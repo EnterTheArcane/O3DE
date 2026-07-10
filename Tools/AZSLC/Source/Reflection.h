@@ -61,27 +61,59 @@ namespace AZ::ShaderCompiler
 
     private:
         //! Builds member variable packing information and adds it to the membersContainer
-        uint32_t BuildMemberLayout(Json::Value& membersContainer, std::string_view namePrefix, const IdentifierUID& memberId, const bool isArrayItr, const Options& options, const AZ::ShaderCompiler::Packing::Layout layoutPacking, uint32_t& offset) const;
+        uint32_t BuildMemberLayout(
+            Json::Value& membersContainer,
+            std::string_view namePrefix,
+            const IdentifierUID& memberId,
+            const bool isArrayItr,
+            const Options& options,
+            const AZ::ShaderCompiler::Packing::Layout layoutPacking,
+            uint32_t& offset) const;
 
         //! Gets the stride for a resource view based on its generic type
-        uint32_t GetViewStride(const IdentifierUID& memberId, const AZ::ShaderCompiler::Packing::Layout& layoutPacking, const Options& options) const;
+        uint32_t GetViewStride(
+            const IdentifierUID& memberId,
+            const AZ::ShaderCompiler::Packing::Layout& layoutPacking,
+            const Options& options) const;
 
         //! Gets the stride for a user defined type containing member variables
         [[nodiscard]]
-        uint32_t BuildUserDefinedMemberLayout(Json::Value& membersContainer, const IdentifierUID& exportedTypeId, const Options& options, const AZ::ShaderCompiler::Packing::Layout layoutPacking, uint32_t& startAt, std::string_view namePrefix) const;
+        uint32_t BuildUserDefinedMemberLayout(
+            Json::Value& membersContainer,
+            const IdentifierUID& exportedTypeId,
+            const Options& options,
+            const AZ::ShaderCompiler::Packing::Layout layoutPacking,
+            uint32_t& startAt,
+            std::string_view namePrefix) const;
 
-        bool BuildIAElement(Json::Value& jsonVal, const IdentifierUID& uid, bool allowStruct) const;
+        bool BuildIAElement(
+            Json::Value& jsonVal,
+            const IdentifierUID& uid,
+            bool allowStruct) const;
 
-        bool BuildOMElement(Json::Value& jsonVal, const ExtendedTypeInfo& returnTypeRef, std::string_view semanticOverride, int& semanticIndex, bool systemValue) const;
+        bool BuildOMElement(
+            Json::Value& jsonVal,
+            const ExtendedTypeInfo& returnTypeRef,
+            std::string_view semanticOverride,
+            int& semanticIndex,
+            bool systemValue) const;
 
-        bool BuildOMStruct(const ExtendedTypeInfo& returnTypeRef, std::string_view semanticOverride, Json::Value& jsonVal, int& semanticIndex) const;
+        bool BuildOMStruct(
+            const ExtendedTypeInfo& returnTypeRef,
+            std::string_view semanticOverride,
+            Json::Value& jsonVal,
+            int& semanticIndex) const;
 
         //! Populate a list of functions where a symbol appear as potentially used
         //! @param uid      The symbol to start the dependency analysis on
         //! @param output   Any dependency symbol will be appended to this set
         //! @scopes         Code reflecting structure storing a map of intervals of function scopes
         //!                 The last parameter is for internal recursion tracking.
-        void DiscoverTopLevelFunctionDependencies(const IdentifierUID& uid, std::set<IdentifierUID>& output, const MapOfBeginToSpanAndUid& scopes, std::set<IdentifierUID>&&) const;
+        void DiscoverTopLevelFunctionDependencies(
+            const IdentifierUID& uid,
+            std::set<IdentifierUID>& output,
+            const MapOfBeginToSpanAndUid& scopes,
+            std::set<IdentifierUID>&&) const;
 
         bool IsNonOverloaded(const IdentifierUID& uid) const;
 

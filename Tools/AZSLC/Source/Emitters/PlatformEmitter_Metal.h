@@ -25,7 +25,11 @@ namespace AZ::ShaderCompiler
         static const PlatformEmitter* RegisterPlatformEmitter() noexcept(false);
 
         [[nodiscard]]
-        std::string GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const final;
+        std::string GetRootConstantsView(
+            const CodeEmitter& codeEmitter,
+            const RootSigDesc& rootSig,
+            const Options& options,
+            BindingPair::Set signatureQuery) const final;
 
         uint32_t AlignRootConstants(uint32_t size) const final;
 

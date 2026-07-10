@@ -110,25 +110,42 @@ namespace AZ::ShaderCompiler
     inline bool IsChameleon(const TypeClass typeClass)
     {
         // IO patch are not strict chameleon because they behave like an array. if we consider array collapsing then maybe they are.
-        return typeClass.IsOneOf(TypeClass::StructuredBuffer, TypeClass::Buffer, TypeClass::StreamOutput, TypeClass::ConstantBuffer);
+        return typeClass.IsOneOf(
+            TypeClass::StructuredBuffer,
+            TypeClass::Buffer,
+            TypeClass::StreamOutput,
+            TypeClass::ConstantBuffer);
     }
 
     inline bool HasGenericParameter(const TypeClass typeClass)
     {
         // TODO: to add InputPath/OutputPatch because it has a generic parameter. (when you do it, update ExtractGenericTypeParameterNameFromAstContext)
-        return IsChameleon(typeClass) || IsGenericArithmetic(typeClass) || typeClass.IsOneOf(TypeClass::GenericTexture, TypeClass::MultisampledTexture, TypeClass::GenericSubpassInput);
+        return IsChameleon(typeClass)
+            || IsGenericArithmetic(typeClass)
+            || typeClass.IsOneOf(TypeClass::GenericTexture, TypeClass::MultisampledTexture, TypeClass::GenericSubpassInput);
     }
 
     inline bool IsViewTypeBuffer(const TypeClass typeClass)
     {
-        return typeClass.IsOneOf(TypeClass::ConstantBuffer, TypeClass::StructuredBuffer, TypeClass::Buffer, TypeClass::ByteAddressBuffer, TypeClass::OtherViewBufferType);
+        return typeClass.IsOneOf(
+            TypeClass::ConstantBuffer,
+            TypeClass::StructuredBuffer,
+            TypeClass::Buffer,
+            TypeClass::ByteAddressBuffer,
+            TypeClass::OtherViewBufferType);
     }
 
     inline bool IsViewType(const TypeClass typeClass)
     {
         // note that a constant buffer is not a view type
         return IsViewTypeBuffer(typeClass)
-            || typeClass.IsOneOf(TypeClass::Texture, TypeClass::GenericTexture, TypeClass::MultisampledTexture, TypeClass::Sampler, TypeClass::SubpassInput, TypeClass::GenericSubpassInput);
+            || typeClass.IsOneOf(
+                TypeClass::Texture,
+                TypeClass::GenericTexture,
+                TypeClass::MultisampledTexture,
+                TypeClass::Sampler,
+                TypeClass::SubpassInput,
+                TypeClass::GenericSubpassInput);
     }
 
     //Example Texture2D m_myTex[]; is supported.

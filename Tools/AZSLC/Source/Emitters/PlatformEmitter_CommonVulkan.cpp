@@ -19,7 +19,10 @@
 
 namespace AZ::ShaderCompiler
 {
-    std::string PlatformEmitter_CommonVulkan::GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbolUid, const Options& options) const
+    std::string PlatformEmitter_CommonVulkan::GetSpecializationConstant(
+        const CodeEmitter& codeEmitter,
+        const IdentifierUID& symbolUid,
+        const Options& options) const
     {
         std::stringstream stream;
         auto* ir = codeEmitter.GetIR();

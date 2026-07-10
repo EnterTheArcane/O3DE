@@ -361,7 +361,10 @@ namespace AZ::ShaderCompiler
     }
 
     template <typename AttributeContextT>
-    static void DoAttributeRegistration(AttributeContextT* ctx, const AttributeScope scope, IntermediateRepresentation* ir)
+    static void DoAttributeRegistration(
+        AttributeContextT* ctx,
+        const AttributeScope scope,
+        IntermediateRepresentation* ir)
     {
         // Attributes can be filtered out by namespace.
         // Attributes without a namespace are always valid and attributes in the 'void' namespace are always filtered out

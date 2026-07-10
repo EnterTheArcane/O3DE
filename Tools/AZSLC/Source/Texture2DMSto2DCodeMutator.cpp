@@ -80,7 +80,8 @@ namespace AZ::ShaderCompiler
         return UnqualifiedName();
     }
 
-    Texture2DMSto2DCodeMutator::TextureMSType Texture2DMSto2DCodeMutator::GetMultiSampledTextureClass(const UnqualifiedName& uqSymbolName)
+    Texture2DMSto2DCodeMutator::TextureMSType Texture2DMSto2DCodeMutator::GetMultiSampledTextureClass(
+        const UnqualifiedName& uqSymbolName)
     {
         if (uqSymbolName.empty())
         {
@@ -361,7 +362,11 @@ namespace AZ::ShaderCompiler
 
     //! A helper method that figures out how a function argument should look like
     //! when mutated into a local variable.
-    static std::string GetLocalVariableStringFromFunctionArgument(TokenStream* stream, const UnqualifiedName& uqName, AstUnnamedVarDecl* ctx, const char* initializationValue)
+    static std::string GetLocalVariableStringFromFunctionArgument(
+        TokenStream* stream,
+        const UnqualifiedName& uqName,
+        AstUnnamedVarDecl* ctx,
+        const char* initializationValue)
     {
         azslParser::FunctionParamContext* paramCtx = nullptr;
         const auto typeCtx = ExtractTypeFromUnnamedVariableDeclarator(ctx, &paramCtx);
@@ -391,7 +396,11 @@ namespace AZ::ShaderCompiler
         return FormatString("%s %s;\n", typeHlsl.c_str(), uqName.c_str());
     }
 
-    void Texture2DMSto2DCodeMutator::DropMultiSamplingSystemSemanticFromFunction(const IdentifierUID& varUid, const VarInfo* varInfo, const std::string& systemSemanticName, const IdentifierUID& functionUid)
+    void Texture2DMSto2DCodeMutator::DropMultiSamplingSystemSemanticFromFunction(
+        const IdentifierUID& varUid,
+        const VarInfo* varInfo,
+        const std::string& systemSemanticName,
+        const IdentifierUID& functionUid)
     {
         // Let's get the FunctionInfo object and report this variable, which will be dropped from the
         // input arguments and will be re-emitted as a local variable to avoid compiler errors from other
@@ -450,7 +459,11 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    void Texture2DMSto2DCodeMutator::MutateMultiSamplingSystemSemanticInStruct(const IdentifierUID& varUid, const VarInfo* varInfo, const std::string& systemSemanticName, const IdentifierUID& structUid)
+    void Texture2DMSto2DCodeMutator::MutateMultiSamplingSystemSemanticInStruct(
+        const IdentifierUID& varUid,
+        const VarInfo* varInfo,
+        const std::string& systemSemanticName,
+        const IdentifierUID& structUid)
     {
         // This is the case of member variable of a struct, but it is a system semantic.
         // Example:

@@ -28,7 +28,9 @@ namespace AZ::ShaderCompiler
         m_getSeenats = getSeenats;
     }
 
-    void SymbolTranslation::RegisterLandingScope(const IdentifierUID& originalSymbol, const QualifiedNameView landingScope)
+    void SymbolTranslation::RegisterLandingScope(
+        const IdentifierUID& originalSymbol,
+        const QualifiedNameView landingScope)
     {
         using RE = RelationshipExtent;
         using std::make_pair;
@@ -71,7 +73,10 @@ namespace AZ::ShaderCompiler
             RelationshipExtentFlag{RE::Self} | RE::Reference | RE::OverloadSet);
     }
 
-    void SymbolTranslation::AddCustomBehavior(const QualifiedNameView originalSymbol, const BehaviorEventFlag on, TranslationBehaviorDelegate action)
+    void SymbolTranslation::AddCustomBehavior(
+        const QualifiedNameView originalSymbol,
+        const BehaviorEventFlag on,
+        TranslationBehaviorDelegate action)
     {
         m_landingScope[originalSymbol].m_customBehavior = CustomBehavior{action, on};
     }
@@ -172,7 +177,10 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    std::string SymbolTranslation::GetTranslatedName(const QualifiedNameView originalSymbol, UsageContext qualificationStrategy, const ssize_t tokenId) const
+    std::string SymbolTranslation::GetTranslatedName(
+        const QualifiedNameView originalSymbol,
+        UsageContext qualificationStrategy,
+        const ssize_t tokenId) const
     {
         FindTranslation_Parameters translationParams{originalSymbol};
         FindTranslation_(translationParams);
@@ -254,7 +262,9 @@ namespace AZ::ShaderCompiler
     }
 
     // checks whether 2 functions are overloads
-    bool SymbolTranslation::BelongsToOverloadSet_(const QualifiedNameView originalName1, const QualifiedNameView originalName2) const
+    bool SymbolTranslation::BelongsToOverloadSet_(
+        const QualifiedNameView originalName1,
+        const QualifiedNameView originalName2) const
     {
         std::string_view core = RemoveLastParenthesisGroup(originalName1);
         auto* coreSymbol = m_accessSymbol(QualifiedNameView{core});

@@ -307,12 +307,15 @@ namespace AZ::ShaderCompiler
         return (m_accumulated[r] - m_accumulatedUnused[r]) + m_registerPos[r];
     }
 
-    void MultiBindingLocationMaker::SignalIncrementSpace(std::function<void(int, int)> warningMessageFunctionForMinDescOvershoot)
+    void MultiBindingLocationMaker::SignalIncrementSpace(
+        std::function<void(int, int)> warningMessageFunctionForMinDescOvershoot)
     {
         if (m_options.m_minAvailableDescriptors.m_spaces >= 0
             && m_untainted.m_space >= m_options.m_minAvailableDescriptors.m_spaces)
         {
-            warningMessageFunctionForMinDescOvershoot(m_untainted.m_space, m_options.m_minAvailableDescriptors.m_spaces);
+            warningMessageFunctionForMinDescOvershoot(
+                m_untainted.m_space,
+                m_options.m_minAvailableDescriptors.m_spaces);
         }
 
         m_untainted.IncrementSpace();
@@ -424,7 +427,11 @@ namespace AZ::ShaderCompiler
         return RemoveWhitespaces(GetTranspiledTokens(initClause->getSourceInterval()));
     }
 
-    void Backend::AppendOptionRange(Json::Value& varOption, const IdentifierUID& varUid, const VarInfo* varInfo, const Options& options) const
+    void Backend::AppendOptionRange(
+        Json::Value& varOption,
+        const IdentifierUID& varUid,
+        const VarInfo* varInfo,
+        const Options& options) const
     {
         Json::Value optValues(Json::arrayValue);
         bool isRange = false;
@@ -664,7 +671,11 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    static void PrintWarningsRelatedToSpecOvershoots(const MultiBindingLocationMaker& bindInfo, const Options& options, const SRGInfo* srgInfo, const IdentifierUID& srgUid)
+    static void PrintWarningsRelatedToSpecOvershoots(
+        const MultiBindingLocationMaker& bindInfo,
+        const Options& options,
+        const SRGInfo* srgInfo,
+        const IdentifierUID& srgUid)
     {
         int numSamplerUsed = bindInfo.m_untainted.GetAccumulated(BindingType::S);
         if (options.m_minAvailableDescriptors.m_samplers >= 0
@@ -731,7 +742,10 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    RootSigDesc::SrgParamDesc Backend::ReflectOneExternalResource(IdentifierUID id, MultiBindingLocationMaker& bindInfo, RootSigDesc& rootSig) const
+    RootSigDesc::SrgParamDesc Backend::ReflectOneExternalResource(
+        IdentifierUID id,
+        MultiBindingLocationMaker& bindInfo,
+        RootSigDesc& rootSig) const
     {
         const Kind kind = m_ir->GetKind(id);
         int count = 1;
@@ -756,7 +770,9 @@ namespace AZ::ShaderCompiler
 
             if (shouldCheckForValidArraySize)
             {
-                CheckHasOneFoldedDimensionOrThrow(memberInfo->GetArrayDimensions(), "CodeEmitter::BuildSignatureDescription");
+                CheckHasOneFoldedDimensionOrThrow(
+                    memberInfo->GetArrayDimensions(),
+                    "CodeEmitter::BuildSignatureDescription");
             }
             count = memberInfo->GetArrayDimensions().GetDimensionAt_OrDefault(0, 1);
             if (isUnboundedArray)
@@ -799,7 +815,10 @@ namespace AZ::ShaderCompiler
         return srgElementDesc;
     }
 
-    RootSigDesc::SrgParamDesc Backend::ReflectOneExternalResourceAndWrapWithUnifyIndices(IdentifierUID id, MultiBindingLocationMaker& bindInfo, RootSigDesc& rootSig) const
+    RootSigDesc::SrgParamDesc Backend::ReflectOneExternalResourceAndWrapWithUnifyIndices(
+        IdentifierUID id,
+        MultiBindingLocationMaker& bindInfo,
+        RootSigDesc& rootSig) const
     {
         auto paramDesc = ReflectOneExternalResource(id, bindInfo, rootSig);
         bindInfo.SignalUnifyIndices();
@@ -954,7 +973,10 @@ namespace AZ::ShaderCompiler
     }
 
     // static
-    std::string Backend::GetTypeModifier(const ExtendedTypeInfo& typeInfo, const Options& options, const Modifiers bannedFlags /*= {}*/)
+    std::string Backend::GetTypeModifier(
+        const ExtendedTypeInfo& typeInfo,
+        const Options& options,
+        const Modifiers bannedFlags /*= {}*/)
     {
         using namespace std::string_literals;
         std::string modifiers;
@@ -1020,7 +1042,11 @@ namespace AZ::ShaderCompiler
         return modifiers;
     }
 
-    std::string Backend::GetExtendedTypeInfo(const ExtendedTypeInfo& extTypeInfo, const Options& options, const Modifiers banned, std::function<std::string(const TypeRefInfo&)> translator) const
+    std::string Backend::GetExtendedTypeInfo(
+        const ExtendedTypeInfo& extTypeInfo,
+        const Options& options,
+        const Modifiers banned,
+        std::function<std::string(const TypeRefInfo&)> translator) const
     {
         std::string hlslString = GetTypeModifier(extTypeInfo, options, banned);
         if (!hlslString.empty())

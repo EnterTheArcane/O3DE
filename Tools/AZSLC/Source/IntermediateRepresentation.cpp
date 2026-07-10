@@ -130,7 +130,9 @@ namespace AZ::ShaderCompiler
         return true;
     }
 
-    void IntermediateRepresentation::RegisterTokenToNodeAssociation(const ssize_t tokenId, antlr4::ParserRuleContext* node)
+    void IntermediateRepresentation::RegisterTokenToNodeAssociation(
+        const ssize_t tokenId,
+        antlr4::ParserRuleContext* node)
     {
         m_tokenMap.SetAssociation(tokenId, node);
     }
@@ -711,7 +713,10 @@ namespace AZ::ShaderCompiler
 
                 // copy the variable into a new symbol. so that its path can make sense
                 // as a child of the rootconstants struct.
-                QualifiedName copiedFieldName{JoinPath(rootConstantStructUid.GetName(), ReplaceSeparators(uid.m_name, Underscore))};
+                QualifiedName copiedFieldName{
+                    JoinPath(rootConstantStructUid.GetName(),
+                    ReplaceSeparators(uid.m_name, Underscore)),
+                };
                 auto& [newVarUid, newVarKind] = m_symbols.AddIdentifier(copiedFieldName, Kind::Variable);
                 newVarKind.GetSubRefAs<VarInfo>() = *varInfo;
                 newVarKind.GetSubRefAs<VarInfo>().m_declNode = nullptr; // the original declaration in the AST isn't inherited by a copied symbol.
@@ -809,7 +814,10 @@ namespace AZ::ShaderCompiler
 
         //! Helper lambda. Checks if @varInfo size is 8 or smaller.
         //! The actual size in bytes is returned in sizeInBytes.
-        auto isVariableOf8BytesOrLess = [](const MiddleEndConfiguration& middleEndconfigration, const VarInfo* varInfo, size_t& sizeInBytes)
+        auto isVariableOf8BytesOrLess = [](
+            const MiddleEndConfiguration& middleEndconfigration,
+            const VarInfo* varInfo,
+            size_t& sizeInBytes)
         {
             if (!IsFundamental(varInfo->GetTypeClass()))
             {
@@ -908,7 +916,9 @@ namespace AZ::ShaderCompiler
             // 2- a float2x2, float3x2, float4x2,
             //    float2x3, float3x3, float4x3.
             //! Helper lambda to get the previously declared variable.
-            auto getPreviousVarInfo = [&](ssize_t& startSearchSymbolIndex /*in out*/, const std::string_view scope) -> VarInfo*
+            auto getPreviousVarInfo = [&](
+                ssize_t& startSearchSymbolIndex /*in out*/,
+                const std::string_view scope) -> VarInfo*
             {
                 while (startSearchSymbolIndex >= 0)
                 {
@@ -965,7 +975,9 @@ namespace AZ::ShaderCompiler
         } // for loop end.
 
         //! Helper function that returns a string suggesting padding solution
-        auto getPaddingSolutionMessage = [&](const PrepadType prepadType, IdentifierUID insertBeforeThisUid) -> std::string
+        auto getPaddingSolutionMessage = [&](
+            const PrepadType prepadType,
+            IdentifierUID insertBeforeThisUid) -> std::string
         {
             // We can deduce the name of parent struct, class or SRG from the name of the field that should come AFTER
             // the dummy float2/float3.

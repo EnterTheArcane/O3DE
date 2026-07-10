@@ -653,7 +653,9 @@ namespace AZ::ShaderCompiler
         }
 
         //! construct your overload-set progressively, thanks to that adder.
-        void PushConcreteFunction(IdentifierUID functionBelongingToTheOverloadSet, ExtendedTypeInfo thatFunctionsReturnType)
+        void PushConcreteFunction(
+            IdentifierUID functionBelongingToTheOverloadSet,
+            ExtendedTypeInfo thatFunctionsReturnType)
         {
             assert(IsLeafDecoratedByArguments(functionBelongingToTheOverloadSet.GetName()));
             const std::string_view core = RemoveLastParenthesisGroup(functionBelongingToTheOverloadSet.GetName());
@@ -1255,7 +1257,9 @@ namespace AZ::ShaderCompiler
     //!     collapsed: float4[10] will be float4
     //!     mangled  : float is ?float  and  Srg::S is /Srg/S
     //! @param getStrategy   set it to "Returned" to collapse functions to their return types. Can be useful for call expressions.
-    inline QualifiedName GetTypeName(const IdAndKind* ptr, const ForFunctionGetType getStrategy = ForFunctionGetType::SelfIdentity)
+    inline QualifiedName GetTypeName(
+        const IdAndKind* ptr,
+        const ForFunctionGetType getStrategy = ForFunctionGetType::SelfIdentity)
     {
         auto& [uid, kind] = *ptr;
         return kind.VisitSub(GetSubKindInfoTypeName_Visitor{uid, getStrategy == ForFunctionGetType::Returned});
@@ -1318,7 +1322,11 @@ namespace AZ::ShaderCompiler
     }
 
     //! helper for fatal semantic error of ODR violation
-    inline void ThrowRedeclarationAsDifferentKind(std::string_view symbolName, const Kind newKind, const KindInfo& kindInfo, const std::optional<size_t> lineNumber = std::nullopt)
+    inline void ThrowRedeclarationAsDifferentKind(
+        std::string_view symbolName,
+        const Kind newKind,
+        const KindInfo& kindInfo,
+        const std::optional<size_t> lineNumber = std::nullopt)
     {
         const std::string errorMessage = ConcatString(
             "redeclaration of ",

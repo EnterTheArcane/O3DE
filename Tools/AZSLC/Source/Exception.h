@@ -119,7 +119,12 @@ namespace AZ::ShaderCompiler
     class AzslcException : public antlr4::RuntimeException
     {
     public:
-        AzslcException(const uint32_t errorCode, const std::string_view errorType, const std::optional<size_t> line, const std::optional<size_t> column, const std::string& message)
+        AzslcException(
+            const uint32_t errorCode,
+            const std::string_view errorType,
+            const std::optional<size_t> line,
+            const std::optional<size_t> column,
+            const std::string& message)
             : antlr4::RuntimeException(std::string(message.c_str(), message.size()))
             , m_errorCode(errorCode)
             , m_errorType(errorType)
@@ -130,7 +135,11 @@ namespace AZ::ShaderCompiler
             BakeErrorMessage();
         }
 
-        AzslcException(const uint32_t errorCode, const std::string_view errorType, const Token* token, const std::string& message)
+        AzslcException(
+            const uint32_t errorCode,
+            const std::string_view errorType,
+            const Token* token,
+            const std::string& message)
             : RuntimeException(std::string(message.c_str(), message.size()))
             , m_errorCode(errorCode)
             , m_errorType(errorType)
@@ -173,7 +182,14 @@ namespace AZ::ShaderCompiler
             return m_errorCode;
         }
 
-        static std::string MakeErrorMessage(std::string_view filename, std::string_view line, std::string_view column, std::string_view errorType, const bool error, std::string_view code, std::string_view message)
+        static std::string MakeErrorMessage(
+            std::string_view filename,
+            std::string_view line,
+            std::string_view column,
+            std::string_view errorType,
+            const bool error,
+            std::string_view code,
+            std::string_view message)
         {
             // global filename for error messages. visual studio standard build-tool error format is:
             // {filename(line# [, column#]) | toolname} : [ any text ] {error | warning} code+number:localizable string [ any text ]
@@ -254,7 +270,11 @@ namespace AZ::ShaderCompiler
         inline static constexpr std::string_view ErrorType = "Semantic";
 
     public:
-        AzslcOrchestratorException(const uint32_t errorCode, const std::optional<size_t> line, const std::optional<size_t> column, const std::string& message)
+        AzslcOrchestratorException(
+            const uint32_t errorCode,
+            const std::optional<size_t> line,
+            const std::optional<size_t> column,
+            const std::string& message)
             : AzslcException(
                 errorCode,
                 ErrorType,
@@ -288,7 +308,10 @@ namespace AZ::ShaderCompiler
         inline static constexpr std::string_view ErrorType = "IR";
 
     public:
-        AzslcIrException(const uint32_t errorCode, const std::string& message, const std::optional<size_t> line = std::nullopt)
+        AzslcIrException(
+            const uint32_t errorCode,
+            const std::string& message,
+            const std::optional<size_t> line = std::nullopt)
             : AzslcException(
                 errorCode,
                 ErrorType,
@@ -305,7 +328,11 @@ namespace AZ::ShaderCompiler
         inline static constexpr std::string_view ErrorType = "Emitter";
 
     public:
-        AzslcEmitterException(const uint32_t errorCode, const std::optional<size_t> line, const std::optional<size_t> column, const std::string& message)
+        AzslcEmitterException(
+            const uint32_t errorCode,
+            const std::optional<size_t> line,
+            const std::optional<size_t> column,
+            const std::string& message)
             : AzslcException(
                 errorCode,
                 ErrorType,

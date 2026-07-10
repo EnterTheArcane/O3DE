@@ -107,7 +107,10 @@ namespace AZ::ShaderCompiler
     // out argument: classifiedTokens
     // filter: is a predicate for condition to check to pass registration
     template <typename FilterFunction>
-    void ClassifyAllTokens(const azslLexer* lexer, MapOfStringViewToSetOfString& classifiedTokens, FilterFunction filter)
+    void ClassifyAllTokens(
+        const azslLexer* lexer,
+        MapOfStringViewToSetOfString& classifiedTokens,
+        FilterFunction filter)
     {
         std::set<std::string> notTypes1;
         VisitTokens(lexer, classifiedTokens, notTypes1, filter);
@@ -292,7 +295,10 @@ namespace AZ::ShaderCompiler::Main
 
     /// this function supports the --visitsym option
     // @symbolMqn   starting point of symbol homonyms graph discovery. Mqn: mangled qualified name
-    void PrintVisitSymbol(IntermediateRepresentation& ir, std::string_view symbolMqn, const RelationshipExtentFlag visitOptions)
+    void PrintVisitSymbol(
+        IntermediateRepresentation& ir,
+        std::string_view symbolMqn,
+        const RelationshipExtentFlag visitOptions)
     {
         const IdAndKind* symbol = ir.GetIdAndKindInfo(QualifiedNameView{symbolMqn});
         if (!symbol)
@@ -653,7 +659,18 @@ int main(int argc, const char* argv[])
                 throw AzslcException{WX_WARNINGS_AS_ERRORS, "as-error", std::string{message}};
             };
             ParseWarningLevel(warningOpts, warningCout);
-            bool nonValidativeOptions[] = {full, ia, om, srg, options, dumpsym, ast, bindingdep, !visitName.empty(), stripUnusedSrgs,};
+            bool nonValidativeOptions[] = {
+                full,
+                ia,
+                om,
+                srg,
+                options,
+                dumpsym,
+                ast,
+                bindingdep,
+                !visitName.empty(),
+                stripUnusedSrgs,
+            };
             bool anyNonValidativeOption = std::any_of(
                 std::begin(nonValidativeOptions),
                 std::end(nonValidativeOptions),

@@ -45,7 +45,11 @@ namespace AZ::ShaderCompiler
         /// Register a fresh entry in the symbol map. No KindInfo filled up, the client must do it.
         /// Will return a reference to the newly inserted data.
         /// Will throw in case of ODR violation.
-        IdAndKind& AddIdentifier(QualifiedNameView symbol, Kind kind, std::optional<size_t> lineNumber = std::nullopt, AddIdentifierChecks = AddIdentifierChecks::ReservedNames);
+        IdAndKind& AddIdentifier(
+            QualifiedNameView symbol,
+            Kind kind,
+            std::optional<size_t> lineNumber = std::nullopt,
+            AddIdentifierChecks = AddIdentifierChecks::ReservedNames);
 
         bool DeleteIdentifier(IdentifierUID name);
 

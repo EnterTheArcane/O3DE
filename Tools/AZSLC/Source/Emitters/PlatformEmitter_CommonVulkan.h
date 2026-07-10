@@ -23,7 +23,10 @@ namespace AZ::ShaderCompiler
     {
     public:
         [[nodiscard]]
-        std::string GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbol, const Options& options) const override;
+        std::string GetSpecializationConstant(
+            const CodeEmitter& codeEmitter,
+            const IdentifierUID& symbol,
+            const Options& options) const override;
 
         [[nodiscard]]
         std::pair<std::string, std::string> GetDataViewHeaderFooter(

@@ -124,7 +124,10 @@ namespace AZ::ShaderCompiler
     }
 
     // special high level entry of "RegisterFunction" feature but with pre-treatments related to scope resolution and semantic checks specifics to methods
-    IdAndKind& SemanticOrchestrator::RegisterDeportedMethod(UnqualifiedNameView uqName, azslParser::UserDefinedTypeContext* className, AstFuncSig* ctx)
+    IdAndKind& SemanticOrchestrator::RegisterDeportedMethod(
+        UnqualifiedNameView uqName,
+        azslParser::UserDefinedTypeContext* className,
+        AstFuncSig* ctx)
     {
         // extract the type name from the type rule. remember that it can be a reference to an existing UDT, or the inline definition of a new UDT.
         //  note: in the latter case, the syntax is contrived but valid (surprising for C++/java people)
@@ -253,13 +256,17 @@ namespace AZ::ShaderCompiler
     }
 
     // unqualified-name (UQN) taking version. (expect a relative name to current scope)
-    IdAndKind& SemanticOrchestrator::RegisterFunction(const UnqualifiedNameView name, AstFuncSig* ctx, const AsFunc statementGenre)
+    IdAndKind& SemanticOrchestrator::RegisterFunction(
+        const UnqualifiedNameView name,
+        AstFuncSig* ctx,
+        const AsFunc statementGenre)
     {
         const auto fqName = MakeFullyQualified(name);
         return RegisterFunction(fqName, ctx, statementGenre);
     }
 
-    std::string SemanticOrchestrator::CreateDecorationOfFunction(azslParser::FunctionParamsContext* parametersContext) const
+    std::string SemanticOrchestrator::CreateDecorationOfFunction(
+        azslParser::FunctionParamsContext* parametersContext) const
     {
         if (parametersContext == nullptr || parametersContext->Void())
         {
@@ -277,13 +284,18 @@ namespace AZ::ShaderCompiler
         return ::AZ::ShaderCompiler::CreateDecorationOfFunction(typeList.begin(), typeList.end());
     }
 
-    QualifiedName SemanticOrchestrator::CreateDecoratedIdentityOfFunction(QualifiedNameView name, azslParser::FunctionParamsContext* parametersContext) const
+    QualifiedName SemanticOrchestrator::CreateDecoratedIdentityOfFunction(
+        QualifiedNameView name,
+        azslParser::FunctionParamsContext* parametersContext) const
     {
         return QualifiedName{ConcatString(name, CreateDecorationOfFunction(parametersContext))};
     }
 
     // qualified-name (FQN) taking version. (pre-resolved scope)
-    IdAndKind& SemanticOrchestrator::RegisterFunction(QualifiedNameView fqUndecoratedName, AstFuncSig* ctx, const AsFunc statementGenre)
+    IdAndKind& SemanticOrchestrator::RegisterFunction(
+        QualifiedNameView fqUndecoratedName,
+        AstFuncSig* ctx,
+        const AsFunc statementGenre)
     {
         // parameter validation: check the claim of the caller
         assert(
@@ -486,7 +498,9 @@ namespace AZ::ShaderCompiler
         return *symbol;
     }
 
-    IdAndKind& SemanticOrchestrator::RegisterFunctionDeclarationAndAddSeenat(const UnqualifiedNameView uqName, AstFuncSig* signature)
+    IdAndKind& SemanticOrchestrator::RegisterFunctionDeclarationAndAddSeenat(
+        const UnqualifiedNameView uqName,
+        AstFuncSig* signature)
     {
         // join scope and uqName (no unqualified lookup here, declarations are authoritative in scope):
         auto qName = MakeFullyQualified(uqName);
@@ -593,7 +607,10 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    IdAndKind& SemanticOrchestrator::RegisterTypeAlias(std::string_view newIdentifier, AstType* existingTypeCtx, azslParser::TypeAliasingDefinitionStatementContext* ctx)
+    IdAndKind& SemanticOrchestrator::RegisterTypeAlias(
+        std::string_view newIdentifier,
+        AstType* existingTypeCtx,
+        azslParser::TypeAliasingDefinitionStatementContext* ctx)
     {
         const UnqualifiedNameView newId{newIdentifier};
         auto& idKind = AddIdentifier(newId, Kind::TypeAlias, ctx->start->getLine());
@@ -881,7 +898,11 @@ namespace AZ::ShaderCompiler
             " ) in external resource declaration");
     }
 
-    void SemanticOrchestrator::FillOutSrgField(const AstNamedVarDecl* ctx, VarInfo& varInfo, IdentifierUID varUid, const ArrayDimensions& arrayDims)
+    void SemanticOrchestrator::FillOutSrgField(
+        const AstNamedVarDecl* ctx,
+        VarInfo& varInfo,
+        IdentifierUID varUid,
+        const ArrayDimensions& arrayDims)
     {
         const bool isUnboundedArray = arrayDims.IsUnbounded();
         if (!isUnboundedArray && !arrayDims.AreAllDimsFullyConstantFolded())
@@ -1280,7 +1301,9 @@ namespace AZ::ShaderCompiler
         return false;
     }
 
-    IdAndKind* SemanticOrchestrator::ResolveOverload(IdAndKind* maybeOverloadSet, azslParser::ArgumentListContext* argumentListCtx) const
+    IdAndKind* SemanticOrchestrator::ResolveOverload(
+        IdAndKind* maybeOverloadSet,
+        azslParser::ArgumentListContext* argumentListCtx) const
     {
         IdAndKind* toReturn = maybeOverloadSet;
         if (maybeOverloadSet && maybeOverloadSet->second.GetKind() == Kind::OverloadSet)
@@ -1371,7 +1394,10 @@ namespace AZ::ShaderCompiler
             });
     }
 
-    void SemanticOrchestrator::DiagnoseUndeclaredSub(Token* atToken, const QualifiedNameView startupScope, std::string partialName) const
+    void SemanticOrchestrator::DiagnoseUndeclaredSub(
+        Token* atToken,
+        const QualifiedNameView startupScope,
+        std::string partialName) const
     {
         // check if we can help the user a bit, that will avoid long pondering when DXC refuses to build something that broke through translation.
         auto parent = GetParentName(partialName);
@@ -1406,7 +1432,8 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    std::pair<bool, QualifiedName> SemanticOrchestrator::VerifyLHSExprOfMAExprIsValid(const azslParser::MemberAccessExpressionContext* ctx) const
+    std::pair<bool, QualifiedName> SemanticOrchestrator::VerifyLHSExprOfMAExprIsValid(
+        const azslParser::MemberAccessExpressionContext* ctx) const
     {
         return VerifyTypeIsScopeComposable(ctx->LHSExpr);
     }
@@ -1414,13 +1441,17 @@ namespace AZ::ShaderCompiler
     //! Member Access Expression (MAE) such as A.B is a scoped lookup. (A is the scope and B is the composition)
     //! Typeof Expression such as typeof(A)::B is a scoped lookup. (typeof(A) is the scope and B is the composition)
     //! returns the looked up scope
-    std::pair<bool, QualifiedName> SemanticOrchestrator::VerifyTypeIsScopeComposable(azslParser::ExpressionContext* typeScopeAnyExpression) const
+    std::pair<bool, QualifiedName> SemanticOrchestrator::VerifyTypeIsScopeComposable(
+        azslParser::ExpressionContext* typeScopeAnyExpression) const
     {
         return VerifyTypeIsScopeComposable(TypeofExpr(typeScopeAnyExpression), typeScopeAnyExpression->getText(), typeScopeAnyExpression->start->getLine());
     }
 
     //! same function as above for already resolved typeof
-    std::pair<bool, QualifiedName> SemanticOrchestrator::VerifyTypeIsScopeComposable(QualifiedNameView lhsTypeName, std::optional<std::string> lhsExpressionText/*= std::nullopt*/, const std::optional<size_t> line/*= std::nullopt*/) const
+    std::pair<bool, QualifiedName> SemanticOrchestrator::VerifyTypeIsScopeComposable(
+        QualifiedNameView lhsTypeName,
+        std::optional<std::string> lhsExpressionText/*= std::nullopt*/,
+        const std::optional<size_t> line/*= std::nullopt*/) const
     {
         // (generalized) member-access-expressions can only work on types with members:
         // any UDT: struct, enum, class, interface. Any scope; srg, function. Any type-like: typeof, typedef (because they get collapsed)
@@ -1477,7 +1508,9 @@ namespace AZ::ShaderCompiler
         return {valid, lhsTypeName};
     }
 
-    QualifiedName SemanticOrchestrator::ComposeMemberNameWithScopeAndGetType(QualifiedName scopingType, AstIdExpr* rhsMember) const
+    QualifiedName SemanticOrchestrator::ComposeMemberNameWithScopeAndGetType(
+        QualifiedName scopingType,
+        AstIdExpr* rhsMember) const
     {
         // get the symbol name we want to lookup on the right hand side:
         UnqualifiedName rhsName = ExtractNameFromIdExpression(rhsMember);
@@ -1544,7 +1577,15 @@ namespace AZ::ShaderCompiler
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::BinaryExpressionContext* ctx) const
     {
         using lex = azslLexer;
-        const auto boolResultOperators = {lex::Less, lex::Greater, lex::LessEqual, lex::GreaterEqual, lex::NotEqual, lex::AndAnd, lex::OrOr};
+        const auto boolResultOperators = {
+            lex::Less,
+            lex::Greater,
+            lex::LessEqual,
+            lex::GreaterEqual,
+            lex::NotEqual,
+            lex::AndAnd,
+            lex::OrOr,
+        };
         if (IsIn(ctx->binaryOperator()->start->getType(), boolResultOperators))
         {
             return MangleScalarType("bool");
@@ -1948,7 +1989,11 @@ namespace AZ::ShaderCompiler
                         srgInfo.m_semantic->GetNameLeaf().c_str(),
                         originalSrglineInfo->m_forcedLineNumber,
                         originalSrglineInfo->m_containingFilename.c_str());
-                    throw AzslcOrchestratorException{ORCHESTRATOR_SRG_EXTENSION_HAS_DIFFERENT_SEMANTIC, ctx->Semantic, errorMsg};
+                    throw AzslcOrchestratorException{
+                        ORCHESTRATOR_SRG_EXTENSION_HAS_DIFFERENT_SEMANTIC,
+                        ctx->Semantic,
+                        errorMsg,
+                    };
                 }
                 // All is good.
                 return;
@@ -1962,7 +2007,7 @@ namespace AZ::ShaderCompiler
                 throw AzslcOrchestratorException{
                     ORCHESTRATOR_INVALID_SEMANTIC_DECLARATION,
                     ctx->ShaderResourceGroup()->getSymbol(),
-                    ConcatString("Declaration for semantic ", semanticName, " used in SRG ", ctx->Name->getText(), " was not found")
+                    ConcatString("Declaration for semantic ", semanticName, " used in SRG ", ctx->Name->getText(), " was not found"),
                 };
             }
 
@@ -2126,7 +2171,10 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    std::optional<int64_t> SemanticOrchestrator::TryFoldSRGSemantic(const azslParser::SrgSemanticContext* ctx, const size_t semanticTokenType, const bool required)
+    std::optional<int64_t> SemanticOrchestrator::TryFoldSRGSemantic(
+        const azslParser::SrgSemanticContext* ctx,
+        const size_t semanticTokenType,
+        const bool required)
     {
         // const ref used, to extend the returned object's temporary life
         const auto stdIntrinsicVarNameFromLexer = m_lexer->getVocabulary().getLiteralName(semanticTokenType);
@@ -2185,7 +2233,9 @@ namespace AZ::ShaderCompiler
         (*semanticInfo).m_variantFallback = TryFoldSRGSemantic(ctx, azslParser::ShaderVariantFallback);
     }
 
-    ConstNumericVal SemanticOrchestrator::FoldEvalStaticConstExprNumericValue(tree::TerminalNode* numericLiteralToken, const bool hintAsInt) const noexcept(false)
+    ConstNumericVal SemanticOrchestrator::FoldEvalStaticConstExprNumericValue(
+        tree::TerminalNode* numericLiteralToken,
+        const bool hintAsInt) const noexcept(false)
     {
         const std::string text = numericLiteralToken->getText();
         if (hintAsInt)
@@ -2236,7 +2286,9 @@ namespace AZ::ShaderCompiler
 
     namespace
     {
-        DiagnosticStream FoldFailedCommonMessage(const Token* tok, std::optional<std::string_view> identifier = std::nullopt)
+        DiagnosticStream FoldFailedCommonMessage(
+            const Token* tok,
+            std::optional<std::string_view> identifier = std::nullopt)
         {
             verboseCout << tok->getLine();
             if (identifier)
@@ -2358,7 +2410,10 @@ namespace AZ::ShaderCompiler
         return toReturn;
     }
 
-    IdentifierUID SemanticOrchestrator::LookupType(UnqualifiedNameView typeName, OnNotFoundOrWrongKind policy, const std::optional<size_t> sourceline /*=std::nullopt*/) const
+    IdentifierUID SemanticOrchestrator::LookupType(
+        UnqualifiedNameView typeName,
+        OnNotFoundOrWrongKind policy,
+        const std::optional<size_t> sourceline /*=std::nullopt*/) const
     {
         auto getErrorIUID = [policy, typeName]()
         {
@@ -2407,7 +2462,9 @@ namespace AZ::ShaderCompiler
         return {type->first};
     }
 
-    bool SemanticOrchestrator::TryFoldGenericArrayDimensions(ExtractedComposedType& extType, const std::vector<tree::TerminalNode*>& genericDims) const
+    bool SemanticOrchestrator::TryFoldGenericArrayDimensions(
+        ExtractedComposedType& extType,
+        const std::vector<tree::TerminalNode*>& genericDims) const
     {
         for (const auto dim : genericDims)
         {
@@ -2518,7 +2575,9 @@ namespace AZ::ShaderCompiler
         return scopeKind.IsKindOneOf(Kind::Struct, Kind::Class, Kind::Interface);
     }
 
-    void SemanticOrchestrator::MakeAndEnterAnonymousScope(std::string_view decorationPrefix, const Token* scopeFirstToken)
+    void SemanticOrchestrator::MakeAndEnterAnonymousScope(
+        std::string_view decorationPrefix,
+        const Token* scopeFirstToken)
     {
         const UnqualifiedName unnamedBlockCode{ConcatString("$", decorationPrefix, m_anonymousCounter)};
         AddIdentifier(unnamedBlockCode, Kind::Namespace, scopeFirstToken->getLine());

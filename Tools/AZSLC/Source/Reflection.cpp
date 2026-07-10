@@ -110,7 +110,11 @@ namespace AZ::ShaderCompiler
         return jsonVal.size() > 0;
     }
 
-    bool CodeReflection::BuildOMStruct(const ExtendedTypeInfo& returnTypeRef, const std::string_view semanticOverride, Json::Value& jsonVal, int& semanticIndex) const
+    bool CodeReflection::BuildOMStruct(
+        const ExtendedTypeInfo& returnTypeRef,
+        const std::string_view semanticOverride,
+        Json::Value& jsonVal,
+        int& semanticIndex) const
     {
         auto idKind = m_ir->GetIdAndKindInfo(returnTypeRef.m_coreType.m_typeId.GetName());
         if (!idKind)
@@ -168,7 +172,11 @@ namespace AZ::ShaderCompiler
         return (semanticIndex == 0);
     }
 
-    bool IsValidPSOutput(const std::string_view& semanticOverride, const int& semanticIndex, Json::Value& jsonVal, const ExtendedTypeInfo& returnTypeRef)
+    bool IsValidPSOutput(
+        const std::string_view& semanticOverride,
+        const int& semanticIndex,
+        Json::Value& jsonVal,
+        const ExtendedTypeInfo& returnTypeRef)
     {
         if (semanticOverride.empty())
         {
@@ -208,7 +216,12 @@ namespace AZ::ShaderCompiler
         return true;
     }
 
-    bool CodeReflection::BuildOMElement(Json::Value& jsonVal, const ExtendedTypeInfo& returnTypeRef, std::string_view semanticOverride, int& semanticIndex, const bool isSystemValue) const
+    bool CodeReflection::BuildOMElement(
+        Json::Value& jsonVal,
+        const ExtendedTypeInfo& returnTypeRef,
+        std::string_view semanticOverride,
+        int& semanticIndex,
+        const bool isSystemValue) const
     {
         // Structs are allowed as pixel shader output, if the type is registered walk over its attributes here
         if (!IsPredefinedType(returnTypeRef.m_coreType.m_typeClass))
@@ -385,7 +398,12 @@ namespace AZ::ShaderCompiler
                 tie(semanticName, semanticIndex, isSystemValue) = ExtractHlslSemantic(funcSubInfo.m_defNode->hlslSemantic());
             }
 
-            validFunc &= BuildOMElement(renderTargets, funcSubInfo.m_returnType, semanticName, semanticIndex, isSystemValue);
+            validFunc &= BuildOMElement(
+                renderTargets,
+                funcSubInfo.m_returnType,
+                semanticName,
+                semanticIndex,
+                isSystemValue);
 
             int depthFoundNTimes = 0;
             for (auto existingSemantic : renderTargets)
@@ -430,7 +448,10 @@ namespace AZ::ShaderCompiler
         m_out << entries;
     }
 
-    uint32_t CodeReflection::GetViewStride(const IdentifierUID& memberId, const AZ::ShaderCompiler::Packing::Layout& layoutPacking, const Options& options) const
+    uint32_t CodeReflection::GetViewStride(
+        const IdentifierUID& memberId,
+        const AZ::ShaderCompiler::Packing::Layout& layoutPacking,
+        const Options& options) const
     {
         const auto* varInfoPtr = m_ir->GetSymbolSubAs<VarInfo>(memberId.m_name);
         if (!varInfoPtr)

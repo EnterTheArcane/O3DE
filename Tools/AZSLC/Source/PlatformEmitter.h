@@ -23,14 +23,14 @@ namespace AZ::ShaderCompiler
     //! Modes of subpass input the emitter supports
     enum class SubpassInputSupportFlag : uint32_t
     {
-        // No support
         None = 0,
-        // Support for color attachments
+        // No support
         Color = 1 << 0,
-        // Support for depth/stencil attachment
+        // Support for color attachments
         DepthStencil = 1 << 1,
-        // Support all modes
+        // Support for depth/stencil attachment
         All = Color | DepthStencil,
+        // Support all modes
     };
 
     // PlatformEmitter is not a Backend by design. It's a supplement to CodeEmitter, not a replacement.

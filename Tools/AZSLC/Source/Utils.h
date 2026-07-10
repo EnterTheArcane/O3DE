@@ -613,7 +613,12 @@ namespace AZ::ShaderCompiler
         //!          https://github.com/microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst#memory-layout-rules
         //! OpenGL : https://www.khronos.org/registry/OpenGL/specs/gl/glspec45.core.pdf#page=159
         //!          https://github.com/Microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst
-        static uint32_t AlignOffset(const Layout layout, const uint32_t currentSize, const Alignment& alignment, const uint32_t rows, const uint32_t cols)
+        static uint32_t AlignOffset(
+            const Layout layout,
+            const uint32_t currentSize,
+            const Alignment& alignment,
+            const uint32_t rows,
+            const uint32_t cols)
         {
             switch (layout)
             {

@@ -28,21 +28,22 @@ namespace AZ
     //! stream manipulator: warning severity level
     MAKE_REFLECTABLE_ENUM(
         Warn,
-        W0,
         // Suppress all warnings
-        W1,
+        W0,
         // Display level 1 (severe) warnings [default]
-        W2,
+        W1,
         // Display level 1 & 2 warnings
-        W3,
+        W2,
         // Display level 1 & 2 & 3 warnings
-        Wx,
+        W3,
         // Treats any currently ativated warning, as error
-        Wx1,
+        Wx,
         // Warnings up to level 1 are errors
-        Wx2,
+        Wx1,
         // Warnings up to level 2 are errors
-        Wx3 // Warnings up to level 3 are errors
+        Wx2,
+        // Warnings up to level 3 are errors
+        Wx3,
     );
 
     //! stream manipulator: stack up a severity level on a DiagnosticStream object (streams used for warnings have stateful warning levels, they can be backup-ed and restored thanks to this)
@@ -109,7 +110,8 @@ namespace AZ
         Self& operator<<(Warn::EnumType&& level)
         {
             assert(level > Warn::W0); // silent warning messages make no sense.
-            assert(level < Warn::Wx); // don't stream manipulators other than warning levels (error manipulators don't make sense)
+            assert(level < Warn::Wx);
+            // don't stream manipulators other than warning levels (error manipulators don't make sense)
             m_activeManipulator.top() = level;
             return *this;
         }
@@ -200,11 +202,14 @@ namespace AZ
     public:
         bool m_on = true;
         decltype(std::cout)& m_wrappedStream;
-        std::function<void(std::string_view)> m_onErrorCallback; //!< receive a message in case of a streamed element of a warning level enough to trigger an error
+        //!< receive a message in case of a streamed element of a warning level enough to trigger an error
+        std::function<void(std::string_view)> m_onErrorCallback;
 
     private:
         Warn m_warningAsErrorLevel = Warn::EndEnumeratorSentinel_; //!< no warning is an error by default
-        Warn m_warningLevel = Warn::W1; //!< current activated level setting. default warning is W1
-        std::stack<Warn> m_activeManipulator{{Warn::W1}}; //!< store manipulators. start with an initial value corresponding to the default filter.
+        //!< current activated level setting. default warning is W1
+        Warn m_warningLevel = Warn::W1;
+        //!< store manipulators. start with an initial value corresponding to the default filter.
+        std::stack<Warn> m_activeManipulator{{Warn::W1}};
     };
 }

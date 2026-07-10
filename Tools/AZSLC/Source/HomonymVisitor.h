@@ -22,15 +22,16 @@ namespace AZ::ShaderCompiler
     //! Strategy for the visitation extent of relationship
     MAKE_REFLECTABLE_ENUM_POWER(
         RelationshipExtent,
-        Self // include the startup symbol
-        ,
-        Reference // the seenat collection of a symbol
-        ,
-        Family // up and down list of overrides
-        ,
-        OverloadSet // group of overloads
-        ,
-        Recursive // explore the entire homonymous graph, including e.g children's overloads's references. And e.g the base of an overload of a child
+        // include the startup symbol
+        Self,
+        // the seenat collection of a symbol
+        Reference
+        // up and down list of overrides
+        Family,
+        // group of overloads
+        OverloadSet,
+        // explore the entire homonymous graph, including e.g children's overloads's references. And e.g the base of an overload of a child
+        Recursive,
     );
 
     using RelationshipExtentFlag = Flag<RelationshipExtent>;
@@ -56,7 +57,10 @@ namespace AZ::ShaderCompiler
         //! @param walkConfiguration    The visitation strategy. You can add flag elements using operator |
         //!                             e.g  RelationshipExtentFlag{ RelationshipExtent::Self } | RelationshipExtent::Reference
         template <typename FunctorType>
-        void operator()(const IdentifierUID& symbol, FunctorType&& functor, RelationshipExtentFlag walkConfiguration) const
+        void operator()(
+            const IdentifierUID& symbol,
+            FunctorType&& functor,
+            RelationshipExtentFlag walkConfiguration) const
         {
             const KindInfo* info = m_getInfo(symbol.GetName());
             assert(info);
@@ -72,7 +76,11 @@ namespace AZ::ShaderCompiler
 
     private:
         template <typename FunctorType>
-        void Walk(const IdentifierUID& symbol, FunctorType&& functor, RelationshipExtentFlag walkConfiguration, std::unordered_set<IdentifierUID>& visitedSet) const
+        void Walk(
+            const IdentifierUID& symbol,
+            FunctorType&& functor,
+            RelationshipExtentFlag walkConfiguration,
+            std::unordered_set<IdentifierUID>& visitedSet) const
         {
             if (visitedSet.find(symbol) != visitedSet.end())
             {
@@ -99,7 +107,11 @@ namespace AZ::ShaderCompiler
         }
 
         template <typename FunctorType>
-        void VisitOverloadSet(const IdentifierUID& symbol, FunctorType&& functor, RelationshipExtentFlag walkConfiguration, std::unordered_set<IdentifierUID>& visitedSet) const
+        void VisitOverloadSet(
+            const IdentifierUID& symbol,
+            FunctorType&& functor,
+            RelationshipExtentFlag walkConfiguration,
+            std::unordered_set<IdentifierUID>& visitedSet) const
         {
             const KindInfo& kind = *m_getInfo(symbol.GetName());
             if (kind.GetKind() == Kind::Function)
@@ -119,7 +131,11 @@ namespace AZ::ShaderCompiler
         }
 
         template <typename FunctorType>
-        void VisitFamily(const IdentifierUID& symbol, FunctorType&& functor, RelationshipExtentFlag walkConfiguration, std::unordered_set<IdentifierUID>& visitedSet) const
+        void VisitFamily(
+            const IdentifierUID& symbol,
+            FunctorType&& functor,
+            RelationshipExtentFlag walkConfiguration,
+            std::unordered_set<IdentifierUID>& visitedSet) const
         {
             KindInfo& kind = *m_getInfo(symbol.GetName());
             if (kind.GetKind() == Kind::Function) // for now only functions have families. we'll have to abstract family access if we implement properties.
@@ -144,14 +160,20 @@ namespace AZ::ShaderCompiler
             auto& seenats = GetSeenats(symbol);
             for (auto&& at : seenats)
             {
-                functor(at, RelationshipExtent::Reference); // callback on reference. which are leaves. no need to add to visited set.
+                functor(at, RelationshipExtent::Reference);
+                // callback on reference. which are leaves. no need to add to visited set.
             }
         }
 
         //! This function is named this way because of the opposition with "direct references" which already have seenats.
         //! definition locations don't register a seenat, so we need to re-synthesize one.
         template <typename FunctorType>
-        void VisitDefinitionIdentifier(const IdentifierUID& symbol, FunctorType&& functor, RelationshipExtent visitCategory, RelationshipExtentFlag walkConfiguration, std::unordered_set<IdentifierUID>& visitedSet) const
+        void VisitDefinitionIdentifier(
+            const IdentifierUID& symbol,
+            FunctorType&& functor,
+            RelationshipExtent visitCategory,
+            RelationshipExtentFlag walkConfiguration,
+            std::unordered_set<IdentifierUID>& visitedSet) const
         {
             if (visitedSet.find(symbol) == visitedSet.end())
             {

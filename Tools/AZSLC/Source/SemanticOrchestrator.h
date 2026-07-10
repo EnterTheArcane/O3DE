@@ -50,7 +50,10 @@ namespace AZ::ShaderCompiler
         //! Does this symbol resolves to an existing ID from the current scope ?
         //! Helper shortcut: will concatenate your symbol name to current scope before passing to SymbolAggregator
         //! Returns whatever SymbolAggretator's eponymous returns.
-        decltype(auto) AddIdentifier(const UnqualifiedNameView usym, const Kind kind, const std::optional<size_t> lineNumber = std::nullopt)
+        decltype(auto) AddIdentifier(
+            const UnqualifiedNameView usym,
+            const Kind kind,
+            const std::optional<size_t> lineNumber = std::nullopt)
         {
             return m_symbols->AddIdentifier(MakeFullyQualified(usym), kind, lineNumber);
         }
@@ -86,7 +89,10 @@ namespace AZ::ShaderCompiler
         //! Execute a class member function (method) definition
         //! @param name         the function name
         //! @param className    the C in C::Method(){}
-        IdAndKind& RegisterDeportedMethod(UnqualifiedNameView name, azslParser::UserDefinedTypeContext* className, AstFuncSig* ctx);
+        IdAndKind& RegisterDeportedMethod(
+            UnqualifiedNameView name,
+            azslParser::UserDefinedTypeContext* className,
+            AstFuncSig* ctx);
 
         //! Execute a function definition or declaration registration into the intermediate representation.
         //! @param name is UNqualified in this version to allow to simplify the API for callers which don't care about symbols and scopes
@@ -168,7 +174,10 @@ namespace AZ::ShaderCompiler
             return symbol;
         }
 
-        IdAndKind& RegisterTypeAlias(std::string_view newIdentifier, AstType* existingTypeCtx, azslParser::TypeAliasingDefinitionStatementContext* ctx);
+        IdAndKind& RegisterTypeAlias(
+            std::string_view newIdentifier,
+            AstType* existingTypeCtx,
+            azslParser::TypeAliasingDefinitionStatementContext* ctx);
 
         IdAndKind& RegisterSRGSemantic(AstSRGSemanticDeclNode* ctx);
 
@@ -184,7 +193,11 @@ namespace AZ::ShaderCompiler
 
         void RegisterNamelessFunctionParameter(azslParser::FunctionParamContext* ctx);
 
-        void FillOutSrgField(const AstNamedVarDecl* ctx, VarInfo& varInfo, IdentifierUID varUid, const ArrayDimensions& arrayDims);
+        void FillOutSrgField(
+            const AstNamedVarDecl* ctx,
+            VarInfo& varInfo,
+            IdentifierUID varUid,
+            const ArrayDimensions& arrayDims);
 
         SamplerStateDesc ExtractSamplerState(AstVarInitializer* ctx);
 
@@ -209,14 +222,18 @@ namespace AZ::ShaderCompiler
         //! Check that the type of LHS expression (in a member access expression context) satisfies well-formed semantics
         //! returns .first==true if is valid, and .first==false if the semantic fails to check.
         //!         .second is the typeof(LHS)
-        std::pair<bool, QualifiedName> VerifyLHSExprOfMAExprIsValid(const azslParser::MemberAccessExpressionContext* ctx) const;
+        std::pair<bool, QualifiedName> VerifyLHSExprOfMAExprIsValid(
+            const azslParser::MemberAccessExpressionContext* ctx) const;
 
         //! Resolve the type from the expression, look it up, and verify that it is a kind that may hold sub-members.
         std::pair<bool, QualifiedName> VerifyTypeIsScopeComposable(azslParser::ExpressionContext* typeScope) const;
 
         //! look up the type, verify that it exists and is a kind that may hold sub-members.
         //! takes supplementary parameters for better verbose or warning diagnostics.
-        std::pair<bool, QualifiedName> VerifyTypeIsScopeComposable(QualifiedNameView lhsTypeName, std::optional<std::string> lhsExpressionText = std::nullopt, std::optional<size_t> line = std::nullopt) const;
+        std::pair<bool, QualifiedName> VerifyTypeIsScopeComposable(
+            QualifiedNameView lhsTypeName,
+            std::optional<std::string> lhsExpressionText = std::nullopt,
+            std::optional<size_t> line = std::nullopt) const;
 
         //! assemble a type (left) and an idexpr (right) to see if it forms a symbol that exists, and extracts its type.
         QualifiedName ComposeMemberNameWithScopeAndGetType(QualifiedName scopingType, AstIdExpr* rhsMember) const;
@@ -271,7 +288,8 @@ namespace AZ::ShaderCompiler
 
         void ValidateClass(azslParser::ClassDefinitionContext* ctx) noexcept(false);
 
-        void ValidateFunctionAndRegisterFamilySeenat(azslParser::LeadingTypeFunctionSignatureContext* ctx) noexcept(false);
+        void ValidateFunctionAndRegisterFamilySeenat(
+            azslParser::LeadingTypeFunctionSignatureContext* ctx) noexcept(false);
 
         // Verify if a symbol overrides a symbol in a base (parent) of the current scope.
         // Currently Azsl can only have interface as parent of classes. And interfaces can only have function signatures.
@@ -290,7 +308,9 @@ namespace AZ::ShaderCompiler
         // Hint: The function has no knowledge of upper contexts, so we can hint if we prefer the const resolved as integer or float
         //   (by default it will try to resolve it as integer)
         // Return: either a int32, a uint32 or a float. but not a monostate.
-        ConstNumericVal FoldEvalStaticConstExprNumericValue(tree::TerminalNode* numericLiteralToken, bool hintAsInt = true) const noexcept(false);
+        ConstNumericVal FoldEvalStaticConstExprNumericValue(
+            tree::TerminalNode* numericLiteralToken,
+            bool hintAsInt = true) const noexcept(false);
 
         // Extracted method from the AstIntLiteralOrId* overload for more flexibility.
         ConstNumericVal FoldEvalStaticConstExprNumericValue(AstIdExpr* idExp) const;
@@ -319,12 +339,17 @@ namespace AZ::ShaderCompiler
 
         //! Shorthand for symbol lookup, but with supplementary checks, specifics to types.
         //! throws if: the found symbol is not a type, or no found symbol and policy is Diagnose.
-        IdentifierUID LookupType(UnqualifiedNameView typeName, OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy, std::optional<size_t> sourceline = std::nullopt) const noexcept(false);
+        IdentifierUID LookupType(
+            UnqualifiedNameView typeName,
+            OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy,
+            std::optional<size_t> sourceline = std::nullopt) const noexcept(false);
 
         //! Find and return a registered type from an AST node. Will also resolve typeof expressions.
         //! could work from any sort of context that has an ExtractTypeNameFromAstContext override
         template <typename TypeCtx>
-        IdentifierUID LookupType(TypeCtx* ctx, const OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy) const
+        IdentifierUID LookupType(
+            TypeCtx* ctx,
+            const OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy) const
         {
             IdentifierUID typeRef;
             UnqualifiedName uqName;
@@ -379,7 +404,9 @@ namespace AZ::ShaderCompiler
         // lookup the symbol database for a type of a given name (or discover the name through an Ast context) and compose a TypeRefInfo
         // ArgumentType maybe UnqualifiedNameView or a AstType
         template <typename ContextOrNameT>
-        TypeRefInfo CreateTypeRefInfo(ContextOrNameT typeNameOrCtx, OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy) const
+        TypeRefInfo CreateTypeRefInfo(
+            ContextOrNameT typeNameOrCtx,
+            OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy) const
         {
             auto typeId = LookupType(typeNameOrCtx, policy);
             auto tClass = GetTypeClass(typeId);
@@ -407,10 +434,15 @@ namespace AZ::ShaderCompiler
         ExtendedTypeInfo CreateExtendedTypeInfo(AstType* ctx, ArrayDimensions dims) const;
 
         // Helper func which folds any possible generic dimensions into the extracted composed type
-        bool TryFoldGenericArrayDimensions(ExtractedComposedType& extType, const std::vector<tree::TerminalNode*>& genericDims) const;
+        bool TryFoldGenericArrayDimensions(
+            ExtractedComposedType& extType,
+            const std::vector<tree::TerminalNode*>& genericDims) const;
 
         // another helper to streamline what to do directly with the result from ExtractTypeNameFromAstContext function families.
-        ExtendedTypeInfo CreateExtendedTypeInfo(const ExtractedComposedType&, const TypeQualifiers&, ArrayDimensions) const;
+        ExtendedTypeInfo CreateExtendedTypeInfo(
+            const ExtractedComposedType&,
+            const TypeQualifiers&,
+            ArrayDimensions) const;
 
         //! check if current scope is a structured user defined type ("struct", "class" or "interface")
         bool IsScopeStructClassInterface() const;
@@ -428,13 +460,21 @@ namespace AZ::ShaderCompiler
 
     private:
         //! for internal use when encountering unresolved symbols by lookup.
-        void DiagnoseUndeclaredSub(Token* atToken, QualifiedNameView startupScope, std::string partialName) const;
+        void DiagnoseUndeclaredSub(
+            Token* atToken,
+            QualifiedNameView startupScope,
+            std::string partialName) const;
 
-        std::optional<int64_t> TryFoldSRGSemantic(const azslParser::SrgSemanticContext* ctx, size_t semanticTokenType, bool required = false);
+        std::optional<int64_t> TryFoldSRGSemantic(
+            const azslParser::SrgSemanticContext* ctx,
+            size_t semanticTokenType,
+            bool required = false);
 
         std::string CreateDecorationOfFunction(azslParser::FunctionParamsContext* parametersContext) const;
 
-        QualifiedName CreateDecoratedIdentityOfFunction(QualifiedNameView name, azslParser::FunctionParamsContext* parametersContext) const;
+        QualifiedName CreateDecoratedIdentityOfFunction(
+            QualifiedNameView name,
+            azslParser::FunctionParamsContext* parametersContext) const;
 
         //! e.g. provided "int a; X GetX(int);" then from expression "(a, GetX(2), true)" MangleArgumentList returns "(?int,/X,?bool)"
         std::string MangleArgumentList(azslParser::ArgumentListContext* ctx) const;

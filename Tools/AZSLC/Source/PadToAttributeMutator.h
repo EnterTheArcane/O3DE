@@ -67,7 +67,10 @@ namespace AZ::ShaderCompiler
         std::vector<IdentifierUID> GetSortedScopeUidList(const MapOfScopeUidToPaddingMap& scopesToPad) const;
 
         // Helper Recursive function for depth-search topological sorting of the Scope Uids that require padding.
-        void ScopeUidSortVisitFunction(const IdentifierUID& scopeUid, std::unordered_set<IdentifierUID>& visitedScopes, std::vector<IdentifierUID>& sortedList) const;
+        void ScopeUidSortVisitFunction(
+            const IdentifierUID& scopeUid,
+            std::unordered_set<IdentifierUID>& visitedScopes,
+            std::vector<IdentifierUID>& sortedList) const;
 
         // Helper function used during ScopeUidSortVisitFunction()
         // pair.first is the struct type IdentifierUID.
@@ -112,7 +115,12 @@ namespace AZ::ShaderCompiler
         // @param numBytesToAdd Will add as many variables as necessary until this amount of bytes are
         //        appended to the ClassInfo.
         // @returns The number of unique VarInfo that were added to ClassInfo::m_memberFields
-        size_t InsertPaddingVariables(ClassInfo* classInfo, const IdentifierUID& scopeUid, size_t insertionIndex, uint32_t startingOffset, uint32_t numBytesToAdd);
+        size_t InsertPaddingVariables(
+            ClassInfo* classInfo,
+            const IdentifierUID& scopeUid,
+            size_t insertionIndex,
+            uint32_t startingOffset,
+            uint32_t numBytesToAdd);
 
         // This class is an extension of the IntermediateRepresentation.
         IntermediateRepresentation& m_ir;

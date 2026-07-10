@@ -35,7 +35,10 @@ namespace AZ::ShaderCompiler
     {
         SubpassInputToTexture2DCodeMutator() = delete;
 
-        explicit SubpassInputToTexture2DCodeMutator(IntermediateRepresentation* ir, CommonTokenStream*, const SubpassInputSupportFlag subpassInputSupport)
+        explicit SubpassInputToTexture2DCodeMutator(
+            IntermediateRepresentation* ir,
+            CommonTokenStream*,
+            const SubpassInputSupportFlag subpassInputSupport)
             : m_ir(ir)
             , m_subpassInputSupport(subpassInputSupport)
         {

@@ -64,7 +64,10 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    IdAndKind& SymbolTable::AddIdentifier(const QualifiedNameView symbol, const Kind kind, const std::optional<size_t> lineNumber /*= std::nullopt*/)
+    IdAndKind& SymbolTable::AddIdentifier(
+        const QualifiedNameView symbol,
+        const Kind kind,
+        const std::optional<size_t> lineNumber)
     {
         IdentifierUID idUID{symbol};
         auto fetchedIdIt = m_symbols.find(idUID);

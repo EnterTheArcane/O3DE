@@ -33,7 +33,11 @@ namespace AZ::ShaderCompiler
         return &platformEmitter;
     }
 
-    std::string PlatformEmitter_DX12::GetRootSig(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options&, BindingPair::Set querySet) const
+    std::string PlatformEmitter_DX12::GetRootSig(
+        const CodeEmitter& codeEmitter,
+        const RootSigDesc& rootSig,
+        const Options&,
+        BindingPair::Set querySet) const
     {
         std::vector<std::string> rootAttrList;
         // SRG Constants are emitted as one CB per SRG, bound to the RootSignature as RootDescriptor
@@ -55,7 +59,9 @@ namespace AZ::ShaderCompiler
                         break;
                     }
                 case RootParamType::RootConstantCB:
-                    rootParam << "            \"RootConstants(num32BitConstants=" << std::to_string(param.m_num32BitConstants)
+                    rootParam
+                        << "            \"RootConstants(num32BitConstants="
+                        << std::to_string(param.m_num32BitConstants)
                         << ", b" << std::to_string(location.m_registerIndex)
                         << ", space = " << std::to_string(location.m_logicalSpace)
                         << ", visibility=SHADER_VISIBILITY_ALL)";
@@ -121,7 +127,8 @@ namespace AZ::ShaderCompiler
                     if (!samplerInfo.m_isDynamic)
                     {
                         Streamable&& s{MakeOStreamStreamable{rootParam}};
-                        s << "            \"StaticSampler(s" << std::to_string(param.m_registerBinding.m_pair[querySet].m_registerIndex)
+                        s
+                            << "            \"StaticSampler(s" << std::to_string(param.m_registerBinding.m_pair[querySet].m_registerIndex)
                             << ", space = " << std::to_string(param.m_registerBinding.m_pair[querySet].m_logicalSpace)
                             << ", visibility=SHADER_VISIBILITY_ALL"
                             << samplerInfo << ")";
@@ -136,7 +143,10 @@ namespace AZ::ShaderCompiler
         return Decorate("#define sig ", Join(rootAttrList, ", \" \\\n"), "\"\n\n");
     }
 
-    std::string PlatformEmitter_DX12::GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbolUid, const Options& options) const
+    std::string PlatformEmitter_DX12::GetSpecializationConstant(
+        const CodeEmitter& codeEmitter,
+        const IdentifierUID& symbolUid,
+        const Options& options) const
     {
         // Specialization constants will be represented by a volatile variable that will be patched later.
         std::stringstream stream;

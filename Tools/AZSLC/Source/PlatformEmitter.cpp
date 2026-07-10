@@ -47,7 +47,9 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    void PlatformEmitter::SetEmitter(const std::string& key, const PlatformEmitter* const platformEmitter) noexcept(false)
+    void PlatformEmitter::SetEmitter(
+        const std::string& key,
+        const PlatformEmitter* const platformEmitter) noexcept(false)
     {
         std::lock_guard<std::mutex> lock(emitterListMutex);
 
@@ -65,13 +67,21 @@ namespace AZ::ShaderCompiler
 
     // Virtual methods to be overridden
 
-    std::string PlatformEmitter::GetRootSig(const CodeEmitter&, const RootSigDesc&, const Options&, BindingPair::Set) const
+    std::string PlatformEmitter::GetRootSig(
+        const CodeEmitter&,
+        const RootSigDesc&,
+        const Options&,
+        BindingPair::Set) const
     {
         // The default implementation of most emission methods does nothing
         return "";
     }
 
-    std::string PlatformEmitter::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, const BindingPair::Set signatureQuery) const
+    std::string PlatformEmitter::GetRootConstantsView(
+        const CodeEmitter& codeEmitter,
+        const RootSigDesc& rootSig,
+        const Options& options,
+        const BindingPair::Set signatureQuery) const
     {
         std::stringstream strOut;
 
@@ -110,7 +120,10 @@ namespace AZ::ShaderCompiler
         return size;
     }
 
-    std::string PlatformEmitter::GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbol, const Options& options) const
+    std::string PlatformEmitter::GetSpecializationConstant(
+        const CodeEmitter& codeEmitter,
+        const IdentifierUID& symbol,
+        const Options& options) const
     {
         return "";
     }

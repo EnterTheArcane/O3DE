@@ -34,7 +34,11 @@ namespace AZ::ShaderCompiler
 
     struct CodeEmitter : Backend
     {
-        CodeEmitter(IntermediateRepresentation* ir, TokenStream* tokens, std::ostream& out, PreprocessorLineDirectiveFinder* lineFinder)
+        CodeEmitter(
+            IntermediateRepresentation* ir,
+            TokenStream* tokens,
+            std::ostream& out,
+            PreprocessorLineDirectiveFinder* lineFinder)
             : Backend(ir, tokens)
             , m_out(out)
             , m_lineFinder(lineFinder)
@@ -51,13 +55,27 @@ namespace AZ::ShaderCompiler
         void Run(const Options& options);
 
         //! For scope-migration-aware name emission of symbol names
-        std::string GetTranslatedName(QualifiedNameView mangledName, UsageContext context, ssize_t tokenId = NotOverToken) const;
+        std::string GetTranslatedName(
+            QualifiedNameView mangledName,
+            UsageContext context,
+            ssize_t tokenId = NotOverToken) const;
 
-        std::string GetTranslatedName(const IdentifierUID& uid, UsageContext context, ssize_t tokenId = NotOverToken) const;
+        std::string GetTranslatedName(
+            const IdentifierUID& uid,
+            UsageContext context,
+            ssize_t tokenId = NotOverToken) const;
 
-        std::string GetTranslatedName(const TypeRefInfo& typeRef, UsageContext context, ssize_t tokenId = NotOverToken) const;
+        std::string GetTranslatedName(
+            const TypeRefInfo& typeRef,
+            UsageContext context,
+            ssize_t tokenId = NotOverToken) const;
 
-        std::string GetTranslatedName(const ExtendedTypeInfo& extType, UsageContext context, const Options& options, Modifiers banned = {}, ssize_t tokenId = NotOverToken) const;
+        std::string GetTranslatedName(
+            const ExtendedTypeInfo& extType,
+            UsageContext context,
+            const Options& options,
+            Modifiers banned = {},
+            ssize_t tokenId = NotOverToken) const;
 
         //! Write the HLSL formatted shape of an attribute into a stream
         static void EmitAttribute(const AttributeInfo& attrInfo, Streamable& outstream);
@@ -89,7 +107,11 @@ namespace AZ::ShaderCompiler
 
         void EmitAttribute(const AttributeInfo& attrInfo) const;
 
-        void EmitFunction(const FunctionInfo& funcSub, const IdentifierUID& id, EmitFunctionAs entityConfiguration, const Options& options);
+        void EmitFunction(
+            const FunctionInfo& funcSub,
+            const IdentifierUID& id,
+            EmitFunctionAs entityConfiguration,
+            const Options& options);
 
         void EmitTypeAlias(const IdentifierUID& uid, const TypeAliasInfo& aliasInfo, const Options& options) const;
 
@@ -129,7 +151,11 @@ namespace AZ::ShaderCompiler
 
         using VarDeclHasFlag = Flag<VarDeclHas>;
 
-        void EmitVariableDeclaration(const VarInfo&, const IdentifierUID& uid, const Options& options, VarDeclHasFlag declOptions) const;
+        void EmitVariableDeclaration(
+            const VarInfo&,
+            const IdentifierUID& uid,
+            const Options& options,
+            VarDeclHasFlag declOptions) const;
 
         //! Iter must be an iterator over FunctionInfo::Parameter elements
         template <typename Iter>
@@ -186,7 +212,11 @@ namespace AZ::ShaderCompiler
         //! NotOverToken is for procedurally generated code, that doesn't have an original source in terms of token.
         static constexpr ssize_t NotOverToken = -1;
 
-        void EmitSRGCBUnified(const SRGInfo& srgInfo, IdentifierUID srgId, const Options& options, const RootSigDesc& rootSig);
+        void EmitSRGCBUnified(
+            const SRGInfo& srgInfo,
+            IdentifierUID srgId,
+            const Options& options,
+            const RootSigDesc& rootSig);
 
         void EmitSRGCB(const IdentifierUID& cId, const Options& options, const RootSigDesc& rootSig) const;
 
@@ -196,10 +226,20 @@ namespace AZ::ShaderCompiler
 
         void EmitGetShaderKeyFunctionDeclaration(const IdentifierUID& getterUid, const TypeRefInfo& returnType) const;
 
-        void EmitGetShaderKeyFunction(const IdentifierUID& shaderKeyUid, const IdentifierUID& getterUid, uint32_t size, uint32_t offset, std::string_view defaultValue, const TypeRefInfo& returnType) const;
+        void EmitGetShaderKeyFunction(
+            const IdentifierUID& shaderKeyUid,
+            const IdentifierUID& getterUid,
+            uint32_t size,
+            uint32_t offset,
+            std::string_view defaultValue,
+            const TypeRefInfo& returnType) const;
 
         //! Will emit SRG content in the shape of HLSL transformed resource, e.g a constant buffer struct for the SRG variables.
-        void EmitSRG(const SRGInfo& srgInfo, const IdentifierUID& srgId, const Options& options, const RootSigDesc& rootSig);
+        void EmitSRG(
+            const SRGInfo& srgInfo,
+            const IdentifierUID& srgId,
+            const Options& options,
+            const RootSigDesc& rootSig);
 
         //! Advanced logic (targeted transpilation transforms included) interval-as-text extractor from source token stream
         //! Will copy function body original tokens, skipping comments, reformatting if possible, and translating variable declarations when needed, as well as mutating reference names of migrated SRG contents.

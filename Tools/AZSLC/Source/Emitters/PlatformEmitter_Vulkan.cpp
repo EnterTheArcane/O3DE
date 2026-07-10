@@ -31,7 +31,11 @@ namespace AZ::ShaderCompiler
         return &platformEmitter;
     }
 
-    std::string PlatformEmitter_Vulkan::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc&, const Options&, BindingPair::Set) const
+    std::string PlatformEmitter_Vulkan::GetRootConstantsView(
+        const CodeEmitter& codeEmitter,
+        const RootSigDesc&,
+        const Options&,
+        BindingPair::Set) const
     {
         std::stringstream strOut;
 
