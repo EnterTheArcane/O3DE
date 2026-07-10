@@ -57,7 +57,7 @@ namespace AZ
     };
 
     //! recover the level (as integer) value of an enumerator
-    inline int ExtractLevel(Warn level)
+    inline int ExtractLevel(const Warn level)
     {
         if (level == Warn::Wx)
         {
@@ -155,13 +155,13 @@ namespace AZ
             return *this;
         }
 
-        void SetRevealedWarningLevel(Warn level)
+        void SetRevealedWarningLevel(const Warn level)
         {
             assert(level < Warn::Wx);
             m_warningLevel = level;
         }
 
-        void SetAsErrorLevel(Warn level)
+        void SetAsErrorLevel(const Warn level)
         {
             assert(level >= Warn::Wx);
             m_warningAsErrorLevel = level;

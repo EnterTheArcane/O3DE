@@ -77,12 +77,12 @@ namespace AZ::ShaderCompiler
     using AstMemberAccess = azslParser::MemberAccessExpressionContext;
     using AstVarInitializer = azslParser::VariableInitializerContext;
 
-    inline constexpr ssize_t operator ""_ssz(unsigned long long n)
+    inline constexpr ssize_t operator ""_ssz(const unsigned long long n)
     {
         return n;
     }
 
-    inline bool EqualNoCase(std::string_view str1, std::string_view str2)
+    inline bool EqualNoCase(const std::string_view str1, const std::string_view str2)
     {
         if (str1.length() != str2.length())
         {
@@ -92,7 +92,7 @@ namespace AZ::ShaderCompiler
         return AzslcStrnicmp(str1.data(), str2.data(), str2.length()) == 0;
     }
 
-    inline bool StartsWithNoCase(std::string_view str1, std::string_view str2)
+    inline bool StartsWithNoCase(const std::string_view str1, const std::string_view str2)
     {
         if (str1.length() < str2.length())
         {
@@ -103,12 +103,12 @@ namespace AZ::ShaderCompiler
     }
 
     // this format is the Microsoft standard for error list parsing "file(line,column): message"
-    inline std::string DiagLine(size_t line)
+    inline std::string DiagLine(const size_t line)
     {
         return AzslcException::s_lineFinder->GetVirtualFileName(line) + "(" + std::to_string(line) + "):";
     }
 
-    inline std::string DiagLine(std::optional<int> line)
+    inline std::string DiagLine(const std::optional<int> line)
     {
         if (line)
         {
@@ -118,7 +118,7 @@ namespace AZ::ShaderCompiler
         return std::string{};
     }
 
-    inline std::string DiagLine(std::optional<size_t> line)
+    inline std::string DiagLine(const std::optional<size_t> line)
     {
         if (line)
         {
@@ -140,7 +140,7 @@ namespace AZ::ShaderCompiler
 
     //! low level version with everything parameterizable
     template <typename... Types>
-    inline void PrintWarning(DiagnosticStream& stream, Warn::EnumType level, std::optional<size_t> lineNumber, std::optional<size_t> column, Types&&... messageBits)
+    inline void PrintWarning(DiagnosticStream& stream, Warn::EnumType level, const std::optional<size_t> lineNumber, const std::optional<size_t> column, Types&&... messageBits)
     {
         std::string fileName;
         std::string virtualLine;
@@ -197,7 +197,7 @@ namespace AZ::ShaderCompiler
     using ConstNumericVal = std::variant<std::monostate, int32_t, uint32_t, float>;
 
     //! Extracts <float> from <ConstNumericVal>. When not possible it will throw if <defval> is not set or fall back to <defval> if set.
-    inline float ExtractValueAsFloat(const ConstNumericVal& var, std::optional<float> defval = std::nullopt)
+    inline float ExtractValueAsFloat(const ConstNumericVal& var, const std::optional<float> defval = std::nullopt)
     {
         if (std::holds_alternative<std::monostate>(var))
         {
@@ -232,7 +232,7 @@ namespace AZ::ShaderCompiler
         return std::get<float>(var);
     }
 
-    inline int64_t ExtractValueAsInt64(const ConstNumericVal& var, std::optional<int64_t> defval = std::nullopt)
+    inline int64_t ExtractValueAsInt64(const ConstNumericVal& var, const std::optional<int64_t> defval = std::nullopt)
     {
         if (std::holds_alternative<std::monostate>(var))
         {
@@ -318,12 +318,12 @@ namespace AZ::ShaderCompiler
         Other
     );
 
-    inline Streamable& operator <<(Streamable& out, StorageFlag::EnumType sf)
+    inline Streamable& operator <<(Streamable& out, const StorageFlag::EnumType sf)
     {
         return out << ToLower(StorageFlag::ToStr(sf));
     }
 
-    inline Streamable& operator <<(Streamable& out, StorageFlag sf)
+    inline Streamable& operator <<(Streamable& out, const StorageFlag sf)
     {
         return out << sf.m_value;
     }
@@ -377,13 +377,13 @@ namespace AZ::ShaderCompiler
             return std::all_of(
                 m_dimensions.begin(),
                 m_dimensions.end(),
-                [](int d)
+                [](const int d)
                 {
                     return (d >= 0);
                 });
         }
 
-        int GetDimensionAt_OrDefault(int dimensionIndex, int defaultValueIfNoSuchDim) const
+        int GetDimensionAt_OrDefault(const int dimensionIndex, const int defaultValueIfNoSuchDim) const
         {
             if (m_dimensions.size() > dimensionIndex)
             {
@@ -404,7 +404,7 @@ namespace AZ::ShaderCompiler
             std::ranges::transform(
                 m_dimensions,
                 std::back_inserter(asStrs),
-                [](int d) -> std::string
+                [](const int d) -> std::string
                 {
                     if (d == Unknown)
                     {
@@ -426,7 +426,7 @@ namespace AZ::ShaderCompiler
             return prefix + Join(asStrs.begin(), asStrs.end(), separator) + suffix;
         }
 
-        void PushBack(int newDimension)
+        void PushBack(const int newDimension)
         {
             m_dimensions.push_back(newDimension);
         }
@@ -563,11 +563,11 @@ namespace AZ::ShaderCompiler
                 return value;
             }
 
-            uint32_t mask = alignment - 1;
+            const uint32_t mask = alignment - 1;
             return (value + mask) & ~mask;
         }
 
-        static uint32_t AlignStructToLargestMember(Layout layout, uint32_t currentSize, uint32_t memberSize)
+        static uint32_t AlignStructToLargestMember(const Layout layout, const uint32_t currentSize, const uint32_t memberSize)
         {
             if (memberSize == 0)
             {
@@ -592,7 +592,7 @@ namespace AZ::ShaderCompiler
         }
 
         // Checks if the parameters correspond to either a Vector or a Matrix collapsed to a Vector.
-        static bool IsVectorAligned(const Alignment& alignment, uint32_t rows, uint32_t cols)
+        static bool IsVectorAligned(const Alignment& alignment, const uint32_t rows, const uint32_t cols)
         {
             if (alignment == Alignment::asVectorStart ||
                 alignment == Alignment::asVectorEnd)
@@ -617,7 +617,7 @@ namespace AZ::ShaderCompiler
         //!          https://github.com/microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst#memory-layout-rules
         //! OpenGL : https://www.khronos.org/registry/OpenGL/specs/gl/glspec45.core.pdf#page=159
         //!          https://github.com/Microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst
-        static uint32_t AlignOffset(Layout layout, uint32_t currentSize, const Alignment& alignment, uint32_t rows, uint32_t cols)
+        static uint32_t AlignOffset(const Layout layout, const uint32_t currentSize, const Alignment& alignment, const uint32_t rows, const uint32_t cols)
         {
             switch (layout)
             {
@@ -681,7 +681,7 @@ namespace AZ::ShaderCompiler
 
         //! Packs the next chunk of data to the current offset and returns the new offset
         //! Alignment - dictates the alignment rules to follow for packing nextChunkSize
-        static uint32_t PackNextChunk(Layout layout, uint32_t nextChunkSize, uint32_t& offset)
+        static uint32_t PackNextChunk(const Layout layout, const uint32_t nextChunkSize, uint32_t& offset)
         {
             switch (layout)
             {
@@ -717,7 +717,7 @@ namespace AZ::ShaderCompiler
         //! Packs the base size into an array of certain dimensions
         //! Dimensions can be 0, in which case it returns the baseSize, because there is no array rules to follow
         //! out Alignment - The minimum alignment required to pack this structure
-        static uint32_t PackIntoArray(Layout layout, uint32_t baseSize, const ArrayDimensions& dimensions)
+        static uint32_t PackIntoArray(const Layout layout, uint32_t baseSize, const ArrayDimensions& dimensions)
         {
             if (dimensions.Empty())
             {
@@ -740,7 +740,7 @@ namespace AZ::ShaderCompiler
             case Layout::StrictStd140Packing:
                 {
                     uint32_t totalElements = 1;
-                    for (auto dimension : dimensions)
+                    for (const auto dimension : dimensions)
                     {
                         totalElements *= dimension;
                     }
@@ -755,7 +755,7 @@ namespace AZ::ShaderCompiler
                     baseSize = AlignUp(baseSize, s_bytesPerRegister);
 
                     uint32_t totalElements = 1;
-                    for (auto dimension : dimensions)
+                    for (const auto dimension : dimensions)
                     {
                         totalElements *= dimension;
                     }
@@ -767,7 +767,7 @@ namespace AZ::ShaderCompiler
                     baseSize = AlignUp(baseSize, s_bytesPerRegister);
 
                     uint32_t totalElements = 1;
-                    for (auto dimension : dimensions)
+                    for (const auto dimension : dimensions)
                     {
                         totalElements *= dimension;
                     }
@@ -785,7 +785,7 @@ namespace AZ::ShaderCompiler
         //! Packs the base size as a vector or a matrix
         //! Rows and/or cols can be 0. However, if Rows is greater than 0, Cols cannot be 0.
         //! Note! Regardless of major, matrices are defined as rows-by-columns! Rows == 0 means it's not a matrix
-        static uint32_t PackAsVectorMatrix(Layout layout, uint32_t baseSize, uint32_t rows, uint32_t cols, bool rowMajor)
+        static uint32_t PackAsVectorMatrix(const Layout layout, const uint32_t baseSize, const uint32_t rows, const uint32_t cols, const bool rowMajor)
         {
             if (cols <= 1 && rows <= 1)
             {
@@ -911,7 +911,7 @@ namespace AZ::ShaderCompiler
             return 0; // Prevents warning C4715
         }
 
-        inline uint32_t PackedSizeof(int indexInAzslPredefined_Scalar)
+        inline uint32_t PackedSizeof(const int indexInAzslPredefined_Scalar)
         {
             // the array is generated but it's expected to look like:
             // {"bool", "double", "dword", "float", "half", "int", "int16_t", "int32_t", "int64_t", "uint", "uint16_t", "uint32_t", "uint64_t"}
@@ -986,7 +986,7 @@ namespace AZ::ShaderCompiler
     // - {line: x, col: y}
     template <typename SeenatRangeIter>
         requires std::same_as<typename std::iterator_traits<SeenatRangeIter>::value_type, Seenat>
-    std::string ToYaml(SeenatRangeIter begin, SeenatRangeIter end, std::string_view indent)
+    std::string ToYaml(SeenatRangeIter begin, SeenatRangeIter end, const std::string_view indent)
     {
         std::string s;
         for (SeenatRangeIter it = begin; it != end; ++it)
@@ -1002,7 +1002,7 @@ namespace AZ::ShaderCompiler
     // version for pseudo-range of IdentifierUID elements
     template <typename UIDRangeIter>
         requires std::same_as<typename std::iterator_traits<UIDRangeIter>::value_type, IdentifierUID>
-    std::string ToYaml(UIDRangeIter begin, UIDRangeIter end, std::string_view indent)
+    std::string ToYaml(UIDRangeIter begin, UIDRangeIter end, const std::string_view indent)
     {
         std::string s;
         for (UIDRangeIter it = begin; it != end; ++it)
@@ -1072,7 +1072,7 @@ namespace AZ::ShaderCompiler
             {
                 action(IdExpressionPart{globalSROToken, IdExpressionPart::GlobalScopeOperator});
             }
-            for (auto* identifier : ctx->qualifiedId()->nestedNameSpecifier()->Identifier())
+            for (const auto* identifier : ctx->qualifiedId()->nestedNameSpecifier()->Identifier())
             {
                 action(IdExpressionPart{identifier->getSymbol(), IdExpressionPart::NestedNameSpecifier});
                 std::unique_ptr<Token> nextToken = identifier->getSymbol()->getTokenSource()->nextToken();
@@ -1124,7 +1124,7 @@ namespace AZ::ShaderCompiler
     //! Verify filiation of an AST rule
     inline bool IsParentOf(tree::ParseTree* assumedParent, tree::ParseTree* assumedChild)
     {
-        tree::ParseTree* parent = assumedChild->parent;
+        const tree::ParseTree* parent = assumedChild->parent;
         while (parent)
         {
             if (parent == assumedParent)
@@ -1139,7 +1139,7 @@ namespace AZ::ShaderCompiler
     //! Get a pointer to the first parent that happens to be of type `SearchType`
     //! with a limit depth of `maxDepth` parents to search through
     template <typename SearchType>
-    SearchType DeepParentAs(tree::ParseTree* ctx, int maxDepth)
+    SearchType DeepParentAs(tree::ParseTree* ctx, const int maxDepth)
     {
         if (auto* searchTypeNode = As<SearchType>(ctx))
         {
@@ -1174,7 +1174,7 @@ namespace AZ::ShaderCompiler
 
     inline bool IsRHSOfMemberAccess(tree::ParseTree* ctx)
     {
-        auto* asMemberAccess = As<AstMemberAccess*>(ctx->parent);
+        const auto* asMemberAccess = As<AstMemberAccess*>(ctx->parent);
         return asMemberAccess && asMemberAccess->Member == ctx;
     }
 
@@ -1442,7 +1442,7 @@ namespace AZ::ShaderCompiler
         return StorageFlag::Other;
     }
 
-    inline bool IsFlag(azslParser::StorageFlagContext* ctx, StorageFlag flag)
+    inline bool IsFlag(azslParser::StorageFlagContext* ctx, const StorageFlag flag)
     {
         return AsFlag(ctx) == flag;
     }
@@ -1493,8 +1493,8 @@ namespace AZ::ShaderCompiler
         }
         if (ctx->genericMatrixPredefinedType())
         {
-            auto intLit1 = ctx->genericMatrixPredefinedType()->IntegerLiteral(0);
-            auto intLit2 = ctx->genericMatrixPredefinedType()->IntegerLiteral(1);
+            const auto intLit1 = ctx->genericMatrixPredefinedType()->IntegerLiteral(0);
+            const auto intLit2 = ctx->genericMatrixPredefinedType()->IntegerLiteral(1);
             if (genericDims && intLit1 && intLit2)
             {
                 genericDims->push_back(intLit1);
@@ -1536,7 +1536,7 @@ namespace AZ::ShaderCompiler
         }
         if (ctx->msTexturePredefinedType())
         {
-            auto intLit = ctx->msTexturePredefinedType()->IntegerLiteral();
+            const auto intLit = ctx->msTexturePredefinedType()->IntegerLiteral();
             if (genericDims && intLit)
             {
                 genericDims->push_back(intLit);
@@ -1549,7 +1549,7 @@ namespace AZ::ShaderCompiler
         }
         if (ctx->genericVectorType())
         {
-            auto intLit = ctx->genericVectorType()->IntegerLiteral();
+            const auto intLit = ctx->genericVectorType()->IntegerLiteral();
             if (genericDims && intLit)
             {
                 genericDims->push_back(intLit);
@@ -1562,7 +1562,7 @@ namespace AZ::ShaderCompiler
         }
         if (ctx->constantBufferTemplated())
         {
-            auto coreName = ctx->constantBufferTemplated()->CBCoreType->getText();
+            const auto coreName = ctx->constantBufferTemplated()->CBCoreType->getText();
             AstType* genericCtx = ctx->constantBufferTemplated()->GenericTypeName;
             return {
                 ExtractedTypeExt{UnqualifiedName{coreName}},
@@ -1598,7 +1598,7 @@ namespace AZ::ShaderCompiler
         }
         assert(ctx->anyStructuredTypeDefinition());
         auto* anyStructLikeCtx = ctx->anyStructuredTypeDefinition();
-        auto structName = VisitFirstNonNull(
+        const auto structName = VisitFirstNonNull(
             [](auto* ctx)
             {
                 return ExtractNameFromAnyContextWithName(ctx);
@@ -1635,14 +1635,14 @@ namespace AZ::ShaderCompiler
     {
         // Semantic name and index
         auto semanticName = hlslSemantic->getText();
-        size_t index = semanticName.find_last_not_of("0123456789") + 1;
+        const size_t index = semanticName.find_last_not_of("0123456789") + 1;
         int semanticIndex = 0;
         if (index != semanticName.length())
         {
             semanticIndex = std::stoi(semanticName.substr(index));
         }
 
-        auto colon = semanticName.find_first_of(":");
+        const auto colon = semanticName.find_first_of(":");
         size_t firstChar = 0;
         if (colon != std::string::npos)
         {

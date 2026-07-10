@@ -28,27 +28,27 @@ namespace AZ::ShaderCompiler
         //The pad_to(N) attribute only accepts one input argument.
         if (attrInfo.m_argList.size() != 1)
         {
-            auto errorMsg = FormatString("The [[pad_to(N)]] attribute only accepts one argument of integral type. %zu arguments were given.", attrInfo.m_argList.size());
+            const auto errorMsg = FormatString("The [[pad_to(N)]] attribute only accepts one argument of integral type. %zu arguments were given.", attrInfo.m_argList.size());
             throw AzslcIrException{IR_INVALID_PAD_TO_ARGUMENTS, errorMsg, attrInfo.m_lineNumber};
         }
         //Is the argument integral?
         if (!std::holds_alternative<ConstNumericVal>(attrInfo.m_argList[0]))
         {
-            std::string errorMsg("The [[pad_to(N)]] attribute only accepts one argument of integral type. A non integral argument was given.");
+            const std::string errorMsg("The [[pad_to(N)]] attribute only accepts one argument of integral type. A non integral argument was given.");
             throw AzslcIrException{IR_INVALID_PAD_TO_ARGUMENTS, errorMsg, attrInfo.m_lineNumber};
         }
         // Read the integral.
-        auto pad_to_value = ExtractValueAs<uint32_t>(std::get<ConstNumericVal>(attrInfo.m_argList[0]), static_cast<uint32_t>(0));
+        const auto pad_to_value = ExtractValueAs<uint32_t>(std::get<ConstNumericVal>(attrInfo.m_argList[0]), static_cast<uint32_t>(0));
         if (!pad_to_value)
         {
-            std::string errorMsg("Failed to read input integral to [[pad_to(N)]].");
+            const std::string errorMsg("Failed to read input integral to [[pad_to(N)]].");
             throw AzslcIrException{IR_INVALID_PAD_TO_ARGUMENTS, errorMsg, attrInfo.m_lineNumber};
         }
         // Must be a multiple of 4.
         static constexpr uint32_t MultipleOf = 4;
         if (pad_to_value & (MultipleOf - 1))
         {
-            auto errorMsg = FormatString("Invalid integral in [[pad_to(N)]]. %u is not a multiple of %u", pad_to_value, MultipleOf);
+            const auto errorMsg = FormatString("Invalid integral in [[pad_to(N)]]. %u is not a multiple of %u", pad_to_value, MultipleOf);
             throw AzslcIrException{IR_INVALID_PAD_TO_ARGUMENTS, errorMsg, attrInfo.m_lineNumber};
         }
 
@@ -56,34 +56,34 @@ namespace AZ::ShaderCompiler
         if (curScopeKindInfo.IsKindOneOf(Kind::Struct, Kind::Class, Kind::ShaderResourceGroup))
         {
             // We need to get the variable declared before this attribute.
-            auto varUid = m_ir.GetLastMemberVariable(curScopeId);
+            const auto varUid = m_ir.GetLastMemberVariable(curScopeId);
             if (varUid.IsEmpty())
             {
-                auto errorMsg = FormatString(
+                const auto errorMsg = FormatString(
                     "The [[pad_to(N)]] attribute must be added after a member variable."
                     " The current scope '%.*s' doesn't have a declared variable yet.",
                     static_cast<int>(curScopeId.GetName().size()),
                     curScopeId.GetName().data());
                 throw AzslcIrException{IR_INVALID_PAD_TO_LOCATION, errorMsg, attrInfo.m_lineNumber};
             }
-            auto structItor = m_scopesToPad.find(curScopeId);
+            const auto structItor = m_scopesToPad.find(curScopeId);
             if (structItor == m_scopesToPad.end())
             {
                 m_scopesToPad[curScopeId] = MapOfVarInfoUidToPadding();
             }
             MapOfVarInfoUidToPadding& varInfoUidToPadMap = m_scopesToPad[curScopeId];
-            auto varInfoItor = varInfoUidToPadMap.find(varUid);
+            const auto varInfoItor = varInfoUidToPadMap.find(varUid);
             if (varInfoItor != varInfoUidToPadMap.end())
             {
                 // It appears that there are two consecutive [[pad_to(N)]] attributes. This is an error.
-                auto errorMsg = std::string("Two consecutive [[pad_to(N)]] attributes are not allowed inside 'struct'.");
+                const auto errorMsg = std::string("Two consecutive [[pad_to(N)]] attributes are not allowed inside 'struct'.");
                 throw AzslcIrException{IR_INVALID_PAD_TO_LOCATION, errorMsg, attrInfo.m_lineNumber};
             }
             varInfoUidToPadMap[varUid] = pad_to_value;
         }
         else
         {
-            auto errorMsg = FormatString(
+            const auto errorMsg = FormatString(
                 "The [[pad_to(N)]] attribute is only supported inside  inside 'struct', 'class' or 'ShaderResourceGroup'."
                 " The current scope '%.*s' is not one of those scope types.",
                 static_cast<int>(curScopeId.GetName().size()),
@@ -114,13 +114,13 @@ namespace AZ::ShaderCompiler
             }
             else if (kind.IsOneOf(Kind::ShaderResourceGroup))
             {
-                auto srgInfo = m_ir.GetSymbolSubAs<SRGInfo>(scopeUid.GetName());
+                const auto srgInfo = m_ir.GetSymbolSubAs<SRGInfo>(scopeUid.GetName());
                 classInfo = &srgInfo->m_implicitStruct;
             }
 
             if (!classInfo)
             {
-                auto errorMsg = FormatString("Error during struct padding: couldn't find ClassInfo for scope %.*s", scopeUid.GetName().size(), scopeUid.GetName().data());
+                const auto errorMsg = FormatString("Error during struct padding: couldn't find ClassInfo for scope %.*s", scopeUid.GetName().size(), scopeUid.GetName().data());
                 throw std::logic_error(errorMsg.c_str());
             }
             InsertScopePaddings(classInfo, scopeUid, varInfoUidToPadMap, middleEndconfigration);
@@ -155,15 +155,15 @@ namespace AZ::ShaderCompiler
             return;
         }
 
-        ClassInfo* classInfo = nullptr;
-        auto kind = m_ir.GetKind(scopeUid);
+        const ClassInfo* classInfo = nullptr;
+        const auto kind = m_ir.GetKind(scopeUid);
         if (kind.IsOneOf(Kind::Struct, Kind::Class))
         {
             classInfo = m_ir.GetSymbolSubAs<ClassInfo>(scopeUid.GetName());
         }
         else if (kind.IsOneOf(Kind::ShaderResourceGroup))
         {
-            auto srgInfo = m_ir.GetSymbolSubAs<SRGInfo>(scopeUid.GetName());
+            const auto srgInfo = m_ir.GetSymbolSubAs<SRGInfo>(scopeUid.GetName());
             classInfo = &srgInfo->m_implicitStruct;
         }
 
@@ -281,7 +281,7 @@ namespace AZ::ShaderCompiler
             // View types should only be called from GetViewStride until we decide to support them as struct constants
             assert(!IsChameleon(varInfo.GetTypeClass()));
 
-            auto exportedType = varInfo.m_typeInfoExt.m_coreType;
+            const auto exportedType = varInfo.m_typeInfoExt.m_coreType;
 
             if (!exportedType.IsPackable())
             {
@@ -292,7 +292,7 @@ namespace AZ::ShaderCompiler
                         + memberId.m_name).c_str()
                 };
             }
-            TypeClass varClass = exportedType.m_typeClass;
+            const TypeClass varClass = exportedType.m_typeClass;
             bool isPrefedined = IsPredefinedType(varClass);
 
             size = varInfo.m_typeInfoExt.GetTotalSize(layoutPacking, emitRowMajor);
@@ -322,7 +322,7 @@ namespace AZ::ShaderCompiler
             if (varInfo.m_typeInfoExt.IsArray() && !isArrayItr)
             {
                 startAt = offset = Packing::AlignOffset(layoutPacking, offset, Packing::Alignment::asArrayStart, 0, 0);
-                uint32_t arrayOffset = startAt;
+                const uint32_t arrayOffset = startAt;
                 for (uint32_t i = 0; i < totalArraySize; i++)
                 {
                     if (!m_ir.GetIdAndKindInfo(varInfo.GetTypeId().m_name))
@@ -438,11 +438,11 @@ namespace AZ::ShaderCompiler
     size_t PadToAttributeMutator::InsertPaddingVariables(
         ClassInfo* classInfo,
         const IdentifierUID& scopeUid,
-        size_t insertionIndex,
+        const size_t insertionIndex,
         uint32_t startingOffset,
         uint32_t numBytesToAdd)
     {
-        auto getFloatTypeNameOfSize = +[](uint32_t sizeInBytes) -> std::string_view
+        const auto getFloatTypeNameOfSize = +[](const uint32_t sizeInBytes) -> std::string_view
         {
             static constexpr std::array floatNames = {
                 "float",
@@ -454,9 +454,9 @@ namespace AZ::ShaderCompiler
             return floatNames[idx];
         };
 
-        auto createVariableInSymbolTable = [&](QualifiedNameView parentName, std::string_view typeName, UnqualifiedName varName, int itemsCount = 0) -> IdentifierUID
+        auto createVariableInSymbolTable = [&](const QualifiedNameView parentName, std::string_view typeName, UnqualifiedName varName, int itemsCount = 0) -> IdentifierUID
         {
-            QualifiedName dummySymbolFieldName{JoinPath(parentName, varName)};
+            const QualifiedName dummySymbolFieldName{JoinPath(parentName, varName)};
 
             // Add the dummy field to the symbol table.
             auto& [newVarUid, newVarKind] = m_ir.m_symbols.AddIdentifier(dummySymbolFieldName, Kind::Variable);
@@ -464,7 +464,7 @@ namespace AZ::ShaderCompiler
             VarInfo newVarInfo;
             newVarInfo.m_declNode = nullptr;
             newVarInfo.m_isPublic = false;
-            ExtractedTypeExt padType = {UnqualifiedNameView(typeName), nullptr};
+            const ExtractedTypeExt padType = {UnqualifiedNameView(typeName), nullptr};
             if (itemsCount < 1)
             {
                 newVarInfo.m_typeInfoExt = ExtendedTypeInfo{
@@ -524,9 +524,9 @@ namespace AZ::ShaderCompiler
             const auto deltaBytes = alignedOffset - startingOffset;
             if (deltaBytes < numBytesToAdd && deltaBytes != 0)
             {
-                auto typeName = getFloatTypeNameOfSize(deltaBytes);
-                auto variableName = FormatString("__pad_at%u", startingOffset);
-                IdentifierUID newVarUid = createVariableInSymbolTable(scopeUid.GetName(), typeName, UnqualifiedName{variableName});
+                const auto typeName = getFloatTypeNameOfSize(deltaBytes);
+                const auto variableName = FormatString("__pad_at%u", startingOffset);
+                const IdentifierUID newVarUid = createVariableInSymbolTable(scopeUid.GetName(), typeName, UnqualifiedName{variableName});
                 if (insertBeforeThisUid.IsEmpty())
                 {
                     classInfo->PushMember(newVarUid, Kind::Variable);
@@ -547,8 +547,8 @@ namespace AZ::ShaderCompiler
             const auto numFloat4s = numBytesToAdd >> 4;
             if (numFloat4s)
             {
-                auto variableName = FormatString("__pad_at%u", startingOffset);
-                IdentifierUID newVarUid = createVariableInSymbolTable(scopeUid.GetName(), "float4", UnqualifiedName{variableName}, numFloat4s);
+                const auto variableName = FormatString("__pad_at%u", startingOffset);
+                const IdentifierUID newVarUid = createVariableInSymbolTable(scopeUid.GetName(), "float4", UnqualifiedName{variableName}, numFloat4s);
                 if (insertBeforeThisUid.IsEmpty())
                 {
                     classInfo->PushMember(newVarUid, Kind::Variable);
@@ -567,9 +567,9 @@ namespace AZ::ShaderCompiler
         // 3rd variable. The remainder
         if (numBytesToAdd > 0)
         {
-            auto variableName = FormatString("__pad_at%u", startingOffset);
-            auto typeName = getFloatTypeNameOfSize(numBytesToAdd);
-            IdentifierUID newVarUid = createVariableInSymbolTable(scopeUid.GetName(), typeName, UnqualifiedName{variableName});
+            const auto variableName = FormatString("__pad_at%u", startingOffset);
+            const auto typeName = getFloatTypeNameOfSize(numBytesToAdd);
+            const IdentifierUID newVarUid = createVariableInSymbolTable(scopeUid.GetName(), typeName, UnqualifiedName{variableName});
             if (insertBeforeThisUid.IsEmpty())
             {
                 classInfo->PushMember(newVarUid, Kind::Variable);

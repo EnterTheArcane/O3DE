@@ -36,7 +36,7 @@ namespace AZ::ShaderCompiler
         QualifiedName() = default;
 
         // Provide implicit compatibility from string_view for sheer convenience
-        QualifiedName(std::string_view sv)
+        QualifiedName(const std::string_view sv)
             : std::string(sv)
         {
         }
@@ -53,7 +53,7 @@ namespace AZ::ShaderCompiler
     {
         UnqualifiedName() = default;
 
-        UnqualifiedName(std::string_view sv)
+        UnqualifiedName(const std::string_view sv)
             : std::string(sv)
         {
         }
@@ -162,17 +162,17 @@ struct std::hash<AZ::ShaderCompiler::UnqualifiedNameView>
 
 namespace AZ::ShaderCompiler
 {
-    inline bool IsRooted(std::string_view path)
+    inline bool IsRooted(const std::string_view path)
     {
         return path.starts_with('/') || path.starts_with('?');
     }
 
     //! from "/func(/f2(?int), ?float)" return "/func"
-    inline std::string RemoveMatchedParenthesis(std::string_view name)
+    inline std::string RemoveMatchedParenthesis(const std::string_view name)
     {
         std::string result;
         int level = 0;
-        for (auto character : name)
+        for (const auto character : name)
         {
             if (character == '(')
             {
@@ -199,8 +199,8 @@ namespace AZ::ShaderCompiler
         // find matched parenthesis going backward
         for (auto iter = name.rbegin(); iter != name.rend(); ++iter)
         {
-            bool close = *iter == '('; // since we go backward ( is the end of a group
-            bool open = *iter == ')';
+            const bool close = *iter == '('; // since we go backward ( is the end of a group
+            const bool open = *iter == ')';
             if (open)
             {
                 ++level;
@@ -226,20 +226,20 @@ namespace AZ::ShaderCompiler
 
     //! Mutate "stuff()" to "stuff_vd_"
     //"        "thing(?int)" to "thing_?int_"
-    inline std::string FlattenParenthesisGroups(std::string_view name)
+    inline std::string FlattenParenthesisGroups(const std::string_view name)
     {
         auto ret = std::regex_replace(std::string(name.data(), name.size()), std::regex("\\(\\)"), "_vd");
         ret = std::regex_replace(ret, std::regex("[\\(\\)]"), "_");
         return ret;
     }
 
-    inline bool IsLeaf(std::string_view name)
+    inline bool IsLeaf(const std::string_view name)
     {
         return RemoveMatchedParenthesis(name).find("/") == std::string::npos;
     }
 
     //! String replace of AZIR separators (mangled scope separators)
-    inline std::string ReplaceSeparators(std::string name, std::string_view replacement)
+    inline std::string ReplaceSeparators(std::string name, const std::string_view replacement)
     {
         if (IsRooted(name))
         {
@@ -263,7 +263,7 @@ namespace AZ::ShaderCompiler
     //! symbol names are stored with path separators. like such:
     //! name = "/MyStruct/m_myVar"
     //! returns: "MyStruct_m_myVar"
-    inline std::string Flatten(std::string name, FlattenStrategy strategy)
+    inline std::string Flatten(std::string name, const FlattenStrategy strategy)
     {
         name = std::regex_replace(name, std::regex("\\?"), "");
         if (strategy == PreserveArgumentsUnicity)
@@ -275,7 +275,7 @@ namespace AZ::ShaderCompiler
     }
 
     //! "?int" to "int" (partial unmangling)
-    inline std::string_view RemoveFloatingMark(std::string_view name)
+    inline std::string_view RemoveFloatingMark(const std::string_view name)
     {
         if (name.starts_with('?'))
         {
@@ -309,7 +309,7 @@ namespace AZ::ShaderCompiler
     //! Important note: This does not provide a valid unqualified name, lookup-able from a given scope.
     //!                 It is merely a string based chopping, that can be used for leaf name comparisons when useful.
     //! If you want the correct context-valid unqualifying feature, use the SymbolAggregator's FindLeastQualifiedName
-    inline UnqualifiedNameView ExtractLeaf(std::string_view anyname)
+    inline UnqualifiedNameView ExtractLeaf(const std::string_view anyname)
     {
         auto lastSlash = anyname.rfind("/");
         while (WithinMatchedParentheses(anyname, lastSlash))
@@ -326,19 +326,19 @@ namespace AZ::ShaderCompiler
 
     //! true  if anywhere in the input, a parenthesis appear
     //!       even in the middle, e.g:  "/A/f(/?int)/b"
-    inline bool ArgumentDecorationExists(std::string_view name)
+    inline bool ArgumentDecorationExists(const std::string_view name)
     {
         return name.find("(") != std::string::npos;
     }
 
     //! true  if the leaf of the input has this sort of form "fun(/T,?int)"
     //! false if e.g "/X"; e.g "/F(/T)/a"
-    inline bool IsLeafDecoratedByArguments(std::string_view name)
+    inline bool IsLeafDecoratedByArguments(const std::string_view name)
     {
         return !name.empty() && (name.back() == ')' || ArgumentDecorationExists({ExtractLeaf(name)}));
     }
 
-    inline size_t CountParameters(std::string_view mangledFunctionName)
+    inline size_t CountParameters(const std::string_view mangledFunctionName)
     {
         auto leaf = ExtractLeaf(mangledFunctionName);
         if (leaf.ends_with("()") || !leaf.ends_with(')')) // no-arg function or not-a-function
@@ -361,7 +361,7 @@ namespace AZ::ShaderCompiler
     //!        "A/B" if passed stem="A"  and leaf="B"
     //!        "/A"  if passed stem=""   and leaf="A" (if policy is EmptyMeansRoot)
     //!        "A"   if passed stem=""   and leaf="A" (if policy is EmptyMeansEmpty)
-    inline std::string JoinPath(std::string_view stem, std::string_view leaf, JoinPolicy policy = JoinPolicy::EmptyMeansRoot)
+    inline std::string JoinPath(const std::string_view stem, const std::string_view leaf, const JoinPolicy policy = JoinPolicy::EmptyMeansRoot)
     {
         if ((stem.empty() || leaf.empty()) && policy == JoinPolicy::EmptyMeansEmpty)
         {
@@ -417,9 +417,9 @@ namespace AZ::ShaderCompiler
 
     //! Has the same semantics than LevelUp but cleans up the trailing slash when there is a name left other than root.
     //! example: "/dir" from "/dir/leaf"
-    inline std::string_view GetParentName(std::string_view path)
+    inline std::string_view GetParentName(const std::string_view path)
     {
-        auto oneUp = LevelUp(path);
+        const auto oneUp = LevelUp(path);
         if (oneUp != "/" && oneUp.ends_with('/'))
         {
             return Slice(oneUp, 0, oneUp.length() - 1);
@@ -428,7 +428,7 @@ namespace AZ::ShaderCompiler
     }
 
     //! Overload for when you work with QualifiedNameView type
-    inline QualifiedNameView GetParentName(QualifiedNameView path)
+    inline QualifiedNameView GetParentName(const QualifiedNameView path)
     {
         return QualifiedNameView{GetParentName(std::string_view{path})};
     }
@@ -446,7 +446,7 @@ namespace AZ::ShaderCompiler
         size_t m_sliceLen;
     };
 
-    inline bool IsGlobal(QualifiedNameView sym)
+    inline bool IsGlobal(const QualifiedNameView sym)
     {
         return GetParentName(sym) == "/";
     }
@@ -455,15 +455,15 @@ namespace AZ::ShaderCompiler
     //! FunctionObject will be fed a PathPart as parameter, and called for each part.
     //! The behavior is the same as SplitPath function, please refer to it for behavior document.
     template <typename FunctionObject>
-    void ForEachPathPart(std::string_view path, FunctionObject action)
+    void ForEachPathPart(const std::string_view path, FunctionObject action)
     {
         size_t start = 0;
-        size_t pathLen = path.length();
+        const size_t pathLen = path.length();
         // character by character. cp=character position
         for (size_t cp = 0; cp < pathLen; ++cp)
         {
-            bool isLast = cp + 1 == path.length();
-            bool isSlash = path[cp] == '/' && !WithinMatchedParentheses(path, cp);
+            const bool isLast = cp + 1 == path.length();
+            const bool isSlash = path[cp] == '/' && !WithinMatchedParentheses(path, cp);
             if (isSlash || isLast)
             {
                 size_t count = cp - start;
@@ -483,7 +483,7 @@ namespace AZ::ShaderCompiler
 
     //! returns true if supposedChild is contained in supposedParent
     //! example: IsParent("/ns/bag", "/ns/bag/member") == true
-    inline bool IsParent(std::string_view supposedParent, std::string_view supposedChild)
+    inline bool IsParent(const std::string_view supposedParent, const std::string_view supposedChild)
     {
         return supposedChild.size() > supposedParent.size() && supposedParent == supposedChild.substr(0, supposedParent.size());
     }
@@ -519,7 +519,7 @@ namespace AZ::ShaderCompiler
     //! This is not the function you need if you are doing a lookup for a symbol, from a site that references something already declared.
     //! In that case you need the SymbolTable::LookupSymbol function.
     //! This function is for constructing new names from declaration sites.
-    inline QualifiedName MakeFullyQualified(QualifiedNameView scope, UnqualifiedNameView name)
+    inline QualifiedName MakeFullyQualified(const QualifiedNameView scope, const UnqualifiedNameView name)
     {
         assert(IsRooted(scope));
         assert(IsLeaf(name));
@@ -719,7 +719,7 @@ namespace AZ::Tests
         assert(CountParameters("/f(/A/B/C, /D/E/F, ?half)") == 3);
         assert(CountParameters("?vector<half,3>") == 0);
 
-        QualifiedName qn;
+        const QualifiedName qn;
         // moderately shameful that this compiles:
         UnqualifiedName uqn{qn}; // mitigation c.f. comment around the is_constructible earlier in this file
         // desired:   (uncomment to verify)

@@ -55,7 +55,7 @@ namespace AZ::ShaderCompiler
         ShaderResourceGroupSemantic
     );
 
-    inline bool IsKindOneOfTypeRelated(Kind kind)
+    inline bool IsKindOneOfTypeRelated(const Kind kind)
     {
         return kind.IsOneOf(Kind::Type, Kind::TypeAlias, Kind::Struct, Kind::Class, Kind::Enum, Kind::Interface);
     }
@@ -101,7 +101,7 @@ namespace AZ::ShaderCompiler
         std::vector<Argument> m_argList;
     };
 
-    static bool TypeHasStorageFlag(const TypeQualifiers& typeQualifier, StorageFlag flag)
+    static bool TypeHasStorageFlag(const TypeQualifiers& typeQualifier, const StorageFlag flag)
     {
         // The mask operation returns an rvalue and it isn't converted to bool
         return static_cast<bool>(typeQualifier.m_flag & flag);
@@ -110,7 +110,7 @@ namespace AZ::ShaderCompiler
     //! store base list, member list...
     struct ClassInfo
     {
-        void PushMember(const IdentifierUID& uid, Kind kind)
+        void PushMember(const IdentifierUID& uid, const Kind kind)
         {
             if (kind == Kind::Variable)
             {
@@ -120,17 +120,17 @@ namespace AZ::ShaderCompiler
             m_members.insert(uid);
         }
 
-        void InsertBefore(const IdentifierUID& newUid, Kind newKind, const IdentifierUID& beforeUid)
+        void InsertBefore(const IdentifierUID& newUid, const Kind newKind, const IdentifierUID& beforeUid)
         {
             if (newKind == Kind::Variable)
             {
-                auto itor = std::find(m_memberFields.begin(), m_memberFields.end(), beforeUid);
+                const auto itor = std::find(m_memberFields.begin(), m_memberFields.end(), beforeUid);
                 assert(itor != m_memberFields.end());
                 m_memberFields.insert(itor, newUid);
             }
             m_members.insert(newUid);
 
-            auto itor = std::find(m_ordered.begin(), m_ordered.end(), beforeUid);
+            const auto itor = std::find(m_ordered.begin(), m_ordered.end(), beforeUid);
             assert(itor != m_ordered.end());
             m_ordered.insert(itor, newUid);
         }
@@ -173,16 +173,16 @@ namespace AZ::ShaderCompiler
             return m_members.find(uid) != m_members.end();
         }
 
-        bool HasMember(UnqualifiedNameView uqName) const
+        bool HasMember(const UnqualifiedNameView uqName) const
         {
             return FindMemberFromLeafName(uqName) != std::nullopt;
         }
 
         //! To help for method name comparison (when doing overrides), only the leaf name needs to match
-        std::optional<IdentifierUID> FindMemberFromLeafName(UnqualifiedNameView uqName) const
+        std::optional<IdentifierUID> FindMemberFromLeafName(const UnqualifiedNameView uqName) const
         {
             assert(IsLeaf(uqName));
-            auto item = std::find_if(
+            const auto item = std::find_if(
                 m_members.begin(),
                 m_members.end(),
                 [&](decltype(*m_members.begin()) elem)
@@ -295,25 +295,25 @@ namespace AZ::ShaderCompiler
         }
 
         //! Get the size of a single element, ignoring array dimensions
-        const uint32_t GetSingleElementSize(Packing::Layout layout, bool defaultRowMajor) const
+        const uint32_t GetSingleElementSize(const Packing::Layout layout, const bool defaultRowMajor) const
         {
-            auto baseSize = m_coreType.m_arithmeticInfo.m_baseSize;
-            bool isRowMajor = (m_mtxMajor == Packing::MatrixMajor::RowMajor ||
+            const auto baseSize = m_coreType.m_arithmeticInfo.m_baseSize;
+            const bool isRowMajor = (m_mtxMajor == Packing::MatrixMajor::RowMajor ||
                 (m_mtxMajor == Packing::MatrixMajor::Default && defaultRowMajor));
-            auto rows = m_coreType.m_arithmeticInfo.m_rows;
-            auto cols = m_coreType.m_arithmeticInfo.m_cols;
+            const auto rows = m_coreType.m_arithmeticInfo.m_rows;
+            const auto cols = m_coreType.m_arithmeticInfo.m_cols;
             return PackAsVectorMatrix(layout, baseSize, rows, cols, isRowMajor);
         }
 
         //! Get the total size
-        const uint32_t GetTotalSize(Packing::Layout layout, bool defaultRowMajor) const
+        const uint32_t GetTotalSize(const Packing::Layout layout, const bool defaultRowMajor) const
         {
-            auto packSize = GetSingleElementSize(layout, defaultRowMajor);
+            const auto packSize = GetSingleElementSize(layout, defaultRowMajor);
             return Packing::PackIntoArray(layout, packSize, m_arrayDims);
         }
 
         //! Set the storage flag for row major (true) or column major (false)
-        void SetMatrixMajor(Packing::MatrixMajor mtxMajor)
+        void SetMatrixMajor(const Packing::MatrixMajor mtxMajor)
         {
             m_mtxMajor = mtxMajor;
             m_qualifiers.m_flag &= StorageFlag::ColumnMajor;
@@ -358,7 +358,7 @@ namespace AZ::ShaderCompiler
                 && (m_genericParameter.IsEmpty() || m_genericParameter.m_typeClass != TypeClass::IsNotType);
         }
 
-        bool CheckHasStorageFlag(StorageFlag flag) const
+        bool CheckHasStorageFlag(const StorageFlag flag) const
         {
             return TypeHasStorageFlag(m_qualifiers, flag);
         }
@@ -367,8 +367,8 @@ namespace AZ::ShaderCompiler
         {
             static const Modifiers inconsequentialModifiers = Modifiers{StorageFlag::Extern}
                 | StorageFlag::Inline | StorageFlag::Static | StorageFlag::Volatile | StorageFlag::Uniform;
-            Modifiers lhsTM = lhs.m_qualifiers.m_flag & ~inconsequentialModifiers;
-            Modifiers rhsTM = rhs.m_qualifiers.m_flag & ~inconsequentialModifiers;
+            const Modifiers lhsTM = lhs.m_qualifiers.m_flag & ~inconsequentialModifiers;
+            const Modifiers rhsTM = rhs.m_qualifiers.m_flag & ~inconsequentialModifiers;
             return lhs.m_coreType == rhs.m_coreType
                 && lhs.m_genericParameter == rhs.m_genericParameter
                 && lhs.m_arrayDims == rhs.m_arrayDims
@@ -482,39 +482,39 @@ namespace AZ::ShaderCompiler
     };
 
     // VarInfo methods definitions
-    bool VarInfo::CheckHasStorageFlag(StorageFlag flag) const
+    bool VarInfo::CheckHasStorageFlag(const StorageFlag flag) const
     {
         return m_typeInfoExt.CheckHasStorageFlag(flag);
     }
 
-    bool VarInfo::CheckHasAllStorageFlags(std::initializer_list<StorageFlag> vararg) const
+    bool VarInfo::CheckHasAllStorageFlags(const std::initializer_list<StorageFlag> vararg) const
     {
         return std::all_of(
             vararg.begin(),
             vararg.end(),
-            [this](StorageFlag f)
+            [this](const StorageFlag f)
             {
                 return CheckHasStorageFlag(f);
             });
     }
 
-    bool VarInfo::CheckHasAnyStorageFlags(std::initializer_list<StorageFlag> vararg) const
+    bool VarInfo::CheckHasAnyStorageFlags(const std::initializer_list<StorageFlag> vararg) const
     {
         return std::any_of(
             vararg.begin(),
             vararg.end(),
-            [this](StorageFlag f)
+            [this](const StorageFlag f)
             {
                 return CheckHasStorageFlag(f);
             });
     }
 
-    bool VarInfo::StorageFlagIsLocalLinkage(bool isGlobalOrSrgScope) const
+    bool VarInfo::StorageFlagIsLocalLinkage(const bool isGlobalOrSrgScope) const
     {
         // Options are hybrid, but we consider them local. Because hard options are defined (by macro).
-        bool forcedLocal = CheckHasAnyStorageFlags({StorageFlag::Static, StorageFlag::Groupshared, StorageFlag::Option});
-        bool impliedExtern = isGlobalOrSrgScope && !forcedLocal; // [not-explicitely-local AND global-scope (or SRG-scope)] implies extern
-        bool isExtern = impliedExtern
+        const bool forcedLocal = CheckHasAnyStorageFlags({StorageFlag::Static, StorageFlag::Groupshared, StorageFlag::Option});
+        const bool impliedExtern = isGlobalOrSrgScope && !forcedLocal; // [not-explicitely-local AND global-scope (or SRG-scope)] implies extern
+        const bool isExtern = impliedExtern
             || CheckHasAnyStorageFlags({StorageFlag::Extern, StorageFlag::Rootconstant});
         return !isExtern;
     }
@@ -612,9 +612,9 @@ namespace AZ::ShaderCompiler
         }
 
         //! if there is a unique function that corresponds to a given arity, return its UID. otherwise return an empty UID
-        IdentifierUID FindCandidateOfArity(size_t arity)
+        IdentifierUID FindCandidateOfArity(const size_t arity)
         {
-            auto lookup = m_argCounts.find(arity);
+            const auto lookup = m_argCounts.find(arity);
             if (lookup != m_argCounts.end())
             {
                 return lookup->second;
@@ -631,11 +631,11 @@ namespace AZ::ShaderCompiler
                 return *m_functions.begin();
             }
             auto reconstructedId = IdentifierUID{QualifiedName{ConcatString(m_setFullName.m_name, mangledArgumentList)}};
-            bool directMatch = m_functions.find(reconstructedId) != m_functions.end();
+            const bool directMatch = m_functions.find(reconstructedId) != m_functions.end();
             if (!directMatch)
             {
                 // attempt a fallback matching logic using arity.
-                auto numArgs = CountParameters(mangledArgumentList);
+                const auto numArgs = CountParameters(mangledArgumentList);
                 return FindCandidateOfArity(numArgs);
             }
             return reconstructedId; // if found it in the set
@@ -657,7 +657,7 @@ namespace AZ::ShaderCompiler
         void PushConcreteFunction(IdentifierUID functionBelongingToTheOverloadSet, ExtendedTypeInfo thatFunctionsReturnType)
         {
             assert(IsLeafDecoratedByArguments(functionBelongingToTheOverloadSet.GetName()));
-            std::string_view core = RemoveLastParenthesisGroup(functionBelongingToTheOverloadSet.GetName());
+            const std::string_view core = RemoveLastParenthesisGroup(functionBelongingToTheOverloadSet.GetName());
             if (core != m_setFullName.m_name)
             {
                 throw std::logic_error{
@@ -669,7 +669,7 @@ namespace AZ::ShaderCompiler
             }
             if (m_returnTypeSet.m_state != ReturnTypeSet::HeterogeneousUserDefinedType)
             {
-                bool ok = m_returnTypeSet.Merge(thatFunctionsReturnType);
+                const bool ok = m_returnTypeSet.Merge(thatFunctionsReturnType);
                 if (!ok)
                 {
                     verboseCout << "WARN: function " << functionBelongingToTheOverloadSet.m_name
@@ -678,8 +678,8 @@ namespace AZ::ShaderCompiler
             }
             m_functions.insert(functionBelongingToTheOverloadSet);
             // cache the arguments count:
-            size_t argCount = CountParameters(functionBelongingToTheOverloadSet.GetName());
-            auto previousCandidateWithSameArgCount = m_argCounts.find(argCount);
+            const size_t argCount = CountParameters(functionBelongingToTheOverloadSet.GetName());
+            const auto previousCandidateWithSameArgCount = m_argCounts.find(argCount);
             if (previousCandidateWithSameArgCount == m_argCounts.end())
             {
                 m_argCounts[argCount] = functionBelongingToTheOverloadSet;
@@ -722,8 +722,8 @@ namespace AZ::ShaderCompiler
                     {
                         // but we can tolerate differences in case of simple types.
                         // (because they can't have renamed members that should go through translation)
-                        bool newIsPredefined = IsPredefinedType(newType.m_coreType.m_typeClass);
-                        bool oldIsPredefined = IsPredefinedType(m_type->m_coreType.m_typeClass);
+                        const bool newIsPredefined = IsPredefinedType(newType.m_coreType.m_typeClass);
+                        const bool oldIsPredefined = IsPredefinedType(m_type->m_coreType.m_typeClass);
                         if (!(newIsPredefined && oldIsPredefined))
                         {
                             m_state = HeterogeneousUserDefinedType;
@@ -796,7 +796,7 @@ namespace AZ::ShaderCompiler
         //! e.g such as in "f(int i = 2)"
         bool HasAnyDefaultParameterValue() const
         {
-            bool list0has = std::any_of(
+            const bool list0has = std::any_of(
                 m_parameters[0].begin(),
                 m_parameters[0].end(),
                 [](auto&& p)
@@ -831,7 +831,7 @@ namespace AZ::ShaderCompiler
         }
 
         //! @param firstDeclaration get the list from the first signature site
-        auto& GetParameters(bool firstDeclaration) const
+        auto& GetParameters(const bool firstDeclaration) const
         {
             if (firstDeclaration)
             {
@@ -896,7 +896,7 @@ namespace AZ::ShaderCompiler
             }
         }
 
-        size_t GetOriginalLineNumber(bool useDefNode = true) const
+        size_t GetOriginalLineNumber(const bool useDefNode = true) const
         {
             if (useDefNode && m_defNode)
             {
@@ -1149,7 +1149,7 @@ namespace AZ::ShaderCompiler
 
     private:
         // private method to check class invariants
-        bool OkToAssignKind(Kind k) const
+        bool OkToAssignKind(const Kind k) const
         {
             // pre-init conditions, or non-changing re-assignment
             return m_kind == k || m_kind == Kind::EndEnumeratorSentinel_;
@@ -1176,7 +1176,7 @@ namespace AZ::ShaderCompiler
 
     struct GetSubKindInfoTypeName_Visitor
     {
-        GetSubKindInfoTypeName_Visitor(IdentifierUID uid, bool forFunctionsGetReturnType)
+        GetSubKindInfoTypeName_Visitor(IdentifierUID uid, const bool forFunctionsGetReturnType)
             : m_uid(uid)
             , m_forFunctionsGetReturnType(forFunctionsGetReturnType)
         {
@@ -1256,7 +1256,7 @@ namespace AZ::ShaderCompiler
     //!     collapsed: float4[10] will be float4
     //!     mangled  : float is ?float  and  Srg::S is /Srg/S
     //! @param getStrategy   set it to "Returned" to collapse functions to their return types. Can be useful for call expressions.
-    inline QualifiedName GetTypeName(const IdAndKind* ptr, ForFunctionGetType getStrategy = ForFunctionGetType::SelfIdentity)
+    inline QualifiedName GetTypeName(const IdAndKind* ptr, const ForFunctionGetType getStrategy = ForFunctionGetType::SelfIdentity)
     {
         auto& [uid, kind] = *ptr;
         return kind.VisitSub(GetSubKindInfoTypeName_Visitor{uid, getStrategy == ForFunctionGetType::Returned});
@@ -1310,7 +1310,7 @@ namespace AZ::ShaderCompiler
 
     inline std::string GetFirstSeenLineMessage(const KindInfo& kindInfo)
     {
-        size_t firstSeen = kindInfo.VisitSub(GetOrigSourceLine_Visitor{});
+        const size_t firstSeen = kindInfo.VisitSub(GetOrigSourceLine_Visitor{});
         if (firstSeen != NoLine)
         {
             return "first seen line " + std::to_string(firstSeen);
@@ -1319,7 +1319,7 @@ namespace AZ::ShaderCompiler
     }
 
     //! helper for fatal semantic error of ODR violation
-    inline void ThrowRedeclarationAsDifferentKind(std::string_view symbolName, Kind newKind, const KindInfo& kindInfo, std::optional<size_t> lineNumber = std::nullopt)
+    inline void ThrowRedeclarationAsDifferentKind(std::string_view symbolName, const Kind newKind, const KindInfo& kindInfo, const std::optional<size_t> lineNumber = std::nullopt)
     {
         const std::string errorMessage = ConcatString(
             "redeclaration of ",
@@ -1349,7 +1349,7 @@ namespace AZ::ShaderCompiler
         const TokensLocation operator()(const FunctionInfo& func) const
         {
             AstFuncSig* node = func.m_declNode;
-            auto* name = func.m_declNode->Name;
+            const auto* name = func.m_declNode->Name;
             if (func.m_defNode)
             {
                 node = func.m_defNode;

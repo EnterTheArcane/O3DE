@@ -27,7 +27,7 @@ namespace AZ::ShaderCompiler
         const IdentifierUID& srgUid,
         const IdentifierUID& varUid,
         const VarInfo& varInfo,
-        TypeClass typeClass,
+        const TypeClass typeClass,
         std::string* errorMessage)
     {
         if (!CanBeDeclaredAsUnboundedArray(typeClass))
@@ -43,11 +43,11 @@ namespace AZ::ShaderCompiler
     }
 
     bool UnboundedArraysValidator::CheckFieldCanBeAddedToSrg(
-        bool isUnboundedArray,
+        const bool isUnboundedArray,
         const IdentifierUID& srgUid,
         const IdentifierUID& varUid,
         const VarInfo& varInfo,
-        TypeClass typeClass,
+        const TypeClass typeClass,
         std::string* errorMessage)
     {
         if (isUnboundedArray)
@@ -55,7 +55,7 @@ namespace AZ::ShaderCompiler
             return CheckUnboundedArrayFieldCanBeAddedToSrg(srgUid, varUid, varInfo, typeClass, errorMessage);
         }
 
-        auto spaceIndex = GetSpaceIndexForSrg(srgUid);
+        const auto spaceIndex = GetSpaceIndexForSrg(srgUid);
         if (spaceIndex >= FirstUnboundedSpace)
         {
             if (errorMessage)
@@ -71,7 +71,7 @@ namespace AZ::ShaderCompiler
     SpaceIndex UnboundedArraysValidator::GetSpaceIndexForSrg(const IdentifierUID& srgUid)
     {
         SpaceIndex spaceIndex = 0;
-        auto findIt = m_srgToSpaceIndex.find(srgUid);
+        const auto findIt = m_srgToSpaceIndex.find(srgUid);
         if (findIt == m_srgToSpaceIndex.end())
         {
             if (m_options.m_maxSpaces - 1 > m_maxSpaceIndex)

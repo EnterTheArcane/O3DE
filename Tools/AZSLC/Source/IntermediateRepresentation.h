@@ -30,7 +30,7 @@ namespace AZ::ShaderCompiler
     {
         using is_transparent = void;
 
-        size_t operator()(std::string_view value) const noexcept
+        size_t operator()(const std::string_view value) const noexcept
         {
             return std::hash<std::string_view>{}(value);
         }
@@ -69,7 +69,7 @@ namespace AZ::ShaderCompiler
     {
         IntermediateRepresentation(azslLexer* lexer)
             : m_scope{
-                [&](QualifiedNameView sym) // Initialize the scope object with a decoupled identifier getter. (SOLID's D.I.P)
+                [&](const QualifiedNameView sym) // Initialize the scope object with a decoupled identifier getter. (SOLID's D.I.P)
                 {
                     return m_symbols.GetIdAndKindInfo(sym);
                 }
@@ -83,13 +83,13 @@ namespace AZ::ShaderCompiler
         }
 
         //! Shortcut helper to symbols
-        auto GetIdAndKindInfo(QualifiedNameView symbol) const
+        auto GetIdAndKindInfo(const QualifiedNameView symbol) const
         {
             return m_symbols.GetIdAndKindInfo(symbol);
         }
 
         //! Shortcut helper to symbols
-        auto GetIdAndKindInfo(QualifiedNameView symbol)
+        auto GetIdAndKindInfo(const QualifiedNameView symbol)
         {
             return m_symbols.GetIdAndKindInfo(symbol);
         }
@@ -133,7 +133,7 @@ namespace AZ::ShaderCompiler
 
         //! Extracts the contained SubInfo from a symbol lookup
         template <typename T>
-        const T* GetSymbolSubAs(QualifiedNameView symbol) const
+        const T* GetSymbolSubAs(const QualifiedNameView symbol) const
         {
             const auto* symbolLookUp = GetIdAndKindInfo(symbol);
             if (!symbolLookUp)
@@ -144,7 +144,7 @@ namespace AZ::ShaderCompiler
         }
 
         template <typename T>
-        T* GetSymbolSubAs(QualifiedNameView symbol)
+        T* GetSymbolSubAs(const QualifiedNameView symbol)
         {
             auto* symbolLookUp = GetIdAndKindInfo(symbol);
             if (!symbolLookUp)
@@ -173,14 +173,14 @@ namespace AZ::ShaderCompiler
             return m_metaData.m_insource;
         }
 
-        bool IsAttributeNamespaceActivated(std::string_view attr)
+        bool IsAttributeNamespaceActivated(const std::string_view attr)
         {
             return m_metaData.m_attributeNamespaceFilters.contains(attr);
         }
 
         void AddAttributeNamespaceFilter(const std::string& attr)
         {
-            std::regex validNamespace(R"__([a-zA-Z_]+)__");
+            const std::regex validNamespace(R"__([a-zA-Z_]+)__");
             if (!std::regex_match(attr, validNamespace))
             {
                 throw std::runtime_error(("Invalid namespace '" + attr + "'").c_str());

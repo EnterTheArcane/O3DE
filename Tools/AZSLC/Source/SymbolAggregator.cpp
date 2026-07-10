@@ -27,7 +27,7 @@ namespace AZ::ShaderCompiler
     template <auto N>
     void AddTypeBag(const AZ::ShaderCompiler::Predefined::Bag<N>& bag, SymbolTable& st)
     {
-        for (std::string_view symbol : bag.m_bag)
+        for (const std::string_view symbol : bag.m_bag)
         {
             QualifiedName azirName{"?"}; // AZIR prefix for predefined types
             azirName += symbol;
@@ -52,7 +52,7 @@ namespace AZ::ShaderCompiler
 
         // temporarily disable the verbosity since it completely bloats the output
         verboseCout << " registering of all predefined types in fixed symbol table (kept silent)...";
-        bool oldVerbosity = verboseCout.m_on;
+        const bool oldVerbosity = verboseCout.m_on;
         verboseCout.m_on = false;
 
         // another helpful canonicalization is for types.
@@ -76,12 +76,12 @@ namespace AZ::ShaderCompiler
     {
     }
 
-    bool SymbolAggregator::HasIdentifier(QualifiedNameView symbol) const
+    bool SymbolAggregator::HasIdentifier(const QualifiedNameView symbol) const
     {
         return m_elastic.HasIdentifier(symbol) || m_fixed.HasIdentifier(symbol);
     }
 
-    IdAndKind* SymbolAggregator::GetIdAndKindInfo(QualifiedNameView symbol)
+    IdAndKind* SymbolAggregator::GetIdAndKindInfo(const QualifiedNameView symbol)
     {
         IdAndKind* idAndKind = m_elastic.GetIdAndKindInfo(symbol);
         if (idAndKind)
@@ -94,7 +94,7 @@ namespace AZ::ShaderCompiler
         return const_cast<std::remove_const_t<decltype(m_fixed)>&>(m_fixed).GetIdAndKindInfo(symbol);
     }
 
-    const IdAndKind* SymbolAggregator::GetIdAndKindInfo(QualifiedNameView symbol) const
+    const IdAndKind* SymbolAggregator::GetIdAndKindInfo(const QualifiedNameView symbol) const
     {
         const IdAndKind* idAndKind = m_elastic.GetIdAndKindInfo(symbol);
         if (idAndKind)
@@ -105,7 +105,7 @@ namespace AZ::ShaderCompiler
         return m_fixed.GetIdAndKindInfo(symbol);
     }
 
-    IdAndKind& SymbolAggregator::AddIdentifier(QualifiedNameView symbol, Kind kind, std::optional<size_t> lineNumber /*=std::nullopt*/, AddIdentifierChecks checkPolicy /*= AddIdentifierChecks::ReservedNames*/)
+    IdAndKind& SymbolAggregator::AddIdentifier(QualifiedNameView symbol, const Kind kind, const std::optional<size_t> lineNumber /*=std::nullopt*/, const AddIdentifierChecks checkPolicy /*= AddIdentifierChecks::ReservedNames*/)
     {
         // check against reserved names
         static constexpr std::array<std::string_view, 2> ReservedNames = {
@@ -134,7 +134,7 @@ namespace AZ::ShaderCompiler
         return m_elastic.DeleteIdentifier(name);
     }
 
-    IdAndKind* SymbolAggregator::LookupSymbol(QualifiedNameView scope, UnqualifiedNameView name)
+    IdAndKind* SymbolAggregator::LookupSymbol(const QualifiedNameView scope, const UnqualifiedNameView name)
     {
         using namespace std::string_literals;
         if (IsRooted(name))
@@ -172,7 +172,7 @@ namespace AZ::ShaderCompiler
             exit = path == "/" || path.empty();
             if (!got)
             {
-                if (auto* scopeAsClass = GetAsSub<ClassInfo>(IdentifierUID{GetParentName(attempt)})) // get enclosing class
+                if (const auto* scopeAsClass = GetAsSub<ClassInfo>(IdentifierUID{GetParentName(attempt)})) // get enclosing class
                 {
                     // classes need deep lookup, because may have bases. classes don't save in the symbol-table all the fields they render accessible.
                     // Because multiple bases (upways and sideways) can shadow each-other's fields; caching inheritated fields would require complicated mangling.
@@ -188,16 +188,16 @@ namespace AZ::ShaderCompiler
         return got;
     }
 
-    UnqualifiedName SymbolAggregator::FindLeastQualifiedName(QualifiedNameView scope, IdentifierUID uid)
+    UnqualifiedName SymbolAggregator::FindLeastQualifiedName(const QualifiedNameView scope, IdentifierUID uid)
     {
         // start from the completely unqualified version:
         IdAndKind* got;
         UnqualifiedName name;
-        QualifiedName target = RemoveLastParenthesisGroup(uid.GetName());
+        const QualifiedName target = RemoveLastParenthesisGroup(uid.GetName());
         UnqualifiedName nextname = ExtractLeaf(target);
-        std::vector<std::string_view> split = SplitPath(uid.m_name);
+        const std::vector<std::string_view> split = SplitPath(uid.m_name);
         bool found = false;
-        int numsplits = static_cast<int>(split.size());
+        const int numsplits = static_cast<int>(split.size());
         for (int i = numsplits - 2; // start from leaf-1 (e.g. from "/A/B/Leaf", name is already Leaf, we need to prepend "B", then "A")
              i >= -1 && !found; // loop until found, or for "all elements in the split, +1" (for the opportunity to try out the last nextname)
              --i) // progressively add qualifiers
@@ -224,14 +224,14 @@ namespace AZ::ShaderCompiler
         return m_elastic.m_order;
     }
 
-    void SymbolAggregator::PushPendingAttribute(const AttributeInfo& attrInfo, AttributeScope scope)
+    void SymbolAggregator::PushPendingAttribute(const AttributeInfo& attrInfo, const AttributeScope scope)
     {
         m_orphanAttributesList[scope].push_back(attrInfo);
     }
 
     const std::vector<AttributeInfo>* SymbolAggregator::GetAttributeList(const IdentifierUID& uid) const
     {
-        auto attrList = m_idToAttributeMap.find(uid);
+        const auto attrList = m_idToAttributeMap.find(uid);
         if (attrList == m_idToAttributeMap.end())
         {
             return nullptr;
@@ -242,7 +242,7 @@ namespace AZ::ShaderCompiler
 
     static std::optional<AttributeInfo> FindAttributeByNameInList(const std::vector<AttributeInfo>& attrList, const std::string& attributeName)
     {
-        auto iter = std::find_if(
+        const auto iter = std::find_if(
             attrList.begin(),
             attrList.end(),
             [=](const auto& attrInfo)
@@ -291,7 +291,7 @@ namespace AZ::ShaderCompiler
         auto isFunctionOrVariableOrType = [this, disambiguatorChar](std::string_view name)
         {
             name = Slice(name, 0, name.find_first_of(disambiguatorChar));
-            KindInfo& ki = GetIdAndKindInfo(QualifiedNameView{name})->second;
+            const KindInfo& ki = GetIdAndKindInfo(QualifiedNameView{name})->second;
             return std::make_tuple(
                 ki.IsKindOneOf(Kind::Function, Kind::OverloadSet),
                 ki.IsKindOneOf(Kind::Variable),
@@ -318,7 +318,7 @@ namespace AZ::ShaderCompiler
             //        ● 'g_fog'   ● 'class C'  ║  these links:   ║      ● 'g_fog' ← ● 'class C'
             //                                 ╚═════════════════╝                       ↑
             //                    ● 'struct C/S'                                    ● 'struct C/S'
-            size_t symbolDepth = GetSymbolDepth(disambiguated.GetName());
+            const size_t symbolDepth = GetSymbolDepth(disambiguated.GetName());
             if (symbolDepth > curDepth)
             {
                 lastSymbolAtCurrentLevel.push(disambiguated);
@@ -330,11 +330,11 @@ namespace AZ::ShaderCompiler
                     lastSymbolAtCurrentLevel.pop();
                 }
                 // establish a horizontal link between symbols of the same level to preserve the apparition order
-                bool sameParentAsLast = GetParentName(disambiguated.GetName()) == GetParentName(lastSymbolAtCurrentLevel.top().GetName());
-                bool parentIsT = std::get<2>(isFunctionOrVariableOrType(GetParentName(disambiguated.GetName())));
-                bool lastIsFunction = std::get<0>(isFunctionOrVariableOrType(lastSymbolAtCurrentLevel.top().GetName()));
-                bool curIsT = std::get<2>(isFunctionOrVariableOrType(disambiguated.GetName()));
-                bool isNestedType = curIsT && symbolDepth > 0;
+                const bool sameParentAsLast = GetParentName(disambiguated.GetName()) == GetParentName(lastSymbolAtCurrentLevel.top().GetName());
+                const bool parentIsT = std::get<2>(isFunctionOrVariableOrType(GetParentName(disambiguated.GetName())));
+                const bool lastIsFunction = std::get<0>(isFunctionOrVariableOrType(lastSymbolAtCurrentLevel.top().GetName()));
+                const bool curIsT = std::get<2>(isFunctionOrVariableOrType(disambiguated.GetName()));
+                const bool isNestedType = curIsT && symbolDepth > 0;
                 // verifying !lastIsFunction, permits to break dependency cycles.
                 if (sameParentAsLast && !lastIsFunction && !(isNestedType && parentIsT)) // in "class C { int a; struct S{}; };"  `S` cannot depend on `a` otherwise `a` is pulled out of C
                 {
@@ -354,8 +354,8 @@ namespace AZ::ShaderCompiler
                     {
                         path = JoinPath(path, part.m_slice);
                         auto [isFunc, isVar, _] = isFunctionOrVariableOrType(path);
-                        IdentifierUID current{QualifiedNameView{path}};
-                        bool parentIsEmptyOrRoot = parent.IsEmpty() || parent.GetName() == "/";
+                        const IdentifierUID current{QualifiedNameView{path}};
+                        const bool parentIsEmptyOrRoot = parent.IsEmpty() || parent.GetName() == "/";
                         if (!parentIsEmptyOrRoot)
                         {
                             if (isFunc)

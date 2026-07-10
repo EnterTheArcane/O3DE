@@ -78,7 +78,7 @@ namespace AZ::ShaderCompiler
     {
         // loop over all keywords
         const auto& vocabulary = recognizer->getVocabulary();
-        size_t maxToken = vocabulary.getMaxTokenType();
+        const size_t maxToken = vocabulary.getMaxTokenType();
         for (size_t ii = 0; ii < maxToken; ++ii)
         {
             auto stdToken = vocabulary.getLiteralName(ii);
@@ -117,7 +117,7 @@ namespace AZ::ShaderCompiler
         // they will be classified as IsNotType. So we need to re-attempt analysis by appending something parseable.
 
         // get a scalar typename from the scalar class:
-        std::string someScalar = *classifiedTokens[TypeClass::ToStr(TypeClass::Scalar)].begin();
+        const std::string someScalar = *classifiedTokens[TypeClass::ToStr(TypeClass::Scalar)].begin();
 
         // now we'll use it to construct parseable generic type expressions
         enum class RetryStateMachine
@@ -183,9 +183,9 @@ namespace AZ::ShaderCompiler
         MapOfStringViewToSetOfString byTypeClass;
         std::set<std::string> notTypes;
         VisitTokens(r, byTypeClass, notTypes);
-        bool notType = notTypes.find(token->getText()) != notTypes.end();
-        bool notIdentifier = r->getVocabulary().getSymbolicName(token->getType()) != "Identifier";
-        bool firstIsalpha(isalpha(token->getText()[0]));
+        const bool notType = notTypes.find(token->getText()) != notTypes.end();
+        const bool notIdentifier = r->getVocabulary().getSymbolicName(token->getType()) != "Identifier";
+        const bool firstIsalpha(isalpha(token->getText()[0]));
         return notType && notIdentifier && firstIsalpha;
     }
 
@@ -209,7 +209,7 @@ namespace AZ::ShaderCompiler
             lexer,
             classifiedTokens /*out*/
             ,
-            [](TypeClass tc)
+            [](const TypeClass tc)
             {
                 return IsPredefinedType(tc);
             });
@@ -267,10 +267,10 @@ namespace AZ::ShaderCompiler::Main
     /// This function will support the --ast option. It uses an AntlR facility and prettifies it.
     void PrintAst(tree::ParseTree* tree, azslParser& parser)
     {
-        std::string s = tree->toStringTree(&parser);
+        const std::string s = tree->toStringTree(&parser);
         // hopefully easy to read indentator
         std::string curindent = "";
-        for (char c : s)
+        for (const char c : s)
         {
             if (c == '(')
             {
@@ -294,16 +294,16 @@ namespace AZ::ShaderCompiler::Main
 
     /// this function supports the --visitsym option
     // @symbolMqn   starting point of symbol homonyms graph discovery. Mqn: mangled qualified name
-    void PrintVisitSymbol(IntermediateRepresentation& ir, std::string_view symbolMqn, RelationshipExtentFlag visitOptions)
+    void PrintVisitSymbol(IntermediateRepresentation& ir, std::string_view symbolMqn, const RelationshipExtentFlag visitOptions)
     {
-        IdAndKind* symbol = ir.GetIdAndKindInfo(QualifiedNameView{symbolMqn});
+        const IdAndKind* symbol = ir.GetIdAndKindInfo(QualifiedNameView{symbolMqn});
         if (!symbol)
         {
             std::cerr << "Error: symbol " << symbolMqn.data() << " not found. To list all symbols use --dumpsym option.\n";
             return;
         }
         std::cout << "Symbol found. kind: " << Kind::ToStr(ir.GetKind(symbol->first)) << ". Homonyms list:\n";
-        HomonymVisitor hv{
+        const HomonymVisitor hv{
             [&ir](QualifiedNameView qnv)
             {
                 return ir.GetKindInfo({{qnv}});
@@ -311,7 +311,7 @@ namespace AZ::ShaderCompiler::Main
         };
         hv(
             symbol->first,
-            [](const Seenat& at, RelationshipExtent category)
+            [](const Seenat& at, const RelationshipExtent category)
             {
                 std::cout << "- {categ: " << RelationshipExtent::ToStr(category)
                     << ", id: " << Decorate("'", at.m_referredDefinition.GetName())
@@ -323,9 +323,9 @@ namespace AZ::ShaderCompiler::Main
 
     void ParseWarningLevel(const std::array<bool, Warn::EndEnumeratorSentinel_>& args, DiagnosticStream& warningConfig)
     {
-        for (auto level : Warn::Enumerate{})
+        for (const auto level : Warn::Enumerate{})
         {
-            bool active = args[level];
+            const bool active = args[level];
             if (active)
             {
                 if (level >= Warn::Wx)
@@ -343,7 +343,7 @@ namespace AZ::ShaderCompiler::Main
 
 namespace AZ
 {
-    std::string_view GetFileLeafName(std::string_view path)
+    std::string_view GetFileLeafName(const std::string_view path)
     {
         return Slice(path, path.find_last_of("/\\") + 1, -1);
     }
@@ -650,7 +650,7 @@ int main(int argc, const char* argv[])
             Texture2DMSto2DCodeMutator texture2DMSto2DCodeMutator(&ir, &tokens);
             SubpassInputToTexture2DCodeMutator subpassInputToTexture2DCodeMutator(&ir, &tokens, subpassInputSupport);
             SemaCheckListener semanticListener{&ir};
-            warningCout.m_onErrorCallback = [](std::string_view message)
+            warningCout.m_onErrorCallback = [](const std::string_view message)
             {
                 throw AzslcException{WX_WARNINGS_AS_ERRORS, "as-error", std::string{message}};
             };
@@ -659,7 +659,7 @@ int main(int argc, const char* argv[])
             bool anyNonValidativeOption = std::any_of(
                 std::begin(nonValidativeOptions),
                 std::end(nonValidativeOptions),
-                [](bool opt)
+                [](const bool opt)
                 {
                     return opt;
                 });

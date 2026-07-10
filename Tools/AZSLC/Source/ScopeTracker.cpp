@@ -24,7 +24,7 @@ namespace AZ::ShaderCompiler
     }
 
     // variation that takes an absolute path in (used by entry into deported method definitions, they can jump scope)
-    void ScopeTracker::EnterScope(QualifiedNameView scopeName, ssize_t tokenStreamPosition)
+    void ScopeTracker::EnterScope(const QualifiedNameView scopeName, const ssize_t tokenStreamPosition)
     {
         m_oldScopePaths.push(m_currentScopePath);
         m_currentScopePath = scopeName;
@@ -35,13 +35,13 @@ namespace AZ::ShaderCompiler
     }
 
     // classic variation that takes a cumulative leaf
-    void ScopeTracker::EnterScope(std::string_view scopeName, ssize_t tokenStreamPosition)
+    void ScopeTracker::EnterScope(const std::string_view scopeName, const ssize_t tokenStreamPosition)
     {
         auto accumulatedPath = JoinPath(m_currentScopePath, scopeName, JoinPolicy::EmptyMeansEmpty);
         EnterScope(QualifiedNameView{accumulatedPath}, tokenStreamPosition);
     }
 
-    void ScopeTracker::ExitScope(ssize_t tokenStreamPosition)
+    void ScopeTracker::ExitScope(const ssize_t tokenStreamPosition)
     {
         // keep track of the scope end token:
         m_scopeIntervals[m_currentScopeUID].b = tokenStreamPosition;
@@ -67,7 +67,7 @@ namespace AZ::ShaderCompiler
 
     QualifiedNameView ScopeTracker::GetNameOfCurParentScope() const
     {
-        auto nameOfParentScope = QualifiedNameView{GetParentName(GetNameOfCurScope())};
+        const auto nameOfParentScope = QualifiedNameView{GetParentName(GetNameOfCurScope())};
         return nameOfParentScope;
     }
 

@@ -14,14 +14,14 @@
 
 namespace AZ::ShaderCompiler
 {
-    bool SymbolTable::HasIdentifier(QualifiedNameView symbol) const
+    bool SymbolTable::HasIdentifier(const QualifiedNameView symbol) const
     {
         return m_symbols.find(IdentifierUID{symbol}) != m_symbols.end();
     }
 
-    IdAndKind* SymbolTable::GetIdAndKindInfo(QualifiedNameView symbol)
+    IdAndKind* SymbolTable::GetIdAndKindInfo(const QualifiedNameView symbol)
     {
-        auto iter = m_symbols.find(IdentifierUID{symbol});
+        const auto iter = m_symbols.find(IdentifierUID{symbol});
         if (iter == m_symbols.end())
         {
             return nullptr;
@@ -30,9 +30,9 @@ namespace AZ::ShaderCompiler
         return &(*iter);
     }
 
-    const IdAndKind* SymbolTable::GetIdAndKindInfo(QualifiedNameView symbol) const
+    const IdAndKind* SymbolTable::GetIdAndKindInfo(const QualifiedNameView symbol) const
     {
-        auto iter = m_symbols.find(IdentifierUID{symbol});
+        const auto iter = m_symbols.find(IdentifierUID{symbol});
         if (iter == m_symbols.end())
         {
             return nullptr;
@@ -43,8 +43,8 @@ namespace AZ::ShaderCompiler
 
     bool SymbolTable::DeleteIdentifier(const IdentifierUID& name)
     {
-        auto iter = m_symbols.find(name);
-        bool found = iter != m_symbols.end();
+        const auto iter = m_symbols.find(name);
+        const bool found = iter != m_symbols.end();
         if (found)
         {
             m_symbols.erase(iter);
@@ -57,7 +57,7 @@ namespace AZ::ShaderCompiler
     void SymbolTable::MigrateOrder(const IdentifierUID& symbol, const IdentifierUID& before)
     {
         // For use in PadToAttributeMutator::InsertPaddingVariables::createVariableInSymbolTable
-        auto beforeSymbolIter = std::find(m_order.begin(), m_order.end(), before);
+        const auto beforeSymbolIter = std::find(m_order.begin(), m_order.end(), before);
         if (beforeSymbolIter != m_order.end())
         {
             m_order.erase(std::remove(m_order.begin(), m_order.end(), symbol), m_order.end());
@@ -65,7 +65,7 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    IdAndKind& SymbolTable::AddIdentifier(QualifiedNameView symbol, Kind kind, std::optional<size_t> lineNumber /*= std::nullopt*/)
+    IdAndKind& SymbolTable::AddIdentifier(const QualifiedNameView symbol, const Kind kind, const std::optional<size_t> lineNumber /*= std::nullopt*/)
     {
         IdentifierUID idUID{symbol};
         auto fetchedIdIt = m_symbols.find(idUID);

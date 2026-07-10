@@ -47,9 +47,9 @@ namespace AZ::ShaderCompiler
 
     ///////////////////////////////////////////////////////////////////////
     // ICodeEmissionMutator Overrides ...
-    const CodeMutation* Texture2DMSto2DCodeMutator::GetMutation(ssize_t tokenId) const
+    const CodeMutation* Texture2DMSto2DCodeMutator::GetMutation(const ssize_t tokenId) const
     {
-        auto itor = m_mutations.find(tokenId);
+        const auto itor = m_mutations.find(tokenId);
         if (itor == m_mutations.end())
         {
             return nullptr;
@@ -75,7 +75,7 @@ namespace AZ::ShaderCompiler
         // "<Symbol>", ".", "<funcName>"
         if (children.size() == 3)
         {
-            std::string symbolName = Replace(children[0]->getText(), "::", "/");
+            const std::string symbolName = Replace(children[0]->getText(), "::", "/");
             return UnqualifiedName{symbolName};
         }
         return UnqualifiedName();
@@ -98,7 +98,7 @@ namespace AZ::ShaderCompiler
         {
             return TextureMSType::None;
         }
-        auto varInfo = kind.GetSubAs<VarInfo>();
+        const auto varInfo = kind.GetSubAs<VarInfo>();
         if (varInfo->GetTypeClass() != TypeClass::MultisampledTexture)
         {
             return TextureMSType::None;
@@ -270,18 +270,18 @@ namespace AZ::ShaderCompiler
 
         // Get all variables that are members of something of type Texture2DMS
         // We use this function pointer to find SRGs that have no references.
-        auto texture2DMSFilterFunc = +[](KindInfo* kindInfo)
+        const auto texture2DMSFilterFunc = +[](KindInfo* kindInfo)
         {
             const auto* varInfo = kindInfo->GetSubAs<VarInfo>();
             return varInfo->m_typeInfoExt.m_coreType.m_typeClass == TypeClass::MultisampledTexture;
         };
 
-        std::vector<IdentifierUID> texture2DMSVariables = m_ir->GetFilteredSymbolsOfSubType<VarInfo>(texture2DMSFilterFunc);
+        const std::vector<IdentifierUID> texture2DMSVariables = m_ir->GetFilteredSymbolsOfSubType<VarInfo>(texture2DMSFilterFunc);
         for (const auto& uid : texture2DMSVariables)
         {
-            auto varInfo = m_ir->GetSymbolSubAs<VarInfo>(uid.GetName());
+            const auto varInfo = m_ir->GetSymbolSubAs<VarInfo>(uid.GetName());
             auto& typeId = varInfo->m_typeInfoExt.m_coreType.m_typeId;
-            auto typeName = typeId.GetName();
+            const auto typeName = typeId.GetName();
             if (typeName == "?Texture2DMS")
             {
                 typeId.m_name = QualifiedName{"?Texture2D"};
@@ -299,7 +299,7 @@ namespace AZ::ShaderCompiler
     void Texture2DMSto2DCodeMutator::MutateMultiSampleSystemSemantics()
     {
         //Let's find all variables that have a system semantic.
-        auto variablesWithSystemSemanticFilterFunc = +[](KindInfo* kindInfo)
+        const auto variablesWithSystemSemanticFilterFunc = +[](KindInfo* kindInfo)
         {
             const auto* varInfo = kindInfo->GetSubAs<VarInfo>();
             if (!varInfo->m_declNode)
@@ -314,10 +314,10 @@ namespace AZ::ShaderCompiler
             return semanticOption->hlslSemanticName()->HLSLSemanticSystem() != nullptr;
         };
 
-        std::vector<IdentifierUID> systemSemanticVariables = m_ir->GetFilteredSymbolsOfSubType<VarInfo>(variablesWithSystemSemanticFilterFunc);
+        const std::vector<IdentifierUID> systemSemanticVariables = m_ir->GetFilteredSymbolsOfSubType<VarInfo>(variablesWithSystemSemanticFilterFunc);
         for (const auto& uid : systemSemanticVariables)
         {
-            auto varInfo = m_ir->GetSymbolSubAs<VarInfo>(uid.GetName());
+            const auto varInfo = m_ir->GetSymbolSubAs<VarInfo>(uid.GetName());
 
             // Get the semantic name.
             auto systemSemanticName = varInfo->m_declNode->SemanticOpt->hlslSemanticName()->HLSLSemanticSystem()->getText();
@@ -352,7 +352,7 @@ namespace AZ::ShaderCompiler
     static std::vector<Token*> NodeTokens(ParserRuleContext* node, TokenStream* stream)
     {
         std::vector<Token*> tokens;
-        misc::Interval src = node->getSourceInterval();
+        const misc::Interval src = node->getSourceInterval();
         for (ssize_t i = src.a; i <= src.b; ++i)
         {
             tokens.push_back(stream->get(i));
@@ -365,7 +365,7 @@ namespace AZ::ShaderCompiler
     static std::string GetLocalVariableStringFromFunctionArgument(TokenStream* stream, const UnqualifiedName& uqName, AstUnnamedVarDecl* ctx, const char* initializationValue)
     {
         azslParser::FunctionParamContext* paramCtx = nullptr;
-        auto typeCtx = ExtractTypeFromUnnamedVariableDeclarator(ctx, &paramCtx);
+        const auto typeCtx = ExtractTypeFromUnnamedVariableDeclarator(ctx, &paramCtx);
         auto tokens = NodeTokens(typeCtx, stream);
         std::vector<std::string> stringlets;
         std::ranges::transform(
@@ -384,7 +384,7 @@ namespace AZ::ShaderCompiler
             {
                 return subtok != "in" && subtok != "out" && subtok != "inout" && !IsAllWhitespaces(subtok);
             });
-        std::string typeHlsl = Join(filtered, " ");
+        const std::string typeHlsl = Join(filtered, " ");
         if (initializationValue && initializationValue[0] != '\0')
         {
             return FormatString("%s %s = (%s)%s;\n", typeHlsl.c_str(), uqName.c_str(), typeHlsl.c_str(), initializationValue);
@@ -433,10 +433,10 @@ namespace AZ::ShaderCompiler
         // The idea is to find the TokenIndex of the opening bracket "{",
         // Once we know that TokenIndex we can add code mutation as an appended
         // string.
-        auto hlslFunctionDefinitionContext = ExtractSpecificParent<azslParser::HlslFunctionDefinitionContext>(functionInfo->m_defNode);
-        auto blockContext = hlslFunctionDefinitionContext->block();
+        const auto hlslFunctionDefinitionContext = ExtractSpecificParent<azslParser::HlslFunctionDefinitionContext>(functionInfo->m_defNode);
+        const auto blockContext = hlslFunctionDefinitionContext->block();
         auto leftBraceTokenIndex = blockContext->LeftBrace()->getSymbol()->getTokenIndex();
-        auto itor = m_mutations.find(leftBraceTokenIndex);
+        const auto itor = m_mutations.find(leftBraceTokenIndex);
         if (itor == m_mutations.end())
         {
             CodeMutation mutation;
@@ -446,7 +446,7 @@ namespace AZ::ShaderCompiler
         else
         {
             CodeMutation& mutation = itor->second;
-            std::string prevCode = mutation.m_append.value();
+            const std::string prevCode = mutation.m_append.value();
             mutation.m_append.emplace(prevCode + newCode);
         }
     }

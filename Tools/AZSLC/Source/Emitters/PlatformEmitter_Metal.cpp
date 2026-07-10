@@ -33,7 +33,7 @@ namespace AZ::ShaderCompiler
         return &platformEmitter;
     }
 
-    std::string PlatformEmitter_Metal::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const
+    std::string PlatformEmitter_Metal::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, const BindingPair::Set signatureQuery) const
     {
         std::stringstream strOut;
 
@@ -48,7 +48,7 @@ namespace AZ::ShaderCompiler
         return strOut.str();
     }
 
-    uint32_t PlatformEmitter_Metal::AlignRootConstants(uint32_t size) const
+    uint32_t PlatformEmitter_Metal::AlignRootConstants(const uint32_t size) const
     {
         return Packing::AlignUp(size, Packing::s_bytesPerRegister);
     }

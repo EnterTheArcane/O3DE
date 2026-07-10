@@ -24,10 +24,10 @@ namespace AZ::ShaderCompiler
         if (memberAccessExpr) // if direct parent is MAE, it's guaranteed this current idExpression is RHS. (because LHS of MAE is expression, not idExpression)
         {
             // we are in `a.b::c` (which can happen legally c.f. https://stackoverflow.com/q/56253767/893406)
-            bool isAbsolute = ctx->qualifiedId() && ctx->qualifiedId()->nestedNameSpecifier()->GlobalSROToken != nullptr; // qualified and fully.
+            const bool isAbsolute = ctx->qualifiedId() && ctx->qualifiedId()->nestedNameSpecifier()->GlobalSROToken != nullptr; // qualified and fully.
             // in MAE (MemberAccessExpression) the LHS (left-hand-side) determines what scope we should look into, for this idExpression.
             // in this context (MAE), a member accessed through a dot, `lhs.field` means the scope of interest is typeof(lhs).
-            QualifiedName startupScope = isAbsolute
+            const QualifiedName startupScope = isAbsolute
                                              ? QualifiedName{"/"} // no need to do any Join if the RHS is absolute
                                              : m_ir->m_sema.TypeofExpr(memberAccessExpr->LHSExpr); // relative to the scope of the type of LHS
             if (isAbsolute || m_ir->m_sema.VerifyLHSExprOfMAExprIsValid(memberAccessExpr).first)
@@ -37,7 +37,7 @@ namespace AZ::ShaderCompiler
         }
         else if (auto* typeofExpression = As<azslParser::TypeofExpressionContext*>(ctx->parent))
         {
-            QualifiedName startupScope = typeofExpression->Expr
+            const QualifiedName startupScope = typeofExpression->Expr
                                              ? m_ir->m_sema.TypeofExpr(typeofExpression->Expr)
                                              : m_ir->m_sema.TypeofExpr(typeofExpression->type());
             if (m_ir->m_sema.VerifyTypeIsScopeComposable(startupScope).first)
@@ -82,7 +82,7 @@ namespace AZ::ShaderCompiler
     void SemaCheckListener::enterEnumDefinition(azslParser::EnumDefinitionContext* ctx)
     {
         m_ir->m_sema.RegisterEnum(ctx);
-        auto* scopedCtx = As<azslParser::ScopedEnumContext*>(ctx->enumKey());
+        const auto* scopedCtx = As<azslParser::ScopedEnumContext*>(ctx->enumKey());
         if (scopedCtx != nullptr)
         {
             m_ir->m_scope.EnterScope(ctx->Name->getText(), ctx->LeftBrace()->getSourceInterval().a);
@@ -96,7 +96,7 @@ namespace AZ::ShaderCompiler
 
     void SemaCheckListener::enterSamplerBodyDeclaration(azslParser::SamplerBodyDeclarationContext* ctx)
     {
-        auto name = ExtractVariableNameSamplerBodyDeclaration(ctx);
+        const auto name = ExtractVariableNameSamplerBodyDeclaration(ctx);
         m_ir->m_scope.EnterScope(name, ctx->LeftBrace()->getSourceInterval().a);
     }
 
@@ -147,7 +147,7 @@ namespace AZ::ShaderCompiler
 
     void SemaCheckListener::exitEnumDefinition(azslParser::EnumDefinitionContext* ctx)
     {
-        auto* scopedCtx = As<azslParser::ScopedEnumContext*>(ctx->enumKey());
+        const auto* scopedCtx = As<azslParser::ScopedEnumContext*>(ctx->enumKey());
         if (scopedCtx != nullptr)
         {
             m_ir->m_scope.ExitScope(ctx->RightBrace()->getSourceInterval().b);
@@ -176,8 +176,8 @@ namespace AZ::ShaderCompiler
                 "structs cannot have member functions; consider using a class.");
         }
 
-        auto signature = ctx->hlslFunctionDefinition()->leadingTypeFunctionSignature();
-        auto uqName = ExtractNameFromAnyContextWithName(signature);
+        const auto signature = ctx->hlslFunctionDefinition()->leadingTypeFunctionSignature();
+        const auto uqName = ExtractNameFromAnyContextWithName(signature);
 
         // extract the class type in case this is a deported method definition
         azslParser::UserDefinedTypeContext* className = ctx->hlslFunctionDefinition()->leadingTypeFunctionSignature()->ClassName;
@@ -216,8 +216,8 @@ namespace AZ::ShaderCompiler
                 "structs cannot have member functions; consider using a class.");
         }
 
-        auto signature = ctx->hlslFunctionDeclaration()->leadingTypeFunctionSignature();
-        auto uqName = ExtractNameFromAnyContextWithName(signature);
+        const auto signature = ctx->hlslFunctionDeclaration()->leadingTypeFunctionSignature();
+        const auto uqName = ExtractNameFromAnyContextWithName(signature);
         auto& [id, _] = m_ir->m_sema.RegisterFunctionDeclarationAndAddSeenat(uqName, signature);
         // we will shortly enter the scope of the function, even for just a declaration, for the sake of canonicalizing validation.
         // it also makes sense anyway since parameters (and any trailings) are defined in the function's scope.
@@ -233,7 +233,7 @@ namespace AZ::ShaderCompiler
     void SemaCheckListener::exitFunctionParam(azslParser::FunctionParamContext* ctx)
     {
         // we use the exit rule to let the time to inlined-UDT-decl to get registered through the type rule visit first.
-        auto& funcInfo = m_ir->m_sema.GetCurrentScopeSubInfoAs<FunctionInfo>();
+        const auto& funcInfo = m_ir->m_sema.GetCurrentScopeSubInfoAs<FunctionInfo>();
         if (funcInfo.m_multiFwds != FMF_FwdDeclRedundancy) // when in that state, we don't accept parameter registration
         {
             if (!ctx->Name)
@@ -283,7 +283,7 @@ namespace AZ::ShaderCompiler
         {
             if (ctx->idExpression())
             {
-                auto name = ExtractNameFromIdExpression(ctx->idExpression());
+                const auto name = ExtractNameFromIdExpression(ctx->idExpression());
                 auto maybeSym = m_ir->m_sema.LookupSymbol(name);
                 if (!maybeSym)
                 {
@@ -308,10 +308,10 @@ namespace AZ::ShaderCompiler
                         }
                         else
                         {
-                            auto& var = sym.GetSubRefAs<VarInfo>();
+                            const auto& var = sym.GetSubRefAs<VarInfo>();
                             try
                             {
-                                int64_t asInt = ExtractValueAsInt64(var.m_constVal);
+                                const int64_t asInt = ExtractValueAsInt64(var.m_constVal);
                                 std::cout << asInt;
                             }
                             catch (std::exception e)
@@ -324,7 +324,7 @@ namespace AZ::ShaderCompiler
             }
             else if (ctx->typeofExpression())
             {
-                QualifiedName resolved = m_ir->m_sema.TypeofExpr(ctx->typeofExpression());
+                const QualifiedName resolved = m_ir->m_sema.TypeofExpr(ctx->typeofExpression());
                 if (ctx->KW_ext_prtsym_fully_qualified())
                 {
                     std::cout << resolved;
@@ -361,7 +361,7 @@ namespace AZ::ShaderCompiler
     }
 
     template <typename AttributeContextT>
-    static void DoAttributeRegistration(AttributeContextT* ctx, AttributeScope scope, IntermediateRepresentation* ir)
+    static void DoAttributeRegistration(AttributeContextT* ctx, const AttributeScope scope, IntermediateRepresentation* ir)
     {
         // Attributes can be filtered out by namespace.
         // Attributes without a namespace are always valid and attributes in the 'void' namespace are always filtered out

@@ -142,12 +142,12 @@ namespace AZ::ShaderCompiler
         std::stringstream stream;
         auto* ir = codeEmitter.GetIR();
         auto* varInfo = ir->GetSymbolSubAs<VarInfo>(symbolUid.GetName());
-        auto retInfo = varInfo->GetTypeRefInfo();
+        const auto retInfo = varInfo->GetTypeRefInfo();
 
         // Volatile is not allowed for global variables, so we create a function to wrap it.
-        std::string varName = "sc_" + JoinAllNestedNamesWithUnderscore(symbolUid.m_name);
-        std::string retType = codeEmitter.GetTranslatedName(retInfo, UsageContext::ReferenceSite);
-        std::string functionName = "GetSpecializationConstant_" + JoinAllNestedNamesWithUnderscore(symbolUid.m_name) + "()";
+        const std::string varName = "sc_" + JoinAllNestedNamesWithUnderscore(symbolUid.m_name);
+        const std::string retType = codeEmitter.GetTranslatedName(retInfo, UsageContext::ReferenceSite);
+        const std::string functionName = "GetSpecializationConstant_" + JoinAllNestedNamesWithUnderscore(symbolUid.m_name) + "()";
 
         // Emit the function
         assert(varInfo->m_specializationId >= 0);

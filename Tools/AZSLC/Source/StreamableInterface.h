@@ -44,7 +44,7 @@ namespace AZ
         {
         }
 
-        Streamable& operator<<(char c) override
+        Streamable& operator<<(const char c) override
         {
             m_wrappedStream << c;
             return *this;
@@ -62,31 +62,31 @@ namespace AZ
             return *this;
         }
 
-        Streamable& operator<<(double n) override
+        Streamable& operator<<(const double n) override
         {
             m_wrappedStream << n;
             return *this;
         }
 
-        Streamable& operator<<(int64_t n) override
+        Streamable& operator<<(const int64_t n) override
         {
             m_wrappedStream << n;
             return *this;
         }
 
-        Streamable& operator<<(uint32_t n) override
+        Streamable& operator<<(const uint32_t n) override
         {
             m_wrappedStream << n;
             return *this;
         }
 
-        Streamable& operator<<(size_t n) override
+        Streamable& operator<<(const size_t n) override
         {
             m_wrappedStream << n;
             return *this;
         }
 
-        Streamable& operator<<(bool b) override
+        Streamable& operator<<(const bool b) override
         {
             m_wrappedStream << b;
             return *this;

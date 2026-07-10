@@ -37,13 +37,13 @@ namespace AZ::ShaderCompiler
 
         //! Helper shortcut: uses the current scope as a starting location to lookup a symbol.
         //! Returns whatever SymbolAggretator's eponymous returns.
-        decltype(auto) LookupSymbol(UnqualifiedNameView name) const
+        decltype(auto) LookupSymbol(const UnqualifiedNameView name) const
         {
             return m_symbols->LookupSymbol(m_scope->m_currentScopePath, name);
         }
 
         //! non-const version
-        decltype(auto) LookupSymbol(UnqualifiedNameView name)
+        decltype(auto) LookupSymbol(const UnqualifiedNameView name)
         {
             return m_symbols->LookupSymbol(m_scope->m_currentScopePath, name);
         }
@@ -51,7 +51,7 @@ namespace AZ::ShaderCompiler
         //! Does this symbol resolves to an existing ID from the current scope ?
         //! Helper shortcut: will concatenate your symbol name to current scope before passing to SymbolAggregator
         //! Returns whatever SymbolAggretator's eponymous returns.
-        decltype(auto) AddIdentifier(UnqualifiedNameView usym, Kind kind, std::optional<size_t> lineNumber = std::nullopt)
+        decltype(auto) AddIdentifier(const UnqualifiedNameView usym, const Kind kind, const std::optional<size_t> lineNumber = std::nullopt)
         {
             return m_symbols->AddIdentifier(MakeFullyQualified(usym), kind, lineNumber);
         }
@@ -103,12 +103,12 @@ namespace AZ::ShaderCompiler
 
         template <typename ContextType>
         IdAndKind&
-        RegisterStructuredType(ContextType* ctx, Kind kind)
+        RegisterStructuredType(ContextType* ctx, const Kind kind)
         {
             auto idText = ctx->Name->getText();
             size_t line = ctx->Name->getLine();
             verboseCout << line << ": " << Kind::ToStr(kind) << " decl: " << idText << "\n";
-            auto uqNameView = UnqualifiedNameView{idText};
+            const auto uqNameView = UnqualifiedNameView{idText};
             if (auto* param = ExtractSpecificParent<azslParser::FunctionParamContext>(ctx))
             {
                 // because arguments participate in the signature of the function,
@@ -139,13 +139,13 @@ namespace AZ::ShaderCompiler
             {
                 EnumerationInfo enumInfo;
                 auto* enumCtx = dynamic_cast<azslParser::EnumDefinitionContext*>(ctx);
-                auto* scopedCtx = dynamic_cast<azslParser::ScopedEnumContext*>(enumCtx->enumKey());
+                const auto* scopedCtx = dynamic_cast<azslParser::ScopedEnumContext*>(enumCtx->enumKey());
                 enumInfo.m_isScoped = scopedCtx != nullptr;
 
                 // If we decide to support the enum struct|class name : type syntax, the underlying type will come from there
                 // The underlying type can be used in SemanticOrchestrator::GetTypeClass(IdentifierUID typeId) later if we need type casting
                 // this int is provisional, because in reality it depends on the collective values of enumerators.
-                ExtractedTypeExt enumType = {UnqualifiedNameView("int"), nullptr};
+                const ExtractedTypeExt enumType = {UnqualifiedNameView("int"), nullptr};
                 enumInfo.m_underlyingType = CreateTypeRefInfo(enumType);
 
                 classInfo.m_subInfo = enumInfo;
@@ -325,7 +325,7 @@ namespace AZ::ShaderCompiler
         //! Find and return a registered type from an AST node. Will also resolve typeof expressions.
         //! could work from any sort of context that has an ExtractTypeNameFromAstContext override
         template <typename TypeCtx>
-        IdentifierUID LookupType(TypeCtx* ctx, OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy) const
+        IdentifierUID LookupType(TypeCtx* ctx, const OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy) const
         {
             IdentifierUID typeRef;
             UnqualifiedName uqName;
@@ -346,7 +346,7 @@ namespace AZ::ShaderCompiler
                     uqName = UnqualifiedName{LookupType(core.m_node, policy).m_name};
                 }
             }
-            IdAndKind* idkind = LookupSymbol(uqName);
+            const IdAndKind* idkind = LookupSymbol(uqName);
             if (idkind)
             {
                 if (idkind->second.GetKind() == Kind::TypeAlias)

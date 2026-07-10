@@ -175,7 +175,7 @@ namespace AZ::Tests
     inline void DoAsserts4()
     {
         int i = 0;
-        for (auto e : MyEnum::Enumerate{})
+        for (const auto e : MyEnum::Enumerate{})
         {
             if (i == 0)
             {
@@ -200,7 +200,7 @@ namespace AZ::Tests
         assert(!e.IsOneOf(MyEnum::Enumerand1, MyEnum::Enumerand3));
 
         i = 0;
-        for (auto e : MyEnumFlaggable::Enumerate{})
+        for (const auto e : MyEnumFlaggable::Enumerate{})
         {
             assert(e == 1 << i);
             ++i;

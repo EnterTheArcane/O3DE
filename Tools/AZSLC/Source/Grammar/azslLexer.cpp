@@ -2009,7 +2009,7 @@ void azsllexerLexerInitialize() {
   };
   staticData->serializedATN = antlr4::atn::SerializedATNView(serializedATNSegment, sizeof(serializedATNSegment) / sizeof(serializedATNSegment[0]));
 
-  antlr4::atn::ATNDeserializer deserializer;
+  const antlr4::atn::ATNDeserializer deserializer;
   staticData->atn = deserializer.deserialize(staticData->serializedATN);
 
   const size_t count = staticData->atn->getNumberOfDecisions();

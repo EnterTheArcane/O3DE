@@ -134,14 +134,14 @@ namespace AZ::ShaderCompiler
 
         //! Iter must be an iterator over FunctionInfo::Parameter elements
         template <typename Iter>
-        void EmitParameters(Iter begin, Iter end, const Options& options, bool withInitializer)
+        void EmitParameters(Iter begin, Iter end, const Options& options, const bool withInitializer)
         {
             for (auto it = begin;
                  it != end;
                  ++it)
             {
                 const FunctionInfo::Parameter& param = *it;
-                auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(param.m_varId.GetName());
+                const auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(param.m_varId.GetName());
                 if (varInfo)
                 {
                     auto flag = VarDeclHasFlag(VarDeclHas::InOutModifiers) | VarDeclHas::HlslSemantics;
@@ -176,7 +176,7 @@ namespace AZ::ShaderCompiler
                     }
                 }
 
-                bool lastIteration = it + 1 == end;
+                const bool lastIteration = it + 1 == end;
                 if (!lastIteration)
                 {
                     m_out << ", ";
@@ -206,7 +206,7 @@ namespace AZ::ShaderCompiler
         //! Will copy function body original tokens, skipping comments, reformatting if possible, and translating variable declarations when needed, as well as mutating reference names of migrated SRG contents.
         void EmitTranspiledTokens(misc::Interval interval, Streamable& output) const override;
 
-        void EmitTranspiledTokens(misc::Interval interval) const
+        void EmitTranspiledTokens(const misc::Interval interval) const
         {
             EmitTranspiledTokens(interval, m_out);
         }

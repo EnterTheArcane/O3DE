@@ -28,12 +28,12 @@ namespace AZ::ShaderCompiler
         m_getSeenats = getSeenats;
     }
 
-    void SymbolTranslation::RegisterLandingScope(const IdentifierUID& originalSymbol, QualifiedNameView landingScope)
+    void SymbolTranslation::RegisterLandingScope(const IdentifierUID& originalSymbol, const QualifiedNameView landingScope)
     {
         using RE = RelationshipExtent;
         using std::make_pair;
         assert(GetParentName(originalSymbol.GetName()) != landingScope);
-        auto findIterator = m_landingScope.find(originalSymbol.GetName());
+        const auto findIterator = m_landingScope.find(originalSymbol.GetName());
         if (findIterator != m_landingScope.end())
         {
             // if we are re-registering the same symbol, nothing to do. but check that the landingScope is the same as originally registered:
@@ -42,10 +42,10 @@ namespace AZ::ShaderCompiler
         }
         m_landingScope[originalSymbol.GetName()].m_landingScope = landingScope;
         // let's pre-cache the locations of all occurrences of this symbol in the program, for quick lookup later when we only have tokenID.
-        HomonymVisitor hv(m_accessSymbol);
+        const HomonymVisitor hv(m_accessSymbol);
         hv(
             originalSymbol,
-            [&, this](const Seenat& at, RE relation)
+            [&, this](const Seenat& at, const RE relation)
             {
                 if (relation == RE::Self)
                 {
@@ -71,17 +71,17 @@ namespace AZ::ShaderCompiler
             RelationshipExtentFlag{RE::Self} | RE::Reference | RE::OverloadSet);
     }
 
-    void SymbolTranslation::AddCustomBehavior(QualifiedNameView originalSymbol, BehaviorEventFlag on, TranslationBehaviorDelegate action)
+    void SymbolTranslation::AddCustomBehavior(const QualifiedNameView originalSymbol, const BehaviorEventFlag on, TranslationBehaviorDelegate action)
     {
         m_landingScope[originalSymbol].m_customBehavior = CustomBehavior{action, on};
     }
 
-    void SymbolTranslation::MigrateDisambiguateAndCache(QualifiedNameView originalSymbol) const
+    void SymbolTranslation::MigrateDisambiguateAndCache(const QualifiedNameView originalSymbol) const
     {
         // can't execute that action more than once
         assert(m_renames.find(originalSymbol) == m_renames.end());
         const auto& landingScope = m_landingScope.find(originalSymbol)->second;
-        bool kindIsFunction = m_accessSymbol(originalSymbol)->IsKindOneOf(Kind::Function, Kind::OverloadSet);
+        const bool kindIsFunction = m_accessSymbol(originalSymbol)->IsKindOneOf(Kind::Function, Kind::OverloadSet);
         // the reason we treat functions differently is that some call sites are un-resolved, it's up to the target compiler to do the final overload resolution.
         // as long as we tolerate this loose semantics, we cannot uniquify function names, we need to preserve their "homonymous-ness".
         // however, there other kinds of symbols, like variables and types within function scopes, need to be unique to avoid collisions.
@@ -91,7 +91,7 @@ namespace AZ::ShaderCompiler
             flatteningStrategy = CollapseArguments;
         }
         // flatten will preserve the original qualification for unicity purposes. SRG::Inner::m_color becomes SRG_Inner_m_color
-        std::string flattened = Flatten(originalSymbol.data(), flatteningStrategy);
+        const std::string flattened = Flatten(originalSymbol.data(), flatteningStrategy);
         // check if the new symbol name is free in the desired scope
         QualifiedName collisionCandidate{JoinPath(landingScope.m_landingScope, flattened)};
         int counter = 1;
@@ -117,9 +117,9 @@ namespace AZ::ShaderCompiler
         m_mappedRenames[collisionCandidate] = originalSymbol; // cache for reverse lookups
     }
 
-    QualifiedNameView SymbolTranslation::GetLandingScope(QualifiedNameView originalSymbol) const
+    QualifiedNameView SymbolTranslation::GetLandingScope(const QualifiedNameView originalSymbol) const
     {
-        auto it = m_landingScope.find(originalSymbol);
+        const auto it = m_landingScope.find(originalSymbol);
         if (it == m_landingScope.end())
         {
             return QualifiedNameView{GetParentName(originalSymbol)};
@@ -130,7 +130,7 @@ namespace AZ::ShaderCompiler
 
     void SymbolTranslation::FindTranslation_(FindTranslation_Parameters& params) const
     {
-        auto landingScopeIter = m_landingScope.find(params.m_originalPath);
+        const auto landingScopeIter = m_landingScope.find(params.m_originalPath);
         params.m_foundMutation = nullptr;
         if (landingScopeIter != m_landingScope.end())
         {
@@ -143,7 +143,7 @@ namespace AZ::ShaderCompiler
             {
                 // no migration registered
                 // check parents.
-                auto parent = GetParentName(params.m_originalPath);
+                const auto parent = GetParentName(params.m_originalPath);
                 if (parent.empty() || parent == "/")
                 {
                     // no parent, just copy the input.
@@ -172,7 +172,7 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    std::string SymbolTranslation::GetTranslatedName(QualifiedNameView originalSymbol, UsageContext qualificationStrategy, ssize_t tokenId) const
+    std::string SymbolTranslation::GetTranslatedName(const QualifiedNameView originalSymbol, UsageContext qualificationStrategy, const ssize_t tokenId) const
     {
         FindTranslation_Parameters translationParams{originalSymbol};
         FindTranslation_(translationParams);
@@ -191,15 +191,15 @@ namespace AZ::ShaderCompiler
             && translationParams.m_foundMutation->m_customBehavior
             && (translationParams.m_foundMutation->m_customBehavior->m_when & static_cast<BehaviorEvent::EnumType>(qualificationStrategy)))
         {
-            auto callback = &(*translationParams.m_foundMutation->m_customBehavior);
+            const auto callback = &(*translationParams.m_foundMutation->m_customBehavior);
             translation = callback->m_action(originalSymbol, qualificationStrategy, translation, tokenId);
         }
         return translation;
     }
 
-    std::pair<QualifiedNameView, ssize_t> SymbolTranslation::OverOriginalDefinitionOf(ssize_t tokenId) const
+    std::pair<QualifiedNameView, ssize_t> SymbolTranslation::OverOriginalDefinitionOf(const ssize_t tokenId) const
     {
-        auto iterator = m_definitionCtxStartTokenOfMigratedSymbol.find(tokenId);
+        const auto iterator = m_definitionCtxStartTokenOfMigratedSymbol.find(tokenId);
         if (iterator != m_definitionCtxStartTokenOfMigratedSymbol.end())
         {
             return std::make_pair(QualifiedNameView{iterator->second.first}, iterator->second.second);
@@ -208,7 +208,7 @@ namespace AZ::ShaderCompiler
         return std::make_pair(QualifiedNameView{}, -1_ssz);
     }
 
-    SymbolTranslation::IDExpressionDesc SymbolTranslation::GetIdExpression(ssize_t tokenId) const
+    SymbolTranslation::IDExpressionDesc SymbolTranslation::GetIdExpression(const ssize_t tokenId) const
     {
         // double step lookup:
         // tok1::tok3::tok5
@@ -219,14 +219,14 @@ namespace AZ::ShaderCompiler
         auto& t2t = m_anyTokenIdToFirstTokenIdOfAnIdExpr;
         auto& ft2ide = m_firstTokenIdToIdExpression;
 
-        auto ftIt = t2t.find(tokenId);
+        const auto ftIt = t2t.find(tokenId);
         ssize_t tokenIdToSearch = tokenId;
         if (ftIt != t2t.end())
         {
             tokenIdToSearch = ftIt->second;
         }
 
-        auto idIt = ft2ide.find(tokenIdToSearch);
+        const auto idIt = ft2ide.find(tokenIdToSearch);
         if (idIt == ft2ide.end())
         {
             return IDExpressionDesc{};
@@ -245,7 +245,7 @@ namespace AZ::ShaderCompiler
             m_anyTokenIdToFirstTokenIdOfAnIdExpr[i] = at.m_where.m_expressionSpan.a;
         }
         // verify that we are the rightmost and update.  (for def of 'rightmost' refer to IDExpressionDesc's comment)
-        ssize_t index = at.m_where.m_focusedTokenId;
+        const ssize_t index = at.m_where.m_focusedTokenId;
         if (index >= idExprDesc.m_mutatedRightMost.m_index)
         {
             idExprDesc.m_mutatedRightMost.m_index = index;
@@ -254,7 +254,7 @@ namespace AZ::ShaderCompiler
     }
 
     // checks whether 2 functions are overloads
-    bool SymbolTranslation::BelongsToOverloadSet_(QualifiedNameView originalName1, QualifiedNameView originalName2) const
+    bool SymbolTranslation::BelongsToOverloadSet_(const QualifiedNameView originalName1, const QualifiedNameView originalName2) const
     {
         std::string_view core = RemoveLastParenthesisGroup(originalName1);
         auto* coreSymbol = m_accessSymbol(QualifiedNameView{core});

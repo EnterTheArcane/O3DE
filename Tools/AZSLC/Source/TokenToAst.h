@@ -22,9 +22,9 @@ namespace AZ::ShaderCompiler
     public:
         using AstNode = antlr4::ParserRuleContext;
 
-        AstNode* GetNode(ssize_t tokenId)
+        AstNode* GetNode(const ssize_t tokenId)
         {
-            auto iterator = m_tokenToAst.find(tokenId);
+            const auto iterator = m_tokenToAst.find(tokenId);
             if (iterator == m_tokenToAst.end())
             {
                 return nullptr;
@@ -33,7 +33,7 @@ namespace AZ::ShaderCompiler
             return iterator->second;
         }
 
-        void SetAssociation(ssize_t tokenId, AstNode* node)
+        void SetAssociation(const ssize_t tokenId, AstNode* node)
         {
             m_tokenToAst[tokenId] = node;
         }

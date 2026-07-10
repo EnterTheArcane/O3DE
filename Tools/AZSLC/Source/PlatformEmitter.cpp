@@ -71,7 +71,7 @@ namespace AZ::ShaderCompiler
         return "";
     }
 
-    std::string PlatformEmitter::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const
+    std::string PlatformEmitter::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, const BindingPair::Set signatureQuery) const
     {
         std::stringstream strOut;
 
@@ -91,7 +91,7 @@ namespace AZ::ShaderCompiler
         const IdentifierUID& symbol,
         uint32_t bindInfoRegisterIndex,
         std::string_view registerTypeLetter,
-        std::optional<std::string> stringifiedLogicalSpace,
+        const std::optional<std::string> stringifiedLogicalSpace,
         const Options& options) const
     {
         // in the general case, we output normal HLSL `var decl : register(b0, space0);`
@@ -105,7 +105,7 @@ namespace AZ::ShaderCompiler
         return {{}, footer};
     }
 
-    uint32_t PlatformEmitter::AlignRootConstants(uint32_t size) const
+    uint32_t PlatformEmitter::AlignRootConstants(const uint32_t size) const
     {
         return size;
     }

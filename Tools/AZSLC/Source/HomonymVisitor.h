@@ -58,7 +58,7 @@ namespace AZ::ShaderCompiler
         template <typename FunctorType>
         void operator()(const IdentifierUID& symbol, FunctorType&& functor, RelationshipExtentFlag walkConfiguration) const
         {
-            KindInfo* info = m_getInfo(symbol.GetName());
+            const KindInfo* info = m_getInfo(symbol.GetName());
             assert(info);
             std::unordered_set<IdentifierUID> visited;
             // visit self if requested
@@ -101,7 +101,7 @@ namespace AZ::ShaderCompiler
         template <typename FunctorType>
         void VisitOverloadSet(const IdentifierUID& symbol, FunctorType&& functor, RelationshipExtentFlag walkConfiguration, std::unordered_set<IdentifierUID>& visitedSet) const
         {
-            KindInfo& kind = *m_getInfo(symbol.GetName());
+            const KindInfo& kind = *m_getInfo(symbol.GetName());
             if (kind.GetKind() == Kind::Function)
             {
                 std::string_view core = RemoveLastParenthesisGroup(symbol.GetName()); // strip the function decoration to find the symbol
@@ -155,7 +155,7 @@ namespace AZ::ShaderCompiler
         {
             if (visitedSet.find(symbol) == visitedSet.end())
             {
-                auto& info = *m_getInfo(symbol.GetName());
+                const auto& info = *m_getInfo(symbol.GetName());
                 Seenat at{symbol, GetDefinitionTokensLocation(info)};
                 functor(at, visitCategory); // callback client
                 if (walkConfiguration & RelationshipExtent::Recursive)

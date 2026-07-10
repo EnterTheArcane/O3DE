@@ -35,9 +35,9 @@ namespace AZ::ShaderCompiler
         return baseStr.str();
     }
 
-    bool CodeReflection::BuildIAElement(Json::Value& jsonVal, const IdentifierUID& uid, bool allowStruct) const
+    bool CodeReflection::BuildIAElement(Json::Value& jsonVal, const IdentifierUID& uid, const bool allowStruct) const
     {
-        auto& varInfo = *m_ir->GetSymbolSubAs<VarInfo>(uid.m_name);
+        const auto& varInfo = *m_ir->GetSymbolSubAs<VarInfo>(uid.m_name);
 
         if (IsPredefinedType(varInfo.GetTypeClass()))
         {
@@ -52,7 +52,7 @@ namespace AZ::ShaderCompiler
                     semanticIndex = static_cast<uint32_t>(std::stoi(semanticName.substr(index)));
                 }
                 semanticName = semanticName.substr(0, index);
-                bool isSystemValue = (semOpt->Name->HLSLSemanticSystem() != nullptr);
+                const bool isSystemValue = (semOpt->Name->HLSLSemanticSystem() != nullptr);
 
                 // Array dimensions
                 Json::Value varArrayDimensions(Json::arrayValue);
@@ -99,7 +99,7 @@ namespace AZ::ShaderCompiler
         }
 
         // Structs are PODs, so all member fields can only be variables
-        auto& classInfo = typeKind.GetSubRefAs<ClassInfo>();
+        const auto& classInfo = typeKind.GetSubRefAs<ClassInfo>();
         for (const auto& memberVar : classInfo.GetMemberFields())
         {
             if (!BuildIAElement(jsonVal, memberVar, false)) // Second pass prevents structs in structs
@@ -111,7 +111,7 @@ namespace AZ::ShaderCompiler
         return jsonVal.size() > 0;
     }
 
-    bool CodeReflection::BuildOMStruct(const ExtendedTypeInfo& returnTypeRef, std::string_view semanticOverride, Json::Value& jsonVal, int& semanticIndex) const
+    bool CodeReflection::BuildOMStruct(const ExtendedTypeInfo& returnTypeRef, const std::string_view semanticOverride, Json::Value& jsonVal, int& semanticIndex) const
     {
         auto idKind = m_ir->GetIdAndKindInfo(returnTypeRef.m_coreType.m_typeId.GetName());
         if (!idKind)
@@ -127,7 +127,7 @@ namespace AZ::ShaderCompiler
         }
 
         // Structs are PODs, so all member fields can only be variables
-        auto& classInfo = typeKind.GetSubRefAs<ClassInfo>();
+        const auto& classInfo = typeKind.GetSubRefAs<ClassInfo>();
         for (const auto& memberVar : classInfo.GetMemberFields())
         {
             auto& attrVarInfo = *m_ir->GetSymbolSubAs<VarInfo>(memberVar.m_name);
@@ -143,7 +143,7 @@ namespace AZ::ShaderCompiler
             else
             {
                 // Semantic name and index
-                auto hlslSemantic = attrVarInfo.m_declNode->hlslSemantic();
+                const auto hlslSemantic = attrVarInfo.m_declNode->hlslSemantic();
                 if (hlslSemantic == nullptr || hlslSemantic->Name->HLSLSemanticSystem() == nullptr)
                 {
                     return false;
@@ -159,7 +159,7 @@ namespace AZ::ShaderCompiler
         return jsonVal.size() > 0;
     }
 
-    bool ValidOutputSemanticIndex(std::string_view semanticName, const int semanticIndex)
+    bool ValidOutputSemanticIndex(const std::string_view semanticName, const int semanticIndex)
     {
         if (EqualNoCase(semanticName, "SV_Target"))
         {
@@ -209,7 +209,7 @@ namespace AZ::ShaderCompiler
         return true;
     }
 
-    bool CodeReflection::BuildOMElement(Json::Value& jsonVal, const ExtendedTypeInfo& returnTypeRef, std::string_view semanticOverride, int& semanticIndex, bool isSystemValue) const
+    bool CodeReflection::BuildOMElement(Json::Value& jsonVal, const ExtendedTypeInfo& returnTypeRef, std::string_view semanticOverride, int& semanticIndex, const bool isSystemValue) const
     {
         // Structs are allowed as pixel shader output, if the type is registered walk over its attributes here
         if (!IsPredefinedType(returnTypeRef.m_coreType.m_typeClass))
@@ -226,7 +226,7 @@ namespace AZ::ShaderCompiler
 
         Json::Value semStream(Json::objectValue);
 
-        bool isVoid = returnTypeRef.m_coreType.m_typeClass == TypeClass::Void;
+        const bool isVoid = returnTypeRef.m_coreType.m_typeClass == TypeClass::Void;
 
         if (isVoid)
         {
@@ -237,7 +237,7 @@ namespace AZ::ShaderCompiler
             semStream["baseType"] = returnTypeRef.m_coreType.m_arithmeticInfo.UnderlyingScalarToStr().data();
         }
 
-        auto numElements = returnTypeRef.m_coreType.m_arithmeticInfo.m_cols;
+        const auto numElements = returnTypeRef.m_coreType.m_arithmeticInfo.m_cols;
         semStream["cols"] = numElements;
         semStream["semanticName"] = semanticOverride.data();
 
@@ -354,14 +354,14 @@ namespace AZ::ShaderCompiler
         return inputLayouts;
     }
 
-    Json::Value CodeReflection::GetOutputMergerLayout(std::string_view psEntry) const
+    Json::Value CodeReflection::GetOutputMergerLayout(const std::string_view psEntry) const
     {
         Json::Value outputLayouts(Json::arrayValue);
 
         // Emit all pixel shader entry functions
         for (const auto& [uid, sym] : m_ir->GetOrderedSymbolsOfSubType_2<FunctionInfo>())
         {
-            UnqualifiedNameView funcName = ExtractLeaf(uid.m_name);
+            const UnqualifiedNameView funcName = ExtractLeaf(uid.m_name);
 
             bool validFunc = (IsGlobal(uid.m_name)
                 && (psEntry.empty() || funcName == psEntry)
@@ -409,7 +409,7 @@ namespace AZ::ShaderCompiler
         return outputLayouts;
     }
 
-    void CodeReflection::DumpOutputMergerLayout(std::string_view psEntry) const
+    void CodeReflection::DumpOutputMergerLayout(const std::string_view psEntry) const
     {
         Json::Value iaRoot(Json::objectValue);
         iaRoot["meta"] = "Output Merger Layout exported by AZSLC";
@@ -470,7 +470,7 @@ namespace AZ::ShaderCompiler
         const Options& options,
         const AZ::ShaderCompiler::Packing::Layout layoutPacking,
         uint32_t& startAt,
-        std::string_view namePrefix) const
+        const std::string_view namePrefix) const
     {
         // Alignment start
         uint32_t tempOffset = startAt = Packing::AlignOffset(layoutPacking, startAt, Packing::Alignment::asStructStart, 0, 0);
@@ -944,7 +944,7 @@ namespace AZ::ShaderCompiler
         // func() to func
         // because in AZIR mangling scheme, the parenthesized name is the concrete function name, and the core name is the overload-set name.
         std::string_view core = RemoveLastParenthesisGroup(uid.GetName());
-        auto* coreSymbol = m_ir->GetSymbolSubAs<OverloadSetInfo>(QualifiedNameView{core});
+        const auto* coreSymbol = m_ir->GetSymbolSubAs<OverloadSetInfo>(QualifiedNameView{core});
         return !coreSymbol || !coreSymbol->HasOverloads();
     }
 
@@ -993,7 +993,7 @@ namespace AZ::ShaderCompiler
                         output.insert(encloser);
                     }
                     // recurse
-                    auto it = funcStack_.insert(encloser).first; // push
+                    const auto it = funcStack_.insert(encloser).first; // push
                     DiscoverTopLevelFunctionDependencies(encloser, output, scopes, CastToRValueReference(funcStack_));
                     funcStack_.erase(it); // pop
                 }
@@ -1002,13 +1002,13 @@ namespace AZ::ShaderCompiler
             {
                 // the only sort of reference that can appear outside of any scope are within global variable initializers.
                 antlr4::ParserRuleContext* syntaxContext = m_ir->m_tokenMap.GetNode(seenat.m_where.m_focusedTokenId);
-                auto* varInitializerContext = ExtractInitializerParent(syntaxContext);
+                const auto* varInitializerContext = ExtractInitializerParent(syntaxContext);
                 if (varInitializerContext) // if null, it's highly suspicious though. what syntax construct allows that ?
                 {
                     auto* declarator = polymorphic_downcast<AstUnnamedVarDecl*>(varInitializerContext->parent);
                     // reconstruct the name to get the UID
                     UnqualifiedName declaredIdentifier{ExtractVariableNameIdentifier(declarator)->getText()};
-                    QualifiedNameView globalScope{"/"};
+                    const QualifiedNameView globalScope{"/"};
                     QualifiedName variable = MakeFullyQualified(globalScope, declaredIdentifier);
                     auto& [identified, kind] = *m_ir->GetIdAndKindInfo(variable); // unchecked dereference here, because symbol presence is an invariant
                     assert(kind.GetKind() == Kind::Variable); // what else
@@ -1117,7 +1117,7 @@ namespace AZ::ShaderCompiler
     }
 
     // Helper routine for option rank analysis
-    static int GuesstimateIntrinsicFunctionCost(std::string_view funcName)
+    static int GuesstimateIntrinsicFunctionCost(const std::string_view funcName)
     {
         if (IsOneOf(funcName, "CallShader", "TraceRay"))
         {
@@ -1142,12 +1142,12 @@ namespace AZ::ShaderCompiler
         KindInfo& overload)
     {
         IdentifierUID concrete;
-        size_t numArgs = NumArgs(callNode);
+        const size_t numArgs = NumArgs(callNode);
         overload.GetSubAs<OverloadSetInfo>()->AnyOf(
             [&](const IdentifierUID& uid)
             {
-                auto* concreteFcInfo = ir->GetSymbolSubAs<FunctionInfo>(uid.GetName());
-                size_t numParams = concreteFcInfo->GetParameters(true).size();
+                const auto* concreteFcInfo = ir->GetSymbolSubAs<FunctionInfo>(uid.GetName());
+                const size_t numParams = concreteFcInfo->GetParameters(true).size();
                 if (numParams == numArgs)
                 {
                     concrete = uid; // we write the result through reference capture (not clean but convenient)
@@ -1187,7 +1187,7 @@ namespace AZ::ShaderCompiler
     template <typename CtxT>
     bool SetNextNodeIfChildOfCtxTCondViaNParents(
         ParserRuleContext*& node,
-        int maxDepth)
+        const int maxDepth)
     {
         if (auto* searchNode = DeepParentAs<CtxT*>(node, maxDepth))
         {
@@ -1213,7 +1213,7 @@ namespace AZ::ShaderCompiler
         // go up the tree to meet one of them using arbitrary max depths of {5,6,7},
         // just enough to search up things like `for (a, b<(ref+1), c)` idExpr->IdentifierExpression->OtherExpression->BinaryExpr->ParenthesisExpr->BinaryExpr->Condition->For
         int complexityFactor = 1;
-        bool isNonLoop = SetNextNodeIfChildOfCtxTCondViaNParents<AstIf>(node, 6);
+        const bool isNonLoop = SetNextNodeIfChildOfCtxTCondViaNParents<AstIf>(node, 6);
         if (!isNonLoop && (SetNextNodeIfChildOfCtxTCondViaNParents<AstFor>(node, 7)
             || SetNextNodeIfChildOfCtxTCondViaNParents<AstWhile>(node, 6)
             || SetNextNodeIfChildOfCtxTCondViaNParents<AstDo>(node, 6)))
@@ -1234,9 +1234,9 @@ namespace AZ::ShaderCompiler
 
     void CodeReflection::AnalyzeImpact(ParserRuleContext* astNode, int& scoreAccumulator) const
     {
-        for (auto& c : astNode->children)
+        for (const auto& c : astNode->children)
         {
-            if (auto* leaf = As<tree::TerminalNode*>(c))
+            if (const auto* leaf = As<tree::TerminalNode*>(c))
             {
                 // determine cost by number of full expressions separated by semicolon
                 scoreAccumulator += leaf->getSymbol()->getType() == azslLexer::Semi; // bool as 0 or 1 trick
@@ -1260,10 +1260,10 @@ namespace AZ::ShaderCompiler
         // figure out the scope at this token.
         // theoretically should be something in the like of the body of another function,
         // or an anonymous block within another function.
-        auto interval = m_intervals.GetClosestIntervalSurrounding(callNode->start->getTokenIndex());
+        const auto interval = m_intervals.GetClosestIntervalSurrounding(callNode->start->getTokenIndex());
         if (!interval.IsEmpty())
         {
-            IdentifierUID encloser = m_intervalToUid[interval];
+            const IdentifierUID encloser = m_intervalToUid[interval];
 
             // Because we are past the end of the semantic analysis,
             // the scope tracker is registering the last seen scope (surely "/").
@@ -1279,7 +1279,7 @@ namespace AZ::ShaderCompiler
             {
                 funcName = ExtractNameFromIdExpression(idExpr->idExpression());
             }
-            else if (auto* maeExpr = As<AstMemberAccess*>(callNode->Expr))
+            else if (const auto* maeExpr = As<AstMemberAccess*>(callNode->Expr))
             {
                 startupLookupScope = m_ir->m_sema.TypeofExpr(maeExpr->LHSExpr);
                 funcName = ExtractNameFromIdExpression(maeExpr->Member);
@@ -1292,7 +1292,7 @@ namespace AZ::ShaderCompiler
             else
             {
                 azslParser::ArgumentListContext* args = GetArgumentListIfBelongsToFunctionCall(callNode);
-                IdAndKind* symbolMeantUnderCallNode = m_ir->m_sema.ResolveOverload(overload, args);
+                const IdAndKind* symbolMeantUnderCallNode = m_ir->m_sema.ResolveOverload(overload, args);
                 IdentifierUID concrete;
                 if (!symbolMeantUnderCallNode || m_ir->GetKind(symbolMeantUnderCallNode->first) == Kind::OverloadSet)
                 {

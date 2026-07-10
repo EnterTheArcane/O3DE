@@ -65,66 +65,66 @@ namespace AZ::ShaderCompiler
 
     // == category queries ==
 
-    inline bool IsUserDefined(TypeClass typeClass)
+    inline bool IsUserDefined(const TypeClass typeClass)
     {
         return typeClass.IsOneOf(TypeClass::Struct, TypeClass::Class, TypeClass::Interface, TypeClass::Enum);
     }
 
     //! a product type is a (non-union) 'structured' type. (Cartesian product in type theory)
-    inline bool IsProductType(TypeClass typeClass)
+    inline bool IsProductType(const TypeClass typeClass)
     {
         return typeClass.IsOneOf(TypeClass::Struct, TypeClass::Class, TypeClass::Interface);
     }
 
     // predefined types are all HLSL base types (void included)
-    inline bool IsPredefinedType(TypeClass typeClass)
+    inline bool IsPredefinedType(const TypeClass typeClass)
     {
         return !typeClass.IsOneOf(TypeClass::IsNotType, TypeClass::TypeofExpression, TypeClass::Alias)
             && !IsUserDefined(typeClass);
     }
 
     // an arithmetic type, but not non-generic
-    inline bool IsNonGenericArithmetic(TypeClass typeClass)
+    inline bool IsNonGenericArithmetic(const TypeClass typeClass)
     {
         return typeClass.IsOneOf(TypeClass::Scalar, TypeClass::Vector, TypeClass::Matrix);
     }
 
     // has a generic to canonicalize
-    inline bool IsGenericArithmetic(TypeClass typeClass)
+    inline bool IsGenericArithmetic(const TypeClass typeClass)
     {
         return typeClass.IsOneOf(TypeClass::GenericVector, TypeClass::GenericMatrix);
     }
 
-    inline bool IsArithmetic(TypeClass typeClass)
+    inline bool IsArithmetic(const TypeClass typeClass)
     {
         return IsGenericArithmetic(typeClass) || IsNonGenericArithmetic(typeClass);
     }
 
     // a fundamental is void or arithmetic
-    inline bool IsFundamental(TypeClass typeClass)
+    inline bool IsFundamental(const TypeClass typeClass)
     {
         return typeClass == TypeClass::Void || IsArithmetic(typeClass);
     }
 
     // type that behaves like its generic parameter
-    inline bool IsChameleon(TypeClass typeClass)
+    inline bool IsChameleon(const TypeClass typeClass)
     {
         // IO patch are not strict chameleon because they behave like an array. if we consider array collapsing then maybe they are.
         return typeClass.IsOneOf(TypeClass::StructuredBuffer, TypeClass::Buffer, TypeClass::StreamOutput, TypeClass::ConstantBuffer);
     }
 
-    inline bool HasGenericParameter(TypeClass typeClass)
+    inline bool HasGenericParameter(const TypeClass typeClass)
     {
         // TODO: to add InputPath/OutputPatch because it has a generic parameter. (when you do it, update ExtractGenericTypeParameterNameFromAstContext)
         return IsChameleon(typeClass) || IsGenericArithmetic(typeClass) || typeClass.IsOneOf(TypeClass::GenericTexture, TypeClass::MultisampledTexture, TypeClass::GenericSubpassInput);
     }
 
-    inline bool IsViewTypeBuffer(TypeClass typeClass)
+    inline bool IsViewTypeBuffer(const TypeClass typeClass)
     {
         return typeClass.IsOneOf(TypeClass::ConstantBuffer, TypeClass::StructuredBuffer, TypeClass::Buffer, TypeClass::ByteAddressBuffer, TypeClass::OtherViewBufferType);
     }
 
-    inline bool IsViewType(TypeClass typeClass)
+    inline bool IsViewType(const TypeClass typeClass)
     {
         // note that a constant buffer is not a view type
         return IsViewTypeBuffer(typeClass)
@@ -132,7 +132,7 @@ namespace AZ::ShaderCompiler
     }
 
     //Example Texture2D m_myTex[]; is supported.
-    inline bool CanBeDeclaredAsUnboundedArray(TypeClass typeClass)
+    inline bool CanBeDeclaredAsUnboundedArray(const TypeClass typeClass)
     {
         return IsViewType(typeClass);
     }
@@ -278,19 +278,19 @@ namespace AZ::ShaderCompiler
     // try to analyze a type with a few iterations to remove mangling while the result is NotAType
     inline TypeClass AnalyzeTypeClass(TentativeName typeName)
     {
-        std::string try1 = UnMangle(typeName.mangled);
+        const std::string try1 = UnMangle(typeName.mangled);
         TypeClass result = AnalyzeTypeClass(try1);
         if (result == TypeClass::IsNotType)
         {
             // this version does not preserve the global one, this can help for fundamentals
-            std::string try2 = ReplaceSeparators(typeName.mangled, "::");
+            const std::string try2 = ReplaceSeparators(typeName.mangled, "::");
             result = AnalyzeTypeClass(try2);
         }
         return result;
     }
 
     /// Verifies that our hardcoded strings don't have typo, by checking against the lexer-extracted keywords stored in the Scalar array.
-    inline bool CheckExistScalarType(std::string_view scalarName)
+    inline bool CheckExistScalarType(const std::string_view scalarName)
     {
         return std::find(
             Predefined::Scalar.begin(),
@@ -299,7 +299,7 @@ namespace AZ::ShaderCompiler
     };
 
     /// Assert validity of the type string, and form a "?<type>" tainted string to host a scalar type
-    inline QualifiedName MangleScalarType(std::string_view typeName)
+    inline QualifiedName MangleScalarType(const std::string_view typeName)
     {
         assert(CheckExistScalarType(typeName));
         return QualifiedName{"?" + std::string{typeName}};
@@ -312,7 +312,7 @@ namespace AZ::ShaderCompiler
         {
             m_baseSize = Packing::PackedSizeof(m_underlyingScalar);
             // establish the conversion rank:
-            auto getIndex = [](std::string_view s) -> int
+            auto getIndex = [](const std::string_view s) -> int
             {
                 const auto& Scalars = Predefined::Scalar;
                 return ::std::distance(
@@ -344,10 +344,10 @@ namespace AZ::ShaderCompiler
                 {getIndex("double"), 13 << 5},
             };
             // `basesize` getter, but 1 for bool: (physical size of extern bool is considered 32bits in HLSL)
-            auto getRankSizeof = [&](int scalarId) -> uint32_t
+            auto getRankSizeof = [&](const int scalarId) -> uint32_t
             {
                 assert(std::string_view{"bool"} == Predefined::Scalar[0]); // verify that 0 is the hard index of bool.
-                bool isBool = scalarId == 0;
+                const bool isBool = scalarId == 0;
                 if (isBool)
                 {
                     return 1u;
@@ -452,7 +452,7 @@ namespace AZ::ShaderCompiler
     {
         TypeRefInfo() = default;
 
-        TypeRefInfo(IdentifierUID typeId, const ArithmeticTraits& fundamentalInfo, TypeClass typeClass)
+        TypeRefInfo(IdentifierUID typeId, const ArithmeticTraits& fundamentalInfo, const TypeClass typeClass)
             : m_typeId{typeId}
             , m_typeClass{typeClass}
             , m_arithmeticInfo{fundamentalInfo}
@@ -475,7 +475,7 @@ namespace AZ::ShaderCompiler
         //! if the type is a SubpassInput, it's an input attachment
         bool IsInputAttachment(const azslLexer* lexer) const
         {
-            auto stdSvToAzSv = [](std::string_view sv)
+            auto stdSvToAzSv = [](const std::string_view sv)
             {
                 return std::string_view(sv.data(), sv.size());
             };
@@ -510,12 +510,12 @@ namespace AZ::ShaderCompiler
 
         ArithmeticTraits toReturn;
 
-        std::string typeName = UnMangle(a_typeName);
+        const std::string typeName = UnMangle(a_typeName);
         size_t baseTypeLen = typeName.length();
 
         // In shading languages we have vector and matrix types which use number of columns and possibly rows (for matrices)
         // The digits always appear at the end of the type, so we can count back to resolve them
-        auto& colsChar = typeName.at(baseTypeLen - 1);
+        const auto& colsChar = typeName.at(baseTypeLen - 1);
         if (isdigit(colsChar))
         {
             // Fundamental types ending with a digit are either vectors (1, 2, 3, 4) or matrices (1x1, 2x2, 3x3, 4x4, etc)
@@ -535,7 +535,7 @@ namespace AZ::ShaderCompiler
                 //   however, every element of a matrix is the same data type.The number of rows and columns is specified with the
                 //   row-by-column string that is appended to the data type.
 
-                auto& rowsChar = typeName.at(baseTypeLen - 2);
+                const auto& rowsChar = typeName.at(baseTypeLen - 2);
                 if (isdigit(rowsChar))
                 {
                     assert(typeName.at(baseTypeLen - 1) == 'x'); // We should not be hitting asserts with any shader input, this is a bug in the tool
@@ -558,7 +558,7 @@ namespace AZ::ShaderCompiler
             baseType = "float";
         }
 
-        auto it = ::std::find(AZ::ShaderCompiler::Predefined::Scalar.begin(), AZ::ShaderCompiler::Predefined::Scalar.end(), baseType);
+        const auto it = ::std::find(AZ::ShaderCompiler::Predefined::Scalar.begin(), AZ::ShaderCompiler::Predefined::Scalar.end(), baseType);
         assert(it != AZ::ShaderCompiler::Predefined::Scalar.end()); // baseType must exist in the Scalar bag by program invariant.
         toReturn.m_underlyingScalar = static_cast<int>(std::distance(AZ::ShaderCompiler::Predefined::Scalar.begin(), it));
         toReturn.ResolveBaseSizeAndRank();

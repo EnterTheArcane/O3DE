@@ -27,7 +27,8 @@ namespace AZ::ShaderCompiler
     //! ReferenceSite   is for usages in expressions
     enum class UsageContext
     {
-        DeclarationSite = BehaviorEvent::OnDeclaration, ReferenceSite = BehaviorEvent::OnReference,
+        DeclarationSite = BehaviorEvent::OnDeclaration,
+        ReferenceSite = BehaviorEvent::OnReference,
     };
 
     //! store translated names (map of names to new names)
@@ -107,9 +108,9 @@ namespace AZ::ShaderCompiler
         //! that is: mutate intermediate symbols by rewriting the path.
         //! emit a fully qualified valid HLSL expression after mutations.
         template <typename NextTokenFunctor>
-        std::string TranslateIdExpression(const IDExpressionDesc& idExprDesc, ssize_t tokenId, const NextTokenFunctor& getNext) const
+        std::string TranslateIdExpression(const IDExpressionDesc& idExprDesc, const ssize_t tokenId, const NextTokenFunctor& getNext) const
         {
-            std::string part1 = GetTranslatedName(idExprDesc.m_mutatedRightMost.m_symbol.m_name, UsageContext::ReferenceSite, tokenId);
+            const std::string part1 = GetTranslatedName(idExprDesc.m_mutatedRightMost.m_symbol.m_name, UsageContext::ReferenceSite, tokenId);
             std::string part2;
             for (ssize_t t = idExprDesc.m_mutatedRightMost.m_index + 1; t <= idExprDesc.m_span.b; ++t)
             {

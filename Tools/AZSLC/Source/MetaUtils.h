@@ -265,7 +265,7 @@ namespace AZ
     }
 
     template <typename NeedleT, typename T, typename... Ts>
-    constexpr int MetaFind(int ind = 0)
+    constexpr int MetaFind(const int ind = 0)
     {
         if (std::is_same_v<NeedleT, T>)
         {

@@ -70,9 +70,9 @@ namespace AZ::ShaderCompiler
         /// Will return nullptr if you request a wrong subtype T, or if the symbol is absent.
         template <typename T>
         const T*
-        GetAsSub(IdentifierUID symbol) const
+        GetAsSub(const IdentifierUID symbol) const
         {
-            auto idKindPtr = GetIdAndKindInfo(symbol.GetName());
+            const auto idKindPtr = GetIdAndKindInfo(symbol.GetName());
             if (!idKindPtr)
             {
                 return nullptr;
@@ -83,7 +83,7 @@ namespace AZ::ShaderCompiler
         /// mutable version (Scott Meyers's way of factorizing)
         template <typename T>
         T*
-        GetAsSub(IdentifierUID symbol)
+        GetAsSub(const IdentifierUID symbol)
         {
             return const_cast<T*>(const_cast<const SymbolAggregator*>(this)->GetAsSub<T>(symbol));
         }

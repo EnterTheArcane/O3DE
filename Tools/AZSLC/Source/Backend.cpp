@@ -25,7 +25,7 @@
 
 namespace AZ::ShaderCompiler
 {
-    bool IsReadWriteView(std::string_view viewName)
+    bool IsReadWriteView(const std::string_view viewName)
     {
         return viewName.starts_with("RW")
             || viewName.starts_with("RasterizerOrdered")
@@ -250,7 +250,7 @@ namespace AZ::ShaderCompiler
 
     RootParamType FindParamType(const ExtendedTypeInfo& typeInfoExt)
     {
-        TypeClass coreTypeClass = typeInfoExt.m_coreType.m_typeClass;
+        const TypeClass coreTypeClass = typeInfoExt.m_coreType.m_typeClass;
         if (coreTypeClass == TypeClass::Sampler)
         {
             return RootParamType::Sampler;
@@ -273,14 +273,14 @@ namespace AZ::ShaderCompiler
 
     BindingType GetBindingType(const ExtendedTypeInfo& extendedTypeInfo)
     {
-        RootParamType paramType = FindParamType(extendedTypeInfo);
-        BindingType bindingType = RootParamTypeToBindingType(paramType);
+        const RootParamType paramType = FindParamType(extendedTypeInfo);
+        const BindingType bindingType = RootParamTypeToBindingType(paramType);
         return bindingType;
     }
 
     void SingleBindingLocationTracker::IncrementSpace()
     {
-        for (auto bufferType : BindingType::Enumerate{})
+        for (const auto bufferType : BindingType::Enumerate{})
         {
             m_accumulated[bufferType] += m_registerPos[bufferType];
             m_registerPos[bufferType] = 0;
@@ -292,18 +292,18 @@ namespace AZ::ShaderCompiler
     void SingleBindingLocationTracker::UnifyIndices()
     {
         using Reg = BindingType;
-        auto maxValue = std::max(
+        const auto maxValue = std::max(
             std::max(m_registerPos[Reg::B], m_registerPos[Reg::T]),
             std::max(m_registerPos[Reg::S], m_registerPos[Reg::U]));
 
-        for (auto bufferType : Reg::Enumerate{})
+        for (const auto bufferType : Reg::Enumerate{})
         {
             m_accumulatedUnused[bufferType] += maxValue - m_registerPos[bufferType];
             m_registerPos[bufferType] = maxValue;
         }
     }
 
-    int SingleBindingLocationTracker::GetAccumulated(BindingType r) const
+    int SingleBindingLocationTracker::GetAccumulated(const BindingType r) const
     {
         return (m_accumulated[r] - m_accumulatedUnused[r]) + m_registerPos[r];
     }
@@ -332,13 +332,13 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    void MultiBindingLocationMaker::SignalIncrementRegister(BindingType regType, int count)
+    void MultiBindingLocationMaker::SignalIncrementRegister(const BindingType regType, const int count)
     {
         m_untainted.m_registerPos[regType] += count;
         m_merged.m_registerPos[regType] += count;
     }
 
-    BindingPair MultiBindingLocationMaker::GetCurrent(BindingType regType)
+    BindingPair MultiBindingLocationMaker::GetCurrent(const BindingType regType)
     {
         BindingPair pair;
         pair.m_pair[BindingPair::Set::Merged].m_logicalSpace = m_merged.m_space;
@@ -372,7 +372,7 @@ namespace AZ::ShaderCompiler
     }
 
     //! Gets the next and increments tokenIndex. TokenIndex must be in the [misc::Interval.a, misc::Interval.b] range. Token cannot be nullptr.
-    antlr4::Token* Backend::GetNextToken(ssize_t& tokenIndex, size_t channel) const
+    antlr4::Token* Backend::GetNextToken(ssize_t& tokenIndex, const size_t channel) const
     {
         auto* token = m_tokens->get(tokenIndex++);
         assert(token); // Higher level logic must ensure tokens are in the [interval.a, interval.b] range. They cannot be null, this is a flaw in the code.
@@ -386,12 +386,12 @@ namespace AZ::ShaderCompiler
         return token;
     }
 
-    void Backend::EmitTranspiledTokens(misc::Interval interval, Streamable& output) const
+    void Backend::EmitTranspiledTokens(const misc::Interval interval, Streamable& output) const
     {
         ssize_t ii = interval.a;
         while (ii <= interval.b)
         {
-            auto* token = GetNextToken(ii /*inout*/);
+            const auto* token = GetNextToken(ii /*inout*/);
             auto str = token->getText();
             char separator = ' ';
             if (str == ";" || str == "{")
@@ -402,7 +402,7 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    std::string Backend::GetTranspiledTokens(misc::Interval interval) const
+    std::string Backend::GetTranspiledTokens(const misc::Interval interval) const
     {
         static std::stringstream ss;
         ss.str({});
@@ -560,7 +560,7 @@ namespace AZ::ShaderCompiler
         varOption["range"] = isRange;
     }
 
-    Json::Value Backend::GetVariantList(const Options& options, bool includeEmpty) const
+    Json::Value Backend::GetVariantList(const Options& options, const bool includeEmpty) const
     {
         Json::Value varRoot(Json::objectValue);
         varRoot["meta"] = "Variant options list exported by AZSLC";
@@ -590,7 +590,7 @@ namespace AZ::ShaderCompiler
             optionOrder++;
             shaderOption["costImpact"] = varInfo->m_estimatedCostImpact;
 
-            bool isUdt = IsUserDefined(varInfo->GetTypeClass());
+            const bool isUdt = IsUserDefined(varInfo->GetTypeClass());
             assert(isUdt || IsPredefinedType(varInfo->GetTypeClass()));
             if (isUdt)
             {
@@ -609,7 +609,7 @@ namespace AZ::ShaderCompiler
             {
                 // We only emit variant options which have positive number of valid values
                 // Because we use uint on the shader source side no shader option can cross the 32-bit boundary
-                uint32_t keySizeInBits = shaderOption["keySize"].asUInt();
+                const uint32_t keySizeInBits = shaderOption["keySize"].asUInt();
 
                 if (keySizeInBits > kShaderVariantKeyElementSize)
                 {
@@ -622,7 +622,7 @@ namespace AZ::ShaderCompiler
                     throw AzslcEmitterException(EMITTER_OVERFLOW_BIT_BOUNDARY, errorMessage);
                 }
 
-                uint32_t remainingBitsAfterOffset = kShaderVariantKeyElementSize - (keyOffsetBits % kShaderVariantKeyElementSize);
+                const uint32_t remainingBitsAfterOffset = kShaderVariantKeyElementSize - (keyOffsetBits % kShaderVariantKeyElementSize);
                 if (keySizeInBits > remainingBitsAfterOffset)
                 {
                     keyOffsetBits += remainingBitsAfterOffset;
@@ -734,7 +734,7 @@ namespace AZ::ShaderCompiler
 
     RootSigDesc::SrgParamDesc Backend::ReflectOneExternalResource(IdentifierUID id, MultiBindingLocationMaker& bindInfo, RootSigDesc& rootSig) const
     {
-        Kind kind = m_ir->GetKind(id);
+        const Kind kind = m_ir->GetKind(id);
         int count = 1;
         RootParamType paramType = RootParamType::SrgConstantCB; // this is the default because when "kind" is not "Variable", this function is used on symbols of "kind" "SRG"
         bool isUnboundedArray = false;
@@ -748,7 +748,7 @@ namespace AZ::ShaderCompiler
             isUnboundedArray = memberInfo->GetArrayDimensions().IsUnbounded();
             if (isUnboundedArray)
             {
-                TypeClass typeClass = memberInfo->GetTypeClass();
+                const TypeClass typeClass = memberInfo->GetTypeClass();
                 if (CanBeDeclaredAsUnboundedArray(typeClass))
                 {
                     shouldCheckForValidArraySize = false;
@@ -767,7 +767,7 @@ namespace AZ::ShaderCompiler
             paramType = FindParamType(memberInfo->m_typeInfoExt);
         }
 
-        auto regType = RootParamTypeToBindingType(paramType);
+        const auto regType = RootParamTypeToBindingType(paramType);
 
         BindingPair binding = bindInfo.GetCurrent(regType);
         if (isUnboundedArray
@@ -817,8 +817,8 @@ namespace AZ::ShaderCompiler
         // let's order them by frequency:
         auto orderingFunction = [this](const Id_SrgInfo_Pair& srgSymbol1, const Id_SrgInfo_Pair& srgSymbol2)
         {
-            auto srgSemantic1 = m_ir->GetSymbolSubAs<ClassInfo>(srgSymbol1.second->m_semantic->GetName())->Get<SRGSemanticInfo>();
-            auto srgSemantic2 = m_ir->GetSymbolSubAs<ClassInfo>(srgSymbol2.second->m_semantic->GetName())->Get<SRGSemanticInfo>();
+            const auto srgSemantic1 = m_ir->GetSymbolSubAs<ClassInfo>(srgSymbol1.second->m_semantic->GetName())->Get<SRGSemanticInfo>();
+            const auto srgSemantic2 = m_ir->GetSymbolSubAs<ClassInfo>(srgSymbol2.second->m_semantic->GetName())->Get<SRGSemanticInfo>();
             return *srgSemantic1->m_frequencyId < *srgSemantic2->m_frequencyId;
         };
         std::sort(allSrgs.begin(), allSrgs.end(), orderingFunction);
@@ -955,11 +955,11 @@ namespace AZ::ShaderCompiler
     }
 
     // static
-    std::string Backend::GetTypeModifier(const ExtendedTypeInfo& typeInfo, const Options& options, Modifiers bannedFlags /*= {}*/)
+    std::string Backend::GetTypeModifier(const ExtendedTypeInfo& typeInfo, const Options& options, const Modifiers bannedFlags /*= {}*/)
     {
         using namespace std::string_literals;
         std::string modifiers;
-        bool isMatrix = typeInfo.m_coreType.m_arithmeticInfo.IsMatrix();
+        const bool isMatrix = typeInfo.m_coreType.m_arithmeticInfo.IsMatrix();
         if (typeInfo.CheckHasStorageFlag(StorageFlag::ColumnMajor) && !(bannedFlags & StorageFlag::ColumnMajor))
         {
             modifiers = "column_major";
@@ -1021,7 +1021,7 @@ namespace AZ::ShaderCompiler
         return modifiers;
     }
 
-    std::string Backend::GetExtendedTypeInfo(const ExtendedTypeInfo& extTypeInfo, const Options& options, Modifiers banned, std::function<std::string(const TypeRefInfo&)> translator) const
+    std::string Backend::GetExtendedTypeInfo(const ExtendedTypeInfo& extTypeInfo, const Options& options, const Modifiers banned, std::function<std::string(const TypeRefInfo&)> translator) const
     {
         std::string hlslString = GetTypeModifier(extTypeInfo, options, banned);
         if (!hlslString.empty())
@@ -1065,7 +1065,7 @@ namespace AZ::ShaderCompiler
     {
         // Count the number of 32 bin constants
         uint32_t numberOf32bitRootConstants = 0;
-        auto* rootConstInfo = m_ir->GetSymbolSubAs<ClassInfo>(uid.GetName());
+        const auto* rootConstInfo = m_ir->GetSymbolSubAs<ClassInfo>(uid.GetName());
         if (options.m_rootConstantsMaxSize && rootConstInfo)
         {
             for (const auto& memberVar : rootConstInfo->GetMemberFields())
@@ -1085,7 +1085,7 @@ namespace AZ::ShaderCompiler
                 }
 
                 // GetTotalSize of each member of the structure
-                uint32_t size = varInfo.m_typeInfoExt.GetTotalSize(options.m_packDataBuffers, options.m_forceMatrixRowMajor);
+                const uint32_t size = varInfo.m_typeInfoExt.GetTotalSize(options.m_packDataBuffers, options.m_forceMatrixRowMajor);
 
                 numberOf32bitRootConstants += (size / 4);
             }

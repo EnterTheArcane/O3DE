@@ -26,7 +26,7 @@ namespace AZ
     public:
         using MakeOStreamStreamable::MakeOStreamStreamable;
 
-        Self& operator<<(char c) override
+        Self& operator<<(const char c) override
         {
             if (c == '\n')
             {
@@ -39,7 +39,7 @@ namespace AZ
         Self& operator<<(const char* nts) override
         {
             const char* tmp = nts;
-            while (char c = *tmp++)
+            while (const char c = *tmp++)
             {
                 if (c == '\n')
                 {
@@ -52,7 +52,7 @@ namespace AZ
 
         Self& operator<<(const std::string& str) override
         {
-            for (char c : str)
+            for (const char c : str)
             {
                 if (c == '\n')
                 {
