@@ -17,7 +17,6 @@ ly_add_target(
     NAME AZSLC EXECUTABLE
     NAMESPACE AZ
     OUTPUT_NAME azslc
-    NO_UNITY
     FILES_CMAKE
         azslc_files.cmake
     INCLUDE_DIRECTORIES

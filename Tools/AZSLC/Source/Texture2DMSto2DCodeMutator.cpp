@@ -17,9 +17,9 @@
 
 namespace AZ::ShaderCompiler
 {
-    static constexpr char FunctionNameLoad[] = "Load";
-    static constexpr char FunctionNameGetSamplePosition[] = "GetSamplePosition";
-    static constexpr char FunctionNameGetDimensions[] = "GetDimensions";
+    static constexpr char TextureLoadFunctionName[] = "Load";
+    static constexpr char GetSamplePositionFunctionName[] = "GetSamplePosition";
+    static constexpr char GetDimensionsFunctionName[] = "GetDimensions";
 
     ///////////////////////////////////////////////////////////////////////
     // azslParserBaseListener Overrides ...
@@ -28,15 +28,15 @@ namespace AZ::ShaderCompiler
         const auto expressionCtx = ctx->expression();
         const std::string functionName = expressionCtx->stop->getText();
 
-        if (functionName == FunctionNameLoad)
+        if (functionName == TextureLoadFunctionName)
         {
             OnEnterLoad(ctx);
         }
-        else if (functionName == FunctionNameGetSamplePosition)
+        else if (functionName == GetSamplePositionFunctionName)
         {
             OnEnterGetSamplePosition(ctx);
         }
-        else if (functionName == FunctionNameGetDimensions)
+        else if (functionName == GetDimensionsFunctionName)
         {
             OnEnterGetDimensions(ctx);
         }
@@ -67,7 +67,7 @@ namespace AZ::ShaderCompiler
     }
 
     //! A helper function that returns the symbol name contained in @expressionCtx.
-    static UnqualifiedName GetSymbolName(const azslParser::ExpressionContext* expressionCtx)
+    static UnqualifiedName GetTextureSymbolName(const azslParser::ExpressionContext* expressionCtx)
     {
         const auto& children = expressionCtx->children;
         // We only care for cases with three children:
@@ -114,7 +114,7 @@ namespace AZ::ShaderCompiler
     {
         // First we must capture the complete name of the symbol that called <Symbol>.Load(...)
         const auto expressionCtx = ctx->expression();
-        const UnqualifiedName uqSymbolName = GetSymbolName(expressionCtx);
+        const UnqualifiedName uqSymbolName = GetTextureSymbolName(expressionCtx);
         const TextureMSType textureMSType = GetMultiSampledTextureClass(uqSymbolName);
         if (textureMSType == TextureMSType::None)
         {
@@ -177,7 +177,7 @@ namespace AZ::ShaderCompiler
     {
         // First we must capture the complete name of the symbol that called <Symbol>.GetSamplePosition(...)
         const auto expressionCtx = ctx->expression();
-        const UnqualifiedName uqSymbolName = GetSymbolName(expressionCtx);
+        const UnqualifiedName uqSymbolName = GetTextureSymbolName(expressionCtx);
         const TextureMSType textureMSType = GetMultiSampledTextureClass(uqSymbolName);
         if (textureMSType == TextureMSType::None)
         {
@@ -202,7 +202,7 @@ namespace AZ::ShaderCompiler
     void Texture2DMSto2DCodeMutator::OnEnterGetDimensions(azslParser::FunctionCallExpressionContext* ctx)
     {
         const auto expressionCtx = ctx->expression();
-        const UnqualifiedName uqSymbolName = GetSymbolName(expressionCtx);
+        const UnqualifiedName uqSymbolName = GetTextureSymbolName(expressionCtx);
         const TextureMSType textureMSType = GetMultiSampledTextureClass(uqSymbolName);
         if (textureMSType == TextureMSType::None)
         {

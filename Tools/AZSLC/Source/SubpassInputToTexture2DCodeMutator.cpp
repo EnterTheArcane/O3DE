@@ -14,7 +14,7 @@
 
 namespace AZ::ShaderCompiler
 {
-    static constexpr char FunctionNameLoad[] = "SubpassLoad";
+    static constexpr char SubpassLoadFunctionName[] = "SubpassLoad";
 
     ///////////////////////////////////////////////////////////////////////
     // azslParserBaseListener Overrides ...
@@ -23,7 +23,7 @@ namespace AZ::ShaderCompiler
         const auto expressionCtx = ctx->expression();
         const std::string functionName = expressionCtx->stop->getText();
 
-        if (functionName == FunctionNameLoad)
+        if (functionName == SubpassLoadFunctionName)
         {
             OnEnterLoad(ctx);
         }
@@ -60,7 +60,7 @@ namespace AZ::ShaderCompiler
 
     ///////////////////////////////////////////////////////////////////////
 
-    static UnqualifiedName GetSymbolName(const azslParser::ExpressionContext* expressionCtx)
+    static UnqualifiedName GetSubpassInputSymbolName(const azslParser::ExpressionContext* expressionCtx)
     {
         const auto& children = expressionCtx->children;
         // We only care for cases with three children:
@@ -77,7 +77,7 @@ namespace AZ::ShaderCompiler
     {
         // First we must capture the complete name of the symbol that called <Symbol>.Load(...)
         const auto expressionCtx = ctx->expression();
-        const UnqualifiedName uqSymbolName = GetSymbolName(expressionCtx);
+        const UnqualifiedName uqSymbolName = GetSubpassInputSymbolName(expressionCtx);
         const SubpassInputType subpassInputType = GetSubpassInputClass(uqSymbolName);
         if (subpassInputType == SubpassInputType::None)
         {
