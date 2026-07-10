@@ -63,10 +63,7 @@ namespace AZ
         {
             return functor(object);
         }
-        else
-        {
-            return VisitFirstNonNull(functor, rest...);
-        }
+        return VisitFirstNonNull(functor, rest...);
     }
 
     //! Create substring views of views. Works like python slicing operator [n:m] with limited modulo semantics.

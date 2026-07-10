@@ -271,10 +271,7 @@ namespace AZ
         {
             return ind;
         }
-        else
-        {
-            return MetaFind<NeedleT, Ts...>(ind + 1);
-        }
+        return MetaFind<NeedleT, Ts...>(ind + 1);
     }
 
     // flat 2 template parameters versions

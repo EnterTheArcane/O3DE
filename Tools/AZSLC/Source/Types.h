@@ -424,7 +424,7 @@ namespace AZ::ShaderCompiler
             {
                 return QualifiedName{MangleScalarType(UnderlyingScalarToStr()) + ToString(m_rows) + "x" + ToString(m_cols)};
             }
-            else if (IsVector())
+            if (IsVector())
             {
                 std::string dim = ToString(m_cols);
                 if (m_rows > 0)
@@ -434,10 +434,7 @@ namespace AZ::ShaderCompiler
 
                 return QualifiedName{MangleScalarType(UnderlyingScalarToStr()) + dim};
             }
-            else
-            {
-                return QualifiedName{MangleScalarType(UnderlyingScalarToStr())};
-            }
+            return QualifiedName{MangleScalarType(UnderlyingScalarToStr())};
         }
 
         uint32_t m_baseSize = 0; //< In bytes. Size of 0 indicates TypeRefInfo which hasn't been resolved or is a struct

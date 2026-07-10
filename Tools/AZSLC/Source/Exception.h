@@ -375,10 +375,7 @@ namespace AZ::ShaderCompiler
             {
                 std::throw_with_nested(parseException);
             }
-            else
-            {
-                throw parseException;
-            }
+            throw parseException;
         }
 
         std::function<bool(antlr4::Recognizer*, antlr4::Token*)> m_isKeywordPredicate;

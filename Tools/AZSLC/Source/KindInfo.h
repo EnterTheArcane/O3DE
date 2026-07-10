@@ -902,7 +902,7 @@ namespace AZ::ShaderCompiler
             {
                 return m_defNode->start->getLine();
             }
-            else if (m_declNode)
+            if (m_declNode)
             {
                 return m_declNode->start->getLine();
             }

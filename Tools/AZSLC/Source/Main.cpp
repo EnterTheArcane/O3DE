@@ -717,7 +717,7 @@ int main(int argc, const char* argv[])
             {
                 throw std::runtime_error("Cannot specify --Zpr and --Zpc together, use --help to get usage information");
             }
-            else if (Zpr)
+            if (Zpr)
             {
                 emitOptions.m_forceMatrixRowMajor = true;
                 emitOptions.m_forceEmitMajor = true;

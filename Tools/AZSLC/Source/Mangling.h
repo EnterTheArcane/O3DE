@@ -378,10 +378,7 @@ namespace AZ::ShaderCompiler
         {
             return std::string{stem}.append(leaf);
         }
-        else
-        {
-            return std::string{stem}.append("/").append(leaf);
-        }
+        return std::string{stem}.append("/").append(leaf);
     }
 
     //! will return "/"     from "/dir"

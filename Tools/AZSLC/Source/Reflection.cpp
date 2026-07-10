@@ -76,10 +76,7 @@ namespace AZ::ShaderCompiler
 
                 return true;
             }
-            else
-            {
-                return false;
-            }
+            return false;
         }
 
         if (!allowStruct)
@@ -450,11 +447,8 @@ namespace AZ::ShaderCompiler
             {
                 return 4;
             }
-            else
-            {
-                // Unspecified generic types default to float4
-                return 16;
-            }
+            // Unspecified generic types default to float4
+            return 16;
         }
 
         const auto genericType = varInfoPtr->m_typeInfoExt.m_genericParameter;
@@ -1130,16 +1124,13 @@ namespace AZ::ShaderCompiler
             // non measurable but assumed high
             return 100;
         }
-        else if (IsOneOf(funcName, "Sample", "Load", "InterlockedCompareStore", "InterlockedCompareExchange", "InterlockedExchange", "Append"))
+        if (IsOneOf(funcName, "Sample", "Load", "InterlockedCompareStore", "InterlockedCompareExchange", "InterlockedExchange", "Append"))
         {
             // memory access, locked or not, will have high latency
             return 10;
         }
-        else
-        {
-            // unlisted intrinsics like lerp, log2, cos, distance.. will default to a cost of 1.
-            return 1;
-        }
+        // unlisted intrinsics like lerp, log2, cos, distance.. will default to a cost of 1.
+        return 1;
     }
 
     // Helper routine for option rank analysis. When picking AN overload is more useful than forfeiting.

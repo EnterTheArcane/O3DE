@@ -311,14 +311,11 @@ namespace AZ::ShaderCompiler
                     ConcatString(ctx->getText(), " is overly qualified. In-class declarations spawn new identifiers, and don't have to refer to existing symbols.")
                 };
             }
-            else
-            {
-                throw AzslcOrchestratorException{
-                    ORCHESTRATOR_DEPORTED_METHOD,
-                    ctx->Name,
-                    ConcatString(ctx->getText(), "is a deported method declaration, which is considered ill-formed. You can make it a definition (with a body), or delete that statement.")
-                };
-            }
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_DEPORTED_METHOD,
+                ctx->Name,
+                ConcatString(ctx->getText(), "is a deported method declaration, which is considered ill-formed. You can make it a definition (with a body), or delete that statement.")
+            };
         }
         IdAndKind* symbol = m_symbols->GetIdAndKindInfo(decoratedName);
         FunctionInfo* funcInfo = nullptr;
@@ -1606,10 +1603,7 @@ namespace AZ::ShaderCompiler
             verboseCout << ctx->start->getLine() << ": can't find typeof " << uqName << "\n";
             return {"<fail>"};
         }
-        else
-        {
-            return GetTypeName(lookup); // this call is often the leaf of the TypeofExpr call tree.
-        }
+        return GetTypeName(lookup); // this call is often the leaf of the TypeofExpr call tree.
     }
 
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::IdentifierExpressionContext* ctx) const
@@ -1729,13 +1723,13 @@ namespace AZ::ShaderCompiler
         {
             return MangleScalarType("bool");
         }
-        else if (auto* literal = ctx->IntegerLiteral())
+        if (auto* literal = ctx->IntegerLiteral())
         {
             return hasSuffix(literal, 'u')
                        ? MangleScalarType("uint")
                        : MangleScalarType("int");
         }
-        else if (auto* literal = ctx->FloatLiteral())
+        if (auto* literal = ctx->FloatLiteral())
         {
             return hasSuffix(literal, 'h')
                        ? MangleScalarType("half")
@@ -1893,17 +1887,14 @@ namespace AZ::ShaderCompiler
                     ConcatString("function ", thisFuncId.m_name, " has override specifier but is not part of a class")
                 };
             }
-            else
+            // in-class case
+            if (!parentFunction)
             {
-                // in-class case
-                if (!parentFunction)
-                {
-                    throw AzslcOrchestratorException{
-                        ORCHESTRATOR_INVALID_OVERRIDE_SPECIFIER_BASE,
-                        ctx->Identifier()->getSymbol(),
-                        ConcatString("method ", thisFuncId.m_name, " has override specifier but is not found in any base")
-                    };
-                }
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_INVALID_OVERRIDE_SPECIFIER_BASE,
+                    ctx->Identifier()->getSymbol(),
+                    ConcatString("method ", thisFuncId.m_name, " has override specifier but is not found in any base")
+                };
             }
         }
 
@@ -2207,10 +2198,7 @@ namespace AZ::ShaderCompiler
 
             return int32_t{std::stoi(text, nullptr, 0)}; // stoi(...) resolves floats as integers, use hintAsInt = false if you need a float
         }
-        else
-        {
-            return float{std::stof(text, nullptr)};
-        }
+        return float{std::stof(text, nullptr)};
     }
 
     ConstNumericVal SemanticOrchestrator::FoldEvalStaticConstExprNumericValue(AstIdExpr* idExp) const
@@ -2284,17 +2272,11 @@ namespace AZ::ShaderCompiler
             AstExpr* expr = declNode->variableInitializer()->standardVariableInitializer()->Expr;
             return FoldEvalStaticConstExprNumericValue(expr);
         }
-        else
+        if (!hasInitializer && isStaticConst)
         {
-            if (!hasInitializer && isStaticConst)
-            {
-                return std::monostate{}; // non-initialized static constants will be zero-initialized appropriately by DXC.
-            }
-            else
-            {
-                FoldFailedCommonMessage(varInfo.m_declNode->start, std::string_view{varInfo.m_identifier}) << ": no standard variable initializer expression\n";
-            }
+            return std::monostate{}; // non-initialized static constants will be zero-initialized appropriately by DXC.
         }
+        FoldFailedCommonMessage(varInfo.m_declNode->start, std::string_view{varInfo.m_identifier}) << ": no standard variable initializer expression\n";
         return std::monostate{};
     }
 
@@ -2308,15 +2290,12 @@ namespace AZ::ShaderCompiler
                 // easy case. we have the literal right there on a plate.
                 return FoldEvalStaticConstExprNumericValue(intLit);
             }
-            else if (auto* floatLit = litExpr->literal()->FloatLiteral())
+            if (auto* floatLit = litExpr->literal()->FloatLiteral())
             {
                 // easy case. we have the literal right there on a plate.
                 return FoldEvalStaticConstExprNumericValue(floatLit, false);
             }
-            else
-            {
-                FoldFailedCommonMessage(expr->start) << ": initializer is not an integer literal\n";
-            }
+            FoldFailedCommonMessage(expr->start) << ": initializer is not an integer literal\n";
         }
         else if (auto* idExpr = As<azslParser::IdentifierExpressionContext*>(expr))
         {
@@ -2403,10 +2382,7 @@ namespace AZ::ShaderCompiler
                     ConcatString(" type ", std::string{typeName}, " requested but not found.")
                 };
             }
-            else
-            {
-                return getErrorIUID();
-            }
+            return getErrorIUID();
         }
         // found..
         const auto& [uid, kind] = *type;
@@ -2427,10 +2403,7 @@ namespace AZ::ShaderCompiler
                         Kind::ToStr(kind.GetKind()).data())
                 };
             }
-            else
-            {
-                return getErrorIUID();
-            }
+            return getErrorIUID();
         }
         return {type->first};
     }
@@ -2448,11 +2421,8 @@ namespace AZ::ShaderCompiler
                 // If we might want to allow such cases use this instead:
                 // extType.m_genericDimensions.PushBack(ArrayDimensions::unknown);
             }
-            else
-            {
-                int asInt = static_cast<int>(nextDim);
-                extType.m_genericDimensions.PushBack(asInt);
-            }
+            int asInt = static_cast<int>(nextDim);
+            extType.m_genericDimensions.PushBack(asInt);
         }
 
         return true;

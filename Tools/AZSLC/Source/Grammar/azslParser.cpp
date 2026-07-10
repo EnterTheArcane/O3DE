@@ -790,8 +790,7 @@ void azslParser::CompilationUnitContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::CompilationUnitContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitCompilationUnit(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::CompilationUnitContext* azslParser::compilationUnit() {
@@ -905,8 +904,7 @@ void azslParser::TopLevelDeclarationContext::exitRule(tree::ParseTreeListener *l
 std::any azslParser::TopLevelDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitTopLevelDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::TopLevelDeclarationContext* azslParser::topLevelDeclaration() {
@@ -1043,8 +1041,7 @@ void azslParser::IdExpressionContext::exitRule(tree::ParseTreeListener *listener
 std::any azslParser::IdExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitIdExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::IdExpressionContext* azslParser::idExpression() {
@@ -1121,8 +1118,7 @@ void azslParser::UnqualifiedIdContext::exitRule(tree::ParseTreeListener *listene
 std::any azslParser::UnqualifiedIdContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitUnqualifiedId(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::UnqualifiedIdContext* azslParser::unqualifiedId() {
@@ -1186,8 +1182,7 @@ void azslParser::QualifiedIdContext::exitRule(tree::ParseTreeListener *listener)
 std::any azslParser::QualifiedIdContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitQualifiedId(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::QualifiedIdContext* azslParser::qualifiedId() {
@@ -1261,8 +1256,7 @@ void azslParser::NestedNameSpecifierContext::exitRule(tree::ParseTreeListener *l
 std::any azslParser::NestedNameSpecifierContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitNestedNameSpecifier(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::NestedNameSpecifierContext* azslParser::nestedNameSpecifier() {
@@ -1348,8 +1342,7 @@ void azslParser::ClassDefinitionStatementContext::exitRule(tree::ParseTreeListen
 std::any azslParser::ClassDefinitionStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitClassDefinitionStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ClassDefinitionStatementContext* azslParser::classDefinitionStatement() {
@@ -1435,8 +1428,7 @@ void azslParser::ClassDefinitionContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::ClassDefinitionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitClassDefinition(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ClassDefinitionContext* azslParser::classDefinition() {
@@ -1543,8 +1535,7 @@ void azslParser::BaseListContext::exitRule(tree::ParseTreeListener *listener) {
 std::any azslParser::BaseListContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitBaseList(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::BaseListContext* azslParser::baseList() {
@@ -1639,8 +1630,7 @@ void azslParser::ClassMemberDeclarationContext::exitRule(tree::ParseTreeListener
 std::any azslParser::ClassMemberDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitClassMemberDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ClassMemberDeclarationContext* azslParser::classMemberDeclaration() {
@@ -1749,8 +1739,7 @@ void azslParser::StructDefinitionStatementContext::exitRule(tree::ParseTreeListe
 std::any azslParser::StructDefinitionStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitStructDefinitionStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::StructDefinitionStatementContext* azslParser::structDefinitionStatement() {
@@ -1832,8 +1821,7 @@ void azslParser::StructDefinitionContext::exitRule(tree::ParseTreeListener *list
 std::any azslParser::StructDefinitionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitStructDefinition(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::StructDefinitionContext* azslParser::structDefinition() {
@@ -1936,8 +1924,7 @@ void azslParser::StructMemberDeclarationContext::exitRule(tree::ParseTreeListene
 std::any azslParser::StructMemberDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitStructMemberDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::StructMemberDeclarationContext* azslParser::structMemberDeclaration() {
@@ -2054,8 +2041,7 @@ void azslParser::AnyStructuredTypeDefinitionStatementContext::exitRule(tree::Par
 std::any azslParser::AnyStructuredTypeDefinitionStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAnyStructuredTypeDefinitionStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AnyStructuredTypeDefinitionStatementContext* azslParser::anyStructuredTypeDefinitionStatement() {
@@ -2134,8 +2120,7 @@ void azslParser::EnumDefinitionStatementContext::exitRule(tree::ParseTreeListene
 std::any azslParser::EnumDefinitionStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitEnumDefinitionStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::EnumDefinitionStatementContext* azslParser::enumDefinitionStatement() {
@@ -2213,8 +2198,7 @@ void azslParser::EnumDefinitionContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::EnumDefinitionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitEnumDefinition(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::EnumDefinitionContext* azslParser::enumDefinition() {
@@ -2295,8 +2279,7 @@ void azslParser::UnscopedEnumContext::exitRule(tree::ParseTreeListener *listener
 std::any azslParser::UnscopedEnumContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitUnscopedEnum(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- ScopedEnumContext ------------------------------------------------------------------
 
@@ -2328,8 +2311,7 @@ void azslParser::ScopedEnumContext::exitRule(tree::ParseTreeListener *listener) 
 std::any azslParser::ScopedEnumContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitScopedEnum(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 azslParser::EnumKeyContext* azslParser::enumKey() {
   EnumKeyContext *_localctx = _tracker.createInstance<EnumKeyContext>(_ctx, getState());
@@ -2429,8 +2411,7 @@ void azslParser::EnumeratorListDefinitionContext::exitRule(tree::ParseTreeListen
 std::any azslParser::EnumeratorListDefinitionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitEnumeratorListDefinition(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::EnumeratorListDefinitionContext* azslParser::enumeratorListDefinition() {
@@ -2524,8 +2505,7 @@ void azslParser::EnumeratorDeclaratorContext::exitRule(tree::ParseTreeListener *
 std::any azslParser::EnumeratorDeclaratorContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitEnumeratorDeclarator(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::EnumeratorDeclaratorContext* azslParser::enumeratorDeclarator() {
@@ -2608,8 +2588,7 @@ void azslParser::AnyStructuredTypeDefinitionContext::exitRule(tree::ParseTreeLis
 std::any azslParser::AnyStructuredTypeDefinitionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAnyStructuredTypeDefinition(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AnyStructuredTypeDefinitionContext* azslParser::anyStructuredTypeDefinition() {
@@ -2704,8 +2683,7 @@ void azslParser::InterfaceDefinitionStatementContext::exitRule(tree::ParseTreeLi
 std::any azslParser::InterfaceDefinitionStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitInterfaceDefinitionStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::InterfaceDefinitionStatementContext* azslParser::interfaceDefinitionStatement() {
@@ -2787,8 +2765,7 @@ void azslParser::InterfaceDefinitionContext::exitRule(tree::ParseTreeListener *l
 std::any azslParser::InterfaceDefinitionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitInterfaceDefinition(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::InterfaceDefinitionContext* azslParser::interfaceDefinition() {
@@ -2879,8 +2856,7 @@ void azslParser::InterfaceMemberDeclarationContext::exitRule(tree::ParseTreeList
 std::any azslParser::InterfaceMemberDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitInterfaceMemberDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::InterfaceMemberDeclarationContext* azslParser::interfaceMemberDeclaration() {
@@ -2980,8 +2956,7 @@ void azslParser::ConstantBufferTemplatedContext::exitRule(tree::ParseTreeListene
 std::any azslParser::ConstantBufferTemplatedContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitConstantBufferTemplated(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ConstantBufferTemplatedContext* azslParser::constantBufferTemplated() {
@@ -3062,8 +3037,7 @@ void azslParser::VariableDeclarationStatementContext::exitRule(tree::ParseTreeLi
 std::any azslParser::VariableDeclarationStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitVariableDeclarationStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::VariableDeclarationStatementContext* azslParser::variableDeclarationStatement() {
@@ -3141,8 +3115,7 @@ void azslParser::FunctionParamsContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::FunctionParamsContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitFunctionParams(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::FunctionParamsContext* azslParser::functionParams() {
@@ -3248,8 +3221,7 @@ void azslParser::FunctionParamContext::exitRule(tree::ParseTreeListener *listene
 std::any azslParser::FunctionParamContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitFunctionParam(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::FunctionParamContext* azslParser::functionParam() {
@@ -3336,8 +3308,7 @@ void azslParser::HlslSemanticContext::exitRule(tree::ParseTreeListener *listener
 std::any azslParser::HlslSemanticContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitHlslSemantic(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::HlslSemanticContext* azslParser::hlslSemantic() {
@@ -3407,8 +3378,7 @@ void azslParser::HlslSemanticNameContext::exitRule(tree::ParseTreeListener *list
 std::any azslParser::HlslSemanticNameContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitHlslSemanticName(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::HlslSemanticNameContext* azslParser::hlslSemanticName() {
@@ -3489,8 +3459,7 @@ void azslParser::AttributeArgumentsContext::exitRule(tree::ParseTreeListener *li
 std::any azslParser::AttributeArgumentsContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAttributeArguments(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AttributeArgumentsContext* azslParser::attributeArguments() {
@@ -3571,8 +3540,7 @@ void azslParser::AttributeArgumentListContext::exitRule(tree::ParseTreeListener 
 std::any azslParser::AttributeArgumentListContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAttributeArgumentList(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AttributeArgumentListContext* azslParser::attributeArgumentList() {
@@ -3662,8 +3630,7 @@ void azslParser::GlobalAttributeContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::GlobalAttributeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitGlobalAttribute(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- AttachedAttributeContext ------------------------------------------------------------------
 
@@ -3699,8 +3666,7 @@ void azslParser::AttachedAttributeContext::exitRule(tree::ParseTreeListener *lis
 std::any azslParser::AttachedAttributeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAttachedAttribute(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 azslParser::AttributeContext* azslParser::attribute() {
   AttributeContext *_localctx = _tracker.createInstance<AttributeContext>(_ctx, getState());
@@ -3837,8 +3803,7 @@ void azslParser::AttributeSpecifierContext::exitRule(tree::ParseTreeListener *li
 std::any azslParser::AttributeSpecifierContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAttributeSpecifier(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AttributeSpecifierContext* azslParser::attributeSpecifier() {
@@ -3926,8 +3891,7 @@ void azslParser::AttributeSpecifierSequenceContext::exitRule(tree::ParseTreeList
 std::any azslParser::AttributeSpecifierSequenceContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAttributeSpecifierSequence(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AttributeSpecifierSequenceContext* azslParser::attributeSpecifierSequence() {
@@ -4012,8 +3976,7 @@ void azslParser::AttributeSpecifierAnyContext::exitRule(tree::ParseTreeListener 
 std::any azslParser::AttributeSpecifierAnyContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAttributeSpecifierAny(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AttributeSpecifierAnyContext* azslParser::attributeSpecifierAny() {
@@ -4102,8 +4065,7 @@ void azslParser::BlockContext::exitRule(tree::ParseTreeListener *listener) {
 std::any azslParser::BlockContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitBlock(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::BlockContext* azslParser::block() {
@@ -4191,8 +4153,7 @@ void azslParser::StatementContext::exitRule(tree::ParseTreeListener *listener) {
 std::any azslParser::StatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::StatementContext* azslParser::statement() {
@@ -4280,8 +4241,7 @@ void azslParser::ForInitializerContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::ForInitializerContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitForInitializer(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ForInitializerContext* azslParser::forInitializer() {
@@ -4368,8 +4328,7 @@ void azslParser::DefaultSwitchLabelContext::exitRule(tree::ParseTreeListener *li
 std::any azslParser::DefaultSwitchLabelContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitDefaultSwitchLabel(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- CaseSwitchLabelContext ------------------------------------------------------------------
 
@@ -4401,8 +4360,7 @@ void azslParser::CaseSwitchLabelContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::CaseSwitchLabelContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitCaseSwitchLabel(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 azslParser::SwitchLabelContext* azslParser::switchLabel() {
   SwitchLabelContext *_localctx = _tracker.createInstance<SwitchLabelContext>(_ctx, getState());
@@ -4498,8 +4456,7 @@ void azslParser::SwitchSectionContext::exitRule(tree::ParseTreeListener *listene
 std::any azslParser::SwitchSectionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSwitchSection(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SwitchSectionContext* azslParser::switchSection() {
@@ -4598,8 +4555,7 @@ void azslParser::SwitchBlockContext::exitRule(tree::ParseTreeListener *listener)
 std::any azslParser::SwitchBlockContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSwitchBlock(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SwitchBlockContext* azslParser::switchBlock() {
@@ -4712,8 +4668,7 @@ void azslParser::DoStatementContext::exitRule(tree::ParseTreeListener *listener)
 std::any azslParser::DoStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitDoStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- EmptyStatementContext ------------------------------------------------------------------
 
@@ -4737,8 +4692,7 @@ void azslParser::EmptyStatementContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::EmptyStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitEmptyStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- BlockStatementContext ------------------------------------------------------------------
 
@@ -4762,8 +4716,7 @@ void azslParser::BlockStatementContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::BlockStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitBlockStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- WhileStatementContext ------------------------------------------------------------------
 
@@ -4811,8 +4764,7 @@ void azslParser::WhileStatementContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::WhileStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitWhileStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- ExtenstionStatementContext ------------------------------------------------------------------
 
@@ -4836,8 +4788,7 @@ void azslParser::ExtenstionStatementContext::exitRule(tree::ParseTreeListener *l
 std::any azslParser::ExtenstionStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitExtenstionStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- BreakStatementContext ------------------------------------------------------------------
 
@@ -4865,8 +4816,7 @@ void azslParser::BreakStatementContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::BreakStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitBreakStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- IfStatementContext ------------------------------------------------------------------
 
@@ -4918,8 +4868,7 @@ void azslParser::IfStatementContext::exitRule(tree::ParseTreeListener *listener)
 std::any azslParser::IfStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitIfStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- SwitchStatementContext ------------------------------------------------------------------
 
@@ -4967,8 +4916,7 @@ void azslParser::SwitchStatementContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::SwitchStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSwitchStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- ExpressionStatementContext ------------------------------------------------------------------
 
@@ -4996,8 +4944,7 @@ void azslParser::ExpressionStatementContext::exitRule(tree::ParseTreeListener *l
 std::any azslParser::ExpressionStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitExpressionStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- ReturnStatementContext ------------------------------------------------------------------
 
@@ -5029,8 +4976,7 @@ void azslParser::ReturnStatementContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::ReturnStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitReturnStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- DiscardStatementContext ------------------------------------------------------------------
 
@@ -5058,8 +5004,7 @@ void azslParser::DiscardStatementContext::exitRule(tree::ParseTreeListener *list
 std::any azslParser::DiscardStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitDiscardStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- ForStatementContext ------------------------------------------------------------------
 
@@ -5123,8 +5068,7 @@ void azslParser::ForStatementContext::exitRule(tree::ParseTreeListener *listener
 std::any azslParser::ForStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitForStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- TypeAliasingDefinitionStatementLabelContext ------------------------------------------------------------------
 
@@ -5148,8 +5092,7 @@ void azslParser::TypeAliasingDefinitionStatementLabelContext::exitRule(tree::Par
 std::any azslParser::TypeAliasingDefinitionStatementLabelContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitTypeAliasingDefinitionStatementLabel(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- ContinueStatementContext ------------------------------------------------------------------
 
@@ -5177,8 +5120,7 @@ void azslParser::ContinueStatementContext::exitRule(tree::ParseTreeListener *lis
 std::any azslParser::ContinueStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitContinueStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 azslParser::EmbeddedStatementContext* azslParser::embeddedStatement() {
   EmbeddedStatementContext *_localctx = _tracker.createInstance<EmbeddedStatementContext>(_ctx, getState());
@@ -5532,8 +5474,7 @@ void azslParser::ElseClauseContext::exitRule(tree::ParseTreeListener *listener) 
 std::any azslParser::ElseClauseContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitElseClause(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ElseClauseContext* azslParser::elseClause() {
@@ -5609,8 +5550,7 @@ void azslParser::ParenthesizedExpressionContext::exitRule(tree::ParseTreeListene
 std::any azslParser::ParenthesizedExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitParenthesizedExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- MemberAccessExpressionContext ------------------------------------------------------------------
 
@@ -5642,8 +5582,7 @@ void azslParser::MemberAccessExpressionContext::exitRule(tree::ParseTreeListener
 std::any azslParser::MemberAccessExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitMemberAccessExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- PrefixUnaryExpressionContext ------------------------------------------------------------------
 
@@ -5671,8 +5610,7 @@ void azslParser::PrefixUnaryExpressionContext::exitRule(tree::ParseTreeListener 
 std::any azslParser::PrefixUnaryExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitPrefixUnaryExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- LiteralExpressionContext ------------------------------------------------------------------
 
@@ -5696,8 +5634,7 @@ void azslParser::LiteralExpressionContext::exitRule(tree::ParseTreeListener *lis
 std::any azslParser::LiteralExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitLiteralExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- ConditionalExpressionContext ------------------------------------------------------------------
 
@@ -5737,8 +5674,7 @@ void azslParser::ConditionalExpressionContext::exitRule(tree::ParseTreeListener 
 std::any azslParser::ConditionalExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitConditionalExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- PostfixUnaryExpressionContext ------------------------------------------------------------------
 
@@ -5766,8 +5702,7 @@ void azslParser::PostfixUnaryExpressionContext::exitRule(tree::ParseTreeListener
 std::any azslParser::PostfixUnaryExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitPostfixUnaryExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- NumericConstructorExpressionContext ------------------------------------------------------------------
 
@@ -5795,8 +5730,7 @@ void azslParser::NumericConstructorExpressionContext::exitRule(tree::ParseTreeLi
 std::any azslParser::NumericConstructorExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitNumericConstructorExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- FunctionCallExpressionContext ------------------------------------------------------------------
 
@@ -5824,8 +5758,7 @@ void azslParser::FunctionCallExpressionContext::exitRule(tree::ParseTreeListener
 std::any azslParser::FunctionCallExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitFunctionCallExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- IdentifierExpressionContext ------------------------------------------------------------------
 
@@ -5849,8 +5782,7 @@ void azslParser::IdentifierExpressionContext::exitRule(tree::ParseTreeListener *
 std::any azslParser::IdentifierExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitIdentifierExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- BinaryExpressionContext ------------------------------------------------------------------
 
@@ -5882,8 +5814,7 @@ void azslParser::BinaryExpressionContext::exitRule(tree::ParseTreeListener *list
 std::any azslParser::BinaryExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitBinaryExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- AssignmentExpressionContext ------------------------------------------------------------------
 
@@ -5915,8 +5846,7 @@ void azslParser::AssignmentExpressionContext::exitRule(tree::ParseTreeListener *
 std::any azslParser::AssignmentExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAssignmentExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- CastExpressionContext ------------------------------------------------------------------
 
@@ -5960,8 +5890,7 @@ void azslParser::CastExpressionContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::CastExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitCastExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- ArrayAccessExpressionContext ------------------------------------------------------------------
 
@@ -5997,8 +5926,7 @@ void azslParser::ArrayAccessExpressionContext::exitRule(tree::ParseTreeListener 
 std::any azslParser::ArrayAccessExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitArrayAccessExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ExpressionContext* azslParser::expression() {
@@ -6285,8 +6213,7 @@ void azslParser::OtherExpressionContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::OtherExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitOtherExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 //----------------- CommaExpressionContext ------------------------------------------------------------------
 
@@ -6318,8 +6245,7 @@ void azslParser::CommaExpressionContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::CommaExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitCommaExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ExpressionExtContext* azslParser::expressionExt() {
@@ -6422,8 +6348,7 @@ void azslParser::PostfixUnaryOperatorContext::exitRule(tree::ParseTreeListener *
 std::any azslParser::PostfixUnaryOperatorContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitPostfixUnaryOperator(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::PostfixUnaryOperatorContext* azslParser::postfixUnaryOperator() {
@@ -6513,8 +6438,7 @@ void azslParser::PrefixUnaryOperatorContext::exitRule(tree::ParseTreeListener *l
 std::any azslParser::PrefixUnaryOperatorContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitPrefixUnaryOperator(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::PrefixUnaryOperatorContext* azslParser::prefixUnaryOperator() {
@@ -6651,8 +6575,7 @@ void azslParser::BinaryOperatorContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::BinaryOperatorContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitBinaryOperator(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::BinaryOperatorContext* azslParser::binaryOperator() {
@@ -6761,8 +6684,7 @@ void azslParser::AssignmentOperatorContext::exitRule(tree::ParseTreeListener *li
 std::any azslParser::AssignmentOperatorContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAssignmentOperator(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AssignmentOperatorContext* azslParser::assignmentOperator() {
@@ -6839,8 +6761,7 @@ void azslParser::ArgumentListContext::exitRule(tree::ParseTreeListener *listener
 std::any azslParser::ArgumentListContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitArgumentList(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ArgumentListContext* azslParser::argumentList() {
@@ -6929,8 +6850,7 @@ void azslParser::ArgumentsContext::exitRule(tree::ParseTreeListener *listener) {
 std::any azslParser::ArgumentsContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitArguments(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ArgumentsContext* azslParser::arguments() {
@@ -7015,8 +6935,7 @@ void azslParser::VariableDeclarationContext::exitRule(tree::ParseTreeListener *l
 std::any azslParser::VariableDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitVariableDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::VariableDeclarationContext* azslParser::variableDeclaration() {
@@ -7103,8 +7022,7 @@ void azslParser::VariableDeclaratorsContext::exitRule(tree::ParseTreeListener *l
 std::any azslParser::VariableDeclaratorsContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitVariableDeclarators(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::VariableDeclaratorsContext* azslParser::variableDeclarators() {
@@ -7199,8 +7117,7 @@ void azslParser::UnnamedVariableDeclaratorContext::exitRule(tree::ParseTreeListe
 std::any azslParser::UnnamedVariableDeclaratorContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitUnnamedVariableDeclarator(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::UnnamedVariableDeclaratorContext* azslParser::unnamedVariableDeclarator() {
@@ -7318,8 +7235,7 @@ void azslParser::NamedVariableDeclaratorContext::exitRule(tree::ParseTreeListene
 std::any azslParser::NamedVariableDeclaratorContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitNamedVariableDeclarator(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::NamedVariableDeclaratorContext* azslParser::namedVariableDeclarator() {
@@ -7389,8 +7305,7 @@ void azslParser::VariableInitializerContext::exitRule(tree::ParseTreeListener *l
 std::any azslParser::VariableInitializerContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitVariableInitializer(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::VariableInitializerContext* azslParser::variableInitializer() {
@@ -7481,8 +7396,7 @@ void azslParser::StandardVariableInitializerContext::exitRule(tree::ParseTreeLis
 std::any azslParser::StandardVariableInitializerContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitStandardVariableInitializer(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::StandardVariableInitializerContext* azslParser::standardVariableInitializer() {
@@ -7743,8 +7657,7 @@ void azslParser::ArrayElementInitializersContext::exitRule(tree::ParseTreeListen
 std::any azslParser::ArrayElementInitializersContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitArrayElementInitializers(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ArrayElementInitializersContext* azslParser::arrayElementInitializers() {
@@ -7836,8 +7749,7 @@ void azslParser::ArrayRankSpecifierContext::exitRule(tree::ParseTreeListener *li
 std::any azslParser::ArrayRankSpecifierContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitArrayRankSpecifier(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ArrayRankSpecifierContext* azslParser::arrayRankSpecifier() {
@@ -7938,8 +7850,7 @@ void azslParser::PackOffsetNodeContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::PackOffsetNodeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitPackOffsetNode(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::PackOffsetNodeContext* azslParser::packOffsetNode() {
@@ -8022,8 +7933,7 @@ void azslParser::StorageFlagsContext::exitRule(tree::ParseTreeListener *listener
 std::any azslParser::StorageFlagsContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitStorageFlags(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::StorageFlagsContext* azslParser::storageFlags() {
@@ -8214,8 +8124,7 @@ void azslParser::StorageFlagContext::exitRule(tree::ParseTreeListener *listener)
 std::any azslParser::StorageFlagContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitStorageFlag(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::StorageFlagContext* azslParser::storageFlag() {
@@ -8303,8 +8212,7 @@ void azslParser::TypeContext::exitRule(tree::ParseTreeListener *listener) {
 std::any azslParser::TypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::TypeContext* azslParser::type() {
@@ -8687,8 +8595,7 @@ void azslParser::PredefinedTypeContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::PredefinedTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitPredefinedType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::PredefinedTypeContext* azslParser::predefinedType() {
@@ -8923,8 +8830,7 @@ void azslParser::SubobjectTypeContext::exitRule(tree::ParseTreeListener *listene
 std::any azslParser::SubobjectTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSubobjectType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SubobjectTypeContext* azslParser::subobjectType() {
@@ -8993,8 +8899,7 @@ void azslParser::OtherViewResourceTypeContext::exitRule(tree::ParseTreeListener 
 std::any azslParser::OtherViewResourceTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitOtherViewResourceType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::OtherViewResourceTypeContext* azslParser::otherViewResourceType() {
@@ -9058,8 +8963,7 @@ void azslParser::RtxBuiltInTypesContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::RtxBuiltInTypesContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitRtxBuiltInTypes(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::RtxBuiltInTypesContext* azslParser::rtxBuiltInTypes() {
@@ -9139,8 +9043,7 @@ void azslParser::BufferPredefinedTypeContext::exitRule(tree::ParseTreeListener *
 std::any azslParser::BufferPredefinedTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitBufferPredefinedType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::BufferPredefinedTypeContext* azslParser::bufferPredefinedType() {
@@ -9214,8 +9117,7 @@ void azslParser::BufferTypeContext::exitRule(tree::ParseTreeListener *listener) 
 std::any azslParser::BufferTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitBufferType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::BufferTypeContext* azslParser::bufferType() {
@@ -9293,8 +9195,7 @@ void azslParser::ByteAddressBufferTypesContext::exitRule(tree::ParseTreeListener
 std::any azslParser::ByteAddressBufferTypesContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitByteAddressBufferTypes(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ByteAddressBufferTypesContext* azslParser::byteAddressBufferTypes() {
@@ -9384,8 +9285,7 @@ void azslParser::PatchPredefinedTypeContext::exitRule(tree::ParseTreeListener *l
 std::any azslParser::PatchPredefinedTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitPatchPredefinedType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::PatchPredefinedTypeContext* azslParser::patchPredefinedType() {
@@ -9459,8 +9359,7 @@ void azslParser::PatchTypeContext::exitRule(tree::ParseTreeListener *listener) {
 std::any azslParser::PatchTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitPatchType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::PatchTypeContext* azslParser::patchType() {
@@ -9546,8 +9445,7 @@ void azslParser::SamplerStatePredefinedTypeContext::exitRule(tree::ParseTreeList
 std::any azslParser::SamplerStatePredefinedTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSamplerStatePredefinedType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SamplerStatePredefinedTypeContext* azslParser::samplerStatePredefinedType() {
@@ -9664,8 +9562,7 @@ void azslParser::ScalarTypeContext::exitRule(tree::ParseTreeListener *listener) 
 std::any azslParser::ScalarTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitScalarType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ScalarTypeContext* azslParser::scalarType() {
@@ -9749,8 +9646,7 @@ void azslParser::StreamOutputPredefinedTypeContext::exitRule(tree::ParseTreeList
 std::any azslParser::StreamOutputPredefinedTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitStreamOutputPredefinedType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::StreamOutputPredefinedTypeContext* azslParser::streamOutputPredefinedType() {
@@ -9824,8 +9720,7 @@ void azslParser::StreamOutputObjectTypeContext::exitRule(tree::ParseTreeListener
 std::any azslParser::StreamOutputObjectTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitStreamOutputObjectType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::StreamOutputObjectTypeContext* azslParser::streamOutputObjectType() {
@@ -9906,8 +9801,7 @@ void azslParser::StructuredBufferPredefinedTypeContext::exitRule(tree::ParseTree
 std::any azslParser::StructuredBufferPredefinedTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitStructuredBufferPredefinedType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::StructuredBufferPredefinedTypeContext* azslParser::structuredBufferPredefinedType() {
@@ -9989,8 +9883,7 @@ void azslParser::StructuredBufferNameContext::exitRule(tree::ParseTreeListener *
 std::any azslParser::StructuredBufferNameContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitStructuredBufferName(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::StructuredBufferNameContext* azslParser::structuredBufferName() {
@@ -10125,8 +10018,7 @@ void azslParser::TextureTypeContext::exitRule(tree::ParseTreeListener *listener)
 std::any azslParser::TextureTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitTextureType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::TextureTypeContext* azslParser::textureType() {
@@ -10195,8 +10087,7 @@ void azslParser::TexturePredefinedTypeContext::exitRule(tree::ParseTreeListener 
 std::any azslParser::TexturePredefinedTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitTexturePredefinedType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::TexturePredefinedTypeContext* azslParser::texturePredefinedType() {
@@ -10268,8 +10159,7 @@ void azslParser::GenericTexturePredefinedTypeContext::exitRule(tree::ParseTreeLi
 std::any azslParser::GenericTexturePredefinedTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitGenericTexturePredefinedType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::GenericTexturePredefinedTypeContext* azslParser::genericTexturePredefinedType() {
@@ -10339,8 +10229,7 @@ void azslParser::TextureTypeMSContext::exitRule(tree::ParseTreeListener *listene
 std::any azslParser::TextureTypeMSContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitTextureTypeMS(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::TextureTypeMSContext* azslParser::textureTypeMS() {
@@ -10430,8 +10319,7 @@ void azslParser::MsTexturePredefinedTypeContext::exitRule(tree::ParseTreeListene
 std::any azslParser::MsTexturePredefinedTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitMsTexturePredefinedType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::MsTexturePredefinedTypeContext* azslParser::msTexturePredefinedType() {
@@ -10520,8 +10408,7 @@ void azslParser::SubpassInputTypeContext::exitRule(tree::ParseTreeListener *list
 std::any azslParser::SubpassInputTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSubpassInputType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SubpassInputTypeContext* azslParser::subpassInputType() {
@@ -10590,8 +10477,7 @@ void azslParser::SubpassInputPredefinedTypeContext::exitRule(tree::ParseTreeList
 std::any azslParser::SubpassInputPredefinedTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSubpassInputPredefinedType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SubpassInputPredefinedTypeContext* azslParser::subpassInputPredefinedType() {
@@ -10663,8 +10549,7 @@ void azslParser::GenericSubpassInputPredefinedTypeContext::exitRule(tree::ParseT
 std::any azslParser::GenericSubpassInputPredefinedTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitGenericSubpassInputPredefinedType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::GenericSubpassInputPredefinedTypeContext* azslParser::genericSubpassInputPredefinedType() {
@@ -10842,8 +10727,7 @@ void azslParser::VectorTypeContext::exitRule(tree::ParseTreeListener *listener) 
 std::any azslParser::VectorTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitVectorType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::VectorTypeContext* azslParser::vectorType() {
@@ -10934,8 +10818,7 @@ void azslParser::GenericVectorTypeContext::exitRule(tree::ParseTreeListener *lis
 std::any azslParser::GenericVectorTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitGenericVectorType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::GenericVectorTypeContext* azslParser::genericVectorType() {
@@ -11009,8 +10892,7 @@ void azslParser::ScalarOrVectorTypeContext::exitRule(tree::ParseTreeListener *li
 std::any azslParser::ScalarOrVectorTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitScalarOrVectorType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ScalarOrVectorTypeContext* azslParser::scalarOrVectorType() {
@@ -11135,8 +11017,7 @@ void azslParser::ScalarOrVectorOrMatrixTypeContext::exitRule(tree::ParseTreeList
 std::any azslParser::ScalarOrVectorOrMatrixTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitScalarOrVectorOrMatrixType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ScalarOrVectorOrMatrixTypeContext* azslParser::scalarOrVectorOrMatrixType() {
@@ -11820,8 +11701,7 @@ void azslParser::MatrixTypeContext::exitRule(tree::ParseTreeListener *listener) 
 std::any azslParser::MatrixTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitMatrixType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::MatrixTypeContext* azslParser::matrixType() {
@@ -11921,8 +11801,7 @@ void azslParser::GenericMatrixPredefinedTypeContext::exitRule(tree::ParseTreeLis
 std::any azslParser::GenericMatrixPredefinedTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitGenericMatrixPredefinedType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::GenericMatrixPredefinedTypeContext* azslParser::genericMatrixPredefinedType() {
@@ -12012,8 +11891,7 @@ void azslParser::RegisterAllocationContext::exitRule(tree::ParseTreeListener *li
 std::any azslParser::RegisterAllocationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitRegisterAllocation(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::RegisterAllocationContext* azslParser::registerAllocation() {
@@ -12093,8 +11971,7 @@ void azslParser::SamplerStatePropertyContext::exitRule(tree::ParseTreeListener *
 std::any azslParser::SamplerStatePropertyContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSamplerStateProperty(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SamplerStatePropertyContext* azslParser::samplerStateProperty() {
@@ -12180,8 +12057,7 @@ void azslParser::LiteralContext::exitRule(tree::ParseTreeListener *listener) {
 std::any azslParser::LiteralContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitLiteral(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::LiteralContext* azslParser::literal() {
@@ -12332,8 +12208,7 @@ void azslParser::LeadingTypeFunctionSignatureContext::exitRule(tree::ParseTreeLi
 std::any azslParser::LeadingTypeFunctionSignatureContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitLeadingTypeFunctionSignature(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::LeadingTypeFunctionSignatureContext* azslParser::leadingTypeFunctionSignature() {
@@ -12457,8 +12332,7 @@ void azslParser::HlslFunctionDefinitionContext::exitRule(tree::ParseTreeListener
 std::any azslParser::HlslFunctionDefinitionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitHlslFunctionDefinition(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::HlslFunctionDefinitionContext* azslParser::hlslFunctionDefinition() {
@@ -12524,8 +12398,7 @@ void azslParser::HlslFunctionDeclarationContext::exitRule(tree::ParseTreeListene
 std::any azslParser::HlslFunctionDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitHlslFunctionDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::HlslFunctionDeclarationContext* azslParser::hlslFunctionDeclaration() {
@@ -12591,8 +12464,7 @@ void azslParser::UserDefinedTypeContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::UserDefinedTypeContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitUserDefinedType(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::UserDefinedTypeContext* azslParser::userDefinedType() {
@@ -12685,8 +12557,7 @@ void azslParser::AssociatedTypeDeclarationContext::exitRule(tree::ParseTreeListe
 std::any azslParser::AssociatedTypeDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAssociatedTypeDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AssociatedTypeDeclarationContext* azslParser::associatedTypeDeclaration() {
@@ -12771,8 +12642,7 @@ void azslParser::TypedefStatementContext::exitRule(tree::ParseTreeListener *list
 std::any azslParser::TypedefStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitTypedefStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::TypedefStatementContext* azslParser::typedefStatement() {
@@ -12854,8 +12724,7 @@ void azslParser::TypealiasStatementContext::exitRule(tree::ParseTreeListener *li
 std::any azslParser::TypealiasStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitTypealiasStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::TypealiasStatementContext* azslParser::typealiasStatement() {
@@ -12927,8 +12796,7 @@ void azslParser::TypeAliasingDefinitionStatementContext::exitRule(tree::ParseTre
 std::any azslParser::TypeAliasingDefinitionStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitTypeAliasingDefinitionStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::TypeAliasingDefinitionStatementContext* azslParser::typeAliasingDefinitionStatement() {
@@ -13029,8 +12897,7 @@ void azslParser::TypeofExpressionContext::exitRule(tree::ParseTreeListener *list
 std::any azslParser::TypeofExpressionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitTypeofExpression(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::TypeofExpressionContext* azslParser::typeofExpression() {
@@ -13147,8 +13014,7 @@ void azslParser::GenericParameterListContext::exitRule(tree::ParseTreeListener *
 std::any azslParser::GenericParameterListContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitGenericParameterList(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::GenericParameterListContext* azslParser::genericParameterList() {
@@ -13229,8 +13095,7 @@ void azslParser::GenericTypeDefinitionContext::exitRule(tree::ParseTreeListener 
 std::any azslParser::GenericTypeDefinitionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitGenericTypeDefinition(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::GenericTypeDefinitionContext* azslParser::genericTypeDefinition() {
@@ -13303,8 +13168,7 @@ void azslParser::GenericConstraintContext::exitRule(tree::ParseTreeListener *lis
 std::any azslParser::GenericConstraintContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitGenericConstraint(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::GenericConstraintContext* azslParser::genericConstraint() {
@@ -13366,8 +13230,7 @@ void azslParser::LanguageDefinedConstraintContext::exitRule(tree::ParseTreeListe
 std::any azslParser::LanguageDefinedConstraintContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitLanguageDefinedConstraint(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::LanguageDefinedConstraintContext* azslParser::languageDefinedConstraint() {
@@ -13427,8 +13290,7 @@ void azslParser::FunctionDeclarationContext::exitRule(tree::ParseTreeListener *l
 std::any azslParser::FunctionDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitFunctionDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::FunctionDeclarationContext* azslParser::functionDeclaration() {
@@ -13496,8 +13358,7 @@ void azslParser::AttributedFunctionDeclarationContext::exitRule(tree::ParseTreeL
 std::any azslParser::AttributedFunctionDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAttributedFunctionDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AttributedFunctionDeclarationContext* azslParser::attributedFunctionDeclaration() {
@@ -13570,8 +13431,7 @@ void azslParser::FunctionDefinitionContext::exitRule(tree::ParseTreeListener *li
 std::any azslParser::FunctionDefinitionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitFunctionDefinition(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::FunctionDefinitionContext* azslParser::functionDefinition() {
@@ -13639,8 +13499,7 @@ void azslParser::AttributedFunctionDefinitionContext::exitRule(tree::ParseTreeLi
 std::any azslParser::AttributedFunctionDefinitionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAttributedFunctionDefinition(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AttributedFunctionDefinitionContext* azslParser::attributedFunctionDefinition() {
@@ -13757,8 +13616,7 @@ void azslParser::CompilerExtensionStatementContext::exitRule(tree::ParseTreeList
 std::any azslParser::CompilerExtensionStatementContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitCompilerExtensionStatement(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::CompilerExtensionStatementContext* azslParser::compilerExtensionStatement() {
@@ -13913,8 +13771,7 @@ void azslParser::SrgDefinitionContext::exitRule(tree::ParseTreeListener *listene
 std::any azslParser::SrgDefinitionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSrgDefinition(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SrgDefinitionContext* azslParser::srgDefinition() {
@@ -14023,8 +13880,7 @@ void azslParser::AttributedSrgDefinitionContext::exitRule(tree::ParseTreeListene
 std::any azslParser::AttributedSrgDefinitionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAttributedSrgDefinition(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AttributedSrgDefinitionContext* azslParser::attributedSrgDefinition() {
@@ -14121,8 +13977,7 @@ void azslParser::SrgMemberDeclarationContext::exitRule(tree::ParseTreeListener *
 std::any azslParser::SrgMemberDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSrgMemberDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SrgMemberDeclarationContext* azslParser::srgMemberDeclaration() {
@@ -14242,8 +14097,7 @@ void azslParser::SrgSemanticContext::exitRule(tree::ParseTreeListener *listener)
 std::any azslParser::SrgSemanticContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSrgSemantic(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SrgSemanticContext* azslParser::srgSemantic() {
@@ -14315,8 +14169,7 @@ void azslParser::AttributedSrgSemanticContext::exitRule(tree::ParseTreeListener 
 std::any azslParser::AttributedSrgSemanticContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAttributedSrgSemantic(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AttributedSrgSemanticContext* azslParser::attributedSrgSemantic() {
@@ -14401,8 +14254,7 @@ void azslParser::SrgSemanticBodyDeclarationContext::exitRule(tree::ParseTreeList
 std::any azslParser::SrgSemanticBodyDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSrgSemanticBodyDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SrgSemanticBodyDeclarationContext* azslParser::srgSemanticBodyDeclaration() {
@@ -14493,8 +14345,7 @@ void azslParser::SrgSemanticMemberDeclarationContext::exitRule(tree::ParseTreeLi
 std::any azslParser::SrgSemanticMemberDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSrgSemanticMemberDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SrgSemanticMemberDeclarationContext* azslParser::srgSemanticMemberDeclaration() {
@@ -14595,8 +14446,7 @@ void azslParser::SamplerBodyDeclarationContext::exitRule(tree::ParseTreeListener
 std::any azslParser::SamplerBodyDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSamplerBodyDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SamplerBodyDeclarationContext* azslParser::samplerBodyDeclaration() {
@@ -14718,8 +14568,7 @@ void azslParser::SamplerMemberDeclarationContext::exitRule(tree::ParseTreeListen
 std::any azslParser::SamplerMemberDeclarationContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitSamplerMemberDeclaration(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::SamplerMemberDeclarationContext* azslParser::samplerMemberDeclaration() {
@@ -14885,8 +14734,7 @@ void azslParser::MaxAnisotropyOptionContext::exitRule(tree::ParseTreeListener *l
 std::any azslParser::MaxAnisotropyOptionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitMaxAnisotropyOption(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::MaxAnisotropyOptionContext* azslParser::maxAnisotropyOption() {
@@ -14964,8 +14812,7 @@ void azslParser::MinFilterOptionContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::MinFilterOptionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitMinFilterOption(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::MinFilterOptionContext* azslParser::minFilterOption() {
@@ -15043,8 +14890,7 @@ void azslParser::MagFilterOptionContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::MagFilterOptionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitMagFilterOption(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::MagFilterOptionContext* azslParser::magFilterOption() {
@@ -15122,8 +14968,7 @@ void azslParser::MipFilterOptionContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::MipFilterOptionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitMipFilterOption(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::MipFilterOptionContext* azslParser::mipFilterOption() {
@@ -15201,8 +15046,7 @@ void azslParser::ReductionTypeOptionContext::exitRule(tree::ParseTreeListener *l
 std::any azslParser::ReductionTypeOptionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitReductionTypeOption(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ReductionTypeOptionContext* azslParser::reductionTypeOption() {
@@ -15280,8 +15124,7 @@ void azslParser::ComparisonFunctionOptionContext::exitRule(tree::ParseTreeListen
 std::any azslParser::ComparisonFunctionOptionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitComparisonFunctionOption(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ComparisonFunctionOptionContext* azslParser::comparisonFunctionOption() {
@@ -15359,8 +15202,7 @@ void azslParser::AddressUOptionContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::AddressUOptionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAddressUOption(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AddressUOptionContext* azslParser::addressUOption() {
@@ -15438,8 +15280,7 @@ void azslParser::AddressVOptionContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::AddressVOptionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAddressVOption(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AddressVOptionContext* azslParser::addressVOption() {
@@ -15517,8 +15358,7 @@ void azslParser::AddressWOptionContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::AddressWOptionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAddressWOption(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AddressWOptionContext* azslParser::addressWOption() {
@@ -15596,8 +15436,7 @@ void azslParser::MinLodOptionContext::exitRule(tree::ParseTreeListener *listener
 std::any azslParser::MinLodOptionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitMinLodOption(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::MinLodOptionContext* azslParser::minLodOption() {
@@ -15675,8 +15514,7 @@ void azslParser::MaxLodOptionContext::exitRule(tree::ParseTreeListener *listener
 std::any azslParser::MaxLodOptionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitMaxLodOption(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::MaxLodOptionContext* azslParser::maxLodOption() {
@@ -15754,8 +15592,7 @@ void azslParser::MipLodBiasOptionContext::exitRule(tree::ParseTreeListener *list
 std::any azslParser::MipLodBiasOptionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitMipLodBiasOption(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::MipLodBiasOptionContext* azslParser::mipLodBiasOption() {
@@ -15833,8 +15670,7 @@ void azslParser::BorderColorOptionContext::exitRule(tree::ParseTreeListener *lis
 std::any azslParser::BorderColorOptionContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitBorderColorOption(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::BorderColorOptionContext* azslParser::borderColorOption() {
@@ -15904,8 +15740,7 @@ void azslParser::FilterModeEnumContext::exitRule(tree::ParseTreeListener *listen
 std::any azslParser::FilterModeEnumContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitFilterModeEnum(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::FilterModeEnumContext* azslParser::filterModeEnum() {
@@ -15987,8 +15822,7 @@ void azslParser::ReductionTypeEnumContext::exitRule(tree::ParseTreeListener *lis
 std::any azslParser::ReductionTypeEnumContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitReductionTypeEnum(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ReductionTypeEnumContext* azslParser::reductionTypeEnum() {
@@ -16073,8 +15907,7 @@ void azslParser::AddressModeEnumContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::AddressModeEnumContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitAddressModeEnum(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::AddressModeEnumContext* azslParser::addressModeEnum() {
@@ -16171,8 +16004,7 @@ void azslParser::ComparisonFunctionEnumContext::exitRule(tree::ParseTreeListener
 std::any azslParser::ComparisonFunctionEnumContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitComparisonFunctionEnum(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::ComparisonFunctionEnumContext* azslParser::comparisonFunctionEnum() {
@@ -16249,8 +16081,7 @@ void azslParser::BorderColorEnumContext::exitRule(tree::ParseTreeListener *liste
 std::any azslParser::BorderColorEnumContext::accept(tree::ParseTreeVisitor *visitor) {
   if (auto parserVisitor = dynamic_cast<azslParserVisitor*>(visitor))
     return parserVisitor->visitBorderColorEnum(this);
-  else
-    return visitor->visitChildren(this);
+  return visitor->visitChildren(this);
 }
 
 azslParser::BorderColorEnumContext* azslParser::borderColorEnum() {

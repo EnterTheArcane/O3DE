@@ -36,8 +36,7 @@ namespace AZ::ShaderCompiler
         {
             return out << std::get<std::string>(arg);
         }
-
-        else if (std::holds_alternative<ConstNumericVal>(arg))
+        if (std::holds_alternative<ConstNumericVal>(arg))
         {
             const auto& constVal = std::get<ConstNumericVal>(arg);
 
@@ -45,7 +44,7 @@ namespace AZ::ShaderCompiler
             {
                 return out << ExtractValueAsInt64(constVal, std::numeric_limits<int64_t>::min());
             }
-            else if (std::holds_alternative<float>(constVal))
+            if (std::holds_alternative<float>(constVal))
             {
                 return out << ExtractValueAsFloat(constVal, std::numeric_limits<float>::infinity());
             }

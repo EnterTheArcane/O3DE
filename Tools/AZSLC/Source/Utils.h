@@ -205,12 +205,9 @@ namespace AZ::ShaderCompiler
             {
                 throw std::logic_error{"Constant value did not hold anything. Set defval if you want a fallback option."};
             }
-            else
-            {
-                return *defval;
-            }
+            return *defval;
         }
-        else if (std::holds_alternative<int32_t>(var))
+        if (std::holds_alternative<int32_t>(var))
         {
             auto intVal = std::get<int32_t>(var);
             // Casting to float has precision loss: https://onlinegdb.com/By0AJTUVE
@@ -220,7 +217,7 @@ namespace AZ::ShaderCompiler
             }
             return static_cast<float>(intVal);
         }
-        else if (std::holds_alternative<uint32_t>(var))
+        if (std::holds_alternative<uint32_t>(var))
         {
             auto uintVal = std::get<uint32_t>(var);
             // Same comment
@@ -243,12 +240,9 @@ namespace AZ::ShaderCompiler
             {
                 throw std::logic_error{"Constant value did not hold anything. Set defval if you want a fallback option."};
             }
-            else
-            {
-                return *defval;
-            }
+            return *defval;
         }
-        else if (std::holds_alternative<float>(var))
+        if (std::holds_alternative<float>(var))
         {
             // Casting from float has precision loss: https://onlinegdb.com/By0AJTUVE
             auto floatVal = std::get<float>(var);
@@ -256,7 +250,7 @@ namespace AZ::ShaderCompiler
             PrintWarning(Warn::W3, std::nullopt, "warning: Casting float ", floatVal, " to integer, will result in ", intVal);
             return intVal;
         }
-        else if (std::holds_alternative<int32_t>(var))
+        if (std::holds_alternative<int32_t>(var))
         {
             return std::get<int32_t>(var);
         }
@@ -272,12 +266,9 @@ namespace AZ::ShaderCompiler
             {
                 throw std::logic_error{"Constant value did not hold anything. Set defval if you want a fallback option."};
             }
-            else
-            {
-                return *defval;
-            }
+            return *defval;
         }
-        else if (std::holds_alternative<float>(var))
+        if (std::holds_alternative<float>(var))
         {
             // Casting from float has precision loss: https://onlinegdb.com/By0AJTUVE
             auto floatVal = std::get<float>(var);
@@ -285,7 +276,7 @@ namespace AZ::ShaderCompiler
             PrintWarning(Warn::W3, std::nullopt, "warning: Casting float ", floatVal, " to integer, will result in ", intVal);
             return static_cast<T>(intVal);
         }
-        else if (std::holds_alternative<int32_t>(var))
+        if (std::holds_alternative<int32_t>(var))
         {
             return static_cast<T>(std::get<int32_t>(var));
         }
@@ -557,7 +548,7 @@ namespace AZ::ShaderCompiler
             {
                 return Layout::RelaxedStd140Packing;
             }
-            else if (scalarLayout == Layout::StrictStd430Packing)
+            if (scalarLayout == Layout::StrictStd430Packing)
             {
                 return Layout::StrictStd140Packing;
             }
@@ -934,7 +925,7 @@ namespace AZ::ShaderCompiler
                 // https://docs.microsoft.com/en-us/windows/desktop/direct3dhlsl/dx-graphics-hlsl-packing-rules
                 return 8;
             }
-            else if (indexInAzslPredefined_Scalar == 4 || indexInAzslPredefined_Scalar == 6 || indexInAzslPredefined_Scalar == 10)
+            if (indexInAzslPredefined_Scalar == 4 || indexInAzslPredefined_Scalar == 6 || indexInAzslPredefined_Scalar == 10)
             {
                 // https://github.com/microsoft/DirectXShaderCompiler/wiki/Buffer-Packing
                 //   extract: "with -enable-16bit-types: HLSL half type maps to native 16-bit float16_t type"
@@ -944,7 +935,7 @@ namespace AZ::ShaderCompiler
                 assert(std::string_view{"uint16_t"} == AZ::ShaderCompiler::Predefined::Scalar[10]);
                 return 2;
             }
-            else if (indexInAzslPredefined_Scalar < 0)
+            if (indexInAzslPredefined_Scalar < 0)
             {
                 return 0; // non-predefined case, surely meaning UDT.
             }
@@ -1500,7 +1491,7 @@ namespace AZ::ShaderCompiler
                 ExtractedTypeExt{UnqualifiedName{ctx->bufferPredefinedType()->scalarOrVectorOrMatrixType()->getText()}}
             }; // m_genericParam
         }
-        else if (ctx->genericMatrixPredefinedType())
+        if (ctx->genericMatrixPredefinedType())
         {
             auto intLit1 = ctx->genericMatrixPredefinedType()->IntegerLiteral(0);
             auto intLit2 = ctx->genericMatrixPredefinedType()->IntegerLiteral(1);
@@ -1515,7 +1506,7 @@ namespace AZ::ShaderCompiler
                 ExtractedTypeExt{UnqualifiedName{ctx->genericMatrixPredefinedType()->scalarType()->getText()}}
             }; // m_genericParam
         }
-        else if (ctx->streamOutputPredefinedType())
+        if (ctx->streamOutputPredefinedType())
         {
             auto* core = ctx->streamOutputPredefinedType()->streamOutputObjectType();
             AstType* genericCtx = ctx->streamOutputPredefinedType()->type();
@@ -1525,7 +1516,7 @@ namespace AZ::ShaderCompiler
                 ExtractedTypeExt{UnqualifiedName{genericCtx->getText()}, genericCtx}
             }; // for the generic, since this is a type context, we will return it as a node, and let the client recurse if needed.
         }
-        else if (ctx->structuredBufferPredefinedType())
+        if (ctx->structuredBufferPredefinedType())
         {
             auto* core = ctx->structuredBufferPredefinedType()->structuredBufferName();
             AstType* genericCtx = ctx->structuredBufferPredefinedType()->type();
@@ -1535,7 +1526,7 @@ namespace AZ::ShaderCompiler
                 ExtractedTypeExt{UnqualifiedName{genericCtx->getText()}, genericCtx}
             }; // same as above
         }
-        else if (ctx->genericTexturePredefinedType())
+        if (ctx->genericTexturePredefinedType())
         {
             return {
                 ExtractedTypeExt{UnqualifiedName{ctx->genericTexturePredefinedType()->textureType()->getText()}},
@@ -1543,7 +1534,7 @@ namespace AZ::ShaderCompiler
                 ExtractedTypeExt{UnqualifiedName{ctx->genericTexturePredefinedType()->scalarOrVectorType()->getText()}}
             }; // m_genericParam
         }
-        else if (ctx->msTexturePredefinedType())
+        if (ctx->msTexturePredefinedType())
         {
             auto intLit = ctx->msTexturePredefinedType()->IntegerLiteral();
             if (genericDims && intLit)
@@ -1556,7 +1547,7 @@ namespace AZ::ShaderCompiler
                 ExtractedTypeExt{UnqualifiedName{ctx->msTexturePredefinedType()->scalarOrVectorType()->getText()}}
             }; // m_genericParam
         }
-        else if (ctx->genericVectorType())
+        if (ctx->genericVectorType())
         {
             auto intLit = ctx->genericVectorType()->IntegerLiteral();
             if (genericDims && intLit)
@@ -1569,7 +1560,7 @@ namespace AZ::ShaderCompiler
                 ExtractedTypeExt{UnqualifiedName{ctx->genericVectorType()->scalarType()->getText()}}
             }; // m_genericParam
         }
-        else if (ctx->constantBufferTemplated())
+        if (ctx->constantBufferTemplated())
         {
             auto coreName = ctx->constantBufferTemplated()->CBCoreType->getText();
             AstType* genericCtx = ctx->constantBufferTemplated()->GenericTypeName;
@@ -1579,7 +1570,7 @@ namespace AZ::ShaderCompiler
                 ExtractedTypeExt{UnqualifiedName{genericCtx->getText()}, genericCtx}
             }; // same as previous 2 comments above
         }
-        else if (ctx->genericSubpassInputPredefinedType())
+        if (ctx->genericSubpassInputPredefinedType())
         {
             return {
                 ExtractedTypeExt{UnqualifiedName{ctx->genericSubpassInputPredefinedType()->subpassInputType()->getText()}},
@@ -1626,11 +1617,11 @@ namespace AZ::ShaderCompiler
         {
             return ExtractComposedTypeNamesFromAstContext(ctx->userDefinedType(), genericDims);
         }
-        else if (ctx->predefinedType())
+        if (ctx->predefinedType())
         {
             return ExtractComposedTypeNamesFromAstContext(ctx->predefinedType(), genericDims);
         }
-        else if (ctx->Void())
+        if (ctx->Void())
         {
             assert(std::string_view{AZ::ShaderCompiler::Predefined::Void[0]} == ctx->Void()->getText());
             return {UnqualifiedName{ctx->Void()->getText()}}; // "void"

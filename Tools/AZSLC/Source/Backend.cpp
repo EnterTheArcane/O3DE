@@ -88,15 +88,15 @@ namespace AZ::ShaderCompiler
         {
             return out << "TEXTURE_ADDRESS_WRAP";
         }
-        else if (addressMode == SamplerStateDesc::AddressMode::Clamp)
+        if (addressMode == SamplerStateDesc::AddressMode::Clamp)
         {
             return out << "TEXTURE_ADDRESS_CLAMP";
         }
-        else if (addressMode == SamplerStateDesc::AddressMode::Border)
+        if (addressMode == SamplerStateDesc::AddressMode::Border)
         {
             return out << "TEXTURE_ADDRESS_BORDER";
         }
-        else if (addressMode == SamplerStateDesc::AddressMode::Mirror)
+        if (addressMode == SamplerStateDesc::AddressMode::Mirror)
         {
             return out << "TEXTURE_ADDRESS_MIRROR";
         }
@@ -110,27 +110,27 @@ namespace AZ::ShaderCompiler
         {
             return out << "COMPARISON_NEVER";
         }
-        else if (compFunc == SamplerStateDesc::ComparisonFunc::Less)
+        if (compFunc == SamplerStateDesc::ComparisonFunc::Less)
         {
             return out << "COMPARISON_LESS";
         }
-        else if (compFunc == SamplerStateDesc::ComparisonFunc::Equal)
+        if (compFunc == SamplerStateDesc::ComparisonFunc::Equal)
         {
             return out << "COMPARISON_EQUAL";
         }
-        else if (compFunc == SamplerStateDesc::ComparisonFunc::LessEqual)
+        if (compFunc == SamplerStateDesc::ComparisonFunc::LessEqual)
         {
             return out << "COMPARISON_LESS_EQUAL";
         }
-        else if (compFunc == SamplerStateDesc::ComparisonFunc::Greater)
+        if (compFunc == SamplerStateDesc::ComparisonFunc::Greater)
         {
             return out << "COMPARISON_GREATER";
         }
-        else if (compFunc == SamplerStateDesc::ComparisonFunc::NotEqual)
+        if (compFunc == SamplerStateDesc::ComparisonFunc::NotEqual)
         {
             return out << "COMPARISON_NOT_EQUAL";
         }
-        else if (compFunc == SamplerStateDesc::ComparisonFunc::GreaterEqual)
+        if (compFunc == SamplerStateDesc::ComparisonFunc::GreaterEqual)
         {
             return out << "COMPARISON_GREATER_EQUAL";
         }
@@ -144,7 +144,7 @@ namespace AZ::ShaderCompiler
         {
             return out << "STATIC_BORDER_COLOR_OPAQUE_BLACK";
         }
-        else if (borderColor == SamplerStateDesc::BorderColor::OpaqueWhite)
+        if (borderColor == SamplerStateDesc::BorderColor::OpaqueWhite)
         {
             return out << "STATIC_BORDER_COLOR_OPAQUE_WHITE";
         }
@@ -354,11 +354,11 @@ namespace AZ::ShaderCompiler
         {
             return out << "Comparison";
         }
-        else if (redcType == SamplerStateDesc::ReductionType::Filter)
+        if (redcType == SamplerStateDesc::ReductionType::Filter)
         {
             return out << "Filter";
         }
-        else if (redcType == SamplerStateDesc::ReductionType::Minimum)
+        if (redcType == SamplerStateDesc::ReductionType::Minimum)
         {
             return out << "Minimum";
         }
