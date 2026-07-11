@@ -21,7 +21,6 @@ ly_add_target(
     INCLUDE_DIRECTORIES
         PRIVATE
             Source
-            Source/Grammar
     BUILD_DEPENDENCIES
         PRIVATE
             AZ::AzCore

@@ -8,9 +8,8 @@
 
 #pragma once
 
+#include "Grammar/azslParserBaseListener.h"
 #include "IntermediateRepresentation.h"
-
-#include "azslParserBaseListener.h"
 
 namespace AZ::ShaderCompiler
 {

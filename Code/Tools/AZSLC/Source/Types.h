@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "Grammar/azslLexer.h"
 #include "Utils.h"
 
 #include <algorithm>
@@ -20,8 +21,6 @@
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
-
-#include "azslLexer.h"
 
 namespace AZ::ShaderCompiler
 {

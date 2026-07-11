@@ -426,11 +426,9 @@ namespace AZ::ShaderCompiler
                 {
                     auto& sub = sym.GetSubRefAs<FunctionInfo>();
                     cout << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
-                    std::string defLine = std::to_string(sub.m_defNode->start->getLine());
-                    if (sub.IsUndefinedFunction())
-                    {
-                        defLine = "undef";
-                    }
+                    const std::string defLine = sub.IsUndefinedFunction()
+                        ? "undef"
+                        : std::to_string(sub.m_defNode->start->getLine());
                     cout << "  def line: " << defLine << "\n";
                     cout << "  must override: " << sub.m_mustOverride << "\n";
                     cout << "  is method: " << sub.m_isMethod << "\n";

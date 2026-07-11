@@ -8,13 +8,13 @@
 
 #pragma once
 
+#include "Backend.h"
+
 #include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
-
-#include "Backend.h"
 
 namespace AZ::ShaderCompiler
 {

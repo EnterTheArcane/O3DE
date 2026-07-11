@@ -8,10 +8,9 @@
 
 #pragma once
 
+#include "Antlr4.h"
 #include "GenericUtils.h"
 #include "PreprocessorLineDirectiveFinder.h"
-
-#include "Antlr4.h"
 
 #include <cstdint>
 #include <exception>
@@ -369,9 +368,10 @@ namespace AZ::ShaderCompiler
             const size_t line,
             const size_t charPositionInLine,
             const std::string& msg,
-            const std::exception_ptr e) override
+            const std::exception_ptr) override
         {
             const bool isKeyword = m_isKeywordPredicate(recognizer, offendingSymbol);
+            const std::string offendingText = offendingSymbol ? offendingSymbol->getText() : "<unknown>";
             using Ex = AzslcException;
             std::string errorMessage;
             if (isKeyword)
@@ -383,7 +383,7 @@ namespace AZ::ShaderCompiler
                     "syntax",
                     true,
                     ToString(PARSER_SYNTAX_ERROR),
-                    ConcatString(msg, " (", offendingSymbol->getText(), " is a keyword)"));
+                    ConcatString(msg, " (", offendingText, " is a keyword)"));
             }
             else
             {
@@ -394,14 +394,10 @@ namespace AZ::ShaderCompiler
                     "syntax",
                     true,
                     ToString(PARSER_SYNTAX_ERROR),
-                    ConcatString(msg, " (", offendingSymbol->getText(), " was unexpected)"));
+                    ConcatString(msg, " (", offendingText, " was unexpected)"));
             }
 
             antlr4::ParseCancellationException parseException(std::string(errorMessage.c_str(), errorMessage.size()));
-            if (e)
-            {
-                std::throw_with_nested(parseException);
-            }
             throw parseException;
         }
 

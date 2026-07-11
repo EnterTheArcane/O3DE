@@ -8,12 +8,11 @@
 
 #pragma once
 
-#include "GenericUtils.h"
-#include "Utils.h"
 #include "CodeEmissionMutator.h"
+#include "GenericUtils.h"
+#include "Grammar/azslParserBaseListener.h"
 #include "IntermediateRepresentation.h"
-
-#include "azslParserBaseListener.h"
+#include "Utils.h"
 
 namespace AZ::ShaderCompiler
 {

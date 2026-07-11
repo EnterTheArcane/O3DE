@@ -8,9 +8,9 @@
 
 #pragma once
 
+#include "KindInfo.h"
 #include "ScopeTracker.h"
 #include "UnboundedArraysValidator.h"
-#include "KindInfo.h"
 
 #include <cstdint>
 #include <optional>

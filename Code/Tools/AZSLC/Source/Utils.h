@@ -8,16 +8,12 @@
 
 #pragma once
 
+#include "Antlr4.h"
 #include "DiagnosticStream.h"
 #include "Exception.h"
+#include "Grammar/azslParser.h"
 #include "Mangling.h"
-
-#include "Antlr4.h"
-
-#include "azslParser.h"
-
 #include "PredefinedTypes.h"
-
 #include "ReflectableEnums.h"
 #include "ReflectableEnumsUtils.h"
 

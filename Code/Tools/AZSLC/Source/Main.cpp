@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdlib>
 #include <cstddef>
 #include <cstdio>
@@ -188,12 +189,17 @@ namespace AZ::ShaderCompiler
 
     bool IsKeyword(const antlr4::Recognizer* r, const antlr4::Token* token)
     {
-        MapOfStringViewToSetOfString byTypeClass;
-        std::set<std::string> notTypes;
-        VisitTokens(r, byTypeClass, notTypes);
-        const bool notType = notTypes.find(token->getText()) != notTypes.end();
+        if (!r || !token || token->getText().empty())
+        {
+            return false;
+        }
+
+        const std::string tokenText = token->getText();
+        const std::string_view literalName = r->getVocabulary().getLiteralName(token->getType());
+        const std::string_view literalText = Trim(literalName, "\"'");
+        const bool notType = literalText == tokenText;
         const bool notIdentifier = r->getVocabulary().getSymbolicName(token->getType()) != "Identifier";
-        const bool firstIsalpha(isalpha(token->getText()[0]));
+        const bool firstIsalpha = std::isalpha(static_cast<unsigned char>(tokenText[0])) != 0;
         return notType && notIdentifier && firstIsalpha;
     }
 

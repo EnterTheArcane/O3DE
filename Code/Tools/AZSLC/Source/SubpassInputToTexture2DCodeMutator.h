@@ -8,11 +8,11 @@
 
 #pragma once
 
-#include "GenericUtils.h"
-#include "Utils.h"
 #include "CodeEmissionMutator.h"
+#include "GenericUtils.h"
 #include "IntermediateRepresentation.h"
 #include "PlatformEmitter.h"
+#include "Utils.h"
 
 #include <cstdint>
 #include <unordered_map>

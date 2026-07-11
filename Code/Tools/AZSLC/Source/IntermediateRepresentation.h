@@ -8,10 +8,10 @@
 
 #pragma once
 
-#include "SemanticOrchestrator.h"
-#include "TokenToAst.h"
 #include "KindInfo.h"
 #include "PadToAttributeMutator.h"
+#include "SemanticOrchestrator.h"
+#include "TokenToAst.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -183,7 +183,7 @@ namespace AZ::ShaderCompiler
             const std::regex validNamespace(R"__([a-zA-Z_]+)__");
             if (!std::regex_match(attr, validNamespace))
             {
-                throw std::runtime_error(("Invalid namespace '" + attr + "'").c_str());
+                throw std::runtime_error("Invalid namespace");
             }
 
             m_metaData.m_attributeNamespaceFilters.emplace(attr);
