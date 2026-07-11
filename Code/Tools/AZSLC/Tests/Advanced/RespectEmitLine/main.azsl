@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#include "level2.azsli"
+#include "Level2.azsli"
 
 ShaderResourceGroup MainSRG : MainSlot
 {

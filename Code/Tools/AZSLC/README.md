@@ -12,13 +12,9 @@ Configure O3DE normally, then build the `azslc` target with the build directory 
 cmake --build <build-directory> --target AZSLC --config Profile
 ```
 
-The executable is written to O3DE's normal configuration-specific runtime output directory.
-Building and configuring AZSLC does not require Java.
-
 ## Test
 
-AZSLC tests are registered individually with CTest (through O3DE's standard `ly_add_test` wrapper) when O3DE host tests and `BUILD_TESTING` are enabled.
-Each test is labelled `AZSLC.<Category>` and, like the rest of the engine, belongs to the `main` suite so it runs in CI:
+AZSLC tests are registered individually with CTest when O3DE host tests and `BUILD_TESTING` are enabled.
 
 ```powershell
 # All AZSLC tests
@@ -40,13 +36,8 @@ See [`Tests/README.md`](Tests/README.md) for how the suite is organized and how 
 The generated ANTLR C++ lexer and parser are checked in under `Source/Grammar`.
 They should only be regenerated when `azslLexer.g4` or `azslParser.g4` changes.
 
-Regeneration requires PowerShell 7 and a Java runtime available on `PATH`:
+Regeneration requires PowerShell and a Java runtime available on `PATH`:
 
 ```powershell
-pwsh Tools/AZSLC/Source/Grammar/Generate.ps1
+pwsh Source/Grammar/Generate.ps1
 ```
-
-The script uses the pinned JAR in `3rdParty/antlr4`, writes the C++ sources directly into `Source/Grammar`, and removes ANTLR's intermediate token and interpreter files.
-Commit grammar and generated-source changes together.
-
-The generated C++ must remain compatible with the pinned ANTLR C++ runtime in `3rdParty/antlr4/CMakeLists.txt`.

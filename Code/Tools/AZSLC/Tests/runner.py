@@ -19,7 +19,6 @@ from os.path import join
 from timeit import default_timer as timer
 from typing import List, Optional
 
-# Ensure the Tests directory is importable regardless of CWD.
 _TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 if _TESTS_DIR not in sys.path:
     sys.path.insert(0, _TESTS_DIR)
@@ -29,8 +28,6 @@ import common
 
 
 class TestResult:
-    """Aggregated test outcome counters."""
-
     def __init__(
         self, num_pass: int, num_todo: int, num_fail: int, num_ec: int
     ):
@@ -54,7 +51,6 @@ def get_status_verbose(
     extra_color: str,
     extra_message: str
 ) -> 'TestResult':
-    """Print a color-coded status line and return a TestResult."""
     if num_fail == 0:
         print(
             f"{Foreground.GREEN}{Style.BRIGHT}"
@@ -63,7 +59,7 @@ def get_status_verbose(
         )
         return TestResult(num_pass, 0, num_fail, 0)
 
-    if input_source.find("wip-") >= 0:
+    if input_source.find("Wip") >= 0:
         print(
             f"{Foreground.YELLOW}{Style.BRIGHT}"
             f"\\\\[ TODO ]// : {input_source}"
@@ -95,7 +91,6 @@ def test_file(
     compiler_path: str,
     silent: bool
 ) -> 'TestResult':
-    """Run a single test file and return the result."""
     if input_source.endswith(".py"):
         # Resolve the script's directory from its path so that CWD and
         # sys.path are correct regardless of how the runner was invoked.

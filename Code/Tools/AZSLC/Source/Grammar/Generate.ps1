@@ -27,6 +27,7 @@ function Invoke-Antlr
         [Parameter(Mandatory)]
         [string] $Grammar,
 
+        [Parameter(ValueFromRemainingArguments)]
         [string[]] $AdditionalArguments = @()
     )
 
@@ -50,18 +51,15 @@ function Invoke-Antlr
 Push-Location $grammarDirectory
 try
 {
-    # Pass grammar names relative to the working directory so ANTLR does not
-    # embed machine-specific absolute paths in the generated source comments.
-    Invoke-Antlr -Grammar (Split-Path $lexerGrammar -Leaf)
-    Invoke-Antlr -Grammar (Split-Path $parserGrammar -Leaf) -AdditionalArguments @("-lib", $grammarDirectory)
-
-    Get-ChildItem -LiteralPath $grammarDirectory -File |
-        Where-Object Extension -In ".interp", ".tokens" |
-        Remove-Item -Force
+    Invoke-Antlr -Grammar $lexerGrammar
+    Invoke-Antlr -Grammar $parserGrammar -lib $grammarDirectory
+    Get-ChildItem -LiteralPath $grammarDirectory -File
+        | Where-Object Extension -In ".interp", ".tokens"
+        | Remove-Item -Force
 }
 finally
 {
     Pop-Location
 }
 
-Write-Host "ANTLR C++ sources regenerated in '$grammarDirectory'."
+Write-Host "ANTLR C++ sources regenerated in: $grammarDirectory"

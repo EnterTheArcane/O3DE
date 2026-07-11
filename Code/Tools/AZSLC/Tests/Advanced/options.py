@@ -145,28 +145,28 @@ def do_tests(compiler, silent):
     else:
         result_failed += 1
 
-    if verify_options_emission_integer_ranges(os.path.join(work_dir, "../Samples/VariantsRanges.azsl"), compiler, silent):
+    if verify_options_emission_integer_ranges(os.path.join(work_dir, "../Samples/Variantsranges.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
     # These tests will fail
-    if verify_fail(os.path.join(work_dir, "../Samples/AsError/int-range-bad-max.azsl"), compiler, silent):
+    if verify_fail(os.path.join(work_dir, "../Samples/Error/IntRangeBadMax.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
-    if verify_fail(os.path.join(work_dir, "../Samples/AsError/int-range-bad-min.azsl"), compiler, silent):
+    if verify_fail(os.path.join(work_dir, "../Samples/Error/IntRangeBadMin.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
-    if verify_fail(os.path.join(work_dir, "../Samples/AsError/int-range-no-args.azsl"), compiler, silent):
+    if verify_fail(os.path.join(work_dir, "../Samples/Error/IntRangeNoArgs.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
-    if verify_fail(os.path.join(work_dir, "../Samples/AsError/int-range-swapped.azsl"), compiler, silent):
+    if verify_fail(os.path.join(work_dir, "../Samples/Error/IntRangeSwapped.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1

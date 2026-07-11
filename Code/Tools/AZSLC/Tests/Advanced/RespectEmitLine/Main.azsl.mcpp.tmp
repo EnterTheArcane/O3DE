@@ -46,7 +46,7 @@ ShaderResourceGroup SRG0 : Slot0
 }
 #line 15 "Level1.azsli"
 
-ShaderResourceGroup SRG1 : Slot1
+ShaderResourceGroup SRG1 : SlotX
 {
     struct Colors
     {

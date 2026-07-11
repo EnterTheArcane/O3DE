@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include "srg_semantics.azsli"
+#include "SrgSemantics.azsli"
 
 ShaderResourceGroup SRG0 : Slot0
 {

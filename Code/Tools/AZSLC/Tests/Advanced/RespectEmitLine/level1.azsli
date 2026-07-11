@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include "level0.azsli"
+#include "Level0.azsli"
 
 ShaderResourceGroup SRG1 : Slot1
 {

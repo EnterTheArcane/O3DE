@@ -451,67 +451,67 @@ def do_tests(compiler, silent):
     work_dir = os.getcwd()
 
     if not silent: print("testing for variables...")
-    if test_variables(os.path.join(work_dir, "seenat-variables.azsl"), compiler, silent):
+    if test_variables(os.path.join(work_dir, "SeenatVariables.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
     if not silent: print("testing for functions...")
-    if test_functions(os.path.join(work_dir, "seenat-functions.azsl"), compiler, silent):
+    if test_functions(os.path.join(work_dir, "SeenatFunctions.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
     if not silent: print("testing for methods...")
-    if test_methods(os.path.join(work_dir, "seenat-methods.azsl"), compiler, silent):
+    if test_methods(os.path.join(work_dir, "SeenatMethods.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
     if not silent: print("testing for structs...")
-    if test_structs(os.path.join(work_dir, "seenat-structs.azsl"), compiler, silent):
+    if test_structs(os.path.join(work_dir, "SeenatStructs.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
     if not silent: print("testing for SRGs...")
-    if test_srgs(os.path.join(work_dir, "seenat-srgs.azsl"), compiler, silent):
+    if test_srgs(os.path.join(work_dir, "SeenatSrgs.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
     if not silent: print("testing for constant buffers...")
-    if test_cbs(os.path.join(work_dir, "seenat-cb.azsl"), compiler, silent):
+    if test_cbs(os.path.join(work_dir, "SeenatCb.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
     if not silent: print("testing for qualification in member access expression RHS...")
-    if test_mae(os.path.join(work_dir, "seenat-MAE-qualifiedRHS.azsl"), compiler, silent):
+    if test_mae(os.path.join(work_dir, "SeenatMaeQualifiedrhs.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
     if not silent: print("testing for deported methods...")
-    if test_deported(os.path.join(work_dir, "seenat-deported-methods.azsl"), compiler, silent):
+    if test_deported(os.path.join(work_dir, "SeenatDeportedMethods.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
     if not silent: print("testing for type alias...")
-    if test_typealias(os.path.join(work_dir, "seenat-typedef.azsl"), compiler, silent):
+    if test_typealias(os.path.join(work_dir, "SeenatTypedef.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
     if not silent: print("testing for function overloading...")
-    if test_function_overloads(os.path.join(work_dir, "seenat-function-overloads.azsl"), compiler, silent):
+    if test_function_overloads(os.path.join(work_dir, "SeenatFunctionOverloads.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1
 
     if not silent: print("testing for unnamed blocks...")
-    if test_unnamed_blocks(os.path.join(work_dir, "seenat-unnamed-blocks.azsl"), compiler, silent):
+    if test_unnamed_blocks(os.path.join(work_dir, "SeenatUnnamedBlocks.azsl"), compiler, silent):
         result += 1
     else:
         result_failed += 1

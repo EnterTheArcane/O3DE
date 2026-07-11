@@ -31,9 +31,6 @@ import io
 import os
 import sys
 
-# Make the Tests/ directory importable so that the Shared package
-# (common module) can be found regardless of the
-# working directory CTest happens to use.
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 if TESTS_DIR not in sys.path:
     sys.path.insert(0, TESTS_DIR)
@@ -42,7 +39,7 @@ import common
 
 EXIT_PASS = 0
 EXIT_FAIL = 1
-EXIT_SKIP = 77  # Convention used with CTest SKIP_RETURN_CODE
+EXIT_SKIP = 77
 
 
 def handle_simple(args):

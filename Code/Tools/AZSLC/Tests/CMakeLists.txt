@@ -15,15 +15,6 @@ update_pip_requirements("${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt" azslc_tes
 set(AZSLC_CTEST_RUNNER "${CMAKE_CURRENT_SOURCE_DIR}/ctest-runner.py")
 include(azslc_test_files.cmake)
 
-# CTest launches executables directly and cannot invoke O3DE's .cmd/.sh
-# convenience wrapper consistently on every host. The venv path is the same
-# managed interpreter selected and validated by LYPython during configure.
-set(AZSLC_PYTHON_COMMAND
-    "${LY_PYTHON_VENV_PATH}/${LY_PYTHON_VENV_PYTHON}"
-    -s
-    -B
-)
-
 set(azslc_test_file_lists
     AZSLC_ADVANCED_TEST_FILES
     AZSLC_EMISSION_TEST_FILES
@@ -39,115 +30,112 @@ foreach(test_file_list IN LISTS azslc_test_file_lists)
     list(TRANSFORM ${test_file_list} PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 endforeach()
 
-function(azslc_add_simple_tests label compiler_flag expect_fail)
+function(ly_add_azslc_test)
+    cmake_parse_arguments(arg "WIP" "NAME;CATEGORY;TIMEOUT" "RUNNER_ARGS" ${ARGN})
+
+    set(labels "AZSLC.${arg_CATEGORY}")
+    set(runner_args ${arg_RUNNER_ARGS})
+    if(arg_WIP)
+        list(APPEND labels "AZSLC.WIP")
+        list(APPEND runner_args --wip)
+    endif()
+
+    ly_add_test(
+        NAME "${arg_NAME}"
+        TEST_SUITE main
+        LABELS "${labels}"
+        TIMEOUT ${arg_TIMEOUT}
+        TEST_COMMAND "${LY_PYTHON_VENV_PATH}/${LY_PYTHON_VENV_PYTHON}" -s -B "${AZSLC_CTEST_RUNNER}" ${runner_args}
+        RUNTIME_DEPENDENCIES AZ::AZSLC
+        EXCLUDE_TEST_RUN_TARGET_FROM_IDE
+    )
+
+    # SKIP_RETURN_CODE and WORKING_DIRECTORY are not ly_add_test parameters, so set them
+    # on the test ly_add_test just created (exported as LY_ADDED_TEST_NAME in this scope).
+    set_tests_properties(${LY_ADDED_TEST_NAME} PROPERTIES
+        SKIP_RETURN_CODE 77
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+endfunction()
+
+function(azslc_add_simple_tests category compiler_flag expect_fail)
     foreach(test_file IN LISTS ARGN)
         file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_file}")
         # Strip extension to form the test name  (e.g. "Syntax/empty")
         string(REGEX REPLACE "\\.[^.]*$" "" test_name "${rel_path}")
 
-        set(cmd_args
-            "${AZSLC_CTEST_RUNNER}"
+        set(runner_args
             --compiler "$<TARGET_FILE:AZ::AZSLC>"
             --file "${test_file}"
             --mode simple
         )
         if(NOT "${compiler_flag}" STREQUAL "")
-            list(APPEND cmd_args "--compiler-flag=${compiler_flag}")
+            list(APPEND runner_args "--compiler-flag=${compiler_flag}")
         endif()
         if(expect_fail)
-            list(APPEND cmd_args --expect-fail)
+            list(APPEND runner_args --expect-fail)
         endif()
 
         get_filename_component(stem "${test_file}" NAME_WE)
-        if(stem MATCHES "^wip-")
-            list(APPEND cmd_args --wip)
+        set(wip_option "")
+        if(stem MATCHES "^Wip")
+            set(wip_option WIP)
         endif()
 
-        add_test(
+        ly_add_azslc_test(
             NAME "${test_name}"
-            COMMAND ${AZSLC_PYTHON_COMMAND} ${cmd_args}
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        )
-
-        set(labels "${label}")
-        if(stem MATCHES "^wip-")
-            list(APPEND labels "WIP")
-        endif()
-
-        set_tests_properties("${test_name}" PROPERTIES
-            LABELS "${labels}"
-            SKIP_RETURN_CODE 77
+            CATEGORY "${category}"
             TIMEOUT 60
+            ${wip_option}
+            RUNNER_ARGS ${runner_args}
         )
     endforeach()
 endfunction()
 
-block() # Advanced
-    foreach(test_file IN LISTS AZSLC_ADVANCED_TEST_FILES)
-        get_filename_component(stem "${test_file}" NAME_WE)
-        file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_file}")
-        string(REGEX REPLACE "\\.[^.]*$" "" test_name "${rel_path}")
+foreach(test_file IN LISTS AZSLC_ADVANCED_TEST_FILES)
+    file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_file}")
+    string(REGEX REPLACE "\\.[^.]*$" "" test_name "${rel_path}")
 
-        add_test(
-            NAME "${test_name}"
-            COMMAND ${AZSLC_PYTHON_COMMAND} "${AZSLC_CTEST_RUNNER}"
+    ly_add_azslc_test(
+        NAME "${test_name}"
+        CATEGORY Advanced
+        TIMEOUT 240
+        RUNNER_ARGS
             --compiler "$<TARGET_FILE:AZ::AZSLC>"
             --file "${test_file}"
             --mode advanced
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        )
+    )
+endforeach()
 
-        set_tests_properties("${test_name}" PROPERTIES
-            LABELS "Advanced"
-            SKIP_RETURN_CODE 77
-            TIMEOUT 240
-        )
-    endforeach()
-endblock()
+foreach(test_file IN LISTS AZSLC_EMISSION_TEST_FILES)
+    file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_file}")
+    string(REGEX REPLACE "\\.[^.]*$" "" test_name "${rel_path}")
 
-block() # Emission
-    foreach(test_file IN LISTS AZSLC_EMISSION_TEST_FILES)
-        file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_file}")
-        string(REGEX REPLACE "\\.[^.]*$" "" test_name "${rel_path}")
-
-        add_test(
-            NAME "${test_name}"
-            COMMAND ${AZSLC_PYTHON_COMMAND} "${AZSLC_CTEST_RUNNER}"
+    ly_add_azslc_test(
+        NAME "${test_name}"
+        CATEGORY Emission
+        TIMEOUT 60
+        RUNNER_ARGS
             --compiler "$<TARGET_FILE:AZ::AZSLC>"
             --file "${test_file}"
             --mode emission
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        )
+    )
+endforeach()
 
-        set_tests_properties("${test_name}" PROPERTIES
-            LABELS "Emission"
-            SKIP_RETURN_CODE 77
-            TIMEOUT 60
-        )
-    endforeach()
-endblock()
+foreach(test_file IN LISTS AZSLC_EMISSION_ERROR_TEST_FILES)
+    file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_file}")
+    string(REGEX REPLACE "\\.[^.]*$" "" test_name "${rel_path}")
 
-block() # Emission Error
-    foreach(test_file IN LISTS AZSLC_EMISSION_ERROR_TEST_FILES)
-        file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_file}")
-        string(REGEX REPLACE "\\.[^.]*$" "" test_name "${rel_path}")
-
-        add_test(
-            NAME "${test_name}"
-            COMMAND ${AZSLC_PYTHON_COMMAND} "${AZSLC_CTEST_RUNNER}"
+    ly_add_azslc_test(
+        NAME "${test_name}"
+        CATEGORY Emission
+        TIMEOUT 60
+        RUNNER_ARGS
             --compiler "$<TARGET_FILE:AZ::AZSLC>"
             --file "${test_file}"
             --mode emission-error
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        )
-
-        set_tests_properties("${test_name}" PROPERTIES
-            LABELS "Emission"
-            SKIP_RETURN_CODE 77
-            TIMEOUT 60
-        )
-    endforeach()
-endblock()
+    )
+endforeach()
 
 block() # Samples
     azslc_add_simple_tests(Samples "" FALSE ${AZSLC_SAMPLE_TEST_FILES})

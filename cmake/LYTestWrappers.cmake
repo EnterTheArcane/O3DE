@@ -173,8 +173,8 @@ function(ly_add_test)
         list(APPEND final_labels ${ly_add_test_LABELS})
     endif()
 
-    # Allow TIAF to apply the label of supported test categories from being run by CTest 
-    o3de_test_impact_apply_test_labels(${ly_add_test_TEST_LIBRARY} final_labels)
+    # Allow TIAF to apply the label of supported test categories from being run by CTest
+    o3de_test_impact_apply_test_labels("${ly_add_test_TEST_LIBRARY}" final_labels)
 
     # labels expects a single param, of concatenated labels
     # this always has a value because ly_add_test_TEST_SUITE is automatically
