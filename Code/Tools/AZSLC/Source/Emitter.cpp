@@ -13,6 +13,7 @@
 #include <cassert>
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <iterator>
 #include <limits>
 #include <optional>
@@ -268,7 +269,7 @@ namespace AZ::ShaderCompiler
                     m_translations.AddCustomBehavior(
                         uid.GetName(),
                         BehaviorEvent::OnReference,
-                        [constructRootconstantReference](QualifiedNameView, UsageContext, std::string proposition, ssize_t)
+                        [constructRootconstantReference](QualifiedNameView, UsageContext, std::string, ssize_t)
                         {
                             // Construct the rootconstant member name which is declared as global variable with the use of get functions.
                             // Type _g_MyRootConstVar = GetShaderRootConst_Member(); So now we just return _g_MyRootConstVar;
@@ -293,7 +294,6 @@ namespace AZ::ShaderCompiler
             {
                 for (auto& member : *array)
                 {
-                    const auto globalScope = QualifiedNameView{"/"};
                     MigrateASTSubTree(member, globalScope);
                 }
             }
@@ -301,7 +301,6 @@ namespace AZ::ShaderCompiler
             // variables get special treatment in case of non-emitConstantBufferBody, because SRG-constants go in a generated-struct: <SRGNAME>_SRGConstantStruct
             for (auto& member : srgInfo->m_implicitStruct.GetMemberFields())
             {
-                const auto globalScope = QualifiedNameView{"/"};
                 auto constantsStruct = MakeSrgConstantsStructName(srgUID);
                 QualifiedNameView landingScope = QualifiedNameView{constantsStruct};
                 if (options.m_emitConstantBufferBody)
@@ -355,7 +354,7 @@ namespace AZ::ShaderCompiler
                         m_translations.AddCustomBehavior(
                             fieldUid.GetName(),
                             BehaviorEvent::OnReference,
-                            [this, srgUID=srgUID](QualifiedNameView, UsageContext, std::string proposition, ssize_t)
+                            [srgUID = srgUID](QualifiedNameView, UsageContext, std::string proposition, ssize_t)
                             {
                                 const std::string constantBufferId = UnMangle(MakeSrgConstantsCBName(srgUID));
                                 const std::string translatedFieldId = UnMangle(std::string{ExtractLeaf(ReMangle(proposition))});
@@ -642,7 +641,7 @@ namespace AZ::ShaderCompiler
                 {
                     if (!IsIn(attrInfo.m_attribute, omissionList))
                     {
-                        EmitAttribute(attrInfo);
+                        this->EmitAttribute(attrInfo);
                     }
                 });
         }
@@ -1123,7 +1122,7 @@ namespace AZ::ShaderCompiler
         m_out << " : register(b" << bindInfo.m_registerBinding.m_pair[bindSet].m_registerIndex << spaceX << ");\n\n";
     }
 
-    void CodeEmitter::EmitSRGSampler(const IdentifierUID& sId, const Options& options, const RootSigDesc& rootSig) const
+    void CodeEmitter::EmitSRGSampler(const IdentifierUID& sId, const Options&, const RootSigDesc& rootSig) const
     {
         EmitAllAttachedAttributes(sId);
         const auto bindSet = BindingPair::Set::Merged;
@@ -1255,7 +1254,7 @@ namespace AZ::ShaderCompiler
             const auto& varInfo = *m_ir->GetSymbolSubAs<VarInfo>(shaderKeyUid.m_name);
             const auto dims = varInfo.m_typeInfoExt.GetDimensions();
             assert(dims.m_dimensions.size() == 1); // This is generated variable, it must have exactly 1 array dimension
-            if (arraySlot >= dims.m_dimensions[0])
+            if (arraySlot >= static_cast<uint32_t>(dims.m_dimensions[0]))
             {
                 const std::string errorMessage = ConcatString(
                     "The option {",
@@ -1412,17 +1411,17 @@ namespace AZ::ShaderCompiler
             const auto qualifiedIdCtx = As<azslParser::QualifiedIdContext*>(nestedNameSpecifierCtx->parent);
             if (!qualifiedIdCtx)
             {
-                const std::string errorMessage = FormatString("Unexpected expression '%s'", token->getText().c_str());
+                const std::string errorMessage = std::format("Unexpected expression '{}'", token->getText());
                 throw AzslcEmitterException(EMITTER_UNEXPECTED_EXPRESSION, token, errorMessage);
             }
             // We only care to call out the error if the token has the name of an SRG.
-            const QualifiedName qualifiedSymbolName(FormatString("/%s", token->getText().c_str()));
+            const QualifiedName qualifiedSymbolName(std::format("/{}", token->getText()));
             if (const IdAndKind* idAndKind = m_ir->GetIdAndKindInfo(qualifiedSymbolName))
             {
                 const auto& [uid, kindInfo] = *idAndKind;
                 if (kindInfo.IsKindOneOf(Kind::ShaderResourceGroup))
                 {
-                    const std::string errorMessage = FormatString("Undefined ShaderResourceGroup member '%s'", qualifiedIdCtx->getText().c_str());
+                    const std::string errorMessage = std::format("Undefined ShaderResourceGroup member '{}'", qualifiedIdCtx->getText());
                     throw AzslcEmitterException(EMITTER_UNDEFINED_SRG_MEMBER, qualifiedIdCtx->getStart(), errorMessage);
                 }
             }

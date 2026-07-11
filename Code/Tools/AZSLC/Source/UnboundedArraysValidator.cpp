@@ -24,9 +24,9 @@ namespace AZ::ShaderCompiler
     }
 
     bool UnboundedArraysValidator::CheckUnboundedArrayFieldCanBeAddedToSrg(
-        const IdentifierUID& srgUid,
+        [[maybe_unused]] const IdentifierUID& srgUid,
         const IdentifierUID& varUid,
-        const VarInfo& varInfo,
+        [[maybe_unused]] const VarInfo& varInfo,
         const TypeClass typeClass,
         std::string* errorMessage)
     {

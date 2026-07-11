@@ -10,9 +10,10 @@
 
 #include "StreamableInterface.h"
 
+#include <cstdint>
 #include <ostream>
 #include <string>
-#include <utility>
+#include <string_view>
 
 namespace AZ
 {
@@ -25,6 +26,8 @@ namespace AZ
 
     public:
         using MakeOStreamStreamable::MakeOStreamStreamable;
+
+        ~NewLineCounterStream() override = default;
 
         Self& operator<<(const char c) override
         {
@@ -63,10 +66,52 @@ namespace AZ
             return *this;
         }
 
-        template <class Any>
-        Self& operator<<(Any&& thing)
+        Self& operator<<(std::string_view str) override
         {
-            m_wrappedStream << std::forward<Any>(thing);
+            for (const char c : str)
+            {
+                if (c == '\n')
+                {
+                    m_lineCount++;
+                }
+            }
+            m_wrappedStream << str;
+            return *this;
+        }
+
+        Self& operator<<(const double n) override
+        {
+            m_wrappedStream << n;
+            return *this;
+        }
+
+        Self& operator<<(const int n) override
+        {
+            m_wrappedStream << n;
+            return *this;
+        }
+
+        Self& operator<<(const int64_t n) override
+        {
+            m_wrappedStream << n;
+            return *this;
+        }
+
+        Self& operator<<(const uint32_t n) override
+        {
+            m_wrappedStream << n;
+            return *this;
+        }
+
+        Self& operator<<(const size_t n) override
+        {
+            m_wrappedStream << n;
+            return *this;
+        }
+
+        Self& operator<<(const bool b) override
+        {
+            m_wrappedStream << b;
             return *this;
         }
 

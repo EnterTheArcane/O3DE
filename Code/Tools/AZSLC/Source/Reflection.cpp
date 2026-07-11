@@ -130,7 +130,6 @@ namespace AZ::ShaderCompiler
         {
             auto& attrVarInfo = *m_ir->GetSymbolSubAs<VarInfo>(memberVar.m_name);
 
-            bool buildOMResult = false;
             if (!semanticOverride.empty())
             {
                 if (!BuildOMElement(jsonVal, attrVarInfo.m_typeInfoExt, semanticOverride, semanticIndex, false, json))
@@ -146,8 +145,8 @@ namespace AZ::ShaderCompiler
                 {
                     return false;
                 }
-                auto [semanticName, semanticIndex, isSystemValue] = ExtractHlslSemantic(hlslSemantic);
-                if (!BuildOMElement(jsonVal, attrVarInfo.m_typeInfoExt, semanticName.c_str(), semanticIndex, isSystemValue, json))
+                auto [semanticName, memberSemanticIndex, isSystemValue] = ExtractHlslSemantic(hlslSemantic);
+                if (!BuildOMElement(jsonVal, attrVarInfo.m_typeInfoExt, semanticName.c_str(), memberSemanticIndex, isSystemValue, json))
                 {
                     return false;
                 }
@@ -309,7 +308,7 @@ namespace AZ::ShaderCompiler
 
             rapidjson::Value semanticStreams = json.MakeArray();
             const auto& funcSubInfo = sym.GetSubRefAs<FunctionInfo>();
-            for (const auto it : funcSubInfo.GetParameters(false))
+            for (const auto& it : funcSubInfo.GetParameters(false))
             {
                 if (!it.m_varId.IsEmpty())
                 {
@@ -948,7 +947,6 @@ namespace AZ::ShaderCompiler
 
         if (options.m_rootConstantsMaxSize > 0)
         {
-            const auto& layoutPacking = options.m_packConstantBuffers;
             rapidjson::Value structLayout = json.MakeArray();
             uint32_t startAt = 0;
             uint32_t strideSize = BuildUserDefinedMemberLayout(

@@ -443,9 +443,9 @@ namespace AZ::Tests
 
         using TL = TypeList<ConstVal<10>, int>;
         ForEachType<TL>(
-            [](auto inst, auto ii_c)
+            []<typename T0>([[maybe_unused]] auto inst, T0 ii_c)
             {
-                using KeyAtii = At_t<decltype(ii_c)::value, TL>;
+                using KeyAtii = At_t<T0::value, TL>;
                 static_assert(
                     ii_c == 0 && isIntegralConstant_v<KeyAtii> && KeyAtii{} == 10
                     || ii_c == 1 && std::is_same_v<KeyAtii, int>);

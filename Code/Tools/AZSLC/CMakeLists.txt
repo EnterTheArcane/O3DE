@@ -6,12 +6,11 @@
 #
 #
 
-if (NOT PAL_TRAIT_BUILD_HOST_TOOLS)
+if(NOT PAL_TRAIT_BUILD_HOST_TOOLS)
     return()
-endif ()
+endif()
 
-add_subdirectory(3rdParty/antlr4)
-add_subdirectory(3rdParty/cli11)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty)
 
 ly_add_target(
     NAME AZSLC EXECUTABLE
@@ -26,22 +25,12 @@ ly_add_target(
     BUILD_DEPENDENCIES
         PRIVATE
             AZ::AzCore
-            3rdParty::antlr4
-            3rdParty::cli11
+            3rdParty::ANTLR4
+            3rdParty::CLI11
 )
 
-target_compile_options(AZSLC PRIVATE ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS})
-
-if (NOT MSVC)
-    target_compile_options(AZSLC PRIVATE
-        -Wno-deprecated-literal-operator
-        -Wno-language-extension-token
-        -Wno-missing-braces
-        -Wno-range-loop-construct
-        -Wno-unused-lambda-capture
-        -Wno-unused-function
-        -Wno-unused-variable
-    )
-endif ()
+target_compile_options(AZSLC PRIVATE
+    ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS}
+)
 
 add_subdirectory(Tests)

@@ -356,7 +356,7 @@ namespace AZ::ShaderCompiler
                 IdentifierUID parent;
                 ForEachPathPart(
                     disambiguated.GetName(),
-                    [this, &solver, &path, &parent, &isFunctionOrVariableOrType](PathPart part)
+                    [&solver, &path, &parent, &isFunctionOrVariableOrType](PathPart part)
                     {
                         path = JoinPath(path, part.m_slice);
                         auto [isFunc, isVar, _] = isFunctionOrVariableOrType(path);

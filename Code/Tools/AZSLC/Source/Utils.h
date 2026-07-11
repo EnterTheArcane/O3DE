@@ -12,7 +12,7 @@
 #include "Exception.h"
 #include "Mangling.h"
 
-#include "antlr4-runtime.h"
+#include "Antlr4.h"
 
 #include "azslParser.h"
 
@@ -336,7 +336,7 @@ namespace AZ::ShaderCompiler
         std::string GetDisplayName() const
         {
             std::vector<StorageFlag> bag;
-            auto end = std::copy_if(
+            std::copy_if(
                 StorageFlag::Enumerate{}.begin(),
                 StorageFlag::Enumerate{}.end(),
                 std::back_inserter(bag),
@@ -543,7 +543,7 @@ namespace AZ::ShaderCompiler
         // Some standards (std140/std430) have extended alignment rules for structures, which dictate that
         //  the alignment inside a struct behaves like base rather than scalar.
         // For all other cases the alignment doesn't change so we can return the input.
-        static Layout GetExtendedLayout(const Layout& scalarLayout)
+        inline Layout GetExtendedLayout(const Layout& scalarLayout)
         {
             if (scalarLayout == Layout::RelaxedStd430Packing)
             {
@@ -557,7 +557,7 @@ namespace AZ::ShaderCompiler
             return scalarLayout;
         }
 
-        static uint32_t AlignUp(const uint32_t value, const uint32_t alignment)
+        inline uint32_t AlignUp(const uint32_t value, const uint32_t alignment)
         {
             if (alignment <= 1)
             {
@@ -568,7 +568,7 @@ namespace AZ::ShaderCompiler
             return (value + mask) & ~mask;
         }
 
-        static uint32_t AlignStructToLargestMember(
+        inline uint32_t AlignStructToLargestMember(
             const Layout layout,
             const uint32_t currentSize,
             const uint32_t memberSize)
@@ -596,7 +596,7 @@ namespace AZ::ShaderCompiler
         }
 
         // Checks if the parameters correspond to either a Vector or a Matrix collapsed to a Vector.
-        static bool IsVectorAligned(const Alignment& alignment, const uint32_t rows, const uint32_t cols)
+        inline bool IsVectorAligned(const Alignment& alignment, const uint32_t rows, const uint32_t cols)
         {
             if (alignment == Alignment::asVectorStart ||
                 alignment == Alignment::asVectorEnd)
@@ -621,7 +621,7 @@ namespace AZ::ShaderCompiler
         //!          https://github.com/microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst#memory-layout-rules
         //! OpenGL : https://www.khronos.org/registry/OpenGL/specs/gl/glspec45.core.pdf#page=159
         //!          https://github.com/Microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst
-        static uint32_t AlignOffset(
+        inline uint32_t AlignOffset(
             const Layout layout,
             const uint32_t currentSize,
             const Alignment& alignment,
@@ -682,15 +682,12 @@ namespace AZ::ShaderCompiler
 
             default:
                 throw std::runtime_error{"PackNextChunk: Unknown format should be handled properly!"};
-                break;
             }
-
-            return 0; // Prevents warning C4715
         }
 
         //! Packs the next chunk of data to the current offset and returns the new offset
         //! Alignment - dictates the alignment rules to follow for packing nextChunkSize
-        static uint32_t PackNextChunk(const Layout layout, const uint32_t nextChunkSize, uint32_t& offset)
+        inline uint32_t PackNextChunk(const Layout layout, const uint32_t nextChunkSize, uint32_t& offset)
         {
             switch (layout)
             {
@@ -717,16 +714,13 @@ namespace AZ::ShaderCompiler
 
             default:
                 throw std::runtime_error{"PackNextChunk: Unknown format should be handled properly!"};
-                break;
             }
-
-            return 0; // Prevents warning C4715
         }
 
         //! Packs the base size into an array of certain dimensions
         //! Dimensions can be 0, in which case it returns the baseSize, because there is no array rules to follow
         //! out Alignment - The minimum alignment required to pack this structure
-        static uint32_t PackIntoArray(const Layout layout, uint32_t baseSize, const ArrayDimensions& dimensions)
+        inline uint32_t PackIntoArray(const Layout layout, uint32_t baseSize, const ArrayDimensions& dimensions)
         {
             if (dimensions.Empty())
             {
@@ -794,7 +788,7 @@ namespace AZ::ShaderCompiler
         //! Packs the base size as a vector or a matrix
         //! Rows and/or cols can be 0. However, if Rows is greater than 0, Cols cannot be 0.
         //! Note! Regardless of major, matrices are defined as rows-by-columns! Rows == 0 means it's not a matrix
-        static uint32_t PackAsVectorMatrix(
+        inline uint32_t PackAsVectorMatrix(
             const Layout layout,
             const uint32_t baseSize,
             const uint32_t rows,
@@ -1604,8 +1598,8 @@ namespace AZ::ShaderCompiler
 
     //! from a special rule: scalarOrVectorOrMatrixType
     inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(
-        azslParser::ScalarOrVectorOrMatrixTypeContext * ctx,
-        std::vector<tree::TerminalNode*> * genericDims = nullptr)
+        azslParser::ScalarOrVectorOrMatrixTypeContext* ctx,
+        [[maybe_unused]] std::vector<tree::TerminalNode*>* genericDims = nullptr)
     {
         return {ExtractedTypeExt{UnqualifiedName{ctx->getText()}}};
         // for now there is no generic part, but mind it when you fix the grammar to support generic vector.
@@ -1613,8 +1607,8 @@ namespace AZ::ShaderCompiler
 
     //! from userDefinedType context
     inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(
-        azslParser::UserDefinedTypeContext * ctx,
-        std::vector<tree::TerminalNode*> * genericDims = nullptr)
+        azslParser::UserDefinedTypeContext* ctx,
+        [[maybe_unused]] std::vector<tree::TerminalNode*>* genericDims = nullptr)
     {
         if (ctx->idExpression())
         {
@@ -1650,7 +1644,7 @@ namespace AZ::ShaderCompiler
         if (ctx->Void())
         {
             assert(std::string_view{AZ::ShaderCompiler::Predefined::Void[0]} == ctx->Void()->getText());
-            return {UnqualifiedName{ctx->Void()->getText()}}; // "void"
+            return {{UnqualifiedName{ctx->Void()->getText()}}}; // "void"
         }
         // this could be a typeof, let's return the node for further resolve!
         return {ExtractedTypeExt{UnqualifiedName{ctx->getText()}, ctx}};

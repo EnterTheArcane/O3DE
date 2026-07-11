@@ -13,6 +13,7 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <format>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
@@ -27,7 +28,7 @@ namespace AZ::ShaderCompiler
         //The pad_to(N) attribute only accepts one input argument.
         if (attrInfo.m_argList.size() != 1)
         {
-            const auto errorMsg = FormatString("The [[pad_to(N)]] attribute only accepts one argument of integral type. %zu arguments were given.", attrInfo.m_argList.size());
+            const auto errorMsg = std::format("The [[pad_to(N)]] attribute only accepts one argument of integral type. {} arguments were given.", attrInfo.m_argList.size());
             throw AzslcIrException{IR_INVALID_PAD_TO_ARGUMENTS, errorMsg, attrInfo.m_lineNumber};
         }
         //Is the argument integral?
@@ -47,7 +48,7 @@ namespace AZ::ShaderCompiler
         static constexpr uint32_t MultipleOf = 4;
         if (pad_to_value & (MultipleOf - 1))
         {
-            const auto errorMsg = FormatString("Invalid integral in [[pad_to(N)]]. %u is not a multiple of %u", pad_to_value, MultipleOf);
+            const auto errorMsg = std::format("Invalid integral in [[pad_to(N)]]. {} is not a multiple of {}", pad_to_value, MultipleOf);
             throw AzslcIrException{IR_INVALID_PAD_TO_ARGUMENTS, errorMsg, attrInfo.m_lineNumber};
         }
 
@@ -58,11 +59,10 @@ namespace AZ::ShaderCompiler
             const auto varUid = m_ir.GetLastMemberVariable(curScopeId);
             if (varUid.IsEmpty())
             {
-                const auto errorMsg = FormatString(
+                const auto errorMsg = std::format(
                     "The [[pad_to(N)]] attribute must be added after a member variable."
-                    " The current scope '%.*s' doesn't have a declared variable yet.",
-                    static_cast<int>(curScopeId.GetName().size()),
-                    curScopeId.GetName().data());
+                    " The current scope '{}' doesn't have a declared variable yet.",
+                    static_cast<std::string_view>(curScopeId.GetName()));
                 throw AzslcIrException{IR_INVALID_PAD_TO_LOCATION, errorMsg, attrInfo.m_lineNumber};
             }
             const auto structItor = m_scopesToPad.find(curScopeId);
@@ -82,11 +82,9 @@ namespace AZ::ShaderCompiler
         }
         else
         {
-            const auto errorMsg = FormatString(
-                "The [[pad_to(N)]] attribute is only supported inside  inside 'struct', 'class' or 'ShaderResourceGroup'."
-                " The current scope '%.*s' is not one of those scope types.",
-                static_cast<int>(curScopeId.GetName().size()),
-                curScopeId.GetName().data());
+            const auto errorMsg = std::format(
+                "The [[pad_to(N)]] attribute is only supported inside  inside 'struct', 'class' or 'ShaderResourceGroup'. The current scope '{}' is not one of those scope types.",
+                static_cast<std::string_view>(curScopeId.GetName()));
             throw AzslcIrException{IR_INVALID_PAD_TO_LOCATION, errorMsg, attrInfo.m_lineNumber};
         }
     }
@@ -119,7 +117,9 @@ namespace AZ::ShaderCompiler
 
             if (!classInfo)
             {
-                const auto errorMsg = FormatString("Error during struct padding: couldn't find ClassInfo for scope %.*s", scopeUid.GetName().size(), scopeUid.GetName().data());
+                const auto errorMsg = std::format(
+                    "Error during struct padding: couldn't find ClassInfo for scope {}",
+                    static_cast<std::string_view>(scopeUid.GetName()));
                 throw std::logic_error(errorMsg.c_str());
             }
             InsertScopePaddings(classInfo, scopeUid, varInfoUidToPadMap, middleEndconfigration);
@@ -237,14 +237,11 @@ namespace AZ::ShaderCompiler
                 if (!IsPowerOfTwo(padToBoundary))
                 {
                     //Runtime error.
-                    const std::string errorMsg = FormatString(
-                        "Offset %u after Member variable %.*s of struct %.*s "
-                        "is bigger than requested boundary = [[pad_to(%u)]], and this case requires a power of two boundary.",
+                    const std::string errorMsg = std::format(
+                        "Offset {} after Member variable {} of struct {} is bigger than requested boundary = [[pad_to({})]], and this case requires a power of two boundary.",
                         nextMemberOffset,
-                        static_cast<int>(varUid.m_name.size()),
-                        varUid.m_name.data(),
-                        static_cast<int>(scopeUid.m_name.size()),
-                        scopeUid.m_name.data(),
+                        static_cast<const std::string&>(varUid.m_name),
+                        static_cast<const std::string&>(scopeUid.m_name),
                         padToBoundary);
                     const auto* varInfoPtr = m_ir.GetSymbolSubAs<VarInfo>(varUid.m_name);
                     throw AzslcIrException{
@@ -301,8 +298,6 @@ namespace AZ::ShaderCompiler
                 };
             }
             const TypeClass varClass = exportedType.m_typeClass;
-            bool isPrefedined = IsPredefinedType(varClass);
-
             size = varInfo.m_typeInfoExt.GetTotalSize(layoutPacking, emitRowMajor);
             auto startAt = offset;
 
@@ -537,7 +532,7 @@ namespace AZ::ShaderCompiler
             if (deltaBytes < numBytesToAdd && deltaBytes != 0)
             {
                 const auto typeName = getFloatTypeNameOfSize(deltaBytes);
-                const auto variableName = FormatString("__pad_at%u", startingOffset);
+                const auto variableName = std::format("__pad_at{}", startingOffset);
                 const IdentifierUID newVarUid = createVariableInSymbolTable(scopeUid.GetName(), typeName, UnqualifiedName{variableName});
                 if (insertBeforeThisUid.IsEmpty())
                 {
@@ -559,7 +554,7 @@ namespace AZ::ShaderCompiler
             const auto numFloat4s = numBytesToAdd >> 4;
             if (numFloat4s)
             {
-                const auto variableName = FormatString("__pad_at%u", startingOffset);
+                const auto variableName = std::format("__pad_at{}", startingOffset);
                 const IdentifierUID newVarUid = createVariableInSymbolTable(scopeUid.GetName(), "float4", UnqualifiedName{variableName}, numFloat4s);
                 if (insertBeforeThisUid.IsEmpty())
                 {
@@ -579,7 +574,7 @@ namespace AZ::ShaderCompiler
         // 3rd variable. The remainder
         if (numBytesToAdd > 0)
         {
-            const auto variableName = FormatString("__pad_at%u", startingOffset);
+            const auto variableName = std::format("__pad_at{}", startingOffset);
             const auto typeName = getFloatTypeNameOfSize(numBytesToAdd);
             const IdentifierUID newVarUid = createVariableInSymbolTable(scopeUid.GetName(), typeName, UnqualifiedName{variableName});
             if (insertBeforeThisUid.IsEmpty())

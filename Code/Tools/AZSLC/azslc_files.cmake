@@ -6,6 +6,7 @@
 #
 
 set(FILES
+        Source/Antlr4.h
         Source/Backend.cpp
         Source/Backend.h
         Source/CodeEmissionMutator.h

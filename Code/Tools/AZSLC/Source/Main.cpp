@@ -6,8 +6,6 @@
  *
  */
 
-#include <CLI/CLI.hpp>
-
 #include "Reflection.h"
 #include "Emitter.h"
 #include "HomonymVisitor.h"
@@ -17,7 +15,9 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <cstddef>
+#include <cstdio>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
@@ -34,11 +34,18 @@
 #include <regex>
 #include <set>
 #include <stdexcept>
-#include <string>
 #include <string_view>
+#include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+#if defined(_MSC_VER)
+#undef strtoll
+#undef strtoull
+#endif
+
+#include <CLI/CLI.hpp>
 
 namespace AZ::ShaderCompiler
 {
@@ -713,7 +720,12 @@ int main(int argc, const char* argv[])
 
             if (!minDescriptors.empty())
             {
-                sscanf(
+                const int parsedDescriptorCount =
+#if defined(_MSC_VER)
+                    sscanf_s(
+#else
+                    sscanf(
+#endif
                     minDescriptors.c_str(),
                     "%d,%d,%d,%d,%d",
                     &emitOptions.m_minAvailableDescriptors.m_descriptorsTotal,
@@ -721,6 +733,11 @@ int main(int argc, const char* argv[])
                     &emitOptions.m_minAvailableDescriptors.m_samplers,
                     &emitOptions.m_minAvailableDescriptors.m_textures,
                     &emitOptions.m_minAvailableDescriptors.m_buffers);
+
+                if (parsedDescriptorCount != 5)
+                {
+                    throw std::runtime_error("Invalid --min-descriptors value, expected total,spaces,samplers,textures,buffers");
+                }
             }
 
             if (*maxSpacesOpt)

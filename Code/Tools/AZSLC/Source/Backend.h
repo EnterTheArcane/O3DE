@@ -154,6 +154,8 @@ namespace AZ::ShaderCompiler
         {
         }
 
+        virtual ~Backend() = default;
+
         //! Gets the IntermediateRepresentation object
         const IntermediateRepresentation* GetIR() const
         {

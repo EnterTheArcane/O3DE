@@ -16294,12 +16294,11 @@ bool azslParser::sempred(RuleContext *context, size_t ruleIndex, size_t predicat
     case 44: return expressionExtSempred(antlrcpp::downCast<ExpressionExtContext *>(context), predicateIndex);
 
   default:
-    break;
+    return true;
   }
-  return true;
 }
 
-bool azslParser::expressionSempred(ExpressionContext *_localctx, size_t predicateIndex) {
+bool azslParser::expressionSempred(ExpressionContext *, size_t predicateIndex) {
   switch (predicateIndex) {
     case 0: return precpred(_ctx, 3);
     case 1: return precpred(_ctx, 10);
@@ -16310,19 +16309,17 @@ bool azslParser::expressionSempred(ExpressionContext *_localctx, size_t predicat
     case 6: return precpred(_ctx, 1);
 
   default:
-    break;
+    return true;
   }
-  return true;
 }
 
-bool azslParser::expressionExtSempred(ExpressionExtContext *_localctx, size_t predicateIndex) {
+bool azslParser::expressionExtSempred(ExpressionExtContext *, size_t predicateIndex) {
   switch (predicateIndex) {
     case 7: return precpred(_ctx, 1);
 
   default:
-    break;
+    return true;
   }
-  return true;
 }
 
 void azslParser::initialize() {

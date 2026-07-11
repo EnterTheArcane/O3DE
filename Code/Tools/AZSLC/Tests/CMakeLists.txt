@@ -10,10 +10,7 @@ if(NOT PAL_TRAIT_BUILD_TESTS_SUPPORTED OR NOT BUILD_TESTING)
     return()
 endif()
 
-update_pip_requirements(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../requirements.txt"
-    azslc_test_requirements
-)
+update_pip_requirements("${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt" azslc_test_requirements)
 
 set(AZSLC_CTEST_RUNNER "${CMAKE_CURRENT_SOURCE_DIR}/ctest-runner.py")
 include(azslc_test_files.cmake)

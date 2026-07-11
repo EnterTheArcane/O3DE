@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <ostream>
 #include <string>
+#include <string_view>
 
 namespace AZ
 {
@@ -19,10 +20,14 @@ namespace AZ
     class Streamable
     {
     public:
+        virtual ~Streamable() = default;
+
         virtual Streamable& operator<<(char) = 0; // template virtual method are forbidden in C++, so manual listing :(
         virtual Streamable& operator<<(const char*) = 0;
 
         virtual Streamable& operator<<(double) = 0;
+
+        virtual Streamable& operator<<(int) = 0;
 
         virtual Streamable& operator<<(int64_t) = 0;
 
@@ -33,6 +38,7 @@ namespace AZ
         virtual Streamable& operator<<(bool) = 0;
 
         virtual Streamable& operator<<(const std::string&) = 0;
+        virtual Streamable& operator<<(std::string_view) = 0;
     };
 
     // trivial concrete version to wrap classic std::ostream objects
@@ -43,6 +49,8 @@ namespace AZ
             : m_wrappedStream(streamToWrap)
         {
         }
+
+        ~MakeOStreamStreamable() override = default;
 
         Streamable& operator<<(const char c) override
         {
@@ -62,7 +70,19 @@ namespace AZ
             return *this;
         }
 
+        Streamable& operator<<(std::string_view str) override
+        {
+            m_wrappedStream << str;
+            return *this;
+        }
+
         Streamable& operator<<(const double n) override
+        {
+            m_wrappedStream << n;
+            return *this;
+        }
+
+        Streamable& operator<<(const int n) override
         {
             m_wrappedStream << n;
             return *this;

@@ -1070,11 +1070,11 @@ namespace AZ::ShaderCompiler
             m_kind = k;
             int typeIndex = -1;
             ForEachType<MapKindToTypesT>(
-                [&typeIndex, k](auto inst, auto ii_c)
+                [&typeIndex, k]<typename T0>([[maybe_unused]] auto inst, T0 ii_c)
                 {
                     // the decltype(ii_c)::value is to prevent MSVC from crashing with an internal error. no kidding.
                     // using KeyAtii = At_t<ii_c, MapKindToTypesT>;  BOOM !
-                    using KeyAtii = At_t<decltype(ii_c)::value, MapKindToTypesT>;
+                    using KeyAtii = At_t<T0::value, MapKindToTypesT>;
                     if constexpr (isIntegralConstant_v<KeyAtii>) // protection because we can't compare TypeRefInfo to Kind without a build error.
                     {
                         if (KeyAtii{} == k) // found k in the maplist

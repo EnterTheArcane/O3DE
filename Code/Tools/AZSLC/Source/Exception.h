@@ -11,7 +11,7 @@
 #include "GenericUtils.h"
 #include "PreprocessorLineDirectiveFinder.h"
 
-#include "antlr4-runtime.h"
+#include "Antlr4.h"
 
 #include <cstdint>
 #include <exception>
@@ -177,7 +177,7 @@ namespace AZ::ShaderCompiler
             return m_errorMessage.c_str();
         }
 
-        uint16_t GetErrorCode() const
+        uint32_t GetErrorCode() const
         {
             return m_errorCode;
         }
@@ -256,7 +256,7 @@ namespace AZ::ShaderCompiler
         static inline PreprocessorLineDirectiveFinder* s_lineFinder;
 
     protected:
-        const uint16_t m_errorCode;
+        const uint32_t m_errorCode;
         const std::string_view m_errorType;
         const Token* m_token;
         std::string m_errorMessage;
@@ -407,35 +407,19 @@ namespace AZ::ShaderCompiler
 
         std::function<bool(antlr4::Recognizer*, antlr4::Token*)> m_isKeywordPredicate;
 
-        void reportAmbiguity(
-            antlr4::Parser* recognizer,
-            const antlr4::dfa::DFA& dfa,
-            size_t startIndex,
-            size_t stopIndex,
-            bool exact,
-            const antlrcpp::BitSet& ambigAlts,
-            antlr4::atn::ATNConfigSet* configs) override
+        void reportAmbiguity(antlr4::Parser*, const antlr4::dfa::DFA&, size_t, size_t, bool, const antlrcpp::BitSet&, antlr4::atn::ATNConfigSet*) override
         {
+            // NO-OP
         }
 
-        void reportAttemptingFullContext(
-            antlr4::Parser* recognizer,
-            const antlr4::dfa::DFA& dfa,
-            size_t startIndex,
-            size_t stopIndex,
-            const antlrcpp::BitSet& conflictingAlts,
-            antlr4::atn::ATNConfigSet* configs) override
+        void reportAttemptingFullContext(antlr4::Parser*, const antlr4::dfa::DFA&, size_t, size_t, const antlrcpp::BitSet&, antlr4::atn::ATNConfigSet*) override
         {
+            // NO-OP
         }
 
-        void reportContextSensitivity(
-            antlr4::Parser* recognizer,
-            const antlr4::dfa::DFA& dfa,
-            size_t startIndex,
-            size_t stopIndex,
-            size_t prediction,
-            antlr4::atn::ATNConfigSet* configs) override
+        void reportContextSensitivity(antlr4::Parser*, const antlr4::dfa::DFA&, size_t, size_t, size_t, antlr4::atn::ATNConfigSet*) override
         {
+            // NO-OP
         }
     };
 

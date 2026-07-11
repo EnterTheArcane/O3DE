@@ -641,7 +641,7 @@ namespace AZ::ShaderCompiler
 #ifndef NDEBUG
 namespace AZ::Tests
 {
-    inline void Func(AZ::ShaderCompiler::UnqualifiedName un)
+    inline void Func(AZ::ShaderCompiler::UnqualifiedName)
     {
     }
 

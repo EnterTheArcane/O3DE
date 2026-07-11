@@ -431,7 +431,7 @@ namespace AZ::ShaderCompiler
         rapidjson::Value& varOption,
         const IdentifierUID& varUid,
         const VarInfo* varInfo,
-        const Options& options,
+        const Options&,
         JsonBuilder& json) const
     {
         rapidjson::Value optValues = json.MakeArray();
@@ -650,7 +650,7 @@ namespace AZ::ShaderCompiler
         return varRoot;
     }
 
-    void Backend::SetupOptionsSpecializationId(const Options& options) const
+    void Backend::SetupOptionsSpecializationId(const Options&) const
     {
         uint32_t specializationId = 0;
         for (auto& [uid, varInfo, kindInfo] : m_ir->m_symbols.GetOrderedSymbolsOfSubType_3<VarInfo>())
@@ -852,7 +852,7 @@ namespace AZ::ShaderCompiler
             RootSigDesc::SrgDesc srgDesc;
             srgDesc.m_uid = srgUid;
 
-            for (const auto tId : srgInfo->m_srViews)
+            for (const auto& tId : srgInfo->m_srViews)
             {
                 if (useUniqueIndices && std::find(srgInfo->m_unboundedArrays.begin(), srgInfo->m_unboundedArrays.end(), tId) != srgInfo->m_unboundedArrays.end())
                 {
@@ -863,7 +863,7 @@ namespace AZ::ShaderCompiler
                 srgDesc.m_parameters.push_back(
                     ReflectOneExternalResourceAndWrapWithUnifyIndices(tId, bindInfo, rootSig));
             }
-            for (const auto sId : srgInfo->m_samplers)
+            for (const auto& sId : srgInfo->m_samplers)
             {
                 if (useUniqueIndices && !srgInfo->m_unboundedArrays.empty() && srgInfo->m_unboundedArrays[0] == sId)
                 {
@@ -884,7 +884,7 @@ namespace AZ::ShaderCompiler
             }
             if (!options.m_emitConstantBufferBody) // emitCB is the SM5- "cbufer{}" block syntax. !emitCB is the "ConstantBuffer<>" SM5.1+ syntax
             {
-                for (const auto cId : srgInfo->m_CBs)
+                for (const auto& cId : srgInfo->m_CBs)
                 {
                     srgDesc.m_parameters.push_back(
                         ReflectOneExternalResourceAndWrapWithUnifyIndices(cId, bindInfo, rootSig));
@@ -899,7 +899,7 @@ namespace AZ::ShaderCompiler
             // must be added after that last resource in the register space.
             if (useUniqueIndices)
             {
-                for (const auto tId : srgInfo->m_unboundedArrays)
+                for (const auto& tId : srgInfo->m_unboundedArrays)
                 {
                     srgDesc.m_parameters.push_back(
                         ReflectOneExternalResourceAndWrapWithUnifyIndices(tId, bindInfo, rootSig));

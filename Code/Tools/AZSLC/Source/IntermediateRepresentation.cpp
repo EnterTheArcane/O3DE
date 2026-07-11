@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <format>
 #include <iostream>
 #include <limits>
 #include <optional>
@@ -181,7 +182,7 @@ namespace AZ::ShaderCompiler
         {
             if (!srgInfo->m_semantic)
             {
-                const auto errorMsg = FormatString("Missing ShaderResourceGroupSemantic for ShaderResourceGroup [%s]", srgInfo->m_declNode->getText().c_str());
+                const auto errorMsg = std::format("Missing ShaderResourceGroupSemantic for ShaderResourceGroup [{}]", srgInfo->m_declNode->getText());
                 throw AzslcIrException(IR_SRG_WITHOUT_SEMANTIC, errorMsg);
             }
 
@@ -273,8 +274,6 @@ namespace AZ::ShaderCompiler
                 // In turn if all Seenats for any given used SRG are removed then the SRG becomes unused.
                 std::vector<misc::Interval> unusedSrgScopes = getSymbolScopesFunc(srgUid);
 
-                SRGInfo* srgInfo = GetSymbolSubAs<SRGInfo>(srgUid.GetName());
-
                 std::vector<IdentifierUID> symbolsToDelete = GetChildren(srgUid);
                 for (const auto& uid : symbolsToDelete)
                 {
@@ -316,7 +315,10 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    std::string ToYaml(const TypeRefInfo& tref, const IntermediateRepresentation& ir, std::string_view indent)
+    std::string ToYaml(
+        const TypeRefInfo& tref,
+        const IntermediateRepresentation& ir,
+        [[maybe_unused]] std::string_view indent)
     {
         if (tref.IsEmpty())
         {
@@ -728,7 +730,6 @@ namespace AZ::ShaderCompiler
         if (middleEndconfigration.m_padRootConstantCB)
         {
             const auto layoutPacking = middleEndconfigration.m_packConstantBuffers;
-            uint32_t startAt = Packing::AlignOffset(layoutPacking, 0, Packing::Alignment::asStructStart, 0, 0);
             const uint32_t strideSize = CalculateSizeOfRootConstantsCB(rootConstantStructUid, middleEndconfigration.m_isRowMajor, layoutPacking);
             uint32_t endOffset = 0;
             switch (layoutPacking)
@@ -758,7 +759,7 @@ namespace AZ::ShaderCompiler
                 varInfo.m_isPublic = false;
 
                 assert(padSize == 16 || padSize == 12 || padSize == 8 || padSize == 4);
-                std::string typeName = FormatString("uint%d", padSize / 4);
+                std::string typeName = std::format("uint{}", padSize / 4);
 
                 const ExtractedTypeExt padType = {UnqualifiedNameView(typeName), nullptr};
                 varInfo.m_typeInfoExt = ExtendedTypeInfo{
@@ -1048,14 +1049,14 @@ namespace AZ::ShaderCompiler
                 prepadComponents = 2;
             }
 
-            std::string solution = FormatString(
-                "- A 'float%d' variable should be added before the variable '%s' in '%s %s' at Line number %zu of '%s'\n",
+            std::string solution = std::format(
+                "- A 'float{}' variable should be added before the variable '{}' in '{} {}' at Line number {} of '{}'\n",
                 prepadComponents,
-                insertBeforeThisUid.GetNameLeaf().c_str(),
-                typeName.c_str(),
-                parentName.data(),
+                static_cast<const std::string&>(insertBeforeThisUid.GetNameLeaf()),
+                typeName,
+                static_cast<std::string_view>(parentName),
                 virtualLine,
-                lineInfo->m_containingFilename.c_str());
+                lineInfo->m_containingFilename);
             return solution;
         };
 

@@ -36,7 +36,7 @@ namespace AZ::ShaderCompiler
     std::string PlatformEmitter_Metal::GetRootConstantsView(
         const CodeEmitter& codeEmitter,
         const RootSigDesc& rootSig,
-        const Options& options,
+        const Options&,
         const BindingPair::Set signatureQuery) const
     {
         std::stringstream strOut;

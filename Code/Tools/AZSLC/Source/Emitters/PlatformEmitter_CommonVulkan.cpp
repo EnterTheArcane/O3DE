@@ -38,7 +38,6 @@ namespace AZ::ShaderCompiler
             // Enums are not a valid type for specialization constant, so we use the underlaying scalar type.
             // The we add a global static variable with the enum type that cast from the specialization constant.
             auto* enumClassInfo = ir->GetSymbolSubAs<ClassInfo>(retInfo.m_typeId.GetName());
-            auto& enumerators = enumClassInfo->GetOrderedMembers();
             auto scalarType = enumClassInfo->Get<EnumerationInfo>()->m_underlyingType.m_arithmeticInfo.UnderlyingScalarToStr();
             std::string scName = JoinAllNestedNamesWithUnderscore(symbolUid.m_name) + "_SC_OPTION";
             stream << "const " << scalarType << " " << scName;

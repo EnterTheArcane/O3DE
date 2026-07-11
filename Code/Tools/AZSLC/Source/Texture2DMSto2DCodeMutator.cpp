@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <array>
+#include <format>
 #include <iterator>
 #include <string>
 #include <string_view>
@@ -258,7 +259,7 @@ namespace AZ::ShaderCompiler
         {
             const ssize_t parenthesisTokenIndex = rightParenthesisNode->getSymbol()->getTokenIndex();
             CodeMutation codeMutation;
-            std::string samplesExpression = AZ::FormatString("; %s = 1 ", lastArgumentName.c_str());
+            std::string samplesExpression = std::format("; {} = 1 ", lastArgumentName);
             codeMutation.m_append.emplace(samplesExpression);
             m_mutations.emplace(parenthesisTokenIndex, codeMutation);
         }
@@ -391,9 +392,9 @@ namespace AZ::ShaderCompiler
         const std::string typeHlsl = Join(filtered, " ");
         if (initializationValue && initializationValue[0] != '\0')
         {
-            return FormatString("%s %s = (%s)%s;\n", typeHlsl.c_str(), uqName.c_str(), typeHlsl.c_str(), initializationValue);
+            return std::format("{} {} = ({}){};\n", typeHlsl, static_cast<const std::string&>(uqName), typeHlsl, initializationValue);
         }
-        return FormatString("%s %s;\n", typeHlsl.c_str(), uqName.c_str());
+        return std::format("{} {};\n", typeHlsl, static_cast<const std::string&>(uqName));
     }
 
     void Texture2DMSto2DCodeMutator::DropMultiSamplingSystemSemanticFromFunction(
@@ -463,7 +464,7 @@ namespace AZ::ShaderCompiler
         const IdentifierUID& varUid,
         const VarInfo* varInfo,
         const std::string& systemSemanticName,
-        const IdentifierUID& structUid)
+        [[maybe_unused]] const IdentifierUID& structUid)
     {
         // This is the case of member variable of a struct, but it is a system semantic.
         // Example:

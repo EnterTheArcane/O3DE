@@ -12,6 +12,7 @@
 #include <cassert>
 #include <cctype>
 #include <cstdint>
+#include <format>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -52,27 +53,6 @@ namespace AZ::ShaderCompiler
                 }
             }
             return qualifiers;
-        }
-
-        TypeQualifiers ExtractTypeQualifiers(AstType* ctx)
-        {
-            if (ctx->storageFlags())
-            {
-                return ExtractTypeQualifiers(ctx->storageFlags());
-            }
-
-            return TypeQualifiers{};
-        }
-
-        TypeQualifiers ExtractTypeQualifiers(AstUnnamedVarDecl* ctx)
-        {
-            azslParser::StorageFlagsContext* flags = ExtractStorageFlagsFromUnnamedVariableDeclarator(ctx);
-            if (flags)
-            {
-                return ExtractTypeQualifiers(flags);
-            }
-
-            return TypeQualifiers{};
         }
 
         void CheckFunctionReturnTypeModifierNotOptionNorRootconstant(const TypeQualifiers& qualifier, size_t line)
@@ -775,11 +755,10 @@ namespace AZ::ShaderCompiler
         {
             if (!varInfo.m_typeInfoExt.IsClassFound())
             {
-                const std::string message = FormatString(
-                    "Unknown type '%s' for shader option '%.*s'",
-                    varInfo.m_typeInfoExt.GetDisplayName().c_str(),
-                    static_cast<int>(uqNameView.size()),
-                    uqNameView.data());
+                const std::string message = std::format(
+                    "Unknown type '{}' for shader option '{}'",
+                    varInfo.m_typeInfoExt.GetDisplayName(),
+                    static_cast<std::string_view>(uqNameView));
                 throw AzslcOrchestratorException{ORCHESTRATOR_UNKNOWN_OPTION_TYPE, ctx->start, message};
             }
             // we'll set that here, an option is better flagged as static const for simplicity during emission
@@ -1105,68 +1084,68 @@ namespace AZ::ShaderCompiler
                 desc.m_anisotropyEnable = true;
             }
 
-            else if (auto opt = samplerOption->minLodOption())
+            else if (auto minLodOption = samplerOption->minLodOption())
             {
-                auto minLODVal = FoldEvalStaticConstExprNumericValue(opt->FloatLiteral(), false);
+                auto minLODVal = FoldEvalStaticConstExprNumericValue(minLodOption->FloatLiteral(), false);
                 desc.m_mipLodMin = ExtractValueAsFloat(minLODVal);
             }
 
-            else if (auto opt = samplerOption->maxLodOption())
+            else if (auto maxLodOption = samplerOption->maxLodOption())
             {
-                auto maxLODVal = FoldEvalStaticConstExprNumericValue(opt->FloatLiteral(), false);
+                auto maxLODVal = FoldEvalStaticConstExprNumericValue(maxLodOption->FloatLiteral(), false);
                 desc.m_mipLodMax = ExtractValueAsFloat(maxLODVal);
             }
 
-            else if (auto opt = samplerOption->mipLodBiasOption())
+            else if (auto mipLodBiasOption = samplerOption->mipLodBiasOption())
             {
-                auto biasVal = FoldEvalStaticConstExprNumericValue(opt->FloatLiteral(), false);
+                auto biasVal = FoldEvalStaticConstExprNumericValue(mipLodBiasOption->FloatLiteral(), false);
                 desc.m_mipLodBias = ExtractValueAsFloat(biasVal);
             }
 
-            else if (auto opt = samplerOption->minFilterOption())
+            else if (auto minFilterOption = samplerOption->minFilterOption())
             {
-                desc.m_filterMin = GetFilterType(opt->filterModeEnum());
+                desc.m_filterMin = GetFilterType(minFilterOption->filterModeEnum());
             }
 
-            else if (auto opt = samplerOption->magFilterOption())
+            else if (auto magFilterOption = samplerOption->magFilterOption())
             {
-                desc.m_filterMag = GetFilterType(opt->filterModeEnum());
+                desc.m_filterMag = GetFilterType(magFilterOption->filterModeEnum());
             }
 
-            else if (auto opt = samplerOption->mipFilterOption())
+            else if (auto mipFilterOption = samplerOption->mipFilterOption())
             {
-                desc.m_filterMip = GetFilterType(opt->filterModeEnum());
+                desc.m_filterMip = GetFilterType(mipFilterOption->filterModeEnum());
             }
 
-            else if (auto opt = samplerOption->reductionTypeOption())
+            else if (auto reductionTypeOption = samplerOption->reductionTypeOption())
             {
-                desc.m_reductionType = GetRedcType(opt->reductionTypeEnum());
+                desc.m_reductionType = GetRedcType(reductionTypeOption->reductionTypeEnum());
             }
 
-            else if (auto opt = samplerOption->comparisonFunctionOption())
+            else if (auto comparisonFunctionOption = samplerOption->comparisonFunctionOption())
             {
-                desc.m_comparisonFunc = GetCompFunc(opt->comparisonFunctionEnum());
+                desc.m_comparisonFunc = GetCompFunc(comparisonFunctionOption->comparisonFunctionEnum());
                 desc.m_isComparison = true;
             }
 
-            else if (auto opt = samplerOption->addressUOption())
+            else if (auto addressUOption = samplerOption->addressUOption())
             {
-                desc.m_addressU = GetAddressMode(opt->addressModeEnum());
+                desc.m_addressU = GetAddressMode(addressUOption->addressModeEnum());
             }
 
-            else if (auto opt = samplerOption->addressVOption())
+            else if (auto addressVOption = samplerOption->addressVOption())
             {
-                desc.m_addressV = GetAddressMode(opt->addressModeEnum());
+                desc.m_addressV = GetAddressMode(addressVOption->addressModeEnum());
             }
 
-            else if (auto opt = samplerOption->addressWOption())
+            else if (auto addressWOption = samplerOption->addressWOption())
             {
-                desc.m_addressW = GetAddressMode(opt->addressModeEnum());
+                desc.m_addressW = GetAddressMode(addressWOption->addressModeEnum());
             }
 
-            else if (auto opt = samplerOption->borderColorOption())
+            else if (auto borderColorOption = samplerOption->borderColorOption())
             {
-                desc.m_borderColor = GetBorderColor(opt->borderColorEnum());
+                desc.m_borderColor = GetBorderColor(borderColorOption->borderColorEnum());
             }
         }
         return desc;
@@ -1982,13 +1961,13 @@ namespace AZ::ShaderCompiler
                 if (srgInfo.m_semantic->GetNameLeaf() != semanticName)
                 {
                     const LineDirectiveInfo* originalSrglineInfo = AzslcException::s_lineFinder->GetNearestPreprocessorLineDirective(srgInfo.m_declNode->Semantic->getLine());
-                    const std::string errorMsg = FormatString(
-                        "'partial' extension of ShaderResourceGroup [%s] with semantic [%s] shall not bind a different semantic than [%s] found in line %u of %s",
-                        ctx->Name->getText().c_str(),
-                        semanticName.c_str(),
-                        srgInfo.m_semantic->GetNameLeaf().c_str(),
+                    const std::string errorMsg = std::format(
+                        "'partial' extension of ShaderResourceGroup [{}] with semantic [{}] shall not bind a different semantic than [{}] found in line {} of {}",
+                        ctx->Name->getText(),
+                        semanticName,
+                        static_cast<const std::string&>(srgInfo.m_semantic->GetNameLeaf()),
                         originalSrglineInfo->m_forcedLineNumber,
-                        originalSrglineInfo->m_containingFilename.c_str());
+                        originalSrglineInfo->m_containingFilename);
                     throw AzslcOrchestratorException{
                         ORCHESTRATOR_SRG_EXTENSION_HAS_DIFFERENT_SEMANTIC,
                         ctx->Semantic,

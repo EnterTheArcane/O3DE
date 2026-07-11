@@ -11,7 +11,7 @@ param()
 $ErrorActionPreference = "Stop"
 
 $grammarDirectory = $PSScriptRoot
-$antlrJar = Join-Path $grammarDirectory "..\..\3rdParty\antlr4\antlr4.jar"
+$antlrJar = Join-Path $grammarDirectory "antlr4.jar"
 $lexerGrammar = Join-Path $grammarDirectory "azslLexer.g4"
 $parserGrammar = Join-Path $grammarDirectory "azslParser.g4"
 

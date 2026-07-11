@@ -9,8 +9,8 @@
 #pragma once
 
 #include "MetaUtils.h"
-
 #include "StreamableInterface.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cctype>
@@ -18,7 +18,6 @@
 #include <initializer_list>
 #include <iterator>
 #include <map>
-#include <memory>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -419,16 +418,6 @@ namespace AZ
         return ret;
     }
 
-    template <typename... Args>
-    std::string FormatString(const char* format, Args... args)
-    {
-        const int size = snprintf(nullptr, 0, format, args...) + 1; // Extra space for '\0'
-        assert(size > 0);
-        const std::unique_ptr<char[]> buf(new char[size]);
-        snprintf(buf.get(), size, format, args...);
-        return std::string(buf.get());
-    }
-
     // Is-One-Of will check if a variable is equal to any of the values listed on the other parameters.
     // Example: IsOneOf(variableKind, Function, Enumeration) is short for: variableKind == Function || variableKind == Enumeration.
     // 2 arguments count: recursion terminal overload.
@@ -464,7 +453,7 @@ namespace AZ
 
     // tail case
     template <typename Deduced>
-    bool DynamicTypeIsAnyOf(Deduced* base)
+    bool DynamicTypeIsAnyOf(Deduced*)
     {
         return false;
     }

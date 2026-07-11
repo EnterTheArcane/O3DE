@@ -80,7 +80,7 @@ namespace AZ::ShaderCompiler
     std::string PlatformEmitter::GetRootConstantsView(
         const CodeEmitter& codeEmitter,
         const RootSigDesc& rootSig,
-        const Options& options,
+        const Options&,
         const BindingPair::Set signatureQuery) const
     {
         std::stringstream strOut;
@@ -97,12 +97,12 @@ namespace AZ::ShaderCompiler
     }
 
     std::pair<std::string, std::string> PlatformEmitter::GetDataViewHeaderFooter(
-        const CodeEmitter& codeEmitter,
-        const IdentifierUID& symbol,
+        const CodeEmitter&,
+        const IdentifierUID&,
         uint32_t bindInfoRegisterIndex,
         std::string_view registerTypeLetter,
         const std::optional<std::string> stringifiedLogicalSpace,
-        const Options& options) const
+        const Options&) const
     {
         // in the general case, we output normal HLSL `var decl : register(b0, space0);`
         // no special header, but the post colon part is the footer
@@ -121,9 +121,9 @@ namespace AZ::ShaderCompiler
     }
 
     std::string PlatformEmitter::GetSpecializationConstant(
-        const CodeEmitter& codeEmitter,
-        const IdentifierUID& symbol,
-        const Options& options) const
+        const CodeEmitter&,
+        const IdentifierUID&,
+        const Options&) const
     {
         return "";
     }

@@ -331,12 +331,12 @@ namespace AZ::ShaderCompiler
         {
             m_baseSize = Packing::PackedSizeof(m_underlyingScalar);
             // establish the conversion rank:
-            auto getIndex = [](const std::string_view s) -> int
+            auto getIndex = [](const std::string_view s)
             {
                 const auto& Scalars = Predefined::Scalar;
-                return ::std::distance(
+                return static_cast<int>(::std::distance(
                     Scalars.begin(),
-                    ::std::find(Scalars.begin(), Scalars.end(), s));
+                    std::ranges::find(Scalars, s)));
             };
             // According to https://en.cppreference.com/w/cpp/language/usual_arithmetic_conversions
             //   - No two signed have the same rank (even if same siezeof)
