@@ -9,7 +9,7 @@ AZSLC is registered as an O3DE host tool.
 Configure O3DE normally, then build the `azslc` target with the build directory and configuration for your platform:
 
 ```powershell
-cmake --build <build-directory> --target azslc --config Profile
+cmake --build <build-directory> --target AZSLC --config Profile
 ```
 
 The executable is written to O3DE's normal configuration-specific runtime output directory.
@@ -17,16 +17,23 @@ Building and configuring AZSLC does not require Java.
 
 ## Test
 
-AZSLC tests are registered individually with CTest when O3DE host tests and `BUILD_TESTING` are enabled:
+AZSLC tests are registered individually with CTest (through O3DE's standard `ly_add_test` wrapper) when O3DE host tests and `BUILD_TESTING` are enabled.
+Each test is labelled `AZSLC.<Category>` and, like the rest of the engine, belongs to the `main` suite so it runs in CI:
 
 ```powershell
-ctest --test-dir <build-directory> -C Profile -L Syntax
-ctest --test-dir <build-directory> -C Profile -L Semantic
-ctest --test-dir <build-directory> -C Profile -L Emission
-ctest --test-dir <build-directory> -C Profile -L Advanced
+# All AZSLC tests
+ctest --test-dir <build-directory> -C Profile -L "AZSLC\."
+
+# A single category
+ctest --test-dir <build-directory> -C Profile -L AZSLC.Syntax
+ctest --test-dir <build-directory> -C Profile -L AZSLC.Semantic
+ctest --test-dir <build-directory> -C Profile -L AZSLC.Emission
+ctest --test-dir <build-directory> -C Profile -L AZSLC.Samples
+ctest --test-dir <build-directory> -C Profile -L AZSLC.Advanced
 ```
 
 Run CTest with `--output-on-failure` for compiler and test-runner diagnostics.
+See [`Tests/README.md`](Tests/README.md) for how the suite is organized and how to add tests.
 
 ## Regenerate the ANTLR sources
 
