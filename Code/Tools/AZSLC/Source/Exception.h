@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "Antlr4.h"
+#include "antlr4-runtime.h"
 #include "GenericUtils.h"
 #include "PreprocessorLineDirectiveFinder.h"
 

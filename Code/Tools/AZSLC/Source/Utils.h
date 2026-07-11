@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "Antlr4.h"
+#include "antlr4-runtime.h"
 #include "DiagnosticStream.h"
 #include "Exception.h"
 #include "Grammar/azslParser.h"

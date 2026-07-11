@@ -53,194 +53,194 @@ void azslparserParserInitialize() {
 #endif
   auto staticData = std::make_unique<AzslParserStaticData>(
     std::vector<std::string>{
-      "compilationUnit", "topLevelDeclaration", "idExpression", "unqualifiedId",
-      "qualifiedId", "nestedNameSpecifier", "classDefinitionStatement",
-      "classDefinition", "baseList", "classMemberDeclaration", "structDefinitionStatement",
-      "structDefinition", "structMemberDeclaration", "anyStructuredTypeDefinitionStatement",
-      "enumDefinitionStatement", "enumDefinition", "enumKey", "enumeratorListDefinition",
-      "enumeratorDeclarator", "anyStructuredTypeDefinition", "interfaceDefinitionStatement",
-      "interfaceDefinition", "interfaceMemberDeclaration", "constantBufferTemplated",
-      "variableDeclarationStatement", "functionParams", "functionParam",
-      "hlslSemantic", "hlslSemanticName", "attributeArguments", "attributeArgumentList",
-      "attribute", "attributeSpecifier", "attributeSpecifierSequence", "attributeSpecifierAny",
-      "block", "statement", "forInitializer", "switchLabel", "switchSection",
-      "switchBlock", "embeddedStatement", "elseClause", "expression", "expressionExt",
-      "postfixUnaryOperator", "prefixUnaryOperator", "binaryOperator", "assignmentOperator",
-      "argumentList", "arguments", "variableDeclaration", "variableDeclarators",
-      "unnamedVariableDeclarator", "namedVariableDeclarator", "variableInitializer",
-      "standardVariableInitializer", "arrayElementInitializers", "arrayRankSpecifier",
-      "packOffsetNode", "storageFlags", "storageFlag", "type", "predefinedType",
-      "subobjectType", "otherViewResourceType", "rtxBuiltInTypes", "bufferPredefinedType",
-      "bufferType", "byteAddressBufferTypes", "patchPredefinedType", "patchType",
-      "samplerStatePredefinedType", "scalarType", "streamOutputPredefinedType",
-      "streamOutputObjectType", "structuredBufferPredefinedType", "structuredBufferName",
-      "textureType", "texturePredefinedType", "genericTexturePredefinedType",
-      "textureTypeMS", "msTexturePredefinedType", "subpassInputType", "subpassInputPredefinedType",
-      "genericSubpassInputPredefinedType", "vectorType", "genericVectorType",
-      "scalarOrVectorType", "scalarOrVectorOrMatrixType", "matrixType",
-      "genericMatrixPredefinedType", "registerAllocation", "samplerStateProperty",
-      "literal", "leadingTypeFunctionSignature", "hlslFunctionDefinition",
-      "hlslFunctionDeclaration", "userDefinedType", "associatedTypeDeclaration",
-      "typedefStatement", "typealiasStatement", "typeAliasingDefinitionStatement",
-      "typeofExpression", "genericParameterList", "genericTypeDefinition",
-      "genericConstraint", "languageDefinedConstraint", "functionDeclaration",
-      "attributedFunctionDeclaration", "functionDefinition", "attributedFunctionDefinition",
-      "compilerExtensionStatement", "srgDefinition", "attributedSrgDefinition",
-      "srgMemberDeclaration", "srgSemantic", "attributedSrgSemantic", "srgSemanticBodyDeclaration",
-      "srgSemanticMemberDeclaration", "samplerBodyDeclaration", "samplerMemberDeclaration",
-      "maxAnisotropyOption", "minFilterOption", "magFilterOption", "mipFilterOption",
-      "reductionTypeOption", "comparisonFunctionOption", "addressUOption",
-      "addressVOption", "addressWOption", "minLodOption", "maxLodOption",
-      "mipLodBiasOption", "borderColorOption", "filterModeEnum", "reductionTypeEnum",
+      "compilationUnit", "topLevelDeclaration", "idExpression", "unqualifiedId", 
+      "qualifiedId", "nestedNameSpecifier", "classDefinitionStatement", 
+      "classDefinition", "baseList", "classMemberDeclaration", "structDefinitionStatement", 
+      "structDefinition", "structMemberDeclaration", "anyStructuredTypeDefinitionStatement", 
+      "enumDefinitionStatement", "enumDefinition", "enumKey", "enumeratorListDefinition", 
+      "enumeratorDeclarator", "anyStructuredTypeDefinition", "interfaceDefinitionStatement", 
+      "interfaceDefinition", "interfaceMemberDeclaration", "constantBufferTemplated", 
+      "variableDeclarationStatement", "functionParams", "functionParam", 
+      "hlslSemantic", "hlslSemanticName", "attributeArguments", "attributeArgumentList", 
+      "attribute", "attributeSpecifier", "attributeSpecifierSequence", "attributeSpecifierAny", 
+      "block", "statement", "forInitializer", "switchLabel", "switchSection", 
+      "switchBlock", "embeddedStatement", "elseClause", "expression", "expressionExt", 
+      "postfixUnaryOperator", "prefixUnaryOperator", "binaryOperator", "assignmentOperator", 
+      "argumentList", "arguments", "variableDeclaration", "variableDeclarators", 
+      "unnamedVariableDeclarator", "namedVariableDeclarator", "variableInitializer", 
+      "standardVariableInitializer", "arrayElementInitializers", "arrayRankSpecifier", 
+      "packOffsetNode", "storageFlags", "storageFlag", "type", "predefinedType", 
+      "subobjectType", "otherViewResourceType", "rtxBuiltInTypes", "bufferPredefinedType", 
+      "bufferType", "byteAddressBufferTypes", "patchPredefinedType", "patchType", 
+      "samplerStatePredefinedType", "scalarType", "streamOutputPredefinedType", 
+      "streamOutputObjectType", "structuredBufferPredefinedType", "structuredBufferName", 
+      "textureType", "texturePredefinedType", "genericTexturePredefinedType", 
+      "textureTypeMS", "msTexturePredefinedType", "subpassInputType", "subpassInputPredefinedType", 
+      "genericSubpassInputPredefinedType", "vectorType", "genericVectorType", 
+      "scalarOrVectorType", "scalarOrVectorOrMatrixType", "matrixType", 
+      "genericMatrixPredefinedType", "registerAllocation", "samplerStateProperty", 
+      "literal", "leadingTypeFunctionSignature", "hlslFunctionDefinition", 
+      "hlslFunctionDeclaration", "userDefinedType", "associatedTypeDeclaration", 
+      "typedefStatement", "typealiasStatement", "typeAliasingDefinitionStatement", 
+      "typeofExpression", "genericParameterList", "genericTypeDefinition", 
+      "genericConstraint", "languageDefinedConstraint", "functionDeclaration", 
+      "attributedFunctionDeclaration", "functionDefinition", "attributedFunctionDefinition", 
+      "compilerExtensionStatement", "srgDefinition", "attributedSrgDefinition", 
+      "srgMemberDeclaration", "srgSemantic", "attributedSrgSemantic", "srgSemanticBodyDeclaration", 
+      "srgSemanticMemberDeclaration", "samplerBodyDeclaration", "samplerMemberDeclaration", 
+      "maxAnisotropyOption", "minFilterOption", "magFilterOption", "mipFilterOption", 
+      "reductionTypeOption", "comparisonFunctionOption", "addressUOption", 
+      "addressVOption", "addressWOption", "minLodOption", "maxLodOption", 
+      "mipLodBiasOption", "borderColorOption", "filterModeEnum", "reductionTypeEnum", 
       "addressModeEnum", "comparisonFunctionEnum", "borderColorEnum"
     },
     std::vector<std::string>{
-      "", "'AppendStructuredBuffer'", "'bool'", "'bool1'", "'bool2'", "'bool3'",
-      "'bool4'", "'bool1x1'", "'bool1x2'", "'bool1x3'", "'bool1x4'", "'bool2x1'",
-      "'bool2x2'", "'bool2x3'", "'bool2x4'", "'bool3x1'", "'bool3x2'", "'bool3x3'",
-      "'bool3x4'", "'bool4x1'", "'bool4x2'", "'bool4x3'", "'bool4x4'", "'Buffer'",
-      "'BuiltInTriangleIntersectionAttributes'", "'ByteAddressBuffer'",
-      "'break'", "'case'", "'cbuffer'", "'centroid'", "'constantbuffer'",
-      "'ConstantBuffer'", "'class'", "'column_major'", "'const'", "'ConsumeStructuredBuffer'",
-      "'continue'", "'default'", "'discard'", "'do'", "'double'", "'double1'",
-      "'double2'", "'double3'", "'double4'", "'double1x1'", "'double1x2'",
-      "'double1x3'", "'double1x4'", "'double2x1'", "'double2x2'", "'double2x3'",
-      "'double2x4'", "'double3x1'", "'double3x2'", "'double3x3'", "'double3x4'",
-      "'double4x1'", "'double4x2'", "'double4x3'", "'double4x4'", "'else'",
-      "'enum'", "'export'", "'extern'", "'FeedbackTexture2D'", "'FeedbackTexture2DArray'",
-      "'float'", "'float1'", "'float2'", "'float3'", "'float4'", "'float1x1'",
-      "'float1x2'", "'float1x3'", "'float1x4'", "'float2x1'", "'float2x2'",
-      "'float2x3'", "'float2x4'", "'float3x1'", "'float3x2'", "'float3x3'",
-      "'float3x4'", "'float4x1'", "'float4x2'", "'float4x3'", "'float4x4'",
-      "'for'", "'groupshared'", "'globallycoherent'", "'global'", "'half'",
-      "'half1'", "'half2'", "'half3'", "'half4'", "'half1x1'", "'half1x2'",
-      "'half1x3'", "'half1x4'", "'half2x1'", "'half2x2'", "'half2x3'", "'half2x4'",
-      "'half3x1'", "'half3x2'", "'half3x3'", "'half3x4'", "'half4x1'", "'half4x2'",
-      "'half4x3'", "'half4x4'", "'if'", "'in'", "'inline'", "'rootconstant'",
-      "", "'InputPatch'", "'int'", "'int16_t'", "'int32_t'", "'int64_t'",
-      "'int1'", "'int2'", "'int3'", "'int4'", "'int1x1'", "'int1x2'", "'int1x3'",
-      "'int1x4'", "'int2x1'", "'int2x2'", "'int2x3'", "'int2x4'", "'int3x1'",
-      "'int3x2'", "'int3x3'", "'int3x4'", "'int4x1'", "'int4x2'", "'int4x3'",
-      "'int4x4'", "'interface'", "'line'", "'lineadj'", "'linear'", "'LineStream'",
-      "'long'", "'matrix'", "'nointerpolation'", "'noperspective'", "'option'",
-      "'out'", "'OutputPatch'", "'override'", "'partial'", "'packoffset'",
-      "'point'", "'PointStream'", "'precise'", "'RasterizerOrderedBuffer'",
-      "'RasterizerOrderedByteAddressBuffer'", "'RasterizerOrderedStructuredBuffer'",
-      "'RasterizerOrderedTexture1D'", "'RasterizerOrderedTexture1DArray'",
-      "'RasterizerOrderedTexture2D'", "'RasterizerOrderedTexture2DArray'",
-      "'RasterizerOrderedTexture3D'", "'RayDesc'", "'RaytracingAccelerationStructure'",
-      "'register'", "'return'", "'row_major'", "'RWBuffer'", "'RWByteAddressBuffer'",
-      "'RWStructuredBuffer'", "'RWTexture1D'", "'RWTexture1DArray'", "'RWTexture2D'",
-      "'RWTexture2DArray'", "'RWTexture3D'", "'sample'", "'sampler'", "'Sampler'",
-      "'SamplerComparisonState'", "'SamplerState'", "'sampler_state'", "'shared'",
-      "'snorm'", "'static'", "'struct'", "'StructuredBuffer'", "'SubpassInput'",
-      "'SubpassInputMS'", "'SubpassInputDS'", "'SubpassInputDSMS'", "'switch'",
-      "'tbuffer'", "'Texture1D'", "'Texture1DArray'", "'Texture2D'", "'Texture2DArray'",
-      "'Texture2DMS'", "'Texture2DMSArray'", "'Texture3D'", "'TextureCube'",
-      "'TextureCubeArray'", "'triangle'", "'triangleadj'", "'TriangleStream'",
-      "'uniform'", "'uint'", "'uint1'", "'uint2'", "'uint3'", "'uint4'",
-      "'uint1x1'", "'uint1x2'", "'uint1x3'", "'uint1x4'", "'uint2x1'", "'uint2x2'",
-      "'uint2x3'", "'uint2x4'", "'uint3x1'", "'uint3x2'", "'uint3x3'", "'uint3x4'",
-      "'uint4x1'", "'uint4x2'", "'uint4x3'", "'uint4x4'", "'uint16_t'",
-      "'uint32_t'", "'uint64_t'", "'unorm'", "'unsigned'", "'dword'", "'dword1'",
-      "'dword2'", "'dword3'", "'dword4'", "'dword1x1'", "'dword1x2'", "'dword1x3'",
-      "'dword1x4'", "'dword2x1'", "'dword2x2'", "'dword2x3'", "'dword2x4'",
-      "'dword3x1'", "'dword3x2'", "'dword3x3'", "'dword3x4'", "'dword4x1'",
-      "'dword4x2'", "'dword4x3'", "'dword4x4'", "'vector'", "'volatile'",
-      "'void'", "'while'", "'StateObjectConfig'", "'LocalRootSignature'",
-      "'GlobalRootSignature'", "'SubobjectToExportsAssociation'", "'RaytracingShaderConfig'",
-      "'RaytracingPipelineConfig'", "'RaytracingPipelineConfig1'", "'TriangleHitGroup'",
-      "'ProceduralPrimitiveHitGroup'", "'AddressU'", "'AddressV'", "'AddressW'",
-      "'BorderColor'", "'MinFilter'", "'MagFilter'", "'MipFilter'", "'MaxAnisotropy'",
-      "'MaxLOD'", "'MinLOD'", "'MipLODBias'", "'ComparisonFunc'", "'ReductionType'",
-      "'Point'", "'Linear'", "'Filter'", "'Comparison'", "'Minimum'", "'Maximum'",
-      "'Wrap'", "'Mirror'", "'Clamp'", "'Border'", "'MirrorOnce'", "'Never'",
-      "'Less'", "'Equal'", "'LessEqual'", "'Greater'", "'NotEqual'", "'GreaterEqual'",
-      "'Always'", "'OpaqueBlack'", "'TransparentBlack'", "'OpaqueWhite'",
-      "'('", "')'", "'['", "']'", "'{'", "'}'", "'[['", "'<'", "'<='", "'>'",
-      "'>='", "'<<'", "'>>'", "'+'", "'++'", "'-'", "'--'", "'*'", "'/'",
-      "'%'", "'&'", "'|'", "'&&'", "'||'", "'^'", "'!'", "'~'", "'\\u003F'",
-      "':'", "'::'", "';'", "','", "'='", "'*='", "'/='", "'%='", "'+='",
-      "'-='", "'<<='", "'>>='", "'&='", "'^='", "'|='", "'=='", "'!='",
-      "'.'", "'true'", "'false'", "'associatedtype'", "'typealias'", "'typedef'",
-      "'fundamental'", "'typeof'", "'FrequencyId'", "'ShaderVariantFallback'",
-      "'ShaderResourceGroupSemantic'", "'ShaderResourceGroup'", "'__azslc_print_message'",
-      "'__azslc_print_symbol'", "'__azslc_prtsym_fully_qualified'", "'__azslc_prtsym_least_qualified'",
+      "", "'AppendStructuredBuffer'", "'bool'", "'bool1'", "'bool2'", "'bool3'", 
+      "'bool4'", "'bool1x1'", "'bool1x2'", "'bool1x3'", "'bool1x4'", "'bool2x1'", 
+      "'bool2x2'", "'bool2x3'", "'bool2x4'", "'bool3x1'", "'bool3x2'", "'bool3x3'", 
+      "'bool3x4'", "'bool4x1'", "'bool4x2'", "'bool4x3'", "'bool4x4'", "'Buffer'", 
+      "'BuiltInTriangleIntersectionAttributes'", "'ByteAddressBuffer'", 
+      "'break'", "'case'", "'cbuffer'", "'centroid'", "'constantbuffer'", 
+      "'ConstantBuffer'", "'class'", "'column_major'", "'const'", "'ConsumeStructuredBuffer'", 
+      "'continue'", "'default'", "'discard'", "'do'", "'double'", "'double1'", 
+      "'double2'", "'double3'", "'double4'", "'double1x1'", "'double1x2'", 
+      "'double1x3'", "'double1x4'", "'double2x1'", "'double2x2'", "'double2x3'", 
+      "'double2x4'", "'double3x1'", "'double3x2'", "'double3x3'", "'double3x4'", 
+      "'double4x1'", "'double4x2'", "'double4x3'", "'double4x4'", "'else'", 
+      "'enum'", "'export'", "'extern'", "'FeedbackTexture2D'", "'FeedbackTexture2DArray'", 
+      "'float'", "'float1'", "'float2'", "'float3'", "'float4'", "'float1x1'", 
+      "'float1x2'", "'float1x3'", "'float1x4'", "'float2x1'", "'float2x2'", 
+      "'float2x3'", "'float2x4'", "'float3x1'", "'float3x2'", "'float3x3'", 
+      "'float3x4'", "'float4x1'", "'float4x2'", "'float4x3'", "'float4x4'", 
+      "'for'", "'groupshared'", "'globallycoherent'", "'global'", "'half'", 
+      "'half1'", "'half2'", "'half3'", "'half4'", "'half1x1'", "'half1x2'", 
+      "'half1x3'", "'half1x4'", "'half2x1'", "'half2x2'", "'half2x3'", "'half2x4'", 
+      "'half3x1'", "'half3x2'", "'half3x3'", "'half3x4'", "'half4x1'", "'half4x2'", 
+      "'half4x3'", "'half4x4'", "'if'", "'in'", "'inline'", "'rootconstant'", 
+      "", "'InputPatch'", "'int'", "'int16_t'", "'int32_t'", "'int64_t'", 
+      "'int1'", "'int2'", "'int3'", "'int4'", "'int1x1'", "'int1x2'", "'int1x3'", 
+      "'int1x4'", "'int2x1'", "'int2x2'", "'int2x3'", "'int2x4'", "'int3x1'", 
+      "'int3x2'", "'int3x3'", "'int3x4'", "'int4x1'", "'int4x2'", "'int4x3'", 
+      "'int4x4'", "'interface'", "'line'", "'lineadj'", "'linear'", "'LineStream'", 
+      "'long'", "'matrix'", "'nointerpolation'", "'noperspective'", "'option'", 
+      "'out'", "'OutputPatch'", "'override'", "'partial'", "'packoffset'", 
+      "'point'", "'PointStream'", "'precise'", "'RasterizerOrderedBuffer'", 
+      "'RasterizerOrderedByteAddressBuffer'", "'RasterizerOrderedStructuredBuffer'", 
+      "'RasterizerOrderedTexture1D'", "'RasterizerOrderedTexture1DArray'", 
+      "'RasterizerOrderedTexture2D'", "'RasterizerOrderedTexture2DArray'", 
+      "'RasterizerOrderedTexture3D'", "'RayDesc'", "'RaytracingAccelerationStructure'", 
+      "'register'", "'return'", "'row_major'", "'RWBuffer'", "'RWByteAddressBuffer'", 
+      "'RWStructuredBuffer'", "'RWTexture1D'", "'RWTexture1DArray'", "'RWTexture2D'", 
+      "'RWTexture2DArray'", "'RWTexture3D'", "'sample'", "'sampler'", "'Sampler'", 
+      "'SamplerComparisonState'", "'SamplerState'", "'sampler_state'", "'shared'", 
+      "'snorm'", "'static'", "'struct'", "'StructuredBuffer'", "'SubpassInput'", 
+      "'SubpassInputMS'", "'SubpassInputDS'", "'SubpassInputDSMS'", "'switch'", 
+      "'tbuffer'", "'Texture1D'", "'Texture1DArray'", "'Texture2D'", "'Texture2DArray'", 
+      "'Texture2DMS'", "'Texture2DMSArray'", "'Texture3D'", "'TextureCube'", 
+      "'TextureCubeArray'", "'triangle'", "'triangleadj'", "'TriangleStream'", 
+      "'uniform'", "'uint'", "'uint1'", "'uint2'", "'uint3'", "'uint4'", 
+      "'uint1x1'", "'uint1x2'", "'uint1x3'", "'uint1x4'", "'uint2x1'", "'uint2x2'", 
+      "'uint2x3'", "'uint2x4'", "'uint3x1'", "'uint3x2'", "'uint3x3'", "'uint3x4'", 
+      "'uint4x1'", "'uint4x2'", "'uint4x3'", "'uint4x4'", "'uint16_t'", 
+      "'uint32_t'", "'uint64_t'", "'unorm'", "'unsigned'", "'dword'", "'dword1'", 
+      "'dword2'", "'dword3'", "'dword4'", "'dword1x1'", "'dword1x2'", "'dword1x3'", 
+      "'dword1x4'", "'dword2x1'", "'dword2x2'", "'dword2x3'", "'dword2x4'", 
+      "'dword3x1'", "'dword3x2'", "'dword3x3'", "'dword3x4'", "'dword4x1'", 
+      "'dword4x2'", "'dword4x3'", "'dword4x4'", "'vector'", "'volatile'", 
+      "'void'", "'while'", "'StateObjectConfig'", "'LocalRootSignature'", 
+      "'GlobalRootSignature'", "'SubobjectToExportsAssociation'", "'RaytracingShaderConfig'", 
+      "'RaytracingPipelineConfig'", "'RaytracingPipelineConfig1'", "'TriangleHitGroup'", 
+      "'ProceduralPrimitiveHitGroup'", "'AddressU'", "'AddressV'", "'AddressW'", 
+      "'BorderColor'", "'MinFilter'", "'MagFilter'", "'MipFilter'", "'MaxAnisotropy'", 
+      "'MaxLOD'", "'MinLOD'", "'MipLODBias'", "'ComparisonFunc'", "'ReductionType'", 
+      "'Point'", "'Linear'", "'Filter'", "'Comparison'", "'Minimum'", "'Maximum'", 
+      "'Wrap'", "'Mirror'", "'Clamp'", "'Border'", "'MirrorOnce'", "'Never'", 
+      "'Less'", "'Equal'", "'LessEqual'", "'Greater'", "'NotEqual'", "'GreaterEqual'", 
+      "'Always'", "'OpaqueBlack'", "'TransparentBlack'", "'OpaqueWhite'", 
+      "'('", "')'", "'['", "']'", "'{'", "'}'", "'[['", "'<'", "'<='", "'>'", 
+      "'>='", "'<<'", "'>>'", "'+'", "'++'", "'-'", "'--'", "'*'", "'/'", 
+      "'%'", "'&'", "'|'", "'&&'", "'||'", "'^'", "'!'", "'~'", "'\\u003F'", 
+      "':'", "'::'", "';'", "','", "'='", "'*='", "'/='", "'%='", "'+='", 
+      "'-='", "'<<='", "'>>='", "'&='", "'^='", "'|='", "'=='", "'!='", 
+      "'.'", "'true'", "'false'", "'associatedtype'", "'typealias'", "'typedef'", 
+      "'fundamental'", "'typeof'", "'FrequencyId'", "'ShaderVariantFallback'", 
+      "'ShaderResourceGroupSemantic'", "'ShaderResourceGroup'", "'__azslc_print_message'", 
+      "'__azslc_print_symbol'", "'__azslc_prtsym_fully_qualified'", "'__azslc_prtsym_least_qualified'", 
       "'__azslc_prtsym_constint_value'"
     },
     std::vector<std::string>{
-      "", "AppendStructuredBuffer", "Bool", "Bool1", "Bool2", "Bool3", "Bool4",
-      "Bool1x1", "Bool1x2", "Bool1x3", "Bool1x4", "Bool2x1", "Bool2x2",
-      "Bool2x3", "Bool2x4", "Bool3x1", "Bool3x2", "Bool3x3", "Bool3x4",
-      "Bool4x1", "Bool4x2", "Bool4x3", "Bool4x4", "Buffer", "BuiltInTriangleIntersectionAttributes",
-      "ByteAddressBuffer", "Break", "Case", "CBuffer", "Centroid", "ConstantBuffer",
-      "ConstantBufferCamel", "Class", "ColumnMajor", "Const", "ConsumeStructuredBuffer",
-      "Continue", "Default", "Discard", "Do", "Double", "Double1", "Double2",
-      "Double3", "Double4", "Double1x1", "Double1x2", "Double1x3", "Double1x4",
-      "Double2x1", "Double2x2", "Double2x3", "Double2x4", "Double3x1", "Double3x2",
-      "Double3x3", "Double3x4", "Double4x1", "Double4x2", "Double4x3", "Double4x4",
-      "Else", "Enum", "Export", "Extern", "FeedbackTexture2D", "FeedbackTexture2DArray",
-      "Float", "Float1", "Float2", "Float3", "Float4", "Float1x1", "Float1x2",
-      "Float1x3", "Float1x4", "Float2x1", "Float2x2", "Float2x3", "Float2x4",
-      "Float3x1", "Float3x2", "Float3x3", "Float3x4", "Float4x1", "Float4x2",
-      "Float4x3", "Float4x4", "For", "Groupshared", "Globallycoherent",
-      "Global", "Half", "Half1", "Half2", "Half3", "Half4", "Half1x1", "Half1x2",
-      "Half1x3", "Half1x4", "Half2x1", "Half2x2", "Half2x3", "Half2x4",
-      "Half3x1", "Half3x2", "Half3x3", "Half3x4", "Half4x1", "Half4x2",
-      "Half4x3", "Half4x4", "If", "In", "Inline", "Rootconstant", "Inout",
-      "InputPatch", "Int", "Int16_t", "Int32_t", "Int64_t", "Int1", "Int2",
-      "Int3", "Int4", "Int1x1", "Int1x2", "Int1x3", "Int1x4", "Int2x1",
-      "Int2x2", "Int2x3", "Int2x4", "Int3x1", "Int3x2", "Int3x3", "Int3x4",
-      "Int4x1", "Int4x2", "Int4x3", "Int4x4", "Interface", "Line_", "LineAdj",
-      "Linear", "LineStream", "Long", "Matrix", "Nointerpolation", "Noperspective",
-      "Option", "Out", "OutputPatch", "Override", "Partial", "Packoffset",
-      "Point", "PointStream", "Precise", "RasterizerOrderedBuffer", "RasterizerOrderedByteAddressBuffer",
-      "RasterizerOrderedStructuredBuffer", "RasterizerOrderedTexture1D",
-      "RasterizerOrderedTexture1DArray", "RasterizerOrderedTexture2D", "RasterizerOrderedTexture2DArray",
-      "RasterizerOrderedTexture3D", "RayDesc", "RaytracingAccelerationStructure",
-      "Register", "Return", "RowMajor", "RWBuffer", "RWByteAddressBuffer",
-      "RWStructuredBuffer", "RWTexture1D", "RWTexture1DArray", "RWTexture2D",
-      "RWTexture2DArray", "RWTexture3D", "Sample", "Sampler", "SamplerCapitalS",
-      "SamplerComparisonState", "SamplerStateCamel", "SamplerState", "Shared",
-      "SNorm", "Static", "Struct", "StructuredBuffer", "SubpassInput", "SubpassInputMS",
-      "SubpassInputDS", "SubpassInputDSMS", "Switch", "TBuffer", "Texture1D",
-      "Texture1DArray", "Texture2D", "Texture2DArray", "Texture2DMS", "Texture2DMSArray",
-      "Texture3D", "TextureCube", "TextureCubeArray", "Triangle", "TriangleAdj",
-      "TriangleStream", "Uniform", "Uint", "Uint1", "Uint2", "Uint3", "Uint4",
-      "Uint1x1", "Uint1x2", "Uint1x3", "Uint1x4", "Uint2x1", "Uint2x2",
-      "Uint2x3", "Uint2x4", "Uint3x1", "Uint3x2", "Uint3x3", "Uint3x4",
-      "Uint4x1", "Uint4x2", "Uint4x3", "Uint4x4", "Uint16_t", "Uint32_t",
-      "Uint64_t", "UNorm", "Unsigned", "Dword", "Dword1", "Dword2", "Dword3",
-      "Dword4", "Dword1x1", "Dword1x2", "Dword1x3", "Dword1x4", "Dword2x1",
-      "Dword2x2", "Dword2x3", "Dword2x4", "Dword3x1", "Dword3x2", "Dword3x3",
-      "Dword3x4", "Dword4x1", "Dword4x2", "Dword4x3", "Dword4x4", "Vector",
-      "Volatile", "Void", "While", "StateObjectConfig", "LocalRootSignature",
-      "GlobalRootSignature", "SubobjectToExportsAssociation", "RaytracingShaderConfig",
-      "RaytracingPipelineConfig", "RaytracingPipelineConfig1", "TriangleHitGroup",
-      "ProceduralPrimitiveHitGroup", "ADDRESS_U", "ADDRESS_V", "ADDRESS_W",
-      "BORDER_COLOR", "MIN_FILTER", "MAG_FILTER", "MIP_FILTER", "MAX_ANISOTROPY",
-      "MAX_LOD", "MIN_LOD", "MIP_LOD_BIAS", "COMPARISON_FUNC", "REDUCTION_TYPE",
-      "FILTER_MODE_POINT", "FILTER_MODE_LINEAR", "REDUCTION_TYPE_FILTER",
-      "REDUCTION_TYPE_COMPARISON", "REDUCTION_TYPE_MINIMUM", "REDUCTION_TYPE_MAXIMUM",
-      "ADDRESS_MODE_WRAP", "ADDRESS_MODE_MIRROR", "ADDRESS_MODE_CLAMP",
-      "ADDRESS_MODE_BORDER", "ADDRESS_MODE_MIRROR_ONCE", "COMPARISON_FUNCTION_NEVER",
-      "COMPARISON_FUNCTION_LESS", "COMPARISON_FUNCTION_EQUAL", "COMPARISON_FUNCTION_LESS_EQUAL",
-      "COMPARISON_FUNCTION_GREATER", "COMPARISON_FUNCTION_NOT_EQUAL", "COMPARISON_FUNCTION_GREATER_EQUAL",
-      "COMPARISON_FUNCTION_ALWAYS", "BORDER_COLOR_OPAQUE_BLACK", "BORDER_COLOR_TRANSPARENT_BLACK",
-      "BORDER_COLOR_OPAQUE_WHITE", "LeftParen", "RightParen", "LeftBracket",
-      "RightBracket", "LeftBrace", "RightBrace", "LeftDoubleBracket", "Less",
-      "LessEqual", "Greater", "GreaterEqual", "LeftShift", "RightShift",
-      "Plus", "PlusPlus", "Minus", "MinusMinus", "Star", "Div", "Mod", "And",
-      "Or", "AndAnd", "OrOr", "Caret", "Not", "Tilde", "Question", "Colon",
-      "ColonColon", "Semi", "Comma", "Assign", "StarAssign", "DivAssign",
-      "ModAssign", "PlusAssign", "MinusAssign", "LeftShiftAssign", "RightShiftAssign",
-      "AndAssign", "XorAssign", "OrAssign", "Equal", "NotEqual", "Dot",
-      "True", "False", "KW_AssociatedType", "KW_TypeAlias", "KW_Typedef",
-      "KW_Fundamental", "KW_Typeof", "FrequencyId", "ShaderVariantFallback",
-      "ShaderResourceGroupSemantic", "ShaderResourceGroup", "KW_ext_print_message",
-      "KW_ext_print_symbol", "KW_ext_prtsym_fully_qualified", "KW_ext_prtsym_least_qualified",
-      "KW_ext_prtsym_constint_value", "HLSLSemanticStream", "HLSLSemanticSystem",
-      "Identifier", "IntegerLiteral", "FloatLiteral", "StringLiteral", "PragmaDirective",
+      "", "AppendStructuredBuffer", "Bool", "Bool1", "Bool2", "Bool3", "Bool4", 
+      "Bool1x1", "Bool1x2", "Bool1x3", "Bool1x4", "Bool2x1", "Bool2x2", 
+      "Bool2x3", "Bool2x4", "Bool3x1", "Bool3x2", "Bool3x3", "Bool3x4", 
+      "Bool4x1", "Bool4x2", "Bool4x3", "Bool4x4", "Buffer", "BuiltInTriangleIntersectionAttributes", 
+      "ByteAddressBuffer", "Break", "Case", "CBuffer", "Centroid", "ConstantBuffer", 
+      "ConstantBufferCamel", "Class", "ColumnMajor", "Const", "ConsumeStructuredBuffer", 
+      "Continue", "Default", "Discard", "Do", "Double", "Double1", "Double2", 
+      "Double3", "Double4", "Double1x1", "Double1x2", "Double1x3", "Double1x4", 
+      "Double2x1", "Double2x2", "Double2x3", "Double2x4", "Double3x1", "Double3x2", 
+      "Double3x3", "Double3x4", "Double4x1", "Double4x2", "Double4x3", "Double4x4", 
+      "Else", "Enum", "Export", "Extern", "FeedbackTexture2D", "FeedbackTexture2DArray", 
+      "Float", "Float1", "Float2", "Float3", "Float4", "Float1x1", "Float1x2", 
+      "Float1x3", "Float1x4", "Float2x1", "Float2x2", "Float2x3", "Float2x4", 
+      "Float3x1", "Float3x2", "Float3x3", "Float3x4", "Float4x1", "Float4x2", 
+      "Float4x3", "Float4x4", "For", "Groupshared", "Globallycoherent", 
+      "Global", "Half", "Half1", "Half2", "Half3", "Half4", "Half1x1", "Half1x2", 
+      "Half1x3", "Half1x4", "Half2x1", "Half2x2", "Half2x3", "Half2x4", 
+      "Half3x1", "Half3x2", "Half3x3", "Half3x4", "Half4x1", "Half4x2", 
+      "Half4x3", "Half4x4", "If", "In", "Inline", "Rootconstant", "Inout", 
+      "InputPatch", "Int", "Int16_t", "Int32_t", "Int64_t", "Int1", "Int2", 
+      "Int3", "Int4", "Int1x1", "Int1x2", "Int1x3", "Int1x4", "Int2x1", 
+      "Int2x2", "Int2x3", "Int2x4", "Int3x1", "Int3x2", "Int3x3", "Int3x4", 
+      "Int4x1", "Int4x2", "Int4x3", "Int4x4", "Interface", "Line_", "LineAdj", 
+      "Linear", "LineStream", "Long", "Matrix", "Nointerpolation", "Noperspective", 
+      "Option", "Out", "OutputPatch", "Override", "Partial", "Packoffset", 
+      "Point", "PointStream", "Precise", "RasterizerOrderedBuffer", "RasterizerOrderedByteAddressBuffer", 
+      "RasterizerOrderedStructuredBuffer", "RasterizerOrderedTexture1D", 
+      "RasterizerOrderedTexture1DArray", "RasterizerOrderedTexture2D", "RasterizerOrderedTexture2DArray", 
+      "RasterizerOrderedTexture3D", "RayDesc", "RaytracingAccelerationStructure", 
+      "Register", "Return", "RowMajor", "RWBuffer", "RWByteAddressBuffer", 
+      "RWStructuredBuffer", "RWTexture1D", "RWTexture1DArray", "RWTexture2D", 
+      "RWTexture2DArray", "RWTexture3D", "Sample", "Sampler", "SamplerCapitalS", 
+      "SamplerComparisonState", "SamplerStateCamel", "SamplerState", "Shared", 
+      "SNorm", "Static", "Struct", "StructuredBuffer", "SubpassInput", "SubpassInputMS", 
+      "SubpassInputDS", "SubpassInputDSMS", "Switch", "TBuffer", "Texture1D", 
+      "Texture1DArray", "Texture2D", "Texture2DArray", "Texture2DMS", "Texture2DMSArray", 
+      "Texture3D", "TextureCube", "TextureCubeArray", "Triangle", "TriangleAdj", 
+      "TriangleStream", "Uniform", "Uint", "Uint1", "Uint2", "Uint3", "Uint4", 
+      "Uint1x1", "Uint1x2", "Uint1x3", "Uint1x4", "Uint2x1", "Uint2x2", 
+      "Uint2x3", "Uint2x4", "Uint3x1", "Uint3x2", "Uint3x3", "Uint3x4", 
+      "Uint4x1", "Uint4x2", "Uint4x3", "Uint4x4", "Uint16_t", "Uint32_t", 
+      "Uint64_t", "UNorm", "Unsigned", "Dword", "Dword1", "Dword2", "Dword3", 
+      "Dword4", "Dword1x1", "Dword1x2", "Dword1x3", "Dword1x4", "Dword2x1", 
+      "Dword2x2", "Dword2x3", "Dword2x4", "Dword3x1", "Dword3x2", "Dword3x3", 
+      "Dword3x4", "Dword4x1", "Dword4x2", "Dword4x3", "Dword4x4", "Vector", 
+      "Volatile", "Void", "While", "StateObjectConfig", "LocalRootSignature", 
+      "GlobalRootSignature", "SubobjectToExportsAssociation", "RaytracingShaderConfig", 
+      "RaytracingPipelineConfig", "RaytracingPipelineConfig1", "TriangleHitGroup", 
+      "ProceduralPrimitiveHitGroup", "ADDRESS_U", "ADDRESS_V", "ADDRESS_W", 
+      "BORDER_COLOR", "MIN_FILTER", "MAG_FILTER", "MIP_FILTER", "MAX_ANISOTROPY", 
+      "MAX_LOD", "MIN_LOD", "MIP_LOD_BIAS", "COMPARISON_FUNC", "REDUCTION_TYPE", 
+      "FILTER_MODE_POINT", "FILTER_MODE_LINEAR", "REDUCTION_TYPE_FILTER", 
+      "REDUCTION_TYPE_COMPARISON", "REDUCTION_TYPE_MINIMUM", "REDUCTION_TYPE_MAXIMUM", 
+      "ADDRESS_MODE_WRAP", "ADDRESS_MODE_MIRROR", "ADDRESS_MODE_CLAMP", 
+      "ADDRESS_MODE_BORDER", "ADDRESS_MODE_MIRROR_ONCE", "COMPARISON_FUNCTION_NEVER", 
+      "COMPARISON_FUNCTION_LESS", "COMPARISON_FUNCTION_EQUAL", "COMPARISON_FUNCTION_LESS_EQUAL", 
+      "COMPARISON_FUNCTION_GREATER", "COMPARISON_FUNCTION_NOT_EQUAL", "COMPARISON_FUNCTION_GREATER_EQUAL", 
+      "COMPARISON_FUNCTION_ALWAYS", "BORDER_COLOR_OPAQUE_BLACK", "BORDER_COLOR_TRANSPARENT_BLACK", 
+      "BORDER_COLOR_OPAQUE_WHITE", "LeftParen", "RightParen", "LeftBracket", 
+      "RightBracket", "LeftBrace", "RightBrace", "LeftDoubleBracket", "Less", 
+      "LessEqual", "Greater", "GreaterEqual", "LeftShift", "RightShift", 
+      "Plus", "PlusPlus", "Minus", "MinusMinus", "Star", "Div", "Mod", "And", 
+      "Or", "AndAnd", "OrOr", "Caret", "Not", "Tilde", "Question", "Colon", 
+      "ColonColon", "Semi", "Comma", "Assign", "StarAssign", "DivAssign", 
+      "ModAssign", "PlusAssign", "MinusAssign", "LeftShiftAssign", "RightShiftAssign", 
+      "AndAssign", "XorAssign", "OrAssign", "Equal", "NotEqual", "Dot", 
+      "True", "False", "KW_AssociatedType", "KW_TypeAlias", "KW_Typedef", 
+      "KW_Fundamental", "KW_Typeof", "FrequencyId", "ShaderVariantFallback", 
+      "ShaderResourceGroupSemantic", "ShaderResourceGroup", "KW_ext_print_message", 
+      "KW_ext_print_symbol", "KW_ext_prtsym_fully_qualified", "KW_ext_prtsym_least_qualified", 
+      "KW_ext_prtsym_constint_value", "HLSLSemanticStream", "HLSLSemanticSystem", 
+      "Identifier", "IntegerLiteral", "FloatLiteral", "StringLiteral", "PragmaDirective", 
       "LineDirective", "Whitespace", "Newline", "BlockComment", "LineComment"
     }
   );
@@ -711,7 +711,7 @@ void azslparserParserInitialize() {
 
   const size_t count = staticData->atn->getNumberOfDecisions();
   staticData->decisionToDFA.reserve(count);
-  for (size_t i = 0; i < count; i++) {
+  for (size_t i = 0; i < count; i++) { 
     staticData->decisionToDFA.emplace_back(staticData->atn->getDecisionState(i), i);
   }
   azslparserParserStaticData = std::move(staticData);
@@ -827,7 +827,7 @@ azslParser::CompilationUnitContext* azslParser::compilationUnit() {
     }
     setState(286);
     match(azslParser::EOF);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -997,7 +997,7 @@ azslParser::TopLevelDeclarationContext* azslParser::topLevelDeclaration() {
     default:
       break;
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -1079,7 +1079,7 @@ azslParser::IdExpressionContext* azslParser::idExpression() {
     default:
       break;
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -1140,7 +1140,7 @@ azslParser::UnqualifiedIdContext* azslParser::unqualifiedId() {
     enterOuterAlt(_localctx, 1);
     setState(304);
     match(azslParser::Identifier);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -1207,7 +1207,7 @@ azslParser::QualifiedIdContext* azslParser::qualifiedId() {
     nestedNameSpecifier();
     setState(307);
     unqualifiedId();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -1296,13 +1296,13 @@ azslParser::NestedNameSpecifierContext* azslParser::nestedNameSpecifier() {
         setState(312);
         match(azslParser::Identifier);
         setState(313);
-        match(azslParser::ColonColon);
+        match(azslParser::ColonColon); 
       }
       setState(318);
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 4, _ctx);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -1369,7 +1369,7 @@ azslParser::ClassDefinitionStatementContext* azslParser::classDefinitionStatemen
     classDefinition();
     setState(320);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -1485,7 +1485,7 @@ azslParser::ClassDefinitionContext* azslParser::classDefinition() {
     }
     setState(334);
     match(azslParser::RightBrace);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -1577,7 +1577,7 @@ azslParser::BaseListContext* azslParser::baseList() {
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -1703,7 +1703,7 @@ azslParser::ClassMemberDeclarationContext* azslParser::classMemberDeclaration() 
     default:
       break;
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -1770,7 +1770,7 @@ azslParser::StructDefinitionStatementContext* azslParser::structDefinitionStatem
     structDefinition();
     setState(354);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -1874,7 +1874,7 @@ azslParser::StructDefinitionContext* azslParser::structDefinition() {
     }
     setState(365);
     match(azslParser::RightBrace);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -2000,7 +2000,7 @@ azslParser::StructMemberDeclarationContext* azslParser::structMemberDeclaration(
     default:
       break;
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -2088,7 +2088,7 @@ azslParser::AnyStructuredTypeDefinitionStatementContext* azslParser::anyStructur
     anyStructuredTypeDefinition();
     setState(382);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -2155,7 +2155,7 @@ azslParser::EnumDefinitionStatementContext* azslParser::enumDefinitionStatement(
     enumDefinition();
     setState(385);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -2247,7 +2247,7 @@ azslParser::EnumDefinitionContext* azslParser::enumDefinition() {
     }
     setState(393);
     match(azslParser::RightBrace);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -2375,7 +2375,7 @@ azslParser::EnumKeyContext* azslParser::enumKey() {
     default:
       break;
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -2460,7 +2460,7 @@ azslParser::EnumeratorListDefinitionContext* azslParser::enumeratorListDefinitio
         match(azslParser::Comma);
         setState(402);
         antlrcpp::downCast<EnumeratorListDefinitionContext *>(_localctx)->enumeratorDeclaratorContext = enumeratorDeclarator();
-        antlrcpp::downCast<EnumeratorListDefinitionContext *>(_localctx)->Enumerators.push_back(antlrcpp::downCast<EnumeratorListDefinitionContext *>(_localctx)->enumeratorDeclaratorContext);
+        antlrcpp::downCast<EnumeratorListDefinitionContext *>(_localctx)->Enumerators.push_back(antlrcpp::downCast<EnumeratorListDefinitionContext *>(_localctx)->enumeratorDeclaratorContext); 
       }
       setState(407);
       _errHandler->sync(this);
@@ -2474,7 +2474,7 @@ azslParser::EnumeratorListDefinitionContext* azslParser::enumeratorListDefinitio
       setState(408);
       match(azslParser::Comma);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -2554,7 +2554,7 @@ azslParser::EnumeratorDeclaratorContext* azslParser::enumeratorDeclarator() {
       setState(413);
       antlrcpp::downCast<EnumeratorDeclaratorContext *>(_localctx)->Value = expression(0);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -2658,7 +2658,7 @@ azslParser::AnyStructuredTypeDefinitionContext* azslParser::anyStructuredTypeDef
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -2725,7 +2725,7 @@ azslParser::InterfaceDefinitionStatementContext* azslParser::interfaceDefinition
     interfaceDefinition();
     setState(423);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -2829,7 +2829,7 @@ azslParser::InterfaceDefinitionContext* azslParser::interfaceDefinition() {
     }
     setState(434);
     match(azslParser::RightBrace);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -2922,7 +2922,7 @@ azslParser::InterfaceMemberDeclarationContext* azslParser::interfaceMemberDeclar
     default:
       break;
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -3016,7 +3016,7 @@ azslParser::ConstantBufferTemplatedContext* azslParser::constantBufferTemplated(
     antlrcpp::downCast<ConstantBufferTemplatedContext *>(_localctx)->GenericTypeName = type();
     setState(444);
     match(azslParser::Greater);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -3083,7 +3083,7 @@ azslParser::VariableDeclarationStatementContext* azslParser::variableDeclaration
     variableDeclaration();
     setState(447);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -3190,7 +3190,7 @@ azslParser::FunctionParamsContext* azslParser::functionParams() {
     default:
       break;
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -3290,7 +3290,7 @@ azslParser::FunctionParamContext* azslParser::functionParam() {
     }
     setState(470);
     unnamedVariableDeclarator();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -3357,7 +3357,7 @@ azslParser::HlslSemanticContext* azslParser::hlslSemantic() {
     match(azslParser::Colon);
     setState(473);
     antlrcpp::downCast<HlslSemanticContext *>(_localctx)->Name = hlslSemanticName();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -3435,7 +3435,7 @@ azslParser::HlslSemanticNameContext* azslParser::hlslSemanticName() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -3521,7 +3521,7 @@ azslParser::AttributeArgumentsContext* azslParser::attributeArguments() {
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -3594,7 +3594,7 @@ azslParser::AttributeArgumentListContext* azslParser::attributeArgumentList() {
     attributeArguments();
     setState(487);
     match(azslParser::RightParen);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -3787,7 +3787,7 @@ azslParser::AttributeContext* azslParser::attribute() {
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -3860,7 +3860,7 @@ azslParser::AttributeSpecifierContext* azslParser::attributeSpecifier() {
     attribute();
     setState(511);
     match(azslParser::RightBracket);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -3966,7 +3966,7 @@ azslParser::AttributeSpecifierSequenceContext* azslParser::attributeSpecifierSeq
     match(azslParser::RightBracket);
     setState(523);
     match(azslParser::RightBracket);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -4048,7 +4048,7 @@ azslParser::AttributeSpecifierAnyContext* azslParser::attributeSpecifierAny() {
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -4141,7 +4141,7 @@ azslParser::BlockContext* azslParser::block() {
     }
     setState(536);
     match(azslParser::RightBrace);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -4234,7 +4234,7 @@ azslParser::StatementContext* azslParser::statement() {
     default:
       break;
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -4316,7 +4316,7 @@ azslParser::ForInitializerContext* azslParser::forInitializer() {
     default:
       break;
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -4444,7 +4444,7 @@ azslParser::SwitchLabelContext* azslParser::switchLabel() {
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -4516,25 +4516,25 @@ azslParser::SwitchSectionContext* azslParser::switchSection() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(556);
+    setState(556); 
     _errHandler->sync(this);
     _la = _input->LA(1);
     do {
       setState(555);
       switchLabel();
-      setState(558);
+      setState(558); 
       _errHandler->sync(this);
       _la = _input->LA(1);
     } while (_la == azslParser::Case
 
     || _la == azslParser::Default);
-    setState(561);
+    setState(561); 
     _errHandler->sync(this);
     _la = _input->LA(1);
     do {
       setState(560);
       statement();
-      setState(563);
+      setState(563); 
       _errHandler->sync(this);
       _la = _input->LA(1);
     } while ((((_la & ~ 0x3fULL) == 0) &&
@@ -4544,7 +4544,7 @@ azslParser::SwitchSectionContext* azslParser::switchSection() {
       ((1ULL << (_la - 192)) & -65) != 0) || ((((_la - 256) & ~ 0x3fULL) == 0) &&
       ((1ULL << (_la - 256)) & 191402984163311615) != 0) || ((((_la - 320) & ~ 0x3fULL) == 0) &&
       ((1ULL << (_la - 320)) & 33830555447668751) != 0));
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -4632,7 +4632,7 @@ azslParser::SwitchBlockContext* azslParser::switchBlock() {
     }
     setState(572);
     match(azslParser::RightBrace);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -5486,7 +5486,7 @@ azslParser::EmbeddedStatementContext* azslParser::embeddedStatement() {
     default:
       break;
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -5553,7 +5553,7 @@ azslParser::ElseClauseContext* azslParser::elseClause() {
     match(azslParser::Else);
     setState(668);
     antlrcpp::downCast<ElseClauseContext *>(_localctx)->Stmt = embeddedStatement();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -6233,7 +6233,7 @@ azslParser::ExpressionContext* azslParser::expression(int precedence) {
 
         default:
           break;
-        }
+        } 
       }
       setState(726);
       _errHandler->sync(this);
@@ -6335,7 +6335,7 @@ azslParser::ExpressionExtContext* azslParser::expressionExt(int precedence) {
   size_t startState = 88;
   enterRecursionRule(_localctx, 88, azslParser::RuleExpressionExt, precedence);
 
-
+    
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -6372,7 +6372,7 @@ azslParser::ExpressionExtContext* azslParser::expressionExt(int precedence) {
         setState(731);
         antlrcpp::downCast<CommaExpressionContext *>(_localctx)->Operator = match(azslParser::Comma);
         setState(732);
-        antlrcpp::downCast<CommaExpressionContext *>(_localctx)->Right = expression(0);
+        antlrcpp::downCast<CommaExpressionContext *>(_localctx)->Right = expression(0); 
       }
       setState(737);
       _errHandler->sync(this);
@@ -6451,7 +6451,7 @@ azslParser::PostfixUnaryOperatorContext* azslParser::postfixUnaryOperator() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -6541,7 +6541,7 @@ azslParser::PrefixUnaryOperatorContext* azslParser::prefixUnaryOperator() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -6679,7 +6679,7 @@ azslParser::BinaryOperatorContext* azslParser::binaryOperator() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -6789,7 +6789,7 @@ azslParser::AssignmentOperatorContext* azslParser::assignmentOperator() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -6875,7 +6875,7 @@ azslParser::ArgumentListContext* azslParser::argumentList() {
     }
     setState(750);
     match(azslParser::RightParen);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -6961,7 +6961,7 @@ azslParser::ArgumentsContext* azslParser::arguments() {
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -7049,7 +7049,7 @@ azslParser::VariableDeclarationContext* azslParser::variableDeclaration() {
     type();
     setState(767);
     variableDeclarators();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -7137,7 +7137,7 @@ azslParser::VariableDeclaratorsContext* azslParser::variableDeclarators() {
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -7272,7 +7272,7 @@ azslParser::UnnamedVariableDeclaratorContext* azslParser::unnamedVariableDeclara
       setState(792);
       variableInitializer();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -7339,7 +7339,7 @@ azslParser::NamedVariableDeclaratorContext* azslParser::namedVariableDeclarator(
     antlrcpp::downCast<NamedVariableDeclaratorContext *>(_localctx)->Name = match(azslParser::Identifier);
     setState(796);
     unnamedVariableDeclarator();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -7427,7 +7427,7 @@ azslParser::VariableInitializerContext* azslParser::variableInitializer() {
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -7689,7 +7689,7 @@ azslParser::StandardVariableInitializerContext* azslParser::standardVariableInit
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -7772,7 +7772,7 @@ azslParser::ArrayElementInitializersContext* azslParser::arrayElementInitializer
         setState(811);
         match(azslParser::Comma);
         setState(812);
-        standardVariableInitializer();
+        standardVariableInitializer(); 
       }
       setState(817);
       _errHandler->sync(this);
@@ -7786,7 +7786,7 @@ azslParser::ArrayElementInitializersContext* azslParser::arrayElementInitializer
       setState(818);
       match(azslParser::Comma);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -7872,7 +7872,7 @@ azslParser::ArrayRankSpecifierContext* azslParser::arrayRankSpecifier() {
     }
     setState(825);
     match(azslParser::RightBracket);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -7976,7 +7976,7 @@ azslParser::PackOffsetNodeContext* azslParser::packOffsetNode() {
     }
     setState(835);
     match(azslParser::RightParen);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -8046,13 +8046,13 @@ azslParser::StorageFlagsContext* azslParser::storageFlags() {
     while (alt != 1 && alt != atn::ATN::INVALID_ALT_NUMBER) {
       if (alt == 1 + 1) {
         setState(837);
-        storageFlag();
+        storageFlag(); 
       }
       setState(842);
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 70, _ctx);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -8245,7 +8245,7 @@ azslParser::StorageFlagContext* azslParser::storageFlag() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -8569,7 +8569,7 @@ azslParser::TypeContext* azslParser::type() {
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -8849,7 +8849,7 @@ azslParser::PredefinedTypeContext* azslParser::predefinedType() {
     default:
       break;
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -8951,7 +8951,7 @@ azslParser::SubobjectTypeContext* azslParser::subobjectType() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -9012,7 +9012,7 @@ azslParser::OtherViewResourceTypeContext* azslParser::otherViewResourceType() {
     enterOuterAlt(_localctx, 1);
     setState(876);
     match(azslParser::RaytracingAccelerationStructure);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -9085,7 +9085,7 @@ azslParser::RtxBuiltInTypesContext* azslParser::rtxBuiltInTypes() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -9164,7 +9164,7 @@ azslParser::BufferPredefinedTypeContext* azslParser::bufferPredefinedType() {
     scalarOrVectorOrMatrixType();
     setState(883);
     match(azslParser::Greater);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -9243,7 +9243,7 @@ azslParser::BufferTypeContext* azslParser::bufferType() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -9322,7 +9322,7 @@ azslParser::ByteAddressBufferTypesContext* azslParser::byteAddressBufferTypes() 
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -9413,7 +9413,7 @@ azslParser::PatchPredefinedTypeContext* azslParser::patchPredefinedType() {
     antlrcpp::downCast<PatchPredefinedTypeContext *>(_localctx)->ControlPoints = match(azslParser::IntegerLiteral);
     setState(894);
     match(azslParser::Greater);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -9488,7 +9488,7 @@ azslParser::PatchTypeContext* azslParser::patchType() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -9574,7 +9574,7 @@ azslParser::SamplerStatePredefinedTypeContext* azslParser::samplerStatePredefine
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -9695,7 +9695,7 @@ azslParser::ScalarTypeContext* azslParser::scalarType() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -9774,7 +9774,7 @@ azslParser::StreamOutputPredefinedTypeContext* azslParser::streamOutputPredefine
     type();
     setState(905);
     match(azslParser::Greater);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -9852,7 +9852,7 @@ azslParser::StreamOutputObjectTypeContext* azslParser::streamOutputObjectType() 
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -9931,7 +9931,7 @@ azslParser::StructuredBufferPredefinedTypeContext* azslParser::structuredBufferP
     type();
     setState(912);
     match(azslParser::Greater);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -10019,7 +10019,7 @@ azslParser::StructuredBufferNameContext* azslParser::structuredBufferName() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -10153,7 +10153,7 @@ azslParser::TextureTypeContext* azslParser::textureType() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -10214,7 +10214,7 @@ azslParser::TexturePredefinedTypeContext* azslParser::texturePredefinedType() {
     enterOuterAlt(_localctx, 1);
     setState(918);
     textureType();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -10293,7 +10293,7 @@ azslParser::GenericTexturePredefinedTypeContext* azslParser::genericTexturePrede
     scalarOrVectorType();
     setState(923);
     match(azslParser::Greater);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -10368,7 +10368,7 @@ azslParser::TextureTypeMSContext* azslParser::textureTypeMS() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -10466,7 +10466,7 @@ azslParser::MsTexturePredefinedTypeContext* azslParser::msTexturePredefinedType(
     }
     setState(934);
     match(azslParser::Greater);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -10548,7 +10548,7 @@ azslParser::SubpassInputTypeContext* azslParser::subpassInputType() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -10609,7 +10609,7 @@ azslParser::SubpassInputPredefinedTypeContext* azslParser::subpassInputPredefine
     enterOuterAlt(_localctx, 1);
     setState(938);
     subpassInputType();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -10688,7 +10688,7 @@ azslParser::GenericSubpassInputPredefinedTypeContext* azslParser::genericSubpass
     scalarOrVectorType();
     setState(943);
     match(azslParser::Greater);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -10872,7 +10872,7 @@ azslParser::VectorTypeContext* azslParser::vectorType() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -10963,7 +10963,7 @@ azslParser::GenericVectorTypeContext* azslParser::genericVectorType() {
     antlrcpp::downCast<GenericVectorTypeContext *>(_localctx)->Size_ = match(azslParser::IntegerLiteral);
     setState(952);
     match(azslParser::Greater);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -11085,7 +11085,7 @@ azslParser::ScalarOrVectorTypeContext* azslParser::scalarOrVectorType() {
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -11330,7 +11330,7 @@ azslParser::ScalarOrVectorOrMatrixTypeContext* azslParser::scalarOrVectorOrMatri
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -11851,7 +11851,7 @@ azslParser::MatrixTypeContext* azslParser::matrixType() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -11954,7 +11954,7 @@ azslParser::GenericMatrixPredefinedTypeContext* azslParser::genericMatrixPredefi
     antlrcpp::downCast<GenericMatrixPredefinedTypeContext *>(_localctx)->Cols_ = match(azslParser::IntegerLiteral);
     setState(972);
     match(azslParser::Greater);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -12039,7 +12039,7 @@ azslParser::RegisterAllocationContext* azslParser::registerAllocation() {
     antlrcpp::downCast<RegisterAllocationContext *>(_localctx)->Address = match(azslParser::Identifier);
     setState(978);
     match(azslParser::RightParen);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -12118,7 +12118,7 @@ azslParser::SamplerStatePropertyContext* azslParser::samplerStateProperty() {
     antlrcpp::downCast<SamplerStatePropertyContext *>(_localctx)->Expr = expression(0);
     setState(983);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -12230,7 +12230,7 @@ azslParser::LiteralContext* azslParser::literal() {
 
       case azslParser::StringLiteral: {
         enterOuterAlt(_localctx, 5);
-        setState(990);
+        setState(990); 
         _errHandler->sync(this);
         alt = 1;
         do {
@@ -12244,7 +12244,7 @@ azslParser::LiteralContext* azslParser::literal() {
           default:
             throw NoViableAltException(this);
           }
-          setState(992);
+          setState(992); 
           _errHandler->sync(this);
           alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 76, _ctx);
         } while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER);
@@ -12254,7 +12254,7 @@ azslParser::LiteralContext* azslParser::literal() {
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -12411,7 +12411,7 @@ azslParser::LeadingTypeFunctionSignatureContext* azslParser::leadingTypeFunction
       setState(1014);
       hlslSemantic();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -12478,7 +12478,7 @@ azslParser::HlslFunctionDefinitionContext* azslParser::hlslFunctionDefinition() 
     leadingTypeFunctionSignature();
     setState(1018);
     block();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -12545,7 +12545,7 @@ azslParser::HlslFunctionDeclarationContext* azslParser::hlslFunctionDeclaration(
     leadingTypeFunctionSignature();
     setState(1021);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -12631,7 +12631,7 @@ azslParser::UserDefinedTypeContext* azslParser::userDefinedType() {
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -12717,7 +12717,7 @@ azslParser::AssociatedTypeDeclarationContext* azslParser::associatedTypeDeclarat
     }
     setState(1032);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -12796,7 +12796,7 @@ azslParser::TypedefStatementContext* azslParser::typedefStatement() {
     antlrcpp::downCast<TypedefStatementContext *>(_localctx)->NewTypeName = match(azslParser::Identifier);
     setState(1037);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -12881,7 +12881,7 @@ azslParser::TypealiasStatementContext* azslParser::typealiasStatement() {
     antlrcpp::downCast<TypealiasStatementContext *>(_localctx)->ExistingType = type();
     setState(1043);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -12963,7 +12963,7 @@ azslParser::TypeAliasingDefinitionStatementContext* azslParser::typeAliasingDefi
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -13085,7 +13085,7 @@ azslParser::TypeofExpressionContext* azslParser::typeofExpression() {
     default:
       break;
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -13183,7 +13183,7 @@ azslParser::GenericParameterListContext* azslParser::genericParameterList() {
     }
     setState(1069);
     match(azslParser::Greater);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -13257,7 +13257,7 @@ azslParser::GenericTypeDefinitionContext* azslParser::genericTypeDefinition() {
       setState(1072);
       genericConstraint();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -13324,7 +13324,7 @@ azslParser::GenericConstraintContext* azslParser::genericConstraint() {
     match(azslParser::Colon);
     setState(1076);
     userDefinedType();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -13385,7 +13385,7 @@ azslParser::LanguageDefinedConstraintContext* azslParser::languageDefinedConstra
     enterOuterAlt(_localctx, 1);
     setState(1078);
     match(azslParser::KW_Fundamental);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -13446,7 +13446,7 @@ azslParser::FunctionDeclarationContext* azslParser::functionDeclaration() {
     enterOuterAlt(_localctx, 1);
     setState(1080);
     hlslFunctionDeclaration();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -13528,7 +13528,7 @@ azslParser::AttributedFunctionDeclarationContext* azslParser::attributedFunction
     }
     setState(1088);
     functionDeclaration();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -13589,7 +13589,7 @@ azslParser::FunctionDefinitionContext* azslParser::functionDefinition() {
     enterOuterAlt(_localctx, 1);
     setState(1090);
     hlslFunctionDefinition();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -13671,7 +13671,7 @@ azslParser::AttributedFunctionDefinitionContext* azslParser::attributedFunctionD
     }
     setState(1098);
     functionDefinition();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -13839,7 +13839,7 @@ azslParser::CompilerExtensionStatementContext* azslParser::compilerExtensionStat
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -13973,7 +13973,7 @@ azslParser::SrgDefinitionContext* azslParser::srgDefinition() {
     }
     setState(1134);
     match(azslParser::RightBrace);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -14055,7 +14055,7 @@ azslParser::AttributedSrgDefinitionContext* azslParser::attributedSrgDefinition(
     }
     setState(1142);
     srgDefinition();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -14192,7 +14192,7 @@ azslParser::SrgMemberDeclarationContext* azslParser::srgMemberDeclaration() {
     default:
       break;
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -14265,7 +14265,7 @@ azslParser::SrgSemanticContext* azslParser::srgSemantic() {
     antlrcpp::downCast<SrgSemanticContext *>(_localctx)->Name = match(azslParser::Identifier);
     setState(1155);
     srgSemanticBodyDeclaration();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -14347,7 +14347,7 @@ azslParser::AttributedSrgSemanticContext* azslParser::attributedSrgSemantic() {
     }
     setState(1163);
     srgSemantic();
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -14435,7 +14435,7 @@ azslParser::SrgSemanticBodyDeclarationContext* azslParser::srgSemanticBodyDeclar
     }
     setState(1172);
     match(azslParser::RightBrace);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -14541,7 +14541,7 @@ azslParser::SrgSemanticMemberDeclarationContext* azslParser::srgSemanticMemberDe
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -14628,7 +14628,7 @@ azslParser::SamplerBodyDeclarationContext* azslParser::samplerBodyDeclaration() 
     }
     setState(1193);
     match(azslParser::RightBrace);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -14831,7 +14831,7 @@ azslParser::SamplerMemberDeclarationContext* azslParser::samplerMemberDeclaratio
     default:
       throw NoViableAltException(this);
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -14910,7 +14910,7 @@ azslParser::MaxAnisotropyOptionContext* azslParser::maxAnisotropyOption() {
     match(azslParser::IntegerLiteral);
     setState(1213);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -14989,7 +14989,7 @@ azslParser::MinFilterOptionContext* azslParser::minFilterOption() {
     filterModeEnum();
     setState(1218);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -15068,7 +15068,7 @@ azslParser::MagFilterOptionContext* azslParser::magFilterOption() {
     filterModeEnum();
     setState(1223);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -15147,7 +15147,7 @@ azslParser::MipFilterOptionContext* azslParser::mipFilterOption() {
     filterModeEnum();
     setState(1228);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -15226,7 +15226,7 @@ azslParser::ReductionTypeOptionContext* azslParser::reductionTypeOption() {
     reductionTypeEnum();
     setState(1233);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -15305,7 +15305,7 @@ azslParser::ComparisonFunctionOptionContext* azslParser::comparisonFunctionOptio
     comparisonFunctionEnum();
     setState(1238);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -15384,7 +15384,7 @@ azslParser::AddressUOptionContext* azslParser::addressUOption() {
     addressModeEnum();
     setState(1243);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -15463,7 +15463,7 @@ azslParser::AddressVOptionContext* azslParser::addressVOption() {
     addressModeEnum();
     setState(1248);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -15542,7 +15542,7 @@ azslParser::AddressWOptionContext* azslParser::addressWOption() {
     addressModeEnum();
     setState(1253);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -15621,7 +15621,7 @@ azslParser::MinLodOptionContext* azslParser::minLodOption() {
     match(azslParser::FloatLiteral);
     setState(1258);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -15700,7 +15700,7 @@ azslParser::MaxLodOptionContext* azslParser::maxLodOption() {
     match(azslParser::FloatLiteral);
     setState(1263);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -15779,7 +15779,7 @@ azslParser::MipLodBiasOptionContext* azslParser::mipLodBiasOption() {
     match(azslParser::FloatLiteral);
     setState(1268);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -15858,7 +15858,7 @@ azslParser::BorderColorOptionContext* azslParser::borderColorOption() {
     borderColorEnum();
     setState(1273);
     match(azslParser::Semi);
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -15933,7 +15933,7 @@ azslParser::FilterModeEnumContext* azslParser::filterModeEnum() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -16015,7 +16015,7 @@ azslParser::ReductionTypeEnumContext* azslParser::reductionTypeEnum() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -16101,7 +16101,7 @@ azslParser::AddressModeEnumContext* azslParser::addressModeEnum() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -16199,7 +16199,7 @@ azslParser::ComparisonFunctionEnumContext* azslParser::comparisonFunctionEnum() 
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -16277,7 +16277,7 @@ azslParser::BorderColorEnumContext* azslParser::borderColorEnum() {
       _errHandler->reportMatch(this);
       consume();
     }
-
+   
   }
   catch (RecognitionException &e) {
     _errHandler->reportError(this, e);
@@ -16294,11 +16294,12 @@ bool azslParser::sempred(RuleContext *context, size_t ruleIndex, size_t predicat
     case 44: return expressionExtSempred(antlrcpp::downCast<ExpressionExtContext *>(context), predicateIndex);
 
   default:
-    return true;
+    break;
   }
+  return true;
 }
 
-bool azslParser::expressionSempred(ExpressionContext *, size_t predicateIndex) {
+bool azslParser::expressionSempred(ExpressionContext *_localctx, size_t predicateIndex) {
   switch (predicateIndex) {
     case 0: return precpred(_ctx, 3);
     case 1: return precpred(_ctx, 10);
@@ -16309,17 +16310,19 @@ bool azslParser::expressionSempred(ExpressionContext *, size_t predicateIndex) {
     case 6: return precpred(_ctx, 1);
 
   default:
-    return true;
+    break;
   }
+  return true;
 }
 
-bool azslParser::expressionExtSempred(ExpressionExtContext *, size_t predicateIndex) {
+bool azslParser::expressionExtSempred(ExpressionExtContext *_localctx, size_t predicateIndex) {
   switch (predicateIndex) {
     case 7: return precpred(_ctx, 1);
 
   default:
-    return true;
+    break;
   }
+  return true;
 }
 
 void azslParser::initialize() {

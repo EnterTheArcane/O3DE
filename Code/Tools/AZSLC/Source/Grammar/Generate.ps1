@@ -51,8 +51,8 @@ function Invoke-Antlr
 Push-Location $grammarDirectory
 try
 {
-    Invoke-Antlr -Grammar $lexerGrammar
-    Invoke-Antlr -Grammar $parserGrammar -lib $grammarDirectory
+    Invoke-Antlr -Grammar (Split-Path $lexerGrammar -Leaf)
+    Invoke-Antlr -Grammar (Split-Path $parserGrammar -Leaf) -lib $grammarDirectory
     Get-ChildItem -LiteralPath $grammarDirectory -File
         | Where-Object Extension -In ".interp", ".tokens"
         | Remove-Item -Force
