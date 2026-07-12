@@ -24,6 +24,7 @@ set(FILES
     Source/Emitters/PlatformEmitter_Vulkan.cpp
     Source/Emitters/PlatformEmitter_Vulkan.h
     Source/Exception.h
+    Source/External/CLI11.hpp
     Source/GenericUtils.h
     Source/Grammar/azslLexer.cpp
     Source/Grammar/azslLexer.g4
@@ -39,7 +40,6 @@ set(FILES
     Source/Grammar/azslParserListener.h
     Source/Grammar/azslParserVisitor.cpp
     Source/Grammar/azslParserVisitor.h
-    Source/Grammar/Generate.ps1
     Source/HomonymVisitor.h
     Source/IntermediateRepresentation.cpp
     Source/IntermediateRepresentation.h
