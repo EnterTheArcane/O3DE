@@ -6,20 +6,19 @@
  *
  */
 
-#include "Reflection.h"
 #include "Emitter.h"
+#include "External/CLI11.hpp"
 #include "HomonymVisitor.h"
 #include "PlatformEmitter.h"
-#include "Texture2DMSto2DCodeMutator.h"
+#include "Reflection.h"
 #include "SubpassInputToTexture2DCodeMutator.h"
+#include "Texture2DMSto2DCodeMutator.h"
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <cstdlib>
 #include <cstddef>
 #include <cstdio>
-#include <cstdint>
 #include <exception>
 #include <filesystem>
 #include <format>
@@ -40,13 +39,6 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-
-#if defined(_MSC_VER)
-#undef strtoll
-#undef strtoull
-#endif
-
-#include <CLI/CLI.hpp>
 
 namespace AZ::ShaderCompiler
 {

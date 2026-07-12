@@ -25,7 +25,6 @@ ly_add_target(
         PRIVATE
             AZ::AzCore
             3rdParty::ANTLR4
-            3rdParty::CLI11
 )
 
 target_compile_options(AZSLC PRIVATE
