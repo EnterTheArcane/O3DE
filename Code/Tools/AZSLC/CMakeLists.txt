@@ -32,4 +32,14 @@ target_compile_options(AZSLC PRIVATE
     ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS}
 )
 
+set_source_files_properties(
+    Source/Grammar/azslLexer.cpp
+    Source/Grammar/azslParser.cpp
+    Source/Grammar/azslParserBaseListener.cpp
+    Source/Grammar/azslParserBaseVisitor.cpp
+    Source/Grammar/azslParserListener.cpp
+    Source/Grammar/azslParserVisitor.cpp
+    PROPERTIES COMPILE_OPTIONS "$<IF:$<CXX_COMPILER_ID:MSVC>,/W0,-w>"
+)
+
 add_subdirectory(Tests)

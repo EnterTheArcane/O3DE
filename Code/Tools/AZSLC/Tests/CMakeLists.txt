@@ -61,7 +61,7 @@ endfunction()
 function(azslc_add_simple_tests category compiler_flag expect_fail)
     foreach(test_file IN LISTS ARGN)
         file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_file}")
-        # Strip extension to form the test name  (e.g. "Syntax/empty")
+        # Strip extension to form the test name  (e.g. "Syntax/Empty")
         string(REGEX REPLACE "\\.[^.]*$" "" test_name "${rel_path}")
 
         set(runner_args

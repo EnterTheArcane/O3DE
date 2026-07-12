@@ -43,6 +43,11 @@ block(SCOPE_FOR VARIABLES)
 
     add_library(3rdParty::ANTLR4 ALIAS antlr4_static)
 
+    get_target_property(_antlr4_interface_includes antlr4_static INTERFACE_INCLUDE_DIRECTORIES)
+    if(_antlr4_interface_includes)
+        set_target_properties(antlr4_static PROPERTIES INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_antlr4_interface_includes}")
+    endif()
+
     target_compile_options(antlr4_static PRIVATE
         ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS}
         ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS}

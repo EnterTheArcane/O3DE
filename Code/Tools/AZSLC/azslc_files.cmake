@@ -83,3 +83,12 @@ set(FILES
     Source/UnboundedArraysValidator.h
     Source/Utils.h
 )
+
+set(SKIP_UNITY_BUILD_INCLUSION_FILES
+    Source/Grammar/azslLexer.cpp
+    Source/Grammar/azslParser.cpp
+    Source/Grammar/azslParserBaseListener.cpp
+    Source/Grammar/azslParserBaseVisitor.cpp
+    Source/Grammar/azslParserListener.cpp
+    Source/Grammar/azslParserVisitor.cpp
+)
