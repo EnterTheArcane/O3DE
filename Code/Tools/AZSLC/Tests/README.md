@@ -22,8 +22,9 @@ O3DE's standard `ly_add_test` wrapper (via a local `ly_add_azslc_test` helper). 
 build hookup that O3DE's CI relies on, so these tests run in CI alongside the rest of the engine. **Adding a test therefore means creating the file *and*
 listing it in `azslc_test_files.cmake`** (see [Adding New Tests](#adding-new-tests)).
 
-A test's name mirrors its path minus extension (e.g. `Semantic/Error/GlobalVariables`), and each test carries an `AZSLC.<Category>` label — `AZSLC.Syntax`,
-`AZSLC.Semantic`, `AZSLC.Emission`, `AZSLC.Samples`, `AZSLC.Advanced`, plus `AZSLC.WIP` for work-in-progress tests.
+A test's name follows the engine's `AZ::<Target>.<...>` convention: `AZ::AZSLC.` followed by its path minus extension with directory separators as dots
+(e.g. `AZ::AZSLC.Semantic.Error.GlobalVariables`). Each test also carries an `AZSLC.<Category>` label — `AZSLC.Syntax`, `AZSLC.Semantic`, `AZSLC.Emission`,
+`AZSLC.Samples`, `AZSLC.Advanced`, plus `AZSLC.WIP` for work-in-progress tests.
 
 ## Running Tests
 
@@ -44,7 +45,7 @@ ctest --test-dir <build-directory> -L AZSLC.Semantic
 ctest --test-dir <build-directory> -L AZSLC.Syntax
 
 # Run a specific test by name (regex match against the test name)
-ctest --test-dir <build-directory> -R "Syntax/Empty"
+ctest --test-dir <build-directory> -R "AZSLC.Syntax.Empty"
 
 # Show output for failures
 ctest --test-dir <build-directory> --output-on-failure

@@ -59,7 +59,7 @@ block(SCOPE_FOR VARIABLES)
 
     cmake_path(RELATIVE_PATH CMAKE_CURRENT_LIST_DIR BASE_DIRECTORY "${LY_ROOT_FOLDER}" OUTPUT_VARIABLE relative_source_root)
     set_target_properties(antlr4_static PROPERTIES
-        FOLDER "${relative_source_root}/External"
+        FOLDER "${relative_source_root}"
         MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
     )
 endblock()

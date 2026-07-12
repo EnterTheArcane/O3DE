@@ -30,6 +30,13 @@ foreach(test_file_list IN LISTS azslc_test_file_lists)
     list(TRANSFORM ${test_file_list} PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 endforeach()
 
+function(azslc_test_name out_var test_file)
+    file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_file}")
+    string(REGEX REPLACE "\\.[^.]*$" "" rel_path "${rel_path}")
+    string(REPLACE "/" "." rel_path "${rel_path}")
+    set(${out_var} "AZ::AZSLC.${rel_path}" PARENT_SCOPE)
+endfunction()
+
 function(ly_add_azslc_test)
     cmake_parse_arguments(arg "WIP" "NAME;CATEGORY;TIMEOUT" "RUNNER_ARGS" ${ARGN})
 
@@ -60,9 +67,7 @@ endfunction()
 
 function(azslc_add_simple_tests category compiler_flag expect_fail)
     foreach(test_file IN LISTS ARGN)
-        file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_file}")
-        # Strip extension to form the test name  (e.g. "Syntax/Empty")
-        string(REGEX REPLACE "\\.[^.]*$" "" test_name "${rel_path}")
+        azslc_test_name(test_name "${test_file}")
 
         set(runner_args
             --compiler "$<TARGET_FILE:AZ::AZSLC>"
@@ -93,8 +98,7 @@ function(azslc_add_simple_tests category compiler_flag expect_fail)
 endfunction()
 
 foreach(test_file IN LISTS AZSLC_ADVANCED_TEST_FILES)
-    file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_file}")
-    string(REGEX REPLACE "\\.[^.]*$" "" test_name "${rel_path}")
+    azslc_test_name(test_name "${test_file}")
 
     ly_add_azslc_test(
         NAME "${test_name}"
@@ -108,8 +112,7 @@ foreach(test_file IN LISTS AZSLC_ADVANCED_TEST_FILES)
 endforeach()
 
 foreach(test_file IN LISTS AZSLC_EMISSION_TEST_FILES)
-    file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_file}")
-    string(REGEX REPLACE "\\.[^.]*$" "" test_name "${rel_path}")
+    azslc_test_name(test_name "${test_file}")
 
     ly_add_azslc_test(
         NAME "${test_name}"
@@ -123,8 +126,7 @@ foreach(test_file IN LISTS AZSLC_EMISSION_TEST_FILES)
 endforeach()
 
 foreach(test_file IN LISTS AZSLC_EMISSION_ERROR_TEST_FILES)
-    file(RELATIVE_PATH rel_path "${CMAKE_CURRENT_SOURCE_DIR}" "${test_file}")
-    string(REGEX REPLACE "\\.[^.]*$" "" test_name "${rel_path}")
+    azslc_test_name(test_name "${test_file}")
 
     ly_add_azslc_test(
         NAME "${test_name}"
