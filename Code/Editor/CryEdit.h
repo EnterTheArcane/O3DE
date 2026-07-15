@@ -136,7 +136,6 @@ public:
     //! @return successful outcome if initialization succeeded. or failed outcome with error message.
     AZ::Outcome<void, AZStd::string> InitGameSystem(HWND hwndForInputSystem);
     void CreateSplashScreen();
-    void InitPlugins();
     bool InitGame();
 
     bool InitConsole();
@@ -319,7 +318,7 @@ private:
     // The following parameters will be added to the URI at runtime:
     // "projectPath". Absolute path of the game projec root.
     // "enginePath". Absolute path of the engine root. if not specified, it will be assume to be one directory above the game project root.
-    // "files[]". A list of files, 
+    // "files[]". A list of files,
     // Full example using the Uri shown below:
     // "vscode://lumbermixalot.o3de-lua-debug/debug?projectPath=D:\mydir\myproject&enginePath=C:\GIT\o3de&files[]=D:\mydir\myproject\scripts\something.lua&files[]=D:\mydir\myproject\scripts\utils\something2.lua"
     // or

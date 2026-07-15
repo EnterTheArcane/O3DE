@@ -142,6 +142,7 @@ namespace AudioSystemGem
         AzFramework::LevelSystemLifecycleNotificationBus::Handler::BusDisconnect();
 
     #if defined(AUDIO_SYSTEM_EDITOR)
+        m_editorPlugin.reset();
         AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
 
         AZ::RPI::ViewportContextNotificationBus::Handler::BusDisconnect();
@@ -228,12 +229,7 @@ namespace AudioSystemGem
     {
         if (g_editor)
         {
-            if (m_editorPlugin)
-            {
-                m_editorPlugin->Release();
-            }
-
-            m_editorPlugin.reset(new CAudioControlsEditorPlugin(g_editor));
+            m_editorPlugin = AZStd::make_unique<CAudioControlsEditorPlugin>(g_editor);
         }
     }
 

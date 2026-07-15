@@ -34,7 +34,6 @@ namespace LyViewPane
     static const char* const Inspector = QT_TRANSLATE_NOOP("LyViewPane", "Inspector");
     static const char* const EntityInspectorPinned = QT_TRANSLATE_NOOP("LyViewPane", "Pinned Entity Inspector");
     static const char* const LevelInspector = QT_TRANSLATE_NOOP("LyViewPane", "Level Inspector");
-    static const char* const ProjectSettingsTool = QT_TRANSLATE_NOOP("LyViewPane", "Edit Platform Settings...");
     static const char* const ErrorReport = QT_TRANSLATE_NOOP("LyViewPane", "Error Report");
     static const char* const Console = QT_TRANSLATE_NOOP("LyViewPane", "Console");
     static const char* const ConsoleMenuName = QT_TRANSLATE_NOOP("LyViewPane", "&Console");
@@ -54,4 +53,3 @@ namespace LyViewPane
 
     const int NO_BUILTIN_ACTION = -1;
 }
-

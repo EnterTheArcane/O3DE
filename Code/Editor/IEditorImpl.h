@@ -25,10 +25,6 @@
 #include <QApplication>
 #include <QMap>
 
-#define GET_PLUGIN_ID_FROM_MENU_ID(ID) (((ID) & 0x000000FF))
-#define GET_UI_ELEMENT_ID_FROM_MENU_ID(ID) ((((ID) & 0x0000FF00) >> 8))
-
-
 class AssetEditorRequestsHandler;
 class AzAssetBrowserRequestHandler;
 class AzAssetWindow;
@@ -139,7 +135,6 @@ public:
     const QColor& GetColorByName(const QString& name) override;
 
     //////////////////////////////////////////////////////////////////////////
-    CPluginManager* GetPluginManager() override { return m_pPluginManager; }
     CViewManager* GetViewManager() override;
     CViewport* GetActiveView() override;
     void SetActiveView(CViewport* viewport) override;
@@ -149,7 +144,6 @@ public:
     void UpdateViews(int flags, const AZ::Aabb* updateRegion) override;
     void ResetViews() override;
     void ReloadTrackView() override;
-    bool AddToolbarItem(uint8 iId, IUIEvent* pIHandler);
     void SetDataModified() override;
 
     void SetAxisConstraints(AxisConstrains axis) override;
@@ -218,9 +212,6 @@ public:
     SSystemGlobalEnvironment* GetEnv() override;
     SEditorSettings* GetEditorSettings() override;
 
-    void UnloadPlugins() override;
-    void LoadPlugins() override;
-
 protected:
 
     AZStd::string LoadProjectIdFromProjectData();
@@ -235,7 +226,6 @@ protected:
     ISystem* m_pSystem;
     IFileUtil* m_pFileUtil;
     CEditorCommandManager* m_pCommandManager;
-    CPluginManager* m_pPluginManager;
     CViewManager*   m_pViewManager;
     CUndoManager* m_pUndoManager;
     AxisConstrains m_selectedAxis;
@@ -282,7 +272,5 @@ protected:
     AzAssetBrowserRequestHandler* m_pAssetBrowserRequestHandler;
     AssetEditorRequestsHandler* m_assetEditorRequestsHandler;
 
-    AZStd::mutex m_pluginMutex; // protect any pointers that come from plugins, such as the source control cached pointer.
     static const char* m_crashLogFileName;
 };
-

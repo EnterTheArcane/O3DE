@@ -228,8 +228,6 @@ set(FILES
     res/water.bmp
     res/work_in_progress_icon.ico
     res/MannFileManagerImageList.bmp
-    PluginManager.cpp
-    PluginManager.h
     IEditor.h
     IEditorImpl.cpp
     IEditorImpl.h
@@ -263,7 +261,6 @@ set(FILES
     Include/ICommandManager.h
     Include/IDisplayViewport.h
     Include/IKeyTimeSet.h
-    Include/IPlugin.h
     Include/IPreferencesPage.h
     Include/ObjectEvent.h
     Util/AffineParts.cpp
@@ -578,8 +575,6 @@ set(FILES
     Util/ColumnGroupTreeView.cpp
     Util/ModalWindowDismisser.h
     Util/ModalWindowDismisser.cpp
-    Util/3DConnexionDriver.cpp
-    Util/3DConnexionDriver.h
     Util/FileChangeMonitor.cpp
     Util/FileChangeMonitor.h
     Util/ImageGif.cpp

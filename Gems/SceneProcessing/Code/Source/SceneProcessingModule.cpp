@@ -21,6 +21,7 @@
 #include <Generation/Components/MeshOptimizer/MeshOptimizerComponent.h>
 #include <SceneAPI/SceneBuilder/ImportContextRegistryComponent.h>
 #include <Source/SceneProcessingModule.h>
+#include <SceneSettings/SceneSettingsEditorSystemComponent.h>
 
 namespace AZ
 {
@@ -38,6 +39,13 @@ namespace AZ
                 LoadSceneModule(s_sceneCoreModule, "SceneCore");
                 LoadSceneModule(s_sceneDataModule, "SceneData");
                 LoadSceneModule(s_sceneBuilderModule, "SceneBuilder");
+                LoadSceneModule(s_sceneUiModule, "SceneUI");
+
+                using ReflectFunc = void(*)(AZ::SerializeContext*);
+                if (ReflectFunc reflect = s_sceneUiModule ? s_sceneUiModule->GetFunction<ReflectFunc>("Reflect") : nullptr)
+                {
+                    reflect(nullptr);
+                }
 
                 m_descriptors.insert(m_descriptors.end(),
                 {
@@ -46,6 +54,7 @@ namespace AZ
                     SceneAPI::SceneBuilder::ImportContextRegistryComponent::CreateDescriptor(),
                     SceneBuilder::BuilderPluginComponent::CreateDescriptor(),
                     SceneBuilder::SceneSerializationHandler::CreateDescriptor(),
+                    SceneSettingsEditorSystemComponent::CreateDescriptor(),
                     AZ::SceneGenerationComponents::TangentPreExportComponent::CreateDescriptor(),
                     AZ::SceneGenerationComponents::TangentGenerateComponent::CreateDescriptor(),
                     AZ::SceneGenerationComponents::CreateUVsGenerateComponentDescriptor(),
@@ -66,6 +75,7 @@ namespace AZ
 
             ~SceneProcessingModule()
             {
+                UnloadModule(s_sceneUiModule);
                 UnloadModule(s_sceneBuilderModule);
                 UnloadModule(s_sceneDataModule);
                 UnloadModule(s_sceneCoreModule);
@@ -76,6 +86,7 @@ namespace AZ
                 return AZ::ComponentTypeList
                 {
                     azrtti_typeid<SceneProcessingConfig::SceneProcessingConfigSystemComponent>(),
+                    azrtti_typeid<SceneSettingsEditorSystemComponent>(),
                 };
             }
 

@@ -195,7 +195,7 @@ namespace AudioControls
 
             QIcon icon(QString(pAudioSystemEditorImpl->GetTypeIcon(type).data()));
             icon.addFile(QString(pAudioSystemEditorImpl->GetTypeIconSelected(type).data()), QSize(), QIcon::Selected);
-            
+
             pItem->setIcon(0, icon);
             pItem->setFlags(pItem->flags() & ~Qt::ItemIsDropEnabled);
 
@@ -335,4 +335,3 @@ namespace AudioControls
         UpdateControl(pMiddlewareControl);
     }
 } // namespace AudioControls
-

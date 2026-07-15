@@ -10,7 +10,7 @@ if(NOT PAL_TRAIT_BUILD_HOST_TOOLS)
     return()
 endif()
 
-add_subdirectory(Plugins)
+add_subdirectory(EditorCommon)
 
 ly_add_target(
     NAME EditorCore SHARED
@@ -104,6 +104,7 @@ ly_add_target(
             Legacy::EditorCommon
             AZ::AzCore
             AZ::AzToolsFramework
+            Gem::Connexion3D.Editor.API
             Gem::LmbrCentral.Static
             AZ::AtomCore
             Gem::Atom_RPI.Edit
@@ -137,14 +138,6 @@ ly_add_source_properties(
         MainWindow.cpp
     PROPERTY COMPILE_DEFINITIONS 
     VALUES ${LY_PAL_TOOLS_DEFINES}
-)
-
-get_property(editor_plugins GLOBAL PROPERTY LY_EDITOR_PLUGINS)
-string (REPLACE ";" "," editor_plugins "${editor_plugins}")
-ly_add_source_properties(
-    SOURCES PluginManager.cpp
-    PROPERTY COMPILE_DEFINITIONS 
-    VALUES LY_EDITOR_PLUGINS="${editor_plugins}"
 )
 
 ################################################################################

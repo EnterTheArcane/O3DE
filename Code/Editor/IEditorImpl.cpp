@@ -40,7 +40,6 @@
 
 // Editor
 #include "CryEdit.h"
-#include "PluginManager.h"
 #include "ViewManager.h"
 #include "DisplaySettings.h"
 #include "LevelIndependentFileMan.h"
@@ -80,7 +79,6 @@ CEditorImpl::CEditorImpl()
     : m_pSystem(nullptr)
     , m_pFileUtil(nullptr)
     , m_pCommandManager(nullptr)
-    , m_pPluginManager(nullptr)
     , m_pViewManager(nullptr)
     , m_pUndoManager(nullptr)
     , m_selectedAxis(AXIS_TERRAIN)
@@ -118,8 +116,6 @@ CEditorImpl::CEditorImpl()
     m_pEditorFileMonitor.reset(new CEditorFileMonitor());
     m_pDisplaySettings = new CDisplaySettings;
     m_pDisplaySettings->LoadRegistry();
-    m_pPluginManager = new CPluginManager;
-
     m_pViewManager = new CViewManager;
     m_pUndoManager = new CUndoManager;
     m_pToolBoxManager = new CToolBoxManager;
@@ -184,63 +180,12 @@ void CEditorImpl::Uninitialize()
     UninitializeEditorCommon();
 }
 
-void CEditorImpl::UnloadPlugins()
-{
-    AZStd::scoped_lock lock(m_pluginMutex);
-
-    // Flush core buses. We're about to unload DLLs and need to ensure we don't have module-owned functions left behind.
-    AZ::Data::AssetBus::ExecuteQueuedEvents();
-    AZ::TickBus::ExecuteQueuedEvents();
-
-    // Send this message to ensure that any widgets queued for deletion will get deleted before their
-    // plugin containing their vtable is unloaded. If not, access violations can occur
-    QCoreApplication::sendPostedEvents(Q_NULLPTR, QEvent::DeferredDelete);
-
-    GetPluginManager()->ReleaseAllPlugins();
-
-    GetPluginManager()->UnloadAllPlugins();
-}
-
-void CEditorImpl::LoadPlugins()
-{
-    AZStd::scoped_lock lock(m_pluginMutex);
-
-    constexpr const char* editorPluginFolder = "EditorPlugins";
-
-    AZ::IO::FixedMaxPath pluginsPath;
-
-#if defined(AZ_PLATFORM_MAC)
-    char maxPathBuffer[AZ::IO::MaxPathLength];
-    if (auto appBundlePathOutcome = AZ::SystemUtilsApple::GetPathToApplicationBundle(maxPathBuffer);
-       appBundlePathOutcome)
-    {
-        AZ::IO::FixedMaxPath bundleRootDirectory = appBundlePathOutcome.GetValue();
-
-        // the bundle directory includes Editor.app so we want the parent directory
-        bundleRootDirectory = (bundleRootDirectory / "..").LexicallyNormal();
-        pluginsPath = bundleRootDirectory / editorPluginFolder;
-    }
-#endif
-
-    if (pluginsPath.empty())
-    {
-        // Use the executable directory as the starting point for the EditorPlugins path
-        AZ::IO::FixedMaxPath executableDirectory = AZ::Utils::GetExecutableDirectory();
-        pluginsPath = executableDirectory / editorPluginFolder;
-    }
-
-    // error handling for invalid paths is handled in LoadPlugins
-    GetPluginManager()->LoadPlugins(pluginsPath.c_str());
-}
-
 CEditorImpl::~CEditorImpl()
 {
     gSettings.Save();
     m_bExiting = true; // Can't save level after this point (while Crash)
 
     SAFE_DELETE(m_pViewManager)
-
-    SAFE_DELETE(m_pPluginManager)
     SAFE_DELETE(m_pAnimationContext) // relies on undo manager
     SAFE_DELETE(m_pUndoManager)
 
@@ -1084,7 +1029,6 @@ void CEditorImpl::NotifyExcept(EEditorNotifyEvent event, IEditorNotifyListener* 
         REGISTER_COMMAND("py", CmdPy, 0, "Execute a Python code snippet.");
     }
 
-    GetPluginManager()->NotifyPlugins(event);
 }
 // Confetti end: Leroy Sikkes
 
@@ -1173,4 +1117,3 @@ SEditorSettings* CEditorImpl::GetEditorSettings()
 {
     return &gSettings;
 }
-

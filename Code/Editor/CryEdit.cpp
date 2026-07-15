@@ -98,7 +98,6 @@ AZ_POP_DISABLE_WARNING
 #include "LayoutConfigDialog.h"
 #include "ViewManager.h"
 #include "FileTypeUtils.h"
-#include "PluginManager.h"
 
 #include "IEditorImpl.h"
 #include "StartupLogoDialog.h"
@@ -120,7 +119,6 @@ AZ_POP_DISABLE_WARNING
 
 #include "ScopedVariableSetter.h"
 
-#include "Util/3DConnexionDriver.h"
 #include "Util/AutoDirectoryRestoreFileDialog.h"
 #include "Util/EditorAutoLevelLoadTest.h"
 #include <AzToolsFramework/PythonTerminal/ScriptHelpDialog.h>
@@ -951,21 +949,6 @@ bool CCryEditApp::InitGame()
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////
-void CCryEditApp::InitPlugins()
-{
-    OutputStartupMessage("Loading Plugins...");
-    // Load the plugins
-    {
-        GetIEditor()->LoadPlugins();
-
-#if defined(AZ_PLATFORM_WINDOWS)
-        C3DConnexionDriver* p3DConnexionDriver = new C3DConnexionDriver;
-        GetIEditor()->GetPluginManager()->RegisterPlugin(0, p3DConnexionDriver);
-#endif
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////
 // Be careful when calling this function: it should be called after
 // everything else has finished initializing, otherwise, certain things
@@ -1598,9 +1581,6 @@ bool CCryEditApp::InitInstance()
         return false;
     }
 
-    // Meant to be called before MainWindow::Initialize
-    InitPlugins();
-
     CCryEditApp::OutputStartupMessage(QString("Initializing Main Window..."));
 
     mainWindow->Initialize();
@@ -2041,13 +2021,13 @@ int CCryEditApp::ExitInstance(int exitCode)
 
     if (m_pEditor)
     {
-        // Ensure component entities are wiped prior to unloading plugins,
-        // since components may be implemented in those plugins.
+        // Ensure component entities are wiped prior to tearing down editor integrations.
         AzToolsFramework::EditorEntityContextRequestBus::Broadcast(
             &AzToolsFramework::EditorEntityContextRequestBus::Events::ResetEditorContext);
 
-        // vital, so that the Qt integration can unhook itself!
-        m_pEditor->UnloadPlugins();
+        AzToolsFramework::EditorEvents::Bus::Broadcast(
+            &AzToolsFramework::EditorEvents::NotifyEditorAboutToShutdown);
+
         m_pEditor->Uninitialize();
     }
 
@@ -3570,4 +3550,3 @@ extern "C" int AZ_DLL_EXPORT CryEditMain(int argc, char* argv[])
 }
 
 AZ_DECLARE_MODULE_INITIALIZATION
-

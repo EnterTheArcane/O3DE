@@ -14,4 +14,5 @@ namespace AZ::SceneProcessing
     inline AZStd::unique_ptr<DynamicModuleHandle> s_sceneCoreModule;
     inline AZStd::unique_ptr<DynamicModuleHandle> s_sceneDataModule;
     inline AZStd::unique_ptr<DynamicModuleHandle> s_sceneBuilderModule;
+    inline AZStd::unique_ptr<DynamicModuleHandle> s_sceneUiModule;
 } // namespace AZ::SceneProcessing

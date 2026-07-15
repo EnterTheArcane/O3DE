@@ -33,11 +33,15 @@ if (PAL_TRAIT_BUILD_HOST_TOOLS)
         NAME ${gem_name}.Editor.Static STATIC
         NAMESPACE Gem
         AUTOMOC
+        AUTOUIC
+        AUTORCC
         FILES_CMAKE
             sceneprocessing_editor_static_files.cmake
+            Source/SceneSettings/scenesettings_files.cmake
         INCLUDE_DIRECTORIES
             PRIVATE
                 Source
+                Source/SceneSettings
                 .
             PUBLIC
                 Include
@@ -46,11 +50,17 @@ if (PAL_TRAIT_BUILD_HOST_TOOLS)
                 3rdParty::Qt::Widgets
                 3rdParty::mikkelsen
                 AZ::AzCore
+                AZ::AzQtComponents
                 AZ::SceneCore
                 AZ::SceneData
+                AZ::SceneUI
                 AZ::AzFramework
+                AZ::AzToolsFramework
                 AZ::SceneBuilder
                 AZ::AssetBuilderSDK
+                Legacy::CryCommon
+                Legacy::EditorLib
+                Legacy::EditorCommon
     )
 
     ly_add_target(

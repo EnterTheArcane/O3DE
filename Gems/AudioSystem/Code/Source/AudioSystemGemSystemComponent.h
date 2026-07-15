@@ -14,12 +14,14 @@
 
 #if defined(AUDIO_SYSTEM_EDITOR)
     #include <AzCore/std/smart_ptr/unique_ptr.h>
-    #include <Include/IPlugin.h>
     #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
     #include <Atom/RPI.Public/ViewportContextBus.h>
 #endif // AUDIO_SYSTEM_EDITOR
 
+#if defined(AUDIO_SYSTEM_EDITOR)
+class CAudioControlsEditorPlugin;
+#endif
 
 namespace AudioSystemGem
 {
@@ -93,7 +95,7 @@ namespace AudioSystemGem
         AZStd::unique_ptr<Audio::IAudioSystem> m_audioSystem;
 
     #if defined(AUDIO_SYSTEM_EDITOR)
-        AZStd::unique_ptr<IPlugin> m_editorPlugin;
+        AZStd::unique_ptr<CAudioControlsEditorPlugin> m_editorPlugin;
         AZ::RPI::MatrixChangedEvent::Handler m_cameraTransformHandler;
     #endif // AUDIO_SYSTEM_EDITOR
     };

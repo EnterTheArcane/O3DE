@@ -54,4 +54,3 @@ AudioControls::IAudioSystemEditor* CImplementationManager::GetImplementation()
     AudioControlsEditor::EditorImplPluginEventBus::BroadcastResult(editor, &AudioControlsEditor::EditorImplPluginEventBus::Events::GetEditorImplPlugin);
     return editor;
 }
-

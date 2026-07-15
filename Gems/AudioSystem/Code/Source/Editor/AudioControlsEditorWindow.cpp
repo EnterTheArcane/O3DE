@@ -354,4 +354,3 @@ namespace AudioControls
         m_pInspectorPanel->Reload();
     }
 } // namespace AudioControls
-

@@ -43,6 +43,8 @@
 #include <CryCommon/Maestro/Types/AnimNodeType.h>
 #include <CryCommon/Maestro/Types/AnimParamType.h>
 
+#include <Connexion3D/IDeviceDriver.h>
+
 // Editor
 #include "Settings.h"
 #include "Util/fastlib.h"
@@ -50,8 +52,6 @@
 #include "TrackViewFindDlg.h"
 #include "SequenceBatchRenderDialog.h"
 #include "TVCustomizeTrackColorsDlg.h"
-#include "PluginManager.h"
-#include "Util/3DConnexionDriver.h"
 #include "TrackViewNewSequenceDialog.h"
 #include "FBXExporterDialog.h"
 #include "CryEditDoc.h"
@@ -1027,7 +1027,7 @@ void CTrackViewDialog::OnAddSequence()
             {
                 return;
             }
-            
+
             undoBatch.MarkEntityDirty(newSequence->GetSequenceComponentEntityId());
 
             // make it the currently selected sequence
@@ -1122,7 +1122,7 @@ void CTrackViewDialog::ReloadSequencesComboBox()
     else if (lastSequenceComponentEntityId.IsValid())
     {
         // Make opening the dialog more user friendly: selecting a sequence probably worked on lately,
-        // as sequences, when created, are pushed to back into corresponding container. 
+        // as sequences, when created, are pushed to back into corresponding container.
         m_currentSequenceEntityId = lastSequenceComponentEntityId;
         m_sequencesComboBox->setCurrentIndex(lastIndex + 1);
     }
@@ -1654,21 +1654,16 @@ bool CTrackViewDialog::processRawInput(MSG* pMsg)
 {
     if (pMsg->message == WM_INPUT)
     {
-        static C3DConnexionDriver* p3DConnexionDriver = 0;
-
-        if (!p3DConnexionDriver)
+        auto* driver = AZ::Interface<AZ::Editor::Connexion3D::IDeviceDriver>::Get();
+        if (driver)
         {
-            p3DConnexionDriver = (C3DConnexionDriver*)GetIEditor()->GetPluginManager()->GetPluginByGUID("{AD109901-9128-4ffd-8E67-137CB2B1C41B}");
-        }
-        if (p3DConnexionDriver)
-        {
-            S3DConnexionMessage msg;
-            if (p3DConnexionDriver->GetInputMessageData(pMsg->lParam, msg))
+            AZ::Editor::Connexion3D::InputMessage message;
+            if (driver->GetInputMessageData(reinterpret_cast<void*>(pMsg->lParam), message))
             {
-                if (msg.bGotRotation)
+                if (message.m_gotRotation)
                 {
                     float fTime = GetIEditor()->GetAnimation()->GetTime();
-                    float fDelta2 = msg.vRotate[2] * 0.1f;
+                    float fDelta2 = message.m_rotation.GetZ() * 0.1f;
                     fTime += fDelta2;
 
                     GetIEditor()->GetAnimation()->SetTime(fTime);

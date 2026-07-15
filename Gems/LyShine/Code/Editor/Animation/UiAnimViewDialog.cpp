@@ -34,8 +34,6 @@
 #include <AzQtComponents/Components/StyledDockWidget.h>
 #include <AzQtComponents/Components/Widgets/ToolBar.h>
 
-#include "PluginManager.h"
-#include "Util/3DConnexionDriver.h"
 #include "UiAnimViewNewSequenceDialog.h"
 #include "UiAnimViewCurveEditor.h"
 
@@ -1839,4 +1837,3 @@ void CUiAnimViewDialog::EndUndoTransaction()
 {
     m_bDoingUndoOperation = false;
 }
-

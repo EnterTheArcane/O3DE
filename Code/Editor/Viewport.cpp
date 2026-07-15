@@ -26,13 +26,11 @@
 #include <AzToolsFramework/ViewportSelection/EditorSelectionUtil.h>
 
 // Editor
-#include "Editor/Plugins/ComponentEntityEditorPlugin/SandboxIntegration.h"
 #include "ViewManager.h"
 #include "Include/HitContext.h"
-#include "Util/3DConnexionDriver.h"
-#include "PluginManager.h"
 #include "GameEngine.h"
 #include "Settings.h"
+#include <Connexion3D/IDeviceDriver.h>
 #include <Editor/EditorViewportSettings.h>
 
 #ifdef LoadCursor
@@ -919,33 +917,28 @@ inline AZ::Matrix3x3 CreateOrientationYPR(const Ang3& ypr)
 
 void QtViewport::OnRawInput([[maybe_unused]] UINT wParam, HRAWINPUT lParam)
 {
-    static C3DConnexionDriver* p3DConnexionDriver = 0;
-
     if (GetType() == ET_ViewportCamera)
     {
-        if (!p3DConnexionDriver)
+        auto* driver = AZ::Interface<AZ::Editor::Connexion3D::IDeviceDriver>::Get();
+        if (driver)
         {
-            p3DConnexionDriver = (C3DConnexionDriver*)GetIEditor()->GetPluginManager()->GetPluginByGUID("{AD109901-9128-4ffd-8E67-137CB2B1C41B}");
-        }
-        if (p3DConnexionDriver)
-        {
-            S3DConnexionMessage msg;
-            if (p3DConnexionDriver->GetInputMessageData((LPARAM)lParam, msg))
+            AZ::Editor::Connexion3D::InputMessage message;
+            if (driver->GetInputMessageData(lParam, message))
             {
-                if (msg.bGotTranslation || msg.bGotRotation)
+                if (message.m_gotTranslation || message.m_gotRotation)
                 {
                     static int all6DOFs[6] = { 0 };
-                    if (msg.bGotTranslation)
+                    if (message.m_gotTranslation)
                     {
-                        all6DOFs[0] = msg.raw_translation[0];
-                        all6DOFs[1] = msg.raw_translation[1];
-                        all6DOFs[2] = msg.raw_translation[2];
+                        all6DOFs[0] = message.m_rawTranslation[0];
+                        all6DOFs[1] = message.m_rawTranslation[1];
+                        all6DOFs[2] = message.m_rawTranslation[2];
                     }
-                    if (msg.bGotRotation)
+                    if (message.m_gotRotation)
                     {
-                        all6DOFs[3] = msg.raw_rotation[0];
-                        all6DOFs[4] = msg.raw_rotation[1];
-                        all6DOFs[5] = msg.raw_rotation[2];
+                        all6DOFs[3] = message.m_rawRotation[0];
+                        all6DOFs[4] = message.m_rawRotation[1];
+                        all6DOFs[5] = message.m_rawRotation[2];
                     }
 
                     AZ::Matrix3x4 viewTM = GetViewTM();
@@ -988,4 +981,3 @@ void QtViewport::setRay(QPoint& vp, Vec3& raySrc, Vec3& rayDir)
     m_raySrc = raySrc;
     m_rayDir = rayDir;
 }
-

@@ -308,7 +308,7 @@ namespace AzToolsFramework
 
         /*!
          * Notifies the application that the user intends to select a list of entities.
-         * This should be used any time multiple entities are selected, as this is 
+         * This should be used any time multiple entities are selected, as this is
          * a large performance improvement over calling MarkEntitySelected more than once.
          * \param entitiesToSelect - the vector of newly selected entities
          */
@@ -538,7 +538,7 @@ namespace AzToolsFramework
         virtual AZ::SliceComponent::SliceInstanceAddress FindCommonSliceInstanceAddress(const EntityIdList& entityIds) = 0;
 
         /**
-         * Get the id of the root entity of a slice instance. 
+         * Get the id of the root entity of a slice instance.
          * This function ignores any unpushed change made to the transform hierarchy of the entities in the slice instance in question.
          * @param sliceAddress The address of a slice instance.
          * @return The root entity id.
@@ -622,8 +622,8 @@ namespace AzToolsFramework
          * Open 3D Engine Internal use only.
          *
          * Run a specific redo command separate from the undo/redo system.
-         * In many cases before a modification on an entity takes place, it is first packaged into 
-         * undo/redo commands. Running the modification's redo command separate from the undo/redo 
+         * In many cases before a modification on an entity takes place, it is first packaged into
+         * undo/redo commands. Running the modification's redo command separate from the undo/redo
          * system simulates its execution, and avoids some code duplication.
          */
         virtual void RunRedoSeparately(UndoSystem::URSequencePoint* redoCommand) = 0;
@@ -696,7 +696,7 @@ namespace AzToolsFramework
          * @note It is only valid to make this request when the editor is in Pick Mode.
          */
         virtual void PickModeSelectEntity(AZ::EntityId entityId) = 0;
-    
+
     protected:
         ~EditorPickModeRequests() = default;
     };
@@ -872,7 +872,7 @@ namespace AzToolsFramework
          * @return the string identifying an agent navigation type
          */
         virtual const char* GetDefaultAgentNavigationTypeName() { return ""; }
-        
+
         virtual void OpenPinnedInspector(const AzToolsFramework::EntityIdSet& /*entities*/) { }
 
         virtual void ClosePinnedInspector(AzToolsFramework::EntityPropertyEditor* /*editor*/) {}
@@ -946,6 +946,9 @@ namespace AzToolsFramework
 
         /// Notify that the Editor has been fully initialized
         virtual void NotifyEditorInitialized() {}
+
+        /// Notify editor extensions to release resources that depend on IEditor before it is uninitialized.
+        virtual void NotifyEditorAboutToShutdown() {}
 
         /// Signal that an asset should be highlighted / selected
         virtual void SelectAsset(const QString& /* assetPath */) {}

@@ -20,7 +20,6 @@
 #include <AzFramework/Windowing/WindowBus.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 // Qt
-#include <QtConcurrent>
 #include <QStringListModel>
 #include <QFileDialog>
 #include <QAction>
@@ -107,7 +106,6 @@ CSequenceBatchRenderDialog::CSequenceBatchRenderDialog(float fps, QWidget* pPare
     , m_customResH(0)
     , m_customResW(0)
     , m_customFPS(0)
-    , m_bFFMPEGCommandAvailable(false)
     , m_ui(new Ui::SequenceBatchRenderDialog)
     , m_renderListModel(new QStringListModel(this))
     , CV_TrackViewRenderOutputCapturing(0)
@@ -179,7 +177,6 @@ void CSequenceBatchRenderDialog::OnInitDialog()
     connect(m_ui->m_cvarsEdit,&QTextEdit::textChanged, this, &CSequenceBatchRenderDialog::OnVarsChange);
     connect(m_ui->BATCH_RENDER_FILE_PREFIX, &QLineEdit::textChanged, this, &CSequenceBatchRenderDialog::OnPrefixChange);
     connect(m_ui->m_disableDebugInfoCheckBox, &QCheckBox::toggled, this, &CSequenceBatchRenderDialog::OnDisableDebugInfoChange);
-    connect(m_ui->m_createVideoCheckBox, &QCheckBox::toggled, this, &CSequenceBatchRenderDialog::OnCreateVideoChange);
 
     const int bigEnoughNumber = 1000000;
     m_ui->m_startFrame->setRange(0, bigEnoughNumber);
@@ -256,18 +253,7 @@ void CSequenceBatchRenderDialog::OnInitDialog()
 
     m_ui->BATCH_RENDER_FRAME_IN_FPS->setText(tr("In %1 FPS").arg(static_cast<int>(m_fpsForTimeToFrameConversion)));
 
-    m_bFFMPEGCommandAvailable = GetIEditor()->GetICommandManager()->IsRegistered("plugin", "ffmpeg_encode");
-    m_ffmpegPluginStatusMsg = m_bFFMPEGCommandAvailable ?
-        QString("") :
-        tr("FFMPEG plug-in isn't found(creating a video isn't supported).");
-    m_ui->BATCH_RENDER_PRESS_ESC_TO_CANCEL->setText(m_ffmpegPluginStatusMsg);
-
-    // Disable the create video checkbox if the ffmpeg command is not available
-    if (!m_bFFMPEGCommandAvailable)
-    {
-        m_ui->m_createVideoCheckBox->setChecked(false);
-        m_ui->m_createVideoCheckBox->setEnabled(false);
-    }
+    m_ui->BATCH_RENDER_PRESS_ESC_TO_CANCEL->clear();
 
     // Load previously saved options, if any.
     QString defaultPresetPath = Path::GetUserSandboxFolder();
@@ -343,12 +329,6 @@ void CSequenceBatchRenderDialog::OnRenderItemSelChange()
     m_ui->BATCH_RENDER_FILE_PREFIX->setText(item.prefix);
 
     m_ui->m_disableDebugInfoCheckBox->setChecked(item.disableDebugInfo);
-
-    // create_video
-    if (m_bFFMPEGCommandAvailable)
-    {
-        m_ui->m_createVideoCheckBox->setChecked(item.bCreateVideo);
-    }
 
     // resolution
     bFound = false;
@@ -720,15 +700,13 @@ void CSequenceBatchRenderDialog::SaveOutputOptions(const QString& pathname) cons
         fpsNode->setContent(fpsText.toUtf8().data());
     }
 
-    // Capture options (format, buffer, prefix, create_video)
+    // Capture options (format, buffer, prefix)
     XmlNodeRef imageNode = batchRenderOptionsNode->newChild("image");
     imageNode->setAttr("format", m_ui->m_imageFormatCombo->currentIndex() % arraysize(imageFormatExtensions));
     const QString prefix = m_ui->BATCH_RENDER_FILE_PREFIX->text();
     imageNode->setAttr("prefix", prefix.toUtf8().data());
     bool disableDebugInfo = m_ui->m_disableDebugInfoCheckBox->isChecked();
     imageNode->setAttr("disabledebuginfo", disableDebugInfo);
-    bool bCreateVideoOn = m_ui->m_createVideoCheckBox->isChecked();
-    imageNode->setAttr("createvideo", bCreateVideoOn);
 
     // Custom configs
     XmlNodeRef cvarsNode = batchRenderOptionsNode->newChild("cvars");
@@ -813,7 +791,7 @@ bool CSequenceBatchRenderDialog::LoadOutputOptions(const QString& pathname)
         }
     }
 
-    // Capture options (format, buffer, prefix, create_video)
+    // Capture options (format, buffer, prefix)
     XmlNodeRef imageNode = batchRenderOptionsNode->findChild("image");
     if (imageNode)
     {
@@ -825,12 +803,6 @@ bool CSequenceBatchRenderDialog::LoadOutputOptions(const QString& pathname)
         bool disableDebugInfo = false;
         imageNode->getAttr("disabledebuginfo", disableDebugInfo);
         m_ui->m_disableDebugInfoCheckBox->setChecked(disableDebugInfo);
-        if (m_bFFMPEGCommandAvailable)
-        {
-            bool bCreateVideoOn = false;
-            imageNode->getAttr("createvideo", bCreateVideoOn);
-            m_ui->m_createVideoCheckBox->setChecked(bCreateVideoOn);
-        }
     }
 
     // Custom configs
@@ -954,9 +926,9 @@ void CSequenceBatchRenderDialog::CaptureItemStart()
     m_renderContext.canceled = false;
 
     CV_TrackViewRenderOutputCapturing = 1;
-    
+
     m_renderContext.captureOptions.timeStep = 1.0f / renderItem.fps;
-  
+
     // Set up the custom config cvars for this item.
     AZ::IConsole* console = AZ::Interface<AZ::IConsole>::Get();
     AZ_Assert(console, "CSequenceBatchRenderDialog requires an IConsole interface but no instance has been created.");
@@ -1059,7 +1031,7 @@ void CSequenceBatchRenderDialog::OnUpdateBeginPlayingSequence()
     const AZStd::string seqName = renderItem.seqName.toUtf8().data();
     IMovieSystem* movieSystem = AZ::Interface<IMovieSystem>::Get();
     AZ_Assert(movieSystem, "Cannot get IMovieSystem");
-    
+
     renderItem.pSequence = movieSystem->FindLegacySequenceByName(seqName.c_str());
     AZ_Assert(renderItem.pSequence, "Cannot find sequence by name %s", seqName.c_str());
 
@@ -1122,7 +1094,7 @@ void CSequenceBatchRenderDialog::OnUpdateCapturing()
     Range rng = pCurSeq->GetTimeRange();
 
     IMovieSystem* movieSystem = AZ::Interface<IMovieSystem>::Get();
-    
+
     float elapsedTime = movieSystem ? movieSystem->GetPlayingTime(pCurSeq) - rng.start : 0.f;
     const int percentage
         = static_cast<int>(100.0f * (m_renderContext.spentTime + elapsedTime) / m_renderContext.expectedTotalTime);
@@ -1170,65 +1142,7 @@ void CSequenceBatchRenderDialog::OnUpdateEnd(IAnimSequence* sequence)
         cvarDebugInfo->Set(m_renderContext.cvarDisplayInfoBU);
     }
 
-    const SRenderItem& renderItem = m_renderItems[m_renderContext.currentItemIndex];
-    if (m_bFFMPEGCommandAvailable && renderItem.bCreateVideo)
-    {
-        // Create a video using the ffmpeg plug-in from captured images.
-        m_renderContext.processingFFMPEG = true;
-
-        const AZStd::string outputFolder = m_renderContext.captureOptions.folder;
-        const AZStd::string imageFormat = m_ui->m_imageFormatCombo->currentText().toStdString().c_str();
-        AZStd::string outputFile;
-        AzFramework::StringFunc::Path::Join(outputFolder.c_str(), renderItem.prefix.toUtf8().data(), outputFile);
-
-        // Create the input file string, leave the %06d unexpanded for the ffmpeg tool.
-        const AZStd::string inputFile = outputFile + "_%06d." + imageFormat;
-
-        outputFile += ".webm";
-
-        static const char* filePattern = "__input_file__";
-
-        QString command = AZStd::string::format(
-            "plugin.ffmpeg_encode '%s' '%s' '%s' %i %i 'crop=%i:%i:0:0'",
-            filePattern,
-            outputFile.c_str(),
-            "libvpx-vp9",
-            10240,
-            renderItem.fps,
-            getResWidth(renderItem.resW),
-            getResHeight(renderItem.resH)).c_str();
-
-        command = command.replace(filePattern, inputFile.c_str());
-
-        auto future = QtConcurrent::run([command]
-        {
-            // Run the command
-            GetIEditor()->ExecuteCommand(command);
-        });
-
-        // Use a watcher to set a flag when the ffmpeg processing is complete.
-        connect(&m_renderContext.processingFFMPEGWatcher, &QFutureWatcher<void>::finished, this, [this]()
-        {
-            m_renderContext.processingFFMPEG = false;
-        });
-        m_renderContext.processingFFMPEGWatcher.setFuture(future);
-
-        EnterCaptureState(CaptureState::FFMPEGProcessing);
-    }
-    else
-    {
-        EnterCaptureState(CaptureState::Finalize);
-    }
-}
-
-void CSequenceBatchRenderDialog::OnUpdateFFMPEGProcessing()
-{
-    UpdateSpinnerProgressMessage(qUtf8Printable(tr("FFMPEG processing")));
-
-    if (!m_renderContext.processingFFMPEG)
-    {
-        EnterCaptureState(CaptureState::Finalize);
-    }
+    EnterCaptureState(CaptureState::Finalize);
 }
 
 void CSequenceBatchRenderDialog::OnUpdateFinalize()
@@ -1265,7 +1179,7 @@ void CSequenceBatchRenderDialog::OnUpdateFinalize()
         m_ui->m_pGoBtn->setText(tr("Start"));
         m_ui->m_pGoBtn->setIcon(QPixmap(":/Trackview/clapperboard_ready.png"));
         m_renderContext.currentItemIndex = -1;
-        m_ui->BATCH_RENDER_PRESS_ESC_TO_CANCEL->setText(m_ffmpegPluginStatusMsg);
+        m_ui->BATCH_RENDER_PRESS_ESC_TO_CANCEL->clear();
 
         CV_TrackViewRenderOutputCapturing = 0;
 
@@ -1330,10 +1244,6 @@ void CSequenceBatchRenderDialog::OnKickIdle()
     {
         OnUpdateEnd(m_renderContext.endingSequence);
         m_renderContext.endingSequence = nullptr;
-    }
-    else if (m_renderContext.captureState == CaptureState::FFMPEGProcessing)
-    {
-        OnUpdateFFMPEGProcessing();
     }
     else if (m_renderContext.captureState == CaptureState::Finalize)
     {
@@ -1503,11 +1413,6 @@ void CSequenceBatchRenderDialog::OnDisableDebugInfoChange()
     CheckForEnableUpdateButton();
 }
 
-void CSequenceBatchRenderDialog::OnCreateVideoChange()
-{
-    CheckForEnableUpdateButton();
-}
-
 void CSequenceBatchRenderDialog::OnLoadBatch()
 {
     QString loadPath;
@@ -1577,9 +1482,6 @@ void CSequenceBatchRenderDialog::OnLoadBatch()
             // prefix
             item.prefix = itemNode->getAttr("prefix");
 
-            // create_video
-            itemNode->getAttr("createvideo", item.bCreateVideo);
-
             // folder
             item.folder = itemNode->getAttr("folder");
 
@@ -1632,9 +1534,6 @@ void CSequenceBatchRenderDialog::OnSaveBatch()
 
             // prefix
             itemNode->setAttr("prefix", item.prefix.toUtf8().data());
-
-            // create_video
-            itemNode->setAttr("createvideo", item.bCreateVideo);
 
             // folder
             itemNode->setAttr("folder", item.folder.toUtf8().data());
@@ -1703,8 +1602,6 @@ bool CSequenceBatchRenderDialog::SetUpNewRenderItem(SRenderItem& item)
     item.prefix = m_ui->BATCH_RENDER_FILE_PREFIX->text();
     // disable debug info
     item.disableDebugInfo = m_ui->m_disableDebugInfoCheckBox->isChecked();
-    // create_video
-    item.bCreateVideo = m_ui->m_createVideoCheckBox->isChecked();
     // resolution
     int curResSel = m_ui->m_resolutionCombo->currentIndex();
     if (curResSel < arraysize(resolutions))
@@ -1743,12 +1640,11 @@ void CSequenceBatchRenderDialog::AddItem(const SRenderItem& item)
 
 QString CSequenceBatchRenderDialog::GetCaptureItemString(const SRenderItem& item) const
 {
-    return QString::fromLatin1("%1_%2_%3-%4(%5x%6,%7)%8").arg(item.pSequence->GetName())
+    return QString::fromLatin1("%1_%2_%3-%4(%5x%6,%7)").arg(item.pSequence->GetName())
                .arg(item.pDirectorNode->GetName())
                .arg(int(item.frameRange.start * m_fpsForTimeToFrameConversion))
                .arg(int(item.frameRange.end * m_fpsForTimeToFrameConversion))
-               .arg(getResWidth(item.resW)).arg(getResHeight(item.resH)).arg(item.fps)
-               .arg(item.bCreateVideo ? "[v]" : "");
+               .arg(getResWidth(item.resW)).arg(getResHeight(item.resH)).arg(item.fps);
 }
 
 void CSequenceBatchRenderDialog::UpdateSpinnerProgressMessage(const char* description)

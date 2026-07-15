@@ -22,6 +22,7 @@
 #include <QtViewPaneManager.h>
 
 #include <AzFramework/Components/CameraBus.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 
 using namespace AudioControls;
@@ -47,12 +48,8 @@ CAudioControlsEditorPlugin::CAudioControlsEditorPlugin(IEditor* editor)
 //-----------------------------------------------------------------------------------------------//
 CAudioControlsEditorPlugin::~CAudioControlsEditorPlugin()
 {
-    Release();
-}
+    AzToolsFramework::UnregisterViewPane(LyViewPane::AudioControlsEditor);
 
-//-----------------------------------------------------------------------------------------------//
-void CAudioControlsEditorPlugin::Release()
-{
     // clear connections before releasing the implementation since they hold pointers to data
     // instantiated from the implementation dll.
     CUndoSuspend suspendUndo;

@@ -126,17 +126,17 @@ void EditorActionsHandler::Initialize(MainWindow* mainWindow)
     AZ_Assert(
         m_actionManagerInternalInterface,
         "EditorActionsHandler - could not get ActionManagerInternalInterface on EditorActionsHandler construction.");
-    
+
     m_hotKeyManagerInterface = AZ::Interface<AzToolsFramework::HotKeyManagerInterface>::Get();
     AZ_Assert(m_hotKeyManagerInterface, "EditorActionsHandler - could not get HotKeyManagerInterface on EditorActionsHandler construction.");
-    
+
     m_menuManagerInterface = AZ::Interface<AzToolsFramework::MenuManagerInterface>::Get();
     AZ_Assert(m_menuManagerInterface, "EditorActionsHandler - could not get MenuManagerInterface on EditorActionsHandler construction.");
-    
+
     m_menuManagerInternalInterface = AZ::Interface<AzToolsFramework::MenuManagerInternalInterface>::Get();
     AZ_Assert(
         m_menuManagerInternalInterface, "EditorActionsHandler - could not get MenuManagerInternalInterface on EditorActionsHandler construction.");
-    
+
     m_toolBarManagerInterface = AZ::Interface<AzToolsFramework::ToolBarManagerInterface>::Get();
     AZ_Assert(m_toolBarManagerInterface, "EditorActionsHandler - could not get ToolBarManagerInterface on EditorActionsHandler construction.");
 
@@ -402,7 +402,7 @@ void EditorActionsHandler::OnActionRegistrationHook()
         actionProperties.m_description = "Save the current level";
         actionProperties.m_category = "Level";
         actionProperties.m_menuVisibility = AzToolsFramework::ActionVisibility::AlwaysShow;
-        
+
         m_actionManagerInterface->RegisterAction(
             EditorIdentifiers::MainWindowActionContextIdentifier, "o3de.action.file.save", actionProperties,
             [cryEdit = m_cryEditApp, mainWindow = m_mainWindow]
@@ -430,7 +430,7 @@ void EditorActionsHandler::OnActionRegistrationHook()
 
         m_actionManagerInterface->InstallEnabledStateCallback("o3de.action.file.save", IsLevelLoaded);
         m_actionManagerInterface->AddActionToUpdater(EditorIdentifiers::LevelLoadedUpdaterIdentifier, "o3de.action.file.save");
-        
+
         m_hotKeyManagerInterface->SetActionHotKey("o3de.action.file.save", "Ctrl+S");
     }
 
@@ -508,25 +508,6 @@ void EditorActionsHandler::OnActionRegistrationHook()
 
         // This action is only accessible outside of Component Modes
         m_actionManagerInterface->AssignModeToAction(AzToolsFramework::DefaultActionContextModeIdentifier, actionIdentifier);
-    }
-
-    // Edit Platform Settings
-    {
-        constexpr AZStd::string_view actionIdentifier = "o3de.action.platform.editSettings";
-        AzToolsFramework::ActionProperties actionProperties;
-        actionProperties.m_name = "Edit Platform Settings...";
-        actionProperties.m_description = "Open the Platform Settings panel.";
-        actionProperties.m_category = "Platform";
-
-        m_actionManagerInterface->RegisterAction(
-            EditorIdentifiers::MainWindowActionContextIdentifier,
-            actionIdentifier,
-            actionProperties,
-            [qtViewPaneManager = m_qtViewPaneManager]
-            {
-                qtViewPaneManager->OpenPane(LyViewPane::ProjectSettingsTool);
-            }
-        );
     }
 
     // New Project
@@ -1672,7 +1653,7 @@ void EditorActionsHandler::OnWidgetActionRegistrationHook()
             }
         );
     }
-}     
+}
 
 void EditorActionsHandler::OnMenuBarRegistrationHook()
 {
@@ -1880,8 +1861,6 @@ void EditorActionsHandler::OnMenuBindingHook()
             m_menuManagerInterface->AddActionToMenu(EditorIdentifiers::EditSettingsMenuIdentifier, "o3de.action.edit.globalPreferences", 100);
             m_menuManagerInterface->AddActionToMenu(EditorIdentifiers::EditSettingsMenuIdentifier, "o3de.action.edit.editorSettingsManager", 200);
             m_menuManagerInterface->AddActionToMenu(EditorIdentifiers::EditSettingsMenuIdentifier, "o3de.action.project.editSettings", 300);
-            m_menuManagerInterface->AddActionToMenu(EditorIdentifiers::EditSettingsMenuIdentifier, "o3de.action.platform.editSettings", 400);
-
         }
     }
 
@@ -2080,7 +2059,7 @@ void EditorActionsHandler::OnPostActionManagerRegistrationHook()
             RefreshToolActions();
         }
     );
-    
+
     RefreshToolActions();
 
     // Initialize the Toolbox Macro actions
@@ -2318,7 +2297,6 @@ void EditorActionsHandler::OpenLevelByRecentFileEntryIndex(int index)
     }
 
     m_cryEditApp->OpenDocumentFile((*recentFiles)[fileIndex].toUtf8().data(), true, COpenSameLevelOptions::ReopenLevelIfSame);
-    
 }
 
 void EditorActionsHandler::UpdateRecentFileActions()

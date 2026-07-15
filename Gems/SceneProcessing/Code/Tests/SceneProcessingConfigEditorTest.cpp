@@ -7,6 +7,23 @@
  */
 
 #include <AzTest/AzTest.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
+#include <SceneSettings/SceneSettingsEditorSystemComponent.h>
 
 AZ_TOOLS_UNIT_TEST_HOOK(DEFAULT_UNIT_TEST_ENV);
+
+namespace UnitTest
+{
+    TEST(SceneSettingsReflectionTests, AssetImporterScriptingBusAndEventAreReflected)
+    {
+        AZ::BehaviorContext behaviorContext;
+        SceneSettingsEditorSystemComponent::Reflect(&behaviorContext);
+
+        const auto busIterator = behaviorContext.m_ebuses.find("SceneSettingsAssetImporterForScriptRequestBus");
+        ASSERT_NE(busIterator, behaviorContext.m_ebuses.end());
+
+        const AZ::BehaviorEBus* behaviorBus = busIterator->second;
+        EXPECT_NE(behaviorBus->m_events.find("EditImportSettings"), behaviorBus->m_events.end());
+    }
+} // namespace UnitTest
