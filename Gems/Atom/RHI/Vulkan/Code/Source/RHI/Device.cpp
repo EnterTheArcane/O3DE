@@ -1441,6 +1441,13 @@ namespace AZ
             }
 
             m_features.m_occlusionQueryPrecise = m_enabledDeviceFeatures.occlusionQueryPrecise == VK_TRUE;
+
+            // Triangle fans are a core Vulkan primitive topology.
+            // On portability implementations support is optional and reported via VkPhysicalDevicePortabilitySubsetFeaturesKHR::triangleFans.
+            m_features.m_triangleFan =
+                !physicalDevice.IsOptionalDeviceExtensionSupported(OptionalDeviceExtension::PortabilitySubset)
+                || physicalDevice.GetPhysicalDevicePortabilitySubsetFeatures().triangleFans == VK_TRUE;
+
             m_features.m_predication = physicalDevice.IsFeatureSupported(DeviceFeature::Predication);
             m_features.m_indirectCommandTier = RHI::IndirectCommandTiers::Tier1;
             m_features.m_indirectDrawCountBufferSupported = physicalDevice.IsFeatureSupported(DeviceFeature::DrawIndirectCount);

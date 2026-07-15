@@ -46,7 +46,7 @@ namespace AZ::RHI
 
         //! Whether the adapter supports indirect draw
         bool m_indirectDrawSupport = true;
-            
+
         //! Whether the adapter supports a count buffer when doing indirect drawing.
         bool m_indirectDrawCountBufferSupported = false;
 
@@ -89,10 +89,10 @@ namespace AZ::RHI
         //! Whether the shading rate attachment is read by the GPU during execution.
         //! Otherwise, the image is read by the CPU during scope execution (so it must not be modified by either CPU or GPU at that time).
         bool m_dynamicShadingRateImage = false;
-            
+
         //! Whether the adapter supports wave/subgroup operation
         bool m_waveOperation = false;
-                        
+
         //! Whether swapchain scaling support is available.
         RHI::ScalingFlags m_swapchainScalingFlags = RHI::ScalingFlags::None;
 
@@ -111,6 +111,9 @@ namespace AZ::RHI
 
         //! Whether fences can be shared with other devices
         bool m_crossDeviceFences = false;
+
+        //! Whether the adapter supports the triangle fan primitive topology
+        bool m_triangleFan = false;
 
         /// Additional features here.
     };

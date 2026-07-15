@@ -100,7 +100,16 @@ namespace AZ
                 D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ,
                 D3D_PRIMITIVE_TOPOLOGY_TRIANGLEFAN,
             };
-            return table[(uint32_t)topology];
+            // NOTE: This table has no entry for PrimitiveTopology::PatchList.
+            // Patch topology needs a per-control-point value resolved elsewhere, so it is intentionally shorter than the enum.
+            // Guard against indexing past the end for PatchList/future additions rather than reading OOB.
+            const uint32_t index = static_cast<uint32_t>(topology);
+            if (index >= AZ_ARRAY_SIZE(table))
+            {
+                AZ_Assert(false, "PrimitiveTopology %u has no D3D12 topology mapping.", index);
+                return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+            }
+            return table[index];
         }
 
         AZStd::vector<D3D12_INPUT_ELEMENT_DESC> ConvertInputElements(const RHI::InputStreamLayout& layout)

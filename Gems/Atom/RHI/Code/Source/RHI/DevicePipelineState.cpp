@@ -8,6 +8,7 @@
 
 #include <Atom/RHI.Reflect/PipelineLayoutDescriptor.h>
 #include <Atom/RHI.Reflect/InputStreamLayout.h>
+#include <Atom/RHI/Device.h>
 #include <Atom/RHI/DevicePipelineState.h>
 
 namespace AZ::RHI
@@ -40,6 +41,12 @@ namespace AZ::RHI
             if (!descriptor.m_inputStreamLayout.IsFinalized())
             {
                 AZ_Error("DevicePipelineState", false, "InputStreamLayout is not finalized!");
+                error = true;
+            }
+
+            if (descriptor.m_inputStreamLayout.GetTopology() == PrimitiveTopology::TriangleFan && !device.GetFeatures().m_triangleFan)
+            {
+                AZ_Error("DevicePipelineState", false, "PrimitiveTopology::TriangleFan is not supported on this device.");
                 error = true;
             }
 

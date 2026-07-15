@@ -73,6 +73,7 @@ namespace AZ
             ExternalMemoryHost,
             ExternalSemaphore,
             SeparateDepthStencilLayouts,
+            PortabilitySubset,
             Count
         };
 
@@ -119,6 +120,7 @@ namespace AZ
             const VkPhysicalDeviceTimelineSemaphoreFeatures& GetPhysicalDeviceTimelineSemaphoreFeatures() const;
             const VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT& GetPhysicalSubpassMergeFeedbackFeatures() const;
             const VkPhysicalDeviceExternalMemoryHostPropertiesEXT& GetExternalMemoryHostProperties() const;
+            const VkPhysicalDevicePortabilitySubsetFeaturesKHR& GetPhysicalDevicePortabilitySubsetFeatures() const;
 
             VkFormatProperties GetFormatProperties(RHI::Format format, bool raiseAsserts = true) const;
             StringList GetDeviceLayerNames() const;
@@ -133,7 +135,7 @@ namespace AZ
             AZStd::vector<VkTimeDomainEXT> GetCalibratedTimeDomains(const GladVulkanContext& context) const;
 
         private:
-            
+
 
             ///////////////////////////////////////////////////////////////////
             // RHI::PhysicalDevice
@@ -173,6 +175,7 @@ namespace AZ
             VkPhysicalDeviceTimelineSemaphoreFeatures m_timelineSemaphoreFeatures{};
             VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT m_subpassMergeFeedbackFeatures{};
             VkPhysicalDeviceExternalMemoryHostPropertiesEXT m_externalMemoryHostProperties{};
+            VkPhysicalDevicePortabilitySubsetFeaturesKHR m_portabilitySubsetFeatures{};
             uint32_t m_vulkanVersion = 0;
         };
     }

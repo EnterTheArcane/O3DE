@@ -208,6 +208,11 @@ namespace AZ
             return m_externalMemoryHostProperties;
         }
 
+        const VkPhysicalDevicePortabilitySubsetFeaturesKHR& PhysicalDevice::GetPhysicalDevicePortabilitySubsetFeatures() const
+        {
+            return m_portabilitySubsetFeatures;
+        }
+
         const VkPhysicalDeviceVulkan12Features& PhysicalDevice::GetPhysicalDeviceVulkan12Features() const
         {
             return m_vulkan12Features;
@@ -380,6 +385,7 @@ namespace AZ
             VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME,
             ExternalSemaphoreExtensionName,
             VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME,
+            VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
         };
 
         RawStringList PhysicalDevice::GetEnabledOptionalExtensions()
@@ -478,6 +484,7 @@ namespace AZ
                 m_fragmentDensityMapFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT;
                 m_timelineSemaphoreFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
                 m_subpassMergeFeedbackFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_MERGE_FEEDBACK_FEATURES_EXT;
+                m_portabilitySubsetFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR;
 
                 VkPhysicalDeviceFeatures2 deviceFeatures2 = {};
                 deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -517,6 +524,11 @@ namespace AZ
                 if (IsOptionalDeviceExtensionSupported(OptionalDeviceExtension::SubpassMergeFeedback))
                 {
                     deviceFeaturesAppender.append(m_subpassMergeFeedbackFeatures);
+                }
+
+                if (IsOptionalDeviceExtensionSupported(OptionalDeviceExtension::PortabilitySubset))
+                {
+                    deviceFeaturesAppender.append(m_portabilitySubsetFeatures);
                 }
 
                 if (IsOptionalDeviceExtensionSupported(OptionalDeviceExtension::FragmentShadingRate))

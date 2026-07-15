@@ -934,9 +934,10 @@ namespace AZ
                 case RHI::PrimitiveTopology::TriangleStrip:
                     return  MTLPrimitiveTypeTriangleStrip;
                 case RHI::PrimitiveTopology::TriangleFan:
-                    // Not supported, just like this being excluded in Vulkan's portability subset
-                    // return MTLPrimitiveTypeTriangleFan;
+                    // Metal has no triangle-fan primitive type, just like this being excluded in Vulkan's portability subset.
+                    // This *should* already be rejected at pipeline creation via DeviceFeatures::m_triangleFan == false.
                     AZ_Assert(false, "TriangleFan not supported on Metal");
+                    break;
                 default:
                     AZ_Assert(false, "Invalid primitive topology");
                 break;

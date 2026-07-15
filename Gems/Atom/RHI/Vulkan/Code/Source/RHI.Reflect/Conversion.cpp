@@ -167,8 +167,8 @@ namespace AZ
             case RHI::PrimitiveTopology::TriangleStripAdj:
                 return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
             case RHI::PrimitiveTopology::TriangleFan:
-                // TODO: If VK_KHR_portability_subset is enabled (i.e. on MoltenVK), assert that
-                // `VkPhysicalDevicePortabilitySubsetFeaturesKHR::triangleFans` is not FALSE:
+                // Triangle-fan availability is gated by DeviceFeatures::m_triangleFan and validated at pipeline creation.
+                // So this conversion is only reached when the device supports it.
                 // https://registry.khronos.org/vulkan/specs/latest/man/html/VkPrimitiveTopology.html#_description
                 return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
             default:

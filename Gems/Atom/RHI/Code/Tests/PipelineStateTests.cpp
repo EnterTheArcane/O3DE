@@ -174,6 +174,36 @@ namespace UnitTest
         EXPECT_EQ(resultCode, RHI::ResultCode::InvalidOperation);
     }
 
+    TEST_F(PipelineStateTests, PipelineState_Init_TriangleFanUnsupported_Fails)
+    {
+        // The test device reports m_triangleFan == false by default, so a TriangleFan PSO must be rejected.
+        RHI::Ptr<RHI::Device> device = MakeTestDevice();
+
+        auto descriptor = CreatePipelineStateDescriptor(0);
+        descriptor.m_inputStreamLayout.SetTopology(RHI::PrimitiveTopology::TriangleFan);
+        descriptor.m_inputStreamLayout.Finalize();
+
+        RHI::Ptr<RHI::DevicePipelineState> pipelineState = RHI::Factory::Get().CreatePipelineState();
+        AZ_TEST_START_ASSERTTEST;
+        RHI::ResultCode resultCode = pipelineState->Init(*device, descriptor);
+        AZ_TEST_STOP_ASSERTTEST(1);
+        EXPECT_EQ(resultCode, RHI::ResultCode::InvalidOperation);
+    }
+
+    TEST_F(PipelineStateTests, PipelineState_Init_TriangleFanSupported_Succeeds)
+    {
+        RHI::Ptr<RHI::Device> device = MakeTestDevice();
+        static_cast<UnitTest::Device*>(device.get())->m_features.m_triangleFan = true;
+
+        auto descriptor = CreatePipelineStateDescriptor(0);
+        descriptor.m_inputStreamLayout.SetTopology(RHI::PrimitiveTopology::TriangleFan);
+        descriptor.m_inputStreamLayout.Finalize();
+
+        RHI::Ptr<RHI::DevicePipelineState> pipelineState = RHI::Factory::Get().CreatePipelineState();
+        RHI::ResultCode resultCode = pipelineState->Init(*device, descriptor);
+        EXPECT_EQ(resultCode, RHI::ResultCode::Success);
+    }
+
     TEST_F(PipelineStateTests, PipelineLibrary_CreateEmpty_Test)
     {
         RHI::Ptr<RHI::DevicePipelineLibrary> empty = RHI::Factory::Get().CreatePipelineLibrary();

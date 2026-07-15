@@ -37,6 +37,8 @@ namespace UnitTest
 
         Device();
 
+        using AZ::RHI::Device::m_features;
+
     private:
 
         AZ::RHI::ResultCode InitInternal(AZ::RHI::PhysicalDevice&) override { return AZ::RHI::ResultCode::Success; }

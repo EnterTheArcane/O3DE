@@ -218,6 +218,18 @@ namespace AZ
             GetDevice()->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS2, &options2, sizeof(options2));
             m_features.m_customSamplePositions =
                 options2.ProgrammableSamplePositionsTier != D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED;
+
+            // Triangle fans were removed in D3D10/11 and are only valid again on drivers that report D3D12_FEATURE_DATA_D3D12_OPTIONS15::TriangleFanSupported.
+            // That feature query is only present in newer versions (NTDDI_WIN11_GE and later).
+            // On older SDKs the feature is left as false, which is the safe/unsupported result.
+            m_features.m_triangleFan = false;
+#if defined(NTDDI_WIN11_GE) && (WDK_NTDDI_VERSION >= NTDDI_WIN11_GE)
+            D3D12_FEATURE_DATA_D3D12_OPTIONS15 options15;
+            if (SUCCEEDED(GetDevice()->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS15, &options15, sizeof(options15))))
+            {
+                m_features.m_triangleFan = (options15.TriangleFanSupported != FALSE);
+            }
+#endif
             m_features.m_queryTypesMask[static_cast<uint32_t>(RHI::HardwareQueueClass::Graphics)] = RHI::QueryTypeFlags::All;
             m_features.m_queryTypesMask[static_cast<uint32_t>(RHI::HardwareQueueClass::Compute)] = RHI::QueryTypeFlags::PipelineStatistics | RHI::QueryTypeFlags::Timestamp;
             D3D12_FEATURE_DATA_D3D12_OPTIONS3 options3;
@@ -241,7 +253,7 @@ namespace AZ
             // Source: https://stackoverflow.com/questions/58586223/d3d11-createswapchainforhwnd-fails-with-either-dxgi-error-invalid-call-or-e-inva
             // Create swapchain would fail if uses DXGI_SCALING_ASPECT_RATIO_STRETCH
             m_features.m_swapchainScalingFlags = RHI::ScalingFlags::Stretch;
-                        
+
             D3D12_FEATURE_DATA_D3D12_OPTIONS options;
             GetDevice()->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
             // DX12's tile resource implementation uses undefined swizzle tile layout which only requires tier 1
@@ -284,7 +296,7 @@ namespace AZ
                         RHI::ShadingRateFlags::Rate1x1 |
                         RHI::ShadingRateFlags::Rate1x2 |
                         RHI::ShadingRateFlags::Rate2x1 |
-                        RHI::ShadingRateFlags::Rate2x2;                   
+                        RHI::ShadingRateFlags::Rate2x2;
                 }
                 break;
             case D3D12_VARIABLE_SHADING_RATE_TIER::D3D12_VARIABLE_SHADING_RATE_TIER_2:
@@ -468,7 +480,7 @@ namespace AZ
         //    AZStd::vector<RHI::Format> formatsList;
 
         //    // Follows Microsoft's HDR sample code for determining if the connected display supports HDR.
-        //    // Enumerates all of the detected displays and determines which one has the largest intersection with the 
+        //    // Enumerates all of the detected displays and determines which one has the largest intersection with the
         //    // region of the window handle parameter.
         //    // If the display for this region supports wide color gamut, then a wide color gamut format is added to
         //    // the list of supported formats.
@@ -679,11 +691,11 @@ namespace AZ
 
             Microsoft::WRL::ComPtr<ID3D12Resource> resource;
             HRESULT result = m_dx12Device->CreatePlacedResource(
-                heap, 
-                heapByteOffset, 
-                &resourceDesc, 
-                initialState, 
-                nullptr, 
+                heap,
+                heapByteOffset,
+                &resourceDesc,
+                initialState,
+                nullptr,
                 IID_GRAPHICS_PPV_ARGS(resource.GetAddressOf())
             );
             AZ_RHI_DUMP_POOL_INFO_ON_FAIL(SUCCEEDED(result));
@@ -737,10 +749,10 @@ namespace AZ
             Microsoft::WRL::ComPtr<ID3D12Resource> resource;
             HRESULT result = m_dx12Device->CreatePlacedResource(
                 heap,
-                heapByteOffset, 
+                heapByteOffset,
                 &resourceDesc,
-                initialState, 
-                (isOutputMergerAttachment && optimizedClearValue) ? &clearValue : nullptr, 
+                initialState,
+                (isOutputMergerAttachment && optimizedClearValue) ? &clearValue : nullptr,
                 IID_GRAPHICS_PPV_ARGS(resource.GetAddressOf())
             );
             AZ_RHI_DUMP_POOL_INFO_ON_FAIL(SUCCEEDED(result));
@@ -765,9 +777,9 @@ namespace AZ
 
             Microsoft::WRL::ComPtr<ID3D12Resource> resource;
             HRESULT result = m_dx12Device->CreateReservedResource(
-                &resourceDesc, 
-                initialState, 
-                nullptr, 
+                &resourceDesc,
+                initialState,
+                nullptr,
                 IID_GRAPHICS_PPV_ARGS(resource.GetAddressOf())
             );
             AZ_RHI_DUMP_POOL_INFO_ON_FAIL(SUCCEEDED(result));
@@ -919,7 +931,7 @@ namespace AZ
         }
 
         RHI::ShadingRateImageValue Device::ConvertShadingRate(RHI::ShadingRate rate) const
-        {            
+        {
             return RHI::ShadingRateImageValue{ static_cast<uint8_t>(ConvertShadingRateEnum(rate)), 0 };
         }
 
