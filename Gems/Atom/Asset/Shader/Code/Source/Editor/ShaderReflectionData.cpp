@@ -10,6 +10,7 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/StringFunc/StringFunc.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -394,14 +395,17 @@ namespace AZ::ShaderBuilder
 
             bool depthFound = false;
 
-            if (semantic.m_name.GetStringView() == "SV_Target")
+            // Semantic comparisons are case-insensitive: HLSL semantics are, and language
+            // frontends disagree on canonicalization (Slang reports SV_TARGET, AZSLC SV_Target)
+            if (AZ::StringFunc::Equal(semantic.m_name.GetStringView(), "SV_Target"))
             {
                 // Render targets only support 1-D vector types
                 contract.m_requiredColorAttachments.emplace_back().m_componentCount = member.m_componentCount;
             }
             else if (
-                semantic.m_name.GetStringView() == "SV_Depth" || semantic.m_name.GetStringView() == "SV_DepthGreaterEqual" ||
-                semantic.m_name.GetStringView() == "SV_DepthLessEqual")
+                AZ::StringFunc::Equal(semantic.m_name.GetStringView(), "SV_Depth") ||
+                AZ::StringFunc::Equal(semantic.m_name.GetStringView(), "SV_DepthGreaterEqual") ||
+                AZ::StringFunc::Equal(semantic.m_name.GetStringView(), "SV_DepthLessEqual"))
             {
                 if (depthFound)
                 {

@@ -197,14 +197,65 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
         uint32_t m_spaceId = 0;
     };
 
+    //! Answers "which entry points actually use the resource at this binding location" from the
+    //! per-entry IMetadata of the linked program. Metadata pointers are held raw with manual
+    //! release (AZStd containers cannot hold Slang::ComPtr).
+    class EntryPointUsageOracle final
+    {
+    public:
+        EntryPointUsageOracle(slang::IComponentType* linkedProgram, AZStd::span<const AZStd::string> entryPointNamesInOrder)
+        {
+            for (size_t entryPointIndex = 0; entryPointIndex < entryPointNamesInOrder.size(); ++entryPointIndex)
+            {
+                slang::IMetadata* metadata = nullptr;
+                linkedProgram->getEntryPointMetadata(aznumeric_cast<SlangInt>(entryPointIndex), 0, &metadata);
+                m_entryPointNames.push_back(entryPointNamesInOrder[entryPointIndex]);
+                m_metadata.push_back(metadata);
+            }
+        }
+
+        ~EntryPointUsageOracle()
+        {
+            for (slang::IMetadata* metadata : m_metadata)
+            {
+                if (metadata)
+                {
+                    metadata->release();
+                }
+            }
+        }
+
+        //! Returns the entry points whose generated code uses the binding; falls back to every
+        //! entry point when metadata is unavailable.
+        AZStd::vector<AZStd::string> DependentFunctions(SlangParameterCategory category, const MemberBinding& binding) const
+        {
+            AZStd::vector<AZStd::string> dependentFunctions;
+            for (size_t entryPointIndex = 0; entryPointIndex < m_metadata.size(); ++entryPointIndex)
+            {
+                bool used = true;
+                if (!m_metadata[entryPointIndex]
+                    || SLANG_FAILED(m_metadata[entryPointIndex]->isParameterLocationUsed(category, binding.m_spaceId, binding.m_registerId, used)))
+                {
+                    used = true;
+                }
+                if (used)
+                {
+                    dependentFunctions.push_back(m_entryPointNames[entryPointIndex]);
+                }
+            }
+            return dependentFunctions;
+        }
+
+    private:
+        AZStd::vector<AZStd::string> m_entryPointNames;
+        AZStd::vector<slang::IMetadata*> m_metadata;
+    };
+
     static MemberBinding GetMemberBinding(
-        RHI::ShaderTargetFormat targetFormat,
+        SlangParameterCategory category,
         slang::VariableLayoutReflection* memberLayout,
-        slang::TypeReflection::Kind kind,
-        SlangResourceAccess access,
         uint32_t blockSpace)
     {
-        const SlangParameterCategory category = GetBindingCategory(targetFormat, kind, access);
         MemberBinding binding;
         binding.m_registerId = aznumeric_cast<uint32_t>(memberLayout->getOffset(category));
         binding.m_spaceId = blockSpace + aznumeric_cast<uint32_t>(memberLayout->getBindingSpace(category));
@@ -223,7 +274,7 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
         int64_t arrayCount,
         uint32_t blockSpace,
         const MemberBinding& constantsBinding,
-        const AZStd::vector<AZStd::string>& allEntryPointNames)
+        const EntryPointUsageOracle& usageOracle)
     {
         const slang::TypeReflection::Kind kind = memberTypeLayout->getKind();
         const Name memberNameId{memberName};
@@ -236,16 +287,16 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
                 srgReflection, srgBindings, targetFormat, memberLayout, memberName,
                 memberTypeLayout->getElementTypeLayout(),
                 elementCount == 0 ? -1 : aznumeric_cast<int64_t>(elementCount),
-                blockSpace, constantsBinding, allEntryPointNames);
+                blockSpace, constantsBinding, usageOracle);
         }
 
-        auto appendBindingDependency = [&](const MemberBinding& binding)
+        auto appendBindingDependency = [&](SlangParameterCategory category, const MemberBinding& binding)
         {
             ResourceBindingReflection bindingReflection;
             bindingReflection.m_name = memberNameId;
             bindingReflection.m_registerId = binding.m_registerId;
             bindingReflection.m_registerSpace = binding.m_spaceId;
-            bindingReflection.m_dependentFunctions.assign(allEntryPointNames.begin(), allEntryPointNames.end());
+            bindingReflection.m_dependentFunctions = usageOracle.DependentFunctions(category, binding);
             srgBindings.m_resourceBindings.push_back(AZStd::move(bindingReflection));
         };
 
@@ -255,7 +306,8 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
         {
         case slang::TypeReflection::Kind::SamplerState:
         {
-            const MemberBinding binding = GetMemberBinding(targetFormat, memberLayout, kind, SLANG_RESOURCE_ACCESS_READ, blockSpace);
+            const SlangParameterCategory category = GetBindingCategory(targetFormat, kind, SLANG_RESOURCE_ACCESS_READ);
+            const MemberBinding binding = GetMemberBinding(category, memberLayout, blockSpace);
             if (slang::UserAttribute* staticSampler = FindUserAttribute(memberLayout->getVariable(), "AtomStaticSampler"))
             {
                 srgReflection.m_staticSamplers.push_back({memberNameId, BuildStaticSamplerState(staticSampler), binding.m_registerId, binding.m_spaceId});
@@ -264,17 +316,18 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
             {
                 srgReflection.m_samplers.push_back({memberNameId, count, binding.m_registerId, binding.m_spaceId});
             }
-            appendBindingDependency(binding);
+            appendBindingDependency(category, binding);
             return true;
         }
         case slang::TypeReflection::Kind::ConstantBuffer:
         {
-            const MemberBinding binding = GetMemberBinding(targetFormat, memberLayout, kind, SLANG_RESOURCE_ACCESS_READ, blockSpace);
+            const SlangParameterCategory category = GetBindingCategory(targetFormat, kind, SLANG_RESOURCE_ACCESS_READ);
+            const MemberBinding binding = GetMemberBinding(category, memberLayout, blockSpace);
             const uint32_t strideSize = aznumeric_cast<uint32_t>(
                 memberTypeLayout->getElementTypeLayout()->getSize(SLANG_PARAMETER_CATEGORY_UNIFORM));
             srgReflection.m_buffers.push_back({memberNameId, RHI::ShaderInputBufferAccess::Constant, RHI::ShaderInputBufferType::Constant,
                 count, strideSize, binding.m_registerId, binding.m_spaceId});
-            appendBindingDependency(binding);
+            appendBindingDependency(category, binding);
             return true;
         }
         case slang::TypeReflection::Kind::Resource:
@@ -282,7 +335,8 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
             slang::TypeReflection* type = memberTypeLayout->getType();
             const SlangResourceShape shape = type->getResourceShape();
             const SlangResourceAccess access = type->getResourceAccess();
-            const MemberBinding binding = GetMemberBinding(targetFormat, memberLayout, kind, access, blockSpace);
+            const SlangParameterCategory category = GetBindingCategory(targetFormat, kind, access);
+            const MemberBinding binding = GetMemberBinding(category, memberLayout, blockSpace);
             const bool isReadOnly = access == SLANG_RESOURCE_ACCESS_READ;
 
             RHI::ShaderInputImageType imageType = RHI::ShaderInputImageType::Unknown;
@@ -297,7 +351,7 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
                 {
                     srgReflection.m_images.push_back({memberNameId, imageAccess, imageType, count, binding.m_registerId, binding.m_spaceId});
                 }
-                appendBindingDependency(binding);
+                appendBindingDependency(category, binding);
                 return true;
             }
 
@@ -318,7 +372,7 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
                 {
                     srgReflection.m_buffers.push_back({memberNameId, bufferAccess, bufferType, count, strideSize, binding.m_registerId, binding.m_spaceId});
                 }
-                appendBindingDependency(binding);
+                appendBindingDependency(category, binding);
                 return true;
             }
 
@@ -335,22 +389,18 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
     }
 
     AZ::Outcome<ShaderReflectionData, AZStd::string> BuildReflectionData(
-        slang::ShaderReflection* programLayout,
+        slang::IComponentType* linkedProgram,
         RHI::ShaderTargetFormat targetFormat,
-        const MapOfStringToStageType& shaderEntryPoints)
+        AZStd::span<const AZStd::string> entryPointNamesInOrder)
     {
+        slang::ShaderReflection* programLayout = linkedProgram ? linkedProgram->getLayout(0) : nullptr;
         if (!programLayout)
         {
             return AZ::Failure(AZStd::string("No reflection layout is available for the linked program"));
         }
 
         ShaderReflectionData reflectionData;
-
-        AZStd::vector<AZStd::string> allEntryPointNames;
-        for (const auto& [entryPointName, stageType] : shaderEntryPoints)
-        {
-            allEntryPointNames.push_back(entryPointName);
-        }
+        const EntryPointUsageOracle usageOracle(linkedProgram, entryPointNamesInOrder);
 
         // Indexed by SRG name so ParameterBlocks and attribute-grouped globals can accumulate
         // into the same group; vector order preserves first-appearance order.
@@ -418,10 +468,13 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
                     constantsBinding.m_registerId = aznumeric_cast<uint32_t>(containerLayout->getOffset(containerCategory));
                     constantsBinding.m_spaceId = blockSpace;
 
+                    const SlangParameterCategory containerBindingCategory = targetFormat == RHI::ShaderTargetFormat::Spirv
+                        ? SLANG_PARAMETER_CATEGORY_DESCRIPTOR_TABLE_SLOT
+                        : SLANG_PARAMETER_CATEGORY_CONSTANT_BUFFER;
                     srgBindings.m_constantDataBinding.m_name = Name{AZStd::string::format("%s_SRGConstantBuffer", parameterName)};
                     srgBindings.m_constantDataBinding.m_registerId = constantsBinding.m_registerId;
                     srgBindings.m_constantDataBinding.m_registerSpace = constantsBinding.m_spaceId;
-                    srgBindings.m_constantDataBinding.m_dependentFunctions.assign(allEntryPointNames.begin(), allEntryPointNames.end());
+                    srgBindings.m_constantDataBinding.m_dependentFunctions = usageOracle.DependentFunctions(containerBindingCategory, constantsBinding);
                 }
 
                 const unsigned fieldCount = elementTypeLayout->getFieldCount();
@@ -430,7 +483,7 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
                     slang::VariableLayoutReflection* fieldLayout = elementTypeLayout->getFieldByIndex(fieldIndex);
                     if (!AppendMember(
                             srgReflection, srgBindings, targetFormat, fieldLayout, fieldLayout->getVariable()->getName(),
-                            fieldLayout->getTypeLayout(), 1, blockSpace, constantsBinding, allEntryPointNames))
+                            fieldLayout->getTypeLayout(), 1, blockSpace, constantsBinding, usageOracle))
                     {
                         return AZ::Failure(AZStd::string::format("Failed to reflect member %s of %s", fieldLayout->getVariable()->getName(), parameterName));
                     }
@@ -451,7 +504,34 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
 
                 ShaderResourceGroupReflection& srgReflection = findOrAddGroup(srgName, aznumeric_cast<uint32_t>(bindingSlot));
                 ShaderResourceGroupBindingReflection& srgBindings = reflectionData.m_shaderResourceGroupBindings[srgName];
-                if (!AppendMember(srgReflection, srgBindings, targetFormat, parameterLayout, parameterName, typeLayout, 1, 0, MemberBinding{}, allEntryPointNames))
+
+                // A grouped ConstantBuffer named <group>_SRGConstantBuffer is the pinned form of
+                // the group's SRG-constants buffer (how shared-SRG declarations express what a
+                // ParameterBlock holds implicitly): its element fields become the SRG constants.
+                const AZStd::string expectedConstantBufferName = AZStd::string::format("%s_SRGConstantBuffer", srgName.c_str());
+                if (typeLayout->getKind() == slang::TypeReflection::Kind::ConstantBuffer && expectedConstantBufferName == parameterName)
+                {
+                    const SlangParameterCategory category = GetBindingCategory(targetFormat, typeLayout->getKind(), SLANG_RESOURCE_ACCESS_READ);
+                    const MemberBinding binding = GetMemberBinding(category, parameterLayout, 0);
+                    slang::TypeLayoutReflection* elementTypeLayout = typeLayout->getElementTypeLayout();
+                    for (unsigned fieldIndex = 0; fieldIndex < elementTypeLayout->getFieldCount(); ++fieldIndex)
+                    {
+                        slang::VariableLayoutReflection* fieldLayout = elementTypeLayout->getFieldByIndex(fieldIndex);
+                        srgReflection.m_constants.push_back({
+                            Name{fieldLayout->getVariable()->getName()},
+                            aznumeric_cast<uint32_t>(fieldLayout->getOffset(SLANG_PARAMETER_CATEGORY_UNIFORM)),
+                            aznumeric_cast<uint32_t>(fieldLayout->getTypeLayout()->getSize(SLANG_PARAMETER_CATEGORY_UNIFORM)),
+                            binding.m_registerId,
+                            binding.m_spaceId});
+                    }
+                    srgBindings.m_constantDataBinding.m_name = Name{expectedConstantBufferName};
+                    srgBindings.m_constantDataBinding.m_registerId = binding.m_registerId;
+                    srgBindings.m_constantDataBinding.m_registerSpace = binding.m_spaceId;
+                    srgBindings.m_constantDataBinding.m_dependentFunctions = usageOracle.DependentFunctions(category, binding);
+                    continue;
+                }
+
+                if (!AppendMember(srgReflection, srgBindings, targetFormat, parameterLayout, parameterName, typeLayout, 1, 0, MemberBinding{}, usageOracle))
                 {
                     return AZ::Failure(AZStd::string::format("Failed to reflect grouped global %s", parameterName));
                 }

@@ -429,9 +429,9 @@ namespace AZ::ShaderBuilder
         const ProgramCompilation compilation = compilationOutcome.TakeValue();
 
         auto reflectionOutcome = SlangReflectionWalker::BuildReflectionData(
-            compilation.m_linkedProgram->getLayout(0),
+            compilation.m_linkedProgram,
             targetDescriptor.m_format,
-            *input.m_entryPoints);
+            compilation.m_entryPointNames);
         if (!reflectionOutcome.IsSuccess())
         {
             return AZ::Failure(reflectionOutcome.TakeError());

@@ -220,7 +220,7 @@ void MainCS(u32 index : SV_DispatchThreadID)
         const SlangBackend::ProgramCompilation compilation = compilationOutcome.TakeValue();
 
         auto reflectionOutcome = SlangReflectionWalker::BuildReflectionData(
-            compilation.m_linkedProgram->getLayout(0), RHI::ShaderTargetFormat::Spirv, entryPoints);
+            compilation.m_linkedProgram, RHI::ShaderTargetFormat::Spirv, compilation.m_entryPointNames);
         ASSERT_TRUE(reflectionOutcome.IsSuccess()) << reflectionOutcome.GetError().c_str();
         const ShaderReflectionData reflectionData = reflectionOutcome.TakeValue();
 

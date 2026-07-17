@@ -21,12 +21,16 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
     //! into their logical group (Bindless), static samplers are rebuilt from [AtomStaticSampler]
     //! attribute values, and per-entry stage interfaces come from entry-point reflection.
     //!
-    //! Stage masks are conservative scaffolding for now: every resource lists every entry point
-    //! as a dependent function. Exact per-entry masks (IMetadata) land with the parity milestone.
+    //! Per-resource dependent functions are exact: each entry point's IMetadata is queried for
+    //! whether the resource's binding location is used, so downstream stage masks match what the
+    //! generated code actually references. When a metadata query is unavailable the walker falls
+    //! back to listing every entry point (conservative, safe, but not parity-grade).
     //!
     //! The caller must hold the compiler lock and keep the linked program alive for the duration.
+    //! @param entryPointNamesInOrder Entry names in composition order (the entry-point index
+    //!        order of the linked program), e.g. ProgramCompilation::m_entryPointNames.
     AZ::Outcome<ShaderReflectionData, AZStd::string> BuildReflectionData(
-        slang::ShaderReflection* programLayout,
+        slang::IComponentType* linkedProgram,
         RHI::ShaderTargetFormat targetFormat,
-        const MapOfStringToStageType& shaderEntryPoints);
+        AZStd::span<const AZStd::string> entryPointNamesInOrder);
 } // namespace AZ::ShaderBuilder::SlangReflectionWalker
