@@ -52,6 +52,8 @@ set(FILES
     Source/Editor/Slang/SlangModuleResolver.h
     Source/Editor/Slang/SlangModuleClosure.cpp
     Source/Editor/Slang/SlangModuleClosure.h
+    Source/Editor/Slang/SlangOptionsModuleGenerator.cpp
+    Source/Editor/Slang/SlangOptionsModuleGenerator.h
     Source/Editor/Slang/SlangReflectionWalker.cpp
     Source/Editor/Slang/SlangReflectionWalker.h
     Source/Editor/Slang/SlangSourceFileSystem.cpp
