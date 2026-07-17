@@ -57,7 +57,7 @@ namespace UnitTests
         m_settingsRegistry = AZStd::make_unique<AZ::SettingsRegistryImpl>();
         AZ::SettingsRegistry::Register(m_settingsRegistry.get());
 
-        // Make sure that the entire system doesn't somehow find the "real" project but instead finds our fake project folder. 
+        // Make sure that the entire system doesn't somehow find the "real" project but instead finds our fake project folder.
         m_settingsRegistry->Set("/O3DE/Runtime/Internal/project_root_scan_up_path", assetRootDir.c_str());
 
         // The engine is actually pretty good at finding the real project folder and tries to do so a number of ways, including
@@ -224,10 +224,12 @@ namespace UnitTests
         m_assetProcessorManager->CheckActiveFiles(expectedFileCount);
 
         AZStd::atomic_bool delayed = false;
+        QObject connectionContext;
 
         QObject::connect(
             m_assetProcessorManager.get(),
             &AssetProcessor::AssetProcessorManager::ProcessingDelayed,
+            &connectionContext,
             [&delayed]([[maybe_unused]] QString filePath)
             {
                 delayed = true;
@@ -236,6 +238,7 @@ namespace UnitTests
         QObject::connect(
             m_assetProcessorManager.get(),
             &AssetProcessor::AssetProcessorManager::ProcessingResumed,
+            &connectionContext,
             [&delayed]([[maybe_unused]] QString filePath)
             {
                 delayed = false;
@@ -462,7 +465,8 @@ namespace UnitTests
         m_fileCompiled = false;
         m_fileFailed = false;
 
-        RunFile(expectedJobCount, expectedFileCount);
+        ASSERT_NO_FATAL_FAILURE(RunFile(expectedJobCount, expectedFileCount));
+        ASSERT_GT(m_jobDetailsList.size(), aznumeric_cast<size_t>(jobToRun));
 
         std::stable_sort(
             m_jobDetailsList.begin(),

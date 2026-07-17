@@ -33,7 +33,7 @@ namespace AZ
         // The watertight algorithm requires the z dimension to contain the component of the segment direction with the largest
         // absolute value. This is calculated by comparing the absolute value of the 3 dimensions and then creating axis remapping
         // indices that put the largest axis onto the z dimension. The other 2 axes are mapped based on preserving the triangle
-        // winding order. 
+        // winding order.
         const float xMagnitude = abs(m_pq.GetX());
         const float yMagnitude = abs(m_pq.GetY());
         const float zMagnitude = abs(m_pq.GetZ());
@@ -48,7 +48,7 @@ namespace AZ
         {
             if (zMagnitude >= xMagnitude)
             {
-                // The Z component is the largest, so instead remap to seg X -> kx, seg Y -> ky, seg Z -> kz 
+                // The Z component is the largest, so instead remap to seg X -> kx, seg Y -> ky, seg Z -> kz
                 m_kz = 2;
                 m_kx = 0;
                 m_ky = 1;
@@ -81,7 +81,11 @@ namespace AZ
 
     template<bool oneSided>
     bool Intersect::SegmentTriangleHitTester::Intersect(
-            const AZ::Vector3& a, const AZ::Vector3& b, const AZ::Vector3& c, AZ::Vector3& normal, float& t) const
+        const AZ::Vector3& a,
+        const AZ::Vector3& b,
+        const AZ::Vector3& c,
+        AZ::Vector3& normal,
+        float& t) const
     {
         // NOTE: The code in this method doesn't follow the o3de naming standards for variables.
         // This is an intentional departure so that the code aligns with the original algorithm in the paper and is easier to compare.
@@ -94,12 +98,19 @@ namespace AZ
 
         // Shear and scale the triangle vertices so that they're fully in the coordinate space in which our segment
         // is a unit segment of (0, 0, 1).
-        const float Ax = A.GetElement(m_kx) - m_sx * A.GetElement(m_kz);
-        const float Ay = A.GetElement(m_ky) - m_sy * A.GetElement(m_kz);
-        const float Bx = B.GetElement(m_kx) - m_sx * B.GetElement(m_kz);
-        const float By = B.GetElement(m_ky) - m_sy * B.GetElement(m_kz);
-        const float Cx = C.GetElement(m_kx) - m_sx * C.GetElement(m_kz);
-        const float Cy = C.GetElement(m_ky) - m_sy * C.GetElement(m_kz);
+        // Keep the multiplication separate from the subtraction so that contraction doesn't change edge classification near zero.
+        const float sxAz = m_sx * A.GetElement(m_kz);
+        const float syAz = m_sy * A.GetElement(m_kz);
+        const float sxBz = m_sx * B.GetElement(m_kz);
+        const float syBz = m_sy * B.GetElement(m_kz);
+        const float sxCz = m_sx * C.GetElement(m_kz);
+        const float syCz = m_sy * C.GetElement(m_kz);
+        const float Ax = A.GetElement(m_kx) - sxAz;
+        const float Ay = A.GetElement(m_ky) - syAz;
+        const float Bx = B.GetElement(m_kx) - sxBz;
+        const float By = B.GetElement(m_ky) - syBz;
+        const float Cx = C.GetElement(m_kx) - sxCz;
+        const float Cy = C.GetElement(m_ky) - syCz;
 
         // Calculate the scaled barycentric coordinates. These would normally be calculated by using expressions like
         // ray.dot(c.cross(b)), but since we've transformed our ray into a unit Z ray, the expressions simplify down
@@ -155,7 +166,7 @@ namespace AZ
         const float T = U * Az + V * Bz + W * Cz;
 
         // Since we're testing a segment, not a ray, T/det needs to be in [0,1] to be considered a hit, as anything outside those
-        // bounds will fall beyond the endpoints of the segment. 
+        // bounds will fall beyond the endpoints of the segment.
         if constexpr(oneSided)
         {
             // For one-sided triangles, we need to have 0 <= T < = det, or else T is beyond the endpoints.

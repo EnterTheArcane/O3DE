@@ -13,6 +13,7 @@
 #include <AzCore/Console/Console.h>
 #include <AzCore/EBus/EventSchedulerSystemComponent.h>
 #include <AzCore/Name/NameDictionary.h>
+#include <AzCore/std/limits.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/UnitTest/Mocks/MockITime.h>
@@ -557,6 +558,50 @@ namespace RecastNavigationTests
         EXPECT_EQ(waypoints.size(), 0);
     }
 
+    TEST_F(NavigationTest, FindPathRejectsUnrepresentablePositions)
+    {
+        Entity e;
+        PopulateEntity(e);
+        e.CreateComponent<DetourNavigationComponent>(e.GetId(), 3.f);
+        ActivateEntity(e);
+        SetupNavigationMesh();
+
+        ON_CALL(*m_mockPhysicsShape.get(), GetGeometry(_, _, _)).WillByDefault(Invoke(
+            [this](AZStd::vector<AZ::Vector3>& vertices, AZStd::vector<AZ::u32>& indices, const AZ::Aabb*)
+            {
+                AddTestGeometry(vertices, indices, true);
+            }));
+
+        RecastNavigationMeshRequestBus::Event(e.GetId(), &RecastNavigationMeshRequests::UpdateNavigationMeshBlockUntilCompleted);
+
+        constexpr float InvalidCoordinates[] =
+        {
+            AZStd::numeric_limits<float>::lowest(),
+            AZStd::numeric_limits<float>::max(),
+            AZStd::numeric_limits<float>::infinity(),
+            AZStd::numeric_limits<float>::quiet_NaN(),
+        };
+
+        for (float invalidCoordinate : InvalidCoordinates)
+        {
+            SCOPED_TRACE(invalidCoordinate);
+            AZStd::vector<AZ::Vector3> waypoints;
+            DetourNavigationRequestBus::EventResult(
+                waypoints,
+                AZ::EntityId(1),
+                &DetourNavigationRequests::FindPathBetweenPositions,
+                AZ::Vector3(invalidCoordinate, 0.0f, 0.0f), AZ::Vector3(2.0f, 2.0f, 0.0f));
+            EXPECT_TRUE(waypoints.empty());
+
+            DetourNavigationRequestBus::EventResult(
+                waypoints,
+                AZ::EntityId(1),
+                &DetourNavigationRequests::FindPathBetweenPositions,
+                AZ::Vector3(0.0f, 0.0f, 0.0f), AZ::Vector3(2.0f, invalidCoordinate, 0.0f));
+            EXPECT_TRUE(waypoints.empty());
+        }
+    }
+
     /*
      * Corner case, test on empty data.
      */
@@ -912,7 +957,7 @@ namespace RecastNavigationTests
             {
                 AddTestGeometry(vertices, indices, true);
             }));
-        
+
         RecastNavigationMeshRequestBus::Event(e.GetId(), &RecastNavigationMeshRequests::UpdateNavigationMeshBlockUntilCompleted);
 
         AZStd::vector<AZ::Vector3> waypoints;
@@ -928,7 +973,7 @@ namespace RecastNavigationTests
             {
                 // Act as if there colliders are gone.
             }));
-        
+
         RecastNavigationMeshRequestBus::Event(e.GetId(), &RecastNavigationMeshRequests::UpdateNavigationMeshBlockUntilCompleted);
 
         waypoints.clear();

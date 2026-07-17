@@ -319,9 +319,9 @@ namespace NvCloth
     {
         normal = triangleEdges[0].Cross(triangleEdges[1]);
 
-        // Avoid situations where the edges are parallel resulting in an invalid normal.
+        // Avoid situations where the edges are non-finite or parallel resulting in an invalid normal.
         // This can happen if the simulation moves particles of triangle to the same spot or very far away.
-        if (normal.IsZero(Tolerance))
+        if (!normal.IsFinite() || normal.IsZero(Tolerance))
         {
             // Use the identity base with low influence to leave other valid triangles to
             // affect these vertices. In case no other triangle affects the vertices the base
@@ -340,6 +340,13 @@ namespace NvCloth
         const TriangleUVs& triangleUVs, const TriangleEdges& triangleEdges,
         AZ::Vector3& tangent, AZ::Vector3& bitangent)
     {
+        if (!triangleEdges[0].IsFinite() || !triangleEdges[1].IsFinite())
+        {
+            tangent = AZ::Vector3::CreateAxisX();
+            bitangent = AZ::Vector3::CreateAxisY();
+            return false;
+        }
+
         const float deltaU1 = triangleUVs[1].GetX() - triangleUVs[0].GetX();
         const float deltaU2 = triangleUVs[2].GetX() - triangleUVs[0].GetX();
         const float deltaV1 = triangleUVs[1].GetY() - triangleUVs[0].GetY();
@@ -389,6 +396,11 @@ namespace NvCloth
         // weight by angle to fix the L-Shape problem
         const AZ::Vector3 edgeA = trianglePositions[(vertexIndexInTriangle + 2) % 3] - trianglePositions[vertexIndexInTriangle];
         const AZ::Vector3 edgeB = trianglePositions[(vertexIndexInTriangle + 1) % 3] - trianglePositions[vertexIndexInTriangle];
+        if (!edgeA.IsFinite() || !edgeB.IsFinite())
+        {
+            return 0.0f;
+        }
+
         return edgeA.AngleSafe(edgeB);
     }
 } // namespace NvCloth

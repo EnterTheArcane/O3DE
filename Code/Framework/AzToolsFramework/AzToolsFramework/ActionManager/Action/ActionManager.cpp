@@ -118,15 +118,6 @@ namespace AzToolsFramework
         }
         case QEvent::Shortcut:
         {
-            // QActions default "autoRepeat" to true, which is not an ideal user experience.
-            // We globally disable that behavior here - in the unlikely event a shortcut needs to
-            // replicate it, its owner can instead implement a keyEvent handler
-            if (static_cast<QKeyEvent*>(event)->isAutoRepeat())
-            {
-                event->accept();
-                return true;
-            }
-
             if (auto shortcutEvent = static_cast<QShortcutEvent*>(event))
             {
                 QWidget* watchedWidget = qobject_cast<QWidget*>(watched);

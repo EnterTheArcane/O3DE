@@ -440,12 +440,12 @@ namespace AZ
         const AZStd::size_t lastRowGroup = m_numRowGroups - 1;
         const AZStd::size_t lastColGroup = m_numColGroups - 1;
         const Simd::Vec4::FloatType zero = Simd::Vec4::ZeroFloat();
-        const uint32_t masks[] =
+        alignas(16) static constexpr uint32_t masks[] =
         {
             0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
             0xFFFFFFFF, 0x00000000, 0x00000000, 0x00000000,
             0xFFFFFFFF, 0xFFFFFFFF, 0x00000000, 0x00000000,
-            0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000
+            0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000,
         };
 
         // Fix last row values

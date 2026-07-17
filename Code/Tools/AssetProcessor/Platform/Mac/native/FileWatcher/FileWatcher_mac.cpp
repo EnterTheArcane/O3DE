@@ -25,13 +25,13 @@ bool FileWatcher::PlatformStart()
 {
     // by the time this function exits, we must already have established the watch
     // and no events may be dropped
-    
+
     CFMutableArrayRef pathsToWatch = CFArrayCreateMutable(nullptr, this->m_folderWatchRoots.size(), nullptr);
     for (const auto& root : this->m_folderWatchRoots)
     {
         CFArrayAppendValue(pathsToWatch, root.m_directory.toCFString());
     }
-    
+
     // The larger this number, the larger the delay between the kernel knowing a file changed
     // and us actually consuming the event.  It is very important for asset processor to deal with
     // file changes as fast as possible, since we use file "fencing" to control network access
@@ -60,8 +60,8 @@ bool FileWatcher::PlatformStart()
 
     AZ_Error("FileWatcher", (m_platformImpl->m_stream != nullptr), "FSEventStreamCreate returned a nullptr. No file events will be reported.");
 
-    m_platformImpl->m_dispatchQueue = dispatch_queue_create("EventStreamQueue", DISPATCH_QUEUE_CONCURRENT);
-    
+    m_platformImpl->m_dispatchQueue = dispatch_queue_create("EventStreamQueue", DISPATCH_QUEUE_SERIAL);
+
     const CFIndex pathCount = CFArrayGetCount(pathsToWatch);
     for(CFIndex i = 0; i < pathCount; ++i)
     {
@@ -70,7 +70,7 @@ bool FileWatcher::PlatformStart()
     CFRelease(pathsToWatch);
 
     return m_platformImpl->m_stream != nullptr;
-    
+
     DEBUG_FILEWATCHER("Started watching for file events\n");
 }
 
@@ -85,27 +85,19 @@ void FileWatcher::PlatformStop()
     FSEventStreamStop(m_platformImpl->m_stream);
     FSEventStreamInvalidate(m_platformImpl->m_stream);
     FSEventStreamRelease(m_platformImpl->m_stream);
+    m_platformImpl->m_stream = nullptr;
+
+    dispatch_release(m_platformImpl->m_dispatchQueue);
+    m_platformImpl->m_dispatchQueue = nullptr;
 }
 
 void FileWatcher::WatchFolderLoop()
 {
     DEBUG_FILEWATCHER("Watch loop entry\n");
-    // Use a half second timeout interval so that we can check if
-    // m_shutdownThreadSignal has been changed while we were running the RunLoop
-    static const CFTimeInterval secondsToProcess = 0.5;
-
-    m_platformImpl->m_runLoop = CFRunLoopGetCurrent();
     FSEventStreamSetDispatchQueue(m_platformImpl->m_stream, m_platformImpl->m_dispatchQueue);
     FSEventStreamStart(m_platformImpl->m_stream);
 
-    const bool returnAfterFirstEventHandled = false;
-
-    DEBUG_FILEWATCHER("Watch loop begins\n");
     m_startedSignal = true; // signal that we are no longer going to drop any events.``
-    while (!m_shutdownThreadSignal)
-    {
-        CFRunLoopRunInMode(kCFRunLoopDefaultMode, secondsToProcess, returnAfterFirstEventHandled);
-    }
 }
 
 void FileWatcher::PlatformImplementation::FileEventStreamCallback([[maybe_unused]] ConstFSEventStreamRef streamRef, void *clientCallBackInfo, size_t numEvents, void *eventPaths, const FSEventStreamEventFlags eventFlags[], const FSEventStreamEventId eventIds[])
@@ -121,7 +113,7 @@ void FileWatcher::PlatformImplementation::ConsumeEvents(size_t numEvents, const 
     {
         const QFileInfo fileInfo(QDir::cleanPath(filePaths[i]));
         const QString fileAndPath = fileInfo.absoluteFilePath();
-        
+
         // avoid repeats
         if (m_lastSeenEventId >= eventIds[i])
         {
@@ -130,14 +122,14 @@ void FileWatcher::PlatformImplementation::ConsumeEvents(size_t numEvents, const 
         }
 
         m_lastSeenEventId = eventIds[i];
-        
+
         DEBUG_FILEWATCHER("File monitor: %s eventflags %x eventId %" PRIu64 "\n", fileAndPath.toUtf8().constData(), eventFlags[i], eventIds[i]);
         if (!fileInfo.isHidden())
         {
             // Some events will be aggregated into one so it is possible we will get
             // multiple event flags set for a single file (create/modify/delete all in one as an example)
             // so check for all of them!
-            
+
             // one tricky caveat is that deletion will usually include created (even if the file
             // was already created).  So you can expect to get a 'create' for every delete.
             if (eventFlags[i] & kFSEventStreamEventFlagItemCreated)
@@ -148,7 +140,7 @@ void FileWatcher::PlatformImplementation::ConsumeEvents(size_t numEvents, const 
                     m_watcher->rawFileAdded(fileAndPath);
                     m_sentCreateAlready.insert(fileAndPath);
                 }
-                
+
             }
 
             if (eventFlags[i] & kFSEventStreamEventFlagItemModified)
@@ -191,7 +183,7 @@ void FileWatcher::PlatformImplementation::ConsumeEvents(size_t numEvents, const 
                     // API expects it so send out the modification event ourselves.
                     DEBUG_FILEWATCHER("    - renamed - sending rawFileModified for parent dir\n");
                     m_watcher->rawFileModified(fileInfo.absolutePath());
-                    
+
                 }
             }
         }

@@ -171,7 +171,7 @@ namespace UnitTest
             JobManagerThreadDesc threadDesc;
 #if AZ_TRAIT_SET_JOB_PROCESSOR_ID
             threadDesc.m_cpuId = 0; // Don't set processors IDs on windows
-#endif 
+#endif
 
             uint32_t numWorkerThreads = jobManagerDesc.GetWorkerThreadCount(AZStd::thread::hardware_concurrency());
 
@@ -180,7 +180,7 @@ namespace UnitTest
                 jobManagerDesc.m_workerThreads.push_back(threadDesc);
 #if AZ_TRAIT_SET_JOB_PROCESSOR_ID
                 threadDesc.m_cpuId++;
-#endif 
+#endif
             }
 
             m_jobManager = AZStd::make_unique<JobManager>(jobManagerDesc);
@@ -788,7 +788,7 @@ namespace UnitTest
             //test ConvertFormat functions against all the pixel formats
             for (EPixelFormat pixelFormat : compressedFormats)
             {
-                // 
+                //
                 if (!CPixelFormats::GetInstance().IsImageSizeValid(pixelFormat, srcImage->GetWidth(0), srcImage->GetHeight(0), false))
                 {
                     continue;
@@ -821,7 +821,7 @@ namespace UnitTest
             }
         }
     }
-        
+
     TEST_F(ImageProcessingTest, Test_ConvertAllAstc_Success)
     {
         // Compress/Decompress to all astc formats (LDR)
@@ -852,7 +852,7 @@ namespace UnitTest
             }
         }
     }
-        
+
     TEST_F(ImageProcessingTest, Test_ConvertHdrToAstc_Success)
     {
         // Compress/Decompress HDR
@@ -862,20 +862,20 @@ namespace UnitTest
         EPixelFormat dstFormat = ePixelFormat_ASTC_4x4;
         ImageToProcess imageToProcess(srcImage);
         imageToProcess.ConvertFormat(ePixelFormat_ASTC_4x4);
-                
+
         ASSERT_TRUE(imageToProcess.Get());
         ASSERT_TRUE(imageToProcess.Get()->GetPixelFormat() == dstFormat);
         ASSERT_TRUE(imageToProcess.Get()->GetWidth(0) == srcImage->GetWidth(0));
         ASSERT_TRUE(imageToProcess.Get()->GetHeight(0) == srcImage->GetHeight(0));
-                                
+
         //convert back to an uncompressed format and expect it will be successful
         imageToProcess.ConvertFormat(srcImage->GetPixelFormat());
         ASSERT_TRUE(imageToProcess.Get()->GetPixelFormat() == srcImage->GetPixelFormat());
-                                
+
         //save the image to a file so we can check the visual result
         SaveImageToFile(imageToProcess.Get(), "ASTC_HDR", 1);
     }
-    
+
     TEST_F(ImageProcessingTest, Test_AstcNormalPreset_Success)
     {
         // Normal.preset which uses ASTC as output format
@@ -904,7 +904,7 @@ namespace UnitTest
             ASSERT_TRUE(outputImage->GetPixelFormat() == preset->m_pixelFormat);
             ASSERT_TRUE(outputImage->GetWidth(0) == srcImage->GetWidth(0));
             ASSERT_TRUE(outputImage->GetHeight(0) == srcImage->GetHeight(0));
-            
+
             SaveImageToFile(outputImage, "ASTC_Normal", 10);
 
             delete process;
@@ -1099,8 +1099,78 @@ namespace UnitTest
         AZ::IO::FileIOBase::GetInstance()->Remove(filepath.c_str());
     }
 
+    TEST_F(ImageProcessingTest, SignedBc5ProductionCompressionEncodesSignedNormals)
+    {
+        constexpr AZ::u32 ImageDimension = 4;
+        constexpr float CompressionTolerance = 0.02f;
+        // Unit normal (-0.6, 0.6, sqrt(0.28)) encoded into the [0, 1] image range.
+        constexpr float EncodedNormal[] = { 0.2f, 0.8f, 0.764575f, 1.0f };
+
+        IImageObjectPtr sourceImage(IImageObject::CreateImage(ImageDimension, ImageDimension, 1, ePixelFormat_R32G32B32A32F));
+        ASSERT_NE(sourceImage, nullptr);
+
+        AZ::u8* sourceData = nullptr;
+        AZ::u32 sourcePitch = 0;
+        sourceImage->GetImagePointer(0, sourceData, sourcePitch);
+        for (AZ::u32 y = 0; y < ImageDimension; ++y)
+        {
+            for (AZ::u32 x = 0; x < ImageDimension; ++x)
+            {
+                float* pixel = reinterpret_cast<float*>(sourceData + (y * sourcePitch)) + (x * 4);
+                memcpy(pixel, EncodedNormal, sizeof(EncodedNormal));
+            }
+        }
+
+        ImageToProcess imageToProcess(sourceImage);
+        imageToProcess.ConvertFormat(ePixelFormat_BC5s);
+        ASSERT_NE(imageToProcess.Get(), nullptr);
+        ASSERT_EQ(imageToProcess.Get()->GetPixelFormat(), ePixelFormat_BC5s);
+
+        auto decodeBc4Signed = [](const AZ::u8* block, size_t pixelIndex)
+        {
+            AZ::s8 endpoint0 = 0;
+            AZ::s8 endpoint1 = 0;
+            memcpy(&endpoint0, block, sizeof(endpoint0));
+            memcpy(&endpoint1, block + 1, sizeof(endpoint1));
+
+            AZ::s32 palette[8] = { endpoint0, endpoint1 };
+            if (endpoint0 > endpoint1)
+            {
+                for (AZ::s32 index = 1; index <= 6; ++index)
+                {
+                    palette[index + 1] = ((7 - index) * endpoint0 + index * endpoint1) / 7;
+                }
+            }
+            else
+            {
+                for (AZ::s32 index = 1; index <= 4; ++index)
+                {
+                    palette[index + 1] = ((5 - index) * endpoint0 + index * endpoint1) / 5;
+                }
+                palette[6] = -127;
+                palette[7] = 127;
+            }
+
+            AZ::u64 packedIndices = 0;
+            for (size_t byteIndex = 0; byteIndex < 6; ++byteIndex)
+            {
+                packedIndices |= static_cast<AZ::u64>(block[byteIndex + 2]) << (byteIndex * 8);
+            }
+            const size_t paletteIndex = (packedIndices >> (pixelIndex * 3)) & 0x7;
+            return static_cast<float>(palette[paletteIndex]) / 127.0f;
+        };
+
+        AZ::u8* compressedData = nullptr;
+        AZ::u32 compressedPitch = 0;
+        imageToProcess.Get()->GetImagePointer(0, compressedData, compressedPitch);
+
+        // The BC5 normal preset stores Y in the first BC4 block and X in the second.
+        const float decodedX = (decodeBc4Signed(compressedData + 8, 0) + 1.0f) * 0.5f;
+        const float decodedY = (decodeBc4Signed(compressedData, 0) + 1.0f) * 0.5f;
+        EXPECT_NEAR(decodedX, EncodedNormal[0], CompressionTolerance);
+        EXPECT_NEAR(decodedY, EncodedNormal[1], CompressionTolerance);
+    }
+
 } // UnitTest
 
 AZ_UNIT_TEST_HOOK(DEFAULT_UNIT_TEST_ENV);
-
-

@@ -383,6 +383,10 @@ namespace AzFramework
                     // as a squared cosine: 2x^3 - 3x^2 + 1 . This produces a nice backwards S curve that starts at 1, ends at 0,
                     // and has a midpoint at (0.5, 0.5).
                     float perPixelOpacity = ((hardnessDistance * hardnessDistance) * (2.0f * hardnessDistance - 3.0f)) + 1.0f;
+                    if (perPixelOpacity < AZ::Constants::FloatEpsilon)
+                    {
+                        perPixelOpacity = 0.0f;
+                    }
 
                     // For the opacity at this point, combine any opacity from previous stamps with the
                     // currently-computed perPixelOpacity and flow.
@@ -411,7 +415,7 @@ namespace AzFramework
 
         // Track the list of center points for each brush stamp to draw for this mouse movement and the AABB around the stamps.
         AZStd::vector<AZ::Vector3> brushStampCenters;
-        AZ::Aabb strokeRegion = AZ::Aabb::CreateNull(); 
+        AZ::Aabb strokeRegion = AZ::Aabb::CreateNull();
 
         CalculateBrushStampCentersAndStrokeRegion(brushCenter, brushSettings, brushStampCenters, strokeRegion);
 
@@ -495,7 +499,7 @@ namespace AzFramework
         const float range = aznumeric_cast<float>(smoothingRadius) * spacing;
 
         // Calculate our list of relative position offsets that the component mode will use to look up all the adjacent values that
-        // the smoothFn is expecting. 
+        // the smoothFn is expecting.
         for (float_t y = -range; y <= range; y += spacing)
         {
             for (float_t x = -range; x <= range; x += spacing)

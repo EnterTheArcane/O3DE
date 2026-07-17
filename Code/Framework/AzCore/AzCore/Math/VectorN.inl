@@ -493,12 +493,12 @@ namespace AZ
             return;
         }
 
-        const uint32_t masks[] =
+        alignas(16) static constexpr uint32_t masks[] =
         {
             0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
             0xFFFFFFFF, 0x00000000, 0x00000000, 0x00000000,
             0xFFFFFFFF, 0xFFFFFFFF, 0x00000000, 0x00000000,
-            0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000
+            0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x00000000,
         };
 
         const AZStd::size_t lastElement = m_values.size() - 1;
