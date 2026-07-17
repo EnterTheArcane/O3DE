@@ -486,7 +486,7 @@ namespace UnitTest
         buildArgs = argsManager.GetCurrentArguments();
         EXPECT_EQ(buildArgs.m_preprocessorArguments, VSTR({ "--cpp1" }));
         EXPECT_EQ(buildArgs.m_azslcArguments, VSTR({ "--azslc1" }));
- 
+
         // No matter how many times We pop, the global set of arguments is never removed.
         argsManager.PopArgumentScope();
         argsManager.PopArgumentScope();
@@ -495,6 +495,66 @@ namespace UnitTest
         EXPECT_EQ(buildArgs.m_preprocessorArguments, VSTR({ "--cpp1" }));
         EXPECT_EQ(buildArgs.m_azslcArguments, VSTR({ "--azslc1" }));
 
+    }
+
+    TEST_F(ShaderBuildArgumentsTests, NamedArgumentGroups_AddAndSubtract_MergePerGroup)
+    {
+        AZ::RHI::ShaderBuildArguments lhs;
+        lhs.m_namedArgumentGroups["slang"] = {"-opt1", "-opt2"};
+
+        AZ::RHI::ShaderBuildArguments rhs;
+        rhs.m_namedArgumentGroups["slang"] = {"-opt2", "-opt3"};
+        rhs.m_namedArgumentGroups["othertool"] = {"-x"};
+
+        // Addition appends per group, skipping duplicates, and introduces new groups.
+        AZ::RHI::ShaderBuildArguments added = lhs + rhs;
+        EXPECT_THAT(added.GetNamedArgumentGroup("slang"), ::testing::ElementsAre("-opt1", "-opt2", "-opt3"));
+        EXPECT_THAT(added.GetNamedArgumentGroup("othertool"), ::testing::ElementsAre("-x"));
+
+        // Subtraction removes per group and ignores groups the left side doesn't have.
+        AZ::RHI::ShaderBuildArguments subtracted = added - rhs;
+        EXPECT_THAT(subtracted.GetNamedArgumentGroup("slang"), ::testing::ElementsAre("-opt1"));
+
+        // An absent group is an empty view, not an error.
+        EXPECT_THAT(lhs.GetNamedArgumentGroup("absentgroup"), ::testing::IsEmpty());
+    }
+
+    TEST_F(ShaderBuildArgumentsTests, NamedArgumentGroups_ManagerScopes_MergeAcrossPushAndPop)
+    {
+        AZ::RHI::ShaderBuildArguments globalAdd;
+        globalAdd.m_namedArgumentGroups["slang"] = {"-global"};
+
+        AZ::RHI::ShaderBuildArguments windowsAdd;
+        windowsAdd.m_namedArgumentGroups["slang"] = {"-windows"};
+
+        AZStd::unordered_map<AZStd::string, AZ::RHI::ShaderBuildArguments> removeArgumentsMap;
+        AZStd::unordered_map<AZStd::string, AZ::RHI::ShaderBuildArguments> addArgumentsMap;
+        // The manager requires each scope to appear in both maps.
+        removeArgumentsMap.emplace("", AZ::RHI::ShaderBuildArguments{});
+        removeArgumentsMap.emplace("Windows", AZ::RHI::ShaderBuildArguments{});
+        addArgumentsMap.emplace("", globalAdd);
+        addArgumentsMap.emplace("Windows", windowsAdd);
+
+        auto argsManager = CreateInitializedManager(AZStd::move(removeArgumentsMap), AZStd::move(addArgumentsMap));
+
+        auto buildArgs = argsManager.GetCurrentArguments();
+        EXPECT_THAT(buildArgs.GetNamedArgumentGroup("slang"), ::testing::ElementsAre("-global"));
+
+        buildArgs = argsManager.PushArgumentScope("Windows");
+        EXPECT_THAT(buildArgs.GetNamedArgumentGroup("slang"), ::testing::ElementsAre("-global", "-windows"));
+
+        // Anonymous scope, the way .shader / supervariant overrides flow in.
+        AZ::RHI::ShaderBuildArguments shaderRemove;
+        shaderRemove.m_namedArgumentGroups["slang"] = {"-global"};
+        AZ::RHI::ShaderBuildArguments shaderAdd;
+        shaderAdd.m_namedArgumentGroups["slang"] = {"-shader"};
+        buildArgs = argsManager.PushArgumentScope(shaderRemove, shaderAdd, {});
+        EXPECT_THAT(buildArgs.GetNamedArgumentGroup("slang"), ::testing::ElementsAre("-windows", "-shader"));
+
+        argsManager.PopArgumentScope();
+        argsManager.PopArgumentScope();
+        buildArgs = argsManager.GetCurrentArguments();
+        EXPECT_THAT(buildArgs.GetNamedArgumentGroup("slang"), ::testing::ElementsAre("-global"));
     }
 
 } //namespace UnitTest

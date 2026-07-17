@@ -23,7 +23,7 @@ namespace AZ::RHI
         if (auto serializeContext = azrtti_cast<SerializeContext*>(context))
         {
             serializeContext->Class<ShaderBuildArguments>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("debug", &ShaderBuildArguments::m_generateDebugInfo)
                 ->Field("preprocessor", &ShaderBuildArguments::m_preprocessorArguments)
                 ->Field("azslc", &ShaderBuildArguments::m_azslcArguments)
@@ -31,6 +31,7 @@ namespace AZ::RHI
                 ->Field("spirv-cross", &ShaderBuildArguments::m_spirvCrossArguments)
                 ->Field("metalair", &ShaderBuildArguments::m_metalAirArguments)
                 ->Field("metallib", &ShaderBuildArguments::m_metalLibArguments)
+                ->Field("namedArgumentGroups", &ShaderBuildArguments::m_namedArgumentGroups)
                 ;
 
 
@@ -65,6 +66,7 @@ namespace AZ::RHI
                 ->Property("spirvCrossArguments", BehaviorValueProperty(&ShaderBuildArguments::m_spirvCrossArguments))
                 ->Property("metalAirArguments", BehaviorValueProperty(&ShaderBuildArguments::m_metalAirArguments))
                 ->Property("metalLibArguments", BehaviorValueProperty(&ShaderBuildArguments::m_metalLibArguments))
+                ->Property("namedArgumentGroups", BehaviorValueProperty(&ShaderBuildArguments::m_namedArgumentGroups))
                 ->Method("AddBuildArguments", &ShaderBuildArguments::operator+=)
                 ->Method("RemoveBuildArguments", &ShaderBuildArguments::operator-=)
                 ->Method("HasArgument", &ShaderBuildArguments::HasArgument)
@@ -91,6 +93,16 @@ namespace AZ::RHI
         , m_metalAirArguments(metalAirArguments)
         , m_metalLibArguments(metalLibArguments)
     {
+    }
+
+    AZStd::span<const AZStd::string> ShaderBuildArguments::GetNamedArgumentGroup(AZStd::string_view groupName) const
+    {
+        const auto groupIterator = m_namedArgumentGroups.find(AZStd::string(groupName));
+        if (groupIterator != m_namedArgumentGroups.end())
+        {
+            return groupIterator->second;
+        }
+        return {};
     }
 
     bool ShaderBuildArguments::HasArgument(const AZStd::vector<AZStd::string>& argList, const AZStd::string& arg)
@@ -173,11 +185,14 @@ namespace AZ::RHI
         m_generateDebugInfo |= rhs.m_generateDebugInfo;
         AppendArguments(m_preprocessorArguments, rhs.m_preprocessorArguments);
         AppendArguments(m_azslcArguments, rhs.m_azslcArguments);
-        AppendArguments(m_preprocessorArguments, rhs.m_preprocessorArguments);
         AppendArguments(m_dxcArguments, rhs.m_dxcArguments);
         AppendArguments(m_spirvCrossArguments, rhs.m_spirvCrossArguments);
         AppendArguments(m_metalAirArguments, rhs.m_metalAirArguments);
         AppendArguments(m_metalLibArguments, rhs.m_metalLibArguments);
+        for (const auto& [groupName, groupArguments] : rhs.m_namedArgumentGroups)
+        {
+            AppendArguments(m_namedArgumentGroups[groupName], groupArguments);
+        }
         return *this;
     }
 
@@ -193,11 +208,17 @@ namespace AZ::RHI
         m_generateDebugInfo &= !rhs.m_generateDebugInfo;
         RemoveArguments(m_preprocessorArguments, rhs.m_preprocessorArguments);
         RemoveArguments(m_azslcArguments, rhs.m_azslcArguments);
-        RemoveArguments(m_preprocessorArguments, rhs.m_preprocessorArguments);
         RemoveArguments(m_dxcArguments, rhs.m_dxcArguments);
         RemoveArguments(m_spirvCrossArguments, rhs.m_spirvCrossArguments);
         RemoveArguments(m_metalAirArguments, rhs.m_metalAirArguments);
         RemoveArguments(m_metalLibArguments, rhs.m_metalLibArguments);
+        for (const auto& [groupName, groupArguments] : rhs.m_namedArgumentGroups)
+        {
+            if (auto groupIterator = m_namedArgumentGroups.find(groupName); groupIterator != m_namedArgumentGroups.end())
+            {
+                RemoveArguments(groupIterator->second, groupArguments);
+            }
+        }
         return *this;
     }
 }

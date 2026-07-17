@@ -32,4 +32,8 @@ set(FILES
     Source/Editor/ShaderVariantListBuilder.cpp
     Source/Editor/ShaderVariantListBuilder.h
     Source/Editor/HashedVariantListSourceData.h
+    Source/Editor/Slang/SlangCompilerService.cpp
+    Source/Editor/Slang/SlangCompilerService.h
+    Source/Editor/Slang/SlangModuleResolver.cpp
+    Source/Editor/Slang/SlangModuleResolver.h
 )

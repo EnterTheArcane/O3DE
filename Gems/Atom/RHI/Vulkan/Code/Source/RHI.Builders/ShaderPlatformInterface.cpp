@@ -103,6 +103,32 @@ namespace AZ
             }
         }
 
+        RHI::ShaderTargetDescriptor ShaderPlatformInterface::GetShaderTargetDescriptor(
+            [[maybe_unused]] const AssetBuilderSDK::PlatformInfo& platform) const
+        {
+            RHI::ShaderTargetDescriptor descriptor;
+            descriptor.m_format = RHI::ShaderTargetFormat::Spirv;
+            // Ray tracing requires shader model 6.3; every other stage compiles as 6.2
+            // (see the stageToProfileName table in CompileHLSLShader).
+            descriptor.m_stageProfiles = {
+                {RHI::ShaderHardwareStage::Vertex, "vs_6_2"},
+                {RHI::ShaderHardwareStage::Geometry, "gs_6_2"},
+                {RHI::ShaderHardwareStage::Fragment, "ps_6_2"},
+                {RHI::ShaderHardwareStage::Compute, "cs_6_2"},
+                {RHI::ShaderHardwareStage::RayTracing, "lib_6_3"},
+            };
+            // Matches the conventions the legacy path applies through DXC:
+            // -fvk-invert-y (vertex-ish stages), -fvk-use-dx-position-w, -fvk-use-dx-layout,
+            // and AZSLC's --unique-idx binding numbering.
+            descriptor.m_conventions.m_invertY = true;
+            descriptor.m_conventions.m_useDxPositionW = true;
+            descriptor.m_conventions.m_useDxMemoryLayout = true;
+            descriptor.m_conventions.m_uniqueBindingIndicesPerSet = true;
+            descriptor.m_rootConstantCapacityInBytes = 128;
+            descriptor.m_constantBufferAlignmentInBytes = 128;
+            return descriptor;
+        }
+
         // Takes in HLSL source file path and then compiles the HLSL to bytecode and
         // appends it to the AZ::Vulkan::ShaderStageDescriptor inside the provided outputAsset.
         bool ShaderPlatformInterface::CompilePlatformInternal(
@@ -134,7 +160,7 @@ namespace AZ
                 return false;
             }
 
-            if (shaderByteCode.size() > 0)
+            if (!shaderByteCode.empty())
             {
                 AZ_Assert(!functionName.empty(), "There is no entry function name.");
                 outputDescriptor.m_stageType = shaderAssetType;
@@ -213,7 +239,7 @@ namespace AZ
                 // - DXC 1.7.2212.1 crashes with the following error when compiling large shaders:
                 //     fatal error: generated SPIR-V is invalid: ID '2123[%2123]' has not been defined
                 //        %2122 = OpExtInst %void %2 DebugTypeFunction %uint_3 %void %2123 %1415
-                // 
+                //
                 // There are already several bug reports like this one: https://github.com/microsoft/DirectXShaderCompiler/issues/4767
                 RHI::ShaderBuildArguments::AppendArguments(dxcArguments, { "-fspv-debug=line" });
             }

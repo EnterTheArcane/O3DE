@@ -9,8 +9,10 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Preprocessor/Enum.h>
-#include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/span.h>
+#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/string/string_view.h>
 
 namespace AZ::RHI
 {
@@ -88,5 +90,18 @@ namespace AZ::RHI
         //! Command line arguments for '/usr/bin/xcrun metallib'.
         AZStd::vector<AZStd::string> m_metalLibArguments;
 
+        //! Additional argument groups keyed by tool/language name (e.g. "slang").
+        //! These are stored and merged opaquely — group names are never interpreted here, which
+        //! keeps this RHI-owned struct free of tool- and language-specific knowledge. Shader
+        //! language backends read their group from this map; the dedicated members above predate
+        //! the map and migrate into it over time.
+        //! Groups participate in the same scoped add/remove merging as the dedicated members
+        //! (settings stack, .shader, supervariant).
+        AZStd::unordered_map<AZStd::string, AZStd::vector<AZStd::string>> m_namedArgumentGroups;
+
+        //! @returns a view of the argument group named @groupName, or an empty span when the
+        //! group is absent — callers iterate without checking for presence. The view is
+        //! invalidated by any mutation of this object.
+        AZStd::span<const AZStd::string> GetNamedArgumentGroup(AZStd::string_view groupName) const;
     };
 }

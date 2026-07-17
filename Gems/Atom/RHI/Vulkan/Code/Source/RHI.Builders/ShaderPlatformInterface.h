@@ -54,6 +54,8 @@ namespace AZ
 
             const char* GetAzslHeader(const AssetBuilderSDK::PlatformInfo& platform) const override;
 
+            RHI::ShaderTargetDescriptor GetShaderTargetDescriptor(const AssetBuilderSDK::PlatformInfo& platform) const override;
+
         private:
             ShaderPlatformInterface() = delete;
 

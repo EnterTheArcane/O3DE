@@ -13,6 +13,8 @@
 #include <Atom/RHI.Reflect/PipelineLayoutDescriptor.h>
 
 #include <Atom/RHI.Edit/ShaderBuildArguments.h>
+#include <Atom/RHI.Edit/ShaderHardwareStage.h>
+#include <Atom/RHI.Edit/ShaderTargetDescriptor.h>
 
 namespace AssetBuilderSDK
 {
@@ -31,19 +33,6 @@ namespace AZ::RHI
 {
     class ShaderResourceGroupLayout;
     class ShaderStageFunction;
-
-    // [GFX TODO] ATOM-1668 This enum is a temporary copy of the RPI::ShaderStageType.
-    // We need to decide if virtual stages are a good design for the RHI and expose one
-    // unique shader stage enum that the RHI and RPI can use.
-    enum ShaderHardwareStage : uint32_t
-    {
-        Invalid = static_cast<uint32_t>(-1),
-        Vertex = 0,
-        Geometry,
-        Fragment,
-        Compute,
-        RayTracing,
-    };
 
     //! This class provides a platform agnostic interface for the creation
     //! and manipulation of platform shader objects.
@@ -135,6 +124,17 @@ namespace AZ::RHI
 
         //! Get the filename of include file to prefix shader programs with
         virtual const char* GetAzslHeader(const AssetBuilderSDK::PlatformInfo& platform) const = 0;
+
+        //! Language-neutral description of the compilation target this RHI consumes (target IR,
+        //! per-stage profiles, code generation conventions). Shader language backends map it onto
+        //! their own compiler options; whether a backend can produce the declared target is the
+        //! backend's answer, never the RHI's.
+        //! The base implementation declares no target: such RHIs participate only in the legacy
+        //! AZSL compilation path (CompilePlatformInternal), which is not an error.
+        virtual ShaderTargetDescriptor GetShaderTargetDescriptor([[maybe_unused]] const AssetBuilderSDK::PlatformInfo& platform) const
+        {
+            return ShaderTargetDescriptor{};
+        }
 
         //! Builds additional platform specific data to the pipeline layout descriptor.
         //! Will be called before CompilePlatformInternal().

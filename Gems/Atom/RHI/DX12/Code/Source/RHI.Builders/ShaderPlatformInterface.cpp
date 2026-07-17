@@ -223,6 +223,28 @@ namespace AZ
             return AzslShaderHeader;
         }
 
+        RHI::ShaderTargetDescriptor ShaderPlatformInterface::GetShaderTargetDescriptor([[maybe_unused]] const AssetBuilderSDK::PlatformInfo& platform) const
+        {
+            RHI::ShaderTargetDescriptor descriptor;
+            descriptor.m_format = RHI::ShaderTargetFormat::Dxil;
+            // Ray tracing requires shader model 6.3; every other stage compiles as 6.2
+            // (see the stageToProfileName table in CompileHLSLShader).
+            descriptor.m_stageProfiles = {
+                {RHI::ShaderHardwareStage::Vertex, "vs_6_2"},
+                {RHI::ShaderHardwareStage::Geometry, "gs_6_2"},
+                {RHI::ShaderHardwareStage::Fragment, "ps_6_2"},
+                {RHI::ShaderHardwareStage::Compute, "cs_6_2"},
+                {RHI::ShaderHardwareStage::RayTracing, "lib_6_3"},
+            };
+            descriptor.m_conventions.m_useDxMemoryLayout = true;
+            descriptor.m_conventions.m_enable16BitTypes = true;
+            descriptor.m_rootConstantCapacityInBytes = 128;
+            descriptor.m_constantBufferAlignmentInBytes = 16;
+            // Specialization constants are applied by patching DXIL (see CompileHLSLShader).
+            descriptor.m_postProcessSteps = {"SpecializationConstantPatch"};
+            return descriptor;
+        }
+
         bool ShaderPlatformInterface::CompileHLSLShader(
             const AZStd::string& shaderSourceFile,
             const AZStd::string& tempFolder,

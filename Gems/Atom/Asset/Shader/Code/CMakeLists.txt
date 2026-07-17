@@ -69,6 +69,7 @@ ly_add_target(
     BUILD_DEPENDENCIES
         PUBLIC
             3rdParty::mcpp
+            3rdParty::Slang
             AZ::AssetBuilderSDK
             AZ::AtomCore
             AZ::AzCore
@@ -108,6 +109,7 @@ ly_add_target(
     RUNTIME_DEPENDENCIES
         3rdParty::DirectXShaderCompilerDxc
         3rdParty::SPIRVCross
+        3rdParty::Slang
         3rdParty::azslc
 )
 
@@ -136,6 +138,7 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
         INCLUDE_DIRECTORIES
             PRIVATE
                 .
+                Source
                 Source/Editor
                 Tests
         BUILD_DEPENDENCIES
@@ -149,6 +152,10 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
                 Gem::Atom_RHI.Public
                 Gem::Atom_RPI.Edit
                 Gem::${gem_name}.Static
+        RUNTIME_DEPENDENCIES
+            3rdParty::DirectXShaderCompilerDxc
+            3rdParty::Slang
+            3rdParty::azslc
     )
     ly_add_googletest(
         NAME Gem::${gem_name}.Tests
