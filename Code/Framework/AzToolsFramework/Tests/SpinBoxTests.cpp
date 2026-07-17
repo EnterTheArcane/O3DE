@@ -11,6 +11,7 @@
 
 #include <QApplication>
 #include <QLineEdit>
+#include <QTest>
 #include <QWheelEvent>
 
 namespace UnitTest
@@ -59,6 +60,7 @@ namespace UnitTest
             // parenting children so they inherit visibility.
             m_dummyWidget->show();
             m_dummyWidget->activateWindow();
+            (void)QTest::qWaitForWindowActive(m_dummyWidget.get());
             QApplication::processEvents();
         }
 
