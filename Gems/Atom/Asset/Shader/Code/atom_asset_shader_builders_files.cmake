@@ -36,8 +36,12 @@ set(FILES
     Source/Editor/Azslc/AzslcBackend.h
     Source/Editor/Azslc/AzslcBackendSystemComponent.cpp
     Source/Editor/Azslc/AzslcBackendSystemComponent.h
+    Source/Editor/Azslc/AzslcReflectionAdapter.cpp
+    Source/Editor/Azslc/AzslcReflectionAdapter.h
     Source/Editor/ShaderCompilerBackend.h
     Source/Editor/ShaderCompilerBackendBus.h
+    Source/Editor/ShaderReflectionData.cpp
+    Source/Editor/ShaderReflectionData.h
     Source/Editor/Slang/SlangCompilerService.cpp
     Source/Editor/Slang/SlangCompilerService.h
     Source/Editor/Slang/SlangModuleResolver.cpp

@@ -78,8 +78,7 @@ namespace AZ
             RHI::ShaderHardwareStage ToAssetBuilderShaderType(RPI::ShaderStageType stageType);
 
             //! Must be called before shaderPlatformInterface->CompilePlatformInternal()
-            //! This function will prune non entry functions from BindingDependencies and use the
-            //! rest of input data to create a pipeline layout descriptor.
+            //! Legacy AZSL entry point over the shared BuildPipelineLayoutDescriptor converter.
             //! The pipeline layout descriptor is returned, but the same data will also be set into the @shaderPlatformInterface
             //! object, which is why it is important to call this method before calling shaderPlatformInterface->CompilePlatformInternal().
             RHI::Ptr<RHI::PipelineLayoutDescriptor> BuildPipelineLayoutDescriptorForApi(
@@ -89,15 +88,7 @@ namespace AZ
                 const RHI::ShaderBuildArguments& shaderBuildArguments,
                 const RootConstantData& rootConstantData,
                 RHI::ShaderPlatformInterface* shaderPlatformInterface,
-                BindingDependencies& bindingDependencies /*inout*/);
-
-
-            bool CreateShaderInputAndOutputContracts(
-                const AzslData& azslData, const MapOfStringToStageType& shaderEntryPoints,
-                const RPI::ShaderOptionGroupLayout& shaderOptionGroupLayout, const AZStd::string& pathToOmJson,
-                const AZStd::string& pathToIaJson, RPI::ShaderInputContract& shaderInputContract,
-                RPI::ShaderOutputContract& shaderOutputContract, size_t& colorAttachmentCount,
-                const AZStd::string& tempFolder);
+                const BindingDependencies& bindingDependencies);
 
 
             //! Create a file from a string's content.

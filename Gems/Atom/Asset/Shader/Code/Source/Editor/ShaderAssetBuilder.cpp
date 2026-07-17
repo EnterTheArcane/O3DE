@@ -46,9 +46,9 @@
 #include <AzCore/Serialization/Json/JsonSerialization.h>
 #include <AzCore/Debug/Timer.h>
 
-#include "AzslCompiler.h"
 #include "ShaderCompilerBackend.h"
 #include "ShaderCompilerBackendBus.h"
+#include "ShaderReflectionData.h"
 #include "ShaderVariantAssetBuilder.h"
 #include "ShaderBuilderUtility.h"
 #include "ShaderPlatformInterfaceRequest.h"
@@ -270,7 +270,7 @@ namespace AZ
 
         static AZ::Outcome<RHI::ShaderStageAttributeMapList, AZStd::string> BuildAttributesMap(
             const RHI::ShaderPlatformInterface* shaderPlatformInterface,
-            const AzslData& azslData,
+            const ShaderReflectionData& reflectionData,
             const MapOfStringToStageType& shaderEntryPoints,
             bool& hasRasterProgram)
         {
@@ -288,26 +288,24 @@ namespace AZ
                 hasComputeProgram |= shaderPlatformInterface->IsShaderStageForCompute(assetBuilderShaderType);
                 hasRayTracingProgram |= shaderPlatformInterface->IsShaderStageForRayTracing(assetBuilderShaderType);
 
-                auto findId = AZStd::find_if(AZ_BEGIN_END(azslData.m_functions), [&shaderEntryPoint](const auto& func) {
-                    return func.m_name == shaderEntryPoint.first;
+                auto findId = AZStd::find_if(AZ_BEGIN_END(reflectionData.m_functions), [&shaderEntryPoint](const auto& function) {
+                    return function.m_name == shaderEntryPoint.first;
                 });
 
-                if (findId == azslData.m_functions.end())
+                if (findId == reflectionData.m_functions.end())
                 {
-                    // shaderData.m_functions only contains Vertex, Fragment and Compute entries for now
+                    // The reflected functions only contain Vertex, Fragment and Compute entries for now
                     // Tessellation shaders will need to be handled too
                     continue;
                 }
 
                 const auto shaderStage = ToRHIShaderStage(assetBuilderShaderType);
-                for (const auto& attr : findId->attributesList)
+                for (const ShaderFunctionAttributeReflection& attribute : findId->m_attributes)
                 {
                     // Some stages like RHI::ShaderStage::Tessellation are compound and consist of two or more shader entries
-                    const Name& attributeName = attr.first;
-                    const RHI::ShaderStageAttributeArguments& args = attr.second;
                     const auto stageIndex = static_cast<uint32_t>(shaderStage);
                     AZ_Assert(stageIndex < RHI::ShaderStageCount, "Invalid shader stage specified!");
-                    attributeMaps[stageIndex][attributeName] = args;
+                    attributeMaps[stageIndex][attribute.m_name] = BuildShaderStageAttributeArguments(attribute.m_arguments);
                 }
             }
 
@@ -392,6 +390,20 @@ namespace AZ
                 return;
             }
 
+            if (shaderSourceData.m_programSettings.m_entryPoints.empty())
+            {
+                AZ_Error(ShaderAssetBuilderName, false, "ProgramSettings must specify entry points.");
+                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                return;
+            }
+
+            // Discover entry points & type of programs.
+            MapOfStringToStageType shaderEntryPoints;
+            for (const auto& entryPoint : shaderSourceData.m_programSettings.m_entryPoints)
+            {
+                shaderEntryPoints[entryPoint.m_name] = entryPoint.m_type;
+            }
+
             RPI::ShaderAssetCreator shaderAssetCreator;
             shaderAssetCreator.Begin(Uuid::CreateRandom());
 
@@ -460,6 +472,7 @@ namespace AZ
                     frontendInput.m_tempDirPath = request.m_tempDirPath;
                     frontendInput.m_includePaths = projectIncludePaths;
                     frontendInput.m_buildArguments = &buildArgsManager.GetCurrentArguments();
+                    frontendInput.m_entryPoints = &shaderEntryPoints;
                     frontendInput.m_shaderPlatformInterface = shaderPlatformInterface;
                     frontendInput.m_platformInfo = &request.m_platformInfo;
 
@@ -471,33 +484,51 @@ namespace AZ
                         return;
                     }
                     FrontendResult frontendResult = frontendOutcome.TakeValue();
-                    const ShaderBuilderUtility::AzslSubProducts::Paths& subProductsPaths = frontendResult.m_subProductPaths;
-                    AzslData& azslData = frontendResult.m_azslData;
-                    RPI::ShaderResourceGroupLayoutList& srgLayoutList = frontendResult.m_srgLayoutList;
-                    RPI::Ptr<RPI::ShaderOptionGroupLayout> shaderOptionGroupLayout = frontendResult.m_shaderOptionGroupLayout;
-                    BindingDependencies& bindingDependencies = frontendResult.m_bindingDependencies;
-                    RootConstantData& rootConstantData = frontendResult.m_rootConstantData;
-                    const bool usesSpecializationConstants = frontendResult.m_usesSpecializationConstants;
+                    const ShaderReflectionData& reflectionData = frontendResult.m_reflection;
+                    const bool usesSpecializationConstants = reflectionData.m_usesSpecializationConstants;
                     AZStd::string& hlslFullPath = frontendResult.m_targetSourcePath;
                     AZStd::string& hlslSourceCode = frontendResult.m_targetSourceCode;
 
-                    // In addition to the hlsl file, there are other json files that were generated.
+                    if (RHI::IsGraphicsDevModeEnabled())
+                    {
+                        DumpReflectionData(ShaderAssetBuilderName, reflectionData, request.m_tempDirPath, superVariantAzslinStemName, apiName);
+                    }
+
+                    // In addition to the target source file, the backend caches intermediate artifacts.
                     // Each output file will become a product.
                     static constexpr AZ::Uuid AzslOutcomeType{ "{6977AEB1-17AD-4992-957B-23BB2E85B18B}" };
-                    for (int i = 0; i < subProductsPaths.size(); ++i)
+                    for (const FrontendSubProduct& subProduct : frontendResult.m_subProducts)
                     {
                         AssetBuilderSDK::JobProduct jobProduct;
-                        jobProduct.m_productFileName = subProductsPaths[i];
+                        jobProduct.m_productFileName = subProduct.m_path;
                         jobProduct.m_productAssetType = AzslOutcomeType;
                         // uint32_t rhiApiUniqueIndex, uint32_t supervariantIndex, uint32_t subProductType
                         jobProduct.m_productSubID = RPI::ShaderAsset::MakeProductAssetSubId(
                                                                 shaderPlatformInterface->GetAPIUniqueIndex(), supervariantIndex,
-                                                                aznumeric_cast<uint32_t>(ShaderBuilderUtility::AzslSubProducts::SubList[i]));
+                                                                subProduct.m_subProductType);
                         jobProduct.m_dependenciesHandled = true;
                         // Note that the output products are not traditional product assets that will be used by the game project.
                         // They are artifacts that are produced once, cached, and used later by other AssetBuilders as a way to centralize
                         // build organization.
                         response.m_outputProducts.push_back(AZStd::move(jobProduct));
+                    }
+
+                    // Build the runtime layouts from the language-neutral reflection contract.
+                    auto srgLayoutsOutcome = BuildShaderResourceGroupLayouts(reflectionData);
+                    if (!srgLayoutsOutcome.IsSuccess())
+                    {
+                        AZ_Error(ShaderAssetBuilderName, false, "%s", srgLayoutsOutcome.GetError().c_str());
+                        response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                        return;
+                    }
+                    RPI::ShaderResourceGroupLayoutList srgLayoutList = srgLayoutsOutcome.TakeValue();
+
+                    RPI::Ptr<RPI::ShaderOptionGroupLayout> shaderOptionGroupLayout = BuildShaderOptionGroupLayout(reflectionData);
+                    if (!shaderOptionGroupLayout)
+                    {
+                        AZ_Error(ShaderAssetBuilderName, false, "Failed to build the shader option group layout");
+                        response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                        return;
                     }
 
                     shaderAssetCreator.SetSrgLayoutList(srgLayoutList);
@@ -524,22 +555,8 @@ namespace AZ
                         }
                     }
 
-                    if (shaderSourceData.m_programSettings.m_entryPoints.empty())
-                    {
-                        AZ_Error( ShaderAssetBuilderName, false, "ProgramSettings must specify entry points.");
-                        response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
-                        return;
-                    }
-
-                    // Discover entry points & type of programs.
-                    MapOfStringToStageType shaderEntryPoints;
-                    for (const auto& entryPoint : shaderSourceData.m_programSettings.m_entryPoints)
-                    {
-                        shaderEntryPoints[entryPoint.m_name] = entryPoint.m_type;
-                    }
-
                     bool hasRasterProgram = false;
-                    auto attributeMapsOutcome = BuildAttributesMap(shaderPlatformInterface, azslData, shaderEntryPoints, hasRasterProgram);
+                    auto attributeMapsOutcome = BuildAttributesMap(shaderPlatformInterface, reflectionData, shaderEntryPoints, hasRasterProgram);
                     if (!attributeMapsOutcome.IsSuccess())
                     {
                         AZ_Error(ShaderAssetBuilderName, false, "%s\n", attributeMapsOutcome.GetError().c_str());
@@ -558,9 +575,9 @@ namespace AZ
                     }
 
                     RHI::Ptr<RHI::PipelineLayoutDescriptor> pipelineLayoutDescriptor =
-                        ShaderBuilderUtility::BuildPipelineLayoutDescriptorForApi(
-                            ShaderAssetBuilderName, srgLayoutList, shaderEntryPoints, buildArgsManager.GetCurrentArguments(), rootConstantData,
-                            shaderPlatformInterface, bindingDependencies);
+                        BuildPipelineLayoutDescriptor(
+                            ShaderAssetBuilderName, reflectionData, srgLayoutList, shaderEntryPoints, buildArgsManager.GetCurrentArguments(),
+                            shaderPlatformInterface);
                     if (!pipelineLayoutDescriptor)
                     {
                         AZ_Error(
@@ -576,11 +593,9 @@ namespace AZ
                     RPI::ShaderInputContract shaderInputContract;
                     RPI::ShaderOutputContract shaderOutputContract;
                     size_t colorAttachmentCount = 0;
-                    ShaderBuilderUtility::CreateShaderInputAndOutputContracts(
-                        azslData, shaderEntryPoints, *shaderOptionGroupLayout.get(),
-                        subProductsPaths[ShaderBuilderUtility::AzslSubProducts::om],
-                        subProductsPaths[ShaderBuilderUtility::AzslSubProducts::ia],
-                        shaderInputContract, shaderOutputContract, colorAttachmentCount, request.m_tempDirPath);
+                    BuildShaderInputAndOutputContracts(
+                        ShaderAssetBuilderName, reflectionData, shaderEntryPoints, *shaderOptionGroupLayout.get(),
+                        shaderInputContract, shaderOutputContract, colorAttachmentCount);
                     shaderAssetCreator.SetInputContract(shaderInputContract);
                     shaderAssetCreator.SetOutputContract(shaderOutputContract);
 

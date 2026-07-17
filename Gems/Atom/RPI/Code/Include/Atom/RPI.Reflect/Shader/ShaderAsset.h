@@ -48,6 +48,10 @@ namespace AZ
             OptionsJson, //!< .options.json, Shader Options reflection data.
             BindingdepJson, //!<.bindingdep.json, Binding dependencies.
             GeneratedHlslSource, //!<.hlsl code generated with AZSLc.
+            ReflectionData, //!< AZ-serialized, language-neutral ShaderReflectionData produced per (API, supervariant) by shader
+                            //!< language backends that do not emit the legacy AZSLC reflection JSONs.
+            ModuleClosureBundle, //!< Serialized shader module closure cached by in-process language backends so variant builds
+                                 //!< can link without re-running the frontend.
             FirstByProduct, //!< This must be last because we use this as a base for adding all the debug byProducts generated
                             //!< with dxc, or spirv-cross, etc.
         };

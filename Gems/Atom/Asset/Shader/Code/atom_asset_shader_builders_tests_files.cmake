@@ -12,6 +12,7 @@ set(FILES
     Tests/McppBinderTests.cpp
     Tests/ShaderBuilderUtilityTests.cpp
     Tests/ShaderBuildArgumentsTests.cpp
+    Tests/ShaderReflectionDataTests.cpp
     Tests/Slang/SlangCompilerServiceTests.cpp
     Tests/Slang/SlangModuleResolverTests.cpp
     Tests/Slang/Gates/Gate1_SharedShaderResourceGroupAbiParityTests.cpp

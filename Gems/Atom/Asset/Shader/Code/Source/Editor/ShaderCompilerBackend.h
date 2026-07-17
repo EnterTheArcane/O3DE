@@ -19,9 +19,7 @@
 #include <Atom/RHI.Edit/ShaderPlatformInterface.h>
 #include <Atom/RHI.Edit/ShaderTargetDescriptor.h>
 
-#include <AzslData.h>
-#include <CommonFiles/CommonTypes.h>
-#include <Editor/ShaderBuilderUtility.h>
+#include <Editor/ShaderReflectionData.h>
 
 namespace AssetBuilderSDK
 {
@@ -50,25 +48,31 @@ namespace AZ::ShaderBuilder
         //! Fully merged build arguments for the current (platform, API, .shader, supervariant) scope.
         const RHI::ShaderBuildArguments* m_buildArguments = nullptr;
 
+        //! Entry points declared by the .shader descriptor, so the backend can reflect
+        //! per-entry data (stage interfaces, attributes) during the frontend run.
+        const MapOfStringToStageType* m_entryPoints = nullptr;
+
         RHI::ShaderPlatformInterface* m_shaderPlatformInterface = nullptr;
         const AssetBuilderSDK::PlatformInfo* m_platformInfo = nullptr;
     };
 
-    //! Reflection data and intermediate artifacts of one frontend run.
-    //! Transitional shape: this carries the legacy AZSLC structures until the language-neutral
-    //! ShaderReflectionData DTO becomes the canonical payload (plan milestone M5).
+    //! One cached build artifact of a frontend run that the builder registers as a job product so
+    //! downstream builders can fetch it by sub-id.
+    struct FrontendSubProduct
+    {
+        AZStd::string m_path;
+
+        //! Sub-product type composed into the product sub-id via RPI::ShaderAsset::MakeProductAssetSubId.
+        uint32_t m_subProductType = 0;
+    };
+
+    //! Everything one frontend run produces: the language-neutral reflection contract plus the
+    //! backend's cached artifacts.
     struct FrontendResult
     {
-        //! Cached build artifacts, indexed per ShaderBuilderUtility::AzslSubProducts. The builder
-        //! registers these as job products so downstream builders can fetch them by sub-id.
-        ShaderBuilderUtility::AzslSubProducts::Paths m_subProductPaths;
+        AZStd::vector<FrontendSubProduct> m_subProducts;
 
-        AzslData m_azslData{AZStd::make_shared<ShaderFiles>()};
-        RPI::ShaderResourceGroupLayoutList m_srgLayoutList;
-        RPI::Ptr<RPI::ShaderOptionGroupLayout> m_shaderOptionGroupLayout;
-        BindingDependencies m_bindingDependencies;
-        RootConstantData m_rootConstantData;
-        bool m_usesSpecializationConstants = false;
+        ShaderReflectionData m_reflection;
 
         //! The target-language source the frontend produced (HLSL today), consumed by stage compiles.
         AZStd::string m_targetSourcePath;

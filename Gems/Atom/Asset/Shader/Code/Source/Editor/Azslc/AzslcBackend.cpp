@@ -15,7 +15,10 @@
 #include <Atom/RPI.Edit/Common/JsonUtils.h>
 
 #include <AzslCompiler.h>
+#include <AzslData.h>
+#include <CommonFiles/CommonTypes.h>
 #include <CommonFiles/Preprocessor.h>
+#include <Editor/Azslc/AzslcReflectionAdapter.h>
 #include <Editor/ShaderBuilderUtility.h>
 
 namespace AZ::ShaderBuilder
@@ -94,23 +97,58 @@ namespace AZ::ShaderBuilder
             return AZ::Failure(AZStd::string::format("AZSLC failed to transpile %s", azslinFullPath.c_str()));
         }
 
-        FrontendResult result;
-        result.m_subProductPaths = emitFullOutcome.TakeValue();
-        result.m_azslData.m_preprocessedFullPath = azslinFullPath;
+        if (!input.m_entryPoints)
+        {
+            return AZ::Failure(AZStd::string::format("No entry points were provided for %s", sourceFullPath.c_str()));
+        }
 
+        const ShaderBuilderUtility::AzslSubProducts::Paths subProductPaths = emitFullOutcome.TakeValue();
+
+        AzslData azslData(AZStd::make_shared<ShaderFiles>());
+        azslData.m_preprocessedFullPath = azslinFullPath;
+        RPI::ShaderResourceGroupLayoutList srgLayoutList;
+        RPI::Ptr<RPI::ShaderOptionGroupLayout> shaderOptionGroupLayout = RPI::ShaderOptionGroupLayout::Create();
+        BindingDependencies bindingDependencies;
+        RootConstantData rootConstantData;
+        bool usesSpecializationConstants = false;
         const AssetBuilderSDK::ProcessJobResultCode azslJsonReadResult = ShaderBuilderUtility::PopulateAzslDataFromJsonFiles(
             builderName.c_str(),
-            result.m_subProductPaths,
-            result.m_azslData,
-            result.m_srgLayoutList,
-            result.m_shaderOptionGroupLayout,
-            result.m_bindingDependencies,
-            result.m_rootConstantData,
+            subProductPaths,
+            azslData,
+            srgLayoutList,
+            shaderOptionGroupLayout,
+            bindingDependencies,
+            rootConstantData,
             tempDirPath,
-            result.m_usesSpecializationConstants);
+            usesSpecializationConstants);
         if (azslJsonReadResult != AssetBuilderSDK::ProcessJobResult_Success)
         {
             return AZ::Failure(AZStd::string::format("Failed to load the AZSLC reflection data for %s", azslinFullPath.c_str()));
+        }
+
+        auto reflectionOutcome = AzslcReflectionAdapter::BuildReflectionData(
+            input.m_builderName,
+            azslData,
+            *shaderOptionGroupLayout,
+            usesSpecializationConstants,
+            bindingDependencies,
+            rootConstantData,
+            subProductPaths[ShaderBuilderUtility::AzslSubProducts::ia],
+            subProductPaths[ShaderBuilderUtility::AzslSubProducts::om],
+            *input.m_entryPoints,
+            tempDirPath);
+        if (!reflectionOutcome.IsSuccess())
+        {
+            return AZ::Failure(reflectionOutcome.TakeError());
+        }
+
+        FrontendResult result;
+        result.m_reflection = reflectionOutcome.TakeValue();
+        for (size_t i = 0; i < subProductPaths.size(); ++i)
+        {
+            result.m_subProducts.push_back({
+                subProductPaths[i],
+                aznumeric_cast<uint32_t>(ShaderBuilderUtility::AzslSubProducts::SubList[i])});
         }
 
         AZ::Outcome<AZStd::string, AZStd::string> hlslSourceCodeOutcome = AZ::Utils::ReadFile(hlslFullPath, AZ::RPI::JsonUtils::DefaultMaxFileSize);
