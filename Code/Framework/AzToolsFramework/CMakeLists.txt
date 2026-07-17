@@ -118,6 +118,7 @@ if(PAL_TRAIT_TEST_GOOGLE_TEST_SUPPORTED)
         ly_add_googletest(
             NAME AZ::AzToolsFramework.Tests
             LABELS REQUIRES_tiaf
+            RESOURCE_LOCK native_gui_focus
         )
         ly_add_googlebenchmark(
             NAME AZ::AzToolsFramework.Benchmarks

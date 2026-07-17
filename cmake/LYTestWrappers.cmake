@@ -90,13 +90,14 @@ endfunction()
 # \arg:RUNTIME_DEPENDENCIES (optional) - List of additional runtime dependencies required by this test.
 # \arg:COMPONENT (optional) - Scope of the feature area that the test belongs to (eg. physics, graphics, etc.).
 # \arg:LABELS (optional) - Additional labels to apply to the test target which can be used by ctest filters.
+# \arg:RESOURCE_LOCK (optional) - Name of a CTest resource lock that prevents tests using the same lock from running concurrently.
 # \arg:EXCLUDE_TEST_RUN_TARGET_FROM_IDE(bool) - If set the test run target will be not be shown in the IDE
 # \arg:TEST_LIBRARY(internal) - Internal variable that contains the library be used. This is only to be used by the other
 #      ly_add_* function below, not by user code
 # sets LY_ADDED_TEST_NAME to the fully qualified name of the test, in parent scope
 function(ly_add_test)
     set(options EXCLUDE_TEST_RUN_TARGET_FROM_IDE)
-    set(one_value_args NAME PARENT_NAME TEST_LIBRARY TEST_SUITE TIMEOUT)
+    set(one_value_args NAME PARENT_NAME TEST_LIBRARY TEST_SUITE TIMEOUT RESOURCE_LOCK)
     set(multi_value_args TEST_REQUIRES TEST_COMMAND NON_IDE_PARAMS RUNTIME_DEPENDENCIES COMPONENT LABELS)
     # note that we dont use TEST_LIBRARY here, but PAL files might so do not remove!
 
@@ -184,6 +185,9 @@ function(ly_add_test)
             LABELS "${final_labels}"
             TIMEOUT ${ly_add_test_TIMEOUT}
     )
+    if (ly_add_test_RESOURCE_LOCK)
+        set_property(TEST ${LY_ADDED_TEST_NAME} PROPERTY RESOURCE_LOCK "${ly_add_test_RESOURCE_LOCK}")
+    endif()
 
     # ly_add_test_NAME could be an alias, we need the actual un-aliased target
     set(unaliased_test_name ${ly_add_test_NAME})
@@ -528,4 +532,3 @@ function(ly_add_googlebenchmark)
         COMPONENT ${ly_add_googlebenchmark_COMPONENT}
     )
 endfunction()
-

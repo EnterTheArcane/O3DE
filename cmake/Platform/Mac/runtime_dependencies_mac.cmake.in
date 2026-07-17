@@ -70,6 +70,15 @@ if (NOT LY_INSTALL_NAME_TOOL)
     message(FATAL_ERROR "Unable to locate 'install_name_tool'")
 endif()
 
+find_program(LY_CODESIGN codesign)
+if(NOT LY_CODESIGN)
+    message(FATAL_ERROR "Unable to locate 'codesign'")
+endif()
+
+cmake_path(GET CMAKE_CURRENT_LIST_FILE PARENT_PATH runtime_dependency_script_directory)
+cmake_path(APPEND runtime_dependency_lock_directory "${runtime_dependency_script_directory}" "locks")
+file(MAKE_DIRECTORY "${runtime_dependency_lock_directory}")
+
 # IS_NEWER_THAN returns true if:
 # 1. file1 is newer than file2
 # 2. Either file1 or file2 do not exist
@@ -313,6 +322,19 @@ function(ly_copy source_files relative_target_directory)
             cmake_path(GET source_file FILENAME target_filename)
             cmake_path(APPEND target_file "${target_file_dir}" "${relative_target_directory}" "${target_filename}")
 
+            # Third-party dylibs can be shared by multiple runtime-dependency targets.
+            # Serialize their copy and signing steps so parallel builds never observe a partially replaced file.
+            set(sign_third_party_dylib FALSE)
+            if(NOT source_type AND "${target_file}" MATCHES "\\.dylib$")
+                set(sign_third_party_dylib TRUE)
+                string(SHA256 target_file_hash "${target_file}")
+                set(target_file_lock "${runtime_dependency_lock_directory}/${target_file_hash}.lock")
+                file(LOCK "${target_file_lock}" GUARD PROCESS TIMEOUT 120 RESULT_VARIABLE lock_result)
+                if(lock_result)
+                    message(FATAL_ERROR "Failed to lock '${target_file}' for copying and signing: ${lock_result}")
+                endif()
+            endif()
+
             # Invoke o3de_copy_file_to_filestream to copy the source_file to the target_file
             o3de_copy_file_to_filesystem(
                 SOURCE_FILE "${source_file}"
@@ -320,6 +342,37 @@ function(ly_copy source_files relative_target_directory)
                 SOURCE_GEM_MODULE "${source_is_gem}"
                 TARGET_FILE "${target_file}"
             )
+
+            # Third-party dylibs are not always signed when distributed.
+            # Sign the copied output so current macOS versions can load it without modifying the source package in the third-party cache.
+            if(sign_third_party_dylib)
+                execute_process(
+                    COMMAND "${LY_CODESIGN}" --verify --strict "${target_file}"
+                    RESULT_VARIABLE codesign_verify_result
+                    ERROR_VARIABLE codesign_verify_error
+                )
+                if(NOT codesign_verify_result EQUAL 0)
+                    execute_process(
+                        COMMAND "${LY_CODESIGN}" --force --sign - "${target_file}"
+                        RESULT_VARIABLE codesign_result
+                        ERROR_VARIABLE codesign_error
+                    )
+                    if(NOT codesign_result EQUAL 0)
+                        message(FATAL_ERROR "Failed to sign '${target_file}': ${codesign_error}")
+                    endif()
+
+                    execute_process(
+                        COMMAND "${LY_CODESIGN}" --verify --strict "${target_file}"
+                        RESULT_VARIABLE codesign_verify_result
+                        ERROR_VARIABLE codesign_verify_error
+                    )
+                    if(NOT codesign_verify_result EQUAL 0)
+                        message(FATAL_ERROR "Failed to verify signature for '${target_file}': ${codesign_verify_error}")
+                    endif()
+                endif()
+
+                file(LOCK "${target_file_lock}" RELEASE)
+            endif()
         endif()
     endforeach()
 endfunction()

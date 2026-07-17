@@ -219,6 +219,7 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
         ly_add_googletest(
             NAME Gem::${gem_name}.Editor.Tests
             LABELS REQUIRES_tiaf
+            RESOURCE_LOCK native_gui_focus
         )
 
         list(APPEND testTargets ${gem_name}.Editor.Tests)
