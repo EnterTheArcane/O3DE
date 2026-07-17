@@ -40,6 +40,17 @@ namespace UnitTest
     class Gate1_SharedShaderResourceGroupAbiParityTests : public ShaderBuilderTestFixture
     {
     public:
+        //! The two PC compilation targets under test. Bindings pin differently per target:
+        //! Vulkan uses [[vk::binding(binding, set)]]; DX12 uses register(<class><index>, space<n>).
+        enum class GateTarget
+        {
+            Vulkan,
+            Dx12,
+        };
+
+        //! Shared body of the per-target parity check: AZSLC reflection -> pinned Slang source ->
+        //! Slang reflection -> field-level and layout-hash comparison.
+        void RunAbiParityCheck(GateTarget target, const AZStd::string& azslcApiArguments);
         void SetUp() override
         {
             ShaderBuilderTestFixture::SetUp();
@@ -164,16 +175,47 @@ void MainCS(uint3 id : SV_DispatchThreadID)
             return parserOnly.ParseSrgPopulateSrgData(jsonOutcome.GetValue(), outSrgData);
         }
 
+        //! Emits one pinned global declaration: the grouping attribute, the target-specific
+        //! binding annotation, and the declaration itself.
+        static AZStd::string DeclarePinnedMember(
+            GateTarget target,
+            uint32_t bindingSlot,
+            AZStd::string_view typeText,
+            AZStd::string_view memberName,
+            char dxRegisterClass,
+            uint32_t registerId,
+            uint32_t spaceId)
+        {
+            AZStd::string declaration = AZStd::string::format("[AtomShaderResourceGroupMember(\"TestSrg\", %u)]\n", bindingSlot);
+            if (target == GateTarget::Vulkan)
+            {
+                declaration += AZStd::string::format("[[vk::binding(%u, %u)]]\n", registerId, spaceId);
+                declaration += AZStd::string::format("%.*s %.*s;\n\n", AZ_STRING_ARG(typeText), AZ_STRING_ARG(memberName));
+            }
+            else
+            {
+                declaration += AZStd::string::format(
+                    "%.*s %.*s : register(%c%u, space%u);\n\n",
+                    AZ_STRING_ARG(typeText),
+                    AZ_STRING_ARG(memberName),
+                    dxRegisterClass,
+                    registerId,
+                    spaceId);
+            }
+            return declaration;
+        }
+
         //! Generates the pinned Slang source for the SRG that AZSLC reflected — the same flow the
         //! binding-ABI manifest generator will use in production (AZSL is the editorial source;
         //! the pinned declarations are derived from its reflection).
-        static AZStd::string GeneratePinnedSlangSource(const SrgData& srg)
+        static AZStd::string GeneratePinnedSlangSource(const SrgData& srg, GateTarget target)
         {
             const TextureSrgData& texture = srg.m_textures[0];
             const SamplerSrgData& sampler = srg.m_samplers[0];
             const BufferSrgData& buffer = srg.m_buffers[0];
+            const uint32_t bindingSlot = srg.m_bindingSlot.GetIndex();
 
-            return AZStd::string::format(R"(
+            AZStd::string source = R"(
 [__AttributeUsage(_AttributeTargets.Var)]
 struct AtomShaderResourceGroupMemberAttribute
 {
@@ -186,47 +228,65 @@ struct TestSrg_Constants
     float4 m_color;
 };
 
-[AtomShaderResourceGroupMember("TestSrg", %u)]
-[[vk::binding(%u, %u)]]
-Texture2D<float4> m_texture;
-
-[AtomShaderResourceGroupMember("TestSrg", %u)]
-[[vk::binding(%u, %u)]]
-SamplerState m_sampler;
-
-[AtomShaderResourceGroupMember("TestSrg", %u)]
-[[vk::binding(%u, %u)]]
-RWStructuredBuffer<float4> m_output;
-
-[AtomShaderResourceGroupMember("TestSrg", %u)]
-[[vk::binding(%u, %u)]]
-ConstantBuffer<TestSrg_Constants> TestSrg_SRGConstantBuffer;
-
+)";
+            source += DeclarePinnedMember(target, bindingSlot, "Texture2D<float4>", "m_texture", 't', texture.m_registerId, texture.m_spaceId);
+            source += DeclarePinnedMember(target, bindingSlot, "SamplerState", "m_sampler", 's', sampler.m_registerId, sampler.m_spaceId);
+            source += DeclarePinnedMember(target, bindingSlot, "RWStructuredBuffer<float4>", "m_output", 'u', buffer.m_registerId, buffer.m_spaceId);
+            source += DeclarePinnedMember(
+                target,
+                bindingSlot,
+                "ConstantBuffer<TestSrg_Constants>",
+                "TestSrg_SRGConstantBuffer",
+                'b',
+                srg.m_srgConstantDataRegisterId,
+                srg.m_srgConstantDataSpaceId);
+            source += R"(
 [shader("compute")]
 [numthreads(1,1,1)]
 void MainCS(uint3 id : SV_DispatchThreadID)
 {
     m_output[id.x] = m_texture.SampleLevel(m_sampler, float2(0, 0), 0) + TestSrg_SRGConstantBuffer.m_color;
 }
-)",
-                srg.m_bindingSlot.GetIndex(),
-                texture.m_registerId,
-                texture.m_spaceId,
-                srg.m_bindingSlot.GetIndex(),
-                sampler.m_registerId,
-                sampler.m_spaceId,
-                srg.m_bindingSlot.GetIndex(),
-                buffer.m_registerId,
-                buffer.m_spaceId,
-                srg.m_bindingSlot.GetIndex(),
-                srg.m_srgConstantDataRegisterId,
-                srg.m_srgConstantDataSpaceId);
+)";
+            return source;
+        }
+
+        //! Returns the reflection category that carries a resource's binding for @target.
+        //! SPIR-V exposes every resource as a descriptor-table slot; DXIL splits bindings by
+        //! register class.
+        static SlangParameterCategory GetBindingCategory(
+            GateTarget target,
+            slang::TypeReflection::Kind kind,
+            SlangResourceAccess access)
+        {
+            if (target == GateTarget::Vulkan)
+            {
+                return SLANG_PARAMETER_CATEGORY_DESCRIPTOR_TABLE_SLOT;
+            }
+
+            switch (kind)
+            {
+            case slang::TypeReflection::Kind::SamplerState:
+                return SLANG_PARAMETER_CATEGORY_SAMPLER_STATE;
+            case slang::TypeReflection::Kind::ConstantBuffer:
+                return SLANG_PARAMETER_CATEGORY_CONSTANT_BUFFER;
+            case slang::TypeReflection::Kind::Resource:
+            default:
+                if (access == SLANG_RESOURCE_ACCESS_READ)
+                {
+                    return SLANG_PARAMETER_CATEGORY_SHADER_RESOURCE;
+                }
+                return SLANG_PARAMETER_CATEGORY_UNORDERED_ACCESS;
+            }
         }
 
         //! Prototype reflection walker (gate quality): groups attribute-tagged globals of a linked
         //! Slang program into SrgData, reading bindings back from reflection — never from the
         //! source annotations — so the test proves reflection agrees with the pinned ABI.
-        static bool BuildSrgDataFromSlangProgram(slang::IComponentType* linkedProgram, SrgDataContainer& outSrgData)
+        static bool BuildSrgDataFromSlangProgram(
+            slang::IComponentType* linkedProgram,
+            GateTarget target,
+            SrgDataContainer& outSrgData)
         {
             slang::ShaderReflection* reflection = linkedProgram->getLayout(0);
             if (!reflection)
@@ -268,11 +328,17 @@ void MainCS(uint3 id : SV_DispatchThreadID)
                 srg.m_name = srgName;
                 srg.m_bindingSlot = RHI::Handle<uint32_t>(static_cast<uint32_t>(bindingSlot));
 
-                const uint32_t binding = static_cast<uint32_t>(varLayout->getOffset(SLANG_PARAMETER_CATEGORY_DESCRIPTOR_TABLE_SLOT));
-                const uint32_t space = static_cast<uint32_t>(varLayout->getBindingSpace(SLANG_PARAMETER_CATEGORY_DESCRIPTOR_TABLE_SLOT));
+                slang::TypeLayoutReflection* typeLayout = varLayout->getTypeLayout();
+                SlangResourceAccess resourceAccess = SLANG_RESOURCE_ACCESS_NONE;
+                if (typeLayout->getKind() == slang::TypeReflection::Kind::Resource)
+                {
+                    resourceAccess = typeLayout->getType()->getResourceAccess();
+                }
+                const SlangParameterCategory bindingCategory = GetBindingCategory(target, typeLayout->getKind(), resourceAccess);
+                const uint32_t binding = static_cast<uint32_t>(varLayout->getOffset(bindingCategory));
+                const uint32_t space = static_cast<uint32_t>(varLayout->getBindingSpace(bindingCategory));
                 const char* variableName = variable->getName();
 
-                slang::TypeLayoutReflection* typeLayout = varLayout->getTypeLayout();
                 switch (typeLayout->getKind())
                 {
                 case slang::TypeReflection::Kind::Resource:
@@ -357,15 +423,26 @@ void MainCS(uint3 id : SV_DispatchThreadID)
             return true;
         }
 
-        //! Compiles @slangSource for SPIR-V and walks its reflection into SrgData.
-        static bool CompileSlangAndGetSrgData(AZStd::string_view slangSource, SrgDataContainer& outSrgData)
+        //! Compiles @slangSource for @target and walks its reflection into SrgData.
+        static bool CompileSlangAndGetSrgData(
+            AZStd::string_view slangSource,
+            GateTarget target,
+            SrgDataContainer& outSrgData)
         {
             SlangCompilerService& service = SlangCompilerService::Get();
             AZStd::unique_lock<AZStd::recursive_mutex> lock = service.AcquireCompilerLock();
 
             SlangCompilerService::SessionDescriptor sessionDescriptor;
-            sessionDescriptor.m_target = SLANG_SPIRV;
-            sessionDescriptor.m_profile = "spirv_1_5";
+            if (target == GateTarget::Vulkan)
+            {
+                sessionDescriptor.m_target = SLANG_SPIRV;
+                sessionDescriptor.m_profile = "spirv_1_5";
+            }
+            else
+            {
+                sessionDescriptor.m_target = SLANG_DXIL;
+                sessionDescriptor.m_profile = "sm_6_2";
+            }
             AZ::Outcome<Slang::ComPtr<slang::ISession>, AZStd::string> sessionOutcome = service.CreateSession(sessionDescriptor);
             if (!sessionOutcome.IsSuccess())
             {
@@ -406,7 +483,7 @@ void MainCS(uint3 id : SV_DispatchThreadID)
                 return false;
             }
 
-            return BuildSrgDataFromSlangProgram(linkedProgram, outSrgData);
+            return BuildSrgDataFromSlangProgram(linkedProgram, target, outSrgData);
         }
 
         static RPI::ShaderResourceGroupLayoutList BuildLayouts(const SrgDataContainer& srgData)
@@ -419,11 +496,13 @@ void MainCS(uint3 id : SV_DispatchThreadID)
         AZStd::unique_ptr<AZ::Test::ScopedAutoTempDirectory> m_tempDirectory;
     };
 
-    TEST_F(Gate1_SharedShaderResourceGroupAbiParityTests, Vulkan_PinnedBindings_LayoutHashesMatchAzslc)
+    void Gate1_SharedShaderResourceGroupAbiParityTests::RunAbiParityCheck(
+        GateTarget target,
+        const AZStd::string& azslcApiArguments)
     {
         // 1) AZSLC is the editorial source of the binding ABI.
         SrgDataContainer azslSrgData;
-        ASSERT_TRUE(CompileAzslAndGetSrgData(AzslSource, "--namespace=vk --unique-idx", azslSrgData));
+        ASSERT_TRUE(CompileAzslAndGetSrgData(AzslSource, azslcApiArguments, azslSrgData));
         ASSERT_EQ(azslSrgData.size(), 1u);
         const SrgData& azslSrg = azslSrgData[0];
         ASSERT_EQ(azslSrg.m_textures.size(), 1u);
@@ -433,7 +512,7 @@ void MainCS(uint3 id : SV_DispatchThreadID)
 
         // 2) Generate the pinned Slang declarations from AZSLC's reflection and compile them.
         SrgDataContainer slangSrgData;
-        ASSERT_TRUE(CompileSlangAndGetSrgData(GeneratePinnedSlangSource(azslSrg), slangSrgData));
+        ASSERT_TRUE(CompileSlangAndGetSrgData(GeneratePinnedSlangSource(azslSrg, target), target, slangSrgData));
         ASSERT_EQ(slangSrgData.size(), 1u);
         const SrgData& slangSrg = slangSrgData[0];
 
@@ -466,5 +545,15 @@ void MainCS(uint3 id : SV_DispatchThreadID)
         ASSERT_TRUE(azslLayouts[0]->Finalize());
         ASSERT_TRUE(slangLayouts[0]->Finalize());
         EXPECT_EQ(slangLayouts[0]->GetHash(), azslLayouts[0]->GetHash());
+    }
+
+    TEST_F(Gate1_SharedShaderResourceGroupAbiParityTests, Vulkan_PinnedBindings_LayoutHashesMatchAzslc)
+    {
+        RunAbiParityCheck(GateTarget::Vulkan, "--namespace=vk --unique-idx");
+    }
+
+    TEST_F(Gate1_SharedShaderResourceGroupAbiParityTests, Dx12_PinnedBindings_LayoutHashesMatchAzslc)
+    {
+        RunAbiParityCheck(GateTarget::Dx12, "--namespace=dx");
     }
 } // namespace UnitTest

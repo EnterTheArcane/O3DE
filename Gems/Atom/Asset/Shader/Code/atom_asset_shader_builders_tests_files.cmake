@@ -15,4 +15,10 @@ set(FILES
     Tests/Slang/SlangCompilerServiceTests.cpp
     Tests/Slang/SlangModuleResolverTests.cpp
     Tests/Slang/Gates/Gate1_SharedShaderResourceGroupAbiParityTests.cpp
+    Tests/Slang/Gates/Gate2_OptionLoweringTests.cpp
+    Tests/Slang/Gates/Gate3_DxilSigningTests.cpp
+    Tests/Slang/Gates/Gate4_ModuleClosureReloadTests.cpp
+    Tests/Slang/Gates/Gate5_DependencyCrossCheckTests.cpp
+    Tests/Slang/Gates/Gate6_ThreadSafetyCharacterizationTests.cpp
+    Tests/Slang/Gates/Gate7_RootConstantsAndStaticSamplerTests.cpp
 )
