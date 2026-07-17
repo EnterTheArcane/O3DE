@@ -116,7 +116,7 @@ ly_add_target(
 # Inject the gem name into the Module source file
 ly_add_source_properties(
     SOURCES
-        Source/Editor/AzslShaderBuilderModule.cpp
+        Source/Editor/ShaderBuilderModule.cpp
     PROPERTY COMPILE_DEFINITIONS
         VALUES
             O3DE_GEM_NAME=${gem_name}

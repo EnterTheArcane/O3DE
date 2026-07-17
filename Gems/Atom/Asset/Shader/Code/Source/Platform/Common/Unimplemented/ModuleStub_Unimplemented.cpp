@@ -12,14 +12,14 @@ namespace AZ
 {
     namespace ShaderBuilder
     {
-        class AzslShaderBuilderModule final
+        class ShaderBuilderModule final
             : public AZ::Module
         {
         public:
-            AZ_RTTI(AzslShaderBuilderModule, "{18F6276E-09B7-4C1D-B658-FADA2DB22148}", AZ::Module);
+            AZ_RTTI(ShaderBuilderModule, "{18F6276E-09B7-4C1D-B658-FADA2DB22148}", AZ::Module);
 
-            AzslShaderBuilderModule() = default;
-            ~AzslShaderBuilderModule() override = default;
+            ShaderBuilderModule() = default;
+            ~ShaderBuilderModule() override = default;
 
             AZ::ComponentTypeList GetRequiredSystemComponents() const override
             {
@@ -30,7 +30,7 @@ namespace AZ
 }
 
 #if defined(O3DE_GEM_NAME)
-AZ_DECLARE_MODULE_CLASS(AZ_JOIN(Gem_, O3DE_GEM_NAME, _Builders), AZ::ShaderBuilder::AzslShaderBuilderModule)
+AZ_DECLARE_MODULE_CLASS(AZ_JOIN(Gem_, O3DE_GEM_NAME, _Builders), AZ::ShaderBuilder::ShaderBuilderModule)
 #else
-AZ_DECLARE_MODULE_CLASS(Gem_AtomShader_Builders, AZ::ShaderBuilder::AzslShaderBuilderModule)
+AZ_DECLARE_MODULE_CLASS(Gem_AtomShader_Builders, AZ::ShaderBuilder::ShaderBuilderModule)
 #endif

@@ -6,7 +6,13 @@
  *
  */
 
-#include <AzslShaderBuilderSystemComponent.h>
+#include <ShaderBuilderSystemComponent.h>
+
+#include <AzCore/std/algorithm.h>
+
+#include <AzFramework/StringFunc/StringFunc.h>
+
+#include <Editor/ShaderCompilerBackend.h>
 
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
@@ -34,11 +40,11 @@ namespace AZ
 {
     namespace ShaderBuilder
     {
-        void AzslShaderBuilderSystemComponent::Reflect(ReflectContext* context)
+        void ShaderBuilderSystemComponent::Reflect(ReflectContext* context)
         {
             if (SerializeContext* serialize = azrtti_cast<SerializeContext*>(context))
             {
-                serialize->Class<AzslShaderBuilderSystemComponent, Component>()
+                serialize->Class<ShaderBuilderSystemComponent, Component>()
                     ->Version(0)
                     ->Attribute(Edit::Attributes::SystemComponentTags, AZStd::vector<Crc32>({ AssetBuilderSDK::ComponentTags::AssetBuilder }))
                     ;
@@ -51,39 +57,40 @@ namespace AZ
             HashedVariantListSourceData::Reflect(context);
         }
 
-        void AzslShaderBuilderSystemComponent::GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided)
+        void ShaderBuilderSystemComponent::GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC_CE("AzslShaderBuilderService"));
+            provided.push_back(AZ_CRC_CE("ShaderBuilderService"));
         }
 
-        void AzslShaderBuilderSystemComponent::GetIncompatibleServices(ComponentDescriptor::DependencyArrayType& incompatible)
+        void ShaderBuilderSystemComponent::GetIncompatibleServices(ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC_CE("AzslShaderBuilderService"));
+            incompatible.push_back(AZ_CRC_CE("ShaderBuilderService"));
         }
 
-        void AzslShaderBuilderSystemComponent::GetRequiredServices(ComponentDescriptor::DependencyArrayType& required)
+        void ShaderBuilderSystemComponent::GetRequiredServices(ComponentDescriptor::DependencyArrayType& required)
         {
             (void)required;
         }
 
-        void AzslShaderBuilderSystemComponent::GetDependentServices(ComponentDescriptor::DependencyArrayType& dependent)
+        void ShaderBuilderSystemComponent::GetDependentServices(ComponentDescriptor::DependencyArrayType& dependent)
         {
             dependent.push_back(AZ_CRC_CE("AssetCatalogService"));
         }
 
-        void AzslShaderBuilderSystemComponent::Init()
+        void ShaderBuilderSystemComponent::Init()
         {
         }
 
-        void AzslShaderBuilderSystemComponent::Activate()
+        void ShaderBuilderSystemComponent::Activate()
         {
             RHI::ShaderPlatformInterfaceRegisterBus::Handler::BusConnect();
             ShaderPlatformInterfaceRequestBus::Handler::BusConnect();
+            ShaderCompilerBackendBus::Handler::BusConnect();
 
             // Register Shader Asset Builder
             AssetBuilderSDK::AssetBuilderDesc shaderAssetBuilderDescriptor;
             shaderAssetBuilderDescriptor.m_name = "Shader Asset Builder";
-            shaderAssetBuilderDescriptor.m_version = 126; // ShaderStageFunction allocator
+            shaderAssetBuilderDescriptor.m_version = 127; // Shader compiler backend seam
             shaderAssetBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern( AZStd::string::format("*.%s", RPI::ShaderSourceData::Extension), AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
             shaderAssetBuilderDescriptor.m_busId = azrtti_typeid<ShaderAssetBuilder>();
             shaderAssetBuilderDescriptor.m_createJobFunction = AZStd::bind(&ShaderAssetBuilder::CreateJobs, &m_shaderAssetBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
@@ -108,7 +115,7 @@ namespace AZ
                 shaderVariantAssetBuilderDescriptor.m_name = "Shader Variant Asset Builder";
                 // Both "Shader Variant Asset Builder" and "Shader Asset Builder" produce ShaderVariantAsset products. If you update
                 // ShaderVariantAsset you will need to update BOTH version numbers, not just "Shader Variant Asset Builder".
-                shaderVariantAssetBuilderDescriptor.m_version = 43; // ShaderStageFunction allocator
+                shaderVariantAssetBuilderDescriptor.m_version = 44; // Shader compiler backend seam
                 shaderVariantAssetBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern(AZStd::string::format("*.%s", HashedVariantListSourceData::Extension), AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
                 shaderVariantAssetBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern(AZStd::string::format("*.%s", HashedVariantInfoSourceData::Extension), AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
                 shaderVariantAssetBuilderDescriptor.m_busId = azrtti_typeid<ShaderVariantAssetBuilder>();
@@ -145,7 +152,7 @@ namespace AZ
             AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBus::Handler::RegisterBuilderInformation, precompiledShaderBuilderDescriptor);
         }
 
-        void AzslShaderBuilderSystemComponent::Deactivate()
+        void ShaderBuilderSystemComponent::Deactivate()
         {
             m_shaderAssetBuilder.BusDisconnect();
             if (m_enableShaderVariantAssetBuilder)
@@ -156,21 +163,69 @@ namespace AZ
             }
             m_precompiledShaderBuilder.BusDisconnect();
 
+            ShaderCompilerBackendBus::Handler::BusDisconnect();
             RHI::ShaderPlatformInterfaceRegisterBus::Handler::BusDisconnect();
             ShaderPlatformInterfaceRequestBus::Handler::BusDisconnect();
         }
 
-        void AzslShaderBuilderSystemComponent::RegisterShaderPlatformHandler(RHI::ShaderPlatformInterface* shaderPlatformInterface)
+        void ShaderBuilderSystemComponent::RegisterShaderCompilerBackend(IShaderCompilerBackend* backend)
+        {
+            if (!backend)
+            {
+                return;
+            }
+
+            // Duplicate extension claims are a deterministic hard error, never last-writer-wins.
+            for (const AZStd::string_view extension : backend->GetSourceExtensions())
+            {
+                if (IShaderCompilerBackend* existingBackend = FindShaderCompilerBackendForSourceExtension(extension))
+                {
+                    AZ_Assert(
+                        false,
+                        "Shader compiler backend '%.*s' claims extension '%.*s' already claimed by '%.*s' - registration rejected",
+                        AZ_STRING_ARG(backend->GetName()),
+                        AZ_STRING_ARG(extension),
+                        AZ_STRING_ARG(existingBackend->GetName()));
+                    return;
+                }
+            }
+
+            m_shaderCompilerBackends.push_back(backend);
+        }
+
+        void ShaderBuilderSystemComponent::UnregisterShaderCompilerBackend(IShaderCompilerBackend* backend)
+        {
+            m_shaderCompilerBackends.erase(
+                AZStd::remove(m_shaderCompilerBackends.begin(), m_shaderCompilerBackends.end(), backend),
+                m_shaderCompilerBackends.end());
+        }
+
+        IShaderCompilerBackend* ShaderBuilderSystemComponent::FindShaderCompilerBackendForSourceExtension(AZStd::string_view extensionWithDot)
+        {
+            for (IShaderCompilerBackend* backend : m_shaderCompilerBackends)
+            {
+                for (const AZStd::string_view claimedExtension : backend->GetSourceExtensions())
+                {
+                    if (AZ::StringFunc::Equal(claimedExtension, extensionWithDot))
+                    {
+                        return backend;
+                    }
+                }
+            }
+            return nullptr;
+        }
+
+        void ShaderBuilderSystemComponent::RegisterShaderPlatformHandler(RHI::ShaderPlatformInterface* shaderPlatformInterface)
         {
             m_shaderPlatformInterfaces[shaderPlatformInterface->GetAPIType()] = shaderPlatformInterface;
         }
 
-        void AzslShaderBuilderSystemComponent::UnregisterShaderPlatformHandler(RHI::ShaderPlatformInterface* shaderPlatformInterface)
+        void ShaderBuilderSystemComponent::UnregisterShaderPlatformHandler(RHI::ShaderPlatformInterface* shaderPlatformInterface)
         {
             m_shaderPlatformInterfaces.erase(shaderPlatformInterface->GetAPIType());
         }
 
-        AZStd::vector<RHI::ShaderPlatformInterface*> AzslShaderBuilderSystemComponent::GetShaderPlatformInterface(const AssetBuilderSDK::PlatformInfo& platformInfo)
+        AZStd::vector<RHI::ShaderPlatformInterface*> ShaderBuilderSystemComponent::GetShaderPlatformInterface(const AssetBuilderSDK::PlatformInfo& platformInfo)
         {
             //Used to validate that each ShaderPlatformInterface returns a unique index.
             AZStd::unordered_map<uint32_t, Name> apiUniqueIndexToName;

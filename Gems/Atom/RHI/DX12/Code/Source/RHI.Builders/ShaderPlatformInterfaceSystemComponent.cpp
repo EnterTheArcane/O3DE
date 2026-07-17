@@ -45,7 +45,7 @@ namespace AZ
 
         void ShaderPlatformInterfaceSystemComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
         {
-            dependent.push_back(AZ_CRC_CE("AzslShaderBuilderService"));
+            dependent.push_back(AZ_CRC_CE("ShaderBuilderService"));
         }
 
         void ShaderPlatformInterfaceSystemComponent::Activate()

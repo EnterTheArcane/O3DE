@@ -8,24 +8,26 @@
 
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Module/Module.h>
-#include <AzslShaderBuilderSystemComponent.h>
+#include <Azslc/AzslcBackendSystemComponent.h>
+#include <ShaderBuilderSystemComponent.h>
 
 namespace AZ
 {
     namespace ShaderBuilder
     {
-        class AzslShaderBuilderModule
+        class ShaderBuilderModule
             : public AZ::Module
         {
         public:
-            AZ_RTTI(AzslShaderBuilderModule, "{43370465-DBF1-44BB-968D-97C0B42F5EA0}", AZ::Module);
-            AZ_CLASS_ALLOCATOR(AzslShaderBuilderModule, AZ::SystemAllocator);
+            AZ_RTTI(ShaderBuilderModule, "{43370465-DBF1-44BB-968D-97C0B42F5EA0}", AZ::Module);
+            AZ_CLASS_ALLOCATOR(ShaderBuilderModule, AZ::SystemAllocator);
 
-            AzslShaderBuilderModule()
+            ShaderBuilderModule()
             {
                 // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
                 m_descriptors.insert(m_descriptors.end(), {
-                    AzslShaderBuilderSystemComponent::CreateDescriptor(),
+                    ShaderBuilderSystemComponent::CreateDescriptor(),
+                    AzslcBackendSystemComponent::CreateDescriptor(),
                 });
             }
 
@@ -35,7 +37,8 @@ namespace AZ
             AZ::ComponentTypeList GetRequiredSystemComponents() const override
             {
                 return AZ::ComponentTypeList{
-                    azrtti_typeid<AzslShaderBuilderSystemComponent>(),
+                    azrtti_typeid<ShaderBuilderSystemComponent>(),
+                    azrtti_typeid<AzslcBackendSystemComponent>(),
                 };
             }
         };
@@ -43,7 +46,7 @@ namespace AZ
 } // namespace AZ
 
 #if defined(O3DE_GEM_NAME)
-AZ_DECLARE_MODULE_CLASS(AZ_JOIN(Gem_, O3DE_GEM_NAME, _Builders), AZ::ShaderBuilder::AzslShaderBuilderModule)
+AZ_DECLARE_MODULE_CLASS(AZ_JOIN(Gem_, O3DE_GEM_NAME, _Builders), AZ::ShaderBuilder::ShaderBuilderModule)
 #else
-AZ_DECLARE_MODULE_CLASS(Gem_AtomShader_Builders, AZ::ShaderBuilder::AzslShaderBuilderModule)
+AZ_DECLARE_MODULE_CLASS(Gem_AtomShader_Builders, AZ::ShaderBuilder::ShaderBuilderModule)
 #endif

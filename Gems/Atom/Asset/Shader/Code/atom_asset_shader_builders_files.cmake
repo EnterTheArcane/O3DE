@@ -12,8 +12,8 @@ set(FILES
     Source/Editor/CommonFiles/Preprocessor.h
     Source/Editor/CommonFiles/Preprocessor.cpp
     Source/Editor/AzslData.h
-    Source/Editor/AzslShaderBuilderSystemComponent.cpp
-    Source/Editor/AzslShaderBuilderSystemComponent.h
+    Source/Editor/ShaderBuilderSystemComponent.cpp
+    Source/Editor/ShaderBuilderSystemComponent.h
     Source/Editor/ShaderAssetBuilder.cpp
     Source/Editor/ShaderAssetBuilder.h
     Source/Editor/ShaderBuilderUtility.cpp
@@ -32,6 +32,12 @@ set(FILES
     Source/Editor/ShaderVariantListBuilder.cpp
     Source/Editor/ShaderVariantListBuilder.h
     Source/Editor/HashedVariantListSourceData.h
+    Source/Editor/Azslc/AzslcBackend.cpp
+    Source/Editor/Azslc/AzslcBackend.h
+    Source/Editor/Azslc/AzslcBackendSystemComponent.cpp
+    Source/Editor/Azslc/AzslcBackendSystemComponent.h
+    Source/Editor/ShaderCompilerBackend.h
+    Source/Editor/ShaderCompilerBackendBus.h
     Source/Editor/Slang/SlangCompilerService.cpp
     Source/Editor/Slang/SlangCompilerService.h
     Source/Editor/Slang/SlangModuleResolver.cpp

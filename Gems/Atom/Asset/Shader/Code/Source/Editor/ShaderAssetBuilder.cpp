@@ -47,6 +47,8 @@
 #include <AzCore/Debug/Timer.h>
 
 #include "AzslCompiler.h"
+#include "ShaderCompilerBackend.h"
+#include "ShaderCompilerBackendBus.h"
 #include "ShaderVariantAssetBuilder.h"
 #include "ShaderBuilderUtility.h"
 #include "ShaderPlatformInterfaceRequest.h"
@@ -377,6 +379,19 @@ namespace AZ
 
             auto supervariantList = ShaderBuilderUtility::GetSupervariantListFromShaderSourceData(shaderSourceData);
 
+            // The source file extension selects the shader language backend that runs the
+            // language-specific middle of the build (frontend + reflection + stage compiles).
+            AZStd::string sourceExtension;
+            AzFramework::StringFunc::Path::GetExtension(azslFullPath.c_str(), sourceExtension, true);
+            IShaderCompilerBackend* compilerBackend = nullptr;
+            ShaderCompilerBackendBus::BroadcastResult(compilerBackend, &ShaderCompilerBackendBus::Events::FindShaderCompilerBackendForSourceExtension, sourceExtension);
+            if (!compilerBackend)
+            {
+                AZ_Error(ShaderAssetBuilderName, false, "No shader compiler backend is registered for source extension '%s'", sourceExtension.c_str());
+                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                return;
+            }
+
             RPI::ShaderAssetCreator shaderAssetCreator;
             shaderAssetCreator.Begin(Uuid::CreateRandom());
 
@@ -417,22 +432,6 @@ namespace AZ
                 // Signal the begin of shader data for an RHI API.
                 shaderAssetCreator.BeginAPI(shaderPlatformInterface->GetAPIType());
 
-                // Each shaderPlatformInterface has its own azsli header that needs to be prepended to the AZSL file before
-                // preprocessing. We will create a new temporary file that contains the combined data.
-                RHI::PrependArguments args;
-                args.m_sourceFile = azslFullPath.c_str();
-                args.m_prependFile = shaderPlatformInterface->GetAzslHeader(request.m_platformInfo);
-                args.m_addSuffixToFileName = apiName.c_str();
-                args.m_destinationFolder = request.m_tempDirPath.c_str();
-
-                AZStd::string prependedAzslFilePath = RHI::PrependFile(args);
-                if (prependedAzslFilePath == azslFullPath)
-                {
-                    // The specific error is already reported by RHI::PrependFile().
-                    response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
-                    return;
-                }
-
                 uint32_t supervariantIndex = 0;
                 for (const auto& supervariantInfo : supervariantList)
                 {
@@ -447,43 +446,40 @@ namespace AZ
 
                     shaderAssetCreator.BeginSupervariant(supervariantInfo.m_name);
 
-                    // Run the preprocessor.
-                    PreprocessorData output;
-                    auto preprocessorArguments = AppendIncludePathsToArgumentList(buildArgsManager.GetCurrentArguments().m_preprocessorArguments, projectIncludePaths);
-                    const bool preprocessorSuccess = PreprocessFile(prependedAzslFilePath, output, preprocessorArguments,  true);
-                    if (RHI::ReportMessages(ShaderAssetBuilderName, output.diagnostics, !preprocessorSuccess))
-                    {
-                        response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
-                        return;
-                    }
-
-                    // Dump the preprocessed string as a flat AZSL file with extension .azslin, which will be given to AZSLc to generate the HLSL file.
                     AZStd::string superVariantAzslinStemName = shaderFileName;
                     if (!supervariantInfo.m_name.IsEmpty())
                     {
                         superVariantAzslinStemName += AZStd::string::format("-%s", supervariantInfo.m_name.GetCStr());
                     }
-                    AZStd::string azslinFullPath = ShaderBuilderUtility::DumpPreprocessedCode(
-                        ShaderAssetBuilderName, output.code, request.m_tempDirPath, superVariantAzslinStemName,
-                        apiName);
-                    if (azslinFullPath.empty())
-                    {
-                        response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
-                        return;
-                    }
-                    AZ_TracePrintf(ShaderAssetBuilderName, "Preprocessed AZSL File: %s \n", prependedAzslFilePath.c_str());
 
-                    // Ready to transpile the azslin file into HLSL.
-                    ShaderBuilder::AzslCompiler azslc(azslinFullPath, request.m_tempDirPath);
-                    AZStd::string hlslFullPath = AZStd::string::format("%s_%s.hlsl", superVariantAzslinStemName.c_str(), apiName.c_str());
-                    AzFramework::StringFunc::Path::Join(request.m_tempDirPath.c_str(), hlslFullPath.c_str(), hlslFullPath, true);
-                    auto emitFullOutcome = azslc.EmitFullData(buildArgsManager.GetCurrentArguments().m_azslcArguments, hlslFullPath);
-                    if (!emitFullOutcome.IsSuccess())
+                    // Run the language backend's frontend: preprocess, transpile/parse and reflect.
+                    FrontendInput frontendInput;
+                    frontendInput.m_builderName = ShaderAssetBuilderName;
+                    frontendInput.m_shaderSourceFullPath = azslFullPath;
+                    frontendInput.m_stemName = superVariantAzslinStemName;
+                    frontendInput.m_tempDirPath = request.m_tempDirPath;
+                    frontendInput.m_includePaths = projectIncludePaths;
+                    frontendInput.m_buildArguments = &buildArgsManager.GetCurrentArguments();
+                    frontendInput.m_shaderPlatformInterface = shaderPlatformInterface;
+                    frontendInput.m_platformInfo = &request.m_platformInfo;
+
+                    AZ::Outcome<FrontendResult, AZStd::string> frontendOutcome = compilerBackend->CompileFrontend(frontendInput);
+                    if (!frontendOutcome.IsSuccess())
                     {
+                        AZ_Error(ShaderAssetBuilderName, false, "%s", frontendOutcome.GetError().c_str());
                         response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
                         return;
                     }
-                    ShaderBuilderUtility::AzslSubProducts::Paths subProductsPaths = emitFullOutcome.TakeValue();
+                    FrontendResult frontendResult = frontendOutcome.TakeValue();
+                    const ShaderBuilderUtility::AzslSubProducts::Paths& subProductsPaths = frontendResult.m_subProductPaths;
+                    AzslData& azslData = frontendResult.m_azslData;
+                    RPI::ShaderResourceGroupLayoutList& srgLayoutList = frontendResult.m_srgLayoutList;
+                    RPI::Ptr<RPI::ShaderOptionGroupLayout> shaderOptionGroupLayout = frontendResult.m_shaderOptionGroupLayout;
+                    BindingDependencies& bindingDependencies = frontendResult.m_bindingDependencies;
+                    RootConstantData& rootConstantData = frontendResult.m_rootConstantData;
+                    const bool usesSpecializationConstants = frontendResult.m_usesSpecializationConstants;
+                    AZStd::string& hlslFullPath = frontendResult.m_targetSourcePath;
+                    AZStd::string& hlslSourceCode = frontendResult.m_targetSourceCode;
 
                     // In addition to the hlsl file, there are other json files that were generated.
                     // Each output file will become a product.
@@ -502,27 +498,6 @@ namespace AZ
                         // They are artifacts that are produced once, cached, and used later by other AssetBuilders as a way to centralize
                         // build organization.
                         response.m_outputProducts.push_back(AZStd::move(jobProduct));
-                    }
-
-                    AZStd::shared_ptr<ShaderFiles> files(new ShaderFiles);
-                    AzslData azslData(files);
-                    azslData.m_preprocessedFullPath = azslinFullPath;
-                    RPI::ShaderResourceGroupLayoutList srgLayoutList;
-                    RPI::Ptr<RPI::ShaderOptionGroupLayout> shaderOptionGroupLayout = RPI::ShaderOptionGroupLayout::Create();
-                    BindingDependencies bindingDependencies;
-                    RootConstantData rootConstantData;
-                    bool usesSpecializationConstants = false;
-                    AssetBuilderSDK::ProcessJobResultCode azslJsonReadResult = ShaderBuilderUtility::PopulateAzslDataFromJsonFiles(
-                        ShaderAssetBuilderName, subProductsPaths, azslData, srgLayoutList,
-                        shaderOptionGroupLayout,
-                        bindingDependencies,
-                        rootConstantData,
-                        request.m_tempDirPath,
-                        usesSpecializationConstants);
-                    if (azslJsonReadResult != AssetBuilderSDK::ProcessJobResult_Success)
-                    {
-                        response.m_resultCode = azslJsonReadResult;
-                        return;
                     }
 
                     shaderAssetCreator.SetSrgLayoutList(srgLayoutList);
@@ -632,7 +607,7 @@ namespace AZ
                             }
                             // We have to ensure this actually has data before applying it, otherwise this would stomp any
                             // data in the "BlendState" or "TargetBlendStates" with default values.
-                            else if(globalTargetBlendState.m_enable) 
+                            else if(globalTargetBlendState.m_enable)
                             {
                                 renderStates.m_blendState.m_targets[i] = globalTargetBlendState;
                             }
@@ -652,17 +627,6 @@ namespace AZ
 
                         shaderAssetCreator.SetRenderStates(renderStates);
                     }
-
-                    Outcome<AZStd::string, AZStd::string> hlslSourceCodeOutcome = Utils::ReadFile(hlslFullPath, AZ::RPI::JsonUtils::DefaultMaxFileSize);
-                    if (!hlslSourceCodeOutcome.IsSuccess())
-                    {
-                        AZ_Error(
-                            ShaderAssetBuilderName, false, "Failed to obtain shader source from %s. [%s]", hlslFullPath.c_str(),
-                            hlslSourceCodeOutcome.GetError().c_str());
-                        response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
-                        return;
-                    }
-                    AZStd::string hlslSourceCode = hlslSourceCodeOutcome.TakeValue();
 
                     // The root ShaderVariantAsset needs to be created with the known uuid of the source .shader asset because
                     // the ShaderAsset owns a Data::Asset<> reference that gets serialized. It must have the correct uuid

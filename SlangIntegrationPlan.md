@@ -169,8 +169,8 @@ class IShaderCompilerBackend
 public:
     virtual ~IShaderCompilerBackend() = default;
 
-    virtual AZStd::string_view GetName() const = 0;                        // "azslc", "slang", ...
-    virtual bool HandlesSourceExtension(AZStd::string_view ext) const = 0; // ".azsl", ".slang"
+    virtual AZStd::string_view GetName() const = 0;                                  // "azslc", "slang", ...
+    virtual AZStd::span<const AZStd::string_view> GetSourceExtensions() const = 0;   // {".azsl"}, {".slang"}
     // Capability negotiation lives on the language side (never on the RHI): can this
     // backend produce the RHI's declared target? Gives Null/WGSL/not-yet-supported
     // combinations a clean skip/error path.
@@ -180,10 +180,12 @@ public:
     // Compiles one entry point of one variant to target bytecode.
     virtual Outcome<StageResult> CompileStage(const StageInput&) = 0;
 };
-// Backends self-register with a ShaderCompilerBackendRegistry (mirroring how RHI backends
-// register via ShaderPlatformInterfaceRegisterBus) — a future language ships as a new
-// registration, with no edits to the builders or the RHI. The registry rejects duplicate
-// extension claims deterministically (hard error, not last-writer-wins).
+// Each language ships its own system component (AzslcBackendSystemComponent, later
+// SlangBackendSystemComponent) that broadcasts its backend on ShaderCompilerBackendBus during
+// activation (mirroring how RHI backends register via ShaderPlatformInterfaceRegisterBus) —
+// a future language ships as a new component, with no edits to the builders or the RHI.
+// The handling ShaderBuilderSystemComponent rejects duplicate extension claims
+// deterministically (hard error, not last-writer-wins).
 ```
 
 `FrontendResult` carries the canonical `ShaderReflectionData` (D5) — SRG reflection, option layout, binding info + stage masks, root constants, IA/OM contracts — plus backend-specific intermediate products to cache (AZSLC: `.hlsl`+JSONs; Slang: the serialized module closure, see D7). Conversion from `ShaderReflectionData` to the final RHI/RPI objects happens once, in shared builder code, after the backend returns.

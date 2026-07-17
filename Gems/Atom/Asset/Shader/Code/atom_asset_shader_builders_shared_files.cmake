@@ -7,5 +7,5 @@
 #
 
 set(FILES
-    Source/Editor/AzslShaderBuilderModule.cpp
+    Source/Editor/ShaderBuilderModule.cpp
 )

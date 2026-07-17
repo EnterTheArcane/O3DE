@@ -15,6 +15,7 @@
 #include <Atom/RPI.Reflect/Shader/ShaderAsset.h>
 
 #include "ShaderAssetBuilder.h"
+#include "ShaderCompilerBackendBus.h"
 #include "ShaderVariantAssetBuilder.h"
 #include "PrecompiledShaderBuilder.h"
 #include "ShaderPlatformInterfaceRequest.h"
@@ -24,14 +25,19 @@ namespace AZ
 {
     namespace ShaderBuilder
     {
-        
-        class AzslShaderBuilderSystemComponent
+        //! Hosts the language-independent shader build machinery: the asset builders, the
+        //! registered RHI ShaderPlatformInterfaces, and the registered shader language backends
+        //! (ShaderCompilerBackendBus). This component has no language knowledge: every language
+        //! flavor — in-gem (AzslcBackendSystemComponent) or in another gem — owns its backend in
+        //! its own component and registers it on the bus.
+        class ShaderBuilderSystemComponent
             : public Component
             , public RHI::ShaderPlatformInterfaceRegisterBus::Handler
             , public ShaderPlatformInterfaceRequestBus::Handler
+            , public ShaderCompilerBackendBus::Handler
         {
         public:
-            AZ_COMPONENT(AzslShaderBuilderSystemComponent, "{56B5B944-8AF4-4478-A047-8DFDE38DA681}");
+            AZ_COMPONENT(ShaderBuilderSystemComponent, "{56B5B944-8AF4-4478-A047-8DFDE38DA681}");
 
             static void Reflect(ReflectContext* context);
 
@@ -41,11 +47,6 @@ namespace AZ
             static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
         protected:
-            ////////////////////////////////////////////////////////////////////////
-            // AzslShaderBuilderRequestBus interface implementation
-
-            ////////////////////////////////////////////////////////////////////////
-
             ////////////////////////////////////////////////////////////////////////
             // AZ::Component interface implementation
             void Init() override;
@@ -60,7 +61,15 @@ namespace AZ
             // ShaderPlatformInterfaceRequestBus interface overrides ...
             AZStd::vector<RHI::ShaderPlatformInterface*> GetShaderPlatformInterface(const AssetBuilderSDK::PlatformInfo& platformInfo) override;
 
+            // ShaderCompilerBackendBus interface overrides ...
+            void RegisterShaderCompilerBackend(IShaderCompilerBackend* backend) override;
+            void UnregisterShaderCompilerBackend(IShaderCompilerBackend* backend) override;
+            IShaderCompilerBackend* FindShaderCompilerBackendForSourceExtension(AZStd::string_view extensionWithDot) override;
+
         private:
+            //! Storage behind ShaderCompilerBackendBus: the registered language backends.
+            AZStd::vector<IShaderCompilerBackend*> m_shaderCompilerBackends;
+
             ShaderAssetBuilder m_shaderAssetBuilder;
 
             // The ShaderVariantAssetBuilder can be disabled with this registry key.
@@ -80,6 +89,6 @@ namespace AZ
             /// Contains the ShaderPlatformInterface for all registered RHIs
             AZStd::unordered_map<RHI::APIType, RHI::ShaderPlatformInterface*> m_shaderPlatformInterfaces;
         };
-        
+
     } // ShaderBuilder
 } //AZ

@@ -53,6 +53,8 @@
 #include "HashedVariantListSourceData.h"
 #include "ShaderAssetBuilder.h"
 #include "ShaderBuilderUtility.h"
+#include "ShaderCompilerBackend.h"
+#include "ShaderCompilerBackendBus.h"
 #include "SrgLayoutUtility.h"
 #include "AzslData.h"
 #include "AzslCompiler.h"
@@ -1036,19 +1038,36 @@ namespace AZ
 
                 auto assetBuilderShaderType = ShaderBuilderUtility::ToAssetBuilderShaderType(shaderStageType);
 
-                // Compile HLSL to the platform specific shader.
-                RHI::ShaderPlatformInterface::StageDescriptor descriptor;
-                bool shaderWasCompiled = creationContext.m_shaderPlatformInterface.CompilePlatformInternal(
-                    creationContext.m_platformInfo, variantShaderSourcePath, shaderEntryName, assetBuilderShaderType,
-                    creationContext.m_tempDirPath,
-                    descriptor,
-                    creationContext.m_shaderBuildArguments,
-                    creationContext.m_useSpecializationConstants);
-
-                if (!shaderWasCompiled)
+                // Compile the target-language source to platform bytecode through the shader
+                // language backend that owns this shader's source extension.
+                AZStd::string sourceExtension;
+                AzFramework::StringFunc::Path::GetExtension(creationContext.m_shaderSourceDataDescriptor.m_source.c_str(), sourceExtension, true);
+                IShaderCompilerBackend* compilerBackend = nullptr;
+                ShaderCompilerBackendBus::BroadcastResult(
+                    compilerBackend, &ShaderCompilerBackendBus::Events::FindShaderCompilerBackendForSourceExtension, sourceExtension);
+                if (!compilerBackend)
                 {
-                    return AZ::Failure(AZStd::string::format("Could not compile the shader function %s", shaderEntryName.c_str()));
+                    return AZ::Failure(AZStd::string::format("No shader compiler backend is registered for source extension '%s'", sourceExtension.c_str()));
                 }
+
+                StageInput stageInput;
+                stageInput.m_builderName = ShaderVariantAssetBuilderName;
+                stageInput.m_platformInfo = &creationContext.m_platformInfo;
+                stageInput.m_shaderPlatformInterface = &creationContext.m_shaderPlatformInterface;
+                stageInput.m_sourcePath = variantShaderSourcePath;
+                stageInput.m_entryPointName = shaderEntryName;
+                stageInput.m_stage = assetBuilderShaderType;
+                stageInput.m_tempDirPath = creationContext.m_tempDirPath;
+                stageInput.m_buildArguments = &creationContext.m_shaderBuildArguments;
+                stageInput.m_useSpecializationConstants = creationContext.m_useSpecializationConstants;
+
+                AZ::Outcome<StageResult, AZStd::string> stageOutcome = compilerBackend->CompileStage(stageInput);
+                if (!stageOutcome.IsSuccess())
+                {
+                    return AZ::Failure(stageOutcome.TakeError());
+                }
+                StageResult stageResult = stageOutcome.TakeValue();
+                RHI::ShaderPlatformInterface::StageDescriptor descriptor = AZStd::move(stageResult.m_descriptor);
                 // bubble up the byproducts to the caller by moving them to the context.
                 outputByproducts.emplace(AZStd::move(descriptor.m_byProducts));
 
