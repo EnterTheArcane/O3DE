@@ -50,6 +50,10 @@ set(FILES
     Source/Editor/Slang/SlangCompilerService.h
     Source/Editor/Slang/SlangModuleResolver.cpp
     Source/Editor/Slang/SlangModuleResolver.h
+    Source/Editor/Slang/SlangModuleClosure.cpp
+    Source/Editor/Slang/SlangModuleClosure.h
+    Source/Editor/Slang/SlangReflectionWalker.cpp
+    Source/Editor/Slang/SlangReflectionWalker.h
     Source/Editor/Slang/SlangSourceFileSystem.cpp
     Source/Editor/Slang/SlangSourceFileSystem.h
 )

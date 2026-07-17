@@ -16,7 +16,11 @@
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
+#include <AzCore/Serialization/Utils.h>
+
 #include <Editor/ShaderBuilderUtility.h>
+#include <Slang/SlangModuleClosure.h>
+#include <Slang/SlangReflectionWalker.h>
 #include <Slang/SlangSourceFileSystem.h>
 
 namespace AZ::ShaderBuilder
@@ -375,6 +379,26 @@ namespace AZ::ShaderBuilder
         }
     }
 
+    //! The per-API prelude deploys beside the AzslcHeader of the same RHI; empty when absent.
+    static AZStd::string GetApiPreludeDirectory(
+        RHI::ShaderPlatformInterface& shaderPlatformInterface,
+        const AssetBuilderSDK::PlatformInfo& platformInfo,
+        AZStd::string_view builderName)
+    {
+        AZ::IO::FixedMaxPath azslHeaderPath = AZ::Utils::GetExecutableDirectory();
+        azslHeaderPath /= shaderPlatformInterface.GetAzslHeader(platformInfo);
+        AZ::IO::FixedMaxPath preludePath = azslHeaderPath.ParentPath();
+        preludePath /= "ApiPrelude.slang";
+        if (AZ::IO::SystemFile::Exists(preludePath.c_str()))
+        {
+            return AZStd::string(azslHeaderPath.ParentPath().String());
+        }
+        AZ_Warning(
+            AZStd::string(builderName).c_str(), false, "No per-API Slang prelude found at %s; compiling without it",
+            preludePath.c_str());
+        return "";
+    }
+
     AZ::Outcome<FrontendResult, AZStd::string> SlangBackend::CompileFrontend(const FrontendInput& input)
     {
         const RHI::ShaderTargetDescriptor targetDescriptor = input.m_shaderPlatformInterface->GetShaderTargetDescriptor(*input.m_platformInfo);
@@ -387,29 +411,11 @@ namespace AZ::ShaderBuilder
                 input.m_shaderPlatformInterface->GetAPIName().GetCStr()));
         }
 
-        // The per-API prelude deploys beside the AzslcHeader of the same RHI.
-        AZStd::string apiPreludeDirectory;
-        {
-            AZ::IO::FixedMaxPath azslHeaderPath = AZ::Utils::GetExecutableDirectory();
-            azslHeaderPath /= input.m_shaderPlatformInterface->GetAzslHeader(*input.m_platformInfo);
-            AZ::IO::FixedMaxPath preludePath = azslHeaderPath.ParentPath();
-            preludePath /= "ApiPrelude.slang";
-            if (AZ::IO::SystemFile::Exists(preludePath.c_str()))
-            {
-                apiPreludeDirectory = azslHeaderPath.ParentPath().String();
-            }
-            else
-            {
-                AZ_Warning(
-                    AZStd::string(input.m_builderName).c_str(), false, "No per-API Slang prelude found at %s; compiling without it",
-                    preludePath.c_str());
-            }
-        }
-
         ProgramCompileRequest request;
         request.m_sourcePath = input.m_shaderSourceFullPath;
         request.m_entryPoints = input.m_entryPoints;
         request.m_includePaths = input.m_includePaths;
+        const AZStd::string apiPreludeDirectory = GetApiPreludeDirectory(*input.m_shaderPlatformInterface, *input.m_platformInfo, input.m_builderName);
         request.m_apiPreludeDirectory = apiPreludeDirectory;
         request.m_buildArguments = input.m_buildArguments;
 
@@ -420,16 +426,132 @@ namespace AZ::ShaderBuilder
         {
             return AZ::Failure(compilationOutcome.TakeError());
         }
+        const ProgramCompilation compilation = compilationOutcome.TakeValue();
 
-        return AZ::Failure(AZStd::string::format(
-            "%.*s compiled and linked, but the Slang backend cannot produce the reflection contract yet — the reflection walker lands with plan milestone M8",
-            AZ_STRING_ARG(input.m_shaderSourceFullPath)));
+        auto reflectionOutcome = SlangReflectionWalker::BuildReflectionData(
+            compilation.m_linkedProgram->getLayout(0),
+            targetDescriptor.m_format,
+            *input.m_entryPoints);
+        if (!reflectionOutcome.IsSuccess())
+        {
+            return AZ::Failure(reflectionOutcome.TakeError());
+        }
+
+        FrontendResult result;
+        result.m_reflection = reflectionOutcome.TakeValue();
+
+        // Cached products for downstream builders: the AZ-serialized reflection contract and the
+        // module closure (a serialized Slang module excludes its imports, so variant builds need
+        // the whole closure to relink without source — consumed at M12).
+        const AZStd::string apiName(input.m_shaderPlatformInterface->GetAPIName().GetCStr());
+        {
+            AZStd::string reflectionPath;
+            AzFramework::StringFunc::Path::Join(
+                AZStd::string(input.m_tempDirPath).c_str(),
+                AZStd::string::format("%.*s_%s.reflectiondata", AZ_STRING_ARG(input.m_stemName), apiName.c_str()).c_str(),
+                reflectionPath);
+            if (!AZ::Utils::SaveObjectToFile(reflectionPath, AZ::DataStream::ST_BINARY, &result.m_reflection))
+            {
+                return AZ::Failure(AZStd::string::format("Failed to write the reflection product to %s", reflectionPath.c_str()));
+            }
+            result.m_subProducts.push_back({reflectionPath, aznumeric_cast<uint32_t>(RPI::ShaderAssetSubId::ReflectionData)});
+        }
+        {
+            auto bundleOutcome = BuildModuleClosureBundle(
+                compilation.m_session,
+                compilerService.GetCompilerBuildTag(),
+                static_cast<uint32_t>(targetDescriptor.m_format));
+            if (!bundleOutcome.IsSuccess())
+            {
+                return AZ::Failure(bundleOutcome.TakeError());
+            }
+            AZStd::string closurePath;
+            AzFramework::StringFunc::Path::Join(
+                AZStd::string(input.m_tempDirPath).c_str(),
+                AZStd::string::format("%.*s_%s.moduleclosure", AZ_STRING_ARG(input.m_stemName), apiName.c_str()).c_str(),
+                closurePath);
+            const SlangModuleClosureBundle bundle = bundleOutcome.TakeValue();
+            if (!AZ::Utils::SaveObjectToFile(closurePath, AZ::DataStream::ST_BINARY, &bundle))
+            {
+                return AZ::Failure(AZStd::string::format("Failed to write the module closure product to %s", closurePath.c_str()));
+            }
+            result.m_subProducts.push_back({closurePath, aznumeric_cast<uint32_t>(RPI::ShaderAssetSubId::ModuleClosureBundle)});
+        }
+
+        // Stage compiles recompile from the original source until module-closure variant builds
+        // land (M12).
+        result.m_targetSourcePath = input.m_shaderSourceFullPath;
+        auto sourceCodeOutcome = AZ::Utils::ReadFile(AZStd::string(input.m_shaderSourceFullPath), AZStd::numeric_limits<size_t>::max());
+        if (sourceCodeOutcome.IsSuccess())
+        {
+            result.m_targetSourceCode = sourceCodeOutcome.TakeValue();
+        }
+        return AZ::Success(AZStd::move(result));
+    }
+
+    static RPI::ShaderStageType ToStageType(RHI::ShaderHardwareStage hardwareStage)
+    {
+        switch (hardwareStage)
+        {
+        case RHI::ShaderHardwareStage::Vertex:
+            return RPI::ShaderStageType::Vertex;
+        case RHI::ShaderHardwareStage::Geometry:
+            return RPI::ShaderStageType::Geometry;
+        case RHI::ShaderHardwareStage::Fragment:
+            return RPI::ShaderStageType::Fragment;
+        case RHI::ShaderHardwareStage::RayTracing:
+            return RPI::ShaderStageType::RayTracing;
+        case RHI::ShaderHardwareStage::Compute:
+        default:
+            return RPI::ShaderStageType::Compute;
+        }
     }
 
     AZ::Outcome<StageResult, AZStd::string> SlangBackend::CompileStage(const StageInput& input)
     {
-        return AZ::Failure(AZStd::string::format(
-            "The Slang backend cannot compile stage %.*s yet — stage compilation lands with plan milestone M8",
-            AZ_STRING_ARG(input.m_entryPointName)));
+        const RHI::ShaderTargetDescriptor targetDescriptor = input.m_shaderPlatformInterface->GetShaderTargetDescriptor(*input.m_platformInfo);
+        if (!CanCompileTarget(targetDescriptor))
+        {
+            return AZ::Failure(AZStd::string::format(
+                "The Slang backend cannot produce the target the %s RHI declares",
+                input.m_shaderPlatformInterface->GetAPIName().GetCStr()));
+        }
+
+        const AZStd::string entryPointName(input.m_entryPointName);
+        const MapOfStringToStageType entryPoints = {
+            {entryPointName, ToStageType(input.m_stage)},
+        };
+
+        ProgramCompileRequest request;
+        request.m_sourcePath = input.m_sourcePath;
+        request.m_entryPoints = &entryPoints;
+        request.m_includePaths = input.m_includePaths;
+        request.m_apiPreludeDirectory = GetApiPreludeDirectory(*input.m_shaderPlatformInterface, *input.m_platformInfo, input.m_builderName);
+        request.m_buildArguments = input.m_buildArguments;
+
+        SlangCompilerService& compilerService = SlangCompilerService::Get();
+        auto compilerLock = compilerService.AcquireCompilerLock();
+        auto compilationOutcome = CompileProgram(targetDescriptor, request);
+        if (!compilationOutcome.IsSuccess())
+        {
+            return AZ::Failure(compilationOutcome.TakeError());
+        }
+        const ProgramCompilation compilation = compilationOutcome.TakeValue();
+
+        Slang::ComPtr<slang::IBlob> bytecode;
+        Slang::ComPtr<slang::IBlob> diagnostics;
+        const SlangResult codeResult = compilation.m_linkedProgram->getEntryPointCode(0, 0, bytecode.writeRef(), diagnostics.writeRef());
+        SlangCompilerService::ReportDiagnostics(input.m_sourcePath, diagnostics, SLANG_FAILED(codeResult));
+        if (SLANG_FAILED(codeResult) || !bytecode)
+        {
+            return AZ::Failure(AZStd::string::format("Failed to generate code for entry point %s", entryPointName.c_str()));
+        }
+
+        StageResult result;
+        result.m_descriptor.m_stageType = input.m_stage;
+        result.m_descriptor.m_entryFunctionName = entryPointName;
+        const uint8_t* bytes = static_cast<const uint8_t*>(bytecode->getBufferPointer());
+        result.m_descriptor.m_byteCode.assign(bytes, bytes + bytecode->getBufferSize());
+        return AZ::Success(AZStd::move(result));
     }
 } // namespace AZ::ShaderBuilder

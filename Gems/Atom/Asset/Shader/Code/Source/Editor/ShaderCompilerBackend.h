@@ -92,6 +92,9 @@ namespace AZ::ShaderBuilder
         AZStd::string_view m_entryPointName;
         RHI::ShaderHardwareStage m_stage = RHI::ShaderHardwareStage::Invalid;
 
+        //! Module/include search roots for backends that recompile from source at stage time.
+        AZStd::span<const AZStd::string> m_includePaths;
+
         AZStd::string_view m_tempDirPath;
         const RHI::ShaderBuildArguments* m_buildArguments = nullptr;
         bool m_useSpecializationConstants = false;

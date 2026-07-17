@@ -1027,6 +1027,13 @@ namespace AZ
                 creationContext.m_shaderVariantAssetId, optionGroup.GetShaderVariantId(), shaderVariantStableId,
                 shaderOptions.IsFullySpecified());
 
+            // Search roots for backends that recompile from source at stage time; the source's
+            // own directory is the highest-priority location.
+            AZStd::string sourceFolderPath;
+            AzFramework::StringFunc::Path::GetFolderPath(creationContext.m_hlslSourcePath.c_str(), sourceFolderPath);
+            const AZStd::vector<AZStd::string> stageIncludePaths =
+                BuildListOfIncludeDirectories(ShaderVariantAssetBuilderName, sourceFolderPath.c_str());
+
             const AZStd::unordered_map<AZStd::string, RPI::ShaderStageType>& shaderEntryPoints = creationContext.m_shaderEntryPoints;
             for (const auto& shaderEntryPoint : shaderEntryPoints)
             {
@@ -1057,6 +1064,7 @@ namespace AZ
                 stageInput.m_sourcePath = variantShaderSourcePath;
                 stageInput.m_entryPointName = shaderEntryName;
                 stageInput.m_stage = assetBuilderShaderType;
+                stageInput.m_includePaths = stageIncludePaths;
                 stageInput.m_tempDirPath = creationContext.m_tempDirPath;
                 stageInput.m_buildArguments = &creationContext.m_shaderBuildArguments;
                 stageInput.m_useSpecializationConstants = creationContext.m_useSpecializationConstants;

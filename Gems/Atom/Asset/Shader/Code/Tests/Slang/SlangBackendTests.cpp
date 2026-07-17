@@ -23,6 +23,7 @@
 
 #include <Slang/SlangBackend.h>
 #include <Slang/SlangCompilerService.h>
+#include <Slang/SlangReflectionWalker.h>
 
 namespace UnitTest
 {
@@ -75,6 +76,7 @@ namespace UnitTest
         //! A private-SRG shader in the ParameterBlock authoring idiom, using the prelude aliases.
         //! The builder injects the Prelude and ShaderResourceGroup imports.
         static constexpr AZStd::string_view PrivateShaderResourceGroupSource = R"(
+[AtomShaderResourceGroup(2)]
 struct TestShaderResourceGroupLayout
 {
     Texture2D<Vector4F> m_texture;
@@ -85,6 +87,7 @@ struct TestShaderResourceGroupLayout
 };
 ParameterBlock<TestShaderResourceGroupLayout> TestSrg;
 
+[numthreads(8, 1, 1)]
 void MainCS(u32 index : SV_DispatchThreadID)
 {
     TestSrg.m_output[index] =
@@ -192,6 +195,71 @@ void MainCS(u32 index : SV_DispatchThreadID)
         ASSERT_GE(bytecode.size(), 4);
         const uint32_t magic = *reinterpret_cast<const uint32_t*>(bytecode.data());
         EXPECT_EQ(magic, 0x07230203u);
+    }
+
+    TEST_F(SlangBackendTests, ReflectionWalker_PrivateShaderResourceGroup_ProducesRuntimeLayouts)
+    {
+        ASSERT_TRUE(AZ::Test::CreateTestFile(*m_tempDirectory, "TestShader.slang", PrivateShaderResourceGroupSource));
+        AZ::IO::FixedMaxPath sourcePath(m_tempDirectory->GetDirectory());
+        sourcePath /= "TestShader.slang";
+
+        const AZStd::vector<AZStd::string> includePaths = GetShaderLibIncludePaths();
+        const MapOfStringToStageType entryPoints = {
+            {"MainCS", RPI::ShaderStageType::Compute},
+        };
+
+        SlangBackend::ProgramCompileRequest request;
+        request.m_sourcePath = sourcePath.Native();
+        request.m_entryPoints = &entryPoints;
+        request.m_includePaths = includePaths;
+
+        SlangBackend backend;
+        auto compilerLock = SlangCompilerService::Get().AcquireCompilerLock();
+        auto compilationOutcome = backend.CompileProgram(MakeSpirvTarget(), request);
+        ASSERT_TRUE(compilationOutcome.IsSuccess()) << compilationOutcome.GetError().c_str();
+        const SlangBackend::ProgramCompilation compilation = compilationOutcome.TakeValue();
+
+        auto reflectionOutcome = SlangReflectionWalker::BuildReflectionData(
+            compilation.m_linkedProgram->getLayout(0), RHI::ShaderTargetFormat::Spirv, entryPoints);
+        ASSERT_TRUE(reflectionOutcome.IsSuccess()) << reflectionOutcome.GetError().c_str();
+        const ShaderReflectionData reflectionData = reflectionOutcome.TakeValue();
+
+        // One SRG with the authored members sorted into their categories
+        ASSERT_EQ(reflectionData.m_shaderResourceGroups.size(), 1);
+        const ShaderResourceGroupReflection& srgReflection = reflectionData.m_shaderResourceGroups[0];
+        EXPECT_EQ(srgReflection.m_name, Name{"TestSrg"});
+        EXPECT_EQ(srgReflection.m_bindingSlot, 2);
+        ASSERT_EQ(srgReflection.m_images.size(), 1);
+        EXPECT_EQ(srgReflection.m_images[0].m_name, Name{"m_texture"});
+        ASSERT_EQ(srgReflection.m_samplers.size(), 1);
+        ASSERT_EQ(srgReflection.m_buffers.size(), 1);
+        EXPECT_EQ(srgReflection.m_buffers[0].m_type, RHI::ShaderInputBufferType::Structured);
+        ASSERT_EQ(srgReflection.m_constants.size(), 2);
+        EXPECT_EQ(srgReflection.m_constants[0].m_name, Name{"m_color"});
+        EXPECT_EQ(srgReflection.m_constants[0].m_constantByteOffset, 0);
+        EXPECT_EQ(srgReflection.m_constants[0].m_constantByteCount, 16);
+        EXPECT_EQ(srgReflection.m_constants[1].m_name, Name{"m_scale"});
+        EXPECT_EQ(srgReflection.m_constants[1].m_constantByteOffset, 16);
+
+        // The compute entry carries its numthreads attribute for the runtime dispatch queries
+        ASSERT_EQ(reflectionData.m_functions.size(), 1);
+        ASSERT_EQ(reflectionData.m_functions[0].m_attributes.size(), 1);
+        EXPECT_EQ(reflectionData.m_functions[0].m_attributes[0].m_name, Name{"numthreads"});
+        EXPECT_THAT(
+            reflectionData.m_functions[0].m_attributes[0].m_arguments,
+            ::testing::ElementsAre(
+                ShaderFunctionAttributeArgument{int32_t{8}},
+                ShaderFunctionAttributeArgument{int32_t{1}},
+                ShaderFunctionAttributeArgument{int32_t{1}}));
+
+        // The shared converters accept the walked reflection: layouts build and finalize
+        auto layoutsOutcome = BuildShaderResourceGroupLayouts(reflectionData);
+        ASSERT_TRUE(layoutsOutcome.IsSuccess());
+        ASSERT_EQ(layoutsOutcome.GetValue().size(), 1);
+        EXPECT_TRUE(layoutsOutcome.GetValue()[0]->Finalize());
+        auto optionLayout = BuildShaderOptionGroupLayout(reflectionData);
+        ASSERT_NE(optionLayout, nullptr);
+        EXPECT_TRUE(optionLayout->FindShaderOptionIndex(Name{"DefaultOption"}).IsValid());
     }
 
     TEST_F(SlangBackendTests, CompileProgram_ImportedModuleSeesPreludeWithoutImports)
