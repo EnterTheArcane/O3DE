@@ -26,6 +26,11 @@ namespace AZ::ShaderBuilder
 
         bool CanCompileTarget(const RHI::ShaderTargetDescriptor& targetDescriptor) const override;
 
+        void EnumerateSourceDependencies(
+            AZStd::string_view shaderSourceFullPath,
+            AZStd::span<const AZStd::string> includePaths,
+            AZStd::unordered_set<AZStd::string>& sourceDependencies) const override;
+
         AZ::Outcome<FrontendResult, AZStd::string> CompileFrontend(const FrontendInput& input) override;
 
         AZ::Outcome<StageResult, AZStd::string> CompileStage(const StageInput& input) override;

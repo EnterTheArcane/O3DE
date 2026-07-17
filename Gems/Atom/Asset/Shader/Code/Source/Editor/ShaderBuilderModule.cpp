@@ -10,6 +10,7 @@
 #include <AzCore/Module/Module.h>
 #include <Azslc/AzslcBackendSystemComponent.h>
 #include <ShaderBuilderSystemComponent.h>
+#include <Slang/SlangBackendSystemComponent.h>
 
 namespace AZ
 {
@@ -28,6 +29,7 @@ namespace AZ
                 m_descriptors.insert(m_descriptors.end(), {
                     ShaderBuilderSystemComponent::CreateDescriptor(),
                     AzslcBackendSystemComponent::CreateDescriptor(),
+                    SlangBackendSystemComponent::CreateDescriptor(),
                 });
             }
 
@@ -39,6 +41,7 @@ namespace AZ
                 return AZ::ComponentTypeList{
                     azrtti_typeid<ShaderBuilderSystemComponent>(),
                     azrtti_typeid<AzslcBackendSystemComponent>(),
+                    azrtti_typeid<SlangBackendSystemComponent>(),
                 };
             }
         };

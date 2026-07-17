@@ -42,8 +42,14 @@ set(FILES
     Source/Editor/ShaderCompilerBackendBus.h
     Source/Editor/ShaderReflectionData.cpp
     Source/Editor/ShaderReflectionData.h
+    Source/Editor/Slang/SlangBackend.cpp
+    Source/Editor/Slang/SlangBackend.h
+    Source/Editor/Slang/SlangBackendSystemComponent.cpp
+    Source/Editor/Slang/SlangBackendSystemComponent.h
     Source/Editor/Slang/SlangCompilerService.cpp
     Source/Editor/Slang/SlangCompilerService.h
     Source/Editor/Slang/SlangModuleResolver.cpp
     Source/Editor/Slang/SlangModuleResolver.h
+    Source/Editor/Slang/SlangSourceFileSystem.cpp
+    Source/Editor/Slang/SlangSourceFileSystem.h
 )

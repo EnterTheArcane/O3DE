@@ -9,26 +9,29 @@
 #Shader asset include headers
 ly_add_target_files(
    TARGETS ${gem_name}.Builders
-   FILES 
+   FILES
        ${CMAKE_CURRENT_SOURCE_DIR}/AZSL/Platform/Windows/DX12/AzslcHeader.azsli
        ${CMAKE_CURRENT_SOURCE_DIR}/AZSL/Platform/Windows/DX12/PlatformHeader.hlsli
+       ${CMAKE_CURRENT_SOURCE_DIR}/AZSL/Platform/Windows/DX12/ApiPrelude.slang
    OUTPUT_SUBDIRECTORY
        Builders/ShaderHeaders/Platform/Windows/DX12
 )
 
 ly_add_target_files(
    TARGETS ${gem_name}.Builders
-   FILES 
+   FILES
        ${CMAKE_CURRENT_SOURCE_DIR}/AZSL/Platform/Windows/Vulkan/AzslcHeader.azsli
        ${CMAKE_CURRENT_SOURCE_DIR}/AZSL/Platform/Windows/Vulkan/PlatformHeader.hlsli
+       ${CMAKE_CURRENT_SOURCE_DIR}/AZSL/Platform/Windows/Vulkan/ApiPrelude.slang
    OUTPUT_SUBDIRECTORY
        Builders/ShaderHeaders/Platform/Windows/Vulkan
 )
 
 ly_add_target_files(
    TARGETS ${gem_name}.Builders
-   FILES 
+   FILES
        ${CMAKE_CURRENT_SOURCE_DIR}/AZSL/Platform/Windows/Null/AzslcHeader.azsli
+       ${CMAKE_CURRENT_SOURCE_DIR}/AZSL/Platform/Windows/Null/ApiPrelude.slang
    OUTPUT_SUBDIRECTORY
        Builders/ShaderHeaders/Platform/Windows/Null
 )

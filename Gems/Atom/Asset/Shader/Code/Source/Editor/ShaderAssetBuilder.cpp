@@ -62,94 +62,6 @@ namespace AZ
     {
         static constexpr char ShaderAssetBuilderName[] = "ShaderAssetBuilder";
 
-        //! The search will start in @currentFolderPath.
-        //! if the file is not found then it searches in order of appearence in @includeDirectories.
-        //! If the search yields no existing file it returns an empty string.
-        static AZStd::string DiscoverFullPath(AZStd::string_view normalizedRelativePath, AZStd::string_view currentFolderPath, const AZStd::vector<AZStd::string>& includeDirectories)
-        {
-            AZStd::string fullPath;
-            AzFramework::StringFunc::Path::Join(currentFolderPath.data(), normalizedRelativePath.data(), fullPath);
-            if (AZ::IO::SystemFile::Exists(fullPath.c_str()))
-            {
-                return fullPath;
-            }
-
-            for (const auto& includeDir : includeDirectories)
-            {
-                AzFramework::StringFunc::Path::Join(includeDir.c_str(), normalizedRelativePath.data(), fullPath);
-                if (AZ::IO::SystemFile::Exists(fullPath.c_str()))
-                {
-                    return fullPath;
-                }
-            }
-
-            return "";
-        }
-
-        // Appends to @includedFiles normalized paths of possible future locations of the file @normalizedRelativePath.
-        // The future locations are each directory listed in @includeDirectories joined with @normalizedRelativePath.
-        // This function is called when an included file doesn't exist but We need to declare source dependency so a .shader
-        // asset is rebuilt when the missing file appears in the future.
-        static void AppendListOfPossibleFutureLocations(AZStd::unordered_set<AZStd::string>& includedFiles, AZStd::string_view normalizedRelativePath, AZStd::string_view currentFolderPath, const AZStd::vector<AZStd::string>& includeDirectories)
-        {
-            AZStd::string fullPath;
-            AzFramework::StringFunc::Path::Join(currentFolderPath.data(), normalizedRelativePath.data(), fullPath);
-            includedFiles.insert(fullPath);
-            for (const auto& includeDir : includeDirectories)
-            {
-                AzFramework::StringFunc::Path::Join(includeDir.c_str(), normalizedRelativePath.data(), fullPath);
-                includedFiles.insert(fullPath);
-            }
-        }
-
-        //! Parses, using depth-first recursive approach, azsl files. Looks for '#include <foo/bar/blah.h>' or '#include "foo/bar/blah.h"' lines
-        //! and in turn parses the included files.
-        //! The included files are searched in the directories listed in @includeDirectories. Basically it's a similar approach
-        //! as how most C-preprocessors would find included files.
-        static void GetListOfIncludedFiles(AZStd::string_view sourceFilePath, const AZStd::vector<AZStd::string>& includeDirectories,
-            const ShaderBuilderUtility::IncludedFilesParser& includedFilesParser, AZStd::unordered_set<AZStd::string>& includedFiles)
-        {
-            auto outcome = includedFilesParser.ParseFileAndGetIncludedFiles(sourceFilePath);
-            if (!outcome.IsSuccess())
-            {
-                AZ_Warning(ShaderAssetBuilderName, false, outcome.GetError().c_str());
-                return;
-            }
-
-            // Cache the path of the folder where @sourceFilePath is located.
-            AZStd::string sourceFileFolderPath;
-            {
-                AZStd::string drive;
-                AzFramework::StringFunc::Path::Split(sourceFilePath.data(), &drive, &sourceFileFolderPath);
-                if (!drive.empty())
-                {
-                    AzFramework::StringFunc::Path::Join(drive.c_str(), sourceFileFolderPath.c_str(), sourceFileFolderPath);
-                }
-            }
-
-            auto listOfRelativePaths = outcome.TakeValue();
-            for (const auto& relativePath : listOfRelativePaths)
-            {
-                auto fullPath = DiscoverFullPath(relativePath, sourceFileFolderPath, includeDirectories);
-                if (fullPath.empty())
-                {
-                    // The file doesn't exist in any of the includeDirectories. It doesn't exist in @sourceFileFolderPath either.
-                    // The file may appear in the future in one of those directories, We must build an exhaustive list
-                    // of full file paths where the file may appear in the future.
-                    AppendListOfPossibleFutureLocations(includedFiles, relativePath, sourceFileFolderPath, includeDirectories);
-                    continue;
-                }
-
-                // Add the file to the list and keep parsing recursively.
-                if (includedFiles.contains(fullPath))
-                {
-                    continue;
-                }
-                includedFiles.insert(fullPath);
-                GetListOfIncludedFiles(fullPath, includeDirectories, includedFilesParser, includedFiles);
-            }
-        }
-
         void ShaderAssetBuilder::CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response) const
         {
             // Used to measure the duration of CreateJobs
@@ -157,7 +69,6 @@ namespace AZ
 
             AZStd::string shaderAssetSourceFileFullPath;
             AzFramework::StringFunc::Path::ConstructFull(request.m_watchFolder.data(), request.m_sourceFile.data(), shaderAssetSourceFileFullPath, true);
-            ShaderBuilderUtility::IncludedFilesParser includedFilesParser;
 
             AZ_TracePrintf(ShaderAssetBuilderName, "CreateJobs for Shader \"%s\"\n", shaderAssetSourceFileFullPath.data());
 
@@ -195,8 +106,33 @@ namespace AZ
 
             auto projectIncludePaths = BuildListOfIncludeDirectories(ShaderAssetBuilderName);
 
+            // The language backend owning the source extension scans dependencies with its own
+            // reference rules (#include for AZSL, module imports for Slang).
+            AZStd::string sourceExtension;
+            AzFramework::StringFunc::Path::GetExtension(azslFullPath.c_str(), sourceExtension, true);
+            IShaderCompilerBackend* compilerBackend = nullptr;
+            ShaderCompilerBackendBus::BroadcastResult(compilerBackend, &ShaderCompilerBackendBus::Events::FindShaderCompilerBackendForSourceExtension, sourceExtension);
+
             AZStd::unordered_set<AZStd::string> includedFiles;
-            GetListOfIncludedFiles(azslFullPath, projectIncludePaths, includedFilesParser, includedFiles);
+            if (compilerBackend)
+            {
+                compilerBackend->EnumerateSourceDependencies(azslFullPath, projectIncludePaths, includedFiles);
+            }
+            else
+            {
+                // No registered backend claims the extension; ProcessJob reports the hard error.
+                // Scanning with the include rules keeps rebuilds triggering while the asset is broken.
+                AZ_Warning(ShaderAssetBuilderName, false, "No shader compiler backend is registered for source extension '%s'", sourceExtension.c_str());
+                const ShaderBuilderUtility::IncludedFilesParser includedFilesParser;
+                auto includesOutcome = includedFilesParser.ParseFileAndGetIncludedFiles(azslFullPath);
+                if (includesOutcome.IsSuccess())
+                {
+                    for (const AZStd::string& relativePath : includesOutcome.GetValue())
+                    {
+                        includedFiles.insert(relativePath);
+                    }
+                }
+            }
             for (const auto& includePath : includedFiles)
             {
                 AssetBuilderSDK::SourceFileDependency includeFileDependency;

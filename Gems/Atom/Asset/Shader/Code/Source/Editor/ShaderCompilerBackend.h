@@ -10,6 +10,7 @@
 
 #include <AzCore/Outcome/Outcome.h>
 #include <AzCore/std/containers/span.h>
+#include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
@@ -122,6 +123,16 @@ namespace AZ::ShaderBuilder
         //! backend produce the RHI's declared target? Gives no-target/unsupported combinations
         //! a clean skip/error path.
         virtual bool CanCompileTarget(const RHI::ShaderTargetDescriptor& targetDescriptor) const = 0;
+
+        //! Appends the full paths of every source file @shaderSourceFullPath transitively
+        //! depends on, plus the nonexistent candidate paths whose future appearance must
+        //! retrigger the build (shadowing/missing includes and modules). CreateJobs registers
+        //! them as source dependencies — the Asset Processor's only source-dependency channel —
+        //! so each language scans with its own reference rules.
+        virtual void EnumerateSourceDependencies(
+            AZStd::string_view shaderSourceFullPath,
+            AZStd::span<const AZStd::string> includePaths,
+            AZStd::unordered_set<AZStd::string>& sourceDependencies) const = 0;
 
         //! Runs the frontend once per (API, supervariant): preprocess/parse/reflect.
         virtual AZ::Outcome<FrontendResult, AZStd::string> CompileFrontend(const FrontendInput& input) = 0;

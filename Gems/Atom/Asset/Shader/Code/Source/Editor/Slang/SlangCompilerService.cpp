@@ -147,6 +147,7 @@ namespace AZ::ShaderBuilder
         sessionDesc.searchPathCount = aznumeric_cast<SlangInt>(searchPaths.size());
         sessionDesc.preprocessorMacros = macros.data();
         sessionDesc.preprocessorMacroCount = aznumeric_cast<SlangInt>(macros.size());
+        sessionDesc.fileSystem = descriptor.m_fileSystem;
         sessionDesc.compilerOptionEntries = options.data();
         sessionDesc.compilerOptionEntryCount = aznumeric_cast<uint32_t>(options.size());
 

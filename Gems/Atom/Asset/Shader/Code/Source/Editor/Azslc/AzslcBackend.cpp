@@ -8,6 +8,7 @@
 
 #include "AzslcBackend.h"
 
+#include <AzCore/IO/SystemFile.h>
 #include <AzCore/Utils/Utils.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -41,6 +42,103 @@ namespace AZ::ShaderBuilder
         // The legacy pipeline predates target descriptors: every RHI it runs on carries its own
         // compile path in ShaderPlatformInterface::CompilePlatformInternal, descriptor or not.
         return true;
+    }
+
+    //! The search will start in @currentFolderPath.
+    //! if the file is not found then it searches in order of appearence in @includeDirectories.
+    //! If the search yields no existing file it returns an empty string.
+    static AZStd::string DiscoverFullPath(AZStd::string_view normalizedRelativePath, AZStd::string_view currentFolderPath, AZStd::span<const AZStd::string> includeDirectories)
+    {
+        AZStd::string fullPath;
+        AzFramework::StringFunc::Path::Join(currentFolderPath.data(), normalizedRelativePath.data(), fullPath);
+        if (AZ::IO::SystemFile::Exists(fullPath.c_str()))
+        {
+            return fullPath;
+        }
+
+        for (const AZStd::string& includeDir : includeDirectories)
+        {
+            AzFramework::StringFunc::Path::Join(includeDir.c_str(), normalizedRelativePath.data(), fullPath);
+            if (AZ::IO::SystemFile::Exists(fullPath.c_str()))
+            {
+                return fullPath;
+            }
+        }
+
+        return "";
+    }
+
+    // Appends to @includedFiles normalized paths of possible future locations of the file @normalizedRelativePath.
+    // The future locations are each directory listed in @includeDirectories joined with @normalizedRelativePath.
+    // This function is called when an included file doesn't exist but We need to declare source dependency so a .shader
+    // asset is rebuilt when the missing file appears in the future.
+    static void AppendListOfPossibleFutureLocations(AZStd::unordered_set<AZStd::string>& includedFiles, AZStd::string_view normalizedRelativePath, AZStd::string_view currentFolderPath, AZStd::span<const AZStd::string> includeDirectories)
+    {
+        AZStd::string fullPath;
+        AzFramework::StringFunc::Path::Join(currentFolderPath.data(), normalizedRelativePath.data(), fullPath);
+        includedFiles.insert(fullPath);
+        for (const AZStd::string& includeDir : includeDirectories)
+        {
+            AzFramework::StringFunc::Path::Join(includeDir.c_str(), normalizedRelativePath.data(), fullPath);
+            includedFiles.insert(fullPath);
+        }
+    }
+
+    //! Parses, using depth-first recursive approach, azsl files. Looks for '#include <foo/bar/blah.h>' or '#include "foo/bar/blah.h"' lines
+    //! and in turn parses the included files.
+    //! The included files are searched in the directories listed in @includeDirectories. Basically it's a similar approach
+    //! as how most C-preprocessors would find included files.
+    static void GetListOfIncludedFiles(AZStd::string_view sourceFilePath, AZStd::span<const AZStd::string> includeDirectories,
+        const ShaderBuilderUtility::IncludedFilesParser& includedFilesParser, AZStd::unordered_set<AZStd::string>& includedFiles)
+    {
+        auto outcome = includedFilesParser.ParseFileAndGetIncludedFiles(sourceFilePath);
+        if (!outcome.IsSuccess())
+        {
+            AZ_Warning("AzslcBackend", false, outcome.GetError().c_str());
+            return;
+        }
+
+        // Cache the path of the folder where @sourceFilePath is located.
+        AZStd::string sourceFileFolderPath;
+        {
+            AZStd::string drive;
+            AzFramework::StringFunc::Path::Split(sourceFilePath.data(), &drive, &sourceFileFolderPath);
+            if (!drive.empty())
+            {
+                AzFramework::StringFunc::Path::Join(drive.c_str(), sourceFileFolderPath.c_str(), sourceFileFolderPath);
+            }
+        }
+
+        auto listOfRelativePaths = outcome.TakeValue();
+        for (const AZStd::string& relativePath : listOfRelativePaths)
+        {
+            auto fullPath = DiscoverFullPath(relativePath, sourceFileFolderPath, includeDirectories);
+            if (fullPath.empty())
+            {
+                // The file doesn't exist in any of the includeDirectories. It doesn't exist in @sourceFileFolderPath either.
+                // The file may appear in the future in one of those directories, We must build an exhaustive list
+                // of full file paths where the file may appear in the future.
+                AppendListOfPossibleFutureLocations(includedFiles, relativePath, sourceFileFolderPath, includeDirectories);
+                continue;
+            }
+
+            // Add the file to the list and keep parsing recursively.
+            if (includedFiles.contains(fullPath))
+            {
+                continue;
+            }
+            includedFiles.insert(fullPath);
+            GetListOfIncludedFiles(fullPath, includeDirectories, includedFilesParser, includedFiles);
+        }
+    }
+
+    void AzslcBackend::EnumerateSourceDependencies(
+        AZStd::string_view shaderSourceFullPath,
+        AZStd::span<const AZStd::string> includePaths,
+        AZStd::unordered_set<AZStd::string>& sourceDependencies) const
+    {
+        const ShaderBuilderUtility::IncludedFilesParser includedFilesParser;
+        GetListOfIncludedFiles(shaderSourceFullPath, includePaths, includedFilesParser, sourceDependencies);
     }
 
     AZ::Outcome<FrontendResult, AZStd::string> AzslcBackend::CompileFrontend(const FrontendInput& input)

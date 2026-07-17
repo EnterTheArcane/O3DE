@@ -63,6 +63,10 @@ namespace AZ::ShaderBuilder
             //! derived from the fields above. Names/values follow slang::CompilerOptionName.
             AZStd::vector<slang::CompilerOptionEntry> m_extraOptions;
 
+            //! Optional file system hook the session loads sources through (e.g. to inject the
+            //! force-included prelude imports). Must outlive the session; not owned.
+            ISlangFileSystem* m_fileSystem = nullptr;
+
             //! Row-major matrix layout (Atom builds shaders row-major everywhere: --Zpr/-Zpr).
             bool m_matrixLayoutRow = true;
 
