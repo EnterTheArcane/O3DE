@@ -440,11 +440,6 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
                     return AZ::Failure(AZStd::string::format(
                         "ParameterBlock %s has no [AtomShaderResourceGroup(bindingSlot)] attribute on its element type", parameterName));
                 }
-                if (FindUserAttribute(elementType, "AtomVariantFallback"))
-                {
-                    return AZ::Failure(AZStd::string::format(
-                        "%s: [AtomVariantFallback] lands with the shader options milestone (M10)", parameterName));
-                }
                 int bindingSlot = 0;
                 srgAttribute->getArgumentValueInt(0, &bindingSlot);
 
@@ -646,8 +641,9 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
             }
         }
 
-        // No shader options yet (they land at M10); mirror AZSLC's empty-options layout so the
-        // ShaderVariantKey machinery sees the same single boolean DefaultOption
+        // Mirror AZSLC's empty-options layout so the ShaderVariantKey machinery sees the same
+        // single boolean DefaultOption; when the shader declares ATOM_OPTIONs, the backend
+        // replaces this with the discovered descriptors after the walk
         const AZStd::vector<RPI::ShaderOptionValuePair> defaultOptionValues = {
             {Name("false"), RPI::ShaderOptionValue(0)},
             {Name("true"), RPI::ShaderOptionValue(1)},

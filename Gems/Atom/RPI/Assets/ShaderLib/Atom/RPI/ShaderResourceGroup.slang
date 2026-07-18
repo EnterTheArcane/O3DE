@@ -60,11 +60,34 @@ public struct AtomStaticSamplerAttribute
     public string borderColor;
 };
 
-//! Designates a ShaderResourceGroup as the ShaderVariantKey fallback with the given key size in bits.
-[__AttributeUsage(_AttributeTargets.Struct)]
+//! Applied by the ATOM_VARIANT_FALLBACK macro to the exported fallback-key getter it generates:
+//! names the ShaderResourceGroup (the ParameterBlock instance) and the uint4 member inside it
+//! that carry the 128-bit ShaderVariantKey fallback. The getter's body reads that member, so the
+//! member's existence and type are enforced by the compiler rather than by builder validation.
+[__AttributeUsage(_AttributeTargets.Function)]
 public struct AtomVariantFallbackAttribute
 {
-    public int sizeBits;
+    public string shaderResourceGroupName;
+    public string memberName;
+};
+
+//! Applied by the ATOM_OPTION / ATOM_OPTION_RANGE macros to the generated accessor declaration
+//! of one shader option. Carries the authored option type and default value as source text; the
+//! shader builder discovers options by walking module declarations for functions with this
+//! attribute (accessor name = AtomOptionImpl_<option name>).
+[__AttributeUsage(_AttributeTargets.Function)]
+public struct AtomOptionAttribute
+{
+    public string typeName;
+    public string defaultValue;
+};
+
+//! Applied by the ATOM_OPTION_RANGE macro: the inclusive value range of an integer shader option.
+[__AttributeUsage(_AttributeTargets.Function)]
+public struct AtomOptionRangeAttribute
+{
+    public int minValue;
+    public int maxValue;
 };
 
 //! Declares a struct as the root-constants block of the shader.

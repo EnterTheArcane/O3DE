@@ -72,9 +72,9 @@ namespace AZ::ShaderBuilder
     };
 
     SlangSourceFileSystem::SlangSourceFileSystem(
-        AZStd::vector<AZStd::string> injectedImportLines,
+        AZStd::vector<AZStd::string> injectedPreambleLines,
         AZStd::vector<AZStd::string> injectionExemptFileNames)
-        : m_injectedImportLines(AZStd::move(injectedImportLines))
+        : m_injectedPreambleLines(AZStd::move(injectedPreambleLines))
         , m_injectionExemptFileNames(AZStd::move(injectionExemptFileNames))
     {
     }
@@ -145,15 +145,15 @@ namespace AZ::ShaderBuilder
         const bool isInjectionExempt = AZStd::find(m_injectionExemptFileNames.begin(), m_injectionExemptFileNames.end(), fileName)
             != m_injectionExemptFileNames.end();
 
-        if (isSlangSource && !isInjectionExempt && !m_injectedImportLines.empty())
+        if (isSlangSource && !isInjectionExempt && !m_injectedPreambleLines.empty())
         {
             AZStd::string forwardSlashedPath(path);
             AZStd::replace(forwardSlashedPath.begin(), forwardSlashedPath.end(), '\\', '/');
 
             AZStd::string injectedContent;
-            for (const AZStd::string& importLine : m_injectedImportLines)
+            for (const AZStd::string& preambleLine : m_injectedPreambleLines)
             {
-                injectedContent += importLine;
+                injectedContent += preambleLine;
                 injectedContent += '\n';
             }
             injectedContent += AZStd::string::format("#line 1 \"%s\"\n", forwardSlashedPath.c_str());

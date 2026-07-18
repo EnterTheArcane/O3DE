@@ -8,10 +8,235 @@
 
 #include "SlangOptionsModuleGenerator.h"
 
+#include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/string/conversions.h>
 
 namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
 {
+    AZStd::span<const AZStd::string_view> GetAuthoringMacroLines()
+    {
+        // The accessor ABI is always `int AtomOptionImpl_<name>()` so implementation modules stay
+        // context-free: the authored property casts the int back to the authored type (bool and
+        // Slang enums both accept the explicit cast). Names must match AccessorNamePrefix and
+        // FallbackKeyGetterName.
+        static constexpr AZStd::string_view macroLines[] = {
+            "#define ATOM_OPTION(type, name, defaultValue) [AtomOption(#type, #defaultValue)] public extern int AtomOptionImpl_##name(); public property type name { get { return (type)AtomOptionImpl_##name(); } }",
+            "#define ATOM_OPTION_RANGE(type, name, defaultValue, minValue, maxValue) [AtomOption(#type, #defaultValue)] [AtomOptionRange(minValue, maxValue)] public extern int AtomOptionImpl_##name(); public property type name { get { return (type)AtomOptionImpl_##name(); } }",
+            "#define ATOM_VARIANT_FALLBACK(shaderResourceGroup, memberName) [AtomVariantFallback(#shaderResourceGroup, #memberName)] export uint4 Atom_GetShaderVariantKeyFallback() { return shaderResourceGroup.memberName; }",
+        };
+        return macroLines;
+    }
+
+    static AZStd::string GetAttributeArgumentString(slang::UserAttribute* attribute, unsigned argumentIndex)
+    {
+        size_t length = 0;
+        const char* text = attribute->getArgumentValueString(argumentIndex, &length);
+        return text ? AZStd::string(text, length) : AZStd::string();
+    }
+
+    //! Enum cases surface in declaration order as Kind::Unsupported children of the enum decl,
+    //! before its synthesized `$__syn_*` operator functions.
+    static AZStd::vector<Name> CollectEnumCaseNames(slang::DeclReflection* enumDecl)
+    {
+        AZStd::vector<Name> caseNames;
+        for (unsigned childIndex = 0; childIndex < enumDecl->getChildrenCount(); ++childIndex)
+        {
+            slang::DeclReflection* child = enumDecl->getChild(childIndex);
+            if (child
+                && child->getKind() == slang::DeclReflection::Kind::Unsupported
+                && child->getName() && child->getName()[0] != '\0' && child->getName()[0] != '$')
+            {
+                caseNames.push_back(Name(child->getName()));
+            }
+        }
+        return caseNames;
+    }
+
+    AZ::Outcome<DiscoveredShaderOptions, AZStd::string> DiscoverShaderOptions(slang::ISession* session)
+    {
+        struct AccessorCandidate
+        {
+            AZStd::string m_functionName;
+            AZStd::string m_typeName;
+            AZStd::string m_defaultValue;
+            bool m_hasRange = false;
+            int m_minValue = 0;
+            int m_maxValue = 0;
+        };
+        AZStd::vector<AccessorCandidate> candidates;
+        AZStd::unordered_map<AZStd::string, AZStd::vector<Name>> enumCasesByName;
+        DiscoveredShaderOptions discovered;
+
+        // First pass over all loaded modules collects enum declarations so enumeration options
+        // can reference enums from any module regardless of walk order
+        const SlangInt moduleCount = session->getLoadedModuleCount();
+        for (SlangInt moduleIndex = 0; moduleIndex < moduleCount; ++moduleIndex)
+        {
+            slang::DeclReflection* moduleDecl = session->getLoadedModule(moduleIndex)->getModuleReflection();
+            if (!moduleDecl)
+            {
+                continue;
+            }
+            for (unsigned childIndex = 0; childIndex < moduleDecl->getChildrenCount(); ++childIndex)
+            {
+                slang::DeclReflection* child = moduleDecl->getChild(childIndex);
+                if (child && child->getKind() == slang::DeclReflection::Kind::Enum && child->getName())
+                {
+                    enumCasesByName[child->getName()] = CollectEnumCaseNames(child);
+                }
+            }
+        }
+
+        // Second pass reads the attributed accessor functions in module-load order, then
+        // declaration order — the deterministic packing order of the option layout
+        for (SlangInt moduleIndex = 0; moduleIndex < moduleCount; ++moduleIndex)
+        {
+            slang::DeclReflection* moduleDecl = session->getLoadedModule(moduleIndex)->getModuleReflection();
+            if (!moduleDecl)
+            {
+                continue;
+            }
+            for (unsigned childIndex = 0; childIndex < moduleDecl->getChildrenCount(); ++childIndex)
+            {
+                slang::DeclReflection* child = moduleDecl->getChild(childIndex);
+                slang::FunctionReflection* function =
+                    (child && child->getKind() == slang::DeclReflection::Kind::Func) ? child->asFunction() : nullptr;
+                if (!function || !function->getName())
+                {
+                    continue;
+                }
+
+                AccessorCandidate candidate;
+                bool isOptionAccessor = false;
+                for (unsigned attributeIndex = 0; attributeIndex < function->getUserAttributeCount(); ++attributeIndex)
+                {
+                    slang::UserAttribute* attribute = function->getUserAttributeByIndex(attributeIndex);
+                    if (azstricmp(attribute->getName(), "AtomOption") == 0)
+                    {
+                        isOptionAccessor = true;
+                        candidate.m_functionName = function->getName();
+                        candidate.m_typeName = GetAttributeArgumentString(attribute, 0);
+                        candidate.m_defaultValue = GetAttributeArgumentString(attribute, 1);
+                    }
+                    else if (azstricmp(attribute->getName(), "AtomOptionRange") == 0)
+                    {
+                        candidate.m_hasRange =
+                            SLANG_SUCCEEDED(attribute->getArgumentValueInt(0, &candidate.m_minValue))
+                            && SLANG_SUCCEEDED(attribute->getArgumentValueInt(1, &candidate.m_maxValue));
+                    }
+                    else if (azstricmp(attribute->getName(), "AtomVariantFallback") == 0)
+                    {
+                        if (!discovered.m_fallbackMemberName.empty())
+                        {
+                            return AZ::Failure(AZStd::string(
+                                "ATOM_VARIANT_FALLBACK is declared more than once; exactly one ShaderResourceGroup member can hold the ShaderVariantKey fallback"));
+                        }
+                        discovered.m_fallbackShaderResourceGroupName = GetAttributeArgumentString(attribute, 0);
+                        discovered.m_fallbackMemberName = GetAttributeArgumentString(attribute, 1);
+                    }
+                }
+                if (isOptionAccessor)
+                {
+                    candidates.push_back(AZStd::move(candidate));
+                }
+            }
+        }
+
+        for (const AccessorCandidate& candidate : candidates)
+        {
+            if (!candidate.m_functionName.starts_with(AccessorNamePrefix))
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "[AtomOption] is applied to %s; the attribute is reserved for the accessor declarations the ATOM_OPTION macros generate",
+                    candidate.m_functionName.c_str()));
+            }
+
+            ShaderOptionDeclaration declaration;
+            declaration.m_name = Name(candidate.m_functionName.substr(AccessorNamePrefix.size()));
+
+            for (const ShaderOptionDeclaration& existing :
+                AZStd::span<const ShaderOptionDeclaration>(discovered.m_declarations))
+            {
+                if (existing.m_name == declaration.m_name)
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "Shader option %s is declared more than once", declaration.m_name.GetCStr()));
+                }
+            }
+
+            if (candidate.m_typeName == "bool")
+            {
+                declaration.m_type = RPI::ShaderOptionType::Boolean;
+                if (candidate.m_defaultValue != "true" && candidate.m_defaultValue != "false")
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "Boolean option %s has default '%s'; expected true or false",
+                        declaration.m_name.GetCStr(), candidate.m_defaultValue.c_str()));
+                }
+                declaration.m_defaultValue = Name(candidate.m_defaultValue);
+            }
+            else if (
+                candidate.m_typeName == "int" || candidate.m_typeName == "uint"
+                || candidate.m_typeName == "i32" || candidate.m_typeName == "u32"
+                || candidate.m_typeName == "int32_t" || candidate.m_typeName == "uint32_t")
+            {
+                if (!candidate.m_hasRange)
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "Integer option %s needs a value range; declare it with ATOM_OPTION_RANGE(type, name, default, min, max)",
+                        declaration.m_name.GetCStr()));
+                }
+                declaration.m_type = RPI::ShaderOptionType::IntegerRange;
+                declaration.m_minValue = candidate.m_minValue;
+                declaration.m_maxValue = candidate.m_maxValue;
+
+                char* parseEnd = nullptr;
+                const long defaultValue = strtol(candidate.m_defaultValue.c_str(), &parseEnd, 10);
+                if (parseEnd == candidate.m_defaultValue.c_str() || *parseEnd != '\0'
+                    || defaultValue < candidate.m_minValue || defaultValue > candidate.m_maxValue)
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "Integer option %s has default '%s' outside its range [%d, %d]",
+                        declaration.m_name.GetCStr(), candidate.m_defaultValue.c_str(),
+                        candidate.m_minValue, candidate.m_maxValue));
+                }
+                declaration.m_defaultValue = Name(candidate.m_defaultValue);
+            }
+            else
+            {
+                auto enumIterator = enumCasesByName.find(candidate.m_typeName);
+                if (enumIterator == enumCasesByName.end() || enumIterator->second.empty())
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "Option %s has type %s, which is not bool, int, or an enum declared in the shader's modules",
+                        declaration.m_name.GetCStr(), candidate.m_typeName.c_str()));
+                }
+                declaration.m_type = RPI::ShaderOptionType::Enumeration;
+                declaration.m_enumValues = enumIterator->second;
+
+                // The default is spelled as authored, e.g. "QualityT.Medium"; the value name is
+                // the bare case label
+                const size_t lastDot = candidate.m_defaultValue.find_last_of('.');
+                const AZStd::string defaultLabel = lastDot == AZStd::string::npos
+                    ? candidate.m_defaultValue
+                    : candidate.m_defaultValue.substr(lastDot + 1);
+                const Name defaultName(defaultLabel);
+                if (AZStd::find(declaration.m_enumValues.begin(), declaration.m_enumValues.end(), defaultName)
+                    == declaration.m_enumValues.end())
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "Option %s has default '%s', which is not a case of enum %s",
+                        declaration.m_name.GetCStr(), candidate.m_defaultValue.c_str(), candidate.m_typeName.c_str()));
+                }
+                declaration.m_defaultValue = defaultName;
+            }
+
+            discovered.m_declarations.push_back(AZStd::move(declaration));
+        }
+
+        return AZ::Success(AZStd::move(discovered));
+    }
+
     AZ::Outcome<RPI::Ptr<RPI::ShaderOptionGroupLayout>, AZStd::string> BuildShaderOptionGroupLayout(
         AZStd::span<const ShaderOptionDeclaration> declarations)
     {
@@ -77,71 +302,52 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
         return AZ::Success(AZStd::move(layout));
     }
 
-    //! The Slang type an option lowers to: booleans stay bool, everything else is a plain int
-    //! (enumeration values are their value indices). Generated code uses raw primitives, not the
-    //! prelude aliases, so it compiles in any session regardless of prelude injection.
-    static AZStd::string_view GetOptionTypeText(RPI::ShaderOptionType type)
+    //! The accessor's int result for an option's default: value indices are the integer values
+    //! for every option type (bool 0/1, enum case index, integer value).
+    static int32_t GetDefaultValueAsInt(const RPI::ShaderOptionDescriptor& option)
     {
-        return type == RPI::ShaderOptionType::Boolean ? "bool" : "int";
+        return aznumeric_cast<int32_t>(option.FindValue(option.GetDefaultValue()).GetIndex());
     }
 
-    static AZStd::string GetDefaultValueText(const RPI::ShaderOptionDescriptor& option)
+    //! Appends one exported accessor whose body is @valueExpression.
+    static void AppendAccessor(AZStd::string& module, const RPI::ShaderOptionDescriptor& option, AZStd::string_view valueExpression)
     {
-        const RPI::ShaderOptionValue defaultValue = option.FindValue(option.GetDefaultValue());
-        if (option.GetType() == RPI::ShaderOptionType::Boolean)
-        {
-            return defaultValue.GetIndex() != 0 ? "true" : "false";
-        }
-        return AZStd::to_string(aznumeric_cast<int32_t>(defaultValue.GetIndex()));
+        module += AZStd::string::format(
+            "export int %.*s%s() { return %.*s; }\n",
+            AZ_STRING_ARG(AccessorNamePrefix),
+            option.GetName().GetCStr(),
+            AZ_STRING_ARG(valueExpression));
     }
 
-    AZStd::string GenerateOptionsModule(
+    AZStd::string GenerateImplementationModule(
         ShaderOptionLoweringMode mode,
         AZStd::string_view moduleName,
-        const RPI::ShaderOptionGroupLayout& layout,
-        AZStd::string_view fallbackBufferName)
+        const RPI::ShaderOptionGroupLayout& layout)
     {
+        AZ_Assert(mode != ShaderOptionLoweringMode::Baked, "Baked accessor values come from GenerateBakedValuesModule");
+
         AZStd::string module = AZStd::string::format("module %.*s;\n\n", AZ_STRING_ARG(moduleName));
 
         if (mode == ShaderOptionLoweringMode::DynamicFallback)
         {
-            // The fallback-key constant buffer carrying the packed ShaderVariantKey bits
-            // (feasibility gate 2's proven dynamic form; binding integration follows the
-            // variant-fallback ShaderResourceGroup work)
-            module += AZStd::string::format(
-                "struct %.*s_Key\n"
-                "{\n"
-                "    uint4 m_keyBits;\n"
-                "};\n\n"
-                "ConstantBuffer<%.*s_Key> %.*s;\n\n",
-                AZ_STRING_ARG(fallbackBufferName),
-                AZ_STRING_ARG(fallbackBufferName),
-                AZ_STRING_ARG(fallbackBufferName));
+            // Satisfied by the export the ATOM_VARIANT_FALLBACK macro generated in the authored
+            // module; the extern/export pair links in both directions across the composition
+            module += AZStd::string::format("extern uint4 %.*s();\n\n", AZ_STRING_ARG(FallbackKeyGetterName));
         }
 
         uint32_t specializationId = 0;
         for (const RPI::ShaderOptionDescriptor& option : layout.GetShaderOptions())
         {
-            const AZStd::string_view typeText = GetOptionTypeText(option.GetType());
-            const AZStd::string defaultText = GetDefaultValueText(option);
-
             switch (mode)
             {
-            case ShaderOptionLoweringMode::Baked:
-                // Satisfied by the export in the values module composed at link time
-                module += AZStd::string::format(
-                    "public extern static const %.*s %s;\n",
-                    AZ_STRING_ARG(typeText),
-                    option.GetName().GetCStr());
-                break;
             case ShaderOptionLoweringMode::SpecializationConstant:
                 module += AZStd::string::format(
                     "[vk::constant_id(%u)]\n"
-                    "public const %.*s %s = %s;\n",
+                    "const int AtomOptionSpecialization_%s = %d;\n",
                     specializationId,
-                    AZ_STRING_ARG(typeText),
                     option.GetName().GetCStr(),
-                    defaultText.c_str());
+                    GetDefaultValueAsInt(option));
+                AppendAccessor(module, option, AZStd::string::format("AtomOptionSpecialization_%s", option.GetName().GetCStr()));
                 break;
             case ShaderOptionLoweringMode::DynamicFallback:
             {
@@ -153,29 +359,20 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
                 const uint32_t mask = bitCount >= 32 ? ~0u : ((1u << bitCount) - 1);
 
                 AZStd::string readExpression = AZStd::string::format(
-                    "(%.*s.m_keyBits[%u] >> %uu)",
-                    AZ_STRING_ARG(fallbackBufferName), wordIndex, bitInWord);
+                    "(%.*s()[%u] >> %uu)",
+                    AZ_STRING_ARG(FallbackKeyGetterName), wordIndex, bitInWord);
                 if (bitInWord + bitCount > 32)
                 {
                     readExpression = AZStd::string::format(
-                        "(%s | (%.*s.m_keyBits[%u] << %uu))",
+                        "(%s | (%.*s()[%u] << %uu))",
                         readExpression.c_str(),
-                        AZ_STRING_ARG(fallbackBufferName), wordIndex + 1, 32 - bitInWord);
+                        AZ_STRING_ARG(FallbackKeyGetterName), wordIndex + 1, 32 - bitInWord);
                 }
-                readExpression = AZStd::string::format("(%s & 0x%Xu)", readExpression.c_str(), mask);
-
-                if (option.GetType() == RPI::ShaderOptionType::Boolean)
-                {
-                    module += AZStd::string::format(
-                        "public static bool %s = %s != 0u;\n", option.GetName().GetCStr(), readExpression.c_str());
-                }
-                else
-                {
-                    module += AZStd::string::format(
-                        "public static int %s = int(%s);\n", option.GetName().GetCStr(), readExpression.c_str());
-                }
+                AppendAccessor(module, option, AZStd::string::format("int(%s & 0x%Xu)", readExpression.c_str(), mask));
                 break;
             }
+            default:
+                break;
             }
             ++specializationId;
         }
@@ -198,21 +395,7 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
             {
                 value = option.FindValue(option.GetDefaultValue());
             }
-
-            if (option.GetType() == RPI::ShaderOptionType::Boolean)
-            {
-                module += AZStd::string::format(
-                    "export static const bool %s = %s;\n",
-                    option.GetName().GetCStr(),
-                    value.GetIndex() != 0 ? "true" : "false");
-            }
-            else
-            {
-                module += AZStd::string::format(
-                    "export static const int %s = %d;\n",
-                    option.GetName().GetCStr(),
-                    aznumeric_cast<int32_t>(value.GetIndex()));
-            }
+            AppendAccessor(module, option, AZStd::to_string(aznumeric_cast<int32_t>(value.GetIndex())));
         }
         return module;
     }

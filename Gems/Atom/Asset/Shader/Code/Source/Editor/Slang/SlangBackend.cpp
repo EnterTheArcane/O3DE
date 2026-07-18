@@ -39,6 +39,9 @@ namespace AZ::ShaderBuilder
     //! Module name of the per-API prelude deployed beside the AzslcHeaders.
     static constexpr AZStd::string_view ApiPreludeModuleName = "ApiPrelude";
 
+    //! Module name of the generated shader-options accessor-implementation module.
+    static constexpr AZStd::string_view GeneratedOptionsModuleName = "AtomGeneratedOptions";
+
     //! Files served without prelude injection so force-inclusion cannot create import cycles.
     static constexpr const char* InjectionExemptFileNames[] = {
         "Prelude.slang",
@@ -212,28 +215,34 @@ namespace AZ::ShaderBuilder
             return AZ::Failure(AZStd::string::format("Failed to read %s. [%s]", sourcePath.c_str(), sourceOutcome.GetError().c_str()));
         }
 
-        // The prelude is force-included: the file system hook injects the import into every
-        // module the session loads, and the root source below gets the same injection, so the
-        // Atom vocabulary needs no per-file imports anywhere.
-        AZStd::vector<AZStd::string> injectedImportLines;
-        injectedImportLines.push_back(AZStd::string::format("import %.*s;", AZ_STRING_ARG(ForceIncludedModuleReference)));
+        // The preamble is force-included: the file system hook injects it into every module the
+        // session loads, and the root source below gets the same injection. The prelude imports
+        // carry the Atom vocabulary with no per-file imports anywhere; the authoring macro
+        // definitions follow as text because module imports cannot propagate preprocessor
+        // definitions.
+        AZStd::vector<AZStd::string> preambleLines;
+        preambleLines.push_back(AZStd::string::format("import %.*s;", AZ_STRING_ARG(ForceIncludedModuleReference)));
         if (!request.m_apiPreludeDirectory.empty())
         {
-            injectedImportLines.push_back(AZStd::string::format("import %.*s;", AZ_STRING_ARG(ApiPreludeModuleName)));
+            preambleLines.push_back(AZStd::string::format("import %.*s;", AZ_STRING_ARG(ApiPreludeModuleName)));
+        }
+        for (const AZStd::string_view macroLine : SlangOptionsModuleGenerator::GetAuthoringMacroLines())
+        {
+            preambleLines.push_back(AZStd::string(macroLine));
         }
 
         ProgramCompilation compilation;
         compilation.m_fileSystem.attach(new SlangSourceFileSystem(
-            injectedImportLines,
+            preambleLines,
             AZStd::vector<AZStd::string>(AZStd::begin(InjectionExemptFileNames), AZStd::end(InjectionExemptFileNames))));
 
         // Restore diagnostics locations to the original file with a #line directive.
         AZStd::string forwardSlashedPath = sourcePath;
         AZStd::replace(forwardSlashedPath.begin(), forwardSlashedPath.end(), '\\', '/');
         AZStd::string sourceText;
-        for (const AZStd::string& importLine : injectedImportLines)
+        for (const AZStd::string& preambleLine : preambleLines)
         {
-            sourceText += importLine;
+            sourceText += preambleLine;
             sourceText += '\n';
         }
         sourceText += AZStd::string::format("#line 1 \"%s\"\n", forwardSlashedPath.c_str());
@@ -265,6 +274,67 @@ namespace AZ::ShaderBuilder
             return AZ::Failure(AZStd::string::format("Failed to load Slang module %s", sourcePath.c_str()));
         }
 
+        // Shader options: discover the ATOM_OPTION declarations across the loaded modules and
+        // satisfy their accessor externs with the generated implementation module for the
+        // requested lowering mode.
+        auto discoveredOutcome = SlangOptionsModuleGenerator::DiscoverShaderOptions(compilation.m_session);
+        if (!discoveredOutcome.IsSuccess())
+        {
+            return AZ::Failure(AZStd::string::format("%s: %s", sourcePath.c_str(), discoveredOutcome.GetError().c_str()));
+        }
+        compilation.m_discoveredOptions = discoveredOutcome.TakeValue();
+        if (!compilation.m_discoveredOptions.m_declarations.empty())
+        {
+            auto layoutOutcome = SlangOptionsModuleGenerator::BuildShaderOptionGroupLayout(compilation.m_discoveredOptions.m_declarations);
+            if (!layoutOutcome.IsSuccess())
+            {
+                return AZ::Failure(AZStd::string::format("%s: %s", sourcePath.c_str(), layoutOutcome.GetError().c_str()));
+            }
+            compilation.m_shaderOptionLayout = layoutOutcome.TakeValue();
+
+            AZStd::string implementationSource;
+            switch (request.m_optionsLoweringMode)
+            {
+            case ShaderOptionLoweringMode::Baked:
+                if (!request.m_bakedOptionValues)
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "%s: Baked option lowering was requested without option values", sourcePath.c_str()));
+                }
+                implementationSource = SlangOptionsModuleGenerator::GenerateBakedValuesModule(
+                    GeneratedOptionsModuleName, *request.m_bakedOptionValues);
+                break;
+            case ShaderOptionLoweringMode::SpecializationConstant:
+                implementationSource = SlangOptionsModuleGenerator::GenerateImplementationModule(
+                    request.m_optionsLoweringMode, GeneratedOptionsModuleName, *compilation.m_shaderOptionLayout);
+                break;
+            case ShaderOptionLoweringMode::DynamicFallback:
+                if (compilation.m_discoveredOptions.m_fallbackMemberName.empty())
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "%s declares shader options, which need a ShaderVariantKey fallback: add a uint4 member to a "
+                        "ShaderResourceGroup and designate it with ATOM_VARIANT_FALLBACK(<ShaderResourceGroup>, <member>)",
+                        sourcePath.c_str()));
+                }
+                implementationSource = SlangOptionsModuleGenerator::GenerateImplementationModule(
+                    request.m_optionsLoweringMode, GeneratedOptionsModuleName, *compilation.m_shaderOptionLayout);
+                break;
+            }
+
+            diagnostics = nullptr;
+            compilation.m_optionsImplementationModule = compilation.m_session->loadModuleFromSourceString(
+                AZStd::string(GeneratedOptionsModuleName).c_str(),
+                AZStd::string::format("%.*s.slang", AZ_STRING_ARG(GeneratedOptionsModuleName)).c_str(),
+                implementationSource.c_str(),
+                diagnostics.writeRef());
+            SlangCompilerService::ReportDiagnostics(sourcePath, diagnostics, !compilation.m_optionsImplementationModule);
+            if (!compilation.m_optionsImplementationModule)
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "Failed to load the generated shader-options module for %s", sourcePath.c_str()));
+            }
+        }
+
         // Entry-point references are held raw with manual release: AZStd containers cannot hold
         // Slang::ComPtr (deleted unary operator&). The composed program retains them afterwards.
         AZStd::vector<slang::IEntryPoint*> ownedEntryPoints;
@@ -279,6 +349,10 @@ namespace AZ::ShaderBuilder
 
         AZStd::vector<slang::IComponentType*> components;
         components.push_back(compilation.m_module);
+        if (compilation.m_optionsImplementationModule)
+        {
+            components.push_back(compilation.m_optionsImplementationModule);
+        }
         for (const auto& [entryPointName, stageType] : *request.m_entryPoints)
         {
             const SlangStage slangStage = ToSlangStage(stageType);
@@ -439,6 +513,48 @@ namespace AZ::ShaderBuilder
 
         FrontendResult result;
         result.m_reflection = reflectionOutcome.TakeValue();
+
+        // Discovered options replace the walker's DefaultOption placeholder, and the
+        // ATOM_VARIANT_FALLBACK designation lands on its ShaderResourceGroup. The getter the
+        // macro generated already compile-proved the member exists and is uint4; here the names
+        // are checked against what reflection actually grouped.
+        if (compilation.m_shaderOptionLayout)
+        {
+            const auto& layoutOptions = compilation.m_shaderOptionLayout->GetShaderOptions();
+            result.m_reflection.m_shaderOptions.assign(layoutOptions.begin(), layoutOptions.end());
+        }
+        if (!compilation.m_discoveredOptions.m_fallbackMemberName.empty())
+        {
+            const AZStd::string& fallbackGroupName = compilation.m_discoveredOptions.m_fallbackShaderResourceGroupName;
+            auto groupIterator = AZStd::find_if(
+                result.m_reflection.m_shaderResourceGroups.begin(),
+                result.m_reflection.m_shaderResourceGroups.end(),
+                [&fallbackGroupName](const ShaderResourceGroupReflection& groupReflection)
+                {
+                    return groupReflection.m_name.GetStringView() == fallbackGroupName;
+                });
+            if (groupIterator == result.m_reflection.m_shaderResourceGroups.end())
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "ATOM_VARIANT_FALLBACK names %s, which is not a ShaderResourceGroup of %.*s",
+                    fallbackGroupName.c_str(), AZ_STRING_ARG(input.m_shaderSourceFullPath)));
+            }
+            const Name fallbackConstantName(compilation.m_discoveredOptions.m_fallbackMemberName);
+            const bool fallbackConstantFound = AZStd::any_of(
+                groupIterator->m_constants.begin(), groupIterator->m_constants.end(),
+                [&fallbackConstantName](const RHI::ShaderInputConstantDescriptor& constant)
+                {
+                    return constant.m_name == fallbackConstantName;
+                });
+            if (!fallbackConstantFound)
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "ATOM_VARIANT_FALLBACK names %s.%s, which reflection does not list among the ShaderResourceGroup constants",
+                    fallbackGroupName.c_str(), fallbackConstantName.GetCStr()));
+            }
+            groupIterator->m_shaderVariantKeyFallbackName = fallbackConstantName;
+            groupIterator->m_shaderVariantKeyFallbackSize = RPI::ShaderVariantKeyBitCount;
+        }
 
         // Cached products for downstream builders: the AZ-serialized reflection contract and the
         // module closure (a serialized Slang module excludes its imports, so variant builds need

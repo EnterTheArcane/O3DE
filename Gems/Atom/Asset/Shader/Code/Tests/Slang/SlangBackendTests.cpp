@@ -322,6 +322,112 @@ void MainCS(u32 index : SV_DispatchThreadID)
         EXPECT_GT(bytecode->getBufferSize(), 0);
     }
 
+    TEST_F(SlangBackendTests, CompileProgram_AtomOptions_DynamicFallbackEndToEnd)
+    {
+        // The full production options surface with ZERO boilerplate: the injected preamble
+        // carries the ATOM_OPTION macros, the force-included prelude carries the attribute
+        // vocabulary, and the backend discovers the options, generates the dynamic-fallback
+        // accessor module and composes it into the link.
+        constexpr AZStd::string_view optionsShaderSource = R"(
+[AtomShaderResourceGroup(0)]
+struct OptionsTestShaderResourceGroupLayout
+{
+    RWStructuredBuffer<Vector4F> m_output;
+    Vector4F m_color;
+    Vector4U m_shaderVariantKey;
+};
+ParameterBlock<OptionsTestShaderResourceGroupLayout> OptionsSrg;
+
+ATOM_VARIANT_FALLBACK(OptionsSrg, m_shaderVariantKey)
+
+public enum QualityT
+{
+    Low,
+    Medium,
+    High,
+}
+
+ATOM_OPTION(bool, o_useTint, true)
+ATOM_OPTION(QualityT, o_quality, QualityT.Medium)
+ATOM_OPTION_RANGE(i32, o_iterations, 4, 1, 8)
+
+[numthreads(1, 1, 1)]
+void MainCS(u32 index : SV_DispatchThreadID)
+{
+    Vector4F value = OptionsSrg.m_color;
+    if (o_useTint)
+    {
+        value *= 0.5;
+    }
+    for (i32 i = 0; i < o_iterations; ++i)
+    {
+        value.y += 0.125;
+    }
+    if (o_quality == QualityT.High)
+    {
+        value.z = 0.0;
+    }
+    OptionsSrg.m_output[index] = value;
+}
+)";
+        ASSERT_TRUE(AZ::Test::CreateTestFile(*m_tempDirectory, "TestShader.slang", optionsShaderSource));
+        AZ::IO::FixedMaxPath sourcePath(m_tempDirectory->GetDirectory());
+        sourcePath /= "TestShader.slang";
+
+        const AZStd::vector<AZStd::string> includePaths = GetShaderLibIncludePaths();
+        const MapOfStringToStageType entryPoints = {
+            {"MainCS", RPI::ShaderStageType::Compute},
+        };
+
+        SlangBackend::ProgramCompileRequest request;
+        request.m_sourcePath = sourcePath.Native();
+        request.m_entryPoints = &entryPoints;
+        request.m_includePaths = includePaths;
+
+        SlangBackend backend;
+        auto compilerLock = SlangCompilerService::Get().AcquireCompilerLock();
+        for (const RHI::ShaderTargetDescriptor& targetDescriptor : {MakeSpirvTarget(), MakeDxilTarget()})
+        {
+            auto compilationOutcome = backend.CompileProgram(targetDescriptor, request);
+            ASSERT_TRUE(compilationOutcome.IsSuccess()) << compilationOutcome.GetError().c_str();
+            const SlangBackend::ProgramCompilation compilation = compilationOutcome.TakeValue();
+
+            // Discovery found the three options in declaration order and the fallback designation
+            ASSERT_NE(compilation.m_shaderOptionLayout, nullptr);
+            ASSERT_EQ(compilation.m_shaderOptionLayout->GetShaderOptions().size(), 3);
+            EXPECT_EQ(compilation.m_shaderOptionLayout->GetShaderOptions()[0].GetName(), Name{"o_useTint"});
+            EXPECT_EQ(compilation.m_shaderOptionLayout->GetShaderOptions()[1].GetName(), Name{"o_quality"});
+            EXPECT_EQ(compilation.m_shaderOptionLayout->GetShaderOptions()[2].GetName(), Name{"o_iterations"});
+            EXPECT_EQ(compilation.m_discoveredOptions.m_fallbackShaderResourceGroupName, "OptionsSrg");
+            EXPECT_EQ(compilation.m_discoveredOptions.m_fallbackMemberName, "m_shaderVariantKey");
+            EXPECT_NE(compilation.m_optionsImplementationModule, nullptr);
+
+            // The linked program generates bytecode with the composed accessor implementations
+            Slang::ComPtr<slang::IBlob> bytecode;
+            Slang::ComPtr<slang::IBlob> diagnostics;
+            const SlangResult codeResult = compilation.m_linkedProgram->getEntryPointCode(0, 0, bytecode.writeRef(), diagnostics.writeRef());
+            SlangCompilerService::ReportDiagnostics(request.m_sourcePath, diagnostics, SLANG_FAILED(codeResult));
+            ASSERT_TRUE(SLANG_SUCCEEDED(codeResult));
+            ASSERT_NE(bytecode, nullptr);
+            EXPECT_GT(bytecode->getBufferSize(), 0);
+
+            // The walked reflection lists the fallback member among the SRG constants, where
+            // CompileFrontend validates and applies the designation
+            auto reflectionOutcome = SlangReflectionWalker::BuildReflectionData(
+                compilation.m_linkedProgram, targetDescriptor.m_format, compilation.m_entryPointNames);
+            ASSERT_TRUE(reflectionOutcome.IsSuccess()) << reflectionOutcome.GetError().c_str();
+            const ShaderReflectionData reflectionData = reflectionOutcome.TakeValue();
+            ASSERT_EQ(reflectionData.m_shaderResourceGroups.size(), 1);
+            EXPECT_TRUE(AZStd::any_of(
+                reflectionData.m_shaderResourceGroups[0].m_constants.begin(),
+                reflectionData.m_shaderResourceGroups[0].m_constants.end(),
+                [](const RHI::ShaderInputConstantDescriptor& constant)
+                {
+                    return constant.m_name == Name{"m_shaderVariantKey"};
+                }));
+        }
+    }
+
     TEST_F(SlangBackendTests, EnumerateSourceDependencies_ReportsInjectedPreludesAndTransitiveImports)
     {
         // A source importing a sibling module, which itself imports the Bindless module.

@@ -11,6 +11,7 @@
 #include <Editor/ShaderCompilerBackend.h>
 #include <Slang/SlangCompilerService.h>
 #include <Slang/SlangModuleResolver.h>
+#include <Slang/SlangOptionsModuleGenerator.h>
 
 namespace AZ::ShaderBuilder
 {
@@ -58,6 +59,13 @@ namespace AZ::ShaderBuilder
             //! IComponentType::getEntryPointCode.
             AZStd::vector<AZStd::string> m_entryPointNames;
 
+            //! Shader options discovered from the ATOM_OPTION declarations across the loaded
+            //! modules, and the generated accessor-implementation module that satisfies them
+            //! (null when the shader declares no options).
+            SlangOptionsModuleGenerator::DiscoveredShaderOptions m_discoveredOptions;
+            RPI::Ptr<RPI::ShaderOptionGroupLayout> m_shaderOptionLayout;
+            Slang::ComPtr<slang::IModule> m_optionsImplementationModule;
+
             Slang::ComPtr<slang::IComponentType> m_linkedProgram;
         };
 
@@ -80,6 +88,12 @@ namespace AZ::ShaderBuilder
             //! Merged build arguments; -D definitions become session preprocessor macros.
             //! May be null.
             const RHI::ShaderBuildArguments* m_buildArguments = nullptr;
+
+            //! How discovered ATOM_OPTION declarations lower for this compile.
+            ShaderOptionLoweringMode m_optionsLoweringMode = ShaderOptionLoweringMode::DynamicFallback;
+
+            //! Option values for Baked lowering (variant builds); ignored in the other modes.
+            const RPI::ShaderOptionGroup* m_bakedOptionValues = nullptr;
         };
 
         //! Runs the frontend pipeline: session from @targetDescriptor, source load with injected

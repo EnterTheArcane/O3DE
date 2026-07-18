@@ -10,8 +10,10 @@
 //
 // The builder now PRODUCES the ShaderOptionGroup packing (AZSLC parsed it) — so the packing must
 // be bit-compatible with what AZSLC assigns for equivalent declarations, or ShaderVariantKey and
-// every variant tree breaks. And the generated per-mode option modules (feasibility gate 2's
-// proven forms) must compile against real use-sites through the production service.
+// every variant tree breaks. Options are authored with the ATOM_OPTION macros (injected as
+// preamble text in production), discovered through declaration reflection, and satisfied by
+// generated accessor-implementation modules composed at link time — every mode is exercised here
+// against a real use-site through the production service.
 
 #include <AzTest/AzTest.h>
 #include <AzCore/UnitTest/TestTypes.h>
@@ -117,17 +119,58 @@ namespace UnitTest
             return exitCode == 0;
         }
 
-        //! Compiles a use-site that imports the generated options module, optionally composing a
-        //! generated values module (baked mode), through the production compiler service.
-        bool CompileWithGeneratedModules(
-            AZStd::string_view optionsModuleText,
-            AZStd::string_view valuesModuleText,
-            AZStd::vector<uint8_t>& outByteCode)
+        //! The use-site module in the production authoring form: the injected macro preamble,
+        //! the attribute vocabulary (inlined here; production gets it from the force-included
+        //! prelude), a fallback-designated ShaderResourceGroup, and the same option set as
+        //! MakeDeclarations() declared through ATOM_OPTION / ATOM_OPTION_RANGE.
+        static AZStd::string MakeUseSiteSource()
         {
-            constexpr AZStd::string_view useSiteSource = R"(
-module OptionsUseSite;
+            AZStd::string source = "\nmodule OptionsUseSite;\n";
+            for (const AZStd::string_view macroLine : SlangOptionsModuleGenerator::GetAuthoringMacroLines())
+            {
+                source += macroLine;
+                source += '\n';
+            }
+            source += R"(
+[__AttributeUsage(_AttributeTargets.Function)]
+struct AtomOptionAttribute
+{
+    string typeName;
+    string defaultValue;
+};
 
-import GeneratedOptions;
+[__AttributeUsage(_AttributeTargets.Function)]
+struct AtomOptionRangeAttribute
+{
+    int minValue;
+    int maxValue;
+};
+
+[__AttributeUsage(_AttributeTargets.Function)]
+struct AtomVariantFallbackAttribute
+{
+    string shaderResourceGroupName;
+    string memberName;
+};
+
+public enum Quality
+{
+    Low,
+    Medium,
+    High,
+}
+
+struct DrawShaderResourceGroup
+{
+    uint4 m_shaderVariantKeyFallback;
+};
+ParameterBlock<DrawShaderResourceGroup> DrawSrg;
+
+ATOM_VARIANT_FALLBACK(DrawSrg, m_shaderVariantKeyFallback)
+
+ATOM_OPTION(bool, o_useTint, false)
+ATOM_OPTION(Quality, o_quality, Quality.Medium)
+ATOM_OPTION_RANGE(int, o_sampleCount, 4, 1, 8)
 
 RWStructuredBuffer<float4> Output;
 
@@ -140,24 +183,26 @@ void MainCS(uint3 id : SV_DispatchThreadID)
     {
         value *= 0.5;
     }
-    value.x += float(o_quality);
+    value.x += float((int)o_quality);
     value.y += float(o_sampleCount);
     Output[id.x] = value;
 }
 )";
-            if (!AZ::Test::CreateTestFile(*m_tempDirectory, "GeneratedOptions.slang", optionsModuleText))
-            {
-                ADD_FAILURE() << "failed to write options module";
-                return false;
-            }
+            return source;
+        }
 
+        //! Composes the use-site with a generated accessor-implementation module through the
+        //! production compiler service.
+        static bool CompileWithImplementationModule(
+            AZStd::string_view implementationModuleText,
+            AZStd::vector<uint8_t>& outByteCode)
+        {
             SlangCompilerService& service = SlangCompilerService::Get();
             const AZStd::unique_lock<AZStd::recursive_mutex> compilerLock = service.AcquireCompilerLock();
 
             SlangCompilerService::SessionDescriptor sessionDescriptor;
             sessionDescriptor.m_target = SLANG_SPIRV;
             sessionDescriptor.m_profile = "spirv_1_5";
-            sessionDescriptor.m_searchPaths.push_back(m_tempDirectory->GetDirectory());
             auto sessionOutcome = service.CreateSession(sessionDescriptor);
             if (!sessionOutcome.IsSuccess())
             {
@@ -168,7 +213,7 @@ void MainCS(uint3 id : SV_DispatchThreadID)
 
             Slang::ComPtr<slang::IBlob> diagnostics;
             slang::IModule* useSiteModule = session->loadModuleFromSourceString(
-                "OptionsUseSite", "OptionsUseSite.slang", AZStd::string(useSiteSource).c_str(), diagnostics.writeRef());
+                "OptionsUseSite", "OptionsUseSite.slang", MakeUseSiteSource().c_str(), diagnostics.writeRef());
             SlangCompilerService::ReportDiagnostics("OptionsUseSite", diagnostics, !useSiteModule);
             if (!useSiteModule)
             {
@@ -184,23 +229,19 @@ void MainCS(uint3 id : SV_DispatchThreadID)
                 return false;
             }
 
+            diagnostics = nullptr;
+            slang::IModule* implementationModule = session->loadModuleFromSourceString(
+                "AtomGeneratedOptions", "AtomGeneratedOptions.slang", AZStd::string(implementationModuleText).c_str(), diagnostics.writeRef());
+            SlangCompilerService::ReportDiagnostics("AtomGeneratedOptions", diagnostics, !implementationModule);
+            if (!implementationModule)
+            {
+                return false;
+            }
+
             AZStd::vector<slang::IComponentType*> components;
             components.push_back(useSiteModule);
+            components.push_back(implementationModule);
             components.push_back(entryPoint.get());
-
-            slang::IModule* valuesModule = nullptr;
-            if (!valuesModuleText.empty())
-            {
-                diagnostics = nullptr;
-                valuesModule = session->loadModuleFromSourceString(
-                    "GeneratedOptionValues", "GeneratedOptionValues.slang", AZStd::string(valuesModuleText).c_str(), diagnostics.writeRef());
-                SlangCompilerService::ReportDiagnostics("GeneratedOptionValues", diagnostics, !valuesModule);
-                if (!valuesModule)
-                {
-                    return false;
-                }
-                components.push_back(valuesModule);
-            }
 
             Slang::ComPtr<slang::IComponentType> composedProgram;
             diagnostics = nullptr;
@@ -301,6 +342,56 @@ void MainCS(uint3 id : SV_DispatchThreadID)
             << "Builder-produced option packing diverged from AZSLC's assignment";
     }
 
+    TEST_F(SlangOptionsModuleGeneratorTests, Discovery_ReadsAtomOptionDeclarations)
+    {
+        SlangCompilerService& service = SlangCompilerService::Get();
+        const AZStd::unique_lock<AZStd::recursive_mutex> compilerLock = service.AcquireCompilerLock();
+
+        SlangCompilerService::SessionDescriptor sessionDescriptor;
+        sessionDescriptor.m_target = SLANG_SPIRV;
+        sessionDescriptor.m_profile = "spirv_1_5";
+        auto sessionOutcome = service.CreateSession(sessionDescriptor);
+        ASSERT_TRUE(sessionOutcome.IsSuccess());
+        Slang::ComPtr<slang::ISession> session = sessionOutcome.TakeValue();
+
+        Slang::ComPtr<slang::IBlob> diagnostics;
+        slang::IModule* useSiteModule = session->loadModuleFromSourceString(
+            "OptionsUseSite", "OptionsUseSite.slang", MakeUseSiteSource().c_str(), diagnostics.writeRef());
+        SlangCompilerService::ReportDiagnostics("OptionsUseSite", diagnostics, !useSiteModule);
+        ASSERT_NE(useSiteModule, nullptr);
+
+        auto discoveredOutcome = SlangOptionsModuleGenerator::DiscoverShaderOptions(session);
+        ASSERT_TRUE(discoveredOutcome.IsSuccess()) << discoveredOutcome.GetError().c_str();
+        const SlangOptionsModuleGenerator::DiscoveredShaderOptions discovered = discoveredOutcome.TakeValue();
+
+        ASSERT_EQ(discovered.m_declarations.size(), 3);
+        EXPECT_EQ(discovered.m_declarations[0].m_name, Name{"o_useTint"});
+        EXPECT_EQ(discovered.m_declarations[0].m_type, RPI::ShaderOptionType::Boolean);
+        EXPECT_EQ(discovered.m_declarations[0].m_defaultValue, Name{"false"});
+        EXPECT_EQ(discovered.m_declarations[1].m_name, Name{"o_quality"});
+        EXPECT_EQ(discovered.m_declarations[1].m_type, RPI::ShaderOptionType::Enumeration);
+        ASSERT_EQ(discovered.m_declarations[1].m_enumValues.size(), 3);
+        EXPECT_EQ(discovered.m_declarations[1].m_enumValues[0], Name{"Low"});
+        EXPECT_EQ(discovered.m_declarations[1].m_enumValues[2], Name{"High"});
+        EXPECT_EQ(discovered.m_declarations[1].m_defaultValue, Name{"Medium"});
+        EXPECT_EQ(discovered.m_declarations[2].m_name, Name{"o_sampleCount"});
+        EXPECT_EQ(discovered.m_declarations[2].m_type, RPI::ShaderOptionType::IntegerRange);
+        EXPECT_EQ(discovered.m_declarations[2].m_minValue, 1);
+        EXPECT_EQ(discovered.m_declarations[2].m_maxValue, 8);
+        EXPECT_EQ(discovered.m_declarations[2].m_defaultValue, Name{"4"});
+
+        EXPECT_EQ(discovered.m_fallbackShaderResourceGroupName, "DrawSrg");
+        EXPECT_EQ(discovered.m_fallbackMemberName, "m_shaderVariantKeyFallback");
+
+        // The discovered declarations must pack identically to the hand-built equivalents the
+        // AZSLC parity test uses
+        auto discoveredLayoutOutcome = SlangOptionsModuleGenerator::BuildShaderOptionGroupLayout(discovered.m_declarations);
+        ASSERT_TRUE(discoveredLayoutOutcome.IsSuccess());
+        auto referenceLayoutOutcome = SlangOptionsModuleGenerator::BuildShaderOptionGroupLayout(MakeDeclarations());
+        ASSERT_TRUE(referenceLayoutOutcome.IsSuccess());
+        EXPECT_EQ(discoveredLayoutOutcome.GetValue()->GetHash(), referenceLayoutOutcome.GetValue()->GetHash());
+    }
+
     TEST_F(SlangOptionsModuleGeneratorTests, GeneratedModules_CompileInAllThreeModes)
     {
         auto layoutOutcome = SlangOptionsModuleGenerator::BuildShaderOptionGroupLayout(MakeDeclarations());
@@ -309,42 +400,40 @@ void MainCS(uint3 id : SV_DispatchThreadID)
 
         // Specialization-constant mode
         {
-            const AZStd::string optionsModule = SlangOptionsModuleGenerator::GenerateOptionsModule(
-                ShaderOptionLoweringMode::SpecializationConstant, "GeneratedOptions", *layout, "OptionsFallback");
+            const AZStd::string implementationModule = SlangOptionsModuleGenerator::GenerateImplementationModule(
+                ShaderOptionLoweringMode::SpecializationConstant, "AtomGeneratedOptions", *layout);
             AZStd::vector<uint8_t> byteCode;
-            EXPECT_TRUE(CompileWithGeneratedModules(optionsModule, {}, byteCode));
+            EXPECT_TRUE(CompileWithImplementationModule(implementationModule, byteCode));
             EXPECT_FALSE(byteCode.empty());
         }
 
-        // Dynamic-fallback mode
+        // Dynamic-fallback mode: the accessors read the key through the extern getter the
+        // ATOM_VARIANT_FALLBACK macro exported from the use-site module
         {
-            const AZStd::string optionsModule = SlangOptionsModuleGenerator::GenerateOptionsModule(
-                ShaderOptionLoweringMode::DynamicFallback, "GeneratedOptions", *layout, "OptionsFallback");
+            const AZStd::string implementationModule = SlangOptionsModuleGenerator::GenerateImplementationModule(
+                ShaderOptionLoweringMode::DynamicFallback, "AtomGeneratedOptions", *layout);
             AZStd::vector<uint8_t> byteCode;
-            EXPECT_TRUE(CompileWithGeneratedModules(optionsModule, {}, byteCode));
+            EXPECT_TRUE(CompileWithImplementationModule(implementationModule, byteCode));
             EXPECT_FALSE(byteCode.empty());
         }
 
-        // Baked mode: extern declarations satisfied by a generated values module, and different
-        // baked values must produce different bytecode
+        // Baked mode: accessors return link-time constants, and different baked values must
+        // produce different bytecode
         {
-            const AZStd::string optionsModule = SlangOptionsModuleGenerator::GenerateOptionsModule(
-                ShaderOptionLoweringMode::Baked, "GeneratedOptions", *layout, "OptionsFallback");
-
             RPI::ShaderOptionGroup defaultValues(layout);
             defaultValues.SetAllToDefaultValues();
-            const AZStd::string defaultValuesModule = SlangOptionsModuleGenerator::GenerateBakedValuesModule("GeneratedOptionValues", defaultValues);
+            const AZStd::string defaultValuesModule = SlangOptionsModuleGenerator::GenerateBakedValuesModule("AtomGeneratedOptions", defaultValues);
 
             RPI::ShaderOptionGroup tintedValues(layout);
             tintedValues.SetAllToDefaultValues();
             tintedValues.SetValue(Name{"o_useTint"}, Name{"true"});
             tintedValues.SetValue(Name{"o_quality"}, Name{"High"});
-            const AZStd::string tintedValuesModule = SlangOptionsModuleGenerator::GenerateBakedValuesModule("GeneratedOptionValues", tintedValues);
+            const AZStd::string tintedValuesModule = SlangOptionsModuleGenerator::GenerateBakedValuesModule("AtomGeneratedOptions", tintedValues);
 
             AZStd::vector<uint8_t> defaultByteCode;
-            EXPECT_TRUE(CompileWithGeneratedModules(optionsModule, defaultValuesModule, defaultByteCode));
+            EXPECT_TRUE(CompileWithImplementationModule(defaultValuesModule, defaultByteCode));
             AZStd::vector<uint8_t> tintedByteCode;
-            EXPECT_TRUE(CompileWithGeneratedModules(optionsModule, tintedValuesModule, tintedByteCode));
+            EXPECT_TRUE(CompileWithImplementationModule(tintedValuesModule, tintedByteCode));
 
             const bool byteCodeDiffers =
                 defaultByteCode.size() != tintedByteCode.size() ||

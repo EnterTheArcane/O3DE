@@ -16,10 +16,12 @@
 
 namespace AZ::ShaderBuilder
 {
-    //! Serves source files to a Slang compile session, injecting the force-included Atom prelude
-    //! imports into every .slang module it loads — this is what makes the prelude vocabulary
-    //! available everywhere with zero per-file imports. A #line directive after the injected
-    //! imports keeps diagnostics on original file/line numbers.
+    //! Serves source files to a Slang compile session, injecting the force-included Atom
+    //! preamble into every .slang module it loads: the prelude imports that make the Atom
+    //! vocabulary available everywhere with zero per-file imports, and the shader-options
+    //! authoring macro definitions (module imports cannot propagate preprocessor definitions).
+    //! A #line directive after the injected preamble keeps diagnostics on original file/line
+    //! numbers.
     //!
     //! The force-included modules themselves (and anything else named in the exemption list) are
     //! served verbatim so injection cannot create import cycles.
@@ -29,10 +31,11 @@ namespace AZ::ShaderBuilder
     class SlangSourceFileSystem final : public ISlangFileSystem
     {
     public:
-        //! @param injectedImportLines Complete import statements, e.g. "import Atom.RPI.Prelude;".
+        //! @param injectedPreambleLines Complete source lines prepended to every served .slang
+        //!                              file: import statements and macro definitions.
         //! @param injectionExemptFileNames File names (no directory) served without injection.
         SlangSourceFileSystem(
-            AZStd::vector<AZStd::string> injectedImportLines,
+            AZStd::vector<AZStd::string> injectedPreambleLines,
             AZStd::vector<AZStd::string> injectionExemptFileNames);
 
         // ISlangUnknown
@@ -49,7 +52,7 @@ namespace AZ::ShaderBuilder
     private:
         void* GetInterface(const SlangUUID& uuid);
 
-        AZStd::vector<AZStd::string> m_injectedImportLines;
+        AZStd::vector<AZStd::string> m_injectedPreambleLines;
         AZStd::vector<AZStd::string> m_injectionExemptFileNames;
         AZStd::atomic<uint32_t> m_referenceCount{1};
     };

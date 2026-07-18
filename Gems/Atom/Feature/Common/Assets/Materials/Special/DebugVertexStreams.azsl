@@ -19,6 +19,11 @@ option enum class TangentOptions { UseVertexData, UseSurfaceGradient} o_tangentO
 option enum class BitangentOptions { UseVertexData, UseSurfaceGradient, ReconstructBitangent} o_bitangentOptions = BitangentOptions::UseVertexData;
 option enum class ColorDisplayMode {ColorSpace, UnitSpace} o_colorDisplayMode = ColorDisplayMode::ColorSpace;
 
+interface IOptions
+{
+    DebugVertexStream 
+}
+
 ShaderResourceGroup MaterialSrg : SRG_PerMaterial
 {
     uint m_uvIndex;

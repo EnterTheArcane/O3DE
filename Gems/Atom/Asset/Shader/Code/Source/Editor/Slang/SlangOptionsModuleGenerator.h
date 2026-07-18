@@ -18,6 +18,8 @@
 #include <Atom/RPI.Reflect/Shader/ShaderOptionGroup.h>
 #include <Atom/RPI.Reflect/Shader/ShaderOptionGroupLayout.h>
 
+#include <slang.h>
+
 namespace AZ::ShaderBuilder
 {
     //! One shader option as authored. The builder owns packing: key offsets and sizes are
@@ -42,38 +44,73 @@ namespace AZ::ShaderBuilder
     //! the builder generates a different implementation module per mode (feasibility gate 2).
     enum class ShaderOptionLoweringMode
     {
-        //! `export static const` values composed at link time — variant builds.
+        //! Accessors return link-time constant values — variant builds.
         Baked,
 
-        //! Specialization constants ([vk::constant_id]) — root variant on capable targets.
+        //! Accessors return specialization constants ([vk::constant_id]) — root variant on
+        //! capable targets.
         SpecializationConstant,
 
-        //! Statics initialized from the variant-key fallback constant buffer read.
+        //! Accessors extract their bits from the ShaderVariantKey fallback read out of the
+        //! designated ShaderResourceGroup constant.
         DynamicFallback,
     };
 
     namespace SlangOptionsModuleGenerator
     {
+        //! Name prefix of the per-option accessor functions the ATOM_OPTION macros declare
+        //! `extern` and the generated implementation modules `export`. The accessor ABI is always
+        //! `int <AccessorNamePrefix><option name>()` — the authored property casts the result back
+        //! to the authored type, so implementation modules never need visibility into
+        //! author-declared enum types.
+        static constexpr AZStd::string_view AccessorNamePrefix = "AtomOptionImpl_";
+
+        //! Name of the exported getter the ATOM_VARIANT_FALLBACK macro generates in the authored
+        //! module, and that DynamicFallback implementation modules declare `extern`.
+        static constexpr AZStd::string_view FallbackKeyGetterName = "Atom_GetShaderVariantKeyFallback";
+
+        //! The shader-options authoring macros, injected as preamble text into every .slang
+        //! module a compile session loads (module imports cannot propagate preprocessor
+        //! definitions). The [AtomOption]/[AtomOptionRange]/[AtomVariantFallback] attributes they
+        //! reference come from the force-included Atom.RPI.Prelude import.
+        AZStd::span<const AZStd::string_view> GetAuthoringMacroLines();
+
+        //! Everything the ATOM_OPTION discovery walk finds across a session's loaded modules.
+        struct DiscoveredShaderOptions
+        {
+            //! In module-load order, then declaration order inside each module — the packing order.
+            AZStd::vector<ShaderOptionDeclaration> m_declarations;
+
+            //! ShaderVariantKey fallback designation from ATOM_VARIANT_FALLBACK; both empty when
+            //! no fallback is designated.
+            AZStd::string m_fallbackShaderResourceGroupName;
+            AZStd::string m_fallbackMemberName;
+        };
+
+        //! Walks the declaration reflection of every module loaded in @session for
+        //! [AtomOption]-attributed accessor functions and the [AtomVariantFallback] getter.
+        //! Enumeration option values resolve against enum declarations found in the same walk.
+        AZ::Outcome<DiscoveredShaderOptions, AZStd::string> DiscoverShaderOptions(slang::ISession* session);
+
         //! Builds the finalized ShaderOptionGroupLayout from declarations: sequential deterministic
         //! packing in declaration order from bit 0, bit-compatible with AZSLC's assignment so
         //! ShaderVariantKey, variant trees and the RPI runtime are untouched.
         AZ::Outcome<RPI::Ptr<RPI::ShaderOptionGroupLayout>, AZStd::string> BuildShaderOptionGroupLayout(
             AZStd::span<const ShaderOptionDeclaration> declarations);
 
-        //! Generates the options module for @mode: the declarations every use-site sees as bare
-        //! identifiers (booleans as `bool`, enumerations and ranges as `i32`).
-        //! Baked mode declares `extern static const` symbols satisfied by a values module at link
-        //! time; SpecializationConstant assigns sequential [vk::constant_id] ids; DynamicFallback
-        //! reads bit-packed values from @fallbackBufferName using the layout's key packing.
-        AZStd::string GenerateOptionsModule(
+        //! Generates the accessor implementation module composed with the program at link time:
+        //! one `export int AtomOptionImpl_<name>()` body per option.
+        //! SpecializationConstant assigns sequential [vk::constant_id] ids initialized to the
+        //! defaults; DynamicFallback extracts each option's bits from the 128-bit key returned by
+        //! the extern fallback getter. Baked values come from GenerateBakedValuesModule instead.
+        AZStd::string GenerateImplementationModule(
             ShaderOptionLoweringMode mode,
             AZStd::string_view moduleName,
-            const RPI::ShaderOptionGroupLayout& layout,
-            AZStd::string_view fallbackBufferName);
+            const RPI::ShaderOptionGroupLayout& layout);
 
-        //! Generates the values module composed with baked-mode programs at link time: one
-        //! `export static const` per option carrying the values selected in @optionGroup
-        //! (defaults fill unspecified options).
+        //! Generates the accessor implementation module for Baked lowering: each accessor returns
+        //! the link-time constant value selected in @optionGroup (defaults fill unspecified
+        //! options), so codegen specializes per variant.
         AZStd::string GenerateBakedValuesModule(
             AZStd::string_view moduleName,
             const RPI::ShaderOptionGroup& optionGroup);
