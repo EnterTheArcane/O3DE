@@ -436,6 +436,27 @@ void MainCS(u32 index : SV_DispatchThreadID)
                 {
                     return constant.m_name == Name{"m_shaderVariantKey"};
                 }));
+
+            // Specialization-constant lowering compiles on the same target, and the walker skips
+            // the specialization parameters (Spirv) rather than misreading them as bindings
+            SlangBackend::ProgramCompileRequest specializationRequest = request;
+            specializationRequest.m_optionsLoweringMode = ShaderOptionLoweringMode::SpecializationConstant;
+            auto specializationOutcome = backend.CompileProgram(targetDescriptor, specializationRequest);
+            ASSERT_TRUE(specializationOutcome.IsSuccess()) << specializationOutcome.GetError().c_str();
+            const SlangBackend::ProgramCompilation specializationCompilation = specializationOutcome.TakeValue();
+
+            Slang::ComPtr<slang::IBlob> specializationByteCode;
+            diagnostics = nullptr;
+            const SlangResult specializationCodeResult = specializationCompilation.m_linkedProgram->getEntryPointCode(
+                0, 0, specializationByteCode.writeRef(), diagnostics.writeRef());
+            SlangCompilerService::ReportDiagnostics(request.m_sourcePath, diagnostics, SLANG_FAILED(specializationCodeResult));
+            ASSERT_TRUE(SLANG_SUCCEEDED(specializationCodeResult));
+            EXPECT_GT(specializationByteCode->getBufferSize(), 0);
+
+            auto specializationReflectionOutcome = SlangReflectionWalker::BuildReflectionData(
+                specializationCompilation.m_linkedProgram, targetDescriptor.m_format, specializationCompilation.m_entryPointNames);
+            ASSERT_TRUE(specializationReflectionOutcome.IsSuccess()) << specializationReflectionOutcome.GetError().c_str();
+            EXPECT_EQ(specializationReflectionOutcome.GetValue().m_shaderResourceGroups.size(), 1);
         }
     }
 

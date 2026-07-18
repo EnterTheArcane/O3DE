@@ -13,6 +13,10 @@
         ],
         "dxc": ["-Zpr" // Row major matrices.
         ],
+        "namedArgumentGroups": {
+            "slang": ["-sc-options" // Use specialization constants for shader options (mirrors the azslc flag).
+            ]
+        },
         // The following apply for all Metal based platforms.
         "spirv-cross": ["--msl"
                       , "--msl-version"

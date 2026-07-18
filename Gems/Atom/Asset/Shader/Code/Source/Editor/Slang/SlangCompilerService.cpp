@@ -9,6 +9,9 @@
 #include "SlangCompilerService.h"
 
 #include <AzCore/Debug/Trace.h>
+#include <AzCore/IO/Path/Path.h>
+#include <AzCore/IO/SystemFile.h>
+#include <AzCore/Utils/Utils.h>
 
 namespace AZ::ShaderBuilder
 {
@@ -31,6 +34,40 @@ namespace AZ::ShaderBuilder
         {
             m_buildTag = m_globalSession->getBuildTagString();
             AZ_TracePrintf(LogName, "Loaded Slang compiler, build tag: %s\n", m_buildTag.c_str());
+
+            // Slang reaches DXIL by emitting HLSL into a downstream DXC. Route it at the DXC
+            // fork the engine ships for AZSLC — every DXIL then comes from the same compiler
+            // regardless of source language, and the fork accepts the `volatile` fold blocker
+            // (vanilla DXC reserves the keyword) the specialization-constant read below needs.
+            AZ::IO::FixedMaxPath directXShaderCompilerDirectory = AZ::Utils::GetExecutableDirectory();
+            directXShaderCompilerDirectory /= "Builders/DirectXShaderCompiler";
+            AZ::IO::FixedMaxPath directXShaderCompilerLibrary = directXShaderCompilerDirectory;
+            directXShaderCompilerLibrary /= "dxcompiler.dll";
+            if (AZ::IO::SystemFile::Exists(directXShaderCompilerLibrary.c_str()))
+            {
+                m_globalSession->setDownstreamCompilerPath(SLANG_PASS_THROUGH_DXC, directXShaderCompilerDirectory.c_str());
+            }
+            else
+            {
+                AZ_Warning(
+                    LogName, false,
+                    "DirectXShaderCompiler not found at %s; Slang DXIL compiles fall back to the embedded compiler, which cannot "
+                    "produce specialization-constant shaders",
+                    directXShaderCompilerDirectory.c_str());
+            }
+
+            // Prepended to every HLSL source Slang generates. The volatile local blocks constant
+            // folding, so the specialization id survives into the DXIL as a discrete patchable
+            // dword the dxsc.exe tool can find — the same fold blocker AZSLC emits for its
+            // specialization constants. `static` keeps it out of the DXIL when unreferenced
+            // (including lib_* profiles), so non-specialized compiles are unaffected.
+            m_globalSession->setLanguagePrelude(
+                SLANG_SOURCE_LANGUAGE_HLSL,
+                "static int AtomReadSpecializationConstant(int specializationId)\n"
+                "{\n"
+                "    volatile int specializationValue = specializationId;\n"
+                "    return specializationValue;\n"
+                "}\n");
         }
     }
 

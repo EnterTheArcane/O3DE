@@ -89,6 +89,26 @@ namespace AZ::ShaderBuilder
         }
     }
 
+    //! Whether the merged build arguments request specialization-constant option lowering: the
+    //! engine-default shader_build_options put "-sc-options" in the "slang" argument group,
+    //! mirroring the azslc flag, so supervariants opt out per scope the same way in both
+    //! languages.
+    static bool UseSpecializationConstantsRequested(const RHI::ShaderBuildArguments* buildArguments)
+    {
+        if (!buildArguments)
+        {
+            return false;
+        }
+        for (const AZStd::string& argument : buildArguments->GetNamedArgumentGroup(SlangArgumentGroupName))
+        {
+            if (argument == "-sc-options")
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     //! Splits a "-DNAME" or "-DNAME=VALUE" argument into a session preprocessor macro.
     static void AppendDefinitionAsMacro(
         AZStd::string_view argument,
@@ -300,7 +320,7 @@ namespace AZ::ShaderBuilder
                 break;
             case ShaderOptionLoweringMode::SpecializationConstant:
                 implementationSource = SlangOptionsModuleGenerator::GenerateImplementationModule(
-                    request.m_optionsLoweringMode, GeneratedOptionsModuleName,
+                    request.m_optionsLoweringMode, targetDescriptor.m_format, GeneratedOptionsModuleName,
                     compilation.m_discoveredOptions, *compilation.m_shaderOptionLayout);
                 break;
             case ShaderOptionLoweringMode::DynamicFallback:
@@ -312,7 +332,7 @@ namespace AZ::ShaderBuilder
                         sourcePath.c_str()));
                 }
                 implementationSource = SlangOptionsModuleGenerator::GenerateImplementationModule(
-                    request.m_optionsLoweringMode, GeneratedOptionsModuleName,
+                    request.m_optionsLoweringMode, targetDescriptor.m_format, GeneratedOptionsModuleName,
                     compilation.m_discoveredOptions, *compilation.m_shaderOptionLayout);
                 break;
             }
@@ -488,6 +508,9 @@ namespace AZ::ShaderBuilder
         const AZStd::string apiPreludeDirectory = GetApiPreludeDirectory(*input.m_shaderPlatformInterface, *input.m_platformInfo, input.m_builderName);
         request.m_apiPreludeDirectory = apiPreludeDirectory;
         request.m_buildArguments = input.m_buildArguments;
+        request.m_optionsLoweringMode = UseSpecializationConstantsRequested(input.m_buildArguments)
+            ? ShaderOptionLoweringMode::SpecializationConstant
+            : ShaderOptionLoweringMode::DynamicFallback;
 
         SlangCompilerService& compilerService = SlangCompilerService::Get();
         auto compilerLock = compilerService.AcquireCompilerLock();
@@ -517,6 +540,8 @@ namespace AZ::ShaderBuilder
         {
             const auto& layoutOptions = compilation.m_shaderOptionLayout->GetShaderOptions();
             result.m_reflection.m_shaderOptions.assign(layoutOptions.begin(), layoutOptions.end());
+            result.m_reflection.m_usesSpecializationConstants =
+                request.m_optionsLoweringMode == ShaderOptionLoweringMode::SpecializationConstant;
         }
         if (!compilation.m_discoveredOptions.m_fallbackMemberName.empty())
         {
@@ -637,8 +662,12 @@ namespace AZ::ShaderBuilder
         request.m_sourcePath = input.m_sourcePath;
         request.m_entryPoints = &entryPoints;
         request.m_includePaths = input.m_includePaths;
-        request.m_apiPreludeDirectory = GetApiPreludeDirectory(*input.m_shaderPlatformInterface, *input.m_platformInfo, input.m_builderName);
+        const AZStd::string apiPreludeDirectory = GetApiPreludeDirectory(*input.m_shaderPlatformInterface, *input.m_platformInfo, input.m_builderName);
+        request.m_apiPreludeDirectory = apiPreludeDirectory;
         request.m_buildArguments = input.m_buildArguments;
+        request.m_optionsLoweringMode = input.m_useSpecializationConstants
+            ? ShaderOptionLoweringMode::SpecializationConstant
+            : ShaderOptionLoweringMode::DynamicFallback;
 
         SlangCompilerService& compilerService = SlangCompilerService::Get();
         auto compilerLock = compilerService.AcquireCompilerLock();
@@ -663,6 +692,17 @@ namespace AZ::ShaderBuilder
         result.m_descriptor.m_entryFunctionName = entryPointName;
         const uint8_t* bytes = static_cast<const uint8_t*>(bytecode->getBufferPointer());
         result.m_descriptor.m_byteCode.assign(bytes, bytes + bytecode->getBufferSize());
+
+        // Bytecode-level fixups the RHI declares (DX12 patches specialization-constant sentinels
+        // here and records the patch offsets in m_extraData)
+        const bool stageUsesSpecializationConstants =
+            input.m_useSpecializationConstants && compilation.m_shaderOptionLayout != nullptr;
+        if (!input.m_shaderPlatformInterface->PostProcessStage(
+                AZStd::string(input.m_sourcePath), AZStd::string(input.m_tempDirPath), stageUsesSpecializationConstants, result.m_descriptor))
+        {
+            return AZ::Failure(AZStd::string::format(
+                "Post-processing failed for entry point %s of %.*s", entryPointName.c_str(), AZ_STRING_ARG(input.m_sourcePath)));
+        }
         return AZ::Success(AZStd::move(result));
     }
 } // namespace AZ::ShaderBuilder

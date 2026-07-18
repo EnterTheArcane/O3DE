@@ -116,6 +116,21 @@ namespace AZ::RHI
             const RHI::ShaderBuildArguments& shaderBuildArguments,
             const bool useSpecializationConstants) const = 0;
 
+        //! Post-processes one compiled stage after target code generation: bytecode-level fixups
+        //! this RHI needs regardless of which shader language produced the stage. DX12 patches
+        //! specialization-constant sentinels here (dxsc) and records the patch-offsets file in
+        //! StageDescriptor::m_extraData. The base implementation is a pass-through.
+        //! The legacy AZSL path (CompilePlatformInternal) performs the same fixups internally and
+        //! must not be routed through this hook a second time.
+        virtual bool PostProcessStage(
+            [[maybe_unused]] const AZStd::string& shaderSourcePath,
+            [[maybe_unused]] const AZStd::string& tempFolderPath,
+            [[maybe_unused]] bool useSpecializationConstants,
+            [[maybe_unused]] StageDescriptor& stageDescriptor) const
+        {
+            return true;
+        }
+
         //! Query whether the shaders are set to build with debug information
         virtual bool BuildHasDebugInfo(const RHI::ShaderBuildArguments& shaderBuildArguments) const
         {

@@ -52,8 +52,27 @@ namespace AZ
 
             RHI::ShaderTargetDescriptor GetShaderTargetDescriptor(const AssetBuilderSDK::PlatformInfo& platform) const override;
 
+            //! Patches specialization-constant sentinels into the stage's DXIL (dxsc) and records
+            //! the patch-offsets file in m_extraData. Language backends that produce bytecode
+            //! without CompilePlatformInternal call this after code generation.
+            bool PostProcessStage(
+                const AZStd::string& shaderSourcePath,
+                const AZStd::string& tempFolderPath,
+                bool useSpecializationConstants,
+                StageDescriptor& stageDescriptor) const override;
+
         private:
             ShaderPlatformInterface() = delete;
+
+            //! Runs dxsc.exe on @dxilFilePath: writes <outputBasePath>.dxil.patched.bin and
+            //! <outputBasePath>.offsets.json (the specialization-id → patch-offset map).
+            bool PatchSpecializationConstants(
+                const AZStd::string& dxilFilePath,
+                const AZStd::string& outputBasePath,
+                const AZStd::string& shaderSourceFile,
+                const AZStd::string& tempFolder,
+                AZStd::string& patchedFilePath,
+                AZStd::string& offsetsFilePath) const;
 
             bool CompileHLSLShader(
                 const AZStd::string& shaderSourceFile,

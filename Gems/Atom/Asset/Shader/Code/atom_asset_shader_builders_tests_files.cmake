@@ -18,6 +18,7 @@ set(FILES
     Tests/Slang/OptionsAuthoringDiscoveryProbeTests.cpp
     Tests/Slang/OptionsInterfaceStyleProbeTests.cpp
     Tests/Slang/SlangBackendTests.cpp
+    Tests/Slang/SpecializationLoweringProbeTests.cpp
     Tests/Slang/SlangCompilerServiceTests.cpp
     Tests/Slang/SlangOptionsModuleGeneratorTests.cpp
     Tests/Slang/SlangModuleResolverTests.cpp

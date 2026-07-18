@@ -431,10 +431,11 @@ void MainCS(uint3 id : SV_DispatchThreadID)
         const RPI::Ptr<RPI::ShaderOptionGroupLayout> layout = layoutOutcome.TakeValue();
         const SlangOptionsModuleGenerator::DiscoveredShaderOptions discovered = MakeDiscoveredOptions();
 
-        // Specialization-constant mode
+        // Specialization-constant mode (Spirv leg — the Dxil splice leg is covered by
+        // SpecializationLoweringProbeTests through dxsc)
         {
             const AZStd::string implementationModule = SlangOptionsModuleGenerator::GenerateImplementationModule(
-                ShaderOptionLoweringMode::SpecializationConstant, "AtomGeneratedOptions", discovered, *layout);
+                ShaderOptionLoweringMode::SpecializationConstant, RHI::ShaderTargetFormat::Spirv, "AtomGeneratedOptions", discovered, *layout);
             AZStd::vector<uint8_t> byteCode;
             EXPECT_TRUE(CompileWithImplementationModule(implementationModule, byteCode));
             EXPECT_FALSE(byteCode.empty());
@@ -444,7 +445,7 @@ void MainCS(uint3 id : SV_DispatchThreadID)
         // through an import of the declaring module
         {
             const AZStd::string implementationModule = SlangOptionsModuleGenerator::GenerateImplementationModule(
-                ShaderOptionLoweringMode::DynamicFallback, "AtomGeneratedOptions", discovered, *layout);
+                ShaderOptionLoweringMode::DynamicFallback, RHI::ShaderTargetFormat::Spirv, "AtomGeneratedOptions", discovered, *layout);
             AZStd::vector<uint8_t> byteCode;
             EXPECT_TRUE(CompileWithImplementationModule(implementationModule, byteCode));
             EXPECT_FALSE(byteCode.empty());

@@ -245,6 +245,88 @@ namespace AZ
             return descriptor;
         }
 
+        bool ShaderPlatformInterface::PatchSpecializationConstants(
+            const AZStd::string& dxilFilePath,
+            const AZStd::string& outputBasePath,
+            const AZStd::string& shaderSourceFile,
+            const AZStd::string& tempFolder,
+            AZStd::string& patchedFilePath,
+            AZStd::string& offsetsFilePath) const
+        {
+            // Patch the shader so it can be used with specialization constants.
+            const auto dxscRelativePath = RHI::GetDirectXShaderCompilerPath("Builders/DirectXShaderCompiler/dxsc.exe");
+
+            patchedFilePath = outputBasePath;
+            AzFramework::StringFunc::Path::ReplaceExtension(patchedFilePath, "dxil.patched.bin");
+            offsetsFilePath = outputBasePath;
+            AzFramework::StringFunc::Path::ReplaceExtension(offsetsFilePath, "offsets.json");
+
+            const auto dxscCommandOptions = AZStd::string::format(
+                //   1.sentinel    3.offsets_output
+                //     |    2.output    |   4.dxil-in
+                //     |       |        |      |
+                "-sv=%lu -o=\"%s\" -f=\"%s\" \"%s\"",
+                static_cast<unsigned long>(SCSentinelValue), // 1
+                patchedFilePath.c_str(), // 2
+                offsetsFilePath.c_str(), // 3
+                dxilFilePath.c_str() // 4
+            );
+
+            return RHI::ExecuteShaderCompiler(dxscRelativePath, dxscCommandOptions, shaderSourceFile, tempFolder, "DXSC");
+        }
+
+        bool ShaderPlatformInterface::PostProcessStage(
+            const AZStd::string& shaderSourcePath,
+            const AZStd::string& tempFolderPath,
+            bool useSpecializationConstants,
+            StageDescriptor& stageDescriptor) const
+        {
+            if (!useSpecializationConstants || stageDescriptor.m_byteCode.empty())
+            {
+                return true;
+            }
+
+            // The patch tool operates on files: stage the bytecode in the job temp folder,
+            // entry-qualified so multi-entry shaders cannot collide
+            AZStd::string outputBasePath;
+            AzFramework::StringFunc::Path::GetFileName(shaderSourcePath.c_str(), outputBasePath);
+            outputBasePath += "_" + stageDescriptor.m_entryFunctionName;
+            AzFramework::StringFunc::Path::Join(tempFolderPath.c_str(), outputBasePath.c_str(), outputBasePath);
+
+            AZStd::string dxilFilePath = outputBasePath;
+            AzFramework::StringFunc::Path::ReplaceExtension(dxilFilePath, "dxil.bin");
+            {
+                AZ::IO::SystemFile dxilFile;
+                if (!dxilFile.Open(
+                        dxilFilePath.c_str(),
+                        AZ::IO::SystemFile::SF_OPEN_CREATE | AZ::IO::SystemFile::SF_OPEN_WRITE_ONLY))
+                {
+                    AZ_Error(DX12ShaderPlatformName, false, "Failed to stage DXIL for specialization patching at %s", dxilFilePath.c_str());
+                    return false;
+                }
+                dxilFile.Write(stageDescriptor.m_byteCode.data(), stageDescriptor.m_byteCode.size());
+            }
+
+            AZStd::string patchedFilePath;
+            AZStd::string offsetsFilePath;
+            if (!PatchSpecializationConstants(
+                    dxilFilePath, outputBasePath, shaderSourcePath, tempFolderPath, patchedFilePath, offsetsFilePath))
+            {
+                return false;
+            }
+
+            AZ::IO::SystemFile patchedFile;
+            if (!patchedFile.Open(patchedFilePath.c_str(), AZ::IO::SystemFile::SF_OPEN_READ_ONLY))
+            {
+                AZ_Error(DX12ShaderPlatformName, false, "Failed to read the patched DXIL at %s", patchedFilePath.c_str());
+                return false;
+            }
+            stageDescriptor.m_byteCode.resize_no_construct(patchedFile.Length());
+            patchedFile.Read(stageDescriptor.m_byteCode.size(), stageDescriptor.m_byteCode.data());
+            stageDescriptor.m_extraData = AZStd::move(offsetsFilePath);
+            return true;
+        }
+
         bool ShaderPlatformInterface::CompileHLSLShader(
             const AZStd::string& shaderSourceFile,
             const AZStd::string& tempFolder,
@@ -357,36 +439,17 @@ namespace AZ
 
             if (useSpecializationConstants)
             {
-                // Need to patch the shader so it can be used with specialization constants.
-                const auto dxscRelativePath = RHI::GetDirectXShaderCompilerPath("Builders/DirectXShaderCompiler/dxsc.exe");
-
                 AZStd::string shaderOutputCommon;
                 AzFramework::StringFunc::Path::GetFileName(shaderSourceFile.c_str(), shaderOutputCommon);
                 AzFramework::StringFunc::Path::Join(tempFolder.c_str(), shaderOutputCommon.c_str(), shaderOutputCommon);
 
-                AZStd::string patchedShaderOutput = shaderOutputCommon;
-                AzFramework::StringFunc::Path::ReplaceExtension(patchedShaderOutput, "dxil.patched.bin");
-                AZStd::string offsetsOutput = shaderOutputCommon;
-                AzFramework::StringFunc::Path::ReplaceExtension(offsetsOutput, "offsets.json");
-
-                const auto dxscCommandOptions = AZStd::string::format(
-                    //   1.sentinel    3.offsets_output   
-                    //     |    2.output    |   4.dxil-in
-                    //     |       |        |      |
-                    "-sv=%lu -o=\"%s\" -f=\"%s\" \"%s\"",
-                    static_cast<unsigned long>(SCSentinelValue), // 1
-                    patchedShaderOutput.c_str(), // 2
-                    offsetsOutput.c_str(), // 3
-                    shaderOutputFile.c_str() // 4
-                );
-
-                if (!RHI::ExecuteShaderCompiler(dxscRelativePath, dxscCommandOptions, shaderSourceFile, tempFolder, "DXSC"))
+                AZStd::string patchedShaderOutput;
+                if (!PatchSpecializationConstants(
+                        shaderOutputFile, shaderOutputCommon, shaderSourceFile, tempFolder, patchedShaderOutput, specializationOffsetsFile))
                 {
                     return false;
                 }
                 shaderOutputFile = patchedShaderOutput;
-
-                specializationOffsetsFile = offsetsOutput;
             }
 
             auto shaderOutputFileLoadResult = AZ::RHI::LoadFileBytes(shaderOutputFile.c_str());

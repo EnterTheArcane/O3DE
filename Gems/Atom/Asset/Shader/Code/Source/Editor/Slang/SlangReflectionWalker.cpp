@@ -429,6 +429,13 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
             slang::TypeLayoutReflection* typeLayout = parameterLayout->getTypeLayout();
             const char* parameterName = variable->getName();
 
+            // Specialization constants ([vk::constant_id] in the generated options module) are
+            // not resource bindings; they are described by the shader option layout instead
+            if (parameterLayout->getCategory() == slang::ParameterCategory::SpecializationConstant)
+            {
+                continue;
+            }
+
             if (typeLayout->getKind() == slang::TypeReflection::Kind::ParameterBlock)
             {
                 slang::TypeLayoutReflection* elementTypeLayout = typeLayout->getElementTypeLayout();

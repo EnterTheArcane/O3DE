@@ -481,6 +481,7 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
 
     AZStd::string GenerateImplementationModule(
         ShaderOptionLoweringMode mode,
+        RHI::ShaderTargetFormat targetFormat,
         AZStd::string_view moduleName,
         const DiscoveredShaderOptions& discovered,
         const RPI::ShaderOptionGroupLayout& layout)
@@ -490,10 +491,10 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
         AZStd::string module = MakeModuleHeader(moduleName, discovered, mode == ShaderOptionLoweringMode::DynamicFallback);
         const auto optionLookup = MakeOptionLookup(layout);
 
-        if (mode == ShaderOptionLoweringMode::SpecializationConstant)
+        if (mode == ShaderOptionLoweringMode::SpecializationConstant && targetFormat == RHI::ShaderTargetFormat::Spirv)
         {
-            // One specialization constant per option, ids in layout order, holding the actual
-            // (unbiased) integer value, defaulted to the option default
+            // One native specialization constant per option, ids in layout order, holding the
+            // actual (unbiased) integer value, defaulted to the option default
             uint32_t specializationId = 0;
             for (const RPI::ShaderOptionDescriptor& option : layout.GetShaderOptions())
             {
@@ -519,6 +520,32 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
                         return AZStd::string::format("(%s)%s", declaration.m_typeText.c_str(), constantName.c_str());
                     default:
                         return AZStd::string::format("(%s)%s", declaration.m_typeText.c_str(), constantName.c_str());
+                    }
+                });
+        }
+        else if (mode == ShaderOptionLoweringMode::SpecializationConstant)
+        {
+            // Targets without native specialization constants (Dxil): each specialization id is
+            // routed through the compiler service's HLSL-prelude volatile read, so it survives
+            // into the bytecode as a discrete dword the dxsc patch (PostProcessStage) can find
+            module +=
+                "int AtomReadSpecializationConstantRaw(int specializationId)\n"
+                "{\n"
+                "    __intrinsic_asm \"AtomReadSpecializationConstant($0)\";\n"
+                "}\n\n";
+
+            AppendProviderStructs(module, discovered,
+                [&optionLookup](const ShaderOptionDeclaration& declaration)
+                {
+                    const RPI::ShaderOptionDescriptor& option = *optionLookup.find(declaration.m_name.GetStringView())->second;
+                    const AZStd::string readExpression =
+                        AZStd::string::format("AtomReadSpecializationConstantRaw(%d)", option.GetSpecializationId());
+                    switch (declaration.m_type)
+                    {
+                    case RPI::ShaderOptionType::Boolean:
+                        return AZStd::string::format("%s != 0", readExpression.c_str());
+                    default:
+                        return AZStd::string::format("(%s)%s", declaration.m_typeText.c_str(), readExpression.c_str());
                     }
                 });
         }

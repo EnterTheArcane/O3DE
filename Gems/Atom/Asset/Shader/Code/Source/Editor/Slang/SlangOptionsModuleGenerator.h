@@ -15,6 +15,8 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
 
+#include <Atom/RHI.Edit/ShaderTargetDescriptor.h>
+
 #include <Atom/RPI.Reflect/Shader/ShaderOptionGroup.h>
 #include <Atom/RPI.Reflect/Shader/ShaderOptionGroupLayout.h>
 
@@ -116,12 +118,16 @@ namespace AZ::ShaderBuilder
 
         //! Generates the implementation module composed with the program at link time: one
         //! `export struct <provider> : <interface>` per discovered provider, each static method
-        //! returning its option's value for the mode. SpecializationConstant assigns sequential
-        //! [vk::constant_id] ids initialized to the defaults; DynamicFallback extracts each
-        //! option's bits from the designated fallback member, read directly through an import of
-        //! the declaring module. Baked values come from GenerateBakedValuesModule instead.
+        //! returning its option's value for the mode. DynamicFallback extracts each option's
+        //! bits from the designated fallback member, read directly through an import of the
+        //! declaring module. SpecializationConstant is target-specific: Spirv uses native
+        //! [vk::constant_id] constants with sequential ids; Dxil routes each specialization id
+        //! through the compiler service's HLSL-prelude volatile read so the id survives into the
+        //! DXIL as the patchable dword dxsc.exe expects (PostProcessStage runs the patch).
+        //! Baked values come from GenerateBakedValuesModule instead.
         AZStd::string GenerateImplementationModule(
             ShaderOptionLoweringMode mode,
+            RHI::ShaderTargetFormat targetFormat,
             AZStd::string_view moduleName,
             const DiscoveredShaderOptions& discovered,
             const RPI::ShaderOptionGroupLayout& layout);
