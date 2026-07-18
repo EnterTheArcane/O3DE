@@ -103,19 +103,6 @@ namespace AZ
         using PatchMap = AZStd::unordered_map<AddressType, AZStd::any>;
         using ChildPatchMap = AZStd::unordered_map<AddressType, AZStd::vector<AddressType> >;
 
-        template<typename Void, typename...>
-        struct has_common_type_helper
-            : AZStd::false_type
-        {};
-
-        template<typename... Types>
-        struct has_common_type_helper<AZStd::void_t<std::common_type_t<Types...>>, Types...>
-            : AZStd::true_type
-        {};
-
-        template<typename... Types>
-        using has_common_type = has_common_type_helper<void, Types...>;
-
         /**
         * Custom serializer for our address type, as we want to be more space efficient and not store every element of the container
         * separately.

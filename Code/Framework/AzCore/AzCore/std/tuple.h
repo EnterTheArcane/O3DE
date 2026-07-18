@@ -13,10 +13,8 @@
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/function/invoke.h>
 #include <AzCore/std/hash.h>
-#include <AzCore/std/typetraits/conjunction.h>
 #include <AzCore/std/typetraits/is_same.h>
 #include <AzCore/std/typetraits/is_swappable.h>
-#include <AzCore/std/typetraits/void_t.h>
 #include <AzCore/std/utility/tuple_concepts.h>
 #include <AzCore/std/utils.h>
 
@@ -37,7 +35,7 @@ namespace AZStd
         }
 
         template<typename... TupleTypes>
-            requires hash_enabled_concept_v<TupleTypes...>
+            requires hash_enabled<TupleTypes...>
         constexpr size_t operator()(const AZStd::tuple<TupleTypes...>& value) const
         {
             return ElementHasher(value, AZStd::make_index_sequence<sizeof...(Types)>{});

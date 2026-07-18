@@ -38,7 +38,8 @@ namespace AZ::RPI
             return false;
         }
 
-        template<typename T, unsigned int N, AZStd::enable_if_t<N <= 4, bool> = true>
+        template<typename T, unsigned int N>
+            requires (N <= 4)
         bool SetVectorParameter(const MaterialShaderParameterLayout::Index& index, const T value)
         {
             const auto* desc{ params->m_layout->GetDescriptor(index) };

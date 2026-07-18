@@ -202,7 +202,7 @@ namespace AZStd
                     else
                     {
                         // Since there are elements already in the bucket, update `insertIter` to where the elements will need to be inserted.
-                        if (!table->find_insert_position(valueKey, table->m_keyEqual, insertIter, numElements, integral_constant<bool, Traits::has_multi_elements>()))
+                        if (!table->find_insert_position(valueKey, table->m_keyEqual, insertIter, numElements))
                         {
                             // An element was found but we don't allow for duplicate elements in this table.
                             // This happens when there was an insertion of two elements that are equal but have different hashes,
@@ -406,7 +406,6 @@ namespace AZStd
     class hash_table
     {
         typedef hash_table<Traits>  this_type;
-        typedef AZStd::integral_constant<bool, Traits::is_dynamic>   is_dynamic;
         typedef Internal::hash_table_storage<Traits>                storage_type;
         friend class Internal::hash_table_storage<Traits>;
     public:
@@ -607,7 +606,7 @@ namespace AZStd
                 }
                 else
                 {
-                    if (!find_insert_position(AZStd::forward<decltype(valueKey)>(valueKey), m_keyEqual, iter, numElements, AZStd::integral_constant<bool, Traits::has_multi_elements>()))
+                    if (!find_insert_position(AZStd::forward<decltype(valueKey)>(valueKey), m_keyEqual, iter, numElements))
                     {
                         return;
                     }
@@ -968,7 +967,7 @@ namespace AZStd
             }
             else
             {
-                if (!find_insert_position(valueKey, keyEq, iter, numElements, AZStd::integral_constant<bool, Traits::has_multi_elements>()))
+                if (!find_insert_position(valueKey, keyEq, iter, numElements))
                 {
                     // discard new list element and return existing
                     return (pair_iter_bool(iter, false));
@@ -1040,30 +1039,21 @@ namespace AZStd
         // find_insert_position sets insertIter to where the element should be inserted
         // and returns true if the element should be inserted, otherwise false
         template<class ComparableToKey, class KeyEq>
-        bool find_insert_position(const ComparableToKey& keyCmp, const KeyEq& keyEq, iterator& insertIter, size_type numElements, const true_type& /* is multi elements */)
+        bool find_insert_position(const ComparableToKey& keyCmp, const KeyEq& keyEq, iterator& insertIter, size_type numElements)
         {
             for (size_type i = 0; i < numElements; ++i, ++insertIter)
             {
                 if (keyEq(keyCmp, Traits::key_from_value(*insertIter)))
                 {
-                    ++insertIter;
-                    break;
-                }
-            }
-
-            // always return true since multi elements (like multiset) allow repeated elements
-            return true;
-        }
-
-        template<class ComparableToKey, class KeyEq>
-        bool find_insert_position(const ComparableToKey& keyCmp, const KeyEq& keyEq, iterator& insertIter, size_type numElements, const false_type& /* !is multi elements */)
-        {
-            for (size_type i = 0; i < numElements; ++i, ++insertIter)
-            {
-                if (keyEq(keyCmp, Traits::key_from_value(*insertIter)))
-                {
-                    // Element already exists, it shouldn't be inserted as we don't allow more than one repeated element for this specialization
-                    return false;
+                    if constexpr (Traits::has_multi_elements)
+                    {
+                        ++insertIter;
+                        break;
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 }
             }
 
@@ -1088,7 +1078,7 @@ namespace AZStd
             }
             else
             {
-                if (!find_insert_position(valueKey, m_keyEqual, iter, numElements, AZStd::integral_constant<bool, Traits::has_multi_elements>()))
+                if (!find_insert_position(valueKey, m_keyEqual, iter, numElements))
                 {
                     // discard new list element and return existing
                     return (pair_iter_bool(iter, false));
@@ -1123,7 +1113,7 @@ namespace AZStd
             else
             {
                 iterator iter = bucket.second;
-                if (!find_insert_position(valueKey, m_keyEqual, iter, numElements, AZStd::integral_constant<bool, Traits::has_multi_elements>()))
+                if (!find_insert_position(valueKey, m_keyEqual, iter, numElements))
                 {
                     // discard new list element and return existing
                     m_data.m_list.pop_front();
@@ -1191,7 +1181,7 @@ namespace AZStd
         }
         else
         {
-            if (!find_insert_position(valueKey, m_keyEqual, iter, numElements, AZStd::bool_constant<Traits::has_multi_elements>()))
+            if (!find_insert_position(valueKey, m_keyEqual, iter, numElements))
             {
                 // The element has been found so return an iterator to it with the inserted flag set to false and the supplied node handle forwarded back to the caller
                 return { iter, false, AZStd::move(nodeHandle) };

@@ -454,14 +454,16 @@ namespace AZ
 
     //! Returns true if the number provided is even.
     template<typename T>
-    constexpr AZStd::enable_if_t<AZStd::is_integral<T>::value, bool> IsEven(T a)
+        requires AZStd::is_integral_v<T>
+    constexpr bool IsEven(T a)
     {
         return a % 2 == 0;
     }
 
     //! Returns true if the number provided is odd.
     template<typename T>
-    constexpr AZStd::enable_if_t<AZStd::is_integral<T>::value, bool> IsOdd(T a)
+        requires AZStd::is_integral_v<T>
+    constexpr bool IsOdd(T a)
     {
         return a % 2 != 0;
     }

@@ -52,8 +52,8 @@ namespace GraphCanvas
         }
 
         template <typename T>
-        auto operator<< (T&& value) ->
-            AZStd::enable_if_t<AZStd::is_void_v<AZStd::void_t<decltype(AZStd::to_string(value))>>, TranslationKey&>
+            requires requires(T&& value) { AZStd::to_string(AZStd::forward<T>(value)); }
+        TranslationKey& operator<< (T&& value)
         {
             AZStd::string valueString = AZStd::to_string(AZStd::forward<T>(value));
             if (!m_key.empty() && !valueString.empty())

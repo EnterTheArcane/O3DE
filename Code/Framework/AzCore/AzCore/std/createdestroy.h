@@ -215,13 +215,9 @@ namespace AZStd::Internal
         && is_trivially_copyable_v<iter_value_t<Out>>;
 
     template<class InputIterator, class ResultIterator>
-    using is_fast_copy = bool_constant<indirectly_trivially_copyable<ResultIterator>
+    constexpr bool is_fast_copy_v = indirectly_trivially_copyable<ResultIterator>
         && contiguous_iterator<InputIterator>
-        && contiguous_iterator<ResultIterator>
-        >;
-
-    template<class InputIterator, class ResultIterator>
-    constexpr bool is_fast_copy_v = is_fast_copy<InputIterator, ResultIterator>::value;
+        && contiguous_iterator<ResultIterator>;
 
 
     // The bool dispatch argument is retained for existing call sites.
@@ -581,9 +577,7 @@ namespace AZStd::Internal
         && sizeof(iter_value_t<Out>) == 1;
 
     template<class Iterator>
-    using is_fast_fill = bool_constant<indirectly_copy_assignable<Iterator> && contiguous_iterator<Iterator>>;
-    template<class Iterator>
-    constexpr bool is_fast_fill_v = is_fast_fill<Iterator>::value;
+    constexpr bool is_fast_fill_v = indirectly_copy_assignable<Iterator> && contiguous_iterator<Iterator>;
 
     // The bool dispatch argument is retained for existing call sites.
     template <class ForwardIterator, class T>

@@ -29,13 +29,8 @@ namespace GradientSignal
 {
     //////////////////////////////////////////////////////////////////////////
     // Set of helpers so we can set the preview entityId on configurations that have a gradient sampler
-    template <typename T, typename = int>
-    struct HasGradientSampler
-        : AZStd::false_type {};
-
     template <typename T>
-    struct HasGradientSampler <T, decltype((void)T::m_gradientSampler, 0)>
-        : AZStd::true_type {};
+    concept HasGradientSampler = requires(T& value) { value.m_gradientSampler; };
 
     // Should be specialized to true_type for any class that needs custom handling
     template<typename T>
@@ -43,19 +38,25 @@ namespace GradientSignal
         : AZStd::false_type {};
 
     template<typename T>
-    bool ValidateGradientEntityIds([[maybe_unused]] T& configuration, AZStd::enable_if_t<!HasGradientSampler<T>::value && !HasCustomSetSamplerOwner<T>::value>* = nullptr) { return true; }
+        requires (!HasGradientSampler<T>)
+            && (!HasCustomSetSamplerOwner<T>::value)
+    bool ValidateGradientEntityIds([[maybe_unused]] T& configuration) { return true; }
 
     template<typename T>
-    bool ValidateGradientEntityIds(T& configuration, AZStd::enable_if_t<HasGradientSampler<T>::value>* = nullptr)
+        requires HasGradientSampler<T>
+    bool ValidateGradientEntityIds(T& configuration)
     {
         return configuration.m_gradientSampler.ValidateGradientEntityId();
     }
 
     template<typename T>
-    void SetSamplerOwnerEntity([[maybe_unused]] T& configuration, [[maybe_unused]] AZ::EntityId entityId, AZStd::enable_if_t<!HasGradientSampler<T>::value && !HasCustomSetSamplerOwner<T>::value>* = nullptr) {}
+        requires (!HasGradientSampler<T>)
+            && (!HasCustomSetSamplerOwner<T>::value)
+    void SetSamplerOwnerEntity([[maybe_unused]] T& configuration, [[maybe_unused]] AZ::EntityId entityId) {}
 
     template<typename T>
-    void SetSamplerOwnerEntity(T& configuration, AZ::EntityId entityId, AZStd::enable_if_t<HasGradientSampler<T>::value>* = nullptr)
+        requires HasGradientSampler<T>
+    void SetSamplerOwnerEntity(T& configuration, AZ::EntityId entityId)
     {
         configuration.m_gradientSampler.m_ownerEntityId = entityId;
     }

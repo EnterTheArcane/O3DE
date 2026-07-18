@@ -217,7 +217,7 @@ namespace AZStd
             : m_allocator(allocator)
         {
             m_head.m_next = m_head.m_prev = &m_head;
-            insert_iter(begin(), first, last, is_integral<InputIterator>());
+            insert_iter(begin(), first, last);
         }
 
         template<Internal::container_compatible_range<value_type> R>
@@ -269,7 +269,7 @@ namespace AZStd
         template <class InputIterator>
         void assign(InputIterator first, InputIterator last)
         {
-            assign_iter(first, last, is_integral<InputIterator>());
+            assign_iter(first, last);
         }
 
 
@@ -279,12 +279,12 @@ namespace AZStd
             if constexpr (is_lvalue_reference_v<R>)
             {
                 auto rangeView = AZStd::forward<R>(rg) | views::common;
-                assign_iter(ranges::begin(rangeView), ranges::end(rangeView), false_type{});
+                assign_iter(ranges::begin(rangeView), ranges::end(rangeView));
             }
             else
             {
                 auto rangeView = AZStd::forward<R>(rg) | views::as_rvalue | views::common;
-                assign_iter(ranges::begin(rangeView), ranges::end(rangeView), false_type{});
+                assign_iter(ranges::begin(rangeView), ranges::end(rangeView));
             }
         }
 
@@ -465,7 +465,7 @@ namespace AZStd
         template <class InputIterator>
         AZ_FORCE_INLINE iterator insert(const_iterator insertPos, InputIterator first, InputIterator last)
         {
-            return insert_iter(insertPos, first, last, is_integral<InputIterator>());
+            return insert_iter(insertPos, first, last);
         }
 
         template<Internal::container_compatible_range<value_type> R>
@@ -474,12 +474,12 @@ namespace AZStd
             if constexpr (is_lvalue_reference_v<R>)
             {
                 auto rangeView = AZStd::forward<R>(rg) | views::common;
-                return insert_iter(insertPos, ranges::begin(rangeView), ranges::end(rangeView), false_type{});
+                return insert_iter(insertPos, ranges::begin(rangeView), ranges::end(rangeView));
             }
             else
             {
                 auto rangeView = AZStd::forward<R>(rg) | views::as_rvalue | views::common;
-                return insert_iter(insertPos, ranges::begin(rangeView), ranges::end(rangeView), false_type{});
+                return insert_iter(insertPos, ranges::begin(rangeView), ranges::end(rangeView));
             }
         }
 
@@ -1177,53 +1177,55 @@ namespace AZStd
         }
 
         template <class InputIterator>
-        AZ_FORCE_INLINE iterator insert_iter(const_iterator insertPos, const InputIterator& first, const InputIterator& last, const true_type& /* is_integral<InputIterator> */)
+        AZ_FORCE_INLINE iterator insert_iter(const_iterator insertPos, const InputIterator& first, const InputIterator& last)
         {
-            return insert(insertPos, (size_type)first, (value_type)last);
-        }
-
-        template <class InputIterator>
-        AZ_FORCE_INLINE iterator insert_iter(const_iterator insertPos, const InputIterator& first, const InputIterator& last, const false_type& /* !is_integral<InputIterator> */)
-        {
-            if (first == last)
+            if constexpr (is_integral_v<InputIterator>)
             {
-                // If the list is empty, return a non-const iterator version of insertPos.
-                return iterator(AZSTD_CHECKED_ITERATOR(iterator_impl, insertPos.base().m_node));
-            }
-
-            InputIterator iter(first);
-            // Store the iterator of the element inserted first (to be returned).
-            iterator returnValue = insert(insertPos, *iter++);
-            for (; iter != last; ++iter)
-            {
-                insert(insertPos, *iter);
-            }
-            return returnValue;
-        }
-
-        template <class InputIterator>
-        inline void assign_iter(const InputIterator& numElements, const InputIterator& value, const true_type& /* is_integral<InputIterator> */)
-        {
-            assign((size_type)numElements, value);
-        }
-
-        template <class InputIterator>
-        inline void assign_iter(const InputIterator& first, const InputIterator& last, const false_type& /* !is_integral<InputIterator> */)
-        {
-            iterator i = begin();
-            iterator curEnd = end();
-            InputIterator src(first);
-            for (; i != curEnd && src != last; ++i, ++src)
-            {
-                *i = *src;
-            }
-            if (src == last)
-            {
-                erase(i, curEnd);
+                return insert(insertPos, (size_type)first, (value_type)last);
             }
             else
             {
-                insert(curEnd, src, last);
+                if (first == last)
+                {
+                    // If the list is empty, return a non-const iterator version of insertPos.
+                    return iterator(AZSTD_CHECKED_ITERATOR(iterator_impl, insertPos.base().m_node));
+                }
+
+                InputIterator iter(first);
+                // Store the iterator of the element inserted first (to be returned).
+                iterator returnValue = insert(insertPos, *iter++);
+                for (; iter != last; ++iter)
+                {
+                    insert(insertPos, *iter);
+                }
+                return returnValue;
+            }
+        }
+
+        template <class InputIterator>
+        inline void assign_iter(const InputIterator& first, const InputIterator& last)
+        {
+            if constexpr (is_integral_v<InputIterator>)
+            {
+                assign((size_type)first, last);
+            }
+            else
+            {
+                iterator i = begin();
+                iterator curEnd = end();
+                InputIterator src(first);
+                for (; i != curEnd && src != last; ++i, ++src)
+                {
+                    *i = *src;
+                }
+                if (src == last)
+                {
+                    erase(i, curEnd);
+                }
+                else
+                {
+                    insert(curEnd, src, last);
+                }
             }
         }
 

@@ -17,7 +17,6 @@
 #include <AzCore/std/typetraits/is_lvalue_reference.h>
 #include <AzCore/std/typetraits/is_rvalue_reference.h>
 #include <AzCore/std/typetraits/remove_cvref.h>
-#include <AzCore/std/typetraits/void_t.h>
 #include <AzCore/std/utility/move.h>
 #include <AzCore/std/utility/declval.h>
 

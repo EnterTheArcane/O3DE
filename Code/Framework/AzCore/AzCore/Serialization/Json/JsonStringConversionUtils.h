@@ -19,7 +19,8 @@ namespace AZ
     {
         // Helper function for string to signed integer
         // Note - assumes that the rapidjson Value is actually a kStringType
-        template <typename T, typename AZStd::enable_if_t<AZStd::is_signed<T>::value, int> = 0>
+        template <typename T>
+            requires AZStd::is_signed_v<T>
         static JsonSerializationResult::Result TextToValue(T* outputValue, const char* text, JsonDeserializerContext& context)
         {
             namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.
@@ -51,7 +52,8 @@ namespace AZ
 
         // Helper function for string to unsigned integer
         // Note - assumes that the rapidjson Value is actually a kStringType
-        template <typename T, typename AZStd::enable_if_t<AZStd::is_unsigned<T>::value, int> = 0>
+        template <typename T>
+            requires AZStd::is_unsigned_v<T>
         static JsonSerializationResult::Result TextToValue(T* outputValue, const char* text, JsonDeserializerContext& context)
         {
             namespace JSR = JsonSerializationResult; // Used remove name conflicts in AzCore in uber builds.

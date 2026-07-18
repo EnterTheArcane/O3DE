@@ -353,7 +353,7 @@ namespace AzToolsFramework
                     return false;
                 }
 
-                return CallDoComponentsMatch(thisActualComponent, otherActualComponent, typename HasEditorComponentMatching<ComponentClass>::type());
+                return CallDoComponentsMatch(thisActualComponent, otherActualComponent);
             }
 
             /**
@@ -373,7 +373,7 @@ namespace AzToolsFramework
                     return;
                 }
 
-                CallPasteOverComponent(sourceActualComponent, destinationActualComponent, typename HasEditorComponentPasteOver<ComponentClass>::type());
+                CallPasteOverComponent(sourceActualComponent, destinationActualComponent);
             }
 
             /**
@@ -387,23 +387,24 @@ namespace AzToolsFramework
             }
 
         private:
-            bool CallDoComponentsMatch(const ComponentClass* thisComponent, const ComponentClass* otherComponent, const AZStd::true_type&) const
+            bool CallDoComponentsMatch(const ComponentClass* thisComponent, const ComponentClass* otherComponent) const
             {
-                return ComponentClass::DoComponentsMatch(thisComponent, otherComponent);
+                if constexpr (HasEditorComponentMatching<ComponentClass>::value)
+                {
+                    return ComponentClass::DoComponentsMatch(thisComponent, otherComponent);
+                }
+                else
+                {
+                    return true;
+                }
             }
 
-            bool CallDoComponentsMatch(const ComponentClass* /*thisComponent*/, const ComponentClass* /*outerComponent*/, const AZStd::false_type&) const
+            void CallPasteOverComponent(const ComponentClass* sourceComponent, ComponentClass* destinationComponent)
             {
-                return true;
-            }
-
-            void CallPasteOverComponent(const ComponentClass* sourceComponent, ComponentClass* destinationComponent, const AZStd::true_type&)
-            {
-                ComponentClass::PasteOverComponent(sourceComponent, destinationComponent);
-            }
-
-            void CallPasteOverComponent(const ComponentClass* /*sourceComponent*/, ComponentClass* /*destinationComponent*/, const AZStd::false_type&)
-            {
+                if constexpr (HasEditorComponentPasteOver<ComponentClass>::value)
+                {
+                    ComponentClass::PasteOverComponent(sourceComponent, destinationComponent);
+                }
             }
         };
 
@@ -441,4 +442,3 @@ namespace AzToolsFramework
 } // namespace AzToolsFramework
 
 AZ_DECLARE_EBUS_MULTI_ADDRESS_WITH_TRAITS(AZTF_API, AzToolsFramework::Components::EditorComponentDescriptor, AZ::ComponentDescriptorBusTraits);
-

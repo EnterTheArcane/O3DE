@@ -37,7 +37,7 @@ namespace AZStd
 
         //      Once we start adding move semantics
         //      template<typename T>
-        //      typename Utils::enable_if<AZStd::is_convertible<T&,Internal::thread_move_t<T> >, T >::type move(T& t)
+        //      template<class T> requires AZStd::convertible_to<T&, Internal::thread_move_t<T>> T move(T& t)
         //      {
         //          return T(Internal::thread_move_t<T>(t));
         //      }

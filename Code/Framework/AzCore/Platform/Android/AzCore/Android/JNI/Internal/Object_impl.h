@@ -510,8 +510,8 @@ namespace AZ { namespace Android
             ////////////////////////////////////////////////////////////////
             template<typename Allocator>
             template<typename ReturnType, typename ...Args>
-            typename AZStd::enable_if<AZStd::is_convertible<ReturnType, jobject>::value, ReturnType>::type
-            Object<Allocator>::InvokeObjectMethod(const char* methodName, Args&&... parameters)
+                requires AZStd::is_convertible_v<ReturnType, jobject>
+            ReturnType Object<Allocator>::InvokeObjectMethod(const char* methodName, Args&&... parameters)
             {
                 ReturnType defaultValue = nullptr;
 
@@ -749,8 +749,8 @@ namespace AZ { namespace Android
             ////////////////////////////////////////////////////////////////
             template<typename Allocator>
             template<typename ReturnType, typename ...Args>
-            typename AZStd::enable_if<AZStd::is_convertible<ReturnType, jobject>::value, ReturnType>::type
-            Object<Allocator>::InvokeStaticObjectMethod(const char* methodName, Args&&... parameters)
+                requires AZStd::is_convertible_v<ReturnType, jobject>
+            ReturnType Object<Allocator>::InvokeStaticObjectMethod(const char* methodName, Args&&... parameters)
             {
                 const ReturnType defaultValue = nullptr;
 
@@ -934,8 +934,8 @@ namespace AZ { namespace Android
             ////////////////////////////////////////////////////////////////
             template<typename Allocator>
             template<typename ValueType, typename ...Args>
-            typename AZStd::enable_if<AZStd::is_convertible<ValueType, jobject>::value>::type
-            Object<Allocator>::SetObjectField(const char* fieldName, ValueType value)
+                requires AZStd::is_convertible_v<ValueType, jobject>
+            void Object<Allocator>::SetObjectField(const char* fieldName, ValueType value)
             {
                 if (!m_instanceConstructed)
                 {
@@ -1086,8 +1086,8 @@ namespace AZ { namespace Android
             ////////////////////////////////////////////////////////////////
             template<typename Allocator>
             template<typename ReturnType, typename ...Args>
-            typename AZStd::enable_if<AZStd::is_convertible<ReturnType, jobject>::value, ReturnType>::type
-            Object<Allocator>::GetObjectField(const char* fieldName)
+                requires AZStd::is_convertible_v<ReturnType, jobject>
+            ReturnType Object<Allocator>::GetObjectField(const char* fieldName)
             {
                 const ReturnType defaultValue(nullptr);
 
@@ -1268,8 +1268,8 @@ namespace AZ { namespace Android
             ////////////////////////////////////////////////////////////////
             template<typename Allocator>
             template<typename ValueType, typename ...Args>
-            typename AZStd::enable_if<AZStd::is_convertible<ValueType, jobject>::value>::type
-            Object<Allocator>::SetStaticObjectField(const char* fieldName, ValueType value)
+                requires AZStd::is_convertible_v<ValueType, jobject>
+            void Object<Allocator>::SetStaticObjectField(const char* fieldName, ValueType value)
             {
                 JNIEnv* jniEnv = GetEnv();
                 if (!jniEnv)
@@ -1414,8 +1414,8 @@ namespace AZ { namespace Android
             ////////////////////////////////////////////////////////////////
             template<typename Allocator>
             template<typename ReturnType, typename ...Args>
-            typename AZStd::enable_if<AZStd::is_convertible<ReturnType, jobject>::value, ReturnType>::type
-            Object<Allocator>::GetStaticObjectField(const char* fieldName)
+                requires AZStd::is_convertible_v<ReturnType, jobject>
+            ReturnType Object<Allocator>::GetStaticObjectField(const char* fieldName)
             {
                 const ReturnType defaultValue(nullptr);
 

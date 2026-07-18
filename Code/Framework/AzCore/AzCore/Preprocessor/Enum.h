@@ -170,7 +170,11 @@ namespace AZ::Internal
     template <class T, class = void>
     inline constexpr bool HasGetAzEnumTraits = false;
     template <class T>
-    inline constexpr bool HasGetAzEnumTraits<T, AZStd::enable_if_t<!AZStd::is_void_v<decltype(GetAzEnumTraits(AZStd::declval<T>()))>>> = true;
+        requires requires
+        {
+            requires (!AZStd::is_void_v<decltype(GetAzEnumTraits(AZStd::declval<T>()))>);
+        }
+    inline constexpr bool HasGetAzEnumTraits<T, void> = true;
 
     // Deleted function to provide the AZ::Internal namespace with the GetAzEnumTraits symbol
     // This is to make an overload which the AzEnumTraitsImpl would use with its
@@ -182,7 +186,8 @@ namespace AZ::Internal
     template <class T, class = void>
     struct GetAzEnumTraits_Impl {};
     template <class T>
-    struct GetAzEnumTraits_Impl<T, AZStd::enable_if_t<HasGetAzEnumTraits<T>>>
+        requires HasGetAzEnumTraits<T>
+    struct GetAzEnumTraits_Impl<T, void>
     {
         // The AZ_ENUM macros contain a function which returns a struct
         // with the enum traits within it
@@ -194,7 +199,8 @@ namespace AZ::Internal
     inline constexpr bool HasAzEnumTraitsImpl = false;
 
     template<class T>
-    inline constexpr bool HasAzEnumTraitsImpl<T, AZStd::enable_if_t<!AZStd::is_void_v<typename GetAzEnumTraits_Impl<T>::type>>> = true;
+        requires requires { typename GetAzEnumTraits_Impl<T>::type; }
+    inline constexpr bool HasAzEnumTraitsImpl<T, void> = true;
 } // namespace AZ::Internal
 
 namespace AZ

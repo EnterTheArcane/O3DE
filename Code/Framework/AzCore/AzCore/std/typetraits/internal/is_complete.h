@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include <AzCore/std/typetraits/disjunction.h>
+#include <AzCore/std/typetraits/integral_constant.h>
 #include <AzCore/std/typetraits/is_array.h>
 #include <AzCore/std/typetraits/is_function.h>
 #include <AzCore/std/typetraits/is_reference.h>
@@ -24,12 +24,10 @@ namespace AZStd::Internal
 
     template<class TypeIdentity, class NestedType = typename TypeIdentity::type>
     constexpr auto is_complete_or_unbounded_impl(TypeIdentity)
-        -> disjunction<
-        is_reference<NestedType>,
-        is_function<NestedType>,
-        is_void<NestedType>,
-        is_unbounded_array<NestedType>
-        >;
+        -> bool_constant<is_reference_v<NestedType>
+            || is_function_v<NestedType>
+            || is_void_v<NestedType>
+            || is_unbounded_array_v<NestedType>>;
 
     template<class T>
     using is_complete_or_unbounded = decltype(is_complete_or_unbounded_impl(type_identity<T>{}));

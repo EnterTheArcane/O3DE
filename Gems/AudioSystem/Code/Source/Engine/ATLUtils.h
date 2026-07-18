@@ -158,9 +158,9 @@ namespace Audio
      * Flags
      * Used for storing, checking, setting, and clearing related bits together.
      */
-    template<typename StoredType,
-        typename = AZStd::enable_if_t<AZStd::is_integral<StoredType>::value
-                                      && AZStd::is_unsigned<StoredType>::value>>
+    template<typename StoredType, typename = void>
+        requires AZStd::is_integral_v<StoredType>
+            && AZStd::is_unsigned_v<StoredType>
     class Flags
     {
     public:

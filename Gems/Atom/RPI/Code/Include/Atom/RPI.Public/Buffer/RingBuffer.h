@@ -69,7 +69,8 @@ namespace AZ::RPI
 
         //! Increments the current buffer index, potentially resized the current buffer and updates the data of the current data. This is a
         //! convenience function which calls AdvanceCurrentBuffer(), CreateOrResizeCurrentBuffer(...) and UpdateCurrentBufferData(...)
-        template<typename T, typename = AZStd::enable_if_t<AZStd::is_convertible_v<T, AZStd::span<const typename T::value_type>>>>
+        template<typename T>
+            requires AZStd::is_convertible_v<T, AZStd::span<const typename T::value_type>>
         void AdvanceCurrentBufferAndUpdateData(const AZStd::unordered_map<int, T>& data)
         {
             AZStd::unordered_map<int, const void*> rawData;

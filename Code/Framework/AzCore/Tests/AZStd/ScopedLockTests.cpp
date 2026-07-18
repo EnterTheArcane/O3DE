@@ -128,41 +128,30 @@ namespace UnitTest
     inline namespace ScopedLockInternal
     {
         struct NotAType {};
-        template<typename T, typename = void>
-        struct has_mutex_type
-        {
-            static constexpr bool value{ false };
-        };
         template<typename T>
-        struct has_mutex_type<T, AZStd::void_t<typename T::mutex_type>>
-        {
-            static constexpr bool value{ true };
-        };
-
-        template<typename T>
-        constexpr bool has_mutex_type_v = has_mutex_type<T>::value;
+        concept HasMutexType = requires { typename T::mutex_type; };
     }
 
     TEST_F(ScopedLockTest, scoped_lock_mutex_type_trait_ExistOnlyForOneArgumentTemplate)
     {
-        static_assert(!ScopedLockInternal::has_mutex_type_v<AZStd::scoped_lock<>>, "ScopedLock with empty parameter should not have the mutex_type alias");
+        static_assert(!ScopedLockInternal::HasMutexType<AZStd::scoped_lock<>>, "ScopedLock with empty parameter should not have the mutex_type alias");
 
         {
             using MutexType = ScopedTestMutex;
             using ScopedLockType = AZStd::scoped_lock<MutexType>;
-            static_assert(ScopedLockInternal::has_mutex_type_v<ScopedLockType>, "ScopedLock with one parameter type should have a mutex_type alias");
+            static_assert(ScopedLockInternal::HasMutexType<ScopedLockType>, "ScopedLock with one parameter type should have a mutex_type alias");
             static_assert(AZStd::is_same<typename ScopedLockType::mutex_type, MutexType>::value, "ScopedLock mutex_type alias should match MutexType alias");
         }
         {
             using MutexType = AZStd::recursive_mutex;
             using ScopedLockType = AZStd::scoped_lock<MutexType>;
-            static_assert(ScopedLockInternal::has_mutex_type_v<ScopedLockType>, "ScopedLock with one parameter type should have a mutex_type alias");
+            static_assert(ScopedLockInternal::HasMutexType<ScopedLockType>, "ScopedLock with one parameter type should have a mutex_type alias");
             static_assert(AZStd::is_same<typename ScopedLockType::mutex_type, MutexType>::value, "ScopedLock mutex_type alias should match MutexType alias");
         }
 
-        static_assert(!ScopedLockInternal::has_mutex_type_v<AZStd::scoped_lock<ScopedTestMutex, ScopedTestMutex>>, "ScopedLock with two template parameter types should not have a mutex_type alias");
-        static_assert(!ScopedLockInternal::has_mutex_type_v<AZStd::scoped_lock<AZStd::recursive_mutex, ScopedTestMutex>>, "ScopedLock with two template parameter types should not have a mutex_type alias");
-        static_assert(!ScopedLockInternal::has_mutex_type_v<AZStd::scoped_lock<ScopedTestMutex, AZStd::recursive_mutex, ScopedTestMutex>>, "ScopedLock with two template parameter types should not have a mutex_type alias");
+        static_assert(!ScopedLockInternal::HasMutexType<AZStd::scoped_lock<ScopedTestMutex, ScopedTestMutex>>, "ScopedLock with two template parameter types should not have a mutex_type alias");
+        static_assert(!ScopedLockInternal::HasMutexType<AZStd::scoped_lock<AZStd::recursive_mutex, ScopedTestMutex>>, "ScopedLock with two template parameter types should not have a mutex_type alias");
+        static_assert(!ScopedLockInternal::HasMutexType<AZStd::scoped_lock<ScopedTestMutex, AZStd::recursive_mutex, ScopedTestMutex>>, "ScopedLock with two template parameter types should not have a mutex_type alias");
     }
 
     TEST_F(ScopedLockTest, scoped_lock_NoArgument_adopt_lock_Construct_ConstructorSucceeds)

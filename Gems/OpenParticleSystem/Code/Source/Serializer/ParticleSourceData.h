@@ -355,10 +355,9 @@ namespace OpenParticle
         void UpdateLODIndex(AZ::u32 index);
 
         void EmitterInfoToDetailInfo(DetailInfo* detailInfo, EmitterInfo* emitterInfo);
-        template<
-            class T,
-            class = AZStd::is_pointer<T>,
-            class = AZStd::enable_if_t<AZStd::is_same_v<T, EmitterInfo*> || AZStd::is_same_v<T, DetailInfo*>>>
+        template<class T>
+            requires AZStd::is_same_v<T, EmitterInfo*>
+                || AZStd::is_same_v<T, DetailInfo*>
         T GetPointerFromEmitterName(const AZStd::string& emitterName, const AZStd::vector<T>& list) const
         {
             auto iter = AZStd::find_if(

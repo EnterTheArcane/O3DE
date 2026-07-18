@@ -465,15 +465,16 @@ namespace AZ
                     }
 
                     template<typename T>
-                    void TestArrowOperator(T iterator, AZStd::true_type)
+                    void TestArrowOperator(T iterator)
                     {
-                        EXPECT_EQ(*iterator, *iterator);
-                    }
-
-                    template<typename T>
-                    void TestArrowOperator(T iterator, AZStd::false_type)
-                    {
-                        EXPECT_EQ(*iterator, *iterator.operator->());
+                        if constexpr (AZStd::is_pointer_v<T>)
+                        {
+                            EXPECT_EQ(*iterator, *iterator);
+                        }
+                        else
+                        {
+                            EXPECT_EQ(*iterator, *iterator.operator->());
+                        }
                     }
 
                     // Arrow operator
@@ -481,7 +482,7 @@ namespace AZ
                     {
                         using Iterator = typename InputContext<TypeParam>::Iterator;
 
-                        TestArrowOperator(this->Construct(), typename AZStd::is_pointer<Iterator>::type());
+                        TestArrowOperator(this->Construct());
                     }
 
                     // Post increment operator - additional

@@ -44,8 +44,14 @@ namespace AZStd
 
     template<class Fn, class... ArgTypes>
     struct invoke_result
-        : AZStd::enable_if<Internal::invocable<Fn, ArgTypes...>::value, typename Internal::invocable<Fn, ArgTypes...>::result_type>
     {};
+
+    template<class Fn, class... ArgTypes>
+        requires Internal::invocable<Fn, ArgTypes...>::value
+    struct invoke_result<Fn, ArgTypes...>
+    {
+        using type = typename Internal::invocable<Fn, ArgTypes...>::result_type;
+    };
 
     template<class Fn, class... ArgTypes>
     using invoke_result_t = typename invoke_result<Fn, ArgTypes...>::type;

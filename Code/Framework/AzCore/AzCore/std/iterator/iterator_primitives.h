@@ -16,7 +16,6 @@
 #include <AzCore/std/ranges/iter_move.h>
 #include <AzCore/std/typetraits/common_reference.h>
 #include <AzCore/std/typetraits/conditional.h>
-#include <AzCore/std/typetraits/conjunction.h>
 #include <AzCore/std/typetraits/integral_constant.h>
 #include <AzCore/std/typetraits/is_array.h>
 #include <AzCore/std/typetraits/is_class.h>
@@ -28,7 +27,6 @@
 #include <AzCore/std/typetraits/is_signed.h>
 #include <AzCore/std/typetraits/is_void.h>
 #include <AzCore/std/typetraits/remove_extent.h>
-#include <AzCore/std/typetraits/void_t.h>
 
 namespace AZStd
 {
@@ -61,14 +59,11 @@ namespace AZStd::Internal
     concept is_primary_template = requires { requires is_same_v<T, typename T::_is_primary_template>; };
 
     // indirectly readable traits
-    template <typename T, typename = void>
-    constexpr bool has_value_type_v = false;
     template <typename T>
-    constexpr bool has_value_type_v<T, void_t<typename T::value_type>> = true;
-    template <typename T, typename = void>
-    constexpr bool has_element_type_v = false;
+    constexpr bool has_value_type_v = requires { typename T::value_type; };
+
     template <typename T>
-    constexpr bool has_element_type_v<T, void_t<typename T::element_type>> = true;
+    constexpr bool has_element_type_v = requires { typename T::element_type; };
 
     template <typename T, typename = void>
     struct object_type_value_requires {};
@@ -120,10 +115,8 @@ namespace AZStd::Internal
         : object_type_value_requires<typename T::value_type> {};
 
     // incrementable traits
-    template <typename T, typename = void>
-    constexpr bool has_difference_type_v = false;
     template <typename T>
-    constexpr bool has_difference_type_v<T, void_t<typename T::difference_type>> = true;
+    constexpr bool has_difference_type_v = requires { typename T::difference_type; };
 
     template <typename T, typename = void>
     struct object_type_difference_requires {};
@@ -177,8 +170,8 @@ namespace AZStd
     template <typename T>
     using iter_value_t = typename indirectly_readable_traits<remove_cvref_t<T>>::value_type;
 
-    template <typename T>
-    using iter_reference_t = enable_if_t<Internal::dereferenceable<T>, decltype(*declval<T&>())>;
+    template <Internal::dereferenceable T>
+    using iter_reference_t = decltype(*declval<T&>());
 
     // incrementable_traits for iter_difference_t
     template <typename T, class = void>
@@ -211,12 +204,12 @@ namespace AZStd
     }
 
     template <typename T>
-    using iter_common_reference_t = enable_if_t<Internal::indirectly_readable_impl<T>,
-        common_reference_t<iter_reference_t<T>, iter_value_t<T>&>>;
+        requires Internal::indirectly_readable_impl<T>
+    using iter_common_reference_t = common_reference_t<iter_reference_t<T>, iter_value_t<T>&>;
 
     template<class It>
-    using iter_const_reference_t = enable_if_t<Internal::indirectly_readable_impl<It>,
-        common_reference_t<const iter_value_t<It>&&, iter_reference_t<It>>>;
+        requires Internal::indirectly_readable_impl<It>
+    using iter_const_reference_t = common_reference_t<const iter_value_t<It>&&, iter_reference_t<It>>;
 
 }
 

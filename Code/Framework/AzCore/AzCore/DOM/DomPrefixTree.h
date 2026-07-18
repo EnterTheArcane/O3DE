@@ -66,17 +66,15 @@ namespace AZ::Dom
     constexpr PrefixTreeTraversalFlags DefaultTraversalFlags =
         PrefixTreeTraversalFlags::ExcludeChildPaths | PrefixTreeTraversalFlags::TraverseLeastToMostSpecific;
 
-    template<class Range, class T, class = void>
-    constexpr bool RangeConvertibleToPrefixTree = false;
-
     template<class Range, class T>
-    constexpr bool RangeConvertibleToPrefixTree<
-        Range,
-        T,
-        AZStd::enable_if_t<
-            AZStd::ranges::input_range<Range> && AZStd::tuple_size<AZStd::ranges::range_value_t<Range>>::value == 2 &&
-            AZStd::convertible_to<AZStd::tuple_element_t<0, AZStd::ranges::range_value_t<Range>>, Path> &&
-            AZStd::convertible_to<AZStd::tuple_element_t<1, AZStd::ranges::range_value_t<Range>>, T>>> = true;
+    constexpr bool RangeConvertibleToPrefixTree = requires
+    {
+        requires AZStd::ranges::input_range<Range>;
+        typename AZStd::tuple_size<AZStd::ranges::range_value_t<Range>>::type;
+        requires AZStd::tuple_size<AZStd::ranges::range_value_t<Range>>::value == 2;
+        requires AZStd::convertible_to<AZStd::tuple_element_t<0, AZStd::ranges::range_value_t<Range>>, Path>;
+        requires AZStd::convertible_to<AZStd::tuple_element_t<1, AZStd::ranges::range_value_t<Range>>, T>;
+    };
 
     //! A prefix tree that maps DOM paths to some arbitrary value.
     template<class T>
@@ -88,7 +86,8 @@ namespace AZ::Dom
         DomPrefixTree(DomPrefixTree&&) = default;
         explicit DomPrefixTree(AZStd::initializer_list<AZStd::pair<Path, T>> init);
 
-        template<class Range, class = AZStd::enable_if_t<RangeConvertibleToPrefixTree<Range, T>>>
+        template<class Range>
+            requires RangeConvertibleToPrefixTree<Range, T>
         explicit DomPrefixTree(Range&& range);
 
         DomPrefixTree& operator=(const DomPrefixTree&) = default;

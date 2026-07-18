@@ -531,15 +531,16 @@ namespace AZ
         };
 
         template<class T>
-        void RttiEnumHierarchyHelper(RTTI_EnumCallback cb, void* userData, const AZStd::true_type& /* HasAZRtti<T> */)
+        void RttiEnumHierarchyHelper(RTTI_EnumCallback cb, void* userData)
         {
-            RttiHelper<T>().EnumHierarchy(cb, userData);
-        }
-
-        template<class T>
-        void RttiEnumHierarchyHelper(RTTI_EnumCallback cb, void* userData, const AZStd::false_type& /* HasAZRtti<T> */)
-        {
-            cb(AzTypeInfo<T>::Uuid(), userData);
+            if constexpr (HasAZRtti_v<AZStd::remove_pointer_t<T>>)
+            {
+                RttiHelper<T>().EnumHierarchy(cb, userData);
+            }
+            else
+            {
+                cb(AzTypeInfo<T>::Uuid(), userData);
+            }
         }
 
         // Helper to prune types that are base class, but don't support RTTI
@@ -620,7 +621,7 @@ namespace AZ
     template<class T>
     inline void     RttiEnumHierarchy(RTTI_EnumCallback cb, void* userData)
     {
-        AZ::Internal::RttiEnumHierarchyHelper<T>(cb, userData, typename HasAZRtti<AZStd::remove_pointer_t<T>>::type());
+        AZ::Internal::RttiEnumHierarchyHelper<T>(cb, userData);
     }
 
     /// Performs a RttiCast when possible otherwise return NULL. Safe to call for type not supporting AZRtti (returns NULL unless type fully match).
@@ -800,4 +801,3 @@ namespace AZ
     }
 
 } // namespace AZ
-

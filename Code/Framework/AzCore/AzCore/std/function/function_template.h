@@ -289,45 +289,47 @@ namespace AZStd
                 // Function objects
                 // Assign to a function object using the small object optimization
                 template<typename FunctionObj>
-                void
-                assign_functor(FunctionObj&& f, function_buffer& functor, AZStd::true_type)
+                void assign_functor(FunctionObj&& f, function_buffer& functor)
                 {
                     using RawFunctorObjType = AZStd::decay_t<FunctionObj>;
-                    AZStd::construct_at(reinterpret_cast<RawFunctorObjType*>(&functor), RawFunctorObjType(AZStd::forward<FunctionObj>(f)));
-                }
-                template<typename FunctionObj, typename Allocator>
-                void
-                assign_functor_a(FunctionObj&& f, function_buffer& functor, Allocator, AZStd::true_type)
-                {
-                    assign_functor(AZStd::forward<FunctionObj>(f), functor, AZStd::true_type());
+                    if constexpr (function_allows_small_object_optimization<RawFunctorObjType>::value)
+                    {
+                        AZStd::construct_at(
+                            reinterpret_cast<RawFunctorObjType*>(&functor), RawFunctorObjType(AZStd::forward<FunctionObj>(f)));
+                    }
+                    else
+                    {
+                        AZStd::allocator a;
+                        functor.obj_ptr = new (a.allocate(sizeof(RawFunctorObjType), AZStd::alignment_of_v<RawFunctorObjType>))
+                            RawFunctorObjType(AZStd::forward<FunctionObj>(f));
+                    }
                 }
 
-                // Assign to a function object allocated on the heap.
-                template<typename FunctionObj>
-                void assign_functor(FunctionObj&& f, function_buffer& functor, AZStd::false_type)
-                {
-                    using RawFunctorObjType = AZStd::decay_t<FunctionObj>;
-                    AZStd::allocator a;
-                    functor.obj_ptr = new (a.allocate(sizeof(RawFunctorObjType), AZStd::alignment_of_v<RawFunctorObjType>))RawFunctorObjType(AZStd::forward<FunctionObj>(f));
-                }
                 template<typename FunctionObj, typename Allocator>
-                void
-                assign_functor_a(FunctionObj&& f, function_buffer& functor, const Allocator& a, AZStd::false_type)
+                void assign_functor_a(FunctionObj&& f, function_buffer& functor, const Allocator& a)
                 {
                     using RawFunctorObjType = AZStd::decay_t<FunctionObj>;
-                    typedef functor_wrapper<RawFunctorObjType, Allocator> functor_wrapper_type;
-                    functor_wrapper_type* new_f = new (const_cast<Allocator&>(a).allocate(sizeof(functor_wrapper_type), AZStd::alignment_of_v<functor_wrapper_type>))functor_wrapper_type(AZStd::forward<FunctionObj>(f), a);
-                    functor.obj_ptr = new_f;
+                    if constexpr (function_allows_small_object_optimization<RawFunctorObjType>::value)
+                    {
+                        assign_functor(AZStd::forward<FunctionObj>(f), functor);
+                    }
+                    else
+                    {
+                        using functor_wrapper_type = functor_wrapper<RawFunctorObjType, Allocator>;
+                        functor_wrapper_type* new_f = new (const_cast<Allocator&>(a).allocate(
+                            sizeof(functor_wrapper_type), AZStd::alignment_of_v<functor_wrapper_type>))
+                            functor_wrapper_type(AZStd::forward<FunctionObj>(f), a);
+                        functor.obj_ptr = new_f;
+                    }
                 }
 
                 template<typename FunctionObj>
                 bool
                 assign_to(FunctionObj&& f, function_buffer& functor, function_obj_tag)
                 {
-                    using RawFunctorObjType = AZStd::decay_t<FunctionObj>;
                     if (!AZStd::Internal::function_util::has_empty_target(AZStd::addressof(f)))
                     {
-                        assign_functor(AZStd::forward<FunctionObj>(f), functor, AZStd::integral_constant<bool, function_allows_small_object_optimization<RawFunctorObjType>::value>());
+                        assign_functor(AZStd::forward<FunctionObj>(f), functor);
                         return true;
                     }
                     else
@@ -339,10 +341,9 @@ namespace AZStd
                 bool
                 assign_to_a(FunctionObj&& f, function_buffer& functor, Allocator a, function_obj_tag)
                 {
-                    using RawFunctorObjType = AZStd::decay_t<FunctionObj>;
                     if (!AZStd::Internal::function_util::has_empty_target(AZStd::addressof(f)))
                     {
-                        assign_functor_a(AZStd::forward<FunctionObj>(f), functor, a, AZStd::integral_constant<bool, function_allows_small_object_optimization<RawFunctorObjType>::value>());
+                        assign_functor_a(AZStd::forward<FunctionObj>(f), functor, a);
                         return true;
                     }
                     else

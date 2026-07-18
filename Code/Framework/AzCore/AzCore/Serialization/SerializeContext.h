@@ -20,10 +20,8 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
 
-#include <AzCore/std/typetraits/disjunction.h>
 #include <AzCore/std/typetraits/is_pointer.h>
 #include <AzCore/std/typetraits/is_abstract.h>
-#include <AzCore/std/typetraits/negation.h>
 #include <AzCore/std/typetraits/remove_pointer.h>
 #include <AzCore/std/typetraits/is_base_of.h>
 #include <AzCore/std/any.h>
@@ -1559,7 +1557,8 @@ namespace AZ
     struct AnyTypeInfoConcept;
 
     template<typename ValueType>
-    struct AnyTypeInfoConcept<ValueType, AZStd::enable_if_t<!AZStd::is_abstract<ValueType>::value && AZStd::Internal::template_is_copy_constructible<ValueType>::value>>
+        requires (!AZStd::is_abstract_v<ValueType>) && AZStd::Internal::template_is_copy_constructible<ValueType>
+    struct AnyTypeInfoConcept<ValueType, void>
     {
         static AZStd::any CreateAny(SerializeContext*)
         {
@@ -1573,7 +1572,8 @@ namespace AZ
     };
 
     template<typename ValueType>
-    struct AnyTypeInfoConcept<ValueType, AZStd::enable_if_t<!AZStd::is_abstract<ValueType>::value && !AZStd::Internal::template_is_copy_constructible<ValueType>::value>>
+        requires (!AZStd::is_abstract_v<ValueType>) && (!AZStd::Internal::template_is_copy_constructible<ValueType>)
+    struct AnyTypeInfoConcept<ValueType, void>
     {
         template<typename T>
         static void* Allocate()
@@ -1694,7 +1694,8 @@ namespace AZ
     };
 
     template<typename ValueType>
-    struct AnyTypeInfoConcept<ValueType, AZStd::enable_if_t<AZStd::is_abstract<ValueType>::value>>
+        requires AZStd::is_abstract_v<ValueType>
+    struct AnyTypeInfoConcept<ValueType, void>
     {
         static AZStd::any CreateAny(SerializeContext*)
         {
@@ -1725,108 +1726,112 @@ namespace AZ
         typedef typename AZStd::remove_pointer<T>::type ValueType;
         static Uuid GetUuid(const T* instance = nullptr)
         {
-            return GetUuid(instance, typename AZStd::is_pointer<T>::type());
-        }
-        static Uuid GetUuid(const T* instance, const AZStd::true_type& /*is_pointer<T>*/)
-        {
-            return GetUuidHelper(instance ? *instance : nullptr, typename HasAZRtti<ValueType>::type());
-        }
-        static Uuid GetUuid(const T* instance, const AZStd::false_type& /*is_pointer<T>*/)
-        {
-            return GetUuidHelper(instance, typename HasAZRtti<ValueType>::type());
+            if constexpr (AZStd::is_pointer_v<T>)
+            {
+                return GetUuidHelper(instance ? *instance : nullptr);
+            }
+            else
+            {
+                return GetUuidHelper(instance);
+            }
         }
         static const char* GetRttiTypeName(ValueType* const* instance)
         {
-            return GetRttiTypeName(instance ? *instance : nullptr, typename HasAZRtti<ValueType>::type());
+            return GetRttiTypeName(instance ? *instance : nullptr);
         }
         static const char* GetRttiTypeName(const ValueType* instance)
         {
-            return GetRttiTypeName(instance, typename HasAZRtti<ValueType>::type());
-        }
-        static const char* GetRttiTypeName(const ValueType* instance, const AZStd::true_type& /*HasAZRtti<ValueType>*/)
-        {
-            return instance ? GetRttiHelper<ValueType>()->GetActualTypeName(instance) : AzTypeInfo<ValueType>::Name();
-        }
-        static const char* GetRttiTypeName(const ValueType* /*instance*/, const AZStd::false_type& /*!HasAZRtti<ValueType>*/)
-        {
-            return "NotAZRttiType";
+            if constexpr (HasAZRtti_v<ValueType>)
+            {
+                return instance ? GetRttiHelper<ValueType>()->GetActualTypeName(instance) : AzTypeInfo<ValueType>::Name();
+            }
+            else
+            {
+                return "NotAZRttiType";
+            }
         }
 
         static AZ::TypeId GetRttiTypeId(ValueType* const* instance)
         {
-            return GetRttiTypeId(instance ? *instance : nullptr, typename HasAZRtti<ValueType>::type());
+            return GetRttiTypeId(instance ? *instance : nullptr);
         }
-        static AZ::TypeId GetRttiTypeId(const ValueType* instance) { return GetRttiTypeId(instance, typename HasAZRtti<ValueType>::type()); }
-        static AZ::TypeId GetRttiTypeId(const ValueType* instance, const AZStd::true_type& /*HasAZRtti<ValueType>*/)
+        static AZ::TypeId GetRttiTypeId(const ValueType* instance)
         {
-            return instance ? AZ::RttiTypeId(instance) : AzTypeInfo<ValueType>::Uuid();
-        }
-        static AZ::TypeId GetRttiTypeId(const ValueType* /*instance*/, const AZStd::false_type& /*!HasAZRtti<ValueType>*/)
-        {
-            static Uuid s_nullUuid = Uuid::CreateNull();
-            return s_nullUuid;
-        }
-
-        static bool IsRttiTypeOf(const Uuid& id, const AZStd::true_type& /*HasAZRtti<ValueType>*/)
-        {
-            return GetRttiHelper<ValueType>()->GetTypeId(id);
-        }
-        static bool IsRttiTypeOf(const Uuid& /*id*/, const AZStd::false_type& /*!HasAZRtti<ValueType>*/)
-        {
-            return false;
+            if constexpr (HasAZRtti_v<ValueType>)
+            {
+                return instance ? AZ::RttiTypeId(instance) : AzTypeInfo<ValueType>::Uuid();
+            }
+            else
+            {
+                static Uuid s_nullUuid = Uuid::CreateNull();
+                return s_nullUuid;
+            }
         }
 
-        static void RttiEnumHierarchy(RTTI_EnumCallback callback, void* userData, const AZStd::true_type& /*HasAZRtti<ValueType>*/)
+        static bool IsRttiTypeOf(const Uuid& id)
         {
-            return AZ::RttiEnumHierarchy<ValueType>(callback, userData);
+            if constexpr (HasAZRtti_v<ValueType>)
+            {
+                return GetRttiHelper<ValueType>()->GetTypeId(id);
+            }
+            else
+            {
+                return false;
+            }
         }
-        static void RttiEnumHierarchy(RTTI_EnumCallback /*callback*/, void* /*userData*/, const AZStd::false_type& /*!HasAZRtti<ValueType>*/)
+
+        static void RttiEnumHierarchy(RTTI_EnumCallback callback, void* userData)
         {
+            if constexpr (HasAZRtti_v<ValueType>)
+            {
+                AZ::RttiEnumHierarchy<ValueType>(callback, userData);
+            }
         }
 
         // const pointers
         static const void* RttiCast(ValueType* const* instance, const Uuid& asType)
         {
-            return RttiCast(instance ? *instance : nullptr, asType, typename HasAZRtti<ValueType>::type());
+            return RttiCast(instance ? *instance : nullptr, asType);
         }
         static const void* RttiCast(const ValueType* instance, const Uuid& asType)
         {
-            return RttiCast(instance, asType, typename HasAZRtti<ValueType>::type());
-        }
-        static const void* RttiCast(const ValueType* instance, const Uuid& asType, const AZStd::true_type& /*HasAZRtti<ValueType>*/)
-        {
-            return AZ::RttiAddressOf(instance, asType);
-        }
-        static const void* RttiCast(const ValueType* instance, const Uuid& /*asType*/, const AZStd::false_type& /*!HasAZRtti<ValueType>*/)
-        {
-            return instance;
+            if constexpr (HasAZRtti_v<ValueType>)
+            {
+                return AZ::RttiAddressOf(instance, asType);
+            }
+            else
+            {
+                return instance;
+            }
         }
         // non cost pointers
         static void* RttiCast(ValueType** instance, const Uuid& asType)
         {
-            return RttiCast(instance ? *instance : nullptr, asType, typename HasAZRtti<ValueType>::type());
+            return RttiCast(instance ? *instance : nullptr, asType);
         }
         static void* RttiCast(ValueType* instance, const Uuid& asType)
         {
-            return RttiCast(instance, asType, typename HasAZRtti<ValueType>::type());
-        }
-        static void* RttiCast(ValueType* instance, const Uuid& asType, const AZStd::true_type& /*HasAZRtti<ValueType>*/)
-        {
-            return AZ::RttiAddressOf(instance, asType);
-        }
-        static void* RttiCast(ValueType* instance, const Uuid& /*asType*/, const AZStd::false_type& /*!HasAZRtti<ValueType>*/)
-        {
-            return instance;
+            if constexpr (HasAZRtti_v<ValueType>)
+            {
+                return AZ::RttiAddressOf(instance, asType);
+            }
+            else
+            {
+                return instance;
+            }
         }
 
     private:
-        static AZ::Uuid GetUuidHelper(const ValueType* /* ptr */, const AZStd::false_type& /* !HasAZRtti<U>::type() */)
+        static AZ::Uuid GetUuidHelper(const ValueType* ptr)
         {
-            return SerializeGenericTypeInfo<ValueType>::GetClassTypeId();
-        }
-        static AZ::Uuid GetUuidHelper(const ValueType* ptr, const AZStd::true_type& /* HasAZRtti<U>::type() */)
-        {
-            return ptr ? AZ::RttiTypeId(ptr) : SerializeGenericTypeInfo<ValueType>::GetClassTypeId();
+            if constexpr (HasAZRtti_v<ValueType>)
+            {
+                return ptr ? AZ::RttiTypeId(ptr) : SerializeGenericTypeInfo<ValueType>::GetClassTypeId();
+            }
+            else
+            {
+                return SerializeGenericTypeInfo<ValueType>::GetClassTypeId();
+            }
         }
     };
 
@@ -2024,7 +2029,7 @@ namespace AZ
     template<class T, class... TBaseClasses>
     SerializeContext::ClassBuilder SerializeContext::Class(IObjectFactory* factory)
     {
-        static_assert((AZStd::negation_v<AZStd::disjunction<AZStd::is_same<T, TBaseClasses>...> >), "You cannot reflect a type as its own base");
+        static_assert(((!AZStd::is_same_v<T, TBaseClasses>) && ...), "You cannot reflect a type as its own base");
         static_assert(sizeof...(TBaseClasses) <= c_serializeMaxNumBaseClasses, "Only " AZ_STRINGIZE(c_serializeMaxNumBaseClasses) " base classes are supported. You can add more in c_serializeBaseClassStrings.");
 
         const Uuid& typeUuid = AzTypeInfo<T>::Uuid();
@@ -2632,4 +2637,3 @@ namespace AZ
 
 /// include implementation of SerializeContext::EnumBuilder
 #include <AzCore/Serialization/SerializeContextEnum.inl>
-

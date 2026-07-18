@@ -262,26 +262,6 @@ namespace AZStd
                 }
             }
 
-#ifndef AZ_NO_AUTO_PTR
-            // auto_ptr<Y> is special cased to provide the strong guarantee
-            template<class Y, class A>
-            explicit shared_count(std::auto_ptr<Y>& r, const A& a)
-                : pi_(0)
-#if defined(AZSTD_SP_ENABLE_DEBUG_HOOKS)
-                , id_(shared_count_id)
-#endif
-            {
-                typedef sp_counted_impl_pa<Y, A> impl_type;
-                A a2(a);
-                pi_ = reinterpret_cast<impl_type*>(static_cast<void*>(a2.allocate(sizeof(impl_type), alignof(impl_type))));
-                if (pi_ != 0)
-                {
-                    new(static_cast< void* >(pi_))impl_type(r.get(), a);
-                }
-                r.release();
-            }
-#endif // AZ_NO_AUTO_PTR
-
             ~shared_count() // nothrow
             {
                 if (pi_ != 0)

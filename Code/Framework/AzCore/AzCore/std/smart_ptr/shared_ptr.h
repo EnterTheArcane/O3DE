@@ -43,7 +43,7 @@
 #include <AzCore/std/allocator.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/smart_ptr/shared_count.h>
-#include <AzCore/std/smart_ptr/sp_convertible.h>
+#include <AzCore/std/typetraits/is_convertible.h>
 #include <AzCore/std/utils.h>
 #include <AzCore/RTTI/RTTI.h>
 
@@ -111,16 +111,6 @@ namespace AZStd
         }
         inline void sp_enable_shared_from_this(...)   {}
 
-#ifndef AZ_NO_AUTO_PTR
-        // rvalue auto_ptr support based on a technique by Dave Abrahams
-        template< class T, class R >
-        struct sp_enable_if_auto_ptr   {};
-        template< class T, class R >
-        struct sp_enable_if_auto_ptr< std::auto_ptr< T >, R >
-        {
-            typedef R type;
-        };
-#endif
     } // namespace Internal
 
     //
@@ -194,7 +184,8 @@ namespace AZStd
             }
         }
         template<class Y>
-        shared_ptr(shared_ptr<Y> const& r, typename AZStd::Internal::sp_enable_if_convertible<Y, T>::type = AZStd::Internal::sp_empty())
+            requires AZStd::is_convertible_v<Y*, T*>
+        shared_ptr(shared_ptr<Y> const& r)
             : px(r.px)
             , pn(r.pn)           // never throws
         {
@@ -247,36 +238,6 @@ namespace AZStd
             }
         }
 
-#ifndef AZ_NO_AUTO_PTR
-        template<class Y>
-        explicit shared_ptr(std::auto_ptr<Y>& r)
-            : px(r.get())
-            , pn()
-        {
-            Y* tmp = r.get();
-            pn = AZStd::Internal::shared_count(r, AZStd::allocator());
-            AZStd::Internal::sp_enable_shared_from_this(this, tmp, tmp);
-        }
-        template<class Y, class A>
-        explicit shared_ptr(std::auto_ptr<Y>& r, const A& a)
-            : px(r.get())
-            , pn()
-        {
-            Y* tmp = r.get();
-            pn = AZStd::Internal::shared_count(r, a);
-            AZStd::Internal::sp_enable_shared_from_this(this, tmp, tmp);
-        }
-        template<class Ap>
-        explicit shared_ptr(Ap r, typename AZStd::Internal::sp_enable_if_auto_ptr<Ap, int>::type = 0)
-            : px(r.get())
-            , pn()
-        {
-            typename Ap::element_type * tmp = r.get();
-            pn = AZStd::Internal::shared_count(r);
-            AZStd::Internal::sp_enable_shared_from_this(this, tmp, tmp);
-        }
-#endif // AZ_NO_AUTO_PTR
-
         // assignment
         shared_ptr& operator=(shared_ptr const& r)     // never throws
         {
@@ -290,20 +251,6 @@ namespace AZStd
             this_type(r).swap(*this);
             return *this;
         }
-#ifndef AZ_NO_AUTO_PTR
-        template<class Y>
-        shared_ptr& operator=(std::auto_ptr<Y>& r)
-        {
-            this_type(r).swap(*this);
-            return *this;
-        }
-        template<class Ap>
-        typename AZStd::Internal::sp_enable_if_auto_ptr< Ap, shared_ptr& >::type operator=(Ap r)
-        {
-            this_type(r).swap(*this);
-            return *this;
-        }
-#endif // AZ_NO_AUTO_PTR
        // Move support
         shared_ptr(shared_ptr&& r)
             : px(r.px)
@@ -313,7 +260,8 @@ namespace AZStd
             r.px = 0;
         }
         template<class Y>
-        shared_ptr(shared_ptr<Y>&& r, typename AZStd::Internal::sp_enable_if_convertible<Y, T>::type = AZStd::Internal::sp_empty())
+            requires AZStd::is_convertible_v<Y*, T*>
+        shared_ptr(shared_ptr<Y>&& r)
             : px(r.px)
             , pn()         // never throws
         {

@@ -206,7 +206,8 @@ template <typename _TYPE, typename = void>
 static constexpr AZ::ThreadSafety ConsoleThreadSafety = AZ::ThreadSafety::RequiresLock;
 
 template <typename _TYPE>
-static constexpr AZ::ThreadSafety ConsoleThreadSafety<_TYPE, std::enable_if_t<std::is_arithmetic_v<_TYPE>>> = AZ::ThreadSafety::UseStdAtomic;
+    requires std::is_arithmetic_v<_TYPE>
+static constexpr AZ::ThreadSafety ConsoleThreadSafety<_TYPE, void> = AZ::ThreadSafety::UseStdAtomic;
 
 //! Standard cvar macro.
 //! @param _TYPE the data type of the cvar

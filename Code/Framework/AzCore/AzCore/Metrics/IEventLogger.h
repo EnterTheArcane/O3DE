@@ -130,7 +130,8 @@ namespace AZ::Metrics
             AZ::u64,
             double,
             EventArray,
-            EventObject>, class = AZStd::enable_if_t<AZStd::constructible_from<Alt, T>>>
+            EventObject>>
+            requires AZStd::constructible_from<Alt, T>
         constexpr EventValue(T&& value);
 
         template<class T, class... Args>

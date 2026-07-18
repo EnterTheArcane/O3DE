@@ -991,12 +991,8 @@ namespace UnitTest
         EXPECT_EQ(0, wcscmp(pipeName.c_str(), LR"(\\.\pipe\capturer.ABC)"));
     }
 
-    // Concept to model if AZStd::to_string(<type>) is a valid expression
-    template<class T, class = void>
-    constexpr bool IsToStringInvocable = false;
-
     template<class T>
-    constexpr bool IsToStringInvocable<T, AZStd::void_t<decltype(AZStd::to_string(AZStd::declval<T>()))>> = true;
+    concept ToStringInvocable = requires(T value) { AZStd::to_string(value); };
 
     TEST_F(String, String_to_stringOverload_DoesNotImplicitlyConvertToBool)
     {
@@ -1014,22 +1010,22 @@ namespace UnitTest
         EXPECT_EQ("true", AZStd::to_string(true));
 
         // AZStd::to_string should not be invocable with a char or wchar_t literal
-        static_assert(!IsToStringInvocable<decltype("NarrowStrLiteral")>);
-        static_assert(!IsToStringInvocable<decltype(L"WideStrLiteral")>);
+        static_assert(!ToStringInvocable<decltype("NarrowStrLiteral")>);
+        static_assert(!ToStringInvocable<decltype(L"WideStrLiteral")>);
 
         // AZStd::to_string should be invocable with the following types
-        static_assert(IsToStringInvocable<bool>);
-        static_assert(IsToStringInvocable<AZ::s8>);
-        static_assert(IsToStringInvocable<AZ::u8>);
-        static_assert(IsToStringInvocable<AZ::s16>);
-        static_assert(IsToStringInvocable<AZ::u16>);
-        static_assert(IsToStringInvocable<AZ::s32>);
-        static_assert(IsToStringInvocable<AZ::u32>);
-        static_assert(IsToStringInvocable<AZ::s64>);
-        static_assert(IsToStringInvocable<AZ::u64>);
-        static_assert(IsToStringInvocable<float>);
-        static_assert(IsToStringInvocable<double>);
-        static_assert(IsToStringInvocable<long double>);
+        static_assert(ToStringInvocable<bool>);
+        static_assert(ToStringInvocable<AZ::s8>);
+        static_assert(ToStringInvocable<AZ::u8>);
+        static_assert(ToStringInvocable<AZ::s16>);
+        static_assert(ToStringInvocable<AZ::u16>);
+        static_assert(ToStringInvocable<AZ::s32>);
+        static_assert(ToStringInvocable<AZ::u32>);
+        static_assert(ToStringInvocable<AZ::s64>);
+        static_assert(ToStringInvocable<AZ::u64>);
+        static_assert(ToStringInvocable<float>);
+        static_assert(ToStringInvocable<double>);
+        static_assert(ToStringInvocable<long double>);
     }
 
     class Regex

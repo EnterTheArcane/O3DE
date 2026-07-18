@@ -259,7 +259,8 @@ protected:
 };
 
 template<typename T>
-typename std::enable_if<std::is_base_of<QObject, typename std::remove_cv<typename std::remove_pointer<T>::type>::type>::value, T>::type
+    requires std::is_base_of_v<QObject, std::remove_cv_t<std::remove_pointer_t<T>>>
+T
 viewport_cast(CViewport* viewport)
 {
     if (viewport == nullptr)

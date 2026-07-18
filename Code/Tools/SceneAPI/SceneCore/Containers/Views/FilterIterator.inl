@@ -107,24 +107,17 @@ namespace AZ
                     return static_cast<typename super::reference>(*super::m_iterator);
                 }
 
-                // Used when iterator is raw pointer
-                template<typename Iterator>
-                auto FilterIterator<Iterator, AZStd::input_iterator_tag>::GetPointer(AZStd::true_type) const->typename super::pointer
-                {
-                    return super::m_iterator;
-                }
-
-                // Used when iterator is an object
-                template<typename Iterator>
-                auto FilterIterator<Iterator, AZStd::input_iterator_tag>::GetPointer(AZStd::false_type) const->typename super::pointer
-                {
-                    return super::m_iterator.operator->();
-                }
-
                 template<typename Iterator>
                 auto FilterIterator<Iterator, AZStd::input_iterator_tag>::operator->() const->typename super::pointer
                 {
-                    return GetPointer(typename AZStd::is_pointer<Iterator>::type());
+                    if constexpr (AZStd::is_pointer_v<Iterator>)
+                    {
+                        return super::m_iterator;
+                    }
+                    else
+                    {
+                        return super::m_iterator.operator->();
+                    }
                 }
 
                 //
@@ -246,34 +239,14 @@ namespace AZ
                 //
                 // Utility functions
                 //
-                namespace Internal
-                {
-                    template<typename Iterator>
-                    View<FilterIterator<Iterator> > MakeFilterView(Iterator current, Iterator end,
-                        const typename FilterIterator<Iterator>::Predicate& predicate, AZStd::false_type)
-                    {
-                        return View<FilterIterator<Iterator> >(
-                            FilterIterator<Iterator>(current, end, predicate),
-                            FilterIterator<Iterator>(end, end, predicate));
-                    }
-
-                    template<typename Iterator>
-                    View<FilterIterator<Iterator> > MakeFilterView(Iterator current, Iterator end,
-                        const typename FilterIterator<Iterator>::Predicate& predicate, AZStd::true_type)
-                    {
-                        return View<FilterIterator<Iterator> >(
-                            FilterIterator<Iterator>(current, current, end, predicate),
-                            FilterIterator<Iterator>(end, current, end, predicate));
-                    }
-                }
-
                 template<typename Iterator>
                 FilterIterator<Iterator> MakeFilterIterator(Iterator current, Iterator end, const typename FilterIterator<Iterator, void>::Predicate& predicate)
                 {
                     return FilterIterator<Iterator>(current, end, predicate);
                 }
 
-                template<typename Iterator, typename AZStd::enable_if<Internal::FilterIteratorNeedsFullRange<Iterator>::value>::type>
+                template<typename Iterator>
+                    requires Internal::FilterIteratorNeedsFullRange<Iterator>
                 FilterIterator<Iterator> MakeFilterIterator(Iterator current, Iterator begin, Iterator end, const typename FilterIterator<Iterator, void>::Predicate& predicate)
                 {
                     return FilterIterator<Iterator>(current, begin, end, predicate);
@@ -282,11 +255,21 @@ namespace AZ
                 template<typename Iterator>
                 View<FilterIterator<Iterator> > MakeFilterView(Iterator current, Iterator end, const typename FilterIterator<Iterator, void>::Predicate& predicate)
                 {
-                    return Internal::MakeFilterView(current, end, predicate,
-                        typename AZStd::is_base_of<AZStd::bidirectional_iterator_tag, typename AZStd::iterator_traits<Iterator>::iterator_category>::type());
+                    if constexpr (Internal::FilterIteratorNeedsFullRange<Iterator>)
+                    {
+                        return View<FilterIterator<Iterator>>(
+                            FilterIterator<Iterator>(current, current, end, predicate),
+                            FilterIterator<Iterator>(end, current, end, predicate));
+                    }
+                    else
+                    {
+                        return View<FilterIterator<Iterator>>(
+                            FilterIterator<Iterator>(current, end, predicate), FilterIterator<Iterator>(end, end, predicate));
+                    }
                 }
 
-                template<typename Iterator, typename AZStd::enable_if<Internal::FilterIteratorNeedsFullRange<Iterator>::value>::type>
+                template<typename Iterator>
+                    requires Internal::FilterIteratorNeedsFullRange<Iterator>
                 View<FilterIterator<Iterator> > MakeFilterView(Iterator current, Iterator begin, Iterator end, const typename FilterIterator<Iterator>::Predicate& predicate)
                 {
                     return View<FilterIterator<Iterator> >(

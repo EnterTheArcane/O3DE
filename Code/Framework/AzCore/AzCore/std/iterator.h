@@ -14,7 +14,6 @@
 #include <AzCore/std/typetraits/is_base_of.h>
 #include <AzCore/std/typetraits/is_convertible.h>
 #include <AzCore/std/typetraits/remove_cv.h>
-#include <AzCore/std/typetraits/void_t.h>
 #include <AzCore/std/utils.h>
 
 #include <iterator>
@@ -36,17 +35,15 @@ namespace AZStd
 
 namespace AZStd::Internal
 {
-    template <typename Iterator, typename = void>
-    inline constexpr bool has_iterator_type_aliases_v = false;
-
     template <typename Iterator>
-    inline constexpr bool has_iterator_type_aliases_v<Iterator, void_t<
-        typename Iterator::iterator_category,
-        typename Iterator::value_type,
-        typename Iterator::difference_type,
-        typename Iterator::pointer,
-        typename Iterator::reference>
-    > = true;
+    inline constexpr bool has_iterator_type_aliases_v = requires
+    {
+        typename Iterator::iterator_category;
+        typename Iterator::value_type;
+        typename Iterator::difference_type;
+        typename Iterator::pointer;
+        typename Iterator::reference;
+    };
 
     // Iterator iterator_category alias must be one of the iterator category tags
     template <typename Iterator, bool>

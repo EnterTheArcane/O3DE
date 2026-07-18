@@ -291,13 +291,13 @@ namespace AZ
 
             // If E is an enum, copy any globally reflected values into the ElementData
             template <class E>
-            typename AZStd::enable_if<AZStd::is_enum<E>::value>::type
-            CopyEnumValues(Edit::ElementData* ed);
+                requires AZStd::is_enum_v<E>
+            void CopyEnumValues(Edit::ElementData* ed);
 
             // Do nothing for non-enum types
             template <class E>
-            typename AZStd::enable_if<!AZStd::is_enum<E>::value>::type
-            CopyEnumValues(Edit::ElementData*) {}
+                requires (!AZStd::is_enum_v<E>)
+            void CopyEnumValues(Edit::ElementData*) {}
 
         public:
             ~ClassBuilder() {}

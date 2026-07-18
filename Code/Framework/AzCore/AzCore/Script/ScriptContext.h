@@ -450,29 +450,27 @@ namespace AZ
     struct ScriptValue<T*>
     {
         static const bool isNativeValueType = true;  // We use native type for internal representation
-        static void StackPush(lua_State* l, T* pointer, const AZStd::true_type& /* AZ::Internal::HasAzTypeInfo<T>::value() */)
-        {
-            AZ::Internal::LuaScriptValueStackPush(l, pointer, AzTypeInfo<T>::Uuid());
-        }
-        static T*   StackRead(lua_State* l, int stackIndex, const AZStd::true_type& /* AZ::Internal::HasAzTypeInfo<T>::value() */)
-        {
-            return reinterpret_cast<T*>(AZ::Internal::LuaScriptValueStackRead(l, stackIndex, AzTypeInfo<T>::Uuid()));
-        }
-        static void StackPush(lua_State* l, T* pointer, const AZStd::false_type& /* AZ::Internal::HasAzTypeInfo<T>::value() */)
-        {
-            AZ::Internal::LuaScriptValueStackPush(l, *pointer, nullptr);
-        }
-        static T*   StackRead(lua_State* l, int stackIndex, const AZStd::false_type& /* AZ::Internal::HasAzTypeInfo<T>::value() */)
-        {
-            return reinterpret_cast<T*>(AZ::Internal::LuaScriptValueStackRead(l, stackIndex, AZ::Uuid::CreateNull()));
-        }
         static void StackPush(lua_State* l, T* pointer)
         {
-            StackPush(l, pointer, typename AZ::Internal::HasAZTypeInfo<T>::type());
+            if constexpr (AZ::Internal::HasAzTypeInfo_v<T>)
+            {
+                AZ::Internal::LuaScriptValueStackPush(l, pointer, AzTypeInfo<T>::Uuid());
+            }
+            else
+            {
+                AZ::Internal::LuaScriptValueStackPush(l, *pointer, nullptr);
+            }
         }
-        static T*   StackRead(lua_State* l, int stackIndex)
+        static T* StackRead(lua_State* l, int stackIndex)
         {
-            return StackRead(l, stackIndex, typename AZ::Internal::HasAZTypeInfo<T>::type());
+            if constexpr (AZ::Internal::HasAzTypeInfo_v<T>)
+            {
+                return reinterpret_cast<T*>(AZ::Internal::LuaScriptValueStackRead(l, stackIndex, AzTypeInfo<T>::Uuid()));
+            }
+            else
+            {
+                return reinterpret_cast<T*>(AZ::Internal::LuaScriptValueStackRead(l, stackIndex, AZ::Uuid::CreateNull()));
+            }
         }
     };
 

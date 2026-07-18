@@ -19,7 +19,6 @@
 #include <AzCore/std/typetraits/is_volatile.h>
 #include <AzCore/std/typetraits/remove_reference.h>
 #include <AzCore/std/typetraits/remove_cvref.h>
-#include <AzCore/std/typetraits/void_t.h>
 #include <AzCore/std/utility/declval.h>
 
 namespace AZStd

@@ -104,8 +104,8 @@ namespace AZ::AzGenericTypeInfo::Internal
     inline constexpr bool ExactClassAutoMatch<T, decltype(ClassAutoHasDefaultParam<T>())> = false;
 
     template<template<class, auto> class T>
-    auto GetTemplateIdentity() ->
-        AZStd::enable_if_t<Internal::ExactClassAutoMatch<T>, TemplateIdentityTypeAuto<T>>;
+        requires Internal::ExactClassAutoMatch<T>
+    auto GetTemplateIdentity() -> TemplateIdentityTypeAuto<T>;
     template<template<class, auto, class> class T>
     auto GetTemplateIdentity() -> TemplateIdentityTypeAutoType<T>;
 }

@@ -106,22 +106,22 @@ namespace UnitTest
         operator bool() { return m_value; }
 
         template <class T>
-        typename AZStd::enable_if<AZStd::is_integral<T>::value, bool>::type
-        Evaluate(const T& t)
+            requires AZStd::is_integral_v<T>
+        bool Evaluate(const T& t)
         {
             return t != 0;
         }
 
         template <class T>
-        typename AZStd::enable_if<AZStd::is_class<T>::value, bool>::type
-        Evaluate(const T& t)
+            requires AZStd::is_class_v<T>
+        bool Evaluate(const T& t)
         {
             return static_cast<bool>(t);
         }
 
         template <class T>
-        typename AZStd::enable_if<AZStd::is_pointer<T>::value, bool>::type
-        Evaluate(const T& t)
+            requires AZStd::is_pointer_v<T>
+        bool Evaluate(const T& t)
         {
             return t != nullptr;
         }
@@ -311,4 +311,3 @@ namespace UnitTest
 #define AZ_TEST(...)
 #define AZ_TEST_SUITE(...)
 #define AZ_TEST_SUITE_END
-

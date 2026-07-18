@@ -10,7 +10,6 @@
 
 #include <AzCore/std/base.h>
 #include <AzCore/std/typetraits/integral_constant.h>
-#include <AzCore/std/typetraits/void_t.h>
 #include <AzCore/std/createdestroy.h>
 #include <AzCore/std/limits.h>
 
@@ -25,7 +24,8 @@ namespace AZStd
             using type = uint8_t;
         };
         template <typename Allocator>
-        struct get_value_type<Allocator, void_t<typename Allocator::value_type>>
+            requires requires { typename Allocator::value_type; }
+        struct get_value_type<Allocator, void>
         {
             using type = typename Allocator::value_type;
         };
@@ -34,15 +34,11 @@ namespace AZStd
         //! Attempts to use the C++ standard allocator_type::pointer typedef if available,
         //! otherwise attempt to fallback to the AZStd pointer typedef.
         //! if neither typedef is available fallbacks to value_type*
-        template <typename Allocator, typename = void>
-        static constexpr bool has_pointer = false;
         template <typename Allocator>
-        static constexpr bool has_pointer<Allocator, void_t<typename Allocator::pointer>> = true;
+        static constexpr bool has_pointer = requires { typename Allocator::pointer; };
 
-        template <typename Allocator, typename = void>
-        static constexpr bool has_pointer_type = false;
         template <typename Allocator>
-        static constexpr bool has_pointer_type<Allocator, void_t<typename Allocator::pointer>> = true;
+        static constexpr bool has_pointer_type = requires { typename Allocator::pointer; };
 
         template <typename Allocator, typename ValueType, bool has_std_pointer_alias = has_pointer<Allocator>, bool has_azstd_pointer_alias = has_pointer_type<Allocator>>
         struct get_pointer_type
@@ -67,7 +63,8 @@ namespace AZStd
             using type = typename std::pointer_traits<PointerType>::template rebind<const ValueType>;
         };
         template <typename Allocator, typename PointerType, typename ValueType>
-        struct get_const_pointer_type<Allocator, PointerType, ValueType, void_t<typename Allocator::const_pointer>>
+            requires requires { typename Allocator::const_pointer; }
+        struct get_const_pointer_type<Allocator, PointerType, ValueType, void>
         {
             using type = typename Allocator::const_pointer;
         };
@@ -79,7 +76,8 @@ namespace AZStd
             using type = typename std::pointer_traits<PointerType>::template rebind<const void>;
         };
         template <typename Allocator, typename PointerType>
-        struct get_const_void_pointer_type<Allocator, PointerType, void_t<typename Allocator::const_void_pointer>>
+            requires requires { typename Allocator::const_void_pointer; }
+        struct get_const_void_pointer_type<Allocator, PointerType, void>
         {
             using type = typename Allocator::const_void_pointer;
         };
@@ -91,7 +89,8 @@ namespace AZStd
             using type = typename std::pointer_traits<PointerType>::difference_type;
         };
         template <typename Allocator, typename PointerType>
-        struct get_difference_type<Allocator, PointerType, void_t<typename Allocator::difference_type>>
+            requires requires { typename Allocator::difference_type; }
+        struct get_difference_type<Allocator, PointerType, void>
         {
             using type = typename Allocator::difference_type;
         };
@@ -103,7 +102,8 @@ namespace AZStd
             using type = typename std::make_unsigned_t<AlignType>;
         };
         template<typename Allocator, typename AlignType>
-        struct get_align_type<Allocator, AlignType, void_t<typename Allocator::align_type>>
+            requires requires { typename Allocator::align_type; }
+        struct get_align_type<Allocator, AlignType, void>
         {
             using type = typename Allocator::align_type;
         };
@@ -115,7 +115,8 @@ namespace AZStd
             using type = typename std::make_unsigned<DifferenceType>::type;
         };
         template <typename Allocator, typename DifferenceType>
-        struct get_size_type<Allocator, DifferenceType, void_t<typename Allocator::size_type>>
+            requires requires { typename Allocator::size_type; }
+        struct get_size_type<Allocator, DifferenceType, void>
         {
             using type = typename Allocator::size_type;
         };
@@ -127,7 +128,8 @@ namespace AZStd
             using type = AZStd::true_type;
         };
         template <typename Allocator>
-        struct get_propagate_on_container_move_assignment_type<Allocator, void_t<typename Allocator::propagate_on_container_move_assignment>>
+            requires requires { typename Allocator::propagate_on_container_move_assignment; }
+        struct get_propagate_on_container_move_assignment_type<Allocator, void>
         {
             using type = typename Allocator::propagate_on_container_move_assignment;
         };
@@ -139,22 +141,17 @@ namespace AZStd
             using type = AZStd::true_type;
         };
         template <typename Allocator>
-        struct get_propagate_on_container_swap_type<Allocator, void_t<typename Allocator::propagate_on_container_swap>>
+            requires requires { typename Allocator::propagate_on_container_swap; }
+        struct get_propagate_on_container_swap_type<Allocator, void>
         {
             using type = typename Allocator::propagate_on_container_swap;
         };
 
         //! rebind
-        template <typename Allocator, typename NewType, typename = void>
-        struct has_rebind
-            : false_type
-        {};
         template <typename Allocator, typename NewType>
-        struct has_rebind<Allocator, NewType, void_t<typename Allocator::template rebind<NewType>::other>>
-            : true_type
-        {};
+        concept has_rebind = requires { typename Allocator::template rebind<NewType>::other; };
         //! allocator_type is not a template nor does it have a rebind alias template therefore the allocator_type will be used directly
-        template <typename Allocator, typename NewType, bool = has_rebind<Allocator, NewType>::value>
+        template <typename Allocator, typename NewType, bool = has_rebind<Allocator, NewType>>
         struct get_rebind_type
         {
             using type = Allocator;
@@ -173,44 +170,22 @@ namespace AZStd
         };
 
         //! max_size
-        template <class Allocator>
-        static auto has_max_size_test(Allocator&& alloc) -> decltype(alloc.max_size(), true_type());
-        template <class Allocator>
-        static auto has_max_size_test(const volatile Allocator&)->false_type;
-        template <typename Allocator>
-        static constexpr bool has_max_size = is_same_v<decltype(has_max_size_test(declval<Allocator&>())), true_type>;
-
-        template <class Allocator>
-        static auto has_get_max_size_test(Allocator&& alloc) -> decltype(alloc.get_max_size(), true_type());
-        template <class Allocator>
-        static auto has_get_max_size_test(const volatile Allocator&)->false_type;
-        template <typename Allocator>
-        static constexpr bool has_get_max_size = is_same_v<decltype(has_get_max_size_test(declval<Allocator&>())), true_type>;
-        // Prefer the C++ standard max_size function before the AZStd get_max_size function
-        template <typename Allocator, typename ValueType, typename SizeType, bool max_size_callable, bool get_max_size_callable>
-        struct call_max_size
+        template <typename Allocator, typename ValueType, typename SizeType>
+        static constexpr SizeType call_max_size(const Allocator& alloc)
         {
-            static constexpr SizeType invoke(const Allocator&)
-            {
-                return (std::numeric_limits<SizeType>::max)() / sizeof(ValueType);
-            }
-        };
-        template <typename Allocator, typename ValueType, typename SizeType, bool get_max_size_callable>
-        struct call_max_size<Allocator, ValueType, SizeType, true, get_max_size_callable>
-        {
-            static SizeType invoke(const Allocator& alloc)
+            if constexpr (requires { alloc.max_size(); })
             {
                 return alloc.max_size();
             }
-        };
-        template <typename Allocator, typename ValueType, typename SizeType>
-        struct call_max_size<Allocator, ValueType, SizeType, false, true>
-        {
-            static SizeType invoke(const Allocator& alloc)
+            else if constexpr (requires { alloc.get_max_size(); })
             {
                 return alloc.get_max_size();
             }
-        };
+            else
+            {
+                return (std::numeric_limits<SizeType>::max)() / sizeof(ValueType);
+            }
+        }
 
     }
     /*
@@ -272,7 +247,7 @@ namespace AZStd
 
         static size_type max_size(const allocator_type& alloc)
         {
-            return call_max_size<allocator_type, value_type, size_type, has_max_size<allocator_type>, has_get_max_size<allocator_type>>::invoke(alloc);
+            return call_max_size<allocator_type, value_type, size_type>(alloc);
         }
 
     };

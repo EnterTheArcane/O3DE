@@ -80,9 +80,9 @@ namespace AZ
         static constexpr Uuid CreateData(const AZStd::byte* data, size_t dataSize);
         // Accepts a range whose value type is implicitly or explicitly convertible to an AZStd::byte
         template<class R>
-        static constexpr auto CreateData(R&& dataSpan)
-            -> AZStd::enable_if_t<AZStd::convertible_to<AZStd::ranges::range_value_t<R>, AZStd::byte>
-            || decltype(static_cast<AZStd::byte>(AZStd::declval<AZStd::ranges::range_value_t<R>>()), AZStd::true_type())::value, Uuid>;
+            requires AZStd::convertible_to<AZStd::ranges::range_value_t<R>, AZStd::byte>
+                || requires(AZStd::ranges::range_value_t<R> value) { static_cast<AZStd::byte>(value); }
+        static constexpr Uuid CreateData(R&& dataSpan);
 
         constexpr bool IsNull() const;
         constexpr Variant GetVariant() const;

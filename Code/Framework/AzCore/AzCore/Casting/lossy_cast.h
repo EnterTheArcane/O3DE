@@ -18,10 +18,9 @@
 // used with other types.
 */
 template <typename ToType, typename FromType>
-inline constexpr AZStd::enable_if_t<
-    (AZStd::is_arithmetic<FromType>::value || AZStd::is_enum<FromType>::value)
-    && (AZStd::is_arithmetic<ToType>::value || AZStd::is_enum<ToType>::value)
-    , ToType > azlossy_cast(FromType value)
+    requires (AZStd::is_arithmetic_v<FromType> || AZStd::is_enum_v<FromType>)
+        && (AZStd::is_arithmetic_v<ToType> || AZStd::is_enum_v<ToType>)
+inline constexpr ToType azlossy_cast(FromType value)
 {
     return static_cast<ToType>(value);
 }

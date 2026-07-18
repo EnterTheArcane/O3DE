@@ -19,8 +19,11 @@ namespace AZ::ConsoleTypeHelpers
     //! @param value the value instance to convert to a string
     //! @return the string representation of the value
     template <typename TYPE>
-    auto ValueToString(const TYPE& value)
-        -> AZStd::enable_if_t<AZStd::is_void_v<decltype(AZStd::to_string(AZStd::declval<CVarFixedString&>(), AZStd::declval<TYPE>()))>, CVarFixedString>;
+        requires requires
+        {
+            requires AZStd::is_void_v<decltype(AZStd::to_string(AZStd::declval<CVarFixedString&>(), AZStd::declval<TYPE>()))>;
+        }
+    CVarFixedString ValueToString(const TYPE& value);
 
     //! Helper function for converting a set of strings to a value.
     //! Must be either overloaded(preferred) or specialized for type

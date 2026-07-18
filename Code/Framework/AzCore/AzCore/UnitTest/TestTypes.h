@@ -260,12 +260,8 @@ namespace UnitTest
             s_moved = 0;
         }
     private:
-        // The test member variable has configurable alignment and this class has configurable size
-        // In some cases (when the size < alignment) padding is required. To avoid the compiler warning
-        // us about the padding being added, we added it here for the cases that is required.
-        // '% alignment' in the padding is redundant, but it fixes an 'array is too large' clang error.
-        static constexpr bool sHasPadding = size < alignment;
-        AZStd::enable_if<sHasPadding, char[(alignment - size) % alignment]> mPadding;
+        // Keep the explicit byte previously contributed by the padding helper so this test type's layout remains unchanged.
+        char mPadding;
     };
 
     template <AZ::u32 size, AZ::u8 instance, size_t alignment>

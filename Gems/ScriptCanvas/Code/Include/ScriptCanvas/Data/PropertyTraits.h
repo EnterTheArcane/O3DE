@@ -139,12 +139,15 @@ namespace ScriptCanvas
         struct WrapGetter;
 
         template<typename FunctionType>
-        struct WrapGetter<FunctionType, AZStd::enable_if_t<AZStd::is_member_pointer<FunctionType>::value>>
+            requires AZStd::is_member_pointer_v<FunctionType>
+        struct WrapGetter<FunctionType, void>
             : Internal::WrapGetterHelper<FunctionType, typename AZStd::function_traits<FunctionType>::class_type>
         {};
 
         template<typename FunctionType>
-        struct WrapGetter<FunctionType, AZStd::enable_if_t<!AZStd::is_member_pointer<FunctionType>::value && AZStd::function_traits<FunctionType>::arity == 1>>
+            requires (!AZStd::is_member_pointer_v<FunctionType>)
+                && (AZStd::function_traits<FunctionType>::arity == 1)
+        struct WrapGetter<FunctionType, void>
             : Internal::WrapGetterHelper<FunctionType, AZStd::decay_t<AZStd::function_traits_get_arg_t<FunctionType, 0>>>
         {};
 
@@ -152,12 +155,16 @@ namespace ScriptCanvas
         struct WrapSetter;
 
         template<typename FunctionType>
-        struct WrapSetter<FunctionType, AZStd::enable_if_t<AZStd::is_member_function_pointer<FunctionType>::value && AZStd::function_traits<FunctionType>::arity == 1>>
+            requires AZStd::is_member_function_pointer_v<FunctionType>
+                && (AZStd::function_traits<FunctionType>::arity == 1)
+        struct WrapSetter<FunctionType, void>
             : Internal::WrapSetterHelper<FunctionType, typename AZStd::function_traits<FunctionType>::class_type, AZStd::function_traits_get_arg_t<FunctionType, 0>>
         {};
 
         template<typename FunctionType>
-        struct WrapSetter<FunctionType, AZStd::enable_if_t<!AZStd::is_member_function_pointer<FunctionType>::value && AZStd::function_traits<FunctionType>::arity == 2>>
+            requires (!AZStd::is_member_function_pointer_v<FunctionType>)
+                && (AZStd::function_traits<FunctionType>::arity == 2)
+        struct WrapSetter<FunctionType, void>
             : Internal::WrapSetterHelper<FunctionType, AZStd::function_traits_get_arg_t<FunctionType, 0>, AZStd::function_traits_get_arg_t<FunctionType, 1>>
         {};
 

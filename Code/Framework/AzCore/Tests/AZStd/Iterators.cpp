@@ -407,6 +407,44 @@ namespace UnitTest
         static_assert(requires { typename ConstIteratorTraits::reference; });
     }
 
+    TEST_F(Iterators, ConstIterator_HeterogeneousAndRewrittenComparisons_Succeed)
+    {
+        int values[]{ 1, 2 };
+        using ConstIterator = AZStd::basic_const_iterator<int*>;
+
+        ConstIterator iterator(values);
+        int* sentinel = values + AZStd::size(values);
+        static_assert(requires(ConstIterator iter, int* sen)
+        {
+            iter == sen;
+            sen == iter;
+            iter != sen;
+            sen != iter;
+        });
+
+        EXPECT_FALSE(iterator == sentinel);
+        EXPECT_FALSE(sentinel == iterator);
+        EXPECT_TRUE(iterator != sentinel);
+        EXPECT_TRUE(sentinel != iterator);
+
+        auto moveIterator = AZStd::make_move_iterator(iterator);
+        auto moveSentinel = AZStd::move_sentinel<int*>(sentinel);
+        static_assert(requires(decltype(moveIterator) iter, decltype(moveSentinel) sen)
+        {
+            iter == sen;
+            sen == iter;
+            iter != sen;
+            sen != iter;
+        });
+
+        while (moveIterator != moveSentinel)
+        {
+            ++moveIterator;
+        }
+        EXPECT_EQ(moveSentinel, moveIterator);
+        EXPECT_EQ(moveIterator, moveSentinel);
+    }
+
     TEST_F(Iterators, CountedIterator_CanIterate_UntilDefaultSentinel)
     {
         AZStd::string testString("Hello World");

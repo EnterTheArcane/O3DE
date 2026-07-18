@@ -243,7 +243,7 @@ namespace AZStd
             {
                 initialize_buffer(rhs.capacity());
                 m_first = m_buff;
-                m_last = AZStd::uninitialized_copy(rhs.begin(), rhs.end(), m_buff, Internal::is_fast_copy<iterator, pointer>());
+                m_last = AZStd::uninitialized_copy(rhs.begin(), rhs.end(), m_buff, Internal::is_fast_copy_v<iterator, pointer>);
                 if (m_last == m_end)
                 {
                     m_last = m_buff;
@@ -259,14 +259,14 @@ namespace AZStd
         AZ_FORCE_INLINE ring_buffer(InputIterator first, InputIterator last, const allocator_type& alloc = allocator_type())
             : m_allocator(alloc)
         {
-            initialize(first, last, is_integral<InputIterator>());
+            initialize(first, last);
         }
 
         template <class InputIterator>
         AZ_FORCE_INLINE ring_buffer(size_type capacity, InputIterator first, InputIterator last,    const allocator_type& alloc = allocator_type())
             : m_allocator(alloc)
         {
-            initialize(capacity, first, last, is_integral<InputIterator>());
+            initialize(capacity, first, last);
         }
 
         AZ_FORCE_INLINE ~ring_buffer()
@@ -293,7 +293,7 @@ namespace AZStd
             m_end = m_buff + rhs.capacity();
             m_first = m_buff;
             m_size = rhs.m_size;
-            m_last = AZStd::uninitialized_copy(rhs.begin(), rhs.end(), m_buff, Internal::is_fast_copy<iterator, pointer>());
+            m_last = AZStd::uninitialized_copy(rhs.begin(), rhs.end(), m_buff, Internal::is_fast_copy_v<iterator, pointer>);
             if (m_last == m_end)
             {
                 m_last = m_buff;
@@ -589,7 +589,7 @@ namespace AZStd
         }
 
         template <class InputIterator>
-        AZ_FORCE_INLINE void insert(iterator pos, InputIterator first, InputIterator last) { insert(pos, first, last, AZStd::is_integral<InputIterator>()); }
+        AZ_FORCE_INLINE void insert(iterator pos, InputIterator first, InputIterator last) { insert_iter(pos, first, last); }
 
         inline iterator erase(const_iterator constPos)
         {
@@ -695,7 +695,7 @@ namespace AZStd
             }
             pointer buff = reinterpret_cast<pointer>(static_cast<void*>(m_allocator.allocate(new_capacity * sizeof(node_type), alignof(node_type))));
             iterator b = begin();
-            pointer last = AZStd::uninitialized_copy(b, b + AZStd::GetMin(new_capacity, m_size), buff, Internal::is_fast_copy<iterator, pointer>());
+            pointer last = AZStd::uninitialized_copy(b, b + AZStd::GetMin(new_capacity, m_size), buff, Internal::is_fast_copy_v<iterator, pointer>);
 
             clear();
             deallocate_memory();
@@ -714,7 +714,7 @@ namespace AZStd
             }
             pointer buff = reinterpret_cast<pointer>(static_cast<void*>(m_allocator.allocate(new_capacity * sizeof(node_type), alignof(node_type))));
             iterator e = end();
-            pointer last = AZStd::uninitialized_copy(e - AZStd::GetMin(new_capacity, m_size), e, buff, Internal::is_fast_copy<iterator, pointer>());
+            pointer last = AZStd::uninitialized_copy(e - AZStd::GetMin(new_capacity, m_size), e, buff, Internal::is_fast_copy_v<iterator, pointer>);
 
             clear();
             deallocate_memory();
@@ -876,19 +876,21 @@ namespace AZStd
         AZ_FORCE_INLINE void initialize_buffer(size_type capacity, const_reference value)
         {
             initialize_buffer(capacity);
-            AZStd::uninitialized_fill_n(m_buff, m_size, value, Internal::is_fast_fill<pointer>());
+            AZStd::uninitialized_fill_n(m_buff, m_size, value, Internal::is_fast_fill_v<pointer>);
         }
         template <class IntegralType>
-        AZ_FORCE_INLINE void initialize(IntegralType n, IntegralType item, const true_type&)
+        AZ_FORCE_INLINE void initialize(IntegralType first, IntegralType last)
         {
-            m_size = static_cast<size_type>(n);
-            initialize_buffer(m_size, item);
-            m_first = m_last = m_buff;
-        }
-        template <class Iterator>
-        AZ_FORCE_INLINE void initialize(Iterator first, Iterator last, const false_type&)
-        {
-            initialize(first, last, typename AZStd::iterator_traits<Iterator>::iterator_category());
+            if constexpr (is_integral_v<IntegralType>)
+            {
+                m_size = static_cast<size_type>(first);
+                initialize_buffer(m_size, last);
+                m_first = m_last = m_buff;
+            }
+            else
+            {
+                initialize(first, last, typename AZStd::iterator_traits<IntegralType>::iterator_category());
+            }
         }
         //template <class InputIterator>
         //void initialize(InputIterator first, InputIterator last, const AZStd::input_iterator_tag&) {
@@ -904,18 +906,20 @@ namespace AZStd
             initialize(distance, first, last, distance);
         }
         template <class IntegralType>
-        void initialize(size_type capacity, IntegralType size, IntegralType value, const true_type&)
+        void initialize(size_type capacity, IntegralType first, IntegralType last)
         {
-            m_size = static_cast<size_type>(size);
-            AZSTD_CONTAINER_ASSERT(capacity >= m_size, "AZStd::ring_buffer::initialize - capacity must be >= size!");
-            initialize_buffer(capacity, value);
-            m_first = m_buff;
-            m_last = (capacity == m_size) ? m_buff : m_buff + m_size;
-        }
-        template <class Iterator>
-        void initialize(size_type capacity, Iterator first, Iterator last, const false_type&)
-        {
-            initialize(capacity, first, last, typename AZStd::iterator_traits<Iterator>::iterator_category());
+            if constexpr (is_integral_v<IntegralType>)
+            {
+                m_size = static_cast<size_type>(first);
+                AZSTD_CONTAINER_ASSERT(capacity >= m_size, "AZStd::ring_buffer::initialize - capacity must be >= size!");
+                initialize_buffer(capacity, last);
+                m_first = m_buff;
+                m_last = (capacity == m_size) ? m_buff : m_buff + m_size;
+            }
+            else
+            {
+                initialize(capacity, first, last, typename AZStd::iterator_traits<IntegralType>::iterator_category());
+            }
         }
 
         //template <class InputIterator>
@@ -959,7 +963,7 @@ namespace AZStd
                 m_size = distance;
             }
 
-            m_last = AZStd::uninitialized_copy(first, last, m_buff, Internal::is_fast_copy<ForwardIterator, pointer>());
+            m_last = AZStd::uninitialized_copy(first, last, m_buff, Internal::is_fast_copy_v<ForwardIterator, pointer>);
             if (m_last == m_end)
             {
                 m_last = m_buff;
@@ -974,10 +978,6 @@ namespace AZStd
             m_first = m_last = m_buff = m_end = 0;
             m_size = 0;
         }
-
-        //! Specialized assign method.
-        /*template <class IntegralType>
-        inline void assign(IntegralType n, IntegralType item, const true_type&) { assign(static_cast<size_type>(n), static_cast<value_type>(item)); }*/
 
         inline iterator insert_item(const iterator& pos, const_reference value)
         {
@@ -1013,16 +1013,17 @@ namespace AZStd
             return iterator(AZSTD_CHECKED_ITERATOR_2(iterator_impl, this, p));
         }
 
-        template <class IntegralType>
-        AZ_FORCE_INLINE void insert(const iterator& pos, IntegralType n, IntegralType item, const true_type&)
+        template <class InputIterator>
+        AZ_FORCE_INLINE void insert_iter(const iterator& pos, InputIterator first, InputIterator last)
         {
-            insert(pos, static_cast<size_type>(n), static_cast<value_type>(item));
-        }
-
-        template <class Iterator>
-        AZ_FORCE_INLINE void insert(const iterator& pos, Iterator first, Iterator last, const false_type&)
-        {
-            insert(pos, first, last, AZStd::iterator_traits<Iterator>::iterator_category());
+            if constexpr (is_integral_v<InputIterator>)
+            {
+                insert(pos, static_cast<size_type>(first), static_cast<value_type>(last));
+            }
+            else
+            {
+                insert(pos, first, last, AZStd::iterator_traits<InputIterator>::iterator_category());
+            }
         }
 
         ////! Specialized insert method.

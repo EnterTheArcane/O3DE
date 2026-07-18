@@ -54,12 +54,14 @@ namespace AZStd
         //  in multithreaded programs r.px may be invalidated at any point.
         //
         template<class Y>
-        weak_ptr(weak_ptr<Y> const& r, typename AZStd::Internal::sp_enable_if_convertible<Y, T>::type = AZStd::Internal::sp_empty())
+            requires AZStd::is_convertible_v<Y*, T*>
+        weak_ptr(weak_ptr<Y> const& r)
             : px(r.lock().get())
             , pn(r.pn)                 // never throws
         {}
         template<class Y>
-        weak_ptr(weak_ptr<Y>&& r, typename AZStd::Internal::sp_enable_if_convertible<Y, T>::type = AZStd::Internal::sp_empty())
+            requires AZStd::is_convertible_v<Y*, T*>
+        weak_ptr(weak_ptr<Y>&& r)
             : px(r.lock().get())
             , pn(static_cast< AZStd::Internal::weak_count && >(r.pn))                       // never throws
         {
@@ -81,7 +83,8 @@ namespace AZStd
         }
 
         template<class Y>
-        weak_ptr(shared_ptr<Y> const& r, typename AZStd::Internal::sp_enable_if_convertible<Y, T>::type = AZStd::Internal::sp_empty())
+            requires AZStd::is_convertible_v<Y*, T*>
+        weak_ptr(shared_ptr<Y> const& r)
             : px(r.px)
             , pn(r.pn)           // never throws
         {

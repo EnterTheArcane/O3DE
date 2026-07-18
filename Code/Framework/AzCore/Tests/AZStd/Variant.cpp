@@ -181,8 +181,8 @@ namespace UnitTest
             template <typename... Args>
             MemberFuncQualifiers operator()(Args&&...)
             {
-                constexpr bool lvalueArg = AZStd::conjunction<AZStd::is_lvalue_reference<Args>...>::value;
-                constexpr bool constArg = AZStd::conjunction<AZStd::is_const<AZStd::remove_reference_t<Args>>...>::value;
+                constexpr bool lvalueArg = (AZStd::is_lvalue_reference_v<Args> && ...);
+                constexpr bool constArg = (AZStd::is_const_v<AZStd::remove_reference_t<Args>> && ...);
 
                 AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
                 if (lvalueArg && !constArg)

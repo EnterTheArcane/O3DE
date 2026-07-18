@@ -162,8 +162,8 @@ namespace AZ { namespace Android
                 //! The return value will be a global reference and the caller is responsible for deleting
                 //! through Jni::DeleteGlobalRef when no longer needed.
                 template<typename ReturnType, typename... Args>
-                typename AZStd::enable_if<AZStd::is_convertible<ReturnType, jobject>::value, ReturnType>::type
-                InvokeObjectMethod(const char* methodName, Args&&... parameters);
+                    requires AZStd::is_convertible_v<ReturnType, jobject>
+                ReturnType InvokeObjectMethod(const char* methodName, Args&&... parameters);
 
 
                 //!@{
@@ -207,8 +207,8 @@ namespace AZ { namespace Android
                 //! The return value will be a global reference and the caller is responsible for deleting
                 //! through Jni::DeleteGlobalRef when no longer needed.
                 template<typename ReturnType, typename... Args>
-                typename AZStd::enable_if<AZStd::is_convertible<ReturnType, jobject>::value, ReturnType>::type
-                InvokeStaticObjectMethod(const char* methodName, Args&&... parameters);
+                    requires AZStd::is_convertible_v<ReturnType, jobject>
+                ReturnType InvokeStaticObjectMethod(const char* methodName, Args&&... parameters);
 
 
                 //!@{
@@ -230,8 +230,8 @@ namespace AZ { namespace Android
                 //! Set a custom java object instance field.  Restricted to types derived from _jobject,
                 //! such as jstring, jarray, etc.
                 template<typename ValueType, typename... Args>
-                typename AZStd::enable_if<AZStd::is_convertible<ValueType, jobject>::value>::type
-                SetObjectField(const char* fieldName, ValueType value);
+                    requires AZStd::is_convertible_v<ValueType, jobject>
+                void SetObjectField(const char* fieldName, ValueType value);
 
                 //!@{
                 //! All the Get<TYPE>Field functions are for getting a registered instance member on
@@ -252,8 +252,8 @@ namespace AZ { namespace Android
                 //! such as jstring, jarray, etc.  A global refernece will be returned and the caller is
                 //! responsible for deleting through Jni::DeleteGlobalRef when no longer needed.
                 template<typename ReturnType, typename... Args>
-                typename AZStd::enable_if<AZStd::is_convertible<ReturnType, jobject>::value, ReturnType>::type
-                GetObjectField(const char* fieldName);
+                    requires AZStd::is_convertible_v<ReturnType, jobject>
+                ReturnType GetObjectField(const char* fieldName);
 
 
                 //!@{
@@ -275,8 +275,8 @@ namespace AZ { namespace Android
                 //! Set a custom java object static field.  Restricted to types derived from _jobject,
                 //! such as jstring, jarray, etc.
                 template<typename ValueType, typename... Args>
-                typename AZStd::enable_if<AZStd::is_convertible<ValueType, jobject>::value>::type
-                SetStaticObjectField(const char* fieldName, ValueType value);
+                    requires AZStd::is_convertible_v<ValueType, jobject>
+                void SetStaticObjectField(const char* fieldName, ValueType value);
 
 
                 //!@{
@@ -298,8 +298,8 @@ namespace AZ { namespace Android
                 //! such as jstring, jarray, etc.  A global reference will be returned and the caller is
                 //! responsible for deleting through Jni::DeleteGlobalRef when no longer needed.
                 template<typename ReturnType, typename... Args>
-                typename AZStd::enable_if<AZStd::is_convertible<ReturnType, jobject>::value, ReturnType>::type
-                GetStaticObjectField(const char* fieldName);
+                    requires AZStd::is_convertible_v<ReturnType, jobject>
+                ReturnType GetStaticObjectField(const char* fieldName);
 
 
             private:

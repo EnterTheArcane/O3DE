@@ -213,7 +213,8 @@ namespace AZ::Dom
         explicit Value(Type type);
 
         // Stores the enum type as it's underlying type
-        template<class EnumType, class = AZStd::enable_if_t<AZStd::is_enum_v<EnumType>>>
+        template<class EnumType>
+            requires AZStd::is_enum_v<EnumType>
         explicit Value(EnumType enumType);
 
         // Disable accidental calls to Value(bool) with pointer types
@@ -230,8 +231,8 @@ namespace AZ::Dom
 
         //! Assignment operator to allow forwarding types constructible via Value(T) to be assigned
         template<class T>
-        auto operator=(T&& arg)
-            -> AZStd::enable_if_t<!AZStd::is_same_v<AZStd::remove_cvref_t<T>, Value> && AZStd::is_constructible_v<Value, T>, Value&>
+            requires (!AZStd::is_same_v<AZStd::remove_cvref_t<T>, Value>) && AZStd::is_constructible_v<Value, T>
+        Value& operator=(T&& arg)
         {
             return operator=(Value(AZStd::forward<T>(arg)));
         }
@@ -420,7 +421,8 @@ namespace AZ::Dom
         ValueType m_value;
     };
 
-    template<class EnumType, class>
+    template<class EnumType>
+        requires AZStd::is_enum_v<EnumType>
     Value::Value(EnumType enumType)
         : Value(AZStd::to_underlying(enumType))
     {

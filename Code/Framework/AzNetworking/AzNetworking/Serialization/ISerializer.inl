@@ -17,45 +17,30 @@
 
 namespace AzNetworking
 {
+    template <typename C>
+    concept IterableContainer = requires(C& value)
+    {
+        typename C::value_type;
+        typename C::const_iterator;
+        typename C::size_type;
+        value.begin();
+        value.end();
+        value.size();
+    };
+
     // Identifies AZStd containers
     struct AzContainerHelper
     {
-        template <typename C>
-        struct IsIterableContainer
-        {
-            template <class TYPE>
-            static AZStd::false_type Evaluate(...);
-
-            template <class TYPE>
-            static AZStd::true_type Evaluate(int,
-                typename TYPE::value_type = typename TYPE::value_type(),
-                typename TYPE::const_iterator = C().begin(),
-                typename TYPE::const_iterator = C().end(),
-                typename TYPE::size_type = C().size());
-
-            static constexpr bool Value = AZStd::is_same<decltype(Evaluate<C>(0)), AZStd::true_type>::value;
-        };
-
         template <typename TYPE>
-        struct HasReserveMethod
-        {
-            template <typename U>
-            static decltype(U().reserve()) Evaluate(int);
-
-            template <typename U>
-            static AZStd::false_type Evaluate(...);
-
-            static constexpr bool value = !AZStd::is_same<AZStd::false_type, decltype(Evaluate<TYPE>(0))>::value;
-        };
-
-        template <typename TYPE>
-        static AZStd::enable_if_t<HasReserveMethod<TYPE>::value> ReserveContainer(TYPE& value, typename TYPE::size_type size)
+            requires requires(TYPE& value, typename TYPE::size_type size) { value.reserve(size); }
+        static void ReserveContainer(TYPE& value, typename TYPE::size_type size)
         {
             value.reserve(size);
         }
 
         template<typename TYPE>
-        static AZStd::enable_if_t<!HasReserveMethod<TYPE>::value> ReserveContainer(TYPE&, typename TYPE::size_type)
+            requires (!requires(TYPE& value, typename TYPE::size_type size) { value.reserve(size); })
+        static void ReserveContainer(TYPE&, typename TYPE::size_type)
         {
             ;
         }
@@ -82,7 +67,8 @@ namespace AzNetworking
 
     // Non-containers
     template <typename TYPE>
-    struct SerializeObjectHelper<TYPE, AZStd::enable_if_t<!AzContainerHelper::IsIterableContainer<TYPE>::value>>
+        requires (!IterableContainer<TYPE>)
+    struct SerializeObjectHelper<TYPE, void>
     {
         static bool SerializeObject(ISerializer& serializer, TYPE& value)
         {

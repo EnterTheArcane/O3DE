@@ -20,7 +20,6 @@
 //  See http://www.boost.org/libs/smart_ptr/intrusive_ptr.html for documentation.
 //
 #include <AzCore/RTTI/RTTI.h>
-#include <AzCore/std/smart_ptr/sp_convertible.h>
 #include <AzCore/std/typetraits/is_abstract.h>
 #include <AzCore/std/typetraits/typetraits.h>
 

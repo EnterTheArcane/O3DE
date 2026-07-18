@@ -738,7 +738,7 @@ namespace AZ
         void Reflect(ReflectContext* reflection) const override
         {
             static_assert(HasComponentReflect<ComponentClass>::value, "All components using ComponentDescriptorDefault (AZ_COMPONENT macro) should implement 'static void Reflect(ReflectContext* reflection)' function!");
-            CallReflect(reflection, typename HasComponentReflect<ComponentClass>::type());
+            CallReflect(reflection);
         }
 
         /**
@@ -749,7 +749,7 @@ namespace AZ
         void GetProvidedServices(ComponentDescriptor::DependencyArrayType& provided, const Component* instance) const override
         {
             (void)instance; // Not used by default because most components have static (not instance-dependent) services.
-            CallProvidedServices(provided, typename HasComponentProvidedServices<ComponentClass>::type());
+            CallProvidedServices(provided);
         }
 
         /**
@@ -760,7 +760,7 @@ namespace AZ
         void GetDependentServices(ComponentDescriptor::DependencyArrayType& dependent, const Component* instance) const override
         {
             (void)instance; // Not used by default because most components have static (not instance-dependent) services.
-            CallDependentServices(dependent, typename HasComponentDependentServices<ComponentClass>::type());
+            CallDependentServices(dependent);
         }
 
         /**
@@ -771,7 +771,7 @@ namespace AZ
         void GetRequiredServices(ComponentDescriptor::DependencyArrayType& required, const Component* instance) const override
         {
             (void)instance; // Not used by default because most components have static (not instance-dependent) services.
-            CallRequiredServices(required, typename HasComponentRequiredServices<ComponentClass>::type());
+            CallRequiredServices(required);
         }
 
         /**
@@ -782,54 +782,49 @@ namespace AZ
         void GetIncompatibleServices(ComponentDescriptor::DependencyArrayType& incompatible, const Component* instance) const override
         {
             (void)instance; // Not used by default because most components have static (not instance-dependent) services.
-            CallIncompatibleServices(incompatible, typename HasComponentIncompatibleServices<ComponentClass>::type());
+            CallIncompatibleServices(incompatible);
         }
 
     private:
 
-        void CallReflect(ReflectContext* reflection, const AZStd::true_type&) const
+        void CallReflect(ReflectContext* reflection) const
         {
-            ComponentClass::Reflect(reflection);
+            if constexpr (HasComponentReflect<ComponentClass>::value)
+            {
+                ComponentClass::Reflect(reflection);
+            }
         }
 
-        void CallReflect(ReflectContext*, const AZStd::false_type&) const
+        void CallProvidedServices(ComponentDescriptor::DependencyArrayType& provided) const
         {
+            if constexpr (HasComponentProvidedServices<ComponentClass>::value)
+            {
+                ComponentClass::GetProvidedServices(provided);
+            }
         }
 
-        void CallProvidedServices(ComponentDescriptor::DependencyArrayType& provided, const AZStd::true_type&) const
+        void CallDependentServices(ComponentDescriptor::DependencyArrayType& dependent) const
         {
-            ComponentClass::GetProvidedServices(provided);
+            if constexpr (HasComponentDependentServices<ComponentClass>::value)
+            {
+                ComponentClass::GetDependentServices(dependent);
+            }
         }
 
-        void CallProvidedServices(ComponentDescriptor::DependencyArrayType&, const AZStd::false_type&) const
+        void CallRequiredServices(ComponentDescriptor::DependencyArrayType& required) const
         {
+            if constexpr (HasComponentRequiredServices<ComponentClass>::value)
+            {
+                ComponentClass::GetRequiredServices(required);
+            }
         }
 
-        void CallDependentServices(ComponentDescriptor::DependencyArrayType& dependent, const AZStd::true_type&) const
+        void CallIncompatibleServices(ComponentDescriptor::DependencyArrayType& incompatible) const
         {
-            ComponentClass::GetDependentServices(dependent);
-        }
-
-        void CallDependentServices(ComponentDescriptor::DependencyArrayType&, const AZStd::false_type&) const
-        {
-        }
-
-        void CallRequiredServices(ComponentDescriptor::DependencyArrayType& required, const AZStd::true_type&) const
-        {
-            ComponentClass::GetRequiredServices(required);
-        }
-
-        void CallRequiredServices(ComponentDescriptor::DependencyArrayType&, const AZStd::false_type&) const
-        {
-        }
-
-        void CallIncompatibleServices(ComponentDescriptor::DependencyArrayType& incompatible, const AZStd::true_type&) const
-        {
-            ComponentClass::GetIncompatibleServices(incompatible);
-        }
-
-        void CallIncompatibleServices(ComponentDescriptor::DependencyArrayType&, const AZStd::false_type&) const
-        {
+            if constexpr (HasComponentIncompatibleServices<ComponentClass>::value)
+            {
+                ComponentClass::GetIncompatibleServices(incompatible);
+            }
         }
     };
 }

@@ -14,7 +14,6 @@
 #include <AzCore/std/typetraits/add_cv.h>
 #include <AzCore/std/typetraits/add_volatile.h>
 #include <AzCore/std/typetraits/common_type.h>
-#include <AzCore/std/typetraits/conjunction.h>
 #include <AzCore/std/typetraits/is_assignable.h>
 #include <AzCore/std/typetraits/is_constructible.h>
 #include <AzCore/std/typetraits/is_destructible.h>
@@ -851,18 +850,14 @@ namespace AZStd
                 }
 
                 constexpr bool is_emplacable = is_nothrow_constructible_v<T, Arg> || !is_nothrow_move_constructible_v<T>;
-                emplace_alt<Index, T>(AZStd::forward<Arg>(arg), bool_constant<is_emplacable>{});
-            }
-            template <size_t Index, class T, class Arg>
-            constexpr void emplace_alt(Arg&& arg, AZStd::true_type)
-            {
-                this->emplace<Index>(AZStd::forward<Arg>(arg));
-            }
-
-            template <size_t Index, class T, class Arg>
-            constexpr void emplace_alt(Arg&& arg, AZStd::false_type)
-            {
-                this->emplace<Index>(T(AZStd::forward<Arg>(arg)));
+                if constexpr (is_emplacable)
+                {
+                    this->emplace<Index>(AZStd::forward<Arg>(arg));
+                }
+                else
+                {
+                    this->emplace<Index>(T(AZStd::forward<Arg>(arg)));
+                }
             }
 
             template <class OtherVariant>

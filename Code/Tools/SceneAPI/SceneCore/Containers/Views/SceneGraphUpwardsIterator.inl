@@ -72,21 +72,16 @@ namespace AZ
                 }
 
                 template<typename Iterator>
-                auto SceneGraphUpwardsIterator<Iterator>::GetPointer(AZStd::true_type) const->pointer
-                {
-                    return m_iterator;
-                }
-
-                template<typename Iterator>
-                auto SceneGraphUpwardsIterator<Iterator>::GetPointer(AZStd::false_type) const->pointer
-                {
-                    return m_iterator.operator->();
-                }
-
-                template<typename Iterator>
                 auto SceneGraphUpwardsIterator<Iterator>::operator->() const->pointer
                 {
-                    return GetPointer(typename AZStd::is_pointer<Iterator>::type());
+                    if constexpr (AZStd::is_pointer_v<Iterator>)
+                    {
+                        return m_iterator;
+                    }
+                    else
+                    {
+                        return m_iterator.operator->();
+                    }
                 }
 
                 template<typename Iterator>

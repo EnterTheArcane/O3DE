@@ -31,7 +31,7 @@ namespace AZStd
     //  scoped_ptr mimics a built-in pointer except that it guarantees deletion
     //  of the object pointed to, either on destruction of the scoped_ptr or via
     //  an explicit reset(). scoped_ptr is a simple solution for simple needs;
-    //  use shared_ptr or std::auto_ptr if your needs are more complex.
+    //  use shared_ptr or unique_ptr if your needs are more complex.
 
     template<class T>
     class scoped_ptr                   // noncopyable
@@ -58,16 +58,6 @@ namespace AZStd
             AZStd::sp_scalar_constructor_hook(px);
     #endif
         }
-
-#ifndef AZ_NO_AUTO_PTR
-        explicit scoped_ptr(std::auto_ptr<T> p)
-            : px(p.release())                                        // never throws
-        {
-    #if defined(AZSTD_SP_ENABLE_DEBUG_HOOKS)
-            AZStd::sp_scalar_constructor_hook(px);
-    #endif
-        }
-#endif // AZ_NO_AUTO_PTR
 
         ~scoped_ptr() // never throws
         {

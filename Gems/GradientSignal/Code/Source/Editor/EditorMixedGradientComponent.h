@@ -20,7 +20,8 @@ namespace GradientSignal
     };
 
     template<typename T>
-    bool ValidateGradientEntityIds(T& configuration, AZStd::enable_if_t<AZStd::is_same<T, MixedGradientConfig>::value>* = nullptr)
+        requires AZStd::is_same_v<T, MixedGradientConfig>
+    bool ValidateGradientEntityIds(T& configuration)
     {
         bool validated = true;
 
@@ -33,7 +34,8 @@ namespace GradientSignal
     }
 
     template<typename T>
-    void SetSamplerOwnerEntity(T& configuration, AZ::EntityId entityId, AZStd::enable_if_t<AZStd::is_same<T, MixedGradientConfig>::value>* = nullptr)
+        requires AZStd::is_same_v<T, MixedGradientConfig>
+    void SetSamplerOwnerEntity(T& configuration, AZ::EntityId entityId)
     {
         for (auto& layer : configuration.m_layers)
         {

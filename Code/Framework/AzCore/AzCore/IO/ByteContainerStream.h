@@ -118,38 +118,34 @@ namespace AZ::IO
 
         // As we are about to write bytes to a container, use the fast resize (without constructing elements) if available.
         template<class ContainerType>
-        inline void ResizeContainerBuffer(ContainerType* buffer, size_t newLength, const AZStd::true_type& /* HasResizeNoConstruct<ContainerType> */)
+        inline void ResizeContainerBuffer(ContainerType* buffer, size_t newLength)
         {
-            buffer->resize_no_construct(newLength);
-        }
-
-        // If resize_no_construct if not supported by the container, just call resize.
-        template<class ContainerType>
-        inline void ResizeContainerBuffer(ContainerType* buffer, size_t newLength, const AZStd::false_type& /* HasResizeNoConstruct<ContainerType> */)
-        {
-            buffer->resize(newLength);
+            if constexpr (HasResizeNoConstruct<ContainerType>::value)
+            {
+                buffer->resize_no_construct(newLength);
+            }
+            else
+            {
+                buffer->resize(newLength);
+            }
         }
 
         // Set the container capacity to manage better number of allocations (especially when doing small allocation)
         AZ_HAS_MEMBER(SetCapacity, set_capacity, void, (size_t));
 
         template<class ContainerType>
-        inline void AdjustContainerBufferCapacity(ContainerType* buffer, size_t requiredSize, size_t maxCapacityGrowSize, const AZStd::true_type& /* HasSetCapacity<ContainerType> */)
+        inline void AdjustContainerBufferCapacity(ContainerType* buffer, size_t requiredSize, size_t maxCapacityGrowSize)
         {
-            if (requiredSize > buffer->capacity())
+            if constexpr (HasSetCapacity<ContainerType>::value)
             {
-                // grow by 50%, if we can.
-                size_t newCapacityGrowSize = AZ::GetClamp<size_t>(requiredSize / 2, 4, maxCapacityGrowSize);
-                size_t newCapacity = requiredSize + newCapacityGrowSize;
-                buffer->set_capacity(newCapacity);
+                if (requiredSize > buffer->capacity())
+                {
+                    // grow by 50%, if we can.
+                    size_t newCapacityGrowSize = AZ::GetClamp<size_t>(requiredSize / 2, 4, maxCapacityGrowSize);
+                    size_t newCapacity = requiredSize + newCapacityGrowSize;
+                    buffer->set_capacity(newCapacity);
+                }
             }
-        }
-
-        template<class ContainerType>
-        inline void AdjustContainerBufferCapacity(ContainerType* buffer, size_t requiredSize, size_t maxCapacityGrowSize, const AZStd::false_type& /* HasSetCapacityt<ContainerType> */)
-        {
-            (void)buffer; (void)requiredSize; (void)maxCapacityGrowSize;
-            // no set capacity support we will need to rely on resize alone
         }
     }
 
@@ -253,9 +249,9 @@ namespace AZ::IO
         if (requiredLen > len)
         {
             // Make sure we grow the write buffer in a reasonable manner to avoid too many allocations
-            Internal::AdjustContainerBufferCapacity(m_buffer, requiredLen, m_maxGrowSize, typename Internal::HasSetCapacity<ContainerType>::type());
+            Internal::AdjustContainerBufferCapacity(m_buffer, requiredLen, m_maxGrowSize);
 
-            Internal::ResizeContainerBuffer(m_buffer, requiredLen, typename Internal::HasResizeNoConstruct<ContainerType>::type());
+            Internal::ResizeContainerBuffer(m_buffer, requiredLen);
         }
 
         // For now, just return back the value that was handed in.  This could also be used to return 0 if error checking gets added
@@ -310,6 +306,6 @@ namespace AZ::IO
             AZ_Error("ByteContainerStream", false, "The stream is closed, cannot truncate buffer");
             return;
         }
-        Internal::ResizeContainerBuffer(m_buffer, m_pos, typename Internal::HasResizeNoConstruct<ContainerType>::type());
+        Internal::ResizeContainerBuffer(m_buffer, m_pos);
     }
 }   // namespace AZ::IO

@@ -23,7 +23,8 @@ namespace AzToolsFramework
             // Collection of helper functions to allow calling the appropriate GetColumn function based on the return type ...
             template<typename T> T GetColumnValue(SQLite::Statement* statement, int index);
 
-            template<typename T, typename AZStd::enable_if_t<AZStd::is_enum<T>::value>* = nullptr>
+            template<typename T>
+                requires AZStd::is_enum_v<T>
             T GetColumnEnum(SQLite::Statement* statement, int index)
             {
                 // In the case of enums, try to cast to the underlying type and see if we have a GetColumnValue implementation for that type
@@ -32,7 +33,8 @@ namespace AzToolsFramework
                 return static_cast<T>(GetColumnValue<EnumType>(statement, index));
             }
 
-            template<typename T, typename AZStd::enable_if_t<!AZStd::is_enum<T>::value>* = nullptr>
+            template<typename T>
+                requires (!AZStd::is_enum_v<T>)
             T GetColumnEnum(SQLite::Statement* statement, int index)
             {
                 // Non-enum type with no implementation

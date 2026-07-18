@@ -85,15 +85,15 @@ namespace UnitTest
         using list_type = AZStd::list<int>;
         using vector_type = AZStd::vector<int>;
         using string_type = AZStd::string;
-        static_assert(AZStd::Internal::is_fast_copy<const char*, const char*>::value);
-        static_assert(!AZStd::Internal::is_fast_copy<typename list_type::iterator, int*>::value);
-        static_assert(!AZStd::Internal::is_fast_copy<int*, typename list_type::iterator>::value);
-        static_assert(AZStd::Internal::is_fast_copy<typename vector_type::iterator, int*>::value);
-        static_assert(AZStd::Internal::is_fast_copy<int*, typename vector_type::iterator>::value);
-        static_assert(AZStd::Internal::is_fast_copy<typename string_type::iterator, char*>::value);
-        static_assert(AZStd::Internal::is_fast_copy<char*, typename string_type::iterator>::value);
+        static_assert(AZStd::Internal::is_fast_copy_v<const char*, const char*>);
+        static_assert(!AZStd::Internal::is_fast_copy_v<typename list_type::iterator, int*>);
+        static_assert(!AZStd::Internal::is_fast_copy_v<int*, typename list_type::iterator>);
+        static_assert(AZStd::Internal::is_fast_copy_v<typename vector_type::iterator, int*>);
+        static_assert(AZStd::Internal::is_fast_copy_v<int*, typename vector_type::iterator>);
+        static_assert(AZStd::Internal::is_fast_copy_v<typename string_type::iterator, char*>);
+        static_assert(AZStd::Internal::is_fast_copy_v<char*, typename string_type::iterator>);
 
-        static_assert(!AZStd::Internal::is_fast_copy<typename vector_type::iterator, typename list_type::iterator>::value);
+        static_assert(!AZStd::Internal::is_fast_copy_v<typename vector_type::iterator, typename list_type::iterator>);
     }
 
     TEST(CreateDestroy, IsFastFillTraits_TrueForContiguousIteratorTypes)
@@ -103,12 +103,12 @@ namespace UnitTest
         using string_type = AZStd::string;
         using fixed_string_type = AZStd::fixed_string<128>;
 
-        static_assert(!AZStd::Internal::is_fast_fill<typename list_type::iterator>::value);
-        static_assert(!AZStd::Internal::is_fast_fill<typename vector_type::iterator>::value);
+        static_assert(!AZStd::Internal::is_fast_fill_v<typename list_type::iterator>);
+        static_assert(!AZStd::Internal::is_fast_fill_v<typename vector_type::iterator>);
         // Fast fill requires the type to be of size 1
-        static_assert(AZStd::Internal::is_fast_fill<const char*>::value);
-        static_assert(AZStd::Internal::is_fast_fill<typename string_type::iterator>::value);
-        static_assert(AZStd::Internal::is_fast_fill<typename fixed_string_type::iterator>::value);
+        static_assert(AZStd::Internal::is_fast_fill_v<const char*>);
+        static_assert(AZStd::Internal::is_fast_fill_v<typename string_type::iterator>);
+        static_assert(AZStd::Internal::is_fast_fill_v<typename fixed_string_type::iterator>);
     }
 
     TEST(CreateDestroy, ConstructAt_IsAbleToConstructReferenceTypes_Success)

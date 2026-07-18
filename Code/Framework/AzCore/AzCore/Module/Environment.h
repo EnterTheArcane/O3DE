@@ -12,7 +12,7 @@
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/spin_mutex.h>
-#include <AzCore/std/smart_ptr/sp_convertible.h>
+#include <AzCore/std/typetraits/is_convertible.h>
 #include <AzCore/std/typetraits/aligned_storage.h>
 #include <AzCore/std/typetraits/alignment_of.h>
 #include <AzCore/std/typetraits/config.h>
@@ -355,7 +355,8 @@ namespace AZ
         }
 
         template<class U>
-        EnvironmentVariable(EnvironmentVariable<U> const& rhs, typename AZStd::Internal::sp_enable_if_convertible<U, T>::type = AZStd::Internal::sp_empty())
+            requires AZStd::is_convertible_v<U*, T*>
+        EnvironmentVariable(EnvironmentVariable<U> const& rhs)
             : m_data(rhs.m_data)
         {
             if (m_data != nullptr)
@@ -429,7 +430,8 @@ namespace AZ
         }
 
         template<typename U>
-        auto Set(U&& value) -> AZStd::enable_if_t<AZStd::assignable_from<T&, U>>
+            requires AZStd::assignable_from<T&, U>
+        void Set(U&& value)
         {
             Get() = AZStd::forward<U>(value);
         }
@@ -619,5 +621,3 @@ namespace AZ
 
 #endif // AZCORE_PLATFORM_INCLUDE_H
 #pragma once
-
-

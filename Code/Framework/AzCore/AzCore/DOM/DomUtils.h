@@ -89,15 +89,16 @@ namespace AZ::Dom::Utils
 
     // Only add pointer to non-pointer types
     template<typename T>
-    struct DomValueWrapper<T, AZStd::enable_if_t<(AZStd::is_reference_v<T> || !AZStd::is_copy_constructible_v<T>)
-        && !is_dom_value_v<T>>>
+        requires (AZStd::is_reference_v<T> || !AZStd::is_copy_constructible_v<T>) && (!is_dom_value_v<T>)
+    struct DomValueWrapper<T, void>
     {
         // i.e don't convert `const void*&` to `const void**`, instead convert to a reference wrapper
         using Type = AZStd::reference_wrapper<AZStd::remove_reference_t<T>>;
     };
 
     template<typename T>
-    struct DomValueWrapper<T, AZStd::enable_if_t<is_dom_value_v<T>>>
+        requires is_dom_value_v<T>
+    struct DomValueWrapper<T, void>
     {
         using Type = Dom::Value;
     };

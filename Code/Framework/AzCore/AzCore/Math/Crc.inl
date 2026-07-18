@@ -18,8 +18,8 @@ namespace AZ
     }
 
     template <class ByteType>
-    constexpr auto Crc32::Set(const ByteType* data, size_t size, bool forceLowerCase)
-        -> AZStd::enable_if_t<sizeof(ByteType) == 1>
+        requires (sizeof(ByteType) == 1)
+    constexpr void Crc32::Set(const ByteType* data, size_t size, bool forceLowerCase)
     {
         Internal::Crc32Set(data, size, forceLowerCase, m_value);
     }
@@ -43,7 +43,8 @@ namespace AZ
     // Crc32 constructor
     //
     //=========================================================================
-    template<class ByteType, class>
+    template<class ByteType>
+        requires (sizeof(ByteType) == 1)
     constexpr Crc32::Crc32(const ByteType* data, size_t size, bool forceLowerCase)
         : m_value{ 0 }
     {
@@ -72,8 +73,8 @@ namespace AZ
     // Crc32 - Add
     //=========================================================================
     template <class ByteType>
-    constexpr auto Crc32::Add(const ByteType* data, size_t size, bool forceLowerCase)
-        -> AZStd::enable_if_t<sizeof(ByteType) == 1>
+        requires (sizeof(ByteType) == 1)
+    constexpr void Crc32::Add(const ByteType* data, size_t size, bool forceLowerCase)
     {
         Combine(Crc32{ data, size, forceLowerCase }, size);
     }

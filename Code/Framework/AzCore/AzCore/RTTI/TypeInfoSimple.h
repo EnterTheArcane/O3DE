@@ -197,8 +197,11 @@ namespace AZ
     // For class types, they can implement the GetO3deTypeName function a later point in code
     // and argument dependent lookup will pick them up
     template <class T>
-    constexpr bool HasUnqualifiedGetO3deTypeName_v<T, AZStd::enable_if_t<
-        AZStd::is_same_v<decltype(GetO3deTypeName(AZ::Adl{}, AZStd::type_identity<T>{})), AZ::TypeNameString>> > = true;
+        requires requires
+        {
+            requires AZStd::is_same_v<decltype(GetO3deTypeName(AZ::Adl{}, AZStd::type_identity<T>{})), AZ::TypeNameString>;
+        }
+    constexpr bool HasUnqualifiedGetO3deTypeName_v<T, void> = true;
 
     // True if the class has an overload available via ordinary name nookup or ADL
     template <class T>
@@ -225,8 +228,11 @@ namespace AZ
     // For class types, they can implement the GetO3deTypeId function a later point in code
     // and argument dependent lookup will pick them up
     template <class T>
-    constexpr bool HasUnqualifiedGetO3deTypeId_v<T, AZStd::enable_if_t<
-        AZStd::is_same_v<decltype(GetO3deTypeId(AZ::Adl{}, AZStd::type_identity<T>{})), AZ::TypeId>> > = true;
+        requires requires
+        {
+            requires AZStd::is_same_v<decltype(GetO3deTypeId(AZ::Adl{}, AZStd::type_identity<T>{})), AZ::TypeId>;
+        }
+    constexpr bool HasUnqualifiedGetO3deTypeId_v<T, void> = true;
 
     // True if the class has an overload available via ordinary name nookup or ADL
     template <class T>
@@ -252,8 +258,11 @@ namespace AZ
     // Specialization for when an unqualified call to GetO3deClassTemplateId is available in the current scope
     // via unqualified name lookup and ADL
     template <class T>
-    inline constexpr bool HasUnqualifiedGetO3deClassTemplateId_v<T, AZStd::enable_if_t <
-        AZStd::is_same_v<decltype(GetO3deClassTemplateId(AZ::Adl{}, AZStd::type_identity<T>{})), AZ::TemplateId > >> = true;
+        requires requires
+        {
+            requires AZStd::is_same_v<decltype(GetO3deClassTemplateId(AZ::Adl{}, AZStd::type_identity<T>{})), AZ::TemplateId>;
+        }
+    inline constexpr bool HasUnqualifiedGetO3deClassTemplateId_v<T, void> = true;
 
     // True if the class has an overload as a member function or an overload available in its namespace.
     template <class T>

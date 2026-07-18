@@ -431,46 +431,46 @@ namespace UnitTest
 
     TEST(TypeTraits, TemplateIsCopyConstructible_WithCopyConstructibleValueType_ReturnsTrue)
     {
-        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::vector<int>>::value, "");
-        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::list<int>>::value, "");
-        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::forward_list<int>>::value, "");
-        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::map<int, int>>::value, "");
-        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::multimap<int, int>>::value, "");
-        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::unordered_map<int, int>>::value, "");
-        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::unordered_multimap<int, int>>::value, "");
-        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::set<int>>::value, "");
-        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::multiset<int>>::value, "");
-        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::unordered_set<int>>::value, "");
-        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::unordered_multiset<int>>::value, "");
-        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::pair<int, int>>::value, "");
+        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::vector<int>>);
+        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::list<int>>);
+        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::forward_list<int>>);
+        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::map<int, int>>);
+        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::multimap<int, int>>);
+        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::unordered_map<int, int>>);
+        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::unordered_multimap<int, int>>);
+        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::set<int>>);
+        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::multiset<int>>);
+        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::unordered_set<int>>);
+        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::unordered_multiset<int>>);
+        static_assert(AZStd::Internal::template_is_copy_constructible<AZStd::pair<int, int>>);
 
         struct CopyableType
         {
             CopyableType() = default;
             CopyableType(const CopyableType&) = default;
         };
-        static_assert(AZStd::Internal::template_is_copy_constructible<CopyableType>::value, "");
+        static_assert(AZStd::Internal::template_is_copy_constructible<CopyableType>);
     }
 
     TEST(TypeTraits, TemplateIsCopyConstructible_WithOutCopyConstructibleValueType_ReturnsFalse)
     {
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::vector<AZStd::unique_ptr<int>>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::list<AZStd::unique_ptr<int>>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::forward_list<AZStd::unique_ptr<int>>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::map<AZStd::unique_ptr<int>, int>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::map<int, AZStd::unique_ptr<int>>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::multimap<AZStd::unique_ptr<int>, int>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::multimap<int, AZStd::unique_ptr<int>>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::unordered_map<AZStd::unique_ptr<int>, int>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::unordered_map<int, AZStd::unique_ptr<int>>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::unordered_multimap<AZStd::unique_ptr<int>, int>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::unordered_multimap<int, AZStd::unique_ptr<int>>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::set<AZStd::unique_ptr<int>>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::multiset<AZStd::unique_ptr<int>>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::unordered_set<AZStd::unique_ptr<int>>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::unordered_multiset<AZStd::unique_ptr<int>>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::pair<AZStd::unique_ptr<int>, int>>::value, "");
-        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::pair<int, AZStd::unique_ptr<int>>>::value, "");
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::vector<AZStd::unique_ptr<int>>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::list<AZStd::unique_ptr<int>>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::forward_list<AZStd::unique_ptr<int>>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::map<AZStd::unique_ptr<int>, int>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::map<int, AZStd::unique_ptr<int>>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::multimap<AZStd::unique_ptr<int>, int>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::multimap<int, AZStd::unique_ptr<int>>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::unordered_map<AZStd::unique_ptr<int>, int>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::unordered_map<int, AZStd::unique_ptr<int>>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::unordered_multimap<AZStd::unique_ptr<int>, int>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::unordered_multimap<int, AZStd::unique_ptr<int>>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::set<AZStd::unique_ptr<int>>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::multiset<AZStd::unique_ptr<int>>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::unordered_set<AZStd::unique_ptr<int>>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::unordered_multiset<AZStd::unique_ptr<int>>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::pair<AZStd::unique_ptr<int>, int>>);
+        static_assert(!AZStd::Internal::template_is_copy_constructible<AZStd::pair<int, AZStd::unique_ptr<int>>>);
 
         struct MoveOnly
         {
@@ -478,7 +478,7 @@ namespace UnitTest
             MoveOnly(const MoveOnly&) = delete;
             MoveOnly(MoveOnly&&) = default;
         };
-        static_assert(!AZStd::Internal::template_is_copy_constructible<MoveOnly>::value, "");
+        static_assert(!AZStd::Internal::template_is_copy_constructible<MoveOnly>);
     }
 
     TEST(TypeTraits, MakeSignedCompiles)
@@ -580,14 +580,8 @@ namespace UnitTest
         static_assert(AZStd::is_same_v<AZStd::iter_rvalue_reference_t<IterMoveCustomizationPointTest>, char&&>);
     }
 
-    // VS2017 workaround, calling decltype directly on the fully specialized aznumeric_cast template
-    // function fails with error C3556:  'aznumeric_cast': incorrect argument to 'decltype'
-    // So invoke the attempt to invoke function in a non-evaluated context and SFINAE to prevent a compile
-    // error
-    template <typename T, typename = void>
-    constexpr bool NumericCastInvocable = false;
     template <typename T>
-    constexpr bool NumericCastInvocable<T, AZStd::void_t<decltype(aznumeric_cast<int>(AZStd::declval<T>()))>> = true;
+    constexpr bool NumericCastInvocable = requires(T value) { aznumeric_cast<int>(value); };
     TEST(TypeTraits, NumericCastConversionOperatorCompiles)
     {
         struct AzNumericCastConvertibleCompileTest

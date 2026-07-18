@@ -16,16 +16,14 @@
 
 namespace AZ
 {
+    template <typename ReflectContextT>
+    concept ReflectContextType = AZStd::is_base_of_v<ReflectContext, ReflectContextT>;
+
     /**
      * Class that manages all ReflectContexts and all reflection entry point functions
      */
     class AZCORE_API ReflectionManager
     {
-    private:
-        // Reusable check for whether or not a type is a reflect context
-        template <typename ReflectContextT>
-        using IsReflectContextT = AZStd::enable_if_t<AZStd::is_base_of<ReflectContext, ReflectContextT>::value>;
-
     public:
         AZ_CLASS_ALLOCATOR(ReflectionManager, SystemAllocator);
 
@@ -48,15 +46,15 @@ namespace AZ
         void Unreflect(StaticReflectionFunctionPtr reflectEntryPoint);
 
         /// Creates a reflect context, and reflects all registered entry points
-        template <typename ReflectContextT, typename = IsReflectContextT<ReflectContextT>>
+        template <ReflectContextType ReflectContextT>
         void AddReflectContext() { AddReflectContext(AZStd::make_unique<ReflectContextT>()); }
 
         /// Gets a reflect context of the requested type
-        template <typename ReflectContextT, typename = IsReflectContextT<ReflectContextT>>
+        template <ReflectContextType ReflectContextT>
         ReflectContextT* GetReflectContext() { return azrtti_cast<ReflectContextT*>(GetReflectContext(azrtti_typeid<ReflectContextT>())); }
 
         /// Destroy a reflect context (unreflects all entry points)
-        template <typename ReflectContextT, typename = IsReflectContextT<ReflectContextT>>
+        template <ReflectContextType ReflectContextT>
         void RemoveReflectContext() { RemoveReflectContext(azrtti_typeid<ReflectContextT>()); }
 
     protected:

@@ -281,9 +281,11 @@ namespace AzToolsFramework
             const AZ::Vector3& localManipulatorStartPosition,
             const AZ::Vector3& localManipulatorOffset);
 
-        template<typename V, typename AZStd::enable_if<AZStd::is_same<V, AZ::Vector3>::value>::type* = nullptr>
+        template<typename V>
+            requires AZStd::is_same_v<V, AZ::Vector3>
         void UpdateManipulatorSpace(const AzFramework::ViewportInfo& viewportInfo);
-        template<typename V, typename AZStd::enable_if<AZStd::is_same<V, AZ::Vector2>::value>::type* = nullptr>
+        template<typename V>
+            requires AZStd::is_same_v<V, AZ::Vector2>
         void UpdateManipulatorSpace(const AzFramework::ViewportInfo& viewportInfo) const;
 
         EditorBoxSelect m_editorBoxSelect; //!< Provide box select support for vertex selection.

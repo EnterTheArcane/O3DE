@@ -37,16 +37,15 @@ namespace AZ
 
     namespace SerializerInternal
     {
-        // Below are some additional helper functions which are really only necessary until we can have if constexpr() support from C++17
-        // so that our above code will the correct signed or unsigned function calls at compile time instead of branching
-
-        template <typename T, AZStd::enable_if_t<AZStd::is_signed<T>::value, int> = 0>
+        template <typename T>
+            requires AZStd::is_signed_v<T>
         static void StoreToValue(rapidjson::Value& outputValue, T inputValue)
         {
             outputValue.SetInt64(inputValue);
         }
 
-        template <typename T, AZStd::enable_if_t<AZStd::is_unsigned<T>::value, int> = 0>
+        template <typename T>
+            requires AZStd::is_unsigned_v<T>
         static void StoreToValue(rapidjson::Value& outputValue, T inputValue)
         {
             outputValue.SetUint64(inputValue);

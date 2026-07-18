@@ -47,11 +47,11 @@ namespace AZStd
     template<class T>
     class shared_ptr;
 
-    template<class T, class = void>
-    inline constexpr bool HasToString_v = false;
     template<class T>
-    inline constexpr bool HasToString_v<T, AZStd::enable_if_t<
-        AZStd::is_void_v<decltype(AZStd::to_string(AZStd::declval<AZStd::string&>(), AZStd::declval<T>()), void())>> > = true;
+    inline constexpr bool HasToString_v = requires
+    {
+        requires AZStd::is_void_v<decltype(AZStd::to_string(AZStd::declval<AZStd::string&>(), AZStd::declval<T>()), void())>;
+    };
 
     inline namespace AssociativeInternal
     {
@@ -141,15 +141,16 @@ namespace AZ
         }
 
         template <class T>
-        AZStd::enable_if_t<std::is_trivial<T>::value> InitializeDefaultIfPodType(T& t)
+        void InitializeDefaultIfPodType(T& t)
         {
-            t = T{};
-        }
-
-        template <class T>
-        AZStd::enable_if_t<!std::is_trivial<T>::value> InitializeDefaultIfPodType(T& t)
-        {
-            (void)t;
+            if constexpr (std::is_trivial_v<T>)
+            {
+                t = T{};
+            }
+            else
+            {
+                (void)t;
+            }
         }
 
         // Simple container that allows wrapping an rvalue into a simple class that enumerates through InstanceDataHierarchy into a class with a single child with a key = value pair

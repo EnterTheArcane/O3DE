@@ -140,7 +140,7 @@ namespace AZStd
         {
             // We need some help here, since this function can be mistaken with the vector(size_type, const_reference value, const allocator_type&) one...
             // so we need to handle this case.
-            construct_iter(first, last, is_integral<InputIterator>());
+            construct_iter(first, last);
         }
 
         template<Internal::container_compatible_range<value_type> R>
@@ -597,7 +597,7 @@ namespace AZStd
         template<class InputIterator>
         AZ_FORCE_INLINE void        assign(const InputIterator& first, const InputIterator& last)
         {
-            assign_iter(first, last, is_integral<InputIterator>());
+            assign_iter(first, last);
         }
 
         template<Internal::container_compatible_range<value_type> R>
@@ -606,12 +606,12 @@ namespace AZStd
             if constexpr (is_lvalue_reference_v<R>)
             {
                 auto rangeView = AZStd::forward<R>(rg) | views::common;
-                assign_iter(ranges::begin(rangeView), ranges::end(rangeView), false_type{});
+                assign_iter(ranges::begin(rangeView), ranges::end(rangeView));
             }
             else
             {
                 auto rangeView = AZStd::forward<R>(rg) | views::as_rvalue | views::common;
-                assign_iter(ranges::begin(rangeView), ranges::end(rangeView), false_type{});
+                assign_iter(ranges::begin(rangeView), ranges::end(rangeView));
             }
         }
 
@@ -793,7 +793,7 @@ namespace AZStd
         template<class InputIterator>
         iterator insert(const_iterator insertPos, InputIterator first, InputIterator last)
         {
-            return insert_impl(insertPos, first, last, is_integral<InputIterator>());
+            return insert_impl(insertPos, first, last);
         }
 
         template<Internal::container_compatible_range<value_type> R>
@@ -805,12 +805,12 @@ namespace AZStd
             if constexpr (is_lvalue_reference_v<R>)
             {
                 auto rangeView = AZStd::forward<R>(rg) | views::common;
-                return insert_impl(insertPos, ranges::begin(rangeView), ranges::end(rangeView), false_type{});
+                return insert_impl(insertPos, ranges::begin(rangeView), ranges::end(rangeView));
             }
             else
             {
                 auto rangeView = AZStd::forward<R>(rg) | views::as_rvalue | views::common;
-                return insert_impl(insertPos, ranges::begin(rangeView), ranges::end(rangeView), false_type{});
+                return insert_impl(insertPos, ranges::begin(rangeView), ranges::end(rangeView));
             }
         }
 
@@ -1070,17 +1070,16 @@ namespace AZStd
 
         //#pragma region Insert iterator specializations
         template<class Iterator>
-        AZ_FORCE_INLINE iterator insert_impl(const_iterator insertPos, const Iterator& first, const Iterator& last, const true_type& /* is_integral<Iterator> */)
+        AZ_FORCE_INLINE iterator insert_impl(const_iterator insertPos, const Iterator& first, const Iterator& last)
         {
-            // we actually are calling this with integral types.
-            return insert(insertPos, (size_type)first, (const_reference)last);
-        }
-
-        template<class Iterator>
-        AZ_FORCE_INLINE iterator insert_impl(const_iterator insertPos, const Iterator& first, const Iterator& last, const false_type& /* is_integral<Iterator> */)
-        {
-            // specialize for specific interators.
-            return insert_iter(insertPos, first, last);
+            if constexpr (is_integral_v<Iterator>)
+            {
+                return insert(insertPos, static_cast<size_type>(first), static_cast<const_reference>(last));
+            }
+            else
+            {
+                return insert_iter(insertPos, first, last);
+            }
         }
 
         template<class Iterator>
@@ -1219,43 +1218,45 @@ namespace AZStd
 
         //#pragma region Construct interator specializations (construct_iter)
         template <class InputIterator>
-        inline void construct_iter(const InputIterator& first, const InputIterator& last, const true_type& /* is_integral<InputIterator> */)
+        inline void construct_iter(const InputIterator& first, const InputIterator& last)
         {
-            size_type numElements = first;
-            value_type value = last;
+            if constexpr (is_integral_v<InputIterator>)
+            {
+                size_type numElements = first;
+                value_type value = last;
 
-            // ok so we did not really mean iterators when the called this function.
-            size_type byteSize = sizeof(node_type) * numElements;
+                // These arguments represent a count and a value, rather than iterators.
+                size_type byteSize = sizeof(node_type) * numElements;
 
-            m_start = reinterpret_cast<pointer>(static_cast<void*>(m_allocator.allocate(byteSize, alignof(node_type))));
-            m_end   = m_start + numElements;
-            AZStd::uninitialized_fill_n(m_start, numElements, value);
-            m_last  = m_end;
+                m_start = reinterpret_cast<pointer>(static_cast<void*>(m_allocator.allocate(byteSize, alignof(node_type))));
+                m_end = m_start + numElements;
+                AZStd::uninitialized_fill_n(m_start, numElements, value);
+                m_last = m_end;
 
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
-            orphan_all();
+                orphan_all();
 #endif
-        }
-
-        template <class InputIterator>
-        AZ_FORCE_INLINE void    construct_iter(const InputIterator& first, const InputIterator& last, const false_type& /* !is_integral<InputIterator> */)
-        {
-            insert(const_iterator(AZSTD_POINTER_ITERATOR_PARAMS(m_start)), first, last);
+            }
+            else
+            {
+                insert(const_iterator(AZSTD_POINTER_ITERATOR_PARAMS(m_start)), first, last);
+            }
         }
         //#pragma endregion
 
         //#pragma region Assign iterator specializations (assign_iter)
         template <class InputIterator>
-        AZ_FORCE_INLINE void    assign_iter(const InputIterator& numElements, const InputIterator& value, const true_type& /* is_integral<InputIterator> */)
+        AZ_FORCE_INLINE void assign_iter(const InputIterator& first, const InputIterator& last)
         {
-            assign((size_type)numElements, value);
-        }
-
-        template <class InputIterator>
-        AZ_FORCE_INLINE void    assign_iter(const InputIterator& first, const InputIterator& last, const false_type& /* !is_integral<InputIterator> */)
-        {
-            clear();
-            insert(begin(), first, last);
+            if constexpr (is_integral_v<InputIterator>)
+            {
+                assign(static_cast<size_type>(first), last);
+            }
+            else
+            {
+                clear();
+                insert(begin(), first, last);
+            }
         }
         //#pragma endregion
 

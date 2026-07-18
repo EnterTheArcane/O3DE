@@ -152,7 +152,8 @@ namespace AssetProcessor
     protected:
 
         //! Helper to handle sending a response for a message if one is needed.
-        template<class TRequest, class TResponse, typename AZStd::enable_if_t<!AZStd::is_void_v<TResponse>>* = nullptr>
+        template<class TRequest, class TResponse>
+            requires (!AZStd::is_void_v<TResponse>)
         static void HandleResponse(AZStd::function<TResponse(MessageData<TRequest>)> handler, MessageData<TRequest> messageData)
         {
             auto&& response = handler(messageData);
@@ -160,7 +161,8 @@ namespace AssetProcessor
             ConnectionBus::Event(messageData.m_key.first, &ConnectionBus::Events::SendResponse, messageData.m_key.second, response);
         }
 
-        template<class TRequest, class TResponse, typename AZStd::enable_if_t<AZStd::is_void_v<TResponse>>* = nullptr>
+        template<class TRequest, class TResponse>
+            requires AZStd::is_void_v<TResponse>
         static void HandleResponse(AZStd::function<TResponse(MessageData<TRequest>)> handler, MessageData<TRequest> messageData)
         {
             // This template handles void returns which mean no response should be sent

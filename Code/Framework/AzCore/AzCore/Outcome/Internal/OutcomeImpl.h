@@ -17,7 +17,8 @@ namespace AZ
         return AZStd::in_place;
     }
 
-    template <class ValueT, class>
+    template <class ValueT>
+        requires (!AZStd::is_void_v<ValueT>)
     constexpr ValueT Success(ValueT&& rhs)
     {
         return AZStd::forward<ValueT>(rhs);
@@ -31,7 +32,8 @@ namespace AZ
         return AZStd::unexpected{ AZStd::unexpect };
     }
 
-    template <class ValueT, class>
+    template <class ValueT>
+        requires (!AZStd::is_void_v<ValueT>)
     constexpr AZStd::unexpected<ValueT> Failure(ValueT&& rhs)
     {
         return AZStd::unexpected<ValueT>(AZStd::forward<ValueT>(rhs));
@@ -126,49 +128,56 @@ namespace AZ
     }
 
     template <class ValueT, class ErrorT>
-    template <class Value_Type, class>
+    template <class Value_Type>
+        requires (!AZStd::is_void_v<Value_Type>)
     AZ_FORCE_INLINE Value_Type& Outcome<ValueT, ErrorT>::GetValue()
     {
         return this->value();
     }
 
     template <class ValueT, class ErrorT>
-    template <class Value_Type, class>
+    template <class Value_Type>
+        requires (!AZStd::is_void_v<Value_Type>)
     AZ_FORCE_INLINE const Value_Type& Outcome<ValueT, ErrorT>::GetValue() const
     {
         return this->value();
     }
 
     template <class ValueT, class ErrorT>
-    template <class Value_Type, class>
+    template <class Value_Type>
+        requires (!AZStd::is_void_v<Value_Type>)
     AZ_FORCE_INLINE Value_Type && Outcome<ValueT, ErrorT>::TakeValue()
     {
         return AZStd::move(this->value());
     }
 
     template <class ValueT, class ErrorT>
-    template <class U, class Value_Type, class>
+    template <class U, class Value_Type>
+        requires (!AZStd::is_void_v<Value_Type>)
     AZ_FORCE_INLINE Value_Type Outcome<ValueT, ErrorT>::GetValueOr(U&& defaultValue) const
     {
         return this->value_or(AZStd::forward<U>(defaultValue));
     }
 
     template <class ValueT, class ErrorT>
-    template <class Error_Type, class>
+    template <class Error_Type>
+        requires (!AZStd::is_void_v<Error_Type>)
     AZ_FORCE_INLINE Error_Type& Outcome<ValueT, ErrorT>::GetError()
     {
         return this->error();
     }
 
     template <class ValueT, class ErrorT>
-    template <class Error_Type, class>
+    template <class Error_Type>
+        requires (!AZStd::is_void_v<Error_Type>)
     AZ_FORCE_INLINE const Error_Type& Outcome<ValueT, ErrorT>::GetError() const
     {
         return this->error();
     }
 
     template <class ValueT, class ErrorT>
-    template <class Error_Type, class>
+    template <class Error_Type>
+        requires (!AZStd::is_void_v<Error_Type>)
     AZ_FORCE_INLINE Error_Type&& Outcome<ValueT, ErrorT>::TakeError()
     {
         return AZStd::move(this->error());

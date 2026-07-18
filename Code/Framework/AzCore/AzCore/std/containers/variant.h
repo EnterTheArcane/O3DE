@@ -12,7 +12,6 @@
 #include <AzCore/std/hash.h>
 #include <AzCore/std/utils.h>
 #include <AzCore/std/typetraits/add_pointer.h>
-#include <AzCore/std/typetraits/disjunction.h>
 #include <AzCore/std/typetraits/is_array.h>
 #include <AzCore/std/typetraits/is_reference.h>
 #include <AzCore/std/typetraits/is_swappable.h>
@@ -117,9 +116,9 @@ namespace AZStd
     {
         static constexpr size_t num_alternatives = sizeof...(Types);
         static_assert(num_alternatives != 0, "variant must contain at least one alternative.");
-        static_assert(!disjunction_v<is_reference<Types>...>, "variant can not have a reference type as an alternative. Per C++ draft standard 19.7.3 Note 1");
-        static_assert(!disjunction_v<is_array<Types>...>, "variant can not have an array type as an alternative. Per C++ draft standard 19.7.3 Note 2");
-        static_assert(!disjunction_v<is_void<Types>...>, "variant can not have a void type as an alternative. Per C++ draft standard 19.7.3 Note 2");
+        static_assert(((!is_reference_v<Types>) && ...), "variant can not have a reference type as an alternative. Per C++ draft standard 19.7.3 Note 1");
+        static_assert(((!is_array_v<Types>) && ...), "variant can not have an array type as an alternative. Per C++ draft standard 19.7.3 Note 2");
+        static_assert(((!is_void_v<Types>) && ...), "variant can not have a void type as an alternative. Per C++ draft standard 19.7.3 Note 2");
 
     public:
         // Variant constructor #1
@@ -474,7 +473,7 @@ namespace AZStd
     struct hash<variant<Types...>>
     {
         template<typename... VariantTypes>
-            requires hash_enabled_concept_v<VariantTypes...>
+            requires hash_enabled<VariantTypes...>
         constexpr size_t operator()(const variant<VariantTypes...>& variantKey) const
         {
             constexpr size_t valuelessHashValue = 'V' | ('A' << 8) | ('R' << 16) | ('I' << 24);

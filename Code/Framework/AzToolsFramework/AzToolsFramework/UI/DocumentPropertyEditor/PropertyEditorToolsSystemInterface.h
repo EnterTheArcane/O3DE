@@ -60,8 +60,15 @@ namespace AzToolsFramework
         //! Unregisters a previously registered property handler.
         virtual void UnregisterHandler(PropertyHandlerId handlerId) = 0;
 
-        template<class, class = void>
-        static constexpr bool IsDefaultHandler = false;
+        template<class T>
+        static constexpr bool IsDefaultHandler = []
+        {
+            if constexpr (requires { T::IsDefaultHandler(); })
+            {
+                return T::IsDefaultHandler();
+            }
+            return false;
+        }();
 
         //! Registers a factory for a given type of PropertyHandlerWidgetInterface.
         //! This type must implement `static const AZStd::string_view GetHandlerName()`
@@ -84,6 +91,4 @@ namespace AzToolsFramework
         }
     };
 
-    template<class T>
-    constexpr bool PropertyEditorToolsSystemInterface::IsDefaultHandler<T, AZStd::void_t<typename T::IsDefaultHandler>> = T::IsDefaultHandler();
 } // namespace AzToolsFramework

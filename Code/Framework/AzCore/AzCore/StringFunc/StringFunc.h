@@ -451,11 +451,10 @@ namespace AZ
             }
         }
 
-        template<typename StringType, typename Range, typename SeparatorString,
-            class = AZStd::enable_if_t<AZStd::ranges::input_range<Range> &&
-            AZStd::convertible_to<AZStd::ranges::range_value_t<Range>,
-                AZStd::basic_string_view<typename StringType::value_type, typename StringType::traits_type>>
-        >>
+        template<typename StringType, typename Range, typename SeparatorString>
+            requires AZStd::ranges::input_range<Range>
+                && AZStd::convertible_to<AZStd::ranges::range_value_t<Range>,
+                    AZStd::basic_string_view<typename StringType::value_type, typename StringType::traits_type>>
         void Join(StringType& joinTarget, Range&& stringViewConvertibleRange, const SeparatorString& separator)
         {
             Join(joinTarget,

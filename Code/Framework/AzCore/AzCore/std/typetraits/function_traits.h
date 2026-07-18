@@ -9,11 +9,11 @@
 
 #include <AzCore/std/typetraits/add_reference.h>
 #include <AzCore/std/typetraits/conditional.h>
-#include <AzCore/std/typetraits/disjunction.h>
 #include <AzCore/std/typetraits/internal/type_sequence_traits.h>
+#include <AzCore/std/typetraits/is_member_function_pointer.h>
+#include <AzCore/std/typetraits/is_member_object_pointer.h>
 #include <AzCore/std/typetraits/is_rvalue_reference.h>
 #include <AzCore/std/typetraits/remove_cvref.h>
-#include <AzCore/std/typetraits/void_t.h>
 
 namespace AZStd
 {
@@ -40,20 +40,8 @@ namespace AZStd
             error_type() = delete;
         };
 
-        template<typename T, typename = void>
-        struct has_call_operator
-            : false_type
-        {
-        };
-
         template<typename T>
-        struct has_call_operator<T, void_t<decltype(&T::operator())>>
-            : true_type
-        {
-        };
-
-        template<typename T>
-        constexpr bool has_call_operator_v = has_call_operator<T>::value;
+        constexpr bool has_call_operator_v = requires { &T::operator(); };
 
         template<typename T = void>
         struct default_traits
@@ -407,14 +395,34 @@ namespace AZStd
             using type = T&;
         };
 
+        template <typename T, typename = void>
+        struct callable_traits
+            : default_traits<T>
+        {};
+
         template <typename T>
-        using callable_traits = disjunction<
-            function_object<T>,
-            raw_function<T>,
-            pointer_to_member_function<T>,
-            pointer_to_member_data<T>,
-            default_traits<T>
-        >;
+            requires function_object<T>::value
+        struct callable_traits<T, void>
+            : function_object<T>
+        {};
+
+        template <typename T>
+            requires raw_function<T>::value
+        struct callable_traits<T, void>
+            : raw_function<T>
+        {};
+
+        template <typename T>
+            requires is_member_function_pointer_v<T>
+        struct callable_traits<T, void>
+            : pointer_to_member_function<T>
+        {};
+
+        template <typename T>
+            requires is_member_object_pointer_v<T>
+        struct callable_traits<T, void>
+            : pointer_to_member_data<T>
+        {};
     }
 
     template <typename Function>

@@ -9,7 +9,6 @@
 #pragma once
 
 #include <AzCore/std/base.h>
-#include <AzCore/std/typetraits/void_t.h>
 #include <AzCore/std/utils.h>
 
 namespace AZStd
@@ -27,16 +26,8 @@ namespace AZStd
         // node_ptr_type DoUpperBound(const ComparableToKey& key, Internal::is_transparent<Compare, ComparableToKey>::value) const
         // will cause a substitution error in this case if the Compare function is missing the is_transparent type alias and therefore can proceed
         // to use the next template candidate
-        template <class T, class Unused, class = void>
-        struct is_transparent
-            : false_type {};
-
         template <class T, class Unused>
-        struct is_transparent<T, Unused, void_t<typename T::is_transparent>>
-            : true_type {};
-
-        template <class T, class Unused>
-        inline constexpr bool is_transparent_v = is_transparent<T, Unused>::value;
+        inline constexpr bool is_transparent_v = requires { typename T::is_transparent; };
     }
     // Functors as required by the standard as of C++17.
 

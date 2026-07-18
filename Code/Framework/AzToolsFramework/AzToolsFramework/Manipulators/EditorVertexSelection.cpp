@@ -962,7 +962,8 @@ namespace AzToolsFramework
     }
 
     template<typename Vertex>
-    template<typename V, typename AZStd::enable_if<AZStd::is_same<V, AZ::Vector3>::value>::type*>
+    template<typename V>
+        requires AZStd::is_same_v<V, AZ::Vector3>
     void EditorVertexSelectionBase<Vertex>::UpdateManipulatorSpace(const AzFramework::ViewportInfo& viewportInfo)
     {
         AZ_PROFILE_FUNCTION(AzToolsFramework);
@@ -985,7 +986,8 @@ namespace AzToolsFramework
         }
     }
     template<typename Vertex>
-    template<typename V, typename AZStd::enable_if<AZStd::is_same<V, AZ::Vector2>::value>::type*>
+    template<typename V>
+        requires AZStd::is_same_v<V, AZ::Vector2>
     void EditorVertexSelectionBase<Vertex>::UpdateManipulatorSpace(const AzFramework::ViewportInfo& /*viewportInfo*/) const
     {
     }

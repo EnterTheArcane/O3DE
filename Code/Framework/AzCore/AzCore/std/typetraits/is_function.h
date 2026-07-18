@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include <AzCore/std/typetraits/conjunction.h>
+#include <AzCore/std/typetraits/integral_constant.h>
 #include <AzCore/std/typetraits/is_pointer.h>
 #include <AzCore/std/typetraits/remove_pointer.h>
 
@@ -18,10 +18,9 @@ namespace AZStd
 
     template<class T>
     struct is_function_pointer
-        : AZStd::conjunction<AZStd::is_pointer<T>, AZStd::is_function<AZStd::remove_pointer_t<T>>>
+        : AZStd::bool_constant<AZStd::is_pointer_v<T> && AZStd::is_function_v<AZStd::remove_pointer_t<T>>>
     {};
 
     template<class T>
     constexpr bool is_function_pointer_v = is_function_pointer<T>::value;
 }
-

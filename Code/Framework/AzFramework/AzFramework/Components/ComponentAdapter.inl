@@ -44,25 +44,25 @@ namespace AzFramework
         template<typename TController, typename TConfiguration>
         void ComponentAdapter<TController, TConfiguration>::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& services)
         {
-            GetProvidedServicesHelper<TController>(services, typename AZ::HasComponentProvidedServices<TController>::type());
+            GetProvidedServicesHelper<TController>(services);
         }
 
         template<typename TController, typename TConfiguration>
         void ComponentAdapter<TController, TConfiguration>::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& services)
         {
-            GetRequiredServicesHelper<TController>(services, typename AZ::HasComponentRequiredServices<TController>::type());
+            GetRequiredServicesHelper<TController>(services);
         }
 
         template<typename TController, typename TConfiguration>
         void ComponentAdapter<TController, TConfiguration>::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& services)
         {
-            GetIncompatibleServicesHelper<TController>(services, typename AZ::HasComponentIncompatibleServices<TController>::type());
+            GetIncompatibleServicesHelper<TController>(services);
         }
 
         template<typename TController, typename TConfiguration>
         void ComponentAdapter<TController, TConfiguration>::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& services)
         {
-            GetDependentServicesHelper<TController>(services, typename AZ::HasComponentDependentServices<TController>::type());
+            GetDependentServicesHelper<TController>(services);
         }
 
         template<typename TController, typename TConfiguration>

@@ -21,85 +21,70 @@ namespace AzFramework
 
         // Make Init() Optional
 
-        template<typename T, typename = void>
-        struct ComponentInitHelper
-        {
-            static void Init([[maybe_unused]] T& controller)
-            {
-            }
-        };
-
         template<typename T>
-        struct ComponentInitHelper<T, AZStd::void_t<decltype(AZStd::declval<T>().Init())>>
+        struct ComponentInitHelper
         {
             static void Init(T& controller)
             {
-                controller.Init();
+                if constexpr (requires { controller.Init(); })
+                {
+                    controller.Init();
+                }
             }
         };
 
-        template<typename T, typename = void>
+        template<typename T>
         struct ComponentActivateHelper
         {
-            static void Activate([[maybe_unused]] T& controller, [[maybe_unused]] const AZ::EntityComponentIdPair& entityComponentIdPair)
-            {
-            }
-        };
-
-        template<typename T>
-        struct ComponentActivateHelper<T, AZStd::void_t<decltype(AZStd::declval<T>().Activate(AZ::EntityId()))>>
-        {
             static void Activate(T& controller, const AZ::EntityComponentIdPair& entityComponentIdPair)
             {
-                controller.Activate(entityComponentIdPair.GetEntityId());
-            }
-        };
-
-        template<typename T>
-        struct ComponentActivateHelper<T, AZStd::void_t<decltype(AZStd::declval<T>().Activate(AZ::EntityComponentIdPair()))>>
-        {
-            static void Activate(T& controller, const AZ::EntityComponentIdPair& entityComponentIdPair)
-            {
-                controller.Activate(entityComponentIdPair);
+                if constexpr (requires { controller.Activate(entityComponentIdPair); })
+                {
+                    controller.Activate(entityComponentIdPair);
+                }
+                else if constexpr (requires { controller.Activate(entityComponentIdPair.GetEntityId()); })
+                {
+                    controller.Activate(entityComponentIdPair.GetEntityId());
+                }
             }
         };
 
         // Make GetProvidedServices, GetDependentServicesHelper, GetRequiredServices and GetIncompatibleServices optional.
 
         template<typename T>
-        void GetProvidedServicesHelper(AZ::ComponentDescriptor::DependencyArrayType&, const AZStd::false_type&) {}
-
-        template<typename T>
-        void GetProvidedServicesHelper(AZ::ComponentDescriptor::DependencyArrayType& services, const AZStd::true_type&)
+        void GetProvidedServicesHelper(AZ::ComponentDescriptor::DependencyArrayType& services)
         {
-            T::GetProvidedServices(services);
+            if constexpr (AZ::HasComponentProvidedServices<T>::value)
+            {
+                T::GetProvidedServices(services);
+            }
         }
 
         template<typename T>
-        void GetDependentServicesHelper(AZ::ComponentDescriptor::DependencyArrayType&, const AZStd::false_type&) {}
-
-        template<typename T>
-        void GetDependentServicesHelper(AZ::ComponentDescriptor::DependencyArrayType& services, const AZStd::true_type&)
+        void GetDependentServicesHelper(AZ::ComponentDescriptor::DependencyArrayType& services)
         {
-            T::GetDependentServices(services);
+            if constexpr (AZ::HasComponentDependentServices<T>::value)
+            {
+                T::GetDependentServices(services);
+            }
         }
 
         template<typename T>
-        void GetRequiredServicesHelper(AZ::ComponentDescriptor::DependencyArrayType&, const AZStd::false_type&) {}
-
-        template<typename T>
-        void GetRequiredServicesHelper(AZ::ComponentDescriptor::DependencyArrayType& services, const AZStd::true_type&)
+        void GetRequiredServicesHelper(AZ::ComponentDescriptor::DependencyArrayType& services)
         {
-            T::GetRequiredServices(services);
+            if constexpr (AZ::HasComponentRequiredServices<T>::value)
+            {
+                T::GetRequiredServices(services);
+            }
         }
 
         template<typename T>
-        void GetIncompatibleServicesHelper(AZ::ComponentDescriptor::DependencyArrayType&, const AZStd::false_type&) {}
-
-        template<typename T>
-        void GetIncompatibleServicesHelper(AZ::ComponentDescriptor::DependencyArrayType& services, const AZStd::true_type&)
+        void GetIncompatibleServicesHelper(AZ::ComponentDescriptor::DependencyArrayType& services)
         {
-            T::GetIncompatibleServices(services);
+            if constexpr (AZ::HasComponentIncompatibleServices<T>::value)
+            {
+                T::GetIncompatibleServices(services);
+            }
         }
     } // namespace Components
 } // namespace AzFramework

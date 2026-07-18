@@ -26,8 +26,11 @@ namespace AZ
     namespace ConsoleTypeHelpers
     {
         template <typename TYPE>
-        inline auto ValueToString(const TYPE& value)
-            -> AZStd::enable_if_t<AZStd::is_void_v<decltype(AZStd::to_string(AZStd::declval<CVarFixedString&>(), AZStd::declval<TYPE>()))>, CVarFixedString>
+            requires requires
+            {
+                requires AZStd::is_void_v<decltype(AZStd::to_string(AZStd::declval<CVarFixedString&>(), AZStd::declval<TYPE>()))>;
+            }
+        inline CVarFixedString ValueToString(const TYPE& value)
         {
             CVarFixedString resultString;
             AZStd::to_string(resultString, value);
@@ -354,19 +357,19 @@ namespace AZ::ConsoleTypeHelpers
 {
     namespace Internal
     {
-        template<class T, class = void>
-        inline constexpr bool HasValueToString = false;
         template<class T>
-        inline constexpr bool HasValueToString<T, AZStd::enable_if_t<
-            AZStd::convertible_to<decltype(ValueToString(AZStd::declval<T>())), CVarFixedString>>> = true;
+        concept HasValueToString = requires
+        {
+            { ValueToString(AZStd::declval<T>()) } -> AZStd::convertible_to<CVarFixedString>;
+        };
 
         struct ToStringFn
         {
             // Converts type to string if the expression ValueToString(const T&) is well formed
             // and returns a type convertible to a CVarFixedString(AZStd::fixed_string)
             template<class T>
-            constexpr auto operator()(const T& value) const
-                -> AZStd::enable_if_t<HasValueToString<T>, CVarFixedString>
+                requires HasValueToString<T>
+            constexpr CVarFixedString operator()(const T& value) const
             {
                 return ValueToString(value);
             }
@@ -374,8 +377,8 @@ namespace AZ::ConsoleTypeHelpers
             // Converts an enum to a enum option string if the EnumType specializes AzEnumTraits
             // otherwise converts the enum to a numeric string
             template<class T>
-            constexpr auto operator()(const T& value) const
-                -> AZStd::enable_if_t<!HasValueToString<T>&& AZStd::is_enum_v<AZStd::remove_cvref_t<T>>, CVarFixedString>
+                requires (!HasValueToString<T>) && AZStd::is_enum_v<AZStd::remove_cvref_t<T>>
+            constexpr CVarFixedString operator()(const T& value) const
             {
                 if constexpr (AZ::HasAzEnumTraits_v<T>)
                 {
@@ -401,19 +404,18 @@ namespace AZ::ConsoleTypeHelpers
             }
         };
 
-        template<class T, class = void>
-        inline constexpr bool HasStringSetToValue = false;
         template<class T>
-        inline constexpr bool HasStringSetToValue<T, AZStd::enable_if_t<
-            AZStd::convertible_to<decltype(StringSetToValue(AZStd::declval<AZStd::remove_const_t<T>&>(), AZStd::declval<AZ::ConsoleCommandContainer>())),
-            bool>>> = true;
+        concept HasStringSetToValue = requires
+        {
+            { StringSetToValue(AZStd::declval<AZStd::remove_const_t<T>&>(), AZStd::declval<AZ::ConsoleCommandContainer>()) }
+                -> AZStd::convertible_to<bool>;
+        };
 
         struct ToValueFn
         {
             template<class T>
-            constexpr auto operator()(T& outValue,
-                const AZ::ConsoleCommandContainer& arguments) const
-                -> AZStd::enable_if_t<HasStringSetToValue<T>, bool>
+                requires HasStringSetToValue<T>
+            constexpr bool operator()(T& outValue, const AZ::ConsoleCommandContainer& arguments) const
             {
                 return StringSetToValue(outValue, arguments);
             }
@@ -425,9 +427,8 @@ namespace AZ::ConsoleTypeHelpers
             // Then a string of "Option1" can be converted to the enum value of EnumName::Option1 == 0
             // and a string of "Option2" can be converted to the enum value of EnumName::Option2 == 1
             template<class T>
-            constexpr auto operator()(T& outValue,
-                const AZ::ConsoleCommandContainer& arguments) const
-                -> AZStd::enable_if_t<!HasStringSetToValue<T>&& AZStd::is_enum_v<AZStd::remove_cvref_t<T>>, bool>
+                requires (!HasStringSetToValue<T>) && AZStd::is_enum_v<AZStd::remove_cvref_t<T>>
+            constexpr bool operator()(T& outValue, const AZ::ConsoleCommandContainer& arguments) const
             {
                 if (arguments.empty())
                 {

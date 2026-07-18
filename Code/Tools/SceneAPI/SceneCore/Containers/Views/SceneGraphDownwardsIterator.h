@@ -89,11 +89,6 @@ namespace AZ
                     void IgnoreNodeDescendants();
 
                 private:
-                    // For iterators that are raw pointers.
-                    pointer GetPointer(AZStd::true_type) const;
-                    // For all other types of iterator.
-                    pointer GetPointer(AZStd::false_type) const;
-
                     void MoveToNext(DepthFirst);
                     void MoveToNext(BreadthFirst);
                     void JumpTo(int32_t index);

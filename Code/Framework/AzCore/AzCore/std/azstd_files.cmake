@@ -161,7 +161,6 @@ set(FILES
     smart_ptr/shared_array.h
     smart_ptr/shared_count.h
     smart_ptr/shared_ptr.h
-    smart_ptr/sp_convertible.h
     smart_ptr/unique_ptr.h
     smart_ptr/weak_ptr.h
     string/alphanum.cpp

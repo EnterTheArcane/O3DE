@@ -304,9 +304,9 @@ namespace AZ
     }
 
     template<class R>
-    constexpr auto Uuid::CreateData(R&& dataSpan)
-        -> AZStd::enable_if_t<AZStd::convertible_to<AZStd::ranges::range_value_t<R>, AZStd::byte>
-        || decltype(static_cast<AZStd::byte>(AZStd::declval<AZStd::ranges::range_value_t<R>>()), AZStd::true_type())::value, Uuid>
+        requires AZStd::convertible_to<AZStd::ranges::range_value_t<R>, AZStd::byte>
+            || requires(AZStd::ranges::range_value_t<R> value) { static_cast<AZStd::byte>(value); }
+    constexpr Uuid Uuid::CreateData(R&& dataSpan)
     {
         if (!dataSpan.empty())
         {

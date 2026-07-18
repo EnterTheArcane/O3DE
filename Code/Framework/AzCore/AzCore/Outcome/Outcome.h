@@ -151,37 +151,44 @@ namespace AZ
 
         //! Returns value from successful outcome.
         //! Behavior is undefined if outcome was a failure.
-        template <class Value_Type = ValueType, class = AZStd::enable_if_t<!AZStd::is_void_v<Value_Type>> >
+        template <class Value_Type = ValueType>
+            requires (!AZStd::is_void_v<Value_Type>)
         AZ_FORCE_INLINE Value_Type& GetValue();
 
-        template <class Value_Type = ValueType, class = AZStd::enable_if_t<!AZStd::is_void_v<Value_Type>> >
+        template <class Value_Type = ValueType>
+            requires (!AZStd::is_void_v<Value_Type>)
         AZ_FORCE_INLINE const Value_Type& GetValue() const;
 
         //! Returns value from successful outcome as rvalue reference.
         //! Note that outcome's value may have its contents stolen,
         //! rendering it invalid for further access.
         //! Behavior is undefined if outcome was a failure.
-        template <class Value_Type = ValueType, class = AZStd::enable_if_t<!AZStd::is_void_v<Value_Type>> >
+        template <class Value_Type = ValueType>
+            requires (!AZStd::is_void_v<Value_Type>)
         AZ_FORCE_INLINE Value_Type&& TakeValue();
 
         //! Returns value from successful outcome.
         //! defaultValue is returned if outcome was a failure.
-        template <class U, class Value_Type = ValueType, class = AZStd::enable_if_t<!AZStd::is_void_v<Value_Type>> >
+        template <class U, class Value_Type = ValueType>
+            requires (!AZStd::is_void_v<Value_Type>)
         AZ_FORCE_INLINE Value_Type GetValueOr(U&& defaultValue) const;
 
         //! Returns error for failed outcome.
         //! Behavior is undefined if outcome was a success.
-        template <class Error_Type = ErrorType, class = AZStd::enable_if_t<!AZStd::is_void_v<Error_Type>> >
+        template <class Error_Type = ErrorType>
+            requires (!AZStd::is_void_v<Error_Type>)
         AZ_FORCE_INLINE Error_Type& GetError();
 
-        template <class Error_Type = ErrorType, class = AZStd::enable_if_t<!AZStd::is_void_v<Error_Type>> >
+        template <class Error_Type = ErrorType>
+            requires (!AZStd::is_void_v<Error_Type>)
         AZ_FORCE_INLINE const Error_Type& GetError() const;
 
         //! Returns error for failed outcome as rvalue reference.
         //! Note that outcome's error may have its contents stolen,
         //! rendering it invalid for further access.
         //! Behavior is undefined if outcome was a success.
-        template <class Error_Type = ErrorType, class = AZStd::enable_if_t<!AZStd::is_void_v<Error_Type>> >
+        template <class Error_Type = ErrorType>
+            requires (!AZStd::is_void_v<Error_Type>)
         AZ_FORCE_INLINE Error_Type&& TakeError();
     };
 
@@ -194,7 +201,8 @@ namespace AZ
      * Used to return a success case in a function returning an AZ::Outcome<ValueT, ...>.
      * rhs is a universal reference: can either copy or move
      */
-    template <class ValueT, class = AZStd::enable_if_t<!AZStd::is_void_v<ValueT>> >
+    template <class ValueT>
+        requires (!AZStd::is_void_v<ValueT>)
     constexpr ValueT Success(ValueT&& rhs);
 
     /**
@@ -209,7 +217,8 @@ namespace AZ
      * Used to return a failure case in a function returning an AZ::Outcome<..., ValueT>.
      * rhs is a universal reference: can either copy or move
      */
-    template <class ValueT, class = AZStd::enable_if_t<!AZStd::is_void_v<ValueT>> >
+    template <class ValueT>
+        requires (!AZStd::is_void_v<ValueT>)
     constexpr AZStd::unexpected<ValueT> Failure(ValueT&& rhs);
 
     /**

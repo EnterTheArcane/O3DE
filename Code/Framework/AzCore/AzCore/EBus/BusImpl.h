@@ -708,13 +708,11 @@ namespace AZ
                     ValidateHelper(AZStd::make_index_sequence<AZStd::function_traits<Function>::num_args>());
                 }
 
-                template<typename T>
-                using is_non_const_lvalue_reference = AZStd::integral_constant<bool, AZStd::is_lvalue_reference<T>::value && !AZStd::is_const<AZStd::remove_reference_t<T>>::value>;
-
                 template <size_t... ArgIndices>
                 constexpr static void ValidateHelper(AZStd::index_sequence<ArgIndices...>)
                 {
-                    static_assert(!AZStd::disjunction_v<is_non_const_lvalue_reference<AZStd::function_traits_get_arg_t<Function, ArgIndices>>...>,
+                    static_assert(((!AZStd::is_lvalue_reference_v<AZStd::function_traits_get_arg_t<Function, ArgIndices>>
+                        || AZStd::is_const_v<AZStd::remove_reference_t<AZStd::function_traits_get_arg_t<Function, ArgIndices>>>) && ...),
                         "It is not safe to queue a function call with non-const lvalue ref arguments");
                 }
             };

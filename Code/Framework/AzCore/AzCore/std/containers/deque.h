@@ -242,7 +242,7 @@ namespace AZStd
         deque(InputIterator first, InputIterator last, const Allocator& allocator = Allocator())
             : m_allocator(allocator)
         {
-            construct_iter(first, last, is_integral<InputIterator>{});
+            construct_iter(first, last);
         }
 
         template<Internal::container_compatible_range<value_type> R>
@@ -275,13 +275,13 @@ namespace AZStd
 
             else if (rhs.m_size <= m_size)
             {
-                iterator mid = AZStd::Internal::copy(rhs.begin(), rhs.end(), begin(), Internal::is_fast_copy<iterator, iterator>());
+                iterator mid = AZStd::Internal::copy(rhs.begin(), rhs.end(), begin(), Internal::is_fast_copy_v<iterator, iterator>);
                 erase(mid, end());
             }
             else
             {
                 const_iterator mid = rhs.begin() + m_size;
-                Internal::copy(rhs.begin(), mid, begin(), Internal::is_fast_copy<iterator, iterator>());
+                Internal::copy(rhs.begin(), mid, begin(), Internal::is_fast_copy_v<iterator, iterator>);
                 insert(end(), mid, rhs.end());
             }
 
@@ -442,7 +442,7 @@ namespace AZStd
         template<class InputIterator>
         AZ_FORCE_INLINE void assign(InputIterator first, InputIterator last)
         {
-            assign_iter(first, last, is_integral<InputIterator>());
+            assign_iter(first, last);
         }
 
         template<Internal::container_compatible_range<value_type> R>
@@ -451,12 +451,12 @@ namespace AZStd
             if constexpr (is_lvalue_reference_v<R>)
             {
                 auto rangeView = AZStd::forward<R>(rg) | views::common;
-                assign_iter(ranges::begin(rangeView), ranges::end(rangeView), false_type{});
+                assign_iter(ranges::begin(rangeView), ranges::end(rangeView));
             }
             else
             {
                 auto rangeView = AZStd::forward<R>(rg) | views::as_rvalue | views::common;
-                assign_iter(ranges::begin(rangeView), ranges::end(rangeView), false_type{});
+                assign_iter(ranges::begin(rangeView), ranges::end(rangeView));
             }
         }
 
@@ -488,14 +488,14 @@ namespace AZStd
                     push_front(front());
                     first = begin();
                     mid = first + offset;
-                    Internal::copy(first + 2, mid + 1, first + 1, Internal::is_fast_copy<iterator, iterator>());
+                    Internal::copy(first + 2, mid + 1, first + 1, Internal::is_fast_copy_v<iterator, iterator>);
                 }
                 else
                 {
                     push_back(back());
                     mid = begin() + offset;
                     last = end();
-                    Internal::copy_backward(mid, last - 2, last - 1, Internal::is_fast_copy<iterator, iterator>());
+                    Internal::copy_backward(mid, last - 2, last - 1, Internal::is_fast_copy_v<iterator, iterator>);
                 }
 
                 *mid = valueCopy;
@@ -525,7 +525,7 @@ namespace AZStd
                         push_front(at(numElements - 1));//push_front(begin()[numElements - 1]); // push prefix
                     }
                     mid = begin() + numElements;
-                    Internal::fill(mid, mid + offset, value, Internal::is_fast_fill<iterator>());
+                    Internal::fill(mid, mid + offset, value, Internal::is_fast_fill_v<iterator>);
                 }
                 else
                 {
@@ -535,8 +535,8 @@ namespace AZStd
                     }
                     mid = begin() + numElements;
                     value_type valueCopy = value; // if it is in the sequence
-                    Internal::copy(mid + numElements, mid + offset, mid, Internal::is_fast_copy<iterator, iterator>());
-                    Internal::fill(begin() + offset, mid + offset, valueCopy, Internal::is_fast_fill<iterator>());
+                    Internal::copy(mid + numElements, mid + offset, mid, Internal::is_fast_copy_v<iterator, iterator>);
+                    Internal::fill(begin() + offset, mid + offset, valueCopy, Internal::is_fast_fill_v<iterator>);
                 }
             }
             else
@@ -552,7 +552,7 @@ namespace AZStd
                         push_back(at(offset + i));//push_back(begin()[offset + i]); // push prefix
                     }
                     mid = begin() + offset;
-                    Internal::fill(mid, mid + rem, value, Internal::is_fast_fill<iterator>());
+                    Internal::fill(mid, mid + rem, value, Internal::is_fast_fill_v<iterator>);
                 }
                 else
                 {
@@ -562,8 +562,8 @@ namespace AZStd
                     }
                     mid = begin() + offset;
                     value_type valueCopy = value;
-                    Internal::copy_backward(mid, mid + rem - numElements, mid + rem, Internal::is_fast_copy<iterator, iterator>());
-                    Internal::fill(mid, mid + numElements, valueCopy, Internal::is_fast_fill<iterator>());
+                    Internal::copy_backward(mid, mid + rem - numElements, mid + rem, Internal::is_fast_copy_v<iterator, iterator>);
+                    Internal::fill(mid, mid + numElements, valueCopy, Internal::is_fast_fill_v<iterator>);
                 }
             }
 
@@ -573,7 +573,7 @@ namespace AZStd
         template<class InputIterator>
         iterator insert(const_iterator insertPos, InputIterator first, InputIterator last)
         {
-            return insert_iter(insertPos, first, last, is_integral<InputIterator>());
+            return insert_iter(insertPos, first, last);
         }
 
         template<Internal::container_compatible_range<value_type> R>
@@ -582,12 +582,12 @@ namespace AZStd
             if constexpr (is_lvalue_reference_v<R>)
             {
                 auto rangeView = AZStd::forward<R>(rg) | views::common;
-                return insert_iter(insertPos, ranges::begin(rangeView), ranges::end(rangeView), false_type{});
+                return insert_iter(insertPos, ranges::begin(rangeView), ranges::end(rangeView));
             }
             else
             {
                 auto rangeView = AZStd::forward<R>(rg) | views::as_rvalue | views::common;
-                return insert_iter(insertPos, ranges::begin(rangeView), ranges::end(rangeView), false_type{});
+                return insert_iter(insertPos, ranges::begin(rangeView), ranges::end(rangeView));
             }
         }
 
@@ -617,7 +617,7 @@ namespace AZStd
             if (offset < size_type(end() - last))
             {
                 // closer to front
-                Internal::copy_backward(begin(), first, last, Internal::is_fast_copy<iterator, iterator>());
+                Internal::copy_backward(begin(), first, last, Internal::is_fast_copy_v<iterator, iterator>);
                 for (; numElements > 0; --numElements)
                 {
                     pop_front();
@@ -626,7 +626,7 @@ namespace AZStd
             else
             {
                 // close to back
-                Internal::copy(last, end(), first, Internal::is_fast_copy<iterator, iterator>());
+                Internal::copy(last, end(), first, Internal::is_fast_copy_v<iterator, iterator>);
                 for (; numElements > 0; --numElements)
                 {
                     pop_back();
@@ -949,15 +949,16 @@ namespace AZStd
         /// @}
     private:
         template <class InputIterator>
-        AZ_FORCE_INLINE void    construct_iter(const InputIterator& first, const InputIterator& last, const true_type& /* is_integral<InputIterator> */)
+        AZ_FORCE_INLINE void construct_iter(const InputIterator& first, const InputIterator& last)
         {
-            insert(iterator(AZSTD_CHECKED_ITERATOR_2(iterator, m_firstOffset, this)), (size_type)first, (value_type)last);
-        }
-
-        template <class InputIterator>
-        AZ_FORCE_INLINE void    construct_iter(const InputIterator& first, const InputIterator& last, const false_type& /* !is_integral<InputIterator> */)
-        {
-            insert(iterator(AZSTD_CHECKED_ITERATOR_2(iterator, m_firstOffset, this)), first, last);
+            if constexpr (is_integral_v<InputIterator>)
+            {
+                insert(iterator(AZSTD_CHECKED_ITERATOR_2(iterator, m_firstOffset, this)), (size_type)first, (value_type)last);
+            }
+            else
+            {
+                insert(iterator(AZSTD_CHECKED_ITERATOR_2(iterator, m_firstOffset, this)), first, last);
+            }
         }
 
         AZ_FORCE_INLINE void    deallocate_memory(void* ptr, size_type size, size_type alignment)
@@ -980,10 +981,10 @@ namespace AZStd
             map_node_ptr_type newMap = reinterpret_cast<map_node_ptr_type>(m_allocator.allocate(sizeof(map_node_type) * (m_mapSize + numElements), alignment_of_v<map_node_type>));
             map_node_ptr_type mapPtr = newMap + offset;
 
-            mapPtr = AZStd::uninitialized_copy(m_map + offset, m_map + m_mapSize, mapPtr, Internal::is_fast_copy<map_node_ptr_type, map_node_ptr_type>());
+            mapPtr = AZStd::uninitialized_copy(m_map + offset, m_map + m_mapSize, mapPtr, Internal::is_fast_copy_v<map_node_ptr_type, map_node_ptr_type>);
             if (offset <= numElements)
             {
-                mapPtr = AZStd::uninitialized_copy(m_map, m_map + offset, mapPtr, Internal::is_fast_copy<map_node_ptr_type, map_node_ptr_type>());
+                mapPtr = AZStd::uninitialized_copy(m_map, m_map + offset, mapPtr, Internal::is_fast_copy_v<map_node_ptr_type, map_node_ptr_type>);
                 //AZStd::uninitialized_fill_n(mapPtr, numElements - offset,0,AZStd::true_type());
                 //AZStd::uninitialized_fill_n(newMap, offset,0,AZStd::true_type());
                 ::memset(mapPtr, 0, (numElements - offset) * sizeof(map_node_type));
@@ -991,8 +992,8 @@ namespace AZStd
             }
             else
             {
-                AZStd::uninitialized_copy(m_map, m_map + numElements, mapPtr, Internal::is_fast_copy<map_node_ptr_type, map_node_ptr_type>());
-                mapPtr = AZStd::uninitialized_copy(m_map + numElements, m_map + offset, newMap, Internal::is_fast_copy<map_node_ptr_type, map_node_ptr_type>());
+                AZStd::uninitialized_copy(m_map, m_map + numElements, mapPtr, Internal::is_fast_copy_v<map_node_ptr_type, map_node_ptr_type>);
+                mapPtr = AZStd::uninitialized_copy(m_map + numElements, m_map + offset, newMap, Internal::is_fast_copy_v<map_node_ptr_type, map_node_ptr_type>);
                 //AZStd::uninitialized_fill_n(mapPtr, numElements,0,AZStd::true_type());
                 ::memset(mapPtr, 0, (numElements) * sizeof(map_node_type));
             }
@@ -1011,66 +1012,70 @@ namespace AZStd
 
 
         template<class InputIterator>
-        AZ_FORCE_INLINE void assign_iter(const InputIterator& first, const InputIterator& last, const true_type& /* is_intergral<InputIterator>()*/)
+        AZ_FORCE_INLINE void assign_iter(const InputIterator& first, const InputIterator& last)
         {
-            assign((size_type)first, (value_type)last);
-        }
-        template<class InputIterator>
-        AZ_FORCE_INLINE void assign_iter(const InputIterator& first, const InputIterator& last, const false_type& /* is_intergral<InputIterator>()*/)
-        {
-            clear();
-            insert(begin(), first, last);
-        }
-        template<class InputIterator>
-        AZ_FORCE_INLINE iterator insert_iter(const_iterator insertPos, const InputIterator& first, const InputIterator& last, const true_type& /* is_intergral<InputIterator>()*/)
-        {
-            return insert(insertPos, (size_type)first, (value_type)last);
-        }
-
-        template<class InputIterator>
-        iterator insert_iter(const_iterator insertPos, const InputIterator& first, const InputIterator& last, const false_type& /* !is_intergral<InputIterator>()*/)
-        {
-            size_type offset = AZStd::ranges::distance(begin(), insertPos);
-            size_type rem = m_size - offset;
-            size_type size = m_size;
-            if (offset < rem)
+            if constexpr (is_integral_v<InputIterator>)
             {
-                // Closer to the front of the block.
-                InputIterator iter(first);
-                for (; iter != last; ++iter)
-                {
-                    push_front(*iter);
-                }
-
-                size_type num = m_size - size;
-                if (offset > 0)
-                {
-                    reverse(num, num + offset);
-                    reverse(0, num + offset);
-                }
-                else
-                {
-                    reverse(0, num);
-                }
+                assign((size_type)first, (value_type)last);
             }
             else
             {
-                // Closer to the back of the block.
-                InputIterator iter(first);
-                for (; iter != last; ++iter)
-                {
-                    push_back(*iter);
-                }
-
-                if (offset < size)
-                {
-                    reverse(offset, size);
-                    reverse(size, m_size);
-                    reverse(offset, m_size);
-                }
+                clear();
+                insert(begin(), first, last);
             }
+        }
 
-            return AZStd::ranges::next(begin(), offset);
+        template<class InputIterator>
+        iterator insert_iter(const_iterator insertPos, const InputIterator& first, const InputIterator& last)
+        {
+            if constexpr (is_integral_v<InputIterator>)
+            {
+                return insert(insertPos, (size_type)first, (value_type)last);
+            }
+            else
+            {
+                size_type offset = AZStd::ranges::distance(begin(), insertPos);
+                size_type rem = m_size - offset;
+                size_type size = m_size;
+                if (offset < rem)
+                {
+                    // Closer to the front of the block.
+                    InputIterator iter(first);
+                    for (; iter != last; ++iter)
+                    {
+                        push_front(*iter);
+                    }
+
+                    size_type num = m_size - size;
+                    if (offset > 0)
+                    {
+                        reverse(num, num + offset);
+                        reverse(0, num + offset);
+                    }
+                    else
+                    {
+                        reverse(0, num);
+                    }
+                }
+                else
+                {
+                    // Closer to the back of the block.
+                    InputIterator iter(first);
+                    for (; iter != last; ++iter)
+                    {
+                        push_back(*iter);
+                    }
+
+                    if (offset < size)
+                    {
+                        reverse(offset, size);
+                        reverse(size, m_size);
+                        reverse(offset, m_size);
+                    }
+                }
+
+                return AZStd::ranges::next(begin(), offset);
+            }
         }
 
         inline void reverse(size_type first, size_type last)

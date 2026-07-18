@@ -252,7 +252,8 @@ namespace AzNetworking
 
     // Az Containers
     template <typename TYPE>
-    struct SerializeObjectHelper<TYPE, AZStd::enable_if_t<AzContainerHelper::IsIterableContainer<TYPE>::Value>>
+        requires IterableContainer<TYPE>
+    struct SerializeObjectHelper<TYPE, void>
     {
         static bool SerializeObject(ISerializer& serializer, TYPE& container)
         {

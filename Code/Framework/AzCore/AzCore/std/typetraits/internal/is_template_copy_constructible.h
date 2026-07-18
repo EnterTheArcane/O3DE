@@ -6,7 +6,6 @@
  *
  */
 #pragma once
-#include <AzCore/std/typetraits/conjunction.h>
 #include <AzCore/std/typetraits/is_constructible.h>
 #include <AzCore/std/utility/pair_fwd.h>
 
@@ -43,84 +42,65 @@ namespace AZStd
     namespace Internal
     {
         // C++ Container types always defines a copy constructor even when it's elements aren't copyable.
-        // To get around issue, a template_is_copy_constructible type trait is added that is specialized
-        // on the AZStd containers types to check the contained type copyability
+        // Account for that by inspecting the contained types for known AZStd containers.
         template<typename T>
-        struct template_is_copy_constructible
-            : is_copy_constructible<T>
-        {
-        };
+        inline constexpr bool template_is_copy_constructible_impl = is_copy_constructible_v<T>;
 
         template<class T, class Allocator>
-        struct template_is_copy_constructible<vector<T, Allocator>>
-            : conjunction<is_copy_constructible<T>, is_copy_constructible<Allocator>>
-        {
-        };
+        inline constexpr bool template_is_copy_constructible_impl<vector<T, Allocator>> =
+            is_copy_constructible_v<T> && is_copy_constructible_v<Allocator>;
 
         template<class T, class Allocator>
-        struct template_is_copy_constructible<list<T, Allocator>>
-            : conjunction<is_copy_constructible<T>, is_copy_constructible<Allocator>>
-        {
-        };
+        inline constexpr bool template_is_copy_constructible_impl<list<T, Allocator>> =
+            is_copy_constructible_v<T> && is_copy_constructible_v<Allocator>;
 
         template<class T, class Allocator>
-        struct template_is_copy_constructible<forward_list<T, Allocator>>
-            : conjunction<is_copy_constructible<T>, is_copy_constructible<Allocator>>
-        {
-        };
+        inline constexpr bool template_is_copy_constructible_impl<forward_list<T, Allocator>> =
+            is_copy_constructible_v<T> && is_copy_constructible_v<Allocator>;
 
         template<class Key, class MappedType, class Compare, class Allocator>
-        struct template_is_copy_constructible<map<Key, MappedType, Compare, Allocator>>
-            : conjunction<is_copy_constructible<Key>, is_copy_constructible<MappedType>, is_copy_constructible<Compare>, is_copy_constructible<Allocator>>
-        {
-        };
+        inline constexpr bool template_is_copy_constructible_impl<map<Key, MappedType, Compare, Allocator>> =
+            is_copy_constructible_v<Key> && is_copy_constructible_v<MappedType>
+            && is_copy_constructible_v<Compare> && is_copy_constructible_v<Allocator>;
 
         template<class Key, class MappedType, class Compare, class Allocator>
-        struct template_is_copy_constructible<multimap<Key, MappedType, Compare, Allocator>>
-            : conjunction<is_copy_constructible<Key>, is_copy_constructible<MappedType>, is_copy_constructible<Compare>, is_copy_constructible<Allocator>>
-        {
-        };
+        inline constexpr bool template_is_copy_constructible_impl<multimap<Key, MappedType, Compare, Allocator>> =
+            is_copy_constructible_v<Key> && is_copy_constructible_v<MappedType>
+            && is_copy_constructible_v<Compare> && is_copy_constructible_v<Allocator>;
 
         template<class Key, class MappedType, class Hasher, class EqualKey, class Allocator>
-        struct template_is_copy_constructible<unordered_map<Key, MappedType, Hasher, EqualKey, Allocator>>
-            : conjunction<is_copy_constructible<Key>, is_copy_constructible<MappedType>, is_copy_constructible<Hasher>, is_copy_constructible<EqualKey>, is_copy_constructible<Allocator>>
-        {
-        };
+        inline constexpr bool template_is_copy_constructible_impl<unordered_map<Key, MappedType, Hasher, EqualKey, Allocator>> =
+            is_copy_constructible_v<Key> && is_copy_constructible_v<MappedType>
+            && is_copy_constructible_v<Hasher> && is_copy_constructible_v<EqualKey> && is_copy_constructible_v<Allocator>;
 
         template<class Key, class MappedType, class Hasher, class EqualKey, class Allocator>
-        struct template_is_copy_constructible<unordered_multimap<Key, MappedType, Hasher, EqualKey, Allocator>>
-            : conjunction<is_copy_constructible<Key>, is_copy_constructible<MappedType>, is_copy_constructible<Hasher>, is_copy_constructible<EqualKey>, is_copy_constructible<Allocator>>
-        {
-        };
+        inline constexpr bool template_is_copy_constructible_impl<unordered_multimap<Key, MappedType, Hasher, EqualKey, Allocator>> =
+            is_copy_constructible_v<Key> && is_copy_constructible_v<MappedType>
+            && is_copy_constructible_v<Hasher> && is_copy_constructible_v<EqualKey> && is_copy_constructible_v<Allocator>;
 
         template<class Key, class Compare, class Allocator>
-        struct template_is_copy_constructible<set<Key,  Compare, Allocator>>
-            : conjunction<is_copy_constructible<Key>, is_copy_constructible<Compare>, is_copy_constructible<Allocator>>
-        {
-        };
+        inline constexpr bool template_is_copy_constructible_impl<set<Key, Compare, Allocator>> =
+            is_copy_constructible_v<Key> && is_copy_constructible_v<Compare> && is_copy_constructible_v<Allocator>;
 
         template<class Key, class Compare, class Allocator>
-        struct template_is_copy_constructible<multiset<Key, Compare, Allocator>>
-            : conjunction<is_copy_constructible<Key>, is_copy_constructible<Compare>, is_copy_constructible<Allocator>>
-        {
-        };
+        inline constexpr bool template_is_copy_constructible_impl<multiset<Key, Compare, Allocator>> =
+            is_copy_constructible_v<Key> && is_copy_constructible_v<Compare> && is_copy_constructible_v<Allocator>;
 
         template<class Key, class Hasher, class EqualKey, class Allocator>
-        struct template_is_copy_constructible<unordered_set<Key, Hasher, EqualKey, Allocator>>
-            : conjunction<is_copy_constructible<Key>, is_copy_constructible<Hasher>, is_copy_constructible<EqualKey>, is_copy_constructible<Allocator>>
-        {
-        };
+        inline constexpr bool template_is_copy_constructible_impl<unordered_set<Key, Hasher, EqualKey, Allocator>> =
+            is_copy_constructible_v<Key> && is_copy_constructible_v<Hasher>
+            && is_copy_constructible_v<EqualKey> && is_copy_constructible_v<Allocator>;
 
         template<class Key, class Hasher, class EqualKey, class Allocator>
-        struct template_is_copy_constructible<unordered_multiset<Key, Hasher, EqualKey, Allocator>>
-            : conjunction<is_copy_constructible<Key>, is_copy_constructible<Hasher>, is_copy_constructible<EqualKey>, is_copy_constructible<Allocator>>
-        {
-        };
+        inline constexpr bool template_is_copy_constructible_impl<unordered_multiset<Key, Hasher, EqualKey, Allocator>> =
+            is_copy_constructible_v<Key> && is_copy_constructible_v<Hasher>
+            && is_copy_constructible_v<EqualKey> && is_copy_constructible_v<Allocator>;
 
         template<class T1, class T2>
-        struct template_is_copy_constructible<pair<T1, T2>>
-            : conjunction<is_copy_constructible<T1>, is_copy_constructible<T2>>
-        {
-        };
+        inline constexpr bool template_is_copy_constructible_impl<pair<T1, T2>> =
+            is_copy_constructible_v<T1> && is_copy_constructible_v<T2>;
+
+        template<typename T>
+        concept template_is_copy_constructible = template_is_copy_constructible_impl<T>;
     }
 }

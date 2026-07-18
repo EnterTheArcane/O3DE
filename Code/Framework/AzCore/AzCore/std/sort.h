@@ -97,7 +97,7 @@ namespace AZStd
                 }
 
                 m_size = newSize;
-                Internal::copy(first, last, begin(), Internal::is_fast_copy<InputIterator, iterator>());
+                Internal::copy(first, last, begin(), Internal::is_fast_copy_v<InputIterator, iterator>);
             }
 
             AZ_FORCE_INLINE void set_size(size_type newSize)
@@ -149,8 +149,8 @@ namespace AZStd
             }
         }
 
-        result = Internal::copy(first1, last1, result, Internal::is_fast_copy<InputIterator1, OutputIterator>());   // copy any tail
-        return Internal::copy(first2, last2, result, Internal::is_fast_copy<InputIterator2, OutputIterator>());
+        result = Internal::copy(first1, last1, result, Internal::is_fast_copy_v<InputIterator1, OutputIterator>);   // copy any tail
+        return Internal::copy(first2, last2, result, Internal::is_fast_copy_v<InputIterator2, OutputIterator>);
     }
 
     template <class InputIterator1, class InputIterator2, class OutputIterator, class Compare>
@@ -171,8 +171,8 @@ namespace AZStd
             }
         }
 
-        result = Internal::copy(first1, last1, result, Internal::is_fast_copy<InputIterator1, OutputIterator>());   // copy any tail
-        return Internal::copy(first2, last2, result, Internal::is_fast_copy<InputIterator1, OutputIterator>());
+        result = Internal::copy(first1, last1, result, Internal::is_fast_copy_v<InputIterator1, OutputIterator>);   // copy any tail
+        return Internal::copy(first2, last2, result, Internal::is_fast_copy_v<InputIterator1, OutputIterator>);
     }
 
     template<class BidirectionalIterator1, class BidirectionalIterator2, class BidirectionalIterator3, class Compare>
@@ -183,11 +183,11 @@ namespace AZStd
         {
             if (first1 == last1)
             {
-                return Internal::copy_backward(first2, last2, result, Internal::is_fast_copy<BidirectionalIterator2, BidirectionalIterator3>());
+                return Internal::copy_backward(first2, last2, result, Internal::is_fast_copy_v<BidirectionalIterator2, BidirectionalIterator3>);
             }
             else if (first2 == last2)
             {
-                return Internal::copy_backward(first1, last1, result, Internal::is_fast_copy<BidirectionalIterator1, BidirectionalIterator3>());
+                return Internal::copy_backward(first1, last1, result, Internal::is_fast_copy_v<BidirectionalIterator1, BidirectionalIterator3>);
             }
             else if (comp(*--last2, *--last1))
             {
@@ -257,14 +257,14 @@ namespace AZStd
         if (count1 <= count2 && count1 <= Difference(buffer.capacity()))
         {   // buffer left partition, then copy parts
             buffer.copy(first, mid);
-            Internal::copy(mid, last, first, Internal::is_fast_copy<BidirectionalIterator, BidirectionalIterator>());
-            return Internal::copy_backward(buffer.begin(), buffer.end(), last, Internal::is_fast_copy<typename Buffer::iterator, BidirectionalIterator>());
+            Internal::copy(mid, last, first, Internal::is_fast_copy_v<BidirectionalIterator, BidirectionalIterator>);
+            return Internal::copy_backward(buffer.begin(), buffer.end(), last, Internal::is_fast_copy_v<typename Buffer::iterator, BidirectionalIterator>);
         }
         else if (count2 <= Difference(buffer.capacity()))
         {   // buffer right partition, then copy parts
             buffer.copy(mid, last);
-            Internal::copy_backward(first, mid, last, Internal::is_fast_copy<BidirectionalIterator, BidirectionalIterator>());
-            return Internal::copy(buffer.begin(), buffer.end(), first, Internal::is_fast_copy<typename Buffer::iterator, BidirectionalIterator>());
+            Internal::copy_backward(first, mid, last, Internal::is_fast_copy_v<BidirectionalIterator, BidirectionalIterator>);
+            return Internal::copy(buffer.begin(), buffer.end(), first, Internal::is_fast_copy_v<typename Buffer::iterator, BidirectionalIterator>);
         }
         else
         {   // buffer too small, rotate in place
@@ -328,7 +328,7 @@ namespace AZStd
                 if (value < *first)
                 {
                     // found new earliest element, move to front
-                    AZStd::Internal::move_backward(first, next, ++next1, Internal::is_fast_copy<RandomAccessIterator, RandomAccessIterator>());
+                    AZStd::Internal::move_backward(first, next, ++next1, Internal::is_fast_copy_v<RandomAccessIterator, RandomAccessIterator>);
 
                     *first = value;
                 }
@@ -362,7 +362,7 @@ namespace AZStd
                 if (comp(value, *first))
                 {
                     // found new earliest element, move to front
-                    AZStd::Internal::move_backward(first, next, ++next1, Internal::is_fast_copy<RandomAccessIterator, RandomAccessIterator>());
+                    AZStd::Internal::move_backward(first, next, ++next1, Internal::is_fast_copy_v<RandomAccessIterator, RandomAccessIterator>);
 
                     *first = value;
                 }
@@ -702,7 +702,7 @@ namespace AZStd
 
             if (count <= chunk)
             {
-                Internal::copy(first, last, result, Internal::is_fast_copy<BidirectionalIterator, OutputIterator>());   // copy partial last chunk
+                Internal::copy(first, last, result, Internal::is_fast_copy_v<BidirectionalIterator, OutputIterator>);   // copy partial last chunk
             }
             else
             {

@@ -32,7 +32,6 @@
 #include <AzCore/std/typetraits/is_same.h>
 #include <AzCore/std/typetraits/is_void.h>
 #include <AzCore/std/typetraits/remove_cvref.h>
-#include <AzCore/std/typetraits/void_t.h>
 #include <AzCore/std/utility/declval.h>
 #include <AzCore/std/utility/move.h>
 

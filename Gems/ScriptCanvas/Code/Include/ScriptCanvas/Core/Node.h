@@ -1084,13 +1084,10 @@ protected:
 
     namespace Internal
     {
-        template<typename, typename = AZStd::void_t<>>
-        struct IsTupleLike : AZStd::false_type {};
-
         template<typename ResultType>
-        struct IsTupleLike<ResultType, AZStd::void_t<decltype(AZStd::get<0>(AZStd::declval<ResultType>()))>> : AZStd::true_type {};
+        concept TupleLike = requires { AZStd::get<0>(AZStd::declval<ResultType>()); };
 
-        template<typename ResultType, typename t_Traits, typename = AZStd::void_t<>>
+        template<typename ResultType, typename t_Traits, typename = void>
         struct OutputSlotHelper
         {
             template<AZStd::size_t... Is>
@@ -1113,7 +1110,8 @@ protected:
         };
 
         template<typename ResultType, typename t_Traits>
-        struct OutputSlotHelper<ResultType, t_Traits, AZStd::enable_if_t<IsTupleLike<ResultType>::value>>
+            requires TupleLike<ResultType>
+        struct OutputSlotHelper<ResultType, t_Traits, void>
         {
             template<size_t Index>
             static void CreateDataSlot(Node& node, ConnectionType connectionType)
@@ -1147,7 +1145,7 @@ protected:
             }
         };
 
-        template<typename t_Func, t_Func function, typename t_Traits, typename t_Result, typename = AZStd::void_t<>>
+        template<typename t_Func, t_Func function, typename t_Traits, typename t_Result, typename = void>
         struct MultipleOutputInvokeHelper
             : MultipleOutputHelper<t_Func, function, t_Traits, 1> {};
 
@@ -1156,7 +1154,8 @@ protected:
             : MultipleOutputHelper<t_Func, function, t_Traits, 0> {};
 
         template<typename t_Func, t_Func function, typename t_Traits, typename t_Result>
-        struct MultipleOutputInvokeHelper< t_Func, function, t_Traits, t_Result, AZStd::enable_if_t<IsTupleLike<t_Result>::value>>
+            requires TupleLike<t_Result>
+        struct MultipleOutputInvokeHelper<t_Func, function, t_Traits, t_Result, void>
             : MultipleOutputHelper<t_Func, function, t_Traits, AZStd::tuple_size<t_Result>::value> {};
     }
 

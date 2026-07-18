@@ -21,7 +21,6 @@
 #include <AzCore/std/typetraits/remove_reference.h>
 #include <AzCore/std/typetraits/is_convertible.h>
 #include <AzCore/std/typetraits/is_lvalue_reference.h>
-#include <AzCore/std/typetraits/void_t.h>
 #include <AzCore/std/utility/move.h>
 #include <AzCore/std/utility/pair.h>
 
@@ -123,10 +122,6 @@ namespace AZStd
     // get_pointer(p) extracts a ->* capable pointer from p
     template<class T>
     constexpr T* get_pointer(T* p)    { return p; }
-    //template<class T> T * get_pointer(std::auto_ptr<T> const& p)
-    //{
-    //  return p.get();
-    //}
     //////////////////////////////////////////////////////////////////////////
 
 

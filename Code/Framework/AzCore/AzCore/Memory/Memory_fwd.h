@@ -341,7 +341,7 @@ namespace AZ
     * Helper class to determine if type T specializes AZ Allocators,
     * so we can safely call aznew on it. -  HasAZClassAllocator<ClassType>...
     * In order to avoid reduce include dependencies, constructs such as
-    * std::integral_constant, std::enable_if_t and std::is_same_v are not being used
+    * Standard type-trait helpers are not used here
     * This allows this header to be used without the need to include <type_traits>
     */
     template<class T, class = void>

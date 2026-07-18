@@ -46,7 +46,8 @@ namespace EMStudio
 
         // Reqire that PluginType is a subclass of EMStudioPlugin
         template<class PluginType>
-        typename AZStd::enable_if_t<AZStd::is_convertible_v<PluginType*, EMStudioPlugin*>, PluginType*> FindActivePlugin() const
+            requires AZStd::is_convertible_v<PluginType*, EMStudioPlugin*>
+        PluginType* FindActivePlugin() const
         {
             return static_cast<PluginType*>(FindActivePlugin(PluginType::CLASS_ID));
         }

@@ -157,20 +157,22 @@ namespace JsonSerializationTests
             BaseJsonSerializerFixture::TearDown();
         }
 
-        template<typename T, typename AZStd::enable_if_t<AZStd::is_floating_point<T>::value, int> = 0>
+        template<typename T>
+            requires AZStd::is_floating_point_v<T>
         void SetValue(rapidjson::Value& out, T in)
         {
             out.SetDouble(in);
         }
 
-        template<typename T, typename
-            AZStd::enable_if_t<AZStd::is_signed<T>::value && !AZStd::is_floating_point<T>::value, int> = 0>
-            void SetValue(rapidjson::Value& out, T in)
+        template<typename T>
+            requires AZStd::is_signed_v<T> && (!AZStd::is_floating_point_v<T>)
+        void SetValue(rapidjson::Value& out, T in)
         {
             out.SetInt64(in);
         }
 
-        template<typename T, typename AZStd::enable_if_t<AZStd::is_unsigned<T>::value, int> = 0>
+        template<typename T>
+            requires AZStd::is_unsigned_v<T>
         void SetValue(rapidjson::Value& out, T in)
         {
             out.SetUint64(in);

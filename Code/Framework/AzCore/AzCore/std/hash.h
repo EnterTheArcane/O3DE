@@ -11,10 +11,7 @@
 #include <limits>
 #include <AzCore/std/function/invoke.h>
 #include <AzCore/std/utils.h>
-#include <AzCore/std/typetraits/conjunction.h>
-#include <AzCore/std/typetraits/disjunction.h>
 #include <AzCore/std/typetraits/is_abstract.h>
-#include <AzCore/std/typetraits/negation.h>
 #include <AzCore/std/typetraits/remove_cv.h>
 
 #include "typetraits/has_member_function.h"
@@ -61,19 +58,24 @@ namespace AZStd
     };
 
     template<typename KeyType>
-    using HasherInvocable = AZStd::conjunction
-        < AZStd::disjunction<AZStd::negation<HasDefaultHash<hash<KeyType>>>, IsNumber<KeyType>, AZStd::is_enum<KeyType>>
-        , AZStd::is_default_constructible<hash<KeyType>>
-        , AZStd::is_invocable_r<size_t, hash<KeyType>, const KeyType&>>;
+    struct HasherInvocable
+        : AZStd::bool_constant<
+            (!HasDefaultHash<hash<KeyType>>::value || IsNumber<KeyType>::value || AZStd::is_enum_v<KeyType>)
+            && AZStd::is_default_constructible_v<hash<KeyType>>
+            && AZStd::is_invocable_r_v<size_t, hash<KeyType>, const KeyType&>>
+    {};
 
     template<typename KeyType>
     inline constexpr bool HasherInvocable_v = HasherInvocable<KeyType>::value;
 
     template<typename... Types>
-    using hash_enabled_concept = AZStd::bool_constant<(HasherInvocable_v<Types> && ...)>;
+    concept hash_enabled = (HasherInvocable_v<Types> && ...);
 
     template<typename... Types>
-    inline constexpr bool hash_enabled_concept_v = hash_enabled_concept<Types...>::value;
+    using hash_enabled_concept = AZStd::bool_constant<hash_enabled<Types...>>;
+
+    template<typename... Types>
+    inline constexpr bool hash_enabled_concept_v = hash_enabled<Types...>;
 
     template< class T >
     struct hash< const T* >
@@ -208,7 +210,7 @@ namespace AZStd
     struct hash< AZStd::pair<T, U> >
     {
         template<typename A, typename B>
-            requires hash_enabled_concept_v<A, B>
+            requires hash_enabled<A, B>
         constexpr size_t operator()(const AZStd::pair<A, B>& value) const
         {
             size_t seed = 0;

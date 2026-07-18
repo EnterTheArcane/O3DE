@@ -102,11 +102,11 @@ namespace AZ
     {
         using DeprecatedTypeNameCallback = AZStd::function<void(AZStd::string_view)>;
 
-        template <class T, class = void>
-        inline constexpr bool HasDeprecatedTypeNameVisitor_v = false;
         template <class T>
-        inline constexpr bool HasDeprecatedTypeNameVisitor_v<T, AZStd::enable_if_t<AZStd::is_invocable_v<
-            decltype(&AZStd::remove_cvref_t<T>::DeprecatedTypeNameVisitor), DeprecatedTypeNameCallback>>> = true;
+        inline constexpr bool HasDeprecatedTypeNameVisitor_v = requires
+        {
+            requires AZStd::is_invocable_v<decltype(&AZStd::remove_cvref_t<T>::DeprecatedTypeNameVisitor), DeprecatedTypeNameCallback>;
+        };
 
         template <class T>
         struct AzDeprecatedTypeNameVisitor
@@ -323,8 +323,8 @@ namespace AZ
 
     // Default function for enums without an overload
     template <class T>
-    constexpr auto GetO3deTypeName(AZ::Adl, AZStd::type_identity<T>)
-        -> AZStd::enable_if_t<AZStd::is_enum_v<T>, TypeNameString>
+        requires AZStd::is_enum_v<T>
+    constexpr TypeNameString GetO3deTypeName(AZ::Adl, AZStd::type_identity<T>)
     {
         if constexpr (AZ::HasAzEnumTraits_v<T>)
         {
@@ -338,8 +338,8 @@ namespace AZ
     }
 
     template <class T>
-    constexpr auto GetO3deTypeId(AZ::Adl, AZStd::type_identity<T>)
-        -> AZStd::enable_if_t<AZStd::is_enum_v<T>, AZ::TypeId>
+        requires AZStd::is_enum_v<T>
+    constexpr AZ::TypeId GetO3deTypeId(AZ::Adl, AZStd::type_identity<T>)
     {
         return AZ::TypeId{};
     }

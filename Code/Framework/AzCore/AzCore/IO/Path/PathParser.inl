@@ -19,7 +19,7 @@ namespace AZ::IO::Internal
     {
         return elem == '/' || elem == '\\';
     }
-    template <typename InputIt, typename EndIt, typename = AZStd::enable_if_t<AZStd::input_iterator<InputIt>>>
+    template <AZStd::input_iterator InputIt, typename EndIt>
     static constexpr bool HasDrivePrefix(InputIt first, EndIt last)
     {
         size_t prefixSize = AZStd::distance(first, last);
@@ -60,9 +60,8 @@ namespace AZ::IO::Internal
 
     //! Returns an iterator past the end of the consumed root name
     //! Windows root names can have include drive letter within them
-    template <typename InputIt>
-    constexpr auto ConsumeRootName(InputIt entryBeginIter, InputIt entryEndIter, const char preferredSeparator)
-        -> AZStd::enable_if_t<AZStd::forward_iterator<InputIt>, InputIt>
+    template <AZStd::forward_iterator InputIt>
+    constexpr InputIt ConsumeRootName(InputIt entryBeginIter, InputIt entryEndIter, const char preferredSeparator)
     {
         if (preferredSeparator == PosixPathSeparator)
         {
@@ -163,7 +162,7 @@ namespace AZ::IO::Internal
     //! If the preferred separator is '/' just checks if the path starts with a '/
     //! Otherwise a check for a Windows absolute path occurs
     //! Windows absolute paths can include a RootName
-    template <typename InputIt, typename EndIt, typename = AZStd::enable_if_t<AZStd::input_iterator<InputIt>>>
+    template <AZStd::input_iterator InputIt, typename EndIt>
     static constexpr bool IsAbsolute(InputIt first, EndIt last, const char preferredSeparator)
     {
         size_t pathSize = AZStd::distance(first, last);

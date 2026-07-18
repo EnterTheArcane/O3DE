@@ -18,7 +18,7 @@ namespace ScriptCanvasEditor
         // Simplified function to trace messages
         void PrintInfo(const char* format, ...)
         {
-            // TODO: Turn into something nice with enable_if
+            // TODO: Constrain this overload to the supported asset types.
             static bool s_enabled = false;
             if (s_enabled)
             {

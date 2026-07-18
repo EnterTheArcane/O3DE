@@ -80,7 +80,9 @@ namespace ScriptCanvas
         /// that REFERS to the source, and passing in a value will create a datum with a new, Script-owned, copy from the source.
         //
         // Also needs to bypass when it conflicts with the other constructors available.
-        template<typename t_Value, typename = AZStd::enable_if_t<!AZStd::is_same<AZStd::decay_t<t_Value>, Datum>::value && !AZStd::is_same<AZStd::decay_t<t_Value>, AZ::BehaviorArgument>::value> >
+        template<typename t_Value>
+            requires (!AZStd::is_same_v<AZStd::decay_t<t_Value>, Datum>)
+                && (!AZStd::is_same_v<AZStd::decay_t<t_Value>, AZ::BehaviorArgument>)
         explicit Datum(t_Value&& value);
 
         AZ_INLINE bool Empty() const;
@@ -393,7 +395,9 @@ namespace ScriptCanvas
         AZStd::string ToStringVector4(const AZ::Vector4& source) const;
     };
 
-    template<typename t_Value, typename>
+    template<typename t_Value>
+        requires (!AZStd::is_same_v<AZStd::decay_t<t_Value>, Datum>)
+            && (!AZStd::is_same_v<AZStd::decay_t<t_Value>, AZ::BehaviorArgument>)
     Datum::Datum(t_Value&& value)
     {
         InitializerHelper<AZStd::remove_reference_t<t_Value>, AZStd::is_reference<t_Value>::value>::Help(value, *this);

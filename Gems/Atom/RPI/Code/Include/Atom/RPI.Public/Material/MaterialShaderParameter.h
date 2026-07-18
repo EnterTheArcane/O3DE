@@ -132,7 +132,8 @@ namespace AZ::RPI
             return Matrix4x4::CreateFromRowMajorFloat16(result.data());
         }
 
-        template<typename T, unsigned int N, AZStd::enable_if_t<N <= 4, bool> = true>
+        template<typename T, unsigned int N>
+            requires (N <= 4)
         T GetVectorShaderParameterData(const MaterialShaderParameterLayout::Index& index, const uint32_t deviceIndex = 0) const
         {
             AZStd::array<float, N> result = GetShaderParameterData<AZStd::array<float, N>>(index, deviceIndex);

@@ -230,7 +230,7 @@ namespace AZStd
             node_ptr_type head = get_head();
             hook_node_ptr_type headHook = Hook::to_node_ptr(head);
             headHook->m_next = m_lastNode = head;
-            insert_after_iter(before_begin(), first, last, is_integral<InputIterator>());
+            insert_after_iter(before_begin(), first, last);
         }
 
         AZ_FORCE_INLINE ~intrusive_slist()
@@ -316,13 +316,13 @@ namespace AZStd
         template <class InputIterator>
         AZ_FORCE_INLINE void insert(iterator insertPos, InputIterator first, InputIterator last)
         {
-            insert_after_iter(previous(insertPos), first, last, is_integral<InputIterator>());
+            insert_after_iter(previous(insertPos), first, last);
         }
 
         template <class InputIterator>
         AZ_FORCE_INLINE void insert_after(iterator insertPos, InputIterator first, InputIterator last)
         {
-            insert_after_iter(insertPos, first, last, is_integral<InputIterator>());
+            insert_after_iter(insertPos, first, last);
         }
 
         AZ_INLINE iterator insert_after(iterator insertPos, const_reference value)
@@ -954,18 +954,19 @@ namespace AZStd
         }
 
         template <class InputIterator>
-        AZ_FORCE_INLINE void    insert_after_iter(iterator insertPos, const InputIterator& first, const InputIterator& last, const true_type& /* is_integral<InputIterator> */)
+        AZ_FORCE_INLINE void insert_after_iter(iterator insertPos, const InputIterator& first, const InputIterator& last)
         {
-            insert_after(insertPos, (size_type)first, (value_type)last);
-        }
-
-        template <class InputIterator>
-        AZ_FORCE_INLINE void    insert_after_iter(iterator insertPos, const InputIterator& first, const InputIterator& last, const false_type& /* !is_integral<InputIterator> */)
-        {
-            InputIterator iter(first);
-            for (; iter != last; ++iter, ++insertPos)
+            if constexpr (is_integral_v<InputIterator>)
             {
-                insert_after(insertPos, *iter);
+                insert_after(insertPos, (size_type)first, (value_type)last);
+            }
+            else
+            {
+                InputIterator iter(first);
+                for (; iter != last; ++iter, ++insertPos)
+                {
+                    insert_after(insertPos, *iter);
+                }
             }
         }
 

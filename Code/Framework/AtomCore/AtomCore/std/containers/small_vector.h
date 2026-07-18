@@ -59,7 +59,8 @@ namespace AZStd
             }
         }
 
-        template<typename... Args, typename = AZStd::enable_if_t<AZStd::is_constructible_v<T, Args...>>>
+        template<typename... Args>
+            requires AZStd::is_constructible_v<T, Args...>
         T& emplace_back(Args&&... args) noexcept
         {
             if (AZStd::holds_alternative<FixedVectorT>(m_data))

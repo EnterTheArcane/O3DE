@@ -285,7 +285,8 @@ namespace AZ
                 //! Polymorphic copy of a shared_ref
                 //! \param rhs The shared_ref of a derived JNI pointer type to be copied
                 template<typename Y>
-                shared_ref(const shared_ref<Y>& rhs, typename AZStd::enable_if<AZStd::is_convertible<Y, JniType>::value, Y>::type = AZStd::nullptr_t())
+                    requires AZStd::is_convertible_v<Y, JniType>
+                shared_ref(const shared_ref<Y>& rhs)
                     : m_javaObject(rhs.m_javaObject)
                     , m_count(rhs.m_count)
                 {

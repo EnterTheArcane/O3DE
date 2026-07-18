@@ -342,27 +342,18 @@ namespace AZStd
                     functor_manager_common<functor_type>::manage_ptr(in_buffer, out_buffer, op);
                 }
 
-                // Function objects that fit in the small-object buffer.
                 static inline void
-                manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op, AZStd::true_type)
+                manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op)
                 {
-                    functor_manager_common<functor_type>::manage_small(in_buffer, out_buffer, op);
-                }
-
-                // Function objects that require heap allocation
-                static inline void
-                manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op, AZStd::false_type)
-                {
-                    if (op == clone_functor_tag)
+                    if constexpr (function_allows_small_object_optimization<functor_type>::value)
                     {
-                        // Clone the functor
-                        // GCC 2.95.3 gets the CV qualifiers wrong here, so we
-                        // can't do the static_cast that we should do.
+                        functor_manager_common<functor_type>::manage_small(in_buffer, out_buffer, op);
+                    }
+                    else if (op == clone_functor_tag)
+                    {
                         const functor_type* f = (const functor_type*)(in_buffer.obj_ptr);
-                        // \todo provide a more generic way to supply utility allocators
                         AZStd::allocator a;
-                        functor_type* new_f = new (a.allocate(sizeof(functor_type), AZStd::alignment_of_v<functor_type>))functor_type(*f);
-                        out_buffer.obj_ptr = new_f;
+                        out_buffer.obj_ptr = new (a.allocate(sizeof(functor_type), AZStd::alignment_of_v<functor_type>))functor_type(*f);
                     }
                     else if (op == move_functor_tag)
                     {
@@ -404,14 +395,14 @@ namespace AZStd
                 static inline void
                 manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op, function_obj_tag)
                 {
-                    manager(in_buffer, out_buffer, op, AZStd::integral_constant<bool, function_allows_small_object_optimization<functor_type>::value >());
+                    manager(in_buffer, out_buffer, op);
                 }
 
                 // For member pointers, we use the small-object optimization buffer.
                 static inline void
                 manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op, member_ptr_tag)
                 {
-                    manager(in_buffer, out_buffer, op, AZStd::true_type());
+                    manager(in_buffer, out_buffer, op);
                 }
 
             public:
@@ -450,59 +441,46 @@ namespace AZStd
                     functor_manager_common<functor_type>::manage_ptr(in_buffer, out_buffer, op);
                 }
 
-                // Function objects that fit in the small-object buffer.
                 static inline void
-                manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op, AZStd::true_type)
+                manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op)
                 {
-                    functor_manager_common<functor_type>::manage_small(in_buffer, out_buffer, op);
-                }
-
-                // Function objects that require heap allocation
-                static inline void
-                manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op, AZStd::false_type)
-                {
-                    typedef functor_wrapper<functor_type, Allocator> functor_wrapper_type;
-
-                    if (op == clone_functor_tag)
+                    if constexpr (function_allows_small_object_optimization<functor_type>::value)
                     {
-                        // Clone the functor
-                        // GCC 2.95.3 gets the CV qualifiers wrong here, so we
-                        // can't do the static_cast that we should do.
-                        functor_wrapper_type* f = static_cast<functor_wrapper_type*>(in_buffer.obj_ptr);
-                        functor_wrapper_type* new_f = new (f->allocate(sizeof(functor_wrapper_type), AZStd::alignment_of_v<functor_wrapper_type>))functor_wrapper_type(*f);
-                        out_buffer.obj_ptr = new_f;
+                        functor_manager_common<functor_type>::manage_small(in_buffer, out_buffer, op);
                     }
-                    else if (op == move_functor_tag)
+                    else
                     {
-                        out_buffer.obj_ptr = in_buffer.obj_ptr;
-                        in_buffer.obj_ptr = 0;
-                    }
-                    else if (op == destroy_functor_tag)
-                    {
-                        /* Cast from the void pointer to the functor_wrapper_type */
-                        functor_wrapper_type* victim = static_cast<functor_wrapper_type*>(in_buffer.obj_ptr);
-                        Allocator wrapper_allocator(static_cast<Allocator const&>(*victim)); // copy the allocator
-                        Internal::destroy<functor_wrapper_type*>::single(victim);
-                        wrapper_allocator.deallocate(victim, sizeof(functor_wrapper_type), AZStd::alignment_of_v<functor_wrapper_type>);
-                        out_buffer.obj_ptr = 0;
-                    }
-                    else if (op == check_functor_type_tag)
-                    {
-                        const type_id& check_type = out_buffer.type.type;
-                        if (aztypeid_cmp(check_type, aztypeid(functor_type)))
+                        using functor_wrapper_type = functor_wrapper<functor_type, Allocator>;
+                        if (op == clone_functor_tag)
+                        {
+                            functor_wrapper_type* f = static_cast<functor_wrapper_type*>(in_buffer.obj_ptr);
+                            out_buffer.obj_ptr = new (f->allocate(sizeof(functor_wrapper_type), AZStd::alignment_of_v<functor_wrapper_type>))
+                                functor_wrapper_type(*f);
+                        }
+                        else if (op == move_functor_tag)
                         {
                             out_buffer.obj_ptr = in_buffer.obj_ptr;
+                            in_buffer.obj_ptr = 0;
+                        }
+                        else if (op == destroy_functor_tag)
+                        {
+                            functor_wrapper_type* victim = static_cast<functor_wrapper_type*>(in_buffer.obj_ptr);
+                            Allocator wrapper_allocator(static_cast<Allocator const&>(*victim));
+                            Internal::destroy<functor_wrapper_type*>::single(victim);
+                            wrapper_allocator.deallocate(victim, sizeof(functor_wrapper_type), AZStd::alignment_of_v<functor_wrapper_type>);
+                            out_buffer.obj_ptr = 0;
+                        }
+                        else if (op == check_functor_type_tag)
+                        {
+                            const type_id& check_type = out_buffer.type.type;
+                            out_buffer.obj_ptr = aztypeid_cmp(check_type, aztypeid(functor_type)) ? in_buffer.obj_ptr : nullptr;
                         }
                         else
                         {
-                            out_buffer.obj_ptr = 0;
+                            out_buffer.type.type = aztypeid(functor_type);
+                            out_buffer.type.const_qualified = false;
+                            out_buffer.type.volatile_qualified = false;
                         }
-                    }
-                    else /* op == get_functor_type_tag */
-                    {
-                        out_buffer.type.type = aztypeid(functor_type);
-                        out_buffer.type.const_qualified = false;
-                        out_buffer.type.volatile_qualified = false;
                     }
                 }
 
@@ -512,7 +490,7 @@ namespace AZStd
                 static inline void
                 manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op, function_obj_tag)
                 {
-                    manager(in_buffer, out_buffer, op, AZStd::integral_constant<bool, function_allows_small_object_optimization<functor_type>::value>());
+                    manager(in_buffer, out_buffer, op);
                 }
 
             public:

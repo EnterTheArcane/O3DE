@@ -89,11 +89,6 @@ namespace AZ
                     SceneGraph::HierarchyStorageConstIterator GetHierarchyIterator() const;
 
                 private:
-                    // For iterators that are raw pointers.
-                    pointer GetPointer(AZStd::true_type) const;
-                    // For all other types of iterator.
-                    pointer GetPointer(AZStd::false_type) const;
-
                     void MoveToNext();
                     bool ShouldAcceptNode(AcceptNodesOnly) const;
                     bool ShouldAcceptNode(AcceptEndPointsOnly) const;

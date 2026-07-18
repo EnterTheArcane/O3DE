@@ -131,8 +131,8 @@ namespace AZStd::ranges::views::Internal
 
 
     template<class RangeAdaptor>
-    using is_range_closure_t = bool_constant<derived_from<remove_cvref_t<RangeAdaptor>,
-        range_adaptor_closure<remove_cvref_t<RangeAdaptor>>>>;
+    concept range_closure = derived_from<remove_cvref_t<RangeAdaptor>,
+        range_adaptor_closure<remove_cvref_t<RangeAdaptor>>>;
 
     template<class T>
     struct range_adaptor_closure
@@ -141,7 +141,7 @@ namespace AZStd::ranges::views::Internal
         friend constexpr auto operator|(View&& view, U&& closure) noexcept(is_nothrow_invocable_v<View, U>)
             -> decltype(AZStd::invoke(AZStd::forward<U>(closure), AZStd::forward<View>(view)))
            requires viewable_range<View>
-               && is_range_closure_t<U>::value
+               && range_closure<U>
                && same_as<T, remove_cvref_t<U>>
                && invocable<U, View>
         {
@@ -154,15 +154,15 @@ namespace AZStd::ranges::views::Internal
             -> decltype(range_adaptor_closure_forwarder{
                 perfect_forwarding_call_wrapper{AZStd::forward<Target>(outerClosure), AZStd::forward<U>(closure) }
                 })
-           requires is_range_closure_t<U>::value
-               && is_range_closure_t<Target>::value
+           requires range_closure<U>
+               && range_closure<Target>
                && same_as<T, remove_cvref_t<U>>
                && constructible_from<decay_t<U>, U>
                && constructible_from<decay_t<Target>, Target>
         {
             // Create a perfect_forwarding_wrapper that wraps the outer adaptor around the inner adaptor
             // and then pass that to the range_adaptor_closure_forward struct which inherits from
-            // range_adaptor_closure class template so that it is_range_closure_t template succeeds
+            // range_adaptor_closure class template so that the range_closure concept is satisfied
             return range_adaptor_closure_forwarder{
                 perfect_forwarding_call_wrapper{AZStd::forward<Target>(outerClosure), AZStd::forward<U>(closure) }
             };

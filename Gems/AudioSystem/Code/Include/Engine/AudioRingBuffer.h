@@ -82,7 +82,8 @@ namespace Audio
      *
      *   <---------------------m_size---------------------->
      */
-    template <typename SampleType, typename = AZStd::enable_if_t<AZStd::is_arithmetic<SampleType>::value>>
+    template <typename SampleType, typename = void>
+        requires AZStd::is_arithmetic_v<SampleType>
     class RingBuffer
         : public RingBufferBase
     {

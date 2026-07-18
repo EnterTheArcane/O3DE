@@ -19,7 +19,6 @@
 #include <AzCore/std/typetraits/is_abstract.h>
 #include <AzCore/std/typetraits/is_reference.h>
 #include <AzCore/std/typetraits/remove_reference.h>
-#include <AzCore/std/typetraits/void_t.h>
 #include <AzCore/std/typetraits/internal/is_template_copy_constructible.h>
 #include <AzCore/std/string/string.h>
 

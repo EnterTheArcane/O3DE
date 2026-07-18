@@ -224,8 +224,7 @@ namespace AZ::Internal
         if (m_currentEBusSender && m_currentEBusSender->m_broadcast)
         {
             AZ::Attribute* eventAttribute = aznew AttributeContainerType<T>(value);
-            Base::template SetAttributeContextData<T>(value, eventAttribute,
-                AZStd::bool_constant<AZStd::is_member_function_pointer_v<T> || AZStd::is_function_v<AZStd::remove_pointer_t<T>>>());
+            Base::template SetAttributeContextData<T>(value, eventAttribute);
             m_currentEBusSender->m_broadcast->m_attributes.emplace_back(AttributePair(idCrc, eventAttribute));
         }
         return static_cast<EBusBuilderBase*>(this);
@@ -238,8 +237,7 @@ namespace AZ::Internal
         if (!Base::m_context->IsRemovingReflection() && m_currentEBusSender && m_currentEBusSender->m_event)
         {
             AZ::Attribute* eventAttribute = aznew AttributeContainerType<T>(value);
-            Base::template SetAttributeContextData<T>(value, eventAttribute,
-                AZStd::bool_constant<AZStd::is_member_function_pointer_v<T> || AZStd::is_function_v<AZStd::remove_pointer_t<T>>>());
+            Base::template SetAttributeContextData<T>(value, eventAttribute);
             m_currentEBusSender->m_event->m_attributes.emplace_back(AttributePair(idCrc, eventAttribute));
         }
         return static_cast<EBusBuilderBase*>(this);
@@ -252,8 +250,7 @@ namespace AZ::Internal
         if (!Base::m_context->IsRemovingReflection() && m_currentEBusSender && m_currentEBusSender->m_queueBroadcast)
         {
             AZ::Attribute* eventAttribute = aznew AttributeContainerType<T>(value);
-            Base::template SetAttributeContextData<T>(value, eventAttribute,
-                AZStd::bool_constant<AZStd::is_member_function_pointer_v<T> || AZStd::is_function_v<AZStd::remove_pointer_t<T>>>());
+            Base::template SetAttributeContextData<T>(value, eventAttribute);
             m_currentEBusSender->m_queueBroadcast->m_attributes.emplace_back(AttributePair(idCrc, eventAttribute));
         }
         return static_cast<EBusBuilderBase*>(this);
@@ -266,8 +263,7 @@ namespace AZ::Internal
         if (!Base::m_context->IsRemovingReflection() && m_currentEBusSender && m_currentEBusSender->m_queueEvent)
         {
             AZ::Attribute* eventAttribute = aznew AttributeContainerType<T>(value);
-            Base::template SetAttributeContextData<T>(value, eventAttribute,
-                AZStd::bool_constant<AZStd::is_member_function_pointer_v<T> || AZStd::is_function_v<AZStd::remove_pointer_t<T>>>());
+            Base::template SetAttributeContextData<T>(value, eventAttribute);
             m_currentEBusSender->m_queueEvent->m_attributes.emplace_back(AttributePair(idCrc, eventAttribute));
         }
         return static_cast<EBusBuilderBase*>(this);
@@ -292,7 +288,7 @@ namespace AZ::Internal
         if (Base::m_currentAttributes)
         {
             AZ::Attribute* ebusAttribute = aznew AttributeContainerType<T>(value);
-            Base::template SetAttributeContextData<T>(value, ebusAttribute, AZStd::bool_constant<AZStd::is_member_function_pointer_v<T> || AZStd::is_function_v<AZStd::remove_pointer_t<T>>>());
+            Base::template SetAttributeContextData<T>(value, ebusAttribute);
             Base::m_currentAttributes->emplace_back(AttributePair(idCrc, ebusAttribute));
         }
 

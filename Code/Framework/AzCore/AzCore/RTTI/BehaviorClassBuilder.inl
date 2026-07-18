@@ -605,11 +605,11 @@ namespace AZ
                     );
 
             SetClassHasher<T>(behaviorClass);
-            SetClassDefaultAllocator<T>(behaviorClass, AZStd::bool_constant<HasAZClassAllocator_v<T>>{});
-            SetClassDefaultConstructor<T>(behaviorClass, typename AZStd::conditional< AZStd::is_constructible<T>::value && !AZStd::is_abstract<T>::value, AZStd::true_type, AZStd::false_type>::type());
-            SetClassDefaultDestructor<T>(behaviorClass, typename AZStd::is_destructible<T>::type());
-            SetClassDefaultCopyConstructor<T>(behaviorClass, typename AZStd::conditional< AZStd::is_copy_constructible<T>::value && !AZStd::is_abstract<T>::value, AZStd::true_type, AZStd::false_type>::type());
-            SetClassDefaultMoveConstructor<T>(behaviorClass, typename AZStd::conditional< AZStd::is_move_constructible<T>::value && !AZStd::is_abstract<T>::value, AZStd::true_type, AZStd::false_type>::type());
+            SetClassDefaultAllocator<T>(behaviorClass);
+            SetClassDefaultConstructor<T>(behaviorClass);
+            SetClassDefaultDestructor<T>(behaviorClass);
+            SetClassDefaultCopyConstructor<T>(behaviorClass);
+            SetClassDefaultMoveConstructor<T>(behaviorClass);
 
             // Switch to Set (we store the name in the class)
             m_classes.insert(AZStd::make_pair(behaviorClass->m_name, behaviorClass));

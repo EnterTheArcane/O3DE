@@ -46,7 +46,8 @@ namespace AZ::MeshBuilder
         explicit MeshBuilder(size_t numOrgVerts, size_t maxBonesPerSubMesh, size_t maxSubMeshVertices, bool optimizeDuplicates = true);
 
         template <class LayerType, class... Args>
-        AZStd::enable_if_t<AZStd::is_convertible_v<LayerType*, MeshBuilderVertexAttributeLayer*>, LayerType*> AddLayer(Args&&... args)
+            requires AZStd::is_convertible_v<LayerType*, MeshBuilderVertexAttributeLayer*>
+        LayerType* AddLayer(Args&&... args)
         {
             if constexpr (AZStd::is_same_v<AZStd::tuple_element_t<0, AZStd::tuple<Args...>>, AZStd::unique_ptr<LayerType>>)
             {

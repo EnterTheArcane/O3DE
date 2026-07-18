@@ -195,7 +195,8 @@ namespace AZ
         bool StoreResult(T&& result);
 
         /// Used internally to store values in the temp data
-        template<typename T, typename = AZStd::enable_if_t<AZStd::is_trivially_destructible_v<AZStd::decay_t<T>>>>
+        template<typename T>
+            requires AZStd::is_trivially_destructible_v<AZStd::decay_t<T>>
         void StoreInTempData(T&& value);
 
         void* m_value;  ///< Pointer to value, keep it mind to check the traits as if the value is pointer, this will be pointer to pointer and use \ref GetValueAddress to get the actual value address
@@ -773,13 +774,7 @@ namespace AZ
         {
         protected:
             template<class T>
-            void SetAttributeContextData(T value, AZ::Attribute* attribute, const AZStd::false_type& /* is_function<remove_pointer<T>::type> && is_member_function_pointer<T>*/)
-            {
-                (void)value; (void)attribute;
-            }
-
-            template<class T>
-            void SetAttributeContextData(T value, AZ::Attribute* attribute, const AZStd::true_type& /* is_function<remove_pointer<T>::type> && is_member_function_pointer<T>*/);
+            void SetAttributeContextData(T value, AZ::Attribute* attribute);
 
             GenericAttributes(BehaviorContext* context)
                 : m_currentAttributes(nullptr)
@@ -1023,16 +1018,10 @@ namespace AZ
         : public OnDemandReflectionOwner
     {
         template<class Getter>
-        bool SetGetter(Getter, BehaviorClass* /*currentClass*/, BehaviorContext* context, const AZStd::true_type& /* is AZStd::is_same<Getter,nullptr_t>::type() */);
-
-        template<class Getter>
-        bool SetGetter(Getter getter, BehaviorClass* currentClass, BehaviorContext* context, const AZStd::false_type& /* is AZStd::is_same<Getter,nullptr_t>::type( */);
+        bool SetGetter(Getter getter, BehaviorClass* currentClass, BehaviorContext* context);
 
         template<class Setter>
-        bool SetSetter(Setter, BehaviorClass*, BehaviorContext*, const AZStd::true_type& /* is AZStd::is_same<Getter,nullptr_t>::type() */);
-
-        template<class Setter>
-        bool SetSetter(Setter setter, BehaviorClass* currentClass, BehaviorContext* context, const AZStd::false_type& /* is AZStd::is_same<Getter,nullptr_t>::type( */);
+        bool SetSetter(Setter setter, BehaviorClass* currentClass, BehaviorContext* context);
 
     public:
         AZ_CLASS_ALLOCATOR(BehaviorProperty, AZ::SystemAllocator);
@@ -1061,22 +1050,13 @@ namespace AZ
         void Set(Event e, const char* eventName, BehaviorContext* context);
 
         template<class EBus, class Event>
-        void SetEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::true_type& /*is NullBusId*/);
+        void SetEvent(Event e, const char* eventName, BehaviorContext* context);
 
         template<class EBus, class Event>
-        void SetEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/);
+        void SetQueueBroadcast(Event e, const char* eventName, BehaviorContext* context);
 
         template<class EBus, class Event>
-        void SetQueueBroadcast(Event e, const char* eventName, BehaviorContext* context, const AZStd::true_type& /*is NullBusId*/);
-
-        template<class EBus, class Event>
-        void SetQueueBroadcast(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/);
-
-        template<class EBus, class Event>
-        void SetQueueEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::true_type& /* is Queue and is BusId valid*/);
-
-        template<class EBus, class Event>
-        void SetQueueEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /* is Queue and is BusId valid*/);
+        void SetQueueEvent(Event e, const char* eventName, BehaviorContext* context);
 
         BehaviorMethod* m_broadcast = nullptr;
         BehaviorMethod* m_event = nullptr;
@@ -1274,14 +1254,16 @@ namespace AZ
      */
     class AZCORE_API BehaviorContext : public ReflectContext
     {
-        template<class Bus, typename AZStd::enable_if<!AZStd::is_same<typename Bus::BusIdType, AZ::NullBusId>::value>::type* = nullptr>
+        template<class Bus>
+            requires (!AZStd::is_same_v<typename Bus::BusIdType, AZ::NullBusId>)
         void EBusSetIdFeatures(BehaviorEBus* ebus)
         {
             AZ::Internal::SetParameters<typename Bus::BusIdType>(&ebus->m_idParam);
             ebus->m_getCurrentId = aznew AZ::Internal::BehaviorMethodImpl(static_cast<const typename Bus::BusIdType*(*)()>(&Bus::GetCurrentBusId), this, AZStd::string(Bus::GetName()) + "::GetCurrentBusId");
         }
 
-        template<class Bus, typename AZStd::enable_if<AZStd::is_same<typename Bus::BusIdType, AZ::NullBusId>::value>::type* = nullptr>
+        template<class Bus>
+            requires AZStd::is_same_v<typename Bus::BusIdType, AZ::NullBusId>
         void EBusSetIdFeatures(BehaviorEBus*)
         {
         }
@@ -1292,13 +1274,15 @@ namespace AZ
             Bus::QueueFunction(f, userData1, userData2);
         }
 
-        template<class Bus, typename AZStd::enable_if<Bus::Traits::EnableEventQueue>::type* = nullptr>
+        template<class Bus>
+            requires Bus::Traits::EnableEventQueue
         BehaviorMethod* QueueFunctionMethod()
         {
             return aznew AZ::Internal::BehaviorMethodImpl(static_cast<void(*)(BehaviorEBus::QueueFunctionType, void*, void*)>(&QueueFunction<Bus>), this, AZStd::string(Bus::GetName()) + "::QueueFunction");
         }
 
-        template<class Bus, typename AZStd::enable_if<!Bus::Traits::EnableEventQueue>::type* = nullptr>
+        template<class Bus>
+            requires (!Bus::Traits::EnableEventQueue)
         BehaviorMethod* QueueFunctionMethod()
         {
             return nullptr;
@@ -1385,29 +1369,18 @@ namespace AZ
         }
 
         template<class T>
-        static void SetClassDefaultAllocator(BehaviorClass* behaviorClass, const AZStd::false_type& /*HasAZClassAllocator<T>*/)
+        static void SetClassDefaultAllocator(BehaviorClass* behaviorClass)
         {
-            behaviorClass->m_allocate = &DefaultSystemAllocator<T>::Allocate;
-            behaviorClass->m_deallocate = &DefaultSystemAllocator<T>::DeAllocate;
-        }
-
-        template<class T>
-        static void SetClassDefaultConstructor(BehaviorClass* behaviorClass, const AZStd::false_type& /*AZStd::is_constructible<T>*/) { (void)behaviorClass; }
-
-        template<class T>
-        static void SetClassDefaultDestructor(BehaviorClass* behaviorClass, const AZStd::false_type& /*AZStd::is_destructible<T>*/) { (void)behaviorClass; }
-
-        template<class T>
-        static void SetClassDefaultCopyConstructor(BehaviorClass* behaviorClass, const AZStd::false_type& /*AZStd::is_copy_constructible<T>*/) { (void)behaviorClass; }
-
-        template<class T>
-        static void SetClassDefaultMoveConstructor(BehaviorClass* behaviorClass, const AZStd::false_type& /*AZStd::is_move_constructible<T>*/) { (void)behaviorClass; }
-
-        template<class T>
-        static void SetClassDefaultAllocator(BehaviorClass* behaviorClass, const AZStd::true_type&  /*HasAZClassAllocator<T>*/)
-        {
-            behaviorClass->m_allocate = &DefaultAllocator<T>::Allocate;
-            behaviorClass->m_deallocate = &DefaultAllocator<T>::DeAllocate;
+            if constexpr (HasAZClassAllocator_v<T>)
+            {
+                behaviorClass->m_allocate = &DefaultAllocator<T>::Allocate;
+                behaviorClass->m_deallocate = &DefaultAllocator<T>::DeAllocate;
+            }
+            else
+            {
+                behaviorClass->m_allocate = &DefaultSystemAllocator<T>::Allocate;
+                behaviorClass->m_deallocate = &DefaultSystemAllocator<T>::DeAllocate;
+            }
         }
 
         template <class T>
@@ -1423,21 +1396,30 @@ namespace AZ
         }
 
         template<class T>
-        static void SetClassDefaultConstructor(BehaviorClass* behaviorClass, const AZStd::true_type& /*AZStd::is_constructible<T>*/)
+        static void SetClassDefaultConstructor(BehaviorClass* behaviorClass)
         {
-            behaviorClass->m_defaultConstructor = &DefaultConstruct<T>;
+            if constexpr (AZStd::is_constructible_v<T> && !AZStd::is_abstract_v<T>)
+            {
+                behaviorClass->m_defaultConstructor = &DefaultConstruct<T>;
+            }
         }
 
         template<class T>
-        static void SetClassDefaultDestructor(BehaviorClass* behaviorClass, const AZStd::true_type& /*AZStd::is_destructible<T>*/)
+        static void SetClassDefaultDestructor(BehaviorClass* behaviorClass)
+        {
+            if constexpr (AZStd::is_destructible_v<T>)
             {
                 behaviorClass->m_destructor = &DefaultDestruct<T>;
             }
+        }
 
         template<class T>
-        static void SetClassDefaultCopyConstructor(BehaviorClass* behaviorClass, const AZStd::true_type& /*AZStd::is_copy_constructible<T>*/)
+        static void SetClassDefaultCopyConstructor(BehaviorClass* behaviorClass)
         {
-            behaviorClass->m_cloner = &DefaultCopyConstruct<T>;
+            if constexpr (AZStd::is_copy_constructible_v<T> && !AZStd::is_abstract_v<T>)
+            {
+                behaviorClass->m_cloner = &DefaultCopyConstruct<T>;
+            }
         }
 
         template<class T>
@@ -1447,9 +1429,12 @@ namespace AZ
         }
 
         template<class T>
-        static void SetClassDefaultMoveConstructor(BehaviorClass* behaviorClass, const AZStd::true_type& /*AZStd::is_move_constructible<T>*/)
+        static void SetClassDefaultMoveConstructor(BehaviorClass* behaviorClass)
         {
-            behaviorClass->m_mover = &DefaultMoveConstruct<T>;
+            if constexpr (AZStd::is_move_constructible_v<T> && !AZStd::is_abstract_v<T>)
+            {
+                behaviorClass->m_mover = &DefaultMoveConstruct<T>;
+            }
         }
 
     public:
@@ -1964,7 +1949,8 @@ namespace AZ
     }
 
     //////////////////////////////////////////////////////////////////////////
-    template<typename T, typename>
+    template<typename T>
+        requires AZStd::is_trivially_destructible_v<AZStd::decay_t<T>>
     inline void BehaviorArgument::StoreInTempData(T&& value)
     {
         StoreInTempDataEvenIfNonTrivial(AZStd::forward<T>(value));
@@ -2007,8 +1993,8 @@ namespace AZ
         // MSVC does not allow an incomplete type to be used in a compiler intrinsic which is the reason why
         // std::is_assignable_v is not being used here
         // For some reason the Script.cpp test validates that an incomplete type can be used with the SetResult struct
-        template<typename T, typename U, typename = void>
-        static constexpr bool IsCopyAssignable = false;
+        template<typename T, typename U>
+        static constexpr bool IsCopyAssignable = requires { AZStd::declval<T>() = AZStd::declval<U>(); };
 
         template<class T>
         static bool Set(BehaviorArgument& param, T&& result, bool IsValueCopy)
@@ -2067,9 +2053,6 @@ namespace AZ
             return false;
         }
     };
-
-    template<typename T, typename U>
-    constexpr bool SetResult::IsCopyAssignable<T, U, AZStd::void_t<decltype(AZStd::declval<T>() = AZStd::declval<U>())>> = true;
 
     template<typename T>
     AZ_FORCE_INLINE BehaviorArgument& BehaviorArgument::operator=(T&& result)
@@ -2157,76 +2140,76 @@ namespace AZ
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
     template<class Getter>
-    bool BehaviorProperty::SetGetter(Getter, BehaviorClass* /*currentClass*/, BehaviorContext* /*context*/, const AZStd::true_type&)
+    bool BehaviorProperty::SetGetter(Getter getter, BehaviorClass* currentClass, BehaviorContext* context)
     {
-        m_getter = nullptr;
-        return true;
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    template<class Getter>
-    bool BehaviorProperty::SetGetter(Getter getter, BehaviorClass* currentClass, BehaviorContext* context, const AZStd::false_type&)
-    {
-        AZStd::string getterPropertyName = currentClass ? currentClass->m_name : AZStd::string{};
-        if (!getterPropertyName.empty())
+        if constexpr (AZStd::is_same_v<Getter, AZStd::nullptr_t>)
         {
-            getterPropertyName += "::";
+            m_getter = nullptr;
+            return true;
         }
-        getterPropertyName += m_name;
-        getterPropertyName += k_PropertyNameGetterSuffix;
+        else
+        {
+            AZStd::string getterPropertyName = currentClass ? currentClass->m_name : AZStd::string{};
+            if (!getterPropertyName.empty())
+            {
+                getterPropertyName += "::";
+            }
+            getterPropertyName += m_name;
+            getterPropertyName += k_PropertyNameGetterSuffix;
 
-        using GetterFunctionTraits = AZStd::function_traits<Getter>;
-        constexpr bool isClassType = !AZStd::is_same_v<typename GetterFunctionTraits::class_type, AZStd::Internal::error_type>;
-        using GetterCastType = AZStd::conditional_t<
-            isClassType,
-            typename GetterFunctionTraits::type,
-            typename GetterFunctionTraits::function_object_signature*>;
-        m_getter = aznew AZ::Internal::BehaviorMethodImpl(static_cast<GetterCastType>(getter), context, getterPropertyName);
+            using GetterFunctionTraits = AZStd::function_traits<Getter>;
+            constexpr bool isClassType = !AZStd::is_same_v<typename GetterFunctionTraits::class_type, AZStd::Internal::error_type>;
+            using GetterCastType = AZStd::conditional_t<
+                isClassType,
+                typename GetterFunctionTraits::type,
+                typename GetterFunctionTraits::function_object_signature*>;
+            m_getter = aznew AZ::Internal::BehaviorMethodImpl(static_cast<GetterCastType>(getter), context, getterPropertyName);
 
-        return SetGetterImpl(isClassType, currentClass);
+            return SetGetterImpl(isClassType, currentClass);
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class Setter>
-    bool BehaviorProperty::SetSetter(Setter, BehaviorClass*, BehaviorContext*, const AZStd::true_type&)
+    bool BehaviorProperty::SetSetter(Setter setter, BehaviorClass* currentClass, BehaviorContext* context)
     {
-        m_setter = nullptr;
-        return true;
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    template<class Setter>
-    bool BehaviorProperty::SetSetter(Setter setter, BehaviorClass* currentClass, BehaviorContext* context, const AZStd::false_type&)
-    {
-        AZStd::string setterPropertyName = currentClass ? currentClass->m_name : AZStd::string{};
-        if (!setterPropertyName.empty())
+        if constexpr (AZStd::is_same_v<Setter, AZStd::nullptr_t>)
         {
-            setterPropertyName += "::";
+            m_setter = nullptr;
+            return true;
         }
-        setterPropertyName += m_name;
-        setterPropertyName += k_PropertyNameSetterSuffix;
+        else
+        {
+            AZStd::string setterPropertyName = currentClass ? currentClass->m_name : AZStd::string{};
+            if (!setterPropertyName.empty())
+            {
+                setterPropertyName += "::";
+            }
+            setterPropertyName += m_name;
+            setterPropertyName += k_PropertyNameSetterSuffix;
 
-        using SetterFunctionTraits = AZStd::function_traits<Setter>;
-        constexpr bool isClassType = !AZStd::is_same_v<typename SetterFunctionTraits::class_type, AZStd::Internal::error_type>;
-        using SetterCastType = AZStd::conditional_t<
-            isClassType,
-            typename SetterFunctionTraits::type,
-            typename SetterFunctionTraits::function_object_signature*>;
-        m_setter = aznew AZ::Internal::BehaviorMethodImpl(static_cast<SetterCastType>(setter), context, setterPropertyName);
+            using SetterFunctionTraits = AZStd::function_traits<Setter>;
+            constexpr bool isClassType = !AZStd::is_same_v<typename SetterFunctionTraits::class_type, AZStd::Internal::error_type>;
+            using SetterCastType = AZStd::conditional_t<
+                isClassType,
+                typename SetterFunctionTraits::type,
+                typename SetterFunctionTraits::function_object_signature*>;
+            m_setter = aznew AZ::Internal::BehaviorMethodImpl(static_cast<SetterCastType>(setter), context, setterPropertyName);
 
-        return SetSetterImpl(isClassType, currentClass);
+            return SetSetterImpl(isClassType, currentClass);
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class Getter, class Setter>
     bool BehaviorProperty::Set(Getter getter, Setter setter, BehaviorClass* currentClass, BehaviorContext* context)
     {
-        if (!SetGetter(getter, currentClass, context, typename AZStd::is_same<Getter, AZStd::nullptr_t>::type()))
+        if (!SetGetter(getter, currentClass, context))
         {
             return false;
         }
 
-        if (!SetSetter(setter, currentClass, context, typename AZStd::is_same<Setter, AZStd::nullptr_t>::type()))
+        if (!SetSetter(setter, currentClass, context))
         {
             return false;
         }
@@ -2250,72 +2233,63 @@ namespace AZ
             AZ::Internal::BehaviorEventType::BE_BROADCAST, AZStd::type_identity<EBus>{});
         m_broadcast->m_name = eventName;
 
-        SetEvent<EBus>(e, eventName, context, typename AZStd::is_same<typename EBus::BusIdType, NullBusId>::type());
-        SetQueueBroadcast<EBus>(e, eventName, context, typename AZStd::is_same<typename EBus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::type());
-        SetQueueEvent<EBus>(e, eventName, context, typename AZStd::conditional<
-            AZStd::is_same_v<typename EBus::BusIdType, NullBusId> || AZStd::is_same_v<typename EBus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>,
-            AZStd::true_type, AZStd::false_type>::type());
+        SetEvent<EBus>(e, eventName, context);
+        SetQueueBroadcast<EBus>(e, eventName, context);
+        SetQueueEvent<EBus>(e, eventName, context);
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class EBus, class Event>
-    void BehaviorEBusEventSender::SetEvent(Event, const char*, BehaviorContext*, const AZStd::true_type& /*is NullBusId*/)
+    void BehaviorEBusEventSender::SetEvent(Event e, const char* eventName, BehaviorContext* context)
     {
+        if constexpr (!AZStd::is_same_v<typename EBus::BusIdType, NullBusId>)
+        {
+            using EventTraits = AZStd::function_traits<Event>;
+            using EventCastType = AZStd::conditional_t<
+                !AZStd::is_same_v<typename EventTraits::class_type, AZStd::Internal::error_type>,
+                typename EventTraits::type,
+                typename EventTraits::function_object_signature*>;
+            m_event = aznew AZ::Internal::BehaviorEBusEvent(static_cast<EventCastType>(e), context,
+                AZ::Internal::BehaviorEventType::BE_EVENT_ID, AZStd::type_identity<EBus>{});
+            m_event->m_name = eventName;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class EBus, class Event>
-    void BehaviorEBusEventSender::SetEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/)
+    void BehaviorEBusEventSender::SetQueueBroadcast(Event e, const char* eventName, BehaviorContext* context)
     {
-        using EventTraits = AZStd::function_traits<Event>;
-        using EventCastType = AZStd::conditional_t<
-            !AZStd::is_same_v<typename EventTraits::class_type, AZStd::Internal::error_type>,
-            typename EventTraits::type,
-            typename EventTraits::function_object_signature*>;
-        m_event = aznew AZ::Internal::BehaviorEBusEvent(static_cast<EventCastType>(e), context,
-            AZ::Internal::BehaviorEventType::BE_EVENT_ID, AZStd::type_identity<EBus>{});
-        m_event->m_name = eventName;
+        if constexpr (!AZStd::is_same_v<
+            typename EBus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>)
+        {
+            using EventTraits = AZStd::function_traits<Event>;
+            using EventCastType = AZStd::conditional_t<
+                !AZStd::is_same_v<typename EventTraits::class_type, AZStd::Internal::error_type>,
+                typename EventTraits::type,
+                typename EventTraits::function_object_signature*>;
+            m_queueBroadcast = aznew AZ::Internal::BehaviorEBusEvent(static_cast<EventCastType>(e), context,
+                AZ::Internal::BehaviorEventType::BE_QUEUE_BROADCAST, AZStd::type_identity<EBus>{});
+
+            m_queueBroadcast->m_name = eventName;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////
     template<class EBus, class Event>
-    void BehaviorEBusEventSender::SetQueueBroadcast(Event, const char*, BehaviorContext*, const AZStd::true_type& /*is NullBusId*/)
+    void BehaviorEBusEventSender::SetQueueEvent(Event e, const char* eventName, BehaviorContext* context)
     {
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    template<class EBus, class Event>
-    void BehaviorEBusEventSender::SetQueueBroadcast(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /*!is NullBusId*/)
-    {
-        using EventTraits = AZStd::function_traits<Event>;
-        using EventCastType = AZStd::conditional_t<
-            !AZStd::is_same_v<typename EventTraits::class_type, AZStd::Internal::error_type>,
-            typename EventTraits::type,
-            typename EventTraits::function_object_signature*>;
-        m_queueBroadcast = aznew AZ::Internal::BehaviorEBusEvent(static_cast<EventCastType>(e), context,
-            AZ::Internal::BehaviorEventType::BE_QUEUE_BROADCAST, AZStd::type_identity<EBus>{});
-
-        m_queueBroadcast->m_name = eventName;
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    template<class EBus, class Event>
-    void BehaviorEBusEventSender::SetQueueEvent(Event, const char*, BehaviorContext*, const AZStd::true_type& /* is Queue and is BusId valid*/)
-    {
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    template<class EBus, class Event>
-    void BehaviorEBusEventSender::SetQueueEvent(Event e, const char* eventName, BehaviorContext* context, const AZStd::false_type& /* is Queue and is BusId valid*/)
-    {
-        using EventTraits = AZStd::function_traits<Event>;
-        using EventCastType = AZStd::conditional_t<
-            !AZStd::is_same_v<typename EventTraits::class_type, AZStd::Internal::error_type>,
-            typename EventTraits::type,
-            typename EventTraits::function_object_signature*>;
-        m_queueEvent = aznew AZ::Internal::BehaviorEBusEvent(static_cast<EventCastType>(e), context,
-            AZ::Internal::BehaviorEventType::BE_QUEUE_EVENT_ID, AZStd::type_identity<EBus>{});
-        m_queueEvent->m_name = eventName;
+        if constexpr (!AZStd::is_same_v<typename EBus::BusIdType, NullBusId>
+            && !AZStd::is_same_v<typename EBus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>)
+        {
+            using EventTraits = AZStd::function_traits<Event>;
+            using EventCastType = AZStd::conditional_t<
+                !AZStd::is_same_v<typename EventTraits::class_type, AZStd::Internal::error_type>,
+                typename EventTraits::type,
+                typename EventTraits::function_object_signature*>;
+            m_queueEvent = aznew AZ::Internal::BehaviorEBusEvent(static_cast<EventCastType>(e), context,
+                AZ::Internal::BehaviorEventType::BE_QUEUE_EVENT_ID, AZStd::type_identity<EBus>{});
+            m_queueEvent->m_name = eventName;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -2713,15 +2687,18 @@ namespace AZ
         //////////////////////////////////////////////////////////////////////////
         template<class Owner>
         template<class T>
-        void GenericAttributes<Owner>::SetAttributeContextData(T value, AZ::Attribute* attribute, const AZStd::true_type& /* is_function<remove_pointer<T>::type> && is_member_function_pointer<T>*/)
+        void GenericAttributes<Owner>::SetAttributeContextData(T value, AZ::Attribute* attribute)
         {
-            BehaviorMethod* method = aznew AZ::Internal::BehaviorMethodImpl(value, m_context, AZStd::string("Function-Attribute"));
-            auto DestroyAttributeMethod = [](void* contextData)
+            if constexpr (AZStd::is_member_function_pointer_v<T> || AZStd::is_function_v<AZStd::remove_pointer_t<T>>)
             {
-                // Passed to Attribute::SetContext data, to destroy the behavior method
-                delete reinterpret_cast<BehaviorMethod*>(contextData);
-            };
-            attribute->SetContextData(method, DestroyAttributeMethod);
+                BehaviorMethod* method = aznew AZ::Internal::BehaviorMethodImpl(value, m_context, AZStd::string("Function-Attribute"));
+                auto DestroyAttributeMethod = [](void* contextData)
+                {
+                    // Passed to Attribute::SetContext data, to destroy the behavior method
+                    delete reinterpret_cast<BehaviorMethod*>(contextData);
+                };
+                attribute->SetContextData(method, DestroyAttributeMethod);
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -2741,7 +2718,7 @@ namespace AZ
             if (m_currentAttributes)
             {
                 AZ::Attribute* attribute = aznew ContainerType(value);
-                SetAttributeContextData<T>(value, attribute, AZStd::integral_constant<bool, AZStd::is_member_function_pointer<T>::value | AZStd::is_function<typename AZStd::remove_pointer<T>::type>::value>());
+                SetAttributeContextData<T>(value, attribute);
                 m_currentAttributes->push_back(AttributePair(idCrc, attribute));
             }
             return static_cast<Owner*>(this);

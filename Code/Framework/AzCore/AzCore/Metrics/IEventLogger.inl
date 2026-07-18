@@ -14,7 +14,8 @@ namespace AZ::Metrics
     // EventValue implementation
     constexpr EventValue::EventValue() = default;
 
-    template<class T, class Alt, class>
+    template<class T, class Alt>
+        requires AZStd::constructible_from<Alt, T>
     constexpr EventValue::EventValue(T&& value)
         : EventValue(AZStd::in_place_type<Alt>, AZStd::forward<T>(value))
     {}

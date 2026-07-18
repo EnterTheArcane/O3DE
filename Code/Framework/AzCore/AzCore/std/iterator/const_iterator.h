@@ -49,8 +49,8 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    template<class I>
-    using const_iterator = enable_if_t<input_iterator<I>, conditional_t<Internal::constant_iterator<I>, I, basic_const_iterator<I>>>;
+    template<input_iterator I>
+    using const_iterator = conditional_t<Internal::constant_iterator<I>, I, basic_const_iterator<I>>;
 
     template<class S>
     using const_sentinel = conditional_t<input_iterator<S>, const_iterator<S>, S>;
@@ -217,38 +217,10 @@ namespace AZStd
 
 
         // comparison operations
-
-        // NOTE: these heterogeneous sentinel comparisons keep the enable_if_t return-type SFINAE form on purpose.
-        // If we use a requires constraint, the associated-constraint is re-entered through `==` overload resolution inside basic_const_iterator_sentinel_for (which checks weakly_equality_comparable_with),
-        // defeating clangs self-dependency detection and producing an infinite constraint-satisfaction recursion for nested iterator adapters such as move_iterator<basic_const_iterator>.
-        // Evaluating the concept as a value in enable_if_t keeps the satisfaction on the stack where the self-dependency is detected and the candidate is correctly discarded.
-        template<class S>
-        friend constexpr auto operator==(const basic_const_iterator& i, const S& s)
-            -> enable_if_t<basic_const_iterator_sentinel_for<S, I>, bool>
+        template<basic_const_iterator_sentinel_for<I> S>
+        constexpr bool operator==(const S& s) const
         {
-            return i.base() == s;
-        }
-
-        template<class S>
-        friend constexpr auto operator!=(const basic_const_iterator& i, const S& s)
-            -> enable_if_t<basic_const_iterator_sentinel_for<S, I>, bool>
-        {
-            return !operator==(i, s);
-        }
-
-        // friend comparison functions
-        template<class S>
-        friend constexpr auto operator==(const S& s, const basic_const_iterator& i)
-            -> enable_if_t<basic_const_iterator_sentinel_for<S, I> && Internal::different_from<S, basic_const_iterator>, bool>
-        {
-            return operator==(i, s);
-        }
-
-        template<class S>
-        friend constexpr auto operator!=(const S& s, const basic_const_iterator& i)
-            -> enable_if_t<basic_const_iterator_sentinel_for<S, I> && Internal::different_from<S, basic_const_iterator>, bool>
-        {
-            return !operator==(i, s);
+            return m_current == s;
         }
 
         template<class I2>

@@ -24,7 +24,8 @@ namespace AZ::Dom
     }
 
     template<class T>
-    template<class Range, class>
+    template<class Range>
+        requires RangeConvertibleToPrefixTree<Range, T>
     DomPrefixTree<T>::DomPrefixTree(Range&& range)
     {
         if constexpr (AZStd::is_lvalue_reference_v<Range>)
