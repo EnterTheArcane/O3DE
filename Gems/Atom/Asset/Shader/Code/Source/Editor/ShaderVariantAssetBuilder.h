@@ -41,8 +41,12 @@ namespace AZ
             const MapOfStringToStageType& m_shaderEntryPoints;
             const Data::AssetId m_shaderVariantAssetId;
             const AZStd::string& m_shaderStemNamePrefix; //<shaderName>-<supervariantName>
-            const AZStd::string& m_hlslSourcePath;
-            const AZStd::string& m_hlslSourceContent;
+            //! Source handed to stage compiles: the frontend's generated target source (HLSL)
+            //! for AZSL, the original language source for Slang.
+            const AZStd::string& m_stageSourcePath;
+            const AZStd::string& m_stageSourceContent;
+            //! The frontend's serialized module-closure product; empty when the backend has none.
+            const AZStd::string m_moduleClosurePath;
             const bool m_useSpecializationConstants = false;
         };
 

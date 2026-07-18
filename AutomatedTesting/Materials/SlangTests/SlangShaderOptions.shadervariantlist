@@ -1,0 +1,19 @@
+{
+    "Shader": "Materials/SlangTests/SlangShaderOptions.shader",
+    "Variants": [
+        {
+            "StableId": 1,
+            "Options": {
+                "o_useTint": "true",
+                "o_debugMode": "Solid",
+                "o_bandCount": "5"
+            }
+        },
+        {
+            "StableId": 2,
+            "Options": {
+                "o_useTint": "false"
+            }
+        }
+    ]
+}

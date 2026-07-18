@@ -132,9 +132,12 @@ namespace AZ::ShaderBuilder
             const DiscoveredShaderOptions& discovered,
             const RPI::ShaderOptionGroupLayout& layout);
 
-        //! Generates the implementation module for Baked lowering: each accessor returns the
-        //! link-time constant value selected in @optionGroup (defaults fill unspecified options),
-        //! so codegen specializes per variant.
+        //! Generates the implementation module for Baked lowering — one variant's option values.
+        //! Each option the variant pins returns its link-time constant value, so codegen
+        //! specializes; options the variant leaves unpinned keep the dynamic fallback read
+        //! (AZSL variant semantics: unpinned options stay runtime-switchable), which requires
+        //! the discovered [AtomVariantFallback] designation — callers must reject partially
+        //! specified variants of shaders without one.
         AZStd::string GenerateBakedValuesModule(
             AZStd::string_view moduleName,
             const DiscoveredShaderOptions& discovered,

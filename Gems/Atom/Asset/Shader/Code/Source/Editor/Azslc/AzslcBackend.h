@@ -33,6 +33,9 @@ namespace AZ::ShaderBuilder
 
         AZ::Outcome<FrontendResult, AZStd::string> CompileFrontend(const FrontendInput& input) override;
 
+        AZ::Outcome<VariantCompilationInputs, AZStd::string> LoadVariantCompilationInputs(
+            const VariantCompilationInputsRequest& request) override;
+
         AZ::Outcome<StageResult, AZStd::string> CompileStage(const StageInput& input) override;
     };
 } // namespace AZ::ShaderBuilder

@@ -9,6 +9,8 @@
 #include "AzslcBackend.h"
 
 #include <AzCore/IO/SystemFile.h>
+#include <AzCore/Serialization/Json/JsonUtils.h>
+#include <AzCore/StringFunc/StringFunc.h>
 #include <AzCore/Utils/Utils.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -21,6 +23,7 @@
 #include <CommonFiles/Preprocessor.h>
 #include <Editor/Azslc/AzslcReflectionAdapter.h>
 #include <Editor/ShaderBuilderUtility.h>
+#include <SrgLayoutUtility.h>
 
 namespace AZ::ShaderBuilder
 {
@@ -261,12 +264,311 @@ namespace AZ::ShaderBuilder
         return AZ::Success(AZStd::move(result));
     }
 
+    //! Loads the option layout the frontend's options.json product declares, plus whether the
+    //! supervariant compiles its options as specialization constants.
+    static RPI::Ptr<RPI::ShaderOptionGroupLayout> LoadShaderOptionsGroupLayoutFromShaderAssetBuilder(
+        const char* builderName,
+        const RHI::ShaderPlatformInterface* shaderPlatformInterface,
+        const AssetBuilderSDK::PlatformInfo& platformInfo,
+        const AzslCompiler& azslCompiler,
+        const AZStd::string& shaderSourceFileFullPath,
+        const RPI::SupervariantIndex supervariantIndex,
+        bool& useSpecializationConstants)
+    {
+        auto optionsGroupPathOutcome = ShaderBuilderUtility::ObtainBuildArtifactPathFromShaderAssetBuilder(
+            shaderPlatformInterface->GetAPIUniqueIndex(), platformInfo.m_identifier, shaderSourceFileFullPath, supervariantIndex.GetIndex(),
+            AZ::RPI::ShaderAssetSubId::OptionsJson);
+        if (!optionsGroupPathOutcome.IsSuccess())
+        {
+            AZ_Error(builderName, false, "%s", optionsGroupPathOutcome.GetError().c_str());
+            return nullptr;
+        }
+        auto optionsGroupJsonPath = optionsGroupPathOutcome.TakeValue();
+        RPI::Ptr<RPI::ShaderOptionGroupLayout> shaderOptionGroupLayout = RPI::ShaderOptionGroupLayout::Create();
+        // The shader options define what options are available, what are the allowed values/range
+        // for each option and what is its default value.
+        auto jsonOutcome = JsonSerializationUtils::ReadJsonFile(optionsGroupJsonPath, AZ::RPI::JsonUtils::DefaultMaxFileSize);
+        if (!jsonOutcome.IsSuccess())
+        {
+            AZ_Error(builderName, false, "%s", jsonOutcome.GetError().c_str());
+            return nullptr;
+        }
+        if (!azslCompiler.ParseOptionsPopulateOptionGroupLayout(
+                jsonOutcome.GetValue(), shaderOptionGroupLayout, useSpecializationConstants))
+        {
+            AZ_Error(builderName, false, "Failed to find a valid list of shader options!");
+            return nullptr;
+        }
+
+        return shaderOptionGroupLayout;
+    }
+
+    static void LoadShaderFunctionsFromShaderAssetBuilder(
+        const char* builderName,
+        const RHI::ShaderPlatformInterface* shaderPlatformInterface, const AssetBuilderSDK::PlatformInfo& platformInfo,
+        const AzslCompiler& azslCompiler, const AZStd::string& shaderSourceFileFullPath,
+        const RPI::SupervariantIndex supervariantIndex,
+        AzslFunctions& functions)
+    {
+        auto functionsJsonPathOutcome = ShaderBuilderUtility::ObtainBuildArtifactPathFromShaderAssetBuilder(
+            shaderPlatformInterface->GetAPIUniqueIndex(), platformInfo.m_identifier, shaderSourceFileFullPath, supervariantIndex.GetIndex(),
+            AZ::RPI::ShaderAssetSubId::IaJson);
+        if (!functionsJsonPathOutcome.IsSuccess())
+        {
+            AZ_Error(builderName, false, "%s", functionsJsonPathOutcome.GetError().c_str());
+            return;
+        }
+
+        auto functionsJsonPath = functionsJsonPathOutcome.TakeValue();
+        auto jsonOutcome = JsonSerializationUtils::ReadJsonFile(functionsJsonPath, AZ::RPI::JsonUtils::DefaultMaxFileSize);
+        if (!jsonOutcome.IsSuccess())
+        {
+            AZ_Error(builderName, false, "%s", jsonOutcome.GetError().c_str());
+            return;
+        }
+        if (!azslCompiler.ParseIaPopulateFunctionData(jsonOutcome.GetValue(), functions))
+        {
+            functions.clear();
+            AZ_Error(builderName, false, "Failed to find shader functions.");
+            return;
+        }
+    }
+
+    static bool LoadSrgLayoutListFromShaderAssetBuilder(
+        const char* builderName,
+        const RHI::ShaderPlatformInterface* shaderPlatformInterface,
+        const AssetBuilderSDK::PlatformInfo& platformInfo,
+        const AzslCompiler& azslCompiler, const AZStd::string& shaderSourceFileFullPath,
+        const RPI::SupervariantIndex supervariantIndex,
+        RPI::ShaderResourceGroupLayoutList& srgLayoutList,
+        RootConstantData& rootConstantData)
+    {
+        auto srgJsonPathOutcome = ShaderBuilderUtility::ObtainBuildArtifactPathFromShaderAssetBuilder(
+            shaderPlatformInterface->GetAPIUniqueIndex(), platformInfo.m_identifier, shaderSourceFileFullPath, supervariantIndex.GetIndex(), AZ::RPI::ShaderAssetSubId::SrgJson);
+        if (!srgJsonPathOutcome.IsSuccess())
+        {
+            AZ_Error(builderName, false, "%s", srgJsonPathOutcome.GetError().c_str());
+            return false;
+        }
+
+        auto srgJsonPath = srgJsonPathOutcome.TakeValue();
+        auto jsonOutcome = JsonSerializationUtils::ReadJsonFile(srgJsonPath, AZ::RPI::JsonUtils::DefaultMaxFileSize);
+        if (!jsonOutcome.IsSuccess())
+        {
+            AZ_Error(builderName, false, "%s", jsonOutcome.GetError().c_str());
+            return false;
+        }
+        SrgDataContainer srgData;
+        if (!azslCompiler.ParseSrgPopulateSrgData(jsonOutcome.GetValue(), srgData))
+        {
+            AZ_Error(builderName, false, "Failed to parse srg data");
+            return false;
+        }
+        // Add all Shader Resource Group Assets that were defined in the shader code to the shader asset
+        if (!SrgLayoutUtility::LoadShaderResourceGroupLayouts(builderName, srgData, srgLayoutList))
+        {
+            AZ_Error(builderName, false, "Failed to load ShaderResourceGroupLayouts");
+            return false;
+        }
+
+        for (auto srgLayout : srgLayoutList)
+        {
+            if (!srgLayout->Finalize())
+            {
+                AZ_Error(builderName, false,
+                    "Failed to finalize SrgLayout %s", srgLayout->GetName().GetCStr());
+                return false;
+            }
+        }
+
+        // Access the root constants reflection
+        if (!azslCompiler.ParseSrgPopulateRootConstantData(
+                jsonOutcome.GetValue(),
+                rootConstantData)) // consuming data from --srg ("RootConstantBuffer" subjson section)
+        {
+            AZ_Error(builderName, false, "Failed to obtain root constant data reflection");
+            return false;
+        }
+
+        return true;
+    }
+
+    static bool LoadBindingDependenciesFromShaderAssetBuilder(
+        const char* builderName,
+        const RHI::ShaderPlatformInterface* shaderPlatformInterface,
+        const AssetBuilderSDK::PlatformInfo& platformInfo,
+        const AzslCompiler& azslCompiler, const AZStd::string& shaderSourceFileFullPath,
+        const RPI::SupervariantIndex supervariantIndex,
+        BindingDependencies& bindingDependencies)
+    {
+        auto bindingsJsonPathOutcome = ShaderBuilderUtility::ObtainBuildArtifactPathFromShaderAssetBuilder(
+            shaderPlatformInterface->GetAPIUniqueIndex(), platformInfo.m_identifier, shaderSourceFileFullPath,     supervariantIndex.GetIndex(), AZ::RPI::ShaderAssetSubId::BindingdepJson);
+        if (!bindingsJsonPathOutcome.IsSuccess())
+        {
+            AZ_Error(builderName, false, "%s", bindingsJsonPathOutcome.GetError().c_str());
+            return false;
+        }
+
+        auto bindingsJsonPath = bindingsJsonPathOutcome.TakeValue();
+        auto jsonOutcome = JsonSerializationUtils::ReadJsonFile(bindingsJsonPath, AZ::RPI::JsonUtils::DefaultMaxFileSize);
+        if (!jsonOutcome.IsSuccess())
+        {
+            AZ_Error(builderName, false, "%s", jsonOutcome.GetError().c_str());
+            return false;
+        }
+        if (!azslCompiler.ParseBindingdepPopulateBindingDependencies(jsonOutcome.GetValue(), bindingDependencies))
+        {
+            AZ_Error(builderName, false, "Failed to parse binding dependencies data");
+            return false;
+        }
+
+        return true;
+    }
+
+    // Returns the content of the hlsl file for the given supervariant as produced by ShaderAsssetBuilder.
+    // In addition to the content it also returns the full path of the hlsl file in @hlslSourcePath.
+    static AZStd::string LoadHlslFileFromShaderAssetBuilder(
+        const char* builderName,
+        const RHI::ShaderPlatformInterface* shaderPlatformInterface, const AssetBuilderSDK::PlatformInfo& platformInfo,
+        const AZStd::string& shaderSourceFileFullPath, const RPI::SupervariantIndex supervariantIndex, AZStd::string& hlslSourcePath)
+    {
+        auto hlslSourcePathOutcome = ShaderBuilderUtility::ObtainBuildArtifactPathFromShaderAssetBuilder(
+            shaderPlatformInterface->GetAPIUniqueIndex(), platformInfo.m_identifier, shaderSourceFileFullPath, supervariantIndex.GetIndex(),
+            AZ::RPI::ShaderAssetSubId::GeneratedHlslSource);
+        if (!hlslSourcePathOutcome.IsSuccess())
+        {
+            AZ_Error(builderName, false, "%s", hlslSourcePathOutcome.GetError().c_str());
+            return "";
+        }
+
+        hlslSourcePath = hlslSourcePathOutcome.TakeValue();
+        Outcome<AZStd::string, AZStd::string> hlslSourceOutcome = Utils::ReadFile(hlslSourcePath, AZ::RPI::JsonUtils::DefaultMaxFileSize);
+        if (!hlslSourceOutcome.IsSuccess())
+        {
+            AZ_Error(
+                builderName, false, "Failed to obtain shader source from %s. [%s]", hlslSourcePath.c_str(),
+                hlslSourceOutcome.TakeError().c_str());
+            return "";
+        }
+        return hlslSourceOutcome.TakeValue();
+    }
+
+    AZ::Outcome<VariantCompilationInputs, AZStd::string> AzslcBackend::LoadVariantCompilationInputs(
+        const VariantCompilationInputsRequest& request)
+    {
+        const AZStd::string builderName(request.m_builderName);
+        const AZStd::string shaderDescriptorPath(request.m_shaderDescriptorPath);
+        const AZStd::string sourceFullPath(request.m_shaderSourceFullPath);
+        const RPI::SupervariantIndex supervariantIndex(request.m_supervariantIndex);
+
+        // Set the input file for eventual error messages; the compiler won't be called on it.
+        const AzslCompiler azslc(sourceFullPath, AZStd::string(request.m_tempDirPath));
+
+        VariantCompilationInputs inputs;
+        inputs.m_shaderOptionGroupLayout = LoadShaderOptionsGroupLayoutFromShaderAssetBuilder(
+            builderName.c_str(), request.m_shaderPlatformInterface, *request.m_platformInfo, azslc,
+            shaderDescriptorPath, supervariantIndex, inputs.m_useSpecializationConstants);
+        if (!inputs.m_shaderOptionGroupLayout)
+        {
+            return AZ::Failure(AZStd::string::format(
+                "Failed to load the shader option group layout for %s", shaderDescriptorPath.c_str()));
+        }
+
+        if (!request.m_loadStageInputs)
+        {
+            return AZ::Success(AZStd::move(inputs));
+        }
+
+        AzslFunctions azslFunctions;
+        LoadShaderFunctionsFromShaderAssetBuilder(
+            builderName.c_str(), request.m_shaderPlatformInterface, *request.m_platformInfo, azslc,
+            shaderDescriptorPath, supervariantIndex, azslFunctions);
+        if (azslFunctions.empty())
+        {
+            return AZ::Failure(AZStd::string::format("Failed to load the shader functions for %s", shaderDescriptorPath.c_str()));
+        }
+
+        inputs.m_stageSourceCode = LoadHlslFileFromShaderAssetBuilder(
+            builderName.c_str(), request.m_shaderPlatformInterface, *request.m_platformInfo,
+            shaderDescriptorPath, supervariantIndex, inputs.m_stageSourcePath);
+        if (inputs.m_stageSourceCode.empty() || inputs.m_stageSourcePath.empty())
+        {
+            return AZ::Failure(AZStd::string::format("Failed to load the generated HLSL for %s", shaderDescriptorPath.c_str()));
+        }
+
+        if (request.m_shaderPlatformInterface->VariantCompilationRequiresSrgLayoutData())
+        {
+            RPI::ShaderResourceGroupLayoutList srgLayoutList;
+            RootConstantData rootConstantData;
+            if (!LoadSrgLayoutListFromShaderAssetBuilder(
+                    builderName.c_str(), request.m_shaderPlatformInterface, *request.m_platformInfo, azslc,
+                    shaderDescriptorPath, supervariantIndex, srgLayoutList, rootConstantData))
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "Failed to load the ShaderResourceGroup layouts for %s", shaderDescriptorPath.c_str()));
+            }
+
+            BindingDependencies bindingDependencies;
+            if (!LoadBindingDependenciesFromShaderAssetBuilder(
+                    builderName.c_str(), request.m_shaderPlatformInterface, *request.m_platformInfo, azslc,
+                    shaderDescriptorPath, supervariantIndex, bindingDependencies))
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "Failed to load the binding dependencies for %s", shaderDescriptorPath.c_str()));
+            }
+
+            inputs.m_pipelineLayoutDescriptor = ShaderBuilderUtility::BuildPipelineLayoutDescriptorForApi(
+                builderName.c_str(),
+                srgLayoutList,
+                *request.m_entryPoints,
+                *request.m_buildArguments,
+                rootConstantData,
+                request.m_shaderPlatformInterface,
+                bindingDependencies);
+            if (!inputs.m_pipelineLayoutDescriptor)
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "Failed to build pipeline layout descriptor for api=[%s]",
+                    request.m_shaderPlatformInterface->GetAPIName().GetCStr()));
+            }
+        }
+
+        return AZ::Success(AZStd::move(inputs));
+    }
+
     AZ::Outcome<StageResult, AZStd::string> AzslcBackend::CompileStage(const StageInput& input)
     {
         StageResult result;
-        const AZStd::string sourcePath(input.m_sourcePath);
+        AZStd::string sourcePath(input.m_sourcePath);
         const AZStd::string entryPointName(input.m_entryPointName);
         const AZStd::string tempDirPath(input.m_tempDirPath);
+
+        if (!input.m_variantOptionAssignments.empty())
+        {
+            // The variant's option values lower as #define macros prepended onto the generated
+            // HLSL (the AZSLC-emitted option getters read them), materialized under a
+            // stable-id-qualified name so variants never collide inside one job's temp folder.
+            AZStd::string variantSourceContent;
+            for (const ShaderOptionAssignment& assignment : input.m_variantOptionAssignments)
+            {
+                variantSourceContent += AZStd::string::format(
+                    "#define %s_OPTION_DEF %s\n", assignment.m_option.GetCStr(), assignment.m_value.GetCStr());
+            }
+            variantSourceContent += input.m_sourceCode;
+
+            const AZStd::string variantSourceName = AZStd::string::format(
+                "%.*s_%s_%u.hlsl", AZ_STRING_ARG(input.m_stemNamePrefix),
+                input.m_shaderPlatformInterface->GetAPIName().GetCStr(), input.m_variantStableId);
+            AZStd::string variantSourcePath;
+            AZ::StringFunc::Path::Join(tempDirPath.c_str(), variantSourceName.c_str(), variantSourcePath, true, true);
+
+            auto writeOutcome = Utils::WriteFile(variantSourceContent, variantSourcePath);
+            if (!writeOutcome.IsSuccess())
+            {
+                return AZ::Failure(AZStd::string::format("Failed to create file %s", variantSourcePath.c_str()));
+            }
+            sourcePath = variantSourcePath;
+        }
 
         const bool compiled = input.m_shaderPlatformInterface->CompilePlatformInternal(
             *input.m_platformInfo,

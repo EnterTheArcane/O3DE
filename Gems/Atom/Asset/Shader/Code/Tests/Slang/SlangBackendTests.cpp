@@ -18,11 +18,15 @@
 #include <AzCore/IO/Path/Path.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Utils/Utils.h>
+#include <AzCore/std/time.h>
 
 #include <Common/ShaderBuilderTestFixture.h>
 
+#include <Atom/RPI.Reflect/Shader/ShaderOptionGroup.h>
+
 #include <Slang/SlangBackend.h>
 #include <Slang/SlangCompilerService.h>
+#include <Slang/SlangModuleClosure.h>
 #include <Slang/SlangReflectionWalker.h>
 
 namespace UnitTest
@@ -458,6 +462,190 @@ void MainCS(u32 index : SV_DispatchThreadID)
             ASSERT_TRUE(specializationReflectionOutcome.IsSuccess()) << specializationReflectionOutcome.GetError().c_str();
             EXPECT_EQ(specializationReflectionOutcome.GetValue().m_shaderResourceGroups.size(), 1);
         }
+    }
+
+    TEST_F(SlangBackendTests, CompileProgramFromClosure_VariantRelink_MatchesSourceCompile)
+    {
+        // M12: variant builds relink from the frontend's serialized module closure instead of
+        // re-running the source frontend. The relinked bytecode must be byte-identical to a
+        // source recompile with the same option values, partial variants must mix baked and
+        // dynamic accessors, and a bundle from a different compiler must be rejected.
+        constexpr AZStd::string_view optionsShaderSource = R"(
+[AtomShaderResourceGroup(0)]
+public struct ClosureTestShaderResourceGroupLayout
+{
+    RWStructuredBuffer<Vector4F> m_output;
+    Vector4F m_color;
+
+    [AtomVariantFallback]
+    public Vector4U m_shaderVariantKey;
+};
+public ParameterBlock<ClosureTestShaderResourceGroupLayout> OptionsSrg;
+
+public enum QualityT
+{
+    Low,
+    Medium,
+    High,
+}
+
+public interface IOptions
+{
+    [AtomOption(true)]
+    static bool o_useTint();
+
+    [AtomOption(QualityT.Medium)]
+    static QualityT o_quality();
+
+    [AtomOption(4)] [AtomOptionRange(1, 8)]
+    static i32 o_iterations();
+}
+
+[AtomOptions]
+public extern struct Options : IOptions;
+
+[numthreads(1, 1, 1)]
+void MainCS(u32 index : SV_DispatchThreadID)
+{
+    Vector4F value = OptionsSrg.m_color;
+    if (Options.o_useTint())
+    {
+        value *= 0.5;
+    }
+    for (i32 i = 0; i < Options.o_iterations(); ++i)
+    {
+        value.y += 0.125;
+    }
+    if (Options.o_quality() == QualityT.High)
+    {
+        value.z = 0.0;
+    }
+    OptionsSrg.m_output[index] = value;
+}
+)";
+        ASSERT_TRUE(AZ::Test::CreateTestFile(*m_tempDirectory, "ClosureTestShader.slang", optionsShaderSource));
+        AZ::IO::FixedMaxPath sourcePath(m_tempDirectory->GetDirectory());
+        sourcePath /= "ClosureTestShader.slang";
+
+        const AZStd::vector<AZStd::string> includePaths = GetShaderLibIncludePaths();
+        const MapOfStringToStageType entryPoints = {
+            {"MainCS", RPI::ShaderStageType::Compute},
+        };
+
+        SlangBackend::ProgramCompileRequest request;
+        request.m_sourcePath = sourcePath.Native();
+        request.m_entryPoints = &entryPoints;
+        request.m_includePaths = includePaths;
+
+        SlangBackend backend;
+        SlangCompilerService& service = SlangCompilerService::Get();
+        auto compilerLock = service.AcquireCompilerLock();
+        const RHI::ShaderTargetDescriptor targetDescriptor = MakeSpirvTarget();
+
+        // The frontend-equivalent compile, and the bundle exactly as CompileFrontend builds it
+        // (the generated options module excluded)
+        auto frontendOutcome = backend.CompileProgram(targetDescriptor, request);
+        ASSERT_TRUE(frontendOutcome.IsSuccess()) << frontendOutcome.GetError().c_str();
+        const SlangBackend::ProgramCompilation frontendCompilation = frontendOutcome.TakeValue();
+        ASSERT_NE(frontendCompilation.m_shaderOptionLayout, nullptr);
+
+        static constexpr AZStd::string_view excludedModuleNames[] = {"AtomGeneratedOptions"};
+        auto bundleOutcome = BuildModuleClosureBundle(
+            frontendCompilation.m_session,
+            service.GetCompilerBuildTag(),
+            static_cast<uint32_t>(targetDescriptor.m_format),
+            frontendCompilation.m_module->getName(),
+            excludedModuleNames);
+        ASSERT_TRUE(bundleOutcome.IsSuccess()) << bundleOutcome.GetError().c_str();
+        const SlangModuleClosureBundle bundle = bundleOutcome.TakeValue();
+        EXPECT_EQ(bundle.m_rootModuleName, "ClosureTestShader");
+        for (const SlangModuleClosureBundle::Module& bundleModule : bundle.m_modules)
+        {
+            EXPECT_NE(bundleModule.m_name, "AtomGeneratedOptions");
+        }
+
+        auto getByteCode = [&](const SlangBackend::ProgramCompilation& compilation, AZStd::vector<uint8_t>& outByteCode)
+        {
+            Slang::ComPtr<slang::IBlob> byteCode;
+            Slang::ComPtr<slang::IBlob> diagnostics;
+            const SlangResult codeResult = compilation.m_linkedProgram->getEntryPointCode(0, 0, byteCode.writeRef(), diagnostics.writeRef());
+            SlangCompilerService::ReportDiagnostics(request.m_sourcePath, diagnostics, SLANG_FAILED(codeResult));
+            ASSERT_TRUE(SLANG_SUCCEEDED(codeResult));
+            ASSERT_NE(byteCode, nullptr);
+            const uint8_t* bytes = static_cast<const uint8_t*>(byteCode->getBufferPointer());
+            outByteCode.assign(bytes, bytes + byteCode->getBufferSize());
+        };
+
+        // Fully specified variant: closure relink == source recompile, byte for byte
+        RPI::ShaderOptionGroup bakedValues(frontendCompilation.m_shaderOptionLayout);
+        bakedValues.SetValue(Name{"o_useTint"}, Name{"true"});
+        bakedValues.SetValue(Name{"o_quality"}, Name{"High"});
+        bakedValues.SetValue(Name{"o_iterations"}, Name{"7"});
+
+        SlangBackend::ProgramCompileRequest bakedRequest = request;
+        bakedRequest.m_optionsLoweringMode = ShaderOptionLoweringMode::Baked;
+        bakedRequest.m_bakedOptionValues = &bakedValues;
+
+        auto closureOutcome = backend.CompileProgramFromClosure(targetDescriptor, bakedRequest, bundle);
+        ASSERT_TRUE(closureOutcome.IsSuccess()) << closureOutcome.GetError().c_str();
+        AZStd::vector<uint8_t> closureByteCode;
+        getByteCode(closureOutcome.GetValue(), closureByteCode);
+
+        auto sourceOutcome = backend.CompileProgram(targetDescriptor, bakedRequest);
+        ASSERT_TRUE(sourceOutcome.IsSuccess()) << sourceOutcome.GetError().c_str();
+        AZStd::vector<uint8_t> sourceByteCode;
+        getByteCode(sourceOutcome.GetValue(), sourceByteCode);
+
+        ASSERT_FALSE(closureByteCode.empty());
+        EXPECT_EQ(closureByteCode, sourceByteCode) << "closure-relinked bytecode diverged from the source recompile";
+
+        // Partially specified variant: pinned options bake, the rest read the fallback key —
+        // and the result differs from the fully baked variant (the runtime branches remain)
+        RPI::ShaderOptionGroup partialValues(frontendCompilation.m_shaderOptionLayout);
+        partialValues.SetValue(Name{"o_useTint"}, Name{"true"});
+        SlangBackend::ProgramCompileRequest partialRequest = request;
+        partialRequest.m_optionsLoweringMode = ShaderOptionLoweringMode::Baked;
+        partialRequest.m_bakedOptionValues = &partialValues;
+
+        auto partialOutcome = backend.CompileProgramFromClosure(targetDescriptor, partialRequest, bundle);
+        ASSERT_TRUE(partialOutcome.IsSuccess()) << partialOutcome.GetError().c_str();
+        AZStd::vector<uint8_t> partialByteCode;
+        getByteCode(partialOutcome.GetValue(), partialByteCode);
+        ASSERT_FALSE(partialByteCode.empty());
+        EXPECT_NE(partialByteCode, closureByteCode);
+
+        // A bundle from another compiler build must be rejected (the caller then falls back to
+        // the source recompile)
+        SlangModuleClosureBundle tamperedBundle = bundle;
+        tamperedBundle.m_compilerBuildTag = "some-other-compiler";
+        EXPECT_FALSE(backend.CompileProgramFromClosure(targetDescriptor, bakedRequest, tamperedBundle).IsSuccess());
+
+        // Record the relink-vs-recompile cost on this shader (plan M12 asks for the numbers
+        // before claiming wins; not asserted — machine-dependent)
+        constexpr int benchmarkIterations = 5;
+        const AZStd::sys_time_t frequency = AZStd::GetTimeTicksPerSecond();
+        AZStd::sys_time_t closureTicks = 0;
+        AZStd::sys_time_t sourceTicks = 0;
+        for (int i = 0; i < benchmarkIterations; ++i)
+        {
+            AZStd::sys_time_t start = AZStd::GetTimeNowTicks();
+            auto timedClosure = backend.CompileProgramFromClosure(targetDescriptor, bakedRequest, bundle);
+            ASSERT_TRUE(timedClosure.IsSuccess());
+            AZStd::vector<uint8_t> timedByteCode;
+            getByteCode(timedClosure.GetValue(), timedByteCode);
+            closureTicks += AZStd::GetTimeNowTicks() - start;
+
+            start = AZStd::GetTimeNowTicks();
+            auto timedSource = backend.CompileProgram(targetDescriptor, bakedRequest);
+            ASSERT_TRUE(timedSource.IsSuccess());
+            getByteCode(timedSource.GetValue(), timedByteCode);
+            sourceTicks += AZStd::GetTimeNowTicks() - start;
+        }
+        printf(
+            "Variant compile benchmark (%d iterations): closure relink %.2f ms/variant, source recompile %.2f ms/variant\n",
+            benchmarkIterations,
+            1000.0 * static_cast<double>(closureTicks) / static_cast<double>(benchmarkIterations) / static_cast<double>(frequency),
+            1000.0 * static_cast<double>(sourceTicks) / static_cast<double>(benchmarkIterations) / static_cast<double>(frequency));
     }
 
     TEST_F(SlangBackendTests, EnumerateSourceDependencies_ReportsInjectedPreludesAndTransitiveImports)

@@ -589,6 +589,18 @@ namespace AZ
                     AZ_Assert(assetIdOutcome.IsSuccess(), "Failed to get AssetId from shader %s", shaderFullPath.c_str());
                     const Data::AssetId variantAssetId = assetIdOutcome.TakeValue();
 
+                    // The root variant can relink from the module closure the frontend just wrote
+                    // (the file already exists in the temp folder even though the product
+                    // registers later); backends without one compile from the target source.
+                    AZStd::string moduleClosurePath;
+                    for (const FrontendSubProduct& subProduct : frontendResult.m_subProducts)
+                    {
+                        if (subProduct.m_subProductType == aznumeric_cast<uint32_t>(RPI::ShaderAssetSubId::ModuleClosureBundle))
+                        {
+                            moduleClosurePath = subProduct.m_path;
+                        }
+                    }
+
                     RPI::ShaderVariantListSourceData::VariantInfo rootVariantInfo;
                     ShaderVariantCreationContext shaderVariantCreationContext = {
                         *shaderPlatformInterface,
@@ -602,6 +614,7 @@ namespace AZ
                         superVariantAzslinStemName,
                         hlslFullPath,
                         hlslSourceCode,
+                        moduleClosurePath,
                         usesSpecializationConstants };
 
                     // Preserve the Temp folder when shaders are compiled with debug symbols

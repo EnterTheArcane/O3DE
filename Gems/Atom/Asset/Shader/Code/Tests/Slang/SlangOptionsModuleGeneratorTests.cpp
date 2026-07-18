@@ -451,6 +451,32 @@ void MainCS(uint3 id : SV_DispatchThreadID)
             EXPECT_FALSE(byteCode.empty());
         }
 
+        // Baked mode with a partially specified variant: pinned options bake to literals,
+        // unpinned options keep their dynamic fallback reads (AZSL variant semantics), and the
+        // mixed module still compiles against the use-site
+        {
+            RPI::ShaderOptionGroup partialValues(layout);
+            partialValues.SetValue(Name{"o_useTint"}, Name{"true"});
+            const AZStd::string partialValuesModule =
+                SlangOptionsModuleGenerator::GenerateBakedValuesModule("AtomGeneratedOptions", discovered, partialValues);
+            EXPECT_NE(partialValuesModule.find("static bool useTint() { return true; }"), AZStd::string::npos)
+                << partialValuesModule.c_str();
+            EXPECT_NE(partialValuesModule.find("DrawSrg.m_shaderVariantKeyFallback"), AZStd::string::npos)
+                << partialValuesModule.c_str();
+
+            AZStd::vector<uint8_t> byteCode;
+            EXPECT_TRUE(CompileWithImplementationModule(partialValuesModule, byteCode));
+            EXPECT_FALSE(byteCode.empty());
+
+            // A fully specified variant needs no fallback read at all
+            RPI::ShaderOptionGroup fullValues(layout);
+            fullValues.SetAllToDefaultValues();
+            const AZStd::string fullValuesModule =
+                SlangOptionsModuleGenerator::GenerateBakedValuesModule("AtomGeneratedOptions", discovered, fullValues);
+            EXPECT_EQ(fullValuesModule.find("m_shaderVariantKeyFallback"), AZStd::string::npos)
+                << fullValuesModule.c_str();
+        }
+
         // Baked mode: accessors return link-time constants, and different baked values must
         // produce different bytecode
         {

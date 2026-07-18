@@ -13,6 +13,7 @@
 #include <AzCore/StringFunc/StringFunc.h>
 #include <AzCore/Utils/Utils.h>
 #include <AzCore/std/limits.h>
+#include <AzCore/std/optional.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -213,6 +214,162 @@ namespace AZ::ShaderBuilder
         return AZ::Success(AZStd::move(sessionDescriptor));
     }
 
+    //! The shared back half of a program compilation, common to the source and module-closure
+    //! paths: options discovery over the loaded modules, the per-mode generated implementation
+    //! module, entry-point discovery, composition and link. @compilation must arrive with
+    //! m_session and m_module set.
+    static AZ::Outcome<void, AZStd::string> ComposeAndLinkProgram(
+        SlangBackend::ProgramCompilation& compilation,
+        const RHI::ShaderTargetDescriptor& targetDescriptor,
+        const SlangBackend::ProgramCompileRequest& request,
+        const AZStd::string& sourcePath)
+    {
+        // Shader options: discover the option declarations across the loaded modules and
+        // satisfy their accessor externs with the generated implementation module for the
+        // requested lowering mode.
+        auto discoveredOutcome = SlangOptionsModuleGenerator::DiscoverShaderOptions(compilation.m_session);
+        if (!discoveredOutcome.IsSuccess())
+        {
+            return AZ::Failure(AZStd::string::format("%s: %s", sourcePath.c_str(), discoveredOutcome.GetError().c_str()));
+        }
+        compilation.m_discoveredOptions = discoveredOutcome.TakeValue();
+        if (!compilation.m_discoveredOptions.m_declarations.empty())
+        {
+            auto layoutOutcome = SlangOptionsModuleGenerator::BuildShaderOptionGroupLayout(compilation.m_discoveredOptions.m_declarations);
+            if (!layoutOutcome.IsSuccess())
+            {
+                return AZ::Failure(AZStd::string::format("%s: %s", sourcePath.c_str(), layoutOutcome.GetError().c_str()));
+            }
+            compilation.m_shaderOptionLayout = layoutOutcome.TakeValue();
+
+            AZStd::string implementationSource;
+            switch (request.m_optionsLoweringMode)
+            {
+            case ShaderOptionLoweringMode::Baked:
+                if (!request.m_bakedOptionValues)
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "%s: Baked option lowering was requested without option values", sourcePath.c_str()));
+                }
+                if (request.m_bakedOptionValues->GetShaderOptionLayout()->GetHash() != compilation.m_shaderOptionLayout->GetHash())
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "%s: the variant's option values were resolved against a different option layout than the "
+                        "source declares — the shader and its variant list are out of sync",
+                        sourcePath.c_str()));
+                }
+                if (!request.m_bakedOptionValues->IsFullySpecified()
+                    && compilation.m_discoveredOptions.m_fallbackMemberName.empty())
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "%s: a partially specified variant leaves options reading the ShaderVariantKey fallback at "
+                        "runtime: designate a public uint4 ShaderResourceGroup member with [AtomVariantFallback]",
+                        sourcePath.c_str()));
+                }
+                implementationSource = SlangOptionsModuleGenerator::GenerateBakedValuesModule(
+                    GeneratedOptionsModuleName, compilation.m_discoveredOptions, *request.m_bakedOptionValues);
+                break;
+            case ShaderOptionLoweringMode::SpecializationConstant:
+                implementationSource = SlangOptionsModuleGenerator::GenerateImplementationModule(
+                    request.m_optionsLoweringMode, targetDescriptor.m_format, GeneratedOptionsModuleName,
+                    compilation.m_discoveredOptions, *compilation.m_shaderOptionLayout);
+                break;
+            case ShaderOptionLoweringMode::DynamicFallback:
+                if (compilation.m_discoveredOptions.m_fallbackMemberName.empty())
+                {
+                    return AZ::Failure(AZStd::string::format(
+                        "%s declares shader options, which need a ShaderVariantKey fallback: designate a public uint4 "
+                        "ShaderResourceGroup member with [AtomVariantFallback]",
+                        sourcePath.c_str()));
+                }
+                implementationSource = SlangOptionsModuleGenerator::GenerateImplementationModule(
+                    request.m_optionsLoweringMode, targetDescriptor.m_format, GeneratedOptionsModuleName,
+                    compilation.m_discoveredOptions, *compilation.m_shaderOptionLayout);
+                break;
+            }
+
+            Slang::ComPtr<slang::IBlob> diagnostics;
+            compilation.m_optionsImplementationModule = compilation.m_session->loadModuleFromSourceString(
+                AZStd::string(GeneratedOptionsModuleName).c_str(),
+                AZStd::string::format("%.*s.slang", AZ_STRING_ARG(GeneratedOptionsModuleName)).c_str(),
+                implementationSource.c_str(),
+                diagnostics.writeRef());
+            SlangCompilerService::ReportDiagnostics(sourcePath, diagnostics, !compilation.m_optionsImplementationModule);
+            if (!compilation.m_optionsImplementationModule)
+            {
+                return AZ::Failure(AZStd::string::format(
+                    "Failed to load the generated shader-options module for %s", sourcePath.c_str()));
+            }
+        }
+
+        // Entry-point references are held raw with manual release: AZStd containers cannot hold
+        // Slang::ComPtr (deleted unary operator&). The composed program retains them afterwards.
+        AZStd::vector<slang::IEntryPoint*> ownedEntryPoints;
+        auto releaseEntryPoints = [&ownedEntryPoints]()
+        {
+            for (slang::IEntryPoint* ownedEntryPoint : ownedEntryPoints)
+            {
+                ownedEntryPoint->release();
+            }
+            ownedEntryPoints.clear();
+        };
+
+        Slang::ComPtr<slang::IBlob> diagnostics;
+        AZStd::vector<slang::IComponentType*> components;
+        components.push_back(compilation.m_module);
+        if (compilation.m_optionsImplementationModule)
+        {
+            components.push_back(compilation.m_optionsImplementationModule);
+        }
+        for (const auto& [entryPointName, stageType] : *request.m_entryPoints)
+        {
+            const SlangStage slangStage = ToSlangStage(stageType);
+            if (slangStage == SLANG_STAGE_NONE)
+            {
+                releaseEntryPoints();
+                return AZ::Failure(AZStd::string::format(
+                    "Entry point %s has a stage the Slang backend does not support yet", entryPointName.c_str()));
+            }
+
+            Slang::ComPtr<slang::IEntryPoint> entryPoint;
+            diagnostics = nullptr;
+            compilation.m_module->findAndCheckEntryPoint(entryPointName.c_str(), slangStage, entryPoint.writeRef(), diagnostics.writeRef());
+            SlangCompilerService::ReportDiagnostics(sourcePath, diagnostics, !entryPoint);
+            if (!entryPoint)
+            {
+                releaseEntryPoints();
+                return AZ::Failure(AZStd::string::format("Entry point %s was not found in %s", entryPointName.c_str(), sourcePath.c_str()));
+            }
+            ownedEntryPoints.push_back(entryPoint.detach());
+            components.push_back(ownedEntryPoints.back());
+            compilation.m_entryPointNames.push_back(entryPointName);
+        }
+
+        Slang::ComPtr<slang::IComponentType> composedProgram;
+        diagnostics = nullptr;
+        const SlangResult composeResult = compilation.m_session->createCompositeComponentType(
+            components.data(),
+            components.size(),
+            composedProgram.writeRef(),
+            diagnostics.writeRef());
+        releaseEntryPoints();
+        SlangCompilerService::ReportDiagnostics(sourcePath, diagnostics, SLANG_FAILED(composeResult));
+        if (SLANG_FAILED(composeResult))
+        {
+            return AZ::Failure(AZStd::string::format("Failed to compose the Slang program for %s", sourcePath.c_str()));
+        }
+
+        diagnostics = nullptr;
+        const SlangResult linkResult = composedProgram->link(compilation.m_linkedProgram.writeRef(), diagnostics.writeRef());
+        SlangCompilerService::ReportDiagnostics(sourcePath, diagnostics, SLANG_FAILED(linkResult));
+        if (SLANG_FAILED(linkResult))
+        {
+            return AZ::Failure(AZStd::string::format("Failed to link the Slang program for %s", sourcePath.c_str()));
+        }
+
+        return AZ::Success();
+    }
+
     AZ::Outcome<SlangBackend::ProgramCompilation, AZStd::string> SlangBackend::CompileProgram(
         const RHI::ShaderTargetDescriptor& targetDescriptor,
         const ProgramCompileRequest& request) const
@@ -288,131 +445,62 @@ namespace AZ::ShaderBuilder
             return AZ::Failure(AZStd::string::format("Failed to load Slang module %s", sourcePath.c_str()));
         }
 
-        // Shader options: discover the ATOM_OPTION declarations across the loaded modules and
-        // satisfy their accessor externs with the generated implementation module for the
-        // requested lowering mode.
-        auto discoveredOutcome = SlangOptionsModuleGenerator::DiscoverShaderOptions(compilation.m_session);
-        if (!discoveredOutcome.IsSuccess())
+        auto composeOutcome = ComposeAndLinkProgram(compilation, targetDescriptor, request, sourcePath);
+        if (!composeOutcome.IsSuccess())
         {
-            return AZ::Failure(AZStd::string::format("%s: %s", sourcePath.c_str(), discoveredOutcome.GetError().c_str()));
-        }
-        compilation.m_discoveredOptions = discoveredOutcome.TakeValue();
-        if (!compilation.m_discoveredOptions.m_declarations.empty())
-        {
-            auto layoutOutcome = SlangOptionsModuleGenerator::BuildShaderOptionGroupLayout(compilation.m_discoveredOptions.m_declarations);
-            if (!layoutOutcome.IsSuccess())
-            {
-                return AZ::Failure(AZStd::string::format("%s: %s", sourcePath.c_str(), layoutOutcome.GetError().c_str()));
-            }
-            compilation.m_shaderOptionLayout = layoutOutcome.TakeValue();
-
-            AZStd::string implementationSource;
-            switch (request.m_optionsLoweringMode)
-            {
-            case ShaderOptionLoweringMode::Baked:
-                if (!request.m_bakedOptionValues)
-                {
-                    return AZ::Failure(AZStd::string::format(
-                        "%s: Baked option lowering was requested without option values", sourcePath.c_str()));
-                }
-                implementationSource = SlangOptionsModuleGenerator::GenerateBakedValuesModule(
-                    GeneratedOptionsModuleName, compilation.m_discoveredOptions, *request.m_bakedOptionValues);
-                break;
-            case ShaderOptionLoweringMode::SpecializationConstant:
-                implementationSource = SlangOptionsModuleGenerator::GenerateImplementationModule(
-                    request.m_optionsLoweringMode, targetDescriptor.m_format, GeneratedOptionsModuleName,
-                    compilation.m_discoveredOptions, *compilation.m_shaderOptionLayout);
-                break;
-            case ShaderOptionLoweringMode::DynamicFallback:
-                if (compilation.m_discoveredOptions.m_fallbackMemberName.empty())
-                {
-                    return AZ::Failure(AZStd::string::format(
-                        "%s declares shader options, which need a ShaderVariantKey fallback: designate a public uint4 "
-                        "ShaderResourceGroup member with [AtomVariantFallback]",
-                        sourcePath.c_str()));
-                }
-                implementationSource = SlangOptionsModuleGenerator::GenerateImplementationModule(
-                    request.m_optionsLoweringMode, targetDescriptor.m_format, GeneratedOptionsModuleName,
-                    compilation.m_discoveredOptions, *compilation.m_shaderOptionLayout);
-                break;
-            }
-
-            diagnostics = nullptr;
-            compilation.m_optionsImplementationModule = compilation.m_session->loadModuleFromSourceString(
-                AZStd::string(GeneratedOptionsModuleName).c_str(),
-                AZStd::string::format("%.*s.slang", AZ_STRING_ARG(GeneratedOptionsModuleName)).c_str(),
-                implementationSource.c_str(),
-                diagnostics.writeRef());
-            SlangCompilerService::ReportDiagnostics(sourcePath, diagnostics, !compilation.m_optionsImplementationModule);
-            if (!compilation.m_optionsImplementationModule)
-            {
-                return AZ::Failure(AZStd::string::format(
-                    "Failed to load the generated shader-options module for %s", sourcePath.c_str()));
-            }
+            return AZ::Failure(composeOutcome.TakeError());
         }
 
-        // Entry-point references are held raw with manual release: AZStd containers cannot hold
-        // Slang::ComPtr (deleted unary operator&). The composed program retains them afterwards.
-        AZStd::vector<slang::IEntryPoint*> ownedEntryPoints;
-        auto releaseEntryPoints = [&ownedEntryPoints]()
-        {
-            for (slang::IEntryPoint* ownedEntryPoint : ownedEntryPoints)
-            {
-                ownedEntryPoint->release();
-            }
-            ownedEntryPoints.clear();
-        };
+        return AZ::Success(AZStd::move(compilation));
+    }
 
-        AZStd::vector<slang::IComponentType*> components;
-        components.push_back(compilation.m_module);
-        if (compilation.m_optionsImplementationModule)
+    AZ::Outcome<SlangBackend::ProgramCompilation, AZStd::string> SlangBackend::CompileProgramFromClosure(
+        const RHI::ShaderTargetDescriptor& targetDescriptor,
+        const ProgramCompileRequest& request,
+        const SlangModuleClosureBundle& bundle) const
+    {
+        if (!request.m_entryPoints || request.m_entryPoints->empty())
         {
-            components.push_back(compilation.m_optionsImplementationModule);
-        }
-        for (const auto& [entryPointName, stageType] : *request.m_entryPoints)
-        {
-            const SlangStage slangStage = ToSlangStage(stageType);
-            if (slangStage == SLANG_STAGE_NONE)
-            {
-                releaseEntryPoints();
-                return AZ::Failure(AZStd::string::format(
-                    "Entry point %s has a stage the Slang backend does not support yet", entryPointName.c_str()));
-            }
-
-            Slang::ComPtr<slang::IEntryPoint> entryPoint;
-            diagnostics = nullptr;
-            compilation.m_module->findAndCheckEntryPoint(entryPointName.c_str(), slangStage, entryPoint.writeRef(), diagnostics.writeRef());
-            SlangCompilerService::ReportDiagnostics(sourcePath, diagnostics, !entryPoint);
-            if (!entryPoint)
-            {
-                releaseEntryPoints();
-                return AZ::Failure(AZStd::string::format("Entry point %s was not found in %s", entryPointName.c_str(), sourcePath.c_str()));
-            }
-            ownedEntryPoints.push_back(entryPoint.detach());
-            components.push_back(ownedEntryPoints.back());
-            compilation.m_entryPointNames.push_back(entryPointName);
+            return AZ::Failure(AZStd::string::format("No entry points were provided for %.*s", AZ_STRING_ARG(request.m_sourcePath)));
         }
 
-        Slang::ComPtr<slang::IComponentType> composedProgram;
-        diagnostics = nullptr;
-        const SlangResult composeResult = compilation.m_session->createCompositeComponentType(
-            components.data(),
-            components.size(),
-            composedProgram.writeRef(),
-            diagnostics.writeRef());
-        releaseEntryPoints();
-        SlangCompilerService::ReportDiagnostics(sourcePath, diagnostics, SLANG_FAILED(composeResult));
-        if (SLANG_FAILED(composeResult))
+        SlangCompilerService& compilerService = SlangCompilerService::Get();
+        auto validationOutcome = ValidateModuleClosureBundle(
+            bundle, compilerService.GetCompilerBuildTag(), static_cast<uint32_t>(targetDescriptor.m_format));
+        if (!validationOutcome.IsSuccess())
         {
-            return AZ::Failure(AZStd::string::format("Failed to compose the Slang program for %s", sourcePath.c_str()));
+            return AZ::Failure(validationOutcome.TakeError());
         }
 
-        diagnostics = nullptr;
-        const SlangResult linkResult = composedProgram->link(compilation.m_linkedProgram.writeRef(), diagnostics.writeRef());
-        SlangCompilerService::ReportDiagnostics(sourcePath, diagnostics, SLANG_FAILED(linkResult));
-        if (SLANG_FAILED(linkResult))
+        auto sessionDescriptorOutcome = BuildSessionDescriptor(targetDescriptor, request);
+        if (!sessionDescriptorOutcome.IsSuccess())
         {
-            return AZ::Failure(AZStd::string::format("Failed to link the Slang program for %s", sourcePath.c_str()));
+            return AZ::Failure(sessionDescriptorOutcome.TakeError());
+        }
+
+        // No file system hook: a restore reads no sources, and the generated options module
+        // resolves its imports against the restored in-session modules.
+        auto sessionOutcome = compilerService.CreateSession(sessionDescriptorOutcome.TakeValue());
+        if (!sessionOutcome.IsSuccess())
+        {
+            return AZ::Failure(sessionOutcome.TakeError());
+        }
+
+        ProgramCompilation compilation;
+        compilation.m_session = sessionOutcome.TakeValue();
+
+        auto restoreOutcome = RestoreModuleClosure(compilation.m_session, bundle);
+        if (!restoreOutcome.IsSuccess())
+        {
+            return AZ::Failure(restoreOutcome.TakeError());
+        }
+        compilation.m_module = restoreOutcome.TakeValue();
+
+        const AZStd::string sourcePath(request.m_sourcePath);
+        auto composeOutcome = ComposeAndLinkProgram(compilation, targetDescriptor, request, sourcePath);
+        if (!composeOutcome.IsSuccess())
+        {
+            return AZ::Failure(composeOutcome.TakeError());
         }
 
         return AZ::Success(AZStd::move(compilation));
@@ -593,10 +681,15 @@ namespace AZ::ShaderBuilder
             result.m_subProducts.push_back({reflectionPath, aznumeric_cast<uint32_t>(RPI::ShaderAssetSubId::ReflectionData)});
         }
         {
+            // The generated options module is excluded: variant relinks regenerate it for their
+            // own values, and the bundled copy must not shadow the replacement
+            static constexpr AZStd::string_view excludedModuleNames[] = {GeneratedOptionsModuleName};
             auto bundleOutcome = BuildModuleClosureBundle(
                 compilation.m_session,
                 compilerService.GetCompilerBuildTag(),
-                static_cast<uint32_t>(targetDescriptor.m_format));
+                static_cast<uint32_t>(targetDescriptor.m_format),
+                compilation.m_module->getName(),
+                excludedModuleNames);
             if (!bundleOutcome.IsSuccess())
             {
                 return AZ::Failure(bundleOutcome.TakeError());
@@ -614,8 +707,8 @@ namespace AZ::ShaderBuilder
             result.m_subProducts.push_back({closurePath, aznumeric_cast<uint32_t>(RPI::ShaderAssetSubId::ModuleClosureBundle)});
         }
 
-        // Stage compiles recompile from the original source until module-closure variant builds
-        // land (M12).
+        // Stage compiles receive the original source; when a module-closure product is also
+        // handed to them they relink from it and keep the source as the fallback.
         result.m_targetSourcePath = input.m_shaderSourceFullPath;
         auto sourceCodeOutcome = AZ::Utils::ReadFile(AZStd::string(input.m_shaderSourceFullPath), AZStd::numeric_limits<size_t>::max());
         if (sourceCodeOutcome.IsSuccess())
@@ -643,6 +736,70 @@ namespace AZ::ShaderBuilder
         }
     }
 
+    AZ::Outcome<VariantCompilationInputs, AZStd::string> SlangBackend::LoadVariantCompilationInputs(
+        const VariantCompilationInputsRequest& request)
+    {
+        const AZStd::string shaderDescriptorPath(request.m_shaderDescriptorPath);
+        const AZStd::string platformIdentifier(request.m_platformInfo->m_identifier);
+        const RPI::SupervariantIndex supervariantIndex(request.m_supervariantIndex);
+
+        VariantCompilationInputs inputs;
+
+        // Option layout and specialization flag from the frontend's reflection product
+        auto reflectionPathOutcome = ShaderBuilderUtility::ObtainBuildArtifactPathFromShaderAssetBuilder(
+            request.m_shaderPlatformInterface->GetAPIUniqueIndex(), platformIdentifier, shaderDescriptorPath,
+            supervariantIndex.GetIndex(), RPI::ShaderAssetSubId::ReflectionData);
+        if (!reflectionPathOutcome.IsSuccess())
+        {
+            return AZ::Failure(reflectionPathOutcome.TakeError());
+        }
+        ShaderReflectionData reflectionData;
+        if (!AZ::Utils::LoadObjectFromFileInPlace(reflectionPathOutcome.GetValue(), reflectionData))
+        {
+            return AZ::Failure(AZStd::string::format(
+                "Failed to load the reflection product at %s", reflectionPathOutcome.GetValue().c_str()));
+        }
+        inputs.m_shaderOptionGroupLayout = BuildShaderOptionGroupLayout(reflectionData);
+        if (!inputs.m_shaderOptionGroupLayout)
+        {
+            return AZ::Failure(AZStd::string::format(
+                "Failed to build the shader option group layout from the reflection product of %s", shaderDescriptorPath.c_str()));
+        }
+        inputs.m_useSpecializationConstants = reflectionData.m_usesSpecializationConstants;
+
+        if (!request.m_loadStageInputs)
+        {
+            return AZ::Success(AZStd::move(inputs));
+        }
+
+        if (request.m_shaderPlatformInterface->VariantCompilationRequiresSrgLayoutData())
+        {
+            return AZ::Failure(AZStd::string::format(
+                "The %s RHI requires ShaderResourceGroup layout data for variant compilation, which the Slang backend "
+                "does not provide yet",
+                request.m_shaderPlatformInterface->GetAPIName().GetCStr()));
+        }
+
+        // Stage compiles start from the original source; the module closure lets them relink
+        // without it. A missing closure product is not an error — the source path stands alone.
+        inputs.m_stageSourcePath = request.m_shaderSourceFullPath;
+        auto closurePathOutcome = ShaderBuilderUtility::ObtainBuildArtifactPathFromShaderAssetBuilder(
+            request.m_shaderPlatformInterface->GetAPIUniqueIndex(), platformIdentifier, shaderDescriptorPath,
+            supervariantIndex.GetIndex(), RPI::ShaderAssetSubId::ModuleClosureBundle);
+        if (closurePathOutcome.IsSuccess())
+        {
+            inputs.m_moduleClosurePath = closurePathOutcome.TakeValue();
+        }
+        else
+        {
+            AZ_Warning(
+                AZStd::string(request.m_builderName).c_str(), false,
+                "No module-closure product for %s; variant compiles will run the source frontend. [%s]",
+                shaderDescriptorPath.c_str(), closurePathOutcome.GetError().c_str());
+        }
+        return AZ::Success(AZStd::move(inputs));
+    }
+
     AZ::Outcome<StageResult, AZStd::string> SlangBackend::CompileStage(const StageInput& input)
     {
         const RHI::ShaderTargetDescriptor targetDescriptor = input.m_shaderPlatformInterface->GetShaderTargetDescriptor(*input.m_platformInfo);
@@ -665,18 +822,62 @@ namespace AZ::ShaderBuilder
         const AZStd::string apiPreludeDirectory = GetApiPreludeDirectory(*input.m_shaderPlatformInterface, *input.m_platformInfo, input.m_builderName);
         request.m_apiPreludeDirectory = apiPreludeDirectory;
         request.m_buildArguments = input.m_buildArguments;
-        request.m_optionsLoweringMode = input.m_useSpecializationConstants
-            ? ShaderOptionLoweringMode::SpecializationConstant
-            : ShaderOptionLoweringMode::DynamicFallback;
+        if (input.m_variantOptionValues)
+        {
+            // A variant compile: pinned options bake as link-time constants, unpinned options
+            // keep their dynamic fallback reads
+            request.m_optionsLoweringMode = ShaderOptionLoweringMode::Baked;
+            request.m_bakedOptionValues = input.m_variantOptionValues;
+        }
+        else
+        {
+            request.m_optionsLoweringMode = input.m_useSpecializationConstants
+                ? ShaderOptionLoweringMode::SpecializationConstant
+                : ShaderOptionLoweringMode::DynamicFallback;
+        }
 
         SlangCompilerService& compilerService = SlangCompilerService::Get();
         auto compilerLock = compilerService.AcquireCompilerLock();
-        auto compilationOutcome = CompileProgram(targetDescriptor, request);
-        if (!compilationOutcome.IsSuccess())
+
+        // Relink from the frontend's module closure when one is available and matches the
+        // running compiler; recompiling from source is the mandatory fallback.
+        AZStd::optional<ProgramCompilation> restoredCompilation;
+        if (!input.m_moduleClosurePath.empty())
         {
-            return AZ::Failure(compilationOutcome.TakeError());
+            const AZStd::string moduleClosurePath(input.m_moduleClosurePath);
+            SlangModuleClosureBundle bundle;
+            if (AZ::Utils::LoadObjectFromFileInPlace(moduleClosurePath, bundle))
+            {
+                auto closureOutcome = CompileProgramFromClosure(targetDescriptor, request, bundle);
+                if (closureOutcome.IsSuccess())
+                {
+                    restoredCompilation.emplace(closureOutcome.TakeValue());
+                }
+                else
+                {
+                    AZ_Warning(
+                        AZStd::string(input.m_builderName).c_str(), false,
+                        "Module-closure relink unavailable for %.*s; recompiling from source. [%s]",
+                        AZ_STRING_ARG(input.m_sourcePath), closureOutcome.GetError().c_str());
+                }
+            }
+            else
+            {
+                AZ_Warning(
+                    AZStd::string(input.m_builderName).c_str(), false,
+                    "Failed to read the module-closure bundle at %s; recompiling from source", moduleClosurePath.c_str());
+            }
         }
-        const ProgramCompilation compilation = compilationOutcome.TakeValue();
+        if (!restoredCompilation)
+        {
+            auto compilationOutcome = CompileProgram(targetDescriptor, request);
+            if (!compilationOutcome.IsSuccess())
+            {
+                return AZ::Failure(compilationOutcome.TakeError());
+            }
+            restoredCompilation.emplace(compilationOutcome.TakeValue());
+        }
+        const ProgramCompilation& compilation = *restoredCompilation;
 
         Slang::ComPtr<slang::IBlob> bytecode;
         Slang::ComPtr<slang::IBlob> diagnostics;

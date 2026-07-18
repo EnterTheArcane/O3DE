@@ -10,6 +10,7 @@
 
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Outcome/Outcome.h>
+#include <AzCore/std/containers/span.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
@@ -35,7 +36,7 @@ namespace AZ::ShaderBuilder
 
         static void Reflect(ReflectContext* context);
 
-        static constexpr uint32_t CurrentSchemaVersion = 1;
+        static constexpr uint32_t CurrentSchemaVersion = 2;
 
         struct Module final
         {
@@ -54,14 +55,35 @@ namespace AZ::ShaderBuilder
         //! RHI::ShaderTargetFormat the session targeted.
         uint32_t m_targetFormat = 0;
 
+        //! Name of the shader's own module — the one holding the entry points, which a restore
+        //! composes and searches.
+        AZStd::string m_rootModuleName;
+
         //! Modules in session load order; reloading must preserve it.
         AZStd::vector<Module> m_modules;
     };
 
-    //! Serializes every module loaded in @session into a bundle. The caller must hold the
+    //! Serializes every module loaded in @session into a bundle, except the names in
+    //! @excludedModuleNames — generated modules a relink always regenerates (the per-mode
+    //! option-values module) must not shadow their replacements. The caller must hold the
     //! compiler lock.
     AZ::Outcome<SlangModuleClosureBundle, AZStd::string> BuildModuleClosureBundle(
         slang::ISession* session,
         AZStd::string_view compilerBuildTag,
+        uint32_t targetFormat,
+        AZStd::string_view rootModuleName,
+        AZStd::span<const AZStd::string_view> excludedModuleNames);
+
+    //! Rejects a bundle that a different compiler, target or schema produced. A mismatched
+    //! bundle must trigger a source recompile — never an optimistic load.
+    AZ::Outcome<void, AZStd::string> ValidateModuleClosureBundle(
+        const SlangModuleClosureBundle& bundle,
+        AZStd::string_view compilerBuildTag,
         uint32_t targetFormat);
+
+    //! Restores every bundle module into @session in bundle order and returns the root module.
+    //! The caller must hold the compiler lock and have validated the bundle.
+    AZ::Outcome<slang::IModule*, AZStd::string> RestoreModuleClosure(
+        slang::ISession* session,
+        const SlangModuleClosureBundle& bundle);
 } // namespace AZ::ShaderBuilder

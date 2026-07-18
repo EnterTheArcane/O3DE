@@ -14,6 +14,7 @@ set(FILES
     Tests/ShaderBuildArgumentsTests.cpp
     Tests/ShaderReflectionDataTests.cpp
     Tests/Slang/DualLanguageParityTests.cpp
+    Tests/Slang/ModuleClosureVariantProbeTests.cpp
     Tests/Slang/OptionsAccessorStyleProbeTests.cpp
     Tests/Slang/OptionsAuthoringDiscoveryProbeTests.cpp
     Tests/Slang/OptionsInterfaceStyleProbeTests.cpp

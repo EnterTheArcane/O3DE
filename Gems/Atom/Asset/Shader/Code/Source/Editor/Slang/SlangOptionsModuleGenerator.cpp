@@ -467,6 +467,45 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
         return module;
     }
 
+    //! The dynamic-fallback read of one option: extract its bits from the designated
+    //! ShaderVariantKey member, handling 32-bit word straddles; integer options are stored
+    //! biased by their range minimum.
+    static AZStd::string MakeDynamicReadExpression(
+        const DiscoveredShaderOptions& discovered,
+        const RPI::ShaderOptionDescriptor& option,
+        const ShaderOptionDeclaration& declaration)
+    {
+        const AZStd::string keyReference = AZStd::string::format(
+            "%s.%s", discovered.m_fallbackShaderResourceGroupName.c_str(), discovered.m_fallbackMemberName.c_str());
+        const uint32_t bitOffset = option.GetBitOffset();
+        const uint32_t bitCount = option.GetBitCount();
+        const uint32_t wordIndex = bitOffset / 32;
+        const uint32_t bitInWord = bitOffset % 32;
+        const uint32_t mask = bitCount >= 32 ? ~0u : ((1u << bitCount) - 1);
+
+        AZStd::string readExpression = AZStd::string::format(
+            "(%s[%u] >> %uu)", keyReference.c_str(), wordIndex, bitInWord);
+        if (bitInWord + bitCount > 32)
+        {
+            readExpression = AZStd::string::format(
+                "(%s | (%s[%u] << %uu))",
+                readExpression.c_str(), keyReference.c_str(), wordIndex + 1, 32 - bitInWord);
+        }
+        readExpression = AZStd::string::format("(%s & 0x%Xu)", readExpression.c_str(), mask);
+
+        switch (declaration.m_type)
+        {
+        case RPI::ShaderOptionType::Boolean:
+            return AZStd::string::format("%s != 0u", readExpression.c_str());
+        case RPI::ShaderOptionType::Enumeration:
+            return AZStd::string::format("(%s)%s", declaration.m_typeText.c_str(), readExpression.c_str());
+        default:
+            return AZStd::string::format(
+                "(%s)(int(%s) + %d)",
+                declaration.m_typeText.c_str(), readExpression.c_str(), declaration.m_minValue);
+        }
+    }
+
     //! Builds a name → descriptor lookup for the layout's options.
     static AZStd::unordered_map<AZStd::string_view, const RPI::ShaderOptionDescriptor*> MakeOptionLookup(
         const RPI::ShaderOptionGroupLayout& layout)
@@ -554,38 +593,8 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
             AppendProviderStructs(module, discovered,
                 [&discovered, &optionLookup](const ShaderOptionDeclaration& declaration)
                 {
-                    // Extract the option's bits from the packed key member, handling 32-bit word
-                    // straddles; integer options are stored biased by their range minimum
                     const RPI::ShaderOptionDescriptor& option = *optionLookup.find(declaration.m_name.GetStringView())->second;
-                    const AZStd::string keyReference = AZStd::string::format(
-                        "%s.%s", discovered.m_fallbackShaderResourceGroupName.c_str(), discovered.m_fallbackMemberName.c_str());
-                    const uint32_t bitOffset = option.GetBitOffset();
-                    const uint32_t bitCount = option.GetBitCount();
-                    const uint32_t wordIndex = bitOffset / 32;
-                    const uint32_t bitInWord = bitOffset % 32;
-                    const uint32_t mask = bitCount >= 32 ? ~0u : ((1u << bitCount) - 1);
-
-                    AZStd::string readExpression = AZStd::string::format(
-                        "(%s[%u] >> %uu)", keyReference.c_str(), wordIndex, bitInWord);
-                    if (bitInWord + bitCount > 32)
-                    {
-                        readExpression = AZStd::string::format(
-                            "(%s | (%s[%u] << %uu))",
-                            readExpression.c_str(), keyReference.c_str(), wordIndex + 1, 32 - bitInWord);
-                    }
-                    readExpression = AZStd::string::format("(%s & 0x%Xu)", readExpression.c_str(), mask);
-
-                    switch (declaration.m_type)
-                    {
-                    case RPI::ShaderOptionType::Boolean:
-                        return AZStd::string::format("%s != 0u", readExpression.c_str());
-                    case RPI::ShaderOptionType::Enumeration:
-                        return AZStd::string::format("(%s)%s", declaration.m_typeText.c_str(), readExpression.c_str());
-                    default:
-                        return AZStd::string::format(
-                            "(%s)(int(%s) + %d)",
-                            declaration.m_typeText.c_str(), readExpression.c_str(), declaration.m_minValue);
-                    }
+                    return MakeDynamicReadExpression(discovered, option, declaration);
                 });
         }
 
@@ -598,17 +607,30 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
         const RPI::ShaderOptionGroup& optionGroup)
     {
         const RPI::ShaderOptionGroupLayout* layout = optionGroup.GetShaderOptionLayout();
-        AZStd::string module = MakeModuleHeader(moduleName, discovered, false);
+
+        // Mixed emission: options the variant leaves unpinned keep their dynamic fallback reads
+        // (AZSL variant semantics — a partially specified variant runtime-branches on everything
+        // it does not pin), which needs the fallback member's declaring module imported. Without
+        // a designated fallback only fully specified variants are valid (callers enforce it);
+        // any unpinned option then bakes its default.
+        const bool dynamicReadsAvailable = !discovered.m_fallbackMemberName.empty();
+        const bool hasUnspecifiedOptions = !optionGroup.IsFullySpecified();
+        AZStd::string module = MakeModuleHeader(moduleName, discovered, hasUnspecifiedOptions && dynamicReadsAvailable);
 
         AppendProviderStructs(module, discovered,
-            [layout, &optionGroup](const ShaderOptionDeclaration& declaration)
+            [layout, &optionGroup, &discovered, dynamicReadsAvailable](const ShaderOptionDeclaration& declaration)
             {
                 const RPI::ShaderOptionIndex optionIndex = layout->FindShaderOptionIndex(declaration.m_name);
-                RPI::ShaderOptionValue value = optionGroup.GetValue(optionIndex);
+                const RPI::ShaderOptionDescriptor& option = layout->GetShaderOptions()[optionIndex.GetIndex()];
+                const RPI::ShaderOptionValue value = optionGroup.GetValue(optionIndex);
                 if (!value.IsValid())
                 {
-                    const RPI::ShaderOptionDescriptor& option = layout->GetShaderOptions()[optionIndex.GetIndex()];
-                    value = option.FindValue(option.GetDefaultValue());
+                    if (dynamicReadsAvailable)
+                    {
+                        return MakeDynamicReadExpression(discovered, option, declaration);
+                    }
+                    return MakeValueExpression(
+                        declaration, aznumeric_cast<int32_t>(option.FindValue(option.GetDefaultValue()).GetIndex()));
                 }
                 return MakeValueExpression(declaration, aznumeric_cast<int32_t>(value.GetIndex()));
             });
