@@ -216,19 +216,13 @@ namespace AZ::ShaderBuilder
         }
 
         // The preamble is force-included: the file system hook injects it into every module the
-        // session loads, and the root source below gets the same injection. The prelude imports
-        // carry the Atom vocabulary with no per-file imports anywhere; the authoring macro
-        // definitions follow as text because module imports cannot propagate preprocessor
-        // definitions.
+        // session loads, and the root source below gets the same injection, so the Atom
+        // vocabulary needs no per-file imports anywhere.
         AZStd::vector<AZStd::string> preambleLines;
         preambleLines.push_back(AZStd::string::format("import %.*s;", AZ_STRING_ARG(ForceIncludedModuleReference)));
         if (!request.m_apiPreludeDirectory.empty())
         {
             preambleLines.push_back(AZStd::string::format("import %.*s;", AZ_STRING_ARG(ApiPreludeModuleName)));
-        }
-        for (const AZStd::string_view macroLine : SlangOptionsModuleGenerator::GetAuthoringMacroLines())
-        {
-            preambleLines.push_back(AZStd::string(macroLine));
         }
 
         ProgramCompilation compilation;
@@ -302,22 +296,24 @@ namespace AZ::ShaderBuilder
                         "%s: Baked option lowering was requested without option values", sourcePath.c_str()));
                 }
                 implementationSource = SlangOptionsModuleGenerator::GenerateBakedValuesModule(
-                    GeneratedOptionsModuleName, *request.m_bakedOptionValues);
+                    GeneratedOptionsModuleName, compilation.m_discoveredOptions, *request.m_bakedOptionValues);
                 break;
             case ShaderOptionLoweringMode::SpecializationConstant:
                 implementationSource = SlangOptionsModuleGenerator::GenerateImplementationModule(
-                    request.m_optionsLoweringMode, GeneratedOptionsModuleName, *compilation.m_shaderOptionLayout);
+                    request.m_optionsLoweringMode, GeneratedOptionsModuleName,
+                    compilation.m_discoveredOptions, *compilation.m_shaderOptionLayout);
                 break;
             case ShaderOptionLoweringMode::DynamicFallback:
                 if (compilation.m_discoveredOptions.m_fallbackMemberName.empty())
                 {
                     return AZ::Failure(AZStd::string::format(
-                        "%s declares shader options, which need a ShaderVariantKey fallback: add a uint4 member to a "
-                        "ShaderResourceGroup and designate it with ATOM_VARIANT_FALLBACK(<ShaderResourceGroup>, <member>)",
+                        "%s declares shader options, which need a ShaderVariantKey fallback: designate a public uint4 "
+                        "ShaderResourceGroup member with [AtomVariantFallback]",
                         sourcePath.c_str()));
                 }
                 implementationSource = SlangOptionsModuleGenerator::GenerateImplementationModule(
-                    request.m_optionsLoweringMode, GeneratedOptionsModuleName, *compilation.m_shaderOptionLayout);
+                    request.m_optionsLoweringMode, GeneratedOptionsModuleName,
+                    compilation.m_discoveredOptions, *compilation.m_shaderOptionLayout);
                 break;
             }
 
@@ -515,9 +511,8 @@ namespace AZ::ShaderBuilder
         result.m_reflection = reflectionOutcome.TakeValue();
 
         // Discovered options replace the walker's DefaultOption placeholder, and the
-        // ATOM_VARIANT_FALLBACK designation lands on its ShaderResourceGroup. The getter the
-        // macro generated already compile-proved the member exists and is uint4; here the names
-        // are checked against what reflection actually grouped.
+        // [AtomVariantFallback] designation lands on its ShaderResourceGroup, checked against
+        // what reflection actually grouped.
         if (compilation.m_shaderOptionLayout)
         {
             const auto& layoutOptions = compilation.m_shaderOptionLayout->GetShaderOptions();
@@ -536,7 +531,7 @@ namespace AZ::ShaderBuilder
             if (groupIterator == result.m_reflection.m_shaderResourceGroups.end())
             {
                 return AZ::Failure(AZStd::string::format(
-                    "ATOM_VARIANT_FALLBACK names %s, which is not a ShaderResourceGroup of %.*s",
+                    "[AtomVariantFallback] is declared in ParameterBlock %s, which is not a ShaderResourceGroup of %.*s",
                     fallbackGroupName.c_str(), AZ_STRING_ARG(input.m_shaderSourceFullPath)));
             }
             const Name fallbackConstantName(compilation.m_discoveredOptions.m_fallbackMemberName);
@@ -549,7 +544,7 @@ namespace AZ::ShaderBuilder
             if (!fallbackConstantFound)
             {
                 return AZ::Failure(AZStd::string::format(
-                    "ATOM_VARIANT_FALLBACK names %s.%s, which reflection does not list among the ShaderResourceGroup constants",
+                    "[AtomVariantFallback] designates %s.%s, which reflection does not list among the ShaderResourceGroup constants",
                     fallbackGroupName.c_str(), fallbackConstantName.GetCStr()));
             }
             groupIterator->m_shaderVariantKeyFallbackName = fallbackConstantName;

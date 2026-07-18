@@ -6,21 +6,22 @@
  *
  */
 
-// Shader options in the ported-shader authoring form: ATOM_OPTION declares each option once —
-// use-sites read it as a bare identifier — and ATOM_VARIANT_FALLBACK designates the
-// ShaderResourceGroup member carrying the ShaderVariantKey for runtime option switching. The
-// builder discovers the options through reflection and links the per-mode accessor
-// implementations; nothing here changes between the dynamic, specialized and baked lowerings.
+// Shader options in the Atom authoring form: an interface of [AtomOption]-attributed static
+// function requirements declares each option once — its name, type, typed default and range —
+// and the [AtomOptions] extern struct is implemented by the builder per lowering mode (baked
+// constants, specialization constants, or dynamic reads of the ShaderVariantKey fallback) and
+// composed at link time. Use-sites are identical in every mode. The [AtomVariantFallback] member
+// designates where the runtime writes the key for dynamic option switching.
 
 [AtomShaderResourceGroup(4 /*PerPass*/)]
-struct OptionsShaderResourceGroupLayout
+public struct OptionsShaderResourceGroupLayout
 {
     Vector4F m_tintColor;
-    Vector4U m_shaderVariantKeyFallback;
-};
-ParameterBlock<OptionsShaderResourceGroupLayout> OptionsSrg;
 
-ATOM_VARIANT_FALLBACK(OptionsSrg, m_shaderVariantKeyFallback)
+    [AtomVariantFallback]
+    public Vector4U m_shaderVariantKeyFallback;
+};
+public ParameterBlock<OptionsShaderResourceGroupLayout> OptionsSrg;
 
 public enum DebugModeT
 {
@@ -29,9 +30,20 @@ public enum DebugModeT
     Solid,
 }
 
-ATOM_OPTION(bool, o_useTint, true)
-ATOM_OPTION(DebugModeT, o_debugMode, DebugModeT.None)
-ATOM_OPTION_RANGE(i32, o_bandCount, 4, 1, 8)
+public interface IOptions
+{
+    [AtomOption(true)]
+    static bool o_useTint();
+
+    [AtomOption(DebugModeT.None)]
+    static DebugModeT o_debugMode();
+
+    [AtomOption(4)] [AtomOptionRange(1, 8)]
+    static i32 o_bandCount();
+}
+
+[AtomOptions]
+public extern struct Options : IOptions;
 
 struct VertexOutput
 {
@@ -57,7 +69,7 @@ struct PixelOutput
 PixelOutput MainPS(VertexOutput input)
 {
     Vector4F color = Vector4F(input.m_uv, 0, 1);
-    switch (o_debugMode)
+    switch (Options.o_debugMode())
     {
     case DebugModeT.Uv:
         color = Vector4F(input.m_uv, 0, 1);
@@ -66,10 +78,10 @@ PixelOutput MainPS(VertexOutput input)
         color = Vector4F(1, 0, 1, 1);
         break;
     default:
-        color.z = frac(input.m_uv.x * f32(o_bandCount));
+        color.z = frac(input.m_uv.x * f32(Options.o_bandCount()));
         break;
     }
-    if (o_useTint)
+    if (Options.o_useTint())
     {
         color *= OptionsSrg.m_tintColor;
     }

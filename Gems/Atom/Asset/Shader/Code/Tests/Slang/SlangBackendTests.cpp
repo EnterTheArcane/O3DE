@@ -324,21 +324,21 @@ void MainCS(u32 index : SV_DispatchThreadID)
 
     TEST_F(SlangBackendTests, CompileProgram_AtomOptions_DynamicFallbackEndToEnd)
     {
-        // The full production options surface with ZERO boilerplate: the injected preamble
-        // carries the ATOM_OPTION macros, the force-included prelude carries the attribute
-        // vocabulary, and the backend discovers the options, generates the dynamic-fallback
-        // accessor module and composes it into the link.
+        // The full production options surface: the force-included prelude carries the attribute
+        // vocabulary, options are an interface of [AtomOption]-attributed requirements with an
+        // [AtomOptions] extern struct, and the backend discovers them, generates the
+        // dynamic-fallback implementation struct and composes it into the link.
         constexpr AZStd::string_view optionsShaderSource = R"(
 [AtomShaderResourceGroup(0)]
-struct OptionsTestShaderResourceGroupLayout
+public struct OptionsTestShaderResourceGroupLayout
 {
     RWStructuredBuffer<Vector4F> m_output;
     Vector4F m_color;
-    Vector4U m_shaderVariantKey;
-};
-ParameterBlock<OptionsTestShaderResourceGroupLayout> OptionsSrg;
 
-ATOM_VARIANT_FALLBACK(OptionsSrg, m_shaderVariantKey)
+    [AtomVariantFallback]
+    public Vector4U m_shaderVariantKey;
+};
+public ParameterBlock<OptionsTestShaderResourceGroupLayout> OptionsSrg;
 
 public enum QualityT
 {
@@ -347,23 +347,34 @@ public enum QualityT
     High,
 }
 
-ATOM_OPTION(bool, o_useTint, true)
-ATOM_OPTION(QualityT, o_quality, QualityT.Medium)
-ATOM_OPTION_RANGE(i32, o_iterations, 4, 1, 8)
+public interface IOptions
+{
+    [AtomOption(true)]
+    static bool o_useTint();
+
+    [AtomOption(QualityT.Medium)]
+    static QualityT o_quality();
+
+    [AtomOption(4)] [AtomOptionRange(1, 8)]
+    static i32 o_iterations();
+}
+
+[AtomOptions]
+public extern struct Options : IOptions;
 
 [numthreads(1, 1, 1)]
 void MainCS(u32 index : SV_DispatchThreadID)
 {
     Vector4F value = OptionsSrg.m_color;
-    if (o_useTint)
+    if (Options.o_useTint())
     {
         value *= 0.5;
     }
-    for (i32 i = 0; i < o_iterations; ++i)
+    for (i32 i = 0; i < Options.o_iterations(); ++i)
     {
         value.y += 0.125;
     }
-    if (o_quality == QualityT.High)
+    if (Options.o_quality() == QualityT.High)
     {
         value.z = 0.0;
     }

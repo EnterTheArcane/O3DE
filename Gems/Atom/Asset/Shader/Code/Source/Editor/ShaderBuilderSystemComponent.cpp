@@ -94,7 +94,7 @@ namespace AZ
             // Register Shader Asset Builder
             AssetBuilderSDK::AssetBuilderDesc shaderAssetBuilderDescriptor;
             shaderAssetBuilderDescriptor.m_name = "Shader Asset Builder";
-            shaderAssetBuilderDescriptor.m_version = 131; // Slang shader options (ATOM_OPTION discovery and accessor lowering)
+            shaderAssetBuilderDescriptor.m_version = 132; // Slang shader options (interface discovery and per-mode implementation structs)
             shaderAssetBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern( AZStd::string::format("*.%s", RPI::ShaderSourceData::Extension), AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
             shaderAssetBuilderDescriptor.m_busId = azrtti_typeid<ShaderAssetBuilder>();
             shaderAssetBuilderDescriptor.m_createJobFunction = AZStd::bind(&ShaderAssetBuilder::CreateJobs, &m_shaderAssetBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
@@ -119,7 +119,7 @@ namespace AZ
                 shaderVariantAssetBuilderDescriptor.m_name = "Shader Variant Asset Builder";
                 // Both "Shader Variant Asset Builder" and "Shader Asset Builder" produce ShaderVariantAsset products. If you update
                 // ShaderVariantAsset you will need to update BOTH version numbers, not just "Shader Variant Asset Builder".
-                shaderVariantAssetBuilderDescriptor.m_version = 46; // Slang shader options (dynamic-fallback accessors in stage compiles)
+                shaderVariantAssetBuilderDescriptor.m_version = 47; // Slang shader options (interface implementation structs in stage compiles)
                 shaderVariantAssetBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern(AZStd::string::format("*.%s", HashedVariantListSourceData::Extension), AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
                 shaderVariantAssetBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern(AZStd::string::format("*.%s", HashedVariantInfoSourceData::Extension), AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
                 shaderVariantAssetBuilderDescriptor.m_busId = azrtti_typeid<ShaderVariantAssetBuilder>();
