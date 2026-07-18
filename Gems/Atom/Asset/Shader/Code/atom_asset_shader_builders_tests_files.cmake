@@ -14,6 +14,9 @@ set(FILES
     Tests/ShaderBuildArgumentsTests.cpp
     Tests/ShaderReflectionDataTests.cpp
     Tests/Slang/DualLanguageParityTests.cpp
+    Tests/Slang/OptionsAccessorStyleProbeTests.cpp
+    Tests/Slang/OptionsAuthoringDiscoveryProbeTests.cpp
+    Tests/Slang/OptionsInterfaceStyleProbeTests.cpp
     Tests/Slang/SlangBackendTests.cpp
     Tests/Slang/SlangCompilerServiceTests.cpp
     Tests/Slang/SlangOptionsModuleGeneratorTests.cpp
