@@ -133,19 +133,19 @@ Buffer<uint> m_visibleSimplePointLightIndices : register(t22, space5);
 
 [AtomShaderResourceGroupMember("ViewSrg", 5)]
 [[vk::binding(23, 5)]]
-StructuredBuffer<ProjectedShadow> m_projectedShadows : register(t23, space5);
+StructuredBuffer<ViewSrgData::ProjectedShadow> m_projectedShadows : register(t23, space5);
 
 [AtomShaderResourceGroupMember("ViewSrg", 5)]
 [[vk::binding(24, 5)]]
-StructuredBuffer<FilterParameter> m_projectedFilterParams : register(t24, space5);
+StructuredBuffer<ViewSrgData::FilterParameter> m_projectedFilterParams : register(t24, space5);
 
 [AtomShaderResourceGroupMember("ViewSrg", 5)]
 [[vk::binding(25, 5)]]
-StructuredBuffer<DirectionalLightShadow> m_directionalLightShadows : register(t25, space5);
+StructuredBuffer<ViewSrgData::DirectionalLightShadow> m_directionalLightShadows : register(t25, space5);
 
 [AtomShaderResourceGroupMember("ViewSrg", 5)]
 [[vk::binding(26, 5)]]
-StructuredBuffer<FilterParameter> m_esmsDirectional : register(t26, space5);
+StructuredBuffer<ViewSrgData::FilterParameter> m_esmsDirectional : register(t26, space5);
 
 [AtomShaderResourceGroupMember("ViewSrg", 5)]
 [[vk::binding(27, 5)]]
@@ -166,3 +166,73 @@ StructuredBuffer<PolygonLight> m_polygonLights : register(t30, space5);
 [AtomShaderResourceGroupMember("ViewSrg", 5)]
 [[vk::binding(31, 5)]]
 StructuredBuffer<float4> m_polygonLightPoints : register(t31, space5);
+
+
+// Access sugar: lets shaders read this shared SRG as `ViewSrg.m_x` / `ViewSrg.Fn()`, matching
+// AZSL's `ViewSrg::m_x` / `ViewSrg::Fn()`. Every property forwards to a pinned global above; the
+// accessor is stateless and `static`, so it adds no binding and leaves the ABI untouched.
+struct ViewSrgAccessor
+{
+    property float4x4 m_viewProjectionMatrix { get { return ViewSrg_SRGConstantBuffer.m_viewProjectionMatrix; } }
+    property float4x4 m_viewMatrix { get { return ViewSrg_SRGConstantBuffer.m_viewMatrix; } }
+    property float4x4 m_viewMatrixInverse { get { return ViewSrg_SRGConstantBuffer.m_viewMatrixInverse; } }
+    property float4x4 m_projectionMatrix { get { return ViewSrg_SRGConstantBuffer.m_projectionMatrix; } }
+    property float4x4 m_projectionMatrixInverse { get { return ViewSrg_SRGConstantBuffer.m_projectionMatrixInverse; } }
+    property float4x4 m_viewProjectionInverseMatrix { get { return ViewSrg_SRGConstantBuffer.m_viewProjectionInverseMatrix; } }
+    property float4x4 m_viewProjectionPrevMatrix { get { return ViewSrg_SRGConstantBuffer.m_viewProjectionPrevMatrix; } }
+    property float3 m_worldPosition { get { return ViewSrg_SRGConstantBuffer.m_worldPosition; } }
+    property float4 m_linearizeDepthConstants { get { return ViewSrg_SRGConstantBuffer.m_linearizeDepthConstants; } }
+    property float4 m_unprojectionConstants { get { return ViewSrg_SRGConstantBuffer.m_unprojectionConstants; } }
+    property uint m_renderDebugOptions { get { return ViewSrg_SRGConstantBuffer.m_renderDebugOptions; } }
+    property uint m_renderDebugViewMode { get { return ViewSrg_SRGConstantBuffer.m_renderDebugViewMode; } }
+    property uint m_decalCount { get { return ViewSrg_SRGConstantBuffer.m_decalCount; } }
+    property uint m_visibleDecalCount { get { return ViewSrg_SRGConstantBuffer.m_visibleDecalCount; } }
+    property uint m_tileGridWidth { get { return ViewSrg_SRGConstantBuffer.m_tileGridWidth; } }
+    property uint m_simplePointLightCount { get { return ViewSrg_SRGConstantBuffer.m_simplePointLightCount; } }
+    property uint m_simpleSpotLightCount { get { return ViewSrg_SRGConstantBuffer.m_simpleSpotLightCount; } }
+    property uint m_visibleSimpleSpotLightCount { get { return ViewSrg_SRGConstantBuffer.m_visibleSimpleSpotLightCount; } }
+    property uint m_pointLightCount { get { return ViewSrg_SRGConstantBuffer.m_pointLightCount; } }
+    property uint m_visibleSimplePointLightCount { get { return ViewSrg_SRGConstantBuffer.m_visibleSimplePointLightCount; } }
+    property float m_shadowmapAtlasSize { get { return ViewSrg_SRGConstantBuffer.m_shadowmapAtlasSize; } }
+    property float m_invShadowmapAtlasSize { get { return ViewSrg_SRGConstantBuffer.m_invShadowmapAtlasSize; } }
+    property uint m_directionalLightCount { get { return ViewSrg_SRGConstantBuffer.m_directionalLightCount; } }
+    property uint m_shadowIndexDirectionalLight { get { return ViewSrg_SRGConstantBuffer.m_shadowIndexDirectionalLight; } }
+    property uint m_diskLightCount { get { return ViewSrg_SRGConstantBuffer.m_diskLightCount; } }
+    property uint m_capsuleLightCount { get { return ViewSrg_SRGConstantBuffer.m_capsuleLightCount; } }
+    property uint m_quadLightCount { get { return ViewSrg_SRGConstantBuffer.m_quadLightCount; } }
+    property uint m_polygonLightCount { get { return ViewSrg_SRGConstantBuffer.m_polygonLightCount; } }
+    property DepthOfFieldData m_dof { get { return ViewSrg_SRGConstantBuffer.m_dof; } }
+    property ConstantBuffer<ExposureControlParameters> m_exposureControl { get { return ::m_exposureControl; } }
+    property StructuredBuffer<Decal> m_decals { get { return ::m_decals; } }
+    property Buffer<uint> m_visibleDecalIndices { get { return ::m_visibleDecalIndices; } }
+    property Texture2DArray<float4> m_decalTextureArrayDiffuse0 { get { return ::m_decalTextureArrayDiffuse0; } }
+    property Texture2DArray<float4> m_decalTextureArrayDiffuse1 { get { return ::m_decalTextureArrayDiffuse1; } }
+    property Texture2DArray<float4> m_decalTextureArrayDiffuse2 { get { return ::m_decalTextureArrayDiffuse2; } }
+    property Texture2DArray<float4> m_decalTextureArrayDiffuse3 { get { return ::m_decalTextureArrayDiffuse3; } }
+    property Texture2DArray<float4> m_decalTextureArrayDiffuse4 { get { return ::m_decalTextureArrayDiffuse4; } }
+    property Texture2DArray<float4> m_decalTextureArrayNormalMaps0 { get { return ::m_decalTextureArrayNormalMaps0; } }
+    property Texture2DArray<float4> m_decalTextureArrayNormalMaps1 { get { return ::m_decalTextureArrayNormalMaps1; } }
+    property Texture2DArray<float4> m_decalTextureArrayNormalMaps2 { get { return ::m_decalTextureArrayNormalMaps2; } }
+    property Texture2DArray<float4> m_decalTextureArrayNormalMaps3 { get { return ::m_decalTextureArrayNormalMaps3; } }
+    property Texture2DArray<float4> m_decalTextureArrayNormalMaps4 { get { return ::m_decalTextureArrayNormalMaps4; } }
+    property StructuredBuffer<uint> m_instanceData { get { return ::m_instanceData; } }
+    property StructuredBuffer<SimplePointLight> m_simplePointLights { get { return ::m_simplePointLights; } }
+    property StructuredBuffer<SimpleSpotLight> m_simpleSpotLights { get { return ::m_simpleSpotLights; } }
+    property Buffer<uint> m_visibleSimpleSpotLightIndices { get { return ::m_visibleSimpleSpotLightIndices; } }
+    property Texture2D<float> m_goboTextures[5] { get { return ::m_goboTextures; } }
+    property StructuredBuffer<PointLight> m_pointLights { get { return ::m_pointLights; } }
+    property Buffer<uint> m_visibleSimplePointLightIndices { get { return ::m_visibleSimplePointLightIndices; } }
+    property StructuredBuffer<ViewSrgData::ProjectedShadow> m_projectedShadows { get { return ::m_projectedShadows; } }
+    property StructuredBuffer<ViewSrgData::FilterParameter> m_projectedFilterParams { get { return ::m_projectedFilterParams; } }
+    property StructuredBuffer<ViewSrgData::DirectionalLightShadow> m_directionalLightShadows { get { return ::m_directionalLightShadows; } }
+    property StructuredBuffer<ViewSrgData::FilterParameter> m_esmsDirectional { get { return ::m_esmsDirectional; } }
+    property StructuredBuffer<DiskLight> m_diskLights { get { return ::m_diskLights; } }
+    property StructuredBuffer<CapsuleLight> m_capsuleLights { get { return ::m_capsuleLights; } }
+    property StructuredBuffer<QuadLight> m_quadLights { get { return ::m_quadLights; } }
+    property StructuredBuffer<PolygonLight> m_polygonLights { get { return ::m_polygonLights; } }
+    property StructuredBuffer<float4> m_polygonLightPoints { get { return ::m_polygonLightPoints; } }
+
+    // Free functions the SRG defined in AZSL (hand-maintained companion).
+    #include "Atom/Features/Srg/ViewSrgFunctions.slangi"
+};
+static ViewSrgAccessor ViewSrg;

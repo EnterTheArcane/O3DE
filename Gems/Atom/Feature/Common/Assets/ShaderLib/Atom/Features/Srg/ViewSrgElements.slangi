@@ -8,12 +8,25 @@
 
 #pragma once
 
-// Field-accurate Slang ports of the element structs referenced by the ViewSrg binding ABI
-// (ViewSrg.slangi). AZSLc SRG reflection carries each buffer's element *stride* but not its fields,
-// so these are hand-maintained; SharedSrgBindingAbiTests validates every stride against the AZSL
-// editorial source. Slang packs structured-buffer elements with the same relaxed rules AZSLc uses
-// (float3 tightly packed, no vector 16-byte rounding), so these are near-verbatim ports of the
-// matching .azsli structs -- with explicit trailing padding where the AZSL used [[pad_to(16)]].
+// Element structs referenced by the ViewSrg binding ABI (ViewSrg.slangi). Each is a
+// StructuredBuffer/ConstantBuffer element whose *stride* is part of the layout hash
+// (SharedSrgBindingAbiTests validates every stride against the AZSL editorial source). Slang packs
+// structured-buffer elements with the same relaxed rules AZSLc uses (float3 tightly packed, no
+// vector 16-byte rounding), so the ports are stride-identical to the matching .azsli structs.
+//
+// Structs that also have a first-party Slang port are pulled in from that single source rather than
+// re-declared here, which previously collided with the ported ShaderLib.
+//
+// Structs AZSL declared *inside* the ViewSrg SRG body live in `namespace ViewSrgData` below. AZSL
+// scopes SRG-inline structs to the SRG (ViewSrg::ProjectedShadow), keeping them distinct from the
+// same-named top-level shadow classes (Shadow/ProjectedShadow.azsli); a namespace reproduces that
+// scope. GenerateSharedSrgSlang.py auto-detects structs in `namespace <Srg>Data` and qualifies the
+// SRG members that reference them, so a new SRG-inline struct only has to be added to this namespace.
+
+#include <Atom/Features/PBR/Lights/LightStructures.slangi>  // SimplePointLight, SimpleSpotLight,
+                                                            // PointLight, DiskLight, CapsuleLight,
+                                                            // QuadLight, PolygonLight
+#include <Atom/Features/Decals/DecalStructures.slangi>      // Decal
 
 // PostProcessing/ViewSrg.azsli
 struct DepthOfFieldData
@@ -39,161 +52,50 @@ struct ExposureControlParameters
     uint2 m_padding;
 };
 
-// Decals/DecalStructures.azsli
-struct Decal
+// CoreLights/ViewSrg.azsli -- structs declared inside the ViewSrg SRG. Scoped here to match AZSL's
+// ViewSrg:: scope and to stay distinct from the same-named top-level shadow classes. The generator
+// qualifies the SRG buffer members that reference these (StructuredBuffer<ViewSrgData::ProjectedShadow>).
+namespace ViewSrgData
 {
-    float3 m_position;
-    float m_opacity;
-    float4 m_quaternion;
-    float3 m_halfSize;
-    float m_angleAttenuation;
-    float m_normalMapOpacity;
-    uint m_sortKeyPacked;
-    uint m_textureArrayIndex;
-    uint m_textureIndex;
-    float3 m_decalColor;
-    float m_decalColorFactor;
-};
+    public struct FilterParameter
+    {
+        uint m_isEnabled;
+        uint2 m_shadowmapOriginInSlice;
+        uint m_shadowmapSize;
+        float m_lightDistanceOfCameraViewFrustum;
+        float m_nf;
+        float m_f_n;
+        float m_f;
+    };
 
-// PBR/Lights/LightStructures.azsli
-struct SimplePointLight
-{
-    float3 m_position;
-    float m_invAttenuationRadiusSquared;
-    float3 m_rgbIntensityCandelas;
-    float m_affectsGIFactor;
-    bool m_affectsGI;
-    uint m_lightingChannelMask;
-    float2 m_padding;
-};
+    public struct ProjectedShadow
+    {
+        float4x4 m_depthBiasMatrix;
+        uint m_shadowmapArraySlice;
+        uint m_shadowFilterMethod;
+        float m_boundaryScale;
+        uint m_filteringSampleCount;
+        float2 m_unprojectConstants;
+        float m_bias;
+        float m_normalShadowBias;
+        float m_esmExponent;
+        float3 m_padding;
+    };
 
-struct SimpleSpotLight
-{
-    float4x4 m_viewProjectionMatrix;
-    float3 m_position;
-    float m_invAttenuationRadiusSquared;
-    float3 m_direction;
-    float m_cosInnerConeAngle;
-    float3 m_rgbIntensityCandelas;
-    float m_cosOuterConeAngle;
-    uint m_shadowIndex;
-    uint m_goboTexIndex;
-    float m_affectsGIFactor;
-    bool m_affectsGI;
-    uint m_lightingChannelMask;
-    float3 m_padding; // [[pad_to(16)]]: 132 -> 144
-};
-
-struct PointLight
-{
-    float3 m_position;
-    float m_invAttenuationRadiusSquared;
-    float3 m_rgbIntensityCandelas;
-    float m_bulbRadius;
-    uint3 m_shadowIndices;
-    float m_affectsGIFactor;
-    bool m_affectsGI;
-    uint m_lightingChannelMask;
-    float2 m_padding;
-};
-
-struct DiskLight
-{
-    float3 m_position;
-    float m_invAttenuationRadiusSquared;
-    float3 m_rgbIntensityCandelas;
-    float m_diskRadius;
-    float3 m_direction;
-    uint m_flags;
-    float m_cosInnerConeAngle;
-    float m_cosOuterConeAngle;
-    float m_bulbPositionOffset;
-    uint m_shadowIndex;
-    float m_affectsGIFactor;
-    bool m_affectsGI;
-    uint m_lightingChannelMask;
-    float m_padding;
-};
-
-struct CapsuleLight
-{
-    float3 m_startPoint;
-    float m_radius;
-    float3 m_direction;
-    float m_length;
-    float3 m_rgbIntensityCandelas;
-    float m_invAttenuationRadiusSquared;
-    float m_affectsGIFactor;
-    bool m_affectsGI;
-    uint m_lightingChannelMask;
-    float m_padding;
-};
-
-struct QuadLight
-{
-    float3 m_position;
-    float m_invAttenuationRadiusSquared;
-    float3 m_leftDir;
-    float m_halfWidth;
-    float3 m_upDir;
-    float m_halfHeight;
-    float3 m_rgbIntensityNits;
-    uint m_flags;
-    float m_affectsGIFactor;
-    bool m_affectsGI;
-    uint m_lightingChannelMask;
-    float m_padding;
-};
-
-struct PolygonLight
-{
-    float3 m_position;
-    uint m_startEndIndex;
-    float3 m_rgbIntensityNits;
-    float m_invAttenuationRadiusSquared;
-    float3 m_direction;
-    uint m_lightingChannelMask;
-};
-
-// CoreLights/ViewSrg.azsli (inline structs)
-struct FilterParameter
-{
-    uint m_isEnabled;
-    uint2 m_shadowmapOriginInSlice;
-    uint m_shadowmapSize;
-    float m_lightDistanceOfCameraViewFrustum;
-    float m_nf;
-    float m_f_n;
-    float m_f;
-};
-
-struct ProjectedShadow
-{
-    float4x4 m_depthBiasMatrix;
-    uint m_shadowmapArraySlice;
-    uint m_shadowFilterMethod;
-    float m_boundaryScale;
-    uint m_filteringSampleCount;
-    float2 m_unprojectConstants;
-    float m_bias;
-    float m_normalShadowBias;
-    float m_esmExponent;
-    float3 m_padding;
-};
-
-struct DirectionalLightShadow
-{
-    float4x4 m_lightViewToShadowmapMatrices[4]; // MaxCascadeCount
-    float4x4 m_worldToLightViewMatrices[4];     // MaxCascadeCount
-    float m_slopeBiasBase[4];                   // MaxCascadeCount
-    float m_boundaryScale;
-    uint m_shadowmapSize;
-    uint m_cascadeCount;
-    float m_shadowBias;
-    float m_normalShadowBias;
-    uint m_filteringSampleCountMode;
-    uint m_debugFlags;
-    uint m_shadowFilterMethod;
-    float m_far_minus_near;
-    float3 m_padding;
-};
+    public struct DirectionalLightShadow
+    {
+        float4x4 m_lightViewToShadowmapMatrices[4]; // MaxCascadeCount
+        float4x4 m_worldToLightViewMatrices[4];     // MaxCascadeCount
+        float m_slopeBiasBase[4];                   // MaxCascadeCount
+        float m_boundaryScale;
+        uint m_shadowmapSize;
+        uint m_cascadeCount;
+        float m_shadowBias;
+        float m_normalShadowBias;
+        uint m_filteringSampleCountMode;
+        uint m_debugFlags;
+        uint m_shadowFilterMethod;
+        float m_far_minus_near;
+        float3 m_padding;
+    };
+}

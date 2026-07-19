@@ -1,0 +1,61 @@
+
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ *
+ */
+
+// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
+
+struct VertexInput
+{
+    float2 Position : POSITION;
+    float2 UV : UV;
+    float4 Color : COLOR;
+    uint TextureIndex : INSTANCE_DATA;
+};
+
+struct VertexOutput
+{
+    float4 Position : SV_Position;
+    float4 Color : COLOR;
+    float2 UV : UV;
+    uint TextureIndex : INSTANCE_DATA;
+};
+
+[AtomShaderResourceGroup(SrgBindingSlot.Pass)]
+struct PassSrgLayout
+{
+    Texture2D<float4> m_textures[16];
+    
+    [AtomStaticSampler("Linear", "Linear", "Linear", "Clamp", "Clamp", "Clamp", 0, "Never", "Filter", "TransparentBlack")]
+    SamplerState LinearSampler;
+    
+    column_major float4x4 m_projectionMatrix;
+};
+ParameterBlock<PassSrgLayout> PassSrg;
+
+VertexOutput MainVS(in VertexInput input)
+{
+    VertexOutput output;
+    output.Position = mul(float4(input.Position, 0.0f, 1.0f), PassSrg.m_projectionMatrix);
+    output.Color = float4(input.Color.rgb, input.Color.a);
+    output.UV = input.UV;
+    output.TextureIndex = input.TextureIndex;
+    return output;
+}
+
+struct PixelOutput
+{
+     float4 m_color : SV_Target0;
+};  
+    
+PixelOutput MainPS(in VertexOutput input)
+{
+    PixelOutput output;
+    float4 color = PassSrg.m_textures[input.TextureIndex].Sample(PassSrg.LinearSampler, input.UV) * input.Color;
+    output.m_color = float4(color.rgb * color.a, color.a);
+    return output;
+}

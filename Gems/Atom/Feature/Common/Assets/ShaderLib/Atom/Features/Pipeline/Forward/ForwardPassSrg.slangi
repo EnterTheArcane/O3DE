@@ -1,0 +1,44 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ *
+ */
+
+#pragma once
+
+// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
+
+[AtomShaderResourceGroup(SrgBindingSlot.Pass)]
+struct PassSrgLayout
+{
+    // [GFX TODO][ATOM-2012] adapt to multiple shadowmaps
+    Texture2DArray<float> m_directionalLightShadowmap;
+    Texture2DArray<float> m_directionalLightExponentialShadowmap;
+    Texture2DArray<float> m_projectedShadowmaps;
+    Texture2DArray<float> m_projectedExponentialShadowmap;
+    Texture2D m_brdfMap;
+    Texture2D<float> m_fullscreenShadow;
+
+    [AtomStaticSampler("Linear", "Linear", "Linear", "Clamp", "Clamp", "Clamp", 0, "Never", "Filter", "TransparentBlack")]
+    SamplerState LinearSampler;
+
+    [AtomStaticSampler("Point", "Point", "Point", "Clamp", "Clamp", "Clamp", 0, "Never", "Filter", "TransparentBlack")]
+    SamplerState PointSampler;
+    
+    Texture2D<uint4> m_tileLightData;
+    StructuredBuffer<uint> m_lightListRemapped;
+    Texture2D<float> m_linearDepthTexture;
+
+    // Whether the m_linearDepthTexture is linear depth or original depth
+    // This is useful for render pipeline which doesn't have a pass to convert original depth to linear depth
+    // We can use m_linearDepthTexture for original depth and set this flag to true. 
+    // And the shaders can calculate linear depth themselves
+    uint m_isOriginalDepth;
+};
+ParameterBlock<PassSrgLayout> PassSrg;
+
+
+
+

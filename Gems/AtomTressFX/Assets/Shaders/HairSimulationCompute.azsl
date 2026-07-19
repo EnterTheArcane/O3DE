@@ -379,7 +379,7 @@ void LengthConstriantsWindAndCollision(uint GIndex : SV_GroupIndex,
     //---------------------------------------
     // clamp velocities, rewrite history
     //---------------------------------------
-    float3 positionDelta = sharedPos[indexForSharedMem].xyz - oldPos;
+    float3 positionDelta = sharedPos[indexForSharedMem].xyz - oldPos.xyz;
     float speedSqr = dot(positionDelta, positionDelta);
     if (speedSqr > g_ClampPositionDelta * g_ClampPositionDelta) {
         positionDelta *= g_ClampPositionDelta * g_ClampPositionDelta / speedSqr;

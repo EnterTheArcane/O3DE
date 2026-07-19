@@ -1,0 +1,109 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ *
+ */
+
+#pragma once
+
+#include <Atom/RPI/Math.slangi>
+
+// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
+
+#include <Atom/Features/PostProcessing/FullscreenVertex.slangi>
+
+#include <Atom/Features/PostProcessing/Aces.slangi>
+#include <Atom/Features/PostProcessing/Shapers.slangi>
+
+float3 convert2Dto3DLutCoords(float2 uv, float width, float height)
+{
+    // convert from center pixel uvs to [0,1]
+    float offset = 1.0/height/2.0;
+    float scale = 1.0 - offset*2.0;
+
+    float2 adjustedUv = float2(uv.x * width, uv.y * height);
+    float3 coords = float3(adjustedUv.x%height, 0.5 + int(adjustedUv.x/height), adjustedUv.y)/height;
+    return (coords - offset)/scale;
+}
+
+[AtomShaderResourceGroup(SrgBindingSlot.Pass)]
+struct PassSrgLayout
+{
+    // framebuffer sampler
+    [AtomStaticSampler("Point", "Point", "Point", "Clamp", "Clamp", "Clamp", 0, "Never", "Filter", "TransparentBlack")]
+    SamplerState PointSampler;
+
+    int m_lutResolution;
+    int m_shaperType;
+    float m_shaperBias;
+    float m_shaperScale;
+
+    float m_colorAdjustmentWeight;
+    float m_colorGradingExposure;
+    float m_colorGradingContrast;
+    float m_colorGradingPreSaturation;
+    float m_colorFilterIntensity;
+    float m_colorFilterMultiply;
+    float4 m_colorFilterSwatch;
+
+    float m_whiteBalanceWeight;
+    float m_whiteBalanceKelvin;
+    float m_whiteBalanceTint;
+    float m_whiteBalanceLuminancePreservation;
+
+    float m_splitToneBalance;
+    float m_splitToneWeight;
+    float4 m_splitToneShadowsColor;
+    float4 m_splitToneHighlightsColor;
+
+    float m_smhShadowsStart;
+    float m_smhShadowsEnd;
+    float m_smhHighlightsStart;
+    float m_smhHighlightsEnd;
+    float m_smhWeight;
+    float4 m_smhShadowsColor;
+    float4 m_smhMidtonesColor;
+    float4 m_smhHighlightsColor;
+
+    float3 m_channelMixingRed;
+    float3 m_channelMixingGreen;
+    float3 m_channelMixingBlue;
+
+    float m_finalAdjustmentWeight;
+    float m_colorGradingPostSaturation;
+    float m_colorGradingHueShift;
+};
+ParameterBlock<PassSrgLayout> PassSrg;
+
+#include <Atom/Features/PostProcessing/HDRColorGradingCommon.slang>
+
+struct PSOutput
+{
+    float4 m_lutOutput : SV_Target0;
+};
+
+PSOutput MainPS(VSOutput IN)
+{
+    ShaperType shaperType = (ShaperType)PassSrg.m_shaperType;
+    int lutResolution = PassSrg.m_lutResolution;
+
+    PSOutput OUT;
+
+    // baseCoords are from 0-1
+    float3 baseCoords = convert2Dto3DLutCoords(IN.m_texCoord, lutResolution*lutResolution, lutResolution);
+
+    float3 linearColor = ShaperToLinear(baseCoords, shaperType, PassSrg.m_shaperBias, PassSrg.m_shaperScale);
+
+    linearColor = TransformColor(linearColor, ColorSpaceId::LinearSRGB, ColorSpaceId::ACEScg);
+    float3 gradedColor = ColorGrade(linearColor);
+    gradedColor = TransformColor(gradedColor, ColorSpaceId::ACEScg, ColorSpaceId::LinearSRGB);
+
+    // Bring back coordinates into 0-1
+    float3 shapedColor = LinearToShaper(gradedColor, shaperType, PassSrg.m_shaperBias, PassSrg.m_shaperScale);
+    shapedColor = saturate(shapedColor);
+
+    OUT.m_lutOutput = float4(shapedColor, 1.0);
+    return OUT;
+}

@@ -1,0 +1,32 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ *
+ */
+
+// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
+
+#define THREADS 16
+
+[AtomShaderResourceGroup(SrgBindingSlot.Pass)]
+struct PassSrgLayout
+{
+    Texture2D<float> m_depthFullRes;
+    RWTexture2D<float> m_depthHalfRes;
+};
+ParameterBlock<PassSrgLayout> PassSrg;
+
+[numthreads(THREADS, THREADS, 1)]
+void MainCS(uint3 dispatch_id: SV_DispatchThreadID)
+{  
+    uint2 targetPixel = dispatch_id.xy;
+
+    // Take the upper left pixel in the 2x2 quad. This has two advantages:
+    // 1) It gives us a real depth value instead of an averaged depth
+    // 2) It preserves equal distance properties between pixels (necessary for SSAO)
+    uint2 sourcePixel = targetPixel * 2;
+
+    PassSrg.m_depthHalfRes[targetPixel] = PassSrg.m_depthFullRes[sourcePixel];
+}

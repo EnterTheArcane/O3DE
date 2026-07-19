@@ -69,3 +69,27 @@ public typealias Matrix3x4<T> = Matrix<T, 3, 4>;
 public typealias Matrix4x2<T> = Matrix<T, 4, 2>;
 public typealias Matrix4x3<T> = Matrix<T, 4, 3>;
 public typealias Matrix4x4<T> = Matrix<T, 4, 4>;
+
+// REAL
+//
+// The platform-sized floating point family AZSL exposes through
+// Atom/RPI/Platform/<OS>/AzslcPlatformHeader.azsli, where `real` is full precision on desktop and
+// half precision on platforms that opt into 16-bit. Ported AZSL uses these names throughout (~2000
+// references across ShaderLib), so they live here rather than in ported sources.
+//
+// They are fixed to 32-bit, which matches every platform the Slang path currently targets. A
+// 16-bit platform cannot be served by an #ifdef here: this is a module, and modules do not see
+// macros defined by whoever imports them. Selecting half precision means shipping a platform
+// prelude that declares these aliases against f16 instead — the same force-include mechanism the
+// per-API ApiPrelude.slang files already use.
+//
+// New Slang code should prefer the explicit f32/Vector3F spellings; `real` exists for parity with
+// the AZSL sources it was ported from.
+public typealias real = f32;
+public typealias real2 = Vector2F;
+public typealias real3 = Vector3F;
+public typealias real4 = Vector4F;
+
+public typealias real3x3 = Matrix3x3<f32>;
+public typealias real3x4 = Matrix3x4<f32>;
+public typealias real4x4 = Matrix4x4<f32>;

@@ -8,22 +8,18 @@
 
 #pragma once
 
-// Field-accurate Slang ports of the element structs referenced by the SceneSrg binding ABI
-// (SceneSrg.slangi). See ViewSrgElements.slangi for the porting rules; SharedSrgBindingAbiTests
-// validates every stride against the AZSL editorial source. row_major is spelled explicitly on
-// float3x4 members because major-ness changes the element stride (row_major 48 vs column_major 64).
+// Element structs referenced by the SceneSrg binding ABI (SceneSrg.slangi). Each is a
+// StructuredBuffer/ConstantBuffer element whose *stride* is part of the layout hash
+// (SharedSrgBindingAbiTests validates every stride against the AZSL editorial source).
+//
+// Structs that also have a first-party Slang port are pulled in from that single source rather than
+// re-declared here -- redeclaring them collided with the ported ShaderLib (two definitions of the
+// same name in one compile). The ports are field-identical to the AZSL originals, so the stride is
+// unchanged. Only structs with no standalone port (SceneSrg-inline structs) are still declared here.
 
-// CoreLights/SceneSrg.azsli references LightStructures.azsli
-struct DirectionalLight
-{
-    float3 m_direction;
-    float m_angularRadius;
-    float3 m_rgbIntensityLux;
-    float m_affectsGIFactor;
-    bool m_affectsGI;
-    uint m_lightingChannelMask;
-    float2 m_padding;
-};
+#include <Atom/Features/PBR/Lights/LightStructures.slangi>       // DirectionalLight
+#include <Atom/Features/MeshInfo/MeshInfo.slangi>                // MeshInfo
+#include <Atom/Features/FallbackPBRMaterial/MaterialInfo.slangi> // MaterialInfo (+ ReflectionProbeData)
 
 // SkyBox/SceneSrg.azsli
 struct PhysicalSkyData
@@ -42,83 +38,6 @@ struct PhysicalSkyData
     float4 m_physicalSkySunDirection;
     float4 m_physicalSkySunRGB;
     float4 m_physicalSkyAndSunIntensity;
-};
-
-// MeshInfo/MeshInfo.azsli
-struct MeshInfo
-{
-    int m_indexBufferIndex;
-    int m_positionBufferIndex;
-    int m_normalBufferIndex;
-    int m_uv0BufferIndex;
-    int m_uv1BufferIndex;
-    int m_tangentBufferIndex;
-    int m_bitangentBufferIndex;
-    int m_clusterBufferIndex;
-
-    uint m_indexBufferByteOffset;
-    uint m_positionBufferByteOffset;
-    uint m_normalBufferByteOffset;
-    uint m_uv0BufferByteOffset;
-    uint m_uv1BufferByteOffset;
-    uint m_tangentBufferByteOffset;
-    uint m_bitangentBufferByteOffset;
-
-    uint m_indexBufferByteStride;
-    uint m_positionBufferByteStride;
-    uint m_normalBufferByteStride;
-    uint m_uv0BufferByteStride;
-    uint m_uv1BufferByteStride;
-    uint m_tangentBufferByteStride;
-    uint m_bitangentBufferByteStride;
-
-    uint m_indexFormat;
-    uint m_positionFormat;
-    uint m_normalFormat;
-    uint m_uv0Format;
-    uint m_uv1Format;
-    uint m_tangentFormat;
-    uint m_bitangentFormat;
-
-    uint m_objectIdForTransform;
-    uint m_lightingChannels;
-    uint m_materialTypeId;
-    uint m_materialInstanceId;
-    uint m_uvStreamTangentBitmask;
-    uint m_flags;
-
-    int m_padding;
-};
-
-// PBR/Lights/ReflectionProbeData.azsli (referenced by MaterialInfo)
-struct ReflectionProbeData
-{
-    row_major float3x4 m_modelToWorld;
-    row_major float3x4 m_modelToWorldInverse;
-    float3 m_outerObbHalfLengths;
-    float m_exposure;
-    float3 m_innerObbHalfLengths;
-    bool m_useReflectionProbe;
-    bool m_useParallaxCorrection;
-    float3 m_padding;
-};
-
-// FallbackPBRMaterial/MaterialInfo.azsli
-struct MaterialInfo
-{
-    float4 m_baseColor;
-    float4 m_irradianceColor;
-    float3 m_emissiveColor;
-    float m_metallicFactor;
-    float m_roughnessFactor;
-    int m_baseColorImage;
-    int m_normalImage;
-    int m_metallicImage;
-    int m_roughnessImage;
-    int m_emissiveImage;
-    uint m_reflectionProbeCubeMapIndex;
-    uint m_pad;
-    ReflectionProbeData m_reflectionProbeData;
 };
 
 // Terrain/SceneSrg.azsli (Terrain gem partial; a loose SRG-constant of struct type)

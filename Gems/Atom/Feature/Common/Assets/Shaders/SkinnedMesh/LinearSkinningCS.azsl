@@ -117,7 +117,7 @@ void SkinVertexLinear(uint vertexIndex, inout float3 position, inout float3 norm
     for(uint i = 0; i < InstanceSrg::m_numInfluencesPerVertex; i+=2)
     {
         float2 weights;
-        float2 jointIds;
+        uint2 jointIds;
         GetInfluences(weightStartOffsetForVertex, jointIdStartOffsetForVertex, i, weights, jointIds);
 
         skinToWorldMatrix += InstanceSrg::m_boneTransformsLinear[ jointIds.x ] * weights.x;
@@ -153,7 +153,7 @@ void SkinVertexDualQuaternion(uint vertexIndex, inout float3 position, inout flo
     for(uint i = 0; i < InstanceSrg::m_numInfluencesPerVertex; i+=2)
     {        
         float2 weights;
-        float2 jointIds;
+        uint2 jointIds;
         GetInfluences(weightStartOffsetForVertex, jointIdStartOffsetForVertex, i, weights, jointIds);
 
         AddWeightedDualQuaternion(skinToWorldDualQuaternion, InstanceSrg::m_boneTransformsDualQuaternion[ jointIds.x ], weights.x);

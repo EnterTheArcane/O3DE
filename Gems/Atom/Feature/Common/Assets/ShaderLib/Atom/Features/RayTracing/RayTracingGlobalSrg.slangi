@@ -1,0 +1,37 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ *
+ */
+
+// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
+
+[AtomShaderResourceGroup(SrgBindingSlot.Draw)]
+struct RayTracingGlobalSrgLayout
+{
+    Texture2DMS<float>    m_depth;
+    Texture2DMS<float4>   m_normal;       // RGB10 = Normal (Encoded), A2 = Flags
+    Texture2DMS<float4>   m_specularF0;   // RGB8 = SpecularF0, A8 = Roughness
+    Texture2D<float2>     m_brdfMap;
+    RWTexture2D<float4>   m_hitCoords;
+    RWTexture2D<float4>   m_fallbackColor;
+    RWTexture2D<float4>   m_fallbackAlbedo;
+    RWTexture2D<float4>   m_fallbackPosition;
+    RWTexture2D<float4>   m_fallbackNormal;
+
+    float m_invOutputScale;
+    float m_maxRayLength;
+    float m_maxRoughness;
+    uint m_reflectionMethod;
+    bool  m_rayTraceFallbackSpecular;
+    // TODO(slang-port): [[pad_to(16)]] - add explicit padding (unknown member type 'Texture2DMS<float>')
+
+    [AtomStaticSampler("Linear", "Linear", "Linear", "Clamp", "Clamp", "Clamp", 0, "Never", "Filter", "TransparentBlack")]
+    SamplerState LinearSampler;
+
+    [AtomStaticSampler("Point", "Point", "Point", "Clamp", "Clamp", "Clamp", 0, "Never", "Filter", "TransparentBlack")]
+    SamplerState PointSampler;
+};
+ParameterBlock<RayTracingGlobalSrgLayout> RayTracingGlobalSrg;

@@ -6,6 +6,8 @@
  *
  */
 
+#pragma once
+
 // The Bindless ShaderResourceGroup, Slang edition — the counterpart of Bindless.azsli.
 //
 // Usage matches the AZSL version:

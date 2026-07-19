@@ -1,0 +1,21 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ *
+ */
+
+#include <Atom/Features/PostProcessing/FullscreenVertex.slangi>
+#include <Atom/Features/PostProcessing/FullscreenPixelInfo.slangi>
+#include "ReflectionScreenSpaceBlurCommon.slangi"
+
+PSOutput MainPS(VSOutput IN)
+{
+    // horizontal blur uses coordinates from the mip-level render target
+    float4 result = GaussianFilter(IN.m_position.xy, IN.m_position.xy, TexelOffsetsH);
+
+    PSOutput OUT;
+    OUT.m_color = result;
+    return OUT;
+}

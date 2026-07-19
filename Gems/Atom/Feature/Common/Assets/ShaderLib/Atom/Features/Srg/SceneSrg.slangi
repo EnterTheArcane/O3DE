@@ -113,3 +113,56 @@ SamplerState LtcSampler : register(s1, space6);
 [AtomStaticSampler("Linear", "Linear", "Linear", "Wrap", "Wrap", "Wrap", 0, "Always", "Filter", "TransparentBlack")]
 [[vk::binding(14, 6)]]
 SamplerState m_samplerEnv : register(s2, space6);
+
+
+// Access sugar: lets shaders read this shared SRG as `SceneSrg.m_x` / `SceneSrg.Fn()`, matching
+// AZSL's `SceneSrg::m_x` / `SceneSrg::Fn()`. Every property forwards to a pinned global above; the
+// accessor is stateless and `static`, so it adds no binding and leaves the ABI untouched.
+struct SceneSrgAccessor
+{
+    property float m_time { get { return SceneSrg_SRGConstantBuffer.m_time; } }
+    property float m_prevTime { get { return SceneSrg_SRGConstantBuffer.m_prevTime; } }
+    property bool m_enable { get { return SceneSrg_SRGConstantBuffer.m_enable; } }
+    property bool m_physicalSky { get { return SceneSrg_SRGConstantBuffer.m_physicalSky; } }
+    property float m_fogTopHeight { get { return SceneSrg_SRGConstantBuffer.m_fogTopHeight; } }
+    property float m_fogBottomHeight { get { return SceneSrg_SRGConstantBuffer.m_fogBottomHeight; } }
+    property float4 m_fogColor { get { return SceneSrg_SRGConstantBuffer.m_fogColor; } }
+    property bool m_fogEnable { get { return SceneSrg_SRGConstantBuffer.m_fogEnable; } }
+    property float4x4 m_cubemapRotationMatrix { get { return SceneSrg_SRGConstantBuffer.m_cubemapRotationMatrix; } }
+    property float m_cubemapExposure { get { return SceneSrg_SRGConstantBuffer.m_cubemapExposure; } }
+    property uint m_directionalLightCount { get { return SceneSrg_SRGConstantBuffer.m_directionalLightCount; } }
+    property uint m_nullCubeMapIndex { get { return SceneSrg_SRGConstantBuffer.m_nullCubeMapIndex; } }
+    property float4 m_iblOrientation { get { return SceneSrg_SRGConstantBuffer.m_iblOrientation; } }
+    property float m_iblExposure { get { return SceneSrg_SRGConstantBuffer.m_iblExposure; } }
+    property bool m_debuggingEnabled { get { return SceneSrg_SRGConstantBuffer.m_debuggingEnabled; } }
+    property float3 m_debugOverrideBaseColor { get { return SceneSrg_SRGConstantBuffer.m_debugOverrideBaseColor; } }
+    property float m_debugOverrideRoughness { get { return SceneSrg_SRGConstantBuffer.m_debugOverrideRoughness; } }
+    property float m_debugOverrideMetallic { get { return SceneSrg_SRGConstantBuffer.m_debugOverrideMetallic; } }
+    property float3 m_debugLightingDirection { get { return SceneSrg_SRGConstantBuffer.m_debugLightingDirection; } }
+    property float3 m_debugLightingIntensity { get { return SceneSrg_SRGConstantBuffer.m_debugLightingIntensity; } }
+    property float m_customDebugFloat01 { get { return SceneSrg_SRGConstantBuffer.m_customDebugFloat01; } }
+    property float m_customDebugFloat02 { get { return SceneSrg_SRGConstantBuffer.m_customDebugFloat02; } }
+    property float m_customDebugFloat03 { get { return SceneSrg_SRGConstantBuffer.m_customDebugFloat03; } }
+    property float m_customDebugFloat04 { get { return SceneSrg_SRGConstantBuffer.m_customDebugFloat04; } }
+    property TerrainWorldData m_terrainWorldData { get { return SceneSrg_SRGConstantBuffer.m_terrainWorldData; } }
+    property ConstantBuffer<PhysicalSkyData> m_physicalSkyData { get { return ::m_physicalSkyData; } }
+    property TextureCube m_skyboxCubemap { get { return ::m_skyboxCubemap; } }
+    property StructuredBuffer<DirectionalLight> m_directionalLights { get { return ::m_directionalLights; } }
+    property Texture2D<float4> m_ltcMatrix { get { return ::m_ltcMatrix; } }
+    property Texture2D<float2> m_ltcAmplification { get { return ::m_ltcAmplification; } }
+    property Texture2D<float3> m_dofPencilMap { get { return ::m_dofPencilMap; } }
+    property StructuredBuffer<MeshInfo> m_meshInfo { get { return ::m_meshInfo; } }
+    property StructuredBuffer<MaterialInfo> m_fallbackPBRMaterial { get { return ::m_fallbackPBRMaterial; } }
+    property StructuredBuffer<ObjectToWorld> m_objectToWorldBuffer { get { return ::m_objectToWorldBuffer; } }
+    property StructuredBuffer<NormalToWorld> m_objectToWorldInverseTransposeBuffer { get { return ::m_objectToWorldInverseTransposeBuffer; } }
+    property StructuredBuffer<ObjectToWorld> m_objectToWorldHistoryBuffer { get { return ::m_objectToWorldHistoryBuffer; } }
+    property TextureCube m_specularEnvMap { get { return ::m_specularEnvMap; } }
+    property TextureCube m_diffuseEnvMap { get { return ::m_diffuseEnvMap; } }
+    property SamplerState m_hwPcfSampler { get { return ::m_hwPcfSampler; } }
+    property SamplerState LtcSampler { get { return ::LtcSampler; } }
+    property SamplerState m_samplerEnv { get { return ::m_samplerEnv; } }
+
+    // Free functions the SRG defined in AZSL (hand-maintained companion).
+    #include "Atom/Features/Srg/SceneSrgFunctions.slangi"
+};
+static SceneSrgAccessor SceneSrg;

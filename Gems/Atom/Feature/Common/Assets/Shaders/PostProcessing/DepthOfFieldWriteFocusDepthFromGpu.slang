@@ -1,0 +1,30 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ *
+ */
+
+// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
+
+#include "DepthOfField.slangi"
+
+[AtomShaderResourceGroup(SrgBindingSlot.Pass)]
+struct PerPassLayout
+{
+    Texture2D<float4> m_depthTexture;
+    RWBuffer<float> m_outputFocusDepth;
+    float2 m_autoFocusScreenPosition;
+
+    [AtomStaticSampler("Linear", "Linear", "Linear", "Clamp", "Clamp", "Clamp", 0, "Never", "Filter", "TransparentBlack")]
+    SamplerState LinearSampler;
+};
+ParameterBlock<PerPassLayout> PerPass;
+
+[numthreads(1, 1, 1)]
+void MainCS(uint3 dispatch_id : SV_DispatchThreadID)
+{
+    float depth = PerPass.m_depthTexture.SampleLevel(PerPass.LinearSampler, PerPass.m_autoFocusScreenPosition, 0).x;
+    PerPass.m_outputFocusDepth[0] = InvertDepth(depth);
+}
