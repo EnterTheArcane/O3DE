@@ -45,6 +45,13 @@ public interface IOptions
 [AtomOptions]
 public extern struct Options : IOptions;
 
+// Supervariants deliver their ".shader" Definitions as preprocessor macros: the TintBoost
+// supervariant amplifies the tint without touching the option layout (which must stay
+// identical across every supervariant of a shader).
+#ifndef SLANGTEST_TINT_STRENGTH
+#define SLANGTEST_TINT_STRENGTH 1
+#endif
+
 struct VertexOutput
 {
     Vector4F m_position : SV_Position;
@@ -83,7 +90,7 @@ PixelOutput MainPS(VertexOutput input)
     }
     if (Options.o_useTint())
     {
-        color *= OptionsSrg.m_tintColor;
+        color *= OptionsSrg.m_tintColor * f32(SLANGTEST_TINT_STRENGTH);
     }
 
     PixelOutput output;

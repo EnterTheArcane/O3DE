@@ -44,6 +44,8 @@ SHADER_PRODUCT_ENDINGS = (
     ".hlsl",
     ".hashedvariantlist",
     ".hashedvariantinfo",
+    ".reflectiondata",
+    ".moduleclosure",
 )
 
 # Source name endings whose asset-database rows are captured (products + job fingerprints).

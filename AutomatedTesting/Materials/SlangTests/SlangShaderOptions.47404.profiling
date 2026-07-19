@@ -1,0 +1,29 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "ShaderCompilerProfiling",
+    "ClassData": {
+        "Entries": [
+            {
+                "ExecutablePath": "Builders/DirectXShaderCompiler/dxsc.exe",
+                "Parameters": "-sv=1164413184 -o=\"D:\\O3DE\\Engine2\\AutomatedTesting\\user\\AssetProcessorTemp\\JobTemp-wsngqC\\SlangShaderOptions_MainVS.dxil.patched.bin\" -f=\"D:\\O3DE\\Engine2\\AutomatedTesting\\user\\AssetProcessorTemp\\JobTemp-wsngqC\\SlangShaderOptions_MainVS.offsets.json\" \"D:\\O3DE\\Engine2\\AutomatedTesting\\user\\AssetProcessorTemp\\JobTemp-wsngqC\\SlangShaderOptions_MainVS.dxil.bin\"",
+                "ElapsedTimeSeconds": 0.010404299944639206
+            },
+            {
+                "ExecutablePath": "Builders/DirectXShaderCompiler/dxsc.exe",
+                "Parameters": "-sv=1164413184 -o=\"D:\\O3DE\\Engine2\\AutomatedTesting\\user\\AssetProcessorTemp\\JobTemp-wsngqC\\SlangShaderOptions_MainPS.dxil.patched.bin\" -f=\"D:\\O3DE\\Engine2\\AutomatedTesting\\user\\AssetProcessorTemp\\JobTemp-wsngqC\\SlangShaderOptions_MainPS.offsets.json\" \"D:\\O3DE\\Engine2\\AutomatedTesting\\user\\AssetProcessorTemp\\JobTemp-wsngqC\\SlangShaderOptions_MainPS.dxil.bin\"",
+                "ElapsedTimeSeconds": 0.010482599958777428
+            },
+            {
+                "ExecutablePath": "Builders/DirectXShaderCompiler/dxsc.exe",
+                "Parameters": "-sv=1164413184 -o=\"D:\\O3DE\\Engine2\\AutomatedTesting\\user\\AssetProcessorTemp\\JobTemp-wsngqC\\SlangShaderOptions_MainVS.dxil.patched.bin\" -f=\"D:\\O3DE\\Engine2\\AutomatedTesting\\user\\AssetProcessorTemp\\JobTemp-wsngqC\\SlangShaderOptions_MainVS.offsets.json\" \"D:\\O3DE\\Engine2\\AutomatedTesting\\user\\AssetProcessorTemp\\JobTemp-wsngqC\\SlangShaderOptions_MainVS.dxil.bin\"",
+                "ElapsedTimeSeconds": 0.011471400037407875
+            },
+            {
+                "ExecutablePath": "Builders/DirectXShaderCompiler/dxsc.exe",
+                "Parameters": "-sv=1164413184 -o=\"D:\\O3DE\\Engine2\\AutomatedTesting\\user\\AssetProcessorTemp\\JobTemp-wsngqC\\SlangShaderOptions_MainPS.dxil.patched.bin\" -f=\"D:\\O3DE\\Engine2\\AutomatedTesting\\user\\AssetProcessorTemp\\JobTemp-wsngqC\\SlangShaderOptions_MainPS.offsets.json\" \"D:\\O3DE\\Engine2\\AutomatedTesting\\user\\AssetProcessorTemp\\JobTemp-wsngqC\\SlangShaderOptions_MainPS.dxil.bin\"",
+                "ElapsedTimeSeconds": 0.010289800353348255
+            }
+        ]
+    }
+}

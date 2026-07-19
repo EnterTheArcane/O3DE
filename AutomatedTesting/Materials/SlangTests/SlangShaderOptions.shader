@@ -14,6 +14,12 @@
             "RemoveBuildArguments": {
                 "namedArgumentGroups": { "slang": ["-sc-options"] }
             }
+        },
+        // Definitions become preprocessor macros in the supervariant's compile session; the
+        // option layout stays shared across all supervariants.
+        {
+            "Name": "TintBoost",
+            "Definitions": ["SLANGTEST_TINT_STRENGTH=3"]
         }
     ],
 

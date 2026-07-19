@@ -648,6 +648,139 @@ void MainCS(u32 index : SV_DispatchThreadID)
             1000.0 * static_cast<double>(sourceTicks) / static_cast<double>(benchmarkIterations) / static_cast<double>(frequency));
     }
 
+    TEST_F(SlangBackendTests, SupervariantDefinitions_ChangeCodeNotLayout_AndGuardedOptionsDivergeTheHash)
+    {
+        // M13: supervariants reach the Slang session as preprocessor macro deltas through the
+        // build-argument scope stack (.shader "Definitions" roll into -D preprocessor
+        // arguments). Two contracts matter:
+        // 1. A definition that changes code must specialize bytecode WITHOUT touching the
+        //    option layout — supervariants share one ShaderOptionGroupLayout by design.
+        // 2. A definition that adds/removes option declarations diverges the layout hash —
+        //    exactly the signal ShaderAssetBuilder's cross-supervariant equality check
+        //    rejects, in either language.
+        constexpr AZStd::string_view supervariantShaderSource = R"(
+[AtomShaderResourceGroup(0)]
+public struct SupervariantTestShaderResourceGroupLayout
+{
+    RWStructuredBuffer<Vector4F> m_output;
+    Vector4F m_color;
+
+    [AtomVariantFallback]
+    public Vector4U m_shaderVariantKey;
+};
+public ParameterBlock<SupervariantTestShaderResourceGroupLayout> OptionsSrg;
+
+#ifndef SLANGTEST_TINT_STRENGTH
+#define SLANGTEST_TINT_STRENGTH 1
+#endif
+
+public interface IOptions
+{
+    [AtomOption(true)]
+    static bool o_useTint();
+
+#ifdef SLANGTEST_EXTRA_OPTION
+    [AtomOption(2)] [AtomOptionRange(1, 4)]
+    static i32 o_extraBands();
+#endif
+}
+
+[AtomOptions]
+public extern struct Options : IOptions;
+
+[numthreads(1, 1, 1)]
+void MainCS(u32 index : SV_DispatchThreadID)
+{
+    Vector4F value = OptionsSrg.m_color;
+    if (Options.o_useTint())
+    {
+        value *= 0.25 * f32(SLANGTEST_TINT_STRENGTH);
+    }
+#ifdef SLANGTEST_EXTRA_OPTION
+    value.y += f32(Options.o_extraBands());
+#endif
+    OptionsSrg.m_output[index] = value;
+}
+)";
+        ASSERT_TRUE(AZ::Test::CreateTestFile(*m_tempDirectory, "SupervariantTestShader.slang", supervariantShaderSource));
+        AZ::IO::FixedMaxPath sourcePath(m_tempDirectory->GetDirectory());
+        sourcePath /= "SupervariantTestShader.slang";
+
+        const AZStd::vector<AZStd::string> includePaths = GetShaderLibIncludePaths();
+        const MapOfStringToStageType entryPoints = {
+            {"MainCS", RPI::ShaderStageType::Compute},
+        };
+
+        SlangBackend backend;
+        auto compilerLock = SlangCompilerService::Get().AcquireCompilerLock();
+        const RHI::ShaderTargetDescriptor targetDescriptor = MakeSpirvTarget();
+
+        struct CompiledSupervariant
+        {
+            HashValue64 m_layoutHash;
+            size_t m_optionCount;
+            AZStd::vector<uint8_t> m_byteCode;
+        };
+        auto compileWithDefinitions = [&](const AZStd::vector<AZStd::string>& preprocessorArguments) -> CompiledSupervariant
+        {
+            RHI::ShaderBuildArguments buildArguments;
+            buildArguments.m_preprocessorArguments = preprocessorArguments;
+
+            SlangBackend::ProgramCompileRequest request;
+            request.m_sourcePath = sourcePath.Native();
+            request.m_entryPoints = &entryPoints;
+            request.m_includePaths = includePaths;
+            request.m_buildArguments = &buildArguments;
+
+            auto compilationOutcome = backend.CompileProgram(targetDescriptor, request);
+            if (!compilationOutcome.IsSuccess())
+            {
+                ADD_FAILURE() << compilationOutcome.GetError().c_str();
+                return {};
+            }
+            const SlangBackend::ProgramCompilation compilation = compilationOutcome.TakeValue();
+            if (!compilation.m_shaderOptionLayout)
+            {
+                ADD_FAILURE() << "no option layout was discovered";
+                return {};
+            }
+
+            CompiledSupervariant result;
+            result.m_layoutHash = compilation.m_shaderOptionLayout->GetHash();
+            result.m_optionCount = compilation.m_shaderOptionLayout->GetShaderOptions().size();
+
+            Slang::ComPtr<slang::IBlob> byteCode;
+            Slang::ComPtr<slang::IBlob> diagnostics;
+            const SlangResult codeResult = compilation.m_linkedProgram->getEntryPointCode(0, 0, byteCode.writeRef(), diagnostics.writeRef());
+            SlangCompilerService::ReportDiagnostics(request.m_sourcePath, diagnostics, SLANG_FAILED(codeResult));
+            if (SLANG_FAILED(codeResult) || !byteCode)
+            {
+                ADD_FAILURE() << "failed to generate bytecode";
+                return {};
+            }
+            const uint8_t* bytes = static_cast<const uint8_t*>(byteCode->getBufferPointer());
+            result.m_byteCode.assign(bytes, bytes + byteCode->getBufferSize());
+            return result;
+        };
+
+        const CompiledSupervariant defaultSupervariant = compileWithDefinitions({});
+        const CompiledSupervariant codeDeltaSupervariant = compileWithDefinitions({"-DSLANGTEST_TINT_STRENGTH=3"});
+        const CompiledSupervariant optionDeltaSupervariant = compileWithDefinitions({"-DSLANGTEST_EXTRA_OPTION"});
+        ASSERT_FALSE(defaultSupervariant.m_byteCode.empty());
+        ASSERT_FALSE(codeDeltaSupervariant.m_byteCode.empty());
+        ASSERT_FALSE(optionDeltaSupervariant.m_byteCode.empty());
+
+        // Contract 1: code-only definition — same layout, different bytecode
+        EXPECT_EQ(defaultSupervariant.m_optionCount, 1);
+        EXPECT_EQ(codeDeltaSupervariant.m_layoutHash, defaultSupervariant.m_layoutHash);
+        EXPECT_NE(codeDeltaSupervariant.m_byteCode, defaultSupervariant.m_byteCode);
+
+        // Contract 2: an option guarded by the definition diverges the layout hash — the
+        // signal the builder's cross-supervariant equality check rejects
+        EXPECT_EQ(optionDeltaSupervariant.m_optionCount, 2);
+        EXPECT_NE(optionDeltaSupervariant.m_layoutHash, defaultSupervariant.m_layoutHash);
+    }
+
     TEST_F(SlangBackendTests, EnumerateSourceDependencies_ReportsInjectedPreludesAndTransitiveImports)
     {
         // A source importing a sibling module, which itself imports the Bindless module.
