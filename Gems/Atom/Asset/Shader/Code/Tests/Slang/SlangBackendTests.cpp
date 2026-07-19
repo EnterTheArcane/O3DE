@@ -326,12 +326,12 @@ void MainCS(u32 index : SV_DispatchThreadID)
         EXPECT_GT(bytecode->getBufferSize(), 0);
     }
 
-    TEST_F(SlangBackendTests, CompileProgram_AtomOptions_DynamicFallbackEndToEnd)
+    TEST_F(SlangBackendTests, CompileProgram_ShaderOptions_DynamicFallbackEndToEnd)
     {
         // The full production options surface: the force-included prelude carries the attribute
-        // vocabulary, options are an interface of [AtomOption]-attributed requirements with an
-        // [AtomOptions] extern struct, and the backend discovers them, generates the
-        // dynamic-fallback implementation struct and composes it into the link.
+        // vocabulary, options are flat [AtomOption]-attributed extern functions, and the backend
+        // discovers them, generates the dynamic-fallback implementation module and composes it
+        // into the link.
         constexpr AZStd::string_view optionsShaderSource = R"(
 [AtomShaderResourceGroup(0)]
 public struct OptionsTestShaderResourceGroupLayout
@@ -351,34 +351,28 @@ public enum QualityT
     High,
 }
 
-public interface IOptions
-{
-    [AtomOption(true)]
-    static bool o_useTint();
+[AtomOption(true)]
+public extern bool o_useTint();
 
-    [AtomOption(QualityT.Medium)]
-    static QualityT o_quality();
+[AtomOption(QualityT.Medium)]
+public extern QualityT o_quality();
 
-    [AtomOption(4)] [AtomOptionRange(1, 8)]
-    static i32 o_iterations();
-}
-
-[AtomOptions]
-public extern struct Options : IOptions;
+[AtomOption(4)] [AtomRange(1, 8)]
+public extern i32 o_iterations();
 
 [numthreads(1, 1, 1)]
 void MainCS(u32 index : SV_DispatchThreadID)
 {
     Vector4F value = OptionsSrg.m_color;
-    if (Options.o_useTint())
+    if (o_useTint())
     {
         value *= 0.5;
     }
-    for (i32 i = 0; i < Options.o_iterations(); ++i)
+    for (i32 i = 0; i < o_iterations(); ++i)
     {
         value.y += 0.125;
     }
-    if (Options.o_quality() == QualityT.High)
+    if (o_quality() == QualityT.High)
     {
         value.z = 0.0;
     }
@@ -489,34 +483,28 @@ public enum QualityT
     High,
 }
 
-public interface IOptions
-{
-    [AtomOption(true)]
-    static bool o_useTint();
+[AtomOption(true)]
+public extern bool o_useTint();
 
-    [AtomOption(QualityT.Medium)]
-    static QualityT o_quality();
+[AtomOption(QualityT.Medium)]
+public extern QualityT o_quality();
 
-    [AtomOption(4)] [AtomOptionRange(1, 8)]
-    static i32 o_iterations();
-}
-
-[AtomOptions]
-public extern struct Options : IOptions;
+[AtomOption(4)] [AtomRange(1, 8)]
+public extern i32 o_iterations();
 
 [numthreads(1, 1, 1)]
 void MainCS(u32 index : SV_DispatchThreadID)
 {
     Vector4F value = OptionsSrg.m_color;
-    if (Options.o_useTint())
+    if (o_useTint())
     {
         value *= 0.5;
     }
-    for (i32 i = 0; i < Options.o_iterations(); ++i)
+    for (i32 i = 0; i < o_iterations(); ++i)
     {
         value.y += 0.125;
     }
-    if (Options.o_quality() == QualityT.High)
+    if (o_quality() == QualityT.High)
     {
         value.z = 0.0;
     }
@@ -674,30 +662,24 @@ public ParameterBlock<SupervariantTestShaderResourceGroupLayout> OptionsSrg;
 #define SLANGTEST_TINT_STRENGTH 1
 #endif
 
-public interface IOptions
-{
-    [AtomOption(true)]
-    static bool o_useTint();
+[AtomOption(true)]
+public extern bool o_useTint();
 
 #ifdef SLANGTEST_EXTRA_OPTION
-    [AtomOption(2)] [AtomOptionRange(1, 4)]
-    static i32 o_extraBands();
+[AtomOption(2)] [AtomRange(1, 4)]
+public extern i32 o_extraBands();
 #endif
-}
-
-[AtomOptions]
-public extern struct Options : IOptions;
 
 [numthreads(1, 1, 1)]
 void MainCS(u32 index : SV_DispatchThreadID)
 {
     Vector4F value = OptionsSrg.m_color;
-    if (Options.o_useTint())
+    if (o_useTint())
     {
         value *= 0.25 * f32(SLANGTEST_TINT_STRENGTH);
     }
 #ifdef SLANGTEST_EXTRA_OPTION
-    value.y += f32(Options.o_extraBands());
+    value.y += f32(o_extraBands());
 #endif
     OptionsSrg.m_output[index] = value;
 }

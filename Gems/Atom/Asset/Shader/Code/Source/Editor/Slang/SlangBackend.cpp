@@ -247,9 +247,9 @@ namespace AZ::ShaderBuilder
         const SlangBackend::ProgramCompileRequest& request,
         const AZStd::string& sourcePath)
     {
-        // Shader options: discover the option declarations across the loaded modules and
-        // satisfy their accessor externs with the generated implementation module for the
-        // requested lowering mode.
+        // Shader options: discover the [AtomOption] extern functions across the loaded modules
+        // and satisfy them with the generated implementation module for the requested lowering
+        // mode.
         auto discoveredOutcome = SlangOptionsModuleGenerator::DiscoverShaderOptions(compilation.m_session);
         if (!discoveredOutcome.IsSuccess())
         {

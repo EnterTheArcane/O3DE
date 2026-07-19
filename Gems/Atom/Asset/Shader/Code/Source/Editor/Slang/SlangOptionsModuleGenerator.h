@@ -28,12 +28,9 @@ namespace AZ::ShaderBuilder
     //! produced deterministically from the declaration order, never authored.
     struct ShaderOptionDeclaration
     {
-        //! The runtime name: what the ShaderOptionGroupLayout, .materialtype references and
-        //! variant lists use. The interface method name, unless [AtomOptionAlias] overrides it.
+        //! The option function's name, which is also the runtime name: what the
+        //! ShaderOptionGroupLayout, .materialtype references and variant lists use.
         Name m_name;
-
-        //! The interface requirement's method name — the name generated implementations define.
-        AZStd::string m_methodName;
 
         RPI::ShaderOptionType m_type = RPI::ShaderOptionType::Boolean;
 
@@ -53,7 +50,7 @@ namespace AZ::ShaderBuilder
     };
 
     //! The three lives of one authored option (spec D6). Use-sites are identical in every mode;
-    //! the builder generates a different implementation struct per mode (feasibility gate 2).
+    //! the builder generates a different implementation module per mode (feasibility gate 2).
     enum class ShaderOptionLoweringMode
     {
         //! Accessors return link-time constant values — variant builds.
@@ -70,27 +67,16 @@ namespace AZ::ShaderBuilder
 
     namespace SlangOptionsModuleGenerator
     {
-        //! One [AtomOptions] extern struct and the interface it conforms to: the anchor a
-        //! generated implementation module exports a struct for.
-        struct DiscoveredOptionsProvider
-        {
-            AZStd::string m_structName;
-            AZStd::string m_interfaceName;
-
-            //! Name of the module declaring the struct; the generated module imports it.
-            AZStd::string m_declaringModuleName;
-
-            //! Indices into DiscoveredShaderOptions::m_declarations of this provider's options.
-            AZStd::vector<size_t> m_declarationIndices;
-        };
-
         //! Everything the options discovery walk finds across a session's loaded modules.
         struct DiscoveredShaderOptions
         {
-            //! In module-load order, then declaration order inside each interface — the packing order.
+            //! In module-load order, then declaration order inside each module — the packing order.
             AZStd::vector<ShaderOptionDeclaration> m_declarations;
 
-            AZStd::vector<DiscoveredOptionsProvider> m_providers;
+            //! Names of the modules declaring option functions, unique, in module-load order; the
+            //! generated implementation module imports each (for the extern declarations and any
+            //! enum option types).
+            AZStd::vector<AZStd::string> m_declaringModuleNames;
 
             //! ShaderVariantKey fallback designation from the [AtomVariantFallback] member
             //! attribute: the ParameterBlock variable name (the runtime ShaderResourceGroup name)
@@ -103,11 +89,11 @@ namespace AZ::ShaderBuilder
             AZStd::string m_fallbackDeclaringModuleName;
         };
 
-        //! Walks every module loaded in @session for [AtomOptions] extern structs, resolves the
-        //! interface each conforms to, and reads the option set off the interface requirements:
-        //! name and type from the requirement itself, default from [AtomOption], integer range
-        //! from [AtomOptionRange], enumeration values from the return type's enum declaration.
-        //! Also finds the [AtomVariantFallback] ShaderResourceGroup member.
+        //! Walks every module loaded in @session for [AtomOption]-attributed extern functions and
+        //! reads the option set off them: name and type from the function itself, default from
+        //! the attribute argument (0 when omitted), integer range from [AtomRange], enumeration
+        //! values from the return type's enum declaration. Also finds the [AtomVariantFallback]
+        //! ShaderResourceGroup member.
         AZ::Outcome<DiscoveredShaderOptions, AZStd::string> DiscoverShaderOptions(slang::ISession* session);
 
         //! Builds the finalized ShaderOptionGroupLayout from declarations: sequential deterministic
@@ -117,10 +103,10 @@ namespace AZ::ShaderBuilder
             AZStd::span<const ShaderOptionDeclaration> declarations);
 
         //! Generates the implementation module composed with the program at link time: one
-        //! `export struct <provider> : <interface>` per discovered provider, each static method
-        //! returning its option's value for the mode. DynamicFallback extracts each option's
-        //! bits from the designated fallback member, read directly through an import of the
-        //! declaring module. SpecializationConstant is target-specific: Spirv uses native
+        //! `export` function per discovered option, returning its option's value for the mode.
+        //! DynamicFallback extracts each option's bits from the designated fallback member, read
+        //! directly through an import of the declaring module. SpecializationConstant is
+        //! target-specific: Spirv uses native
         //! [vk::constant_id] constants with sequential ids; Dxil routes each specialization id
         //! through the compiler service's HLSL-prelude volatile read so the id survives into the
         //! DXIL as the patchable dword dxsc.exe expects (PostProcessStage runs the patch).

@@ -61,9 +61,9 @@ namespace AZ::ShaderBuilder
             //! IComponentType::getEntryPointCode.
             AZStd::vector<AZStd::string> m_entryPointNames;
 
-            //! Shader options discovered from the ATOM_OPTION declarations across the loaded
-            //! modules, and the generated accessor-implementation module that satisfies them
-            //! (null when the shader declares no options).
+            //! Shader options discovered from the [AtomOption] extern function declarations
+            //! across the loaded modules, and the generated implementation module that satisfies
+            //! them (null when the shader declares no options).
             SlangOptionsModuleGenerator::DiscoveredShaderOptions m_discoveredOptions;
             RPI::Ptr<RPI::ShaderOptionGroupLayout> m_shaderOptionLayout;
             Slang::ComPtr<slang::IModule> m_optionsImplementationModule;

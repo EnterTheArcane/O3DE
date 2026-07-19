@@ -46,59 +46,35 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
         return caseNames;
     }
 
-    //! Reads one option declaration off an [AtomOption]-attributed interface requirement.
+    //! Reads one option declaration off an [AtomOption]-attributed extern function.
     static AZ::Outcome<ShaderOptionDeclaration, AZStd::string> ReadOptionDeclaration(
-        slang::FunctionReflection* requirement,
-        AZStd::string_view interfaceName,
+        slang::FunctionReflection* optionFunction,
         const AZStd::unordered_map<AZStd::string, AZStd::vector<Name>>& enumCasesByName)
     {
         ShaderOptionDeclaration declaration;
-        declaration.m_methodName = requirement->getName();
+        declaration.m_name = Name(optionFunction->getName());
 
-        // [AtomOptionAlias] decouples the runtime name (layout, .materialtype references,
-        // variant lists) from the Slang method name, so ports keep legacy AZSL option names
-        // without carrying the prefix into the API
-        if (slang::UserAttribute* aliasAttribute = FindAttributeByName(requirement, "AtomOptionAlias"))
-        {
-            size_t aliasLength = 0;
-            const char* aliasText = aliasAttribute->getArgumentValueString(0, &aliasLength);
-            const AZStd::string_view alias = aliasText ? AZStd::string_view(aliasText, aliasLength) : AZStd::string_view();
-            const bool aliasIsIdentifier = !alias.empty()
-                && !isdigit(static_cast<unsigned char>(alias.front()))
-                && AZStd::all_of(alias.begin(), alias.end(), [](char character)
-                    {
-                        return isalnum(static_cast<unsigned char>(character)) || character == '_';
-                    });
-            if (!aliasIsIdentifier)
-            {
-                return AZ::Failure(AZStd::string::format(
-                    "Option %s has an [AtomOptionAlias] runtime name that is not a valid identifier", requirement->getName()));
-            }
-            declaration.m_name = Name(alias);
-        }
-        else
-        {
-            declaration.m_name = Name(declaration.m_methodName);
-        }
-
-        slang::UserAttribute* optionAttribute = FindAttributeByName(requirement, "AtomOption");
-        if (!optionAttribute)
+        if (optionFunction->getParameterCount() != 0)
         {
             return AZ::Failure(AZStd::string::format(
-                "Options interface %.*s requirement %s has no [AtomOption(default)] attribute",
-                AZ_STRING_ARG(interfaceName), requirement->getName()));
+                "Option %s takes parameters; an option function is an extern parameterless accessor", optionFunction->getName()));
         }
+
+        // The attribute argument is the typed default; an omitted argument means the attribute
+        // field's declared default of 0 (false / first enum case)
+        slang::UserAttribute* optionAttribute = FindAttributeByName(optionFunction, "AtomOption");
         int defaultValue = 0;
-        if (SLANG_FAILED(optionAttribute->getArgumentValueInt(0, &defaultValue)))
+        if (optionAttribute->getArgumentCount() > 0
+            && SLANG_FAILED(optionAttribute->getArgumentValueInt(0, &defaultValue)))
         {
             return AZ::Failure(AZStd::string::format(
-                "Option %s has an [AtomOption] default that does not evaluate to a constant", requirement->getName()));
+                "Option %s has an [AtomOption] default that does not evaluate to a constant", optionFunction->getName()));
         }
 
-        slang::TypeReflection* returnType = requirement->getReturnType();
+        slang::TypeReflection* returnType = optionFunction->getReturnType();
         if (!returnType || !returnType->getName())
         {
-            return AZ::Failure(AZStd::string::format("Option %s has no readable return type", requirement->getName()));
+            return AZ::Failure(AZStd::string::format("Option %s has no readable return type", optionFunction->getName()));
         }
         declaration.m_typeText = returnType->getName();
 
@@ -112,7 +88,7 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
             && (returnType->getScalarType() == slang::TypeReflection::ScalarType::Int32
                 || returnType->getScalarType() == slang::TypeReflection::ScalarType::UInt32))
         {
-            slang::UserAttribute* rangeAttribute = FindAttributeByName(requirement, "AtomOptionRange");
+            slang::UserAttribute* rangeAttribute = FindAttributeByName(optionFunction, "AtomRange");
             int minValue = 0;
             int maxValue = 0;
             if (!rangeAttribute
@@ -120,13 +96,13 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
                 || SLANG_FAILED(rangeAttribute->getArgumentValueInt(1, &maxValue)))
             {
                 return AZ::Failure(AZStd::string::format(
-                    "Integer option %s needs an [AtomOptionRange(min, max)] attribute", requirement->getName()));
+                    "Integer option %s needs an [AtomRange(min, max)] attribute", optionFunction->getName()));
             }
             if (defaultValue < minValue || defaultValue > maxValue)
             {
                 return AZ::Failure(AZStd::string::format(
                     "Integer option %s has default %d outside its range [%d, %d]",
-                    requirement->getName(), defaultValue, minValue, maxValue));
+                    optionFunction->getName(), defaultValue, minValue, maxValue));
             }
             declaration.m_type = RPI::ShaderOptionType::IntegerRange;
             declaration.m_minValue = minValue;
@@ -140,13 +116,13 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
             {
                 return AZ::Failure(AZStd::string::format(
                     "Option %s returns enum %s, whose declaration was not found in the shader's modules",
-                    requirement->getName(), declaration.m_typeText.c_str()));
+                    optionFunction->getName(), declaration.m_typeText.c_str()));
             }
             if (defaultValue < 0 || defaultValue >= aznumeric_cast<int>(enumIterator->second.size()))
             {
                 return AZ::Failure(AZStd::string::format(
                     "Option %s has default %d, which is not a case index of enum %s",
-                    requirement->getName(), defaultValue, declaration.m_typeText.c_str()));
+                    optionFunction->getName(), defaultValue, declaration.m_typeText.c_str()));
             }
             declaration.m_type = RPI::ShaderOptionType::Enumeration;
             declaration.m_enumValues = enumIterator->second;
@@ -156,7 +132,7 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
         {
             return AZ::Failure(AZStd::string::format(
                 "Option %s has type %s; shader options are bool, int/uint, or an enum",
-                requirement->getName(), declaration.m_typeText.c_str()));
+                optionFunction->getName(), declaration.m_typeText.c_str()));
         }
 
         return AZ::Success(AZStd::move(declaration));
@@ -166,27 +142,23 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
     {
         DiscoveredShaderOptions discovered;
 
-        struct NamedDecl
+        struct OptionFunctionRecord
         {
-            AZStd::string m_name;
             slang::DeclReflection* m_decl = nullptr;
-            SlangInt m_moduleIndex = 0;
+            AZStd::string m_moduleName;
         };
-        AZStd::vector<NamedDecl> interfaceRecords;
-        AZStd::vector<NamedDecl> providerCandidates;
+        AZStd::vector<OptionFunctionRecord> optionFunctionRecords;
         AZStd::unordered_map<AZStd::string, AZStd::vector<Name>> enumCasesByName;
 
         // Pass 1 over all loaded modules: enum declarations, the [AtomVariantFallback] member,
-        // and every named top-level declaration classified through the module layout's type
-        // reflection (interface decls surface as Kind::Unsupported, so the layout is the only
-        // reliable classifier).
+        // and every [AtomOption]-attributed function. Options are read in a second pass so an
+        // option's enum type can be declared in any module, not just ones loaded before it.
         const SlangInt moduleCount = session->getLoadedModuleCount();
         for (SlangInt moduleIndex = 0; moduleIndex < moduleCount; ++moduleIndex)
         {
             slang::IModule* currentModule = session->getLoadedModule(moduleIndex);
             slang::DeclReflection* moduleDecl = currentModule->getModuleReflection();
-            slang::ProgramLayout* moduleLayout = currentModule->getLayout();
-            if (!moduleDecl || !moduleLayout)
+            if (!moduleDecl)
             {
                 continue;
             }
@@ -235,100 +207,39 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
                     continue;
                 }
 
-                slang::TypeReflection* namedType = moduleLayout->findTypeByName(child->getName());
-                if (!namedType)
+                if (child->getKind() == slang::DeclReflection::Kind::Func)
                 {
-                    continue;
-                }
-                if (namedType->getKind() == slang::TypeReflection::Kind::Interface)
-                {
-                    interfaceRecords.push_back({child->getName(), child, moduleIndex});
-                }
-                else if (namedType->getKind() == slang::TypeReflection::Kind::Struct
-                    && FindAttributeByName(namedType, "AtomOptions"))
-                {
-                    providerCandidates.push_back({child->getName(), child, moduleIndex});
+                    slang::FunctionReflection* function = child->asFunction();
+                    if (function && FindAttributeByName(function, "AtomOption"))
+                    {
+                        optionFunctionRecords.push_back({child, currentModule->getName()});
+                        if (discovered.m_declaringModuleNames.empty()
+                            || discovered.m_declaringModuleNames.back() != currentModule->getName())
+                        {
+                            discovered.m_declaringModuleNames.push_back(currentModule->getName());
+                        }
+                    }
                 }
             }
         }
 
-        // Pass 2: match each [AtomOptions] struct to the one options interface it conforms to and
-        // read the option set off that interface's requirements
+        // Pass 2: read the option set off the attributed functions, in module-load order then
+        // declaration order — the packing order
         AZStd::unordered_set<AZStd::string> seenOptionNames;
-        for (const NamedDecl& providerCandidate : providerCandidates)
+        for (const OptionFunctionRecord& optionFunctionRecord : optionFunctionRecords)
         {
-            slang::ProgramLayout* providerLayout = session->getLoadedModule(providerCandidate.m_moduleIndex)->getLayout();
-            slang::TypeReflection* providerType = providerLayout ? providerLayout->findTypeByName(providerCandidate.m_name.c_str()) : nullptr;
-            if (!providerType)
+            auto declarationOutcome = ReadOptionDeclaration(optionFunctionRecord.m_decl->asFunction(), enumCasesByName);
+            if (!declarationOutcome.IsSuccess())
             {
-                continue;
+                return AZ::Failure(declarationOutcome.TakeError());
             }
-
-            const NamedDecl* matchedInterface = nullptr;
-            for (const NamedDecl& interfaceRecord : interfaceRecords)
-            {
-                slang::TypeReflection* interfaceType = providerLayout->findTypeByName(interfaceRecord.m_name.c_str());
-                if (interfaceType && providerLayout->isSubType(providerType, interfaceType))
-                {
-                    if (matchedInterface)
-                    {
-                        return AZ::Failure(AZStd::string::format(
-                            "[AtomOptions] struct %s conforms to more than one interface (%s and %s); options need exactly one",
-                            providerCandidate.m_name.c_str(), matchedInterface->m_name.c_str(), interfaceRecord.m_name.c_str()));
-                    }
-                    matchedInterface = &interfaceRecord;
-                }
-            }
-            if (!matchedInterface)
+            ShaderOptionDeclaration declaration = declarationOutcome.TakeValue();
+            if (!seenOptionNames.insert(declaration.m_name.GetStringView()).second)
             {
                 return AZ::Failure(AZStd::string::format(
-                    "[AtomOptions] struct %s conforms to no interface declared in the shader's modules",
-                    providerCandidate.m_name.c_str()));
+                    "Shader option %s is declared more than once", declaration.m_name.GetCStr()));
             }
-
-            DiscoveredOptionsProvider provider;
-            provider.m_structName = providerCandidate.m_name;
-            provider.m_interfaceName = matchedInterface->m_name;
-            provider.m_declaringModuleName = session->getLoadedModule(providerCandidate.m_moduleIndex)->getName();
-
-            for (unsigned memberIndex = 0; memberIndex < matchedInterface->m_decl->getChildrenCount(); ++memberIndex)
-            {
-                slang::DeclReflection* member = matchedInterface->m_decl->getChild(memberIndex);
-                if (!member || !member->getName() || member->getName()[0] == '\0' || member->getName()[0] == '$'
-                    || azstricmp(member->getName(), "This") == 0)
-                {
-                    continue;
-                }
-                slang::FunctionReflection* requirement = member->asFunction();
-                if (!requirement)
-                {
-                    return AZ::Failure(AZStd::string::format(
-                        "Options interface %s member %s must be a static function requirement",
-                        matchedInterface->m_name.c_str(), member->getName()));
-                }
-
-                auto declarationOutcome = ReadOptionDeclaration(requirement, matchedInterface->m_name, enumCasesByName);
-                if (!declarationOutcome.IsSuccess())
-                {
-                    return AZ::Failure(declarationOutcome.TakeError());
-                }
-                ShaderOptionDeclaration declaration = declarationOutcome.TakeValue();
-                if (!seenOptionNames.insert(declaration.m_name.GetStringView()).second)
-                {
-                    return AZ::Failure(AZStd::string::format(
-                        "Shader option %s is declared more than once", declaration.m_name.GetCStr()));
-                }
-                provider.m_declarationIndices.push_back(discovered.m_declarations.size());
-                discovered.m_declarations.push_back(AZStd::move(declaration));
-            }
-
-            if (provider.m_declarationIndices.empty())
-            {
-                return AZ::Failure(AZStd::string::format(
-                    "[AtomOptions] struct %s conforms to interface %s, which declares no [AtomOption] requirements",
-                    provider.m_structName.c_str(), provider.m_interfaceName.c_str()));
-            }
-            discovered.m_providers.push_back(AZStd::move(provider));
+            discovered.m_declarations.push_back(AZStd::move(declaration));
         }
 
         return AZ::Success(AZStd::move(discovered));
@@ -419,31 +330,27 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
         return aznumeric_cast<int32_t>(option.FindValue(option.GetDefaultValue()).GetIndex());
     }
 
-    //! Emits the provider structs, with @makeBody producing each option's return expression.
+    //! Emits the export functions satisfying the option externs, with @makeBody producing each
+    //! option's return expression.
     template<typename MakeBody>
-    static void AppendProviderStructs(
+    static void AppendOptionFunctions(
         AZStd::string& module,
         const DiscoveredShaderOptions& discovered,
         MakeBody&& makeBody)
     {
-        for (const DiscoveredOptionsProvider& provider : discovered.m_providers)
+        for (const ShaderOptionDeclaration& declaration : discovered.m_declarations)
         {
-            module += AZStd::string::format("export struct %s : %s\n{\n", provider.m_structName.c_str(), provider.m_interfaceName.c_str());
-            for (const size_t declarationIndex : provider.m_declarationIndices)
-            {
-                const ShaderOptionDeclaration& declaration = discovered.m_declarations[declarationIndex];
-                module += AZStd::string::format(
-                    "    static %s %s() { return %s; }\n",
-                    declaration.m_typeText.c_str(),
-                    declaration.m_methodName.c_str(),
-                    makeBody(declaration).c_str());
-            }
-            module += "}\n\n";
+            module += AZStd::string::format(
+                "export %s %s() { return %s; }\n",
+                declaration.m_typeText.c_str(),
+                declaration.m_name.GetCStr(),
+                makeBody(declaration).c_str());
         }
+        module += '\n';
     }
 
-    //! Module header plus the imports the generated structs need: every provider's declaring
-    //! module (for the interface and any enum types) and the fallback member's module.
+    //! Module header plus the imports the generated functions need: every module declaring an
+    //! option (for the extern declarations and any enum types) and the fallback member's module.
     static AZStd::string MakeModuleHeader(
         AZStd::string_view moduleName,
         const DiscoveredShaderOptions& discovered,
@@ -451,11 +358,11 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
     {
         AZStd::string module = AZStd::string::format("module %.*s;\n\n", AZ_STRING_ARG(moduleName));
         AZStd::unordered_set<AZStd::string> importedModules;
-        for (const DiscoveredOptionsProvider& provider : discovered.m_providers)
+        for (const AZStd::string& declaringModuleName : discovered.m_declaringModuleNames)
         {
-            if (importedModules.insert(provider.m_declaringModuleName).second)
+            if (importedModules.insert(declaringModuleName).second)
             {
-                module += AZStd::string::format("import %s;\n", provider.m_declaringModuleName.c_str());
+                module += AZStd::string::format("import %s;\n", declaringModuleName.c_str());
             }
         }
         if (importFallbackModule && !discovered.m_fallbackDeclaringModuleName.empty()
@@ -547,7 +454,7 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
             }
             module += '\n';
 
-            AppendProviderStructs(module, discovered,
+            AppendOptionFunctions(module, discovered,
                 [](const ShaderOptionDeclaration& declaration)
                 {
                     const AZStd::string constantName = AZStd::string::format("AtomOptionSpecialization_%s", declaration.m_name.GetCStr());
@@ -573,7 +480,7 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
                 "    __intrinsic_asm \"AtomReadSpecializationConstant($0)\";\n"
                 "}\n\n";
 
-            AppendProviderStructs(module, discovered,
+            AppendOptionFunctions(module, discovered,
                 [&optionLookup](const ShaderOptionDeclaration& declaration)
                 {
                     const RPI::ShaderOptionDescriptor& option = *optionLookup.find(declaration.m_name.GetStringView())->second;
@@ -590,7 +497,7 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
         }
         else
         {
-            AppendProviderStructs(module, discovered,
+            AppendOptionFunctions(module, discovered,
                 [&discovered, &optionLookup](const ShaderOptionDeclaration& declaration)
                 {
                     const RPI::ShaderOptionDescriptor& option = *optionLookup.find(declaration.m_name.GetStringView())->second;
@@ -617,7 +524,7 @@ namespace AZ::ShaderBuilder::SlangOptionsModuleGenerator
         const bool hasUnspecifiedOptions = !optionGroup.IsFullySpecified();
         AZStd::string module = MakeModuleHeader(moduleName, discovered, hasUnspecifiedOptions && dynamicReadsAvailable);
 
-        AppendProviderStructs(module, discovered,
+        AppendOptionFunctions(module, discovered,
             [layout, &optionGroup, &discovered, dynamicReadsAvailable](const ShaderOptionDeclaration& declaration)
             {
                 const RPI::ShaderOptionIndex optionIndex = layout->FindShaderOptionIndex(declaration.m_name);

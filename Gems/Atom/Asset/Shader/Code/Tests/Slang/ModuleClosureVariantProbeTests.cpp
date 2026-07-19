@@ -98,25 +98,20 @@ namespace UnitTest
     {
     public:
         //! Same authoring form as the generator tests: attribute vocabulary inlined (production
-        //! gets it from the force-included prelude), aliased bool + enum + ranged int options,
-        //! fallback-designated ShaderResourceGroup.
+        //! gets it from the force-included prelude), flat [AtomOption] extern functions — bool
+        //! with the omitted-argument default + enum + ranged int — and a fallback-designated
+        //! ShaderResourceGroup.
         static constexpr AZStd::string_view UseSiteSource = R"(
 module ClosureProbe;
 
-[__AttributeUsage(_AttributeTargets.Struct)]
-struct AtomOptionsAttribute {};
+[__AttributeUsage(_AttributeTargets.Function)]
+struct AtomOptionAttribute { int value = 0; };
 
 [__AttributeUsage(_AttributeTargets.Function)]
-struct AtomOptionAttribute { int defaultValue; };
-
-[__AttributeUsage(_AttributeTargets.Function)]
-struct AtomOptionRangeAttribute { int minValue; int maxValue; };
+struct AtomRangeAttribute { int min; int max; };
 
 [__AttributeUsage(_AttributeTargets.Var)]
 struct AtomVariantFallbackAttribute {};
-
-[__AttributeUsage(_AttributeTargets.Function)]
-struct AtomOptionAliasAttribute { string runtimeName; };
 
 public enum Quality
 {
@@ -125,20 +120,14 @@ public enum Quality
     High,
 }
 
-public interface IOptions
-{
-    [AtomOption(false)] [AtomOptionAlias("o_useTint")]
-    static bool useTint();
+[AtomOption]
+public extern bool o_useTint();
 
-    [AtomOption(Quality.Medium)]
-    static Quality o_quality();
+[AtomOption(Quality.Medium)]
+public extern Quality o_quality();
 
-    [AtomOption(4)] [AtomOptionRange(1, 8)]
-    static int o_sampleCount();
-}
-
-[AtomOptions]
-public extern struct Options : IOptions;
+[AtomOption(4)] [AtomRange(1, 8)]
+public extern int o_sampleCount();
 
 public struct DrawShaderResourceGroup
 {
@@ -154,12 +143,12 @@ RWStructuredBuffer<float4> Output;
 void MainCS(uint3 id : SV_DispatchThreadID)
 {
     float4 value = float4(1.0, 1.0, 1.0, 1.0);
-    if (Options.useTint())
+    if (o_useTint())
     {
         value *= 0.5;
     }
-    value.x += float((int)Options.o_quality());
-    value.y += float(Options.o_sampleCount());
+    value.x += float((int)o_quality());
+    value.y += float(o_sampleCount());
     Output[id.x] = value;
 }
 )";
@@ -333,7 +322,6 @@ void MainCS(uint3 id : SV_DispatchThreadID)
             const auto discovered = discoveredOutcome.TakeValue();
             ASSERT_EQ(discovered.m_declarations.size(), 3);
             EXPECT_EQ(discovered.m_declarations[0].m_name, Name{"o_useTint"});
-            EXPECT_EQ(discovered.m_declarations[0].m_methodName, "useTint");
             EXPECT_EQ(discovered.m_declarations[0].m_type, RPI::ShaderOptionType::Boolean);
             EXPECT_EQ(discovered.m_declarations[0].m_defaultValue, Name{"false"});
             EXPECT_EQ(discovered.m_declarations[1].m_name, Name{"o_quality"});
@@ -346,9 +334,7 @@ void MainCS(uint3 id : SV_DispatchThreadID)
             EXPECT_EQ(discovered.m_declarations[2].m_type, RPI::ShaderOptionType::IntegerRange);
             EXPECT_EQ(discovered.m_declarations[2].m_minValue, 1);
             EXPECT_EQ(discovered.m_declarations[2].m_maxValue, 8);
-            ASSERT_EQ(discovered.m_providers.size(), 1);
-            EXPECT_EQ(discovered.m_providers[0].m_structName, "Options");
-            EXPECT_EQ(discovered.m_providers[0].m_declaringModuleName, "ClosureProbe");
+            EXPECT_THAT(discovered.m_declaringModuleNames, ::testing::ElementsAre("ClosureProbe"));
             EXPECT_EQ(discovered.m_fallbackShaderResourceGroupName, "DrawSrg");
             EXPECT_EQ(discovered.m_fallbackMemberName, "m_shaderVariantKeyFallback");
 

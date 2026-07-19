@@ -89,26 +89,25 @@ public struct AtomStaticSamplerAttribute
 
 // SHADER OPTIONS
 //
-// Options are authored as an interface of static function requirements plus an extern struct the
-// builder implements per lowering mode (baked constants, specialization constants, or dynamic
-// reads of the ShaderVariantKey fallback) and composes at link time — use-sites are identical in
-// every mode:
+// Options are authored as [AtomOption]-attributed extern functions — AZSL's global option
+// declarations, as functions. Each option is one declaration; the builder discovers them through
+// declaration reflection and satisfies the externs with a generated implementation module per
+// lowering mode (baked constants, specialization constants, or dynamic reads of the
+// ShaderVariantKey fallback) composed at link time — use-sites are identical in every mode:
 //
-//     public interface IOptions
-//     {
-//         [AtomOption(true)]
-//         static bool o_useTint();
+//     [AtomOption]                         // no argument: defaults to 0 (false / first case)
+//     public extern bool o_useTint();
 //
-//         [AtomOption(QualityT.Medium)]        // typed default: enum literals coerce to int
-//         static QualityT o_quality();
+//     [AtomOption(QualityT.Medium)]        // typed default: enum literals coerce to int
+//     public extern QualityT o_quality();
 //
-//         [AtomOption(4)] [AtomOptionRange(1, 8)]
-//         static i32 o_sampleCount();
-//     }
-//     [AtomOptions]
-//     public extern struct Options : IOptions;
+//     [AtomOption(4)] [AtomRange(1, 8)]
+//     public extern i32 o_sampleCount();
 //
-//     ... if (Options.o_useTint()) { ... }
+//     ... if (o_useTint()) { ... }
+//
+// The function name is the runtime name — what the ShaderOptionGroupLayout, .materialtype option
+// references and shader variant lists use — so options keep the o_ prefix.
 //
 // Dynamic lowering additionally needs one uint4 ShaderResourceGroup member designated as the
 // ShaderVariantKey fallback, in a public ParameterBlock:
@@ -116,41 +115,21 @@ public struct AtomStaticSamplerAttribute
 //     [AtomVariantFallback]
 //     public Vector4U m_shaderVariantKeyFallback;
 
-//! Marks the extern struct whose link-time implementation the builder generates: the anchor the
-//! option discovery starts from. The struct must conform to exactly one interface of
-//! [AtomOption]-attributed static function requirements.
-[__AttributeUsage(_AttributeTargets.Struct)]
-public struct AtomOptionsAttribute {};
-
-//! Declares one interface requirement as a shader option and carries its default. The argument
-//! is typed and compile-checked: bool and enum literals coerce onto the int field (an enum
-//! default is its case index).
+//! Declares an extern function as a shader option and carries its default. The argument is typed
+//! and compile-checked: bool and enum literals coerce onto the int field (an enum default is its
+//! case index); omitting the argument defaults to 0.
 [__AttributeUsage(_AttributeTargets.Function)]
 public struct AtomOptionAttribute
 {
-    public int defaultValue;
+    public int value = 0;
 };
 
 //! The inclusive value range of an integer shader option.
 [__AttributeUsage(_AttributeTargets.Function)]
-public struct AtomOptionRangeAttribute
+public struct AtomRangeAttribute
 {
     public int min;
     public int max;
-};
-
-//! Overrides the runtime name of a shader option — the name the ShaderOptionGroupLayout,
-//! .materialtype option references and shader variant lists use. Ports keep their legacy AZSL
-//! option names without carrying the prefix into the Slang API:
-//!
-//!     [AtomOption(false)] [AtomOptionAlias("o_shadeAll")]
-//!     static bool shadeAll();     // runtime name o_shadeAll, use-sites Options.shadeAll()
-//!
-//! Without an alias, the runtime name is the method name.
-[__AttributeUsage(_AttributeTargets.Function)]
-public struct AtomOptionAliasAttribute
-{
-    public string runtimeName;
 };
 
 //! Designates a uint4 ShaderResourceGroup member as the 128-bit ShaderVariantKey fallback the

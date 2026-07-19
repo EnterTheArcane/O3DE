@@ -238,20 +238,16 @@ void MainCS(uint3 id : SV_DispatchThreadID)
 
     TEST_F(SpecializationLoweringProbeTests, Dx12SpliceLeg_TwoOptionDxscRoundTrip)
     {
-        // The production DXIL spec-mode shape end to end: the generated implementation struct
-        // routes each option through the __intrinsic_asm splice into the service's HLSL-prelude
-        // volatile helper, both options feed BRANCHES (the constant-folding hazard), and
-        // dxsc.exe must find both specialization ids and report their patch offsets.
+        // The production DXIL spec-mode shape end to end: the generated implementation module
+        // routes each option function through the __intrinsic_asm splice into the service's
+        // HLSL-prelude volatile helper, both options feed BRANCHES (the constant-folding
+        // hazard), and dxsc.exe must find both specialization ids and report their patch
+        // offsets.
         constexpr AZStd::string_view useSiteSource = R"(
 module SpecProbe;
 
-public interface IOptions
-{
-    static bool useTint();
-    static int quality();
-}
-
-public extern struct Options : IOptions;
+public extern bool o_useTint();
+public extern int o_quality();
 
 RWStructuredBuffer<int> Output;
 
@@ -260,11 +256,11 @@ RWStructuredBuffer<int> Output;
 void MainCS(uint3 id : SV_DispatchThreadID)
 {
     int value = 0;
-    if (Options.useTint())
+    if (o_useTint())
     {
         value += 1;
     }
-    if (Options.quality() == 2)
+    if (o_quality() == 2)
     {
         value += 10;
     }
@@ -280,11 +276,8 @@ int AtomReadSpecializationConstantRaw(int specializationId)
     __intrinsic_asm "AtomReadSpecializationConstant($0)";
 }
 
-export struct Options : IOptions
-{
-    static bool useTint() { return AtomReadSpecializationConstantRaw(0) != 0; }
-    static int quality() { return AtomReadSpecializationConstantRaw(1); }
-}
+export bool o_useTint() { return AtomReadSpecializationConstantRaw(0) != 0; }
+export int o_quality() { return AtomReadSpecializationConstantRaw(1); }
 )SLANG";
 
         AZStd::vector<uint8_t> dxilByteCode;

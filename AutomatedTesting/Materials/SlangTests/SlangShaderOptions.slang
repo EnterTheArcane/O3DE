@@ -6,12 +6,12 @@
  *
  */
 
-// Shader options in the Atom authoring form: an interface of [AtomOption]-attributed static
-// function requirements declares each option once — its name, type, typed default and range —
-// and the [AtomOptions] extern struct is implemented by the builder per lowering mode (baked
-// constants, specialization constants, or dynamic reads of the ShaderVariantKey fallback) and
-// composed at link time. Use-sites are identical in every mode. The [AtomVariantFallback] member
-// designates where the runtime writes the key for dynamic option switching.
+// Shader options in the Atom authoring form: each option is one [AtomOption]-attributed extern
+// function declaring its name, type, typed default and range, implemented by the builder per
+// lowering mode (baked constants, specialization constants, or dynamic reads of the
+// ShaderVariantKey fallback) and composed at link time. Use-sites are identical in every mode.
+// The [AtomVariantFallback] member designates where the runtime writes the key for dynamic
+// option switching.
 
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 public struct OptionsShaderResourceGroupLayout
@@ -30,20 +30,14 @@ public enum DebugModeT
     Solid,
 }
 
-public interface IOptions
-{
-    [AtomOption(true)]
-    static bool o_useTint();
+[AtomOption(true)]
+public extern bool o_useTint();
 
-    [AtomOption(DebugModeT.None)]
-    static DebugModeT o_debugMode();
+[AtomOption(DebugModeT.None)]
+public extern DebugModeT o_debugMode();
 
-    [AtomOption(4)] [AtomOptionRange(1, 8)]
-    static i32 o_bandCount();
-}
-
-[AtomOptions]
-public extern struct Options : IOptions;
+[AtomOption(4), AtomRange(1, 8)]
+public extern i32 o_bandCount();
 
 // Supervariants deliver their ".shader" Definitions as preprocessor macros: the TintBoost
 // supervariant amplifies the tint without touching the option layout (which must stay
@@ -76,7 +70,7 @@ struct PixelOutput
 PixelOutput MainPS(VertexOutput input)
 {
     Vector4F color = Vector4F(input.m_uv, 0, 1);
-    switch (Options.o_debugMode())
+    switch (o_debugMode())
     {
     case DebugModeT.Uv:
         color = Vector4F(input.m_uv, 0, 1);
@@ -85,10 +79,10 @@ PixelOutput MainPS(VertexOutput input)
         color = Vector4F(1, 0, 1, 1);
         break;
     default:
-        color.z = frac(input.m_uv.x * f32(Options.o_bandCount()));
+        color.z = frac(input.m_uv.x * f32(o_bandCount()));
         break;
     }
-    if (Options.o_useTint())
+    if (o_useTint())
     {
         color *= OptionsSrg.m_tintColor * f32(SLANGTEST_TINT_STRENGTH);
     }

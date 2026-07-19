@@ -17,7 +17,7 @@ set(FILES
     Tests/Slang/ModuleClosureVariantProbeTests.cpp
     Tests/Slang/OptionsAccessorStyleProbeTests.cpp
     Tests/Slang/OptionsAuthoringDiscoveryProbeTests.cpp
-    Tests/Slang/OptionsInterfaceStyleProbeTests.cpp
+    Tests/Slang/OptionsFunctionStyleProbeTests.cpp
     Tests/Slang/SlangBackendTests.cpp
     Tests/Slang/SpecializationLoweringProbeTests.cpp
     Tests/Slang/SlangCompilerServiceTests.cpp
