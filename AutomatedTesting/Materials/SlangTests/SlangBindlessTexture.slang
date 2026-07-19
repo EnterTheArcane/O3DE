@@ -12,7 +12,7 @@
 
 import Atom.Features.Bindless;
 
-[AtomShaderResourceGroup(4 /*PerPass*/)]
+[AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 struct BindlessTestShaderResourceGroupLayout
 {
     RWStructuredBuffer<Vector4F> m_results;

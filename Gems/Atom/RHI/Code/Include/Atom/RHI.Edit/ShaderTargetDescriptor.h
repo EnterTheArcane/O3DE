@@ -29,6 +29,12 @@ namespace AZ::RHI
         MetalShadingLanguage, //!< MSL source, consumed by an external Metal toolchain.
         MetalLibrary, //!< Compiled metallib.
         Wgsl, //!< WebGPU shading language.
+        //! The RHI consumes reflection but no bytecode (the Null RHI): its shader assets carry
+        //! real ShaderResourceGroup layouts, options and pipeline layout with empty stage
+        //! functions. Distinct from None, which means "declares no target at all" and stays a
+        //! hard error for a modern language backend — a reflection-only target is one every
+        //! backend can serve, by running its frontend and emitting no code.
+        ReflectionOnly,
     };
 
     //! Language-neutral description of the compilation target a ShaderPlatformInterface consumes.

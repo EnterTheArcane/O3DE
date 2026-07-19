@@ -66,7 +66,10 @@ namespace AZ::ShaderBuilder
     bool SlangBackend::CanCompileTarget(const RHI::ShaderTargetDescriptor& targetDescriptor) const
     {
         return targetDescriptor.m_format == RHI::ShaderTargetFormat::Dxil
-            || targetDescriptor.m_format == RHI::ShaderTargetFormat::Spirv;
+            || targetDescriptor.m_format == RHI::ShaderTargetFormat::Spirv
+            // A reflection-only RHI (Null) consumes no bytecode: the frontend still runs to
+            // produce reflection, and CompileStage emits an empty stage function.
+            || targetDescriptor.m_format == RHI::ShaderTargetFormat::ReflectionOnly;
     }
 
     static SlangStage ToSlangStage(RPI::ShaderStageType stageType)
@@ -156,6 +159,14 @@ namespace AZ::ShaderBuilder
         case RHI::ShaderTargetFormat::Spirv:
             sessionDescriptor.m_target = SLANG_SPIRV;
             sessionDescriptor.m_profile = "spirv_1_5";
+            break;
+        case RHI::ShaderTargetFormat::ReflectionOnly:
+            // The bytecode is never consumed, but Slang still needs a concrete target to produce
+            // a ProgramLayout. Lay out with the HLSL register model: Atom's ShaderResourceGroup
+            // layouts are register-based, the layout hash excludes the space, and the reflection
+            // walker treats every non-SPIR-V target as register-classed.
+            sessionDescriptor.m_target = SLANG_DXIL;
+            sessionDescriptor.m_profile = "sm_6_2";
             break;
         default:
             return AZ::Failure(AZStd::string::format(
@@ -823,6 +834,18 @@ namespace AZ::ShaderBuilder
         }
 
         const AZStd::string entryPointName(input.m_entryPointName);
+
+        if (targetDescriptor.m_format == RHI::ShaderTargetFormat::ReflectionOnly)
+        {
+            // Mirrors the legacy path's no-op CompilePlatformInternal: this RHI consumes no
+            // bytecode, and builds its (empty) stage function from this descriptor alone. The
+            // shader asset still carries the frontend's full reflection.
+            StageResult result;
+            result.m_descriptor.m_stageType = input.m_stage;
+            result.m_descriptor.m_entryFunctionName = entryPointName;
+            return AZ::Success(AZStd::move(result));
+        }
+
         const MapOfStringToStageType entryPoints = {
             {entryPointName, ToStageType(input.m_stage)},
         };

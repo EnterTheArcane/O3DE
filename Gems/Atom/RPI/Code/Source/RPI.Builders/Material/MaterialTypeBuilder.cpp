@@ -8,6 +8,7 @@
 
 #include "MaterialTypeBuilder.h"
 #include "MaterialPipelineScriptRunner.h"
+#include "MaterialShaderGenerator.h"
 #include <Material/MaterialBuilderUtils.h>
 
 #include <AssetBuilderSDK/SerializationDependencies.h>
@@ -72,7 +73,8 @@ namespace AZ
             auto materialPipelinePaths = GetMaterialPipelinePaths();
             AZStd::string materialPipelinePathString;
             AzFramework::StringFunc::Join(materialPipelinePathString, materialPipelinePaths.begin(), materialPipelinePaths.end(), ", ");
-            return AZStd::string::format("[MaterialPipelineList %s]", materialPipelinePathString.c_str());
+            // [v3] language-generator seam (AZSL byte-identical + Slang); language inferred from file extensions
+            return AZStd::string::format("[MaterialPipelineList %s][v3]", materialPipelinePathString.c_str());
         }
 
         AZStd::string MaterialTypeBuilder::FinalStage::GetBuilderSettingsFingerprint() const
@@ -431,6 +433,20 @@ namespace AZ
             }
         }
 
+        // A shader source file's host language, read from its extension the same way the shader
+        // builder picks its language backend: .slang/.slangi is Slang, everything else AZSL. Applied
+        // to both the material type's authored shader code and a material pipeline's shader templates,
+        // so neither needs to declare its language explicitly -- a material type is only rendered by a
+        // pipeline whose templates are the same language its shader code can be stitched with.
+        static AZStd::string InferShaderCodeLanguage(AZStd::string_view shaderCodePath)
+        {
+            if (shaderCodePath.ends_with(".slang") || shaderCodePath.ends_with(".slangi"))
+            {
+                return "Slang";
+            }
+            return "AZSL";
+        }
+
         void MaterialTypeBuilder::PipelineStage::ProcessJobHelper(
             const AssetBuilderSDK::ProcessJobRequest& request,
             AssetBuilderSDK::ProcessJobResponse& response,
@@ -442,6 +458,19 @@ namespace AZ
             const AZStd::string materialTypeName = AZ::IO::Path{ materialTypeSourcePath }.Stem().Native();
 
             const AZStd::map<AZ::IO::Path, MaterialPipelineSourceData> materialPipelines = LoadMaterialPipelines();
+
+            // The host language of the material type's authored shader code selects the shader-code
+            // generator; only material pipelines authored in the same language can render it.
+            const AZStd::string materialTypeShaderCodeLanguage =
+                InferShaderCodeLanguage(materialTypeSourceData.m_materialShaderCode);
+            const MaterialShaderGenerator* shaderGenerator = GetMaterialShaderGenerator(materialTypeShaderCodeLanguage);
+            if (!shaderGenerator)
+            {
+                AZ_Error(
+                    MaterialTypeBuilderName, false, "Unknown material shader-code language '%s'.",
+                    materialTypeShaderCodeLanguage.c_str());
+                return;
+            }
 
             // A list of pointers to lists
             // Each leaf element is a line that will be included in the object SRG of every shader
@@ -475,6 +504,16 @@ namespace AZ
                 for (const auto& [materialPipelineFilePath, materialPipeline] : materialPipelines)
                 {
                     AZ_TraceContext("Material Pipeline", materialPipelineFilePath.c_str());
+
+                    // A pipeline can only render a material type authored in the same language; its
+                    // templates, the material shader code, and the parameter struct must all stitch
+                    // together. The pipeline's language is implicit in its shader-template files (the
+                    // same .azsli/.slangi cue used for the material shader code) -- no explicit field.
+                    if (!materialPipeline.m_shaderTemplates.empty() &&
+                        InferShaderCodeLanguage(materialPipeline.m_shaderTemplates.front().m_azsli) != materialTypeShaderCodeLanguage)
+                    {
+                        continue;
+                    }
 
                     if (!scriptRunner.RunScript(materialPipelineFilePath, materialPipeline, materialTypeSourceData))
                     {
@@ -572,17 +611,18 @@ namespace AZ
 
             auto MaterialShaderParameterLayout = materialTypeSourceData.CreateMaterialShaderParameterLayout();
 
-            AZStd::string materialParameterAzsliFileName = AZStd::string::format("%s_parameters.azsli", materialTypeName.c_str());
-            AZStd::to_lower(materialParameterAzsliFileName.begin(), materialParameterAzsliFileName.end());
-            AZ::IO::Path outputMaterialParameterAzsliFilePath = request.m_tempDirPath;
-            outputMaterialParameterAzsliFilePath /= materialParameterAzsliFileName;
+            AZStd::string materialParameterFileName =
+                AZStd::string::format("%s_parameters.%s", materialTypeName.c_str(), shaderGenerator->GetParameterFileExtension());
+            AZStd::to_lower(materialParameterFileName.begin(), materialParameterFileName.end());
+            AZ::IO::Path outputMaterialParameterFilePath = request.m_tempDirPath;
+            outputMaterialParameterFilePath /= materialParameterFileName;
 
-            if (MaterialShaderParameterLayout.WriteMaterialParameterStructureAzsli(outputMaterialParameterAzsliFilePath))
+            if (shaderGenerator->WriteMaterialParameterStructure(MaterialShaderParameterLayout, outputMaterialParameterFilePath))
             {
                 AssetBuilderSDK::JobProduct product;
                 product.m_outputFlags = AssetBuilderSDK::ProductOutputFlags::IntermediateAsset;
                 product.m_dependenciesHandled = true;
-                product.m_productFileName = outputMaterialParameterAzsliFilePath.String();
+                product.m_productFileName = outputMaterialParameterFilePath.String();
                 product.m_productAssetType = azrtti_typeid<RPI::MaterialTypeSourceData>();
                 product.m_productSubID = nextProductSubID++;
                 response.m_outputProducts.emplace_back(AZStd::move(product));
@@ -593,7 +633,7 @@ namespace AZ
                     MaterialTypeBuilderName,
                     false,
                     "Failed to write intermediate material parameters file '%s'.",
-                    outputMaterialParameterAzsliFilePath.c_str());
+                    outputMaterialParameterFilePath.c_str());
                 return;
             }
 
@@ -661,60 +701,26 @@ namespace AZ
                     return;
                 }
 
-                // Intermediate azsl file
-                AZStd::string generatedAzsl;
-                generatedAzsl += AZStd::string::format("// This code was generated by %s. Do not modify.\n", MaterialTypeBuilderName);
+                // Intermediate shader source: the language generator stitches the material-parameters
+                // include, the material type's shader code, and the pipeline's shader template. At this
+                // point m_azsli is absolute (ResolvePathReference() above). The AZSL generator reproduces
+                // the historical output byte for byte; the Slang generator uses .slang/SLANGI surfaces.
+                const AZStd::string materialTypeDefinesFilePathPosix = materialDefinesAzsliFilePath.empty()
+                    ? AZStd::string()
+                    : AZStd::string(AZ::IO::PathView(materialDefinesAzsliFilePath).StringAsPosix());
+                const AZStd::string materialTypeShaderCodeFilePathPosix{ AZ::IO::PathView(materialAzsliFilePath).StringAsPosix() };
+                const AZStd::string shaderTemplateFilePathPosix{ AZ::IO::PathView(shaderTemplate.m_azsli).StringAsPosix() };
 
-                if (!objectSrgAdditionsFromMaterialPipelines.empty())
-                {
-                    // Generate the #define that will include new object srg members that were specified in the material pipelines
-                    generatedAzsl += AZStd::string::format("#define MATERIAL_PIPELINE_OBJECT_SRG_MEMBERS   \\\n");
-
-                    for (const AZStd::string& objectSrgAddition : objectSrgAdditionsFromMaterialPipelines)
-                    {
-                        generatedAzsl += AZStd::string::format("%s   \\\n", objectSrgAddition.c_str());
-                    }
-                    generatedAzsl += AZStd::string::format("\n");
-                }
-
-                if (!drawSrgAdditionsFromMaterialPipelines.empty())
-                {
-                    // Generate the #define that will include new Draw srg members that were specified in the material pipelines
-                    generatedAzsl += AZStd::string::format("#define MATERIAL_PIPELINE_DRAW_SRG_MEMBERS   \\\n");
-
-                    for (const AZStd::string& drawSrgAddition : drawSrgAdditionsFromMaterialPipelines)
-                    {
-                        generatedAzsl += AZStd::string::format("%s   \\\n", drawSrgAddition.c_str());
-                    }
-
-                    generatedAzsl += AZStd::string::format("\n");
-                }
-
-                generatedAzsl +=
-                    AZStd::string::format("#define MATERIAL_PARAMETERS_AZSLI_FILE_PATH \"%s\" \n", materialParameterAzsliFileName.c_str());
-
-                generatedAzsl += AZStd::string::format("\n");
-                if (!materialDefinesAzsliFilePath.empty())
-                {
-                    const AZ::IO::PathView materialDefinesAzsliFilePathView{ materialDefinesAzsliFilePath };
-                    generatedAzsl += AZStd::string::format(
-                        "#define MATERIAL_TYPE_DEFINES_AZSLI_FILE_PATH \"%s\" \n",
-                        materialDefinesAzsliFilePathView.StringAsPosix().c_str());
-                }
-
-                // At this point m_azsli should be absolute due to ResolvePathReference() being called above.
-                // It might be better for the include path to be relative to the generated .shader file path in the intermediate cache,
-                // so the project could be renamed or moved without having to rebuild the cache. But there's a good chance that moving
-                // the project would require a rebuild of the cache anyway.
-                const AZ::IO::PathView materialAzsliFilePathView{ materialAzsliFilePath };
-                generatedAzsl += AZStd::string::format(
-                    "#define MATERIAL_TYPE_AZSLI_FILE_PATH \"%s\" \n", materialAzsliFilePathView.StringAsPosix().c_str());
-
-                auto materialTypeNameUpper = materialTypeName;
-                AZStd::to_upper(materialTypeNameUpper);
-                generatedAzsl += AZStd::string::format("#define MATERIAL_TYPE_%s 1 \n", materialTypeNameUpper.c_str());
-
-                generatedAzsl += AZStd::string::format("#include \"%s\" \n", AZ::IO::PathView(shaderTemplate.m_azsli).StringAsPosix().c_str());
+                MaterialShaderStitchInputs stitchInputs;
+                stitchInputs.m_builderName = MaterialTypeBuilderName;
+                stitchInputs.m_materialTypeName = materialTypeName;
+                stitchInputs.m_parametersFileName = materialParameterFileName;
+                stitchInputs.m_materialTypeDefinesFilePath = materialTypeDefinesFilePathPosix;
+                stitchInputs.m_materialTypeShaderCodeFilePath = materialTypeShaderCodeFilePathPosix;
+                stitchInputs.m_shaderTemplateFilePath = shaderTemplateFilePathPosix;
+                stitchInputs.m_objectSrgAdditions = &objectSrgAdditionsFromMaterialPipelines;
+                stitchInputs.m_drawSrgAdditions = &drawSrgAdditionsFromMaterialPipelines;
+                const AZStd::string generatedShaderSource = shaderGenerator->GenerateStitchedShaderSource(stitchInputs);
 
                 AZ::IO::Path shaderName = shaderTemplate.m_shader;
                 shaderName = shaderName.Filename(); // Removes the folder path
@@ -722,10 +728,11 @@ namespace AZ
                 shaderName = shaderName.ReplaceExtension(""); // This will remove the ".shader" extension
 
                 AZ::IO::Path outputAzslFilePath = request.m_tempDirPath;
-                outputAzslFilePath /=
-                    AZStd::string::format("%s_%s_%s.azsl", materialTypeName.c_str(), materialPipelineIndicator.c_str(), shaderName.c_str());
+                outputAzslFilePath /= AZStd::string::format(
+                    "%s_%s_%s.%s", materialTypeName.c_str(), materialPipelineIndicator.c_str(), shaderName.c_str(),
+                    shaderGenerator->GetShaderFileExtension());
 
-                if (AZ::Utils::WriteFile(generatedAzsl, outputAzslFilePath.c_str()).IsSuccess())
+                if (AZ::Utils::WriteFile(generatedShaderSource, outputAzslFilePath.c_str()).IsSuccess())
                 {
                     AssetBuilderSDK::JobProduct product;
                     product.m_outputFlags = AssetBuilderSDK::ProductOutputFlags::IntermediateAsset;

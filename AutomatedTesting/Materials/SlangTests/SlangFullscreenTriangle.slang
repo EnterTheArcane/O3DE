@@ -9,7 +9,7 @@
 // The first end-to-end Slang shader: a fullscreen triangle with a private ShaderResourceGroup,
 // authored with zero imports — the builder force-includes the Atom prelude.
 
-[AtomShaderResourceGroup(4 /*PerPass*/)]
+[AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 struct TriangleShaderResourceGroupLayout
 {
     Vector4F m_tintColor;

@@ -13,7 +13,7 @@
 // composed at link time. Use-sites are identical in every mode. The [AtomVariantFallback] member
 // designates where the runtime writes the key for dynamic option switching.
 
-[AtomShaderResourceGroup(4 /*PerPass*/)]
+[AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 public struct OptionsShaderResourceGroupLayout
 {
     Vector4F m_tintColor;

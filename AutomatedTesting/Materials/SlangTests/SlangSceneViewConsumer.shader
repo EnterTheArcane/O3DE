@@ -1,8 +1,6 @@
 {
     "Source": "SlangSceneViewConsumer.slang",
 
-    "DisabledRHIBackends": ["null"],
-
     "DrawList": "forward",
 
     "ProgramSettings":

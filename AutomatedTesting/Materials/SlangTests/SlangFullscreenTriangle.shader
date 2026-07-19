@@ -1,8 +1,6 @@
 {
     "Source": "SlangFullscreenTriangle.slang",
 
-    "DisabledRHIBackends": ["null"],
-
     "DrawList": "forward",
 
     "ProgramSettings":

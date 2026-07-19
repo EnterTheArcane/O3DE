@@ -1,8 +1,6 @@
 {
     "Source": "SlangShaderOptions.slang",
 
-    "DisabledRHIBackends": ["null"],
-
     "DrawList": "forward",
 
     // The default supervariant specializes its options (engine-default -sc-options); this one

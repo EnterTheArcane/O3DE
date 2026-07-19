@@ -16,7 +16,7 @@
 #include "Atom/Features/Srg/SceneSrg.slangi"
 
 // Private per-pass SRG: the depth input to linearize.
-[AtomShaderResourceGroup(4 /*PerPass*/)]
+[AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 struct DepthToLinearShaderResourceGroupLayout
 {
     Texture2D<Vector2F> m_depthStencil;

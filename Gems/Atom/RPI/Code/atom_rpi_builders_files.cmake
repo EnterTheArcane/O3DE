@@ -17,6 +17,8 @@ set(FILES
     Source/RPI.Builders/Material/MaterialBuilderUtils.h
     Source/RPI.Builders/Material/MaterialPipelineScriptRunner.cpp
     Source/RPI.Builders/Material/MaterialPipelineScriptRunner.h
+    Source/RPI.Builders/Material/MaterialShaderGenerator.cpp
+    Source/RPI.Builders/Material/MaterialShaderGenerator.h
     Source/RPI.Builders/Material/MaterialTypeBuilder.cpp
     Source/RPI.Builders/Material/MaterialTypeBuilder.h
     Source/RPI.Builders/Model/MaterialAssetBuilderComponent.cpp

@@ -29,7 +29,25 @@
 // slots, static-sampler descriptors and the variant-key fallback designation that AZSL expressed
 // with dedicated syntax. Slang user attributes take positional arguments only.
 
-//! Declares a struct as an Atom ShaderResourceGroup with the given binding slot (frequency).
+//! The binding slot (frequency) of a ShaderResourceGroup, mirroring the native RPI::SrgBindingSlot
+//! namespace (Atom/RPI.Reflect/Base.h) one-for-one: same names, same values, and an open set of
+//! constants rather than a closed enum. The values also match the AZSL SRG_* frequencies in
+//! Atom/Features/SrgSemantics.azsli, so [AtomShaderResourceGroup(SrgBindingSlot.Pass)] reads like the
+//! C++ SrgBindingSlot::Pass instead of a bare slot number.
+namespace SrgBindingSlot
+{
+    public static const int Draw = 0;
+    public static const int Object = 1;
+    public static const int Material = 2;
+    public static const int SubPass = 3;
+    public static const int Pass = 4;
+    public static const int View = 5;
+    public static const int Scene = 6;
+    public static const int Bindless = 7;
+}
+
+//! Declares a struct as an Atom ShaderResourceGroup with the given binding slot (frequency). The
+//! argument is an SrgBindingSlot; it coerces onto the integer slot the builder reads back.
 [__AttributeUsage(_AttributeTargets.Struct)]
 public struct AtomShaderResourceGroupAttribute
 {
@@ -117,8 +135,8 @@ public struct AtomOptionAttribute
 [__AttributeUsage(_AttributeTargets.Function)]
 public struct AtomOptionRangeAttribute
 {
-    public int minValue;
-    public int maxValue;
+    public int min;
+    public int max;
 };
 
 //! Overrides the runtime name of a shader option — the name the ShaderOptionGroupLayout,

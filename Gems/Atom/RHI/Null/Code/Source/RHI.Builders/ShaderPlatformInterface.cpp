@@ -111,6 +111,20 @@ namespace AZ
             }
         }
 
+        RHI::ShaderTargetDescriptor ShaderPlatformInterface::GetShaderTargetDescriptor(
+            [[maybe_unused]] const AssetBuilderSDK::PlatformInfo& platform) const
+        {
+            // The Null RHI consumes no bytecode -- CompilePlatformInternal below is a no-op and
+            // CreateShaderStageFunction builds an empty stage function -- but it still needs the
+            // shader asset's reflection: ShaderResourceGroup layouts, options and pipeline layout.
+            // Declaring that explicitly lets any language backend serve this RHI; leaving the
+            // descriptor at None would mean "declares no target", which a modern backend must
+            // reject, and would make every non-AZSL shader fail to build for Null.
+            RHI::ShaderTargetDescriptor descriptor;
+            descriptor.m_format = RHI::ShaderTargetFormat::ReflectionOnly;
+            return descriptor;
+        }
+
         bool ShaderPlatformInterface::CompilePlatformInternal(
             [[maybe_unused]] const AssetBuilderSDK::PlatformInfo& platform, [[maybe_unused]] const AZStd::string& shaderSourcePath,
             [[maybe_unused]] const AZStd::string& functionName, [[maybe_unused]] RHI::ShaderHardwareStage shaderStage,

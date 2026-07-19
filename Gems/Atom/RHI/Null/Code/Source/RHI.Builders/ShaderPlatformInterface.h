@@ -36,6 +36,7 @@ namespace AZ
                 const RHI::ShaderBuildArguments& shaderBuildArguments,
                 const bool useSpecializationConstants) const override;
             const char* GetAzslHeader(const AssetBuilderSDK::PlatformInfo& platform) const override;
+            RHI::ShaderTargetDescriptor GetShaderTargetDescriptor(const AssetBuilderSDK::PlatformInfo& platform) const override;
             bool BuildPipelineLayoutDescriptor(
                 RHI::Ptr<RHI::PipelineLayoutDescriptor> pipelineLayoutDescriptor,
                 const ShaderResourceGroupInfoList& srgInfoList,

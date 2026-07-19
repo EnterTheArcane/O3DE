@@ -1,9 +1,9 @@
 {
-    "Source": "Vignette.azsl",
+    "Source": "Vignette.slang",
 
-    "ProgramSettings": 
+    "ProgramSettings":
     {
-        "EntryPoints": 
+        "EntryPoints":
         [
             {
                 "name": "MainCS",
