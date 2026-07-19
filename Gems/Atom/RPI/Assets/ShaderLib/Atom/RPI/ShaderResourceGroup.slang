@@ -18,7 +18,7 @@
 //     {
 //         Texture2D<Vector4F> m_diffuse;
 //
-//         [AtomStaticSampler(16 /*maxAnisotropy*/, "Wrap" /*addressMode*/, "Linear" /*filterMode*/, "Never" /*comparisonFunc*/, "TransparentBlack" /*borderColor*/)]
+//         [AtomStaticSampler("Linear", "Linear", "Linear", "Wrap", "Wrap", "Wrap", 16 /*maxAnisotropy*/, "Never", "Filter", "TransparentBlack")]
 //         SamplerState m_sampler;
 //
 //         Vector4F m_color; // loose members land in the implicit SRG-constants constant buffer
@@ -46,17 +46,26 @@ public struct AtomShaderResourceGroupMemberAttribute
     public int bindingSlot;
 };
 
-//! Declares a SamplerState member as an immutable static sampler with the given state.
-//! String arguments name RHI enum values: addressMode = Wrap|Mirror|Clamp|Border|MirrorOnce,
-//! filterMode = Point|Linear, comparisonFunc = Never|Less|Equal|LessEqual|Greater|NotEqual|GreaterEqual|Always,
-//! borderColor = TransparentBlack|OpaqueBlack|OpaqueWhite.
+//! Declares a SamplerState member as an immutable static sampler with the given state. String
+//! arguments name RHI enum values: filter{Min,Mag,Mip} = Point|Linear; address{U,V,W} =
+//! Wrap|Mirror|Clamp|Border|MirrorOnce; comparisonFunc =
+//! Never|Less|Equal|LessEqual|Greater|NotEqual|GreaterEqual|Always; reductionType =
+//! Filter|Comparison|Minimum|Maximum; borderColor = TransparentBlack|OpaqueBlack|OpaqueWhite.
+//! maxAnisotropy > 1 enables anisotropic filtering. The full state is spelled out (not the shorter
+//! AZSL sampler block) because a shared-SRG static sampler contributes to the layout hash and must
+//! match AZSLc's SamplerState field-for-field. mip LOD min/max/bias stay at RHI defaults (0, 15, 0).
 [__AttributeUsage(_AttributeTargets.Var)]
 public struct AtomStaticSamplerAttribute
 {
+    public string filterMin;
+    public string filterMag;
+    public string filterMip;
+    public string addressU;
+    public string addressV;
+    public string addressW;
     public int maxAnisotropy;
-    public string addressMode;
-    public string filterMode;
     public string comparisonFunc;
+    public string reductionType;
     public string borderColor;
 };
 

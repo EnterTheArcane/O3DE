@@ -136,13 +136,19 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
     static RHI::SamplerState BuildStaticSamplerState(slang::UserAttribute* attribute)
     {
         // Argument order matches AtomStaticSamplerAttribute:
-        // (maxAnisotropy, addressMode, filterMode, comparisonFunc, borderColor)
+        // (filterMin, filterMag, filterMip, addressU, addressV, addressW, maxAnisotropy,
+        //  comparisonFunc, reductionType, borderColor)
+        const AZStd::string filterMin = GetAttributeStringArgument(attribute, 0);
+        const AZStd::string filterMag = GetAttributeStringArgument(attribute, 1);
+        const AZStd::string filterMip = GetAttributeStringArgument(attribute, 2);
+        const AZStd::string addressU = GetAttributeStringArgument(attribute, 3);
+        const AZStd::string addressV = GetAttributeStringArgument(attribute, 4);
+        const AZStd::string addressW = GetAttributeStringArgument(attribute, 5);
         int maxAnisotropy = 0;
-        attribute->getArgumentValueInt(0, &maxAnisotropy);
-        const AZStd::string addressMode = GetAttributeStringArgument(attribute, 1);
-        const AZStd::string filterMode = GetAttributeStringArgument(attribute, 2);
-        const AZStd::string comparisonFunc = GetAttributeStringArgument(attribute, 3);
-        const AZStd::string borderColor = GetAttributeStringArgument(attribute, 4);
+        attribute->getArgumentValueInt(6, &maxAnisotropy);
+        const AZStd::string comparisonFunc = GetAttributeStringArgument(attribute, 7);
+        const AZStd::string reductionType = GetAttributeStringArgument(attribute, 8);
+        const AZStd::string borderColor = GetAttributeStringArgument(attribute, 9);
 
         auto parseAddressMode = [](const AZStd::string& text)
         {
@@ -174,18 +180,28 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
             if (AZ::StringFunc::Equal(text, "Always")) { return RHI::ComparisonFunc::Always; }
             return RHI::ComparisonFunc::Never;
         };
+        auto parseReductionType = [](const AZStd::string& text)
+        {
+            if (AZ::StringFunc::Equal(text, "Comparison")) { return RHI::ReductionType::Comparison; }
+            if (AZ::StringFunc::Equal(text, "Minimum")) { return RHI::ReductionType::Minimum; }
+            if (AZ::StringFunc::Equal(text, "Maximum")) { return RHI::ReductionType::Maximum; }
+            return RHI::ReductionType::Filter;
+        };
 
+        // Set every field explicitly so the descriptor matches AZSLc's parsed SamplerState field for
+        // field; mip LOD min/max/bias keep their RHI defaults (0, MipCountMax, 0), as AZSLc leaves them.
         RHI::SamplerState samplerState;
-        if (maxAnisotropy > 1)
-        {
-            samplerState = RHI::SamplerState::CreateAnisotropic(maxAnisotropy, parseAddressMode(addressMode));
-        }
-        else
-        {
-            samplerState = RHI::SamplerState::Create(
-                parseFilterMode(filterMode), parseFilterMode(filterMode), parseAddressMode(addressMode), parseBorderColor(borderColor));
-        }
+        samplerState.m_filterMin = parseFilterMode(filterMin);
+        samplerState.m_filterMag = parseFilterMode(filterMag);
+        samplerState.m_filterMip = parseFilterMode(filterMip);
+        samplerState.m_addressU = parseAddressMode(addressU);
+        samplerState.m_addressV = parseAddressMode(addressV);
+        samplerState.m_addressW = parseAddressMode(addressW);
+        samplerState.m_anisotropyMax = aznumeric_cast<uint32_t>(maxAnisotropy);
+        samplerState.m_anisotropyEnable = maxAnisotropy > 1 ? 1 : 0;
         samplerState.m_comparisonFunc = parseComparisonFunc(comparisonFunc);
+        samplerState.m_reductionType = parseReductionType(reductionType);
+        samplerState.m_borderColor = parseBorderColor(borderColor);
         return samplerState;
     }
 
@@ -260,6 +276,81 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
         binding.m_registerId = aznumeric_cast<uint32_t>(memberLayout->getOffset(category));
         binding.m_spaceId = blockSpace + aznumeric_cast<uint32_t>(memberLayout->getBindingSpace(category));
         return binding;
+    }
+
+    //! Byte size of a scalar type, used to derive typed-buffer (Buffer<T>) element strides, which
+    //! Slang does not expose through a uniform element layout.
+    static uint32_t ScalarByteSize(slang::TypeReflection::ScalarType scalarType)
+    {
+        switch (scalarType)
+        {
+        case slang::TypeReflection::ScalarType::Int8:
+        case slang::TypeReflection::ScalarType::UInt8:
+            return 1;
+        case slang::TypeReflection::ScalarType::Int16:
+        case slang::TypeReflection::ScalarType::UInt16:
+        case slang::TypeReflection::ScalarType::Float16:
+            return 2;
+        case slang::TypeReflection::ScalarType::Bool:
+        case slang::TypeReflection::ScalarType::Int32:
+        case slang::TypeReflection::ScalarType::UInt32:
+        case slang::TypeReflection::ScalarType::Float32:
+            return 4;
+        case slang::TypeReflection::ScalarType::Int64:
+        case slang::TypeReflection::ScalarType::UInt64:
+        case slang::TypeReflection::ScalarType::Float64:
+            return 8;
+        default:
+            return 0;
+        }
+    }
+
+    //! Byte size of a typed-buffer element (scalar or vector result type).
+    static uint32_t TypedBufferElementStride(slang::TypeReflection* bufferType)
+    {
+        slang::TypeReflection* resultType = bufferType ? bufferType->getResourceResultType() : nullptr;
+        if (!resultType)
+        {
+            return 0;
+        }
+        slang::TypeReflection::ScalarType scalarType = resultType->getScalarType();
+        uint32_t componentCount = 1;
+        if (resultType->getKind() == slang::TypeReflection::Kind::Vector)
+        {
+            componentCount = aznumeric_cast<uint32_t>(resultType->getElementCount());
+            scalarType = resultType->getElementType()->getScalarType();
+        }
+        return componentCount * ScalarByteSize(scalarType);
+    }
+
+    //! Appends a loose SRG-constant member and, for struct-typed members, flattens it the way AZSLc
+    //! does: one "parent.child" descriptor per leaf field (recursively) followed by the aggregate.
+    //! Constant descriptors are hashed by name+offset+size, so matching this flattening exactly is
+    //! what makes shared-SRG layout hashes byte-identical to AZSLc's. @absoluteOffset is the field's
+    //! offset from the start of the SRG-constants buffer.
+    static void AppendConstant(
+        AZStd::vector<RHI::ShaderInputConstantDescriptor>& constants,
+        const AZStd::string& name,
+        uint32_t absoluteOffset,
+        slang::TypeLayoutReflection* typeLayout,
+        uint32_t registerId,
+        uint32_t spaceId)
+    {
+        if (typeLayout->getKind() == slang::TypeReflection::Kind::Struct)
+        {
+            const unsigned fieldCount = typeLayout->getFieldCount();
+            for (unsigned fieldIndex = 0; fieldIndex < fieldCount; ++fieldIndex)
+            {
+                slang::VariableLayoutReflection* field = typeLayout->getFieldByIndex(fieldIndex);
+                const uint32_t fieldOffset =
+                    absoluteOffset + aznumeric_cast<uint32_t>(field->getOffset(SLANG_PARAMETER_CATEGORY_UNIFORM));
+                AppendConstant(
+                    constants, AZStd::string::format("%s.%s", name.c_str(), field->getVariable()->getName()),
+                    fieldOffset, field->getTypeLayout(), registerId, spaceId);
+            }
+        }
+        const uint32_t byteSize = aznumeric_cast<uint32_t>(typeLayout->getSize(SLANG_PARAMETER_CATEGORY_UNIFORM));
+        constants.push_back({Name{name}, absoluteOffset, byteSize, registerId, spaceId});
     }
 
     //! Appends one member (of a ParameterBlock element or an attribute-grouped global) to the
@@ -364,6 +455,12 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
                 {
                     strideSize = aznumeric_cast<uint32_t>(elementLayout->getSize(SLANG_PARAMETER_CATEGORY_UNIFORM));
                 }
+                if (strideSize == 0)
+                {
+                    // Typed buffers (Buffer<T>/RWBuffer<T>) have no uniform element layout; AZSLc records
+                    // the element format size as the stride, so derive it from the result type to match.
+                    strideSize = TypedBufferElementStride(type);
+                }
                 if (arrayCount < 0)
                 {
                     srgReflection.m_bufferUnboundedArrays.push_back({memberNameId, bufferAccess, bufferType, strideSize, binding.m_registerId, binding.m_spaceId});
@@ -380,10 +477,12 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
             return false;
         }
         default:
-            // Everything else is uniform data: a loose member of the implicit SRG-constants buffer
-            const uint32_t byteOffset = aznumeric_cast<uint32_t>(memberLayout->getOffset(SLANG_PARAMETER_CATEGORY_UNIFORM));
-            const uint32_t byteSize = aznumeric_cast<uint32_t>(memberTypeLayout->getSize(SLANG_PARAMETER_CATEGORY_UNIFORM));
-            srgReflection.m_constants.push_back({memberNameId, byteOffset, byteSize, constantsBinding.m_registerId, constantsBinding.m_spaceId});
+            // Everything else is uniform data: a loose member of the implicit SRG-constants buffer.
+            // Struct-typed members are flattened (parent.child leaves + aggregate) to match AZSLc.
+            AppendConstant(
+                srgReflection.m_constants, AZStd::string{memberName},
+                aznumeric_cast<uint32_t>(memberLayout->getOffset(SLANG_PARAMETER_CATEGORY_UNIFORM)),
+                memberTypeLayout, constantsBinding.m_registerId, constantsBinding.m_spaceId);
             return true;
         }
     }
@@ -519,12 +618,10 @@ namespace AZ::ShaderBuilder::SlangReflectionWalker
                     for (unsigned fieldIndex = 0; fieldIndex < elementTypeLayout->getFieldCount(); ++fieldIndex)
                     {
                         slang::VariableLayoutReflection* fieldLayout = elementTypeLayout->getFieldByIndex(fieldIndex);
-                        srgReflection.m_constants.push_back({
-                            Name{fieldLayout->getVariable()->getName()},
+                        AppendConstant(
+                            srgReflection.m_constants, fieldLayout->getVariable()->getName(),
                             aznumeric_cast<uint32_t>(fieldLayout->getOffset(SLANG_PARAMETER_CATEGORY_UNIFORM)),
-                            aznumeric_cast<uint32_t>(fieldLayout->getTypeLayout()->getSize(SLANG_PARAMETER_CATEGORY_UNIFORM)),
-                            binding.m_registerId,
-                            binding.m_spaceId});
+                            fieldLayout->getTypeLayout(), binding.m_registerId, binding.m_spaceId);
                     }
                     srgBindings.m_constantDataBinding.m_name = Name{expectedConstantBufferName};
                     srgBindings.m_constantDataBinding.m_registerId = binding.m_registerId;

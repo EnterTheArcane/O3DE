@@ -1,0 +1,433 @@
+{
+    "schemaVersion": 1,
+    "srgName": "SceneSrg",
+    "frequencyId": 6,
+    "resources": [
+        {
+            "name": "m_physicalSkyData",
+            "type": "ConstantBuffer<PhysicalSkyData>",
+            "count": 1,
+            "stride": 224,
+            "dx12": {
+                "class": "b",
+                "register": 1,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 16,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_skyboxCubemap",
+            "type": "TextureCube",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 0,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 0,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_directionalLights",
+            "type": "StructuredBuffer<DirectionalLight>",
+            "count": 1,
+            "stride": 48,
+            "dx12": {
+                "class": "t",
+                "register": 1,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 1,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_ltcMatrix",
+            "type": "Texture2D<float4>",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 2,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 2,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_ltcAmplification",
+            "type": "Texture2D<float2>",
+            "count": 1,
+            "stride": 8,
+            "dx12": {
+                "class": "t",
+                "register": 3,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 3,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_dofPencilMap",
+            "type": "Texture2D<float3>",
+            "count": 1,
+            "stride": 12,
+            "dx12": {
+                "class": "t",
+                "register": 4,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 4,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_meshInfo",
+            "type": "StructuredBuffer<MeshInfo>",
+            "count": 1,
+            "stride": 144,
+            "dx12": {
+                "class": "t",
+                "register": 5,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 5,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_fallbackPBRMaterial",
+            "type": "StructuredBuffer<MaterialInfo>",
+            "count": 1,
+            "stride": 224,
+            "dx12": {
+                "class": "t",
+                "register": 6,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 6,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_objectToWorldBuffer",
+            "type": "StructuredBuffer<ObjectToWorld>",
+            "count": 1,
+            "stride": 48,
+            "dx12": {
+                "class": "t",
+                "register": 7,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 7,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_objectToWorldInverseTransposeBuffer",
+            "type": "StructuredBuffer<NormalToWorld>",
+            "count": 1,
+            "stride": 48,
+            "dx12": {
+                "class": "t",
+                "register": 8,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 8,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_objectToWorldHistoryBuffer",
+            "type": "StructuredBuffer<ObjectToWorld>",
+            "count": 1,
+            "stride": 48,
+            "dx12": {
+                "class": "t",
+                "register": 9,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 9,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_specularEnvMap",
+            "type": "TextureCube",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 10,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 10,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_diffuseEnvMap",
+            "type": "TextureCube",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 11,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 11,
+                "set": 0
+            }
+        }
+    ],
+    "staticSamplers": [
+        {
+            "name": "m_hwPcfSampler",
+            "filterMin": "Linear",
+            "filterMag": "Linear",
+            "filterMip": "Point",
+            "addressU": "Clamp",
+            "addressV": "Clamp",
+            "addressW": "Clamp",
+            "maxAnisotropy": 16,
+            "comparisonFunc": "Less",
+            "reductionType": "Comparison",
+            "borderColor": "TransparentBlack",
+            "dx12": {
+                "class": "s",
+                "register": 0,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 12,
+                "set": 0
+            }
+        },
+        {
+            "name": "LtcSampler",
+            "filterMin": "Linear",
+            "filterMag": "Linear",
+            "filterMip": "Linear",
+            "addressU": "Clamp",
+            "addressV": "Clamp",
+            "addressW": "Clamp",
+            "maxAnisotropy": 0,
+            "comparisonFunc": "Always",
+            "reductionType": "Filter",
+            "borderColor": "TransparentBlack",
+            "dx12": {
+                "class": "s",
+                "register": 1,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 13,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_samplerEnv",
+            "filterMin": "Linear",
+            "filterMag": "Linear",
+            "filterMip": "Linear",
+            "addressU": "Wrap",
+            "addressV": "Wrap",
+            "addressW": "Wrap",
+            "maxAnisotropy": 0,
+            "comparisonFunc": "Always",
+            "reductionType": "Filter",
+            "borderColor": "TransparentBlack",
+            "dx12": {
+                "class": "s",
+                "register": 2,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 14,
+                "set": 0
+            }
+        }
+    ],
+    "constants": [
+        {
+            "name": "m_time",
+            "type": "float",
+            "offset": 0,
+            "size": 4
+        },
+        {
+            "name": "m_prevTime",
+            "type": "float",
+            "offset": 4,
+            "size": 4
+        },
+        {
+            "name": "m_enable",
+            "type": "bool",
+            "offset": 8,
+            "size": 4
+        },
+        {
+            "name": "m_physicalSky",
+            "type": "bool",
+            "offset": 12,
+            "size": 4
+        },
+        {
+            "name": "m_fogTopHeight",
+            "type": "float",
+            "offset": 16,
+            "size": 4
+        },
+        {
+            "name": "m_fogBottomHeight",
+            "type": "float",
+            "offset": 20,
+            "size": 4
+        },
+        {
+            "name": "m_fogColor",
+            "type": "float4",
+            "offset": 32,
+            "size": 16
+        },
+        {
+            "name": "m_fogEnable",
+            "type": "bool",
+            "offset": 48,
+            "size": 4
+        },
+        {
+            "name": "m_cubemapRotationMatrix",
+            "type": "float4x4",
+            "offset": 64,
+            "size": 64
+        },
+        {
+            "name": "m_cubemapExposure",
+            "type": "float",
+            "offset": 128,
+            "size": 4
+        },
+        {
+            "name": "m_directionalLightCount",
+            "type": "uint",
+            "offset": 132,
+            "size": 4
+        },
+        {
+            "name": "m_nullCubeMapIndex",
+            "type": "uint",
+            "offset": 136,
+            "size": 4
+        },
+        {
+            "name": "m_iblOrientation",
+            "type": "float4",
+            "offset": 144,
+            "size": 16
+        },
+        {
+            "name": "m_iblExposure",
+            "type": "float",
+            "offset": 160,
+            "size": 4
+        },
+        {
+            "name": "m_debuggingEnabled",
+            "type": "bool",
+            "offset": 164,
+            "size": 4
+        },
+        {
+            "name": "m_debugOverrideBaseColor",
+            "type": "float3",
+            "offset": 176,
+            "size": 12
+        },
+        {
+            "name": "m_debugOverrideRoughness",
+            "type": "float",
+            "offset": 188,
+            "size": 4
+        },
+        {
+            "name": "m_debugOverrideMetallic",
+            "type": "float",
+            "offset": 192,
+            "size": 4
+        },
+        {
+            "name": "m_debugLightingDirection",
+            "type": "float3",
+            "offset": 196,
+            "size": 12
+        },
+        {
+            "name": "m_debugLightingIntensity",
+            "type": "float3",
+            "offset": 208,
+            "size": 12
+        },
+        {
+            "name": "m_customDebugFloat01",
+            "type": "float",
+            "offset": 220,
+            "size": 4
+        },
+        {
+            "name": "m_customDebugFloat02",
+            "type": "float",
+            "offset": 224,
+            "size": 4
+        },
+        {
+            "name": "m_customDebugFloat03",
+            "type": "float",
+            "offset": 228,
+            "size": 4
+        },
+        {
+            "name": "m_customDebugFloat04",
+            "type": "float",
+            "offset": 232,
+            "size": 4
+        },
+        {
+            "name": "m_terrainWorldData",
+            "type": "TerrainWorldData",
+            "offset": 240,
+            "size": 16
+        }
+    ],
+    "srgConstantsBuffer": {
+        "dx12": {
+            "class": "b",
+            "register": 0,
+            "space": 0
+        },
+        "vulkan": {
+            "binding": 15,
+            "set": 0
+        }
+    }
+}

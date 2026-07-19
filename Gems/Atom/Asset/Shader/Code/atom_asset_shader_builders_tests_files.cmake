@@ -23,6 +23,7 @@ set(FILES
     Tests/Slang/SlangCompilerServiceTests.cpp
     Tests/Slang/SlangOptionsModuleGeneratorTests.cpp
     Tests/Slang/SlangModuleResolverTests.cpp
+    Tests/Slang/SharedSrgBindingAbiTests.cpp
     Tests/Slang/Gates/Gate1_SharedShaderResourceGroupAbiParityTests.cpp
     Tests/Slang/Gates/Gate2_OptionLoweringTests.cpp
     Tests/Slang/Gates/Gate3_DxilSigningTests.cpp

@@ -1,0 +1,630 @@
+{
+    "schemaVersion": 1,
+    "srgName": "ViewSrg",
+    "frequencyId": 5,
+    "resources": [
+        {
+            "name": "m_exposureControl",
+            "type": "ConstantBuffer<ExposureControlParameters>",
+            "count": 1,
+            "stride": 32,
+            "dx12": {
+                "class": "b",
+                "register": 1,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 33,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_decals",
+            "type": "StructuredBuffer<Decal>",
+            "count": 1,
+            "stride": 80,
+            "dx12": {
+                "class": "t",
+                "register": 0,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 0,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_visibleDecalIndices",
+            "type": "Buffer<uint>",
+            "count": 1,
+            "stride": 4,
+            "dx12": {
+                "class": "t",
+                "register": 1,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 1,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_decalTextureArrayDiffuse0",
+            "type": "Texture2DArray<float4>",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 2,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 2,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_decalTextureArrayDiffuse1",
+            "type": "Texture2DArray<float4>",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 3,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 3,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_decalTextureArrayDiffuse2",
+            "type": "Texture2DArray<float4>",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 4,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 4,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_decalTextureArrayDiffuse3",
+            "type": "Texture2DArray<float4>",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 5,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 5,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_decalTextureArrayDiffuse4",
+            "type": "Texture2DArray<float4>",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 6,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 6,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_decalTextureArrayNormalMaps0",
+            "type": "Texture2DArray<float4>",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 7,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 7,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_decalTextureArrayNormalMaps1",
+            "type": "Texture2DArray<float4>",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 8,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 8,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_decalTextureArrayNormalMaps2",
+            "type": "Texture2DArray<float4>",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 9,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 9,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_decalTextureArrayNormalMaps3",
+            "type": "Texture2DArray<float4>",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 10,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 10,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_decalTextureArrayNormalMaps4",
+            "type": "Texture2DArray<float4>",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 11,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 11,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_instanceData",
+            "type": "StructuredBuffer<uint>",
+            "count": 1,
+            "stride": 4,
+            "dx12": {
+                "class": "t",
+                "register": 12,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 12,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_simplePointLights",
+            "type": "StructuredBuffer<SimplePointLight>",
+            "count": 1,
+            "stride": 48,
+            "dx12": {
+                "class": "t",
+                "register": 13,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 13,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_simpleSpotLights",
+            "type": "StructuredBuffer<SimpleSpotLight>",
+            "count": 1,
+            "stride": 144,
+            "dx12": {
+                "class": "t",
+                "register": 14,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 14,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_visibleSimpleSpotLightIndices",
+            "type": "Buffer<uint>",
+            "count": 1,
+            "stride": 4,
+            "dx12": {
+                "class": "t",
+                "register": 15,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 15,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_goboTextures",
+            "type": "Texture2D<float>",
+            "count": 5,
+            "stride": 4,
+            "dx12": {
+                "class": "t",
+                "register": 16,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 16,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_pointLights",
+            "type": "StructuredBuffer<PointLight>",
+            "count": 1,
+            "stride": 64,
+            "dx12": {
+                "class": "t",
+                "register": 21,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 21,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_visibleSimplePointLightIndices",
+            "type": "Buffer<uint>",
+            "count": 1,
+            "stride": 4,
+            "dx12": {
+                "class": "t",
+                "register": 22,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 22,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_projectedShadows",
+            "type": "StructuredBuffer<ProjectedShadow>",
+            "count": 1,
+            "stride": 112,
+            "dx12": {
+                "class": "t",
+                "register": 23,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 23,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_projectedFilterParams",
+            "type": "StructuredBuffer<FilterParameter>",
+            "count": 1,
+            "stride": 32,
+            "dx12": {
+                "class": "t",
+                "register": 24,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 24,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_directionalLightShadows",
+            "type": "StructuredBuffer<DirectionalLightShadow>",
+            "count": 1,
+            "stride": 576,
+            "dx12": {
+                "class": "t",
+                "register": 25,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 25,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_esmsDirectional",
+            "type": "StructuredBuffer<FilterParameter>",
+            "count": 1,
+            "stride": 32,
+            "dx12": {
+                "class": "t",
+                "register": 26,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 26,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_diskLights",
+            "type": "StructuredBuffer<DiskLight>",
+            "count": 1,
+            "stride": 80,
+            "dx12": {
+                "class": "t",
+                "register": 27,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 27,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_capsuleLights",
+            "type": "StructuredBuffer<CapsuleLight>",
+            "count": 1,
+            "stride": 64,
+            "dx12": {
+                "class": "t",
+                "register": 28,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 28,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_quadLights",
+            "type": "StructuredBuffer<QuadLight>",
+            "count": 1,
+            "stride": 80,
+            "dx12": {
+                "class": "t",
+                "register": 29,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 29,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_polygonLights",
+            "type": "StructuredBuffer<PolygonLight>",
+            "count": 1,
+            "stride": 48,
+            "dx12": {
+                "class": "t",
+                "register": 30,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 30,
+                "set": 0
+            }
+        },
+        {
+            "name": "m_polygonLightPoints",
+            "type": "StructuredBuffer<float4>",
+            "count": 1,
+            "stride": 16,
+            "dx12": {
+                "class": "t",
+                "register": 31,
+                "space": 0
+            },
+            "vulkan": {
+                "binding": 31,
+                "set": 0
+            }
+        }
+    ],
+    "staticSamplers": [],
+    "constants": [
+        {
+            "name": "m_viewProjectionMatrix",
+            "type": "float4x4",
+            "offset": 0,
+            "size": 64
+        },
+        {
+            "name": "m_viewMatrix",
+            "type": "float4x4",
+            "offset": 64,
+            "size": 64
+        },
+        {
+            "name": "m_viewMatrixInverse",
+            "type": "float4x4",
+            "offset": 128,
+            "size": 64
+        },
+        {
+            "name": "m_projectionMatrix",
+            "type": "float4x4",
+            "offset": 192,
+            "size": 64
+        },
+        {
+            "name": "m_projectionMatrixInverse",
+            "type": "float4x4",
+            "offset": 256,
+            "size": 64
+        },
+        {
+            "name": "m_viewProjectionInverseMatrix",
+            "type": "float4x4",
+            "offset": 320,
+            "size": 64
+        },
+        {
+            "name": "m_viewProjectionPrevMatrix",
+            "type": "float4x4",
+            "offset": 384,
+            "size": 64
+        },
+        {
+            "name": "m_worldPosition",
+            "type": "float3",
+            "offset": 448,
+            "size": 12
+        },
+        {
+            "name": "m_linearizeDepthConstants",
+            "type": "float4",
+            "offset": 464,
+            "size": 16
+        },
+        {
+            "name": "m_unprojectionConstants",
+            "type": "float4",
+            "offset": 480,
+            "size": 16
+        },
+        {
+            "name": "m_renderDebugOptions",
+            "type": "uint",
+            "offset": 496,
+            "size": 4
+        },
+        {
+            "name": "m_renderDebugViewMode",
+            "type": "uint",
+            "offset": 500,
+            "size": 4
+        },
+        {
+            "name": "m_decalCount",
+            "type": "uint",
+            "offset": 504,
+            "size": 4
+        },
+        {
+            "name": "m_visibleDecalCount",
+            "type": "uint",
+            "offset": 508,
+            "size": 4
+        },
+        {
+            "name": "m_tileGridWidth",
+            "type": "uint",
+            "offset": 512,
+            "size": 4
+        },
+        {
+            "name": "m_simplePointLightCount",
+            "type": "uint",
+            "offset": 516,
+            "size": 4
+        },
+        {
+            "name": "m_simpleSpotLightCount",
+            "type": "uint",
+            "offset": 520,
+            "size": 4
+        },
+        {
+            "name": "m_visibleSimpleSpotLightCount",
+            "type": "uint",
+            "offset": 524,
+            "size": 4
+        },
+        {
+            "name": "m_pointLightCount",
+            "type": "uint",
+            "offset": 528,
+            "size": 4
+        },
+        {
+            "name": "m_visibleSimplePointLightCount",
+            "type": "uint",
+            "offset": 532,
+            "size": 4
+        },
+        {
+            "name": "m_shadowmapAtlasSize",
+            "type": "float",
+            "offset": 536,
+            "size": 4
+        },
+        {
+            "name": "m_invShadowmapAtlasSize",
+            "type": "float",
+            "offset": 540,
+            "size": 4
+        },
+        {
+            "name": "m_directionalLightCount",
+            "type": "uint",
+            "offset": 544,
+            "size": 4
+        },
+        {
+            "name": "m_shadowIndexDirectionalLight",
+            "type": "uint",
+            "offset": 548,
+            "size": 4
+        },
+        {
+            "name": "m_diskLightCount",
+            "type": "uint",
+            "offset": 552,
+            "size": 4
+        },
+        {
+            "name": "m_capsuleLightCount",
+            "type": "uint",
+            "offset": 556,
+            "size": 4
+        },
+        {
+            "name": "m_quadLightCount",
+            "type": "uint",
+            "offset": 560,
+            "size": 4
+        },
+        {
+            "name": "m_polygonLightCount",
+            "type": "uint",
+            "offset": 564,
+            "size": 4
+        },
+        {
+            "name": "m_dof",
+            "type": "DepthOfFieldData",
+            "offset": 576,
+            "size": 32
+        }
+    ],
+    "srgConstantsBuffer": {
+        "dx12": {
+            "class": "b",
+            "register": 0,
+            "space": 0
+        },
+        "vulkan": {
+            "binding": 32,
+            "set": 0
+        }
+    }
+}

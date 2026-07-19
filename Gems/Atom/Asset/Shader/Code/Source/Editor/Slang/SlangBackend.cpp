@@ -180,6 +180,18 @@ namespace AZ::ShaderBuilder
             useDxPositionW.value.intValue0 = 1;
             sessionDescriptor.m_extraOptions.push_back(useDxPositionW);
         }
+        if (targetDescriptor.m_format == RHI::ShaderTargetFormat::Spirv)
+        {
+            // Atom lays out Vulkan structured/constant buffers with DirectX memory rules (as AZSLc
+            // does), so one CPU-side struct and one shared-SRG layout serve both APIs. Without this,
+            // Slang emits std430 for SPIR-V and diverges on any buffer element containing a float3
+            // (16-byte-aligned under std430, tightly packed under DX rules).
+            slang::CompilerOptionEntry forceDxLayout = {};
+            forceDxLayout.name = slang::CompilerOptionName::ForceDXLayout;
+            forceDxLayout.value.kind = slang::CompilerOptionValueKind::Int;
+            forceDxLayout.value.intValue0 = 1;
+            sessionDescriptor.m_extraOptions.push_back(forceDxLayout);
+        }
 
         // Search order mirrors the module resolver: the importing file's directory first, then
         // the project include roots, then the per-API prelude directory.
@@ -839,10 +851,15 @@ namespace AZ::ShaderBuilder
         SlangCompilerService& compilerService = SlangCompilerService::Get();
         auto compilerLock = compilerService.AcquireCompilerLock();
 
-        // Relink from the frontend's module closure when one is available and matches the
-        // running compiler; recompiling from source is the mandatory fallback.
+        // Relink from the frontend's module closure when one is available and matches the running
+        // compiler; recompiling from source is the mandatory fallback. Closure relink is the
+        // optimization that avoids re-parsing/re-checking for the many *derived* variants (baked
+        // option values), and produces byte-identical bytecode to a source recompile (M12). The root
+        // variant gains nothing from it, so it compiles from source — which also keeps root builds
+        // robust against Slang's IR round-trip limits on very large modules (e.g. shaders that pull
+        // in the full shared Scene/View SRGs).
         AZStd::optional<ProgramCompilation> restoredCompilation;
-        if (!input.m_moduleClosurePath.empty())
+        if (!input.m_moduleClosurePath.empty() && input.m_variantOptionValues)
         {
             const AZStd::string moduleClosurePath(input.m_moduleClosurePath);
             SlangModuleClosureBundle bundle;
