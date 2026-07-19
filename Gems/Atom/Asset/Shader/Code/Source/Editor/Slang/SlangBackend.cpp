@@ -561,7 +561,7 @@ namespace AZ::ShaderBuilder
     static AZStd::string GetApiPreludeDirectory(
         RHI::ShaderPlatformInterface& shaderPlatformInterface,
         const AssetBuilderSDK::PlatformInfo& platformInfo,
-        AZStd::string_view builderName)
+        [[maybe_unused]] AZStd::string_view builderName)
     {
         AZ::IO::FixedMaxPath azslHeaderPath = AZ::Utils::GetExecutableDirectory();
         azslHeaderPath /= shaderPlatformInterface.GetAzslHeader(platformInfo);

@@ -267,7 +267,7 @@ namespace AZ::ShaderBuilder
     //! Loads the option layout the frontend's options.json product declares, plus whether the
     //! supervariant compiles its options as specialization constants.
     static RPI::Ptr<RPI::ShaderOptionGroupLayout> LoadShaderOptionsGroupLayoutFromShaderAssetBuilder(
-        const char* builderName,
+        [[maybe_unused]] const char* builderName,
         const RHI::ShaderPlatformInterface* shaderPlatformInterface,
         const AssetBuilderSDK::PlatformInfo& platformInfo,
         const AzslCompiler& azslCompiler,
@@ -304,7 +304,7 @@ namespace AZ::ShaderBuilder
     }
 
     static void LoadShaderFunctionsFromShaderAssetBuilder(
-        const char* builderName,
+        [[maybe_unused]] const char* builderName,
         const RHI::ShaderPlatformInterface* shaderPlatformInterface, const AssetBuilderSDK::PlatformInfo& platformInfo,
         const AzslCompiler& azslCompiler, const AZStd::string& shaderSourceFileFullPath,
         const RPI::SupervariantIndex supervariantIndex,
@@ -335,7 +335,7 @@ namespace AZ::ShaderBuilder
     }
 
     static bool LoadSrgLayoutListFromShaderAssetBuilder(
-        const char* builderName,
+        [[maybe_unused]] const char* builderName,
         const RHI::ShaderPlatformInterface* shaderPlatformInterface,
         const AssetBuilderSDK::PlatformInfo& platformInfo,
         const AzslCompiler& azslCompiler, const AZStd::string& shaderSourceFileFullPath,
@@ -394,7 +394,7 @@ namespace AZ::ShaderBuilder
     }
 
     static bool LoadBindingDependenciesFromShaderAssetBuilder(
-        const char* builderName,
+        [[maybe_unused]] const char* builderName,
         const RHI::ShaderPlatformInterface* shaderPlatformInterface,
         const AssetBuilderSDK::PlatformInfo& platformInfo,
         const AzslCompiler& azslCompiler, const AZStd::string& shaderSourceFileFullPath,
@@ -428,7 +428,7 @@ namespace AZ::ShaderBuilder
     // Returns the content of the hlsl file for the given supervariant as produced by ShaderAsssetBuilder.
     // In addition to the content it also returns the full path of the hlsl file in @hlslSourcePath.
     static AZStd::string LoadHlslFileFromShaderAssetBuilder(
-        const char* builderName,
+        [[maybe_unused]] const char* builderName,
         const RHI::ShaderPlatformInterface* shaderPlatformInterface, const AssetBuilderSDK::PlatformInfo& platformInfo,
         const AZStd::string& shaderSourceFileFullPath, const RPI::SupervariantIndex supervariantIndex, AZStd::string& hlslSourcePath)
     {

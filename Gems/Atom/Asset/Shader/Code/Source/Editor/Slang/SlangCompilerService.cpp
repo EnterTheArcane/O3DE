@@ -90,7 +90,7 @@ namespace AZ::ShaderBuilder
     }
 
     void SlangCompilerService::ReportDiagnostics(
-        AZStd::string_view contextPath,
+        [[maybe_unused]] AZStd::string_view contextPath,
         slang::IBlob* diagnostics,
         bool asError)
     {
@@ -99,8 +99,8 @@ namespace AZ::ShaderBuilder
             return;
         }
 
-        const int messageLength = static_cast<int>(diagnostics->getBufferSize());
-        const char* messageText = static_cast<const char*>(diagnostics->getBufferPointer());
+        [[maybe_unused]] const int messageLength = static_cast<int>(diagnostics->getBufferSize());
+        [[maybe_unused]] const char* messageText = static_cast<const char*>(diagnostics->getBufferPointer());
         if (asError)
         {
             AZ_Error(

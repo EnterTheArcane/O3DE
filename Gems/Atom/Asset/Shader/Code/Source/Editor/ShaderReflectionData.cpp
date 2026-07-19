@@ -313,7 +313,7 @@ namespace AZ::ShaderBuilder
     }
 
     static bool BuildShaderInputContract(
-        const AZStd::string& builderNameString,
+        [[maybe_unused]] const AZStd::string& builderNameString,
         const ShaderReflectionData& reflectionData,
         const AZStd::string& vertexShaderName,
         const RPI::ShaderOptionGroupLayout& shaderOptionGroupLayout,
@@ -377,7 +377,7 @@ namespace AZ::ShaderBuilder
     }
 
     static bool BuildShaderOutputContract(
-        const AZStd::string& builderNameString,
+        [[maybe_unused]] const AZStd::string& builderNameString,
         const ShaderReflectionData& reflectionData,
         const AZStd::string& fragmentShaderName,
         RPI::ShaderOutputContract& contract)
