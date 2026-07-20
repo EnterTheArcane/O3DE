@@ -6,12 +6,11 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
-#include <Atom/Features/ColorManagement/TransformColor.slangi>
-#include <Atom/Features/CoreLights/PhotometricValue.slangi>
-#include "LuminanceHistogramCommon.slangi"
+import Atom.Features.ColorManagement.TransformColor;
+import Atom.Features.CoreLights.PhotometricValue;
+import "LuminanceHistogramCommon.slang";
 
-#define NUM_THREADS_PER_DIM 32
+public static const int NUM_THREADS_PER_DIM = 32;
 
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 struct PassSrgLayout

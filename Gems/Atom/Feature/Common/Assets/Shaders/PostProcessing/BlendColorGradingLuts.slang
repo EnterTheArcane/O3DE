@@ -6,9 +6,8 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
-#include <Atom/Features/PostProcessing/Aces.slangi>
-#include <Atom/Features/PostProcessing/Shapers.slangi>
+import Atom.Features.PostProcessing.Aces;
+import Atom.Features.PostProcessing.Shapers;
 
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 struct PassSrgLayout

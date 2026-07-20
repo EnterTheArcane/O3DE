@@ -5,10 +5,10 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#include "LinearSkinningPassSRG.slangi"
-#include <Atom/Features/MorphTargets/MorphTargetCompression.slangi>
-#include <Atom/Features/MatrixUtility.slangi>
-#include <Atom/RPI/Math.slangi>
+import "LinearSkinningPassSRG.slang";
+import Atom.Features.MorphTargets.MorphTargetCompression;
+import Atom.Features.MatrixUtility;
+import Atom.RPI.Math;
 
 
 public enum SkinningMethod

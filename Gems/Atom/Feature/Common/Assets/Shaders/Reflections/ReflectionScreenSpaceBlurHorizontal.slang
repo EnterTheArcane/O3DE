@@ -6,9 +6,9 @@
  *
  */
 
-#include <Atom/Features/PostProcessing/FullscreenVertex.slangi>
-#include <Atom/Features/PostProcessing/FullscreenPixelInfo.slangi>
-#include "ReflectionScreenSpaceBlurCommon.slangi"
+import Atom.Features.PostProcessing.FullscreenVertex;
+import Atom.Features.PostProcessing.FullscreenPixelInfo;
+import "ReflectionScreenSpaceBlurCommon.slang";
 
 PSOutput MainPS(VSOutput IN)
 {

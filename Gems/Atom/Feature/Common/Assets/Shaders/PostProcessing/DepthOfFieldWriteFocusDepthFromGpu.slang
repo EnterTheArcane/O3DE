@@ -6,9 +6,8 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
-#include "DepthOfField.slangi"
+import "DepthOfField.slang";
 
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 struct PerPassLayout

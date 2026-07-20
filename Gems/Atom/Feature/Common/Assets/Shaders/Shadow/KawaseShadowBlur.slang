@@ -12,10 +12,9 @@
 // It should generally be faster than separable gaussian blur
 // https://software.intel.com/content/www/us/en/develop/blogs/an-investigation-of-fast-real-time-gpu-based-image-blur-algorithms.html
 
-#include <Atom/Features/Math/Filter.slangi>
-#include <Atom/Features/Shadow/ShadowmapAtlasLib.slangi>
-#include <Atom/Features/Shadow/Shadow.slangi>
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
+import Atom.Features.Math.Filter;
+import Atom.Features.Shadow.ShadowmapAtlasLib;
+import Atom.Features.Shadow.Shadow;
 
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 struct FilterPassSrgLayout

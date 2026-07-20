@@ -6,7 +6,6 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
 
 // --- Algorithm Overview ---
@@ -80,7 +79,7 @@
 //    texture gather instructions on both the downsampled depth/source and the full-res depth (see above example for T-11)
 //
 
-#define THREADS 16
+public static const int THREADS = 16;
 
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 struct PassSrgLayout

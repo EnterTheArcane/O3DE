@@ -15,7 +15,7 @@ from .discover import SourceFile
 from .lexing import lex_file, lex_text
 from .registry import Registry
 from .rewrite import Note, Rewriter, Severity
-from .rules import includes, members, options, srg, types
+from .rules import constants, includes, members, options, srg, types, visibility
 
 
 class Outcome(Enum):
@@ -36,7 +36,7 @@ class Result:
 
 # Order matters only where rules could contend for the same tokens: SRG conversion rewrites the
 # declaration header, options rewrite whole declarations, and the rest touch disjoint spans.
-_RULES = (includes, srg, options, members, types)
+_RULES = (includes, constants, srg, options, members, types)
 
 
 def convert(entry: SourceFile, registry: Registry) -> Result:
@@ -83,6 +83,18 @@ def convert(entry: SourceFile, registry: Registry) -> Result:
         text = rewriter.apply()
     except ValueError as exc:
         return Result(entry, Outcome.FAILED, notes=rewriter.notes, error=str(exc))
+
+    # Access control runs last, on the converted text: it publicizes the *final* declarations
+    # (structs, extern options, ParameterBlocks), so it must see them in their ported form, not the
+    # raw AZSL the other rules restructure.
+    post_lexed = lex_text(text, entry.source)
+    postpass = Rewriter(text=text)
+    visibility.apply(post_lexed, registry, postpass)
+    if postpass.edits:
+        try:
+            text = postpass.apply()
+        except ValueError as exc:
+            return Result(entry, Outcome.FAILED, notes=rewriter.notes, error=str(exc))
 
     if rewriter.needs_manual:
         outcome = Outcome.NEEDS_MANUAL

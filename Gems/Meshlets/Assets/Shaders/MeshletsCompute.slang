@@ -1,6 +1,4 @@
-#pragma once
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
 //------------------------------------------------------------------------------
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]
@@ -148,7 +146,7 @@ uint4 GetGlobalVertexIndicesAndTriOffset(MeshletDescriptor meshlet, uint localTr
 //! or Meshlets::maxTrianglesPerMeshlet depending on our algorithm for minimizing 
 //! amount of work per thread and achieving max parallelizm.
 //------------------------------------------------------------------------------
-#define THREADS_COUNT 64
+public static const int THREADS_COUNT = 64;
 
 //------------------------------------------------------------------------------
 // The following method demonstartes the usage of the meshlets data buffers to 

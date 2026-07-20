@@ -8,9 +8,8 @@
 
 // refer https://github.com/GPUOpen-Effects/FidelityFX-SPD/blob/c52944f547884774a1b33066f740e6bf89f927f5/sample/src/DX12/SPDIntegration.hlsl
 
-#include <Atom/RPI/Math.slangi>
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
-#include <Atom/Features/ColorManagement/TransformColor.slangi>
+import Atom.RPI.Math;
+import Atom.Features.ColorManagement.TransformColor;
 
 struct SpdGlobalAtomicBuffer
 {

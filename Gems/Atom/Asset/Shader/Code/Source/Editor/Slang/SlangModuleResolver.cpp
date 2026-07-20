@@ -126,7 +126,9 @@ namespace AZ::ShaderBuilder
     {
         AZStd::vector<AZStd::string> references;
 
-        // Matches: import A.B.C;  import "path/file.slang";  __include A.B;  import A, B;
+        // Matches: import A.B.C;  __exported import A.B.C;  import "path/file.slang";  __include A.B;
+        // import A, B;  -- the leading `import` is matched after any `__exported` prefix (a preceding
+        // space), so the re-export form is covered without a separate alternative.
         // Statements must be single-line (the reference list may not span newlines, or a
         // stray "import" in a comment would swallow real imports below it).
         // Over-prescriptive on purpose: matches inside comments or disabled preprocessor

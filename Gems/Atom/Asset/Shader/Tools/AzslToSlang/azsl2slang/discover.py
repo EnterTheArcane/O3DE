@@ -20,8 +20,9 @@ EXCLUDED_DIR_NAMES = frozenset(
 
 SOURCE_SUFFIXES = frozenset({".azsl", ".azsli", ".srgi"})
 
-# Entry-point shaders become modules; every include form becomes .slangi.
-SUFFIX_MAP = {".azsl": ".slang", ".azsli": ".slangi", ".srgi": ".slangi"}
+# Everything is a Slang module now (imported or #included), and modules resolve to `.slang`, so all
+# ported files take the `.slang` extension — the old `.slangi` include-only convention is retired.
+SUFFIX_MAP = {".azsl": ".slang", ".azsli": ".slang", ".srgi": ".slang"}
 
 # Per-API compiler prologues defining macros like UNBOUNDED_SIZE. The Slang path has its own
 # ApiPrelude.slang files, so these are never ported.

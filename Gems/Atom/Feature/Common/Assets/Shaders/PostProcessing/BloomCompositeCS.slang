@@ -5,10 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
 // Ratio between input and output texture size
-#define INPUT_OUTPUT_SIZE_RATIO 0.5
+public static const float INPUT_OUTPUT_SIZE_RATIO = 0.5;
 
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 struct PassSrgLayout

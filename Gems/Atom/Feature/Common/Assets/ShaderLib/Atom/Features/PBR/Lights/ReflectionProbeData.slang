@@ -1,0 +1,51 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ *
+ */
+
+
+//! Reflection Probe (smallest probe volume that overlaps the object position)
+public struct ReflectionProbeData
+{
+    public row_major float3x4 m_modelToWorld;
+    public row_major float3x4 m_modelToWorldInverse; // does not include extents
+    public float3 m_outerObbHalfLengths;
+    public float m_exposure;
+    public float3 m_innerObbHalfLengths;
+    public bool m_useReflectionProbe;
+    public bool m_useParallaxCorrection;
+    public float3 m_padding;
+    // [[pad_to(16)]] - already aligned
+};
+
+public float4x4 GetReflectionProbeWorldMatrix(in ReflectionProbeData reflectionProbeData)
+{
+    float4x4 modelToWorld = float4x4(
+        float4(1, 0, 0, 0),
+        float4(0, 1, 0, 0),
+        float4(0, 0, 1, 0),
+        float4(0, 0, 0, 1));
+
+    modelToWorld[0] = reflectionProbeData.m_modelToWorld[0];
+    modelToWorld[1] = reflectionProbeData.m_modelToWorld[1];
+    modelToWorld[2] = reflectionProbeData.m_modelToWorld[2];
+    return modelToWorld;
+}
+
+public float4x4 GetReflectionProbeWorldMatrixInverse(in ReflectionProbeData reflectionProbeData)
+{
+    float4x4 modelToWorldInverse = float4x4(
+        float4(1, 0, 0, 0),
+        float4(0, 1, 0, 0),
+        float4(0, 0, 1, 0),
+        float4(0, 0, 0, 1));
+
+    modelToWorldInverse[0] = reflectionProbeData.m_modelToWorldInverse[0];
+    modelToWorldInverse[1] = reflectionProbeData.m_modelToWorldInverse[1];
+    modelToWorldInverse[2] = reflectionProbeData.m_modelToWorldInverse[2];
+    return modelToWorldInverse;
+}
+

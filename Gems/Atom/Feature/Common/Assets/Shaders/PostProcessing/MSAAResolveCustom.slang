@@ -6,10 +6,9 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
-#include <Atom/Features/PostProcessing/FullscreenVertex.slangi>
-#include <Atom/Features/PostProcessing/PostProcessUtil.slangi>
+import Atom.Features.PostProcessing.FullscreenVertex;
+import Atom.Features.PostProcessing.PostProcessUtil;
 
 // --- NOTES ---
 //
@@ -18,7 +17,7 @@
 // Additionally, aliasing can be further reduced by applying neighborhood lumanince clamping. This will clamp luminace
 // values of sampled sub-pixels based on how bright neighboring sub-pixels are.
 
-#define PROVISIONAL_TONEMAP_GAMMA 2.2f
+public static const float PROVISIONAL_TONEMAP_GAMMA = 2.2f;
 
 // Tonemapping strategy
 #define REINHARD_TONEMAPPING_STRATEGY   0

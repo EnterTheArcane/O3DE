@@ -31,8 +31,8 @@
 // THE SOFTWARE.
 //
 //--------------------------------------------------------------------------------------
-#include <HairSimulationComputeSrgs.slangi>
-#include <HairSimulationCommon.slangi>
+import HairSimulationComputeSrgs;
+#include <HairSimulationCommon.slang>
 
 //--------------------------------------------------------------------------------------
 //

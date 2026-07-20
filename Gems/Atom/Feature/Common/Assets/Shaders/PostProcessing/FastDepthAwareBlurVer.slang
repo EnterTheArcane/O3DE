@@ -6,23 +6,22 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
-#include <Atom/RPI/Math.slangi>
+import Atom.RPI.Math;
 
 //                      --- Algorithm Overview ---
 // For an overview of this algorithm, please see FastDepthAwareBlurCommon.azsli
 
 // Each thread will output 3 pixels (this is a performance optimization,
 // we're essentially calculating the blur for 3 pixels at the same time)
-#define OUTPUT_PIXEL_PER_THREAD 3
+public static const int OUTPUT_PIXEL_PER_THREAD = 3;
 
 // How many pixels wide the blur will be
-#define BLUR_RADIUS 8
+public static const int BLUR_RADIUS = 8;
 
 // Number of threads in a group
 // Testing showed 64 x 2 groups had best performance on nvidia hardware (not yet tested on AMD)
-#define THREADS_X 2     // Must be at least  2 or shader will produce errors
-#define THREADS_Y 64    // Must be at least 16 or shader will produce errors
+public static const int THREADS_X = 2; // Must be at least  2 or shader will produce errors
+public static const int THREADS_Y = 64; // Must be at least 16 or shader will produce errors
 
 // How many output pixels are computed per group
 #define OUTPUT_SIZE_X THREADS_X
@@ -32,7 +31,7 @@
 #define LOOP_COUNT (BLUR_RADIUS - 2)
 
 // LDS offset for the start of the first loop going in the positive direction
-#define LOOP_1_START 0
+public static const int LOOP_1_START = 0;
 
 // LDS offset for the start of the second loop going in the negative direction
 #define LOOP_2_START (BLUR_RADIUS * 2 + OUTPUT_PIXEL_PER_THREAD - 1)
@@ -41,7 +40,7 @@
 #define LDS_HEIGHT (THREADS_Y * 4)
 
 // LDS_SIZE = LDS_WIDTH * LDS_HEIGHT = 8 * 64 = 512
-#define LDS_SIZE 512
+public static const int LDS_SIZE = 512;
 
 // Before any blur loops are executed, we accumulate all depth and value samples in LDS
 groupshared float depthLDS[LDS_SIZE];

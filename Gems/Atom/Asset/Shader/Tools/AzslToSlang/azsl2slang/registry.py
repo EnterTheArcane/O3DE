@@ -17,12 +17,20 @@ So every file is lexed once to build these registries before any file is rewritt
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .lexing import LexedFile, find_matching_brace, lex_file
+from .lexing import CHANNEL_PREPROCESSOR, LexedFile, find_matching_brace, lex_file
 
-from azslLexer import azslLexer as L  # noqa: N814  (sys.path prepared by .lexing)
+from azslLexer import azslLexer as L  # noqa: N814
+
+# Macros tested in a preprocessor conditional must stay `#define`s — a `public static const` cannot
+# gate a `#if`. This finds the names each conditional reads.
+_CONDITIONAL = re.compile(r"^\s*#\s*(?:if|ifdef|ifndef|elif)\b(?P<expr>.*)$")
+_IDENTIFIER = re.compile(r"[A-Za-z_]\w*")
+# `#define NAME` (object- or function-like); captures the macro name and whether it is function-like.
+_DEFINE = re.compile(r"^\s*#\s*define\s+(?P<name>[A-Za-z_]\w*)(?P<paren>\()?")
 
 # Frequencies from Atom/Features/SrgSemantics.azsli, named as the SrgBindingSlot constants declared
 # in Atom/RPI/ShaderResourceGroup.slang. Semantics are also scanned from source so project-defined
@@ -84,6 +92,17 @@ class Registry:
     options: dict[str, OptionInfo] = field(default_factory=dict)
     enums: set[str] = field(default_factory=set)
     collisions: list[str] = field(default_factory=list)
+    # Macro names read by any `#if`/`#ifdef`/`#ifndef`/`#elif` anywhere in the corpus; these must
+    # remain `#define`s (a static const cannot gate the preprocessor).
+    conditional_macros: set[str] = field(default_factory=set)
+    # Function-like macro names defined anywhere (`#define NAME(args) ...`).
+    function_macros: set[str] = field(default_factory=set)
+    # Basenames of files that export a `#define` another module can't receive by `import` — a macro
+    # tested in `#if` or a function-like macro. Includes of these stay `#include` so the macro crosses.
+    preprocessor_export_files: set[str] = field(default_factory=set)
+    # Stems (basename without extension) of every real source file. An include whose target is not
+    # among these is build-generated (e.g. GeneratedTransforms/*) and cannot become a module.
+    source_stems: set[str] = field(default_factory=set)
 
     def slot_expression(self, semantic_name: str | None) -> str | None:
         """`SrgBindingSlot.Pass` for a semantic, or None when it cannot be resolved."""
@@ -100,13 +119,56 @@ class Registry:
 
 def build(paths: list[Path]) -> Registry:
     registry = Registry()
+    # (path basename, object-like define names, function-like define names) per file, so that after
+    # the whole corpus is scanned we can mark files that export macros no `import` can carry.
+    per_file_defines: list[tuple[str, set[str], set[str]]] = []
     for path in paths:
+        registry.source_stems.add(path.stem)
         try:
             lexed = lex_file(path)
         except Exception:  # a file that will not lex is reported later, during conversion
             continue
         scan_file(lexed, registry)
+        object_defines, function_defines = _scan_defines(lexed, registry)
+        _scan_conditionals(lexed, registry)
+        per_file_defines.append((path.name, object_defines, function_defines))
+
+    # A file must stay `#include`d if it defines a macro that another module reads and `import` can't
+    # carry: a toggle tested in `#if`, or any function-like macro.
+    for basename, object_defines, function_defines in per_file_defines:
+        if function_defines or (object_defines & registry.conditional_macros):
+            registry.preprocessor_export_files.add(basename)
+
     return registry
+
+
+def _scan_defines(lexed: LexedFile, registry: Registry) -> tuple[set[str], set[str]]:
+    object_defines: set[str] = set()
+    function_defines: set[str] = set()
+    for token in lexed.tokens:
+        if token.channel != CHANNEL_PREPROCESSOR:
+            continue
+        match = _DEFINE.match(token.text)
+        if not match:
+            continue
+        if match.group("paren"):
+            function_defines.add(match.group("name"))
+            registry.function_macros.add(match.group("name"))
+        else:
+            object_defines.add(match.group("name"))
+    return object_defines, function_defines
+
+
+def _scan_conditionals(lexed: LexedFile, registry: Registry) -> None:
+    for token in lexed.tokens:
+        if token.channel != CHANNEL_PREPROCESSOR:
+            continue
+        match = _CONDITIONAL.match(token.text)
+        if not match:
+            continue
+        for name in _IDENTIFIER.findall(match.group("expr")):
+            if name != "defined":
+                registry.conditional_macros.add(name)
 
 
 def scan_file(lexed: LexedFile, registry: Registry) -> None:

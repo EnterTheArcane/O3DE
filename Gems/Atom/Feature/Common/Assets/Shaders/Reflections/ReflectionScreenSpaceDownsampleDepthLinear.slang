@@ -6,8 +6,7 @@
  *
  */
 
-#include <Atom/Features/PostProcessing/FullscreenVertex.slangi>
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
+import Atom.Features.PostProcessing.FullscreenVertex;
 
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 struct PassSrgLayout

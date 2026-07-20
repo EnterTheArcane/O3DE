@@ -6,9 +6,8 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
-#include <Atom/Features/ColorManagement/TransformColor.slangi>
+import Atom.Features.ColorManagement.TransformColor;
 
 // If true pixels with an alpha value of less than 0.5 are clipped
 [AtomOption]

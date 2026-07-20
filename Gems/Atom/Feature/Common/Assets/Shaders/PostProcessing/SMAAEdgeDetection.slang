@@ -6,12 +6,11 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
-#include <Atom/Features/PostProcessing/FullscreenPixelInfo.slangi>
-#include <Atom/Features/PostProcessing/PostProcessUtil.slangi>
-#include <Atom/Features/PostProcessing/FullscreenVertexInfo.slangi>
-#include <Atom/Features/PostProcessing/FullscreenVertexUtil.slangi>
+import Atom.Features.PostProcessing.FullscreenPixelInfo;
+import Atom.Features.PostProcessing.PostProcessUtil;
+import Atom.Features.PostProcessing.FullscreenVertexInfo;
+import Atom.Features.PostProcessing.FullscreenVertexUtil;
 
 struct VSOutputSMAAEdgeDetection
 {
@@ -79,7 +78,7 @@ public extern EdgeDetectionMode o_edgeDetectionMode();
 // Defining the elements below before including SMAA.azsli as they'll be used in it.
 // - PassSrg SRG to be used for the edge detection implementation.
 // - The option shader variables to be used for the edge detection implementation.
-#include "SMAA.slangi"
+#include "SMAA.slang"
 
 VSOutputSMAAEdgeDetection MainVS(VSInput input)
 {

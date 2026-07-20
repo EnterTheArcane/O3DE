@@ -6,7 +6,6 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
 [AtomShaderResourceGroup(SrgBindingSlot.Object)]
 struct ObjectSrgLayout
@@ -16,7 +15,7 @@ struct ObjectSrgLayout
 };
 ParameterBlock<ObjectSrgLayout> ObjectSrg;
 
-#define ThreadGroupSize 16
+public static const int ThreadGroupSize = 16;
 [numthreads(ThreadGroupSize, ThreadGroupSize, 1)]
 void MainCS(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID)
 {

@@ -1,0 +1,73 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ *
+ */
+
+
+__exported import Atom.Features.LightCulling.LightCullingShared;
+#include <Atom/Features/PBR/LightingOptions.slang>
+
+// This class is used by forward shaders to iterate through lights (and decals) that are visible at this pixel position
+public struct LightCullingTileIterator
+{       
+    [mutating] public void InitNoCulling()
+    {
+        m_readIndex = 0;
+        m_value = NVLC_END_OF_LIST;  
+    }
+
+    [mutating] public void Init(float4 svPosition, StructuredBuffer<uint> lightListRemapped, Texture2D<uint4> tileLightDataTex)
+    {
+#if ENABLE_LIGHT_CULLING
+        m_lightListRemapped = lightListRemapped;
+    
+        uint2 tileId = ComputeTileId(svPosition.xy);
+        
+        float viewz = abs(svPosition.w);
+
+        // ATOM-4198
+        // Replace GetDimensions() with a cbuffer uint read. Reading it from a cbuffer should be faster
+        uint tileWidth, tileHeight;
+        tileLightDataTex.GetDimensions(tileWidth, tileHeight);
+                    
+        TileLightData tileLightData = Tile_UnpackData(tileLightDataTex[tileId]);
+        m_overflow = tileLightData.overflow;
+        uint bin = NVLC_GetBin(viewz, tileLightData); 
+        m_readIndex = ((tileId.y * tileWidth + tileId.x) * NVLC_MAX_BINS + bin) * NVLC_MAX_POSSIBLE_LIGHTS_PER_BIN;  
+        m_value = 0;  
+#else
+        InitNoCulling();  
+#endif
+    }
+            
+    [mutating] public uint LoadAdvance()
+    {
+        if (m_value != NVLC_END_OF_LIST)
+        {
+            m_value = m_lightListRemapped.Load(int(m_readIndex)).x;     
+            ++m_readIndex;
+        }
+        return m_value;
+    }
+    
+    public uint GetValue()
+    {
+        return m_value;
+    }
+           
+    public bool IsDone()
+    {
+        return !(m_value < NVLC_END_OF_GROUP);
+    }
+
+    public uint m_readIndex;
+    public uint m_value;   
+
+    // true if the maximum number of lights per tile is exceeded
+    // lights will probably flicker if this happens
+    public bool m_overflow;
+    public StructuredBuffer<uint> m_lightListRemapped;
+};

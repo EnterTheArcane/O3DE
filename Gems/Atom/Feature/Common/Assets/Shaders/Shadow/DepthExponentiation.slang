@@ -6,11 +6,10 @@
  *
  */
 
-#include <Atom/Features/Shadow/Shadow.slangi>
-#include <Atom/Features/Math/Filter.slangi>
-#include <Atom/Features/Shadow/ShadowmapAtlasLib.slangi>
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
-#include <Atom/RPI/Math.slangi>
+import Atom.Features.Shadow.Shadow;
+import Atom.Features.Math.Filter;
+import Atom.Features.Shadow.ShadowmapAtlasLib;
+import Atom.RPI.Math;
 
 static const uint MaxCascadeCount = 4;
 

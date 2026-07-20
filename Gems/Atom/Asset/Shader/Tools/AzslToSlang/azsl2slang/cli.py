@@ -113,6 +113,10 @@ def main(argv: list[str] | None = None) -> int:
             _show_diff(result, args)
         elif result.text is not None:
             write(result)
+            # Modules are `.slang`; remove the `.slangi` an earlier pass wrote for the same source.
+            stale = entry.source.with_suffix(".slangi")
+            if stale != entry.target and stale.exists():
+                stale.unlink()
 
         if not args.quiet:
             for note in result.notes:

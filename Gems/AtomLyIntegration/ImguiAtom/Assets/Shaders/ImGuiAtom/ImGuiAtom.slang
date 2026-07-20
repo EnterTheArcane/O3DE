@@ -7,8 +7,7 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
-#include <Atom/Features/ColorManagement/TransformColor.slangi>
+import Atom.Features.ColorManagement.TransformColor;
 
 struct VertexInput
 {

@@ -7,7 +7,6 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
 struct VertexInput
 {

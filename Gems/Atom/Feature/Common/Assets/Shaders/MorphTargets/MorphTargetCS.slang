@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#include "MorphTargetSRG.slangi"
-#include <Atom/Features/MorphTargets/MorphTargetCompression.slangi>
+import "MorphTargetSRG.slang";
+import Atom.Features.MorphTargets.MorphTargetCompression;
 
 // TODO(slang-port): root constants are not reflected by SlangReflectionWalker yet
 struct ShaderRootConstants

@@ -267,7 +267,10 @@ def emit_slangi(model, elements_include, path, functions_include=None, scoped_na
     lines.append(f"// one {srg} instance. Verified byte-for-byte by SharedSrgBindingAbiTests.")
     lines.append("")
     lines.append("#pragma once")
-    lines.append(f'#include "{elements_include}"')
+    # Import the element-structs module (Slang discourages #include). The functions companion stays
+    # a #include because it is injected into the accessor struct body (a fragment, not a module).
+    elements_module = elements_include.rsplit(".", 1)[0].strip("/").replace("/", ".")
+    lines.append(f"__exported import {elements_module};")
     lines.append("")
 
     scoped = scoped_element_types(path, elements_include, scoped_namespace)

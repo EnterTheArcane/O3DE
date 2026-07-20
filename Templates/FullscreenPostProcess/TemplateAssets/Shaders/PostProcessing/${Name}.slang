@@ -27,10 +27,9 @@
 //   C++ pass class accesses them through m_shaderResourceGroup.
 // =============================================================================
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
-#include <Atom/Features/PostProcessing/FullscreenPixelInfo.slangi>
-#include <Atom/Features/PostProcessing/FullscreenVertex.slangi>
-#include <Atom/Features/PostProcessing/PostProcessUtil.slangi>
+import Atom.Features.PostProcessing.FullscreenPixelInfo;
+import Atom.Features.PostProcessing.FullscreenVertex;
+import Atom.Features.PostProcessing.PostProcessUtil;
 
 
 // -----------------------------------------------------------------------------

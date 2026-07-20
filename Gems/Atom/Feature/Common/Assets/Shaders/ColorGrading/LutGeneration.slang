@@ -6,16 +6,14 @@
  *
  */
 
-#pragma once
 
-#include <Atom/RPI/Math.slangi>
+import Atom.RPI.Math;
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
-#include <Atom/Features/PostProcessing/FullscreenVertex.slangi>
+import Atom.Features.PostProcessing.FullscreenVertex;
 
-#include <Atom/Features/PostProcessing/Aces.slangi>
-#include <Atom/Features/PostProcessing/Shapers.slangi>
+import Atom.Features.PostProcessing.Aces;
+import Atom.Features.PostProcessing.Shapers;
 
 float3 convert2Dto3DLutCoords(float2 uv, float width, float height)
 {
@@ -77,7 +75,7 @@ struct PassSrgLayout
 };
 ParameterBlock<PassSrgLayout> PassSrg;
 
-#include <Atom/Features/PostProcessing/HDRColorGradingCommon.slang>
+import Atom.Features.PostProcessing.HDRColorGradingCommon;
 
 struct PSOutput
 {

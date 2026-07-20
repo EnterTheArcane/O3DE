@@ -6,8 +6,7 @@
  *
  */
 
-#include <Atom/Features/RayTracing/RayTracingIntersectionAttributes.slangi>
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
+import Atom.Features.RayTracing.RayTracingIntersectionAttributes;
 
 // https://github.com/erich666/GraphicsGems/blob/master/gems/RayBox.c
 bool IntersectRayAABB(float3 rayOrigin, float3 rayDirection, float3 aabbMin, float3 aabbMax, out float t, out float3 normal, out float2 uv)

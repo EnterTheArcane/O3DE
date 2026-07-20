@@ -6,10 +6,9 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
-#include <Atom/Features/PBR/Hammersley.slangi>
-#include <Atom/Features/PBR/Microfacet/Ggx.slangi>
+import Atom.Features.PBR.Hammersley;
+import Atom.Features.PBR.Microfacet.Ggx;
 
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 struct PassSrgLayout

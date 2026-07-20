@@ -6,8 +6,7 @@
  *
  */
  
- // [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
-
+ 
 [AtomShaderResourceGroup(SrgBindingSlot.Draw)]
 struct InstanceSrgLayout
 {

@@ -6,8 +6,7 @@
  *
  */
  
- // [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
-
+ 
 // Indicates whether the sampler should use Wrap or Clamp
 [AtomOption]
 public extern bool o_clamp();

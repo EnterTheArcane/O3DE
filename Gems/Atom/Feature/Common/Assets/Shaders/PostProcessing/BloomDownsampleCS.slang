@@ -6,8 +6,7 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
-#include <Atom/Features/ColorManagement/TransformColor.slangi>
+import Atom.Features.ColorManagement.TransformColor;
 
 // [slang-port] hoisted out of the ShaderResourceGroup (Slang has no groupshared member)
 groupshared float3 smColor1[256];

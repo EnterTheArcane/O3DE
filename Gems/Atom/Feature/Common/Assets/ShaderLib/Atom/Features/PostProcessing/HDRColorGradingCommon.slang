@@ -6,14 +6,13 @@
  *
  */
 
-#pragma once
 
-#include <Atom/RPI/Math.slangi>
-#include <Atom/Features/ColorManagement/TransformColor.slangi>
-#include <Atom/Features/PostProcessing/AcesColorSpaceConversion.slangi>
-#include <3rdParty/Features/PostProcessing/PSstyleColorBlends_Separable.slangi>
-#include <3rdParty/Features/PostProcessing/PSstyleColorBlends_NonSeparable.slangi>
-#include <3rdParty/Features/PostProcessing/KelvinToRgb.slangi>
+import Atom.RPI.Math;
+import Atom.Features.ColorManagement.TransformColor;
+import Atom.Features.PostProcessing.AcesColorSpaceConversion;
+import 3rdParty.Features.PostProcessing.PSstyleColorBlends_Separable;
+import 3rdParty.Features.PostProcessing.PSstyleColorBlends_NonSeparable;
+import 3rdParty.Features.PostProcessing.KelvinToRgb;
 
 static const float FloatEpsilon = 1.192092896e-07; // 1.0 + FloatEpsilon != 1.0, smallest positive float   
 static const float FloatMin = FLOAT_32_MIN; // Min float number that is positive

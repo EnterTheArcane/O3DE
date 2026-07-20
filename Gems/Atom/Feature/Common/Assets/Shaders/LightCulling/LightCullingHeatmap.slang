@@ -19,24 +19,23 @@ static const float3 OverUsedColor = float3(1.00, 0.05, 0.05);           // Red
 static const float3 OverflowColor = float3(1.0, 1.0, 1.0);              // White
 
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
-#include <Atom/Features/PostProcessing/FullscreenPixelInfo.slangi>
-#include <Atom/Features/PostProcessing/FullscreenVertex.slangi>
-#include <Atom/Features/PostProcessing/PostProcessUtil.slangi>
-#include <Atom/Features/LightCulling/LightCullingShared.slangi>
+import Atom.Features.PostProcessing.FullscreenPixelInfo;
+import Atom.Features.PostProcessing.FullscreenVertex;
+import Atom.Features.PostProcessing.PostProcessUtil;
+import Atom.Features.LightCulling.LightCullingShared;
 
 
-#define X                                       1
-#define _                                       0
+public static const int X = 1;
+public static const int _ = 0;
 
 #define PACK_GLYPH_UINT(a, b, c, d)             ((d << 3) | (c << 2) | (b << 1) | a)
 
-#define CHAR_W                                  4
-#define GLYPH_HEIGHT                            6
+public static const int CHAR_W = 4;
+public static const int GLYPH_HEIGHT = 6;
 
 
-#define MAX_CHARS                               10
+public static const int MAX_CHARS = 10;
 
 
 static const uint NumberGlyphs[GLYPH_HEIGHT * MAX_CHARS] =
@@ -122,9 +121,9 @@ static const uint NumberGlyphs[GLYPH_HEIGHT * MAX_CHARS] =
     PACK_GLYPH_UINT(X, X, X, _),
 };
 
-#define IS_UNINITIALIZED        0x0
-#define IS_BACKGROUND           0x1
-#define IS_FOREGROUND           0x2
+public static const uint IS_UNINITIALIZED = 0x0;
+public static const uint IS_BACKGROUND = 0x1;
+public static const uint IS_FOREGROUND = 0x2;
 
 #define PRINT_ITERATION(ch)  \
     { \

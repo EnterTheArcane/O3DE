@@ -14,12 +14,12 @@
 */
 
 
-#include <Atom/RPI/Math.slangi>
+import Atom.RPI.Math;
 
 // We are using the shader variant system to deal with different MSAA modes
 // The shader variant system needs a fallback, using UnusedFallbackDrawSrg for this.
-#include <Atom/RPI/ShaderResourceGroups/UnusedFallbackDrawSrg.slangi>
-#include <Atom/Features/LightCulling/LightCullingShared.slangi>
+import Atom.RPI.ShaderResourceGroups.UnusedFallbackDrawSrg;
+import Atom.Features.LightCulling.LightCullingShared;
 
 
 public enum MsaaMode

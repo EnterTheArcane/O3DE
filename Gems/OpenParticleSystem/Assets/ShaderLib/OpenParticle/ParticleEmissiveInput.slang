@@ -1,0 +1,23 @@
+
+__exported import Atom.Features.ColorManagement.TransformColor;
+
+[AtomOption]
+public extern bool o_emissiveEnabled();
+[AtomOption]
+public extern bool o_emissive_useTexture();
+
+public float3 GetEmissiveInput(Texture2D map, SamplerState mapSampler, float2 uv, float factor, float3 emissiveColor, bool emissiveEnabled, bool useTexture)
+{
+    float3 emissive = float3(0,0,0);
+    if(emissiveEnabled)
+    {
+        emissive = emissiveColor * factor;
+        if (useTexture)
+        {
+            float3 sampledValue = map.Sample(mapSampler, uv).rgb;
+            emissive *= TransformColor(sampledValue, ColorSpaceId::LinearSRGB, ColorSpaceId::ACEScg);
+        }
+    }
+    return emissive;
+}
+

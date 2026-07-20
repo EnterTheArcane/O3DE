@@ -6,12 +6,11 @@
  *
  */
 
-#include <Atom/RPI/Math.slangi>
+import Atom.RPI.Math;
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
-#include <Atom/Features/PostProcessing/FullscreenPixelInfo.slangi>
-#include <Atom/Features/PostProcessing/FullscreenVertex.slangi>
+import Atom.Features.PostProcessing.FullscreenPixelInfo;
+import Atom.Features.PostProcessing.FullscreenVertex;
 
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 struct PassSrgLayout
@@ -60,7 +59,7 @@ struct PassSrgLayout
 };
 ParameterBlock<PassSrgLayout> PassSrg;
 
-#include <Atom/Features/PostProcessing/HDRColorGradingCommon.slang>
+import Atom.Features.PostProcessing.HDRColorGradingCommon;
 
 PSOutput MainPS(VSOutput IN)
 {

@@ -6,13 +6,12 @@
  *
  */
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
-#include <Atom/Features/PostProcessing/FullscreenPixelInfo.slangi>
-#include <Atom/Features/PostProcessing/FullscreenVertex.slangi>
-#include <Atom/Features/PostProcessing/PostProcessUtil.slangi>
+import Atom.Features.PostProcessing.FullscreenPixelInfo;
+import Atom.Features.PostProcessing.FullscreenVertex;
+import Atom.Features.PostProcessing.PostProcessUtil;
 
-#include <Atom/Features/ColorManagement/TransformColor.slangi>
+import Atom.Features.ColorManagement.TransformColor;
 
 ////////////////////////////////////////////////////////////////////////////////
 

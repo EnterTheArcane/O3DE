@@ -8,15 +8,14 @@
 
 // Compute shader that takes a LightList and remaps it into a format that is fast for the forward shader to read (LightListRemapped)
 
-// [slang-port] removed: #include <Atom/Features/SrgSemantics.azsli> has no Slang counterpart
 
-#include <Atom/RPI/Math.slangi>
-#include <Atom/Features/LightCulling/LightCullingShared.slangi>
+import Atom.RPI.Math;
+import Atom.Features.LightCulling.LightCullingShared;
 
 // Make sure to change ComputeSharedBinLocationFromLightIndex() if NUM_THREADS changes.
-#define NUM_THREADS 32
+public static const int NUM_THREADS = 32;
 
-#define UNROLLING_STEPS 2
+public static const int UNROLLING_STEPS = 2;
 
 
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]

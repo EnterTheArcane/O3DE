@@ -1,0 +1,101 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ *
+ */
+
+#pragma once
+
+// Element structs referenced by the ViewSrg binding ABI (ViewSrg.slang). Each is a
+// StructuredBuffer/ConstantBuffer element whose *stride* is part of the layout hash
+// (SharedSrgBindingAbiTests validates every stride against the AZSL editorial source). Slang packs
+// structured-buffer elements with the same relaxed rules AZSLc uses (float3 tightly packed, no
+// vector 16-byte rounding), so the ports are stride-identical to the matching .azsli structs.
+//
+// Structs that also have a first-party Slang port are pulled in from that single source rather than
+// re-declared here, which previously collided with the ported ShaderLib.
+//
+// Structs AZSL declared *inside* the ViewSrg SRG body live in `namespace ViewSrgData` below. AZSL
+// scopes SRG-inline structs to the SRG (ViewSrg::ProjectedShadow), keeping them distinct from the
+// same-named top-level shadow classes (Shadow/ProjectedShadow.azsli); a namespace reproduces that
+// scope. GenerateSharedSrgSlang.py auto-detects structs in `namespace <Srg>Data` and qualifies the
+// SRG members that reference them, so a new SRG-inline struct only has to be added to this namespace.
+
+__exported import Atom.Features.PBR.Lights.LightStructures;  // SimplePointLight, SimpleSpotLight,
+                                                            // PointLight, DiskLight, CapsuleLight,
+                                                            // QuadLight, PolygonLight
+__exported import Atom.Features.Decals.DecalStructures;  // Decal
+
+// PostProcessing/ViewSrg.azsli
+struct DepthOfFieldData
+{
+    float3 m_cameraParameters;
+    float m_pencilMapTexcoordToCocRadius;
+    float m_pencilMapFocusPointTexcoordU;
+    float m_cocToScreenRatio;
+    // [[pad_to(16)]] rounds 24 -> 32. AZSLc names this synthesized SRG-constant padding "__pad_at24"
+    // (its byte offset within the struct); the name is part of the layout hash, so match it exactly.
+    float2 __pad_at24;
+};
+
+// PostProcessing/ViewSrg.azsli
+struct ExposureControlParameters
+{
+    float m_exposureMinLog2;
+    float m_exposureMaxLog2;
+    float m_speedUp;
+    float m_speedDown;
+    float m_exposureValueCompensation;
+    uint m_eyeAdaptationEnabled;
+    uint2 m_padding;
+};
+
+// CoreLights/ViewSrg.azsli -- structs declared inside the ViewSrg SRG. Scoped here to match AZSL's
+// ViewSrg:: scope and to stay distinct from the same-named top-level shadow classes. The generator
+// qualifies the SRG buffer members that reference these (StructuredBuffer<ViewSrgData::ProjectedShadow>).
+namespace ViewSrgData
+{
+    public struct FilterParameter
+    {
+        uint m_isEnabled;
+        uint2 m_shadowmapOriginInSlice;
+        uint m_shadowmapSize;
+        float m_lightDistanceOfCameraViewFrustum;
+        float m_nf;
+        float m_f_n;
+        float m_f;
+    };
+
+    public struct ProjectedShadow
+    {
+        float4x4 m_depthBiasMatrix;
+        uint m_shadowmapArraySlice;
+        uint m_shadowFilterMethod;
+        float m_boundaryScale;
+        uint m_filteringSampleCount;
+        float2 m_unprojectConstants;
+        float m_bias;
+        float m_normalShadowBias;
+        float m_esmExponent;
+        float3 m_padding;
+    };
+
+    public struct DirectionalLightShadow
+    {
+        float4x4 m_lightViewToShadowmapMatrices[4]; // MaxCascadeCount
+        float4x4 m_worldToLightViewMatrices[4];     // MaxCascadeCount
+        float m_slopeBiasBase[4];                   // MaxCascadeCount
+        float m_boundaryScale;
+        uint m_shadowmapSize;
+        uint m_cascadeCount;
+        float m_shadowBias;
+        float m_normalShadowBias;
+        uint m_filteringSampleCountMode;
+        uint m_debugFlags;
+        uint m_shadowFilterMethod;
+        float m_far_minus_near;
+        float3 m_padding;
+    };
+}

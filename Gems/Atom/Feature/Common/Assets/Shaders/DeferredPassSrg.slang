@@ -10,5 +10,5 @@
 // The only purpose of this shader is to have a shader asset that can be used
 // at runtime to find the PassSrg required by most Passes.
 
-#include <Atom/Features/Pipeline/Deferred/DeferredPassSrg.slangi>
-#include <Atom/RPI/DummyEntryFunctions.slangi>
+import Atom.Features.Pipeline.Deferred.DeferredPassSrg;
+import Atom.RPI.DummyEntryFunctions;

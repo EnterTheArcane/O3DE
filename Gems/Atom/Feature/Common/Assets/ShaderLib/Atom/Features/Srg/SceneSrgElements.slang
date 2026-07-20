@@ -1,0 +1,61 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ *
+ */
+
+#pragma once
+
+// Element structs referenced by the SceneSrg binding ABI (SceneSrg.slang). Each is a
+// StructuredBuffer/ConstantBuffer element whose *stride* is part of the layout hash
+// (SharedSrgBindingAbiTests validates every stride against the AZSL editorial source).
+//
+// Structs that also have a first-party Slang port are pulled in from that single source rather than
+// re-declared here -- redeclaring them collided with the ported ShaderLib (two definitions of the
+// same name in one compile). The ports are field-identical to the AZSL originals, so the stride is
+// unchanged. Only structs with no standalone port (SceneSrg-inline structs) are still declared here.
+
+__exported import Atom.Features.PBR.Lights.LightStructures;  // DirectionalLight
+__exported import Atom.Features.MeshInfo.MeshInfo;  // MeshInfo
+__exported import Atom.Features.FallbackPBRMaterial.MaterialInfo;  // MaterialInfo (+ ReflectionProbeData)
+
+// SkyBox/SceneSrg.azsli
+struct PhysicalSkyData
+{
+    float4 m_physicalSkyParameterA;
+    float4 m_physicalSkyParameterB;
+    float4 m_physicalSkyParameterC;
+    float4 m_physicalSkyParameterD;
+    float4 m_physicalSkyParameterE;
+    float4 m_physicalSkyParameterF;
+    float4 m_physicalSkyParameterG;
+    float4 m_physicalSkyParameterH;
+    float4 m_physicalSkyParameterI;
+    float4 m_physicalSkyParameterZ;
+    float4 m_physicalSkySunParameters;
+    float4 m_physicalSkySunDirection;
+    float4 m_physicalSkySunRGB;
+    float4 m_physicalSkyAndSunIntensity;
+};
+
+// Terrain/SceneSrg.azsli (Terrain gem partial; a loose SRG-constant of struct type)
+struct TerrainWorldData
+{
+    float m_zMin;
+    float m_zMax;
+    float m_zExtents;
+    float m_padding;
+};
+
+// ShaderResourceGroups/SceneSrg.azsli (inline structs)
+struct ObjectToWorld
+{
+    row_major float3x4 m_transform;
+};
+
+struct NormalToWorld
+{
+    row_major float3x4 m_transform;
+};
