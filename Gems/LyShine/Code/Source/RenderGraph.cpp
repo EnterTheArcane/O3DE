@@ -882,7 +882,7 @@ namespace LyShine
         const int numIndicesInQuad = 6;
 
         // points are a clockwise quad
-        static const Vec2 uvs[numVertsInQuad] = { {0, 0}, {1, 0}, {1, 1}, {0, 1} };
+        static const Vec2 uvs[numVertsInQuad] = { Vec2(0, 0), Vec2(1, 0), Vec2(1, 1), Vec2(0, 1) };
 
         static uint16 indices[numIndicesInQuad] = { 0, 1, 2, 2, 3, 0 };
 

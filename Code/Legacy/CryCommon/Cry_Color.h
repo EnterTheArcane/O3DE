@@ -12,6 +12,7 @@
 
 #include <platform.h>
 #include <AzCore/std/containers/array.h>
+#include <AzCore/Math/Color.h>
 #include "Cry_Math.h"
 
 template <class T>
@@ -21,9 +22,10 @@ struct Color_tpl;
 AZ_DEPRECATED_MESSAGE("ColorB is deprecated, use AZ::Color instead.")
 typedef Color_tpl<uint8> ColorB; // [ 0,  255]
 
-// O3DE_DEPRECATION_NOTICE(GHI-19504) - Use AZ::Color
-AZ_DEPRECATED_MESSAGE("ColorF is deprecated, use AZ::Color instead.")
-typedef Color_tpl<float> ColorF; // [0.0, 1.0]
+// CryCommon->AzCore migration: `ColorF` is now a TEMPORARY alias of AZ::Color (was
+// Color_tpl<float>). The Color_tpl<T> template is retained for the uint8 `ColorB` (which has
+// no clean AZ::Color analog and stays a Cry type). REMOVE alias in Wave 3.
+using ColorF = AZ::Color; // [0.0, 1.0]
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // RGBA Color structure.

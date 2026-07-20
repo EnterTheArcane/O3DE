@@ -378,8 +378,8 @@ Vec3    QtViewport::ViewToWorldNormal([[maybe_unused]] const QPoint& vp, [[maybe
 //////////////////////////////////////////////////////////////////////////
 void    QtViewport::ViewToWorldRay([[maybe_unused]] const QPoint& vp, Vec3& raySrc, Vec3& rayDir) const
 {
-    raySrc(0, 0, 0);
-    rayDir(0, 0, -1);
+    raySrc.Set(0, 0, 0);
+    rayDir.Set(0, 0, -1);
 }
 
 void QtViewport::mousePressEvent(QMouseEvent* event)

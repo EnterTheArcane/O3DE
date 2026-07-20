@@ -1324,7 +1324,7 @@ void EditorViewportWidget::ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& 
 {
     QRect rc = m_rcClient;
 
-    Vec3 pos0, pos1;
+    Vec3 pos0;
     float wx, wy, wz;
     UnProjectFromScreen(static_cast<float>(vp.x()), static_cast<float>(rc.bottom() - vp.y()), &wx, &wy, &wz);
 
@@ -1338,7 +1338,7 @@ void EditorViewportWidget::ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& 
         return;
     }
 
-    pos0(wx, wy, wz);
+    pos0.Set(wx, wy, wz);
 
     raySrc = pos0;
     rayDir = (pos0 - AZVec3ToLYVec3(m_renderViewport->GetCameraState().m_position)).GetNormalized();

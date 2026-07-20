@@ -11,6 +11,7 @@
 #pragma once
 
 #include <AzCore/RTTI/TypeInfo.h>
+#include <AzCore/Math/Vector2.h>
 #include "Cry_Math.h"
 
 template<class F>
@@ -49,6 +50,11 @@ struct Vec2_tpl
         , y(0) {}
     ILINE Vec2_tpl(F vx, F vy) { x = vx; y = vy; }
     explicit ILINE Vec2_tpl(F m) { x = y = m; }
+
+    // CryCommon->AzCore migration: implicit both ways so Vec2_tpl<F> still interops with
+    // AZ::Vector2 (which `Vec2` now aliases). REMOVE with the Vec2_tpl template in Wave 3.
+    ILINE Vec2_tpl(const AZ::Vector2& v) { x = static_cast<F>(v.GetX()); y = static_cast<F>(v.GetY()); }
+    ILINE operator AZ::Vector2() const { return AZ::Vector2(static_cast<float>(x), static_cast<float>(y)); }
 
     ILINE Vec2_tpl& set(F nx, F ny) { x = F(nx); y = F(ny); return *this; }
 
@@ -295,7 +301,11 @@ struct Vec2_tpl
 // Typedefs                                                                  //
 ///////////////////////////////////////////////////////////////////////////////
 
-typedef Vec2_tpl<f32>    Vec2;  // always 32 bit
+// CryCommon->AzCore migration: `Vec2` is now a TEMPORARY alias of AZ::Vector2 (was
+// Vec2_tpl<f32>). The generic Vec2_tpl<F> template is retained for non-float uses (Vec2i).
+// REMOVE alias in Wave 3. Legacy Vec2 type id {844131BA-...} migrates to AZ::Vector2 via a
+// ClassDeprecate converter registered in Wave 2.
+using Vec2 = AZ::Vector2;
 typedef Vec2_tpl<int32>  Vec2i;
 
 #if defined(LINUX64)
@@ -362,7 +372,5 @@ const Vec2_tpl<float> Vec2_OneX(1, 0);
 const Vec2_tpl<float> Vec2_OneY(0, 1);
 const Vec2_tpl<float> Vec2_One(1, 1);
 
-namespace AZ
-{
-    AZ_TYPE_INFO_SPECIALIZE(Vec2, "{844131BA-9565-42F3-8482-6F65A6D5FC59}");
-}
+// NOTE (CryCommon->AzCore migration): `Vec2` is now AZ::Vector2, which already carries its
+// own AZ_TYPE_INFO. Do NOT re-specialize type info here.

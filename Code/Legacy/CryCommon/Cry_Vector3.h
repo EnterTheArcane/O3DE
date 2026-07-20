@@ -123,11 +123,18 @@ struct Vec3_tpl
         , y(f)
         , z(f) { assert(this->IsValid()); }
 
-    explicit ILINE Vec3_tpl(const AZ::Vector3& v)
+    // CryCommon->AzCore migration: implicit both ways so Vec3_tpl<F> still interops with
+    // AZ::Vector3 (which `Vec3` now aliases). REMOVE with the Vec3_tpl template in Wave 3.
+    ILINE Vec3_tpl(const AZ::Vector3& v)
     {
-        x = v.GetX();
-        y = v.GetY();
-        z = v.GetZ();
+        x = static_cast<F>(v.GetX());
+        y = static_cast<F>(v.GetY());
+        z = static_cast<F>(v.GetZ());
+    }
+
+    ILINE operator AZ::Vector3() const
+    {
+        return AZ::Vector3(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
     }
 
     /*!
@@ -925,7 +932,27 @@ ILINE bool IsEquivalent(const Vec3_tpl<F>& v0, const Vec3_tpl<F>& v1, f32 epsilo
 ///////////////////////////////////////////////////////////////////////////////
 // Typedefs                                                                  //
 ///////////////////////////////////////////////////////////////////////////////
-typedef Vec3_tpl<f32>    Vec3;  // always 32 bit
+
+// ###################################################################################
+// ##  !!! TEMPORARY CRYCOMMON -> AZCORE MIGRATION SHIM -- REMOVE IN WAVE 3 !!!       ##
+// ##                                                                                ##
+// ##  `Vec3` is now a TEMPORARY alias of AZ::Vector3 (was Vec3_tpl<f32>). The        ##
+// ##  Cry-only free operators below are compat shims so existing call sites still    ##
+// ##  build; they MUST be removed once call sites use AzCore APIs directly. The       ##
+// ##  generic Vec3_tpl<F> template above is retained only for non-float uses          ##
+// ##  (e.g. Vec3i).                                                                  ##
+// ##                                                                                ##
+// ##  SEMANTIC HAZARD: Cry overloaded `Vec3 * Vec3` to mean DOT product, but          ##
+// ##  AZ::Vector3::operator* is COMPONENT-WISE multiply. That difference is           ##
+// ##  intentionally NOT shimmed -- such sites must be fixed to use operator| /        ##
+// ##  .Dot() during migration.                                                       ##
+// ###################################################################################
+using Vec3 = AZ::Vector3;
+
+// TEMP Cry-compat free operators on AZ::Vector3 (REMOVE IN WAVE 3):
+inline float operator|(const AZ::Vector3& v0, const AZ::Vector3& v1) { return v0.Dot(v1); }
+inline AZ::Vector3 operator^(const AZ::Vector3& v0, const AZ::Vector3& v1) { return v0.Cross(v1); }
+inline AZ::Vector3 operator%(const AZ::Vector3& v0, const AZ::Vector3& v1) { return v0.Cross(v1); }
 
 template<>
 inline Vec3_tpl<f32>::Vec3_tpl(type_min) { x = y = z = -3.3E38f; }
@@ -1371,7 +1398,7 @@ const Vec3_tpl<float> Vec3_OneY(0, 1, 0);
 const Vec3_tpl<float> Vec3_OneZ(0, 0, 1);
 const Vec3_tpl<float> Vec3_One(1, 1, 1);
 
-namespace AZ
-{
-    AZ_TYPE_INFO_SPECIALIZE(Vec3, "{DFA993FB-4E92-4A13-BDB3-4E9285A5346F}");
-}
+// NOTE (CryCommon->AzCore migration): `Vec3` is now AZ::Vector3, which already carries
+// its own AZ_TYPE_INFO ({8379EB7D-...}). The legacy Vec3 type id
+// {DFA993FB-4E92-4A13-BDB3-4E9285A5346F} is migrated to AZ::Vector3 via a ClassDeprecate
+// converter registered in Wave 2 (see MathReflection). Do NOT re-specialize type info here.

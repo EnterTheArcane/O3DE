@@ -14,13 +14,19 @@
 
 template <typename F>
 struct Vec2_tpl;
-typedef Vec2_tpl<f32>   Vec2;
+// CryCommon->AzCore migration: `Vec2` is now a TEMPORARY alias of AZ::Vector2. REMOVE IN WAVE 3.
+namespace AZ { class Vector2; }
+using Vec2 = AZ::Vector2;
 
 template <typename F>
 struct Vec3_tpl;
-typedef Vec3_tpl<f32>   Vec3;
+// CryCommon->AzCore migration: `Vec3` is now a TEMPORARY alias of AZ::Vector3. REMOVE IN WAVE 3.
+namespace AZ { class Vector3; }
+using Vec3 = AZ::Vector3;
 
-struct Vec4;
+// CryCommon->AzCore migration: `Vec4` is now a TEMPORARY alias of AZ::Vector4. REMOVE IN WAVE 3.
+namespace AZ { class Vector4; }
+using Vec4 = AZ::Vector4;
 
 template <typename F>
 struct Ang3_tpl;

@@ -203,12 +203,6 @@ namespace
         vert.pad = 0;
     }
 
-    //! Set the values for an image vertex
-    //! This version of the helper function takes AZ vectors
-    void SetVertex(LyShine::UiPrimitiveVertex& vert, const AZ::Vector2& pos, uint32 color, const AZ::Vector2& uv)
-    {
-        SetVertex(vert, Vec2(pos.GetX(), pos.GetY()), color, Vec2(uv.GetX(), uv.GetY()));
-    }
 
     //! Given the xValues, yValues, sValues and tValues, fill out the verts array with transformed points.
     //!

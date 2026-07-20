@@ -100,7 +100,7 @@ namespace AZ
         struct FontRenderingPass
         {
             Color m_color = {255, 255, 255, 255};
-            Vec2 m_posOffset = {0,0};
+            Vec2 m_posOffset{0.0f, 0.0f};
             int m_blendSrc = GS_BLSRC_SRCALPHA;
             int m_blendDest = GS_BLDST_ONEMINUSSRCALPHA;
         };
@@ -199,13 +199,13 @@ namespace AZ
 
         void Prepare(const char* str, bool updateTexture, const AtomFont::GlyphSize& glyphSize = AtomFont::defaultGlyphSize);
         void DrawStringUInternal(
-            const RHI::Viewport& viewport, 
-            RPI::ViewportContextPtr viewportContext, 
-            float x, 
-            float y, 
-            float z, 
-            const char* str, 
-            const bool asciiMultiLine, 
+            const RHI::Viewport& viewport,
+            RPI::ViewportContextPtr viewportContext,
+            float x,
+            float y,
+            float z,
+            const char* str,
+            const bool asciiMultiLine,
             const TextDrawContext& ctx);
         Vec2 GetTextSizeUInternal(const RHI::Viewport& viewport, const char* str, const bool asciiMultiLine, const TextDrawContext& ctx);
         Vec2 GetKerningInternal(const RHI::Viewport& viewport, uint32_t leftGlyph, uint32_t rightGlyph, const TextDrawContext& ctx) const;
@@ -217,7 +217,7 @@ namespace AZ
         //! This function is used by both DrawStringUInternal and WriteTextQuadsToBuffers
         //! To do this is takes a function pointer that implement the appropriate AddQuad behavior
         int CreateQuadsForText(
-            const RHI::Viewport& viewport, 
+            const RHI::Viewport& viewport,
             float x,
             float y,
             float z,

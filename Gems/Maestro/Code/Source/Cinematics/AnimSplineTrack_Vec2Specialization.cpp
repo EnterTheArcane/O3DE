@@ -114,11 +114,11 @@ namespace Maestro
         {
             if (applyMultiplier && m_trackMultiplier != 1.0f)
             {
-                m_defaultValue.set(time, value * m_trackMultiplier);
+                m_defaultValue.Set(time, value * m_trackMultiplier);
             }
             else
             {
-                m_defaultValue.set(time, value);
+                m_defaultValue.Set(time, value);
             }
         }
     }

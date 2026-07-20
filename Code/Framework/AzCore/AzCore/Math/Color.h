@@ -197,9 +197,31 @@ namespace AZ
         Color& operator*=(float multiplier);
         Color& operator/=(float divisor);
 
-    private:
+    // ###################################################################################
+    // ##  !!! TEMPORARY CRYCOMMON MIGRATION SHIM -- REVERT BEFORE SHIPPING (Wave 3) !!! ##
+    // ##                                                                                ##
+    // ##  The storage below is TEMPORARILY `public` and unions the backing `m_color`    ##
+    // ##  Vector4 with overlapping `r/g/b/a` members so that legacy CryCommon `.r/.g/    ##
+    // ##  .b/.a` field access keeps compiling while `ColorF` is migrated onto AZ::Color. ##
+    // ##  DO NOT write new code against these public members -- use GetR()/SetR(). This  ##
+    // ##  whole block MUST be restored to `private: Vector4 m_color;` (dropping the       ##
+    // ##  `r/g/b/a` struct) once all call sites use accessors.                          ##
+    // ###################################################################################
+    public:
 
-        Vector4 m_color;
+        union
+        {
+            Vector4 m_color;
+
+            // TEMPORARY Cry-compat public aliases (overlap m_color x/y/z/w). REMOVE IN WAVE 3.
+            struct
+            {
+                float r;
+                float g;
+                float b;
+                float a;
+            };
+        };
 
     };
 

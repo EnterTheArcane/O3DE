@@ -109,8 +109,8 @@ struct HitContext
         point2d = QPoint();
         axis = 0;
         distanceTolerance = 0;
-        raySrc(0, 0, 0);
-        rayDir(0, 0, 0);
+        raySrc.Set(0, 0, 0);
+        rayDir.Set(0, 0, 0);
         dist = 0;
         weakHit = false;
         manipulatorMode = 0;

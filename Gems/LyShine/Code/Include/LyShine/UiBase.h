@@ -61,8 +61,7 @@ namespace LyShine
 };
 
 
-namespace AZ
-{
-    AZ_TYPE_INFO_SPECIALIZE(Vec4, "{CAC9510C-8C00-41D4-BC4D-2C6A8136EB30}");
-} // namespace AZ
+// NOTE (CryCommon->AzCore migration): `Vec4` is now AZ::Vector4, which already carries its
+// own AZ_TYPE_INFO. The legacy Vec4 type id {CAC9510C-...} migrates to AZ::Vector4 via a
+// ClassDeprecate converter registered in Wave 2. Do NOT re-specialize type info here.
 

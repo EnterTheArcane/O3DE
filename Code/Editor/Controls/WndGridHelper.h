@@ -95,10 +95,6 @@ public:
         origin.SetX(ofsx);
         origin.SetY(ofsy);
     }
-    void SetZoom(Vec2 newzoom, const QPoint& center)
-    {
-        SetZoom(AZ::Vector2(newzoom.x, newzoom.y), center);
-    }
     void CalculateGridLines()
     {
         pixelsPerGrid = zoom;

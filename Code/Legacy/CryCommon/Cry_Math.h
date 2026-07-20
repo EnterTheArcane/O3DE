@@ -16,6 +16,7 @@
 #include "Cry_ValidNumber.h"
 #include <CryEndian.h>  // eLittleEndian
 #include <CryHalf.inl>
+#include <AzCore/Math/Vector4.h>  // CryCommon->AzCore migration: Vec4 aliases AZ::Vector4
 #include <float.h>
 #include <limits>
 ///////////////////////////////////////////////////////////////////////////////
@@ -25,7 +26,9 @@ template <typename F>
 struct Vec2_tpl;
 template <typename F>
 struct Vec3_tpl;
-struct Vec4;
+// CryCommon->AzCore migration: `Vec4` is now a TEMPORARY alias of AZ::Vector4 (was a Cry
+// struct). REMOVE IN WAVE 3. Defined centrally here since Cry_Math.h is included widely.
+using Vec4 = AZ::Vector4;
 
 template <typename F>
 struct Ang3_tpl;

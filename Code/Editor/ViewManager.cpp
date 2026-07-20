@@ -53,7 +53,7 @@ CViewManager::CViewManager()
 {
     m_zoomFactor = 1;
 
-    m_origin2D(0, 0, 0);
+    m_origin2D.Set(0, 0, 0);
     m_zoom2D = 1.0f;
 
     m_updateRegion = AZ::Aabb::CreateFromMinMax(AZ::Vector3(-100000, -100000, -100000), AZ::Vector3(100000, 100000, 100000));

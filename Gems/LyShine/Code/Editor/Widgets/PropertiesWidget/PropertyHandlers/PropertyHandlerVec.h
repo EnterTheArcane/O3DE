@@ -75,7 +75,8 @@ public:
         {
             if (elements[idx]->wasValueEditedByUser())
             {
-                actualValue[idx] = aznumeric_cast<typename TypeBeingHandled::value_type>(elements[idx]->getValue());
+                // CryCommon->AzCore migration: AZ vector types have no `value_type`; components are float.
+                actualValue[idx] = aznumeric_cast<float>(elements[idx]->getValue());
             }
         }
         instance = actualValue;
