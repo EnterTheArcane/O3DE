@@ -1,5 +1,5 @@
 { 
-    "Source" : "SMAABlendingWeightCalculation.azsl",
+    "Source" : "SMAABlendingWeightCalculation.slang",
 
     "DepthStencilState" : {
         "Depth" : { "Enable" : false }

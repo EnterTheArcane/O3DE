@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 #if ENABLE_DISK_LIGHTS
 

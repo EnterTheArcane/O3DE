@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 // ---------- Tangent & World Space ----------
 

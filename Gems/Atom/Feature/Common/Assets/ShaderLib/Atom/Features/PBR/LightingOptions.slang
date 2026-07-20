@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 // --- Note: About this file ---
 // This file uses #defines to completely strip out certain lighting features from shaders

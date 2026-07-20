@@ -1,5 +1,5 @@
 {
-    "Source" : "HDRColorGrading.azsl",
+    "Source" : "HDRColorGrading.slang",
 
     "DepthStencilState" : {
         "Depth" : { "Enable" : false }

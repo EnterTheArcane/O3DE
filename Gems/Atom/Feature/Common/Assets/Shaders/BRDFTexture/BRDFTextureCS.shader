@@ -1,5 +1,5 @@
 {
-    "Source": "BRDFTextureCS.azsl",
+    "Source": "BRDFTextureCS.slang",
 
     "ProgramSettings":
     {

@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 // This #define magic lets you use the EvaluatePixelGeometry function in this file without making it the final EvaluatePixelGeometry
 // used in your shader. Simply #define EvaluatePixelGeometry to your custom definition before including this file

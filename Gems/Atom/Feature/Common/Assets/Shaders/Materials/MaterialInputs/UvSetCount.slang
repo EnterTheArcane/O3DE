@@ -6,5 +6,6 @@
  *
  */
 
+#pragma once
 
 #define UvSetCount 2

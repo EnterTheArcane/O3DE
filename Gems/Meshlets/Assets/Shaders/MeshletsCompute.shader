@@ -1,5 +1,5 @@
 { 
-    "Source" : "MeshletsCompute.azsl",
+    "Source" : "MeshletsCompute.slang",
 
     "ProgramSettings":
     {

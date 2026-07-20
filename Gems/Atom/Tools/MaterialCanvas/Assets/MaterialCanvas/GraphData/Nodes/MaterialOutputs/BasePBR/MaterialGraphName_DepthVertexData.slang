@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 // by default the Vertex-Data is empty, so enable the parts we need
 #define MATERIAL_USES_VERTEX_POSITION 1

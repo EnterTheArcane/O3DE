@@ -49,7 +49,7 @@ void ComputeSharedBinLocationFromLightIndex(uint lightIndex, out uint locationBi
 
 // What we are doing with shared_bin is storing an "is present" bit for each light in groupshared memory
 // If we have a max possible 256 lights, then we need 8 buckets of uints to store all these bits since a uint has 32 bits
-#define NUM_LIGHT_BINS (NVLC_MAX_POSSIBLE_LIGHTS_PER_BIN / 32)
+public static const int NUM_LIGHT_BINS = (NVLC_MAX_POSSIBLE_LIGHTS_PER_BIN / 32);
 
 groupshared uint shared_bin[NVLC_MAX_BINS][NUM_LIGHT_BINS];  
 

@@ -1,6 +1,6 @@
 {
  
-    "Source" : "ImGui.azsl",
+    "Source" : "ImGui.slang",
 
     
     "RasterState" : { "CullMode" : "None" },

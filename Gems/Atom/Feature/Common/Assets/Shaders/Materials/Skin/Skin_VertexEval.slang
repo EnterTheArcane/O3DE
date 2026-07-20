@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 // This #define magic allows you to use the EvaluateVertexGeometry function in this file without making it the final
 // EvaluateVertexGeometry used in your shader. Simply #define EvaluateVertexGeometry before including this file

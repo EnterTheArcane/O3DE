@@ -14,7 +14,7 @@
 
 
 import Atom.Features.PostProcessing.FullscreenPixelInfo;
-import Atom.Features.PostProcessing.FullscreenVertex;
+#include <Atom/Features/PostProcessing/FullscreenVertex.slang>
 import Atom.Features.PostProcessing.PostProcessUtil;
 import Atom.Features.PostProcessing.Aces;
 

@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 #if !defined(VertexFormatEnumType)
 #define VertexFormatEnumType

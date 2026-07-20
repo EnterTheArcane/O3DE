@@ -1,5 +1,5 @@
 {
-    "Source": "LightCullingRemap.azsl",
+    "Source": "LightCullingRemap.slang",
     
     "ProgramSettings" : 
     {

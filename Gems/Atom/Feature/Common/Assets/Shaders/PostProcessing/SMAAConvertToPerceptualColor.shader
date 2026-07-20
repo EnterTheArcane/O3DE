@@ -1,5 +1,5 @@
 { 
-    "Source" : "SMAAConvertToPerceptualColor.azsl",
+    "Source" : "SMAAConvertToPerceptualColor.slang",
 
     "DepthStencilState" : {
         "Depth" : { "Enable" : false }

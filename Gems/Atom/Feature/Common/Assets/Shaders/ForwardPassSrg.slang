@@ -11,4 +11,4 @@
 // at runtime to find the PassSrg required by most Passes.
 
 import Atom.Features.Pipeline.Forward.ForwardPassSrg;
-import Atom.RPI.DummyEntryFunctions;
+#include <Atom/RPI/DummyEntryFunctions.slang>

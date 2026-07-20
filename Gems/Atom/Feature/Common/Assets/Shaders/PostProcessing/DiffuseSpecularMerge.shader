@@ -1,5 +1,5 @@
 { 
-    "Source" : "DiffuseSpecularMerge.azsl",
+    "Source" : "DiffuseSpecularMerge.slang",
 
     "DepthStencilState" : {
         "Depth" : { "Enable" : false }

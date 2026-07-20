@@ -1,5 +1,5 @@
 {
-    "Source" : "ClearShadowmap.azsl",
+    "Source" : "ClearShadowmap.slang",
 
     "DepthStencilState" : { 
         "Depth" : { "Enable" : true, "CompareFunc" : "Always" }

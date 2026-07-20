@@ -1,5 +1,5 @@
 {
-    "Source": "BlendColorGradingLuts.azsl",
+    "Source": "BlendColorGradingLuts.slang",
 
     "DrawList" : "forward",
 

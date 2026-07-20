@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 __exported import Atom.Features.PBR.MaterialUtils;
 

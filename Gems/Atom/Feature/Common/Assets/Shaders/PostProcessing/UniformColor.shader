@@ -1,5 +1,5 @@
 {
-    "Source" : "UniformColor.azsl",
+    "Source" : "UniformColor.slang",
 
     "DepthStencilState" : {
         "Depth" : { "Enable" : false }

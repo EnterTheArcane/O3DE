@@ -1,5 +1,5 @@
 { 
-    "Source" : "LightCullingHeatmap.azsl",
+    "Source" : "LightCullingHeatmap.slang",
 
     "DepthStencilState" : {
         "Depth" : { "Enable" : false }

@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 
 #ifndef MATERIAL_PIPELINE_OBJECT_SRG_MEMBERS

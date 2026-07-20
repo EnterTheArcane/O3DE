@@ -27,8 +27,8 @@ half3 Srgb_To_LinearSrgb(half3 color)
     // Copied from CryFx's ToAccurateLinear()
 #ifdef PRE_HLSL_2021
     // See /o3de/Gems/Atom/Feature/Common/Assets/ShaderLib/PRE_HLSL_2021.md for details.
-    return (color.xyz < 0.04045h) ? color.xyz / 12.92h : pow((color.xyz + half3(0.055, 0.055, 0.055)) / half3(1.055, 1.055, 1.055), 2.4);
+    return (color.xyz < 0.04045h) ? color.xyz / 12.92h : pow((color.xyz + half3(0.055h, 0.055h, 0.055h)) / half3(1.055h, 1.055h, 1.055h), 2.4h);
 #else
-    return select((color.xyz < 0.04045h), color.xyz / 12.92h, pow((color.xyz + half3(0.055, 0.055, 0.055)) / half3(1.055, 1.055, 1.055), 2.4));
+    return select((color.xyz < 0.04045h), color.xyz / 12.92h, pow((color.xyz + half3(0.055h, 0.055h, 0.055h)) / half3(1.055h, 1.055h, 1.055h), 2.4h));
 #endif
 }

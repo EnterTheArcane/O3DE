@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 #ifndef EvaluatePixelGeometry
 #define EvaluatePixelGeometry EvaluatePixelGeometry_StandardMultilayerPBR

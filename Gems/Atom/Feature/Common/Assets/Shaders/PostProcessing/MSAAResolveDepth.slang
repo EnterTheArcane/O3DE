@@ -7,7 +7,7 @@
  */
 
 
-import Atom.Features.PostProcessing.FullscreenVertex;
+#include <Atom/Features/PostProcessing/FullscreenVertex.slang>
 import Atom.Features.PostProcessing.PostProcessUtil;
 
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]

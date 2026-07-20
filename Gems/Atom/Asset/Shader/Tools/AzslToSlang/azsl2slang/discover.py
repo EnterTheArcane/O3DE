@@ -28,6 +28,11 @@ SUFFIX_MAP = {".azsl": ".slang", ".azsli": ".slang", ".srgi": ".slang"}
 # ApiPrelude.slang files, so these are never ported.
 EXCLUDED_STEMS = frozenset({"AzslcHeader"})
 
+# A shader `X.azsl` and a private header `X.azsli` in the same directory would both map to `X.slang`,
+# and a Slang module name must be unique. The `.azsl` is the entry point the `.shader` references, so
+# it keeps the base name; the header's module is suffixed to disambiguate.
+HEADER_COLLISION_SUFFIX = "Common"
+
 DEFAULT_SEARCH_ROOTS = ("Gems", "Templates", "AutomatedTesting")
 
 
@@ -47,8 +52,14 @@ def is_excluded(path: Path) -> bool:
     return any(part in EXCLUDED_DIR_NAMES for part in path.parts)
 
 
+def collides_with_shader(source: Path) -> bool:
+    """Whether `source` is a header `X.azsli` shadowed by a sibling shader `X.azsl` (same `.slang`)."""
+    return source.suffix == ".azsli" and source.with_suffix(".azsl").exists()
+
+
 def target_for(source: Path) -> Path:
-    return source.with_suffix(SUFFIX_MAP[source.suffix])
+    stem = source.stem + HEADER_COLLISION_SUFFIX if collides_with_shader(source) else source.stem
+    return source.with_name(stem + SUFFIX_MAP[source.suffix])
 
 
 def discover(roots: Iterable[Path], repo_root: Path) -> list[SourceFile]:

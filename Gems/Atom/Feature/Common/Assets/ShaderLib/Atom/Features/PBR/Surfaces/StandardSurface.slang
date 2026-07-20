@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 #ifndef ENABLE_CLEAR_COAT
 #define ENABLE_CLEAR_COAT               1

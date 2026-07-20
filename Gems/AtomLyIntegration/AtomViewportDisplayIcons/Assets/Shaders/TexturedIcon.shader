@@ -1,5 +1,5 @@
 {
-    "Source" : "TexturedIcon.azsl",
+    "Source" : "TexturedIcon.slang",
 
     "DepthStencilState" : { 
         "Depth" : { 

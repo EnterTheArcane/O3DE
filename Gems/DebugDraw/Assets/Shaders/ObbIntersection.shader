@@ -1,5 +1,5 @@
 {
-    "Source" : "ObbIntersection.azsl",
+    "Source" : "ObbIntersection.slang",
     "DrawList" : "RayTracing",
 
     "AddBuildArguments": 

@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 // ------------------------------------------------------------------------------
 // NOTE: The following must be included or defined before including this file:

@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 // This #define magic lets you use the EvaluateSurface function in this file without making it the final EvaluateSurface
 // used in your shader. Simply #define EvaluateSurface to your custom definition before including this file

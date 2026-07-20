@@ -1,5 +1,5 @@
 {
-    "Source": "SplashScreenPass.azsl",
+    "Source": "SplashScreenPass.slang",
 
     "DepthStencilState" : { 
         "Depth" : { "Enable" : false }

@@ -1,5 +1,5 @@
 {
-    "Source": "MorphTargetCS.azsl",
+    "Source": "MorphTargetCS.slang",
 
     "ProgramSettings":
     {

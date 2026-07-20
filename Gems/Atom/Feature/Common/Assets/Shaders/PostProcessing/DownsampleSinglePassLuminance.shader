@@ -1,5 +1,5 @@
 {
-    "Source": "DownsampleSinglePassLuminance.azsl",
+    "Source": "DownsampleSinglePassLuminance.slang",
 
     "ProgramSettings":
     {

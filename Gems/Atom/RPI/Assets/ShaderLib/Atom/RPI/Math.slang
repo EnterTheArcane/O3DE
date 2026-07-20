@@ -309,7 +309,7 @@ public float3 MultiplyVectorQuaternion(float3 v, float4 q)
 
 public half3 MultiplyVectorQuaternion(half3 v, half4 q)
 {
-    return v + 2.0 * cross(cross(v, q.xyz) + q.w * v, q.xyz);
+    return v + 2.0h * cross(cross(v, q.xyz) + q.w * v, q.xyz);
 }
 
 // Rotates a vector using a rotation from a quaternion

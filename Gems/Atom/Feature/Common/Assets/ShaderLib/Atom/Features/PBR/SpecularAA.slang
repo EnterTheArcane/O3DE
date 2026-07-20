@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 #ifndef ENABLE_SPECULARAA
 #define ENABLE_SPECULARAA 1

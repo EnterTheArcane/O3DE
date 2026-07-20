@@ -10,7 +10,7 @@
 import Atom.RPI.Math;
 
 
-import Atom.Features.PostProcessing.FullscreenVertex;
+#include <Atom/Features/PostProcessing/FullscreenVertex.slang>
 
 import Atom.Features.PostProcessing.Aces;
 import Atom.Features.PostProcessing.Shapers;

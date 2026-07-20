@@ -1,5 +1,5 @@
 {
-    "Source" : "${Name}.azsl",
+    "Source" : "${Name}.slang",
 
     "DepthStencilState" : {
         "Depth" : { "Enable" : false }

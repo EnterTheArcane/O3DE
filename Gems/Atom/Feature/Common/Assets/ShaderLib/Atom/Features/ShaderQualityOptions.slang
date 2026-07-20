@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 // This file translates quality option macros like QUALITY_LOW_END tiers to their relevant settings
 

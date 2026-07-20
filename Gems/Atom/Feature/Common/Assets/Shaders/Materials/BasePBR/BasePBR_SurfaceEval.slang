@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 #ifndef ENABLE_VERTEX_COLOR
 #define ENABLE_VERTEX_COLOR 0

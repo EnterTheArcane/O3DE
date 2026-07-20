@@ -1,5 +1,5 @@
 { 
-    "Source" : "SMAAEdgeDetection.azsl",
+    "Source" : "SMAAEdgeDetection.slang",
 
     "DepthStencilState" : {
         "Depth" : { "Enable" : false }

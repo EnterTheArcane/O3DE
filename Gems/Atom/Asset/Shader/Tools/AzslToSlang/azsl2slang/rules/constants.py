@@ -60,7 +60,7 @@ def apply(lexed, registry, rewriter: Rewriter) -> None:
             rewriter.replace_token(token, f"public typealias {name} = {value};{trailer}")
             continue
 
-        type_name = _infer_type(value)
+        type_name = _infer_type(value, registry.const_types)
         if type_name is None:
             # A value we can't type (resource alias, cross-macro expression); leave it and flag.
             rewriter.note(
@@ -85,12 +85,18 @@ def _split_comment(body: str) -> tuple[str, str]:
     return body.strip(), ""
 
 
-def _infer_type(body: str) -> str | None:
-    """Infer the Slang type of a constant's value expression, or None if it can't be typed."""
+def _infer_type(body: str, consts: dict[str, str] | None = None) -> str | None:
+    """Infer the Slang type of a constant's value expression, or None if it can't be typed.
+
+    `consts` maps already-typed constant names to their Slang type, so a value that references another
+    converted constant (`(NVLC_MAX_BINS - 1)`) resolves instead of being left as a `#define` — which
+    matters because a `#define` cannot cross a module boundary but a `static const` can.
+    """
+    consts = consts or {}
     text = body.strip()
     # Parenthesized expression: infer from the inside.
     if text.startswith("(") and text.endswith(")"):
-        return _infer_type(text[1:-1])
+        return _infer_type(text[1:-1], consts)
 
     if _HEX.match(text) or _UINT.match(text):
         return "uint"
@@ -100,16 +106,40 @@ def _infer_type(body: str) -> str | None:
         return "float"
     if text in ("true", "false"):
         return "bool"
+    if text in consts:
+        return consts[text]  # a bare reference to another converted constant
 
     ctor = _CTOR.match(text)
     if ctor:
         return ctor.group("type")
 
-    # Arithmetic expression over literals -> type from its operands (int if all int, else float).
-    if re.fullmatch(r"[-+*/%()<>\s\w.]+", text) and any(op in text for op in "+-*/%<>"):
-        tokens = re.findall(r"[A-Za-z_]\w*|\d+\.?\d*[fF]?|0[xX][0-9a-fA-F]+", text)
-        if all(re.fullmatch(r"\d+", t) for t in tokens):
-            return "int"
-        if all(re.fullmatch(r"\d+\.?\d*[fF]?|\d+", t) for t in tokens):
+    # Arithmetic/bitwise expression over literals and known constants -> type from its operands.
+    if re.fullmatch(r"[-+*/%()<>&|^~\s\w.]+", text) and any(op in text for op in "+-*/%<>&|^~"):
+        operands = re.findall(r"0[xX][0-9a-fA-F]+[uU]?|\d+\.?\d*[fFuU]?|[A-Za-z_]\w*", text)
+        types = []
+        for operand in operands:
+            operand_type = _operand_type(operand, consts)
+            if operand_type is None:
+                return None  # an unresolved operand (unknown identifier) -> can't type the expression
+            types.append(operand_type)
+        if not types:
+            return None
+        if "float" in types:
             return "float"
+        if all(t == "uint" for t in types):
+            return "uint"
+        return "int"  # all int, or an int/uint mix -> int
+    return None
+
+
+def _operand_type(operand: str, consts: dict[str, str]) -> str | None:
+    """Type of a single operand in a constant expression, or None if it cannot be resolved."""
+    if _HEX.match(operand) or _UINT.match(operand):
+        return "uint"
+    if re.fullmatch(r"\d+", operand):
+        return "int"
+    if re.fullmatch(r"\d+\.\d*[fF]?|\.\d+[fF]?|\d+[fF]|\d+\.?\d*[eE][+-]?\d+[fF]?", operand):
+        return "float"
+    if re.fullmatch(r"[A-Za-z_]\w*", operand):
+        return consts.get(operand)  # None when it is not a known constant
     return None

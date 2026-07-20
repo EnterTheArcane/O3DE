@@ -25,16 +25,23 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //----------------------------------------------------------------------------------
+//
+// azsl2slang:hand-authored — NVLC's reversed-depth and tile-bit helpers were `#define` macros in
+// NVLC.azsli. A `#define` cannot cross a Slang `import`, so they are hand-authored here as real
+// `public` functions (verified against slangc). Do not regenerate this file from NVLC.azsli.
+#pragma once
 
-#define DepthBufferToViewSpace(d, unprojectZ)                                      (unprojectZ.x / (d + unprojectZ.y))
+// unprojectZ.x / (d + unprojectZ.y), for the float2 (2x MSAA) and float4 (4x MSAA) depth samples.
+public float2 DepthBufferToViewSpace(float2 d, float2 unprojectZ) { return (unprojectZ.x / (d + unprojectZ.y)); }
+public float4 DepthBufferToViewSpace(float4 d, float2 unprojectZ) { return (unprojectZ.x / (d + unprojectZ.y)); }
 
  
 public static const int NVLC_MAX_POSSIBLE_LIGHTS_PER_BIN = 256;
 public static const int NVLC_MAX_BINS = 8;
 public static const int LOG_MAX_BINS = 3;
 
-#define NVLC_ALL_BIN_BITS                               ((1 << NVLC_MAX_BINS) - 1)
-#define NVLC_BINS_MASK                                  (NVLC_MAX_BINS - 1)
+public static const int NVLC_ALL_BIN_BITS = ((1 << NVLC_MAX_BINS) - 1);
+public static const int NVLC_BINS_MASK = (NVLC_MAX_BINS - 1);
 
 // We terminate the entire list of lights with a single marker of this type
 public static const uint NVLC_END_OF_LIST = 0xFFFF;
@@ -47,12 +54,21 @@ public static const uint NVLC_END_OF_GROUP = 0xFFFE;
 
 public static const float DEPTH_NEAR = 1.0;
 public static const float DEPTH_FAR = 0.0;
-#define DEPTH_MIN                                   max
-#define DEPTH_MAX                                   min
-#define DEPTH_InterlockedMin                        InterlockedMax
-#define DEPTH_InterlockedMax                        InterlockedMin
-#define InfDepthToNearPlane(d)                      max(d, step(d, 0.0f))
-#define DepthLessThanInf(d)                         (d > 0.0f)
+// Reversed depth: the numerically larger value is nearer the min plane, so DEPTH_MIN forwards to
+// `max` (and DEPTH_MAX to `min`). Overloads cover the scalar, broadcast, and vector call sites.
+public float  DEPTH_MIN(float  a, float  b) { return max(a, b); }
+public float2 DEPTH_MIN(float2 a, float   b) { return max(a, b); }
+public float2 DEPTH_MIN(float2 a, float2  b) { return max(a, b); }
+public float  DEPTH_MAX(float  a, float  b) { return min(a, b); }
+public float2 DEPTH_MAX(float2 a, float   b) { return min(a, b); }
+public float2 DEPTH_MAX(float2 a, float2  b) { return min(a, b); }
+// Reversed-depth atomics keep the farther depth; the 3-arg form returns the pre-op value in `original`.
+public void DEPTH_InterlockedMin(__ref uint dest, uint value, out uint original) { InterlockedMax(dest, value, original); }
+public void DEPTH_InterlockedMax(__ref uint dest, uint value, out uint original) { InterlockedMin(dest, value, original); }
+public float2 InfDepthToNearPlane(float2 d) { return max(d, step(d, 0.0f)); }
+public float4 InfDepthToNearPlane(float4 d) { return max(d, step(d, 0.0f)); }
+public bool2  DepthLessThanInf(float2 d) { return (d > 0.0f); }
+public bool4  DepthLessThanInf(float4 d) { return (d > 0.0f); }
 
 // We are using RH coordinate system on Atom so some calculations need to be reversed in order to work
 // Should be a free operation according to Drobot
@@ -89,7 +105,9 @@ public uint Light_GetIndex(uint package)
 
 // This will convert that 0 to 1 value into 0.0 to 31.99999
 // IMPORTANT: we want to avoid getting exact value "32", so decrease by 1 ULP
-#define Tile_UnitValueToBit(x)          (saturate(x) * asfloat( asuint(32.0) - 1 ) )
+// Convert a 0..1 value into 0.0..31.99999 (staying strictly below 32 by 1 ULP), per depth sample.
+public float2 Tile_UnitValueToBit(float2 x) { return (saturate(x) * asfloat( asuint(32.0) - 1 )); }
+public float4 Tile_UnitValueToBit(float4 x) { return (saturate(x) * asfloat( asuint(32.0) - 1 )); }
 
 public static const uint4 g_binMask0[] =
 {

@@ -1,5 +1,5 @@
 {
-    "Source": "MSAAResolveCustom.azsl",
+    "Source": "MSAAResolveCustom.slang",
 
     "DepthStencilState" : {
         "Depth" : { "Enable" : false }

@@ -1,5 +1,5 @@
 { 
-    "Source" : "HairSimulationCompute.azsl",	
+    "Source" : "HairSimulationCompute.slang",	
 
     "ProgramSettings":
     {

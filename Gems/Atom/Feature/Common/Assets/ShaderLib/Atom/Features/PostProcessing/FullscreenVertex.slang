@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 __exported import Atom.Features.PostProcessing.FullscreenVertexInfo;
 __exported import Atom.Features.PostProcessing.FullscreenVertexUtil;
 

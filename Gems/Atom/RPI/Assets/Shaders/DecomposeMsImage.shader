@@ -1,5 +1,5 @@
 {
-    "Source": "DecomposeMsImage.azsl",
+    "Source": "DecomposeMsImage.slang",
 
     "ProgramSettings":
     {

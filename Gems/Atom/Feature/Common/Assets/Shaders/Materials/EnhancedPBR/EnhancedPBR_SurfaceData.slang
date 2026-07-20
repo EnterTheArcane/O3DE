@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 #ifndef Surface
 #define Surface     SurfaceData_EnhancedPBR

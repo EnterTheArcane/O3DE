@@ -6,6 +6,7 @@
  *
  */
   
+#pragma once
 
 
 #ifndef USE_CUSTOM_DRAW_SRG

@@ -1,5 +1,5 @@
 {
-    "Source" : "DepthExponentiation.azsl",
+    "Source" : "DepthExponentiation.slang",
 
     "DrawList" : "shadow",
 

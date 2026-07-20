@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 // This #define magic lets you use the VsInput & VsOutput classes in this file without making it the final VsInput & VsOutput
 // used in your shader. Simply #define VsInput & VsOutput to your custom definitions before including this file

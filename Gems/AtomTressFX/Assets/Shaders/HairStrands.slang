@@ -31,6 +31,7 @@
 // THE SOFTWARE.
 //
 
+#pragma once 
 
 __exported import HairUtilities;
 

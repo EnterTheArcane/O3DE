@@ -1,5 +1,5 @@
 {
-    "Source": "BakeAcesOutputTransformLutCS.azsl",
+    "Source": "BakeAcesOutputTransformLutCS.slang",
 
     "ProgramSettings":
     {

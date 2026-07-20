@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 // This file provides utilities for common handling of inputs for baked occlusion maps for PBR materials.
 

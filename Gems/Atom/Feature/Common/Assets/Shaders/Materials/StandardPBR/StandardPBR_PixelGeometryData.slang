@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 // This #define magic lets you use the PixelGeometryData class in this file without making it the final PixelGeometryData
 // used in your shader. Simply #define PixelGeometryData to your custom definition before including this file

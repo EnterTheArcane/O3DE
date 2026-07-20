@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 // This #define magic lets you use the Surface class in this file without making it the final Surface
 // used in your shader. Simply #define Surface to your custom definition before including this file

@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -68,7 +69,8 @@ def main(argv: list[str] | None = None) -> int:
     # SrgSemantics.azsli and options are declared in headers far from their use sites, so a
     # subset-only scan would silently fail to resolve binding slots and option calls.
     corpus = discover([Path(root) for root in DEFAULT_SEARCH_ROOTS], REPO_ROOT)
-    registry = registry_module.build([entry.source for entry in corpus])
+    shader_files = _shader_files([Path(root) for root in DEFAULT_SEARCH_ROOTS])
+    registry = registry_module.build([entry.source for entry in corpus], shader_files)
     print(
         f"  {len(registry.srgs)} ShaderResourceGroups, {len(registry.semantics)} semantics, "
         f"{len(registry.options)} options, {len(registry.enums)} enums"
@@ -86,6 +88,7 @@ def main(argv: list[str] | None = None) -> int:
     results = []
     skipped = 0
     shared_srg_skipped = 0
+    hand_authored_skipped = 0
     counts: Counter[str] = Counter()
 
     for entry in entries:
@@ -94,6 +97,13 @@ def main(argv: list[str] | None = None) -> int:
             # Remove a .slang left behind by an earlier pass that did convert it.
             if entry.target.exists() and not (args.dry_run or args.check):
                 entry.target.unlink()
+            continue
+
+        # A hand-authored .slang (converted output the converter cannot produce — macros that must
+        # become real functions, etc.) is left untouched, even under --force. The registry still
+        # scans its AZSL source, so its options/SRGs/macros stay visible to the rest of the corpus.
+        if _is_hand_authored(entry.target):
+            hand_authored_skipped += 1
             continue
 
         if entry.target.exists() and not (args.force or args.dry_run or args.check):
@@ -123,6 +133,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  {note.severity.value:6} {relative}"
                       f"{f':{note.line}' if note.line else ''}: {note.message}")
 
+    if args.flip_shader and not (args.dry_run or args.check):
+        flipped = _flip_shaders(roots)
+        print(f"\nflipped {flipped} .shader Source entry(ies) to .slang")
+
     print("\nsummary")
     for outcome in Outcome:
         if counts[outcome.value]:
@@ -131,6 +145,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {'skipped (exists)':22} {skipped}")
     if shared_srg_skipped:
         print(f"  {'skipped (shared-SRG)':22} {shared_srg_skipped}")
+    if hand_authored_skipped:
+        print(f"  {'skipped (hand-authored)':22} {hand_authored_skipped}")
 
     if args.report:
         _write_report(args.report, results)
@@ -143,6 +159,71 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     return 1 if counts[Outcome.FAILED.value] else 0
+
+
+# A converted .slang carrying this marker near its top is hand-authored and never regenerated.
+HAND_AUTHORED_MARKER = "azsl2slang:hand-authored"
+
+
+def _is_hand_authored(target: Path) -> bool:
+    """Whether an existing .slang output is hand-authored (marked do-not-regenerate)."""
+    if not target.exists():
+        return False
+    try:
+        with target.open("r", encoding="utf-8-sig") as handle:
+            head = handle.read(2048)
+    except OSError:
+        return False
+    return HAND_AUTHORED_MARKER in head
+
+
+def _shader_files(roots: list[Path]) -> list[Path]:
+    """Every `.shader` under the search roots — the registry reads their entry-point names."""
+    seen: set[Path] = set()
+    for root in roots:
+        root = root if root.is_absolute() else REPO_ROOT / root
+        if root.is_dir():
+            seen.update(root.rglob("*.shader"))
+    return sorted(seen)
+
+
+_SHADER_SOURCE = re.compile(r'("Source"\s*:\s*")([^"]+)\.azsl(")')
+_SHADER_SOURCE_SLANG = re.compile(r'("Source"\s*:\s*")([^"]+)\.slang(")')
+
+
+def _flip_shaders(roots: list[Path]) -> int:
+    """Point each `.shader`'s `"Source"` at the ported file when it exists, and back at the `.azsl`
+    when it does not. A shader that stays AZSL (shared-SRG) keeps its `.azsl`; one whose `.slang` was
+    removed — e.g. a shared-SRG shader whose sibling *header* had wrongly produced the `.slang` before
+    the header was renamed — is reverted so it does not dangle at a missing source. Edits are textual
+    to preserve the JSON formatting."""
+    flipped = 0
+    seen: set[Path] = set()
+    for root in roots:
+        root = root if root.is_absolute() else REPO_ROOT / root
+        if not root.is_dir():
+            continue
+        for shader in root.rglob("*.shader"):
+            if shader in seen:
+                continue
+            seen.add(shader)
+            text = shader.read_text(encoding="utf-8-sig")
+
+            match = _SHADER_SOURCE.search(text)
+            if match and (shader.parent / f"{match.group(2)}.slang").exists():
+                replacement = f"{match.group(1)}{match.group(2)}.slang{match.group(3)}"
+            else:
+                # Revert a `.slang` source with no ported file back to its `.azsl` original.
+                match = _SHADER_SOURCE_SLANG.search(text)
+                if not match or (shader.parent / f"{match.group(2)}.slang").exists():
+                    continue
+                if not (shader.parent / f"{match.group(2)}.azsl").exists():
+                    continue
+                replacement = f"{match.group(1)}{match.group(2)}.azsl{match.group(3)}"
+
+            shader.write_text(text[: match.start()] + replacement + text[match.end() :], encoding="utf-8", newline="")
+            flipped += 1
+    return flipped
 
 
 def _relative(path: Path) -> str:

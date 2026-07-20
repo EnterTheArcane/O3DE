@@ -8,6 +8,7 @@
 
 #error "This file exists as starting point for a custom lightTypeUtil class, and can't be used directly."
 
+#pragma once
 
 #ifndef _LIGHTTYPE_Util
 #define _LIGHTTYPE_Util _LIGHTTYPE_Util__NAME_

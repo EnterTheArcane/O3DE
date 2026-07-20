@@ -24,20 +24,20 @@ public static const int THREADS_X = 64; // Must be at least 16 or shader will pr
 public static const int THREADS_Y = 2; // Must be at least  2 or shader will produce errors
 
 // How many output pixels are computed per group
-#define OUTPUT_SIZE_X (THREADS_X * OUTPUT_PIXEL_PER_THREAD)
-#define OUTPUT_SIZE_Y THREADS_Y
+public static const int OUTPUT_SIZE_X = (THREADS_X * OUTPUT_PIXEL_PER_THREAD);
+public static const int OUTPUT_SIZE_Y = THREADS_Y;
 
 // Number of pixels to blur before the 3 output pixels (-2 because we fetch two samples before the loop)
-#define LOOP_COUNT (BLUR_RADIUS - 2)
+public static const int LOOP_COUNT = (BLUR_RADIUS - 2);
 
 // LDS offset for the start of the first loop going in the positive direction
 public static const int LOOP_1_START = 0;
 
 // LDS offset for the start of the second loop going in the negative direction
-#define LOOP_2_START (BLUR_RADIUS * 2 + OUTPUT_PIXEL_PER_THREAD - 1)
+public static const int LOOP_2_START = (BLUR_RADIUS * 2 + OUTPUT_PIXEL_PER_THREAD - 1);
 
-#define LDS_WIDTH (THREADS_X * 4)
-#define LDS_HEIGHT OUTPUT_SIZE_Y
+public static const int LDS_WIDTH = (THREADS_X * 4);
+public static const int LDS_HEIGHT = OUTPUT_SIZE_Y;
 
 // LDS_SIZE = LDS_WIDTH * LDS_HEIGHT = 64 * 8 = 512
 public static const int LDS_SIZE = 512;

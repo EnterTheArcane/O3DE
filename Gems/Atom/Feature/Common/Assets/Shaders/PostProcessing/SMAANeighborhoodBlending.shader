@@ -1,5 +1,5 @@
 { 
-    "Source" : "SMAANeighborhoodBlending.azsl",
+    "Source" : "SMAANeighborhoodBlending.slang",
 
     "DepthStencilState" : {
         "Depth" : { "Enable" : false }

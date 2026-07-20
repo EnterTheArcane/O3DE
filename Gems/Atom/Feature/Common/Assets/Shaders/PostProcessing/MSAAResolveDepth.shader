@@ -1,5 +1,5 @@
 { 
-    "Source" : "MSAAResolveDepth.azsl",
+    "Source" : "MSAAResolveDepth.slang",
 
     "DepthStencilState" : { 
         "Depth" : { "Enable" : true, "CompareFunc" : "Always" }

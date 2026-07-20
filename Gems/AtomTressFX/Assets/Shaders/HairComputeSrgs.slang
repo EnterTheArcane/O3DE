@@ -33,6 +33,7 @@
 //
 // Declarations of SRGs used by the hair shaders.
 //------------------------------------------------------------------------------
+#pragma once
 
 
 // Whether bones are specified by dual quaternion.

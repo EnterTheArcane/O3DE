@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 #if ENABLE_SPHERE_LIGHTS
 

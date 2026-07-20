@@ -1,5 +1,5 @@
 {
-    "Source": "LightCullingTilePrepare.azsl",
+    "Source": "LightCullingTilePrepare.slang",
     
     "ProgramSettings" : 
     {

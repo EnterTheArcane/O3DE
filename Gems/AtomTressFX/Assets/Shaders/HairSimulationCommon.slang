@@ -37,6 +37,7 @@
 // Physics simulation of hair using compute shaders
 //--------------------------------------------------------------------------------------
 
+#pragma once
 
 public static const int USE_MESH_BASED_HAIR_TRANSFORM = 0;
 

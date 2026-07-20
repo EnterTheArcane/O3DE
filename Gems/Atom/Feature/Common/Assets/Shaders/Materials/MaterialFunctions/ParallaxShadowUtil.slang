@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 #ifndef SHADOWMAP
 #define SHADOWMAP 0

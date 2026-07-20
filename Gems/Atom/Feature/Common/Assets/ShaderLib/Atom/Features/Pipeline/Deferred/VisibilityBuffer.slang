@@ -12,12 +12,12 @@ public struct VisibilityBuffer
 };
 
 public static const int MESHINFO_BITS = 30;
-#define MAX_MESHINFO (1 << MESHINFO_BITS)
-#define MESHINFO_MASK (MAX_MESHINFO - 1)
+public static const int MAX_MESHINFO = (1 << MESHINFO_BITS);
+public static const int MESHINFO_MASK = (MAX_MESHINFO - 1);
 public static const int MESHINFO_INVALID_BIT = 31;
-#define MESHINFO_INVALID_MASK (1 << MESHINFO_INVALID_BIT)
+public static const int MESHINFO_INVALID_MASK = (1 << MESHINFO_INVALID_BIT);
 public static const int FRONTFACE_BIT = 30;
-#define FRONTFACE_MASK (1 << FRONTFACE_BIT)
+public static const int FRONTFACE_MASK = (1 << FRONTFACE_BIT);
 
 
 

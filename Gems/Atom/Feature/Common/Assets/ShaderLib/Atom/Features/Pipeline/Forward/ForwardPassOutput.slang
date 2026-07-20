@@ -6,7 +6,8 @@
  *
  */
 
- 
+ #pragma once
+
 
 #include <Atom/Features/ShaderQualityOptions.slang>
 

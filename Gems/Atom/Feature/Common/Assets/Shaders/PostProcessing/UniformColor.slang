@@ -8,7 +8,7 @@
 
 
 import Atom.Features.PostProcessing.FullscreenPixelInfo;
-import Atom.Features.PostProcessing.FullscreenVertex;
+#include <Atom/Features/PostProcessing/FullscreenVertex.slang>
 
 [AtomShaderResourceGroup(SrgBindingSlot.Pass)]
 struct PassSrgLayout

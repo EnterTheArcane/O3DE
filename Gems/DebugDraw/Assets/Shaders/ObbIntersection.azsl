@@ -14,6 +14,7 @@ bool IntersectRayAABB(float3 rayOrigin, float3 rayDirection, float3 aabbMin, flo
 {
     t = 0.f;
     normal = float3(1, 0, 0);
+    uv = float2(0, 0); // initialized up front so the early-out returns below leave no out param unset
 
     float3 maxT;
 

@@ -1,5 +1,5 @@
 { 
-    "Source" : "FullscreenCopy.azsl",
+    "Source" : "FullscreenCopy.slang",
 
     "DepthStencilState" : {
         "Depth" : { "Enable" : false }

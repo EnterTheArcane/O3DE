@@ -6,6 +6,7 @@
  *
 
  */
+#pragma once
 
 // This #define magic lets you use the GetDiffuseLighting & GetSpecularLighting functions in this file without making them the final functions
 // used in your shader. Simply #define GetDiffuseLighting & GetSpecularLighting to your custom definition before including this file

@@ -1,5 +1,5 @@
 {
-    "Source" : "LutGeneration.azsl",
+    "Source" : "LutGeneration.slang",
 
     "DepthStencilState" : {
         "Depth" : { "Enable" : false }

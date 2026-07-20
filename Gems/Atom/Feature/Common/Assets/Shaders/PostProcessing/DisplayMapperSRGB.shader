@@ -1,5 +1,5 @@
 { 
-    "Source" : "DisplayMapperSRGB.azsl",
+    "Source" : "DisplayMapperSRGB.slang",
 
     "DepthStencilState" : {
         "Depth" : { "Enable" : false }

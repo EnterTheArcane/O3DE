@@ -1,5 +1,5 @@
 {
-    "Source" : "ReflectionScreenSpaceDownsampleDepthLinear.azsl",
+    "Source" : "ReflectionScreenSpaceDownsampleDepthLinear.slang",
 
     "RasterState" :
     {

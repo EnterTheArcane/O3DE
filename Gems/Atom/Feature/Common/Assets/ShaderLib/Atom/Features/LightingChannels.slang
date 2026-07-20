@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+#pragma once
 
 #ifndef PIPELINE_HAS_OBJECT_SRG
 // assume we have an object-srg by default

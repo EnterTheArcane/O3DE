@@ -1,5 +1,5 @@
 {
-    "Source": "Vignette.slang",
+    "Source": "Vignette.azsl",
 
     "ProgramSettings":
     {

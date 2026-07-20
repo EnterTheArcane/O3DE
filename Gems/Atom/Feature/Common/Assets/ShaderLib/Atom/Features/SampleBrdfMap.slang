@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+#pragma once
 
 #ifndef PIPELINE_HAS_PASS_SRG
 // assume we have a pass-srg by default

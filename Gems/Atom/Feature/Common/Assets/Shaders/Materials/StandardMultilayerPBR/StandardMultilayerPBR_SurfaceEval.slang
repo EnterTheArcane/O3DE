@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 #ifndef EvaluateSurface
 #define EvaluateSurface EvaluateSurface_StandardMultilayerPBR

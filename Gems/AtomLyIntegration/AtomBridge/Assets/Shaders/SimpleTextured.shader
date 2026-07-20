@@ -1,5 +1,5 @@
 {
-    "Source" : "SimpleTextured.azsl",
+    "Source" : "SimpleTextured.slang",
 
     "DepthStencilState" : { 
         "Depth" : { 

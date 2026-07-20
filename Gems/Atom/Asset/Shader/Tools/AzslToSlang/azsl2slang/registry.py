@@ -21,7 +21,9 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .discover import collides_with_shader
 from .lexing import CHANNEL_PREPROCESSOR, LexedFile, find_matching_brace, lex_file
+from .rules.constants import _DEFINE as _CONST_DEFINE, _TYPE_NAME, _infer_type, _split_comment
 
 from azslLexer import azslLexer as L  # noqa: N814
 
@@ -103,6 +105,20 @@ class Registry:
     # Stems (basename without extension) of every real source file. An include whose target is not
     # among these is build-generated (e.g. GeneratedTransforms/*) and cannot become a module.
     source_stems: set[str] = field(default_factory=set)
+    # Object-like value macros that become `public static const`, mapped to their inferred Slang type.
+    # Lets a constant whose value references another constant (`(NVLC_MAX_BINS - 1)`) be typed and
+    # converted too, instead of being stranded as a `#define` that no import can carry.
+    const_types: dict[str, str] = field(default_factory=dict)
+    # Every shader entry-point function name declared in a `.shader` (MainVS, MainPS, ...). A shader's
+    # entry point must live in the module being compiled, so a header providing one can't be imported.
+    entry_point_names: set[str] = field(default_factory=set)
+    # Basenames of header files that *define* a shared entry-point function (e.g. FullscreenVertex.azsli
+    # defines the fullscreen MainVS). Consumers must `#include` these so the entry point lands in their
+    # own module — an `import` would leave it in the imported module, where the builder can't find it.
+    entry_provider_files: set[str] = field(default_factory=set)
+    # Basenames of header files `X.azsli` shadowed by a sibling shader `X.azsl`; their module is
+    # suffixed (see discover.HEADER_COLLISION_SUFFIX), so includes of them must use the suffixed name.
+    collision_headers: set[str] = field(default_factory=set)
 
     def slot_expression(self, semantic_name: str | None) -> str | None:
         """`SrgBindingSlot.Pass` for a semantic, or None when it cannot be resolved."""
@@ -116,22 +132,41 @@ class Registry:
     def is_srg(self, name: str) -> bool:
         return name in self.srgs
 
+    @property
+    def keep_include_files(self) -> set[str]:
+        """Source basenames whose includes must stay `#include` (not become `import`): files that
+        export a preprocessor macro or that provide a shader entry point."""
+        return self.preprocessor_export_files | self.entry_provider_files
 
-def build(paths: list[Path]) -> Registry:
+
+def build(paths: list[Path], shader_paths: list[Path] | None = None) -> Registry:
     registry = Registry()
+    # Every entry-point name any `.shader` designates, so a header defining one is caught below.
+    registry.entry_point_names = _scan_shader_entry_points(shader_paths or [])
     # (path basename, object-like define names, function-like define names) per file, so that after
     # the whole corpus is scanned we can mark files that export macros no `import` can carry.
     per_file_defines: list[tuple[str, set[str], set[str]]] = []
+    # (source basename, top-level function names) per header, to find files that define an entry point.
+    per_file_functions: list[tuple[str, set[str]]] = []
+    # Every object-like `#define NAME value` in the corpus (name -> comment-stripped value), so that
+    # after the scan we can type the ones whose value references another constant.
+    object_bodies: dict[str, str] = {}
     for path in paths:
         registry.source_stems.add(path.stem)
+        if collides_with_shader(path):
+            registry.collision_headers.add(path.name)
         try:
             lexed = lex_file(path)
         except Exception:  # a file that will not lex is reported later, during conversion
             continue
         scan_file(lexed, registry)
-        object_defines, function_defines = _scan_defines(lexed, registry)
+        object_defines, function_defines = _scan_defines(lexed, registry, object_bodies)
         _scan_conditionals(lexed, registry)
         per_file_defines.append((path.name, object_defines, function_defines))
+        # A `.azsl` is a leaf shader defining its own entry point; only a header (`.azsli`/`.srgi`)
+        # that defines an entry point is one shared across shaders and must stay `#include`.
+        if path.suffix != ".azsl":
+            per_file_functions.append((path.name, _scan_functions(lexed)))
 
     # A file must stay `#include`d if it defines a macro that another module reads and `import` can't
     # carry: a toggle tested in `#if`, or any function-like macro.
@@ -139,10 +174,94 @@ def build(paths: list[Path]) -> Registry:
         if function_defines or (object_defines & registry.conditional_macros):
             registry.preprocessor_export_files.add(basename)
 
+    # A header that defines a shader entry point must stay `#include`d (the entry point has to be in
+    # the compiled module, not an imported one).
+    for basename, functions in per_file_functions:
+        if functions & registry.entry_point_names:
+            registry.entry_provider_files.add(basename)
+
+    registry.const_types = _infer_const_types(object_bodies, registry.conditional_macros)
     return registry
 
 
-def _scan_defines(lexed: LexedFile, registry: Registry) -> tuple[set[str], set[str]]:
+_SHADER_ENTRY = re.compile(r'"name"\s*:\s*"(?P<name>[^"]+)"')
+
+
+def _scan_shader_entry_points(shader_paths: list[Path]) -> set[str]:
+    """Collect every entry-point function name declared in the `EntryPoints` block of a `.shader`."""
+    names: set[str] = set()
+    for path in shader_paths:
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except OSError:
+            continue
+        block = re.search(r'"EntryPoints"\s*:\s*\[(?P<body>.*?)\]', text, re.DOTALL)
+        if block:
+            names.update(_SHADER_ENTRY.findall(block.group("body")))
+    return names
+
+
+def _scan_functions(lexed: LexedFile) -> set[str]:
+    """Top-level function names in a file: an identifier directly followed by `(`, outside any
+    `{}`/`()`/`[]` nesting — i.e. a function definition's name, not a call or an attribute argument."""
+    names: set[str] = set()
+    code = lexed.code_tokens
+    brace = paren = bracket = 0
+    for index, token in enumerate(code):
+        token_type = token.type
+        if token_type == L.LeftBrace:
+            brace += 1
+        elif token_type == L.RightBrace:
+            brace = max(0, brace - 1)
+        elif token_type in (L.LeftParen,):
+            paren += 1
+        elif token_type == L.RightParen:
+            paren = max(0, paren - 1)
+        elif token_type in (L.LeftBracket, L.LeftDoubleBracket):
+            bracket += 1
+        elif token_type == L.RightBracket:
+            bracket = max(0, bracket - 1)
+        elif (
+            token_type == L.Identifier
+            and brace == 0
+            and paren == 0
+            and bracket == 0
+            and index + 1 < len(code)
+            and code[index + 1].type == L.LeftParen
+        ):
+            names.add(token.text)
+    return names
+
+
+def _infer_const_types(object_bodies: dict[str, str], conditional_macros: set[str]) -> dict[str, str]:
+    """Type every object-like value macro that will become a `public static const`, to a fixpoint.
+
+    A value that references another constant (`(NVLC_MAX_BINS - 1)`) can only be typed once that other
+    constant is known, so the pass repeats until no new constant resolves. Macros gated by `#if` are
+    excluded: they stay `#define`s, so their type must not leak into an expression that would convert.
+    """
+    const_types: dict[str, str] = {}
+    typeable = {
+        name: value
+        for name, value in object_bodies.items()
+        if name not in conditional_macros and not _TYPE_NAME.match(value.strip())
+    }
+    changed = True
+    while changed:
+        changed = False
+        for name, value in typeable.items():
+            if name in const_types:
+                continue
+            inferred = _infer_type(value, const_types)
+            if inferred is not None:
+                const_types[name] = inferred
+                changed = True
+    return const_types
+
+
+def _scan_defines(
+    lexed: LexedFile, registry: Registry, object_bodies: dict[str, str]
+) -> tuple[set[str], set[str]]:
     object_defines: set[str] = set()
     function_defines: set[str] = set()
     for token in lexed.tokens:
@@ -156,6 +275,12 @@ def _scan_defines(lexed: LexedFile, registry: Registry) -> tuple[set[str], set[s
             registry.function_macros.add(match.group("name"))
         else:
             object_defines.add(match.group("name"))
+            # Capture the value (a `#define NAME value` with a non-empty body) for later typing.
+            body_match = _CONST_DEFINE.match(token.text)
+            if body_match:
+                value, _ = _split_comment(body_match.group("body"))
+                if value:
+                    object_bodies.setdefault(match.group("name"), value)
     return object_defines, function_defines
 
 

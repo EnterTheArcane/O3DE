@@ -1,5 +1,5 @@
 {
-    "Source" : "LyShineUI.azsl",
+    "Source" : "LyShineUI.slang",
 
     "DepthStencilState" : { 
         "Depth" : { 

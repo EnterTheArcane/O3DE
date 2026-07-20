@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 // These macros can be used to declare common shader inputs for this feature. 
 // Use the COMMON_SRG_INPUTS_* macro in your material SRG definition, and use the COMMON_OPTIONS_* macro at the global scope in your shader. Then you can pass these variables to the Get*Input() function below.

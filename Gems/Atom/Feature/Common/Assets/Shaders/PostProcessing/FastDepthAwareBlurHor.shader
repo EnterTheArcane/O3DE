@@ -1,5 +1,5 @@
 {
-    "Source": "FastDepthAwareBlurHor.azsl",
+    "Source": "FastDepthAwareBlurHor.slang",
 
     "ProgramSettings" :
     {

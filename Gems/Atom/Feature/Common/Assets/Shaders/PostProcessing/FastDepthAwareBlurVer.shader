@@ -1,5 +1,5 @@
 {
-    "Source": "FastDepthAwareBlurVer.azsl",
+    "Source": "FastDepthAwareBlurVer.slang",
 
     "ProgramSettings" :
     {

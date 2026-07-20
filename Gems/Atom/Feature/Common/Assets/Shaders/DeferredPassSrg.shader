@@ -1,5 +1,5 @@
 { 
-    "Source" : "DeferredPassSrg.azsl",
+    "Source" : "DeferredPassSrg.slang",
 
     "DepthStencilState" : 
     {

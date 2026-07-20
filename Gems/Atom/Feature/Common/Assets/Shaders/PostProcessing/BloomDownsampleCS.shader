@@ -1,5 +1,5 @@
 {
-    "Source": "BloomDownsampleCS.azsl",
+    "Source": "BloomDownsampleCS.slang",
     
     "DrawList" : "forward",
 

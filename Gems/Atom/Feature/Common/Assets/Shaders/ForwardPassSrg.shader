@@ -1,5 +1,5 @@
 { 
-    "Source" : "ForwardPassSrg.azsl",
+    "Source" : "ForwardPassSrg.slang",
 
     "DepthStencilState" : 
     {

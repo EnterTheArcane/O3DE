@@ -6,6 +6,7 @@
  *
  */
 
+#pragma once
 
 #ifndef EvaluateVertexGeometry
 #define EvaluateVertexGeometry EvaluateVertexGeometry_MaterialGraphName_Depth
