@@ -7,440 +7,94 @@
  */
 
 
-// Description : 4D Color template.
+// Description : 8-bit RGBA color (ColorB).
+//
+// CryCommon->AzCore migration: this used to be a generic `Color_tpl<T>` template with `ColorF`
+// (float) and `ColorB` (uint8) instantiations. `ColorF` is now AZ::Color and the float
+// instantiation was unused, so the template was replaced with a concrete `ColorB` struct (uint8
+// 0-255) for faster compiles. `ColorB` has no clean AZ::Color analog (float 0-1) and remains a
+// deprecated Cry type -- prefer AZ::Color.
 #pragma once
 
 #include <platform.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/Math/Color.h>
-#include "Cry_Vector3.h"  // CryCommon->AzCore migration: was Cry_Math.h (now retired)
-
-template <class T>
-struct Color_tpl;
-
-// O3DE_DEPRECATION_NOTICE(GHI-19504) - Use AZ::Color
-AZ_DEPRECATED_MESSAGE("ColorB is deprecated, use AZ::Color instead.")
-typedef Color_tpl<uint8> ColorB; // [ 0,  255]
-
-// CryCommon->AzCore migration: the `ColorF` alias (was Color_tpl<float>) was removed once all
-// callers moved to AZ::Color directly. The Color_tpl<T> template is retained only for the uint8
-// `ColorB` (which has no clean AZ::Color analog and stays a Cry type).
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Vector4.h>
+#include <AzCore/Math/MathUtils.h>  // AZ::GetMin / AZ::GetMax
 
 //////////////////////////////////////////////////////////////////////////////////////////////
-// RGBA Color structure.
+// 8-bit RGBA color structure. O3DE_DEPRECATION_NOTICE(GHI-19504) - Use AZ::Color.
 //////////////////////////////////////////////////////////////////////////////////////////////
-template <class T>
-struct Color_tpl
+struct ColorB
 {
-    T   r, g, b, a;
+    uint8 r, g, b, a;
 
-    ILINE Color_tpl() {};
+    ILINE ColorB() {}
 
-    ILINE Color_tpl(T _x, T _y, T _z, T _w);
-    ILINE Color_tpl(T _x, T _y, T _z);
+    ILINE ColorB(uint8 _r, uint8 _g, uint8 _b, uint8 _a) : r(_r), g(_g), b(_b), a(_a) {}
+    ILINE ColorB(uint8 _r, uint8 _g, uint8 _b) : r(_r), g(_g), b(_b), a(255) {}
 
-    /*  inline Color_tpl(const Color_tpl<T> & v)    {
-    r = v.r; g = v.g; b = v.b; a = v.a;
-    }*/
+    // Works together with pack_abgr8888 / RGBA8 macro.
+    ILINE ColorB(const unsigned int abgr) { *(unsigned int*)(&r) = abgr; }
 
-    // works together with pack_abgr8888
-    ILINE Color_tpl(const unsigned int abgr);
-    ILINE Color_tpl(const f32 c);
+    ILINE ColorB(const float c)
+        : r((uint8)(c * 255)), g((uint8)(c * 255)), b((uint8)(c * 255)), a((uint8)(c * 255)) {}
+
     AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
-    ILINE Color_tpl(const AZ::Color& c);
-    ILINE Color_tpl(const AZ::Color& c, float fAlpha);
+    ILINE ColorB(const AZ::Color& c)
+        : r((uint8)(c.GetR() * 255)), g((uint8)(c.GetG() * 255)), b((uint8)(c.GetB() * 255)), a((uint8)(c.GetA() * 255)) {}
+    ILINE ColorB(const AZ::Color& c, float fAlpha)
+        : r((uint8)(c.GetR() * 255)), g((uint8)(c.GetG() * 255)), b((uint8)(c.GetB() * 255)), a((uint8)(fAlpha * 255)) {}
     AZ_POP_DISABLE_WARNING;
-    ILINE Color_tpl(const AZ::Vector3& c, float fAlpha);
-    ILINE Color_tpl(const AZ::Vector4& c);
 
-    ILINE Color_tpl(const AZ::Vector3& vVec)
-    {
-        r = (T)vVec.GetX();
-        g = (T)vVec.GetY();
-        b = (T)vVec.GetZ();
-        a = (T)1.f;
-    }
+    ILINE ColorB(const AZ::Vector3& c, float fAlpha)
+        : r((uint8)(c.GetX() * 255)), g((uint8)(c.GetY() * 255)), b((uint8)(c.GetZ() * 255)), a((uint8)(fAlpha * 255)) {}
+    ILINE ColorB(const AZ::Vector4& c)
+        : r((uint8)(c.GetX() * 255)), g((uint8)(c.GetY() * 255)), b((uint8)(c.GetZ() * 255)), a((uint8)(c.GetW() * 255)) {}
 
-    ILINE Color_tpl& operator = (const AZ::Vector3& v) { r = (T)v.GetX(); g = (T)v.GetY(); b = (T)v.GetZ(); a = (T)1.0f; return *this; }
-    ILINE Color_tpl& operator = (const Color_tpl& c) { r = (T)c.r; g = (T)c.g; b = (T)c.b; a = (T)c.a; return *this; }
+    ILINE ColorB(const AZ::Vector3& vVec)
+        : r((uint8)vVec.GetX()), g((uint8)vVec.GetY()), b((uint8)vVec.GetZ()), a((uint8)1) {}
 
-    ILINE T& operator [] (int index)          { assert(index >= 0 && index <= 3); return ((T*)this)[index]; }
-    ILINE T operator [] (int index) const { assert(index >= 0 && index <= 3); return ((T*)this)[index]; }
+    ILINE ColorB& operator=(const AZ::Vector3& v) { r = (uint8)v.GetX(); g = (uint8)v.GetY(); b = (uint8)v.GetZ(); a = (uint8)1; return *this; }
+
+    ILINE uint8& operator[](int index)       { assert(index >= 0 && index <= 3); return ((uint8*)this)[index]; }
+    ILINE uint8  operator[](int index) const { assert(index >= 0 && index <= 3); return ((uint8*)this)[index]; }
 
     ILINE void Set(float fR, float fG, float fB, float fA = 1.0f)
     {
-        r = static_cast<T>(fR);
-        g = static_cast<T>(fG);
-        b = static_cast<T>(fB);
-        a = static_cast<T>(fA);
+        r = static_cast<uint8>(fR);
+        g = static_cast<uint8>(fG);
+        b = static_cast<uint8>(fB);
+        a = static_cast<uint8>(fA);
     }
 
-    ILINE Color_tpl operator + () const
+    ILINE ColorB operator+(const ColorB& v) const { return ColorB(uint8(r + v.r), uint8(g + v.g), uint8(b + v.b), uint8(a + v.a)); }
+    ILINE ColorB operator-(const ColorB& v) const { return ColorB(uint8(r - v.r), uint8(g - v.g), uint8(b - v.b), uint8(a - v.a)); }
+    ILINE ColorB operator*(const ColorB& v) const { return ColorB(uint8(r * v.r), uint8(g * v.g), uint8(b * v.b), uint8(a * v.a)); }
+    ILINE ColorB& operator+=(const ColorB& v) { r += v.r; g += v.g; b += v.b; a += v.a; return *this; }
+    ILINE ColorB& operator-=(const ColorB& v) { r -= v.r; g -= v.g; b -= v.b; a -= v.a; return *this; }
+    ILINE ColorB& operator*=(const ColorB& v) { r *= v.r; g *= v.g; b *= v.b; a *= v.a; return *this; }
+
+    ILINE bool operator==(const ColorB& v) const { return (r == v.r) && (g == v.g) && (b == v.b) && (a == v.a); }
+    ILINE bool operator!=(const ColorB& v) const { return !(*this == v); }
+
+    ILINE unsigned int pack_abgr8888() const { return ((unsigned int)a << 24) | ((unsigned int)b << 16) | ((unsigned int)g << 8) | (unsigned int)r; }
+    ILINE unsigned int pack_argb8888() const { return ((unsigned int)a << 24) | ((unsigned int)r << 16) | ((unsigned int)g << 8) | (unsigned int)b; }
+
+    ILINE AZ::Vector3 toVec3() const    { return AZ::Vector3(r, g, b); }
+    ILINE AZ::Vector3 toVector3() const { return AZ::Vector3(r, g, b); }
+    ILINE AZ::Vector4 toVector4() const { return AZ::Vector4(r, g, b, a); }
+
+    ILINE void clamp(uint8 bottom = 0, uint8 top = 255)
     {
-        return *this;
-    }
-    ILINE Color_tpl operator - () const
-    {
-        return Color_tpl<T>(-r, -g, -b, -a);
+        r = AZ::GetMin(top, AZ::GetMax(bottom, r));
+        g = AZ::GetMin(top, AZ::GetMax(bottom, g));
+        b = AZ::GetMin(top, AZ::GetMax(bottom, b));
+        a = AZ::GetMin(top, AZ::GetMax(bottom, a));
     }
 
-    ILINE Color_tpl& operator += (const Color_tpl& v)
-    {
-        T _r = r,       _g = g,         _b = b,         _a = a;
-        _r += v.r;
-        _g += v.g;
-        _b += v.b;
-        _a += v.a;
-        r = _r;
-        g = _g;
-        b = _b;
-        a = _a;
-        return *this;
-    }
-    ILINE Color_tpl& operator -= (const Color_tpl& v)
-    {
-        r -= v.r;
-        g -= v.g;
-        b -= v.b;
-        a -= v.a;
-        return *this;
-    }
-    ILINE Color_tpl& operator *= (const Color_tpl& v)
-    {
-        r *= v.r;
-        g *= v.g;
-        b *= v.b;
-        a *= v.a;
-        return *this;
-    }
-    ILINE Color_tpl& operator /= (const Color_tpl& v)
-    {
-        r /= v.r;
-        g /= v.g;
-        b /= v.b;
-        a /= v.a;
-        return *this;
-    }
-    ILINE Color_tpl& operator *= (T s)
-    {
-        r *= s;
-        g *= s;
-        b *= s;
-        a *= s;
-        return *this;
-    }
-    ILINE Color_tpl& operator /= (T s)
-    {
-        s = 1.0f / s;
-        r *= s;
-        g *= s;
-        b *= s;
-        a *= s;
-        return *this;
-    }
-
-    ILINE Color_tpl operator + (const Color_tpl& v) const
-    {
-        return Color_tpl(r + v.r, g + v.g, b + v.b, a + v.a);
-    }
-    ILINE Color_tpl operator - (const Color_tpl& v) const
-    {
-        return Color_tpl(r - v.r, g - v.g, b - v.b, a - v.a);
-    }
-    ILINE Color_tpl operator * (const Color_tpl& v) const
-    {
-        return Color_tpl(r * v.r, g * v.g, b * v.b, a * v.a);
-    }
-    ILINE Color_tpl operator / (const Color_tpl& v) const
-    {
-        return Color_tpl(r / v.r, g / v.g, b / v.b, a / v.a);
-    }
-    ILINE Color_tpl operator * (T s) const
-    {
-        return Color_tpl(r * s, g * s, b * s, a * s);
-    }
-    ILINE Color_tpl operator / (T s) const
-    {
-        s = 1.0f / s;
-        return Color_tpl(r * s, g * s, b * s, a * s);
-    }
-
-    ILINE bool operator == (const Color_tpl& v) const
-    {
-        return (r == v.r) && (g == v.g) && (b == v.b) && (a == v.a);
-    }
-    ILINE bool operator != (const Color_tpl& v) const
-    {
-        return (r != v.r) || (g != v.g) || (b != v.b) || (a != v.a);
-    }
-
-    ILINE unsigned int pack_abgr8888() const;
-    ILINE unsigned int pack_argb8888() const;
-    inline AZ::Vector3 toVec3() const { return AZ::Vector3(r, g, b); }
-    inline AZ::Vector3 toVector3() const { return AZ::Vector3(r, g, b); }
-    inline AZ::Vector4 toVector4() const { return AZ::Vector4(r, g, b, a); }
-
-    inline void clamp(T bottom = 0.0f, T top = 1.0f);
-
-    void srgb2rgb()
-    {
-        for (int i = 0; i < 3; i++)
-        {
-            T& c = (*this)[i];
-
-            if (c <= 0.040448643f)
-            {
-                c = c / 12.92f;
-            }
-            else
-            {
-                c = pow((c + 0.055f) / 1.055f, 2.4f);
-            }
-        }
-    }
-
-    AZStd::array<T, 4> GetAsArray() const
-    {
-        AZStd::array<T, 4> primitiveArray = { { r, g, b, a } };
-        return primitiveArray;
-    }
+    ILINE AZStd::array<uint8, 4> GetAsArray() const { return AZStd::array<uint8, 4>{ { r, g, b, a } }; }
 };
 
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-// template specialization
-///////////////////////////////////////////////
-
-template<>
-ILINE Color_tpl<f32>::Color_tpl(f32 _x, f32 _y, f32 _z, f32 _w)
-{
-    r = _x;
-    g = _y;
-    b = _z;
-    a = _w;
-}
-
-template<>
-ILINE Color_tpl<f32>::Color_tpl(f32 _x, f32 _y, f32 _z)
-{
-    r = _x;
-    g = _y;
-    b = _z;
-    a = 1.f;
-}
-
-template<>
-ILINE Color_tpl<uint8>::Color_tpl(uint8 _x, uint8 _y, uint8 _z, uint8 _w)
-{
-    r = _x;
-    g = _y;
-    b = _z;
-    a = _w;
-}
-
-template<>
-ILINE Color_tpl<uint8>::Color_tpl(uint8 _x, uint8 _y, uint8 _z)
-{
-    r = _x;
-    g = _y;
-    b = _z;
-    a = 255;
-}
-
-//-----------------------------------------------------------------------------
-
-template<>
-ILINE Color_tpl<f32>::Color_tpl(const unsigned int abgr)
-{
-    r = (abgr & 0xff) / 255.0f;
-    g = ((abgr >> 8) & 0xff) / 255.0f;
-    b = ((abgr >> 16) & 0xff) / 255.0f;
-    a = ((abgr >> 24) & 0xff) / 255.0f;
-}
-
-template<>
-ILINE Color_tpl<uint8>::Color_tpl(const unsigned int c)
-{
-    *(unsigned int*)(&r) = c;
-} //use this with RGBA8 macro!
-
-//-----------------------------------------------------------------------------
-
-template<>
-ILINE Color_tpl<f32>::Color_tpl(const float c)
-{
-    r = c;
-    g = c;
-    b = c;
-    a = c;
-}
-template<>
-ILINE Color_tpl<uint8>::Color_tpl(const float c)
-{
-    r = (uint8)(c * 255);
-    g = (uint8)(c * 255);
-    b = (uint8)(c * 255);
-    a = (uint8)(c * 255);
-}
-//-----------------------------------------------------------------------------
-AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
-template<>
-ILINE Color_tpl<f32>::Color_tpl(const AZ::Color& c)
-{
-    r = c.GetR();
-    g = c.GetG();
-    b = c.GetB();
-    a = c.GetA();
-}
-template<>
-ILINE Color_tpl<uint8>::Color_tpl(const AZ::Color& c)
-{
-    r = (uint8)(c.GetR() * 255);
-    g = (uint8)(c.GetG() * 255);
-    b = (uint8)(c.GetB() * 255);
-    a = (uint8)(c.GetA() * 255);
-}
-
-template<>
-ILINE Color_tpl<f32>::Color_tpl(const AZ::Color& c, float fAlpha)
-{
-    r = c.GetR();
-    g = c.GetG();
-    b = c.GetB();
-    a = fAlpha;
-}
-AZ_POP_DISABLE_WARNING;
-
-template<>
-ILINE Color_tpl<f32>::Color_tpl(const AZ::Vector3& c, float fAlpha)
-{
-    r = c.GetX();
-    g = c.GetY();
-    b = c.GetZ();
-    a = fAlpha;
-}
-
-template<>
-ILINE Color_tpl<f32>::Color_tpl(const AZ::Vector4& c)
-{
-    r = c.GetX();
-    g = c.GetY();
-    b = c.GetZ();
-    a = c.GetW();
-}
-
-AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
-template<>
-ILINE Color_tpl<uint8>::Color_tpl(const AZ::Color& c, float fAlpha)
-{
-    r = (uint8)(c.GetR() * 255);
-    g = (uint8)(c.GetG() * 255);
-    b = (uint8)(c.GetB() * 255);
-    a = (uint8)(fAlpha * 255);
-}
-AZ_POP_DISABLE_WARNING;
-
-template<>
-ILINE Color_tpl<uint8>::Color_tpl(const AZ::Vector3& c, float fAlpha)
-{
-    r = (uint8)(c.GetX() * 255);
-    g = (uint8)(c.GetY() * 255);
-    b = (uint8)(c.GetZ() * 255);
-    a = (uint8)(fAlpha * 255);
-}
-
-template<>
-ILINE Color_tpl<uint8>::Color_tpl(const AZ::Vector4& c)
-{
-    r = (uint8)(c.GetX() * 255);
-    g = (uint8)(c.GetY() * 255);
-    b = (uint8)(c.GetZ() * 255);
-    a = (uint8)(c.GetW() * 255);
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-// functions implementation
-///////////////////////////////////////////////
-
-///////////////////////////////////////////////
-///////////////////////////////////////////////
-template <class T>
-ILINE Color_tpl<T> operator * (T s, const Color_tpl<T>& v)
-{
-    return Color_tpl<T>(v.r * s, v.g * s, v.b * s, v.a * s);
-}
-
-///////////////////////////////////////////////
-template <class T>
-ILINE unsigned int Color_tpl<T>::pack_abgr8888() const
-{
-    unsigned char cr;
-    unsigned char cg;
-    unsigned char cb;
-    unsigned char ca;
-    if constexpr (sizeof(r) == 1) // char and unsigned char
-    {
-        cr = (unsigned char)r;
-        cg = (unsigned char)g;
-        cb = (unsigned char)b;
-        ca = (unsigned char)a;
-    }
-    else if constexpr (sizeof(r) == 2) // short and unsigned short
-    {
-        cr = (unsigned short)(r) >> 8;
-        cg = (unsigned short)(g) >> 8;
-        cb = (unsigned short)(b) >> 8;
-        ca = (unsigned short)(a) >> 8;
-    }
-    else // float or double
-    {
-        cr = (unsigned char)(r * 255.0f);
-        cg = (unsigned char)(g * 255.0f);
-        cb = (unsigned char)(b * 255.0f);
-        ca = (unsigned char)(a * 255.0f);
-    }
-    return (ca << 24) | (cb << 16) | (cg << 8) | cr;
-}
-
-
-///////////////////////////////////////////////
-template <class T>
-ILINE unsigned int Color_tpl<T>::pack_argb8888() const
-{
-    unsigned char cr;
-    unsigned char cg;
-    unsigned char cb;
-    unsigned char ca;
-    if constexpr (sizeof(r) == 1) // char and unsigned char
-    {
-        cr = (unsigned char)r;
-        cg = (unsigned char)g;
-        cb = (unsigned char)b;
-        ca = (unsigned char)a;
-    }
-    else if constexpr (sizeof(r) == 2) // short and unsigned short
-    {
-        cr = (unsigned short)(r) >> 8;
-        cg = (unsigned short)(g) >> 8;
-        cb = (unsigned short)(b) >> 8;
-        ca = (unsigned short)(a) >> 8;
-    }
-    else // float or double
-    {
-        cr = (unsigned char)(r * 255.0f);
-        cg = (unsigned char)(g * 255.0f);
-        cb = (unsigned char)(b * 255.0f);
-        ca = (unsigned char)(a * 255.0f);
-    }
-    return (ca << 24) | (cr << 16) | (cg << 8) | cb;
-}
-
-///////////////////////////////////////////////
-template <class T>
-inline void Color_tpl<T>::clamp(T bottom, T top)
-{
-    r = AZ::GetMin(top, AZ::GetMax(bottom, r));
-    g = AZ::GetMin(top, AZ::GetMax(bottom, g));
-    b = AZ::GetMin(top, AZ::GetMax(bottom, b));
-    a = AZ::GetMin(top, AZ::GetMax(bottom, a));
-}
+ILINE ColorB operator*(uint8 s, const ColorB& v) { return ColorB(uint8(v.r * s), uint8(v.g * s), uint8(v.b * s), uint8(v.a * s)); }
