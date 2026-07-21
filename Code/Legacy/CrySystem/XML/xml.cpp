@@ -306,13 +306,6 @@ void CXmlNode::setAttr(const char* key, uint64 value, bool useHexFormat)
     setAttr(key, str);
 }
 
-void CXmlNode::setAttr(const char* key, const Ang3& value)
-{
-    char str[128];
-    AZ::Locale::ScopedSerializationLocale localeResetter;
-    azsprintf(str, FLOAT_FMT "," FLOAT_FMT "," FLOAT_FMT, value.x, value.y, value.z);
-    setAttr(key, str);
-}
 void CXmlNode::setAttr(const char* key, const AZ::Vector3& value)
 {
     char str[128];
@@ -437,23 +430,6 @@ bool CXmlNode::getAttr(const char* key, double& value) const
     return false;
 }
 
-bool CXmlNode::getAttr(const char* key, Ang3& value) const
-{
-    const char* svalue = GetValue(key);
-    if (svalue)
-    {
-        AZ::Locale::ScopedSerializationLocale localeResetter;
-        float x, y, z;
-        if (azsscanf(svalue, "%f,%f,%f", &x, &y, &z) == 3)
-        {
-            value(x, y, z);
-            return true;
-        }
-    }
-    return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
 bool CXmlNode::getAttr(const char* key, AZ::Vector3& value) const
 {
     const char* svalue = GetValue(key);

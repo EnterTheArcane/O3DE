@@ -347,7 +347,7 @@ void CCryEditDoc::SerializeViewSettings(CXmlArchive& xmlAr)
         {
             XmlNodeRef view;
             AZ::Vector3 vp(0.0f, 0.0f, 256.0f);
-            Ang3 va(ZERO);
+            AZ::Vector3 va = AZ::Vector3::CreateZero();
 
             auto viewName = QString("View%1").arg(i);
             view = xmlAr.root->findChild(viewName.toUtf8().constData());
@@ -370,7 +370,7 @@ void CCryEditDoc::SerializeViewSettings(CXmlArchive& xmlAr)
             }
 
             AZ::Transform tm = AZ::Transform::CreateFromQuaternionAndTranslation(
-                AZ::Quaternion::CreateFromEulerRadiansZYX(LYAng3ToAZVec3(va)), LYVec3ToAZVec3(vp));
+                AZ::Quaternion::CreateFromEulerRadiansZYX(va), LYVec3ToAZVec3(vp));
 
             auto viewportContextManager = AZ::Interface<AZ::RPI::ViewportContextRequestsInterface>::Get();
             if (auto viewportContext = viewportContextManager->GetViewportContextById(i))
@@ -396,7 +396,7 @@ void CCryEditDoc::SerializeViewSettings(CXmlArchive& xmlAr)
             if (pVP)
             {
                 AZ::Vector3 pos = AZVec3ToLYVec3(pVP->GetViewTM().GetTranslation());
-                Ang3 angles = AZVec3ToLYAng3(AZ::Quaternion::CreateFromMatrix3x4(pVP->GetViewTM()).GetEulerRadiansZYX());
+                AZ::Vector3 angles = AZ::Quaternion::CreateFromMatrix3x4(pVP->GetViewTM()).GetEulerRadiansZYX();
                 auto viewerPosName = QString("ViewerPos%1").arg(i);
                 view->setAttr(viewerPosName.toUtf8().constData(), pos);
                 auto viewerAnglesName = QString("ViewerAngles%1").arg(i);

@@ -261,7 +261,6 @@ struct IVariable
     virtual void Set(bool value) = 0;
     virtual void Set(float value) = 0;
     virtual void Set(double value) = 0;
-    virtual void Set(const Ang3& value) = 0;
     virtual void Set(const QString& value) = 0;
     virtual void Set(const char* value) = 0;
     virtual void SetDisplayValue(const QString& value) = 0;
@@ -283,7 +282,6 @@ struct IVariable
     virtual void Get(bool& value) const  = 0;
     virtual void Get(float& value) const  = 0;
     virtual void Get(double& value) const = 0;
-    virtual void Get(Ang3& value) const  = 0;
     virtual void Get(QString& value) const = 0;
     virtual QString GetDisplayValue() const = 0;
     virtual bool HasDefaultValue() const = 0;
@@ -427,7 +425,6 @@ public:
     void Set([[maybe_unused]] bool value) override                  { assert(0); }
     void Set([[maybe_unused]] float value) override                 { assert(0); }
     void Set([[maybe_unused]] double value) override                { assert(0); }
-    void Set([[maybe_unused]] const Ang3& value) override           { assert(0); }
     void Set([[maybe_unused]] const QString& value) override        { assert(0); }
     void Set([[maybe_unused]] const char* value) override           { assert(0); }
     void SetDisplayValue(const QString& value) override             { Set(value); }
@@ -446,7 +443,6 @@ public:
     void Get([[maybe_unused]] bool& value) const override           { assert(0); }
     void Get([[maybe_unused]] float& value) const override          { assert(0); }
     void Get([[maybe_unused]] double& value) const override         { assert(0); }
-    void Get([[maybe_unused]] Ang3& value) const override           { assert(0); }
     void Get([[maybe_unused]] QString& value) const override        { assert(0); }
     QString GetDisplayValue() const override { QString val; Get(val); return val; }
 
@@ -955,7 +951,6 @@ namespace var_type
         void operator()(int value, QString& to) const { to = QString::number(value); }
         void operator()(float value, QString& to) const { to = QString::number(value); };
         void operator()(double value, QString& to) const { to = QString::number(value); };
-        void operator()(const Ang3& value, QString& to) const { to = QString::fromLatin1("%1,%2,%3").arg(value.x).arg(value.y).arg(value.z); }
 
         void operator()(const AZ::Color& from,  QString& to) const      { to = QString::fromLatin1("%1,%2,%3,%4").arg(from.GetR()).arg(from.GetG()).arg(from.GetB()).arg(from.GetA()); }
         void operator()(const AZ::Vector2& from,  QString& to) const    { to = QString::fromLatin1("%1,%2").arg(from.GetX()).arg(from.GetY()); }
@@ -968,13 +963,6 @@ namespace var_type
         void operator()(int value, AZStd::string& to) const             { to = AZStd::to_string(value); }
         void operator()(float value, AZStd::string& to) const           { to = AZStd::to_string(value); };
         void operator()(double value, AZStd::string& to) const          { to = AZStd::to_string(value); };
-        void operator()(const Ang3& value, AZStd::string& to) const
-        {
-            AZ::Locale::ScopedSerializationLocale scopedLocale; // String should be interpreted in the "C" Locale.
-            char buf[192] = { 0 };
-            azsnprintf(buf, sizeof(buf), "%f,%f,%f", value.x, value.y, value.z);
-            to.assign(buf);
-        }
         void operator()(const AZ::Color& from, AZStd::string& to) const
         {
             AZ::Locale::ScopedSerializationLocale scopedLocale; // String should be interpreted in the "C" Locale.
@@ -1012,26 +1000,13 @@ namespace var_type
         }
 
         /////////////////////////////////////////// Legal to Current Math Types
-        void operator()(const Ang3& from, AZ::Vector3& to) const    { to.Set(from.x, from.y, from.z); }
         /////////////////////////////////////////// Current to Legal Math Types
-        void operator()(const AZ::Vector3& from, Ang3& to) const    { to.Set(from.GetX(), from.GetY(), from.GetZ()); }
 
         /////////////////////////////////////////// From QString
         void operator()(const QString& from, int& value) const      { value = from.toInt(); }
         void operator()(const QString& from, bool& value) const     { value = from.toInt() != 0; }
         void operator()(const QString& from, float& value) const    { value = from.toFloat(); }
         void operator()(const QString& from, double& value) const   { value = from.toDouble(); }
-        void operator()(const QString& from, Ang3& value) const
-        {
-            QStringList parts = from.split(QStringLiteral(","));
-            while (parts.size() < 3)
-            {
-                parts.push_back(QString());
-            }
-            value.x = parts[0].toFloat();
-            value.y = parts[1].toFloat();
-            value.z = parts[2].toFloat();
-        };
         void operator()(const QString& from, AZ::Color& value) const
         {
             QStringList parts = from.split(QStringLiteral(","));
@@ -1120,11 +1095,6 @@ namespace var_type
             AZ::Locale::ScopedSerializationLocale scopedLocale; // String should be interpreted in the "C" Locale.
             azsscanf(from.c_str(), "%lf", &value);
         }
-        void operator()(const AZStd::string& from, Ang3& value) const
-        {
-            AZ::Locale::ScopedSerializationLocale scopedLocale; // String should be interpreted in the "C" Locale.
-            azsscanf(from.c_str(), "%f,%f,%f", &value.x, &value.y, &value.z);
-        }
         void operator()(const AZStd::string& from, AZ::Color& value) const
         {
             AZ::Locale::ScopedSerializationLocale scopedLocale; // String should be interpreted in the "C" Locale.
@@ -1184,10 +1154,6 @@ namespace var_type
     {
         return v1.GetX() == v2.GetX() && v1.GetY() == v2.GetY() && v1.GetZ() == v2.GetZ() && v1.GetW() == v2.GetW();
     }
-    inline bool compare(const Ang3& v1, const Ang3& v2)
-    {
-        return v1.x == v2.x && v1.y == v2.y && v1.z == v2.z;
-    }
     inline bool compare(const char* s1, const char* s2)
     {
         return strcmp(s1, s2) == 0;
@@ -1203,7 +1169,6 @@ namespace var_type
         val = 0;
     }
 
-    inline void init(Ang3& val) { val.x = 0; val.y = 0; val.z = 0; };
 
     inline void init(AZ::Color& val)        { val = AZ::Color::CreateZero(); }
     inline void init(AZ::Vector2& val)      { val = AZ::Vector2::CreateZero(); }
@@ -1278,7 +1243,6 @@ public:
     void Set(bool value) override                       { SetValue(value); }
     void Set(float value) override                      { SetValue(value); }
     void Set(double value) override                     { SetValue(value); }
-    void Set(const Ang3& value) override                { SetValue(value); }
     void Set(const QString& value) override             { SetValue(value); }
     void Set(const char* value) override                { SetValue(QString(value)); }
 

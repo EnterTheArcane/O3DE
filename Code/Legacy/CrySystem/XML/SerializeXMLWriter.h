@@ -115,7 +115,6 @@ private:
     bool IsDefaultValue(uint64 v) const { return v == 0; };
     bool IsDefaultValue(const AZ::Vector2& v) const { return v.GetX() == 0 && v.GetY() == 0; };
     bool IsDefaultValue(const AZ::Vector3& v) const { return v.GetX() == 0 && v.GetY() == 0 && v.GetZ() == 0; };
-    bool IsDefaultValue(const Ang3& v) const { return v.x == 0 && v.y == 0 && v.z == 0; };
     bool IsDefaultValue(const AZ::Quaternion& v) const { return v.IsIdentity(); };
     bool IsDefaultValue(const CTimeValue& v) const { return v.GetValue() == 0; };
     bool IsDefaultValue(const char* str) const { return !str || !*str; };

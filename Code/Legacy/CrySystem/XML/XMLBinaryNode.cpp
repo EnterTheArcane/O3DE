@@ -178,24 +178,6 @@ bool CBinaryXmlNode::getAttr(const char* key, double& value) const
     return false;
 }
 
-bool CBinaryXmlNode::getAttr(const char* key, Ang3& value) const
-{
-    const char* svalue = GetValue(key);
-    if (svalue)
-    {
-        AZ::Locale::ScopedSerializationLocale scopedLocale; // for parsing to be culture invariant
-
-        float x, y, z;
-        if (azsscanf(svalue, "%f,%f,%f", &x, &y, &z) == 3)
-        {
-            value(x, y, z);
-            return true;
-        }
-    }
-    return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
 bool CBinaryXmlNode::getAttr(const char* key, AZ::Vector3& value) const
 {
     const char* svalue = GetValue(key);

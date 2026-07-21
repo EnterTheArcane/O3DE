@@ -11,14 +11,13 @@
 #pragma once
 
 // CryCommon->AzCore migration: was `#define VEC_EPSILON (0.05f)` in Cry_Math.h. Kept as a
-// constexpr (not a macro) for the vestigial Vec2_tpl/Vec3_tpl/Ang3_tpl equivalence checks.
+// constexpr (not a macro) for the vestigial Vec2_tpl/Vec3_tpl equivalence checks.
 // Defined before the includes because Cry_Math.h transitively pulls in Cry_Vector3.h, which
 // references VEC_EPSILON.
 inline constexpr float VEC_EPSILON = 0.05f;
 
-// CryCommon->AzCore migration: tag enums for the Vec*_tpl/Ang3 "special value" constructors
-// (e.g. `Ang3(ZERO)`). Moved here from Cry_Math.h. Defined before the includes because
-// Cry_Math.h transitively pulls in Cry_Vector3.h, whose Ang3_tpl(type_zero) ctor needs them.
+// CryCommon->AzCore migration: tag enums for the Vec2_tpl/Vec3_tpl "special value"
+// constructors (e.g. `Vec3_tpl(ZERO)`). Moved here from the retired Cry_Math.h.
 enum type_zero { ZERO };
 enum type_min { VMIN };
 enum type_max { VMAX };
@@ -36,7 +35,6 @@ enum type_identity { IDENTITY };
 // CryCommon->AzCore migration: forward declarations of the remaining Cry _tpl types (moved
 // here from the retired Cry_Math.h so this header chain is self-contained).
 template <typename F> struct Vec3_tpl;
-template <typename F> struct Ang3_tpl;
 template <typename F> struct Plane_tpl;
 template <typename F> struct AngleAxis_tpl;
 template <typename F> struct Quat_tpl;

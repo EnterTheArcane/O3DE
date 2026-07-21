@@ -40,15 +40,8 @@ inline AZ::Vector3 AZVec3ToLYVec3(const AZ::Vector3& source)
     return AZ::Vector3(source.GetX(), source.GetY(), source.GetZ());
 }
 
-inline AZ::Vector3 LYAng3ToAZVec3(const Ang3& source)
-{
-    return AZ::Vector3(source.x, source.y, source.z);
-}
-
-inline Ang3 AZVec3ToLYAng3(const AZ::Vector3& source)
-{
-    return Ang3(source.GetX(), source.GetY(), source.GetZ());
-}
+// CryCommon->AzCore migration: the LYAng3ToAZVec3/AZVec3ToLYAng3 bridges were removed with the
+// Ang3 type. Euler angles are represented directly as AZ::Vector3.
 
 inline AZ::Vector4 LYVec4ToAZVec4(const AZ::Vector4& source)
 {

@@ -19,11 +19,6 @@ namespace AZ { class Vector2; }
 namespace AZ { class Vector3; }
 namespace AZ { class Vector4; }
 
-template <typename F>
-struct Ang3_tpl;
-typedef Ang3_tpl<f32>       Ang3;
-
-
 #if defined(QT_VERSION)
 #include <QColor>
 #include <QString>
@@ -291,7 +286,6 @@ public:
     virtual void setAttr(const char* key, float value) = 0;
     virtual void setAttr(const char* key, double value) = 0;
     virtual void setAttr(const char* key, const AZ::Vector2& value) = 0;
-    virtual void setAttr(const char* key, const Ang3& value) = 0;
     virtual void setAttr(const char* key, const AZ::Vector3& value) = 0;
     virtual void setAttr(const char* key, const AZ::Vector4& value) = 0;
     virtual void setAttr(const char* key, const AZ::Quaternion& value) = 0;
@@ -338,7 +332,6 @@ public:
     virtual bool getAttr(const char* key, float& value) const = 0;
     virtual bool getAttr(const char* key, double& value) const = 0;
     virtual bool getAttr(const char* key, AZ::Vector2& value) const = 0;
-    virtual bool getAttr(const char* key, Ang3& value) const = 0;
     virtual bool getAttr(const char* key, AZ::Vector3& value) const = 0;
     virtual bool getAttr(const char* key, AZ::Vector4& value) const = 0;
     virtual bool getAttr(const char* key, AZ::Quaternion& value) const = 0;
