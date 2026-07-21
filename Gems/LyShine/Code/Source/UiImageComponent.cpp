@@ -2193,11 +2193,11 @@ int UiImageComponent::ClipToLine(const LyShine::UiPrimitiveVertex* vertices, con
         AZ::Vector2 triangleEdgeDirection = currentVertex.xy - lastVertex.xy;
         AZ::Vector2 currentPointVector = (currentVertex.xy - lineOrigin);
         AZ::Vector2 lastPointVector = (lastVertex.xy - lineOrigin);
-        float currentPointDeterminant = (lineVector.x * currentPointVector.y) - (lineVector.y * currentPointVector.x);
-        float lastPointDeterminant = (lineVector.x * lastPointVector.y) - (lineVector.y * lastPointVector.x);
+        float currentPointDeterminant = (lineVector.GetX() * currentPointVector.GetY()) - (lineVector.GetY() * currentPointVector.GetX());
+        float lastPointDeterminant = (lineVector.GetX() * lastPointVector.GetY()) - (lineVector.GetY() * lastPointVector.GetX());
         const float epsilon = 0.001f;
 
-        AZ::Vector2 perpendicularLineVector(-lineVector.y, lineVector.x);
+        AZ::Vector2 perpendicularLineVector(-lineVector.GetY(), lineVector.GetX());
         AZ::Vector2 vertexToLine = lineOrigin - lastVertex.xy;
 
         if (currentPointDeterminant < epsilon)
@@ -2205,7 +2205,7 @@ int UiImageComponent::ClipToLine(const LyShine::UiPrimitiveVertex* vertices, con
             if (lastPointDeterminant > -epsilon && fabs(currentPointDeterminant) > epsilon && fabs(lastPointDeterminant) > epsilon)
             {
                 //add calculated intersection
-                float intersectionDistance = (vertexToLine.x * perpendicularLineVector.x + vertexToLine.y * perpendicularLineVector.y) / (triangleEdgeDirection.x * perpendicularLineVector.x + triangleEdgeDirection.y * perpendicularLineVector.y);
+                float intersectionDistance = (vertexToLine.GetX() * perpendicularLineVector.GetX() + vertexToLine.GetY() * perpendicularLineVector.GetY()) / (triangleEdgeDirection.GetX() * perpendicularLineVector.GetX() + triangleEdgeDirection.GetY() * perpendicularLineVector.GetY());
                 LyShine::UiPrimitiveVertex intersectPoint;
                 SetVertex(intersectPoint, lastVertex.xy + triangleEdgeDirection * intersectionDistance,
                     lastVertex.color.dcolor, lastVertex.st + (currentVertex.st - lastVertex.st) * intersectionDistance);
@@ -2222,7 +2222,7 @@ int UiImageComponent::ClipToLine(const LyShine::UiPrimitiveVertex* vertices, con
         else if (lastPointDeterminant < epsilon)
         {
             //add calculated intersection
-            float intersectionDistance = (vertexToLine.x * perpendicularLineVector.x + vertexToLine.y * perpendicularLineVector.y) / (triangleEdgeDirection.x * perpendicularLineVector.x + triangleEdgeDirection.y * perpendicularLineVector.y);
+            float intersectionDistance = (vertexToLine.GetX() * perpendicularLineVector.GetX() + vertexToLine.GetY() * perpendicularLineVector.GetY()) / (triangleEdgeDirection.GetX() * perpendicularLineVector.GetX() + triangleEdgeDirection.GetY() * perpendicularLineVector.GetY());
             LyShine::UiPrimitiveVertex intersectPoint;
             SetVertex(intersectPoint, lastVertex.xy + triangleEdgeDirection * intersectionDistance,
                 lastVertex.color.dcolor, lastVertex.st + (currentVertex.st - lastVertex.st) * intersectionDistance);

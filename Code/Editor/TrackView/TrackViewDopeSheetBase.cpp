@@ -2092,8 +2092,8 @@ void CTrackViewDopeSheetBase::UpdateColorKeyHelper(const AZ::Color& color)
             subTrackKey.GetKey(&bezierKey);
         }
 
-        bezierKey.value.x = m_colorUpdateKeyTime;
-        bezierKey.value.y = color.GetElement(i);
+        bezierKey.value.SetX(m_colorUpdateKeyTime);
+        bezierKey.value.SetY(color.GetElement(i));
         subTrackKey.SetKey(&bezierKey);
     }
 }
@@ -3677,7 +3677,7 @@ void CTrackViewDopeSheetBase::DrawKeyDuration(CTrackViewTrack* pTrack, QPainter*
     {
         ISoundKey soundKey;
         keyHandle.GetKey(&soundKey);
-        colorFrom.setRgbF(soundKey.customColor.x, soundKey.customColor.y, soundKey.customColor.z);
+        colorFrom.setRgbF(soundKey.customColor.GetX(), soundKey.customColor.GetY(), soundKey.customColor.GetZ());
     }
     QLinearGradient gradient(x, rc.top() + 3, x, rc.bottom() - 3);
     gradient.setColorAt(0, colorFrom);

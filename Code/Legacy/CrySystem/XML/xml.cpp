@@ -317,14 +317,14 @@ void CXmlNode::setAttr(const char* key, const AZ::Vector3& value)
 {
     char str[128];
     AZ::Locale::ScopedSerializationLocale localeResetter;
-    azsprintf(str, FLOAT_FMT "," FLOAT_FMT "," FLOAT_FMT, value.x, value.y, value.z);
+    azsprintf(str, FLOAT_FMT "," FLOAT_FMT "," FLOAT_FMT, value.GetX(), value.GetY(), value.GetZ());
     setAttr(key, str);
 }
 void CXmlNode::setAttr(const char* key, const AZ::Vector4& value)
 {
     char str[128];
     AZ::Locale::ScopedSerializationLocale localeResetter;
-    azsprintf(str, FLOAT_FMT "," FLOAT_FMT "," FLOAT_FMT "," FLOAT_FMT, value.x, value.y, value.z, value.w);
+    azsprintf(str, FLOAT_FMT "," FLOAT_FMT "," FLOAT_FMT "," FLOAT_FMT, value.GetX(), value.GetY(), value.GetZ(), value.GetW());
     setAttr(key, str);
 }
 
@@ -332,7 +332,7 @@ void CXmlNode::setAttr(const char* key, const AZ::Vector2& value)
 {
     char str[128];
     AZ::Locale::ScopedSerializationLocale localeResetter;
-    azsprintf(str, FLOAT_FMT "," FLOAT_FMT, value.x, value.y);
+    azsprintf(str, FLOAT_FMT "," FLOAT_FMT, value.GetX(), value.GetY());
     setAttr(key, str);
 }
 

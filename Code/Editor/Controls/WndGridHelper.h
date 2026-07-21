@@ -46,25 +46,25 @@ public:
     AZ::Vector2 ClientToWorld(const QPoint& point)
     {
         AZ::Vector2 v;
-        v.x = (point.x() - rect.left()) / zoom.GetX() + origin.GetX();
-        v.y = (point.y() - rect.top()) / zoom.GetY() + origin.GetY();
+        v.SetX((point.x() - rect.left()) / zoom.GetX() + origin.GetX());
+        v.SetY((point.y() - rect.top()) / zoom.GetY() + origin.GetY());
         return v;
     }
     
     QPoint WorldToClient(AZ::Vector2 v)
     {
-        QPoint p(aznumeric_cast<int>(floor((v.x - origin.GetX()) * zoom.GetX() + 0.5f) + rect.left()),
-            aznumeric_cast<int>(floor((v.y - origin.GetY()) * zoom.GetY() + 0.5f) + rect.top()));
+        QPoint p(aznumeric_cast<int>(floor((v.GetX() - origin.GetX()) * zoom.GetX() + 0.5f) + rect.left()),
+            aznumeric_cast<int>(floor((v.GetY() - origin.GetY()) * zoom.GetY() + 0.5f) + rect.top()));
         return p;
     }
 
     void SetOrigin(AZ::Vector2 neworigin)
     {
-        origin = AZ::Vector2(neworigin.x, neworigin.y);
+        origin = AZ::Vector2(neworigin.GetX(), neworigin.GetY());
     }
     void SetZoom(AZ::Vector2 newzoom)
     {
-        zoom = AZ::Vector2(newzoom.x, newzoom.y);
+        zoom = AZ::Vector2(newzoom.GetX(), newzoom.GetY());
     }
     void SetZoom(AZ::Vector2 newzoom, const QPoint& center)
     {

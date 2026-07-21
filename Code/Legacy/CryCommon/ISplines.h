@@ -10,6 +10,8 @@
 
 #include <IXml.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Quaternion.h> // CryCommon->AzCore migration: was transitively included via the removed Cry_Quat.h
 
 //////////////////////////////////////////////////////////////////////////
 

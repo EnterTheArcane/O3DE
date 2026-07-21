@@ -22,7 +22,7 @@
 
 inline AZ::Vector2 LYVec2ToAZVec2(const Vec2& source)
 {
-    return AZ::Vector2(source.x, source.y);
+    return AZ::Vector2(source.GetX(), source.GetY());
 }
 
 inline Vec2 AZVec2ToLYVec2(const AZ::Vector2& source)
@@ -32,7 +32,7 @@ inline Vec2 AZVec2ToLYVec2(const AZ::Vector2& source)
 
 inline AZ::Vector3 LYVec3ToAZVec3(const Vec3& source)
 {
-    return AZ::Vector3(source.x, source.y, source.z);
+    return AZ::Vector3(source.GetX(), source.GetY(), source.GetZ());
 }
 
 inline Vec3 AZVec3ToLYVec3(const AZ::Vector3& source)
@@ -52,7 +52,7 @@ inline Ang3 AZVec3ToLYAng3(const AZ::Vector3& source)
 
 inline AZ::Vector4 LYVec4ToAZVec4(const Vec4& source)
 {
-    return AZ::Vector4(source.x, source.y, source.z, source.w);
+    return AZ::Vector4(source.GetX(), source.GetY(), source.GetZ(), source.GetW());
 }
 
 inline Vec4 AZVec4ToLYVec4(const AZ::Vector4& source)
@@ -62,7 +62,7 @@ inline Vec4 AZVec4ToLYVec4(const AZ::Vector4& source)
 
 inline AZ::Color LYVec3ToAZColor(const Vec3& source)
 {
-    return AZ::Color(source.x, source.y, source.z, 1.0f);
+    return AZ::Color(source.GetX(), source.GetY(), source.GetZ(), 1.0f);
 }
 
 inline Vec3 AZColorToLYVec3(const AZ::Color& source)
@@ -84,7 +84,7 @@ inline ColorF AZColorToLYColorF(const AZ::Color& source)
 
 inline AZ::Color LYColorFToAZColor(const ColorF& source)
 {
-    return AZ::Color(source.r, source.g, source.b, source.a);
+    return AZ::Color(source.GetR(), source.GetG(), source.GetB(), source.GetA());
 }
 AZ_POP_DISABLE_WARNING
 
@@ -101,61 +101,9 @@ inline AZ::Color LYColorBToAZColor(const ColorB& source)
 }
 AZ_POP_DISABLE_WARNING
 
-// Disable the deprecated-declarations warning for all conversion operators of Matrix33
-AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
-inline Matrix33 AZMatrix3x3ToLYMatrix3x3(const AZ::Matrix3x3& source)
-{
-    return Matrix33::CreateFromVectors(
-        AZVec3ToLYVec3(source.GetColumn(0)),
-        AZVec3ToLYVec3(source.GetColumn(1)),
-        AZVec3ToLYVec3(source.GetColumn(2)));
-}
-
-inline AZ::Matrix3x3 LyMatrix3x3ToAzMatrix3x3(const Matrix33& source)
-{
-    return AZ::Matrix3x3::CreateFromColumns(
-        LYVec3ToAZVec3(source.GetColumn(0)),
-        LYVec3ToAZVec3(source.GetColumn(1)),
-        LYVec3ToAZVec3(source.GetColumn(2)));
-}
-AZ_POP_DISABLE_WARNING
-
-// Disable the deprecated-declarations warning for all conversion operators of Matrix34
-AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
-inline Matrix34 AZTransformToLYTransform(const AZ::Transform& source)
-{
-    return Matrix34::CreateFromVectors(
-        AZVec3ToLYVec3(source.GetBasisX()),
-        AZVec3ToLYVec3(source.GetBasisY()),
-        AZVec3ToLYVec3(source.GetBasisZ()),
-        AZVec3ToLYVec3(source.GetTranslation()));
-}
-
-inline Matrix34 AZMatrix3x4ToLYMatrix3x4(const AZ::Matrix3x4& source)
-{
-    AZ::Vector3 col0;
-    AZ::Vector3 col1;
-    AZ::Vector3 col2;
-    AZ::Vector3 col3;
-    source.GetBasisAndTranslation(&col0, &col1, &col2, &col3);
-
-    return Matrix34(
-        col0.GetX(), col1.GetX(), col2.GetX(), col3.GetX(),
-        col0.GetY(), col1.GetY(), col2.GetY(), col3.GetY(),
-        col0.GetZ(), col1.GetZ(), col2.GetZ(), col3.GetZ());
-}
-
-inline AZ::Transform LYTransformToAZTransform(const Matrix34& source)
-{
-    const AZ::Matrix3x4 matrix3x4 = AZ::Matrix3x4::CreateFromRowMajorFloat12(source.GetData());
-    return AZ::Transform::CreateFromMatrix3x4(matrix3x4);
-}
-
-inline AZ::Matrix3x4 LYTransformToAZMatrix3x4(const Matrix34& source)
-{
-    return AZ::Matrix3x4::CreateFromRowMajorFloat12(source.GetData());
-}
-AZ_POP_DISABLE_WARNING
+// CryCommon->AzCore migration: the Matrix33/Matrix34/Transform bridge helpers were removed
+// along with the (dead) Cry Matrix33/Matrix34 types. Use AZ::Matrix3x3 / AZ::Matrix3x4 /
+// AZ::Transform directly.
 
 inline AZ::Plane LyPlaneToAZPlane(const ::Plane& source)
 {

@@ -78,26 +78,26 @@ struct Vec3f16
     }
     _inline Vec3f16& operator = (const AZ::Vector3& sl)
     {
-        x = CryConvertFloatToHalf(sl.x);
-        y = CryConvertFloatToHalf(sl.y);
-        z = CryConvertFloatToHalf(sl.z);
+        x = CryConvertFloatToHalf(sl.GetX());
+        y = CryConvertFloatToHalf(sl.GetY());
+        z = CryConvertFloatToHalf(sl.GetZ());
         w = CryConvertFloatToHalf(1.0f);
         return *this;
     }
     _inline Vec3f16& operator = (const AZ::Vector4& sl)
     {
-        x = CryConvertFloatToHalf(sl.x);
-        y = CryConvertFloatToHalf(sl.y);
-        z = CryConvertFloatToHalf(sl.z);
-        w = CryConvertFloatToHalf(sl.w);
+        x = CryConvertFloatToHalf(sl.GetX());
+        y = CryConvertFloatToHalf(sl.GetY());
+        z = CryConvertFloatToHalf(sl.GetZ());
+        w = CryConvertFloatToHalf(sl.GetW());
         return *this;
     }
     _inline AZ::Vector3 ToVec3() const
     {
         AZ::Vector3 v;
-        v.x = CryConvertHalfToFloat(x);
-        v.y = CryConvertHalfToFloat(y);
-        v.z = CryConvertHalfToFloat(z);
+        v.SetX(CryConvertHalfToFloat(x));
+        v.SetY(CryConvertHalfToFloat(y));
+        v.SetZ(CryConvertHalfToFloat(z));
         return v;
     }
 };

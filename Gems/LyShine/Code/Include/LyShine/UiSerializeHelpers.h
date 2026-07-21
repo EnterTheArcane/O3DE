@@ -351,10 +351,11 @@ namespace LyShine
         {
             AZ::SerializeContext::DataElementNode& elementNode = classElement.GetSubElement(index);
 
-            AZ::Vector2 oldData;
+            float oldDataX = 0.0f;
+            float oldDataY = 0.0f;
 
-            if (!(GetSubElementValue(elementNode, "x", oldData.x) &&
-                GetSubElementValue(elementNode, "y", oldData.y)))
+            if (!(GetSubElementValue(elementNode, "x", oldDataX) &&
+                GetSubElementValue(elementNode, "y", oldDataY)))
             {
                 // Error, old subElement was not a AZ::Vector2
                 AZ_Error("Serialization", false, "Element %s is not a Vec2.", vec2ElementName);
@@ -374,7 +375,7 @@ namespace LyShine
                 return false;
             }
 
-            AZ::Vector2 newVector2Data(oldData.x, oldData.y);
+            AZ::Vector2 newVector2Data(oldDataX, oldDataY);
             classElement.GetSubElement(newVector2ElementIndex).SetData(context, newVector2Data);
         }
 

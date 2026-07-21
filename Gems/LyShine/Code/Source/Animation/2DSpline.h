@@ -350,8 +350,8 @@ namespace UiSpline
     inline void SplineKeyEx<AZ::Vector2>::ComputeThetaAndScale()
     {
         scale_from_dd_to_ds = (ds.GetLength() + 1.0f) / (dd.GetLength() + 1.0f);
-        float out = fabs(dd.x) > 0.000001f ? atan_tpl(dd.y / dd.x) : (dd.x * dd.y >= 0 ? gf_PI / 2.0f : -gf_PI / 2.0f);
-        float in  = fabs(ds.x) > 0.000001f ? atan_tpl(ds.y / ds.x) : (ds.x * ds.y >= 0 ? gf_PI / 2.0f : -gf_PI / 2.0f);
+        float out = fabs(dd.GetX()) > 0.000001f ? atan_tpl(dd.GetY() / dd.GetX()) : (dd.GetX() * dd.GetY() >= 0 ? gf_PI / 2.0f : -gf_PI / 2.0f);
+        float in  = fabs(ds.GetX()) > 0.000001f ? atan_tpl(ds.GetY() / ds.GetX()) : (ds.GetX() * ds.GetY() >= 0 ? gf_PI / 2.0f : -gf_PI / 2.0f);
         theta_from_dd_to_ds = in + gf_PI - out;
     }
 
@@ -360,9 +360,9 @@ namespace UiSpline
     {
         assert((flags & SPLINE_KEY_TANGENT_ALL_MASK) == SPLINE_KEY_TANGENT_UNIFIED);
         float outLength = (ds.GetLength() + 1.0f) / scale_from_dd_to_ds - 1.0f;
-        float in  = fabs(ds.x) > 0.000001f ? atan_tpl(ds.y / ds.x) : (ds.x * ds.y >= 0 ? gf_PI / 2.0f : -gf_PI / 2.0f);
-        dd.x = 1.0f;
-        dd.y = tan_tpl(in + gf_PI - theta_from_dd_to_ds);
+        float in  = fabs(ds.GetX()) > 0.000001f ? atan_tpl(ds.GetY() / ds.GetX()) : (ds.GetX() * ds.GetY() >= 0 ? gf_PI / 2.0f : -gf_PI / 2.0f);
+        dd.SetX(1.0f);
+        dd.SetY(tan_tpl(in + gf_PI - theta_from_dd_to_ds));
         dd.Normalize();
         dd *= outLength;
     }
@@ -372,9 +372,9 @@ namespace UiSpline
     {
         assert((flags & SPLINE_KEY_TANGENT_ALL_MASK) == SPLINE_KEY_TANGENT_UNIFIED);
         float inLength = scale_from_dd_to_ds * (dd.GetLength() + 1.0f) - 1.0f;
-        float out = fabs(dd.x) > 0.000001f ? atan_tpl(dd.y / dd.x) : (dd.x * dd.y >= 0 ? gf_PI / 2.0f : -gf_PI / 2.0f);
-        ds.x = 1.0f;
-        ds.y = tan_tpl(out + theta_from_dd_to_ds - gf_PI);
+        float out = fabs(dd.GetX()) > 0.000001f ? atan_tpl(dd.GetY() / dd.GetX()) : (dd.GetX() * dd.GetY() >= 0 ? gf_PI / 2.0f : -gf_PI / 2.0f);
+        ds.SetX(1.0f);
+        ds.SetY(tan_tpl(out + theta_from_dd_to_ds - gf_PI));
         ds.Normalize();
         ds *= inLength;
     }
@@ -534,10 +534,10 @@ namespace UiSpline
             float b2 = -9.0f * u2 + 6.0f * u;
             float b3 = 3.0f * u2;
 
-            float p0 = this->value(from).x;
-            float p3 = this->value(to).x;
-            float p1 = p0 + this->dd(from).x;
-            float p2 = p3 - this->ds(to).x;
+            float p0 = this->value(from).GetX();
+            float p3 = this->value(to).GetX();
+            float p1 = p0 + this->dd(from).GetX();
+            float p2 = p3 - this->ds(to).GetX();
 
             return (b0 * p0) + (b1 * p1) + (b2 * p2) + (b3 * p3);
         }
@@ -550,10 +550,10 @@ namespace UiSpline
             float b2 = -9.0f * u2 + 6.0f * u;
             float b3 = 3.0f * u2;
 
-            float p0 = this->value(from).y;
-            float p3 = this->value(to).y;
-            float p1 = p0 + this->dd(from).y;
-            float p2 = p3 - this->ds(to).y;
+            float p0 = this->value(from).GetY();
+            float p3 = this->value(to).GetY();
+            float p1 = p0 + this->dd(from).GetY();
+            float p2 = p3 - this->ds(to).GetY();
 
             return (b0 * p0) + (b1 * p1) + (b2 * p2) + (b3 * p3);
         }
@@ -562,19 +562,19 @@ namespace UiSpline
         {
             if (GetOutTangentType(from) == SPLINE_KEY_TANGENT_STEP || GetInTangentType(to) == SPLINE_KEY_TANGENT_STEP)
             {
-                float value = this->value(from).y;
+                float value = this->value(from).GetY();
                 if (GetOutTangentType(from) == SPLINE_KEY_TANGENT_STEP)
                 {
-                    value = this->value(to).y;
+                    value = this->value(to).GetY();
                 }
                 float timeDelta = this->time(to) - this->time(from);
                 return value * timeDelta * u;
             }
 
-            float p0 = this->value(from).y;
-            float p3 = this->value(to).y;
-            float p1 = p0 + this->dd(from).y;
-            float p2 = p3 - this->ds(to).y;
+            float p0 = this->value(from).GetY();
+            float p3 = this->value(to).GetY();
+            float p1 = p0 + this->dd(from).GetY();
+            float p2 = p3 - this->ds(to).GetY();
 
             // y = A*t^3 + B*t^2 + C*t + D
             float A = -p0 + 3 * p1 - 3 * p2 + p3;
@@ -582,10 +582,10 @@ namespace UiSpline
             float C = -3 * p0 + 3 * p1;
             float D = p0;
 
-            p0 = this->value(from).x;
-            p3 = this->value(to).x;
-            p1 = p0 + this->dd(from).x;
-            p2 = p3 - this->ds(to).x;
+            p0 = this->value(from).GetX();
+            p3 = this->value(to).GetX();
+            p1 = p0 + this->dd(from).GetX();
+            p2 = p3 - this->ds(to).GetX();
 
             // dx/dt = a*t^2 + b*t + c
             float a = 3 * (-p0 + 3 * p1 - 3 * p2 + p3);
@@ -684,8 +684,8 @@ namespace UiSpline
 
             ISplineInterpolator::ValueType value;
             u = search_u(time, value);
-            tangent.x = comp_time_deriv(curr, next, u);
-            tangent.y = comp_value_deriv(curr, next, u);
+            tangent.SetX(comp_time_deriv(curr, next, u));
+            tangent.SetY(comp_value_deriv(curr, next, u));
             tangent /= 3.0f;
             return tangent;
         }
@@ -756,7 +756,7 @@ namespace UiSpline
             }
             else
             {
-                area += (time - this->time(curr)) * this->value(curr).y;
+                area += (time - this->time(curr)) * this->value(curr).GetY();
             }
             return area;
         }
@@ -804,17 +804,17 @@ namespace UiSpline
         void ConstrainOutTangentsOf(int k)
         {
             if (k < num_keys() - 1
-                && this->key(k).dd.x > (this->time(k + 1) - this->time(k)))
+                && this->key(k).dd.GetX() > (this->time(k + 1) - this->time(k)))
             {
-                this->key(k).dd *= (this->time(k + 1) - this->time(k)) / this->key(k).dd.x;
+                this->key(k).dd *= (this->time(k + 1) - this->time(k)) / this->key(k).dd.GetX();
             }
         }
         void ConstrainInTangentsOf(int k)
         {
             if (k > 0
-                && this->key(k).ds.x > (this->time(k) - this->time(k - 1)))
+                && this->key(k).ds.GetX() > (this->time(k) - this->time(k - 1)))
             {
-                this->key(k).ds *= (this->time(k) - this->time(k - 1)) / this->key(k).ds.x;
+                this->key(k).ds *= (this->time(k) - this->time(k - 1)) / this->key(k).ds.GetX();
             }
         }
 
@@ -833,8 +833,8 @@ namespace UiSpline
                 {
                     if (GetOutTangentType(0) == SPLINE_KEY_TANGENT_ZERO)
                     {
-                        this->key(0).dd.x = oneThird * (this->value(1).x - this->value(0).x);
-                        this->key(0).dd.y = 0;
+                        this->key(0).dd.SetX(oneThird * (this->value(1).GetX() - this->value(0).GetX()));
+                        this->key(0).dd.SetY(0);
                     }
                     else
                     {
@@ -843,8 +843,8 @@ namespace UiSpline
                     // Set the in-tangent same to the out.
                     if (GetInTangentType(0) == SPLINE_KEY_TANGENT_ZERO)
                     {
-                        this->key(0).ds.x = oneThird * (this->value(1).x - this->value(0).x);
-                        this->key(0).ds.y = 0;
+                        this->key(0).ds.SetX(oneThird * (this->value(1).GetX() - this->value(0).GetX()));
+                        this->key(0).ds.SetY(0);
                     }
                     else
                     {
@@ -853,8 +853,8 @@ namespace UiSpline
 
                     if (GetInTangentType(last) == SPLINE_KEY_TANGENT_ZERO)
                     {
-                        this->key(last).ds.x = oneThird * (this->value(last).x - this->value(last - 1).x);
-                        this->key(last).ds.y = 0;
+                        this->key(last).ds.SetX(oneThird * (this->value(last).GetX() - this->value(last - 1).GetX()));
+                        this->key(last).ds.SetY(0);
                     }
                     else
                     {
@@ -863,8 +863,8 @@ namespace UiSpline
                     // Set the out-tangent same to the in.
                     if (GetOutTangentType(last) == SPLINE_KEY_TANGENT_ZERO)
                     {
-                        this->key(last).dd.x = oneThird * (this->value(last).x - this->value(last - 1).x);
-                        this->key(last).dd.y = 0;
+                        this->key(last).dd.SetX(oneThird * (this->value(last).GetX() - this->value(last - 1).GetX()));
+                        this->key(last).dd.SetY(0);
                     }
                     else
                     {
@@ -879,8 +879,8 @@ namespace UiSpline
                     switch (GetInTangentType(i))
                     {
                     case SPLINE_KEY_TANGENT_ZERO:
-                        key.ds.x = oneThird * (this->value(i).x - this->value(i - 1).x);
-                        key.ds.y = 0;
+                        key.ds.SetX(oneThird * (this->value(i).GetX() - this->value(i - 1).GetX()));
+                        key.ds.SetY(0);
                         break;
                     default:
                         ConstrainInTangentsOf(i);
@@ -890,8 +890,8 @@ namespace UiSpline
                     switch (GetOutTangentType(i))
                     {
                     case SPLINE_KEY_TANGENT_ZERO:
-                        key.dd.x = oneThird * (this->value(i + 1).x - this->value(i).x);
-                        key.dd.y = 0;
+                        key.dd.SetX(oneThird * (this->value(i + 1).GetX() - this->value(i).GetX()));
+                        key.dd.SetY(0);
                         break;
                     default:
                         ConstrainOutTangentsOf(i);
@@ -931,26 +931,26 @@ namespace UiSpline
                     u = 0;
                     if (num_keys() > 1)
                     {
-                        this->key(0).dd.x = oneThird * (this->value(1).x - this->value(0).x);
+                        this->key(0).dd.SetX(oneThird * (this->value(1).GetX() - this->value(0).GetX()));
                     }
                     else
                     {
-                        this->key(0).dd.x = 1.0f;   // Just an arbitrary value
+                        this->key(0).dd.SetX(1.0f);   // Just an arbitrary value
                     }
-                    this->key(0).dd.y = 0;
+                    this->key(0).dd.SetY(0);
                     // Set the in-tangent same to the out.
-                    this->key(0).ds.x = this->key(0).dd.x;
-                    this->key(0).ds.y = 0;
+                    this->key(0).ds.SetX(this->key(0).dd.GetX());
+                    this->key(0).ds.SetY(0);
                 }
                 else if (keyIndex == num_keys() - 1)
                 {
                     u = 1;
                     int last = num_keys() - 1;
-                    this->key(last).ds.x = oneThird * (this->value(last).x - this->value(last - 1).x);
-                    this->key(last).ds.y = 0;
+                    this->key(last).ds.SetX(oneThird * (this->value(last).GetX() - this->value(last - 1).GetX()));
+                    this->key(last).ds.SetY(0);
                     // Set the out-tangent same to the in.
-                    this->key(last).dd.x = this->key(last).ds.x;
-                    this->key(last).dd.y = 0;
+                    this->key(last).dd.SetX(this->key(last).ds.GetX());
+                    this->key(last).dd.SetY(0);
                 }
                 else
                 {

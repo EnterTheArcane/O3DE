@@ -59,7 +59,7 @@ namespace Maestro
     {
         if (GetNumKeys() == 0)
         {
-            value = m_defaultValue.y;
+            value = m_defaultValue.GetY();
         }
         else
         {
@@ -158,7 +158,7 @@ namespace Maestro
         k.time = bezierkey->time;
         k.flags = bezierkey->flags;
         k.value = bezierkey->value;
-        UpdateTrackValueRange(k.value.y);
+        UpdateTrackValueRange(k.value.GetY());
 
         Invalidate();
         SortKeys();
@@ -201,12 +201,12 @@ namespace Maestro
                 return -1; // a key is too close in time, reject adding a key
             }
             // Check if Default Value was recently updated, and is closer in time than existing keys
-            bUseDefault = AZStd::abs(time - m_defaultValue.x) < dt;
+            bUseDefault = AZStd::abs(time - m_defaultValue.GetX()) < dt;
         }
 
         if (bUseDefault)
         {
-            value = m_defaultValue.y;
+            value = m_defaultValue.GetY();
         }
         else
         {
@@ -275,7 +275,7 @@ namespace Maestro
             return -1;
         }
 
-        key.value.x = key.time;
+        key.value.SetX(key.time);
         SetKey(newIndex, &key);
 
         SortKeys();
@@ -346,7 +346,7 @@ namespace Maestro
             return -1;
         }
 
-        key.value.x = key.time;
+        key.value.SetX(key.time);
         SetKey(newIndex, &key);
 
         SortKeys();
@@ -434,7 +434,7 @@ namespace Maestro
             {
                 GetKey(i, &key);
                 XmlNodeRef keyNode = xmlNode->newChild("Key");
-                AZ_Assert(key.time == key.value.x, "Invalid Bezier key at %i", i);
+                AZ_Assert(key.time == key.value.GetX(), "Invalid Bezier key at %i", i);
                 keyNode->setAttr("time", key.time);
                 keyNode->setAttr("value", key.value);
 
@@ -480,7 +480,7 @@ namespace Maestro
                 XmlNodeRef keyNode = xmlNode->getChild(i);
                 keyNode->getAttr("time", key.time);
                 keyNode->getAttr("value", key.value);
-                if (AZStd::abs(key.time - key.value.x) > AZ::Constants::FloatEpsilon)
+                if (AZStd::abs(key.time - key.value.GetX()) > AZ::Constants::FloatEpsilon)
                 {
                     AZ_Assert(false, "Invalid Bezier key at %i", i);
                     result = false;
@@ -488,7 +488,7 @@ namespace Maestro
                 }
 
                 key.time += fTimeOffset;
-                key.value.x += fTimeOffset;
+                key.value.SetX(key.value.GetX() + fTimeOffset);
 
                 keyNode->getAttr("flags", key.flags);
 
@@ -521,7 +521,7 @@ namespace Maestro
             for (int i = 0; i < numKeys; i++)
             {
                 GetKey(i, &key);
-                if (AZStd::abs(key.time - key.value.x) > AZ::Constants::FloatEpsilon)
+                if (AZStd::abs(key.time - key.value.GetX()) > AZ::Constants::FloatEpsilon)
                 {
                     AZ_Assert(false, "Invalid Bezier key at %i", i);
                     result = false;
@@ -569,7 +569,7 @@ namespace Maestro
         }
 
         Spline::key_type& k = m_spline->key(keyIndex);
-        azsnprintf(str, AZ_ARRAY_SIZE(str), "%.2f", k.value.y);
+        azsnprintf(str, AZ_ARRAY_SIZE(str), "%.2f", k.value.GetY());
     }
 
 } // namespace Maestro

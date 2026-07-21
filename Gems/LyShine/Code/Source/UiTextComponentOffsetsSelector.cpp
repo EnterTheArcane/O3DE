@@ -43,7 +43,7 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
                 // selection string. This will be used to offset the
                 // cursor position from the left of the start of the line.
                 AZStd::string unselectedPrecedingString(drawBatch.text.substr(0, firstIndexLineIndex));
-                lineOffsetsStack.top()->left.SetX(curLineWidth + drawBatch.font->GetTextSize(unselectedPrecedingString.c_str(), false, m_fontContext).x);
+                lineOffsetsStack.top()->left.SetX(curLineWidth + drawBatch.font->GetTextSize(unselectedPrecedingString.c_str(), false, m_fontContext).GetX());
 
                 if (m_firstIndex == m_lastIndex)
                 {
@@ -63,7 +63,7 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
 
                 AZStd::string selectionString(drawBatch.text.substr(firstIndexLineIndex, selectionLength));
                 AZ::Vector2 rightSize = drawBatch.font->GetTextSize(selectionString.c_str(), true, m_fontContext);
-                lineOffsetsStack.top()->right.SetX(rightSize.x);
+                lineOffsetsStack.top()->right.SetX(rightSize.GetX());
                 m_numCharsSelected += LyShine::GetUtf8StringLength(selectionString);
 
                 break;
@@ -82,7 +82,7 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
         // line width.
         if (!firstIndexFound)
         {
-            curLineWidth += drawBatch.font->GetTextSize(drawBatch.text.c_str(), false, m_fontContext).x;
+            curLineWidth += drawBatch.font->GetTextSize(drawBatch.text.c_str(), false, m_fontContext).GetX();
         }
         // If m_firstIndex has been found, but we haven't found m_lastIndex, we
         // calculate curLineWidth relative to firstIndexLineIndex (the m_firstIndex
@@ -94,7 +94,7 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
         {
             int substrLength = static_cast<int>(drawBatch.text.length() - firstIndexLineIndex);
             AZStd::string curSubstring(drawBatch.text.substr(firstIndexLineIndex, substrLength));
-            curLineWidth += drawBatch.font->GetTextSize(curSubstring.c_str(), false, m_fontContext).x;
+            curLineWidth += drawBatch.font->GetTextSize(curSubstring.c_str(), false, m_fontContext).GetX();
             lineOffsetsStack.top()->right.SetX(AZStd::GetMax<float>(lineOffsetsStack.top()->right.GetX(), curLineWidth));
             m_numCharsSelected += LyShine::GetUtf8StringLength(curSubstring);
         }

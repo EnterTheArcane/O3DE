@@ -142,7 +142,7 @@ namespace EMotionFX
 
         EXPECT_EQ(actorInstance->GetLODLevel(), 3);
 
-        newVec.y = 50;
+        newVec.SetY(50);
 
         // Tick!
         AZ::TickBus::Broadcast(&AZ::TickBus::Events::OnTick, 0.0f, AZ::ScriptTimePoint{});

@@ -2110,7 +2110,7 @@ namespace
                 AssertTextNotEmpty(drawBatches);
 
                 // Element size 75% of text length should insert one newline
-                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).GetX();
                 const float wrapWidth = textWidth * 0.75f;
                 InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
 
@@ -2134,7 +2134,7 @@ namespace
                 AssertTextNotEmpty(drawBatches);
 
                 // Element size 45% of text length should insert two newlines
-                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).GetX();
                 const float wrapWidth = textWidth * 0.45f;
                 InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
 
@@ -2352,7 +2352,7 @@ namespace
                 BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
 
                 // Element size 75% of text length should insert one newline
-                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).GetX();
                 const float wrapWidth = textWidth * 0.75f;
                 InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
 
@@ -2379,7 +2379,7 @@ namespace
                 BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
 
                 // Element size 45% of text length should insert two newlines
-                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).GetX();
                 const float wrapWidth = textWidth * 0.45f;
                 InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
 
@@ -2456,7 +2456,7 @@ namespace
                 BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
 
                 // Element size 75% of text length should insert one newline
-                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).GetX();
                 const float wrapWidth = textWidth * 0.75f;
                 InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
 
@@ -2499,7 +2499,7 @@ namespace
                 BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
 
                 // Element size 45% of text length should insert two newlines
-                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).GetX();
                 const float wrapWidth = textWidth * 0.45f;
                 InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
 
@@ -2554,7 +2554,7 @@ namespace
                 BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
 
                 // Element size 75% of text length should insert one newline
-                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).GetX();
                 const float wrapWidth = textWidth * 0.75f;
                 InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
 
@@ -2628,7 +2628,7 @@ namespace
                 BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
 
                 // Element size 75% of text length should insert one newline
-                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).GetX();
                 const float wrapWidth = textWidth * 0.75f;
                 InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
 

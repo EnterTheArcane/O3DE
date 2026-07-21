@@ -51,7 +51,7 @@ namespace Maestro
 
                 AZ::Vector4 color(key.m_color.GetR(), key.m_color.GetG(), key.m_color.GetB(), key.m_color.GetA());
                 keyNode->getAttr("color", color);
-                key.m_color.Set(color.x, color.y, color.z, color.w);
+                key.m_color.Set(color.GetX(), color.GetY(), color.GetZ(), color.GetW());
 
                 keyNode->getAttr("size", key.m_size);
                 int alignment = 0;

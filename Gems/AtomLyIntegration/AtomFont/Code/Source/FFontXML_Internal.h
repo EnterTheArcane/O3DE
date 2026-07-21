@@ -344,11 +344,11 @@ namespace AtomFontInternal
                 }
                 if (name == "x")
                 {
-                    m_pass->m_posOffset.x = (float)atoi(value.c_str());
+                    m_pass->m_posOffset.SetX((float)atoi(value.c_str()));
                 }
                 else if (name == "y")
                 {
-                    m_pass->m_posOffset.y = (float)atoi(value.c_str());
+                    m_pass->m_posOffset.SetY((float)atoi(value.c_str()));
                 }
                 break;
 

@@ -1174,15 +1174,15 @@ namespace var_type
     
     inline bool compare(const AZ::Vector2& v1, const AZ::Vector2& v2)
     {
-        return v1.x == v2.x && v1.y == v2.y;
+        return v1.GetX() == v2.GetX() && v1.GetY() == v2.GetY();
     }
     inline bool compare(const AZ::Vector3& v1, const AZ::Vector3& v2)
     {
-        return v1.x == v2.x && v1.y == v2.y && v1.z == v2.z;
+        return v1.GetX() == v2.GetX() && v1.GetY() == v2.GetY() && v1.GetZ() == v2.GetZ();
     }
     inline bool compare(const AZ::Vector4& v1, const AZ::Vector4& v2)
     {
-        return v1.x == v2.x && v1.y == v2.y && v1.z == v2.z && v1.w == v2.w;
+        return v1.GetX() == v2.GetX() && v1.GetY() == v2.GetY() && v1.GetZ() == v2.GetZ() && v1.GetW() == v2.GetW();
     }
     inline bool compare(const Ang3& v1, const Ang3& v2)
     {

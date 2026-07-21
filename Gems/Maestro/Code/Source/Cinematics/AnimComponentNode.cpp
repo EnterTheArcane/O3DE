@@ -181,7 +181,7 @@ namespace Maestro
             {
                 I2DBezierKey key;
                 track->GetKey(keyIdx, &key);
-                key.value.y = currValue.GetFloatValue();
+                key.value.SetY(currValue.GetFloatValue());
                 track->SetKey(keyIdx, &key);
             }
             retNumKeysSet++;
@@ -322,7 +322,7 @@ namespace Maestro
 
     void CAnimComponentNode::ConvertBetweenWorldAndLocalPosition(AZ::Vector3& position, ETransformSpaceConversionDirection conversionDirection) const
     {
-        AZ::Vector3 pos(position.x, position.y, position.z);
+        AZ::Vector3 pos(position.GetX(), position.GetY(), position.GetZ());
         AZ::Transform parentTransform = AZ::Transform::Identity();
 
         GetParentWorldTransform(parentTransform);
@@ -355,7 +355,7 @@ namespace Maestro
     void CAnimComponentNode::ConvertBetweenWorldAndLocalScale(AZ::Vector3& scale, ETransformSpaceConversionDirection conversionDirection) const
     {
         AZ::Transform parentTransform = AZ::Transform::Identity();
-        AZ::Transform scaleTransform = AZ::Transform::CreateUniformScale(AZ::Vector3(scale.x, scale.y, scale.z).GetMaxElement());
+        AZ::Transform scaleTransform = AZ::Transform::CreateUniformScale(AZ::Vector3(scale.GetX(), scale.GetY(), scale.GetZ()).GetMaxElement());
 
         GetParentWorldTransform(parentTransform);
         if (conversionDirection == eTransformConverstionDirection_toLocalSpace)

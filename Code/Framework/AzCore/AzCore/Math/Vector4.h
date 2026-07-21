@@ -312,17 +312,7 @@ namespace AZ
         //! Directly sets the underlying SIMD vector.
         void SetSimdValue(Simd::Vec4::FloatArgType value);
 
-    // ###################################################################################
-    // ##  !!! TEMPORARY CRYCOMMON MIGRATION SHIM -- REVERT BEFORE SHIPPING (Wave 3) !!! ##
-    // ##                                                                                ##
-    // ##  The storage union below is TEMPORARILY `public` and carries overlapping       ##
-    // ##  `x/y/z/w` members so that legacy CryCommon `.x/.y/.z/.w` field access keeps     ##
-    // ##  compiling while `Vec4` is migrated onto `AZ::Vector4`. DO NOT write new code   ##
-    // ##  against these public members -- use GetX()/SetX(). This whole block MUST be    ##
-    // ##  restored to `protected:` (dropping the `x/y/z/w` struct) once all call sites   ##
-    // ##  use accessors.                                                                ##
-    // ###################################################################################
-    public:
+    protected:
         union
         {
             Simd::Vec4::FloatType m_value;
@@ -334,15 +324,6 @@ namespace AZ
                 float m_y;
                 float m_z;
                 float m_w;
-            };
-
-            // TEMPORARY Cry-compat public aliases (overlap m_x..m_w). REMOVE IN WAVE 3.
-            struct
-            {
-                float x;
-                float y;
-                float z;
-                float w;
             };
         };
     };

@@ -1051,77 +1051,9 @@ struct Ang3_tpl
         z = if_neg_else(modZ, modZ + gf_PI, modZ - gf_PI);
     }
 
-    //! Convert unit Quat to Euler Angles (xyz).
-    template<class F1>
-    explicit Ang3_tpl(const Quat_tpl<F1>& q)
-    {
-        assert(q.IsValid());
-        y = F(asin_tpl(max((F)-1.0, min((F)1.0, -(q.v.x * q.v.z - q.w * q.v.y) * 2))));
-        if (fabs_tpl(fabs_tpl(y) - (F)((F)g_PI * (F)0.5)) < (F)0.01)
-        {
-            x = F(0);
-            z = F(atan2_tpl(-2 * (q.v.x * q.v.y - q.w * q.v.z), 1 - (q.v.x * q.v.x + q.v.z * q.v.z) * 2));
-        }
-        else
-        {
-            x = F(atan2_tpl((q.v.y * q.v.z + q.w * q.v.x) * 2, 1 - (q.v.x * q.v.x + q.v.y * q.v.y) * 2));
-            z = F(atan2_tpl((q.v.x * q.v.y + q.w * q.v.z) * 2, 1 - (q.v.z * q.v.z + q.v.y * q.v.y) * 2));
-        }
-    }
-
-    //! Convert Matrix33 to Euler Angles (xyz).
-    template<class F1>
-    explicit Ang3_tpl(const Matrix33_tpl<F1>& m)
-    {
-        assert(m.IsOrthonormalRH(0.001f));
-        y = (F)asin_tpl(max((F)-1.0, min((F)1.0, -m.m20)));
-        if (fabs_tpl(fabs_tpl(y) - (F)((F)g_PI * (F)0.5)) < (F)0.01)
-        {
-            x = F(0);
-            z = F(atan2_tpl(-m.m01, m.m11));
-        }
-        else
-        {
-            x = F(atan2_tpl(m.m21, m.m22));
-            z = F(atan2_tpl(m.m10, m.m00));
-        }
-    }
-
-    //! Convert Matrix34 to Euler Angles (xyz).
-    template<class F1>
-    explicit Ang3_tpl(const Matrix34_tpl<F1>& m)
-    {
-        assert(m.IsOrthonormalRH(0.001f));
-        y = F(asin_tpl(max((F)-1.0, min((F)1.0, -m.m20))));
-        if (fabs_tpl(fabs_tpl(y) - (F)((F)g_PI * (F)0.5)) < (F)0.01)
-        {
-            x = F(0);
-            z = F(atan2_tpl(-m.m01, m.m11));
-        }
-        else
-        {
-            x = F(atan2_tpl(m.m21, m.m22));
-            z = F(atan2_tpl(m.m10, m.m00));
-        }
-    }
-
-    //! Convert Matrix44 to Euler Angles (xyz).
-    template<class F1>
-    explicit Ang3_tpl(const Matrix44_tpl<F1>& m)
-    {
-        assert(Matrix33(m).IsOrthonormalRH(0.001f));
-        y = F(asin_tpl(max((F)-1.0, min((F)1.0, -m.m20))));
-        if (fabs_tpl(fabs_tpl(y) - (F)((F)g_PI * (F)0.5)) < (F)0.01)
-        {
-            x = F(0);
-            z = F(atan2_tpl(-m.m01, m.m11));
-        }
-        else
-        {
-            x = F(atan2_tpl(m.m21, m.m22));
-            z = F(atan2_tpl(m.m10, m.m00));
-        }
-    }
+    // CryCommon->AzCore migration: Ang3's Quat/Matrix33/34/44 euler-conversion constructors
+    // were removed along with the (dead) Cry Quat/Matrix types. Use AZ::Quaternion /
+    // AZ::Matrix3x3 euler helpers instead.
 
     template<typename F1>
     static ILINE F CreateRadZ(const Vec2_tpl<F1>& v0, const Vec2_tpl<F1>& v1)
@@ -1139,20 +1071,8 @@ struct Ang3_tpl
         return F(atan2_tpl(cz, c));
     }
 
-    template<typename F1>
-    ILINE static Ang3_tpl<F> GetAnglesXYZ(const Quat_tpl<F1>& q) {    return Ang3_tpl<F>(q); }
-    template<typename F1>
-    ILINE void SetAnglesXYZ(const Quat_tpl<F1>& q)    {   *this = Ang3_tpl<F>(q);   }
-
-    template<typename F1>
-    ILINE static Ang3_tpl<F> GetAnglesXYZ(const Matrix33_tpl<F1>& m) {    return Ang3_tpl<F>(m); }
-    template<typename F1>
-    ILINE void SetAnglesXYZ(const Matrix33_tpl<F1>& m)    {   *this = Ang3_tpl<F>(m);   }
-
-    template<typename F1>
-    ILINE static Ang3_tpl<F> GetAnglesXYZ(const Matrix34_tpl<F1>& m) {    return Ang3_tpl<F>(m); }
-    template<typename F1>
-    ILINE void SetAnglesXYZ(const Matrix34_tpl<F1>& m)    {   *this = Ang3_tpl<F>(m);   }
+    // CryCommon->AzCore migration: GetAnglesXYZ/SetAnglesXYZ(Quat/Matrix33/34) removed with
+    // the dead Cry Quat/Matrix types.
 
     //---------------------------------------------------------------
     ILINE F& operator [] (int index)          { assert(index >= 0 && index <= 2); return ((F*)this)[index]; }

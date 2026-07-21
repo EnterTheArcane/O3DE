@@ -56,13 +56,13 @@ struct Color_tpl
 
     ILINE Color_tpl(const Vec3& vVec)
     {
-        r = (T)vVec.x;
-        g = (T)vVec.y;
-        b = (T)vVec.z;
+        r = (T)vVec.GetX();
+        g = (T)vVec.GetY();
+        b = (T)vVec.GetZ();
         a = (T)1.f;
     }
 
-    ILINE Color_tpl& operator = (const Vec3& v) { r = (T)v.x; g = (T)v.y; b = (T)v.z; a = (T)1.0f; return *this; }
+    ILINE Color_tpl& operator = (const Vec3& v) { r = (T)v.GetX(); g = (T)v.GetY(); b = (T)v.GetZ(); a = (T)1.0f; return *this; }
     ILINE Color_tpl& operator = (const Color_tpl& c) { r = (T)c.r; g = (T)c.g; b = (T)c.b; a = (T)c.a; return *this; }
 
     ILINE T& operator [] (int index)          { assert(index >= 0 && index <= 3); return ((T*)this)[index]; }
@@ -288,26 +288,26 @@ AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
 template<>
 ILINE Color_tpl<f32>::Color_tpl(const ColorF& c)
 {
-    r = c.r;
-    g = c.g;
-    b = c.b;
-    a = c.a;
+    r = c.GetR();
+    g = c.GetG();
+    b = c.GetB();
+    a = c.GetA();
 }
 template<>
 ILINE Color_tpl<uint8>::Color_tpl(const ColorF& c)
 {
-    r = (uint8)(c.r * 255);
-    g = (uint8)(c.g * 255);
-    b = (uint8)(c.b * 255);
-    a = (uint8)(c.a * 255);
+    r = (uint8)(c.GetR() * 255);
+    g = (uint8)(c.GetG() * 255);
+    b = (uint8)(c.GetB() * 255);
+    a = (uint8)(c.GetA() * 255);
 }
 
 template<>
 ILINE Color_tpl<f32>::Color_tpl(const ColorF& c, float fAlpha)
 {
-    r = c.r;
-    g = c.g;
-    b = c.b;
+    r = c.GetR();
+    g = c.GetG();
+    b = c.GetB();
     a = fAlpha;
 }
 AZ_POP_DISABLE_WARNING;
@@ -315,28 +315,28 @@ AZ_POP_DISABLE_WARNING;
 template<>
 ILINE Color_tpl<f32>::Color_tpl(const Vec3& c, float fAlpha)
 {
-    r = c.x;
-    g = c.y;
-    b = c.z;
+    r = c.GetX();
+    g = c.GetY();
+    b = c.GetZ();
     a = fAlpha;
 }
 
 template<>
 ILINE Color_tpl<f32>::Color_tpl(const Vec4& c)
 {
-    r = c.x;
-    g = c.y;
-    b = c.z;
-    a = c.w;
+    r = c.GetX();
+    g = c.GetY();
+    b = c.GetZ();
+    a = c.GetW();
 }
 
 AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
 template<>
 ILINE Color_tpl<uint8>::Color_tpl(const ColorF& c, float fAlpha)
 {
-    r = (uint8)(c.r * 255);
-    g = (uint8)(c.g * 255);
-    b = (uint8)(c.b * 255);
+    r = (uint8)(c.GetR() * 255);
+    g = (uint8)(c.GetG() * 255);
+    b = (uint8)(c.GetB() * 255);
     a = (uint8)(fAlpha * 255);
 }
 AZ_POP_DISABLE_WARNING;
@@ -344,19 +344,19 @@ AZ_POP_DISABLE_WARNING;
 template<>
 ILINE Color_tpl<uint8>::Color_tpl(const Vec3& c, float fAlpha)
 {
-    r = (uint8)(c.x * 255);
-    g = (uint8)(c.y * 255);
-    b = (uint8)(c.z * 255);
+    r = (uint8)(c.GetX() * 255);
+    g = (uint8)(c.GetY() * 255);
+    b = (uint8)(c.GetZ() * 255);
     a = (uint8)(fAlpha * 255);
 }
 
 template<>
 ILINE Color_tpl<uint8>::Color_tpl(const Vec4& c)
 {
-    r = (uint8)(c.x * 255);
-    g = (uint8)(c.y * 255);
-    b = (uint8)(c.z * 255);
-    a = (uint8)(c.w * 255);
+    r = (uint8)(c.GetX() * 255);
+    g = (uint8)(c.GetY() * 255);
+    b = (uint8)(c.GetZ() * 255);
+    a = (uint8)(c.GetW() * 255);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////

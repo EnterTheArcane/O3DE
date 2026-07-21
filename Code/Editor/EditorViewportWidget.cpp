@@ -1225,11 +1225,11 @@ AZ::Vector3 EditorViewportWidget::WorldToView3D(const AZ::Vector3& wp, [[maybe_u
     AZ::Vector3 out(0, 0, 0);
     float x, y;
 
-    ProjectToScreen(wp.x, wp.y, wp.z, &x, &y);
+    ProjectToScreen(wp.GetX(), wp.GetY(), wp.GetZ(), &x, &y);
     if (_finite(x) && _finite(y))
     {
-        out.x = (x / 100) * m_rcClient.width();
-        out.y = (y / 100) * m_rcClient.height();
+        out.SetX((x / 100) * m_rcClient.width());
+        out.SetY((y / 100) * m_rcClient.height());
     }
     return out;
 }
@@ -1259,7 +1259,7 @@ AZ::Vector3 EditorViewportWidget::ViewToWorld(
     const float maxDistance = 10000.f;
     AZ::Vector3 v = AZVec3ToLYVec3(ray.m_direction) * maxDistance;
 
-    if (!_finite(v.x) || !_finite(v.y) || !_finite(v.z))
+    if (!_finite(v.GetX()) || !_finite(v.GetY()) || !_finite(v.GetZ()))
     {
         return AZ::Vector3(0, 0, 0);
     }

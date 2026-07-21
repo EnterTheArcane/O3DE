@@ -383,7 +383,10 @@ AZ::Vector2 AZ::FFont::GetTextSizeUInternal(
     AZ::Vector2 size = ctx.m_size;
     if (ctx.m_sizeIn800x600)
     {
-        ScaleCoord(viewport, size.x, size.y);
+        float scaledX = size.GetX(), scaledY = size.GetY();
+        ScaleCoord(viewport, scaledX, scaledY);
+        size.SetX(scaledX);
+        size.SetY(scaledY);
     }
 
     // This scaling takes into account the logical size of the font relative
@@ -406,8 +409,8 @@ AZ::Vector2 AZ::FFont::GetTextSizeUInternal(
         // gather pass data
         AZ::Vector2 offset = pass->m_posOffset;
 
-        float charX = offset.x;
-        float charY = offset.y + size.y;
+        float charX = offset.GetX();
+        float charY = offset.GetY() + size.GetY();
 
         if (charY > maxH)
         {
@@ -439,8 +442,8 @@ AZ::Vector2 AZ::FFont::GetTextSizeUInternal(
                     maxW = charX;
                 }
 
-                charX = offset.x;
-                charY += size.y * (1.f + ctx.GetLineSpacing());
+                charX = offset.GetX();
+                charY += size.GetY() * (1.f + ctx.GetLineSpacing());
 
                 if (charY > maxH)
                 {
@@ -457,7 +460,7 @@ AZ::Vector2 AZ::FFont::GetTextSizeUInternal(
                     maxW = charX;
                 }
 
-                charX = offset.x;
+                charX = offset.GetX();
                 continue;
             }
             break;
@@ -465,11 +468,11 @@ AZ::Vector2 AZ::FFont::GetTextSizeUInternal(
             {
                 if (ctx.m_proportional)
                 {
-                    charX += TabCharCount * size.x * AZ_FONT_SPACE_SIZE;
+                    charX += TabCharCount * size.GetX() * AZ_FONT_SPACE_SIZE;
                 }
                 else
                 {
-                    charX += TabCharCount * size.x * ctx.m_widthScale;
+                    charX += TabCharCount * size.GetX() * ctx.m_widthScale;
                 }
                 continue;
             }
@@ -506,18 +509,18 @@ AZ::Vector2 AZ::FFont::GetTextSizeUInternal(
 
             if (ctx.m_proportional)
             {
-                advance = horizontalAdvance * scaleInfo.scale.x;
+                advance = horizontalAdvance * scaleInfo.scale.GetX();
             }
             else
             {
-                advance = size.x * ctx.m_widthScale;
+                advance = size.GetX() * ctx.m_widthScale;
             }
 
             // Adjust "advance" here for kerning purposes
             AZ::Vector2 kerningOffset(Vec2_Zero);
             if (ctx.m_kerningEnabled && nextCh)
             {
-                kerningOffset = m_fontTexture->GetKerning(ch, nextCh) * scaleInfo.scale.x;
+                kerningOffset = m_fontTexture->GetKerning(ch, nextCh) * scaleInfo.scale.GetX();
             }
 
             // Adjust char width with tracking only if there is a next character
@@ -526,7 +529,7 @@ AZ::Vector2 AZ::FFont::GetTextSizeUInternal(
                 charX += ctx.m_tracking;
             }
 
-            charX += advance + kerningOffset.x;
+            charX += advance + kerningOffset.GetX();
         }
 
         if (charX > maxW)
@@ -738,7 +741,10 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
     AZ::Vector2 size = ctx.m_size;
     if (ctx.m_sizeIn800x600)
     {
-        ScaleCoord(viewport, size.x, size.y);
+        float scaledX = size.GetX(), scaledY = size.GetY();
+        ScaleCoord(viewport, scaledX, scaledY);
+        size.SetX(scaledX);
+        size.SetY(scaledY);
     }
 
     // This scaling takes into account the logical size of the font relative
@@ -748,23 +754,26 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
     AZ::Vector2 baseXY = AZ::Vector2(x, y); // in pixels
     if (ctx.m_sizeIn800x600)
     {
-        ScaleCoord(viewport, baseXY.x, baseXY.y);
+        float scaledBaseX = baseXY.GetX(), scaledBaseY = baseXY.GetY();
+        ScaleCoord(viewport, scaledBaseX, scaledBaseY);
+        baseXY.SetX(scaledBaseX);
+        baseXY.SetY(scaledBaseY);
     }
 
     // snap for pixel perfect rendering (better quality for text)
     if (ctx.m_pixelAligned)
     {
-        baseXY.x = floor(baseXY.x);
-        baseXY.y = floor(baseXY.y);
+        baseXY.SetX(floor(baseXY.GetX()));
+        baseXY.SetY(floor(baseXY.GetY()));
 
         // for smaller fonts (half res or less) it's better to average multiple pixels (we don't miss lines)
-        if (scaleInfo.scale.x < 0.9f)
+        if (scaleInfo.scale.GetX() < 0.9f)
         {
-            baseXY.x += 0.5f; // try to average two columns (for exact half res)
+            baseXY.SetX(baseXY.GetX() + 0.5f); // try to average two columns (for exact half res)
         }
-        if (scaleInfo.scale.y < 0.9f)
+        if (scaleInfo.scale.GetY() < 0.9f)
         {
-            baseXY.y += 0.25f; // hand tweaked value to get a good result with tiny font (640x480 underscore in console)
+            baseXY.SetY(baseXY.GetY() + 0.25f); // hand tweaked value to get a good result with tiny font (640x480 underscore in console)
         }
     }
 
@@ -784,8 +793,8 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
         // gather pass data
         AZ::Vector2 offset = pass->m_posOffset; // in pixels
 
-        float charX = baseXY.x + offset.x; // in pixels
-        float charY = baseXY.y + offset.y; // in pixels
+        float charX = baseXY.GetX() + offset.GetX(); // in pixels
+        float charY = baseXY.GetY() + offset.GetY(); // in pixels
 
         Color color = passColor;
 
@@ -797,10 +806,10 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
 
             AZ::Vector2 textSize = GetTextSizeUInternal(viewport, str, asciiMultiLine, ctx);
 
-            float x0 = baseXY.x - 12;
-            float y0 = baseXY.y - 6;
-            float x1 = baseXY.x + textSize.x + 12;
-            float y1 = baseXY.y + textSize.y + 6;
+            float x0 = baseXY.GetX() - 12;
+            float y0 = baseXY.GetY() - 6;
+            float x1 = baseXY.GetX() + textSize.GetX() + 12;
+            float y1 = baseXY.GetY() + textSize.GetY() + 6;
 
             bool culled = false;
             if (ctx.m_clippingEnabled)
@@ -825,8 +834,8 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
             {
                 AZ::Vector3 v0(x0, y0, z);
                 AZ::Vector3 v2(x1, y1, z);
-                AZ::Vector3 v1(v2.x, v0.y, v0.z);
-                AZ::Vector3 v3(v0.x, v2.y, v0.z);
+                AZ::Vector3 v1(v2.GetX(), v0.GetY(), v0.GetZ());
+                AZ::Vector3 v3(v0.GetX(), v2.GetY(), v0.GetZ());
 
                 if (ctx.m_drawTextFlags & eDrawText_UseTransform)
                 {
@@ -837,10 +846,13 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
                 }
 
                 AZ::Vector2 gradientUvMin, gradientUvMax;
-                GetGradientTextureCoord(gradientUvMin.x, gradientUvMin.y, gradientUvMax.x, gradientUvMax.y);
+                float gradMinX = gradientUvMin.GetX(), gradMinY = gradientUvMin.GetY(), gradMaxX = gradientUvMax.GetX(), gradMaxY = gradientUvMax.GetY();
+                GetGradientTextureCoord(gradMinX, gradMinY, gradMaxX, gradMaxY);
+                gradientUvMin.Set(gradMinX, gradMinY);
+                gradientUvMax.Set(gradMaxX, gradMaxY);
 
                 // define the frame quad
-                AZ::Vector2 uv(gradientUvMin.x, gradientUvMax.y);
+                AZ::Vector2 uv(gradientUvMin.GetX(), gradientUvMax.GetY());
                 if (AddQuad(v0, v1, v2, v3, uv, uv, uv, uv, frameColor))
                 {
                     ++numQuads;
@@ -875,14 +887,14 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
             }
             case '\n':
             {
-                charX = baseXY.x + offset.x;
-                charY += size.y * (1.f + ctx.GetLineSpacing());
+                charX = baseXY.GetX() + offset.GetX();
+                charY += size.GetY() * (1.f + ctx.GetLineSpacing());
                 continue;
             }
             break;
             case '\r':
             {
-                charX = baseXY.x + offset.x;
+                charX = baseXY.GetX() + offset.GetX();
                 continue;
             }
             break;
@@ -890,11 +902,11 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
             {
                 if (ctx.m_proportional)
                 {
-                    charX += TabCharCount * size.x * AZ_FONT_SPACE_SIZE;
+                    charX += TabCharCount * size.GetX() * AZ_FONT_SPACE_SIZE;
                 }
                 else
                 {
-                    charX += TabCharCount * size.x * ctx.m_widthScale;
+                    charX += TabCharCount * size.GetX() * ctx.m_widthScale;
                 }
                 continue;
             }
@@ -963,17 +975,17 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
 
             if (ctx.m_proportional)
             {
-                advance = horizontalAdvance * scaleInfo.scale.x;
+                advance = horizontalAdvance * scaleInfo.scale.GetX();
             }
             else
             {
-                advance = size.x * ctx.m_widthScale;
+                advance = size.GetX() * ctx.m_widthScale;
             }
 
             AZ::Vector2 kerningOffset(Vec2_Zero);
             if (ctx.m_kerningEnabled && nextCh)
             {
-                kerningOffset = m_fontTexture->GetKerning(ch, nextCh) * scaleInfo.scale.x;
+                kerningOffset = m_fontTexture->GetKerning(ch, nextCh) * scaleInfo.scale.GetX();
             }
 
             float trackingOffset = 0.0f;
@@ -982,10 +994,10 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
                 trackingOffset = ctx.m_tracking;
             }
 
-            float px = charX + charOffsetX * scaleInfo.scale.x; // in pixels
-            float py = charY + charOffsetY * scaleInfo.scale.y; // in pixels
-            float pr = px + charSizeX * scaleInfo.scale.x;
-            float pb = py + charSizeY * scaleInfo.scale.y;
+            float px = charX + charOffsetX * scaleInfo.scale.GetX(); // in pixels
+            float py = charY + charOffsetY * scaleInfo.scale.GetY(); // in pixels
+            float pr = px + charSizeX * scaleInfo.scale.GetX();
+            float pb = py + charSizeY * scaleInfo.scale.GetY();
 
             // compute clipping
             float newX = px; // in pixels
@@ -1003,16 +1015,16 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
                 // clip non visible
                 if ((px >= clipR) || (py >= clipB) || (pr < clipX) || (pb < clipY))
                 {
-                    charX += advance + kerningOffset.x + trackingOffset;
+                    charX += advance + kerningOffset.GetX() + trackingOffset;
                     continue;
                 }
                 // clip partially visible
                 else
                 {
                     float width = horizontalAdvance * scaleInfo.rcpCellWidth;
-                    if ((width <= 0.0f) || (size.y <= 0.0f))
+                    if ((width <= 0.0f) || (size.GetY() <= 0.0f))
                     {
-                        charX += advance + kerningOffset.x + trackingOffset;
+                        charX += advance + kerningOffset.GetX() + trackingOffset;
                         continue;
                     }
 
@@ -1023,7 +1035,7 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
                     newB = min(clipB, pb);
 
                     float rcpWidth = 1.0f / width;
-                    float rcpHeight = 1.0f / size.y;
+                    float rcpHeight = 1.0f / size.GetY();
 
                     float texW = texCoord[2] - texCoord[0];
                     float texH = texCoord[3] - texCoord[1];
@@ -1040,13 +1052,13 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
 
             AZ::Vector3 v0(newX, newY, z);
             AZ::Vector3 v2(newR, newB, z);
-            AZ::Vector3 v1(v2.x, v0.y, v0.z);
-            AZ::Vector3 v3(v0.x, v2.y, v0.z);
+            AZ::Vector3 v1(v2.GetX(), v0.GetY(), v0.GetZ());
+            AZ::Vector3 v3(v0.GetX(), v2.GetY(), v0.GetZ());
 
             AZ::Vector2 tc0(texCoord[0], texCoord[1]);
             AZ::Vector2 tc2(texCoord[2], texCoord[3]);
-            AZ::Vector2 tc1(tc2.x, tc0.y);
-            AZ::Vector2 tc3(tc0.x, tc2.y);
+            AZ::Vector2 tc1(tc2.GetX(), tc0.GetY());
+            AZ::Vector2 tc3(tc0.GetX(), tc2.GetY());
 
             uint32_t packedColor = 0xffffffff;
             {
@@ -1072,7 +1084,7 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
             {
                 return numQuads;
             }
-            charX += advance + kerningOffset.x + trackingOffset;
+            charX += advance + kerningOffset.GetX() + trackingOffset;
         }
     }
     return numQuads;
@@ -1084,7 +1096,10 @@ AZ::FFont::TextScaleInfoInternal AZ::FFont::CalculateScaleInternal(const RHI::Vi
 
     if (ctx.m_sizeIn800x600)
     {
-        ScaleCoord(viewport, size.x, size.y);
+        float scaledX = size.GetX(), scaledY = size.GetY();
+        ScaleCoord(viewport, scaledX, scaledY);
+        size.SetX(scaledX);
+        size.SetY(scaledY);
     }
 
     float rcpCellWidth;
@@ -1095,13 +1110,13 @@ AZ::FFont::TextScaleInfoInternal AZ::FFont::CalculateScaleInternal(const RHI::Vi
 
     if (ctx.m_proportional)
     {
-        rcpCellWidth = (1.0f / static_cast<float>(fontTextureCellWidth)) * size.x;
-        scale = AZ::Vector2(rcpCellWidth * ctx.m_widthScale, size.y / static_cast<float>(fontTextureCellHeight));
+        rcpCellWidth = (1.0f / static_cast<float>(fontTextureCellWidth)) * size.GetX();
+        scale = AZ::Vector2(rcpCellWidth * ctx.m_widthScale, size.GetY() / static_cast<float>(fontTextureCellHeight));
     }
     else
     {
-        rcpCellWidth = size.x / 16.0f;
-        scale = AZ::Vector2(rcpCellWidth * ctx.m_widthScale, size.y * ctx.m_widthScale / 16.0f);
+        rcpCellWidth = size.GetX() / 16.0f;
+        scale = AZ::Vector2(rcpCellWidth * ctx.m_widthScale, size.GetY() * ctx.m_widthScale / 16.0f);
     }
 
     return TextScaleInfoInternal(scale, rcpCellWidth);
@@ -1170,14 +1185,14 @@ void AZ::FFont::WrapText(AZStd::string& result, float maxWidth, const char* str,
 
     AZ::Vector2 strSize = GetTextSize(result.c_str(), true, ctx);
 
-    if (strSize.x <= maxWidth)
+    if (strSize.GetX() <= maxWidth)
     {
         return;
     }
 
     // Assume a given string has multiple lines of text if it's height is
     // greater than the height of its font.
-    const bool multiLine = strSize.y > GetRestoredFontSize(ctx).y;
+    const bool multiLine = strSize.GetY() > GetRestoredFontSize(ctx).GetY();
 
     int lastSpace = -1;
     const wchar_t* pLastSpace = NULL;
@@ -1219,7 +1234,7 @@ void AZ::FFont::WrapText(AZStd::string& result, float maxWidth, const char* str,
         // Note: This is not unicode compatible, since char-width depends on surrounding context (ie, combining diacritics etc)
         char codepoint[5];
         AZStd::to_string(codepoint, 5, { (wchar_t*)&ch, 1 });
-        curCharWidth = GetTextSize(codepoint, true, ctx).x;
+        curCharWidth = GetTextSize(codepoint, true, ctx).GetX();
 
         // keep track of spaces
         // they are good for splitting the string
@@ -1284,7 +1299,7 @@ void AZ::FFont::WrapText(AZStd::string& result, float maxWidth, const char* str,
             // if we don't need any more line breaks, then just stop, but for
             // multiple lines we can't assume that there aren't any more
             // strings to wrap, so continue
-            if (strSize.x - widthSum <= maxWidth && !multiLine)
+            if (strSize.GetX() - widthSum <= maxWidth && !multiLine)
             {
                 break;
             }
@@ -1358,14 +1373,14 @@ AZ::Vector2 AZ::FFont::GetMaxEffectOffset(unsigned int effectId) const
             // gather pass data
             AZ::Vector2 offset = pass->m_posOffset;
 
-            if (maxOffset.x < offset.x)
+            if (maxOffset.GetX() < offset.GetX())
             {
-                maxOffset.x = offset.x;
+                maxOffset.SetX(offset.GetX());
             }
 
-            if (maxOffset.y < offset.y)
+            if (maxOffset.GetY() < offset.GetY())
             {
-                maxOffset.y = offset.y;
+                maxOffset.SetY(offset.GetY());
             }
         }
     }
@@ -1405,12 +1420,12 @@ AZ::Vector2 AZ::FFont::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph, const
 AZ::Vector2 AZ::FFont::GetKerningInternal(const RHI::Viewport& viewport, uint32_t leftGlyph, uint32_t rightGlyph, const TextDrawContext& ctx) const
 {
     const TextScaleInfoInternal scaleInfo(CalculateScaleInternal(viewport, ctx));
-    return m_fontTexture->GetKerning(leftGlyph, rightGlyph) * scaleInfo.scale.x;
+    return m_fontTexture->GetKerning(leftGlyph, rightGlyph) * scaleInfo.scale.GetX();
 }
 
 float AZ::FFont::GetAscender(const TextDrawContext& ctx) const
 {
-    return (ctx.m_size.y * m_fontTexture->GetAscenderToHeightRatio());
+    return (ctx.m_size.GetY() * m_fontTexture->GetAscenderToHeightRatio());
 }
 
 float AZ::FFont::GetBaseline(const TextDrawContext& ctx) const
@@ -1423,7 +1438,7 @@ float AZ::FFont::GetBaselineInternal(const RHI::Viewport& viewport, const TextDr
     const TextScaleInfoInternal scaleInfo(CalculateScaleInternal(viewport, ctx));
     // Calculate baseline the same way as the font renderer which uses the glyph height * size ratio.
     // Adding 1 because FontTexture always adds 1 to the char height in GetTextureCoord
-    return (round(m_fontTexture->GetCellHeight() * GetSizeRatio()) + 1.0f) * scaleInfo.scale.y;
+    return (round(m_fontTexture->GetCellHeight() * GetSizeRatio()) + 1.0f) * scaleInfo.scale.GetY();
 }
 
 
@@ -1534,7 +1549,7 @@ AZ::Vector2 AZ::FFont::GetRestoredFontSize(const TextDrawContext& ctx) const
     // it's on-screen size is the same regardless of the slot scaling needed
     // to fit the glyphs of the font within the font texture slots.
     float restoringScale = IFFontConstants::defaultSizeRatio / m_sizeRatio;
-    return AZ::Vector2(ctx.m_size.x * restoringScale, ctx.m_size.y * restoringScale);
+    return AZ::Vector2(ctx.m_size.GetX() * restoringScale, ctx.m_size.GetY() * restoringScale);
 }
 
 void AZ::FFont::ScaleCoord(const RHI::Viewport& viewport, float& x, float& y) const
@@ -1645,28 +1660,28 @@ AZ::FFont::DrawParameters AZ::FFont::ExtractDrawParameters(const AzFramework::Te
             float width = 1.0f;
             float height = 1.0f;
             ScaleCoord(viewport, width, height);
-            textSize.x /= width;
-            textSize.y /= height;
+            textSize.SetX(textSize.GetX() / width);
+            textSize.SetY(textSize.GetY() / height);
         }
 
         if (params.m_hAlign == AzFramework::TextHorizontalAlignment::Center)
         {
-            posX -= textSize.x * 0.5f;
+            posX -= textSize.GetX() * 0.5f;
         }
         else if (params.m_hAlign == AzFramework::TextHorizontalAlignment::Right)
         {
-            posX -= textSize.x;
+            posX -= textSize.GetX();
         }
 
         if (params.m_vAlign == AzFramework::TextVerticalAlignment::Center)
         {
-            posY -= textSize.y * 0.5f;
+            posY -= textSize.GetY() * 0.5f;
         }
         else if (params.m_vAlign == AzFramework::TextVerticalAlignment::Bottom)
         {
-            posY -= textSize.y;
+            posY -= textSize.GetY();
         }
-        internalParams.m_size = AZ::Vector2{textSize.x, textSize.y};
+        internalParams.m_size = AZ::Vector2{textSize.GetX(), textSize.GetY()};
     }
     SetCommonContextFlags(internalParams.m_ctx, params);
     internalParams.m_ctx.m_drawTextFlags |= eDrawText_2D;

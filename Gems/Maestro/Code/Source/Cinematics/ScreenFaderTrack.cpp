@@ -52,7 +52,7 @@ namespace Maestro
             keyNode->getAttr("fadeTime", key.m_fadeTime);
             AZ::Vector3 color(0, 0, 0);
             keyNode->getAttr("fadeColor", color);
-            key.m_fadeColor = AZ::Color(color.x, color.y, color.z, 1.f);
+            key.m_fadeColor = AZ::Color(color.GetX(), color.GetY(), color.GetZ(), 1.f);
             int fadeType = 0;
             keyNode->getAttr("fadeType", fadeType);
             key.m_fadeType = IScreenFaderKey::EFadeType(fadeType);

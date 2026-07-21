@@ -56,7 +56,9 @@ bool C2DBezierKeyUIControls::OnKeySelectionChange(const CTrackViewKeyBundle& sel
             keyHandle.GetKey(&bezierKey);
 
             m_skipOnUIChange = true;
-            SyncValue(mv_value, bezierKey.value.y, true);
+            float syncVal = bezierKey.value.GetY();
+            SyncValue(mv_value, syncVal, true);
+            bezierKey.value.SetY(syncVal);
             m_skipOnUIChange = false;
 
             bAssigned = true;
@@ -85,7 +87,9 @@ void C2DBezierKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& se
             I2DBezierKey bezierKey;
             keyHandle.GetKey(&bezierKey);
 
-            SyncValue(mv_value, bezierKey.value.y, false, pVar);
+            float syncVal = bezierKey.value.GetY();
+            SyncValue(mv_value, syncVal, false, pVar);
+            bezierKey.value.SetY(syncVal);
 
             bool isDuringUndo = false;
             AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);

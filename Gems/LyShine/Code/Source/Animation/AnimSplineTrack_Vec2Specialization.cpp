@@ -45,7 +45,7 @@ void TUiAnimSplineTrack<AZ::Vector2>::GetValue(float time, float& value)
 {
     if (GetNumKeys() == 0)
     {
-        value = m_defaultValue.y;
+        value = m_defaultValue.GetY();
     }
     else
     {
@@ -96,7 +96,7 @@ void TUiAnimSplineTrack<AZ::Vector2>::SetKey(int index, IKey* key)
     k.time = bezierkey->time;
     k.flags = bezierkey->flags;
     k.value = bezierkey->value;
-    UpdateTrackValueRange(k.value.y);
+    UpdateTrackValueRange(k.value.GetY());
     Invalidate();
 }
 
@@ -114,7 +114,7 @@ int TUiAnimSplineTrack<AZ::Vector2>::CreateKey(float time)
     }
     else
     {
-        value = m_defaultValue.y;
+        value = m_defaultValue.GetY();
     }
 
     UpdateTrackValueRange(value);
@@ -134,7 +134,8 @@ int TUiAnimSplineTrack<AZ::Vector2>::CopyKey(IUiAnimTrack* pFromTrack, int nFrom
     pFromTrack->GetKey(nFromKey, &key);
     float t = key.time + timeOffset;
     int newIndex =  CreateKey(t);
-    key.time = key.value.x = t;
+    key.value.SetX(t);
+    key.time = t;
     SetKey(newIndex, &key);
     return newIndex;
 }
@@ -214,7 +215,7 @@ bool TUiAnimSplineTrack<AZ::Vector2>::Serialize([[maybe_unused]] IUiAnimationSys
         {
             GetKey(i, &key);
             XmlNodeRef keyNode = xmlNode->newChild("Key");
-            assert(key.time == key.value.x);
+            assert(key.time == key.value.GetX());
             keyNode->setAttr("time", key.time);
             keyNode->setAttr("value", key.value);
 
@@ -258,9 +259,9 @@ bool TUiAnimSplineTrack<AZ::Vector2>::SerializeSelection(XmlNodeRef& xmlNode, bo
             XmlNodeRef keyNode = xmlNode->getChild(i);
             keyNode->getAttr("time", key.time);
             keyNode->getAttr("value", key.value);
-            assert(key.time == key.value.x);
+            assert(key.time == key.value.GetX());
             key.time += fTimeOffset;
-            key.value.x += fTimeOffset;
+            key.value.SetX(key.value.GetX() + fTimeOffset);
 
             keyNode->getAttr("flags", key.flags);
 
@@ -286,7 +287,7 @@ bool TUiAnimSplineTrack<AZ::Vector2>::SerializeSelection(XmlNodeRef& xmlNode, bo
         for (int i = 0; i < num; i++)
         {
             GetKey(i, &key);
-            assert(key.time == key.value.x);
+            assert(key.time == key.value.GetX());
 
             if (!bCopySelected || IsKeySelected(i))
             {
@@ -321,7 +322,7 @@ void TUiAnimSplineTrack<AZ::Vector2>::GetKeyInfo(int index, const char*& descrip
     description = str;
     assert(index >= 0 && index < GetNumKeys());
     Spline::key_type& k = m_spline->key(index);
-    azsnprintf(str, sizeof(str), "%.2f", k.value.y);
+    azsnprintf(str, sizeof(str), "%.2f", k.value.GetY());
 }
 
 //////////////////////////////////////////////////////////////////////////

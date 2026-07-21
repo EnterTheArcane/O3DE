@@ -1752,9 +1752,9 @@ bool CUiAnimViewDopeSheetBase::CreateColorKey(CUiAnimViewTrack* pTrack, float ke
     pTrack->GetValue(keyTime, vColor);
 
     const AZ::Color defaultColor = AZ::Color::CreateFromRgba(
-        clamp_tpl(static_cast<AZ::u8>(FloatToIntRet(vColor.x)), AZ::u8(0), AZ::u8(255)),
-        clamp_tpl(static_cast<AZ::u8>(FloatToIntRet(vColor.y)), AZ::u8(0), AZ::u8(255)),
-        clamp_tpl(static_cast<AZ::u8>(FloatToIntRet(vColor.z)), AZ::u8(0), AZ::u8(255)), 255);
+        clamp_tpl(static_cast<AZ::u8>(FloatToIntRet(vColor.GetX())), AZ::u8(0), AZ::u8(255)),
+        clamp_tpl(static_cast<AZ::u8>(FloatToIntRet(vColor.GetY())), AZ::u8(0), AZ::u8(255)),
+        clamp_tpl(static_cast<AZ::u8>(FloatToIntRet(vColor.GetZ())), AZ::u8(0), AZ::u8(255)), 255);
     AzQtComponents::ColorPicker dlg(AzQtComponents::ColorPicker::Configuration::RGB, tr("Select Color"), this);
     dlg.setCurrentColor(defaultColor);
     dlg.setSelectedColor(defaultColor);

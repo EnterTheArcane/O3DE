@@ -361,7 +361,7 @@ bool operator==(const Vec2_tpl<F>& left, const Vec2_tpl<F>& right)
 template<>
 ILINE Vec2 clamp_tpl<Vec2>(Vec2 X, Vec2 Min, Vec2 Max)
 {
-    return Vec2(clamp_tpl(X.x, Min.x, Max.x), clamp_tpl(X.y, Min.y, Max.y));
+    return Vec2(clamp_tpl(X.GetX(), Min.GetX(), Max.GetX()), clamp_tpl(X.GetY(), Min.GetY(), Max.GetY()));
 }
 
 

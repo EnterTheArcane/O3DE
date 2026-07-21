@@ -348,7 +348,7 @@ void AbstractSplineWidget::SetZoom(AZ::Vector2 zoom, const QPoint& center)
     SetScrollOffset(AZ::Vector2(m_grid.origin.GetX(), m_grid.origin.GetY()));
     if (m_pTimelineCtrl)
     {
-        m_pTimelineCtrl->setZoom(zoom.x, m_grid.origin.GetX());
+        m_pTimelineCtrl->setZoom(zoom.GetX(), m_grid.origin.GetX());
     }
     update();
 }
@@ -356,11 +356,11 @@ void AbstractSplineWidget::SetZoom(AZ::Vector2 zoom, const QPoint& center)
 //////////////////////////////////////////////////////////////////////////
 void AbstractSplineWidget::SetZoom(AZ::Vector2 zoom)
 {
-    m_grid.zoom = AZ::Vector2(zoom.x,zoom.y);
+    m_grid.zoom = AZ::Vector2(zoom.GetX(),zoom.GetY());
     SetScrollOffset(AZ::Vector2(m_grid.origin.GetX(), m_grid.origin.GetY()));
     if (m_pTimelineCtrl)
     {
-        m_pTimelineCtrl->setZoom(zoom.x, m_grid.origin.GetX());
+        m_pTimelineCtrl->setZoom(zoom.GetX(), m_grid.origin.GetX());
     }
     SendNotifyEvent(SPLN_SCROLL_ZOOM);
     update();
@@ -369,7 +369,7 @@ void AbstractSplineWidget::SetZoom(AZ::Vector2 zoom)
 //////////////////////////////////////////////////////////////////////////
 void AbstractSplineWidget::SetScrollOffset(AZ::Vector2 ofs)
 {
-    m_grid.origin = AZ::Vector2(ofs.x, ofs.y);
+    m_grid.origin = AZ::Vector2(ofs.GetX(), ofs.GetY());
     if (m_pTimelineCtrl)
     {
         m_pTimelineCtrl->setZoom(m_grid.zoom.GetX(), m_grid.origin.GetX());
@@ -626,7 +626,7 @@ void SplineWidget::resizeEvent(QResizeEvent* event)
 
     if (width() > 1 && height() > 1 && oldW > 1 && oldH > 1 && m_rcSpline.width() > 0 && m_rcSpline.height())
     {
-        SetZoom(AZ::Vector2(float(m_rcSpline.width()) / oldW * GetZoom().x, float(m_rcSpline.height()) / oldH * GetZoom().y));
+        SetZoom(AZ::Vector2(float(m_rcSpline.width()) / oldW * GetZoom().GetX(), float(m_rcSpline.height()) / oldH * GetZoom().GetY()));
     }
 }
 
@@ -653,7 +653,7 @@ float AbstractSplineWidget::TimeToXOfs(float x)
 void AbstractSplineWidget::PointToTimeValue(QPoint point, float& time, float& value)
 {
     AZ::Vector2 v = ClientToWorld(point);
-    value = v.y;
+    value = v.GetY();
     time = XOfsToTime(point.x());
 }
 
@@ -661,7 +661,7 @@ void AbstractSplineWidget::PointToTimeValue(QPoint point, float& time, float& va
 float AbstractSplineWidget::XOfsToTime(int x)
 {
     AZ::Vector2 v = ClientToWorld(QPoint(x, 0));
-    float time = v.x;
+    float time = v.GetX();
     return time;
 }
 
@@ -1381,11 +1381,11 @@ void SplineWidget::mouseMoveEvent(QMouseEvent* event)
 
             if (bAltClick)
             {
-                TimeScaleKeys(m_fTimeMarker, v0.x, v1.x);
+                TimeScaleKeys(m_fTimeMarker, v0.GetX(), v1.GetX());
             }
             else if (m_controlAmplitude)
             {
-                ScaleAmplitudeKeys(v0.x, v0.y, v1.y - v0.y);
+                ScaleAmplitudeKeys(v0.GetX(), v0.GetY(), v1.GetY() - v0.GetY());
             }
             else
             {
@@ -2128,7 +2128,7 @@ void AbstractSplineWidget::MoveSelectedKeys(AZ::Vector2 offset, bool copyKeys)
         for (int i = 0; i < keyCount; i++)
         {
             float   oldTime = pSpline->GetKeyTime(i);
-            float   t = SnapTime(oldTime + offset.x);
+            float   t = SnapTime(oldTime + offset.GetX());
 
             if (pSpline->IsKeySelectedAtAnyDimension(i))
             {
@@ -2150,7 +2150,7 @@ void AbstractSplineWidget::MoveSelectedKeys(AZ::Vector2 offset, bool copyKeys)
                     ISplineInterpolator::ValueType  afValue;
                     pSpline->GetKeyValue(i, afValue);
 
-                    afValue[nCurrentDimension] = SnapValue(afValue[nCurrentDimension] + offset.y);
+                    afValue[nCurrentDimension] = SnapValue(afValue[nCurrentDimension] + offset.GetY());
                     pSpline->SetKeyValue(i, afValue);
                 }
             }
@@ -2731,10 +2731,10 @@ void AbstractSplineWidget::SelectRectangle(const QRect& rc, bool bSelect)
 
     AZ::Vector2 vec0 = ClientToWorld(rc.topLeft());
     AZ::Vector2 vec1 = ClientToWorld(rc.bottomRight());
-    float t0 = vec0.x;
-    float t1 = vec1.x;
-    float v0 = vec0.y;
-    float v1 = vec1.y;
+    float t0 = vec0.GetX();
+    float t1 = vec1.GetX();
+    float v0 = vec0.GetY();
+    float v1 = vec1.GetY();
     if (v0 > v1)
     {
         std::swap(v0, v1);

@@ -518,9 +518,8 @@ enum type_identity
 #include "Cry_Vector2.h"
 #include "Cry_Vector3.h"
 #include "Cry_Vector4.h"
-#include "Cry_Matrix33.h"
-#include "Cry_Matrix34.h"
-#include "Cry_Quat.h"
+// CryCommon->AzCore migration: Cry_Matrix33/34/Quat headers removed (dead types). Use
+// AZ::Matrix3x3 / AZ::Matrix3x4 / AZ::Matrix4x4 / AZ::Quaternion directly.
 
 // function for safe comparsion of floating point  values
 ILINE bool fcmp(f32 fA, f32 fB, f32 fEpsilon = FLT_EPSILON)
@@ -534,15 +533,15 @@ ILINE bool fcmp(f32 fA, f32 fB, f32 fEpsilon = FLT_EPSILON)
 //! \param[out] b2 Orthonormal axis vector
 inline void GetBasisVectors(const Vec3& n, Vec3& b1, Vec3& b2)
 {
-    if (n.z < FLT_EPSILON - 1.0f)
+    if (n.GetZ() < FLT_EPSILON - 1.0f)
     {
         b1 = Vec3(0.0f, -1.0f, 0.0f);
         b2 = Vec3(-1.0f, 0.0f, 0.0f);
         return;
     }
 
-    const float a = 1.0f / (1.0f + n.z);
-    const float b = -n.x * n.y * a;
-    b1 = Vec3(1.0f - n.x * n.x * a, b, -n.x);
-    b2 = Vec3(b, 1.0f - n.y * n.y * a, -n.y);
+    const float a = 1.0f / (1.0f + n.GetZ());
+    const float b = -n.GetX() * n.GetY() * a;
+    b1 = Vec3(1.0f - n.GetX() * n.GetX() * a, b, -n.GetX());
+    b2 = Vec3(b, 1.0f - n.GetY() * n.GetY() * a, -n.GetY());
 }

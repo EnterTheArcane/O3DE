@@ -12,6 +12,7 @@
 #include "XMLBinaryNode.h"
 
 #include <AzCore/Serialization/Locale.h>
+#include <AzCore/Math/Quaternion.h> // CryCommon->AzCore migration: was transitively included via the removed Cry_Quat.h
 //////////////////////////////////////////////////////////////////////////
 CBinaryXmlData::~CBinaryXmlData()
 {

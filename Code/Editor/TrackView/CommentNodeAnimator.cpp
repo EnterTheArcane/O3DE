@@ -60,12 +60,16 @@ void CCommentNodeAnimator::Animate(CTrackViewAnimNode* pNode, const SAnimContext
         break;
         case AnimParamType::PositionX:
         {
-            pTrack->GetValue(ac.time, pos.x);
+            float posComp = pos.GetX();
+            pTrack->GetValue(ac.time, posComp);
+            pos.SetX(posComp);
         }
         break;
         case AnimParamType::PositionY:
         {
-            pTrack->GetValue(ac.time, pos.y);
+            float posComp = pos.GetY();
+            pTrack->GetValue(ac.time, posComp);
+            pos.SetY(posComp);
         }
         break;
         }
@@ -188,16 +192,16 @@ void CCommentNodeAnimator::DrawText(const char* szFontName, float fSize, const A
 
         if (align & eDrawText_Center)
         {
-            pos.x -= pFont->GetTextSize(szText, true, ctx).x * 0.5f;
+            pos.SetX(pos.GetX() - pFont->GetTextSize(szText, true, ctx).GetX() * 0.5f);
         }
         else if (align & eDrawText_Right)
         {
-            pos.x -= pFont->GetTextSize(szText, true, ctx).x;
+            pos.SetX(pos.GetX() - pFont->GetTextSize(szText, true, ctx).GetX());
         }
 
         // Color
         ctx.SetColor(col);
 
-        pFont->DrawString(pos.x, pos.y, szText, true, ctx);
+        pFont->DrawString(pos.GetX(), pos.GetY(), szText, true, ctx);
     }
 }

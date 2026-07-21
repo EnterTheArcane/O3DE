@@ -84,9 +84,9 @@ struct ITcbKey
     void SetFloat(float val) { fval[0] = val; };
     void SetVec3(const AZ::Vector3& val)
     {
-        fval[0] = val.x;
-        fval[1] = val.y;
-        fval[2] = val.z;
+        fval[0] = val.GetX();
+        fval[1] = val.GetY();
+        fval[2] = val.GetZ();
     };
     void SetQuat(const AZ::Quaternion& val)
     {
@@ -101,9 +101,9 @@ struct ITcbKey
     AZ::Vector3 GetVec3() const
     {
         AZ::Vector3 vec;
-        vec.x = fval[0];
-        vec.y = fval[1];
-        vec.z = fval[2];
+        vec.SetX(fval[0]);
+        vec.SetY(fval[1]);
+        vec.SetZ(fval[2]);
         return vec;
     };
     AZ::Quaternion GetQuat() const

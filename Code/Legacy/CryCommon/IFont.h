@@ -167,7 +167,7 @@ struct STextDrawContext
     STextDrawContext()
         : m_fxIdx(0)
         , m_size(16.0f, 16.0f)
-        , m_requestSize(static_cast<int32>(m_size.x), static_cast<int32>(m_size.y))
+        , m_requestSize(static_cast<int32>(m_size.GetX()), static_cast<int32>(m_size.GetY()))
         , m_widthScale(1.0f)
         , m_lineSpacing(0.f)
         , m_clipX(0)
@@ -206,8 +206,8 @@ struct STextDrawContext
     void SetOverrideViewProjMatrices(bool overrideViewProjMatrices) { m_overrideViewProjMatrices = overrideViewProjMatrices; }
     void SetLineSpacing(float lineSpacing) { m_lineSpacing = lineSpacing; }
 
-    float GetCharWidth() const { return m_size.x; }
-    float GetCharHeight() const { return m_size.y; }
+    float GetCharWidth() const { return m_size.GetX(); }
+    float GetCharHeight() const { return m_size.GetY(); }
     float GetCharWidthScale() const { return m_widthScale; }
     int GetFlags() const { return m_drawTextFlags; }
     float GetLineSpacing() const { return m_lineSpacing; }

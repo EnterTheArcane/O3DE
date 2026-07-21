@@ -85,7 +85,7 @@ int TimelineWidget::TimeToClient(float time)
 //////////////////////////////////////////////////////////////////////////
 float TimelineWidget::ClientToTime(int x)
 {
-    return m_grid.ClientToWorld(QPoint(x, 0)).x;
+    return m_grid.ClientToWorld(QPoint(x, 0)).GetX();
 }
 
 //////////////////////////////////////////////////////////////////////////

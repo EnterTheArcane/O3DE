@@ -337,7 +337,7 @@ void ReflectedPropertyControl::CreateItems(XmlNodeRef node, CVarBlockPtr& outBlo
                 AZ::Vector3 vValue(0, 0, 0);
                 if (child->getAttr("value", vValue))
                 {
-                    vec3Var->Set(AZ::Vector3(vValue.x, vValue.y, vValue.z));
+                    vec3Var->Set(AZ::Vector3(vValue.GetX(), vValue.GetY(), vValue.GetZ()));
                 }
             }
             else if (!azstricmp(type, "vector4"))
@@ -347,7 +347,7 @@ void ReflectedPropertyControl::CreateItems(XmlNodeRef node, CVarBlockPtr& outBlo
                 AZ::Vector4 vValue(0, 0, 0, 0);
                 if (child->getAttr("value", vValue))
                 {
-                    vec4Var->Set(AZ::Vector4(vValue.x, vValue.y, vValue.z, vValue.w));
+                    vec4Var->Set(AZ::Vector4(vValue.GetX(), vValue.GetY(), vValue.GetZ(), vValue.GetW()));
                 }
             }
             else if (!azstricmp(type, "bool"))
