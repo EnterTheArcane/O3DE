@@ -953,7 +953,7 @@ ILINE bool IsEquivalent(const Vec3_tpl<F>& v0, const Vec3_tpl<F>& v1, f32 epsilo
 // ##  intentionally NOT shimmed -- such sites must be fixed to use operator| /        ##
 // ##  .Dot() during migration.                                                       ##
 // ###################################################################################
-using Vec3 = AZ::Vector3;
+// CryCommon->AzCore migration: the `Vec3` alias was removed once all callers moved to AZ::Vector3.
 
 template<>
 inline Vec3_tpl<f32>::Vec3_tpl(type_min) { x = y = z = -3.3E38f; }

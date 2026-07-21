@@ -41,8 +41,6 @@ template <typename F> struct Plane_tpl;
 template <typename F> struct AngleAxis_tpl;
 template <typename F> struct Quat_tpl;
 
-// CryCommon->AzCore migration: `Vec4` is a TEMPORARY alias of AZ::Vector4 (was a Cry struct).
-using Vec4 = AZ::Vector4;
 
 template<class F>
 struct Vec2_tpl
@@ -333,9 +331,9 @@ struct Vec2_tpl
 
 // CryCommon->AzCore migration: `Vec2` is now a TEMPORARY alias of AZ::Vector2 (was
 // Vec2_tpl<f32>). The generic Vec2_tpl<F> template is retained for non-float uses (Vec2i).
-// REMOVE alias in Wave 3. Legacy Vec2 type id {844131BA-...} migrates to AZ::Vector2 via a
-// ClassDeprecate converter registered in Wave 2.
-using Vec2 = AZ::Vector2;
+// CryCommon->AzCore migration: the `Vec2` alias was removed once all callers moved to
+// AZ::Vector2. Legacy serialized Vec2 (type id {844131BA-...}) migrates to AZ::Vector2 via a
+// ClassDeprecate converter.
 // CryCommon->AzCore migration: `Vec2i` removed (font glyph sizes now use plain ints).
 
 #if defined(LINUX64)

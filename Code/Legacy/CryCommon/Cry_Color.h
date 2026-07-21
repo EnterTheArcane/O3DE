@@ -22,10 +22,9 @@ struct Color_tpl;
 AZ_DEPRECATED_MESSAGE("ColorB is deprecated, use AZ::Color instead.")
 typedef Color_tpl<uint8> ColorB; // [ 0,  255]
 
-// CryCommon->AzCore migration: `ColorF` is now a TEMPORARY alias of AZ::Color (was
-// Color_tpl<float>). The Color_tpl<T> template is retained for the uint8 `ColorB` (which has
-// no clean AZ::Color analog and stays a Cry type). REMOVE alias in Wave 3.
-using ColorF = AZ::Color; // [0.0, 1.0]
+// CryCommon->AzCore migration: the `ColorF` alias (was Color_tpl<float>) was removed once all
+// callers moved to AZ::Color directly. The Color_tpl<T> template is retained only for the uint8
+// `ColorB` (which has no clean AZ::Color analog and stays a Cry type).
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // RGBA Color structure.
@@ -48,13 +47,13 @@ struct Color_tpl
     ILINE Color_tpl(const unsigned int abgr);
     ILINE Color_tpl(const f32 c);
     AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
-    ILINE Color_tpl(const ColorF& c);
-    ILINE Color_tpl(const ColorF& c, float fAlpha);
+    ILINE Color_tpl(const AZ::Color& c);
+    ILINE Color_tpl(const AZ::Color& c, float fAlpha);
     AZ_POP_DISABLE_WARNING;
-    ILINE Color_tpl(const Vec3& c, float fAlpha);
-    ILINE Color_tpl(const Vec4& c);
+    ILINE Color_tpl(const AZ::Vector3& c, float fAlpha);
+    ILINE Color_tpl(const AZ::Vector4& c);
 
-    ILINE Color_tpl(const Vec3& vVec)
+    ILINE Color_tpl(const AZ::Vector3& vVec)
     {
         r = (T)vVec.GetX();
         g = (T)vVec.GetY();
@@ -62,7 +61,7 @@ struct Color_tpl
         a = (T)1.f;
     }
 
-    ILINE Color_tpl& operator = (const Vec3& v) { r = (T)v.GetX(); g = (T)v.GetY(); b = (T)v.GetZ(); a = (T)1.0f; return *this; }
+    ILINE Color_tpl& operator = (const AZ::Vector3& v) { r = (T)v.GetX(); g = (T)v.GetY(); b = (T)v.GetZ(); a = (T)1.0f; return *this; }
     ILINE Color_tpl& operator = (const Color_tpl& c) { r = (T)c.r; g = (T)c.g; b = (T)c.b; a = (T)c.a; return *this; }
 
     ILINE T& operator [] (int index)          { assert(index >= 0 && index <= 3); return ((T*)this)[index]; }
@@ -177,7 +176,7 @@ struct Color_tpl
 
     ILINE unsigned int pack_abgr8888() const;
     ILINE unsigned int pack_argb8888() const;
-    inline Vec3 toVec3() const { return Vec3(r, g, b); }
+    inline AZ::Vector3 toVec3() const { return AZ::Vector3(r, g, b); }
     inline AZ::Vector3 toVector3() const { return AZ::Vector3(r, g, b); }
     inline AZ::Vector4 toVector4() const { return AZ::Vector4(r, g, b, a); }
 
@@ -286,7 +285,7 @@ ILINE Color_tpl<uint8>::Color_tpl(const float c)
 //-----------------------------------------------------------------------------
 AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
 template<>
-ILINE Color_tpl<f32>::Color_tpl(const ColorF& c)
+ILINE Color_tpl<f32>::Color_tpl(const AZ::Color& c)
 {
     r = c.GetR();
     g = c.GetG();
@@ -294,7 +293,7 @@ ILINE Color_tpl<f32>::Color_tpl(const ColorF& c)
     a = c.GetA();
 }
 template<>
-ILINE Color_tpl<uint8>::Color_tpl(const ColorF& c)
+ILINE Color_tpl<uint8>::Color_tpl(const AZ::Color& c)
 {
     r = (uint8)(c.GetR() * 255);
     g = (uint8)(c.GetG() * 255);
@@ -303,7 +302,7 @@ ILINE Color_tpl<uint8>::Color_tpl(const ColorF& c)
 }
 
 template<>
-ILINE Color_tpl<f32>::Color_tpl(const ColorF& c, float fAlpha)
+ILINE Color_tpl<f32>::Color_tpl(const AZ::Color& c, float fAlpha)
 {
     r = c.GetR();
     g = c.GetG();
@@ -313,7 +312,7 @@ ILINE Color_tpl<f32>::Color_tpl(const ColorF& c, float fAlpha)
 AZ_POP_DISABLE_WARNING;
 
 template<>
-ILINE Color_tpl<f32>::Color_tpl(const Vec3& c, float fAlpha)
+ILINE Color_tpl<f32>::Color_tpl(const AZ::Vector3& c, float fAlpha)
 {
     r = c.GetX();
     g = c.GetY();
@@ -322,7 +321,7 @@ ILINE Color_tpl<f32>::Color_tpl(const Vec3& c, float fAlpha)
 }
 
 template<>
-ILINE Color_tpl<f32>::Color_tpl(const Vec4& c)
+ILINE Color_tpl<f32>::Color_tpl(const AZ::Vector4& c)
 {
     r = c.GetX();
     g = c.GetY();
@@ -332,7 +331,7 @@ ILINE Color_tpl<f32>::Color_tpl(const Vec4& c)
 
 AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
 template<>
-ILINE Color_tpl<uint8>::Color_tpl(const ColorF& c, float fAlpha)
+ILINE Color_tpl<uint8>::Color_tpl(const AZ::Color& c, float fAlpha)
 {
     r = (uint8)(c.GetR() * 255);
     g = (uint8)(c.GetG() * 255);
@@ -342,7 +341,7 @@ ILINE Color_tpl<uint8>::Color_tpl(const ColorF& c, float fAlpha)
 AZ_POP_DISABLE_WARNING;
 
 template<>
-ILINE Color_tpl<uint8>::Color_tpl(const Vec3& c, float fAlpha)
+ILINE Color_tpl<uint8>::Color_tpl(const AZ::Vector3& c, float fAlpha)
 {
     r = (uint8)(c.GetX() * 255);
     g = (uint8)(c.GetY() * 255);
@@ -351,7 +350,7 @@ ILINE Color_tpl<uint8>::Color_tpl(const Vec3& c, float fAlpha)
 }
 
 template<>
-ILINE Color_tpl<uint8>::Color_tpl(const Vec4& c)
+ILINE Color_tpl<uint8>::Color_tpl(const AZ::Vector4& c)
 {
     r = (uint8)(c.GetX() * 255);
     g = (uint8)(c.GetY() * 255);

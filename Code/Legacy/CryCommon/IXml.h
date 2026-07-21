@@ -12,21 +12,12 @@
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Math/Color.h>
 
-template <typename F>
-struct Vec2_tpl;
-// CryCommon->AzCore migration: `Vec2` is now a TEMPORARY alias of AZ::Vector2. REMOVE IN WAVE 3.
+// CryCommon->AzCore migration: the IXmlNode Vec2/Vec3/Vec4 attribute overloads now take
+// AZ::Vector2/3/4 directly (the Vec* aliases were removed). Forward-declared here since the
+// interface only uses them by reference.
 namespace AZ { class Vector2; }
-using Vec2 = AZ::Vector2;
-
-template <typename F>
-struct Vec3_tpl;
-// CryCommon->AzCore migration: `Vec3` is now a TEMPORARY alias of AZ::Vector3. REMOVE IN WAVE 3.
 namespace AZ { class Vector3; }
-using Vec3 = AZ::Vector3;
-
-// CryCommon->AzCore migration: `Vec4` is now a TEMPORARY alias of AZ::Vector4. REMOVE IN WAVE 3.
 namespace AZ { class Vector4; }
-using Vec4 = AZ::Vector4;
 
 template <typename F>
 struct Ang3_tpl;
@@ -299,10 +290,10 @@ public:
     virtual void setAttr(const char* key, uint64 value, bool useHexFormat = true) = 0;
     virtual void setAttr(const char* key, float value) = 0;
     virtual void setAttr(const char* key, double value) = 0;
-    virtual void setAttr(const char* key, const Vec2& value) = 0;
+    virtual void setAttr(const char* key, const AZ::Vector2& value) = 0;
     virtual void setAttr(const char* key, const Ang3& value) = 0;
-    virtual void setAttr(const char* key, const Vec3& value) = 0;
-    virtual void setAttr(const char* key, const Vec4& value) = 0;
+    virtual void setAttr(const char* key, const AZ::Vector3& value) = 0;
+    virtual void setAttr(const char* key, const AZ::Vector4& value) = 0;
     virtual void setAttr(const char* key, const AZ::Quaternion& value) = 0;
 #if defined(LINUX64) || defined(APPLE)
     // Compatibility functions, on Linux and Mac long int is the default int64_t
@@ -346,10 +337,10 @@ public:
     virtual bool getAttr(const char* key, uint64& value, bool useHexFormat = true) const = 0;
     virtual bool getAttr(const char* key, float& value) const = 0;
     virtual bool getAttr(const char* key, double& value) const = 0;
-    virtual bool getAttr(const char* key, Vec2& value) const = 0;
+    virtual bool getAttr(const char* key, AZ::Vector2& value) const = 0;
     virtual bool getAttr(const char* key, Ang3& value) const = 0;
-    virtual bool getAttr(const char* key, Vec3& value) const = 0;
-    virtual bool getAttr(const char* key, Vec4& value) const = 0;
+    virtual bool getAttr(const char* key, AZ::Vector3& value) const = 0;
+    virtual bool getAttr(const char* key, AZ::Vector4& value) const = 0;
     virtual bool getAttr(const char* key, AZ::Quaternion& value) const = 0;
     virtual bool getAttr(const char* key, bool& value) const = 0;
     virtual bool getAttr(const char* key, XmlString& value) const = 0;

@@ -20,24 +20,24 @@
 #include <Cry_Vector3.h>
 #include <Cry_Color.h>
 
-inline AZ::Vector2 LYVec2ToAZVec2(const Vec2& source)
+inline AZ::Vector2 LYVec2ToAZVec2(const AZ::Vector2& source)
 {
     return AZ::Vector2(source.GetX(), source.GetY());
 }
 
-inline Vec2 AZVec2ToLYVec2(const AZ::Vector2& source)
+inline AZ::Vector2 AZVec2ToLYVec2(const AZ::Vector2& source)
 {
-    return Vec2(source.GetX(), source.GetY());
+    return AZ::Vector2(source.GetX(), source.GetY());
 }
 
-inline AZ::Vector3 LYVec3ToAZVec3(const Vec3& source)
+inline AZ::Vector3 LYVec3ToAZVec3(const AZ::Vector3& source)
 {
     return AZ::Vector3(source.GetX(), source.GetY(), source.GetZ());
 }
 
-inline Vec3 AZVec3ToLYVec3(const AZ::Vector3& source)
+inline AZ::Vector3 AZVec3ToLYVec3(const AZ::Vector3& source)
 {
-    return Vec3(source.GetX(), source.GetY(), source.GetZ());
+    return AZ::Vector3(source.GetX(), source.GetY(), source.GetZ());
 }
 
 inline AZ::Vector3 LYAng3ToAZVec3(const Ang3& source)
@@ -50,39 +50,39 @@ inline Ang3 AZVec3ToLYAng3(const AZ::Vector3& source)
     return Ang3(source.GetX(), source.GetY(), source.GetZ());
 }
 
-inline AZ::Vector4 LYVec4ToAZVec4(const Vec4& source)
+inline AZ::Vector4 LYVec4ToAZVec4(const AZ::Vector4& source)
 {
     return AZ::Vector4(source.GetX(), source.GetY(), source.GetZ(), source.GetW());
 }
 
-inline Vec4 AZVec4ToLYVec4(const AZ::Vector4& source)
+inline AZ::Vector4 AZVec4ToLYVec4(const AZ::Vector4& source)
 {
-    return Vec4(source.GetX(), source.GetY(), source.GetZ(), source.GetW());
+    return AZ::Vector4(source.GetX(), source.GetY(), source.GetZ(), source.GetW());
 }
 
-inline AZ::Color LYVec3ToAZColor(const Vec3& source)
+inline AZ::Color LYVec3ToAZColor(const AZ::Vector3& source)
 {
     return AZ::Color(source.GetX(), source.GetY(), source.GetZ(), 1.0f);
 }
 
-inline Vec3 AZColorToLYVec3(const AZ::Color& source)
+inline AZ::Vector3 AZColorToLYVec3(const AZ::Color& source)
 {
-    return Vec3(source.GetR(), source.GetG(), source.GetB());
+    return AZ::Vector3(source.GetR(), source.GetG(), source.GetB());
 }
 
-inline Vec4 AZColorToLYVec4(const AZ::Color& source)
+inline AZ::Vector4 AZColorToLYVec4(const AZ::Color& source)
 {
-    return Vec4(source.GetR(), source.GetG(), source.GetB(), source.GetA());
+    return AZ::Vector4(source.GetR(), source.GetG(), source.GetB(), source.GetA());
 }
 
-// Disable the deprecated-declarations warning for all conversion operators of ColorF
+// Disable the deprecated-declarations warning for all conversion operators of AZ::Color
 AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
-inline ColorF AZColorToLYColorF(const AZ::Color& source)
+inline AZ::Color AZColorToLYColorF(const AZ::Color& source)
 {
-    return ColorF(source.ToU32());
+    return AZ::Color(source.ToU32());
 }
 
-inline AZ::Color LYColorFToAZColor(const ColorF& source)
+inline AZ::Color LYColorFToAZColor(const AZ::Color& source)
 {
     return AZ::Color(source.GetR(), source.GetG(), source.GetB(), source.GetA());
 }

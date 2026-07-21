@@ -17,6 +17,7 @@
 // ##  AZ::Vector4 so the whole engine builds against AzCore. AZ::Vector4 already      ##
 // ##  provides the arithmetic / compare / Dot / GetLength operators the old struct    ##
 // ##  had, plus TEMPORARY public x/y/z/w fields (see Vector4.h) for legacy field      ##
-// ##  access. Remove this alias / restore real Cry usage tracking in Wave 3.         ##
+// ##  access.                                                                        ##
 // ###################################################################################
-using Vec4 = AZ::Vector4;
+// CryCommon->AzCore migration: the `Vec4` alias was removed once all callers moved to AZ::Vector4.
+// This header now just forwards to <AzCore/Math/Vector4.h>.
