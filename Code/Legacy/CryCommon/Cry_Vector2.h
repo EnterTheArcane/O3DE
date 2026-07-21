@@ -35,9 +35,6 @@ enum type_identity { IDENTITY };
 // CryCommon->AzCore migration: forward declarations of the remaining Cry _tpl types (moved
 // here from the retired Cry_Math.h so this header chain is self-contained).
 template <typename F> struct Vec3_tpl;
-template <typename F> struct Plane_tpl;
-template <typename F> struct AngleAxis_tpl;
-template <typename F> struct Quat_tpl;
 
 
 template<class F>
