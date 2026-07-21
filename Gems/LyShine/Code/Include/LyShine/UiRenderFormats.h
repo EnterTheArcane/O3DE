@@ -31,9 +31,9 @@ namespace LyShine
 
     struct UiPrimitiveVertex
     {
-        Vec2 xy;
+        AZ::Vector2 xy;
         UCol color;
-        Vec2 st;
+        AZ::Vector2 st;
         uint8 texIndex;
         uint8 texHasColorChannel;
         uint8 texIndex2;

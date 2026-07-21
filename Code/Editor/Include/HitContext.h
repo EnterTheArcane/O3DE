@@ -77,9 +77,9 @@ struct HitContext
     // Input parameters.
 
     //! Ray origin.
-    Vec3 raySrc;
+    AZ::Vector3 raySrc;
     //! Ray direction.
-    Vec3 rayDir;
+    AZ::Vector3 rayDir;
     //! Relaxation parameter for hit testing.
     float distanceTolerance;
     //! Sub object hit testing flags, @see ESubObjHitFlags

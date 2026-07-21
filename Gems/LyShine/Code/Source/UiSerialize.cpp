@@ -314,30 +314,43 @@ namespace UiSerialize
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
+    // CryCommon->AzCore migration converters: legacy Cry AZ::Vector2/AZ::Vector3 were serialized with named
+    // float fields (x/y[/z]) under their old Cry type ids. They are now AZ::Vector2/AZ::Vector3
+    // (reflected centrally by MathReflect). These converters upgrade previously-serialized data:
+    // read the old named fields, retype the node to the AzCore type, and store the value.
+    static bool ConvertLegacyVec2ToAZVector2(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& node)
+    {
+        float x = 0.0f, y = 0.0f;
+        node.GetChildData(AZ::Crc32("x"), x);
+        node.GetChildData(AZ::Crc32("y"), y);
+        node.Convert(context, azrtti_typeid<AZ::Vector2>());
+        node.SetData(context, AZ::Vector2(x, y));
+        return true;
+    }
+
+    static bool ConvertLegacyVec3ToAZVector3(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& node)
+    {
+        float x = 0.0f, y = 0.0f, z = 0.0f;
+        node.GetChildData(AZ::Crc32("x"), x);
+        node.GetChildData(AZ::Crc32("y"), y);
+        node.GetChildData(AZ::Crc32("z"), z);
+        node.Convert(context, azrtti_typeid<AZ::Vector3>());
+        node.SetData(context, AZ::Vector3(x, y, z));
+        return true;
+    }
+
     void ReflectUiTypes(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
 
-        // Vec2 (still used in UI Animation sequence splines)
+        // CryCommon->AzCore migration: `AZ::Vector2`/`AZ::Vector3` are now AZ::Vector2/AZ::Vector3 (reflected
+        // by MathReflect). Deprecate the legacy Cry type ids so previously-serialized UI data
+        // (e.g. 2D animation spline keys) upgrades automatically instead of failing to load.
+        if (serializeContext)
         {
-            if (serializeContext)
-            {
-                serializeContext->Class<Vec2>()->
-                    Field("x", &Vec2::x)->
-                    Field("y", &Vec2::y);
-            }
-        }
-
-        // Vec3 (possibly no longer used)
-        {
-            if (serializeContext)
-            {
-                serializeContext->Class<Vec3>()->
-                    Field("x", &Vec3::x)->
-                    Field("y", &Vec3::y)->
-                    Field("z", &Vec3::z);
-            }
+            serializeContext->ClassDeprecate("Vec2", AZ::Uuid("{844131BA-9565-42F3-8482-6F65A6D5FC59}"), &ConvertLegacyVec2ToAZVector2);
+            serializeContext->ClassDeprecate("Vec3", AZ::Uuid("{DFA993FB-4E92-4A13-BDB3-4E9285A5346F}"), &ConvertLegacyVec3ToAZVector3);
         }
 
         // Anchors

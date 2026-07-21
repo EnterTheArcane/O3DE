@@ -1748,7 +1748,7 @@ void CUiAnimViewDopeSheetBase::LButtonDownOnKey([[maybe_unused]] const QPoint& p
 bool CUiAnimViewDopeSheetBase::CreateColorKey(CUiAnimViewTrack* pTrack, float keyTime)
 {
     bool keyCreated = false;
-    Vec3 vColor(0, 0, 0);
+    AZ::Vector3 vColor(0, 0, 0);
     pTrack->GetValue(keyTime, vColor);
 
     const AZ::Color defaultColor = AZ::Color::CreateFromRgba(
@@ -1775,7 +1775,7 @@ bool CUiAnimViewDopeSheetBase::CreateColorKey(CUiAnimViewTrack* pTrack, float ke
 
                 I2DBezierKey bezierKey;
                 newKey.GetKey(&bezierKey);
-                bezierKey.value = Vec2(keyTime, col.GetElement(i));
+                bezierKey.value = AZ::Vector2(keyTime, col.GetElement(i));
                 newKey.SetKey(&bezierKey);
 
                 keyCreated = true;
@@ -3061,7 +3061,7 @@ void CUiAnimViewDopeSheetBase::DrawColorGradient(QPainter* painter, const QRect&
     for (int x = rc.left(); x < rc.right(); ++x)
     {
         // This is really slow. Is there a better way?
-        Vec3 vColor(0, 0, 0);
+        AZ::Vector3 vColor(0, 0, 0);
         pTrack->GetValue(TimeFromPointUnsnapped(QPoint(x, rc.top())), vColor);
 
         painter->setPen(ColorLinearToGamma(LYVec3ToAZColor(vColor / 255.0f)));

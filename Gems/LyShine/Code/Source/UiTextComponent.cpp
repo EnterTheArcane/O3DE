@@ -1216,7 +1216,7 @@ void UiTextComponent::DrawBatch::CalculateSize(const STextDrawContext& ctx, bool
             }
         }
 
-        Vec2 textSize = font->GetTextSize(displayString.c_str(), true, ctx);
+        AZ::Vector2 textSize = font->GetTextSize(displayString.c_str(), true, ctx);
         size = AZ::Vector2(textSize.x, textSize.y);
     }
     else if (GetType() == UiTextComponent::DrawBatch::Type::Image)
@@ -2291,7 +2291,7 @@ int UiTextComponent::GetCharIndexFromCanvasSpacePoint(AZ::Vector2 point, bool mu
                 // Iterate across each character of text until the width
                 // exceeds the X pick offset.
                 AZStd::string subString(drawBatch.text.substr(0, curLineIndexIter));
-                Vec2 sizeSoFar = m_font->GetTextSize(subString.c_str(), true, fontContext);
+                AZ::Vector2 sizeSoFar = m_font->GetTextSize(subString.c_str(), true, fontContext);
                 float charWidth = sizeSoFar.x - lastSubstrX;
 
                 // pickOffset is a screen-position and the text position changes
@@ -2693,7 +2693,7 @@ void UiTextComponent::GetClickableTextRects(UiClickableTextInterface::ClickableT
                 }
 
                 alignedPosition.SetX(alignedPosition.GetX() + xDrawPosOffset);
-                Vec2 textSize(drawBatch.size.GetX(), drawBatch.size.GetY());
+                AZ::Vector2 textSize(drawBatch.size.GetX(), drawBatch.size.GetY());
                 xDrawPosOffset = textSize.x;
 
                 if (drawBatch.IsClickable())
@@ -3590,7 +3590,7 @@ float UiTextComponent::CalculateHorizontalClipOffset()
             // - cursorClippedLeft
             int bytesToSelectionEnd = LyShine::GetByteLengthOfUtf8Chars(displayedText.c_str(), m_selectionEnd);
             AZStd::string leftString(displayedText.substr(0, bytesToSelectionEnd));
-            Vec2 leftSize(m_font->GetTextSize(leftString.c_str(), true, fontContext));
+            AZ::Vector2 leftSize(m_font->GetTextSize(leftString.c_str(), true, fontContext));
 
             if (m_textHAlignment == IDraw2d::HAlign::Left)
             {
@@ -3686,7 +3686,7 @@ float UiTextComponent::CalculateHorizontalClipOffset()
                 // - cursorClippedRight
                 // - cursorClippedLeft
                 AZStd::string rightString(displayedText.substr(bytesToSelectionEnd, displayedText.length() - bytesToSelectionEnd));
-                Vec2 rightSize(m_font->GetTextSize(rightString.c_str(), true, fontContext));
+                AZ::Vector2 rightSize(m_font->GetTextSize(rightString.c_str(), true, fontContext));
 
                 // Negative offset will scroll text to the right
                 m_clipOffsetMultiplier = -1.0f;
@@ -4079,7 +4079,7 @@ void UiTextComponent::RenderDrawBatchLines(
 
                 alignedPosition.SetX(alignedPosition.GetX() + xDrawPosOffset);
 
-                Vec2 textSize(drawBatch.size.GetX(), drawBatch.size.GetY());
+                AZ::Vector2 textSize(drawBatch.size.GetX(), drawBatch.size.GetY());
                 xDrawPosOffset = textSize.x;
 
                 AZ::Color batchColor = origColor;
@@ -4186,9 +4186,9 @@ void UiTextComponent::RenderDrawBatchLines(
                 cacheImageBatch->m_cachedPrimitive.m_vertices = new LyShine::UiPrimitiveVertex[4];
                 for (int i = 0; i < 4; ++i)
                 {
-                    cacheImageBatch->m_cachedPrimitive.m_vertices[i].xy = Vec2(imageQuad[i].GetX(), imageQuad[i].GetY());
+                    cacheImageBatch->m_cachedPrimitive.m_vertices[i].xy = AZ::Vector2(imageQuad[i].GetX(), imageQuad[i].GetY());
                     cacheImageBatch->m_cachedPrimitive.m_vertices[i].color.dcolor = packedColor;
-                    cacheImageBatch->m_cachedPrimitive.m_vertices[i].st = Vec2(uvs[i].GetX(), uvs[i].GetY());
+                    cacheImageBatch->m_cachedPrimitive.m_vertices[i].st = AZ::Vector2(uvs[i].GetX(), uvs[i].GetY());
                     cacheImageBatch->m_cachedPrimitive.m_vertices[i].texIndex = 0;
                     cacheImageBatch->m_cachedPrimitive.m_vertices[i].texHasColorChannel = 1;
                     cacheImageBatch->m_cachedPrimitive.m_vertices[i].texIndex2 = 0;
@@ -4264,7 +4264,7 @@ STextDrawContext UiTextComponent::GetTextDrawContextPrototype(int requestFontSiz
     // shrink-to-fit - a scale transformation is applied for these characters instead. For
     // higher quality font scaling with shrink-to-fit, consider taking m_fontSizeScale into
     // account.
-    ctx.SetSize(Vec2(m_fontSize * fontSizeScale.GetX(), m_fontSize * fontSizeScale.GetY()));
+    ctx.SetSize(AZ::Vector2(m_fontSize * fontSizeScale.GetX(), m_fontSize * fontSizeScale.GetY()));
     ctx.m_requestSize = Vec2i(requestFontSize, requestFontSize);
     ctx.m_processSpecialChars = false;
     ctx.m_tracking = (m_charSpacing * ctx.m_size.x) / 1000.0f; // m_charSpacing units are 1/1000th of ems, 1 em is equal to font size.
@@ -5063,7 +5063,7 @@ bool UiTextComponent::VersionConverter(AZ::SerializeContext& context,
         }
     }
 
-    // conversion from version 6 to current: Need to convert ColorF to AZ::Color
+    // conversion from version 6 to current: Need to convert AZ::Color to AZ::Color
     if (classElement.GetVersion() <= 6)
     {
         if (!LyShine::ConvertSubElementFromVector3ToAzColor(context, classElement, "Color"))

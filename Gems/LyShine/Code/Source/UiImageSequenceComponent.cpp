@@ -27,7 +27,7 @@ namespace
 {
     //! Set the values for an image vertex
     //! This helper function is used so that we only have to initialize textIndex and texHasColorChannel in one place
-    void SetVertex(LyShine::UiPrimitiveVertex& vert, const Vec2& pos, uint32 color, const Vec2& uv)
+    void SetVertex(LyShine::UiPrimitiveVertex& vert, const AZ::Vector2& pos, uint32 color, const AZ::Vector2& uv)
     {
         vert.xy = pos;
         vert.color.dcolor = color;

@@ -192,7 +192,7 @@ namespace
 
     //! Set the values for an image vertex
     //! This helper function is used so that we only have to initialize textIndex and texHasColorChannel in one place
-    void SetVertex(LyShine::UiPrimitiveVertex& vert, const Vec2& pos, uint32 color, const Vec2& uv)
+    void SetVertex(LyShine::UiPrimitiveVertex& vert, const AZ::Vector2& pos, uint32 color, const AZ::Vector2& uv)
     {
         vert.xy = pos;
         vert.color.dcolor = color;
@@ -2036,10 +2036,10 @@ void UiImageComponent::ClipAndRenderForSlicedRadialFill(uint32 numVertsPerSide, 
 
     float fillOffset = AZ::DegToRad(m_fillStartAngle);
 
-    Vec2 lineOrigin = (verts[0].xy + verts[numVerts-1].xy) * 0.5f;
-    Vec2 rotatingLineEnd = ((verts[0].xy + verts[numVertsPerSide-1].xy) * 0.5f) - lineOrigin;
-    Vec2 firstHalfFixedLineEnd = (rotatingLineEnd * -1.0f);
-    Vec2 secondHalfFixedLineEnd = rotatingLineEnd;
+    AZ::Vector2 lineOrigin = (verts[0].xy + verts[numVerts-1].xy) * 0.5f;
+    AZ::Vector2 rotatingLineEnd = ((verts[0].xy + verts[numVertsPerSide-1].xy) * 0.5f) - lineOrigin;
+    AZ::Vector2 firstHalfFixedLineEnd = (rotatingLineEnd * -1.0f);
+    AZ::Vector2 secondHalfFixedLineEnd = rotatingLineEnd;
     float startAngle = 0;
     float endAngle = -AZ::Constants::TwoPi;
 
@@ -2146,13 +2146,13 @@ void UiImageComponent::ClipAndRenderForSlicedRadialCornerOrEdgeFill(uint32 numVe
         targetVertex = 0;
     }
 
-    Vec2 lineOrigin(verts[originVertex].xy);
+    AZ::Vector2 lineOrigin(verts[originVertex].xy);
     if (m_fillType == FillType::RadialEdge)
     {
         lineOrigin = (verts[originVertex].xy + verts[targetVertex].xy) * 0.5f;
     }
 
-    Vec2 lineEnd = verts[targetVertex].xy - verts[originVertex].xy;
+    AZ::Vector2 lineEnd = verts[targetVertex].xy - verts[originVertex].xy;
     float startAngle = 0;
     float endAngle = m_fillType == FillType::RadialCorner ? -AZ::Constants::HalfPi : -AZ::Constants::Pi;
 
@@ -2180,9 +2180,9 @@ void UiImageComponent::ClipAndRenderForSlicedRadialCornerOrEdgeFill(uint32 numVe
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-int UiImageComponent::ClipToLine(const LyShine::UiPrimitiveVertex* vertices, const uint16* indices, LyShine::UiPrimitiveVertex* renderVertices, uint16* renderIndices, int& vertexOffset, int renderIndexOffset, const Vec2& lineOrigin, const Vec2& lineEnd)
+int UiImageComponent::ClipToLine(const LyShine::UiPrimitiveVertex* vertices, const uint16* indices, LyShine::UiPrimitiveVertex* renderVertices, uint16* renderIndices, int& vertexOffset, int renderIndexOffset, const AZ::Vector2& lineOrigin, const AZ::Vector2& lineEnd)
 {
-    Vec2 lineVector = lineEnd - lineOrigin;
+    AZ::Vector2 lineVector = lineEnd - lineOrigin;
     LyShine::UiPrimitiveVertex lastVertex = vertices[indices[2]];
     LyShine::UiPrimitiveVertex currentVertex;
     int verticesAdded = 0;
@@ -2190,15 +2190,15 @@ int UiImageComponent::ClipToLine(const LyShine::UiPrimitiveVertex* vertices, con
     for (int i = 0; i < 3; ++i)
     {
         currentVertex = vertices[indices[i]];
-        Vec2 triangleEdgeDirection = currentVertex.xy - lastVertex.xy;
-        Vec2 currentPointVector = (currentVertex.xy - lineOrigin);
-        Vec2 lastPointVector = (lastVertex.xy - lineOrigin);
+        AZ::Vector2 triangleEdgeDirection = currentVertex.xy - lastVertex.xy;
+        AZ::Vector2 currentPointVector = (currentVertex.xy - lineOrigin);
+        AZ::Vector2 lastPointVector = (lastVertex.xy - lineOrigin);
         float currentPointDeterminant = (lineVector.x * currentPointVector.y) - (lineVector.y * currentPointVector.x);
         float lastPointDeterminant = (lineVector.x * lastPointVector.y) - (lineVector.y * lastPointVector.x);
         const float epsilon = 0.001f;
 
-        Vec2 perpendicularLineVector(-lineVector.y, lineVector.x);
-        Vec2 vertexToLine = lineOrigin - lastVertex.xy;
+        AZ::Vector2 perpendicularLineVector(-lineVector.y, lineVector.x);
+        AZ::Vector2 vertexToLine = lineOrigin - lastVertex.xy;
 
         if (currentPointDeterminant < epsilon)
         {

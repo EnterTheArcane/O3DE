@@ -39,7 +39,7 @@ static AZ::Color StringToColor(const QString &value)
     // XML is always in "C" locale, and the GUI is ultimately using @ref type_convertor in Variable.h
     // which itself uses QString::number, which is always in the "C" locale (invariant culture).
     // for example, color is converted using the following line
-    // void operator()(const Vec4& value, QString& to) const { to = QString::fromLatin1("%1,%2,%3,%4").arg(value.x).arg(value.y).arg(value.z).arg(value.w); }
+    // void operator()(const AZ::Vector4& value, QString& to) const { to = QString::fromLatin1("%1,%2,%3,%4").arg(value.x).arg(value.y).arg(value.z).arg(value.w); }
     // QString::arg uses the "C" Locale unless explicitly using the notation %L1, %L2, etc, so the input will be invariant.
 
     AZ::Locale::ScopedSerializationLocale localeScope;

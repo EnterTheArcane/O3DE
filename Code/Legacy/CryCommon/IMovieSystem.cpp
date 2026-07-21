@@ -165,7 +165,7 @@ IAnimNode::SParamInfo::SParamInfo(const char* _name, CAnimParamType _paramType, 
     , flags(_flags) {};
 
 //! Compute and return the offset which brings the current position to the given position
-Vec3 IAnimNode::GetOffsetPosition(const Vec3& position) { return position - GetPos(); }
+AZ::Vector3 IAnimNode::GetOffsetPosition(const AZ::Vector3& position) { return position - GetPos(); }
 
 // IAnimStringTable RTTI member definitions
 AZ_TYPE_INFO_WITH_NAME_IMPL(IAnimStringTable, "IAnimStringTable", "{35690309-9D22-41FF-80B7-8AF7C8419945}");

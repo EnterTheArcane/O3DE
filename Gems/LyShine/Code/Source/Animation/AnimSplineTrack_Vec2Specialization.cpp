@@ -13,26 +13,26 @@
 #include <AzCore/Serialization/SerializeContext.h>
 
 template <>
-TUiAnimSplineTrack<Vec2>::TUiAnimSplineTrack()
+TUiAnimSplineTrack<AZ::Vector2>::TUiAnimSplineTrack()
     : m_refCount(0)
 {
     AllocSpline();
     m_flags = 0;
-    m_defaultValue = Vec2(0, 0);
+    m_defaultValue = AZ::Vector2(0, 0);
     m_fMinKeyValue = 0.0f;
     m_fMaxKeyValue = 0.0f;
     m_bCustomColorSet = false;
 }
 
 template <>
-void TUiAnimSplineTrack<Vec2>::add_ref()
+void TUiAnimSplineTrack<AZ::Vector2>::add_ref()
 {
     ++m_refCount;
 }
 
 //////////////////////////////////////////////////////////////////////////
 template <>
-void TUiAnimSplineTrack<Vec2>::release()
+void TUiAnimSplineTrack<AZ::Vector2>::release()
 {
     if (--m_refCount <= 0)
     {
@@ -41,7 +41,7 @@ void TUiAnimSplineTrack<Vec2>::release()
 }
 
 template <>
-void TUiAnimSplineTrack<Vec2>::GetValue(float time, float& value)
+void TUiAnimSplineTrack<AZ::Vector2>::GetValue(float time, float& value)
 {
     if (GetNumKeys() == 0)
     {
@@ -55,26 +55,26 @@ void TUiAnimSplineTrack<Vec2>::GetValue(float time, float& value)
     }
 }
 template <>
-EUiAnimCurveType TUiAnimSplineTrack<Vec2>::GetCurveType() { return eUiAnimCurveType_BezierFloat; }
+EUiAnimCurveType TUiAnimSplineTrack<AZ::Vector2>::GetCurveType() { return eUiAnimCurveType_BezierFloat; }
 template <>
-EUiAnimValue TUiAnimSplineTrack<Vec2>::GetValueType() { return eUiAnimValue_Float; }
+EUiAnimValue TUiAnimSplineTrack<AZ::Vector2>::GetValueType() { return eUiAnimValue_Float; }
 template <>
-void TUiAnimSplineTrack<Vec2>::SetValue(float time, const float& value, bool bDefault)
+void TUiAnimSplineTrack<AZ::Vector2>::SetValue(float time, const float& value, bool bDefault)
 {
     if (!bDefault)
     {
         I2DBezierKey key;
-        key.value = Vec2(time, value);
+        key.value = AZ::Vector2(time, value);
         SetKeyAtTime(time, &key);
     }
     else
     {
-        m_defaultValue = Vec2(time, value);
+        m_defaultValue = AZ::Vector2(time, value);
     }
 }
 
 template <>
-void TUiAnimSplineTrack<Vec2>::GetKey(int index, IKey* key) const
+void TUiAnimSplineTrack<AZ::Vector2>::GetKey(int index, IKey* key) const
 {
     assert(index >= 0 && index < GetNumKeys());
     assert(key != 0);
@@ -87,7 +87,7 @@ void TUiAnimSplineTrack<Vec2>::GetKey(int index, IKey* key) const
 }
 
 template <>
-void TUiAnimSplineTrack<Vec2>::SetKey(int index, IKey* key)
+void TUiAnimSplineTrack<AZ::Vector2>::SetKey(int index, IKey* key)
 {
     assert(index >= 0 && index < GetNumKeys());
     assert(key != 0);
@@ -102,7 +102,7 @@ void TUiAnimSplineTrack<Vec2>::SetKey(int index, IKey* key)
 
 //! Create key at given time, and return its index.
 template <>
-int TUiAnimSplineTrack<Vec2>::CreateKey(float time)
+int TUiAnimSplineTrack<AZ::Vector2>::CreateKey(float time)
 {
     float value;
 
@@ -126,7 +126,7 @@ int TUiAnimSplineTrack<Vec2>::CreateKey(float time)
 }
 
 template <>
-int TUiAnimSplineTrack<Vec2>::CopyKey(IUiAnimTrack* pFromTrack, int nFromKey)
+int TUiAnimSplineTrack<AZ::Vector2>::CopyKey(IUiAnimTrack* pFromTrack, int nFromKey)
 {
     // This small time offset is applied to prevent the generation of singular tangents.
     float timeOffset = 0.01f;
@@ -140,7 +140,7 @@ int TUiAnimSplineTrack<Vec2>::CopyKey(IUiAnimTrack* pFromTrack, int nFromKey)
 }
 
 template <>
-bool TUiAnimSplineTrack<Vec2>::Serialize([[maybe_unused]] IUiAnimationSystem* uiAnimationSystem, XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
+bool TUiAnimSplineTrack<AZ::Vector2>::Serialize([[maybe_unused]] IUiAnimationSystem* uiAnimationSystem, XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks)
 {
     if (bLoading)
     {
@@ -235,7 +235,7 @@ bool TUiAnimSplineTrack<Vec2>::Serialize([[maybe_unused]] IUiAnimationSystem* ui
 }
 
 template <>
-bool TUiAnimSplineTrack<Vec2>::SerializeSelection(XmlNodeRef& xmlNode, bool bLoading, bool bCopySelected, float fTimeOffset)
+bool TUiAnimSplineTrack<AZ::Vector2>::SerializeSelection(XmlNodeRef& xmlNode, bool bLoading, bool bCopySelected, float fTimeOffset)
 {
     if (bLoading)
     {
@@ -313,7 +313,7 @@ bool TUiAnimSplineTrack<Vec2>::SerializeSelection(XmlNodeRef& xmlNode, bool bLoa
 
 //////////////////////////////////////////////////////////////////////////
 template<>
-void TUiAnimSplineTrack<Vec2>::GetKeyInfo(int index, const char*& description, float& duration)
+void TUiAnimSplineTrack<AZ::Vector2>::GetKeyInfo(int index, const char*& description, float& duration)
 {
     duration = 0;
 
@@ -327,8 +327,8 @@ void TUiAnimSplineTrack<Vec2>::GetKeyInfo(int index, const char*& description, f
 //////////////////////////////////////////////////////////////////////////
 namespace UiSpline
 {
-    using BezierSplineVec2 = BezierSpline<Vec2, SplineKeyEx<Vec2> >;
-    using TSplineBezierBasisVec2 = TSpline<SplineKeyEx<Vec2>, spline::BezierBasis>;
+    using BezierSplineVec2 = BezierSpline<AZ::Vector2, SplineKeyEx<AZ::Vector2> >;
+    using TSplineBezierBasisVec2 = TSpline<SplineKeyEx<AZ::Vector2>, spline::BezierBasis>;
 
 
     // Implement Reflection functions for Spline full template specializations in a cpp file
@@ -339,34 +339,34 @@ namespace UiSpline
     //////////////////////////////////////////////////////////////////////////
     template <>
     void BezierSplineVec2::Reflect(AZ::ReflectContext* context);
-    AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_DECL(TrackSplineInterpolator<Vec2>);
-    AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(TrackSplineInterpolator<Vec2>, "TrackSplineInterpolator<Vec2>", "{38F814D4-6041-4442-9704-9F68E996D55B}");
-    AZ_TYPE_INFO_SPECIALIZE(SplineKey<Vec2>, "{E2301E81-6BAF-4A17-886C-76F1A9C37118}");
-    AZ_TYPE_INFO_SPECIALIZE(SplineKeyEx<Vec2>, "{1AE37C63-D5C2-4E65-A08B-7020E7696233}");
+    AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_DECL(TrackSplineInterpolator<AZ::Vector2>);
+    AZ_TYPE_INFO_SPECIALIZE_WITH_NAME_IMPL(TrackSplineInterpolator<AZ::Vector2>, "TrackSplineInterpolator<Vec2>", "{38F814D4-6041-4442-9704-9F68E996D55B}");
+    AZ_TYPE_INFO_SPECIALIZE(SplineKey<AZ::Vector2>, "{E2301E81-6BAF-4A17-886C-76F1A9C37118}");
+    AZ_TYPE_INFO_SPECIALIZE(SplineKeyEx<AZ::Vector2>, "{1AE37C63-D5C2-4E65-A08B-7020E7696233}");
     AZ_TYPE_INFO_SPECIALIZE(BezierSplineVec2, "{EC8BA7BD-EF3B-453A-8017-CD1BF5B7C011}");
     AZ_TYPE_INFO_SPECIALIZE(TSplineBezierBasisVec2, "{B661D05E-B912-4BD9-B102-FA82938243A9}");
 
     template<>
-    void SplineKey<Vec2>::Reflect(AZ::ReflectContext* context)
+    void SplineKey<AZ::Vector2>::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context); serializeContext != nullptr)
         {
-            serializeContext->Class<SplineKey<Vec2> >()
+            serializeContext->Class<SplineKey<AZ::Vector2> >()
                 ->Version(1)
-                ->Field("time", &SplineKey<Vec2>::time)
-                ->Field("flags", &SplineKey<Vec2>::flags)
-                ->Field("value", &SplineKey<Vec2>::value)
-                ->Field("ds", &SplineKey<Vec2>::ds)
-                ->Field("dd", &SplineKey<Vec2>::dd);
+                ->Field("time", &SplineKey<AZ::Vector2>::time)
+                ->Field("flags", &SplineKey<AZ::Vector2>::flags)
+                ->Field("value", &SplineKey<AZ::Vector2>::value)
+                ->Field("ds", &SplineKey<AZ::Vector2>::ds)
+                ->Field("dd", &SplineKey<AZ::Vector2>::dd);
         }
     }
 
     template<>
-    void SplineKeyEx<Vec2>::Reflect(AZ::ReflectContext* context)
+    void SplineKeyEx<AZ::Vector2>::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context); serializeContext != nullptr)
         {
-            serializeContext->Class<SplineKeyEx<Vec2>, SplineKey<Vec2> >()
+            serializeContext->Class<SplineKeyEx<AZ::Vector2>, SplineKey<AZ::Vector2> >()
                 ->Version(1)
                 ;
         }
@@ -397,20 +397,20 @@ namespace UiSpline
         }
     }
 
-    void TrackSplineInterpolator<Vec2>::Reflect(AZ::ReflectContext* context)
+    void TrackSplineInterpolator<AZ::Vector2>::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context); serializeContext != nullptr)
         {
-            serializeContext->Class<TrackSplineInterpolator<Vec2>,
-                UiSpline::BezierSpline<Vec2, UiSpline::SplineKeyEx<Vec2> > >()
+            serializeContext->Class<TrackSplineInterpolator<AZ::Vector2>,
+                UiSpline::BezierSpline<AZ::Vector2, UiSpline::SplineKeyEx<AZ::Vector2> > >()
                 ->Version(1)
                 ;
         }
     }
 }
 
-// When TUiAnimSplineTrack<Vec2> is deserialized, a spline instance
-// is first created in the TUiAnimSplineTrack<Vec2> constructor (via AllocSpline()),
+// When TUiAnimSplineTrack<AZ::Vector2> is deserialized, a spline instance
+// is first created in the TUiAnimSplineTrack<AZ::Vector2> constructor (via AllocSpline()),
 // then the pointer is overwritten when "Spline" field is deserialized.
 // To prevent a memory leak, m_spline is now an intrusive pointer, so that if/when
 // the "Spline" field is deserialized, the old object will be deleted.
@@ -429,7 +429,7 @@ static bool TUiAnimSplineTrackVec2VersionConverter(AZ::SerializeContext& context
 
             // Reset the node, then convert it to an intrusive pointer
             splinePtrNodeRef = AZ::SerializeContext::DataElementNode();
-            const bool result = splinePtrNodeRef.Convert<AZStd::intrusive_ptr<UiSpline::TrackSplineInterpolator<Vec2>>>(context, "Spline");
+            const bool result = splinePtrNodeRef.Convert<AZStd::intrusive_ptr<UiSpline::TrackSplineInterpolator<AZ::Vector2>>>(context, "Spline");
             if (result)
             {
                 // Use the standard name used with the smart pointers serialization
@@ -449,23 +449,23 @@ static bool TUiAnimSplineTrackVec2VersionConverter(AZ::SerializeContext& context
 }
 
 template<>
-void TUiAnimSplineTrack<Vec2>::Reflect(AZ::ReflectContext* context)
+void TUiAnimSplineTrack<AZ::Vector2>::Reflect(AZ::ReflectContext* context)
 {
     if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context); serializeContext != nullptr)
     {
-        UiSpline::SplineKey<Vec2>::Reflect(serializeContext);
-        UiSpline::SplineKeyEx<Vec2>::Reflect(serializeContext);
+        UiSpline::SplineKey<AZ::Vector2>::Reflect(serializeContext);
+        UiSpline::SplineKeyEx<AZ::Vector2>::Reflect(serializeContext);
 
-        UiSpline::TrackSplineInterpolator<Vec2>::Reflect(serializeContext);
+        UiSpline::TrackSplineInterpolator<AZ::Vector2>::Reflect(serializeContext);
         UiSpline::BezierSplineVec2::Reflect(serializeContext);
 
 
-        serializeContext->Class<TUiAnimSplineTrack<Vec2> >()
+        serializeContext->Class<TUiAnimSplineTrack<AZ::Vector2> >()
             ->Version(2, &TUiAnimSplineTrackVec2VersionConverter)
-            ->Field("Flags", &TUiAnimSplineTrack<Vec2>::m_flags)
-            ->Field("DefaultValue", &TUiAnimSplineTrack<Vec2>::m_defaultValue)
-            ->Field("ParamType", &TUiAnimSplineTrack<Vec2>::m_nParamType)
-            ->Field("ParamData", &TUiAnimSplineTrack<Vec2>::m_componentParamData)
-            ->Field("Spline", &TUiAnimSplineTrack<Vec2>::m_spline);
+            ->Field("Flags", &TUiAnimSplineTrack<AZ::Vector2>::m_flags)
+            ->Field("DefaultValue", &TUiAnimSplineTrack<AZ::Vector2>::m_defaultValue)
+            ->Field("ParamType", &TUiAnimSplineTrack<AZ::Vector2>::m_nParamType)
+            ->Field("ParamData", &TUiAnimSplineTrack<AZ::Vector2>::m_componentParamData)
+            ->Field("Spline", &TUiAnimSplineTrack<AZ::Vector2>::m_spline);
     }
 }

@@ -882,14 +882,14 @@ namespace LyShine
         const int numIndicesInQuad = 6;
 
         // points are a clockwise quad
-        static const Vec2 uvs[numVertsInQuad] = { Vec2(0, 0), Vec2(1, 0), Vec2(1, 1), Vec2(0, 1) };
+        static const AZ::Vector2 uvs[numVertsInQuad] = { AZ::Vector2(0, 0), AZ::Vector2(1, 0), AZ::Vector2(1, 1), AZ::Vector2(0, 1) };
 
         static uint16 indices[numIndicesInQuad] = { 0, 1, 2, 2, 3, 0 };
 
         DynamicQuad* quad = new DynamicQuad;
         for (int i = 0; i < numVertsInQuad; ++i)
         {
-            quad->m_quadVerts[i].xy = Vec2(positions[i].GetX(), positions[i].GetY());
+            quad->m_quadVerts[i].xy = AZ::Vector2(positions[i].GetX(), positions[i].GetY());
             quad->m_quadVerts[i].color.dcolor = packedColor;
             quad->m_quadVerts[i].st = uvs[i];
             quad->m_quadVerts[i].texIndex = 0;

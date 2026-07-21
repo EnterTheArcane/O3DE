@@ -337,7 +337,7 @@ void CUiAnimViewCurveEditor::OnTimelineChange()
 void CUiAnimViewCurveEditor::OnHorizontalScrollBarChange()
 {
     int pos = m_ui->m_horizontalScrollBar->value();
-    Vec2 zoom = m_ui->m_wndSpline->GetZoom();
+    AZ::Vector2 zoom = m_ui->m_wndSpline->GetZoom();
 
     // Zero value is not acceptable.
     zoom.x = max(SLIDERRANGE_TO_ZOOM(pos), 1.f / SLIDER_MULTIPLIER);
@@ -348,7 +348,7 @@ void CUiAnimViewCurveEditor::OnHorizontalScrollBarChange()
 void CUiAnimViewCurveEditor::OnVerticalScrollBarChange()
 {
     int pos = m_ui->m_verticalScrollBar->value();
-    Vec2 zoom = m_ui->m_wndSpline->GetZoom();
+    AZ::Vector2 zoom = m_ui->m_wndSpline->GetZoom();
 
     // Zero value is not acceptable.
     zoom.y = max(SLIDERRANGE_TO_ZOOM(pos), 1.f / SLIDER_MULTIPLIER);
@@ -364,9 +364,9 @@ void CUiAnimViewCurveEditor::OnSplineScrollZoom()
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewCurveEditor::ResetScrollBarRange()
 {
-    Vec2 zoom = m_ui->m_wndSpline->GetZoom();
-    Vec2 minValue = zoom / 2.f;
-    Vec2 maxValue = zoom * 2.f;
+    AZ::Vector2 zoom = m_ui->m_wndSpline->GetZoom();
+    AZ::Vector2 minValue = zoom / 2.f;
+    AZ::Vector2 maxValue = zoom * 2.f;
 
     const QSignalBlocker sb1(m_ui->m_horizontalScrollBar);
     const QSignalBlocker sb2(m_ui->m_verticalScrollBar);

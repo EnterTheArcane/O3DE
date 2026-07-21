@@ -203,10 +203,10 @@ public:
     void setAttr(const char* key, uint64 value, bool useHexFormat = true) override;
     void setAttr(const char* key, float value) override;
     void setAttr(const char* key, double value) override;
-    void setAttr(const char* key, const Vec2& value) override;
+    void setAttr(const char* key, const AZ::Vector2& value) override;
     void setAttr(const char* key, const Ang3& value) override;
-    void setAttr(const char* key, const Vec3& value) override;
-    void setAttr(const char* key, const Vec4& value) override;
+    void setAttr(const char* key, const AZ::Vector3& value) override;
+    void setAttr(const char* key, const AZ::Vector4& value) override;
     void setAttr(const char* key, const AZ::Quaternion& value) override;
 
     //! Delete attrbute.
@@ -226,10 +226,10 @@ public:
     bool getAttr(const char* key, XmlString& value) const override
     {const char*    v(NULL); bool  boHasAttribute(getAttr(key, &v)); value = v; return boHasAttribute; }
 
-    bool getAttr(const char* key, Vec2& value) const override;
+    bool getAttr(const char* key, AZ::Vector2& value) const override;
     bool getAttr(const char* key, Ang3& value) const override;
-    bool getAttr(const char* key, Vec3& value) const override;
-    bool getAttr(const char* key, Vec4& value) const override;
+    bool getAttr(const char* key, AZ::Vector3& value) const override;
+    bool getAttr(const char* key, AZ::Vector4& value) const override;
     bool getAttr(const char* key, AZ::Quaternion& value) const override;
     bool getAttr(const char* key, AZ::Color& value) const override;
 

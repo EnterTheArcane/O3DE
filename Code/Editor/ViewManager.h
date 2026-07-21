@@ -61,11 +61,11 @@ public:
 
     /** Get 2D viewports origin.
     */
-    Vec3 GetOrigin2D() const { return m_origin2D; }
+    AZ::Vector3 GetOrigin2D() const { return m_origin2D; }
 
     /** Assign 2D viewports origin.
     */
-    void SetOrigin2D(const Vec3& org) { m_origin2D = org; };
+    void SetOrigin2D(const AZ::Vector3& org) { m_origin2D = org; };
 
     /** Assign zoom factor for 2d viewports.
     */
@@ -119,7 +119,7 @@ private:
     AZ::Aabb m_updateRegion;
 
     //! Origin of 2d viewports.
-    Vec3 m_origin2D;
+    AZ::Vector3 m_origin2D;
     //! Zoom of 2d viewports.
     float m_zoom2D;
 

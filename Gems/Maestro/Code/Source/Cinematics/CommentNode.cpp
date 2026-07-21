@@ -73,10 +73,10 @@ namespace Maestro
         C2DSplineTrack* pTrack = 0;
 
         pTrack = (C2DSplineTrack*)CreateTrack(AnimParamType::PositionX);
-        pTrack->SetDefaultValue(Vec2(0, 50));
+        pTrack->SetDefaultValue(AZ::Vector2(0, 50));
 
         pTrack = (C2DSplineTrack*)CreateTrack(AnimParamType::PositionY);
-        pTrack->SetDefaultValue(Vec2(0, 50));
+        pTrack->SetDefaultValue(AZ::Vector2(0, 50));
     }
 
     void CCommentNode::OnReset()

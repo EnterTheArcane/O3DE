@@ -203,7 +203,7 @@ struct Matrix34_tpl
 
 
     //CONSTRUCTOR for identical float-types. It converts a Matrix33 with a translation-vector into a Matrix34.
-    //Matrix34(m33,Vec3(1,2,3));
+    //Matrix34(m33,AZ::Vector3(1,2,3));
     ILINE Matrix34_tpl<F>(const Matrix33_tpl<F>&m, const Vec3_tpl<F>&t)
     {
         assert(m.IsValid());
@@ -389,12 +389,12 @@ struct Matrix34_tpl
     *       Matrix34 m34;
     *       m34.SetRotationX(0.5f);
     */
-    ILINE void SetRotationX(const f32 rad, const Vec3_tpl<F>& t = Vec3(ZERO))
+    ILINE void SetRotationX(const f32 rad, const Vec3_tpl<F>& t = AZ::Vector3(ZERO))
     {
         *this = Matrix33_tpl<F>::CreateRotationX(rad);
         this->SetTranslation(t);
     }
-    ILINE static Matrix34_tpl<F> CreateRotationX(const f32 rad, const Vec3_tpl<F>& t = Vec3(ZERO))
+    ILINE static Matrix34_tpl<F> CreateRotationX(const f32 rad, const Vec3_tpl<F>& t = AZ::Vector3(ZERO))
     {
         Matrix34_tpl<F> m34;
         m34.SetRotationX(rad, t);
@@ -410,12 +410,12 @@ struct Matrix34_tpl
     *       Matrix34 m34;
     *       m34.SetRotationY(0.5f);
     */
-    ILINE void SetRotationY(const f32 rad, const Vec3_tpl<F>& t = Vec3(ZERO))
+    ILINE void SetRotationY(const f32 rad, const Vec3_tpl<F>& t = AZ::Vector3(ZERO))
     {
         *this = Matrix33_tpl<F>::CreateRotationY(rad);
         this->SetTranslation(t);
     }
-    ILINE static Matrix34_tpl<F> CreateRotationY(const f32 rad, const Vec3_tpl<F>& t = Vec3(ZERO))
+    ILINE static Matrix34_tpl<F> CreateRotationY(const f32 rad, const Vec3_tpl<F>& t = AZ::Vector3(ZERO))
     {
         Matrix34_tpl<F> m34;
         m34.SetRotationY(rad, t);
@@ -435,14 +435,14 @@ struct Matrix34_tpl
     *  Example 2:
     *       Matrix34 m34=Matrix34::CreateRotationXYZ( Ang3(0.5f,0.2f,0.9f), translation );
     */
-    ILINE void SetRotationXYZ(const Ang3_tpl<F>& rad, const Vec3_tpl<F>& t = Vec3(ZERO))
+    ILINE void SetRotationXYZ(const Ang3_tpl<F>& rad, const Vec3_tpl<F>& t = AZ::Vector3(ZERO))
     {
         assert(rad.IsValid());
         assert(t.IsValid());
         *this = Matrix33_tpl<F>::CreateRotationXYZ(rad);
         this->SetTranslation(t);
     }
-    ILINE static Matrix34_tpl<F> CreateRotationXYZ(const Ang3_tpl<F>& rad, const Vec3_tpl<F>& t = Vec3(ZERO))
+    ILINE static Matrix34_tpl<F> CreateRotationXYZ(const Ang3_tpl<F>& rad, const Vec3_tpl<F>& t = AZ::Vector3(ZERO))
     {
         assert(rad.IsValid());
         assert(t.IsValid());
@@ -476,7 +476,7 @@ struct Matrix34_tpl
 
 
     //NOTE: all vectors are stored in columns
-    ILINE void SetFromVectors(const Vec3& vx, const Vec3& vy, const Vec3& vz, const Vec3& pos)
+    ILINE void SetFromVectors(const AZ::Vector3& vx, const AZ::Vector3& vy, const AZ::Vector3& vz, const AZ::Vector3& pos)
     {
         m00 = vx.x;
         m01 = vy.x;
@@ -563,7 +563,7 @@ struct Matrix34_tpl
     ILINE void SetRow(int i, const Vec3_tpl<F>& v)  {   assert(i < 3);    F* p = (F*)(&m00);    p[0 + 4 * i] = v.x;   p[1 + 4 * i] = v.y;   p[2 + 4 * i] = v.z;       }
 
     ILINE const Vec3_tpl<F>& GetRow(int i) const    {   assert(i < 3); return *(const Vec3_tpl<F>*)(&m00 + 4 * i);  }
-    ILINE const Vec4& GetRow4(int i) const   {   assert(i < 3); return *(const Vec4*)(&m00 + 4 * i);  }
+    ILINE const AZ::Vector4& GetRow4(int i) const   {   assert(i < 3); return *(const AZ::Vector4*)(&m00 + 4 * i);  }
 
     ILINE Vec3_tpl<F> GetColumn0() const    { return Vec3_tpl<F>(m00, m10, m20);  }
     ILINE Vec3_tpl<F> GetColumn1() const    { return Vec3_tpl<F>(m01, m11, m21);  }
@@ -686,9 +686,9 @@ struct Matrix34_tpl
     *
     *  Example 1:
     *       Matrix m34;
-    *       m34.SetMatrix( Vec3(1,2,3), quat, Vec3(11,22,33)  );
+    *       m34.SetMatrix( AZ::Vector3(1,2,3), quat, AZ::Vector3(11,22,33)  );
     */
-    ILINE void Set(const Vec3_tpl<F>& s, const Quat_tpl<F>& q, const Vec3_tpl<F>& t = Vec3(ZERO))
+    ILINE void Set(const Vec3_tpl<F>& s, const Quat_tpl<F>& q, const Vec3_tpl<F>& t = AZ::Vector3(ZERO))
     {
         assert(s.IsValid());
         assert(q.IsUnit(0.1f));
@@ -715,13 +715,13 @@ struct Matrix34_tpl
         m22 = (1 - (vxvx + vyvy) * 2) * s.z;
         m23 = t.z;
     }
-    ILINE static Matrix34_tpl<F> Create(const Vec3_tpl<F>& s, const Quat_tpl<F>& q, const Vec3_tpl<F>& t = Vec3(ZERO))
+    ILINE static Matrix34_tpl<F> Create(const Vec3_tpl<F>& s, const Quat_tpl<F>& q, const Vec3_tpl<F>& t = AZ::Vector3(ZERO))
     {
         Matrix34_tpl<F> m34;
         m34.Set(s, q, t);
         return m34;
     }
-    Matrix34_tpl(const Vec3_tpl<F>& s, const Quat_tpl<F>& q, const Vec3_tpl<F>& t = Vec3(ZERO))
+    Matrix34_tpl(const Vec3_tpl<F>& s, const Quat_tpl<F>& q, const Vec3_tpl<F>& t = AZ::Vector3(ZERO))
     {
         Set(s, q, t);
     }
@@ -733,9 +733,9 @@ struct Matrix34_tpl
     *
     *  Example 1:
     *       Matrix m34;
-    *       m34.SetScale( Vec3(0.5f, 1.0f, 2.0f) );
+    *       m34.SetScale( AZ::Vector3(0.5f, 1.0f, 2.0f) );
     */
-    ILINE void SetScale(const Vec3_tpl<F>& s, const Vec3_tpl<F>& t = Vec3(ZERO))
+    ILINE void SetScale(const Vec3_tpl<F>& s, const Vec3_tpl<F>& t = AZ::Vector3(ZERO))
     {
         *this = Matrix33_tpl<F>::CreateScale(s);
         this->SetTranslation(t);
@@ -832,14 +832,14 @@ ILINE Matrix34_tpl<F> operator * (const Matrix34_tpl<F>& m, const f32 f)
 }
 
 /*!
-*  multiplication of Matrix34 by a (column) Vec3.
-*  This function transforms the given input Vec3
+*  multiplication of Matrix34 by a (column) AZ::Vector3.
+*  This function transforms the given input AZ::Vector3
 *  into the coordinate system defined by this matrix.
 *
 *  Example:
 *   Matrix34 m34;
-*   Vec3 vector(44,55,66);
-*   Vec3 result = m34*vector;
+*   AZ::Vector3 vector(44,55,66);
+*   AZ::Vector3 result = m34*vector;
 */
 template<class F>
 ILINE Vec3_tpl<F> operator * (const Matrix34_tpl<F>& m, const Vec3_tpl<F>& p)
@@ -936,7 +936,7 @@ ILINE Matrix34_tpl<F> operator * (const Matrix34_tpl<F>& l, const Matrix33_tpl<F
 *  This operation takes 36 mults and 27 adds.
 *
 *  Example:
-*   Matrix34 m34=Matrix34::CreateRotationX(1.94192f, Vec3(11,22,33));;
+*   Matrix34 m34=Matrix34::CreateRotationX(1.94192f, AZ::Vector3(11,22,33));;
 *   Matrix34 m34=Matrix33::CreateRotationZ(3.14192f);
 *     Matrix34 result=m34*m34;
 */

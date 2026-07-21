@@ -28,9 +28,9 @@ public:
             (fabs_tpl(s - other.s) <= epsilon) &&
             (fabs_tpl(t - other.t) <= epsilon);
     }
-    ILINE Vec2 GetUV() const
+    ILINE AZ::Vector2 GetUV() const
     {
-        return Vec2(s, t);
+        return AZ::Vector2(s, t);
     }
 };
 

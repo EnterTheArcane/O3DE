@@ -107,7 +107,7 @@ namespace EditorUtilsTest
     }
 
     // CryCommon->AzCore migration: TestLegacyColor_FromU32 was removed. It validated that the
-    // legacy `ColorF(uint32)` unpacking constructor matched `AZ::Color::FromU32`; `ColorF` is
+    // legacy `AZ::Color(uint32)` unpacking constructor matched `AZ::Color::FromU32`; `AZ::Color` is
     // now a direct alias of `AZ::Color`, so the two sides are identical and the legacy
     // packed-uint constructor / operator[] no longer exist. (The ColorB test above still
     // exercises a genuine Cry type.)

@@ -145,10 +145,10 @@ public:
     void setAttr([[maybe_unused]] const char* key, [[maybe_unused]] uint64 value, [[maybe_unused]] bool useHexFormat = true /* ignored */) override { assert(0); };
     void setAttr([[maybe_unused]] const char* key, [[maybe_unused]] float value) override { assert(0); };
     void setAttr([[maybe_unused]] const char* key, [[maybe_unused]] f64 value) override { assert(0); };
-    void setAttr([[maybe_unused]] const char* key, [[maybe_unused]] const Vec2& value) override { assert(0); };
+    void setAttr([[maybe_unused]] const char* key, [[maybe_unused]] const AZ::Vector2& value) override { assert(0); };
     void setAttr([[maybe_unused]] const char* key, [[maybe_unused]] const Ang3& value) override { assert(0); };
-    void setAttr([[maybe_unused]] const char* key, [[maybe_unused]] const Vec3& value) override { assert(0); };
-    void setAttr([[maybe_unused]] const char* key, [[maybe_unused]] const Vec4& value) override { assert(0); };
+    void setAttr([[maybe_unused]] const char* key, [[maybe_unused]] const AZ::Vector3& value) override { assert(0); };
+    void setAttr([[maybe_unused]] const char* key, [[maybe_unused]] const AZ::Vector4& value) override { assert(0); };
     void setAttr([[maybe_unused]] const char* key, [[maybe_unused]] const AZ::Quaternion& value) override { assert(0); };
     void delAttr([[maybe_unused]] const char* key) override { assert(0); };
     void removeAllAttributes() override { assert(0); };
@@ -162,10 +162,10 @@ public:
     bool getAttr(const char* key, f64& value) const override;
     bool getAttr(const char* key, bool& value) const override;
     bool getAttr(const char* key, XmlString& value) const override  {const char*    v(NULL); bool  boHasAttribute(getAttr(key, &v)); value = v; return boHasAttribute; }
-    bool getAttr(const char* key, Vec2& value) const override;
+    bool getAttr(const char* key, AZ::Vector2& value) const override;
     bool getAttr(const char* key, Ang3& value) const override;
-    bool getAttr(const char* key, Vec3& value) const override;
-    bool getAttr(const char* key, Vec4& value) const override;
+    bool getAttr(const char* key, AZ::Vector3& value) const override;
+    bool getAttr(const char* key, AZ::Vector4& value) const override;
     bool getAttr(const char* key, AZ::Quaternion& value) const override;
     bool getAttr(const char* key, AZ::Color& value) const override;
 

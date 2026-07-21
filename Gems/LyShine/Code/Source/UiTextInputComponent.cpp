@@ -1575,7 +1575,7 @@ bool UiTextInputComponent::VersionConverter(AZ::SerializeContext& context,
         clipTextNode.SetData(context, false);
     }
 
-    // conversion from version 6 to 7: Need to convert ColorF to AZ::Color
+    // conversion from version 6 to 7: Need to convert AZ::Color to AZ::Color
     if (classElement.GetVersion() < 7)
     {
         if (!LyShine::ConvertSubElementFromColorFToAzColor(context, classElement, "TextSelectionColor"))

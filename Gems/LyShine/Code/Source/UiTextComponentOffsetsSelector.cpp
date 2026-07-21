@@ -62,7 +62,7 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
                 const int selectionLength = firstAndLastIndexOccurOnDifferentLines ? curLineIndexIter : curLineIndexIter - firstIndexLineIndex;
 
                 AZStd::string selectionString(drawBatch.text.substr(firstIndexLineIndex, selectionLength));
-                Vec2 rightSize = drawBatch.font->GetTextSize(selectionString.c_str(), true, m_fontContext);
+                AZ::Vector2 rightSize = drawBatch.font->GetTextSize(selectionString.c_str(), true, m_fontContext);
                 lineOffsetsStack.top()->right.SetX(rightSize.x);
                 m_numCharsSelected += LyShine::GetUtf8StringLength(selectionString);
 

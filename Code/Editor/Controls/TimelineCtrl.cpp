@@ -79,7 +79,7 @@ void TimelineWidget::resizeEvent(QResizeEvent* event)
 //////////////////////////////////////////////////////////////////////////
 int TimelineWidget::TimeToClient(float time)
 {
-    return m_grid.WorldToClient(Vec2(time, 0)).x();
+    return m_grid.WorldToClient(AZ::Vector2(time, 0)).x();
 }
 
 //////////////////////////////////////////////////////////////////////////

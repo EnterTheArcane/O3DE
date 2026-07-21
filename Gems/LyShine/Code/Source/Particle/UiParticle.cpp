@@ -207,9 +207,9 @@ bool UiParticle::FillVertices(LyShine::UiPrimitiveVertex* outputVertices, const 
         AZ::Vector3 point3(cornerVector.GetX(), cornerVector.GetY(), 1.0f);
         point3 = transform * point3;
 
-        outputVertices[i].xy = Vec2(point3.GetX(), point3.GetY());
+        outputVertices[i].xy = AZ::Vector2(point3.GetX(), point3.GetY());
         outputVertices[i].color.dcolor = packedColor;
-        outputVertices[i].st = Vec2(uvs[i].GetX(), uvs[i].GetY());
+        outputVertices[i].st = AZ::Vector2(uvs[i].GetX(), uvs[i].GetY());
         outputVertices[i].texIndex = 0;
         outputVertices[i].texHasColorChannel = 1;
         outputVertices[i].texIndex2 = 0;

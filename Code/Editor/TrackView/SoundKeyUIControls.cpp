@@ -78,7 +78,7 @@ void CSoundKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selec
             else if (pVar == mv_customColor.GetVar())
             {
                 AZ::Vector3 vector3 = mv_customColor;
-                soundKey.customColor = Vec3(vector3.GetX(), vector3.GetY(), vector3.GetZ());
+                soundKey.customColor = AZ::Vector3(vector3.GetX(), vector3.GetY(), vector3.GetZ());
             }
 
             SyncValue(mv_duration, soundKey.fDuration, false, pVar);

@@ -18,7 +18,7 @@ class CViewport;
 struct IDisplayViewport
 {
     virtual void Update() = 0;
-    virtual float GetScreenScaleFactor(const Vec3& position) const = 0;
+    virtual float GetScreenScaleFactor(const AZ::Vector3& position) const = 0;
 
     /**
      * Gets the distance of the point on screen to the line defined by the two points, converted to screenspace.
@@ -27,7 +27,7 @@ struct IDisplayViewport
      * @param point The point to check the distance from the line. This point is in screen space.
      * @return The distance of the point to the line.
     */
-    virtual float GetDistanceToLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& point) const = 0;
+    virtual float GetDistanceToLine(const AZ::Vector3& lineP1, const AZ::Vector3& lineP2, const QPoint& point) const = 0;
 
     enum EAxis
     {
@@ -40,11 +40,11 @@ struct IDisplayViewport
 
     virtual const AZ::Matrix3x4& GetViewTM() const = 0;
     virtual const AZ::Matrix3x4& GetScreenTM() const = 0;
-    virtual QPoint WorldToView(const Vec3& worldPoint) const = 0;
-    virtual Vec3 WorldToView3D(const Vec3& worldPoint, int flags = 0) const = 0;
-    virtual Vec3 ViewToWorld(const QPoint& vp, bool* collideWithTerrain = nullptr, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false, bool* collideWithObject = nullptr) const = 0;
-    virtual void ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir) const = 0;
-    virtual void setRay(QPoint& vp, Vec3& raySrc, Vec3& rayDir) = 0;
+    virtual QPoint WorldToView(const AZ::Vector3& worldPoint) const = 0;
+    virtual AZ::Vector3 WorldToView3D(const AZ::Vector3& worldPoint, int flags = 0) const = 0;
+    virtual AZ::Vector3 ViewToWorld(const QPoint& vp, bool* collideWithTerrain = nullptr, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false, bool* collideWithObject = nullptr) const = 0;
+    virtual void ViewToWorldRay(const QPoint& vp, AZ::Vector3& raySrc, AZ::Vector3& rayDir) const = 0;
+    virtual void setRay(QPoint& vp, AZ::Vector3& raySrc, AZ::Vector3& rayDir) = 0;
 
     virtual float GetAspectRatio() const = 0;
 

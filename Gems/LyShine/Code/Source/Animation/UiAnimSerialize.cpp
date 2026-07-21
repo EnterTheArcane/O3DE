@@ -24,7 +24,7 @@ namespace UiAnimSerialize
 {
     void ReflectUiAnimTypes(AZ::SerializeContext* context)
     {
-        TUiAnimSplineTrack<Vec2>::Reflect(context);
+        TUiAnimSplineTrack<AZ::Vector2>::Reflect(context);
         UiCompoundSplineTrack::Reflect(context);
         UiBoolTrack::Reflect(context);
         CUiAnimSequence::Reflect(context);

@@ -59,12 +59,12 @@ namespace Maestro
         void SetRotate(float time, const AZ::Quaternion& quat) override;
         void SetScale(float time, const AZ::Vector3& scale) override;
 
-        Vec3 GetOffsetPosition(const Vec3& position) override;
+        AZ::Vector3 GetOffsetPosition(const AZ::Vector3& position) override;
 
-        Vec3 GetPos() override;
+        AZ::Vector3 GetPos() override;
         AZ::Quaternion GetRotate() override;
         AZ::Quaternion GetRotate(float time) override;
-        Vec3 GetScale() override;
+        AZ::Vector3 GetScale() override;
         //////////////////////////////////////////////////////////////////////////
 
         void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks) override;

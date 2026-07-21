@@ -272,7 +272,7 @@ bool CTrackViewSplineCtrl::GetTangentHandlePts(QPoint& inTangentPt, QPoint& pt, 
         ITcbKey tcbKey;
         keyHandle.GetKey(&tcbKey);
 
-        Vec2 va, vb, vc;
+        AZ::Vector2 va, vb, vc;
         va.x = time - 1.0f;
         va.y = value[nDimension] - tin[nDimension];
         vb.x = time;
@@ -283,7 +283,7 @@ bool CTrackViewSplineCtrl::GetTangentHandlePts(QPoint& inTangentPt, QPoint& pt, 
         pt = WorldToClient(vb);
         outTangentPt = WorldToClient(vc);
 
-        Vec2 tinv, toutv;
+        AZ::Vector2 tinv, toutv;
         float maxLength = float(outTangentPt.x() - pt.x());
         tinv.x = float(inTangentPt.x() - pt.x());
         tinv.y = float(inTangentPt.y() - pt.y());
@@ -305,7 +305,7 @@ bool CTrackViewSplineCtrl::GetTangentHandlePts(QPoint& inTangentPt, QPoint& pt, 
         I2DBezierKey bezierKey;
         keyHandle.GetKey(&bezierKey);
 
-        Vec2 va, vb, vc;
+        AZ::Vector2 va, vb, vc;
         va.x = time - tin[0];
         va.y = value[0] - tin[1];
         vb.x = time;
@@ -339,13 +339,13 @@ void CTrackViewSplineCtrl::ComputeIncomingTangentAndEaseTo(float& ds, float& eas
     keyHandle.GetKey(&tcbKey);
 
     // Get the control point.
-    Vec2 tinv, vb;
+    AZ::Vector2 tinv, vb;
     vb.x = time;
     vb.y = value[nDimension];
     QPoint pt = WorldToClient(vb);
 
     // Get the max length to compute the 'ease' value.
-    float maxLength = float(WorldToClient(Vec2(vb.x + 1, vb.y)).x() - pt.x());
+    float maxLength = float(WorldToClient(AZ::Vector2(vb.x + 1, vb.y)).x() - pt.x());
 
     QPoint tmp = inTangentPt - pt;
     tinv.x = float(tmp.x());
@@ -355,7 +355,7 @@ void CTrackViewSplineCtrl::ComputeIncomingTangentAndEaseTo(float& ds, float& eas
     easeTo = 2.0f - maxLength / tinv.GetLength();
 
     // Compute the 'ds'.
-    Vec2 va = ClientToWorld(inTangentPt);
+    AZ::Vector2 va = ClientToWorld(inTangentPt);
     if (time < va.x + 0.000001f)
     {
         if (value[nDimension] > va.y)
@@ -392,13 +392,13 @@ void CTrackViewSplineCtrl::ComputeOutgoingTangentAndEaseFrom(float& dd, float& e
     keyHandle.GetKey(&tcbKey);
 
     // Get the control point.
-    Vec2 toutv, vb;
+    AZ::Vector2 toutv, vb;
     vb.x = time;
     vb.y = value[nDimension];
     QPoint pt = WorldToClient(vb);
 
     // Get the max length to comute the 'ease' value.
-    float maxLength = float(WorldToClient(Vec2(vb.x + 1, vb.y)).x() - pt.x());
+    float maxLength = float(WorldToClient(AZ::Vector2(vb.x + 1, vb.y)).x() - pt.x());
 
     QPoint tmp = outTangentPt - pt;
     toutv.x = float(tmp.x());
@@ -408,7 +408,7 @@ void CTrackViewSplineCtrl::ComputeOutgoingTangentAndEaseFrom(float& dd, float& e
     easeFrom = 2.0f - maxLength / toutv.GetLength();
 
     // Compute the 'dd'.
-    Vec2 vc = ClientToWorld(outTangentPt);
+    AZ::Vector2 vc = ClientToWorld(outTangentPt);
     if (vc.x < time + 0.000001f)
     {
         if (value[nDimension] < vc.y)
@@ -554,7 +554,7 @@ void CTrackViewSplineCtrl::MoveSelectedTangentHandleTo(const QPoint& point)
         AZ_Assert(pTrack->GetCurveType() == eAnimCurveType_BezierFloat, "Unexpected curve type %i", pTrack->GetCurveType());
         AZ_Assert(m_nHitDimension == 0, "Hit dimension is not zero");
 
-        Vec2 tp = ClientToWorld(point);
+        AZ::Vector2 tp = ClientToWorld(point);
         if (m_bHitIncomingHandle)
         {
             // tin
@@ -664,8 +664,8 @@ void CTrackViewSplineCtrl::mouseMoveEvent(QMouseEvent* event)
             bool bShiftClick = CheckVirtualKey(Qt::Key_Shift);
             bool bSpaceClick = CheckVirtualKey(Qt::Key_Space);
 
-            Vec2 v0 = ClientToWorld(m_cMouseDownPos);
-            Vec2 v1 = ClientToWorld(point);
+            AZ::Vector2 v0 = ClientToWorld(m_cMouseDownPos);
+            AZ::Vector2 v1 = ClientToWorld(point);
             if (m_hitCode == HIT_TANGENT_HANDLE)
             {
                 if (!m_bTangentsFreeze)
@@ -686,12 +686,12 @@ void CTrackViewSplineCtrl::mouseMoveEvent(QMouseEvent* event)
                 else if (bShiftClick)
                 {
                     // Constrains the move to the vertical direction.
-                    MoveSelectedKeys(Vec2(0, v1.y - v0.y), false);
+                    MoveSelectedKeys(AZ::Vector2(0, v1.y - v0.y), false);
                 }
                 else if (bSpaceClick)
                 {
                     // Reset to the original position.
-                    MoveSelectedKeys(Vec2(0, 0), false);
+                    MoveSelectedKeys(AZ::Vector2(0, 0), false);
                 }
                 else
                 {
@@ -766,7 +766,7 @@ void CTrackViewSplineCtrl::mouseMoveEvent(QMouseEvent* event)
         // Set the new scrolled coordinates
         const float ofsx = m_grid.origin.GetX() - (point.x() - m_cMouseDownPos.x()) / m_grid.zoom.GetX();
         const float ofsy = m_grid.origin.GetY() + (point.y() - m_cMouseDownPos.y()) / m_grid.zoom.GetY();
-        SetScrollOffset(Vec2(ofsx, ofsy));
+        SetScrollOffset(AZ::Vector2(ofsx, ofsy));
         m_cMouseDownPos = point;
     }
     break;
@@ -785,7 +785,7 @@ void CTrackViewSplineCtrl::mouseMoveEvent(QMouseEvent* event)
         {
             z.SetY(max(z.GetY() * (1.0f + ofsy), 0.001f));
         }
-        SetZoom(Vec2(z.GetX(), z.GetY()), m_cMouseDownPos);
+        SetZoom(AZ::Vector2(z.GetX(), z.GetY()), m_cMouseDownPos);
         m_cMouseDownPos = point;
     }
     break;

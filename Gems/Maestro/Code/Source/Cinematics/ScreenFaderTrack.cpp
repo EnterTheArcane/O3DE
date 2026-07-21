@@ -50,7 +50,7 @@ namespace Maestro
         if (bLoading)
         {
             keyNode->getAttr("fadeTime", key.m_fadeTime);
-            Vec3 color(0, 0, 0);
+            AZ::Vector3 color(0, 0, 0);
             keyNode->getAttr("fadeColor", color);
             key.m_fadeColor = AZ::Color(color.x, color.y, color.z, 1.f);
             int fadeType = 0;
@@ -72,7 +72,7 @@ namespace Maestro
         else
         {
             keyNode->setAttr("fadeTime", key.m_fadeTime);
-            Vec3 color(key.m_fadeColor.GetR(), key.m_fadeColor.GetG(), key.m_fadeColor.GetB());
+            AZ::Vector3 color(key.m_fadeColor.GetR(), key.m_fadeColor.GetG(), key.m_fadeColor.GetB());
             keyNode->setAttr("fadeColor", color);
             keyNode->setAttr("fadeType", (int)key.m_fadeType);
             keyNode->setAttr("fadeChangeType", (int)key.m_fadeChangeType);

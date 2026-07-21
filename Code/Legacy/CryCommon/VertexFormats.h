@@ -47,9 +47,9 @@ struct UCol
     };
 
     // get normal vector from unsigned 8bit integers (can't point up/down and is not normal)
-    ILINE Vec3 GetN()
+    ILINE AZ::Vector3 GetN()
     {
-        return Vec3
+        return AZ::Vector3
                (
             (bcolor[0] - 128.0f) / 127.5f,
             (bcolor[1] - 128.0f) / 127.5f,
@@ -76,7 +76,7 @@ struct Vec3f16
         assert(i <= 3);
         return CryConvertHalfToFloat(((CryHalf*)this)[i]);
     }
-    _inline Vec3f16& operator = (const Vec3& sl)
+    _inline Vec3f16& operator = (const AZ::Vector3& sl)
     {
         x = CryConvertFloatToHalf(sl.x);
         y = CryConvertFloatToHalf(sl.y);
@@ -84,7 +84,7 @@ struct Vec3f16
         w = CryConvertFloatToHalf(1.0f);
         return *this;
     }
-    _inline Vec3f16& operator = (const Vec4& sl)
+    _inline Vec3f16& operator = (const AZ::Vector4& sl)
     {
         x = CryConvertFloatToHalf(sl.x);
         y = CryConvertFloatToHalf(sl.y);
@@ -92,9 +92,9 @@ struct Vec3f16
         w = CryConvertFloatToHalf(sl.w);
         return *this;
     }
-    _inline Vec3 ToVec3() const
+    _inline AZ::Vector3 ToVec3() const
     {
-        Vec3 v;
+        AZ::Vector3 v;
         v.x = CryConvertHalfToFloat(x);
         v.y = CryConvertHalfToFloat(y);
         v.z = CryConvertHalfToFloat(z);
@@ -104,22 +104,22 @@ struct Vec3f16
 
 struct SVF_P3F_C4B
 {
-    Vec3 xyz;
+    AZ::Vector3 xyz;
     UCol color;
 };
 
 struct SVF_P3F_C4B_T2F
 {
-    Vec3 xyz;
+    AZ::Vector3 xyz;
     UCol color;
-    Vec2 st;
+    AZ::Vector2 st;
 };
 
 struct SVF_P2F_C4B_T2F_F4B
 {
-    Vec2 xy;
+    AZ::Vector2 xy;
     UCol color;
-    Vec2 st;
+    AZ::Vector2 st;
     uint8 texIndex;
     uint8 texHasColorChannel;
     uint8 texIndex2;
@@ -128,5 +128,5 @@ struct SVF_P2F_C4B_T2F_F4B
 
 struct SVF_P3F
 {
-    Vec3 xyz;
+    AZ::Vector3 xyz;
 };

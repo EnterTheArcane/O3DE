@@ -287,7 +287,7 @@ void AZ::FFont::DrawStringUInternal(
 
     // Local function that is passed into CreateQuadsForText as the AddQuad function
     AZ::FFont::AddFunction AddQuad = [this, startingVertexCount]
-            (const Vec3& v0, const Vec3& v1, const Vec3& v2, const Vec3& v3, const Vec2& tc0, const Vec2& tc1, const Vec2& tc2, const Vec2& tc3, uint32_t packedColor)
+            (const AZ::Vector3& v0, const AZ::Vector3& v1, const AZ::Vector3& v2, const AZ::Vector3& v3, const AZ::Vector2& tc0, const AZ::Vector2& tc1, const AZ::Vector2& tc2, const AZ::Vector2& tc3, uint32_t packedColor)
         {
             const bool vertexSpaceLeft = m_vertexCount + 4 < MaxVerts;
             const bool indexSpaceLeft = m_indexCount + 6 < MaxIndices;
@@ -352,17 +352,17 @@ void AZ::FFont::DrawStringUInternal(
     }
 }
 
-Vec2 AZ::FFont::GetTextSize(const char* str, const bool asciiMultiLine, const TextDrawContext& ctx)
+AZ::Vector2 AZ::FFont::GetTextSize(const char* str, const bool asciiMultiLine, const TextDrawContext& ctx)
 {
     if (!str)
     {
-        return Vec2(0.0f, 0.0f);
+        return AZ::Vector2(0.0f, 0.0f);
     }
 
     return GetTextSizeUInternal(GetDefaultWindowContext()->GetViewport(), str, asciiMultiLine, ctx);
 }
 
-Vec2 AZ::FFont::GetTextSizeUInternal(
+AZ::Vector2 AZ::FFont::GetTextSizeUInternal(
     const RHI::Viewport& viewport, 
     const char* str, 
     const bool asciiMultiLine, 
@@ -372,7 +372,7 @@ Vec2 AZ::FFont::GetTextSizeUInternal(
 
     if (!str || !m_fontTexture || !fxSize)
     {
-        return Vec2(0, 0);
+        return AZ::Vector2(0, 0);
     }
 
     Prepare(str, false, ctx.m_requestSize);
@@ -380,7 +380,7 @@ Vec2 AZ::FFont::GetTextSizeUInternal(
     // This is the "logical" size of the font (in pixels). The actual size of
     // the glyphs in the font texture may have additional scaling applied or
     // could have been re-rendered at a different size.
-    Vec2 size = ctx.m_size;
+    AZ::Vector2 size = ctx.m_size;
     if (ctx.m_sizeIn800x600)
     {
         ScaleCoord(viewport, size.x, size.y);
@@ -404,7 +404,7 @@ Vec2 AZ::FFont::GetTextSizeUInternal(
         const FontRenderingPass* pass = &fx.m_passes[numPasses - i - 1];
 
         // gather pass data
-        Vec2 offset = pass->m_posOffset;
+        AZ::Vector2 offset = pass->m_posOffset;
 
         float charX = offset.x;
         float charY = offset.y + size.y;
@@ -514,7 +514,7 @@ Vec2 AZ::FFont::GetTextSizeUInternal(
             }
 
             // Adjust "advance" here for kerning purposes
-            Vec2 kerningOffset(Vec2_Zero);
+            AZ::Vector2 kerningOffset(Vec2_Zero);
             if (ctx.m_kerningEnabled && nextCh)
             {
                 kerningOffset = m_fontTexture->GetKerning(ch, nextCh) * scaleInfo.scale.x;
@@ -535,7 +535,7 @@ Vec2 AZ::FFont::GetTextSizeUInternal(
         }
     }
 
-    return Vec2(maxW, maxH);
+    return AZ::Vector2(maxW, maxH);
 }
 
 uint32_t AZ::FFont::GetNumQuadsForText(const char* str, const bool asciiMultiLine, const TextDrawContext& ctx)
@@ -638,12 +638,12 @@ uint32_t AZ::FFont::WriteTextQuadsToBuffers(SVF_P2F_C4B_T2F_F4B* verts, uint16_t
 
     // Local function that is passed into CreateQuadsForText as the AddQuad function
     AddFunction AddQuad = [&vertexData, &indexData, &vertexOffset, &indexOffset, maxQuads, &numQuadsWritten]
-            (const Vec3& v0, const Vec3& v1, const Vec3& v2, const Vec3& v3, const Vec2& tc0, const Vec2& tc1, const Vec2& tc2, const Vec2& tc3, uint32_t packedColor)
+            (const AZ::Vector3& v0, const AZ::Vector3& v1, const AZ::Vector3& v2, const AZ::Vector3& v3, const AZ::Vector2& tc0, const AZ::Vector2& tc1, const AZ::Vector2& tc2, const AZ::Vector2& tc3, uint32_t packedColor)
         {
-            Vec2 xy0(v0);
-            Vec2 xy1(v1);
-            Vec2 xy2(v2);
-            Vec2 xy3(v3);
+            AZ::Vector2 xy0(v0);
+            AZ::Vector2 xy1(v1);
+            AZ::Vector2 xy2(v2);
+            AZ::Vector2 xy3(v3);
 
             const bool vertexSpaceLeft = vertexOffset + 3 < maxQuads * 4;
             const bool indexSpaceLeft = indexOffset + 5 < maxQuads * 6;
@@ -735,7 +735,7 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
     // This is the "logical" size of the font (in pixels). The actual size of
     // the glyphs in the font texture may have additional scaling applied or
     // could have been re-rendered at a different size.
-    Vec2 size = ctx.m_size;
+    AZ::Vector2 size = ctx.m_size;
     if (ctx.m_sizeIn800x600)
     {
         ScaleCoord(viewport, size.x, size.y);
@@ -745,7 +745,7 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
     // to any additional scaling applied (such as from "size ratio").
     const TextScaleInfoInternal scaleInfo(CalculateScaleInternal(viewport, ctx));
 
-    Vec2 baseXY = Vec2(x, y); // in pixels
+    AZ::Vector2 baseXY = AZ::Vector2(x, y); // in pixels
     if (ctx.m_sizeIn800x600)
     {
         ScaleCoord(viewport, baseXY.x, baseXY.y);
@@ -782,7 +782,7 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
         const Color& passColor = !i && passZeroColorOverridden ? ctx.m_colorOverride : fx.m_passes[i].m_color;
 
         // gather pass data
-        Vec2 offset = pass->m_posOffset; // in pixels
+        AZ::Vector2 offset = pass->m_posOffset; // in pixels
 
         float charX = baseXY.x + offset.x; // in pixels
         float charY = baseXY.y + offset.y; // in pixels
@@ -795,7 +795,7 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
         {
             uint32_t frameColor = Colors::White.ToU32();
 
-            Vec2 textSize = GetTextSizeUInternal(viewport, str, asciiMultiLine, ctx);
+            AZ::Vector2 textSize = GetTextSizeUInternal(viewport, str, asciiMultiLine, ctx);
 
             float x0 = baseXY.x - 12;
             float y0 = baseXY.y - 6;
@@ -823,10 +823,10 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
 
             if (!culled)
             {
-                Vec3 v0(x0, y0, z);
-                Vec3 v2(x1, y1, z);
-                Vec3 v1(v2.x, v0.y, v0.z);
-                Vec3 v3(v0.x, v2.y, v0.z);
+                AZ::Vector3 v0(x0, y0, z);
+                AZ::Vector3 v2(x1, y1, z);
+                AZ::Vector3 v1(v2.x, v0.y, v0.z);
+                AZ::Vector3 v3(v0.x, v2.y, v0.z);
 
                 if (ctx.m_drawTextFlags & eDrawText_UseTransform)
                 {
@@ -836,11 +836,11 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
                     v3 = AZVec3ToLYVec3(ctx.m_transform * LYVec3ToAZVec3(v3));
                 }
 
-                Vec2 gradientUvMin, gradientUvMax;
+                AZ::Vector2 gradientUvMin, gradientUvMax;
                 GetGradientTextureCoord(gradientUvMin.x, gradientUvMin.y, gradientUvMax.x, gradientUvMax.y);
 
                 // define the frame quad
-                Vec2 uv(gradientUvMin.x, gradientUvMax.y);
+                AZ::Vector2 uv(gradientUvMin.x, gradientUvMax.y);
                 if (AddQuad(v0, v1, v2, v3, uv, uv, uv, uv, frameColor))
                 {
                     ++numQuads;
@@ -970,7 +970,7 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
                 advance = size.x * ctx.m_widthScale;
             }
 
-            Vec2 kerningOffset(Vec2_Zero);
+            AZ::Vector2 kerningOffset(Vec2_Zero);
             if (ctx.m_kerningEnabled && nextCh)
             {
                 kerningOffset = m_fontTexture->GetKerning(ch, nextCh) * scaleInfo.scale.x;
@@ -1038,15 +1038,15 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
                 }
             }
 
-            Vec3 v0(newX, newY, z);
-            Vec3 v2(newR, newB, z);
-            Vec3 v1(v2.x, v0.y, v0.z);
-            Vec3 v3(v0.x, v2.y, v0.z);
+            AZ::Vector3 v0(newX, newY, z);
+            AZ::Vector3 v2(newR, newB, z);
+            AZ::Vector3 v1(v2.x, v0.y, v0.z);
+            AZ::Vector3 v3(v0.x, v2.y, v0.z);
 
-            Vec2 tc0(texCoord[0], texCoord[1]);
-            Vec2 tc2(texCoord[2], texCoord[3]);
-            Vec2 tc1(tc2.x, tc0.y);
-            Vec2 tc3(tc0.x, tc2.y);
+            AZ::Vector2 tc0(texCoord[0], texCoord[1]);
+            AZ::Vector2 tc2(texCoord[2], texCoord[3]);
+            AZ::Vector2 tc1(tc2.x, tc0.y);
+            AZ::Vector2 tc3(tc0.x, tc2.y);
 
             uint32_t packedColor = 0xffffffff;
             {
@@ -1080,7 +1080,7 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
 
 AZ::FFont::TextScaleInfoInternal AZ::FFont::CalculateScaleInternal(const RHI::Viewport& viewport, const TextDrawContext& ctx) const
 {
-    Vec2 size = GetRestoredFontSize(ctx); // in pixel
+    AZ::Vector2 size = GetRestoredFontSize(ctx); // in pixel
 
     if (ctx.m_sizeIn800x600)
     {
@@ -1088,7 +1088,7 @@ AZ::FFont::TextScaleInfoInternal AZ::FFont::CalculateScaleInternal(const RHI::Vi
     }
 
     float rcpCellWidth;
-    Vec2 scale;
+    AZ::Vector2 scale;
 
     int fontTextureCellWidth = GetFontTexture()->GetCellWidth();
     int fontTextureCellHeight = GetFontTexture()->GetCellHeight();
@@ -1096,12 +1096,12 @@ AZ::FFont::TextScaleInfoInternal AZ::FFont::CalculateScaleInternal(const RHI::Vi
     if (ctx.m_proportional)
     {
         rcpCellWidth = (1.0f / static_cast<float>(fontTextureCellWidth)) * size.x;
-        scale = Vec2(rcpCellWidth * ctx.m_widthScale, size.y / static_cast<float>(fontTextureCellHeight));
+        scale = AZ::Vector2(rcpCellWidth * ctx.m_widthScale, size.y / static_cast<float>(fontTextureCellHeight));
     }
     else
     {
         rcpCellWidth = size.x / 16.0f;
-        scale = Vec2(rcpCellWidth * ctx.m_widthScale, size.y * ctx.m_widthScale / 16.0f);
+        scale = AZ::Vector2(rcpCellWidth * ctx.m_widthScale, size.y * ctx.m_widthScale / 16.0f);
     }
 
     return TextScaleInfoInternal(scale, rcpCellWidth);
@@ -1168,7 +1168,7 @@ void AZ::FFont::WrapText(AZStd::string& result, float maxWidth, const char* str,
         // maxWidth = ???->ScaleCoordX(maxWidth);
     }
 
-    Vec2 strSize = GetTextSize(result.c_str(), true, ctx);
+    AZ::Vector2 strSize = GetTextSize(result.c_str(), true, ctx);
 
     if (strSize.x <= maxWidth)
     {
@@ -1343,9 +1343,9 @@ const char* AZ::FFont::GetEffectName(unsigned int effectId) const
     return (effectId < m_effects.size()) ? m_effects[effectId].m_name.c_str() : nullptr;
 }
 
-Vec2 AZ::FFont::GetMaxEffectOffset(unsigned int effectId) const
+AZ::Vector2 AZ::FFont::GetMaxEffectOffset(unsigned int effectId) const
 {
-    Vec2 maxOffset(0.0f, 0.0f);
+    AZ::Vector2 maxOffset(0.0f, 0.0f);
 
     if (effectId < m_effects.size())
     {
@@ -1356,7 +1356,7 @@ Vec2 AZ::FFont::GetMaxEffectOffset(unsigned int effectId) const
             const FontRenderingPass* pass = &fx.m_passes[numPasses - i - 1];
 
             // gather pass data
-            Vec2 offset = pass->m_posOffset;
+            AZ::Vector2 offset = pass->m_posOffset;
 
             if (maxOffset.x < offset.x)
             {
@@ -1397,12 +1397,12 @@ void AZ::FFont::AddCharsToFontTexture(const char* chars, int glyphSizeX, int gly
     Prepare(chars, false, glyphSize);
 }
 
-Vec2 AZ::FFont::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph, const TextDrawContext& ctx) const
+AZ::Vector2 AZ::FFont::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph, const TextDrawContext& ctx) const
 {
     return GetKerningInternal(GetDefaultWindowContext()->GetViewport(), leftGlyph, rightGlyph, ctx);
 }
 
-Vec2 AZ::FFont::GetKerningInternal(const RHI::Viewport& viewport, uint32_t leftGlyph, uint32_t rightGlyph, const TextDrawContext& ctx) const
+AZ::Vector2 AZ::FFont::GetKerningInternal(const RHI::Viewport& viewport, uint32_t leftGlyph, uint32_t rightGlyph, const TextDrawContext& ctx) const
 {
     const TextScaleInfoInternal scaleInfo(CalculateScaleInternal(viewport, ctx));
     return m_fontTexture->GetKerning(leftGlyph, rightGlyph) * scaleInfo.scale.x;
@@ -1528,13 +1528,13 @@ void AZ::FFont::Prepare(const char* str, bool updateTexture, const AtomFont::Gly
     }
 }
 
-Vec2 AZ::FFont::GetRestoredFontSize(const TextDrawContext& ctx) const
+AZ::Vector2 AZ::FFont::GetRestoredFontSize(const TextDrawContext& ctx) const
 {
     // Calculate the scale that we need to apply to the text size to ensure
     // it's on-screen size is the same regardless of the slot scaling needed
     // to fit the glyphs of the font within the font texture slots.
     float restoringScale = IFFontConstants::defaultSizeRatio / m_sizeRatio;
-    return Vec2(ctx.m_size.x * restoringScale, ctx.m_size.y * restoringScale);
+    return AZ::Vector2(ctx.m_size.x * restoringScale, ctx.m_size.y * restoringScale);
 }
 
 void AZ::FFont::ScaleCoord(const RHI::Viewport& viewport, float& x, float& y) const
@@ -1635,7 +1635,7 @@ AZ::FFont::DrawParameters AZ::FFont::ExtractDrawParameters(const AzFramework::Te
         // text to move when the font effect is changed
         unsigned int effectIndex = internalParams.m_ctx.m_fxIdx;
         internalParams.m_ctx.SetEffect(0);
-        Vec2 textSize = GetTextSizeUInternal(viewport, text.data(), params.m_multiline, internalParams.m_ctx);
+        AZ::Vector2 textSize = GetTextSizeUInternal(viewport, text.data(), params.m_multiline, internalParams.m_ctx);
         internalParams.m_ctx.SetEffect(effectIndex);
         
         // If we're using virtual 800x600 coordinates, convert the text size from

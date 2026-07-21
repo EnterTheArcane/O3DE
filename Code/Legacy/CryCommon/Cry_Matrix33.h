@@ -333,11 +333,11 @@ struct Matrix33_tpl
 
     /*!
     *  Create a rotation matrix around an arbitrary axis (Eulers Theorem).
-    *  The axis is specified as a normalized Vec3. The angle is assumed to be in radians.
+    *  The axis is specified as a normalized AZ::Vector3. The angle is assumed to be in radians.
     *
     *  Example:
     *       Matrix34 m34;
-    *       Vec3 axis=GetNormalized( Vec3(-1.0f,-0.3f,0.0f) );
+    *       AZ::Vector3 axis=GetNormalized( AZ::Vector3(-1.0f,-0.3f,0.0f) );
     *       m34.SetRotationAA( rad, axis );
     */
     ILINE void SetRotationAA(F angle, const Vec3_tpl<F> axis)
@@ -560,11 +560,11 @@ struct Matrix33_tpl
     * \param roll  radiant to rotate about Y-axis.
     *
     *  Given a view-direction and a radiant to rotate about Y-axis, this function builds a 3x3 look-at matrix
-    *  using only simple vector arithmetic. This function is always using the implicit up-vector Vec3(0,0,1).
+    *  using only simple vector arithmetic. This function is always using the implicit up-vector AZ::Vector3(0,0,1).
     *  The view-direction is always stored in column(1).
     *  IMPORTANT: The view-vector is assumed to be normalized, because all trig-values for the orientation are being
     *  extracted  directly out of the vector. This function must NOT be called with a view-direction
-    *  that is close to Vec3(0,0,1) or Vec3(0,0,-1). If one of these rules is broken, the function returns a matrix
+    *  that is close to AZ::Vector3(0,0,1) or AZ::Vector3(0,0,-1). If one of these rules is broken, the function returns a matrix
     *  with an undefined rotation about the Z-axis.
     *
     *  Rotation order for the look-at-matrix is Z-X-Y. (Zaxis=YAW / Xaxis=PITCH / Yaxis=ROLL)
@@ -581,7 +581,7 @@ struct Matrix33_tpl
     *    +--------------->   x-axis
     *
     *  Example:
-    *       Matrix33 orientation=Matrix33::CreateRotationVDir( Vec3(0,1,0), 0 );
+    *       Matrix33 orientation=Matrix33::CreateRotationVDir( AZ::Vector3(0,1,0), 0 );
     */
     ILINE void SetRotationVDir(const Vec3_tpl<F>& vdir)
     {
@@ -646,8 +646,8 @@ struct Matrix33_tpl
     ILINE static Matrix33_tpl<F> CreateOrientation(const Vec3_tpl<F>& dir, const Vec3_tpl<F>& up, float rollAngle)
     {
         // LookAt transform.
-        Vec3 xAxis, yAxis, zAxis;
-        Vec3 upVector = up;
+        AZ::Vector3 xAxis, yAxis, zAxis;
+        AZ::Vector3 upVector = up;
         if (dir.IsZeroFast())
         {
             Matrix33_tpl<F> tm;
@@ -784,9 +784,9 @@ struct Matrix33_tpl
     //! make a right-handed orthonormal matrix.
     ILINE void OrthonormalizeFast()
     {
-        Vec3 x = Vec3(m00, m10, m20).GetNormalized();
-        Vec3 y = (Vec3(m02, m12, m22) % x).GetNormalized();
-        Vec3 z = (x % y);
+        AZ::Vector3 x = AZ::Vector3(m00, m10, m20).GetNormalized();
+        AZ::Vector3 y = (AZ::Vector3(m02, m12, m22) % x).GetNormalized();
+        AZ::Vector3 z = (x % y);
         m00 = x.x;
         m01 = y.x;
         m02 = z.x;

@@ -77,10 +77,10 @@ namespace Maestro
         void SetRotate(float time, const AZ::Quaternion& quat) override;
         void SetScale(float time, const AZ::Vector3& scale) override;
 
-        Vec3 GetPos() override;
+        AZ::Vector3 GetPos() override;
         AZ::Quaternion GetRotate() override;
         AZ::Quaternion GetRotate(float time) override;
-        Vec3 GetScale() override;
+        AZ::Vector3 GetScale() override;
 
         void Activate(bool bActivate) override;
         //////////////////////////////////////////////////////////////////////////
@@ -139,9 +139,9 @@ namespace Maestro
         // methods to convert world transforms to local transforms to account for Transform Delegate bug working solely
         // in world space
         void GetParentWorldTransform(AZ::Transform& retTransform) const;
-        void ConvertBetweenWorldAndLocalPosition(Vec3& position, ETransformSpaceConversionDirection conversionDirection) const;
+        void ConvertBetweenWorldAndLocalPosition(AZ::Vector3& position, ETransformSpaceConversionDirection conversionDirection) const;
         void ConvertBetweenWorldAndLocalRotation(AZ::Quaternion& rotation, ETransformSpaceConversionDirection conversionDirection) const;
-        void ConvertBetweenWorldAndLocalScale(Vec3& scale, ETransformSpaceConversionDirection conversionDirection) const;
+        void ConvertBetweenWorldAndLocalScale(AZ::Vector3& scale, ETransformSpaceConversionDirection conversionDirection) const;
 
         AZ::Vector3 TransformFromWorldToLocalPosition(const AZ::Vector3& position) const;
         AZ::Quaternion TransformFromWorldToLocalRotation(const AZ::Quaternion& rotation) const;

@@ -2025,7 +2025,7 @@ bool CTrackViewDopeSheetBase::CreateColorKey(CTrackViewTrack* pTrack, float keyT
 
                     I2DBezierKey bezierKey;
                     newKey.GetKey(&bezierKey);
-                    bezierKey.value = Vec2(keyTime, col.GetElement(i));
+                    bezierKey.value = AZ::Vector2(keyTime, col.GetElement(i));
                     newKey.SetKey(&bezierKey);
 
                     keyCreated = true;

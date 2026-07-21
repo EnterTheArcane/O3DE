@@ -523,7 +523,7 @@ bool CUiAnimNode::SetParamValue(float time, CUiAnimParamType param, float value)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CUiAnimNode::SetParamValue(float time, CUiAnimParamType param, const Vec3& value)
+bool CUiAnimNode::SetParamValue(float time, CUiAnimParamType param, const AZ::Vector3& value)
 {
     if (m_bIgnoreSetParam)
     {
@@ -533,7 +533,7 @@ bool CUiAnimNode::SetParamValue(float time, CUiAnimParamType param, const Vec3& 
     UiCompoundSplineTrack* track = static_cast<UiCompoundSplineTrack*>(GetTrackForParameter(param));
     if (track && track->GetValueType() == eUiAnimValue_Vector)
     {
-        // Vec3 track.
+        // AZ::Vector3 track.
         bool bDefault = !(GetUiAnimationSystem()->IsRecording() && (m_flags & eUiAnimNodeFlags_EntitySelected)); // Only selected nodes can be recorded
         track->SetValue(time, value, bDefault);
         return true;
@@ -542,7 +542,7 @@ bool CUiAnimNode::SetParamValue(float time, CUiAnimParamType param, const Vec3& 
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CUiAnimNode::SetParamValue(float time, CUiAnimParamType param, const Vec4& value)
+bool CUiAnimNode::SetParamValue(float time, CUiAnimParamType param, const AZ::Vector4& value)
 {
     if (m_bIgnoreSetParam)
     {
@@ -552,7 +552,7 @@ bool CUiAnimNode::SetParamValue(float time, CUiAnimParamType param, const Vec4& 
     UiCompoundSplineTrack* track = static_cast<UiCompoundSplineTrack*>(GetTrackForParameter(param));
     if (track && track->GetValueType() == eUiAnimValue_Vector4)
     {
-        // Vec4 track.
+        // AZ::Vector4 track.
         bool bDefault = !(GetUiAnimationSystem()->IsRecording() && (m_flags & eUiAnimNodeFlags_EntitySelected)); // Only selected nodes can be recorded
         track->SetValue(time, value, bDefault);
         return true;
@@ -574,12 +574,12 @@ bool CUiAnimNode::GetParamValue(float time, CUiAnimParamType param, float& value
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CUiAnimNode::GetParamValue(float time, CUiAnimParamType param, Vec3& value)
+bool CUiAnimNode::GetParamValue(float time, CUiAnimParamType param, AZ::Vector3& value)
 {
     UiCompoundSplineTrack* track = static_cast<UiCompoundSplineTrack*>(GetTrackForParameter(param));
     if (track && track->GetValueType() == eUiAnimValue_Vector && track->GetNumKeys() > 0)
     {
-        // Vec3 track.
+        // AZ::Vector3 track.
         track->GetValue(time, value);
         return true;
     }
@@ -587,12 +587,12 @@ bool CUiAnimNode::GetParamValue(float time, CUiAnimParamType param, Vec3& value)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CUiAnimNode::GetParamValue(float time, CUiAnimParamType param, Vec4& value)
+bool CUiAnimNode::GetParamValue(float time, CUiAnimParamType param, AZ::Vector4& value)
 {
     UiCompoundSplineTrack* track = static_cast<UiCompoundSplineTrack*>(GetTrackForParameter(param));
     if (track && track->GetValueType() == eUiAnimValue_Vector4 && track->GetNumKeys() > 0)
     {
-        // Vec4 track.
+        // AZ::Vector4 track.
         track->GetValue(time, value);
         return true;
     }

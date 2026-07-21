@@ -322,21 +322,21 @@ AbstractSplineWidget::~AbstractSplineWidget()
 
 
 //////////////////////////////////////////////////////////////////////////
-Vec2 AbstractSplineWidget::GetZoom()
+AZ::Vector2 AbstractSplineWidget::GetZoom()
 {
-    return Vec2(m_grid.zoom.GetX(), m_grid.zoom.GetY());
+    return AZ::Vector2(m_grid.zoom.GetX(), m_grid.zoom.GetY());
 }
 
-Vec2 AbstractSplineWidget::GetScrollOffset()
+AZ::Vector2 AbstractSplineWidget::GetScrollOffset()
 {
-    return Vec2(m_grid.origin.GetX(), m_grid.origin.GetY());
+    return AZ::Vector2(m_grid.origin.GetX(), m_grid.origin.GetY());
 }
 
 //////////////////////////////////////////////////////////////////////////
-void AbstractSplineWidget::SetZoom(Vec2 zoom, const QPoint& center)
+void AbstractSplineWidget::SetZoom(AZ::Vector2 zoom, const QPoint& center)
 {
     m_grid.SetZoom(zoom, QPoint(center.x(), m_rcSpline.bottom() + 1 - center.y()));
-    SetScrollOffset(Vec2(m_grid.origin.GetX(), m_grid.origin.GetY()));
+    SetScrollOffset(AZ::Vector2(m_grid.origin.GetX(), m_grid.origin.GetY()));
     if (m_pTimelineCtrl)
     {
         m_pTimelineCtrl->setZoom(zoom.x, m_grid.origin.GetX());
@@ -345,10 +345,10 @@ void AbstractSplineWidget::SetZoom(Vec2 zoom, const QPoint& center)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void AbstractSplineWidget::SetZoom(Vec2 zoom)
+void AbstractSplineWidget::SetZoom(AZ::Vector2 zoom)
 {
     m_grid.zoom = AZ::Vector2(zoom.x,zoom.y);
-    SetScrollOffset(Vec2(m_grid.origin.GetX(), m_grid.origin.GetY()));
+    SetScrollOffset(AZ::Vector2(m_grid.origin.GetX(), m_grid.origin.GetY()));
     if (m_pTimelineCtrl)
     {
         m_pTimelineCtrl->setZoom(zoom.x, m_grid.origin.GetX());
@@ -358,7 +358,7 @@ void AbstractSplineWidget::SetZoom(Vec2 zoom)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void AbstractSplineWidget::SetScrollOffset(Vec2 ofs)
+void AbstractSplineWidget::SetScrollOffset(AZ::Vector2 ofs)
 {
     m_grid.origin = AZ::Vector2(ofs.x, ofs.y);
     if (m_pTimelineCtrl)
@@ -618,7 +618,7 @@ void SplineWidget::resizeEvent(QResizeEvent* event)
 
     if (width() > 1 && height() > 1 && oldW > 1 && oldH > 1 && m_rcSpline.width() > 0 && m_rcSpline.height())
     {
-        SetZoom(Vec2(float(m_rcSpline.width()) / oldW * GetZoom().x, float(m_rcSpline.height()) / oldH * GetZoom().y));
+        SetZoom(AZ::Vector2(float(m_rcSpline.width()) / oldW * GetZoom().x, float(m_rcSpline.height()) / oldH * GetZoom().y));
     }
 }
 
@@ -631,20 +631,20 @@ QPoint AbstractSplineWidget::TimeToPoint(float time, ISplineInterpolator* pSplin
         pSpline->InterpolateFloat(time, val);
     }
 
-    return WorldToClient(Vec2(time, val));
+    return WorldToClient(AZ::Vector2(time, val));
     ;
 }
 
 //////////////////////////////////////////////////////////////////////////
 float AbstractSplineWidget::TimeToXOfs(float x)
 {
-    return static_cast<float>(WorldToClient(Vec2(float(x), 0.0f)).x());
+    return static_cast<float>(WorldToClient(AZ::Vector2(float(x), 0.0f)).x());
 }
 
 //////////////////////////////////////////////////////////////////////////
 void AbstractSplineWidget::PointToTimeValue(QPoint point, float& time, float& value)
 {
-    Vec2 v = ClientToWorld(point);
+    AZ::Vector2 v = ClientToWorld(point);
     value = v.y;
     time = XOfsToTime(point.x());
 }
@@ -652,7 +652,7 @@ void AbstractSplineWidget::PointToTimeValue(QPoint point, float& time, float& va
 //////////////////////////////////////////////////////////////////////////
 float AbstractSplineWidget::XOfsToTime(int x)
 {
-    Vec2 v = ClientToWorld(QPoint(x, 0));
+    AZ::Vector2 v = ClientToWorld(QPoint(x, 0));
     float time = v.x;
     return time;
 }
@@ -664,7 +664,7 @@ QPoint AbstractSplineWidget::XOfsToPoint(int x, ISplineInterpolator* pSpline)
 }
 
 //////////////////////////////////////////////////////////////////////////
-QPoint AbstractSplineWidget::WorldToClient(Vec2 v)
+QPoint AbstractSplineWidget::WorldToClient(AZ::Vector2 v)
 {
     QPoint p = m_grid.WorldToClient(v);
     p.setY(m_rcSpline.bottom() - p.y());
@@ -672,9 +672,9 @@ QPoint AbstractSplineWidget::WorldToClient(Vec2 v)
 }
 
 //////////////////////////////////////////////////////////////////////////
-Vec2 AbstractSplineWidget::ClientToWorld(const QPoint& point)
+AZ::Vector2 AbstractSplineWidget::ClientToWorld(const QPoint& point)
 {
-    Vec2 v = m_grid.ClientToWorld(QPoint(point.x(), m_rcSpline.bottom() + 1 - point.y()));
+    AZ::Vector2 v = m_grid.ClientToWorld(QPoint(point.x(), m_rcSpline.bottom() + 1 - point.y()));
     return v;
 }
 
@@ -734,10 +734,10 @@ public:
 
 void SplineWidget::DrawGrid(QPainter* painter)
 {
-    QPoint ptTop = WorldToClient(Vec2(0.0f, m_valueRange.end));
-    QPoint ptBottom = WorldToClient(Vec2(0.0f, m_valueRange.start));
-    QPoint pt0 = WorldToClient(Vec2(m_timeRange.start, 0));
-    QPoint pt1 = WorldToClient(Vec2(m_timeRange.end, 0));
+    QPoint ptTop = WorldToClient(AZ::Vector2(0.0f, m_valueRange.end));
+    QPoint ptBottom = WorldToClient(AZ::Vector2(0.0f, m_valueRange.start));
+    QPoint pt0 = WorldToClient(AZ::Vector2(m_timeRange.start, 0));
+    QPoint pt1 = WorldToClient(AZ::Vector2(m_timeRange.end, 0));
     QRect timeRc = QRect(QPoint(pt0.x() - 2, ptTop.y()), QPoint(pt1.x() + 2, ptBottom.y()) - QPoint(1, 1));
     timeRc = timeRc.intersected(m_rcSpline);
     painter->fillRect(timeRc, ACTIVE_BKG_COLOR);
@@ -793,7 +793,7 @@ void SplineWidget::DrawGrid(QPainter* painter)
     //////////////////////////////////////////////////////////////////////////
     {
         const QPen pen0(QColor(110, 100, 100), 2);
-        const QPoint p = WorldToClient(Vec2(0, 0));
+        const QPoint p = WorldToClient(AZ::Vector2(0, 0));
 
         painter->setPen(pen0);
 
@@ -886,7 +886,7 @@ void SplineWidget::DrawSpline(QPainter* painter, SSplineInfo& splineInfo, float 
             }
 
 
-            QPoint pt = WorldToClient(Vec2(time, value[nCurrentDimension]));
+            QPoint pt = WorldToClient(AZ::Vector2(time, value[nCurrentDimension]));
 
             if ((x == right && pointsInLine >= 0) || (pointsInLine > 0 && fabs(lineStart.y() + gradient * (pt.x() - lineStart.x()) - pt.y()) > 1.0f))
             {
@@ -978,7 +978,7 @@ void SplineWidget::DrawKeys(QPainter* painter, int splineIndex, [[maybe_unused]]
 
                 value[nCurrentDimension] = value[nCurrentDimension] + value2[nCurrentDimension];
             }
-            QPoint pt = WorldToClient(Vec2(time, value[nCurrentDimension]));
+            QPoint pt = WorldToClient(AZ::Vector2(time, value[nCurrentDimension]));
             ;
 
             if (pt.x() < m_rcSpline.left())
@@ -1368,8 +1368,8 @@ void SplineWidget::mouseMoveEvent(QMouseEvent* event)
 
             bool bAltClick = event->modifiers() & Qt::AltModifier;
 
-            Vec2 v0 = ClientToWorld(m_cMouseDownPos);
-            Vec2 v1 = ClientToWorld(event->pos());
+            AZ::Vector2 v0 = ClientToWorld(m_cMouseDownPos);
+            AZ::Vector2 v1 = ClientToWorld(event->pos());
             if (bAltClick)
             {
                 TimeScaleKeys(m_fTimeMarker, v0.x, v1.x);
@@ -1392,7 +1392,7 @@ void SplineWidget::mouseMoveEvent(QMouseEvent* event)
         // Set the new scrolled coordinates
         float ofsx = m_grid.origin.GetX() - (event->position().x() - m_cMouseDownPos.x()) / m_grid.zoom.GetX();
         float ofsy = m_grid.origin.GetY() + (event->position().y() - m_cMouseDownPos.y()) / m_grid.zoom.GetY();
-        SetScrollOffset(Vec2(ofsx, ofsy));
+        SetScrollOffset(AZ::Vector2(ofsx, ofsy));
         m_cMouseDownPos = event->pos();
     }
     break;
@@ -1411,7 +1411,7 @@ void SplineWidget::mouseMoveEvent(QMouseEvent* event)
         {
             z.SetY(max(z.GetY() * (1.0f + ofsy), 0.001f));
         }
-        SetZoom(Vec2(z.GetX(), z.GetY()), m_cMouseDownPos);
+        SetZoom(AZ::Vector2(z.GetX(), z.GetY()), m_cMouseDownPos);
         m_cMouseDownPos = event->pos();
     }
     break;
@@ -1616,7 +1616,7 @@ void SplineWidget::wheelEvent(QWheelEvent* event)
     {
         z /= scale;
     }
-    SetZoom(Vec2(z.GetX(), z.GetY()), m_cMousePos);
+    SetZoom(AZ::Vector2(z.GetX(), z.GetY()), m_cMousePos);
 
     event->accept();
 }
@@ -1874,7 +1874,7 @@ AbstractSplineWidget::EHitCode AbstractSplineWidget::HitTest(const QPoint& point
                 }
             }
 
-            QPoint splinePt = WorldToClient(Vec2(time, stSplineValue[nCurrentDimension]));
+            QPoint splinePt = WorldToClient(AZ::Vector2(time, stSplineValue[nCurrentDimension]));
             bool bSplineHit = abs(splinePt.x() - point.x()) < 4 && abs(splinePt.y() - point.y()) < 4;
 
             if (bSplineHit)
@@ -2200,7 +2200,7 @@ void AbstractSplineWidget::ValueScaleKeys(float startValue, float endValue)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void AbstractSplineWidget::MoveSelectedKeys(Vec2 offset, bool copyKeys)
+void AbstractSplineWidget::MoveSelectedKeys(AZ::Vector2 offset, bool copyKeys)
 {
     m_pHitSpline = nullptr;
     m_pHitDetailSpline = nullptr;
@@ -2791,8 +2791,8 @@ void AbstractSplineWidget::SelectRectangle(const QRect& rc, bool bSelect)
 
     ClearSelectedKeys();
 
-    Vec2 vec0 = ClientToWorld(rc.topLeft());
-    Vec2 vec1 = ClientToWorld(rc.bottomRight());
+    AZ::Vector2 vec0 = ClientToWorld(rc.topLeft());
+    AZ::Vector2 vec1 = ClientToWorld(rc.bottomRight());
     float t0 = vec0.x;
     float t1 = vec1.x;
     float v0 = vec0.y;
@@ -3083,8 +3083,8 @@ void AbstractSplineWidget::FitSplineToViewWidth()
     }
 
     float zoom = abs(m_rcSpline.width() - 20) / max(1.0f, fabs(t1 - t0));
-    SetZoom(Vec2(zoom, m_grid.zoom.GetY()));
-    SetScrollOffset(Vec2(t0, m_grid.origin.GetY()));
+    SetZoom(AZ::Vector2(zoom, m_grid.zoom.GetY()));
+    SetScrollOffset(AZ::Vector2(t0, m_grid.origin.GetY()));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3098,12 +3098,12 @@ void AbstractSplineWidget::FitSplineToViewHeight()
     }
 
     float zoom = abs(m_rcSpline.height() - 40) / max(minViewRange, splineRange.Length());
-    SetZoom(Vec2(m_grid.zoom.GetX(), zoom));
+    SetZoom(AZ::Vector2(m_grid.zoom.GetX(), zoom));
 
     // Center the range if it's less than the minRange by adjusting it's offset.
     float scrollOffset = max(0.0f, minViewRange - splineRange.Length()) / 2.0f;
 
-    SetScrollOffset(Vec2(m_grid.origin.GetX(), splineRange.start - scrollOffset));
+    SetScrollOffset(AZ::Vector2(m_grid.origin.GetX(), splineRange.start - scrollOffset));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3114,8 +3114,8 @@ void AbstractSplineWidget::FitSplineHeightToValueRange()
     splineRange.end = max(splineRange.end, m_valueRange.end);
 
     float zoom = abs(m_rcSpline.height() - 40) / max(minViewRange, splineRange.Length());
-    SetZoom(Vec2(m_grid.zoom.GetX(), zoom));
-    SetScrollOffset(Vec2(m_grid.origin.GetX(), splineRange.start));
+    SetZoom(AZ::Vector2(m_grid.zoom.GetX(), zoom));
+    SetScrollOffset(AZ::Vector2(m_grid.origin.GetX(), splineRange.start));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3206,7 +3206,7 @@ void AbstractSplineWidget::GotoNextKey(bool previousKey)
                             float ofsx = keyTime - ((m_grid.rect.right() + 1) / 2) / m_grid.zoom.GetX();
                             float ofsy = afValue[nCurrentDimension] - ((m_grid.rect.bottom() + 1) / 2) / m_grid.zoom.GetY();
 
-                            SetScrollOffset(Vec2(ofsx, ofsy));
+                            SetScrollOffset(AZ::Vector2(ofsx, ofsy));
                         }
                         break;
                     }
@@ -3259,7 +3259,7 @@ void AbstractSplineWidget::GotoNextKey(bool previousKey)
                 const float ofsx = fClosestKeyTime - ((m_grid.rect.right() + 1) / 2) / m_grid.zoom.GetX();
                 const float ofsy = averageValue / dimensions - ((m_grid.rect.bottom() + 1) / 2) / m_grid.zoom.GetY();
 
-                SetScrollOffset(Vec2(ofsx, ofsy));
+                SetScrollOffset(AZ::Vector2(ofsx, ofsy));
             }
         }
     }

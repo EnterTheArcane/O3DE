@@ -164,18 +164,18 @@ private:
     AzToolsFramework::ViewportInteraction::MouseInteraction BuildMouseInteraction(
         Qt::MouseButtons buttons, Qt::KeyboardModifiers modifiers, const QPoint& point) override;
     void SetViewportId(int id) override;
-    QPoint WorldToView(const Vec3& wp) const override;
-    Vec3 WorldToView3D(const Vec3& wp, int nFlags = 0) const override;
-    Vec3 ViewToWorld(
+    QPoint WorldToView(const AZ::Vector3& wp) const override;
+    AZ::Vector3 WorldToView3D(const AZ::Vector3& wp, int nFlags = 0) const override;
+    AZ::Vector3 ViewToWorld(
         const QPoint& vp,
         bool* collideWithTerrain = nullptr,
         bool onlyTerrain = false,
         bool bSkipVegetation = false,
         bool bTestRenderMesh = false,
         bool* collideWithObject = nullptr) const override;
-    void ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir) const override;
-    Vec3 ViewToWorldNormal(const QPoint& vp, bool onlyTerrain, bool bTestRenderMesh = false) override;
-    float GetScreenScaleFactor(const Vec3& worldPoint) const override;
+    void ViewToWorldRay(const QPoint& vp, AZ::Vector3& raySrc, AZ::Vector3& rayDir) const override;
+    AZ::Vector3 ViewToWorldNormal(const QPoint& vp, bool onlyTerrain, bool bTestRenderMesh = false) override;
+    float GetScreenScaleFactor(const AZ::Vector3& worldPoint) const override;
     float GetAspectRatio() const override;
     bool HitTest(const QPoint& point, HitContext& hitInfo) override;
     bool IsBoundsVisible(const AZ::Aabb& box) const override;
@@ -234,7 +234,7 @@ private:
     void SetDefaultCameraNearFar();
     void RenderAll();
 
-    bool RayRenderMeshIntersection(IRenderMesh* pRenderMesh, const Vec3& vInPos, const Vec3& vInDir, Vec3& vOutPos, Vec3& vOutNormal) const;
+    bool RayRenderMeshIntersection(IRenderMesh* pRenderMesh, const AZ::Vector3& vInPos, const AZ::Vector3& vInDir, AZ::Vector3& vOutPos, AZ::Vector3& vOutNormal) const;
 
     bool AddCameraMenuItems(QMenu* menu);
     void ResizeView(int width, int height);

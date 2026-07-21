@@ -53,7 +53,7 @@ struct UiTextComponentOffsetsSelector
                                                                     //!< line (top), the last line (bottom), and a multi-line middle section
                                                                     //!< that is basically a rect.
                                                                     //!<
-                                                                    //!< Each LineOffset contains a Vec2 for left and right offsets. The left
+                                                                    //!< Each LineOffset contains a AZ::Vector2 for left and right offsets. The left
                                                                     //!< offset is "absolute" for the element rect whereas the right offset is
                                                                     //!< relative to the left offset.
     const UiTextComponent::DrawBatchLines& m_drawBatchLines;

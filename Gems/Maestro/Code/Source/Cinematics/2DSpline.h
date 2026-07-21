@@ -54,7 +54,7 @@ namespace spline
         static void Reflect(AZ::ReflectContext*) {}
     };
 
-    inline void ComputeUnifiedTangent(Vec2& destTan, float angle, float length)
+    inline void ComputeUnifiedTangent(AZ::Vector2& destTan, float angle, float length)
     {
         // "Unifying" tangents really means we try to maintain the angle between them
 
@@ -81,7 +81,7 @@ namespace spline
     }
 
     template <>
-    inline void SplineKeyEx<Vec2>::ComputeThetaAndScale()
+    inline void SplineKeyEx<AZ::Vector2>::ComputeThetaAndScale()
     {
         scale_from_dd_to_ds = (ds.GetLength() + 1.0f) / (dd.GetLength() + 1.0f);
         float out = fabs(dd.x) > g_tanEpsilon ? atan_tpl(dd.y / dd.x) : (dd.y >= .0f ? gf_halfPI : -gf_halfPI);
@@ -90,7 +90,7 @@ namespace spline
     }
 
     template<>
-    inline void SplineKeyEx<Vec2>::SetOutTangentFromIn()
+    inline void SplineKeyEx<AZ::Vector2>::SetOutTangentFromIn()
     {
         // "Unifying" tangents really means we try to maintain the angle between them
         AZ_Assert((flags & SPLINE_KEY_TANGENT_ALL_MASK) == SPLINE_KEY_TANGENT_UNIFIED, "Invalid spline key flag");
@@ -102,7 +102,7 @@ namespace spline
     }
 
     template<>
-    inline void SplineKeyEx<Vec2>::SetInTangentFromOut()
+    inline void SplineKeyEx<AZ::Vector2>::SetInTangentFromOut()
     {
         // "Unifying" tangents really means we try to maintain the angle between them
         AZ_Assert((flags & SPLINE_KEY_TANGENT_ALL_MASK) == SPLINE_KEY_TANGENT_UNIFIED, "Invalid spline key flag");
@@ -114,17 +114,17 @@ namespace spline
     }
 
     template<>
-    void SplineKeyEx<Vec2>::Reflect(AZ::ReflectContext* context);
+    void SplineKeyEx<AZ::Vector2>::Reflect(AZ::ReflectContext* context);
 
     template <class T>
     class TrackSplineInterpolator;
 
     template <>
-    class TrackSplineInterpolator<Vec2>
-        : public spline::CBaseSplineInterpolator<Vec2, spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2>>>
+    class TrackSplineInterpolator<AZ::Vector2>
+        : public spline::CBaseSplineInterpolator<AZ::Vector2, spline::BezierSpline<AZ::Vector2, spline::SplineKeyEx<AZ::Vector2>>>
     {
     public:
-        AZ_CLASS_ALLOCATOR(TrackSplineInterpolator<Vec2>, AZ::SystemAllocator);
+        AZ_CLASS_ALLOCATOR(TrackSplineInterpolator<AZ::Vector2>, AZ::SystemAllocator);
 
         int GetNumDimensions() override
         {
@@ -246,12 +246,12 @@ namespace spline
             // In case of stepping tangents, we don't need this special processing.
             if (GetOutTangentType(curr) == SPLINE_KEY_TANGENT_STEP || GetInTangentType(next) == SPLINE_KEY_TANGENT_STEP)
             {
-                spline::CBaseSplineInterpolator<Vec2, spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2> > >::Interpolate(time_to_check, value);
+                spline::CBaseSplineInterpolator<AZ::Vector2, spline::BezierSpline<AZ::Vector2, spline::SplineKeyEx<AZ::Vector2> > >::Interpolate(time_to_check, value);
                 return (time_to_check - this->time(curr)) / timeDelta;
             }
             do
             {
-                spline::CBaseSplineInterpolator<Vec2, spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2> > >::Interpolate(time_to_check, value);
+                spline::CBaseSplineInterpolator<AZ::Vector2, spline::BezierSpline<AZ::Vector2, spline::SplineKeyEx<AZ::Vector2> > >::Interpolate(time_to_check, value);
 
                 u = (time_to_check - this->time(curr)) / timeDelta;
 
@@ -283,9 +283,9 @@ namespace spline
             return u;
         }
 
-        Vec2 interpolate_tangent(float time, float& u)
+        AZ::Vector2 interpolate_tangent(float time, float& u)
         {
-            Vec2 tangent;
+            AZ::Vector2 tangent;
             int curr = seek_key(time);
 
             // special case for time == last key.
@@ -312,10 +312,10 @@ namespace spline
         {
             ISplineInterpolator::ValueType value;
             ISplineInterpolator::ZeroValue(value);
-            spline::CBaseSplineInterpolator<Vec2, spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2> > >::GetKeyValue(key, value);
+            spline::CBaseSplineInterpolator<AZ::Vector2, spline::BezierSpline<AZ::Vector2, spline::SplineKeyEx<AZ::Vector2> > >::GetKeyValue(key, value);
             value[0] = time;
-            spline::CBaseSplineInterpolator<Vec2, spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2> > >::SetKeyValue(key, value);
-            spline::CBaseSplineInterpolator<Vec2, spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2> > >::SetKeyTime(key, time);
+            spline::CBaseSplineInterpolator<AZ::Vector2, spline::BezierSpline<AZ::Vector2, spline::SplineKeyEx<AZ::Vector2> > >::SetKeyValue(key, value);
+            spline::CBaseSplineInterpolator<AZ::Vector2, spline::BezierSpline<AZ::Vector2, spline::SplineKeyEx<AZ::Vector2> > >::SetKeyTime(key, time);
         }
 
         void SetKeyValue(int key, ISplineInterpolator::ValueType value) override
@@ -324,12 +324,12 @@ namespace spline
             ISplineInterpolator::ZeroValue(value0);
             value0[0] = GetKeyTime(key);
             value0[1] = value[0];
-            spline::CBaseSplineInterpolator<Vec2, spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2> > >::SetKeyValue(key, value0);
+            spline::CBaseSplineInterpolator<AZ::Vector2, spline::BezierSpline<AZ::Vector2, spline::SplineKeyEx<AZ::Vector2> > >::SetKeyValue(key, value0);
         }
 
         bool GetKeyValue(int key, ISplineInterpolator::ValueType& value) override
         {
-            if (spline::CBaseSplineInterpolator<Vec2, spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2> > >::GetKeyValue(key, value))
+            if (spline::CBaseSplineInterpolator<AZ::Vector2, spline::BezierSpline<AZ::Vector2, spline::SplineKeyEx<AZ::Vector2> > >::GetKeyValue(key, value))
             {
                 value[0] = value[1];
                 value[1] = 0;
@@ -392,7 +392,7 @@ namespace spline
                     this->key(k).ComputeThetaAndScale();
                 }
             }
-            spline::CBaseSplineInterpolator<Vec2, spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2> > >::SetKeyFlags(k, flags);
+            spline::CBaseSplineInterpolator<AZ::Vector2, spline::BezierSpline<AZ::Vector2, spline::SplineKeyEx<AZ::Vector2> > >::SetKeyFlags(k, flags);
         }
 
         void SetKeyInTangent(int k, ISplineInterpolator::ValueType tin) override
@@ -445,7 +445,7 @@ namespace spline
 
         void comp_deriv() override
         {
-            spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2> >::comp_deriv();
+            spline::BezierSpline<AZ::Vector2, spline::SplineKeyEx<AZ::Vector2> >::comp_deriv();
 
             // To process the 'zero tangent' case more properly,
             // here we override the tangent behavior for the case of SPLINE_KEY_TANGENT_ZERO.
@@ -528,7 +528,7 @@ namespace spline
 
         int InsertKey(float t, ISplineInterpolator::ValueType val) override
         {
-            Vec2 tangent;
+            AZ::Vector2 tangent;
             float u = 0;
             bool inRange = false;
             if (num_keys() > 1 && this->time(0) <= t && t <= this->time(num_keys() - 1))
@@ -539,7 +539,7 @@ namespace spline
 
             val[1] = val[0];
             val[0] = t;
-            int keyIndex = spline::CBaseSplineInterpolator<Vec2, spline::BezierSpline<Vec2, spline::SplineKeyEx<Vec2> > >::InsertKey(t, val);
+            int keyIndex = spline::CBaseSplineInterpolator<AZ::Vector2, spline::BezierSpline<AZ::Vector2, spline::SplineKeyEx<AZ::Vector2> > >::InsertKey(t, val);
             // Sets the default tangents properly.
             if (inRange)
             {

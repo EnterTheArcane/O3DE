@@ -775,7 +775,7 @@ namespace Maestro
         CCompoundSplineTrack* pTrack = static_cast<CCompoundSplineTrack*>(GetTrackForParameter(param));
         if (pTrack && pTrack->GetValueType() == AnimValueType::Vector)
         {
-            // Vec3 track.
+            // AZ::Vector3 track.
             bool bDefault = !(m_movieSystem->IsRecording() && (m_flags & eAnimNodeFlags_EntitySelected)); // Only selected nodes can be recorded
             pTrack->SetValue(time, value, bDefault);
             return true;
@@ -793,7 +793,7 @@ namespace Maestro
         CCompoundSplineTrack* pTrack = static_cast<CCompoundSplineTrack*>(GetTrackForParameter(param));
         if (pTrack && pTrack->GetValueType() == AnimValueType::Vector4)
         {
-            // Vec4 track.
+            // AZ::Vector4 track.
             bool bDefault = !(m_movieSystem->IsRecording() && (m_flags & eAnimNodeFlags_EntitySelected)); // Only selected nodes can be recorded
             pTrack->SetValue(time, value, bDefault);
             return true;
@@ -818,7 +818,7 @@ namespace Maestro
         CCompoundSplineTrack* pTrack = static_cast<CCompoundSplineTrack*>(GetTrackForParameter(param));
         if (pTrack && pTrack->GetValueType() == AnimValueType::Vector && pTrack->GetNumKeys() > 0)
         {
-            // Vec3 track.
+            // AZ::Vector3 track.
             pTrack->GetValue(time, value);
             return true;
         }
@@ -830,7 +830,7 @@ namespace Maestro
         CCompoundSplineTrack* pTrack = static_cast<CCompoundSplineTrack*>(GetTrackForParameter(param));
         if (pTrack && pTrack->GetValueType() == AnimValueType::Vector4 && pTrack->GetNumKeys() > 0)
         {
-            // Vec4 track.
+            // AZ::Vector4 track.
             pTrack->GetValue(time, value);
             return true;
         }

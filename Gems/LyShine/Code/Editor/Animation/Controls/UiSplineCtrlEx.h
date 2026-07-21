@@ -136,13 +136,13 @@ public:
     //////////////////////////////////////////////////////////////////////////
     // Scrolling/Zooming.
     //////////////////////////////////////////////////////////////////////////
-    Vec2   ClientToWorld(const QPoint& point);
-    QPoint WorldToClient(Vec2 v);
-    Vec2 GetZoom();
-    void SetZoom(Vec2 zoom, const QPoint& center);
-    void SetZoom(Vec2 zoom);
-    void SetScrollOffset(Vec2 ofs);
-    Vec2 GetScrollOffset();
+    AZ::Vector2   ClientToWorld(const QPoint& point);
+    QPoint WorldToClient(AZ::Vector2 v);
+    AZ::Vector2 GetZoom();
+    void SetZoom(AZ::Vector2 zoom, const QPoint& center);
+    void SetZoom(AZ::Vector2 zoom);
+    void SetScrollOffset(AZ::Vector2 ofs);
+    AZ::Vector2 GetScrollOffset();
     float SnapTime(float time);
     float SnapValue(float val);
     //////////////////////////////////////////////////////////////////////////
@@ -198,7 +198,7 @@ protected:
     void RemoveKey(ISplineInterpolator* pSpline, int nKey);
     void RemoveSelectedKeys();
     void RemoveSelectedKeyTimesImpl();
-    void MoveSelectedKeys(Vec2 offset, bool copyKeys);
+    void MoveSelectedKeys(AZ::Vector2 offset, bool copyKeys);
     void ScaleAmplitudeKeys(float time, float startValue, float offset);
     void TimeScaleKeys(float time, float startTime, float endTime);
     void ValueScaleKeys(float startValue, float endValue);

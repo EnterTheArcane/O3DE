@@ -2666,7 +2666,7 @@ bool UiScrollBoxComponent::VersionConverter(AZ::SerializeContext& context,
     }
 
     // Conversion from version 3 to 4:
-    // - Need to convert Vec2 to AZ::Vector2
+    // - Need to convert AZ::Vector2 to AZ::Vector2
     if (classElement.GetVersion() < 4)
     {
         if (!LyShine::ConvertSubElementFromVec2ToVector2(context, classElement, "ScrollOffset"))

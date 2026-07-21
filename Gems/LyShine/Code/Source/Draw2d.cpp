@@ -36,9 +36,9 @@ namespace
     // Vertex format for Dynamic Draw Context
     struct Draw2dVertex
     {
-        Vec3 xyz;
+        AZ::Vector3 xyz;
         LyShine::UCol color;
-        Vec2 st;
+        AZ::Vector2 st;
     };
 }
 
@@ -746,9 +746,9 @@ void CDraw2d::DeferredQuad::Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynam
     for (int i = 0; i < NUM_VERTS; ++i)
     {
         int j = vertIndex[i];
-        vertices[i].xyz = Vec3(m_points[j].GetX(), m_points[j].GetY(), z);
+        vertices[i].xyz = AZ::Vector3(m_points[j].GetX(), m_points[j].GetY(), z);
         vertices[i].color.dcolor = m_packedColors[j];
-        vertices[i].st = Vec2(m_texCoords[j].GetX(), m_texCoords[j].GetY());
+        vertices[i].st = AZ::Vector2(m_texCoords[j].GetX(), m_texCoords[j].GetY());
     }
 
     dynamicDraw->SetShaderVariant(m_clamp ? shaderData.m_shaderOptionsClamp : shaderData.m_shaderOptionsWrap);
@@ -809,9 +809,9 @@ void CDraw2d::DeferredLine::Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynam
 
     for (int i = 0; i < NUM_VERTS; ++i)
     {
-        vertices[i].xyz = Vec3(m_points[i].GetX(), m_points[i].GetY(), z);
+        vertices[i].xyz = AZ::Vector3(m_points[i].GetX(), m_points[i].GetY(), z);
         vertices[i].color.dcolor = m_packedColors[i];
-        vertices[i].st = Vec2(m_texCoords[i].GetX(), m_texCoords[i].GetY());
+        vertices[i].st = AZ::Vector2(m_texCoords[i].GetX(), m_texCoords[i].GetY());
     }
 
     // Set up per draw SRG
@@ -863,9 +863,9 @@ void CDraw2d::DeferredRectOutline::Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext
     uint32 packedColor = PackARGB8888(m_color);
     for (int i = 0; i < NUM_VERTS; ++i)
     {
-        vertices[i].xyz = Vec3(m_verts2d[i].GetX(), m_verts2d[i].GetY(), z);
+        vertices[i].xyz = AZ::Vector3(m_verts2d[i].GetX(), m_verts2d[i].GetY(), z);
         vertices[i].color.dcolor = packedColor;
-        vertices[i].st = Vec2(m_uvs[i].GetX(), m_uvs[i].GetY());
+        vertices[i].st = AZ::Vector2(m_uvs[i].GetX(), m_uvs[i].GetY());
     }
 
     // The indices are for four quads (one for each side of the rect).

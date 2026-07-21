@@ -658,9 +658,9 @@ void UiMaskComponent::UpdateCachedPrimitive(const AZ::Vector2& pixelAlignedTopLe
     float right = pixelAlignedBottomRight.GetX();
     float top = pixelAlignedTopLeft.GetY();
     float bottom = pixelAlignedBottomRight.GetY();
-    Vec2 positions[numVertices] = { Vec2(left, top), Vec2(right, top), Vec2(right, bottom), Vec2(left, bottom) };
+    AZ::Vector2 positions[numVertices] = { AZ::Vector2(left, top), AZ::Vector2(right, top), AZ::Vector2(right, bottom), AZ::Vector2(left, bottom) };
 
-    static const Vec2 uvs[numVertices] = { Vec2(0, 0), Vec2(1, 0), Vec2(1, 1), Vec2(0, 1) };
+    static const AZ::Vector2 uvs[numVertices] = { AZ::Vector2(0, 0), AZ::Vector2(1, 0), AZ::Vector2(1, 1), AZ::Vector2(0, 1) };
 
     for (int i = 0; i < numVertices; ++i)
     {

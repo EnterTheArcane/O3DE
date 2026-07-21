@@ -1115,7 +1115,7 @@ namespace AZ::AtomBridge
             float arrowRadius = 0.1f * headScale;
             // if (flags & DISPLAY_2D)
             // {
-            //     f2dScale = 1.2f * ToWorldSpaceVector(Vec3(1, 0, 0)).GetLength();
+            //     f2dScale = 1.2f * ToWorldSpaceVector(AZ::Vector3(1, 0, 0)).GetLength();
             // }
             AZ::Vector3 dir = trg - src;
             dir = ToWorldSpaceVector(dir.GetNormalized());

@@ -137,7 +137,7 @@ public:
     virtual void SetAxisConstrain(int axis) = 0;
     int GetAxisConstrain() const { return GetIEditor()->GetAxisConstrains(); };
 
-    virtual Vec3 SnapToGrid(const Vec3& vec) = 0;
+    virtual AZ::Vector3 SnapToGrid(const AZ::Vector3& vec) = 0;
 
     //! Get selection precision tolerance.
     virtual float GetSelectionTolerance() const = 0;
@@ -170,11 +170,11 @@ public:
     }
 
     //! Map viewport position to world space position.
-    Vec3        ViewToWorld(const QPoint& vp, bool* pCollideWithTerrain = nullptr, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false, bool* collideWithObject = nullptr) const override = 0;
+    AZ::Vector3        ViewToWorld(const QPoint& vp, bool* pCollideWithTerrain = nullptr, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false, bool* collideWithObject = nullptr) const override = 0;
     //! Convert point on screen to world ray.
-    void        ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir) const override = 0;
+    void        ViewToWorldRay(const QPoint& vp, AZ::Vector3& raySrc, AZ::Vector3& rayDir) const override = 0;
     //! Get normal for viewport position
-    virtual Vec3        ViewToWorldNormal(const QPoint& vp, bool onlyTerrain, bool bTestRenderMesh = false) = 0;
+    virtual AZ::Vector3        ViewToWorldNormal(const QPoint& vp, bool onlyTerrain, bool bTestRenderMesh = false) = 0;
 
     //! Performs hit testing of 2d point in view to find which object hit.
     virtual bool HitTest(const QPoint& point, HitContext& hitInfo) = 0;
@@ -339,25 +339,25 @@ public:
     virtual void OnDeactivate();
 
     //! Map world space position to viewport position.
-    QPoint WorldToView(const Vec3& wp) const override;
+    QPoint WorldToView(const AZ::Vector3& wp) const override;
 
     //! Map world space position to 3D viewport position.
-    Vec3 WorldToView3D(const Vec3& wp, int nFlags = 0) const override;
+    AZ::Vector3 WorldToView3D(const AZ::Vector3& wp, int nFlags = 0) const override;
 
     //! Map viewport position to world space position.
-    virtual Vec3 ViewToWorld(const QPoint& vp, bool* pCollideWithTerrain = nullptr, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false, bool* collideWithObject = nullptr) const override;
+    virtual AZ::Vector3 ViewToWorld(const QPoint& vp, bool* pCollideWithTerrain = nullptr, bool onlyTerrain = false, bool bSkipVegetation = false, bool bTestRenderMesh = false, bool* collideWithObject = nullptr) const override;
     //! Convert point on screen to world ray.
-    virtual void        ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir) const override;
+    virtual void        ViewToWorldRay(const QPoint& vp, AZ::Vector3& raySrc, AZ::Vector3& rayDir) const override;
     //! Get normal for viewport position
-    virtual Vec3        ViewToWorldNormal(const QPoint& vp, bool onlyTerrain, bool bTestRenderMesh = false) override;
+    virtual AZ::Vector3        ViewToWorldNormal(const QPoint& vp, bool onlyTerrain, bool bTestRenderMesh = false) override;
 
 
     //! Snap any given 3D world position to grid lines if snap is enabled.
-    Vec3 SnapToGrid(const Vec3& vec) override;
+    AZ::Vector3 SnapToGrid(const AZ::Vector3& vec) override;
 
     //! Returns the screen scale factor for a point given in world coordinates.
     //! This factor gives the width in world-space units at the point's distance of the viewport.
-    float GetScreenScaleFactor([[maybe_unused]] const Vec3& worldPoint) const  override { return 1; };
+    float GetScreenScaleFactor([[maybe_unused]] const AZ::Vector3& worldPoint) const  override { return 1; };
 
     void SetAxisConstrain(int axis) override;
 
@@ -388,7 +388,7 @@ public:
     //! Performs hit testing of 2d point in view to find which object hit.
     bool HitTest(const QPoint& point, HitContext& hitInfo) override;
 
-    float GetDistanceToLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& point) const override;
+    float GetDistanceToLine(const AZ::Vector3& lineP1, const AZ::Vector3& lineP2, const QPoint& point) const override;
 
     // Access to the member m_bAdvancedSelectMode so interested modules can know its value.
     bool GetAdvancedSelectModeFlag() override;
@@ -434,11 +434,11 @@ public:
     void CaptureMouse() override { m_mouseCaptured = true;  QWidget::grabMouse(); }
     void ReleaseMouse() override { m_mouseCaptured = false;  QWidget::releaseMouse(); }
 
-    void setRay(QPoint& vp, Vec3& raySrc, Vec3& rayDir) override;
+    void setRay(QPoint& vp, AZ::Vector3& raySrc, AZ::Vector3& rayDir) override;
 
     QPoint m_vp;
-    Vec3 m_raySrc;
-    Vec3 m_rayDir;
+    AZ::Vector3 m_raySrc;
+    AZ::Vector3 m_rayDir;
 
     // Greater than 0 while running MouseCallback() function. It needs to be a counter
     // because of recursive calls to MouseCallback(). It's used to make an exception
@@ -447,8 +447,8 @@ public:
 
 protected:
     friend class CViewManager;
-    bool IsVectorInValidRange(const Vec3& v) const { return fabs(v.x) < 1e+8 && fabs(v.y) < 1e+8 && fabs(v.z) < 1e+8; }
-    void AssignConstructionPlane(const Vec3& p1, const Vec3& p2, const Vec3& p3);
+    bool IsVectorInValidRange(const AZ::Vector3& v) const { return fabs(v.x) < 1e+8 && fabs(v.y) < 1e+8 && fabs(v.z) < 1e+8; }
+    void AssignConstructionPlane(const AZ::Vector3& p1, const AZ::Vector3& p2, const AZ::Vector3& p3);
     HWND renderOverlayHWND() const;
     void setRenderOverlayVisible(bool);
     bool isRenderOverlayVisible() const;

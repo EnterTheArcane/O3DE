@@ -1938,7 +1938,7 @@ bool UiTransform2dComponent::VersionConverter(AZ::SerializeContext& context,
     AZ::SerializeContext::DataElementNode& classElement)
 {
     // conversion from version 1:
-    // - Need to convert Vec2 to AZ::Vector2
+    // - Need to convert AZ::Vector2 to AZ::Vector2
     if (classElement.GetVersion() <= 1)
     {
         if (!LyShine::ConvertSubElementFromVec2ToVector2(context, classElement, "Pivot"))

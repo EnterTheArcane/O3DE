@@ -135,7 +135,7 @@ struct STextDrawContext
 {
     unsigned int m_fxIdx;
 
-    Vec2 m_size;
+    AZ::Vector2 m_size;
     Vec2i m_requestSize;
     float m_widthScale;
     float m_lineSpacing;
@@ -192,7 +192,7 @@ struct STextDrawContext
 
     void Reset() { *this = STextDrawContext(); }
     void SetEffect(unsigned int fxIdx) { m_fxIdx = fxIdx; }
-    void SetSize(const Vec2& size) { m_size = size; }
+    void SetSize(const AZ::Vector2& size) { m_size = size; }
     void SetCharWidthScale(float widthScale) { m_widthScale = widthScale; }
     void SetClippingRect(float x, float y, float width, float height) { m_clipX = x; m_clipY = y; m_clipWidth = width; m_clipHeight = height; }
     void SetProportional(bool proportional) { m_proportional = proportional; }
@@ -253,7 +253,7 @@ struct IFFont
 
     // Summary:
     //   Computes the text size (UTF-8).
-    virtual Vec2 GetTextSize(const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx) = 0;
+    virtual AZ::Vector2 GetTextSize(const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx) = 0;
 
     // Description:
     //   Computes virtual text-length (UTF-8) (because of special chars...).
@@ -270,7 +270,7 @@ struct IFFont
     virtual unsigned int GetEffectId(const char* pEffectName) const = 0;
     virtual unsigned int GetNumEffects() const = 0;
     virtual const char* GetEffectName(unsigned int effectId) const = 0;
-    virtual Vec2 GetMaxEffectOffset(unsigned int effectId) const = 0;
+    virtual AZ::Vector2 GetMaxEffectOffset(unsigned int effectId) const = 0;
     virtual bool DoesEffectHaveTransparency(unsigned int effectId) const = 0;
 
     //! \brief Adds the given UTF-8 string of chars to this font's font texture.
@@ -285,7 +285,7 @@ struct IFFont
     //! Even fonts that do have a 'kern' defined do not define kerning values for all
     //! possible combination of characters. Zero values will be returned for those
     //! cases.
-    virtual Vec2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph, const STextDrawContext& ctx) const = 0;
+    virtual AZ::Vector2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph, const STextDrawContext& ctx) const = 0;
 
     //! \brief Returns the ascender of the font
     virtual float GetAscender(const STextDrawContext& ctx) const = 0;

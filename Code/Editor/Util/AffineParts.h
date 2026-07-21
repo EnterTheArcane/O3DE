@@ -10,10 +10,10 @@
 
 struct AffineParts
 {
-    Vec3 pos;               //!< Translation components
+    AZ::Vector3 pos;               //!< Translation components
     AZ::Quaternion rot;      //!< Essential rotation.
     AZ::Quaternion rotScale; //!< Stretch rotation.
-    Vec3 scale;         //!< Stretch factors.
+    AZ::Vector3 scale;         //!< Stretch factors.
     float fDet;         //!< Sign of determinant.
 
     /** Decompose matrix to its affine parts.

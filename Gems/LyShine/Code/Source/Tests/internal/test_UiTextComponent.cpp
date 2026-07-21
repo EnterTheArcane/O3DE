@@ -179,7 +179,7 @@ namespace
         STextDrawContext fontContext;
         fontContext.SetEffect(0);
         fontContext.SetSizeIn800x600(false);
-        fontContext.SetSize(Vec2(32.0f, 32.0f));
+        fontContext.SetSize(AZ::Vector2(32.0f, 32.0f));
         const float defaultAscent = fontFamily->normal->GetAscender(fontContext);
 
         // Plain string
@@ -2021,7 +2021,7 @@ namespace
         STextDrawContext fontContext;
         fontContext.SetEffect(0);
         fontContext.SetSizeIn800x600(false);
-        fontContext.SetSize(Vec2(32.0f, 32.0f));
+        fontContext.SetSize(AZ::Vector2(32.0f, 32.0f));
         const float defaultAscent = fontFamily->normal->GetAscender(fontContext);
 
         {
@@ -2149,7 +2149,7 @@ namespace
         STextDrawContext fontContext;
         fontContext.SetEffect(0);
         fontContext.SetSizeIn800x600(false);
-        fontContext.SetSize(Vec2(32.0f, 32.0f));
+        fontContext.SetSize(AZ::Vector2(32.0f, 32.0f));
 
         UiTextComponent::InlineImageContainer inlineImages;
         float defaultImageHeight = 32.0f;

@@ -61,7 +61,7 @@ namespace LyShine
 };
 
 
-// NOTE (CryCommon->AzCore migration): `Vec4` is now AZ::Vector4, which already carries its
-// own AZ_TYPE_INFO. The legacy Vec4 type id {CAC9510C-...} migrates to AZ::Vector4 via a
+// NOTE (CryCommon->AzCore migration): `AZ::Vector4` is now AZ::Vector4, which already carries its
+// own AZ_TYPE_INFO. The legacy AZ::Vector4 type id {CAC9510C-...} migrates to AZ::Vector4 via a
 // ClassDeprecate converter registered in Wave 2. Do NOT re-specialize type info here.
 

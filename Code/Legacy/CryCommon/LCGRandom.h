@@ -71,7 +71,7 @@ public:
         return CryRandom_Internal::BoundedRandom<CRndGen, T>::Get(*this, minValue, maxValue);
     }
 
-    // Vector (Vec2, Vec3, Vec4) ranged function returns vector with
+    // Vector (AZ::Vector2, AZ::Vector3, AZ::Vector4) ranged function returns vector with
     // every component within the *inclusive* ranges between minValue.component
     // and maxValue.component.
     // All orderings work correctly: minValue.component <= maxValue.component and
@@ -82,7 +82,7 @@ public:
         return CryRandom_Internal::BoundedRandomComponentwise<CRndGen, T>::Get(*this, minValue, maxValue);
     }
 
-    // The function returns a random unit vector (Vec2, Vec3, Vec4).
+    // The function returns a random unit vector (AZ::Vector2, AZ::Vector3, AZ::Vector4).
     template <class T>
     T GetRandomUnitVector()
     {

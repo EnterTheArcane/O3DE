@@ -140,7 +140,7 @@ namespace
         return true;
     }
 
-    //! \brief Reads a Vec2 tuple (as a string) into an AZ::Vector2
+    //! \brief Reads a AZ::Vector2 tuple (as a string) into an AZ::Vector2
     //!
     //! Example XML string data: "1.0 2.0"
     void SerializeAzVector2(TSerialize ser, const char* attributeName, AZ::Vector2& azVec2)
@@ -159,7 +159,7 @@ namespace
         }
         else
         {
-            Vec2 legacyVec2(azVec2.GetX(), azVec2.GetY());
+            AZ::Vector2 legacyVec2(azVec2.GetX(), azVec2.GetY());
             ser.Value(attributeName, legacyVec2);
         }
     }

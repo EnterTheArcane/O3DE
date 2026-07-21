@@ -43,26 +43,26 @@ public:
     }
 
     //////////////////////////////////////////////////////////////////////////
-    Vec2 ClientToWorld(const QPoint& point)
+    AZ::Vector2 ClientToWorld(const QPoint& point)
     {
-        Vec2 v;
+        AZ::Vector2 v;
         v.x = (point.x() - rect.left()) / zoom.GetX() + origin.GetX();
         v.y = (point.y() - rect.top()) / zoom.GetY() + origin.GetY();
         return v;
     }
     
-    QPoint WorldToClient(Vec2 v)
+    QPoint WorldToClient(AZ::Vector2 v)
     {
         QPoint p(aznumeric_cast<int>(floor((v.x - origin.GetX()) * zoom.GetX() + 0.5f) + rect.left()),
             aznumeric_cast<int>(floor((v.y - origin.GetY()) * zoom.GetY() + 0.5f) + rect.top()));
         return p;
     }
 
-    void SetOrigin(Vec2 neworigin)
+    void SetOrigin(AZ::Vector2 neworigin)
     {
         origin = AZ::Vector2(neworigin.x, neworigin.y);
     }
-    void SetZoom(Vec2 newzoom)
+    void SetZoom(AZ::Vector2 newzoom)
     {
         zoom = AZ::Vector2(newzoom.x, newzoom.y);
     }

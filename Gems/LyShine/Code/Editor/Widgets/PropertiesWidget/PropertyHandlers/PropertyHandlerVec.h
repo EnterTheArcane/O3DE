@@ -97,7 +97,7 @@ public:
     }
 };
 
-class PropertyHandlerVec2 : public LegacyVectorPropertyHandlerBase<Vec2>
+class PropertyHandlerVec2 : public LegacyVectorPropertyHandlerBase<AZ::Vector2>
 {
 public:
     AZ_CLASS_ALLOCATOR(PropertyHandlerVec2, AZ::SystemAllocator);
@@ -115,7 +115,7 @@ public:
 
 //////////////////////////////////////////////////////////////////////////
 
-class PropertyHandlerVec3 : public LegacyVectorPropertyHandlerBase<Vec3>
+class PropertyHandlerVec3 : public LegacyVectorPropertyHandlerBase<AZ::Vector3>
 {
 public:
     AZ_CLASS_ALLOCATOR(PropertyHandlerVec3, AZ::SystemAllocator);
@@ -133,7 +133,7 @@ public:
 
 //////////////////////////////////////////////////////////////////////////
 
-class PropertyHandlerVec4 : public LegacyVectorPropertyHandlerBase<Vec4>
+class PropertyHandlerVec4 : public LegacyVectorPropertyHandlerBase<AZ::Vector4>
 {
 public:
     AZ_CLASS_ALLOCATOR(PropertyHandlerVec3, AZ::SystemAllocator);

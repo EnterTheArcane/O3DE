@@ -30,7 +30,7 @@ namespace Maestro
             // TAnimSplineTrack previously restricted the typename to 128 bytes
             AZStd::array<char, 128> deprecatedName{};
 
-            // The old TAnimSplineTrack TypeName mistakenly used Vec2 as the template parameter and not ValueType
+            // The old TAnimSplineTrack TypeName mistakenly used AZ::Vector2 as the template parameter and not ValueType
             // Also the extra space before the '>' is due to the AZ::Internal::AggregateTypes template
             // always adding a space after each argument
             AZ::Internal::AzTypeInfoSafeCat(deprecatedName.data(), deprecatedName.size(), "TAnimSplineTrack<Vec2 >");
@@ -1045,51 +1045,51 @@ namespace Maestro
     }
 
     template<>
-    TAnimSplineTrack<Vec2>::TAnimSplineTrack();
+    TAnimSplineTrack<AZ::Vector2>::TAnimSplineTrack();
     template<>
-    void TAnimSplineTrack<Vec2>::GetValue(float time, float& value, bool applyMultiplier) const;
+    void TAnimSplineTrack<AZ::Vector2>::GetValue(float time, float& value, bool applyMultiplier) const;
     template<>
-    EAnimCurveType TAnimSplineTrack<Vec2>::GetCurveType() const;
+    EAnimCurveType TAnimSplineTrack<AZ::Vector2>::GetCurveType() const;
     template<>
-    AnimValueType TAnimSplineTrack<Vec2>::GetValueType() const;
+    AnimValueType TAnimSplineTrack<AZ::Vector2>::GetValueType() const;
     template<>
-    void TAnimSplineTrack<Vec2>::SetValue(float time, const float& value, bool bDefault, bool applyMultiplier);
+    void TAnimSplineTrack<AZ::Vector2>::SetValue(float time, const float& value, bool bDefault, bool applyMultiplier);
     template<>
-    void TAnimSplineTrack<Vec2>::GetKey(int keyIndex, IKey* key) const;
+    void TAnimSplineTrack<AZ::Vector2>::GetKey(int keyIndex, IKey* key) const;
 
     template<>
-    void TAnimSplineTrack<Vec2>::SetKey(int keyIndex, IKey* key);
+    void TAnimSplineTrack<AZ::Vector2>::SetKey(int keyIndex, IKey* key);
 
     //! Create key at given time, and return its index.
     template<>
-    int TAnimSplineTrack<Vec2>::CreateKey(float time);
+    int TAnimSplineTrack<AZ::Vector2>::CreateKey(float time);
 
     template<>
-    int TAnimSplineTrack<Vec2>::CloneKey(int srcKeyIndex, float timeOffset);
+    int TAnimSplineTrack<AZ::Vector2>::CloneKey(int srcKeyIndex, float timeOffset);
 
     template<>
-    int TAnimSplineTrack<Vec2>::CopyKey(IAnimTrack* pFromTrack, int fromKeyIndex);
+    int TAnimSplineTrack<AZ::Vector2>::CopyKey(IAnimTrack* pFromTrack, int fromKeyIndex);
 
     /// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence
     /// Component
     template<>
-    bool TAnimSplineTrack<Vec2>::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks);
+    bool TAnimSplineTrack<AZ::Vector2>::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks);
 
     template<>
-    bool TAnimSplineTrack<Vec2>::SerializeSelection(XmlNodeRef& xmlNode, bool bLoading, bool bCopySelected, float fTimeOffset);
+    bool TAnimSplineTrack<AZ::Vector2>::SerializeSelection(XmlNodeRef& xmlNode, bool bLoading, bool bCopySelected, float fTimeOffset);
 
     template<>
-    void TAnimSplineTrack<Vec2>::GetKeyInfo(int keyIndex, const char*& description, float& duration) const;
+    void TAnimSplineTrack<AZ::Vector2>::GetKeyInfo(int keyIndex, const char*& description, float& duration) const;
 
     template<>
-    void TAnimSplineTrack<Vec2>::add_ref();
+    void TAnimSplineTrack<AZ::Vector2>::add_ref();
 
     template<>
-    void TAnimSplineTrack<Vec2>::release();
+    void TAnimSplineTrack<AZ::Vector2>::release();
 
     template<>
-    void TAnimSplineTrack<Vec2>::Reflect(AZ::ReflectContext* context);
+    void TAnimSplineTrack<AZ::Vector2>::Reflect(AZ::ReflectContext* context);
 
-    using C2DSplineTrack = TAnimSplineTrack<Vec2>;
+    using C2DSplineTrack = TAnimSplineTrack<AZ::Vector2>;
 
 } // namespace Maestro

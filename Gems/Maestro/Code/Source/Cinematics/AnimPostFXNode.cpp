@@ -29,11 +29,11 @@ namespace Maestro
         public:
             virtual void SetDefault(float val) = 0;
             virtual void SetDefault(bool val) = 0;
-            virtual void SetDefault(Vec4 val) = 0;
+            virtual void SetDefault(AZ::Vector4 val) = 0;
 
             virtual void GetDefault(float& val) const = 0;
             virtual void GetDefault(bool& val) const = 0;
-            virtual void GetDefault(Vec4& val) const = 0;
+            virtual void GetDefault(AZ::Vector4& val) const = 0;
 
             AZStd::string m_name;
 
@@ -57,7 +57,7 @@ namespace Maestro
                 AZ_Assert(false, "Not expected to be used");
             }
 
-            void SetDefault([[maybe_unused]] Vec4 val) override
+            void SetDefault([[maybe_unused]] AZ::Vector4 val) override
             {
                 AZ_Assert(false, "Not expected to be used");
             }
@@ -72,7 +72,7 @@ namespace Maestro
                 AZ_Assert(false, "Not expected to be used");
             }
 
-            void GetDefault([[maybe_unused]] Vec4& val) const override
+            void GetDefault([[maybe_unused]] AZ::Vector4& val) const override
             {
                 AZ_Assert(false, "Not expected to be used");
             }
@@ -120,7 +120,7 @@ namespace Maestro
         m_defaultValue = val;
     }
     template<>
-    void CFXNodeDescription::TControlParam<Vec4>::SetDefault(Vec4 val)
+    void CFXNodeDescription::TControlParam<AZ::Vector4>::SetDefault(AZ::Vector4 val)
     {
         m_defaultValue = val;
     }
@@ -135,7 +135,7 @@ namespace Maestro
         val = m_defaultValue;
     }
     template<>
-    void CFXNodeDescription::TControlParam<Vec4>::GetDefault(Vec4& val) const
+    void CFXNodeDescription::TControlParam<AZ::Vector4>::GetDefault(AZ::Vector4& val) const
     {
         val = m_defaultValue;
     }
@@ -343,7 +343,7 @@ namespace Maestro
                 C2DSplineTrack* pFloatTrack = static_cast<C2DSplineTrack*>(pTrack);
                 float val(0);
                 m_pDescription->m_controlParams[i]->GetDefault(val);
-                pFloatTrack->SetDefaultValue(Vec2(0, val));
+                pFloatTrack->SetDefaultValue(AZ::Vector2(0, val));
             }
             else if (valueType == AnimValueType::Bool)
             {
@@ -355,7 +355,7 @@ namespace Maestro
             else if (valueType == AnimValueType::Vector4)
             {
                 CCompoundSplineTrack* pCompoundTrack = static_cast<CCompoundSplineTrack*>(pTrack);
-                Vec4 val(0.0f, 0.0f, 0.0f, 0.0f);
+                AZ::Vector4 val(0.0f, 0.0f, 0.0f, 0.0f);
                 m_pDescription->m_controlParams[i]->GetDefault(val);
                 pCompoundTrack->SetValue(0.0f, LYVec4ToAZVec4(val), true);
             }
@@ -476,7 +476,7 @@ namespace Maestro
             }
             else if (valueType == AnimValueType::Vector4)
             {
-                Vec4 val(0.0f, 0.0f, 0.0f, 0.0f);
+                AZ::Vector4 val(0.0f, 0.0f, 0.0f, 0.0f);
                 m_pDescription->m_controlParams[paramIndex]->GetDefault(val);
                 // TODO : https://github.com/o3de/o3de/issues/6169, legacy code was:
                 //gEnv->p3DEngine->GetPostEffectBaseGroup()->SetParam(m_pDescription->m_controlParams[paramIndex]->m_name.c_str(), val);

@@ -361,7 +361,7 @@ int AZ::GlyphCache::GetGlyph(AZ::GlyphBitmap** glyph, int* horizontalAdvance, in
 }
 
 //-------------------------------------------------------------------------------------------------
-Vec2 AZ::GlyphCache::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph)
+AZ::Vector2 AZ::GlyphCache::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph)
 {
     return m_fontRenderer.GetKerning(leftGlyph, rightGlyph);
 }

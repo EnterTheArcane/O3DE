@@ -236,7 +236,7 @@ namespace Multiplayer
         //    AZ_Assert(octreeNodeComponent != nullptr, "Controlled entity does not have an octree node component");
         //
         //    const float radius = octreeNodeComponent->GetAwarenessRadius();
-        //    Vec3 currPos = octreeNodeComponent->GetPosition();
+        //    AZ::Vector3 currPos = octreeNodeComponent->GetPosition();
         //    currPos.z += BoundaryStripeHeight;
         //
         //    for (int i = 0; i < BoundaryStripeCount; ++i)

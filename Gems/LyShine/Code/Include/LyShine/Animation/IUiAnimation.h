@@ -656,13 +656,13 @@ public:
     // Set float/vec3/vec4 parameter at given time.
     // @return true if parameter set, false if this parameter not exist in node.
     virtual bool SetParamValue(float time, CUiAnimParamType param, float value) = 0;
-    virtual bool SetParamValue(float time, CUiAnimParamType param, const Vec3& value) = 0;
-    virtual bool SetParamValue(float time, CUiAnimParamType param, const Vec4& value) = 0;
+    virtual bool SetParamValue(float time, CUiAnimParamType param, const AZ::Vector3& value) = 0;
+    virtual bool SetParamValue(float time, CUiAnimParamType param, const AZ::Vector4& value) = 0;
     // Get float/vec3/vec4 parameter at given time.
     // @return true if parameter exist, false if this parameter not exist in node.
     virtual bool GetParamValue(float time, CUiAnimParamType param, float& value) = 0;
-    virtual bool GetParamValue(float time, CUiAnimParamType param, Vec3& value) = 0;
-    virtual bool GetParamValue(float time, CUiAnimParamType param, Vec4& value) = 0;
+    virtual bool GetParamValue(float time, CUiAnimParamType param, AZ::Vector3& value) = 0;
+    virtual bool GetParamValue(float time, CUiAnimParamType param, AZ::Vector4& value) = 0;
 
     virtual bool SetParamValueAz([[maybe_unused]] float time, [[maybe_unused]] const UiAnimParamData& param, [[maybe_unused]] float value) { return false; }
     virtual bool SetParamValueAz([[maybe_unused]] float time, [[maybe_unused]] const UiAnimParamData& param, [[maybe_unused]] bool value) { return false; }

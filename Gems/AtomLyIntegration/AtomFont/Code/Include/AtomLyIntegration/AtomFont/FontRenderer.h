@@ -81,7 +81,7 @@ namespace AZ
 
         bool GetMonospaced() const { return FT_IS_FIXED_WIDTH(m_face) != 0; }
 
-        Vec2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph);
+        AZ::Vector2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph);
 
         float GetAscenderToHeightRatio();
 

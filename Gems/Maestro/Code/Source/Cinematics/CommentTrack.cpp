@@ -49,7 +49,7 @@ namespace Maestro
                 const char* strFont = keyNode->getAttr("font");
                 key.m_strFont = strFont;
 
-                Vec4 color(key.m_color.GetR(), key.m_color.GetG(), key.m_color.GetB(), key.m_color.GetA());
+                AZ::Vector4 color(key.m_color.GetR(), key.m_color.GetG(), key.m_color.GetB(), key.m_color.GetA());
                 keyNode->getAttr("color", color);
                 key.m_color.Set(color.x, color.y, color.z, color.w);
 
@@ -68,7 +68,7 @@ namespace Maestro
             {
                 keyNode->setAttr("font", key.m_strFont.c_str());
             }
-            Vec4 color(key.m_color.GetR(), key.m_color.GetG(), key.m_color.GetB(), key.m_color.GetA());
+            AZ::Vector4 color(key.m_color.GetR(), key.m_color.GetG(), key.m_color.GetB(), key.m_color.GetA());
             keyNode->setAttr("color", color);
             keyNode->setAttr("size", key.m_size);
             keyNode->setAttr("align", (int)key.m_align);

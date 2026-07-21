@@ -83,7 +83,7 @@ struct Quat_tpl
         assert(IsValid());
     }
     //CONSTRUCTOR to initialize a Quat with a scalar and a vector
-    //Quat q(1,Vec3(0,0,0));
+    //Quat q(1,AZ::Vector3(0,0,0));
     ILINE Quat_tpl<F>(F scalar, const Vec3_tpl<F> &vector)
     {
         v = vector;
@@ -265,7 +265,7 @@ struct Quat_tpl
             return GetColumn2();
         }
         assert(0); //bad index
-        return Vec3(ZERO);
+        return AZ::Vector3(ZERO);
     }
 
     ILINE Vec3_tpl<F> GetColumn0() const {return Vec3_tpl<F>(2 * (v.x * v.x + w * w) - 1, 2 * (v.y * v.x + v.z * w), 2 * (v.z * v.x - v.y * w)); }
@@ -537,11 +537,11 @@ struct Quat_tpl
     * \param roll  radiant to rotate about Y-axis.
     *
     *  Given a view-direction and a radiant to rotate about Y-axis, this function builds a 3x3 look-at quaternion
-    *  using only simple vector arithmetic. This function is always using the implicit up-vector Vec3(0,0,1).
+    *  using only simple vector arithmetic. This function is always using the implicit up-vector AZ::Vector3(0,0,1).
     *  The view-direction is always stored in column(1).
     *  IMPORTANT: The view-vector is assumed to be normalized, because all trig-values for the orientation are being
     *  extracted  directly out of the vector. This function must NOT be called with a view-direction
-    *  that is close to Vec3(0,0,1) or Vec3(0,0,-1). If one of these rules is broken, the function returns a quaternion
+    *  that is close to AZ::Vector3(0,0,1) or AZ::Vector3(0,0,-1). If one of these rules is broken, the function returns a quaternion
     *  with an undefined rotation about the Z-axis.
     *
     *  Rotation order for the look-at-quaternion is Z-X-Y. (Zaxis=YAW / Xaxis=PITCH / Yaxis=ROLL)
@@ -558,9 +558,9 @@ struct Quat_tpl
     *    +--------------->   x-axis
     *
     *  Example:
-    *       Quat LookAtQuat=Quat::CreateRotationVDir( Vec3(0,1,0) );
+    *       Quat LookAtQuat=Quat::CreateRotationVDir( AZ::Vector3(0,1,0) );
     *   or
-    *       Quat LookAtQuat=Quat::CreateRotationVDir( Vec3(0,1,0), 0.333f );
+    *       Quat LookAtQuat=Quat::CreateRotationVDir( AZ::Vector3(0,1,0), 0.333f );
     */
     ILINE void SetRotationVDir(const Vec3_tpl<F>& vdir)
     {
@@ -1008,12 +1008,12 @@ ILINE Quat_tpl<F1>   operator / (const Quat_tpl<F1>& q, F2 t)
 
 /*!
 *
-* post-multiply of a quaternion and a Vec3 (3D rotations with quaternions)
+* post-multiply of a quaternion and a AZ::Vector3 (3D rotations with quaternions)
 *
 * Example:
 *  Quat q(1,0,0,0);
-*  Vec3 v(33,44,55);
-*    Vec3 result = q*v;
+*  AZ::Vector3 v(33,44,55);
+*    AZ::Vector3 result = q*v;
 */
 template<class F, class F2>
 ILINE Vec3_tpl<F> operator * (const Quat_tpl<F>& q, const Vec3_tpl<F2>& v)
@@ -1036,12 +1036,12 @@ ILINE Vec3_tpl<F> operator * (const Quat_tpl<F>& q, const Vec3_tpl<F2>& v)
 
 
 /*!
-* pre-multiply of a quaternion and a Vec3 (3D rotations with quaternions)
+* pre-multiply of a quaternion and a AZ::Vector3 (3D rotations with quaternions)
 *
 * Example:
 *  Quat q(1,0,0,0);
-*  Vec3 v(33,44,55);
-*    Vec3 result = v*q;
+*  AZ::Vector3 v(33,44,55);
+*    AZ::Vector3 result = v*q;
 */
 template<class F, class F2>
 ILINE Vec3_tpl<F2> operator * (const Vec3_tpl<F>& v, const Quat_tpl<F2>& q)

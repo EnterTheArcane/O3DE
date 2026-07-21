@@ -53,7 +53,7 @@ struct IKey
 struct I2DBezierKey
     : public IKey
 {
-    Vec2 value;
+    AZ::Vector2 value;
 };
 
 /** ITcbKey used in all TCB tracks.
@@ -82,7 +82,7 @@ struct ITcbKey
     };
 
     void SetFloat(float val) { fval[0] = val; };
-    void SetVec3(const Vec3& val)
+    void SetVec3(const AZ::Vector3& val)
     {
         fval[0] = val.x;
         fval[1] = val.y;
@@ -94,13 +94,13 @@ struct ITcbKey
     };
 
     ILINE void SetValue(float val)       { SetFloat(val); }
-    ILINE void SetValue(const Vec3& val) { SetVec3(val); }
+    ILINE void SetValue(const AZ::Vector3& val) { SetVec3(val); }
     ILINE void SetValue(const AZ::Quaternion& val) { SetQuat(val); }
 
     float GetFloat() const { return *((float*)fval); };
-    Vec3 GetVec3() const
+    AZ::Vector3 GetVec3() const
     {
-        Vec3 vec;
+        AZ::Vector3 vec;
         vec.x = fval[0];
         vec.y = fval[1];
         vec.z = fval[2];
@@ -111,7 +111,7 @@ struct ITcbKey
         return AZ::Quaternion::CreateFromFloat4(fval);
     };
     ILINE void GetValue(float& val) { val = GetFloat(); };
-    ILINE void GetValue(Vec3& val)  { val = GetVec3(); };
+    ILINE void GetValue(AZ::Vector3& val)  { val = GetVec3(); };
     ILINE void GetValue(AZ::Quaternion& val)  { val = GetQuat(); };
 };
 
@@ -242,7 +242,7 @@ struct ISoundKey
     AZStd::string sStartTrigger;
     AZStd::string sStopTrigger;
     float         fDuration;
-    Vec3          customColor;
+    AZ::Vector3          customColor;
 };
 
 /** ITimeRangeKey used in time ranges animation track.

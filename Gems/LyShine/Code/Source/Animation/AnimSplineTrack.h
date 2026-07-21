@@ -611,46 +611,46 @@ inline bool TUiAnimSplineTrack<T>::SerializeSelection(XmlNodeRef& xmlNode, bool 
     return true;
 }
 
-// Specialize TUIAnimSplineTrack for Vec2
+// Specialize TUIAnimSplineTrack for AZ::Vector2
 template <>
-TUiAnimSplineTrack<Vec2>::TUiAnimSplineTrack();
+TUiAnimSplineTrack<AZ::Vector2>::TUiAnimSplineTrack();
 template <>
-void TUiAnimSplineTrack<Vec2>::GetValue(float time, float& value);
+void TUiAnimSplineTrack<AZ::Vector2>::GetValue(float time, float& value);
 template <>
-EUiAnimCurveType TUiAnimSplineTrack<Vec2>::GetCurveType();
+EUiAnimCurveType TUiAnimSplineTrack<AZ::Vector2>::GetCurveType();
 template <>
-EUiAnimValue TUiAnimSplineTrack<Vec2>::GetValueType();
+EUiAnimValue TUiAnimSplineTrack<AZ::Vector2>::GetValueType();
 template <>
-void TUiAnimSplineTrack<Vec2>::SetValue(float time, const float& value, bool bDefault);
+void TUiAnimSplineTrack<AZ::Vector2>::SetValue(float time, const float& value, bool bDefault);
 template <>
-void TUiAnimSplineTrack<Vec2>::GetKey(int index, IKey* key) const;
+void TUiAnimSplineTrack<AZ::Vector2>::GetKey(int index, IKey* key) const;
 
 template <>
-void TUiAnimSplineTrack<Vec2>::SetKey(int index, IKey* key);
+void TUiAnimSplineTrack<AZ::Vector2>::SetKey(int index, IKey* key);
 
 //! Create key at given time, and return its index.
 template <>
-int TUiAnimSplineTrack<Vec2>::CreateKey(float time);
+int TUiAnimSplineTrack<AZ::Vector2>::CreateKey(float time);
 
 template <>
-int TUiAnimSplineTrack<Vec2>::CopyKey(IUiAnimTrack* pFromTrack, int nFromKey);
+int TUiAnimSplineTrack<AZ::Vector2>::CopyKey(IUiAnimTrack* pFromTrack, int nFromKey);
 
 template <>
-bool TUiAnimSplineTrack<Vec2>::Serialize([[maybe_unused]] IUiAnimationSystem* uiAnimationSystem, XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks);
+bool TUiAnimSplineTrack<AZ::Vector2>::Serialize([[maybe_unused]] IUiAnimationSystem* uiAnimationSystem, XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks);
 
 template <>
-bool TUiAnimSplineTrack<Vec2>::SerializeSelection(XmlNodeRef& xmlNode, bool bLoading, bool bCopySelected, float fTimeOffset);
+bool TUiAnimSplineTrack<AZ::Vector2>::SerializeSelection(XmlNodeRef& xmlNode, bool bLoading, bool bCopySelected, float fTimeOffset);
 
 template<>
-void TUiAnimSplineTrack<Vec2>::GetKeyInfo(int index, const char*& description, float& duration);
+void TUiAnimSplineTrack<AZ::Vector2>::GetKeyInfo(int index, const char*& description, float& duration);
 
 template <>
-void TUiAnimSplineTrack<Vec2>::add_ref();
+void TUiAnimSplineTrack<AZ::Vector2>::add_ref();
 
 template <>
-void TUiAnimSplineTrack<Vec2>::release();
+void TUiAnimSplineTrack<AZ::Vector2>::release();
 
 template <>
-void TUiAnimSplineTrack<Vec2>::Reflect(AZ::ReflectContext* context);
+void TUiAnimSplineTrack<AZ::Vector2>::Reflect(AZ::ReflectContext* context);
 
-using C2DSplineTrack = TUiAnimSplineTrack<Vec2>;
+using C2DSplineTrack = TUiAnimSplineTrack<AZ::Vector2>;

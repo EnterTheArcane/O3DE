@@ -557,16 +557,16 @@ public:
     virtual void SetScale(float time, const AZ::Vector3& scale) = 0;
 
     //! Compute and return the offset which brings the current position to the given position
-    virtual Vec3 GetOffsetPosition(const Vec3& position);
+    virtual AZ::Vector3 GetOffsetPosition(const AZ::Vector3& position);
 
     //! Get current entity position.
-    virtual Vec3 GetPos() = 0;
+    virtual AZ::Vector3 GetPos() = 0;
     //! Get current entity rotation.
     virtual AZ::Quaternion GetRotate() = 0;
     //! Get entity rotation at specified time.
     virtual AZ::Quaternion GetRotate(float time) = 0;
     //! Get current entity scale.
-    virtual Vec3 GetScale() = 0;
+    virtual AZ::Vector3 GetScale() = 0;
 
     // General Set param.
     // Set float/vec3/vec4 parameter at given time.

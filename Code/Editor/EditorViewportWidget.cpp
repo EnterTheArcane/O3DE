@@ -1220,9 +1220,9 @@ AZ::EntityId EditorViewportWidget::GetCurrentViewEntityId()
     return m_viewEntityId;
 }
 
-Vec3 EditorViewportWidget::WorldToView3D(const Vec3& wp, [[maybe_unused]] int nFlags) const
+AZ::Vector3 EditorViewportWidget::WorldToView3D(const AZ::Vector3& wp, [[maybe_unused]] int nFlags) const
 {
-    Vec3 out(0, 0, 0);
+    AZ::Vector3 out(0, 0, 0);
     float x, y;
 
     ProjectToScreen(wp.x, wp.y, wp.z, &x, &y);
@@ -1235,13 +1235,13 @@ Vec3 EditorViewportWidget::WorldToView3D(const Vec3& wp, [[maybe_unused]] int nF
 }
 
 //////////////////////////////////////////////////////////////////////////
-QPoint EditorViewportWidget::WorldToView(const Vec3& wp) const
+QPoint EditorViewportWidget::WorldToView(const AZ::Vector3& wp) const
 {
     return AzToolsFramework::ViewportInteraction::QPointFromScreenPoint(m_renderViewport->ViewportWorldToScreen(LYVec3ToAZVec3(wp)));
 }
 
 //////////////////////////////////////////////////////////////////////////
-Vec3 EditorViewportWidget::ViewToWorld(
+AZ::Vector3 EditorViewportWidget::ViewToWorld(
     const QPoint& vp, bool* collideWithTerrain, bool onlyTerrain, bool bSkipVegetation, bool bTestRenderMesh, bool* collideWithObject) const
 {
     AZ_PROFILE_FUNCTION(Editor);
@@ -1257,20 +1257,20 @@ Vec3 EditorViewportWidget::ViewToWorld(
         m_renderViewport->ViewportScreenToWorldRay(AzToolsFramework::ViewportInteraction::ScreenPointFromQPoint(vp * devicePixelRatioF()));
 
     const float maxDistance = 10000.f;
-    Vec3 v = AZVec3ToLYVec3(ray.m_direction) * maxDistance;
+    AZ::Vector3 v = AZVec3ToLYVec3(ray.m_direction) * maxDistance;
 
     if (!_finite(v.x) || !_finite(v.y) || !_finite(v.z))
     {
-        return Vec3(0, 0, 0);
+        return AZ::Vector3(0, 0, 0);
     }
 
-    Vec3 colp = AZVec3ToLYVec3(ray.m_origin) + 0.002f * v;
+    AZ::Vector3 colp = AZVec3ToLYVec3(ray.m_origin) + 0.002f * v;
 
     return colp;
 }
 
 //////////////////////////////////////////////////////////////////////////
-Vec3 EditorViewportWidget::ViewToWorldNormal(const QPoint& vp, bool onlyTerrain, bool bTestRenderMesh)
+AZ::Vector3 EditorViewportWidget::ViewToWorldNormal(const QPoint& vp, bool onlyTerrain, bool bTestRenderMesh)
 {
     AZ_UNUSED(vp);
     AZ_UNUSED(onlyTerrain);
@@ -1278,12 +1278,12 @@ Vec3 EditorViewportWidget::ViewToWorldNormal(const QPoint& vp, bool onlyTerrain,
 
     AZ_PROFILE_FUNCTION(Editor);
 
-    return Vec3(0, 0, 1);
+    return AZ::Vector3(0, 0, 1);
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool EditorViewportWidget::RayRenderMeshIntersection(
-    IRenderMesh* pRenderMesh, const Vec3& vInPos, const Vec3& vInDir, Vec3& vOutPos, Vec3& vOutNormal) const
+    IRenderMesh* pRenderMesh, const AZ::Vector3& vInPos, const AZ::Vector3& vInDir, AZ::Vector3& vOutPos, AZ::Vector3& vOutNormal) const
 {
     AZ_UNUSED(pRenderMesh);
     AZ_UNUSED(vInPos);
@@ -1320,11 +1320,11 @@ void EditorViewportWidget::ProjectToScreen(float ptx, float pty, float ptz, floa
 }
 
 //////////////////////////////////////////////////////////////////////////
-void EditorViewportWidget::ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& rayDir) const
+void EditorViewportWidget::ViewToWorldRay(const QPoint& vp, AZ::Vector3& raySrc, AZ::Vector3& rayDir) const
 {
     QRect rc = m_rcClient;
 
-    Vec3 pos0;
+    AZ::Vector3 pos0;
     float wx, wy, wz;
     UnProjectFromScreen(static_cast<float>(vp.x()), static_cast<float>(rc.bottom() - vp.y()), &wx, &wy, &wz);
 
@@ -1345,7 +1345,7 @@ void EditorViewportWidget::ViewToWorldRay(const QPoint& vp, Vec3& raySrc, Vec3& 
 }
 
 //////////////////////////////////////////////////////////////////////////
-float EditorViewportWidget::GetScreenScaleFactor([[maybe_unused]] const Vec3& worldPoint) const
+float EditorViewportWidget::GetScreenScaleFactor([[maybe_unused]] const AZ::Vector3& worldPoint) const
 {
     AZ_Error("CryLegacy", false, "EditorViewportWidget::GetScreenScaleFactor not implemented");
     return 1.f;
@@ -1401,7 +1401,7 @@ void EditorViewportWidget::CenterOnAABB(const AZ::Aabb& aabb)
 
     // Forward vector is y component of rotation matrix
     AZ::Matrix3x3 rotationMatrix(affineParts.rot);
-    const Vec3 viewDirection = AZVec3ToLYVec3(rotationMatrix.GetColumn(1).GetNormalized());
+    const AZ::Vector3 viewDirection = AZVec3ToLYVec3(rotationMatrix.GetColumn(1).GetNormalized());
 
     // Compute adjustment required by FOV != 90 degrees
     const float fov = GetFOV();
@@ -1409,7 +1409,7 @@ void EditorViewportWidget::CenterOnAABB(const AZ::Aabb& aabb)
 
     // Compute new transform matrix
     const float distanceToTarget = selectionSize * fovScale * centerScale;
-    const Vec3 newPosition = AZVec3ToLYVec3(selectionCenter) - (viewDirection * distanceToTarget);
+    const AZ::Vector3 newPosition = AZVec3ToLYVec3(selectionCenter) - (viewDirection * distanceToTarget);
     AZ::Matrix3x4 newTM = AZ::Matrix3x4::CreateFromMatrix3x3AndTranslation(rotationMatrix, LYVec3ToAZVec3(newPosition));
 
     // Set new orbit distance

@@ -110,7 +110,7 @@ namespace AZ
 
         bool GetMonospaced() const { return m_fontRenderer.GetMonospaced(); }
 
-        Vec2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph);
+        AZ::Vector2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph);
 
         float GetAscenderToHeightRatio();
 

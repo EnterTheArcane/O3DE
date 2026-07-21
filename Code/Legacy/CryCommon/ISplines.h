@@ -248,17 +248,17 @@ namespace spline
     template <>
     inline void Zero(float& val) { val = 0.0f; }
     template <>
-    inline void Zero(Vec2& val) { val = Vec2(0.0f, 0.0f); }
+    inline void Zero(AZ::Vector2& val) { val = AZ::Vector2(0.0f, 0.0f); }
     template <>
-    inline void Zero(Vec3& val) { val = Vec3(0.0f, 0.0f, 0.0f); }
+    inline void Zero(AZ::Vector3& val) { val = AZ::Vector3(0.0f, 0.0f, 0.0f); }
     template <>
     inline void Zero(AZ::Quaternion& val) { val = AZ::Quaternion::CreateIdentity(); }
 
     inline float Concatenate(float left, float right) { return left + right; }
-    inline Vec3 Concatenate(const Vec3& left, const Vec3& right) { return left + right; }
+    inline AZ::Vector3 Concatenate(const AZ::Vector3& left, const AZ::Vector3& right) { return left + right; }
     inline AZ::Quaternion Concatenate(const AZ::Quaternion& left, const AZ::Quaternion& right) { return left * right; }
     inline float Subtract (float left, float right) { return left - right; }
-    inline Vec3 Subtract (const Vec3& left, const Vec3& right) { return left - right; }
+    inline AZ::Vector3 Subtract (const AZ::Vector3& left, const AZ::Vector3& right) { return left - right; }
     inline AZ::Quaternion Subtract(const AZ::Quaternion& left, const AZ::Quaternion& right) { return left.GetConjugate() * right; }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -407,7 +407,7 @@ namespace spline
         :  public TCBSplineKey<AZ::Quaternion>
     {
         float angle;
-        Vec3 axis;
+        AZ::Vector3 axis;
 
         TCBAngAxisKey()
             : axis(0, 0, 0)
@@ -1248,5 +1248,5 @@ namespace spline
 
 namespace AZ
 {
-    AZ_TYPE_INFO_SPECIALIZE(spline::SplineKey<Vec2>, "{24A4D7E5-C36D-427D-AB49-CD86573B7288}");
+    AZ_TYPE_INFO_SPECIALIZE(spline::SplineKey<AZ::Vector2>, "{24A4D7E5-C36D-427D-AB49-CD86573B7288}");
 }

@@ -897,8 +897,8 @@ namespace var_type
     template<>
     struct type_traits<double>
         : public type_traits_base<IVariable::DOUBLE, true, false, false, true>{};
-    // CryCommon->AzCore migration: `Vec2`/`Vec3`/`Vec4` now alias AZ::Vector2/3/4, whose
-    // type_traits specializations appear below; the former separate Vec2/Vec3/Vec4
+    // CryCommon->AzCore migration: `AZ::Vector2`/`AZ::Vector3`/`AZ::Vector4` now alias AZ::Vector2/3/4, whose
+    // type_traits specializations appear below; the former separate AZ::Vector2/AZ::Vector3/AZ::Vector4
     // specializations were removed to avoid redefinitions.
     template<>
     struct type_traits<AZStd::string>
@@ -1172,15 +1172,15 @@ namespace var_type
         return arg1 == arg2;
     };
     
-    inline bool compare(const Vec2& v1, const Vec2& v2)
+    inline bool compare(const AZ::Vector2& v1, const AZ::Vector2& v2)
     {
         return v1.x == v2.x && v1.y == v2.y;
     }
-    inline bool compare(const Vec3& v1, const Vec3& v2)
+    inline bool compare(const AZ::Vector3& v1, const AZ::Vector3& v2)
     {
         return v1.x == v2.x && v1.y == v2.y && v1.z == v2.z;
     }
-    inline bool compare(const Vec4& v1, const Vec4& v2)
+    inline bool compare(const AZ::Vector4& v1, const AZ::Vector4& v2)
     {
         return v1.x == v2.x && v1.y == v2.y && v1.z == v2.z && v1.w == v2.w;
     }

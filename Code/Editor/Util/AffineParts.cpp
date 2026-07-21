@@ -835,8 +835,8 @@ void AffineParts::Decompose(const AZ::Matrix3x4& tm34)
 
     rot = AZ::Quaternion(parts.q.x, parts.q.y, parts.q.z, parts.q.w);
     rotScale = AZ::Quaternion(parts.u.x, parts.u.y, parts.u.z, parts.u.w);
-    pos = Vec3(parts.t.x, parts.t.y, parts.t.z);
-    scale = Vec3(parts.k.x, parts.k.y, parts.k.z);
+    pos = AZ::Vector3(parts.t.x, parts.t.y, parts.t.z);
+    scale = AZ::Vector3(parts.k.x, parts.k.y, parts.k.z);
     fDet = parts.f;
 }
 
@@ -853,7 +853,7 @@ void AffineParts::SpectralDecompose(const AZ::Matrix3x4& tm34)
 
     rot = AZ::Quaternion(parts.q.x, parts.q.y, parts.q.z, parts.q.w);
     rotScale = AZ::Quaternion(parts.u.x, parts.u.y, parts.u.z, parts.u.w);
-    pos = Vec3(parts.t.x, parts.t.y, parts.t.z);
-    scale = Vec3(parts.k.x, parts.k.y, parts.k.z);
+    pos = AZ::Vector3(parts.t.x, parts.t.y, parts.t.z);
+    scale = AZ::Vector3(parts.k.x, parts.k.y, parts.k.z);
     fDet = parts.f;
 }

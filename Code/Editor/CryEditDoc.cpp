@@ -346,7 +346,7 @@ void CCryEditDoc::SerializeViewSettings(CXmlArchive& xmlAr)
         for (int i = 0; i < numberOfGameViewports; i++)
         {
             XmlNodeRef view;
-            Vec3 vp(0.0f, 0.0f, 256.0f);
+            AZ::Vector3 vp(0.0f, 0.0f, 256.0f);
             Ang3 va(ZERO);
 
             auto viewName = QString("View%1").arg(i);
@@ -395,7 +395,7 @@ void CCryEditDoc::SerializeViewSettings(CXmlArchive& xmlAr)
 
             if (pVP)
             {
-                Vec3 pos = AZVec3ToLYVec3(pVP->GetViewTM().GetTranslation());
+                AZ::Vector3 pos = AZVec3ToLYVec3(pVP->GetViewTM().GetTranslation());
                 Ang3 angles = AZVec3ToLYAng3(AZ::Quaternion::CreateFromMatrix3x4(pVP->GetViewTM()).GetEulerRadiansZYX());
                 auto viewerPosName = QString("ViewerPos%1").arg(i);
                 view->setAttr(viewerPosName.toUtf8().constData(), pos);

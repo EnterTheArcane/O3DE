@@ -154,7 +154,7 @@ namespace Maestro
         
         // Tracks
         IAnimTrack::Reflect(context);
-        TAnimSplineTrack<Vec2>::Reflect(context);
+        TAnimSplineTrack<AZ::Vector2>::Reflect(context);
         CBoolTrack::Reflect(context);
         CCaptureTrack::Reflect(context);
         CCharacterTrack::Reflect(context);

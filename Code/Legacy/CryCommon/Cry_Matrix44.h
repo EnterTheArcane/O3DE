@@ -510,20 +510,20 @@ struct Matrix44_tpl
     }
 
     //! transform a vector
-    ILINE Vec3 TransformVector(const Vec3& b) const
+    ILINE AZ::Vector3 TransformVector(const AZ::Vector3& b) const
     {
-        assert(b.IsFinite()); // CryCommon->AzCore migration: Vec3 is AZ::Vector3 (IsValid()->IsFinite())
-        Vec3 v;
+        assert(b.IsFinite()); // CryCommon->AzCore migration: AZ::Vector3 is AZ::Vector3 (IsValid()->IsFinite())
+        AZ::Vector3 v;
         v.x = m00 * b.x + m01 * b.y + m02 * b.z;
         v.y = m10 * b.x + m11 * b.y + m12 * b.z;
         v.z = m20 * b.x + m21 * b.y + m22 * b.z;
         return v;
     }
     //! transform a point
-    ILINE Vec3 TransformPoint(const Vec3& b) const
+    ILINE AZ::Vector3 TransformPoint(const AZ::Vector3& b) const
     {
-        assert(b.IsFinite()); // CryCommon->AzCore migration: Vec3 is AZ::Vector3 (IsValid()->IsFinite())
-        Vec3 v;
+        assert(b.IsFinite()); // CryCommon->AzCore migration: AZ::Vector3 is AZ::Vector3 (IsValid()->IsFinite())
+        AZ::Vector3 v;
         v.x = m00 * b.x + m01 * b.y + m02 * b.z + m03;
         v.y = m10 * b.x + m11 * b.y + m12 * b.z + m13;
         v.z = m20 * b.x + m21 * b.y + m22 * b.z + m23;
@@ -541,15 +541,15 @@ struct Matrix44_tpl
     ILINE F& operator () (uint32 i, uint32 j)   {   assert ((i < 4) && (j < 4));    F* p_data = (F*)(&m00);       return p_data[i * 4 + j];   }
 
     ILINE void SetRow(int i, const Vec3_tpl<F>& v)  {   assert(i < 4);    F* p = (F*)(&m00);    p[0 + 4 * i] = v.x;   p[1 + 4 * i] = v.y;   p[2 + 4 * i] = v.z;       }
-    ILINE void SetRow4(int i, const Vec4& v)   {   assert(i < 4);    F* p = (F*)(&m00);    p[0 + 4 * i] = v.x;   p[1 + 4 * i] = v.y;   p[2 + 4 * i] = v.z;   p[3 + 4 * i] = v.w;   }
+    ILINE void SetRow4(int i, const AZ::Vector4& v)   {   assert(i < 4);    F* p = (F*)(&m00);    p[0 + 4 * i] = v.x;   p[1 + 4 * i] = v.y;   p[2 + 4 * i] = v.z;   p[3 + 4 * i] = v.w;   }
     ILINE const Vec3_tpl<F>& GetRow(int i) const    {   assert(i < 4); return *(const Vec3_tpl<F>*)(&m00 + 4 * i);  }
 
     ILINE void SetColumn(int i, const Vec3_tpl<F>& v)   {   assert(i < 4);    F* p = (F*)(&m00);    p[i + 4 * 0] = v.x;   p[i + 4 * 1] = v.y;   p[i + 4 * 2] = v.z;       }
-    ILINE Vec3_tpl<F> GetColumn(int i) const    {   assert(i < 4);    F* p = (F*)(&m00);    return Vec3(p[i + 4 * 0], p[i + 4 * 1], p[i + 4 * 2]);    }
-    ILINE Vec4 GetColumn4(int i) const {   assert(i < 4);    F* p = (F*)(&m00);    return Vec4(p[i + 4 * 0], p[i + 4 * 1], p[i + 4 * 2], p[i + 4 * 3]);   }
+    ILINE Vec3_tpl<F> GetColumn(int i) const    {   assert(i < 4);    F* p = (F*)(&m00);    return AZ::Vector3(p[i + 4 * 0], p[i + 4 * 1], p[i + 4 * 2]);    }
+    ILINE AZ::Vector4 GetColumn4(int i) const {   assert(i < 4);    F* p = (F*)(&m00);    return AZ::Vector4(p[i + 4 * 0], p[i + 4 * 1], p[i + 4 * 2], p[i + 4 * 3]);   }
 
-    ILINE Vec3 GetTranslation() const { return Vec3(m03, m13, m23);   }
-    ILINE void SetTranslation(const Vec3& t)  {   m03 = t.x; m13 = t.y; m23 = t.z; }
+    ILINE AZ::Vector3 GetTranslation() const { return AZ::Vector3(m03, m13, m23);   }
+    ILINE void SetTranslation(const AZ::Vector3& t)  {   m03 = t.x; m13 = t.y; m23 = t.z; }
 
     bool IsValid() const
     {
@@ -761,11 +761,11 @@ ILINE Matrix44_tpl<F1> operator * (const Matrix44_tpl<F1>& l, const Matrix44_tpl
 
 //post-multiply
 template<class F2>
-ILINE Vec4 operator*(const Matrix44_tpl<F2>& m, const Vec4& v)
+ILINE AZ::Vector4 operator*(const Matrix44_tpl<F2>& m, const AZ::Vector4& v)
 {
     assert(m.IsValid());
-    assert(v.IsFinite()); // CryCommon->AzCore migration: Vec4 is AZ::Vector4 (IsValid()->IsFinite())
-    return Vec4(v.x * m.m00 + v.y * m.m01 + v.z * m.m02 + v.w * m.m03,
+    assert(v.IsFinite()); // CryCommon->AzCore migration: AZ::Vector4 is AZ::Vector4 (IsValid()->IsFinite())
+    return AZ::Vector4(v.x * m.m00 + v.y * m.m01 + v.z * m.m02 + v.w * m.m03,
         v.x * m.m10 + v.y * m.m11 + v.z * m.m12 + v.w * m.m13,
         v.x * m.m20 + v.y * m.m21 + v.z * m.m22 + v.w * m.m23,
         v.x * m.m30 + v.y * m.m31 + v.z * m.m32 + v.w * m.m33);
@@ -773,11 +773,11 @@ ILINE Vec4 operator*(const Matrix44_tpl<F2>& m, const Vec4& v)
 
 //pre-multiply
 template<class F2>
-ILINE Vec4 operator*(const Vec4& v, const Matrix44_tpl<F2>& m)
+ILINE AZ::Vector4 operator*(const AZ::Vector4& v, const Matrix44_tpl<F2>& m)
 {
     assert(m.IsValid());
-    assert(v.IsFinite()); // CryCommon->AzCore migration: Vec4 is AZ::Vector4 (IsValid()->IsFinite())
-    return Vec4(v.x * m.m00 + v.y * m.m10 + v.z * m.m20 + v.w * m.m30,
+    assert(v.IsFinite()); // CryCommon->AzCore migration: AZ::Vector4 is AZ::Vector4 (IsValid()->IsFinite())
+    return AZ::Vector4(v.x * m.m00 + v.y * m.m10 + v.z * m.m20 + v.w * m.m30,
         v.x * m.m01 + v.y * m.m11 + v.z * m.m21 + v.w * m.m31,
         v.x * m.m02 + v.y * m.m12 + v.z * m.m22 + v.w * m.m32,
         v.x * m.m03 + v.y * m.m13 + v.z * m.m23 + v.w * m.m33);

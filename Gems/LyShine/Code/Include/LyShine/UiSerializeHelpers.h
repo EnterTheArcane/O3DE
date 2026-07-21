@@ -152,7 +152,7 @@ namespace LyShine
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    // Helper function to VersionConverter to convert a ColorF field to a Vector3 color and a float
+    // Helper function to VersionConverter to convert a AZ::Color field to a Vector3 color and a float
     // alpha.
     // Inline to avoid DLL linkage issues
     inline bool ConvertSubElementFromColorToColorPlusAlpha(
@@ -173,7 +173,7 @@ namespace LyShine
                   GetSubElementValue(elementNode, "b", b) &&
                   GetSubElementValue(elementNode, "a", a)))
             {
-                // Error, old subElement was not a ColorF
+                // Error, old subElement was not a AZ::Color
                 AZ_Error("Serialization", false, "Element %s is not a ColorF.", colorElementName);
                 return false;
             }
@@ -256,7 +256,7 @@ namespace LyShine
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    // Helper function to VersionConverter to convert a ColorF field to a AZ::Color
+    // Helper function to VersionConverter to convert a AZ::Color field to a AZ::Color
     // Inline to avoid DLL linkage issues
     inline bool ConvertSubElementFromColorFToAzColor(
         AZ::SerializeContext& context,
@@ -275,7 +275,7 @@ namespace LyShine
                   GetSubElementValue(elementNode, "b", b) &&
                   GetSubElementValue(elementNode, "a", a)))
             {
-                // Error, old subElement was not a ColorF
+                // Error, old subElement was not a AZ::Color
                 AZ_Error("Serialization", false, "Element %s is not a ColorF.", colorElementName);
                 return false;
             }
@@ -339,7 +339,7 @@ namespace LyShine
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    // Helper function to VersionConverter to convert a Vec2 field to a AZ::Vector2.
+    // Helper function to VersionConverter to convert a AZ::Vector2 field to a AZ::Vector2.
     // Inline to avoid DLL linkage issues
     inline bool ConvertSubElementFromVec2ToVector2(
         AZ::SerializeContext& context,
@@ -351,12 +351,12 @@ namespace LyShine
         {
             AZ::SerializeContext::DataElementNode& elementNode = classElement.GetSubElement(index);
 
-            Vec2 oldData;
+            AZ::Vector2 oldData;
 
             if (!(GetSubElementValue(elementNode, "x", oldData.x) &&
                 GetSubElementValue(elementNode, "y", oldData.y)))
             {
-                // Error, old subElement was not a Vec2
+                // Error, old subElement was not a AZ::Vector2
                 AZ_Error("Serialization", false, "Element %s is not a Vec2.", vec2ElementName);
                 return false;
             }

@@ -401,7 +401,7 @@ return 0;
 */
 
 //-------------------------------------------------------------------------------------------------
-Vec2 AZ::FontTexture::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph)
+AZ::Vector2 AZ::FontTexture::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph)
 {
     return m_glyphCache.GetKerning(leftGlyph, rightGlyph);
 }
