@@ -173,12 +173,26 @@ class _PCFilesDeps:
             ret[var_name] = f"{prefix}{directory}"
         return ret
 
+    _GCC_LIKE = ("clang", "apple-clang", "gcc")
+
     def _get_framework_flags(self, info: Any) -> list[str]:
-        # FIXME: GnuDepsFlags used only here. Let's adapt the code and remove this dependency.
-        #        self._recipe is also used only here.
-        from thirdparty.build.gnudeps_flags import GnuDepsFlags
-        gnudeps_flags = GnuDepsFlags(self._recipe, info)
-        return gnudeps_flags.frameworks + gnudeps_flags.framework_paths
+        # Apple frameworks: emit `-framework <name>` and `-F<dir>` flags, but only on Apple
+        # platforms with a GCC-like compiler (other compilers don't support frameworks).
+        from thirdparty._internal.subsystems import deduce_subsystem, subsystem_path
+        from thirdparty.apple.utils import is_apple_os
+        if not is_apple_os(self._recipe):
+            return []
+        if str(self._recipe.settings.compiler) not in self._GCC_LIKE:
+            return []
+        subsystem = deduce_subsystem(self._recipe, scope="build")
+
+        def adjust_path(path: str) -> str:
+            path = subsystem_path(subsystem, path.replace("\\", "/"))
+            return '"%s"' % path if " " in path else path
+
+        frameworks = ["-framework %s" % framework for framework in (info.frameworks or [])]
+        framework_paths = ['-F"%s"' % adjust_path(path) for path in (info.frameworkdirs or [])]
+        return frameworks + framework_paths
 
     def _get_lib_flags(self, libdirvars: Any, info: Any) -> str:
         framework_flags = self._get_framework_flags(info)
