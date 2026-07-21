@@ -33,7 +33,7 @@ namespace
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     AZ::Vector2 ConvertBarycentricCoordsToUVCoords(float u, float v, float w, AZ::Vector2 uv0, AZ::Vector2 uv1, AZ::Vector2 uv2)
     {
-        float arrVertWeight[3] = { max(0.f, u), max(0.f, v), max(0.f, w) };
+        float arrVertWeight[3] = { AZStd::max(0.f, u), AZStd::max(0.f, v), AZStd::max(0.f, w) };
         float fDiv = 1.f / (arrVertWeight[0] + arrVertWeight[1] + arrVertWeight[2]);
         arrVertWeight[0] *= fDiv;
         arrVertWeight[1] *= fDiv;

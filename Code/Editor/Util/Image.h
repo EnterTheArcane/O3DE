@@ -213,7 +213,7 @@ public:
             {
                 for (int x = 0; x < width; x++)
                 {
-                    ValueAt(x1 + x, y1 + y) = clamp_tpl(f32(subImage.ValueAt(x, y) + heightOffset), 0.0f, f32(TClamp));
+                    ValueAt(x1 + x, y1 + y) = AZ::GetClamp(f32(subImage.ValueAt(x, y) + heightOffset), 0.0f, f32(TClamp));
                 }
             }
         }

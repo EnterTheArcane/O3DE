@@ -824,10 +824,10 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
                     culled = true;
                 }
 
-                x0 = max(clipX, x0);
-                y0 = max(clipY, y0);
-                x1 = min(clipR, x1);
-                y1 = min(clipB, y1);
+                x0 = AZStd::max(clipX, x0);
+                y0 = AZStd::max(clipY, y0);
+                x1 = AZStd::min(clipR, x1);
+                y1 = AZStd::min(clipB, y1);
             }
 
             if (!culled)
@@ -1029,10 +1029,10 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
                     }
 
                     // clip the image to the scissor rect
-                    newX = max(clipX, px);
-                    newY = max(clipY, py);
-                    newR = min(clipR, pr);
-                    newB = min(clipB, pb);
+                    newX = AZStd::max(clipX, px);
+                    newY = AZStd::max(clipY, py);
+                    newR = AZStd::min(clipR, pr);
+                    newB = AZStd::min(clipB, pb);
 
                     float rcpWidth = 1.0f / width;
                     float rcpHeight = 1.0f / size.GetY();

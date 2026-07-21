@@ -355,7 +355,7 @@ namespace spline
 
     inline float fast_fmod(float x, float y)
     {
-        return fmod_tpl(x, y);
+        return AZStd::fmod(x, y);
         //int ival = ftoi(x/y);
         //return x - ival*y;
     }

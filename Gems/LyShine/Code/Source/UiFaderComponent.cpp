@@ -194,7 +194,7 @@ void UiFaderComponent::Fade(float targetValue, float speed)
     }
 
     m_isFading = true;
-    m_fadeTarget = clamp_tpl(targetValue, 0.0f, 1.0f);
+    m_fadeTarget = AZ::GetClamp(targetValue, 0.0f, 1.0f);
 
     // Give speed a direction
     float fadeChange = m_fadeTarget - m_fade;

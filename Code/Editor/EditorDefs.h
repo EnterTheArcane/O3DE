@@ -21,7 +21,7 @@
 #include "ProjectDefines.h"
 
 #ifdef NOMINMAX
-#include "Cry_Math.h"
+#include <AzCore/Math/Vector3.h>
 #endif //NOMINMAX
 
 // Resource includes
@@ -73,7 +73,7 @@
 // CRY Stuff ////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 #include <platform.h>
-#include <Cry_Math.h>
+#include <AzCore/Math/Vector3.h>
 #include <Range.h>
 #include <StlUtils.h>
 

@@ -560,7 +560,7 @@ namespace Maestro
         // Assumes the degree is in (-PI, PI).
         AZ_Assert(-180.01f < degree && degree < 180.01f, "degree %f is out of range", degree);
         float degree00 = degree0;
-        degree0 = fmod_tpl(degree0, 360.0f);
+        degree0 = AZStd::fmod(degree0, 360.0f);
         float n = (degree00 - degree0) / 360.0f;
         float degreeAlt;
         if (degree >= 0)

@@ -225,5 +225,5 @@ inline float Gestures::RecognizerRotate::GetSignedRotationInDegrees() const
     const float dotProduct = vectorBetweenStartPositions.Dot(vectorBetweenCurrentPositions);
     const float crossProduct = vectorBetweenStartPositions.GetX() * vectorBetweenCurrentPositions.GetY() - 
                                vectorBetweenStartPositions.GetY() * vectorBetweenCurrentPositions.GetX();
-    return RAD2DEG(atan2(crossProduct, dotProduct));
+    return AZ::RadToDeg(atan2(crossProduct, dotProduct));
 }

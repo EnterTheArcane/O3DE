@@ -22,7 +22,7 @@
 #include <CryCommon/Maestro/Types/AnimValueType.h>
 
 #define DEFAULT_NEAR 0.2f
-#define DEFAULT_FOV (75.0f * gf_PI / 180.0f)
+#define DEFAULT_FOV (75.0f * AZ::Constants::Pi / 180.0f)
 
 // forward declaration.
 struct IAnimTrack;

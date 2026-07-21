@@ -392,7 +392,7 @@ float UiCompoundSplineTrack::PreferShortestRotPath(float degree, float degree0) 
     // Assumes the degree is in (-PI, PI).
     assert(-181.0f < degree && degree < 181.0f);
     float degree00 = degree0;
-    degree0 = fmod_tpl(degree0, 360.0f);
+    degree0 = AZStd::fmod(degree0, 360.0f);
     float n = (degree00 - degree0) / 360.0f;
     float degreeAlt;
     if (degree >= 0)

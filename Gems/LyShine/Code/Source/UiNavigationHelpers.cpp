@@ -208,12 +208,12 @@ namespace UiNavigationHelpers
                     }
                     else
                     {
-                        float x1 = max(srcLeft, destLeft);
-                        float x2 = min(srcRight, destRight);
+                        float x1 = AZStd::max(srcLeft, destLeft);
+                        float x2 = AZStd::min(srcRight, destRight);
                         if (x1 <= x2)
                         {
                             float overlap = x2 - x1;
-                            overlapValue = max(overlap / (srcRight - srcLeft), overlap / (destRight - destLeft));
+                            overlapValue = AZStd::max(overlap / (srcRight - srcLeft), overlap / (destRight - destLeft));
                         }
                     }
                 }
@@ -231,12 +231,12 @@ namespace UiNavigationHelpers
                     }
                     else
                     {
-                        float y1 = max(srcTop, destTop);
-                        float y2 = min(srcBottom, destBottom);
+                        float y1 = AZStd::max(srcTop, destTop);
+                        float y2 = AZStd::min(srcBottom, destBottom);
                         if (y1 <= y2)
                         {
                             float overlap = y2 - y1;
-                            overlapValue = max(overlap / (srcBottom - srcTop), overlap / (destBottom - destTop));
+                            overlapValue = AZStd::max(overlap / (srcBottom - srcTop), overlap / (destBottom - destTop));
                         }
                     }
                 }
@@ -300,7 +300,7 @@ namespace UiNavigationHelpers
                 // Calculate angle distance value from 0 to 1
                 float angleDist;
                 AZ::Vector2 dir = destPoint - srcPoint;
-                float angle = RAD2DEG(atan2(-dir.GetY(), dir.GetX()));
+                float angle = AZ::RadToDeg(atan2(-dir.GetY(), dir.GetX()));
                 if (angle < 0.0f)
                 {
                     angle += 360.0f;

@@ -532,7 +532,7 @@ inline int TUiAnimTrack<KeyType>::GetActiveKey(float time, KeyType* key)
         float duration = 0;
         GetKeyInfo(nkeys - 1, desc, duration);
         float endtime = GetKeyTime(nkeys - 1) + duration;
-        time = fmod_tpl(time, endtime);
+        time = AZStd::fmod(time, endtime);
         if (time < m_lastTime)
         {
             // Time is wrapped.

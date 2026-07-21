@@ -13,7 +13,7 @@
 #include <AzFramework/Viewport/ViewportId.h>
 #include <AzToolsFramework/Viewport/ViewportTypes.h>
 #include <AzToolsFramework/ViewportUi/ViewportUiManager.h>
-#include <Cry_Color.h>
+#include <AzCore/Math/Color.h>
 #include "IPostRenderer.h"
 #include "Include/IDisplayViewport.h"
 #include "Include/SandboxAPI.h"

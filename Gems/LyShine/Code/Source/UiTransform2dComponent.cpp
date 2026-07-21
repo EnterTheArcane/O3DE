@@ -47,7 +47,7 @@ namespace
     {
         AZ::Vector3 pivot3(pivot.GetX(), pivot.GetY(), 0);
 
-        float rotRad = DEG2RAD(-rotation);            // inverse rotation
+        float rotRad = AZ::DegToRad(-rotation);            // inverse rotation
 
         // Avoid a divide by zero. We could compare with 0.0f here and that would avoid a divide
         // by zero. However comparing with FLT_EPSILON also avoids the rare case of an overflow.
@@ -449,7 +449,7 @@ void UiTransform2dComponent::GetLocalTransform(AZ::Matrix4x4& mat)
         AZ::Vector2 pivot = GetCanvasSpacePivotNoScaleRotate();
         AZ::Vector3 pivot3(pivot.GetX(), pivot.GetY(), 0);
 
-        float rotRad = DEG2RAD(m_rotation);     // rotation
+        float rotRad = AZ::DegToRad(m_rotation);     // rotation
 
         AZ::Vector2 scale = GetScaleAdjustedForDevice();
         AZ::Vector3 scale3(scale.GetX(), scale.GetY(), 1);   // scale

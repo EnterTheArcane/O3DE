@@ -19,7 +19,7 @@
 #include <AzFramework/Entity/EntityContext.h>
 #include <AzFramework/Entity/SliceEntityOwnershipService.h>
 #include <AzToolsFramework/Entity/EditorEntityContextPickingBus.h>
-#include <Cry_Vector2.h>
+#include <AzCore/Math/Vector2.h>
 #include <LyShine/UiEntityContext.h>
 
 namespace AZ

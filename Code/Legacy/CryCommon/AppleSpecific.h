@@ -363,8 +363,8 @@ typedef struct _SECURITY_ATTRIBUTES
 
 #ifdef __cplusplus
 
-#define __min(_S, _T) min(_S, _T)
-#define __max(_S, _T) max(_S, _T)
+// CryCommon->AzCore migration: the __min/__max compat macros (aliased the removed Cry global
+// min/max) were dropped. Use AZStd::min / AZStd::max directly.
 
 typedef enum
 {

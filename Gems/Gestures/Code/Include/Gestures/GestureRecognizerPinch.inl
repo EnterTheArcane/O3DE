@@ -106,7 +106,7 @@ inline float AngleInDegreesBetweenVectors(const AZ::Vector2& vec0, const AZ::Vec
         return 0.0f;
     }
 
-    return RAD2DEG(acosf(abs(vec0.GetNormalized().Dot(vec1.GetNormalized()))));
+    return AZ::RadToDeg(acosf(abs(vec0.GetNormalized().Dot(vec1.GetNormalized()))));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

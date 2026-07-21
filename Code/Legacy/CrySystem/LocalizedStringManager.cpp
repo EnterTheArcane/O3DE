@@ -2613,7 +2613,7 @@ void CLocalizedStringsManager::LocalizeNumber_Decimal(float number, int decimals
 
     float decimalsOnly = f - (float)d;
 
-    int decimalsAsInt = aznumeric_cast<int>(int_round(decimalsOnly * pow(10.0f, decimals)));
+    int decimalsAsInt = aznumeric_cast<int>(AZStd::round(decimalsOnly * pow(10.0f, decimals)));
 
     AZStd::fixed_string<64> tmp;
     tmp = AZStd::fixed_string<64>::format("%s%s%0*d", intPart.c_str(), commaSeparator.c_str(), decimals, decimalsAsInt);

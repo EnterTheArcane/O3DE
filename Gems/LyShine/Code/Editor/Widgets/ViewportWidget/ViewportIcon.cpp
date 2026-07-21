@@ -159,7 +159,7 @@ void ViewportIcon::Draw(Draw2dHelper& draw2d, AZ::Vector2 anchorPos, const AZ::M
 
     // apply the rotation that rotates the anchor icon to point in the correct direction
     AZ::Vector3 pivot3(anchorPos.GetX(), anchorPos.GetY(), 0);
-    float rotRad = DEG2RAD(iconRot);
+    float rotRad = AZ::DegToRad(iconRot);
     AZ::Matrix4x4 moveToPivotSpaceMat = AZ::Matrix4x4::CreateTranslation(-pivot3);
     AZ::Matrix4x4 rotMat = AZ::Matrix4x4::CreateRotationZ(rotRad);
     AZ::Matrix4x4 moveFromPivotSpaceMat = AZ::Matrix4x4::CreateTranslation(pivot3);
@@ -287,7 +287,7 @@ void ViewportIcon::DrawDistanceLine(Draw2dHelper& draw2d, AZ::Vector2 start, AZ:
 
     // get the angle of the line (will always be > (-90 < angle <= 90)
     float rotRad = atan2f(end.GetY() - start.GetY(), end.GetX() - start.GetX());
-    float rotation = RAD2DEG(rotRad);
+    float rotation = AZ::RadToDeg(rotRad);
 
     // offset the bottom center of the text from the line by a fixed offset,
     // we rotate the offset to match line angle

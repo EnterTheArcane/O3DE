@@ -902,7 +902,7 @@ namespace Maestro
             float duration = 0;
             GetKeyInfo(numKeys - 1, desc, duration);
             float endtime = GetKeyTime(numKeys - 1) + duration;
-            time = fmod_tpl(time, endtime);
+            time = AZStd::fmod(time, endtime);
             if (time < m_lastTime)
             {
                 // Time is wrapped.

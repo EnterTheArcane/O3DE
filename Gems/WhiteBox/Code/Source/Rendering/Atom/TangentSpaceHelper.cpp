@@ -9,7 +9,7 @@
 #include "TangentSpaceHelper.h"
 
 #include <AzCore/std/containers/array.h>
-#include <CryCommon/Cry_Math.h>
+#include <AzCore/Math/Vector3.h>
 
 namespace WhiteBox
 {
@@ -129,8 +129,8 @@ namespace WhiteBox
 
                     // /fAreaMul2*fAreaMul2 was optimized away -> small triangles in UV should contribute less and
                     // less artifacts (no divide and multiply)
-                    tangent = (triangleEdges[0] * a + triangleEdges[1] * b) * fsgnf(div);
-                    bitangent = (triangleEdges[0] * c + triangleEdges[1] * d) * fsgnf(div);
+                    tangent = (triangleEdges[0] * a + triangleEdges[1] * b) * AZ::GetSign(div);
+                    bitangent = (triangleEdges[0] * c + triangleEdges[1] * d) * AZ::GetSign(div);
                 }
                 else
                 {
@@ -249,8 +249,8 @@ namespace WhiteBox
 
         double cosAngle = a.Dot(b) / lengthQ;
 
-        // acosf is not available on every platform. acos_tpl clamps cosAngle to [-1,1].
-        return static_cast<float>(acos_tpl(cosAngle));
+        // Clamp to [-1,1] to guard against floating-point overshoot producing NaN.
+        return static_cast<float>(AZStd::acos(AZ::GetClamp(cosAngle, -1.0, 1.0)));
     }
 
     AZTangentSpaceCalculation::Base33::Base33(

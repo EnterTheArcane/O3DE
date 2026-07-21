@@ -87,11 +87,11 @@ void UiLayoutGridComponent::ApplyLayoutHeight()
         {
         case StartingDirection::HorizontalOrder:
             numColumns = static_cast<int>(floorf((layoutRectSize.GetX() + m_spacing.GetX()) / (m_cellSize.GetX() + m_spacing.GetX())));
-            numColumns = max(numColumns, 1);
+            numColumns = AZStd::max(numColumns, 1);
             break;
         case StartingDirection::VerticalOrder:
             numRows = static_cast<int>(floorf((layoutRectSize.GetY() + m_spacing.GetY()) / (m_cellSize.GetY() + m_spacing.GetY())));
-            numRows = max(numRows, 1);
+            numRows = AZStd::max(numRows, 1);
             break;
         default:
             AZ_Assert(0, "Unrecognized Direction type in UiLayoutGridComponent");
@@ -631,15 +631,15 @@ AZ::Vector2 UiLayoutGridComponent::GetChildrenBoundingRectSize(const AZ::Vector2
         {
         case StartingDirection::HorizontalOrder:
             numColumns = static_cast<int>(floorf((layoutRectSize.GetX() + m_spacing.GetX()) / (childElementSize.GetX() + m_spacing.GetX())));
-            Limit(numColumns, 1, numChildElements);
+            numColumns = AZ::GetClamp(numColumns, 1, numChildElements);
             numRows = static_cast<int>(ceil(static_cast<float>(numChildElements) / numColumns));
-            numRows = max(numRows, 1);
+            numRows = AZStd::max(numRows, 1);
             break;
         case StartingDirection::VerticalOrder:
             numRows = static_cast<int>(floorf((layoutRectSize.GetY() + m_spacing.GetY()) / (childElementSize.GetY() + m_spacing.GetY())));
-            Limit(numRows, 1, numChildElements);
+            numRows = AZ::GetClamp(numRows, 1, numChildElements);
             numColumns = static_cast<int>(ceil(static_cast<float>(numChildElements) / numRows));
-            numColumns = max(numColumns, 1);
+            numColumns = AZStd::max(numColumns, 1);
             break;
         default:
             AZ_Assert(0, "Unrecognized Direction type in UiLayoutGridComponent");

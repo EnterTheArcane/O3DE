@@ -117,7 +117,7 @@ void CScreenFaderKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle&
 
             if (pVar == mv_fadeTime.GetVar())
             {
-                screenFaderKey.m_fadeTime = MAX((float)mv_fadeTime, 0.f);
+                screenFaderKey.m_fadeTime = AZStd::max((float)mv_fadeTime, 0.f);
             }
             else if (pVar == mv_strTexture.GetVar())
             {

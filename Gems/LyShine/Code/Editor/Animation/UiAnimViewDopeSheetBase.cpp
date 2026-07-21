@@ -1752,9 +1752,9 @@ bool CUiAnimViewDopeSheetBase::CreateColorKey(CUiAnimViewTrack* pTrack, float ke
     pTrack->GetValue(keyTime, vColor);
 
     const AZ::Color defaultColor = AZ::Color::CreateFromRgba(
-        clamp_tpl(static_cast<AZ::u8>(FloatToIntRet(vColor.GetX())), AZ::u8(0), AZ::u8(255)),
-        clamp_tpl(static_cast<AZ::u8>(FloatToIntRet(vColor.GetY())), AZ::u8(0), AZ::u8(255)),
-        clamp_tpl(static_cast<AZ::u8>(FloatToIntRet(vColor.GetZ())), AZ::u8(0), AZ::u8(255)), 255);
+        AZ::GetClamp(static_cast<AZ::u8>(FloatToIntRet(vColor.GetX())), AZ::u8(0), AZ::u8(255)),
+        AZ::GetClamp(static_cast<AZ::u8>(FloatToIntRet(vColor.GetY())), AZ::u8(0), AZ::u8(255)),
+        AZ::GetClamp(static_cast<AZ::u8>(FloatToIntRet(vColor.GetZ())), AZ::u8(0), AZ::u8(255)), 255);
     AzQtComponents::ColorPicker dlg(AzQtComponents::ColorPicker::Configuration::RGB, tr("Select Color"), this);
     dlg.setCurrentColor(defaultColor);
     dlg.setSelectedColor(defaultColor);
@@ -2053,8 +2053,8 @@ void CUiAnimViewDopeSheetBase::DrawTrack(CUiAnimViewTrack* pTrack, QPainter* pai
     painter->setPen(prevPen);
 
     QRect rcInner = trackRect;
-    rcInner.setLeft(max(trackRect.left(), m_leftOffset - m_scrollOffset.x()));
-    rcInner.setRight(min(trackRect.right(), (m_scrollMax + m_scrollMin) - m_scrollOffset.x() + m_leftOffset * 2));
+    rcInner.setLeft(AZStd::max(trackRect.left(), m_leftOffset - m_scrollOffset.x()));
+    rcInner.setRight(AZStd::min(trackRect.right(), (m_scrollMax + m_scrollMin) - m_scrollOffset.x() + m_leftOffset * 2));
 
     bool bLightAnimationSetActive = pSequence->GetFlags() & IUiAnimSequence::eSeqFlags_LightAnimationSet;
     if (bLightAnimationSetActive && pTrack->GetKeyCount() > 0)
@@ -2062,7 +2062,7 @@ void CUiAnimViewDopeSheetBase::DrawTrack(CUiAnimViewTrack* pTrack, QPainter* pai
         // In the case of the light animation set, the time of of the last key
         // determines the end of the track.
         float lastKeyTime = pTrack->GetKey(pTrack->GetKeyCount() - 1).GetTime();
-        rcInner.setRight(min(rcInner.right(), TimeToClient(lastKeyTime)));
+        rcInner.setRight(AZStd::min(rcInner.right(), TimeToClient(lastKeyTime)));
     }
 
     QRect rcInnerDraw(QPoint(rcInner.left() - 6, rcInner.top()), QPoint(rcInner.right() + 6, rcInner.bottom()));
@@ -2190,8 +2190,8 @@ void CUiAnimViewDopeSheetBase::DrawSelectTrack(const Range& timeRange, QPainter*
                 nextTime = pTrack->GetKey(i + 1).GetTime();
             }
 
-            time = clamp_tpl(time, timeRange.start, timeRange.end);
-            nextTime = clamp_tpl(nextTime, timeRange.start, timeRange.end);
+            time = AZ::GetClamp(time, timeRange.start, timeRange.end);
+            nextTime = AZ::GetClamp(nextTime, timeRange.start, timeRange.end);
 
             int x0 = TimeToClient(time);
 
@@ -3032,7 +3032,7 @@ void CUiAnimViewDopeSheetBase::DrawKeyDuration(CUiAnimViewTrack* pTrack, QPainte
     int x = TimeToClient(time);
 
     // Draw key duration.
-    float endt = min(time + duration, m_timeRange.end);
+    float endt = AZStd::min(time + duration, m_timeRange.end);
     int x1 = TimeToClient(endt);
     if (x1 < 0)
     {

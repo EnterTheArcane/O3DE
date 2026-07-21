@@ -372,7 +372,7 @@ void CDraw2d::DrawRectOutlineTextured(AZ::Data::Instance<AZ::RPI::Image> image,
     // if the rect is small there may not be space for the half of the outline that
     // is inside the rect. If this is the case reduce the innerOffset so the inner
     // points are coincident. Adjust the UVs according to keep a 1-1 texel to pixel ratio.
-    float minDimension = min(rectWidth, rectHeight);
+    float minDimension = AZStd::min(rectWidth, rectHeight);
     if (innerOffset > minDimension * 0.5f)
     {
         float oldInnerOffset = innerOffset;
@@ -554,7 +554,7 @@ AZ::Data::Instance<AZ::RPI::Image> CDraw2d::LoadTexture(const AZStd::string& pat
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void CDraw2d::RotatePointsAboutPivot(AZ::Vector2* points, [[maybe_unused]] int numPoints, AZ::Vector2 pivot, float angle) const
 {
-    float angleRadians = DEG2RAD(angle);
+    float angleRadians = AZ::DegToRad(angle);
     AZ::Matrix3x3 rotationMatrix = AZ::Matrix3x3::CreateRotationZ(angleRadians);
 
     for (int i = 0; i < 4; ++i)
@@ -635,7 +635,7 @@ void CDraw2d::DrawTextInternal(const char* textString, AzFramework::FontId fontI
     if (rotation != 0.0f)
     {
         // rotate around the position (if aligned to center will rotate about center etc)
-        float rotRad = DEG2RAD(rotation);
+        float rotRad = AZ::DegToRad(rotation);
         AZ::Vector3 pivot(position.GetX(), position.GetY(), 0.0f);
         AZ::Matrix3x4 moveToPivotSpaceMat = AZ::Matrix3x4::CreateTranslation(-pivot);
         AZ::Matrix3x4 rotMat = AZ::Matrix3x4::CreateRotationZ(rotRad);

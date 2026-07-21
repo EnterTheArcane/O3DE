@@ -119,7 +119,7 @@ void Command_SetWaitFrames(IConsoleCmdArgs* pCmd)
 
     if (pCmd->GetArgCount() > 1)
     {
-        pConsole->m_waitFrames = max(0, atoi(pCmd->GetArg(1)));
+        pConsole->m_waitFrames = AZStd::max(0, atoi(pCmd->GetArg(1)));
     }
 }
 

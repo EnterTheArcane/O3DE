@@ -2133,12 +2133,12 @@ void UiDynamicScrollBoxComponent::FindVisibleElementIndicesForFixedSizes(const A
         if (itemSize > 0.0f)
         {
             // Calculate first visible element index
-            firstVisibleElementIndexOut = max(static_cast<int>(ceil(beginningVisibleOffset / itemSize)) - 1, 0);
+            firstVisibleElementIndexOut = AZStd::max(static_cast<int>(ceil(beginningVisibleOffset / itemSize)) - 1, 0);
 
             // Calculate last visible element index
             lastVisibleElementIndexOut = static_cast<int>(ceil(endVisibleOffset / itemSize)) - 1;
-            int lastElementIndex = max(m_numElements - 1, 0);
-            Limit(lastVisibleElementIndexOut, 0, lastElementIndex);
+            int lastElementIndex = AZStd::max(m_numElements - 1, 0);
+            lastVisibleElementIndexOut = AZ::GetClamp(lastVisibleElementIndexOut, 0, lastElementIndex);
         }
     }
     else
@@ -2302,12 +2302,12 @@ int UiDynamicScrollBoxComponent::EstimateFirstVisibleElementIndex(const AZ::Vect
             // Check how much scrolling has occurred
             float scrollDelta = visibleContentBounds.GetX() - m_lastCalculatedVisibleContentOffset;
             // Estimate the number of elements within the scroll delta
-            int estimatedElementIndexOffset = max(static_cast<int>(ceil(fabs(scrollDelta / m_averageElementSize))) - 1, 0);
+            int estimatedElementIndexOffset = AZStd::max(static_cast<int>(ceil(fabs(scrollDelta / m_averageElementSize))) - 1, 0);
             estimatedElementIndex = m_firstVisibleElementIndex + (scrollDelta > 0.0f ? estimatedElementIndexOffset : -estimatedElementIndexOffset);
         }
         else
         {
-            estimatedElementIndex = max(static_cast<int>(ceil(visibleContentBounds.GetX() / m_averageElementSize)) - 1, 0);
+            estimatedElementIndex = AZStd::max(static_cast<int>(ceil(visibleContentBounds.GetX() / m_averageElementSize)) - 1, 0);
         }
     }
 

@@ -339,7 +339,7 @@ namespace Maestro
     {
         if (m_sequence)
         {
-            newTime = clamp_tpl(newTime, m_sequence.get()->GetTimeRange().start, m_sequence.get()->GetTimeRange().end);
+            newTime = AZ::GetClamp(newTime, m_sequence.get()->GetTimeRange().start, m_sequence.get()->GetTimeRange().end);
             m_movieSystem->SetPlayingTime(m_sequence.get(), newTime);
         }
     }

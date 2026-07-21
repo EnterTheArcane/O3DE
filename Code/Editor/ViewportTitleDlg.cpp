@@ -269,7 +269,7 @@ inline double Round(double fVal, double fStep)
 {
     if (fStep > 0.f)
     {
-        fVal = int_round(fVal / fStep) * fStep;
+        fVal = AZStd::round(fVal / fStep) * fStep;
     }
     return fVal;
 }

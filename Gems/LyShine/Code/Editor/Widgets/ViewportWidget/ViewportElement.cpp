@@ -104,10 +104,10 @@ bool ViewportElement::PickElementEdges(const AZ::Entity* element,
     float top    = corners.TopLeft().GetY();
     float bottom = corners.BottomRight().GetY();
 
-    float minX = min(left, right) - pickDistance.GetX();
-    float maxX = max(left, right) + pickDistance.GetX();
-    float minY = min(top, bottom) - pickDistance.GetY();
-    float maxY = max(top, bottom) + pickDistance.GetY();
+    float minX = AZStd::min(left, right) - pickDistance.GetX();
+    float maxX = AZStd::max(left, right) + pickDistance.GetX();
+    float minY = AZStd::min(top, bottom) - pickDistance.GetY();
+    float maxY = AZStd::max(top, bottom) + pickDistance.GetY();
 
     // Test distance of point from edges
     if (!ViewportHelpers::IsHorizontallyFit(element))
@@ -461,7 +461,7 @@ void ViewportElement::ResizeDirectly(HierarchyWidget* hierarchy,
         // build matrix to transform these points into parent's transform space using this pivot
         float rotation;
         UiTransformBus::EventResult(rotation, element->GetId(), &UiTransformBus::Events::GetZRotation);
-        float rotRad = DEG2RAD(-rotation);  // reverse rotation
+        float rotRad = AZ::DegToRad(-rotation);  // reverse rotation
 
         AZ::Vector2 scale;
         UiTransformBus::EventResult(scale, element->GetId(), &UiTransformBus::Events::GetScale);
@@ -574,7 +574,7 @@ void ViewportElement::Rotate(HierarchyWidget* hierarchy,
     pivotToLastPos.NormalizeSafe();
     pivotToThisPos.NormalizeSafe();
     float signedAngle = atan2(pivotToThisPos.GetY(), pivotToThisPos.GetX()) - atan2(pivotToLastPos.GetY(), pivotToLastPos.GetX());
-    signedAngle = roundf(RAD2DEG(signedAngle));
+    signedAngle = roundf(AZ::RadToDeg(signedAngle));
 
     // if the combined parent transform is scaling just one of either X or Y negatively then the
     // element will rotate on screen in the opposite direction to the way the cursor is moved. So

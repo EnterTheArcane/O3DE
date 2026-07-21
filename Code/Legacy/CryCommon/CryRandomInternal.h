@@ -151,7 +151,7 @@ namespace CryRandom_Internal
 
         if (lenSquared >= (std::numeric_limits<T>::min)())
         {
-            return res * isqrt_tpl(lenSquared);
+            return res * AZ::InvSqrt(lenSquared);
         }
 
         res = VT(ZERO);

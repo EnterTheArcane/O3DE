@@ -14,7 +14,7 @@
 
 #include <AtomLyIntegration/AtomFont/FFont.h>
 #include <AtomLyIntegration/AtomFont/FontTexture.h>
-#include <CryCommon/Cry_Math.h>
+#include <AzCore/Math/Vector3.h>
 #include <CryCommon/CryPath.h>
 #include <AzCore/PlatformIncl.h>
 

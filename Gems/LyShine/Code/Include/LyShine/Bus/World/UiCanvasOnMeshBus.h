@@ -9,7 +9,7 @@
 
 #include <AzCore/Component/ComponentBus.h>
 #include <AzFramework/Input/Channels/InputChannel.h>
-#include <Cry_Math.h>
+#include <AzCore/Math/Vector3.h>
 
 struct ray_hit;
 

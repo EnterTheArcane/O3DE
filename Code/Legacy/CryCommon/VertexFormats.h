@@ -8,7 +8,8 @@
 
 #pragma once
 
-#include <CryCommon/Cry_Math.h>
+#include <CryCommon/Cry_Vector3.h>
+#include <CryHalf.inl>  // CryCommon->AzCore migration: CryHalf types were pulled in transitively via Cry_Math.h (now retired)
 
 enum EVertexFormat : uint8
 {

@@ -340,7 +340,7 @@ namespace UiSpline
         void SetInTangentFromOut() { assert(0); }
 
         SplineKeyEx()
-            : theta_from_dd_to_ds(gf_PI)
+            : theta_from_dd_to_ds(AZ::Constants::Pi)
             , scale_from_dd_to_ds(1.0f) {}
 
         static void Reflect(AZ::ReflectContext*) {}
@@ -350,9 +350,9 @@ namespace UiSpline
     inline void SplineKeyEx<AZ::Vector2>::ComputeThetaAndScale()
     {
         scale_from_dd_to_ds = (ds.GetLength() + 1.0f) / (dd.GetLength() + 1.0f);
-        float out = fabs(dd.GetX()) > 0.000001f ? atan_tpl(dd.GetY() / dd.GetX()) : (dd.GetX() * dd.GetY() >= 0 ? gf_PI / 2.0f : -gf_PI / 2.0f);
-        float in  = fabs(ds.GetX()) > 0.000001f ? atan_tpl(ds.GetY() / ds.GetX()) : (ds.GetX() * ds.GetY() >= 0 ? gf_PI / 2.0f : -gf_PI / 2.0f);
-        theta_from_dd_to_ds = in + gf_PI - out;
+        float out = fabs(dd.GetX()) > 0.000001f ? AZStd::atan(dd.GetY() / dd.GetX()) : (dd.GetX() * dd.GetY() >= 0 ? AZ::Constants::Pi / 2.0f : -AZ::Constants::Pi / 2.0f);
+        float in  = fabs(ds.GetX()) > 0.000001f ? AZStd::atan(ds.GetY() / ds.GetX()) : (ds.GetX() * ds.GetY() >= 0 ? AZ::Constants::Pi / 2.0f : -AZ::Constants::Pi / 2.0f);
+        theta_from_dd_to_ds = in + AZ::Constants::Pi - out;
     }
 
     template<>
@@ -360,9 +360,9 @@ namespace UiSpline
     {
         assert((flags & SPLINE_KEY_TANGENT_ALL_MASK) == SPLINE_KEY_TANGENT_UNIFIED);
         float outLength = (ds.GetLength() + 1.0f) / scale_from_dd_to_ds - 1.0f;
-        float in  = fabs(ds.GetX()) > 0.000001f ? atan_tpl(ds.GetY() / ds.GetX()) : (ds.GetX() * ds.GetY() >= 0 ? gf_PI / 2.0f : -gf_PI / 2.0f);
+        float in  = fabs(ds.GetX()) > 0.000001f ? AZStd::atan(ds.GetY() / ds.GetX()) : (ds.GetX() * ds.GetY() >= 0 ? AZ::Constants::Pi / 2.0f : -AZ::Constants::Pi / 2.0f);
         dd.SetX(1.0f);
-        dd.SetY(tan_tpl(in + gf_PI - theta_from_dd_to_ds));
+        dd.SetY(AZStd::tan(in + AZ::Constants::Pi - theta_from_dd_to_ds));
         dd.Normalize();
         dd *= outLength;
     }
@@ -372,9 +372,9 @@ namespace UiSpline
     {
         assert((flags & SPLINE_KEY_TANGENT_ALL_MASK) == SPLINE_KEY_TANGENT_UNIFIED);
         float inLength = scale_from_dd_to_ds * (dd.GetLength() + 1.0f) - 1.0f;
-        float out = fabs(dd.GetX()) > 0.000001f ? atan_tpl(dd.GetY() / dd.GetX()) : (dd.GetX() * dd.GetY() >= 0 ? gf_PI / 2.0f : -gf_PI / 2.0f);
+        float out = fabs(dd.GetX()) > 0.000001f ? AZStd::atan(dd.GetY() / dd.GetX()) : (dd.GetX() * dd.GetY() >= 0 ? AZ::Constants::Pi / 2.0f : -AZ::Constants::Pi / 2.0f);
         ds.SetX(1.0f);
-        ds.SetY(tan_tpl(out + theta_from_dd_to_ds - gf_PI));
+        ds.SetY(AZStd::tan(out + theta_from_dd_to_ds - AZ::Constants::Pi));
         ds.Normalize();
         ds *= inLength;
     }

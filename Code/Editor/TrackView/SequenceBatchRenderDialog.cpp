@@ -660,8 +660,8 @@ void CSequenceBatchRenderDialog::OnResolutionSelected()
         if (resDlg.exec() == QDialog::Accepted)
         {
             const int maxRes = 8192;
-            m_customResW = min(resDlg.GetWidth(), maxRes);
-            m_customResH = min(resDlg.GetHeight(), maxRes);
+            m_customResW = AZStd::min(resDlg.GetWidth(), maxRes);
+            m_customResH = AZStd::min(resDlg.GetHeight(), maxRes);
             const QString resText = QString(customResFormat).arg(m_customResW).arg(m_customResH);
             m_ui->m_resolutionCombo->setItemText(indexOfCustomRes, resText);
             m_ui->m_resolutionCombo->setCurrentIndex(indexOfCustomRes);

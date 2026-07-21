@@ -103,8 +103,8 @@ namespace
     //! The given indices are code-point indices and not raw (byte) indices.
     void RemoveUtf8CodePointsByIndex(AZStd::string& utf8String, int index1, int index2)
     {
-        const int minSelectIndex = min(index1, index2);
-        const int maxSelectIndex = max(index1, index2);
+        const int minSelectIndex = AZStd::min(index1, index2);
+        const int maxSelectIndex = AZStd::max(index1, index2);
         const int left = GetCharArrayIndexFromUtf8CharIndex(utf8String, minSelectIndex);
         const int right = GetCharArrayIndexFromUtf8CharIndex(utf8String, maxSelectIndex);
         utf8String.erase(left, right - left);
@@ -114,8 +114,8 @@ namespace
     //! The given indices are code-point indices and not raw (byte) indices.
     AZStd::string Utf8SubString(const AZStd::string& utf8String, int utf8CharIndexStart, int utf8CharIndexEnd)
     {
-        const int minCharIndex = min(utf8CharIndexStart, utf8CharIndexEnd);
-        const int maxCharIndex = max(utf8CharIndexStart, utf8CharIndexEnd);
+        const int minCharIndex = AZStd::min(utf8CharIndexStart, utf8CharIndexEnd);
+        const int maxCharIndex = AZStd::max(utf8CharIndexStart, utf8CharIndexEnd);
         const int left = GetCharArrayIndexFromUtf8CharIndex(utf8String, minCharIndex);
         const int right = GetCharArrayIndexFromUtf8CharIndex(utf8String, maxCharIndex);
         return utf8String.substr(left, right - left);
@@ -125,7 +125,7 @@ namespace
     void EraseAndUpdateSelectionRange(AZStd::string& utf8String, int& endSelectIndex, int& startSelectIndex)
     {
         RemoveUtf8CodePointsByIndex(utf8String, endSelectIndex, startSelectIndex);
-        endSelectIndex = startSelectIndex = min(endSelectIndex, startSelectIndex);
+        endSelectIndex = startSelectIndex = AZStd::min(endSelectIndex, startSelectIndex);
     }
 }   // anonymous namespace
 
@@ -503,11 +503,11 @@ bool UiTextInputComponent::HandleKeyInputBegan(const AzFramework::InputChannel::
                 // Place cursor at start or end of selection
                 if (command == UiNavigationHelpers::Command::Left)
                 {
-                    m_textCursorPos = min(m_textCursorPos, m_textSelectionStartPos);
+                    m_textCursorPos = AZStd::min(m_textCursorPos, m_textSelectionStartPos);
                 }
                 else // eKI_Right
                 {
-                    m_textCursorPos = max(m_textCursorPos, m_textSelectionStartPos);
+                    m_textCursorPos = AZStd::max(m_textCursorPos, m_textSelectionStartPos);
                 }
                 m_textSelectionStartPos = m_textCursorPos;
             }
@@ -618,8 +618,8 @@ bool UiTextInputComponent::HandleKeyInputBegan(const AzFramework::InputChannel::
         UiTextBus::EventResult(textString, m_textEntity, &UiTextBus::Events::GetText);
         if (textString.length() > 0 && m_textCursorPos != m_textSelectionStartPos)
         {
-            int left = min(m_textCursorPos, m_textSelectionStartPos);
-            int right = max(m_textCursorPos, m_textSelectionStartPos);
+            int left = AZStd::min(m_textCursorPos, m_textSelectionStartPos);
+            int right = AZStd::max(m_textCursorPos, m_textSelectionStartPos);
             UiClipboard::SetText(textString.substr(left, right - left));
         }
     }
@@ -629,8 +629,8 @@ bool UiTextInputComponent::HandleKeyInputBegan(const AzFramework::InputChannel::
         UiTextBus::EventResult(textString, m_textEntity, &UiTextBus::Events::GetText);
         if (textString.length() > 0 && m_textCursorPos != m_textSelectionStartPos)
         {
-            int left = min(m_textCursorPos, m_textSelectionStartPos);
-            int right = max(m_textCursorPos, m_textSelectionStartPos);
+            int left = AZStd::min(m_textCursorPos, m_textSelectionStartPos);
+            int right = AZStd::max(m_textCursorPos, m_textSelectionStartPos);
             UiClipboard::SetText(textString.substr(left, right - left));
             textString.erase(left, right - left);
             m_textCursorPos = m_textSelectionStartPos = left;
@@ -650,8 +650,8 @@ bool UiTextInputComponent::HandleKeyInputBegan(const AzFramework::InputChannel::
             // If a range is selected then erase that first
             if (m_textCursorPos != m_textSelectionStartPos)
             {
-                int left = min(m_textCursorPos, m_textSelectionStartPos);
-                int right = max(m_textCursorPos, m_textSelectionStartPos);
+                int left = AZStd::min(m_textCursorPos, m_textSelectionStartPos);
+                int right = AZStd::max(m_textCursorPos, m_textSelectionStartPos);
                 textString.erase(left, right - left);
                 m_textCursorPos = m_textSelectionStartPos = left;
             }

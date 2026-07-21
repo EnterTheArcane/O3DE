@@ -1997,9 +1997,9 @@ bool CTrackViewDopeSheetBase::CreateColorKey(CTrackViewTrack* pTrack, float keyT
     pTrack->GetValue(keyTime, vColor);
 
     const AZ::Color defaultColor(
-        clamp_tpl(FloatToIntRet(vColor.GetX()), 0, 255),
-        clamp_tpl(FloatToIntRet(vColor.GetY()), 0, 255),
-        clamp_tpl(FloatToIntRet(vColor.GetZ()), 0, 255),
+        AZ::GetClamp(FloatToIntRet(vColor.GetX()), 0, 255),
+        AZ::GetClamp(FloatToIntRet(vColor.GetY()), 0, 255),
+        AZ::GetClamp(FloatToIntRet(vColor.GetZ()), 0, 255),
         255);
     AzQtComponents::ColorPicker dlg(AzQtComponents::ColorPicker::Configuration::RGB, QString(), this);
     dlg.setWindowTitle(tr("Select Color"));
@@ -2113,9 +2113,9 @@ void CTrackViewDopeSheetBase::EditSelectedColorKey(CTrackViewTrack* pTrack)
             pTrack->GetValue(m_colorUpdateKeyTime, color);
 
             const AZ::Color defaultColor(
-                clamp_tpl(FloatToIntRet(color.GetX()), 0, 255),
-                clamp_tpl(FloatToIntRet(color.GetY()), 0, 255),
-                clamp_tpl(FloatToIntRet(color.GetZ()), 0, 255),
+                AZ::GetClamp(FloatToIntRet(color.GetX()), 0, 255),
+                AZ::GetClamp(FloatToIntRet(color.GetY()), 0, 255),
+                AZ::GetClamp(FloatToIntRet(color.GetZ()), 0, 255),
                 255);
 
             AzQtComponents::ColorPicker picker(AzQtComponents::ColorPicker::Configuration::RGB);
@@ -2528,8 +2528,8 @@ void CTrackViewDopeSheetBase::DrawTrack(CTrackViewTrack* pTrack, QPainter* paint
     painter->setPen(prevPen);
 
     QRect rcInner = trackRect;
-    rcInner.setLeft(max(trackRect.left(), m_leftOffset - m_scrollOffset.x()));
-    rcInner.setRight(min(trackRect.right(), (m_scrollMax + m_scrollMin) - m_scrollOffset.x() + m_leftOffset * 2));
+    rcInner.setLeft(AZStd::max(trackRect.left(), m_leftOffset - m_scrollOffset.x()));
+    rcInner.setRight(AZStd::min(trackRect.right(), (m_scrollMax + m_scrollMin) - m_scrollOffset.x() + m_leftOffset * 2));
 
     bool bLightAnimationSetActive = pSequence->GetFlags() & IAnimSequence::eSeqFlags_LightAnimationSet;
     if (bLightAnimationSetActive && pTrack->GetKeyCount() > 0)
@@ -2537,7 +2537,7 @@ void CTrackViewDopeSheetBase::DrawTrack(CTrackViewTrack* pTrack, QPainter* paint
         // In the case of the light animation set, the time of the last key
         // determines the end of the track.
         float lastKeyTime = pTrack->GetKey(pTrack->GetKeyCount() - 1).GetTime();
-        rcInner.setRight(min(rcInner.right(), TimeToClient(lastKeyTime)));
+        rcInner.setRight(AZStd::min(rcInner.right(), TimeToClient(lastKeyTime)));
     }
 
     QRect rcInnerDraw(QPoint(rcInner.left() - 6, rcInner.top()), QPoint(rcInner.right() + 6, rcInner.bottom()));
@@ -2690,8 +2690,8 @@ void CTrackViewDopeSheetBase::DrawSelectTrack(const Range& timeRange, QPainter* 
             }
         }
 
-        time = clamp_tpl(time, timeRange.start, timeRange.end);
-        nextTime = clamp_tpl(nextTime, timeRange.start, timeRange.end);
+        time = AZ::GetClamp(time, timeRange.start, timeRange.end);
+        nextTime = AZ::GetClamp(nextTime, timeRange.start, timeRange.end);
 
         int x0_2 = TimeToClient(time);
 
@@ -2793,8 +2793,8 @@ void CTrackViewDopeSheetBase::DrawSequenceTrack(const Range& timeRange, QPainter
             {
                 nextTime = pTrack->GetKey(i + 1).GetTime();
             }
-            time = clamp_tpl(time, timeRange.start, timeRange.end);
-            nextTime = clamp_tpl(nextTime, timeRange.start, timeRange.end);
+            time = AZ::GetClamp(time, timeRange.start, timeRange.end);
+            nextTime = AZ::GetClamp(nextTime, timeRange.start, timeRange.end);
 
             int x0_2 = TimeToClient(time);
             int x = TimeToClient(nextTime);
@@ -3661,7 +3661,7 @@ void CTrackViewDopeSheetBase::DrawKeyDuration(CTrackViewTrack* pTrack, QPainter*
     int x = TimeToClient(time);
 
     // Draw key duration.
-    float endt = min(time + duration, m_timeRange.end);
+    float endt = AZStd::min(time + duration, m_timeRange.end);
     int x1 = TimeToClient(endt);
     if (x1 < 0)
     {

@@ -12,7 +12,7 @@
 
 #if !defined(USE_NULLFONT_ALWAYS)
 
-#include <Cry_Vector2.h>
+#include <AzCore/Math/Vector2.h>
 #include <IXml.h>
 #include <CryCommon/IFont.h>
 #include <AzCore/std/containers/map.h>

@@ -761,8 +761,8 @@ void CSystem::GetUpdateStats(SSystemUpdateStats& stats)
         {
             const float t = it->second;
             stats.avgUpdateTime += t;
-            stats.maxUpdateTime = max(stats.maxUpdateTime, t);
-            stats.minUpdateTime = min(stats.minUpdateTime, t);
+            stats.maxUpdateTime = AZStd::max(stats.maxUpdateTime, t);
+            stats.minUpdateTime = AZStd::min(stats.minUpdateTime, t);
         }
         stats.avgUpdateTime /= m_updateTimes.size();
     }

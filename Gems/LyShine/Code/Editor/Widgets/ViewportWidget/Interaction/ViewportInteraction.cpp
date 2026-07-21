@@ -1262,8 +1262,8 @@ void ViewportInteraction::UpdateCursor()
             UiTransformInterface::RectPoints rect;
             UiTransformBus::Event(m_activeElementId, &UiTransformBus::Events::GetViewportSpacePoints, rect);
 
-            float topAngle = RAD2DEG(atan2f(rect.TopRight().GetY() - rect.TopLeft().GetY(), rect.TopRight().GetX() - rect.TopLeft().GetX()));
-            float leftAngle = RAD2DEG(atan2f(rect.TopLeft().GetY() - rect.BottomLeft().GetY(), rect.TopLeft().GetX() - rect.BottomLeft().GetX()));
+            float topAngle = AZ::RadToDeg(atan2f(rect.TopRight().GetY() - rect.TopLeft().GetY(), rect.TopRight().GetX() - rect.TopLeft().GetX()));
+            float leftAngle = AZ::RadToDeg(atan2f(rect.TopLeft().GetY() - rect.BottomLeft().GetY(), rect.TopLeft().GetX() - rect.BottomLeft().GetX()));
             float topLeftAngle = 0.5f * (topAngle + leftAngle);
             float topRightAngle = ViewportHelpers::GetPerpendicularAngle(topLeftAngle);
 
@@ -1362,8 +1362,8 @@ void ViewportInteraction::ProcessInteraction(const AZ::Vector2& mousePosition,
             if (mouseDragDistance2 >= g_minAreaSelectionDistance2)
             {
                 // Area selection
-                AZ::Vector2 rectMin(min(m_startMouseDragPos.GetX(), mousePosition.GetX()), min(m_startMouseDragPos.GetY(), mousePosition.GetY()));
-                AZ::Vector2 rectMax(max(m_startMouseDragPos.GetX(), mousePosition.GetX()), max(m_startMouseDragPos.GetY(), mousePosition.GetY()));
+                AZ::Vector2 rectMin(AZStd::min(m_startMouseDragPos.GetX(), mousePosition.GetX()), AZStd::min(m_startMouseDragPos.GetY(), mousePosition.GetY()));
+                AZ::Vector2 rectMax(AZStd::max(m_startMouseDragPos.GetX(), mousePosition.GetX()), AZStd::max(m_startMouseDragPos.GetY(), mousePosition.GetY()));
 
                 LyShine::EntityArray elementsToSelect;
                 UiCanvasBus::EventResult(

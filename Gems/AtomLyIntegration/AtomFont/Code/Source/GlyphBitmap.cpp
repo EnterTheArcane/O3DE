@@ -12,7 +12,7 @@
 
 #include <AtomLyIntegration/AtomFont/GlyphBitmap.h>
 #include <math.h>
-#include <CryCommon/Cry_Math.h>
+#include <AzCore/Math/Vector3.h>
 
 //-------------------------------------------------------------------------------------------------
 AZ::GlyphBitmap::GlyphBitmap()
@@ -186,7 +186,7 @@ int AZ::GlyphBitmap::BlitScaledTo8(unsigned char* destBuffer, [[maybe_unused]] i
     for (int y = 0; y < newHeight; ++y)
     {
         srcReadY = y * destToSrcYScale;
-        srcReadYFloor = (int)floor_tpl(srcReadY);
+        srcReadYFloor = (int)AZStd::floor(srcReadY);
         srcReadYCeil = srcReadYFloor + 1;
 
         srcReadYFraction = srcReadY - srcReadYFloor;
@@ -205,7 +205,7 @@ int AZ::GlyphBitmap::BlitScaledTo8(unsigned char* destBuffer, [[maybe_unused]] i
         for (int x = 0; x < newWidth; ++x)
         {
             srcReadX = x * destToSrcXScale;
-            srcReadXFloor = (int)floor_tpl(srcReadX);
+            srcReadXFloor = (int)AZStd::floor(srcReadX);
             srcReadXCeil = srcReadXFloor + 1;
 
             srcReadXFraction = srcReadX - srcReadXFloor;

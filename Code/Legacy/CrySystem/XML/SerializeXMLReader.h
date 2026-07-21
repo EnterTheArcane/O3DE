@@ -107,7 +107,7 @@ private:
                     return child;
                 }
             }
-            int ncount = min(m_nCurrent, num);
+            int ncount = AZStd::min(m_nCurrent, num);
             // Try searching from begining.
             for (i = 0; i < ncount; i++)
             {

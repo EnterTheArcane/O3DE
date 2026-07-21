@@ -60,7 +60,6 @@ set(FILES
     Cry_Matrix44.h
     Cry_Vector4.h
     Cry_Color.h
-    Cry_Math.h
     Cry_Quat.h
     Cry_ValidNumber.h
     Cry_Vector2.h

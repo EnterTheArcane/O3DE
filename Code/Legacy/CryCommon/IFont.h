@@ -13,7 +13,7 @@
 
 #include <AzCore/PlatformDef.h>
 
-#include <Cry_Math.h>
+#include <Cry_Vector3.h>
 #include <Cry_Color.h>
 #include <smartptr.h>
 

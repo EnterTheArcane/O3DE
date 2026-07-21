@@ -13,7 +13,7 @@
 #include <platform.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/Math/Color.h>
-#include "Cry_Math.h"
+#include "Cry_Vector3.h"  // CryCommon->AzCore migration: was Cry_Math.h (now retired)
 
 template <class T>
 struct Color_tpl;
@@ -440,8 +440,8 @@ ILINE unsigned int Color_tpl<T>::pack_argb8888() const
 template <class T>
 inline void Color_tpl<T>::clamp(T bottom, T top)
 {
-    r = min(top, max(bottom, r));
-    g = min(top, max(bottom, g));
-    b = min(top, max(bottom, b));
-    a = min(top, max(bottom, a));
+    r = AZ::GetMin(top, AZ::GetMax(bottom, r));
+    g = AZ::GetMin(top, AZ::GetMax(bottom, g));
+    b = AZ::GetMin(top, AZ::GetMax(bottom, b));
+    a = AZ::GetMin(top, AZ::GetMax(bottom, a));
 }

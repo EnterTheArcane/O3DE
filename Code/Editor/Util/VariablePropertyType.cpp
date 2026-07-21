@@ -152,17 +152,17 @@ namespace Prop
         else if (type == IVariable::DT_ANGLE)
         {
             // Scale radians to degrees.
-            m_valueMultiplier = RAD2DEG(1);
-            m_rangeMin = max(-360.0f, m_rangeMin);
-            m_rangeMax = min(360.0f, m_rangeMax);
+            m_valueMultiplier = AZ::RadToDeg(1);
+            m_rangeMin = AZStd::max(-360.0f, m_rangeMin);
+            m_rangeMax = AZStd::min(360.0f, m_rangeMax);
         }
 
         const bool useExplicitStep = (pVar->GetFlags() & IVariable::UI_EXPLICIT_STEP);
         if (!useExplicitStep)
         {
             // Limit step size to 1000.
-            int nPrec = max(3 - int(log(m_rangeMax - m_rangeMin) / log(10.f)), 0);
-            m_step = max<float>(m_step, powf(10.f, static_cast<float>(-nPrec)));
+            int nPrec = AZStd::max(3 - int(log(m_rangeMax - m_rangeMin) / log(10.f)), 0);
+            m_step = AZStd::max<float>(m_step, powf(10.f, static_cast<float>(-nPrec)));
         }
     }
 

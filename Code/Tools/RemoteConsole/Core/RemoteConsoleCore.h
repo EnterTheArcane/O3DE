@@ -116,7 +116,7 @@ protected:
     void WriteToBuffer(char* buffer, int& size, int maxsize) override
     {
         const char* data = GetData();
-        size = min((int)strlen(data), maxsize);
+        size = AZStd::min((int)strlen(data), maxsize);
         memcpy(buffer, data, size);
     }
     IRemoteEvent* CreateFromBuffer(const char* buffer, [[maybe_unused]] int size) override { return new SStringEvent<T>(buffer); }

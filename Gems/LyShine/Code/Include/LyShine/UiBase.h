@@ -9,8 +9,8 @@
 
 #include <platform.h>
 #include <algorithm>
-#include <Cry_Math.h>
-#include <Cry_Color.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Color.h>
 #include <ISystem.h>
 
 #include <AzCore/std/string/string.h>

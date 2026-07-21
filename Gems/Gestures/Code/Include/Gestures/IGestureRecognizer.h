@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 #include <IRenderer.h>
-#include <Cry_Vector2.h>
+#include <AzCore/Math/Vector2.h>
 
 #include <AzFramework/Input/Events/InputChannelEventListener.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>

@@ -17,7 +17,7 @@
 #include <AzCore/Math/Matrix3x4.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Plane.h>
-#include <Cry_Math.h>
+#include <Cry_Vector3.h>
 #include <Cry_Color.h>
 
 inline AZ::Vector2 LYVec2ToAZVec2(const Vec2& source)

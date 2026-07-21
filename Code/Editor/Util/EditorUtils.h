@@ -14,7 +14,7 @@
 #include <CryCommon/platform.h>
 #include <IXml.h>
 #include "Util/FileUtil.h"
-#include <Cry_Color.h>
+#include <AzCore/Math/Color.h>
 #include <CryCommon/ISystem.h>
 
 #include <QColor>

@@ -8,7 +8,7 @@
 #pragma once
 
 #include <platform.h>
-#include <Cry_Math.h>
+#include <Cry_Vector3.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Math/Color.h>
 

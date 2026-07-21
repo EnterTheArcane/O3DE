@@ -340,7 +340,7 @@ void CUiAnimViewCurveEditor::OnHorizontalScrollBarChange()
     AZ::Vector2 zoom = m_ui->m_wndSpline->GetZoom();
 
     // Zero value is not acceptable.
-    zoom.SetX(max(SLIDERRANGE_TO_ZOOM(pos), 1.f / SLIDER_MULTIPLIER));
+    zoom.SetX(AZStd::max(SLIDERRANGE_TO_ZOOM(pos), 1.f / SLIDER_MULTIPLIER));
     m_ui->m_wndSpline->SetZoom(zoom);
 }
 
@@ -351,7 +351,7 @@ void CUiAnimViewCurveEditor::OnVerticalScrollBarChange()
     AZ::Vector2 zoom = m_ui->m_wndSpline->GetZoom();
 
     // Zero value is not acceptable.
-    zoom.SetY(max(SLIDERRANGE_TO_ZOOM(pos), 1.f / SLIDER_MULTIPLIER));
+    zoom.SetY(AZStd::max(SLIDERRANGE_TO_ZOOM(pos), 1.f / SLIDER_MULTIPLIER));
     m_ui->m_wndSpline->SetZoom(zoom);
 }
 

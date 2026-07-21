@@ -43,7 +43,7 @@ bool CImageEx::ConvertToFloatImage(CFloatImage& dstImage)
 
     for (int pixel = 0; pixel < (GetHeight() * GetWidth()); pixel++)
     {
-        dstPixel[pixel] = clamp_tpl(static_cast<float>(srcPixel[pixel] & pixelMask) / intToFloat, 0.0f, 1.0f);
+        dstPixel[pixel] = AZ::GetClamp(static_cast<float>(srcPixel[pixel] & pixelMask) / intToFloat, 0.0f, 1.0f);
     }
 
     return true;

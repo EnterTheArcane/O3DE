@@ -736,11 +736,11 @@ void CUiAnimViewSplineCtrl::mouseMoveEvent(QMouseEvent* event)
         AZ::Vector2 z = m_grid.zoom;
         if (ofsx != 0)
         {
-            z.SetX(max(z.GetX() * (1.0f + ofsx), 0.001f));
+            z.SetX(AZStd::max(z.GetX() * (1.0f + ofsx), 0.001f));
         }
         if (ofsy != 0)
         {
-            z.SetY(max(z.GetY() * (1.0f + ofsy), 0.001f));
+            z.SetY(AZStd::max(z.GetY() * (1.0f + ofsy), 0.001f));
         }
         SetZoom(AZ::Vector2(z.GetX(), z.GetY()), m_cMouseDownPos);
         m_cMouseDownPos = point;

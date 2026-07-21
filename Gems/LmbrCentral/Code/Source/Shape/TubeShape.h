@@ -11,7 +11,7 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/parallel/shared_mutex.h>
-#include <Cry_Math.h>
+#include <AzCore/Math/Vector3.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <LmbrCentral/Shape/TubeShapeComponentBus.h>
 #include <LmbrCentral/Shape/SplineComponentBus.h>

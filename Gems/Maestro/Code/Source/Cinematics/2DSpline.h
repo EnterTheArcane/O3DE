@@ -48,7 +48,7 @@ namespace spline
         }
 
         SplineKeyEx()
-            : theta_from_dd_to_ds(gf_PI)
+            : theta_from_dd_to_ds(AZ::Constants::Pi)
             , scale_from_dd_to_ds(1.0f) {}
 
         static void Reflect(AZ::ReflectContext*) {}
@@ -59,12 +59,12 @@ namespace spline
         // "Unifying" tangents really means we try to maintain the angle between them
 
         // clamp the out tangent between +/- 90 degrees
-        if (angle <= -gf_halfPI)
+        if (angle <= -AZ::Constants::HalfPi)
         {
             destTan.SetX(.0f);
             destTan.SetY(-1.0f);
         }
-        else if (angle >= gf_halfPI)
+        else if (angle >= AZ::Constants::HalfPi)
         {
             destTan.SetX(.0f);
             destTan.SetY(1.0f);
@@ -72,21 +72,21 @@ namespace spline
         else
         {
             destTan.SetX(1.0f);
-            destTan.SetY(tan_tpl(angle));
+            destTan.SetY(AZStd::tan(angle));
             destTan.Normalize();
         }
 
         // lower clamp length so the destTan is never 'inverted' nor completely zero
-        destTan *= max(length, g_tanEpsilon);
+        destTan *= AZStd::max(length, g_tanEpsilon);
     }
 
     template <>
     inline void SplineKeyEx<AZ::Vector2>::ComputeThetaAndScale()
     {
         scale_from_dd_to_ds = (ds.GetLength() + 1.0f) / (dd.GetLength() + 1.0f);
-        float out = fabs(dd.GetX()) > g_tanEpsilon ? atan_tpl(dd.GetY() / dd.GetX()) : (dd.GetY() >= .0f ? gf_halfPI : -gf_halfPI);
-        float in = fabs(ds.GetX()) > g_tanEpsilon ? atan_tpl(ds.GetY() / ds.GetX()) : (ds.GetY() >= .0f ? gf_halfPI : -gf_halfPI);
-        theta_from_dd_to_ds = in + gf_PI - out;
+        float out = fabs(dd.GetX()) > g_tanEpsilon ? AZStd::atan(dd.GetY() / dd.GetX()) : (dd.GetY() >= .0f ? AZ::Constants::HalfPi : -AZ::Constants::HalfPi);
+        float in = fabs(ds.GetX()) > g_tanEpsilon ? AZStd::atan(ds.GetY() / ds.GetX()) : (ds.GetY() >= .0f ? AZ::Constants::HalfPi : -AZ::Constants::HalfPi);
+        theta_from_dd_to_ds = in + AZ::Constants::Pi - out;
     }
 
     template<>
@@ -95,8 +95,8 @@ namespace spline
         // "Unifying" tangents really means we try to maintain the angle between them
         AZ_Assert((flags & SPLINE_KEY_TANGENT_ALL_MASK) == SPLINE_KEY_TANGENT_UNIFIED, "Invalid spline key flag");
         float outLength = (ds.GetLength() + 1.0f) / scale_from_dd_to_ds - 1.0f;
-        float in = fabs(ds.GetX()) > g_tanEpsilon ? atan_tpl(ds.GetY() / ds.GetX()) : (ds.GetY() >= .0f ? gf_halfPI : -gf_halfPI);
-        float outAngle = in + gf_PI - theta_from_dd_to_ds;
+        float in = fabs(ds.GetX()) > g_tanEpsilon ? AZStd::atan(ds.GetY() / ds.GetX()) : (ds.GetY() >= .0f ? AZ::Constants::HalfPi : -AZ::Constants::HalfPi);
+        float outAngle = in + AZ::Constants::Pi - theta_from_dd_to_ds;
 
         ComputeUnifiedTangent(dd, outAngle, outLength);
     }
@@ -107,8 +107,8 @@ namespace spline
         // "Unifying" tangents really means we try to maintain the angle between them
         AZ_Assert((flags & SPLINE_KEY_TANGENT_ALL_MASK) == SPLINE_KEY_TANGENT_UNIFIED, "Invalid spline key flag");
         float inLength = scale_from_dd_to_ds * (dd.GetLength() + 1.0f) - 1.0f;
-        float out = fabs(dd.GetX()) > g_tanEpsilon ? atan_tpl(dd.GetY() / dd.GetX()) : (dd.GetY() >= .0f ? gf_halfPI : -gf_halfPI);
-        float inAngle = out + theta_from_dd_to_ds - gf_PI;
+        float out = fabs(dd.GetX()) > g_tanEpsilon ? AZStd::atan(dd.GetY() / dd.GetX()) : (dd.GetY() >= .0f ? AZ::Constants::HalfPi : -AZ::Constants::HalfPi);
+        float inAngle = out + theta_from_dd_to_ds - AZ::Constants::Pi;
 
         ComputeUnifiedTangent(ds, inAngle, inLength);
     }

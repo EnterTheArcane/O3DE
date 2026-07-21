@@ -407,15 +407,15 @@ int MatchStrings(const char* str0, const char* str1)
                     do
                     {
                         int chr = *str[i]++;
-                        bSkipWord |= iszero(chr - '\\') | iszero(chr - '/') | iszero(chr - '_'); // ignore different words with \,_,/
-                        bAlpha[i] = inrange(chr, 'A' - 1, 'Z' + 1) | inrange(chr, 'a' - 1, 'z' + 1);
-                        bWS[i] = iszero(chr - ' ');
-                        bStop |= iszero(chr);
+                        bSkipWord |= (chr == '\\' ? 1 : 0) | (chr == '/' ? 1 : 0) | (chr == '_' ? 1 : 0); // ignore different words with \,_,/
+                        bAlpha[i] = ((chr > 'A' - 1 && chr < 'Z' + 1) ? 1 : 0) | ((chr > 'a' - 1 && chr < 'z' + 1) ? 1 : 0);
+                        bWS[i] = (chr == ' ' ? 1 : 0);
+                        bStop |= (chr == 0 ? 1 : 0);
                     } while (!(bAlpha[i] | bWS[i] | bStop)); // wait for a letter or a space in each input string
                 }
             }
             len += bAlpha[0] & bAlpha[1];
-            nWordDiffs += 1 - iszero((int)(*str[0] - *str[1])) & - (bAlpha[0] & bAlpha[1]);   // count diffs in this word
+            nWordDiffs += 1 - ((*str[0] - *str[1]) == 0 ? 1 : 0) & - (bAlpha[0] & bAlpha[1]);   // count diffs in this word
         } while ((1 - bWS[0] | 1 - bWS[1]) & 1 - bStop); // wait for space (word end) in both strings
         nDiffs += nWordDiffs & ~-bSkipWord;
     } while (!bStop);

@@ -25,8 +25,8 @@ public:
     bool IsEquivalent(const SMeshTexCoord& other, float epsilon = 0.00005f) const
     {
         return
-            (fabs_tpl(s - other.s) <= epsilon) &&
-            (fabs_tpl(t - other.t) <= epsilon);
+            (AZStd::abs(s - other.s) <= epsilon) &&
+            (AZStd::abs(t - other.t) <= epsilon);
     }
     ILINE AZ::Vector2 GetUV() const
     {

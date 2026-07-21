@@ -18,7 +18,7 @@
 
 
 
-#include "Cry_Math.h"
+#include "Cry_Vector3.h"
 #include <StlUtils.h>
 /************************************************************************
 

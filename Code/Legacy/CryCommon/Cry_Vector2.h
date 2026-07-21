@@ -10,9 +10,39 @@
 // Description : Common matrix class
 #pragma once
 
+// CryCommon->AzCore migration: was `#define VEC_EPSILON (0.05f)` in Cry_Math.h. Kept as a
+// constexpr (not a macro) for the vestigial Vec2_tpl/Vec3_tpl/Ang3_tpl equivalence checks.
+// Defined before the includes because Cry_Math.h transitively pulls in Cry_Vector3.h, which
+// references VEC_EPSILON.
+inline constexpr float VEC_EPSILON = 0.05f;
+
+// CryCommon->AzCore migration: tag enums for the Vec*_tpl/Ang3 "special value" constructors
+// (e.g. `Ang3(ZERO)`). Moved here from Cry_Math.h. Defined before the includes because
+// Cry_Math.h transitively pulls in Cry_Vector3.h, whose Ang3_tpl(type_zero) ctor needs them.
+enum type_zero { ZERO };
+enum type_min { VMIN };
+enum type_max { VMAX };
+enum type_identity { IDENTITY };
+
+#include <platform.h>
+#include "Cry_ValidNumber.h"
+#include <float.h>
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/Math/Vector2.h>
-#include "Cry_Math.h"
+#include <AzCore/Math/Vector4.h>
+#include <AzCore/Math/MathUtils.h>
+#include <AzCore/std/math.h>
+
+// CryCommon->AzCore migration: forward declarations of the remaining Cry _tpl types (moved
+// here from the retired Cry_Math.h so this header chain is self-contained).
+template <typename F> struct Vec3_tpl;
+template <typename F> struct Ang3_tpl;
+template <typename F> struct Plane_tpl;
+template <typename F> struct AngleAxis_tpl;
+template <typename F> struct Quat_tpl;
+
+// CryCommon->AzCore migration: `Vec4` is a TEMPORARY alias of AZ::Vector4 (was a Cry struct).
+using Vec4 = AZ::Vector4;
 
 template<class F>
 struct Vec2_tpl
@@ -77,7 +107,7 @@ struct Vec2_tpl
     // The default Normalize function is in fact "safe". 0 vectors remain unchanged.
     Vec2_tpl& Normalize()
     {
-        F fInvLen = isqrt_safe_tpl(x * x + y * y);
+        F fInvLen = AZ::InvSqrt(x * x + y * y);
         x *= fInvLen;
         y *= fInvLen;
         return *this;
@@ -89,7 +119,7 @@ struct Vec2_tpl
         F fLen2 = x * x + y * y;
         if (fLen2 > 0.0f)
         {
-            F fInvLen = isqrt_tpl(fLen2);
+            F fInvLen = AZ::InvSqrt(fLen2);
             x *= fInvLen;
             y *= fInvLen;
         }
@@ -102,7 +132,7 @@ struct Vec2_tpl
 
     Vec2_tpl GetNormalized() const
     {
-        F fInvLen = isqrt_safe_tpl(x * x + y * y);
+        F fInvLen = AZ::InvSqrt(x * x + y * y);
         return *this * fInvLen;
     }
 
@@ -111,7 +141,7 @@ struct Vec2_tpl
         F fLen2 = x * x + y * y;
         if (fLen2 > 0.0f)
         {
-            F fInvLen = isqrt_tpl(fLen2);
+            F fInvLen = AZ::InvSqrt(fLen2);
             return *this * fInvLen;
         }
         else
@@ -124,20 +154,20 @@ struct Vec2_tpl
     {
         assert(v1.IsValid());
         assert(this->IsValid());
-        return  ((fabs_tpl(x - v1.x) <= epsilon) &&   (fabs_tpl(y - v1.y) <= epsilon));
+        return  ((AZStd::abs(x - v1.x) <= epsilon) &&   (AZStd::abs(y - v1.y) <= epsilon));
     }
 
     ILINE static bool IsEquivalent(const Vec2_tpl<F>& v0, const Vec2_tpl<F>& v1, F epsilon = VEC_EPSILON)
     {
         assert(v0.IsValid());
         assert(v1.IsValid());
-        return  ((fabs_tpl(v0.x - v1.x) <= epsilon) &&    (fabs_tpl(v0.y - v1.y) <= epsilon));
+        return  ((AZStd::abs(v0.x - v1.x) <= epsilon) &&    (AZStd::abs(v0.y - v1.y) <= epsilon));
     }
 
 
     ILINE F GetLength() const
     {
-        return sqrt_tpl(x * x + y * y);
+        return AZStd::sqrt(x * x + y * y);
     }
 
     ILINE F GetLengthSquared() const
@@ -157,7 +187,7 @@ struct Vec2_tpl
         {
             return;
         }
-        fLenMe = fLen * isqrt_tpl(fLenMe);
+        fLenMe = fLen * AZ::InvSqrt(fLenMe);
         x *= fLenMe;
         y *= fLenMe;
     }
@@ -195,7 +225,7 @@ struct Vec2_tpl
         return res;
     }
     #endif
-    ILINE F atan2() const { return atan2_tpl(y, x); }
+    ILINE F atan2() const { return AZStd::atan2(y, x); }
 
     ILINE Vec2_tpl operator-() const { return Vec2_tpl(-x, -y); }
 
@@ -212,13 +242,13 @@ struct Vec2_tpl
 
     ILINE bool IsZero(F e = (F)0.0) const
     {
-        return (fabs_tpl(x) <= e) && (fabs_tpl(y) <= e);
+        return (AZStd::abs(x) <= e) && (AZStd::abs(y) <= e);
     }
 
     // IsZeroSlow would be a better name [5/20/2010 evgeny]
     ILINE bool IsZeroFast(F e = (F)0.0003) const
     {
-        return (fabs_tpl(x) + fabs_tpl(y)) <= e;
+        return (AZStd::abs(x) + AZStd::abs(y)) <= e;
     }
 
     ILINE F Dot(const Vec2_tpl& rhs) const {return x * rhs.x + y * rhs.y; }
@@ -250,8 +280,8 @@ struct Vec2_tpl
     */
     void SetSlerp(const Vec2_tpl<F>& p, const Vec2_tpl<F>& q, F t)
     {
-        assert((fabs_tpl(1 - (p | p))) < 0.005); //check if unit-vector
-        assert((fabs_tpl(1 - (q | q))) < 0.005); //check if unit-vector
+        assert((AZStd::abs(1 - (p | p))) < 0.005); //check if unit-vector
+        assert((AZStd::abs(1 - (q | q))) < 0.005); //check if unit-vector
         // calculate cosine using the "inner product" between two vectors: p*q=cos(radiant)
         F cosine = (p | q);
         //we explore the special cases where the both vectors are very close together,
@@ -264,10 +294,10 @@ struct Vec2_tpl
         else
         {
             //perform SLERP: because of the LERP-check above, a "division by zero" is not possible
-            F rad               = acos_tpl(cosine);
-            F scale_0   = sin_tpl((1 - t) * rad);
-            F scale_1   = sin_tpl(t * rad);
-            *this = (p * scale_0 + q * scale_1) / sin_tpl(rad);
+            F rad               = AZStd::acos(cosine);
+            F scale_0   = AZStd::sin((1 - t) * rad);
+            F scale_1   = AZStd::sin(t * rad);
+            *this = (p * scale_0 + q * scale_1) / AZStd::sin(rad);
             this->Normalize();
         }
     }
@@ -293,7 +323,7 @@ struct Vec2_tpl
 
     ILINE F GetDistance(const Vec2_tpl<F>& vec1) const
     {
-        return sqrt_tpl((x - vec1.x) * (x - vec1.x) + (y - vec1.y) * (y - vec1.y));
+        return AZStd::sqrt((x - vec1.x) * (x - vec1.x) + (y - vec1.y) * (y - vec1.y));
     }
 };
 
@@ -358,11 +388,9 @@ bool operator==(const Vec2_tpl<F>& left, const Vec2_tpl<F>& right)
 }
 
 
-template<>
-ILINE Vec2 clamp_tpl<Vec2>(Vec2 X, Vec2 Min, Vec2 Max)
-{
-    return Vec2(clamp_tpl(X.GetX(), Min.GetX(), Max.GetX()), clamp_tpl(X.GetY(), Min.GetY(), Max.GetY()));
-}
+// CryCommon->AzCore migration: the AZ::GetClamp<Vec2> whole-vector specialization was removed
+// (no callers clamped a whole vector; all AZ::GetClamp uses are scalar -> AZ::GetClamp). Use
+// AZ::Vector2::GetClamp for whole-vector clamping.
 
 
 // declare common constants.  Must be done after the class for compiler conformance

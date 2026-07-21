@@ -10,7 +10,7 @@
 
 #include <QPoint>
 #include <QRect>
-#include "Cry_Vector2.h"
+#include <AzCore/Math/Vector2.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Math/Vector2.h>
 

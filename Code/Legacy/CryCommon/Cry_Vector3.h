@@ -14,6 +14,7 @@
 
 #include "CryEndian.h"
 #include <AzCore/Math/Vector3.h>
+#include "Cry_Vector2.h"   // CryCommon->AzCore migration: for VEC_EPSILON + Vec2_tpl interop
 
 template<typename T>
 struct VecPrecisionValues
@@ -268,12 +269,12 @@ struct Vec3_tpl
 
     ILINE bool IsZero(F e = (F) 0.0) const
     {
-        return (fabs_tpl(x) <= e) && (fabs_tpl(y) <= e) && (fabs_tpl(z) <= e);
+        return (AZStd::abs(x) <= e) && (AZStd::abs(y) <= e) && (AZStd::abs(z) <= e);
     }
 
     ILINE bool IsZeroFast(F e = (F) 0.0003) const
     {
-        return (fabs_tpl(x) + fabs_tpl(y) + fabs_tpl(z)) <= e;
+        return (AZStd::abs(x) + AZStd::abs(y) + AZStd::abs(z)) <= e;
     }
 
     // Chebyshev distance (axis aligned)
@@ -281,13 +282,13 @@ struct Vec3_tpl
     {
         assert(v1.IsValid());
         assert(this->IsValid());
-        return  ((fabs_tpl(x - v1.x) <= epsilon) &&   (fabs_tpl(y - v1.y) <= epsilon) && (fabs_tpl(z - v1.z) <= epsilon));
+        return  ((AZStd::abs(x - v1.x) <= epsilon) &&   (AZStd::abs(y - v1.y) <= epsilon) && (AZStd::abs(z - v1.z) <= epsilon));
     }
     ILINE static bool IsEquivalent(const Vec3_tpl<F>& v0, const Vec3_tpl<F>& v1, F epsilon = VEC_EPSILON)
     {
         assert(v0.IsValid());
         assert(v1.IsValid());
-        return  ((fabs_tpl(v0.x - v1.x) <= epsilon) &&    (fabs_tpl(v0.y - v1.y) <= epsilon) &&  (fabs_tpl(v0.z - v1.z) <= epsilon));
+        return  ((AZStd::abs(v0.x - v1.x) <= epsilon) &&    (AZStd::abs(v0.y - v1.y) <= epsilon) &&  (AZStd::abs(v0.z - v1.z) <= epsilon));
     }
 
     // Euclidean distance L2
@@ -306,7 +307,7 @@ struct Vec3_tpl
 
     ILINE bool IsUnit(F epsilon = VEC_EPSILON) const
     {
-        return (fabs_tpl(1 - GetLengthSquared()) <= epsilon);
+        return (AZStd::abs(1 - GetLengthSquared()) <= epsilon);
     }
 
     bool IsValid() const
@@ -334,7 +335,7 @@ struct Vec3_tpl
         {
             return;
         }
-        fLenMe = fLen * isqrt_tpl(fLenMe);
+        fLenMe = fLen * AZ::InvSqrt(fLenMe);
         x *= fLenMe;
         y *= fLenMe;
         z *= fLenMe;
@@ -345,7 +346,7 @@ struct Vec3_tpl
         F sqrLength = GetLengthSquared();
         if (sqrLength > (maxLength * maxLength))
         {
-            F scale = maxLength * isqrt_tpl(sqrLength);
+            F scale = maxLength * AZ::InvSqrt(sqrLength);
             x *= scale;
             y *= scale;
             z *= scale;
@@ -355,7 +356,7 @@ struct Vec3_tpl
     //! calculate the length of the vector
     ILINE F GetLength() const
     {
-        return sqrt_tpl(x * x + y * y + z * z);
+        return AZStd::sqrt(x * x + y * y + z * z);
     }
 
     ILINE F GetLengthFloat() const
@@ -365,7 +366,7 @@ struct Vec3_tpl
 
     ILINE F GetLengthFast() const
     {
-        return sqrt_fast_tpl(x * x + y * y + z * z);
+        return AZStd::sqrt(x * x + y * y + z * z);
     }
 
     //! calculate the squared length of the vector
@@ -382,7 +383,7 @@ struct Vec3_tpl
     //! calculate the length of the vector ignoring the z component
     ILINE F GetLength2D() const
     {
-        return sqrt_tpl(x * x + y * y);
+        return AZStd::sqrt(x * x + y * y);
     }
 
     //! calculate the squared length of the vector ignoring the z component
@@ -393,7 +394,7 @@ struct Vec3_tpl
 
     ILINE F GetDistance(const Vec3_tpl<F>& vec1) const
     {
-        return sqrt_tpl((x - vec1.x) * (x - vec1.x) + (y - vec1.y) * (y - vec1.y) + (z - vec1.z) * (z - vec1.z));
+        return AZStd::sqrt((x - vec1.x) * (x - vec1.x) + (y - vec1.y) * (y - vec1.y) + (z - vec1.z) * (z - vec1.z));
     }
     ILINE F GetSquaredDistance (const Vec3_tpl<F>& v) const
     {
@@ -409,7 +410,7 @@ struct Vec3_tpl
     ILINE void  Normalize()
     {
         assert(this->IsValid());
-        F fInvLen = isqrt_safe_tpl(x * x + y * y + z * z);
+        F fInvLen = AZ::InvSqrt(x * x + y * y + z * z);
         x *= fInvLen;
         y *= fInvLen;
         z *= fInvLen;
@@ -419,7 +420,7 @@ struct Vec3_tpl
     ILINE void NormalizeFast()
     {
         assert(this->IsValid());
-        F fInvLen = isqrt_fast_tpl(x * x + y * y + z * z);
+        F fInvLen = AZ::InvSqrt(x * x + y * y + z * z);
         x *= fInvLen;
         y *= fInvLen;
         z *= fInvLen;
@@ -429,7 +430,7 @@ struct Vec3_tpl
     ILINE void Normalize(F scale)
     {
         assert(this->IsValid());
-        F fInvLen = isqrt_safe_tpl(x * x + y * y + z * z) * scale;
+        F fInvLen = AZ::InvSqrt(x * x + y * y + z * z) * scale;
         x *= fInvLen;
         y *= fInvLen;
         z *= fInvLen;
@@ -437,7 +438,7 @@ struct Vec3_tpl
     ILINE void NormalizeFast(F scale)
     {
         assert(this->IsValid());
-        F fInvLen = isqrt_fast_tpl(x * x + y * y + z * z) * scale;
+        F fInvLen = AZ::InvSqrt(x * x + y * y + z * z) * scale;
         x *= fInvLen;
         y *= fInvLen;
         z *= fInvLen;
@@ -452,7 +453,7 @@ struct Vec3_tpl
         F fLen2 = x * x + y * y + z * z;
         IF (VecPrecisionValues<F>::CheckGreater(fLen2), 1)
         {
-            F fInvLen = isqrt_tpl(fLen2);
+            F fInvLen = AZ::InvSqrt(fLen2);
             x *= fInvLen;
             y *= fInvLen;
             z *= fInvLen;
@@ -473,14 +474,14 @@ struct Vec3_tpl
     //! Return a normalized vector.
     ILINE Vec3_tpl GetNormalized() const
     {
-        F fInvLen = isqrt_safe_tpl(x * x + y * y + z * z);
+        F fInvLen = AZ::InvSqrt(x * x + y * y + z * z);
         return *this * fInvLen;
     }
 
     //! Return a normalized vector.
     ILINE Vec3_tpl GetNormalizedFast() const
     {
-        F fInvLen = isqrt_fast_tpl(x * x + y * y + z * z);
+        F fInvLen = AZ::InvSqrt(x * x + y * y + z * z);
         return *this * fInvLen;
     }
 
@@ -490,7 +491,7 @@ struct Vec3_tpl
         F fLen2 = x * x + y * y + z * z;
         IF (VecPrecisionValues<F>::CheckGreater(fLen2), 1)
         {
-            F fInvLen = isqrt_tpl(fLen2);
+            F fInvLen = AZ::InvSqrt(fLen2);
             return *this * fInvLen;
         }
         else
@@ -508,17 +509,22 @@ struct Vec3_tpl
     //! Return a normalized and scaled vector.
     ILINE Vec3_tpl GetNormalized(F scale) const
     {
-        F fInvLen = isqrt_safe_tpl(x * x + y * y + z * z);
+        F fInvLen = AZ::InvSqrt(x * x + y * y + z * z);
         return *this * (fInvLen * scale);
     }
     ILINE Vec3_tpl GetNormalizedFast(F scale) const
     {
-        F fInvLen = isqrt_fast_tpl(x * x + y * y + z * z);
+        F fInvLen = AZ::InvSqrt(x * x + y * y + z * z);
         return *this * (fInvLen * scale);
     }
 
     //! Permutate coordinates so that z goes to new_z slot.
-    ILINE Vec3_tpl GetPermutated(int new_z) const { return Vec3_tpl(*(&x + inc_mod3[new_z]), *(&x + dec_mod3[new_z]), *(&x + new_z)); }
+    ILINE Vec3_tpl GetPermutated(int new_z) const
+    {
+        static constexpr int inc_mod3[3] = { 1, 2, 0 };
+        static constexpr int dec_mod3[3] = { 2, 0, 1 };
+        return Vec3_tpl(*(&x + inc_mod3[new_z]), *(&x + dec_mod3[new_z]), *(&x + new_z));
+    }
 
     //! Returns volume of a box with this vector as diagonal.
     ILINE F GetVolume() const { return x * y * z; }
@@ -526,22 +532,22 @@ struct Vec3_tpl
     //! Returns a vector that consists of absolute values of this one's coordinates.
     ILINE Vec3_tpl<F> abs() const
     {
-        return Vec3_tpl(fabs_tpl(x), fabs_tpl(y), fabs_tpl(z));
+        return Vec3_tpl(AZStd::abs(x), AZStd::abs(y), AZStd::abs(z));
     }
 
     //! Check for min bounds.
     ILINE void CheckMin(const Vec3_tpl<F> other)
     {
-        x = min(other.x, x);
-        y = min(other.y, y);
-        z = min(other.z, z);
+        x = AZ::GetMin(other.x, x);
+        y = AZ::GetMin(other.y, y);
+        z = AZ::GetMin(other.z, z);
     }
     //! Check for max bounds.
     ILINE void CheckMax(const Vec3_tpl<F> other)
     {
-        x = max(other.x, x);
-        y = max(other.y, y);
-        z = max(other.z, z);
+        x = AZ::GetMax(other.x, x);
+        y = AZ::GetMax(other.y, y);
+        z = AZ::GetMax(other.z, z);
     }
 
 
@@ -555,12 +561,12 @@ struct Vec3_tpl
     */
     ILINE void SetOrthogonal(const Vec3_tpl<F>& v)
     {
-        sqr(F(0.9)) * (v | v) - v.x * v.x < 0 ? (x = -v.z, y = 0, z = v.x) : (x = 0, y = v.z, z = -v.y);
+        (F(0.9) * F(0.9)) * (v | v) - v.x * v.x < 0 ? (x = -v.z, y = 0, z = v.x) : (x = 0, y = v.z, z = -v.y);
     }
     //! Returns a vector orthogonal to this one.
     ILINE Vec3_tpl GetOrthogonal() const
     {
-        return sqr(F(0.9)) * (x * x + y * y + z * z) - x * x < 0 ? Vec3_tpl<F>(-z, 0, x) : Vec3_tpl<F>(0, z, -y);
+        return (F(0.9) * F(0.9)) * (x * x + y * y + z * z) - x * x < 0 ? Vec3_tpl<F>(-z, 0, x) : Vec3_tpl<F>(0, z, -y);
     }
 
     /*!
@@ -625,7 +631,7 @@ struct Vec3_tpl
         assert(p.IsUnit(0.005f));
         assert(q.IsUnit(0.005f));
         // calculate cosine using the "inner product" between two vectors: p*q=cos(radiant)
-        F cosine = clamp_tpl((p | q), F(-1), F(1));
+        F cosine = AZ::GetClamp((p | q), F(-1), F(1));
         //we explore the special cases where the both vectors are very close together,
         //in which case we approximate using the more economical LERP and avoid "divisions by zero" since sin(Angle) = 0  as   Angle=0
         if (cosine >= (F)0.99)
@@ -636,10 +642,10 @@ struct Vec3_tpl
         else
         {
             //perform SLERP: because of the LERP-check above, a "division by zero" is not possible
-            F rad               = acos_tpl(cosine);
-            F scale_0   = sin_tpl((1 - t) * rad);
-            F scale_1   = sin_tpl(t * rad);
-            *this = (p * scale_0 + q * scale_1) / sin_tpl(rad);
+            F rad               = AZStd::acos(cosine);
+            F scale_0   = AZStd::sin((1 - t) * rad);
+            F scale_1   = AZStd::sin(t * rad);
+            *this = (p * scale_0 + q * scale_1) / AZStd::sin(rad);
             Normalize();
         }
     }
@@ -720,7 +726,7 @@ struct Vec3_tpl
     */
     ILINE Vec3_tpl<F> GetRotated(const Vec3_tpl<F>& axis, F angle) const
     {
-        return GetRotated(axis, cos_tpl(angle), sin_tpl(angle));
+        return GetRotated(axis, AZStd::cos(angle), AZStd::sin(angle));
     }
     ILINE Vec3_tpl<F> GetRotated(const Vec3_tpl<F>& axis, F cosa, F sina) const
     {
@@ -772,7 +778,7 @@ struct Vec3_tpl
     ILINE Vec3_tpl& zero() { x = y = z = 0; return *this; }
     ILINE F len() const
     {
-        return sqrt_tpl(x * x + y * y + z * z);
+        return AZStd::sqrt(x * x + y * y + z * z);
     }
     ILINE F len2() const
     {
@@ -784,7 +790,7 @@ struct Vec3_tpl
         F len2 = x * x + y * y + z * z;
         if (len2 > (F)1e-20f)
         {
-            F rlen = isqrt_tpl(len2);
+            F rlen = AZ::InvSqrt(len2);
             x *= rlen;
             y *= rlen;
             z *= rlen;
@@ -800,7 +806,7 @@ struct Vec3_tpl
         F len2 = x * x + y * y + z * z;
         if (len2 > (F)1e-20f)
         {
-            F rlen = isqrt_tpl(len2);
+            F rlen = AZ::InvSqrt(len2);
             return Vec3_tpl(x * rlen, y * rlen, z * rlen);
         }
         else
@@ -925,7 +931,7 @@ ILINE Vec3_tpl<F1> operator / (const Vec3_tpl<F1>& v0, const Vec3_tpl<F2>& v1)
 template <class F>
 ILINE bool IsEquivalent(const Vec3_tpl<F>& v0, const Vec3_tpl<F>& v1, f32 epsilon = VEC_EPSILON)
 {
-    return  ((fabs_tpl(v0.x - v1.x) <= epsilon) &&    (fabs_tpl(v0.y - v1.y) <= epsilon) &&  (fabs_tpl(v0.z - v1.z) <= epsilon));
+    return  ((AZStd::abs(v0.x - v1.x) <= epsilon) &&    (AZStd::abs(v0.y - v1.y) <= epsilon) &&  (AZStd::abs(v0.z - v1.z) <= epsilon));
 }
 
 
@@ -1025,25 +1031,25 @@ struct Ang3_tpl
 
     ILINE bool IsEquivalent(const Ang3_tpl<F>& v1, F epsilon = VEC_EPSILON) const
     {
-        return  ((fabs_tpl(x - v1.x) <= epsilon) &&   (fabs_tpl(y - v1.y) <= epsilon) && (fabs_tpl(z - v1.z) <= epsilon));
+        return  ((AZStd::abs(x - v1.x) <= epsilon) &&   (AZStd::abs(y - v1.y) <= epsilon) && (AZStd::abs(z - v1.z) <= epsilon));
     }
     ILINE bool IsInRangePI() const
     {
-        F pi = (F)(gf_PI + 0.001); //we need this to fix fp-precision problem
+        F pi = (F)(AZ::Constants::Pi + 0.001); //we need this to fix fp-precision problem
         return  ((x > -pi) && (x < pi) && (y > -pi) && (y < pi) && (z > -pi) && (z < pi));
     }
 
     //! Normalize angle to -pi and +pi range.
     ILINE void RangePI()
     {
-        const F modX = fmod(x + gf_PI, gf_PI2);
-        x = if_neg_else(modX, modX + gf_PI, modX - gf_PI);
+        const F modX = fmod(x + AZ::Constants::Pi, AZ::Constants::TwoPi);
+        x = (modX < 0) ? modX + AZ::Constants::Pi : modX - AZ::Constants::Pi;
 
-        const F modY = fmod(y + gf_PI, gf_PI2);
-        y = if_neg_else(modY, modY + gf_PI, modY - gf_PI);
+        const F modY = fmod(y + AZ::Constants::Pi, AZ::Constants::TwoPi);
+        y = (modY < 0) ? modY + AZ::Constants::Pi : modY - AZ::Constants::Pi;
 
-        const F modZ = fmod(z + gf_PI, gf_PI2);
-        z = if_neg_else(modZ, modZ + gf_PI, modZ - gf_PI);
+        const F modZ = fmod(z + AZ::Constants::Pi, AZ::Constants::TwoPi);
+        z = (modZ < 0) ? modZ + AZ::Constants::Pi : modZ - AZ::Constants::Pi;
     }
 
     // CryCommon->AzCore migration: Ang3's Quat/Matrix33/34/44 euler-conversion constructors
@@ -1055,7 +1061,7 @@ struct Ang3_tpl
     {
         F cz    = v0.x * v1.y - v0.y * v1.x;
         F c     =   v0.x * v1.x + v0.y * v1.y;
-        return F(atan2_tpl(cz, c));
+        return F(AZStd::atan2(cz, c));
     }
 
     template<typename F1>
@@ -1063,7 +1069,7 @@ struct Ang3_tpl
     {
         F cz    = v0.x * v1.y - v0.y * v1.x;
         F c     =   v0.x * v1.x + v0.y * v1.y;
-        return F(atan2_tpl(cz, c));
+        return F(AZStd::atan2(cz, c));
     }
 
     // CryCommon->AzCore migration: GetAnglesXYZ/SetAnglesXYZ(Quat/Matrix33/34) removed with
@@ -1151,10 +1157,10 @@ struct AngleAxis_tpl
 
     AngleAxis_tpl(const Quat_tpl<F>& q)
     {
-        angle = acos_tpl(q.w) * 2;
+        angle = AZStd::acos(AZ::GetClamp(q.w, F(-1), F(1))) * 2;
         axis    = q.v;
         axis.Normalize();
-        F s = sin_tpl(angle * (F)0.5);
+        F s = AZStd::sin(angle * (F)0.5);
         if (s == 0)
         {
             angle = 0;
@@ -1171,7 +1177,7 @@ template<typename F>
 ILINE const Vec3_tpl<F> AngleAxis_tpl<F>::operator * (const Vec3_tpl<F>& v) const
 {
     Vec3_tpl<F> origin  = axis * (axis | v);
-    return origin +  (v - origin) * cos_tpl(angle)  +  (axis % v) * sin_tpl(angle);
+    return origin +  (v - origin) * AZStd::cos(angle)  +  (axis % v) * AZStd::sin(angle);
 }
 
 //////////////////////////////////////////////////////////////////////

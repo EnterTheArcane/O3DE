@@ -104,7 +104,7 @@ public:
     inline static float ComputeSliderStep(float sliderMin, float sliderMax, const float precision = .01f)
     {
         float step;
-        step = int_round(((sliderMax - sliderMin) / ReflectedPropertyItem::s_DefaultNumStepIncrements) / precision) * precision;
+        step = AZStd::round(((sliderMax - sliderMin) / ReflectedPropertyItem::s_DefaultNumStepIncrements) / precision) * precision;
         // prevent rounding down to zero
         return (step > precision) ? step : precision;
     }
