@@ -4265,7 +4265,8 @@ STextDrawContext UiTextComponent::GetTextDrawContextPrototype(int requestFontSiz
     // higher quality font scaling with shrink-to-fit, consider taking m_fontSizeScale into
     // account.
     ctx.SetSize(AZ::Vector2(m_fontSize * fontSizeScale.GetX(), m_fontSize * fontSizeScale.GetY()));
-    ctx.m_requestSize = Vec2i(requestFontSize, requestFontSize);
+    ctx.m_requestSizeX = requestFontSize;
+    ctx.m_requestSizeY = requestFontSize;
     ctx.m_processSpecialChars = false;
     ctx.m_tracking = (m_charSpacing * ctx.m_size.GetX()) / 1000.0f; // m_charSpacing units are 1/1000th of ems, 1 em is equal to font size.
                                                                // It's important that we base the character spacing based on the

@@ -836,7 +836,7 @@ struct Vec3_tpl
     }
 };
 
-using Vec3i = Vec3_tpl<int32>;
+// CryCommon->AzCore migration: `Vec3i` removed (no users).
 
 // dot product (2 versions)
 template<class F1, class F2>
@@ -948,11 +948,6 @@ ILINE bool IsEquivalent(const Vec3_tpl<F>& v0, const Vec3_tpl<F>& v1, f32 epsilo
 // ##  .Dot() during migration.                                                       ##
 // ###################################################################################
 using Vec3 = AZ::Vector3;
-
-// TEMP Cry-compat free operators on AZ::Vector3 (REMOVE IN WAVE 3):
-inline float operator|(const AZ::Vector3& v0, const AZ::Vector3& v1) { return v0.Dot(v1); }
-inline AZ::Vector3 operator^(const AZ::Vector3& v0, const AZ::Vector3& v1) { return v0.Cross(v1); }
-inline AZ::Vector3 operator%(const AZ::Vector3& v0, const AZ::Vector3& v1) { return v0.Cross(v1); }
 
 template<>
 inline Vec3_tpl<f32>::Vec3_tpl(type_min) { x = y = z = -3.3E38f; }
@@ -1307,7 +1302,8 @@ struct Plane_tpl
     ILINE bool IsValid() const { return !n.IsZeroFast(); } //A plane with a zero normal isn't valid.
 };
 
-typedef Plane_tpl<f32>  Plane; //always 32 bit
+// CryCommon->AzCore migration: the Cry `Plane` type (Plane_tpl<f32>) was removed (dead — no
+// real users). Use AZ::Plane. (Plane_tpl remains only as vestigial template support.)
 
 
 // declare common constants.  Must be done after the class for compiler conformance

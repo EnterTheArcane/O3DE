@@ -60,7 +60,6 @@ namespace AZ
             };
             GlyphSize() : x(0), y(0) {}
             GlyphSize(const int32_t sizeX, const int32_t sizeY) : x(sizeX), y(sizeY) {}
-            GlyphSize(const Vec2i v) : x(v.x), y(v.y) {}
 
             bool operator==(const GlyphSize& rhs) const {return x == rhs.x && y == rhs.y;}
         };

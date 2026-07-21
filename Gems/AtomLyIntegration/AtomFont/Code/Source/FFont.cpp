@@ -375,7 +375,7 @@ AZ::Vector2 AZ::FFont::GetTextSizeUInternal(
         return AZ::Vector2(0, 0);
     }
 
-    Prepare(str, false, ctx.m_requestSize);
+    Prepare(str, false, AtomFont::GlyphSize(ctx.m_requestSizeX, ctx.m_requestSizeY));
 
     // This is the "logical" size of the font (in pixels). The actual size of
     // the glyphs in the font texture may have additional scaling applied or
@@ -503,7 +503,7 @@ AZ::Vector2 AZ::FFont::GetTextSizeUInternal(
             }
 
             const bool rerenderGlyphs = m_sizeBehavior == SizeBehavior::Rerender;
-            const AtomFont::GlyphSize requestSize = rerenderGlyphs ? ctx.m_requestSize : AtomFont::defaultGlyphSize;
+            const AtomFont::GlyphSize requestSize = rerenderGlyphs ? AtomFont::GlyphSize(ctx.m_requestSizeX, ctx.m_requestSizeY) : AtomFont::defaultGlyphSize;
             int horizontalAdvance = m_fontTexture->GetHorizontalAdvance(ch, requestSize);
             float advance;
 
@@ -722,7 +722,7 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
     int numQuads = 0;
     const size_t fxSize = m_effects.size();
 
-    Prepare(str, true, ctx.m_requestSize);
+    Prepare(str, true, AtomFont::GlyphSize(ctx.m_requestSizeX, ctx.m_requestSizeY));
 
     const size_t fxIdx = ctx.m_fxIdx < fxSize ? ctx.m_fxIdx : 0;
     const FontEffect& fx = m_effects[fxIdx];
@@ -967,7 +967,7 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
             int charOffsetX, charOffsetY; // in font texels
             int charSizeX, charSizeY; // in font texels
             const bool rerenderGlyphs = m_sizeBehavior == SizeBehavior::Rerender;
-            const AtomFont::GlyphSize requestSize = rerenderGlyphs ? ctx.m_requestSize : AtomFont::defaultGlyphSize;
+            const AtomFont::GlyphSize requestSize = rerenderGlyphs ? AtomFont::GlyphSize(ctx.m_requestSizeX, ctx.m_requestSizeY) : AtomFont::defaultGlyphSize;
             m_fontTexture->GetTextureCoord(m_fontTexture->GetCharSlot(ch, requestSize), texCoord, charSizeX, charSizeY, charOffsetX, charOffsetY, requestSize);
 
             int horizontalAdvance = m_fontTexture->GetHorizontalAdvance(ch, requestSize);

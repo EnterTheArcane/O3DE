@@ -105,15 +105,5 @@ AZ_POP_DISABLE_WARNING
 // along with the (dead) Cry Matrix33/Matrix34 types. Use AZ::Matrix3x3 / AZ::Matrix3x4 /
 // AZ::Transform directly.
 
-inline AZ::Plane LyPlaneToAZPlane(const ::Plane& source)
-{
-    return AZ::Plane::CreateFromNormalAndDistance(LYVec3ToAZVec3(source.n), source.d);
-}
-
-inline ::Plane AZPlaneToLyPlane(const AZ::Plane& source)
-{
-    ::Plane resultPlane;
-    resultPlane.Set(AZVec3ToLYVec3(source.GetNormal()), source.GetDistance());
-
-    return resultPlane;
-}
+// CryCommon->AzCore migration: the Ly<->AZ Plane bridge helpers were removed along with the
+// (dead) Cry `Plane` type. Use AZ::Plane directly.

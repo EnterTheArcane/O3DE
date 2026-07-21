@@ -306,7 +306,7 @@ struct Vec2_tpl
 // REMOVE alias in Wave 3. Legacy Vec2 type id {844131BA-...} migrates to AZ::Vector2 via a
 // ClassDeprecate converter registered in Wave 2.
 using Vec2 = AZ::Vector2;
-typedef Vec2_tpl<int32>  Vec2i;
+// CryCommon->AzCore migration: `Vec2i` removed (font glyph sizes now use plain ints).
 
 #if defined(LINUX64)
 typedef Vec2_tpl<int>    vector2l;

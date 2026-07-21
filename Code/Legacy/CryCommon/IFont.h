@@ -136,7 +136,10 @@ struct STextDrawContext
     unsigned int m_fxIdx;
 
     AZ::Vector2 m_size;
-    Vec2i m_requestSize;
+    // CryCommon->AzCore migration: was `Vec2i m_requestSize;` (Vec2_tpl<int32>); replaced with
+    // two ints so the Vec2_tpl template can be removed.
+    int32 m_requestSizeX;
+    int32 m_requestSizeY;
     float m_widthScale;
     float m_lineSpacing;
 
@@ -167,7 +170,8 @@ struct STextDrawContext
     STextDrawContext()
         : m_fxIdx(0)
         , m_size(16.0f, 16.0f)
-        , m_requestSize(static_cast<int32>(m_size.GetX()), static_cast<int32>(m_size.GetY()))
+        , m_requestSizeX(static_cast<int32>(m_size.GetX()))
+        , m_requestSizeY(static_cast<int32>(m_size.GetY()))
         , m_widthScale(1.0f)
         , m_lineSpacing(0.f)
         , m_clipX(0)
