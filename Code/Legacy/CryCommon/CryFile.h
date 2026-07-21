@@ -9,6 +9,7 @@
 // Description : File wrapper.
 #pragma once
 
+#include <CryEndian.h>  // CryCommon->AzCore migration: SwapEndian (was transitive via Cry vector headers)
 #include <AzCore/Console/IConsole.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/IO/FileIO.h>

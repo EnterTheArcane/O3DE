@@ -23,6 +23,17 @@
 
 namespace AtomFontInternal
 {
+    // CryCommon->AzCore migration: `vector2l` was Vec2_tpl<long> (the Cry Vec2_tpl template was
+    // removed). This is a minimal integer 2-vector kept for the font texture size.
+    struct vector2l
+    {
+        long x = 0;
+        long y = 0;
+        vector2l() = default;
+        vector2l(long vx, long vy) : x(vx), y(vy) {}
+        void set(long vx, long vy) { x = vx; y = vy; }
+    };
+
     enum
     {
 

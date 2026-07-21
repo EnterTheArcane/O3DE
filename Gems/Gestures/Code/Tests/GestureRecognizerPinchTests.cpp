@@ -70,7 +70,7 @@ TEST_F(PinchTests, Touch_OneFinger_InitNotCalled)
     MockPinchRecognizer mockRecognizer;
     mockRecognizer.SetConfig(defaultConfig);
 
-    Press(mockRecognizer, 0, AZ::Vector2(ZERO), 0.0f);
+    Press(mockRecognizer, 0, AZ::Vector2::CreateZero(), 0.0f);
 
     ASSERT_EQ(0, mockRecognizer.m_initCount);
 }
@@ -80,7 +80,7 @@ TEST_F(PinchTests, Touch_TwoFingersSlightlyApartNoMovement_InitNotCalled)
     MockPinchRecognizer mockRecognizer;
     mockRecognizer.SetConfig(defaultConfig);
 
-    Press(mockRecognizer, 0, AZ::Vector2(ZERO), 0.0f);
+    Press(mockRecognizer, 0, AZ::Vector2::CreateZero(), 0.0f);
     Press(mockRecognizer, 1, AZ::Vector2(0.5f), 0.0f);
 
     // both are down, but they haven't moved the "min pixels moved" distance
@@ -95,8 +95,8 @@ TEST_F(PinchTests, PinchOutward_GreaterThanMinDistance_InitCalled)
     config.minPixelsMoved = 10.0f;
     mockRecognizer.SetConfig(config);
 
-    Press(mockRecognizer, 0, AZ::Vector2(ZERO), 0.0f);
-    Press(mockRecognizer, 1, AZ::Vector2(ZERO), 0.0f);
+    Press(mockRecognizer, 0, AZ::Vector2::CreateZero(), 0.0f);
+    Press(mockRecognizer, 1, AZ::Vector2::CreateZero(), 0.0f);
     Move(mockRecognizer, 0, AZ::Vector2(-5.01f, 0.0f), 1.0f);
     Move(mockRecognizer, 1, AZ::Vector2(5.01f, 0.0f), 1.0f);
 
@@ -126,8 +126,8 @@ TEST_F(PinchTests, ReleaseBothTouches_AfterInitialized_EndedCalled)
     mockRecognizer.SetConfig(config);
 
     const AZ::Vector2 end(5.01f, 0.0f);
-    Press(mockRecognizer, 0, AZ::Vector2(ZERO), 0.0f);
-    Press(mockRecognizer, 1, AZ::Vector2(ZERO), 0.0f);
+    Press(mockRecognizer, 0, AZ::Vector2::CreateZero(), 0.0f);
+    Press(mockRecognizer, 1, AZ::Vector2::CreateZero(), 0.0f);
     Move(mockRecognizer, 0, -end, 1.0f);
     Move(mockRecognizer, 1, end, 1.0f);
     Release(mockRecognizer, 0, -end, 2.0f);
@@ -145,8 +145,8 @@ TEST_F(PinchTests, ReleaseOneTouch_AfterInitialized_EndedCalled)
     mockRecognizer.SetConfig(config);
 
     const AZ::Vector2 end(5.01f, 0.0f);
-    Press(mockRecognizer, 0, AZ::Vector2(ZERO), 0.0f);
-    Press(mockRecognizer, 1, AZ::Vector2(ZERO), 0.0f);
+    Press(mockRecognizer, 0, AZ::Vector2::CreateZero(), 0.0f);
+    Press(mockRecognizer, 1, AZ::Vector2::CreateZero(), 0.0f);
     Move(mockRecognizer, 0, -end, 1.0f);
     Move(mockRecognizer, 1, end, 1.0f);
     Release(mockRecognizer, 0, -end, 2.0f);

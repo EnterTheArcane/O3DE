@@ -13,9 +13,7 @@
 #include <limits>  // std::numeric_limits
 #include <type_traits>  // std::make_unsigned
 #include "BaseTypes.h"  // uint32, uint64
-#include "Cry_Vector2.h"
-#include "Cry_Vector3.h"
-#include "Cry_Vector4.h"
+#include <AzCore/Math/MathUtils.h>  // AZ::InvSqrt (retained scalar helpers only)
 
 
 namespace CryRandom_Internal
@@ -91,73 +89,8 @@ namespace CryRandom_Internal
         }
     };
 
-    //////////////////////////////////////////////////////////////////////////
-
-    template <class R, class VT, class T = typename VT::value_type, size_t componentCount = VT::component_count>
-    struct BoundedRandomComponentwise;
-
-    template <class R, class VT, class T>
-    struct BoundedRandomComponentwise<R, VT, T, 2>
-    {
-        inline static VT Get(R& randomGenerator, const VT& minValue, const VT& maxValue)
-        {
-            const T x = BoundedRandom<R, T>::Get(randomGenerator, minValue.x, maxValue.x);
-            const T y = BoundedRandom<R, T>::Get(randomGenerator, minValue.y, maxValue.y);
-            return VT(x, y);
-        }
-    };
-
-    template <class R, class VT, class T>
-    struct BoundedRandomComponentwise<R, VT, T, 3>
-    {
-        inline static VT Get(R& randomGenerator, const VT& minValue, const VT& maxValue)
-        {
-            const T x = BoundedRandom<R, T>::Get(randomGenerator, minValue.x, maxValue.x);
-            const T y = BoundedRandom<R, T>::Get(randomGenerator, minValue.y, maxValue.y);
-            const T z = BoundedRandom<R, T>::Get(randomGenerator, minValue.z, maxValue.z);
-            return VT(x, y, z);
-        }
-    };
-
-    template <class R, class VT, class T>
-    struct BoundedRandomComponentwise<R, VT, T, 4>
-    {
-        inline static VT Get(R& randomGenerator, const VT& minValue, const VT& maxValue)
-        {
-            const T x = BoundedRandom<R, T>::Get(randomGenerator, minValue.x, maxValue.x);
-            const T y = BoundedRandom<R, T>::Get(randomGenerator, minValue.y, maxValue.y);
-            const T z = BoundedRandom<R, T>::Get(randomGenerator, minValue.z, maxValue.z);
-            const T w = BoundedRandom<R, T>::Get(randomGenerator, minValue.w, maxValue.w);
-            return VT(x, y, z, w);
-        }
-    };
-
-    //////////////////////////////////////////////////////////////////////////
-
-    template <class R, class VT>
-    inline VT GetRandomUnitVector(R& randomGenerator)
-    {
-        typedef typename VT::value_type T;
-        static_assert(!std::numeric_limits<T>::is_integer);
-
-        VT res;
-        T lenSquared;
-
-        do
-        {
-            res = BoundedRandomComponentwise<R, VT>::Get(randomGenerator, VT(-1), VT(1));
-            lenSquared = res.GetLengthSquared();
-        } while (lenSquared > 1);
-
-        if (lenSquared >= (std::numeric_limits<T>::min)())
-        {
-            return res * AZ::InvSqrt(lenSquared);
-        }
-
-        res = VT(ZERO);
-        res.x = 1;
-        return res;
-    }
+    // CryCommon->AzCore migration: the BoundedRandomComponentwise / GetRandomUnitVector vector
+    // helpers were removed (dead — never instantiated, and built on the retired Vec*_tpl API).
 } // namespace CryRandom_Internal
 
 // eof

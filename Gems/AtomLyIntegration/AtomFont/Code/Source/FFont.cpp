@@ -517,7 +517,7 @@ AZ::Vector2 AZ::FFont::GetTextSizeUInternal(
             }
 
             // Adjust "advance" here for kerning purposes
-            AZ::Vector2 kerningOffset(Vec2_Zero);
+            AZ::Vector2 kerningOffset = AZ::Vector2::CreateZero();
             if (ctx.m_kerningEnabled && nextCh)
             {
                 kerningOffset = m_fontTexture->GetKerning(ch, nextCh) * scaleInfo.scale.GetX();
@@ -982,7 +982,7 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
                 advance = size.GetX() * ctx.m_widthScale;
             }
 
-            AZ::Vector2 kerningOffset(Vec2_Zero);
+            AZ::Vector2 kerningOffset = AZ::Vector2::CreateZero();
             if (ctx.m_kerningEnabled && nextCh)
             {
                 kerningOffset = m_fontTexture->GetKerning(ch, nextCh) * scaleInfo.scale.GetX();

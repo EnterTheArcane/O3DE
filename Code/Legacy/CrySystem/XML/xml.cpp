@@ -491,7 +491,9 @@ bool CXmlNode::getAttr(const char* key, AZ::Quaternion& value) const
         float w, x, y, z;
         if (azsscanf(svalue, "%f,%f,%f,%f", &w, &x, &y, &z) == 4)
         {
-            if (fabs(w) > VEC_EPSILON || fabs(x) > VEC_EPSILON || fabs(y) > VEC_EPSILON || fabs(z) > VEC_EPSILON)
+            // CryCommon->AzCore migration: was VEC_EPSILON (0.05f) from the retired Cry vector headers.
+            constexpr float epsilon = 0.05f;
+            if (fabs(w) > epsilon || fabs(x) > epsilon || fabs(y) > epsilon || fabs(z) > epsilon)
             {
                 value.Set(x, y, z, w);
                 return value.IsFinite();

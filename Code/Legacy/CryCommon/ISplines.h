@@ -72,17 +72,8 @@ inline T minmag(T const& a, T const& b)
     }
 }
 
-template<class T>
-inline Vec3_tpl<T> minmag(Vec3_tpl<T> const& a, Vec3_tpl<T> const& b)
-{
-    return Vec3_tpl<T>(minmag(a.x, b.x), minmag(a.y, b.y), minmag(a.z, b.z));
-}
-
-template<class T>
-T abs(Vec3_tpl<T> v)
-{
-    return v.GetLength();
-}
+// CryCommon->AzCore migration: the Vec3_tpl minmag/abs overloads were removed (dead — splines
+// now use AZ::Vector2/AZ::Vector3, and these were never called).
 
 //////////////////////////////////////////////////////////////////////////
 // Interface returned by backup methods of ISplineInterpolator.
