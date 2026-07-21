@@ -50,7 +50,7 @@ class _CMakePresets:
             if "CMAKE_SH" not in cache_variables:
                 cache_variables["CMAKE_SH"] = "CMAKE_SH-NOTFOUND"
 
-        cmake_make_program = recipe.conf.tools.gnu.make_program or cache_variables.get("CMAKE_MAKE_PROGRAM")
+        cmake_make_program: Any = recipe.conf.tools.gnu.make_program or cache_variables.get("CMAKE_MAKE_PROGRAM")
         if cmake_make_program:
             cmake_make_program = cmake_make_program.replace("\\", "/")
             cache_variables["CMAKE_MAKE_PROGRAM"] = cmake_make_program
@@ -114,7 +114,7 @@ class _CMakePresets:
             recipe, generator, cache_variables, toolchain_file, multiconfig, preset_prefix, buildenv, cmake_executable)
         build = _CMakePresets._build_preset_fields(recipe, multiconfig, preset_prefix)
         test = _CMakePresets._test_preset_fields(recipe, multiconfig, preset_prefix, runenv)
-        ret = {
+        ret: dict[str, Any] = {
             "version": 3, "vendor": {"recipe": {}}, "cmakeMinimumRequired": {"major": 3, "minor": 15, "patch": 0}, "configurePresets": [conf], "buildPresets": [build], "testPresets": [test],
         }
         return ret
@@ -128,7 +128,7 @@ class _CMakePresets:
             name = f"{preset_prefix}-{name}"
         if not multiconfig and build_type:
             cache_variables["CMAKE_BUILD_TYPE"] = build_type
-        ret = {
+        ret: dict[str, Any] = {
             "name": name, "displayName": f"'{name}' config", "description": f"'{name}' configure using '{generator}' generator", "generator": generator, "cacheVariables": cache_variables,
         }
 
@@ -162,7 +162,7 @@ class _CMakePresets:
         compiler = recipe.settings.compiler
         default_cl = "cl" if compiler == "msvc" and "Ninja" in str(generator) else None
         for lang in ("c", "cpp"):
-            comp = compilers_by_conf.get(lang, default_cl)
+            comp: Any = compilers_by_conf.get(lang, default_cl)
             if comp and os.path.basename(comp) in ("cl", "cl.exe", "clang-cl", "clang-cl.exe"):
                 lang = {"c": "C", "cpp": "CXX"}[lang]
                 ret["cacheVariables"][f"CMAKE_{lang}_COMPILER"] = comp.replace("\\", "/")
@@ -257,7 +257,7 @@ class _IncludingPresets:
             inherited_user = _IncludingPresets._collect_user_inherits(output_dir, preset_prefix)
 
         if not os.path.exists(user_presets_path):
-            data = {
+            data: Any = {
                 "version": 4, "vendor": {"recipe": dict()},
             }
         else:
@@ -293,7 +293,7 @@ class _IncludingPresets:
         Set configurePresets/buildPresets/testPresets to stubs for recipe-* presets
         that the user inherits but that don't have a real preset of the same type in the includes.
         """
-        real_preset_names_by_type = {
+        real_preset_names_by_type: dict[str, set[Any]] = {
             "configurePresets": set(), "buildPresets": set(), "testPresets": set(),
         }
         for inc in data.get("include", []):
@@ -311,7 +311,7 @@ class _IncludingPresets:
 
         for preset_type in ("configurePresets", "buildPresets", "testPresets"):
             real_names = real_preset_names_by_type[preset_type]
-            stubs = []
+            stubs: list[Any] = []
             for name in inherited_user.get(preset_type, []):
                 if name not in real_names:
                     stub = {"name": name}
@@ -326,7 +326,7 @@ class _IncludingPresets:
     def _collect_user_inherits(output_dir: str, preset_prefix: Any) -> dict[str, Any]:
         # Collect all the existing targets in the user files, to create empty recipe- presets
         # so things doesn't break for multi-platform, when inherits don't exist
-        collected_targets = {}
+        collected_targets: dict[str, list[Any]] = {}
         types = "configurePresets", "buildPresets", "testPresets"
         for file in ("CMakePresets.json", "CMakeUserPresets.json"):
             user_file = os.path.join(output_dir, file)

@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Any
 
 from thirdparty.build.flags import cppstd_msvc_flag, disable_flag
 from thirdparty.recipe import RecipeBase
@@ -15,13 +16,13 @@ _meson_cpu_family_map = {
 }
 
 
-def get_apple_subsystem(apple_sdk):
+def get_apple_subsystem(apple_sdk: Any) -> str:
     return {
         "iphoneos": "ios", "iphonesimulator": "ios-simulator", "appletvos": "tvos", "appletvsimulator": "tvos-simulator", "watchos": "watchos", "watchsimulator": "watchos-simulator",
     }.get(apple_sdk, "macos")
 
 
-def to_meson_machine(machine_os, machine_arch):
+def to_meson_machine(machine_os: str, machine_arch: str) -> dict[str, Any]:
     """Gets the OS system info as the Meson machine context.
 
     :param machine_os: ``str`` OS name.
@@ -38,7 +39,7 @@ def to_meson_machine(machine_os, machine_arch):
     return context
 
 
-def to_meson_value(value):
+def to_meson_value(value: Any) -> Any:
     """Puts any value with a valid str-like Meson format.
 
     :param value: ``str``, ``bool``, or ``list``, otherwise, it will do nothing.
@@ -61,9 +62,9 @@ def to_meson_value(value):
 
 def to_cppstd_flag(
     recipe: RecipeBase,
-    compiler,
-    compiler_version,
-    cppstd):
+    compiler: str | None,
+    compiler_version: str | None,
+    cppstd: str | None) -> str | None:
     """Gets a valid cppstd flag.
     :param recipe: ``RecipeBase`` instance.
     :param compiler: ``str`` compiler name.
@@ -85,7 +86,7 @@ def to_cppstd_flag(
         return f"gnu++{cppstd[3:]}" if cppstd.startswith("gnu") else f"c++{cppstd}"
 
 
-def to_cstd_flag(recipe: RecipeBase, cstd):
+def to_cstd_flag(recipe: RecipeBase, cstd: str | None) -> str | None:
     """Gets a valid cstd flag.
     """
     if cstd is None:

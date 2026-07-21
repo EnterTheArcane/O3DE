@@ -55,7 +55,7 @@ class _PCFilesDeps:
         dep: Any,
         pkg_name: str | None = None,
         comp_ref_name: str | None = None) -> list[Any]:
-        def _get_dep_aliases():
+        def _get_dep_aliases() -> list[Any]:
             pkg_aliases = self._get_property("pkg_config_aliases", dep, check_type=list)
             return pkg_aliases or []
 
@@ -160,7 +160,7 @@ class _PCFilesDeps:
 
     @staticmethod
     def _get_formatted_dirs(folder_name: str, folders: Any, prefix_path_: str) -> dict[str, str]:
-        ret = {}
+        ret: dict[str, str] = {}
         for i, directory in enumerate(folders):
             directory = os.path.normpath(directory).replace("\\", "/")
             if directory.startswith(prefix_path_):
@@ -230,7 +230,7 @@ class _PCFilesDeps:
         ```
         """
         dep_ref_name = self._dep.name
-        ret = []
+        ret: list[str] = []
         for req in info.requires:
             pkg_ref_name, comp_ref_name = req.split("::") if "::" in req else (dep_ref_name, req)
             # For instance, dep == "hello/1.0" and req == "other::cmp1" -> hello != other
@@ -263,8 +263,8 @@ class _PCFilesDeps:
 
         * Apart from those PC files, if there are any aliases declared, they will be created too.
         """
-        pc_files = {}
-        pc_alias_files = {}
+        pc_files: dict[str, str] = {}
+        pc_alias_files: dict[str, str] = {}
         pkg_name = self._get_name(self._dep)
         # First, let's load all the components PC files
         # Loop through all the package's components
@@ -275,7 +275,7 @@ class _PCFilesDeps:
             version = (self._get_property("component_version", self._dep, comp_ref_name) or self._get_property("system_package_version", self._dep, comp_ref_name) or self._dep.version)
             custom_content = self._get_property("pkg_config_custom_content", self._dep, comp_ref_name)
             pc_variables = self._get_pc_variables(self._dep, comp_cpp_info, custom_content)
-            pc_context = {
+            pc_context: dict[str, Any] = {
                 "name": comp_name, "description": f"Recipe component: {comp_name}", "version": version, "requires": comp_requires, "pc_variables": pc_variables, "cflags": self._get_cflags(
                     [d for d in pc_variables if d.startswith("includedir")], comp_cpp_info), "libflags": self._get_lib_flags(
                     [d for d in pc_variables if d.startswith("libdir")], comp_cpp_info),
@@ -304,7 +304,7 @@ class _PCFilesDeps:
             version = (self._get_property("system_package_version", self._dep) or self._dep.version)
             custom_content = self._get_property("pkg_config_custom_content", self._dep)
             pc_variables = self._get_pc_variables(self._dep, info, custom_content)
-            pc_context = {
+            pc_context: dict[str, Any] = {
                 "name": pkg_name, "description": f"Recipe package: {pkg_name}", "version": version, "requires": requires, "pc_variables": pc_variables, "cflags": self._get_cflags(
                     [d for d in pc_variables if d.startswith("includedir")], info), "libflags": self._get_lib_flags(
                     [d for d in pc_variables if d.startswith("libdir")], info),
@@ -340,7 +340,7 @@ class PkgConfigDeps:
         # a suffix. It is necessary when the same package is both a host and tool requirement.
         # DEPRECATED: consumers should use build_context_folder instead
         # FIXME: Recipe 3.x: Remove build_context_suffix attribute
-        self.build_context_suffix = {}
+        self.build_context_suffix: dict[str, str] = {}
         # By default, the "[generators_folder]/build" folder will save all the *.pc files activated
         # in the build_context_activated list.
         # Notice that if the `build_context_suffix` attr is defined, the `build_context_folder` one
@@ -349,7 +349,7 @@ class PkgConfigDeps:
         # Issue: upstream issue 14935
         # FIXME: Recipe 3.x: build_context_folder should be "build" by default
         self.build_context_folder = None  # Keeping backward-compatibility
-        self._properties = {}
+        self._properties: dict[str, dict[str, Any]] = {}
 
     def _get_dependencies(self):
         # Get all the dependencies
@@ -389,7 +389,7 @@ class PkgConfigDeps:
         Save all the `*.pc` files
         """
 
-        def _pc_file_name(name_, is_build_context: bool = False, has_suffix: bool = False):
+        def _pc_file_name(name_: str, is_build_context: bool = False, has_suffix: bool = False):
             # If no suffix is defined, we can save the *.pc file in the build_context_folder
             build = is_build_context and self.build_context_folder and not has_suffix
             # Issue: upstream issue 12342

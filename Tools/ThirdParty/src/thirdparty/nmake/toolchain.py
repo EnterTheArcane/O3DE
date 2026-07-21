@@ -56,18 +56,18 @@ class NMakeToolchain:
         rt_flags = msvc_runtime_flag(self._recipe)
         rt_flags = [f"/{rt_flags}"] if rt_flags else []
 
-        cflags = []
+        cflags: list[str] = []
         cflags.extend(self._recipe.conf.tools.build.cflags)
         cflags.extend(self.extra_cflags)
 
-        cxxflags = []
+        cxxflags: list[str] = []
         cppstd = cppstd_flag(self._recipe)
         if cppstd:
             cxxflags.append(cppstd)
         cxxflags.extend(self._recipe.conf.tools.build.cxxflags)
         cxxflags.extend(self.extra_cxxflags)
 
-        defines = []
+        defines: list[str] = []
         build_type = self._recipe.settings.build_type
         if build_type in ["Release", "RelWithDebInfo", "MinSizeRel"]:
             defines.append("NDEBUG")
@@ -82,7 +82,7 @@ class NMakeToolchain:
         bt_ldflags = build_type_link_flags(self._recipe.settings)
         bt_ldflags = bt_ldflags if bt_ldflags else []
 
-        ldflags = []
+        ldflags: list[str] = []
         ldflags.extend(bt_ldflags)
         ldflags.extend(self._recipe.conf.tools.build.sharedlinkflags)
         ldflags.extend(self._recipe.conf.tools.build.exelinkflags)

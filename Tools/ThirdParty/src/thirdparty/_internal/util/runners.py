@@ -68,7 +68,7 @@ def detect_runner(command: str) -> tuple[int, str]:
     proc = subprocess.Popen(
         command, shell=True, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-    output_buffer = []
+    output_buffer: list[str] = []
     while True:
         line = proc.stdout.readline()
         if not line:

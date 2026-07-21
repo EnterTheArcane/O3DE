@@ -11,7 +11,7 @@ from thirdparty._internal.util.files import human_size, check_sha256sum
 from thirdparty.errors import RecipeException
 
 
-def response_to_str(response):
+def response_to_str(response: Any) -> str:
     content = response.content
     try:
         # A bytes message, decode it as str
@@ -153,7 +153,7 @@ class FileDownloader:
             is_large_file = total_length > 10000000  # 10 MB
             base_name = os.path.basename(file_path)
 
-            def msg_format(msg, downloaded):
+            def msg_format(msg: str, downloaded: int) -> str:
                 perc = int(total_downloaded_size * 100 / total_length)
                 return msg + f" {human_size(downloaded)} {perc}% {base_name}"
 

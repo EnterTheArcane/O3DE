@@ -41,14 +41,14 @@ class ConfigTemplate2:
         f = self._cmakedeps.get_cmake_filename(self._recipe)
         targets_include = f"{f}Targets.cmake"
         pkg_name = self._recipe.name
-        build_modules_paths = self._cmakedeps.get_property(
+        build_modules_paths: list[Any] = self._cmakedeps.get_property(
             "cmake_build_modules", self._recipe, check_type=list) or []
         # FIXME: Proper escaping of paths for CMake and relativization
         # FIXME: build_module_paths coming from last config only
         build_modules_paths = [f.replace("\\", "/") for f in build_modules_paths]
         build_modules_paths = [relativize_path(
             p, self._cmakedeps._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in build_modules_paths]
-        components = self._cmakedeps.get_property(
+        components: Any = self._cmakedeps.get_property(
             "cmake_components", self._recipe, check_type=list)
         if components is None:  # Lets compute the default components names
             components = []
@@ -68,16 +68,16 @@ class ConfigTemplate2:
                     components.append(cmakename or name)
         components = " ".join(components) if components else ""
 
-        result = {
+        result: dict[str, Any] = {
             "filename": f, "components": components, "pkg_name": pkg_name, "targets_include_file": targets_include, "build_modules_paths": build_modules_paths,
         }
 
         conf_extra_variables = self._recipe.conf.tools.cmake.toolchain.extra_variables
-        dep_extra_variables = self._cmakedeps.get_property(
+        dep_extra_variables: dict[Any, Any] = self._cmakedeps.get_property(
             "cmake_extra_variables", self._recipe, check_type=dict) or {}
         # The configuration variables have precedence over the dependency ones
         extra_variables = {dep: value for dep, value in dep_extra_variables.items() if dep not in conf_extra_variables}
-        parsed_extra_variables = {}
+        parsed_extra_variables: dict[Any, Any] = {}
         for key, value in extra_variables.items():
             parsed_extra_variables[key] = parse_extra_variable(
                 "cmake_extra_variables", key, value)
@@ -89,7 +89,7 @@ class ConfigTemplate2:
     def _get_legacy_vars(self) -> dict[str, Any]:
         # Auxiliary variables for legacy consumption and try_compile cases
         pkg_name = self._recipe.name
-        prefixes = self._cmakedeps.get_property(
+        prefixes: list[Any] = self._cmakedeps.get_property(
             "cmake_additional_variables_prefixes", self._recipe, check_type=list) or []
 
         f = self._cmakedeps.get_cmake_filename(self._recipe)
@@ -98,12 +98,12 @@ class ConfigTemplate2:
         if not self._require.build:  # To add global variables for try_compile and legacy
             aggregated_cppinfo = self._full_cpp_info.aggregated_components()
             # FIXME: Proper escaping of paths for CMake
-            incdirs = [i.replace("\\", "/") for i in aggregated_cppinfo.includedirs]
+            incdirs: list[Any] = [i.replace("\\", "/") for i in aggregated_cppinfo.includedirs]
             incdirs = [relativize_path(i, self._cmakedeps._recipe, "${CMAKE_CURRENT_LIST_DIR}") for i in incdirs]
             include_dirs = ";".join(incdirs)
             definitions = ";".join("-D" + cmake_escape_value(d) for d in aggregated_cppinfo.defines)
 
-            libraries = []
+            libraries: Any = []
             if self._full_cpp_info.has_components:
                 for component in self._full_cpp_info.components.keys():
                     root_target_name = self._cmakedeps.get_property(

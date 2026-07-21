@@ -255,7 +255,7 @@ def fix_apple_shared_install_name(recipe: RecipeBase):
         run(recipe, command)
 
     def _get_rpath_entries(binary_file: str) -> list[str]:
-        entries = []
+        entries: list[str] = []
         command = f"{otool} -l {binary_file}"
         otool_output = check_output_runner(command).splitlines()
         for count, text in enumerate(otool_output):

@@ -4,7 +4,7 @@ import copy
 import os
 import types
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
-from typing import Literal, TypeAlias, get_args, get_origin, get_type_hints
+from typing import Any, Literal, TypeAlias, get_args, get_origin, get_type_hints
 
 PathValue: TypeAlias = str | os.PathLike[str]
 CompilerExecutable: TypeAlias = Literal["c", "cpp", "cuda", "objc", "objcxx", "objcpp", "rc", "fortran", "asm", "hip", "ispc"]
@@ -322,7 +322,7 @@ class Conf:
         return self
 
 
-def _compose_dataclass(current: object, other: object):
+def _compose_dataclass(current: Any, other: Any):
     for data_field in fields(current):
         name = data_field.name
         current_value = getattr(current, name)
@@ -340,7 +340,7 @@ def _compose_dataclass(current: object, other: object):
             setattr(current, name, copy.deepcopy(other_value))
 
 
-def _to_jsonable(value):
+def _to_jsonable(value: Any) -> Any:
     if is_dataclass(value):
         return _to_jsonable(asdict(value))
     if isinstance(value, dict):
@@ -367,7 +367,7 @@ def _load_dataclass(target: object, content: dict[str, object]):
             setattr(target, data_field.name, _restore_value(value, type_hints[data_field.name]))
 
 
-def _restore_value(value, annotation):
+def _restore_value(value: Any, annotation: Any) -> Any:
     if value is None:
         return None
     origin = get_origin(annotation)

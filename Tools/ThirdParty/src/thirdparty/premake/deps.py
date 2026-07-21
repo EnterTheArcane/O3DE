@@ -98,12 +98,12 @@ end
 # Helper class that expands info meta information in lua readable string sequences
 class _PremakeTemplate:
     def __init__(self, req: Any, dep_cpp_info: Any):
-        def _format_paths(paths):
+        def _format_paths(paths: Any) -> str:
             if not paths:
                 return ""
             return ",\n".join(f'"{p}"'.replace("\\", "/") for p in paths)
 
-        def _format_flags(flags):
+        def _format_flags(flags: Any) -> str:
             if not flags:
                 return ""
             return ", ".join('"%s"' % p.replace('"', '\\"') for p in flags)
@@ -187,7 +187,7 @@ class PremakeDeps:
           setup function call(s) to a certain scope. Here it is used to limit the calls in content to only apply
           if the premake ``configuration`` and ``architecture`` matches the parameters in this function call.
         """
-        lines = list(itertools.chain.from_iterable([cnt.splitlines() for cnt in content]))
+        lines: list[str] = list(itertools.chain.from_iterable([cnt.splitlines() for cnt in content]))
         return [
             # Set new filter
             f'{self.tab * indent}filter {{ "configurations:{configuration}", "architecture:{architecture}" }}', # Emit content
@@ -214,8 +214,8 @@ class PremakeDeps:
         full_req = list(host_req.items()) + list(build_req.items())
 
         # Process dependencies and accumulate globally required data
-        pkg_files = []
-        dep_names = []
+        pkg_files: list[str] = []
+        dep_names: list[str] = []
         config_sets = []
         for require, dep in full_req:
             dep_name = require.name
@@ -239,7 +239,7 @@ class PremakeDeps:
             # Add filename of current generations var file if not already present
             if var_filename not in available_config_files:
                 available_config_files.append(var_filename)
-            profiles = [(regex_res[0], regex_res.group(1), regex_res.group(2), regex_res.group(3)) for regex_res in [re.search(file_regex, file_name) for file_name in available_config_files]]
+            profiles: list[tuple[str, str, str, str]] = [(regex_res[0], regex_res.group(1), regex_res.group(2), regex_res.group(3)) for regex_res in [re.search(file_regex, file_name) for file_name in available_config_files]]
             config_sets = [profile[1] for profile in profiles]
 
             # Emit package premake file

@@ -3,10 +3,10 @@ import os
 import platform
 import textwrap
 from collections import OrderedDict
+from typing import Any
 
 from thirdparty._internal.output import Output
 from thirdparty._internal.util.files import save
-from thirdparty.build import use_win_mingw
 
 from thirdparty.cmake.presets import write_cmake_presets
 from thirdparty.cmake.toolchain import RECIPE_TOOLCHAIN_FILENAME
@@ -41,29 +41,28 @@ from thirdparty.cmake.toolchain.blocks import (
 )
 from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
-from thirdparty.errors import RecipeException
 from thirdparty.microsoft import VCVars
-from thirdparty.microsoft.visual import vs_ide_version
+
 from thirdparty.recipe import RecipeBase
 
 
-class Variables(OrderedDict):
-    _configuration_types = None  # Needed for py27 to avoid infinite recursion
+class Variables(OrderedDict[str, Any]):
+    _configuration_types: "dict[str, Any] | None" = None  # Needed for py27 to avoid infinite recursion
 
     def __init__(self):
         super(Variables, self).__init__()
         self._configuration_types = {}
 
-    def __getattribute__(self, config):
+    def __getattribute__(self, config: str) -> Any:
         try:
             return super(Variables, self).__getattribute__(config)
         except AttributeError:
             return self._configuration_types.setdefault(config, OrderedDict())
 
     @property
-    def configuration_types(self):
+    def configuration_types(self) -> "OrderedDict[Any, Any]":
         # Reverse index for the configuration_types variables
-        ret = OrderedDict()
+        ret: "OrderedDict[Any, Any]" = OrderedDict()
         for conf, definitions in self._configuration_types.items():
             for k, v in definitions.items():
                 ret.setdefault(k, []).append((conf, v))
@@ -73,7 +72,7 @@ class Variables(OrderedDict):
         for key, var in self.items():
             if isinstance(var, str):
                 self[key] = str(var).replace('"', '\\"')
-        for config, data in self._configuration_types.items():
+        for _config, data in self._configuration_types.items():
             for key, var in data.items():
                 if isinstance(var, str):
                     data[key] = str(var).replace('"', '\\"')
@@ -105,6 +104,7 @@ class CMakeToolchain:
 
     variables: Variables
     cache_variables: Variables
+    generator: str | None
 
     _recipe: RecipeBase
     preprocessor_definitions: Variables
@@ -171,13 +171,13 @@ class CMakeToolchain:
         self.presets_run_environment = None
         self.absolute_paths = False  # By default use relative paths to toolchain and presets
 
-    def _context(self):
+    def _context(self) -> dict[str, Any]:
         """ Returns dict, the context for the template
         """
         self.preprocessor_definitions.quote_preprocessor_strings()
 
-        blocks = self.blocks.process_blocks()
-        ctxt_toolchain = {
+        blocks: list[Any] = self.blocks.process_blocks()
+        ctxt_toolchain: dict[str, Any] = {
 
             "recipe_blocks": blocks,
         }
@@ -226,7 +226,7 @@ class CMakeToolchain:
             if platform.system() != "Windows":
                 VirtualBuildEnv(self._recipe).generate()
 
-        cache_variables = {}
+        cache_variables: dict[str, Any] = {}
         for name, value in self.cache_variables.items():
             if isinstance(value, bool):
                 cache_variables[name] = "ON" if value else "OFF"

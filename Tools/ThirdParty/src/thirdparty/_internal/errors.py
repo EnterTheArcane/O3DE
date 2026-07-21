@@ -1,18 +1,19 @@
 import traceback
 from contextlib import contextmanager
+from typing import Any
 
 from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
 from thirdparty.recipe import RecipeBase
 
 
 @contextmanager
-def recipe_remove_attr(recipe: RecipeBase, names, method):
+def recipe_remove_attr(recipe: RecipeBase, names: Any, method: str):
     """ remove some self.xxxx attribute from the class, so it raises an exception if used
     within a given recipe method
     """
     original_class = type(recipe)
 
-    def _prop(attr_name):
+    def _prop(attr_name: str):
         def _m(_):
             raise RecipeException(f"'self.{attr_name}' access in '{method}()' method is forbidden")
 
@@ -47,14 +48,14 @@ def recipe_exception_formatter(recipe: RecipeBase, funcname: str):
         raise RecipeException(m)
 
 
-def scoped_traceback(header_msg, exception, scope):
+def scoped_traceback(header_msg: str, exception: Exception, scope: str) -> str:
     """
     It will iterate the traceback lines, when it finds that the source code is inside the users
     recipe it "start recording" the messages, when the trace exits the recipe we return
     the traces.
     """
     import sys
-    content_lines = []
+    content_lines: list[str] = []
     try:
         scope_reached = False
         tb = sys.exc_info()[2]
@@ -107,12 +108,12 @@ class NotFoundException(RecipeException):  # 404
 
 
 class RecipeNotFoundException(NotFoundException):
-    def __init__(self, ref):
+    def __init__(self, ref: str):
         super().__init__(f"Recipe not found: '{ref}'")
 
 
 class PackageNotFoundException(NotFoundException):
-    def __init__(self, pref):
+    def __init__(self, pref: str):
         super().__init__(f"Binary package not found: '{pref}'")
 
 

@@ -33,7 +33,7 @@ class AutotoolsDeps:
         return ret
 
     def _rpaths_flags(self) -> list[str]:
-        flags = []
+        flags: list[str] = []
         for dep in self.ordered_deps:
             if dep.options.get_safe("shared"):
                 flags.extend(
@@ -51,12 +51,12 @@ class AutotoolsDeps:
             flags = GnuDepsFlags(self._recipe, self._get_cpp_info())
 
             # cpp_flags
-            cpp_flags = []
+            cpp_flags: list[str] = []
             cpp_flags.extend(flags.include_paths)
             cpp_flags.extend(flags.defines)
 
             # Ldflags
-            ldflags = flags.sharedlinkflags
+            ldflags: list[str] = flags.sharedlinkflags
             ldflags.extend(flags.exelinkflags)
             ldflags.extend(flags.frameworks)
             ldflags.extend(flags.framework_paths)
@@ -67,12 +67,12 @@ class AutotoolsDeps:
                 ldflags.extend(self._rpaths_flags())
 
             # libs
-            libs = flags.libs
+            libs: list[str] = flags.libs
             libs.extend(flags.system_libs)
 
             # cflags
-            cflags = flags.cflags
-            cxxflags = flags.cxxflags
+            cflags: list[str] = flags.cflags
+            cxxflags: list[str] = flags.cxxflags
 
             env = Environment()
             env.append("CPPFLAGS", cpp_flags)

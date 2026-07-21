@@ -184,7 +184,7 @@ class CMake:
             bf = os.path.join(self._recipe.folders.build, subfolder)
         build_config = self._config_arg(build_type)
 
-        args = []
+        args: list[Any] = []
         if target is not None:
             target_list = [target] if isinstance(target, str) else target
             args.extend(["--target"] + target_list)

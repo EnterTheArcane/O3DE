@@ -62,7 +62,7 @@ def msvc_version_to_vs_ide_version(version: str) -> str:
     return _visuals[str(version)]
 
 
-def msvc_version_to_toolset_version(version: str) -> str:
+def msvc_version_to_toolset_version(version: str) -> str | None:
     """
     Gets the Visual Studio IDE toolset version given the ``msvc`` compiler one.
 
@@ -234,7 +234,7 @@ def msvc_runtime_flag(recipe: RecipeBase) -> str:
 
 
 def vcvars_command(
-    version, architecture=None, platform_type=None, winsdk_version=None, vcvars_ver=None, start_dir_cd: bool = True, vs_install_path=None):
+    version: str, architecture: str | None = None, platform_type: str | None = None, winsdk_version: str | None = None, vcvars_ver: str | None = None, start_dir_cd: bool = True, vs_install_path: str | os.PathLike[str] | None = None):
     """
     Recipe-agnostic construction of vcvars command
     https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line
@@ -249,7 +249,7 @@ def vcvars_command(
     :param vs_install_path: ``str`` Visual Studio installation path.
     :return: ``str`` complete _vcvarsall_ command.
     """
-    cmd = []
+    cmd: list[str] = []
     if start_dir_cd:
         cmd.append('set "VSCMD_START_DIR=%CD%" &&')
 
@@ -266,7 +266,7 @@ def vcvars_command(
     return " ".join(cmd)
 
 
-def _vcvars_path(version: str, vs_install_path: str | None) -> str:
+def _vcvars_path(version: str, vs_install_path: str | os.PathLike[str] | None) -> str:
     # TODO: This comes from upstream_source/client/tools/win.py vcvars_command()
     vs_path = vs_install_path or vs_installation_path(version)
     if not vs_path or not os.path.isdir(vs_path):
@@ -283,7 +283,7 @@ def _vcvars_path(version: str, vs_install_path: str | None) -> str:
     return vcpath
 
 
-def _vcvars_versions(recipe: RecipeBase) -> list[str]:
+def _vcvars_versions(recipe: RecipeBase) -> tuple[str | None, str | None]:
     compiler = recipe.settings.compiler
     msvc_update = recipe.conf.tools.microsoft.msvc_update
     if compiler == "clang":

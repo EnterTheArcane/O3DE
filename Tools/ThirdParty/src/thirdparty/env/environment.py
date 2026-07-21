@@ -17,11 +17,13 @@ class _EnvVarPlaceHolder:
 
 
 def environment_wrap_command(
-    recipe: RecipeBase, env_filenames, env_folder, cmd, subsystem=None, accepted_extensions=None):
+    recipe: RecipeBase, env_filenames: str | list[str], env_folder: str, cmd: str, subsystem: str | None = None, accepted_extensions: tuple[str, ...] | None = None) -> str:
     if not env_filenames:
         return cmd
     filenames = [env_filenames] if not isinstance(env_filenames, list) else env_filenames
-    bats, shs, ps1s = [], [], []
+    bats: list[str] = []
+    shs: list[str] = []
+    ps1s: list[str] = []
 
     accept = accepted_extensions or ("ps1", "bat", "sh")
     # TODO: This implemantation is dirty, improve it
@@ -90,7 +92,7 @@ class _EnvValue:
         return bool(self._values)  # Empty means unset
 
     def dumps(self) -> str:
-        result = []
+        result: list[str] = []
         path = "(path)" if self._path else ""
         sep = f"(sep={self._sep})" if self._sep != " " and not self._path else ""
         if not self._values:  # Empty means unset
@@ -163,7 +165,7 @@ class _EnvValue:
         :param script_path: the replacement instead of the script path
         :return: a string representation of the env-var value, including the $NAME-like placeholder
         """
-        values = []
+        values: list[str] = []
         for v in self._values:
             if v is _EnvVarPlaceHolder:
                 if placeholder:
@@ -237,7 +239,7 @@ class Environment:
         return "\n".join([v.dumps() for v in reversed(self._values.values())])
 
     def serialize(self) -> dict[str, Any]:
-        result = []
+        result: list[dict[str, Any]] = []
         for name, value in self._values.items():
             result.append({
                 "name": name,
@@ -371,7 +373,7 @@ class Environment:
         :param other: the "other" environment
         :type other: class:`Environment`
         """
-        return other._values == self._values
+        return isinstance(other, Environment) and other._values == self._values
 
     def vars(self, recipe: RecipeBase, scope: str = "build") -> EnvVars:
         """
@@ -468,7 +470,7 @@ class EnvVars:
             os.environ.update(old_env)
 
     def save_dotenv(self, file_location: str):
-        result = []
+        result: list[str] = []
         for varname, varvalues in self._values.items():
             value = varvalues.get_value(subsystem=self._subsystem, pathsep=self._pathsep)
             result.append(f'{varname}="{value}"')
@@ -563,7 +565,7 @@ class EnvVars:
     def save_ps1(self, file_location: str, generate_deactivate: bool = True):
         _, filename = os.path.split(file_location)
 
-        result = []
+        result: list[str] = []
         if generate_deactivate:
             result.append(_ps1_deactivate_contents(self._deactivation_mode, self._values, filename))
         abs_base_path, new_path = _relativize_paths(self._recipe, "$PSScriptRoot")
@@ -604,7 +606,7 @@ class EnvVars:
 
     def save_sh(self, file_location: str, generate_deactivate: bool = True):
         filepath, filename = os.path.split(file_location)
-        result = []
+        result: list[str] = []
         if generate_deactivate:
             result.append(_sh_deactivate_contents(self._deactivation_mode, self._values, filename))
         abs_base_path, new_path = _relativize_paths(self._recipe, "$script_folder")
@@ -816,24 +818,24 @@ def register_env_script(recipe: RecipeBase, env_script_path: str, scope: str = "
 
 
 def generate_aggregated_env(recipe: RecipeBase):
-    def deactivates(filenames):
+    def deactivates(filenames: list[str]) -> list[str]:
         # FIXME: Probably the order needs to be reversed
-        result = []
+        result: list[str] = []
         for s in reversed(filenames):
             folder, f = os.path.split(s)
             result.append(os.path.join(folder, f"deactivate_{f}"))
         return result
 
-    def deactivate_function_names(filenames):
+    def deactivate_function_names(filenames: list[str]) -> list[str]:
         return [os.path.splitext(os.path.basename(s))[0].replace("-", "_") for s in reversed(filenames)]
 
     deactivation_mode = recipe.conf.tools.env.deactivation_mode
-    generated = []
+    generated: list[str] = []
     for group, env_scripts in recipe.env_scripts.items():
         subsystem = deduce_subsystem(recipe, group)
-        bats = []
-        shs = []
-        ps1s = []
+        bats: list[str] = []
+        shs: list[str] = []
+        ps1s: list[str] = []
         for env_script in env_scripts:
             path = os.path.join(recipe.folders.generators, env_script)
             # Only the .bat and .ps1 are made relative to current script
@@ -847,7 +849,7 @@ def generate_aggregated_env(recipe: RecipeBase):
                 # This $PSScriptRoot uses the current script directory
                 ps1s.append("$PSScriptRoot/" + path)
         if shs:
-            def sh_content(files):
+            def sh_content(files: list[str]) -> str:
                 content = ". " + " && . ".join(f'"{s}"' for s in files)
                 if deactivation_mode == "function":
                     content += f"\n\ndeactivate_env_{group}() {{\n"
@@ -866,7 +868,7 @@ def generate_aggregated_env(recipe: RecipeBase):
             filename = f"env_{group}.bat"
             deactivate_filename = f"deactivate_{filename}"
 
-            def bat_content(files):
+            def bat_content(files: list[str]) -> str:
                 content = ["@echo off"]
 
                 if deactivation_mode == "function":
@@ -904,7 +906,7 @@ def generate_aggregated_env(recipe: RecipeBase):
                     os.path.join(recipe.folders.generators, deactivate_filename), bat_content(deactivates(bats)))
 
         if ps1s:
-            def ps1_content(files):
+            def ps1_content(files: list[str]) -> str:
                 content = "\r\n".join([f'& "{b}"' for b in files])
                 if deactivation_mode == "function":
                     content += f"\n\nfunction global:deactivate_env_{group} {{\n"
@@ -926,7 +928,7 @@ def generate_aggregated_env(recipe: RecipeBase):
         recipe.output.info(f"Generated aggregated env files: {generated}")
 
 
-def _relativize_paths(recipe: RecipeBase, placeholder):
+def _relativize_paths(recipe: RecipeBase, placeholder: str):
     generators_folder = os.fspath(recipe.folders.generators)
     abs_base_path = generators_folder
     if not abs_base_path or not os.path.isabs(abs_base_path):

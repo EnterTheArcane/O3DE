@@ -464,7 +464,7 @@ class _Component:
         :type other: _Component
         """
 
-        def merge_list(o, d):
+        def merge_list(o: list[Any], d: list[Any]):
             d.extend(e for e in o if e not in d)
 
         for varname in _ALL_NAMES:
@@ -508,7 +508,7 @@ class _Component:
                 properties["cmake_build_modules"] = [os.path.join(folder, v) for v in modules]
 
     def deploy_base_folder(self, package_folder: str, deploy_folder: str):
-        def relocate(el):
+        def relocate(el: str) -> str:
             rel_path = os.path.relpath(el, package_folder)
             if rel_path.startswith(".."):
                 # If it is pointing to a folder outside of the package, then do not relocate
@@ -530,14 +530,14 @@ class _Component:
         return [r.split("::", 1) if "::" in r else (None, r) for r in self.requires]
 
     def _auto_deduce_locations(self, recipe: RecipeBase, library_name: str):
-        def _lib_match_by_glob(dir_, filename):
+        def _lib_match_by_glob(dir_: str, filename: str) -> list[str] | None:
             # Run a glob.glob function to find the file given by the filename
             matches = glob.glob(f"{dir_}/{filename}")
             if matches:
                 return matches
 
-        def _lib_match_by_regex(dir_, pattern):
-            ret = set()
+        def _lib_match_by_regex(dir_: str, pattern: re.Pattern[str]) -> list[str]:
+            ret: set[str] = set()
             # pattern is a regex compiled pattern, so let's iterate each file to find the library
             files = os.listdir(dir_)
             for file_name in files:
@@ -547,7 +547,7 @@ class _Component:
                     ret.add(full_path)
             return list(ret)
 
-        def _find_matching(dirs, pattern):
+        def _find_matching(dirs: list[str], pattern: str | re.Pattern[str]) -> str | None:
             for d in dirs:
                 if not os.path.exists(d):
                     continue
@@ -870,7 +870,7 @@ class Info:
         # Only direct host (not test) dependencies can define required components
         # We use recipe.dependencies to use the already replaced ones by "replace_requires"
         # So consumers can keep their ``self.info.requires = ["pkg_name::comp"]``
-        direct_dependencies = [r.name for r, d in recipe.dependencies.items() if r.direct and not r.build and not r.is_test and r.visible and not r.override]
+        direct_dependencies = [r.name for r, _d in recipe.dependencies.items() if r.direct and not r.build and not r.is_test and r.visible and not r.override]
 
         for e in external:
             if e not in direct_dependencies:

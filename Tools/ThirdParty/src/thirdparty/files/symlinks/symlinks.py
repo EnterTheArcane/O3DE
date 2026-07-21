@@ -1,8 +1,10 @@
 import os
+from collections.abc import Iterator
+
 from thirdparty.recipe import RecipeBase
 
 
-def get_symlinks(base_folder):
+def get_symlinks(base_folder: str) -> Iterator[str]:
     """Return the absolute path to the symlink files in base_folder"""
     for (root, dirnames, filenames) in os.walk(base_folder):
         for el in filenames + dirnames:
@@ -11,13 +13,13 @@ def get_symlinks(base_folder):
                 yield fullpath
 
 
-def _path_inside(base, folder):
+def _path_inside(base: str, folder: str) -> bool:
     base = os.path.abspath(base)
     folder = os.path.abspath(folder)
     return os.path.commonprefix([base, folder]) == base
 
 
-def absolute_to_relative_symlinks(recipe: RecipeBase, base_folder):
+def absolute_to_relative_symlinks(recipe: RecipeBase, base_folder: str):
     """
     Convert the symlinks with absolute paths into relative ones if they are pointing to a file or
     directory inside the ``base_folder``. Any absolute symlink pointing outside the ``base_folder``    will be ignored.
@@ -36,7 +38,7 @@ def absolute_to_relative_symlinks(recipe: RecipeBase, base_folder):
             os.symlink(new_link, fullpath)
 
 
-def remove_external_symlinks(recipe: RecipeBase, base_folder):
+def remove_external_symlinks(recipe: RecipeBase, base_folder: str):
     """
     Remove the symlinks to files that point outside the ``base_folder``, no matter if relative or absolute.
 
@@ -51,7 +53,7 @@ def remove_external_symlinks(recipe: RecipeBase, base_folder):
             os.unlink(fullpath)
 
 
-def remove_broken_symlinks(recipe: RecipeBase, base_folder=None):
+def remove_broken_symlinks(recipe: RecipeBase, base_folder: str | None = None):
     """
     Remove the broken symlinks, no matter if relative or absolute.
 

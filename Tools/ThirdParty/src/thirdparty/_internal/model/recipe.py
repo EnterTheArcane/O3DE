@@ -62,7 +62,7 @@ class RecipeBase(ABC, Generic[TOptions]):
             settings_build=settings,
             conf=Conf(),
             info=Info(set_defaults=True))
-        self.env_scripts = {}  # Accumulate the env scripts generated in order
+        self.env_scripts: dict[str, list[str]] = {}  # Accumulate the env scripts generated in order
 
     def requires(self, ref: str):
         req = Requirement(RecipeReference(ref), headers=True, libs=True, run=False)

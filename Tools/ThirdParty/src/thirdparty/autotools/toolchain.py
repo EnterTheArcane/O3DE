@@ -179,7 +179,7 @@ class AutotoolsToolchain:
 
     def _resolve_android_cross_compilation(self) -> dict[str, str]:
         # Issue related: upstream issue 13443
-        ret = {}
+        ret: dict[str, str] = {}
         if not self._is_cross_building or not self._recipe.settings.os == "Android":
             return ret
         # Setting host if it was not already defined yet
@@ -189,7 +189,7 @@ class AutotoolsToolchain:
         }.get(arch)
         self._host = self._host or android_target
         # Automatic guessing made by Recipe (need the NDK path variable defined)
-        recipe_vars = {}
+        recipe_vars: dict[str, str] = {}
         ndk_path = self._recipe.conf.tools.android.ndk_path
         if ndk_path:
             if self._recipe.conf.tools.build.compiler_executables:
@@ -419,7 +419,7 @@ class AutotoolsToolchain:
         return ["--force", "--install"]
 
     def _get_triplets(self) -> list[str]:
-        triplets = []
+        triplets: list[str] = []
         for flag, value in (
                 ("--host=", self._host), ("--build=", self._build), ("--target=", self._target),
         ):
@@ -456,8 +456,8 @@ class AutotoolsToolchain:
 
     # FIXME: Remove all these update_xxxx whenever xxxx_args are dicts or new ones replace them
     def _update_flags(self, attr_name: str, updated_flags: dict[str, Any]):
-        def _list_to_dict(flags):
-            ret = {}
+        def _list_to_dict(flags: list[str]) -> dict[str, str]:
+            ret: dict[str, str] = {}
             for flag in flags:
                 # Only splitting if "=" is there
                 option = flag.split("=", 1)
@@ -467,7 +467,7 @@ class AutotoolsToolchain:
                     ret[option[0]] = ""
             return ret
 
-        def _dict_to_list(flags):
+        def _dict_to_list(flags: dict[str, str]) -> list[str]:
             return [f"{k}={v}" if v else k for k, v in flags.items() if v is not None]
 
         self_args = getattr(self, attr_name)

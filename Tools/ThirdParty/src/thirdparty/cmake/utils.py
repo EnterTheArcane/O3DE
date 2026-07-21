@@ -7,7 +7,7 @@ def is_multi_configuration(generator: str | None) -> bool:
     return "Visual" in generator or "Xcode" in generator or "Multi-Config" in generator
 
 
-def parse_extra_variable(source: str, key: str, value: object):
+def parse_extra_variable(source: str, key: str, value: object) -> str | int | float:
     CMAKE_CACHE_TYPES = ["BOOL", "FILEPATH", "PATH", "STRING", "INTERNAL"]  # noqa
     if isinstance(value, str):
         return f"\"{value}\""

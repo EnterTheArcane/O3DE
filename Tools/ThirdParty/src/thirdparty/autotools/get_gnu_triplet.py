@@ -1,7 +1,7 @@
 from thirdparty.errors import RecipeException
 
 
-def _get_gnu_arch(os_, arch):
+def _get_gnu_arch(os_: str, arch: str) -> str:
     # Calculate the arch
     machine = {
         "X64": "x86_64", "ARM": "aarch64",
@@ -54,7 +54,7 @@ def _get_gnu_arch(os_, arch):
     return machine
 
 
-def _get_gnu_os(os_, arch, compiler=None):
+def _get_gnu_os(os_: str, arch: str, compiler: str | None = None) -> str:
     # Calculate the OS
     if compiler == "gcc":
         windows_op = "w64-mingw32"
@@ -71,7 +71,7 @@ def _get_gnu_os(os_, arch, compiler=None):
     return op_system
 
 
-def _get_gnu_triplet(os_, arch, compiler=None):
+def _get_gnu_triplet(os_: str, arch: str, compiler: str | None = None) -> dict[str, str]:
     """
     Returns string with <machine>-<vendor>-<op_system> triplet (<vendor> can be omitted in practice)
 

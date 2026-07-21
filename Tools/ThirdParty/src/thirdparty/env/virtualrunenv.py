@@ -1,16 +1,17 @@
 import os
+from typing import Any
 
 from thirdparty.env import Environment
 from thirdparty.recipe import RecipeBase
 
 
-def runenv_from_cpp_info(dep, os_name):
+def runenv_from_cpp_info(dep: Any, os_name: str | None):
     """ return an Environment deducing the runtime information from a info
     """
     dyn_runenv = Environment()
     info = dep.info.aggregated_components()
 
-    def _prepend_path(envvar, paths):
+    def _prepend_path(envvar: str, paths: Any):
         existing = [p for p in paths if os.path.exists(p)] if paths else None
         if existing:
             dyn_runenv.prepend_path(envvar, existing)

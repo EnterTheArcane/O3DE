@@ -27,7 +27,7 @@ class CMakeDeps:
     def __init__(self, recipe: RecipeBase):
         self._recipe = recipe
         self.configuration = str(self._recipe.settings.build_type)
-        self._properties = {}
+        self._properties: dict[str, dict[str, Any]] = {}
 
     def generate(self):
         # Current directory is the generators_folder
@@ -42,7 +42,7 @@ class CMakeDeps:
 
         # Iterate all the transitive requires
         ret: dict[str, str] = {}
-        direct_deps = []
+        direct_deps: list[Any] = []
         for require, dep in list(host_req.items()) + list(build_req.items()):
             cmake_find_mode = self.get_property("cmake_find_mode", dep)
             cmake_find_mode = cmake_find_mode or FIND_MODE_CONFIG
@@ -75,7 +75,7 @@ class CMakeDeps:
     def _print_help(self, direct_deps: Any):
         if direct_deps:
             msg = ["CMakeDeps necessary find_package() and targets for your CMakeLists.txt"]
-            link_targets = []
+            link_targets: list[Any] = []
             for (require, dep) in direct_deps:
                 note = " # Optional. This is a tool-require, can't link its targets" if require.build else ""
                 msg.append(f"    find_package({self.get_cmake_filename(dep)}){note}")
@@ -173,7 +173,7 @@ class _PathGenerator:
         self._cmakedeps = cmakedeps
 
     def _get_cmake_paths(self, requirements: Any, dirs_name: str) -> list[Any]:
-        paths = {}
+        paths: dict[Any, Any] = {}
         cmake_vars = {
             "bindirs": "CMAKE_PROGRAM_PATH", "libdirs": "CMAKE_LIBRARY_PATH", "includedirs": "CMAKE_INCLUDE_PATH", "frameworkdirs": "CMAKE_FRAMEWORK_PATH", "builddirs": "CMAKE_MODULE_PATH",
         }
@@ -231,17 +231,17 @@ class _PathGenerator:
             """)
         host_req = self._recipe.dependencies.host
         build_req = self._recipe.dependencies.direct_build
-        all_reqs = list(host_req.items()) + list(build_req.items())
+        all_reqs: list[Any] = list(host_req.items()) + list(build_req.items())
         # Library/include/framework search paths come from the host requirements only (the
         # packages we link against), never from build/tool requirements.
         host_test_reqs = list(host_req.items())
         # gen_folder = self._recipe.folders.generators.as_posix()
         # if not, test_cmake_add_subdirectory test fails
         # content.append('set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)')
-        pkg_paths = {}
-        prefix_paths = []
+        pkg_paths: dict[str, str] = {}
+        prefix_paths: list[str] = []
 
-        pkg_paths_multi = {}
+        pkg_paths_multi: dict[str, list[str]] = {}
         if os.path.exists(self._recipe_cmakedeps_paths):
             existing_toolchain = load(self._recipe_cmakedeps_paths)
             pattern_paths = r"list\(APPEND RECIPE_([A-Za-z0-9-_]*)_DIR_MULTI \"([^)]*)\"\)"
@@ -251,13 +251,13 @@ class _PathGenerator:
                 if captured_path not in path_list:
                     path_list.append(captured_path)
 
-        for req, dep in all_reqs:
+        for _req, dep in all_reqs:
             cmake_find_mode = self._cmakedeps.get_property("cmake_find_mode", dep)
             cmake_find_mode = cmake_find_mode or FIND_MODE_CONFIG
             cmake_find_mode = cmake_find_mode.lower()
 
             cmake_filename = self._cmakedeps.get_cmake_filename(dep)
-            extra_variants = self._cmakedeps.get_property(
+            extra_variants: list[Any] = self._cmakedeps.get_property(
                 "cmake_file_name_variants", dep, check_type=list) or []
             lowercase_variants = {variant.lower() for variant in extra_variants}
             if len(lowercase_variants) > 1:
@@ -285,10 +285,10 @@ class _PathGenerator:
                 try:
                     # This is irrespective of the components, it should be in the root info
                     # To define the location of the pkg-config.cmake file
-                    build_dir = dep.info.builddirs[0]
+                    build_dir: "str | os.PathLike[str]" = dep.info.builddirs[0]
                 except IndexError:
                     build_dir = dep.folders.package
-                pkg_folder = os.fspath(build_dir).replace("\\", "/") if build_dir else None
+                pkg_folder: str | None = os.fspath(build_dir).replace("\\", "/") if build_dir else None
                 if pkg_folder:
                     if any(
                         os.path.isfile(os.path.join(pkg_folder, f + ext)) for f in pkg_names for ext in ("-config.cmake", "Config.cmake")):
@@ -338,8 +338,8 @@ class _PathGenerator:
         content = jinja2.Template(template, trim_blocks=True, lstrip_blocks=True).render(context)
         save(self._recipe, self._recipe_cmakedeps_paths, content)
 
-    def _get_host_runtime_dirs(self) -> dict[str, Any]:
-        host_runtime_dirs = {}
+    def _get_host_runtime_dirs(self) -> str:
+        host_runtime_dirs: dict[str, list[str]] = {}
 
         # Get the previous configuration
         if os.path.exists(self._recipe_cmakedeps_paths):

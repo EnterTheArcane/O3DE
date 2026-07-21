@@ -1,16 +1,17 @@
 import json
 import os
 from shutil import which
+from typing import Any
 
 from thirdparty.build import cmd_args_to_string
 from thirdparty.errors import RecipeException
 
 
-def vs_installation_path(version):
+def vs_installation_path(version: Any):
     return _vs_installation_path(version)[0]
 
 
-def vs_detect_update(version):
+def vs_detect_update(version: Any):
     version = {"195": "18", "194": "17", "193": "17", "192": "16", "191": "15"}.get(str(version))
     full_version = _vs_installation_path(version)[1]
     components = full_version.split(".")
@@ -18,7 +19,7 @@ def vs_detect_update(version):
         return components[1]
 
 
-def _vs_installation_path(version):
+def _vs_installation_path(version: Any) -> tuple[Any, Any]:
     # TODO: Preference hardcoded, [conf] must be defined
     preference = ["Enterprise", "Professional", "Community", "BuildTools"]
 
@@ -54,11 +55,11 @@ def _vs_installation_path(version):
 
 
 def vswhere(
-    all_: bool = False, prerelease: bool = True, products=None, requires=None, version: str = "", latest: bool = False, legacy: bool = False, property_: str = "", nologo: bool = True):
+    all_: bool = False, prerelease: bool = True, products: Any = None, requires: Any = None, version: str = "", latest: bool = False, legacy: bool = False, property_: str = "", nologo: bool = True):
     # 'version' option only works if Visual Studio 2017 is installed:
     # https://github.com/Microsoft/vswhere/issues/91
-    products = list() if products is None else products
-    requires = list() if requires is None else requires
+    products = list[Any]() if products is None else products
+    requires = list[Any]() if requires is None else requires
 
     if legacy and (products or requires):
         raise RecipeException(
@@ -79,7 +80,7 @@ def vswhere(
             "Cannot locate vswhere in 'Program Files'/'Program Files (x86)' "
             "directory nor in PATH")
 
-    arguments = list()
+    arguments: list[Any] = list()
     arguments.append(vswhere_path)
 
     # Output json format

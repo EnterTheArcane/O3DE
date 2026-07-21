@@ -1,7 +1,6 @@
 import filecmp
 import fnmatch
 import os
-from pathlib import Path
 import shutil
 
 from thirdparty._internal.util.files import mkdir
@@ -70,14 +69,14 @@ def copy(
 def _filter_files(
         src: str,
         pattern: str,
-        excludes: Any,
+        excludes: str | list[str] | tuple[str, ...] | None,
         ignore_case: bool,
-        excluded_folder: str) -> tuple[list[str], list[str]]:
+        excluded_folder: str | os.PathLike[str]) -> tuple[list[str], list[str]]:
     """ return a list of the files matching the patterns
     The list will be relative path names wrt to the root src folder
     """
-    filenames = []
-    files_symlinked_to_folders = []
+    filenames: list[str] = []
+    files_symlinked_to_folders: list[str] = []
 
     pattern = pattern.lower() if ignore_case else pattern
     if excludes:
@@ -135,13 +134,13 @@ def _filter_files(
 def _copy_files(
     files: Any,
     src: str,
-    dst: str,
+    dst: str | os.PathLike[str],
     keep_path: bool,
     overwrite_equal: bool) -> list[str]:
     """ executes a multiple file copy from [(src_file, dst_file), (..)]
     managing symlinks if necessary
     """
-    copied_files = []
+    copied_files: list[str] = []
     for filename in files:
         abs_src_name = os.path.join(src, filename)
         filename = filename if keep_path else os.path.basename(filename)
@@ -165,10 +164,10 @@ def _copy_files(
     return copied_files
 
 
-def _copy_files_symlinked_to_folders(files_symlinked_to_folders: Any, src: str, dst: str) -> list[str]:
+def _copy_files_symlinked_to_folders(files_symlinked_to_folders: Any, src: str, dst: str | os.PathLike[str]) -> list[str]:
     """Copy the files that are symlinks to folders from src to dst.
        The files are already filtered with the specified pattern"""
-    copied_files = []
+    copied_files: list[str] = []
     for relative_path in files_symlinked_to_folders:
         abs_path = os.path.join(src, relative_path)
         symlink_path = os.path.join(dst, relative_path)

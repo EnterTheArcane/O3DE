@@ -33,7 +33,7 @@ else:
 DEFAULT_O3DE_PACKAGE_HOME = os.path.join(".o3de", "ThirdParty")
 
 
-def find_file_walk_up(start, filename, end=None):
+def find_file_walk_up(start: "str | os.PathLike[str]", filename: str, end: "str | os.PathLike[str] | None" = None) -> Path | None:
     path = Path(start)
     end = Path(end) if end else None
     while True:

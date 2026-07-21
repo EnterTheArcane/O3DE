@@ -47,7 +47,7 @@ class RecipeLoader:
         if not recipe_path.exists():
             return None
         try:
-            module, cls = _parse_recipe(str(recipe_path))
+            _module, cls = _parse_recipe(str(recipe_path))
             if not (isinstance(cls, type) and issubclass(cls, RecipeBase)):
                 return None
             return cls
@@ -60,7 +60,7 @@ def _parse_module(recipe_module: Any, module_id: Any) -> type[RecipeBase]:
     @param recipe_module: the module to be processed
     @return: the main RecipeBase class from the module
     """
-    result = None
+    result: type[RecipeBase] | None = None
     for name, attr in recipe_module.__dict__.items():
         if (name.startswith("_") or not inspect.isclass(attr) or attr.__dict__.get("__module__") != module_id):
             continue

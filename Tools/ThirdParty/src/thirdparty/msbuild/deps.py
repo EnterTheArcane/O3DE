@@ -170,7 +170,7 @@ class MSBuildDeps:
         :return: varfile content
         """
 
-        def add_valid_ext(libname, libdirs=None) -> str:
+        def add_valid_ext(libname: str, libdirs: list[str] | None = None) -> str:
             ext = os.path.splitext(libname)[1]
             if ext in VALID_LIB_EXTENSIONS:
                 return f"{libname};"
@@ -184,15 +184,15 @@ class MSBuildDeps:
 
         pkg_placeholder = f"$(Recipe{name}RootFolder)"
 
-        def escape_path(path):
+        def escape_path(path: str) -> str:
             # https://docs.microsoft.com/en-us/visualstudio/msbuild/
             #                          how-to-escape-special-characters-in-msbuild
             # https://docs.microsoft.com/en-us/visualstudio/msbuild/msbuild-special-characters
             return os.fspath(path).lstrip("/")
 
-        def join_paths(paths):
+        def join_paths(paths: list[str]) -> str:
             # TODO: ALmost copied from CMakeDeps TargetDataContext
-            ret = []
+            ret: list[str] = []
             for p in paths:
                 assert os.path.isabs(p), f"{p} is not absolute"
                 full_path = escape_path(p)
@@ -209,7 +209,7 @@ class MSBuildDeps:
         )
         root_folder = escape_path(root_folder)
         # Make the root_folder relative to the generated recipe_vars_xxx.props file
-        relative_root_folder = relativize_path(
+        relative_root_folder: str = relativize_path(
             root_folder, self._recipe, "$(MSBuildThisFileDirectory)", normalize=False)
 
         bin_dirs = join_paths(info.bindirs)
@@ -236,7 +236,7 @@ class MSBuildDeps:
         if require and not require.run:
             bin_dirs = ""
 
-        fields = {
+        fields: dict[str, Any] = {
             "name": name, "root_folder": relative_root_folder, "bin_dirs": bin_dirs, "res_dirs": res_dirs, "include_dirs": include_dirs, "lib_dirs": lib_dirs, "libs": libs, # TODO: Missing objects
             "system_libs": system_libs, "definitions": definitions, "compiler_flags": compiler_flags, "linker_flags": linker_flags, "host_context": not build,
         }
@@ -396,7 +396,7 @@ class MSBuildDeps:
         conf_name = self._config_filename()
         condition = self._condition()
         dep_name = self._dep_name(dep, build)
-        result = {}
+        result: dict[str, str] = {}
         pkg_deps = get_transitive_requires(self._recipe, dep)  # only non-skipped dependencies
         if dep.info.has_components:
             pkg_aggregated_content = None
@@ -407,7 +407,7 @@ class MSBuildDeps:
                 comp_filename = "recipe_%s.props" % full_comp_name
                 pkg_filename = "recipe_%s.props" % dep_name
 
-                public_deps = []  # To store the xml dependencies/file names
+                public_deps: list[str] = []  # To store the xml dependencies/file names
                 for required_pkg, required_comp in comp_info.parsed_requires():
                     if required_pkg is not None:  # Points to a component of a different package
                         try:
@@ -449,7 +449,7 @@ class MSBuildDeps:
     def _content(self) -> dict[str, str]:
         if not self._recipe.settings.build_type:
             raise RecipeException("The 'msbuild' generator requires a 'build_type' setting value")
-        result = {}
+        result: dict[str, str] = {}
 
         for req, dep in self._recipe.dependencies.host.items():
             result.update(self._package_props_files(req, dep, build=False))

@@ -6,7 +6,7 @@ import platform
 import shutil
 import stat
 import subprocess
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from fnmatch import fnmatch
 from shutil import which
@@ -99,7 +99,7 @@ def rmdir(recipe: RecipeBase, path: str | os.PathLike[str]):
 
 
 def rm(
-    recipe: RecipeBase, pattern: str, folder: str | os.PathLike[str], recursive: bool = False, excludes: Any = None):
+    recipe: RecipeBase, pattern: str, folder: str | os.PathLike[str], recursive: bool = False, excludes: str | list[str] | tuple[str, ...] | None = None):
     """
     Utility functions to remove files matching a ``pattern`` in a ``folder``.
 
@@ -126,7 +126,7 @@ def rm(
 
 def get(
     recipe: RecipeBase,
-    url: Any,
+    url: str | list[str] | tuple[str, ...],
     sha256: str | None = None,
     destination: Path = Path("."),
     filename: str = "",
@@ -213,9 +213,9 @@ def download(
     """
     config = recipe.conf
 
-    retry: int = retry if retry is not None else 2
+    retry = retry if retry is not None else 2
     retry = config.tools.files.download.retry if config.tools.files.download.retry is not None else retry
-    retry_wait: int = retry_wait if retry_wait is not None else 5
+    retry_wait = retry_wait if retry_wait is not None else 5
     retry_wait = config.tools.files.download.retry_wait if config.tools.files.download.retry_wait is not None else retry_wait
     verify = config.tools.files.download.verify if config.tools.files.download.verify is not None else verify
 
@@ -265,7 +265,7 @@ def rename(
 @contextmanager
 def chdir(
     recipe: RecipeBase,
-    newdir: str | os.PathLike[str]) -> Iterator[None]:
+    newdir: str | os.PathLike[str]) -> Generator[None, None, None]:
     """
     This is a context manager that allows to temporary change the current directory in your recipe
 
@@ -486,7 +486,7 @@ def untargz(
             tarredgzippedFile.extractall(destination)
         else:
             common_folder = None
-            members = []
+            members: list[tarfile.TarInfo] = []
             for member in tarredgzippedFile:
                 if pattern and not fnmatch(member.name, pattern):
                     continue  # Skip files that don't match the pattern

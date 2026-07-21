@@ -178,7 +178,7 @@ def _change_permissions(func: Any, path: str, exc_info: Any):
 
 
 if platform.system() == "Windows":
-    def rmdir(path):
+    def rmdir(path: str | os.PathLike[str]):
         if not os.path.isdir(path):
             return
 
@@ -197,7 +197,7 @@ if platform.system() == "Windows":
                 time.sleep(delay)
 
 
-    def renamedir(old_path, new_path):
+    def renamedir(old_path: str, new_path: str):
         retries = 3
         delay = 0.5
         for i in range(retries):
@@ -225,7 +225,7 @@ else:
                 "Close any app using it and retry.")
 
 
-    def renamedir(old_path, new_path):
+    def renamedir(old_path: str, new_path: str):
         try:
             shutil.move(old_path, new_path)
         except OSError as err:
@@ -269,9 +269,9 @@ def merge_directories(src: str, dst: str):
     copy(None, pattern="*", src=src, dst=dst)
 
 
-def gather_files(folder: str):
-    file_dict = {}
-    symlinked_folders = {}
+def gather_files(folder: str) -> tuple[dict[str, str], dict[str, str]]:
+    file_dict: dict[str, str] = {}
+    symlinked_folders: dict[str, str] = {}
     for root, dirs, files in os.walk(folder):
         if root != folder and not dirs and not files:  # empty folder
             rel_path = root[len(folder) + 1:].replace("\\", "/")

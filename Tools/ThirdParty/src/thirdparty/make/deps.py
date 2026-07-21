@@ -70,7 +70,7 @@ def _makefy(name: str) -> str:
     return re.sub(r"[^0-9A-Z_]", "_", name.upper())
 
 
-def _makefy_properties(properties: Optional[dict]) -> dict[str, Any]:
+def _makefy_properties(properties: Optional[dict[str, Any]]) -> dict[str, Any]:
     """
     Convert property dictionary keys to Make-variable-friendly syntax
     :param properties: The property dictionary to be converted (None is also accepted)
@@ -87,7 +87,7 @@ def _check_property_value(name: str, value: str, output: Output) -> bool:
         return True
 
 
-def _filter_properties(properties: Optional[dict], output) -> dict[str, Any]:
+def _filter_properties(properties: Optional[dict[str, Any]], output: Output) -> dict[str, Any]:
     """
     Filter out properties whose values contain newlines, because they would break the generated makefile
     :param properties: A property dictionary (None is also accepted)
@@ -503,7 +503,7 @@ class DepComponentGenerator:
         List regular directories from info and format them to be used in the makefile
         :return: A dictionary with regular folder name and its formatted path
         """
-        dirs = {}
+        dirs: dict[str, Any] = {}
         for var, flag in _common_cppinfo_dirs().items():
             cppinfo_value = getattr(self._comp, var)
             formatted_dirs = _get_formatted_dirs(cppinfo_value, self._root, _makefy(self._name))
@@ -533,7 +533,7 @@ class DepComponentGenerator:
         List common variables from info and format them to be used in the makefile
         :return: A dictionary with regular flag/variable name and its formatted value with prefix
         """
-        flags = {}
+        flags: dict[str, Any] = {}
         for var, prefix_var in _common_cppinfo_variables().items():
             cppinfo_value = getattr(self._comp, var)
             if not cppinfo_value:
@@ -586,7 +586,7 @@ class DepGenerator:
         :param dependency: Dependency object
         :return: A dictionary with regular folder name and its formatted path
         """
-        dirs = {}
+        dirs: dict[str, Any] = {}
         for var, prefix in _common_cppinfo_dirs().items():
             cppinfo_value = getattr(dependency.info, var)
             if not cppinfo_value:  # The root value is not defined, there might be components
@@ -604,7 +604,7 @@ class DepGenerator:
         List common variables from info and format them to be used in the makefile
         :param dependency: Dependency object
         """
-        flags = {}
+        flags: dict[str, Any] = {}
         for var, prefix_var in _common_cppinfo_variables().items():
             cppinfo_value = getattr(dependency.info, var)
             # Use component info info when does not provide any value
@@ -619,11 +619,11 @@ class DepGenerator:
                 flags[var] = [_recipe_prefix_flag(prefix_var) + it for it in cppinfo_value]
         return flags
 
-    def _get_sysroot(self, root: str) -> list[Any]:
+    def _get_sysroot(self, root: str) -> list[Any] | None:
         """
         Get the sysroot of the dependency. Sysroot is a list of directories, or a single directory
         """
-        sysroot = self._dep.info.sysroot if isinstance(self._dep.info.sysroot, list) else [self._dep.info.sysroot]
+        sysroot: list[Any] = self._dep.info.sysroot if isinstance(self._dep.info.sysroot, list) else [self._dep.info.sysroot]
         # sysroot may return ['']
         if not sysroot or not sysroot[0]:
             return []
@@ -685,7 +685,7 @@ class MakeDeps:
         # Tool requirements are not emitted by MakeDeps.
         dependencies = list(host_req.items())
 
-        make_infos = []
+        make_infos: list[MakeInfo] = []
 
         for require, dep in dependencies:
             output = Output(scope=f"{self._recipe} MakeDeps: {dep}:")

@@ -3,7 +3,7 @@ from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
 from thirdparty.recipe import RecipeBase
 
 
-def check_min_compiler_version(recipe: RecipeBase, compiler_restrictions):
+def check_min_compiler_version(recipe: RecipeBase, compiler_restrictions: list[tuple[str, str, str]]):
     """(Experimental) Checks if the current compiler and its version meet the minimum requirements.
 
     :param recipe: The current recipe object. Always use ``self``.

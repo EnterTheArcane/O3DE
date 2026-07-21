@@ -36,7 +36,7 @@ class _SourceURLCredentials:
         if not os.path.exists(creds_path):
             return
 
-        def _get_auth(credentials):
+        def _get_auth(credentials: Any) -> Any:
             if ("headers" in credentials or "token" in credentials or ("user" in credentials and "password" in credentials)):
                 return credentials
             raise RecipeException(f"Unknown credentials method for '{credentials["url"]}'")

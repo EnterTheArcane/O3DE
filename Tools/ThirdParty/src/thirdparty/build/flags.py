@@ -5,7 +5,7 @@ from thirdparty.errors import RecipeException
 from thirdparty.recipe import RecipeBase
 
 
-def disable_flag(recipe: Recipe, flag: str) -> bool:
+def disable_flag(recipe: RecipeBase, flag: str) -> bool:
     disable_flags = recipe.conf.tools.gnu.disable_flags
     valid = [
         "arch", "arch_link", "libcxx", "build_type", "build_type_link", "threads", "cppstd", "cstd",
@@ -94,7 +94,7 @@ def architecture_link_flag(recipe: RecipeBase) -> str:
     return ""
 
 
-def libcxx_flags(recipe: RecipeBase):
+def libcxx_flags(recipe: RecipeBase) -> tuple[str | None, str | None]:
     libcxx = recipe.settings.compiler_libcxx
     if not libcxx:
         return None, None
@@ -256,7 +256,7 @@ def cppstd_flag(recipe: RecipeBase) -> str:
     return flag
 
 
-def cppstd_msvc_flag(visual_version, cppstd):
+def cppstd_msvc_flag(visual_version: Any, cppstd: str) -> str | None:
     # https://docs.microsoft.com/en-us/cpp/build/reference/std-specify-language-standard-version
     if cppstd == "23":
         if visual_version >= "193":
@@ -278,12 +278,12 @@ def cppstd_msvc_flag(visual_version, cppstd):
     return None
 
 
-def _cppstd_msvc(visual_version, cppstd):
+def _cppstd_msvc(visual_version: Version, cppstd: str) -> str | None:
     flag = cppstd_msvc_flag(visual_version, cppstd)
     return f"/std:{flag}" if flag else None
 
 
-def _cppstd_apple_clang(clang_version, cppstd):
+def _cppstd_apple_clang(clang_version: Version, cppstd: str) -> str | None:
     """
     Inspired in:
     https://github.com/Kitware/CMake/blob/master/Modules/Compiler/AppleClang-CXX.cmake
@@ -337,7 +337,7 @@ def _cppstd_apple_clang(clang_version, cppstd):
     return f"-std={flag}" if flag else None
 
 
-def _cppstd_clang(clang_version, cppstd):
+def _cppstd_clang(clang_version: Version, cppstd: str) -> str | None:
     """
     Inspired in:
     https://github.com/Kitware/CMake/blob/
@@ -396,7 +396,7 @@ def _cppstd_clang(clang_version, cppstd):
     return f"-std={flag}" if flag else None
 
 
-def _cppstd_gcc(gcc_version, cppstd):
+def _cppstd_gcc(gcc_version: Version, cppstd: str) -> str | None:
     """https://github.com/Kitware/CMake/blob/master/Modules/Compiler/GNU-CXX.cmake"""
     # https://gcc.gnu.org/projects/cxx-status.html
     v98 = vgnu98 = v11 = vgnu11 = v14 = vgnu14 = v17 = vgnu17 = v20 = vgnu20 = v23 = vgnu23 = v26 = vgnu26 = None
@@ -449,7 +449,7 @@ def _cppstd_gcc(gcc_version, cppstd):
     return f"-std={flag}" if flag else None
 
 
-def _cppstd_mcst_lcc(mcst_lcc_version, cppstd):
+def _cppstd_mcst_lcc(mcst_lcc_version: Version, cppstd: str) -> str | None:
     v11 = vgnu11 = v14 = vgnu14 = v17 = vgnu17 = v20 = vgnu20 = None
 
     if mcst_lcc_version >= "1.21":
@@ -506,7 +506,7 @@ def cstd_flag(recipe: RecipeBase) -> str:
     return flag
 
 
-def _cstd_gcc(gcc_version, cstd):
+def _cstd_gcc(gcc_version: Version, cstd: str) -> str | None:
     # TODO: Verify flags per version
     flag = {
         "99": "c99", "11": "c11", "17": "c17", "23": "c23",
@@ -514,7 +514,7 @@ def _cstd_gcc(gcc_version, cstd):
     return f"-std={flag}" if flag else None
 
 
-def _cstd_clang(gcc_version, cstd):
+def _cstd_clang(gcc_version: Version, cstd: str) -> str | None:
     # TODO: Verify flags per version
     flag = {
         "99": "c99", "11": "c11", "17": "c17", "23": "c23",
@@ -522,7 +522,7 @@ def _cstd_clang(gcc_version, cstd):
     return f"-std={flag}" if flag else None
 
 
-def _cstd_apple_clang(gcc_version, cstd):
+def _cstd_apple_clang(gcc_version: Version, cstd: str) -> str | None:
     # TODO: Verify flags per version
     flag = {
         "99": "c99", "11": "c11", "17": "c17", "23": "c23",
@@ -530,7 +530,7 @@ def _cstd_apple_clang(gcc_version, cstd):
     return f"-std={flag}" if flag else None
 
 
-def cstd_msvc_flag(visual_version, cstd):
+def cstd_msvc_flag(visual_version: Any, cstd: str) -> str | None:
     if cstd == "17":
         if visual_version >= "192":
             return "c17"
@@ -540,6 +540,6 @@ def cstd_msvc_flag(visual_version, cstd):
     return None
 
 
-def _cstd_msvc(visual_version, cstd):
+def _cstd_msvc(visual_version: Version, cstd: str) -> str | None:
     flag = cstd_msvc_flag(visual_version, cstd)
     return f"/std:{flag}" if flag else None

@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Any
 
 import patch_ng
 
@@ -8,12 +9,12 @@ from thirdparty.recipe import RecipeBase
 
 
 class PatchLogHandler(logging.Handler):
-    def __init__(self, scoped_output, patch_file):
+    def __init__(self, scoped_output: Any, patch_file: str | None):
         logging.Handler.__init__(self, logging.DEBUG)
         self._scoped_output = scoped_output
         self.patchname = patch_file or "patch_ng"
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord):
         logstr = self.format(record)
         if record.levelno == logging.WARN:
             self._scoped_output.warning("%s: %s" % (self.patchname, logstr))
@@ -23,12 +24,12 @@ class PatchLogHandler(logging.Handler):
 
 def patch(
     recipe: RecipeBase,
-    base_path=None,
-    patch_file=None,
-    patch_string=None,
+    base_path: str | None = None,
+    patch_file: str | None = None,
+    patch_string: str | None = None,
     strip: int = 0,
     fuzz: bool = False,
-    **kwargs):
+    **kwargs: Any):
     """
     Applies a diff from file (patch_file) or string (patch_string) in the recipe.folders.source
     directory. The folder containing the sources can be customized with the self.folders attribute

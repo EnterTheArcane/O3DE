@@ -2,6 +2,7 @@ import jinja2
 import os
 import textwrap
 from pathlib import Path
+from typing import Any
 
 from thirdparty.build.cross_building import cross_building
 from thirdparty.build.flags import architecture_flag, architecture_link_flag, libcxx_flags, threads_flags
@@ -12,7 +13,7 @@ from thirdparty.premake.deps import PREMAKE_ROOT_FILE
 from thirdparty.recipe import RecipeBase
 
 
-def _generate_flags(self, recipe: RecipeBase):
+def _generate_flags(self: Any, recipe: RecipeBase) -> str:
     template = textwrap.dedent(
         """
         {% if extra_cflags %}
@@ -43,10 +44,10 @@ def _generate_flags(self, recipe: RecipeBase):
         {% endif %}
         """)
 
-    def format_list(items):
+    def format_list(items: Any) -> str | None:
         return ", ".join(f'"{item}"' for item in items) if items else None
 
-    def to_list(value):
+    def to_list(value: Any) -> list[Any]:
         return value if isinstance(value, list) else [value] if value else []
 
     arch_flags = to_list(architecture_flag(self._recipe))
@@ -80,7 +81,7 @@ class _PremakeProject:
             {% endif %}
         """)
 
-    def __init__(self, name, recipe: RecipeBase) -> None:
+    def __init__(self, name: str, recipe: RecipeBase) -> None:
         self.name = name
         self.kind = None
         self.extra_cxxflags = []
@@ -185,7 +186,7 @@ class PremakeToolchain:
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
         self._recipe = recipe
-        self._projects = {}
+        self._projects: dict[str, _PremakeProject] = {}
         # Extra flags
         #: List of extra ``CXX`` flags. Added to ``buildoptions``.
         self.extra_cxxflags = []
@@ -196,7 +197,7 @@ class PremakeToolchain:
         #: List of extra preprocessor definitions. Added to ``defines``.
         self.extra_defines = []
 
-    def project(self, project_name):
+    def project(self, project_name: str) -> "_PremakeProject":
         """
         The returned object will also have the same properties as the workspace but will only affect
         the project with the name.

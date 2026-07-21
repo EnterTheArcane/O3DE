@@ -5,7 +5,6 @@ from collections.abc import Iterable
 
 from thirdparty._internal.subsystems import subsystem_path, deduce_subsystem
 from thirdparty.build import build_jobs, cmd_args_to_string, load_toolchain_args
-from thirdparty.errors import RecipeException
 from thirdparty.files import chdir
 from thirdparty.microsoft import unix_path
 from thirdparty.recipe import RecipeBase

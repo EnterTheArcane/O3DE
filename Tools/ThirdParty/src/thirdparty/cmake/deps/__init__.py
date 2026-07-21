@@ -1,13 +1,15 @@
+from typing import Any
+
 from thirdparty.errors import RecipeException
 
 
-def is_multi_configuration(generator) -> bool:
+def is_multi_configuration(generator: str | None) -> bool:
     if not generator:
         return False
     return "Visual" in generator or "Xcode" in generator or "Multi-Config" in generator
 
 
-def parse_extra_variable(source, key, value):
+def parse_extra_variable(source: Any, key: Any, value: Any) -> str | int | float:
     CMAKE_CACHE_TYPES = ["BOOL", "FILEPATH", "PATH", "STRING", "INTERNAL"]  # noqa
     if isinstance(value, str):
         return f"\"{value}\""
@@ -43,5 +45,5 @@ def parse_extra_variable(source, key, value):
         f" got {type(value)}")
 
 
-def cmake_escape_value(v):
+def cmake_escape_value(v: str) -> str:
     return v.replace("\\", "\\\\").replace("$", "\\$").replace('"', '\\"')

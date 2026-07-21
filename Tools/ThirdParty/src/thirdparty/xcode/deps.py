@@ -136,7 +136,7 @@ class XcodeDeps:
         content for recipe_poco_x86_release.xcconfig, containing the activation
         """
 
-        def _merged_vars(name):
+        def _merged_vars(name: str) -> list[Any]:
             merged = [var for info in transitive_cpp_infos for var in getattr(info, name)]
             return list(dict.fromkeys(merged).keys())
 
@@ -194,7 +194,7 @@ class XcodeDeps:
         else:
             content_multi = self._dep_xconfig
 
-            def _get_includes(components):
+            def _get_includes(components: Any) -> list[str]:
                 # if we require the root component dep::dep include recipe_dep.xcconfig
                 # for components (dep::component) include recipe_dep_component.xcconfig
                 return [f"recipe_{_format_name(component[0])}.xcconfig" if component[0] == component[1] else f"recipe_{_format_name(component[0])}_{_format_name(component[1])}.xcconfig" for component in components]
@@ -243,7 +243,7 @@ class XcodeDeps:
         component_name: str,
         package_folder: str,
         transitive_cpp_infos: Any) -> dict[str, str]:
-        result = {}
+        result: dict[str, str] = {}
 
         conf_name = _xcconfig_settings_filename(self._recipe.settings, self.configuration)
 
@@ -263,7 +263,7 @@ class XcodeDeps:
         pkg_dep: Any,
         all_deps: Any,
         collected: Any,
-        visited: Any = None):
+        visited: set[int] | None = None):
         """Recursively collect all transitive Info objects (internal and external)
         into a flat list.
 
@@ -323,7 +323,7 @@ class XcodeDeps:
                 ext_dep.info.components.get(ext_comp), ext_dep, all_deps, collected, visited)
 
     def _content(self) -> dict[str, str]:
-        result = {}
+        result: dict[str, str] = {}
 
         # Generate the config files for each component with name recipe_pkgname_compname.xcconfig
         # If a package has no components the name is recipe_pkgname_pkgname.xcconfig
@@ -339,7 +339,7 @@ class XcodeDeps:
 
             dep_name = _format_name(dep.name)
 
-            include_components_names = []
+            include_components_names: list[tuple[str, str]] = []
             if dep.info.has_components:
 
                 sorted_components = dep.info.get_sorted_components().items()

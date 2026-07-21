@@ -100,9 +100,9 @@ class Output:
     """
     # Singleton
     _output_level = LEVEL_STATUS
-    _silent_warn_tags = []
-    _warnings_as_errors = []
-    _last_scope_header = None
+    _silent_warn_tags: list[str] = []
+    _warnings_as_errors: list[str] = []
+    _last_scope_header: str | None = None
     # Flag to enable/disable new Output contextual behavior
     _scoped_recipe_output = None
     lock = Lock()
@@ -123,11 +123,11 @@ class Output:
             Output._last_scope_header = None
 
     @classmethod
-    def define_silence_warnings(cls, warnings: Any):
+    def define_silence_warnings(cls, warnings: list[str]):
         cls._silent_warn_tags = warnings
 
     @classmethod
-    def set_warnings_as_errors(cls, value: Any):
+    def set_warnings_as_errors(cls, value: list[str]):
         cls._warnings_as_errors = value
 
     @classmethod
@@ -356,7 +356,7 @@ class Output:
         return self
 
     @staticmethod
-    def _warn_tag_matches(warn_tag: Any, patterns: Any) -> bool:
+    def _warn_tag_matches(warn_tag: str | None, patterns: list[str]) -> bool:
         lookup_tag = warn_tag or "unknown"
         return any(fnmatch.fnmatch(lookup_tag, pattern) for pattern in patterns)
 

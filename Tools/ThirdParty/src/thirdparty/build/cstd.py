@@ -144,11 +144,11 @@ def _check_cstd(
     if not str(cstd).isdigit():
         raise RecipeException("cstd parameter must be a number")
 
-    def compare(lhs, rhs, comp) -> bool:
-        def extract_cpp_version(_cstd):
+    def compare(lhs: Any, rhs: Any, comp: Any) -> bool:
+        def extract_cpp_version(_cstd: Any) -> str:
             return str(_cstd).replace("gnu", "")
 
-        def add_millennium(_cstd):
+        def add_millennium(_cstd: Any) -> str:
             return "19%s" % _cstd if _cstd == "99" else "20%s" % _cstd
 
         lhs = add_millennium(extract_cpp_version(lhs))
@@ -169,12 +169,12 @@ def _check_cstd(
             f"than the required C standard ({cstd}).")
 
 
-def _apple_clang_supported_cstd(version: Any):
+def _apple_clang_supported_cstd(version: Any) -> list[str]:
     # TODO: Per-version support
     return ["99", "gnu99", "11", "gnu11", "17", "gnu17", "23", "gnu23"]
 
 
-def _gcc_supported_cstd(version: Any):
+def _gcc_supported_cstd(version: Any) -> list[str]:
     if version < "4.7":
         return ["99", "gnu99"]
     if version < "8":
@@ -184,13 +184,13 @@ def _gcc_supported_cstd(version: Any):
     return ["99", "gnu99", "11", "gnu11", "17", "gnu17", "23", "gnu23"]
 
 
-def _msvc_supported_cstd(version: Any):
+def _msvc_supported_cstd(version: Any) -> list[str]:
     if version < "192":
         return []
     return ["11", "17"]
 
 
-def _clang_supported_cstd(version: Any):
+def _clang_supported_cstd(version: Any) -> list[str]:
     if version < "3":
         return ["99", "gnu99"]
     if version < "6":
@@ -200,7 +200,7 @@ def _clang_supported_cstd(version: Any):
     return ["99", "gnu99", "11", "gnu11", "17", "gnu17", "23", "gnu23"]
 
 
-def _emcc_supported_cstd(version: Any):
+def _emcc_supported_cstd(version: Any) -> list[str]:
     """
     emcc is based on clang but follow different versioning scheme.
     """

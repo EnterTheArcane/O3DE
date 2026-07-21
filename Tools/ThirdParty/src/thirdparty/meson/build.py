@@ -1,7 +1,6 @@
 import os
 
 from thirdparty.build import build_jobs
-from thirdparty.errors import RecipeException
 from thirdparty.meson.toolchain import MesonToolchain
 from thirdparty.recipe import RecipeBase
 from thirdparty.shell import run

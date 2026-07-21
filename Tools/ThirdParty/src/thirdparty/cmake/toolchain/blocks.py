@@ -55,9 +55,7 @@ class Block:
     def context(self) -> dict[str, Any] | None:
         return {}
 
-    @property
-    def template(self) -> str:
-        raise NotImplementedError()
+    template: str
 
 
 class VSRuntimeBlock(Block):
@@ -288,7 +286,7 @@ class RpathLinkFlagsBlock(Block):
     def context(self) -> dict[str, Any] | None:
         add_rpath_link = self._toolchain.add_rpath_link or self._recipe.conf.tools.build.add_rpath_link
         if add_rpath_link:
-            runtime_dirs = []
+            runtime_dirs: list[Any] = []
             host_req = self._recipe.dependencies.filter({"build": False}).values()
             for req in host_req:
                 cppinfo = req.info.aggregated_components()
@@ -355,7 +353,7 @@ class CppStdBlock(Block):
     def context(self) -> dict[str, Any] | None:
         compiler_cppstd = self._recipe.settings.compiler_cxx_standard
         compiler_cstd = self._recipe.settings.compiler_c_standard
-        result = {}
+        result: dict[str, Any] = {}
         if compiler_cppstd is not None:
             if compiler_cppstd.startswith("gnu"):
                 result["cppstd"] = compiler_cppstd[3:]
@@ -633,15 +631,15 @@ class FindFiles(Block):
         endif()
         """)
 
-    def _runtime_dirs_value(self, dirs):
+    def _runtime_dirs_value(self, dirs: dict[str, list[str]]) -> str:
         if is_multi_configuration(self._toolchain.generator):
             return " ".join(f'"$<$<CONFIG:{c}>:{i}>"' for c, v in dirs.items() for i in v)
         else:
             return " ".join(f'"{item}"' for _, items in dirs.items() for item in items)
 
-    def _get_host_runtime_dirs(self, host_req):
+    def _get_host_runtime_dirs(self, host_req: list[Any]) -> dict[Any, Any]:
         settings = self._recipe.settings
-        host_runtime_dirs = {}
+        host_runtime_dirs: dict[Any, Any] = {}
         is_win = self._recipe.settings.os == "Windows"
 
         # Get the previous configuration
@@ -657,7 +655,7 @@ class FindFiles(Block):
                     host_runtime_dirs.setdefault(k, []).append(v)
 
         # Calculate the dirs for the current build_type
-        runtime_dirs = []
+        runtime_dirs: list[Any] = []
         for req in host_req:
             cppinfo = req.info.aggregated_components()
             runtime_dirs.extend(cppinfo.bindirs if is_win else cppinfo.libdirs)
@@ -667,7 +665,7 @@ class FindFiles(Block):
 
         return host_runtime_dirs
 
-    def _join_paths(self, paths):
+    def _join_paths(self, paths: list[str]) -> str:
         paths = [p.replace("\\", "/").replace("$", "\\$").replace('"', '\\"') for p in paths]
         paths = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in paths]
         return " ".join([f'"{p}"' for p in paths])
@@ -685,11 +683,11 @@ class FindFiles(Block):
         # Read information from host context
         # TODO: Add here in 2.0 the "skip": False trait
         host_req = self._recipe.dependencies.filter({"build": False}).values()
-        build_paths = []
-        host_lib_paths = []
+        build_paths: list[Any] = []
+        host_lib_paths: list[Any] = []
         host_runtime_dirs = self._get_host_runtime_dirs(host_req)
-        host_framework_paths = []
-        host_include_paths = []
+        host_framework_paths: list[Any] = []
+        host_include_paths: list[Any] = []
         for req in host_req:
             cppinfo = req.info.aggregated_components()
             build_paths.extend(cppinfo.builddirs)
@@ -700,7 +698,7 @@ class FindFiles(Block):
 
         # Read information from build context
         build_req = self._recipe.dependencies.build.values()
-        build_bin_paths = []
+        build_bin_paths: list[Any] = []
         for req in build_req:
             cppinfo = req.info.aggregated_components()
             build_paths.extend(cppinfo.builddirs)
@@ -813,7 +811,7 @@ class ExtraFlagsBlock(Block):
         if os.path.exists(RECIPE_TOOLCHAIN_FILENAME):
             existing_toolchain = load(RECIPE_TOOLCHAIN_FILENAME)
             lines = existing_toolchain.splitlines()
-            current_section = None
+            current_section: list[str] | None = None
             for line in lines:
                 if line.startswith("# Recipe conf flags start: "):
                     section_name = line.split(":", 1)[1].strip()
@@ -1088,7 +1086,7 @@ class GenericSystemBlock(Block):
         return os_host in ("iOS", "tvOS", "visionOS") or (os_host == "Mac" and (arch_host != arch_build or os_build != os_host))
 
     @staticmethod
-    def _get_darwin_version(os_name, os_version):
+    def _get_darwin_version(os_name: str, os_version: str):
         # version mapping from https://en.wikipedia.org/wiki/Darwin_(operating_system)
         # but a more detailed version can be found in https://theapplewiki.com/wiki/Kernel
         version_mapping = {
@@ -1142,7 +1140,7 @@ class GenericSystemBlock(Block):
 
         return system_name, system_version, system_processor
 
-    def _get_winsdk_version(self, system_version, generator_platform):
+    def _get_winsdk_version(self, system_version: str | None, generator_platform: str | None):
         compiler = self._recipe.settings.compiler
         if compiler not in ("msvc", "clang") or "Visual" not in str(self._toolchain.generator):
             # Ninja will get it from VCVars, not from toolchain
@@ -1276,7 +1274,7 @@ class OutputDirsBlock(Block):
             {% endif %}
             """)
 
-    def _get_cpp_info_value(self, name):
+    def _get_cpp_info_value(self, name: str):
         # These variables are used by "cmake install" and therefore refer to the package
         # layout, even when the root path comes from the build directory.
         elements = getattr(self._recipe.info, name)
@@ -1466,7 +1464,7 @@ class ToolchainBlocks:
     def __getitem__(self, name: str):
         return self._blocks[name]
 
-    def process_blocks(self):
+    def process_blocks(self) -> list[str]:
         blocks = self._recipe.conf.tools.cmake.toolchain.enabled_blocks
         if blocks:
             try:
@@ -1476,7 +1474,7 @@ class ToolchainBlocks:
                     f"Block {e} defined in tools.cmake.toolchain"
                     f":enabled_blocks doesn't exist in {list(self._blocks.keys())}")
             self._blocks = new_blocks
-        result = []
+        result: list[str] = []
         for b in self._blocks.values():
             content = b.get_rendered_content()
             if content:

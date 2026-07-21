@@ -18,7 +18,7 @@ class Git:
         self,
         recipe: RecipeBase,
         folder: str = ".",
-        excluded=None):
+        excluded: list[str] | None = None):
         """
         :param recipe: Recipefile instance.
         :param folder: Current directory, by default ``.``, the current working directory.
@@ -28,7 +28,7 @@ class Git:
         self.folder = folder
         self._excluded = excluded
 
-    def run(self, cmd, hidden_output=None):
+    def run(self, cmd: str, hidden_output: str | None = None):
         """
         Executes ``git <cmd>``
 
@@ -87,7 +87,7 @@ class Git:
                     url = url.replace("\\", "/")
                 return url
 
-    def commit_in_remote(self, commit, remote: str = "origin") -> bool:
+    def commit_in_remote(self, commit: str, remote: str = "origin") -> bool:
         """
         Checks that the given commit exists in the remote, with ``branch -r --contains <commit>``
         and checking an occurrence of a branch in that remote exists.
@@ -200,9 +200,9 @@ class Git:
 
     def clone(
         self,
-        url,
+        url: str,
         target: str = "",
-        args=None,
+        args: list[str] | None = None,
         hide_url: bool = True):
         """
         Performs a ``git clone <url> <args> <target>`` operation, where target is the target directory.
@@ -225,8 +225,8 @@ class Git:
 
     def fetch_commit(
         self,
-        url,
-        commit,
+        url: str,
+        commit: str,
         hide_url: bool = True):
         """
         Experimental: does a single commit fetch and checkout, instead of a full clone,
@@ -246,7 +246,7 @@ class Git:
         self.run(f"fetch --depth 1 origin {commit}")
         self.run("checkout FETCH_HEAD")
 
-    def checkout(self, commit):
+    def checkout(self, commit: str):
         """
         Checkouts the given commit using ``git checkout <commit>``.
 

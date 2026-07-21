@@ -18,6 +18,20 @@ from thirdparty.recipe import RecipeBase
 RECIPE_TOOLCHAIN_ARGS_FILE = "buildenv.conf"
 RECIPE_TOOLCHAIN_ARGS_SECTION = "toolchain"
 
+__all__ = [
+    "check_min_compiler_version",
+    "check_max_cppstd", "check_min_cppstd", "valid_max_cppstd", "valid_min_cppstd",
+    "default_cppstd", "supported_cppstd",
+    "build_jobs",
+    "cross_building", "can_run",
+    "check_max_cstd", "check_min_cstd", "valid_max_cstd", "valid_min_cstd",
+    "default_cstd", "supported_cstd",
+    "cppstd_flag",
+    "stdcpp_library",
+    "use_win_mingw", "cmd_args_to_string", "load_toolchain_args", "save_toolchain_args",
+    "RECIPE_TOOLCHAIN_ARGS_FILE", "RECIPE_TOOLCHAIN_ARGS_SECTION",
+]
+
 
 def use_win_mingw(recipe: RecipeBase) -> bool:
     os_build = recipe.settings_build.os
@@ -47,7 +61,7 @@ def _unix_cmd_args_to_string(args: Iterable[str]) -> str:
 
 def _windows_cmd_args_to_string(args: Iterable[str]) -> str:
     # FIXME: This is not managing all the parsing from list2cmdline, but covering simplified cases
-    ret = []
+    ret: list[str] = []
     for arg in args:
         # escaped quotes have to escape the \ and then the ". Replace with <QUOTE> so next
         # replace doesn't interfere

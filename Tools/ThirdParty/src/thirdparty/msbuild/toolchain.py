@@ -5,6 +5,7 @@ from typing import Any
 from xml.dom import minidom
 
 from thirdparty._internal.util.detect_vs import vs_installation_path
+from thirdparty._internal.model.settings import Settings
 from thirdparty._internal.util.files import save, load
 from thirdparty.build import build_jobs
 from thirdparty.errors import RecipeException
@@ -60,9 +61,9 @@ class MSBuildToolchain:
         """
         self._recipe = recipe
         #: Dict-like that defines the preprocessor definitions
-        self.preprocessor_definitions = {}
+        self.preprocessor_definitions: dict[str, str | None] = {}
         #: Dict with compile options that will be added as <key>value</key> in the ClCompile section
-        self.compile_options = {}
+        self.compile_options: dict[str, Any] = {}
         #: List of all the CXX flags
         self.cxxflags: list[str] = []
         #: List of all the C flags
@@ -84,7 +85,7 @@ class MSBuildToolchain:
         self.properties: dict[str, Any] = {}
         self.toolset_version_full_path = _get_toolset_props(recipe)
 
-    def _name_condition(self, settings):
+    def _name_condition(self, settings: Settings):
         platform = msvc_platform_from_arch(settings.arch)
         props = [
             ("Configuration", self.configuration), ("Platform", platform),
@@ -161,14 +162,14 @@ class MSBuildToolchain:
             "toolset_version_full_path": self.toolset_version_full_path,
         }
 
-    def _write_config_toolchain(self, config_filename):
+    def _write_config_toolchain(self, config_filename: str):
         config_filepath = os.path.join(self._recipe.folders.generators, config_filename)
         config_props = jinja2.Template(
             self._config_toolchain_props, trim_blocks=True, lstrip_blocks=True).render(**self.context_config_toolchain)
         self._recipe.output.info("MSBuildToolchain created %s" % config_filename)
         save(config_filepath, config_props)
 
-    def _write_main_toolchain(self, config_filename, condition):
+    def _write_main_toolchain(self, config_filename: str, condition: str):
         main_toolchain_path = os.path.join(self._recipe.folders.generators, self.filename)
         if os.path.isfile(main_toolchain_path):
             content = load(main_toolchain_path)

@@ -5,7 +5,7 @@ class HomePaths:
     """ pure computing of paths in the home, not caching anything
     """
 
-    def __init__(self, home_folder):
+    def __init__(self, home_folder: str):
         self._home = home_folder
 
     @property

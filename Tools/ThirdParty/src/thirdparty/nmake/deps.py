@@ -6,7 +6,7 @@ from thirdparty.recipe import RecipeBase
 
 
 def format_defines(defines: list[str], toolchain: bool = False) -> list[str]:
-    def is_hex_or_numeric(s) -> bool:
+    def is_hex_or_numeric(s: str) -> bool:
         try:
             # Check for Hexadecimal (base 16)
             int(s, 16)
@@ -14,7 +14,7 @@ def format_defines(defines: list[str], toolchain: bool = False) -> list[str]:
         except ValueError:
             return False
 
-    formated_defines = []
+    formated_defines: list[str] = []
     for define in defines:
         if "=" in define:
             # CL env-var can't accept '=' sign in /D option, it can be replaced by '#' sign:
@@ -37,7 +37,7 @@ class NMakeDeps:
         self._environment = None
 
     # TODO: This is similar from AutotoolsDeps: Refactor and make common
-    def _get_cpp_info(self):
+    def _get_cpp_info(self) -> Info:
         ret = Info()
         deps = self._recipe.dependencies.host.topological_sort
         deps = [dep for dep in reversed(deps.values())]
@@ -56,11 +56,11 @@ class NMakeDeps:
 
             lib_paths = ";".join(info.libdirs or [])
 
-            def format_lib(lib):
+            def format_lib(lib: str) -> str:
                 ext = os.path.splitext(lib)[1]
                 return lib if ext in (".so", ".lib", ".a", ".dylib", ".bc") else "%s.lib" % lib
 
-            ret = []
+            ret: list[str] = []
             ret.extend(info.exelinkflags or [])
             ret.extend(info.sharedlinkflags or [])
             ret.extend([format_lib(lib) for lib in info.libs or []])

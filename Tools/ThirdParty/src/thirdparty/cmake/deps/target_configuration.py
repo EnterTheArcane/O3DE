@@ -63,7 +63,7 @@ class TargetConfigurationTemplate2:
         return f"{f}-Targets{build}-{config}.cmake"
 
     def _requires(self, info: Any, components: Any) -> dict[str, Any]:
-        result = {}
+        result: dict[str, Any] = {}
         requires = info.parsed_requires()
         pkg_name = self._recipe.name
         pkg_type = info.type
@@ -157,7 +157,7 @@ class TargetConfigurationTemplate2:
             self._add_root_lib_target(libs, pkg_name, info)
         exes = self._get_exes(info, pkg_name, pkg_folder, pkg_folder_var)
 
-        seen_aliases = set()
+        seen_aliases: set[Any] = set()
         root_target_name = self._cmakedeps.get_property("cmake_target_name", self._recipe)
         root_target_name = root_target_name or f"{pkg_name}::{pkg_name}"
         for lib in libs.values():
@@ -189,7 +189,7 @@ class TargetConfigurationTemplate2:
         pkg_name: str,
         pkg_folder: str,
         pkg_folder_var: str) -> dict[str, Any]:
-        libs = {}
+        libs: dict[str, Any] = {}
         if info.has_components:
             for name, component in info.components.items():
                 target_name = self._cmakedeps.get_property(
@@ -229,10 +229,10 @@ class TargetConfigurationTemplate2:
         # FIXME: Filter by lib traits!!!!!
         if not self._require.headers:  # If not depending on headers, paths and
             includedirs = defines = None
-        extra_libs = self._cmakedeps.get_property(
+        extra_libs: list[Any] = self._cmakedeps.get_property(
             "cmake_extra_interface_libs", self._recipe, comp_name=comp_name, check_type=list) or []
         sources = [self._path(source, pkg_folder, pkg_folder_var) for source in info.sources]
-        target = {
+        target: dict[str, Any] = {
             "type": "INTERFACE",
             "comp_name": comp_name,
             "includedirs": includedirs,
@@ -283,7 +283,7 @@ class TargetConfigurationTemplate2:
         return target
 
     def _get_aliases(self, comp_name: str | None = None) -> list[Any]:
-        aliases = self._cmakedeps.get_property("cmake_target_aliases", self._recipe, comp_name, check_type=list) or []
+        aliases: list[Any] = self._cmakedeps.get_property("cmake_target_aliases", self._recipe, comp_name, check_type=list) or []
         return aliases
 
     def _add_root_lib_target(
@@ -330,7 +330,7 @@ class TargetConfigurationTemplate2:
         pkg_name: str,
         pkg_folder: str,
         pkg_folder_var: str) -> dict[str, Any]:
-        exes = {}
+        exes: dict[str, Any] = {}
 
         if info.has_components:
             for name, comp in info.components.items():
@@ -355,15 +355,15 @@ class TargetConfigurationTemplate2:
         # Build requires are already filtered by the get_transitive_requires
         transitive_reqs = self._cmakedeps.get_transitive_requires(self._recipe)
         # FIXME: Hardcoded CONFIG
-        ret = {self._cmakedeps.get_cmake_filename(r): "CONFIG" for r in transitive_reqs.values()}
-        extra_mods = self._cmakedeps.get_property(
+        ret: dict[str, str] = {self._cmakedeps.get_cmake_filename(r): "CONFIG" for r in transitive_reqs.values()}
+        extra_mods: list[Any] = self._cmakedeps.get_property(
             "cmake_extra_dependencies", self._recipe, check_type=list) or []
         ret.update({extra_mod: "" for extra_mod in extra_mods})
         return ret
 
     @staticmethod
     def _path(p: str, pkg_folder: str, pkg_folder_var: str) -> str:
-        def escape(p_):
+        def escape(p_: str) -> str:
             return p_.replace("$", "\\$").replace('"', '\\"')
 
         p = p.replace("\\", "/")

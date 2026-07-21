@@ -27,16 +27,16 @@ class DownloadCache:
     def __init__(self, path: str):
         self._path: str = path
 
-    def source_path(self, sha256: Any):
+    def source_path(self, sha256: Any) -> str:
         return os.path.join(self._path, self._SOURCE_BACKUP, sha256)
 
-    def cached_path(self, url: str):
+    def cached_path(self, url: str) -> tuple[str, str]:
         md = hashlib.sha256()
         md.update(url.encode())
         h = md.hexdigest()
         return os.path.join(self._path, self._RECIPE_CACHE, h), h
 
-    _thread_locks = {}  # Needs to be shared among all instances
+    _thread_locks: dict[str, Lock] = {}  # Needs to be shared among all instances
 
     @contextmanager
     def lock(self, lock_id: Any):
@@ -55,7 +55,7 @@ class DownloadCache:
         self,
         excluded_urls: Any,
         package_list: Any = None,
-        only_upload: bool = True):
+        only_upload: bool = True) -> list[str]:
         """Get list of backup source files currently present in the cache,
         either all of them if no package_list is give, or filtered by those belonging to the references in the package_list
 
@@ -72,19 +72,19 @@ class DownloadCache:
         if excluded_urls is None:
             excluded_urls = []
 
-        def has_excluded_urls(backup_urls):
+        def has_excluded_urls(backup_urls: Any) -> bool:
             return all(
                 any(
                     url.startswith(excluded_url) for excluded_url in excluded_urls) for url in backup_urls)
 
-        all_refs = set()
+        all_refs: set[str] = set()
         if package_list is not None:
             for ref, packages in package_list.items():
                 ref_info = package_list.recipe_dict(ref)
                 if (not only_upload or ref_info.get("upload") or any(package_list.package_dict(p).get("upload") for p in packages)):
                     all_refs.add(str(ref))
 
-        path_backups_contents = []
+        path_backups_contents: list[str] = []
 
         dirty_ext = ".dirty"
         for path in os.listdir(path_backups):
@@ -98,7 +98,7 @@ class DownloadCache:
             if not path.endswith(".json"):
                 path_backups_contents.append(path)
 
-        files_to_upload = []
+        files_to_upload: list[str] = []
 
         for path in path_backups_contents:
             blob_path = os.path.join(path_backups, path)
@@ -115,13 +115,13 @@ class DownloadCache:
         return files_to_upload
 
     @staticmethod
-    def get_urls_from_backup_sources(cached_path: str):
+    def get_urls_from_backup_sources(cached_path: str) -> set[str]:
         """All download URLs stored in the backup-sources summary file ``<cached_path>.json``.
         """
         summary_path = cached_path + ".json"
         if not os.path.exists(summary_path):
             return set()
-        refs = json.loads(load(summary_path)).get("references") or {}
+        refs: dict[str, Any] = json.loads(load(summary_path)).get("references") or {}
         return {url for urls in refs.values() for url in urls}
 
     @staticmethod
@@ -129,6 +129,7 @@ class DownloadCache:
         """ create or update the sha256.json file with the references and new urls used
         """
         summary_path = cached_path + ".json"
+        summary: dict[str, Any]
         if os.path.exists(summary_path):
             summary = json.loads(load(summary_path))
         else:
@@ -140,7 +141,7 @@ class DownloadCache:
 
         if not isinstance(urls, (list, tuple)):
             urls = [urls]
-        existing_urls = summary["references"].setdefault(summary_key, [])
+        existing_urls: list[Any] = summary["references"].setdefault(summary_key, [])
         existing_urls.extend(url for url in urls if url not in existing_urls)
         recipe.output.verbose(f"Updating {summary_path} summary file")
         summary_dump = json.dumps(summary)

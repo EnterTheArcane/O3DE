@@ -81,7 +81,7 @@ class Premake:
             # Old behavior, for backward compatibility
             recipe_luafile = self.luafile
 
-        premake_options = dict()
+        premake_options: dict[str, Any] = dict()
         premake_options["file"] = f'"{recipe_luafile}"'
 
         premake_command = (f"premake5 {self._expand_args(premake_options)} {self.action} "
@@ -126,6 +126,6 @@ class Premake:
             msbuild.build_type = build_type
             msbuild.build(sln=f"{workspace}.sln", targets=targets)
         else:
-            targets = "all" if targets is None else " ".join(targets)
+            targets_str = "all" if targets is None else " ".join(targets)
             njobs = build_jobs(self._recipe)
-            run(self._recipe, f"make config={build_type.lower()} {targets} -j{njobs}{self._compilation_verbosity}")
+            run(self._recipe, f"make config={build_type.lower()} {targets_str} -j{njobs}{self._compilation_verbosity}")

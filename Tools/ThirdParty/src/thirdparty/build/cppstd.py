@@ -135,11 +135,11 @@ def _check_cppstd(
     if not str(cppstd).isdigit():
         raise RecipeException("cppstd parameter must be a number")
 
-    def compare(lhs, rhs, comp) -> bool:
-        def extract_cpp_version(_cppstd):
+    def compare(lhs: Any, rhs: Any, comp: Any) -> bool:
+        def extract_cpp_version(_cppstd: Any) -> str:
             return str(_cppstd).replace("gnu", "")
 
-        def add_millennium(_cppstd):
+        def add_millennium(_cppstd: Any) -> str:
             return "19%s" % _cppstd if _cppstd == "98" else "20%s" % _cppstd
 
         lhs = add_millennium(extract_cpp_version(lhs))
@@ -160,7 +160,7 @@ def _check_cppstd(
             f"than the required C++ standard ({cppstd}).")
 
 
-def _apple_clang_supported_cppstd(version: Any):
+def _apple_clang_supported_cppstd(version: Any) -> list[str]:
     """
     ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20"]
     """
@@ -186,7 +186,7 @@ def _apple_clang_supported_cppstd(version: Any):
     ]
 
 
-def _gcc_supported_cppstd(version: Any):
+def _gcc_supported_cppstd(version: Any) -> list[str]:
     """
     ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20", "23", "gnu23"]
     """
@@ -213,7 +213,7 @@ def _gcc_supported_cppstd(version: Any):
     ]
 
 
-def _msvc_supported_cppstd(version: Any):
+def _msvc_supported_cppstd(version: Any) -> list[str]:
     """
     https://learn.microsoft.com/en-us/cpp/build/reference/std-specify-language-standard-version?view=msvc-170
     - /std:c++14 starting in Visual Studio 2015 Update 3 (190)
@@ -233,7 +233,7 @@ def _msvc_supported_cppstd(version: Any):
     return ["14", "17", "20", "23"]
 
 
-def _clang_supported_cppstd(version: Any):
+def _clang_supported_cppstd(version: Any) -> list[str]:
     """
     ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20", "23", "gnu23"]
     """
@@ -257,7 +257,7 @@ def _clang_supported_cppstd(version: Any):
     ]
 
 
-def _mcst_lcc_supported_cppstd(version: Any):
+def _mcst_lcc_supported_cppstd(version: Any) -> list[str]:
     """
     ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20", "23", "gnu23"]
     """
@@ -274,7 +274,7 @@ def _mcst_lcc_supported_cppstd(version: Any):
     return ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20"]
 
 
-def _qcc_supported_cppstd(version: Any):
+def _qcc_supported_cppstd(version: Any) -> list[str]:
     """
     [98, gnu98, 11, gnu11, 14, gnu14, 17, gnu17]
     """
@@ -287,7 +287,7 @@ def _qcc_supported_cppstd(version: Any):
         return ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20"]
 
 
-def _emcc_supported_cppstd(version: Any):
+def _emcc_supported_cppstd(version: Any) -> list[str]:
     """
     emcc is based on clang but follow different versioning scheme.
     """

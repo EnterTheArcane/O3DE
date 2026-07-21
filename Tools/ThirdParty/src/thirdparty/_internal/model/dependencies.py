@@ -13,7 +13,7 @@ class UserRequirementsDict:
         self._require_filter = require_filter  # dict {trait: value} for requirements
 
     def filter(self, require_filter: Any) -> UserRequirementsDict:
-        def filter_fn(require) -> bool:
+        def filter_fn(require: Any) -> bool:
             for k, v in require_filter.items():
                 if getattr(require, k) != v:
                     return False
@@ -38,23 +38,23 @@ class UserRequirementsDict:
         build: Any = None,
         **kwargs: Any) -> tuple[Any, Any]:
         if build is None:
-            current_filters = self._require_filter or {}
+            current_filters: dict[str, Any] = self._require_filter or {}
             if "build" not in current_filters:
                 # By default we search in the "host" context
                 kwargs["build"] = False
         else:
             kwargs["build"] = build
         data = self.filter(kwargs)
-        ret = []
+        ret: list[tuple[Any, Any]] = []
         for require, value in data.items():
             if require.ref == ref:  # RecipeReference == bare name string
                 ret.append((require, value))
         if len(ret) > 1:
-            current_filters = data._require_filter or "{}"
+            filters_repr = data._require_filter or "{}"
             requires = "\n".join([f"- {require}" for require, _ in ret])
             raise RecipeException(
                 "There are more than one requires matching the specified filters:"
-                f" {current_filters}\n{requires}")
+                f" {filters_repr}\n{requires}")
         if not ret:
             raise KeyError(f"'{ref}' not found in the dependency set")
 
@@ -74,7 +74,7 @@ class UserRequirementsDict:
     def values(self):
         return self._data.values()
 
-    def __contains__(self, item: object) -> bool:
+    def __contains__(self, item: str) -> bool:
         try:
             self.get(item)
             return True
@@ -97,7 +97,7 @@ class UserRequirementsDict:
 class RecipeDependencies(UserRequirementsDict):
     def filter(self, require_filter: Any, remove_system: bool = True) -> RecipeDependencies:
         # FIXME: Copy of hte above, to return RecipeDependencies class object
-        def filter_fn(require) -> bool:
+        def filter_fn(require: Any) -> bool:
             for k, v in require_filter.items():
                 if getattr(require, k) != v:
                     return False
@@ -110,8 +110,8 @@ class RecipeDependencies(UserRequirementsDict):
         """
         :type other: RecipeDependencies
         """
-        data = OrderedDict()
-        for k, v in self._data.items():
+        data: "OrderedDict[Any, Any]" = OrderedDict()
+        for _k, v in self._data.items():
             for otherk, otherv in other._data.items():
                 if v == otherv:
                     data[otherk] = v  # Use otherk to respect original replace_requires
@@ -120,12 +120,12 @@ class RecipeDependencies(UserRequirementsDict):
     @property
     def topological_sort(self) -> RecipeDependencies:
         # Return first independent nodes, final ones are the more direct deps
-        result = OrderedDict()
-        opened = self._data.copy()
+        result: "OrderedDict[Any, Any]" = OrderedDict()
+        opened: "OrderedDict[Any, Any]" = self._data.copy()
 
         while opened:
-            opened_values = set(opened.values())
-            new_opened = OrderedDict()
+            opened_values: set[Any] = set(opened.values())
+            new_opened: "OrderedDict[Any, Any]" = OrderedDict()
             for req, recipe in opened.items():
                 deps_in_opened = any(d in opened_values for d in recipe.dependencies.values())
                 if deps_in_opened:

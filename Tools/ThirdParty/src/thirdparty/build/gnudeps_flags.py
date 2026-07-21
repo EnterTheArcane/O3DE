@@ -24,10 +24,10 @@ class GnuDepsFlags:
         self.framework_paths = self._format_frameworks(info.frameworkdirs, is_path=True)
 
         # Direct flags
-        self.cxxflags = info.cxxflags or []
-        self.cflags = info.cflags or []
-        self.sharedlinkflags = info.sharedlinkflags or []
-        self.exelinkflags = info.exelinkflags or []
+        self.cxxflags: list[Any] = info.cxxflags or []
+        self.cflags: list[Any] = info.cflags or []
+        self.sharedlinkflags: list[Any] = info.sharedlinkflags or []
+        self.exelinkflags: list[Any] = info.exelinkflags or []
         self.system_libs = self._format_libraries(info.system_libs)
 
         # Not used?  # self.bin_paths  # self.build_paths  # self.src_paths
@@ -35,10 +35,10 @@ class GnuDepsFlags:
     _GCC_LIKE = ["clang", "apple-clang", "gcc"]
 
     @staticmethod
-    def _format_defines(defines: Any):
+    def _format_defines(defines: Any) -> list[str]:
         return ["-D%s" % define for define in defines] if defines else []
 
-    def _format_frameworks(self, frameworks: Any, is_path: bool = False):
+    def _format_frameworks(self, frameworks: Any, is_path: bool = False) -> list[str]:
         """
         returns an appropriate compiler flags to link with Apple Frameworks
         or an empty array, if Apple Frameworks aren't supported by the given compiler
@@ -53,23 +53,23 @@ class GnuDepsFlags:
         else:
             return ["-framework %s" % framework for framework in frameworks]
 
-    def _format_include_paths(self, include_paths: Any):
+    def _format_include_paths(self, include_paths: Any) -> list[str]:
         if not include_paths:
             return []
         pattern = "/I%s" if is_msvc(self._recipe) else "-I%s"
         return [pattern % (self._adjust_path(include_path)) for include_path in include_paths if include_path]
 
-    def _format_library_paths(self, library_paths: Any):
+    def _format_library_paths(self, library_paths: Any) -> list[str]:
         if not library_paths:
             return []
         pattern = "/LIBPATH:%s" if is_msvc(self._recipe) else "-L%s"
         return [pattern % self._adjust_path(library_path) for library_path in library_paths if library_path]
 
-    def _format_libraries(self, libraries: Any):
+    def _format_libraries(self, libraries: Any) -> list[str]:
         if not libraries:
             return []
 
-        result = []
+        result: list[str] = []
 
         is_visual = is_msvc(self._recipe)
         for library in libraries:

@@ -123,7 +123,7 @@ def _default_target_arch(the_os: str, target_arch: str | None) -> str:
     return _machine_arch()
 
 
-def detect_settings(build_type: str = "Release", target_os: str=None, target_arch: str=None) -> Settings:
+def detect_settings(build_type: str = "Release", target_os: str | None = None, target_arch: str | None = None) -> Settings:
     """Detect build settings for the *target* platform.
 
     ``target_os``/``target_arch`` select the HOST/target platform the package will run
@@ -183,7 +183,7 @@ def detect_settings(build_type: str = "Release", target_os: str=None, target_arc
     return settings
 
 
-def platform_tag(settings) -> str:
+def platform_tag(settings: Settings) -> str:
     """Return the output-folder platform tag for *settings*, e.g. ``windows-x64``.
 
     Build outputs are grouped by OS and architecture so that packages built for
@@ -202,7 +202,7 @@ def platform_tag(settings) -> str:
     return f"{os_name}-{arch}"
 
 
-def detect_platform_tag(target_os=None, target_arch=None) -> str:
+def detect_platform_tag(target_os: str | None = None, target_arch: str | None = None) -> str:
     """Lightweight platform tag for a target (no compiler probing).
 
     Defaults to the current machine.  Produces the same string as :func:`platform_tag`

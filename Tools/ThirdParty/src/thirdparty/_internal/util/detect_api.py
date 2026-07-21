@@ -111,7 +111,7 @@ def detect_libc(ldd: str = "/usr/bin/ldd"):
 def detect_libcxx(compiler: str, version: Any, compiler_exe: str | None = None):
     assert isinstance(version, Version)
 
-    def _detect_gcc_libcxx(version_, executable) -> str:
+    def _detect_gcc_libcxx(version_: Any, executable: str) -> str:
         output = Output(scope="detect_api")
         # Assumes a working g++ executable
         if executable == "g++":  # we can rule out old gcc versions
@@ -193,28 +193,28 @@ def default_cppstd(compiler: str, compiler_version: Any):
     """ returns the default cppstd for the compiler-version. This is not detected, just the default
     """
 
-    def _clang_cppstd_default(version):
+    def _clang_cppstd_default(version: Any) -> str:
         if version >= "16":
             return "gnu17"
         # Official docs are wrong, in 6.0 the default is gnu14 to follow gcc's choice
         return "gnu98" if version < "6" else "gnu14"
 
-    def _gcc_cppstd_default(version):
+    def _gcc_cppstd_default(version: Any) -> str:
         if version >= "16":
             return "gnu20"
         if version >= "11":
             return "gnu17"
         return "gnu98" if version < "6" else "gnu14"
 
-    def _visual_cppstd_default(version):
+    def _visual_cppstd_default(version: Any) -> str | None:
         if version >= "190":  # VS 2015 update 3 only
             return "14"
         return None
 
-    def _mcst_lcc_cppstd_default(version):
+    def _mcst_lcc_cppstd_default(version: Any) -> str:
         return "gnu14" if version >= "1.24" else "gnu98"
 
-    def _apple_clang_cppstd_default(version):
+    def _apple_clang_cppstd_default(version: Any) -> str:
         return "gnu98" if version < "17" else "gnu14"
 
     default = {
@@ -240,7 +240,7 @@ def detect_cppstd(compiler: str, compiler_version: Any):
 def default_cstd(compiler: str, compiler_version: Any):
     """returns the default cstd for the compiler-version. This is not detected, just the default"""
 
-    def _clang_cstd_default(version) -> str:
+    def _clang_cstd_default(version: Any) -> str:
         if version >= "11":
             return "gnu17"  # https://releases.llvm.org/11.0.0/tools/clang/docs/ReleaseNotes.html#c-language-changes-in-clang
         elif version >= "4":  # 3.5 actually
@@ -248,7 +248,7 @@ def default_cstd(compiler: str, compiler_version: Any):
         else:
             return "gnu99"  # It was gnu89 actually
 
-    def _gcc_cstd_default(version) -> str:
+    def _gcc_cstd_default(version: Any) -> str:
         if version >= "15":  # https://www.gnu.org/software/gcc/gcc-15/changes.html#c
             return "gnu23"
         elif version >= "8":
@@ -258,10 +258,10 @@ def default_cstd(compiler: str, compiler_version: Any):
         else:
             return "gnu99"  # It was gnu89 actually
 
-    def _visual_cstd_default(version):
+    def _visual_cstd_default(version: Any) -> None:
         return None
 
-    def _apple_clang_cstd_default(version) -> str:
+    def _apple_clang_cstd_default(version: Any) -> str:
         # Based on which LLVM/Clang versions these are based on
         if version >= "12":
             return "gnu17"
@@ -269,7 +269,7 @@ def default_cstd(compiler: str, compiler_version: Any):
             return "gnu11"
         return "gnu99"
 
-    def _mcst_lcc_cstd_default(version):
+    def _mcst_lcc_cstd_default(version: Any) -> None:
         return None
 
     default = {
@@ -282,7 +282,7 @@ def default_cstd(compiler: str, compiler_version: Any):
     return default
 
 
-def detect_default_compiler():
+def detect_default_compiler() -> tuple[Any, Any, Any] | None:
     """
         find the default compiler on the build machine
         search order and priority:
@@ -362,7 +362,7 @@ def _detect_vs_ide_version():
     return None
 
 
-def _cc_compiler(compiler_exe: str = "cc"):
+def _cc_compiler(compiler_exe: str = "cc") -> tuple[Any, Any, Any] | None:
     # Try to detect the "cc" linux system "alternative". It could point to gcc or clang
     try:
         ret, out = detect_runner(f'"{compiler_exe}" --version')
@@ -384,7 +384,7 @@ def _cc_compiler(compiler_exe: str = "cc"):
         return None, None, None
 
 
-def detect_gcc_compiler(compiler_exe: str = "gcc"):
+def detect_gcc_compiler(compiler_exe: str = "gcc") -> tuple[Any, Any, Any] | None:
     try:
         if platform.system() == "Darwin":
             # In Mac OS X check if gcc is a fronted using apple-clang
@@ -405,7 +405,7 @@ def detect_gcc_compiler(compiler_exe: str = "gcc"):
         return None, None, None
 
 
-def detect_suncc_compiler(compiler_exe: str = "cc"):
+def detect_suncc_compiler(compiler_exe: str = "cc") -> tuple[Any, Any, Any] | None:
     try:
         _, out = detect_runner(f'"{compiler_exe}" -V')
         compiler = "sun-cc"
@@ -421,7 +421,7 @@ def detect_suncc_compiler(compiler_exe: str = "cc"):
         return None, None, None
 
 
-def detect_clang_compiler(compiler_exe: str = "clang"):
+def detect_clang_compiler(compiler_exe: str = "clang") -> tuple[Any, Any, Any] | None:
     try:
         ret, out = detect_runner(f'"{compiler_exe}" --version')
         if ret != 0:
@@ -440,7 +440,7 @@ def detect_clang_compiler(compiler_exe: str = "clang"):
         return None, None, None
 
 
-def detect_msvc_compiler():
+def detect_msvc_compiler() -> tuple[Any, Any, Any]:
     ide_version = _detect_vs_ide_version()
     # Map to compiler
     version = {"18": "195", "17": "193", "16": "192", "15": "191"}.get(str(ide_version))
@@ -453,7 +453,7 @@ def detect_msvc_compiler():
     return None, None, None
 
 
-def detect_cl_compiler(compiler_exe: str = "cl"):
+def detect_cl_compiler(compiler_exe: str = "cl") -> tuple[Any, Any, Any] | None:
     """ only if CC/CXX env-vars are defined pointing to cl.exe, and the VS environment must
     be active to have them in the path
     """
@@ -477,7 +477,7 @@ def detect_cl_compiler(compiler_exe: str = "cl"):
         return None, None, None
 
 
-def detect_emcc_compiler(compiler_exe: str = "emcc"):
+def detect_emcc_compiler(compiler_exe: str = "emcc") -> tuple[Any, Any, Any]:
     ret, out = detect_runner(f'"{compiler_exe}" --version')
     if ret != 0:
         return None, None, None

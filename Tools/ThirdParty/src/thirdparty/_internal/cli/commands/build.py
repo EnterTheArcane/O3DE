@@ -28,7 +28,7 @@ from thirdparty.env.environment import generate_aggregated_env
 from thirdparty.errors import RecipeException
 
 
-def _wipe(path) -> None:
+def _wipe(path: str | Path) -> None:
     """Remove a directory tree, clearing read-only attributes (e.g. Subversion `.svn` or
     msys2 source files on Windows) that make a plain ``shutil.rmtree`` fail.  ``rmdir``
     installs an onerror handler that chmods + retries; this swallows any final failure so
@@ -177,7 +177,7 @@ def _build_dep_graph(
     jobs: int | None = None,
     verbose: bool = False,
     tool_names: list[str] | None = None,
-    _recipe_cache: dict | None = None, ) -> RecipeDependencies:
+    _recipe_cache: dict[tuple[str, str | None, str | None, bool], tuple[Requirement, RecipeBase]] | None = None, ) -> RecipeDependencies:
     """Create a RecipeDependencies from a list of already-built packages.
 
     dep_names  - host (non-build) deps (build=False); inherit the parent's effective
@@ -194,7 +194,7 @@ def _build_dep_graph(
     the build machine stay distinct, including native builds where the same package is both
     a library dependency and a build tool.
     """
-    deps_dict: OrderedDict = OrderedDict()
+    deps_dict: OrderedDict[Requirement, RecipeBase] = OrderedDict()
 
     if _recipe_cache is None:
         _recipe_cache = {}
@@ -351,7 +351,7 @@ def _is_sourced(
     return (_package_root(build_root, name, package_id) / "source" / _COMPLETE_MARKER).is_file()
 
 
-def _build_only_tools(rgraph) -> set[str]:
+def _build_only_tools(rgraph: _Graph) -> set[str]:
     """Recipes that are *only* ever a ``requires_tool`` (never a regular ``requires``).
 
     These are pure build tools (cmake, ninja, nasm, ...) and are built for the BUILD
@@ -426,7 +426,7 @@ def _build_ordered(
 
     _out.info()
 
-    visited: set = set()
+    visited: set[tuple[str, str]] = set()
     results: list[tuple[str, str, float, str | None]] = []
     skipped: list[tuple[str, str | None]] = []
     unavailable: dict[str, str] = {}
@@ -512,7 +512,7 @@ def _build_recipe(
     build_root: Path,
     name: str,
     build_type: str,
-    visited: set,
+    visited: set[tuple[str, str]],
     target_os: str | None,
     target_arch: str | None,
     jobs: int | None = None,

@@ -1,4 +1,5 @@
 from functools import total_ordering
+from typing import Any
 
 from thirdparty.errors import RecipeException
 
@@ -22,7 +23,7 @@ class _VersionItem:
     def __str__(self):
         return str(self._v)
 
-    def __add__(self, other):
+    def __add__(self, other: Any) -> Any:
         # necessary for the "bump()" functionality. Other aritmetic operations are missing
         return self._v + other
 
@@ -80,7 +81,7 @@ class Version:
             del items[-1]
         self._nonzero_items = tuple(items)
 
-    def bump(self, index):
+    def bump(self, index: int):
         """
         :meta private:
             Bump the version
@@ -94,7 +95,7 @@ class Version:
         # this method is used to compute version ranges from tilde ~1.2 and caret ^1.2.1 ranges
         # TODO: at this moment it only works for digits, cannot increment pre-release or builds
         # better not make it public yet, keep it internal
-        items = list(self._items[:index])
+        items: list[Any] = list(self._items[:index])
         try:
             items.append(self._items[index] + 1)
         except TypeError:
@@ -104,8 +105,8 @@ class Version:
         # prerelease and build are dropped while bumping digits
         return Version(v)
 
-    def upper_bound(self, index):
-        items = list(self._items[:index])
+    def upper_bound(self, index: int):
+        items: list[Any] = list(self._items[:index])
         try:
             items.append(self._items[index] + 1)
         except TypeError:

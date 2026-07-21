@@ -182,14 +182,14 @@ class MesonToolchain:
 
         # Extra flags
         #: List of extra ``CXX`` flags. Added to ``cpp_args``
-        self.extra_cxxflags = []
+        self.extra_cxxflags: list[str] = []
         #: List of extra ``C`` flags. Added to ``c_args``
-        self.extra_cflags = []
+        self.extra_cflags: list[str] = []
         #: List of extra linker flags. Added to ``c_link_args`` and ``cpp_link_args``
-        self.extra_ldflags = []
+        self.extra_ldflags: list[str] = []
         #: List of extra preprocessor definitions. Added to ``c_args`` and ``cpp_args`` with the
         #: format ``-D[FLAG_N]``.
-        self.extra_defines = []
+        self.extra_defines: list[str] = []
         #: Architecture flag deduced by Recipe and added to ``c_args``, ``cpp_args``, ``c_link_args`` and ``cpp_link_args``
         self.arch_flag = architecture_flag(self._recipe)  # upstream issue 17624
         #: Architecture link flag deduced by Recipe and added to ``c_link_args`` and ``cpp_link_args``
@@ -197,10 +197,10 @@ class MesonToolchain:
         #: Threads flags deduced by Recipe and added to ``c_args``, ``cpp_args``, ``c_link_args`` and ``cpp_link_args``
         self.threads_flags = threads_flags(self._recipe)
         #: Dict-like object that defines Meson ``properties`` with ``key=value`` format
-        self.properties = {}
+        self.properties: dict[str, Any] = {}
         #: Dict-like object that defines Meson ``binaries`` with ``key=value`` format. If any dict key
         #: matches a public attribute binary name, e.g., "c", "cpp", etc., it will override that one.
-        self.binaries = {}
+        self.binaries: dict[str, Any] = {}
         #: Dict-like object that defines Meson ``project options`` with ``key=value`` format
         self.project_options = {
             "wrap_mode": "nofallback",  # upstream issue 10671
@@ -211,11 +211,11 @@ class MesonToolchain:
             # Level 0 emits no warning flags, so -w cleanly wins and warnings stay suppressed.
             self.project_options["warning_level"] = "0"
         #: Dict-like object that defines Meson ``preprocessor definitions``
-        self.preprocessor_definitions = {}
+        self.preprocessor_definitions: dict[str, Any] = {}
         # Add all the default dirs
         self.project_options.update(self._get_default_dirs())
         #: Dict-like object that defines Meson ``subproject options``.
-        self.subproject_options = {}
+        self.subproject_options: dict[str, Any] = {}
         #: Defines the Meson ``pkg_config_path`` variable
         self.pkg_config_path = self._recipe.folders.generators
         #: Defines the Meson ``build.pkg_config_path`` variable (build context)
@@ -266,7 +266,7 @@ class MesonToolchain:
         # Read configuration for compilers
         compilers_by_conf = self._recipe_conf.tools.build.compiler_executables
         # Read the VirtualBuildEnv to update the variables
-        build_env = self._recipe.buildenv_build.vars(self._recipe) if native else (VirtualBuildEnv(self._recipe).vars())
+        build_env: dict[str, Any] = self._recipe.buildenv_build.vars(self._recipe) if native else (VirtualBuildEnv(self._recipe).vars())
         #: Sets the Meson ``c`` variable, defaulting to the ``CC`` build environment value.
         #: If provided as a blank-separated string, it will be transformed into a list.
         #: Otherwise, it remains a single string.
@@ -312,11 +312,11 @@ class MesonToolchain:
 
         # Apple flags and variables
         #: Apple arch flag as a list, e.g., ``["-arch", "i386"]``
-        self.apple_arch_flag = []
+        self.apple_arch_flag: list[str] = []
         #: Apple sysroot flag as a list, e.g., ``["-isysroot", "./Platforms/MacOSX.platform"]``
-        self.apple_isysroot_flag = []
+        self.apple_isysroot_flag: list[str] = []
         #: Apple minimum binary version flag as a list, e.g., ``["-mios-version-min", "10.8"]``
-        self.apple_min_version_flag = []
+        self.apple_min_version_flag: list[Any] = []
         #: Apple bitcode, visibility and arc flags
         self.apple_extra_flags = apple_extra_flags(self._recipe)
         #: Defines the Meson ``objc`` variable. Defaulted to ``None``, if if any Apple OS ``clang``
@@ -324,13 +324,13 @@ class MesonToolchain:
         #: Defines the Meson ``objcpp`` variable. Defaulted to ``None``, if if any Apple OS ``clang++``
         self.objcpp = None
         #: Defines the Meson ``objc_args`` variable. Defaulted to ``OBJCFLAGS`` build environment value
-        self.objc_args = []
+        self.objc_args: list[Any] = []
         #: Defines the Meson ``objc_link_args`` variable. Defaulted to ``LDFLAGS`` build environment value
-        self.objc_link_args = []
+        self.objc_link_args: list[Any] = []
         #: Defines the Meson ``objcpp_args`` variable. Defaulted to ``OBJCXXFLAGS`` build environment value
-        self.objcpp_args = []
+        self.objcpp_args: list[Any] = []
         #: Defines the Meson ``objcpp_link_args`` variable. Defaulted to ``LDFLAGS`` build environment value
-        self.objcpp_link_args = []
+        self.objcpp_link_args: list[Any] = []
 
         self._resolve_apple_flags_and_variables(build_env, compilers_by_conf)
         if not native:
@@ -345,11 +345,11 @@ class MesonToolchain:
             - upstream issue 11596
         """
 
-        def _get_cpp_info_value(name):
+        def _get_cpp_info_value(name: str) -> Any:
             elements = getattr(self._recipe.info, name)
             return elements[0] if elements else None
 
-        ret = {}
+        ret: dict[str, Any] = {}
         bindir = _get_cpp_info_value("bindirs")
         datadir = _get_cpp_info_value("resdirs")
         libdir = _get_cpp_info_value("libdirs")
@@ -374,7 +374,7 @@ class MesonToolchain:
         if not self._is_apple_system:
             return
         # Calculating the main Apple flags
-        min_flag, arch_flag, isysroot_flag = (resolve_apple_flags(self._recipe, is_cross_building=bool(self.cross_build)))
+        _min_flag, arch_flag, isysroot_flag = (resolve_apple_flags(self._recipe, is_cross_building=bool(self.cross_build)))
         self.apple_arch_flag = arch_flag.split() if arch_flag else []
         self.apple_isysroot_flag = isysroot_flag.split() if isysroot_flag else []
         self.apple_min_version_flag = [apple_min_version_flag(self._recipe)]
@@ -422,7 +422,7 @@ class MesonToolchain:
         add_rpath_link = self._recipe.conf.tools.build.add_rpath_link
         if not add_rpath_link:
             return []
-        runtime_dirs = []
+        runtime_dirs: list[Any] = []
         host_req = self._recipe.dependencies.filter({"build": False}).values()
         for req in host_req:
             cppinfo = req.info.aggregated_components()
@@ -511,7 +511,7 @@ class MesonToolchain:
         if self.gcc_cxx11_abi:
             self.cpp_args.append(f"-D{self.gcc_cxx11_abi}")
 
-        subproject_options = {}
+        subproject_options: dict[str, Any] = {}
         for subproject, listkeypair in self.subproject_options.items():
             if listkeypair:
                 if not isinstance(listkeypair, list):
