@@ -1,7 +1,7 @@
 import glob
 import itertools
 import re
-from typing import Any
+from typing import Any, cast
 
 from thirdparty._internal.util.files import save
 from thirdparty.premake.constants import RECIPE_TO_PREMAKE_ARCH
@@ -239,7 +239,8 @@ class PremakeDeps:
             # Add filename of current generations var file if not already present
             if var_filename not in available_config_files:
                 available_config_files.append(var_filename)
-            profiles: list[tuple[str, str, str, str]] = [(regex_res[0], regex_res.group(1), regex_res.group(2), regex_res.group(3)) for regex_res in [re.search(file_regex, file_name) for file_name in available_config_files]]
+            matches = cast(list["re.Match[str]"], [re.search(file_regex, file_name) for file_name in available_config_files])
+            profiles: list[tuple[str, str, str, str]] = [(regex_res[0], regex_res.group(1), regex_res.group(2), regex_res.group(3)) for regex_res in matches]
             config_sets = [profile[1] for profile in profiles]
 
             # Emit package premake file

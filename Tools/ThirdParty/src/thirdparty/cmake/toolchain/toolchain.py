@@ -3,7 +3,7 @@ import os
 import platform
 import textwrap
 from collections import OrderedDict
-from typing import Any
+from typing import Any, cast
 
 from thirdparty._internal.output import Output
 from thirdparty._internal.util.files import save
@@ -57,13 +57,13 @@ class Variables(OrderedDict[str, Any]):
         try:
             return super(Variables, self).__getattribute__(config)
         except AttributeError:
-            return self._configuration_types.setdefault(config, OrderedDict())
+            return cast("dict[str, Any]", self._configuration_types).setdefault(config, OrderedDict())
 
     @property
     def configuration_types(self) -> "OrderedDict[Any, Any]":
         # Reverse index for the configuration_types variables
         ret: "OrderedDict[Any, Any]" = OrderedDict()
-        for conf, definitions in self._configuration_types.items():
+        for conf, definitions in cast("dict[str, Any]", self._configuration_types).items():
             for k, v in definitions.items():
                 ret.setdefault(k, []).append((conf, v))
         return ret
@@ -72,7 +72,7 @@ class Variables(OrderedDict[str, Any]):
         for key, var in self.items():
             if isinstance(var, str):
                 self[key] = str(var).replace('"', '\\"')
-        for _config, data in self._configuration_types.items():
+        for _config, data in cast("dict[str, Any]", self._configuration_types).items():
             for key, var in data.items():
                 if isinstance(var, str):
                     data[key] = str(var).replace('"', '\\"')

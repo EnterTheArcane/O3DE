@@ -12,7 +12,7 @@ from thirdparty._internal.util.files import load, save
 from thirdparty.env.environment import Environment
 from thirdparty.errors import RecipeException
 
-from typing import Any
+from typing import Any, cast
 from thirdparty.recipe import RecipeBase
 
 
@@ -491,7 +491,7 @@ class _Component:
             for k, v in other._properties.items():
                 existing = current_values.get(k)
                 if existing is not None and isinstance(existing, list) and not overwrite:
-                    existing.extend(v)
+                    cast("list[Any]", existing).extend(v)
                 else:
                     current_values[k] = copy.copy(v)
 
@@ -505,7 +505,7 @@ class _Component:
             modules = properties.get("cmake_build_modules")  # Only this prop at this moment
             if modules is not None:
                 assert isinstance(modules, list), "cmake_build_modules must be a list"
-                properties["cmake_build_modules"] = [os.path.join(folder, v) for v in modules]
+                properties["cmake_build_modules"] = [os.path.join(folder, v) for v in cast("list[Any]", modules)]
 
     def deploy_base_folder(self, package_folder: str, deploy_folder: str):
         def relocate(el: str) -> str:
@@ -524,7 +524,7 @@ class _Component:
             modules = properties.get("cmake_build_modules")  # Only this prop at this moment
             if modules is not None:
                 assert isinstance(modules, list), "cmake_build_modules must be a list"
-                properties["cmake_build_modules"] = [relocate(f) for f in modules]
+                properties["cmake_build_modules"] = [relocate(f) for f in cast("list[Any]", modules)]
 
     def parsed_requires(self) -> list[Any]:
         return [r.split("::", 1) if "::" in r else (None, r) for r in self.requires]

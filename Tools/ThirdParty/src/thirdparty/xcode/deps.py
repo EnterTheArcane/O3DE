@@ -117,7 +117,7 @@ class XcodeDeps:
         self.sdk_version = recipe.settings.os_sdk_version
 
     def generate(self):
-        if self.configuration is None:
+        if self.configuration is None:  # pyright: ignore[reportUnnecessaryComparison]  # defensive invariant check
             raise RecipeException("XcodeDeps.configuration is None, it should have a value")
         if self.architecture is None:
             raise RecipeException("XcodeDeps.architecture is None, it should have a value")

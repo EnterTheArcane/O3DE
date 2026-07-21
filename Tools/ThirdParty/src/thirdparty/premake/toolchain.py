@@ -2,7 +2,7 @@ import jinja2
 import os
 import textwrap
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from thirdparty.build.cross_building import cross_building
 from thirdparty.build.flags import architecture_flag, architecture_link_flag, libcxx_flags, threads_flags
@@ -48,7 +48,7 @@ def _generate_flags(self: Any, recipe: RecipeBase) -> str:
         return ", ".join(f'"{item}"' for item in items) if items else None
 
     def to_list(value: Any) -> list[Any]:
-        return value if isinstance(value, list) else [value] if value else []
+        return cast(list[Any], value) if isinstance(value, list) else [value] if value else []
 
     arch_flags = to_list(architecture_flag(self._recipe))
     cxx_flags, libcxx_compile_definitions = libcxx_flags(self._recipe)
@@ -228,9 +228,9 @@ class PremakeToolchain:
             build_env = VirtualBuildEnv(self._recipe)
             env = build_env.environment()
             if "c" in compilers_build_mapping:
-                env.define("CC", compilers_build_mapping["c"])
+                env.define("CC", cast(str, compilers_build_mapping["c"]))
             if "cpp" in compilers_build_mapping:
-                env.define("CXX", compilers_build_mapping["cpp"])
+                env.define("CXX", cast(str, compilers_build_mapping["cpp"]))
             build_env.generate()
 
         macho_to_amd64 = (self._recipe.settings.arch if cross_building(self._recipe) and self._recipe.settings.os == "Mac" else None)
@@ -249,9 +249,9 @@ class PremakeToolchain:
             flags=_generate_flags(self, self._recipe),
             indent_level=8, )
         save(
-            self, os.path.join(self._recipe.folders.generators, self.filename), content, )
+            cast(RecipeBase, self), os.path.join(self._recipe.folders.generators, self.filename), content, )
         # Generate VCVars if using MSVC
-        if "msvc" in self._recipe.settings.compiler:
+        if "msvc" in cast(str, self._recipe.settings.compiler):
             VCVars(self._recipe).generate()
 
     def _target_build_os(self):

@@ -268,6 +268,7 @@ class Recipe(RecipeBase[_Options]):
             # rules.vc normally recompiles nmakehlp.exe with the target compiler, but that
             # ARM64 helper cannot run on the build host (NMAKE U1045). Drop in the native
             # nmakehlp.exe shipped by the Tcl install; the patched rules.vc reuses it.
+            native_tcl = self.dependencies.build["tcl"].folders.package
             native_nmakehlp: Path = next(iter((native_tcl / "lib" / "nmake").glob("*nmakehlp*.exe")))
             shutil.copy2(native_nmakehlp, config_dir / "nmakehlp.exe")
         with chdir(self, config_dir):

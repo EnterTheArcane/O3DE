@@ -4,7 +4,7 @@ import copy
 import os
 import types
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
-from typing import Any, Literal, TypeAlias, get_args, get_origin, get_type_hints
+from typing import Any, Literal, TypeAlias, cast, get_args, get_origin, get_type_hints
 
 PathValue: TypeAlias = str | os.PathLike[str]
 CompilerExecutable: TypeAlias = Literal["c", "cpp", "cuda", "objc", "objcxx", "objcpp", "rc", "fortran", "asm", "hip", "ispc"]
@@ -330,39 +330,39 @@ def _compose_dataclass(current: Any, other: Any):
         if is_dataclass(current_value):
             _compose_dataclass(current_value, other_value)
         elif isinstance(current_value, dict) and isinstance(other_value, dict):
-            merged = copy.deepcopy(other_value)
-            merged.update(current_value)
+            merged: dict[Any, Any] = copy.deepcopy(cast("dict[Any, Any]", other_value))
+            merged.update(cast("dict[Any, Any]", current_value))
             setattr(current, name, merged)
         elif isinstance(current_value, list) and isinstance(other_value, list):
             if not current_value and other_value:
-                setattr(current, name, copy.deepcopy(other_value))
+                setattr(current, name, copy.deepcopy(cast("list[Any]", other_value)))
         elif current_value is None and other_value is not None:
             setattr(current, name, copy.deepcopy(other_value))
 
 
 def _to_jsonable(value: Any) -> Any:
     if is_dataclass(value):
-        return _to_jsonable(asdict(value))
+        return _to_jsonable(asdict(cast("Any", value)))
     if isinstance(value, dict):
-        return {key: _to_jsonable(val) for key, val in value.items()}
+        return {key: _to_jsonable(val) for key, val in cast("dict[Any, Any]", value).items()}
     if isinstance(value, list):
-        return [_to_jsonable(val) for val in value]
+        return [_to_jsonable(val) for val in cast("list[Any]", value)]
     if isinstance(value, tuple):
-        return [_to_jsonable(val) for val in value]
+        return [_to_jsonable(val) for val in cast("tuple[Any, ...]", value)]
     if hasattr(value, "__fspath__"):
-        return os.fspath(value)
+        return os.fspath(cast("os.PathLike[str]", value))
     return value
 
 
 def _load_dataclass(target: object, content: dict[str, object]):
     type_hints = get_type_hints(type(target))
-    for data_field in fields(target):
+    for data_field in fields(cast("Any", target)):
         if data_field.name not in content:
             continue
         value = content[data_field.name]
         current_value = getattr(target, data_field.name)
         if is_dataclass(current_value) and isinstance(value, dict):
-            _load_dataclass(current_value, value)
+            _load_dataclass(current_value, cast("dict[str, object]", value))
         else:
             setattr(target, data_field.name, _restore_value(value, type_hints[data_field.name]))
 

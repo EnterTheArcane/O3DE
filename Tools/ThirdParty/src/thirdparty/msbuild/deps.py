@@ -126,7 +126,7 @@ class MSBuildDeps:
         """
         if self.configuration is None:
             raise RecipeException("MSBuildDeps.configuration is None, it should have a value")
-        if self.platform is None:
+        if self.platform is None:  # pyright: ignore[reportUnnecessaryComparison]  # defensive invariant check
             raise RecipeException("MSBuildDeps.platform is None, it should have a value")
         generator_files = self._content()
         for generator_file, content in generator_files.items():

@@ -1,6 +1,6 @@
 import os
 from io import StringIO
-from typing import Any
+from typing import Any, cast
 
 from thirdparty._internal.util.runners import check_output_runner
 from thirdparty.build import cmd_args_to_string
@@ -37,7 +37,7 @@ def apple_sdk_path(recipe: RecipeBase, is_cross_building: bool = True) -> str | 
         raise RecipeException(
             "Apple SDK path not found. For cross-compilation, you must "
             "provide a valid SDK path in 'tools.apple:sdk_path' config.")
-    return sdk_path
+    return cast("str | None", sdk_path)
 
 
 def get_apple_sdk_fullname(recipe: RecipeBase) -> str | None:

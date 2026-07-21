@@ -61,7 +61,7 @@ class MSBuild:
             cmd += f' -m:"{maxcpucount}"' if maxcpucount > 0 else " -m"
 
         if targets:
-            if not isinstance(targets, list):
+            if not isinstance(targets, list):  # pyright: ignore[reportUnnecessaryIsInstance]  # defensive: recipes may pass a non-list
                 raise RecipeException("targets argument should be a list")
             cmd += f' -target:"{";".join(targets)}"'
 

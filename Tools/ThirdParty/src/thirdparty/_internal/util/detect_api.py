@@ -20,7 +20,7 @@ def detect_os() -> str:
     return the_os
 
 
-def detect_arch() -> str:
+def detect_arch() -> str | None:
     machine = platform.machine().lower()
     if "arm64" in machine or "aarch64" in machine:
         return "ARM"
@@ -362,7 +362,7 @@ def _detect_vs_ide_version():
     return None
 
 
-def _cc_compiler(compiler_exe: str = "cc") -> tuple[Any, Any, Any] | None:
+def _cc_compiler(compiler_exe: str = "cc") -> tuple[Any, Any, Any]:
     # Try to detect the "cc" linux system "alternative". It could point to gcc or clang
     try:
         ret, out = detect_runner(f'"{compiler_exe}" --version')
@@ -382,9 +382,10 @@ def _cc_compiler(compiler_exe: str = "cc") -> tuple[Any, Any, Any] | None:
             return compiler, Version(installed_version), compiler_exe
     except (Exception,):  # to disable broad-except
         return None, None, None
+    return None, None, None
 
 
-def detect_gcc_compiler(compiler_exe: str = "gcc") -> tuple[Any, Any, Any] | None:
+def detect_gcc_compiler(compiler_exe: str = "gcc") -> tuple[Any, Any, Any]:
     try:
         if platform.system() == "Darwin":
             # In Mac OS X check if gcc is a fronted using apple-clang
@@ -397,15 +398,16 @@ def detect_gcc_compiler(compiler_exe: str = "gcc") -> tuple[Any, Any, Any] | Non
         if ret != 0:
             return None, None, None
         compiler = "gcc"
-        installed_version = re.search(r"([0-9]+(\.[0-9]+)?)", out).group()
+        installed_version = re.search(r"([0-9]+(\.[0-9]+)?)", out).group()  # pyright: ignore[reportOptionalMemberAccess]  # no-match raises -> caught by broad except
         if installed_version:
             Output(scope="detect_api").info("Found %s %s" % (compiler, installed_version))
             return compiler, Version(installed_version), compiler_exe
     except (Exception,):  # to disable broad-except
         return None, None, None
+    return None, None, None
 
 
-def detect_suncc_compiler(compiler_exe: str = "cc") -> tuple[Any, Any, Any] | None:
+def detect_suncc_compiler(compiler_exe: str = "cc") -> tuple[Any, Any, Any]:
     try:
         _, out = detect_runner(f'"{compiler_exe}" -V')
         compiler = "sun-cc"
@@ -413,15 +415,16 @@ def detect_suncc_compiler(compiler_exe: str = "cc") -> tuple[Any, Any, Any] | No
         if installed_version:
             installed_version = installed_version.group(1)
         else:
-            installed_version = re.search(r"([0-9]+\.[0-9]+)", out).group()
+            installed_version = re.search(r"([0-9]+\.[0-9]+)", out).group()  # pyright: ignore[reportOptionalMemberAccess]  # no-match raises -> caught by broad except
         if installed_version:
             Output(scope="detect_api").info("Found %s %s" % (compiler, installed_version))
             return compiler, Version(installed_version), compiler_exe
     except (Exception,):  # to disable broad-except
         return None, None, None
+    return None, None, None
 
 
-def detect_clang_compiler(compiler_exe: str = "clang") -> tuple[Any, Any, Any] | None:
+def detect_clang_compiler(compiler_exe: str = "clang") -> tuple[Any, Any, Any]:
     try:
         ret, out = detect_runner(f'"{compiler_exe}" --version')
         if ret != 0:
@@ -432,12 +435,13 @@ def detect_clang_compiler(compiler_exe: str = "clang") -> tuple[Any, Any, Any] |
             compiler = "clang"
         else:
             return None, None, None
-        installed_version = re.search(r"([0-9]+\.[0-9])", out).group()
+        installed_version = re.search(r"([0-9]+\.[0-9])", out).group()  # pyright: ignore[reportOptionalMemberAccess]  # no-match raises -> caught by broad except
         if installed_version:
             Output(scope="detect_api").info("Found %s %s" % (compiler, installed_version))
             return compiler, Version(installed_version), compiler_exe
     except (Exception,):  # to disable broad-except
         return None, None, None
+    return None, None, None
 
 
 def detect_msvc_compiler() -> tuple[Any, Any, Any]:

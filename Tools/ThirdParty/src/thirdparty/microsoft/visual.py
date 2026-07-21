@@ -30,7 +30,7 @@ def check_min_vs(recipe: RecipeBase, version: str, raise_invalid: bool = True) -
         compiler_version = recipe.settings.compiler_version
         compiler_version = {
             "17": "193", "16": "192", "15": "191", "14": "190", "12": "180", "11": "170",
-        }.get(compiler_version)
+        }.get(compiler_version)  # pyright: ignore[reportArgumentType]  # dict.get tolerates a None key (returns None)
     elif compiler == "msvc":
         compiler_version = recipe.settings.compiler_version
         msvc_update = recipe.conf.tools.microsoft.msvc_update
@@ -48,7 +48,7 @@ def check_min_vs(recipe: RecipeBase, version: str, raise_invalid: bool = True) -
     return True
 
 
-def msvc_version_to_vs_ide_version(version: str) -> str:
+def msvc_version_to_vs_ide_version(version: str | None) -> str:
     """
     Gets the Visual Studio IDE version given the ``msvc`` compiler one.
 
@@ -62,7 +62,7 @@ def msvc_version_to_vs_ide_version(version: str) -> str:
     return _visuals[str(version)]
 
 
-def msvc_version_to_toolset_version(version: str) -> str | None:
+def msvc_version_to_toolset_version(version: str | None) -> str | None:
     """
     Gets the Visual Studio IDE toolset version given the ``msvc`` compiler one.
 
@@ -207,7 +207,7 @@ def vs_ide_version(recipe: RecipeBase) -> str:
             visual_version = msvc_version_to_vs_ide_version(compiler_version)
     else:
         visual_version = compiler_version
-    return visual_version
+    return visual_version  # pyright: ignore[reportReturnType]  # defensive: compiler_version is non-None for the msvc path callers rely on
 
 
 def msvc_runtime_flag(recipe: RecipeBase) -> str:
@@ -294,7 +294,7 @@ def _vcvars_versions(recipe: RecipeBase) -> tuple[str | None, str | None]:
         toolset_version = recipe.settings.compiler_runtime_version
         vs_version = {
             "v140": "14", "v141": "15", "v142": "16", "v143": "17", "v144": "17", "v145": "18",
-        }.get(toolset_version)
+        }.get(toolset_version)  # pyright: ignore[reportArgumentType]  # dict.get tolerates a None key (returns None)
         if vs_version is None:
             raise RecipeException(
                 "Visual Studio Runtime version (v140-v145) not defined. Please, "
@@ -302,7 +302,7 @@ def _vcvars_versions(recipe: RecipeBase) -> tuple[str | None, str | None]:
                 "profile.")
         vcvars_ver = {
             "v140": "14.0", "v141": "14.1", "v142": "14.2", "v143": "14.3", "v144": "14.4", "v145": "14.5",
-        }.get(toolset_version)
+        }.get(toolset_version)  # pyright: ignore[reportArgumentType]  # dict.get tolerates a None key (returns None)
         if vcvars_ver and msvc_update is not None:
             vcvars_ver += f"{msvc_update}"
     else:

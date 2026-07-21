@@ -1,6 +1,6 @@
 import os
 import subprocess
-from typing import IO, Any
+from typing import IO, Any, cast
 
 from thirdparty._internal.output import Output, Color, LEVEL_QUIET
 from thirdparty.errors import RecipeException
@@ -10,14 +10,14 @@ from thirdparty.recipe import RecipeBase
 def run(
     recipe: RecipeBase,
     command: str,
-    stdout: IO[Any] | None = None,
+    stdout: IO[Any] | int | None = None,
     cwd: str | None = None,
     ignore_errors: bool = False,
     env: str | list[str] | None = "",
     quiet: bool = False,
     shell: bool = True,
     scope: str = "build",
-    stderr: IO[Any] | None = None) -> int:
+    stderr: IO[Any] | int | None = None) -> int:
     """ Run a command in the recipe's package context.
 
     :parameter recipe: the current recipe, always pass ``self``.
@@ -49,7 +49,7 @@ def run(
 
     env = [env] if env and isinstance(env, str) else (env or [])
     assert isinstance(env, list), "env argument to run() should be a list"
-    envfiles_folder = recipe.folders.generators or os.getcwd()
+    envfiles_folder = os.fspath(recipe.folders.generators or os.getcwd())
     wrapped_cmd = command_env_wrapper(recipe, command, env, envfiles_folder=envfiles_folder, scope=scope)
     if not quiet:
         recipe.output.info(f"RUN: {command}", fg=Color.BRIGHT_BLUE)
@@ -57,7 +57,7 @@ def run(
     if quiet or Output.get_output_level() == LEVEL_QUIET:
         stdout = subprocess.DEVNULL if stdout is None else stdout
         stderr = subprocess.DEVNULL if stderr is None else stderr
-    retcode = run_command(wrapped_cmd, cwd=cwd, stdout=stdout, stderr=stderr, shell=shell)
+    retcode = run_command(wrapped_cmd, cwd=cwd, stdout=cast("IO[Any] | None", stdout), stderr=cast("IO[Any] | None", stderr), shell=shell)
     if not quiet:
         recipe.output.writeln("")
 

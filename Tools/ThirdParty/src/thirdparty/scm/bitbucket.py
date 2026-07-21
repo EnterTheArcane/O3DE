@@ -1,5 +1,6 @@
 import re
 from functools import cached_property
+from typing import Any
 
 import requests
 
@@ -20,7 +21,7 @@ class BitbucketRepository:
         best_tag: str | None = None
         best_version: Version | None = None
         url: str | None = f"https://api.bitbucket.org/2.0/repositories/{self._slug}/tags"
-        params: dict = {"pagelen": 100}
+        params: dict[str, Any] = {"pagelen": 100}
         while url:
             resp = requests.get(url, params=params, timeout=30)
             resp.raise_for_status()

@@ -277,8 +277,9 @@ class TargetConfigurationTemplate2:
             target["link_location"] = link_location
             # Keep only languages CMake knows (mapped to its names); Rust/Zig/... are dropped so
             # they link via CMake's default rules instead of erroring as an unknown link language.
+            languages: list[str] = info.languages or []
             link_languages = [
-                _CMAKE_LANGUAGES[c] for c in (info.languages or []) if c in _CMAKE_LANGUAGES]
+                _CMAKE_LANGUAGES[c] for c in languages if c in _CMAKE_LANGUAGES]
             target["link_languages"] = link_languages
         return target
 

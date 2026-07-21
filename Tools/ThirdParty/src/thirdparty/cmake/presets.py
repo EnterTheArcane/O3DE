@@ -11,7 +11,7 @@ from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft import is_msvc
 
-from typing import Any
+from typing import Any, cast
 from thirdparty.recipe import RecipeBase
 
 
@@ -257,8 +257,9 @@ class _IncludingPresets:
             inherited_user = _IncludingPresets._collect_user_inherits(output_dir, preset_prefix)
 
         if not os.path.exists(user_presets_path):
+            recipe_vendor: dict[str, Any] = {}
             data: Any = {
-                "version": 4, "vendor": {"recipe": dict()},
+                "version": 4, "vendor": {"recipe": recipe_vendor},
             }
         else:
             data = json.loads(load(user_presets_path))
@@ -268,10 +269,10 @@ class _IncludingPresets:
 
         if not absolute_paths:
             try:  # Make it relative to the CMakeUserPresets.json if possible
-                preset_path = os.path.relpath(preset_path, output_dir)
+                rel_path = cast(str, os.path.relpath(preset_path, output_dir))
                 # If we don't normalize, path will be removed in Linux shared folders
                 # upstream issue 18434
-                preset_path = preset_path.replace("\\", "/")
+                preset_path = rel_path.replace("\\", "/")
             except ValueError:
                 pass
         data = _IncludingPresets._append_user_preset_path(data, preset_path, output_dir)

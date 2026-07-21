@@ -1,5 +1,7 @@
 from thirdparty.errors import RecipeException
 
+__all__ = ["_get_gnu_triplet"]
+
 
 def _get_gnu_arch(os_: str, arch: str) -> str:
     # Calculate the arch

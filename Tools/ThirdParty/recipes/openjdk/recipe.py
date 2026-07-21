@@ -49,7 +49,7 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def package(self):
-        symlinks.remove_broken_symlinks(self, self._jdk_home)
+        symlinks.remove_broken_symlinks(self, str(self._jdk_home))
 
         copy(self, "*", src=self._jdk_home / "bin", dst=self.folders.package / "bin")
         copy(self, "*", src=self._jdk_home / "include", dst=self.folders.package / "include")

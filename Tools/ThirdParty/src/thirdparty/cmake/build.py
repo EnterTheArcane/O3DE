@@ -56,7 +56,7 @@ class CMake:
         # Store a reference to useful data
         self._recipe = recipe
 
-        cmake_presets = load_cmake_presets(recipe.folders.generators)
+        cmake_presets = load_cmake_presets(os.fspath(recipe.folders.generators))
         # Recipe generated presets will have exactly 1 configurePresets, no more
         configure_preset = cmake_presets["configurePresets"][0]
 
@@ -64,7 +64,7 @@ class CMake:
         self._toolchain_file = configure_preset.get("toolchainFile")
         self._cache_variables = configure_preset["cacheVariables"]
 
-        self._cmake_program = recipe.conf.tools.cmake.cmake_program or "cmake"
+        self._cmake_program = str(recipe.conf.tools.cmake.cmake_program or "cmake")
 
     @property
     def is_multi_configuration(self) -> bool:
@@ -147,7 +147,7 @@ class CMake:
             arg_list.extend(cli_args)
 
         command = " ".join(arg_list)
-        with chdir(self, build_folder):
+        with chdir(self._recipe, build_folder):
             run(self._recipe, command, stdout=stdout, stderr=stderr)
 
     def _config_arg(self, build_type: str | None) -> str:
@@ -314,7 +314,7 @@ class CMake:
             return
         if not target:
             is_multi = is_multi_configuration(self._generator)
-            is_ninja = "Ninja" in self._generator
+            is_ninja = "Ninja" in (self._generator or "")
             target = "RUN_TESTS" if is_multi and not is_ninja else "test"
 
         # CTest behavior controlled by CTEST_ env-vars should be directly defined in [buildenv]
@@ -337,7 +337,7 @@ class CMake:
         if self._recipe.conf.tools.build.skip_test:
             return
 
-        arg_list = []
+        arg_list: list[str] = []
         bt = self._recipe.settings.build_type
         is_multi = is_multi_configuration(self._generator)
         if bt and is_multi:
@@ -358,8 +358,8 @@ class CMake:
         if extra_args:
             arg_list.extend(extra_args)
 
-        arg_list = " ".join(filter(None, arg_list))
-        command = f"ctest {arg_list}"
+        arg_str = " ".join(filter(None, arg_list))
+        command = f"ctest {arg_str}"
 
         env = ["env_build", "env_run"] if env == "" else env
         run(self._recipe, command, env=env, stdout=stdout, stderr=stderr)

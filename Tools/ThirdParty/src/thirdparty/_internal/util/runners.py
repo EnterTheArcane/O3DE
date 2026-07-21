@@ -69,6 +69,7 @@ def detect_runner(command: str) -> tuple[int, str]:
         command, shell=True, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     output_buffer: list[str] = []
+    assert proc.stdout is not None
     while True:
         line = proc.stdout.readline()
         if not line:
@@ -90,7 +91,7 @@ def check_output_runner(cmd: str, stderr: Any = None, ignore_error: bool = False
         stderr = stderr or subprocess.PIPE
         command = f'{cmd} > "{tmp_file}"'
         process = subprocess.Popen(command, shell=True, stderr=stderr)
-        stdout, stderr = process.communicate()
+        _stdout, stderr = process.communicate()
 
         if process.returncode and not ignore_error:
             # Only in case of error, we print also the stderr to know what happened

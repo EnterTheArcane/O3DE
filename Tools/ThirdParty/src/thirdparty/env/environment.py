@@ -3,7 +3,7 @@ import textwrap
 from collections import OrderedDict
 from contextlib import contextmanager
 from shlex import quote
-from typing import Any
+from typing import Any, cast
 
 from thirdparty._internal.output import Output
 from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS, subsystem_path
@@ -124,7 +124,7 @@ class _EnvValue:
         if separator is not None:
             self._sep = separator
         if isinstance(value, list):
-            self._values.extend(value)
+            self._values.extend(cast("list[Any]", value))
         else:
             self._values.append(value)
 
@@ -171,16 +171,16 @@ class _EnvValue:
                 if placeholder:
                     values.append(placeholder.format(name=self._name))
             else:
-                v = os.fspath(v)  # values may be Path objects; an env value is an OS path string
+                v = cast(str, os.fspath(v))  # values may be Path objects; an env value is an OS path string
                 if self._path:
                     v = subsystem_path(subsystem, v)
                     if root_path is not None:
                         if v.startswith(root_path):  # relativize
-                            v = v.replace(root_path, script_path, 1)
+                            v = v.replace(root_path, cast(str, script_path), 1)
                         elif os.sep == "\\":  # Just in case user specified C:/path/to/somewhere
                             r = root_path.replace("\\", "/")
                             if v.startswith(r):
-                                v = v.replace(r, script_path.replace("\\", "/"))
+                                v = v.replace(r, cast(str, script_path).replace("\\", "/"))
                 values.append(v)
         if self._path:
             return pathsep.join(values)
@@ -331,7 +331,7 @@ class Environment:
         """
         self._values.setdefault(name, _EnvValue(name, _EnvVarPlaceHolder)).prepend(value, separator)
 
-    def prepend_path(self, name: str, value: str | os.PathLike[str]):
+    def prepend_path(self, name: str, value: str | os.PathLike[str] | list[str]):
         """
         Similar to "prepend" method but indicating that the variable is a filesystem path. It will automatically handle the path separators depending on the operating system.
 

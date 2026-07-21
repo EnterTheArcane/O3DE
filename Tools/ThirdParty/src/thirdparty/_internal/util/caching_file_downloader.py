@@ -12,7 +12,7 @@ from thirdparty._internal.util.files import mkdir, set_dirty_context_manager, re
 from thirdparty._internal.util.http_requester import HttpRequester
 from thirdparty.errors import RecipeException
 
-from typing import Any
+from typing import Any, cast
 from thirdparty.recipe import RecipeBase
 
 
@@ -48,7 +48,7 @@ class SourcesCachingDownloader:
             self._output.warning("Cannot cache download() without sha256 checksum")
             download_cache_folder = None  # Cannot cache
             source_origins = ["origin"]
-        if None in source_origins:
+        if None in source_origins:  # pyright: ignore[reportUnnecessaryContains]  # defensive: conf list may contain None at runtime
             raise RecipeException(
                 f"Incorrect 'core.sources:download_urls' contains invalid 'None'"
                 f"url: {source_origins}")
@@ -59,7 +59,7 @@ class SourcesCachingDownloader:
 
         # First, see if it is already in the download cache
         if download_cache_folder:
-            download_cache = DownloadCache(download_cache_folder)
+            download_cache = DownloadCache(os.fspath(download_cache_folder))
             download_path = download_cache.source_path(sha256)
 
             with download_cache.lock(sha256):
@@ -69,7 +69,7 @@ class SourcesCachingDownloader:
                 need_download = not in_cache
                 if in_cache:
                     recorded_urls = download_cache.get_urls_from_backup_sources(download_path)
-                    urls_set = set(urls if isinstance(urls, (list, tuple)) else [urls])
+                    urls_set = set(cast("list[Any]", urls if isinstance(urls, (list, tuple)) else [urls]))
                     # URLs mismatch: only re-download if there are recorded URLs and they don't match the requested ones.
                     # Some users could not have available the metadata files (json) while using
                     # backup-sources. We do not want to force re-downloading
@@ -141,10 +141,11 @@ class SourcesCachingDownloader:
         os.makedirs(os.path.dirname(file_path), exist_ok=True)  # filename in subfolder must exist
         if not isinstance(urls, (list, tuple)):
             urls = [urls]
+        urls = cast("list[Any]", urls)
         for url in urls:
             try:
                 if url.startswith("file:"):  # plain copy from local disk, no real download
-                    file_origin = url2pathname(urlparse(url).path)
+                    file_origin = url2pathname(urlparse(str(url)).path)
                     shutil.copyfile(file_origin, file_path)
                     self._file_downloader.check_checksum(file_path, sha256)
                 else:

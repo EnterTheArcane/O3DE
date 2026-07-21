@@ -5,7 +5,7 @@ from pathlib import Path
 from thirdparty.errors import RecipeException
 
 if platform.system() == "Windows":
-    def _recipe_expand_user(path):
+    def _recipe_expand_user(path: "str | os.PathLike[str]") -> str:
         """ wrapper to the original expanduser function, to workaround python returning
         verbatim %USERPROFILE% when some other app (git for windows) sets HOME envvar
         """
@@ -28,7 +28,8 @@ if platform.system() == "Windows":
                 os.environ["HOME"] = home
         return result
 else:
-    _recipe_expand_user = os.path.expanduser
+    def _recipe_expand_user(path: "str | os.PathLike[str]") -> str:
+        return os.path.expanduser(path)
 
 DEFAULT_O3DE_PACKAGE_HOME = os.path.join(".o3de", "ThirdParty")
 
@@ -52,6 +53,8 @@ def get_recipe_user_home():
     def _user_home_from_rc_file():
         try:
             rc_path = find_file_walk_up(os.getcwd(), ".thirdpartyrc")
+            if rc_path is None:
+                return None
 
             with open(rc_path) as rc_file:
                 values = {k: str(v) for k, v in (line.split("=") for line in rc_file.read().splitlines() if not line.startswith("#"))}

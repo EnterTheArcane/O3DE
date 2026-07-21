@@ -21,13 +21,13 @@ def cross_building(recipe: RecipeBase, skip_x64_x86: bool = False) -> bool:
     host_os = recipe.settings.os
     host_arch = recipe.settings.arch
 
-    if skip_x64_x86 and host_os is not None and (build_os == host_os) and host_arch is not None and (
+    if skip_x64_x86 and host_os is not None and (build_os == host_os) and host_arch is not None and (  # pyright: ignore[reportUnnecessaryComparison]  # settings os/arch typed str; keep defensive None guard
         (build_arch == "x86_64") and (host_arch == "x86") or (build_arch == "sparcv9") and (host_arch == "sparc") or (build_arch == "ppc64") and (host_arch == "ppc32")):
         return False
 
-    if host_os is not None and (build_os != host_os):
+    if host_os is not None and (build_os != host_os):  # pyright: ignore[reportUnnecessaryComparison]  # settings.os typed str; keep defensive None guard
         return True
-    if host_arch is not None and (build_arch != host_arch):
+    if host_arch is not None and (build_arch != host_arch):  # pyright: ignore[reportUnnecessaryComparison]  # settings.arch typed str; keep defensive None guard
         return True
 
     return False

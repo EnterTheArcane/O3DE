@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import cast
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
@@ -131,8 +132,8 @@ class Recipe(RecipeBase[_Options]):
                     return os.environ.get("CC", "clang-cl"), os.environ.get("AR", "llvm-lib"), os.environ.get("LD", "lld-link"), rc
                 return "cl -nologo", "lib", "link", rc
 
-            compile_wrapper = unix_path(self, self.conf.tools.automake.compile_wrapper)
-            ar_wrapper = unix_path(self, self.conf.tools.automake.lib_wrapper)
+            compile_wrapper = unix_path(self, cast("str | os.PathLike[str]", self.conf.tools.automake.compile_wrapper))
+            ar_wrapper = unix_path(self, cast("str | os.PathLike[str]", self.conf.tools.automake.lib_wrapper))
             cc, ar, link, rc = programs()
             env.define("CC", f"{compile_wrapper} {cc}")
             env.define("CXX", f"{compile_wrapper} {cc}")

@@ -1,7 +1,7 @@
 import jinja2
 import os
 import textwrap
-from typing import Any
+from typing import Any, cast
 
 from thirdparty._internal.util.files import save
 from thirdparty.apple.utils import is_apple_os, apple_min_version_flag, resolve_apple_flags, apple_extra_flags
@@ -266,7 +266,11 @@ class MesonToolchain:
         # Read configuration for compilers
         compilers_by_conf = self._recipe_conf.tools.build.compiler_executables
         # Read the VirtualBuildEnv to update the variables
-        build_env: dict[str, Any] = self._recipe.buildenv_build.vars(self._recipe) if native else (VirtualBuildEnv(self._recipe).vars())
+        build_env: dict[str, Any] = cast(
+            "dict[str, Any]",
+            self._recipe.buildenv_build.vars(self._recipe)  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
+            if native
+            else VirtualBuildEnv(self._recipe).vars())
         #: Sets the Meson ``c`` variable, defaulting to the ``CC`` build environment value.
         #: If provided as a blank-separated string, it will be transformed into a list.
         #: Otherwise, it remains a single string.
@@ -436,7 +440,7 @@ class MesonToolchain:
         sharedlinkflags = self._recipe_conf.tools.build.sharedlinkflags
         exelinkflags = self._recipe_conf.tools.build.exelinkflags
         linker_scripts = self._recipe_conf.tools.build.linker_scripts
-        linker_script_flags = ["-T" + linker_script for linker_script in linker_scripts]
+        linker_script_flags = ["-T" + str(linker_script) for linker_script in linker_scripts]
         defines = self._recipe_conf.tools.build.defines
         sys_root = [f"--sysroot={self._sys_root}"] if self._sys_root else [""]
         ld = (sharedlinkflags + exelinkflags + linker_script_flags + sys_root + self.extra_ldflags + self.threads_flags)
@@ -454,7 +458,7 @@ class MesonToolchain:
     @staticmethod
     def _get_env_list(v: Any) -> Any:
         # FIXME: Should Environment have the "check_type=None" keyword as Conf?
-        return v.strip().split() if not isinstance(v, list) else v
+        return v.strip().split() if not isinstance(v, list) else cast("list[Any]", v)
 
     @staticmethod
     def _filter_list_empty_fields(v: Any) -> list[Any]:
@@ -463,7 +467,7 @@ class MesonToolchain:
     @staticmethod
     def _sanitize_env_format(value: Any) -> Any:
         if value is None or isinstance(value, list):
-            return value
+            return cast("list[Any] | None", value)
         if not isinstance(value, str):
             raise RecipeException(f"MesonToolchain: Value '{value}' should be a string")
         ret = [x.strip() for x in value.split() if x]
@@ -516,7 +520,7 @@ class MesonToolchain:
             if listkeypair:
                 if not isinstance(listkeypair, list):
                     raise RecipeException("MesonToolchain.subproject_options must be a list of dicts")
-                subproject_options[subproject] = [{k: to_meson_value(v) for k, v in keypair.items()} for keypair in listkeypair]
+                subproject_options[subproject] = [{k: to_meson_value(v) for k, v in keypair.items()} for keypair in cast("list[dict[str, Any]]", listkeypair)]
         return {
             # https://mesonbuild.com/Machine-files.html#properties
             "properties": {k: to_meson_value(v) for k, v in self.properties.items()}, # https://mesonbuild.com/Machine-files.html#project-specific-options

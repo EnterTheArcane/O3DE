@@ -18,7 +18,7 @@ from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft.visual import msvc_version_to_toolset_version, msvc_platform_from_arch
 
-from typing import Any
+from typing import Any, cast
 from thirdparty.recipe import RecipeBase
 
 
@@ -102,7 +102,7 @@ class VSRuntimeBlock(Block):
                 config_dict = dict(matches)
 
         build_type = settings.build_type  # FIXME: change for configuration
-        if build_type is None:
+        if build_type is None:  # pyright: ignore[reportUnnecessaryComparison] -- defensive: build_type declared str but may be unset at runtime
             return None
 
         if compiler == "msvc" or compiler == "clang":
@@ -441,7 +441,7 @@ class AndroidSystemBlock(Block):
         android_ndk_path = self._recipe.conf.tools.android.ndk_path
         if not android_ndk_path:
             raise RecipeException("CMakeToolchain needs conf.tools.android.ndk_path configuration defined")
-        android_ndk_path = android_ndk_path.replace("\\", "/")
+        android_ndk_path = os.fspath(android_ndk_path).replace("\\", "/")
         android_ndk_path = relativize_path(
             android_ndk_path, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
 
@@ -542,12 +542,12 @@ class AppleSystemBlock(Block):
         enable_arc = self._recipe.conf.tools.apple.enable_arc
         enable_visibility = self._recipe.conf.tools.apple.enable_visibility
 
-        ctxt_toolchain = {
+        ctxt_toolchain: dict[str, Any] = {
             "enable_bitcode": enable_bitcode, "enable_bitcode_marker": all([enable_bitcode, is_debug]), "enable_arc": enable_arc, "enable_visibility": enable_visibility,
         }
         if host_sdk_name:
             host_sdk_name = relativize_path(
-                host_sdk_name, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
+                os.fspath(host_sdk_name), self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
             ctxt_toolchain["cmake_osx_sysroot"] = host_sdk_name
         # this is used to initialize the OSX_ARCHITECTURES property on each target as it is created
         if host_architecture:
@@ -738,7 +738,7 @@ class PkgConfigBlock(Block):
     def context(self) -> dict[str, Any] | None:
         pkg_config = self._recipe.conf.tools.gnu.pkg_config
         if pkg_config:
-            pkg_config = pkg_config.replace("\\", "/")
+            pkg_config = os.fspath(pkg_config).replace("\\", "/")
         subsystem = deduce_subsystem(self._recipe, "build")
         pathsep = ":" if subsystem != WINDOWS else ";"
         pkg_config_path = "${CMAKE_CURRENT_LIST_DIR}" + pathsep
@@ -761,7 +761,7 @@ class UserToolchain(Block):
     def context(self) -> dict[str, Any] | None:
         # This is global [conf] injection of extra toolchain files
         user_toolchain = self._recipe.conf.tools.cmake.toolchain.user_toolchain
-        paths = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in user_toolchain]
+        paths = [relativize_path(os.fspath(p), self._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in user_toolchain]
         paths = [p.replace("\\", "/") for p in paths]
         return {"paths": paths}
 
@@ -803,11 +803,11 @@ class ExtraFlagsBlock(Block):
         """)
 
     @property
-    def template(self) -> str:
+    def template(self) -> str:  # pyright: ignore[reportIncompatibleVariableOverride] -- dynamic template computed from existing toolchain file; base is a str class var
         if not is_multi_configuration(self._toolchain.generator):
             return self._template
 
-        sections = {}
+        sections: dict[str, list[str]] = {}
         if os.path.exists(RECIPE_TOOLCHAIN_FILENAME):
             existing_toolchain = load(RECIPE_TOOLCHAIN_FILENAME)
             lines = existing_toolchain.splitlines()
@@ -818,6 +818,7 @@ class ExtraFlagsBlock(Block):
                     current_section = [line]
                     sections[section_name] = current_section
                 elif line == "# Recipe conf flags end":
+                    assert current_section is not None
                     current_section.append(line)
                     current_section = None
                 elif current_section is not None:
@@ -830,9 +831,8 @@ class ExtraFlagsBlock(Block):
                 v.insert(0, "{% raw %}")
                 v.append("{% endraw %}")
         sections[config] = [self._template]
-        sections = ["\n".join(lines) for lines in sections.values()]
-        sections = "\n".join(sections)
-        return sections
+        section_texts = ["\n".join(section_lines) for section_lines in sections.values()]
+        return "\n".join(section_texts)
 
     def context(self) -> dict[str, Any] | None:
         # Now, it's time to get all the flags defined by the user
@@ -1029,7 +1029,7 @@ class GenericSystemBlock(Block):
                 toolset = msvc_version_to_toolset_version(compiler_version)
                 if compiler_update is not None:  # It is full one(19.28), not generic 19.2X
                     # The equivalent of compiler 19.26 is toolset 14.26
-                    toolset += f",version=14.{compiler_version[-1]}{compiler_update}"
+                    toolset = cast(str, toolset) + f",version=14.{compiler_version[-1]}{compiler_update}"
         elif compiler == "clang":
             if generator and "Visual" in generator:
                 if any(f"Visual Studio {v}" in generator for v in ("16", "17", "18")):
@@ -1044,7 +1044,7 @@ class GenericSystemBlock(Block):
             toolset = toolset_arch if toolset is None else f"{toolset},{toolset_arch}"
         toolset_cuda = recipe.conf.tools.cmake.toolchain.toolset_cuda
         if toolset_cuda is not None:
-            toolset_cuda = relativize_path(toolset_cuda, recipe, "${CMAKE_CURRENT_LIST_DIR}")
+            toolset_cuda = relativize_path(os.fspath(toolset_cuda), recipe, "${CMAKE_CURRENT_LIST_DIR}")
             toolset_cuda = f"cuda={toolset_cuda}"
             toolset = toolset_cuda if toolset is None else f"{toolset},{toolset_cuda}"
         return toolset
@@ -1075,7 +1075,7 @@ class GenericSystemBlock(Block):
             if arch_host in ["tc131", "tc16", "tc161", "tc162", "tc18"]:
                 return "Generic-ELF"
             return cmake_system_name_map.get(os_host, os_host)
-        elif arch_host is not None and arch_host != arch_build:
+        elif arch_host is not None and arch_host != arch_build:  # pyright: ignore[reportUnnecessaryComparison] -- defensive: arch declared str but may be unset at runtime
             return cmake_system_name_map.get(os_host, os_host)
 
     def _is_apple_cross_building(self):
@@ -1100,9 +1100,9 @@ class GenericSystemBlock(Block):
                 "1": "23", "2": "24", "26": "25",
             },
         }
-        os_version = Version(os_version).major if os_name != "Mac" or (os_name == "Mac" and Version(
+        darwin_version = Version(os_version).major if os_name != "Mac" or (os_name == "Mac" and Version(
             os_version) >= Version("11")) else os_version
-        return version_mapping.get(os_name, {}).get(str(os_version))
+        return version_mapping.get(os_name, {}).get(str(darwin_version))
 
     def _get_cross_build(self):
         system_name = self._recipe.conf.tools.cmake.toolchain.system_name
@@ -1123,7 +1123,7 @@ class GenericSystemBlock(Block):
                 # cross-build in Macos also for M1
                 system_name = {"Mac": "Darwin"}.get(os_host, os_host)
                 #  CMAKE_SYSTEM_VERSION for Apple sets the Darwin version, not the os version
-                _system_version = self._get_darwin_version(os_host, os_host_version)
+                _system_version = self._get_darwin_version(os_host, cast(str, os_host_version))
                 _system_processor = to_apple_arch(self._recipe)
             elif os_host != "Android":
                 system_name = self._get_generic_system_name()
@@ -1177,7 +1177,7 @@ class GenericSystemBlock(Block):
 
         # This is handled by the tools.apple:sdk_path and CMAKE_OSX_SYSROOT in Apple
         cmake_sysroot = self._recipe.conf.tools.build.sysroot
-        cmake_sysroot = cmake_sysroot.replace("\\", "/") if cmake_sysroot is not None else None
+        cmake_sysroot = os.fspath(cmake_sysroot).replace("\\", "/") if cmake_sysroot is not None else None
         if cmake_sysroot is not None:
             cmake_sysroot = relativize_path(
                 cmake_sysroot, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
@@ -1242,7 +1242,7 @@ class ExtraVariablesBlock(Block):
 
 class OutputDirsBlock(Block):
     @property
-    def template(self) -> str:
+    def template(self) -> str:  # pyright: ignore[reportIncompatibleVariableOverride] -- dynamic template; base is a str class var
         return textwrap.dedent(
             """
             # Definition of CMAKE_INSTALL_XXX folders
@@ -1293,7 +1293,7 @@ class OutputDirsBlock(Block):
 
 class VariablesBlock(Block):
     @property
-    def template(self) -> str:
+    def template(self) -> str:  # pyright: ignore[reportIncompatibleVariableOverride] -- dynamic template; base is a str class var
         return textwrap.dedent(
             """
             # Definition of CMake variables from CMakeToolchain.variables values
@@ -1335,7 +1335,7 @@ class VariablesBlock(Block):
 
 class PreprocessorBlock(Block):
     @property
-    def template(self) -> str:
+    def template(self) -> str:  # pyright: ignore[reportIncompatibleVariableOverride] -- dynamic template; base is a str class var
         return textwrap.dedent(
             """
             # Preprocessor definitions from CMakeToolchain.preprocessor_definitions values
@@ -1386,7 +1386,7 @@ class WarningFilterBlock(Block):
     """
 
     @property
-    def template(self) -> str:
+    def template(self) -> str:  # pyright: ignore[reportIncompatibleVariableOverride] -- dynamic template; base is a str class var
         return textwrap.dedent(
             """
             function(add_compile_options)

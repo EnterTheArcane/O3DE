@@ -486,7 +486,7 @@ def _build_ordered(
                 sys.exit(1)
 
     ok = [(n, v, t) for n, v, t, e in results if e is None]
-    fail = [(n, v, e) for n, v, t, e in results if e is not None]
+    fail = [(n, v, e) for n, v, _t, e in results if e is not None]
 
     _out.info(f"\n{"=" * 70}")
     _out.info(f"=== Summary: {len(ok)} built, {len(fail)} failed, {len(skipped)} skipped ===")

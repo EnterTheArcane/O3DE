@@ -80,7 +80,7 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os in ("Linux", "FreeBSD"):
             # cube/vulkaninfo include vulkan.h + X11/Xlib.h with the platform macros defined, so the
             # xcb/X11 headers (in package dirs, not /usr/include) must be visible to every target.
-            include_flags = []
+            include_flags: list[str] = []
             for dep in self.dependencies.host.topological_sort.values():
                 inc = dep.folders.package / "include"
                 if inc.is_dir():

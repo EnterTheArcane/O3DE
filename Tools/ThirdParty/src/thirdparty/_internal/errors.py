@@ -14,7 +14,7 @@ def recipe_remove_attr(recipe: RecipeBase, names: Any, method: str):
     original_class = type(recipe)
 
     def _prop(attr_name: str):
-        def _m(_):
+        def _m(_: Any):
             raise RecipeException(f"'self.{attr_name}' access in '{method}()' method is forbidden")
 
         return property(_m)

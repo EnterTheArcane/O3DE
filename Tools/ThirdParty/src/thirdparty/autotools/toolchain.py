@@ -1,6 +1,7 @@
 import os
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from thirdparty.apple.utils import is_apple_os, resolve_apple_flags, apple_extra_flags
 from thirdparty.build import cmd_args_to_string, save_toolchain_args
@@ -136,7 +137,7 @@ class AutotoolsToolchain:
 
         sysroot = self._recipe.conf.tools.build.sysroot
         if sysroot:
-            root = sysroot.replace("\\", "/")
+            root = os.fspath(sysroot).replace("\\", "/")
             compiler = self._recipe.settings.compiler
             self.sysroot_flag = f"--sysroot {root}" if compiler != "qcc" else f"-Wc,-isysroot,{root}"
         else:
@@ -258,8 +259,8 @@ class AutotoolsToolchain:
         return [f for f in self.msvc_extra_flags if f not in flags]
 
     @staticmethod
-    def _filter_list_empty_fields(v: list[str | None]) -> list[str]:
-        return list(filter(bool, v))
+    def _filter_list_empty_fields(v: Iterable[str | None]) -> list[str]:
+        return [x for x in v if x]
 
     @property
     def cxxflags(self) -> list[str]:
@@ -293,7 +294,7 @@ class AutotoolsToolchain:
         conf_flags = list(self._recipe.conf.tools.build.sharedlinkflags)
         conf_flags.extend(self._recipe.conf.tools.build.exelinkflags)
         linker_scripts = self._recipe.conf.tools.build.linker_scripts
-        conf_flags.extend(["-T'" + linker_script + "'" for linker_script in linker_scripts])
+        conf_flags.extend(["-T'" + str(linker_script) + "'" for linker_script in linker_scripts])
         ret = ret + self.build_type_link_flags + apple_flags + self.extra_ldflags + conf_flags
         ret = ret + self.msvc_runtime_link_flags
         return self._filter_list_empty_fields(ret)
@@ -326,7 +327,7 @@ class AutotoolsToolchain:
         if self.android_cross_flags:
             for env_var, env_value in self.android_cross_flags.items():
                 unix_env_value = unix_path(self._recipe, env_value)
-                env.define(env_var, unix_env_value)
+                env.define(env_var, cast(str, unix_env_value))
         else:
             # Setting user custom compiler executables flags
             compilers_by_conf = self._recipe.conf.tools.build.compiler_executables
@@ -339,7 +340,7 @@ class AutotoolsToolchain:
                         compiler = compilers_by_conf[comp]
                         # upstream issue 13780
                         compiler = unix_path(self._recipe, compiler)
-                        env.define(env_var, compiler)
+                        env.define(env_var, cast(str, compiler))
             compiler_setting = self._recipe.settings.compiler
             if compiler_setting == "msvc":
                 # None of them defined, if one is defined by user, user should define the other too
@@ -368,9 +369,9 @@ class AutotoolsToolchain:
             # on the build host), NOT the target compiler_executables used for CC/CXX.
             compilers_build_mapping = self._recipe.conf.tools.build.compiler_executables_build
             if "c" in compilers_build_mapping:
-                env.define("CC_FOR_BUILD", compilers_build_mapping["c"])
+                env.define("CC_FOR_BUILD", cast(str, compilers_build_mapping["c"]))
             if "cpp" in compilers_build_mapping:
-                env.define("CXX_FOR_BUILD", compilers_build_mapping["cpp"])
+                env.define("CXX_FOR_BUILD", cast(str, compilers_build_mapping["cpp"]))
         return env
 
     def vars(self):
@@ -378,8 +379,8 @@ class AutotoolsToolchain:
 
     def generate(self, env: Environment | None = None, scope: str = "build"):
         env = env or self.environment()
-        env = env.vars(self._recipe, scope=scope)
-        env.save_script("autotoolstoolchain")
+        env_vars = env.vars(self._recipe, scope=scope)
+        env_vars.save_script("autotoolstoolchain")
         self.generate_args()
         VCVars(self._recipe).generate(scope=scope)
 
@@ -468,7 +469,8 @@ class AutotoolsToolchain:
             return ret
 
         def _dict_to_list(flags: dict[str, str]) -> list[str]:
-            return [f"{k}={v}" if v else k for k, v in flags.items() if v is not None]
+            # Defensive: values come from _list_to_dict (always str) but callers may inject None to prune.
+            return [f"{k}={v}" if v else k for k, v in flags.items() if v is not None]  # pyright: ignore[reportUnnecessaryComparison]
 
         self_args = getattr(self, attr_name)
         # FIXME: if xxxxx_args -> dict-type at some point, all these lines could be removed

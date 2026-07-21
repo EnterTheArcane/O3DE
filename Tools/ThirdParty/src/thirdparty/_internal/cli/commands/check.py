@@ -75,7 +75,7 @@ def _check_recipes(
         except Exception as e:  # noqa: BLE001
             failures.append((name, "load", f"{type(e).__name__}: {e}"))
             continue
-        if not (isinstance(cls, type) and issubclass(cls, RecipeBase)):
+        if not (isinstance(cls, type) and issubclass(cls, RecipeBase)):  # pyright: ignore[reportUnnecessaryIsInstance]  # defensive: _parse_recipe may return non-class objects
             continue
         n_recipes += 1
         version = resolve_version(cls)

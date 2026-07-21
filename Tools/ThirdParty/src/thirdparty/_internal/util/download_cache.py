@@ -4,13 +4,13 @@ import os
 from contextlib import contextmanager
 from threading import Lock
 
-import fasteners
+import fasteners  # pyright: ignore[reportMissingTypeStubs]
 
 from thirdparty._internal.util.dates import timestamp_now
 from thirdparty._internal.util.files import load, save, remove_if_dirty
 from thirdparty.errors import RecipeException
 
-from typing import Any
+from typing import Any, cast
 from thirdparty.recipe import RecipeBase
 
 
@@ -141,6 +141,7 @@ class DownloadCache:
 
         if not isinstance(urls, (list, tuple)):
             urls = [urls]
+        urls = cast("list[Any]", urls)
         existing_urls: list[Any] = summary["references"].setdefault(summary_key, [])
         existing_urls.extend(url for url in urls if url not in existing_urls)
         recipe.output.verbose(f"Updating {summary_path} summary file")

@@ -9,7 +9,7 @@ from importlib import util as imp_util
 from multiprocessing import cpu_count
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import Any, cast
 
 from thirdparty._internal.errors import NotFoundException
 from thirdparty._internal.model.conf import Conf
@@ -48,7 +48,7 @@ class RecipeLoader:
             return None
         try:
             _module, cls = _parse_recipe(str(recipe_path))
-            if not (isinstance(cls, type) and issubclass(cls, RecipeBase)):
+            if not (isinstance(cls, type) and issubclass(cls, RecipeBase)):  # pyright: ignore[reportUnnecessaryIsInstance]  # defensive: _parse_recipe may return non-class objects
                 return None
             return cls
         except Exception:
@@ -67,7 +67,7 @@ def _parse_module(recipe_module: Any, module_id: Any) -> type[RecipeBase]:
 
         if issubclass(attr, RecipeBase) and attr != RecipeBase:
             if result is None:
-                result = attr
+                result = cast("type[RecipeBase]", attr)
             else:
                 raise RecipeException("More than 1 recipe in the file")
 
@@ -138,7 +138,7 @@ def set_linux_compiler_executables(conf: Conf, settings: Settings) -> None:
     """
     execs = _linux_gcc_compiler_executables(settings)
     if execs:
-        conf.tools.build.compiler_executables = execs
+        conf.tools.build.compiler_executables = cast("dict[Any, Any]", execs)
 
 
 def set_linux_build_compiler_executables(conf: Conf, settings_build: Settings) -> None:
@@ -148,7 +148,7 @@ def set_linux_build_compiler_executables(conf: Conf, settings_build: Settings) -
     """
     execs = _linux_gcc_compiler_executables(settings_build)
     if execs:
-        conf.tools.build.compiler_executables_build = execs
+        conf.tools.build.compiler_executables_build = cast("dict[Any, Any]", execs)
 
 
 def make_probe_recipe(
@@ -254,6 +254,8 @@ def _load_python_file(recipe_path: Any):
             try:
                 sys.dont_write_bytecode = True
                 spec = imp_util.spec_from_file_location(module_id, recipe_path)
+                if spec is None or spec.loader is None:
+                    raise ImportError(f"Could not load spec for {recipe_path}")
                 loaded = imp_util.module_from_spec(spec)
                 spec.loader.exec_module(loaded)
                 sys.dont_write_bytecode = old_dont_write_bytecode
@@ -269,17 +271,17 @@ def _load_python_file(recipe_path: Any):
                 try:
                     try:
                         # Most modules will have __file__ != None
-                        folder = os.path.dirname(module.__file__)
+                        folder: str = os.path.dirname(cast("str", module.__file__))
                     except (AttributeError, TypeError):
                         # But __file__ might not exist or equal None
                         # Like some builtins and Namespace packages py3
-                        folder = module.__path__._path[0]
+                        folder = cast("Any", module.__path__)._path[0]
                 except AttributeError:  # In case the module.__path__ doesn't exist
                     pass
                 else:
                     if folder.startswith(current_dir):
                         module = sys.modules.pop(added)
-                        module.print = new_print
+                        cast("Any", module).print = new_print
                         sys.modules["%s.%s" % (module_id, added)] = module
     except RecipeException:
         raise
@@ -292,5 +294,5 @@ def _load_python_file(recipe_path: Any):
     finally:
         sys.path.pop(0)
 
-    loaded.print = new_print
+    cast("Any", loaded).print = new_print
     return loaded, module_id

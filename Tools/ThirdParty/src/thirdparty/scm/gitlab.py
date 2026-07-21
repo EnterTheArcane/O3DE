@@ -3,7 +3,6 @@ import re
 from functools import cached_property
 
 import gitlab
-import gitlab.exceptions
 
 from thirdparty._internal.model.version import Version
 from thirdparty.recipe import RecipeBase
@@ -31,9 +30,10 @@ def _tag_version(tag: str) -> Version | None:
         return None
     if len(v.main) < 2:
         return None
-    if had_prefix and v.main[0].value >= 1000:
+    main = [int(i.value) for i in v.main]
+    if had_prefix and main[0] >= 1000:
         return None
-    if (not had_prefix and len(v.main) == 3 and v.main[0].value > 1970 and 1 <= v.main[1].value <= 12 and 1 <= v.main[2].value <= 31):
+    if (not had_prefix and len(main) == 3 and main[0] > 1970 and 1 <= main[1] <= 12 and 1 <= main[2] <= 31):
         return None
     return v
 

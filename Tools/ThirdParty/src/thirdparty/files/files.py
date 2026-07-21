@@ -402,7 +402,7 @@ def unzip(
         return untargz(
             filename, destination, pattern, strip_root, extract_filter, excludes=excludes)
     if filename.endswith(".gz"):
-        target_name = filename[:-3] if destination == "." else destination
+        target_name = filename[:-3] if destination == "." else destination  # pyright: ignore[reportUnnecessaryComparison]  # defensive: callers may pass "." as a str
         target_dir = os.path.dirname(target_name)
         if target_dir:
             os.makedirs(target_dir, exist_ok=True)

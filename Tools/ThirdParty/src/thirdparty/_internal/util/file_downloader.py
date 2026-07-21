@@ -84,7 +84,7 @@ class FileDownloader:
                     if counter == retry:
                         raise
                     else:
-                        self._output.warning(exc, warn_tag="network")
+                        self._output.warning(str(exc), warn_tag="network")
                         self._output.info(f"Waiting {retry_wait} seconds to retry...")
                         time.sleep(retry_wait)
 

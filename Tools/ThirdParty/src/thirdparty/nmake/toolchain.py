@@ -1,4 +1,6 @@
 
+from typing import cast
+
 from thirdparty.build.flags import build_type_flags, cppstd_flag, build_type_link_flags
 from thirdparty.env import Environment
 from thirdparty.nmake.deps import format_defines
@@ -114,7 +116,7 @@ class NMakeToolchain:
             }
             for env_var, comp in compilers_mapping.items():
                 if comp in conf_compilers:
-                    env.define(env_var, conf_compilers[comp])
+                    env.define(env_var, cast(str, conf_compilers[comp]))
         return env
 
     def vars(self):

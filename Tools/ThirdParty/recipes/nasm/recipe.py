@@ -2,6 +2,8 @@ import os
 import shutil
 from pathlib import Path
 
+from thirdparty._internal.model.conf import CompilerExecutable, PathValue
+
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, chdir, copy, get, replace_in_file, rmdir
@@ -88,7 +90,7 @@ class Recipe(RecipeBase):
         self.info.libdirs = []
         self.info.includedirs = []
 
-        compiler_executables = {"asm": self._nasm}
+        compiler_executables: dict[CompilerExecutable, PathValue] = {"asm": self._nasm}
         self.info.conf.tools.build.compiler_executables.update(compiler_executables)
         self.info.buildenv.define_path("NASM", self._nasm)
         self.info.buildenv.define_path("NDISASM", self._ndisasm)

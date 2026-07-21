@@ -71,7 +71,7 @@ class Recipe(RecipeBase[_Options]):
             # xcb/xcb.h, X11/Xlib.h and wayland-client.h in every translation unit - but vvl only
             # wires those platform include dirs onto a couple of targets. Here the headers come
             # from package dirs (not /usr/include), so expose them to every target.
-            include_flags = []
+            include_flags: list[str] = []
             for dep in self.dependencies.host.topological_sort.values():
                 inc = dep.folders.package / "include"
                 if inc.is_dir():

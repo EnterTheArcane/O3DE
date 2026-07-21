@@ -1,7 +1,7 @@
 import os
 import sys
 from contextlib import contextmanager
-from collections.abc import Iterator
+from collections.abc import Generator
 
 # GitHub Actions sets GITHUB_ACTIONS=true for every step; only then do we emit the
 # ::group::/::endgroup:: workflow commands that make each recipe collapsible in the log.
@@ -42,7 +42,7 @@ def group_end() -> None:
 
 
 @contextmanager
-def group(title: str) -> Iterator[None]:
+def group(title: str) -> Generator[None]:
     group_start(title)
     try:
         yield

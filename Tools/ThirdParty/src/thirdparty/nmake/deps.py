@@ -1,4 +1,5 @@
 import os
+from typing import cast
 
 from thirdparty import Info
 from thirdparty.env import Environment
@@ -63,11 +64,11 @@ class NMakeDeps:
             ret: list[str] = []
             ret.extend(info.exelinkflags or [])
             ret.extend(info.sharedlinkflags or [])
-            ret.extend([format_lib(lib) for lib in info.libs or []])
-            ret.extend([format_lib(lib) for lib in info.system_libs or []])
+            ret.extend([format_lib(lib) for lib in cast("list[str]", info.libs or [])])
+            ret.extend([format_lib(lib) for lib in cast("list[str]", info.system_libs or [])])
             link_args = " ".join(ret)
 
-            cl_flags = [f'-I"{p}"' for p in info.includedirs or []]
+            cl_flags = [f'-I"{p}"' for p in cast("list[str]", info.includedirs or [])]
             cl_flags.extend(info.cflags or [])
             cl_flags.extend(info.cxxflags or [])
             cl_flags.extend(format_defines(info.defines or []))

@@ -2,7 +2,7 @@ import jinja2
 import os
 import re
 import textwrap
-from typing import Any
+from typing import Any, cast
 
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.util.files import save
@@ -134,7 +134,7 @@ class _PCFilesDeps:
 
         def apply_custom_content():
             if isinstance(custom_content, dict):
-                pc_variables.update(custom_content)
+                pc_variables.update(cast("dict[str, str]", custom_content))
             elif custom_content:  # Legacy: custom content is string
                 pc_variable_pattern = re.compile("^(.*)=(.*)")
                 for line in custom_content.splitlines():
@@ -190,8 +190,8 @@ class _PCFilesDeps:
             path = subsystem_path(subsystem, path.replace("\\", "/"))
             return '"%s"' % path if " " in path else path
 
-        frameworks = ["-framework %s" % framework for framework in (info.frameworks or [])]
-        framework_paths = ['-F"%s"' % adjust_path(path) for path in (info.frameworkdirs or [])]
+        frameworks = ["-framework %s" % framework for framework in cast("list[str]", info.frameworks or [])]
+        framework_paths = ['-F"%s"' % adjust_path(path) for path in cast("list[str]", info.frameworkdirs or [])]
         return frameworks + framework_paths
 
     def _get_lib_flags(self, libdirvars: Any, info: Any) -> str:

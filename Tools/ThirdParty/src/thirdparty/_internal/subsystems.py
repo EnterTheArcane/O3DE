@@ -121,7 +121,7 @@ def deduce_subsystem(recipe: RecipeBase, scope: str | None) -> str | None:
     scope = "build" if scope is None else scope  # let's assume build context if scope=None
     if scope.startswith("build"):
         the_os = recipe.settings_build.os
-        if the_os is None:
+        if the_os is None:  # pyright: ignore[reportUnnecessaryComparison]  # os typed str but may be None at runtime
             raise RecipeException("The 'build' profile must have a 'os' declared")
     else:
         the_os = recipe.settings.os
@@ -140,7 +140,7 @@ def deduce_subsystem(recipe: RecipeBase, scope: str | None) -> str | None:
     return WINDOWS
 
 
-def subsystem_path(subsystem: str | None, path: str | os.PathLike[str]) -> str | None:
+def subsystem_path(subsystem: str | None, path: str | os.PathLike[str]) -> str:
     """"Used to translate windows paths to MSYS2 unix paths like
     /c/users/path/to/file. Not working in a regular console or MinGW!
     """
@@ -167,7 +167,7 @@ def get_cased_path(name: str) -> str:
     if not os.path.isabs(name):
         name = os.path.abspath(name)
 
-    result = []
+    result: list[str] = []
     current = name
     while True:
         parent, child = os.path.split(current)

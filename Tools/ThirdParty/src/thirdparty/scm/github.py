@@ -35,12 +35,13 @@ def _tag_version(tag: str) -> Version | None:
     # Require at least two components; single numbers (r42, v114, draft-15) are not versions.
     if len(v.main) < 2:
         return None
+    main = [int(i.value) for i in v.main]
     # When a non-digit prefix was stripped, reject year-like first components
     # (e.g. "before-reformat-2005-01" -> 2005.01, "CVE-2021-3541" -> 2021.3541).
-    if had_prefix and v.main[0].value >= 1000:
+    if had_prefix and main[0] >= 1000:
         return None
     # Reject digit-starting YYYY-MM-DD style date tags (e.g. "2021-01-15").
-    if (not had_prefix and len(v.main) == 3 and v.main[0].value > 1970 and 1 <= v.main[1].value <= 12 and 1 <= v.main[2].value <= 31):
+    if (not had_prefix and len(main) == 3 and main[0] > 1970 and 1 <= main[1] <= 12 and 1 <= main[2] <= 31):
         return None
     return v
 

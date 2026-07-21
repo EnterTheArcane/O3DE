@@ -45,7 +45,7 @@ def copy(
         raise RecipeException("copy() 'src' and 'dst' arguments must have different values")
     if pattern.startswith(".."):
         raise RecipeException("copy() it is not possible to use relative patterns starting with '..'")
-    if src is None:
+    if src is None:  # pyright: ignore[reportUnnecessaryComparison]  # defensive: guard against runtime src=None despite the annotation
         raise RecipeException("copy() received 'src=None' argument")
 
     # This is necessary to add the trailing / so it is not reported as symlink

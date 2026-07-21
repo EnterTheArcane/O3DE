@@ -91,8 +91,8 @@ class MSBuildToolchain:
             ("Configuration", self.configuration), ("Platform", platform),
         ]
 
-        name = "".join("_%s" % v for _, v in props if v is not None)
-        condition = " And ".join("'$(%s)' == '%s'" % (k, v) for k, v in props if v is not None)
+        name = "".join("_%s" % v for _, v in props if v is not None)  # pyright: ignore[reportUnnecessaryComparison]  # defensive: prune unset props
+        condition = " And ".join("'$(%s)' == '%s'" % (k, v) for k, v in props if v is not None)  # pyright: ignore[reportUnnecessaryComparison]  # defensive: prune unset props
         return name.lower(), condition
 
     def generate(self):

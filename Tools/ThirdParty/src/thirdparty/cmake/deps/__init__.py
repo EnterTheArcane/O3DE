@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 from thirdparty.errors import RecipeException
 
@@ -16,6 +16,7 @@ def parse_extra_variable(source: Any, key: Any, value: Any) -> str | int | float
     elif isinstance(value, (int, float)):
         return value
     elif isinstance(value, dict):
+        value = cast("dict[str, Any]", value)
         var_value = parse_extra_variable(source, key, value.get("value"))
         is_force = value.get("force")
         if is_force:

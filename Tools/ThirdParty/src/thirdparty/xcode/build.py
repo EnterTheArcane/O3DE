@@ -11,7 +11,7 @@ class XcodeBuild:
     _arch: str | None
     _sdk: str
     _sdk_version: str
-    _os: str | None
+    _os: str
     _os_version: str | None
 
     def __init__(self, recipe: RecipeBase):

@@ -1,5 +1,6 @@
 import os
 from collections.abc import Iterator
+from typing import cast
 
 from thirdparty.recipe import RecipeBase
 
@@ -60,7 +61,7 @@ def remove_broken_symlinks(recipe: RecipeBase, base_folder: str | None = None):
     :param recipe: The current recipe object. Always use ``self``.
     :param base_folder: Folder to be scanned.
     """
-    for fullpath in get_symlinks(base_folder):
+    for fullpath in get_symlinks(cast(str, base_folder)):
         link_target = os.readlink(fullpath)
         if not os.path.isabs(link_target):
             link_target = os.path.join(os.path.dirname(fullpath), link_target)

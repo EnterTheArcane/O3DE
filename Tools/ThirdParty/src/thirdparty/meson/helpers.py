@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from thirdparty.build.flags import cppstd_msvc_flag, disable_flag
 from thirdparty.recipe import RecipeBase
@@ -52,11 +52,11 @@ def to_meson_value(value: Any) -> Any:
     elif isinstance(value, bool):
         return "true" if value else "false"
     elif isinstance(value, list):
-        return f"[{", ".join([str(to_meson_value(val)) for val in value])}]"
+        return f"[{", ".join([str(to_meson_value(val)) for val in cast("list[Any]", value)])}]"
     elif isinstance(value, Path):
         return f"'{value.as_posix()}'"
     elif isinstance(value, os.PathLike):
-        return f"'{os.fspath(value)}'"
+        return f"'{os.fspath(cast("os.PathLike[str]", value))}'"
     return value
 
 

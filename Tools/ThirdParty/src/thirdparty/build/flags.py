@@ -38,7 +38,7 @@ def architecture_flag(recipe: RecipeBase) -> str:
 
     if compiler == "clang" and the_os == "Windows":
         comp_exes = recipe.conf.tools.build.compiler_executables
-        clangcl = "clang-cl" in (comp_exes.get("c") or comp_exes.get("cpp", ""))
+        clangcl = "clang-cl" in str(comp_exes.get("c") or comp_exes.get("cpp", ""))
         if clangcl:
             return ""  # Do not add arch flags for clang-cl, can happen in cross-build runtime=None
         # LLVM/Clang and VS/Clang must define runtime. msys2 clang won't
@@ -160,7 +160,7 @@ def build_type_flags(recipe: RecipeBase) -> list[str]:
         return []
 
     comp_exes = recipe.conf.tools.build.compiler_executables
-    clangcl = "clang-cl" in (comp_exes.get("c") or comp_exes.get("cpp", ""))
+    clangcl = "clang-cl" in str(comp_exes.get("c") or comp_exes.get("cpp", ""))
 
     if compiler == "msvc" or clangcl:
         # https://github.com/Kitware/CMake/blob/d7af8a34b67026feaee558433db3a835d6007e06/
@@ -216,7 +216,7 @@ def llvm_clang_front(recipe: RecipeBase) -> str | None:
     if (recipe.settings.os != "Windows" or recipe.settings.compiler != "clang" or not recipe.settings.compiler_runtime):
         return
     compilers = recipe.conf.tools.build.compiler_executables
-    if "clang-cl" in compilers.get("c", "") or "clang-cl" in compilers.get("cpp", ""):
+    if "clang-cl" in str(compilers.get("c", "")) or "clang-cl" in str(compilers.get("cpp", "")):
         return "clang-cl"  # The MSVC-compatible front
     return "clang"  # The GNU-compatible front
 
@@ -253,7 +253,7 @@ def cppstd_flag(recipe: RecipeBase) -> str:
         flag = func(Version(compiler_version), str(cppstd))
     if flag and llvm_clang_front(recipe) == "clang-cl":
         flag = flag.replace("=", ":")
-    return flag
+    return flag or ""
 
 
 def cppstd_msvc_flag(visual_version: Any, cppstd: str) -> str | None:
@@ -503,7 +503,7 @@ def cstd_flag(recipe: RecipeBase) -> str:
     flag = None
     if func:
         flag = func(Version(compiler_version), str(cstd))
-    return flag
+    return flag or ""
 
 
 def _cstd_gcc(gcc_version: Version, cstd: str) -> str | None:

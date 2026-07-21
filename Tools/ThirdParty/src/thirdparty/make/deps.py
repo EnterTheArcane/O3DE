@@ -29,7 +29,7 @@ import jinja2
 import os
 import re
 import textwrap
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from thirdparty._internal.output import Output
 from thirdparty.files import save
@@ -623,7 +623,8 @@ class DepGenerator:
         """
         Get the sysroot of the dependency. Sysroot is a list of directories, or a single directory
         """
-        sysroot: list[Any] = self._dep.info.sysroot if isinstance(self._dep.info.sysroot, list) else [self._dep.info.sysroot]
+        raw_sysroot = cast("list[Any] | str | None", self._dep.info.sysroot)
+        sysroot: list[Any] = raw_sysroot if isinstance(raw_sysroot, list) else [raw_sysroot]
         # sysroot may return ['']
         if not sysroot or not sysroot[0]:
             return []

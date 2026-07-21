@@ -1,7 +1,7 @@
 import jinja2
 import textwrap
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from thirdparty.build.cpu import build_jobs
 from thirdparty.errors import RecipeException
@@ -52,7 +52,7 @@ class Premake:
         #: Key value pairs. Will translate to "--{key}={value}"
         self.arguments = {}  # https://premake.github.io/docs/Command-Line-Arguments/
 
-        if "msvc" in self._recipe.settings.compiler:
+        if "msvc" in cast(str, self._recipe.settings.compiler):
             msvc_version = PREMAKE_VS_VERSION.get(str(self._recipe.settings.compiler_version))
             self.action = f"vs{msvc_version}"
         else:

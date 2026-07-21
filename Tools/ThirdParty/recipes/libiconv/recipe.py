@@ -129,10 +129,10 @@ class Recipe(RecipeBase[_Options]):
             self.settings.compiler_runtime
 
     @property
-    def _msvc_tools(self):
+    def _msvc_tools(self) -> tuple[str, str, str]:
         compilers = self.conf.tools.build.compiler_executables
         compiler = compilers.get("c") or compilers.get("cpp")
-        return (compiler or "clang-cl", "llvm-lib", "lld-link") if self._is_clang_cl else ("cl", "lib", "link")
+        return (os.fspath(compiler) if compiler else "clang-cl", "llvm-lib", "lld-link") if self._is_clang_cl else ("cl", "lib", "link")
 
     def _apply_resource_patch(self):
         if self.settings.arch == "x86":

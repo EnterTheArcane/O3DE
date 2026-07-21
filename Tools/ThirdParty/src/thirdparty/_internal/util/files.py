@@ -186,7 +186,7 @@ if platform.system() == "Windows":
         delay = 0.5
         for i in range(retries):
             try:
-                shutil.rmtree(path, onerror=_change_permissions)
+                shutil.rmtree(path, onerror=_change_permissions)  # pyright: ignore[reportDeprecated]  # onexc needs different signature; keep onerror for compat
                 break
             except OSError as err:
                 if i == retries - 1:
@@ -217,7 +217,7 @@ else:
         if not os.path.isdir(path):
             return
         try:
-            shutil.rmtree(path, onerror=_change_permissions)
+            shutil.rmtree(path, onerror=_change_permissions)  # pyright: ignore[reportDeprecated]  # onexc needs different signature; keep onerror for compat
         except OSError as err:
             raise RecipeException(
                 f"Couldn't remove folder: {path}\n{str(err)}\n"
@@ -266,7 +266,7 @@ def tar_extract(fileobj: Any, destination_dir: str):
 
 def merge_directories(src: str, dst: str):
     from thirdparty.files import copy
-    copy(None, pattern="*", src=src, dst=dst)
+    copy(None, pattern="*", src=src, dst=dst)  # pyright: ignore[reportArgumentType]  # copy ignores recipe for plain pattern copy
 
 
 def gather_files(folder: str) -> tuple[dict[str, str], dict[str, str]]:

@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Any
 
-import patch_ng
+import patch_ng  # pyright: ignore[reportMissingTypeStubs]
 
 from thirdparty.errors import RecipeException
 from thirdparty.recipe import RecipeBase
@@ -62,16 +62,16 @@ def patch(
         # trick *1: patch_file path could be absolute (e.g. recipe.folders.build), in that case
         # the join does nothing and works.
         patch_path = os.path.join(recipe.folders.recipe, patch_file)
-        patchset = patch_ng.fromfile(patch_path)
+        patchset = patch_ng.fromfile(patch_path)  # pyright: ignore[reportUnknownMemberType]
     else:
-        patchset = patch_ng.fromstring(patch_string.encode())
+        patchset = patch_ng.fromstring(patch_string.encode())  # pyright: ignore[reportUnknownMemberType, reportOptionalMemberAccess]
 
     if not patchset:
         raise RecipeException("Failed to parse patch: %s" % (patch_file if patch_file else "string"))
 
     # trick *1
     root = os.path.join(recipe.folders.source, base_path) if base_path else recipe.folders.source
-    if not patchset.apply(strip=strip, root=root, fuzz=fuzz):
+    if not patchset.apply(strip=strip, root=root, fuzz=fuzz):  # pyright: ignore[reportUnknownMemberType]
         raise RecipeException("Failed to apply patch: %s" % patch_file)
 
 
@@ -87,8 +87,8 @@ def apply_patches(recipe: RecipeBase):
         patchlog = logging.getLogger("patch_ng")
         patchlog.handlers = []
         patchlog.addHandler(PatchLogHandler(recipe.output, patch_name))
-        patchset = patch_ng.fromfile(patch_path)
+        patchset = patch_ng.fromfile(patch_path)  # pyright: ignore[reportUnknownMemberType]
         if not patchset:
             raise RecipeException(f"Failed to parse patch: {patch_name}")
-        if not patchset.apply(root=recipe.folders.source):
+        if not patchset.apply(root=recipe.folders.source):  # pyright: ignore[reportUnknownMemberType]
             raise RecipeException(f"Failed to apply patch: {patch_name}")

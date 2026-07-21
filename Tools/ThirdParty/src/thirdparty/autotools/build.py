@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import re
 from collections.abc import Iterable
+from typing import cast
 
 from thirdparty._internal.subsystems import subsystem_path, deduce_subsystem
 from thirdparty.build import build_jobs, cmd_args_to_string, load_toolchain_args
@@ -35,7 +36,7 @@ class Autotools:
         self._recipe = recipe
 
         toolchain_file_content = load_toolchain_args(
-            self._recipe.folders.generators, namespace=namespace)
+            os.fspath(self._recipe.folders.generators), namespace=namespace)
 
         self._configure_args = toolchain_file_content.get("configure_args")
         self._make_args = toolchain_file_content.get("make_args")
@@ -139,7 +140,7 @@ class Autotools:
         script_folder = os.path.join(self._recipe.folders.source, build_script_folder) if build_script_folder else self._recipe.folders.source
         args = args or []
         command = join_arguments(["autoreconf", self._autoreconf_args, cmd_args_to_string(args)])
-        with chdir(self, script_folder):
+        with chdir(cast(RecipeBase, self), script_folder):
             run(self._recipe, command)
 
     def _use_win_mingw(self) -> bool:

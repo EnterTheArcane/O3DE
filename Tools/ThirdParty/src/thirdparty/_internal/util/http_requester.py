@@ -8,7 +8,7 @@ import platform
 import requests
 import urllib3
 from requests.adapters import HTTPAdapter
-from typing import Any
+from typing import Any, cast
 
 from thirdparty._internal.output import Output
 # Capture SSL warnings as pointed out here:
@@ -101,7 +101,7 @@ class HttpRequester:
             requests.codes.bandwidth_limit_exceeded,
         }
         return urllib3.Retry(
-            total=retry, backoff_factor=0.05, status_forcelist=retry_status_code_set)
+            total=retry, backoff_factor=0.05, status_forcelist=cast("set[int]", retry_status_code_set))
 
     def _should_skip_proxy(self, url: str) -> bool:
         if self._no_proxy_match:
@@ -155,6 +155,7 @@ class HttpRequester:
         url: str,
         **kwargs: Any):
         popped = False
+        old_env: dict[str, str] = {}
         if self._clean_system_proxy:
             old_env = dict(os.environ)
             # Clean the proxies from the environ and use the recipe specified proxies

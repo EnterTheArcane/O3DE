@@ -105,8 +105,8 @@ class Recipe(RecipeBase):
             configure_script = os.path.relpath(
                 self.folders.source / "configure",
                 self.folders.build).replace("\\", "/")
-            configure_args = load_toolchain_args(self.folders.generators).get("configure_args") or ""
-            run(self,f'"{configure_script}" {configure_args}', cwd=self.folders.build)
+            configure_args = load_toolchain_args(os.fspath(self.folders.generators)).get("configure_args") or ""
+            run(self,f'"{configure_script}" {configure_args}', cwd=os.fspath(self.folders.build))
         else:
             autotools.configure()
         autotools.make()
