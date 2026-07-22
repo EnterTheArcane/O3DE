@@ -1,7 +1,7 @@
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -169,7 +169,8 @@ target_include_directories(
+@@ -186,7 +186,8 @@ target_include_directories(
  # (or override-supplied) headers don't trip Slang's extra warnings / -Werror.
  add_library(fast_float INTERFACE)
  if(NOT SLANG_OVERRIDE_FAST_FLOAT_PATH)

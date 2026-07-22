@@ -7,7 +7,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "luau"
-    version = "0.728"
+    version = "0.730"
     license = "MIT"
 
     def latest_version(self):
@@ -21,7 +21,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url=f"https://github.com/luau-lang/luau/archive/{self.version}.tar.gz",
-            sha256="488effdb5f9ece3e4436ac65fe3cdcb02fabd6bfc7a1af22565ddb83ff03963c",
+            sha256="448d720df65d393f4c61c7d2b2ddde8c772de55c23760603a9ada43a752aef70",
             destination=self.folders.source,
             strip_root=True)
 
@@ -32,7 +32,8 @@ class Recipe(RecipeBase):
         tc.variables["LUAU_BUILD_WEB"] = False
         tc.variables["LUAU_WERROR"] = False
         tc.variables["LUAU_STATIC_CRT"] = False
-        tc.variables["LUAU_NATIVE"] = True
+        tc.variables["LUAU_BUILD_SHARED"] = False
+        tc.variables["LUAU_EXTERN_C"] = False
         tc.variables["LUAU_SRC_DIR"] = self.folders.source.as_posix()
         tc.generate()
 

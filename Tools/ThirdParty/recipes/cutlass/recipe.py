@@ -7,7 +7,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "cutlass"
-    version = "4.5.2"
+    version = "4.6.1"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -21,7 +21,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url=f"https://github.com/NVIDIA/cutlass/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="7d3ffb03b2d767439189492ab2aa0785632e1b80ba0c5e5618d6c5265d44e008",
+            sha256="455d9ba37d57cb214d67b5d1a6070441244b378bcacb2e916c3b86f2a9b02e1c",
             destination=self.folders.source,
             strip_root=True)
         # Don't look for CUDA, we're only installing the headers.
@@ -36,8 +36,6 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.cache_variables["CMAKE_SUPPRESS_REGENERATION"] = True
-        tc.cache_variables["CUTLASS_REVISION"] = f"v{self.version}"
-        tc.cache_variables["CUTLASS_NATIVE_CUDA"] = False
         tc.cache_variables["CUTLASS_ENABLE_CUBLAS"] = False
         tc.cache_variables["CUTLASS_ENABLE_CUDNN"] = False
         tc.cache_variables["CUTLASS_ENABLE_GTEST_UNIT_TESTS"] = False
@@ -47,6 +45,8 @@ class Recipe(RecipeBase):
         tc.cache_variables["CUTLASS_ENABLE_PROFILER"] = False
         tc.cache_variables["CUTLASS_ENABLE_TESTS"] = False
         tc.cache_variables["CUTLASS_ENABLE_TOOLS"] = False
+        tc.cache_variables["CUTLASS_ENABLE_SELF_CONTAINED_INCLUDES_CHECK"] = False
+        tc.cache_variables["CUTLASS_INSTALL_TESTS"] = False
         tc.generate()
 
     def build(self):

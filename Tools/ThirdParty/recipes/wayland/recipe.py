@@ -16,7 +16,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "wayland"
-    version = "1.25.0"
+    version = "1.26.0"
     license = "MIT"
 
     def latest_version(self):
@@ -50,7 +50,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://gitlab.freedesktop.org/wayland/wayland/-/releases/{self.version}/downloads/wayland-{self.version}.tar.xz",
-            sha256="c065f040afdff3177680600f249727e41a1afc22fccf27222f15f5306faa1f03",
+            sha256="64176eaa46e4969903e286f8e5ef8331affc17fdf03ac9b58381d2b23162b7a3",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)

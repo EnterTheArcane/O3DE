@@ -20,7 +20,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "dav1d"
-    version = "1.5.3"
+    version = "1.5.4"
     license = "BSD-2-Clause"
 
     def latest_version(self):
@@ -47,7 +47,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/videolan/dav1d/archive/refs/tags/{self.version}.tar.gz",
-            sha256="cbe212b02faf8c6eed5b6d55ef8a6e363aaab83f15112e960701a9c3df813686",
+            sha256="a1d5b63d2d38ec9bd03acf643caa51fa22edd1e89c5a109c4807717216bbec07",
             destination=self.folders.source,
             strip_root=True)
         replace_in_file(self, self.folders.source / "meson.build", "subdir('doc')", "")

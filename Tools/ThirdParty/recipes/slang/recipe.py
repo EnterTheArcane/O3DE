@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "slang"
-    version = "2026.12.2"
+    version = "2026.13.1"
     license = "Apache-2.0", "MIT"
 
     def latest_version(self):
@@ -37,7 +37,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/shader-slang/slang/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="d4c06414d210cc81f309c98b604ae51541b3a9bf946798f5ae562f2926256e47",
+            sha256="2d112770f4af5459b0963473237523c4b1295ebe5627aa043c48cd3c8531158e",
             destination=self.folders.source,
             strip_root=True)
         get(
@@ -85,7 +85,7 @@ class Recipe(RecipeBase[_Options]):
         if cross_building(self):
             # Reuse the build-machine generators (imported as executables by tools/CMakeLists.txt)
             # instead of building/running target-arch ones.
-            host_generators = self.dependencies.build[self.name].folders.package / "generators"
+            host_generators = self.dependencies.build[self.name].folders.package / "bin"
             tc.cache_variables["SLANG_GENERATORS_PATH"] = host_generators.as_posix()
         tc.generate()
         deps = CMakeDeps(self)
@@ -100,13 +100,9 @@ class Recipe(RecipeBase[_Options]):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        # Ship the code generators so a cross-compiled build of another arch can consume them via SLANG_GENERATORS_PATH.
-        copy(
-            self,
-            "*.exe",
-            src=self.folders.build / "generators",
-            dst=self.folders.package / "generators",
-            keep_path=False)
+        # Slang excludes its build-machine generators from the default install. Install the
+        # upstream component explicitly so another architecture can consume the complete set.
+        cmake.install(component="generators")
         copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         rmdir(self, self.folders.package / "cmake")
         rmdir(self, self.folders.package / "lib" / "cmake")

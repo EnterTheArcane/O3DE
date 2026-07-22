@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "sdformat"
-    version = "16.0.1"
+    version = "16.1.0"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -35,7 +35,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/gazebosim/sdformat/archive/refs/tags/sdformat{version_major}_{self.version}.tar.gz",
-            sha256="4fac898700afb2953af5f8ac6b0221e4d9bc1e460aac6d4b7a5c3699c456126c",
+            sha256="f9ef71787b0055f7ee35a3b52f42a9d6397f0c2f21f9572957bc3f456e2ca674",
             destination=self.folders.source,
             strip_root=True)
 

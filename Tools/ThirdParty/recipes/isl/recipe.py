@@ -14,7 +14,7 @@ from thirdparty.scm import Version
 
 class Recipe(RecipeBase):
     name = "isl"
-    version = "0.26"
+    version = "0.28"
     license = "MIT"
 
     def latest_version(self):
@@ -36,11 +36,13 @@ class Recipe(RecipeBase):
             raise RecipeInvalidConfiguration(f"{self.name} is only supported on desktop host platforms")
         if self.settings.os == "Windows" and self.settings.arch != "X64":
             raise RecipeInvalidConfiguration(f"{self.name} only supports Windows X64 for the MSYS2/MinGW bootstrap")
-        if cross_building(self):
-            raise RecipeInvalidConfiguration(f"{self.name} only supports native builds")
 
     def requirements(self):
-        self.requires("gmp")
+        # The GMP recipe is intentionally native-only.  isl ships imath as an
+        # alternative multi-precision backend, so use it when cross-compiling
+        # rather than leaking the build-machine GMP into the target archive.
+        if not cross_building(self):
+            self.requires("gmp")
         if self.settings_build.os == "Windows":
             self.win_bash = True
             self.requires_tool("msys2")
@@ -49,7 +51,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url=f"https://libisl.sourceforge.io/isl-{self.version}.tar.xz",
-            sha256="a0b5cb06d24f9fa9e77b55fabbe9a3c94a336190345c2555f9915bb38e976504",
+            sha256="3dc31b8e1b18329e42d5dfbf84dd55e15c59b61569a2ab246f61497d9592f727",
             destination=self.folders.source,
             strip_root=True)
 
@@ -61,10 +63,15 @@ class Recipe(RecipeBase):
             "--disable-shared",
             "--enable-static",
             "--enable-portable-binary",
-            "--with-int=gmp",
-            "--with-gmp=system",
-            f"--with-gmp-prefix={unix_path(self, self.dependencies["gmp"].folders.package)}",
         ])
+        if cross_building(self):
+            tc.configure_args.append("--with-int=imath")
+        else:
+            tc.configure_args.extend([
+                "--with-int=gmp",
+                "--with-gmp=system",
+                f"--with-gmp-prefix={unix_path(self, self.dependencies['gmp'].folders.package)}",
+            ])
 
         if host := self._host_triplet():
             tc.configure_args.extend([f"--build={host}", f"--host={host}"])

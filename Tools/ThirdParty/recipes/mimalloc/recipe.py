@@ -22,7 +22,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "mimalloc"
-    version = "3.3.2"
+    version = "3.4.3"
     license = "MIT"
 
     def latest_version(self):
@@ -60,7 +60,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/microsoft/mimalloc/archive/v{self.version}.tar.gz",
-            sha256="ca02384e007f46950598500dfaebde5ff9948c1d231f5a81b058799afa64bbbb",
+            sha256="7b043c26b64dde66344d144fbcac3664858a4eb32197793ea2a18feb32741ca1",
             destination=self.folders.source,
             strip_root=True)
 
@@ -75,6 +75,7 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["MI_WIN_REDIRECT"] = "ON" if self.options.win_redirect else "OFF"
         tc.variables["MI_INSTALL_TOPLEVEL"] = "ON"
         tc.variables["MI_GUARDED"] = self.options.guarded
+        tc.variables["MI_NO_OPT_ARCH"] = True
         tc.generate()
 
         VirtualBuildEnv(self).generate(scope="build")

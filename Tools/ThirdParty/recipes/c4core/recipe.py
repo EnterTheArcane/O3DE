@@ -12,7 +12,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "c4core"
-    version = "0.4.0"
+    version = "0.6.0"
     license = "MIT",
 
     def latest_version(self):
@@ -27,16 +27,20 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/biojppm/c4core/releases/download/v{self.version}/c4core-{self.version}-src.tgz",
-            sha256="6703768e6ae3f623296d3fb5cff0fc74c08bfe45dc800234e0e42ba508e230a0",
+            sha256="fd0a3e2c39a5985c6699e306ead71e8a73a6ada2577c905734a2a6ba0a61c1b7",
             destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["C4CORE_WITH_FASTFLOAT"] = True
+        tc.variables["C4CORE_WITH_FASTFLOAT_SYSTEM"] = True
         tc.generate()
 
         deps = CMakeDeps(self)
+        # c4core's system-fast-float path calls find_package(fast_float), while the
+        # dependency's public target remains FastFloat::fast_float.
+        deps.set_property("fast-float", "cmake_file_name", "fast_float")
         deps.generate()
 
     def build(self):

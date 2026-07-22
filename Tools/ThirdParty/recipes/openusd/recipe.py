@@ -1,3 +1,5 @@
+import shutil
+
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import cross_building
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
@@ -13,7 +15,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "openusd"
-    version = "26.05"
+    version = "26.08"
     license = "LicenseRef-LICENSE.txt"
 
     def latest_version(self):
@@ -30,14 +32,9 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/PixarAnimationStudios/OpenUSD/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="bf514f62ac9508d3c5b121dc1107f3b29bf3c954473b9b0bf8324b7cf04c64c1",
+            sha256="4bccbb95cddda1dbeef2f74a08b9456352f2aa91bfd4578c0c613009c7950149",
             destination=self.folders.source,
             strip_root=True)
-        replace_in_file(
-            self,
-            self.folders.source / "pxr" / "base" / "work" / "workTBB" / "dispatcher_impl.h",
-            "#include <tbb/blocked_range.h>",
-            "#include <tbb/version.h>\n#include <tbb/blocked_range.h>")
         # openusd hardcodes /W3 into _PXR_CXX_FLAGS (which lands in CMAKE_CXX_FLAGS), conflicting
         # with the framework's quiet -w -> "D9025: overriding '/w' with '/W3'" for ~every source
         # file. Drop it so -w wins (verbose builds still get warnings via the compiler default).
@@ -82,9 +79,37 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["PXR_VALIDATE_GENERATED_CODE"] = False
 
         python_pkg = self.dependencies["cpython"]
-        python_root = python_pkg.folders.package.as_posix()
-        tc.variables["Python3_ROOT_DIR"] = python_root
+        python_root = python_pkg.folders.package
+        python_major, python_minor = str(python_pkg.version).split(".")[:2]
+        extension = "dylib" if self.settings.os == "Mac" else "so"
+        if self.settings.os == "Windows":
+            python_executable = python_root / "bin" / "python3.exe"
+            python_include = python_root / "bin" / "include"
+            python_library = python_root / "bin" / "libs" / "python3.lib"
+        else:
+            python_executable = python_root / "bin" / "python3"
+            # CPython's packaged include layout is platform-specific: the macOS recipe
+            # normalizes it to include/python, while Linux retains include/pythonX.Y.
+            versioned_include = python_root / "include" / f"python{python_major}.{python_minor}"
+            python_include = (versioned_include if versioned_include.is_dir()
+                              else python_root / "include" / "python")
+            python_library = python_root / "lib" / f"libpython3.{extension}"
+
+        # CMake 4.4's FindPython3 derives the development version from the library
+        # filename. The CPython recipe intentionally installs a version-neutral
+        # libpython3 name, so provide a private versioned alias for discovery.
+        if self.settings.os == "Windows":
+            discovery_name = f"python{python_major}{python_minor}.lib"
+        else:
+            discovery_name = f"libpython{python_major}.{python_minor}.{extension}"
+        discovery_library = self.folders.build / discovery_name
+        shutil.copy2(python_library, discovery_library)
+
+        tc.variables["Python3_ROOT_DIR"] = python_root.as_posix()
         tc.variables["Python3_FIND_STRATEGY"] = "LOCATION"
+        tc.variables["Python3_EXECUTABLE"] = python_executable.as_posix()
+        tc.variables["Python3_INCLUDE_DIR"] = python_include.as_posix()
+        tc.variables["Python3_LIBRARY"] = discovery_library.as_posix()
         if self.settings.os == "Windows":
             tc.variables["Python3_FIND_REGISTRY"] = "NEVER"
 
@@ -94,10 +119,9 @@ class Recipe(RecipeBase[_Options]):
             # build-context (host) interpreter for running, while keeping the target headers/lib so
             # the python bindings still link against the aarch64 libpython.
             host_python_root = self.dependencies.build["cpython"].folders.package
-            py_maj, py_min = str(python_pkg.version).split(".")[:2]
-            tc.variables["Python3_EXECUTABLE"] = (host_python_root / "bin" / f"python{py_maj}.{py_min}").as_posix()
-            tc.variables["Python3_INCLUDE_DIR"] = (python_pkg.folders.package / "include" / f"python{py_maj}.{py_min}").as_posix()
-            tc.variables["Python3_LIBRARY"] = (python_pkg.folders.package / "lib" / f"libpython{py_maj}.{py_min}.so").as_posix()
+            host_executable = host_python_root / "bin" / (
+                "python3.exe" if self.settings.os == "Windows" else "python3")
+            tc.variables["Python3_EXECUTABLE"] = host_executable.as_posix()
 
         tc.generate()
 
@@ -132,7 +156,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.set_property("cmake_file_name", "pxr")
         self.info.set_property("cmake_target_name", "pxr::usd_m")
 
-        self.info.libs = ["usd_m"]
+        self.info.libs = ["usd_ms" if self.options.shared else "usd_m"]
         if not self.options.shared:
             self.info.defines = ["PXR_STATIC=1"]
         if self.settings.os == "Windows":

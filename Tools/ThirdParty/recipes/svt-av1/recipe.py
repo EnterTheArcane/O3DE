@@ -19,7 +19,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "svt-av1"
-    version = "4.1.0"
+    version = "4.2.0"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -50,7 +50,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v{self.version}/SVT-AV1-v{self.version}.tar.gz",
-            sha256="6c4c0c44ff0ba3d136d6f57f3a707f9de8e9c866f50f809c1d22a43f0d8c9583",
+            sha256="c7b13c4a84bd3751aa35fcc72be13e6875467e7c2216879251a486e5b1e4e740",
             destination=self.folders.source,
             strip_root=True)
         # SVT-AV1 prepends /W3 to the compile flags; it's applied via a variable the toolchain
@@ -62,7 +62,9 @@ class Recipe(RecipeBase[_Options]):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.cache_variables["BUILD_APPS"] = False
+        tc.cache_variables["BUILD_TESTING"] = False
         tc.cache_variables["MINIMAL_BUILD"] = self.options.minimal_build
+        tc.cache_variables["SVT_AV1_LTO"] = False
         if self._arm_simd_unsupported:
             tc.cache_variables["COMPILE_C_ONLY"] = True
         elif self.settings.arch == "ARM":

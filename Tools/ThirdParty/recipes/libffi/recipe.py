@@ -18,7 +18,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libffi"
-    version = "3.6.0"
+    version = "3.7.1"
     license = "MIT"
 
     def latest_version(self):
@@ -40,7 +40,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/libffi/libffi/releases/download/v{self.version}/libffi-{self.version}.tar.gz",
-            sha256="31ff1fe32deaebfbb388727f32677bb254bf2a41382c51464c0b1837c9ee9828",
+            sha256="d5e9a6638ddbd2513ddb54518eb67e4bbe6fa707bcc01c10f6212f0a088d819d",
             destination=self.folders.source,
             strip_root=True)
 

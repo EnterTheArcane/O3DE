@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import get, copy, rmdir, replace_in_file
+from thirdparty.files import get, copy, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -12,7 +12,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "flatbuffers"
-    version = "23.5.26"
+    version = "25.12.19"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -26,32 +26,21 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/google/flatbuffers/archive/v{self.version}.tar.gz",
-            sha256="1cce06b17cddd896b6d73cc047e36a254fb8df4d7ea18a46acf16c4c0cd3f3f3",
+            sha256="f81c3162b1046fe8b84b9a0dbdd383e24fdbcf88583b9cb6028f90d04d90696a",
             destination=self.folders.source,
             strip_root=True)
-        cmakelists = self.folders.source / "CMakeLists.txt"
-        # Inject the version manually in generate() instead of calling git.
-        replace_in_file(self, cmakelists, "include(CMake/Version.cmake)", "")
-        # No warnings as errors.
-        replace_in_file(self, cmakelists, "/WX", "")
-        replace_in_file(self, cmakelists, "-Werror ", "")
 
     def generate(self):
-        version = Version(self.version)
         tc = CMakeToolchain(self)
         tc.variables["FLATBUFFERS_BUILD_TESTS"] = False
         tc.variables["FLATBUFFERS_INSTALL"] = True
         tc.variables["FLATBUFFERS_BUILD_FLATLIB"] = not self.options.shared
-        tc.variables["FLATBUFFERS_BUILD_FLATC"] = False
+        tc.variables["FLATBUFFERS_BUILD_FLATC"] = True
         tc.variables["FLATBUFFERS_STATIC_FLATC"] = False
         tc.variables["FLATBUFFERS_BUILD_FLATHASH"] = False
         tc.variables["FLATBUFFERS_BUILD_SHAREDLIB"] = self.options.shared
         tc.variables["FLATBUFFERS_LIBCXX_WITH_CLANG"] = False
-        # Mimic upstream CMake/Version.cmake removed in source().
-        tc.cache_variables["VERSION_MAJOR"] = str(version.major)
-        tc.cache_variables["VERSION_MINOR"] = str(version.minor or "0")
-        tc.cache_variables["VERSION_PATCH"] = str(version.patch or "0")
-        tc.cache_variables["VERSION_COMMIT"] = "0"
+        tc.variables["FLATBUFFERS_STRICT_MODE"] = False
         tc.variables["CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS"] = True
         tc.generate()
 

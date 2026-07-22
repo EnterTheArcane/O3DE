@@ -12,7 +12,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "gz-math"
-    version = "9.1.0"
+    version = "9.2.0"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -32,7 +32,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/gazebosim/gz-math/archive/refs/tags/gz-math{version_major}_{self.version}.tar.gz",
-            sha256="d6d266a2a5094b977a3cfec4646efb2eede5fd36781a53faaa37ba416da5cdaf",
+            sha256="fed32da2ac16b96c45e87ceb03b0fae6cbc8a860c8341bd9a2549dffee1c1f59",
             destination=self.folders.source,
             strip_root=True)
 

@@ -7,7 +7,7 @@ from thirdparty.scm.github import GithubRepository
 
 
 # abseil components libprotobuf/libprotoc link against.
-# Reference: protobuf/cmake/abseil-cpp.cmake (conan-center absl_deps for 6.33.5 / v33.5).
+# Reference: protobuf/cmake/abseil-cpp.cmake for C++ runtime 7.35.1 / release v35.1.
 _ABSL_DEPS = [
     "absl_absl_check", "absl_absl_log", "absl_algorithm", "absl_base",
     "absl_bind_front", "absl_bits", "absl_btree", "absl_cleanup", "absl_cord",
@@ -15,10 +15,10 @@ _ABSL_DEPS = [
     "absl_dynamic_annotations", "absl_flags", "absl_flat_hash_map",
     "absl_flat_hash_set", "absl_function_ref", "absl_hash", "absl_layout",
     "absl_log_initialize", "absl_log_globals", "absl_log_severity",
-    "absl_memory", "absl_node_hash_map", "absl_node_hash_set",
+    "absl_memory", "absl_node_hash_map", "absl_node_hash_set", "absl_optional",
     "absl_random_distributions", "absl_random_random", "absl_span",
     "absl_status", "absl_statusor", "absl_strings", "absl_synchronization",
-    "absl_time", "absl_type_traits", "absl_utility",
+    "absl_time", "absl_utility",
 ]
 
 
@@ -32,15 +32,16 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "protobuf"
-    # conan-center version scheme: 6.x maps to upstream v33.x (< v7 keeps onnx/onnxruntime happy)
-    version = "6.33.5"
+    # Protobuf release v35.1 corresponds to C++ runtime 7.35.1.
+    version = "7.35.1"
     license = "BSD-3-Clause"
 
     _cmake_install_base_path = "lib/cmake/protobuf"
 
     def latest_version(self):
         repo = GithubRepository(self, "protocolbuffers/protobuf")
-        return Version(repo.latest_release.removeprefix("v"))
+        release = repo.latest_release.removeprefix("v")
+        return Version(f"7.{release}")
 
     def requirements(self):
         self.requires_tool("cmake")
@@ -51,8 +52,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/protocolbuffers/protobuf/releases/download/v33.5/protobuf-33.5.tar.gz",
-            sha256="c6c7c27fadc19d40ab2eaa23ff35debfe01f6494a8345559b9bb285ce4144dd1",
+            url="https://github.com/protocolbuffers/protobuf/releases/download/v35.1/protobuf-35.1.tar.gz",
+            sha256="f0b6838e7522a8da96126d487068c959bc624926368f3024ac8fd03abd0a1ac4",
             destination=self.folders.source,
             strip_root=True)
         copy(self, "protobuf-conan-protoc-target.cmake", src=self.folders.recipe, dst=self.folders.source)
@@ -73,10 +74,13 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["CMAKE_INSTALL_CMAKEDIR"] = self._cmake_install_base_path
         tc.cache_variables["protobuf_WITH_ZLIB"] = self.options.with_zlib
         tc.cache_variables["protobuf_BUILD_TESTS"] = False
+        tc.cache_variables["protobuf_BUILD_CONFORMANCE"] = False
+        tc.cache_variables["protobuf_BUILD_EXAMPLES"] = False
+        tc.cache_variables["protobuf_BUILD_SHARED_LIBS"] = self.options.shared
         tc.cache_variables["protobuf_BUILD_PROTOC_BINARIES"] = True
         tc.cache_variables["protobuf_BUILD_LIBPROTOC"] = True
+        tc.cache_variables["protobuf_BUILD_LIBUPB"] = True
         tc.cache_variables["protobuf_DISABLE_RTTI"] = not self.options.with_rtti
-        tc.cache_variables["protobuf_ABSL_PROVIDER"] = "package"
         if is_msvc(self) and self.settings.compiler_runtime:
             tc.cache_variables["protobuf_MSVC_STATIC_RUNTIME"] = is_msvc_static_runtime(self)
         tc.generate()

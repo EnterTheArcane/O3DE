@@ -1,3 +1,5 @@
+import sys
+
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
@@ -6,6 +8,7 @@ from thirdparty.microsoft import is_msvc
 from thirdparty.files import get, copy, rmdir, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
+from thirdparty.shell import run
 
 
 class _Options(RecipeOptions):
@@ -25,7 +28,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "onnxruntime"
-    version = "1.27.0"
+    version = "1.27.1"
     license = "MIT"
 
     def latest_version(self):
@@ -37,6 +40,7 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires_tool("cmake")
+        self.requires_tool("flatbuffers")  # flatc regenerates schemas for the packaged FlatBuffers version
         self.requires_tool("protobuf")  # protoc at build time
         self.requires("abseil")
         self.requires("boost")
@@ -71,7 +75,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/microsoft/onnxruntime/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="b41d09905a3c2f3a25709d1dcce8ef3942a4c2799d1046f74be7b6bbebc45e6a",
+            sha256="e53b06ccd454f56088fde374d1af6660ef111ca7ce7a98d62b274ff9094d3005",
             destination=self.folders.source,
             strip_root=True)
         # Replace onnxruntime's FetchContent dependency logic with find_package(... CONFIG).
@@ -142,6 +146,15 @@ class Recipe(RecipeBase[_Options]):
         deps.generate()
 
     def build(self):
+        flatc_name = "flatc.exe" if self.settings.os == "Windows" else "flatc"
+        flatc = self.dependencies.build["flatbuffers"].folders.package / "bin" / flatc_name
+        schema_scripts = [
+            self.folders.source / "onnxruntime" / "core" / "flatbuffers" / "schema" / "compile_schema.py",
+            self.folders.source / "onnxruntime" / "lora" / "adapter_format" / "compile_schema.py",
+        ]
+        for script in schema_scripts:
+            run(self, f'"{sys.executable}" "{script}" --flatc "{flatc}" --language cpp')
+
         cmake = CMake(self)
         cmake.configure(
             build_script_folder=self.folders.source / "cmake",

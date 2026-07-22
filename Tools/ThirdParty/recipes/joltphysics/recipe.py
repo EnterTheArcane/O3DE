@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "joltphysics"
-    version = "5.5.0"
+    version = "5.6.0"
     license = "MIT"
 
     def latest_version(self):
@@ -22,12 +22,18 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires_tool("cmake")
+        if self.settings.os == "Linux":
+            # Jolt compiles its Vulkan shaders with DXC and loads Vulkan at runtime.
+            # DXC must run on the build machine when cross-compiling Linux ARM.
+            self.requires_tool("directxshadercompiler")
+            self.requires("vulkan-headers")
+            self.requires("vulkan-loader")
 
     def source(self):
         get(
             self,
             url=f"https://github.com/jrouwe/JoltPhysics/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="3dae862a32c9092fca5b17f8e5d32cd57e035d30c3145c00040f13ca58a866df",
+            sha256="6e069ee0172478cc78182047aac87e5310ba14a67a53348ae14cc37801fd3f8e",
             destination=self.folders.source,
             strip_root=True)
 
@@ -38,6 +44,19 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["TARGET_PERFORMANCE_TEST"] = False
         tc.cache_variables["TARGET_SAMPLES"] = False
         tc.cache_variables["TARGET_VIEWER"] = False
+        tc.cache_variables["JPH_BUILD_SHARED_LIBS"] = self.options.shared
+        tc.cache_variables["ENABLE_OBJECT_STREAM"] = True
+        # Use the native GPU compute backend where the complete shader toolchain is
+        # available, while retaining Jolt's CPU implementation as a fallback.
+        tc.cache_variables["JPH_USE_DX12"] = self.settings.os == "Windows"
+        tc.cache_variables["JPH_USE_VK"] = self.settings.os == "Linux"
+        tc.cache_variables["JPH_USE_MTL"] = False
+        tc.cache_variables["JPH_USE_CPU_COMPUTE"] = True
+        if self.settings.os == "Linux":
+            dxc = self.dependencies.build["directxshadercompiler"].folders.package / "bin" / "dxc"
+            # Jolt 5.6 derives dxc from FindVulkan's glslc path. Point that cache
+            # entry directly at the packaged compiler; replacing "glslc" is then a no-op.
+            tc.cache_variables["Vulkan_GLSLC_EXECUTABLE"] = dxc.as_posix()
         tc.cache_variables["CROSS_PLATFORM_DETERMINISTIC"] = False
         tc.cache_variables["INTERPROCEDURAL_OPTIMIZATION"] = False
         tc.cache_variables["GENERATE_DEBUG_SYMBOLS"] = False
@@ -65,7 +84,17 @@ class Recipe(RecipeBase[_Options]):
         self.info.libs = ["Jolt"]
         self.info.set_property("cmake_file_name", "Jolt")
         self.info.set_property("cmake_target_name", "Jolt::Jolt")
-        self.info.defines = ["JPH_OBJECT_STREAM"]
+        self.info.defines = ["JPH_OBJECT_STREAM", "JPH_USE_CPU_COMPUTE"]
+        if self.settings.os == "Windows":
+            self.info.defines.append("JPH_USE_DX12")
+            self.info.system_libs.extend(["dxgi", "d3d12", "d3dcompiler", "dxguid"])
+        elif self.settings.os == "Linux":
+            self.info.defines.append("JPH_USE_VK")
+            self.info.requires = [
+                "vulkan-headers::vulkan-headers",
+                "vulkan-loader::vulkan-loader",
+            ]
+            self.info.resdirs = ["share"]
         if self.settings.arch in ["X64"]:
             self.info.defines.extend(
                 [
@@ -80,3 +109,5 @@ class Recipe(RecipeBase[_Options]):
         self.info.defines.append("JPH_OBJECT_LAYER_BITS=16")
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.info.system_libs.append("pthread")
+        if self.settings.os == "Linux":
+            self.info.system_libs.append("dl")

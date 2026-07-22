@@ -9,7 +9,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "cmake"
-    version = "4.3.4"
+    version = "4.4.0"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -23,20 +23,20 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             if self.settings.arch == "ARM":
                 url = f"https://github.com/Kitware/CMake/releases/download/v{self.version}/cmake-{self.version}-windows-arm64.zip"
-                sha256 = "91a59ca6ffbcec18e1fb05431fa22f538ab615b6e525d1bfd0b8dd67a4d45685"
+                sha256 = "57437e918b2929bbd25b8d427611120149df02d4b216872e0f48f361f03d71e5"
             else:
                 url = f"https://github.com/Kitware/CMake/releases/download/v{self.version}/cmake-{self.version}-windows-x86_64.zip"
-                sha256 = "86e5fcafb38bdf58346a78b187c7b6b4f252ae5242cffe24c463a92bbd2e77d1"
+                sha256 = "156d70eb7625a7b469444df7d0861d2af8d5d0a437fce32c350372b08f5620e8"
         elif self.settings.os == "Linux":
             if self.settings.arch == "ARM":
                 url = f"https://github.com/Kitware/CMake/releases/download/v{self.version}/cmake-{self.version}-linux-aarch64.tar.gz"
-                sha256 = "56a8014a8f28b8ff9cbe2c6fa8beebc028ac5b1987195d122b847fb486dc5282"
+                sha256 = "e98bb53e0b00a8f672424517d34c05bb9b94fd1c888c89e0b81bc8df51d1a94b"
             else:
                 url = f"https://github.com/Kitware/CMake/releases/download/v{self.version}/cmake-{self.version}-linux-x86_64.tar.gz"
-                sha256 = "ca6f08ccbd5e6b0a9068d33317d0d1aff7278d08cccaed4529b8fbead7942a68"
+                sha256 = "3864eb649b4466ae126a64bbde1657adad78efbbaa068bf38201de5cf1b5349f"
         elif self.settings.os == "Mac":
             url = f"https://github.com/Kitware/CMake/releases/download/v{self.version}/cmake-{self.version}-macos-universal.tar.gz"
-            sha256 = "bf6647c78ac295c54dbe0a094d4428f495be93c1f810fd8bde57374e8b548523"
+            sha256 = "09d6382059aa1b986b25fd1809459f5eb3da6a1ab342d44d6084265f38541397"
         else:
             raise RecipeException(f"Unsupported OS: {self.settings.os}")
         get(
@@ -47,8 +47,11 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def package(self):
+        content_root = self.folders.build
+        if self.settings.os == "Mac":
+            content_root = content_root / "CMake.app" / "Contents"
         for subdir in ("bin", "share", "lib"):
-            src = self.folders.build / subdir
+            src = content_root / subdir
             if os.path.isdir(src):
                 copy(self, "*", src=src, dst=self.folders.package / subdir)
 

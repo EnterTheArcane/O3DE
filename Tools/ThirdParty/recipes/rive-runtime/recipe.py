@@ -8,7 +8,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "rive-runtime"
-    version = "0.1.151"
+    version = "0.1.203"
     license = "MIT"
 
     def latest_version(self):
@@ -22,7 +22,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url=f"https://github.com/rive-app/rive-runtime/archive/refs/tags/runtime-v{self.version}.tar.gz",
-            sha256="9da0819d70d0b7a4fb436b60dbcbc8fa9b3c99495a3dabcc50a5b0fd05ff6d85",
+            sha256="68f603326d2d411a1972df63a79240b970c2acafd58ab2e6a0821e7c30b99d9f",
             destination=self.folders.source,
             strip_root=True)
 
@@ -64,9 +64,12 @@ class Recipe(RecipeBase):
     def generate(self):
         deps = PremakeDeps(self)
         deps.generate()
+        # Generate the dependency environment before the toolchain: on Linux the
+        # toolchain adds the target-triplet CC/CXX exports to the same script and
+        # must be the final writer for cross builds.
+        VirtualBuildEnv(self).generate()
         tc = PremakeToolchain(self)
         tc.generate()
-        VirtualBuildEnv(self).generate()
 
     def build(self):
         config = "release" if str(self.settings.build_type) == "Release" else "debug"

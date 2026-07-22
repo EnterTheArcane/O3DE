@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.errors import RecipeInvalidConfiguration
-from thirdparty.files import get, copy, rmdir, replace_in_file, apply_patches
+from thirdparty.files import get, copy, rmdir, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "nsync"
-    version = "1.26.0"
+    version = "1.30.0"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -32,10 +32,9 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/google/nsync/archive/{self.version}.tar.gz",
-            sha256="80fc1e605bb3cf5f272811ece39c4fb6761ffcb9b30563301845cc9ff381eb8b",
+            sha256="883a0b3f8ffc1950670425df3453c127c1a3f6ed997719ca1bbe7f474235b6cc",
             destination=self.folders.source,
             strip_root=True)
-        apply_patches(self)
         replace_in_file(
             self,
             self.folders.source / "CMakeLists.txt",

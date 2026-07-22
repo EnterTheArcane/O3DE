@@ -29,7 +29,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "onnx"
-    version = "1.21.0"
+    version = "1.22.0"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -51,7 +51,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/onnx/onnx/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="42ffedcd8c9b6363694300c6ffec1ada77f9620176465719acb27b13a4d6f2de",
+            sha256="70bb8b25cf31ea9b1d9f94baacfdc8c4fa27a760f9a10f5d93881bc9eede5fbc",
             destination=self.folders.source,
             strip_root=True)
 
