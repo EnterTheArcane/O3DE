@@ -76,6 +76,16 @@ class ReleaseHelperTests(unittest.TestCase):
                 repo.latest_tag_matching(r"\d+\.\d+-physx-(\d+\.\d+\.\d+)"),
                 "5.9.0")
 
+    def test_github_latest_tag_orders_numbered_prereleases_naturally(self):
+        result = SimpleNamespace(stdout="""
+            a refs/tags/v4.3
+            b refs/tags/v5.0.0-beta9
+            c refs/tags/v5.0.0-beta10
+        """.replace(" refs", "\trefs"))
+        with patch("thirdparty.scm.github.subprocess.run", return_value=result):
+            repo = GithubRepository(MagicMock(), "example/prerelease-project")
+            self.assertEqual(repo.latest_tag("v"), "v5.0.0-beta10")
+
     def test_github_latest_release_uses_redirect_and_git_tags_without_api(self):
         response = MagicMock(
             status_code=200,

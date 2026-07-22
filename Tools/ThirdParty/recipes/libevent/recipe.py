@@ -20,7 +20,7 @@ class Recipe(RecipeBase[_Options]):
 
     def latest_version(self):
         repo = GithubRepository(self, "libevent/libevent")
-        return Version(repo.latest_release.removeprefix("release-").removesuffix("-stable"))
+        return Version(repo.latest_tag_matching(r"release-(\d+(?:\.\d+)+)-stable"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

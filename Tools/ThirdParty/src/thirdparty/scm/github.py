@@ -192,7 +192,9 @@ class GithubRepository:
     def latest_tag(self, prefix: str) -> str:
         """Return the raw tag name with the highest version among tags starting with `prefix`.
 
-        The suffix after `prefix` is normalised (hyphens → dots) before version comparison.
+        Underscore-separated versions are normalised before comparison. Hyphenated
+        prerelease suffixes are preserved so a final release sorts after its
+        prereleases, and numeric qualifier suffixes sort naturally.
         """
         best_tag: str | None = None
         best_version: Version | None = None
@@ -200,7 +202,9 @@ class GithubRepository:
             if not tag.startswith(prefix):
                 continue
             try:
-                v = Version(tag[len(prefix):].replace("-", ".").replace("_", "."))
+                candidate = tag[len(prefix):].replace("_", ".")
+                candidate = re.sub(r"-([A-Za-z]+)(\d+)$", r"-\1.\2", candidate)
+                v = Version(candidate)
             except Exception:
                 continue
             if not v.main or not all(isinstance(item.value, int) for item in v.main):

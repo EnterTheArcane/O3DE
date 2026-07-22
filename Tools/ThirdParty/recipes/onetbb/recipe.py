@@ -14,7 +14,7 @@ class Recipe(RecipeBase):
 
     def latest_version(self):
         repo = GithubRepository(self, "uxlfoundation/oneTBB")
-        return Version(repo.latest_release.removeprefix("v"))
+        return Version(repo.latest_tag_matching(r"v(\d{4}\.\d+(?:\.\d+)?)"))
 
     def requirements(self):
         self.requires_tool("cmake")

@@ -19,7 +19,7 @@ class Recipe(RecipeBase[_Options]):
 
     def latest_version(self):
         repo = GithubRepository(self, "mm2/Little-CMS")
-        return Version(repo.latest_release.removeprefix("lcms"))
+        return Version(repo.latest_tag_matching(r"lcms(\d+\.\d+(?:\.\d+)?)"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

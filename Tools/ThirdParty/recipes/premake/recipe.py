@@ -14,7 +14,7 @@ class Recipe(RecipeBase):
 
     def latest_version(self):
         repo = GithubRepository(self, "premake/premake-core")
-        return Version(repo.latest_release.lstrip("v"))
+        return Version(repo.latest_tag("v").removeprefix("v"))
 
     def build(self):
         if self.settings.os == "Windows":
