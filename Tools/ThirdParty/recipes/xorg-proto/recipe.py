@@ -2,6 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rmdir
 from thirdparty.meson import Meson, MesonToolchain
+from thirdparty.scm import Version, WebReleaseIndex
 
 # Header-only protocol packages shipped by xorg-proto. Each installs an <name>.pc so downstream
 # X.Org libraries (libX11, libxcb, libXrandr, ...) can find the matching headers via pkg-config.
@@ -41,6 +42,10 @@ class Recipe(RecipeBase):
     name = "xorg-proto"
     version = "2024.1"
     license = "MIT"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://www.x.org/releases/individual/proto/")
+        return Version(index.latest_release(r"xorgproto-([\d.]+)\.tar\.xz"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

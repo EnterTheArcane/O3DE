@@ -5,6 +5,7 @@ from thirdparty.build import cross_building
 from thirdparty.cmake import CMakeToolchain, CMake
 from thirdparty.files import apply_patches, load, save, get, copy
 from thirdparty.microsoft import msvc_runtime_flag, is_msvc
+from thirdparty.scm import GithubRepository, Version
 
 
 class _Options(RecipeOptions):
@@ -21,6 +22,11 @@ class Recipe(RecipeBase[_Options]):
     name = "physx"
     version = "5.6.1"
     license = "BSD-3-Clause"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "NVIDIA-Omniverse/PhysX")
+        return Version(repo.latest_tag_matching(
+            r"\d+\.\d+-(?:omni-and-)?physx-(\d+\.\d+\.\d+)"))
 
     def configure(self):
         if self.settings.os != "Windows":

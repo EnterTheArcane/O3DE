@@ -6,12 +6,17 @@ from thirdparty.env import VirtualBuildEnv
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get, replace_in_file, rm, rmdir
 from thirdparty.autotools import Autotools, AutotoolsToolchain
+from thirdparty.scm import GithubRepository, Version
 
 
 class Recipe(RecipeBase):
     name = "flex"
     version = "2.6.4"
     license = "BSD-2-Clause"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "westes/flex")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def configure(self):
         self.settings.compiler_libcxx = None

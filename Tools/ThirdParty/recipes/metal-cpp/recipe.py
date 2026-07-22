@@ -1,11 +1,16 @@
 from thirdparty import RecipeBase
 from thirdparty.files import get, copy
+from thirdparty.scm import GithubRepository, Version
 
 
 class Recipe(RecipeBase):
     name = "metal-cpp"
     version = "27"
     license = "Apache-2.0"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "apple/metal-cpp")
+        return Version(repo.latest_tag_matching(r"release/metal-cpp_macOS(\d+)_iOS\1"))
 
     def source(self):
         get(

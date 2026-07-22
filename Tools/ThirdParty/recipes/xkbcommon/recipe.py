@@ -3,6 +3,7 @@ from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rmdir
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.pkgconfig import PkgConfigDeps
+from thirdparty.scm import GithubRepository, Version
 
 
 class _Options(RecipeOptions):
@@ -16,6 +17,10 @@ class Recipe(RecipeBase[_Options]):
     name = "xkbcommon"
     version = "1.7.0"
     license = "MIT"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "xkbcommon/libxkbcommon")
+        return Version(repo.latest_release.removeprefix("xkbcommon-"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

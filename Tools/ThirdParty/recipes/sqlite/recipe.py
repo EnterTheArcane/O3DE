@@ -4,6 +4,7 @@ from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import get, load, save
+from thirdparty.scm import Version, WebReleaseIndex
 
 
 class _Options(RecipeOptions):
@@ -43,6 +44,10 @@ class Recipe(RecipeBase[_Options]):
     name = "sqlite"
     version = "3.53.3"
     license = "Unlicense"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://www.sqlite.org/download.html")
+        return Version(index.latest_release(r"PRODUCT,([\d.]+),[^\n]*sqlite-amalgamation"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

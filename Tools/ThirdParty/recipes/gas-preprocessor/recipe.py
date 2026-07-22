@@ -1,11 +1,15 @@
 from thirdparty import RecipeBase
 from thirdparty.files import copy, download
+from thirdparty.scm import GithubRepository, Version
 
 
 class Recipe(RecipeBase):
     name = "gas-preprocessor"
     version = "20260314"
     license = "GPL-2.0-or-later"
+
+    def latest_version(self):
+        return Version(GithubRepository(self, "FFmpeg/gas-preprocessor").latest_commit_date())
 
     def source(self):
         download(

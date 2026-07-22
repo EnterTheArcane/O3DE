@@ -3,12 +3,16 @@ from thirdparty.env import VirtualBuildEnv
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get, replace_in_file
 from thirdparty.autotools import Autotools, AutotoolsToolchain
+from thirdparty.scm import GnuFtp, Version
 
 
 class Recipe(RecipeBase):
     name = "bison"
     version = "3.8.2"
     license = "GPL-3.0-or-later"
+
+    def latest_version(self):
+        return Version(GnuFtp(self, "bison").latest_release)
 
     def configure(self):
         self.settings.compiler_libcxx = None

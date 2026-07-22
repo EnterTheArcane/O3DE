@@ -9,7 +9,7 @@ from thirdparty.files import copy, get, replace_in_file
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.microsoft import is_msvc, unix_path
-from thirdparty.scm import Version
+from thirdparty.scm import GnuFtp, Version
 
 
 class _Options(RecipeOptions):
@@ -29,6 +29,9 @@ class Recipe(RecipeBase[_Options]):
     name = "ncurses"
     version = "6.5"
     license = "X11"
+
+    def latest_version(self):
+        return Version(GnuFtp(self, "ncurses").latest_release)
 
     def configure(self):
         # Set the default value based on OS

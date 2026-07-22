@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.files import get, copy, replace_in_file
+from thirdparty.scm import GithubRepository, Version
 
 
 class _Options(RecipeOptions):
@@ -15,6 +16,9 @@ class Recipe(RecipeBase[_Options]):
     name = "xnnpack"
     version = "20241203"
     license = "BSD-3-Clause"
+
+    def latest_version(self):
+        return Version(GithubRepository(self, "google/XNNPACK").latest_commit_date())
 
     def requirements(self):
         self.requires_tool("cmake")

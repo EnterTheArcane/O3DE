@@ -2,6 +2,7 @@ from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir
 from thirdparty.microsoft import is_msvc
+from thirdparty.scm import GithubRepository, Version
 
 
 class _Options(RecipeOptions):
@@ -13,6 +14,9 @@ class Recipe(RecipeBase[_Options]):
     name = "cpuinfo"
     version = "20251210"
     license = "BSD-2-Clause"
+
+    def latest_version(self):
+        return Version(GithubRepository(self, "pytorch/cpuinfo").latest_commit_date())
 
     def configure(self):
         if is_msvc(self):

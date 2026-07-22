@@ -1,11 +1,16 @@
 from thirdparty import RecipeBase
 from thirdparty.files import copy, get
+from thirdparty.scm import GithubRepository, Version
 
 
 class Recipe(RecipeBase):
     name = "neon2sse"
     version = "20260428"
     license = "BSD-3-Clause"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "intel/ARM_NEON_2_x86_SSE")
+        return Version(repo.latest_commit_date())
 
     def source(self):
         get(

@@ -2,6 +2,7 @@ from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rm, rmdir
+from thirdparty.scm import Version, WebReleaseIndex
 
 
 class _Options(RecipeOptions):
@@ -13,6 +14,10 @@ class Recipe(RecipeBase[_Options]):
     name = "libalsa"
     version = "1.2.14"
     license = "LGPL-2.1-or-later"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://www.alsa-project.org/files/pub/lib/")
+        return Version(index.latest_release(r"alsa-lib-([\d.]+)\.tar\.bz2"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

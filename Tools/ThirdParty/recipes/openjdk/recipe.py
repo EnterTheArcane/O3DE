@@ -3,6 +3,7 @@ from pathlib import Path
 from thirdparty import RecipeBase
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get, rm, symlinks
+from thirdparty.scm import Version, WebReleaseIndex
 
 class Recipe(RecipeBase):
     name = "openjdk"
@@ -11,6 +12,13 @@ class Recipe(RecipeBase):
         "GPL-2.0-only WITH Classpath-exception-2.0",
         "GPL-2.0-only WITH OpenJDK-assembly-exception-1.0",
     )
+
+    def latest_version(self):
+        home = WebReleaseIndex(self, "https://jdk.java.net/")
+        feature = home.latest_release(
+            r'GA Releases[\s\S]{0,500}?href="(?:\./|\.\./|/)?(\d+)/">JDK \d+</a>')
+        release = WebReleaseIndex(self, f"https://jdk.java.net/{feature}/")
+        return Version(release.latest_release(r"OpenJDK JDK ([\d.]+) GA Release"))
 
     _SOURCE_DATA = {
         ("Linux", "ARM"): {

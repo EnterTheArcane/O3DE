@@ -5,12 +5,17 @@ from thirdparty import RecipeBase
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rmdir
+from thirdparty.scm import Version, WebReleaseIndex
 
 
 class Recipe(RecipeBase):
     name = "xcb-proto"
     version = "1.17.0"
     license = "MIT"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://xorg.freedesktop.org/releases/individual/xcb/")
+        return Version(index.latest_release(r"xcb-proto-([\d.]+)\.tar\.xz"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

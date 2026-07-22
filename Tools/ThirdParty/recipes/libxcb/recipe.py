@@ -3,6 +3,7 @@ from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.pkgconfig import PkgConfigDeps
+from thirdparty.scm import Version, WebReleaseIndex
 
 # Each xcb-* library libxcb builds installs its own <name>.pc; expose them as components so
 # consumers (libX11, vulkan-loader, ...) can require just the ones they need.
@@ -44,6 +45,10 @@ class Recipe(RecipeBase[_Options]):
     name = "libxcb"
     version = "1.17.0"
     license = "MIT"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://xorg.freedesktop.org/releases/individual/lib/")
+        return Version(index.latest_release(r"libxcb-([\d.]+)\.tar\.xz"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

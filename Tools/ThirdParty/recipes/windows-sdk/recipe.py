@@ -1,5 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.files import copy, get, save
+from thirdparty.scm import NugetPackage, Version
 
 
 # Keyed by NuGet package id. The flat-container API lowercases ids in the URL, so ids must be
@@ -19,9 +20,14 @@ _LIB_APIS = ("ucrt", "um")
 
 class Recipe(RecipeBase):
     name = "windows-sdk"
-    version = "10.0.28000.0"
-    nuget_version = "10.0.28000.2270"
+    version = "10.0.28000.2270"
+    sdk_version = "10.0.28000.0"
+    nuget_version = version
     license = "Microsoft Windows SDK License"
+
+    def latest_version(self):
+        package = NugetPackage(self, "microsoft.windows.sdk.cpp")
+        return Version(package.latest_release)
 
     def build(self) -> None:
         # Headers/sources, the target-arch libs only, and the tools -- not both arches.
@@ -41,18 +47,18 @@ class Recipe(RecipeBase):
         arch = _ARCH[self.settings.arch]
         host = _ARCH[self.settings_build.arch]
 
-        copy(self, "*", src=build / "c" / "Include" / self.version, dst=pkg / "include")
-        copy(self, "*", src=build / "c" / "Source" / self.version, dst=pkg / "src")
+        copy(self, "*", src=build / "c" / "Include" / self.sdk_version, dst=pkg / "include")
+        copy(self, "*", src=build / "c" / "Source" / self.sdk_version, dst=pkg / "src")
         for api in _LIB_APIS:
             copy(self, "*", src=build / "c" / api / arch, dst=pkg / "lib" / api / arch)
-        copy(self, "*", src=build / "bin" / self.version / host, dst=pkg / "bin")
+        copy(self, "*", src=build / "bin" / self.sdk_version / host, dst=pkg / "bin")
 
         # The SDK license is URL-only (nuspec licenseUrl), record it.
         # cppwinrt ships its own LICENSE.txt alongside its headers under include/cppwinrt.
         save(
             self,
             self.folders.package / "licenses" / "NOTICE.txt",
-            f"Microsoft Windows SDK ({self.version})\n"
+            f"Microsoft Windows SDK ({self.sdk_version})\n"
             "(c) Microsoft Corporation. All rights reserved.\n"
             "Licensed under the Microsoft Software License Terms for the Windows SDK.\n"
             "https://aka.ms/WinSDKLicenseURL\n")
@@ -69,8 +75,8 @@ class Recipe(RecipeBase):
         self.info.set_property("cmake_target_name", "WindowsSDK::WindowsSDK")
 
         self.info.buildenv.define_path("WindowsSdkDir", root)
-        self.info.buildenv.define("WindowsSDKVersion", f"{self.version}\\")
-        self.info.buildenv.define("UCRTVersion", self.version)
+        self.info.buildenv.define("WindowsSDKVersion", f"{self.sdk_version}\\")
+        self.info.buildenv.define("UCRTVersion", self.sdk_version)
         for d in self.info.includedirs:
             self.info.buildenv.append_path("INCLUDE", root / d)
         for d in self.info.libdirs:

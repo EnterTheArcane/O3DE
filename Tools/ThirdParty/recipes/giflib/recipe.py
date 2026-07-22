@@ -2,6 +2,7 @@ from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get
 from thirdparty.microsoft import is_msvc
+from thirdparty.scm import SourceForgeProject, Version
 
 
 class _Options(RecipeOptions):
@@ -14,6 +15,10 @@ class Recipe(RecipeBase[_Options]):
     name = "giflib"
     version = "5.2.2"
     license = "MIT"
+
+    def latest_version(self):
+        project = SourceForgeProject(self, "giflib")
+        return Version(project.latest_release(r"giflib-([\d.]+)\.tar\.gz"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

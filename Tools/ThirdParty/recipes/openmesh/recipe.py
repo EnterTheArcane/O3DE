@@ -2,6 +2,7 @@ from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rm, rmdir
 from thirdparty.microsoft import is_msvc
+from thirdparty.scm import Version, WebReleaseIndex
 
 
 class _Options(RecipeOptions):
@@ -13,6 +14,11 @@ class Recipe(RecipeBase[_Options]):
     name = "openmesh"
     version = "11.0"
     license = "BSD-3-Clause"
+
+    def latest_version(self):
+        url = "https://www.graphics.rwth-aachen.de/software/openmesh/download/"
+        index = WebReleaseIndex(self, url)
+        return Version(index.latest_release(r"latest version is OpenMesh (\d+(?:\.\d+)*)"))
 
     def requirements(self):
         self.requires_tool("cmake")

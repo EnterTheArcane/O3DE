@@ -10,6 +10,7 @@ from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
 from thirdparty.files import chdir, get, replace_in_file, copy, rm
 from thirdparty.shell import run
+from thirdparty.scm import GithubRepository, Version
 
 
 # ``ctypes.windll`` / ``ctypes.WinError`` only exist on Windows; OpLock is Windows-only and the
@@ -62,8 +63,14 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "msys2"
-    version = "latest"
+    release_date = "2025-12-13"
+    version = release_date.replace("-", "")
     license = "MSYS license"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "msys2/msys2-installer")
+        tag = repo.latest_release_matching(r"\d{4}-\d{2}-\d{2}")
+        return Version(tag.replace("-", ""))
 
     def configure(self):
         default_packages = ",".join(_DEFAULT_PACKAGES)
@@ -76,7 +83,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/msys2/msys2-installer/releases/download/2025-12-13/msys2-base-x86_64-20251213.tar.xz",
+            url=f"https://github.com/msys2/msys2-installer/releases/download/{self.release_date}/msys2-base-x86_64-{self.version}.tar.xz",
             sha256="999f63c2fc7525af5cd41b55e9ea704471a4f9d0278a257fff3b0d1183c441b9",
             destination=self.folders.source,
             strip_root=False)  # Preserve tarball root dir (msys64/)

@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rmdir
+from thirdparty.scm import GithubRepository, Version
 
 
 class _Options(RecipeOptions):
@@ -12,6 +13,10 @@ class Recipe(RecipeBase[_Options]):
     name = "libsndfile"
     version = "1.2.2"
     license = "LGPL-2.1-or-later"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "libsndfile/libsndfile")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def requirements(self):
         self.requires_tool("cmake")

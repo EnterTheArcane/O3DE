@@ -2,12 +2,17 @@ from thirdparty import RecipeBase
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rm, rmdir
+from thirdparty.scm import Version, WebReleaseIndex
 
 
 class Recipe(RecipeBase):
     name = "xtrans"
     version = "1.6.0"
     license = "MIT"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://www.x.org/releases/individual/lib/")
+        return Version(index.latest_release(r"xtrans-([\d.]+)\.tar\.xz"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

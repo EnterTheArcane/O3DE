@@ -6,6 +6,7 @@ from thirdparty.env import Environment, VirtualBuildEnv
 from thirdparty.files import copy, rename, get, rmdir, chdir
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.microsoft import is_msvc, unix_path
+from thirdparty.scm import GitlabRepository, Version
 
 
 class _Options(RecipeOptions):
@@ -17,6 +18,10 @@ class Recipe(RecipeBase[_Options]):
     name = "x264"
     version = "20250910"
     license = "GPL-2.0"
+
+    def latest_version(self):
+        repo = GitlabRepository(self, "videolan/x264", host="code.videolan.org")
+        return Version(repo.latest_commit_date("master"))
 
     def configure(self):
         self.settings.compiler_libcxx = None

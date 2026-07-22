@@ -7,6 +7,7 @@ from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rename, rm, rmdir
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
+from thirdparty.scm import Version, WebReleaseIndex
 
 
 class _Options(RecipeOptions):
@@ -24,6 +25,10 @@ class Recipe(RecipeBase[_Options]):
     version = "4.2"
     # https://bitbucket.org/multicoreware/x265/src/default/COPYING
     license = "GPL-2.0-only", "commercial"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://downloads.videolan.org/videolan/x265/")
+        return Version(index.latest_release(r"x265_([\d.]+)\.tar\.gz"))
 
     def configure(self):
         if self.settings.os != "Linux":

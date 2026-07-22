@@ -14,7 +14,7 @@ from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get, replace_in_file, apply_patches, save, rm, rmdir
 from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.microsoft import msvc_runtime_flag, is_msvc
-from thirdparty.scm import Version
+from thirdparty.scm import Version, WebReleaseIndex
 
 # X.Org libraries the XCB platform plugin needs. Depend on the individual libx* recipes directly
 # rather than a meta package, so each library's own pkg-config .pc (with correct Libs) is used.
@@ -216,6 +216,12 @@ class Recipe(RecipeBase[_Options]):
     name = "qt"
     version = "6.11.1"
     license = "LGPL-3.0-only"
+
+    def latest_version(self):
+        root = "https://download.qt.io/official_releases/qt/"
+        series = WebReleaseIndex(self, root).latest_release(r'href="([\d.]+)/"')
+        release = WebReleaseIndex(self, f"{root}{series}/")
+        return Version(release.latest_release(r'href="([\d.]+)/"'))
 
     def configure(self):
         if self.settings.os in ("Linux", "FreeBSD"):

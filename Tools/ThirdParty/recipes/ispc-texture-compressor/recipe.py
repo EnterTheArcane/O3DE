@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get
+from thirdparty.scm import GithubRepository, Version
 
 
 class _Options(RecipeOptions):
@@ -12,6 +13,10 @@ class Recipe(RecipeBase[_Options]):
     name = "ispc-texture-compressor"
     version = "2024.09.23"
     license = "MIT"
+
+    def latest_version(self):
+        date = GithubRepository(self, "GameTechDev/ISPCTextureCompressor").latest_commit_date()
+        return Version(f"{date[:4]}.{date[4:6]}.{date[6:]}")
 
     def requirements(self):
         self.requires_tool("cmake")

@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain, set_cmake_minimum_required
 from thirdparty.files import apply_patches, copy, get, rmdir
+from thirdparty.scm import SourceForgeProject, Version
 
 
 class _Options(RecipeOptions):
@@ -12,6 +13,10 @@ class Recipe(RecipeBase[_Options]):
     name = "clipper"
     version = "6.4.2"
     license = "BSL-1.0"
+
+    def latest_version(self):
+        project = SourceForgeProject(self, "polyclipping")
+        return Version(project.latest_release(r"clipper_ver([\d.]+)\.zip"))
 
     def requirements(self):
         self.requires_tool("cmake")

@@ -1,11 +1,16 @@
 from thirdparty import RecipeBase
 from thirdparty.files import apply_patches, copy, get, load, save
+from thirdparty.scm import GithubRepository, Version
 
 
 class Recipe(RecipeBase):
     name = "getopt-for-visual-studio"
     version = "20200201"
     license = "BSD-2-Clause", "MIT"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "skandhurkat/Getopt-for-Visual-Studio")
+        return Version(repo.latest_commit_date())
 
     def source(self):
         get(

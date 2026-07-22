@@ -2,12 +2,17 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.files import copy, get, apply_patches
+from thirdparty.scm import SourceForgeProject, Version
 
 
 class Recipe(RecipeBase):
     name = "rapidxml"
     version = "1.13"
     license = "BSL-1.0", "MIT"
+
+    def latest_version(self):
+        project = SourceForgeProject(self, "rapidxml")
+        return Version(project.latest_release(r"rapidxml-([\d.]+)\.zip"))
 
     def source(self):
         get(

@@ -1,12 +1,17 @@
 from thirdparty import RecipeBase
 from thirdparty.errors import RecipeException
 from thirdparty.files import copy, get, load, save, apply_patches
+from thirdparty.scm import GithubRepository, Version
 
 
 class Recipe(RecipeBase):
     name = "gnu-config"
     version = "2021.08.14"
     license = "GPL-3.0-or-later", "autoconf-special-exception"
+
+    def latest_version(self):
+        date = GithubRepository(self, "build2/config").latest_commit_date()
+        return Version(f"{date[:4]}.{date[4:6]}.{date[6:]}")
 
     def source(self):
         get(

@@ -9,6 +9,7 @@ from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.nmake import NMakeToolchain
 from thirdparty.microsoft import is_msvc
 from thirdparty.shell import run
+from thirdparty.scm import SourceForgeProject, Version
 
 
 class _Options(RecipeOptions):
@@ -20,6 +21,10 @@ class Recipe(RecipeBase[_Options]):
     name = "libmp3lame"
     version = "3.100"
     license = "LGPL-2.0"
+
+    def latest_version(self):
+        project = SourceForgeProject(self, "lame")
+        return Version(project.latest_release(r"lame-([\d.]+)\.tar\.gz"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

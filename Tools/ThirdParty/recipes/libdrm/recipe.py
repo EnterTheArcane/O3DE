@@ -3,6 +3,7 @@ from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.pkgconfig import PkgConfigDeps
+from thirdparty.scm import Version, WebReleaseIndex
 
 
 class _Options(RecipeOptions):
@@ -14,6 +15,10 @@ class Recipe(RecipeBase[_Options]):
     name = "libdrm"
     version = "2.4.125"
     license = "MIT"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://dri.freedesktop.org/libdrm/")
+        return Version(index.latest_release(r"libdrm-([\d.]+)\.tar\.xz"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

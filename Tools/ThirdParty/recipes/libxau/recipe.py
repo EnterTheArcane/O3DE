@@ -4,6 +4,7 @@ from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get, rmdir
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.pkgconfig import PkgConfigDeps
+from thirdparty.scm import Version, WebReleaseIndex
 
 
 class _Options(RecipeOptions):
@@ -15,6 +16,10 @@ class Recipe(RecipeBase[_Options]):
     name = "libxau"
     version = "1.0.12"
     license = "MIT"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://www.x.org/releases/individual/lib/")
+        return Version(index.latest_release(r"libXau-([\d.]+)\.tar\.xz"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

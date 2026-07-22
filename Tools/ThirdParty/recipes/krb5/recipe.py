@@ -27,7 +27,7 @@ class Recipe(RecipeBase[_Options]):
 
     def latest_version(self):
         repo = GithubRepository(self, "krb5/krb5")
-        return Version(repo.latest_tag("krb5-").removeprefix("krb5-").replace("-final", ""))
+        return Version(repo.latest_tag_matching(r"krb5-(\d+\.\d+(?:\.\d+)?)-final"))
 
     def configure(self):
         if self.settings.os != "Linux":

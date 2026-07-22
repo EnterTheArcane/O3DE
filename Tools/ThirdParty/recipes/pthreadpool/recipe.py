@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.files import get, copy, replace_in_file
+from thirdparty.scm import GithubRepository, Version
 
 
 class _Options(RecipeOptions):
@@ -12,6 +13,9 @@ class Recipe(RecipeBase[_Options]):
     name = "pthreadpool"
     version = "20231129"
     license = "BSD-2-Clause"
+
+    def latest_version(self):
+        return Version(GithubRepository(self, "Maratyszcza/pthreadpool").latest_commit_date())
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

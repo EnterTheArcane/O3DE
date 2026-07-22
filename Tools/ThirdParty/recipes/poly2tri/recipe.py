@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get
+from thirdparty.scm import GithubRepository, Version
 
 
 class _Options(RecipeOptions):
@@ -12,6 +13,9 @@ class Recipe(RecipeBase[_Options]):
     name = "poly2tri"
     version = "20130502"
     license = "BSD-3-Clause"
+
+    def latest_version(self):
+        return Version(GithubRepository(self, "greenm01/poly2tri").latest_commit_date())
 
     def requirements(self):
         self.requires_tool("cmake")

@@ -1,11 +1,15 @@
 from thirdparty import RecipeBase
 from thirdparty.files import get, copy
+from thirdparty.scm import GithubRepository, Version
 
 
 class Recipe(RecipeBase):
     name = "fp16"
     version = "20210320"
     license = "MIT"
+
+    def latest_version(self):
+        return Version(GithubRepository(self, "Maratyszcza/FP16").latest_commit_date())
 
     def source(self):
         get(

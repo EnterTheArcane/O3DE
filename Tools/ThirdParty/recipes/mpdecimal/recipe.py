@@ -7,6 +7,7 @@ from thirdparty.autotools import AutotoolsToolchain, Autotools
 from thirdparty.nmake import NMakeDeps, NMakeToolchain
 from thirdparty.microsoft import VCVars, is_msvc
 from thirdparty.shell import run
+from thirdparty.scm import Version, WebReleaseIndex
 
 
 class _Options(RecipeOptions):
@@ -19,6 +20,10 @@ class Recipe(RecipeBase[_Options]):
     name = "mpdecimal"
     version = "4.0.0"
     license = "BSD-2-Clause"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://www.bytereef.org/mpdecimal/download.html")
+        return Version(index.latest_release(r"mpdecimal-([\d.]+)\.tar\.gz"))
 
     def configure(self):
         if not self.options.cxx:

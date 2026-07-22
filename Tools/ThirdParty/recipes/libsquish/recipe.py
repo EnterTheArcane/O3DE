@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get
+from thirdparty.scm import SourceForgeProject, Version
 
 
 class _Options(RecipeOptions):
@@ -15,6 +16,10 @@ class Recipe(RecipeBase[_Options]):
     name = "libsquish"
     version = "1.15"
     license = "MIT"
+
+    def latest_version(self):
+        project = SourceForgeProject(self, "libsquish")
+        return Version(project.latest_release(r"libsquish-([\d.]+)\.tgz"))
 
     def configure(self):
         if self.settings.arch not in self._sse2_compliant_archs:

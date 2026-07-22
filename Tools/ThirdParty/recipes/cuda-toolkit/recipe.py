@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get
+from thirdparty.scm import Version, WebReleaseIndex
 
 import os
 
@@ -59,6 +60,11 @@ class Recipe(RecipeBase):
     name = "cuda-toolkit"
     version = "13.3.0"
     license = "NVIDIA CUDA Toolkit EULA"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://developer.nvidia.com/cuda-toolkit-archive")
+        pattern = r"Latest Release[\s\S]*?CUDA Toolkit ([\d.]+)"
+        return Version(index.latest_release(pattern))
     
     def validate(self):
         if self._platform_key not in _REDIST_PLATFORMS:

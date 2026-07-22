@@ -1,12 +1,18 @@
 from thirdparty import RecipeBase
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get
+from thirdparty.scm import Version, WebReleaseIndex
 
 
 class Recipe(RecipeBase):
     name = "jom"
     version = "1.1.4"
     license = "GPL-3.0-only"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://download.qt.io/official_releases/jom/")
+        value = index.latest_release(r"jom_([\d_]+)\.zip")
+        return Version(value.replace("_", "."))
 
     def validate(self):
         if self.settings.os != "Windows":

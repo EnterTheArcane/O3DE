@@ -5,6 +5,7 @@ from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get, replace_in_file, rm, rmdir
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.microsoft import unix_path
+from thirdparty.scm import GithubRepository, Version
 
 
 class _Options(RecipeOptions):
@@ -16,6 +17,10 @@ class Recipe(RecipeBase[_Options]):
     name = "libxcrypt"
     version = "4.4.36"
     license = "LGPL-2.1-or-later"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "besser82/libxcrypt")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def configure(self):
         self.settings.compiler_libcxx = None

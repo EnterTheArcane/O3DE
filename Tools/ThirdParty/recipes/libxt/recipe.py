@@ -4,6 +4,7 @@ from thirdparty.build import cross_building
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.pkgconfig import PkgConfigDeps
+from thirdparty.scm import Version, WebReleaseIndex
 
 
 class _Options(RecipeOptions):
@@ -15,6 +16,10 @@ class Recipe(RecipeBase[_Options]):
     name = "libxt"
     version = "1.3.1"
     license = "MIT"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://www.x.org/releases/individual/lib/")
+        return Version(index.latest_release(r"libXt-([\d.]+)\.tar\.xz"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

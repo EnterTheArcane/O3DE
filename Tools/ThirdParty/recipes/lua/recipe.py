@@ -2,6 +2,7 @@ from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import get, load, save, apply_patches, collect_libs
+from thirdparty.scm import Version, WebReleaseIndex
 
 
 class _Options(RecipeOptions):
@@ -16,6 +17,10 @@ class Recipe(RecipeBase[_Options]):
     name = "lua"
     version = "5.5.0"
     license = "MIT"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://www.lua.org/ftp/")
+        return Version(index.latest_release(r"lua-([\d.]+)\.tar\.gz"))
 
     def configure(self):
         if not self.options.compile_as_cpp:

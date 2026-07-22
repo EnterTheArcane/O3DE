@@ -3,12 +3,16 @@ from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, chdir, copy, get, rmdir
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.microsoft import is_msvc, unix_path
+from thirdparty.scm import GnuFtp, Version
 
 
 class Recipe(RecipeBase):
     name = "gperf"
     version = "3.1"
     license = "GPL-3.0-or-later"
+
+    def latest_version(self):
+        return Version(GnuFtp(self, "gperf").latest_release)
 
     def configure(self):
         self.settings.compiler_libcxx = None

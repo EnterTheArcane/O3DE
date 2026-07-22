@@ -3,6 +3,7 @@ import os
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, get, load, save
+from thirdparty.scm import GithubRepository, Version
 
 
 class _Options(RecipeOptions):
@@ -14,6 +15,10 @@ class Recipe(RecipeBase[_Options]):
     name = "minizip"
     version = "1.3.1"
     license = "Zlib"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "madler/zlib")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

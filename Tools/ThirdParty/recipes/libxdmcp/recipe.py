@@ -3,6 +3,7 @@ from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.pkgconfig import PkgConfigDeps
+from thirdparty.scm import Version, WebReleaseIndex
 
 
 class _Options(RecipeOptions):
@@ -14,6 +15,10 @@ class Recipe(RecipeBase[_Options]):
     name = "libxdmcp"
     version = "1.1.5"
     license = "MIT"
+
+    def latest_version(self):
+        index = WebReleaseIndex(self, "https://www.x.org/releases/individual/lib/")
+        return Version(index.latest_release(r"libXdmcp-([\d.]+)\.tar\.xz"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

@@ -3,6 +3,7 @@ from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.pkgconfig import PkgConfigDeps
+from thirdparty.scm import GitlabRepository, Version
 
 
 class _Options(RecipeOptions):
@@ -14,6 +15,10 @@ class Recipe(RecipeBase[_Options]):
     name = "pulseaudio"
     version = "17.0"
     license = "LGPL-2.1-or-later"
+
+    def latest_version(self):
+        repo = GitlabRepository(self, "pulseaudio/pulseaudio", host="gitlab.freedesktop.org")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

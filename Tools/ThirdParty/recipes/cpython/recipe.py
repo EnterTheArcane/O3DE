@@ -18,7 +18,7 @@ from thirdparty.autotools import Autotools, AutotoolsToolchain, AutotoolsDeps
 from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.msbuild import MSBuild, MSBuildDeps, MSBuildToolchain
 from thirdparty.microsoft import is_msvc, msvc_runtime_flag, msvs_toolset
-from thirdparty.scm import Version
+from thirdparty.scm import GithubRepository, Version
 from thirdparty.shell import run
 from thirdparty.build.cross_building import cross_building
 
@@ -44,6 +44,10 @@ class Recipe(RecipeBase[_Options]):
     name = "cpython"
     version = "3.14.6"
     license = "Python-2.0"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "python/cpython")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def configure(self):
         if is_msvc(self):
