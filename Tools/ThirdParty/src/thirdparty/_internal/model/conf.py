@@ -239,14 +239,13 @@ class _OpenJDKTools:
 
 @dataclass(slots=True)
 class _PySideTools:
-    pyside_dir: PathValue | None = None
-    shiboken6_generator: PathValue | None = None
+    root: PathValue | None = None
 
 
 @dataclass(slots=True)
-class _PySide6Tools:
-    pyside6_dir: PathValue | None = None
-    shiboken6_generator: PathValue | None = None
+class _ShibokenTools:
+    generator: PathValue | None = None
+    generator_root: PathValue | None = None
 
 
 @dataclass(slots=True)
@@ -293,9 +292,9 @@ class _Tools:
     ncurses: _NcursesTools = field(default_factory=_NcursesTools)
     openjdk: _OpenJDKTools = field(default_factory=_OpenJDKTools)
     pyside: _PySideTools = field(default_factory=_PySideTools)
-    pyside6: _PySide6Tools = field(default_factory=_PySide6Tools)
     qt: _QtTools = field(default_factory=_QtTools)
     rust: _RustTools = field(default_factory=_RustTools)
+    shiboken: _ShibokenTools = field(default_factory=_ShibokenTools)
     strawberryperl: _StrawberryPerlTools = field(default_factory=_StrawberryPerlTools)
 
 

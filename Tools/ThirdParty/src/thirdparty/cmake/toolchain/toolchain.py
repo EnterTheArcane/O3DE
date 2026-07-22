@@ -40,7 +40,7 @@ from thirdparty.cmake.toolchain.blocks import (
     RpathLinkFlagsBlock,
 )
 from thirdparty.cmake.utils import is_multi_configuration
-from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
+from thirdparty.env import Environment, VirtualBuildEnv, VirtualRunEnv
 from thirdparty.microsoft import VCVars
 
 from thirdparty.recipe import RecipeBase
@@ -116,6 +116,8 @@ class CMakeToolchain:
     find_builddirs: bool
     user_presets_path: str
     presets_prefix: str
+    presets_build_environment: Environment | None
+    presets_run_environment: Environment | None
     absolute_paths: bool
     configure_args: list[str]
 

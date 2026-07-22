@@ -7,6 +7,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
     bash build-essential perl git python3 python3-pip \
     gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+    gcc-x86-64-linux-gnu g++-x86-64-linux-gnu \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /tmp/requirements.txt

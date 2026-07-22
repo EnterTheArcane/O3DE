@@ -128,8 +128,6 @@ _MODULE_DEPENDS: dict[str, list[str]] = {
 
 
 class _Options(RecipeOptions):
-    shared: bool = False
-
     with_brotli: bool = True
     with_dbus: bool = False
     with_doubleconversion: bool = True
@@ -555,9 +553,19 @@ class Recipe(RecipeBase[_Options]):
         tc = CMakeToolchain(self, generator="Ninja")
 
         tc.absolute_paths = True
+        # A cross linker does not consult the target's LD_LIBRARY_PATH when it resolves
+        # DT_NEEDED entries of imported shared libraries. Give it link-time-only search
+        # paths for those transitive dependencies (for example, libgssapi_krb5.so needs
+        # the other Kerberos shared libraries from the same package).
+        if cross_building(self) and self.settings.os == "Linux":
+            tc.add_rpath_link = True
 
         tc.variables["QT_BUILD_TESTS"] = "OFF"
         tc.variables["QT_BUILD_EXAMPLES"] = "OFF"
+        # Qt is distributed dynamically. Static Qt is intentionally unsupported.
+        tc.variables["BUILD_SHARED_LIBS"] = True
+        tc.variables["FEATURE_shared"] = "ON"
+        tc.variables["FEATURE_static"] = "OFF"
 
         if is_msvc(self) and "MT" in msvc_runtime_flag(self):
             tc.variables["FEATURE_static_runtime"] = "ON"
@@ -707,13 +715,6 @@ class Recipe(RecipeBase[_Options]):
             tc.cache_variables["QT_FORCE_BUILD_TOOLS"] = True
 
         tc.variables["FEATURE_pkg_config"] = "ON"
-        if self.settings.compiler == "gcc" and self.settings.build_type == "Debug" and not self.options.shared:
-            tc.variables["BUILD_WITH_PCH"] = "OFF"  # disabling PCH to save disk space
-
-            # "set(QT_EXTRA_INCLUDEPATHS ${RECIPE_INCLUDE_DIRS})\n"
-            # "set(QT_EXTRA_DEFINES ${RECIPE_DEFINES})\n"
-            # "set(QT_EXTRA_LIBDIRS ${RECIPE_LIB_DIRS})\n"
-
         current_cpp_std = (self.settings.compiler_cxx_standard or default_cppstd(self))
         current_cpp_std = str(current_cpp_std).replace("gnu", "")
         cpp_std_map = {
@@ -1034,8 +1035,6 @@ class Recipe(RecipeBase[_Options]):
             assert componentname not in self.info.components, f"Plugin {pluginname} already present in self.info.components"
             self.info.components[componentname].set_property("cmake_target_name", f"Qt6::{pluginname}")
             self.info.components[componentname].set_property("cmake_target_aliases", [f"Qt::{pluginname}"])
-            if not self.options.shared:
-                self.info.components[componentname].libs = [libname + libsuffix]
             self.info.components[componentname].libdirs = [os.path.join("plugins", plugintype)]
             self.info.components[componentname].includedirs = []
             if "Core" not in requires:
@@ -1493,81 +1492,6 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os != "Windows":
             self.info.components["qtCore"].cxxflags.append("-fPIC")
 
-        if not self.options.shared:
-            if self.settings.os == "Windows":
-                # https://github.com/qt/qtbase/blob/v6.6.1/src/corelib/CMakeLists.txt#L527-L541
-                self.info.components["qtCore"].system_libs.append("advapi32")
-                self.info.components["qtCore"].system_libs.append("authz")
-                self.info.components["qtCore"].system_libs.append("kernel32")
-                self.info.components["qtCore"].system_libs.append("netapi32")
-                self.info.components["qtCore"].system_libs.append("ole32")
-                self.info.components["qtCore"].system_libs.append("shell32")
-                self.info.components["qtCore"].system_libs.append("user32")
-                self.info.components["qtCore"].system_libs.append("uuid")
-                self.info.components["qtCore"].system_libs.append("version")
-                self.info.components["qtCore"].system_libs.append("winmm")
-                self.info.components["qtCore"].system_libs.append("ws2_32")
-                self.info.components["qtCore"].system_libs.append("mpr")
-                self.info.components["qtCore"].system_libs.append("userenv")
-                # https://github.com/qt/qtbase/blob/90b845d15ffb97693dba527385db83510ebd121a/src/corelib/CMakeLists.txt#L891-L895
-                self.info.components["qtCore"].system_libs.extend(["icuuc", "icuin"])
-                # https://github.com/qt/qtbase/commit/09991b51a48aab7a5f7c5cbf2577ba5450d4cbb4
-                self.info.components["qtCore"].system_libs.append("ntdll")
-                # https://github.com/qt/qtbase/blob/v6.6.1/src/network/CMakeLists.txt#L196-L200
-                self.info.components["qtNetwork"].system_libs.append("advapi32")
-                self.info.components["qtNetwork"].system_libs.append("dnsapi")
-                self.info.components["qtNetwork"].system_libs.append("iphlpapi")
-                self.info.components["qtNetwork"].system_libs.append("secur32")
-                self.info.components["qtNetwork"].system_libs.append("winhttp")
-                # https://github.com/qt/qtbase/blob/v6.6.1/src/printsupport/CMakeLists.txt#L70-L75
-                self.info.components["qtPrintSupport"].system_libs.append("gdi32")
-                self.info.components["qtPrintSupport"].system_libs.append("user32")
-                self.info.components["qtPrintSupport"].system_libs.append("comdlg32")
-                self.info.components["qtPrintSupport"].system_libs.append("winspool")
-
-            if is_apple_os(self):
-                # https://github.com/qt/qtbase/blob/v6.6.1/src/corelib/CMakeLists.txt#L580-L584
-                self.info.components["qtCore"].frameworks.append("CoreFoundation")
-                self.info.components["qtCore"].frameworks.append("Foundation")
-                self.info.components["qtCore"].frameworks.append("IOKit")
-                # https://github.com/qt/qtbase/blob/v6.6.1/src/network/CMakeLists.txt#L205-L214
-                self.info.components["qtNetwork"].frameworks.append("CFNetwork")
-                # https://github.com/qt/qtbase/commit/1299aaa231b1ce989c8aedcfed372bde0e1e3a0e
-                self.info.components["qtNetwork"].frameworks.append("Network")
-                # https://github.com/qt/qtbase/blob/v6.6.1/src/network/CMakeLists.txt#L216-L221
-                # qtcore requires "_OBJC_CLASS_$_NSApplication" and more, which are in "Cocoa" framework
-                self.info.components["qtCore"].frameworks.append("Cocoa")
-                # https://github.com/qt/qtbase/blob/v6.8.3/src/corelib/CMakeLists.txt#L712-L717
-                self.info.components["qtCore"].frameworks.append("UniformTypeIdentifiers")
-                self.info.components["qtNetwork"].system_libs.append("resolv")
-                if self.options.with_gssapi:
-                    # https://github.com/qt/qtbase/blob/v6.6.1/src/network/CMakeLists.txt#L250C56-L253
-                    self.info.components["qtNetwork"].frameworks.append("GSS")
-                if self.options.gui and self.options.widgets:
-                    # https://github.com/qt/qtbase/blob/v6.6.1/src/printsupport/CMakeLists.txt#L52-L63
-                    self.info.components["qtPrintSupport"].system_libs.append("cups")
-                    self.info.components["qtPrintSupport"].frameworks.append("ApplicationServices")
-                if self.settings.os == "Mac":
-                    # https://github.com/qt/qtbase/blob/v6.6.1/src/corelib/CMakeLists.txt#L598-L606
-                    self.info.components["qtCore"].frameworks.append("AppKit")
-                    self.info.components["qtCore"].frameworks.append("ApplicationServices")
-                    self.info.components["qtCore"].frameworks.append("CoreServices")
-                    self.info.components["qtCore"].frameworks.append("CoreServices")
-                    self.info.components["qtCore"].frameworks.append("Security")
-                    self.info.components["qtCore"].frameworks.append("DiskArbitration")
-                else:
-                    # https://github.com/qt/qtbase/blob/v6.6.1/src/corelib/CMakeLists.txt#L969-L972
-                    self.info.components["qtCore"].frameworks.append("MobileCoreServices")
-                if self.settings.os not in ["iOS", "tvOS"]:
-                    self.info.components["qtNetwork"].frameworks.append("CoreServices")
-                    self.info.components["qtNetwork"].frameworks.append("SystemConfiguration")
-                else:
-                    # https://github.com/qt/qtbase/blob/v6.6.1/src/corelib/CMakeLists.txt#L1074-L1077
-                    self.info.components["qtCore"].frameworks.append("UIKit")
-                if self.settings.os == "watchOS":
-                    # https://github.com/qt/qtbase/blob/v6.6.1/src/corelib/CMakeLists.txt#L1079-L1082
-                    self.info.components["qtCore"].frameworks.append("WatchKit")
-
         if self.settings.os == "Windows" or is_msvc(self):
             _add_build_module("qtPlatform", self._cmake_platform_target_setup_file)
 
@@ -1603,17 +1527,6 @@ class Recipe(RecipeBase[_Options]):
                 if os.path.isfile(module):
                     _add_build_module(component_name[:-5], module)
                 self.info.components[component_name[:-5]].builddirs.append(os.path.join("lib", "cmake", m))
-
-        objects_dirs = (self.folders.package / "lib").glob("objects-*/")
-        for object_dir in objects_dirs:
-            for m in os.listdir(object_dir):
-                component = "qt" + m[:m.find("_")]
-                if component not in self.info.components:
-                    continue
-                for root, _, files in os.walk(os.path.join(object_dir, m)):
-                    obj_files = [os.path.join(root, file) for file in files]
-                    self.info.components[component].exelinkflags.extend(obj_files)
-                    self.info.components[component].sharedlinkflags.extend(obj_files)
 
         build_modules_list: list[str | Path] = []
 

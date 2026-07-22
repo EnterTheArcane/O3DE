@@ -66,10 +66,20 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
-        self.info.components["xkbcommon"].set_property("pkg_config_name", "xkbcommon")
-        self.info.components["xkbcommon"].libs = ["xkbcommon"]
+        # Qt's installed Qt6GuiConfig.cmake calls find_dependency(XKB) and consumes XKB::XKB.
+        # Export that canonical interface here so every native Qt CMake consumer gets it from
+        # CMakeDeps instead of synthesizing an ad-hoc compatibility file.
+        self.info.set_property("cmake_file_name", "XKB")
+        # Qt asks for XKB 0.9.0. xkbcommon's stable API is intentionally compatible
+        # across the 0.x -> 1.x boundary, so CMake's default SameMajorVersion policy
+        # would incorrectly reject this package even though it is new enough.
+        self.info.set_property("cmake_config_version_compat", "AnyNewerVersion")
+        xkb = self.info.components["xkbcommon"]
+        xkb.set_property("cmake_target_name", "XKB::XKB")
+        xkb.set_property("pkg_config_name", "xkbcommon")
+        xkb.libs = ["xkbcommon"]
         if self.settings.os in ("Linux", "FreeBSD"):
-            self.info.components["xkbcommon"].system_libs = ["m"]
+            xkb.system_libs = ["m"]
 
         if self.options.with_x11:
             self.info.components["libxkbcommon-x11"].set_property("pkg_config_name", "xkbcommon-x11")

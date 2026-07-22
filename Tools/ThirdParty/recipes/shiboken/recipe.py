@@ -5,13 +5,13 @@ from thirdparty import RecipeBase
 from thirdparty.build import cross_building
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.env import Environment, VirtualBuildEnv
-from thirdparty.files import apply_patches, chmod, copy, get, save
+from thirdparty.files import apply_patches, copy, get, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
-    name = "pyside"
+    name = "shiboken"
     version = "6.11.1"
     license = "LGPL-3.0-only"
 
@@ -25,7 +25,6 @@ class Recipe(RecipeBase):
         self.requires_tool("shiboken-generator")
         self.requires("cpython")
         self.requires("qt")
-        self.requires("shiboken")
         if cross_building(self):
             self.requires_tool("qt")
 
@@ -46,51 +45,22 @@ class Recipe(RecipeBase):
         if self.settings.os == "Mac" and "llvm" in self.dependencies.build:
             environment = build_env.environment()
             llvm_root = self.dependencies.build["llvm"].folders.package
-            # Shiboken asks `clang++` for macOS' implicit SDK include paths. Let that
-            # resolve to Apple's driver; the packaged LLVM driver has no implicit SDK
-            # and otherwise mixes its libc++ headers with the host's bare C headers.
             _remove_all(environment, "PATH", llvm_root / "bin")
             _remove_all(environment, "DYLD_LIBRARY_PATH", llvm_root / "lib")
 
-        if cross_building(self):
-            # PySide forwards CMAKE_SYSTEM_PROCESSOR to shiboken6 --arch. Recipe
-            # architecture names such as X64 are not accepted there, so keep the
-            # CMake target processor in the compiler/tooling spelling upstream expects.
-            processor = self.settings.arch
-            if processor == "X64":
-                processor = "AMD64" if self.settings.os == "Windows" else "x86_64"
-            elif processor == "ARM":
-                processor = {
-                    "Windows": "ARM64",
-                    "Mac": "arm64",
-                }.get(self.settings.os, "aarch64")
-            self.conf.tools.cmake.toolchain.system_processor = processor
-
         python = self.dependencies["cpython"]
         qt = self.dependencies["qt"]
-        shiboken = self.dependencies["shiboken"]
         generator = self.dependencies.build["shiboken-generator"]
-        python_root, python_exe, python_include, python_library, _ = (
-            _python_layout(python))
-        shiboken_site = _python_site_packages(shiboken.folders.package, python) / "shiboken6"
+        python_root, python_exe, python_include, python_library, _ = _python_layout(python)
         qt_root = qt.folders.package
-        shiboken_root = shiboken.folders.package
 
         tc = CMakeToolchain(self)
-        tc.variables["PYSIDE_SOURCE_DIR"] = self.folders.source.as_posix()
         tc.variables["BUILD_TESTS"] = False
-        tc.variables["INSTALL_TESTS"] = False
-        tc.variables["BUILD_DOCS"] = "no"
+        tc.variables["BUILD_DOCS"] = False
         tc.variables["QUIET_BUILD"] = True
         tc.variables["FORCE_LIMITED_API"] = "no"
-        # Qt, Shiboken, and PySide are separate package roots whose run environments
-        # provide their shared-library paths. Do not embed temporary build-root paths.
-        tc.variables["CMAKE_SKIP_INSTALL_RPATH"] = True
-        tc.variables["SHIBOKEN_PYTHON_MODULE_DIR"] = shiboken_site.as_posix()
-        tc.variables["QFP_QT_TARGET_PATH"] = qt_root.as_posix()
-        tc.variables["QFP_SHIBOKEN_TARGET_PATH"] = shiboken_root.as_posix()
-        tc.variables["Shiboken6_DIR"] = (
-            shiboken_root / "lib" / "cmake" / "Shiboken6").as_posix()
+        # Keep the native install layout and omit wheel-only duplicate targets/configs.
+        tc.variables["is_pyside6_superproject_build"] = True
         tc.variables["Qt6_DIR"] = (qt_root / "lib" / "cmake" / "Qt6").as_posix()
         tc.variables["QT6_INSTALL_PREFIX"] = qt_root.as_posix()
         tc.variables["QT6_INSTALL_BINS"] = "bin"
@@ -106,6 +76,7 @@ class Recipe(RecipeBase):
             tc.variables["Python3_ROOT_DIR"] = python_root.as_posix()
             tc.variables["QFP_PYTHON_TARGET_PATH"] = python_root.as_posix()
             tc.variables["QFP_PYTHON_HOST_PATH"] = host_python_exe.as_posix()
+            tc.variables["QFP_QT_TARGET_PATH"] = qt_root.as_posix()
             tc.variables["QFP_QT_HOST_PATH"] = host_qt_root.as_posix()
             tc.variables["QFP_SHIBOKEN_HOST_PATH"] = generator.folders.package.as_posix()
             if self.settings.os in ("Linux", "FreeBSD"):
@@ -134,7 +105,7 @@ class Recipe(RecipeBase):
         build_env.generate()
 
         deps = CMakeDeps(self)
-        for dependency in ("cpython", "qt", "shiboken"):
+        for dependency in ("cpython", "qt"):
             deps.set_property(dependency, "cmake_find_mode", "none")
         for dependency in ("cpython", "shiboken-generator"):
             deps.set_property(dependency, "cmake_find_mode", "none", build_context=True)
@@ -144,76 +115,31 @@ class Recipe(RecipeBase):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=self.folders.recipe)
+        cmake.configure(build_script_folder=Path("sources/shiboken6"))
         cmake.build()
 
     def package(self):
         copy(self, "LICENSE*", src=self.folders.source, dst=self.folders.package / "licenses")
         CMake(self).install()
-
-        # Install the console entry points normally supplied by the wheel build.
-        bin_dir = self.folders.package / "bin"
-        if self.settings.os == "Windows":
-            save(
-                self,
-                bin_dir / "pyside6-uic.cmd",
-                '@"%~dp0uic.exe" -g python %*\n',
-            )
-            save(
-                self,
-                bin_dir / "pyside6-rcc.cmd",
-                "@setlocal\n"
-                '@set "_PYSIDE_RCC_ARGS=-g python"\n'
-                '@for %%A in (%*) do @if "%%~A"=="--binary" set "_PYSIDE_RCC_ARGS="\n'
-                '@"%~dp0rcc.exe" %_PYSIDE_RCC_ARGS% %*\n',
-            )
-        else:
-            loader_environment = ""
-            if self.settings.os == "Mac":
-                # macOS strips DYLD_* variables while starting a script through /bin/sh.
-                # Reconstruct the fallback path from Qt's surviving QT_PLUGIN_PATH.
-                loader_environment = (
-                    'qt_plugin_dir="${QT_PLUGIN_PATH%%:*}"\n'
-                    'if [ -n "$qt_plugin_dir" ]; then\n'
-                    '    qt_root="${qt_plugin_dir%/plugins}"\n'
-                    '    export DYLD_FALLBACK_LIBRARY_PATH="${qt_root}/lib'
-                    '${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"\n'
-                    'fi\n'
-                )
-
-            save(
-                self,
-                bin_dir / "pyside6-uic",
-                '#!/bin/sh\n' + loader_environment
-                + 'exec "$(dirname "$0")/uic" -g python "$@"\n',
-            )
-            save(
-                self,
-                bin_dir / "pyside6-rcc",
-                "#!/bin/sh\n" + loader_environment
-                + 'for arg in "$@"; do\n'
-                '    if [ "$arg" = "--binary" ]; then\n'
-                '        exec "$(dirname "$0")/rcc" "$@"\n'
-                "    fi\n"
-                "done\n"
-                'exec "$(dirname "$0")/rcc" -g python "$@"\n',
-            )
-            chmod(self, str(bin_dir / "pyside6-uic"), execute=True)
-            chmod(self, str(bin_dir / "pyside6-rcc"), execute=True)
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.set_property("cmake_find_mode", "none")
-        self.info.set_property("cmake_file_name", "PySide6")
-        self.info.builddirs = [os.path.join("lib", "cmake", "PySide6")]
+        self.info.set_property("cmake_file_name", "Shiboken6")
+        self.info.builddirs = [os.path.join("lib", "cmake", "Shiboken6")]
 
-        binding = self.info.components["pyside6"]
-        binding.set_property("cmake_target_name", "PySide6::pyside6")
-        binding.includedirs = [os.path.join("PySide6", "include")]
-        binding.requires = ["shiboken::shiboken6", "qt::qtCore"]
+        runtime = self.info.components["shiboken6"]
+        runtime.set_property("cmake_target_name", "Shiboken6::libshiboken")
+        runtime.includedirs = [os.path.join("shiboken6", "include")]
+        runtime.requires = ["cpython::python"]
 
-        site_packages = _python_site_packages(
-            self.folders.package, self.dependencies["cpython"])
         root = self.folders.package
+        python = self.dependencies["cpython"]
+        major, minor = str(python.version).split(".")[:2]
+        if python.settings.os == "Windows":
+            site_packages = root / "Lib" / "site-packages"
+        else:
+            site_packages = root / "lib" / f"python{major}.{minor}" / "site-packages"
         for environment in (self.info.buildenv, self.info.runenv):
             environment.prepend_path("PATH", root / "bin")
             environment.prepend_path("PYTHONPATH", site_packages)
@@ -221,7 +147,6 @@ class Recipe(RecipeBase):
                 environment.prepend_path("DYLD_LIBRARY_PATH", root / "lib")
             elif self.settings.os in ("Linux", "FreeBSD"):
                 environment.prepend_path("LD_LIBRARY_PATH", root / "lib")
-        self.info.conf.tools.pyside.root = self.folders.package
 
 
 def _python_layout(dependency: RecipeBase) -> tuple[Path, Path, Path, Path, Path]:
@@ -243,13 +168,6 @@ def _python_layout(dependency: RecipeBase) -> tuple[Path, Path, Path, Path, Path
         root / "lib" / f"libpython{major}.{minor}.{extension}",
         root / "lib" / f"python{major}.{minor}" / "site-packages",
     )
-
-
-def _python_site_packages(root: Path, dependency: RecipeBase) -> Path:
-    major, minor = str(dependency.version).split(".")[:2]
-    if dependency.settings.os == "Windows":
-        return root / "Lib" / "site-packages"
-    return root / "lib" / f"python{major}.{minor}" / "site-packages"
 
 
 def _remove_all(environment: Environment, name: str, value: Path):
