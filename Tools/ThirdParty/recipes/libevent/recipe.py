@@ -15,7 +15,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libevent"
-    version = "2.1.12"
+    version = "2.1.13"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -35,7 +35,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/libevent/libevent/archive/release-{self.version}-stable.tar.gz",
-            sha256="7180a979aaa7000e1264da484f712d403fcf7679b1e9212c4e3d09f5c93efc24",
+            sha256="1a0885e17dc78afbaeddf13cf849f9238bbc24acdc178464a0d1934d7c5ffbd5",
             destination=self.folders.source,
             strip_root=True)
         set_cmake_minimum_required(self)

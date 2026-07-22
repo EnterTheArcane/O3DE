@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "giflib"
-    version = "5.2.2"
+    version = "6.1.3"
     license = "MIT"
 
     def latest_version(self):
@@ -32,8 +32,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://downloads.sourceforge.net/project/giflib/giflib-5.x/giflib-{self.version}.tar.gz",
-            sha256="be7ffbd057cadebe2aa144542fd90c6838c6a083b5e8a9048b8ee3b66b29d5fb",
+            url=f"https://downloads.sourceforge.net/project/giflib/giflib-6.x/giflib-{self.version}.tar.gz",
+            sha256="b65b66b99f0424b93525f987386f22fc5efb9da2bfc92ad4a532249aaffbab0e",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)

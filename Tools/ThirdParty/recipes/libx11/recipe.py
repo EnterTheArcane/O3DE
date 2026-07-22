@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libx11"
-    version = "1.8.10"
+    version = "1.8.13"
     license = "MIT"
 
     def latest_version(self):
@@ -41,7 +41,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://www.x.org/releases/individual/lib/libX11-{self.version}.tar.xz",
-            sha256="2b3b3dad9347db41dca56beb7db5878f283bde1142f04d9f8e478af435dfdc53",
+            sha256="69606f485c2c07c14ef64f75b7bb326d48587af33795d9ab3e607c0b5f94f11c",
             destination=self.folders.source,
             strip_root=True)
 

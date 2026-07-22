@@ -1,40 +1,30 @@
 --- physx/source/physxextensions/src/serialization/SnSerialUtils.cpp
 +++ physx/source/physxextensions/src/serialization/SnSerialUtils.cpp
-@@ -38,7 +38,7 @@
- namespace
- {
- 
--#define SN_NUM_BINARY_PLATFORMS 12
+@@ -41,1 +41,1 @@
+-#define SN_NUM_BINARY_PLATFORMS 9
 +#define SN_NUM_BINARY_PLATFORMS 13
- const PxU32 sBinaryPlatformTags[SN_NUM_BINARY_PLATFORMS] =
- {
- 	PX_MAKE_FOURCC('W','_','3','2'),
-@@ -52,7 +52,8 @@
- 	PX_MAKE_FOURCC('L','A','6','4'),
- 	PX_MAKE_FOURCC('A','N','D','R'),
- 	PX_MAKE_FOURCC('A','A','6','4'),
--	PX_MAKE_FOURCC('M','A','6','4')
+@@ -52,1 +52,5 @@
+-	PX_MAKE_FOURCC('L','A','6','4')
++	PX_MAKE_FOURCC('L','A','6','4'),
++	PX_MAKE_FOURCC('A','N','D','R'),
++	PX_MAKE_FOURCC('A','A','6','4'),
 +	PX_MAKE_FOURCC('M','A','6','4'),
 +	PX_MAKE_FOURCC('W','A','6','4')
- };
- 
- const char* sBinaryPlatformNames[SN_NUM_BINARY_PLATFORMS] =
-@@ -68,7 +69,8 @@
- 	"linuxaarch64",
- 	"android",
- 	"ios64",
--	"macarm64"
+@@ -65,1 +69,5 @@
+-	"linuxaarch64"
++	"linuxaarch64",
++	"android",
++	"ios64",
 +	"macarm64",
 +	"winarm64"
- };
- 
- }
-@@ -101,6 +103,8 @@
- 	return sBinaryPlatformTags[10];
- #elif PX_OSX && PX_A64
- 	return sBinaryPlatformTags[11];
+@@ -92,1 +100,9 @@
+-#else
++#elif PX_ANDROID
++	return sBinaryPlatformTags[9];
++#elif PX_IOS && PX_A64
++	return sBinaryPlatformTags[10];
++#elif PX_OSX && PX_A64
++	return sBinaryPlatformTags[11];
 +#elif PX_WINDOWS_FAMILY && PX_A64
 +	return sBinaryPlatformTags[12];
- #else
- 	#error Unknown binary platform
- #endif
++#else

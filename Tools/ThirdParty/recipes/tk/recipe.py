@@ -1,5 +1,4 @@
 import os
-import shutil
 from pathlib import Path
 from typing import Any
 
@@ -24,13 +23,15 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "tk"
-    version = "8.6.10"
+    version = "9.0.4"
     license = "TCL"
 
     def latest_version(self):
         repo = GithubRepository(self, "tcltk/tk")
-        tag = repo.latest_tag("core-")
-        return Version(tag.removeprefix("core-").replace("-", "."))
+        version = repo.latest_tag_matching(
+            r"core-(\d+-\d+-\d+)",
+            version_transform=lambda value: value.replace("-", "."))
+        return Version(version.replace("-", "."))
 
     def configure(self):
         self.settings.compiler_libcxx = None
@@ -61,7 +62,7 @@ class Recipe(RecipeBase[_Options]):
             # NB: the GitHub archive omits release-only files (macosx/configure
             # and doc/man.macros), so use the release tarball that ships them.
             url=f"https://prdownloads.sourceforge.net/tcl/tk{self.version}-src.tar.gz",
-            sha256="63df418a859d0a463347f95ded5cd88a3dd3aaa1ceecaeee362194bc30f3e386",
+            sha256="d7a146d2917eb8b5cc95276dbf0e3d03c7464d2b19c1675357857c989301dbb4",
             strip_root=True,
             destination=self.folders.source)
         apply_patches(self)
@@ -86,13 +87,21 @@ class Recipe(RecipeBase[_Options]):
                 return "yes" if v else "no"
 
             tc = AutotoolsToolchain(self)
-            tc.configure_args.append("--enable-threads")
+            # Tk 9 selects static output with --disable-shared and is always
+            # threaded; it no longer accepts the generic static/thread switches.
+            tc.configure_args = [
+                arg for arg in tc.configure_args
+                if arg not in ("--enable-static", "--disable-static")]
             tc.configure_args.append(
                 f"--enable-symbols={yes_no(self.settings.build_type == "Debug")}"
             )
             tc.configure_args.append(
                 f"--enable-64bit={yes_no(self.settings.arch == "X64")}"
             )
+            if is_apple_os(self) and cross_building(self) and self.settings.arch == "X64":
+                # Tk shares Tcl's native `arch` probe and would otherwise append
+                # the ARM build-machine flag to an explicitly x64 cross-build.
+                tc.configure_args.append("tcl_cv_cc_arch_arm64=no")
             tc.configure_args.append(f"--enable-aqua={yes_no(is_apple_os(self))}")
             tc.configure_args.append(
                 f"--with-tcl={self.dependencies["tcl"].folders.package / "lib"}"
@@ -123,6 +132,23 @@ class Recipe(RecipeBase[_Options]):
         else:
             autotools = Autotools(self)
             autotools.configure(build_script_folder=self._get_configure_folder())
+            if self.settings.os == "Linux":
+                # Tk's configure falls back to a bundled `minizip` when no system
+                # `zip` is available, but the Tk release archive does not contain
+                # that program or its Makefile rules. Tcl builds the same native
+                # helper for its own zipfs archive, so reuse it here. This is also
+                # important for cross-builds: Tcl's helper is compiled with
+                # CC_FOR_BUILD and can run on the build machine.
+                tcl_minizip = (
+                    self.dependencies["tcl"].folders.package.parent / "build" / "minizip"
+                )
+                if tcl_minizip.is_file():
+                    copy(
+                        self,
+                        pattern=tcl_minizip.name,
+                        src=tcl_minizip.parent,
+                        dst=self.folders.build,
+                    )
             autotools.make()
 
     def package(self):
@@ -157,17 +183,36 @@ class Recipe(RecipeBase[_Options]):
 
     def package_info(self):
         tk_version = Version(self.version)
-        lib_infix = f"{tk_version.major}.{tk_version.minor}"
-        if is_msvc(self):
-            lib_infix = f"{tk_version.major}{tk_version.minor}"
-            tk_suffix = "t{}{}{}".format(
-                "" if self.options.shared else "s",
-                "g" if self.settings.build_type == "Debug" else "",
-                "x" if ("dynamic" in str(self.settings.compiler_runtime) or "MD" in str(self.settings.compiler_runtime)) and not self.options.shared else "",
-            )
+        tk_major = tk_version.major
+        tk_minor = tk_version.minor
+        assert tk_major is not None and tk_minor is not None
+        if tk_major >= 9:
+            if is_msvc(self):
+                static_runtime = (
+                    "dynamic" not in str(self.settings.compiler_runtime)
+                    and "MD" not in str(self.settings.compiler_runtime))
+                tk_suffix = "" if self.options.shared else "s" + ("x" if static_runtime else "")
+                self.info.libs = [
+                    f"tcl9tk{tk_major}{tk_minor}{tk_suffix}",
+                    "tkstub",
+                ]
+            else:
+                self.info.libs = [
+                    f"tcl9tk{tk_major}.{tk_minor}",
+                    "tkstub",
+                ]
         else:
-            tk_suffix = ""
-        self.info.libs = [f"tk{lib_infix}{tk_suffix}", f"tkstub{lib_infix}"]
+            lib_infix = f"{tk_major}.{tk_minor}"
+            if is_msvc(self):
+                lib_infix = f"{tk_major}{tk_minor}"
+                tk_suffix = "t{}{}{}".format(
+                    "" if self.options.shared else "s",
+                    "g" if self.settings.build_type == "Debug" else "",
+                    "x" if ("dynamic" in str(self.settings.compiler_runtime) or "MD" in str(self.settings.compiler_runtime)) and not self.options.shared else "",
+                )
+            else:
+                tk_suffix = ""
+            self.info.libs = [f"tk{lib_infix}{tk_suffix}", f"tkstub{lib_infix}"]
         if self.settings.os == "Mac":
             self.info.frameworks = ["CoreFoundation", "Cocoa", "Carbon", "IOKit"]
         elif self.settings.os == "Windows":
@@ -264,13 +309,6 @@ class Recipe(RecipeBase[_Options]):
             native_tcl: Path = self.dependencies.build["tcl"].folders.package
             flags["TCLSH_NATIVE"] = next(iter((native_tcl / "bin").glob("tclsh*.exe")))
         config_dir = self._get_configure_folder("win")
-        if cross_building(self):
-            # rules.vc normally recompiles nmakehlp.exe with the target compiler, but that
-            # ARM64 helper cannot run on the build host (NMAKE U1045). Drop in the native
-            # nmakehlp.exe shipped by the Tcl install; the patched rules.vc reuses it.
-            native_tcl = self.dependencies.build["tcl"].folders.package
-            native_nmakehlp: Path = next(iter((native_tcl / "lib" / "nmake").glob("*nmakehlp*.exe")))
-            shutil.copy2(native_nmakehlp, config_dir / "nmakehlp.exe")
         with chdir(self, config_dir):
             run(
                 self,

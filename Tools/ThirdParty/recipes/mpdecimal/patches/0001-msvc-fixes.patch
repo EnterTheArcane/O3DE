@@ -2,8 +2,8 @@ diff --git a/libmpdec++/Makefile.vc b/libmpdec++/Makefile.vc
 index 5985c33..bc2bdac 100644
 --- a/libmpdec++/Makefile.vc
 +++ b/libmpdec++/Makefile.vc
-@@ -14,11 +14,11 @@ LIBIMPORT_CXX = libmpdec++-4.0.0.dll.lib
- LIBSHARED_CXX = libmpdec++-4.0.0.dll
+@@ -14,11 +14,11 @@ LIBIMPORT_CXX = libmpdec++-4.0.1.dll.lib
+ LIBSHARED_CXX = libmpdec++-4.0.1.dll
  
  !if "$(DEBUG)" == "1"
 -OPT = /MTd /Od /Zi /EHsc

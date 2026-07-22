@@ -20,10 +20,10 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libtool"
-    version = "2.4.7"
+    version = "2.6.2"
     license = "GPL-2.0-or-later", "GPL-3.0-or-later"
 
-    _SOURCE_SHA256 = "04e96c2404ea70c590c546eba4202a4e12722c640016c12b9b2f1ce3d481e9a8"
+    _SOURCE_SHA256 = "24adb3aa9ae035c70faba344af57d73215eb89281045af6c7ccd307751f8b0bf"
 
     def latest_version(self):
         repo = GnuFtp(self, "libtool")
@@ -147,7 +147,7 @@ class Recipe(RecipeBase[_Options]):
             method_pass_all)
         replace_in_file(
             self, libtool_m4,
-            "lt_cv_deplibs_check_method='file_magic file format (pei*-i386(.*architecture: i386)?|pe-arm-wince|pe-x86-64)'",
+            "lt_cv_deplibs_check_method='file_magic file format (pei*-i386(.*architecture: i386)?|pe-arm-wince|pe-x86-64|pe-aarch64)'",
             method_pass_all)
 
     def package_info(self):

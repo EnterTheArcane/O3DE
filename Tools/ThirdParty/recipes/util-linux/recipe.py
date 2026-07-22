@@ -22,7 +22,7 @@ class Recipe(RecipeBase[_Options]):
 
     def latest_version(self):
         repo = GithubRepository(self, "util-linux/util-linux")
-        return Version(repo.latest_tag("v").removeprefix("v"))
+        return Version(repo.latest_tag_matching(r"v(\d+\.\d+(?:\.\d+)?)"))
 
     def configure(self):
         self.settings.compiler_cxx_standard = None

@@ -76,6 +76,20 @@ class ReleaseHelperTests(unittest.TestCase):
                 repo.latest_tag_matching(r"\d+\.\d+-physx-(\d+\.\d+\.\d+)"),
                 "5.9.0")
 
+    def test_github_latest_tag_matching_can_normalize_for_comparison(self):
+        result = SimpleNamespace(stdout="""
+            a refs/tags/core-8-6-18
+            b refs/tags/core-9-0-4
+            c refs/tags/core-9-1-b0
+        """.replace(" refs", "\trefs"))
+        with patch("thirdparty.scm.github.subprocess.run", return_value=result):
+            repo = GithubRepository(MagicMock(), "example/hyphen-version-project")
+            self.assertEqual(
+                repo.latest_tag_matching(
+                    r"core-(\d+-\d+-\d+)",
+                    version_transform=lambda value: value.replace("-", ".")),
+                "9-0-4")
+
     def test_github_latest_tag_orders_numbered_prereleases_naturally(self):
         result = SimpleNamespace(stdout="""
             a refs/tags/v4.3

@@ -5,7 +5,7 @@ from thirdparty.scm import GithubRepository, Version
 
 class Recipe(RecipeBase):
     name = "gas-preprocessor"
-    version = "20260314"
+    version = "20260401"
     license = "GPL-2.0-or-later"
 
     def latest_version(self):
@@ -14,7 +14,7 @@ class Recipe(RecipeBase):
     def source(self):
         download(
             self,
-            url="https://raw.githubusercontent.com/FFmpeg/gas-preprocessor/ca93666a02f978ac0801e2ae26eee5a385137fd3/gas-preprocessor.pl",
+            url="https://raw.githubusercontent.com/FFmpeg/gas-preprocessor/ac1836309c2e77023c228b7184485597286289d3/gas-preprocessor.pl",
             sha256="7124d70cdecba7c5612f9a71fbf3f28514dd9c2ca3022f58ad793f88bb925fcf",
             filename=self.folders.source / "gas-preprocessor.pl")
 

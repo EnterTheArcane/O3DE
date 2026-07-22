@@ -19,7 +19,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libmp3lame"
-    version = "3.100"
+    version = "4.0"
     license = "LGPL-2.0"
 
     def latest_version(self):
@@ -33,6 +33,9 @@ class Recipe(RecipeBase[_Options]):
     def requirements(self):
         if not is_msvc(self) and not self._is_clang_cl:
             self.requires_tool("gnu-config")
+            # LAME 4.0's configure script requires pkg-config even when the
+            # optional frontend is disabled.
+            self.requires_tool("pkgconf")
             if self.settings.os == "Windows":
                 self.win_bash = True
                 self.requires_tool("msys2")
@@ -41,11 +44,10 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://downloads.sourceforge.net/project/lame/lame/{self.version}/lame-{self.version}.tar.gz",
-            sha256="ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e",
+            sha256="3df5124d5ad3a98312ffd7ba6a9b36230e4f8a3e66d3ce0f425e336c32d216eb",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
-        replace_in_file(self, self.folders.source / "include" / "libmp3lame.sym", "lame_init_old\n", "", strict=False)
 
     def generate(self):
         if is_msvc(self) or self._is_clang_cl:
@@ -54,6 +56,7 @@ class Recipe(RecipeBase[_Options]):
             VirtualBuildEnv(self).generate()
             tc = AutotoolsToolchain(self)
             tc.configure_args.append("--disable-frontend")
+            tc.configure_args.append("--disable-decoder")
             if self.settings.compiler == "clang" and self.settings.arch in ["X64"]:
                 tc.extra_cxxflags.extend(["-mmmx", "-msse"])
             tc.generate()

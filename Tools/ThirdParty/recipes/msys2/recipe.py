@@ -63,7 +63,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "msys2"
-    release_date = "2025-12-13"
+    release_date = "2026-06-11"
     version = release_date.replace("-", "")
     license = "MSYS license"
 
@@ -84,7 +84,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/msys2/msys2-installer/releases/download/{self.release_date}/msys2-base-x86_64-{self.version}.tar.xz",
-            sha256="999f63c2fc7525af5cd41b55e9ea704471a4f9d0278a257fff3b0d1183c441b9",
+            sha256="a2d047e8ee213c3c6a49a8de427eb1069df12207c0422ff1b3cbb5c905c34221",
             destination=self.folders.source,
             strip_root=False)  # Preserve tarball root dir (msys64/)
 

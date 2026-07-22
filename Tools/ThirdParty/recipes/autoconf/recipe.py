@@ -9,7 +9,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "autoconf"
-    version = "2.72"
+    version = "2.73"
     license = "GPL-2.0-or-later", "GPL-3.0-or-later"
 
     def latest_version(self):
@@ -27,7 +27,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url=f"https://ftpmirror.gnu.org/autoconf/autoconf-{self.version}.tar.xz",
-            sha256="ba885c1319578d6c94d46e9b0dceb4014caafe2490e437a0dbca3f270a223f5a",
+            sha256="9fd672b1c8425fac2fa67fa0477b990987268b90ff36d5f016dae57be0d6b52e",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)

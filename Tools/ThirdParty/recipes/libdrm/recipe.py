@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libdrm"
-    version = "2.4.125"
+    version = "2.4.134"
     license = "MIT"
 
     def latest_version(self):
@@ -38,7 +38,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://dri.freedesktop.org/libdrm/libdrm-{self.version}.tar.xz",
-            sha256="d4bae92797a50f81a93524762e0410a49cd84cfa0f997795bc0172ac8fb1d96a",
+            sha256="ac5e74d157830eb8bee44c6a6bf3ad49774ef0dd2a72bdad74a8f20308b52a95",
             destination=self.folders.source,
             strip_root=True)
 

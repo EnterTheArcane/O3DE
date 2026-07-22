@@ -5,7 +5,7 @@ from thirdparty.scm import GithubRepository, Version
 
 class Recipe(RecipeBase):
     name = "fxdiv"
-    version = "20200417"
+    version = "20201209"
     license = "MIT"
 
     def latest_version(self):
@@ -14,8 +14,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/Maratyszcza/FXdiv/archive/b408327ac2a15ec3e43352421954f5b1967701d1.zip",
-            sha256="ab7dfb08829bee33dca38405d647868fb214ac685e379ec7ef2bebcd234cd44d",
+            url="https://github.com/Maratyszcza/FXdiv/archive/63058eff77e11aa15bf531df5dd34395ec3017c8.zip",
+            sha256="3d7b0e9c4c658a84376a1086126be02f9b7f753caa95e009d9ac38d11da444db",
             destination=self.folders.source,
             strip_root=True)
 

@@ -22,13 +22,15 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "tcl"
-    version = "8.6.13"
+    version = "9.0.4"
     license = "TCL"
 
     def latest_version(self):
         repo = GithubRepository(self, "tcltk/tcl")
-        tag = repo.latest_tag("core-")
-        return Version(tag.removeprefix("core-").replace("-", "."))
+        version = repo.latest_tag_matching(
+            r"core-(\d+-\d+-\d+)",
+            version_transform=lambda value: value.replace("-", "."))
+        return Version(version.replace("-", "."))
 
     def configure(self):
         self.settings.compiler_libcxx = None
@@ -51,7 +53,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/tcltk/tcl/archive/refs/tags/core-{self.version.replace('.', '-')}.tar.gz",
-            sha256="d9c68b6f76623e046df549ac988a064adf6ec063da6ae229c842f7b68fc78aee",
+            sha256="8c01bac92a9a8ce271b63d3aa28f09cde2c6762d6719ca671cdc8aee25391234",
             destination=self.folders.source,
             strip_root=True)
         # tcl's nmake rules.vc sets WARNINGS to -W3/-W4; blank the level so the quiet -w wins (D9025).
@@ -71,16 +73,27 @@ class Recipe(RecipeBase[_Options]):
                 VirtualRunEnv(self).generate(scope="build")
 
             tc = AutotoolsToolchain(self)
+            # Tcl 9 selects static output with --disable-shared and is always
+            # threaded; it no longer accepts the generic static/thread switches.
+            tc.configure_args = [
+                arg for arg in tc.configure_args
+                if arg not in ("--enable-static", "--disable-static")]
 
             def yes_no(v: Any) -> str:
                 return "yes" if v else "no"
 
             tc.configure_args.extend(
                 [
-                    "--enable-threads",
                     f"--enable-symbols={yes_no(self.settings.build_type == "Debug")}",
                     f"--enable-64bit={yes_no(self.settings.arch == "X64")}",
                 ])
+            if is_apple_os(self) and cross_building(self) and self.settings.arch == "X64":
+                # Tcl's macOS --enable-64bit probe uses the build machine's
+                # architecture and otherwise appends -arch arm64 to an x64
+                # cross-build. Besides contaminating Tcl's exported flags,
+                # this makes Tk build a fat archive and fail while linking
+                # against the x64-only Tcl library.
+                tc.configure_args.append("tcl_cv_cc_arch_arm64=no")
             if self.settings.os == "Linux":
                 # Ensure the library has a soname, fix https://github.com/recipe-io/recipe-center-index/issues/27691
                 # (mirror debian behavior)
@@ -97,10 +110,6 @@ class Recipe(RecipeBase[_Options]):
         else:
             autotools = Autotools(self)
             autotools.configure(build_script_folder=self._get_configure_subdir())
-            # https://core.tcl.tk/tcl/tktview/840660e5a1
-            for root, _, list_of_files in os.walk(self.folders.build):
-                if "Makefile" in list_of_files:
-                    replace_in_file(self, os.path.join(root, "Makefile"), "-Dstrtod=fixstrtod", "", strict=False)
             # For some reason this target "binaries" may not be built before others
             # on Windows while it's a dependency of many other targets
             autotools.make(target="binaries")
@@ -181,15 +190,15 @@ class Recipe(RecipeBase[_Options]):
 
         unix_config_dir = self.folders.source / "unix"
         # When disabling 64-bit support (in 32-bit), this test must be 0 in order to use "long long" for 64-bit ints
-        # (${tcl_type_64bit} can be either "__int64" or "long long")
+        # Tcl 9 uses "long long" directly for this check.
         replace_in_file(
             self, unix_config_dir / "configure",
-            "(sizeof(${tcl_type_64bit})==sizeof(long))",
-            "(sizeof(${tcl_type_64bit})!=sizeof(long))")
+            "(sizeof(long long)==sizeof(long))",
+            "(sizeof(long long)!=sizeof(long))")
 
         unix_makefile_in = unix_config_dir / "Makefile.in"
         # Avoid building internal libraries as shared libraries
-        replace_in_file(self, unix_makefile_in, "--enable-shared --enable-threads", "--enable-threads")
+        replace_in_file(self, unix_makefile_in, "--enable-shared; )", "; )")
         # Avoid clearing CFLAGS and LDFLAGS in the makefile
         replace_in_file(self, unix_makefile_in, "\nCFLAGS\t", "\n#CFLAGS\t")
         replace_in_file(self, unix_makefile_in, "\nLDFLAGS\t", "\n#LDFLAGS\t")

@@ -34,7 +34,7 @@ class Recipe(RecipeBase[_Options]):
 
     def latest_version(self):
         repo = GithubRepository(self, "AcademySoftwareFoundation/OpenImageIO")
-        return Version(repo.latest_tag("v").removeprefix("v"))
+        return Version(repo.latest_tag_matching(r"v(\d+\.\d+\.\d+\.\d+)"))
 
     def requirements(self):
         # Required libraries

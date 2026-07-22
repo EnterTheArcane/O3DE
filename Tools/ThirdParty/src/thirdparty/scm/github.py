@@ -2,6 +2,7 @@ import os
 import re
 import subprocess
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from functools import cached_property, lru_cache
 from urllib.parse import quote, unquote
 
@@ -216,12 +217,17 @@ class GithubRepository:
             raise RuntimeError(f"no tag with prefix {prefix!r} found in {self._slug}")
         return best_tag
 
-    def latest_tag_matching(self, pattern: str, group: int | str = 1) -> str:
+    def latest_tag_matching(
+            self,
+            pattern: str,
+            group: int | str = 1,
+            version_transform: Callable[[str], str] | None = None) -> str:
         """Return the version captured by *group* from the highest matching tag.
 
         This is intended for repositories whose tags contain more than a simple
         prefix, for example ``107.3-physx-5.6.1`` or
-        ``release/metal-cpp_macOS27_iOS27``.
+        ``release/metal-cpp_macOS27_iOS27``. ``version_transform`` can normalize
+        a captured value for comparison without changing the returned value.
         """
         rx = re.compile(pattern)
         best_value: str | None = None
@@ -232,7 +238,7 @@ class GithubRepository:
                 continue
             value = match.group(group)
             try:
-                version = Version(value)
+                version = Version(version_transform(value) if version_transform else value)
             except Exception:
                 continue
             if version.pre is not None:

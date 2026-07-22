@@ -27,7 +27,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "ncurses"
-    version = "6.5"
+    version = "6.6"
     license = "X11"
 
     def latest_version(self):
@@ -62,7 +62,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://ftpmirror.gnu.org/gnu/ncurses/ncurses-{self.version}.tar.gz",
-            sha256="136d91bc269a9a5785e5f9e980bc76ab57428f604ce3e5a5a90cebc767971cc6",
+            sha256="355b4cbbed880b0381a04c46617b7656e362585d52e9cf84a67e2009b749ff11",
             destination=self.folders.source,
             strip_root=True)
 

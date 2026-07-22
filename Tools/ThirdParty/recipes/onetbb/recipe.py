@@ -9,7 +9,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "onetbb"
-    version = "2023.0.0"
+    version = "2023.1.0"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -23,7 +23,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url=f"https://github.com/uxlfoundation/oneTBB/archive/v{self.version}.tar.gz",
-            sha256="f8767b971ec6aea25dde58ae0f593e94e7aa75a739a86f67967012f69e2199b1",
+            sha256="191288b52e1e6b17198000b64d77d194bb65e791be46ebc606e9b091781e2070",
             destination=self.folders.source,
             strip_root=True)
         # onetbb sets TBB_WARNING_LEVEL to a genex-wrapped /W4; empty the /W4 branch so the quiet
@@ -32,6 +32,16 @@ class Recipe(RecipeBase):
             self, self.folders.source / "cmake" / "compilers" / "MSVC.cmake",
             "$<$<NOT:$<CXX_COMPILER_ID:Intel>>:/W4>", "$<$<NOT:$<CXX_COMPILER_ID:Intel>>:>",
             strict=False)
+        # The framework spells the GNU cross target processor `X64`. oneTBB's
+        # x86 test does not recognize that spelling, so it omits -mwaitpkg even
+        # though its headers enable _tpause for modern GCC. Accept X64 here to
+        # keep the upstream runtime-gated WAITPKG optimization buildable.
+        replace_in_file(
+            self,
+            self.folders.source / "cmake" / "compilers" / "GNU.cmake",
+            '(AMD64|amd64|i.86|x86)',
+            '(AMD64|amd64|X64|x64|i.86|x86)',
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)

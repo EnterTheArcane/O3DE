@@ -11,7 +11,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "poly2tri"
-    version = "20130502"
+    version = "20240130"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -23,8 +23,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/greenm01/poly2tri/archive/88de49021b6d9bef6faa1bc94ceb3fbd85c3c204.zip",
-            sha256="2bd25eb2b8f467382c5bc3384c8c62ab3e6c10de26be8019aa94d93f7b65806d",
+            url="https://github.com/greenm01/poly2tri/archive/a922022da4c0d3a55b1d6b6d634219caea653053.zip",
+            sha256="7f7ecc49626ce3a347dc79366a9164d809bc8615649e8feb82f60369c4c911f3",
             destination=self.folders.source,
             strip_root=True)
 

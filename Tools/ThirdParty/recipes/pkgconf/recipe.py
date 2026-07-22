@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import apply_patches, copy, get, rename, rm, rmdir, replace_in_file
+from thirdparty.files import apply_patches, copy, get, rename, rm, rmdir
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
@@ -17,7 +17,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "pkgconf"
-    version = "2.5.1"
+    version = "3.0.4"
     license = "ISC"
 
     def latest_version(self):
@@ -38,7 +38,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/pkgconf/pkgconf/archive/refs/tags/pkgconf-{self.version}.tar.gz",
-            sha256="79721badcad1987dead9c3609eb4877ab9b58821c06bdacb824f2c8897c11f2a",
+            sha256="61436e5fa19bdb2dc999fba22e855aad999e9de0f196894068dbaeeb72aef2c4",
             destination=self.folders.source,
             strip_root=True)
 
@@ -46,7 +46,6 @@ class Recipe(RecipeBase[_Options]):
         VirtualBuildEnv(self).generate()
 
         tc = MesonToolchain(self)
-        tc.project_options["tests"] = "disabled"
         if not self.options.enable_lib:
             tc.project_options["default_library"] = "static"
         tc.generate()
@@ -106,13 +105,3 @@ class Recipe(RecipeBase[_Options]):
 
     def _patch_sources(self):
         apply_patches(self)
-
-        if not self.options.shared:
-            replace_in_file(
-                self, self.folders.source / "meson.build",
-                "'-DLIBPKGCONF_EXPORT'",
-                "'-DPKGCONFIG_IS_STATIC'", strict=False)
-            replace_in_file(
-                self, self.folders.source / "meson.build",
-                "project('pkgconf', 'c',",
-                "project('pkgconf', 'c',\ndefault_options : ['c_std=gnu99'],", strict=False)

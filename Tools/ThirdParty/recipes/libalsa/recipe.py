@@ -12,7 +12,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libalsa"
-    version = "1.2.14"
+    version = "1.2.16.1"
     license = "LGPL-2.1-or-later"
 
     def latest_version(self):
@@ -32,7 +32,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://www.alsa-project.org/files/pub/lib/alsa-lib-{self.version}.tar.bz2",
-            sha256="be9c88a0b3604367dd74167a2b754a35e142f670292ae47a2fdef27a2ee97a32",
+            sha256="f740db7f488255944ffd4428416ee3390a96742856916433df468c281436480e",
             destination=self.folders.source,
             strip_root=True)
 

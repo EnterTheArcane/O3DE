@@ -7,7 +7,7 @@ from thirdparty.scm import Version, WebReleaseIndex
 
 class Recipe(RecipeBase):
     name = "openjdk"
-    version = "25.0.2"
+    version = "26.0.2"
     license = (
         "GPL-2.0-only WITH Classpath-exception-2.0",
         "GPL-2.0-only WITH OpenJDK-assembly-exception-1.0",
@@ -22,24 +22,24 @@ class Recipe(RecipeBase):
 
     _SOURCE_DATA = {
         ("Linux", "ARM"): {
-            "url": "https://download.java.net/java/GA/jdk{version}/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-{version}_linux-aarch64_bin.tar.gz",
-            "sha256": "671208d205e70c9805da45a483f670d49dd64654990a7b7223ccffb2abb070dd",
+            "url": "https://download.java.net/java/GA/jdk{version}/818d462d89b645c7a1aad49066c454e5/10/GPL/openjdk-{version}_linux-aarch64_bin.tar.gz",
+            "sha256": "0ce6516c459e635d9f263f9b3492d83ec2c1ee26db128a6d904cae3d3096ceee",
         },
         ("Linux", "X64"): {
-            "url": "https://download.java.net/java/GA/jdk{version}/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-{version}_linux-x64_bin.tar.gz",
-            "sha256": "555ce0821e4fe175ea50d54518cd6fbece9663c1998de529bc6ce429534457df",
+            "url": "https://download.java.net/java/GA/jdk{version}/818d462d89b645c7a1aad49066c454e5/10/GPL/openjdk-{version}_linux-x64_bin.tar.gz",
+            "sha256": "2da09e9db53e5c4f9eeec045f49e7d8fbcd8e4153edbf0c269f520ff82fd4198",
         },
         ("Mac", "ARM"): {
-            "url": "https://download.java.net/java/GA/jdk{version}/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-{version}_macos-aarch64_bin.tar.gz",
-            "sha256": "7581b0d1752cd5acbf39e286c03f07b6cd6c205b562eb2fe753ff0253cf4c1bf",
+            "url": "https://download.java.net/java/GA/jdk{version}/818d462d89b645c7a1aad49066c454e5/10/GPL/openjdk-{version}_macos-aarch64_bin.tar.gz",
+            "sha256": "c99b35ad3063ef555361a243c44280b048e24e3cbbc4a59ee3b368e5a8958f3a",
         },
         ("Mac", "X64"): {
-            "url": "https://download.java.net/java/GA/jdk{version}/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-{version}_macos-x64_bin.tar.gz",
-            "sha256": "4ec2f4bc47b057fdf9cda07af27fae8f3605e90fa963d4240d63baeb46ede460",
+            "url": "https://download.java.net/java/GA/jdk{version}/818d462d89b645c7a1aad49066c454e5/10/GPL/openjdk-{version}_macos-x64_bin.tar.gz",
+            "sha256": "c258f17d4095c0cda0489d33fc4988d4be193a280b7e1f045e961699dedbfc65",
         },
         ("Windows", "X64"): {
-            "url": "https://download.java.net/java/GA/jdk{version}/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-{version}_windows-x64_bin.zip",
-            "sha256": "74784a0c07258f32d36e9224dd79187c566d831c30d47dc06888d4212087331d",
+            "url": "https://download.java.net/java/GA/jdk{version}/818d462d89b645c7a1aad49066c454e5/10/GPL/openjdk-{version}_windows-x64_bin.zip",
+            "sha256": "a4974cff5ec4c1042ebb070b2e582354786289e0448fd78a2c7b1a6a177f1080",
         },
     }
 

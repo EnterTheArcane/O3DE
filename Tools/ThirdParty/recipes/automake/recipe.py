@@ -10,7 +10,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "automake"
-    version = "1.16.5"
+    version = "1.18.1"
     license = "GPL-2.0-or-later", "GPL-3.0-or-later"
 
     def latest_version(self):
@@ -32,7 +32,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url=f"https://ftpmirror.gnu.org/gnu/automake/automake-{self.version}.tar.gz",
-            sha256="07bd24ad08a64bc17250ce09ec56e921d6343903943e99ccf63bbf0705e34605",
+            sha256="63e585246d0fc8772dffdee0724f2f988146d1a3f1c756a3dc5cfbefa3c01915",
             destination=self.folders.source,
             strip_root=True)
 

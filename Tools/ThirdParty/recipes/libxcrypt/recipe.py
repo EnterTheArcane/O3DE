@@ -15,7 +15,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libxcrypt"
-    version = "4.4.36"
+    version = "4.5.2"
     license = "LGPL-2.1-or-later"
 
     def latest_version(self):
@@ -39,7 +39,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/besser82/libxcrypt/archive/v{self.version}.tar.gz",
-            sha256="b979838d5f1f238869d467484793b72b8bca64c4eae696fdbba0a9e0b6c28453",
+            sha256="d99b548636894641e6b29b58ef592cab692e75672155a938c3209c187a872e1e",
             destination=self.folders.source,
             strip_root=True)
 

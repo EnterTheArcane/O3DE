@@ -15,25 +15,25 @@ _REDIST_PLATFORMS = {
 }
 
 _COMPONENTS = {
-    "cuda_nvcc": ("13.3.33", {
-        ("Windows", "X64"): "8fed1ab69ed4e637ad76baff572579630674df9ff02570777800782ee5bdfbc5",
-        ("Linux", "X64"): "93b098bda4a562ebf3541523ce82adc43f106a81dcf28bcbf8f0d8e093d1c66f",
-        ("Linux", "ARM"): "b5dde44aadd52234af3944ae3b2e74e811ad8e71fb600bcc9dfe6d8540353499",
+    "cuda_nvcc": ("13.3.73", {
+        ("Windows", "X64"): "270214eaee58e49f8fca52a910a46afbfab227858e70897cba8afae10826280b",
+        ("Linux", "X64"): "2ff9f9954060794a1c5134a933ccb45bec723d866b2629dadfe4a1a313f21068",
+        ("Linux", "ARM"): "87044b338bf1cb062512c4bc790dd24d1c61b043119b5743f583128a954474a8",
     }),
-    "cuda_crt": ("13.3.33", {
-        ("Windows", "X64"): "752c528281a06a0ddf89237d760ffd6acde1b9cd59efc35803c2591127ef55f0",
-        ("Linux", "X64"): "4755d36d24c6ef7697a2d3e1dbb23c4562c9c0d97d48390d4cbd8ab32dec5b5f",
-        ("Linux", "ARM"): "6f6194918c00b980d8fd2111bf0aa004977760855c6e1528e0653bf4c889fbef",
+    "cuda_crt": ("13.3.73", {
+        ("Windows", "X64"): "9227ec7c80db10b7cb0d4ee71ed62ec7ae36e67890216413ab6f9afa35d577f0",
+        ("Linux", "X64"): "1251aa9d668c607a103489cd2250773701e83a313e355578044622cf36713a9d",
+        ("Linux", "ARM"): "d28e00e9455fac2c2defd6459a2dbcf118d13eb950646074290bc0d29e32a239",
     }),
     "cuda_cudart": ("13.3.29", {
         ("Windows", "X64"): "1feb7dd266813ffe8dbc24e115183a5ac35a4795c8d34aca0df85ab616b64d9c",
         ("Linux", "X64"): "1e59c4888267d27ba1a9bd0f3669a6439db1334a96e754cd9013c7c73e18dc9d",
         ("Linux", "ARM"): "0cdd73d11885062daf3aa98ad4d7b8bd84f89b398be11f7054edea9ed31f597d",
     }),
-    "cccl": ("13.3.3.3.1", {
-        ("Windows", "X64"): "607dcfca31da168171fbdae5b7096ade646c4c2b1e0ff2899077dde0ccbdd6fb",
-        ("Linux", "X64"): "67746da12f16229ac4ebde78ce7895e42b069d1d3e2ae2d2d25f90bc43679d68",
-        ("Linux", "ARM"): "37e9024c5e24a9e9d1618c4fb7b36e74a0a68fac91d589867676952204ecde5b",
+    "cccl": ("13.3.3.4.1", {
+        ("Windows", "X64"): "48fab83097a636c4119da28bd3c9c9af9327e34c1efed17a14449cc2956ca6d1",
+        ("Linux", "X64"): "26957cede74f9341174ecaf0372f3f886e7c46ceccb98d6dc775fe2b68d19268",
+        ("Linux", "ARM"): "c0dd608d18ff7014c5fe0d3b2c7d1a6b9b855ec6fcad1f379cc3315610d22635",
     }),
     "cuda_nvrtc": ("13.3.33", {
         ("Windows", "X64"): "8519f678588610bf380ccaac130729aa1a624c407183e7ad9c319c19ecc63d2f",
@@ -45,10 +45,10 @@ _COMPONENTS = {
         ("Linux", "X64"): "f79e25bb1ef2f22f26c09897f6cb8719634f38e7330bd4700a1ea9ec9591eaff",
         ("Linux", "ARM"): "6ed3a14646bd53e25ccf03a52586cdd12b07ad48cf81fe79deac49b5d64c2ce6",
     }),
-    "libnvvm": ("13.3.33", {
-        ("Windows", "X64"): "e8e48fcceb3ffeb3e421f29fc40252580c6dfd2a841bea3490782233048a5f00",
-        ("Linux", "X64"): "fc9c1fd5844e44c0e5eeb051378c1b13cf0e3bb3fe4966d5103c38885424f802",
-        ("Linux", "ARM"): "5f8ca5c9a10c3c9804b045960ee6192281efec4c7d83d5f3245ec2de8612118e",
+    "libnvvm": ("13.3.73", {
+        ("Windows", "X64"): "ca8f11d5173ac16a166be8fafefbf9676542a097de1fce61b3f17696dffc1f27",
+        ("Linux", "X64"): "206b1ab4979c09b5c32f8bf907c42bc9e16cd7454cf6036f524c45a58d060f93",
+        ("Linux", "ARM"): "4bdb28ca53b714ae48887921f462a913b6806dd847978f8eba40434c85d1016f",
     }),
 }
 
@@ -58,7 +58,7 @@ _TOOLKIT_DIRS = ("bin", "include", "lib", "lib64", "nvvm", "targets")
 
 class Recipe(RecipeBase):
     name = "cuda-toolkit"
-    version = "13.3.0"
+    version = "13.3.1"
     license = "NVIDIA CUDA Toolkit EULA"
 
     def latest_version(self):

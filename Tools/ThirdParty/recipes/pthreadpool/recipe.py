@@ -11,11 +11,11 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "pthreadpool"
-    version = "20231129"
+    version = "20260518"
     license = "BSD-2-Clause"
 
     def latest_version(self):
-        return Version(GithubRepository(self, "Maratyszcza/pthreadpool").latest_commit_date())
+        return Version(GithubRepository(self, "google/pthreadpool").latest_commit_date())
 
     def configure(self):
         self.settings.compiler_cxx_standard = None
@@ -30,8 +30,8 @@ class Recipe(RecipeBase[_Options]):
         # (which injects a bare `fxdiv` target) can `add_subdirectory(src)`.
         get(
             self,
-            url="https://github.com/Maratyszcza/pthreadpool/archive/4fe0e1e183925bf8cfa6aae24237e724a96479b8.zip",
-            sha256="a4cf06de57bfdf8d7b537c61f1c3071bce74e57524fe053e0bbd2332feca7f95",
+            url="https://github.com/google/pthreadpool/archive/02460584c6092e527c8b89f7df4de143d70e801f.zip",
+            sha256="5ab4e8f63e3dcf62048360c216532bdf62f00dc204883a52d91230402f0feb6a",
             destination=self.folders.source / "src",
             strip_root=True)
         copy(self, "CMakeLists.txt", src=self.folders.recipe, dst=self.folders.source)

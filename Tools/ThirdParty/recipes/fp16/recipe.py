@@ -5,7 +5,7 @@ from thirdparty.scm import GithubRepository, Version
 
 class Recipe(RecipeBase):
     name = "fp16"
-    version = "20210320"
+    version = "20260620"
     license = "MIT"
 
     def latest_version(self):
@@ -14,8 +14,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/Maratyszcza/FP16/archive/0a92994d729ff76a58f692d3028ca1b64b145d91.zip",
-            sha256="e66e65515fa09927b348d3d584c68be4215cfe664100d01c9dbc7655a5716d70",
+            url="https://github.com/Maratyszcza/FP16/archive/782eea126dc5c755827be751a099eb01826175cf.zip",
+            sha256="f7f8b1ff0bc87e366c89dee192708cbf9609bc7e204b2d88b514364eb8dbb7ba",
             destination=self.folders.source,
             strip_root=True)
 

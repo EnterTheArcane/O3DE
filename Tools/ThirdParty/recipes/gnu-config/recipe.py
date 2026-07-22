@@ -6,7 +6,7 @@ from thirdparty.scm import GithubRepository, Version
 
 class Recipe(RecipeBase):
     name = "gnu-config"
-    version = "2021.08.14"
+    version = "2024.07.28"
     license = "GPL-3.0-or-later", "autoconf-special-exception"
 
     def latest_version(self):
@@ -16,8 +16,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/build2/config/archive/191bcb948f7191c36eefe634336f5fc5c0c4c2be.tar.gz",
-            sha256="302e5e7f3c4996976c58efde8b2f28f71d51357e784330eeed738e129300dc33",
+            url="https://github.com/build2/config/archive/00b15927496058d23e6258a28d8996f87cf1f191.tar.gz",
+            sha256="1b32d68b3db54f53f919f335360d9d0a077839799856c1b8cc6ccb31c255a6b9",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)

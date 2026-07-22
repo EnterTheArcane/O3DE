@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "xnnpack"
-    version = "20241203"
+    version = "20260722"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -30,8 +30,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/google/XNNPACK/archive/51a0103656eff6fc9bfd39a4597923c4b542c883.tar.gz",
-            sha256="3ff271a4f41e798616950b0c690d127afcc530a6180f78c78c4b2932920911aa",
+            url="https://github.com/google/XNNPACK/archive/950d955b5f998eafe54fd7ccd36f9dca0cbc0ab2.tar.gz",
+            sha256="c364ef5283a41104880a66b30b17a37730d8b3578adf403ce6f2f568b073d7e6",
             destination=self.folders.source,
             strip_root=True)
         copy(self, "xnnpack_project_include.cmake", src=self.folders.recipe, dst=self.folders.source)

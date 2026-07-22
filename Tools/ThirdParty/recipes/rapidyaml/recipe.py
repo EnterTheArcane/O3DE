@@ -15,7 +15,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "rapidyaml"
-    version = "0.15.2"
+    version = "0.16.0"
     license = "MIT"
 
     def latest_version(self):
@@ -34,8 +34,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://github.com/biojppm/rapidyaml/releases/download/v{self.version}/rapidyaml-{self.version}-src.tgz",
-            sha256="85e1428266978ca4b28a4103f047314ee534be17502b30f752e5df736fd60df6",
+            url=f"https://github.com/biojppm/rapidyaml/releases/download/v{self.version}/rapidyaml.v{self.version}.src.tgz",
+            sha256="a0ce80a8f4211580c8703e57acb813a28ca6ec80908f6eb926be94be8e98d39d",
             destination=self.folders.source,
             strip_root=True)
 

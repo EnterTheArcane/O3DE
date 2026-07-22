@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import apply_patches, chdir, copy, get, rmdir
+from thirdparty.files import chdir, copy, get, rmdir
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.microsoft import is_msvc, unix_path
 from thirdparty.scm import GnuFtp, Version
@@ -8,7 +8,7 @@ from thirdparty.scm import GnuFtp, Version
 
 class Recipe(RecipeBase):
     name = "gperf"
-    version = "3.1"
+    version = "3.3"
     license = "GPL-3.0-or-later"
 
     def latest_version(self):
@@ -27,7 +27,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url=f"https://ftpmirror.gnu.org/gnu/gperf/gperf-{self.version}.tar.gz",
-            sha256="588546b945bba4b70b6a3a616e80b4ab466e3f33024a352fc2198112cdbb3ae2",
+            sha256="fd87e0aba7e43ae054837afd6cd4db03a3f2693deb3619085e6ed9d8d9604ad8",
             destination=self.folders.source,
             strip_root=True)
 
@@ -53,7 +53,6 @@ class Recipe(RecipeBase):
         tc.generate(tcenv)
 
     def build(self):
-        apply_patches(self)
         autotools = Autotools(self)
         with chdir(self, self.folders.source):
             autotools.configure()

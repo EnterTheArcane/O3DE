@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libxext"
-    version = "1.3.6"
+    version = "1.3.7"
     license = "MIT"
 
     def latest_version(self):
@@ -40,7 +40,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://www.x.org/releases/individual/lib/libXext-{self.version}.tar.xz",
-            sha256="edb59fa23994e405fdc5b400afdf5820ae6160b94f35e3dc3da4457a16e89753",
+            sha256="6c643c7035cdacf67afd68f25d01b90ef889d546c9fcd7c0adf7c2cf91e3a32d",
             destination=self.folders.source,
             strip_root=True)
 

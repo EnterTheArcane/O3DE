@@ -15,7 +15,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "xkbcommon"
-    version = "1.7.0"
+    version = "1.13.2"
     license = "MIT"
 
     def latest_version(self):
@@ -42,8 +42,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://xkbcommon.org/download/libxkbcommon-{self.version}.tar.xz",
-            sha256="65782f0a10a4b455af9c6baab7040e2f537520caa2ec2092805cdfd36863b247",
+            url=f"https://github.com/xkbcommon/libxkbcommon/archive/refs/tags/xkbcommon-{self.version}.tar.gz",
+            sha256="acc4d5f7c3cbba5f9f8d08d8bdbeede84ecede46792f47929aa9321873385528",
             destination=self.folders.source,
             strip_root=True)
 

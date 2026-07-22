@@ -20,7 +20,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "physx"
-    version = "5.6.1"
+    version = "5.9.0"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -58,20 +58,29 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/o3de/PhysX/archive/0af1ce283240f8618a94456b6b819f97724cf6b7.tar.gz",
-            sha256="3c0c89f8cb6210f623b2ac46ae2ff95101817209511a3190581feb0b4499d809",
+            url="https://github.com/NVIDIA-Omniverse/PhysX/archive/refs/tags/110.1-omni-and-physx-5.9.0.tar.gz",
+            sha256="c924aa80e73562730d6b3335a31843fe1acbe2af9f5a56563e0953ecbe3ff77d",
             destination=self.folders.source,
             strip_root=True)
 
-        # PhysX 5.6.1 embeds its CMake helper modules in-tree (physx/source/compiler/cmake/modules),
-        # so unlike 5.1.1 there are no packman/CDN externals to download. Everything else listed in
-        # physx/dependencies.xml (clangMetadata, freeglut, vswhere, opengl, rapidjson) is only used
-        # by metadata-generation / snippets / tooling, all of which are disabled in this build.
+        # The 5.9 release removed the macOS, iOS, and Android CMake platform layers even though the
+        # SDK source still supports those targets. Carry forward O3DE's 5.6.1 platform definitions;
+        # the following cross-platform patch rebases them alongside the common 5.9 sources, so keep
+        # the complete patched source tree on every host even though CMake selects only one layer.
+        portability_source = self.folders.source / "_o3de_portability"
+        get(
+            self,
+            url="https://github.com/o3de/PhysX/archive/0af1ce283240f8618a94456b6b819f97724cf6b7.tar.gz",
+            sha256="3c0c89f8cb6210f623b2ac46ae2ff95101817209511a3190581feb0b4499d809",
+            destination=portability_source,
+            strip_root=True)
+        for platform in ("mac", "ios", "android"):
+            copy(
+                self,
+                pattern="*",
+                src=portability_source / "physx" / "source" / "compiler" / "cmake" / platform,
+                dst=self.folders.source / "physx" / "source" / "compiler" / "cmake" / platform)
 
-        # All source adjustments live in patches/0001-cuda13-gpu-build.patch (PIC control, no
-        # warnings-as-errors, the freeglut DLL-copy fix, the NDEBUG/_DEBUG header guard, and the
-        # CUDA 12->13 GPU bridge). The GPU hunks are inert in CPU-only builds, so it applies
-        # unconditionally.
         apply_patches(self)
 
     def generate(self):
@@ -84,14 +93,14 @@ class Recipe(RecipeBase[_Options]):
 
         tc.cache_variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.pic
 
-        # physx/compiler/public/CMakeLists.txt
+        # PhysX's public top-level CMake entry point.
         tc.cache_variables["TARGET_BUILD_PLATFORM"] = str(self.settings.os).lower()
         tc.cache_variables["PHYSX_ROOT_DIR"] = (self.folders.source / "physx").as_posix()
         tc.cache_variables["PX_BUILDSNIPPETS"] = False
         tc.cache_variables["PX_BUILDPVDRUNTIME"] = False
         tc.cache_variables["PX_CMAKE_SUPPRESS_REGENERATION"] = False
         
-        # GPU acceleration is opt-in in 5.6.1. When off (default), GPU projects aren't generated and
+        # GPU acceleration is optional. When off, GPU projects aren't generated and
         # windows/CMakeLists.txt auto-defines DISABLE_CUDA_PHYSX (PX_SUPPORT_GPU_PHYSX=0) -- pure
         # CPU-only, matching mac/android, with nothing to fetch. When on, PhysX compiles PhysXGpu
         # from source using the cuda-toolkit we provide.
@@ -107,7 +116,7 @@ class Recipe(RecipeBase[_Options]):
             tc.cache_variables["CMAKE_CUDA_FLAGS"] = "-allow-unsupported-compiler"
             tc.cache_variables["PX_GENERATE_GPU_REDUCED_ARCHITECTURES"] = self.options.gpu_reduced_architectures
 
-        # GameWorks output layout: <PX_OUTPUT_LIB_DIR>/bin/<platform>/<config>/<libs>. In 5.6.1 this
+        # GameWorks output layout: <PX_OUTPUT_LIB_DIR>/bin/<platform>/<config>/<libs>. In 5.9 this
         # is the default structure (no NV_USE_GAMEWORKS_OUTPUT_DIRS toggle); the base dirs are
         # mandatory (NvidiaBuildOptions.cmake FATAL_ERRORs without them).
         px_output = (self.folders.build / "px_output").as_posix()
@@ -145,7 +154,7 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=self.folders.source / "physx" / "compiler" / "public")
+        cmake.configure(build_script_folder=self.folders.source / "physx")
         cmake.build(build_type=self._physx_build_type)
 
     def package(self):
@@ -221,7 +230,7 @@ class Recipe(RecipeBase[_Options]):
                   requires=["physxfoundation", "physxpvdsdk", "physxmain", "physxcommon"])
         component("physxcharacterkinematic", "PhysXCharacterKinematic", ["PhysXCharacterKinematic"],
                   requires=["physxfoundation", "physxcommon", "physxextensions"])
-        component("physxvehicle2", "PhysXVehicle2", ["PhysXVehicle2"],
+        component("physxvehicle2", "PhysXVehicle2", ["PhysXVehicle"],
                   requires=["physxfoundation", "physxpvdsdk", "physxextensions"])
 
     @property

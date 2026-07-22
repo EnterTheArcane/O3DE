@@ -40,7 +40,7 @@ _PROTOS = [
 
 class Recipe(RecipeBase):
     name = "xorg-proto"
-    version = "2024.1"
+    version = "2025.1"
     license = "MIT"
 
     def latest_version(self):
@@ -65,7 +65,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url=f"https://www.x.org/releases/individual/proto/xorgproto-{self.version}.tar.xz",
-            sha256="372225fd40815b8423547f5d890c5debc72e88b91088fbfb13158c20495ccb59",
+            sha256="56898c716c0578df8a2d828c9c3e5c528277705c0484381a81960fe1a67668e8",
             destination=self.folders.source,
             strip_root=True)
 

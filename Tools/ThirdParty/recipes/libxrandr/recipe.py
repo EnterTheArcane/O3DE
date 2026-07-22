@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libxrandr"
-    version = "1.5.4"
+    version = "1.5.5"
     license = "MIT"
 
     def latest_version(self):
@@ -42,7 +42,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://www.x.org/releases/individual/lib/libXrandr-{self.version}.tar.xz",
-            sha256="1ad5b065375f4a85915aa60611cc6407c060492a214d7f9daf214be752c3b4d3",
+            sha256="72b922c2e765434e9e9f0960148070bd4504b288263e2868a4ccce1b7cf2767a",
             destination=self.folders.source,
             strip_root=True)
 

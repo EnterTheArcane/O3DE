@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.files import apply_patches, get, load, save
+from thirdparty.files import get, load, save
 from thirdparty.scm import GithubRepository, Version
 
 
@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "minizip"
-    version = "1.3.1"
+    version = "1.3.2"
     license = "Zlib"
 
     def latest_version(self):
@@ -33,10 +33,9 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/madler/zlib/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c",
+            sha256="b99a0b86c0ba9360ec7e78c4f1e43b1cbdf1e6936c8fa0f6835c0cd694a495a1",
             destination=self.folders.source,
             strip_root=True)
-        apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)

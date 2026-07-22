@@ -6,7 +6,7 @@ from thirdparty.scm import Version, WebReleaseIndex
 
 class Recipe(RecipeBase):
     name = "jom"
-    version = "1.1.4"
+    version = "1.1.7"
     license = "GPL-3.0-only"
 
     def latest_version(self):
@@ -21,8 +21,8 @@ class Recipe(RecipeBase):
     def build(self):
         get(
             self,
-            url="https://download.qt.io/official_releases/jom/jom_1_1_4.zip",
-            sha256="d533c1ef49214229681e90196ed2094691e8c4a0a0bef0b2c901debcb562682b",
+            url="https://download.qt.io/official_releases/jom/jom_1_1_7.zip",
+            sha256="4c8af345586a9a08fbfd2f613fcac748226d91a75627aa3581b297dd513046fe",
             destination=self.folders.build)
 
     def package(self):

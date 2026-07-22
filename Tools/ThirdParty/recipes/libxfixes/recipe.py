@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libxfixes"
-    version = "6.0.1"
+    version = "6.0.2"
     license = "MIT"
 
     def latest_version(self):
@@ -40,7 +40,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://www.x.org/releases/individual/lib/libXfixes-{self.version}.tar.xz",
-            sha256="b695f93cd2499421ab02d22744458e650ccc88c1d4c8130d60200213abc02d58",
+            sha256="39f115d72d9c5f8111e4684164d3d68cc1fd21f9b27ff2401b08fddfc0f409ba",
             destination=self.folders.source,
             strip_root=True)
 

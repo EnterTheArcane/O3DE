@@ -15,14 +15,18 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     shared: bool = False
     pic: bool = True
-    with_elf: bool = True
-    with_selinux: bool = True
-    with_mount: bool = True
+    # These integrations are optional in GLib, and this repository does not
+    # currently provide elfutils, libselinux, or libmount recipes. Keeping
+    # them off by default also prevents native system packages from masking a
+    # missing target dependency during cross-builds.
+    with_elf: bool = False
+    with_selinux: bool = False
+    with_mount: bool = False
 
 
 class Recipe(RecipeBase[_Options]):
     name = "glib"
-    version = "2.85.3"
+    version = "2.89.2"
     license = "LGPL-2.1-or-later"
 
     def latest_version(self):
@@ -33,7 +37,6 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os != "Linux":
             self.options.with_mount = False
             self.options.with_selinux = False
-        self.options.with_elf = self.settings.os == "Linux"
         if is_msvc(self):
             self.options.with_elf = False
 
@@ -68,7 +71,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://download.gnome.org/sources/glib/{ver.major}.{ver.minor}/glib-{self.version}.tar.xz",
-            sha256="af229e1de191d66aebcdb03c7493c724fd4d0a6628b1ca4ea1f35739259b311d",
+            sha256="894fd527e305041f7723071297d79a78af4719dbd0d8fb77f6b1a85c9f5475b9",
             destination=self.folders.source,
             strip_root=True)
 

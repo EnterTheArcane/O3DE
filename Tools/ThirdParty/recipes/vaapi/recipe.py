@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "vaapi"
-    version = "2.22.0"
+    version = "2.24.1"
     license = "MIT"
 
     def latest_version(self):
@@ -42,7 +42,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/intel/libva/releases/download/{self.version}/libva-{self.version}.tar.bz2",
-            sha256="e3da2250654c8d52b3f59f8cb3f3d8e7fb1a2ee64378dbc400fbc5663de7edb8",
+            sha256="eec6050b52876f229bd35e9df17cd31a06785e18e6f7990c445b584628483d67",
             destination=self.folders.source,
             strip_root=True)
 
