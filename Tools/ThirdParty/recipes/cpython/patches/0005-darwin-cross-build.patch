@@ -1,50 +1,22 @@
 diff --git a/configure.ac b/configure.ac
-index 028e4fc78b..ddf638a23b 100644
+index aed1494673..518c5bd973 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -550,6 +550,10 @@ then
- 	*-*-cygwin*)
- 		ac_sys_system=Cygwin
- 		;;
-+	*-*-darwin*)
-+		ac_sys_system=Darwin
+@@ -334,0 +335 @@
 +		ac_sys_release=`uname -r`
-+		;;
- 	*-*-vxworks*)
- 	    ac_sys_system=VxWorks
- 	    ;;
-@@ -613,6 +616,9 @@ if test "$cross_compiling" = yes; then
- 	*-*-cygwin*)
- 		_host_cpu=
- 		;;
-+	*-*-darwin*)
-+		_host_cpu=$host_cpu
-+		;;
- 	*-*-vxworks*)
- 		_host_cpu=$host_cpu
- 		;;
+@@ -350 +351,3 @@
+-	ac_sys_release=
++	if test "$ac_sys_system" != "Darwin"; then
++		ac_sys_release=
++	fi
 diff --git a/configure b/configure
-index e8f7981bc5..83072cb277 100755
+index 2088290f0e..eed03b2883 100755
 --- a/configure
 +++ b/configure
-@@ -4270,6 +4270,10 @@ then
- 	*-*-cygwin*)
- 		ac_sys_system=Cygwin
- 		;;
-+	*-*-darwin*)
-+		ac_sys_system=Darwin
+@@ -4122,0 +4123 @@
 +		ac_sys_release=`uname -r`
-+		;;
- 	*-*-vxworks*)
- 	    ac_sys_system=VxWorks
- 	    ;;
-@@ -4335,6 +4338,9 @@ if test "$cross_compiling" = yes; then
- 	*-*-cygwin*)
- 		_host_cpu=
- 		;;
-+	*-*-darwin*)
-+		_host_cpu=$host_cpu
-+		;;
- 	*-*-vxworks*)
- 		_host_cpu=$host_cpu
- 		;;
+@@ -4138 +4139,3 @@
+-	ac_sys_release=
++	if test "$ac_sys_system" != "Darwin"; then
++		ac_sys_release=
++	fi

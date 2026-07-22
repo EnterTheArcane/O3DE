@@ -1,12 +1,18 @@
+import base64
+import csv
+import hashlib
+import io
 import os
 import re
 import textwrap
+import zipfile
 from pathlib import Path
 from typing import Any
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
+from thirdparty.errors import RecipeException
 from thirdparty.files import apply_patches, copy, get, load, mkdir, replace_in_file, rm, rmdir, save, unzip
 from thirdparty.autotools import Autotools, AutotoolsToolchain, AutotoolsDeps
 from thirdparty.pkgconfig import PkgConfigDeps
@@ -36,7 +42,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "cpython"
-    version = "3.12.7"
+    version = "3.14.6"
     license = "Python-2.0"
 
     def configure(self):
@@ -70,6 +76,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires("libexpat")
             self.requires("libffi")
             self.requires("mpdecimal")
+            self.requires("zstd")
         if self.settings.os != "Windows":
             if not is_apple_os(self):
                 self.requires("util-linux")
@@ -105,7 +112,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/python/cpython/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="0c4db8f00ab490bfb5a4b0d0e763319d017226b5521f97e851412342ff04d459",
+            sha256="7f77ccf3613ddadc74dfb8d6f8082581a8835115a25e1307d189f03aa750893e",
             destination=self.folders.source,
             strip_root=True)
 
@@ -166,7 +173,7 @@ class Recipe(RecipeBase[_Options]):
                 with open(filepath, "wb") as fn:
                     fn.write(
                         textwrap.dedent(
-                            f"""
+                            f"""\
                             #!/bin/sh
                             ''':'
                             __file__="$0"
@@ -179,21 +186,18 @@ class Recipe(RecipeBase[_Options]):
                     fn.write(text)
 
             if not os.path.exists(self._cpython_symlink):
-                os.symlink(f"python{self._version_suffix}", self._cpython_symlink)
+                os.symlink(self._cpython_interpreter_name, self._cpython_symlink)
         fix_apple_shared_install_name(self)
 
         self._write_cmake_findpython_wrapper_file()
 
     def package_info(self):
-        py_version = Version(self.version)
         # python component: "Build a C extension for Python"
         if is_msvc(self):
             self.info.components["python"].includedirs = [os.path.join(self._msvc_install_subprefix, "include")]
             libdir = os.path.join(self._msvc_install_subprefix, "libs")
         else:
-            self.info.components["python"].includedirs.append(
-                os.path.join("include", f"python{self._version_suffix}{self._abi_suffix}")
-            )
+            self.info.components["python"].includedirs.append(os.path.join("include", "python"))
             libdir = "lib"
         if self.options.shared:
             self.info.components["python"].defines.append("Py_ENABLE_SHARED")
@@ -209,10 +213,10 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os != "Windows":
             self.info.components["python"].requires.append("libxcrypt::libxcrypt")
         self.info.components["python"].set_property(
-            "pkg_config_name", f"python-{py_version.major}.{py_version.minor}"
+            "pkg_config_name", "python3"
         )
         self.info.components["python"].set_property(
-            "pkg_config_aliases", [f"python{py_version.major}"]
+            "pkg_config_aliases", ["python"]
         )
         self.info.components["python"].libdirs = []
 
@@ -221,10 +225,10 @@ class Recipe(RecipeBase[_Options]):
         self.info.components["embed"].libdirs = [libdir]
         self.info.components["embed"].includedirs = []
         self.info.components["embed"].set_property(
-            "pkg_config_name", f"python-{py_version.major}.{py_version.minor}-embed"
+            "pkg_config_name", "python3-embed"
         )
         self.info.components["embed"].set_property(
-            "pkg_config_aliases", [f"python{py_version.major}-embed"]
+            "pkg_config_aliases", ["python-embed"]
         )
         self.info.components["embed"].requires = ["python"]
 
@@ -241,6 +245,7 @@ class Recipe(RecipeBase[_Options]):
                 "libexpat::libexpat",
                 "mpdecimal::mpdecimal",
                 "libffi::libffi",
+                "zstd::zstd",
             ]
             if self.settings.os != "Windows":
                 if not is_apple_os(self):
@@ -311,8 +316,7 @@ class Recipe(RecipeBase[_Options]):
     @property
     def _version_suffix(self):
         v = Version(self.version)
-        joiner = "" if is_msvc(self) else "."
-        return f"{v.major}{joiner}{v.minor}"
+        return f"{v.major}"
 
     def _generate_autotools(self):
         tc = AutotoolsToolchain(self, prefix=self.folders.package)
@@ -340,12 +344,6 @@ class Recipe(RecipeBase[_Options]):
                 "ac_cv_buggy_getaddrinfo=no",
                 "ac_cv_file__dev_ptmx=yes",
                 "ac_cv_file__dev_ptc=no",
-                # 'make install' runs ensurepip through the host-runnable build-python, but its
-                # PYTHONPATH also includes the freshly built target's shared-module directory, so
-                # importing subprocess picks up the target arch's _posixsubprocess.so and fails to
-                # dlopen. The ensurepip wheels stay bundled in the package regardless: the target
-                # python can bootstrap pip itself when it's actually run on a matching-arch machine.
-                "--with-ensurepip=no",
             ])
         tc.configure_args.append("--disable-test-modules")
         if self.options.with_sqlite:
@@ -354,7 +352,7 @@ class Recipe(RecipeBase[_Options]):
             )
         if self._supports_modules and "mpdecimal" in self.dependencies:
             # mpdecimal >= 4.0 renamed CONFIG_64/CONFIG_32 → MPD_CONFIG_64/MPD_CONFIG_32.
-            # CPython 3.12 _decimal.c still checks the old names; provide compat defines.
+            # CPython's _decimal implementation still checks the old names; provide compat defines.
             if Version(str(self.dependencies["mpdecimal"].version)) >= "4.0":
                 _arch = str(self.settings.arch)
                 if _arch in ("X64", "ARM"):
@@ -407,6 +405,46 @@ class Recipe(RecipeBase[_Options]):
                 search + f'<Import Project="{self.folders.generators}/recipe_{dep_name}.props" />')
 
     def _patch_msvc_projects(self):
+        # Produce the interpreter and import library under their final package names. The full
+        # runtime intentionally replaces PCbuild's separate stable-ABI python3.dll in this
+        # isolated package, so do not build a second project with the same output name.
+        replace_in_file(
+            self, self.folders.source / "PCbuild" / "python.props",
+            '<PyExeName Condition="$(PyExeName) == \'\'">python</PyExeName>',
+            '<PyExeName Condition="$(PyExeName) == \'\'">python3</PyExeName>')
+        replace_in_file(
+            self, self.folders.source / "PCbuild" / "python.props",
+            '<PyDllName Condition="$(PyDllName) == \'\'">python$(MajorVersionNumber)$(MinorVersionNumber)$(PyDebugExt)</PyDllName>',
+            '<PyDllName Condition="$(PyDllName) == \'\'">python3$(PyDebugExt)</PyDllName>')
+        replace_in_file(
+            self, self.folders.source / "PC" / "layout" / "support" / "constants.py",
+            'PYTHON_DLL_NAME = "python{}{}.dll".format(VER_MAJOR, VER_MINOR)',
+            'PYTHON_DLL_NAME = "python3.dll"')
+        replace_in_file(
+            self, self.folders.source / "PC" / "layout" / "support" / "constants.py",
+            'PYTHON_ZIP_NAME = "python{}{}.zip".format(VER_MAJOR, VER_MINOR)',
+            'PYTHON_ZIP_NAME = "python.zip"')
+        replace_in_file(
+            self, self.folders.source / "PC" / "layout" / "support" / "constants.py",
+            'PYTHON_PTH_NAME = "python{}{}._pth".format(VER_MAJOR, VER_MINOR)',
+            'PYTHON_PTH_NAME = "python3._pth"')
+        replace_in_file(
+            self, self.folders.source / "PC" / "layout" / "main.py",
+            '    source = "python.exe"',
+            '    source = "python3.exe"')
+        replace_in_file(
+            self, self.folders.source / "PC" / "layout" / "main.py",
+            '''    alias = [
+        "python",
+        "python{}".format(VER_MAJOR) if ns.include_alias3 else "",
+        "python{}".format(VER_DOT) if ns.include_alias3x else "",
+    ]''',
+            '''    alias = ["python3"]''')
+        replace_in_file(
+            self, self._msvc_project_path("_remote_debugging"),
+            '<ProjectReference Include="python3dll.vcxproj">',
+            '<ProjectReference Include="python3dll.vcxproj" Condition="False">')
+
         # Don't build vendored bz2
         self._regex_replace_in_file(self._msvc_project_path("_bz2"), r'.*Include=\"\$\(bz2Dir\).*', "")
 
@@ -421,11 +459,12 @@ class Recipe(RecipeBase[_Options]):
         # For mpdecimal, we need to remove all headers and all c files *except* the main module file, _decimal.c
         self._regex_replace_in_file(self._msvc_project_path("_decimal"), r'.*Include=\"\.\.\\Modules\\_decimal\\.*\.h.*', "")
         self._regex_replace_in_file(self._msvc_project_path("_decimal"), r'.*Include=\"\.\.\\Modules\\_decimal\\libmpdec\\.*\.c.*', "")
+        self._regex_replace_in_file(self._msvc_project_path("_decimal"), r'.*Include=\"\$\(mpdecimalDir\)\\libmpdec\\.*\.(?:c|h).*', "")
         # There is also an assembly file with a complicated build step as part of the mpdecimal build
         replace_in_file(self, self._msvc_project_path("_decimal"), "<CustomBuild", "<!--<CustomBuild")
         replace_in_file(self, self._msvc_project_path("_decimal"), "</CustomBuild>", "</CustomBuild>-->")
-        # Remove extra include directory
-        replace_in_file(self, self._msvc_project_path("_decimal"), r"..\Modules\_decimal\libmpdec;", "")
+        # Remove the vendored mpdecimal include directory. The recipe props add the packaged one.
+        replace_in_file(self, self._msvc_project_path("_decimal"), r"$(mpdecimalDir)\libmpdec;", "")
 
         # Don't include vendored sqlite
         replace_in_file(
@@ -460,14 +499,26 @@ class Recipe(RecipeBase[_Options]):
         # Remove vendored expat
         self._regex_replace_in_file(self._msvc_project_path("_elementtree"), r'.*Include=\"\.\.\\Modules\\expat\\.*" />', "")
 
-        # deflate.c has warning 4244 disabled, need special patching else it breaks the regex below
-        # Add an extra space to avoid being picked up by the regex
-        replace_in_file(
-            self, self._msvc_project_path("pythoncore"),
-            r'<ClCompile Include="$(zlibDir)\deflate.c">',
-            r'<ClCompile Include= "$(zlibDir)\deflate.c" Condition="False">')
         # Don't use vendored zlib
         self._regex_replace_in_file(self._msvc_project_path("pythoncore"), r'.*Include=\"\$\(zlibDir\).*', "")
+        # CPython 3.14's PCbuild uses vendored zlib-ng in compatibility mode. Link the recipe's
+        # zlib instead and remove all zlib-ng source/header entries and its hardcoded import lib.
+        self._regex_replace_in_file(self._msvc_project_path("pythoncore"), r'.*Include=\"\$\((?:GeneratedZlibNgDir|zlibNgDir)\).*', "")
+        replace_in_file(
+            self, self._msvc_project_path("pythoncore"),
+            "zlib-ng$(PyDebugExt).lib;", "")
+        replace_in_file(
+            self, self._msvc_project_path("pythoncore"),
+            '<ProjectReference Include="zlib-ng.vcxproj" Condition="$(IncludeExternals)">',
+            '<ProjectReference Include="zlib-ng.vcxproj" Condition="False">')
+
+        # Python 3.14 adds compression.zstd. Build the extension against the separately packaged
+        # zstd library rather than compiling CPython's vendored zstd sources into the module.
+        self._regex_replace_in_file(self._msvc_project_path("_zstd"), r'.*Include=\"\$\(zstdDir\).*', "")
+        replace_in_file(
+            self, self._msvc_project_path("_zstd"),
+            r"$(zstdDir)lib\;$(zstdDir)lib\common;$(zstdDir)lib\compress;$(zstdDir)lib\decompress;$(zstdDir)lib\dictBuilder;",
+            "")
 
         # Don't use vendored tcl/tk include dir
         replace_in_file(self, self._msvc_project_path("_tkinter"), "<AdditionalIncludeDirectories>$(tcltkDir)include;", "<AdditionalIncludeDirectories>")
@@ -484,12 +535,6 @@ class Recipe(RecipeBase[_Options]):
         # Disable "ValidateUcrtbase" target (TODO: Why?)
         replace_in_file(self, self._msvc_project_path("python"), "$(Configuration) != 'PGInstrument'", "False")
 
-        # Remove vendored openssl file
-        replace_in_file(
-            self, self._msvc_project_path("_ssl"),
-            r'<ClCompile Include="$(opensslIncludeDir)\applink.c">',
-            r'<ClCompile Include="$(opensslIncludeDir)\applink.c" Condition="False">')
-
         self._inject_recipe_props_file("_bz2", "bzip2", self.options.with_bz2)
         self._inject_recipe_props_file("_elementtree", "libexpat", self._supports_modules)
         self._inject_recipe_props_file("pyexpat", "libexpat", self._supports_modules)
@@ -503,10 +548,195 @@ class Recipe(RecipeBase[_Options]):
         self._inject_recipe_props_file("_ctypes", "libffi", self._supports_modules)
         self._inject_recipe_props_file("_decimal", "mpdecimal", self._supports_modules)
         self._inject_recipe_props_file("_lzma", "xz", self.options.with_lzma)
+        self._inject_recipe_props_file("_zstd", "zstd", self._supports_modules)
         self._inject_recipe_props_file("_bsddb", "libdb", self.options.with_bsddb)
+
+    def _patch_unversioned_artifacts(self):
+        """Make the isolated package use stable, major-version-only artifact names."""
+        configure_replacements = {
+            'LIBRARY=\'libpython$(VERSION)$(ABIFLAGS).a\'':
+                'LIBRARY=\'libpython3$(ABIFLAGS).a\'',
+            'LDVERSION="$VERSION"': 'LDVERSION="3"',
+            'LDVERSION=\'$(VERSION)$(ABIFLAGS)\'': 'LDVERSION=\'3$(ABIFLAGS)\'',
+            'INSTSONAME="$LDLIBRARY".$SOVERSION': 'INSTSONAME="$LDLIBRARY"',
+            'PY3LIBRARY=libpython3.so': "PY3LIBRARY=''",
+            "BINLIBDEST='$(LIBDIR)/python$(VERSION)$(ABI_THREAD)'":
+                "BINLIBDEST='$(LIBDIR)/python'",
+            "BINLIBDEST='${exec_prefix}/${PLATLIBDIR}/python$(VERSION)$(ABI_THREAD)'":
+                "BINLIBDEST='${exec_prefix}/${PLATLIBDIR}/python'",
+            "LIBPL='$(prefix)'\"/${PLATLIBDIR}/python${VERSION}${ABI_THREAD}/config-${LDVERSION}\"":
+                "LIBPL='$(prefix)'\"/${PLATLIBDIR}/python/config-${LDVERSION}\"",
+            "LIBPL='$(prefix)'\"/${PLATLIBDIR}/python${VERSION}${ABI_THREAD}/config-${LDVERSION}-${PLATFORM_TRIPLET}\"":
+                "LIBPL='$(prefix)'\"/${PLATLIBDIR}/python/config-${LDVERSION}-${PLATFORM_TRIPLET}\"",
+            "'-bundle_loader $(BINDIR)/python$(VERSION)$(EXE)'":
+                "'-bundle_loader $(BINDIR)/python3$(EXE)'",
+        }
+        for filename in ("configure.ac", "configure"):
+            path = self.folders.source / filename
+            for search, replacement in configure_replacements.items():
+                replace_in_file(self, path, search, replacement)
+
+        makefile = self.folders.source / "Makefile.pre.in"
+        makefile_replacements = {
+            "EXENAME=\t$(BINDIR)/python$(LDVERSION)$(EXE)":
+                "EXENAME=\t$(BINDIR)/python3$(EXE)",
+            "LIBDEST=\t$(SCRIPTDIR)/python$(VERSION)$(ABI_THREAD)":
+                "LIBDEST=\t$(SCRIPTDIR)/python",
+            "INCLUDEPY=\t$(INCLUDEDIR)/python$(LDVERSION)":
+                "INCLUDEPY=\t$(INCLUDEDIR)/python",
+            "CONFINCLUDEPY=\t$(CONFINCLUDEDIR)/python$(LDVERSION)":
+                "CONFINCLUDEPY=\t$(CONFINCLUDEDIR)/python",
+            "ZIP_STDLIB=python$(VERSION)$(ABI_THREAD).zip": "ZIP_STDLIB=python.zip",
+            "libpython3.so:\tlibpython$(LDVERSION).so\n\t$(BLDSHARED) $(NO_AS_NEEDED) -o $@ -Wl,-h$@ $^\n\n": "",
+            "$(INSTALL_DATA) Misc/python.pc $(DESTDIR)$(LIBPC)/python-$(LDVERSION).pc":
+                "$(INSTALL_DATA) Misc/python.pc $(DESTDIR)$(LIBPC)/python3.pc",
+            "$(INSTALL_DATA) Misc/python-embed.pc $(DESTDIR)$(LIBPC)/python-$(LDVERSION)-embed.pc":
+                "$(INSTALL_DATA) Misc/python-embed.pc $(DESTDIR)$(LIBPC)/python3-embed.pc",
+            "$(INSTALL_SCRIPT) python-config $(DESTDIR)$(BINDIR)/python$(LDVERSION)-config":
+                "$(INSTALL_SCRIPT) python-config $(DESTDIR)$(BINDIR)/python3-config",
+            "$(INSTALL_SCRIPT) $(SCRIPT_IDLE) $(DESTDIR)$(BINDIR)/idle$(VERSION)":
+                "$(INSTALL_SCRIPT) $(SCRIPT_IDLE) $(DESTDIR)$(BINDIR)/idle3",
+            "$(INSTALL_SCRIPT) $(SCRIPT_PYDOC) $(DESTDIR)$(BINDIR)/pydoc$(VERSION)":
+                "$(INSTALL_SCRIPT) $(SCRIPT_PYDOC) $(DESTDIR)$(BINDIR)/pydoc3",
+            "$(DESTDIR)$(MANDIR)/man1/python$(VERSION).1":
+                "$(DESTDIR)$(MANDIR)/man1/python3.1",
+        }
+        for search, replacement in makefile_replacements.items():
+            replace_in_file(self, makefile, search, replacement)
+
+        replace_in_file(
+            self, makefile,
+            '''\t-if test "$(VERSION)" != "$(LDVERSION)"; then \\
+\t\tif test -f $(DESTDIR)$(BINDIR)/python$(VERSION)$(EXE) -o -h $(DESTDIR)$(BINDIR)/python$(VERSION)$(EXE); \\
+\t\tthen rm -f $(DESTDIR)$(BINDIR)/python$(VERSION)$(EXE); \\
+\t\tfi; \\
+\t\t(cd $(DESTDIR)$(BINDIR); $(LN) python$(LDVERSION)$(EXE) python$(VERSION)$(EXE)); \\
+\tfi
+''',
+            "")
+        self._regex_replace_in_file(
+            makefile,
+            r"(?s)bininstall: commoninstall altbininstall\n.*?(?=\n# Install the versioned manual page)",
+            "bininstall: commoninstall altbininstall\n")
+        replace_in_file(
+            self, makefile,
+            '''maninstall:\taltmaninstall
+\t-rm -f $(DESTDIR)$(MANDIR)/man1/python3.1
+\t(cd $(DESTDIR)$(MANDIR)/man1; $(LN) -s python$(VERSION).1 python3.1)
+''',
+            '''maninstall:\taltmaninstall
+''')
+
+        getpath = self.folders.source / "Modules" / "getpath.py"
+        getpath_replacements = {
+            "STDLIB_SUBDIR = f'{platlibdir}/python{VERSION_MAJOR}.{VERSION_MINOR}{ABI_THREAD}'":
+                "STDLIB_SUBDIR = f'{platlibdir}/python'",
+            "PLATSTDLIB_LANDMARK = f'{platlibdir}/python{VERSION_MAJOR}.{VERSION_MINOR}{ABI_THREAD}/lib-dynload'":
+                "PLATSTDLIB_LANDMARK = f'{platlibdir}/python/lib-dynload'",
+            "ZIP_LANDMARK = f'{platlibdir}/python{VERSION_MAJOR}{VERSION_MINOR}{ABI_THREAD}.zip'":
+                "ZIP_LANDMARK = f'{platlibdir}/python.zip'",
+            "    DEFAULT_PROGRAM_NAME = f'python'":
+                "    DEFAULT_PROGRAM_NAME = f'python{VERSION_MAJOR}'",
+            "    ZIP_LANDMARK = f'python{VERSION_MAJOR}{VERSION_MINOR}{PYDEBUGEXT or \"\"}.zip'":
+                "    ZIP_LANDMARK = f'python.zip'",
+            'base_executable = f"{dirname(library)}/bin/python{VERSION_MAJOR}.{VERSION_MINOR}"':
+                'base_executable = f"{dirname(library)}/bin/python{VERSION_MAJOR}"',
+        }
+        for search, replacement in getpath_replacements.items():
+            replace_in_file(self, getpath, search, replacement)
+
+        sysconfig = self.folders.source / "Lib" / "sysconfig" / "__init__.py"
+        posix_scheme = '''        'stdlib': '{installed_base}/{platlibdir}/{implementation_lower}{py_version_short}{abi_thread}',
+        'platstdlib': '{platbase}/{platlibdir}/{implementation_lower}{py_version_short}{abi_thread}',
+        'purelib': '{base}/lib/{implementation_lower}{py_version_short}{abi_thread}/site-packages',
+        'platlib': '{platbase}/{platlibdir}/{implementation_lower}{py_version_short}{abi_thread}/site-packages',
+        'include':
+            '{installed_base}/include/{implementation_lower}{py_version_short}{abiflags}',
+        'platinclude':
+            '{installed_platbase}/include/{implementation_lower}{py_version_short}{abiflags}',
+'''
+        unversioned_posix_scheme = '''        'stdlib': '{installed_base}/{platlibdir}/{implementation_lower}',
+        'platstdlib': '{platbase}/{platlibdir}/{implementation_lower}',
+        'purelib': '{base}/lib/{implementation_lower}/site-packages',
+        'platlib': '{platbase}/{platlibdir}/{implementation_lower}/site-packages',
+        'include': '{installed_base}/include/{implementation_lower}',
+        'platinclude': '{installed_platbase}/include/{implementation_lower}',
+'''
+        # The same block is used by the prefix and venv schemes.
+        replace_in_file(self, sysconfig, posix_scheme, unversioned_posix_scheme)
+
+        python_config = self.folders.source / "Misc" / "python-config.sh.in"
+        python_config_replacements = {
+            'LIBS_EMBED="-lpython${VERSION}${ABIFLAGS} @LIBS@ $SYSLIBS"':
+                'LIBS_EMBED="-lpython3${ABIFLAGS} @LIBS@ $SYSLIBS"',
+            'LIBDEST=${prefix_real}/lib/python${VERSION}': 'LIBDEST=${prefix_real}/lib/python',
+            'INCDIR="-I$includedir/python${VERSION}${ABIFLAGS}"': 'INCDIR="-I$includedir/python"',
+        }
+        for search, replacement in python_config_replacements.items():
+            replace_in_file(self, python_config, search, replacement)
+        for filename in ("python.pc.in", "python-embed.pc.in"):
+            path = self.folders.source / "Misc" / filename
+            replace_in_file(
+                self, path,
+                'Cflags: -I${includedir}/python@VERSION@@ABIFLAGS@',
+                'Cflags: -I${includedir}/python')
+        replace_in_file(
+            self, self.folders.source / "Misc" / "python-embed.pc.in",
+            'Libs: -L${libdir} -lpython@VERSION@@ABIFLAGS@',
+            'Libs: -L${libdir} -lpython3@ABIFLAGS@')
+        replace_in_file(
+            self, self.folders.source / "Misc" / "python-config.in",
+            "pyver = getvar('VERSION')",
+            "pyver = str(getvar('LDVERSION'))")
+        self._patch_bundled_pip_entrypoints()
+
+    def _patch_bundled_pip_entrypoints(self):
+        """Teach ensurepip's bundled pip wheel to emit pip3 without also emitting pip3.X."""
+        wheels = list((self.folders.source / "Lib" / "ensurepip" / "_bundled").glob("pip-*.whl"))
+        if len(wheels) != 1:
+            raise RecipeException(f"Expected one bundled pip wheel, found {len(wheels)}")
+
+        wheel = wheels[0]
+        module_name = "pip/_internal/operations/install/wheel.py"
+        search = b'        scripts_to_generate.append(f"pip{get_major_minor_version()} = {pip_script}")\n'
+        replacement = b"        # This isolated package installs only the stable pip3 entry point.\n"
+
+        with zipfile.ZipFile(wheel, "r") as source_zip:
+            infos = source_zip.infolist()
+            contents = {info.filename: source_zip.read(info.filename) for info in infos}
+        module = contents.get(module_name)
+        if module is None or search not in module:
+            raise RecipeException(f"Unable to patch bundled pip entry points in {wheel.name}")
+        contents[module_name] = module.replace(search, replacement)
+
+        record_name = next(
+            (name for name in contents if name.endswith(".dist-info/RECORD")), None)
+        if record_name is None:
+            raise RecipeException(f"Unable to find RECORD in {wheel.name}")
+        digest = base64.urlsafe_b64encode(
+            hashlib.sha256(contents[module_name]).digest()).rstrip(b"=").decode()
+        record_input = io.StringIO(contents[record_name].decode(), newline="")
+        rows = list(csv.reader(record_input))
+        for row in rows:
+            if row and row[0] == module_name:
+                row[1] = f"sha256={digest}"
+                row[2] = str(len(contents[module_name]))
+                break
+        else:
+            raise RecipeException(f"Unable to update RECORD for {module_name}")
+        record_output = io.StringIO(newline="")
+        csv.writer(record_output, lineterminator="\n").writerows(rows)
+        contents[record_name] = record_output.getvalue().encode()
+
+        patched_wheel = wheel.with_suffix(".patched.whl")
+        with zipfile.ZipFile(patched_wheel, "w") as destination_zip:
+            for info in infos:
+                destination_zip.writestr(info, contents[info.filename])
+        os.replace(patched_wheel, wheel)
 
     def _patch_sources(self):
         apply_patches(self)
+        self._patch_unversioned_artifacts()
         replace_in_file(
             self, self.folders.source / "configure",
             'OPENSSL_LIBS="-lssl -lcrypto"',
@@ -607,6 +837,8 @@ class Recipe(RecipeBase[_Options]):
             "bdist_wininst",
             "liblzma",
             "openssl",
+            "python3dll",
+            "zlib-ng",
             "xxlimited",
         }
         if not self.options.with_bz2:
@@ -673,9 +905,9 @@ class Recipe(RecipeBase[_Options]):
         # machine, so use the host-runnable python provided via the build-context tool_require.
         if cross_building(self):
             host_python_pkg = Path(self.dependencies.build[self.name].folders.package)
-            python_built = host_python_pkg / self._msvc_install_subprefix / f"python{infix}.exe"
+            python_built = host_python_pkg / self._msvc_install_subprefix / f"python3{infix}.exe"
         else:
-            python_built = build_path / f"python{infix}.exe"
+            python_built = build_path / f"python3{infix}.exe"
         layout_args = [
             self.folders.source / "PC" / "layout" / "main.py",
             "-v",
@@ -833,12 +1065,9 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _cpython_interpreter_name(self):
-        python = "python"
-        if is_msvc(self):
-            if self.settings.build_type == "Debug":
-                python += "_d"
-        else:
-            python += self._version_suffix
+        python = f"python{self._version_suffix}"
+        if is_msvc(self) and self.settings.build_type == "Debug":
+            python += "_d"
         if self.settings.os == "Windows":
             python += ".exe"
         return python

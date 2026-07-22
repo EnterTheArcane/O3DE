@@ -44,15 +44,15 @@ class Recipe(RecipeBase):
         # headers). PYBIND11_FINDPYTHON runs find_package(Python COMPONENTS Development.Module), so
         # point FindPython/FindPython3 at cpython's package (matches the pyside recipe's approach).
         python_root = self.dependencies["cpython"].folders.package.as_posix()
-        py_maj, py_min = str(self.dependencies["cpython"].version).split(".")[:2]
         if self.settings.os == "Windows":
-            py_exe = f"{python_root}/bin/python.exe"
+            py_exe = f"{python_root}/bin/python3.exe"
             py_inc = f"{python_root}/bin/include"
-            py_lib = f"{python_root}/bin/libs/python{py_maj}{py_min}.lib"
+            py_lib = f"{python_root}/bin/libs/python3.lib"
         else:
-            py_exe = f"{python_root}/bin/python{py_maj}.{py_min}"
-            py_inc = f"{python_root}/include/python{py_maj}.{py_min}"
-            py_lib = f"{python_root}/lib/libpython{py_maj}.{py_min}.so"
+            extension = "dylib" if self.settings.os == "Mac" else "so"
+            py_exe = f"{python_root}/bin/python3"
+            py_inc = f"{python_root}/include/python"
+            py_lib = f"{python_root}/lib/libpython3.{extension}"
         for prefix in ("Python", "Python3"):
             tc.variables[f"{prefix}_ROOT_DIR"] = python_root
             tc.variables[f"{prefix}_FIND_STRATEGY"] = "LOCATION"

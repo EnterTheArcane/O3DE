@@ -135,11 +135,10 @@ class Recipe(RecipeBase):
 
         root = self.folders.package
         python = self.dependencies["cpython"]
-        major, minor = str(python.version).split(".")[:2]
         if python.settings.os == "Windows":
             site_packages = root / "Lib" / "site-packages"
         else:
-            site_packages = root / "lib" / f"python{major}.{minor}" / "site-packages"
+            site_packages = root / "lib" / "python" / "site-packages"
         for environment in (self.info.buildenv, self.info.runenv):
             environment.prepend_path("PATH", root / "bin")
             environment.prepend_path("PYTHONPATH", site_packages)
@@ -151,22 +150,21 @@ class Recipe(RecipeBase):
 
 def _python_layout(dependency: RecipeBase) -> tuple[Path, Path, Path, Path, Path]:
     root = Path(dependency.folders.package)
-    major, minor = str(dependency.version).split(".")[:2]
     if dependency.settings.os == "Windows":
         return (
             root,
-            root / "bin" / "python.exe",
+            root / "bin" / "python3.exe",
             root / "bin" / "include",
-            root / "bin" / "libs" / f"python{major}{minor}.lib",
+            root / "bin" / "libs" / "python3.lib",
             root / "bin" / "Lib" / "site-packages",
         )
     extension = "dylib" if dependency.settings.os == "Mac" else "so"
     return (
         root,
-        root / "bin" / f"python{major}.{minor}",
-        root / "include" / f"python{major}.{minor}",
-        root / "lib" / f"libpython{major}.{minor}.{extension}",
-        root / "lib" / f"python{major}.{minor}" / "site-packages",
+        root / "bin" / "python3",
+        root / "include" / "python",
+        root / "lib" / f"libpython3.{extension}",
+        root / "lib" / "python" / "site-packages",
     )
 
 
