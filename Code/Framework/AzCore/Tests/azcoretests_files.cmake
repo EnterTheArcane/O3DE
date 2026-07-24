@@ -100,6 +100,13 @@ set(FILES
     EventTests.cpp
     FileIOBaseTestTypes.h
     Geometry2DUtils.cpp
+    Hash/CityReferenceVectors.h
+    Hash/CityTests.cpp
+    Hash/CrcTests.cpp
+    Hash/FnvTests.cpp
+    Hash/Xxh3Tests.cpp
+    Hash/XxhReferenceVectors.h
+    Hash/XxhTests.cpp
     Interface.cpp
     IO/FileReaderTests.cpp
     IO/Path/PathReflectTests.cpp

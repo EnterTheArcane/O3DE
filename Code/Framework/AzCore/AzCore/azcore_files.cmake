@@ -155,6 +155,19 @@ set(FILES
     EBus/Internal/Debug.h
     EBus/Internal/Handlers.h
     EBus/Internal/StoragePolicies.h
+    Hash/City.cpp
+    Hash/City.h
+    Hash/Crc.cpp
+    Hash/Crc.h
+    Hash/Fnv.cpp
+    Hash/Fnv.h
+    Hash/HashReflection.cpp
+    Hash/HashReflection.h
+    Hash/Internal/ByteReader.h
+    Hash/Xxh.cpp
+    Hash/Xxh.h
+    Hash/Xxh3.cpp
+    Hash/Xxh3.h
     Instance/InstancePool.h
     Interface/Interface.h
     IO/AnsiTerminalUtils.cpp
@@ -293,8 +306,8 @@ set(FILES
     Math/ColorSerializer.h
     Math/ColorSerializer.cpp
     Math/Crc.cpp
-    Math/Crc.inl
     Math/Crc.h
+    Math/Crc.inl
     Math/CrcInternal.h
     Math/CrcSerializer.h
     Math/CrcSerializer.cpp

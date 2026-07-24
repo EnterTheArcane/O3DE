@@ -16,6 +16,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
             MAC
             __APPLE__
             DARWIN
+        COMPILATION
+            -mavx2
         LINK_NON_STATIC
             -headerpad_max_install_names
             -lpthread

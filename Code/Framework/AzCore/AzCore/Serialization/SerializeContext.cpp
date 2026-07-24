@@ -25,6 +25,7 @@
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/containers/stack.h>
 
+#include <AzCore/Hash/HashReflection.h>
 #include <AzCore/Math/MathReflection.h>
 #include <AzCore/Math/MathUtils.h>
 
@@ -464,6 +465,7 @@ namespace AZ
                 Serializer<BoolSerializer>();
 
             MathReflect(this);
+            HashReflect(this);
 
             Class<DataOverlayToken>()->
                 Field("Uri", &DataOverlayToken::m_dataUri);
