@@ -103,7 +103,7 @@ namespace WhiteBox
 
                 const float div = (deltaU1 * deltaV2 - deltaU2 * deltaV1);
 
-                if (_isnan(div))
+                if (AZStd::isnan(div))
                 {
                     AZ_Error(
                         "AZTangentSpaceCalculation", false,

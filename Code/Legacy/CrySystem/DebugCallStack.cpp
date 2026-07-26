@@ -181,7 +181,7 @@ void UnmarkThisThreadFromDebugging()
 
 void UpdateFPExceptionsMaskForThreads()
 {
-    int mask = -iszero(g_cvars.sys_float_exceptions);
+    int mask = -(g_cvars.sys_float_exceptions == 0);
     CONTEXT ctx;
     for (int i = 0; i < g_nDebugThreads; i++)
     {
