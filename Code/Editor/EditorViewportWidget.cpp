@@ -60,7 +60,6 @@
 // Editor
 #include "AnimationContext.h"
 #include "Core/QtEditorApplication.h"
-#include "CryCommon/MathConversion.h"
 #include "CryEditDoc.h"
 #include "CustomResolutionDlg.h"
 #include "DisplaySettings.h"
@@ -1237,7 +1236,7 @@ AZ::Vector3 EditorViewportWidget::WorldToView3D(const AZ::Vector3& wp, [[maybe_u
 //////////////////////////////////////////////////////////////////////////
 QPoint EditorViewportWidget::WorldToView(const AZ::Vector3& wp) const
 {
-    return AzToolsFramework::ViewportInteraction::QPointFromScreenPoint(m_renderViewport->ViewportWorldToScreen(LYVec3ToAZVec3(wp)));
+    return AzToolsFramework::ViewportInteraction::QPointFromScreenPoint(m_renderViewport->ViewportWorldToScreen(wp));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1257,14 +1256,14 @@ AZ::Vector3 EditorViewportWidget::ViewToWorld(
         m_renderViewport->ViewportScreenToWorldRay(AzToolsFramework::ViewportInteraction::ScreenPointFromQPoint(vp * devicePixelRatioF()));
 
     const float maxDistance = 10000.f;
-    AZ::Vector3 v = AZVec3ToLYVec3(ray.m_direction) * maxDistance;
+    AZ::Vector3 v = ray.m_direction * maxDistance;
 
     if (!_finite(v.GetX()) || !_finite(v.GetY()) || !_finite(v.GetZ()))
     {
         return AZ::Vector3(0, 0, 0);
     }
 
-    AZ::Vector3 colp = AZVec3ToLYVec3(ray.m_origin) + 0.002f * v;
+    AZ::Vector3 colp = ray.m_origin + 0.002f * v;
 
     return colp;
 }
@@ -1341,7 +1340,7 @@ void EditorViewportWidget::ViewToWorldRay(const QPoint& vp, AZ::Vector3& raySrc,
     pos0.Set(wx, wy, wz);
 
     raySrc = pos0;
-    rayDir = (pos0 - AZVec3ToLYVec3(m_renderViewport->GetCameraState().m_position)).GetNormalized();
+    rayDir = (pos0 - m_renderViewport->GetCameraState().m_position).GetNormalized();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1401,7 +1400,7 @@ void EditorViewportWidget::CenterOnAABB(const AZ::Aabb& aabb)
 
     // Forward vector is y component of rotation matrix
     AZ::Matrix3x3 rotationMatrix(affineParts.rot);
-    const AZ::Vector3 viewDirection = AZVec3ToLYVec3(rotationMatrix.GetColumn(1).GetNormalized());
+    const AZ::Vector3 viewDirection = rotationMatrix.GetColumn(1).GetNormalized();
 
     // Compute adjustment required by FOV != 90 degrees
     const float fov = GetFOV();
@@ -1409,8 +1408,8 @@ void EditorViewportWidget::CenterOnAABB(const AZ::Aabb& aabb)
 
     // Compute new transform matrix
     const float distanceToTarget = selectionSize * fovScale * centerScale;
-    const AZ::Vector3 newPosition = AZVec3ToLYVec3(selectionCenter) - (viewDirection * distanceToTarget);
-    AZ::Matrix3x4 newTM = AZ::Matrix3x4::CreateFromMatrix3x3AndTranslation(rotationMatrix, LYVec3ToAZVec3(newPosition));
+    const AZ::Vector3 newPosition = selectionCenter - (viewDirection * distanceToTarget);
+    AZ::Matrix3x4 newTM = AZ::Matrix3x4::CreateFromMatrix3x3AndTranslation(rotationMatrix, newPosition);
 
     // Set new orbit distance
     float orbitDistance = distanceToTarget;
@@ -1642,7 +1641,7 @@ void EditorViewportWidget::CycleCamera()
     auto&& currentCameraIterator = AZStd::find(results.values.begin(), results.values.end(), m_viewEntityId);
     if (currentCameraIterator != results.values.end())
     {
-        if (++currentCameraIterator != results.values.end()) // Found -> check that a next one exists ... 
+        if (++currentCameraIterator != results.values.end()) // Found -> check that a next one exists ...
         {
             SetEntityAsCamera(*currentCameraIterator); // ... and then select it.
             return;

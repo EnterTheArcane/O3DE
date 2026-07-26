@@ -14,7 +14,6 @@
 #include "StartingPointCamera/StartingPointCameraConstants.h"
 #include <AzCore/Math/Quaternion.h>
 #include <AzFramework/Translation/TranslationDef.h>
-#include <MathConversion.h>
 #include <StartingPointCamera/StartingPointCameraUtilities.h>
 
 

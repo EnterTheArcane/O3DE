@@ -32,7 +32,6 @@
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Prefab/PrefabPublicNotificationBus.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
-#include <MathConversion.h>
 
 // forward declarations.
 class QMenu;

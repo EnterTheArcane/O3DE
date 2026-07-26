@@ -12,9 +12,9 @@
 #include <ISystem.h>
 #include <Cry_Color.h>
 #include <AzCore/Math/Color.h>
+#include <AzCore/Math/Quaternion.h>
 #include <AzCore/Component/EntityId.h>
 
-#include "MathConversion.h"
 
 enum EAnimKeyFlags
 {
@@ -161,7 +161,7 @@ struct ISelectKey
     bool IsValid() const { return cameraAzEntityId.IsValid() && !szSelection.empty(); }
 
     //!< @returns True if a valid camera controller EntityId is set and camera properties are stored, otherwise returns false.
-    bool IsInitialized() const { return IsValid() && m_FoV > 0.0f; } 
+    bool IsInitialized() const { return IsValid() && m_FoV > 0.0f; }
 
     //!< @returns True if a valid camera controller EntityId is set, otherwise returns false and invalidates camera properties.
     bool CheckValid()
@@ -236,7 +236,7 @@ struct ISoundKey
     ISoundKey()
         : fDuration(0.0f)
     {
-        customColor = AZColorToLYVec3(TrackviewDefaultColor);
+        customColor = TrackviewDefaultColor.GetAsVector3();
     }
 
     AZStd::string sStartTrigger;
@@ -529,7 +529,7 @@ struct IStringKey
     IStringKey() = default;
 
     IStringKey(const AZStd::string value)
-        : m_strValue(value) 
+        : m_strValue(value)
     {
     }
 };

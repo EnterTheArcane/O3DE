@@ -21,7 +21,6 @@
 #include <Maestro/Types/AnimValueType.h>
 #include <Maestro/Types/AnimParamType.h>
 #include <Maestro/Types/AssetBlends.h>
-#include <MathConversion.h>
 
 #include "CharacterTrack.h"
 
@@ -396,7 +395,7 @@ namespace Maestro
         GetParentWorldTransform(parentTransform);
         parentTransform.ExtractUniformScale();
         parentTransform.Invert();
-    
+
         rotTransform = parentTransform * rotTransform;
         return rotTransform.GetRotation();
     }
@@ -1133,7 +1132,7 @@ namespace Maestro
                                 AZ::Vector3 degreesRotation;
                                 pTrack->GetValue(ac.time, degreesRotation);
                                 AZ::Vector3 degreesRotationPrev = prevQuaternionValue.GetEulerDegreesZYX();
-                                bool needToRecalc = false; 
+                                bool needToRecalc = false;
                                 for (int i = 0; i < 3; ++i)
                                 {
                                     const auto valueIsValid = pTrack->GetSubTrack(i) && pTrack->GetSubTrack(i)->HasKeys() &&

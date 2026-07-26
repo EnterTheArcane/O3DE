@@ -8,7 +8,6 @@
 
 #include "EditorDefs.h"
 #include <AzTest/AzTest.h>
-#include <CryCommon/MathConversion.h>
 
 namespace EditorUtilsTest
 {

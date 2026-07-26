@@ -476,7 +476,7 @@ namespace UnitTest
         EXPECT_EQ(renderMeshPositions.size(), clothParticles.size());
         for (size_t i = 0; i < renderMeshPositions.size(); ++i)
         {
-            EXPECT_THAT(LYVec3ToAZVec3(renderMeshPositions[i]), IsCloseTolerance(clothParticles[i].GetAsVector3(), Tolerance));
+            EXPECT_THAT(renderMeshPositions[i], IsCloseTolerance(clothParticles[i].GetAsVector3(), Tolerance));
         }
         */
     }

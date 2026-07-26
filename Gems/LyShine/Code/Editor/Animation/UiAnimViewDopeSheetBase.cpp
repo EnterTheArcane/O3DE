@@ -9,7 +9,6 @@
 
 #include "EditorDefs.h"
 #include "Editor/Resource.h"
-#include "MathConversion.h"
 #include "UiEditorAnimationBus.h"
 #include "UiAnimViewDopeSheetBase.h"
 
@@ -3064,7 +3063,7 @@ void CUiAnimViewDopeSheetBase::DrawColorGradient(QPainter* painter, const QRect&
         AZ::Vector3 vColor(0, 0, 0);
         pTrack->GetValue(TimeFromPointUnsnapped(QPoint(x, rc.top())), vColor);
 
-        painter->setPen(ColorLinearToGamma(LYVec3ToAZColor(vColor / 255.0f)));
+        painter->setPen(ColorLinearToGamma(AZ::Color(vColor / 255.0f)));
         painter->drawLine(x, rc.top(), x, rc.bottom());
     }
     painter->setPen(pOldPen);

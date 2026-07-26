@@ -15,7 +15,6 @@
 #include "Maestro/Types/AnimNodeType.h"
 #include "Maestro/Types/AnimParamType.h"
 #include "Maestro/Types/AnimValueType.h"
-#include "MathConversion.h"
 
 namespace Maestro
 {
@@ -153,7 +152,7 @@ namespace Maestro
     {
         AZ_Assert(id > 0, "Expected a valid node id.");
         AZ_Assert(pDesc, "Expected a valid description pointer.");
-    }        
+    }
 
     void CAnimPostFXNode::Initialize()
     {
@@ -357,7 +356,7 @@ namespace Maestro
                 CCompoundSplineTrack* pCompoundTrack = static_cast<CCompoundSplineTrack*>(pTrack);
                 AZ::Vector4 val(0.0f, 0.0f, 0.0f, 0.0f);
                 m_pDescription->m_controlParams[i]->GetDefault(val);
-                pCompoundTrack->SetValue(0.0f, LYVec4ToAZVec4(val), true);
+                pCompoundTrack->SetValue(0.0f, val, true);
             }
         }
     }

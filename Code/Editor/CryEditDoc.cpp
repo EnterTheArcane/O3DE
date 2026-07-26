@@ -21,7 +21,6 @@
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/Time/ITime.h>
 #include <AzCore/Utils/Utils.h>
-#include <MathConversion.h>
 
 // AzFramework
 #include <AzFramework/Archive/IArchive.h>
@@ -370,7 +369,7 @@ void CCryEditDoc::SerializeViewSettings(CXmlArchive& xmlAr)
             }
 
             AZ::Transform tm = AZ::Transform::CreateFromQuaternionAndTranslation(
-                AZ::Quaternion::CreateFromEulerRadiansZYX(va), LYVec3ToAZVec3(vp));
+                AZ::Quaternion::CreateFromEulerRadiansZYX(va), vp);
 
             auto viewportContextManager = AZ::Interface<AZ::RPI::ViewportContextRequestsInterface>::Get();
             if (auto viewportContext = viewportContextManager->GetViewportContextById(i))
@@ -395,7 +394,7 @@ void CCryEditDoc::SerializeViewSettings(CXmlArchive& xmlAr)
 
             if (pVP)
             {
-                AZ::Vector3 pos = AZVec3ToLYVec3(pVP->GetViewTM().GetTranslation());
+                AZ::Vector3 pos = pVP->GetViewTM().GetTranslation();
                 AZ::Vector3 angles = AZ::Quaternion::CreateFromMatrix3x4(pVP->GetViewTM()).GetEulerRadiansZYX();
                 auto viewerPosName = QString("ViewerPos%1").arg(i);
                 view->setAttr(viewerPosName.toUtf8().constData(), pos);

@@ -16,7 +16,6 @@
 #include "CharacterTrack.h"
 #include "AnimSplineTrack.h"
 #include "BoolTrack.h"
-#include "MathConversion.h"
 #include "SelectTrack.h"
 #include "EventTrack.h"
 #include "SoundTrack.h"
@@ -34,6 +33,7 @@
 
 #include <AzCore/std/sort.h>
 #include <AzCore/Math/MathUtils.h>
+#include <AzCore/Math/Matrix3x4.h>
 #include <AzCore/Component/TickBus.h>
 #include <ctime>
 #include "Maestro/Types/AnimValueType.h"

@@ -31,7 +31,6 @@
 
 #include <AzFramework/Translation/TranslationDef.h>
 
-#include "MathConversion.h"
 #include "UiSerialize.h"
 #include "UiLayoutHelpers.h"
 #include "Sprite.h"
@@ -386,7 +385,7 @@ void UiImageComponent::Render(LyShine::IRenderGraph* renderGraph)
             if (textureSize.GetX() == 0 || textureSize.GetY() == 0)
             {
                 // don't render to cache and leave m_isRenderCacheDirty set to true
-                return;        
+                return;
             }
         }
 
@@ -1240,7 +1239,7 @@ void UiImageComponent::Deactivate()
     {
         UiCanvasPixelAlignmentNotificationBus::Handler::BusDisconnect();
     }
- 
+
     if (UiSpriteSettingsChangeNotificationBus::Handler::BusIsConnected())
     {
         UiSpriteSettingsChangeNotificationBus::Handler::BusDisconnect();
@@ -2055,13 +2054,13 @@ void UiImageComponent::ClipAndRenderForSlicedRadialFill(uint32 numVertsPerSide, 
     }
 
     AZ::Matrix3x3 lineRotationMatrix = AZ::Matrix3x3::CreateRotationZ(startAngle - fillOffset);
-    firstHalfFixedLineEnd = AZVec2ToLYVec2(AZ::Vector2(AZ::Vector3(LYVec2ToAZVec2(firstHalfFixedLineEnd), 0.f) * lineRotationMatrix));
+    firstHalfFixedLineEnd = AZ::Vector2(AZ::Vector3(firstHalfFixedLineEnd, 0.f) * lineRotationMatrix);
     firstHalfFixedLineEnd = lineOrigin + firstHalfFixedLineEnd;
-    secondHalfFixedLineEnd = AZVec2ToLYVec2(AZ::Vector2(AZ::Vector3(LYVec2ToAZVec2(secondHalfFixedLineEnd), 0.f) * lineRotationMatrix));
+    secondHalfFixedLineEnd = AZ::Vector2(AZ::Vector3(secondHalfFixedLineEnd, 0.f) * lineRotationMatrix);
     secondHalfFixedLineEnd = lineOrigin + secondHalfFixedLineEnd;
 
     lineRotationMatrix = AZ::Matrix3x3::CreateRotationZ(startAngle - fillOffset + (endAngle - startAngle) * m_fillAmount);
-    rotatingLineEnd = AZVec2ToLYVec2(AZ::Vector2(AZ::Vector3(LYVec2ToAZVec2(rotatingLineEnd), 0.f) * lineRotationMatrix));
+    rotatingLineEnd = AZ::Vector2(AZ::Vector3(rotatingLineEnd, 0.f) * lineRotationMatrix);
     rotatingLineEnd = lineOrigin + rotatingLineEnd;
 
     int numIndicesToRender = 0;
@@ -2165,7 +2164,7 @@ void UiImageComponent::ClipAndRenderForSlicedRadialCornerOrEdgeFill(uint32 numVe
         lineEnd = lineEnd * -1.0f;
     }
     AZ::Matrix3x3 lineRotationMatrix = AZ::Matrix3x3::CreateRotationZ(startAngle + (endAngle - startAngle) * m_fillAmount);
-    lineEnd = AZVec2ToLYVec2(AZ::Vector2(AZ::Vector3(LYVec2ToAZVec2(lineEnd), 0.f) * lineRotationMatrix));
+    lineEnd = AZ::Vector2(AZ::Vector3(lineEnd, 0.f) * lineRotationMatrix);
     lineEnd = lineOrigin + lineEnd;
 
     int numIndicesToRender = 0;

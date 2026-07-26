@@ -26,7 +26,6 @@
 #include "EditorViewportSettings.h"
 #include "GameEngine.h"
 #include "MainWindow.h"
-#include "MathConversion.h"
 #include "Settings.h"
 #include "UsedResources.h"
 #include "ViewPane.h"

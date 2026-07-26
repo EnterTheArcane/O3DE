@@ -18,7 +18,6 @@
 #include <AzQtComponents/DragAndDrop/ViewportDragAndDrop.h>
 
 #include <AzCore/Math/IntersectSegment.h>
-#include <MathConversion.h>
 
 // AzToolsFramework
 #include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
@@ -552,16 +551,16 @@ void QtViewport::OnDragSelectRectangle(const QRect& rect, bool bNormalizeRect)
     // Calculate selection volume.
     if (!bNormalizeRect)
     {
-        box.AddPoint(LYVec3ToAZVec3(p1));
-        box.AddPoint(LYVec3ToAZVec3(p2));
+        box.AddPoint(p1);
+        box.AddPoint(p2);
     }
     else
     {
         const QRect rc = correctedRect.normalized();
-        box.AddPoint(LYVec3ToAZVec3(ViewToWorld(rc.topLeft())));
-        box.AddPoint(LYVec3ToAZVec3(ViewToWorld(rc.topRight())));
-        box.AddPoint(LYVec3ToAZVec3(ViewToWorld(rc.bottomLeft())));
-        box.AddPoint(LYVec3ToAZVec3(ViewToWorld(rc.bottomRight())));
+        box.AddPoint(ViewToWorld(rc.topLeft()));
+        box.AddPoint(ViewToWorld(rc.topRight()));
+        box.AddPoint(ViewToWorld(rc.bottomLeft()));
+        box.AddPoint(ViewToWorld(rc.bottomRight()));
     }
 
     AZ::Vector3 boxMin = box.GetMin();

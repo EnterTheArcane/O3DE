@@ -37,7 +37,6 @@
 #include <Maestro/Types/AnimNodeType.h>
 #include <Maestro/Types/AnimParamType.h>
 #include <Maestro/Types/SequenceType.h>
-#include <MathConversion.h>
 
 
 int CMovieSystem::m_mov_NoCutscenes = 0;
@@ -415,7 +414,7 @@ void CMovieSystem::AddSequence(IAnimSequence* sequence)
     else
     {
         AZ_Trace("CMovieSystem::AddSequence", "IAnimSequence %s already in m_sequences", sequenceEntityId.ToString().c_str());
-    }    
+    }
 }
 
 bool CMovieSystem::IsCutScenePlaying() const

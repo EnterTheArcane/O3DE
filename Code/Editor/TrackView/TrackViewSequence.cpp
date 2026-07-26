@@ -27,7 +27,6 @@
 #include <CryCommon/Maestro/Types/AnimValueType.h>
 #include <CryCommon/Maestro/Types/AnimNodeType.h>
 #include <CryCommon/Maestro/Bus/EditorSequenceComponentBus.h>
-#include <CryCommon/MathConversion.h>
 
 // Editor
 #include "AnimationContext.h"
@@ -719,11 +718,11 @@ void CTrackViewSequence::DeleteSelectedNodes()
         }
     }
 
-    // Deactivate the sequence entity while we are potentially removing things from it. 
-    // We need to allow the full removal operation (node and children) to complete before 
+    // Deactivate the sequence entity while we are potentially removing things from it.
+    // We need to allow the full removal operation (node and children) to complete before
     // OnActivate happens on the Sequence again. If we don't deactivate the sequence entity
     // OnActivate will get called by the entity system as components are removed.
-    // In some cases this will erroneously cause some components to be added 
+    // In some cases this will erroneously cause some components to be added
     // back to the sequence that were just deleted.
     bool sequenceEntityWasActive = false;
     AZ::Entity* sequenceEntity = nullptr;

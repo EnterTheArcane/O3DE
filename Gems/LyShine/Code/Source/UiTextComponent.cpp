@@ -28,7 +28,6 @@
 
 #include <ILocalizationManager.h>
 
-#include "MathConversion.h"
 #include "UiSerialize.h"
 #include "TextMarkup.h"
 #include "UiTextComponentOffsetsSelector.h"

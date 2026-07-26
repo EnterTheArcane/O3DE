@@ -17,7 +17,6 @@
 
 #include <ISystem.h>
 #include <IAudioSystem.h>
-#include <MathConversion.h>
 
 namespace LmbrCentral
 {
@@ -86,7 +85,7 @@ namespace LmbrCentral
         {
             m_currentRotationEntity = entityId;
         }
-        
+
     }
 
     //=========================================================================

@@ -8,7 +8,6 @@
 
 #include <AzCore/PlatformDef.h>
 
-#include <MathConversion.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>

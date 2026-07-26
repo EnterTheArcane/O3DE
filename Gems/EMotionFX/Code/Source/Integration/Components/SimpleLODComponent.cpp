@@ -20,7 +20,6 @@
 #include <MCore/Source/AttributeString.h>
 #include <EMotionFX/Source/ActorInstance.h>
 
-#include <MathConversion.h>
 
 #include <Atom/RPI.Public/ViewportContext.h>
 #include <Atom/RPI.Public/ViewportContextBus.h>

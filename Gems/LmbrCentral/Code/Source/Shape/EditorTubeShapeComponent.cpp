@@ -17,7 +17,6 @@
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <AzCore/Component/Component.h>
 #include <AzFramework/Translation/TranslationDef.h>
-#include <MathConversion.h>
 #include "ShapeDisplay.h"
 
 namespace LmbrCentral

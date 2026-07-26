@@ -16,7 +16,6 @@
 #include <CryCommon/Maestro/Types/AnimParamType.h>
 
 // Editor
-#include "MathConversion.h"
 #include "Settings.h"
 
 

@@ -19,7 +19,6 @@
 #include <AzToolsFramework/ViewportSelection/EditorSelectionUtil.h>
 #include <AzFramework/Translation/TranslationDef.h>
 
-#include "MathConversion.h"
 
 namespace LmbrCentral
 {

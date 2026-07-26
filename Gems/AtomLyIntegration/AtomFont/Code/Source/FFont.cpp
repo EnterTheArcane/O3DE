@@ -26,7 +26,6 @@
 #include <AtomLyIntegration/AtomFont/FFont.h>
 #include <AtomLyIntegration/AtomFont/AtomFont.h>
 #include <AtomLyIntegration/AtomFont/FontTexture.h>
-#include <CryCommon/MathConversion.h>
 
 #include <AzCore/std/parallel/lock.h>
 
@@ -228,13 +227,13 @@ void AZ::FFont::DrawString(float x, float y, float z, const char* str, const boo
 }
 
 void AZ::FFont::DrawStringUInternal(
-    const RHI::Viewport& viewport, 
-    RPI::ViewportContextPtr viewportContext, 
+    const RHI::Viewport& viewport,
+    RPI::ViewportContextPtr viewportContext,
     float x,
-    float y, 
-    float z, 
-    const char* str, 
-    const bool asciiMultiLine, 
+    float y,
+    float z,
+    const char* str,
+    const bool asciiMultiLine,
     const TextDrawContext& ctx)
 {
     // Lazily ensure we're initialized before attempting to render.
@@ -363,9 +362,9 @@ AZ::Vector2 AZ::FFont::GetTextSize(const char* str, const bool asciiMultiLine, c
 }
 
 AZ::Vector2 AZ::FFont::GetTextSizeUInternal(
-    const RHI::Viewport& viewport, 
-    const char* str, 
-    const bool asciiMultiLine, 
+    const RHI::Viewport& viewport,
+    const char* str,
+    const bool asciiMultiLine,
     const TextDrawContext& ctx)
 {
     const size_t fxSize = m_effects.size();
@@ -839,10 +838,10 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
 
                 if (ctx.m_drawTextFlags & eDrawText_UseTransform)
                 {
-                    v0 = AZVec3ToLYVec3(ctx.m_transform * LYVec3ToAZVec3(v0));
-                    v2 = AZVec3ToLYVec3(ctx.m_transform * LYVec3ToAZVec3(v2));
-                    v1 = AZVec3ToLYVec3(ctx.m_transform * LYVec3ToAZVec3(v1));
-                    v3 = AZVec3ToLYVec3(ctx.m_transform * LYVec3ToAZVec3(v3));
+                    v0 = ctx.m_transform * v0;
+                    v2 = ctx.m_transform * v2;
+                    v1 = ctx.m_transform * v1;
+                    v3 = ctx.m_transform * v3;
                 }
 
                 AZ::Vector2 gradientUvMin, gradientUvMax;
@@ -1070,10 +1069,10 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
 
             if (ctx.m_drawTextFlags & eDrawText_UseTransform)
             {
-                v0 = AZVec3ToLYVec3(ctx.m_transform * LYVec3ToAZVec3(v0));
-                v2 = AZVec3ToLYVec3(ctx.m_transform * LYVec3ToAZVec3(v2));
-                v1 = AZVec3ToLYVec3(ctx.m_transform * LYVec3ToAZVec3(v1));
-                v3 = AZVec3ToLYVec3(ctx.m_transform * LYVec3ToAZVec3(v3));
+                v0 = ctx.m_transform * v0;
+                v2 = ctx.m_transform * v2;
+                v1 = ctx.m_transform * v1;
+                v3 = ctx.m_transform * v3;
             }
 
             if (AddQuad(v0, v1, v2, v3, tc0, tc1, tc2, tc3, packedColor))
@@ -1572,32 +1571,32 @@ static void SetCommonContextFlags(AZ::TextDrawContext& ctx, const AzFramework::T
         {
             ctx.m_drawTextFlags |= eDrawText_Right;
         }
-        
+
         if (params.m_vAlign == AzFramework::TextVerticalAlignment::Center)
         {
             ctx.m_drawTextFlags |= eDrawText_CenterV;
         }
-        
+
         if (params.m_vAlign == AzFramework::TextVerticalAlignment::Bottom)
         {
             ctx.m_drawTextFlags |= eDrawText_Bottom;
         }
-        
+
         if (params.m_monospace)
         {
             ctx.m_drawTextFlags |= eDrawText_Monospace;
         }
-        
+
         if (params.m_depthTest)
         {
             ctx.m_drawTextFlags |= eDrawText_DepthTest;
         }
-        
+
         if (params.m_virtual800x600ScreenSize)
         {
             ctx.m_drawTextFlags |= eDrawText_800x600;
         }
-        
+
         if (!params.m_scaleWithWindow)
         {
             ctx.m_drawTextFlags |= eDrawText_FixedSize;
@@ -1637,9 +1636,9 @@ AZ::FFont::DrawParameters AZ::FFont::ExtractDrawParameters(const AzFramework::Te
     internalParams.m_ctx.EnableFrame(false);
     internalParams.m_ctx.SetProportional(!params.m_monospace && params.m_scaleWithWindow);
     internalParams.m_ctx.SetSizeIn800x600(params.m_scaleWithWindow && params.m_virtual800x600ScreenSize);
-    internalParams.m_ctx.SetSize(AZVec2ToLYVec2(
-        AZ::Vector2(params.m_textSizeFactor, params.m_textSizeFactor) * params.m_scale *
-        internalParams.m_viewportContext->GetDpiScalingFactor()));
+    internalParams.m_ctx.SetSize(
+        AZ::Vector2(params.m_textSizeFactor, params.m_textSizeFactor)
+        * params.m_scale * internalParams.m_viewportContext->GetDpiScalingFactor());
     internalParams.m_ctx.SetLineSpacing(params.m_lineSpacing);
 
     if (params.m_hAlign != AzFramework::TextHorizontalAlignment::Left ||
@@ -1652,7 +1651,7 @@ AZ::FFont::DrawParameters AZ::FFont::ExtractDrawParameters(const AzFramework::Te
         internalParams.m_ctx.SetEffect(0);
         AZ::Vector2 textSize = GetTextSizeUInternal(viewport, text.data(), params.m_multiline, internalParams.m_ctx);
         internalParams.m_ctx.SetEffect(effectIndex);
-        
+
         // If we're using virtual 800x600 coordinates, convert the text size from
         // pixels to that before using it as an offset.
         if (internalParams.m_ctx.m_sizeIn800x600)
@@ -1700,10 +1699,10 @@ void AZ::FFont::DrawScreenAlignedText2d(
     }
 
     DrawStringUInternal(
-        internalParams.m_viewport, 
-        internalParams.m_viewportContext, 
-        internalParams.m_position.GetX(), 
-        internalParams.m_position.GetY(), 
+        internalParams.m_viewport,
+        internalParams.m_viewportContext,
+        internalParams.m_position.GetX(),
+        internalParams.m_position.GetY(),
         params.m_position.GetZ(), // Z
         text.data(),
         params.m_multiline,
@@ -1739,8 +1738,8 @@ void AZ::FFont::DrawScreenAlignedText3d(
     internalParams.m_ctx.m_sizeIn800x600 = false;
 
     DrawStringUInternal(
-        internalParams.m_viewport, 
-        internalParams.m_viewportContext, 
+        internalParams.m_viewport,
+        internalParams.m_viewportContext,
         positionNdc.GetX() * internalParams.m_viewport.GetWidth(),
         (1.0f - positionNdc.GetY()) * internalParams.m_viewport.GetHeight(),
         positionNdc.GetZ(),

@@ -9,7 +9,7 @@
 
 #include "EditorDefs.h"
 
-#include <CryCommon/MathConversion.h>
+#include <AzCore/Math/Matrix4x4.h>
 
 /**** Decompose.h - Basic declarations ****/
 typedef struct

@@ -39,7 +39,6 @@
 
 #include <AzFramework/Entity/GameEntityContextBus.h>
 #include <AzFramework/Render/Intersector.h>
-#include <MathConversion.h>
 
 #include "LyShine.h"
 
@@ -861,15 +860,15 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::Inpu
     AzFramework::EntityContextId gameContextId;
     AzFramework::GameEntityContextRequestBus::BroadcastResult(gameContextId,
         &AzFramework::GameEntityContextRequests::GetGameEntityContextId);
-        
+
     AzFramework::RenderGeometry::RayRequest request;
     request.m_startWorldPosition = rayOrigin;
     request.m_endWorldPosition = endpoint;
-        
+
     AzFramework::RenderGeometry::RayResult rayResult;
     AzFramework::RenderGeometry::IntersectorBus::EventResult(rayResult, gameContextId,
         &AzFramework::RenderGeometry::IntersectorInterface::RayIntersect, request);
-        
+
     if (rayResult)
     {
         AZ::EntityId hitEntity = rayResult.m_entityAndComponent.GetEntityId();
@@ -882,7 +881,7 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::Inpu
                 // Checkif the UI canvas referenced by the hit entity supports automatic input
                 bool doesCanvasSupportInput = false;
                 UiCanvasBus::EventResult(doesCanvasSupportInput, canvasEntityId, &UiCanvasInterface::GetIsPositionalInputSupported);
-        
+
                 if (doesCanvasSupportInput)
                 {
                     // Send the hit details to the hit entity. It will convert into canvas coords and send to canvas.
@@ -892,7 +891,7 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::Inpu
                     bool handled = false;
                     UiCanvasOnMeshBus::EventResult(handled, hitEntity,
                         &UiCanvasOnMeshInterface::ProcessHitInputEvent, inputSnapshot, request);
-        
+
                     if (handled)
                     {
                         return true;
