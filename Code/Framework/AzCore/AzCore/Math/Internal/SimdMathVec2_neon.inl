@@ -87,8 +87,15 @@ namespace AZ
             return NeonDouble::SelectIndex1(value);
         }
 
-        AZ_MATH_INLINE Vec2::FloatType Vec2::Splat(float value)
+        AZ_MATH_INLINE constexpr Vec2::FloatType Vec2::Splat(float value)
         {
+            // Splat fills every lane of the register, including the padding lanes that
+            // LoadImmediate zeroes, so the constant-evaluated form has to spell them all out
+            // rather than defer to LoadImmediate.
+            if (az_builtin_is_constant_evaluated())
+            {
+                return FloatType{ value, value };
+            }
             return NeonDouble::Splat(value);
         }
 
@@ -127,8 +134,17 @@ namespace AZ
             return NeonDouble::ReplaceIndex1(a, b);
         }
 
-        AZ_MATH_INLINE Vec2::FloatType Vec2::LoadImmediate(float x, float y)
+        AZ_MATH_INLINE constexpr float Vec2::GetLane(FloatArgType value, int32_t index)
         {
+            return value[index];
+        }
+
+        AZ_MATH_INLINE constexpr Vec2::FloatType Vec2::LoadImmediate(float x, float y)
+        {
+            if (az_builtin_is_constant_evaluated())
+            {
+                return FloatType{ x, y };
+            }
             return NeonDouble::LoadImmediate(x, y);
         }
 
@@ -322,8 +338,15 @@ namespace AZ
             return NeonDouble::CmpLtEq(arg1, arg2);
         }
 
-        AZ_MATH_INLINE bool Vec2::CmpAllEq(FloatArgType arg1, FloatArgType arg2)
+        AZ_MATH_INLINE constexpr bool Vec2::CmpAllEq(FloatArgType arg1, FloatArgType arg2)
         {
+            // The Neon comparison reduction is not a constant expression, so compare the lanes it
+            // covers directly when evaluating at compile time.
+            if (az_builtin_is_constant_evaluated())
+            {
+                return GetLane(arg1, 0) == GetLane(arg2, 0)
+                    && GetLane(arg1, 1) == GetLane(arg2, 1);
+            }
             return NeonDouble::CmpAllEq(arg1, arg2);
         }
 

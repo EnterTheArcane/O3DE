@@ -11,19 +11,19 @@
 
 namespace AZ
 {
-    AZ_MATH_INLINE Vector4::Vector4(float x)
-        : m_value(Simd::Vec4::Splat(x))
+    AZ_MATH_INLINE constexpr Vector4::Vector4(float x)
+        : m_value(Simd::Vec4::LoadImmediate(x, x, x, x))
     {
         ;
     }
 
-    AZ_MATH_INLINE Vector4::Vector4(float x, float y, float z, float w)
+    AZ_MATH_INLINE constexpr Vector4::Vector4(float x, float y, float z, float w)
         : m_value(Simd::Vec4::LoadImmediate(x, y, z, w))
     {
         ;
     }
 
-    AZ_MATH_INLINE Vector4::Vector4(Simd::Vec4::FloatArgType value)
+    AZ_MATH_INLINE constexpr Vector4::Vector4(Simd::Vec4::FloatArgType value)
         : m_value(value)
     {
     }
@@ -49,44 +49,46 @@ namespace AZ
         m_w = w;
     }
 
-    AZ_MATH_INLINE Vector4::Vector4(const Vector3& source)
+    AZ_MATH_INLINE constexpr Vector4::Vector4(const Vector3& source)
         : m_value(Simd::Vec4::FromVec3(source.GetSimdValue()))
     {
-        m_w = 1.0f;
+        SetW(1.0f);
     }
 
-    AZ_MATH_INLINE Vector4::Vector4(const Vector3& source, float w)
+    AZ_MATH_INLINE constexpr Vector4::Vector4(const Vector3& source, float w)
         : m_value(Simd::Vec4::FromVec3(source.GetSimdValue()))
     {
-        m_w = w;
+        SetW(w);
     }
 
-    AZ_MATH_INLINE Vector4 Vector4::CreateZero()
+    AZ_MATH_INLINE constexpr Vector4 Vector4::CreateZero()
     {
-        return Vector4(Simd::Vec4::ZeroFloat());
+        // Goes through LoadImmediate rather than ZeroFloat so the result is a constant expression;
+        // both lower to the same instruction at runtime.
+        return Vector4(0.0f, 0.0f, 0.0f, 0.0f);
     }
 
-    AZ_MATH_INLINE Vector4 Vector4::CreateOne()
+    AZ_MATH_INLINE constexpr Vector4 Vector4::CreateOne()
     {
         return Vector4(1.0f);
     }
 
-    AZ_MATH_INLINE Vector4 Vector4::CreateAxisX(float length)
+    AZ_MATH_INLINE constexpr Vector4 Vector4::CreateAxisX(float length)
     {
         return Vector4(length, 0.0f, 0.0f, 0.0f);
     }
 
-    AZ_MATH_INLINE Vector4 Vector4::CreateAxisY(float length)
+    AZ_MATH_INLINE constexpr Vector4 Vector4::CreateAxisY(float length)
     {
         return Vector4(0.0f, length, 0.0f, 0.0f);
     }
 
-    AZ_MATH_INLINE Vector4 Vector4::CreateAxisZ(float length)
+    AZ_MATH_INLINE constexpr Vector4 Vector4::CreateAxisZ(float length)
     {
         return Vector4(0.0f, 0.0f, length, 0.0f);
     }
 
-    AZ_MATH_INLINE Vector4 Vector4::CreateAxisW(float length)
+    AZ_MATH_INLINE constexpr Vector4 Vector4::CreateAxisW(float length)
     {
         return Vector4(0.0f, 0.0f, 0.0f, length);
     }
@@ -156,58 +158,114 @@ namespace AZ
         Simd::Vec4::StoreUnaligned(values, m_value);
     }
 
-    AZ_MATH_INLINE float Vector4::GetX() const
+    AZ_MATH_INLINE constexpr float Vector4::GetX() const
     {
+        // m_value is the active union member, so during constant evaluation the lane has to be read
+        // through it. At runtime this is the same direct member read it has always been.
+        if (az_builtin_is_constant_evaluated())
+        {
+            return Simd::Vec4::GetLane(m_value, 0);
+        }
         return m_x;
     }
 
-    AZ_MATH_INLINE float Vector4::GetY() const
+    AZ_MATH_INLINE constexpr float Vector4::GetY() const
     {
+        // m_value is the active union member, so during constant evaluation the lane has to be read
+        // through it. At runtime this is the same direct member read it has always been.
+        if (az_builtin_is_constant_evaluated())
+        {
+            return Simd::Vec4::GetLane(m_value, 1);
+        }
         return m_y;
     }
 
-    AZ_MATH_INLINE float Vector4::GetZ() const
+    AZ_MATH_INLINE constexpr float Vector4::GetZ() const
     {
+        // m_value is the active union member, so during constant evaluation the lane has to be read
+        // through it. At runtime this is the same direct member read it has always been.
+        if (az_builtin_is_constant_evaluated())
+        {
+            return Simd::Vec4::GetLane(m_value, 2);
+        }
         return m_z;
     }
 
-    AZ_MATH_INLINE float Vector4::GetW() const
+    AZ_MATH_INLINE constexpr float Vector4::GetW() const
     {
+        // m_value is the active union member, so during constant evaluation the lane has to be read
+        // through it. At runtime this is the same direct member read it has always been.
+        if (az_builtin_is_constant_evaluated())
+        {
+            return Simd::Vec4::GetLane(m_value, 3);
+        }
         return m_w;
     }
 
-    AZ_MATH_INLINE float Vector4::GetElement(int32_t index) const
+    AZ_MATH_INLINE constexpr float Vector4::GetElement(int32_t index) const
     {
         AZ_MATH_ASSERT((index >= 0) && (index < Simd::Vec4::ElementCount), "Invalid index for component access.\n");
+        if (az_builtin_is_constant_evaluated())
+        {
+            return Simd::Vec4::GetLane(m_value, index);
+        }
         return m_values[index];
     }
 
-    AZ_MATH_INLINE void Vector4::SetX(float x)
+    AZ_MATH_INLINE constexpr void Vector4::SetX(float x)
     {
+        // m_value is the active union member, so during constant evaluation the lane has to be
+        // written through it. At runtime this is the same direct member store it has always been.
+        if (az_builtin_is_constant_evaluated())
+        {
+            m_value = Simd::Vec4::LoadImmediate(x, GetY(), GetZ(), GetW());
+            return;
+        }
         m_x = x;
     }
 
-    AZ_MATH_INLINE void Vector4::SetY(float y)
+    AZ_MATH_INLINE constexpr void Vector4::SetY(float y)
     {
+        // m_value is the active union member, so during constant evaluation the lane has to be
+        // written through it. At runtime this is the same direct member store it has always been.
+        if (az_builtin_is_constant_evaluated())
+        {
+            m_value = Simd::Vec4::LoadImmediate(GetX(), y, GetZ(), GetW());
+            return;
+        }
         m_y = y;
     }
 
-    AZ_MATH_INLINE void Vector4::SetZ(float z)
+    AZ_MATH_INLINE constexpr void Vector4::SetZ(float z)
     {
+        // m_value is the active union member, so during constant evaluation the lane has to be
+        // written through it. At runtime this is the same direct member store it has always been.
+        if (az_builtin_is_constant_evaluated())
+        {
+            m_value = Simd::Vec4::LoadImmediate(GetX(), GetY(), z, GetW());
+            return;
+        }
         m_z = z;
     }
 
-    AZ_MATH_INLINE void Vector4::SetW(float w)
+    AZ_MATH_INLINE constexpr void Vector4::SetW(float w)
     {
+        // m_value is the active union member, so during constant evaluation the lane has to be
+        // written through it. At runtime this is the same direct member store it has always been.
+        if (az_builtin_is_constant_evaluated())
+        {
+            m_value = Simd::Vec4::LoadImmediate(GetX(), GetY(), GetZ(), w);
+            return;
+        }
         m_w = w;
     }
 
-    AZ_MATH_INLINE void Vector4::Set(float x)
+    AZ_MATH_INLINE constexpr void Vector4::Set(float x)
     {
         m_value = Simd::Vec4::Splat(x);
     }
 
-    AZ_MATH_INLINE void Vector4::Set(float x, float y, float z, float w)
+    AZ_MATH_INLINE constexpr void Vector4::Set(float x, float y, float z, float w)
     {
         m_value = Simd::Vec4::LoadImmediate(x, y, z, w);
     }
@@ -217,16 +275,16 @@ namespace AZ
         m_value = Simd::Vec4::LoadUnaligned(values);
     }
 
-    AZ_MATH_INLINE void Vector4::Set(const Vector3& v)
+    AZ_MATH_INLINE constexpr void Vector4::Set(const Vector3& v)
     {
         m_value = Simd::Vec4::FromVec3(v.GetSimdValue());
-        m_w = 1.0f;
+        SetW(1.0f);
     }
 
-    AZ_MATH_INLINE void Vector4::Set(const Vector3& v, float w)
+    AZ_MATH_INLINE constexpr void Vector4::Set(const Vector3& v, float w)
     {
         m_value = Simd::Vec4::FromVec3(v.GetSimdValue());
-        m_w = w;
+        SetW(w);
     }
 
     AZ_MATH_INLINE void Vector4::Set(Simd::Vec4::FloatArgType v)
@@ -234,13 +292,22 @@ namespace AZ
         m_value = v;
     }
 
-    AZ_MATH_INLINE void Vector4::SetElement(int32_t index, float v)
+    AZ_MATH_INLINE constexpr void Vector4::SetElement(int32_t index, float v)
     {
         AZ_MATH_ASSERT((index >= 0) && (index < Simd::Vec4::ElementCount), "Invalid index for component access.\n");
+        // m_value is the active union member, so during constant evaluation the lane has to be
+        // written through it. At runtime this is the same direct member store it has always been.
+        if (az_builtin_is_constant_evaluated())
+        {
+            m_value = Simd::Vec4::LoadImmediate(
+                index == 0 ? v : GetX(), index == 1 ? v : GetY(),
+                index == 2 ? v : GetZ(), index == 3 ? v : GetW());
+            return;
+        }
         m_values[index] = v;
     }
 
-    AZ_MATH_INLINE Vector3 Vector4::GetAsVector3() const
+    AZ_MATH_INLINE constexpr Vector3 Vector4::GetAsVector3() const
     {
         return Vector3(Simd::Vec4::ToVec3(m_value));
     }
@@ -393,12 +460,12 @@ namespace AZ
         return dist.IsLessEqualThan(Vector4(tolerance));
     }
 
-    AZ_MATH_INLINE bool Vector4::operator==(const Vector4& rhs) const
+    AZ_MATH_INLINE constexpr bool Vector4::operator==(const Vector4& rhs) const
     {
         return Simd::Vec4::CmpAllEq(m_value, rhs.m_value);
     }
 
-    AZ_MATH_INLINE bool Vector4::operator!=(const Vector4& rhs) const
+    AZ_MATH_INLINE constexpr bool Vector4::operator!=(const Vector4& rhs) const
     {
         return !Simd::Vec4::CmpAllEq(m_value, rhs.m_value);
     }
@@ -681,7 +748,7 @@ namespace AZ
         return Simd::Vec4::CmpAllLtEq(Simd::Vec4::Abs(m_value), Simd::Vec4::Splat(Constants::FloatMax));
     }
 
-    AZ_MATH_INLINE Simd::Vec4::FloatType Vector4::GetSimdValue() const
+    AZ_MATH_INLINE constexpr Simd::Vec4::FloatType Vector4::GetSimdValue() const
     {
         return m_value;
     }

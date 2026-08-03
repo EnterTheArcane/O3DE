@@ -23,12 +23,12 @@ namespace AZ
             return value.v[0];
         }
 
-        AZ_MATH_INLINE Vec2::FloatType Vec4::ToVec2(FloatArgType value)
+        AZ_MATH_INLINE constexpr Vec2::FloatType Vec4::ToVec2(FloatArgType value)
         {
             return {{ value.v[0], value.v[1] }};
         }
 
-        AZ_MATH_INLINE Vec3::FloatType Vec4::ToVec3(FloatArgType value)
+        AZ_MATH_INLINE constexpr Vec3::FloatType Vec4::ToVec3(FloatArgType value)
         {
             return {{ value.v[0], value.v[1], value.v[2] }};
         }
@@ -43,7 +43,7 @@ namespace AZ
             return {{ value.v[0], value.v[1], 0.0f, 0.0f }};
         }
 
-        AZ_MATH_INLINE Vec4::FloatType Vec4::FromVec3(Vec3::FloatArgType value)
+        AZ_MATH_INLINE constexpr Vec4::FloatType Vec4::FromVec3(Vec3::FloatArgType value)
         {
             return {{ value.v[0], value.v[1], value.v[2], 0.0f }};
         }
@@ -126,7 +126,7 @@ namespace AZ
             return value.v[3];
         }
 
-        AZ_MATH_INLINE Vec4::FloatType Vec4::Splat(float value)
+        AZ_MATH_INLINE constexpr Vec4::FloatType Vec4::Splat(float value)
         {
             return LoadImmediate(value, value, value, value);
         }
@@ -196,10 +196,16 @@ namespace AZ
             return {{ a.v[0], a.v[1], a.v[2], b.v[3] }};
         }
 
-        AZ_MATH_INLINE Vec4::FloatType Vec4::LoadImmediate(float x, float y, float z, float w)
+        AZ_MATH_INLINE constexpr Vec4::FloatType Vec4::LoadImmediate(float x, float y, float z, float w)
         {
+            // Already a plain aggregate, so this is a constant expression as written.
             FloatType result = {{ x, y, z, w }};
             return result;
+        }
+
+        AZ_MATH_INLINE constexpr float Vec4::GetLane(FloatArgType value, int32_t index)
+        {
+            return value.v[index];
         }
 
         AZ_MATH_INLINE Vec4::Int32Type Vec4::LoadImmediate(int32_t x, int32_t y, int32_t z, int32_t w)
@@ -441,7 +447,7 @@ namespace AZ
             return CastToFloat(result);
         }
 
-        AZ_MATH_INLINE bool Vec4::CmpAllEq(FloatArgType arg1, FloatArgType arg2)
+        AZ_MATH_INLINE constexpr bool Vec4::CmpAllEq(FloatArgType arg1, FloatArgType arg2)
         {
             for (int32_t i = 0; i < ElementCount; ++i)
             {

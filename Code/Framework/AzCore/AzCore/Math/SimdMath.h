@@ -51,6 +51,28 @@ namespace AZ
 #include <AzCore/Math/SimdMathVec3.h>
 #include <AzCore/Math/SimdMathVec4.h>
 
+namespace AZ::Simd::Internal
+{
+    //! Compile time self-test for the SIMD layer's constant expression support.
+    //!
+    //! Building and reading the platform SIMD float type inside a constant expression is what makes
+    //! AZ::Vector2/3/4 and AZ::Color constexpr-constructible. The intrinsic functions themselves are
+    //! never constant expressions, so LoadImmediate brace-initializes the lanes during constant
+    //! evaluation and uses the intrinsic at runtime.
+    //!
+    //! This goes through the real LoadImmediate/GetLane path rather than a hand written literal, so a
+    //! toolchain that cannot support it fails here with a clear message instead of somewhere deep
+    //! inside Vector4. Clang and GCC model __m128 / float32x4_t as vector_size types and the scalar
+    //! fallback is a plain struct, so all three qualify; MSVC's __declspec(intrin_type) union of
+    //! arrays should also qualify but has not yet been verified on an MSVC toolchain.
+    inline constexpr Vec4::FloatType g_simdConstexprProbe = Vec4::LoadImmediate(1.0f, 2.0f, 3.0f, 4.0f);
+    static_assert(Vec4::GetLane(g_simdConstexprProbe, 0) == 1.0f,
+        "This toolchain cannot build and read the SIMD float type in a constant expression, which "
+        "constexpr AZ::Vector2/3/4 and AZ::Color depend on. See Vec4::LoadImmediate in "
+        "Internal/SimdMathVec4_*.inl.");
+    static_assert(Vec4::GetLane(g_simdConstexprProbe, 3) == 4.0f);
+} // namespace AZ::Simd::Internal
+
 namespace AZ
 {
     AZ_MATH_INLINE float Abs(float value)

@@ -88,7 +88,7 @@ namespace AZ
             return value.v[1];
         }
 
-        AZ_MATH_INLINE Vec2::FloatType Vec2::Splat(float value)
+        AZ_MATH_INLINE constexpr Vec2::FloatType Vec2::Splat(float value)
         {
             return LoadImmediate(value, value);
         }
@@ -128,7 +128,12 @@ namespace AZ
             return {{ a.v[0], b.v[1] }};
         }
 
-        AZ_MATH_INLINE Vec2::FloatType Vec2::LoadImmediate(float x, float y)
+        AZ_MATH_INLINE constexpr float Vec2::GetLane(FloatArgType value, int32_t index)
+        {
+            return value.v[index];
+        }
+
+        AZ_MATH_INLINE constexpr Vec2::FloatType Vec2::LoadImmediate(float x, float y)
         {
             FloatType result = {{ x, y }};
             return result;
@@ -351,7 +356,7 @@ namespace AZ
             return CastToFloat(result);
         }
 
-        AZ_MATH_INLINE bool Vec2::CmpAllEq(FloatArgType arg1, FloatArgType arg2)
+        AZ_MATH_INLINE constexpr bool Vec2::CmpAllEq(FloatArgType arg1, FloatArgType arg2)
         {
             for (int32_t i = 0; i < ElementCount; ++i)
             {

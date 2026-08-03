@@ -38,9 +38,9 @@ namespace AZ
         Vector3(const Vector3& v) = default;
 
         //! Constructs vector with all components set to the same specified value.
-        explicit Vector3(float x);
+        explicit constexpr Vector3(float x);
 
-        Vector3(float x, float y, float z);
+        constexpr Vector3(float x, float y, float z);
 
         //! Sets x,y components from a Vector2, sets z to 0.0.
         explicit Vector3(const Vector2& source);
@@ -52,17 +52,17 @@ namespace AZ
         explicit Vector3(const Vector4& source);
 
         //! For internal use only, arrangement of values in SIMD type is not guaranteed.
-        explicit Vector3(Simd::Vec3::FloatArgType value);
+        explicit constexpr Vector3(Simd::Vec3::FloatArgType value);
 
         //! Creates a vector with all components set to zero, more efficient than calling Vector3(0.0f).
-        static Vector3 CreateZero();
+        static constexpr Vector3 CreateZero();
 
         //! Creates a vector with all components set to one.
-        static Vector3 CreateOne();
+        static constexpr Vector3 CreateOne();
 
-        static Vector3 CreateAxisX(float length = 1.0f);
-        static Vector3 CreateAxisY(float length = 1.0f);
-        static Vector3 CreateAxisZ(float length = 1.0f);
+        static constexpr Vector3 CreateAxisX(float length = 1.0f);
+        static constexpr Vector3 CreateAxisY(float length = 1.0f);
+        static constexpr Vector3 CreateAxisZ(float length = 1.0f);
 
         //! Sets components from an array of 3 floats, stored in xyz order
         static Vector3 CreateFromFloat3(const float* values);
@@ -86,26 +86,26 @@ namespace AZ
         //! The 4th float is generally set to garbage, but its presence allows more efficient instructions to be used.
         void StoreToFloat4(float* values) const;
 
-        float GetX() const;
-        float GetY() const;
-        float GetZ() const;
-        void SetX(float x);
-        void SetY(float y);
-        void SetZ(float z);
+        constexpr float GetX() const;
+        constexpr float GetY() const;
+        constexpr float GetZ() const;
+        constexpr void SetX(float x);
+        constexpr void SetY(float y);
+        constexpr void SetZ(float z);
 
         //! We recommend using GetX,Y,Z. GetElement can be slower.
-        float GetElement(int32_t index) const;
+        constexpr float GetElement(int32_t index) const;
 
         //! We recommend using SetX,Y,Z. SetElement can be slower.
-        void SetElement(int32_t index, float v);
+        constexpr void SetElement(int32_t index, float v);
 
         //! Sets all components to the same specified value.
-        void Set(float x);
+        constexpr void Set(float x);
 
-        void Set(float x, float y, float z);
+        constexpr void Set(float x, float y, float z);
 
         //! Sets components from an array of 3 floats in xyz order.
-        void Set(const float values[]);
+        constexpr void Set(const float values[]);
 
         //! Indexed access using operator(), just for convenience.
         float operator()(int32_t index) const;
@@ -212,8 +212,8 @@ namespace AZ
 
         bool IsZero(float tolerance = Constants::FloatEpsilon) const;
 
-        bool operator==(const Vector3& rhs) const;
-        bool operator!=(const Vector3& rhs) const;
+        constexpr bool operator==(const Vector3& rhs) const;
+        constexpr bool operator!=(const Vector3& rhs) const;
 
         //! Comparison functions, not implemented as operators since that would probably be a little dangerous.
         //! These functions return true only if all components pass the comparison test.
@@ -329,7 +329,7 @@ namespace AZ
         bool IsFinite() const;
 
         //! Returns the underlying SIMD vector.
-        Simd::Vec3::FloatType GetSimdValue() const;
+        constexpr Simd::Vec3::FloatType GetSimdValue() const;
 
         //! Directly sets the underlying SIMD vector.
         void SetSimdValue(Simd::Vec3::FloatArgType value);

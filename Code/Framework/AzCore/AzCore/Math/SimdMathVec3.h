@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <AzCore/base.h>
+
 namespace AZ
 {
     namespace Simd
@@ -34,7 +36,7 @@ namespace AZ
 #endif
 
             static Vec1::FloatType ToVec1(FloatArgType value);
-            static Vec2::FloatType ToVec2(FloatArgType value);
+            static constexpr Vec2::FloatType ToVec2(FloatArgType value);
             static FloatType FromVec1(Vec1::FloatArgType value); // Generates Vec3 {Vec1.x, Vec1.x, Vec1.x}
             static FloatType FromVec2(Vec2::FloatArgType value); // Generates Vec3 {Vec2.x, Vec2.y, 0.0f}
 
@@ -58,7 +60,7 @@ namespace AZ
             static float AZ_MATH_INLINE SelectSecond(FloatArgType value) { return SelectIndex1(value); } // O3DE_DEPRECATION_NOTICE(PR-16251)
             static float AZ_MATH_INLINE SelectThird (FloatArgType value) { return SelectIndex2(value); } // O3DE_DEPRECATION_NOTICE(PR-16251)
 
-            static FloatType Splat(float value);
+            static constexpr FloatType Splat(float value);
             static Int32Type Splat(int32_t value);
 
             static FloatType SplatIndex0(FloatArgType value);
@@ -81,7 +83,11 @@ namespace AZ
             static FloatType AZ_MATH_INLINE ReplaceThird (FloatArgType a,        float b) { return ReplaceIndex2(a, b); } // O3DE_DEPRECATION_NOTICE(PR-16251)
             static FloatType AZ_MATH_INLINE ReplaceThird (FloatArgType a, FloatArgType b) { return ReplaceIndex2(a, b); } // O3DE_DEPRECATION_NOTICE(PR-16251)
 
-            static FloatType LoadImmediate(float x, float y, float z);
+            //! Reads a single lane in a way that works during constant evaluation.
+            static constexpr float GetLane(FloatArgType value, int32_t index);
+
+            //! Constant expression capable; see Vec4::LoadImmediate.
+            static constexpr FloatType LoadImmediate(float x, float y, float z);
             static Int32Type LoadImmediate(int32_t x, int32_t y, int32_t z);
 
             static FloatType Add(FloatArgType arg1, FloatArgType arg2);
@@ -128,7 +134,7 @@ namespace AZ
             static FloatType CmpLt(FloatArgType arg1, FloatArgType arg2);
             static FloatType CmpLtEq(FloatArgType arg1, FloatArgType arg2);
 
-            static bool CmpAllEq(FloatArgType arg1, FloatArgType arg2);
+            static constexpr bool CmpAllEq(FloatArgType arg1, FloatArgType arg2);
             static bool CmpAllLt(FloatArgType arg1, FloatArgType arg2);
             static bool CmpAllLtEq(FloatArgType arg1, FloatArgType arg2);
             static bool CmpAllGt(FloatArgType arg1, FloatArgType arg2);

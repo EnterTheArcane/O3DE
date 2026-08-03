@@ -36,11 +36,11 @@ namespace AZ
 #endif
 
             static Vec1::FloatType ToVec1(FloatArgType value);
-            static Vec2::FloatType ToVec2(FloatArgType value);
-            static Vec3::FloatType ToVec3(FloatArgType value);
+            static constexpr Vec2::FloatType ToVec2(FloatArgType value);
+            static constexpr Vec3::FloatType ToVec3(FloatArgType value);
             static FloatType FromVec1(Vec1::FloatArgType value); // Generates Vec4 {Vec1.x, Vec1.x, Vec1.x, Vec1.x}
             static FloatType FromVec2(Vec2::FloatArgType value); // Generates Vec4 {Vec2.x, Vec2.y, 0.0f, 0.0f}
-            static FloatType FromVec3(Vec3::FloatArgType value); // Generates Vec4 {Vec3.x, Vec3.y, Vec3.z, 0.0f}
+            static constexpr FloatType FromVec3(Vec3::FloatArgType value); // Generates Vec4 {Vec3.x, Vec3.y, Vec3.z, 0.0f}
 
             static FloatType LoadAligned(const float* __restrict addr); // addr *must* be 16-byte aligned
             static Int32Type LoadAligned(const int32_t* __restrict addr); // addr *must* be 16-byte aligned
@@ -64,7 +64,7 @@ namespace AZ
             static float AZ_MATH_INLINE SelectThird (FloatArgType value) { return SelectIndex2(value); } // O3DE_DEPRECATION_NOTICE(PR-16251)
             static float AZ_MATH_INLINE SelectFourth(FloatArgType value) { return SelectIndex3(value); } // O3DE_DEPRECATION_NOTICE(PR-16251)
 
-            static FloatType Splat(float value);
+            static constexpr FloatType Splat(float value);
             static Int32Type Splat(int32_t value);
 
             static FloatType SplatIndex0(FloatArgType value);
@@ -93,8 +93,15 @@ namespace AZ
             static FloatType AZ_MATH_INLINE ReplaceFourth(FloatArgType a,        float b) { return ReplaceIndex3(a, b); } // O3DE_DEPRECATION_NOTICE(PR-16251)
             static FloatType AZ_MATH_INLINE ReplaceFourth(FloatArgType a, FloatArgType b) { return ReplaceIndex3(a, b); } // O3DE_DEPRECATION_NOTICE(PR-16251)
 
-            static FloatType LoadImmediate(float x, float y, float z, float w);
+            //! Builds a vector from four scalars.
+            //! Constant expression capable: during constant evaluation this brace-initializes the
+            //! lanes, and at runtime it uses the platform intrinsic exactly as before.
+            static constexpr FloatType LoadImmediate(float x, float y, float z, float w);
             static Int32Type LoadImmediate(int32_t x, int32_t y, int32_t z, int32_t w);
+
+            //! Reads a single lane in a way that works during constant evaluation.
+            //! Runtime code should prefer SelectIndexN, which lowers to a single instruction.
+            static constexpr float GetLane(FloatArgType value, int32_t index);
 
             static FloatType Add(FloatArgType arg1, FloatArgType arg2);
             static FloatType Sub(FloatArgType arg1, FloatArgType arg2);
@@ -140,7 +147,7 @@ namespace AZ
             static FloatType CmpLt(FloatArgType arg1, FloatArgType arg2);
             static FloatType CmpLtEq(FloatArgType arg1, FloatArgType arg2);
 
-            static bool CmpAllEq(FloatArgType arg1, FloatArgType arg2);
+            static constexpr bool CmpAllEq(FloatArgType arg1, FloatArgType arg2);
             static bool CmpAllLt(FloatArgType arg1, FloatArgType arg2);
             static bool CmpAllLtEq(FloatArgType arg1, FloatArgType arg2);
             static bool CmpAllGt(FloatArgType arg1, FloatArgType arg2);

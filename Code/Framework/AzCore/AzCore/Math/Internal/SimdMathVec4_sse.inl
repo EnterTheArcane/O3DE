@@ -20,12 +20,12 @@ namespace AZ
             return value;
         }
 
-        AZ_MATH_INLINE Vec2::FloatType Vec4::ToVec2(FloatArgType value)
+        AZ_MATH_INLINE constexpr Vec2::FloatType Vec4::ToVec2(FloatArgType value)
         {
             return value;
         }
 
-        AZ_MATH_INLINE Vec3::FloatType Vec4::ToVec3(FloatArgType value)
+        AZ_MATH_INLINE constexpr Vec3::FloatType Vec4::ToVec3(FloatArgType value)
         {
             return value;
         }
@@ -42,9 +42,13 @@ namespace AZ
             return Sse::ReplaceIndex3(Sse::ReplaceIndex2(value, 0.0f), 0.0f); // {value.x, value.x, 0.0f, 0.0f}
         }
 
-        AZ_MATH_INLINE Vec4::FloatType Vec4::FromVec3(Vec3::FloatArgType value)
+        AZ_MATH_INLINE constexpr Vec4::FloatType Vec4::FromVec3(Vec3::FloatArgType value)
         {
             // Coming from a Vec3 the last element could be garbage.
+            if (az_builtin_is_constant_evaluated())
+            {
+                return FloatType{ Vec3::GetLane(value, 0), Vec3::GetLane(value, 1), Vec3::GetLane(value, 2), 0.0f };
+            }
             return Sse::ReplaceIndex3(value, 0.0f); // {value.x, value.y, value.z, 0.0f}
         }
 
@@ -118,8 +122,15 @@ namespace AZ
             return Sse::SelectIndex0(Sse::SplatIndex3(value));
         }
 
-        AZ_MATH_INLINE Vec4::FloatType Vec4::Splat(float value)
+        AZ_MATH_INLINE constexpr Vec4::FloatType Vec4::Splat(float value)
         {
+            // Splat fills every lane of the register, including the padding lanes that
+            // LoadImmediate zeroes, so the constant-evaluated form has to spell them all out
+            // rather than defer to LoadImmediate.
+            if (az_builtin_is_constant_evaluated())
+            {
+                return FloatType{ value, value, value, value };
+            }
             return Sse::Splat(value);
         }
 
@@ -188,9 +199,25 @@ namespace AZ
             return Sse::ReplaceIndex3(a, b);
         }
 
-        AZ_MATH_INLINE Vec4::FloatType Vec4::LoadImmediate(float x, float y, float z, float w)
+        AZ_MATH_INLINE constexpr Vec4::FloatType Vec4::LoadImmediate(float x, float y, float z, float w)
         {
+            // _mm_set_ps is not a constant expression, so build the lanes directly when evaluating at
+            // compile time. Clang and GCC define _mm_set_ps as exactly this brace initialization, so
+            // runtime codegen is unaffected.
+            if (az_builtin_is_constant_evaluated())
+            {
+                return FloatType{ x, y, z, w };
+            }
             return Sse::LoadImmediate(x, y, z, w);
+        }
+
+        AZ_MATH_INLINE constexpr float Vec4::GetLane(FloatArgType value, int32_t index)
+        {
+#if defined(_MSC_VER) && !defined(__clang__)
+            return value.m128_f32[index];
+#else
+            return value[index];
+#endif
         }
 
         AZ_MATH_INLINE Vec4::Int32Type Vec4::LoadImmediate(int32_t x, int32_t y, int32_t z, int32_t w)
@@ -383,9 +410,18 @@ namespace AZ
             return Sse::CmpLtEq(arg1, arg2);
         }
 
-        AZ_MATH_INLINE bool Vec4::CmpAllEq(FloatArgType arg1, FloatArgType arg2)
+        AZ_MATH_INLINE constexpr bool Vec4::CmpAllEq(FloatArgType arg1, FloatArgType arg2)
         {
             // Check the first four bits for Vector4
+            // The comparison mask below is not a constant expression, so compare the lanes the
+            // mask selects directly when evaluating at compile time.
+            if (az_builtin_is_constant_evaluated())
+            {
+                return GetLane(arg1, 0) == GetLane(arg2, 0)
+                    && GetLane(arg1, 1) == GetLane(arg2, 1)
+                    && GetLane(arg1, 2) == GetLane(arg2, 2)
+                    && GetLane(arg1, 3) == GetLane(arg2, 3);
+            }
             return Sse::CmpAllEq(arg1, arg2, 0b1111);
         }
 

@@ -7,6 +7,7 @@
  */
 
 #include <AzCore/Math/Color.h>
+
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Vector4.h>
 #include <AzCore/UnitTest/TestTypes.h>
@@ -548,5 +549,55 @@ namespace UnitTest
         // Multiply-assignment with single float
         color2 /= 2.0f;
         EXPECT_THAT(color2Half, IsClose(color2));
+    }
+
+    //! AZ::Color became a literal type once Simd::VecN::LoadImmediate gained a constant expression
+    //! path. Nothing in the color palette depends on this any more (the palette is ColorSwatch), but
+    //! it is load bearing for anyone declaring `constexpr AZ::Color`.
+    TEST(MATH_Color, IsConstexprConstructible)
+    {
+        static_assert(AZ::Color(0.5f, 0.25f, 0.75f, 1.0f).GetR() == 0.5f);
+        static_assert(AZ::Color(0.5f, 0.25f, 0.75f, 1.0f).GetB() == 0.75f);
+        static_assert(AZ::Color(255, 128, 0, 255).GetR8() == 255);
+        static_assert(AZ::Color::CreateZero().GetA() == 0.0f);
+        static_assert(AZ::Color::CreateOne().GetR() == 1.0f);
+        static_assert(AZ::Color::CreateFromRgba(255, 0, 0, 255).ToU32() == 0xFF0000FFu);
+        static_assert(AZ::Color(AZ::Vector4(1.0f, 0.0f, 0.0f, 1.0f)).GetR() == 1.0f);
+        static_assert(AZ::Color(0.5f, 0.25f, 0.75f, 1.0f).GetAsVector4().GetZ() == 0.75f);
+    }
+
+    //! GetAsVector3 was declared constexpr before Vector4::GetAsVector3 was, which made it a
+    //! constexpr function that could never actually be evaluated in a constant expression -- legal
+    //! to declare, but a hard error at every call site. These assertions are what catches that.
+    TEST(MATH_Color, IsConstexprConvertibleToVector)
+    {
+        static_assert(AZ::Color(1.0f, 0.5f, 0.0f, 1.0f).GetAsVector3() == AZ::Vector3(1.0f, 0.5f, 0.0f));
+        static_assert(static_cast<AZ::Vector3>(AZ::Color(1.0f, 0.5f, 0.0f, 1.0f)) == AZ::Vector3(1.0f, 0.5f, 0.0f));
+        static_assert(static_cast<AZ::Vector4>(AZ::Color(1.0f, 0.5f, 0.0f, 1.0f)).GetW() == 1.0f);
+        static_assert(AZ::Color(AZ::Vector3(1.0f, 0.0f, 0.0f)).GetA() == 1.0f);
+        static_assert(AZ::Color::CreateFromVector3(AZ::Vector3(1.0f, 0.0f, 0.0f)).ToU32() == 0xFF0000FFu);
+        static_assert(AZ::Color::CreateFromVector3AndFloat(AZ::Vector3(1.0f, 0.0f, 0.0f), 0.0f).GetA() == 0.0f);
+    }
+
+    TEST(MATH_Color, IsConstexprMutable)
+    {
+        constexpr AZ::Color mutated = []
+        {
+            AZ::Color c = AZ::Colors::Black;
+            c.SetR(1.0f);
+            c.SetG8(255);
+            c.SetElement(2, 0.5f);
+            return c;
+        }();
+        static_assert(mutated == AZ::Color(1.0f, 1.0f, 0.5f, 1.0f));
+        static_assert(mutated != AZ::Color(1.0f, 1.0f, 1.0f, 1.0f));
+
+        constexpr AZ::Color unpacked = []
+        {
+            AZ::Color c = AZ::Colors::Black;
+            c.FromU32(0xFF0000FFu);
+            return c;
+        }();
+        static_assert(unpacked == AZ::Color(1.0f, 0.0f, 0.0f, 1.0f));
     }
 }

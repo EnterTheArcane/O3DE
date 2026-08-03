@@ -294,10 +294,18 @@ set(FILES
     Math/Color.cpp
     Math/Color.h
     Math/Color.inl
+    Math/Color32.cpp
+    Math/Color32.h
+    Math/Color64.cpp
+    Math/Color64.h
     Math/ColorGradient.cpp
     Math/ColorGradient.h
+    Math/ColorHalf.h
+    Math/Colors.h
     Math/ColorSerializer.h
     Math/ColorSerializer.cpp
+    Math/ColorSwatch.cpp
+    Math/ColorSwatch.h
     Math/Crc.cpp
     Math/Crc.inl
     Math/Crc.h
@@ -313,9 +321,11 @@ set(FILES
     Math/Geometry3DUtils.cpp
     Math/Geometry3DUtils.h
     Math/Guid.h
+    Math/Half.h
     Math/Hemisphere.h
     Math/Hemisphere.inl
     Math/Internal/MathTypes.h
+    Math/Internal/ColorTables.h
     Math/Internal/SimdMathVec1_neon.inl
     Math/Internal/SimdMathVec1_scalar.inl
     Math/Internal/SimdMathVec1_sse.inl

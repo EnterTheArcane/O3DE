@@ -563,4 +563,40 @@ namespace UnitTest
         AZ::Vector3 rGrEq = AZ::Vector3::CreateSelectCmpGreater(vA, vB, AZ::Vector3(1.0f), AZ::Vector3(0.0f));
         EXPECT_THAT(rGrEq, IsClose(AZ::Vector3(0.0f, 1.0f, 0.0f)));
     }
+
+    TEST(MATH_Vector3, IsConstexprConstructible)
+    {
+        constexpr AZ::Vector3 v(1.0f, 2.0f, 3.0f);
+        static_assert(v.GetX() == 1.0f && v.GetY() == 2.0f && v.GetZ() == 3.0f);
+        static_assert(v.GetElement(1) == 2.0f);
+        static_assert(AZ::Vector3(7.0f).GetY() == 7.0f);
+        static_assert(AZ::Vector3::CreateZero().GetZ() == 0.0f);
+        static_assert(AZ::Vector3::CreateOne().GetZ() == 1.0f);
+    }
+
+    TEST(MATH_Vector3, IsConstexprMutable)
+    {
+        constexpr AZ::Vector3 mutated = []
+        {
+            AZ::Vector3 v(0.0f);
+            v.SetX(1.0f);
+            v.SetY(2.0f);
+            v.SetZ(3.0f);
+            v.SetElement(1, 20.0f);
+            return v;
+        }();
+        static_assert(mutated == AZ::Vector3(1.0f, 20.0f, 3.0f));
+        static_assert(mutated != AZ::Vector3(1.0f, 2.0f, 3.0f));
+
+        constexpr AZ::Vector3 splatted = []
+        {
+            AZ::Vector3 v(0.0f);
+            v.Set(7.0f);
+            return v;
+        }();
+        static_assert(splatted == AZ::Vector3(7.0f, 7.0f, 7.0f));
+
+        static_assert(AZ::Vector3::CreateAxisY(2.0f) == AZ::Vector3(0.0f, 2.0f, 0.0f));
+        static_assert(AZ::Vector3::CreateAxisZ() == AZ::Vector3(0.0f, 0.0f, 1.0f));
+    }
 }

@@ -86,8 +86,15 @@ namespace AZ
             return Sse::SelectIndex0(Sse::SplatIndex1(value));
         }
 
-        AZ_MATH_INLINE Vec2::FloatType Vec2::Splat(float value)
+        AZ_MATH_INLINE constexpr Vec2::FloatType Vec2::Splat(float value)
         {
+            // Splat fills every lane of the register, including the padding lanes that
+            // LoadImmediate zeroes, so the constant-evaluated form has to spell them all out
+            // rather than defer to LoadImmediate.
+            if (az_builtin_is_constant_evaluated())
+            {
+                return FloatType{ value, value, value, value };
+            }
             return Sse::Splat(value);
         }
 
@@ -126,8 +133,23 @@ namespace AZ
             return Sse::ReplaceIndex1(a, b);
         }
 
-        AZ_MATH_INLINE Vec2::FloatType Vec2::LoadImmediate(float x, float y)
+        AZ_MATH_INLINE constexpr float Vec2::GetLane(FloatArgType value, int32_t index)
         {
+#if defined(_MSC_VER) && !defined(__clang__)
+            return value.m128_f32[index];
+#else
+            return value[index];
+#endif
+        }
+
+        AZ_MATH_INLINE constexpr Vec2::FloatType Vec2::LoadImmediate(float x, float y)
+        {
+            // The padding lanes must be zeroed here exactly as the intrinsic path does,
+            // or IsFinite/GetLength would read indeterminate lanes.
+            if (az_builtin_is_constant_evaluated())
+            {
+                return FloatType{ x, y, 0.0f, 0.0f };
+            }
             return Sse::LoadImmediate(x, y, 0.0f, 0.0f);
         }
 
@@ -323,9 +345,16 @@ namespace AZ
             return Sse::CmpLtEq(arg1, arg2);
         }
 
-        AZ_MATH_INLINE bool Vec2::CmpAllEq(FloatArgType arg1, FloatArgType arg2)
+        AZ_MATH_INLINE constexpr bool Vec2::CmpAllEq(FloatArgType arg1, FloatArgType arg2)
         {
             // Only check the first two bits for Vector2
+            // The comparison mask below is not a constant expression, so compare the lanes the
+            // mask selects directly when evaluating at compile time.
+            if (az_builtin_is_constant_evaluated())
+            {
+                return GetLane(arg1, 0) == GetLane(arg2, 0)
+                    && GetLane(arg1, 1) == GetLane(arg2, 1);
+            }
             return Sse::CmpAllEq(arg1, arg2, 0b0011);
         }
 

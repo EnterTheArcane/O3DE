@@ -21,8 +21,13 @@ namespace AZ
             return NeonQuad::ToVec1(value);
         }
 
-        AZ_MATH_INLINE Vec2::FloatType Vec3::ToVec2(FloatArgType value)
+        AZ_MATH_INLINE constexpr Vec2::FloatType Vec3::ToVec2(FloatArgType value)
         {
+            // NeonQuad::ToVec2 narrows the register, which is not a constant expression.
+            if (az_builtin_is_constant_evaluated())
+            {
+                return Vec2::FloatType{ GetLane(value, 0), GetLane(value, 1) };
+            }
             return NeonQuad::ToVec2(value);
         }
 
@@ -101,8 +106,15 @@ namespace AZ
             return NeonQuad::SelectIndex2(value);
         }
 
-        AZ_MATH_INLINE Vec3::FloatType Vec3::Splat(float value)
+        AZ_MATH_INLINE constexpr Vec3::FloatType Vec3::Splat(float value)
         {
+            // Splat fills every lane of the register, including the padding lanes that
+            // LoadImmediate zeroes, so the constant-evaluated form has to spell them all out
+            // rather than defer to LoadImmediate.
+            if (az_builtin_is_constant_evaluated())
+            {
+                return FloatType{ value, value, value, value };
+            }
             return NeonQuad::Splat(value);
         }
 
@@ -156,8 +168,19 @@ namespace AZ
             return NeonQuad::ReplaceIndex2(a, b);
         }
 
-        AZ_MATH_INLINE Vec3::FloatType Vec3::LoadImmediate(float x, float y, float z)
+        AZ_MATH_INLINE constexpr float Vec3::GetLane(FloatArgType value, int32_t index)
         {
+            return value[index];
+        }
+
+        AZ_MATH_INLINE constexpr Vec3::FloatType Vec3::LoadImmediate(float x, float y, float z)
+        {
+            // The padding lanes must be zeroed here exactly as the intrinsic path does,
+            // or IsFinite/GetLength would read indeterminate lanes.
+            if (az_builtin_is_constant_evaluated())
+            {
+                return FloatType{ x, y, z, 0.0f };
+            }
             return NeonQuad::LoadImmediate(x, y, z, 0.0f);
         }
 
@@ -353,8 +376,16 @@ namespace AZ
             return NeonQuad::CmpLtEq(arg1, arg2);
         }
 
-        AZ_MATH_INLINE bool Vec3::CmpAllEq(FloatArgType arg1, FloatArgType arg2)
+        AZ_MATH_INLINE constexpr bool Vec3::CmpAllEq(FloatArgType arg1, FloatArgType arg2)
         {
+            // The Neon comparison reduction is not a constant expression, so compare the lanes it
+            // covers directly when evaluating at compile time.
+            if (az_builtin_is_constant_evaluated())
+            {
+                return GetLane(arg1, 0) == GetLane(arg2, 0)
+                    && GetLane(arg1, 1) == GetLane(arg2, 1)
+                    && GetLane(arg1, 2) == GetLane(arg2, 2);
+            }
             return NeonQuad::CmpFirstThreeEq(arg1, arg2);
         }
 

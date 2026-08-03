@@ -33,25 +33,25 @@ namespace AZ
         Vector2(const Vector2& v) = default;
 
         //! Constructs vector with all components set to the same specified value.
-        explicit Vector2(float x);
+        explicit constexpr Vector2(float x);
 
-        explicit Vector2(float x, float y);
+        explicit constexpr Vector2(float x, float y);
 
         explicit Vector2(const Vector3& source);
 
         explicit Vector2(const Vector4& source);
 
         //! For internal use only, arrangement of values in SIMD type is not guaranteed.
-        explicit Vector2(Simd::Vec2::FloatArgType value);
+        explicit constexpr Vector2(Simd::Vec2::FloatArgType value);
 
         //! Creates a vector with all components set to zero, more efficient than calling Vector2(0.0f).
-        static Vector2 CreateZero();
+        static constexpr Vector2 CreateZero();
 
         //! Creates a vector with all components set to one.
-        static Vector2 CreateOne();
+        static constexpr Vector2 CreateOne();
 
-        static Vector2 CreateAxisX(float length = 1.0f);
-        static Vector2 CreateAxisY(float length = 1.0f);
+        static constexpr Vector2 CreateAxisX(float length = 1.0f);
+        static constexpr Vector2 CreateAxisY(float length = 1.0f);
 
         //! Sets components from an array of 2 floats, stored in xy order
         static Vector2 CreateFromFloat2(const float* values);
@@ -72,16 +72,16 @@ namespace AZ
         //! The floats need only be 4 byte aligned, 16 byte alignment is not required.
         void StoreToFloat2(float* values) const;
 
-        float GetX() const;
-        float GetY() const;
-        void SetX(float x);
-        void SetY(float y);
+        constexpr float GetX() const;
+        constexpr float GetY() const;
+        constexpr void SetX(float x);
+        constexpr void SetY(float y);
 
-        float GetElement(int index) const;
-        void SetElement(int index, float value);
+        constexpr float GetElement(int index) const;
+        constexpr void SetElement(int index, float value);
 
-        void Set(float x);
-        void Set(float x, float y);
+        constexpr void Set(float x);
+        constexpr void Set(float x, float y);
 
         //! Indexed access using operator().
         float operator()(int index) const;
@@ -176,8 +176,8 @@ namespace AZ
 
         bool IsZero(float tolerance = AZ::Constants::FloatEpsilon) const;
 
-        bool operator==(const Vector2& rhs) const;
-        bool operator!=(const Vector2& rhs) const;
+        constexpr bool operator==(const Vector2& rhs) const;
+        constexpr bool operator!=(const Vector2& rhs) const;
 
         //! Comparison functions, not implemented as operators since that would probably be a little dangerous.
         //! These functions return true only if all components pass the comparison test.
@@ -296,7 +296,7 @@ namespace AZ
         bool IsFinite() const;
 
         //! Returns the underlying SIMD vector.
-        Simd::Vec2::FloatType GetSimdValue() const;
+        constexpr Simd::Vec2::FloatType GetSimdValue() const;
 
         //! Directly sets the underlying SIMD vector.
         void SetSimdValue(Simd::Vec2::FloatArgType value);

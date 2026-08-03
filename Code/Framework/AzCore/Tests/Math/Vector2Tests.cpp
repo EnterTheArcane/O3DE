@@ -523,4 +523,38 @@ namespace UnitTest
             Vector2AngleTestArgs{ AZ::Vector2{ 1.0f, 0.0f }, AZ::Vector2{ 0.0f, 0.0f }, 0.f },
             Vector2AngleTestArgs{ AZ::Vector2{ 0.0f, 0.0f }, AZ::Vector2{ 0.0f, 323432.0f }, 0.f },
             Vector2AngleTestArgs{ AZ::Vector2{ 323432.0f, 0.0f }, AZ::Vector2{ 0.0f, 0.0f }, 0.f }));
+
+    TEST(MATH_Vector2, IsConstexprConstructible)
+    {
+        constexpr AZ::Vector2 v(1.0f, 2.0f);
+        static_assert(v.GetX() == 1.0f && v.GetY() == 2.0f);
+        static_assert(v.GetElement(0) == 1.0f);
+        static_assert(AZ::Vector2::CreateZero().GetY() == 0.0f);
+        static_assert(AZ::Vector2::CreateOne().GetX() == 1.0f);
+    }
+
+    TEST(MATH_Vector2, IsConstexprMutable)
+    {
+        constexpr AZ::Vector2 mutated = []
+        {
+            AZ::Vector2 v(0.0f);
+            v.SetX(1.0f);
+            v.SetY(2.0f);
+            v.SetElement(0, 10.0f);
+            return v;
+        }();
+        static_assert(mutated == AZ::Vector2(10.0f, 2.0f));
+        static_assert(mutated != AZ::Vector2(1.0f, 2.0f));
+
+        constexpr AZ::Vector2 splatted = []
+        {
+            AZ::Vector2 v(0.0f);
+            v.Set(7.0f);
+            return v;
+        }();
+        static_assert(splatted == AZ::Vector2(7.0f, 7.0f));
+
+        static_assert(AZ::Vector2::CreateAxisX(2.0f) == AZ::Vector2(2.0f, 0.0f));
+        static_assert(AZ::Vector2::CreateAxisY() == AZ::Vector2(0.0f, 1.0f));
+    }
 } // namespace UnitTest

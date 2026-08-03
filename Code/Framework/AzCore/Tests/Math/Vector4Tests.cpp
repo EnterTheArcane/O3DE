@@ -493,4 +493,55 @@ namespace UnitTest
             Vector4AngleTestArgs{ AZ::Vector4{ 1.0f, 0.0f, 0.0f, 0.0f }, AZ::Vector4{ 0.0f, 0.0f, 0.0f, 0.0f }, 0.f },
             Vector4AngleTestArgs{ AZ::Vector4{ 0.0f, 0.0f, 0.0f, 0.0f }, AZ::Vector4{ 0.0f, 323432.0f, 0.0f, 0.0f }, 0.f },
             Vector4AngleTestArgs{ AZ::Vector4{ 323432.0f, 0.0f, 0.0f, 0.0f }, AZ::Vector4{ 0.0f, 0.0f, 0.0f, 0.0f }, 0.f }));
+
+    TEST(MATH_Vector4, IsConstexprConstructible)
+    {
+        constexpr AZ::Vector4 v(1.0f, 2.0f, 3.0f, 4.0f);
+        static_assert(v.GetX() == 1.0f && v.GetY() == 2.0f && v.GetZ() == 3.0f && v.GetW() == 4.0f);
+        static_assert(v.GetElement(2) == 3.0f);
+        static_assert(AZ::Vector4(5.0f).GetW() == 5.0f);
+        static_assert(AZ::Vector4::CreateZero().GetX() == 0.0f);
+        static_assert(AZ::Vector4::CreateOne().GetW() == 1.0f);
+    }
+
+    //! The setters write through m_value during constant evaluation, because m_value is the active
+    //! union member there and the m_x/m_y/m_z/m_w view is not readable. At runtime they are still the
+    //! same single direct member store, which is what the codegen check pins down.
+    TEST(MATH_Vector4, IsConstexprMutable)
+    {
+        constexpr AZ::Vector4 mutated = []
+        {
+            AZ::Vector4 v(0.0f);
+            v.SetX(1.0f);
+            v.SetY(2.0f);
+            v.SetZ(3.0f);
+            v.SetW(4.0f);
+            v.SetElement(2, 30.0f);
+            return v;
+        }();
+        static_assert(mutated == AZ::Vector4(1.0f, 2.0f, 30.0f, 4.0f));
+        static_assert(mutated != AZ::Vector4(1.0f, 2.0f, 3.0f, 4.0f));
+
+        // Set(float) goes through Simd::Vec4::Splat, which fills every lane rather than deferring to
+        // LoadImmediate -- so it gets its own coverage.
+        constexpr AZ::Vector4 splatted = []
+        {
+            AZ::Vector4 v(0.0f);
+            v.Set(7.0f);
+            return v;
+        }();
+        static_assert(splatted == AZ::Vector4(7.0f, 7.0f, 7.0f, 7.0f));
+
+        static_assert(AZ::Vector4::CreateAxisX(2.0f) == AZ::Vector4(2.0f, 0.0f, 0.0f, 0.0f));
+        static_assert(AZ::Vector4::CreateAxisW() == AZ::Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+    }
+
+    //! Vec4::ToVec3 leaves the source w lane in place while Vec4::FromVec3 zeroes it, so the two
+    //! directions are asserted separately rather than only as a round trip.
+    TEST(MATH_Vector4, IsConstexprConvertibleToVector3)
+    {
+        static_assert(AZ::Vector4(1.0f, 2.0f, 3.0f, 4.0f).GetAsVector3() == AZ::Vector3(1.0f, 2.0f, 3.0f));
+        static_assert(AZ::Vector4(AZ::Vector3(1.0f, 2.0f, 3.0f)).GetW() == 1.0f);
+        static_assert(AZ::Vector4(AZ::Vector3(1.0f, 2.0f, 3.0f), 9.0f).GetW() == 9.0f);
+    }
 } // namespace UnitTest

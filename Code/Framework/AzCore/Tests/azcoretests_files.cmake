@@ -116,13 +116,18 @@ set(FILES
     Instance/InstanceDatabaseTests.cpp
     Math/AabbTests.cpp
     Math/CapsuleTests.cpp
-    Math/ColorTests.cpp
+    Math/Color32Tests.cpp
+    Math/Color64Tests.cpp
     Math/ColorGradientTests.cpp
+    Math/ColorHalfTests.cpp
+    Math/ColorSwatchTests.cpp
+    Math/ColorTests.cpp
     Math/CrcTests.cpp
     Math/CrcTestsCompileTimeLiterals.h
     Math/FrustumTests.cpp
     Math/FrustumPerformanceTests.cpp
     Math/Geometry3DUtilsTests.cpp
+    Math/HalfTests.cpp
     Math/HemisphereTests.cpp
     Math/IntersectionPerformanceTests.cpp
     Math/IntersectionTestHelpers.cpp

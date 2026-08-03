@@ -793,7 +793,7 @@ int AZ::FFont::CreateQuadsForText(const RHI::Viewport& viewport, float x, float 
 
         if (drawFrame)
         {
-            uint32_t frameColor = Colors::White.ToU32();
+            uint32_t frameColor = Colors::White.AsU32();
 
             Vec2 textSize = GetTextSizeUInternal(viewport, str, asciiMultiLine, ctx);
 

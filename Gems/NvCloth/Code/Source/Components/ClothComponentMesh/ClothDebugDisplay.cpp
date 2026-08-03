@@ -181,9 +181,9 @@ namespace NvCloth
         const float normalLength = 0.05f;
         const float tangentLength = 0.05f;
         const float bitangentLength = 0.05f;
-        const AZ::Vector4 colorNormal = AZ::Colors::Blue.GetAsVector4();
-        const AZ::Vector4 colorTangent = AZ::Colors::Red.GetAsVector4();
-        const AZ::Vector4 colorBitangent = AZ::Colors::Green.GetAsVector4();
+        const AZ::Vector4 colorNormal = AZ::Colors::Blue.AsVector4();
+        const AZ::Vector4 colorTangent = AZ::Colors::Red.AsVector4();
+        const AZ::Vector4 colorBitangent = AZ::Colors::Green.AsVector4();
 
         for (size_t i = 0; i < clothRenderParticles.size(); ++i)
         {
@@ -225,9 +225,9 @@ namespace NvCloth
 
     void ClothDebugDisplay::DisplayMotionConstraints(AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        const AZ::Vector4 particleColor = AZ::Colors::Green.GetAsVector4();
-        const AZ::Vector4 staticPraticleColor = AZ::Colors::Black.GetAsVector4();
-        const AZ::Vector4 lineColor = AZ::Colors::Magenta.GetAsVector4();
+        const AZ::Vector4 particleColor = AZ::Colors::Green.AsVector4();
+        const AZ::Vector4 staticPraticleColor = AZ::Colors::Black.AsVector4();
+        const AZ::Vector4 lineColor = AZ::Colors::Magenta.AsVector4();
         const float ballsize = 0.008f;
 
         for (const auto& constraint : m_clothComponentMesh->m_motionConstraints)
@@ -248,8 +248,8 @@ namespace NvCloth
             return;
         }
 
-        const AZ::Vector4 sphereColor = AZ::Colors::Red.GetAsVector4();
-        const AZ::Vector4 lineColor = AZ::Colors::Aqua.GetAsVector4();
+        const AZ::Vector4 sphereColor = AZ::Colors::Red.AsVector4();
+        const AZ::Vector4 lineColor = AZ::Colors::Aqua.AsVector4();
 
         const auto& particles = m_clothComponentMesh->m_cloth->GetParticles();
 

@@ -56,7 +56,7 @@ namespace AZ
             static float AZ_MATH_INLINE SelectFirst (FloatArgType value) { return SelectIndex0(value); } // O3DE_DEPRECATION_NOTICE(PR-16251)
             static float AZ_MATH_INLINE SelectSecond(FloatArgType value) { return SelectIndex1(value); } // O3DE_DEPRECATION_NOTICE(PR-16251)
 
-            static FloatType Splat(float value);
+            static constexpr FloatType Splat(float value);
             static Int32Type Splat(int32_t value);
 
             static FloatType SplatIndex0(FloatArgType value);
@@ -73,7 +73,11 @@ namespace AZ
             static FloatType AZ_MATH_INLINE ReplaceSecond(FloatArgType a,        float b) { return ReplaceIndex1(a, b); } // O3DE_DEPRECATION_NOTICE(PR-16251)
             static FloatType AZ_MATH_INLINE ReplaceSecond(FloatArgType a, FloatArgType b) { return ReplaceIndex1(a, b); } // O3DE_DEPRECATION_NOTICE(PR-16251)
 
-            static FloatType LoadImmediate(float x, float y);
+            //! Reads a single lane in a way that works during constant evaluation.
+            static constexpr float GetLane(FloatArgType value, int32_t index);
+
+            //! Constant expression capable; see Vec4::LoadImmediate.
+            static constexpr FloatType LoadImmediate(float x, float y);
             static Int32Type LoadImmediate(int32_t x, int32_t y);
 
             static FloatType Add(FloatArgType arg1, FloatArgType arg2);
@@ -120,7 +124,7 @@ namespace AZ
             static FloatType CmpLt(FloatArgType arg1, FloatArgType arg2);
             static FloatType CmpLtEq(FloatArgType arg1, FloatArgType arg2);
 
-            static bool CmpAllEq(FloatArgType arg1, FloatArgType arg2);
+            static constexpr bool CmpAllEq(FloatArgType arg1, FloatArgType arg2);
             static bool CmpAllLt(FloatArgType arg1, FloatArgType arg2);
             static bool CmpAllLtEq(FloatArgType arg1, FloatArgType arg2);
             static bool CmpAllGt(FloatArgType arg1, FloatArgType arg2);
