@@ -297,6 +297,8 @@ namespace AZ
                     Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
                 Method("IsClose", &Color::IsClose, behaviorContext->MakeDefaultValues(Constants::Tolerance))->
                 Method("IsZero", &Color::IsZero, behaviorContext->MakeDefaultValues(Constants::FloatEpsilon))->
+                Method("IsOpaque", &Color::IsOpaque)->
+                Method("IsTransparent", &Color::IsTransparent)->
                 Method("IsLessThan", &Color::IsLessThan)->
                     Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
                 Method("IsLessEqualThan", &Color::IsLessEqualThan)->

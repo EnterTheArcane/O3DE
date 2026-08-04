@@ -25,6 +25,8 @@
 #include <AzCore/Math/MathVectorSerializer.h>
 #include <AzCore/Math/CrcSerializer.h>
 #include <AzCore/Math/Color.h>
+#include <AzCore/Math/Color32.h>
+#include <AzCore/Math/Color64.h>
 #include <AzCore/Math/ColorGradient.h>
 #include <AzCore/Math/ColorSerializer.h>
 #include <AzCore/Math/Quaternion.h>
@@ -381,6 +383,8 @@ namespace AZ
             Aabb::Reflect(context);
             Obb::Reflect(context);
             Color::Reflect(context);
+            Color32::Reflect(context);
+            Color64::Reflect(context);
             ColorGradientMarker::Reflect(context);
             AlphaGradientMarker::Reflect(context);
             ColorGradient::Reflect(context);

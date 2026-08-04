@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <AzCore/Math/Colors.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Vector4.h>
@@ -17,7 +18,7 @@
 namespace AZ
 {
     //! A color class with 4 components, RGBA.
-    class AZCORE_API Color
+    class Color
     {
     public:
 
@@ -25,348 +26,610 @@ namespace AZ
 
         //! AzCore Reflection.
         //! @param context reflection context
-        static void Reflect(ReflectContext* context);
+        static AZCORE_API void Reflect(ReflectContext* context);
 
         //! Default constructor, components are uninitialized.
         Color() = default;
-        Color(const Vector4& v)   { m_color = v; }
 
-        explicit Color(const Vector2& source);
+        constexpr Color(const Vector4& v)
+            : m_color(v)
+        {
+        }
 
-        explicit Color(const Vector3& source);
+        //! Constructs from a named color constant, exactly. See AzCore/Math/Colors.h.
+        //! Implicit on purpose. The named constants are the narrowest color representation, so this
+        //! widens and cannot lose information, and it is what makes `AZ::Color c = AZ::Colors::White` work.
+        constexpr Color(const Internal::NamedColor& color)
+            : Color(color.m_r, color.m_g, color.m_b, color.m_a)
+        {
+        }
+
+        AZ_MATH_INLINE explicit Color(const Vector2& source)
+        {
+            m_color = Vector4(source);
+        }
+
+        AZ_MATH_INLINE explicit Color(const Vector3& source)
+        {
+            m_color = Vector4(source);
+        }
 
         //! Constructs vector with all components set to the same specified value.
-        explicit Color(float rgba);
+        AZ_MATH_INLINE explicit constexpr Color(float rgba)
+            : m_color(rgba)
+        {
+        }
 
         //! Constructs a color from the given floating point RGBA values in the range [0..1].
-        //! This must be a template function so that constructing a Color with mixed floating point and integer arguments is not possible.
+        //! A template so that constructing a Color from mixed floating point and integer arguments is not possible.
         template<typename T> requires AZStd::is_floating_point_v<T>
-        Color(T r, T g, T b, T a = T(1));
+        AZ_MATH_INLINE constexpr Color(T r, T g, T b, T a = T(1))
+            : m_color(r, g, b, a)
+        {
+        }
 
         //! Constructs a color from the given integer RGBA values in the range [0..255].
-        //! This must be a template function so that calling the constructor with non-u8 integer types such as int/uint is not ambiguous.
+        //! A template so that calling the constructor with a non-u8 integer type such as int or unsigned is not ambiguous.
         template<typename T> requires AZStd::is_integral_v<T>
-        Color(T r, T g, T b, T a = T(255));
+        AZ_MATH_INLINE constexpr Color(T r, T g, T b, T a = T(255))
+            // Built in the mem-init list rather than through SetR8..SetA8 so this is a constant expression.
+            // The asserts still fire at runtime.
+            : m_color(
+                static_cast<float>(static_cast<u8>(r)) * (1.0f / 255.0f),
+                static_cast<float>(static_cast<u8>(g)) * (1.0f / 255.0f),
+                static_cast<float>(static_cast<u8>(b)) * (1.0f / 255.0f),
+                static_cast<float>(static_cast<u8>(a)) * (1.0f / 255.0f))
+        {
+            AZ_MATH_ASSERT(r >= 0 && r <= 255, "R component must be in the range [0..255]");
+            AZ_MATH_ASSERT(g >= 0 && g <= 255, "G component must be in the range [0..255]");
+            AZ_MATH_ASSERT(b >= 0 && b <= 255, "B component must be in the range [0..255]");
+            AZ_MATH_ASSERT(a >= 0 && a <= 255, "A component must be in the range [0..255]");
+        }
+
+        static const Color Zero;
+        static const Color One;
 
         //! Creates a vector with all components set to zero, more efficient than calling Color(0.0f).
-        static Color CreateZero();
+        AZ_MATH_INLINE static constexpr Color CreateZero()
+        {
+            return {0.0f, 0.0f, 0.0f, 0.0f};
+        }
 
         //! Creates a vector with all components set to one.
-        static Color CreateOne();
+        AZ_MATH_INLINE static constexpr Color CreateOne()
+        {
+            return Color(1.0f);
+        }
 
         //! Sets components from rgba.
-        static Color CreateFromRgba(u8 r, u8 g, u8 b, u8 a);
+        AZ_MATH_INLINE static constexpr Color CreateFromRgba(u8 r, u8 g, u8 b, u8 a)
+        {
+            return {r, g, b, a};
+        }
 
         //! Sets components from an array of 4 floats, stored in xyzw order.
-        static Color CreateFromFloat4(const float* values);
+        AZ_MATH_INLINE static Color CreateFromFloat4(const float* values)
+        {
+            Color result;
+            result.Set(values);
+            return result;
+        }
 
         //! Copies r,g,b components from a Vector3, sets w to 1.0.
-        static Color CreateFromVector3(const Vector3& v);
+        AZ_MATH_INLINE static Color CreateFromVector3(const Vector3& v)
+        {
+            Color result;
+            result.Set(v);
+            return result;
+        }
 
         //! Copies r,g,b components from a Vector3, specify w separately.
-        static Color CreateFromVector3AndFloat(const Vector3& v, float w);
+        AZ_MATH_INLINE static Color CreateFromVector3AndFloat(const Vector3& v, float w)
+        {
+            Color result;
+            result.Set(v, w);
+            return result;
+        }
 
         //! r,g,b,a to u32 => 0xAABBGGRR (COLREF format).
-        static u32 CreateU32(u8 r, u8 g, u8 b, u8 a);
+        AZ_MATH_INLINE static constexpr u32 CreateU32(u8 r, u8 g, u8 b, u8 a)
+        {
+            return (a << 24) | (b << 16) | (g << 8) | r;
+        }
 
         //! Stores the vector to an array of 4 floats.
         //! The floats need only be 4 byte aligned, 16 byte alignment is not required.
-        void StoreToFloat4(float* values) const;
+        AZ_MATH_INLINE void StoreToFloat4(float* values) const
+        {
+            m_color.StoreToFloat4(values);
+        }
 
-        u8 GetR8() const;
-        u8 GetG8() const;
-        u8 GetB8() const;
-        u8 GetA8() const;
+        //! @name Channel access, as bytes.
+        //! @{
+        AZ_MATH_INLINE constexpr u8 GetR8() const
+        {
+            return static_cast<u8>(m_color.GetX() * 255.0f);
+        }
 
-        void SetR8(u8 r);
-        void SetG8(u8 g);
-        void SetB8(u8 b);
-        void SetA8(u8 a);
+        AZ_MATH_INLINE constexpr u8 GetG8() const
+        {
+            return static_cast<u8>(m_color.GetY() * 255.0f);
+        }
 
-        float GetR() const;
-        float GetG() const;
-        float GetB() const;
-        float GetA() const;
+        AZ_MATH_INLINE constexpr u8 GetB8() const
+        {
+            return static_cast<u8>(m_color.GetZ() * 255.0f);
+        }
 
-        void SetR(float r);
-        void SetG(float g);
-        void SetB(float b);
-        void SetA(float a);
+        AZ_MATH_INLINE constexpr u8 GetA8() const
+        {
+            return static_cast<u8>(m_color.GetW() * 255.0f);
+        }
 
-        float GetElement(int32_t index) const;
-        void SetElement(int32_t index, float v);
+        AZ_MATH_INLINE constexpr void SetR8(u8 r)
+        {
+            m_color.SetX(static_cast<float>(r) * (1.0f / 255.0f));
+        }
 
-        Vector3 GetAsVector3() const;
+        AZ_MATH_INLINE constexpr void SetG8(u8 g)
+        {
+            m_color.SetY(static_cast<float>(g) * (1.0f / 255.0f));
+        }
 
-        Vector4 GetAsVector4() const;
+        AZ_MATH_INLINE constexpr void SetB8(u8 b)
+        {
+            m_color.SetZ(static_cast<float>(b) * (1.0f / 255.0f));
+        }
+
+        AZ_MATH_INLINE constexpr void SetA8(u8 a)
+        {
+            m_color.SetW(static_cast<float>(a) * (1.0f / 255.0f));
+        }
+        //! @}
+
+        //! @name Channel access, normalized to the range [0, 1].
+        //! @{
+        AZ_MATH_INLINE constexpr float GetR() const
+        {
+            return m_color.GetX();
+        }
+
+        AZ_MATH_INLINE constexpr float GetG() const
+        {
+            return m_color.GetY();
+        }
+
+        AZ_MATH_INLINE constexpr float GetB() const
+        {
+            return m_color.GetZ();
+        }
+
+        AZ_MATH_INLINE constexpr float GetA() const
+        {
+            return m_color.GetW();
+        }
+
+        AZ_MATH_INLINE constexpr void SetR(float r)
+        {
+            m_color.SetX(r);
+        }
+
+        AZ_MATH_INLINE constexpr void SetG(float g)
+        {
+            m_color.SetY(g);
+        }
+
+        AZ_MATH_INLINE constexpr void SetB(float b)
+        {
+            m_color.SetZ(b);
+        }
+
+        AZ_MATH_INLINE constexpr void SetA(float a)
+        {
+            m_color.SetW(a);
+        }
+        //! @}
+
+        AZ_MATH_INLINE constexpr float GetElement(int32_t index) const
+        {
+            return m_color.GetElement(index);
+        }
+
+        AZ_MATH_INLINE constexpr void SetElement(int32_t index, float v)
+        {
+            m_color.SetElement(index, v);
+        }
+
+        AZ_MATH_INLINE Vector3 GetAsVector3() const
+        {
+            return m_color.GetAsVector3();
+        }
+
+        AZ_MATH_INLINE constexpr Vector4 GetAsVector4() const
+        {
+            return m_color;
+        }
 
         //! Sets all components to the same specified value.
-        void Set(float x);
+        AZ_MATH_INLINE constexpr void Set(float x)
+        {
+            m_color.Set(x);
+        }
 
-        void Set(float r, float g, float b, float a);
+        AZ_MATH_INLINE constexpr void Set(float r, float g, float b, float a)
+        {
+            m_color.Set(r, g, b, a);
+        }
 
         //! Sets components from an array of 4 floats, stored in rgba order.
-        void Set(const float values[4]);
+        AZ_MATH_INLINE void Set(const float values[4])
+        {
+            m_color.Set(values);
+        }
 
         //! Sets r,g,b components from a Vector3, sets a to 1.0.
-        void Set(const Vector3& v);
+        AZ_MATH_INLINE void Set(const Vector3& v)
+        {
+            m_color.Set(v);
+        }
 
         //! Sets r,g,b components from a Vector3, specify a separately.
-        void Set(const Vector3& v, float a);
+        AZ_MATH_INLINE void Set(const Vector3& v, float a)
+        {
+            m_color.Set(v, a);
+        }
 
         //! Sets the RGB values of this Color based on a passed in hue, saturation, and value. Alpha is unchanged.
-        void SetFromHSVRadians(float hueRadians, float saturation, float value);
+        AZ_MATH_INLINE void SetFromHSVRadians(float hueRadians, float saturation, float value)
+        {
+            float alpha = GetA();
+
+            // Saturation and value outside of [0-1] are invalid, so clamp them to valid values.
+            saturation = GetClamp(saturation, 0.0f, 1.0f);
+            value = GetClamp(value, 0.0f, 1.0f);
+
+            hueRadians = fmodf(hueRadians, AZ::Constants::TwoPi);
+            if (hueRadians < 0)
+            {
+                hueRadians += AZ::Constants::TwoPi;
+            }
+
+            // https://en.wikipedia.org/wiki/HSL_and_HSV#Converting_to_RGB
+            float hue = fmodf(hueRadians / AZ::DegToRad(60.0f), 6.0f);
+            const int32_t hueSexant = static_cast<int32_t>(hue);
+            const float hueSexantRemainder = hue - hueSexant;
+
+            const float offColor = value * (1.0f - saturation);
+            const float fallingColor = value * (1.0f - (saturation * hueSexantRemainder));
+            const float risingColor = value * (1.0f - (saturation * (1.0f - hueSexantRemainder)));
+
+            switch (hueSexant)
+            {
+            case 0:
+                Set(value, risingColor, offColor, alpha);
+                break;
+            case 1:
+                Set(fallingColor, value, offColor, alpha);
+                break;
+            case 2:
+                Set(offColor, value, risingColor, alpha);
+                break;
+            case 3:
+                Set(offColor, fallingColor, value, alpha);
+                break;
+            case 4:
+                Set(risingColor, offColor, value, alpha);
+                break;
+            case 5:
+                Set(value, offColor, fallingColor, alpha);
+                break;
+            default:
+                AZ_MATH_ASSERT(false,
+                    "SetFromHSV has generated invalid data from these parameters : H %.5f, S %.5f, V %.5f.",
+                    hueRadians,
+                    saturation,
+                    value);
+            }
+        }
 
         //! Checks the color is equal to another within a floating point tolerance.
-        bool IsClose(const Color& v, float tolerance = Constants::Tolerance) const;
+        AZ_MATH_INLINE bool IsClose(const Color& v, float tolerance = Constants::Tolerance) const
+        {
+            return m_color.IsClose(v.GetAsVector4(), tolerance);
+        }
 
-        bool IsZero(float tolerance = Constants::FloatEpsilon) const;
+        AZ_MATH_INLINE bool IsZero(float tolerance = Constants::FloatEpsilon) const
+        {
+            return IsClose(CreateZero(), tolerance);
+        }
+
+        AZ_MATH_INLINE constexpr bool IsOpaque() const
+        {
+            return GetA() == 1.0f;
+        }
+
+        AZ_MATH_INLINE constexpr bool IsTransparent() const
+        {
+            return GetA() == 0.0f;
+        }
 
         //! Checks whether all components are finite.
-        bool IsFinite() const;
+        AZ_MATH_INLINE bool IsFinite() const
+        {
+            return m_color.IsFinite();
+        }
 
-        bool operator==(const Color& rhs) const;
-        bool operator!=(const Color& rhs) const;
+        AZ_MATH_INLINE bool operator==(const Color& rhs) const
+        {
+            return m_color == rhs.m_color;
+        }
 
-        explicit operator Vector3() const;
-        explicit operator Vector4() const;
+        AZ_MATH_INLINE bool operator!=(const Color& rhs) const
+        {
+            return m_color != rhs.m_color;
+        }
 
-        Color& operator=(const Vector3& rhs);
+        AZ_MATH_INLINE explicit operator Vector3() const
+        {
+            return m_color.GetAsVector3();
+        }
+
+        AZ_MATH_INLINE explicit constexpr operator Vector4() const
+        {
+            return m_color;
+        }
+
+        AZ_MATH_INLINE Color& operator=(const Vector3& rhs)
+        {
+            Set(rhs);
+            return *this;
+        }
 
         //! Color to u32 => 0xAABBGGRR.
-        u32 ToU32() const;
+        AZ_MATH_INLINE constexpr u32 ToU32() const
+        {
+            return CreateU32(GetR8(), GetG8(), GetB8(), GetA8());
+        }
 
         //! Color to u32 => 0xAABBGGRR, RGB convert from Linear to Gamma corrected values.
-        u32 ToU32LinearToGamma() const;
+        AZ_MATH_INLINE u32 ToU32LinearToGamma() const
+        {
+            return LinearToGamma().ToU32();
+        }
 
         //! Color from u32 => 0xAABBGGRR.
-        void FromU32(u32 c);
+        AZ_MATH_INLINE constexpr void FromU32(u32 c)
+        {
+            SetA(static_cast<float>(c >> 24) * (1.0f / 255.0f));
+            SetB(static_cast<float>((c >> 16) & 0xff) * (1.0f / 255.0f));
+            SetG(static_cast<float>((c >> 8) & 0xff) * (1.0f / 255.0f));
+            SetR(static_cast<float>(c & 0xff) * (1.0f / 255.0f));
+        }
 
         //! Color from u32 => 0xAABBGGRR, RGB convert from Gamma corrected to Linear values.
-        void FromU32GammaToLinear(u32 c);
+        AZ_MATH_INLINE void FromU32GammaToLinear(u32 c)
+        {
+            FromU32(c);
+            *this = GammaToLinear();
+        }
 
         //! Convert SRGB gamma space to linear space
-        static float ConvertSrgbGammaToLinear(float x);
+        AZ_MATH_INLINE static float ConvertSrgbGammaToLinear(float x)
+        {
+            if (x <= 0.04045)
+            {
+                return x / 12.92f;
+            }
+            return static_cast<float>(pow((static_cast<double>(x) + 0.055) / 1.055, 2.4));
+        }
 
         //! Convert SRGB linear space to gamma space
-        static float ConvertSrgbLinearToGamma(float x);
+        AZ_MATH_INLINE static float ConvertSrgbLinearToGamma(float x)
+        {
+            if (x <= 0.0031308)
+            {
+                return 12.92f * x;
+            }
+            return static_cast<float>(1.055 * pow(static_cast<double>(x), 1.0 / 2.4) - 0.055);
+        }
 
         //! Clamps the color to the range [0..1]
-        void Saturate();
+        AZ_MATH_INLINE void Saturate()
+        {
+            m_color = m_color.GetClamp(Vector4(0.f), Vector4(1.f));
+        }
 
         //! Returns a color which was clamped in the range [0..1]
-        Color GetSaturated() const;
+        AZ_MATH_INLINE Color GetSaturated() const
+        {
+            Color copy(*this);
+            copy.Saturate();
+            return copy;
+        }
 
         //! Convert color from linear to gamma corrected space.
-        Color LinearToGamma() const;
+        AZ_MATH_INLINE Color LinearToGamma() const
+        {
+            float r = GetR();
+            float g = GetG();
+            float b = GetB();
+
+            r = ConvertSrgbLinearToGamma(r);
+            g = ConvertSrgbLinearToGamma(g);
+            b = ConvertSrgbLinearToGamma(b);
+
+            return {
+                r,
+                g,
+                b,
+                GetA(),
+            };
+        }
 
         //! Convert color from gamma corrected to linear space.
-        Color GammaToLinear() const;
+        AZ_MATH_INLINE Color GammaToLinear() const
+        {
+            float r = GetR();
+            float g = GetG();
+            float b = GetB();
+
+            return {
+                ConvertSrgbGammaToLinear(r),
+                ConvertSrgbGammaToLinear(g),
+                ConvertSrgbGammaToLinear(b),
+                GetA(),
+            };
+        }
 
         //! Comparison functions, not implemented as operators since that would probably be a little dangerous. These
         //! functions return true only if all components pass the comparison test.
         //! @{
-        bool IsLessThan(const Color& rhs) const;
-        bool IsLessEqualThan(const Color& rhs) const;
-        bool IsGreaterThan(const Color& rhs) const;
-        bool IsGreaterEqualThan(const Color& rhs) const;
+        AZ_MATH_INLINE bool IsLessThan(const Color& rhs) const
+        {
+            return m_color.IsLessThan(rhs.m_color);
+        }
+
+        AZ_MATH_INLINE bool IsLessEqualThan(const Color& rhs) const
+        {
+            return m_color.IsLessEqualThan(rhs.m_color);
+        }
+
+        AZ_MATH_INLINE bool IsGreaterThan(const Color& rhs) const
+        {
+            return m_color.IsGreaterThan(rhs.m_color);
+        }
+
+        AZ_MATH_INLINE bool IsGreaterEqualThan(const Color& rhs) const
+        {
+            return m_color.IsGreaterEqualThan(rhs.m_color);
+        }
         //! @}
 
         //! Linear interpolation between this color and a destination.
         //! @return (*this)*(1-t) + dest*t
-        Color Lerp(const Color& dest, float t) const;
+        AZ_MATH_INLINE Color Lerp(const Color& dest, float t) const
+        {
+            return Color(m_color.Lerp(dest.m_color, t));
+        }
 
         //! Dot product of two colors, uses all 4 components.
-        float Dot(const Color& rhs) const;
+        AZ_MATH_INLINE float Dot(const Color& rhs) const
+        {
+            return m_color.Dot(rhs.m_color);
+        }
 
         //! Dot product of two colors, using only the r,g,b components.
-        float Dot3(const Color& rhs) const;
+        AZ_MATH_INLINE float Dot3(const Color& rhs) const
+        {
+            return m_color.Dot3(rhs.m_color.GetAsVector3());
+        }
 
-        Color operator-() const;
-        Color operator+(const Color& rhs) const;
-        Color operator-(const Color& rhs) const;
-        Color operator*(const Color& rhs) const;
-        Color operator/(const Color& rhs) const;
-        Color operator*(float multiplier) const;
-        Color operator/(float divisor) const;
+        //! @name Arithmetic.
+        //! These go through AZ::Vector4 and therefore through the SIMD layer, which is why none of
+        //! them are constant expressions.
+        //! @{
+        AZ_MATH_INLINE Color operator-() const
+        {
+            return Color(-m_color);
+        }
 
-        Color& operator+=(const Color& rhs);
-        Color& operator-=(const Color& rhs);
-        Color& operator*=(const Color& rhs);
-        Color& operator/=(const Color& rhs);
-        Color& operator*=(float multiplier);
-        Color& operator/=(float divisor);
+        AZ_MATH_INLINE Color operator+(const Color& rhs) const
+        {
+            return Color(m_color + rhs.m_color);
+        }
+
+        AZ_MATH_INLINE Color operator-(const Color& rhs) const
+        {
+            return Color(m_color - rhs.m_color);
+        }
+
+        AZ_MATH_INLINE Color operator*(const Color& rhs) const
+        {
+            return Color(m_color * rhs.m_color);
+        }
+
+        AZ_MATH_INLINE Color operator/(const Color& rhs) const
+        {
+            return Color(m_color / rhs.m_color);
+        }
+
+        AZ_MATH_INLINE Color operator*(float multiplier) const
+        {
+            return Color(m_color * multiplier);
+        }
+
+        AZ_MATH_INLINE Color operator/(float divisor) const
+        {
+            return Color(m_color / divisor);
+        }
+
+        AZ_MATH_INLINE Color& operator+=(const Color& rhs)
+        {
+            *this = (*this) + rhs;
+            return *this;
+        }
+
+        AZ_MATH_INLINE Color& operator-=(const Color& rhs)
+        {
+            *this = (*this) - rhs;
+            return *this;
+        }
+
+        AZ_MATH_INLINE Color& operator*=(const Color& rhs)
+        {
+            *this = (*this) * rhs;
+            return *this;
+        }
+
+        AZ_MATH_INLINE Color& operator/=(const Color& rhs)
+        {
+            *this = (*this) / rhs;
+            return *this;
+        }
+
+        AZ_MATH_INLINE Color& operator*=(float multiplier)
+        {
+            *this = (*this) * multiplier;
+            return *this;
+        }
+
+        AZ_MATH_INLINE Color& operator/=(float divisor)
+        {
+            *this = (*this) / divisor;
+            return *this;
+        }
+
+        //! A friend so the scalar can appear on either side of the multiply.
+        AZ_MATH_INLINE friend const Color operator*(float multiplier, const Color& rhs)
+        {
+            return rhs * multiplier;
+        }
+        //! @}
 
     private:
-
         Vector4 m_color;
-
     };
 
-    // Named colors, from CSS specification: https://www.w3.org/TR/2011/REC-SVG11-20110816/types.html#ColorKeywords
-    namespace Colors
+    inline constexpr Color Color::Zero{0.0f, 0.0f, 0.0f, 0.0f};
+    inline constexpr Color Color::One{1.0f, 1.0f, 1.0f, 1.0f};
+
+    // Transitional NamedColor members.
+    // Defined here because they need the vector types,
+    // and every consumer of the named constants historically included this header.
+    inline Vector3 Internal::NamedColor::GetAsVector3() const
     {
-        // Basic Colors (CSS 1 standard)
-        const Color White                { 255, 255, 255 };
-        const Color Silver               { 192, 192, 192 };
-        const Color Gray                 { 128, 128, 128 };
-        const Color Black                {   0,   0,   0 };
-        const Color Red                  { 255,   0,   0 };
-        const Color Maroon               { 128,   0,   0 };
-        const Color Lime                 {   0, 255,   0 };
-        const Color Green                {   0, 128,   0 };
-        const Color Blue                 {   0,   0, 255 };
-        const Color Navy                 {   0,   0, 128 };
-        const Color Yellow               { 255, 255,   0 };
-        const Color Orange               { 255, 165,   0 };
-        const Color Olive                { 128, 128,   0 };
-        const Color Purple               { 128,   0, 128 };
-        const Color Fuchsia              { 255,   0, 255 };
-        const Color Teal                 {   0, 128, 128 };
-        const Color Aqua                 {   0, 255, 255 };
-        // CSS3 colors
-        // Reds
-        const Color IndianRed            { 205,  92,  92 };
-        const Color LightCoral           { 240, 128, 128 };
-        const Color Salmon               { 250, 128, 114 };
-        const Color DarkSalmon           { 233, 150, 122 };
-        const Color LightSalmon          { 255, 160, 122 };
-        const Color Crimson              { 220,  20,  60 };
-        const Color FireBrick            { 178,  34,  34 };
-        const Color DarkRed              { 139,   0,   0 };
-        // Pinks
-        const Color Pink                 { 255, 192, 203 };
-        const Color LightPink            { 255, 182, 193 };
-        const Color HotPink              { 255, 105, 180 };
-        const Color DeepPink             { 255,  20, 147 };
-        const Color MediumVioletRed      { 199,  21, 133 };
-        const Color PaleVioletRed        { 219, 112, 147 };
-        // Oranges
-        const Color Coral                { 255, 127,  80 };
-        const Color Tomato               { 255,  99,  71 };
-        const Color OrangeRed            { 255,  69,   0 };
-        const Color DarkOrange           { 255, 140,   0 };
-        // Yellows
-        const Color Gold                 { 255, 215,   0 };
-        const Color LightYellow          { 255, 255, 224 };
-        const Color LemonChiffon         { 255, 250, 205 };
-        const Color LightGoldenrodYellow { 250, 250, 210 };
-        const Color PapayaWhip           { 255, 239, 213 };
-        const Color Moccasin             { 255, 228, 181 };
-        const Color PeachPuff            { 255, 218, 185 };
-        const Color PaleGoldenrod        { 238, 232, 170 };
-        const Color Khaki                { 240, 230, 140 };
-        const Color DarkKhaki            { 189, 183, 107 };
-        // Purples
-        const Color Lavender             { 230, 230, 250 };
-        const Color Thistle              { 216, 191, 216 };
-        const Color Plum                 { 221, 160, 221 };
-        const Color Violet               { 238, 130, 238 };
-        const Color Orchid               { 218, 112, 214 };
-        const Color Magenta              { 255,   0, 255 };
-        const Color MediumOrchid         { 186,  85, 211 };
-        const Color MediumPurple         { 147, 112, 219 };
-        const Color BlueViolet           { 138,  43, 226 };
-        const Color DarkViolet           { 148,   0, 211 };
-        const Color DarkOrchid           { 153,  50, 204 };
-        const Color DarkMagenta          { 139,   0, 139 };
-        const Color RebeccaPurple        { 102,  51, 153 };
-        const Color Indigo               {  75,   0, 130 };
-        const Color MediumSlateBlue      { 123, 104, 238 };
-        const Color SlateBlue            { 106,  90, 205 };
-        const Color DarkSlateBlue        {  72,  61, 139 };
-        // Greens
-        const Color GreenYellow          { 173, 255,  47 };
-        const Color Chartreuse           { 127, 255,   0 };
-        const Color LawnGreen            { 124, 252,   0 };
-        const Color LimeGreen            {  50, 205,  50 };
-        const Color PaleGreen            { 152, 251, 152 };
-        const Color LightGreen           { 144, 238, 144 };
-        const Color MediumSpringGreen    {   0, 250, 154 };
-        const Color SpringGreen          {   0, 255, 127 };
-        const Color MediumSeaGreen       {  60, 179, 113 };
-        const Color SeaGreen             {  46, 139,  87 };
-        const Color ForestGreen          {  34, 139,  34 };
-        const Color DarkGreen            {   0, 100,   0 };
-        const Color YellowGreen          { 154, 205,  50 };
-        const Color OliveDrab            { 107, 142,  35 };
-        const Color DarkOliveGreen       {  85, 107,  47 };
-        const Color MediumAquamarine     { 102, 205, 170 };
-        const Color DarkSeaGreen         { 143, 188, 143 };
-        const Color LightSeaGreen        {  32, 178, 170 };
-        const Color DarkCyan             {   0, 139, 139 };
-        // Blues
-        const Color Cyan                 {   0, 255, 255 };
-        const Color LightCyan            { 224, 255, 255 };
-        const Color PaleTurquoise        { 175, 238, 238 };
-        const Color Aquamarine           { 127, 255, 212 };
-        const Color Turquoise            {  64, 224, 208 };
-        const Color MediumTurquoise      {  72, 209, 204 };
-        const Color DarkTurquoise        {   0, 206, 209 };
-        const Color CadetBlue            {  95, 158, 160 };
-        const Color SteelBlue            {  70, 130, 180 };
-        const Color LightSteelBlue       { 176, 196, 222 };
-        const Color PowderBlue           { 176, 224, 230 };
-        const Color LightBlue            { 173, 216, 230 };
-        const Color SkyBlue              { 135, 206, 235 };
-        const Color LightSkyBlue         { 135, 206, 250 };
-        const Color DeepSkyBlue          {   0, 191, 255 };
-        const Color DodgerBlue           {  30, 144, 255 };
-        const Color CornflowerBlue       { 100, 149, 237 };
-        const Color RoyalBlue            {  65, 105, 225 };
-        const Color MediumBlue           {   0,   0, 205 };
-        const Color DarkBlue             {   0,   0, 139 };
-        const Color MidnightBlue         {  25,  25, 112 };
-        // Browns
-        const Color Cornsilk             { 255, 248, 220 };
-        const Color BlanchedAlmond       { 255, 235, 205 };
-        const Color Bisque               { 255, 228, 196 };
-        const Color NavajoWhite          { 255, 222, 173 };
-        const Color Wheat                { 245, 222, 179 };
-        const Color BurlyWood            { 222, 184, 135 };
-        const Color Tan                  { 210, 180, 140 };
-        const Color RosyBrown            { 188, 143, 143 };
-        const Color SandyBrown           { 244, 164,  96 };
-        const Color Goldenrod            { 218, 165,  32 };
-        const Color DarkGoldenrod        { 184, 134,  11 };
-        const Color Peru                 { 205, 133,  63 };
-        const Color Chocolate            { 210, 105,  30 };
-        const Color SaddleBrown          { 139,  69,  19 };
-        const Color Sienna               { 160,  82,  45 };
-        const Color Brown                { 165,  42,  42 };
-        // Whites
-        const Color Snow                 { 255, 250, 250 };
-        const Color Honeydew             { 240, 255, 240 };
-        const Color MintCream            { 245, 255, 250 };
-        const Color Azure                { 240, 255, 255 };
-        const Color AliceBlue            { 240, 248, 255 };
-        const Color GhostWhite           { 248, 248, 255 };
-        const Color WhiteSmoke           { 245, 245, 245 };
-        const Color Seashell             { 255, 245, 238 };
-        const Color Beige                { 245, 245, 220 };
-        const Color OldLace              { 253, 245, 230 };
-        const Color FloralWhite          { 255, 250, 240 };
-        const Color Ivory                { 255, 255, 240 };
-        const Color AntiqueWhite         { 250, 235, 215 };
-        const Color Linen                { 250, 240, 230 };
-        const Color LavenderBlush        { 255, 240, 245 };
-        const Color MistyRose            { 255, 228, 225 };
-        // Grays
-        const Color Gainsboro            { 220, 220, 220 };
-        const Color LightGray            { 211, 211, 211 };
-        const Color LightGrey            { 211, 211, 211 };
-        const Color DarkGray             { 169, 169, 169 };
-        const Color DarkGrey             { 169, 169, 169 };
-        const Color Grey                 { 128, 128, 128 };
-        const Color DimGray              { 105, 105, 105 };
-        const Color DimGrey              { 105, 105, 105 };
-        const Color LightSlateGray       { 119, 136, 153 };
-        const Color LightSlateGrey       { 119, 136, 153 };
-        const Color SlateGray            { 112, 128, 144 };
-        const Color SlateGrey            { 112, 128, 144 };
-        const Color DarkSlateGray        {  47,  79,  79 };
-        const Color DarkSlateGrey        {  47,  79,  79 };
+        return Vector3(
+            static_cast<float>(m_r) * (1.0f / 255.0f),
+            static_cast<float>(m_g) * (1.0f / 255.0f),
+            static_cast<float>(m_b) * (1.0f / 255.0f));
+    }
+
+    inline Vector4 Internal::NamedColor::GetAsVector4() const
+    {
+        return Vector4(
+            static_cast<float>(m_r) * (1.0f / 255.0f),
+            static_cast<float>(m_g) * (1.0f / 255.0f),
+            static_cast<float>(m_b) * (1.0f / 255.0f),
+            static_cast<float>(m_a) * (1.0f / 255.0f));
     }
 }
-
-#include <AzCore/Math/Color.inl>

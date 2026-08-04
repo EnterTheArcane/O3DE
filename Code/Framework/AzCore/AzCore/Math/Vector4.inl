@@ -11,16 +11,24 @@
 
 namespace AZ
 {
-    AZ_MATH_INLINE Vector4::Vector4(float x)
-        : m_value(Simd::Vec4::Splat(x))
+    AZ_MATH_INLINE constexpr Vector4::Vector4(float x)
+        : m_values{x, x, x, x}
     {
-        ;
+        if (!az_builtin_is_constant_evaluated())
+        {
+            m_value = Simd::Vec4::Splat(x);
+        }
     }
 
-    AZ_MATH_INLINE Vector4::Vector4(float x, float y, float z, float w)
-        : m_value(Simd::Vec4::LoadImmediate(x, y, z, w))
+    AZ_MATH_INLINE constexpr Vector4::Vector4(float x, float y, float z, float w)
+        : m_values{x, y, z, w}
     {
-        ;
+        // Initializing m_values is what makes this a constant expression.
+        // The SIMD store is what keeps runtime construction in a vector register, and the mem-init above is dead there.
+        if (!az_builtin_is_constant_evaluated())
+        {
+            m_value = Simd::Vec4::LoadImmediate(x, y, z, w);
+        }
     }
 
     AZ_MATH_INLINE Vector4::Vector4(Simd::Vec4::FloatArgType value)
@@ -61,12 +69,16 @@ namespace AZ
         m_w = w;
     }
 
-    AZ_MATH_INLINE Vector4 Vector4::CreateZero()
+    AZ_MATH_INLINE constexpr Vector4 Vector4::CreateZero()
     {
+        if (az_builtin_is_constant_evaluated())
+        {
+            return Vector4(0.0f, 0.0f, 0.0f, 0.0f);
+        }
         return Vector4(Simd::Vec4::ZeroFloat());
     }
 
-    AZ_MATH_INLINE Vector4 Vector4::CreateOne()
+    AZ_MATH_INLINE constexpr Vector4 Vector4::CreateOne()
     {
         return Vector4(1.0f);
     }
@@ -156,59 +168,105 @@ namespace AZ
         Simd::Vec4::StoreUnaligned(values, m_value);
     }
 
-    AZ_MATH_INLINE float Vector4::GetX() const
+    AZ_MATH_INLINE constexpr float Vector4::GetX() const
     {
+        if (az_builtin_is_constant_evaluated())
+        {
+            return m_values[0];
+        }
         return m_x;
     }
 
-    AZ_MATH_INLINE float Vector4::GetY() const
+    AZ_MATH_INLINE constexpr float Vector4::GetY() const
     {
+        if (az_builtin_is_constant_evaluated())
+        {
+            return m_values[1];
+        }
         return m_y;
     }
 
-    AZ_MATH_INLINE float Vector4::GetZ() const
+    AZ_MATH_INLINE constexpr float Vector4::GetZ() const
     {
+        if (az_builtin_is_constant_evaluated())
+        {
+            return m_values[2];
+        }
         return m_z;
     }
 
-    AZ_MATH_INLINE float Vector4::GetW() const
+    AZ_MATH_INLINE constexpr float Vector4::GetW() const
     {
+        if (az_builtin_is_constant_evaluated())
+        {
+            return m_values[3];
+        }
         return m_w;
     }
 
-    AZ_MATH_INLINE float Vector4::GetElement(int32_t index) const
+    AZ_MATH_INLINE constexpr float Vector4::GetElement(int32_t index) const
     {
         AZ_MATH_ASSERT((index >= 0) && (index < Simd::Vec4::ElementCount), "Invalid index for component access.\n");
         return m_values[index];
     }
 
-    AZ_MATH_INLINE void Vector4::SetX(float x)
+    AZ_MATH_INLINE constexpr void Vector4::SetX(float x)
     {
+        if (az_builtin_is_constant_evaluated())
+        {
+            m_values[0] = x;
+            return;
+        }
         m_x = x;
     }
 
-    AZ_MATH_INLINE void Vector4::SetY(float y)
+    AZ_MATH_INLINE constexpr void Vector4::SetY(float y)
     {
+        if (az_builtin_is_constant_evaluated())
+        {
+            m_values[1] = y;
+            return;
+        }
         m_y = y;
     }
 
-    AZ_MATH_INLINE void Vector4::SetZ(float z)
+    AZ_MATH_INLINE constexpr void Vector4::SetZ(float z)
     {
+        if (az_builtin_is_constant_evaluated())
+        {
+            m_values[2] = z;
+            return;
+        }
         m_z = z;
     }
 
-    AZ_MATH_INLINE void Vector4::SetW(float w)
+    AZ_MATH_INLINE constexpr void Vector4::SetW(float w)
     {
+        if (az_builtin_is_constant_evaluated())
+        {
+            m_values[3] = w;
+            return;
+        }
         m_w = w;
     }
 
-    AZ_MATH_INLINE void Vector4::Set(float x)
+    AZ_MATH_INLINE constexpr void Vector4::Set(float x)
     {
+        if (az_builtin_is_constant_evaluated())
+        {
+            *this = Vector4(x);
+            return;
+        }
         m_value = Simd::Vec4::Splat(x);
     }
 
-    AZ_MATH_INLINE void Vector4::Set(float x, float y, float z, float w)
+    AZ_MATH_INLINE constexpr void Vector4::Set(float x, float y, float z, float w)
     {
+        if (az_builtin_is_constant_evaluated())
+        {
+            *this = Vector4(x, y, z, w);
+            return;
+        }
         m_value = Simd::Vec4::LoadImmediate(x, y, z, w);
     }
 
@@ -234,7 +292,7 @@ namespace AZ
         m_value = v;
     }
 
-    AZ_MATH_INLINE void Vector4::SetElement(int32_t index, float v)
+    AZ_MATH_INLINE constexpr void Vector4::SetElement(int32_t index, float v)
     {
         AZ_MATH_ASSERT((index >= 0) && (index < Simd::Vec4::ElementCount), "Invalid index for component access.\n");
         m_values[index] = v;

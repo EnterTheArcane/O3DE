@@ -7,6 +7,7 @@
  */
 
 #include <AzCore/Math/Color.h>
+#include <AzCore/Math/Colors.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Vector4.h>
 #include <AzCore/UnitTest/TestTypes.h>
@@ -264,6 +265,37 @@ namespace UnitTest
         // Strict inequality
         EXPECT_FALSE(color1 != color2);
         EXPECT_TRUE(color1 != color3);
+    }
+
+    //! Shared semantics across Color, Color32, Color64 and ColorHalf:
+    //! opaque means alpha at its maximum, transparent means alpha exactly zero.
+    TEST(MATH_Color, AlphaPredicates)
+    {
+        constexpr Color opaque(0.5f, 0.5f, 0.5f, 1.0f);
+        static_assert(opaque.IsOpaque());
+        static_assert(!opaque.IsTransparent());
+
+        constexpr Color faded(0.5f, 0.5f, 0.5f, 0.5f);
+        static_assert(!faded.IsOpaque());
+        static_assert(!faded.IsTransparent(), "partially faded is neither opaque nor transparent");
+
+        constexpr Color invisible(0.5f, 0.5f, 0.5f, 0.0f);
+        static_assert(invisible.IsTransparent());
+        static_assert(!invisible.IsOpaque());
+    }
+
+    //! The NamedColor transitional API keeps pre-Colors.h call sites building.
+    //! Each member must answer exactly what AZ::Color answered at those call sites.
+    TEST(MATH_Color, NamedColorTransitionalApi)
+    {
+        static_assert(Colors::White.ToU32() == 0xFFFFFFFFu);
+        static_assert(Colors::White.GetR() == 1.0f && Colors::White.GetA() == 1.0f);
+
+        const Color asColor = Colors::Gold;
+        EXPECT_EQ(Colors::Gold.ToU32(), asColor.ToU32());
+        EXPECT_FLOAT_EQ(Colors::Gold.GetG(), asColor.GetG());
+        EXPECT_THAT(Colors::Gold.GetAsVector3(), IsClose(asColor.GetAsVector3()));
+        EXPECT_THAT(Colors::Gold.GetAsVector4(), IsClose(asColor.GetAsVector4()));
     }
 
     TEST(MATH_Color, LessThanComparisons)
