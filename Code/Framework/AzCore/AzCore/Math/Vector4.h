@@ -34,9 +34,9 @@ namespace AZ
         Vector4(const Vector4& v) = default;
 
         //! Constructs vector with all components set to the same specified value.
-        explicit Vector4(float x);
+        explicit constexpr Vector4(float x);
 
-        explicit Vector4(float x, float y, float z, float w);
+        explicit constexpr Vector4(float x, float y, float z, float w);
 
         //! Copies x,y components from a Vector2, set z = 0.0, w = 1.0.
         explicit Vector4(const Vector2& source);
@@ -57,10 +57,10 @@ namespace AZ
         explicit Vector4(Simd::Vec4::FloatArgType value);
 
         //! Creates a vector with all components set to zero, more efficient than calling Vector4(0.0f).
-        static Vector4 CreateZero();
+        static constexpr Vector4 CreateZero();
 
         //! Creates a vector with all components set to one.
-        static Vector4 CreateOne();
+        static constexpr Vector4 CreateOne();
 
         static Vector4 CreateAxisX(float length = 1.0f);
         static Vector4 CreateAxisY(float length = 1.0f);
@@ -88,22 +88,22 @@ namespace AZ
         //! Stores the vector to an array of 4 floats. The floats need only be 4 byte aligned, 16 byte alignment is not required.
         void StoreToFloat4(float* values) const;
 
-        float GetX() const;
-        float GetY() const;
-        float GetZ() const;
-        float GetW() const;
-        void SetX(float x);
-        void SetY(float y);
-        void SetZ(float z);
-        void SetW(float w);
+        constexpr float GetX() const;
+        constexpr float GetY() const;
+        constexpr float GetZ() const;
+        constexpr float GetW() const;
+        constexpr void SetX(float x);
+        constexpr void SetY(float y);
+        constexpr void SetZ(float z);
+        constexpr void SetW(float w);
 
         //! Access component by index.
-        float GetElement(int32_t index) const;
+        constexpr float GetElement(int32_t index) const;
 
         //! Sets all components to the same specified value.
-        void Set(float x);
+        constexpr void Set(float x);
 
-        void Set(float x, float y, float z, float w);
+        constexpr void Set(float x, float y, float z, float w);
 
         //! Sets components from an array of 4 floats, stored in xyzw order.
         void Set(const float values[]);
@@ -118,7 +118,7 @@ namespace AZ
         void Set(Simd::Vec4::FloatArgType v);
 
         //! We recommend using SetX,Y,Z,W. SetElement can be slower.
-        void SetElement(int32_t index, float v);
+        constexpr void SetElement(int32_t index, float v);
 
         Vector3 GetAsVector3() const;
 

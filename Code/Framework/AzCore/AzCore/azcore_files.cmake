@@ -293,11 +293,17 @@ set(FILES
     Math/Capsule.inl
     Math/Color.cpp
     Math/Color.h
-    Math/Color.inl
+    Math/Color32.cpp
+    Math/Color32.h
+    Math/Color64.cpp
+    Math/Color64.h
     Math/ColorGradient.cpp
     Math/ColorGradient.h
+    Math/ColorHalf.cpp
+    Math/ColorHalf.h
     Math/ColorSerializer.h
     Math/ColorSerializer.cpp
+    Math/Colors.h
     Math/Crc.cpp
     Math/Crc.inl
     Math/Crc.h
@@ -313,6 +319,8 @@ set(FILES
     Math/Geometry3DUtils.cpp
     Math/Geometry3DUtils.h
     Math/Guid.h
+    Math/Half.cpp
+    Math/Half.h
     Math/Hemisphere.h
     Math/Hemisphere.inl
     Math/Internal/MathTypes.h

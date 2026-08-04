@@ -9,10 +9,11 @@
 #pragma once
 
 #if AZ_TRAIT_USE_PLATFORM_SIMD_SSE
-#   include <xmmintrin.h>
-#   include <pmmintrin.h>
-#   include <emmintrin.h>
-#   include <smmintrin.h>
+#include <xmmintrin.h>
+#include <pmmintrin.h>
+#include <emmintrin.h>
+#include <smmintrin.h>
+#include <immintrin.h>
 #elif AZ_TRAIT_USE_PLATFORM_SIMD_NEON
-#   include <arm_neon.h>
+#include <arm_neon.h>
 #endif

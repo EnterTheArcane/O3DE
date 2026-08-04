@@ -204,7 +204,6 @@ namespace AzToolsFramework
     static const AZ::Color FadedYAxisColor = AZ::Color(AZ::u8(127), AZ::u8(190), AZ::u8(127), AZ::u8(255));
     static const AZ::Color FadedZAxisColor = AZ::Color(AZ::u8(120), AZ::u8(120), AZ::u8(180), AZ::u8(255));
 
-    static const AZ::Color PickedOrientationColor = AZ::Color(0.0f, 1.0f, 0.0f, 1.0f);
     static const AZ::Color SelectedEntityAabbColor = AZ::Color(0.6f, 0.6f, 0.6f, 0.4f);
 
     static const float PivotSize = 0.075f; // the size of the pivot (box) to render when selected
