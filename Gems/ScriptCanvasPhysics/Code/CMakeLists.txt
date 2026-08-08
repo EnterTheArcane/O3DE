@@ -16,7 +16,6 @@ ly_add_target(
             Source
     BUILD_DEPENDENCIES
         PRIVATE
-            Legacy::CryCommon
         PUBLIC
             Gem::ScriptCanvas.Extensions
     AUTOGEN_RULES
@@ -34,7 +33,6 @@ ly_add_target(
             Source
     BUILD_DEPENDENCIES
         PRIVATE
-            Legacy::CryCommon
             Gem::${gem_name}.Static
 )
 
@@ -72,7 +70,6 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
             PRIVATE
                 AZ::AzFramework
                 AZ::AzTest
-                Legacy::CryCommon
                 Gem::${gem_name}.Static
     )
     ly_add_googletest(

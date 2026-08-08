@@ -13,7 +13,9 @@
 #include <AzFramework/Application/Application.h>
 
 #include <UiCanvasComponent.h>
+#include <Animation/AnimTrack.h>
 #include <Animation/AnimSequence.h>
+#include <Animation/AzEntityNode.h>
 #include <Animation/EventNode.h>
 #include <Animation/TrackEventTrack.h>
 
@@ -136,6 +138,13 @@ namespace UnitTest
         UiCanvasComponent* m_canvasComponent;
     };
 
+    class TestUiAnimAzEntityNode
+        : public CUiAnimAzEntityNode
+    {
+    public:
+        using CUiAnimAzEntityNode::ComputeOffsetFromElementName;
+    };
+
     TEST_F(LyShineAnimationTest, Animation_TrackEventTriggered_FT)
     {
         IUiAnimationSystem* animSys = m_canvasComponent->GetAnimationSystem();
@@ -176,5 +185,27 @@ namespace UnitTest
         EXPECT_STREQ(eventHandler.m_recievedEvents[0].m_event.c_str(), key.event.c_str());
         EXPECT_STREQ(eventHandler.m_recievedEvents[0].m_value.c_str(), key.eventValue.c_str());
         EXPECT_STREQ(eventHandler.m_recievedEvents[0].m_sequence.c_str(), sequence->GetName());
+    }
+
+    TEST_F(LyShineAnimationTest, LegacyVec2ParamTypeId_UpgradesToAZVector2)
+    {
+        AZ::SerializeContext::ClassData classData;
+        classData.m_typeId = AZ::Uuid::CreateRandom();
+        AZ::SerializeContext::ClassElement classElement;
+        classElement.m_name = "AnimatedPosition";
+        classElement.m_nameCrc = AZ::Crc32(classElement.m_name);
+        classElement.m_typeId = azrtti_typeid<AZ::Vector2>();
+        classElement.m_offset = 32;
+        classData.m_elements.push_back(classElement);
+
+        CUiTrackEventTrack track;
+        track.SetParamData(UiAnimParamData(
+            AZ::ComponentId{ 1 }, classElement.m_name,
+            AZ::Uuid("{844131BA-9565-42F3-8482-6F65A6D5FC59}"), 0));
+
+        TestUiAnimAzEntityNode node;
+        EXPECT_EQ(node.ComputeOffsetFromElementName(&classData, &track, 16), &classData.m_elements.front());
+        EXPECT_EQ(track.GetParamData().GetTypeId(), azrtti_typeid<AZ::Vector2>());
+        EXPECT_EQ(track.GetParamData().GetOffset(), 48);
     }
 } //namespace UnitTest

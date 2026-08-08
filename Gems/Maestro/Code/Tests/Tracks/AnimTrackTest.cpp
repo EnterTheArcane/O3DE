@@ -7,11 +7,13 @@
  */
 
 #if !defined(_RELEASE)
-#include <AzTest/AzTest.h>
-#include <AzCore/UnitTest/UnitTest.h>
 #include <AnimKey.h>
-#include <Maestro/Types/AssetBlendKey.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/UnitTest/UnitTest.h>
+#include <AzTest/AzTest.h>
+#include <Cinematics/AnimSplineTrack.h>
 #include <Cinematics/AnimTrack.h>
+#include <Maestro/Types/AssetBlendKey.h>
 
 namespace Maestro
 {
@@ -53,7 +55,9 @@ namespace Maestro
             void GetKeyInfo([[maybe_unused]] int index, [[maybe_unused]] const char*& description, [[maybe_unused]] float& duration) const
             {
             }
-            void SerializeKey([[maybe_unused]] ITestKey& key, [[maybe_unused]] XmlNodeRef& keyNode, [[maybe_unused]] bool bLoading) {}
+            void SerializeKey([[maybe_unused]] ITestKey& key, [[maybe_unused]] XmlNodeRef& keyNode, [[maybe_unused]] bool bLoading)
+            {
+            }
         };
 
         class TAnimTrackTest : public ::testing::Test
@@ -388,6 +392,57 @@ namespace Maestro
             EXPECT_EQ(i, 2);
         }
     } // namespace AnimTrackTest
+
+    TEST(MaestroLegacySerializationTest, Vec2TrackAndVec3FieldConvertersAreRegisteredWithoutLyShine)
+    {
+        AZ::SerializeContext context;
+        struct ModuleGenericCleanup
+        {
+            ~ModuleGenericCleanup()
+            {
+                // The generic class info instances created by this test contain
+                // code from the Maestro test module. Destroy them while the
+                // module is still loaded rather than leaving them for process
+                // shutdown after AzTestRunner has unloaded the module.
+                AZ::GetGlobalSerializeContextModule().Cleanup();
+            }
+
+        } moduleGenericCleanup;
+
+        IAnimTrack::Reflect(&context);
+        TAnimSplineTrack<AZ::Vector2>::Reflect(&context);
+
+        const AZ::Uuid legacyTrackTypeId("{665B2599-32E9-560F-A434-2E69C8A25117}");
+        const AZ::SerializeContext::ClassData* legacyTrackClass = context.FindClassData(legacyTrackTypeId);
+        ASSERT_NE(legacyTrackClass, nullptr);
+        ASSERT_TRUE(legacyTrackClass->m_converter);
+
+        AZ::SerializeContext::DataElementNode trackNode;
+        trackNode.GetRawDataElement().m_id = legacyTrackTypeId;
+        trackNode.SetVersion(4);
+        ASSERT_NE(trackNode.AddElementWithData(context, "Flags", 37), -1);
+        ASSERT_TRUE(legacyTrackClass->m_converter(context, trackNode));
+        EXPECT_EQ(trackNode.GetId(), azrtti_typeid<TAnimSplineTrack<AZ::Vector2>>());
+        EXPECT_EQ(trackNode.GetVersion(), 5);
+        int flags = 0;
+        EXPECT_TRUE(trackNode.GetChildData(AZ_CRC_CE("Flags"), flags));
+        EXPECT_EQ(flags, 37);
+
+        const AZ::Uuid legacyVec3TypeId("{DFA993FB-4E92-4A13-BDB3-4E9285A5346F}");
+        const AZ::SerializeContext::ClassData* legacyVec3Class = context.FindClassData(legacyVec3TypeId);
+        ASSERT_NE(legacyVec3Class, nullptr);
+        ASSERT_TRUE(legacyVec3Class->m_converter);
+
+        AZ::SerializeContext::DataElementNode vec3Node;
+        vec3Node.GetRawDataElement().m_id = legacyVec3TypeId;
+        ASSERT_NE(vec3Node.AddElementWithData(context, "x", 1.0f), -1);
+        ASSERT_NE(vec3Node.AddElementWithData(context, "y", -2.0f), -1);
+        ASSERT_NE(vec3Node.AddElementWithData(context, "z", 3.5f), -1);
+        ASSERT_TRUE(legacyVec3Class->m_converter(context, vec3Node));
+        AZ::Vector3 color;
+        ASSERT_TRUE(vec3Node.GetData(color));
+        EXPECT_EQ(color, AZ::Vector3(1.0f, -2.0f, 3.5f));
+    }
 
 } // namespace Maestro
 

@@ -374,9 +374,9 @@ namespace LyShineExamples
         for (int i = 0; i < numVertices; ++i)
         {
             AZ::Vector2 pos = Draw2dHelper::RoundXY(positions[i], pixelRounding);
-            m_cachedPrimitive.m_vertices[i].xy = Vec2(pos.GetX(), pos.GetY());
+            m_cachedPrimitive.m_vertices[i].xy = AZ::Vector2(pos.GetX(), pos.GetY());
             m_cachedPrimitive.m_vertices[i].color.dcolor = packedColor;
-            m_cachedPrimitive.m_vertices[i].st = Vec2(uvs[i].GetX(), uvs[i].GetY());
+            m_cachedPrimitive.m_vertices[i].st = AZ::Vector2(uvs[i].GetX(), uvs[i].GetY());
             m_cachedPrimitive.m_vertices[i].texIndex = 0;
             m_cachedPrimitive.m_vertices[i].texHasColorChannel = 1;
             m_cachedPrimitive.m_vertices[i].texIndex2 = 0;

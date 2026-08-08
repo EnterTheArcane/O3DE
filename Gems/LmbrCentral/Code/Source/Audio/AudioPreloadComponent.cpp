@@ -8,7 +8,6 @@
 
 #include "AudioPreloadComponent.h"
 
-#include <ISystem.h>
 #include <IAudioSystem.h>
 
 #include <AzCore/Component/Entity.h>

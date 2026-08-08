@@ -10,7 +10,6 @@
 #include <platform.h>
 #include "XMLBinaryReader.h"
 #include "XMLBinaryNode.h"
-#include "CryPath.h"
 
 
 XMLBinary::XMLBinaryReader::XMLBinaryReader()

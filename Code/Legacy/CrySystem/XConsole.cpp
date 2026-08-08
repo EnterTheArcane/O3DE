@@ -119,7 +119,7 @@ void Command_SetWaitFrames(IConsoleCmdArgs* pCmd)
 
     if (pCmd->GetArgCount() > 1)
     {
-        pConsole->m_waitFrames = max(0, atoi(pCmd->GetArg(1)));
+        pConsole->m_waitFrames = AZStd::max(0, atoi(pCmd->GetArg(1)));
     }
 }
 
@@ -552,7 +552,8 @@ ICVar* CXConsole::Register(const char* sName, int* src, int iValue, int nFlags, 
 {
     AssertName(sName);
 
-    ICVar* pCVar = stl::find_in_map(m_mapVariables, sName, NULL);
+    const auto cvarIterator = m_mapVariables.find(sName);
+    ICVar* pCVar = cvarIterator != m_mapVariables.end() ? cvarIterator->second : nullptr;
     if (pCVar)
     {
         gEnv->pLog->LogError("[CVARS]: [DUPLICATE] CXConsole::Register(int): variable [%s] is already registered", pCVar->GetName());
@@ -578,7 +579,8 @@ ICVar* CXConsole::Register(const char* sName, float* src, float fValue, int nFla
 {
     AssertName(sName);
 
-    ICVar* pCVar = stl::find_in_map(m_mapVariables, sName, NULL);
+    const auto cvarIterator = m_mapVariables.find(sName);
+    ICVar* pCVar = cvarIterator != m_mapVariables.end() ? cvarIterator->second : nullptr;
     if (pCVar)
     {
         gEnv->pLog->Log("[CVARS]: [DUPLICATE] CXConsole::Register(float): variable [%s] is already registered", pCVar->GetName());
@@ -602,7 +604,8 @@ ICVar* CXConsole::Register(const char* sName, const char** src, const char* defa
 {
     AssertName(sName);
 
-    ICVar* pCVar = stl::find_in_map(m_mapVariables, sName, NULL);
+    const auto cvarIterator = m_mapVariables.find(sName);
+    ICVar* pCVar = cvarIterator != m_mapVariables.end() ? cvarIterator->second : nullptr;
     if (pCVar)
     {
         gEnv->pLog->Log("[CVARS]: [DUPLICATE] CXConsole::Register(const char*): variable [%s] is already registered", pCVar->GetName());
@@ -625,7 +628,8 @@ ICVar* CXConsole::RegisterString(const char* sName, const char* sValue, int nFla
 {
     AssertName(sName);
 
-    ICVar* pCVar = stl::find_in_map(m_mapVariables, sName, NULL);
+    const auto cvarIterator = m_mapVariables.find(sName);
+    ICVar* pCVar = cvarIterator != m_mapVariables.end() ? cvarIterator->second : nullptr;
     if (pCVar)
     {
         gEnv->pLog->Log("[CVARS]: [DUPLICATE] CXConsole::RegisterString(const char*): variable [%s] is already registered", pCVar->GetName());
@@ -645,7 +649,8 @@ ICVar* CXConsole::RegisterFloat(const char* sName, float fValue, int nFlags, con
 {
     AssertName(sName);
 
-    ICVar* pCVar = stl::find_in_map(m_mapVariables, sName, NULL);
+    const auto cvarIterator = m_mapVariables.find(sName);
+    ICVar* pCVar = cvarIterator != m_mapVariables.end() ? cvarIterator->second : nullptr;
     if (pCVar)
     {
         gEnv->pLog->Log("[CVARS]: [DUPLICATE] CXConsole::RegisterFloat(): variable [%s] is already registered", pCVar->GetName());
@@ -665,7 +670,8 @@ ICVar* CXConsole::RegisterInt(const char* sName, int iValue, int nFlags, const c
 {
     AssertName(sName);
 
-    ICVar* pCVar = stl::find_in_map(m_mapVariables, sName, NULL);
+    const auto cvarIterator = m_mapVariables.find(sName);
+    ICVar* pCVar = cvarIterator != m_mapVariables.end() ? cvarIterator->second : nullptr;
     if (pCVar)
     {
         gEnv->pLog->Log("[CVARS]: [DUPLICATE] CXConsole::RegisterInt(): variable [%s] is already registered", pCVar->GetName());
@@ -1870,7 +1876,9 @@ const char* CXConsole::ProcessCompletion(const char* szInputBuffer)
 
         if (bProcessAutoCompl)
         {
-            IConsoleArgumentAutoComplete* pArgumentAutoComplete = stl::find_in_map(m_mapArgumentAutoComplete, sVar, 0);
+            const auto autoCompleteIterator = m_mapArgumentAutoComplete.find(sVar);
+            IConsoleArgumentAutoComplete* pArgumentAutoComplete =
+                autoCompleteIterator != m_mapArgumentAutoComplete.end() ? autoCompleteIterator->second : nullptr;
             if (pArgumentAutoComplete)
             {
                 int nMatches = pArgumentAutoComplete->GetCount();

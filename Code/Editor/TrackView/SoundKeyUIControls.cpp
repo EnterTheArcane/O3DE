@@ -37,7 +37,7 @@ bool CSoundKeyUIControls::OnKeySelectionChange(const CTrackViewKeyBundle& select
             mv_startTrigger = soundKey.sStartTrigger.c_str();
             mv_stopTrigger = soundKey.sStopTrigger.c_str();
             mv_duration = soundKey.fDuration;
-            mv_customColor = AZ::Vector3(soundKey.customColor.x, soundKey.customColor.y, soundKey.customColor.z);
+            mv_customColor = AZ::Vector3(soundKey.customColor.GetX(), soundKey.customColor.GetY(), soundKey.customColor.GetZ());
 
             bAssigned = true;
         }
@@ -78,7 +78,7 @@ void CSoundKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& selec
             else if (pVar == mv_customColor.GetVar())
             {
                 AZ::Vector3 vector3 = mv_customColor;
-                soundKey.customColor = Vec3(vector3.GetX(), vector3.GetY(), vector3.GetZ());
+                soundKey.customColor = AZ::Vector3(vector3.GetX(), vector3.GetY(), vector3.GetZ());
             }
 
             SyncValue(mv_duration, soundKey.fDuration, false, pVar);

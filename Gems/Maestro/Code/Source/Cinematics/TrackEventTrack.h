@@ -13,7 +13,8 @@
 #include "AnimKey.h"
 #include "AnimTrack.h"
 #include <AzCore/std/containers/unordered_map.h>
-#include <CryCommon/StlUtils.h>
+
+#include <cstring>
 
 namespace Maestro
 {
@@ -46,7 +47,28 @@ namespace Maestro
             char mem[512 - sizeof(Page*)];
         };
 
-        typedef AZStd::unordered_map<const char*, const char*, stl::hash_string<const char*>, stl::equality_string<const char*>> TableMap;
+        struct StringHash
+        {
+            size_t operator()(const char* value) const
+            {
+                unsigned int hash = 0;
+                for (; *value; ++value)
+                {
+                    hash = 5 * hash + static_cast<unsigned char>(*value);
+                }
+                return static_cast<size_t>(hash);
+            }
+        };
+
+        struct StringEqual
+        {
+            bool operator()(const char* left, const char* right) const
+            {
+                return std::strcmp(left, right) == 0;
+            }
+        };
+
+        using TableMap = AZStd::unordered_map<const char*, const char*, StringHash, StringEqual>;
 
     private:
         CAnimStringTable(const CAnimStringTable&);

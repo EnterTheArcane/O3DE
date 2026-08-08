@@ -18,8 +18,6 @@
 #include <Vegetation/Ebuses/InstanceSystemRequestBus.h>
 #include <VegetationSystemComponent.h>
 
-#include <ISystem.h>
-#include <IConsole.h>
 
 namespace Vegetation
 {

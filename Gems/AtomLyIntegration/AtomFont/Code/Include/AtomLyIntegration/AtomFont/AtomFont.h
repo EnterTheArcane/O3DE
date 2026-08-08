@@ -12,7 +12,7 @@
 
 #if !defined(USE_NULLFONT_ALWAYS)
 
-#include <Cry_Vector2.h>
+#include <AzCore/Math/Vector2.h>
 #include <IXml.h>
 #include <CryCommon/IFont.h>
 #include <AzCore/std/containers/map.h>
@@ -60,7 +60,6 @@ namespace AZ
             };
             GlyphSize() : x(0), y(0) {}
             GlyphSize(const int32_t sizeX, const int32_t sizeY) : x(sizeX), y(sizeY) {}
-            GlyphSize(const Vec2i v) : x(v.x), y(v.y) {}
 
             bool operator==(const GlyphSize& rhs) const {return x == rhs.x && y == rhs.y;}
         };

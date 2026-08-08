@@ -76,58 +76,17 @@ namespace AZStd
 
     using std::mismatch;
     using std::equal;
-    template <class InputIter, class Function>
-    constexpr Function for_each(InputIter first, InputIter last, Function f)
-    {
-        for (; first != last; ++first)
-        {
-            f(*first);
-        }
-        return f;
-    }
+    using std::for_each;
 
     using std::count_if;
 
     //////////////////////////////////////////////////////////////////////////
     // Find
-    template<class InputIterator, class ComparableToIteratorValue>
-    constexpr InputIterator find(InputIterator first, InputIterator last, const ComparableToIteratorValue& value)
-    {
-        for (; first != last; ++first)
-        {
-            if (*first == value)
-            {
-                break;
-            }
-        }
-        return first;
-    }
+    using std::find;
 
-    template<class InputIterator, class Predicate>
-    constexpr InputIterator find_if(InputIterator first, InputIterator last, Predicate pred)
-    {
-        for (; first != last; ++first)
-        {
-            if (pred(*first))
-            {
-                break;
-            }
-        }
-        return first;
-    }
+    using std::find_if;
 
-    template<class InputIterator, class Predicate>
-    constexpr InputIterator find_if_not(InputIterator first, InputIterator last, Predicate pred)
-    {
-        for (; first != last; ++first)
-        {
-            if (!pred(*first))
-            {
-                break;
-            }
-        }
-        return first;
-    }
+    using std::find_if_not;
 
     using std::adjacent_find;
     using std::find_first_of;
@@ -135,43 +94,13 @@ namespace AZStd
     // find_end for forward iterators.
     // find_end for bidirectional iterators.
 
-    template <class InputIter, class UnaryOperation>
-    constexpr bool all_of(InputIter first, InputIter last, UnaryOperation operation)
-    {
-        return AZStd::find_if_not(first, last, operation) == last;
-    }
+    using std::all_of;
 
-    template <class InputIter, class UnaryOperation>
-    constexpr bool any_of(InputIter first, InputIter last, UnaryOperation operation)
-    {
-        return AZStd::find_if(first, last, operation) != last;
-    }
+    using std::any_of;
 
-    template <class InputIter, class UnaryOperation>
-    constexpr bool none_of(InputIter first, InputIter last, UnaryOperation operation)
-    {
-        return AZStd::find_if(first, last, operation) == last;
-    }
+    using std::none_of;
 
-    template <class InputIterator, class OutputIterator, class UnaryOperation>
-    constexpr OutputIterator  transform(InputIterator first, InputIterator last, OutputIterator result, UnaryOperation operation)
-    {
-        for (; first != last; ++first, ++result)
-        {
-            *result = operation(*first);
-        }
-        return result;
-    }
-
-    template <class InputIterator1, class InputIterator2, class OutputIterator, class BinaryOperation>
-    constexpr OutputIterator transform(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, OutputIterator result, BinaryOperation operation)
-    {
-        for (; first1 != last1; ++first1, ++first2, ++result)
-        {
-            *result = operation(*first1, *first2);
-        }
-        return result;
-    }
+    using std::transform;
 
     using std::replace;
     using std::replace_if;
@@ -179,49 +108,13 @@ namespace AZStd
     using std::replace_copy_if;
     using std::generate;
 
-    template <class OutputIter, class Size, class Generator>
-    constexpr void generate_n(OutputIter first, Size n, Generator gen)
-    {
-        for (; n > 0; --n, ++first)
-        {
-            *first = gen();
-        }
-    }
+    using std::generate_n;
     using std::remove_copy;
     using std::remove_copy_if;
 
-    template <class ForwardIter, class T>
-    constexpr ForwardIter remove(ForwardIter first, ForwardIter last, const T& val)
-    {
-        //DEBUG_CHECK(check_range(first, last))
-        first = AZStd::find(first, last, val);
-        if (first == last)
-        {
-            return first;
-        }
-        else
-        {
-            ForwardIter next = first;
-            return AZStd::remove_copy(++next, last, first, val);
-        }
-    }
+    using std::remove;
 
-    template <class ForwardIter, class Predicate>
-    constexpr ForwardIter remove_if(ForwardIter first, ForwardIter last, Predicate pred)
-    {
-        //DEBUG_CHECK(check_range(first, last))
-        first = AZStd::find_if(first, last, pred);
-        if (first == last)
-        {
-            return first;
-        }
-        else
-        {
-            ForwardIter next = first;
-            return AZStd::remove_copy_if(++next, last, first, pred);
-        }
-    }
-
+    using std::remove_if;
 
     // Reverse
     // The std::reverse function will be constexpr as of C++20, for now the std:: versions will be aliased
@@ -468,4 +361,7 @@ namespace AZStd
     }
     //
     //////////////////////////////////////////////////////////////////////////
+
+    using std::erase;
+    using std::erase_if;
 }

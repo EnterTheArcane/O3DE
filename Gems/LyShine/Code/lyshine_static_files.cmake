@@ -208,6 +208,7 @@ set(FILES
     Source/UiClipboard.h
     Source/Sprite.cpp
     Source/Sprite.h
+    Source/StringHashCompatibility.h
     Source/Animation/2DSpline.h
     Source/Animation/AnimNode.cpp
     Source/Animation/AnimNode.h

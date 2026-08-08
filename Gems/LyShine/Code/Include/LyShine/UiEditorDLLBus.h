@@ -11,15 +11,16 @@
 #include <LyShine/UiBase.h>
 
 class UndoStack;
+class QString;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //! Interface class that the UI Editor needs to implement
-class UiEditorDLLInterface
-    : public AZ::EBusTraits
+class UiEditorDLLInterface : public AZ::EBusTraits
 {
 public: // member functions
-
-    virtual ~UiEditorDLLInterface(){}
+    virtual ~UiEditorDLLInterface()
+    {
+    }
 
     //! Get the selected elements in the UiEditor
     virtual LyShine::EntityArray GetSelectedElements() = 0;
@@ -34,8 +35,10 @@ public: // member functions
     virtual void OpenSourceCanvasFile(QString absolutePathToFile) = 0;
 
 public: // static member functions
-
-    static const char* GetUniqueName() { return "UiEditorDLLInterface"; }
+    static const char* GetUniqueName()
+    {
+        return "UiEditorDLLInterface";
+    }
 };
 
 typedef AZ::EBus<UiEditorDLLInterface> UiEditorDLLBus;

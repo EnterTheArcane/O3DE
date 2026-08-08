@@ -7,23 +7,23 @@
  */
 #include "UiSerialize.h"
 
-#include <LyShine/UiAssetTypes.h>
-#include <LyShine/IDraw2d.h>
-#include <LyShine/UiBase.h>
 #include "UiInteractableComponent.h"
+#include <LyShine/IDraw2d.h>
+#include <LyShine/UiAssetTypes.h>
+#include <LyShine/UiBase.h>
 #include <LyShine/UiSerializeHelpers.h>
 
-#include <LyShine/Bus/UiParticleEmitterBus.h>
 #include <LyShine/Bus/UiImageBus.h>
+#include <LyShine/Bus/UiParticleEmitterBus.h>
 #include <LyShine/Bus/UiTransform2dBus.h>
 
-#include <UiElementComponent.h>
-#include <UiCanvasComponent.h>
-#include <UiLayoutGridComponent.h>
-#include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Script/ScriptContext.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Slice/SliceComponent.h>
+#include <UiCanvasComponent.h>
+#include <UiElementComponent.h>
+#include <UiLayoutGridComponent.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // NAMESPACE FUNCTIONS
@@ -42,37 +42,39 @@ namespace UiSerialize
         switch (numArgs)
         {
         case noArgsGiven:
-        {
-            *thisPtr = UiTransform2dInterface::Offsets();
-        }
-        break;
+            {
+                *thisPtr = UiTransform2dInterface::Offsets();
+            }
+            break;
 
         case allArgsGiven:
-        {
-            if (dc.IsNumber(0) && dc.IsNumber(1) && dc.IsNumber(2) && dc.IsNumber(3))
             {
-                float left = 0;
-                float top = 0;
-                float right = 0;
-                float bottom = 0;
-                dc.ReadArg(0, left);
-                dc.ReadArg(1, top);
-                dc.ReadArg(2, right);
-                dc.ReadArg(3, bottom);
-                *thisPtr = UiTransform2dInterface::Offsets(left, top, right, bottom);
+                if (dc.IsNumber(0) && dc.IsNumber(1) && dc.IsNumber(2) && dc.IsNumber(3))
+                {
+                    float left = 0;
+                    float top = 0;
+                    float right = 0;
+                    float bottom = 0;
+                    dc.ReadArg(0, left);
+                    dc.ReadArg(1, top);
+                    dc.ReadArg(2, right);
+                    dc.ReadArg(3, bottom);
+                    *thisPtr = UiTransform2dInterface::Offsets(left, top, right, bottom);
+                }
+                else
+                {
+                    dc.GetScriptContext()->Error(
+                        AZ::ScriptContext::ErrorType::Error, true, "When providing 4 arguments to UiOffsets(), all must be numbers!");
+                }
             }
-            else
-            {
-                dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "When providing 4 arguments to UiOffsets(), all must be numbers!");
-            }
-        }
-        break;
+            break;
 
         default:
-        {
-            dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "UiOffsets() accepts only 0 or 4 arguments, not %d!", numArgs);
-        }
-        break;
+            {
+                dc.GetScriptContext()->Error(
+                    AZ::ScriptContext::ErrorType::Error, true, "UiOffsets() accepts only 0 or 4 arguments, not %d!", numArgs);
+            }
+            break;
         }
     }
 
@@ -87,37 +89,39 @@ namespace UiSerialize
         switch (numArgs)
         {
         case noArgsGiven:
-        {
-            *thisPtr = UiTransform2dInterface::Anchors();
-        }
-        break;
+            {
+                *thisPtr = UiTransform2dInterface::Anchors();
+            }
+            break;
 
         case allArgsGiven:
-        {
-            if (dc.IsNumber(0) && dc.IsNumber(1) && dc.IsNumber(2) && dc.IsNumber(3))
             {
-                float left = 0;
-                float top = 0;
-                float right = 0;
-                float bottom = 0;
-                dc.ReadArg(0, left);
-                dc.ReadArg(1, top);
-                dc.ReadArg(2, right);
-                dc.ReadArg(3, bottom);
-                *thisPtr = UiTransform2dInterface::Anchors(left, top, right, bottom);
+                if (dc.IsNumber(0) && dc.IsNumber(1) && dc.IsNumber(2) && dc.IsNumber(3))
+                {
+                    float left = 0;
+                    float top = 0;
+                    float right = 0;
+                    float bottom = 0;
+                    dc.ReadArg(0, left);
+                    dc.ReadArg(1, top);
+                    dc.ReadArg(2, right);
+                    dc.ReadArg(3, bottom);
+                    *thisPtr = UiTransform2dInterface::Anchors(left, top, right, bottom);
+                }
+                else
+                {
+                    dc.GetScriptContext()->Error(
+                        AZ::ScriptContext::ErrorType::Error, true, "When providing 4 arguments to UiAnchors(), all must be numbers!");
+                }
             }
-            else
-            {
-                dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "When providing 4 arguments to UiAnchors(), all must be numbers!");
-            }
-        }
-        break;
+            break;
 
         default:
-        {
-            dc.GetScriptContext()->Error(AZ::ScriptContext::ErrorType::Error, true, "UiAnchors() accepts only 0 or 4 arguments, not %d!", numArgs);
-        }
-        break;
+            {
+                dc.GetScriptContext()->Error(
+                    AZ::ScriptContext::ErrorType::Error, true, "UiAnchors() accepts only 0 or 4 arguments, not %d!", numArgs);
+            }
+            break;
         }
     }
 
@@ -313,42 +317,20 @@ namespace UiSerialize
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////
     void ReflectUiTypes(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
 
-        // Vec2 (still used in UI Animation sequence splines)
-        {
-            if (serializeContext)
-            {
-                serializeContext->Class<Vec2>()->
-                    Field("x", &Vec2::x)->
-                    Field("y", &Vec2::y);
-            }
-        }
-
-        // Vec3 (possibly no longer used)
-        {
-            if (serializeContext)
-            {
-                serializeContext->Class<Vec3>()->
-                    Field("x", &Vec3::x)->
-                    Field("y", &Vec3::y)->
-                    Field("z", &Vec3::z);
-            }
-        }
-
         // Anchors
         {
             if (serializeContext)
             {
-                serializeContext->Class<UiTransform2dInterface::Anchors>()->
-                    Field("left", &UiTransform2dInterface::Anchors::m_left)->
-                    Field("top", &UiTransform2dInterface::Anchors::m_top)->
-                    Field("right", &UiTransform2dInterface::Anchors::m_right)->
-                    Field("bottom", &UiTransform2dInterface::Anchors::m_bottom);
+                serializeContext->Class<UiTransform2dInterface::Anchors>()
+                    ->Field("left", &UiTransform2dInterface::Anchors::m_left)
+                    ->Field("top", &UiTransform2dInterface::Anchors::m_top)
+                    ->Field("right", &UiTransform2dInterface::Anchors::m_right)
+                    ->Field("bottom", &UiTransform2dInterface::Anchors::m_bottom);
             }
 
             if (behaviorContext)
@@ -398,11 +380,11 @@ namespace UiSerialize
         {
             if (serializeContext)
             {
-                serializeContext->Class<UiTransform2dInterface::Offsets>()->
-                    Field("left", &UiTransform2dInterface::Offsets::m_left)->
-                    Field("top", &UiTransform2dInterface::Offsets::m_top)->
-                    Field("right", &UiTransform2dInterface::Offsets::m_right)->
-                    Field("bottom", &UiTransform2dInterface::Offsets::m_bottom);
+                serializeContext->Class<UiTransform2dInterface::Offsets>()
+                    ->Field("left", &UiTransform2dInterface::Offsets::m_left)
+                    ->Field("top", &UiTransform2dInterface::Offsets::m_top)
+                    ->Field("right", &UiTransform2dInterface::Offsets::m_right)
+                    ->Field("bottom", &UiTransform2dInterface::Offsets::m_bottom);
             }
 
             if (behaviorContext)
@@ -428,11 +410,11 @@ namespace UiSerialize
         {
             if (serializeContext)
             {
-                serializeContext->Class<UiLayoutInterface::Padding>()->
-                    Field("left", &UiLayoutInterface::Padding::m_left)->
-                    Field("top", &UiLayoutInterface::Padding::m_top)->
-                    Field("right", &UiLayoutInterface::Padding::m_right)->
-                    Field("bottom", &UiLayoutInterface::Padding::m_bottom);
+                serializeContext->Class<UiLayoutInterface::Padding>()
+                    ->Field("left", &UiLayoutInterface::Padding::m_left)
+                    ->Field("top", &UiLayoutInterface::Padding::m_top)
+                    ->Field("right", &UiLayoutInterface::Padding::m_right)
+                    ->Field("bottom", &UiLayoutInterface::Padding::m_bottom);
             }
 
             if (behaviorContext)
@@ -477,31 +459,31 @@ namespace UiSerialize
 
         if (serializeContext)
         {
-            serializeContext->Class<AnimationData>()
-                ->Version(1)
-                ->Field("SerializeString", &AnimationData::m_serializeData);
+            serializeContext->Class<AnimationData>()->Version(1)->Field("SerializeString", &AnimationData::m_serializeData);
 
             // deprecate old classes that no longer exist
             serializeContext->ClassDeprecate("UiCanvasEditor", AZ::Uuid("{65682E87-B573-435B-88CB-B4C12B71EEEE}"));
             serializeContext->ClassDeprecate("ImageAsset", AZ::Uuid("{138E471A-F3AE-404A-9075-EDC7488C97FC}"));
 
             // Allow loading FontAssets and CanvasAssets with previous Uuid specializations of AZ_TYPE_INFO_SPECIALIZE
-            serializeContext->ClassDeprecate("SimpleAssetReference_FontAsset", AZ::Uuid("{D6342379-A5FA-4B18-B890-702C2FE99A5A}"),
+            serializeContext->ClassDeprecate(
+                "SimpleAssetReference_FontAsset",
+                AZ::Uuid("{D6342379-A5FA-4B18-B890-702C2FE99A5A}"),
                 [](AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& rootElement)
-            {
-                AZStd::vector<AZ::SerializeContext::DataElementNode> childNodeElements;
-                for (int index = 0; index < rootElement.GetNumSubElements(); ++index)
                 {
-                    childNodeElements.push_back(rootElement.GetSubElement(index));
-                }
-                // Convert the rootElement now, the existing child DataElmentNodes are now removed
-                rootElement.Convert<AzFramework::SimpleAssetReference<LyShine::FontAsset>>(context);
-                for (AZ::SerializeContext::DataElementNode& childNodeElement : childNodeElements)
-                {
-                    rootElement.AddElement(AZStd::move(childNodeElement));
-                }
-                return true;
-            });
+                    AZStd::vector<AZ::SerializeContext::DataElementNode> childNodeElements;
+                    for (int index = 0; index < rootElement.GetNumSubElements(); ++index)
+                    {
+                        childNodeElements.push_back(rootElement.GetSubElement(index));
+                    }
+                    // Convert the rootElement now, the existing child DataElmentNodes are now removed
+                    rootElement.Convert<AzFramework::SimpleAssetReference<LyShine::FontAsset>>(context);
+                    for (AZ::SerializeContext::DataElementNode& childNodeElement : childNodeElements)
+                    {
+                        rootElement.AddElement(AZStd::move(childNodeElement));
+                    }
+                    return true;
+                });
 
             AzFramework::SimpleAssetReference<LyShine::FontAsset>::Register(*serializeContext);
             AzFramework::SimpleAssetReference<LyShine::CanvasAsset>::Register(*serializeContext);
@@ -541,7 +523,7 @@ namespace UiSerialize
 
         // Add a new element for the state actions.
         int stateActionsIndex = srcClassElement.GetSubElement(interactableBaseClassIndex)
-                .AddElement<AZStd::vector<UiInteractableStateAction*> >(context, stateActionsElementName);
+                                    .AddElement<AZStd::vector<UiInteractableStateAction*>>(context, stateActionsElementName);
         if (stateActionsIndex == -1)
         {
             // Error adding the new sub element
@@ -617,4 +599,4 @@ namespace UiSerialize
         // if the field did not exist then we do not report an error
         return true;
     }
-}
+} // namespace UiSerialize

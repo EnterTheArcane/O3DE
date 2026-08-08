@@ -15,7 +15,7 @@
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/std/containers/list.h>
 #include <AzCore/std/containers/vector.h>
-#include <CryCommon/StlUtils.h>
+#include <AzCore/std/algorithm.h>
 #include <vector>
 
 struct IUndoObject;
@@ -108,7 +108,7 @@ public:
                 continue;
             }
 
-            if (stl::find(objNames, m_undoObjects[i]->GetObjectName()))
+            if (AZStd::find(objNames.begin(), objNames.end(), m_undoObjects[i]->GetObjectName()) != objNames.end())
             {
                 continue;
             }

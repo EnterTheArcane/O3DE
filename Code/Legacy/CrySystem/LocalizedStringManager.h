@@ -11,7 +11,6 @@
 
 #include <ILocalizationManager.h>
 #include <ISystem.h>
-#include <StlUtils.h>
 #include <VectorMap.h>
 #include <AzCore/std/containers/map.h>
 

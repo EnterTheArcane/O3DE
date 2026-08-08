@@ -14,8 +14,7 @@
 
 #include <AtomLyIntegration/AtomFont/FFont.h>
 #include <AtomLyIntegration/AtomFont/FontTexture.h>
-#include <CryCommon/Cry_Math.h>
-#include <CryCommon/CryPath.h>
+#include <AzCore/Math/Vector3.h>
 #include <AzCore/PlatformIncl.h>
 
 //////////////////////////////////////////////////////////////////////////
@@ -23,6 +22,17 @@
 
 namespace AtomFontInternal
 {
+    // CryCommon->AzCore migration: `vector2l` was Vec2_tpl<long> (the Cry Vec2_tpl template was
+    // removed). This is a minimal integer 2-vector kept for the font texture size.
+    struct vector2l
+    {
+        long x = 0;
+        long y = 0;
+        vector2l() = default;
+        vector2l(long vx, long vy) : x(vx), y(vy) {}
+        void set(long vx, long vy) { x = vx; y = vy; }
+    };
+
     enum
     {
 
@@ -344,11 +354,11 @@ namespace AtomFontInternal
                 }
                 if (name == "x")
                 {
-                    m_pass->m_posOffset.x = (float)atoi(value.c_str());
+                    m_pass->m_posOffset.SetX((float)atoi(value.c_str()));
                 }
                 else if (name == "y")
                 {
-                    m_pass->m_posOffset.y = (float)atoi(value.c_str());
+                    m_pass->m_posOffset.SetY((float)atoi(value.c_str()));
                 }
                 break;
 
@@ -406,4 +416,3 @@ namespace AtomFontInternal
 }
 
 #endif
-

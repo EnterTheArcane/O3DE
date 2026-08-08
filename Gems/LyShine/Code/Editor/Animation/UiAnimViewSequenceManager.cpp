@@ -126,7 +126,7 @@ void CUiAnimViewSequenceManager::DeleteSequence(CUiAnimViewSequence* pSequence)
     IUiAnimationSystem* animationSystem = nullptr;
     UiEditorAnimationBus::BroadcastResult(animationSystem, &UiEditorAnimationBus::Events::GetAnimationSystem);
 
-    uint32 animSequenceId = 0;
+    AZ::u32 animSequenceId = 0;
     IUiAnimSequence* animSequence = nullptr;
 
     if (pSequence)

@@ -114,7 +114,7 @@ public:
     CUiAnimViewKeyHandle FindSingleSelectedKey();
 
     // Get UI Animation system sequence ID
-    uint32 GetSequenceId() const { return m_pAnimSequence->GetId(); }
+    AZ::u32 GetSequenceId() const { return m_pAnimSequence->GetId(); }
 
     // Rendering
     virtual void Render(const SUiAnimContext& animContext) override;

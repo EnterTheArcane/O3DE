@@ -20,8 +20,6 @@ AZ_POP_DISABLE_WARNING
 
 #include <ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 
-#include <ISystem.h>
-#include <IConsole.h>
 #include <AzCore/Debug/TraceMessageBus.h>
 
 class QPushButton;

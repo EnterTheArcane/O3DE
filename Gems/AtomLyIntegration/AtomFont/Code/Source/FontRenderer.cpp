@@ -296,7 +296,7 @@ int AZ::FontRenderer::GetGlyphScaled([[maybe_unused]] GlyphBitmap* glyphBitmap, 
     return 1;
 }
 
-Vec2 AZ::FontRenderer::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph)
+AZ::Vector2 AZ::FontRenderer::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph)
 {
     FT_Vector kerningOffsets;
     kerningOffsets.x = kerningOffsets.y = 0;
@@ -316,7 +316,7 @@ Vec2 AZ::FontRenderer::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph)
 #endif
     }
 
-    return Vec2(azlossy_cast<float>(kerningOffsets.x / FractionalPixelUnits), azlossy_cast<float>(kerningOffsets.y / FractionalPixelUnits));
+    return AZ::Vector2(azlossy_cast<float>(kerningOffsets.x / FractionalPixelUnits), azlossy_cast<float>(kerningOffsets.y / FractionalPixelUnits));
 }
 
 float AZ::FontRenderer::GetAscenderToHeightRatio()

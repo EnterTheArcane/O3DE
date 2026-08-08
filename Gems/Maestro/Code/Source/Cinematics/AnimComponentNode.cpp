@@ -21,7 +21,6 @@
 #include <Maestro/Types/AnimValueType.h>
 #include <Maestro/Types/AnimParamType.h>
 #include <Maestro/Types/AssetBlends.h>
-#include <MathConversion.h>
 
 #include "CharacterTrack.h"
 
@@ -181,7 +180,7 @@ namespace Maestro
             {
                 I2DBezierKey key;
                 track->GetKey(keyIdx, &key);
-                key.value.y = currValue.GetFloatValue();
+                key.value.SetY(currValue.GetFloatValue());
                 track->SetKey(keyIdx, &key);
             }
             retNumKeysSet++;
@@ -320,9 +319,9 @@ namespace Maestro
         }
     }
 
-    void CAnimComponentNode::ConvertBetweenWorldAndLocalPosition(Vec3& position, ETransformSpaceConversionDirection conversionDirection) const
+    void CAnimComponentNode::ConvertBetweenWorldAndLocalPosition(AZ::Vector3& position, ETransformSpaceConversionDirection conversionDirection) const
     {
-        AZ::Vector3 pos(position.x, position.y, position.z);
+        AZ::Vector3 pos(position.GetX(), position.GetY(), position.GetZ());
         AZ::Transform parentTransform = AZ::Transform::Identity();
 
         GetParentWorldTransform(parentTransform);
@@ -352,10 +351,10 @@ namespace Maestro
         rotation = rotTransform.GetRotation();
     }
 
-    void CAnimComponentNode::ConvertBetweenWorldAndLocalScale(Vec3& scale, ETransformSpaceConversionDirection conversionDirection) const
+    void CAnimComponentNode::ConvertBetweenWorldAndLocalScale(AZ::Vector3& scale, ETransformSpaceConversionDirection conversionDirection) const
     {
         AZ::Transform parentTransform = AZ::Transform::Identity();
-        AZ::Transform scaleTransform = AZ::Transform::CreateUniformScale(AZ::Vector3(scale.x, scale.y, scale.z).GetMaxElement());
+        AZ::Transform scaleTransform = AZ::Transform::CreateUniformScale(AZ::Vector3(scale.GetX(), scale.GetY(), scale.GetZ()).GetMaxElement());
 
         GetParentWorldTransform(parentTransform);
         if (conversionDirection == eTransformConverstionDirection_toLocalSpace)
@@ -396,7 +395,7 @@ namespace Maestro
         GetParentWorldTransform(parentTransform);
         parentTransform.ExtractUniformScale();
         parentTransform.Invert();
-    
+
         rotTransform = parentTransform * rotTransform;
         return rotTransform.GetRotation();
     }
@@ -424,7 +423,7 @@ namespace Maestro
         }
     }
 
-    Vec3 CAnimComponentNode::GetPos()
+    AZ::Vector3 CAnimComponentNode::GetPos()
     {
         SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, "Position");
         SequenceComponentRequests::AnimatedVector3Value posValue(AZ::Vector3::CreateZero());
@@ -432,7 +431,7 @@ namespace Maestro
 
         // Always return world position because Component Entity AZ::Transforms do not correctly set
         // CBaseObject parenting. This should probably be fixed, but for now, we explicitly change from Local to World space here.
-        Vec3 worldPos(posValue.GetVector3Value());
+        AZ::Vector3 worldPos(posValue.GetVector3Value());
         ConvertBetweenWorldAndLocalPosition(worldPos, eTransformConverstionDirection_toWorldSpace);
 
         return worldPos;
@@ -518,7 +517,7 @@ namespace Maestro
         }
     }
 
-    Vec3 CAnimComponentNode::GetScale()
+    AZ::Vector3 CAnimComponentNode::GetScale()
     {
         SequenceComponentRequests::AnimatablePropertyAddress animatableAddress(m_componentId, "Scale");
         SequenceComponentRequests::AnimatedVector3Value scaleValue(AZ::Vector3::CreateZero());
@@ -526,7 +525,7 @@ namespace Maestro
 
         // Always return World scale because Component Entity AZ::Transforms do not correctly set
         // CBaseObject parenting. This should probably be fixed, but for now, we explicitly change from Local to World space here.
-        Vec3 worldScale(scaleValue.GetVector3Value());
+        AZ::Vector3 worldScale(scaleValue.GetVector3Value());
         ConvertBetweenWorldAndLocalScale(worldScale, eTransformConverstionDirection_toWorldSpace);
 
         return worldScale;
@@ -1133,7 +1132,7 @@ namespace Maestro
                                 AZ::Vector3 degreesRotation;
                                 pTrack->GetValue(ac.time, degreesRotation);
                                 AZ::Vector3 degreesRotationPrev = prevQuaternionValue.GetEulerDegreesZYX();
-                                bool needToRecalc = false; 
+                                bool needToRecalc = false;
                                 for (int i = 0; i < 3; ++i)
                                 {
                                     const auto valueIsValid = pTrack->GetSubTrack(i) && pTrack->GetSubTrack(i)->HasKeys() &&

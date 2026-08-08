@@ -27,7 +27,6 @@
 #include <CryCommon/Maestro/Types/AnimNodeType.h>
 #include <CryCommon/Maestro/Types/AnimValueType.h>
 #include <CryCommon/Maestro/Types/AnimParamType.h>
-#include <CryCommon/MathConversion.h>
 
 // Editor
 #include "AnimationContext.h"
@@ -136,7 +135,10 @@ namespace
 
 void CTrackViewAnimNodeBundle::AppendAnimNode(CTrackViewAnimNode* node)
 {
-    stl::push_back_unique(m_animNodes, node);
+    if (AZStd::find(m_animNodes.begin(), m_animNodes.end(), node) == m_animNodes.end())
+    {
+        m_animNodes.push_back(node);
+    }
 }
 
 void CTrackViewAnimNodeBundle::AppendAnimNodeBundle(const CTrackViewAnimNodeBundle& bundle)
@@ -324,7 +326,7 @@ void CTrackViewAnimNode::UnBindFromEditorObjects()
 
     if (m_animNode)
     {
-        // 'Owner' is the TrackViewNode, as opposed to the EditorEntityNode (as 'owner' is used in animSequence, or the pEntity 
+        // 'Owner' is the TrackViewNode, as opposed to the EditorEntityNode (as 'owner' is used in animSequence, or the pEntity
         // returned from FindAnimNodeOwner() - confusing, isn't it?
         m_animNode->SetNodeOwner(nullptr);
     }
@@ -452,7 +454,7 @@ CTrackViewAnimNode* CTrackViewAnimNode::CreateSubNode(
         }
         else
         {
-            // Search by name for other non AzEntity 
+            // Search by name for other non AzEntity
             alreadyExists = director2->GetAnimNodesByName(name.toUtf8().data()).GetCount() > 0;
         }
 
@@ -637,7 +639,7 @@ void CTrackViewAnimNode::RemoveTrack(CTrackViewTrack* track)
                 }
 
             }
-            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());            
+            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
         }
     }
 }
@@ -1249,7 +1251,7 @@ CTrackViewAnimNodeBundle CTrackViewAnimNode::AddSelectedEntities(const AZStd::ve
         movieSystem->LogUserNotificationMsg("Could not add selected entity, because sequence is invalid.");
         return addedNodes;
     }
-        
+
     // Add selected nodes.
     for (const AZ::EntityId& entityId : entityIds)
     {
@@ -1498,7 +1500,7 @@ void CTrackViewAnimNode::PasteNodeFromClipboard(AZStd::map<int, IAnimNode*>& cop
     {
         movieSystem->SerializeNodeType(nodeType, xmlNode, /*bLoading=*/ true, IAnimSequence::kSequenceVersion, m_animSequence->GetFlags());
     }
-    
+
     if (nodeType == AnimNodeType::Component)
     {
         // When pasting Component Nodes, the parent Component Entity Node would have already added all its Components as part of its OnEntityActivated() sync.
@@ -1532,7 +1534,7 @@ void CTrackViewAnimNode::PasteNodeFromClipboard(AZStd::map<int, IAnimNode*>& cop
                     }
                 }
             }
-        }   
+        }
     }
     else
     {
@@ -1751,7 +1753,7 @@ void CTrackViewAnimNode::SetNewParent(CTrackViewAnimNode* newParent)
 
     BindToEditorObjects();
 
-    undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());    
+    undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
 }
 
 bool CTrackViewAnimNode::CanBeEnabled() const

@@ -144,7 +144,6 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
                 AZ::AzTest
                 AZ::AzFramework
                 AZ::AzToolsFramework
-                Legacy::CryCommon
                 Gem::Atom_RPI.Public
                 Gem::Atom_RHI.Public
                 Gem::Atom_RPI.Edit

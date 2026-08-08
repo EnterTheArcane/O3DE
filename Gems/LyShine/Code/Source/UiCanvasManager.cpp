@@ -12,7 +12,7 @@
 #include "UiCanvasComponent.h"
 #include "UiGameEntityContext.h"
 
-#include <CryCommon/StlUtils.h>
+#include <AzCore/std/algorithm.h>
 #include <LyShine/UiSerializeHelpers.h>
 
 #include <AzCore/Memory/Memory.h>
@@ -39,7 +39,6 @@
 
 #include <AzFramework/Entity/GameEntityContextBus.h>
 #include <AzFramework/Render/Intersector.h>
-#include <MathConversion.h>
 
 #include "LyShine.h"
 
@@ -491,12 +490,21 @@ void UiCanvasManager::ReleaseCanvas(AZ::EntityId canvasEntityId, bool forEditor)
         {
             if (forEditor)
             {
-                stl::find_and_erase(m_loadedCanvasesInEditor, canvasComponent);
+                if (auto canvasIterator = AZStd::find(
+                        m_loadedCanvasesInEditor.begin(), m_loadedCanvasesInEditor.end(), canvasComponent);
+                    canvasIterator != m_loadedCanvasesInEditor.end())
+                {
+                    m_loadedCanvasesInEditor.erase(canvasIterator);
+                }
                 delete canvasEntity;
             }
             else
             {
-                stl::find_and_erase(m_loadedCanvases, canvasComponent);
+                if (auto canvasIterator = AZStd::find(m_loadedCanvases.begin(), m_loadedCanvases.end(), canvasComponent);
+                    canvasIterator != m_loadedCanvases.end())
+                {
+                    m_loadedCanvases.erase(canvasIterator);
+                }
                 delete canvasEntity;
 
                 UiCanvasManagerNotificationBus::Broadcast(&UiCanvasManagerNotificationBus::Events::OnCanvasUnloaded, canvasEntityId);
@@ -528,7 +536,11 @@ void UiCanvasManager::ReleaseCanvasDeferred(AZ::EntityId canvasEntityId)
         if (canvasComponent)
         {
             // Remove canvas component from list of loaded canvases
-            stl::find_and_erase(m_loadedCanvases, canvasComponent);
+            if (auto canvasIterator = AZStd::find(m_loadedCanvases.begin(), m_loadedCanvases.end(), canvasComponent);
+                canvasIterator != m_loadedCanvases.end())
+            {
+                m_loadedCanvases.erase(canvasIterator);
+            }
 
             // Deactivate elements of the canvas
             canvasComponent->DeactivateElements();
@@ -861,15 +873,15 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::Inpu
     AzFramework::EntityContextId gameContextId;
     AzFramework::GameEntityContextRequestBus::BroadcastResult(gameContextId,
         &AzFramework::GameEntityContextRequests::GetGameEntityContextId);
-        
+
     AzFramework::RenderGeometry::RayRequest request;
     request.m_startWorldPosition = rayOrigin;
     request.m_endWorldPosition = endpoint;
-        
+
     AzFramework::RenderGeometry::RayResult rayResult;
     AzFramework::RenderGeometry::IntersectorBus::EventResult(rayResult, gameContextId,
         &AzFramework::RenderGeometry::IntersectorInterface::RayIntersect, request);
-        
+
     if (rayResult)
     {
         AZ::EntityId hitEntity = rayResult.m_entityAndComponent.GetEntityId();
@@ -882,7 +894,7 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::Inpu
                 // Checkif the UI canvas referenced by the hit entity supports automatic input
                 bool doesCanvasSupportInput = false;
                 UiCanvasBus::EventResult(doesCanvasSupportInput, canvasEntityId, &UiCanvasInterface::GetIsPositionalInputSupported);
-        
+
                 if (doesCanvasSupportInput)
                 {
                     // Send the hit details to the hit entity. It will convert into canvas coords and send to canvas.
@@ -892,7 +904,7 @@ bool UiCanvasManager::HandleInputEventForInWorldCanvases(const AzFramework::Inpu
                     bool handled = false;
                     UiCanvasOnMeshBus::EventResult(handled, hitEntity,
                         &UiCanvasOnMeshInterface::ProcessHitInputEvent, inputSnapshot, request);
-        
+
                     if (handled)
                     {
                         return true;

@@ -124,9 +124,9 @@ namespace Maestro
         void SetRotate([[maybe_unused]] float time, [[maybe_unused]] const AZ::Quaternion& quat) override {}
         void SetScale([[maybe_unused]] float time, [[maybe_unused]] const AZ::Vector3& scale) override {}
 
-        Vec3 GetPos() override
+        AZ::Vector3 GetPos() override
         {
-            return Vec3(0, 0, 0);
+            return AZ::Vector3(0, 0, 0);
         }
 
         AZ::Quaternion GetRotate() override
@@ -139,9 +139,9 @@ namespace Maestro
             return AZ::Quaternion::CreateZero();
         }
 
-        Vec3 GetScale() override
+        AZ::Vector3 GetScale() override
         {
-            return Vec3(0, 0, 0);
+            return AZ::Vector3(0, 0, 0);
         }
 
         virtual AZ::Matrix3x4 GetReferenceMatrix() const;

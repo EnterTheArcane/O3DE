@@ -27,7 +27,6 @@
 #include <CryCommon/Maestro/Types/AnimValueType.h>
 #include <CryCommon/Maestro/Types/AnimNodeType.h>
 #include <CryCommon/Maestro/Bus/EditorSequenceComponentBus.h>
-#include <CryCommon/MathConversion.h>
 
 // Editor
 #include "AnimationContext.h"
@@ -332,12 +331,19 @@ void CTrackViewSequence::Animate(const SAnimContext& animContext)
 
 void CTrackViewSequence::AddListener(ITrackViewSequenceListener* pListener)
 {
-    stl::push_back_unique(m_sequenceListeners, pListener);
+    if (AZStd::find(m_sequenceListeners.begin(), m_sequenceListeners.end(), pListener) == m_sequenceListeners.end())
+    {
+        m_sequenceListeners.push_back(pListener);
+    }
 }
 
 void CTrackViewSequence::RemoveListener(ITrackViewSequenceListener* pListener)
 {
-    stl::find_and_erase(m_sequenceListeners, pListener);
+    if (auto listenerIterator = AZStd::find(m_sequenceListeners.begin(), m_sequenceListeners.end(), pListener);
+        listenerIterator != m_sequenceListeners.end())
+    {
+        m_sequenceListeners.erase(listenerIterator);
+    }
 }
 
 void CTrackViewSequence::OnNodeSelectionChanged()
@@ -719,11 +725,11 @@ void CTrackViewSequence::DeleteSelectedNodes()
         }
     }
 
-    // Deactivate the sequence entity while we are potentially removing things from it. 
-    // We need to allow the full removal operation (node and children) to complete before 
+    // Deactivate the sequence entity while we are potentially removing things from it.
+    // We need to allow the full removal operation (node and children) to complete before
     // OnActivate happens on the Sequence again. If we don't deactivate the sequence entity
     // OnActivate will get called by the entity system as components are removed.
-    // In some cases this will erroneously cause some components to be added 
+    // In some cases this will erroneously cause some components to be added
     // back to the sequence that were just deleted.
     bool sequenceEntityWasActive = false;
     AZ::Entity* sequenceEntity = nullptr;
@@ -1000,7 +1006,10 @@ CTrackViewSequence::GetMatchedPasteLocations(XmlNodeRef clipboardContent, CTrack
                 // Pick the first track that was matched *and* was not already matched
                 if (!AZStd::find(matchedTracks.begin(), matchedTracks.end(), pMatchedTrack))
                 {
-                    stl::push_back_unique(matchedTracks, pMatchedTrack);
+                    if (AZStd::find(matchedTracks.begin(), matchedTracks.end(), pMatchedTrack) == matchedTracks.end())
+                    {
+                        matchedTracks.push_back(pMatchedTrack);
+                    }
                     matchedLocations.push_back(TMatchedTrackLocation(pMatchedTrack, trackNode));
                     break;
                 }
@@ -1072,7 +1081,10 @@ AZStd::deque<CTrackViewTrack*> CTrackViewSequence::GetMatchingTracks(CTrackViewA
 
             if (pTrack->GetValueType() == static_cast<AnimValueType>(valueType))
             {
-                stl::push_back_unique(matchingTracks, pTrack);
+                if (AZStd::find(matchingTracks.begin(), matchingTracks.end(), pTrack) == matchingTracks.end())
+                {
+                    matchingTracks.push_back(pTrack);
+                }
             }
         }
     }

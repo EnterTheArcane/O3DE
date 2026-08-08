@@ -12,7 +12,6 @@
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
-#include <platform.h>
 #include <IConsole.h>
 #include <ILevelSystem.h>
 #include <ISystem.h>

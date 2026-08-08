@@ -16,7 +16,7 @@
 #include "UiEditorAnimationBus.h"
 
 #include <Util/EditorUtils.h>
-#include <CryCommon/StlUtils.h>
+#include <AzCore/std/algorithm.h>
 
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewTrackBundle::AppendTrack(CUiAnimViewTrack* pTrack)
@@ -34,7 +34,10 @@ void CUiAnimViewTrackBundle::AppendTrack(CUiAnimViewTrack* pTrack)
         }
     }
 
-    stl::push_back_unique(m_tracks, pTrack);
+    if (AZStd::find(m_tracks.begin(), m_tracks.end(), pTrack) == m_tracks.end())
+    {
+        m_tracks.push_back(pTrack);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

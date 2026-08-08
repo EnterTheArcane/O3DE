@@ -26,7 +26,6 @@
 #include "EditorViewportSettings.h"
 #include "GameEngine.h"
 #include "MainWindow.h"
-#include "MathConversion.h"
 #include "Settings.h"
 #include "UsedResources.h"
 #include "ViewPane.h"
@@ -265,15 +264,6 @@ void CViewportTitleDlg::OnBnClickedMuteAudio()
     }
 }
 
-inline double Round(double fVal, double fStep)
-{
-    if (fStep > 0.f)
-    {
-        fVal = int_round(fVal / fStep) * fStep;
-    }
-    return fVal;
-}
-
 namespace
 {
     void PyToggleHelpers()
@@ -320,4 +310,3 @@ namespace AzToolsFramework
         }
     }
 } // namespace AzToolsFramework
-

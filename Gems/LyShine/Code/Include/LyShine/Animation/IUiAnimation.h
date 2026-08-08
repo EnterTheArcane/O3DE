@@ -518,8 +518,6 @@ struct IUiAnimTrack
     // Interpolates keys if needed.
     //////////////////////////////////////////////////////////////////////////
     virtual void GetValue(float time, float& value) = 0;
-    virtual void GetValue(float time, Vec3& value) = 0;
-    virtual void GetValue(float time, Vec4& value) = 0;
     virtual void GetValue(float time, AZ::Quaternion& value) = 0;
     virtual void GetValue(float time, bool& value) = 0;
     virtual void GetValue(float time, AZ::Vector2& value) = 0;
@@ -532,8 +530,6 @@ struct IUiAnimTrack
     // Adds new keys if required.
     //////////////////////////////////////////////////////////////////////////
     virtual void SetValue(float time, const float& value, bool bDefault = false) = 0;
-    virtual void SetValue(float time, const Vec3& value, bool bDefault = false) = 0;
-    virtual void SetValue(float time, const Vec4& value, bool bDefault = false) = 0;
     virtual void SetValue(float time, const AZ::Quaternion& value, bool bDefault = false) = 0;
     virtual void SetValue(float time, const bool& value, bool bDefault = false) = 0;
     virtual void SetValue(float time, const AZ::Vector2& value, bool bDefault = false) = 0;
@@ -660,13 +656,13 @@ public:
     // Set float/vec3/vec4 parameter at given time.
     // @return true if parameter set, false if this parameter not exist in node.
     virtual bool SetParamValue(float time, CUiAnimParamType param, float value) = 0;
-    virtual bool SetParamValue(float time, CUiAnimParamType param, const Vec3& value) = 0;
-    virtual bool SetParamValue(float time, CUiAnimParamType param, const Vec4& value) = 0;
+    virtual bool SetParamValue(float time, CUiAnimParamType param, const AZ::Vector3& value) = 0;
+    virtual bool SetParamValue(float time, CUiAnimParamType param, const AZ::Vector4& value) = 0;
     // Get float/vec3/vec4 parameter at given time.
     // @return true if parameter exist, false if this parameter not exist in node.
     virtual bool GetParamValue(float time, CUiAnimParamType param, float& value) = 0;
-    virtual bool GetParamValue(float time, CUiAnimParamType param, Vec3& value) = 0;
-    virtual bool GetParamValue(float time, CUiAnimParamType param, Vec4& value) = 0;
+    virtual bool GetParamValue(float time, CUiAnimParamType param, AZ::Vector3& value) = 0;
+    virtual bool GetParamValue(float time, CUiAnimParamType param, AZ::Vector4& value) = 0;
 
     virtual bool SetParamValueAz([[maybe_unused]] float time, [[maybe_unused]] const UiAnimParamData& param, [[maybe_unused]] float value) { return false; }
     virtual bool SetParamValueAz([[maybe_unused]] float time, [[maybe_unused]] const UiAnimParamData& param, [[maybe_unused]] bool value) { return false; }

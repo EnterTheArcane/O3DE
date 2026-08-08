@@ -12,6 +12,7 @@
 #include "XMLBinaryNode.h"
 
 #include <AzCore/Serialization/Locale.h>
+#include <AzCore/Math/Quaternion.h> // CryCommon->AzCore migration: was transitively included via the removed Cry_Quat.h
 //////////////////////////////////////////////////////////////////////////
 CBinaryXmlData::~CBinaryXmlData()
 {
@@ -177,7 +178,7 @@ bool CBinaryXmlNode::getAttr(const char* key, double& value) const
     return false;
 }
 
-bool CBinaryXmlNode::getAttr(const char* key, Ang3& value) const
+bool CBinaryXmlNode::getAttr(const char* key, AZ::Vector3& value) const
 {
     const char* svalue = GetValue(key);
     if (svalue)
@@ -187,7 +188,7 @@ bool CBinaryXmlNode::getAttr(const char* key, Ang3& value) const
         float x, y, z;
         if (azsscanf(svalue, "%f,%f,%f", &x, &y, &z) == 3)
         {
-            value(x, y, z);
+            value = AZ::Vector3(x, y, z);
             return true;
         }
     }
@@ -195,25 +196,7 @@ bool CBinaryXmlNode::getAttr(const char* key, Ang3& value) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CBinaryXmlNode::getAttr(const char* key, Vec3& value) const
-{
-    const char* svalue = GetValue(key);
-    if (svalue)
-    {
-        AZ::Locale::ScopedSerializationLocale scopedLocale; // for parsing to be culture invariant
-
-        float x, y, z;
-        if (azsscanf(svalue, "%f,%f,%f", &x, &y, &z) == 3)
-        {
-            value = Vec3(x, y, z);
-            return true;
-        }
-    }
-    return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CBinaryXmlNode::getAttr(const char* key, Vec4& value) const
+bool CBinaryXmlNode::getAttr(const char* key, AZ::Vector4& value) const
 {
     const char* svalue = GetValue(key);
     if (svalue)
@@ -223,7 +206,7 @@ bool CBinaryXmlNode::getAttr(const char* key, Vec4& value) const
         float x, y, z, w;
         if (azsscanf(svalue, "%f,%f,%f,%f", &x, &y, &z, &w) == 4)
         {
-            value = Vec4(x, y, z, w);
+            value = AZ::Vector4(x, y, z, w);
             return true;
         }
     }
@@ -231,7 +214,7 @@ bool CBinaryXmlNode::getAttr(const char* key, Vec4& value) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CBinaryXmlNode::getAttr(const char* key, Vec2& value) const
+bool CBinaryXmlNode::getAttr(const char* key, AZ::Vector2& value) const
 {
     const char* svalue = GetValue(key);
     if (svalue)
@@ -241,7 +224,7 @@ bool CBinaryXmlNode::getAttr(const char* key, Vec2& value) const
         float x, y;
         if (azsscanf(svalue, "%f,%f", &x, &y) == 2)
         {
-            value = Vec2(x, y);
+            value = AZ::Vector2(x, y);
             return true;
         }
     }

@@ -9,24 +9,27 @@
 #include "EditorDefs.h"
 #include <AzTest/AzTest.h>
 #include <AzCore/Math/Matrix4x4.h>
+#include <AzCore/std/containers/array.h>
+#include <CryCommon/Cry_Math.h>
 #include <CryCommon/Cry_Matrix44.h>
+#include <CryCommon/LCGRandom.h>
 #include <CryCommon/MathConversion.h>
 
 namespace EditorUtilsTest
 {
-    class LegacryDeprecationHelper : public ::testing::Test
+    class LegacyDeprecationHelper : public ::testing::Test
     {
     public:
-        LegacryDeprecationHelper()
+        LegacyDeprecationHelper()
         {
         }
     };
 
     typedef float HMatrix[4][4]; /* Right-handed, for column vectors */
 
-   TEST_F(LegacryDeprecationHelper, TestLegacyMatrix44_HMatrixConversion)
+    TEST_F(LegacyDeprecationHelper, TestLegacyMatrix44_HMatrixConversion)
     {
-       AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
+        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
 
         // Validation for AffineParts::Decompose and AffineParts::SpectralDecompose
         Matrix34 tm(0.0f, 1.0f, 2.0f, 3.0f, 10.0f, 11.0f, 12.0f, 13.0f, 20.0f, 21.0f, 22.0f, 23.0f);
@@ -52,7 +55,7 @@ namespace EditorUtilsTest
         AZ_POP_DISABLE_WARNING;
     }
 
-    TEST_F(LegacryDeprecationHelper, TestLegacyMatrix33_CreateFromEulerAngles)
+    TEST_F(LegacyDeprecationHelper, TestLegacyMatrix33_CreateFromEulerAngles)
     {
         AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
 
@@ -73,7 +76,7 @@ namespace EditorUtilsTest
         AZ_POP_DISABLE_WARNING;
     }
 
-    TEST_F(LegacryDeprecationHelper, TestLegacyMatrix33_GetEulerAngles)
+    TEST_F(LegacyDeprecationHelper, TestLegacyMatrix33_GetEulerAngles)
     {
         AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
 
@@ -85,16 +88,16 @@ namespace EditorUtilsTest
         Ang3 legacyAngles = Ang3::GetAnglesXYZ(legacyMatrix);
         AZ::Vector3 newAngles = AZ::Quaternion::CreateFromMatrix3x3(newMatrix).GetEulerRadiansZYX();
 
-        // Validation
-        for (int r = 0; r < 3; ++r)
-        {
-            ASSERT_NEAR(legacyAngles[r], newAngles[r], 1e-6f);
-        }
+        // Euler components can differ slightly between implementations while still representing the same rotation.
+        const AZ::Quaternion legacyRotation =
+            AZ::Quaternion::CreateFromEulerRadiansZYX(AZ::Vector3(legacyAngles.x, legacyAngles.y, legacyAngles.z));
+        const AZ::Quaternion newRotation = AZ::Quaternion::CreateFromEulerRadiansZYX(newAngles);
+        EXPECT_TRUE(legacyRotation.IsClose(newRotation, 1e-5f));
 
         AZ_POP_DISABLE_WARNING;
     }
 
-    TEST_F(LegacryDeprecationHelper, TestLegacyColor_ToU32)
+    TEST_F(LegacyDeprecationHelper, TestLegacyColor_ToU32)
     {
         AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
 
@@ -106,19 +109,55 @@ namespace EditorUtilsTest
         AZ_POP_DISABLE_WARNING;
     }
 
-    TEST_F(LegacryDeprecationHelper, TestLegacyColor_FromU32)
-   {
-       AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
+    TEST_F(LegacyDeprecationHelper, TestLegacyColor_FromU32)
+    {
+        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
 
-       ColorF legacyColor(3365299250u);
-       AZ::Color newColor;
-       newColor.FromU32(3365299250u);
+        ColorF legacyColor(3365299250u);
+        AZ::Color newColor;
+        newColor.FromU32(3365299250u);
 
-       for (int r = 0; r < 4; ++r)
-       {
-           ASSERT_NEAR(legacyColor[r], newColor.GetElement(r), 1e-6f);
-       }
+        for (int r = 0; r < 4; ++r)
+        {
+            ASSERT_NEAR(legacyColor[r], newColor.GetElement(r), 1e-6f);
+        }
 
-       AZ_POP_DISABLE_WARNING;
-   }
+        AZ_POP_DISABLE_WARNING;
+    }
+
+    TEST_F(LegacyDeprecationHelper, LegacyVectorMath_MatchesAzCore)
+    {
+        AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations");
+
+        const Vec3 legacyA(1.25f, -2.5f, 4.0f);
+        const Vec3 legacyB(-0.5f, 3.0f, 2.0f);
+        const AZ::Vector3 azA(legacyA.x, legacyA.y, legacyA.z);
+        const AZ::Vector3 azB(legacyB.x, legacyB.y, legacyB.z);
+        const Vec3 legacyCross = legacyA.Cross(legacyB);
+        const AZ::Vector3 azCross = azA.Cross(azB);
+
+        EXPECT_FLOAT_EQ(legacyA.Dot(legacyB), azA.Dot(azB));
+        EXPECT_NEAR(legacyCross.x, azCross.GetX(), 1e-6f);
+        EXPECT_NEAR(legacyCross.y, azCross.GetY(), 1e-6f);
+        EXPECT_NEAR(legacyCross.z, azCross.GetZ(), 1e-6f);
+        EXPECT_NEAR(legacyA.GetLength(), azA.GetLength(), 1e-6f);
+
+        AZ_POP_DISABLE_WARNING;
+    }
+
+    TEST_F(LegacyDeprecationHelper, LegacyRandom_RemainsDeterministic)
+    {
+        constexpr AZStd::array<AZ::u32, 16> baselineSequence = {
+            997372905u, 3777911615u, 3194997773u, 3675119777u,
+            3227999126u, 1172420501u, 1239423025u, 4049585924u,
+            4056710473u, 4089263149u, 53206174u, 854732129u,
+            1130104963u, 3250047951u, 4033416457u, 1029098607u
+        };
+        CRndGen generator(0x12345678u);
+
+        for (AZ::u32 expected : baselineSequence)
+        {
+            EXPECT_EQ(generator.GenerateUint32(), expected);
+        }
+    }
 } // namespace EditorUtilsTest

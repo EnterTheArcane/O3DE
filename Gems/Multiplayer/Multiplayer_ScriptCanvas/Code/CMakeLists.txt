@@ -36,7 +36,6 @@ ly_add_target(
             Source
     BUILD_DEPENDENCIES
         PRIVATE
-            Legacy::CryCommon
             Gem::${gem_name}.Static
 )
 

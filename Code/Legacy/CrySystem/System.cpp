@@ -17,11 +17,11 @@
 #include <AzCore/IO/IStreamer.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Debug/Budget.h>
+#include <AzCore/std/containers/fixed_vector.h>
 #include <AzCore/std/parallel/thread.h>
 #include <CryPath.h>
 #include <CrySystemBus.h>
 #include <CryCommon/IFont.h>
-#include <CryCommon/MiniQueue.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/API/ApplicationAPI_Platform.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
@@ -461,14 +461,14 @@ void CSystem::SleepIfNeeded()
 {
     static bool firstCall = true;
 
-    typedef MiniQueue<CTimeValue, 32> PrevNow;
+    using PrevNow = AZStd::fixed_vector<CTimeValue, 32>;
     static PrevNow prevNow;
     if (firstCall)
     {
         const AZ::TimeMs timeMs = AZ::GetRealElapsedTimeMs();
         const double timeSec = AZ::TimeMsToSecondsDouble(timeMs);
         m_lastTickTime = CTimeValue(timeSec);
-        prevNow.Push(m_lastTickTime);
+        prevNow.push_back(m_lastTickTime);
         firstCall = false;
         return;
     }
@@ -480,11 +480,11 @@ void CSystem::SleepIfNeeded()
     const CTimeValue now = CTimeValue(nowTimeSec);
     const float elapsed = (now - m_lastTickTime).GetSeconds();
 
-    if (prevNow.Full())
+    if (prevNow.size() == prevNow.capacity())
     {
-        prevNow.Pop();
+        prevNow.erase(prevNow.begin());
     }
-    prevNow.Push(now);
+    prevNow.push_back(now);
 
     static bool allowStallCatchup = true;
     if (elapsed > minTime && allowStallCatchup)
@@ -497,8 +497,9 @@ void CSystem::SleepIfNeeded()
     }
     allowStallCatchup = true;
 
-    float totalElapsed = (now - prevNow.Front()).GetSeconds();
-    float wantSleepTime = AZStd::clamp(minTime * (prevNow.Size() - 1) - totalElapsed, 0.0f, (minTime - elapsed) * 0.9f);
+    float totalElapsed = (now - prevNow.front()).GetSeconds();
+    float wantSleepTime =
+        AZStd::clamp(minTime * (prevNow.size() - 1) - totalElapsed, 0.0f, (minTime - elapsed) * 0.9f);
     static float sleepTime = 0;
     sleepTime = (15 * sleepTime + wantSleepTime) / 16;
     int sleepMS = (int)(1000.0f * sleepTime + 0.5f);
@@ -761,8 +762,8 @@ void CSystem::GetUpdateStats(SSystemUpdateStats& stats)
         {
             const float t = it->second;
             stats.avgUpdateTime += t;
-            stats.maxUpdateTime = max(stats.maxUpdateTime, t);
-            stats.minUpdateTime = min(stats.minUpdateTime, t);
+            stats.maxUpdateTime = AZStd::max(stats.maxUpdateTime, t);
+            stats.minUpdateTime = AZStd::min(stats.minUpdateTime, t);
         }
         stats.avgUpdateTime /= m_updateTimes.size();
     }
@@ -1250,7 +1251,9 @@ void CSystem::SetSystemGlobalState(const ESystemGlobalState systemGlobalState)
 void CSystem::RegisterWindowMessageHandler(IWindowMessageHandler* pHandler)
 {
 #if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MESSAGE_HANDLER
-    assert(pHandler && !stl::find(m_windowMessageHandlers, pHandler) && "This IWindowMessageHandler is already registered");
+    assert(pHandler && AZStd::find(m_windowMessageHandlers.begin(), m_windowMessageHandlers.end(), pHandler)
+            == m_windowMessageHandlers.end()
+        && "This IWindowMessageHandler is already registered");
     m_windowMessageHandlers.push_back(pHandler);
 #else
     AZ_Assert(false, "This platform does not support window message handlers");
@@ -1261,7 +1264,12 @@ void CSystem::RegisterWindowMessageHandler(IWindowMessageHandler* pHandler)
 void CSystem::UnregisterWindowMessageHandler(IWindowMessageHandler* pHandler)
 {
 #if AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MESSAGE_HANDLER
-    [[maybe_unused]] bool bRemoved = stl::find_and_erase(m_windowMessageHandlers, pHandler);
+    const auto handlerIterator = AZStd::find(m_windowMessageHandlers.begin(), m_windowMessageHandlers.end(), pHandler);
+    const bool bRemoved = handlerIterator != m_windowMessageHandlers.end();
+    if (bRemoved)
+    {
+        m_windowMessageHandlers.erase(handlerIterator);
+    }
     assert(pHandler && bRemoved && "This IWindowMessageHandler was not registered");
 #else
     AZ_Assert(false, "This platform does not support window message handlers");
@@ -1430,4 +1438,3 @@ ILevelSystem* CSystem::GetILevelSystem()
 }
 
 #undef EXCLUDE_UPDATE_ON_CONSOLE
-

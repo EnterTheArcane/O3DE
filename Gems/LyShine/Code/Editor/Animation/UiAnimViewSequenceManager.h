@@ -13,7 +13,8 @@
 #include <LyShine/Animation/IUiAnimation.h>
 #include "UiEditorAnimationBus.h"
 #include "UiAnimUndoManager.h"
-#include "CryCommon/StlUtils.h"
+
+#include <AzCore/std/algorithm.h>
 
 #include <IEditor.h>
 
@@ -47,8 +48,21 @@ public:
     CUiAnimViewAnimNodeBundle GetAllRelatedAnimNodes(const AZ::Entity* pEntityObject) const;
     CUiAnimViewAnimNode* GetActiveAnimNode(const AZ::Entity* pEntityObject) const;
 
-    void AddListener(IUiAnimViewSequenceManagerListener* pListener) { stl::push_back_unique(m_listeners, pListener); }
-    void RemoveListener(IUiAnimViewSequenceManagerListener* pListener) { stl::find_and_erase(m_listeners, pListener); }
+    void AddListener(IUiAnimViewSequenceManagerListener* pListener)
+    {
+        if (AZStd::find(m_listeners.begin(), m_listeners.end(), pListener) == m_listeners.end())
+        {
+            m_listeners.push_back(pListener);
+        }
+    }
+    void RemoveListener(IUiAnimViewSequenceManagerListener* pListener)
+    {
+        if (auto listenerIterator = AZStd::find(m_listeners.begin(), m_listeners.end(), pListener);
+            listenerIterator != m_listeners.end())
+        {
+            m_listeners.erase(listenerIterator);
+        }
+    }
 
     // UI_ANIMATION_REVISIT, made this a singleton for now
     static CUiAnimViewSequenceManager* GetSequenceManager();
@@ -75,7 +89,7 @@ private:
     std::vector<IUiAnimViewSequenceManagerListener*> m_listeners;
     std::vector<std::unique_ptr<CUiAnimViewSequence> > m_sequences;
 
-    uint32 m_nextSequenceId;
+    AZ::u32 m_nextSequenceId;
 
     // Used to handle object attach/detach
     std::unordered_map<CUiAnimViewNode*, AZ::Matrix3x4> m_prevTransforms;
@@ -86,4 +100,3 @@ private:
 
     UiAnimUndoManager m_undoManager;
 };
-

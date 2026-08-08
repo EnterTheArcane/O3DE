@@ -14,7 +14,6 @@
 #include <AzCore/IO/SystemFile.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzCore/PlatformIncl.h>
-#include <CryCommon/platform.h>
 
 namespace LUAEditor
 {

@@ -10,7 +10,6 @@
 #pragma once
 
 #include <AzCore/Math/Vector3.h>
-#include <Cry_Math.h>
 #include <IXml.h>
 #include <StlUtils.h>
 

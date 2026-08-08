@@ -10,6 +10,7 @@
 #include "EditorDefs.h"
 
 #include "ConsoleSCB.h"
+#include <IConsole.h>
 
 // Qt
 #include <QHeaderView>
@@ -289,7 +290,7 @@ void ConsoleLineEdit::DisplayHistory(bool bForward)
     const int newHistoryIndex = static_cast<int>(m_historyIndex) + increment;
 
     m_bReusedHistory = false;
-    m_historyIndex = static_cast<unsigned int>(clamp_tpl(newHistoryIndex, 0, static_cast<int>(m_history.size()) - 1));
+    m_historyIndex = static_cast<unsigned int>(AZ::GetClamp(newHistoryIndex, 0, static_cast<int>(m_history.size()) - 1));
 
     setText(m_history[m_historyIndex]);
 }

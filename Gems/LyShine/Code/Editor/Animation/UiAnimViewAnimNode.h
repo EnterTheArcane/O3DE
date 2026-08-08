@@ -157,7 +157,7 @@ public:
     virtual bool IsDisabled() const override;
 
     // Return track assigned to the specified parameter.
-    CUiAnimViewTrack* GetTrackForParameter(const CUiAnimParamType& paramType, uint32 index = 0) const;
+    CUiAnimViewTrack* GetTrackForParameter(const CUiAnimParamType& paramType, AZ::u32 index = 0) const;
     CUiAnimViewTrack* GetTrackForParameterAz(const UiAnimParamData& param) const;
 
     // Param

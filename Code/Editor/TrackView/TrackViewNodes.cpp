@@ -14,6 +14,8 @@
 
 #include "TrackViewNodes.h"
 
+#include <AzCore/std/algorithm.h>
+
 // Qt
 #include <QAction>
 #include <QCompleter>
@@ -2172,7 +2174,7 @@ void CTrackViewNodesCtrl::CreateSetAnimationLayerPopupMenu(QMenu& menuSetLayer, 
         a->setData(eMI_SetAnimationLayerBase + i);
         a->setCheckable(true);
         a->setChecked(pTrack->GetAnimationLayerIndex() == i);
-        a->setEnabled(!stl::find(layersInUse, i));
+        a->setEnabled(AZStd::find(layersInUse.begin(), layersInUse.end(), i) == layersInUse.end());
     }
 }
 

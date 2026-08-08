@@ -22,6 +22,7 @@
 
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/std/algorithm.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/Utils.h>
@@ -32,7 +33,10 @@ bool CUiAnimViewAnimNode::s_isForcingAnimationBecausePropertyChanged = false;
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewAnimNodeBundle::AppendAnimNode(CUiAnimViewAnimNode* pNode)
 {
-    stl::push_back_unique(m_animNodes, pNode);
+    if (AZStd::find(m_animNodes.begin(), m_animNodes.end(), pNode) == m_animNodes.end())
+    {
+        m_animNodes.push_back(pNode);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -81,7 +85,7 @@ void CUiAnimViewAnimNodeBundle::CollapseAll()
 //////////////////////////////////////////////////////////////////////////
 const bool CUiAnimViewAnimNodeBundle::DoesContain(const CUiAnimViewNode* pTargetNode)
 {
-    return stl::find(m_animNodes, pTargetNode);
+    return AZStd::find(m_animNodes.begin(), m_animNodes.end(), pTargetNode) != m_animNodes.end();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -927,9 +931,9 @@ bool CUiAnimViewAnimNode::IsParamValid(const CUiAnimParamType& param) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-CUiAnimViewTrack* CUiAnimViewAnimNode::GetTrackForParameter(const CUiAnimParamType& paramType, uint32 index) const
+CUiAnimViewTrack* CUiAnimViewAnimNode::GetTrackForParameter(const CUiAnimParamType& paramType, AZ::u32 index) const
 {
-    uint32 currentIndex = 0;
+    AZ::u32 currentIndex = 0;
 
     for (auto iter = m_childNodes.begin(); iter != m_childNodes.end(); ++iter)
     {

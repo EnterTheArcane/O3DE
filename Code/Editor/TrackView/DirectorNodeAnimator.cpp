@@ -55,14 +55,24 @@ void CDirectorNodeAnimator::Animate(CTrackViewAnimNode* pNode, const SAnimContex
             {
                 if (sequenceKey.time <= time)
                 {
-                    stl::push_back_unique(activeSequences, pSequence);
-                    stl::find_and_erase(inactiveSequences, pSequence);
+                    if (AZStd::find(activeSequences.begin(), activeSequences.end(), pSequence) == activeSequences.end())
+                    {
+                        activeSequences.push_back(pSequence);
+                    }
+                    if (auto sequenceIterator = AZStd::find(inactiveSequences.begin(), inactiveSequences.end(), pSequence);
+                        sequenceIterator != inactiveSequences.end())
+                    {
+                        inactiveSequences.erase(sequenceIterator);
+                    }
                 }
                 else
                 {
-                    if (!stl::find(activeSequences, pSequence))
+                    if (AZStd::find(activeSequences.begin(), activeSequences.end(), pSequence) == activeSequences.end())
                     {
-                        stl::push_back_unique(inactiveSequences, pSequence);
+                        if (AZStd::find(inactiveSequences.begin(), inactiveSequences.end(), pSequence) == inactiveSequences.end())
+                        {
+                            inactiveSequences.push_back(pSequence);
+                        }
                     }
                 }
             }

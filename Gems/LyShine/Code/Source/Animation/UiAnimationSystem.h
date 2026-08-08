@@ -14,8 +14,6 @@
 #include <AzCore/std/containers/map.h>
 #include <AzCore/Time/ITime.h>
 
-#include <CryCommon/StlUtils.h>
-
 struct PlayingUIAnimSequence
 {
     //! Sequence playing
@@ -173,7 +171,7 @@ private:
     using TUiAnimationListenerMap = AZStd::map<IUiAnimSequence*, TUiAnimationListenerVec> ;
 
     // a container which maps sequences to all interested listeners
-    // listeners is a vector (could be a set in case we have a lot of listeners, stl::push_back_unique!)
+    // Listeners are kept unique while preserving insertion order.
     TUiAnimationListenerMap m_animationListenerMap;
 
     bool    m_bRecording;
@@ -186,7 +184,15 @@ private:
 
 
     using UiAnimParamSystemString = AZStd::string;
-    template <typename KeyType, typename MappedType, typename Compare = stl::less_stricmp<KeyType>>
+    struct CaseInsensitiveStringLess
+    {
+        bool operator()(const AZStd::string& left, const AZStd::string& right) const
+        {
+            return azstricmp(left.c_str(), right.c_str()) < 0;
+        }
+    };
+
+    template <typename KeyType, typename MappedType, typename Compare = CaseInsensitiveStringLess>
     using UiAnimSystemOrderedMap = AZStd::map<KeyType, MappedType, Compare>;
     template <typename KeyType, typename MappedType, typename Hasher = AZStd::hash<KeyType>, typename EqualKey = AZStd::equal_to<>>
     using UiAnimSystemUnorderedMap = AZStd::unordered_map<KeyType, MappedType, Hasher, EqualKey>;

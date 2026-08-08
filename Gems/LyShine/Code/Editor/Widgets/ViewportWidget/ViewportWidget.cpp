@@ -53,13 +53,13 @@
 
 namespace
 {
-    uint32 GetDrawElementBordersFlags()
+    AZ::u32 GetDrawElementBordersFlags()
     {
         QSettings settings(QSettings::IniFormat, QSettings::UserScope, AZ_QCOREAPPLICATION_SETTINGS_ORGANIZATION_NAME);
 
         settings.beginGroup(UICANVASEDITOR_NAME_SHORT);
 
-        uint32 result = settings.value(UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_KEY,
+        AZ::u32 result = settings.value(UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_KEY,
                 UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_DEFAULT).toInt();
 
         settings.endGroup();
@@ -68,7 +68,7 @@ namespace
     }
 
     // Persistence.
-    void SetDrawElementBordersFlags(uint32 flags)
+    void SetDrawElementBordersFlags(AZ::u32 flags)
     {
         QSettings settings(QSettings::IniFormat, QSettings::UserScope, AZ_QCOREAPPLICATION_SETTINGS_ORGANIZATION_NAME);
 
@@ -296,12 +296,12 @@ ViewportInteraction* ViewportWidget::GetViewportInteraction()
     return m_viewportInteraction.get();
 }
 
-bool ViewportWidget::IsDrawingElementBorders(uint32 flags) const
+bool ViewportWidget::IsDrawingElementBorders(AZ::u32 flags) const
 {
     return (m_drawElementBordersFlags & flags) ? true : false;
 }
 
-void ViewportWidget::ToggleDrawElementBorders(uint32 flags)
+void ViewportWidget::ToggleDrawElementBorders(AZ::u32 flags)
 {
     m_drawElementBordersFlags ^= flags;
 

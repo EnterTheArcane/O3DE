@@ -26,8 +26,6 @@
 #include <Atom/RHI/RHIMemoryStatisticsInterface.h>
 #include <Atom/RHI.Reflect/MemoryUsage.h>
 
-#include <CryCommon/ISystem.h>
-#include <CryCommon/IConsole.h>
 
 #include <AzFramework/Translation/TranslationDef.h>
 

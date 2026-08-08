@@ -204,7 +204,7 @@ private: // member functions
     void ClipAndRenderForSlicedRadialFill(uint32 numVertsPerside, uint32 numVerts, const LyShine::UiPrimitiveVertex* verts, uint32 totalIndices, const uint16* indices);
     void ClipAndRenderForSlicedRadialCornerOrEdgeFill(uint32 numVertsPerside, uint32 numVerts, const LyShine::UiPrimitiveVertex* verts, uint32 totalIndices, const uint16* indices);
 
-    int ClipToLine(const LyShine::UiPrimitiveVertex* vertices, const uint16* indices, LyShine::UiPrimitiveVertex* newVertex, uint16* renderIndices, int& vertexOffset, int idxOffset, const Vec2& lineOrigin, const Vec2& lineEnd);
+    int ClipToLine(const LyShine::UiPrimitiveVertex* vertices, const uint16* indices, LyShine::UiPrimitiveVertex* newVertex, uint16* renderIndices, int& vertexOffset, int idxOffset, const AZ::Vector2& lineOrigin, const AZ::Vector2& lineEnd);
 
     void RenderTriangleList(const LyShine::UiPrimitiveVertex* vertices, const uint16* indices, int numVertices, int numIndices);
     void ClearCachedVertices();

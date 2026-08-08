@@ -10,7 +10,6 @@
 #pragma once
 
 #include <QString>
-#include <CryCommon/StlUtils.h>
 
 #include <QApplication>
 #include <QDropEvent>
@@ -77,11 +76,9 @@ namespace QtUtil
     };
 }
 
-namespace stl
+namespace Editor
 {
-    //! Case insensitive less key for QString
-    template <>
-    struct less_stricmp<QString>
+    struct CaseInsensitiveQStringLess
     {
         bool operator()(const QString& left, const QString& right) const
         {

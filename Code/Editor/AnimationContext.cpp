@@ -20,6 +20,7 @@
 
 #include <AzCore/Serialization/Locale.h>
 #include <AzCore/Time/ITime.h>
+#include <AzCore/std/algorithm.h>
 
 #include <AzToolsFramework/API/EditorCameraBus.h>
 #include <Maestro/Bus/EditorSequenceComponentBus.h>
@@ -148,13 +149,20 @@ void CAnimationContext::Init()
 //////////////////////////////////////////////////////////////////////////
 void CAnimationContext::AddListener(IAnimationContextListener* pListener)
 {
-    stl::push_back_unique(m_contextListeners, pListener);
+    if (AZStd::find(m_contextListeners.begin(), m_contextListeners.end(), pListener) == m_contextListeners.end())
+    {
+        m_contextListeners.push_back(pListener);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CAnimationContext::RemoveListener(IAnimationContextListener* pListener)
 {
-    stl::find_and_erase(m_contextListeners, pListener);
+    if (auto listenerIterator = AZStd::find(m_contextListeners.begin(), m_contextListeners.end(), pListener);
+        listenerIterator != m_contextListeners.end())
+    {
+        m_contextListeners.erase(listenerIterator);
+    }
 }
 
 void CAnimationContext::NotifyTimeChangedListenersUsingCurrTime() const

@@ -592,7 +592,7 @@ namespace AZ
     {
         if (IsRemovingReflection())
         {
-            m_uuidMap.erase(typeUuid);
+            UnregisterType(typeUuid);
             return;
         }
 

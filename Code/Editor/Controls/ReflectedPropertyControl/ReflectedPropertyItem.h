@@ -11,7 +11,8 @@
 #include "Util/Variable.h"
 #include <Util/VariablePropertyType.h>
 
-namespace AzToolsFramework {
+namespace AzToolsFramework
+{
     class ReflectedPropertyEditor;
 }
 
@@ -29,15 +30,17 @@ class ReflectedVarContainerAdapter;
 // The CPropertyItem created editor widgets for each property type, but this class
 // just holds a CReflectedVar and updates it's values. The editing is done by the
 // reflection system and registered property handlers for each CReflectedVar.
-class EDITOR_CORE_API ReflectedPropertyItem
-    : public CRefCountBase
+class EDITOR_CORE_API ReflectedPropertyItem : public CRefCountBase
 {
 public:
     ReflectedPropertyItem(ReflectedPropertyControl* control, ReflectedPropertyItem* parent);
     ~ReflectedPropertyItem();
 
     void SetVariable(IVariable* var);
-    IVariable* GetVariable() const { return m_pVariable; }
+    IVariable* GetVariable() const
+    {
+        return m_pVariable;
+    }
 
     void ReplaceVarBlock(CVarBlock* varBlock);
 
@@ -45,47 +48,67 @@ public:
 
     ReflectedPropertyItem* findItem(CReflectedVar* var);
     ReflectedPropertyItem* findItem(IVariable* var);
-    ReflectedPropertyItem* findItem(const QString &name);
+    ReflectedPropertyItem* findItem(const QString& name);
     ReflectedPropertyItem* FindItemByFullName(const QString& fullName);
 
-    //update the internal IVariable as result of ReflectedVar changing
+    // update the internal IVariable as result of ReflectedVar changing
     void OnReflectedVarChanged();
 
-    //update the ReflectedVar to current value of IVar
+    // update the ReflectedVar to current value of IVar
     void SyncReflectedVarToIVar();
 
     //! Return true if this property item is modified.
-    bool IsModified() const { return m_modified; }
+    bool IsModified() const
+    {
+        return m_modified;
+    }
 
     void ReloadValues();
 
-    ReflectedVarContainerAdapter* GetContainer() { return m_reflectedVarContainerAdapter; }
-    ReflectedPropertyItem* GetParent() { return m_parent; }
+    ReflectedVarContainerAdapter* GetContainer()
+    {
+        return m_reflectedVarContainerAdapter;
+    }
+    ReflectedPropertyItem* GetParent()
+    {
+        return m_parent;
+    }
 
     /** Get script default value of property item.
-    */
-    virtual bool HasScriptDefault() const { return m_strScriptDefault != m_strNoScriptDefault; };
+     */
+    virtual bool HasScriptDefault() const
+    {
+        return m_strScriptDefault != m_strNoScriptDefault;
+    };
 
     /** Get script default value of property item.
-    */
-    virtual QString GetScriptDefault() const { return m_strScriptDefault; };
+     */
+    virtual QString GetScriptDefault() const
+    {
+        return m_strScriptDefault;
+    };
 
     /** Set script default value of property item.
-    */
-    virtual void SetScriptDefault(const QString& sScriptDefault) { m_strScriptDefault = sScriptDefault; };
+     */
+    virtual void SetScriptDefault(const QString& sScriptDefault)
+    {
+        m_strScriptDefault = sScriptDefault;
+    };
 
     /** Set script default value of property item.
-    */
-    virtual void ClearScriptDefault() { m_strScriptDefault = m_strNoScriptDefault; };
-
+     */
+    virtual void ClearScriptDefault()
+    {
+        m_strScriptDefault = m_strNoScriptDefault;
+    };
 
     /** Changes value of item.
-    */
+     */
     virtual void SetValue(const QString& sValue, bool bRecordUndo = true, bool bForceModified = false);
 
-    //hack for calling ReflectedPropertyControl::OnItemChange from a wrapper class
-    //this is used because changes to Splines should not actually change anything in the IVariable,
-    //but we need OnItemChanged as if the IVariable did change.
+    // hack for calling ReflectedPropertyControl::OnItemChange from a wrapper class
+    // this is used because changes to Splines should not actually change anything in the IVariable,
+    // but we need OnItemChanged as if the IVariable did change.
     void SendOnItemChange();
 
     void ExpandAllChildren(bool recursive);
@@ -103,8 +126,9 @@ public:
     // for a consistent Feel, compute the step size for a numerical slider for the specified min/max, rounded to precision
     inline static float ComputeSliderStep(float sliderMin, float sliderMax, const float precision = .01f)
     {
-        float step;
-        step = int_round(((sliderMax - sliderMin) / ReflectedPropertyItem::s_DefaultNumStepIncrements) / precision) * precision;
+        const float unroundedStep = ((sliderMax - sliderMin) / ReflectedPropertyItem::s_DefaultNumStepIncrements) / precision;
+        const int roundedStep = static_cast<int>(unroundedStep < 0.0f ? unroundedStep - 0.5f : unroundedStep + 0.5f);
+        const float step = roundedStep * precision;
         // prevent rounding down to zero
         return (step > precision) ? step : precision;
     }
@@ -120,13 +144,22 @@ protected:
 
 public:
     //! Get number of child nodes.
-    int GetChildCount() const { return static_cast<int>(m_childs.size()); };
+    int GetChildCount() const
+    {
+        return static_cast<int>(m_childs.size());
+    };
     //! Get Child by id.
-    ReflectedPropertyItem* GetChild(int index) const { return m_childs[index]; }
-    PropertyType GetType() const { return m_type; }
+    ReflectedPropertyItem* GetChild(int index) const
+    {
+        return m_childs[index];
+    }
+    PropertyType GetType() const
+    {
+        return m_type;
+    }
 
     /** Get name of property item.
-    */
+     */
     virtual QString GetName() const;
 
     QString GetFullName() const;
@@ -134,15 +167,15 @@ public:
 protected:
     PropertyType m_type;
 
-    //The variable being edited.
+    // The variable being edited.
     _smart_ptr<IVariable> m_pVariable;
 
-    //holds the CReflectedVar and syncs its value with IVariable when either changes
+    // holds the CReflectedVar and syncs its value with IVariable when either changes
     ReflectedVarAdapter* m_reflectedVarAdapter;
     ReflectedVarContainerAdapter* m_reflectedVarContainerAdapter;
 
     ReflectedPropertyItem* m_parent;
-    std::vector<_smart_ptr<ReflectedPropertyItem> > m_childs;
+    std::vector<_smart_ptr<ReflectedPropertyItem>> m_childs;
 
     ReflectedPropertyControl* m_propertyCtrl;
 

@@ -12,6 +12,5 @@
 #include <Mocks/IConsoleMock.h>
 #include <AzCore/Memory/OSAllocator.h>
 
-#include <ISystem.h>
 
 AZ_UNIT_TEST_HOOK(DEFAULT_UNIT_TEST_ENV)

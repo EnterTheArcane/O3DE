@@ -17,6 +17,7 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/std/algorithm.h>
 #include <LyShine/Bus/UiAnimateEntityBus.h>
 #include <AzFramework/Translation/TranslationDef.h>
 
@@ -40,8 +41,8 @@ CUiAnimAzEntityNode::CUiAnimAzEntityNode(const int id)
     m_bWasTransRot = false;
     m_bInitialPhysicsStatus = false;
 
-    m_pos(0, 0, 0);
-    m_scale(1, 1, 1);
+    m_pos.Set(0, 0, 0);
+    m_scale.Set(1, 1, 1);
     m_rotate = AZ::Quaternion::CreateIdentity();
 
     m_visible = true;
@@ -219,9 +220,13 @@ const AZ::SerializeContext::ClassElement* CUiAnimAzEntityNode::ComputeOffsetFrom
 
         if (element)
         {
-            // Allow AZ::Vector2 types to be assigned Vec2 animation data and AZ::Color types
-            // to be assiged AZ::Vector3 animation data
-            if (((element->m_typeId == AZ::SerializeTypeInfo<AZ::Vector2>::GetUuid()) && (paramData.GetTypeId() == AZ::SerializeTypeInfo<Vec2>::GetUuid()))
+            // ParamData stores its type as a raw UUID, so the typed-node ClassDeprecate converter
+            // cannot update this legacy Vec2 identifier while loading old animation data.
+            static const AZ::Uuid legacyVec2TypeId("{844131BA-9565-42F3-8482-6F65A6D5FC59}");
+
+            // Allow AZ::Vector2 fields to be assigned legacy Vec2 animation data and AZ::Color fields
+            // to be assigned AZ::Vector3 animation data.
+            if (((element->m_typeId == AZ::SerializeTypeInfo<AZ::Vector2>::GetUuid()) && (paramData.GetTypeId() == legacyVec2TypeId))
                 || ((element->m_typeId == AZ::SerializeTypeInfo<AZ::Color>::GetUuid()) && (paramData.GetTypeId() == AZ::SerializeTypeInfo<AZ::Vector3>::GetUuid())))
             {
                 mismatch = false;
@@ -325,7 +330,12 @@ void CUiAnimAzEntityNode::ComputeOffsetsFromElementNames()
     }
 
     // remove any null entries from m_tracks (only happens if we found invalid animation data)
-    stl::find_and_erase_if(m_tracks, [](const AZStd::intrusive_ptr<IUiAnimTrack>& sp) { return !sp; });
+    if (auto trackIterator = AZStd::find_if(
+            m_tracks.begin(), m_tracks.end(), [](const AZStd::intrusive_ptr<IUiAnimTrack>& track) { return !track; });
+        trackIterator != m_tracks.end())
+    {
+        m_tracks.erase(trackIterator);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -36,7 +36,8 @@ void CNamedData::AddDataBlock(const QString& blockName, void*   pData, int nSize
     assert(pData);
     assert(nSize > 0);
 
-    DataBlock* pBlock = stl::find_in_map(m_blocks, blockName, (DataBlock*)nullptr);
+    const auto blockIterator = m_blocks.find(blockName);
+    DataBlock* pBlock = blockIterator != m_blocks.end() ? blockIterator->second : nullptr;
     if (pBlock)
     {
         delete pBlock;
@@ -66,7 +67,8 @@ void CNamedData::AddDataBlock(const QString& blockName, void*   pData, int nSize
 
 void CNamedData::AddDataBlock(const QString& blockName, CMemoryBlock& mem)
 {
-    DataBlock* pBlock = stl::find_in_map(m_blocks, blockName, (DataBlock*)nullptr);
+    const auto blockIterator = m_blocks.find(blockName);
+    DataBlock* pBlock = blockIterator != m_blocks.end() ? blockIterator->second : nullptr;
     if (pBlock)
     {
         delete pBlock;
@@ -119,7 +121,8 @@ bool CNamedData::GetDataBlock(const QString& blockName, void*& pData, int& nSize
 //////////////////////////////////////////////////////////////////////////
 CMemoryBlock* CNamedData::GetDataBlock(const QString& blockName, bool& bCompressed)
 {
-    DataBlock* pBlock = stl::find_in_map(m_blocks, blockName, (DataBlock*)nullptr);
+    const auto blockIterator = m_blocks.find(blockName);
+    DataBlock* pBlock = blockIterator != m_blocks.end() ? blockIterator->second : nullptr;
     if (!pBlock)
     {
         return nullptr;

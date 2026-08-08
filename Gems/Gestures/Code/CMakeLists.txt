@@ -20,8 +20,9 @@ ly_add_target(
         PUBLIC
             Gem::Atom_RPI.Public
             AZ::AtomCore
-        PRIVATE
             Legacy::CryCommon
+        PRIVATE
+            AZ::AzCore
 )
 
 ly_add_target(
@@ -73,7 +74,6 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
         BUILD_DEPENDENCIES
             PRIVATE
                 AZ::AzTest
-                Legacy::CryCommon
                 Gem::${gem_name}.Static
     )
     ly_add_googletest(

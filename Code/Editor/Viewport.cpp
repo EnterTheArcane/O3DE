@@ -18,7 +18,7 @@
 #include <AzQtComponents/DragAndDrop/ViewportDragAndDrop.h>
 
 #include <AzCore/Math/IntersectSegment.h>
-#include <MathConversion.h>
+#include <AzCore/std/algorithm.h>
 
 // AzToolsFramework
 #include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
@@ -230,7 +230,10 @@ void QtViewport::GetDimensions(int* pWidth, int* pHeight) const
 //////////////////////////////////////////////////////////////////////////
 void QtViewport::AddPostRenderer(IPostRenderer* pPostRenderer)
 {
-    stl::push_back_unique(m_postRenderers, pPostRenderer);
+    if (AZStd::find(m_postRenderers.begin(), m_postRenderers.end(), pPostRenderer) == m_postRenderers.end())
+    {
+        m_postRenderers.push_back(pPostRenderer);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -339,29 +342,29 @@ void QtViewport::Update()
 }
 
 //////////////////////////////////////////////////////////////////////////
-QPoint QtViewport::WorldToView(const Vec3& wp) const
+QPoint QtViewport::WorldToView(const AZ::Vector3& wp) const
 {
-    return QPoint(static_cast<int>(wp.x), static_cast<int>(wp.y));
+    return QPoint(static_cast<int>(wp.GetX()), static_cast<int>(wp.GetY()));
 }
 
 //////////////////////////////////////////////////////////////////////////
-Vec3 QtViewport::WorldToView3D(const Vec3& wp, [[maybe_unused]] int nFlags) const
+AZ::Vector3 QtViewport::WorldToView3D(const AZ::Vector3& wp, [[maybe_unused]] int nFlags) const
 {
     QPoint p = WorldToView(wp);
-    Vec3 out;
-    out.x = static_cast<f32>(p.x());
-    out.y = static_cast<f32>(p.y());
-    out.z = wp.z;
+    AZ::Vector3 out;
+    out.SetX(static_cast<f32>(p.x()));
+    out.SetY(static_cast<f32>(p.y()));
+    out.SetZ(wp.GetZ());
     return out;
 }
 
 //////////////////////////////////////////////////////////////////////////
-Vec3    QtViewport::ViewToWorld(const QPoint& vp, bool* pCollideWithTerrain, [[maybe_unused]] bool onlyTerrain, [[maybe_unused]] bool bSkipVegetation, [[maybe_unused]] bool bTestRenderMesh, [[maybe_unused]] bool* collideWithObject) const
+AZ::Vector3    QtViewport::ViewToWorld(const QPoint& vp, bool* pCollideWithTerrain, [[maybe_unused]] bool onlyTerrain, [[maybe_unused]] bool bSkipVegetation, [[maybe_unused]] bool bTestRenderMesh, [[maybe_unused]] bool* collideWithObject) const
 {
-    Vec3 wp;
-    wp.x = static_cast<f32>(vp.x());
-    wp.y = static_cast<f32>(vp.y());
-    wp.z = 0;
+    AZ::Vector3 wp;
+    wp.SetX(static_cast<f32>(vp.x()));
+    wp.SetY(static_cast<f32>(vp.y()));
+    wp.SetZ(0);
     if (pCollideWithTerrain)
     {
         *pCollideWithTerrain = true;
@@ -370,16 +373,16 @@ Vec3    QtViewport::ViewToWorld(const QPoint& vp, bool* pCollideWithTerrain, [[m
 }
 
 //////////////////////////////////////////////////////////////////////////
-Vec3    QtViewport::ViewToWorldNormal([[maybe_unused]] const QPoint& vp, [[maybe_unused]] bool onlyTerrain, [[maybe_unused]] bool bTestRenderMesh)
+AZ::Vector3    QtViewport::ViewToWorldNormal([[maybe_unused]] const QPoint& vp, [[maybe_unused]] bool onlyTerrain, [[maybe_unused]] bool bTestRenderMesh)
 {
-    return Vec3(0, 0, 0);
+    return AZ::Vector3(0, 0, 0);
 }
 
 //////////////////////////////////////////////////////////////////////////
-void    QtViewport::ViewToWorldRay([[maybe_unused]] const QPoint& vp, Vec3& raySrc, Vec3& rayDir) const
+void    QtViewport::ViewToWorldRay([[maybe_unused]] const QPoint& vp, AZ::Vector3& raySrc, AZ::Vector3& rayDir) const
 {
-    raySrc(0, 0, 0);
-    rayDir(0, 0, -1);
+    raySrc.Set(0, 0, 0);
+    rayDir.Set(0, 0, -1);
 }
 
 void QtViewport::mousePressEvent(QMouseEvent* event)
@@ -541,27 +544,27 @@ void QtViewport::SetSelectionRectangle(const QRect& rect)
 //////////////////////////////////////////////////////////////////////////
 void QtViewport::OnDragSelectRectangle(const QRect& rect, bool bNormalizeRect)
 {
-    Vec3 org;
+    AZ::Vector3 org;
     AZ::Aabb box = AZ::Aabb::CreateNull();
 
     //adjust QRect bottom and right corner once before extracting bottom/right coordinates
     const QRect correctedRect = rect.adjusted(0, 0, 1, 1);
-    Vec3 p1 = ViewToWorld(correctedRect.topLeft());
-    Vec3 p2 = ViewToWorld(correctedRect.bottomRight());
+    AZ::Vector3 p1 = ViewToWorld(correctedRect.topLeft());
+    AZ::Vector3 p2 = ViewToWorld(correctedRect.bottomRight());
     org = p1;
     // Calculate selection volume.
     if (!bNormalizeRect)
     {
-        box.AddPoint(LYVec3ToAZVec3(p1));
-        box.AddPoint(LYVec3ToAZVec3(p2));
+        box.AddPoint(p1);
+        box.AddPoint(p2);
     }
     else
     {
         const QRect rc = correctedRect.normalized();
-        box.AddPoint(LYVec3ToAZVec3(ViewToWorld(rc.topLeft())));
-        box.AddPoint(LYVec3ToAZVec3(ViewToWorld(rc.topRight())));
-        box.AddPoint(LYVec3ToAZVec3(ViewToWorld(rc.bottomLeft())));
-        box.AddPoint(LYVec3ToAZVec3(ViewToWorld(rc.bottomRight())));
+        box.AddPoint(ViewToWorld(rc.topLeft()));
+        box.AddPoint(ViewToWorld(rc.topRight()));
+        box.AddPoint(ViewToWorld(rc.bottomLeft()));
+        box.AddPoint(ViewToWorld(rc.bottomRight()));
     }
 
     AZ::Vector3 boxMin = box.GetMin();
@@ -574,7 +577,7 @@ void QtViewport::OnDragSelectRectangle(const QRect& rect, bool bNormalizeRect)
     float w = box.GetXExtent();
     float h = box.GetYExtent();
     char szNewStatusText[512];
-    azsnprintf(szNewStatusText, AZ_ARRAY_SIZE(szNewStatusText), "X:%g Y:%g Z:%g  W:%g H:%g", org.x, org.y, org.z, w, h);
+    azsnprintf(szNewStatusText, AZ_ARRAY_SIZE(szNewStatusText), "X:%g Y:%g Z:%g  W:%g H:%g", org.GetX(), org.GetY(), org.GetZ(), w, h);
     GetIEditor()->SetStatusText(szNewStatusText);
 }
 
@@ -650,7 +653,7 @@ AzToolsFramework::ViewportInteraction::MouseInteraction QtViewport::BuildMouseIn
 //////////////////////////////////////////////////////////////////////////
 bool QtViewport::HitTest(const QPoint& point, HitContext& hitInfo)
 {
-    Vec3 raySrc(0, 0, 0), rayDir(1, 0, 0);
+    AZ::Vector3 raySrc(0, 0, 0), rayDir(1, 0, 0);
     ViewToWorldRay(point, hitInfo.raySrc, hitInfo.rayDir);
     hitInfo.view = this;
     hitInfo.point2d = point;
@@ -726,7 +729,7 @@ float QtViewport::GetZoomFactor() const
 };
 
 //////////////////////////////////////////////////////////////////////////
-Vec3 QtViewport::SnapToGrid(const Vec3& vec)
+AZ::Vector3 QtViewport::SnapToGrid(const AZ::Vector3& vec)
 {
     return vec;
 }
@@ -786,7 +789,7 @@ bool QtViewport::IsBoundsVisible([[maybe_unused]] const AZ::Aabb& box) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-float QtViewport::GetDistanceToLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& point) const
+float QtViewport::GetDistanceToLine(const AZ::Vector3& lineP1, const AZ::Vector3& lineP2, const QPoint& point) const
 {
     QPoint p1 = WorldToView(lineP1);
     QPoint p2 = WorldToView(lineP2);
@@ -857,10 +860,9 @@ float QtViewport::GetFOV() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void QtViewport::setRay(QPoint& vp, Vec3& raySrc, Vec3& rayDir)
+void QtViewport::setRay(QPoint& vp, AZ::Vector3& raySrc, AZ::Vector3& rayDir)
 {
     m_vp = vp;
     m_raySrc = raySrc;
     m_rayDir = rayDir;
 }
-

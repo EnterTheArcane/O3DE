@@ -44,6 +44,8 @@
 #include <LyShine/Bus/UiElementBus.h>
 #include <LyShine/Bus/Tools/UiSystemToolsBus.h>
 
+#include <ISystem.h>
+
 #include <QDialog>
 #include <QErrorMessage>
 #include <QFileDialog>

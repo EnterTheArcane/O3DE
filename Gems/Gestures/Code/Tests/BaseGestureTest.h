@@ -6,7 +6,6 @@
  *
  */
 #pragma once
-#include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/UnitTest/Mocks/MockITime.h>
 #include <AzTest/AzTest.h>
 #include <Gestures/IGestureRecognizer.h>
@@ -34,9 +33,6 @@ public:
 
     void SetUp() override
     {
-        // global environment stubs
-        m_env = new(AZ_OS_MALLOC(sizeof(SSystemGlobalEnvironment), alignof(SSystemGlobalEnvironment))) SSystemGlobalEnvironment();
-        gEnv = m_env;
         m_stubTimer = new GesturesTests::StubTimer();
         // simulated position
         m_pos = AZ::Vector2(0.0f, 0.0f);
@@ -44,13 +40,6 @@ public:
 
     void TearDown() override
     {
-        gEnv = nullptr;
-        if (m_env)
-        {
-            m_env->~SSystemGlobalEnvironment();
-            AZ_OS_FREE(m_env);
-            m_env = nullptr;
-        }
         delete m_stubTimer;
     }
 
@@ -81,26 +70,25 @@ protected:
 
     // more direct interface
 
-    void Press(Gestures::IRecognizer& recognizer, uint index, AZ::Vector2 pos, float sec)
+    void Press(Gestures::IRecognizer& recognizer, AZ::u32 index, AZ::Vector2 pos, float sec)
     {
         SetTime(sec);
         recognizer.OnPressedEvent(pos, index);
     }
 
-    void Move(Gestures::IRecognizer& recognizer, uint index, AZ::Vector2 pos, float sec)
+    void Move(Gestures::IRecognizer& recognizer, AZ::u32 index, AZ::Vector2 pos, float sec)
     {
         SetTime(sec);
         recognizer.OnDownEvent(pos, index);
     }
 
-    void Release(Gestures::IRecognizer& recognizer, uint index, AZ::Vector2 pos, float sec)
+    void Release(Gestures::IRecognizer& recognizer, AZ::u32 index, AZ::Vector2 pos, float sec)
     {
         SetTime(sec);
         recognizer.OnReleasedEvent(pos, index);
     }
 
 private:
-    SSystemGlobalEnvironment* m_env = nullptr;
     GesturesTests::StubTimer* m_stubTimer = nullptr;
     AZ::Vector2 m_pos;
 };

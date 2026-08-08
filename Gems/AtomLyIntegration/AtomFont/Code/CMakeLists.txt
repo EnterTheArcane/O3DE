@@ -53,6 +53,7 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
             PRIVATE
                 Include
                 Tests
+                ${LY_ROOT_FOLDER}/Code/Legacy/CryCommon
         BUILD_DEPENDENCIES
             PRIVATE
                 AZ::AzTest
@@ -62,4 +63,3 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
         LABELS REQUIRES_tiaf
     )
 endif()
-

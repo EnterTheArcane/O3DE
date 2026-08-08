@@ -18,7 +18,6 @@
 #include <LmbrCentral/Audio/AudioProxyComponentBus.h>
 #include <LmbrCentral/Animation/SkeletalHierarchyRequestBus.h>
 
-#include <MathConversion.h>
 
 namespace EMotionFX
 {

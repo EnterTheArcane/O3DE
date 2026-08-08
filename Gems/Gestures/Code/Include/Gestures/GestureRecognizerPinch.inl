@@ -9,7 +9,6 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzFramework/Translation/TranslationDef.h>
-#include <CryCommon/ISystem.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 inline void Gestures::RecognizerPinch::Config::Reflect(AZ::ReflectContext* context)
@@ -106,7 +105,7 @@ inline float AngleInDegreesBetweenVectors(const AZ::Vector2& vec0, const AZ::Vec
         return 0.0f;
     }
 
-    return RAD2DEG(acosf(abs(vec0.GetNormalized().Dot(vec1.GetNormalized()))));
+    return acosf(abs(vec0.GetNormalized().Dot(vec1.GetNormalized()))) * (180.0f / AZ::Constants::Pi);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

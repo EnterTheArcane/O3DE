@@ -11,7 +11,6 @@
 #include "SandboxAPI.h"
 #include "ILog.h"
 
-#include <IConsole.h>
 #include <stdarg.h>
 
 #include <QString>
@@ -20,9 +19,6 @@
 
 class QTextEdit;
 class QListWidget;
-
-//struct IConsole;
-//struct ICVar;
 
 //////////////////////////////////////////////////////////////////////////
 // Global log functions.

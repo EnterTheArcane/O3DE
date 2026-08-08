@@ -6,7 +6,6 @@
  *
  */
 
-
 // Description : The game engine for editor
 #pragma once
 
@@ -23,6 +22,7 @@
 #include <AzCore/Outcome/Outcome.h>
 
 class CStartupLogoDialog;
+struct IConsoleCmdArgs;
 struct IInitializeUIInfo;
 
 class ThreadedOnErrorHandler : public QObject
@@ -40,8 +40,7 @@ private:
 };
 
 //! This class serves as a high-level wrapper for CryEngine game.
-class SANDBOX_API CGameEngine
-    : public IEditorNotifyListener
+class SANDBOX_API CGameEngine : public IEditorNotifyListener
 {
 public:
     CGameEngine();
@@ -49,19 +48,13 @@ public:
     //! Initialize System.
     //! @return successful outcome if initialization succeeded. or failed outcome with error message.
     AZ::Outcome<void, AZStd::string> Init(
-        bool bPreviewMode,
-        bool bTestMode,
-        const char* sCmdLine,
-        IInitializeUIInfo* logo,
-        HWND hwndForInputSystem);
+        bool bPreviewMode, bool bTestMode, const char* sCmdLine, IInitializeUIInfo* logo, HWND hwndForInputSystem);
     //! Initialize game.
     //! @return true if initialization succeeded, false otherwise
     bool InitGame(const char* sGameDLL);
     //! Load new level into 3d engine.
     //! Also load AI triangulation for this level.
-    bool LoadLevel(
-        bool bDeleteAIGraph,
-        bool bReleaseResources);
+    bool LoadLevel(bool bDeleteAIGraph, bool bReleaseResources);
     //!* Reload level if it was already loaded.
     bool ReloadLevel();
     //! Request to switch In/Out of game mode on next update.
@@ -72,31 +65,61 @@ public:
     //! @param enabled When true editor switch to simulation mode.
     void SetSimulationMode(bool enabled, bool bOnlyPhysics = false);
     //! Get current simulation mode.
-    bool GetSimulationMode() const { return m_bSimulationMode; };
+    bool GetSimulationMode() const
+    {
+        return m_bSimulationMode;
+    };
     //! Returns true if level is loaded.
-    bool IsLevelLoaded() const { return m_bLevelLoaded; };
+    bool IsLevelLoaded() const
+    {
+        return m_bLevelLoaded;
+    };
     //! Assign new level path name.
     void SetLevelPath(const QString& path);
     //! Return name of currently loaded level.
-    const QString& GetLevelName() const { return m_levelName; };
+    const QString& GetLevelName() const
+    {
+        return m_levelName;
+    };
     //! Return extension of currently loaded level.
-    const QString& GetLevelExtension() const { return m_levelExtension; };
+    const QString& GetLevelExtension() const
+    {
+        return m_levelExtension;
+    };
     //! Get fully specified level path.
-    const QString& GetLevelPath() const { return m_levelPath; };
+    const QString& GetLevelPath() const
+    {
+        return m_levelPath;
+    };
     //! Query if engine is in game mode.
-    bool IsInGameMode() const { return m_bInGameMode; };
+    bool IsInGameMode() const
+    {
+        return m_bInGameMode;
+    };
     //! Force level loaded variable to true.
-    void SetLevelLoaded(bool bLoaded) { m_bLevelLoaded = bLoaded; }
+    void SetLevelLoaded(bool bLoaded)
+    {
+        m_bLevelLoaded = bLoaded;
+    }
     //! Force level just created variable to true.
-    void SetLevelCreated(bool bJustCreated) { m_bJustCreated = bJustCreated; }
+    void SetLevelCreated(bool bJustCreated)
+    {
+        m_bJustCreated = bJustCreated;
+    }
     //! Query ISystem interface.
-    ISystem* GetSystem() { return m_pISystem; };
+    ISystem* GetSystem()
+    {
+        return m_pISystem;
+    };
     //! Set player position in game.
     //! @param bEyePos If set then given position is position of player eyes.
     void SetPlayerViewMatrix(const AZ::Matrix3x4& tm, bool bEyePos = true);
     //! When set, player in game will be every frame synchronized with editor camera.
     void SyncPlayerPosition(bool bEnable);
-    bool IsSyncPlayerPosition() const { return m_bSyncPlayerPosition; };
+    bool IsSyncPlayerPosition() const
+    {
+        return m_bSyncPlayerPosition;
+    };
     //! Set game's current Mod name.
     void SetCurrentMOD(const char* sMod);
     //! Returns game's current Mod name.
@@ -148,4 +171,3 @@ private:
     EPendingGameMode m_ePendingGameMode;
     AZStd::unique_ptr<class ModalWindowDismisser> m_modalWindowDismisser;
 };
-

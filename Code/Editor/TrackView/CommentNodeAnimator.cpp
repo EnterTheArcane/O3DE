@@ -16,7 +16,6 @@
 #include <CryCommon/Maestro/Types/AnimParamType.h>
 
 // Editor
-#include "MathConversion.h"
 #include "Settings.h"
 
 
@@ -41,7 +40,7 @@ void CCommentNodeAnimator::Animate(CTrackViewAnimNode* pNode, const SAnimContext
     CTrackViewTrackBundle tracks = pNode->GetAllTracks();
 
     int trackCount = tracks.GetCount();
-    Vec2 pos(0, 0);
+    AZ::Vector2 pos(0, 0);
     for (int i = 0; i < trackCount; ++i)
     {
         CTrackViewTrack* pTrack = tracks.GetTrack(i);
@@ -60,19 +59,23 @@ void CCommentNodeAnimator::Animate(CTrackViewAnimNode* pNode, const SAnimContext
         break;
         case AnimParamType::PositionX:
         {
-            pTrack->GetValue(ac.time, pos.x);
+            float posComp = pos.GetX();
+            pTrack->GetValue(ac.time, posComp);
+            pos.SetX(posComp);
         }
         break;
         case AnimParamType::PositionY:
         {
-            pTrack->GetValue(ac.time, pos.y);
+            float posComp = pos.GetY();
+            pTrack->GetValue(ac.time, posComp);
+            pos.SetY(posComp);
         }
         break;
         }
     }
 
     // Position mapping from [0,100] to [-1,1]
-    pos = (pos - Vec2(50.0f, 50.0f)) / 50.0f;
+    pos = (pos - AZ::Vector2(50.0f, 50.0f)) / 50.0f;
     m_commentContext.m_unitPos = pos;
 }
 
@@ -160,13 +163,13 @@ void CCommentNodeAnimator::Render(CTrackViewAnimNode* pNode, [[maybe_unused]] co
     }
 }
 
-Vec2 CCommentNodeAnimator::GetScreenPosFromNormalizedPos(const Vec2&)
+AZ::Vector2 CCommentNodeAnimator::GetScreenPosFromNormalizedPos(const AZ::Vector2&)
 {
     AZ_Error("CryLegacy", false, "CCommentNodeAnimator::GetScreenPosFromNormalizedPos not supported");
-    return Vec2(0, 0);
+    return AZ::Vector2(0, 0);
 }
 
-void CCommentNodeAnimator::DrawText(const char* szFontName, float fSize, const Vec2& unitPos, const AZ::Color col, const char* szText, int align)
+void CCommentNodeAnimator::DrawText(const char* szFontName, float fSize, const AZ::Vector2& unitPos, const AZ::Color col, const char* szText, int align)
 {
     IFFont* pFont = gEnv->pCryFont->GetFont(szFontName);
     if (!pFont)
@@ -178,26 +181,26 @@ void CCommentNodeAnimator::DrawText(const char* szFontName, float fSize, const V
     {
         STextDrawContext ctx;
         ctx.SetSizeIn800x600(false);
-        ctx.SetSize(Vec2(UIDRAW_TEXTSIZEFACTOR * fSize, UIDRAW_TEXTSIZEFACTOR * fSize));
+        ctx.SetSize(AZ::Vector2(UIDRAW_TEXTSIZEFACTOR * fSize, UIDRAW_TEXTSIZEFACTOR * fSize));
         ctx.SetCharWidthScale(0.5f);
         ctx.SetProportional(false);
         ctx.SetFlags(align);
 
         // alignment
-        Vec2 pos = GetScreenPosFromNormalizedPos(unitPos);
+        AZ::Vector2 pos = GetScreenPosFromNormalizedPos(unitPos);
 
         if (align & eDrawText_Center)
         {
-            pos.x -= pFont->GetTextSize(szText, true, ctx).x * 0.5f;
+            pos.SetX(pos.GetX() - pFont->GetTextSize(szText, true, ctx).GetX() * 0.5f);
         }
         else if (align & eDrawText_Right)
         {
-            pos.x -= pFont->GetTextSize(szText, true, ctx).x;
+            pos.SetX(pos.GetX() - pFont->GetTextSize(szText, true, ctx).GetX());
         }
 
         // Color
         ctx.SetColor(col);
 
-        pFont->DrawString(pos.x, pos.y, szText, true, ctx);
+        pFont->DrawString(pos.GetX(), pos.GetY(), szText, true, ctx);
     }
 }

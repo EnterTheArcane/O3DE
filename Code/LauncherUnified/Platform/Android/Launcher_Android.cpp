@@ -19,7 +19,6 @@
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 #include <AzGameFramework/Application/GameApplication.h>
 
-#include <IConsole.h>
 
 #include <android/asset_manager_jni.h>
 #include <android/log.h>

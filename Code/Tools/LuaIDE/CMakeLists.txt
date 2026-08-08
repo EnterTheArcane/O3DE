@@ -27,7 +27,6 @@ ly_add_target(
             Source/LUA
     BUILD_DEPENDENCIES
         PRIVATE
-            Legacy::CryCommon
             AZ::AzCore
             AZ::AzFramework
             AZ::AzToolsFramework

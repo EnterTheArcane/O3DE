@@ -8,6 +8,8 @@
 
 #include "UiInteractableState.h"
 
+#include <ISystem.h>
+
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>

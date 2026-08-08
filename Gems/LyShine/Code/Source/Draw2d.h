@@ -9,10 +9,10 @@
 
 #include <LyShine/IDraw2d.h>
 
-#include <AzFramework/Font/FontInterface.h>
 #include <Atom/Bootstrap/BootstrapNotificationBus.h>
 #include <Atom/RPI.Public/DynamicDraw/DynamicDrawInterface.h>
 #include <Atom/RPI.Public/ViewportContext.h>
+#include <AzFramework/Font/FontInterface.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //! Implementation of IDraw2d interface for 2D drawing in screen space
@@ -24,9 +24,7 @@ class CDraw2d
     , public AZ::Render::Bootstrap::NotificationBus::Handler
 {
 public: // types
-
 public: // member functions
-
     //! Constructor, constructed by the LyShine class
     CDraw2d(AZ::RPI::ViewportContextPtr viewportContext = nullptr);
 
@@ -53,8 +51,14 @@ public: // member functions
     //! \param minMaxTexCoords  An optional two component array. The first component is the UV coord for the top left
     //!                         point of the quad and the second is the UV coord of the bottom right point of the quad
     //! \param imageOptions     Optional struct specifying options that tend to be the same from call to call
-    void DrawImage(AZ::Data::Instance<AZ::RPI::Image> image, AZ::Vector2 position, AZ::Vector2 size, float opacity = 1.0f,
-        float rotation = 0.0f, const AZ::Vector2* pivotPoint = nullptr, const AZ::Vector2* minMaxTexCoords = nullptr,
+    void DrawImage(
+        AZ::Data::Instance<AZ::RPI::Image> image,
+        AZ::Vector2 position,
+        AZ::Vector2 size,
+        float opacity = 1.0f,
+        float rotation = 0.0f,
+        const AZ::Vector2* pivotPoint = nullptr,
+        const AZ::Vector2* minMaxTexCoords = nullptr,
         ImageOptions* imageOptions = nullptr) override;
 
     //! Draw a textured quad where the position specifies the point specified by the alignment.
@@ -71,9 +75,15 @@ public: // member functions
     //! \param minMaxTexCoords  An optional two component array. The first component is the UV coord for the top left
     //!                         point of the quad and the second is the UV coord of the bottom right point of the quad
     //! \param imageOptions     Optional struct specifying options that tend to be the same from call to call
-    void DrawImageAligned(AZ::Data::Instance<AZ::RPI::Image> image, AZ::Vector2 position, AZ::Vector2 size,
-        HAlign horizontalAlignment, VAlign verticalAlignment,
-        float opacity = 1.0f, float rotation = 0.0f, const AZ::Vector2* minMaxTexCoords = nullptr,
+    void DrawImageAligned(
+        AZ::Data::Instance<AZ::RPI::Image> image,
+        AZ::Vector2 position,
+        AZ::Vector2 size,
+        HAlign horizontalAlignment,
+        VAlign verticalAlignment,
+        float opacity = 1.0f,
+        float rotation = 0.0f,
+        const AZ::Vector2* minMaxTexCoords = nullptr,
         ImageOptions* imageOptions = nullptr) override;
 
     //! Draw a textured quad where the position, color and uv of each point is specified explicitly
@@ -82,7 +92,8 @@ public: // member functions
     //! \param verts        An array of 4 vertices, in clockwise order (e.g. top left, top right, bottom right, bottom left)
     //! \param pixelRounding Whether and how to round pixel coordinates
     //! \param renderState  Blend mode and depth state
-    void DrawQuad(AZ::Data::Instance<AZ::RPI::Image> image,
+    void DrawQuad(
+        AZ::Data::Instance<AZ::RPI::Image> image,
         VertexPosColUV* verts,
         Rounding pixelRounding = Rounding::Nearest,
         bool clamp = false,
@@ -95,7 +106,10 @@ public: // member functions
     //! \param color        The color of the line
     //! \param pixelRounding Whether and how to round pixel coordinates
     //! \param renderState  Blend mode and depth state
-    void DrawLine(AZ::Vector2 start, AZ::Vector2 end, AZ::Color color,
+    void DrawLine(
+        AZ::Vector2 start,
+        AZ::Vector2 end,
+        AZ::Color color,
         IDraw2d::Rounding pixelRounding = IDraw2d::Rounding::Nearest,
         const RenderState& renderState = RenderState{}) override;
 
@@ -105,7 +119,8 @@ public: // member functions
     //! \param verts        An array of 2 vertices for the start and end points of the line
     //! \param pixelRounding Whether and how to round pixel coordinates
     //! \param renderState  Blend mode and depth state
-    void DrawLineTextured(AZ::Data::Instance<AZ::RPI::Image> image,
+    void DrawLineTextured(
+        AZ::Data::Instance<AZ::RPI::Image> image,
         VertexPosColUV* verts,
         IDraw2d::Rounding pixelRounding = IDraw2d::Rounding::Nearest,
         const RenderState& renderState = RenderState{}) override;
@@ -117,18 +132,19 @@ public: // member functions
     //! \param pointSize    The size of the font to use
     //! \param opacity      The opacity (alpha value) to use to draw the text
     //! \param textOptions  Pointer to an options struct. If null the default options are used
-    void DrawText(const char* textString, AZ::Vector2 position, float pointSize,
-        float opacity = 1.0f, TextOptions* textOptions = nullptr) override;
+    void DrawText(
+        const char* textString, AZ::Vector2 position, float pointSize, float opacity = 1.0f, TextOptions* textOptions = nullptr) override;
 
     //! Draw a rectangular outline with a texture
     //
     //! \param image            The texture to be used for drawing the outline
     //! \param points           The rect's vertices (top left, top right, bottom right, bottom left)
-    //! \param rightVec         Right vector. Specified because the rect's width/height could be 0 
+    //! \param rightVec         Right vector. Specified because the rect's width/height could be 0
     //! \param downVec          Down vector. Specified because the rect's width/height could be 0
     //! \param color            The color of the outline
     //! \param lineThickness    The thickness in pixels of the outline. If 0, it will be based on image height
-    void DrawRectOutlineTextured(AZ::Data::Instance<AZ::RPI::Image> image,
+    void DrawRectOutlineTextured(
+        AZ::Data::Instance<AZ::RPI::Image> image,
         UiTransformInterface::RectPoints points,
         AZ::Vector2 rightVec,
         AZ::Vector2 downVec,
@@ -172,19 +188,16 @@ public: // member functions
     void SetSortKey(int64_t key) override;
 
 private:
-
     AZ_DISABLE_COPY_MOVE(CDraw2d);
 
     // AZ::Render::Bootstrap::NotificationBus overrides
     void OnBootstrapSceneReady(AZ::RPI::Scene* bootstrapScene) override;
 
 public: // static member functions
-
     //! Helper to load a texture
     static AZ::Data::Instance<AZ::RPI::Image> LoadTexture(const AZStd::string& pathName);
 
 protected: // types and constants
-
     enum
     {
         MAX_VERTICES_IN_PRIM = 6
@@ -203,70 +216,71 @@ protected: // types and constants
     {
     public:
         virtual ~DeferredPrimitive() {};
-        virtual void Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
+        virtual void Draw(
+            AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
             const Draw2dShaderData& shaderData,
             AZ::RPI::ViewportContextPtr viewportContext) const = 0;
     };
 
-    class DeferredQuad
-        : public DeferredPrimitive
+    class DeferredQuad : public DeferredPrimitive
     {
     public:
         ~DeferredQuad() override {};
-        void Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
+        void Draw(
+            AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
             const Draw2dShaderData& shaderData,
             AZ::RPI::ViewportContextPtr viewportContext) const override;
 
         AZ::Vector2 m_points[4];
         AZ::Vector2 m_texCoords[4];
-        uint32      m_packedColors[4];
+        AZ::u32 m_packedColors[4];
         AZ::Data::Instance<AZ::RPI::Image> m_image;
         bool m_clamp;
         RenderState m_renderState;
     };
 
-    class DeferredLine
-        : public DeferredPrimitive
+    class DeferredLine : public DeferredPrimitive
     {
     public:
         ~DeferredLine() override {};
-        void Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
+        void Draw(
+            AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
             const Draw2dShaderData& shaderData,
             AZ::RPI::ViewportContextPtr viewportContext) const override;
 
         AZ::Data::Instance<AZ::RPI::Image> m_image;
         AZ::Vector2 m_points[2];
         AZ::Vector2 m_texCoords[2];
-        uint32      m_packedColors[2];
+        AZ::u32 m_packedColors[2];
         RenderState m_renderState;
     };
 
-    class DeferredText
-        : public DeferredPrimitive
+    class DeferredText : public DeferredPrimitive
     {
     public:
         ~DeferredText() override {};
-        void Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
+        void Draw(
+            AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
             const Draw2dShaderData& shaderData,
             AZ::RPI::ViewportContextPtr viewportContext) const override;
 
         AzFramework::TextDrawParameters m_drawParameters;
         AzFramework::FontId m_fontId;
-        std::string         m_string;
+        std::string m_string;
     };
 
-    class DeferredRectOutline
-        : public DeferredPrimitive
+    class DeferredRectOutline : public DeferredPrimitive
     {
     public:
         ~DeferredRectOutline() override {};
-        void Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
+        void Draw(
+            AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
             const Draw2dShaderData& shaderData,
             AZ::RPI::ViewportContextPtr viewportContext) const override;
 
         AZ::Data::Instance<AZ::RPI::Image> m_image;
 
-        static constexpr int32 NUM_VERTS = 8;
+        static constexpr AZ::s32 NUM_VERTS = 8;
         AZ::Vector2 m_verts2d[NUM_VERTS];
         AZ::Vector2 m_uvs[NUM_VERTS];
 
@@ -274,16 +288,23 @@ protected: // types and constants
     };
 
 protected: // member functions
-
     //! Rotate an array of points around the z-axis at the pivot point.
     //
     //! Angle is in degrees counter-clockwise
     void RotatePointsAboutPivot(AZ::Vector2* points, int numPoints, AZ::Vector2 pivot, float angle) const;
 
     //! Helper function to render a text string
-    void DrawTextInternal(const char* textString, AzFramework::FontId fontId, unsigned int effectIndex,
-        AZ::Vector2 position, float pointSize, AZ::Color color, float rotation,
-        HAlign horizontalAlignment, VAlign verticalAlignment, bool depthTestEnabled);
+    void DrawTextInternal(
+        const char* textString,
+        AzFramework::FontId fontId,
+        unsigned int effectIndex,
+        AZ::Vector2 position,
+        float pointSize,
+        AZ::Color color,
+        float rotation,
+        HAlign horizontalAlignment,
+        VAlign verticalAlignment,
+        bool depthTestEnabled);
 
     //! Draw or defer a quad
     void DrawOrDeferQuad(const DeferredQuad* quad);
@@ -301,9 +322,8 @@ protected: // member functions
     AZ::RPI::ViewportContextPtr GetViewportContext() const;
 
 protected: // attributes
-
-    ImageOptions m_defaultImageOptions;     //!< The default image options used if nullptr is passed
-    TextOptions m_defaultTextOptions;       //!< The default text options used if nullptr is passed
+    ImageOptions m_defaultImageOptions; //!< The default image options used if nullptr is passed
+    TextOptions m_defaultTextOptions; //!< The default text options used if nullptr is passed
 
     //! True if the actual render of the primitives should be deferred to a RenderDeferredPrimitives call
     bool m_deferCalls;

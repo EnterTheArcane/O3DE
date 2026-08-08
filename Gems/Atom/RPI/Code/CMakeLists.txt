@@ -199,7 +199,6 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED AND PAL_TRAIT_BUILD_HOST_TOOLS)
                 AZ::AzTestShared
                 AZ::AzFramework
                 AZ::AzToolsFramework
-                Legacy::CryCommon
                 Gem::Atom_RHI.Public
                 Gem::Atom_Utils.TestUtils.Static
                 Gem::${gem_name}.Edit

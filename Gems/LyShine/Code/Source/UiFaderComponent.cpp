@@ -194,7 +194,7 @@ void UiFaderComponent::Fade(float targetValue, float speed)
     }
 
     m_isFading = true;
-    m_fadeTarget = clamp_tpl(targetValue, 0.0f, 1.0f);
+    m_fadeTarget = targetValue < 0.0f ? 0.0f : targetValue < 1.0f ? targetValue : 1.0f;
 
     // Give speed a direction
     float fadeChange = m_fadeTarget - m_fade;
@@ -522,15 +522,15 @@ void UiFaderComponent::UpdateCachedPrimitive(const AZ::Vector2& pixelAlignedTopL
     float right = pixelAlignedBottomRight.GetX();
     float top = pixelAlignedTopLeft.GetY();
     float bottom = pixelAlignedBottomRight.GetY();
-    Vec2 positions[numVertices] = { Vec2(left, top), Vec2(right, top), Vec2(right, bottom), Vec2(left, bottom) };
+    AZ::Vector2 positions[numVertices] = { AZ::Vector2(left, top), AZ::Vector2(right, top), AZ::Vector2(right, bottom), AZ::Vector2(left, bottom) };
 
-    static const Vec2 uvs[numVertices] = { {0, 0}, {1, 0}, {1, 1}, {0, 1} };
+    static const AZ::Vector2 uvs[numVertices] = { AZ::Vector2(0, 0), AZ::Vector2(1, 0), AZ::Vector2(1, 1), AZ::Vector2(0, 1) };
 
     for (int i = 0; i < numVertices; ++i)
     {
-        m_cachedPrimitive.m_vertices[i].xy = positions[i];
+        m_cachedPrimitive.m_vertices[i].xy = AZ::PackedVector2f(positions[i]);
         m_cachedPrimitive.m_vertices[i].color.dcolor = 0xFFFFFFFF;
-        m_cachedPrimitive.m_vertices[i].st = uvs[i];
+        m_cachedPrimitive.m_vertices[i].st = AZ::PackedVector2f(uvs[i]);
         m_cachedPrimitive.m_vertices[i].texIndex = 0;   // this will be set later by render graph
         m_cachedPrimitive.m_vertices[i].texHasColorChannel = 1;
         m_cachedPrimitive.m_vertices[i].texIndex2 = 0;

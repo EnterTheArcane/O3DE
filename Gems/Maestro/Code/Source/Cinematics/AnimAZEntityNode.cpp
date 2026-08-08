@@ -133,13 +133,13 @@ namespace Maestro
         }
     }
 
-    Vec3 CAnimAzEntityNode::GetPos()
+    AZ::Vector3 CAnimAzEntityNode::GetPos()
     {
         if (auto transformComponentNode = GetTransformComponentNode())
         {
             return transformComponentNode->GetPos();
         }
-        return Vec3(.0f, .0f, .0f);
+        return AZ::Vector3(.0f, .0f, .0f);
     }
 
     void CAnimAzEntityNode::SetRotate(float time, const AZ::Quaternion& rotation)
@@ -176,23 +176,23 @@ namespace Maestro
         }
     }
 
-    Vec3 CAnimAzEntityNode::GetScale()
+    AZ::Vector3 CAnimAzEntityNode::GetScale()
     {
         if (auto transformComponentNode = GetTransformComponentNode())
         {
             return transformComponentNode->GetScale();
         }
 
-        return Vec3(.0f, .0f, .0f);
+        return AZ::Vector3(.0f, .0f, .0f);
     }
 
-    Vec3 CAnimAzEntityNode::GetOffsetPosition(const Vec3& position)
+    AZ::Vector3 CAnimAzEntityNode::GetOffsetPosition(const AZ::Vector3& position)
     {
         if (auto transformComponentNode = GetTransformComponentNode())
         {
             return position - transformComponentNode->GetPos();
         }
-        return Vec3(.0f, .0f, .0f);
+        return AZ::Vector3(.0f, .0f, .0f);
     }
 
 } // namespace Maestro

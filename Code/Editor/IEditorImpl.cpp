@@ -21,6 +21,7 @@
 #include <AzCore/JSON/document.h>
 #include <AzCore/Settings/SettingsRegistryMergeUtils.h>
 #include <AzCore/Utils/Utils.h>
+#include <AzCore/std/algorithm.h>
 
 #if defined(AZ_PLATFORM_MAC)
 #include <AzCore/Utils/SystemUtilsApple_Platform.h>
@@ -1001,7 +1002,10 @@ void CEditorImpl::NotifyExcept(EEditorNotifyEvent event, IEditorNotifyListener* 
 void CEditorImpl::RegisterNotifyListener(IEditorNotifyListener* listener)
 {
     listener->m_bIsRegistered = true;
-    stl::push_back_unique(m_listeners, listener);
+    if (AZStd::find(m_listeners.begin(), m_listeners.end(), listener) == m_listeners.end())
+    {
+        m_listeners.push_back(listener);
+    }
 }
 
 void CEditorImpl::UnregisterNotifyListener(IEditorNotifyListener* listener)
@@ -1083,4 +1087,3 @@ SEditorSettings* CEditorImpl::GetEditorSettings()
 {
     return &gSettings;
 }
-

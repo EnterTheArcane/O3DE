@@ -11,7 +11,8 @@
 #include "Undo/IUndoManagerListener.h"
 #include "Undo/UndoStack.h"
 
-#include <CryCommon/StlUtils.h>
+#include <AzCore/Casting/numeric_cast.h>
+#include <AzCore/std/algorithm.h>
 
 // UI Editor
 #include <QUndoCommand>
@@ -19,18 +20,26 @@
 UiAnimUndoManager* UiAnimUndoManager::s_instance = nullptr;
 
 //! UiAnimUndoStep is a collection of UiAnimUndoObjects instances that forms a single undo step.
-class UiAnimUndoStep
-    : public QUndoCommand
+class UiAnimUndoStep : public QUndoCommand
 {
 public:
     UiAnimUndoStep()
         : m_hasDoneUndo(false) {};
-    virtual ~UiAnimUndoStep() { ClearObjects(); }
+    virtual ~UiAnimUndoStep()
+    {
+        ClearObjects();
+    }
 
     //! Set undo object name.
-    void SetName(const AZStd::string& name) { m_name = name; };
+    void SetName(const AZStd::string& name)
+    {
+        m_name = name;
+    };
     //! Get undo object name.
-    const AZStd::string& GetName() { return m_name; };
+    const AZStd::string& GetName()
+    {
+        return m_name;
+    };
 
     //! Add new undo object to undo step.
     void AddUndoObject(UiAnimUndoObject* o)
@@ -56,7 +65,10 @@ public:
         }
         return size;
     }
-    virtual bool IsEmpty() const { return m_undoObjects.empty(); };
+    virtual bool IsEmpty() const
+    {
+        return m_undoObjects.empty();
+    };
     virtual void Undo(bool bUndo)
     {
         for (int i = aznumeric_cast<int>(m_undoObjects.size()) - 1; i >= 0; i--)
@@ -80,7 +92,6 @@ public:
     }
 
 private: // ------------------------------------------------------
-
     // these are called from the Qt undo system
     void undo() override
     {
@@ -134,7 +145,7 @@ UiAnimUndoManager::~UiAnimUndoManager()
 //////////////////////////////////////////////////////////////////////////
 void UiAnimUndoManager::Begin()
 {
-    //CryLog( "<Undo> Begin SuspendCount=%d",m_suspendCount );
+    // CryLog( "<Undo> Begin SuspendCount=%d",m_suspendCount );
     if (m_bUndoing || m_bRedoing) // If Undoing or redoing now, ignore this calls.
     {
         return;
@@ -144,8 +155,8 @@ void UiAnimUndoManager::Begin()
 
     if (m_bRecording)
     {
-        //CLogFile::WriteLine( "<Undo> Begin (already recording)" );
-        // Not cancel, just combine.
+        // CLogFile::WriteLine( "<Undo> Begin (already recording)" );
+        //  Not cancel, just combine.
         return;
     }
 
@@ -153,7 +164,7 @@ void UiAnimUndoManager::Begin()
     m_currentUndo = new UiAnimUndoStep;
 
     m_bRecording = true;
-    //CLogFile::WriteLine( "<Undo> Begin OK" );
+    // CLogFile::WriteLine( "<Undo> Begin OK" );
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -179,13 +190,13 @@ void UiAnimUndoManager::Restore(bool bUndo)
         }
         EndRestoreTransaction();
     }
-    //CryLog( "Restore Undo" );
+    // CryLog( "Restore Undo" );
 }
 
 //////////////////////////////////////////////////////////////////////////
 void UiAnimUndoManager::Accept(const AZStd::string& name)
 {
-    //CryLog( "<Undo> Accept, Suspend Count=%d",m_suspendCount );
+    // CryLog( "<Undo> Accept, Suspend Count=%d",m_suspendCount );
     if (m_bUndoing || m_bRedoing) // If Undoing or redoing now, ignore this calls.
     {
         return;
@@ -193,7 +204,7 @@ void UiAnimUndoManager::Accept(const AZStd::string& name)
 
     if (!m_bRecording)
     {
-        //CLogFile::WriteLine( "<Undo> Accept (Not recording)" );
+        // CLogFile::WriteLine( "<Undo> Accept (Not recording)" );
         return;
     }
 
@@ -214,13 +225,13 @@ void UiAnimUndoManager::Accept(const AZStd::string& name)
     m_bRecording = false;
     m_currentUndo = 0;
 
-    //CLogFile::WriteLine( "<Undo> Accept OK" );
+    // CLogFile::WriteLine( "<Undo> Accept OK" );
 }
 
 //////////////////////////////////////////////////////////////////////////
 void UiAnimUndoManager::Cancel()
 {
-    //CryLog( "<Undo> Cancel" );
+    // CryLog( "<Undo> Cancel" );
     if (m_bUndoing || m_bRedoing) // If Undoing or redoing now, ignore this calls.
     {
         return;
@@ -243,7 +254,7 @@ void UiAnimUndoManager::Cancel()
 
     delete m_currentUndo;
     m_currentUndo = 0;
-    //CLogFile::WriteLine( "<Undo> Cancel OK" );
+    // CLogFile::WriteLine( "<Undo> Cancel OK" );
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -331,11 +342,11 @@ void UiAnimUndoManager::UndoStep(UiAnimUndoStep* step)
 //////////////////////////////////////////////////////////////////////////
 void UiAnimUndoManager::RecordUndo(UiAnimUndoObject* obj)
 {
-    //CryLog( "<Undo> RecordUndo Name=%s",obj->GetDescription() );
+    // CryLog( "<Undo> RecordUndo Name=%s",obj->GetDescription() );
 
     if (m_bUndoing || m_bRedoing) // If Undoing or redoing now, ignore this calls.
     {
-        //CLogFile::WriteLine( "<Undo> RecordUndo (Undoing or Redoing)" );
+        // CLogFile::WriteLine( "<Undo> RecordUndo (Undoing or Redoing)" );
         obj->Release();
         return;
     }
@@ -344,12 +355,12 @@ void UiAnimUndoManager::RecordUndo(UiAnimUndoObject* obj)
     {
         assert(m_currentUndo != 0);
         m_currentUndo->AddUndoObject(obj);
-        //CLogFile::FormatLine( "Undo Object Added: %s",obj->GetDescription() );
+        // CLogFile::FormatLine( "Undo Object Added: %s",obj->GetDescription() );
     }
     else
     {
-        //CLogFile::WriteLine( "<Undo> RecordUndo (Not Recording)" );
-        // Ignore this object.
+        // CLogFile::WriteLine( "<Undo> RecordUndo (Not Recording)" );
+        //  Ignore this object.
         obj->Release();
     }
 }
@@ -358,7 +369,7 @@ void UiAnimUndoManager::RecordUndo(UiAnimUndoObject* obj)
 void UiAnimUndoManager::Suspend()
 {
     m_suspendCount++;
-    //CLogFile::FormatLine( "<Undo> Suspend %d",m_suspendCount );
+    // CLogFile::FormatLine( "<Undo> Suspend %d",m_suspendCount );
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -369,7 +380,7 @@ void UiAnimUndoManager::Resume()
     {
         m_suspendCount--;
     }
-    //CLogFile::FormatLine( "<Undo> Resume %d",m_suspendCount );
+    // CLogFile::FormatLine( "<Undo> Resume %d",m_suspendCount );
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -383,12 +394,18 @@ void UiAnimUndoManager::Flush()
 
 void UiAnimUndoManager::AddListener(IUndoManagerListener* pListener)
 {
-    stl::push_back_unique(m_listeners, pListener);
+    if (AZStd::find(m_listeners.begin(), m_listeners.end(), pListener) == m_listeners.end())
+    {
+        m_listeners.push_back(pListener);
+    }
 }
 
 void UiAnimUndoManager::RemoveListener(IUndoManagerListener* pListener)
 {
-    stl::find_and_erase(m_listeners, pListener);
+    if (auto listenerIterator = AZStd::find(m_listeners.begin(), m_listeners.end(), pListener); listenerIterator != m_listeners.end())
+    {
+        m_listeners.erase(listenerIterator);
+    }
 }
 
 void UiAnimUndoManager::BeginUndoTransaction()

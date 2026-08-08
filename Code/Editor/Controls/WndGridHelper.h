@@ -10,7 +10,7 @@
 
 #include <QPoint>
 #include <QRect>
-#include "Cry_Vector2.h"
+#include <AzCore/Math/Vector2.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Math/Vector2.h>
 
@@ -43,28 +43,28 @@ public:
     }
 
     //////////////////////////////////////////////////////////////////////////
-    Vec2 ClientToWorld(const QPoint& point)
+    AZ::Vector2 ClientToWorld(const QPoint& point)
     {
-        Vec2 v;
-        v.x = (point.x() - rect.left()) / zoom.GetX() + origin.GetX();
-        v.y = (point.y() - rect.top()) / zoom.GetY() + origin.GetY();
+        AZ::Vector2 v;
+        v.SetX((point.x() - rect.left()) / zoom.GetX() + origin.GetX());
+        v.SetY((point.y() - rect.top()) / zoom.GetY() + origin.GetY());
         return v;
     }
     
-    QPoint WorldToClient(Vec2 v)
+    QPoint WorldToClient(AZ::Vector2 v)
     {
-        QPoint p(aznumeric_cast<int>(floor((v.x - origin.GetX()) * zoom.GetX() + 0.5f) + rect.left()),
-            aznumeric_cast<int>(floor((v.y - origin.GetY()) * zoom.GetY() + 0.5f) + rect.top()));
+        QPoint p(aznumeric_cast<int>(floor((v.GetX() - origin.GetX()) * zoom.GetX() + 0.5f) + rect.left()),
+            aznumeric_cast<int>(floor((v.GetY() - origin.GetY()) * zoom.GetY() + 0.5f) + rect.top()));
         return p;
     }
 
-    void SetOrigin(Vec2 neworigin)
+    void SetOrigin(AZ::Vector2 neworigin)
     {
-        origin = AZ::Vector2(neworigin.x, neworigin.y);
+        origin = AZ::Vector2(neworigin.GetX(), neworigin.GetY());
     }
-    void SetZoom(Vec2 newzoom)
+    void SetZoom(AZ::Vector2 newzoom)
     {
-        zoom = AZ::Vector2(newzoom.x, newzoom.y);
+        zoom = AZ::Vector2(newzoom.GetX(), newzoom.GetY());
     }
     void SetZoom(AZ::Vector2 newzoom, const QPoint& center)
     {
@@ -94,10 +94,6 @@ public:
         ofsy = -(y2 / z2.GetY() - y2 / z1.GetY() - ofsy);
         origin.SetX(ofsx);
         origin.SetY(ofsy);
-    }
-    void SetZoom(Vec2 newzoom, const QPoint& center)
-    {
-        SetZoom(AZ::Vector2(newzoom.x, newzoom.y), center);
     }
     void CalculateGridLines()
     {

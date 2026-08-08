@@ -6,7 +6,6 @@
  *
  */
 #include <AzCore/PlatformDef.h>
-#include <platform.h>
 
 #include "ColorButton.h"
 
@@ -55,4 +54,3 @@ void ColorButton::OnClick()
         emit ColorChanged(m_color);
     }
 }
-

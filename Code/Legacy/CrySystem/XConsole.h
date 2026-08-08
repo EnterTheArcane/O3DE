@@ -9,7 +9,6 @@
 #pragma once
 
 #include <IConsole.h>
-#include <CryCommon/StlUtils.h>
 #include <CryCommon/TimeValue.h>
 #include <AzFramework/Components/ConsoleBus.h>
 #include <AzFramework/CommandLine/CommandRegistrationBus.h>
@@ -262,7 +261,7 @@ private: // ----------------------------------------------------------
     typedef std::map<AZStd::string, AZStd::string> ConsoleBindsMap;
     typedef ConsoleBindsMap::iterator ConsoleBindsMapItor;
 
-    typedef std::map<AZStd::string, IConsoleArgumentAutoComplete*, stl::less_stricmp<AZStd::string> > ArgumentAutoCompleteMap;
+    using ArgumentAutoCompleteMap = std::map<AZStd::string, IConsoleArgumentAutoComplete*, string_nocase_lt>;
 
     struct SConfigVar
     {

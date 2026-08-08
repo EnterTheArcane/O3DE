@@ -11,6 +11,8 @@
 
 #include "Undo.h"
 
+#include <AzCore/std/algorithm.h>
+
 #include "Settings.h"
 #include "IUndoManagerListener.h"
 
@@ -594,12 +596,19 @@ int CUndoManager::GetMaxUndoStep() const
 
 void CUndoManager::AddListener(IUndoManagerListener* pListener)
 {
-    stl::push_back_unique(m_listeners, pListener);
+    if (AZStd::find(m_listeners.begin(), m_listeners.end(), pListener) == m_listeners.end())
+    {
+        m_listeners.push_back(pListener);
+    }
 }
 
 void CUndoManager::RemoveListener(IUndoManagerListener* pListener)
 {
-    stl::find_and_erase(m_listeners, pListener);
+    if (auto listenerIterator = AZStd::find(m_listeners.begin(), m_listeners.end(), pListener);
+        listenerIterator != m_listeners.end())
+    {
+        m_listeners.erase(listenerIterator);
+    }
 }
 
 void CUndoManager::BeginUndoTransaction()

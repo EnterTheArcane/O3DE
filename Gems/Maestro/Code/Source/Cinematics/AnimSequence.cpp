@@ -26,7 +26,7 @@
 #include "SequenceTrack.h"
 #include "ShadowsSetupNode.h"
 #include <AzCore/Serialization/SerializeContext.h>
-#include <CryCommon/StlUtils.h>
+#include <AzCore/std/algorithm.h>
 #include <Maestro/Bus/EditorSequenceComponentBus.h>
 #include <Maestro/Types/AnimNodeType.h>
 #include <Maestro/Types/AnimParamType.h>
@@ -433,9 +433,9 @@ namespace Maestro
 
     void CAnimSequence::RemoveAll()
     {
-        stl::free_container(m_nodes);
-        stl::free_container(m_events);
-        stl::free_container(m_nodesNeedToRender);
+        decltype(m_nodes){}.swap(m_nodes);
+        decltype(m_events){}.swap(m_events);
+        decltype(m_nodesNeedToRender){}.swap(m_nodesNeedToRender);
         m_activeDirector = nullptr;
         m_activeDirectorNodeId = -1;
     }
@@ -1074,8 +1074,9 @@ namespace Maestro
             return false;
         }
 
-        if (stl::push_back_unique(m_events, szEvent))
+        if (AZStd::find(m_events.begin(), m_events.end(), szEvent) == m_events.end())
         {
+            m_events.push_back(szEvent);
             NotifyTrackEvent(ITrackEventListener::eTrackEventReason_Added, szEvent);
             return true;
         }
@@ -1091,8 +1092,9 @@ namespace Maestro
             return false;
         }
 
-        if (stl::find_and_erase(m_events, szEvent))
+        if (auto eventIterator = AZStd::find(m_events.begin(), m_events.end(), szEvent); eventIterator != m_events.end())
         {
+            m_events.erase(eventIterator);
             NotifyTrackEvent(ITrackEventListener::eTrackEventReason_Removed, szEvent);
             return true;
         }
@@ -1275,7 +1277,12 @@ namespace Maestro
         }
 
         AZStd::intrusive_ptr<IAnimNode> pTempHolder(pNode); // Keep reference to node so it is not deleted by erasing from list.
-        stl::find_and_erase_if(m_nodes, [pNode](const AZStd::intrusive_ptr<IAnimNode>& sp) { return sp.get() == pNode; });
+        if (auto nodeIterator = AZStd::find_if(
+                m_nodes.begin(), m_nodes.end(), [pNode](const AZStd::intrusive_ptr<IAnimNode>& node) { return node.get() == pNode; });
+            nodeIterator != m_nodes.end())
+        {
+            m_nodes.erase(nodeIterator);
+        }
 
         AnimNodes::iterator it;
         for (it = m_nodes.begin(); it != m_nodes.end(); ++it)
@@ -1386,7 +1393,13 @@ namespace Maestro
             return false;
         }
 
-        return stl::push_back_unique(m_nodesNeedToRender, AZStd::intrusive_ptr<IAnimNode>(pNode));
+        const AZStd::intrusive_ptr<IAnimNode> node(pNode);
+        if (AZStd::find(m_nodesNeedToRender.begin(), m_nodesNeedToRender.end(), node) != m_nodesNeedToRender.end())
+        {
+            return false;
+        }
+        m_nodesNeedToRender.push_back(node);
+        return true;
     }
 
     void CAnimSequence::RemoveNodeNeedToRender(IAnimNode* pNode)
@@ -1397,12 +1410,13 @@ namespace Maestro
             return;
         }
 
-        stl::find_and_erase_if(
-            m_nodesNeedToRender,
-            [pNode](const AZStd::intrusive_ptr<IAnimNode>& sp)
-            {
-                return sp.get() == pNode;
-            });
+        if (auto nodeIterator = AZStd::find_if(
+                m_nodesNeedToRender.begin(), m_nodesNeedToRender.end(),
+                [pNode](const AZStd::intrusive_ptr<IAnimNode>& node) { return node.get() == pNode; });
+            nodeIterator != m_nodesNeedToRender.end())
+        {
+            m_nodesNeedToRender.erase(nodeIterator);
+        }
     }
 
     void CAnimSequence::SetSequenceEntityId(const AZ::EntityId& sequenceEntityId)

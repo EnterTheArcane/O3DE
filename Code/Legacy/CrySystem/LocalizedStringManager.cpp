@@ -319,7 +319,10 @@ void CLocalizedStringsManager::FreeLocalizationData()
                 SAFE_DELETE(pLanguage->m_vEncoders[iEncoder]);
             }
         }
-        std::for_each(m_languages[i]->m_vLocalizedStrings.begin(), m_languages[i]->m_vLocalizedStrings.end(), stl::container_object_deleter());
+        for (const SLocalizedStringEntry* entry : m_languages[i]->m_vLocalizedStrings)
+        {
+            delete entry;
+        }
         m_languages[i]->m_keysMap.clear();
         m_languages[i]->m_vLocalizedStrings.clear();
     }
@@ -2017,7 +2020,9 @@ bool CLocalizedStringsManager::LocalizeLabel(const char* sLabel, AZStd::string& 
         uint32 labelCRC32 = AZ::Crc32(sLabel + 1);   // skip @ character.
         {
             AutoLock lock(m_cs);    //Lock here, to prevent strings etc being modified underneath this lookup
-            SLocalizedStringEntry* entry = stl::find_in_map(m_pLanguage->m_keysMap, labelCRC32, NULL);
+            const auto entryIterator = m_pLanguage->m_keysMap.find(labelCRC32);
+            SLocalizedStringEntry* entry =
+                entryIterator != m_pLanguage->m_keysMap.end() ? entryIterator->second : nullptr;
 
             if (entry != NULL)
             {
@@ -2066,7 +2071,9 @@ bool CLocalizedStringsManager::GetEnglishString(const char* sKey, AZStd::string&
         uint32 keyCRC32 = AZ::Crc32(sKey + 1);
         {
             AutoLock lock(m_cs); // Lock here, to prevent strings etc being modified underneath this lookup
-            SLocalizedStringEntry* entry = stl::find_in_map(m_pLanguage->m_keysMap, keyCRC32, NULL); // skip @ character.
+            auto entryIterator = m_pLanguage->m_keysMap.find(keyCRC32);
+            SLocalizedStringEntry* entry =
+                entryIterator != m_pLanguage->m_keysMap.end() ? entryIterator->second : nullptr; // skip @ character.
             if (entry != NULL && entry->pEditorExtension != NULL)
             {
                 sLocalizedString = entry->pEditorExtension->sOriginalText;
@@ -2075,7 +2082,8 @@ bool CLocalizedStringsManager::GetEnglishString(const char* sKey, AZStd::string&
             else
             {
                 keyCRC32 = AZ::Crc32(sKey);
-                entry = stl::find_in_map(m_pLanguage->m_keysMap, keyCRC32, NULL);
+                entryIterator = m_pLanguage->m_keysMap.find(keyCRC32);
+                entry = entryIterator != m_pLanguage->m_keysMap.end() ? entryIterator->second : nullptr;
                 if (entry != NULL && entry->pEditorExtension != NULL)
                 {
                     sLocalizedString = entry->pEditorExtension->sOriginalText;
@@ -2109,7 +2117,9 @@ bool CLocalizedStringsManager::IsLocalizedInfoFound(const char* sKey)
     uint32 keyCRC32 = AZ::Crc32(sKey);
     {
         AutoLock lock(m_cs);    //Lock here, to prevent strings etc being modified underneath this lookup
-        const SLocalizedStringEntry* entry = stl::find_in_map(m_pLanguage->m_keysMap, keyCRC32, NULL);
+        const auto entryIterator = m_pLanguage->m_keysMap.find(keyCRC32);
+        const SLocalizedStringEntry* entry =
+            entryIterator != m_pLanguage->m_keysMap.end() ? entryIterator->second : nullptr;
         return (entry != NULL);
     }
 }
@@ -2125,7 +2135,9 @@ bool CLocalizedStringsManager::GetLocalizedInfoByKey(const char* sKey, SLocalize
     uint32 keyCRC32 = AZ::Crc32(sKey);
     {
         AutoLock lock(m_cs);    //Lock here, to prevent strings etc being modified underneath this lookup
-        const SLocalizedStringEntry* entry = stl::find_in_map(m_pLanguage->m_keysMap, keyCRC32, NULL);
+        const auto entryIterator = m_pLanguage->m_keysMap.find(keyCRC32);
+        const SLocalizedStringEntry* entry =
+            entryIterator != m_pLanguage->m_keysMap.end() ? entryIterator->second : nullptr;
         if (entry != NULL)
         {
             outGameInfo.szCharacterName = entry->sCharacterName.c_str();
@@ -2156,7 +2168,9 @@ bool CLocalizedStringsManager::GetLocalizedInfoByKey(const char* sKey, SLocalize
     uint32 keyCRC32 = AZ::Crc32(sKey);
     {
         AutoLock lock(m_cs);    //Lock here, to prevent strings etc being modified underneath this lookup
-        const SLocalizedStringEntry* pEntry = stl::find_in_map(m_pLanguage->m_keysMap, keyCRC32, NULL);
+        const auto entryIterator = m_pLanguage->m_keysMap.find(keyCRC32);
+        const SLocalizedStringEntry* pEntry =
+            entryIterator != m_pLanguage->m_keysMap.end() ? entryIterator->second : nullptr;
         if (pEntry != NULL)
         {
             bResult = true;
@@ -2309,7 +2323,9 @@ bool CLocalizedStringsManager::GetSubtitle(const char* sKeyOrLabel, AZStd::strin
     uint32 keyCRC32 = AZ::Crc32(sKeyOrLabel);
     {
         AutoLock lock(m_cs);    //Lock here, to prevent strings etc being modified underneath this lookup
-        const SLocalizedStringEntry* pEntry = stl::find_in_map(m_pLanguage->m_keysMap, keyCRC32, NULL);
+        const auto entryIterator = m_pLanguage->m_keysMap.find(keyCRC32);
+        const SLocalizedStringEntry* pEntry =
+            entryIterator != m_pLanguage->m_keysMap.end() ? entryIterator->second : nullptr;
         if (pEntry != NULL)
         {
             if ((pEntry->flags & SLocalizedStringEntry::USE_SUBTITLE) == false && !bForceSubtitle)
@@ -2613,7 +2629,10 @@ void CLocalizedStringsManager::LocalizeNumber_Decimal(float number, int decimals
 
     float decimalsOnly = f - (float)d;
 
-    int decimalsAsInt = aznumeric_cast<int>(int_round(decimalsOnly * pow(10.0f, decimals)));
+    const float scaledDecimals = decimalsOnly * pow(10.0f, decimals);
+    // Preserve int_round's add-before-truncate behavior. std::round is observably different for
+    // representable values immediately below a half because the addition itself can round to 1.0f.
+    int decimalsAsInt = static_cast<int>(scaledDecimals + 0.5f);
 
     AZStd::fixed_string<64> tmp;
     tmp = AZStd::fixed_string<64>::format("%s%s%0*d", intPart.c_str(), commaSeparator.c_str(), decimals, decimalsAsInt);
@@ -2779,5 +2798,3 @@ void CLocalizedStringsManager::LocalizeDate(time_t t, bool bMakeLocalTime, bool 
 
 
 #endif
-
-

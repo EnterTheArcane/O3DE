@@ -56,7 +56,6 @@
 #include "Pipeline/LyShineBuilder/LyShineBuilderComponent.h"
 #endif // LYSHINE_BUILDER
 
-#include <CryCommon/LoadScreenBus.h>
 
 namespace LyShine
 {

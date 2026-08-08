@@ -88,11 +88,11 @@ public:
     unsigned int GetParamCount() const override { return 0; };
 
     bool SetParamValue(float time, CUiAnimParamType param, float val) override;
-    bool SetParamValue(float time, CUiAnimParamType param, const Vec3& val) override;
-    bool SetParamValue(float time, CUiAnimParamType param, const Vec4& val) override;
+    bool SetParamValue(float time, CUiAnimParamType param, const AZ::Vector3& val) override;
+    bool SetParamValue(float time, CUiAnimParamType param, const AZ::Vector4& val) override;
     bool GetParamValue(float time, CUiAnimParamType param, float& val) override;
-    bool GetParamValue(float time, CUiAnimParamType param, Vec3& val) override;
-    bool GetParamValue(float time, CUiAnimParamType param, Vec4& val) override;
+    bool GetParamValue(float time, CUiAnimParamType param, AZ::Vector3& val) override;
+    bool GetParamValue(float time, CUiAnimParamType param, AZ::Vector4& val) override;
 
     void SetTarget([[maybe_unused]] IUiAnimNode* node) {};
     IUiAnimNode* GetTarget() const { return 0; };

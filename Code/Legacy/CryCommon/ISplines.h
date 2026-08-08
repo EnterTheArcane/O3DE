@@ -10,6 +10,10 @@
 
 #include <IXml.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/typetraits/is_same.h>
+#include <AzCore/Math/Vector2.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Quaternion.h> // CryCommon->AzCore migration: was transitively included via the removed Cry_Quat.h
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -70,17 +74,8 @@ inline T minmag(T const& a, T const& b)
     }
 }
 
-template<class T>
-inline Vec3_tpl<T> minmag(Vec3_tpl<T> const& a, Vec3_tpl<T> const& b)
-{
-    return Vec3_tpl<T>(minmag(a.x, b.x), minmag(a.y, b.y), minmag(a.z, b.z));
-}
-
-template<class T>
-T abs(Vec3_tpl<T> v)
-{
-    return v.GetLength();
-}
+// CryCommon->AzCore migration: the Vec3_tpl minmag/abs overloads were removed (dead — splines
+// now use AZ::Vector2/AZ::Vector3, and these were never called).
 
 //////////////////////////////////////////////////////////////////////////
 // Interface returned by backup methods of ISplineInterpolator.
@@ -248,17 +243,17 @@ namespace spline
     template <>
     inline void Zero(float& val) { val = 0.0f; }
     template <>
-    inline void Zero(Vec2& val) { val = Vec2(0.0f, 0.0f); }
+    inline void Zero(AZ::Vector2& val) { val = AZ::Vector2(0.0f, 0.0f); }
     template <>
-    inline void Zero(Vec3& val) { val = Vec3(0.0f, 0.0f, 0.0f); }
+    inline void Zero(AZ::Vector3& val) { val = AZ::Vector3(0.0f, 0.0f, 0.0f); }
     template <>
     inline void Zero(AZ::Quaternion& val) { val = AZ::Quaternion::CreateIdentity(); }
 
     inline float Concatenate(float left, float right) { return left + right; }
-    inline Vec3 Concatenate(const Vec3& left, const Vec3& right) { return left + right; }
+    inline AZ::Vector3 Concatenate(const AZ::Vector3& left, const AZ::Vector3& right) { return left + right; }
     inline AZ::Quaternion Concatenate(const AZ::Quaternion& left, const AZ::Quaternion& right) { return left * right; }
     inline float Subtract (float left, float right) { return left - right; }
-    inline Vec3 Subtract (const Vec3& left, const Vec3& right) { return left - right; }
+    inline AZ::Vector3 Subtract (const AZ::Vector3& left, const AZ::Vector3& right) { return left - right; }
     inline AZ::Quaternion Subtract(const AZ::Quaternion& left, const AZ::Quaternion& right) { return left.GetConjugate() * right; }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -353,7 +348,7 @@ namespace spline
 
     inline float fast_fmod(float x, float y)
     {
-        return fmod_tpl(x, y);
+        return AZStd::fmod(x, y);
         //int ival = ftoi(x/y);
         //return x - ival*y;
     }
@@ -407,7 +402,7 @@ namespace spline
         :  public TCBSplineKey<AZ::Quaternion>
     {
         float angle;
-        Vec3 axis;
+        AZ::Vector3 axis;
 
         TCBAngAxisKey()
             : axis(0, 0, 0)
@@ -1068,8 +1063,30 @@ namespace spline
         static const int DIM = sizeof(value_type) / sizeof(ElemType);
 
         //////////////////////////////////////////////////////////////////////////
-        inline void ToValueType(const value_type& t, ValueType& v) { *(value_type*)v = t; }
-        inline void FromValueType(ValueType v, value_type& t) { t = *(value_type*)v; }
+        inline void ToValueType(const value_type& t, ValueType& v)
+        {
+            if constexpr (AZStd::is_same_v<value_type, AZ::Vector2>)
+            {
+                t.StoreToFloat2(v);
+                v[2] = 0.0f;
+                v[3] = 0.0f;
+            }
+            else
+            {
+                *(value_type*)v = t;
+            }
+        }
+        inline void FromValueType(ValueType v, value_type& t)
+        {
+            if constexpr (AZStd::is_same_v<value_type, AZ::Vector2>)
+            {
+                t = AZ::Vector2::CreateFromFloat2(v);
+            }
+            else
+            {
+                t = *(value_type*)v;
+            }
+        }
         //////////////////////////////////////////////////////////////////////////
 
         virtual void SetModified(bool b, bool bSort = false)
@@ -1248,5 +1265,5 @@ namespace spline
 
 namespace AZ
 {
-    AZ_TYPE_INFO_SPECIALIZE(spline::SplineKey<Vec2>, "{24A4D7E5-C36D-427D-AB49-CD86573B7288}");
+    AZ_TYPE_INFO_SPECIALIZE(spline::SplineKey<AZ::Vector2>, "{24A4D7E5-C36D-427D-AB49-CD86573B7288}");
 }

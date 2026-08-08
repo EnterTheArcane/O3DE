@@ -6,17 +6,17 @@
  *
  */
 #include "Sprite.h"
-#include <CryPath.h>
-#include <ISerialize.h>
 #include <AzCore/Serialization/Locale.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
+#include <ISerialize.h>
+#include <ISystem.h>
 #include <LyShine/Bus/Sprite/UiSpriteBus.h>
 
-#include <Atom/RPI.Public/Image/StreamingImage.h>
 #include <Atom/RPI.Public/Image/AttachmentImage.h>
-#include <Atom/RPI.Reflect/Image/StreamingImageAsset.h>
+#include <Atom/RPI.Public/Image/StreamingImage.h>
 #include <Atom/RPI.Reflect/Asset/AssetUtils.h>
+#include <Atom/RPI.Reflect/Image/StreamingImageAsset.h>
 
 namespace
 {
@@ -25,12 +25,10 @@ namespace
 
     // Increment this when the Sprite Serialize(TSerialize) function
     // changes to be incompatible with previous data
-    uint32 spriteFileVersionNumber = 2;
+    AZ::u32 spriteFileVersionNumber = 2;
     const char* spriteVersionNumberTag = "versionNumber";
 
-    const char* allowedSpriteTextureExtensions[] = {
-        "tif", "jpg", "jpeg", "tga", "bmp", "png", "gif", "dds"
-    };
+    const char* allowedSpriteTextureExtensions[] = { "tif", "jpg", "jpeg", "tga", "bmp", "png", "gif", "dds" };
     const int numAllowedSpriteTextureExtensions = AZ_ARRAY_SIZE(allowedSpriteTextureExtensions);
 
     bool IsValidImageExtension(const AZStd::string& extension)
@@ -64,7 +62,8 @@ namespace
         {
             // If the texture doesn't exist check if it's queued or being compiled.
             AzFramework::AssetSystem::AssetStatus status;
-            AzFramework::AssetSystemRequestBus::BroadcastResult(status, &AzFramework::AssetSystemRequestBus::Events::GetAssetStatus, sourceRelativePath);
+            AzFramework::AssetSystemRequestBus::BroadcastResult(
+                status, &AzFramework::AssetSystemRequestBus::Events::GetAssetStatus, sourceRelativePath);
 
             switch (status)
             {
@@ -72,19 +71,19 @@ namespace
             case AzFramework::AssetSystem::AssetStatus_Compiling:
             case AzFramework::AssetSystem::AssetStatus_Compiled:
             case AzFramework::AssetSystem::AssetStatus_Failed:
-            {
-                // The file is queued, in progress, or finished processing after the initial FileIO check
-                fileExists = true;
-                break;
-            }
+                {
+                    // The file is queued, in progress, or finished processing after the initial FileIO check
+                    fileExists = true;
+                    break;
+                }
             case AzFramework::AssetSystem::AssetStatus_Unknown:
             case AzFramework::AssetSystem::AssetStatus_Missing:
             default:
-            {
-                // The file does not exist
-                fileExists = false;
-                break;
-            }
+                {
+                    // The file does not exist
+                    fileExists = false;
+                    break;
+                }
             }
         }
 
@@ -119,8 +118,13 @@ namespace
             // look for a texture file with the same name
             if (!CSprite::FixUpSourceImagePathFromUserDefinedPath(spritePath, texturePath))
             {
-                gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
-                    spritePath.c_str(), "No texture file found for sprite: %s, no sprite will be used", spritePath.c_str());
+                gEnv->pSystem->Warning(
+                    VALIDATOR_MODULE_SHINE,
+                    VALIDATOR_WARNING,
+                    VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
+                    spritePath.c_str(),
+                    "No texture file found for sprite: %s, no sprite will be used",
+                    spritePath.c_str());
                 return false;
             }
         }
@@ -132,15 +136,20 @@ namespace
         }
         else
         {
-            gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
-                pathname.c_str(), "Invalid file extension for sprite: %s, no sprite will be used", pathname.c_str());
+            gEnv->pSystem->Warning(
+                VALIDATOR_MODULE_SHINE,
+                VALIDATOR_WARNING,
+                VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
+                pathname.c_str(),
+                "Invalid file extension for sprite: %s, no sprite will be used",
+                pathname.c_str());
             return false;
         }
 
         return true;
     }
 
-    //! \brief Reads a Vec2 tuple (as a string) into an AZ::Vector2
+    //! \brief Reads a AZ::Vector2 tuple (as a string) into an AZ::Vector2
     //!
     //! Example XML string data: "1.0 2.0"
     void SerializeAzVector2(TSerialize ser, const char* attributeName, AZ::Vector2& azVec2)
@@ -159,7 +168,7 @@ namespace
         }
         else
         {
-            Vec2 legacyVec2(azVec2.GetX(), azVec2.GetY());
+            AZ::Vector2 legacyVec2(azVec2.GetX(), azVec2.GetY());
             ser.Value(attributeName, legacyVec2);
         }
     }
@@ -175,7 +184,7 @@ namespace
         }
         return numCellTags;
     }
-}
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // STATIC MEMBER DATA
@@ -327,7 +336,7 @@ bool CSprite::SaveToXml(const AZStd::string& pathname)
     // NOTE: The input pathname has to be a path that can used to save - so not an Asset ID
     // because of this we do not store the pathname
 
-    XmlNodeRef root =  GetISystem()->CreateXmlNode("Sprite");
+    XmlNodeRef root = GetISystem()->CreateXmlNode("Sprite");
     std::unique_ptr<IXmlSerializer> pSerializer(GetISystem()->GetXmlUtils()->CreateXmlSerializer());
     ISerialize* pWriter = pSerializer->GetWriter(root);
     TSerialize ser = TSerialize(pWriter);
@@ -349,10 +358,8 @@ bool CSprite::AreCellBordersZeroWidth(int cellIndex) const
 {
     if (CellIndexWithinRange(cellIndex))
     {
-        return m_spriteSheetCells[cellIndex].borders.m_left == 0
-               && m_spriteSheetCells[cellIndex].borders.m_right == 1
-               && m_spriteSheetCells[cellIndex].borders.m_top == 0
-               && m_spriteSheetCells[cellIndex].borders.m_bottom == 1;
+        return m_spriteSheetCells[cellIndex].borders.m_left == 0 && m_spriteSheetCells[cellIndex].borders.m_right == 1 &&
+            m_spriteSheetCells[cellIndex].borders.m_top == 0 && m_spriteSheetCells[cellIndex].borders.m_bottom == 1;
     }
     else
     {
@@ -389,13 +396,11 @@ AZ::Vector2 CSprite::GetCellSize(int cellIndex)
     {
         // Assume top width is same as bottom width
         const float normalizedCellWidth =
-            m_spriteSheetCells[cellIndex].uvCellCoords.TopRight().GetX() -
-            m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetX();
+            m_spriteSheetCells[cellIndex].uvCellCoords.TopRight().GetX() - m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetX();
 
         // Similar, assume height of cell is same for left and right sides
         const float normalizedCellHeight =
-            m_spriteSheetCells[cellIndex].uvCellCoords.BottomLeft().GetY() -
-            m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetY();
+            m_spriteSheetCells[cellIndex].uvCellCoords.BottomLeft().GetY() - m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetY();
 
         textureSize.SetX(textureSize.GetX() * normalizedCellWidth);
         textureSize.SetY(textureSize.GetY() * normalizedCellHeight);
@@ -438,8 +443,10 @@ AZ::Vector2 CSprite::GetCellUvSize(int cellIndex) const
 
     if (CellIndexWithinRange(cellIndex))
     {
-        result.SetX(m_spriteSheetCells[cellIndex].uvCellCoords.TopRight().GetX() - m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetX());
-        result.SetY(m_spriteSheetCells[cellIndex].uvCellCoords.BottomLeft().GetY() - m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetY());
+        result.SetX(
+            m_spriteSheetCells[cellIndex].uvCellCoords.TopRight().GetX() - m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetX());
+        result.SetY(
+            m_spriteSheetCells[cellIndex].uvCellCoords.BottomLeft().GetY() - m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetY());
     }
     if (m_atlas)
     {
@@ -458,14 +465,22 @@ UiTransformInterface::RectPoints CSprite::GetCellUvCoords(int cellIndex) const
         if (m_atlas)
         {
             return UiTransformInterface::RectPoints(
-                static_cast<float>(m_atlasCoordinates.GetLeft() + (m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetX() * m_atlasCoordinates.GetWidth()))
-                / m_atlas->GetWidth(),
-                static_cast<float>(m_atlasCoordinates.GetLeft() + (m_spriteSheetCells[cellIndex].uvCellCoords.TopRight().GetX() * m_atlasCoordinates.GetWidth()))
-                / m_atlas->GetWidth(),
-                static_cast<float>(m_atlasCoordinates.GetTop() + (m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetY() * m_atlasCoordinates.GetHeight()))
-                / m_atlas->GetHeight(),
-                static_cast<float>(m_atlasCoordinates.GetTop() + (m_spriteSheetCells[cellIndex].uvCellCoords.BottomLeft().GetY() * m_atlasCoordinates.GetHeight()))
-                / m_atlas->GetHeight());
+                static_cast<float>(
+                    m_atlasCoordinates.GetLeft() +
+                    (m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetX() * m_atlasCoordinates.GetWidth())) /
+                    m_atlas->GetWidth(),
+                static_cast<float>(
+                    m_atlasCoordinates.GetLeft() +
+                    (m_spriteSheetCells[cellIndex].uvCellCoords.TopRight().GetX() * m_atlasCoordinates.GetWidth())) /
+                    m_atlas->GetWidth(),
+                static_cast<float>(
+                    m_atlasCoordinates.GetTop() +
+                    (m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetY() * m_atlasCoordinates.GetHeight())) /
+                    m_atlas->GetHeight(),
+                static_cast<float>(
+                    m_atlasCoordinates.GetTop() +
+                    (m_spriteSheetCells[cellIndex].uvCellCoords.BottomLeft().GetY() * m_atlasCoordinates.GetHeight())) /
+                    m_atlas->GetHeight());
         }
         return m_spriteSheetCells[cellIndex].uvCellCoords;
     }
@@ -578,7 +593,8 @@ void CSprite::OnAtlasUnloaded(const TextureAtlasNamespace::TextureAtlas* atlas)
     if (atlas == m_atlas)
     {
         m_atlas = nullptr;
-        TextureAtlasNamespace::TextureAtlasRequestBus::BroadcastResult(m_atlas, &TextureAtlasNamespace::TextureAtlasRequests::FindAtlasContainingImage, m_pathname.c_str());
+        TextureAtlasNamespace::TextureAtlasRequestBus::BroadcastResult(
+            m_atlas, &TextureAtlasNamespace::TextureAtlasRequests::FindAtlasContainingImage, m_pathname.c_str());
         if (m_atlas)
         {
             m_atlasCoordinates = m_atlas->GetAtlasCoordinates(m_pathname.c_str());
@@ -634,7 +650,7 @@ CSprite* CSprite::LoadSprite(const AZStd::string& pathname)
     AZStd::string spritePath;
     AZStd::string texturePath;
     bool validAssetPaths = GetSourceAssetPaths(pathname.c_str(), spritePath, texturePath);
-    
+
     if (!validAssetPaths)
     {
         return nullptr;
@@ -653,7 +669,8 @@ CSprite* CSprite::LoadSprite(const AZStd::string& pathname)
     // Try to use a texture atlas instead
     TextureAtlasNamespace::TextureAtlas* atlas = nullptr;
     TextureAtlasNamespace::AtlasCoordinates atlasCoordinates;
-    TextureAtlasNamespace::TextureAtlasRequestBus::BroadcastResult(atlas, &TextureAtlasNamespace::TextureAtlasRequests::FindAtlasContainingImage, texturePath.c_str());
+    TextureAtlasNamespace::TextureAtlasRequestBus::BroadcastResult(
+        atlas, &TextureAtlasNamespace::TextureAtlasRequests::FindAtlasContainingImage, texturePath.c_str());
     AZ::Data::Instance<AZ::RPI::Image> image;
     if (atlas)
     {
@@ -746,7 +763,8 @@ bool CSprite::DoesSpriteTextureAssetExist(const AZStd::string& pathname)
     // Try to use a texture atlas instead
     TextureAtlasNamespace::TextureAtlas* atlas = nullptr;
     TextureAtlasNamespace::AtlasCoordinates atlasCoordinates;
-    TextureAtlasNamespace::TextureAtlasRequestBus::BroadcastResult(atlas, &TextureAtlasNamespace::TextureAtlasRequests::FindAtlasContainingImage, texturePath.c_str());
+    TextureAtlasNamespace::TextureAtlasRequestBus::BroadcastResult(
+        atlas, &TextureAtlasNamespace::TextureAtlasRequests::FindAtlasContainingImage, texturePath.c_str());
     if (atlas)
     {
         return true;
@@ -851,16 +869,20 @@ bool CSprite::LoadImage(const AZStd::string& nameTex, AZ::Data::Instance<AZ::RPI
     // Use GenerateAssetIdTEMP instead of GetAssetIdByPath so that it will return a valid AssetId anyways
     AZ::Data::AssetId streamingImageAssetId;
     AZ::Data::AssetCatalogRequestBus::BroadcastResult(
-        streamingImageAssetId, &AZ::Data::AssetCatalogRequestBus::Events::GenerateAssetIdTEMP,
-        sourceRelativePath.c_str());
+        streamingImageAssetId, &AZ::Data::AssetCatalogRequestBus::Events::GenerateAssetIdTEMP, sourceRelativePath.c_str());
     streamingImageAssetId.m_subId = AZ::RPI::StreamingImageAsset::GetImageAssetSubId();
 
-    auto streamingImageAsset = AZ::Data::AssetManager::Instance().FindOrCreateAsset<AZ::RPI::StreamingImageAsset>(streamingImageAssetId, AZ::Data::AssetLoadBehavior::PreLoad);
+    auto streamingImageAsset = AZ::Data::AssetManager::Instance().FindOrCreateAsset<AZ::RPI::StreamingImageAsset>(
+        streamingImageAssetId, AZ::Data::AssetLoadBehavior::PreLoad);
     image = AZ::RPI::StreamingImage::FindOrCreate(streamingImageAsset);
     if (!image)
     {
-        AZ_Error("CSprite", false, "Failed to find or create an image instance from image asset '%s', ID %s",
-            streamingImageAsset.GetHint().c_str(), streamingImageAsset.GetId().ToString<AZStd::string>().c_str());
+        AZ_Error(
+            "CSprite",
+            false,
+            "Failed to find or create an image instance from image asset '%s', ID %s",
+            streamingImageAsset.GetHint().c_str(),
+            streamingImageAsset.GetId().ToString<AZStd::string>().c_str());
         return false;
     }
 
@@ -890,9 +912,13 @@ bool CSprite::LoadFromXmlFile()
 
     if (!root)
     {
-        gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
+        gEnv->pSystem->Warning(
+            VALIDATOR_MODULE_SHINE,
+            VALIDATOR_WARNING,
+            VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
             m_pathname.c_str(),
-            "No sprite file found for sprite: %s, default sprite values will be used", m_pathname.c_str());
+            "No sprite file found for sprite: %s, default sprite values will be used",
+            m_pathname.c_str());
         return false;
     }
 
@@ -901,12 +927,15 @@ bool CSprite::LoadFromXmlFile()
 
     TSerialize ser = TSerialize(pReader);
 
-    uint32 versionNumber = spriteFileVersionNumber;
+    AZ::u32 versionNumber = spriteFileVersionNumber;
     ser.Value(spriteVersionNumberTag, versionNumber);
     const bool validVersionNumber = versionNumber >= 1 && versionNumber <= spriteFileVersionNumber;
     if (!validVersionNumber)
     {
-        gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
+        gEnv->pSystem->Warning(
+            VALIDATOR_MODULE_SHINE,
+            VALIDATOR_WARNING,
+            VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
             m_pathname.c_str(),
             "Unsupported version number found for sprite file: %s, default sprite values will be used",
             m_pathname.c_str());

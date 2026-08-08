@@ -27,23 +27,17 @@ namespace
 {
     //! Set the values for an image vertex
     //! This helper function is used so that we only have to initialize textIndex and texHasColorChannel in one place
-    void SetVertex(LyShine::UiPrimitiveVertex& vert, const Vec2& pos, uint32 color, const Vec2& uv)
+    void SetVertex(LyShine::UiPrimitiveVertex& vert, const AZ::Vector2& pos, uint32 color, const AZ::Vector2& uv)
     {
-        vert.xy = pos;
+        vert.xy = AZ::PackedVector2f(pos);
         vert.color.dcolor = color;
-        vert.st = uv;
+        vert.st = AZ::PackedVector2f(uv);
         vert.texIndex = 0;
         vert.texHasColorChannel = 1;
         vert.texIndex2 = 0;
         vert.pad = 0;
     }
 
-    //! Set the values for an image vertex
-    //! This version of the helper function takes AZ vectors
-    void SetVertex(LyShine::UiPrimitiveVertex& vert, const AZ::Vector2& pos, uint32 color, const AZ::Vector2& uv)
-    {
-        SetVertex(vert, Vec2(pos.GetX(), pos.GetY()), color, Vec2(uv.GetX(), uv.GetY()));
-    }
 
     //! \brief Loads assets from disk and populates the sprite list with loaded sprites.
     void PopulateSpriteListFromImageList(UiImageSequenceComponent::SpriteList& spriteList, UiImageSequenceComponent::ImageList& imageList)

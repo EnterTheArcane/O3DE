@@ -8,6 +8,10 @@
 
 #pragma once
 
+// CryCommon->AzCore migration: uint16/uint32/__forceinline used to arrive transitively via the
+// Cry vector headers (now forwarding-only). Include platform.h directly.
+#include <platform.h>
+
 typedef uint16 CryHalf;
 
 typedef union floatint_union

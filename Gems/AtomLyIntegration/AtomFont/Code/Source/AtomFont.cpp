@@ -6,33 +6,31 @@
  *
  */
 
-
 // Description : AtomFont class.
-
-
 
 #if !defined(USE_NULLFONT_ALWAYS)
 
 #include <AtomLyIntegration/AtomFont/AtomFont.h>
 #include <AtomLyIntegration/AtomFont/FFont.h>
-#include <AtomLyIntegration/AtomFont/FontTexture.h>
 #include <AtomLyIntegration/AtomFont/FontRenderer.h>
+#include <AtomLyIntegration/AtomFont/FontTexture.h>
 
 #include <CryCommon/CryPath.h>
 #include <CryCommon/ILocalizationManager.h>
 
+#include <AzCore/Interface/Interface.h>
+#include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/std/string/string_view.h>
-#include <AzCore/std/parallel/lock.h>
-#include <AzCore/Interface/Interface.h>
 #include <AzFramework/Archive/IArchive.h>
 
-#include <Atom/RPI.Public/RPIUtils.h>
 #include <Atom/RPI.Public/DynamicDraw/DynamicDrawInterface.h>
+#include <Atom/RPI.Public/RPIUtils.h>
 #include <Atom/RPI.Reflect/Asset/AssetUtils.h>
 
 // Static member definitions
-const AZ::AtomFont::GlyphSize AZ::AtomFont::defaultGlyphSize = AZ::AtomFont::GlyphSize(ICryFont::defaultGlyphSizeX, ICryFont::defaultGlyphSizeY);
+const AZ::AtomFont::GlyphSize AZ::AtomFont::defaultGlyphSize =
+    AZ::AtomFont::GlyphSize(ICryFont::defaultGlyphSizeX, ICryFont::defaultGlyphSizeY);
 
 #if !defined(_RELEASE)
 static void DumfontTexture(IConsoleCmdArgs* cmdArgs)
@@ -50,7 +48,7 @@ static void DumfontTexture(IConsoleCmdArgs* cmdArgs)
         fontFilePath += fontName;
         fontFilePath += ".bmp";
 
-        AZ::FFont* font = (AZ::FFont*) gEnv->pCryFont->GetFont(fontName);
+        AZ::FFont* font = (AZ::FFont*)gEnv->pCryFont->GetFont(fontName);
         if (font)
         {
             font->GetFontTexture()->WriteToFile(fontFilePath.c_str());
@@ -91,21 +89,19 @@ namespace
         bool IsValid() const
         {
             // Note that "lang" can be empty
-            return !m_fontFilename.empty()
-                && !m_boldFontFilename.empty()
-                && !m_italicFontFilename.empty()
-                && !m_boldItalicFontFilename.empty();
+            return !m_fontFilename.empty() && !m_boldFontFilename.empty() && !m_italicFontFilename.empty() &&
+                !m_boldItalicFontFilename.empty();
         }
 
-        AZStd::string m_lang;               //!< Stores a comma-separated list of languages this collection of fonts applies to.
-                                            //!< If this is an empty string, it implies that these set of fonts will be applied
-                                            //!< by default (when a language is being used but no fonts in the font family are
-                                            //!< mapped to that language).
+        AZStd::string m_lang; //!< Stores a comma-separated list of languages this collection of fonts applies to.
+                              //!< If this is an empty string, it implies that these set of fonts will be applied
+                              //!< by default (when a language is being used but no fonts in the font family are
+                              //!< mapped to that language).
 
-        AZStd::string m_fontFilename;              //!< Font used when no styling is applied.
-        AZStd::string m_boldFontFilename;          //!< Bold-styled font
-        AZStd::string m_italicFontFilename;        //!< Italic-styled font
-        AZStd::string m_boldItalicFontFilename;    //!< Bold-italic-styled font
+        AZStd::string m_fontFilename; //!< Font used when no styling is applied.
+        AZStd::string m_boldFontFilename; //!< Bold-styled font
+        AZStd::string m_italicFontFilename; //!< Italic-styled font
+        AZStd::string m_boldItalicFontFilename; //!< Bold-italic-styled font
     };
 
     //! Stores parsed font family XML data.
@@ -152,14 +148,14 @@ namespace
             return !m_fontFamilyName.empty();
         }
 
-        AZStd::string m_fontFamilyName;                  //!< Value of the "name" font-family tag attribute
-        AZStd::list<FontTagXml> m_fontTagsXml;    //!< List of child <font> tag data.
+        AZStd::string m_fontFamilyName; //!< Value of the "name" font-family tag attribute
+        AZStd::list<FontTagXml> m_fontTagsXml; //!< List of child <font> tag data.
     };
 
     //! Returns true if the XML tree was traversed successfully, false otherwise.
     //!
     //! Note that, if this function returns true, it simply means that there were
-    //! no unexpected structure issues with the given XML tree, it doesn't 
+    //! no unexpected structure issues with the given XML tree, it doesn't
     //! necessarily mean that all the required fields were parsed.
     bool ParseFontFamilyXml(const XmlNodeRef& node, FontFamilyTagXml& xmlData)
     {
@@ -325,7 +321,7 @@ namespace
         return XmlNodeRef();
     }
 
-}
+} // namespace
 
 AZ::AtomFont::AtomFont([[maybe_unused]] ISystem* system)
 {
@@ -335,23 +331,24 @@ AZ::AtomFont::AtomFont([[maybe_unused]] ISystem* system)
     REGISTER_CVAR(r_persistFontFamilies, r_persistFontFamilies, VF_NULL, "Persist loaded font families for lifetime of application.");
 
 #if !defined(_RELEASE)
-    REGISTER_COMMAND("r_DumfontTexture", DumfontTexture, 0,
+    REGISTER_COMMAND(
+        "r_DumfontTexture",
+        DumfontTexture,
+        0,
         "Dumps the specified font's texture to a bitmap file\n"
         "Use r_DumfontTexture to get the loaded font names\n"
         "Usage: r_DumfontTexture <fontname>");
-    REGISTER_COMMAND("r_DumfontNames", DumfontNames, 0,
-        "Logs a list of fonts currently loaded");
-    REGISTER_COMMAND("r_ReloadFonts", ReloadFonts, VF_NULL,
-        "Reload all fonts");
+    REGISTER_COMMAND("r_DumfontNames", DumfontNames, 0, "Logs a list of fonts currently loaded");
+    REGISTER_COMMAND("r_ReloadFonts", ReloadFonts, VF_NULL, "Reload all fonts");
 #endif
     AZ::Interface<AzFramework::FontQueryInterface>::Register(this);
 
     // Queue a load for the font per viewport dynamic draw context shader, and wait for it to load
     static const char* shaderFilepath = "Shaders/SimpleTextured.azshader";
-    Data::Asset<RPI::ShaderAsset> shaderAsset = RPI::AssetUtils::LoadCriticalAsset<RPI::ShaderAsset>(shaderFilepath, RPI::AssetUtils::TraceLevel::Assert);
+    Data::Asset<RPI::ShaderAsset> shaderAsset =
+        RPI::AssetUtils::LoadCriticalAsset<RPI::ShaderAsset>(shaderFilepath, RPI::AssetUtils::TraceLevel::Assert);
     shaderAsset.QueueLoad();
     Data::AssetBus::Handler::BusConnect(shaderAsset.GetId());
-
 }
 
 AZ::AtomFont::~AtomFont()
@@ -364,7 +361,7 @@ AZ::AtomFont::~AtomFont()
     // Persist fonts for application lifetime to prevent unnecessary work
     m_persistedFontFamilies.clear();
 
-    for (FontMapItor it = m_fonts.begin(), itEnd = m_fonts.end(); it != itEnd; )
+    for (FontMapItor it = m_fonts.begin(), itEnd = m_fonts.end(); it != itEnd;)
     {
         FFont* font = it->second;
         ++it; // iterate as Release() below will remove font from the map
@@ -391,7 +388,7 @@ IFFont* AZ::AtomFont::NewFont(const char* fontName)
 
     FFont* font = new FFont(this, name.c_str());
     m_fonts.insert(FontMapItor::value_type(fontId, font));
-    if(!m_defaultFontDrawInterface)
+    if (!m_defaultFontDrawInterface)
     {
         m_defaultFontDrawInterface = static_cast<AzFramework::FontDrawInterface*>(font);
     }
@@ -423,7 +420,7 @@ FontFamilyPtr AZ::AtomFont::LoadFontFamily(const char* fontFamilyName)
     FontFamilyPtr fontFamily(nullptr);
     AZStd::string fontFamilyPath;
     AZStd::string fontFamilyFullPath;
-    
+
     XmlNodeRef root = LoadFontFamilyXml(fontFamilyName, fontFamilyPath, fontFamilyFullPath);
 
     if (root)
@@ -437,8 +434,8 @@ FontFamilyPtr AZ::AtomFont::LoadFontFamily(const char* fontFamilyName)
             FontTagXml* langSpecificFont = nullptr;
 
             // Note that we don't break out of this for-loop early because we
-            // want to find both the default font family and the 
-            // language-specific font family. We prefer the lang-specific 
+            // want to find both the default font family and the
+            // language-specific font family. We prefer the lang-specific
             // family but will fall back on the default if it doesn't exist.
             for (FontTagXml& fontTagXml : xmlData.m_fontTagsXml)
             {
@@ -451,7 +448,7 @@ FontFamilyPtr AZ::AtomFont::LoadFontFamily(const char* fontFamilyName)
                     // "lang" font-tag attribute could be comma-separated
                     AZStd::vector<AZStd::string> tokens;
                     AZ::StringFunc::Tokenize(fontTagXml.m_lang, tokens, ',');
-                    for(AZStd::string& langToken : tokens)
+                    for (AZStd::string& langToken : tokens)
                     {
                         AZ::StringFunc::TrimWhiteSpace(langToken, true, true);
                         if (langToken == currentLanguage)
@@ -468,7 +465,7 @@ FontFamilyPtr AZ::AtomFont::LoadFontFamily(const char* fontFamilyName)
                 // Prefer lang-specific font-family over default, if it exists
                 FontTagXml* fontTagXml = langSpecificFont ? langSpecificFont : defaultFont;
 
-                // Pre-pend font family's path to make font family XML paths 
+                // Pre-pend font family's path to make font family XML paths
                 // relative to font family file
                 fontTagXml->m_fontFilename = fontFamilyPath + fontTagXml->m_fontFilename;
                 fontTagXml->m_boldFontFilename = fontFamilyPath + fontTagXml->m_boldFontFilename;
@@ -483,17 +480,18 @@ FontFamilyPtr AZ::AtomFont::LoadFontFamily(const char* fontFamilyName)
                 // Only continue if all fonts were created successfully
                 if (normal && bold && italic && boldItalic)
                 {
-                    fontFamily.reset(new FontFamily(),
+                    fontFamily.reset(
+                        new FontFamily(),
                         [this](FontFamily* fontFamily)
-                    {
-                        if (AZ::Interface<AzFramework::FontQueryInterface>::Get())
                         {
-                            ReleaseFontFamily(fontFamily);
-                        }
-                    });
+                            if (AZ::Interface<AzFramework::FontQueryInterface>::Get())
+                            {
+                                ReleaseFontFamily(fontFamily);
+                            }
+                        });
 
                     // Map the font family name both by path and by name defined
-                    // within the Font Family XML itself. This allows font 
+                    // within the Font Family XML itself. This allows font
                     // families to also be referenced simply by name.
                     if (!AddFontFamilyToMaps(fontFamilyFullPath.c_str(), xmlData.m_fontFamilyName.c_str(), fontFamily))
                     {
@@ -532,14 +530,15 @@ FontFamilyPtr AZ::AtomFont::LoadFontFamily(const char* fontFamilyName)
         {
             // Create a font family from a single font by assigning all the
             // font family stylings to the same font
-            fontFamily.reset(new FontFamily(),
+            fontFamily.reset(
+                new FontFamily(),
                 [this](FontFamily* fontFamily)
-            {
-                if (AZ::Interface<AzFramework::FontQueryInterface>::Get())
                 {
-                    ReleaseFontFamily(fontFamily);
-                }
-            });
+                    if (AZ::Interface<AzFramework::FontQueryInterface>::Get())
+                    {
+                        ReleaseFontFamily(fontFamily);
+                    }
+                });
 
             // Use filepath as familyName so font loading/unloading doesn't break with duplicate file names
             fontFamily->familyName = fontFamilyName;
@@ -557,7 +556,7 @@ FontFamilyPtr AZ::AtomFont::LoadFontFamily(const char* fontFamilyName)
             fontFamily->italic = font;
             fontFamily->boldItalic = font;
 
-            // The other three stylings need to have their ref count 
+            // The other three stylings need to have their ref count
             // incremented (even though in this particular case its all the
             // same font) because when ReleaseFontFamily executes all fonts
             // in the family will be (corresondingly) Release'd.
@@ -597,7 +596,7 @@ FontFamilyPtr AZ::AtomFont::GetFontFamily(const char* fontFamilyName)
     {
         // Iterate through all fonts, returning the first match where simply
         // the filename of a font could be a match. This case will likely be
-        // hit when text markup references a font that doesn't belong to a 
+        // hit when text markup references a font that doesn't belong to a
         // font family.
         for (const auto& fontFamilyIter : m_fontFamilies)
         {
@@ -705,18 +704,10 @@ void AZ::AtomFont::UnregisterFont(const char* fontName)
     for (auto reverseMapEntry : m_fontFamilyReverseLookup)
     {
         FontFamily* fontFamily = reverseMapEntry.first;
-        AZ_Assert(fontFamily->normal != fontPtr, 
-            "The following font is being freed but still in use by a FontFamily: %s",
-            fontName);
-        AZ_Assert(fontFamily->italic != fontPtr,
-            "The following font is being freed but still in use by a FontFamily: %s",
-            fontName);
-        AZ_Assert(fontFamily->bold != fontPtr,
-            "The following font is being freed but still in use by a FontFamily: %s",
-            fontName);
-        AZ_Assert(fontFamily->boldItalic != fontPtr,
-            "The following font is being freed but still in use by a FontFamily: %s",
-            fontName);
+        AZ_Assert(fontFamily->normal != fontPtr, "The following font is being freed but still in use by a FontFamily: %s", fontName);
+        AZ_Assert(fontFamily->italic != fontPtr, "The following font is being freed but still in use by a FontFamily: %s", fontName);
+        AZ_Assert(fontFamily->bold != fontPtr, "The following font is being freed but still in use by a FontFamily: %s", fontName);
+        AZ_Assert(fontFamily->boldItalic != fontPtr, "The following font is being freed but still in use by a FontFamily: %s", fontName);
     }
 #endif
 }
@@ -787,7 +778,7 @@ bool AZ::AtomFont::AddFontFamilyToMaps(const char* fontFamilyFilename, const cha
         return false;
     }
 
-    // We don't support "updating" mapped values. 
+    // We don't support "updating" mapped values.
     AZStd::string loweredFilename(PathUtil::MakeGamePath(AZStd::string(fontFamilyFilename)).c_str());
     AZStd::to_lower<AZStd::string::iterator>(loweredFilename.begin(), loweredFilename.end());
     if (m_fontFamilies.find(loweredFilename) != m_fontFamilies.end())
@@ -796,7 +787,7 @@ bool AZ::AtomFont::AddFontFamilyToMaps(const char* fontFamilyFilename, const cha
         return false;
     }
 
-    // Similarly, we don't support Font Family XMLs that have the same font 
+    // Similarly, we don't support Font Family XMLs that have the same font
     // family name (we assume all Font Family names are unique).
     AZStd::string loweredFontFamilyName(fontFamilyName);
     AZStd::to_lower<AZStd::string::iterator>(loweredFontFamilyName.begin(), loweredFontFamilyName.end());
@@ -810,7 +801,7 @@ bool AZ::AtomFont::AddFontFamilyToMaps(const char* fontFamilyFilename, const cha
     AZStd::pair<AZStd::string, AZStd::weak_ptr<FontFamily>> insertPair(loweredFilename, fontFamily);
     auto iterPosition = m_fontFamilies.insert(insertPair).first;
     m_fontFamilyReverseLookup[fontFamily.get()] = iterPosition;
-    
+
     // Then, by Font Family name
     AZStd::pair<AZStd::string, AZStd::weak_ptr<FontFamily>> nameInsertPair(loweredFontFamilyName, fontFamily);
     m_fontFamilies.insert(nameInsertPair);
@@ -829,7 +820,7 @@ XmlNodeRef AZ::AtomFont::LoadFontFamilyXml(const char* fontFamilyName, AZStd::st
     AZ::RPI::AssetUtils::TryToCompileAsset(outputFullPath.c_str(), AZ::RPI::AssetUtils::TraceLevel::None);
     XmlNodeRef root = SafeLoadXmlFromFile(outputFullPath);
 
-    // When parsing a <font> tag in markup, only the font name is given and 
+    // When parsing a <font> tag in markup, only the font name is given and
     // not a path, so we try to build a "best guess" path from the name.
     if (!root)
     {
@@ -868,7 +859,9 @@ void AZ::AtomFont::OnAssetReady(Data::Asset<Data::AssetData> asset)
         AZ::Name(AZ::AtomFontDynamicDrawContextName),
         [shaderAsset](RPI::Ptr<RPI::DynamicDrawContext> drawContext)
         {
-            AZ_Assert(shaderAsset->IsReady(), "Attempting to register the AtomFont"
+            AZ_Assert(
+                shaderAsset->IsReady(),
+                "Attempting to register the AtomFont"
                 " dynamic draw context before the shader asset is loaded. The shader should be loaded first"
                 " to avoid a blocking asset load and potential deadlock, since the DynamicDrawContext lambda"
                 " will be executed during scene processing and there may be multiple scenes executing in parallel.");
@@ -879,11 +872,9 @@ void AZ::AtomFont::OnAssetReady(Data::Asset<Data::AssetData> asset)
             shaderOptions.push_back(AZ::RPI::ShaderOption(AZ::Name("o_clamp"), AZ::Name("true")));
             drawContext->InitShaderWithVariant(shader, &shaderOptions);
             drawContext->InitVertexFormat(
-                {
-                    {"POSITION", RHI::Format::R32G32B32_FLOAT},
-                    {"COLOR", RHI::Format::B8G8R8A8_UNORM},
-                    {"TEXCOORD0", RHI::Format::R32G32_FLOAT}
-                });
+                { { "POSITION", RHI::Format::R32G32B32_FLOAT },
+                  { "COLOR", RHI::Format::B8G8R8A8_UNORM },
+                  { "TEXCOORD0", RHI::Format::R32G32_FLOAT } });
             drawContext->EndInit();
         });
 
@@ -891,4 +882,3 @@ void AZ::AtomFont::OnAssetReady(Data::Asset<Data::AssetData> asset)
 }
 
 #endif
-

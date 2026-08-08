@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include <CryCommon/IConsole.h>
 #include <CryCommon/CryListenerSet.h>
 
 #if (!defined(RELEASE) || defined(RELEASE_LOGGING) || defined(ENABLE_PROFILING_CODE)) && !defined(AZ_LEGACY_CRYSYSTEM_TRAIT_REMOTE_CONSOLE_UNSUPPORTED)

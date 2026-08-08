@@ -311,7 +311,6 @@ if (PAL_TRAIT_BUILD_HOST_TOOLS)
         BUILD_DEPENDENCIES
             PRIVATE
                 Legacy::EditorLib
-                Legacy::CryCommon
                 Legacy::Editor.Headers
                 AZ::AzCore
                 AZ::AzFramework

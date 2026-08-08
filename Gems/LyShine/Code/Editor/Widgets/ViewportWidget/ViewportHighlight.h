@@ -22,7 +22,7 @@ public:
     //! Given the invisibleRootItem and the list of selectedItems, draw
     //! the correct highlight borders around elements, according to the
     //! given flags (defined in ViewportWidget::DrawElementBorders).
-    void Draw(Draw2dHelper& draw2d, QTreeWidgetItem* invisibleRootItem, HierarchyItemRawPtrList& selectedItems, uint32 flags);
+    void Draw(Draw2dHelper& draw2d, QTreeWidgetItem* invisibleRootItem, HierarchyItemRawPtrList& selectedItems, AZ::u32 flags);
 
     void DrawHover(Draw2dHelper& draw2d, AZ::EntityId hoverElement);
 

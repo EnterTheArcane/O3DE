@@ -9,7 +9,7 @@
 #pragma once
 
 #include <LyShine/Animation/IUiAnimation.h>
-#include "CryCommon/StlUtils.h"
+#include "../StringHashCompatibility.h"
 #include "AnimTrack.h"
 #include "AnimKey.h"
 
@@ -40,7 +40,11 @@ private:
         char mem[512 - sizeof(Page*)];
     };
 
-    typedef std::unordered_map<const char*, const char*, stl::hash_string<const char*>, stl::equality_string<const char*> > TableMap;
+    using TableMap = std::unordered_map<
+        const char*,
+        const char*,
+        LyShine::StringHashCompatibility::Hash<const char*, false>,
+        LyShine::StringHashCompatibility::Equal<const char*, false>>;
 
 private:
     CUiAnimStringTable(const CUiAnimStringTable&);

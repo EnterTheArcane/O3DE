@@ -9,7 +9,7 @@
 #pragma once
 
 #include "ISystem.h"
-#include <StlUtils.h>
+#include <AzCore/std/containers/unordered_map.h>
 
 //TODO: Pull most of this into a cpp file!
 
@@ -36,11 +36,18 @@ struct SStringData
 private:
 };
 
-template<>
-inline const char* stl::constchar_cast(const SStringData& in)
+struct SStringDataHash
 {
-    return in.m_szString;
-}
+    size_t operator()(const SStringData& value) const
+    {
+        unsigned int hash = 0;
+        for (const char* character = value.m_szString; *character; ++character)
+        {
+            hash = 5 * hash + static_cast<unsigned char>(*character);
+        }
+        return static_cast<size_t>(hash);
+    }
+};
 
 
 /////////////////////////////////////////////////////////////////////
@@ -70,7 +77,7 @@ public:
     int nUsedBlocks;
     bool m_reuseStrings;
 
-    typedef AZStd::unordered_map<SStringData, char*, stl::hash_string<SStringData> > TStringToExistingStringMap;
+    using TStringToExistingStringMap = AZStd::unordered_map<SStringData, char*, SStringDataHash>;
     TStringToExistingStringMap m_stringToExistingStringMap;
 
     static size_t g_nTotalAllocInXmlStringPools;
@@ -343,7 +350,8 @@ private:
     char* FindExistingString(const char* szString, int nStrLen)
     {
         SStringData testData(szString, nStrLen);
-        char* szResult = stl::find_in_map(m_stringToExistingStringMap, testData, NULL);
+        const auto stringIterator = m_stringToExistingStringMap.find(testData);
+        char* szResult = stringIterator != m_stringToExistingStringMap.end() ? stringIterator->second : nullptr;
         assert(!szResult || !_stricmp(szResult, szString));
         return szResult;
     }

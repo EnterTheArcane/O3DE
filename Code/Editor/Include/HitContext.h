@@ -10,45 +10,44 @@
 
 // Description : Hit testing for editor viewport operations
 
-
 struct IDisplayViewport;
 namespace AZ
 {
     class Aabb;
 }
 
+#include <AzCore/base.h>
 #include <QRect>
-#include <platform.h>
 
 //! Flags used in HitContext for nSubObjFlags member.
 enum ESubObjHitFlags
 {
     //! When set all hit elements will be selected.
-    SO_HIT_SELECT = BIT(1),
+    SO_HIT_SELECT = 1 << 1,
     //! Only test selected elements for hit.
-    SO_HIT_TEST_SELECTED = BIT(2),
+    SO_HIT_TEST_SELECTED = 1 << 2,
     //! Only hit test point2d, not rectangle
     //! Will only test/select 1 closest element
-    SO_HIT_POINT = BIT(3),
+    SO_HIT_POINT = 1 << 3,
     //! Adds hit elements to previously selected ones.
-    SO_HIT_SELECT_ADD = BIT(4),
+    SO_HIT_SELECT_ADD = 1 << 4,
     //! Remove hit elements from previously selected ones.
-    SO_HIT_SELECT_REMOVE = BIT(5),
+    SO_HIT_SELECT_REMOVE = 1 << 5,
     //! Output flag, set if selection was changed.
-    SO_HIT_SELECTION_CHANGED = BIT(6),
+    SO_HIT_SELECTION_CHANGED = 1 << 6,
     //! Hit testing to highlight sub object-element.
-    SO_HIT_HIGHLIGHT_ONLY = BIT(7),
+    SO_HIT_HIGHLIGHT_ONLY = 1 << 7,
     //! This hit test is not for editing sub-objects.
     //! (ex. for moving an object by its face-normal)
-    SO_HIT_NO_EDIT = BIT(8),
+    SO_HIT_NO_EDIT = 1 << 8,
     // Check hit with vertices.
-    SO_HIT_ELEM_VERTEX = BIT(10),
+    SO_HIT_ELEM_VERTEX = 1 << 10,
     // Check hit with edges.
-    SO_HIT_ELEM_EDGE = BIT(11),
+    SO_HIT_ELEM_EDGE = 1 << 11,
     // Check hit with faces.
-    SO_HIT_ELEM_FACE = BIT(12),
+    SO_HIT_ELEM_FACE = 1 << 12,
     // Check hit with polygons.
-    SO_HIT_ELEM_POLYGON = BIT(13)
+    SO_HIT_ELEM_POLYGON = 1 << 13
 };
 
 #define SO_HIT_ELEM_ALL (SO_HIT_ELEM_VERTEX | SO_HIT_ELEM_EDGE | SO_HIT_ELEM_FACE | SO_HIT_ELEM_POLYGON)
@@ -77,9 +76,9 @@ struct HitContext
     // Input parameters.
 
     //! Ray origin.
-    Vec3 raySrc;
+    AZ::Vector3 raySrc;
     //! Ray direction.
-    Vec3 rayDir;
+    AZ::Vector3 rayDir;
     //! Relaxation parameter for hit testing.
     float distanceTolerance;
     //! Sub object hit testing flags, @see ESubObjHitFlags
@@ -109,8 +108,8 @@ struct HitContext
         point2d = QPoint();
         axis = 0;
         distanceTolerance = 0;
-        raySrc(0, 0, 0);
-        rayDir(0, 0, 0);
+        raySrc.Set(0, 0, 0);
+        rayDir.Set(0, 0, 0);
         dist = 0;
         weakHit = false;
         manipulatorMode = 0;

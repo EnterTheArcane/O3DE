@@ -12,6 +12,7 @@
 #include "EditorDefs.h"
 
 #include "LogFile.h"
+#include <IConsole.h>
 
 // Qt
 #include <QTextEdit>

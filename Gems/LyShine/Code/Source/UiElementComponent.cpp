@@ -27,11 +27,10 @@
 #include <LyShine/Bus/UiEntityContextBus.h>
 #include <LyShine/Bus/UiLayoutManagerBus.h>
 
-#include <CryCommon/StlUtils.h>
+#include <AzCore/std/algorithm.h>
 
 #include "UiTransform2dComponent.h"
 
-#include "IConsole.h"
 
 #include <AzFramework/Translation/TranslationDef.h>
 
@@ -1145,7 +1144,12 @@ void UiElementComponent::RemoveChild(AZ::Entity* child)
         AZ_Assert(elementComponent, "Child element has no UiElementComponent");
 
         // Also erase from m_childElementComponents
-        stl::find_and_erase(m_childElementComponents, elementComponent);
+        if (auto childIterator = AZStd::find(
+                m_childElementComponents.begin(), m_childElementComponents.end(), elementComponent);
+            childIterator != m_childElementComponents.end())
+        {
+            m_childElementComponents.erase(childIterator);
+        }
 
         // Clear child's parent
         elementComponent->SetParentReferences(nullptr, nullptr);
@@ -1182,7 +1186,12 @@ void UiElementComponent::RemoveChild(AZ::EntityId child)
             AZ_Assert(elementComponent, "");
             if (elementComponent)
             {
-                stl::find_and_erase(m_childElementComponents, elementComponent);
+                if (auto childIterator = AZStd::find(
+                        m_childElementComponents.begin(), m_childElementComponents.end(), elementComponent);
+                    childIterator != m_childElementComponents.end())
+                {
+                    m_childElementComponents.erase(childIterator);
+                }
 
                 // Clear child's parent
                 elementComponent->SetParentReferences(nullptr, nullptr);
@@ -1289,7 +1298,11 @@ bool UiElementComponent::FixupPostLoad(AZ::Entity* entity, UiCanvasComponent* ca
     // This is recovery code for the case that a slice asset that we were using has been removed.
     for (auto child : missingChildren)
     {
-        stl::find_and_erase(m_childEntityIdOrder, child);
+        if (auto childIterator = AZStd::find(m_childEntityIdOrder.begin(), m_childEntityIdOrder.end(), child);
+            childIterator != m_childEntityIdOrder.end())
+        {
+            m_childEntityIdOrder.erase(childIterator);
+        }
     }
 
     // Initialize the m_childElementComponents array that is used for performance optimization

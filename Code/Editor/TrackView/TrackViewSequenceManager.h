@@ -11,6 +11,7 @@
 #include "TrackViewSequence.h"
 
 #include <AzCore/Component/EntityBus.h>
+#include <AzCore/std/algorithm.h>
 #include <AzCore/std/containers/set.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/vector.h>
@@ -42,8 +43,21 @@ public:
     CTrackViewAnimNodeBundle GetAllRelatedAnimNodes(AZ::EntityId entityId) const;
     CTrackViewAnimNode* GetActiveAnimNode(AZ::EntityId entityId) const;
 
-    void AddListener(ITrackViewSequenceManagerListener* pListener) { stl::push_back_unique(m_listeners, pListener); }
-    void RemoveListener(ITrackViewSequenceManagerListener* pListener) { stl::find_and_erase(m_listeners, pListener); }
+    void AddListener(ITrackViewSequenceManagerListener* pListener)
+    {
+        if (AZStd::find(m_listeners.begin(), m_listeners.end(), pListener) == m_listeners.end())
+        {
+            m_listeners.push_back(pListener);
+        }
+    }
+    void RemoveListener(ITrackViewSequenceManagerListener* pListener)
+    {
+        if (auto listenerIterator = AZStd::find(m_listeners.begin(), m_listeners.end(), pListener);
+            listenerIterator != m_listeners.end())
+        {
+            m_listeners.erase(listenerIterator);
+        }
+    }
 
     //  ITrackViewSequenceManager Overrides
     // Callback from SequenceObject

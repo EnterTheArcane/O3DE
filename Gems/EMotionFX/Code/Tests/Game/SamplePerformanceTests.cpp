@@ -181,7 +181,7 @@ namespace EMotionFX
                     boolAttribute->SetValue(boolParamPair.second);
                 }
 
-                // Vec2 parameters
+                // AZ::Vector2 parameters
                 for (const auto& vec2ParamTuple : params.m_vec2Params)
                 {
                     const AZ::Outcome<size_t> parameterIndex = animGraph->FindValueParameterIndexByName(std::get<0>(vec2ParamTuple).c_str());

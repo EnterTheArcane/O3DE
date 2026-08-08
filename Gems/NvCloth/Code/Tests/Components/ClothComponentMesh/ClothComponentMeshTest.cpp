@@ -471,12 +471,12 @@ namespace UnitTest
             &renderMesh);
 
         const AZStd::vector<NvCloth::SimParticleFormat>& clothParticles = clothComponentMesh.GetRenderData().m_particles;
-        const AZStd::vector<Vec3>& renderMeshPositions = renderMesh.m_positions;
+        const AZStd::vector<AZ::Vector3>& renderMeshPositions = renderMesh.m_positions;
 
         EXPECT_EQ(renderMeshPositions.size(), clothParticles.size());
         for (size_t i = 0; i < renderMeshPositions.size(); ++i)
         {
-            EXPECT_THAT(LYVec3ToAZVec3(renderMeshPositions[i]), IsCloseTolerance(clothParticles[i].GetAsVector3(), Tolerance));
+            EXPECT_THAT(renderMeshPositions[i], IsCloseTolerance(clothParticles[i].GetAsVector3(), Tolerance));
         }
         */
     }

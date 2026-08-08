@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 #include <IRenderer.h>
-#include <Cry_Vector2.h>
+#include <AzCore/Math/Vector2.h>
 
 #include <AzFramework/Input/Events/InputChannelEventListener.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
@@ -94,8 +94,8 @@ namespace Gestures
         //! \param[in] screenPositionPixels The screen position (in pixels) of the input event.
         void UpdateNormalizedPositionAndDeltaFromScreenPosition(const AZ::Vector2& screenPositionPixels);
 
-        // Using Vec2 directly as a member of derived recognizer classes results in
-        // linker warnings because Vec2 doesn't have dll import/export specifiers.
+        // Using AZ::Vector2 directly as a member of derived recognizer classes results in
+        // linker warnings because AZ::Vector2 doesn't have dll import/export specifiers.
         struct ScreenPosition
         {
             ScreenPosition()

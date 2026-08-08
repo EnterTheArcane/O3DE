@@ -10,7 +10,6 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Time/ITime.h>
 #include <AzFramework/Translation/TranslationDef.h>
-#include <CryCommon/ISystem.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 inline void Gestures::RecognizerClickOrTap::Config::Reflect(AZ::ReflectContext* context)

@@ -14,7 +14,6 @@
 #include <AzCore/JSON/stringbuffer.h>
 #include <AzCore/XML/rapidxml_print.h>
 
-#include <CryCommon/platform.h>
 #include <Util/FileUtil.h>
 
 namespace ProjectSettingsTool

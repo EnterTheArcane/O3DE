@@ -46,8 +46,89 @@
 
 namespace AZ
 {
+    namespace
+    {
+        bool ConvertLegacyVec2ToVector2(SerializeContext& context, SerializeContext::DataElementNode& node)
+        {
+            float x = 0.0f;
+            float y = 0.0f;
+            if (!node.GetChildData(Crc32("x"), x) || !node.GetChildData(Crc32("y"), y))
+            {
+                AZ_Error("Serialization", false, "Failed to read a legacy Vec2 while converting it to AZ::Vector2.");
+                return false;
+            }
+            if (!node.Convert(context, azrtti_typeid<Vector2>()))
+            {
+                AZ_Error("Serialization", false, "Failed to convert a legacy Vec2 node to AZ::Vector2.");
+                return false;
+            }
+            if (!node.SetData(context, Vector2(x, y)))
+            {
+                AZ_Error("Serialization", false, "Failed to store a converted AZ::Vector2 value.");
+                return false;
+            }
+            return true;
+        }
+
+        bool ConvertLegacyVec3ToVector3(SerializeContext& context, SerializeContext::DataElementNode& node)
+        {
+            float x = 0.0f;
+            float y = 0.0f;
+            float z = 0.0f;
+            if (!node.GetChildData(Crc32("x"), x) || !node.GetChildData(Crc32("y"), y) || !node.GetChildData(Crc32("z"), z))
+            {
+                AZ_Error("Serialization", false, "Failed to read a legacy Vec3 while converting it to AZ::Vector3.");
+                return false;
+            }
+            if (!node.Convert(context, azrtti_typeid<Vector3>()))
+            {
+                AZ_Error("Serialization", false, "Failed to convert a legacy Vec3 node to AZ::Vector3.");
+                return false;
+            }
+            if (!node.SetData(context, Vector3(x, y, z)))
+            {
+                AZ_Error("Serialization", false, "Failed to store a converted AZ::Vector3 value.");
+                return false;
+            }
+            return true;
+        }
+
+        bool ConvertLegacyVec4ToVector4(SerializeContext& context, SerializeContext::DataElementNode& node)
+        {
+            float x = 0.0f;
+            float y = 0.0f;
+            float z = 0.0f;
+            float w = 0.0f;
+            if (!node.GetChildData(Crc32("x"), x) || !node.GetChildData(Crc32("y"), y) || !node.GetChildData(Crc32("z"), z) ||
+                !node.GetChildData(Crc32("w"), w))
+            {
+                AZ_Error("Serialization", false, "Failed to read a legacy Vec4 while converting it to AZ::Vector4.");
+                return false;
+            }
+            if (!node.Convert(context, azrtti_typeid<Vector4>()))
+            {
+                AZ_Error("Serialization", false, "Failed to convert a legacy Vec4 node to AZ::Vector4.");
+                return false;
+            }
+            if (!node.SetData(context, Vector4(x, y, z, w)))
+            {
+                AZ_Error("Serialization", false, "Failed to store a converted AZ::Vector4 value.");
+                return false;
+            }
+            return true;
+        }
+    } // namespace
+
     void MathReflect(SerializeContext& context)
     {
+        // These legacy Cry math ids are serialized inside assets owned by several independently
+        // loadable modules. Math reflection is their single lifecycle-safe owner: it is present
+        // wherever the replacement AZ vector types are reflected and unregisters them with those
+        // types when reflection is removed.
+        context.ClassDeprecate("Vec2", Uuid("{844131BA-9565-42F3-8482-6F65A6D5FC59}"), &ConvertLegacyVec2ToVector2);
+        context.ClassDeprecate("Vec3", Uuid("{DFA993FB-4E92-4A13-BDB3-4E9285A5346F}"), &ConvertLegacyVec3ToVector3);
+        context.ClassDeprecate("Vec4", Uuid("{CAC9510C-8C00-41D4-BC4D-2C6A8136EB30}"), &ConvertLegacyVec4ToVector4);
+
         // aggregates
         context.Class<Uuid>()->
             Serializer<UuidSerializer>();

@@ -44,7 +44,7 @@ namespace AZ::RHI
         Interface<RHIMemoryStatisticsInterface>::Register(this);
         return InitInternalDevices(deviceCount);
     }
-    
+
     void RHISystem::Init(RHI::Ptr<RHI::ShaderResourceGroupLayout> bindlessSrgLayout)
     {
         //! If a bindless srg layout is not provided we simply skip initialization with the assumption that no one will use bindless srg
@@ -447,7 +447,7 @@ namespace AZ::RHI
     {
         if (enabled)
         {
-            AZStd::remove(m_drawListTagsDisabledByDefault.begin(),
+            (void)AZStd::remove(m_drawListTagsDisabledByDefault.begin(),
                           m_drawListTagsDisabledByDefault.end(),
                           drawListTag);
         }
@@ -484,18 +484,18 @@ namespace AZ::RHI
     {
         return m_frameScheduler.GetMemoryStatistics();
     }
-        
+
     void RHISystem::WriteResourcePoolInfoToJson(
-        const AZStd::vector<RHI::MemoryStatistics::Pool>& pools, 
+        const AZStd::vector<RHI::MemoryStatistics::Pool>& pools,
         rapidjson::Document& doc) const
     {
         AZ::RHI::WritePoolsToJson(pools, doc);
     }
 
     AZ::Outcome<void, AZStd::string> RHISystem::LoadResourcePoolInfoFromJson(
-        AZStd::vector<RHI::MemoryStatistics::Pool>& pools, 
-        AZStd::vector<RHI::MemoryStatistics::Heap>& heaps, 
-        rapidjson::Document& doc, 
+        AZStd::vector<RHI::MemoryStatistics::Pool>& pools,
+        AZStd::vector<RHI::MemoryStatistics::Heap>& heaps,
+        rapidjson::Document& doc,
         const AZStd::string& fileName) const
     {
         return AZ::RHI::LoadPoolsFromJson(pools, heaps, doc, fileName);

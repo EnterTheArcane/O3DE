@@ -317,12 +317,12 @@ bool CImageTIF::Load(const QString& fileName, CFloatImage& outImage)
                                 if (format == SAMPLEFORMAT_INT)
                                 {
                                     // Scale 0-max int32_t to 0.0 - 1.0
-                                    dest[(y * width) + x] = clamp_tpl(static_cast<float>(linebufUint32[x * spp]) / static_cast<float>(std::numeric_limits<int32_t>::max()), 0.0f, 1.0f);
+                                    dest[(y * width) + x] = AZ::GetClamp(static_cast<float>(linebufUint32[x * spp]) / static_cast<float>(std::numeric_limits<int32_t>::max()), 0.0f, 1.0f);
                                 }
                                 else if (format == SAMPLEFORMAT_UINT)
                                 {
                                     // Scale 0-max uint32_t to 0.0 - 1.0
-                                    dest[(y * width) + x] = clamp_tpl(static_cast<float>(linebufUint32[x * spp]) / static_cast<float>(std::numeric_limits<uint32_t>::max()), 0.0f, 1.0f);
+                                    dest[(y * width) + x] = AZ::GetClamp(static_cast<float>(linebufUint32[x * spp]) / static_cast<float>(std::numeric_limits<uint32_t>::max()), 0.0f, 1.0f);
                                 }
                                 else if (format == SAMPLEFORMAT_IEEEFP)
                                 {
@@ -340,7 +340,7 @@ bool CImageTIF::Load(const QString& fileName, CFloatImage& outImage)
                                 break;
                         }
 
-                        maxPixelValue = max(maxPixelValue, dest[(y * width) + x]);
+                        maxPixelValue = AZStd::max(maxPixelValue, dest[(y * width) + x]);
                     }
                 }
 

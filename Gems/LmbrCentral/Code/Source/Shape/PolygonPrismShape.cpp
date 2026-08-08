@@ -15,7 +15,6 @@
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzFramework/Translation/TranslationDef.h>
-#include <MathConversion.h>
 #include <Shape/ShapeGeometryUtil.h>
 #include <Shape/ShapeDisplay.h>
 #include <ISystem.h>

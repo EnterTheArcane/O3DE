@@ -36,7 +36,6 @@ ly_add_target(
             AZ::AtomCore
             AZ::AzCore
             AZ::AzFramework
-            Legacy::CryCommon
             Gem::Atom_RPI.Public
 )
 

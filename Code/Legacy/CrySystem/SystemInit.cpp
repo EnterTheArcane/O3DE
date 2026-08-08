@@ -30,6 +30,7 @@
 #endif
 
 #include "CryPath.h"
+#include <AzCore/std/algorithm.h>
 
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
@@ -54,7 +55,6 @@
 #include <AzCore/Utils/Utils.h>
 #include <AzFramework/Logging/MissingAssetLogger.h>
 #include <AzFramework/Platform/PlatformDefaults.h>
-#include <CryCommon/LoadScreenBus.h>
 
 #if defined(APPLE) || defined(LINUX)
 #include <cstdlib>
@@ -1455,12 +1455,23 @@ void CSystem::AddCVarGroupDirectory(const AZStd::string& sPath)
 
 bool CSystem::RegisterErrorObserver(IErrorObserver* errorObserver)
 {
-    return stl::push_back_unique(m_errorObservers, errorObserver);
+    if (AZStd::find(m_errorObservers.begin(), m_errorObservers.end(), errorObserver) != m_errorObservers.end())
+    {
+        return false;
+    }
+    m_errorObservers.push_back(errorObserver);
+    return true;
 }
 
 bool CSystem::UnregisterErrorObserver(IErrorObserver* errorObserver)
 {
-    return stl::find_and_erase(m_errorObservers, errorObserver);
+    const auto observerIterator = AZStd::find(m_errorObservers.begin(), m_errorObservers.end(), errorObserver);
+    if (observerIterator == m_errorObservers.end())
+    {
+        return false;
+    }
+    m_errorObservers.erase(observerIterator);
+    return true;
 }
 
 void CSystem::OnAssert(const char* condition, const char* message, const char* fileName, unsigned int fileLineNumber)

@@ -10,21 +10,20 @@
 
 // Description : Utility classes used by Editor.
 
-
-#include <CryCommon/platform.h>
-#include <IXml.h>
 #include "Util/FileUtil.h"
-#include <Cry_Color.h>
+#include <AzCore/Math/Color.h>
+#include <AzCore/base.h>
 #include <CryCommon/ISystem.h>
+#include <IXml.h>
 
 #include <QColor>
 #include <QDataStream>
 #include <QGuiApplication>
 #include <QSet>
 
-#include <Include/SandboxAPI.h>
 #include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/Math/Color.h>
+#include <Include/SandboxAPI.h>
 
 #ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -34,33 +33,32 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
-
 #ifdef LoadCursor
 #undef LoadCursor
 #endif
 
 #define LINE_EPS (0.00001f)
 
-template <typename T, size_t N>
+template<typename T, size_t N>
 char (&ArraySizeHelper(T (&array)[N]))[N];
 #define arraysize(array) (sizeof(ArraySizeHelper(array)))
 
 /// Some preprocessor utils
 /// http://altdevblogaday.com/2011/07/12/abusing-the-c-preprocessor/
-#define JOIN(x, y)       JOIN2(x, y)
-#define JOIN2(x, y)  x##y
+#define JOIN(x, y) JOIN2(x, y)
+#define JOIN2(x, y) x##y
 
 #define LIST_0(x)
-#define LIST_1(x)       x##1
-#define LIST_2(x)       LIST_1(x), x##2
-#define LIST_3(x)       LIST_2(x), x##3
-#define LIST_4(x)       LIST_3(x), x##4
-#define LIST_5(x)       LIST_4(x), x##5
-#define LIST_6(x)       LIST_5(x), x##6
-#define LIST_7(x)       LIST_6(x), x##7
-#define LIST_8(x)       LIST_7(x), x##8
+#define LIST_1(x) x##1
+#define LIST_2(x) LIST_1(x), x##2
+#define LIST_3(x) LIST_2(x), x##3
+#define LIST_4(x) LIST_3(x), x##4
+#define LIST_5(x) LIST_4(x), x##5
+#define LIST_6(x) LIST_5(x), x##6
+#define LIST_7(x) LIST_6(x), x##7
+#define LIST_8(x) LIST_7(x), x##8
 
-#define LIST(cnt, x)     JOIN(LIST_, cnt)(x)
+#define LIST(cnt, x) JOIN(LIST_, cnt)(x)
 
 //! Checks heap for errors.
 struct HeapCheck
@@ -75,8 +73,14 @@ struct HeapCheck
 #define HEAP_CHECK
 #endif
 
-#define MAKE_SURE(x, action) { if (!(x)) { assert(0 && #x); action; } \
-}
+#define MAKE_SURE(x, action)                                                                                                               \
+    {                                                                                                                                      \
+        if (!(x))                                                                                                                          \
+        {                                                                                                                                  \
+            assert(0 && #x);                                                                                                               \
+            action;                                                                                                                        \
+        }                                                                                                                                  \
+    }
 
 namespace EditorUtils
 {
@@ -85,7 +89,7 @@ namespace EditorUtils
     class TScopedVariableValue
     {
     public:
-        //Relevant for containers, should not be used manually.
+        // Relevant for containers, should not be used manually.
         TScopedVariableValue()
             : m_pVariable(nullptr)
         {
@@ -156,8 +160,7 @@ namespace EditorUtils
         return TScopedVariableValue<TType>(tVariable, tConstructValue, tDestructValue);
     }
 
-    class AzWarningAbsorber
-        : public AZ::Debug::TraceMessageBus::Handler
+    class AzWarningAbsorber : public AZ::Debug::TraceMessageBus::Handler
     {
     public:
         SANDBOX_API AzWarningAbsorber(const char* window);
@@ -174,8 +177,8 @@ namespace EditorUtils
         const char* GetOldCryFileExtension();
         //! Retrieve default level file extension (With prepending '.')
         const char* GetDefaultFileExtension();
-    }
-};
+    } // namespace LevelFile
+}; // namespace EditorUtils
 
 //////////////////////////////////////////////////////////////////////////
 // XML Helper functions.
@@ -205,17 +208,16 @@ namespace XmlHelpers
     {
         return GetISystem()->LoadXmlFromBuffer(buffer, size, false, suppressWarnings);
     }
-}
+} // namespace XmlHelpers
 
 //////////////////////////////////////////////////////////////////////////
-
 
 //////////////////////////////////////////////////////////////////////////
 
 /*!
  * StdMap Wraps std::map to provide easier to use interface.
  */
-template <class Key, class Value>
+template<class Key, class Value>
 struct StdMap
 {
 private:
@@ -226,12 +228,30 @@ public:
     typedef typename Map::iterator Iterator;
     typedef typename Map::const_iterator ConstIterator;
 
-    void    Insert(const Key& key, const Value& value) { m[key] = value; }
-    int     GetCount() const { return m.size(); };
-    bool    IsEmpty() const { return m.empty(); };
-    void    Clear() { m.clear(); }
-    int     Erase(const Key& key) { return m.erase(key); };
-    Value& operator[](const Key& key) { return m[key]; };
+    void Insert(const Key& key, const Value& value)
+    {
+        m[key] = value;
+    }
+    int GetCount() const
+    {
+        return m.size();
+    };
+    bool IsEmpty() const
+    {
+        return m.empty();
+    };
+    void Clear()
+    {
+        m.clear();
+    }
+    int Erase(const Key& key)
+    {
+        return m.erase(key);
+    };
+    Value& operator[](const Key& key)
+    {
+        return m[key];
+    };
     bool Find(const Key& key, Value& value) const
     {
         ConstIterator it = m.find(key);
@@ -242,8 +262,14 @@ public:
         value = it->second;
         return true;
     }
-    Iterator Find(const Key& key) { return m.find(key); }
-    ConstIterator Find(const Key& key) const { return m.find(key); }
+    Iterator Find(const Key& key)
+    {
+        return m.find(key);
+    }
+    ConstIterator Find(const Key& key) const
+    {
+        return m.find(key);
+    }
 
     bool FindKeyByValue(const Value& value, Key& key) const
     {
@@ -258,12 +284,24 @@ public:
         return false;
     }
 
-    Iterator Begin() { return m.begin(); };
-    Iterator End() { return m.end(); };
-    ConstIterator Begin() const { return m.begin(); };
-    ConstIterator End() const { return m.end(); };
+    Iterator Begin()
+    {
+        return m.begin();
+    };
+    Iterator End()
+    {
+        return m.end();
+    };
+    ConstIterator Begin() const
+    {
+        return m.begin();
+    };
+    ConstIterator End() const
+    {
+        return m.end();
+    };
 
-    void    GetAsVector(std::vector<Value>& array) const
+    void GetAsVector(std::vector<Value>& array) const
     {
         array.resize(m.size());
         int i = 0;
@@ -320,13 +358,13 @@ class QColor;
 QColor ColorLinearToGamma(const AZ::Color& col);
 AZ::Color ColorGammaToLinear(const QColor& col);
 
-QColor ColorToQColor(uint32 color);
+QColor ColorToQColor(AZ::u32 color);
 
 class QCursor;
 class QPixmap;
 
 /*! Collection of Utility MFC functions.
-*/
+ */
 struct CMFCUtils
 {
     static QCursor LoadCursor(unsigned int nIDResource, int hotX = -1, int hotY = -1);
@@ -384,7 +422,8 @@ public:
         while (totalBytesLeftToWrite > 0)
         {
             uint bytesToWrite = AZ::GetMin(blockSize, totalBytesLeftToWrite);
-            uint bytesWritten = static_cast<uint>(QDataStream::writeRawData(reinterpret_cast<char*>(buffer) + totalBytesWritten, bytesToWrite));
+            uint bytesWritten =
+                static_cast<uint>(QDataStream::writeRawData(reinterpret_cast<char*>(buffer) + totalBytesWritten, bytesToWrite));
 
             totalBytesLeftToWrite -= bytesWritten;
             totalBytesWritten += bytesWritten;
@@ -394,7 +433,6 @@ public:
             {
                 break;
             }
-
         }
         return totalBytesWritten;
     }
@@ -510,7 +548,8 @@ inline CArchive& operator<<(CArchive& ar, const QString& str)
     {
         ar << static_cast<quint8>(length);
     }
-    else if (length < 0xfffe) // 0xfffe instead of 0xffff because 0xfffe indicated Windows wide character strings, which we aren't bothering with anymore
+    else if (length < 0xfffe) // 0xfffe instead of 0xffff because 0xfffe indicated Windows wide character strings, which we aren't bothering
+                              // with anymore
     {
         ar << static_cast<quint8>(0xff);
         ar << static_cast<quint16>(length);

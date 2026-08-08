@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <AzCore/base.h>
+
 #include "../Include/SandboxAPI.h"
 #include <set>
 #include <AzCore/std/containers/vector.h>
@@ -72,7 +74,7 @@ struct IFileUtil
         time_t  time_create;    //! -1 for FAT file systems
         time_t  time_access;    //! -1 for FAT file systems
         time_t  time_write;
-        int64 size;
+        AZ::s64 size;
     };
 
     enum ETextFileType
@@ -163,7 +165,7 @@ struct IFileUtil
     virtual bool Exists(const QString& strPath, bool boDirectory, FileDesc* pDesc = nullptr) = 0;
     virtual bool FileExists(const QString& strFilePath, FileDesc* pDesc = nullptr) = 0;
     virtual bool PathExists(const QString& strPath) = 0;
-    virtual bool GetDiskFileSize(const char* pFilePath, uint64& rOutSize) = 0;
+    virtual bool GetDiskFileSize(const char* pFilePath, AZ::u64& rOutSize) = 0;
 
     // This function should be used only with physical files.
     virtual bool IsFileExclusivelyAccessable(const QString& strFilePath) = 0;
@@ -202,7 +204,7 @@ struct IFileUtil
     virtual ECopyTreeResult MoveTree(const QString& strSourceDirectory, const QString& strTargetDirectory, bool boRecurse = true, bool boConfirmOverwrite = false) = 0;
 
     // Get file attributes include source control attributes if available
-    virtual uint32 GetAttributes(const char* filename, bool bUseSourceControl = true) = 0;
+    virtual AZ::u32 GetAttributes(const char* filename, bool bUseSourceControl = true) = 0;
 
     // Returns true if the files have the same content, false otherwise
     virtual bool CompareFiles(const QString& strFilePath1, const QString& strFilePath2) = 0;

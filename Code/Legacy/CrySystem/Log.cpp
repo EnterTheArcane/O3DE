@@ -6,24 +6,23 @@
  *
  */
 
-
 // Description : Log related functions
 
-
-#include "CrySystem_precompiled.h"
 #include "Log.h"
+#include "CrySystem_precompiled.h"
 
-//this should not be included here
+// this should not be included here
+#include "CryPath.h" // PathUtil::ReplaceExtension()
+#include "System.h"
 #include <IConsole.h>
 #include <ISystem.h>
-#include "System.h"
-#include "CryPath.h"                    // PathUtil::ReplaceExtension()
 
-#include <AzFramework/IO/FileOperations.h>
 #include <AzCore/IO/ByteContainerStream.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/Path/Path.h>
 #include <AzCore/Time/ITime.h>
+#include <AzCore/std/algorithm.h>
+#include <AzFramework/IO/FileOperations.h>
 
 #ifdef WIN32
 #include <time.h>
@@ -35,27 +34,31 @@
 
 #define LOG_BACKUP_PATH "@log@/LogBackups"
 
-AZ_CVAR(int32_t, log_IncludeTime, 1, nullptr, AZ::ConsoleFunctorFlags::Null,
-                "Toggles time stamping of log entries.\n"
-                "Usage: log_IncludeTime [0/1/2/3/4/5]\n"
-                "  0=off (default)\n"
-                "  1=current time\n"
-                "  2=relative time\n"
-                "  3=current+relative time\n"
-                "  4=absolute time in seconds since this mode was started\n"
-                "  5=current time+server time"
-                "  6=current date+current time");
-
+AZ_CVAR(
+    int32_t,
+    log_IncludeTime,
+    1,
+    nullptr,
+    AZ::ConsoleFunctorFlags::Null,
+    "Toggles time stamping of log entries.\n"
+    "Usage: log_IncludeTime [0/1/2/3/4/5]\n"
+    "  0=off (default)\n"
+    "  1=current time\n"
+    "  2=relative time\n"
+    "  3=current+relative time\n"
+    "  4=absolute time in seconds since this mode was started\n"
+    "  5=current time+server time"
+    "  6=current date+current time");
 
 //////////////////////////////////////////////////////////////////////
 namespace LogCVars
 {
     float s_log_tick = 0;
-    int max_backup_directory_size_mb = 200; //200MB default
-};
+    int max_backup_directory_size_mb = 200; // 200MB default
+}; // namespace LogCVars
 
 #if defined(SUPPORT_LOG_IDENTER)
-static CLog::LogStringType indentString ("    ");
+static CLog::LogStringType indentString("    ");
 #endif
 
 namespace
@@ -137,14 +140,14 @@ namespace
 
         return elapsedTime;
     };
-}
+} // namespace
 
 //////////////////////////////////////////////////////////////////////
 CLog::CLog(ISystem* pSystem)
 {
     memset(m_szFilename, 0, MAX_FILENAME_SIZE);
     memset(m_sBackupFilename, 0, MAX_FILENAME_SIZE);
-    //memset(m_szTemp,0,MAX_TEMP_LENGTH_SIZE);
+    // memset(m_szTemp,0,MAX_TEMP_LENGTH_SIZE);
     m_pSystem = pSystem;
     m_pLogVerbosity = 0;
     m_pLogWriteToFile = 0;
@@ -152,7 +155,7 @@ CLog::CLog(ISystem* pSystem)
     m_pLogVerbosityOverridesWriteToFile = 0;
     m_pLogSpamDelay = 0;
     m_pLogModule = 0;
-    m_fLastLoadingUpdateTime = -1.f;    // for streaming engine update
+    m_fLastLoadingUpdateTime = -1.f; // for streaming engine update
     m_backupLogs = true;
 
 #if defined(SUPPORT_LOG_IDENTER)
@@ -167,60 +170,79 @@ CLog::CLog(ISystem* pSystem)
     memset(m_history, 0, sizeof(m_history));
 
     CheckAndPruneBackupLogs();
-
 }
 
 void CLog::RegisterConsoleVariables()
 {
     IConsole* console = m_pSystem->GetIConsole();
 
-#ifdef  _RELEASE
-    #if defined(RELEASE_LOGGING)
-        #define DEFAULT_VERBOSITY 0
-    #else
-        #define DEFAULT_VERBOSITY -1
-    #endif
+#ifdef _RELEASE
+#if defined(RELEASE_LOGGING)
+#define DEFAULT_VERBOSITY 0
 #else
-    #define DEFAULT_VERBOSITY 3
+#define DEFAULT_VERBOSITY -1
+#endif
+#else
+#define DEFAULT_VERBOSITY 3
 #endif
 
     if (console)
     {
-        m_pLogVerbosity = REGISTER_INT("log_Verbosity", DEFAULT_VERBOSITY, VF_DUMPTODISK,
-                "defines the verbosity level for log messages written to console\n"
-                "-1=suppress all logs (including eAlways)\n"
-                "0=suppress all logs(except eAlways)\n"
-                "1=additional errors\n"
-                "2=additional warnings\n"
-                "3=additional messages\n"
-                "4=additional comments");
+        m_pLogVerbosity = REGISTER_INT(
+            "log_Verbosity",
+            DEFAULT_VERBOSITY,
+            VF_DUMPTODISK,
+            "defines the verbosity level for log messages written to console\n"
+            "-1=suppress all logs (including eAlways)\n"
+            "0=suppress all logs(except eAlways)\n"
+            "1=additional errors\n"
+            "2=additional warnings\n"
+            "3=additional messages\n"
+            "4=additional comments");
 
-        //writing to game.log during game play causes stalls on consoles
+        // writing to game.log during game play causes stalls on consoles
         m_pLogWriteToFile = REGISTER_INT("log_WriteToFile", 1, VF_DUMPTODISK, "toggle whether to write log to file (game.log)");
 
-        m_pLogWriteToFileVerbosity = REGISTER_INT("log_WriteToFileVerbosity", DEFAULT_VERBOSITY, VF_DUMPTODISK,
-                "defines the verbosity level for log messages written to files\n"
-                "-1=suppress all logs (including eAlways)\n"
-                "0=suppress all logs(except eAlways)\n"
-                "1=additional errors\n"
-                "2=additional warnings\n"
-                "3=additional messages\n"
-                "4=additional comments");
-        m_pLogVerbosityOverridesWriteToFile = REGISTER_INT("log_VerbosityOverridesWriteToFile", 1, VF_DUMPTODISK, "when enabled, setting log_verbosity to 0 will stop all logging including writing to file");
+        m_pLogWriteToFileVerbosity = REGISTER_INT(
+            "log_WriteToFileVerbosity",
+            DEFAULT_VERBOSITY,
+            VF_DUMPTODISK,
+            "defines the verbosity level for log messages written to files\n"
+            "-1=suppress all logs (including eAlways)\n"
+            "0=suppress all logs(except eAlways)\n"
+            "1=additional errors\n"
+            "2=additional warnings\n"
+            "3=additional messages\n"
+            "4=additional comments");
+        m_pLogVerbosityOverridesWriteToFile = REGISTER_INT(
+            "log_VerbosityOverridesWriteToFile",
+            1,
+            VF_DUMPTODISK,
+            "when enabled, setting log_verbosity to 0 will stop all logging including writing to file");
 
         m_pLogSpamDelay = REGISTER_FLOAT("log_SpamDelay", 0.0f, 0, "Sets the minimum time interval between messages classified as spam");
 
         m_pLogModule = REGISTER_STRING("log_Module", "", VF_NULL, "Only show warnings from specified module");
 
-        REGISTER_CVAR2("log_tick", &LogCVars::s_log_tick, LogCVars::s_log_tick, 0, "When not 0, writes tick log entry into the log file, every N seconds");
+        REGISTER_CVAR2(
+            "log_tick",
+            &LogCVars::s_log_tick,
+            LogCVars::s_log_tick,
+            0,
+            "When not 0, writes tick log entry into the log file, every N seconds");
 
-        REGISTER_CVAR2("max_log_backup_mb", &LogCVars::max_backup_directory_size_mb, LogCVars::max_backup_directory_size_mb, 0, "Maximum size of backup logs to keep on disk (in MB)");
+        REGISTER_CVAR2(
+            "max_log_backup_mb",
+            &LogCVars::max_backup_directory_size_mb,
+            LogCVars::max_backup_directory_size_mb,
+            0,
+            "Maximum size of backup logs to keep on disk (in MB)");
 
 #if defined(KEEP_LOG_FILE_OPEN)
         REGISTER_COMMAND("log_flush", &LogFlushFile, 0, "Flush the log file");
 #endif
     }
-    #undef DEFAULT_VERBOSITY
+#undef DEFAULT_VERBOSITY
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -232,7 +254,7 @@ CLog::~CLog()
         m_topIndenter->Enable(false);
     }
 
-    assert (m_indentation == 0);
+    assert(m_indentation == 0);
 #endif
 
     CreateBackupFile();
@@ -310,7 +332,6 @@ bool CLog::CheckLogFormatter(const char* formatter)
     return true;
 }
 
-
 //////////////////////////////////////////////////////////////////////////
 #if !defined(EXCLUDE_NORMAL_LOG)
 void CLog::LogWarning(const char* szFormat, ...)
@@ -321,7 +342,7 @@ void CLog::LogWarning(const char* szFormat, ...)
     }
 
     va_list ArgList;
-    char        szBuffer[MAX_WARNING_LENGTH];
+    char szBuffer[MAX_WARNING_LENGTH];
     va_start(ArgList, szFormat);
     azvsnprintf(szBuffer, sizeof(szBuffer) - 1, szFormat, ArgList);
     szBuffer[sizeof(szBuffer) - 1] = '\0';
@@ -341,7 +362,7 @@ void CLog::LogError(const char* szFormat, ...)
     }
 
     va_list ArgList;
-    char        szBuffer[MAX_WARNING_LENGTH];
+    char szBuffer[MAX_WARNING_LENGTH];
     va_start(ArgList, szFormat);
     azvsnprintf(szBuffer, sizeof(szBuffer) - 1, szFormat, ArgList);
     szBuffer[sizeof(szBuffer) - 1] = '\0';
@@ -362,7 +383,7 @@ void CLog::Log(const char* szFormat, ...)
 
     va_list arg;
     va_start(arg, szFormat);
-    LogV (eMessage, szFormat, arg);
+    LogV(eMessage, szFormat, arg);
     va_end(arg);
 }
 
@@ -376,7 +397,7 @@ void CLog::LogAlways(const char* szFormat, ...)
 
     va_list arg;
     va_start(arg, szFormat);
-    LogV (eAlways, szFormat, arg);
+    LogV(eAlways, szFormat, arg);
     va_end(arg);
 }
 #endif // !defined(EXCLUDE_NORMAL_LOG)
@@ -407,15 +428,16 @@ int MatchStrings(const char* str0, const char* str1)
                     do
                     {
                         int chr = *str[i]++;
-                        bSkipWord |= iszero(chr - '\\') | iszero(chr - '/') | iszero(chr - '_'); // ignore different words with \,_,/
-                        bAlpha[i] = inrange(chr, 'A' - 1, 'Z' + 1) | inrange(chr, 'a' - 1, 'z' + 1);
-                        bWS[i] = iszero(chr - ' ');
-                        bStop |= iszero(chr);
+                        bSkipWord |=
+                            (chr == '\\' ? 1 : 0) | (chr == '/' ? 1 : 0) | (chr == '_' ? 1 : 0); // ignore different words with \,_,/
+                        bAlpha[i] = ((chr > 'A' - 1 && chr < 'Z' + 1) ? 1 : 0) | ((chr > 'a' - 1 && chr < 'z' + 1) ? 1 : 0);
+                        bWS[i] = (chr == ' ' ? 1 : 0);
+                        bStop |= (chr == 0 ? 1 : 0);
                     } while (!(bAlpha[i] | bWS[i] | bStop)); // wait for a letter or a space in each input string
                 }
             }
             len += bAlpha[0] & bAlpha[1];
-            nWordDiffs += 1 - iszero((int)(*str[0] - *str[1])) & - (bAlpha[0] & bAlpha[1]);   // count diffs in this word
+            nWordDiffs += 1 - ((*str[0] - *str[1]) == 0 ? 1 : 0) & -(bAlpha[0] & bAlpha[1]); // count diffs in this word
         } while ((1 - bWS[0] | 1 - bWS[1]) & 1 - bStop); // wait for space (word end) in both strings
         nDiffs += nWordDiffs & ~-bSkipWord;
     } while (!bStop);
@@ -423,8 +445,7 @@ break2:
     return nDiffs * 10 < len;
 }
 
-
-//will log the text both to file and console
+// will log the text both to file and console
 //////////////////////////////////////////////////////////////////////
 void CLog::LogV(const ELogType type, const char* szFormat, va_list args)
 {
@@ -443,7 +464,6 @@ void CLog::LogV(const ELogType type, [[maybe_unused]] int flags, const char* szF
     if (!CheckLogFormatter(szFormat))
     {
         return;
-
     }
     if (!szFormat)
     {
@@ -458,11 +478,10 @@ void CLog::LogV(const ELogType type, [[maybe_unused]] int flags, const char* szF
         }
     }
 
-
     bool bfile = false, bconsole = false;
     const char* szCommand = szFormat;
 
-    uint8 DefaultVerbosity = 0;   // 0 == Always log (except for special -1 verbosity overrides)
+    uint8 DefaultVerbosity = 0; // 0 == Always log (except for special -1 verbosity overrides)
 
     switch (type)
     {
@@ -513,7 +532,7 @@ void CLog::LogV(const ELogType type, [[maybe_unused]] int flags, const char* szF
     case eWarning:
     case eWarningAlways:
         azstrcpy(szString, MAX_WARNING_LENGTH, "$6[Warning] ");
-        szString += 12;     // strlen("$6[Warning] ");
+        szString += 12; // strlen("$6[Warning] ");
         szAfterColour += 2;
         prefixSize = 12;
         break;
@@ -521,7 +540,7 @@ void CLog::LogV(const ELogType type, [[maybe_unused]] int flags, const char* szF
     case eError:
     case eErrorAlways:
         azstrcpy(szString, MAX_WARNING_LENGTH, "$4[Error] ");
-        szString += 10;     // strlen("$4[Error] ");
+        szString += 10; // strlen("$4[Error] ");
         szAfterColour += 2;
         prefixSize = 10;
         break;
@@ -573,7 +592,8 @@ void CLog::LogV(const ELogType type, [[maybe_unused]] int flags, const char* szF
             {
                 continue;
             }
-            if (m_history[i].ptr == szSpamCheck && *(int*)m_history[i].str == *(int*)szFormat || MatchStrings(m_history[i].str, szSpamCheck))
+            if (m_history[i].ptr == szSpamCheck && *(int*)m_history[i].str == *(int*)szFormat ||
+                MatchStrings(m_history[i].str, szSpamCheck))
             {
                 return;
             }
@@ -632,7 +652,7 @@ void CLog::LogWithCallback(ELogType type, const LogWriteCallback& messageCallbac
     bool bfile = false;
     bool bconsole = false;
 
-    uint8_t DefaultVerbosity = 0;   // 0 == Always log (except for special -1 verbosity overrides)
+    uint8_t DefaultVerbosity = 0; // 0 == Always log (except for special -1 verbosity overrides)
 
     switch (type)
     {
@@ -686,8 +706,7 @@ void CLog::LogWithCallback(ELogType type, const LogWriteCallback& messageCallbac
         break;
     }
 
-    auto LogStringWithCallback = [this](ELogType logType,
-        const LogWriteCallback& messageCallback, AZStd::string_view logCategoryString)
+    auto LogStringWithCallback = [this](ELogType logType, const LogWriteCallback& messageCallback, AZStd::string_view logCategoryString)
     {
         AZStd::string message;
         AZ::IO::ByteContainerStream outputStream(&message);
@@ -714,8 +733,8 @@ void CLog::LogWithCallback(ELogType type, const LogWriteCallback& messageCallbac
     LogStringWithCallback(type, messageCallback, logCategoryString);
     if (bfile)
     {
-        auto LogStringToFileWithCallback = [this](ELogType logType,
-            const LogWriteCallback& messageCallback, AZStd::string_view logCategoryString)
+        auto LogStringToFileWithCallback =
+            [this](ELogType logType, const LogWriteCallback& messageCallback, AZStd::string_view logCategoryString)
         {
 #if defined(_RELEASE) && defined(EXCLUDE_NORMAL_LOG) // no file logging in release
             return;
@@ -750,8 +769,7 @@ void CLog::LogWithCallback(ELogType type, const LogWriteCallback& messageCallbac
             LogStringType timeStr;
             auto console = AZ::Interface<AZ::IConsole>::Get();
             if (uint32_t dwCVarState;
-                console != nullptr
-                && console->GetCvarValue("log_IncludeTime", dwCVarState) == AZ::GetValueResult::Success)
+                console != nullptr && console->GetCvarValue("log_IncludeTime", dwCVarState) == AZ::GetValueResult::Success)
             {
                 // See the log_IncludeTime CVar description as to what
                 // values correspond to what time strings
@@ -792,7 +810,6 @@ void CLog::LogWithCallback(ELogType type, const LogWriteCallback& messageCallbac
                 return;
             }
 #endif // !defined(_RELEASE)
-
 
             //////////////////////////////////////////////////////////////////////////
             // Call callback function.
@@ -838,8 +855,8 @@ void CLog::LogWithCallback(ELogType type, const LogWriteCallback& messageCallbac
     }
     if (bconsole)
     {
-        auto LogStringToConsoleWithCallback = [this](const LogWriteCallback& messageCallback,
-            AZStd::string_view colorString, AZStd::string_view logCategoryString)
+        auto LogStringToConsoleWithCallback =
+            [this](const LogWriteCallback& messageCallback, AZStd::string_view colorString, AZStd::string_view logCategoryString)
         {
 #if defined(_RELEASE) && defined(EXCLUDE_NORMAL_LOG) // no console logging in release
             return;
@@ -921,7 +938,7 @@ void CLog::LogWithCallback(ELogType type, const LogWriteCallback& messageCallbac
     }
 }
 
-//will log the text both to the end of file and console
+// will log the text both to the end of file and console
 //////////////////////////////////////////////////////////////////////
 #if !defined(EXCLUDE_NORMAL_LOG)
 void CLog::LogAppendWithPrevLine(const char* szFormat, ...)
@@ -953,7 +970,7 @@ void CLog::LogAppendWithPrevLine(const char* szFormat, ...)
         return;
     }
 
-    va_list     arglist;
+    va_list arglist;
 
     char szTemp[MAX_TEMP_LENGTH_SIZE];
     va_start(arglist, szFormat);
@@ -971,13 +988,13 @@ void CLog::LogAppendWithPrevLine(const char* szFormat, ...)
     }
 }
 
-//log to console only
+// log to console only
 //////////////////////////////////////////////////////////////////////
 void CLog::LogStringToConsole(AZStd::string_view message, ELogType logType, bool appendToPrevLine)
 {
-    #if defined(_RELEASE) && defined(EXCLUDE_NORMAL_LOG) // no console logging in release
+#if defined(_RELEASE) && defined(EXCLUDE_NORMAL_LOG) // no console logging in release
     return;
-    #endif
+#endif
 
     if (message.empty())
     {
@@ -1015,7 +1032,7 @@ void CLog::LogStringToConsole(AZStd::string_view message, ELogType logType, bool
     }
 }
 
-//log to console only
+// log to console only
 //////////////////////////////////////////////////////////////////////
 void CLog::LogToConsole(const char* szFormat, ...)
 {
@@ -1041,7 +1058,7 @@ void CLog::LogToConsole(const char* szFormat, ...)
         return;
     }
 
-    va_list     arglist;
+    va_list arglist;
 
     char szBuffer[MAX_WARNING_LENGTH];
     va_start(arglist, szFormat);
@@ -1077,7 +1094,7 @@ void CLog::LogToConsoleAppendWithPrevLine(const char* szFormat, ...)
         return;
     }
 
-    va_list     arglist;
+    va_list arglist;
 
     char szTemp[MAX_TEMP_LENGTH_SIZE];
     va_start(arglist, szFormat);
@@ -1093,8 +1110,6 @@ void CLog::LogToConsoleAppendWithPrevLine(const char* szFormat, ...)
     LogStringToConsole(szTemp, ELogType::eAlways, true);
 }
 #endif // !defined(EXCLUDE_NORMAL_LOG)
-
-
 
 //////////////////////////////////////////////////////////////////////
 [[maybe_unused]] static AZStd::string_view RemoveColorCode(AZStd::string_view rStr)
@@ -1131,8 +1146,8 @@ void CLog::Indent(CLogIndenter* indenter)
 //////////////////////////////////////////////////////////////////////
 void CLog::Unindent(CLogIndenter* indenter)
 {
-    assert (indenter == m_topIndenter);
-    assert (m_indentation);
+    assert(indenter == m_topIndenter);
+    assert(m_indentation);
     m_topIndenter = m_topIndenter->GetNextIndenter();
     --m_indentation;
     BuildIndentString();
@@ -1173,7 +1188,7 @@ const char* CLog::GetAssetScopeString()
         m_assetScopeString += m_assetScopeQueue[i].sType;
         m_assetScopeString += "]";
         m_assetScopeString += m_assetScopeQueue[i].sName;
-        if (i <  m_assetScopeQueue.size() - 1)
+        if (i < m_assetScopeQueue.size() - 1)
         {
             m_assetScopeString += " > ";
         }
@@ -1209,7 +1224,8 @@ bool CLog::LogToMainThread(AZStd::string_view szString, ELogType logType, bool a
 
 //////////////////////////////////////////////////////////////////////
 #if !defined(EXCLUDE_NORMAL_LOG)
-void CLog::LogStringToFile(AZStd::string_view message, ELogType logType, bool appendToPrevLine, [[maybe_unused]] MessageQueueState queueState)
+void CLog::LogStringToFile(
+    AZStd::string_view message, ELogType logType, bool appendToPrevLine, [[maybe_unused]] MessageQueueState queueState)
 {
 #if defined(_RELEASE) && defined(EXCLUDE_NORMAL_LOG) // no file logging in release
     return;
@@ -1251,9 +1267,7 @@ void CLog::LogStringToFile(AZStd::string_view message, ELogType logType, bool ap
 #endif
 
     auto console = AZ::Interface<AZ::IConsole>::Get();
-    if (uint32_t dwCVarState;
-        console != nullptr
-        && console->GetCvarValue("log_IncludeTime", dwCVarState) == AZ::GetValueResult::Success)
+    if (uint32_t dwCVarState; console != nullptr && console->GetCvarValue("log_IncludeTime", dwCVarState) == AZ::GetValueResult::Success)
     {
         // See the log_IncludeTime CVar description as to what
         // values correspond to what time strings
@@ -1292,7 +1306,7 @@ void CLog::LogStringToFile(AZStd::string_view message, ELogType logType, bool ap
         AZ::Debug::Trace::Instance().OutputToRawAndDebugger(nullptr, message.data());
         if (!message.ends_with('\n'))
         {
-           AZ::Debug::Trace::Instance().OutputToRawAndDebugger(nullptr, "\n");
+            AZ::Debug::Trace::Instance().OutputToRawAndDebugger(nullptr, "\n");
         }
     }
 
@@ -1301,7 +1315,6 @@ void CLog::LogStringToFile(AZStd::string_view message, ELogType logType, bool ap
         return;
     }
 #endif // !defined(_RELEASE)
-
 
     //////////////////////////////////////////////////////////////////////////
     // Call callback function.
@@ -1368,7 +1381,7 @@ void CLog::LogString(AZStd::string_view szString, ELogType logType)
     }
 }
 
-//same as above but to a file
+// same as above but to a file
 //////////////////////////////////////////////////////////////////////
 void CLog::LogToFileAppendWithPrevLine(const char* szFormat, ...)
 {
@@ -1394,7 +1407,7 @@ void CLog::LogToFileAppendWithPrevLine(const char* szFormat, ...)
         return;
     }
 
-    va_list     arglist;
+    va_list arglist;
     va_start(arglist, szFormat);
     auto szTemp = AZStd::fixed_string<MAX_TEMP_LENGTH_SIZE>::format_arg(szCommand, arglist);
     va_end(arglist);
@@ -1402,7 +1415,7 @@ void CLog::LogToFileAppendWithPrevLine(const char* szFormat, ...)
     LogStringToFile(szTemp, ELogType::eAlways, true, MessageQueueState::NotQueued);
 }
 
-//log to the file specified in setfilename
+// log to the file specified in setfilename
 //////////////////////////////////////////////////////////////////////
 void CLog::LogToFile(const char* szFormat, ...)
 {
@@ -1428,7 +1441,7 @@ void CLog::LogToFile(const char* szFormat, ...)
         return;
     }
 
-    va_list     arglist;
+    va_list arglist;
     va_start(arglist, szFormat);
     auto szTemp = AZStd::fixed_string<MAX_TEMP_LENGTH_SIZE>::format_arg(szCommand, arglist);
     va_end(arglist);
@@ -1491,7 +1504,7 @@ void CLog::CreateBackupFile() const
                         AZ::Debug::Platform::OutputToDebugger("CrySystem Log", "Log::CreateBackupFile ERROR '");
                         AZ::Debug::Platform::OutputToDebugger({}, sName.c_str());
                         AZ::Debug::Platform::OutputToDebugger({}, "' not recognized \n");
-                        assert(0);      // broken log file? - first line should include this name - written by LogVersion()
+                        assert(0); // broken log file? - first line should include this name - written by LogVersion()
                         return;
                     }
                     sName.clear();
@@ -1546,26 +1559,33 @@ void CLog::CheckAndPruneBackupLogs() const
 
     AZStd::list<fileInfo> fileInfoList;
 
-    // Now that we've copied the new log over, lets check the size of the backup folder and trim it as necessary to keep it within appropriate limits
-    fileSystem->FindFiles(LOG_BACKUP_PATH, "*",
+    // Now that we've copied the new log over, lets check the size of the backup folder and trim it as necessary to keep it within
+    // appropriate limits
+    fileSystem->FindFiles(
+        LOG_BACKUP_PATH,
+        "*",
         [&totalBackupDirectorySize, &fileSystem, &fileInfoList](const char* fileName)
-    {
-        AZ::u64 size;
-        fileSystem->Size(fileName, size);
-        AZ::u64 modTime = fileSystem->ModificationTime(fileName);
-        fileInfoList.push_back(fileInfo(modTime, fileName, size));
+        {
+            AZ::u64 size;
+            fileSystem->Size(fileName, size);
+            AZ::u64 modTime = fileSystem->ModificationTime(fileName);
+            fileInfoList.push_back(fileInfo(modTime, fileName, size));
 
-        totalBackupDirectorySize += size;
-        return true;
-    });
+            totalBackupDirectorySize += size;
+            return true;
+        });
 
     AZ::u64 max_size = LogCVars::max_backup_directory_size_mb;
-    max_size = max_size << 20;  // Convert from MB to bytes
+    max_size = max_size << 20; // Convert from MB to bytes
 
     if (totalBackupDirectorySize > max_size)
     {
         // Sort the list from lowest to highest modtime (oldest to newest logs)
-        fileInfoList.sort([](const fileInfo &a, const fileInfo&b) { return a.modTime < b.modTime; });
+        fileInfoList.sort(
+            [](const fileInfo& a, const fileInfo& b)
+            {
+                return a.modTime < b.modTime;
+            });
 
         while (totalBackupDirectorySize > max_size && fileInfoList.size() > 0)
         {
@@ -1576,7 +1596,7 @@ void CLog::CheckAndPruneBackupLogs() const
     }
 }
 
-//set the file used to log to disk
+// set the file used to log to disk
 //////////////////////////////////////////////////////////////////////
 bool CLog::SetFileName(const char* fileNameOrAbsolutePath, bool backupLogs)
 {
@@ -1669,19 +1689,21 @@ const char* CLog::CheckAgainstVerbosity(const char* pText, bool& logtofile, bool
 
     logtoconsole = (nLogVerbosityConsole >= DefaultVerbosity);
 
-    //to preserve logging to TTY, logWriteToFile logic has been moved to inside logStringToFile
-    //int logToFileCVar = m_pLogWriteToFile ? m_pLogWriteToFile->GetIVal() : 1;
+    // to preserve logging to TTY, logWriteToFile logic has been moved to inside logStringToFile
+    // int logToFileCVar = m_pLogWriteToFile ? m_pLogWriteToFile->GetIVal() : 1;
 
     logtofile = (nLogVerbosityFile >= DefaultVerbosity);
 
     return pText;
 }
 
-
 //////////////////////////////////////////////////////////////////////////
 void CLog::AddCallback(ILogCallback* pCallback)
 {
-    stl::push_back_unique(m_callbacks, pCallback);
+    if (AZStd::find(m_callbacks.begin(), m_callbacks.end(), pCallback) == m_callbacks.end())
+    {
+        m_callbacks.push_back(pCallback);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1697,7 +1719,8 @@ void CLog::Update()
     {
         if (!m_threadSafeMsgQueue.empty())
         {
-            AZStd::scoped_lock lock(m_threadSafeMsgQueue.get_lock());   // Get the lock and hold onto it until we clear the entire queue (prevents other threads adding more things in while we clear it)
+            AZStd::scoped_lock lock(m_threadSafeMsgQueue.get_lock()); // Get the lock and hold onto it until we clear the entire queue
+                                                                      // (prevents other threads adding more things in while we clear it)
             // Must be called from main thread
             constexpr auto GetMessageView = [](auto&& messageView) constexpr -> AZStd::string_view
             {
@@ -1720,7 +1743,7 @@ void CLog::Update()
                     LogString(messageView, msg.logType);
                 }
             }
-            stl::free_container(m_threadSafeMsgQueue);
+            m_threadSafeMsgQueue.free_memory();
         }
 
         if (LogCVars::s_log_tick != 0)

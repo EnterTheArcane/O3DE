@@ -9,7 +9,6 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzFramework/Translation/TranslationDef.h>
-#include <CryCommon/ISystem.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 inline void Gestures::RecognizerRotate::Config::Reflect(AZ::ReflectContext* context)
@@ -225,5 +224,5 @@ inline float Gestures::RecognizerRotate::GetSignedRotationInDegrees() const
     const float dotProduct = vectorBetweenStartPositions.Dot(vectorBetweenCurrentPositions);
     const float crossProduct = vectorBetweenStartPositions.GetX() * vectorBetweenCurrentPositions.GetY() - 
                                vectorBetweenStartPositions.GetY() * vectorBetweenCurrentPositions.GetX();
-    return RAD2DEG(atan2(crossProduct, dotProduct));
+    return atan2(crossProduct, dotProduct) * (180.0f / AZ::Constants::Pi);
 }

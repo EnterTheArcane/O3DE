@@ -6,6 +6,8 @@
  *
  */
 #include "UiElementLuaBus.h"
+
+#include <ISystem.h>
 #include <LyShine/Bus/UiElementBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Serialization/SerializeContext.h>

@@ -11,6 +11,8 @@
 
 #include "TrackViewTrack.h"
 
+#include <AzCore/std/algorithm.h>
+
 // CryCommon
 #include <CryCommon/Maestro/Types/AnimParamType.h>
 
@@ -42,7 +44,10 @@ void CTrackViewTrackBundle::AppendTrack(CTrackViewTrack* pTrack)
         }
     }
 
-    stl::push_back_unique(m_tracks, pTrack);
+    if (AZStd::find(m_tracks.begin(), m_tracks.end(), pTrack) == m_tracks.end())
+    {
+        m_tracks.push_back(pTrack);
+    }
 }
 
 void CTrackViewTrackBundle::AppendTrackBundle(const CTrackViewTrackBundle& bundle)
@@ -61,7 +66,13 @@ bool CTrackViewTrackBundle::RemoveTrack(CTrackViewTrack* trackToRemove)
         return false;
     }
 
-    return stl::find_and_erase(m_tracks, trackToRemove);
+    const auto trackIterator = AZStd::find(m_tracks.begin(), m_tracks.end(), trackToRemove);
+    if (trackIterator == m_tracks.end())
+    {
+        return false;
+    }
+    m_tracks.erase(trackIterator);
+    return true;
 }
 
 CTrackViewTrack::CTrackViewTrack(IAnimTrack* pTrack, CTrackViewAnimNode* pTrackAnimNode,

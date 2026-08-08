@@ -248,30 +248,30 @@ bool CUiAnimViewSplineCtrl::GetTangentHandlePts(QPoint& inTangentPt, QPoint& pt,
         ITcbKey tcbKey;
         keyHandle.GetKey(&tcbKey);
 
-        Vec2 va, vb, vc;
-        va.x = time - 1.0f;
-        va.y = value[nDimension] - tin[nDimension];
-        vb.x = time;
-        vb.y = value[nDimension];
-        vc.x = time + 1.0f;
-        vc.y = value[nDimension] + tout[nDimension];
+        AZ::Vector2 va, vb, vc;
+        va.SetX(time - 1.0f);
+        va.SetY(value[nDimension] - tin[nDimension]);
+        vb.SetX(time);
+        vb.SetY(value[nDimension]);
+        vc.SetX(time + 1.0f);
+        vc.SetY(value[nDimension] + tout[nDimension]);
         inTangentPt = WorldToClient(va);
         pt = WorldToClient(vb);
         outTangentPt = WorldToClient(vc);
 
-        Vec2 tinv, toutv;
+        AZ::Vector2 tinv, toutv;
         float maxLength = float(outTangentPt.x() - pt.x());
-        tinv.x = float(inTangentPt.x() - pt.x());
-        tinv.y = float(inTangentPt.y() - pt.y());
-        toutv.x = float(outTangentPt.x() - pt.x());
-        toutv.y = float(outTangentPt.y() - pt.y());
-        tinv.Normalize();
-        toutv.Normalize();
+        tinv.SetX(float(inTangentPt.x() - pt.x()));
+        tinv.SetY(float(inTangentPt.y() - pt.y()));
+        toutv.SetX(float(outTangentPt.x() - pt.x()));
+        toutv.SetY(float(outTangentPt.y() - pt.y()));
+        tinv.NormalizeSafe();
+        toutv.NormalizeSafe();
         tinv *= maxLength / (2 - tcbKey.easeto);
         toutv *= maxLength / (2 - tcbKey.easefrom);
 
-        inTangentPt = pt + QPoint(int(tinv.x), int(tinv.y));
-        outTangentPt = pt + QPoint(int(toutv.x), int(toutv.y));
+        inTangentPt = pt + QPoint(int(tinv.GetX()), int(tinv.GetY()));
+        outTangentPt = pt + QPoint(int(toutv.GetX()), int(toutv.GetY()));
     }
     else
     {
@@ -281,13 +281,13 @@ bool CUiAnimViewSplineCtrl::GetTangentHandlePts(QPoint& inTangentPt, QPoint& pt,
         I2DBezierKey bezierKey;
         keyHandle.GetKey(&bezierKey);
 
-        Vec2 va, vb, vc;
-        va.x = time - tin[0];
-        va.y = value[0] - tin[1];
-        vb.x = time;
-        vb.y = value[0];
-        vc.x = time + tout[0];
-        vc.y = value[0] + tout[1];
+        AZ::Vector2 va, vb, vc;
+        va.SetX(time - tin[0]);
+        va.SetY(value[0] - tin[1]);
+        vb.SetX(time);
+        vb.SetY(value[0]);
+        vc.SetX(time + tout[0]);
+        vc.SetY(value[0] + tout[1]);
         inTangentPt = WorldToClient(va);
         pt = WorldToClient(vb);
         outTangentPt = WorldToClient(vc);
@@ -315,26 +315,26 @@ void CUiAnimViewSplineCtrl::ComputeIncomingTangentAndEaseTo(float& ds, float& ea
     keyHandle.GetKey(&tcbKey);
 
     // Get the control point.
-    Vec2 tinv, vb;
-    vb.x = time;
-    vb.y = value[nDimension];
+    AZ::Vector2 tinv, vb;
+    vb.SetX(time);
+    vb.SetY(value[nDimension]);
     QPoint pt = WorldToClient(vb);
 
     // Get the max length to compute the 'ease' value.
-    float maxLength = float(WorldToClient(Vec2(vb.x + 1, vb.y)).x() - pt.x());
+    float maxLength = float(WorldToClient(AZ::Vector2(vb.GetX() + 1, vb.GetY())).x() - pt.x());
 
     QPoint tmp = inTangentPt - pt;
-    tinv.x = float(tmp.x());
-    tinv.y = float(tmp.y());
+    tinv.SetX(float(tmp.x()));
+    tinv.SetY(float(tmp.y()));
 
     // Compute the 'easeTo'.
     easeTo = 2.0f - maxLength / tinv.GetLength();
 
     // Compute the 'ds'.
-    Vec2 va = ClientToWorld(inTangentPt);
-    if (time < va.x + 0.000001f)
+    AZ::Vector2 va = ClientToWorld(inTangentPt);
+    if (time < va.GetX() + 0.000001f)
     {
-        if (value[nDimension] > va.y)
+        if (value[nDimension] > va.GetY())
         {
             ds = 1000000.0f;
         }
@@ -345,7 +345,7 @@ void CUiAnimViewSplineCtrl::ComputeIncomingTangentAndEaseTo(float& ds, float& ea
     }
     else
     {
-        ds = (value[nDimension] - va.y) / (time - va.x);
+        ds = (value[nDimension] - va.GetY()) / (time - va.GetX());
     }
 }
 
@@ -368,26 +368,26 @@ void CUiAnimViewSplineCtrl::ComputeOutgoingTangentAndEaseFrom(float& dd, float& 
     keyHandle.GetKey(&tcbKey);
 
     // Get the control point.
-    Vec2 toutv, vb;
-    vb.x = time;
-    vb.y = value[nDimension];
+    AZ::Vector2 toutv, vb;
+    vb.SetX(time);
+    vb.SetY(value[nDimension]);
     QPoint pt = WorldToClient(vb);
 
     // Get the max length to comute the 'ease' value.
-    float maxLength = float(WorldToClient(Vec2(vb.x + 1, vb.y)).x() - pt.x());
+    float maxLength = float(WorldToClient(AZ::Vector2(vb.GetX() + 1, vb.GetY())).x() - pt.x());
 
     QPoint tmp = outTangentPt - pt;
-    toutv.x = float(tmp.x());
-    toutv.y = float(tmp.y());
+    toutv.SetX(float(tmp.x()));
+    toutv.SetY(float(tmp.y()));
 
     // Compute the 'easeFrom'.
     easeFrom = 2.0f - maxLength / toutv.GetLength();
 
     // Compute the 'dd'.
-    Vec2 vc = ClientToWorld(outTangentPt);
-    if (vc.x < time + 0.000001f)
+    AZ::Vector2 vc = ClientToWorld(outTangentPt);
+    if (vc.GetX() < time + 0.000001f)
     {
-        if (value[nDimension] < vc.y)
+        if (value[nDimension] < vc.GetY())
         {
             dd = 1000000.0f;
         }
@@ -398,7 +398,7 @@ void CUiAnimViewSplineCtrl::ComputeOutgoingTangentAndEaseFrom(float& dd, float& 
     }
     else
     {
-        dd = (vc.y - value[nDimension]) / (vc.x - time);
+        dd = (vc.GetY() - value[nDimension]) / (vc.GetX() - time);
     }
 }
 
@@ -528,7 +528,7 @@ void CUiAnimViewSplineCtrl::MoveSelectedTangentHandleTo(const QPoint& point)
         assert(pTrack->GetCurveType() == eUiAnimCurveType_BezierFloat);
         assert(m_nHitDimension == 0);
 
-        Vec2 tp = ClientToWorld(point);
+        AZ::Vector2 tp = ClientToWorld(point);
         if (m_bHitIncomingHandle)
         {
             // tin
@@ -536,7 +536,7 @@ void CUiAnimViewSplineCtrl::MoveSelectedTangentHandleTo(const QPoint& point)
             float time = m_pHitSpline->GetKeyTime(m_nHitKeyIndex);
             m_pHitSpline->GetKeyValue(m_nHitKeyIndex, value);
             m_pHitSpline->GetKeyTangents(m_nHitKeyIndex, tin, tout);
-            tin[0] = time - tp.x;
+            tin[0] = time - tp.GetX();
             // Constrain the time range so that the time curve is always monotonically increasing.
             if (tin[0] < 0)
             {
@@ -547,7 +547,7 @@ void CUiAnimViewSplineCtrl::MoveSelectedTangentHandleTo(const QPoint& point)
             {
                 tin[0] = time - m_pHitSpline->GetKeyTime(m_nHitKeyIndex - 1);
             }
-            tin[1] = value[0] - tp.y;
+            tin[1] = value[0] - tp.GetY();
             m_pHitSpline->SetKeyInTangent(m_nHitKeyIndex, tin);
         }
         else
@@ -557,7 +557,7 @@ void CUiAnimViewSplineCtrl::MoveSelectedTangentHandleTo(const QPoint& point)
             float time = m_pHitSpline->GetKeyTime(m_nHitKeyIndex);
             m_pHitSpline->GetKeyValue(m_nHitKeyIndex, value);
             m_pHitSpline->GetKeyTangents(m_nHitKeyIndex, tin, tout);
-            tout[0] = tp.x - time;
+            tout[0] = tp.GetX() - time;
             // Constrain the time range so that the time curve is always monotonically increasing.
             if (tout[0] < 0)
             {
@@ -568,7 +568,7 @@ void CUiAnimViewSplineCtrl::MoveSelectedTangentHandleTo(const QPoint& point)
             {
                 tout[0] = m_pHitSpline->GetKeyTime(m_nHitKeyIndex + 1) - time;
             }
-            tout[1] = tp.y - value[0];
+            tout[1] = tp.GetY() - value[0];
             m_pHitSpline->SetKeyOutTangent(m_nHitKeyIndex, tout);
         }
     }
@@ -622,8 +622,8 @@ void CUiAnimViewSplineCtrl::mouseMoveEvent(QMouseEvent* event)
             bool bShiftClick = CheckVirtualKey(Qt::Key_Shift);
             bool bSpaceClick = CheckVirtualKey(Qt::Key_Space);
 
-            Vec2 v0 = ClientToWorld(m_cMouseDownPos);
-            Vec2 v1 = ClientToWorld(point);
+            AZ::Vector2 v0 = ClientToWorld(m_cMouseDownPos);
+            AZ::Vector2 v1 = ClientToWorld(point);
             if (m_hitCode == HIT_TANGENT_HANDLE)
             {
                 if (!m_bTangentsFreeze)
@@ -635,21 +635,21 @@ void CUiAnimViewSplineCtrl::mouseMoveEvent(QMouseEvent* event)
             {
                 if (bAltClick && bShiftClick)
                 {
-                    ValueScaleKeys(v0.y, v1.y);
+                    ValueScaleKeys(v0.GetY(), v1.GetY());
                 }
                 else if (bAltClick)
                 {
-                    TimeScaleKeys(m_fTimeMarker, v0.x, v1.x);
+                    TimeScaleKeys(m_fTimeMarker, v0.GetX(), v1.GetX());
                 }
                 else if (bShiftClick)
                 {
                     // Constrains the move to the vertical direction.
-                    MoveSelectedKeys(Vec2(0, v1.y - v0.y), false);
+                    MoveSelectedKeys(AZ::Vector2(0, v1.GetY() - v0.GetY()), false);
                 }
                 else if (bSpaceClick)
                 {
                     // Reset to the original position.
-                    MoveSelectedKeys(Vec2(0, 0), false);
+                    MoveSelectedKeys(AZ::Vector2(0, 0), false);
                 }
                 else
                 {
@@ -723,7 +723,7 @@ void CUiAnimViewSplineCtrl::mouseMoveEvent(QMouseEvent* event)
         // Set the new scrolled coordinates
         const float ofsx = m_grid.origin.GetX() - (point.x() - m_cMouseDownPos.x()) / m_grid.zoom.GetX();
         const float ofsy = m_grid.origin.GetY() + (point.y() - m_cMouseDownPos.y()) / m_grid.zoom.GetY();
-        SetScrollOffset(Vec2(ofsx, ofsy));
+        SetScrollOffset(AZ::Vector2(ofsx, ofsy));
         m_cMouseDownPos = point;
     }
     break;
@@ -736,13 +736,13 @@ void CUiAnimViewSplineCtrl::mouseMoveEvent(QMouseEvent* event)
         AZ::Vector2 z = m_grid.zoom;
         if (ofsx != 0)
         {
-            z.SetX(max(z.GetX() * (1.0f + ofsx), 0.001f));
+            z.SetX(AZStd::max(z.GetX() * (1.0f + ofsx), 0.001f));
         }
         if (ofsy != 0)
         {
-            z.SetY(max(z.GetY() * (1.0f + ofsy), 0.001f));
+            z.SetY(AZStd::max(z.GetY() * (1.0f + ofsy), 0.001f));
         }
-        SetZoom(Vec2(z.GetX(), z.GetY()), m_cMouseDownPos);
+        SetZoom(AZ::Vector2(z.GetX(), z.GetY()), m_cMouseDownPos);
         m_cMouseDownPos = point;
     }
     break;

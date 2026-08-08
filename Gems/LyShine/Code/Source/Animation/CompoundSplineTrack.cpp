@@ -179,27 +179,7 @@ void UiCompoundSplineTrack::GetValue(float time, float& value)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void UiCompoundSplineTrack::GetValue(float time, Vec3& value)
-{
-    for (int i = 0; i < m_nDimensions; i++)
-    {
-        float v = value[i];
-        m_subTracks[i]->GetValue(time, v);
-        value[i] = v;
-    }
-}
-
 //////////////////////////////////////////////////////////////////////////
-void UiCompoundSplineTrack::GetValue(float time, Vec4& value)
-{
-    for (int i = 0; i < m_nDimensions; i++)
-    {
-        float v = value[i];
-        m_subTracks[i]->GetValue(time, v);
-        value[i] = v;
-    }
-}
-
 //////////////////////////////////////////////////////////////////////////
 void UiCompoundSplineTrack::GetValue(float time, AZ::Quaternion& value)
 {
@@ -274,23 +254,7 @@ void UiCompoundSplineTrack::SetValue(float time, const float& value, bool bDefau
 }
 
 //////////////////////////////////////////////////////////////////////////
-void UiCompoundSplineTrack::SetValue(float time, const Vec3& value, bool bDefault)
-{
-    for (int i = 0; i < m_nDimensions; i++)
-    {
-        m_subTracks[i]->SetValue(time, value[i], bDefault);
-    }
-}
-
 //////////////////////////////////////////////////////////////////////////
-void UiCompoundSplineTrack::SetValue(float time, const Vec4& value, bool bDefault)
-{
-    for (int i = 0; i < m_nDimensions; i++)
-    {
-        m_subTracks[i]->SetValue(time, value[i], bDefault);
-    }
-}
-
 //////////////////////////////////////////////////////////////////////////
 void UiCompoundSplineTrack::SetValue(float time, const AZ::Quaternion& value, bool bDefault)
 {
@@ -428,7 +392,7 @@ float UiCompoundSplineTrack::PreferShortestRotPath(float degree, float degree0) 
     // Assumes the degree is in (-PI, PI).
     assert(-181.0f < degree && degree < 181.0f);
     float degree00 = degree0;
-    degree0 = fmod_tpl(degree0, 360.0f);
+    degree0 = AZStd::fmod(degree0, 360.0f);
     float n = (degree00 - degree0) / 360.0f;
     float degreeAlt;
     if (degree >= 0)

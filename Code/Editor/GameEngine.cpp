@@ -6,7 +6,6 @@
  *
  */
 
-
 #include "EditorDefs.h"
 
 #include "GameEngine.h"
@@ -17,39 +16,43 @@
 
 // AzCore
 #include <AzCore/Component/ComponentApplication.h>
+#include <AzCore/Console/IConsole.h>
 #include <AzCore/IO/IStreamer.h>
 #include <AzCore/IO/Streamer/FileRequest.h>
 #include <AzCore/Serialization/Locale.h>
 #include <AzCore/std/parallel/binary_semaphore.h>
-#include <AzCore/Console/IConsole.h>
 
 // AzFramework
-#include <AzFramework/Asset/AssetSystemBus.h>
-#include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
-#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
-#include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
 #include <AzFramework/Archive/IArchive.h>
+#include <AzFramework/Asset/AssetSystemBus.h>
+#include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
+#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
+#include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 
 // Editor
-#include "IEditorImpl.h"
 #include "CryEditDoc.h"
+#include "IEditorImpl.h"
 #include "Settings.h"
 
 // CryCommon
+#include <CryCommon/IConsole.h>
 #include <CryCommon/MainThreadRenderRequestBus.h>
 
 // Editor
 #include "CryEdit.h"
 
-#include "ViewManager.h"
 #include "AnimationContext.h"
 #include "MainWindow.h"
+#include "ViewManager.h"
 
 // Implementation of System Callback structure.
-struct SSystemUserCallback
-    : public ISystemUserCallback
+struct SSystemUserCallback : public ISystemUserCallback
 {
-    SSystemUserCallback(IInitializeUIInfo* logo) : m_threadErrorHandler(this) { m_pLogo = logo; };
+    SSystemUserCallback(IInitializeUIInfo* logo)
+        : m_threadErrorHandler(this)
+    {
+        m_pLogo = logo;
+    };
     void OnSystemConnect(ISystem* pSystem) override
     {
         ModuleInitISystem(pSystem, "Editor");
@@ -61,7 +64,12 @@ struct SSystemUserCallback
         if (QThread::currentThread() != qApp->thread())
         {
             bool result = false;
-            QMetaObject::invokeMethod(&m_threadErrorHandler, "OnError", Qt::BlockingQueuedConnection, Q_RETURN_ARG(bool, result), Q_ARG(const char*, szErrorString));
+            QMetaObject::invokeMethod(
+                &m_threadErrorHandler,
+                "OnError",
+                Qt::BlockingQueuedConnection,
+                Q_RETURN_ARG(bool, result),
+                Q_ARG(const char*, szErrorString));
             return result;
         }
 
@@ -92,7 +100,8 @@ struct SSystemUserCallback
 
         if (!pCVar || pCVar->GetIVal() == 0)
         {
-            res = QMessageBox::critical(QApplication::activeWindow(), QObject::tr("Engine Error"), str, QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+            res = QMessageBox::critical(
+                QApplication::activeWindow(), QObject::tr("Engine Error"), str, QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
         }
 
         if (res == QMessageBox::Yes || res == QMessageBox::No)
@@ -101,7 +110,10 @@ struct SSystemUserCallback
             {
                 if (GetIEditor()->SaveDocument())
                 {
-                    QMessageBox::information(QApplication::activeWindow(), QObject::tr("Save"), QObject::tr("Level has been successfully saved!\r\nPress Ok to terminate Editor."));
+                    QMessageBox::information(
+                        QApplication::activeWindow(),
+                        QObject::tr("Save"),
+                        QObject::tr("Level has been successfully saved!\r\nPress Ok to terminate Editor."));
                 }
             }
         }
@@ -179,8 +191,7 @@ bool ThreadedOnErrorHandler::OnError(const char* error)
 }
 
 //! This class will be used by CSystem to find out whether the negotiation with the assetprocessor failed
-class AssetProcessConnectionStatus
-    : public AzFramework::AssetSystemConnectionNotificationsBus::Handler
+class AssetProcessConnectionStatus : public AzFramework::AssetSystemConnectionNotificationsBus::Handler
 {
 public:
     AssetProcessConnectionStatus()
@@ -212,6 +223,7 @@ public:
     {
         return m_negotiationFailed;
     }
+
 private:
     bool m_connectionFailed = false;
     bool m_negotiationFailed = false;
@@ -221,8 +233,7 @@ AZ_PUSH_DISABLE_WARNING(4273, "-Wunknown-warning-option")
 CGameEngine::CGameEngine()
     : m_bIgnoreUpdates(false)
     , m_ePendingGameMode(ePGM_NotPending)
-    , m_modalWindowDismisser(nullptr)
-AZ_POP_DISABLE_WARNING
+    , m_modalWindowDismisser(nullptr) AZ_POP_DISABLE_WARNING
 {
     m_pISystem = nullptr;
     m_bLevelLoaded = false;
@@ -240,7 +251,7 @@ AZ_POP_DISABLE_WARNING
 AZ_PUSH_DISABLE_WARNING(4273, "-Wunknown-warning-option")
 CGameEngine::~CGameEngine()
 {
-AZ_POP_DISABLE_WARNING
+    AZ_POP_DISABLE_WARNING
     GetIEditor()->UnregisterNotifyListener(this);
 
     IMovieSystem* movieSystem = AZ::Interface<IMovieSystem>::Get();
@@ -299,13 +310,9 @@ static void CmdGotoEditor(IConsoleCmdArgs* pArgs)
 
     float x, y, z, wx, wy, wz;
 
-    if (iArgCount == 7
-        && azsscanf(pArgs->GetArg(1), "%f", &x) == 1
-        && azsscanf(pArgs->GetArg(2), "%f", &y) == 1
-        && azsscanf(pArgs->GetArg(3), "%f", &z) == 1
-        && azsscanf(pArgs->GetArg(4), "%f", &wx) == 1
-        && azsscanf(pArgs->GetArg(5), "%f", &wy) == 1
-        && azsscanf(pArgs->GetArg(6), "%f", &wz) == 1)
+    if (iArgCount == 7 && azsscanf(pArgs->GetArg(1), "%f", &x) == 1 && azsscanf(pArgs->GetArg(2), "%f", &y) == 1 &&
+        azsscanf(pArgs->GetArg(3), "%f", &z) == 1 && azsscanf(pArgs->GetArg(4), "%f", &wx) == 1 &&
+        azsscanf(pArgs->GetArg(5), "%f", &wy) == 1 && azsscanf(pArgs->GetArg(6), "%f", &wz) == 1)
     {
         AZ::Matrix3x4 tm = pRenderViewport->GetViewTM();
 
@@ -316,15 +323,11 @@ static void CmdGotoEditor(IConsoleCmdArgs* pArgs)
 }
 
 AZ::Outcome<void, AZStd::string> CGameEngine::Init(
-    bool bPreviewMode,
-    bool bTestMode,
-    const char* sInCmdLine,
-    IInitializeUIInfo* logo,
-    HWND hwndForInputSystem)
+    bool bPreviewMode, bool bTestMode, const char* sInCmdLine, IInitializeUIInfo* logo, HWND hwndForInputSystem)
 {
     m_pSystemUserCallback = new SSystemUserCallback(logo);
 
-    constexpr const char* crySystemLibraryName = AZ_TRAIT_OS_DYNAMIC_LIBRARY_PREFIX  "CrySystem" AZ_TRAIT_OS_DYNAMIC_LIBRARY_EXTENSION;
+    constexpr const char* crySystemLibraryName = AZ_TRAIT_OS_DYNAMIC_LIBRARY_PREFIX "CrySystem" AZ_TRAIT_OS_DYNAMIC_LIBRARY_EXTENSION;
 
     m_hSystemHandle = AZ::DynamicModuleHandle::Create(crySystemLibraryName);
     if (!m_hSystemHandle->Load(AZ::DynamicModuleHandle::LoadFlags::InitFuncRequired))
@@ -334,8 +337,7 @@ AZ::Outcome<void, AZStd::string> CGameEngine::Init(
         return AZ::Failure(errorMessage);
     }
 
-    PFNCREATESYSTEMINTERFACE pfnCreateSystemInterface =
-        m_hSystemHandle->GetFunction<PFNCREATESYSTEMINTERFACE>("CreateSystemInterface");
+    PFNCREATESYSTEMINTERFACE pfnCreateSystemInterface = m_hSystemHandle->GetFunction<PFNCREATESYSTEMINTERFACE>("CreateSystemInterface");
 
     SSystemInitParams sip;
 
@@ -392,7 +394,8 @@ AZ::Outcome<void, AZStd::string> CGameEngine::Init(
 
     if (apConnectionStatus.CheckNegotiationFailed())
     {
-        auto errorMessage = AZStd::string::format("Negotiation with Asset Processor failed.\n"
+        auto errorMessage = AZStd::string::format(
+            "Negotiation with Asset Processor failed.\n"
             "Please ensure the Asset Processor is running on the same branch and try again.");
         gEnv = nullptr;
         return AZ::Failure(errorMessage);
@@ -402,10 +405,12 @@ AZ::Outcome<void, AZStd::string> CGameEngine::Init(
     {
         AzFramework::AssetSystem::ConnectionSettings connectionSettings;
         AzFramework::AssetSystem::ReadConnectionSettingsFromSettingsRegistry(connectionSettings);
-        auto errorMessage = AZStd::string::format("Unable to connect to the local Asset Processor.\n\n"
-                                                  "The Asset Processor is either not running locally or not accepting connections on port %hu. "
-                                                  "Check your remote_port settings in bootstrap.cfg or view the Asset Processor's \"Logs\" tab "
-                                                  "for any errors.", connectionSettings.m_assetProcessorPort);
+        auto errorMessage = AZStd::string::format(
+            "Unable to connect to the local Asset Processor.\n\n"
+            "The Asset Processor is either not running locally or not accepting connections on port %hu. "
+            "Check your remote_port settings in bootstrap.cfg or view the Asset Processor's \"Logs\" tab "
+            "for any errors.",
+            connectionSettings.m_assetProcessorPort);
         gEnv = nullptr;
         return AZ::Failure(errorMessage);
     }
@@ -463,11 +468,9 @@ void CGameEngine::SetLevelPath(const QString& path)
     }
 }
 
-bool CGameEngine::LoadLevel(
-    [[maybe_unused]] bool bDeleteAIGraph,
-    [[maybe_unused]] bool bReleaseResources)
+bool CGameEngine::LoadLevel([[maybe_unused]] bool bDeleteAIGraph, [[maybe_unused]] bool bReleaseResources)
 {
-     m_bLevelLoaded = false;
+    m_bLevelLoaded = false;
     CLogFile::FormatLine("Loading map '%s' into engine...", m_levelPath.toUtf8().data());
     // Switch the current directory back to the Primary CD folder first.
     // The engine might have trouble to find some files when the current
@@ -496,7 +499,12 @@ void CGameEngine::SwitchToInGame()
     {
         AZStd::binary_semaphore wait;
         AZ::IO::FileRequestPtr flush = streamer->FlushCaches();
-        streamer->SetRequestCompleteCallback(flush, [&wait](AZ::IO::FileRequestHandle) { wait.release(); });
+        streamer->SetRequestCompleteCallback(
+            flush,
+            [&wait](AZ::IO::FileRequestHandle)
+            {
+                wait.release();
+            });
         streamer->QueueRequest(flush);
         wait.acquire();
     }
@@ -524,9 +532,10 @@ void CGameEngine::SwitchToInGame()
     if (!CCryEditApp::instance()->IsInAutotestMode())
     {
         // Constrain and hide the system cursor (important to do this last)
-        AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
-                                                    &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
-                                                    AzFramework::SystemCursorState::ConstrainedAndHidden);
+        AzFramework::InputSystemCursorRequestBus::Event(
+            AzFramework::InputDeviceMouse::Id,
+            &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
+            AzFramework::SystemCursorState::ConstrainedAndHidden);
     }
 
     Log("Entered game mode");
@@ -565,13 +574,13 @@ void CGameEngine::SwitchToInEditor()
         pGameViewport->SetViewTM(m_playerViewTM);
     }
 
-
     GetIEditor()->Notify(eNotify_OnEndGameMode);
 
     // Unconstrain the system cursor and make it visible (important to do this last)
-    AzFramework::InputSystemCursorRequestBus::Event(AzFramework::InputDeviceMouse::Id,
-                                                    &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
-                                                    AzFramework::SystemCursorState::UnconstrainedAndVisible);
+    AzFramework::InputSystemCursorRequestBus::Event(
+        AzFramework::InputDeviceMouse::Id,
+        &AzFramework::InputSystemCursorRequests::SetSystemCursorState,
+        AzFramework::SystemCursorState::UnconstrainedAndVisible);
 
     Log("Exited game mode");
 }
@@ -690,7 +699,8 @@ void CGameEngine::SetSimulationMode(bool enabled, bool bOnlyPhysics)
     if (m_bSimulationMode && !bOnlyPhysics)
     {
         // Transition to runtime entity context.
-        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequestBus::Events::StartPlayInEditor);
+        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::StartPlayInEditor);
     }
 
     AzFramework::InputChannelRequestBus::Broadcast(&AzFramework::InputChannelRequests::ResetState);
@@ -731,27 +741,27 @@ void CGameEngine::Update()
     switch (m_ePendingGameMode)
     {
     case ePGM_SwitchToInGame:
-    {
-        SetGameMode(true);
-        m_ePendingGameMode = ePGM_NotPending;
-        break;
-    }
+        {
+            SetGameMode(true);
+            m_ePendingGameMode = ePGM_NotPending;
+            break;
+        }
 
     case ePGM_SwitchToInEditor:
-    {
-        bool wasInSimulationMode = GetIEditor()->GetGameEngine()->GetSimulationMode();
-        if (wasInSimulationMode)
         {
-            GetIEditor()->GetGameEngine()->SetSimulationMode(false);
+            bool wasInSimulationMode = GetIEditor()->GetGameEngine()->GetSimulationMode();
+            if (wasInSimulationMode)
+            {
+                GetIEditor()->GetGameEngine()->SetSimulationMode(false);
+            }
+            SetGameMode(false);
+            if (wasInSimulationMode)
+            {
+                GetIEditor()->GetGameEngine()->SetSimulationMode(true);
+            }
+            m_ePendingGameMode = ePGM_NotPending;
+            break;
         }
-        SetGameMode(false);
-        if (wasInSimulationMode)
-        {
-            GetIEditor()->GetGameEngine()->SetSimulationMode(true);
-        }
-        m_ePendingGameMode = ePGM_NotPending;
-        break;
-    }
     }
 
     AZ::ComponentApplication* componentApplication = nullptr;
@@ -771,17 +781,17 @@ void CGameEngine::Update()
             pRenderViewport->Update();
         }
 
-        // Check for the Escape key to exit game mode here rather than in Qt, 
-        // because all Qt events are usually filtered out in game mode in 
-        // QtEditorApplication_<platform>.cpp nativeEventFilter() to prevent 
-        // using Editor menu actions and shortcuts that shouldn't trigger while 
+        // Check for the Escape key to exit game mode here rather than in Qt,
+        // because all Qt events are usually filtered out in game mode in
+        // QtEditorApplication_<platform>.cpp nativeEventFilter() to prevent
+        // using Editor menu actions and shortcuts that shouldn't trigger while
         // playing the game.
-        // When the user opens the console, Qt events will be allowed 
+        // When the user opens the console, Qt events will be allowed
         // so the user can interact with limited Editor content like the console.
         const AzFramework::InputChannel* inputChannel = nullptr;
         const AzFramework::InputChannelId channelId(AzFramework::InputDeviceKeyboard::Key::Escape);
         AzFramework::InputChannelRequestBus::EventResult(inputChannel, channelId, &AzFramework::InputChannelRequests::GetInputChannel);
-        if(inputChannel && inputChannel->GetState() == AzFramework::InputChannel::State::Began)
+        if (inputChannel && inputChannel->GetState() == AzFramework::InputChannel::State::Began)
         {
             // leave game mode
             RequestSetGameMode(false);
@@ -804,13 +814,13 @@ void CGameEngine::OnEditorNotifyEvent(EEditorNotifyEvent event)
     switch (event)
     {
     case eNotify_OnSplashScreenDestroyed:
-    {
-        if (m_pSystemUserCallback != nullptr)
         {
-            m_pSystemUserCallback->OnSplashScreenDone();
+            if (m_pSystemUserCallback != nullptr)
+            {
+                m_pSystemUserCallback->OnSplashScreenDone();
+            }
         }
-    }
-    break;
+        break;
     }
 }
 
@@ -824,4 +834,3 @@ void CGameEngine::ExecuteQueuedEvents()
     AZ::TickBus::ExecuteQueuedEvents();
     AZ::MainThreadRenderRequestBus::ExecuteQueuedEvents();
 }
-

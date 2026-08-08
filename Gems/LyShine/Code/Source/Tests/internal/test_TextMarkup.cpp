@@ -8,8 +8,6 @@
 
 #if defined(LYSHINE_INTERNAL_UNIT_TEST)
 
-#include <IConsole.h>
-
 namespace
 {
     void AnchorTagTests()

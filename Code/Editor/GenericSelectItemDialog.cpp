@@ -105,7 +105,8 @@ void CGenericSelectItemDialog::ReloadTree()
         {
             itemName += token + QStringLiteral("/");
 
-            QTreeWidgetItem* hParentItem = stl::find_in_map(items, itemName, nullptr);
+            const auto parentIterator = items.find(itemName);
+            QTreeWidgetItem* hParentItem = parentIterator != items.end() ? parentIterator->second : nullptr;
             if (!hParentItem)
             {
                 hRoot = hRoot == nullptr ? new QTreeWidgetItem(ui->m_tree) : new QTreeWidgetItem(hRoot);
@@ -269,4 +270,3 @@ void CGenericSelectItemDialog::showEvent(QShowEvent* event)
 
     QDialog::showEvent(event);
 }
-

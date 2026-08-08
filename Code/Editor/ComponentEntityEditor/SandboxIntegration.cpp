@@ -53,7 +53,6 @@
 #include <AzToolsFramework/UI/PropertyEditor/EntityPropertyEditor.hxx>
 #include <AzToolsFramework/ViewportSelection/EditorHelpers.h>
 #include <AzToolsFramework/ViewportSelection/EditorSelectionUtil.h>
-#include <MathConversion.h>
 
 #include <Atom/ImageProcessing/ImageProcessingDefines.h>
 #include <Atom/RPI.Public/ViewportContext.h>
@@ -356,7 +355,7 @@ AZ::Vector3 SandboxIntegrationManager::GetWorldPositionAtViewportCenter()
         {
             int width, height;
             view->GetDimensions(&width, &height);
-            return LYVec3ToAZVec3(view->ViewToWorld(QPoint(width / 2, height / 2)));
+            return view->ViewToWorld(QPoint(width / 2, height / 2));
         }
     }
 

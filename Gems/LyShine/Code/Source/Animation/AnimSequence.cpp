@@ -12,7 +12,9 @@
 
 #include "AnimSequence.h"
 
-#include "StlUtils.h"
+#include <AzCore/std/algorithm.h>
+
+#include <map>
 #include "EventNode.h"
 #include "AzEntityNode.h"
 #include "UiAnimSerialize.h"
@@ -332,9 +334,9 @@ void CUiAnimSequence::RemoveNode(IUiAnimNode* node)
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimSequence::RemoveAll()
 {
-    stl::free_container(m_nodes);
-    stl::free_container(m_events);
-    stl::free_container(m_nodesNeedToRender);
+    decltype(m_nodes){}.swap(m_nodes);
+    decltype(m_events){}.swap(m_events);
+    decltype(m_nodesNeedToRender){}.swap(m_nodesNeedToRender);
     m_pActiveDirector = NULL;
 }
 
@@ -876,8 +878,9 @@ void CUiAnimSequence::ComputeTimeRange()
 bool CUiAnimSequence::AddTrackEvent(const char* szEvent)
 {
     AZ_Assert(szEvent && szEvent[0], "Track Event is nullptr.");
-    if (stl::push_back_unique(m_events, szEvent))
+    if (AZStd::find(m_events.begin(), m_events.end(), szEvent) == m_events.end())
     {
+        m_events.push_back(szEvent);
         NotifyTrackEvent(IUiTrackEventListener::eTrackEventReason_Added, szEvent);
         return true;
     }
@@ -889,8 +892,9 @@ bool CUiAnimSequence::AddTrackEvent(const char* szEvent)
 bool CUiAnimSequence::RemoveTrackEvent(const char* szEvent)
 {
     AZ_Assert(szEvent && szEvent[0], "Track Event is nullptr.");
-    if (stl::find_and_erase(m_events, szEvent))
+    if (auto eventIterator = AZStd::find(m_events.begin(), m_events.end(), szEvent); eventIterator != m_events.end())
     {
+        m_events.erase(eventIterator);
         NotifyTrackEvent(IUiTrackEventListener::eTrackEventReason_Removed, szEvent);
         return true;
     }
@@ -1069,7 +1073,12 @@ void CUiAnimSequence::ReorderNode(IUiAnimNode* pNode, IUiAnimNode* pPivotNode, b
     }
 
     AZStd::intrusive_ptr<IUiAnimNode> pTempHolder(pNode); // Keep reference to node so it is not deleted by erasing from list.
-    stl::find_and_erase_if(m_nodes, [pNode](const AZStd::intrusive_ptr<IUiAnimNode>& sp) { return sp.get() == pNode; });
+    if (auto nodeIterator = AZStd::find_if(
+            m_nodes.begin(), m_nodes.end(), [pNode](const AZStd::intrusive_ptr<IUiAnimNode>& node) { return node.get() == pNode; });
+        nodeIterator != m_nodes.end())
+    {
+        m_nodes.erase(nodeIterator);
+    }
 
 
     AnimNodes::iterator it;
@@ -1181,14 +1190,26 @@ void CUiAnimSequence::PasteNodes(const XmlNodeRef& xmlNode, IUiAnimNode* pParent
 bool CUiAnimSequence::AddNodeNeedToRender(IUiAnimNode* pNode)
 {
     assert(pNode != 0);
-    return stl::push_back_unique(m_nodesNeedToRender, AZStd::intrusive_ptr<IUiAnimNode>(pNode));
+    const AZStd::intrusive_ptr<IUiAnimNode> node(pNode);
+    if (AZStd::find(m_nodesNeedToRender.begin(), m_nodesNeedToRender.end(), node) != m_nodesNeedToRender.end())
+    {
+        return false;
+    }
+    m_nodesNeedToRender.push_back(node);
+    return true;
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimSequence::RemoveNodeNeedToRender(IUiAnimNode* pNode)
 {
     assert(pNode != 0);
-    stl::find_and_erase_if(m_nodesNeedToRender, [pNode](const AZStd::intrusive_ptr<IUiAnimNode>& sp) { return sp.get() == pNode; });
+    if (auto nodeIterator = AZStd::find_if(
+            m_nodesNeedToRender.begin(), m_nodesNeedToRender.end(),
+            [pNode](const AZStd::intrusive_ptr<IUiAnimNode>& node) { return node.get() == pNode; });
+        nodeIterator != m_nodesNeedToRender.end())
+    {
+        m_nodesNeedToRender.erase(nodeIterator);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -8,8 +8,7 @@
 #pragma once
 
 #include <LyShine/ISprite.h>
-#include <platform.h>
-#include <StlUtils.h>
+#include "StringHashCompatibility.h"
 
 #include "TextureAtlas/TextureAtlas.h"
 #include "TextureAtlas/TextureAtlasBus.h"
@@ -99,7 +98,11 @@ protected: // member functions
     bool CellIndexWithinRange(int cellIndex) const;
 
 private: // types
-    using CSpriteHashMap = AZStd::unordered_map<AZStd::string, CSprite*, stl::hash_string_caseless<AZStd::string>, stl::equality_string_caseless<AZStd::string> >;
+    using CSpriteHashMap = AZStd::unordered_map<
+        AZStd::string,
+        CSprite*,
+        LyShine::StringHashCompatibility::Hash<AZStd::string, true>,
+        LyShine::StringHashCompatibility::Equal<AZStd::string, true>>;
 
 private: // member functions
     bool LoadFromXmlFile();

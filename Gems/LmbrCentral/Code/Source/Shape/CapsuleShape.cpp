@@ -14,7 +14,6 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzFramework/Translation/TranslationDef.h>
-#include <MathConversion.h>
 
 namespace LmbrCentral
 {

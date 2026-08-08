@@ -1744,7 +1744,7 @@ void UiParticleEmitterComponent::CreateMultiplierCurve(C2DSplineTrack& curve, co
         I2DBezierKey newKey;
         newKey.time = currentPoint.time;
         newKey.flags = 0;
-        newKey.value = Vec2(currentPoint.time, currentPoint.multiplier);
+        newKey.value = AZ::Vector2(currentPoint.time, currentPoint.multiplier);
 
         int newKeyIndex = curve.CreateKey(currentPoint.time);
         curve.SetKey(newKeyIndex, &newKey);
@@ -1783,7 +1783,7 @@ void UiParticleEmitterComponent::CreateMultiplierCurve(UiCompoundSplineTrack& cu
                 I2DBezierKey newKey;
                 newKey.time = currentPoint.time;
                 newKey.flags = 0;
-                newKey.value = Vec2(currentPoint.time, currentPoint.color.GetElement(i));
+                newKey.value = AZ::Vector2(currentPoint.time, currentPoint.color.GetElement(i));
 
                 IUiAnimTrack* track = curve.GetSubTrack(i);
                 int newKeyIndex = track->CreateKey(currentPoint.time);

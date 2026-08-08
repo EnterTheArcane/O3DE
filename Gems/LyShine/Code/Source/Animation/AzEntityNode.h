@@ -11,7 +11,7 @@
 
 #include "AnimNode.h"
 //#include "SoundTrack.h"
-#include "StlUtils.h"
+#include "../StringHashCompatibility.h"
 #include <AzCore/Component/Entity.h>
 #include <LyShine/Bus/UiAnimationBus.h>
 
@@ -68,9 +68,9 @@ public:
     void PrecacheStatic(float startTime) override;
     void PrecacheDynamic(float time) override;
 
-    Vec3 GetPos() { return m_pos; };
+    AZ::Vector3 GetPos() { return m_pos; };
     AZ::Quaternion GetRotate() { return m_rotate; };
-    Vec3 GetScale() { return m_scale; };
+    AZ::Vector3 GetScale() { return m_scale; };
 
     void Activate(bool bActivate) override;
 
@@ -125,9 +125,9 @@ protected:
     };
 
 protected:
-    Vec3 m_pos;
+    AZ::Vector3 m_pos;
     AZ::Quaternion m_rotate;
-    Vec3 m_scale;
+    AZ::Vector3 m_scale;
 
 private:
     IUiAnimTrack* CreateVectorTrack(const UiAnimParamData& param, EUiAnimValue valueType, int numElements);
@@ -140,8 +140,8 @@ private:
 
     // Cached parameters of node at given time.
     float m_time;
-    Vec3 m_velocity;
-    Vec3 m_angVelocity;
+    AZ::Vector3 m_velocity;
+    AZ::Vector3 m_angVelocity;
 
     //! Last animated key in Entity track.
     int m_lastEntityKey;
@@ -160,7 +160,11 @@ private:
     };
 
     AZStd::vector<SScriptPropertyParamInfo> m_entityScriptPropertiesParamInfos;
-    using TScriptPropertyParamInfoMap = AZStd::unordered_map<AZStd::string, size_t, stl::hash_string_caseless<AZStd::string>, stl::equality_string_caseless<AZStd::string>>;
+    using TScriptPropertyParamInfoMap = AZStd::unordered_map<
+        AZStd::string,
+        size_t,
+        LyShine::StringHashCompatibility::Hash<AZStd::string, true>,
+        LyShine::StringHashCompatibility::Equal<AZStd::string, true>>;
     TScriptPropertyParamInfoMap m_nameToScriptPropertyParamInfo;
     #ifdef CHECK_FOR_TOO_MANY_ONPROPERTY_SCRIPT_CALLS
     uint32 m_OnPropertyCalls;

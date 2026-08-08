@@ -11,11 +11,12 @@
 //! Class passed to resource gathering functions
 
 #include "Include/EditorCoreAPI.h"
+#include "QtUtil.h"
 
 class EDITOR_CORE_API CUsedResources
 {
 public:
-    typedef std::set<QString, stl::less_stricmp<QString> > TResourceFiles;
+    using TResourceFiles = std::set<QString, Editor::CaseInsensitiveQStringLess>;
 
     CUsedResources();
     void Add(const char* pResourceFileName);

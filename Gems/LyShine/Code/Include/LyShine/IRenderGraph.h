@@ -16,7 +16,7 @@ namespace AZ
 {
     class Color;
     class Vector2;
-}
+} // namespace AZ
 
 namespace LyShine
 {
@@ -28,9 +28,10 @@ namespace LyShine
     class IRenderGraph
     {
     public:
-
         //! Virtual destructor
-        virtual ~IRenderGraph() {}
+        virtual ~IRenderGraph()
+        {
+        }
 
         //---- Functions for creating and adding primitives to the render graph ----
 
@@ -44,7 +45,8 @@ namespace LyShine
         virtual void EndMask() = 0;
 
         //! Begin rendering to a texture
-        virtual void BeginRenderToTexture(AZ::Data::Instance<AZ::RPI::AttachmentImage> attachmentImage,
+        virtual void BeginRenderToTexture(
+            AZ::Data::Instance<AZ::RPI::AttachmentImage> attachmentImage,
             const AZ::Vector2& viewportTopLeft,
             const AZ::Vector2& viewportSize,
             const AZ::Color& clearColor) = 0;
@@ -53,11 +55,17 @@ namespace LyShine
         virtual void EndRenderToTexture() = 0;
 
         //! Add an indexed triangle list primitive to the render graph with given render state
-        virtual void AddPrimitive(LyShine::UiPrimitive* primitive, const AZ::Data::Instance<AZ::RPI::Image>& texture,
-            bool isClampTextureMode, bool isTextureSRGB, bool isTexturePremultipliedAlpha, BlendMode blendMode) = 0;
+        virtual void AddPrimitive(
+            LyShine::UiPrimitive* primitive,
+            const AZ::Data::Instance<AZ::RPI::Image>& texture,
+            bool isClampTextureMode,
+            bool isTextureSRGB,
+            bool isTexturePremultipliedAlpha,
+            BlendMode blendMode) = 0;
 
         //! Add an indexed triangle list primitive to the render graph which will use maskTexture as an alpha (gradient) mask
-        virtual void AddAlphaMaskPrimitive(LyShine::UiPrimitive* primitive,
+        virtual void AddAlphaMaskPrimitive(
+            LyShine::UiPrimitive* primitive,
             AZ::Data::Instance<AZ::RPI::AttachmentImage> contentAttachmentImage,
             AZ::Data::Instance<AZ::RPI::AttachmentImage> maskAttachmentImage,
             bool isClampTextureMode,
@@ -69,7 +77,7 @@ namespace LyShine
         //! The graph handles the allocation of this DynUiPrimitive and deletes it when the graph is reset
         //! This can be used if the UI component doesn't want to own the storage of the primitive. Used infrequently,
         //! e.g. for the selection rect on a text component.
-        virtual LyShine::UiPrimitive* GetDynamicQuadPrimitive(const AZ::Vector2* positions, uint32 packedColor) = 0;
+        virtual LyShine::UiPrimitive* GetDynamicQuadPrimitive(const AZ::Vector2* positions, AZ::u32 packedColor) = 0;
 
         //---- Functions for supporting masking (used during creation of the graph, not rendering ) ----
 
@@ -93,4 +101,4 @@ namespace LyShine
         //! Get the current alpha fade value
         virtual float GetAlphaFade() const = 0;
     };
-}
+} // namespace LyShine

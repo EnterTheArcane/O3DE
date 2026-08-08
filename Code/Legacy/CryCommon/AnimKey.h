@@ -10,11 +10,10 @@
 
 #include <IConsole.h> // <> required for Interfuscator
 #include <ISystem.h>
-#include <Cry_Color.h>
 #include <AzCore/Math/Color.h>
+#include <AzCore/Math/Quaternion.h>
 #include <AzCore/Component/EntityId.h>
 
-#include "MathConversion.h"
 
 enum EAnimKeyFlags
 {
@@ -53,7 +52,7 @@ struct IKey
 struct I2DBezierKey
     : public IKey
 {
-    Vec2 value;
+    AZ::Vector2 value;
 };
 
 /** ITcbKey used in all TCB tracks.
@@ -82,11 +81,11 @@ struct ITcbKey
     };
 
     void SetFloat(float val) { fval[0] = val; };
-    void SetVec3(const Vec3& val)
+    void SetVec3(const AZ::Vector3& val)
     {
-        fval[0] = val.x;
-        fval[1] = val.y;
-        fval[2] = val.z;
+        fval[0] = val.GetX();
+        fval[1] = val.GetY();
+        fval[2] = val.GetZ();
     };
     void SetQuat(const AZ::Quaternion& val)
     {
@@ -94,16 +93,16 @@ struct ITcbKey
     };
 
     ILINE void SetValue(float val)       { SetFloat(val); }
-    ILINE void SetValue(const Vec3& val) { SetVec3(val); }
+    ILINE void SetValue(const AZ::Vector3& val) { SetVec3(val); }
     ILINE void SetValue(const AZ::Quaternion& val) { SetQuat(val); }
 
     float GetFloat() const { return *((float*)fval); };
-    Vec3 GetVec3() const
+    AZ::Vector3 GetVec3() const
     {
-        Vec3 vec;
-        vec.x = fval[0];
-        vec.y = fval[1];
-        vec.z = fval[2];
+        AZ::Vector3 vec;
+        vec.SetX(fval[0]);
+        vec.SetY(fval[1]);
+        vec.SetZ(fval[2]);
         return vec;
     };
     AZ::Quaternion GetQuat() const
@@ -111,7 +110,7 @@ struct ITcbKey
         return AZ::Quaternion::CreateFromFloat4(fval);
     };
     ILINE void GetValue(float& val) { val = GetFloat(); };
-    ILINE void GetValue(Vec3& val)  { val = GetVec3(); };
+    ILINE void GetValue(AZ::Vector3& val)  { val = GetVec3(); };
     ILINE void GetValue(AZ::Quaternion& val)  { val = GetQuat(); };
 };
 
@@ -161,7 +160,7 @@ struct ISelectKey
     bool IsValid() const { return cameraAzEntityId.IsValid() && !szSelection.empty(); }
 
     //!< @returns True if a valid camera controller EntityId is set and camera properties are stored, otherwise returns false.
-    bool IsInitialized() const { return IsValid() && m_FoV > 0.0f; } 
+    bool IsInitialized() const { return IsValid() && m_FoV > 0.0f; }
 
     //!< @returns True if a valid camera controller EntityId is set, otherwise returns false and invalidates camera properties.
     bool CheckValid()
@@ -236,13 +235,13 @@ struct ISoundKey
     ISoundKey()
         : fDuration(0.0f)
     {
-        customColor = AZColorToLYVec3(TrackviewDefaultColor);
+        customColor = TrackviewDefaultColor.GetAsVector3();
     }
 
     AZStd::string sStartTrigger;
     AZStd::string sStopTrigger;
     float         fDuration;
-    Vec3          customColor;
+    AZ::Vector3          customColor;
 };
 
 /** ITimeRangeKey used in time ranges animation track.
@@ -529,7 +528,7 @@ struct IStringKey
     IStringKey() = default;
 
     IStringKey(const AZStd::string value)
-        : m_strValue(value) 
+        : m_strValue(value)
     {
     }
 };

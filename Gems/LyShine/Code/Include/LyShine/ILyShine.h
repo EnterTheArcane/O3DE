@@ -10,11 +10,12 @@
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/PlatformDef.h>
 
-#include <LyShine/UiBase.h>
 #include <AtomCore/Instance/InstanceData.h>
+#include <LyShine/UiBase.h>
 
 class IDraw2d;
 class ISprite;
+struct ISystem;
 struct IUiAnimationSystem;
 class UiEntityContext;
 
@@ -22,7 +23,7 @@ namespace AZ::RPI
 {
     class Image;
     class AttachmentImageAsset;
-}
+} // namespace AZ::RPI
 
 // The following ifdef block is the standard way of creating macros which make exporting
 // from a DLL simpler. All files within this DLL are compiled with the LYSHINE_EXPORTS
@@ -31,9 +32,9 @@ namespace AZ::RPI
 // LYSHINE_API functions as being imported from a DLL, whereas this DLL sees symbols
 // defined with this macro as being exported.
 #ifdef LYSHINE_EXPORTS
-    #define LYSHINE_API AZ_DLL_EXPORT
+#define LYSHINE_API AZ_DLL_EXPORT
 #else
-    #define LYSHINE_API AZ_DLL_IMPORT
+#define LYSHINE_API AZ_DLL_IMPORT
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +67,8 @@ public:
     virtual AZ::EntityId CreateCanvasInEditor(UiEntityContext* entityContext) = 0;
 
     //! Load a UI Canvas from the UI editor
-    virtual AZ::EntityId LoadCanvasInEditor(const AZStd::string& assetIdPathname, const AZStd::string& sourceAssetPathname, UiEntityContext* entityContext) = 0;
+    virtual AZ::EntityId LoadCanvasInEditor(
+        const AZStd::string& assetIdPathname, const AZStd::string& sourceAssetPathname, UiEntityContext* entityContext) = 0;
 
     //! Reload a UI Canvas from xml. For use in the editor for the undo system only
     virtual AZ::EntityId ReloadCanvasFromXml(const AZStd::string& xmlString, UiEntityContext* entityContext) = 0;
@@ -137,4 +139,3 @@ LYSHINE_API ILyShine* CreateLyShineInterface(ISystem* system);
 #ifdef __cplusplus
 };
 #endif
-

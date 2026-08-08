@@ -31,7 +31,6 @@
 
 #include <AzFramework/Translation/TranslationDef.h>
 
-#include "MathConversion.h"
 #include "UiSerialize.h"
 #include "UiLayoutHelpers.h"
 #include "Sprite.h"
@@ -39,6 +38,16 @@
 
 namespace
 {
+    AZ::Vector2 UnpackUiVertexVector(const AZ::PackedVector2f& vector)
+    {
+        return static_cast<AZ::Vector2>(vector);
+    }
+
+    AZ::PackedVector2f PackUiVertexVector(const AZ::Vector2& vector)
+    {
+        return AZ::PackedVector2f(vector);
+    }
+
     //! Given a sprite with a cell index, populates the UV/ST coords array for traditional (stretched) 9-sliced image types.
     //!
     //! It's assumed that the given left/right/top/bottom border values have
@@ -192,23 +201,17 @@ namespace
 
     //! Set the values for an image vertex
     //! This helper function is used so that we only have to initialize textIndex and texHasColorChannel in one place
-    void SetVertex(LyShine::UiPrimitiveVertex& vert, const Vec2& pos, uint32 color, const Vec2& uv)
+    void SetVertex(LyShine::UiPrimitiveVertex& vert, const AZ::Vector2& pos, uint32 color, const AZ::Vector2& uv)
     {
-        vert.xy = pos;
+        vert.xy = PackUiVertexVector(pos);
         vert.color.dcolor = color;
-        vert.st = uv;
+        vert.st = PackUiVertexVector(uv);
         vert.texIndex = 0;
         vert.texHasColorChannel = 1;
         vert.texIndex2 = 0;
         vert.pad = 0;
     }
 
-    //! Set the values for an image vertex
-    //! This version of the helper function takes AZ vectors
-    void SetVertex(LyShine::UiPrimitiveVertex& vert, const AZ::Vector2& pos, uint32 color, const AZ::Vector2& uv)
-    {
-        SetVertex(vert, Vec2(pos.GetX(), pos.GetY()), color, Vec2(uv.GetX(), uv.GetY()));
-    }
 
     //! Given the xValues, yValues, sValues and tValues, fill out the verts array with transformed points.
     //!
@@ -392,7 +395,7 @@ void UiImageComponent::Render(LyShine::IRenderGraph* renderGraph)
             if (textureSize.GetX() == 0 || textureSize.GetY() == 0)
             {
                 // don't render to cache and leave m_isRenderCacheDirty set to true
-                return;        
+                return;
             }
         }
 
@@ -1246,7 +1249,7 @@ void UiImageComponent::Deactivate()
     {
         UiCanvasPixelAlignmentNotificationBus::Handler::BusDisconnect();
     }
- 
+
     if (UiSpriteSettingsChangeNotificationBus::Handler::BusIsConnected())
     {
         UiSpriteSettingsChangeNotificationBus::Handler::BusDisconnect();
@@ -1582,11 +1585,19 @@ void UiImageComponent::RenderLinearFilledQuad(const AZ::Vector2* positions, cons
         SetVertex(vertices[i], roundedPoint, packedColor, uvs[index]);
     }
 
-    vertices[1].xy = vertices[0].xy + m_fillAmount * (vertices[1].xy - vertices[0].xy);
-    vertices[2].xy = vertices[3].xy + m_fillAmount * (vertices[2].xy - vertices[3].xy);
+    vertices[1].xy = PackUiVertexVector(
+        UnpackUiVertexVector(vertices[0].xy) +
+        m_fillAmount * (UnpackUiVertexVector(vertices[1].xy) - UnpackUiVertexVector(vertices[0].xy)));
+    vertices[2].xy = PackUiVertexVector(
+        UnpackUiVertexVector(vertices[3].xy) +
+        m_fillAmount * (UnpackUiVertexVector(vertices[2].xy) - UnpackUiVertexVector(vertices[3].xy)));
 
-    vertices[1].st = vertices[0].st + m_fillAmount * (vertices[1].st - vertices[0].st);
-    vertices[2].st = vertices[3].st + m_fillAmount * (vertices[2].st - vertices[3].st);
+    vertices[1].st = PackUiVertexVector(
+        UnpackUiVertexVector(vertices[0].st) +
+        m_fillAmount * (UnpackUiVertexVector(vertices[1].st) - UnpackUiVertexVector(vertices[0].st)));
+    vertices[2].st = PackUiVertexVector(
+        UnpackUiVertexVector(vertices[3].st) +
+        m_fillAmount * (UnpackUiVertexVector(vertices[2].st) - UnpackUiVertexVector(vertices[3].st)));
 
     const uint32 numIndices = 6;
     uint16 indices[numIndices] = { 0, 1, 2, 2, 3, 0 };
@@ -1654,13 +1665,17 @@ void UiImageComponent::RenderRadialFilledQuad(const AZ::Vector2* positions, cons
     float startingEdgePercentage = startingEdgeRemainder * 4;
 
     // Set start/end vertices
-    SetVertex(verts[1], verts[5].xy + startingEdgePercentage * (verts[2].xy - verts[5].xy),
-        packedColor, verts[5].st + startingEdgePercentage * (verts[2].st - verts[5].st));
+    SetVertex(verts[1],
+        UnpackUiVertexVector(verts[5].xy) +
+            startingEdgePercentage * (UnpackUiVertexVector(verts[2].xy) - UnpackUiVertexVector(verts[5].xy)),
+        packedColor,
+        UnpackUiVertexVector(verts[5].st) +
+            startingEdgePercentage * (UnpackUiVertexVector(verts[2].st) - UnpackUiVertexVector(verts[5].st)));
     verts[6] = verts[1];
 
     // Set center vertex
-    SetVertex(verts[0], (verts[5].xy + verts[3].xy) * 0.5f,
-        packedColor, (verts[5].st + verts[3].st) * 0.5f);
+    SetVertex(verts[0], (UnpackUiVertexVector(verts[5].xy) + UnpackUiVertexVector(verts[3].xy)) * 0.5f,
+        packedColor, (UnpackUiVertexVector(verts[5].st) + UnpackUiVertexVector(verts[3].st)) * 0.5f);
 
     int finalEdge = static_cast<int>((startingEdgeRemainder + m_fillAmount) / 0.25f);
     float finalEdgePercentage = fmod(fillOffset + m_fillAmount, 0.25f) * 4;
@@ -1669,8 +1684,12 @@ void UiImageComponent::RenderRadialFilledQuad(const AZ::Vector2* positions, cons
     int editedVertexIndex = finalEdge + 2;
     int previousVertexIndex = ((3 + editedVertexIndex - 2) % 4) + 2;
     int nextVertexIndex = ((editedVertexIndex - 2) % 4) + 2;
-    verts[editedVertexIndex].xy = verts[previousVertexIndex].xy + finalEdgePercentage * (verts[nextVertexIndex].xy - verts[previousVertexIndex].xy);
-    verts[editedVertexIndex].st = verts[previousVertexIndex].st + finalEdgePercentage * (verts[nextVertexIndex].st - verts[previousVertexIndex].st);
+    verts[editedVertexIndex].xy = PackUiVertexVector(
+        UnpackUiVertexVector(verts[previousVertexIndex].xy) + finalEdgePercentage *
+            (UnpackUiVertexVector(verts[nextVertexIndex].xy) - UnpackUiVertexVector(verts[previousVertexIndex].xy)));
+    verts[editedVertexIndex].st = PackUiVertexVector(
+        UnpackUiVertexVector(verts[previousVertexIndex].st) + finalEdgePercentage *
+            (UnpackUiVertexVector(verts[nextVertexIndex].st) - UnpackUiVertexVector(verts[previousVertexIndex].st)));
 
     RenderTriangleList(verts, indices, editedVertexIndex + 1, 3 * (editedVertexIndex - 1));
 }
@@ -1720,8 +1739,12 @@ void UiImageComponent::RenderRadialCornerFilledQuad(const AZ::Vector2* positions
     float s = (m_fillAmount - (0.5f * half)) * 2;
     int order = m_fillClockwise ? 1 : -1;
     int vertexToEdit = (half * order) + 2;
-    verts[vertexToEdit].xy = verts[vertexToEdit - order].xy + (verts[vertexToEdit].xy - verts[vertexToEdit - order].xy) * s;
-    verts[vertexToEdit].st = verts[vertexToEdit - order].st + (verts[vertexToEdit].st - verts[vertexToEdit - order].st) * s;
+    verts[vertexToEdit].xy = PackUiVertexVector(
+        UnpackUiVertexVector(verts[vertexToEdit - order].xy) +
+        (UnpackUiVertexVector(verts[vertexToEdit].xy) - UnpackUiVertexVector(verts[vertexToEdit - order].xy)) * s);
+    verts[vertexToEdit].st = PackUiVertexVector(
+        UnpackUiVertexVector(verts[vertexToEdit - order].st) +
+        (UnpackUiVertexVector(verts[vertexToEdit].st) - UnpackUiVertexVector(verts[vertexToEdit - order].st)) * s);
 
     int numIndicesToDraw = 3 + half * 3;
 
@@ -1784,8 +1807,12 @@ void UiImageComponent::RenderRadialEdgeFilledQuad(const AZ::Vector2* positions, 
     }
     // Calculate which vertex needs to be moved based on m_fillAmount and set its new position and UV.
     int vertexToEdit = (segment * order) + firstVertex;
-    verts[vertexToEdit].xy = verts[vertexToEdit - order].xy + (verts[vertexToEdit].xy - verts[vertexToEdit - order].xy) * s;
-    verts[vertexToEdit].st = verts[vertexToEdit - order].st + (verts[vertexToEdit].st - verts[vertexToEdit - order].st) * s;
+    verts[vertexToEdit].xy = PackUiVertexVector(
+        UnpackUiVertexVector(verts[vertexToEdit - order].xy) +
+        (UnpackUiVertexVector(verts[vertexToEdit].xy) - UnpackUiVertexVector(verts[vertexToEdit - order].xy)) * s);
+    verts[vertexToEdit].st = PackUiVertexVector(
+        UnpackUiVertexVector(verts[vertexToEdit - order].st) +
+        (UnpackUiVertexVector(verts[vertexToEdit].st) - UnpackUiVertexVector(verts[vertexToEdit - order].st)) * s);
 
     int numIndicesToDraw = 3 * (segment + 1);
 
@@ -2042,10 +2069,12 @@ void UiImageComponent::ClipAndRenderForSlicedRadialFill(uint32 numVertsPerSide, 
 
     float fillOffset = AZ::DegToRad(m_fillStartAngle);
 
-    Vec2 lineOrigin = (verts[0].xy + verts[numVerts-1].xy) * 0.5f;
-    Vec2 rotatingLineEnd = ((verts[0].xy + verts[numVertsPerSide-1].xy) * 0.5f) - lineOrigin;
-    Vec2 firstHalfFixedLineEnd = (rotatingLineEnd * -1.0f);
-    Vec2 secondHalfFixedLineEnd = rotatingLineEnd;
+    AZ::Vector2 lineOrigin =
+        (UnpackUiVertexVector(verts[0].xy) + UnpackUiVertexVector(verts[numVerts - 1].xy)) * 0.5f;
+    AZ::Vector2 rotatingLineEnd =
+        ((UnpackUiVertexVector(verts[0].xy) + UnpackUiVertexVector(verts[numVertsPerSide - 1].xy)) * 0.5f) - lineOrigin;
+    AZ::Vector2 firstHalfFixedLineEnd = (rotatingLineEnd * -1.0f);
+    AZ::Vector2 secondHalfFixedLineEnd = rotatingLineEnd;
     float startAngle = 0;
     float endAngle = -AZ::Constants::TwoPi;
 
@@ -2061,13 +2090,13 @@ void UiImageComponent::ClipAndRenderForSlicedRadialFill(uint32 numVertsPerSide, 
     }
 
     AZ::Matrix3x3 lineRotationMatrix = AZ::Matrix3x3::CreateRotationZ(startAngle - fillOffset);
-    firstHalfFixedLineEnd = AZVec2ToLYVec2(AZ::Vector2(AZ::Vector3(LYVec2ToAZVec2(firstHalfFixedLineEnd), 0.f) * lineRotationMatrix));
+    firstHalfFixedLineEnd = AZ::Vector2(AZ::Vector3(firstHalfFixedLineEnd, 0.f) * lineRotationMatrix);
     firstHalfFixedLineEnd = lineOrigin + firstHalfFixedLineEnd;
-    secondHalfFixedLineEnd = AZVec2ToLYVec2(AZ::Vector2(AZ::Vector3(LYVec2ToAZVec2(secondHalfFixedLineEnd), 0.f) * lineRotationMatrix));
+    secondHalfFixedLineEnd = AZ::Vector2(AZ::Vector3(secondHalfFixedLineEnd, 0.f) * lineRotationMatrix);
     secondHalfFixedLineEnd = lineOrigin + secondHalfFixedLineEnd;
 
     lineRotationMatrix = AZ::Matrix3x3::CreateRotationZ(startAngle - fillOffset + (endAngle - startAngle) * m_fillAmount);
-    rotatingLineEnd = AZVec2ToLYVec2(AZ::Vector2(AZ::Vector3(LYVec2ToAZVec2(rotatingLineEnd), 0.f) * lineRotationMatrix));
+    rotatingLineEnd = AZ::Vector2(AZ::Vector3(rotatingLineEnd, 0.f) * lineRotationMatrix);
     rotatingLineEnd = lineOrigin + rotatingLineEnd;
 
     int numIndicesToRender = 0;
@@ -2152,13 +2181,13 @@ void UiImageComponent::ClipAndRenderForSlicedRadialCornerOrEdgeFill(uint32 numVe
         targetVertex = 0;
     }
 
-    Vec2 lineOrigin(verts[originVertex].xy);
+    AZ::Vector2 lineOrigin = UnpackUiVertexVector(verts[originVertex].xy);
     if (m_fillType == FillType::RadialEdge)
     {
-        lineOrigin = (verts[originVertex].xy + verts[targetVertex].xy) * 0.5f;
+        lineOrigin = (UnpackUiVertexVector(verts[originVertex].xy) + UnpackUiVertexVector(verts[targetVertex].xy)) * 0.5f;
     }
 
-    Vec2 lineEnd = verts[targetVertex].xy - verts[originVertex].xy;
+    AZ::Vector2 lineEnd = UnpackUiVertexVector(verts[targetVertex].xy) - UnpackUiVertexVector(verts[originVertex].xy);
     float startAngle = 0;
     float endAngle = m_fillType == FillType::RadialCorner ? -AZ::Constants::HalfPi : -AZ::Constants::Pi;
 
@@ -2171,7 +2200,7 @@ void UiImageComponent::ClipAndRenderForSlicedRadialCornerOrEdgeFill(uint32 numVe
         lineEnd = lineEnd * -1.0f;
     }
     AZ::Matrix3x3 lineRotationMatrix = AZ::Matrix3x3::CreateRotationZ(startAngle + (endAngle - startAngle) * m_fillAmount);
-    lineEnd = AZVec2ToLYVec2(AZ::Vector2(AZ::Vector3(LYVec2ToAZVec2(lineEnd), 0.f) * lineRotationMatrix));
+    lineEnd = AZ::Vector2(AZ::Vector3(lineEnd, 0.f) * lineRotationMatrix);
     lineEnd = lineOrigin + lineEnd;
 
     int numIndicesToRender = 0;
@@ -2186,9 +2215,9 @@ void UiImageComponent::ClipAndRenderForSlicedRadialCornerOrEdgeFill(uint32 numVe
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-int UiImageComponent::ClipToLine(const LyShine::UiPrimitiveVertex* vertices, const uint16* indices, LyShine::UiPrimitiveVertex* renderVertices, uint16* renderIndices, int& vertexOffset, int renderIndexOffset, const Vec2& lineOrigin, const Vec2& lineEnd)
+int UiImageComponent::ClipToLine(const LyShine::UiPrimitiveVertex* vertices, const uint16* indices, LyShine::UiPrimitiveVertex* renderVertices, uint16* renderIndices, int& vertexOffset, int renderIndexOffset, const AZ::Vector2& lineOrigin, const AZ::Vector2& lineEnd)
 {
-    Vec2 lineVector = lineEnd - lineOrigin;
+    AZ::Vector2 lineVector = lineEnd - lineOrigin;
     LyShine::UiPrimitiveVertex lastVertex = vertices[indices[2]];
     LyShine::UiPrimitiveVertex currentVertex;
     int verticesAdded = 0;
@@ -2196,25 +2225,27 @@ int UiImageComponent::ClipToLine(const LyShine::UiPrimitiveVertex* vertices, con
     for (int i = 0; i < 3; ++i)
     {
         currentVertex = vertices[indices[i]];
-        Vec2 triangleEdgeDirection = currentVertex.xy - lastVertex.xy;
-        Vec2 currentPointVector = (currentVertex.xy - lineOrigin);
-        Vec2 lastPointVector = (lastVertex.xy - lineOrigin);
-        float currentPointDeterminant = (lineVector.x * currentPointVector.y) - (lineVector.y * currentPointVector.x);
-        float lastPointDeterminant = (lineVector.x * lastPointVector.y) - (lineVector.y * lastPointVector.x);
+        AZ::Vector2 triangleEdgeDirection = UnpackUiVertexVector(currentVertex.xy) - UnpackUiVertexVector(lastVertex.xy);
+        AZ::Vector2 currentPointVector = UnpackUiVertexVector(currentVertex.xy) - lineOrigin;
+        AZ::Vector2 lastPointVector = UnpackUiVertexVector(lastVertex.xy) - lineOrigin;
+        float currentPointDeterminant = (lineVector.GetX() * currentPointVector.GetY()) - (lineVector.GetY() * currentPointVector.GetX());
+        float lastPointDeterminant = (lineVector.GetX() * lastPointVector.GetY()) - (lineVector.GetY() * lastPointVector.GetX());
         const float epsilon = 0.001f;
 
-        Vec2 perpendicularLineVector(-lineVector.y, lineVector.x);
-        Vec2 vertexToLine = lineOrigin - lastVertex.xy;
+        AZ::Vector2 perpendicularLineVector(-lineVector.GetY(), lineVector.GetX());
+        AZ::Vector2 vertexToLine = lineOrigin - UnpackUiVertexVector(lastVertex.xy);
 
         if (currentPointDeterminant < epsilon)
         {
             if (lastPointDeterminant > -epsilon && fabs(currentPointDeterminant) > epsilon && fabs(lastPointDeterminant) > epsilon)
             {
                 //add calculated intersection
-                float intersectionDistance = (vertexToLine.x * perpendicularLineVector.x + vertexToLine.y * perpendicularLineVector.y) / (triangleEdgeDirection.x * perpendicularLineVector.x + triangleEdgeDirection.y * perpendicularLineVector.y);
+                float intersectionDistance = (vertexToLine.GetX() * perpendicularLineVector.GetX() + vertexToLine.GetY() * perpendicularLineVector.GetY()) / (triangleEdgeDirection.GetX() * perpendicularLineVector.GetX() + triangleEdgeDirection.GetY() * perpendicularLineVector.GetY());
                 LyShine::UiPrimitiveVertex intersectPoint;
-                SetVertex(intersectPoint, lastVertex.xy + triangleEdgeDirection * intersectionDistance,
-                    lastVertex.color.dcolor, lastVertex.st + (currentVertex.st - lastVertex.st) * intersectionDistance);
+                SetVertex(intersectPoint, UnpackUiVertexVector(lastVertex.xy) + triangleEdgeDirection * intersectionDistance,
+                    lastVertex.color.dcolor,
+                    UnpackUiVertexVector(lastVertex.st) +
+                        (UnpackUiVertexVector(currentVertex.st) - UnpackUiVertexVector(lastVertex.st)) * intersectionDistance);
 
                 renderVertices[vertexOffset] = intersectPoint;
                 vertexOffset++;
@@ -2228,10 +2259,12 @@ int UiImageComponent::ClipToLine(const LyShine::UiPrimitiveVertex* vertices, con
         else if (lastPointDeterminant < epsilon)
         {
             //add calculated intersection
-            float intersectionDistance = (vertexToLine.x * perpendicularLineVector.x + vertexToLine.y * perpendicularLineVector.y) / (triangleEdgeDirection.x * perpendicularLineVector.x + triangleEdgeDirection.y * perpendicularLineVector.y);
+            float intersectionDistance = (vertexToLine.GetX() * perpendicularLineVector.GetX() + vertexToLine.GetY() * perpendicularLineVector.GetY()) / (triangleEdgeDirection.GetX() * perpendicularLineVector.GetX() + triangleEdgeDirection.GetY() * perpendicularLineVector.GetY());
             LyShine::UiPrimitiveVertex intersectPoint;
-            SetVertex(intersectPoint, lastVertex.xy + triangleEdgeDirection * intersectionDistance,
-                lastVertex.color.dcolor, lastVertex.st + (currentVertex.st - lastVertex.st) * intersectionDistance);
+            SetVertex(intersectPoint, UnpackUiVertexVector(lastVertex.xy) + triangleEdgeDirection * intersectionDistance,
+                lastVertex.color.dcolor,
+                UnpackUiVertexVector(lastVertex.st) +
+                    (UnpackUiVertexVector(currentVertex.st) - UnpackUiVertexVector(lastVertex.st)) * intersectionDistance);
 
             renderVertices[vertexOffset] = intersectPoint;
             vertexOffset++;

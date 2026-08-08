@@ -26,6 +26,7 @@
 #include "UiEditorAnimationBus.h"
 
 #include <AzCore/Time/ITime.h>
+#include <AzCore/std/algorithm.h>
 
 namespace Internal
 {
@@ -132,13 +133,20 @@ void CUiAnimationContext::Init()
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimationContext::AddListener(IUiAnimationContextListener* pListener)
 {
-    stl::push_back_unique(m_contextListeners, pListener);
+    if (AZStd::find(m_contextListeners.begin(), m_contextListeners.end(), pListener) == m_contextListeners.end())
+    {
+        m_contextListeners.push_back(pListener);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimationContext::RemoveListener(IUiAnimationContextListener* pListener)
 {
-    stl::find_and_erase(m_contextListeners, pListener);
+    if (auto listenerIterator = AZStd::find(m_contextListeners.begin(), m_contextListeners.end(), pListener);
+        listenerIterator != m_contextListeners.end())
+    {
+        m_contextListeners.erase(listenerIterator);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

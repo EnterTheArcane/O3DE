@@ -124,7 +124,7 @@ public:
     const UiAnimParamData& GetParamData() const { return m_pAnimTrack->GetParamData(); }
 
     // Mask
-    bool IsMasked(uint32 mask) const { return m_pAnimTrack->IsMasked(mask); }
+    bool IsMasked(AZ::u32 mask) const { return m_pAnimTrack->IsMasked(mask); }
 
     // Flag getter
     IUiAnimTrack::EUiAnimTrackFlags GetFlags() const;

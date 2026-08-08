@@ -16,9 +16,7 @@
 #include <PhysX/Utils.h>
 #include <PhysX/PhysXLocks.h>
 
-#include <CryCommon/IConsole.h>
 #include <CryCommon/ISystem.h>
-#include <CryCommon/MathConversion.h>
 
 #include <AzFramework/Components/CameraBus.h>
 #include <AzFramework/Physics/PhysicsScene.h>

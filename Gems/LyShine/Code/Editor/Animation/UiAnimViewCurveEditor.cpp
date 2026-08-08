@@ -337,10 +337,10 @@ void CUiAnimViewCurveEditor::OnTimelineChange()
 void CUiAnimViewCurveEditor::OnHorizontalScrollBarChange()
 {
     int pos = m_ui->m_horizontalScrollBar->value();
-    Vec2 zoom = m_ui->m_wndSpline->GetZoom();
+    AZ::Vector2 zoom = m_ui->m_wndSpline->GetZoom();
 
     // Zero value is not acceptable.
-    zoom.x = max(SLIDERRANGE_TO_ZOOM(pos), 1.f / SLIDER_MULTIPLIER);
+    zoom.SetX(AZStd::max(SLIDERRANGE_TO_ZOOM(pos), 1.f / SLIDER_MULTIPLIER));
     m_ui->m_wndSpline->SetZoom(zoom);
 }
 
@@ -348,10 +348,10 @@ void CUiAnimViewCurveEditor::OnHorizontalScrollBarChange()
 void CUiAnimViewCurveEditor::OnVerticalScrollBarChange()
 {
     int pos = m_ui->m_verticalScrollBar->value();
-    Vec2 zoom = m_ui->m_wndSpline->GetZoom();
+    AZ::Vector2 zoom = m_ui->m_wndSpline->GetZoom();
 
     // Zero value is not acceptable.
-    zoom.y = max(SLIDERRANGE_TO_ZOOM(pos), 1.f / SLIDER_MULTIPLIER);
+    zoom.SetY(AZStd::max(SLIDERRANGE_TO_ZOOM(pos), 1.f / SLIDER_MULTIPLIER));
     m_ui->m_wndSpline->SetZoom(zoom);
 }
 
@@ -364,17 +364,17 @@ void CUiAnimViewCurveEditor::OnSplineScrollZoom()
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewCurveEditor::ResetScrollBarRange()
 {
-    Vec2 zoom = m_ui->m_wndSpline->GetZoom();
-    Vec2 minValue = zoom / 2.f;
-    Vec2 maxValue = zoom * 2.f;
+    AZ::Vector2 zoom = m_ui->m_wndSpline->GetZoom();
+    AZ::Vector2 minValue = zoom / 2.f;
+    AZ::Vector2 maxValue = zoom * 2.f;
 
     const QSignalBlocker sb1(m_ui->m_horizontalScrollBar);
     const QSignalBlocker sb2(m_ui->m_verticalScrollBar);
-    m_ui->m_horizontalScrollBar->setRange(ZOOMRANGE_TO_SLIDER(minValue.x), ZOOMRANGE_TO_SLIDER(maxValue.x));
-    m_ui->m_horizontalScrollBar->setValue(ZOOMRANGE_TO_SLIDER((minValue.x + maxValue.x) / 2.f));
+    m_ui->m_horizontalScrollBar->setRange(ZOOMRANGE_TO_SLIDER(minValue.GetX()), ZOOMRANGE_TO_SLIDER(maxValue.GetX()));
+    m_ui->m_horizontalScrollBar->setValue(ZOOMRANGE_TO_SLIDER((minValue.GetX() + maxValue.GetX()) / 2.f));
 
-    m_ui->m_verticalScrollBar->setRange(ZOOMRANGE_TO_SLIDER(minValue.y), ZOOMRANGE_TO_SLIDER(maxValue.y));
-    m_ui->m_verticalScrollBar->setValue(ZOOMRANGE_TO_SLIDER((minValue.y + maxValue.y) / 2.f));
+    m_ui->m_verticalScrollBar->setRange(ZOOMRANGE_TO_SLIDER(minValue.GetY()), ZOOMRANGE_TO_SLIDER(maxValue.GetY()));
+    m_ui->m_verticalScrollBar->setValue(ZOOMRANGE_TO_SLIDER((minValue.GetY() + maxValue.GetY()) / 2.f));
 }
 
 //////////////////////////////////////////////////////////////////////////

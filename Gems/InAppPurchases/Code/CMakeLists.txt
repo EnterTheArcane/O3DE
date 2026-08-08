@@ -23,7 +23,6 @@ ly_add_target(
             Include
     BUILD_DEPENDENCIES
         PUBLIC
-            Legacy::CryCommon
 )
 
 ly_add_target(

@@ -17,8 +17,6 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
 #include <AzCore/Time/ITime.h>
-#include <CryCommon/StlUtils.h>
-#include <CryCommon/TimeValue.h>
 
 struct IConsoleCmdArgs;
 
@@ -221,7 +219,7 @@ private:
     typedef AZStd::map<IAnimSequence*, TMovieListenerVec> TMovieListenerMap;
 
     // a container which maps sequences to all interested listeners
-    // listeners is a vector (could be a set in case we have a lot of listeners, stl::push_back_unique!)
+    // Listeners are kept unique while preserving insertion order.
     TMovieListenerMap m_movieListenerMap;
 
     bool    m_bRecording;
@@ -259,7 +257,15 @@ private:
 
     using AnimParamSystemString = AZStd::string;
 
-    template <typename KeyType, typename MappedType, typename Compare = stl::less_stricmp<KeyType>>
+    struct CaseInsensitiveStringLess
+    {
+        bool operator()(const AZStd::string& left, const AZStd::string& right) const
+        {
+            return azstricmp(left.c_str(), right.c_str()) < 0;
+        }
+    };
+
+    template <typename KeyType, typename MappedType, typename Compare = CaseInsensitiveStringLess>
     using AnimSystemOrderedMap = AZStd::map<KeyType, MappedType, Compare>;
     template <typename KeyType, typename MappedType, typename Hasher = AZStd::hash<KeyType>, typename EqualKey = AZStd::equal_to<>>
     using AnimSystemUnorderedMap = AZStd::unordered_map<KeyType, MappedType, Hasher, EqualKey>;

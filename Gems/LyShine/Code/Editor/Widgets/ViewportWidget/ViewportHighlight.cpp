@@ -25,7 +25,7 @@ ViewportHighlight::~ViewportHighlight()
 {
 }
 
-void ViewportHighlight::Draw(Draw2dHelper& draw2d, QTreeWidgetItem* invisibleRootItem, HierarchyItemRawPtrList& selectedItems, uint32 flags)
+void ViewportHighlight::Draw(Draw2dHelper& draw2d, QTreeWidgetItem* invisibleRootItem, HierarchyItemRawPtrList& selectedItems, AZ::u32 flags)
 {
     // first draw any unselected element borders (if flag is set to draw them)
     if (flags & ViewportWidget::DrawElementBorders_Unselected)

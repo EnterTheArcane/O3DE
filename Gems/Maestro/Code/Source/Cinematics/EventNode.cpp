@@ -14,7 +14,6 @@
 #include "Maestro/Types/AnimValueType.h"
 #include "Maestro/Types/AnimParamType.h"
 
-#include <ISystem.h>
 
 namespace Maestro
 {

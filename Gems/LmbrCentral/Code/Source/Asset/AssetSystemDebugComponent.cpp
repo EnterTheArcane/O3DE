@@ -73,7 +73,7 @@ namespace LmbrCentral
         // ToDo: Remove class or update to work with Atom? LYN-3672
         /*float x = 10;
         float y = 15;
-        ColorF color(1, 1, 1);
+        AZ::Color color(1, 1, 1);
         constexpr bool center = false;
         constexpr float ySpacing = 14;
         constexpr float fontSize = 1.3;

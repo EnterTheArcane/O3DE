@@ -58,8 +58,8 @@ public: // member functions
 
     ViewportInteraction* GetViewportInteraction();
 
-    bool IsDrawingElementBorders(uint32 flags) const;
-    void ToggleDrawElementBorders(uint32 flags);
+    bool IsDrawingElementBorders(AZ::u32 flags) const;
+    void ToggleDrawElementBorders(AZ::u32 flags);
 
     void ActiveCanvasChanged();
     void EntityContextChanged();
@@ -223,7 +223,7 @@ private: // data
     AZStd::unique_ptr<ViewportCanvasBackground> m_viewportBackground;
     AZStd::unique_ptr<ViewportPivot> m_viewportPivot;
 
-    uint32 m_drawElementBordersFlags;
+    AZ::u32 m_drawElementBordersFlags;
     bool m_refreshRequested;
     bool m_canvasRenderIsEnabled;
     QTimer m_updateTimer;

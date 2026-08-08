@@ -15,6 +15,7 @@
 #include "ViewManager.h"
 
 // AzCore
+#include <AzCore/std/algorithm.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 
 // AzToolsFramework
@@ -53,7 +54,7 @@ CViewManager::CViewManager()
 {
     m_zoomFactor = 1;
 
-    m_origin2D(0, 0, 0);
+    m_origin2D.Set(0, 0, 0);
     m_zoom2D = 1.0f;
 
     m_updateRegion = AZ::Aabb::CreateFromMinMax(AZ::Vector3(-100000, -100000, -100000), AZ::Vector3(100000, 100000, 100000));
@@ -103,7 +104,11 @@ void CViewManager::UnregisterViewport(CViewport* pViewport)
     {
         m_pSelectedView = nullptr;
     }
-    stl::find_and_erase(m_viewports, pViewport);
+    if (auto viewportIterator = AZStd::find(m_viewports.begin(), m_viewports.end(), pViewport);
+        viewportIterator != m_viewports.end())
+    {
+        m_viewports.erase(viewportIterator);
+    }
     m_bGameViewportsUpdated = false;
 }
 

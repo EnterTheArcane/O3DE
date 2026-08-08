@@ -11,9 +11,7 @@
 // Description : the command manager
 
 
-#include "platform.h"
 
-#include <ISystem.h>
 
 #include "Include/SandboxAPI.h"
 #include "Include/ICommandManager.h"

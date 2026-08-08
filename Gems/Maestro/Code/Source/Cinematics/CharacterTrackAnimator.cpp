@@ -52,7 +52,10 @@ namespace Maestro
     float CCharacterTrackAnimator::ComputeAnimKeyNormalizedTime(const ICharacterKey& key, float ectime) const
     {
         float endTime = key.GetValidEndTime();
-        const float clipDuration = clamp_tpl(endTime - key.m_startTime, s_minClipDuration, key.m_duration);
+        const float unclampedClipDuration = endTime - key.m_startTime;
+        const float clipDuration = unclampedClipDuration < s_minClipDuration
+            ? s_minClipDuration
+            : unclampedClipDuration < key.m_duration ? unclampedClipDuration : key.m_duration;
         float t;
         f32 retNormalizedTime;
 
@@ -67,7 +70,7 @@ namespace Maestro
             }
 
             t += key.m_startTime;
-            t = clamp_tpl(t, key.m_startTime, endTime);
+            t = t < key.m_startTime ? key.m_startTime : t < endTime ? t : endTime;
         }
         else
         {
@@ -75,7 +78,10 @@ namespace Maestro
             t = (key.m_startTime < endTime) ? key.m_startTime : endTime;
         }
 
-        retNormalizedTime = clamp_tpl(t / key.m_duration, .0f, 1.0f);
+        const float unclampedNormalizedTime = t / key.m_duration;
+        retNormalizedTime = unclampedNormalizedTime < 0.0f
+            ? 0.0f
+            : unclampedNormalizedTime < 1.0f ? unclampedNormalizedTime : 1.0f;
         return retNormalizedTime;
     }
 

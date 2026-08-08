@@ -7,6 +7,7 @@
  */
 
 #pragma once
+
 #include "ImGuiManager.h"
 
 #ifdef IMGUI_ENABLED

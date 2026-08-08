@@ -31,7 +31,6 @@
 #include <IAudioSystem.h>
 #include <IConsole.h>
 #include <ISystem.h>
-#include <MathConversion.h>
 
 namespace Maestro
 {
@@ -565,7 +564,7 @@ namespace Maestro
                     overrideCamId = AZ::EntityId(u64Id);
                 }
             }
-            if (overrideCamId.IsValid()) 
+            if (overrideCamId.IsValid())
             {
                 AZ::Entity* cameraEntity = nullptr;
                 AZ::ComponentApplicationBus::BroadcastResult(cameraEntity, &AZ::ComponentApplicationBus::Events::FindEntity, overrideCamId);
@@ -855,7 +854,7 @@ namespace Maestro
         const bool isAutostart = (m_pSequence->GetFlags() & IAnimSequence::eSeqFlags_PlayOnReset) != 0;
 
         // Find the active camera
-        AZ::EntityId activeCameraId; 
+        AZ::EntityId activeCameraId;
         Camera::CameraSystemRequestBus::BroadcastResult(activeCameraId, &Camera::CameraSystemRequests::GetActiveCamera);
 
         if (!activeCameraId.IsValid()) // Invalid camera EntityId means that a default Editor view is in use.
@@ -895,7 +894,7 @@ namespace Maestro
             m_movieSystem->SetActiveCamera(currKey.cameraAzEntityId);
         }
 
-        // Interpolate and apply camera properties always, unchanged values will not actually be transferred. 
+        // Interpolate and apply camera properties always, unchanged values will not actually be transferred.
         {
             // A valid Scene Camera (Camera Component Camera) helper is needed to apply camera properties.
             auto activeCamera = static_cast<ISceneCamera*>(new AnimSceneNodeHelper::CComponentEntitySceneCamera(activeCameraId));

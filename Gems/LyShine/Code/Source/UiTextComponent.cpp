@@ -28,7 +28,6 @@
 
 #include <ILocalizationManager.h>
 
-#include "MathConversion.h"
 #include "UiSerialize.h"
 #include "TextMarkup.h"
 #include "UiTextComponentOffsetsSelector.h"
@@ -636,11 +635,11 @@ namespace
                 char* codepointPtr = codepoint;
                 Utf8::Unchecked::octet_iterator<AZStd::string::iterator>::to_utf8_sequence(ch, codepointPtr, maxSize);
 
-                float curCharWidth = drawBatch.font->GetTextSize(codepoint, true, ctx).x;
+                float curCharWidth = drawBatch.font->GetTextSize(codepoint, true, ctx).GetX();
 
                 if (prevCh && ctx.m_kerningEnabled)
                 {
-                    curCharWidth += drawBatch.font->GetKerning(prevCh, ch, ctx).x;
+                    curCharWidth += drawBatch.font->GetKerning(prevCh, ch, ctx).GetX();
                 }
 
                 if (prevCh)
@@ -860,7 +859,7 @@ namespace
             // Calculate the batch y offsets from the text y position based on the text's baseline
             for (UiTextComponent::DrawBatch& drawBatch : drawBatchLine.drawBatchList)
             {
-                drawBatch.CalculateYOffset(ctx.m_size.y, output.baseline);
+                drawBatch.CalculateYOffset(ctx.m_size.GetY(), output.baseline);
             }
 
             // Figure out the highest batch offset above the text y position
@@ -1216,8 +1215,8 @@ void UiTextComponent::DrawBatch::CalculateSize(const STextDrawContext& ctx, bool
             }
         }
 
-        Vec2 textSize = font->GetTextSize(displayString.c_str(), true, ctx);
-        size = AZ::Vector2(textSize.x, textSize.y);
+        AZ::Vector2 textSize = font->GetTextSize(displayString.c_str(), true, ctx);
+        size = AZ::Vector2(textSize.GetX(), textSize.GetY());
     }
     else if (GetType() == UiTextComponent::DrawBatch::Type::Image)
     {
@@ -1313,7 +1312,7 @@ bool UiTextComponent::DrawBatch::GetOverflowInfo(const STextDrawContext& ctx,
 
         float width = 0.0f;
 
-        float maxEffectOffsetX = font->GetMaxEffectOffset(ctx.m_fxIdx).x;
+        float maxEffectOffsetX = font->GetMaxEffectOffset(ctx.m_fxIdx).GetX();
 
         Utf8::Unchecked::octet_iterator pChar(text.data());
         uint32_t prevCh = 0;
@@ -1324,7 +1323,7 @@ bool UiTextComponent::DrawBatch::GetOverflowInfo(const STextDrawContext& ctx,
             char* codepointPtr = codepoint;
             Utf8::Unchecked::octet_iterator<AZStd::string::iterator>::to_utf8_sequence(ch, codepointPtr, maxSize);
 
-            float curCharWidth = font->GetTextSize(codepoint, true, ctx).x;
+            float curCharWidth = font->GetTextSize(codepoint, true, ctx).GetX();
             if (prevCh)
             {
                 curCharWidth -= maxEffectOffsetX;
@@ -1332,7 +1331,7 @@ bool UiTextComponent::DrawBatch::GetOverflowInfo(const STextDrawContext& ctx,
 
             if (prevCh && ctx.m_kerningEnabled)
             {
-                curCharWidth += font->GetKerning(prevCh, ch, ctx).x;
+                curCharWidth += font->GetKerning(prevCh, ch, ctx).GetX();
             }
 
             if (prevCh)
@@ -2291,8 +2290,8 @@ int UiTextComponent::GetCharIndexFromCanvasSpacePoint(AZ::Vector2 point, bool mu
                 // Iterate across each character of text until the width
                 // exceeds the X pick offset.
                 AZStd::string subString(drawBatch.text.substr(0, curLineIndexIter));
-                Vec2 sizeSoFar = m_font->GetTextSize(subString.c_str(), true, fontContext);
-                float charWidth = sizeSoFar.x - lastSubstrX;
+                AZ::Vector2 sizeSoFar = m_font->GetTextSize(subString.c_str(), true, fontContext);
+                float charWidth = sizeSoFar.GetX() - lastSubstrX;
 
                 // pickOffset is a screen-position and the text position changes
                 // based on its alignment. We add an offset here to account for
@@ -2312,7 +2311,7 @@ int UiTextComponent::GetCharIndexFromCanvasSpacePoint(AZ::Vector2 point, bool mu
                     return indexIter;
                 }
 
-                lastSubstrX = sizeSoFar.x;
+                lastSubstrX = sizeSoFar.GetX();
                 ++indexIter;
             }
         }
@@ -2693,8 +2692,8 @@ void UiTextComponent::GetClickableTextRects(UiClickableTextInterface::ClickableT
                 }
 
                 alignedPosition.SetX(alignedPosition.GetX() + xDrawPosOffset);
-                Vec2 textSize(drawBatch.size.GetX(), drawBatch.size.GetY());
-                xDrawPosOffset = textSize.x;
+                AZ::Vector2 textSize(drawBatch.size.GetX(), drawBatch.size.GetY());
+                xDrawPosOffset = textSize.GetX();
 
                 if (drawBatch.IsClickable())
                 {
@@ -3590,7 +3589,7 @@ float UiTextComponent::CalculateHorizontalClipOffset()
             // - cursorClippedLeft
             int bytesToSelectionEnd = LyShine::GetByteLengthOfUtf8Chars(displayedText.c_str(), m_selectionEnd);
             AZStd::string leftString(displayedText.substr(0, bytesToSelectionEnd));
-            Vec2 leftSize(m_font->GetTextSize(leftString.c_str(), true, fontContext));
+            AZ::Vector2 leftSize(m_font->GetTextSize(leftString.c_str(), true, fontContext));
 
             if (m_textHAlignment == IDraw2d::HAlign::Left)
             {
@@ -3608,9 +3607,9 @@ float UiTextComponent::CalculateHorizontalClipOffset()
 
                 // We calculate the clip offset differently based on where
                 // the cursor position is currently located.
-                const bool cursorAtFirstChar = leftSize.x == 0.0f;
-                const bool cursorClippedRight = leftSize.x > elemSize.GetX() + clipOffsetLeft;
-                const bool cursorClippedLeft = leftSize.x < clipOffsetLeft;
+                const bool cursorAtFirstChar = leftSize.GetX() == 0.0f;
+                const bool cursorClippedRight = leftSize.GetX() > elemSize.GetX() + clipOffsetLeft;
+                const bool cursorClippedLeft = leftSize.GetX() < clipOffsetLeft;
 
                 if (cursorAtFirstChar)
                 {
@@ -3622,13 +3621,13 @@ float UiTextComponent::CalculateHorizontalClipOffset()
                     // right of the clipping area. The amount scrolled by is
                     // the clipped and non-clipped widths added together and
                     // subtracted from the string size to the left of the cursor.
-                    m_clipOffset += leftSize.x - elemSize.GetX() - clipOffsetLeft;
+                    m_clipOffset += leftSize.GetX() - elemSize.GetX() - clipOffsetLeft;
                 }
                 else if (cursorClippedLeft)
                 {
                     // Cursor is clipped to the left, so scroll the text
                     // right by decreasing the clip offset.
-                    m_clipOffset = leftSize.x;
+                    m_clipOffset = leftSize.GetX();
                 }
             }
 
@@ -3644,9 +3643,9 @@ float UiTextComponent::CalculateHorizontalClipOffset()
                 // by the min clipping value when the offset becomes negative.
                 const float clipOffsetLeft = m_clipOffset >= 0.0f ? m_clipOffset : m_clipOffset - clipOffsetMin;
 
-                const bool cursorAtFirstChar = leftSize.x == 0.0f;
-                const bool cursorClippedRight = leftSize.x > elemSize.GetX() + clipOffsetLeft;
-                const bool cursorClippedLeft = leftSize.x < clipOffsetLeft;
+                const bool cursorAtFirstChar = leftSize.GetX() == 0.0f;
+                const bool cursorClippedRight = leftSize.GetX() > elemSize.GetX() + clipOffsetLeft;
+                const bool cursorClippedLeft = leftSize.GetX() < clipOffsetLeft;
 
                 if (cursorAtFirstChar)
                 {
@@ -3658,20 +3657,20 @@ float UiTextComponent::CalculateHorizontalClipOffset()
                     // Similar to left-aligned text, but we adjust our offset
                     // multiplier to account for half of the width already
                     // being accounted for in centered-alignment logic elsewhere.
-                    m_clipOffset += leftSize.x - elemSize.GetX() - clipOffsetLeft;
+                    m_clipOffset += leftSize.GetX() - elemSize.GetX() - clipOffsetLeft;
                     m_clipOffsetMultiplier = 0.5f;
                 }
                 else if (cursorClippedLeft)
                 {
                     const float prevClipOffset = m_clipOffset;
-                    m_clipOffset = leftSize.x;
+                    m_clipOffset = leftSize.GetX();
 
                     // Obtain a multiplier that, when multiplied by the new
                     // offset, returns the current offset value, minus the
                     // difference between the current and new offsets (to
                     // account for the clipped space).
                     const float clipOffsetInverse = 1.0f / m_clipOffset;
-                    m_clipOffsetMultiplier = clipOffsetInverse * (prevClipOffset * (m_clipOffsetMultiplier - 1) + leftSize.x);
+                    m_clipOffsetMultiplier = clipOffsetInverse * (prevClipOffset * (m_clipOffsetMultiplier - 1) + leftSize.GetX());
                 }
             }
 
@@ -3686,7 +3685,7 @@ float UiTextComponent::CalculateHorizontalClipOffset()
                 // - cursorClippedRight
                 // - cursorClippedLeft
                 AZStd::string rightString(displayedText.substr(bytesToSelectionEnd, displayedText.length() - bytesToSelectionEnd));
-                Vec2 rightSize(m_font->GetTextSize(rightString.c_str(), true, fontContext));
+                AZ::Vector2 rightSize(m_font->GetTextSize(rightString.c_str(), true, fontContext));
 
                 // Negative offset will scroll text to the right
                 m_clipOffsetMultiplier = -1.0f;
@@ -3708,9 +3707,9 @@ float UiTextComponent::CalculateHorizontalClipOffset()
                 // Amout of clipped text to the left of the non-clipped text
                 const float clipOffsetLeft = clipOffsetRight > 0.0f ? fabs(clipOffsetMax) - clipOffsetRight : 0.0f;
 
-                const bool cursorAtFirstChar = rightSize.x == 0.0f;
-                const bool cursorClippedRight = leftSize.x > elemSize.GetX() + clipOffsetLeft;
-                const bool cursorClippedLeft = rightSize.x > elemSize.GetX() + clipOffsetRight;
+                const bool cursorAtFirstChar = rightSize.GetX() == 0.0f;
+                const bool cursorClippedRight = leftSize.GetX() > elemSize.GetX() + clipOffsetLeft;
+                const bool cursorClippedLeft = rightSize.GetX() > elemSize.GetX() + clipOffsetRight;
 
                 if (cursorAtFirstChar)
                 {
@@ -3722,12 +3721,12 @@ float UiTextComponent::CalculateHorizontalClipOffset()
                     // would subtract from the offset amount each frame.
                     if (m_clipOffset != 0.0f)
                     {
-                        m_clipOffset -= leftSize.x - elemSize.GetX() - clipOffsetLeft;
+                        m_clipOffset -= leftSize.GetX() - elemSize.GetX() - clipOffsetLeft;
                     }
                 }
                 else if (cursorClippedLeft)
                 {
-                    m_clipOffset += rightSize.x - elemSize.GetX() - clipOffsetRight;
+                    m_clipOffset += rightSize.GetX() - elemSize.GetX() - clipOffsetRight;
                 }
             }
         }
@@ -4079,8 +4078,8 @@ void UiTextComponent::RenderDrawBatchLines(
 
                 alignedPosition.SetX(alignedPosition.GetX() + xDrawPosOffset);
 
-                Vec2 textSize(drawBatch.size.GetX(), drawBatch.size.GetY());
-                xDrawPosOffset = textSize.x;
+                AZ::Vector2 textSize(drawBatch.size.GetX(), drawBatch.size.GetY());
+                xDrawPosOffset = textSize.GetX();
 
                 AZ::Color batchColor = origColor;
                 const bool drawBatchHasColorAssigned = drawBatch.color != TextMarkup::ColorInvalid;
@@ -4186,9 +4185,10 @@ void UiTextComponent::RenderDrawBatchLines(
                 cacheImageBatch->m_cachedPrimitive.m_vertices = new LyShine::UiPrimitiveVertex[4];
                 for (int i = 0; i < 4; ++i)
                 {
-                    cacheImageBatch->m_cachedPrimitive.m_vertices[i].xy = Vec2(imageQuad[i].GetX(), imageQuad[i].GetY());
+                    cacheImageBatch->m_cachedPrimitive.m_vertices[i].xy =
+                        AZ::PackedVector2f(imageQuad[i].GetX(), imageQuad[i].GetY());
                     cacheImageBatch->m_cachedPrimitive.m_vertices[i].color.dcolor = packedColor;
-                    cacheImageBatch->m_cachedPrimitive.m_vertices[i].st = Vec2(uvs[i].GetX(), uvs[i].GetY());
+                    cacheImageBatch->m_cachedPrimitive.m_vertices[i].st = AZ::PackedVector2f(uvs[i].GetX(), uvs[i].GetY());
                     cacheImageBatch->m_cachedPrimitive.m_vertices[i].texIndex = 0;
                     cacheImageBatch->m_cachedPrimitive.m_vertices[i].texHasColorChannel = 1;
                     cacheImageBatch->m_cachedPrimitive.m_vertices[i].texIndex2 = 0;
@@ -4264,10 +4264,11 @@ STextDrawContext UiTextComponent::GetTextDrawContextPrototype(int requestFontSiz
     // shrink-to-fit - a scale transformation is applied for these characters instead. For
     // higher quality font scaling with shrink-to-fit, consider taking m_fontSizeScale into
     // account.
-    ctx.SetSize(Vec2(m_fontSize * fontSizeScale.GetX(), m_fontSize * fontSizeScale.GetY()));
-    ctx.m_requestSize = Vec2i(requestFontSize, requestFontSize);
+    ctx.SetSize(AZ::Vector2(m_fontSize * fontSizeScale.GetX(), m_fontSize * fontSizeScale.GetY()));
+    ctx.m_requestSizeX = requestFontSize;
+    ctx.m_requestSizeY = requestFontSize;
     ctx.m_processSpecialChars = false;
-    ctx.m_tracking = (m_charSpacing * ctx.m_size.x) / 1000.0f; // m_charSpacing units are 1/1000th of ems, 1 em is equal to font size.
+    ctx.m_tracking = (m_charSpacing * ctx.m_size.GetX()) / 1000.0f; // m_charSpacing units are 1/1000th of ems, 1 em is equal to font size.
                                                                // It's important that we base the character spacing based on the
                                                                // the scaled font size since this is the size the characters will be
                                                                // rendered at. Because spacing is relative to font size, basing the
@@ -4808,7 +4809,7 @@ UiTextComponent::DrawBatch* UiTextComponent::GetDrawBatchToEllipseAndPositions(c
         const bool moreDrawBatchesAvailable = moreBatchesPriorToImage || moreTextBatches;
 
         // The size of the ellipsis text can change based on the font being used in the draw batch
-        ellipsisSize = drawBatchToEllipse->font->GetTextSize(ellipseText, true, ctx).x;
+        ellipsisSize = drawBatchToEllipse->font->GetTextSize(ellipseText, true, ctx).GetX();
 
         // Calculate where the ellipsis must start in order to be contained within the
         // element bounds. Also, guard against narrow elements that aren't wide enough
@@ -4874,11 +4875,11 @@ int UiTextComponent::GetStartEllipseIndexInDrawBatch(const DrawBatch* drawBatchT
         char* codepointPtr = codepoint;
         Utf8::Unchecked::octet_iterator<AZStd::string::iterator>::to_utf8_sequence(ch, codepointPtr, maxSize);
 
-        overflowStringSize += drawBatchToEllipse->font->GetTextSize(codepoint, true, ctx).x;
+        overflowStringSize += drawBatchToEllipse->font->GetTextSize(codepoint, true, ctx).GetX();
 
         if (prevCh && ctx.m_kerningEnabled)
         {
-            overflowStringSize += drawBatchToEllipse->font->GetKerning(prevCh, ch, ctx).x;
+            overflowStringSize += drawBatchToEllipse->font->GetKerning(prevCh, ch, ctx).GetX();
         }
 
         if (prevCh)
@@ -5063,7 +5064,7 @@ bool UiTextComponent::VersionConverter(AZ::SerializeContext& context,
         }
     }
 
-    // conversion from version 6 to current: Need to convert ColorF to AZ::Color
+    // conversion from version 6 to current: Need to convert legacy ColorF to AZ::Color
     if (classElement.GetVersion() <= 6)
     {
         if (!LyShine::ConvertSubElementFromVector3ToAzColor(context, classElement, "Color"))

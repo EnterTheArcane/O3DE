@@ -14,12 +14,12 @@
 #include "UiAnimSerialize.h"
 
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/std/algorithm.h>
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/containers/unordered_map.h>
 
 #include <ISystem.h>
 #include <ILog.h>
-#include <IConsole.h>
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -379,7 +379,7 @@ void UiAnimationSystem::RemoveAllSequences()
     SetCallback(NULL);
     InternalStopAllSequences(true, false);
 
-    stl::free_container(m_sequences);
+    decltype(m_sequences){}.swap(m_sequences);
 
     for (TUiAnimationListenerMap::iterator it = m_animationListenerMap.begin(); it != m_animationListenerMap.end(); )
     {
@@ -533,7 +533,7 @@ void UiAnimationSystem::InternalStopAllSequences(bool bAbort, bool bAnimate)
         InternalStopSequence(m_playingSequences.begin()->sequence.get(), bAbort, bAnimate);
     }
 
-    stl::free_container(m_playingSequences);
+    decltype(m_playingSequences){}.swap(m_playingSequences);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -619,7 +619,7 @@ void UiAnimationSystem::StopAllCutScenes()
 
     if (m_playingSequences.empty())
     {
-        stl::free_container(m_playingSequences);
+        decltype(m_playingSequences){}.swap(m_playingSequences);
     }
 }
 
@@ -1068,7 +1068,13 @@ bool UiAnimationSystem::AddUiAnimationListener(IUiAnimSequence* pSequence, IUiAn
         return false;
     }
 
-    return stl::push_back_unique(m_animationListenerMap[pSequence], pListener);
+    auto& listeners = m_animationListenerMap[pSequence];
+    if (AZStd::find(listeners.begin(), listeners.end(), pListener) != listeners.end())
+    {
+        return false;
+    }
+    listeners.push_back(pListener);
+    return true;
 }
 
 bool UiAnimationSystem::RemoveUiAnimationListener(IUiAnimSequence* pSequence, IUiAnimationListener* pListener)
@@ -1080,7 +1086,14 @@ bool UiAnimationSystem::RemoveUiAnimationListener(IUiAnimSequence* pSequence, IU
         gEnv->pLog->Log ("UiAnimationSystem::AddUiAnimationListener: Sequence %p unknown to UiAnimationSystem", pSequence);
         return false;
     }
-    return stl::find_and_erase(m_animationListenerMap[pSequence], pListener);
+    auto& listeners = m_animationListenerMap[pSequence];
+    const auto listenerIterator = AZStd::find(listeners.begin(), listeners.end(), pListener);
+    if (listenerIterator == listeners.end())
+    {
+        return false;
+    }
+    listeners.erase(listenerIterator);
+    return true;
 }
 
 void UiAnimationSystem::GoToFrame(const char* seqName, float targetFrame)
@@ -1148,7 +1161,10 @@ void UiAnimationSystem::SerializeNodeType(EUiAnimNodeType& animNodeType, XmlNode
             if (xmlNode->getAttr(kType, nodeTypeString))
             {
                 assert(m_animNodeStringToEnumMap.contains(nodeTypeString.c_str()));
-                animNodeType = stl::find_in_map(m_animNodeStringToEnumMap, nodeTypeString.c_str(), eUiAnimNodeType_Invalid);
+                const auto nodeTypeIterator = m_animNodeStringToEnumMap.find(nodeTypeString.c_str());
+                animNodeType = nodeTypeIterator != m_animNodeStringToEnumMap.end()
+                    ? nodeTypeIterator->second
+                    : eUiAnimNodeType_Invalid;
             }
         }
     }
@@ -1217,7 +1233,10 @@ void UiAnimationSystem::SerializeParamType(CUiAnimParamType& animParamType, XmlN
                 else
                 {
                     assert(m_animParamStringToEnumMap.contains(paramTypeString.c_str()));
-                    animParamType.m_type = stl::find_in_map(m_animParamStringToEnumMap, paramTypeString.c_str(), eUiAnimParamType_Invalid);
+                    const auto paramTypeIterator = m_animParamStringToEnumMap.find(paramTypeString.c_str());
+                    animParamType.m_type = paramTypeIterator != m_animParamStringToEnumMap.end()
+                        ? paramTypeIterator->second
+                        : eUiAnimParamType_Invalid;
                 }
             }
         }
@@ -1346,13 +1365,16 @@ void UiAnimationSystem::Reflect(AZ::SerializeContext* serializeContext)
 //////////////////////////////////////////////////////////////////////////
 EUiAnimNodeType UiAnimationSystem::GetNodeTypeFromString(const char* pString) const
 {
-    return stl::find_in_map(m_animNodeStringToEnumMap, pString, eUiAnimNodeType_Invalid);
+    const auto nodeTypeIterator = m_animNodeStringToEnumMap.find(pString);
+    return nodeTypeIterator != m_animNodeStringToEnumMap.end() ? nodeTypeIterator->second : eUiAnimNodeType_Invalid;
 }
 
 //////////////////////////////////////////////////////////////////////////
 CUiAnimParamType UiAnimationSystem::GetParamTypeFromString(const char* pString) const
 {
-    const EUiAnimParamType paramType = stl::find_in_map(m_animParamStringToEnumMap, pString, eUiAnimParamType_Invalid);
+    const auto paramTypeIterator = m_animParamStringToEnumMap.find(pString);
+    const EUiAnimParamType paramType =
+        paramTypeIterator != m_animParamStringToEnumMap.end() ? paramTypeIterator->second : eUiAnimParamType_Invalid;
 
     if (paramType != eUiAnimParamType_Invalid)
     {

@@ -7,16 +7,16 @@
  */
 #pragma once
 
-#include <platform.h>
 #include <algorithm>
-#include <Cry_Math.h>
-#include <Cry_Color.h>
-#include <ISystem.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Color.h>
 
 #include <AzCore/std/string/string.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/vector.h>
+
+struct Vec4;
 
 // This is a workaround for AZCore including WinUser.h which defines DrawText to be DrawTextA
 #ifdef DrawText
@@ -61,8 +61,9 @@ namespace LyShine
 };
 
 
+// Retain the exported legacy type id for downstream source compatibility. Math reflection owns
+// the lifecycle-safe converter from this id to AZ::Vector4.
 namespace AZ
 {
     AZ_TYPE_INFO_SPECIALIZE(Vec4, "{CAC9510C-8C00-41D4-BC4D-2C6A8136EB30}");
 } // namespace AZ
-

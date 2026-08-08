@@ -9,7 +9,6 @@
 #pragma once
 
 #include "Settings.h"
-#include "IConsole.h"
 #include "IEditor.h"
 #include <AzToolsFramework/Editor/EditorSettingsAPIBus.h>
 
@@ -29,6 +28,7 @@ class ConsoleWidget;
 class QFocusEvent;
 class QTableView;
 class CVarBlock;
+struct ICVar;
 
 namespace Ui {
     class Console;

@@ -107,7 +107,7 @@ private:
                     return child;
                 }
             }
-            int ncount = min(m_nCurrent, num);
+            int ncount = AZStd::min(m_nCurrent, num);
             // Try searching from begining.
             for (i = 0; i < ncount; i++)
             {
@@ -144,9 +144,8 @@ private:
     void DefaultValue(uint32& v) const { v = 0; }
     void DefaultValue(int64& v) const { v = 0; }
     void DefaultValue(uint64& v) const { v = 0; }
-    void DefaultValue(Vec2& v) const { v.x = 0; v.y = 0; }
-    void DefaultValue(Vec3& v) const { v.x = 0; v.y = 0; v.z = 0; }
-    void DefaultValue(Ang3& v) const { v.x = 0; v.y = 0; v.z = 0; }
+    void DefaultValue(AZ::Vector2& v) const { v.SetX(0); v.SetY(0); }
+    void DefaultValue(AZ::Vector3& v) const { v.SetX(0); v.SetY(0); v.SetZ(0); }
     void DefaultValue(AZ::Quaternion& v) const { v = AZ::Quaternion::CreateIdentity(); }
     void DefaultValue(CTimeValue& v) const { v.SetValue(0); }
     void DefaultValue(AZStd::string& str) const { str = ""; }

@@ -11,6 +11,8 @@
 
 #include "LevelIndependentFileMan.h"
 
+#include <AzCore/std/algorithm.h>
+
 CLevelIndependentFileMan::CLevelIndependentFileMan()
 {
 }
@@ -34,9 +36,15 @@ bool CLevelIndependentFileMan::PromptChangedFiles()
 
 void CLevelIndependentFileMan::RegisterModule(ILevelIndependentFileModule* pModule)
 {
-    stl::push_back_unique(m_Modules, pModule);
+    if (AZStd::find(m_Modules.begin(), m_Modules.end(), pModule) == m_Modules.end())
+    {
+        m_Modules.push_back(pModule);
+    }
 }
 void CLevelIndependentFileMan::UnregisterModule(ILevelIndependentFileModule* pModule)
 {
-    stl::find_and_erase(m_Modules, pModule);
+    if (auto moduleIterator = AZStd::find(m_Modules.begin(), m_Modules.end(), pModule); moduleIterator != m_Modules.end())
+    {
+        m_Modules.erase(moduleIterator);
+    }
 }

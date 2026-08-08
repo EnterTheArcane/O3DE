@@ -10,7 +10,7 @@
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/Vector2.h>
 #include <LyShine/Bus/UiTransformBus.h>
-#include <CryCommon/Cry_Color.h>
+#include <AzCore/Math/Color.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiTransform2dInterface

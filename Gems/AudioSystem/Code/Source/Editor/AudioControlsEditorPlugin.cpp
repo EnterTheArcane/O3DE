@@ -18,7 +18,6 @@
 #include <IAudioSystemEditor.h>
 #include <ImplementationManager.h>
 
-#include <MathConversion.h>
 #include <QtViewPaneManager.h>
 
 #include <AzFramework/Components/CameraBus.h>

@@ -11,7 +11,6 @@
 #include <AzFramework/Translation/TranslationDef.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
-#include <CrySystemBus.h>
 
 namespace Vegetation
 {

@@ -75,7 +75,8 @@ public:
         {
             if (elements[idx]->wasValueEditedByUser())
             {
-                actualValue[idx] = aznumeric_cast<typename TypeBeingHandled::value_type>(elements[idx]->getValue());
+                // CryCommon->AzCore migration: AZ vector types have no `value_type`; components are float.
+                actualValue[idx] = aznumeric_cast<float>(elements[idx]->getValue());
             }
         }
         instance = actualValue;
@@ -96,7 +97,7 @@ public:
     }
 };
 
-class PropertyHandlerVec2 : public LegacyVectorPropertyHandlerBase<Vec2>
+class PropertyHandlerVec2 : public LegacyVectorPropertyHandlerBase<AZ::Vector2>
 {
 public:
     AZ_CLASS_ALLOCATOR(PropertyHandlerVec2, AZ::SystemAllocator);
@@ -114,7 +115,7 @@ public:
 
 //////////////////////////////////////////////////////////////////////////
 
-class PropertyHandlerVec3 : public LegacyVectorPropertyHandlerBase<Vec3>
+class PropertyHandlerVec3 : public LegacyVectorPropertyHandlerBase<AZ::Vector3>
 {
 public:
     AZ_CLASS_ALLOCATOR(PropertyHandlerVec3, AZ::SystemAllocator);
@@ -132,7 +133,7 @@ public:
 
 //////////////////////////////////////////////////////////////////////////
 
-class PropertyHandlerVec4 : public LegacyVectorPropertyHandlerBase<Vec4>
+class PropertyHandlerVec4 : public LegacyVectorPropertyHandlerBase<AZ::Vector4>
 {
 public:
     AZ_CLASS_ALLOCATOR(PropertyHandlerVec3, AZ::SystemAllocator);

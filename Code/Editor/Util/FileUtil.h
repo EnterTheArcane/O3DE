@@ -11,6 +11,7 @@
 
 #include "FileUtil_Common.h"
 #include "../Include/SandboxAPI.h"
+#include <AzCore/std/string/string.h>
 #include <QString>
 #include <QFileInfo>
 #include "../Include/IFileUtil.h"
@@ -87,7 +88,7 @@ public:
     static bool   Exists(const QString& strPath, bool boDirectory, IFileUtil::FileDesc* pDesc = nullptr);
     static bool   FileExists(const QString& strFilePath, IFileUtil::FileDesc* pDesc = nullptr);
     static bool   PathExists(const QString& strPath);
-    static bool   GetDiskFileSize(const char* pFilePath, uint64& rOutSize);
+    static bool   GetDiskFileSize(const char* pFilePath, AZ::u64& rOutSize);
 
     // This function should be used only with physical files.
     static bool   IsFileExclusivelyAccessable(const QString& strFilePath);
@@ -127,7 +128,7 @@ public:
     static void PopulateQMenu(QWidget* caller, QMenu* menu, AZStd::string_view fullGamePath);
 
     // Get file attributes include source control attributes if available
-    static uint32 GetAttributes(const char* filename, bool bUseSourceControl = true);
+    static AZ::u32 GetAttributes(const char* filename, bool bUseSourceControl = true);
 
     // Returns true if the files have the same content, false otherwise
     static bool CompareFiles(const QString& strFilePath1, const QString& strFilePath2);

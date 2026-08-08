@@ -154,7 +154,7 @@ namespace Maestro
         
         // Tracks
         IAnimTrack::Reflect(context);
-        TAnimSplineTrack<Vec2>::Reflect(context);
+        TAnimSplineTrack<AZ::Vector2>::Reflect(context);
         CBoolTrack::Reflect(context);
         CCaptureTrack::Reflect(context);
         CCharacterTrack::Reflect(context);
@@ -339,7 +339,10 @@ namespace Maestro
     {
         if (m_sequence)
         {
-            newTime = clamp_tpl(newTime, m_sequence.get()->GetTimeRange().start, m_sequence.get()->GetTimeRange().end);
+            const Range sequenceTimeRange = m_sequence->GetTimeRange();
+            newTime = newTime < sequenceTimeRange.start
+                ? sequenceTimeRange.start
+                : newTime < sequenceTimeRange.end ? newTime : sequenceTimeRange.end;
             m_movieSystem->SetPlayingTime(m_sequence.get(), newTime);
         }
     }

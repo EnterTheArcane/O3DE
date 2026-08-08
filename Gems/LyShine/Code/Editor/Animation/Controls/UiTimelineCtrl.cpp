@@ -78,13 +78,13 @@ void TimelineWidget::resizeEvent(QResizeEvent* event)
 //////////////////////////////////////////////////////////////////////////
 int TimelineWidget::TimeToClient(float time)
 {
-    return m_grid.WorldToClient(Vec2(time, 0)).x();
+    return m_grid.WorldToClient(AZ::Vector2(time, 0)).x();
 }
 
 //////////////////////////////////////////////////////////////////////////
 float TimelineWidget::ClientToTime(int x)
 {
-    return m_grid.ClientToWorld(QPoint(x, 0)).x;
+    return m_grid.ClientToWorld(QPoint(x, 0)).GetX();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -168,8 +168,8 @@ void TimelineWidget::DrawTicks(QPainter* painter)
     const QBrush keySelectedBrush(QColor(100, 255, 255));
     for (int keyTimeIndex = 0; m_pKeyTimeSet && keyTimeIndex < m_pKeyTimeSet->GetKeyTimeCount(); ++keyTimeIndex)
     {
-        int keyCountBound = __max(m_pKeyTimeSet->GetKeyCountBound(), 1);
-        int keyCount = __min(m_pKeyTimeSet->GetKeyCount(keyTimeIndex), keyCountBound);
+        int keyCountBound = AZStd::max(m_pKeyTimeSet->GetKeyCountBound(), 1);
+        int keyCount = AZStd::min(m_pKeyTimeSet->GetKeyCount(keyTimeIndex), keyCountBound);
         float colorCodeFraction = float(keyCount) / keyCountBound;
         const QColor keyMarkerCol = InterpolateColor(Qt::green, Qt::red, colorCodeFraction);
 
@@ -415,8 +415,8 @@ void TimelineWidget::mouseMoveEvent(QMouseEvent* event)
 
     case TRACKING_MODE_SELECTION_RANGE:
     {
-        const float start = min(ClientToTime(m_lastPoint.x()), ClientToTime(event->position().x()));
-        const float end = max(ClientToTime(m_lastPoint.x()), ClientToTime(event->position().x()));
+        const float start = AZStd::min(ClientToTime(m_lastPoint.x()), ClientToTime(event->position().x()));
+        const float end = AZStd::max(ClientToTime(m_lastPoint.x()), ClientToTime(event->position().x()));
         SelectKeysInRange(start, end, !(event->modifiers() & Qt::ShiftModifier));
         m_lastPoint = event->pos();
         update();

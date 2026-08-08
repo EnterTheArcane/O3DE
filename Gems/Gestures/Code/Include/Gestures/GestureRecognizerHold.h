@@ -9,7 +9,6 @@
 
 #include "IGestureRecognizer.h"
 
-#include <CryCommon/ISystem.h>
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Time/ITime.h>
 

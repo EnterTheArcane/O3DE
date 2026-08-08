@@ -12,7 +12,6 @@
 #include "AnimTrack.h"
 #include "TrackEventTrack.h"
 
-#include <ISystem.h>
 
 //////////////////////////////////////////////////////////////////////////
 CUiAnimEventNode::CUiAnimEventNode()

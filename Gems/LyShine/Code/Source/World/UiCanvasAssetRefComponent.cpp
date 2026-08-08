@@ -6,6 +6,8 @@
  *
  */
 #include "UiCanvasAssetRefComponent.h"
+
+#include <ISystem.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Interface/Interface.h>

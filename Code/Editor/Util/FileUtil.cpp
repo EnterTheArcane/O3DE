@@ -1106,7 +1106,7 @@ bool CFileUtil::PathExists(const QString& strPath)
     return Exists(strPath, true);
 }
 
-bool CFileUtil::GetDiskFileSize(const char* pFilePath, uint64& rOutSize)
+bool CFileUtil::GetDiskFileSize(const char* pFilePath, AZ::u64& rOutSize)
 {
     const QFileInfo fi(pFilePath);
     rOutSize = fi.size();
@@ -1854,7 +1854,7 @@ void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, AZStd::string_view f
         *isSelected = false;
     }
 
-    uint32 nFileAttr = CFileUtil::GetAttributes(fullPath.toUtf8().data());
+    AZ::u32 nFileAttr = CFileUtil::GetAttributes(fullPath.toUtf8().data());
 
     QAction* action;
 
@@ -1960,7 +1960,7 @@ void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, AZStd::string_view f
     }
 }
 
-uint32 CFileUtil::GetAttributes(const char* filename, bool bUseSourceControl /*= true*/)
+AZ::u32 CFileUtil::GetAttributes(const char* filename, bool bUseSourceControl /*= true*/)
 {
     using namespace AzToolsFramework;
 
@@ -2011,7 +2011,7 @@ uint32 CFileUtil::GetAttributes(const char* filename, bool bUseSourceControl /*=
     // Translate SourceControlStatus to (legacy) ESccFileAttributes
     if (scOpSuccess)
     {
-        uint32 sccFileAttr = AZ::IO::SystemFile::Exists(filename) ? SCC_FILE_ATTRIBUTE_NORMAL : SCC_FILE_ATTRIBUTE_INVALID;
+        AZ::u32 sccFileAttr = AZ::IO::SystemFile::Exists(filename) ? SCC_FILE_ATTRIBUTE_NORMAL : SCC_FILE_ATTRIBUTE_INVALID;
 
         if (fileInfo.HasFlag(SourceControlFlags::SCF_Tracked))
         {
@@ -2082,8 +2082,8 @@ uint32 CFileUtil::GetAttributes(const char* filename, bool bUseSourceControl /*=
 bool CFileUtil::CompareFiles(const QString& strFilePath1, const QString& strFilePath2)
 {
     // Get the size of both files.  If either fails we say they are different (most likely one doesn't exist)
-    uint64 size1 = 0;
-    uint64 size2 = 0;
+    AZ::u64 size1 = 0;
+    AZ::u64 size2 = 0;
     if (!GetDiskFileSize(strFilePath1.toUtf8().data(), size1) || !GetDiskFileSize(strFilePath2.toUtf8().data(), size2))
     {
         return false;
@@ -2102,11 +2102,11 @@ bool CFileUtil::CompareFiles(const QString& strFilePath1, const QString& strFile
         return false;
     }
 
-    const uint64 bufSize = 4096;
+    const AZ::u64 bufSize = 4096;
 
     char buf1[bufSize], buf2[bufSize];
 
-    for (uint64 i = 0; i < size1; i += bufSize)
+    for (AZ::u64 i = 0; i < size1; i += bufSize)
     {
         size_t amtRead1 = file1.ReadRaw(buf1, bufSize);
         size_t amtRead2 = file2.ReadRaw(buf2, bufSize);
@@ -2216,4 +2216,3 @@ bool CTempFileHelper::UpdateFile(bool bBackup)
         return true;
     }
 }
-

@@ -9,7 +9,6 @@
 
 #pragma once
 
-#include "Cry_Color.h"
 #include <Vertex.h>
 
 // Description:
@@ -25,12 +24,12 @@ public:
     bool IsEquivalent(const SMeshTexCoord& other, float epsilon = 0.00005f) const
     {
         return
-            (fabs_tpl(s - other.s) <= epsilon) &&
-            (fabs_tpl(t - other.t) <= epsilon);
+            (AZStd::abs(s - other.s) <= epsilon) &&
+            (AZStd::abs(t - other.t) <= epsilon);
     }
-    ILINE Vec2 GetUV() const
+    ILINE AZ::Vector2 GetUV() const
     {
-        return Vec2(s, t);
+        return AZ::Vector2(s, t);
     }
 };
 

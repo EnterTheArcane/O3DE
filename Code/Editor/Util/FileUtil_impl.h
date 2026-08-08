@@ -82,7 +82,7 @@ public:
     bool Exists(const QString& strPath, bool boDirectory, FileDesc* pDesc = nullptr) override;
     bool FileExists(const QString& strFilePath, FileDesc* pDesc = nullptr) override;
     bool PathExists(const QString& strPath) override;
-    bool GetDiskFileSize(const char* pFilePath, uint64& rOutSize) override;
+    bool GetDiskFileSize(const char* pFilePath, AZ::u64& rOutSize) override;
 
     // This function should be used only with physical files.
     bool IsFileExclusivelyAccessable(const QString& strFilePath) override;
@@ -114,7 +114,7 @@ public:
     ECopyTreeResult MoveTree(const QString& strSourceDirectory, const QString& strTargetDirectory, bool boRecurse = true, bool boConfirmOverwrite = false) override;
 
     // Get file attributes include source control attributes if available
-    uint32 GetAttributes(const char* filename, bool bUseSourceControl = true) override;
+    AZ::u32 GetAttributes(const char* filename, bool bUseSourceControl = true) override;
 
     // Returns true if the files have the same content, false otherwise
     bool CompareFiles(const QString& strFilePath1, const QString& strFilePath2) override;
@@ -122,4 +122,3 @@ public:
     // Extract path from full specified file path.
     QString GetPath(const QString& path) override;
 };
-

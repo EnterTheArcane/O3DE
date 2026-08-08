@@ -360,7 +360,8 @@ void CSettingsManager::AddToolVersion(const QString& toolName, const QString& to
         return;
     }
 
-    if (stl::find_in_map(m_toolNames, toolName, nullptr) == "")
+    const auto toolIterator = m_toolNames.find(toolName);
+    if (toolIterator == m_toolNames.end() || toolIterator->second == "")
     {
         if (!toolVersion.isEmpty())
         {
@@ -380,7 +381,8 @@ void CSettingsManager::AddToolName(const QString& toolName, const QString& human
         return;
     }
 
-    if (stl::find_in_map(m_toolNames, toolName, nullptr) == "")
+    const auto toolIterator = m_toolNames.find(toolName);
+    if (toolIterator == m_toolNames.end() || toolIterator->second == "")
     {
         if (!humanReadableName.isEmpty())
         {

@@ -11,7 +11,6 @@
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Memory/Memory.h>
-#include <CryCommon/platform.h>
 
 struct IOutputPrintSink;
 

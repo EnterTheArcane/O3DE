@@ -179,21 +179,21 @@ namespace ImageProcessingAtom
         switch (GetImageFlags() & EIF_Colormodel)
         {
         case EIF_Colormodel_RGB:
-            cBaseLines = Vec4(0.0f, 0.0f, 0.0f, 0.0f);
+            cBaseLines = AZ::Vector4(0.0f, 0.0f, 0.0f, 0.0f);
             break;
         case EIF_Colormodel_CIE:
-            cBaseLines = Vec4(0.0f, 1.f / 3, 1.f / 3, 0.0f);
+            cBaseLines = AZ::Vector4(0.0f, 1.f / 3, 1.f / 3, 0.0f);
             break;
         case EIF_Colormodel_IRB:
-            cBaseLines = Vec4(0.0f, 1.f / 2, 1.f / 2, 0.0f);
+            cBaseLines = AZ::Vector4(0.0f, 1.f / 2, 1.f / 2, 0.0f);
             break;
         case EIF_Colormodel_YCC:
         case EIF_Colormodel_YFF:
-            cBaseLines = Vec4(1.f / 2, 0.0f, 1.f / 2, 0.0f);
+            cBaseLines = AZ::Vector4(1.f / 2, 0.0f, 1.f / 2, 0.0f);
             break;
         }
 
-        Vec4 cBaseScale = cBaseLines;
+        AZ::Vector4 cBaseScale = cBaseLines;
         cBaseLines = cBaseLines - cMinColor;
         cBaseLines = cBaseLines / cScale;
 

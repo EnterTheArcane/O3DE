@@ -7,12 +7,13 @@
  */
 #pragma once
 
-#include <LyShine/ILyShine.h>
-#include <LyShine/Bus/UiCursorBus.h>
-#include <AzCore/Math/Vector2.h>
 #include <AzCore/Component/TickBus.h>
+#include <AzCore/Math/Vector2.h>
 #include <AzFramework/Input/Events/InputChannelEventListener.h>
 #include <AzFramework/Input/Events/InputTextEventListener.h>
+#include <ISystem.h>
+#include <LyShine/Bus/UiCursorBus.h>
+#include <LyShine/ILyShine.h>
 
 #include <Atom/Bootstrap/BootstrapNotificationBus.h>
 #include <Atom/RPI.Public/ViewportContextBus.h>
@@ -46,7 +47,6 @@ class CLyShine
     , protected LyShinePassDataRequestBus::Handler
 {
 public:
-
     //! Create the LyShine object, the given system pointer is stored internally
     CLyShine();
 
@@ -61,7 +61,8 @@ public:
     AZ::EntityId CreateCanvas() override;
     AZ::EntityId LoadCanvas(const AZStd::string& assetIdPathname) override;
     AZ::EntityId CreateCanvasInEditor(UiEntityContext* entityContext) override;
-    AZ::EntityId LoadCanvasInEditor(const AZStd::string& assetIdPathname, const AZStd::string& sourceAssetPathname, UiEntityContext* entityContext) override;
+    AZ::EntityId LoadCanvasInEditor(
+        const AZStd::string& assetIdPathname, const AZStd::string& sourceAssetPathname, UiEntityContext* entityContext) override;
     AZ::EntityId ReloadCanvasFromXml(const AZStd::string& xmlString, UiEntityContext* entityContext) override;
     AZ::EntityId FindCanvasById(LyShine::CanvasId id) override;
     AZ::EntityId FindLoadedCanvasByPathName(const AZStd::string& assetIdPathname) override;
@@ -128,28 +129,24 @@ public:
     void SetUiRendererForEditor(AZStd::shared_ptr<UiRenderer> uiRenderer);
 
 public: // static member functions
-
 #if defined(LYSHINE_INTERNAL_UNIT_TEST)
     static void RunUnitTests(IConsoleCmdArgs* cmdArgs);
 #endif
 
 private: // member functions
-
     AZ_DISABLE_COPY_MOVE(CLyShine);
 
     void LoadUiCursor();
     void RenderUiCursor();
 
-private:  // static member functions
-
+private: // static member functions
 #ifndef _RELEASE
     static void DebugReportDrawCalls(IConsoleCmdArgs* cmdArgs);
 #endif
 
 private: // data
-
-    std::unique_ptr<CDraw2d> m_draw2d;  // using a pointer rather than an instance to avoid including Draw2d.h
-    std::unique_ptr<UiRenderer> m_uiRenderer;  // using a pointer rather than an instance to avoid including UiRenderer.h
+    std::unique_ptr<CDraw2d> m_draw2d; // using a pointer rather than an instance to avoid including Draw2d.h
+    std::unique_ptr<UiRenderer> m_uiRenderer; // using a pointer rather than an instance to avoid including UiRenderer.h
     AZStd::shared_ptr<UiRenderer> m_uiRendererForEditor;
 
     std::unique_ptr<UiCanvasManager> m_uiCanvasManager;
@@ -158,7 +155,7 @@ private: // data
     AZ::Data::Instance<AZ::RPI::Image> m_uiCursorTexture;
     int m_uiCursorVisibleCounter;
 
-    bool m_updatingLoadedCanvases = false;  // guard against nested updates
+    bool m_updatingLoadedCanvases = false; // guard against nested updates
 
     // Console variables
 #ifndef _RELEASE

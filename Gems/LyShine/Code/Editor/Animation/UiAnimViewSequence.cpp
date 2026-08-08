@@ -23,6 +23,8 @@
 
 #include <QApplication>
 
+#include <AzCore/std/algorithm.h>
+
 //////////////////////////////////////////////////////////////////////////
 CUiAnimViewSequence::CUiAnimViewSequence(IUiAnimSequence* pSequence)
     : CUiAnimViewAnimNode(pSequence, nullptr, nullptr)
@@ -167,13 +169,20 @@ void CUiAnimViewSequence::Animate(const SUiAnimContext& animContext)
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewSequence::AddListener(IUiAnimViewSequenceListener* pListener)
 {
-    stl::push_back_unique(m_sequenceListeners, pListener);
+    if (AZStd::find(m_sequenceListeners.begin(), m_sequenceListeners.end(), pListener) == m_sequenceListeners.end())
+    {
+        m_sequenceListeners.push_back(pListener);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CUiAnimViewSequence::RemoveListener(IUiAnimViewSequenceListener* pListener)
 {
-    stl::find_and_erase(m_sequenceListeners, pListener);
+    if (auto listenerIterator = AZStd::find(m_sequenceListeners.begin(), m_sequenceListeners.end(), pListener);
+        listenerIterator != m_sequenceListeners.end())
+    {
+        m_sequenceListeners.erase(listenerIterator);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -587,9 +596,9 @@ CUiAnimViewSequence::GetMatchedPasteLocations(XmlNodeRef clipboardContent, CUiAn
             {
                 CUiAnimViewTrack* pMatchedTrack = *iter;
                 // Pick the first track that was matched *and* was not already matched
-                if (!stl::find(matchedTracks, pMatchedTrack))
+                if (AZStd::find(matchedTracks.begin(), matchedTracks.end(), pMatchedTrack) == matchedTracks.end())
                 {
-                    stl::push_back_unique(matchedTracks, pMatchedTrack);
+                    matchedTracks.push_back(pMatchedTrack);
                     matchedLocations.push_back(TMatchedTrackLocation(pMatchedTrack, trackNode));
                     break;
                 }
@@ -659,7 +668,10 @@ std::deque<CUiAnimViewTrack*> CUiAnimViewSequence::GetMatchingTracks(CUiAnimView
 
             if (pTrack->GetValueType() == valueType)
             {
-                stl::push_back_unique(matchingTracks, pTrack);
+                if (AZStd::find(matchingTracks.begin(), matchingTracks.end(), pTrack) == matchingTracks.end())
+                {
+                    matchingTracks.push_back(pTrack);
+                }
             }
         }
     }

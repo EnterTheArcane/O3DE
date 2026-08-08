@@ -8,7 +8,6 @@
 
 #include "AudioEnvironmentComponent.h"
 
-#include <ISystem.h>
 
 #include <LmbrCentral/Audio/AudioProxyComponentBus.h>
 

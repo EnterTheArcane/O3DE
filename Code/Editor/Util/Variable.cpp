@@ -11,6 +11,8 @@
 
 #include "Variable.h"
 
+#include <AzCore/std/algorithm.h>
+
 #include "UsedResources.h"              // for CUsedResources
 
 //////////////////////////////////////////////////////////////////////////
@@ -98,7 +100,12 @@ void CVarBlock::AddVariable(CVariableBase& var, const char* varName, unsigned ch
 //////////////////////////////////////////////////////////////////////////
 bool CVarBlock::DeleteVariable(IVariable* var, bool bRecursive)
 {
-    bool found = stl::find_and_erase(m_vars, var);
+    const auto variableIterator = AZStd::find(m_vars.begin(), m_vars.end(), var);
+    const bool found = variableIterator != m_vars.end();
+    if (found)
+    {
+        m_vars.erase(variableIterator);
+    }
 
     if (!found && bRecursive)
     {

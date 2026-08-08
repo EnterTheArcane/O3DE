@@ -615,8 +615,8 @@ void CSplineCtrl::TrackKey(const QPoint& p)
         float time, val;
 
         // Editing time & value.
-        Limit(point.rx(), m_rcSpline.left(), m_rcSpline.right());
-        Limit(point.ry(), m_rcSpline.top(), m_rcSpline.bottom());
+        point.rx() = AZ::GetClamp(point.rx(), m_rcSpline.left(), m_rcSpline.right());
+        point.ry() = AZ::GetClamp(point.ry(), m_rcSpline.top(), m_rcSpline.bottom());
         PointToTimeValue(point, time, val);
 
         int i;

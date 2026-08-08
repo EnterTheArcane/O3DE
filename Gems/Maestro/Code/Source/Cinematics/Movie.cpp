@@ -37,7 +37,6 @@
 #include <Maestro/Types/AnimNodeType.h>
 #include <Maestro/Types/AnimParamType.h>
 #include <Maestro/Types/SequenceType.h>
-#include <MathConversion.h>
 
 
 int CMovieSystem::m_mov_NoCutscenes = 0;
@@ -415,7 +414,7 @@ void CMovieSystem::AddSequence(IAnimSequence* sequence)
     else
     {
         AZ_Trace("CMovieSystem::AddSequence", "IAnimSequence %s already in m_sequences", sequenceEntityId.ToString().c_str());
-    }    
+    }
 }
 
 bool CMovieSystem::IsCutScenePlaying() const
@@ -759,7 +758,7 @@ void CMovieSystem::InternalStopAllSequences(bool bAbort, bool bAnimate)
         InternalStopSequence(m_playingSequences.begin()->sequence.get(), bAbort, bAnimate);
     }
 
-    stl::free_container(m_playingSequences);
+    decltype(m_playingSequences){}.swap(m_playingSequences);
 }
 
 bool CMovieSystem::InternalStopSequence(IAnimSequence* sequence, bool bAbort, bool bAnimate)
@@ -855,7 +854,7 @@ void CMovieSystem::StopAllCutScenes()
 
     if (m_playingSequences.empty())
     {
-        stl::free_container(m_playingSequences);
+        decltype(m_playingSequences){}.swap(m_playingSequences);
     }
 }
 
@@ -1387,7 +1386,13 @@ bool CMovieSystem::AddMovieListener(IAnimSequence* sequence, IMovieListener* pLi
         return false;
     }
 
-    return stl::push_back_unique(m_movieListenerMap[sequence], pListener);
+    auto& listeners = m_movieListenerMap[sequence];
+    if (AZStd::find(listeners.begin(), listeners.end(), pListener) != listeners.end())
+    {
+        return false;
+    }
+    listeners.push_back(pListener);
+    return true;
 }
 
 bool CMovieSystem::RemoveMovieListener(IAnimSequence* sequence, IMovieListener* pListener)
@@ -1398,7 +1403,14 @@ bool CMovieSystem::RemoveMovieListener(IAnimSequence* sequence, IMovieListener* 
         AZ_Printf("CMovieSystem::AddMovieListener", "Sequence %p unknown to CMovieSystem", sequence);
         return false;
     }
-    return stl::find_and_erase(m_movieListenerMap[sequence], pListener);
+    auto& listeners = m_movieListenerMap[sequence];
+    const auto listenerIterator = AZStd::find(listeners.begin(), listeners.end(), pListener);
+    if (listenerIterator == listeners.end())
+    {
+        return false;
+    }
+    listeners.erase(listenerIterator);
+    return true;
 }
 
 #if !defined(_RELEASE)
@@ -1634,7 +1646,9 @@ void CMovieSystem::SerializeNodeType(AnimNodeType& animNodeType, XmlNodeRef& xml
             {
                 AZ_Assert(m_animNodeStringToEnumMap.find(nodeTypeString.c_str()) != m_animNodeStringToEnumMap.end(),
                     "Node type %s is not found in string to enum map", nodeTypeString.c_str());
-                animNodeType = stl::find_in_map(m_animNodeStringToEnumMap, nodeTypeString.c_str(), AnimNodeType::Invalid);
+                const auto nodeTypeIterator = m_animNodeStringToEnumMap.find(nodeTypeString.c_str());
+                animNodeType =
+                    nodeTypeIterator != m_animNodeStringToEnumMap.end() ? nodeTypeIterator->second : AnimNodeType::Invalid;
             }
         }
     }
@@ -1712,7 +1726,10 @@ void CMovieSystem::LoadParamTypeFromXml(CAnimParamType& animParamType, const Xml
 
                 AZ_Assert(m_animParamStringToEnumMap.find(paramTypeString.c_str()) != m_animParamStringToEnumMap.end(),
                     "Param type %s is not found in string to enum map", paramTypeString.c_str());
-                animParamType.m_type = stl::find_in_map(m_animParamStringToEnumMap, paramTypeString.c_str(), AnimParamType::Invalid);
+                const auto paramTypeIterator = m_animParamStringToEnumMap.find(paramTypeString.c_str());
+                animParamType.m_type = paramTypeIterator != m_animParamStringToEnumMap.end()
+                    ? paramTypeIterator->second
+                    : AnimParamType::Invalid;
             }
         }
     }
@@ -1825,12 +1842,15 @@ void CMovieSystem::OnSequenceActivated(IAnimSequence* sequence)
 #ifdef MOVIESYSTEM_SUPPORT_EDITING
 AnimNodeType CMovieSystem::GetNodeTypeFromString(const char* pString) const
 {
-    return stl::find_in_map(m_animNodeStringToEnumMap, pString, AnimNodeType::Invalid);
+    const auto nodeTypeIterator = m_animNodeStringToEnumMap.find(pString);
+    return nodeTypeIterator != m_animNodeStringToEnumMap.end() ? nodeTypeIterator->second : AnimNodeType::Invalid;
 }
 
 CAnimParamType CMovieSystem::GetParamTypeFromString(const char* pString) const
 {
-    const AnimParamType paramType = stl::find_in_map(m_animParamStringToEnumMap, pString, AnimParamType::Invalid);
+    const auto paramTypeIterator = m_animParamStringToEnumMap.find(pString);
+    const AnimParamType paramType =
+        paramTypeIterator != m_animParamStringToEnumMap.end() ? paramTypeIterator->second : AnimParamType::Invalid;
 
     if (paramType != AnimParamType::Invalid)
     {
@@ -1840,4 +1860,3 @@ CAnimParamType CMovieSystem::GetParamTypeFromString(const char* pString) const
     return CAnimParamType(pString);
 }
 #endif
-

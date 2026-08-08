@@ -110,7 +110,7 @@ bool CFileUtil_impl::PathExists(const QString& strPath)
     return CFileUtil::PathExists(strPath);
 }
 
-bool CFileUtil_impl::GetDiskFileSize(const char* pFilePath, uint64& rOutSize)
+bool CFileUtil_impl::GetDiskFileSize(const char* pFilePath, AZ::u64& rOutSize)
 {
     return CFileUtil::GetDiskFileSize(pFilePath, rOutSize);
 }
@@ -150,7 +150,7 @@ IFileUtil::ECopyTreeResult CFileUtil_impl::MoveTree(const QString& strSourceDire
     return CFileUtil::MoveTree(strSourceDirectory, strTargetDirectory, boRecurse, boConfirmOverwrite);
 }
 
-uint32 CFileUtil_impl::GetAttributes(const char* filename, bool bUseSourceControl)
+AZ::u32 CFileUtil_impl::GetAttributes(const char* filename, bool bUseSourceControl)
 {
     return CFileUtil::GetAttributes(filename, bUseSourceControl);
 }
@@ -164,5 +164,4 @@ QString CFileUtil_impl::GetPath(const QString& path)
 {
     return Path::GetPath(path);
 }
-
 

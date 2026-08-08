@@ -16,7 +16,6 @@
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AssetBuilderSDK/SerializationDependencies.h>
 
-#include <CryCommon/platform.h>
 
 namespace BenchmarkAssetBuilder
 {

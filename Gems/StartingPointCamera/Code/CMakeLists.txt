@@ -21,7 +21,6 @@ ly_add_target(
             AZ::AzCore
             Gem::CameraFramework.Static
             Gem::LmbrCentral
-            Legacy::CryCommon
 )
 
 ly_add_target(
@@ -41,7 +40,6 @@ ly_add_target(
             Gem::${gem_name}.Static
             Gem::CameraFramework.Static
             Gem::LmbrCentral.Static
-            Legacy::CryCommon
     RUNTIME_DEPENDENCIES
         Gem::CameraFramework
 )

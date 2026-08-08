@@ -6,7 +6,6 @@
  *
  */
 
-#include <platform.h>
 
 #include <ScriptCanvasDeveloperEditor/EditorAutomation/EditorAutomationStates/ElementInteractionStates.h>
 

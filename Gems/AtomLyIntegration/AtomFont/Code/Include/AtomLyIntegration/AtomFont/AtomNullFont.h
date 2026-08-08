@@ -38,7 +38,7 @@ namespace AZ
         void DrawString([[maybe_unused]] float x, [[maybe_unused]] float y, [[maybe_unused]] const char* str, [[maybe_unused]] const bool asciiMultiLine, [[maybe_unused]] const TextDrawContext& ctx) override {}
         void DrawString([[maybe_unused]] float x, [[maybe_unused]] float y, [[maybe_unused]] float z, [[maybe_unused]] const char* str, [[maybe_unused]] const bool asciiMultiLine, [[maybe_unused]] const TextDrawContext& ctx) override {}
 
-        Vec2 GetTextSize([[maybe_unused]] const char* str, [[maybe_unused]] const bool asciiMultiLine, [[maybe_unused]] const TextDrawContext& ctx) override { return Vec2(0.0f, 0.0f); }
+        AZ::Vector2 GetTextSize([[maybe_unused]] const char* str, [[maybe_unused]] const bool asciiMultiLine, [[maybe_unused]] const TextDrawContext& ctx) override { return AZ::Vector2(0.0f, 0.0f); }
 
         size_t GetTextLength([[maybe_unused]] const char* str, [[maybe_unused]] const bool asciiMultiLine) const override { return 0; }
 
@@ -49,11 +49,11 @@ namespace AZ
         unsigned int GetEffectId([[maybe_unused]] const char* effectName) const override { return 0; }
         unsigned int GetNumEffects() const override { return 0; }
         const char* GetEffectName([[maybe_unused]] unsigned int effectId) const override { return nullptr; }
-        Vec2 GetMaxEffectOffset([[maybe_unused]] unsigned int effectId) const override { return Vec2(); }
+        AZ::Vector2 GetMaxEffectOffset([[maybe_unused]] unsigned int effectId) const override { return AZ::Vector2(); }
         bool DoesEffectHaveTransparency([[maybe_unused]] unsigned int effectId) const override { return false; }
 
         void AddCharsToFontTexture([[maybe_unused]] const char* chars, [[maybe_unused]] int glyphSizeX, [[maybe_unused]] int glyphSizeY) override {}
-        Vec2 GetKerning([[maybe_unused]] uint32_t leftGlyph, [[maybe_unused]] uint32_t rightGlyph, [[maybe_unused]] const TextDrawContext& ctx) const override { return Vec2(); }
+        AZ::Vector2 GetKerning([[maybe_unused]] uint32_t leftGlyph, [[maybe_unused]] uint32_t rightGlyph, [[maybe_unused]] const TextDrawContext& ctx) const override { return AZ::Vector2(); }
         float GetAscender([[maybe_unused]] const TextDrawContext& ctx) const override { return 0.0f; }
         float GetBaseline([[maybe_unused]] const TextDrawContext& ctx) const override { return 0.0f; }
         float GetSizeRatio() const override { return IFFontConstants::defaultSizeRatio; }

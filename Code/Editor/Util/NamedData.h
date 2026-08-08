@@ -14,6 +14,8 @@
 #include "MemoryBlock.h"
 #include "QtUtil.h"
 
+#include <map>
+
 class CPakFile;
 
 class CNamedData
@@ -52,6 +54,6 @@ private:
         bool bCompressed;
         bool bFastCompression;
     };
-    typedef std::map<QString, DataBlock*, stl::less_stricmp<QString> > TBlocks;
+    using TBlocks = std::map<QString, DataBlock*, Editor::CaseInsensitiveQStringLess>;
     TBlocks m_blocks;
 };

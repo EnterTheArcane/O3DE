@@ -6,8 +6,6 @@
  *
  */
 
-#include <ISystem.h>
-#include <IConsole.h>
 
 #include <Editor/View/Windows/MainWindow.h>
 #include <Editor/GraphCanvas/AutomationIds.h>

@@ -7,20 +7,23 @@
  */
 
 #include "Draw2d.h"
-#include <LyShine/UiRenderFormats.h>
 #include "LyShinePassDataBus.h"
+#include <LyShine/UiRenderFormats.h>
 
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/Math/MatrixUtils.h>
+#include <AzCore/Math/PackedVector3.h>
 #include <AzFramework/Font/FontInterface.h>
 
-#include <Atom/RPI.Public/Image/ImageSystemInterface.h>
-#include <Atom/RPI.Public/RPISystemInterface.h>
+#include <cstddef>
+
 #include <Atom/RHI/RHISystemInterface.h>
-#include <Atom/RPI.Public/Pass/RasterPass.h>
-#include <Atom/RPI.Public/Shader/Shader.h>
+#include <Atom/RPI.Public/Image/ImageSystemInterface.h>
 #include <Atom/RPI.Public/Image/StreamingImage.h>
+#include <Atom/RPI.Public/Pass/RasterPass.h>
+#include <Atom/RPI.Public/RPISystemInterface.h>
 #include <Atom/RPI.Public/RPIUtils.h>
+#include <Atom/RPI.Public/Shader/Shader.h>
 #include <Atom/RPI.Public/ViewportContextBus.h>
 
 namespace
@@ -36,11 +39,16 @@ namespace
     // Vertex format for Dynamic Draw Context
     struct Draw2dVertex
     {
-        Vec3 xyz;
+        AZ::PackedVector3f xyz;
         LyShine::UCol color;
-        Vec2 st;
+        AZ::PackedVector2f st;
     };
-}
+
+    static_assert(sizeof(Draw2dVertex) == 24);
+    static_assert(alignof(Draw2dVertex) == 4);
+    static_assert(offsetof(Draw2dVertex, color) == 12);
+    static_assert(offsetof(Draw2dVertex, st) == 16);
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC MEMBER FUNCTIONS
@@ -94,7 +102,9 @@ void CDraw2d::OnBootstrapSceneReady(AZ::RPI::Scene* bootstrapScene)
         // No viewport context specified, use main scene
         scene = bootstrapScene;
     }
-    AZ_Assert(scene != nullptr, "Attempting to create a DynamicDrawContext for a viewport context that has not been associated with a scene yet.");
+    AZ_Assert(
+        scene != nullptr,
+        "Attempting to create a DynamicDrawContext for a viewport context that has not been associated with a scene yet.");
 
     // Create and initialize a DynamicDrawContext for 2d drawing
 
@@ -112,13 +122,12 @@ void CDraw2d::OnBootstrapSceneReady(AZ::RPI::Scene* bootstrapScene)
     m_dynamicDraw = AZ::RPI::DynamicDrawInterface::Get()->CreateDynamicDrawContext();
     m_dynamicDraw->InitShader(shader);
     m_dynamicDraw->InitVertexFormat(
-        { {"POSITION", AZ::RHI::Format::R32G32B32_FLOAT},
-        {"COLOR", AZ::RHI::Format::B8G8R8A8_UNORM},
-        {"TEXCOORD0", AZ::RHI::Format::R32G32_FLOAT} });
-    m_dynamicDraw->AddDrawStateOptions(AZ::RPI::DynamicDrawContext::DrawStateOptions::PrimitiveType
-        | AZ::RPI::DynamicDrawContext::DrawStateOptions::BlendMode
-        | AZ::RPI::DynamicDrawContext::DrawStateOptions::DepthState
-        | AZ::RPI::DynamicDrawContext::DrawStateOptions::ShaderVariant);
+        { { "POSITION", AZ::RHI::Format::R32G32B32_FLOAT },
+          { "COLOR", AZ::RHI::Format::B8G8R8A8_UNORM },
+          { "TEXCOORD0", AZ::RHI::Format::R32G32_FLOAT } });
+    m_dynamicDraw->AddDrawStateOptions(
+        AZ::RPI::DynamicDrawContext::DrawStateOptions::PrimitiveType | AZ::RPI::DynamicDrawContext::DrawStateOptions::BlendMode |
+        AZ::RPI::DynamicDrawContext::DrawStateOptions::DepthState | AZ::RPI::DynamicDrawContext::DrawStateOptions::ShaderVariant);
     // Use scene as output scope (will render to the UiCanvas child pass of the LyShine pass)
     m_dynamicDraw->SetOutputScope(scene);
     m_dynamicDraw->InitDrawListTag(uiCanvasPass->GetDrawListTag());
@@ -135,11 +144,10 @@ void CDraw2d::OnBootstrapSceneReady(AZ::RPI::Scene* bootstrapScene)
         {
             const AZ::RHI::ShaderResourceGroupLayout* layout = drawSrg->GetLayout();
             m_shaderData.m_imageInputIndex = layout->FindShaderInputImageIndex(AZ::Name(textureIndexName));
-            AZ_Error("Draw2d", m_shaderData.m_imageInputIndex.IsValid(), "Failed to find shader input constant %s.",
-                textureIndexName);
+            AZ_Error("Draw2d", m_shaderData.m_imageInputIndex.IsValid(), "Failed to find shader input constant %s.", textureIndexName);
             m_shaderData.m_viewProjInputIndex = layout->FindShaderInputConstantIndex(AZ::Name(worldToProjIndexName));
-            AZ_Error("Draw2d", m_shaderData.m_viewProjInputIndex.IsValid(), "Failed to find shader input constant %s.",
-                worldToProjIndexName);
+            AZ_Error(
+                "Draw2d", m_shaderData.m_viewProjInputIndex.IsValid(), "Failed to find shader input constant %s.", worldToProjIndexName);
         }
 
         // Cache shader variants that will be used
@@ -156,8 +164,14 @@ void CDraw2d::OnBootstrapSceneReady(AZ::RPI::Scene* bootstrapScene)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Draw a textured quad with the top left corner at the given position.
-void CDraw2d::DrawImage(AZ::Data::Instance<AZ::RPI::Image> image, AZ::Vector2 position, AZ::Vector2 size, float opacity,
-    float rotation, const AZ::Vector2* pivotPoint, const AZ::Vector2* minMaxTexCoords,
+void CDraw2d::DrawImage(
+    AZ::Data::Instance<AZ::RPI::Image> image,
+    AZ::Vector2 position,
+    AZ::Vector2 size,
+    float opacity,
+    float rotation,
+    const AZ::Vector2* pivotPoint,
+    const AZ::Vector2* minMaxTexCoords,
     ImageOptions* imageOptions)
 {
     ImageOptions* actualImageOptions = (imageOptions) ? imageOptions : &m_defaultImageOptions;
@@ -213,9 +227,16 @@ void CDraw2d::DrawImage(AZ::Data::Instance<AZ::RPI::Image> image, AZ::Vector2 po
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void CDraw2d::DrawImageAligned(AZ::Data::Instance<AZ::RPI::Image> image, AZ::Vector2 position, AZ::Vector2 size,
-    HAlign horizontalAlignment, VAlign verticalAlignment,
-    float opacity, float rotation, const AZ::Vector2* minMaxTexCoords, ImageOptions* imageOptions)
+void CDraw2d::DrawImageAligned(
+    AZ::Data::Instance<AZ::RPI::Image> image,
+    AZ::Vector2 position,
+    AZ::Vector2 size,
+    HAlign horizontalAlignment,
+    VAlign verticalAlignment,
+    float opacity,
+    float rotation,
+    const AZ::Vector2* minMaxTexCoords,
+    ImageOptions* imageOptions)
 {
     AZ::Vector2 alignedPosition = Draw2dHelper::Align(position, size, horizontalAlignment, verticalAlignment);
 
@@ -223,8 +244,12 @@ void CDraw2d::DrawImageAligned(AZ::Data::Instance<AZ::RPI::Image> image, AZ::Vec
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void CDraw2d::DrawQuad(AZ::Data::Instance<AZ::RPI::Image> image, VertexPosColUV* verts, Rounding pixelRounding,
-    bool clamp, const CDraw2d::RenderState& renderState)
+void CDraw2d::DrawQuad(
+    AZ::Data::Instance<AZ::RPI::Image> image,
+    VertexPosColUV* verts,
+    Rounding pixelRounding,
+    bool clamp,
+    const CDraw2d::RenderState& renderState)
 {
     // define quad
     DeferredQuad quad;
@@ -244,13 +269,12 @@ void CDraw2d::DrawQuad(AZ::Data::Instance<AZ::RPI::Image> image, VertexPosColUV*
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void CDraw2d::DrawLine(AZ::Vector2 start, AZ::Vector2 end, AZ::Color color, Rounding pixelRounding,
-    const CDraw2d::RenderState& renderState)
+void CDraw2d::DrawLine(AZ::Vector2 start, AZ::Vector2 end, AZ::Color color, Rounding pixelRounding, const CDraw2d::RenderState& renderState)
 {
     auto image = AZ::RPI::ImageSystemInterface::Get()->GetSystemImage(AZ::RPI::SystemImage::White);
 
     // define line
-    uint32 packedColor = PackARGB8888(color);
+    AZ::u32 packedColor = PackARGB8888(color);
 
     DeferredLine line;
     line.m_image = image;
@@ -272,8 +296,8 @@ void CDraw2d::DrawLine(AZ::Vector2 start, AZ::Vector2 end, AZ::Color color, Roun
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void CDraw2d::DrawLineTextured(AZ::Data::Instance<AZ::RPI::Image> image, VertexPosColUV* verts, Rounding pixelRounding,
-    const CDraw2d::RenderState& renderState)
+void CDraw2d::DrawLineTextured(
+    AZ::Data::Instance<AZ::RPI::Image> image, VertexPosColUV* verts, Rounding pixelRounding, const CDraw2d::RenderState& renderState)
 {
     // define line
     DeferredLine line;
@@ -313,23 +337,36 @@ void CDraw2d::DrawText(const char* textString, AZ::Vector2 position, float point
     {
         // calculate the drop shadow pos and render it
         AZ::Vector2 dropShadowPosition(position + actualTextOptions->dropShadowOffset);
-        DrawTextInternal(textString, fontId, actualTextOptions->effectIndex,
-            dropShadowPosition, pointSize, actualTextOptions->dropShadowColor,
+        DrawTextInternal(
+            textString,
+            fontId,
+            actualTextOptions->effectIndex,
+            dropShadowPosition,
+            pointSize,
+            actualTextOptions->dropShadowColor,
             actualTextOptions->rotation,
-            actualTextOptions->horizontalAlignment, actualTextOptions->verticalAlignment,
+            actualTextOptions->horizontalAlignment,
+            actualTextOptions->verticalAlignment,
             actualTextOptions->depthTestEnabled);
     }
 
     // draw the text string
     AZ::Color textColor = AZ::Color::CreateFromVector3AndFloat(actualTextOptions->color, opacity);
-    DrawTextInternal(textString, fontId, actualTextOptions->effectIndex,
-        position, pointSize, textColor,
+    DrawTextInternal(
+        textString,
+        fontId,
+        actualTextOptions->effectIndex,
+        position,
+        pointSize,
+        textColor,
         actualTextOptions->rotation,
-        actualTextOptions->horizontalAlignment, actualTextOptions->verticalAlignment,
+        actualTextOptions->horizontalAlignment,
+        actualTextOptions->verticalAlignment,
         actualTextOptions->depthTestEnabled);
 }
 
-void CDraw2d::DrawRectOutlineTextured(AZ::Data::Instance<AZ::RPI::Image> image,
+void CDraw2d::DrawRectOutlineTextured(
+    AZ::Data::Instance<AZ::RPI::Image> image,
     UiTransformInterface::RectPoints points,
     AZ::Vector2 rightVec,
     AZ::Vector2 downVec,
@@ -372,7 +409,7 @@ void CDraw2d::DrawRectOutlineTextured(AZ::Data::Instance<AZ::RPI::Image> image,
     // if the rect is small there may not be space for the half of the outline that
     // is inside the rect. If this is the case reduce the innerOffset so the inner
     // points are coincident. Adjust the UVs according to keep a 1-1 texel to pixel ratio.
-    float minDimension = min(rectWidth, rectHeight);
+    float minDimension = AZStd::min(rectWidth, rectHeight);
     if (innerOffset > minDimension * 0.5f)
     {
         float oldInnerOffset = innerOffset;
@@ -533,11 +570,11 @@ AZ::Data::Instance<AZ::RPI::Image> CDraw2d::LoadTexture(const AZStd::string& pat
     // Use GenerateAssetIdTEMP instead of GetAssetIdByPath so that it will return a valid AssetId anyways
     AZ::Data::AssetId streamingImageAssetId;
     AZ::Data::AssetCatalogRequestBus::BroadcastResult(
-        streamingImageAssetId, &AZ::Data::AssetCatalogRequestBus::Events::GenerateAssetIdTEMP,
-        pathName.c_str());
+        streamingImageAssetId, &AZ::Data::AssetCatalogRequestBus::Events::GenerateAssetIdTEMP, pathName.c_str());
     streamingImageAssetId.m_subId = AZ::RPI::StreamingImageAsset::GetImageAssetSubId();
 
-    auto streamingImageAsset = AZ::Data::AssetManager::Instance().FindOrCreateAsset<AZ::RPI::StreamingImageAsset>(streamingImageAssetId, AZ::Data::AssetLoadBehavior::PreLoad);
+    auto streamingImageAsset = AZ::Data::AssetManager::Instance().FindOrCreateAsset<AZ::RPI::StreamingImageAsset>(
+        streamingImageAssetId, AZ::Data::AssetLoadBehavior::PreLoad);
     AZ::Data::Instance<AZ::RPI::Image> image = AZ::RPI::StreamingImage::FindOrCreate(streamingImageAsset);
     if (!image)
     {
@@ -554,7 +591,7 @@ AZ::Data::Instance<AZ::RPI::Image> CDraw2d::LoadTexture(const AZStd::string& pat
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void CDraw2d::RotatePointsAboutPivot(AZ::Vector2* points, [[maybe_unused]] int numPoints, AZ::Vector2 pivot, float angle) const
 {
-    float angleRadians = DEG2RAD(angle);
+    float angleRadians = angle * (AZ::Constants::Pi / 180.0f);
     AZ::Matrix3x3 rotationMatrix = AZ::Matrix3x3::CreateRotationZ(angleRadians);
 
     for (int i = 0; i < 4; ++i)
@@ -568,9 +605,17 @@ void CDraw2d::RotatePointsAboutPivot(AZ::Vector2* points, [[maybe_unused]] int n
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void CDraw2d::DrawTextInternal(const char* textString, AzFramework::FontId fontId, unsigned int effectIndex,
-    AZ::Vector2 position, float pointSize, AZ::Color color, float rotation,
-    HAlign horizontalAlignment, VAlign verticalAlignment, bool depthTestEnabled)
+void CDraw2d::DrawTextInternal(
+    const char* textString,
+    AzFramework::FontId fontId,
+    unsigned int effectIndex,
+    AZ::Vector2 position,
+    float pointSize,
+    AZ::Color color,
+    float rotation,
+    HAlign horizontalAlignment,
+    VAlign verticalAlignment,
+    bool depthTestEnabled)
 {
     // FFont.cpp uses the alpha value of the color to decide whether to use the color, if the alpha value is zero
     // (in a ColorB format) then the color set via SetColor is ignored and it usually ends up drawing with an alpha of 1.
@@ -635,7 +680,7 @@ void CDraw2d::DrawTextInternal(const char* textString, AzFramework::FontId fontI
     if (rotation != 0.0f)
     {
         // rotate around the position (if aligned to center will rotate about center etc)
-        float rotRad = DEG2RAD(rotation);
+        float rotRad = rotation * (AZ::Constants::Pi / 180.0f);
         AZ::Vector3 pivot(position.GetX(), position.GetY(), 0.0f);
         AZ::Matrix3x4 moveToPivotSpaceMat = AZ::Matrix3x4::CreateTranslation(-pivot);
         AZ::Matrix3x4 rotMat = AZ::Matrix3x4::CreateRotationZ(rotRad);
@@ -730,25 +775,24 @@ AZ::RPI::ViewportContextPtr CDraw2d::GetViewportContext() const
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void CDraw2d::DeferredQuad::Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
+void CDraw2d::DeferredQuad::Draw(
+    AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
     const Draw2dShaderData& shaderData,
     AZ::RPI::ViewportContextPtr viewportContext) const
 {
-    const int32 NUM_VERTS = 6;
+    const AZ::s32 NUM_VERTS = 6;
 
-    const float z = 1.0f;   // depth test disabled, if writing Z this will write at far plane
+    const float z = 1.0f; // depth test disabled, if writing Z this will write at far plane
 
     Draw2dVertex vertices[NUM_VERTS];
-    const int vertIndex[NUM_VERTS] = {
-        0, 1, 3, 3, 1, 2
-    };
+    const int vertIndex[NUM_VERTS] = { 0, 1, 3, 3, 1, 2 };
 
     for (int i = 0; i < NUM_VERTS; ++i)
     {
         int j = vertIndex[i];
-        vertices[i].xyz = Vec3(m_points[j].GetX(), m_points[j].GetY(), z);
+        vertices[i].xyz = AZ::PackedVector3f(m_points[j].GetX(), m_points[j].GetY(), z);
         vertices[i].color.dcolor = m_packedColors[j];
-        vertices[i].st = Vec2(m_texCoords[j].GetX(), m_texCoords[j].GetY());
+        vertices[i].st = AZ::PackedVector2f(m_texCoords[j].GetX(), m_texCoords[j].GetY());
     }
 
     dynamicDraw->SetShaderVariant(m_clamp ? shaderData.m_shaderOptionsClamp : shaderData.m_shaderOptionsWrap);
@@ -797,21 +841,22 @@ void CDraw2d::DeferredQuad::Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynam
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void CDraw2d::DeferredLine::Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
+void CDraw2d::DeferredLine::Draw(
+    AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
     const Draw2dShaderData& shaderData,
     AZ::RPI::ViewportContextPtr viewportContext) const
 {
-    const float z = 1.0f;   // depth test disabled, if writing Z this will write at far plane
+    const float z = 1.0f; // depth test disabled, if writing Z this will write at far plane
 
-    const int32 NUM_VERTS = 2;
+    const AZ::s32 NUM_VERTS = 2;
 
     Draw2dVertex vertices[NUM_VERTS];
 
     for (int i = 0; i < NUM_VERTS; ++i)
     {
-        vertices[i].xyz = Vec3(m_points[i].GetX(), m_points[i].GetY(), z);
+        vertices[i].xyz = AZ::PackedVector3f(m_points[i].GetX(), m_points[i].GetY(), z);
         vertices[i].color.dcolor = m_packedColors[i];
-        vertices[i].st = Vec2(m_texCoords[i].GetX(), m_texCoords[i].GetY());
+        vertices[i].st = AZ::PackedVector2f(m_texCoords[i].GetX(), m_texCoords[i].GetY());
     }
 
     // Set up per draw SRG
@@ -853,19 +898,20 @@ void CDraw2d::DeferredLine::Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynam
     dynamicDraw->DrawLinear(vertices, NUM_VERTS, drawSrg);
 }
 
-void CDraw2d::DeferredRectOutline::Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
+void CDraw2d::DeferredRectOutline::Draw(
+    AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
     const Draw2dShaderData& shaderData,
     AZ::RPI::ViewportContextPtr viewportContext) const
 {
     // Create the 8 verts in the right vertex format for the dynamic draw context
     Draw2dVertex vertices[NUM_VERTS];
-    const float z = 1.0f;   // depth test disabled, if writing Z this will write at far plane
-    uint32 packedColor = PackARGB8888(m_color);
+    const float z = 1.0f; // depth test disabled, if writing Z this will write at far plane
+    AZ::u32 packedColor = PackARGB8888(m_color);
     for (int i = 0; i < NUM_VERTS; ++i)
     {
-        vertices[i].xyz = Vec3(m_verts2d[i].GetX(), m_verts2d[i].GetY(), z);
+        vertices[i].xyz = AZ::PackedVector3f(m_verts2d[i].GetX(), m_verts2d[i].GetY(), z);
         vertices[i].color.dcolor = packedColor;
-        vertices[i].st = Vec2(m_uvs[i].GetX(), m_uvs[i].GetY());
+        vertices[i].st = AZ::PackedVector2f(m_uvs[i].GetX(), m_uvs[i].GetY());
     }
 
     // The indices are for four quads (one for each side of the rect).
@@ -881,13 +927,12 @@ void CDraw2d::DeferredRectOutline::Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext
     //
     // The two triangles would be 0,1,2 and 2,1,3
     //
-    static constexpr int32 NUM_INDICES = 24;
-    uint16 indices[NUM_INDICES] =
-    {
-        0, 1, 4,    4, 1, 5,    // top quad
-        6, 7, 2,    2, 7, 3,    // bottom quad
-        0, 4, 2,    2, 4, 6,    // left quad
-        5, 1, 7,    1, 7, 3,    // right quad
+    static constexpr AZ::s32 NUM_INDICES = 24;
+    AZ::u16 indices[NUM_INDICES] = {
+        0, 1, 4, 4, 1, 5, // top quad
+        6, 7, 2, 2, 7, 3, // bottom quad
+        0, 4, 2, 2, 4, 6, // left quad
+        5, 1, 7, 1, 7, 3, // right quad
     };
 
     // Set up per draw SRG
@@ -932,7 +977,8 @@ void CDraw2d::DeferredRectOutline::Draw(AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void CDraw2d::DeferredText::Draw([[maybe_unused]] AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
+void CDraw2d::DeferredText::Draw(
+    [[maybe_unused]] AZ::RHI::Ptr<AZ::RPI::DynamicDrawContext> dynamicDraw,
     [[maybe_unused]] const Draw2dShaderData& shaderData,
     [[maybe_unused]] AZ::RPI::ViewportContextPtr viewportContext) const
 {

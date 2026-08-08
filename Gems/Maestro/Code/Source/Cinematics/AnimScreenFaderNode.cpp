@@ -170,7 +170,7 @@ namespace Maestro
                     {
                         ratio = 0.f;
                     }
-                    ratio = MIN(ratio, 1.f);
+                    ratio = AZStd::min(ratio, 1.f);
 
                     switch (key.m_fadeChangeType)
                     {

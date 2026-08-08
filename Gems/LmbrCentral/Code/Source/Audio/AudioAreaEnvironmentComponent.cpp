@@ -21,7 +21,6 @@
 #include <LmbrCentral/Audio/AudioProxyComponentBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 
-#include <ISystem.h>
 
 namespace LmbrCentral
 {

@@ -24,7 +24,6 @@
 #include <AzFramework/Entity/GameEntityContextBus.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
 
-#include <ISystem.h>
 
 #include <Atom/RHI/RHISystemInterface.h>
 

@@ -192,7 +192,7 @@ AZ::Color ColorGammaToLinear(const QColor& col)
     return gammaColor.GammaToLinear();
 }
 
-QColor ColorToQColor(uint32 color)
+QColor ColorToQColor(AZ::u32 color)
 {
     return QColor::fromRgbF((float)GetRValue(color) / 255.0f,
         (float)GetGValue(color) / 255.0f,
@@ -245,4 +245,3 @@ namespace EditorUtils
     }
 
 } // namespace EditorUtils
-

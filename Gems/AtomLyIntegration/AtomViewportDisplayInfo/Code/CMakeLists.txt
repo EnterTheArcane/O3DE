@@ -19,8 +19,8 @@ ly_add_target(
     BUILD_DEPENDENCIES
         PRIVATE
             AZ::AzCore
+            AZ::AzFramework
             AZ::AtomCore
-            Legacy::CryCommon
             Gem::Atom_RHI.Reflect
             Gem::Atom_RPI.Public
 )
@@ -61,4 +61,3 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
         LABELS REQUIRES_tiaf
     )
 endif()
-
