@@ -49,4 +49,5 @@ set(FILES
     Tests/Benchmarks/PhysXSceneQueryBenchmarks.cpp
     Tests/Benchmarks/PhysXRigidBodyBenchmarks.cpp
     Tests/Benchmarks/PhysXJointBenchmarks.cpp
+    Tests/Benchmarks/PhysXMatchedBenchmarks.cpp
 )

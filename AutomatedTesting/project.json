@@ -17,6 +17,7 @@
         "Atom_TestData",
         "AudioSystem",
         "AutomatedTesting",
+        "Box3D",
         "Camera",
         "CameraFramework",
         "CertificateManager",

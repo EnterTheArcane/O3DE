@@ -1,0 +1,2148 @@
+diff --git a/include/box3d/box3d.h b/include/box3d/box3d.h
+index 2275663..f2d8af5 100644
+--- a/include/box3d/box3d.h
++++ b/include/box3d/box3d.h
+@@ -123,6 +123,13 @@ B3_API float b3World_CastMover( b3WorldId worldId, b3Pos origin, const b3Capsule
+ B3_API void b3World_CollideMover( b3WorldId worldId, b3Pos origin, const b3Capsule* mover, b3QueryFilter filter,
+ 								  b3PlaneResultFcn* fcn, void* context );
+ 
++/// Collide a capsule mover with a bounded per-shape plane buffer. The callback receives at most planeCapacity planes
++/// per shape. The two ignored bodies are excluded before narrow-phase work. The return value is true if a shape produced
++/// more planes than the buffer could hold.
++B3_API bool b3World_CollideMoverWithCapacity( b3WorldId worldId, b3Pos origin, const b3Capsule* mover, int planeCapacity,
++											  bool ignoreSensors, b3BodyId ignoredBodyA, b3BodyId ignoredBodyB, b3QueryFilter filter,
++											  b3PlaneResultFcn* fcn, void* context );
++
+ /// Enable/disable sleep. If your application does not need sleeping, you can gain some performance
+ /// by disabling sleep completely at the world level.
+ /// @see b3WorldDef
+diff --git a/include/box3d/types.h b/include/box3d/types.h
+index 2c75977..382be02 100644
+--- a/include/box3d/types.h
++++ b/include/box3d/types.h
+@@ -881,7 +881,7 @@ typedef struct b3SphericalJointDef
+ 	/// A flag to enable the cone limit. The cone is centered on the frameA z-axis.
+ 	bool enableConeLimit;
+ 
+-	/// The angle for the cone limit in radians. Valid range is [0, pi]
++	/// The angle for the cone limit in radians. Valid range is [0, pi / 2]
+ 	float coneAngle;
+ 
+ 	/// A flag to enable the twist limit. The twist is centered on the frameB z-axis.
+@@ -1158,6 +1158,15 @@ typedef struct b3ContactHitEvent
+ 	/// User material on shape B
+ 	uint64_t userMaterialIdB;
+ 
++	/// Triangle index if shape A is a mesh, height field, or compound mesh child
++	int triangleIndex;
++
++	/// Child index if shape A is a compound
++	int childIndexA;
++
++	/// Child index if shape B is a compound
++	int childIndexB;
++
+ } b3ContactHitEvent;
+ 
+ /// Contact events are buffered in the world and are available
+@@ -1259,6 +1268,12 @@ typedef struct b3ContactData
+ 	/// The second shape id.
+ 	b3ShapeId shapeIdB;
+ 
++	/// Child index if shape A is a compound.
++	int childIndexA;
++
++	/// Child index if shape B is a compound.
++	int childIndexB;
++
+ 	/// The contact manifold. This points to internal data and may become invalid. Do not store
+ 	/// this pointer.
+ 	const struct b3Manifold* manifolds;
+@@ -1484,6 +1499,9 @@ typedef struct b3BodyCastResult
+ 	/// The triangle index if the shape is a mesh or height-field.
+ 	int triangleIndex;
+ 
++	/// The child index if the shape is a compound.
++	int childIndex;
++
+ 	/// The user material id at the hit point. This can be per triangle
+ 	/// if the shape is a mesh, height-field, or compound with child mesh.
+ 	uint64_t userMaterialId;
+diff --git a/src/body.c b/src/body.c
+index aa4e91e..4bded3a 100644
+--- a/src/body.c
++++ b/src/body.c
+@@ -550,7 +550,7 @@ float b3Body_GetClosestPoint( b3BodyId bodyId, b3Vec3* result, b3Vec3 target )
+ 
+ 	// Target rides in frame A at the origin, so the relative pose of the shape in A is the body transform
+ 	input.transform = transform;
+-	input.useRadii = false;
++	input.useRadii = true;
+ 
+ 	int shapeId = body->headShapeId;
+ 	while ( shapeId != B3_NULL_INDEX )
+@@ -634,6 +634,7 @@ b3BodyCastResult b3Body_CastRay( b3BodyId bodyId, b3Pos origin, b3Vec3 translati
+ 			.normal = shapeOutput.normal,
+ 			.fraction = shapeOutput.fraction,
+ 			.triangleIndex = shapeOutput.triangleIndex,
++			.childIndex = shapeOutput.childIndex,
+ 			.userMaterialId = userMaterialId,
+ 			.iterations = shapeOutput.iterations,
+ 			.hit = true,
+@@ -699,6 +700,7 @@ b3BodyCastResult b3Body_CastShape( b3BodyId bodyId, b3Pos origin, const b3ShapeP
+ 			.normal = shapeOutput.normal,
+ 			.fraction = shapeOutput.fraction,
+ 			.triangleIndex = shapeOutput.triangleIndex,
++			.childIndex = shapeOutput.childIndex,
+ 			.userMaterialId = userMaterialId,
+ 			.iterations = shapeOutput.iterations,
+ 			.hit = true,
+@@ -759,6 +761,7 @@ int b3Body_CollideMover( b3BodyId bodyId, b3BodyPlaneResult* bodyPlanes, int pla
+ 
+ 	int resultCount = 0;
+ 	b3Body* body = b3GetBodyFullId( world, bodyId );
++	b3PlaneResult* planes = b3StackAlloc( &world->stack, planeCapacity * (int)sizeof( b3PlaneResult ), "body mover planes" );
+ 
+ 	b3Transform transform = b3ToRelativeTransform( bodyTransform, origin );
+ 
+@@ -773,27 +776,21 @@ int b3Body_CollideMover( b3BodyId bodyId, b3BodyPlaneResult* bodyPlanes, int pla
+ 			continue;
+ 		}
+ 
+-		b3ShapeType type = shape->type;
+-		if ( type != b3_sphereShape && type != b3_capsuleShape && type != b3_hullShape )
+-		{
+-			continue;
+-		}
+-
+-		b3PlaneResult plane;
+-		int count = b3CollideMover( &plane, 1, shape, transform, mover );
+-
+-		if ( count > 0 )
++		int count = b3CollideMover( planes, planeCapacity - resultCount, shape, transform, mover );
++		b3ShapeId id = { shape->id + 1, bodyId.world0, shape->generation };
++		for ( int i = 0; i < count; ++i )
+ 		{
+-			b3ShapeId id = { shape->id + 1, bodyId.world0, shape->generation };
+-			bodyPlanes[resultCount] = (b3BodyPlaneResult){ .shapeId = id, .result = plane };
++			bodyPlanes[resultCount] = (b3BodyPlaneResult){ .shapeId = id, .result = planes[i] };
+ 			resultCount += 1;
+ 			if ( resultCount == planeCapacity )
+ 			{
++				b3StackFree( &world->stack, planes );
+ 				return resultCount;
+ 			}
+ 		}
+ 	}
+ 
++	b3StackFree( &world->stack, planes );
+ 	return resultCount;
+ }
+ 
+diff --git a/src/compound.c b/src/compound.c
+index 29da3c6..28eee73 100644
+--- a/src/compound.c
++++ b/src/compound.c
+@@ -261,6 +261,16 @@ b3CompoundData* b3CreateCompound( const b3CompoundDef* def )
+ 		B3_ASSERT( false );
+ 		return NULL;
+ 	}
++	int materialCapacity = convexCount;
++	for ( int i = 0; i < def->meshCount; ++i )
++	{
++		if ( def->meshes[i].materialCount <= 0 || def->meshes[i].materialCount > B3_MAX_COMPOUND_MESH_MATERIALS )
++		{
++			B3_ASSERT( false );
++			return NULL;
++		}
++		materialCapacity += def->meshes[i].materialCount;
++	}
+ 
+ 	b3DynamicTree tree = b3DynamicTree_Create( shapeCount );
+ 
+@@ -276,14 +286,6 @@ b3CompoundData* b3CreateCompound( const b3CompoundDef* def )
+ 	int sphereCount = def->sphereCount;
+ 	b3CompoundSphere* sphereInstances = b3AllocZeroed( sphereCount * sizeof( b3CompoundSphere ) );
+ 
+-	// Determine material capacity
+-	int materialCapacity = convexCount;
+-	for ( int i = 0; i < def->meshCount; ++i )
+-	{
+-		B3_ASSERT( def->meshes[i].materialCount > 0 );
+-		materialCapacity += def->meshes[i].materialCount;
+-	}
+-
+ 	// Material map for convex material sharing. Mesh materials are not shared for simplicity.
+ 	b3MaterialMap materialMap;
+ 	b3MaterialMap_init( &materialMap );
+diff --git a/src/contact.c b/src/contact.c
+index 3486e3c..e9f2780 100644
+--- a/src/contact.c
++++ b/src/contact.c
+@@ -79,6 +79,8 @@ b3ContactData b3Contact_GetData( b3ContactId contactId )
+ 		.world0 = contactId.world0,
+ 		.generation = shapeB->generation,
+ 	};
++	data.childIndexA = shapeA->type == b3_compoundShape ? contact->childIndex : -1;
++	data.childIndexB = shapeB->type == b3_compoundShape ? contact->childIndex : -1;
+ 
+ 	if ( contact->manifoldCount > 0 )
+ 	{
+diff --git a/src/core.c b/src/core.c
+index d6a09b0..f9ddcaa 100644
+--- a/src/core.c
++++ b/src/core.c
+@@ -15,10 +15,11 @@
+ #include "box3d/constants.h"
+ #include "box3d/math_functions.h"
+ 
++#include <limits.h>
+ #include <stdarg.h>
+ #include <string.h>
+ 
+-#ifdef BOX2D_PROFILE
++#ifdef BOX3D_PROFILE
+ 
+ #include <tracy/TracyC.h>
+ #define b3TracyCAlloc( ptr, size ) TracyCAlloc( ptr, size )
+@@ -147,14 +148,21 @@ void* b3Alloc( size_t size )
+ 	{
+ 		return NULL;
+ 	}
++	if ( size > (size_t)( INT_MAX - ( B3_ALIGNMENT - 1 ) ) )
++	{
++		B3_ASSERT( false );
++		return NULL;
++	}
++
++	int requestedSize = (int)size;
+ 
+ 	// This could cause some sharing issues, however Box3D rarely calls b3Alloc.
+ 	// todo this is not true, Box3D allocates a lot.
+-	b3AtomicFetchAddInt( &b3_byteCount, (int)size );
++	b3AtomicFetchAddInt( &b3_byteCount, requestedSize );
+ 
+-	// Allocation must be a multiple of 32 or risk a seg fault
++	// Allocation must be a multiple of the requested alignment or risk a seg fault.
+ 	// https://en.cppreference.com/w/c/memory/aligned_alloc
+-	int size64 = ( ( (int)size - 1 ) | 0x3F ) + 1;
++	int size64 = ( ( requestedSize - 1 ) | ( B3_ALIGNMENT - 1 ) ) + 1;
+ 
+ 	if ( b3_allocFcn != NULL )
+ 	{
+diff --git a/src/dynamic_tree.c b/src/dynamic_tree.c
+index 92be1a8..fc98394 100644
+--- a/src/dynamic_tree.c
++++ b/src/dynamic_tree.c
+@@ -1261,6 +1261,8 @@ b3TreeStats b3DynamicTree_RayCast( const b3DynamicTree* tree, const b3RayCastInp
+ 
+ 	b3Vec3 p1 = input->origin;
+ 	b3Vec3 d = input->translation;
++	int zeroComponentCount = ( d.x == 0.0f ) + ( d.y == 0.0f ) + ( d.z == 0.0f );
++	bool axisAligned = zeroComponentCount >= 2;
+ 
+ 	b3V32 pv1 = b3LoadV( &p1.x );
+ 	b3V32 dv = b3LoadV( &d.x );
+@@ -1303,13 +1305,16 @@ b3TreeStats b3DynamicTree_RayCast( const b3DynamicTree* tree, const b3RayCastInp
+ 			continue;
+ 		}
+ 
+-		b3V32 lower = b3LoadV( &nodeAABB.lowerBound.x );
+-		b3V32 upper = b3LoadV( &nodeAABB.upperBound.x );
+-
+-		bool edgeOverlap = b3TestBoundsRayOverlap( lower, upper, pv1, dv );
+-		if ( edgeOverlap == false )
++		if ( axisAligned == false )
+ 		{
+-			continue;
++			b3V32 lower = b3LoadV( &nodeAABB.lowerBound.x );
++			b3V32 upper = b3LoadV( &nodeAABB.upperBound.x );
++
++			bool edgeOverlap = b3TestBoundsRayOverlap( lower, upper, pv1, dv );
++			if ( edgeOverlap == false )
++			{
++				continue;
++			}
+ 		}
+ 
+ 		if ( b3IsLeaf( node ) )
+@@ -1343,7 +1348,7 @@ b3TreeStats b3DynamicTree_RayCast( const b3DynamicTree* tree, const b3RayCastInp
+ 			{
+ 				b3Vec3 c1 = b3AABB_Center( nodes[node->children.child1].aabb );
+ 				b3Vec3 c2 = b3AABB_Center( nodes[node->children.child2].aabb );
+-				if ( b3DistanceSquared( c1, p1 ) < b3DistanceSquared( c2, p1 ) )
++				if ( b3Dot( b3Sub( c1, p1 ), d ) < b3Dot( b3Sub( c2, p1 ), d ) )
+ 				{
+ 					stack[stackCount++] = node->children.child2;
+ 					stack[stackCount++] = node->children.child1;
+diff --git a/src/height_field.c b/src/height_field.c
+index 1b0307f..8ea87c1 100644
+--- a/src/height_field.c
++++ b/src/height_field.c
+@@ -1203,6 +1203,11 @@ void b3QueryHeightField( const b3HeightFieldData* heightField, b3AABB bounds, b3
+ 
+ int b3CollideMoverAndHeightField( b3PlaneResult* planes, int capacity, const b3HeightFieldData* shape, const b3Capsule* mover )
+ {
++	if ( capacity == 0 )
++	{
++		return 0;
++	}
++
+ 	b3DistanceInput distanceInput = { 0 };
+ 	distanceInput.proxyB = (b3ShapeProxy){ &mover->center1, 2, 0.0f };
+ 	distanceInput.transform = b3Transform_identity;
+@@ -1281,7 +1286,11 @@ int b3CollideMoverAndHeightField( b3PlaneResult* planes, int capacity, const b3H
+ 
+ 				if ( distanceOutput.distance == 0.0f )
+ 				{
+-					// todo SAT
++					planeCount += b3CollideMoverAndTriangle( planes + planeCount, triangleVertices, mover );
++					if ( planeCount == capacity )
++					{
++						return planeCount;
++					}
+ 				}
+ 				else if ( distanceOutput.distance <= mover->radius )
+ 				{
+@@ -1309,7 +1318,11 @@ int b3CollideMoverAndHeightField( b3PlaneResult* planes, int capacity, const b3H
+ 
+ 				if ( distanceOutput.distance == 0.0f )
+ 				{
+-					// todo SAT
++					planeCount += b3CollideMoverAndTriangle( planes + planeCount, triangleVertices, mover );
++					if ( planeCount == capacity )
++					{
++						return planeCount;
++					}
+ 				}
+ 				else if ( distanceOutput.distance <= mover->radius )
+ 				{
+diff --git a/src/hull.c b/src/hull.c
+index 75bace9..45c119b 100644
+--- a/src/hull.c
++++ b/src/hull.c
+@@ -2436,8 +2436,57 @@ b3AABB b3ComputeSweptHullAABB( const b3HullData* shape, b3Transform xf1, b3Trans
+ 	return b3AABB_Union( aabb1, aabb2 );
+ }
+ 
++bool b3IsBoxHull( const b3HullData* shape )
++{
++	if ( shape->vertexCount != 8 || shape->edgeCount != 24 || shape->faceCount != 6 )
++	{
++		return false;
++	}
++
++	const b3Plane* planes = b3GetHullPlanes( shape );
++	const float parallelTolerance = 16.0f * FLT_EPSILON;
++	return b3Dot( planes[0].normal, planes[1].normal ) < -1.0f + parallelTolerance &&
++		b3Dot( planes[2].normal, planes[3].normal ) < -1.0f + parallelTolerance &&
++		b3Dot( planes[4].normal, planes[5].normal ) < -1.0f + parallelTolerance &&
++		b3AbsFloat( b3Dot( planes[0].normal, planes[2].normal ) ) < parallelTolerance &&
++		b3AbsFloat( b3Dot( planes[0].normal, planes[4].normal ) ) < parallelTolerance &&
++		b3AbsFloat( b3Dot( planes[2].normal, planes[4].normal ) ) < parallelTolerance;
++}
++
++bool b3OverlapBoxHull( const b3HullData* shape, b3Transform shapeTransform, const b3ShapeProxy* proxy )
++{
++	B3_ASSERT( proxy->count == 1 );
++	const b3Plane* planes = b3GetHullPlanes( shape );
++	b3Vec3 center = b3InvTransformPoint( shapeTransform, proxy->points[0] );
++	float separation0 = b3MaxFloat( b3Dot( planes[0].normal, center ) - planes[0].offset,
++		b3Dot( planes[1].normal, center ) - planes[1].offset );
++	float separation1 = b3MaxFloat( b3Dot( planes[2].normal, center ) - planes[2].offset,
++		b3Dot( planes[3].normal, center ) - planes[3].offset );
++	float separation2 = b3MaxFloat( b3Dot( planes[4].normal, center ) - planes[4].offset,
++		b3Dot( planes[5].normal, center ) - planes[5].offset );
++	separation0 = b3MaxFloat( separation0, 0.0f );
++	separation1 = b3MaxFloat( separation1, 0.0f );
++	separation2 = b3MaxFloat( separation2, 0.0f );
++	float radius = proxy->radius + B3_OVERLAP_SLOP;
++	return separation0 * separation0 + separation1 * separation1 + separation2 * separation2 < radius * radius;
++}
++
++bool b3IsAxisAlignedBoxHull( const b3HullData* shape )
++{
++	const b3Plane* planes = b3GetHullPlanes( shape );
++	const float tolerance = 16.0f * FLT_EPSILON;
++	return b3AbsFloat( b3AbsFloat( planes[0].normal.x ) - 1.0f ) < tolerance &&
++		b3AbsFloat( b3AbsFloat( planes[2].normal.y ) - 1.0f ) < tolerance &&
++		b3AbsFloat( b3AbsFloat( planes[4].normal.z ) - 1.0f ) < tolerance;
++}
++
+ bool b3OverlapHull( const b3HullData* shape, b3Transform shapeTransform, const b3ShapeProxy* proxy )
+ {
++	if ( proxy->count == 1 && b3IsBoxHull( shape ) )
++	{
++		return b3OverlapBoxHull( shape, shapeTransform, proxy );
++	}
++
+ 	const b3Vec3* points = b3GetHullPoints( shape );
+ 
+ 	b3DistanceInput input;
+@@ -2451,6 +2500,95 @@ bool b3OverlapHull( const b3HullData* shape, b3Transform shapeTransform, const b
+ 	return output.distance < B3_OVERLAP_SLOP;
+ }
+ 
++b3CastOutput b3RayCastAxisAlignedBoxHull( const b3HullData* shape, const b3RayCastInput* input )
++{
++	B3_ASSERT( b3IsValidRay( input ) );
++	b3CastOutput output = { 0 };
++	float lower = 0.0f;
++	float upper = input->maxFraction;
++	int bestAxis = B3_NULL_INDEX;
++	float normalSign = 0.0f;
++
++	const float origins[3] = { input->origin.x, input->origin.y, input->origin.z };
++	const float translations[3] = { input->translation.x, input->translation.y, input->translation.z };
++	const float lowerBounds[3] = { shape->aabb.lowerBound.x, shape->aabb.lowerBound.y, shape->aabb.lowerBound.z };
++	const float upperBounds[3] = { shape->aabb.upperBound.x, shape->aabb.upperBound.y, shape->aabb.upperBound.z };
++	int nonZeroAxisCount = ( translations[0] != 0.0f ) + ( translations[1] != 0.0f ) + ( translations[2] != 0.0f );
++	if ( nonZeroAxisCount == 1 )
++	{
++		int movingAxis = translations[0] != 0.0f ? 0 : translations[1] != 0.0f ? 1 : 2;
++		int fixedAxis1 = ( movingAxis + 1 ) % 3;
++		int fixedAxis2 = ( movingAxis + 2 ) % 3;
++		if ( origins[fixedAxis1] < lowerBounds[fixedAxis1] || origins[fixedAxis1] > upperBounds[fixedAxis1] ||
++			 origins[fixedAxis2] < lowerBounds[fixedAxis2] || origins[fixedAxis2] > upperBounds[fixedAxis2] )
++		{
++			return output;
++		}
++
++		float inverseTranslation = 1.0f / translations[movingAxis];
++		float fraction1 = ( lowerBounds[movingAxis] - origins[movingAxis] ) * inverseTranslation;
++		float fraction2 = ( upperBounds[movingAxis] - origins[movingAxis] ) * inverseTranslation;
++		lower = b3MinFloat( fraction1, fraction2 );
++		upper = b3MaxFloat( fraction1, fraction2 );
++		if ( lower <= 0.0f || lower > input->maxFraction || upper < 0.0f )
++		{
++			return output;
++		}
++
++		output.point = b3Add( input->origin, b3MulSV( lower, input->translation ) );
++		float sign = fraction1 < fraction2 ? -1.0f : 1.0f;
++		output.normal = movingAxis == 0 ? (b3Vec3){ sign, 0.0f, 0.0f }
++			: movingAxis == 1         ? (b3Vec3){ 0.0f, sign, 0.0f }
++									: (b3Vec3){ 0.0f, 0.0f, sign };
++		output.fraction = lower;
++		output.hit = true;
++		return output;
++	}
++
++	for ( int axis = 0; axis < 3; ++axis )
++	{
++		float translation = translations[axis];
++		if ( translation == 0.0f )
++		{
++			if ( origins[axis] < lowerBounds[axis] || origins[axis] > upperBounds[axis] )
++			{
++				return output;
++			}
++			continue;
++		}
++
++		float inverseTranslation = 1.0f / translation;
++		float fraction1 = ( lowerBounds[axis] - origins[axis] ) * inverseTranslation;
++		float fraction2 = ( upperBounds[axis] - origins[axis] ) * inverseTranslation;
++		float entry = b3MinFloat( fraction1, fraction2 );
++		float exit = b3MaxFloat( fraction1, fraction2 );
++		if ( entry > lower )
++		{
++			lower = entry;
++			bestAxis = axis;
++			normalSign = fraction1 < fraction2 ? -1.0f : 1.0f;
++		}
++		upper = b3MinFloat( upper, exit );
++		if ( upper < lower )
++		{
++			return output;
++		}
++	}
++
++	if ( bestAxis < 0 )
++	{
++		return output;
++	}
++
++	output.point = b3Add( input->origin, b3MulSV( lower, input->translation ) );
++	output.normal = bestAxis == 0 ? (b3Vec3){ normalSign, 0.0f, 0.0f }
++		: bestAxis == 1         ? (b3Vec3){ 0.0f, normalSign, 0.0f }
++								: (b3Vec3){ 0.0f, 0.0f, normalSign };
++	output.fraction = lower;
++	output.hit = true;
++	return output;
++}
++
+ b3CastOutput b3RayCastHull( const b3HullData* shape, const b3RayCastInput* input )
+ {
+ 	B3_ASSERT( b3IsValidRay( input ) );
+@@ -2551,11 +2689,29 @@ int b3CollideMoverAndHull( b3PlaneResult* result, const b3HullData* shape, const
+ 
+ 	if ( distanceOutput.distance == 0.0f )
+ 	{
+-		// I could handle deep overlap on hulls, but there is no reasonable solution for
+-		// deep overlap on meshes. So if someone converted a hull to a mesh there would be
+-		// different behavior. So I think there is not a good reason to handle deep overlap
+-		// on hulls.
+-		return 0;
++		const b3Plane* planes = b3GetHullPlanes( shape );
++		float bestSeparation = -FLT_MAX;
++		int bestFace = 0;
++		bool useSecondCenter = false;
++		for ( int faceIndex = 0; faceIndex < shape->faceCount; ++faceIndex )
++		{
++			float separation1 = b3PlaneSeparation( planes[faceIndex], mover->center1 );
++			float separation2 = b3PlaneSeparation( planes[faceIndex], mover->center2 );
++			float separation = b3MinFloat( separation1, separation2 );
++			if ( separation > bestSeparation )
++			{
++				bestSeparation = separation;
++				bestFace = faceIndex;
++				useSecondCenter = separation2 < separation1;
++			}
++		}
++
++		b3Plane hullPlane = planes[bestFace];
++		b3Vec3 center = useSecondCenter ? mover->center2 : mover->center1;
++		b3Vec3 point = b3MulSub( center, b3PlaneSeparation( hullPlane, center ), hullPlane.normal );
++		result->plane = (b3Plane){ hullPlane.normal, mover->radius - bestSeparation };
++		result->point = point;
++		return 1;
+ 	}
+ 
+ 	if ( distanceOutput.distance <= totalRadius )
+diff --git a/src/joint.c b/src/joint.c
+index 5875f55..7c81a9d 100644
+--- a/src/joint.c
++++ b/src/joint.c
+@@ -616,7 +616,7 @@ b3JointId b3CreateRevoluteJoint( b3WorldId worldId, const b3RevoluteJointDef* de
+ b3JointId b3CreateSphericalJoint( b3WorldId worldId, const b3SphericalJointDef* def )
+ {
+ 	B3_CHECK_JOINT_DEF( def );
+-	B3_ASSERT( 0.0f <= def->coneAngle && def->coneAngle <= 0.99f * B3_PI );
++	B3_ASSERT( 0.0f <= def->coneAngle && def->coneAngle <= 0.5f * B3_PI );
+ 	B3_ASSERT( b3IsValidQuat( def->targetRotation ) );
+ 
+ 	b3World* world = b3GetUnlockedWorldFromId( worldId );
+@@ -998,7 +998,7 @@ void b3Joint_WakeBodies( b3JointId jointId )
+ 	world->locked = false;
+ }
+ 
+-void b3GetJointReaction( b3World* world, b3JointSim* sim, float invTimeStep, float* force, float* torque )
++void b3GetJointReaction( b3JointSim* sim, b3StepContext* context, float* force, float* torque )
+ {
+ 	float linearImpulse = 0.0f;
+ 	float angularImpulse = 0.0f;
+@@ -1036,7 +1036,7 @@ void b3GetJointReaction( b3World* world, b3JointSim* sim, float invTimeStep, flo
+ 		{
+ 			b3PrismaticJoint* joint = &sim->prismaticJoint;
+ 			b3Vec3 impulse = {
+-				.x = joint->motorImpulse + joint->lowerImpulse - joint->upperImpulse,
++				.x = joint->springImpulse + joint->motorImpulse + joint->lowerImpulse - joint->upperImpulse,
+ 				.y = joint->perpImpulse.x,
+ 				.z = joint->perpImpulse.y,
+ 			};
+@@ -1052,7 +1052,7 @@ void b3GetJointReaction( b3World* world, b3JointSim* sim, float invTimeStep, flo
+ 			b3Vec3 impulse = {
+ 				.x = joint->perpImpulse.x,
+ 				.y = joint->perpImpulse.y,
+-				.z = joint->motorImpulse + joint->lowerImpulse - joint->upperImpulse,
++				.z = joint->springImpulse + joint->motorImpulse + joint->lowerImpulse - joint->upperImpulse,
+ 			};
+ 			angularImpulse = b3Length( impulse );
+ 		}
+@@ -1060,23 +1060,12 @@ void b3GetJointReaction( b3World* world, b3JointSim* sim, float invTimeStep, flo
+ 
+ 		case b3_sphericalJoint:
+ 		{
+-			// todo improve performance
+ 			b3SphericalJoint* joint = &sim->sphericalJoint;
+ 			linearImpulse = b3Length( joint->linearImpulse );
+ 
+-			b3WorldTransform xfA = b3GetBodyTransform( world, sim->bodyIdA );
+-			b3WorldTransform xfB = b3GetBodyTransform( world, sim->bodyIdB );
+-			b3Quat qA = b3MulQuat( xfA.q, sim->localFrameA.q );
+-			b3Quat qB = b3MulQuat( xfB.q, sim->localFrameB.q );
+-
+-			// Cone axis is the z-axis of body A.
+-			b3Vec3 coneAxis = b3RotateVector( qA, b3Vec3_axisZ );
+-			b3Vec3 twistAxis = b3RotateVector( qB, b3Vec3_axisZ );
+-			b3Vec3 swingAxis = b3Normalize( b3Cross( coneAxis, twistAxis ) );
+-
+ 			b3Vec3 impulse = b3Add( joint->springImpulse, joint->motorImpulse );
+-			impulse = b3MulAdd( impulse, joint->lowerTwistImpulse - joint->upperTwistImpulse, twistAxis );
+-			impulse = b3MulAdd( impulse, joint->swingImpulse, swingAxis );
++			impulse = b3MulSub( impulse, joint->swingImpulse, joint->swingAxis );
++			impulse = b3MulAdd( impulse, joint->lowerTwistImpulse - joint->upperTwistImpulse, joint->twistJacobian );
+ 
+ 			angularImpulse = b3Length( impulse );
+ 		}
+@@ -1092,12 +1081,16 @@ void b3GetJointReaction( b3World* world, b3JointSim* sim, float invTimeStep, flo
+ 
+ 		case b3_wheelJoint:
+ 		{
+-			// todo probably wrong
+ 			b3WheelJoint* joint = &sim->wheelJoint;
+ 			b3Vec2 perpImpulse = joint->linearImpulse;
+ 			float axialImpulse = joint->suspensionSpringImpulse + joint->lowerSuspensionImpulse - joint->upperSuspensionImpulse;
+ 			linearImpulse = sqrtf( perpImpulse.x * perpImpulse.x + perpImpulse.y * perpImpulse.y + axialImpulse * axialImpulse );
+-			angularImpulse = b3AbsFloat( joint->spinImpulse );
++			b3BodyState dummyState = b3_identityBodyState;
++			b3BodyState* stateA = joint->indexA == B3_NULL_INDEX ? &dummyState : context->states + joint->indexA;
++			b3BodyState* stateB = joint->indexB == B3_NULL_INDEX ? &dummyState : context->states + joint->indexB;
++			b3Quat quatA = b3MulQuat( stateA->deltaRotation, joint->frameA.q );
++			b3Quat quatB = b3MulQuat( stateB->deltaRotation, joint->frameB.q );
++			angularImpulse = b3Length( b3GetWheelJointAngularImpulse( joint, quatA, quatB ) );
+ 		}
+ 		break;
+ 
+@@ -1105,8 +1098,8 @@ void b3GetJointReaction( b3World* world, b3JointSim* sim, float invTimeStep, flo
+ 			break;
+ 	}
+ 
+-	*force = linearImpulse * invTimeStep;
+-	*torque = angularImpulse * invTimeStep;
++	*force = linearImpulse * context->inv_h;
++	*torque = angularImpulse * context->inv_h;
+ }
+ 
+ static b3Vec3 b3GetJointConstraintForce( b3World* world, b3Joint* joint )
+@@ -1255,14 +1248,15 @@ float b3Joint_GetLinearSeparation( b3JointId jointId )
+ 		case b3_prismaticJoint:
+ 		{
+ 			b3PrismaticJoint* prismaticJoint = &base->prismaticJoint;
+-			b3Vec3 axisA = b3RotateVector( xfA.q, b3Vec3_axisX );
+-			b3Vec3 perpA = b3Perp( axisA );
+-			float perpendicularSeparation = b3AbsFloat( b3Dot( perpA, dp ) );
++			b3Quat frameA = b3MulQuat( xfA.q, base->localFrameA.q );
++			b3Vec3 axisA = b3RotateVector( frameA, b3Vec3_axisX );
++			float translation = b3Dot( axisA, dp );
++			b3Vec3 perpendicularDelta = b3MulSub( dp, translation, axisA );
++			float perpendicularSeparation = b3Length( perpendicularDelta );
+ 			float limitSeparation = 0.0f;
+ 
+ 			if ( prismaticJoint->enableLimit )
+ 			{
+-				float translation = b3Dot( axisA, dp );
+ 				if ( translation < prismaticJoint->lowerTranslation )
+ 				{
+ 					limitSeparation = prismaticJoint->lowerTranslation - translation;
+@@ -1297,14 +1291,15 @@ float b3Joint_GetLinearSeparation( b3JointId jointId )
+ 		case b3_wheelJoint:
+ 		{
+ 			b3WheelJoint* wheelJoint = &base->wheelJoint;
+-			b3Vec3 axisA = b3RotateVector( xfA.q, b3Vec3_axisX );
+-			b3Vec3 perpA = b3Perp( axisA );
+-			float perpendicularSeparation = b3AbsFloat( b3Dot( perpA, dp ) );
++			b3Quat frameA = b3MulQuat( xfA.q, base->localFrameA.q );
++			b3Vec3 axisA = b3RotateVector( frameA, b3Vec3_axisX );
++			float translation = b3Dot( axisA, dp );
++			b3Vec3 perpendicularDelta = b3MulSub( dp, translation, axisA );
++			float perpendicularSeparation = b3Length( perpendicularDelta );
+ 			float limitSeparation = 0.0f;
+ 
+ 			if ( wheelJoint->enableSuspensionLimit )
+ 			{
+-				float translation = b3Dot( axisA, dp );
+ 				if ( translation < wheelJoint->lowerSuspensionLimit )
+ 				{
+ 					limitSeparation = wheelJoint->lowerSuspensionLimit - translation;
+@@ -1334,7 +1329,15 @@ float b3Joint_GetAngularSeparation( b3JointId jointId )
+ 	b3WorldTransform xfA = b3GetBodyTransform( world, joint->edges[0].bodyId );
+ 	b3WorldTransform xfB = b3GetBodyTransform( world, joint->edges[1].bodyId );
+ 
+-	b3Quat relQ = b3InvMulQuat( xfA.q, xfB.q );
++	b3Quat frameA = b3MulQuat( xfA.q, base->localFrameA.q );
++	b3Quat frameB = b3MulQuat( xfB.q, base->localFrameB.q );
++
++	// Keep the relative angle on the shortest arc.
++	if ( b3DotQuat( frameA, frameB ) < 0.0f )
++	{
++		frameB = b3NegateQuat( frameB );
++	}
++	b3Quat relQ = b3InvMulQuat( frameA, frameB );
+ 
+ 	switch ( joint->type )
+ 	{
+@@ -1411,9 +1414,34 @@ float b3Joint_GetAngularSeparation( b3JointId jointId )
+ 		}
+ 
+ 		case b3_wheelJoint:
+-			// todo
+-			B3_ASSERT( false );
+-			return 0.0f;
++		{
++			b3WheelJoint* wheelJoint = &base->wheelJoint;
++			if ( wheelJoint->enableSteering == false )
++			{
++				// Spin around frame B's z-axis is admissible.
++				relQ.v.z = 0.0f;
++				return b3GetQuatAngle( relQ );
++			}
++
++			b3Matrix3 matrixA = b3MakeMatrixFromQuat( frameA );
++			b3Matrix3 matrixB = b3MakeMatrixFromQuat( frameB );
++			float perpendicularSine = b3AbsFloat( b3Dot( matrixA.cx, matrixB.cz ) );
++			float perpendicularCosine = b3Length( b3Cross( matrixA.cx, matrixB.cz ) );
++			float perpendicularSeparation = b3Atan2( perpendicularSine, perpendicularCosine );
++
++			float limitSeparation = 0.0f;
++			if ( wheelJoint->enableSteeringLimit )
++			{
++				float cs = b3Dot( matrixB.cz, matrixA.cz );
++				float ss = -b3Dot( matrixB.cz, matrixA.cy );
++				float steeringAngle = b3Atan2( ss, cs );
++				limitSeparation = b3MaxFloat( 0.0f, wheelJoint->lowerSteeringLimit - steeringAngle );
++				limitSeparation += b3MaxFloat( 0.0f, steeringAngle - wheelJoint->upperSteeringLimit );
++			}
++
++			return sqrtf(
++				perpendicularSeparation * perpendicularSeparation + limitSeparation * limitSeparation );
++		}
+ 
+ 		default:
+ 			B3_ASSERT( false );
+diff --git a/src/joint.h b/src/joint.h
+index 64171b9..00b1deb 100644
+--- a/src/joint.h
++++ b/src/joint.h
+@@ -359,7 +359,7 @@ void b3PrepareJoints_Overflow( b3StepContext* context );
+ void b3WarmStartJoints_Overflow( b3StepContext* context );
+ void b3SolveJoints_Overflow( b3StepContext* context, bool useBias );
+ 
+-void b3GetJointReaction( b3World* world, b3JointSim* sim, float invTimeStep, float* force, float* torque );
++void b3GetJointReaction( b3JointSim* sim, b3StepContext* context, float* force, float* torque );
+ 
+ void b3DrawJoint( b3DebugDraw* draw, b3World* world, b3Joint* joint );
+ 
+@@ -371,6 +371,7 @@ b3Vec3 b3GetSphericalJointForce( b3World* world, b3JointSim* base );
+ b3Vec3 b3GetWeldJointForce( b3World* world, b3JointSim* base );
+ b3Vec3 b3GetWheelJointForce( b3World* world, b3JointSim* base );
+ 
++b3Vec3 b3GetWheelJointAngularImpulse( const b3WheelJoint* joint, b3Quat quatA, b3Quat quatB );
+ b3Vec3 b3GetMotorJointTorque( b3World* world, b3JointSim* base );
+ b3Vec3 b3GetParallelJointTorque( b3World* world, b3JointSim* base );
+ b3Vec3 b3GetPrismaticJointTorque( b3World* world, b3JointSim* base );
+diff --git a/src/mesh.c b/src/mesh.c
+index c034899..03b5f9d 100644
+--- a/src/mesh.c
++++ b/src/mesh.c
+@@ -2281,7 +2281,11 @@ int b3CollideMoverAndMesh( b3PlaneResult* planes, int capacity, const b3Mesh* sh
+ 
+ 						if ( distanceOutput.distance == 0.0f )
+ 						{
+-							// todo SAT
++							planeCount += b3CollideMoverAndTriangle( planes + planeCount, triangleVertices, mover );
++							if ( planeCount == capacity )
++							{
++								return planeCount;
++							}
+ 						}
+ 						else if ( distanceOutput.distance <= mover->radius )
+ 						{
+diff --git a/src/physics_world.c b/src/physics_world.c
+index 7f5630b..9c60d9c 100644
+--- a/src/physics_world.c
++++ b/src/physics_world.c
+@@ -28,6 +28,7 @@
+ #include "box3d/constants.h"
+ 
+ #include <float.h>
++#include <limits.h>
+ #include <stdio.h>
+ #include <string.h>
+ 
+@@ -360,6 +361,7 @@ b3WorldId b3CreateWorld( const b3WorldDef* def )
+ 		world->finishTaskFcn = def->finishTask;
+ 		world->userTaskContext = def->userTaskContext;
+ 		world->scheduler = NULL;
++		world->useExternalTaskSystem = true;
+ 	}
+ 	else if ( def->workerCount > 1 )
+ 	{
+@@ -369,6 +371,7 @@ b3WorldId b3CreateWorld( const b3WorldDef* def )
+ 		world->enqueueTaskFcn = b3SchedulerEnqueueTask;
+ 		world->finishTaskFcn = b3SchedulerFinishTask;
+ 		world->userTaskContext = world->scheduler;
++		world->useExternalTaskSystem = false;
+ 	}
+ 	else
+ 	{
+@@ -378,6 +381,7 @@ b3WorldId b3CreateWorld( const b3WorldDef* def )
+ 		world->finishTaskFcn = b3DefaultFinishTaskFcn;
+ 		world->userTaskContext = NULL;
+ 		world->scheduler = NULL;
++		world->useExternalTaskSystem = false;
+ 	}
+ 
+ 	b3CreateWorkerContexts( world );
+@@ -396,14 +400,13 @@ b3WorldId b3CreateWorld( const b3WorldDef* def )
+ 
+ void b3DestroyWorld( b3WorldId worldId )
+ {
+-	b3AtomicFetchAddInt( &b3_worldCount, -1 );
+-
+ 	b3World* world = b3GetUnlockedWorldFromId( worldId );
+ 	if ( world == NULL )
+ 	{
+ 		return;
+ 	}
+ 
++	b3AtomicFetchAddInt( &b3_worldCount, -1 );
+ 	world->locked = true;
+ 
+ 	// Detach any recording before teardown. The user owns and frees the recording buffer.
+@@ -1029,6 +1032,7 @@ void b3World_Step( b3WorldId worldId, float timeStep, int subStepCount )
+ 	{
+ 		return;
+ 	}
++	b3FloatEnvironment floatEnvironment = b3EnterDeterministicFloatEnvironment();
+ 
+ 	B3_REC( world, Step, worldId, timeStep, subStepCount );
+ 
+@@ -1193,6 +1197,7 @@ void b3World_Step( b3WorldId worldId, float timeStep, int subStepCount )
+ 
+ 	b3TracyCZoneEnd( world_step );
+ 	b3TracyCFrame;
++	b3LeaveDeterministicFloatEnvironment( &floatEnvironment );
+ }
+ 
+ typedef struct DrawContext
+@@ -2240,6 +2245,28 @@ void b3World_SetWorkerCount( b3WorldId worldId, int count )
+ 
+ 	b3DestroyWorkerContexts( world );
+ 	world->workerCount = b3ClampInt( count, 1, B3_MAX_WORKERS );
++	if ( world->useExternalTaskSystem == false )
++	{
++		if ( world->scheduler != NULL )
++		{
++			b3DestroyScheduler( world->scheduler );
++			world->scheduler = NULL;
++		}
++
++		if ( world->workerCount > 1 )
++		{
++			world->scheduler = b3CreateScheduler( world->workerCount );
++			world->enqueueTaskFcn = b3SchedulerEnqueueTask;
++			world->finishTaskFcn = b3SchedulerFinishTask;
++			world->userTaskContext = world->scheduler;
++		}
++		else
++		{
++			world->enqueueTaskFcn = b3DefaultAddTaskFcn;
++			world->finishTaskFcn = b3DefaultFinishTaskFcn;
++			world->userTaskContext = NULL;
++		}
++	}
+ 	b3CreateWorkerContexts( world );
+ }
+ 
+@@ -2259,7 +2286,7 @@ void b3World_StartRecording( b3WorldId worldId, b3Recording* recording )
+ 	// Must be a step boundary, so refuse a locked world
+ 	b3World* world = b3GetUnlockedWorldFromId( worldId );
+ 
+-	if ( world == NULL || recording == NULL || world->recording != NULL )
++	if ( world == NULL || recording == NULL || world->recording != NULL || recording->owner != NULL )
+ 	{
+ 		return;
+ 	}
+@@ -2679,7 +2706,9 @@ static bool b3TreeOverlapCallback( int proxyId, uint64_t userData, void* context
+ 	b3Body* body = b3Array_Get( world->bodies, shape->bodyId );
+ 	b3Transform transform = b3ToRelativeTransform( b3GetBodyTransformQuick( world, body ), worldContext->origin );
+ 
+-	bool overlapping = b3OverlapShape( shape, transform, &worldContext->proxy );
++	bool overlapping = worldContext->proxy.count == 1 && shape->type == b3_hullShape && shape->isAxisAlignedBox
++		? b3OverlapAxisAlignedBoxHull( shape->hull, transform, &worldContext->proxy )
++		: b3OverlapShape( shape, transform, &worldContext->proxy );
+ 	if ( overlapping == false )
+ 	{
+ 		return true;
+@@ -2726,7 +2755,7 @@ b3TreeStats b3World_OverlapShape( b3WorldId worldId, b3Pos origin, const b3Shape
+ 	for ( int i = 0; i < b3_bodyTypeCount; ++i )
+ 	{
+ 		b3TreeStats treeResult = b3DynamicTree_Query( world->broadPhase.trees + i, aabb, filter.maskBits, false,
+-													  b3TreeOverlapCallback, &worldContext );
++												  b3TreeOverlapCallback, &worldContext );
+ 
+ 		treeStats.nodeVisits += treeResult.nodeVisits;
+ 		treeStats.leafVisits += treeResult.leafVisits;
+@@ -2749,6 +2778,12 @@ typedef struct WorldMoverContext
+ 	b3QueryFilter filter;
+ 	b3Capsule mover;
+ 	b3Pos origin;
++	b3PlaneResult* planes;
++	b3BodyId ignoredBodyA;
++	b3BodyId ignoredBodyB;
++	int planeCapacity;
++	bool ignoreSensors;
++	bool overflow;
+ 	void* userContext;
+ } WorldMoverContext;
+ 
+@@ -2761,6 +2796,18 @@ static bool TreeCollideCallback( int proxyId, uint64_t userData, void* context )
+ 	b3World* world = worldContext->world;
+ 
+ 	b3Shape* shape = b3Array_Get( world->shapes, shapeId );
++	b3Body* body = b3Array_Get( world->bodies, shape->bodyId );
++	if ( ( B3_IS_NON_NULL( worldContext->ignoredBodyA ) && worldContext->ignoredBodyA.index1 == body->id + 1 &&
++		   worldContext->ignoredBodyA.world0 == world->worldId && worldContext->ignoredBodyA.generation == body->generation ) ||
++		 ( B3_IS_NON_NULL( worldContext->ignoredBodyB ) && worldContext->ignoredBodyB.index1 == body->id + 1 &&
++		   worldContext->ignoredBodyB.world0 == world->worldId && worldContext->ignoredBodyB.generation == body->generation ) )
++	{
++		return true;
++	}
++	if ( worldContext->ignoreSensors && shape->sensorIndex != B3_NULL_INDEX )
++	{
++		return true;
++	}
+ 
+ 	b3Filter shapeFilter = shape->filter;
+ 	b3QueryFilter queryFilter = worldContext->filter;
+@@ -2771,31 +2818,36 @@ static bool TreeCollideCallback( int proxyId, uint64_t userData, void* context )
+ 	}
+ 
+ 	// Re-center on the query origin, the mover and the resulting planes are origin relative
+-	b3Body* body = b3Array_Get( world->bodies, shape->bodyId );
+ 	b3WorldTransform bodyTransform = b3GetBodyTransformQuick( world, body );
+ 	b3Transform transform = b3ToRelativeTransform( bodyTransform, worldContext->origin );
+ 
+-	b3PlaneResult buffer[64];
+-	int count = b3CollideMover( buffer, 64, shape, transform, &worldContext->mover );
++	int count = b3CollideMover( worldContext->planes, worldContext->planeCapacity + 1, shape, transform, &worldContext->mover );
++	if ( count > worldContext->planeCapacity )
++	{
++		count = worldContext->planeCapacity;
++		worldContext->overflow = true;
++	}
+ 
+ 	if ( count > 0 )
+ 	{
+ 		b3ShapeId id = { shape->id + 1, world->worldId, shape->generation };
+-		return worldContext->fcn( id, buffer, count, worldContext->userContext );
++		bool keepGoing = worldContext->fcn( id, worldContext->planes, count, worldContext->userContext );
++		return keepGoing && worldContext->overflow == false;
+ 	}
+ 
+-	return true;
++	return worldContext->overflow == false;
+ }
+ 
+ // It is tempting to use a shape proxy for the mover, but this makes handling deep overlap difficult and the generality may
+ // not be worth it.
+-void b3World_CollideMover( b3WorldId worldId, b3Pos origin, const b3Capsule* mover, b3QueryFilter filter, b3PlaneResultFcn* fcn,
+-						   void* context )
++bool b3World_CollideMoverWithCapacity( b3WorldId worldId, b3Pos origin, const b3Capsule* mover, int planeCapacity,
++										  bool ignoreSensors, b3BodyId ignoredBodyA, b3BodyId ignoredBodyB, b3QueryFilter filter,
++										  b3PlaneResultFcn* fcn, void* context )
+ {
+ 	b3World* world = b3GetUnlockedWorldFromId( worldId );
+-	if ( world == NULL )
++	if ( world == NULL || planeCapacity <= 0 || planeCapacity > INT_MAX / (int)sizeof( b3PlaneResult ) - 1 || fcn == NULL )
+ 	{
+-		return;
++		return true;
+ 	}
+ 
+ 	B3_ASSERT( b3IsValidPosition( origin ) );
+@@ -2808,6 +2860,10 @@ void b3World_CollideMover( b3WorldId worldId, b3Pos origin, const b3Capsule* mov
+ 		b3RecW_WORLDID( &recWriter.buf, worldId );
+ 		b3RecW_POSITION( &recWriter.buf, origin );
+ 		b3RecW_CAPSULE( &recWriter.buf, *mover );
++		b3RecW_I32( &recWriter.buf, planeCapacity );
++		b3RecW_BOOL( &recWriter.buf, ignoreSensors );
++		b3RecW_BODYID( &recWriter.buf, ignoredBodyA );
++		b3RecW_BODYID( &recWriter.buf, ignoredBodyB );
+ 		b3RecW_QUERYFILTER( &recWriter.buf, filter );
+ 		recWriter.countOffset = b3RecReserveU32( &recWriter.buf );
+ 		fcn = b3RecPlaneTrampoline;
+@@ -2821,22 +2877,48 @@ void b3World_CollideMover( b3WorldId worldId, b3Pos origin, const b3Capsule* mov
+ 	relBox.lowerBound = b3Sub( b3Min( mover->center1, mover->center2 ), r );
+ 	relBox.upperBound = b3Add( b3Max( mover->center1, mover->center2 ), r );
+ 	b3AABB aabb = b3OffsetAABB( relBox, origin );
++	b3PlaneResult* planes = b3StackAlloc( &world->stack, ( planeCapacity + 1 ) * (int)sizeof( b3PlaneResult ), "mover planes" );
+ 
+ 	WorldMoverContext worldContext = {
+-		world, fcn, filter, *mover, origin, context,
++		.world = world,
++		.fcn = fcn,
++		.filter = filter,
++		.mover = *mover,
++		.origin = origin,
++		.planes = planes,
++		.ignoredBodyA = ignoredBodyA,
++		.ignoredBodyB = ignoredBodyB,
++		.planeCapacity = planeCapacity,
++		.ignoreSensors = ignoreSensors,
++		.overflow = false,
++		.userContext = context,
+ 	};
+ 
+ 	for ( int i = 0; i < b3_bodyTypeCount; ++i )
+ 	{
+ 		b3DynamicTree_Query( world->broadPhase.trees + i, aabb, filter.maskBits, false, TreeCollideCallback, &worldContext );
++		if ( worldContext.overflow )
++		{
++			break;
++		}
+ 	}
++	b3StackFree( &world->stack, planes );
+ 
+ 	if ( world->recording != NULL )
+ 	{
+-		// CollideMover returns void: no treestats tail, just the per-shape plane batches.
+ 		b3RecPatchU32( &recWriter.buf, recWriter.countOffset, recWriter.hitCount );
++		b3RecW_BOOL( &recWriter.buf, worldContext.overflow );
+ 		b3RecQueryCommit( world->recording, b3_recOpQueryCollideMover, &recWriter );
+ 	}
++
++	return worldContext.overflow;
++}
++
++void b3World_CollideMover( b3WorldId worldId, b3Pos origin, const b3Capsule* mover, b3QueryFilter filter, b3PlaneResultFcn* fcn,
++						   void* context )
++{
++	(void)b3World_CollideMoverWithCapacity(
++		worldId, origin, mover, 64, false, b3_nullBodyId, b3_nullBodyId, filter, fcn, context );
+ }
+ 
+ typedef struct WorldRayCastContext
+@@ -2936,8 +3018,12 @@ b3TreeStats b3World_CastRay( b3WorldId worldId, b3Pos origin, b3Vec3 translation
+ 
+ 	for ( int i = 0; i < b3_bodyTypeCount; ++i )
+ 	{
+-		b3TreeStats treeResult =
+-			b3DynamicTree_RayCast( world->broadPhase.trees + i, &input, filter.maskBits, false, RayCastCallback, &worldContext );
++		b3DynamicTree* tree = world->broadPhase.trees + i;
++		if ( tree->nodeCount == 0 )
++		{
++			continue;
++		}
++		b3TreeStats treeResult = b3DynamicTree_RayCast( tree, &input, filter.maskBits, false, RayCastCallback, &worldContext );
+ 		treeStats.nodeVisits += treeResult.nodeVisits;
+ 		treeStats.leafVisits += treeResult.leafVisits;
+ 
+@@ -3008,8 +3094,12 @@ b3RayResult b3World_CastRayClosest( b3WorldId worldId, b3Pos origin, b3Vec3 tran
+ 
+ 	for ( int i = 0; i < b3_bodyTypeCount; ++i )
+ 	{
+-		b3TreeStats treeResult =
+-			b3DynamicTree_RayCast( world->broadPhase.trees + i, &input, filter.maskBits, false, RayCastCallback, &worldContext );
++		b3DynamicTree* tree = world->broadPhase.trees + i;
++		if ( tree->nodeCount == 0 )
++		{
++			continue;
++		}
++		b3TreeStats treeResult = b3DynamicTree_RayCast( tree, &input, filter.maskBits, false, RayCastCallback, &worldContext );
+ 		result.nodeVisits += treeResult.nodeVisits;
+ 		result.leafVisits += treeResult.leafVisits;
+ 
+diff --git a/src/physics_world.h b/src/physics_world.h
+index 8387e2a..8ba2a0e 100644
+--- a/src/physics_world.h
++++ b/src/physics_world.h
+@@ -255,6 +255,7 @@ typedef struct b3World
+ 	void* userTreeTask;
+ 
+ 	struct b3Scheduler* scheduler;
++	bool useExternalTaskSystem;
+ 
+ 	void* userData;
+ 
+@@ -344,4 +345,3 @@ static inline void b3FreeManifolds( b3World* world, b3Manifold* manifolds, int c
+ 	b3FreeElement( allocator, manifolds );
+ 	b3UnlockMutex( world->manifoldAllocatorMutex );
+ }
+-
+diff --git a/src/platform.h b/src/platform.h
+index 49d63a8..3803e09 100644
+--- a/src/platform.h
++++ b/src/platform.h
+@@ -5,6 +5,7 @@
+ 
+ #include "core.h"
+ 
++#include <fenv.h>
+ #include <stdbool.h>
+ #include <stdint.h>
+ 
+@@ -24,6 +25,93 @@
+ #define b3Prefetch( addr ) ( (void)( addr ) )
+ #endif
+ 
++#if defined( B3_CPU_X86_X64 ) && ( defined( B3_COMPILER_CLANG ) || defined( B3_COMPILER_GCC ) )
++#include <xmmintrin.h>
++#elif defined( _M_ARM64 )
++#include <arm64intr.h>
++#elif defined( __aarch64__ ) && defined( B3_COMPILER_CLANG )
++#include <arm_acle.h>
++#endif
++
++#if defined( _M_ARM64 ) || defined( __aarch64__ )
++	#define B3_HAS_ARM64_FLOAT_CONTROL
++
++static inline uint64_t b3ReadFloatControl( void )
++{
++#if defined( _M_ARM64 )
++	return (uint64_t)_ReadStatusReg( ARM64_FPCR );
++#elif defined( B3_COMPILER_CLANG )
++	return __arm_rsr64( "fpcr" );
++#else
++	uint64_t control = 0;
++	__asm__ volatile( "mrs %0, fpcr" : "=r"( control ) );
++	return control;
++#endif
++}
++
++static inline void b3WriteFloatControl( uint64_t control )
++{
++#if defined( _M_ARM64 )
++	_WriteStatusReg( ARM64_FPCR, (__int64)control );
++#elif defined( B3_COMPILER_CLANG )
++	__arm_wsr64( "fpcr", control );
++#else
++	__asm__ volatile( "msr fpcr, %0" : : "r"( control ) );
++#endif
++}
++#endif
++
++typedef struct b3FloatEnvironment
++{
++	fenv_t environment;
++	bool environmentCaptured;
++#if defined( B3_CPU_X86_X64 )
++	uint32_t control;
++#elif defined( B3_HAS_ARM64_FLOAT_CONTROL )
++	uint64_t control;
++#endif
++} b3FloatEnvironment;
++
++// Box3D performs deterministic floating-point work under the platform's IEEE default environment.
++// Callers and task systems may otherwise configure rounding or denormal handling per thread.
++static inline b3FloatEnvironment b3EnterDeterministicFloatEnvironment( void )
++{
++	b3FloatEnvironment previous = { 0 };
++	previous.environmentCaptured = fegetenv( &previous.environment ) == 0;
++#if defined( B3_CPU_X86_X64 )
++	previous.control = (uint32_t)_mm_getcsr();
++#elif defined( B3_HAS_ARM64_FLOAT_CONTROL )
++	previous.control = b3ReadFloatControl();
++#endif
++
++	fesetenv( FE_DFL_ENV );
++	fesetround( FE_TONEAREST );
++#if defined( B3_CPU_X86_X64 )
++	// IEEE round-to-nearest, gradual underflow, and all exceptions masked.
++	_mm_setcsr( 0x1F80U );
++#elif defined( B3_HAS_ARM64_FLOAT_CONTROL )
++	const uint64_t formatAndRoundingMask = 0x7FFULL << 16;
++	const uint64_t exceptionAndBFloatMask = ( 1ULL << 15 ) | ( 1ULL << 13 ) | ( 0x1FULL << 8 );
++	const uint64_t alternativeBehaviorMask = 0x7ULL;
++	const uint64_t floatControlModeMask = formatAndRoundingMask | exceptionAndBFloatMask | alternativeBehaviorMask;
++	b3WriteFloatControl( b3ReadFloatControl() & ~floatControlModeMask );
++#endif
++	return previous;
++}
++
++static inline void b3LeaveDeterministicFloatEnvironment( const b3FloatEnvironment* previous )
++{
++	if ( previous->environmentCaptured )
++	{
++		fesetenv( &previous->environment );
++	}
++#if defined( B3_CPU_X86_X64 )
++	_mm_setcsr( previous->control );
++#elif defined( B3_HAS_ARM64_FLOAT_CONTROL )
++	b3WriteFloatControl( previous->control );
++#endif
++}
++
+ static inline void b3AtomicStoreInt( b3AtomicInt* a, int value )
+ {
+ #if defined( _MSC_VER )
+diff --git a/src/prismatic_joint.c b/src/prismatic_joint.c
+index c96e6d6..60723e4 100644
+--- a/src/prismatic_joint.c
++++ b/src/prismatic_joint.c
+@@ -271,9 +271,9 @@ b3Vec3 b3GetPrismaticJointForce( b3World* world, b3JointSim* base )
+ 
+ 	// impulse in joint space
+ 	b3Vec3 impulse = {
++		joint->springImpulse + joint->motorImpulse + joint->lowerImpulse - joint->upperImpulse,
+ 		joint->perpImpulse.x,
+ 		joint->perpImpulse.y,
+-		joint->motorImpulse + joint->lowerImpulse + joint->upperImpulse + joint->springImpulse,
+ 	};
+ 
+ 	// convert impulse to force
+@@ -289,13 +289,7 @@ b3Vec3 b3GetPrismaticJointForce( b3World* world, b3JointSim* base )
+ 
+ b3Vec3 b3GetPrismaticJointTorque( b3World* world, b3JointSim* base )
+ {
+-	b3WorldTransform transformA = b3GetBodyTransform( world, base->bodyIdA );
+-	b3PrismaticJoint* joint = &base->prismaticJoint;
+-
+-	b3Vec3 torque = b3MulSV( world->inv_h, joint->angularImpulse );
+-	torque = b3RotateVector( base->localFrameA.q, torque );
+-	torque = b3RotateVector( transformA.q, torque );
+-	return torque;
++	return b3MulSV( world->inv_h, base->prismaticJoint.angularImpulse );
+ }
+ 
+ void b3PreparePrismaticJoint( b3JointSim* base, b3StepContext* context )
+diff --git a/src/recording.c b/src/recording.c
+index 933449f..220c681 100644
+--- a/src/recording.c
++++ b/src/recording.c
+@@ -991,6 +991,10 @@ void b3DestroyRecording( b3Recording* recording )
+ 	{
+ 		return;
+ 	}
++	if ( recording->owner != NULL )
++	{
++		b3StopRecordingInternal( recording->owner );
++	}
+ 
+ 	b3RecBufFree( &recording->buffer );
+ 	b3FreeRegistry( &recording->registry );
+@@ -1056,6 +1060,7 @@ void b3StartRecordingIntoBuffer( b3World* world, b3Recording* recording )
+ 	hdr.registryByteCount = 0;
+ 
+ 	world->recording = recording;
++	recording->owner = world;
+ 
+ 	// Every recording is snapshot-seeded. The seed blob follows the header so replay restores in
+ 	// place and the world id stays stable across a restart or backward scrub. An empty world still
+@@ -1084,6 +1089,7 @@ void b3StopRecordingInternal( b3World* world )
+ 
+ 	b3Recording* rec = world->recording;
+ 	world->recording = NULL;
++	rec->owner = NULL;
+ 
+ 	// Write accumulated bounds so a viewer can frame the whole recorded motion
+ 	b3RecArgs_RecordingBounds rb = { 0 };
+diff --git a/src/recording.h b/src/recording.h
+index 9c8750c..f9aff69 100644
+--- a/src/recording.h
++++ b/src/recording.h
+@@ -42,19 +42,18 @@ static inline uint64_t b3FnvMixPosition( uint64_t hash, b3Pos p )
+ 
+ typedef struct b3World b3World;
+ 
+-// Magic 'B3RC' in little-endian: bytes B(0x42) 3(0x33) R(0x52) C(0x43)
+-#define B3_REC_MAGIC 0x43523342u
++// Private 'B3AZ' magic in little-endian: bytes B(0x42) 3(0x33) A(0x41) Z(0x5A)
++#define B3_REC_MAGIC 0x5A413342u
+ 
+-// Minor tracks op-stream additions that keep the 48 byte header shape (e.g. the spatial query ops).
+-// Minor 2 added the QueryTag op and the interned query-tag table at the tail of the registry block.
+-#define B3_REC_VERSION_MAJOR 2
+-#define B3_REC_VERSION_MINOR 2
++// Version numbers are scoped to the private B3AZ format.
++#define B3_REC_VERSION_MAJOR 1
++#define B3_REC_VERSION_MINOR 0
+ 
+ // File header, fixed 48 bytes, little-endian. Contains the registry locator so the player
+ // can load geometry before replaying any ops.
+ typedef struct b3RecHeader
+ {
+-	uint32_t magic;			   // 'B3RC' = 0x43523342
++	uint32_t magic;			   // 'B3AZ' = 0x5A413342
+ 	uint16_t versionMajor;	   // B3_REC_VERSION_MAJOR
+ 	uint16_t versionMinor;	   // B3_REC_VERSION_MINOR
+ 	uint8_t pointerWidth;	   // sizeof(void*), gates POD-def struct layout
+@@ -128,6 +127,7 @@ typedef struct b3RecTag
+ typedef struct b3Recording
+ {
+ 	b3RecBuffer buffer;
++	struct b3World* owner;
+ 	int recordStart; // offset of the 3-byte size field for u24 backpatch
+ 	b3Mutex* lock;	 // serializes record writes from concurrent threads
+ 	b3GeometryRegistry registry;
+diff --git a/src/recording_ops.inl b/src/recording_ops.inl
+index 3c8086e..0499727 100644
+--- a/src/recording_ops.inl
++++ b/src/recording_ops.inl
+@@ -221,7 +221,8 @@ B3_REC_OP( 0xEC, QueryCastRayClosest, RET_NONE,
+ B3_REC_OP( 0xED, QueryCastMover, RET_NONE,
+ 		   ARG( WORLDID, world ) ARG( POSITION, origin ) ARG( CAPSULE, mover ) ARG( VEC3, translation ) ARG( QUERYFILTER, filter ) )
+ B3_REC_OP( 0xEE, QueryCollideMover, RET_NONE,
+-		   ARG( WORLDID, world ) ARG( POSITION, origin ) ARG( CAPSULE, mover ) ARG( QUERYFILTER, filter ) )
++		   ARG( WORLDID, world ) ARG( POSITION, origin ) ARG( CAPSULE, mover ) ARG( I32, planeCapacity )
++			   ARG( BOOL, ignoreSensors ) ARG( BODYID, ignoredBodyA ) ARG( BODYID, ignoredBodyB ) ARG( QUERYFILTER, filter ) )
+ 
+ // Identity key (hash of the caller id + label) for the query that immediately follows. Emitted only
+ // for a tagged query. The id and label are interned in the trailing tag table, so only the 8 byte key
+diff --git a/src/recording_replay.c b/src/recording_replay.c
+index f0537e0..1fe06c8 100644
+--- a/src/recording_replay.c
++++ b/src/recording_replay.c
+@@ -2054,8 +2054,11 @@ static void b3RecDispatch_QueryCollideMover( const b3RecArgs_QueryCollideMover*
+ 	if ( !rdr->ok )
+ 		return;
+ 	b3RecReplayQueryCtx rc = { rdr, rdr->hits, total, 0 };
+-	b3World_CollideMover( rdr->replayWorldId, a->origin, &a->mover, a->filter, b3RecReplayPlaneTrampoline, &rc );
+-	if ( rc.cursor != total )
++	bool recordedOverflow = b3RecR_BOOL( rdr );
++	bool overflow = b3World_CollideMoverWithCapacity( rdr->replayWorldId, a->origin, &a->mover, a->planeCapacity,
++												  a->ignoreSensors, b3RecMakeBodyId( rdr, a->ignoredBodyA ),
++												  b3RecMakeBodyId( rdr, a->ignoredBodyB ), a->filter, b3RecReplayPlaneTrampoline, &rc );
++	if ( rc.cursor != total || overflow != recordedOverflow )
+ 		rdr->diverged = true;
+ 	if ( rdr->owner )
+ 	{
+@@ -2709,6 +2712,11 @@ b3RecPlayer* b3RecPlayer_Create( const void* data, int size, int workerCount )
+ 		printf( "b3RecPlayer_Create: big-endian recording not supported\n" );
+ 		return NULL;
+ 	}
++	if ( hdr.lengthScale > 0.0f && hdr.lengthScale != b3GetLengthUnitsPerMeter() )
++	{
++		printf( "b3RecPlayer_Create: length scale mismatch %g vs %g\n", hdr.lengthScale, b3GetLengthUnitsPerMeter() );
++		return NULL;
++	}
+ 
+ 	// Every recording is snapshot-seeded: the seed blob sits between the header and the op stream.
+ 	if ( hdr.snapshotSize == 0 )
+@@ -2743,7 +2751,6 @@ b3RecPlayer* b3RecPlayer_Create( const void* data, int size, int workerCount )
+ 	player->headerEnd = headerEnd;
+ 	player->registryEnd = registryEnd;
+ 	player->lengthScale = hdr.lengthScale;
+-	player->previousLengthScale = b3GetLengthUnitsPerMeter();
+ 	player->frame = 0;
+ 	player->frameCount = 0;
+ 	player->recordedDt = 0.0f;
+@@ -2756,12 +2763,6 @@ b3RecPlayer* b3RecPlayer_Create( const void* data, int size, int workerCount )
+ 	player->keyframeBudget = B3_REC_KEYFRAME_BUDGET_DEFAULT;
+ 	player->lastKeyframeFrame = 0;
+ 
+-	// Set length scale so replay reproduces the same tuning constants.
+-	if ( hdr.lengthScale > 0.0f )
+-	{
+-		b3SetLengthUnitsPerMeter( hdr.lengthScale );
+-	}
+-
+ 	// Count frames and read first step's dt so the viewer can show hz up front.
+ 	b3RecScanFile( player );
+ 
+@@ -2906,9 +2907,6 @@ void b3RecPlayer_Destroy( b3RecPlayer* player )
+ 
+ 	b3Free( player->data, (size_t)player->size );
+ 
+-	// Restore the global length scale.
+-	b3SetLengthUnitsPerMeter( player->previousLengthScale );
+-
+ 	b3Free( player, sizeof( b3RecPlayer ) );
+ }
+ 
+diff --git a/src/recording_replay.h b/src/recording_replay.h
+index e343d2b..1b2f959 100644
+--- a/src/recording_replay.h
++++ b/src/recording_replay.h
+@@ -141,7 +141,6 @@ struct b3RecPlayer
+ 	int headerEnd;	 // first byte of op stream (past header + snapshot blob)
+ 	int registryEnd; // end of op stream = start of registry block (or size)
+ 	float lengthScale;
+-	float previousLengthScale;
+ 	int frame;
+ 	int frameCount;
+ 	float recordedDt;
+diff --git a/src/revolute_joint.c b/src/revolute_joint.c
+index 7856a83..f454d4b 100644
+--- a/src/revolute_joint.c
++++ b/src/revolute_joint.c
+@@ -232,10 +232,7 @@ b3Vec3 b3GetRevoluteJointForce( b3World* world, b3JointSim* base )
+ 
+ b3Vec3 b3GetRevoluteJointTorque( b3World* world, b3JointSim* base )
+ {
+-	b3WorldTransform transformA = b3GetBodyTransform( world, base->bodyIdA );
+ 	b3RevoluteJoint* joint = &base->revoluteJoint;
+-	b3Vec3 axis = b3RotateVector( base->localFrameA.q, b3Vec3_axisZ );
+-	axis = b3RotateVector( transformA.q, axis );
+ 
+ 	b3Quat relQ = b3InvMulQuat( joint->frameA.q, joint->frameB.q );
+ 
+@@ -248,11 +245,9 @@ b3Vec3 b3GetRevoluteJointTorque( b3World* world, b3JointSim* base )
+ 	float axialImpulse = joint->springImpulse + joint->motorImpulse + joint->lowerImpulse - joint->upperImpulse;
+ 	b3Vec3 angularImpulse =
+ 		b3Add( b3MulSV( joint->perpImpulse.x, joint->perpAxisX ), b3MulSV( joint->perpImpulse.y, joint->perpAxisY ) );
+-	angularImpulse = b3MulAdd( angularImpulse, axialImpulse, joint->rotationAxisZ );
+ 
+ 	// todo add pivot torque
+-	b3Vec3 impulse = b3MulAdd( angularImpulse,
+-							   joint->springImpulse + joint->motorImpulse + joint->lowerImpulse - joint->upperImpulse, axis );
++	b3Vec3 impulse = b3MulAdd( angularImpulse, axialImpulse, joint->rotationAxisZ );
+ 	b3Vec3 torque = b3MulSV( world->inv_h, impulse );
+ 	return torque;
+ }
+diff --git a/src/scheduler.c b/src/scheduler.c
+index 7bcde42..6857907 100644
+--- a/src/scheduler.c
++++ b/src/scheduler.c
+@@ -83,6 +83,7 @@ static void b3SchedulerWorkerMain( void* context )
+ {
+ 	b3SchedulerWorkerContext* workerContext = context;
+ 	b3Scheduler* scheduler = workerContext->scheduler;
++	b3FloatEnvironment floatEnvironment = b3EnterDeterministicFloatEnvironment();
+ 
+ 	while ( true )
+ 	{
+@@ -98,6 +99,8 @@ static void b3SchedulerWorkerMain( void* context )
+ 		{
+ 		}
+ 	}
++
++	b3LeaveDeterministicFloatEnvironment( &floatEnvironment );
+ }
+ 
+ b3Scheduler* b3CreateScheduler( int workerCount )
+diff --git a/src/sensor.c b/src/sensor.c
+index e0221f5..66eb02f 100644
+--- a/src/sensor.c
++++ b/src/sensor.c
+@@ -174,8 +174,12 @@ static int b3CompareVisitors( const void* a, const void* b )
+ 	{
+ 		return -1;
+ 	}
++	if ( sa->shapeId > sb->shapeId )
++	{
++		return 1;
++	}
+ 
+-	return 1;
++	return 0;
+ }
+ 
+ static void b3SensorTask( int startIndex, int endIndex, int workerIndex, void* context )
+diff --git a/src/shape.c b/src/shape.c
+index 14464f5..71a5be5 100644
+--- a/src/shape.c
++++ b/src/shape.c
+@@ -173,6 +173,8 @@ static b3Shape* b3CreateShapeInternal( b3World* world, b3Body* body, b3WorldTran
+ 	shape->id = shapeId;
+ 	shape->bodyId = body->id;
+ 	shape->type = shapeType;
++	shape->isBox = shapeType == b3_hullShape && b3IsBoxHull( shape->hull );
++	shape->isAxisAlignedBox = shape->isBox && b3IsAxisAlignedBoxHull( shape->hull );
+ 	shape->density = def->density;
+ 	shape->explosionScale = def->explosionScale;
+ 	shape->filter = def->filter;
+@@ -789,6 +791,15 @@ b3ShapeExtent b3ComputeShapeExtent( const b3Shape* shape, b3Vec3 localCenter )
+ 
+ b3CastOutput b3RayCastShape( const b3Shape* shape, b3Transform transform, const b3RayCastInput* input )
+ {
++	if ( shape->isAxisAlignedBox && transform.q.v.x == 0.0f && transform.q.v.y == 0.0f && transform.q.v.z == 0.0f )
++	{
++		b3RayCastInput localInput = *input;
++		localInput.origin = b3Sub( input->origin, transform.p );
++		b3CastOutput output = b3RayCastAxisAlignedBoxHull( shape->hull, &localInput );
++		output.point = b3Add( transform.p, output.point );
++		return output;
++	}
++
+ 	b3RayCastInput localInput = *input;
+ 	localInput.origin = b3InvTransformPoint( transform, input->origin );
+ 	localInput.translation = b3InvRotateVector( transform.q, input->translation );
+@@ -806,7 +817,8 @@ b3CastOutput b3RayCastShape( const b3Shape* shape, b3Transform transform, const
+ 			output = b3RayCastSphere( &shape->sphere, &localInput );
+ 			break;
+ 		case b3_hullShape:
+-			output = b3RayCastHull( shape->hull, &localInput );
++			output = shape->isAxisAlignedBox ? b3RayCastAxisAlignedBoxHull( shape->hull, &localInput )
++											 : b3RayCastHull( shape->hull, &localInput );
+ 			break;
+ 		case b3_meshShape:
+ 			output = b3RayCastMesh( &shape->mesh, &localInput );
+@@ -887,6 +899,17 @@ bool b3OverlapShape( const b3Shape* shape, b3Transform transform, const b3ShapeP
+ 			return b3OverlapHeightField( shape->heightField, transform, proxy );
+ 
+ 		case b3_hullShape:
++			if ( proxy->count == 1 )
++			{
++				if ( shape->isAxisAlignedBox )
++				{
++					return b3OverlapAxisAlignedBoxHull( shape->hull, transform, proxy );
++				}
++				if ( shape->isBox )
++				{
++					return b3OverlapBoxHull( shape->hull, transform, proxy );
++				}
++			}
+ 			return b3OverlapHull( shape->hull, transform, proxy );
+ 
+ 		case b3_meshShape:
+@@ -1596,6 +1619,8 @@ void b3Shape_SetHull( b3ShapeId shapeId, const b3HullData* hull )
+ 
+ 	shape->hull = data;
+ 	shape->type = b3_hullShape;
++	shape->isBox = b3IsBoxHull( data );
++	shape->isAxisAlignedBox = shape->isBox && b3IsAxisAlignedBoxHull( data );
+ 	shape->aabbMargin = b3ComputeShapeMargin( shape );
+ 
+ 	// need to wake bodies so they can react to the shape change
+diff --git a/src/shape.h b/src/shape.h
+index f55ca0f..129f345 100644
+--- a/src/shape.h
++++ b/src/shape.h
+@@ -44,6 +44,8 @@ typedef struct b3Shape
+ 	bool enableHitEvents;
+ 	bool enablePreSolveEvents;
+ 	bool enlargedAABB;
++	bool isBox;
++	bool isAxisAlignedBox;
+ 
+ 	union
+ 	{
+@@ -94,6 +96,24 @@ b3AABB b3ComputeProxyAABB( const b3ShapeProxy* proxy );
+ b3CastOutput b3RayCastShape( const b3Shape* shape, b3Transform transform, const b3RayCastInput* input );
+ b3CastOutput b3ShapeCastShape( const b3Shape* shape, b3Transform transform, const b3ShapeCastInput* input );
+ bool b3OverlapShape( const b3Shape* shape, b3Transform transform, const b3ShapeProxy* proxy );
++bool b3IsBoxHull( const b3HullData* hull );
++bool b3OverlapBoxHull( const b3HullData* hull, b3Transform transform, const b3ShapeProxy* proxy );
++bool b3IsAxisAlignedBoxHull( const b3HullData* hull );
++static inline bool b3OverlapAxisAlignedBoxHull( const b3HullData* hull, b3Transform transform, const b3ShapeProxy* proxy )
++{
++	B3_ASSERT( proxy->count == 1 );
++	b3Vec3 center = transform.q.v.x == 0.0f && transform.q.v.y == 0.0f && transform.q.v.z == 0.0f
++		? b3Sub( proxy->points[0], transform.p )
++		: b3InvTransformPoint( transform, proxy->points[0] );
++	b3Vec3 separation = {
++		b3MaxFloat( b3MaxFloat( hull->aabb.lowerBound.x - center.x, center.x - hull->aabb.upperBound.x ), 0.0f ),
++		b3MaxFloat( b3MaxFloat( hull->aabb.lowerBound.y - center.y, center.y - hull->aabb.upperBound.y ), 0.0f ),
++		b3MaxFloat( b3MaxFloat( hull->aabb.lowerBound.z - center.z, center.z - hull->aabb.upperBound.z ), 0.0f ),
++	};
++	float radius = proxy->radius + B3_OVERLAP_SLOP;
++	return b3LengthSquared( separation ) < radius * radius;
++}
++b3CastOutput b3RayCastAxisAlignedBoxHull( const b3HullData* hull, const b3RayCastInput* input );
+ 
+ float b3GetShapeArea( const b3Shape* shape );
+ float b3GetShapeProjectedArea( const b3Shape* shape, b3Vec3 planeNormal );
+@@ -102,6 +122,7 @@ b3TOIOutput b3ShapeTimeOfImpact( b3Shape* shapeA, b3Shape* shapeB, b3Sweep* swee
+ int b3CollideMoverAndSphere( b3PlaneResult* result, const b3Sphere* shape, const b3Capsule* mover );
+ int b3CollideMoverAndCapsule( b3PlaneResult* result, const b3Capsule* shape, const b3Capsule* mover );
+ int b3CollideMoverAndHull( b3PlaneResult* result, const b3HullData* shape, const b3Capsule* mover );
++int b3CollideMoverAndTriangle( b3PlaneResult* result, const b3Vec3* triangle, const b3Capsule* mover );
+ int b3CollideMoverAndMesh( b3PlaneResult* planes, int capacity, const b3Mesh* shape, const b3Capsule* mover );
+ int b3CollideMoverAndHeightField( b3PlaneResult* results, int capacity, const b3HeightFieldData* shape, const b3Capsule* mover );
+ int b3CollideMover( b3PlaneResult* planes, int planeCapacity, const b3Shape* shape, b3Transform transform,
+diff --git a/src/solver.c b/src/solver.c
+index 4c5c114..cdd54d2 100644
+--- a/src/solver.c
++++ b/src/solver.c
+@@ -296,7 +296,7 @@ static void b3SolveJointsTask( b3SolverBlock block, b3StepContext* context, bool
+ 			 b3GetBit( jointStateBitSet, joint->jointId ) == false )
+ 		{
+ 			float force, torque;
+-			b3GetJointReaction( context->world, joint, context->inv_h, &force, &torque );
++			b3GetJointReaction( joint, context, &force, &torque );
+ 
+ 			// Check thresholds. A zero threshold means all awake joints get reported.
+ 			if ( force >= joint->forceThreshold || torque >= joint->torqueThreshold )
+@@ -440,7 +440,7 @@ static bool b3ContinuousQueryCallback( int proxyId, uint64_t userData, void* con
+ 	{
+ 		bool didHit = true;
+ 
+-		if ( didHit && ( shape->enablePreSolveEvents || fastShape->enablePreSolveEvents ) )
++		if ( didHit && world->preSolveFcn != NULL && ( shape->enablePreSolveEvents || fastShape->enablePreSolveEvents ) )
+ 		{
+ 			b3ShapeId shapeIdA = { shape->id + 1, world->worldId, shape->generation };
+ 			b3ShapeId shapeIdB = { fastShape->id + 1, world->worldId, fastShape->generation };
+@@ -1804,6 +1804,11 @@ void b3Solve( b3World* world, b3StepContext* stepContext )
+ 
+ 			workerContext[i].context = stepContext;
+ 			workerContext[i].workerIndex = i;
++			if ( i == 0 )
++			{
++				workerContext[i].userTask = NULL;
++				continue;
++			}
+ 
+ 			if ( world->taskCount < B3_MAX_TASKS )
+ 			{
+@@ -1821,12 +1826,8 @@ void b3Solve( b3World* world, b3StepContext* stepContext )
+ 			}
+ 		}
+ 
+-		// The calling thread of b3World_Step also enters b3SolverTask as worker 0 and races for the
+-		// orchestrator slot via the CAS inside. This guarantees progress even when the user's task
+-		// system can't run the queued worker 0 promptly: it might schedule out of order, have fewer
+-		// threads than workerCount, or invert priority by parking the calling thread in finishTaskFcn.
+-		// Whoever wins the CAS becomes the orchestrator; the loser returns and lets the spinner-only
+-		// path handle workers >0.
++		// Keep the orchestrator on the calling thread. A redundant worker 0 task makes floating-point
++		// results depend on which thread wins the orchestrator race.
+ 		b3WorkerContext callerContext = { stepContext, 0, NULL };
+ 		b3SolverTask( &callerContext );
+ 
+@@ -2039,6 +2040,9 @@ void b3Solve( b3World* world, b3StepContext* stepContext )
+ 						// childIndex argument is irrelevant for it. shapeA carries the compound.
+ 						event.userMaterialIdA = b3GetShapeUserMaterialId( shapeA, contact->childIndex, triangleIndex );
+ 						event.userMaterialIdB = b3GetShapeUserMaterialId( shapeB, 0, triangleIndex );
++						event.triangleIndex = triangleIndex;
++						event.childIndexA = shapeA->type == b3_compoundShape ? contact->childIndex : -1;
++						event.childIndexB = shapeB->type == b3_compoundShape ? contact->childIndex : -1;
+ 
+ 						b3Array_Push( world->contactHitEvents, event );
+ 					}
+diff --git a/src/spherical_joint.c b/src/spherical_joint.c
+index 3f699ac..3188c1c 100644
+--- a/src/spherical_joint.c
++++ b/src/spherical_joint.c
+@@ -259,20 +259,10 @@ b3Vec3 b3GetSphericalJointForce( b3World* world, b3JointSim* base )
+ 
+ b3Vec3 b3GetSphericalJointTorque( b3World* world, b3JointSim* base )
+ {
+-	b3WorldTransform xfA = b3GetBodyTransform( world, base->bodyIdA );
+-	b3WorldTransform xfB = b3GetBodyTransform( world, base->bodyIdB );
+-	b3Quat qA = b3MulQuat( xfA.q, base->localFrameA.q );
+-	b3Quat qB = b3MulQuat( xfB.q, base->localFrameB.q );
+-
+-	// Cone axis is the z-axis of body A.
+-	b3Vec3 coneAxis = b3RotateVector( qA, b3Vec3_axisZ );
+-	b3Vec3 twistAxis = b3RotateVector( qB, b3Vec3_axisZ );
+-	b3Vec3 swingAxis = b3Normalize( b3Cross( coneAxis, twistAxis ) );
+-
+ 	b3SphericalJoint* joint = &base->sphericalJoint;
+ 	b3Vec3 impulse = b3Add( joint->springImpulse, joint->motorImpulse );
+-	impulse = b3MulAdd( impulse, joint->lowerTwistImpulse - joint->upperTwistImpulse, twistAxis );
+-	impulse = b3MulAdd( impulse, joint->swingImpulse, swingAxis );
++	impulse = b3MulSub( impulse, joint->swingImpulse, joint->swingAxis );
++	impulse = b3MulAdd( impulse, joint->lowerTwistImpulse - joint->upperTwistImpulse, joint->twistJacobian );
+ 	b3Vec3 torque = b3MulSV( world->inv_h, impulse );
+ 	return torque;
+ }
+diff --git a/src/triangle_manifold.c b/src/triangle_manifold.c
+index 001ae05..4f83e29 100644
+--- a/src/triangle_manifold.c
++++ b/src/triangle_manifold.c
+@@ -458,6 +458,51 @@ void b3CollideCapsuleAndTriangle( b3LocalManifold* manifold, int capacity, const
+ 	}
+ }
+ 
++int b3CollideMoverAndTriangle( b3PlaneResult* result, const b3Vec3* triangle, const b3Capsule* mover )
++{
++	b3Vec3 oriented[3] = { triangle[0], triangle[1], triangle[2] };
++	b3Plane plane = b3MakePlaneFromPoints( oriented[0], oriented[1], oriented[2] );
++	b3Vec3 center = b3Lerp( mover->center1, mover->center2, 0.5f );
++	float separation = b3PlaneSeparation( plane, center );
++	bool canonicalFlip = separation == 0.0f &&
++		( plane.normal.x < 0.0f || ( plane.normal.x == 0.0f &&
++			( plane.normal.y < 0.0f || ( plane.normal.y == 0.0f && plane.normal.z < 0.0f ) ) ) );
++	if ( separation < 0.0f || canonicalFlip )
++	{
++		b3Vec3 swap = oriented[1];
++		oriented[1] = oriented[2];
++		oriented[2] = swap;
++	}
++
++	b3LocalManifoldPoint manifoldPoints[2];
++	b3LocalManifold manifold = { .points = manifoldPoints };
++	b3SimplexCache cache = { 0 };
++	b3CollideCapsuleAndTriangle( &manifold, 2, mover, oriented, &cache );
++	if ( manifold.pointCount == 0 )
++	{
++		return 0;
++	}
++
++	int deepestIndex = 0;
++	for ( int i = 1; i < manifold.pointCount; ++i )
++	{
++		if ( manifold.points[i].separation < manifold.points[deepestIndex].separation )
++		{
++			deepestIndex = i;
++		}
++	}
++
++	b3LocalManifoldPoint point = manifold.points[deepestIndex];
++	if ( point.separation > 0.0f )
++	{
++		return 0;
++	}
++
++	result->plane = (b3Plane){ manifold.normal, -point.separation };
++	result->point = b3MulSub( point.point, 0.5f * point.separation, manifold.normal );
++	return 1;
++}
++
+ static inline int b3GetTriangleSupport( b3Vec3* points, b3Vec3 direction )
+ {
+ 	int index = 0;
+diff --git a/src/wheel_joint.c b/src/wheel_joint.c
+index 05665e9..ed0c957 100644
+--- a/src/wheel_joint.c
++++ b/src/wheel_joint.c
+@@ -357,9 +357,9 @@ b3Vec3 b3GetWheelJointForce( b3World* world, b3JointSim* base )
+ 
+ 	// impulse in joint space
+ 	b3Vec3 impulse = {
++		joint->suspensionSpringImpulse + joint->lowerSuspensionImpulse - joint->upperSuspensionImpulse,
+ 		joint->linearImpulse.x,
+ 		joint->linearImpulse.y,
+-		joint->lowerSuspensionLimit + joint->upperSuspensionImpulse + joint->suspensionSpringImpulse,
+ 	};
+ 
+ 	// convert impulse to force
+@@ -373,31 +373,55 @@ b3Vec3 b3GetWheelJointForce( b3World* world, b3JointSim* base )
+ 	return force;
+ }
+ 
+-b3Vec3 b3GetWheelJointTorque( b3World* world, b3JointSim* base )
++static inline b3Vec3 b3BuildWheelJointAngularImpulse(
++	const b3WheelJoint* joint, b3Quat quatA, b3Quat relQ, b3Matrix3 matrixA, b3Matrix3 matrixB )
+ {
+-	B3_ASSERT( base->type == b3_wheelJoint );
+-
+-	// chase body id to the solver set where the body lives
+-	int idA = base->bodyIdA;
+-	// int idB = base->bodyIdB;
++	b3Vec3 spinAxis = matrixB.cz;
+ 
+-	b3Body* bodyA = b3Array_Get( world->bodies, idA  );
+-	// b3Body* bodyB = b3Array_Get( world->bodies, idB  );
++	if ( joint->enableSteering )
++	{
++		float cs = b3Dot( matrixB.cz, matrixA.cz );
++		float ss = -b3Dot( matrixB.cz, matrixA.cy );
++		float den = cs * cs + ss * ss;
++		den = den > 0.0f ? 1.0f / den : 0.0f;
++		b3Vec3 steeringAxis =
++			b3MulSV( den, b3Cross( matrixB.cz, b3Sub( b3MulSV( -cs, matrixA.cy ), b3MulSV( ss, matrixA.cz ) ) ) );
+ 
+-	b3SolverSet* setA = b3Array_Get( world->solverSets, bodyA->setIndex  );
+-	// b3SolverSet* setB = b3Array_Get( world->solverSets, bodyB->setIndex  );
++		b3Vec3 perpAxis = b3Cross( spinAxis, matrixA.cx );
++		float steeringImpulse = joint->steeringSpringImpulse + joint->lowerSteeringImpulse - joint->upperSteeringImpulse;
++		return b3Blend3( joint->angularImpulse.x, perpAxis, joint->spinImpulse, spinAxis, steeringImpulse, steeringAxis );
++	}
+ 
+-	int localIndexA = bodyA->localIndex;
+-	// int localIndexB = bodyB->localIndex;
++	b3Vec3 perpAxisX = b3MulSV(
++		0.5f, b3RotateVector( quatA, b3Add( b3MulSV( relQ.s, b3Vec3_axisX ), b3Cross( relQ.v, b3Vec3_axisX ) ) ) );
++	b3Vec3 perpAxisY = b3MulSV(
++		0.5f, b3RotateVector( quatA, b3Add( b3MulSV( relQ.s, b3Vec3_axisY ), b3Cross( relQ.v, b3Vec3_axisY ) ) ) );
++	return b3Blend3( joint->angularImpulse.x, perpAxisX, joint->angularImpulse.y, perpAxisY, joint->spinImpulse, spinAxis );
++}
+ 
+-	b3BodySim* bodySimA = b3Array_Get( setA->bodySims, localIndexA  );
+-	// b3BodySim* bodySimB = b3Array_Get( setB->bodySims, localIndexB  );
++b3Vec3 b3GetWheelJointAngularImpulse( const b3WheelJoint* joint, b3Quat quatA, b3Quat quatB )
++{
++	if ( b3DotQuat( quatA, quatB ) < 0.0f )
++	{
++		quatB = b3NegateQuat( quatB );
++	}
+ 
+-	b3Quat qA = b3MulQuat( bodySimA->transform.q, base->localFrameA.q );
++	b3Quat relQ = b3InvMulQuat( quatA, quatB );
++	b3Matrix3 matrixA = b3MakeMatrixFromQuat( quatA );
++	b3Matrix3 matrixB = b3MakeMatrixFromQuat( quatB );
++	return b3BuildWheelJointAngularImpulse( joint, quatA, relQ, matrixA, matrixB );
++}
+ 
+-	b3Matrix3 matrixA = b3MakeMatrixFromQuat( qA );
++b3Vec3 b3GetWheelJointTorque( b3World* world, b3JointSim* base )
++{
++	B3_ASSERT( base->type == b3_wheelJoint );
+ 
+-	return b3MulSV( world->inv_h * base->wheelJoint.spinImpulse, matrixA.cz );
++	b3WorldTransform transformA = b3GetBodyTransform( world, base->bodyIdA );
++	b3WorldTransform transformB = b3GetBodyTransform( world, base->bodyIdB );
++	b3Quat quatA = b3MulQuat( transformA.q, base->localFrameA.q );
++	b3Quat quatB = b3MulQuat( transformB.q, base->localFrameB.q );
++	b3Vec3 impulse = b3GetWheelJointAngularImpulse( &base->wheelJoint, quatA, quatB );
++	return b3MulSV( world->inv_h, impulse );
+ }
+ 
+ // See constraints.pdf
+@@ -469,7 +493,7 @@ void b3PrepareWheelJoint( b3JointSim* base, b3StepContext* context )
+ 	joint->steeringSoftness = b3MakeSoft( joint->steeringHertz, joint->steeringDampingRatio, context->h );
+ 
+ 	{
+-		// Rotation axis is the z-axis of body A.
++		// Rotation axis is the z-axis of body B.
+ 		b3Vec3 spinAxis = matrixB.cz;
+ 		float k = b3Dot( spinAxis, b3MulMV( invInertiaSum, spinAxis ) );
+ 		joint->spinMass = k > 0.0f ? 1.0f / k : 0.0f;
+@@ -546,41 +570,11 @@ void b3WarmStartWheelJoint( b3JointSim* base, b3StepContext* context )
+ 
+ 	float linearImpulseY = joint->linearImpulse.x;
+ 	float linearImpulseZ = joint->linearImpulse.y;
+-	float angularImpulseX = joint->angularImpulse.x;
+-	float angularImpulseY = joint->angularImpulse.y;
+-
+ 	b3Vec3 linearImpulse = b3Blend3( suspensionImpulse, matrixA.cx, linearImpulseY, matrixA.cy, linearImpulseZ, matrixA.cz );
+ 	b3Vec3 angularImpulseA = b3Blend3( suspensionImpulse, sAx, linearImpulseY, sAy, linearImpulseZ, sAz );
+ 	b3Vec3 angularImpulseB = b3Blend3( suspensionImpulse, sBx, linearImpulseY, sBy, linearImpulseZ, sBz );
+-	b3Vec3 angularImpulse = b3MulSV( joint->spinImpulse, matrixA.cz );
+-
+-	b3Vec3 spinAxis = matrixB.cz;
+-
+-	if ( joint->enableSteering )
+-	{
+-		// Twist constraint around x-axis
+-		float cs = b3Dot( matrixB.cz, matrixA.cz );
+-		float ss = -b3Dot( matrixB.cz, matrixA.cy );
+-		float den = cs * cs + ss * ss;
+-		den = den > 0.0f ? 1.0f / den : 0.0f;
+-		b3Vec3 steeringAxis =
+-			b3MulSV( den, b3Cross( matrixB.cz, b3Sub( b3MulSV( -cs, matrixA.cy ), b3MulSV( ss, matrixA.cz ) ) ) );
+-
+-		b3Vec3 perpAxis = b3Cross( spinAxis, matrixA.cx );
+-		float steeringImpulse = joint->steeringSpringImpulse + joint->lowerSteeringImpulse - joint->upperSteeringImpulse;
+-		angularImpulse = b3Blend3( angularImpulseX, perpAxis, joint->spinImpulse, spinAxis, steeringImpulse, steeringAxis );
+-	}
+-	else
+-	{
+-		b3Quat relQ = b3InvMulQuat( quatA, quatB );
+-		b3Vec3 perpAxisX = b3MulSV(
+-			0.5f, b3RotateVector( quatA, b3Add( b3MulSV( relQ.s, b3Vec3_axisX ), b3Cross( relQ.v, b3Vec3_axisX ) ) ) );
+-		b3Vec3 perpAxisY = b3MulSV(
+-			0.5f, b3RotateVector( quatA, b3Add( b3MulSV( relQ.s, b3Vec3_axisY ), b3Cross( relQ.v, b3Vec3_axisY ) ) ) );
+-		angularImpulse = b3Add(
+-			angularImpulse,
+-			b3Blend3( angularImpulseX, perpAxisX, angularImpulseY, perpAxisY, joint->spinImpulse, spinAxis ) );
+-	}
++	b3Quat relQ = b3InvMulQuat( quatA, quatB );
++	b3Vec3 angularImpulse = b3BuildWheelJointAngularImpulse( joint, quatA, relQ, matrixA, matrixB );
+ 
+ 	if ( stateA->flags & b3_dynamicFlag )
+ 	{
+diff --git a/src/world_snapshot.c b/src/world_snapshot.c
+index 880c9ed..1b0ef41 100644
+--- a/src/world_snapshot.c
++++ b/src/world_snapshot.c
+@@ -566,7 +566,10 @@ static void b3DesShapes( b3SnapReader* r, b3World* world, b3RecReader* rdr )
+ 	}
+ 
+ 	b3Array_Resize( world->shapes, count );
+-	memset( world->shapes.data, 0, (size_t)count * sizeof( b3Shape ) );
++	if ( count > 0 )
++	{
++		memset( world->shapes.data, 0, (size_t)count * sizeof( b3Shape ) );
++	}
+ 
+ 	for ( int i = 0; i < count && r->ok; ++i )
+ 	{
+@@ -802,7 +805,10 @@ static void b3DesContacts( b3SnapReader* r, b3World* world )
+ 	}
+ 
+ 	b3Array_Resize( world->contacts, count );
+-	memset( world->contacts.data, 0, (size_t)count * sizeof( b3Contact ) );
++	if ( count > 0 )
++	{
++		memset( world->contacts.data, 0, (size_t)count * sizeof( b3Contact ) );
++	}
+ 
+ 	for ( int i = 0; i < count && r->ok; ++i )
+ 	{
+@@ -1123,7 +1129,10 @@ bool b3DeserializeIntoShell( const uint8_t* data, int size, b3World* world, b3Re
+ 	if ( r->ok )
+ 	{
+ 		b3Array_Resize( world->solverSets, setCount );
+-		memset( world->solverSets.data, 0, (size_t)setCount * sizeof( b3SolverSet ) );
++		if ( setCount > 0 )
++		{
++			memset( world->solverSets.data, 0, (size_t)setCount * sizeof( b3SolverSet ) );
++		}
+ 		for ( int i = 0; i < setCount; ++i )
+ 		{
+ 			b3DesSolverSet( r, world->solverSets.data + i );
+@@ -1205,7 +1214,10 @@ bool b3DeserializeIntoShell( const uint8_t* data, int size, b3World* world, b3Re
+ 		if ( r->ok )
+ 		{
+ 			b3Array_Resize( world->sensors, sensorCount );
+-			memset( world->sensors.data, 0, (size_t)sensorCount * sizeof( b3Sensor ) );
++			if ( sensorCount > 0 )
++			{
++				memset( world->sensors.data, 0, (size_t)sensorCount * sizeof( b3Sensor ) );
++			}
+ 		}
+ 
+ 		for ( int i = 0; i < sensorCount && r->ok; ++i )
+@@ -1234,7 +1246,10 @@ bool b3DeserializeIntoShell( const uint8_t* data, int size, b3World* world, b3Re
+ 		if ( r->ok )
+ 		{
+ 			b3Array_Resize( world->islands, islandCount );
+-			memset( world->islands.data, 0, (size_t)islandCount * sizeof( b3Island ) );
++			if ( islandCount > 0 )
++			{
++				memset( world->islands.data, 0, (size_t)islandCount * sizeof( b3Island ) );
++			}
+ 		}
+ 
+ 		for ( int i = 0; i < islandCount && r->ok; ++i )
+diff --git a/src/dynamic_tree.c b/src/dynamic_tree.c
+index fc98394b19..51b53088d6 100644
+--- a/src/dynamic_tree.c
++++ b/src/dynamic_tree.c
+@@ -1263,6 +1263,8 @@ b3TreeStats b3DynamicTree_RayCast( const b3DynamicTree* tree, const b3RayCastInp
+ 	b3Vec3 d = input->translation;
+ 	int zeroComponentCount = ( d.x == 0.0f ) + ( d.y == 0.0f ) + ( d.z == 0.0f );
+ 	bool axisAligned = zeroComponentCount >= 2;
++	int movingAxis = d.x != 0.0f ? 0 : d.y != 0.0f ? 1 : 2;
++	float movingDirection = movingAxis == 0 ? d.x : movingAxis == 1 ? d.y : d.z;
+ 
+ 	b3V32 pv1 = b3LoadV( &p1.x );
+ 	b3V32 dv = b3LoadV( &d.x );
+@@ -1274,9 +1276,9 @@ b3TreeStats b3DynamicTree_RayCast( const b3DynamicTree* tree, const b3RayCastInp
+ 	// Build a bounding box for the segment.
+ 	b3AABB segmentAABB = { b3Min( p1, p2 ), b3Max( p1, p2 ) };
+ 
+-	int stack[B3_TREE_STACK_SIZE];
++	uint32_t stack[B3_TREE_STACK_SIZE];
+ 	int stackCount = 0;
+-	stack[stackCount++] = tree->root;
++	stack[stackCount++] = (uint32_t)tree->root;
+ 
+ 	const b3TreeNode* nodes = tree->nodes;
+ 
+@@ -1284,7 +1286,9 @@ b3TreeStats b3DynamicTree_RayCast( const b3DynamicTree* tree, const b3RayCastInp
+ 
+ 	while ( stackCount > 0 )
+ 	{
+-		int nodeId = stack[--stackCount];
++		uint32_t stackEntry = stack[--stackCount];
++		bool prevalidated = ( stackEntry & 0x80000000u ) != 0;
++		int nodeId = (int)( stackEntry & 0x7FFFFFFFu );
+ 		if ( nodeId == B3_NULL_INDEX )
+ 		{
+ 			// todo is this possible?
+@@ -1295,26 +1299,29 @@ b3TreeStats b3DynamicTree_RayCast( const b3DynamicTree* tree, const b3RayCastInp
+ 		const b3TreeNode* node = nodes + nodeId;
+ 		result.nodeVisits += 1;
+ 
+-		b3AABB nodeAABB = node->aabb;
+-
+-		// todo look at disassembly
+-		uint64_t bitMatch = requireAllBits ? ( node->categoryBits & maskBits ) == maskBits : ( node->categoryBits & maskBits );
+-
+-		if ( bitMatch == 0 || b3AABB_Overlaps( nodeAABB, segmentAABB ) == false )
++		if ( prevalidated == false )
+ 		{
+-			continue;
+-		}
++			b3AABB nodeAABB = node->aabb;
+ 
+-		if ( axisAligned == false )
+-		{
+-			b3V32 lower = b3LoadV( &nodeAABB.lowerBound.x );
+-			b3V32 upper = b3LoadV( &nodeAABB.upperBound.x );
++			// todo look at disassembly
++			uint64_t bitMatch = requireAllBits ? ( node->categoryBits & maskBits ) == maskBits : ( node->categoryBits & maskBits );
+ 
+-			bool edgeOverlap = b3TestBoundsRayOverlap( lower, upper, pv1, dv );
+-			if ( edgeOverlap == false )
++			if ( bitMatch == 0 || b3AABB_Overlaps( nodeAABB, segmentAABB ) == false )
+ 			{
+ 				continue;
+ 			}
++
++			if ( axisAligned == false )
++			{
++				b3V32 lower = b3LoadV( &nodeAABB.lowerBound.x );
++				b3V32 upper = b3LoadV( &nodeAABB.upperBound.x );
++
++				bool edgeOverlap = b3TestBoundsRayOverlap( lower, upper, pv1, dv );
++				if ( edgeOverlap == false )
++				{
++					continue;
++				}
++			}
+ 		}
+ 
+ 		if ( b3IsLeaf( node ) )
+@@ -1346,17 +1353,62 @@ b3TreeStats b3DynamicTree_RayCast( const b3DynamicTree* tree, const b3RayCastInp
+ 			B3_ASSERT( stackCount < B3_TREE_STACK_SIZE - 1 );
+ 			if ( stackCount < B3_TREE_STACK_SIZE - 1 )
+ 			{
++				if ( axisAligned )
++				{
++					const b3TreeNode* child1 = nodes + node->children.child1;
++					const b3TreeNode* child2 = nodes + node->children.child2;
++					b3AABB aabb1 = child1->aabb;
++					b3AABB aabb2 = child2->aabb;
++					uint64_t bitMatch1 = requireAllBits ? ( child1->categoryBits & maskBits ) == maskBits
++													 : ( child1->categoryBits & maskBits );
++					uint64_t bitMatch2 = requireAllBits ? ( child2->categoryBits & maskBits ) == maskBits
++													 : ( child2->categoryBits & maskBits );
++					bool match1 = bitMatch1 != 0 && b3AABB_Overlaps( aabb1, segmentAABB );
++					bool match2 = bitMatch2 != 0 && b3AABB_Overlaps( aabb2, segmentAABB );
++					if ( match1 != match2 )
++					{
++						int matchingChild = match1 ? node->children.child1 : node->children.child2;
++						stack[stackCount++] = (uint32_t)matchingChild | 0x80000000u;
++						continue;
++					}
++
++					if ( match1 == false )
++					{
++						continue;
++					}
++
++					float center1 = movingAxis == 0 ? aabb1.lowerBound.x + aabb1.upperBound.x
++						: movingAxis == 1         ? aabb1.lowerBound.y + aabb1.upperBound.y
++										  : aabb1.lowerBound.z + aabb1.upperBound.z;
++					float center2 = movingAxis == 0 ? aabb2.lowerBound.x + aabb2.upperBound.x
++						: movingAxis == 1         ? aabb2.lowerBound.y + aabb2.upperBound.y
++										  : aabb2.lowerBound.z + aabb2.upperBound.z;
++					bool child1First = movingDirection > 0.0f ? center1 < center2 : center2 < center1;
++					if ( child1First )
++					{
++						stack[stackCount++] = (uint32_t)node->children.child2;
++						stack[stackCount++] = (uint32_t)node->children.child1 | 0x80000000u;
++					}
++					else
++					{
++						stack[stackCount++] = (uint32_t)node->children.child1;
++						stack[stackCount++] = (uint32_t)node->children.child2 | 0x80000000u;
++					}
++					continue;
++				}
++
+ 				b3Vec3 c1 = b3AABB_Center( nodes[node->children.child1].aabb );
+ 				b3Vec3 c2 = b3AABB_Center( nodes[node->children.child2].aabb );
+-				if ( b3Dot( b3Sub( c1, p1 ), d ) < b3Dot( b3Sub( c2, p1 ), d ) )
++				bool child1First = b3Dot( b3Sub( c1, p1 ), d ) < b3Dot( b3Sub( c2, p1 ), d );
++				if ( child1First )
+ 				{
+-					stack[stackCount++] = node->children.child2;
+-					stack[stackCount++] = node->children.child1;
++					stack[stackCount++] = (uint32_t)node->children.child2;
++					stack[stackCount++] = (uint32_t)node->children.child1;
+ 				}
+ 				else
+ 				{
+-					stack[stackCount++] = node->children.child1;
+-					stack[stackCount++] = node->children.child2;
++					stack[stackCount++] = (uint32_t)node->children.child1;
++					stack[stackCount++] = (uint32_t)node->children.child2;
+ 				}
+ 			}
+ 		}
+diff --git a/src/physics_world.c b/src/physics_world.c
+index 9c60d9ca55..9de5456655 100644
+--- a/src/physics_world.c
++++ b/src/physics_world.c
+@@ -3018,12 +3018,8 @@ b3TreeStats b3World_CastRay( b3WorldId worldId, b3Pos origin, b3Vec3 translation
+ 
+ 	for ( int i = 0; i < b3_bodyTypeCount; ++i )
+ 	{
+-		b3DynamicTree* tree = world->broadPhase.trees + i;
+-		if ( tree->nodeCount == 0 )
+-		{
+-			continue;
+-		}
+-		b3TreeStats treeResult = b3DynamicTree_RayCast( tree, &input, filter.maskBits, false, RayCastCallback, &worldContext );
++		b3TreeStats treeResult =
++			b3DynamicTree_RayCast( world->broadPhase.trees + i, &input, filter.maskBits, false, RayCastCallback, &worldContext );
+ 		treeStats.nodeVisits += treeResult.nodeVisits;
+ 		treeStats.leafVisits += treeResult.leafVisits;
+ 
+@@ -3045,26 +3041,55 @@ b3TreeStats b3World_CastRay( b3WorldId worldId, b3Pos origin, b3Vec3 translation
+ 	return treeStats;
+ }
+ 
+-// This callback finds the closest hit. This is the most common callback used in games.
+-static float b3RayCastClosestFcn( b3ShapeId shapeId, b3Pos point, b3Vec3 normal, float fraction, uint64_t userMaterialId,
+-								  int triangleIndex, int childIndex, void* context )
++typedef struct WorldRayCastClosestContext
+ {
+-	// Ignore initial overlap
+-	if ( fraction == 0.0f )
++	b3World* world;
++	b3QueryFilter filter;
++	b3Pos origin;
++	b3RayResult* result;
++} WorldRayCastClosestContext;
++
++static float RayCastClosestCallback( const b3RayCastInput* input, int proxyId, uint64_t userData, void* context )
++{
++	B3_UNUSED( proxyId );
++
++	int shapeId = (int)userData;
++	WorldRayCastClosestContext* worldContext = (WorldRayCastClosestContext*)context;
++	b3World* world = worldContext->world;
++	b3Shape* shape = b3Array_Get( world->shapes, shapeId );
++	if ( b3ShouldQueryCollide( &shape->filter, &worldContext->filter ) == false )
++	{
++		return input->maxFraction;
++	}
++
++	b3Body* body = b3Array_Get( world->bodies, shape->bodyId );
++	b3WorldTransform bodyTransform = b3GetBodyTransformQuick( world, body );
++	b3Transform transform = b3ToRelativeTransform( bodyTransform, worldContext->origin );
++	b3RayCastInput localInput = *input;
++	localInput.origin = b3Vec3_zero;
++	b3CastOutput output = b3RayCastShape( shape, transform, &localInput );
++	if ( output.hit == false )
++	{
++		return input->maxFraction;
++	}
++
++	// Closest queries ignore shapes containing the ray origin.
++	if ( output.fraction == 0.0f )
+ 	{
+ 		return -1.0f;
+ 	}
+ 
+-	b3RayResult* rayResult = (b3RayResult*)context;
+-	rayResult->shapeId = shapeId;
+-	rayResult->point = point;
+-	rayResult->normal = normal;
+-	rayResult->fraction = fraction;
+-	rayResult->userMaterialId = userMaterialId;
+-	rayResult->triangleIndex = triangleIndex;
+-	rayResult->childIndex = childIndex;
+-	rayResult->hit = true;
+-	return fraction;
++	b3RayResult* result = worldContext->result;
++	result->shapeId = (b3ShapeId){ shapeId + 1, world->worldId, shape->generation };
++	result->point = b3OffsetPos( worldContext->origin, output.point );
++	result->normal = output.normal;
++	result->fraction = output.fraction;
++	int materialIndex = b3ClampInt( output.materialIndex, 0, shape->materialCount - 1 );
++	result->userMaterialId = b3GetShapeMaterials( shape )[materialIndex].userMaterialId;
++	result->triangleIndex = output.triangleIndex;
++	result->childIndex = output.childIndex;
++	result->hit = true;
++	return output.fraction;
+ }
+ 
+ b3RayResult b3World_CastRayClosest( b3WorldId worldId, b3Pos origin, b3Vec3 translation, b3QueryFilter filter )
+@@ -3083,32 +3108,20 @@ b3RayResult b3World_CastRayClosest( b3WorldId worldId, b3Pos origin, b3Vec3 tran
+ 	// The tree traverses in float relative to the world origin. Each shape is then re-differenced at
+ 	// full precision against its body, so a hit stays accurate far from the origin.
+ 	b3RayCastInput input = { b3ToVec3( origin ), translation, 1.0f };
+-	WorldRayCastContext worldContext = {
++	WorldRayCastClosestContext worldContext = {
+ 		.world = world,
+-		.fcn = b3RayCastClosestFcn,
+ 		.filter = filter,
+-		.fraction = 1.0f,
+ 		.origin = origin,
+-		.userContext = &result,
++		.result = &result,
+ 	};
+ 
+ 	for ( int i = 0; i < b3_bodyTypeCount; ++i )
+ 	{
+-		b3DynamicTree* tree = world->broadPhase.trees + i;
+-		if ( tree->nodeCount == 0 )
+-		{
+-			continue;
+-		}
+-		b3TreeStats treeResult = b3DynamicTree_RayCast( tree, &input, filter.maskBits, false, RayCastCallback, &worldContext );
++		b3TreeStats treeResult =
++			b3DynamicTree_RayCast( world->broadPhase.trees + i, &input, filter.maskBits, false, RayCastClosestCallback, &worldContext );
+ 		result.nodeVisits += treeResult.nodeVisits;
+ 		result.leafVisits += treeResult.leafVisits;
+-
+-		if ( worldContext.fraction == 0.0f )
+-		{
+-			break;
+-		}
+-
+-		input.maxFraction = worldContext.fraction;
++		input.maxFraction = result.hit ? result.fraction : input.maxFraction;
+ 	}
+ 
+ 	// Closed query, no user callback: record the inputs and the single result for the replay compare.

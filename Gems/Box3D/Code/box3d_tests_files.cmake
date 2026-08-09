@@ -1,0 +1,75 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+
+set(FILES
+    Tests/Benchmarks.cpp
+    Tests/BodyTests.cpp
+    Tests/CharacterTests.cpp
+    Tests/ComponentTests.cpp
+    Tests/CookingTests.cpp
+    Tests/DiagnosticsTests.cpp
+    Tests/EffectsTests.cpp
+    Tests/EventTests.cpp
+    Tests/JointTests.cpp
+    Tests/Headers/CharacterBus.cpp
+    Tests/Headers/CharacterConfiguration.cpp
+    Tests/Headers/ColliderBus.cpp
+    Tests/Headers/Collision.cpp
+    Tests/Headers/Cooking.cpp
+    Tests/Headers/CookingBus.cpp
+    Tests/Headers/Diagnostics.cpp
+    Tests/Headers/DiagnosticsBus.cpp
+    Tests/Headers/EffectsBus.cpp
+    Tests/Headers/Effects.cpp
+    Tests/Headers/Events.cpp
+    Tests/Headers/Handle.cpp
+    Tests/Headers/HeightfieldBus.cpp
+    Tests/Headers/JointBus.cpp
+    Tests/Headers/Joints.cpp
+    Tests/Headers/Material.cpp
+    Tests/Headers/MaterialBus.cpp
+    Tests/Headers/Queries.cpp
+    Tests/Headers/RigidBodyBus.cpp
+    Tests/Headers/RigidBodyConfiguration.cpp
+    Tests/Headers/ShapeConfiguration.cpp
+    Tests/Headers/Statistics.cpp
+    Tests/Headers/SystemConfiguration.cpp
+    Tests/Headers/System.cpp
+    Tests/Headers/TypeIds.cpp
+    Tests/Headers/WorldBus.cpp
+    Tests/QueryTests.cpp
+    Tests/SelfContainedTests.cpp
+)
+
+set(SKIP_UNITY_BUILD_INCLUSION_FILES
+    Tests/Headers/CharacterBus.cpp
+    Tests/Headers/CharacterConfiguration.cpp
+    Tests/Headers/ColliderBus.cpp
+    Tests/Headers/Collision.cpp
+    Tests/Headers/Cooking.cpp
+    Tests/Headers/CookingBus.cpp
+    Tests/Headers/Diagnostics.cpp
+    Tests/Headers/DiagnosticsBus.cpp
+    Tests/Headers/EffectsBus.cpp
+    Tests/Headers/Effects.cpp
+    Tests/Headers/Events.cpp
+    Tests/Headers/Handle.cpp
+    Tests/Headers/HeightfieldBus.cpp
+    Tests/Headers/JointBus.cpp
+    Tests/Headers/Joints.cpp
+    Tests/Headers/Material.cpp
+    Tests/Headers/MaterialBus.cpp
+    Tests/Headers/Queries.cpp
+    Tests/Headers/RigidBodyBus.cpp
+    Tests/Headers/RigidBodyConfiguration.cpp
+    Tests/Headers/ShapeConfiguration.cpp
+    Tests/Headers/Statistics.cpp
+    Tests/Headers/SystemConfiguration.cpp
+    Tests/Headers/System.cpp
+    Tests/Headers/TypeIds.cpp
+    Tests/Headers/WorldBus.cpp
+)
