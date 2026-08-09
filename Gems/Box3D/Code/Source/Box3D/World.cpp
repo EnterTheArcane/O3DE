@@ -157,13 +157,6 @@ namespace Box3D
             return AZ::IsClose(transform.GetUniformScale(), 1.0f, AZ::Constants::Tolerance);
         }
 
-        bool IsValidGeometryScale(const AZ::Vector3& scale)
-        {
-            constexpr float minimumScale = 0.01f;
-            return scale.IsFinite() && AZStd::abs(scale.GetX()) >= minimumScale && AZStd::abs(scale.GetY()) >= minimumScale &&
-                AZStd::abs(scale.GetZ()) >= minimumScale;
-        }
-
         bool IsValidBodyType(BodyType bodyType)
         {
             switch (bodyType)
@@ -336,44 +329,58 @@ namespace Box3D
 
         struct QueryProxy final
         {
-            AZStd::fixed_vector<AZ::Vector3, 64> m_points;
+            void AddPoint(const AZ::Vector3& point)
+            {
+                if (m_overflowPoints.empty() && m_inlinePoints.size() < m_inlinePoints.max_size())
+                {
+                    m_inlinePoints.push_back(point);
+                    return;
+                }
+                if (m_overflowPoints.empty())
+                {
+                    m_overflowPoints.reserve(MaximumPointCount);
+                    m_overflowPoints.assign(m_inlinePoints.begin(), m_inlinePoints.end());
+                    m_inlinePoints.clear();
+                }
+                m_overflowPoints.push_back(point);
+            }
+
+            [[nodiscard]] AZStd::span<const AZ::Vector3> GetPoints() const
+            {
+                return m_overflowPoints.empty() ? AZStd::span<const AZ::Vector3>(m_inlinePoints)
+                                                : AZStd::span<const AZ::Vector3>(m_overflowPoints);
+            }
+
+            static constexpr size_t MaximumPointCount = 64;
+            AZStd::fixed_vector<AZ::Vector3, 8> m_inlinePoints;
+            AZStd::vector<AZ::Vector3> m_overflowPoints;
             float m_radius = 0.0f;
         };
 
-        bool BuildQueryProxy(const QueryGeometry& geometry, const AZ::Transform& transform, const AZ::Vector3& scale, QueryProxy& proxy)
+        bool BuildQueryProxy(const QueryGeometry& geometry, const AZ::Transform& transform, QueryProxy& proxy)
         {
             proxy = {};
-            if (!IsValidTransform(transform) || !HasUnitScale(transform) || !IsValidGeometryScale(scale))
+            if (!IsValidTransform(transform))
             {
                 return false;
             }
             return AZStd::visit(
-                [&transform, &scale, &proxy](const auto& configuration)
+                [&transform, &proxy](const auto& configuration)
                 {
                     using Configuration = AZStd::remove_cvref_t<decltype(configuration)>;
                     if constexpr (AZStd::is_same_v<Configuration, SphereShapeConfiguration>)
                     {
-                        if (!AZ::IsClose(AZStd::abs(scale.GetX()), AZStd::abs(scale.GetY()), 1.0e-4f) ||
-                            !AZ::IsClose(AZStd::abs(scale.GetX()), AZStd::abs(scale.GetZ()), 1.0e-4f))
-                        {
-                            return false;
-                        }
-                        proxy.m_radius = configuration.m_radius * AZStd::abs(scale.GetX());
-                        proxy.m_points.push_back(AZ::Vector3::CreateZero());
+                        proxy.m_radius = configuration.m_radius * transform.GetUniformScale();
+                        proxy.AddPoint(AZ::Vector3::CreateZero());
                         return AZ::IsFiniteFloat(proxy.m_radius) && proxy.m_radius > 0.0f;
                     }
                     else if constexpr (AZStd::is_same_v<Configuration, CapsuleShapeConfiguration>)
                     {
-                        if (!AZ::IsClose(AZStd::abs(scale.GetX()), AZStd::abs(scale.GetY()), 1.0e-4f) ||
-                            !AZ::IsClose(AZStd::abs(scale.GetX()), AZStd::abs(scale.GetZ()), 1.0e-4f))
-                        {
-                            return false;
-                        }
-                        proxy.m_radius = configuration.m_radius * AZStd::abs(scale.GetX());
+                        proxy.m_radius = configuration.m_radius * transform.GetUniformScale();
                         const float halfSegment = AZStd::max(0.5f * configuration.m_height - configuration.m_radius, 0.0f);
-                        const AZ::Vector3 axis = transform.TransformVector(scale * AZ::Vector3::CreateAxisZ(halfSegment));
-                        proxy.m_points.push_back(-axis);
-                        proxy.m_points.push_back(axis);
+                        const AZ::Vector3 axis = transform.TransformVector(AZ::Vector3::CreateAxisZ(halfSegment));
+                        proxy.AddPoint(-axis);
+                        proxy.AddPoint(axis);
                         return AZ::IsFiniteFloat(configuration.m_height) && configuration.m_height > 0.0f &&
                             AZ::IsFiniteFloat(proxy.m_radius) && proxy.m_radius > 0.0f;
                     }
@@ -389,7 +396,7 @@ namespace Box3D
                             {
                                 for (float z : { -configuration.m_halfExtents.GetZ(), configuration.m_halfExtents.GetZ() })
                                 {
-                                    proxy.m_points.push_back(transform.TransformVector(scale * AZ::Vector3(x, y, z)));
+                                    proxy.AddPoint(transform.TransformVector(AZ::Vector3(x, y, z)));
                                 }
                             }
                         }
@@ -411,14 +418,14 @@ namespace Box3D
                             float cosine = 0.0f;
                             AZ::SinCos(angle, sine, cosine);
                             const AZ::Vector3 radial(configuration.m_radius * cosine, configuration.m_radius * sine, 0.0f);
-                            proxy.m_points.push_back(transform.TransformVector(scale * (radial - AZ::Vector3::CreateAxisZ(halfHeight))));
-                            proxy.m_points.push_back(transform.TransformVector(scale * (radial + AZ::Vector3::CreateAxisZ(halfHeight))));
+                            proxy.AddPoint(transform.TransformVector(radial - AZ::Vector3::CreateAxisZ(halfHeight)));
+                            proxy.AddPoint(transform.TransformVector(radial + AZ::Vector3::CreateAxisZ(halfHeight)));
                         }
                         return true;
                     }
                     else if constexpr (AZStd::is_same_v<Configuration, ConvexHullShapeConfiguration>)
                     {
-                        if (configuration.m_vertices.size() < 4 || configuration.m_vertices.size() > proxy.m_points.max_size())
+                        if (configuration.m_vertices.size() < 4 || configuration.m_vertices.size() > QueryProxy::MaximumPointCount)
                         {
                             return false;
                         }
@@ -428,7 +435,7 @@ namespace Box3D
                             {
                                 return false;
                             }
-                            proxy.m_points.push_back(transform.TransformVector(scale * vertex));
+                            proxy.AddPoint(transform.TransformVector(vertex));
                         }
                         return true;
                     }
@@ -602,6 +609,7 @@ namespace Box3D
         }
 
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::Step");
+        m_entityCharacterMoves.clear();
         if (!ApplyPendingCharacterMoves(fixedTimeStep, true))
         {
             return false;
@@ -626,6 +634,7 @@ namespace Box3D
         }
 
         m_accumulatedTime += deltaTime;
+        m_entityCharacterMoves.clear();
         AZ::u32 stepCount = 0;
         while (m_accumulatedTime >= m_configuration.m_fixedTimeStep && stepCount < m_configuration.m_maximumCatchUpSteps)
         {
@@ -689,11 +698,12 @@ namespace Box3D
             }
             HashU32(digest, characterIndex);
             HashU32(digest, slot.m_generation);
-            HashVector(digest, slot.m_state.m_basePosition);
-            HashVector(digest, slot.m_state.m_velocity);
-            HashU32(digest, static_cast<AZ::u32>(slot.m_state.m_support.m_state));
-            HashVector(digest, slot.m_state.m_support.m_position);
-            HashVector(digest, slot.m_state.m_support.m_normal);
+            const CharacterState& state = m_characterResources[characterIndex].m_state;
+            HashVector(digest, state.m_basePosition);
+            HashVector(digest, state.m_velocity);
+            HashU32(digest, static_cast<AZ::u32>(state.m_support.m_state));
+            HashVector(digest, state.m_support.m_position);
+            HashVector(digest, state.m_support.m_normal);
         }
         return digest;
     }
@@ -710,8 +720,8 @@ namespace Box3D
         AZ::u32 bodyIndex = 0;
         if (!m_freeBodySlots.empty())
         {
-            bodyIndex = m_freeBodySlots.front();
-            m_freeBodySlots.pop();
+            bodyIndex = m_freeBodySlots.back();
+            m_freeBodySlots.pop_back();
         }
         else
         {
@@ -721,6 +731,7 @@ namespace Box3D
             }
             bodyIndex = aznumeric_cast<AZ::u32>(m_bodySlots.size());
             m_bodySlots.emplace_back();
+            m_bodyNames.emplace_back();
         }
 
         BodySlot& slot = m_bodySlots[bodyIndex];
@@ -754,11 +765,12 @@ namespace Box3D
         if (!Box3D::IsValid(slot.m_nativeId))
         {
             slot = BodySlot{};
-            m_freeBodySlots.push(bodyIndex);
+            m_freeBodySlots.push_back(bodyIndex);
             return {};
         }
         slot.m_entityId = configuration.m_entityId;
-        slot.m_name = configuration.m_name;
+        m_entityBodyCount += configuration.m_entityId.IsValid() ? 1 : 0;
+        m_bodyNames[bodyIndex] = configuration.m_name;
         slot.m_firstShapeIndex = InvalidSlotIndex;
         slot.m_type = nativeConfiguration.m_type;
         slot.m_allowFastRotation = configuration.m_allowFastRotation;
@@ -780,7 +792,7 @@ namespace Box3D
              shapeIndex = m_shapeSlots[shapeIndex].m_nextShapeIndex)
         {
             const ShapeSlot& shapeSlot = m_shapeSlots[shapeIndex];
-            UnregisterShapeIdentity(shapeSlot.m_nativeId);
+            UnregisterShape(shapeSlot.m_nativeId);
             m_retiredShapes.push_back(
                 { shapeSlot.m_nativeId,
                   bodyHandle,
@@ -794,8 +806,8 @@ namespace Box3D
             const AZ::u32 nextShapeIndex = shapeSlot.m_nextShapeIndex;
             m_sensorShapeCount -= shapeSlot.m_isSensor ? 1 : 0;
             shapeSlot = ShapeSlot{};
-            m_shapeIdentities[shapeIndex] = ShapeIdentity{};
-            m_freeShapeSlots.push(shapeIndex);
+            m_shapeResources[shapeIndex] = ShapeResources{};
+            m_freeShapeSlots.push_back(shapeIndex);
             shapeIndex = nextShapeIndex;
         }
         for (AZ::u32 jointIndex = 0; jointIndex < m_jointSlots.size(); ++jointIndex)
@@ -805,15 +817,19 @@ namespace Box3D
             {
                 continue;
             }
-            const JointCommonConfiguration& jointConfiguration = GetCommonJointConfiguration(jointSlot.m_configuration);
+            const JointCommonConfiguration& jointConfiguration = GetCommonJointConfiguration(m_jointConfigurations[jointIndex]);
             if (jointConfiguration.m_parentBody == bodyHandle || jointConfiguration.m_childBody == bodyHandle)
             {
+                m_entityJointCount -= jointSlot.m_entityId.IsValid() ? 1 : 0;
                 jointSlot = JointSlot{};
-                m_freeJointSlots.push(jointIndex);
+                m_jointConfigurations[jointIndex] = JointConfiguration{};
+                m_freeJointSlots.push_back(jointIndex);
             }
         }
+        m_entityBodyCount -= bodySlot->m_entityId.IsValid() ? 1 : 0;
         *bodySlot = BodySlot{};
-        m_freeBodySlots.push(parts.m_index);
+        m_bodyNames[parts.m_index] = AZ::Name{};
+        m_freeBodySlots.push_back(parts.m_index);
         return true;
     }
 
@@ -821,7 +837,8 @@ namespace Box3D
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
-        if (slot == nullptr)
+        Internal::WorldMemberHandleParts parts;
+        if (slot == nullptr || !Internal::DecodeWorldMemberHandle(bodyHandle, parts))
         {
             return false;
         }
@@ -829,7 +846,7 @@ namespace Box3D
         state.m_linearVelocity = Box3D::GetLinearVelocity(slot->m_nativeId);
         state.m_angularVelocity = Box3D::GetAngularVelocity(slot->m_nativeId);
         state.m_entityId = slot->m_entityId;
-        state.m_name = slot->m_name;
+        state.m_name = m_bodyNames[parts.m_index];
         state.m_bodyType = FromNativeBodyType(slot->m_type);
         state.m_isAwake = Box3D::IsAwake(slot->m_nativeId);
         state.m_isEnabled = Box3D::IsBodyEnabled(slot->m_nativeId);
@@ -841,19 +858,21 @@ namespace Box3D
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
-        return slot != nullptr ? slot->m_name : AZ::Name{};
+        Internal::WorldMemberHandleParts parts;
+        return slot != nullptr && Internal::DecodeWorldMemberHandle(bodyHandle, parts) ? m_bodyNames[parts.m_index] : AZ::Name{};
     }
 
     bool World::SetBodyName(BodyHandle bodyHandle, AZ::Name name)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
-        if (slot == nullptr)
+        Internal::WorldMemberHandleParts parts;
+        if (slot == nullptr || !Internal::DecodeWorldMemberHandle(bodyHandle, parts))
         {
             return false;
         }
         Box3D::SetBodyName(slot->m_nativeId, name);
-        slot->m_name = name;
+        m_bodyNames[parts.m_index] = name;
         return true;
     }
 
@@ -1283,7 +1302,8 @@ namespace Box3D
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* bodySlot = FindBodySlot(bodyHandle);
-        if (bodySlot == nullptr || !Box3D::GetTouchingContacts(bodySlot->m_nativeId, m_nativeContactSnapshots))
+        if (bodySlot == nullptr ||
+            !Box3D::GetTouchingContacts(bodySlot->m_nativeId, m_nativeContactScratch, m_nativeContactSnapshots, m_nativeContactPoints))
         {
             return {};
         }
@@ -1294,7 +1314,7 @@ namespace Box3D
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* bodySlot = FindBodySlot(bodyHandle);
-        if (bodySlot == nullptr || !Box3D::GetSensorOverlaps(bodySlot->m_nativeId, m_nativeSensorOverlaps))
+        if (bodySlot == nullptr || !Box3D::GetSensorOverlaps(bodySlot->m_nativeId, m_nativeSensorScratch, m_nativeSensorOverlaps))
         {
             return {};
         }
@@ -1324,14 +1344,15 @@ namespace Box3D
             return false;
         }
 
-        const ShapeIdentity* identity = ResolveShapeIdentity(nativeHit.m_shapeUserData, nativeHit.m_shapeId);
-        if (identity == nullptr || identity->m_bodyHandle != bodyHandle)
+        ResolvedShape resolvedShape;
+        if (!ResolveShape(nativeHit.m_shapeUserData, nativeHit.m_shapeId, resolvedShape) ||
+            resolvedShape.m_slot->m_bodyHandle != bodyHandle)
         {
             return false;
         }
 
         hit.m_bodyHandle = bodyHandle;
-        hit.m_shapeHandle = identity->m_shapeHandle;
+        hit.m_shapeHandle = resolvedShape.m_shapeHandle;
         hit.m_materialHandle = Internal::HandleAccess::Create<MaterialHandle>(nativeHit.m_userMaterialId);
         hit.m_position = nativeHit.m_position;
         hit.m_normal = nativeHit.m_normal;
@@ -1349,7 +1370,7 @@ namespace Box3D
         const BodySlot* bodySlot = FindBodySlot(bodyHandle);
         QueryProxy proxy;
         if (bodySlot == nullptr || !request.m_translation.IsFinite() || request.m_translation.IsZero() ||
-            !BuildQueryProxy(request.m_geometry, request.m_start, request.m_scale, proxy))
+            !BuildQueryProxy(request.m_geometry, request.m_start, proxy))
         {
             return false;
         }
@@ -1358,7 +1379,7 @@ namespace Box3D
         if (!Box3D::CastShape(
                 bodySlot->m_nativeId,
                 request.m_start.GetTranslation(),
-                proxy.m_points,
+                proxy.GetPoints(),
                 proxy.m_radius,
                 request.m_translation,
                 request.m_filter.m_categoryBits,
@@ -1368,14 +1389,15 @@ namespace Box3D
             return false;
         }
 
-        const ShapeIdentity* identity = ResolveShapeIdentity(nativeHit.m_shapeUserData, nativeHit.m_shapeId);
-        if (identity == nullptr || identity->m_bodyHandle != bodyHandle)
+        ResolvedShape resolvedShape;
+        if (!ResolveShape(nativeHit.m_shapeUserData, nativeHit.m_shapeId, resolvedShape) ||
+            resolvedShape.m_slot->m_bodyHandle != bodyHandle)
         {
             return false;
         }
 
         hit.m_bodyHandle = bodyHandle;
-        hit.m_shapeHandle = identity->m_shapeHandle;
+        hit.m_shapeHandle = resolvedShape.m_shapeHandle;
         hit.m_materialHandle = Internal::HandleAccess::Create<MaterialHandle>(nativeHit.m_userMaterialId);
         hit.m_position = nativeHit.m_position;
         hit.m_normal = nativeHit.m_normal;
@@ -1391,11 +1413,11 @@ namespace Box3D
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* bodySlot = FindBodySlot(bodyHandle);
         QueryProxy proxy;
-        return bodySlot != nullptr && BuildQueryProxy(request.m_geometry, request.m_transform, request.m_scale, proxy) &&
+        return bodySlot != nullptr && BuildQueryProxy(request.m_geometry, request.m_transform, proxy) &&
             Box3D::OverlapShape(
                    bodySlot->m_nativeId,
                    request.m_transform.GetTranslation(),
-                   proxy.m_points,
+                   proxy.GetPoints(),
                    proxy.m_radius,
                    request.m_filter.m_categoryBits,
                    request.m_filter.m_maskBits);
@@ -1403,12 +1425,12 @@ namespace Box3D
 
     ShapeHandle World::CreateShape(BodyHandle bodyHandle, const ShapeConfiguration& configuration)
     {
-        return CreateShape(bodyHandle, configuration, AZ::Vector3::CreateOne());
+        return CreateShape(bodyHandle, configuration, 1.0f);
     }
 
-    ShapeHandle World::CreateShape(BodyHandle bodyHandle, const ShapeConfiguration& configuration, const AZ::Vector3& postScale)
+    ShapeHandle World::CreateShape(BodyHandle bodyHandle, const ShapeConfiguration& configuration, float uniformScale)
     {
-        return AttachShape(bodyHandle, configuration.m_properties, &configuration.m_geometry, nullptr, postScale);
+        return AttachShape(bodyHandle, configuration.m_properties, &configuration.m_geometry, nullptr, uniformScale);
     }
 
     ShapeHandle World::CreateShapeFromCooked(BodyHandle bodyHandle, const NativeGeometry& geometry, const ShapeProperties& properties)
@@ -1421,14 +1443,14 @@ namespace Box3D
         const ShapeProperties& properties,
         const ShapeGeometry* geometry,
         const NativeGeometry* cookedGeometry,
-        const AZ::Vector3& postScale)
+        float uniformScale)
     {
         AZStd::lock_guard lock(m_mutex);
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::CreateShape");
         Internal::WorldMemberHandleParts bodyParts;
         BodySlot* bodySlot = FindBodySlot(bodyHandle);
         if (bodySlot == nullptr || !Internal::DecodeWorldMemberHandle(bodyHandle, bodyParts) ||
-            (geometry == nullptr) == (cookedGeometry == nullptr))
+            (geometry == nullptr) == (cookedGeometry == nullptr) || !AZ::IsFiniteFloat(uniformScale) || uniformScale <= 0.0f)
         {
             return {};
         }
@@ -1436,8 +1458,8 @@ namespace Box3D
         AZ::u32 shapeIndex = 0;
         if (!m_freeShapeSlots.empty())
         {
-            shapeIndex = m_freeShapeSlots.front();
-            m_freeShapeSlots.pop();
+            shapeIndex = m_freeShapeSlots.back();
+            m_freeShapeSlots.pop_back();
         }
         else
         {
@@ -1447,52 +1469,51 @@ namespace Box3D
             }
             shapeIndex = aznumeric_cast<AZ::u32>(m_shapeSlots.size());
             m_shapeSlots.emplace_back();
-            m_shapeIdentities.emplace_back();
+            m_shapeResources.emplace_back();
         }
 
         ShapeSlot& shapeSlot = m_shapeSlots[shapeIndex];
+        ShapeResources& resources = m_shapeResources[shapeIndex];
+        resources = {};
         shapeSlot.m_generation = m_shapeGenerations.Acquire();
         if (shapeSlot.m_generation == 0)
         {
             return {};
         }
         shapeSlot.m_bodyHandle = bodyHandle;
-        ShapeIdentity& identity = m_shapeIdentities[shapeIndex];
-        identity.m_bodyHandle = bodyHandle;
-        identity.m_shapeHandle = Internal::MakeWorldMemberHandle<ShapeHandle>(m_worldIndex, shapeIndex, shapeSlot.m_generation);
-        identity.m_index = shapeIndex;
-        identity.m_isSensor = properties.m_isSensor;
+        const ShapeHandle shapeHandle = Internal::MakeWorldMemberHandle<ShapeHandle>(m_worldIndex, shapeIndex, shapeSlot.m_generation);
         shapeSlot.m_explosionScale = properties.m_explosionScale;
         shapeSlot.m_isSensor = properties.m_isSensor;
         shapeSlot.m_enableCustomFiltering = properties.m_enableCustomFiltering;
         shapeSlot.m_nativeId =
-            CreateNativeShape(shapeIndex, bodySlot->m_nativeId, shapeSlot, properties, geometry, cookedGeometry, postScale);
+            CreateNativeShape(shapeIndex, bodySlot->m_nativeId, shapeSlot, resources, properties, geometry, cookedGeometry, uniformScale);
         if (!Box3D::IsValid(shapeSlot.m_nativeId))
         {
             shapeSlot = ShapeSlot{};
-            identity = ShapeIdentity{};
-            m_freeShapeSlots.push(shapeIndex);
+            resources = {};
+            m_freeShapeSlots.push_back(shapeIndex);
             return {};
         }
-        identity.m_nativeId = shapeSlot.m_nativeId;
-        RegisterShapeIdentity(identity);
+        RegisterShape(shapeSlot.m_nativeId, shapeIndex);
         shapeSlot.m_nextShapeIndex = bodySlot->m_firstShapeIndex;
         bodySlot->m_firstShapeIndex = shapeIndex;
         m_sensorShapeCount += shapeSlot.m_isSensor ? 1 : 0;
-        return identity.m_shapeHandle;
-    }
-    bool World::UpdateShape(ShapeHandle shapeHandle, const ShapeConfiguration& configuration)
-    {
-        return UpdateShape(shapeHandle, configuration, AZ::Vector3::CreateOne());
+        return shapeHandle;
     }
 
-    bool World::UpdateShape(ShapeHandle shapeHandle, const ShapeConfiguration& configuration, const AZ::Vector3& postScale)
+    bool World::UpdateShape(ShapeHandle shapeHandle, const ShapeConfiguration& configuration)
+    {
+        return UpdateShape(shapeHandle, configuration, 1.0f);
+    }
+
+    bool World::UpdateShape(ShapeHandle shapeHandle, const ShapeConfiguration& configuration, float uniformScale)
     {
         AZStd::lock_guard lock(m_mutex);
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::UpdateShape");
         Internal::WorldMemberHandleParts shapeParts;
         ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
-        if (shapeSlot == nullptr || !Internal::DecodeWorldMemberHandle(shapeHandle, shapeParts))
+        if (shapeSlot == nullptr || !Internal::DecodeWorldMemberHandle(shapeHandle, shapeParts) || !AZ::IsFiniteFloat(uniformScale) ||
+            uniformScale <= 0.0f)
         {
             return false;
         }
@@ -1501,11 +1522,12 @@ namespace Box3D
         {
             return false;
         }
+        ShapeResources& resources = m_shapeResources[shapeParts.m_index];
 
         if (shapeSlot->m_isSensor == configuration.m_properties.m_isSensor &&
             shapeSlot->m_enableCustomFiltering == configuration.m_properties.m_enableCustomFiltering &&
             shapeSlot->m_explosionScale == configuration.m_properties.m_explosionScale &&
-            shapeSlot->m_materials == configuration.m_properties.m_materials)
+            resources.m_materials == configuration.m_properties.m_materials)
         {
             AZStd::vector<SurfaceMaterial> nativeMaterials;
             nativeMaterials.reserve(configuration.m_properties.m_materials.size());
@@ -1525,9 +1547,7 @@ namespace Box3D
             }
 
             NativeGeometry geometry = CookGeometry(
-                configuration.m_geometry,
-                GeometryTransform{ configuration.m_properties.m_localTransform, configuration.m_properties.m_scale, postScale },
-                nativeMaterials);
+                configuration.m_geometry, GeometryTransform{ configuration.m_properties.m_localTransform, uniformScale }, nativeMaterials);
             if (Box3D::SetShapeGeometry(shapeSlot->m_nativeId, geometry))
             {
                 Box3D::SetShapeFilter(
@@ -1545,7 +1565,8 @@ namespace Box3D
                 {
                     return false;
                 }
-                shapeSlot->m_geometry = AZStd::move(geometry);
+                resources.m_geometry = AZStd::move(geometry);
+                shapeSlot->m_isCompound = AZStd::holds_alternative<AZStd::shared_ptr<const CompoundGeometry>>(resources.m_geometry);
                 if (configuration.m_properties.m_updateBodyMass)
                 {
                     Box3D::ApplyMassFromShapes(bodySlot->m_nativeId);
@@ -1555,7 +1576,8 @@ namespace Box3D
         }
 
         ShapeSlot replacement = *shapeSlot;
-        replacement.m_materials.clear();
+        ShapeResources replacementResources = resources;
+        replacementResources.m_materials.clear();
         replacement.m_explosionScale = configuration.m_properties.m_explosionScale;
         replacement.m_isSensor = configuration.m_properties.m_isSensor;
         replacement.m_enableCustomFiltering = configuration.m_properties.m_enableCustomFiltering;
@@ -1563,16 +1585,17 @@ namespace Box3D
             shapeParts.m_index,
             bodySlot->m_nativeId,
             replacement,
+            replacementResources,
             configuration.m_properties,
             &configuration.m_geometry,
             nullptr,
-            postScale);
+            uniformScale);
         if (!Box3D::IsValid(replacement.m_nativeId))
         {
             return false;
         }
         m_retiredShapes.push_back({ shapeSlot->m_nativeId, shapeSlot->m_bodyHandle, shapeHandle });
-        UnregisterShapeIdentity(shapeSlot->m_nativeId);
+        UnregisterShape(shapeSlot->m_nativeId);
         Box3D::DestroyShape(shapeSlot->m_nativeId, false);
         if (shapeSlot->m_isSensor != replacement.m_isSensor)
         {
@@ -1586,10 +1609,8 @@ namespace Box3D
             }
         }
         *shapeSlot = AZStd::move(replacement);
-        ShapeIdentity& identity = m_shapeIdentities[shapeParts.m_index];
-        identity.m_nativeId = shapeSlot->m_nativeId;
-        identity.m_isSensor = shapeSlot->m_isSensor;
-        RegisterShapeIdentity(identity);
+        resources = AZStd::move(replacementResources);
+        RegisterShape(shapeSlot->m_nativeId, shapeParts.m_index);
         if (configuration.m_properties.m_updateBodyMass)
         {
             Box3D::ApplyMassFromShapes(bodySlot->m_nativeId);
@@ -1623,12 +1644,12 @@ namespace Box3D
             *shapeLink = shapeSlot->m_nextShapeIndex;
         }
         m_retiredShapes.push_back({ shapeSlot->m_nativeId, shapeSlot->m_bodyHandle, shapeHandle });
-        UnregisterShapeIdentity(shapeSlot->m_nativeId);
+        UnregisterShape(shapeSlot->m_nativeId);
         Box3D::DestroyShape(shapeSlot->m_nativeId, updateBodyMass);
         m_sensorShapeCount -= shapeSlot->m_isSensor ? 1 : 0;
         *shapeSlot = ShapeSlot{};
-        m_shapeIdentities[shapeParts.m_index] = ShapeIdentity{};
-        m_freeShapeSlots.push(shapeParts.m_index);
+        m_shapeResources[shapeParts.m_index] = ShapeResources{};
+        m_freeShapeSlots.push_back(shapeParts.m_index);
         return true;
     }
 
@@ -1647,11 +1668,13 @@ namespace Box3D
     bool World::SetShapeMaterials(ShapeHandle shapeHandle, AZStd::span<const MaterialHandle> materials)
     {
         AZStd::lock_guard lock(m_mutex);
+        Internal::WorldMemberHandleParts parts;
         ShapeSlot* slot = FindShapeSlot(shapeHandle);
-        if (slot == nullptr || materials.empty())
+        if (slot == nullptr || materials.empty() || !Internal::DecodeWorldMemberHandle(shapeHandle, parts))
         {
             return false;
         }
+        ShapeResources& resources = m_shapeResources[parts.m_index];
         AZStd::vector<SurfaceMaterial> nativeMaterials;
         nativeMaterials.reserve(materials.size());
         float density = 0.0f;
@@ -1677,13 +1700,13 @@ namespace Box3D
         }
         if (state.m_type == NativeShapeType::Compound || m_recording != nullptr)
         {
-            return RecreateShapeWithMaterials(shapeHandle, *slot, nativeMaterials, density, explosionScale, materials);
+            return RecreateShapeWithMaterials(shapeHandle, *slot, resources, nativeMaterials, density, explosionScale, materials);
         }
         if (!Box3D::SetShapeMaterials(slot->m_nativeId, nativeMaterials))
         {
             return false;
         }
-        slot->m_materials.assign(materials.begin(), materials.end());
+        resources.m_materials.assign(materials.begin(), materials.end());
         slot->m_explosionScale = explosionScale;
         return true;
     }
@@ -1743,18 +1766,20 @@ namespace Box3D
     BufferResult World::GetShapeMaterials(ShapeHandle shapeHandle, AZStd::span<MaterialHandle> materialHandles) const
     {
         AZStd::lock_guard lock(m_mutex);
+        Internal::WorldMemberHandleParts parts;
         const ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
-        if (shapeSlot == nullptr)
+        if (shapeSlot == nullptr || !Internal::DecodeWorldMemberHandle(shapeHandle, parts))
         {
             return {};
         }
 
-        const size_t materialCount = AZStd::min(shapeSlot->m_materials.size(), materialHandles.size());
+        const AZStd::vector<MaterialHandle>& materials = m_shapeResources[parts.m_index].m_materials;
+        const size_t materialCount = AZStd::min(materials.size(), materialHandles.size());
         for (size_t materialIndex = 0; materialIndex < materialCount; ++materialIndex)
         {
-            materialHandles[materialIndex] = shapeSlot->m_materials[materialIndex];
+            materialHandles[materialIndex] = materials[materialIndex];
         }
-        return { materialCount, shapeSlot->m_materials.size() };
+        return { materialCount, materials.size() };
     }
 
     bool World::SetShapeDensity(ShapeHandle shapeHandle, float density, bool updateBodyMass)
@@ -1767,8 +1792,10 @@ namespace Box3D
     bool World::SetShapeFriction(ShapeHandle shapeHandle, float friction)
     {
         AZStd::lock_guard lock(m_mutex);
+        Internal::WorldMemberHandleParts parts;
         ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
-        if (shapeSlot == nullptr || !AZ::IsFiniteFloat(friction) || friction < 0.0f)
+        if (shapeSlot == nullptr || !Internal::DecodeWorldMemberHandle(shapeHandle, parts) || !AZ::IsFiniteFloat(friction) ||
+            friction < 0.0f)
         {
             return false;
         }
@@ -1782,7 +1809,8 @@ namespace Box3D
             return Box3D::SetShapeFriction(shapeSlot->m_nativeId, friction);
         }
         AZStd::vector<SurfaceMaterial> materials;
-        if (!GetCompoundSourceMaterials(*shapeSlot, materials))
+        ShapeResources& resources = m_shapeResources[parts.m_index];
+        if (!GetCompoundSourceMaterials(*shapeSlot, resources, materials))
         {
             return false;
         }
@@ -1791,14 +1819,16 @@ namespace Box3D
             material.m_friction = friction;
         }
         return RecreateShapeWithMaterials(
-            shapeHandle, *shapeSlot, materials, state.m_density, shapeSlot->m_explosionScale, shapeSlot->m_materials);
+            shapeHandle, *shapeSlot, resources, materials, state.m_density, shapeSlot->m_explosionScale, resources.m_materials);
     }
 
     bool World::SetShapeRestitution(ShapeHandle shapeHandle, float restitution)
     {
         AZStd::lock_guard lock(m_mutex);
+        Internal::WorldMemberHandleParts parts;
         ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
-        if (shapeSlot == nullptr || !AZ::IsFiniteFloat(restitution) || restitution < 0.0f)
+        if (shapeSlot == nullptr || !Internal::DecodeWorldMemberHandle(shapeHandle, parts) || !AZ::IsFiniteFloat(restitution) ||
+            restitution < 0.0f)
         {
             return false;
         }
@@ -1812,7 +1842,8 @@ namespace Box3D
             return Box3D::SetShapeRestitution(shapeSlot->m_nativeId, restitution);
         }
         AZStd::vector<SurfaceMaterial> materials;
-        if (!GetCompoundSourceMaterials(*shapeSlot, materials))
+        ShapeResources& resources = m_shapeResources[parts.m_index];
+        if (!GetCompoundSourceMaterials(*shapeSlot, resources, materials))
         {
             return false;
         }
@@ -1821,7 +1852,7 @@ namespace Box3D
             material.m_restitution = restitution;
         }
         return RecreateShapeWithMaterials(
-            shapeHandle, *shapeSlot, materials, state.m_density, shapeSlot->m_explosionScale, shapeSlot->m_materials);
+            shapeHandle, *shapeSlot, resources, materials, state.m_density, shapeSlot->m_explosionScale, resources.m_materials);
     }
 
     bool World::SetShapeEventSubscriptions(
@@ -1862,9 +1893,10 @@ namespace Box3D
         ShapeHandle shapeHandle, const AZ::Vector3& start, const AZ::Vector3& direction, float distance, QueryHit& hit) const
     {
         AZStd::lock_guard lock(m_mutex);
+        Internal::WorldMemberHandleParts parts;
         const ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
-        if (shapeSlot == nullptr || !start.IsFinite() || !direction.IsFinite() || direction.IsZero() || !AZ::IsFiniteFloat(distance) ||
-            distance <= 0.0f)
+        if (shapeSlot == nullptr || !Internal::DecodeWorldMemberHandle(shapeHandle, parts) || !start.IsFinite() || !direction.IsFinite() ||
+            direction.IsZero() || !AZ::IsFiniteFloat(distance) || distance <= 0.0f)
         {
             return false;
         }
@@ -1879,14 +1911,15 @@ namespace Box3D
         hit.m_bodyHandle = shapeSlot->m_bodyHandle;
         hit.m_shapeHandle = shapeHandle;
         hit.m_materialHandle = Internal::HandleAccess::Create<MaterialHandle>(nativeHit.m_userMaterialId);
+        const AZStd::vector<MaterialHandle>& materials = m_shapeResources[parts.m_index].m_materials;
         if (!hit.m_materialHandle.IsValid() && nativeHit.m_materialIndex >= 0 &&
-            aznumeric_cast<size_t>(nativeHit.m_materialIndex) < shapeSlot->m_materials.size())
+            aznumeric_cast<size_t>(nativeHit.m_materialIndex) < materials.size())
         {
-            hit.m_materialHandle = shapeSlot->m_materials[aznumeric_cast<size_t>(nativeHit.m_materialIndex)];
+            hit.m_materialHandle = materials[aznumeric_cast<size_t>(nativeHit.m_materialIndex)];
         }
-        else if (shapeSlot->m_materials.size() == 1)
+        else if (materials.size() == 1)
         {
-            hit.m_materialHandle = shapeSlot->m_materials.front();
+            hit.m_materialHandle = materials.front();
         }
         hit.m_position = nativeHit.m_position;
         hit.m_normal = nativeHit.m_normal;
@@ -1902,7 +1935,8 @@ namespace Box3D
     {
         AZStd::lock_guard lock(m_mutex);
         const ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
-        if (shapeSlot == nullptr || !Box3D::GetTouchingContacts(shapeSlot->m_nativeId, m_nativeContactSnapshots))
+        if (shapeSlot == nullptr ||
+            !Box3D::GetTouchingContacts(shapeSlot->m_nativeId, m_nativeContactScratch, m_nativeContactSnapshots, m_nativeContactPoints))
         {
             return {};
         }
@@ -1913,7 +1947,7 @@ namespace Box3D
     {
         AZStd::lock_guard lock(m_mutex);
         const ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
-        if (shapeSlot == nullptr || !Box3D::GetSensorOverlaps(shapeSlot->m_nativeId, m_nativeSensorOverlaps))
+        if (shapeSlot == nullptr || !Box3D::GetSensorOverlaps(shapeSlot->m_nativeId, m_nativeSensorScratch, m_nativeSensorOverlaps))
         {
             return {};
         }
@@ -1923,14 +1957,18 @@ namespace Box3D
     bool World::UsesMaterial(MaterialHandle materialHandle) const
     {
         AZStd::lock_guard lock(m_mutex);
-        return AZStd::any_of(
-            m_shapeSlots.begin(),
-            m_shapeSlots.end(),
-            [materialHandle](const ShapeSlot& slot)
+        for (size_t shapeIndex = 0; shapeIndex < m_shapeSlots.size(); ++shapeIndex)
+        {
+            if (m_shapeSlots[shapeIndex].m_generation != 0)
             {
-                return slot.m_generation != 0 &&
-                    AZStd::find(slot.m_materials.begin(), slot.m_materials.end(), materialHandle) != slot.m_materials.end();
-            });
+                const AZStd::vector<MaterialHandle>& materials = m_shapeResources[shapeIndex].m_materials;
+                if (AZStd::find(materials.begin(), materials.end(), materialHandle) != materials.end())
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     bool World::RefreshMaterial(MaterialHandle materialHandle)
@@ -1939,17 +1977,18 @@ namespace Box3D
         for (AZ::u32 shapeIndex = 0; shapeIndex < m_shapeSlots.size(); ++shapeIndex)
         {
             ShapeSlot& slot = m_shapeSlots[shapeIndex];
+            ShapeResources& resources = m_shapeResources[shapeIndex];
             if (slot.m_generation == 0 ||
-                AZStd::find(slot.m_materials.begin(), slot.m_materials.end(), materialHandle) == slot.m_materials.end())
+                AZStd::find(resources.m_materials.begin(), resources.m_materials.end(), materialHandle) == resources.m_materials.end())
             {
                 continue;
             }
 
             AZStd::vector<SurfaceMaterial> nativeMaterials;
-            nativeMaterials.reserve(slot.m_materials.size());
+            nativeMaterials.reserve(resources.m_materials.size());
             float density = 0.0f;
             float explosionScale = slot.m_explosionScale;
-            for (MaterialHandle referencedMaterial : slot.m_materials)
+            for (MaterialHandle referencedMaterial : resources.m_materials)
             {
                 MaterialConfiguration materialConfiguration;
                 if (!m_system.GetMaterial(referencedMaterial, materialConfiguration))
@@ -1971,7 +2010,8 @@ namespace Box3D
             if (state.m_type == NativeShapeType::Compound || m_recording != nullptr)
             {
                 const ShapeHandle shapeHandle = Internal::MakeWorldMemberHandle<ShapeHandle>(m_worldIndex, shapeIndex, slot.m_generation);
-                if (!RecreateShapeWithMaterials(shapeHandle, slot, nativeMaterials, density, explosionScale, slot.m_materials))
+                if (!RecreateShapeWithMaterials(
+                        shapeHandle, slot, resources, nativeMaterials, density, explosionScale, resources.m_materials))
                 {
                     return false;
                 }
@@ -2116,8 +2156,8 @@ namespace Box3D
         AZ::u32 jointIndex = 0;
         if (!m_freeJointSlots.empty())
         {
-            jointIndex = m_freeJointSlots.front();
-            m_freeJointSlots.pop();
+            jointIndex = m_freeJointSlots.back();
+            m_freeJointSlots.pop_back();
         }
         else
         {
@@ -2127,12 +2167,14 @@ namespace Box3D
             }
             jointIndex = aznumeric_cast<AZ::u32>(m_jointSlots.size());
             m_jointSlots.emplace_back();
+            m_jointConfigurations.emplace_back();
         }
 
         NativeJointConfiguration nativeConfiguration;
         if (!BuildNativeJointConfiguration(jointIndex, configuration, nativeConfiguration))
         {
-            m_freeJointSlots.push(jointIndex);
+            m_jointConfigurations[jointIndex] = JointConfiguration{};
+            m_freeJointSlots.push_back(jointIndex);
             return {};
         }
 
@@ -2140,15 +2182,18 @@ namespace Box3D
         slot.m_generation = m_jointGenerations.Acquire();
         if (slot.m_generation == 0)
         {
+            m_jointConfigurations[jointIndex] = JointConfiguration{};
+            m_freeJointSlots.push_back(jointIndex);
             return {};
         }
         slot.m_kind = nativeConfiguration.m_kind;
-        slot.m_configuration = configuration;
+        m_jointConfigurations[jointIndex] = configuration;
         slot.m_nativeId = Box3D::CreateJoint(m_nativeId, nativeConfiguration);
         if (!Box3D::IsValid(slot.m_nativeId))
         {
             slot = JointSlot{};
-            m_freeJointSlots.push(jointIndex);
+            m_jointConfigurations[jointIndex] = JointConfiguration{};
+            m_freeJointSlots.push_back(jointIndex);
             return {};
         }
         return Internal::MakeWorldMemberHandle<JointHandle>(m_worldIndex, jointIndex, slot.m_generation);
@@ -2181,7 +2226,7 @@ namespace Box3D
             {
                 return false;
             }
-            slot->m_configuration = configuration;
+            m_jointConfigurations[parts.m_index] = configuration;
             return true;
         }
 
@@ -2193,7 +2238,21 @@ namespace Box3D
         Box3D::DestroyJoint(slot->m_nativeId);
         slot->m_nativeId = replacementNativeId;
         slot->m_kind = nativeConfiguration.m_kind;
-        slot->m_configuration = configuration;
+        m_jointConfigurations[parts.m_index] = configuration;
+        return true;
+    }
+
+    bool World::SetJointEntityId(JointHandle jointHandle, AZ::EntityId entityId)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        JointSlot* slot = FindJointSlot(jointHandle);
+        if (slot == nullptr)
+        {
+            return false;
+        }
+        m_entityJointCount -= slot->m_entityId.IsValid() ? 1 : 0;
+        slot->m_entityId = entityId;
+        m_entityJointCount += entityId.IsValid() ? 1 : 0;
         return true;
     }
 
@@ -2208,8 +2267,10 @@ namespace Box3D
             return false;
         }
         Box3D::DestroyJoint(slot->m_nativeId, wakeAttachedBodies);
+        m_entityJointCount -= slot->m_entityId.IsValid() ? 1 : 0;
         *slot = JointSlot{};
-        m_freeJointSlots.push(parts.m_index);
+        m_jointConfigurations[parts.m_index] = JointConfiguration{};
+        m_freeJointSlots.push_back(parts.m_index);
         return true;
     }
 
@@ -2228,12 +2289,13 @@ namespace Box3D
     bool World::GetJointConfiguration(JointHandle jointHandle, JointConfiguration& configuration) const
     {
         AZStd::lock_guard lock(m_mutex);
+        Internal::WorldMemberHandleParts parts;
         const JointSlot* slot = FindJointSlot(jointHandle);
-        if (slot == nullptr)
+        if (slot == nullptr || !Internal::DecodeWorldMemberHandle(jointHandle, parts))
         {
             return false;
         }
-        configuration = slot->m_configuration;
+        configuration = m_jointConfigurations[parts.m_index];
         return true;
     }
 
@@ -2253,6 +2315,18 @@ namespace Box3D
         return true;
     }
 
+    void World::EnsureCharacterScratchCapacity(size_t maximumPlaneCount)
+    {
+        if (maximumPlaneCount <= m_characterScratchCapacity)
+        {
+            return;
+        }
+
+        m_characterScratch = AZStd::make_unique<MoverScratch>(maximumPlaneCount);
+        m_characterStepScratch = AZStd::make_unique<MoverScratch>(maximumPlaneCount);
+        m_characterScratchCapacity = maximumPlaneCount;
+    }
+
     CharacterHandle World::CreateCharacter(const CharacterConfiguration& configuration)
     {
         AZStd::lock_guard lock(m_mutex);
@@ -2261,12 +2335,13 @@ namespace Box3D
         {
             return {};
         }
+        EnsureCharacterScratchCapacity(configuration.m_maximumContactPlanes);
 
         AZ::u32 characterIndex = 0;
         if (!m_freeCharacterSlots.empty())
         {
-            characterIndex = m_freeCharacterSlots.front();
-            m_freeCharacterSlots.pop();
+            characterIndex = m_freeCharacterSlots.back();
+            m_freeCharacterSlots.pop_back();
         }
         else
         {
@@ -2276,20 +2351,23 @@ namespace Box3D
             }
             characterIndex = aznumeric_cast<AZ::u32>(m_characterSlots.size());
             m_characterSlots.emplace_back();
+            m_characterResources.emplace_back();
         }
 
         CharacterSlot& slot = m_characterSlots[characterIndex];
         slot.m_generation = m_characterGenerations.Acquire();
         if (slot.m_generation == 0)
         {
+            m_characterResources[characterIndex] = CharacterResources{};
+            m_freeCharacterSlots.push_back(characterIndex);
             return {};
         }
-        slot.m_configuration = configuration;
-        slot.m_configuration.m_upDirection.Normalize();
-        slot.m_scratch = AZStd::make_unique<MoverScratch>(configuration.m_maximumContactPlanes);
-        slot.m_stepScratch = AZStd::make_unique<MoverScratch>(configuration.m_maximumContactPlanes);
-        slot.m_state.m_basePosition = configuration.m_basePosition;
-        slot.m_state.m_centerPosition = configuration.m_basePosition + 0.5f * configuration.m_height * slot.m_configuration.m_upDirection;
+        CharacterResources& resources = m_characterResources[characterIndex];
+        resources.m_configuration = configuration;
+        resources.m_configuration.m_upDirection.Normalize();
+        resources.m_state.m_basePosition = configuration.m_basePosition;
+        resources.m_state.m_centerPosition =
+            configuration.m_basePosition + 0.5f * configuration.m_height * resources.m_configuration.m_upDirection;
         return Internal::MakeWorldMemberHandle<CharacterHandle>(m_worldIndex, characterIndex, slot.m_generation);
     }
 
@@ -2297,20 +2375,22 @@ namespace Box3D
     {
         AZStd::lock_guard lock(m_mutex);
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::UpdateCharacter");
-        CharacterSlot* slot = FindCharacterSlot(characterHandle);
+        AZ::u32 characterIndex = 0;
+        CharacterSlot* slot = FindCharacterSlot(characterHandle, &characterIndex);
         if (slot == nullptr || !IsValidCharacterConfiguration(configuration))
         {
             return false;
         }
+        EnsureCharacterScratchCapacity(configuration.m_maximumContactPlanes);
 
-        slot->m_configuration = configuration;
-        slot->m_configuration.m_upDirection.Normalize();
-        slot->m_scratch = AZStd::make_unique<MoverScratch>(configuration.m_maximumContactPlanes);
-        slot->m_stepScratch = AZStd::make_unique<MoverScratch>(configuration.m_maximumContactPlanes);
-        slot->m_state.m_basePosition = configuration.m_basePosition;
-        slot->m_state.m_centerPosition = configuration.m_basePosition + 0.5f * configuration.m_height * slot->m_configuration.m_upDirection;
-        slot->m_state.m_velocity = AZ::Vector3::CreateZero();
-        slot->m_state.m_support = {};
+        CharacterResources& resources = m_characterResources[characterIndex];
+        resources.m_configuration = configuration;
+        resources.m_configuration.m_upDirection.Normalize();
+        resources.m_state.m_basePosition = configuration.m_basePosition;
+        resources.m_state.m_centerPosition =
+            configuration.m_basePosition + 0.5f * configuration.m_height * resources.m_configuration.m_upDirection;
+        resources.m_state.m_velocity = AZ::Vector3::CreateZero();
+        resources.m_state.m_support = {};
         slot->m_pendingVelocity = AZ::Vector3::CreateZero();
         slot->m_hasPendingMove = false;
         return true;
@@ -2320,46 +2400,49 @@ namespace Box3D
     {
         AZStd::lock_guard lock(m_mutex);
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::DestroyCharacter");
-        Internal::WorldMemberHandleParts parts;
-        CharacterSlot* slot = FindCharacterSlot(characterHandle);
-        if (slot == nullptr || !Internal::DecodeWorldMemberHandle(characterHandle, parts))
+        AZ::u32 characterIndex = 0;
+        CharacterSlot* slot = FindCharacterSlot(characterHandle, &characterIndex);
+        if (slot == nullptr)
         {
             return false;
         }
         *slot = CharacterSlot{};
-        m_freeCharacterSlots.push(parts.m_index);
+        m_characterResources[characterIndex] = CharacterResources{};
+        m_freeCharacterSlots.push_back(characterIndex);
         return true;
     }
 
     bool World::MoveCharacter(CharacterHandle characterHandle, const AZ::Vector3& velocity, float fixedTimeStep)
     {
         AZStd::lock_guard lock(m_mutex);
-        CharacterSlot* slot = FindCharacterSlot(characterHandle);
+        AZ::u32 characterIndex = 0;
+        CharacterSlot* slot = FindCharacterSlot(characterHandle, &characterIndex);
         if (slot == nullptr || !velocity.IsFinite() || !AZ::IsFiniteFloat(fixedTimeStep) || fixedTimeStep <= 0.0f)
         {
             return false;
         }
 
-        if (slot->m_configuration.m_applyMoveOnFixedTick)
+        CharacterResources& resources = m_characterResources[characterIndex];
+        if (resources.m_configuration.m_applyMoveOnFixedTick)
         {
             slot->m_pendingVelocity = velocity;
             slot->m_hasPendingMove = true;
             return true;
         }
-        return MoveCharacterImmediately(*slot, velocity, fixedTimeStep);
+        return MoveCharacterImmediately(resources, velocity, fixedTimeStep);
     }
 
-    bool World::MoveCharacterImmediately(CharacterSlot& slot, const AZ::Vector3& velocity, float fixedTimeStep)
+    bool World::MoveCharacterImmediately(CharacterResources& resources, const AZ::Vector3& velocity, float fixedTimeStep)
     {
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::MoveCharacter");
-        const CharacterConfiguration& configuration = slot.m_configuration;
+        const CharacterConfiguration& configuration = resources.m_configuration;
         const AZ::Vector3 up = configuration.m_upDirection;
         const AZ::Vector3 clampedVelocity =
             velocity.GetLength() > configuration.m_maximumSpeed ? velocity.GetNormalized() * configuration.m_maximumSpeed : velocity;
         const AZ::Vector3 translation = clampedVelocity * fixedTimeStep;
         const AZ::Vector3 lowerCenter = configuration.m_radius * up;
         const AZ::Vector3 upperCenter = (configuration.m_height - configuration.m_radius) * up;
-        const AZ::Vector3 initialPosition = slot.m_state.m_basePosition;
+        const AZ::Vector3 initialPosition = resources.m_state.m_basePosition;
         const auto move =
             [this, &configuration, &lowerCenter, &upperCenter, fixedTimeStep](
                 const AZ::Vector3& position, const AZ::Vector3& requestedTranslation, MoverScratch& scratch, MoverResult& result)
@@ -2382,7 +2465,7 @@ namespace Box3D
                 result);
         };
         MoverResult result;
-        if (!move(initialPosition, translation, *slot.m_scratch, result))
+        if (!move(initialPosition, translation, *m_characterScratch, result))
         {
             return false;
         }
@@ -2412,21 +2495,21 @@ namespace Box3D
                 MoverResult advancedResult;
                 MoverResult settledResult;
                 const AZ::Vector3 stepUp = configuration.m_stepHeight * up;
-                const bool raised = move(initialPosition, stepUp, *slot.m_stepScratch, raisedResult) &&
+                const bool raised = move(initialPosition, stepUp, *m_characterStepScratch, raisedResult) &&
                     (raisedResult.m_position - initialPosition).Dot(up) + configuration.m_minimumMovementDistance >=
                         configuration.m_stepHeight;
-                const bool advanced = raised && move(raisedResult.m_position, translation, *slot.m_stepScratch, advancedResult);
+                const bool advanced = raised && move(raisedResult.m_position, translation, *m_characterStepScratch, advancedResult);
                 const bool settled = advanced &&
                     move(advancedResult.m_position,
                          -(configuration.m_stepHeight + configuration.m_groundStickDistance) * up,
-                         *slot.m_stepScratch,
+                         *m_characterStepScratch,
                          settledResult);
                 const float steppedProgress = (settledResult.m_position - initialPosition).Dot(lateralDirection);
-                if (settled && hasWalkableSupport(*slot.m_stepScratch) &&
+                if (settled && hasWalkableSupport(*m_characterStepScratch) &&
                     steppedProgress > directProgress + configuration.m_minimumMovementDistance)
                 {
                     result = settledResult;
-                    slot.m_scratch.swap(slot.m_stepScratch);
+                    m_characterScratch.swap(m_characterStepScratch);
                     stepped = true;
                 }
             }
@@ -2435,17 +2518,17 @@ namespace Box3D
         if (!stepped && configuration.m_groundStickDistance > 0.0f && clampedVelocity.Dot(up) <= 0.0f)
         {
             MoverResult groundedResult;
-            if (move(result.m_position, -configuration.m_groundStickDistance * up, *slot.m_stepScratch, groundedResult) &&
-                hasWalkableSupport(*slot.m_stepScratch))
+            if (move(result.m_position, -configuration.m_groundStickDistance * up, *m_characterStepScratch, groundedResult) &&
+                hasWalkableSupport(*m_characterStepScratch))
             {
                 result = groundedResult;
-                slot.m_scratch.swap(slot.m_stepScratch);
+                m_characterScratch.swap(m_characterStepScratch);
             }
         }
 
         if (configuration.m_interactionScale > 0.0f)
         {
-            for (const MoverPlane& plane : slot.m_scratch->GetPlanes())
+            for (const MoverPlane& plane : m_characterScratch->GetPlanes())
             {
                 AZ::u32 bodyIndex = 0;
                 if (!DecodeSlotIndex(plane.m_bodyUserData, bodyIndex) || bodyIndex >= m_bodySlots.size())
@@ -2470,12 +2553,12 @@ namespace Box3D
             }
         }
 
-        slot.m_state.m_velocity = (result.m_position - initialPosition) / fixedTimeStep;
-        slot.m_state.m_basePosition = result.m_position;
-        slot.m_state.m_centerPosition = result.m_position + 0.5f * configuration.m_height * up;
-        slot.m_state.m_support = {};
+        resources.m_state.m_velocity = (result.m_position - initialPosition) / fixedTimeStep;
+        resources.m_state.m_basePosition = result.m_position;
+        resources.m_state.m_centerPosition = result.m_position + 0.5f * configuration.m_height * up;
+        resources.m_state.m_support = {};
         float bestUpDot = 0.0f;
-        for (const MoverPlane& plane : slot.m_scratch->GetPlanes())
+        for (const MoverPlane& plane : m_characterScratch->GetPlanes())
         {
             const float upDot = plane.m_normal.Dot(up);
             if (upDot <= bestUpDot)
@@ -2483,8 +2566,9 @@ namespace Box3D
                 continue;
             }
             AZ::u32 bodyIndex = 0;
-            const ShapeIdentity* identity = ResolveShapeIdentity(plane.m_shapeUserData, plane.m_shapeId);
-            if (!DecodeSlotIndex(plane.m_bodyUserData, bodyIndex) || bodyIndex >= m_bodySlots.size() || identity == nullptr)
+            ResolvedShape resolvedShape;
+            if (!DecodeSlotIndex(plane.m_bodyUserData, bodyIndex) || bodyIndex >= m_bodySlots.size() ||
+                !ResolveShape(plane.m_shapeUserData, plane.m_shapeId, resolvedShape))
             {
                 continue;
             }
@@ -2494,10 +2578,10 @@ namespace Box3D
                 continue;
             }
             bestUpDot = upDot;
-            CharacterSupport& support = slot.m_state.m_support;
+            CharacterSupport& support = resources.m_state.m_support;
             support.m_state = upDot >= walkableDot ? CharacterSupportState::Supported : CharacterSupportState::Sliding;
             support.m_bodyHandle = Internal::MakeWorldMemberHandle<BodyHandle>(m_worldIndex, bodyIndex, bodySlot.m_generation);
-            support.m_shapeHandle = identity->m_shapeHandle;
+            support.m_shapeHandle = resolvedShape.m_shapeHandle;
             support.m_position = plane.m_point;
             support.m_normal = plane.m_normal;
             support.m_velocity = Box3D::GetLinearVelocityAtWorldPoint(bodySlot.m_nativeId, plane.m_point);
@@ -2508,13 +2592,20 @@ namespace Box3D
     bool World::ApplyPendingCharacterMoves(float fixedTimeStep, bool consume)
     {
         bool movedAllCharacters = true;
-        for (CharacterSlot& slot : m_characterSlots)
+        for (size_t characterIndex = 0; characterIndex < m_characterSlots.size(); ++characterIndex)
         {
+            CharacterSlot& slot = m_characterSlots[characterIndex];
             if (!slot.m_hasPendingMove)
             {
                 continue;
             }
-            movedAllCharacters = MoveCharacterImmediately(slot, slot.m_pendingVelocity, fixedTimeStep) && movedAllCharacters;
+            CharacterResources& resources = m_characterResources[characterIndex];
+            const bool moved = MoveCharacterImmediately(resources, slot.m_pendingVelocity, fixedTimeStep);
+            movedAllCharacters = moved && movedAllCharacters;
+            if (moved && resources.m_configuration.m_entityId.IsValid())
+            {
+                m_entityCharacterMoves.push_back({ resources.m_configuration.m_entityId, resources.m_state });
+            }
             if (consume)
             {
                 slot.m_hasPendingMove = false;
@@ -2526,24 +2617,26 @@ namespace Box3D
     bool World::GetCharacterState(CharacterHandle characterHandle, CharacterState& state) const
     {
         AZStd::lock_guard lock(m_mutex);
-        const CharacterSlot* slot = FindCharacterSlot(characterHandle);
+        AZ::u32 characterIndex = 0;
+        const CharacterSlot* slot = FindCharacterSlot(characterHandle, &characterIndex);
         if (slot == nullptr)
         {
             return false;
         }
-        state = slot->m_state;
+        state = m_characterResources[characterIndex].m_state;
         return true;
     }
 
     bool World::GetCharacterConfiguration(CharacterHandle characterHandle, CharacterConfiguration& configuration) const
     {
         AZStd::lock_guard lock(m_mutex);
-        const CharacterSlot* slot = FindCharacterSlot(characterHandle);
+        AZ::u32 characterIndex = 0;
+        const CharacterSlot* slot = FindCharacterSlot(characterHandle, &characterIndex);
         if (slot == nullptr)
         {
             return false;
         }
-        configuration = slot->m_configuration;
+        configuration = m_characterResources[characterIndex].m_configuration;
         return true;
     }
 
@@ -2553,7 +2646,8 @@ namespace Box3D
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::RaycastClosest");
 #endif
         AZStd::lock_guard lock(m_mutex);
-        return RaycastClosestUnlocked(request, hit);
+        return CanUseClosestRaycast(request.m_filter) ? RaycastClosestDefaultUnlocked(request, hit)
+                                                      : RaycastClosestFilteredUnlocked(request, hit);
     }
 
     BufferResult World::RaycastClosestBatch(AZStd::span<const RaycastRequest> requests, AZStd::span<ClosestQueryResult> results) const
@@ -2567,23 +2661,22 @@ namespace Box3D
         }
 
         constexpr size_t minimumRaycastsPerJob = 128;
-        const size_t jobCount = AZStd::min(
-            requestCount / minimumRaycastsPerJob, static_cast<size_t>(m_systemConfiguration.m_workerCount));
-        const bool canRunConcurrently = m_recording == nullptr && m_configuration.m_jobContext != nullptr &&
-            jobCount > 1 &&
+        const size_t jobCount = AZStd::min(requestCount / minimumRaycastsPerJob, static_cast<size_t>(m_systemConfiguration.m_workerCount));
+        const bool canRunConcurrently = m_recording == nullptr && m_configuration.m_jobContext != nullptr && jobCount > 1 &&
             AZStd::all_of(requests.begin(),
                           requests.begin() + requestCount,
                           [this](const RaycastRequest& request)
                           {
-                              return request.m_filter.m_callback == nullptr && request.m_filter.m_bodyTypes == QueryBodyTypes::All &&
-                                  (request.m_filter.m_includeSensors || m_sensorShapeCount == 0);
+                              return CanUseClosestRaycast(request.m_filter);
                           });
         if (!canRunConcurrently)
         {
             for (size_t requestIndex = 0; requestIndex < requestCount; ++requestIndex)
             {
                 results[requestIndex] = {};
-                results[requestIndex].m_found = RaycastClosestUnlocked(requests[requestIndex], results[requestIndex].m_hit);
+                results[requestIndex].m_found = CanUseClosestRaycast(requests[requestIndex].m_filter)
+                    ? RaycastClosestDefaultUnlocked(requests[requestIndex], results[requestIndex].m_hit)
+                    : RaycastClosestFilteredUnlocked(requests[requestIndex], results[requestIndex].m_hit);
             }
             return { requestCount, requests.size() };
         }
@@ -2595,7 +2688,7 @@ namespace Box3D
             for (size_t requestIndex = beginIndex; requestIndex < endIndex; ++requestIndex)
             {
                 results[requestIndex] = {};
-                results[requestIndex].m_found = RaycastClosestUnlocked(requests[requestIndex], results[requestIndex].m_hit);
+                results[requestIndex].m_found = RaycastClosestDefaultUnlocked(requests[requestIndex], results[requestIndex].m_hit);
             }
         };
         AZ::JobCompletion completion(m_configuration.m_jobContext);
@@ -2624,7 +2717,13 @@ namespace Box3D
         return { requestCount, requests.size() };
     }
 
-    bool World::RaycastClosestUnlocked(const RaycastRequest& request, QueryHit& hit) const
+    bool World::CanUseClosestRaycast(const QueryFilter& filter) const
+    {
+        return filter.m_callback == nullptr && filter.m_bodyTypes == QueryBodyTypes::All &&
+            (filter.m_includeSensors || m_sensorShapeCount == 0);
+    }
+
+    bool World::RaycastClosestDefaultUnlocked(const RaycastRequest& request, QueryHit& hit) const
     {
         if (!request.m_start.IsFinite() || !request.m_direction.IsFinite() || request.m_direction.IsZero() ||
             !AZ::IsFiniteFloat(request.m_distance) || request.m_distance <= 0.0f)
@@ -2632,39 +2731,38 @@ namespace Box3D
             return false;
         }
 
-        if (request.m_filter.m_callback == nullptr && request.m_filter.m_bodyTypes == QueryBodyTypes::All &&
-            (request.m_filter.m_includeSensors || m_sensorShapeCount == 0))
+        ClosestCastHit nativeHit;
+        if (!Box3D::CastRayClosest(
+                m_nativeId,
+                request.m_start,
+                (request.m_direction.IsNormalized() ? request.m_direction : request.m_direction.GetNormalized()) * request.m_distance,
+                request.m_filter.m_collisionFilter.m_categoryBits,
+                request.m_filter.m_collisionFilter.m_maskBits,
+                nativeHit))
         {
-            ClosestCastHit nativeHit;
-            if (!Box3D::CastRayClosest(
-                    m_nativeId,
-                    request.m_start,
-                    (request.m_direction.IsNormalized() ? request.m_direction : request.m_direction.GetNormalized()) * request.m_distance,
-                    request.m_filter.m_collisionFilter.m_categoryBits,
-                    request.m_filter.m_collisionFilter.m_maskBits,
-                    nativeHit))
-            {
-                return false;
-            }
-
-            const ShapeIdentity* identity = ResolveShapeIdentity(nativeHit.m_shapeId);
-            if (identity == nullptr)
-            {
-                return false;
-            }
-            const ShapeSlot& shapeSlot = m_shapeSlots[identity->m_index];
-            hit.m_bodyHandle = identity->m_bodyHandle;
-            hit.m_shapeHandle = identity->m_shapeHandle;
-            hit.m_materialHandle = Internal::HandleAccess::Create<MaterialHandle>(nativeHit.m_userMaterialId);
-            hit.m_position = nativeHit.m_position;
-            hit.m_normal = nativeHit.m_normal;
-            hit.m_distance = nativeHit.m_fraction * request.m_distance;
-            hit.m_fraction = nativeHit.m_fraction;
-            hit.m_faceIndex = nativeHit.m_triangleIndex;
-            hit.m_childIndex =
-                AZStd::holds_alternative<AZStd::shared_ptr<const CompoundGeometry>>(shapeSlot.m_geometry) ? nativeHit.m_childIndex : -1;
-            return true;
+            return false;
         }
+
+        ResolvedShape resolvedShape;
+        if (!ResolveShape(nativeHit.m_shapeId, resolvedShape))
+        {
+            return false;
+        }
+        const ShapeSlot& shapeSlot = *resolvedShape.m_slot;
+        hit.m_bodyHandle = shapeSlot.m_bodyHandle;
+        hit.m_shapeHandle = resolvedShape.m_shapeHandle;
+        hit.m_materialHandle = Internal::HandleAccess::Create<MaterialHandle>(nativeHit.m_userMaterialId);
+        hit.m_position = nativeHit.m_position;
+        hit.m_normal = nativeHit.m_normal;
+        hit.m_distance = nativeHit.m_fraction * request.m_distance;
+        hit.m_fraction = nativeHit.m_fraction;
+        hit.m_faceIndex = nativeHit.m_triangleIndex;
+        hit.m_childIndex = shapeSlot.m_isCompound ? nativeHit.m_childIndex : -1;
+        return true;
+    }
+
+    bool World::RaycastClosestFilteredUnlocked(const RaycastRequest& request, QueryHit& hit) const
+    {
         AZStd::array<QueryHit, 1> hits;
         struct FilterContext final
         {
@@ -2711,30 +2809,29 @@ namespace Box3D
         const auto callback = [](const CastHit& nativeHit, void* opaqueContext)
         {
             auto& queryContext = *static_cast<Context*>(opaqueContext);
-            const ShapeIdentity* identity = queryContext.m_world.ResolveShapeIdentity(nativeHit.m_shapeUserData, nativeHit.m_shapeId);
-            if (identity == nullptr)
+            ResolvedShape resolvedShape;
+            if (!queryContext.m_world.ResolveShape(nativeHit.m_shapeUserData, nativeHit.m_shapeId, resolvedShape))
             {
                 return 1.0f;
             }
-            const ShapeSlot& shapeSlot = queryContext.m_world.m_shapeSlots[identity->m_index];
-            const BodySlot* bodySlot = queryContext.m_world.FindBodySlot(identity->m_bodyHandle);
-            if (bodySlot == nullptr || (!queryContext.m_filter.m_includeSensors && identity->m_isSensor) ||
+            const ShapeSlot& shapeSlot = *resolvedShape.m_slot;
+            const BodySlot* bodySlot = queryContext.m_world.FindBodySlot(shapeSlot.m_bodyHandle);
+            if (bodySlot == nullptr || (!queryContext.m_filter.m_includeSensors && shapeSlot.m_isSensor) ||
                 !IncludesBodyType(queryContext.m_filter.m_bodyTypes, bodySlot->m_type))
             {
                 return 1.0f;
             }
 
             QueryHit queryHit;
-            queryHit.m_bodyHandle = identity->m_bodyHandle;
-            queryHit.m_shapeHandle = identity->m_shapeHandle;
+            queryHit.m_bodyHandle = shapeSlot.m_bodyHandle;
+            queryHit.m_shapeHandle = resolvedShape.m_shapeHandle;
             queryHit.m_materialHandle = Internal::HandleAccess::Create<MaterialHandle>(nativeHit.m_userMaterialId);
             queryHit.m_position = nativeHit.m_position;
             queryHit.m_normal = nativeHit.m_normal;
             queryHit.m_fraction = nativeHit.m_fraction;
             queryHit.m_distance = nativeHit.m_fraction * queryContext.m_distance;
             queryHit.m_faceIndex = nativeHit.m_triangleIndex;
-            queryHit.m_childIndex =
-                AZStd::holds_alternative<AZStd::shared_ptr<const CompoundGeometry>>(shapeSlot.m_geometry) ? nativeHit.m_childIndex : -1;
+            queryHit.m_childIndex = shapeSlot.m_isCompound ? nativeHit.m_childIndex : -1;
             if (queryContext.m_filter.m_callback != nullptr &&
                 !queryContext.m_filter.m_callback(queryHit, queryContext.m_filter.m_userData))
             {
@@ -2802,7 +2899,7 @@ namespace Box3D
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::ShapeCast");
         QueryProxy proxy;
         if (!request.m_translation.IsFinite() || request.m_translation.IsZero() ||
-            !BuildQueryProxy(request.m_geometry, request.m_start, request.m_scale, proxy))
+            !BuildQueryProxy(request.m_geometry, request.m_start, proxy))
         {
             return {};
         }
@@ -2821,30 +2918,29 @@ namespace Box3D
         const auto callback = [](const CastHit& nativeHit, void* opaqueContext)
         {
             auto& queryContext = *static_cast<Context*>(opaqueContext);
-            const ShapeIdentity* identity = queryContext.m_world.ResolveShapeIdentity(nativeHit.m_shapeUserData, nativeHit.m_shapeId);
-            if (identity == nullptr)
+            ResolvedShape resolvedShape;
+            if (!queryContext.m_world.ResolveShape(nativeHit.m_shapeUserData, nativeHit.m_shapeId, resolvedShape))
             {
                 return 1.0f;
             }
-            const ShapeSlot& shapeSlot = queryContext.m_world.m_shapeSlots[identity->m_index];
-            const BodySlot* bodySlot = queryContext.m_world.FindBodySlot(identity->m_bodyHandle);
+            const ShapeSlot& shapeSlot = *resolvedShape.m_slot;
+            const BodySlot* bodySlot = queryContext.m_world.FindBodySlot(shapeSlot.m_bodyHandle);
             const QueryFilter& filter = queryContext.m_request.m_filter;
-            if (bodySlot == nullptr || (!filter.m_includeSensors && identity->m_isSensor) ||
+            if (bodySlot == nullptr || (!filter.m_includeSensors && shapeSlot.m_isSensor) ||
                 !IncludesBodyType(filter.m_bodyTypes, bodySlot->m_type))
             {
                 return 1.0f;
             }
             QueryHit queryHit;
-            queryHit.m_bodyHandle = identity->m_bodyHandle;
-            queryHit.m_shapeHandle = identity->m_shapeHandle;
+            queryHit.m_bodyHandle = shapeSlot.m_bodyHandle;
+            queryHit.m_shapeHandle = resolvedShape.m_shapeHandle;
             queryHit.m_materialHandle = Internal::HandleAccess::Create<MaterialHandle>(nativeHit.m_userMaterialId);
             queryHit.m_position = nativeHit.m_position;
             queryHit.m_normal = nativeHit.m_normal;
             queryHit.m_fraction = nativeHit.m_fraction;
             queryHit.m_distance = nativeHit.m_fraction * queryContext.m_request.m_distance;
             queryHit.m_faceIndex = nativeHit.m_triangleIndex;
-            queryHit.m_childIndex =
-                AZStd::holds_alternative<AZStd::shared_ptr<const CompoundGeometry>>(shapeSlot.m_geometry) ? nativeHit.m_childIndex : -1;
+            queryHit.m_childIndex = shapeSlot.m_isCompound ? nativeHit.m_childIndex : -1;
             if (filter.m_callback != nullptr && !filter.m_callback(queryHit, filter.m_userData))
             {
                 return 1.0f;
@@ -2879,7 +2975,7 @@ namespace Box3D
         Box3D::CastShape(
             m_nativeId,
             request.m_start.GetTranslation(),
-            proxy.m_points,
+            proxy.GetPoints(),
             proxy.m_radius,
             request.m_translation,
             request.m_filter.m_collisionFilter.m_categoryBits,
@@ -2915,11 +3011,8 @@ namespace Box3D
         float radius = 0.0f;
         if (const auto* sphere = AZStd::get_if<SphereShapeConfiguration>(&request.m_geometry))
         {
-            const float scale = AZStd::abs(request.m_scale.GetX());
-            if (!IsValidTransform(request.m_transform) || !HasUnitScale(request.m_transform) || !IsValidGeometryScale(request.m_scale) ||
-                !AZ::IsClose(scale, AZStd::abs(request.m_scale.GetY()), 1.0e-4f) ||
-                !AZ::IsClose(scale, AZStd::abs(request.m_scale.GetZ()), 1.0e-4f) || !AZ::IsFiniteFloat(sphere->m_radius) ||
-                sphere->m_radius <= 0.0f)
+            const float scale = request.m_transform.GetUniformScale();
+            if (!IsValidTransform(request.m_transform) || !AZ::IsFiniteFloat(sphere->m_radius) || sphere->m_radius <= 0.0f)
             {
                 return {};
             }
@@ -2930,9 +3023,9 @@ namespace Box3D
                 return {};
             }
         }
-        else if (BuildQueryProxy(request.m_geometry, request.m_transform, request.m_scale, proxy))
+        else if (BuildQueryProxy(request.m_geometry, request.m_transform, proxy))
         {
-            points = proxy.m_points;
+            points = proxy.GetPoints();
             radius = proxy.m_radius;
         }
         else
@@ -2959,22 +3052,22 @@ namespace Box3D
         const auto callback = [](const OverlapCandidate& candidate, void* opaqueContext)
         {
             auto& queryContext = *static_cast<Context*>(opaqueContext);
-            const auto* identity = static_cast<const ShapeIdentity*>(candidate.m_shapeUserData);
-            if (identity == nullptr || identity->m_nativeId != candidate.m_shapeId ||
-                (queryContext.m_filterSensors && identity->m_isSensor))
+            ResolvedShape resolvedShape;
+            if (!queryContext.m_world.ResolveShape(candidate.m_shapeUserData, candidate.m_shapeId, resolvedShape) ||
+                (queryContext.m_filterSensors && resolvedShape.m_slot->m_isSensor))
             {
                 return true;
             }
             if (queryContext.m_filterBodyTypes)
             {
-                const BodySlot* bodySlot = queryContext.m_world.FindBodySlot(identity->m_bodyHandle);
+                const BodySlot* bodySlot = queryContext.m_world.FindBodySlot(resolvedShape.m_slot->m_bodyHandle);
                 if (bodySlot == nullptr || !IncludesBodyType(queryContext.m_filter.m_bodyTypes, bodySlot->m_type))
                 {
                     return true;
                 }
             }
-            const BodyHandle bodyHandle = identity->m_bodyHandle;
-            const ShapeHandle shapeHandle = identity->m_shapeHandle;
+            const BodyHandle bodyHandle = resolvedShape.m_slot->m_bodyHandle;
+            const ShapeHandle shapeHandle = resolvedShape.m_shapeHandle;
             if (queryContext.m_filter.m_callback != nullptr)
             {
                 QueryHit filterHit;
@@ -3008,30 +3101,7 @@ namespace Box3D
         }
         {
             AZ_PROFILE_SCOPE(Physics, "Box3D::World::Overlap::Sort");
-            if (context.m_hitCount <= 1)
-            {
-                for (size_t hitIndex = 1; hitIndex < context.m_hitCount; ++hitIndex)
-                {
-                    const BodyHandle bodyHandle = hits[hitIndex].m_bodyHandle;
-                    const ShapeHandle shapeHandle = hits[hitIndex].m_shapeHandle;
-                    size_t insertionIndex = hitIndex;
-                    while (insertionIndex > 0)
-                    {
-                        const Hit& previous = hits[insertionIndex - 1];
-                        if (previous.m_bodyHandle < bodyHandle ||
-                            (previous.m_bodyHandle == bodyHandle && !(shapeHandle < previous.m_shapeHandle)))
-                        {
-                            break;
-                        }
-                        hits[insertionIndex].m_bodyHandle = previous.m_bodyHandle;
-                        hits[insertionIndex].m_shapeHandle = previous.m_shapeHandle;
-                        --insertionIndex;
-                    }
-                    hits[insertionIndex].m_bodyHandle = bodyHandle;
-                    hits[insertionIndex].m_shapeHandle = shapeHandle;
-                }
-            }
-            else
+            if (context.m_hitCount > 1)
             {
                 AZStd::sort(
                     hits.begin(),
@@ -3084,15 +3154,15 @@ namespace Box3D
         const auto callback = [](const OverlapCandidate& candidate, void* opaqueContext)
         {
             auto& queryContext = *static_cast<Context*>(opaqueContext);
-            const auto* identity = static_cast<const ShapeIdentity*>(candidate.m_shapeUserData);
-            if (identity == nullptr || identity->m_nativeId != candidate.m_shapeId ||
-                (queryContext.m_filterSensors && identity->m_isSensor))
+            ResolvedShape resolvedShape;
+            if (!queryContext.m_world.ResolveShape(candidate.m_shapeUserData, candidate.m_shapeId, resolvedShape) ||
+                (queryContext.m_filterSensors && resolvedShape.m_slot->m_isSensor))
             {
                 return true;
             }
             if (queryContext.m_filterBodyTypes)
             {
-                const BodySlot* bodySlot = queryContext.m_world.FindBodySlot(identity->m_bodyHandle);
+                const BodySlot* bodySlot = queryContext.m_world.FindBodySlot(resolvedShape.m_slot->m_bodyHandle);
                 if (bodySlot == nullptr || !IncludesBodyType(queryContext.m_filter.m_bodyTypes, bodySlot->m_type))
                 {
                     return true;
@@ -3101,8 +3171,8 @@ namespace Box3D
             if (queryContext.m_filter.m_callback != nullptr)
             {
                 QueryHit filterHit;
-                filterHit.m_bodyHandle = identity->m_bodyHandle;
-                filterHit.m_shapeHandle = identity->m_shapeHandle;
+                filterHit.m_bodyHandle = resolvedShape.m_slot->m_bodyHandle;
+                filterHit.m_shapeHandle = resolvedShape.m_shapeHandle;
                 if (!queryContext.m_filter.m_callback(filterHit, queryContext.m_filter.m_userData))
                 {
                     return true;
@@ -3112,8 +3182,8 @@ namespace Box3D
             if (queryContext.m_hitCount < queryContext.m_hits.size())
             {
                 Hit& hit = queryContext.m_hits[queryContext.m_hitCount++];
-                hit.m_bodyHandle = identity->m_bodyHandle;
-                hit.m_shapeHandle = identity->m_shapeHandle;
+                hit.m_bodyHandle = resolvedShape.m_slot->m_bodyHandle;
+                hit.m_shapeHandle = resolvedShape.m_shapeHandle;
             }
             return true;
         };
@@ -3302,53 +3372,65 @@ namespace Box3D
         return slot.m_generation == parts.m_generation && Box3D::IsValid(slot.m_nativeId) ? &slot : nullptr;
     }
 
-    const World::ShapeIdentity* World::ResolveShapeIdentity(void* userData, ShapeId nativeId) const
+    bool World::ResolveShape(void* userData, ShapeId nativeId, ResolvedShape& resolvedShape) const
     {
-        const auto* identity = static_cast<const ShapeIdentity*>(userData);
-        return identity != nullptr && identity->m_index < m_shapeIdentities.size() && &m_shapeIdentities[identity->m_index] == identity &&
-                identity->m_nativeId == nativeId
-            ? identity
-            : nullptr;
-    }
-
-    const World::ShapeIdentity* World::ResolveShapeIdentity(ShapeId nativeId) const
-    {
-        const AZ::u32 nativeIndex = nativeId.GetIndex();
-        if (nativeIndex >= m_nativeShapeIdentities.size())
+        AZ::u32 shapeIndex = 0;
+        if (!DecodeSlotIndex(userData, shapeIndex) || shapeIndex >= m_shapeSlots.size())
         {
-            return nullptr;
+            return false;
         }
 
-        const ShapeIdentity* identity = m_nativeShapeIdentities[nativeIndex];
-        return identity != nullptr && identity->m_nativeId == nativeId ? identity : nullptr;
+        const ShapeSlot& slot = m_shapeSlots[shapeIndex];
+        if (slot.m_nativeId != nativeId || slot.m_generation == 0)
+        {
+            return false;
+        }
+        resolvedShape = { &slot, Internal::MakeWorldMemberHandle<ShapeHandle>(m_worldIndex, shapeIndex, slot.m_generation), shapeIndex };
+        return true;
     }
 
-    void World::RegisterShapeIdentity(ShapeIdentity& identity)
+    bool World::ResolveShape(ShapeId nativeId, ResolvedShape& resolvedShape) const
     {
-        const AZ::u32 nativeIndex = identity.m_nativeId.GetIndex();
+        const AZ::u32 nativeIndex = nativeId.GetIndex();
+        if (nativeIndex >= m_nativeShapeSlots.size())
+        {
+            return false;
+        }
+
+        const AZ::u32 shapeIndex = m_nativeShapeSlots[nativeIndex];
+        if (shapeIndex == InvalidSlotIndex || shapeIndex >= m_shapeSlots.size())
+        {
+            return false;
+        }
+        return ResolveShape(EncodeSlotIndex(shapeIndex), nativeId, resolvedShape);
+    }
+
+    void World::RegisterShape(ShapeId nativeId, AZ::u32 shapeIndex)
+    {
+        const AZ::u32 nativeIndex = nativeId.GetIndex();
         if (nativeIndex == AZStd::numeric_limits<AZ::u32>::max())
         {
             return;
         }
-        if (nativeIndex >= m_nativeShapeIdentities.size())
+        if (nativeIndex >= m_nativeShapeSlots.size())
         {
-            m_nativeShapeIdentities.resize(static_cast<size_t>(nativeIndex) + 1, nullptr);
+            m_nativeShapeSlots.resize(static_cast<size_t>(nativeIndex) + 1, InvalidSlotIndex);
         }
-        m_nativeShapeIdentities[nativeIndex] = &identity;
+        m_nativeShapeSlots[nativeIndex] = shapeIndex;
     }
 
-    void World::UnregisterShapeIdentity(ShapeId nativeId)
+    void World::UnregisterShape(ShapeId nativeId)
     {
         const AZ::u32 nativeIndex = nativeId.GetIndex();
-        if (nativeIndex >= m_nativeShapeIdentities.size())
+        if (nativeIndex >= m_nativeShapeSlots.size())
         {
             return;
         }
 
-        ShapeIdentity*& identity = m_nativeShapeIdentities[nativeIndex];
-        if (identity != nullptr && identity->m_nativeId == nativeId)
+        const AZ::u32 shapeIndex = m_nativeShapeSlots[nativeIndex];
+        if (shapeIndex < m_shapeSlots.size() && m_shapeSlots[shapeIndex].m_nativeId == nativeId)
         {
-            identity = nullptr;
+            m_nativeShapeSlots[nativeIndex] = InvalidSlotIndex;
         }
     }
 
@@ -3369,12 +3451,12 @@ namespace Box3D
         return slot.m_generation == parts.m_generation && Box3D::IsValid(slot.m_nativeId) ? &slot : nullptr;
     }
 
-    World::CharacterSlot* World::FindCharacterSlot(CharacterHandle characterHandle)
+    World::CharacterSlot* World::FindCharacterSlot(CharacterHandle characterHandle, AZ::u32* characterIndex)
     {
-        return const_cast<CharacterSlot*>(static_cast<const World&>(*this).FindCharacterSlot(characterHandle));
+        return const_cast<CharacterSlot*>(static_cast<const World&>(*this).FindCharacterSlot(characterHandle, characterIndex));
     }
 
-    const World::CharacterSlot* World::FindCharacterSlot(CharacterHandle characterHandle) const
+    const World::CharacterSlot* World::FindCharacterSlot(CharacterHandle characterHandle, AZ::u32* characterIndex) const
     {
         Internal::WorldMemberHandleParts parts;
         if (!Internal::DecodeWorldMemberHandle(characterHandle, parts) || parts.m_worldIndex != m_worldIndex ||
@@ -3383,19 +3465,28 @@ namespace Box3D
             return nullptr;
         }
         const CharacterSlot& slot = m_characterSlots[parts.m_index];
-        return slot.m_generation == parts.m_generation && slot.m_scratch != nullptr ? &slot : nullptr;
+        if (slot.m_generation != parts.m_generation || slot.m_generation == 0)
+        {
+            return nullptr;
+        }
+        if (characterIndex != nullptr)
+        {
+            *characterIndex = parts.m_index;
+        }
+        return &slot;
     }
 
     ShapeId World::CreateNativeShape(
         AZ::u32 shapeIndex,
         BodyId bodyId,
         ShapeSlot& shapeSlot,
+        ShapeResources& resources,
         const ShapeProperties& properties,
         const ShapeGeometry* geometry,
         const NativeGeometry* cookedGeometry,
-        const AZ::Vector3& postScale)
+        float uniformScale)
     {
-        if (!IsValidTransform(properties.m_localTransform) || !HasUnitScale(properties.m_localTransform) ||
+        if (!IsValidTransform(properties.m_localTransform) || !AZ::IsFiniteFloat(uniformScale) || uniformScale <= 0.0f ||
             !IsNonNegative(properties.m_density) || !IsNonNegative(properties.m_explosionScale) ||
             (geometry == nullptr) == (cookedGeometry == nullptr))
         {
@@ -3432,7 +3523,7 @@ namespace Box3D
         nativeConfiguration.m_categoryBits = properties.m_collisionFilter.m_categoryBits;
         nativeConfiguration.m_maskBits = properties.m_collisionFilter.m_maskBits;
         nativeConfiguration.m_groupIndex = properties.m_collisionFilter.m_groupIndex;
-        nativeConfiguration.m_userData = &m_shapeIdentities[shapeIndex];
+        nativeConfiguration.m_userData = EncodeSlotIndex(shapeIndex);
         nativeConfiguration.m_isSensor = properties.m_isSensor;
         nativeConfiguration.m_enableSensorEvents = properties.m_enableSensorEvents;
         nativeConfiguration.m_enableContactEvents = properties.m_enableContactEvents;
@@ -3441,17 +3532,19 @@ namespace Box3D
         nativeConfiguration.m_enablePreSolveEvents = properties.m_enablePreSolveEvents;
         nativeConfiguration.m_invokeContactCreation = properties.m_createContactsImmediately;
         nativeConfiguration.m_updateBodyMass = properties.m_updateBodyMass;
-        shapeSlot.m_materials = properties.m_materials;
+        resources.m_materials = properties.m_materials;
 
-        shapeSlot.m_geometry = cookedGeometry != nullptr
+        resources.m_geometry = cookedGeometry != nullptr
             ? *cookedGeometry
-            : CookGeometry(*geometry, GeometryTransform{ properties.m_localTransform, properties.m_scale, postScale }, nativeMaterials);
-        return Box3D::CreateShape(bodyId, nativeConfiguration, shapeSlot.m_geometry);
+            : CookGeometry(*geometry, GeometryTransform{ properties.m_localTransform, uniformScale }, nativeMaterials);
+        shapeSlot.m_isCompound = AZStd::holds_alternative<AZStd::shared_ptr<const CompoundGeometry>>(resources.m_geometry);
+        return Box3D::CreateShape(bodyId, nativeConfiguration, resources.m_geometry);
     }
 
     bool World::RecreateShapeWithMaterials(
         ShapeHandle shapeHandle,
         ShapeSlot& shapeSlot,
+        ShapeResources& resources,
         AZStd::span<const SurfaceMaterial> materials,
         float density,
         float explosionScale,
@@ -3472,7 +3565,7 @@ namespace Box3D
         configuration.m_categoryBits = state.m_categoryBits;
         configuration.m_maskBits = state.m_maskBits;
         configuration.m_groupIndex = state.m_groupIndex;
-        configuration.m_userData = &m_shapeIdentities[shapeParts.m_index];
+        configuration.m_userData = EncodeSlotIndex(shapeParts.m_index);
         configuration.m_density = density;
         configuration.m_explosionScale = explosionScale;
         configuration.m_isSensor = state.m_isSensor;
@@ -3484,7 +3577,8 @@ namespace Box3D
         configuration.m_updateBodyMass = false;
 
         ShapeSlot replacement = shapeSlot;
-        if (const auto* compound = AZStd::get_if<AZStd::shared_ptr<const CompoundGeometry>>(&shapeSlot.m_geometry))
+        ShapeResources replacementResources = resources;
+        if (const auto* compound = AZStd::get_if<AZStd::shared_ptr<const CompoundGeometry>>(&resources.m_geometry))
         {
             if (*compound == nullptr)
             {
@@ -3495,29 +3589,30 @@ namespace Box3D
             {
                 return false;
             }
-            replacement.m_geometry = AZStd::move(replacementGeometry);
+            replacementResources.m_geometry = AZStd::move(replacementGeometry);
         }
-        replacement.m_nativeId = Box3D::CreateShape(bodySlot->m_nativeId, configuration, replacement.m_geometry);
+        replacement.m_nativeId = Box3D::CreateShape(bodySlot->m_nativeId, configuration, replacementResources.m_geometry);
         if (!Box3D::IsValid(replacement.m_nativeId))
         {
             return false;
         }
-        replacement.m_materials.assign(materialHandles.begin(), materialHandles.end());
+        replacementResources.m_materials.assign(materialHandles.begin(), materialHandles.end());
         replacement.m_explosionScale = explosionScale;
+        replacement.m_isCompound = AZStd::holds_alternative<AZStd::shared_ptr<const CompoundGeometry>>(replacementResources.m_geometry);
         m_retiredShapes.push_back({ shapeSlot.m_nativeId, shapeSlot.m_bodyHandle, shapeHandle });
-        UnregisterShapeIdentity(shapeSlot.m_nativeId);
+        UnregisterShape(shapeSlot.m_nativeId);
         Box3D::DestroyShape(shapeSlot.m_nativeId, false);
         shapeSlot = AZStd::move(replacement);
-        ShapeIdentity& identity = m_shapeIdentities[shapeParts.m_index];
-        identity.m_nativeId = shapeSlot.m_nativeId;
-        RegisterShapeIdentity(identity);
+        resources = AZStd::move(replacementResources);
+        RegisterShape(shapeSlot.m_nativeId, shapeParts.m_index);
         Box3D::ApplyMassFromShapes(bodySlot->m_nativeId);
         return true;
     }
 
-    bool World::GetCompoundSourceMaterials(const ShapeSlot& shapeSlot, AZStd::vector<SurfaceMaterial>& materials) const
+    bool World::GetCompoundSourceMaterials(
+        const ShapeSlot& shapeSlot, const ShapeResources& resources, AZStd::vector<SurfaceMaterial>& materials) const
     {
-        const auto* compound = AZStd::get_if<AZStd::shared_ptr<const CompoundGeometry>>(&shapeSlot.m_geometry);
+        const auto* compound = AZStd::get_if<AZStd::shared_ptr<const CompoundGeometry>>(&resources.m_geometry);
         if (compound == nullptr || *compound == nullptr)
         {
             return false;
@@ -3529,20 +3624,20 @@ namespace Box3D
             return false;
         }
 
-        size_t sourceMaterialCount = shapeSlot.m_materials.size();
+        size_t sourceMaterialCount = resources.m_materials.size();
         for (AZ::u8 sourceIndex : materialSources)
         {
             sourceMaterialCount = AZStd::max(sourceMaterialCount, aznumeric_cast<size_t>(sourceIndex) + 1);
         }
         materials.assign(sourceMaterialCount, SurfaceMaterial{});
-        for (size_t sourceIndex = 0; sourceIndex < shapeSlot.m_materials.size(); ++sourceIndex)
+        for (size_t sourceIndex = 0; sourceIndex < resources.m_materials.size(); ++sourceIndex)
         {
             MaterialConfiguration ignored;
-            if (!m_system.GetMaterial(shapeSlot.m_materials[sourceIndex], ignored))
+            if (!m_system.GetMaterial(resources.m_materials[sourceIndex], ignored))
             {
                 return false;
             }
-            materials[sourceIndex] = m_system.ResolveMaterial(shapeSlot.m_materials[sourceIndex]);
+            materials[sourceIndex] = m_system.ResolveMaterial(resources.m_materials[sourceIndex]);
         }
 
         AZStd::vector<SurfaceMaterial> nativeMaterials(nativeMaterialCount);
@@ -3585,8 +3680,8 @@ namespace Box3D
 
     ShapeHandle World::GetShapeHandle(const ShapeData& shapeData) const
     {
-        const ShapeIdentity* identity = ResolveShapeIdentity(shapeData.m_shapeUserData, shapeData.m_shapeId);
-        return identity != nullptr ? identity->m_shapeHandle : ShapeHandle{};
+        ResolvedShape resolvedShape;
+        return ResolveShape(shapeData.m_shapeUserData, shapeData.m_shapeId, resolvedShape) ? resolvedShape.m_shapeHandle : ShapeHandle{};
     }
 
     bool World::ResolveShapeHandles(ShapeId nativeId, BodyHandle& bodyHandle, ShapeHandle& shapeHandle) const
@@ -3641,7 +3736,7 @@ namespace Box3D
             }
 
             ++result.m_contacts.m_requiredCount;
-            result.m_points.m_requiredCount += nativeContact.m_points.size();
+            result.m_points.m_requiredCount += nativeContact.m_pointCount;
             if (result.m_contacts.m_count >= contacts.size())
             {
                 continue;
@@ -3654,13 +3749,13 @@ namespace Box3D
                         shapeHandleB,
                         result.m_points.m_count,
                         0,
-                        nativeContact.m_points.size(),
+                        nativeContact.m_pointCount,
                         nativeContact.m_childIndexA,
                         nativeContact.m_childIndexB };
-            const size_t pointCount = AZStd::min(nativeContact.m_points.size(), points.size() - result.m_points.m_count);
+            const size_t pointCount = AZStd::min(nativeContact.m_pointCount, points.size() - result.m_points.m_count);
             for (size_t pointIndex = 0; pointIndex < pointCount; ++pointIndex)
             {
-                const NativeContactPoint& nativePoint = nativeContact.m_points[pointIndex];
+                const NativeContactPoint& nativePoint = m_nativeContactPoints[nativeContact.m_firstPoint + pointIndex];
                 points[result.m_points.m_count++] = { nativePoint.m_position,
                                                       nativePoint.m_normal,
                                                       nativePoint.m_impulse,
@@ -3706,8 +3801,10 @@ namespace Box3D
             m_contactPoints.clear();
             m_contactHitEvents.clear();
             m_jointEvents.clear();
+            m_entityBodyMoves.clear();
+            m_entityJointThresholds.clear();
         }
-        if (m_configuration.m_collectedEventTypes == StepEventTypes::None)
+        if (m_configuration.m_collectedEventTypes == StepEventTypes::None && m_entityBodyCount == 0 && m_entityJointCount == 0)
         {
             m_activeContactIds.clear();
             m_retiredShapes.clear();
@@ -3721,7 +3818,7 @@ namespace Box3D
                 return left.m_nativeId.m_value < right.m_nativeId.m_value;
             });
         StepEventFlags nativeFlags = StepEventFlags::None;
-        nativeFlags |= (m_configuration.m_collectedEventTypes & StepEventTypes::BodyMoves) != StepEventTypes::None
+        nativeFlags |= (m_configuration.m_collectedEventTypes & StepEventTypes::BodyMoves) != StepEventTypes::None || m_entityBodyCount > 0
             ? StepEventFlags::BodyMoves
             : StepEventFlags::None;
         nativeFlags |= (m_configuration.m_collectedEventTypes & StepEventTypes::Sensors) != StepEventTypes::None ? StepEventFlags::Sensors
@@ -3731,7 +3828,8 @@ namespace Box3D
         nativeFlags |= (m_configuration.m_collectedEventTypes & StepEventTypes::ContactHits) != StepEventTypes::None
             ? StepEventFlags::ContactHits
             : StepEventFlags::None;
-        nativeFlags |= (m_configuration.m_collectedEventTypes & StepEventTypes::JointThresholds) != StepEventTypes::None
+        nativeFlags |=
+            (m_configuration.m_collectedEventTypes & StepEventTypes::JointThresholds) != StepEventTypes::None || m_entityJointCount > 0
             ? StepEventFlags::Joints
             : StepEventFlags::None;
         Box3D::GetStepEvents(
@@ -3743,13 +3841,45 @@ namespace Box3D
             m_nativeContactHits,
             m_nativeJointEvents);
 
+        const auto contactIdLess = [](const ContactId& left, const ContactId& right)
+        {
+            if (left.m_world != right.m_world)
+            {
+                return left.m_world < right.m_world;
+            }
+            if (left.m_index != right.m_index)
+            {
+                return left.m_index < right.m_index;
+            }
+            return left.m_generation < right.m_generation;
+        };
+        m_endedContactIds.clear();
+        m_endedContactIds.reserve(m_nativeContactEvents.size());
+        for (const ContactTransition& transition : m_nativeContactEvents)
+        {
+            if (transition.m_type == ContactTransitionType::End)
+            {
+                m_endedContactIds.push_back(transition.m_contactId);
+            }
+        }
+        AZStd::sort(m_endedContactIds.begin(), m_endedContactIds.end(), contactIdLess);
+
         m_bodyMoveEvents.reserve(m_nativeBodyMoves.size());
         for (const BodyMove& nativeEvent : m_nativeBodyMoves)
         {
             const BodyHandle bodyHandle = GetBodyHandle(nativeEvent);
             if (bodyHandle)
             {
-                m_bodyMoveEvents.push_back({ bodyHandle, nativeEvent.m_transform, nativeEvent.m_fellAsleep });
+                const BodyMoveEvent event{ bodyHandle, nativeEvent.m_transform, nativeEvent.m_fellAsleep };
+                if ((m_configuration.m_collectedEventTypes & StepEventTypes::BodyMoves) != StepEventTypes::None)
+                {
+                    m_bodyMoveEvents.push_back(event);
+                }
+                const BodySlot* bodySlot = FindBodySlot(bodyHandle);
+                if (bodySlot != nullptr && bodySlot->m_entityId.IsValid())
+                {
+                    m_entityBodyMoves.push_back({ bodySlot->m_entityId, event });
+                }
             }
         }
         AZStd::sort(
@@ -3824,8 +3954,10 @@ namespace Box3D
             event.m_firstPoint = aznumeric_cast<AZ::u32>(m_contactPoints.size());
             event.m_childIndexA = contactData.m_childIndexA;
             event.m_childIndexB = contactData.m_childIndexB;
-            for (const NativeContactPoint& point : contactData.m_points)
+            const size_t pointEnd = contactData.m_firstPoint + contactData.m_pointCount;
+            for (size_t pointIndex = contactData.m_firstPoint; pointIndex < pointEnd; ++pointIndex)
             {
+                const NativeContactPoint& point = m_nativeContactPoints[pointIndex];
                 m_contactPoints.push_back({ point.m_position, point.m_normal, point.m_impulse, point.m_separation, point.m_triangleIndex });
             }
             event.m_pointCount = aznumeric_cast<AZ::u32>(m_contactPoints.size()) - event.m_firstPoint;
@@ -3835,15 +3967,9 @@ namespace Box3D
 
         for (auto activeContact = m_activeContactIds.begin(); activeContact != m_activeContactIds.end();)
         {
-            const bool ended = AZStd::find_if(
-                                   m_nativeContactEvents.begin(),
-                                   m_nativeContactEvents.end(),
-                                   [activeContact](const ContactTransition& transition)
-                                   {
-                                       return transition.m_type == ContactTransitionType::End && transition.m_contactId == *activeContact;
-                                   }) != m_nativeContactEvents.end();
+            const bool ended = AZStd::binary_search(m_endedContactIds.begin(), m_endedContactIds.end(), *activeContact, contactIdLess);
             ContactData contactData;
-            if (ended || !Box3D::GetContactData(*activeContact, contactData))
+            if (ended || !Box3D::GetContactData(*activeContact, contactData, m_nativeContactPoints))
             {
                 activeContact = m_activeContactIds.erase(activeContact);
                 continue;
@@ -3857,7 +3983,8 @@ namespace Box3D
             if (nativeEvent.m_type == ContactTransitionType::Begin)
             {
                 ContactData contactData;
-                if (Box3D::GetContactData(nativeEvent.m_contactId, contactData) && appendContactData(contactData, EventPhase::Begin))
+                if (Box3D::GetContactData(nativeEvent.m_contactId, contactData, m_nativeContactPoints) &&
+                    appendContactData(contactData, EventPhase::Begin))
                 {
                     m_activeContactIds.push_back(nativeEvent.m_contactId);
                 }
@@ -3881,21 +4008,7 @@ namespace Box3D
             event.m_firstPoint = aznumeric_cast<AZ::u32>(m_contactPoints.size());
             m_contactEvents.push_back(event);
         }
-        AZStd::sort(
-            m_activeContactIds.begin(),
-            m_activeContactIds.end(),
-            [](const ContactId& left, const ContactId& right)
-            {
-                if (left.m_world != right.m_world)
-                {
-                    return left.m_world < right.m_world;
-                }
-                if (left.m_index != right.m_index)
-                {
-                    return left.m_index < right.m_index;
-                }
-                return left.m_generation < right.m_generation;
-            });
+        AZStd::sort(m_activeContactIds.begin(), m_activeContactIds.end(), contactIdLess);
         AZStd::sort(
             m_contactEvents.begin(),
             m_contactEvents.end(),
@@ -3976,7 +4089,16 @@ namespace Box3D
             const JointSlot& slot = m_jointSlots[jointIndex];
             if (Box3D::IsValid(slot.m_nativeId))
             {
-                m_jointEvents.push_back({ Internal::MakeWorldMemberHandle<JointHandle>(m_worldIndex, jointIndex, slot.m_generation) });
+                const JointThresholdEvent event{ Internal::MakeWorldMemberHandle<JointHandle>(
+                    m_worldIndex, jointIndex, slot.m_generation) };
+                if ((m_configuration.m_collectedEventTypes & StepEventTypes::JointThresholds) != StepEventTypes::None)
+                {
+                    m_jointEvents.push_back(event);
+                }
+                if (slot.m_entityId.IsValid())
+                {
+                    m_entityJointThresholds.push_back({ slot.m_entityId, event });
+                }
             }
         }
         AZStd::sort(

@@ -452,15 +452,15 @@ namespace Box3D
         AZ_Error("Box3D", m_system != nullptr, "Box3D SystemComponent must be active before body components.");
         AZ_Error("Box3D", m_collider != nullptr, "Box3D RigidBodyComponent requires a ColliderComponent.");
         RigidBodyRequestBus::Handler::BusConnect(GetEntityId());
+        RigidBodyNotificationBus::Handler::BusConnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
-        AZ::TickBus::Handler::BusConnect();
         EnableSimulation();
     }
 
     void RigidBodyComponent::Deactivate()
     {
-        AZ::TickBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
+        RigidBodyNotificationBus::Handler::BusDisconnect();
         RigidBodyRequestBus::Handler::BusDisconnect();
         DisableSimulation();
         m_collider = nullptr;
@@ -476,30 +476,25 @@ namespace Box3D
         }
     }
 
-    void RigidBodyComponent::OnTick([[maybe_unused]] float deltaTime, [[maybe_unused]] AZ::ScriptTimePoint time)
+    void RigidBodyComponent::OnBodyMoved(const BodyMoveEvent& event)
     {
-        BodyState state;
-        if (m_system == nullptr || !m_system->GetBodyState(m_worldHandle, m_bodyHandle, state) || state.m_bodyType == BodyType::Static)
+        if (event.m_bodyHandle != m_bodyHandle)
         {
             return;
         }
 
         AZ::Transform currentTransform = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(currentTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
-        if (currentTransform.GetTranslation().IsClose(state.m_transform.GetTranslation()) &&
-            currentTransform.GetRotation().IsClose(state.m_transform.GetRotation()))
+        if (currentTransform.GetTranslation().IsClose(event.m_transform.GetTranslation()) &&
+            currentTransform.GetRotation().IsClose(event.m_transform.GetRotation()))
         {
             return;
         }
 
         m_syncingTransform = true;
-        state.m_transform.SetUniformScale(m_uniformScale);
-        AZ::TransformBus::Event(GetEntityId(), &AZ::TransformInterface::SetWorldTM, state.m_transform);
+        AZ::Transform transform = event.m_transform;
+        transform.SetUniformScale(m_uniformScale);
+        AZ::TransformBus::Event(GetEntityId(), &AZ::TransformInterface::SetWorldTM, transform);
         m_syncingTransform = false;
-    }
-
-    int RigidBodyComponent::GetTickOrder()
-    {
-        return AZ::ComponentTickBus::TICK_PHYSICS;
     }
 } // namespace Box3D

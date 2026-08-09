@@ -91,7 +91,6 @@ namespace Box3D
             ShapeCastRequest request;
             request.m_geometry = geometry;
             request.m_start = parameters.m_start;
-            request.m_scale = parameters.m_scale;
             request.m_translation = parameters.m_translation;
             request.m_filter = parameters.m_filter;
             return CollectQueryHits(
@@ -113,7 +112,6 @@ namespace Box3D
             OverlapRequest request;
             request.m_geometry = geometry;
             request.m_transform = parameters.m_transform;
-            request.m_scale = parameters.m_scale;
             request.m_filter = parameters.m_filter;
             return CollectQueryHits(
                 parameters.m_maxHitCount,
@@ -401,8 +399,8 @@ namespace Box3D
         AZ::u32 replayIndex = 0;
         if (!m_freeReplaySlots.empty())
         {
-            replayIndex = m_freeReplaySlots.front();
-            m_freeReplaySlots.pop();
+            replayIndex = m_freeReplaySlots.back();
+            m_freeReplaySlots.pop_back();
         }
         else
         {
@@ -435,7 +433,7 @@ namespace Box3D
         slot.m_replay.reset();
         if (Internal::AdvanceGeneration(slot.m_generation))
         {
-            m_freeReplaySlots.push(replayIndex);
+            m_freeReplaySlots.push_back(replayIndex);
         }
         return true;
     }

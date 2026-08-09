@@ -16,7 +16,6 @@
 
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/std/containers/array.h>
-#include <AzCore/std/containers/queue.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/string/string.h>
@@ -148,15 +147,14 @@ namespace Box3D
         [[nodiscard]] ShapeHandle CreateShape(
             WorldHandle worldHandle, BodyHandle bodyHandle, const ShapeConfiguration& configuration) override;
         [[nodiscard]] ShapeHandle CreateShape(
-            WorldHandle worldHandle, BodyHandle bodyHandle, const ShapeConfiguration& configuration, const AZ::Vector3& postScale);
+            WorldHandle worldHandle, BodyHandle bodyHandle, const ShapeConfiguration& configuration, float uniformScale);
         [[nodiscard]] ShapeHandle CreateShapeFromCooked(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             CookedShapeHandle cookedShapeHandle,
             const ShapeProperties& properties) override;
         bool UpdateShape(WorldHandle worldHandle, ShapeHandle shapeHandle, const ShapeConfiguration& configuration) override;
-        bool UpdateShape(
-            WorldHandle worldHandle, ShapeHandle shapeHandle, const ShapeConfiguration& configuration, const AZ::Vector3& postScale);
+        bool UpdateShape(WorldHandle worldHandle, ShapeHandle shapeHandle, const ShapeConfiguration& configuration, float uniformScale);
         bool DestroyShape(WorldHandle worldHandle, ShapeHandle shapeHandle, bool updateBodyMass = true) override;
         bool SetShapeCollisionFilter(WorldHandle worldHandle, ShapeHandle shapeHandle, const CollisionFilter& collisionFilter) override;
         bool SetShapeMaterials(WorldHandle worldHandle, ShapeHandle shapeHandle, AZStd::span<const MaterialHandle> materials) override;
@@ -194,6 +192,7 @@ namespace Box3D
             WorldHandle worldHandle, ShapeHandle shapeHandle, AZStd::span<SensorOverlap> overlaps) const override;
 
         [[nodiscard]] JointHandle CreateJoint(WorldHandle worldHandle, const JointConfiguration& configuration) override;
+        bool SetJointEntityId(WorldHandle worldHandle, JointHandle jointHandle, AZ::EntityId entityId);
         bool UpdateJoint(WorldHandle worldHandle, JointHandle jointHandle, const JointConfiguration& configuration) override;
         bool DestroyJoint(WorldHandle worldHandle, JointHandle jointHandle, bool wakeAttachedBodies = true) override;
         bool WakeJointBodies(WorldHandle worldHandle, JointHandle jointHandle) override;
@@ -256,23 +255,31 @@ namespace Box3D
 
         struct MaterialSlot final
         {
-            MaterialConfiguration m_configuration;
             AZ::u32 m_generation = 0;
         };
 
         struct CookedShapeSlot final
         {
-            NativeGeometry m_geometry;
-            AZStd::vector<MaterialHandle> m_materials;
             AZ::u32 m_generation = 0;
         };
 
+        struct CookedShapeResources final
+        {
+            NativeGeometry m_geometry;
+            AZStd::vector<MaterialHandle> m_materials;
+        };
+
+        static_assert(sizeof(MaterialSlot) <= 4);
+        static_assert(sizeof(CookedShapeSlot) <= 4);
+        static_assert(sizeof(CookedShapeResources) <= 96);
+
         [[nodiscard]] World* FindWorldInstance(WorldHandle worldHandle);
         [[nodiscard]] const World* FindWorldInstance(WorldHandle worldHandle) const;
-        [[nodiscard]] MaterialSlot* FindMaterialSlot(MaterialHandle materialHandle);
-        [[nodiscard]] const MaterialSlot* FindMaterialSlot(MaterialHandle materialHandle) const;
-        [[nodiscard]] CookedShapeSlot* FindCookedShapeSlot(CookedShapeHandle cookedShapeHandle);
-        [[nodiscard]] const CookedShapeSlot* FindCookedShapeSlot(CookedShapeHandle cookedShapeHandle) const;
+        [[nodiscard]] MaterialSlot* FindMaterialSlot(MaterialHandle materialHandle, AZ::u32* materialIndex = nullptr);
+        [[nodiscard]] const MaterialSlot* FindMaterialSlot(MaterialHandle materialHandle, AZ::u32* materialIndex = nullptr) const;
+        [[nodiscard]] CookedShapeSlot* FindCookedShapeSlot(CookedShapeHandle cookedShapeHandle, AZ::u32* cookedShapeIndex = nullptr);
+        [[nodiscard]] const CookedShapeSlot* FindCookedShapeSlot(
+            CookedShapeHandle cookedShapeHandle, AZ::u32* cookedShapeIndex = nullptr) const;
         [[nodiscard]] bool UsesCookedMaterial(MaterialHandle materialHandle) const;
         void DispatchStepEvents(const World& world) const;
         [[nodiscard]] SurfaceTypeId ResolveSurfaceType(AZ::u64 materialId) const;
@@ -282,16 +289,18 @@ namespace Box3D
 
         SystemConfiguration m_configuration;
         AZStd::vector<WorldSlot> m_worldSlots;
-        AZStd::queue<AZ::u32> m_freeWorldSlots;
+        AZStd::vector<AZ::u32> m_freeWorldSlots;
         AZStd::array<Internal::GenerationSource, Internal::MaximumWorldCount> m_bodyGenerations;
         AZStd::array<Internal::GenerationSource, Internal::MaximumWorldCount> m_shapeGenerations;
         AZStd::array<Internal::GenerationSource, Internal::MaximumWorldCount> m_jointGenerations;
         AZStd::array<Internal::GenerationSource, Internal::MaximumWorldCount> m_characterGenerations;
         AZStd::vector<MaterialSlot> m_materialSlots;
-        AZStd::queue<AZ::u32> m_freeMaterialSlots;
+        AZStd::vector<MaterialConfiguration> m_materialConfigurations;
+        AZStd::vector<AZ::u32> m_freeMaterialSlots;
         Internal::GenerationSource m_materialGenerations;
         AZStd::vector<CookedShapeSlot> m_cookedShapeSlots;
-        AZStd::queue<AZ::u32> m_freeCookedShapeSlots;
+        AZStd::vector<CookedShapeResources> m_cookedShapeResources;
+        AZStd::vector<AZ::u32> m_freeCookedShapeSlots;
         Internal::GenerationSource m_cookedShapeGenerations;
         AZStd::string m_compatibilityFingerprint;
         World* m_defaultWorldInstance = nullptr;

@@ -11,7 +11,6 @@
 #include <Box3D/TypeIds.h>
 
 #include <AzCore/Component/Component.h>
-#include <AzCore/Component/NonUniformScaleBus.h>
 #include <AzCore/std/containers/vector.h>
 
 namespace Box3D
@@ -50,7 +49,6 @@ namespace Box3D
         void Deactivate() override;
         [[nodiscard]] bool Attach(ISystem& system, WorldHandle worldHandle, BodyHandle bodyHandle, float uniformScale);
         [[nodiscard]] bool UpdateUniformScale(float uniformScale);
-        [[nodiscard]] bool UpdateScale(const AZ::Vector3& scale);
         void Detach();
 
         AZStd::vector<ShapeConfiguration> m_shapeConfigurations{ ShapeConfiguration{} };
@@ -59,15 +57,7 @@ namespace Box3D
         System* m_system = nullptr;
         WorldHandle m_worldHandle;
         BodyHandle m_bodyHandle;
-        AZ::Vector3 m_nonUniformScale = AZ::Vector3::CreateOne();
         float m_uniformScale = 1.0f;
-        AZ::NonUniformScaleChangedEvent::Handler m_nonUniformScaleChangedHandler{ [this](const AZ::Vector3& scale)
-                                                                                  {
-                                                                                      if (UpdateScale(scale * m_uniformScale))
-                                                                                      {
-                                                                                          m_nonUniformScale = scale;
-                                                                                      }
-                                                                                  } };
 
         friend class RigidBodyComponent;
         friend class StaticRigidBodyComponent;

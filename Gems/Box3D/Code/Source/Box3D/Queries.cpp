@@ -105,7 +105,6 @@ namespace Box3D
             ->Attribute(AZ::Script::Attributes::Module, "box3d")
             ->Constructor<>()
             ->Property("start", BehaviorValueProperty(&ConvexCastParameters::m_start))
-            ->Property("scale", BehaviorValueProperty(&ConvexCastParameters::m_scale))
             ->Property("translation", BehaviorValueProperty(&ConvexCastParameters::m_translation))
             ->Property("filter", BehaviorValueProperty(&ConvexCastParameters::m_filter))
             ->Property("maxHitCount", BehaviorValueProperty(&ConvexCastParameters::m_maxHitCount));
@@ -114,7 +113,6 @@ namespace Box3D
             ->Attribute(AZ::Script::Attributes::Module, "box3d")
             ->Constructor<>()
             ->Property("transform", BehaviorValueProperty(&ConvexOverlapParameters::m_transform))
-            ->Property("scale", BehaviorValueProperty(&ConvexOverlapParameters::m_scale))
             ->Property("filter", BehaviorValueProperty(&ConvexOverlapParameters::m_filter))
             ->Property("maxHitCount", BehaviorValueProperty(&ConvexOverlapParameters::m_maxHitCount));
     }

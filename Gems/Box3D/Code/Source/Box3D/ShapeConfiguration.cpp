@@ -24,6 +24,62 @@ namespace Box3D
             const Geometry* value = AZStd::get_if<Geometry>(&geometry);
             return value != nullptr ? *value : Geometry{};
         }
+
+        bool MergeLegacyUniformScale(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+        {
+            AZ::Vector3 scale;
+            if (!classElement.GetChildData(AZ_CRC_CE("Scale"), scale))
+            {
+                return true;
+            }
+            if (!scale.IsFinite() || scale.GetMinElement() <= 0.0f || !AZ::IsClose(scale.GetX(), scale.GetY(), AZ::Constants::Tolerance) ||
+                !AZ::IsClose(scale.GetX(), scale.GetZ(), AZ::Constants::Tolerance))
+            {
+                AZ_Error("Box3D", false, "Cannot convert a legacy non-uniform or non-positive shape scale.");
+                return false;
+            }
+
+            AZ::Transform transform = AZ::Transform::CreateIdentity();
+            classElement.GetChildData(AZ_CRC_CE("LocalTransform"), transform);
+            transform.SetUniformScale(transform.GetUniformScale() * scale.GetX());
+            classElement.RemoveElementByName(AZ_CRC_CE("Scale"));
+            classElement.RemoveElementByName(AZ_CRC_CE("LocalTransform"));
+            return classElement.AddElementWithData(context, "LocalTransform", transform) >= 0;
+        }
+
+        bool SplitLegacyHeightfieldScale(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+        {
+            AZ::Vector3 scale;
+            if (!classElement.GetChildData(AZ_CRC_CE("Scale"), scale))
+            {
+                return true;
+            }
+            classElement.RemoveElementByName(AZ_CRC_CE("Scale"));
+            return classElement.AddElementWithData(context, "SampleSpacing", AZ::Vector2(scale.GetX(), scale.GetY())) >= 0 &&
+                classElement.AddElementWithData(context, "HeightScale", scale.GetZ()) >= 0;
+        }
+
+        bool MoveLegacyMaterialConfigurations(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+        {
+            AZ::SerializeContext::DataElementNode* properties = classElement.FindSubElement(AZ_CRC_CE("Properties"));
+            if (properties == nullptr)
+            {
+                return true;
+            }
+            const int materialsIndex = properties->FindElement(AZ_CRC_CE("MaterialConfigurations"));
+            if (materialsIndex < 0)
+            {
+                return true;
+            }
+
+            AZStd::vector<MaterialConfiguration> materials;
+            if (!properties->GetSubElement(materialsIndex).GetData(materials))
+            {
+                return false;
+            }
+            properties->RemoveElement(materialsIndex);
+            return classElement.AddElementWithData(context, "MaterialConfigurations", materials) >= 0;
+        }
     } // namespace
 
     CompoundChildType CompoundChildShapeConfiguration::GetType() const
@@ -124,28 +180,26 @@ namespace Box3D
                 ->Field("UseMedianSplit", &TriangleMeshShapeConfiguration::m_useMedianSplit)
                 ->Field("IdentifyEdges", &TriangleMeshShapeConfiguration::m_identifyEdges);
             serializeContext->Class<HeightfieldShapeConfiguration>()
-                ->Version(1)
+                ->Version(2, &SplitLegacyHeightfieldScale)
                 ->Field("Samples", &HeightfieldShapeConfiguration::m_samples)
                 ->Field("MaterialIndices", &HeightfieldShapeConfiguration::m_materialIndices)
                 ->Field("ColumnCount", &HeightfieldShapeConfiguration::m_columnCount)
                 ->Field("RowCount", &HeightfieldShapeConfiguration::m_rowCount)
-                ->Field("Scale", &HeightfieldShapeConfiguration::m_scale)
+                ->Field("SampleSpacing", &HeightfieldShapeConfiguration::m_sampleSpacing)
+                ->Field("HeightScale", &HeightfieldShapeConfiguration::m_heightScale)
                 ->Field("MinimumHeight", &HeightfieldShapeConfiguration::m_minimumHeight)
                 ->Field("MaximumHeight", &HeightfieldShapeConfiguration::m_maximumHeight)
                 ->Field("Clockwise", &HeightfieldShapeConfiguration::m_clockwise)
                 ->Field("UseSharedHeightRange", &HeightfieldShapeConfiguration::m_useSharedHeightRange);
             serializeContext->Class<CompoundChildShapeConfiguration>()
-                ->Version(1)
+                ->Version(2, &MergeLegacyUniformScale)
                 ->Field("Geometry", &CompoundChildShapeConfiguration::m_geometry)
                 ->Field("LocalTransform", &CompoundChildShapeConfiguration::m_localTransform)
-                ->Field("Scale", &CompoundChildShapeConfiguration::m_scale)
                 ->Field("MaterialIndex", &CompoundChildShapeConfiguration::m_materialIndex);
             serializeContext->Class<CompoundShapeConfiguration>()->Version(0)->Field("Children", &CompoundShapeConfiguration::m_children);
             serializeContext->Class<ShapeProperties>()
-                ->Version(2)
-                ->Field("MaterialConfigurations", &ShapeProperties::m_materialConfigurations)
+                ->Version(3, &MergeLegacyUniformScale)
                 ->Field("LocalTransform", &ShapeProperties::m_localTransform)
-                ->Field("Scale", &ShapeProperties::m_scale)
                 ->Field("CollisionFilter", &ShapeProperties::m_collisionFilter)
                 ->Field("Density", &ShapeProperties::m_density)
                 ->Field("ExplosionScale", &ShapeProperties::m_explosionScale)
@@ -158,9 +212,10 @@ namespace Box3D
                 ->Field("CreateContactsImmediately", &ShapeProperties::m_createContactsImmediately)
                 ->Field("UpdateBodyMass", &ShapeProperties::m_updateBodyMass);
             serializeContext->Class<ShapeConfiguration>()
-                ->Version(4)
+                ->Version(5, &MoveLegacyMaterialConfigurations)
                 ->Field("Geometry", &ShapeConfiguration::m_geometry)
-                ->Field("Properties", &ShapeConfiguration::m_properties);
+                ->Field("Properties", &ShapeConfiguration::m_properties)
+                ->Field("MaterialConfigurations", &ShapeConfiguration::m_materialConfigurations);
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
@@ -218,7 +273,8 @@ namespace Box3D
                         "One material index per heightfield cell.")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &HeightfieldShapeConfiguration::m_columnCount, "Columns", "")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &HeightfieldShapeConfiguration::m_rowCount, "Rows", "")
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &HeightfieldShapeConfiguration::m_scale, "Scale", "")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &HeightfieldShapeConfiguration::m_sampleSpacing, "Sample spacing", "")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &HeightfieldShapeConfiguration::m_heightScale, "Height scale", "")
                     ->DataElement(
                         AZ::Edit::UIHandlers::Default,
                         &HeightfieldShapeConfiguration::m_minimumHeight,
@@ -238,18 +294,11 @@ namespace Box3D
                 editContext->Class<CompoundChildShapeConfiguration>("Child shape", "")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CompoundChildShapeConfiguration::m_geometry, "Geometry", "")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CompoundChildShapeConfiguration::m_localTransform, "Local transform", "")
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &CompoundChildShapeConfiguration::m_scale, "Scale", "")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CompoundChildShapeConfiguration::m_materialIndex, "Material index", "");
                 editContext->Class<CompoundShapeConfiguration>("Compound", "")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CompoundShapeConfiguration::m_children, "Children", "");
                 editContext->Class<ShapeProperties>("Shape properties", "Collision and instance behavior")
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default,
-                        &ShapeProperties::m_materialConfigurations,
-                        "Materials",
-                        "Physical response and diagnostic appearance for this shape")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ShapeProperties::m_localTransform, "Local transform", "")
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &ShapeProperties::m_scale, "Scale", "")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ShapeProperties::m_collisionFilter, "Collision filter", "")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ShapeProperties::m_density, "Density", "")
                     ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
@@ -281,7 +330,12 @@ namespace Box3D
                         "Disable while attaching shapes in bulk, then recompute mass once after the batch.");
                 editContext->Class<ShapeConfiguration>("Shape", "Geometry and collision behavior")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &ShapeConfiguration::m_geometry, "Geometry", "")
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &ShapeConfiguration::m_properties, "Properties", "");
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &ShapeConfiguration::m_properties, "Properties", "")
+                    ->DataElement(
+                        AZ::Edit::UIHandlers::Default,
+                        &ShapeConfiguration::m_materialConfigurations,
+                        "Materials",
+                        "Physical response and diagnostic appearance for this shape");
             }
         }
 
@@ -330,12 +384,9 @@ namespace Box3D
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "box3d")
                 ->Constructor<>()
-                ->Method("GetMaterialConfigurations", &ShapeProperties::GetMaterialConfigurations)
-                ->Method("SetMaterialConfigurations", &ShapeProperties::SetMaterialConfigurations)
                 ->Method("GetMaterials", &ShapeProperties::GetMaterials)
                 ->Method("SetMaterials", &ShapeProperties::SetMaterials)
                 ->Property("localTransform", BehaviorValueProperty(&ShapeProperties::m_localTransform))
-                ->Property("scale", BehaviorValueProperty(&ShapeProperties::m_scale))
                 ->Property("collisionFilter", BehaviorValueProperty(&ShapeProperties::m_collisionFilter))
                 ->Property("density", BehaviorValueProperty(&ShapeProperties::m_density))
                 ->Property("explosionScale", BehaviorValueProperty(&ShapeProperties::m_explosionScale))
@@ -347,6 +398,13 @@ namespace Box3D
                 ->Property("enablePreSolveEvents", BehaviorValueProperty(&ShapeProperties::m_enablePreSolveEvents))
                 ->Property("createContactsImmediately", BehaviorValueProperty(&ShapeProperties::m_createContactsImmediately))
                 ->Property("updateBodyMass", BehaviorValueProperty(&ShapeProperties::m_updateBodyMass));
+            behaviorContext->Class<ShapeConfiguration>("ShapeConfiguration")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Constructor<>()
+                ->Method("GetMaterialConfigurations", &ShapeConfiguration::GetMaterialConfigurations)
+                ->Method("SetMaterialConfigurations", &ShapeConfiguration::SetMaterialConfigurations)
+                ->Property("properties", BehaviorValueProperty(&ShapeConfiguration::m_properties));
             behaviorContext->Class<HeightfieldShapeConfiguration>("HeightfieldShapeConfiguration")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "box3d")
@@ -355,7 +413,8 @@ namespace Box3D
                 ->Property("materialIndices", BehaviorValueProperty(&HeightfieldShapeConfiguration::m_materialIndices))
                 ->Property("columnCount", BehaviorValueProperty(&HeightfieldShapeConfiguration::m_columnCount))
                 ->Property("rowCount", BehaviorValueProperty(&HeightfieldShapeConfiguration::m_rowCount))
-                ->Property("scale", BehaviorValueProperty(&HeightfieldShapeConfiguration::m_scale))
+                ->Property("sampleSpacing", BehaviorValueProperty(&HeightfieldShapeConfiguration::m_sampleSpacing))
+                ->Property("heightScale", BehaviorValueProperty(&HeightfieldShapeConfiguration::m_heightScale))
                 ->Property("minimumHeight", BehaviorValueProperty(&HeightfieldShapeConfiguration::m_minimumHeight))
                 ->Property("maximumHeight", BehaviorValueProperty(&HeightfieldShapeConfiguration::m_maximumHeight))
                 ->Property("clockwise", BehaviorValueProperty(&HeightfieldShapeConfiguration::m_clockwise))
@@ -384,7 +443,6 @@ namespace Box3D
                 ->Method("SetConvexHull", &CompoundChildShapeConfiguration::SetConvexHull)
                 ->Method("SetTriangleMesh", &CompoundChildShapeConfiguration::SetTriangleMesh)
                 ->Property("localTransform", BehaviorValueProperty(&CompoundChildShapeConfiguration::m_localTransform))
-                ->Property("scale", BehaviorValueProperty(&CompoundChildShapeConfiguration::m_scale))
                 ->Property("materialIndex", BehaviorValueProperty(&CompoundChildShapeConfiguration::m_materialIndex));
             behaviorContext->Class<CompoundShapeConfiguration>("CompoundShapeConfiguration")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)

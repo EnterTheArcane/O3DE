@@ -471,6 +471,25 @@ namespace Box3D
 
     struct GeometryTransform final
     {
+        GeometryTransform() = default;
+        explicit GeometryTransform(AZ::Transform transform)
+            : m_localTransform(AZStd::move(transform))
+        {
+            m_scale = AZ::Vector3::CreateOne() * m_localTransform.ExtractUniformScale();
+        }
+        GeometryTransform(AZ::Transform transform, float uniformScale)
+            : m_localTransform(AZStd::move(transform))
+            , m_postScale(AZ::Vector3::CreateOne() * uniformScale)
+        {
+            m_scale = AZ::Vector3::CreateOne() * m_localTransform.ExtractUniformScale();
+        }
+        GeometryTransform(AZ::Transform transform, const AZ::Vector3& scale, const AZ::Vector3& postScale)
+            : m_localTransform(AZStd::move(transform))
+            , m_scale(scale)
+            , m_postScale(postScale)
+        {
+        }
+
         AZ::Transform m_localTransform = AZ::Transform::CreateIdentity();
         AZ::Vector3 m_scale = AZ::Vector3::CreateOne();
         AZ::Vector3 m_postScale = AZ::Vector3::CreateOne();
@@ -693,7 +712,8 @@ namespace Box3D
         void* m_bodyUserDataB = nullptr;
         AZ::s32 m_childIndexA = -1;
         AZ::s32 m_childIndexB = -1;
-        AZStd::vector<NativeContactPoint> m_points;
+        size_t m_firstPoint = 0;
+        size_t m_pointCount = 0;
     };
 
     struct ShapeData final
@@ -775,6 +795,34 @@ namespace Box3D
         void* m_data = nullptr;
 
         friend bool GetBodyJoints(BodyId, JointScratch&);
+    };
+
+    class ContactScratch final
+    {
+    public:
+        ContactScratch();
+        ~ContactScratch();
+        AZ_DISABLE_COPY_MOVE(ContactScratch);
+
+    private:
+        void* m_data = nullptr;
+
+        friend bool GetTouchingContacts(BodyId, ContactScratch&, AZStd::vector<ContactData>&, AZStd::vector<NativeContactPoint>&);
+        friend bool GetTouchingContacts(ShapeId, ContactScratch&, AZStd::vector<ContactData>&, AZStd::vector<NativeContactPoint>&);
+    };
+
+    class SensorScratch final
+    {
+    public:
+        SensorScratch();
+        ~SensorScratch();
+        AZ_DISABLE_COPY_MOVE(SensorScratch);
+
+    private:
+        void* m_data = nullptr;
+
+        friend bool GetSensorOverlaps(BodyId, SensorScratch&, AZStd::vector<SensorOverlapData>&);
+        friend bool GetSensorOverlaps(ShapeId, SensorScratch&, AZStd::vector<SensorOverlapData>&);
     };
 
     class IContactCallbacks
@@ -883,12 +931,14 @@ namespace Box3D
         AZStd::vector<ContactTransition>& contactTransitions,
         AZStd::vector<ContactHit>& contactHits,
         AZStd::vector<NativeJointThresholdEvent>& jointEvents);
-    [[nodiscard]] bool GetContactData(ContactId contactId, ContactData& contactData);
-    [[nodiscard]] bool GetTouchingContacts(BodyId bodyId, AZStd::vector<ContactData>& contacts);
-    [[nodiscard]] bool GetTouchingContacts(ShapeId shapeId, AZStd::vector<ContactData>& contacts);
+    [[nodiscard]] bool GetContactData(ContactId contactId, ContactData& contactData, AZStd::vector<NativeContactPoint>& points);
+    [[nodiscard]] bool GetTouchingContacts(
+        BodyId bodyId, ContactScratch& scratch, AZStd::vector<ContactData>& contacts, AZStd::vector<NativeContactPoint>& points);
+    [[nodiscard]] bool GetTouchingContacts(
+        ShapeId shapeId, ContactScratch& scratch, AZStd::vector<ContactData>& contacts, AZStd::vector<NativeContactPoint>& points);
     [[nodiscard]] bool GetShapeData(ShapeId shapeId, ShapeData& shapeData);
-    [[nodiscard]] bool GetSensorOverlaps(BodyId bodyId, AZStd::vector<SensorOverlapData>& overlaps);
-    [[nodiscard]] bool GetSensorOverlaps(ShapeId shapeId, AZStd::vector<SensorOverlapData>& overlaps);
+    [[nodiscard]] bool GetSensorOverlaps(BodyId bodyId, SensorScratch& scratch, AZStd::vector<SensorOverlapData>& overlaps);
+    [[nodiscard]] bool GetSensorOverlaps(ShapeId shapeId, SensorScratch& scratch, AZStd::vector<SensorOverlapData>& overlaps);
     [[nodiscard]] bool MoveCapsule(
         WorldId worldId,
         const AZ::Vector3& position,

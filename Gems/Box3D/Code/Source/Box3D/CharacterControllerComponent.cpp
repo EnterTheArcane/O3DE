@@ -166,7 +166,15 @@ namespace Box3D
 
     bool CharacterControllerComponent::Move(const AZ::Vector3& velocity, float fixedTimeStep)
     {
-        return m_system != nullptr && m_system->MoveCharacter(m_worldHandle, m_characterHandle, velocity, fixedTimeStep);
+        if (m_system == nullptr || !m_system->MoveCharacter(m_worldHandle, m_characterHandle, velocity, fixedTimeStep))
+        {
+            return false;
+        }
+        if (!m_configuration.m_applyMoveOnFixedTick)
+        {
+            OnCharacterMoved(GetState());
+        }
+        return true;
     }
 
     void CharacterControllerComponent::Activate()
@@ -174,15 +182,15 @@ namespace Box3D
         m_system = AZ::Interface<ISystem>::Get();
         AZ_Error("Box3D", m_system != nullptr, "Box3D SystemComponent must be active before character components.");
         CharacterRequestBus::Handler::BusConnect(GetEntityId());
+        CharacterNotificationBus::Handler::BusConnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
-        AZ::TickBus::Handler::BusConnect();
         EnableSimulation();
     }
 
     void CharacterControllerComponent::Deactivate()
     {
-        AZ::TickBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
+        CharacterNotificationBus::Handler::BusDisconnect();
         CharacterRequestBus::Handler::BusDisconnect();
         DisableSimulation();
         m_system = nullptr;
@@ -201,14 +209,8 @@ namespace Box3D
         UpdateConfiguration(configuration);
     }
 
-    void CharacterControllerComponent::OnTick([[maybe_unused]] float deltaTime, [[maybe_unused]] AZ::ScriptTimePoint time)
+    void CharacterControllerComponent::OnCharacterMoved(const CharacterState& state)
     {
-        CharacterState state;
-        if (m_system == nullptr || !m_system->GetCharacterState(m_worldHandle, m_characterHandle, state))
-        {
-            return;
-        }
-
         AZ::Transform currentTransform = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(currentTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
         if (currentTransform.GetTranslation().IsClose(state.m_basePosition))
@@ -220,10 +222,5 @@ namespace Box3D
         const AZ::Transform transform = AZ::Transform::CreateFromQuaternionAndTranslation(m_configuration.m_rotation, state.m_basePosition);
         AZ::TransformBus::Event(GetEntityId(), &AZ::TransformInterface::SetWorldTM, transform);
         m_syncingTransform = false;
-    }
-
-    int CharacterControllerComponent::GetTickOrder()
-    {
-        return AZ::ComponentTickBus::TICK_PHYSICS;
     }
 } // namespace Box3D

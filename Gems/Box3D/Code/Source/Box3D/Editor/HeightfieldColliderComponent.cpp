@@ -91,8 +91,7 @@ namespace Box3D::Editor
     {
         debugDisplay.SetColor(AzFramework::ViewportColors::WireColor);
         const AZ::Matrix3x4 transform = AZ::Matrix3x4::CreateFromTransform(GetWorldTM()) *
-            AZ::Matrix3x4::CreateFromTransform(m_configuration.m_properties.m_localTransform) *
-            AZ::Matrix3x4::CreateScale(m_configuration.m_properties.m_scale);
+            AZ::Matrix3x4::CreateFromTransform(m_configuration.m_properties.m_localTransform);
         DrawShapeGeometry(debugDisplay, m_configuration.m_geometry, transform);
     }
 
@@ -104,8 +103,7 @@ namespace Box3D::Editor
     AZ::Aabb HeightfieldColliderComponent::GetEditorSelectionBoundsViewport([[maybe_unused]] const AzFramework::ViewportInfo& viewportInfo)
     {
         const AZ::Matrix3x4 transform = AZ::Matrix3x4::CreateFromTransform(GetWorldTM()) *
-            AZ::Matrix3x4::CreateFromTransform(m_configuration.m_properties.m_localTransform) *
-            AZ::Matrix3x4::CreateScale(m_configuration.m_properties.m_scale);
+            AZ::Matrix3x4::CreateFromTransform(m_configuration.m_properties.m_localTransform);
         return CalculateShapeBounds(m_configuration.m_geometry, transform);
     }
 

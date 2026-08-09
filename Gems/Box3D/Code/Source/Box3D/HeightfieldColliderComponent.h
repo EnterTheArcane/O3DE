@@ -12,7 +12,6 @@
 #include <Box3D/TypeIds.h>
 
 #include <AzCore/Component/Component.h>
-#include <AzCore/Component/NonUniformScaleBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Name/Name.h>
 #include <AzCore/std/containers/vector.h>
@@ -71,7 +70,7 @@ namespace Box3D
         void Activate() override;
         void Deactivate() override;
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-        [[nodiscard]] bool UpdateScale(const AZ::Vector3& scale);
+        [[nodiscard]] bool UpdateScale(float scale);
 
         ShapeConfiguration m_configuration{ HeightfieldShapeConfiguration{ { 0.0f, 0.0f, 0.0f, 0.0f }, {}, 2, 2 } };
         AZ::Name m_worldName;
@@ -80,14 +79,6 @@ namespace Box3D
         WorldHandle m_worldHandle;
         BodyHandle m_bodyHandle;
         ShapeHandle m_shapeHandle;
-        AZ::Vector3 m_nonUniformScale = AZ::Vector3::CreateOne();
         float m_uniformScale = 1.0f;
-        AZ::NonUniformScaleChangedEvent::Handler m_nonUniformScaleChangedHandler{ [this](const AZ::Vector3& scale)
-                                                                                  {
-                                                                                      if (UpdateScale(scale * m_uniformScale))
-                                                                                      {
-                                                                                          m_nonUniformScale = scale;
-                                                                                      }
-                                                                                  } };
     };
 } // namespace Box3D

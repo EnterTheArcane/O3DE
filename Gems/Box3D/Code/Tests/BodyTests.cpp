@@ -278,7 +278,7 @@ namespace Box3D::Tests
 
         const BodyHandle compoundBody = system.CreateBody(worldHandle, bodyConfiguration);
         CompoundShapeConfiguration compound;
-        compound.m_children.push_back({ SphereShapeConfiguration{}, AZ::Transform::CreateIdentity(), AZ::Vector3::CreateOne(), 0 });
+        compound.m_children.push_back({ SphereShapeConfiguration{}, AZ::Transform::CreateIdentity(), 0 });
         ShapeConfiguration compoundShape;
         compoundShape.m_geometry = AZStd::move(compound);
         ASSERT_TRUE(system.CreateShape(worldHandle, compoundBody, compoundShape).IsValid());
@@ -286,7 +286,7 @@ namespace Box3D::Tests
         const BodyHandle heightfieldBody = system.CreateBody(worldHandle, bodyConfiguration);
         ShapeConfiguration heightfieldShape;
         heightfieldShape.m_geometry =
-            HeightfieldShapeConfiguration{ { 0.0f, 0.0f, 0.0f, 0.0f }, {}, 2, 2, AZ::Vector3::CreateOne(), false };
+            HeightfieldShapeConfiguration{ { 0.0f, 0.0f, 0.0f, 0.0f }, {}, 2, 2, AZ::Vector2::CreateOne(), 1.0f, false };
         ASSERT_TRUE(system.CreateShape(worldHandle, heightfieldBody, heightfieldShape).IsValid());
 
         for (BodyHandle bodyHandle : AZStd::array{ compoundBody, heightfieldBody })

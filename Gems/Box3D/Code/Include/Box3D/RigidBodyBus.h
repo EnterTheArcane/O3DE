@@ -69,6 +69,9 @@ namespace Box3D
         virtual void OnBodyDestroyed([[maybe_unused]] WorldHandle worldHandle, [[maybe_unused]] BodyHandle bodyHandle)
         {
         }
+        virtual void OnBodyMoved([[maybe_unused]] const BodyMoveEvent& event)
+        {
+        }
     };
 
     using RigidBodyNotificationBus = AZ::EBus<RigidBodyNotifications>;

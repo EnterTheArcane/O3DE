@@ -41,7 +41,8 @@ namespace Box3D::Tests
             configurations[5].m_geometry = TriangleMeshShapeConfiguration{
                 { AZ::Vector3(-1.0f, -1.0f, 0.0f), AZ::Vector3(1.0f, -1.0f, 0.0f), AZ::Vector3(0.0f, 1.0f, 0.0f) }, { 0, 1, 2 }
             };
-            configurations[6].m_geometry = HeightfieldShapeConfiguration{ { 0.0f, 0.1f, 0.2f, 0.3f }, {}, 2, 2, AZ::Vector3::CreateOne() };
+            configurations[6].m_geometry =
+                HeightfieldShapeConfiguration{ { 0.0f, 0.1f, 0.2f, 0.3f }, {}, 2, 2, AZ::Vector2::CreateOne(), 1.0f };
             CompoundShapeConfiguration compound;
             compound.m_children.push_back({ SphereShapeConfiguration{ 0.5f } });
             configurations[7].m_geometry = AZStd::move(compound);

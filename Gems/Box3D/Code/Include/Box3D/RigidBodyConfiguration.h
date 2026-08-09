@@ -11,7 +11,7 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Name/Name.h>
-#include <AzCore/RTTI/RTTI.h>
+#include <AzCore/RTTI/TypeInfo.h>
 
 #include <Box3D/TypeIds.h>
 
@@ -44,7 +44,7 @@ namespace Box3D
     //! Initial state and simulation policy for one body.
     struct RigidBodyConfiguration final
     {
-        AZ_RTTI(RigidBodyConfiguration, RigidBodyConfigurationTypeId);
+        AZ_TYPE_INFO(RigidBodyConfiguration, RigidBodyConfigurationTypeId);
 
         static void Reflect(AZ::ReflectContext* context);
 

@@ -13,8 +13,6 @@
 #include <Box3D/NativeApi.h>
 #include <Box3D/System.h>
 
-#include <AzCore/std/containers/deque.h>
-#include <AzCore/std/containers/queue.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
@@ -103,11 +101,11 @@ namespace Box3D
         [[nodiscard]] bool OverlapBody(BodyHandle bodyHandle, const BodyOverlapRequest& request) const;
 
         [[nodiscard]] ShapeHandle CreateShape(BodyHandle bodyHandle, const ShapeConfiguration& configuration);
-        [[nodiscard]] ShapeHandle CreateShape(BodyHandle bodyHandle, const ShapeConfiguration& configuration, const AZ::Vector3& postScale);
+        [[nodiscard]] ShapeHandle CreateShape(BodyHandle bodyHandle, const ShapeConfiguration& configuration, float uniformScale);
         [[nodiscard]] ShapeHandle CreateShapeFromCooked(
             BodyHandle bodyHandle, const NativeGeometry& geometry, const ShapeProperties& properties);
         bool UpdateShape(ShapeHandle shapeHandle, const ShapeConfiguration& configuration);
-        bool UpdateShape(ShapeHandle shapeHandle, const ShapeConfiguration& configuration, const AZ::Vector3& postScale);
+        bool UpdateShape(ShapeHandle shapeHandle, const ShapeConfiguration& configuration, float uniformScale);
         bool DestroyShape(ShapeHandle shapeHandle, bool updateBodyMass);
         bool SetShapeCollisionFilter(ShapeHandle shapeHandle, const CollisionFilter& collisionFilter);
         bool SetShapeMaterials(ShapeHandle shapeHandle, AZStd::span<const MaterialHandle> materials);
@@ -179,7 +177,6 @@ namespace Box3D
         {
             BodyId m_nativeId;
             AZ::EntityId m_entityId{};
-            AZ::Name m_name;
             AZ::u32 m_generation = 0;
             AZ::u32 m_firstShapeIndex = InvalidSlotIndex;
             NativeBodyType m_type = NativeBodyType::Static;
@@ -189,42 +186,74 @@ namespace Box3D
         struct ShapeSlot final
         {
             ShapeId m_nativeId;
-            NativeGeometry m_geometry;
             BodyHandle m_bodyHandle;
-            AZStd::vector<MaterialHandle> m_materials;
             AZ::u32 m_generation = 0;
             AZ::u32 m_nextShapeIndex = InvalidSlotIndex;
             float m_explosionScale = 1.0f;
             bool m_isSensor = false;
             bool m_enableCustomFiltering = false;
+            bool m_isCompound = false;
         };
 
-        struct ShapeIdentity final
+        struct ShapeResources final
         {
-            ShapeId m_nativeId;
-            BodyHandle m_bodyHandle;
+            NativeGeometry m_geometry;
+            AZStd::vector<MaterialHandle> m_materials;
+        };
+
+        static_assert(sizeof(BodySlot) <= 32);
+        static_assert(sizeof(ShapeSlot) <= 32);
+        static_assert(sizeof(ShapeResources) <= 96);
+
+        struct ResolvedShape final
+        {
+            const ShapeSlot* m_slot = nullptr;
             ShapeHandle m_shapeHandle;
             AZ::u32 m_index = InvalidSlotIndex;
-            bool m_isSensor = false;
         };
 
         struct JointSlot final
         {
             JointId m_nativeId;
-            JointConfiguration m_configuration;
+            AZ::EntityId m_entityId{};
             AZ::u32 m_generation = 0;
             JointKind m_kind = JointKind::Filter;
         };
 
+        static_assert(sizeof(JointSlot) <= 24);
+
         struct CharacterSlot final
         {
-            AZStd::unique_ptr<MoverScratch> m_scratch;
-            AZStd::unique_ptr<MoverScratch> m_stepScratch;
-            CharacterConfiguration m_configuration;
-            CharacterState m_state;
             AZ::Vector3 m_pendingVelocity = AZ::Vector3::CreateZero();
             AZ::u32 m_generation = 0;
             bool m_hasPendingMove = false;
+        };
+
+        struct CharacterResources final
+        {
+            CharacterConfiguration m_configuration;
+            CharacterState m_state;
+        };
+
+        static_assert(sizeof(CharacterSlot) <= 32);
+        static_assert(sizeof(CharacterResources) <= 304);
+
+        struct EntityBodyMove final
+        {
+            AZ::EntityId m_entityId;
+            BodyMoveEvent m_event;
+        };
+
+        struct EntityJointThreshold final
+        {
+            AZ::EntityId m_entityId;
+            JointThresholdEvent m_event;
+        };
+
+        struct EntityCharacterMove final
+        {
+            AZ::EntityId m_entityId;
+            CharacterState m_state;
         };
 
         struct RetiredShapeProvenance final
@@ -238,45 +267,52 @@ namespace Box3D
         [[nodiscard]] const BodySlot* FindBodySlot(BodyHandle bodyHandle) const;
         [[nodiscard]] ShapeSlot* FindShapeSlot(ShapeHandle shapeHandle);
         [[nodiscard]] const ShapeSlot* FindShapeSlot(ShapeHandle shapeHandle) const;
-        [[nodiscard]] const ShapeIdentity* ResolveShapeIdentity(void* userData, ShapeId nativeId) const;
-        [[nodiscard]] const ShapeIdentity* ResolveShapeIdentity(ShapeId nativeId) const;
-        void RegisterShapeIdentity(ShapeIdentity& identity);
-        void UnregisterShapeIdentity(ShapeId nativeId);
+        [[nodiscard]] bool ResolveShape(void* userData, ShapeId nativeId, ResolvedShape& resolvedShape) const;
+        [[nodiscard]] bool ResolveShape(ShapeId nativeId, ResolvedShape& resolvedShape) const;
+        void RegisterShape(ShapeId nativeId, AZ::u32 shapeIndex);
+        void UnregisterShape(ShapeId nativeId);
         [[nodiscard]] JointSlot* FindJointSlot(JointHandle jointHandle);
         [[nodiscard]] const JointSlot* FindJointSlot(JointHandle jointHandle) const;
-        [[nodiscard]] CharacterSlot* FindCharacterSlot(CharacterHandle characterHandle);
-        [[nodiscard]] const CharacterSlot* FindCharacterSlot(CharacterHandle characterHandle) const;
+        bool SetJointEntityId(JointHandle jointHandle, AZ::EntityId entityId);
+        [[nodiscard]] CharacterSlot* FindCharacterSlot(CharacterHandle characterHandle, AZ::u32* characterIndex = nullptr);
+        [[nodiscard]] const CharacterSlot* FindCharacterSlot(CharacterHandle characterHandle, AZ::u32* characterIndex = nullptr) const;
         [[nodiscard]] ShapeHandle AttachShape(
             BodyHandle bodyHandle,
             const ShapeProperties& properties,
             const ShapeGeometry* geometry,
             const NativeGeometry* cookedGeometry,
-            const AZ::Vector3& postScale = AZ::Vector3::CreateOne());
+            float uniformScale = 1.0f);
         [[nodiscard]] ShapeId CreateNativeShape(
             AZ::u32 shapeIndex,
             BodyId bodyId,
             ShapeSlot& shapeSlot,
+            ShapeResources& resources,
             const ShapeProperties& properties,
             const ShapeGeometry* geometry,
             const NativeGeometry* cookedGeometry,
-            const AZ::Vector3& postScale);
+            float uniformScale);
         [[nodiscard]] bool RecreateShapeWithMaterials(
             ShapeHandle shapeHandle,
             ShapeSlot& shapeSlot,
+            ShapeResources& resources,
             AZStd::span<const SurfaceMaterial> materials,
             float density,
             float explosionScale,
             AZStd::span<const MaterialHandle> materialHandles);
-        [[nodiscard]] bool GetCompoundSourceMaterials(const ShapeSlot& shapeSlot, AZStd::vector<SurfaceMaterial>& materials) const;
+        [[nodiscard]] bool GetCompoundSourceMaterials(
+            const ShapeSlot& shapeSlot, const ShapeResources& resources, AZStd::vector<SurfaceMaterial>& materials) const;
         [[nodiscard]] bool BuildNativeJointConfiguration(
             AZ::u32 jointIndex, const JointConfiguration& configuration, NativeJointConfiguration& nativeConfiguration) const;
-        [[nodiscard]] bool MoveCharacterImmediately(CharacterSlot& slot, const AZ::Vector3& velocity, float fixedTimeStep);
+        [[nodiscard]] bool MoveCharacterImmediately(CharacterResources& resources, const AZ::Vector3& velocity, float fixedTimeStep);
+        void EnsureCharacterScratchCapacity(size_t maximumPlaneCount);
         [[nodiscard]] bool ApplyPendingCharacterMoves(float fixedTimeStep, bool consume);
         [[nodiscard]] BodyHandle GetBodyHandle(const BodyMove& bodyMove) const;
         [[nodiscard]] BodyHandle GetBodyHandle(const ShapeData& shapeData) const;
         [[nodiscard]] ShapeHandle GetShapeHandle(const ShapeData& shapeData) const;
         [[nodiscard]] bool ResolveShapeHandles(ShapeId nativeId, BodyHandle& bodyHandle, ShapeHandle& shapeHandle) const;
-        [[nodiscard]] bool RaycastClosestUnlocked(const RaycastRequest& request, QueryHit& hit) const;
+        [[nodiscard]] bool CanUseClosestRaycast(const QueryFilter& filter) const;
+        [[nodiscard]] bool RaycastClosestDefaultUnlocked(const RaycastRequest& request, QueryHit& hit) const;
+        [[nodiscard]] bool RaycastClosestFilteredUnlocked(const RaycastRequest& request, QueryHit& hit) const;
         [[nodiscard]] ContactSnapshotResult CopyContactSnapshots(
             AZStd::span<const ContactData> nativeContacts, AZStd::span<ContactSnapshot> contacts, AZStd::span<ContactPoint> points) const;
         [[nodiscard]] BufferResult CopySensorOverlaps(
@@ -296,24 +332,34 @@ namespace Box3D
         NativeTaskContext m_nativeTaskContext;
         WorldId m_nativeId;
         AZStd::vector<BodySlot> m_bodySlots;
-        AZStd::queue<AZ::u32> m_freeBodySlots;
+        AZStd::vector<AZ::Name> m_bodyNames;
+        AZStd::vector<AZ::u32> m_freeBodySlots;
         AZStd::vector<ShapeSlot> m_shapeSlots;
-        AZStd::deque<ShapeIdentity> m_shapeIdentities;
-        AZStd::vector<ShapeIdentity*> m_nativeShapeIdentities;
-        AZStd::queue<AZ::u32> m_freeShapeSlots;
+        AZStd::vector<ShapeResources> m_shapeResources;
+        AZStd::vector<AZ::u32> m_nativeShapeSlots;
+        AZStd::vector<AZ::u32> m_freeShapeSlots;
         AZStd::vector<JointSlot> m_jointSlots;
-        AZStd::queue<AZ::u32> m_freeJointSlots;
+        AZStd::vector<JointConfiguration> m_jointConfigurations;
+        AZStd::vector<AZ::u32> m_freeJointSlots;
         AZStd::vector<CharacterSlot> m_characterSlots;
-        AZStd::queue<AZ::u32> m_freeCharacterSlots;
+        AZStd::vector<CharacterResources> m_characterResources;
+        AZStd::vector<AZ::u32> m_freeCharacterSlots;
+        AZStd::unique_ptr<MoverScratch> m_characterScratch;
+        AZStd::unique_ptr<MoverScratch> m_characterStepScratch;
+        size_t m_characterScratchCapacity = 0;
         AZStd::vector<BodyMove> m_nativeBodyMoves;
         AZStd::vector<SensorTransition> m_nativeSensorEvents;
         AZStd::vector<ContactTransition> m_nativeContactEvents;
         AZStd::vector<ContactId> m_activeContactIds;
+        AZStd::vector<ContactId> m_endedContactIds;
         AZStd::vector<ContactHit> m_nativeContactHits;
         AZStd::vector<NativeJointThresholdEvent> m_nativeJointEvents;
         AZStd::vector<RetiredShapeProvenance> m_retiredShapes;
         mutable AZStd::vector<ContactData> m_nativeContactSnapshots;
+        mutable AZStd::vector<NativeContactPoint> m_nativeContactPoints;
+        mutable ContactScratch m_nativeContactScratch;
         mutable AZStd::vector<SensorOverlapData> m_nativeSensorOverlaps;
+        mutable SensorScratch m_nativeSensorScratch;
         mutable JointScratch m_nativeBodyJoints;
         AZStd::vector<BodyMoveEvent> m_bodyMoveEvents;
         AZStd::vector<SensorEvent> m_sensorEvents;
@@ -321,6 +367,9 @@ namespace Box3D
         AZStd::vector<ContactPoint> m_contactPoints;
         AZStd::vector<ContactHitEvent> m_contactHitEvents;
         AZStd::vector<JointThresholdEvent> m_jointEvents;
+        AZStd::vector<EntityBodyMove> m_entityBodyMoves;
+        AZStd::vector<EntityJointThreshold> m_entityJointThresholds;
+        AZStd::vector<EntityCharacterMove> m_entityCharacterMoves;
         AZStd::unique_ptr<Recording> m_recording;
         CollisionFilterCallback m_collisionFilterCallback = nullptr;
         PreSolveCallback m_preSolveCallback = nullptr;
@@ -330,5 +379,7 @@ namespace Box3D
         SimulationTick m_lastCompletedTick = 0;
         AZ::u32 m_worldIndex = 0;
         AZ::u32 m_sensorShapeCount = 0;
+        AZ::u32 m_entityBodyCount = 0;
+        AZ::u32 m_entityJointCount = 0;
     };
 } // namespace Box3D

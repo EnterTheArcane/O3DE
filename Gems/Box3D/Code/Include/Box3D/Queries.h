@@ -98,9 +98,9 @@ namespace Box3D
         AZ_TYPE_INFO(QueryFilter, "{FD320F4D-F889-4B25-BF31-6BD2B6FCFC7D}");
 
         CollisionFilter m_collisionFilter;
-        QueryBodyTypes m_bodyTypes = QueryBodyTypes::All;
         QueryFilterCallback m_callback = nullptr;
         void* m_userData = nullptr;
+        QueryBodyTypes m_bodyTypes = QueryBodyTypes::All;
         bool m_includeSensors = false;
     };
 
@@ -126,7 +126,6 @@ namespace Box3D
     {
         QueryGeometry m_geometry;
         AZ::Transform m_start = AZ::Transform::CreateIdentity();
-        AZ::Vector3 m_scale = AZ::Vector3::CreateOne();
         AZ::Vector3 m_translation = AZ::Vector3::CreateZero();
         QueryFilter m_filter;
     };
@@ -135,7 +134,6 @@ namespace Box3D
     {
         QueryGeometry m_geometry;
         AZ::Transform m_transform = AZ::Transform::CreateIdentity();
-        AZ::Vector3 m_scale = AZ::Vector3::CreateOne();
         QueryFilter m_filter;
     };
 
@@ -161,7 +159,6 @@ namespace Box3D
     {
         QueryGeometry m_geometry;
         AZ::Transform m_start = AZ::Transform::CreateIdentity();
-        AZ::Vector3 m_scale = AZ::Vector3::CreateOne();
         AZ::Vector3 m_translation = AZ::Vector3::CreateZero();
         CollisionFilter m_filter;
     };
@@ -171,7 +168,6 @@ namespace Box3D
     {
         QueryGeometry m_geometry;
         AZ::Transform m_transform = AZ::Transform::CreateIdentity();
-        AZ::Vector3 m_scale = AZ::Vector3::CreateOne();
         CollisionFilter m_filter;
     };
 

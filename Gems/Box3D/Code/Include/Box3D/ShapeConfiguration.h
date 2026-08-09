@@ -12,6 +12,7 @@
 #include <Box3D/Material.h>
 
 #include <AzCore/Math/Transform.h>
+#include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/std/containers/span.h>
@@ -84,7 +85,8 @@ namespace Box3D
         AZStd::vector<AZ::u8> m_materialIndices;
         AZ::u32 m_columnCount = 0;
         AZ::u32 m_rowCount = 0;
-        AZ::Vector3 m_scale = AZ::Vector3::CreateOne();
+        AZ::Vector2 m_sampleSpacing = AZ::Vector2::CreateOne();
+        float m_heightScale = 1.0f;
         float m_minimumHeight = 0.0f;
         float m_maximumHeight = 0.0f;
         bool m_clockwise = false;
@@ -129,7 +131,6 @@ namespace Box3D
 
         CompoundChildGeometry m_geometry;
         AZ::Transform m_localTransform = AZ::Transform::CreateIdentity();
-        AZ::Vector3 m_scale = AZ::Vector3::CreateOne();
         AZ::u8 m_materialIndex = 0;
     };
 
@@ -164,22 +165,9 @@ namespace Box3D
         {
             return MaterialHandleCollection(m_materials);
         }
-        void SetMaterialConfigurations(const MaterialConfigurationCollection& materials)
-        {
-            const AZStd::span<const MaterialConfiguration> configurations = materials.GetConfigurations();
-            m_materialConfigurations.assign(configurations.begin(), configurations.end());
-        }
-        [[nodiscard]] MaterialConfigurationCollection GetMaterialConfigurations() const
-        {
-            return MaterialConfigurationCollection(m_materialConfigurations);
-        }
-
-        //! Serialized material authoring data. Components create transient handles when the shape is attached.
-        AZStd::vector<MaterialConfiguration> m_materialConfigurations;
         //! Transient material handles for callers that manage materials through ISystem directly.
         AZStd::vector<MaterialHandle> m_materials;
         AZ::Transform m_localTransform = AZ::Transform::CreateIdentity();
-        AZ::Vector3 m_scale = AZ::Vector3::CreateOne();
         CollisionFilter m_collisionFilter;
         float m_density = 1000.0f;
         float m_explosionScale = 1.0f;
@@ -200,8 +188,20 @@ namespace Box3D
 
         static void Reflect(AZ::ReflectContext* context);
 
+        void SetMaterialConfigurations(const MaterialConfigurationCollection& materials)
+        {
+            const AZStd::span<const MaterialConfiguration> configurations = materials.GetConfigurations();
+            m_materialConfigurations.assign(configurations.begin(), configurations.end());
+        }
+        [[nodiscard]] MaterialConfigurationCollection GetMaterialConfigurations() const
+        {
+            return MaterialConfigurationCollection(m_materialConfigurations);
+        }
+
         ShapeGeometry m_geometry;
         ShapeProperties m_properties;
+        //! Serialized authoring data. Components create transient material handles when the shape is attached.
+        AZStd::vector<MaterialConfiguration> m_materialConfigurations;
     };
 } // namespace Box3D
 

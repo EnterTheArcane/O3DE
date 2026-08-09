@@ -12,17 +12,15 @@
 #include <Box3D/TypeIds.h>
 
 #include <AzCore/Component/Component.h>
-#include <AzCore/Component/TickBus.h>
 
 namespace Box3D
 {
-    class ISystem;
+    class System;
 
     class JointComponent final
         : public AZ::Component
         , public JointRequestBus::Handler
         , private RigidBodyNotificationBus::MultiHandler
-        , private AZ::TickBus::Handler
     {
     public:
         AZ_COMPONENT(JointComponent, JointComponentTypeId);
@@ -74,14 +72,12 @@ namespace Box3D
         void Deactivate() override;
         void OnBodyCreated(WorldHandle worldHandle, BodyHandle bodyHandle) override;
         void OnBodyDestroyed(WorldHandle worldHandle, BodyHandle bodyHandle) override;
-        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
-        int GetTickOrder() override;
         [[nodiscard]] bool ResolveConfiguration(
             const JointConfiguration& source, JointConfiguration& resolved, WorldHandle& worldHandle) const;
 
         JointConfiguration m_configuration;
         AZ::EntityId m_parentEntityId{};
-        ISystem* m_system = nullptr;
+        System* m_system = nullptr;
         WorldHandle m_worldHandle;
         JointHandle m_jointHandle;
     };

@@ -467,7 +467,7 @@ namespace Box3D::Tests
         }
     }
 
-    TEST(Box3DQueryTests, QueryScaleAppliesToGeometry)
+    TEST(Box3DQueryTests, QueryUniformScaleIsPartOfTransform)
     {
         System system;
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -483,19 +483,17 @@ namespace Box3D::Tests
         request.m_geometry = SphereShapeConfiguration{ 0.5f };
         AZStd::array<QueryHit, 1> hits;
         EXPECT_EQ(system.Overlap(worldHandle, request, hits).m_hitCount, 0);
-        request.m_scale = AZ::Vector3::CreateOne() * 2.0f;
+        request.m_transform.SetUniformScale(2.0f);
         const QueryResult result = system.Overlap(worldHandle, request, hits);
         ASSERT_EQ(result.m_hitCount, 1);
         EXPECT_EQ(hits.front().m_bodyHandle, bodyHandle);
 
-        request.m_scale = AZ::Vector3(2.0f, 1.0f, 1.0f);
+        request.m_transform.SetUniformScale(1.0f);
         EXPECT_EQ(system.Overlap(worldHandle, request, hits).m_hitCount, 0);
 
         request.m_geometry = BoxShapeConfiguration{ AZ::Vector3::CreateOne() * 0.5f };
-        EXPECT_EQ(system.Overlap(worldHandle, request, hits).m_hitCount, 1);
-
         request.m_transform.SetUniformScale(2.0f);
-        EXPECT_EQ(system.Overlap(worldHandle, request, hits).m_hitCount, 0);
+        EXPECT_EQ(system.Overlap(worldHandle, request, hits).m_hitCount, 1);
     }
 
     TEST(Box3DQueryTests, OverlapAndAabbOverlapReportCapacityAndStableOrder)
@@ -703,7 +701,7 @@ namespace Box3D::Tests
         mesh.m_materialIndices = { 2, 1 };
 
         CompoundShapeConfiguration compound;
-        compound.m_children.push_back({ AZStd::move(mesh), AZ::Transform::CreateIdentity(), AZ::Vector3::CreateOne(), 0 });
+        compound.m_children.push_back({ AZStd::move(mesh), AZ::Transform::CreateIdentity(), 0 });
         ShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_geometry = AZStd::move(compound);
         shapeConfiguration.m_properties.m_materials.assign(materials.begin(), materials.end());

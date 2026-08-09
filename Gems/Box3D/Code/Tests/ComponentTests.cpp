@@ -5,19 +5,19 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  */
 
+#include <Box3D/CharacterBus.h>
 #include <Box3D/ColliderComponent.h>
 #include <Box3D/HeightfieldColliderComponent.h>
+#include <Box3D/JointBus.h>
 #include <Box3D/RigidBodyComponent.h>
 #include <Box3D/SystemInternal.h>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
-#include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Name/NameDictionary.h>
 #include <AzCore/std/containers/array.h>
-#include <AzFramework/Components/NonUniformScaleComponent.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzTest/AzTest.h>
 
@@ -37,6 +37,54 @@ namespace Box3D::Tests
             {
                 AZ::NameDictionary::Destroy();
             }
+        };
+
+        class CharacterMoveRecorder final
+            : public CharacterNotificationBus::Handler
+        {
+        public:
+            explicit CharacterMoveRecorder(AZ::EntityId entityId)
+            {
+                BusConnect(entityId);
+            }
+
+            ~CharacterMoveRecorder()
+            {
+                BusDisconnect();
+            }
+
+            void OnCharacterMoved(const CharacterState& state) override
+            {
+                ++m_moveCount;
+                m_state = state;
+            }
+
+            CharacterState m_state;
+            AZ::u32 m_moveCount = 0;
+        };
+
+        class JointThresholdRecorder final
+            : public JointNotificationBus::Handler
+        {
+        public:
+            explicit JointThresholdRecorder(AZ::EntityId entityId)
+            {
+                BusConnect(entityId);
+            }
+
+            ~JointThresholdRecorder()
+            {
+                BusDisconnect();
+            }
+
+            void OnThresholdExceeded(const JointThresholdEvent& event) override
+            {
+                ++m_eventCount;
+                m_event = event;
+            }
+
+            JointThresholdEvent m_event;
+            AZ::u32 m_eventCount = 0;
         };
     } // namespace
 
@@ -58,7 +106,7 @@ namespace Box3D::Tests
         MaterialConfiguration materialConfiguration;
         materialConfiguration.m_name = AZ::Name("Rubber");
         materialConfiguration.m_friction = 0.9f;
-        shapeConfiguration.m_properties.m_materialConfigurations.push_back(materialConfiguration);
+        shapeConfiguration.m_materialConfigurations.push_back(materialConfiguration);
 
         AZ::Entity entity("Box3D body");
         entity.CreateComponent<AzFramework::TransformComponent>();
@@ -91,7 +139,6 @@ namespace Box3D::Tests
         const MaterialHandle ownedMaterial = materialHit.m_materialHandle;
 
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-        AZ::TickBus::Broadcast(&AZ::TickEvents::OnTick, 1.0f / 60.0f, AZ::ScriptTimePoint{});
         AZ::Transform entityTransform = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(entityTransform, entity.GetId(), &AZ::TransformInterface::GetWorldTM);
         EXPECT_LT(entityTransform.GetTranslation().GetZ(), 2.0f);
@@ -171,15 +218,13 @@ namespace Box3D::Tests
         transformDescriptor->ReleaseDescriptor();
     }
 
-    TEST(Box3DComponentTests, NonUniformScaleChangesRecookColliderGeometry)
+    TEST(Box3DComponentTests, UniformScaleChangesRecookColliderGeometry)
     {
         NameDictionaryScope nameDictionaryScope;
         AZ::ComponentDescriptor* transformDescriptor = AzFramework::TransformComponent::CreateDescriptor();
-        AZ::ComponentDescriptor* scaleDescriptor = AzFramework::NonUniformScaleComponent::CreateDescriptor();
         AZ::ComponentDescriptor* colliderDescriptor = ColliderComponent::CreateDescriptor();
         AZ::ComponentDescriptor* bodyDescriptor = RigidBodyComponent::CreateDescriptor();
         AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, transformDescriptor);
-        AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, scaleDescriptor);
         AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, colliderDescriptor);
         AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, bodyDescriptor);
 
@@ -191,24 +236,79 @@ namespace Box3D::Tests
 
         AZ::Entity entity("Box3D scaled body");
         entity.CreateComponent<AzFramework::TransformComponent>();
-        entity.CreateComponent<AzFramework::NonUniformScaleComponent>();
         ColliderComponent* collider = entity.CreateComponent<ColliderComponent>(shapeConfiguration);
         entity.CreateComponent<RigidBodyComponent>(bodyConfiguration);
         entity.Init();
         entity.Activate();
 
         EXPECT_TRUE(collider->GetAabb().GetExtents().IsClose(AZ::Vector3::CreateOne(), 0.05f));
-        AZ::NonUniformScaleRequestBus::Event(entity.GetId(), &AZ::NonUniformScaleRequests::SetScale, AZ::Vector3(2.0f, 1.0f, 0.5f));
-        EXPECT_TRUE(collider->GetAabb().GetExtents().IsClose(AZ::Vector3(2.0f, 1.0f, 0.5f), 0.05f));
+        AZ::TransformBus::Event(entity.GetId(), &AZ::TransformInterface::SetLocalUniformScale, 2.0f);
+        EXPECT_TRUE(collider->GetAabb().GetExtents().IsClose(AZ::Vector3::CreateOne() * 2.0f, 0.05f));
 
         entity.Deactivate();
         AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, bodyDescriptor);
         AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, colliderDescriptor);
-        AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, scaleDescriptor);
         AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, transformDescriptor);
         bodyDescriptor->ReleaseDescriptor();
         colliderDescriptor->ReleaseDescriptor();
-        scaleDescriptor->ReleaseDescriptor();
         transformDescriptor->ReleaseDescriptor();
+    }
+
+    TEST(Box3DComponentTests, StepDispatchesQueuedCharacterMovesByEntity)
+    {
+        SystemConfiguration systemConfiguration;
+        systemConfiguration.m_workerCount = 1;
+        System system(systemConfiguration);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const AZ::EntityId entityId(101);
+        CharacterMoveRecorder recorder(entityId);
+
+        CharacterConfiguration configuration;
+        configuration.m_entityId = entityId;
+        configuration.m_groundStickDistance = 0.0f;
+        configuration.m_stepHeight = 0.0f;
+        configuration.m_applyMoveOnFixedTick = true;
+        const CharacterHandle characterHandle = system.CreateCharacter(worldHandle, configuration);
+        ASSERT_TRUE(characterHandle.IsValid());
+        ASSERT_TRUE(system.MoveCharacter(worldHandle, characterHandle, 2.0f * AZ::Vector3::CreateAxisX(), 1.0f / 60.0f));
+        EXPECT_EQ(recorder.m_moveCount, 0);
+
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        EXPECT_EQ(recorder.m_moveCount, 1);
+        EXPECT_GT(recorder.m_state.m_basePosition.GetX(), 0.0f);
+    }
+
+    TEST(Box3DComponentTests, StepDispatchesJointThresholdsByEntity)
+    {
+        SystemConfiguration systemConfiguration;
+        systemConfiguration.m_workerCount = 1;
+        System system(systemConfiguration);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const AZ::EntityId entityId(102);
+        JointThresholdRecorder recorder(entityId);
+
+        RigidBodyConfiguration parentConfiguration;
+        parentConfiguration.m_bodyType = BodyType::Dynamic;
+        const BodyHandle parentBody = system.CreateBody(worldHandle, parentConfiguration);
+        RigidBodyConfiguration childConfiguration;
+        childConfiguration.m_bodyType = BodyType::Dynamic;
+        childConfiguration.m_transform = AZ::Transform::CreateTranslation(2.0f * AZ::Vector3::CreateAxisX());
+        const BodyHandle childBody = system.CreateBody(worldHandle, childConfiguration);
+        ASSERT_TRUE(parentBody.IsValid());
+        ASSERT_TRUE(childBody.IsValid());
+
+        DistanceJointConfiguration jointConfiguration;
+        jointConfiguration.m_common.m_parentBody = parentBody;
+        jointConfiguration.m_common.m_childBody = childBody;
+        jointConfiguration.m_common.m_forceThreshold = 0.0f;
+        jointConfiguration.m_length = 1.0f;
+        const JointHandle jointHandle = system.CreateJoint(worldHandle, jointConfiguration);
+        ASSERT_TRUE(jointHandle.IsValid());
+        ASSERT_TRUE(system.SetJointEntityId(worldHandle, jointHandle, entityId));
+        ASSERT_TRUE(system.ApplyLinearImpulse(worldHandle, childBody, 100.0f * AZ::Vector3::CreateAxisX()));
+
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        EXPECT_EQ(recorder.m_eventCount, 1);
+        EXPECT_EQ(recorder.m_event.m_jointHandle, jointHandle);
     }
 } // namespace Box3D::Tests

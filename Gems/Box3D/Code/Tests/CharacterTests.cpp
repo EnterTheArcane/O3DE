@@ -158,4 +158,31 @@ namespace Box3D::Tests
         EXPECT_TRUE(retainedConfiguration.m_basePosition.IsClose(configuration.m_basePosition));
         EXPECT_FLOAT_EQ(retainedConfiguration.m_maximumSpeed, configuration.m_maximumSpeed);
     }
+
+    TEST(Box3DCharacterTests, RecycledSlotsRejectStaleHandlesAndResetColdState)
+    {
+        System system;
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        CharacterConfiguration firstConfiguration;
+        firstConfiguration.m_basePosition = AZ::Vector3(1.0f, 2.0f, 3.0f);
+        firstConfiguration.m_maximumSpeed = 12.0f;
+        const CharacterHandle staleHandle = system.CreateCharacter(worldHandle, firstConfiguration);
+        ASSERT_TRUE(staleHandle.IsValid());
+        ASSERT_TRUE(system.DestroyCharacter(worldHandle, staleHandle));
+
+        CharacterConfiguration replacementConfiguration;
+        replacementConfiguration.m_basePosition = AZ::Vector3(-4.0f, -5.0f, -6.0f);
+        replacementConfiguration.m_maximumSpeed = 3.0f;
+        const CharacterHandle replacementHandle = system.CreateCharacter(worldHandle, replacementConfiguration);
+        ASSERT_TRUE(replacementHandle.IsValid());
+        EXPECT_NE(replacementHandle, staleHandle);
+
+        CharacterState state;
+        CharacterConfiguration retainedConfiguration;
+        EXPECT_FALSE(system.GetCharacterState(worldHandle, staleHandle, state));
+        EXPECT_FALSE(system.GetCharacterConfiguration(worldHandle, staleHandle, retainedConfiguration));
+        ASSERT_TRUE(system.GetCharacterConfiguration(worldHandle, replacementHandle, retainedConfiguration));
+        EXPECT_TRUE(retainedConfiguration.m_basePosition.IsClose(replacementConfiguration.m_basePosition));
+        EXPECT_FLOAT_EQ(retainedConfiguration.m_maximumSpeed, replacementConfiguration.m_maximumSpeed);
+    }
 } // namespace Box3D::Tests

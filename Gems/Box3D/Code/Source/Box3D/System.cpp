@@ -7,7 +7,10 @@
 
 #include <Box3D/SystemInternal.h>
 
+#include <Box3D/CharacterBus.h>
 #include <Box3D/FloatEnvironment.h>
+#include <Box3D/JointBus.h>
+#include <Box3D/RigidBodyBus.h>
 #include <Box3D/World.h>
 #include <Box3D/WorldBus.h>
 
@@ -154,8 +157,8 @@ namespace Box3D
         AZ::u32 worldIndex = 0;
         if (!m_freeWorldSlots.empty())
         {
-            worldIndex = m_freeWorldSlots.front();
-            m_freeWorldSlots.pop();
+            worldIndex = m_freeWorldSlots.back();
+            m_freeWorldSlots.pop_back();
         }
         else
         {
@@ -183,7 +186,7 @@ namespace Box3D
         if (!slot.m_world->IsValid())
         {
             slot.m_world.reset();
-            m_freeWorldSlots.push(worldIndex);
+            m_freeWorldSlots.push_back(worldIndex);
             return {};
         }
         if (!m_defaultWorldHandle)
@@ -211,7 +214,7 @@ namespace Box3D
         slot.m_world.reset();
         if (Internal::AdvanceGeneration(slot.m_generation))
         {
-            m_freeWorldSlots.push(parts.m_index);
+            m_freeWorldSlots.push_back(parts.m_index);
         }
         if (m_defaultWorldHandle == worldHandle)
         {
@@ -334,6 +337,18 @@ namespace Box3D
     void System::DispatchStepEvents(const World& world) const
     {
         const WorldHandle worldHandle = world.GetHandle();
+        for (const World::EntityBodyMove& notification : world.m_entityBodyMoves)
+        {
+            RigidBodyNotificationBus::Event(notification.m_entityId, &RigidBodyNotifications::OnBodyMoved, notification.m_event);
+        }
+        for (const World::EntityJointThreshold& notification : world.m_entityJointThresholds)
+        {
+            JointNotificationBus::Event(notification.m_entityId, &JointNotifications::OnThresholdExceeded, notification.m_event);
+        }
+        for (const World::EntityCharacterMove& notification : world.m_entityCharacterMoves)
+        {
+            CharacterNotificationBus::Event(notification.m_entityId, &CharacterNotifications::OnCharacterMoved, notification.m_state);
+        }
         if (!WorldNotificationBus::HasHandlers(worldHandle))
         {
             return;
@@ -390,22 +405,25 @@ namespace Box3D
         AZ::u32 materialIndex = 0;
         if (!m_freeMaterialSlots.empty())
         {
-            materialIndex = m_freeMaterialSlots.front();
-            m_freeMaterialSlots.pop();
+            materialIndex = m_freeMaterialSlots.back();
+            m_freeMaterialSlots.pop_back();
         }
         else
         {
             materialIndex = aznumeric_cast<AZ::u32>(m_materialSlots.size());
             m_materialSlots.emplace_back();
+            m_materialConfigurations.emplace_back();
         }
 
         MaterialSlot& slot = m_materialSlots[materialIndex];
         slot.m_generation = m_materialGenerations.Acquire();
         if (slot.m_generation == 0)
         {
+            m_materialConfigurations[materialIndex] = {};
+            m_freeMaterialSlots.push_back(materialIndex);
             return {};
         }
-        slot.m_configuration = configuration;
+        m_materialConfigurations[materialIndex] = configuration;
         return Internal::MakeRegistryHandle<MaterialHandle>(materialIndex, slot.m_generation);
     }
 
@@ -417,18 +435,20 @@ namespace Box3D
             return false;
         }
 
-        MaterialSlot* slot = FindMaterialSlot(materialHandle);
+        AZ::u32 materialIndex = 0;
+        MaterialSlot* slot = FindMaterialSlot(materialHandle, &materialIndex);
         if (slot == nullptr)
         {
             return false;
         }
-        const MaterialConfiguration previousConfiguration = slot->m_configuration;
-        slot->m_configuration = configuration;
+        MaterialConfiguration& retainedConfiguration = m_materialConfigurations[materialIndex];
+        const MaterialConfiguration previousConfiguration = retainedConfiguration;
+        retainedConfiguration = configuration;
         for (WorldSlot& worldSlot : m_worldSlots)
         {
             if (worldSlot.m_world != nullptr && !worldSlot.m_world->RefreshMaterial(materialHandle))
             {
-                slot->m_configuration = previousConfiguration;
+                retainedConfiguration = previousConfiguration;
                 for (WorldSlot& rollbackWorldSlot : m_worldSlots)
                 {
                     if (rollbackWorldSlot.m_world != nullptr)
@@ -444,12 +464,13 @@ namespace Box3D
 
     bool System::GetMaterial(MaterialHandle materialHandle, MaterialConfiguration& configuration) const
     {
-        const MaterialSlot* slot = FindMaterialSlot(materialHandle);
+        AZ::u32 materialIndex = 0;
+        const MaterialSlot* slot = FindMaterialSlot(materialHandle, &materialIndex);
         if (slot == nullptr)
         {
             return false;
         }
-        configuration = slot->m_configuration;
+        configuration = m_materialConfigurations[materialIndex];
         return true;
     }
 
@@ -458,7 +479,7 @@ namespace Box3D
         AZ_PROFILE_SCOPE(Physics, "Box3D::System::DestroyMaterial");
         AZ::u32 materialIndex = 0;
         AZ::u32 generation = 0;
-        MaterialSlot* slot = FindMaterialSlot(materialHandle);
+        MaterialSlot* slot = FindMaterialSlot(materialHandle, &materialIndex);
         if (slot == nullptr || !Internal::DecodeRegistryHandle(materialHandle, materialIndex, generation))
         {
             return false;
@@ -474,9 +495,9 @@ namespace Box3D
                 return false;
             }
         }
-        slot->m_configuration = {};
+        m_materialConfigurations[materialIndex] = {};
         slot->m_generation = 0;
-        m_freeMaterialSlots.push(materialIndex);
+        m_freeMaterialSlots.push_back(materialIndex);
         return true;
     }
 
@@ -484,7 +505,7 @@ namespace Box3D
     {
         AZ_PROFILE_SCOPE(Physics, "Box3D::System::CookShape");
         const DeterministicFloatScope floatScope;
-        if (!configuration.m_properties.m_materialConfigurations.empty())
+        if (!configuration.m_materialConfigurations.empty())
         {
             AZ_Error("Box3D", false, "Cooking requires transient material handles, not serialized material configurations.");
             return {};
@@ -501,10 +522,8 @@ namespace Box3D
             nativeMaterials.push_back(ResolveMaterial(materialHandle));
         }
 
-        NativeGeometry nativeGeometry = CookGeometry(
-            configuration.m_geometry,
-            GeometryTransform{ configuration.m_properties.m_localTransform, configuration.m_properties.m_scale },
-            nativeMaterials);
+        NativeGeometry nativeGeometry =
+            CookGeometry(configuration.m_geometry, GeometryTransform{ configuration.m_properties.m_localTransform }, nativeMaterials);
         const bool validGeometry = AZStd::visit(
             [](const auto& geometry)
             {
@@ -531,8 +550,8 @@ namespace Box3D
         AZ::u32 cookedShapeIndex = 0;
         if (!m_freeCookedShapeSlots.empty())
         {
-            cookedShapeIndex = m_freeCookedShapeSlots.front();
-            m_freeCookedShapeSlots.pop();
+            cookedShapeIndex = m_freeCookedShapeSlots.back();
+            m_freeCookedShapeSlots.pop_back();
         }
         else
         {
@@ -542,16 +561,20 @@ namespace Box3D
             }
             cookedShapeIndex = aznumeric_cast<AZ::u32>(m_cookedShapeSlots.size());
             m_cookedShapeSlots.emplace_back();
+            m_cookedShapeResources.emplace_back();
         }
 
         CookedShapeSlot& slot = m_cookedShapeSlots[cookedShapeIndex];
         slot.m_generation = m_cookedShapeGenerations.Acquire();
         if (slot.m_generation == 0)
         {
+            m_cookedShapeResources[cookedShapeIndex] = CookedShapeResources{};
+            m_freeCookedShapeSlots.push_back(cookedShapeIndex);
             return {};
         }
-        slot.m_geometry = AZStd::move(nativeGeometry);
-        slot.m_materials = configuration.m_properties.m_materials;
+        CookedShapeResources& resources = m_cookedShapeResources[cookedShapeIndex];
+        resources.m_geometry = AZStd::move(nativeGeometry);
+        resources.m_materials = configuration.m_properties.m_materials;
         return Internal::MakeRegistryHandle<CookedShapeHandle>(cookedShapeIndex, slot.m_generation);
     }
 
@@ -561,14 +584,15 @@ namespace Box3D
         const DeterministicFloatScope floatScope;
         AZ::u32 cookedShapeIndex = 0;
         AZ::u32 generation = 0;
-        CookedShapeSlot* slot = FindCookedShapeSlot(cookedShapeHandle);
+        CookedShapeSlot* slot = FindCookedShapeSlot(cookedShapeHandle, &cookedShapeIndex);
         if (slot == nullptr || !Internal::DecodeRegistryHandle(cookedShapeHandle, cookedShapeIndex, generation))
         {
             return false;
         }
 
         *slot = CookedShapeSlot{};
-        m_freeCookedShapeSlots.push(cookedShapeIndex);
+        m_cookedShapeResources[cookedShapeIndex] = CookedShapeResources{};
+        m_freeCookedShapeSlots.push_back(cookedShapeIndex);
         return true;
     }
 
@@ -580,8 +604,9 @@ namespace Box3D
     AZ::Aabb System::GetAabb(CookedShapeHandle cookedShapeHandle) const
     {
         const DeterministicFloatScope floatScope;
-        const CookedShapeSlot* slot = FindCookedShapeSlot(cookedShapeHandle);
-        return slot != nullptr ? Box3D::GetAabb(slot->m_geometry) : AZ::Aabb::CreateNull();
+        AZ::u32 cookedShapeIndex = 0;
+        const CookedShapeSlot* slot = FindCookedShapeSlot(cookedShapeHandle, &cookedShapeIndex);
+        return slot != nullptr ? Box3D::GetAabb(m_cookedShapeResources[cookedShapeIndex].m_geometry) : AZ::Aabb::CreateNull();
     }
 
     bool System::Raycast(
@@ -589,7 +614,8 @@ namespace Box3D
     {
         AZ_PROFILE_SCOPE(Physics, "Box3D::System::RaycastCookedShape");
         const DeterministicFloatScope floatScope;
-        const CookedShapeSlot* slot = FindCookedShapeSlot(cookedShapeHandle);
+        AZ::u32 cookedShapeIndex = 0;
+        const CookedShapeSlot* slot = FindCookedShapeSlot(cookedShapeHandle, &cookedShapeIndex);
         if (slot == nullptr || !start.IsFinite() || !direction.IsFinite() || direction.IsZero() || !AZ::IsFiniteFloat(distance) ||
             distance <= 0.0f)
         {
@@ -597,7 +623,7 @@ namespace Box3D
         }
 
         GeometryCastHit nativeHit;
-        if (!Box3D::CastRay(slot->m_geometry, start, direction.GetNormalized() * distance, nativeHit))
+        if (!Box3D::CastRay(m_cookedShapeResources[cookedShapeIndex].m_geometry, start, direction.GetNormalized() * distance, nativeHit))
         {
             return false;
         }
@@ -857,43 +883,54 @@ namespace Box3D
 
     ShapeHandle System::CreateShape(WorldHandle worldHandle, BodyHandle bodyHandle, const ShapeConfiguration& configuration)
     {
-        return CreateShape(worldHandle, bodyHandle, configuration, AZ::Vector3::CreateOne());
+        return CreateShape(worldHandle, bodyHandle, configuration, 1.0f);
     }
 
     ShapeHandle System::CreateShape(
-        WorldHandle worldHandle, BodyHandle bodyHandle, const ShapeConfiguration& configuration, const AZ::Vector3& postScale)
+        WorldHandle worldHandle, BodyHandle bodyHandle, const ShapeConfiguration& configuration, float uniformScale)
     {
+        if (!configuration.m_materialConfigurations.empty())
+        {
+            AZ_Error("Box3D", false, "Direct shape creation requires material handles, not serialized material configurations.");
+            return {};
+        }
         World* world = FindWorldInstance(worldHandle);
-        return world != nullptr ? world->CreateShape(bodyHandle, configuration, postScale) : ShapeHandle{};
+        return world != nullptr ? world->CreateShape(bodyHandle, configuration, uniformScale) : ShapeHandle{};
     }
 
     ShapeHandle System::CreateShapeFromCooked(
         WorldHandle worldHandle, BodyHandle bodyHandle, CookedShapeHandle cookedShapeHandle, const ShapeProperties& properties)
     {
         World* world = FindWorldInstance(worldHandle);
-        const CookedShapeSlot* cookedShape = FindCookedShapeSlot(cookedShapeHandle);
-        if (world == nullptr || cookedShape == nullptr || !properties.m_materialConfigurations.empty() || !properties.m_materials.empty() ||
+        AZ::u32 cookedShapeIndex = 0;
+        const CookedShapeSlot* cookedShape = FindCookedShapeSlot(cookedShapeHandle, &cookedShapeIndex);
+        if (world == nullptr || cookedShape == nullptr || !properties.m_materials.empty() ||
             !properties.m_localTransform.GetTranslation().IsZero() || !properties.m_localTransform.GetRotation().IsIdentity() ||
-            !properties.m_scale.IsClose(AZ::Vector3::CreateOne()))
+            !AZ::IsClose(properties.m_localTransform.GetUniformScale(), 1.0f, AZ::Constants::Tolerance))
         {
             return {};
         }
 
         ShapeProperties instanceProperties = properties;
-        instanceProperties.m_materials = cookedShape->m_materials;
-        return world->CreateShapeFromCooked(bodyHandle, cookedShape->m_geometry, instanceProperties);
+        const CookedShapeResources& resources = m_cookedShapeResources[cookedShapeIndex];
+        instanceProperties.m_materials = resources.m_materials;
+        return world->CreateShapeFromCooked(bodyHandle, resources.m_geometry, instanceProperties);
     }
 
     bool System::UpdateShape(WorldHandle worldHandle, ShapeHandle shapeHandle, const ShapeConfiguration& configuration)
     {
-        return UpdateShape(worldHandle, shapeHandle, configuration, AZ::Vector3::CreateOne());
+        return UpdateShape(worldHandle, shapeHandle, configuration, 1.0f);
     }
 
-    bool System::UpdateShape(
-        WorldHandle worldHandle, ShapeHandle shapeHandle, const ShapeConfiguration& configuration, const AZ::Vector3& postScale)
+    bool System::UpdateShape(WorldHandle worldHandle, ShapeHandle shapeHandle, const ShapeConfiguration& configuration, float uniformScale)
     {
+        if (!configuration.m_materialConfigurations.empty())
+        {
+            AZ_Error("Box3D", false, "Direct shape updates require material handles, not serialized material configurations.");
+            return false;
+        }
         World* world = FindWorldInstance(worldHandle);
-        return world != nullptr && world->UpdateShape(shapeHandle, configuration, postScale);
+        return world != nullptr && world->UpdateShape(shapeHandle, configuration, uniformScale);
     }
 
     bool System::DestroyShape(WorldHandle worldHandle, ShapeHandle shapeHandle, bool updateBodyMass)
@@ -1000,6 +1037,12 @@ namespace Box3D
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->CreateJoint(configuration) : JointHandle{};
+    }
+
+    bool System::SetJointEntityId(WorldHandle worldHandle, JointHandle jointHandle, AZ::EntityId entityId)
+    {
+        World* world = FindWorldInstance(worldHandle);
+        return world != nullptr && world->SetJointEntityId(jointHandle, entityId);
     }
 
     bool System::UpdateJoint(WorldHandle worldHandle, JointHandle jointHandle, const JointConfiguration& configuration)
@@ -1192,13 +1235,14 @@ namespace Box3D
 
     SurfaceMaterial System::ResolveMaterial(MaterialHandle materialHandle) const
     {
-        const MaterialSlot* slot = FindMaterialSlot(materialHandle);
+        AZ::u32 materialIndex = 0;
+        const MaterialSlot* slot = FindMaterialSlot(materialHandle, &materialIndex);
         if (slot == nullptr)
         {
             return {};
         }
 
-        const MaterialConfiguration& configuration = slot->m_configuration;
+        const MaterialConfiguration& configuration = m_materialConfigurations[materialIndex];
         SurfaceMaterial material;
         material.m_tangentVelocity = configuration.m_tangentVelocity;
         material.m_userId = Internal::HandleAccess::GetValue(materialHandle);
@@ -1234,58 +1278,80 @@ namespace Box3D
         return slot.m_generation == parts.m_generation ? slot.m_world.get() : nullptr;
     }
 
-    System::MaterialSlot* System::FindMaterialSlot(MaterialHandle materialHandle)
+    System::MaterialSlot* System::FindMaterialSlot(MaterialHandle materialHandle, AZ::u32* materialIndex)
     {
-        return const_cast<MaterialSlot*>(static_cast<const System&>(*this).FindMaterialSlot(materialHandle));
+        return const_cast<MaterialSlot*>(static_cast<const System&>(*this).FindMaterialSlot(materialHandle, materialIndex));
     }
 
-    const System::MaterialSlot* System::FindMaterialSlot(MaterialHandle materialHandle) const
+    const System::MaterialSlot* System::FindMaterialSlot(MaterialHandle materialHandle, AZ::u32* materialIndex) const
     {
-        AZ::u32 materialIndex = 0;
+        AZ::u32 resolvedMaterialIndex = 0;
         AZ::u32 generation = 0;
-        if (!Internal::DecodeRegistryHandle(materialHandle, materialIndex, generation) || materialIndex >= m_materialSlots.size())
+        if (!Internal::DecodeRegistryHandle(materialHandle, resolvedMaterialIndex, generation) ||
+            resolvedMaterialIndex >= m_materialSlots.size())
         {
             return nullptr;
         }
-        const MaterialSlot& slot = m_materialSlots[materialIndex];
-        return slot.m_generation == generation ? &slot : nullptr;
-    }
-
-    System::CookedShapeSlot* System::FindCookedShapeSlot(CookedShapeHandle cookedShapeHandle)
-    {
-        return const_cast<CookedShapeSlot*>(static_cast<const System&>(*this).FindCookedShapeSlot(cookedShapeHandle));
-    }
-
-    const System::CookedShapeSlot* System::FindCookedShapeSlot(CookedShapeHandle cookedShapeHandle) const
-    {
-        AZ::u32 cookedShapeIndex = 0;
-        AZ::u32 generation = 0;
-        if (!Internal::DecodeRegistryHandle(cookedShapeHandle, cookedShapeIndex, generation) ||
-            cookedShapeIndex >= m_cookedShapeSlots.size())
+        const MaterialSlot& slot = m_materialSlots[resolvedMaterialIndex];
+        if (slot.m_generation != generation)
         {
             return nullptr;
         }
-        const CookedShapeSlot& slot = m_cookedShapeSlots[cookedShapeIndex];
-        return slot.m_generation == generation ? &slot : nullptr;
+        if (materialIndex != nullptr)
+        {
+            *materialIndex = resolvedMaterialIndex;
+        }
+        return &slot;
+    }
+
+    System::CookedShapeSlot* System::FindCookedShapeSlot(CookedShapeHandle cookedShapeHandle, AZ::u32* cookedShapeIndex)
+    {
+        return const_cast<CookedShapeSlot*>(static_cast<const System&>(*this).FindCookedShapeSlot(cookedShapeHandle, cookedShapeIndex));
+    }
+
+    const System::CookedShapeSlot* System::FindCookedShapeSlot(CookedShapeHandle cookedShapeHandle, AZ::u32* cookedShapeIndex) const
+    {
+        AZ::u32 resolvedCookedShapeIndex = 0;
+        AZ::u32 generation = 0;
+        if (!Internal::DecodeRegistryHandle(cookedShapeHandle, resolvedCookedShapeIndex, generation) ||
+            resolvedCookedShapeIndex >= m_cookedShapeSlots.size())
+        {
+            return nullptr;
+        }
+        const CookedShapeSlot& slot = m_cookedShapeSlots[resolvedCookedShapeIndex];
+        if (slot.m_generation != generation)
+        {
+            return nullptr;
+        }
+        if (cookedShapeIndex != nullptr)
+        {
+            *cookedShapeIndex = resolvedCookedShapeIndex;
+        }
+        return &slot;
     }
 
     bool System::UsesCookedMaterial(MaterialHandle materialHandle) const
     {
-        return AZStd::any_of(
-            m_cookedShapeSlots.begin(),
-            m_cookedShapeSlots.end(),
-            [materialHandle](const CookedShapeSlot& slot)
+        for (size_t cookedShapeIndex = 0; cookedShapeIndex < m_cookedShapeSlots.size(); ++cookedShapeIndex)
+        {
+            if (m_cookedShapeSlots[cookedShapeIndex].m_generation != 0)
             {
-                return slot.m_generation != 0 &&
-                    AZStd::find(slot.m_materials.begin(), slot.m_materials.end(), materialHandle) != slot.m_materials.end();
-            });
+                const AZStd::vector<MaterialHandle>& materials = m_cookedShapeResources[cookedShapeIndex].m_materials;
+                if (AZStd::find(materials.begin(), materials.end(), materialHandle) != materials.end())
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     SurfaceTypeId System::ResolveSurfaceType(AZ::u64 materialId) const
     {
         const MaterialHandle materialHandle = Internal::HandleAccess::Create<MaterialHandle>(materialId);
-        const MaterialSlot* slot = FindMaterialSlot(materialHandle);
-        return slot != nullptr ? slot->m_configuration.m_surfaceTypeId : SurfaceTypeId{};
+        AZ::u32 materialIndex = 0;
+        const MaterialSlot* slot = FindMaterialSlot(materialHandle, &materialIndex);
+        return slot != nullptr ? m_materialConfigurations[materialIndex].m_surfaceTypeId : SurfaceTypeId{};
     }
 
     float System::MixFriction(float valueA, AZ::u64 materialIdA, float valueB, AZ::u64 materialIdB) const

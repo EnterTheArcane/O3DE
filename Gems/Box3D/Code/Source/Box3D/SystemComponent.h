@@ -16,7 +16,6 @@
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TickBus.h>
-#include <AzCore/std/containers/queue.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
@@ -139,6 +138,6 @@ namespace Box3D
         AZStd::unique_ptr<System> m_system;
         mutable AZStd::mutex m_replayMutex;
         AZStd::vector<ReplaySlot> m_replaySlots;
-        AZStd::queue<AZ::u32> m_freeReplaySlots;
+        AZStd::vector<AZ::u32> m_freeReplaySlots;
     };
 } // namespace Box3D

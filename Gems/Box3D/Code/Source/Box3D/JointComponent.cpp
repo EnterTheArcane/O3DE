@@ -7,7 +7,7 @@
 
 #include <Box3D/JointComponent.h>
 
-#include <Box3D/System.h>
+#include <Box3D/SystemInternal.h>
 
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Interface/Interface.h>
@@ -146,7 +146,17 @@ namespace Box3D
             return false;
         }
         m_jointHandle = m_system->CreateJoint(m_worldHandle, resolved);
-        return m_jointHandle.IsValid();
+        if (!m_jointHandle.IsValid())
+        {
+            return false;
+        }
+        if (m_system->SetJointEntityId(m_worldHandle, m_jointHandle, GetEntityId()))
+        {
+            return true;
+        }
+        [[maybe_unused]] const bool destroyed = m_system->DestroyJoint(m_worldHandle, m_jointHandle);
+        m_jointHandle = {};
+        return false;
     }
 
     bool JointComponent::DisableSimulation()
@@ -331,7 +341,7 @@ namespace Box3D
 
     void JointComponent::Activate()
     {
-        m_system = AZ::Interface<ISystem>::Get();
+        m_system = azrtti_cast<System*>(AZ::Interface<ISystem>::Get());
         AZ_Error("Box3D", m_system != nullptr, "Box3D SystemComponent must be active before joint components.");
         JointRequestBus::Handler::BusConnect(GetEntityId());
         RigidBodyNotificationBus::MultiHandler::BusConnect(GetEntityId());
@@ -339,13 +349,11 @@ namespace Box3D
         {
             RigidBodyNotificationBus::MultiHandler::BusConnect(m_parentEntityId);
         }
-        AZ::TickBus::Handler::BusConnect();
         EnableSimulation();
     }
 
     void JointComponent::Deactivate()
     {
-        AZ::TickBus::Handler::BusDisconnect();
         RigidBodyNotificationBus::MultiHandler::BusDisconnect();
         JointRequestBus::Handler::BusDisconnect();
         DisableSimulation();
@@ -362,26 +370,6 @@ namespace Box3D
     void JointComponent::OnBodyDestroyed(WorldHandle, BodyHandle)
     {
         DisableSimulation();
-    }
-
-    void JointComponent::OnTick([[maybe_unused]] float deltaTime, [[maybe_unused]] AZ::ScriptTimePoint time)
-    {
-        if (m_system == nullptr || !m_jointHandle.IsValid())
-        {
-            return;
-        }
-        for (const JointThresholdEvent& event : m_system->GetStepEvents(m_worldHandle).m_jointThresholds)
-        {
-            if (event.m_jointHandle == m_jointHandle)
-            {
-                JointNotificationBus::Event(GetEntityId(), &JointNotifications::OnThresholdExceeded, event);
-            }
-        }
-    }
-
-    int JointComponent::GetTickOrder()
-    {
-        return AZ::ComponentTickBus::TICK_PHYSICS;
     }
 
     bool JointComponent::ResolveConfiguration(

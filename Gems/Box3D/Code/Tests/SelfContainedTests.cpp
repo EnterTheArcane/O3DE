@@ -46,6 +46,19 @@ AZ_UNIT_TEST_HOOK(DEFAULT_UNIT_TEST_ENV);
 
 namespace Box3D::Tests
 {
+    static_assert(sizeof(ShapeProperties) <= 112);
+    static_assert(sizeof(ShapeConfiguration) <= 272);
+    static_assert(sizeof(HeightfieldShapeConfiguration) <= 112);
+    static_assert(sizeof(QueryFilter) <= 48);
+    static_assert(sizeof(RaycastRequest) <= 96);
+    static_assert(sizeof(ShapeCastRequest) <= 144);
+    static_assert(sizeof(OverlapRequest) <= 128);
+    static_assert(sizeof(AabbOverlapRequest) <= 80);
+    static_assert(sizeof(QueryHit) <= 80);
+    static_assert(sizeof(CharacterConfiguration) <= 176);
+    static_assert(sizeof(RigidBodyConfiguration) <= 160);
+    static_assert(sizeof(SystemConfiguration) <= 88);
+
     namespace
     {
 #if defined(_M_ARM64) || defined(_M_ARM64EC) || defined(__aarch64__)
@@ -553,6 +566,14 @@ namespace Box3D::Tests
 
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
         EXPECT_TRUE(system.DestroyMaterial(materialHandle));
+
+        materialConfiguration.m_friction = 0.4f;
+        const MaterialHandle replacementHandle = system.CreateMaterial(materialConfiguration);
+        ASSERT_TRUE(replacementHandle.IsValid());
+        EXPECT_NE(replacementHandle, materialHandle);
+        EXPECT_FALSE(system.GetMaterial(materialHandle, updatedConfiguration));
+        ASSERT_TRUE(system.GetMaterial(replacementHandle, updatedConfiguration));
+        EXPECT_FLOAT_EQ(updatedConfiguration.m_friction, 0.4f);
     }
 
     TEST(Box3DSystemTests, MaterialMixingUsesSurfaceTypesAndDebugAppearanceIsOptIn)
@@ -659,7 +680,7 @@ namespace Box3D::Tests
         EXPECT_TRUE(retainedState.m_basePosition.IsClose(initialState.m_basePosition));
     }
 
-    TEST(Box3DSystemTests, ShapeScaleIsExplicitAndRejectsInexactCurvedGeometry)
+    TEST(Box3DSystemTests, ShapeUniformScaleIsPartOfLocalTransform)
     {
         System system;
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -668,29 +689,27 @@ namespace Box3D::Tests
         ShapeConfiguration box;
         box.m_geometry = BoxShapeConfiguration{ AZ::Vector3::CreateOne() * 0.5f };
         box.m_properties.m_localTransform = AZ::Transform::CreateFromQuaternion(AZ::Quaternion::CreateRotationZ(AZ::DegToRad(45.0f)));
-        box.m_properties.m_scale = AZ::Vector3(2.0f, 1.0f, -1.0f);
+        box.m_properties.m_localTransform.SetUniformScale(2.0f);
         const ShapeHandle boxHandle = system.CreateShape(worldHandle, bodyHandle, box);
         ASSERT_TRUE(boxHandle.IsValid());
         EXPECT_GT(system.GetShapeAabb(worldHandle, boxHandle).GetExtents().GetX(), 2.0f);
 
         ShapeConfiguration sphere;
         sphere.m_geometry = SphereShapeConfiguration{ 0.5f };
-        sphere.m_properties.m_scale = AZ::Vector3(2.0f, 1.0f, 1.0f);
-        EXPECT_FALSE(system.CreateShape(worldHandle, bodyHandle, sphere).IsValid());
-        sphere.m_properties.m_scale = AZ::Vector3(-2.0f, -2.0f, -2.0f);
+        sphere.m_properties.m_localTransform.SetUniformScale(2.0f);
         EXPECT_TRUE(system.CreateShape(worldHandle, bodyHandle, sphere).IsValid());
 
-        box.m_properties.m_scale = AZ::Vector3(0.001f, 1.0f, 1.0f);
+        box.m_properties.m_localTransform.SetUniformScale(0.001f);
         EXPECT_FALSE(system.CreateShape(worldHandle, bodyHandle, box).IsValid());
 
         CompoundShapeConfiguration compound;
         CompoundChildShapeConfiguration child;
         child.m_geometry = SphereShapeConfiguration{ 0.5f };
-        child.m_scale = AZ::Vector3(2.0f, 1.0f, 1.0f);
+        child.m_localTransform.SetUniformScale(2.0f);
         compound.m_children.push_back(AZStd::move(child));
         ShapeConfiguration compoundShape;
         compoundShape.m_geometry = AZStd::move(compound);
-        EXPECT_FALSE(system.CreateShape(worldHandle, bodyHandle, compoundShape).IsValid());
+        EXPECT_TRUE(system.CreateShape(worldHandle, bodyHandle, compoundShape).IsValid());
     }
 
     TEST(Box3DSystemTests, FixedStepSimulationIsRepeatable)
@@ -987,9 +1006,9 @@ namespace Box3D::Tests
             { AZ::Vector3(0.0f, 0.0f, 0.0f), AZ::Vector3(1.0f, 0.0f, 0.0f), AZ::Vector3(0.0f, 1.0f, 0.0f) }, { 0, 1, 2 }, {}
         };
         configurations[6].m_geometry =
-            HeightfieldShapeConfiguration{ { 0.0f, 0.0f, 0.0f, 0.0f }, {}, 2, 2, AZ::Vector3::CreateOne(), false };
+            HeightfieldShapeConfiguration{ { 0.0f, 0.0f, 0.0f, 0.0f }, {}, 2, 2, AZ::Vector2::CreateOne(), 1.0f, false };
         CompoundShapeConfiguration compound;
-        compound.m_children.push_back({ SphereShapeConfiguration{}, AZ::Transform::CreateIdentity(), AZ::Vector3::CreateOne(), 0 });
+        compound.m_children.push_back({ SphereShapeConfiguration{}, AZ::Transform::CreateIdentity(), 0 });
         configurations[7].m_geometry = AZStd::move(compound);
 
         for (size_t configurationIndex = 0; configurationIndex < configurations.size(); ++configurationIndex)

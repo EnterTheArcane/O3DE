@@ -105,7 +105,6 @@ namespace Box3D
         AZ_TYPE_INFO(ConvexCastParameters, "{BA9B9A55-C9BD-46CA-9B9C-A4879DC62BE0}");
 
         AZ::Transform m_start = AZ::Transform::CreateIdentity();
-        AZ::Vector3 m_scale = AZ::Vector3::CreateOne();
         AZ::Vector3 m_translation = AZ::Vector3::CreateZero();
         QueryFilter m_filter;
         AZ::u32 m_maxHitCount = 64;
@@ -116,7 +115,6 @@ namespace Box3D
         AZ_TYPE_INFO(ConvexOverlapParameters, "{6F2A22A5-1522-4663-93B0-55980053263D}");
 
         AZ::Transform m_transform = AZ::Transform::CreateIdentity();
-        AZ::Vector3 m_scale = AZ::Vector3::CreateOne();
         QueryFilter m_filter;
         AZ::u32 m_maxHitCount = 64;
     };

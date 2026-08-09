@@ -122,12 +122,12 @@ namespace Box3D
             return false;
         }
 
-        ShapeConfiguration runtimeConfiguration = configuration;
+        ShapeConfiguration runtimeConfiguration{ configuration.m_geometry, configuration.m_properties };
         AZStd::vector<MaterialHandle> replacementMaterials;
         if (m_system != nullptr)
         {
-            replacementMaterials.reserve(configuration.m_properties.m_materialConfigurations.size());
-            for (const MaterialConfiguration& materialConfiguration : configuration.m_properties.m_materialConfigurations)
+            replacementMaterials.reserve(configuration.m_materialConfigurations.size());
+            for (const MaterialConfiguration& materialConfiguration : configuration.m_materialConfigurations)
             {
                 const MaterialHandle materialHandle = m_system->CreateMaterial(materialConfiguration);
                 if (!materialHandle.IsValid())
@@ -141,7 +141,7 @@ namespace Box3D
                 replacementMaterials.push_back(materialHandle);
                 runtimeConfiguration.m_properties.m_materials.push_back(materialHandle);
             }
-            if (!m_system->UpdateShape(m_worldHandle, m_shapeHandle, runtimeConfiguration, m_nonUniformScale * m_uniformScale))
+            if (!m_system->UpdateShape(m_worldHandle, m_shapeHandle, runtimeConfiguration, m_uniformScale))
             {
                 for (MaterialHandle createdMaterial : replacementMaterials)
                 {
@@ -183,7 +183,7 @@ namespace Box3D
             }
             m_ownedMaterials.clear();
         }
-        m_configuration.m_properties.m_materialConfigurations.clear();
+        m_configuration.m_materialConfigurations.clear();
         m_configuration.m_properties.m_materials.assign(materials.begin(), materials.end());
         return true;
     }
@@ -216,9 +216,9 @@ namespace Box3D
             return false;
         }
 
-        ShapeConfiguration runtimeConfiguration = m_configuration;
-        m_ownedMaterials.reserve(m_configuration.m_properties.m_materialConfigurations.size());
-        for (const MaterialConfiguration& materialConfiguration : m_configuration.m_properties.m_materialConfigurations)
+        ShapeConfiguration runtimeConfiguration{ m_configuration.m_geometry, m_configuration.m_properties };
+        m_ownedMaterials.reserve(m_configuration.m_materialConfigurations.size());
+        for (const MaterialConfiguration& materialConfiguration : m_configuration.m_materialConfigurations)
         {
             const MaterialHandle materialHandle = m_system->CreateMaterial(materialConfiguration);
             if (!materialHandle.IsValid())
@@ -229,7 +229,7 @@ namespace Box3D
             m_ownedMaterials.push_back(materialHandle);
             runtimeConfiguration.m_properties.m_materials.push_back(materialHandle);
         }
-        m_shapeHandle = m_system->CreateShape(m_worldHandle, m_bodyHandle, runtimeConfiguration, m_nonUniformScale * m_uniformScale);
+        m_shapeHandle = m_system->CreateShape(m_worldHandle, m_bodyHandle, runtimeConfiguration, m_uniformScale);
         if (!m_shapeHandle.IsValid())
         {
             DisableSimulation();
@@ -380,10 +380,6 @@ namespace Box3D
     void HeightfieldColliderComponent::Activate()
     {
         m_system = azrtti_cast<System*>(AZ::Interface<ISystem>::Get());
-        m_nonUniformScale = AZ::Vector3::CreateOne();
-        AZ::NonUniformScaleRequestBus::EventResult(m_nonUniformScale, GetEntityId(), &AZ::NonUniformScaleRequests::GetScale);
-        AZ::NonUniformScaleRequestBus::Event(
-            GetEntityId(), &AZ::NonUniformScaleRequests::RegisterScaleChangedEvent, m_nonUniformScaleChangedHandler);
         ColliderRequestBus::Handler::BusConnect(GetEntityId());
         HeightfieldRequestBus::Handler::BusConnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
@@ -396,7 +392,6 @@ namespace Box3D
         HeightfieldRequestBus::Handler::BusDisconnect();
         ColliderRequestBus::Handler::BusDisconnect();
         DisableSimulation();
-        m_nonUniformScaleChangedHandler.Disconnect();
         m_system = nullptr;
         m_worldHandle = {};
     }
@@ -409,7 +404,7 @@ namespace Box3D
             const float uniformScale = pose.ExtractUniformScale();
             if (!AZ::IsClose(uniformScale, m_uniformScale, AZ::Constants::Tolerance))
             {
-                if (!UpdateScale(m_nonUniformScale * uniformScale))
+                if (!UpdateScale(uniformScale))
                 {
                     return;
                 }
@@ -419,9 +414,9 @@ namespace Box3D
         }
     }
 
-    bool HeightfieldColliderComponent::UpdateScale(const AZ::Vector3& scale)
+    bool HeightfieldColliderComponent::UpdateScale(float scale)
     {
-        if (!scale.IsFinite() || scale.GetMinElement() < 0.01f)
+        if (!AZ::IsFiniteFloat(scale) || scale < 0.01f)
         {
             return false;
         }
@@ -430,7 +425,7 @@ namespace Box3D
             return true;
         }
 
-        ShapeConfiguration runtimeConfiguration = m_configuration;
+        ShapeConfiguration runtimeConfiguration{ m_configuration.m_geometry, m_configuration.m_properties };
         runtimeConfiguration.m_properties.m_materials.insert(
             runtimeConfiguration.m_properties.m_materials.end(), m_ownedMaterials.begin(), m_ownedMaterials.end());
         return m_system->UpdateShape(m_worldHandle, m_shapeHandle, runtimeConfiguration, scale);

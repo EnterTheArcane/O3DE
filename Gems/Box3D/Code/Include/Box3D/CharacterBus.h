@@ -29,4 +29,15 @@ namespace Box3D
     };
 
     using CharacterRequestBus = AZ::EBus<CharacterRequests>;
+
+    class CharacterNotifications
+        : public AZ::ComponentBus
+    {
+    public:
+        virtual void OnCharacterMoved([[maybe_unused]] const CharacterState& state)
+        {
+        }
+    };
+
+    using CharacterNotificationBus = AZ::EBus<CharacterNotifications>;
 } // namespace Box3D

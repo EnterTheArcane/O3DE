@@ -609,6 +609,17 @@ namespace Box3D
             AZStd::vector<JointId> m_joints;
         };
 
+        struct ContactScratchData final
+        {
+            AZStd::vector<b3ContactData> m_nativeContacts;
+        };
+
+        struct SensorScratchData final
+        {
+            AZStd::vector<b3ShapeId> m_sensorIds;
+            AZStd::vector<b3ShapeId> m_visitorIds;
+        };
+
         bool CollectMoverPlanes(b3ShapeId shapeId, const b3PlaneResult* planeResults, int planeCount, void* context)
         {
             auto& data = *static_cast<MoverScratchData*>(context);
@@ -1257,6 +1268,26 @@ namespace Box3D
     {
         const auto* data = static_cast<const JointScratchData*>(m_data);
         return data != nullptr ? AZStd::span<const JointId>(data->m_joints) : AZStd::span<const JointId>();
+    }
+
+    ContactScratch::ContactScratch()
+        : m_data(aznew ContactScratchData)
+    {
+    }
+
+    ContactScratch::~ContactScratch()
+    {
+        delete static_cast<ContactScratchData*>(m_data);
+    }
+
+    SensorScratch::SensorScratch()
+        : m_data(new SensorScratchData)
+    {
+    }
+
+    SensorScratch::~SensorScratch()
+    {
+        delete static_cast<SensorScratchData*>(m_data);
     }
 
     class ReplayInstance final
@@ -1909,7 +1940,7 @@ namespace Box3D
 
     namespace
     {
-        bool ConvertContactData(const b3ContactData& nativeData, ContactData& contactData)
+        bool ConvertContactData(const b3ContactData& nativeData, ContactData& contactData, AZStd::vector<NativeContactPoint>& points)
         {
             contactData = {};
             if (!b3Shape_IsValid(nativeData.shapeIdA) || !b3Shape_IsValid(nativeData.shapeIdB))
@@ -1929,6 +1960,7 @@ namespace Box3D
             contactData.m_bodyUserDataB = b3Body_GetUserData(bodyIdB);
             contactData.m_childIndexA = nativeData.childIndexA;
             contactData.m_childIndexB = nativeData.childIndexB;
+            contactData.m_firstPoint = points.size();
             const b3Pos centerA = b3Body_GetWorldCenterOfMass(bodyIdA);
             const b3Pos centerB = b3Body_GetWorldCenterOfMass(bodyIdB);
             for (int manifoldIndex = 0; manifoldIndex < nativeData.manifoldCount; ++manifoldIndex)
@@ -1939,7 +1971,7 @@ namespace Box3D
                     const b3ManifoldPoint& point = manifold.points[pointIndex];
                     const b3Pos pointA = centerA + point.anchorA;
                     const b3Pos pointB = centerB + point.anchorB;
-                    contactData.m_points.push_back(
+                    points.push_back(
                         { 0.5f * (FromNativePosition(pointA) + FromNativePosition(pointB)),
                           FromNative(manifold.normal),
                           point.totalNormalImpulse * FromNative(manifold.normal),
@@ -1947,17 +1979,22 @@ namespace Box3D
                           point.triangleIndex });
                 }
             }
+            contactData.m_pointCount = points.size() - contactData.m_firstPoint;
             return true;
         }
 
-        void ConvertAndSortContacts(AZStd::span<const b3ContactData> nativeContacts, AZStd::vector<ContactData>& contacts)
+        void ConvertAndSortContacts(
+            AZStd::span<const b3ContactData> nativeContacts,
+            AZStd::vector<ContactData>& contacts,
+            AZStd::vector<NativeContactPoint>& points)
         {
             contacts.clear();
+            points.clear();
             contacts.reserve(nativeContacts.size());
             for (const b3ContactData& nativeContact : nativeContacts)
             {
                 ContactData contact;
-                if (ConvertContactData(nativeContact, contact))
+                if (ConvertContactData(nativeContact, contact, points))
                 {
                     contacts.push_back(AZStd::move(contact));
                 }
@@ -1976,9 +2013,10 @@ namespace Box3D
         }
     } // namespace
 
-    bool GetContactData(ContactId contactId, ContactData& contactData)
+    bool GetContactData(ContactId contactId, ContactData& contactData, AZStd::vector<NativeContactPoint>& points)
     {
         contactData = {};
+        points.clear();
         if (!contactId.IsValid())
         {
             return false;
@@ -1991,38 +2029,44 @@ namespace Box3D
             return false;
         }
 
-        return ConvertContactData(b3Contact_GetData(nativeContactId), contactData);
+        return ConvertContactData(b3Contact_GetData(nativeContactId), contactData, points);
     }
 
-    bool GetTouchingContacts(BodyId bodyId, AZStd::vector<ContactData>& contacts)
+    bool GetTouchingContacts(
+        BodyId bodyId, ContactScratch& scratch, AZStd::vector<ContactData>& contacts, AZStd::vector<NativeContactPoint>& points)
     {
         contacts.clear();
-        if (!IsValid(bodyId))
+        points.clear();
+        auto* scratchData = static_cast<ContactScratchData*>(scratch.m_data);
+        if (!IsValid(bodyId) || scratchData == nullptr)
         {
             return false;
         }
 
         const b3BodyId nativeBodyId = b3LoadBodyId(bodyId.m_value);
         const int capacity = b3Body_GetContactCapacity(nativeBodyId);
-        AZStd::vector<b3ContactData> nativeContacts(aznumeric_cast<size_t>(capacity));
-        const int count = b3Body_GetContactData(nativeBodyId, nativeContacts.data(), capacity);
-        ConvertAndSortContacts(AZStd::span(nativeContacts).first(aznumeric_cast<size_t>(count)), contacts);
+        scratchData->m_nativeContacts.resize(aznumeric_cast<size_t>(capacity));
+        const int count = b3Body_GetContactData(nativeBodyId, scratchData->m_nativeContacts.data(), capacity);
+        ConvertAndSortContacts(AZStd::span(scratchData->m_nativeContacts).first(aznumeric_cast<size_t>(count)), contacts, points);
         return true;
     }
 
-    bool GetTouchingContacts(ShapeId shapeId, AZStd::vector<ContactData>& contacts)
+    bool GetTouchingContacts(
+        ShapeId shapeId, ContactScratch& scratch, AZStd::vector<ContactData>& contacts, AZStd::vector<NativeContactPoint>& points)
     {
         contacts.clear();
-        if (!IsValid(shapeId))
+        points.clear();
+        auto* scratchData = static_cast<ContactScratchData*>(scratch.m_data);
+        if (!IsValid(shapeId) || scratchData == nullptr)
         {
             return false;
         }
 
         const b3ShapeId nativeShapeId = b3LoadShapeId(shapeId.m_value);
         const int capacity = b3Shape_GetContactCapacity(nativeShapeId);
-        AZStd::vector<b3ContactData> nativeContacts(aznumeric_cast<size_t>(capacity));
-        const int count = b3Shape_GetContactData(nativeShapeId, nativeContacts.data(), capacity);
-        ConvertAndSortContacts(AZStd::span(nativeContacts).first(aznumeric_cast<size_t>(count)), contacts);
+        scratchData->m_nativeContacts.resize(aznumeric_cast<size_t>(capacity));
+        const int count = b3Shape_GetContactData(nativeShapeId, scratchData->m_nativeContacts.data(), capacity);
+        ConvertAndSortContacts(AZStd::span(scratchData->m_nativeContacts).first(aznumeric_cast<size_t>(count)), contacts, points);
         return true;
     }
 
@@ -2040,7 +2084,7 @@ namespace Box3D
         return true;
     }
 
-    bool GetSensorOverlaps(BodyId bodyId, AZStd::vector<SensorOverlapData>& overlaps)
+    bool GetSensorOverlaps(BodyId bodyId, SensorScratch& scratch, AZStd::vector<SensorOverlapData>& overlaps)
     {
         overlaps.clear();
         if (!IsValid(bodyId))
@@ -2050,14 +2094,15 @@ namespace Box3D
 
         const b3BodyId nativeBodyId = b3LoadBodyId(bodyId.m_value);
         const int shapeCount = b3Body_GetShapeCount(nativeBodyId);
-        AZStd::vector<b3ShapeId> sensorIds(aznumeric_cast<size_t>(shapeCount));
-        const int storedShapeCount = b3Body_GetShapes(nativeBodyId, sensorIds.data(), shapeCount);
+        auto& scratchData = *static_cast<SensorScratchData*>(scratch.m_data);
+        scratchData.m_sensorIds.resize(aznumeric_cast<size_t>(shapeCount));
+        const int storedShapeCount = b3Body_GetShapes(nativeBodyId, scratchData.m_sensorIds.data(), shapeCount);
         for (int shapeIndex = 0; shapeIndex < storedShapeCount; ++shapeIndex)
         {
-            const b3ShapeId sensorId = sensorIds[shapeIndex];
+            const b3ShapeId sensorId = scratchData.m_sensorIds[shapeIndex];
             const int capacity = b3Shape_GetSensorCapacity(sensorId);
-            AZStd::vector<b3ShapeId> visitorIds(aznumeric_cast<size_t>(capacity));
-            const int count = b3Shape_GetSensorData(sensorId, visitorIds.data(), capacity);
+            scratchData.m_visitorIds.resize(aznumeric_cast<size_t>(capacity));
+            const int count = b3Shape_GetSensorData(sensorId, scratchData.m_visitorIds.data(), capacity);
             ShapeData sensor;
             if (!GetShapeData({ b3StoreShapeId(sensorId) }, sensor))
             {
@@ -2066,7 +2111,7 @@ namespace Box3D
             for (int visitorIndex = 0; visitorIndex < count; ++visitorIndex)
             {
                 ShapeData visitor;
-                if (GetShapeData({ b3StoreShapeId(visitorIds[visitorIndex]) }, visitor))
+                if (GetShapeData({ b3StoreShapeId(scratchData.m_visitorIds[visitorIndex]) }, visitor))
                 {
                     overlaps.push_back({ sensor, visitor });
                 }
@@ -2084,7 +2129,7 @@ namespace Box3D
         return true;
     }
 
-    bool GetSensorOverlaps(ShapeId shapeId, AZStd::vector<SensorOverlapData>& overlaps)
+    bool GetSensorOverlaps(ShapeId shapeId, SensorScratch& scratch, AZStd::vector<SensorOverlapData>& overlaps)
     {
         overlaps.clear();
         if (!IsValid(shapeId))
@@ -2094,8 +2139,9 @@ namespace Box3D
 
         const b3ShapeId nativeShapeId = b3LoadShapeId(shapeId.m_value);
         const int capacity = b3Shape_GetSensorCapacity(nativeShapeId);
-        AZStd::vector<b3ShapeId> visitorIds(aznumeric_cast<size_t>(capacity));
-        const int count = b3Shape_GetSensorData(nativeShapeId, visitorIds.data(), capacity);
+        auto& scratchData = *static_cast<SensorScratchData*>(scratch.m_data);
+        scratchData.m_visitorIds.resize(aznumeric_cast<size_t>(capacity));
+        const int count = b3Shape_GetSensorData(nativeShapeId, scratchData.m_visitorIds.data(), capacity);
         ShapeData sensor;
         if (!GetShapeData(shapeId, sensor))
         {
@@ -2105,7 +2151,7 @@ namespace Box3D
         for (int visitorIndex = 0; visitorIndex < count; ++visitorIndex)
         {
             ShapeData visitor;
-            if (GetShapeData({ b3StoreShapeId(visitorIds[visitorIndex]) }, visitor))
+            if (GetShapeData({ b3StoreShapeId(scratchData.m_visitorIds[visitorIndex]) }, visitor))
             {
                 overlaps.push_back({ sensor, visitor });
             }
@@ -3543,7 +3589,8 @@ namespace Box3D
         const AZ::Vector3& scale,
         const AZ::Transform& localTransform)
     {
-        const AZStd::unique_ptr<HullGeometry> geometry = CreateHullGeometry(points, GeometryTransform{ localTransform, scale });
+        const AZStd::unique_ptr<HullGeometry> geometry =
+            CreateHullGeometry(points, GeometryTransform{ localTransform, scale, AZ::Vector3::CreateOne() });
         return geometry != nullptr ? CreateHullShape(bodyId, configuration, *geometry) : ShapeId{};
     }
 
@@ -4153,8 +4200,8 @@ namespace Box3D
                         materialIndices,
                         shapeGeometry.m_columnCount,
                         shapeGeometry.m_rowCount,
-                        AZ::Vector2(shapeGeometry.m_scale.GetX(), shapeGeometry.m_scale.GetY()),
-                        AZ::Vector3(1.0f, 1.0f, shapeGeometry.m_scale.GetZ()) * transform.m_scale * transform.m_postScale,
+                        shapeGeometry.m_sampleSpacing,
+                        AZ::Vector3(1.0f, 1.0f, shapeGeometry.m_heightScale) * transform.m_scale * transform.m_postScale,
                         quantizationMinimum,
                         quantizationMaximum,
                         shapeGeometry.m_clockwise));
@@ -4178,16 +4225,16 @@ namespace Box3D
 
                     for (const CompoundChildShapeConfiguration& child : shapeGeometry.m_children)
                     {
-                        if (!IsRigidTransform(child.m_localTransform) || !IsValidGeometryScale(child.m_scale) ||
+                        const GeometryTransform childTransform{ child.m_localTransform };
+                        if (!IsRigidTransform(childTransform.m_localTransform) || !IsValidGeometryScale(childTransform.m_scale) ||
                             (!materials.empty() && child.m_materialIndex >= materials.size()))
                         {
                             return AZStd::monostate{};
                         }
                         const SurfaceMaterial material = !materials.empty() ? materials[child.m_materialIndex] : SurfaceMaterial{};
-                        const auto transformPoint = [&transform, &child](const AZ::Vector3& point)
+                        const auto transformPoint = [&transform, &childTransform](const AZ::Vector3& point)
                         {
-                            const AZ::Vector3 childPoint = child.m_localTransform.TransformPoint(child.m_scale * point);
-                            return transform.m_postScale * transform.m_localTransform.TransformPoint(transform.m_scale * childPoint);
+                            return TransformGeometryPoint(transform, TransformGeometryPoint(childTransform, point));
                         };
                         const AZ::Vector3 center = transformPoint(AZ::Vector3::CreateZero());
                         const AZ::Vector3 basisX = transformPoint(AZ::Vector3::CreateAxisX()) - center;

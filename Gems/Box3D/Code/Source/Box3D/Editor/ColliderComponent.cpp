@@ -179,9 +179,8 @@ namespace Box3D::Editor
                         AzToolsFramework::ComponentModeFramework::EntityAndComponentModeBuilders(pair.GetEntityId(), builder));
                     return;
                 }
-                const auto builder =
-                    AzToolsFramework::ComponentModeFramework::CreateComponentModeBuilder<
-                        ColliderComponent, ComponentModes::OffsetComponentMode>(pair);
+                const auto builder = AzToolsFramework::ComponentModeFramework::
+                    CreateComponentModeBuilder<ColliderComponent, ComponentModes::OffsetComponentMode>(pair);
                 AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequestBus::Broadcast(
                     &AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequests::AddComponentModes,
                     AzToolsFramework::ComponentModeFramework::EntityAndComponentModeBuilders(pair.GetEntityId(), builder));
@@ -212,9 +211,8 @@ namespace Box3D::Editor
         debugDisplay.SetColor(AzFramework::ViewportColors::WireColor);
         for (const ShapeConfiguration& shape : m_shapes)
         {
-            const AZ::Matrix3x4 transform = AZ::Matrix3x4::CreateFromTransform(GetWorldTM()) *
-                AZ::Matrix3x4::CreateFromTransform(shape.m_properties.m_localTransform) *
-                AZ::Matrix3x4::CreateScale(shape.m_properties.m_scale);
+            const AZ::Matrix3x4 transform =
+                AZ::Matrix3x4::CreateFromTransform(GetWorldTM()) * AZ::Matrix3x4::CreateFromTransform(shape.m_properties.m_localTransform);
             DrawShapeGeometry(debugDisplay, shape.m_geometry, transform);
         }
     }
@@ -229,9 +227,8 @@ namespace Box3D::Editor
         AZ::Aabb bounds = AZ::Aabb::CreateNull();
         for (const ShapeConfiguration& shape : m_shapes)
         {
-            const AZ::Matrix3x4 transform = AZ::Matrix3x4::CreateFromTransform(GetWorldTM()) *
-                AZ::Matrix3x4::CreateFromTransform(shape.m_properties.m_localTransform) *
-                AZ::Matrix3x4::CreateScale(shape.m_properties.m_scale);
+            const AZ::Matrix3x4 transform =
+                AZ::Matrix3x4::CreateFromTransform(GetWorldTM()) * AZ::Matrix3x4::CreateFromTransform(shape.m_properties.m_localTransform);
             bounds.AddAabb(CalculateShapeBounds(shape.m_geometry, transform));
         }
         return bounds;
@@ -250,7 +247,7 @@ namespace Box3D::Editor
             return 0.0f;
         }
         const ShapeConfiguration& shape = m_shapes[m_activeShapeIndex];
-        const float scale = shape.m_properties.m_scale.GetX();
+        const float scale = shape.m_properties.m_localTransform.GetUniformScale();
         if (const auto* sphere = AZStd::get_if<SphereShapeConfiguration>(&shape.m_geometry))
         {
             return sphere->m_radius * scale;
@@ -273,7 +270,7 @@ namespace Box3D::Editor
             return;
         }
         ShapeConfiguration& shape = m_shapes[m_activeShapeIndex];
-        const float scale = shape.m_properties.m_scale.GetX();
+        const float scale = shape.m_properties.m_localTransform.GetUniformScale();
         if (!AZ::IsFiniteFloat(scale) || scale <= 0.0f)
         {
             return;
@@ -300,7 +297,7 @@ namespace Box3D::Editor
             return 0.0f;
         }
         const ShapeConfiguration& shape = m_shapes[m_activeShapeIndex];
-        const float scale = shape.m_properties.m_scale.GetZ();
+        const float scale = shape.m_properties.m_localTransform.GetUniformScale();
         if (const auto* capsule = AZStd::get_if<CapsuleShapeConfiguration>(&shape.m_geometry))
         {
             return capsule->m_height * scale;
@@ -319,7 +316,7 @@ namespace Box3D::Editor
             return;
         }
         ShapeConfiguration& shape = m_shapes[m_activeShapeIndex];
-        const float scale = shape.m_properties.m_scale.GetZ();
+        const float scale = shape.m_properties.m_localTransform.GetUniformScale();
         if (!AZ::IsFiniteFloat(scale) || scale <= 0.0f)
         {
             return;
@@ -343,7 +340,8 @@ namespace Box3D::Editor
         }
         const ShapeConfiguration& shape = m_shapes[m_activeShapeIndex];
         const auto* box = AZStd::get_if<BoxShapeConfiguration>(&shape.m_geometry);
-        return box != nullptr ? 2.0f * box->m_halfExtents * shape.m_properties.m_scale : AZ::Vector3::CreateZero();
+        return box != nullptr ? 2.0f * box->m_halfExtents * shape.m_properties.m_localTransform.GetUniformScale()
+                              : AZ::Vector3::CreateZero();
     }
 
     void ColliderComponent::SetDimensions(const AZ::Vector3& dimensions)
@@ -354,11 +352,12 @@ namespace Box3D::Editor
         }
         ShapeConfiguration& shape = m_shapes[m_activeShapeIndex];
         auto* box = AZStd::get_if<BoxShapeConfiguration>(&shape.m_geometry);
-        if (box == nullptr || !shape.m_properties.m_scale.IsFinite() || shape.m_properties.m_scale.GetMinElement() <= 0.0f)
+        const float scale = shape.m_properties.m_localTransform.GetUniformScale();
+        if (box == nullptr || !AZ::IsFiniteFloat(scale) || scale <= 0.0f)
         {
             return;
         }
-        box->m_halfExtents = 0.5f * dimensions / shape.m_properties.m_scale;
+        box->m_halfExtents = 0.5f * dimensions / scale;
         ConfigurationChanged();
     }
 

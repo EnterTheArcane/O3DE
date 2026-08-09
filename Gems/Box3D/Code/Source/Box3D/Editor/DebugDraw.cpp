@@ -56,7 +56,10 @@ namespace Box3D::Editor
             const auto point = [&heightfield](AZ::u32 column, AZ::u32 row)
             {
                 const float height = heightfield.m_samples[row * heightfield.m_columnCount + column];
-                return heightfield.m_scale * AZ::Vector3(static_cast<float>(column), static_cast<float>(row), height);
+                return AZ::Vector3(
+                    heightfield.m_sampleSpacing.GetX() * static_cast<float>(column),
+                    heightfield.m_sampleSpacing.GetY() * static_cast<float>(row),
+                    heightfield.m_heightScale * height);
             };
             for (AZ::u32 row = 0; row < heightfield.m_rowCount; ++row)
             {
@@ -94,8 +97,7 @@ namespace Box3D::Editor
                     {
                         for (const CompoundChildShapeConfiguration& child : typedGeometry.m_children)
                         {
-                            const AZ::Matrix3x4 childTransform = transform * AZ::Matrix3x4::CreateFromTransform(child.m_localTransform) *
-                                AZ::Matrix3x4::CreateScale(child.m_scale);
+                            const AZ::Matrix3x4 childTransform = transform * AZ::Matrix3x4::CreateFromTransform(child.m_localTransform);
                             DrawGeometry(debugDisplay, child.m_geometry, childTransform);
                         }
                     }
@@ -196,8 +198,10 @@ namespace Box3D::Editor
                         {
                             const AZ::u32 column = aznumeric_cast<AZ::u32>(sampleIndex % typedGeometry.m_columnCount);
                             const AZ::u32 row = aznumeric_cast<AZ::u32>(sampleIndex / typedGeometry.m_columnCount);
-                            const AZ::Vector3 point = typedGeometry.m_scale *
-                                AZ::Vector3(static_cast<float>(column), static_cast<float>(row), typedGeometry.m_samples[sampleIndex]);
+                            const AZ::Vector3 point(
+                                typedGeometry.m_sampleSpacing.GetX() * static_cast<float>(column),
+                                typedGeometry.m_sampleSpacing.GetY() * static_cast<float>(row),
+                                typedGeometry.m_heightScale * typedGeometry.m_samples[sampleIndex]);
                             bounds.AddPoint(transform.TransformPoint(point));
                         }
                     }
@@ -205,8 +209,7 @@ namespace Box3D::Editor
                     {
                         for (const CompoundChildShapeConfiguration& child : typedGeometry.m_children)
                         {
-                            const AZ::Matrix3x4 childTransform = transform * AZ::Matrix3x4::CreateFromTransform(child.m_localTransform) *
-                                AZ::Matrix3x4::CreateScale(child.m_scale);
+                            const AZ::Matrix3x4 childTransform = transform * AZ::Matrix3x4::CreateFromTransform(child.m_localTransform);
                             AddGeometryBounds(bounds, child.m_geometry, childTransform);
                         }
                     }

@@ -11,7 +11,7 @@
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Name/Name.h>
-#include <AzCore/RTTI/RTTI.h>
+#include <AzCore/RTTI/TypeInfo.h>
 
 #include <Box3D/Collision.h>
 #include <Box3D/Handle.h>
@@ -27,7 +27,7 @@ namespace Box3D
     //! Capsule mover geometry, filtering, movement limits, and interaction behavior.
     struct CharacterConfiguration final
     {
-        AZ_RTTI(CharacterConfiguration, CharacterConfigurationTypeId);
+        AZ_TYPE_INFO(CharacterConfiguration, CharacterConfigurationTypeId);
 
         static void Reflect(AZ::ReflectContext* context);
         static constexpr AZ::u32 MaximumIterationCount = 64;

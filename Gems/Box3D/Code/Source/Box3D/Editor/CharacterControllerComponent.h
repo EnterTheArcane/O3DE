@@ -31,8 +31,7 @@ namespace Box3D::Editor
         , private AzToolsFramework::ShapeManipulatorRequestBus::Handler
     {
     public:
-        AZ_EDITOR_COMPONENT(
-            CharacterControllerComponent, CharacterControllerComponentTypeId, AzToolsFramework::Components::EditorComponentBase);
+        AZ_EDITOR_COMPONENT(CharacterControllerComponent, CharacterControllerComponentTypeId, AzToolsFramework::Components::EditorComponentBase);
 
         static void Reflect(AZ::ReflectContext* context);
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);

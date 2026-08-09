@@ -13,7 +13,7 @@
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Name/Name.h>
-#include <AzCore/RTTI/RTTI.h>
+#include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/std/limits.h>
 
 namespace AZ
@@ -31,7 +31,7 @@ namespace Box3D
     struct SystemConfiguration final
     {
         AZ_CLASS_ALLOCATOR_DECL;
-        AZ_RTTI(SystemConfiguration, SystemConfigurationTypeId);
+        AZ_TYPE_INFO(SystemConfiguration, SystemConfigurationTypeId);
 
         static void Reflect(AZ::ReflectContext* context);
         static constexpr AZ::u32 DefaultWorkerCount = 4;
