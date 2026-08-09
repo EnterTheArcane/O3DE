@@ -32,7 +32,7 @@ namespace Box3D::Editor
             AZ_CLASS_ALLOCATOR(VelocityComponentMode, AZ::SystemAllocator);
             AZ_RTTI(VelocityComponentMode, "{EC42DDBB-3C3F-451B-8B9A-EFE72CCB8D90}", AzToolsFramework::BaseShapeComponentMode);
 
-            VelocityComponentMode(const AZ::EntityComponentIdPair& entityComponentIdPair, AZ::Uuid componentType)
+            VelocityComponentMode(const AZ::EntityComponentIdPair& entityComponentIdPair, const AZ::Uuid componentType)
                 : BaseShapeComponentMode(entityComponentIdPair, componentType)
             {
                 auto velocityEdit = AZStd::make_unique<AzToolsFramework::ShapeTranslationOffsetViewportEdit>();
@@ -185,7 +185,7 @@ namespace Box3D::Editor
         return m_configuration.m_radius;
     }
 
-    void ExplosionComponent::SetRadius(float radius)
+    void ExplosionComponent::SetRadius(const float radius)
     {
         if (!AZ::IsFiniteFloat(radius) || radius <= 0.0f)
         {

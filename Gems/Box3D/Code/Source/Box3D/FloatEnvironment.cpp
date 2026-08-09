@@ -47,7 +47,7 @@ namespace Box3D
             return _mm_getcsr();
         }
 
-        void WriteFloatControl(AZ::u64 control)
+        void WriteFloatControl(const AZ::u64 control)
         {
             _mm_setcsr(static_cast<AZ::u32>(control));
         }

@@ -42,7 +42,7 @@ namespace Box3D
         constexpr AZ::u64 DigestOffset = 14695981039346656037ULL;
         constexpr AZ::u64 DigestPrime = 1099511628211ULL;
 
-        void ReportProfilerDataPoints(WorldId worldId)
+        void ReportProfilerDataPoints(const WorldId worldId)
         {
 #if !defined(AZ_RELEASE_BUILD)
             if (!box3d_profileSimulationDatapoints)
@@ -76,7 +76,7 @@ namespace Box3D
 #endif
         }
 
-        void* EncodeSlotIndex(AZ::u32 index)
+        void* EncodeSlotIndex(const AZ::u32 index)
         {
             return reinterpret_cast<void*>(static_cast<uintptr_t>(index) + 1);
         }
@@ -92,7 +92,7 @@ namespace Box3D
             return true;
         }
 
-        NativeBodyType ToNativeBodyType(BodyType bodyType)
+        NativeBodyType ToNativeBodyType(const BodyType bodyType)
         {
             switch (bodyType)
             {
@@ -106,7 +106,7 @@ namespace Box3D
             }
         }
 
-        BodyType FromNativeBodyType(NativeBodyType bodyType)
+        BodyType FromNativeBodyType(const NativeBodyType bodyType)
         {
             switch (bodyType)
             {
@@ -120,7 +120,7 @@ namespace Box3D
             }
         }
 
-        QueryBodyTypes GetQueryBodyType(NativeBodyType bodyType)
+        QueryBodyTypes GetQueryBodyType(const NativeBodyType bodyType)
         {
             switch (bodyType)
             {
@@ -135,7 +135,7 @@ namespace Box3D
             }
         }
 
-        bool IncludesBodyType(QueryBodyTypes bodyTypes, NativeBodyType bodyType)
+        bool IncludesBodyType(const QueryBodyTypes bodyTypes, const NativeBodyType bodyType)
         {
             return (bodyTypes & GetQueryBodyType(bodyType)) != QueryBodyTypes::None;
         }
@@ -157,7 +157,7 @@ namespace Box3D
             return AZ::IsClose(transform.GetUniformScale(), 1.0f, AZ::Constants::Tolerance);
         }
 
-        bool IsValidBodyType(BodyType bodyType)
+        bool IsValidBodyType(const BodyType bodyType)
         {
             switch (bodyType)
             {
@@ -169,7 +169,7 @@ namespace Box3D
             return false;
         }
 
-        bool IsNonNegative(float value)
+        bool IsNonNegative(const float value)
         {
             return AZ::IsFiniteFloat(value) && value >= 0.0f;
         }
@@ -298,7 +298,7 @@ namespace Box3D
                 configuration);
         }
 
-        void HashU32(AZ::u64& digest, AZ::u32 value)
+        void HashU32(AZ::u64& digest, const AZ::u32 value)
         {
             for (AZ::u32 byteIndex = 0; byteIndex < sizeof(value); ++byteIndex)
             {
@@ -307,7 +307,7 @@ namespace Box3D
             }
         }
 
-        void HashFloat(AZ::u64& digest, float value)
+        void HashFloat(AZ::u64& digest, const float value)
         {
             HashU32(digest, std::bit_cast<AZ::u32>(value));
         }
@@ -460,8 +460,8 @@ namespace Box3D
 
     World::World(
         System& system,
-        AZ::u32 worldIndex,
-        WorldHandle worldHandle,
+        const AZ::u32 worldIndex,
+        const WorldHandle worldHandle,
         const WorldConfiguration& configuration,
         const SystemConfiguration& systemConfiguration,
         Internal::GenerationSource& bodyGenerations,
@@ -564,7 +564,7 @@ namespace Box3D
         Box3D::ReconfigureWorld(m_nativeId, nativeConfiguration);
     }
 
-    bool World::SetEnabled(bool enabled)
+    bool World::SetEnabled(const bool enabled)
     {
         AZStd::lock_guard lock(m_mutex);
         m_configuration.m_enabled = enabled;
@@ -600,7 +600,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::Step(float fixedTimeStep, AZ::u32 subStepCount)
+    bool World::Step(const float fixedTimeStep, const AZ::u32 subStepCount)
     {
         AZStd::lock_guard lock(m_mutex);
         if (!m_configuration.m_enabled || !AZ::IsFiniteFloat(fixedTimeStep) || fixedTimeStep <= 0.0f || subStepCount == 0)
@@ -624,7 +624,7 @@ namespace Box3D
         return true;
     }
 
-    void World::StepAutomatically(float deltaTime, AZ::u32 subStepCount)
+    void World::StepAutomatically(const float deltaTime, const AZ::u32 subStepCount)
     {
         AZStd::lock_guard lock(m_mutex);
         if (!m_configuration.m_autoSimulate || !m_configuration.m_enabled || !AZ::IsFiniteFloat(deltaTime) || deltaTime <= 0.0f ||
@@ -777,7 +777,7 @@ namespace Box3D
         return Internal::MakeWorldMemberHandle<BodyHandle>(m_worldIndex, bodyIndex, slot.m_generation);
     }
 
-    bool World::DestroyBody(BodyHandle bodyHandle)
+    bool World::DestroyBody(const BodyHandle bodyHandle)
     {
         AZStd::lock_guard lock(m_mutex);
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::DestroyBody");
@@ -833,7 +833,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::GetBodyState(BodyHandle bodyHandle, BodyState& state) const
+    bool World::GetBodyState(const BodyHandle bodyHandle, BodyState& state) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
@@ -854,7 +854,7 @@ namespace Box3D
         return true;
     }
 
-    AZ::Name World::GetBodyName(BodyHandle bodyHandle) const
+    AZ::Name World::GetBodyName(const BodyHandle bodyHandle) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
@@ -862,7 +862,7 @@ namespace Box3D
         return slot != nullptr && Internal::DecodeWorldMemberHandle(bodyHandle, parts) ? m_bodyNames[parts.m_index] : AZ::Name{};
     }
 
-    bool World::SetBodyName(BodyHandle bodyHandle, AZ::Name name)
+    bool World::SetBodyName(const BodyHandle bodyHandle, AZ::Name name)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -876,7 +876,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::GetBodyProperties(BodyHandle bodyHandle, BodyProperties& properties) const
+    bool World::GetBodyProperties(const BodyHandle bodyHandle, BodyProperties& properties) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
@@ -899,7 +899,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::SetBodyProperties(BodyHandle bodyHandle, const BodyProperties& properties)
+    bool World::SetBodyProperties(const BodyHandle bodyHandle, const BodyProperties& properties)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -948,7 +948,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::SetBodyAwake(BodyHandle bodyHandle, bool awake)
+    bool World::SetBodyAwake(const BodyHandle bodyHandle, const bool awake)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -960,7 +960,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::SetBodyEnabled(BodyHandle bodyHandle, bool enabled)
+    bool World::SetBodyEnabled(const BodyHandle bodyHandle, const bool enabled)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -972,7 +972,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::SetBodyHitEventsEnabled(BodyHandle bodyHandle, bool enabled)
+    bool World::SetBodyHitEventsEnabled(const BodyHandle bodyHandle, const bool enabled)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -984,7 +984,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::SetBodyTransform(BodyHandle bodyHandle, const AZ::Transform& transform)
+    bool World::SetBodyTransform(const BodyHandle bodyHandle, const AZ::Transform& transform)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -996,7 +996,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::GetBodyLocalPoint(BodyHandle bodyHandle, const AZ::Vector3& worldPoint, AZ::Vector3& localPoint) const
+    bool World::GetBodyLocalPoint(const BodyHandle bodyHandle, const AZ::Vector3& worldPoint, AZ::Vector3& localPoint) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1008,7 +1008,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::GetBodyWorldPoint(BodyHandle bodyHandle, const AZ::Vector3& localPoint, AZ::Vector3& worldPoint) const
+    bool World::GetBodyWorldPoint(const BodyHandle bodyHandle, const AZ::Vector3& localPoint, AZ::Vector3& worldPoint) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1020,7 +1020,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::GetBodyLocalVector(BodyHandle bodyHandle, const AZ::Vector3& worldVector, AZ::Vector3& localVector) const
+    bool World::GetBodyLocalVector(const BodyHandle bodyHandle, const AZ::Vector3& worldVector, AZ::Vector3& localVector) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1032,7 +1032,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::GetBodyWorldVector(BodyHandle bodyHandle, const AZ::Vector3& localVector, AZ::Vector3& worldVector) const
+    bool World::GetBodyWorldVector(const BodyHandle bodyHandle, const AZ::Vector3& localVector, AZ::Vector3& worldVector) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1044,7 +1044,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::SetLinearVelocity(BodyHandle bodyHandle, const AZ::Vector3& velocity)
+    bool World::SetLinearVelocity(const BodyHandle bodyHandle, const AZ::Vector3& velocity)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1056,7 +1056,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::SetAngularVelocity(BodyHandle bodyHandle, const AZ::Vector3& velocity)
+    bool World::SetAngularVelocity(const BodyHandle bodyHandle, const AZ::Vector3& velocity)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1068,7 +1068,7 @@ namespace Box3D
         return true;
     }
 
-    AZ::Vector3 World::GetLinearVelocityAtLocalPoint(BodyHandle bodyHandle, const AZ::Vector3& localPoint) const
+    AZ::Vector3 World::GetLinearVelocityAtLocalPoint(const BodyHandle bodyHandle, const AZ::Vector3& localPoint) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1076,7 +1076,7 @@ namespace Box3D
                                                         : AZ::Vector3::CreateZero();
     }
 
-    AZ::Vector3 World::GetLinearVelocityAtWorldPoint(BodyHandle bodyHandle, const AZ::Vector3& worldPoint) const
+    AZ::Vector3 World::GetLinearVelocityAtWorldPoint(const BodyHandle bodyHandle, const AZ::Vector3& worldPoint) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1084,7 +1084,7 @@ namespace Box3D
                                                         : AZ::Vector3::CreateZero();
     }
 
-    bool World::SetKinematicTarget(BodyHandle bodyHandle, const AZ::Transform& transform, float fixedTimeStep, bool wake)
+    bool World::SetKinematicTarget(const BodyHandle bodyHandle, const AZ::Transform& transform, const float fixedTimeStep, const bool wake)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1097,7 +1097,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::ApplyLinearImpulse(BodyHandle bodyHandle, const AZ::Vector3& impulse, bool wake)
+    bool World::ApplyLinearImpulse(const BodyHandle bodyHandle, const AZ::Vector3& impulse, const bool wake)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1109,7 +1109,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::ApplyLinearImpulseAtWorldPoint(BodyHandle bodyHandle, const AZ::Vector3& impulse, const AZ::Vector3& worldPoint, bool wake)
+    bool World::ApplyLinearImpulseAtWorldPoint(const BodyHandle bodyHandle, const AZ::Vector3& impulse, const AZ::Vector3& worldPoint, const bool wake)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1121,7 +1121,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::ApplyAngularImpulse(BodyHandle bodyHandle, const AZ::Vector3& impulse, bool wake)
+    bool World::ApplyAngularImpulse(const BodyHandle bodyHandle, const AZ::Vector3& impulse, const bool wake)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1133,7 +1133,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::ApplyForce(BodyHandle bodyHandle, const AZ::Vector3& force, bool wake)
+    bool World::ApplyForce(const BodyHandle bodyHandle, const AZ::Vector3& force, const bool wake)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1145,7 +1145,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::ApplyForceAtWorldPoint(BodyHandle bodyHandle, const AZ::Vector3& force, const AZ::Vector3& worldPoint, bool wake)
+    bool World::ApplyForceAtWorldPoint(const BodyHandle bodyHandle, const AZ::Vector3& force, const AZ::Vector3& worldPoint, const bool wake)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1157,7 +1157,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::ApplyTorque(BodyHandle bodyHandle, const AZ::Vector3& torque, bool wake)
+    bool World::ApplyTorque(const BodyHandle bodyHandle, const AZ::Vector3& torque, const bool wake)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1169,7 +1169,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::GetMassProperties(BodyHandle bodyHandle, MassProperties& properties) const
+    bool World::GetMassProperties(const BodyHandle bodyHandle, MassProperties& properties) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1184,7 +1184,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::SetMassProperties(BodyHandle bodyHandle, const MassProperties& properties)
+    bool World::SetMassProperties(const BodyHandle bodyHandle, const MassProperties& properties)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1197,7 +1197,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::RecomputeMassFromShapes(BodyHandle bodyHandle)
+    bool World::RecomputeMassFromShapes(const BodyHandle bodyHandle)
     {
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBodySlot(bodyHandle);
@@ -1209,35 +1209,35 @@ namespace Box3D
         return true;
     }
 
-    AZ::Matrix3x3 World::GetWorldInverseInertia(BodyHandle bodyHandle) const
+    AZ::Matrix3x3 World::GetWorldInverseInertia(const BodyHandle bodyHandle) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
         return slot != nullptr ? Box3D::GetWorldInverseInertia(slot->m_nativeId) : AZ::Matrix3x3::CreateZero();
     }
 
-    AZ::Vector3 World::GetWorldCenterOfMass(BodyHandle bodyHandle) const
+    AZ::Vector3 World::GetWorldCenterOfMass(const BodyHandle bodyHandle) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
         return slot != nullptr ? Box3D::GetWorldCenterOfMass(slot->m_nativeId) : AZ::Vector3::CreateZero();
     }
 
-    bool World::GetBodyClosestPoint(BodyHandle bodyHandle, const AZ::Vector3& target, AZ::Vector3& position, float& distance) const
+    bool World::GetBodyClosestPoint(const BodyHandle bodyHandle, const AZ::Vector3& target, AZ::Vector3& position, float& distance) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
         return slot != nullptr && target.IsFinite() && Box3D::GetBodyClosestPoint(slot->m_nativeId, target, position, distance);
     }
 
-    AZ::Aabb World::GetBodyAabb(BodyHandle bodyHandle) const
+    AZ::Aabb World::GetBodyAabb(const BodyHandle bodyHandle) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBodySlot(bodyHandle);
         return slot != nullptr ? Box3D::GetBodyAabb(slot->m_nativeId) : AZ::Aabb::CreateNull();
     }
 
-    BufferResult World::GetBodyShapes(BodyHandle bodyHandle, AZStd::span<ShapeHandle> shapeHandles) const
+    BufferResult World::GetBodyShapes(const BodyHandle bodyHandle, AZStd::span<ShapeHandle> shapeHandles) const
     {
         AZStd::lock_guard lock(m_mutex);
         BufferResult result;
@@ -1265,7 +1265,7 @@ namespace Box3D
         return result;
     }
 
-    BufferResult World::GetBodyJoints(BodyHandle bodyHandle, AZStd::span<JointHandle> jointHandles) const
+    BufferResult World::GetBodyJoints(const BodyHandle bodyHandle, AZStd::span<JointHandle> jointHandles) const
     {
         AZStd::lock_guard lock(m_mutex);
         BufferResult result;
@@ -1298,7 +1298,7 @@ namespace Box3D
     }
 
     ContactSnapshotResult World::GetBodyContacts(
-        BodyHandle bodyHandle, AZStd::span<ContactSnapshot> contacts, AZStd::span<ContactPoint> points) const
+        const BodyHandle bodyHandle, const AZStd::span<ContactSnapshot> contacts, const AZStd::span<ContactPoint> points) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* bodySlot = FindBodySlot(bodyHandle);
@@ -1310,7 +1310,7 @@ namespace Box3D
         return CopyContactSnapshots(m_nativeContactSnapshots, contacts, points);
     }
 
-    BufferResult World::GetBodySensorOverlaps(BodyHandle bodyHandle, AZStd::span<SensorOverlap> overlaps) const
+    BufferResult World::GetBodySensorOverlaps(const BodyHandle bodyHandle, const AZStd::span<SensorOverlap> overlaps) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* bodySlot = FindBodySlot(bodyHandle);
@@ -1321,7 +1321,7 @@ namespace Box3D
         return CopySensorOverlaps(m_nativeSensorOverlaps, overlaps);
     }
 
-    bool World::RaycastBody(BodyHandle bodyHandle, const BodyRaycastRequest& request, QueryHit& hit) const
+    bool World::RaycastBody(const BodyHandle bodyHandle, const BodyRaycastRequest& request, QueryHit& hit) const
     {
         AZStd::lock_guard lock(m_mutex);
         hit = {};
@@ -1363,7 +1363,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::ShapeCastBody(BodyHandle bodyHandle, const BodyShapeCastRequest& request, QueryHit& hit) const
+    bool World::ShapeCastBody(const BodyHandle bodyHandle, const BodyShapeCastRequest& request, QueryHit& hit) const
     {
         AZStd::lock_guard lock(m_mutex);
         hit = {};
@@ -1408,7 +1408,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::OverlapBody(BodyHandle bodyHandle, const BodyOverlapRequest& request) const
+    bool World::OverlapBody(const BodyHandle bodyHandle, const BodyOverlapRequest& request) const
     {
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* bodySlot = FindBodySlot(bodyHandle);
@@ -1423,27 +1423,27 @@ namespace Box3D
                    request.m_filter.m_maskBits);
     }
 
-    ShapeHandle World::CreateShape(BodyHandle bodyHandle, const ShapeConfiguration& configuration)
+    ShapeHandle World::CreateShape(const BodyHandle bodyHandle, const ShapeConfiguration& configuration)
     {
         return CreateShape(bodyHandle, configuration, 1.0f);
     }
 
-    ShapeHandle World::CreateShape(BodyHandle bodyHandle, const ShapeConfiguration& configuration, float uniformScale)
+    ShapeHandle World::CreateShape(const BodyHandle bodyHandle, const ShapeConfiguration& configuration, const float uniformScale)
     {
         return AttachShape(bodyHandle, configuration.m_properties, &configuration.m_geometry, nullptr, uniformScale);
     }
 
-    ShapeHandle World::CreateShapeFromCooked(BodyHandle bodyHandle, const NativeGeometry& geometry, const ShapeProperties& properties)
+    ShapeHandle World::CreateShapeFromCooked(const BodyHandle bodyHandle, const NativeGeometry& geometry, const ShapeProperties& properties)
     {
         return AttachShape(bodyHandle, properties, nullptr, &geometry);
     }
 
     ShapeHandle World::AttachShape(
-        BodyHandle bodyHandle,
+        const BodyHandle bodyHandle,
         const ShapeProperties& properties,
         const ShapeGeometry* geometry,
         const NativeGeometry* cookedGeometry,
-        float uniformScale)
+        const float uniformScale)
     {
         AZStd::lock_guard lock(m_mutex);
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::CreateShape");
@@ -1501,7 +1501,7 @@ namespace Box3D
         return shapeHandle;
     }
 
-    bool World::UpdateShape(ShapeHandle shapeHandle, const ShapeConfiguration& configuration)
+    bool World::UpdateShape(const ShapeHandle shapeHandle, const ShapeConfiguration& configuration)
     {
         return UpdateShape(shapeHandle, configuration, 1.0f);
     }
@@ -1618,7 +1618,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::DestroyShape(ShapeHandle shapeHandle, bool updateBodyMass)
+    bool World::DestroyShape(const ShapeHandle shapeHandle, const bool updateBodyMass)
     {
         AZStd::lock_guard lock(m_mutex);
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::DestroyShape");
@@ -1653,7 +1653,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::SetShapeCollisionFilter(ShapeHandle shapeHandle, const CollisionFilter& collisionFilter)
+    bool World::SetShapeCollisionFilter(const ShapeHandle shapeHandle, const CollisionFilter& collisionFilter)
     {
         AZStd::lock_guard lock(m_mutex);
         ShapeSlot* slot = FindShapeSlot(shapeHandle);
@@ -1665,7 +1665,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::SetShapeMaterials(ShapeHandle shapeHandle, AZStd::span<const MaterialHandle> materials)
+    bool World::SetShapeMaterials(const ShapeHandle shapeHandle, AZStd::span<const MaterialHandle> materials)
     {
         AZStd::lock_guard lock(m_mutex);
         Internal::WorldMemberHandleParts parts;
@@ -1711,14 +1711,14 @@ namespace Box3D
         return true;
     }
 
-    AZ::Aabb World::GetShapeAabb(ShapeHandle shapeHandle) const
+    AZ::Aabb World::GetShapeAabb(const ShapeHandle shapeHandle) const
     {
         AZStd::lock_guard lock(m_mutex);
         const ShapeSlot* slot = FindShapeSlot(shapeHandle);
         return slot != nullptr ? Box3D::GetShapeAabb(slot->m_nativeId) : AZ::Aabb::CreateNull();
     }
 
-    bool World::GetShapeState(ShapeHandle shapeHandle, ShapeState& state) const
+    bool World::GetShapeState(const ShapeHandle shapeHandle, ShapeState& state) const
     {
         AZStd::lock_guard lock(m_mutex);
         const ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
@@ -1763,7 +1763,7 @@ namespace Box3D
         return true;
     }
 
-    BufferResult World::GetShapeMaterials(ShapeHandle shapeHandle, AZStd::span<MaterialHandle> materialHandles) const
+    BufferResult World::GetShapeMaterials(const ShapeHandle shapeHandle, AZStd::span<MaterialHandle> materialHandles) const
     {
         AZStd::lock_guard lock(m_mutex);
         Internal::WorldMemberHandleParts parts;
@@ -1782,14 +1782,14 @@ namespace Box3D
         return { materialCount, materials.size() };
     }
 
-    bool World::SetShapeDensity(ShapeHandle shapeHandle, float density, bool updateBodyMass)
+    bool World::SetShapeDensity(const ShapeHandle shapeHandle, const float density, const bool updateBodyMass)
     {
         AZStd::lock_guard lock(m_mutex);
         ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
         return shapeSlot != nullptr && Box3D::SetShapeDensity(shapeSlot->m_nativeId, density, updateBodyMass);
     }
 
-    bool World::SetShapeFriction(ShapeHandle shapeHandle, float friction)
+    bool World::SetShapeFriction(const ShapeHandle shapeHandle, const float friction)
     {
         AZStd::lock_guard lock(m_mutex);
         Internal::WorldMemberHandleParts parts;
@@ -1822,7 +1822,7 @@ namespace Box3D
             shapeHandle, *shapeSlot, resources, materials, state.m_density, shapeSlot->m_explosionScale, resources.m_materials);
     }
 
-    bool World::SetShapeRestitution(ShapeHandle shapeHandle, float restitution)
+    bool World::SetShapeRestitution(const ShapeHandle shapeHandle, const float restitution)
     {
         AZStd::lock_guard lock(m_mutex);
         Internal::WorldMemberHandleParts parts;
@@ -1856,7 +1856,7 @@ namespace Box3D
     }
 
     bool World::SetShapeEventSubscriptions(
-        ShapeHandle shapeHandle, bool sensorEvents, bool contactEvents, bool hitEvents, bool preSolveEvents)
+        const ShapeHandle shapeHandle, const bool sensorEvents, const bool contactEvents, const bool hitEvents, const bool preSolveEvents)
     {
         AZStd::lock_guard lock(m_mutex);
         ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
@@ -1864,7 +1864,7 @@ namespace Box3D
             Box3D::SetShapeEventSubscriptions(shapeSlot->m_nativeId, sensorEvents, contactEvents, hitEvents, preSolveEvents);
     }
 
-    bool World::GetShapeMassProperties(ShapeHandle shapeHandle, MassProperties& properties) const
+    bool World::GetShapeMassProperties(const ShapeHandle shapeHandle, MassProperties& properties) const
     {
         AZStd::lock_guard lock(m_mutex);
         const ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
@@ -1877,7 +1877,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::GetShapeClosestPoint(ShapeHandle shapeHandle, const AZ::Vector3& target, AZ::Vector3& position, float& distance) const
+    bool World::GetShapeClosestPoint(const ShapeHandle shapeHandle, const AZ::Vector3& target, AZ::Vector3& position, float& distance) const
     {
         AZStd::lock_guard lock(m_mutex);
         const ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
@@ -1890,7 +1890,7 @@ namespace Box3D
     }
 
     bool World::RaycastShape(
-        ShapeHandle shapeHandle, const AZ::Vector3& start, const AZ::Vector3& direction, float distance, QueryHit& hit) const
+        const ShapeHandle shapeHandle, const AZ::Vector3& start, const AZ::Vector3& direction, const float distance, QueryHit& hit) const
     {
         AZStd::lock_guard lock(m_mutex);
         Internal::WorldMemberHandleParts parts;
@@ -1931,7 +1931,7 @@ namespace Box3D
     }
 
     ContactSnapshotResult World::GetShapeContacts(
-        ShapeHandle shapeHandle, AZStd::span<ContactSnapshot> contacts, AZStd::span<ContactPoint> points) const
+        const ShapeHandle shapeHandle, const AZStd::span<ContactSnapshot> contacts, const AZStd::span<ContactPoint> points) const
     {
         AZStd::lock_guard lock(m_mutex);
         const ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
@@ -1943,7 +1943,7 @@ namespace Box3D
         return CopyContactSnapshots(m_nativeContactSnapshots, contacts, points);
     }
 
-    BufferResult World::GetShapeSensorOverlaps(ShapeHandle shapeHandle, AZStd::span<SensorOverlap> overlaps) const
+    BufferResult World::GetShapeSensorOverlaps(const ShapeHandle shapeHandle, const AZStd::span<SensorOverlap> overlaps) const
     {
         AZStd::lock_guard lock(m_mutex);
         const ShapeSlot* shapeSlot = FindShapeSlot(shapeHandle);
@@ -1954,7 +1954,7 @@ namespace Box3D
         return CopySensorOverlaps(m_nativeSensorOverlaps, overlaps);
     }
 
-    bool World::UsesMaterial(MaterialHandle materialHandle) const
+    bool World::UsesMaterial(const MaterialHandle materialHandle) const
     {
         AZStd::lock_guard lock(m_mutex);
         for (size_t shapeIndex = 0; shapeIndex < m_shapeSlots.size(); ++shapeIndex)
@@ -1971,7 +1971,7 @@ namespace Box3D
         return false;
     }
 
-    bool World::RefreshMaterial(MaterialHandle materialHandle)
+    bool World::RefreshMaterial(const MaterialHandle materialHandle)
     {
         AZStd::lock_guard lock(m_mutex);
         for (AZ::u32 shapeIndex = 0; shapeIndex < m_shapeSlots.size(); ++shapeIndex)
@@ -2027,7 +2027,7 @@ namespace Box3D
     }
 
     bool World::BuildNativeJointConfiguration(
-        AZ::u32 jointIndex, const JointConfiguration& configuration, NativeJointConfiguration& nativeConfiguration) const
+        const AZ::u32 jointIndex, const JointConfiguration& configuration, NativeJointConfiguration& nativeConfiguration) const
     {
         if (!IsValidJointConfiguration(configuration))
         {
@@ -2199,7 +2199,7 @@ namespace Box3D
         return Internal::MakeWorldMemberHandle<JointHandle>(m_worldIndex, jointIndex, slot.m_generation);
     }
 
-    bool World::UpdateJoint(JointHandle jointHandle, const JointConfiguration& configuration)
+    bool World::UpdateJoint(const JointHandle jointHandle, const JointConfiguration& configuration)
     {
         AZStd::lock_guard lock(m_mutex);
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::UpdateJoint");
@@ -2242,7 +2242,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::SetJointEntityId(JointHandle jointHandle, AZ::EntityId entityId)
+    bool World::SetJointEntityId(const JointHandle jointHandle, const AZ::EntityId entityId)
     {
         AZStd::lock_guard lock(m_mutex);
         JointSlot* slot = FindJointSlot(jointHandle);
@@ -2256,7 +2256,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::DestroyJoint(JointHandle jointHandle, bool wakeAttachedBodies)
+    bool World::DestroyJoint(const JointHandle jointHandle, const bool wakeAttachedBodies)
     {
         AZStd::lock_guard lock(m_mutex);
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::DestroyJoint");
@@ -2274,7 +2274,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::WakeJointBodies(JointHandle jointHandle)
+    bool World::WakeJointBodies(const JointHandle jointHandle)
     {
         AZStd::lock_guard lock(m_mutex);
         JointSlot* slot = FindJointSlot(jointHandle);
@@ -2286,7 +2286,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::GetJointConfiguration(JointHandle jointHandle, JointConfiguration& configuration) const
+    bool World::GetJointConfiguration(const JointHandle jointHandle, JointConfiguration& configuration) const
     {
         AZStd::lock_guard lock(m_mutex);
         Internal::WorldMemberHandleParts parts;
@@ -2299,7 +2299,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::GetJointMeasurements(JointHandle jointHandle, JointMeasurements& measurements) const
+    bool World::GetJointMeasurements(const JointHandle jointHandle, JointMeasurements& measurements) const
     {
         AZStd::lock_guard lock(m_mutex);
         const JointSlot* slot = FindJointSlot(jointHandle);
@@ -2371,7 +2371,7 @@ namespace Box3D
         return Internal::MakeWorldMemberHandle<CharacterHandle>(m_worldIndex, characterIndex, slot.m_generation);
     }
 
-    bool World::UpdateCharacter(CharacterHandle characterHandle, const CharacterConfiguration& configuration)
+    bool World::UpdateCharacter(const CharacterHandle characterHandle, const CharacterConfiguration& configuration)
     {
         AZStd::lock_guard lock(m_mutex);
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::UpdateCharacter");
@@ -2396,7 +2396,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::DestroyCharacter(CharacterHandle characterHandle)
+    bool World::DestroyCharacter(const CharacterHandle characterHandle)
     {
         AZStd::lock_guard lock(m_mutex);
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::DestroyCharacter");
@@ -2412,7 +2412,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::MoveCharacter(CharacterHandle characterHandle, const AZ::Vector3& velocity, float fixedTimeStep)
+    bool World::MoveCharacter(const CharacterHandle characterHandle, const AZ::Vector3& velocity, const float fixedTimeStep)
     {
         AZStd::lock_guard lock(m_mutex);
         AZ::u32 characterIndex = 0;
@@ -2589,7 +2589,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::ApplyPendingCharacterMoves(float fixedTimeStep, bool consume)
+    bool World::ApplyPendingCharacterMoves(const float fixedTimeStep, const bool consume)
     {
         bool movedAllCharacters = true;
         for (size_t characterIndex = 0; characterIndex < m_characterSlots.size(); ++characterIndex)
@@ -2614,7 +2614,7 @@ namespace Box3D
         return movedAllCharacters;
     }
 
-    bool World::GetCharacterState(CharacterHandle characterHandle, CharacterState& state) const
+    bool World::GetCharacterState(const CharacterHandle characterHandle, CharacterState& state) const
     {
         AZStd::lock_guard lock(m_mutex);
         AZ::u32 characterIndex = 0;
@@ -2627,7 +2627,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::GetCharacterConfiguration(CharacterHandle characterHandle, CharacterConfiguration& configuration) const
+    bool World::GetCharacterConfiguration(const CharacterHandle characterHandle, CharacterConfiguration& configuration) const
     {
         AZStd::lock_guard lock(m_mutex);
         AZ::u32 characterIndex = 0;
@@ -2682,7 +2682,7 @@ namespace Box3D
         }
 
         const size_t requestsPerJob = (requestCount + jobCount - 1) / jobCount;
-        const auto processRequests = [this, requests, results](size_t beginIndex, size_t endIndex)
+        const auto processRequests = [this, requests, results](const size_t beginIndex, const size_t endIndex)
         {
             DeterministicFloatScope floatScope;
             for (size_t requestIndex = beginIndex; requestIndex < endIndex; ++requestIndex)
@@ -3116,12 +3116,12 @@ namespace Box3D
         return { context.m_hitCount, context.m_requiredHitCount };
     }
 
-    QueryResult World::Overlap(const OverlapRequest& request, AZStd::span<OverlapHit> hits) const
+    QueryResult World::Overlap(const OverlapRequest& request, const AZStd::span<OverlapHit> hits) const
     {
         return OverlapImpl(request, hits);
     }
 
-    QueryResult World::Overlap(const OverlapRequest& request, AZStd::span<QueryHit> hits) const
+    QueryResult World::Overlap(const OverlapRequest& request, const AZStd::span<QueryHit> hits) const
     {
         return OverlapImpl(request, hits);
     }
@@ -3214,12 +3214,12 @@ namespace Box3D
         return { context.m_hitCount, context.m_requiredHitCount };
     }
 
-    QueryResult World::OverlapAabb(const AabbOverlapRequest& request, AZStd::span<OverlapHit> hits) const
+    QueryResult World::OverlapAabb(const AabbOverlapRequest& request, const AZStd::span<OverlapHit> hits) const
     {
         return OverlapAabbImpl(request, hits);
     }
 
-    QueryResult World::OverlapAabb(const AabbOverlapRequest& request, AZStd::span<QueryHit> hits) const
+    QueryResult World::OverlapAabb(const AabbOverlapRequest& request, const AZStd::span<QueryHit> hits) const
     {
         return OverlapAabbImpl(request, hits);
     }
@@ -3230,7 +3230,7 @@ namespace Box3D
         return { m_bodyMoveEvents, m_sensorEvents, m_contactEvents, m_contactPoints, m_contactHitEvents, m_jointEvents };
     }
 
-    bool World::SetContactCallbacks(CollisionFilterCallback collisionFilterCallback, PreSolveCallback preSolveCallback, void* userData)
+    bool World::SetContactCallbacks(const CollisionFilterCallback collisionFilterCallback, const PreSolveCallback preSolveCallback, void* userData)
     {
         AZStd::lock_guard lock(m_mutex);
         if (m_recording != nullptr && (collisionFilterCallback != nullptr || preSolveCallback != nullptr))
@@ -3244,7 +3244,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::GetStatistics(StatisticsFlags flags, WorldStatistics& statistics) const
+    bool World::GetStatistics(const StatisticsFlags flags, WorldStatistics& statistics) const
     {
         AZStd::lock_guard lock(m_mutex);
         const bool success = Box3D::GetStatistics(m_nativeId, flags, statistics);
@@ -3252,7 +3252,7 @@ namespace Box3D
         return success;
     }
 
-    bool World::StartRecording(size_t initialCapacityBytes)
+    bool World::StartRecording(const size_t initialCapacityBytes)
     {
         AZStd::lock_guard lock(m_mutex);
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::StartRecording");
@@ -3311,7 +3311,7 @@ namespace Box3D
             configuration.m_impulsePerArea);
     }
 
-    bool World::ApplyWind(BodyHandle bodyHandle, const WindConfiguration& configuration)
+    bool World::ApplyWind(const BodyHandle bodyHandle, const WindConfiguration& configuration)
     {
         AZStd::lock_guard lock(m_mutex);
         AZ_PROFILE_SCOPE(Physics, "Box3D::World::ApplyWind");
@@ -3338,12 +3338,12 @@ namespace Box3D
         return applied;
     }
 
-    World::BodySlot* World::FindBodySlot(BodyHandle bodyHandle)
+    World::BodySlot* World::FindBodySlot(const BodyHandle bodyHandle)
     {
         return const_cast<BodySlot*>(static_cast<const World&>(*this).FindBodySlot(bodyHandle));
     }
 
-    const World::BodySlot* World::FindBodySlot(BodyHandle bodyHandle) const
+    const World::BodySlot* World::FindBodySlot(const BodyHandle bodyHandle) const
     {
         Internal::WorldMemberHandleParts parts;
         if (!Internal::DecodeWorldMemberHandle(bodyHandle, parts) || parts.m_worldIndex != m_worldIndex ||
@@ -3355,12 +3355,12 @@ namespace Box3D
         return slot.m_generation == parts.m_generation && Box3D::IsValid(slot.m_nativeId) ? &slot : nullptr;
     }
 
-    World::ShapeSlot* World::FindShapeSlot(ShapeHandle shapeHandle)
+    World::ShapeSlot* World::FindShapeSlot(const ShapeHandle shapeHandle)
     {
         return const_cast<ShapeSlot*>(static_cast<const World&>(*this).FindShapeSlot(shapeHandle));
     }
 
-    const World::ShapeSlot* World::FindShapeSlot(ShapeHandle shapeHandle) const
+    const World::ShapeSlot* World::FindShapeSlot(const ShapeHandle shapeHandle) const
     {
         Internal::WorldMemberHandleParts parts;
         if (!Internal::DecodeWorldMemberHandle(shapeHandle, parts) || parts.m_worldIndex != m_worldIndex ||
@@ -3372,7 +3372,7 @@ namespace Box3D
         return slot.m_generation == parts.m_generation && Box3D::IsValid(slot.m_nativeId) ? &slot : nullptr;
     }
 
-    bool World::ResolveShape(void* userData, ShapeId nativeId, ResolvedShape& resolvedShape) const
+    bool World::ResolveShape(void* userData, const ShapeId nativeId, ResolvedShape& resolvedShape) const
     {
         AZ::u32 shapeIndex = 0;
         if (!DecodeSlotIndex(userData, shapeIndex) || shapeIndex >= m_shapeSlots.size())
@@ -3389,7 +3389,7 @@ namespace Box3D
         return true;
     }
 
-    bool World::ResolveShape(ShapeId nativeId, ResolvedShape& resolvedShape) const
+    bool World::ResolveShape(const ShapeId nativeId, ResolvedShape& resolvedShape) const
     {
         const AZ::u32 nativeIndex = nativeId.GetIndex();
         if (nativeIndex >= m_nativeShapeSlots.size())
@@ -3405,7 +3405,7 @@ namespace Box3D
         return ResolveShape(EncodeSlotIndex(shapeIndex), nativeId, resolvedShape);
     }
 
-    void World::RegisterShape(ShapeId nativeId, AZ::u32 shapeIndex)
+    void World::RegisterShape(const ShapeId nativeId, const AZ::u32 shapeIndex)
     {
         const AZ::u32 nativeIndex = nativeId.GetIndex();
         if (nativeIndex == AZStd::numeric_limits<AZ::u32>::max())
@@ -3419,7 +3419,7 @@ namespace Box3D
         m_nativeShapeSlots[nativeIndex] = shapeIndex;
     }
 
-    void World::UnregisterShape(ShapeId nativeId)
+    void World::UnregisterShape(const ShapeId nativeId)
     {
         const AZ::u32 nativeIndex = nativeId.GetIndex();
         if (nativeIndex >= m_nativeShapeSlots.size())
@@ -3434,12 +3434,12 @@ namespace Box3D
         }
     }
 
-    World::JointSlot* World::FindJointSlot(JointHandle jointHandle)
+    World::JointSlot* World::FindJointSlot(const JointHandle jointHandle)
     {
         return const_cast<JointSlot*>(static_cast<const World&>(*this).FindJointSlot(jointHandle));
     }
 
-    const World::JointSlot* World::FindJointSlot(JointHandle jointHandle) const
+    const World::JointSlot* World::FindJointSlot(const JointHandle jointHandle) const
     {
         Internal::WorldMemberHandleParts parts;
         if (!Internal::DecodeWorldMemberHandle(jointHandle, parts) || parts.m_worldIndex != m_worldIndex ||
@@ -3451,12 +3451,12 @@ namespace Box3D
         return slot.m_generation == parts.m_generation && Box3D::IsValid(slot.m_nativeId) ? &slot : nullptr;
     }
 
-    World::CharacterSlot* World::FindCharacterSlot(CharacterHandle characterHandle, AZ::u32* characterIndex)
+    World::CharacterSlot* World::FindCharacterSlot(const CharacterHandle characterHandle, AZ::u32* characterIndex)
     {
         return const_cast<CharacterSlot*>(static_cast<const World&>(*this).FindCharacterSlot(characterHandle, characterIndex));
     }
 
-    const World::CharacterSlot* World::FindCharacterSlot(CharacterHandle characterHandle, AZ::u32* characterIndex) const
+    const World::CharacterSlot* World::FindCharacterSlot(const CharacterHandle characterHandle, AZ::u32* characterIndex) const
     {
         Internal::WorldMemberHandleParts parts;
         if (!Internal::DecodeWorldMemberHandle(characterHandle, parts) || parts.m_worldIndex != m_worldIndex ||
@@ -3542,12 +3542,12 @@ namespace Box3D
     }
 
     bool World::RecreateShapeWithMaterials(
-        ShapeHandle shapeHandle,
+        const ShapeHandle shapeHandle,
         ShapeSlot& shapeSlot,
         ShapeResources& resources,
-        AZStd::span<const SurfaceMaterial> materials,
-        float density,
-        float explosionScale,
+        const AZStd::span<const SurfaceMaterial> materials,
+        const float density,
+        const float explosionScale,
         AZStd::span<const MaterialHandle> materialHandles)
     {
         Internal::WorldMemberHandleParts shapeParts;
@@ -3684,7 +3684,7 @@ namespace Box3D
         return ResolveShape(shapeData.m_shapeUserData, shapeData.m_shapeId, resolvedShape) ? resolvedShape.m_shapeHandle : ShapeHandle{};
     }
 
-    bool World::ResolveShapeHandles(ShapeId nativeId, BodyHandle& bodyHandle, ShapeHandle& shapeHandle) const
+    bool World::ResolveShapeHandles(const ShapeId nativeId, BodyHandle& bodyHandle, ShapeHandle& shapeHandle) const
     {
         ShapeData shapeData;
         if (Box3D::GetShapeData(nativeId, shapeData))
@@ -3701,7 +3701,7 @@ namespace Box3D
             m_retiredShapes.begin(),
             m_retiredShapes.end(),
             nativeId.m_value,
-            [](const RetiredShapeProvenance& provenance, AZ::u64 value)
+            [](const RetiredShapeProvenance& provenance, const AZ::u64 value)
             {
                 return provenance.m_nativeId.m_value < value;
             });
@@ -3715,7 +3715,7 @@ namespace Box3D
     }
 
     ContactSnapshotResult World::CopyContactSnapshots(
-        AZStd::span<const ContactData> nativeContacts, AZStd::span<ContactSnapshot> contacts, AZStd::span<ContactPoint> points) const
+        const AZStd::span<const ContactData> nativeContacts, AZStd::span<ContactSnapshot> contacts, AZStd::span<ContactPoint> points) const
     {
         ContactSnapshotResult result;
         for (const ContactData& nativeContact : nativeContacts)
@@ -3767,7 +3767,7 @@ namespace Box3D
         return result;
     }
 
-    BufferResult World::CopySensorOverlaps(AZStd::span<const SensorOverlapData> nativeOverlaps, AZStd::span<SensorOverlap> overlaps) const
+    BufferResult World::CopySensorOverlaps(const AZStd::span<const SensorOverlapData> nativeOverlaps, AZStd::span<SensorOverlap> overlaps) const
     {
         BufferResult result;
         for (const SensorOverlapData& nativeOverlap : nativeOverlaps)
@@ -3934,7 +3934,7 @@ namespace Box3D
             });
 
         m_contactEvents.reserve(m_activeContactIds.size() + m_nativeContactEvents.size());
-        const auto appendContactData = [this](const ContactData& contactData, EventPhase phase)
+        const auto appendContactData = [this](const ContactData& contactData, const EventPhase phase)
         {
             BodyHandle bodyA;
             BodyHandle bodyB;
@@ -4111,7 +4111,7 @@ namespace Box3D
         m_retiredShapes.clear();
     }
 
-    bool World::ShouldCollide(ShapeId shapeA, ShapeId shapeB)
+    bool World::ShouldCollide(const ShapeId shapeA, const ShapeId shapeB)
     {
         if (m_collisionFilterCallback == nullptr)
         {
@@ -4123,7 +4123,7 @@ namespace Box3D
             m_collisionFilterCallback(GetShapeHandle(dataA), GetShapeHandle(dataB), m_contactCallbackUserData);
     }
 
-    bool World::BeforeSolve(ShapeId shapeA, ShapeId shapeB, const AZ::Vector3& position, const AZ::Vector3& normal)
+    bool World::BeforeSolve(const ShapeId shapeA, const ShapeId shapeB, const AZ::Vector3& position, const AZ::Vector3& normal)
     {
         if (m_preSolveCallback == nullptr)
         {

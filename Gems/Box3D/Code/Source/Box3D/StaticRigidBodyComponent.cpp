@@ -157,7 +157,7 @@ namespace Box3D
         return GetEntity() != nullptr ? AZ::Name(GetEntity()->GetName()) : AZ::Name{};
     }
 
-    bool StaticRigidBodyComponent::SetName(AZ::Name name)
+    bool StaticRigidBodyComponent::SetName(const AZ::Name name)
     {
         return m_system != nullptr && m_bodyHandle.IsValid() && m_system->SetBodyName(m_worldHandle, m_bodyHandle, name);
     }
@@ -273,27 +273,27 @@ namespace Box3D
         return m_system != nullptr && m_system->ApplyAngularImpulse(m_worldHandle, m_bodyHandle, impulse);
     }
 
-    bool StaticRigidBodyComponent::ApplyForce(const AZ::Vector3& force, bool wake)
+    bool StaticRigidBodyComponent::ApplyForce(const AZ::Vector3& force, const bool wake)
     {
         return m_system != nullptr && m_system->ApplyForce(m_worldHandle, m_bodyHandle, force, wake);
     }
 
-    bool StaticRigidBodyComponent::ApplyForceAtWorldPoint(const AZ::Vector3& force, const AZ::Vector3& worldPoint, bool wake)
+    bool StaticRigidBodyComponent::ApplyForceAtWorldPoint(const AZ::Vector3& force, const AZ::Vector3& worldPoint, const bool wake)
     {
         return m_system != nullptr && m_system->ApplyForceAtWorldPoint(m_worldHandle, m_bodyHandle, force, worldPoint, wake);
     }
 
-    bool StaticRigidBodyComponent::ApplyTorque(const AZ::Vector3& torque, bool wake)
+    bool StaticRigidBodyComponent::ApplyTorque(const AZ::Vector3& torque, const bool wake)
     {
         return m_system != nullptr && m_system->ApplyTorque(m_worldHandle, m_bodyHandle, torque, wake);
     }
 
-    bool StaticRigidBodyComponent::SetAwake(bool awake)
+    bool StaticRigidBodyComponent::SetAwake(const bool awake)
     {
         return m_system != nullptr && m_system->SetBodyAwake(m_worldHandle, m_bodyHandle, awake);
     }
 
-    bool StaticRigidBodyComponent::SetHitEventsEnabled(bool enabled)
+    bool StaticRigidBodyComponent::SetHitEventsEnabled(const bool enabled)
     {
         return m_system != nullptr && m_system->SetBodyHitEventsEnabled(m_worldHandle, m_bodyHandle, enabled);
     }

@@ -34,7 +34,7 @@ namespace Box3D
 
         bool IsValidMaterialConfiguration(const MaterialConfiguration& configuration)
         {
-            const auto isNonNegative = [](float value)
+            const auto isNonNegative = [](const float value)
             {
                 return AZ::IsFiniteFloat(value) && value >= 0.0f;
             };
@@ -90,7 +90,7 @@ namespace Box3D
         m_configuration = configuration;
         m_configuration.m_subStepCount = AZStd::max(m_configuration.m_subStepCount, AZ::u32{ 1 });
         m_configuration.m_workerCount = AZStd::clamp(m_configuration.m_workerCount, AZ::u32{ 1 }, MaximumWorkerCount);
-        const auto nonNegativeOr = [](float value, float fallback)
+        const auto nonNegativeOr = [](const float value, const float fallback)
         {
             return AZ::IsFiniteFloat(value) && value >= 0.0f ? value : fallback;
         };
@@ -197,7 +197,7 @@ namespace Box3D
         return worldHandle;
     }
 
-    bool System::DestroyWorld(WorldHandle worldHandle)
+    bool System::DestroyWorld(const WorldHandle worldHandle)
     {
         AZ_PROFILE_SCOPE(Physics, "Box3D::System::DestroyWorld");
         Internal::WorldHandleParts parts;
@@ -238,12 +238,12 @@ namespace Box3D
         return m_defaultWorldHandle;
     }
 
-    const IWorldQueries* System::GetWorldQueries(WorldHandle worldHandle) const
+    const IWorldQueries* System::GetWorldQueries(const WorldHandle worldHandle) const
     {
         return FindWorldInstance(worldHandle);
     }
 
-    WorldHandle System::FindWorld(AZ::Name name) const
+    WorldHandle System::FindWorld(const AZ::Name name) const
     {
         for (const WorldSlot& slot : m_worldSlots)
         {
@@ -261,7 +261,7 @@ namespace Box3D
         return {};
     }
 
-    bool System::GetWorldConfiguration(WorldHandle worldHandle, WorldConfiguration& configuration) const
+    bool System::GetWorldConfiguration(const WorldHandle worldHandle, WorldConfiguration& configuration) const
     {
         const World* world = FindWorldInstance(worldHandle);
         if (world == nullptr)
@@ -272,42 +272,42 @@ namespace Box3D
         return true;
     }
 
-    AZ::Aabb System::GetWorldAabb(WorldHandle worldHandle) const
+    AZ::Aabb System::GetWorldAabb(const WorldHandle worldHandle) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetAabb() : AZ::Aabb::CreateNull();
     }
 
-    bool System::IsValid(WorldHandle worldHandle) const
+    bool System::IsValid(const WorldHandle worldHandle) const
     {
         return FindWorldInstance(worldHandle) != nullptr;
     }
 
-    bool System::SetWorldEnabled(WorldHandle worldHandle, bool enabled)
+    bool System::SetWorldEnabled(const WorldHandle worldHandle, const bool enabled)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetEnabled(enabled);
     }
 
-    bool System::IsWorldEnabled(WorldHandle worldHandle) const
+    bool System::IsWorldEnabled(const WorldHandle worldHandle) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->IsEnabled();
     }
 
-    bool System::SetWorldGravity(WorldHandle worldHandle, const AZ::Vector3& gravity)
+    bool System::SetWorldGravity(const WorldHandle worldHandle, const AZ::Vector3& gravity)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetGravity(gravity);
     }
 
-    bool System::GetWorldGravity(WorldHandle worldHandle, AZ::Vector3& gravity) const
+    bool System::GetWorldGravity(const WorldHandle worldHandle, AZ::Vector3& gravity) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetGravity(gravity);
     }
 
-    bool System::StepWorld(WorldHandle worldHandle, float fixedTimeStep)
+    bool System::StepWorld(const WorldHandle worldHandle, const float fixedTimeStep)
     {
         World* world = FindWorldInstance(worldHandle);
         if (world == nullptr || !world->Step(fixedTimeStep, m_configuration.m_subStepCount))
@@ -318,7 +318,7 @@ namespace Box3D
         return true;
     }
 
-    void System::StepAutoSimulatedWorlds(float deltaTime)
+    void System::StepAutoSimulatedWorlds(const float deltaTime)
     {
         for (WorldSlot& slot : m_worldSlots)
         {
@@ -377,13 +377,13 @@ namespace Box3D
         }
     }
 
-    SimulationTick System::GetLastCompletedTick(WorldHandle worldHandle) const
+    SimulationTick System::GetLastCompletedTick(const WorldHandle worldHandle) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetLastCompletedTick() : 0;
     }
 
-    AZ::u64 System::GetStateDigest(WorldHandle worldHandle) const
+    AZ::u64 System::GetStateDigest(const WorldHandle worldHandle) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetStateDigest() : 0;
@@ -427,7 +427,7 @@ namespace Box3D
         return Internal::MakeRegistryHandle<MaterialHandle>(materialIndex, slot.m_generation);
     }
 
-    bool System::UpdateMaterial(MaterialHandle materialHandle, const MaterialConfiguration& configuration)
+    bool System::UpdateMaterial(const MaterialHandle materialHandle, const MaterialConfiguration& configuration)
     {
         AZ_PROFILE_SCOPE(Physics, "Box3D::System::UpdateMaterial");
         if (!IsValidMaterialConfiguration(configuration) || UsesCookedMaterial(materialHandle))
@@ -462,7 +462,7 @@ namespace Box3D
         return true;
     }
 
-    bool System::GetMaterial(MaterialHandle materialHandle, MaterialConfiguration& configuration) const
+    bool System::GetMaterial(const MaterialHandle materialHandle, MaterialConfiguration& configuration) const
     {
         AZ::u32 materialIndex = 0;
         const MaterialSlot* slot = FindMaterialSlot(materialHandle, &materialIndex);
@@ -474,7 +474,7 @@ namespace Box3D
         return true;
     }
 
-    bool System::DestroyMaterial(MaterialHandle materialHandle)
+    bool System::DestroyMaterial(const MaterialHandle materialHandle)
     {
         AZ_PROFILE_SCOPE(Physics, "Box3D::System::DestroyMaterial");
         AZ::u32 materialIndex = 0;
@@ -578,7 +578,7 @@ namespace Box3D
         return Internal::MakeRegistryHandle<CookedShapeHandle>(cookedShapeIndex, slot.m_generation);
     }
 
-    bool System::DestroyCookedShape(CookedShapeHandle cookedShapeHandle)
+    bool System::DestroyCookedShape(const CookedShapeHandle cookedShapeHandle)
     {
         AZ_PROFILE_SCOPE(Physics, "Box3D::System::DestroyCookedShape");
         const DeterministicFloatScope floatScope;
@@ -596,12 +596,12 @@ namespace Box3D
         return true;
     }
 
-    bool System::IsValid(CookedShapeHandle cookedShapeHandle) const
+    bool System::IsValid(const CookedShapeHandle cookedShapeHandle) const
     {
         return FindCookedShapeSlot(cookedShapeHandle) != nullptr;
     }
 
-    AZ::Aabb System::GetAabb(CookedShapeHandle cookedShapeHandle) const
+    AZ::Aabb System::GetAabb(const CookedShapeHandle cookedShapeHandle) const
     {
         const DeterministicFloatScope floatScope;
         AZ::u32 cookedShapeIndex = 0;
@@ -610,7 +610,7 @@ namespace Box3D
     }
 
     bool System::Raycast(
-        CookedShapeHandle cookedShapeHandle, const AZ::Vector3& start, const AZ::Vector3& direction, float distance, GeometryHit& hit) const
+        const CookedShapeHandle cookedShapeHandle, const AZ::Vector3& start, const AZ::Vector3& direction, const float distance, GeometryHit& hit) const
     {
         AZ_PROFILE_SCOPE(Physics, "Box3D::System::RaycastCookedShape");
         const DeterministicFloatScope floatScope;
@@ -632,262 +632,262 @@ namespace Box3D
         return true;
     }
 
-    BodyHandle System::CreateBody(WorldHandle worldHandle, const RigidBodyConfiguration& configuration)
+    BodyHandle System::CreateBody(const WorldHandle worldHandle, const RigidBodyConfiguration& configuration)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->CreateBody(configuration) : BodyHandle{};
     }
 
-    bool System::DestroyBody(WorldHandle worldHandle, BodyHandle bodyHandle)
+    bool System::DestroyBody(const WorldHandle worldHandle, const BodyHandle bodyHandle)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->DestroyBody(bodyHandle);
     }
 
-    bool System::GetBodyState(WorldHandle worldHandle, BodyHandle bodyHandle, BodyState& state) const
+    bool System::GetBodyState(const WorldHandle worldHandle, const BodyHandle bodyHandle, BodyState& state) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetBodyState(bodyHandle, state);
     }
 
-    AZ::Name System::GetBodyName(WorldHandle worldHandle, BodyHandle bodyHandle) const
+    AZ::Name System::GetBodyName(const WorldHandle worldHandle, const BodyHandle bodyHandle) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetBodyName(bodyHandle) : AZ::Name{};
     }
 
-    bool System::SetBodyName(WorldHandle worldHandle, BodyHandle bodyHandle, AZ::Name name)
+    bool System::SetBodyName(const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Name name)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetBodyName(bodyHandle, name);
     }
 
-    bool System::GetBodyProperties(WorldHandle worldHandle, BodyHandle bodyHandle, BodyProperties& properties) const
+    bool System::GetBodyProperties(const WorldHandle worldHandle, const BodyHandle bodyHandle, BodyProperties& properties) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetBodyProperties(bodyHandle, properties);
     }
 
-    bool System::SetBodyProperties(WorldHandle worldHandle, BodyHandle bodyHandle, const BodyProperties& properties)
+    bool System::SetBodyProperties(const WorldHandle worldHandle, const BodyHandle bodyHandle, const BodyProperties& properties)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetBodyProperties(bodyHandle, properties);
     }
 
-    bool System::SetBodyAwake(WorldHandle worldHandle, BodyHandle bodyHandle, bool awake)
+    bool System::SetBodyAwake(const WorldHandle worldHandle, const BodyHandle bodyHandle, const bool awake)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetBodyAwake(bodyHandle, awake);
     }
 
-    bool System::SetBodyEnabled(WorldHandle worldHandle, BodyHandle bodyHandle, bool enabled)
+    bool System::SetBodyEnabled(const WorldHandle worldHandle, const BodyHandle bodyHandle, const bool enabled)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetBodyEnabled(bodyHandle, enabled);
     }
 
-    bool System::SetBodyHitEventsEnabled(WorldHandle worldHandle, BodyHandle bodyHandle, bool enabled)
+    bool System::SetBodyHitEventsEnabled(const WorldHandle worldHandle, const BodyHandle bodyHandle, const bool enabled)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetBodyHitEventsEnabled(bodyHandle, enabled);
     }
 
-    bool System::SetBodyTransform(WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Transform& transform)
+    bool System::SetBodyTransform(const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Transform& transform)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetBodyTransform(bodyHandle, transform);
     }
 
     bool System::GetBodyLocalPoint(
-        WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& worldPoint, AZ::Vector3& localPoint) const
+        const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& worldPoint, AZ::Vector3& localPoint) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetBodyLocalPoint(bodyHandle, worldPoint, localPoint);
     }
 
     bool System::GetBodyWorldPoint(
-        WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& localPoint, AZ::Vector3& worldPoint) const
+        const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& localPoint, AZ::Vector3& worldPoint) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetBodyWorldPoint(bodyHandle, localPoint, worldPoint);
     }
 
     bool System::GetBodyLocalVector(
-        WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& worldVector, AZ::Vector3& localVector) const
+        const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& worldVector, AZ::Vector3& localVector) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetBodyLocalVector(bodyHandle, worldVector, localVector);
     }
 
     bool System::GetBodyWorldVector(
-        WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& localVector, AZ::Vector3& worldVector) const
+        const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& localVector, AZ::Vector3& worldVector) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetBodyWorldVector(bodyHandle, localVector, worldVector);
     }
 
-    bool System::SetLinearVelocity(WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& velocity)
+    bool System::SetLinearVelocity(const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& velocity)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetLinearVelocity(bodyHandle, velocity);
     }
 
-    bool System::SetAngularVelocity(WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& velocity)
+    bool System::SetAngularVelocity(const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& velocity)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetAngularVelocity(bodyHandle, velocity);
     }
 
-    AZ::Vector3 System::GetLinearVelocityAtLocalPoint(WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& localPoint) const
+    AZ::Vector3 System::GetLinearVelocityAtLocalPoint(const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& localPoint) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetLinearVelocityAtLocalPoint(bodyHandle, localPoint) : AZ::Vector3::CreateZero();
     }
 
-    AZ::Vector3 System::GetLinearVelocityAtWorldPoint(WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& worldPoint) const
+    AZ::Vector3 System::GetLinearVelocityAtWorldPoint(const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& worldPoint) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetLinearVelocityAtWorldPoint(bodyHandle, worldPoint) : AZ::Vector3::CreateZero();
     }
 
     bool System::SetKinematicTarget(
-        WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Transform& transform, float fixedTimeStep, bool wake)
+        const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Transform& transform, const float fixedTimeStep, const bool wake)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetKinematicTarget(bodyHandle, transform, fixedTimeStep, wake);
     }
 
-    bool System::ApplyLinearImpulse(WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& impulse, bool wake)
+    bool System::ApplyLinearImpulse(const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& impulse, const bool wake)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->ApplyLinearImpulse(bodyHandle, impulse, wake);
     }
 
     bool System::ApplyLinearImpulseAtWorldPoint(
-        WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& impulse, const AZ::Vector3& worldPoint, bool wake)
+        const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& impulse, const AZ::Vector3& worldPoint, const bool wake)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->ApplyLinearImpulseAtWorldPoint(bodyHandle, impulse, worldPoint, wake);
     }
 
-    bool System::ApplyAngularImpulse(WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& impulse, bool wake)
+    bool System::ApplyAngularImpulse(const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& impulse, const bool wake)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->ApplyAngularImpulse(bodyHandle, impulse, wake);
     }
 
-    bool System::ApplyForce(WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& force, bool wake)
+    bool System::ApplyForce(const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& force, const bool wake)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->ApplyForce(bodyHandle, force, wake);
     }
 
     bool System::ApplyForceAtWorldPoint(
-        WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& force, const AZ::Vector3& worldPoint, bool wake)
+        const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& force, const AZ::Vector3& worldPoint, const bool wake)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->ApplyForceAtWorldPoint(bodyHandle, force, worldPoint, wake);
     }
 
-    bool System::ApplyTorque(WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& torque, bool wake)
+    bool System::ApplyTorque(const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& torque, const bool wake)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->ApplyTorque(bodyHandle, torque, wake);
     }
 
-    bool System::GetMassProperties(WorldHandle worldHandle, BodyHandle bodyHandle, MassProperties& properties) const
+    bool System::GetMassProperties(const WorldHandle worldHandle, const BodyHandle bodyHandle, MassProperties& properties) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetMassProperties(bodyHandle, properties);
     }
 
-    bool System::SetMassProperties(WorldHandle worldHandle, BodyHandle bodyHandle, const MassProperties& properties)
+    bool System::SetMassProperties(const WorldHandle worldHandle, const BodyHandle bodyHandle, const MassProperties& properties)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetMassProperties(bodyHandle, properties);
     }
 
-    bool System::RecomputeMassFromShapes(WorldHandle worldHandle, BodyHandle bodyHandle)
+    bool System::RecomputeMassFromShapes(const WorldHandle worldHandle, const BodyHandle bodyHandle)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->RecomputeMassFromShapes(bodyHandle);
     }
 
-    AZ::Matrix3x3 System::GetWorldInverseInertia(WorldHandle worldHandle, BodyHandle bodyHandle) const
+    AZ::Matrix3x3 System::GetWorldInverseInertia(const WorldHandle worldHandle, const BodyHandle bodyHandle) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetWorldInverseInertia(bodyHandle) : AZ::Matrix3x3::CreateZero();
     }
 
-    AZ::Vector3 System::GetWorldCenterOfMass(WorldHandle worldHandle, BodyHandle bodyHandle) const
+    AZ::Vector3 System::GetWorldCenterOfMass(const WorldHandle worldHandle, const BodyHandle bodyHandle) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetWorldCenterOfMass(bodyHandle) : AZ::Vector3::CreateZero();
     }
 
     bool System::GetBodyClosestPoint(
-        WorldHandle worldHandle, BodyHandle bodyHandle, const AZ::Vector3& target, AZ::Vector3& position, float& distance) const
+        const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZ::Vector3& target, AZ::Vector3& position, float& distance) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetBodyClosestPoint(bodyHandle, target, position, distance);
     }
 
-    AZ::Aabb System::GetBodyAabb(WorldHandle worldHandle, BodyHandle bodyHandle) const
+    AZ::Aabb System::GetBodyAabb(const WorldHandle worldHandle, const BodyHandle bodyHandle) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetBodyAabb(bodyHandle) : AZ::Aabb::CreateNull();
     }
 
-    BufferResult System::GetBodyShapes(WorldHandle worldHandle, BodyHandle bodyHandle, AZStd::span<ShapeHandle> shapeHandles) const
+    BufferResult System::GetBodyShapes(const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZStd::span<ShapeHandle> shapeHandles) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetBodyShapes(bodyHandle, shapeHandles) : BufferResult{};
     }
 
-    BufferResult System::GetBodyJoints(WorldHandle worldHandle, BodyHandle bodyHandle, AZStd::span<JointHandle> jointHandles) const
+    BufferResult System::GetBodyJoints(const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZStd::span<JointHandle> jointHandles) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetBodyJoints(bodyHandle, jointHandles) : BufferResult{};
     }
 
     ContactSnapshotResult System::GetBodyContacts(
-        WorldHandle worldHandle, BodyHandle bodyHandle, AZStd::span<ContactSnapshot> contacts, AZStd::span<ContactPoint> points) const
+        const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZStd::span<ContactSnapshot> contacts, const AZStd::span<ContactPoint> points) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetBodyContacts(bodyHandle, contacts, points) : ContactSnapshotResult{};
     }
 
-    BufferResult System::GetBodySensorOverlaps(WorldHandle worldHandle, BodyHandle bodyHandle, AZStd::span<SensorOverlap> overlaps) const
+    BufferResult System::GetBodySensorOverlaps(const WorldHandle worldHandle, const BodyHandle bodyHandle, const AZStd::span<SensorOverlap> overlaps) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetBodySensorOverlaps(bodyHandle, overlaps) : BufferResult{};
     }
 
-    bool System::RaycastBody(WorldHandle worldHandle, BodyHandle bodyHandle, const BodyRaycastRequest& request, QueryHit& hit) const
+    bool System::RaycastBody(const WorldHandle worldHandle, const BodyHandle bodyHandle, const BodyRaycastRequest& request, QueryHit& hit) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->RaycastBody(bodyHandle, request, hit);
     }
 
-    bool System::ShapeCastBody(WorldHandle worldHandle, BodyHandle bodyHandle, const BodyShapeCastRequest& request, QueryHit& hit) const
+    bool System::ShapeCastBody(const WorldHandle worldHandle, const BodyHandle bodyHandle, const BodyShapeCastRequest& request, QueryHit& hit) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->ShapeCastBody(bodyHandle, request, hit);
     }
 
-    bool System::OverlapBody(WorldHandle worldHandle, BodyHandle bodyHandle, const BodyOverlapRequest& request) const
+    bool System::OverlapBody(const WorldHandle worldHandle, const BodyHandle bodyHandle, const BodyOverlapRequest& request) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->OverlapBody(bodyHandle, request);
     }
 
-    ShapeHandle System::CreateShape(WorldHandle worldHandle, BodyHandle bodyHandle, const ShapeConfiguration& configuration)
+    ShapeHandle System::CreateShape(const WorldHandle worldHandle, const BodyHandle bodyHandle, const ShapeConfiguration& configuration)
     {
         return CreateShape(worldHandle, bodyHandle, configuration, 1.0f);
     }
 
     ShapeHandle System::CreateShape(
-        WorldHandle worldHandle, BodyHandle bodyHandle, const ShapeConfiguration& configuration, float uniformScale)
+        const WorldHandle worldHandle, const BodyHandle bodyHandle, const ShapeConfiguration& configuration, const float uniformScale)
     {
         if (!configuration.m_materialConfigurations.empty())
         {
@@ -899,7 +899,7 @@ namespace Box3D
     }
 
     ShapeHandle System::CreateShapeFromCooked(
-        WorldHandle worldHandle, BodyHandle bodyHandle, CookedShapeHandle cookedShapeHandle, const ShapeProperties& properties)
+        const WorldHandle worldHandle, const BodyHandle bodyHandle, const CookedShapeHandle cookedShapeHandle, const ShapeProperties& properties)
     {
         World* world = FindWorldInstance(worldHandle);
         AZ::u32 cookedShapeIndex = 0;
@@ -917,12 +917,12 @@ namespace Box3D
         return world->CreateShapeFromCooked(bodyHandle, resources.m_geometry, instanceProperties);
     }
 
-    bool System::UpdateShape(WorldHandle worldHandle, ShapeHandle shapeHandle, const ShapeConfiguration& configuration)
+    bool System::UpdateShape(const WorldHandle worldHandle, const ShapeHandle shapeHandle, const ShapeConfiguration& configuration)
     {
         return UpdateShape(worldHandle, shapeHandle, configuration, 1.0f);
     }
 
-    bool System::UpdateShape(WorldHandle worldHandle, ShapeHandle shapeHandle, const ShapeConfiguration& configuration, float uniformScale)
+    bool System::UpdateShape(const WorldHandle worldHandle, const ShapeHandle shapeHandle, const ShapeConfiguration& configuration, const float uniformScale)
     {
         if (!configuration.m_materialConfigurations.empty())
         {
@@ -933,87 +933,87 @@ namespace Box3D
         return world != nullptr && world->UpdateShape(shapeHandle, configuration, uniformScale);
     }
 
-    bool System::DestroyShape(WorldHandle worldHandle, ShapeHandle shapeHandle, bool updateBodyMass)
+    bool System::DestroyShape(const WorldHandle worldHandle, const ShapeHandle shapeHandle, const bool updateBodyMass)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->DestroyShape(shapeHandle, updateBodyMass);
     }
 
-    bool System::SetShapeCollisionFilter(WorldHandle worldHandle, ShapeHandle shapeHandle, const CollisionFilter& collisionFilter)
+    bool System::SetShapeCollisionFilter(const WorldHandle worldHandle, const ShapeHandle shapeHandle, const CollisionFilter& collisionFilter)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetShapeCollisionFilter(shapeHandle, collisionFilter);
     }
 
-    bool System::SetShapeMaterials(WorldHandle worldHandle, ShapeHandle shapeHandle, AZStd::span<const MaterialHandle> materials)
+    bool System::SetShapeMaterials(const WorldHandle worldHandle, const ShapeHandle shapeHandle, const AZStd::span<const MaterialHandle> materials)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetShapeMaterials(shapeHandle, materials);
     }
 
-    AZ::Aabb System::GetShapeAabb(WorldHandle worldHandle, ShapeHandle shapeHandle) const
+    AZ::Aabb System::GetShapeAabb(const WorldHandle worldHandle, const ShapeHandle shapeHandle) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetShapeAabb(shapeHandle) : AZ::Aabb::CreateNull();
     }
 
-    bool System::GetShapeState(WorldHandle worldHandle, ShapeHandle shapeHandle, ShapeState& state) const
+    bool System::GetShapeState(const WorldHandle worldHandle, const ShapeHandle shapeHandle, ShapeState& state) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetShapeState(shapeHandle, state);
     }
 
     BufferResult System::GetShapeMaterials(
-        WorldHandle worldHandle, ShapeHandle shapeHandle, AZStd::span<MaterialHandle> materialHandles) const
+        const WorldHandle worldHandle, const ShapeHandle shapeHandle, const AZStd::span<MaterialHandle> materialHandles) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetShapeMaterials(shapeHandle, materialHandles) : BufferResult{};
     }
 
-    bool System::SetShapeDensity(WorldHandle worldHandle, ShapeHandle shapeHandle, float density, bool updateBodyMass)
+    bool System::SetShapeDensity(const WorldHandle worldHandle, const ShapeHandle shapeHandle, const float density, const bool updateBodyMass)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetShapeDensity(shapeHandle, density, updateBodyMass);
     }
 
-    bool System::SetShapeFriction(WorldHandle worldHandle, ShapeHandle shapeHandle, float friction)
+    bool System::SetShapeFriction(const WorldHandle worldHandle, const ShapeHandle shapeHandle, const float friction)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetShapeFriction(shapeHandle, friction);
     }
 
-    bool System::SetShapeRestitution(WorldHandle worldHandle, ShapeHandle shapeHandle, float restitution)
+    bool System::SetShapeRestitution(const WorldHandle worldHandle, const ShapeHandle shapeHandle, const float restitution)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetShapeRestitution(shapeHandle, restitution);
     }
 
     bool System::SetShapeEventSubscriptions(
-        WorldHandle worldHandle, ShapeHandle shapeHandle, bool sensorEvents, bool contactEvents, bool hitEvents, bool preSolveEvents)
+        const WorldHandle worldHandle, const ShapeHandle shapeHandle, const bool sensorEvents, const bool contactEvents, const bool hitEvents, const bool preSolveEvents)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetShapeEventSubscriptions(shapeHandle, sensorEvents, contactEvents, hitEvents, preSolveEvents);
     }
 
-    bool System::GetShapeMassProperties(WorldHandle worldHandle, ShapeHandle shapeHandle, MassProperties& properties) const
+    bool System::GetShapeMassProperties(const WorldHandle worldHandle, const ShapeHandle shapeHandle, MassProperties& properties) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetShapeMassProperties(shapeHandle, properties);
     }
 
     bool System::GetShapeClosestPoint(
-        WorldHandle worldHandle, ShapeHandle shapeHandle, const AZ::Vector3& target, AZ::Vector3& position, float& distance) const
+        const WorldHandle worldHandle, const ShapeHandle shapeHandle, const AZ::Vector3& target, AZ::Vector3& position, float& distance) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetShapeClosestPoint(shapeHandle, target, position, distance);
     }
 
     bool System::RaycastShape(
-        WorldHandle worldHandle,
-        ShapeHandle shapeHandle,
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
         const AZ::Vector3& start,
         const AZ::Vector3& direction,
-        float distance,
+        const float distance,
         QueryHit& hit) const
     {
         const World* world = FindWorldInstance(worldHandle);
@@ -1021,172 +1021,172 @@ namespace Box3D
     }
 
     ContactSnapshotResult System::GetShapeContacts(
-        WorldHandle worldHandle, ShapeHandle shapeHandle, AZStd::span<ContactSnapshot> contacts, AZStd::span<ContactPoint> points) const
+        const WorldHandle worldHandle, const ShapeHandle shapeHandle, const AZStd::span<ContactSnapshot> contacts, const AZStd::span<ContactPoint> points) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetShapeContacts(shapeHandle, contacts, points) : ContactSnapshotResult{};
     }
 
-    BufferResult System::GetShapeSensorOverlaps(WorldHandle worldHandle, ShapeHandle shapeHandle, AZStd::span<SensorOverlap> overlaps) const
+    BufferResult System::GetShapeSensorOverlaps(const WorldHandle worldHandle, const ShapeHandle shapeHandle, const AZStd::span<SensorOverlap> overlaps) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetShapeSensorOverlaps(shapeHandle, overlaps) : BufferResult{};
     }
 
-    JointHandle System::CreateJoint(WorldHandle worldHandle, const JointConfiguration& configuration)
+    JointHandle System::CreateJoint(const WorldHandle worldHandle, const JointConfiguration& configuration)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->CreateJoint(configuration) : JointHandle{};
     }
 
-    bool System::SetJointEntityId(WorldHandle worldHandle, JointHandle jointHandle, AZ::EntityId entityId)
+    bool System::SetJointEntityId(const WorldHandle worldHandle, const JointHandle jointHandle, const AZ::EntityId entityId)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetJointEntityId(jointHandle, entityId);
     }
 
-    bool System::UpdateJoint(WorldHandle worldHandle, JointHandle jointHandle, const JointConfiguration& configuration)
+    bool System::UpdateJoint(const WorldHandle worldHandle, const JointHandle jointHandle, const JointConfiguration& configuration)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->UpdateJoint(jointHandle, configuration);
     }
 
-    bool System::DestroyJoint(WorldHandle worldHandle, JointHandle jointHandle, bool wakeAttachedBodies)
+    bool System::DestroyJoint(const WorldHandle worldHandle, const JointHandle jointHandle, const bool wakeAttachedBodies)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->DestroyJoint(jointHandle, wakeAttachedBodies);
     }
 
-    bool System::WakeJointBodies(WorldHandle worldHandle, JointHandle jointHandle)
+    bool System::WakeJointBodies(const WorldHandle worldHandle, const JointHandle jointHandle)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->WakeJointBodies(jointHandle);
     }
 
-    bool System::GetJointConfiguration(WorldHandle worldHandle, JointHandle jointHandle, JointConfiguration& configuration) const
+    bool System::GetJointConfiguration(const WorldHandle worldHandle, const JointHandle jointHandle, JointConfiguration& configuration) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetJointConfiguration(jointHandle, configuration);
     }
 
-    bool System::GetJointMeasurements(WorldHandle worldHandle, JointHandle jointHandle, JointMeasurements& measurements) const
+    bool System::GetJointMeasurements(const WorldHandle worldHandle, const JointHandle jointHandle, JointMeasurements& measurements) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetJointMeasurements(jointHandle, measurements);
     }
 
-    CharacterHandle System::CreateCharacter(WorldHandle worldHandle, const CharacterConfiguration& configuration)
+    CharacterHandle System::CreateCharacter(const WorldHandle worldHandle, const CharacterConfiguration& configuration)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->CreateCharacter(configuration) : CharacterHandle{};
     }
 
-    bool System::UpdateCharacter(WorldHandle worldHandle, CharacterHandle characterHandle, const CharacterConfiguration& configuration)
+    bool System::UpdateCharacter(const WorldHandle worldHandle, const CharacterHandle characterHandle, const CharacterConfiguration& configuration)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->UpdateCharacter(characterHandle, configuration);
     }
 
-    bool System::DestroyCharacter(WorldHandle worldHandle, CharacterHandle characterHandle)
+    bool System::DestroyCharacter(const WorldHandle worldHandle, const CharacterHandle characterHandle)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->DestroyCharacter(characterHandle);
     }
 
-    bool System::MoveCharacter(WorldHandle worldHandle, CharacterHandle characterHandle, const AZ::Vector3& velocity, float fixedTimeStep)
+    bool System::MoveCharacter(const WorldHandle worldHandle, const CharacterHandle characterHandle, const AZ::Vector3& velocity, const float fixedTimeStep)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->MoveCharacter(characterHandle, velocity, fixedTimeStep);
     }
 
-    bool System::GetCharacterState(WorldHandle worldHandle, CharacterHandle characterHandle, CharacterState& state) const
+    bool System::GetCharacterState(const WorldHandle worldHandle, const CharacterHandle characterHandle, CharacterState& state) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetCharacterState(characterHandle, state);
     }
 
     bool System::GetCharacterConfiguration(
-        WorldHandle worldHandle, CharacterHandle characterHandle, CharacterConfiguration& configuration) const
+        const WorldHandle worldHandle, const CharacterHandle characterHandle, CharacterConfiguration& configuration) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetCharacterConfiguration(characterHandle, configuration);
     }
 
-    bool System::RaycastClosest(WorldHandle worldHandle, const RaycastRequest& request, QueryHit& hit) const
+    bool System::RaycastClosest(const WorldHandle worldHandle, const RaycastRequest& request, QueryHit& hit) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->RaycastClosest(request, hit);
     }
 
     BufferResult System::RaycastClosestBatch(
-        WorldHandle worldHandle, AZStd::span<const RaycastRequest> requests, AZStd::span<ClosestQueryResult> results) const
+        const WorldHandle worldHandle, const AZStd::span<const RaycastRequest> requests, const AZStd::span<ClosestQueryResult> results) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->RaycastClosestBatch(requests, results) : BufferResult{ 0, requests.size() };
     }
 
-    QueryResult System::Raycast(WorldHandle worldHandle, const RaycastRequest& request, AZStd::span<QueryHit> hits) const
+    QueryResult System::Raycast(const WorldHandle worldHandle, const RaycastRequest& request, const AZStd::span<QueryHit> hits) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->Raycast(request, hits) : QueryResult{};
     }
 
-    QueryResult System::ShapeCast(WorldHandle worldHandle, const ShapeCastRequest& request, AZStd::span<QueryHit> hits) const
+    QueryResult System::ShapeCast(const WorldHandle worldHandle, const ShapeCastRequest& request, const AZStd::span<QueryHit> hits) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->ShapeCast(request, hits) : QueryResult{};
     }
 
-    QueryResult System::Overlap(WorldHandle worldHandle, const OverlapRequest& request, AZStd::span<OverlapHit> hits) const
+    QueryResult System::Overlap(const WorldHandle worldHandle, const OverlapRequest& request, const AZStd::span<OverlapHit> hits) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->Overlap(request, hits) : QueryResult{};
     }
 
-    QueryResult System::Overlap(WorldHandle worldHandle, const OverlapRequest& request, AZStd::span<QueryHit> hits) const
+    QueryResult System::Overlap(const WorldHandle worldHandle, const OverlapRequest& request, const AZStd::span<QueryHit> hits) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->Overlap(request, hits) : QueryResult{};
     }
 
-    QueryResult System::OverlapAabb(WorldHandle worldHandle, const AabbOverlapRequest& request, AZStd::span<OverlapHit> hits) const
+    QueryResult System::OverlapAabb(const WorldHandle worldHandle, const AabbOverlapRequest& request, const AZStd::span<OverlapHit> hits) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->OverlapAabb(request, hits) : QueryResult{};
     }
 
-    QueryResult System::OverlapAabb(WorldHandle worldHandle, const AabbOverlapRequest& request, AZStd::span<QueryHit> hits) const
+    QueryResult System::OverlapAabb(const WorldHandle worldHandle, const AabbOverlapRequest& request, const AZStd::span<QueryHit> hits) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->OverlapAabb(request, hits) : QueryResult{};
     }
 
-    StepEvents System::GetStepEvents(WorldHandle worldHandle) const
+    StepEvents System::GetStepEvents(const WorldHandle worldHandle) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr ? world->GetStepEvents() : StepEvents{};
     }
 
     bool System::SetContactCallbacks(
-        WorldHandle worldHandle, CollisionFilterCallback collisionFilterCallback, PreSolveCallback preSolveCallback, void* userData)
+        const WorldHandle worldHandle, const CollisionFilterCallback collisionFilterCallback, const PreSolveCallback preSolveCallback, void* userData)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->SetContactCallbacks(collisionFilterCallback, preSolveCallback, userData);
     }
 
-    bool System::GetWorldStatistics(WorldHandle worldHandle, StatisticsFlags flags, WorldStatistics& statistics) const
+    bool System::GetWorldStatistics(const WorldHandle worldHandle, const StatisticsFlags flags, WorldStatistics& statistics) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->GetStatistics(flags, statistics);
     }
 
-    bool System::StartRecording(WorldHandle worldHandle, size_t initialCapacityBytes)
+    bool System::StartRecording(const WorldHandle worldHandle, const size_t initialCapacityBytes)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->StartRecording(initialCapacityBytes);
     }
 
-    bool System::StopRecording(WorldHandle worldHandle, AZStd::vector<AZ::u8>& data)
+    bool System::StopRecording(const WorldHandle worldHandle, AZStd::vector<AZ::u8>& data)
     {
         World* world = FindWorldInstance(worldHandle);
         if (world != nullptr)
@@ -1197,43 +1197,43 @@ namespace Box3D
         return false;
     }
 
-    bool System::ValidateRecording(AZStd::span<const AZ::u8> data, AZ::u32 workerCount) const
+    bool System::ValidateRecording(const AZStd::span<const AZ::u8> data, const AZ::u32 workerCount) const
     {
         AZ_PROFILE_SCOPE(Physics, "Box3D::System::ValidateRecording");
         return Box3D::ValidateRecording(data, workerCount);
     }
 
-    AZStd::unique_ptr<IReplay> System::CreateReplay(AZStd::span<const AZ::u8> data, AZ::u32 workerCount) const
+    AZStd::unique_ptr<IReplay> System::CreateReplay(const AZStd::span<const AZ::u8> data, const AZ::u32 workerCount) const
     {
         AZ_PROFILE_SCOPE(Physics, "Box3D::System::CreateReplay");
         return Box3D::CreateReplay(data, workerCount);
     }
 
-    bool System::DrawWorld(WorldHandle worldHandle, const DebugDrawSettings& settings, IDebugRenderer& renderer) const
+    bool System::DrawWorld(const WorldHandle worldHandle, const DebugDrawSettings& settings, IDebugRenderer& renderer) const
     {
         const World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->Draw(settings, renderer);
     }
 
-    bool System::RebuildStaticTree(WorldHandle worldHandle)
+    bool System::RebuildStaticTree(const WorldHandle worldHandle)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->RebuildStaticTree();
     }
 
-    bool System::Explode(WorldHandle worldHandle, const ExplosionConfiguration& configuration)
+    bool System::Explode(const WorldHandle worldHandle, const ExplosionConfiguration& configuration)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->Explode(configuration);
     }
 
-    bool System::ApplyWind(WorldHandle worldHandle, BodyHandle bodyHandle, const WindConfiguration& configuration)
+    bool System::ApplyWind(const WorldHandle worldHandle, const BodyHandle bodyHandle, const WindConfiguration& configuration)
     {
         World* world = FindWorldInstance(worldHandle);
         return world != nullptr && world->ApplyWind(bodyHandle, configuration);
     }
 
-    SurfaceMaterial System::ResolveMaterial(MaterialHandle materialHandle) const
+    SurfaceMaterial System::ResolveMaterial(const MaterialHandle materialHandle) const
     {
         AZ::u32 materialIndex = 0;
         const MaterialSlot* slot = FindMaterialSlot(materialHandle, &materialIndex);
@@ -1258,12 +1258,12 @@ namespace Box3D
         return material;
     }
 
-    World* System::FindWorldInstance(WorldHandle worldHandle)
+    World* System::FindWorldInstance(const WorldHandle worldHandle)
     {
         return const_cast<World*>(static_cast<const System&>(*this).FindWorldInstance(worldHandle));
     }
 
-    const World* System::FindWorldInstance(WorldHandle worldHandle) const
+    const World* System::FindWorldInstance(const WorldHandle worldHandle) const
     {
         if (worldHandle == m_defaultWorldHandle)
         {
@@ -1278,12 +1278,12 @@ namespace Box3D
         return slot.m_generation == parts.m_generation ? slot.m_world.get() : nullptr;
     }
 
-    System::MaterialSlot* System::FindMaterialSlot(MaterialHandle materialHandle, AZ::u32* materialIndex)
+    System::MaterialSlot* System::FindMaterialSlot(const MaterialHandle materialHandle, AZ::u32* materialIndex)
     {
         return const_cast<MaterialSlot*>(static_cast<const System&>(*this).FindMaterialSlot(materialHandle, materialIndex));
     }
 
-    const System::MaterialSlot* System::FindMaterialSlot(MaterialHandle materialHandle, AZ::u32* materialIndex) const
+    const System::MaterialSlot* System::FindMaterialSlot(const MaterialHandle materialHandle, AZ::u32* materialIndex) const
     {
         AZ::u32 resolvedMaterialIndex = 0;
         AZ::u32 generation = 0;
@@ -1304,12 +1304,12 @@ namespace Box3D
         return &slot;
     }
 
-    System::CookedShapeSlot* System::FindCookedShapeSlot(CookedShapeHandle cookedShapeHandle, AZ::u32* cookedShapeIndex)
+    System::CookedShapeSlot* System::FindCookedShapeSlot(const CookedShapeHandle cookedShapeHandle, AZ::u32* cookedShapeIndex)
     {
         return const_cast<CookedShapeSlot*>(static_cast<const System&>(*this).FindCookedShapeSlot(cookedShapeHandle, cookedShapeIndex));
     }
 
-    const System::CookedShapeSlot* System::FindCookedShapeSlot(CookedShapeHandle cookedShapeHandle, AZ::u32* cookedShapeIndex) const
+    const System::CookedShapeSlot* System::FindCookedShapeSlot(const CookedShapeHandle cookedShapeHandle, AZ::u32* cookedShapeIndex) const
     {
         AZ::u32 resolvedCookedShapeIndex = 0;
         AZ::u32 generation = 0;
@@ -1330,7 +1330,7 @@ namespace Box3D
         return &slot;
     }
 
-    bool System::UsesCookedMaterial(MaterialHandle materialHandle) const
+    bool System::UsesCookedMaterial(const MaterialHandle materialHandle) const
     {
         for (size_t cookedShapeIndex = 0; cookedShapeIndex < m_cookedShapeSlots.size(); ++cookedShapeIndex)
         {
@@ -1346,7 +1346,7 @@ namespace Box3D
         return false;
     }
 
-    SurfaceTypeId System::ResolveSurfaceType(AZ::u64 materialId) const
+    SurfaceTypeId System::ResolveSurfaceType(const AZ::u64 materialId) const
     {
         const MaterialHandle materialHandle = Internal::HandleAccess::Create<MaterialHandle>(materialId);
         AZ::u32 materialIndex = 0;
@@ -1354,7 +1354,7 @@ namespace Box3D
         return slot != nullptr ? m_materialConfigurations[materialIndex].m_surfaceTypeId : SurfaceTypeId{};
     }
 
-    float System::MixFriction(float valueA, AZ::u64 materialIdA, float valueB, AZ::u64 materialIdB) const
+    float System::MixFriction(const float valueA, const AZ::u64 materialIdA, const float valueB, const AZ::u64 materialIdB) const
     {
         const MaterialMixCallback callback = m_configuration.m_frictionCallback;
         if (callback == nullptr)
@@ -1365,7 +1365,7 @@ namespace Box3D
         return AZ::IsFiniteFloat(mixed) && mixed >= 0.0f ? mixed : std::sqrt(valueA * valueB);
     }
 
-    float System::MixRestitution(float valueA, AZ::u64 materialIdA, float valueB, AZ::u64 materialIdB) const
+    float System::MixRestitution(const float valueA, const AZ::u64 materialIdA, const float valueB, const AZ::u64 materialIdB) const
     {
         const MaterialMixCallback callback = m_configuration.m_restitutionCallback;
         if (callback == nullptr)

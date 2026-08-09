@@ -54,7 +54,7 @@ namespace Box3D::Internal
     class GenerationSource final
     {
     public:
-        explicit GenerationSource(AZ::u32 firstGeneration = 1) noexcept
+        explicit GenerationSource(const AZ::u32 firstGeneration = 1) noexcept
             : m_nextGeneration(firstGeneration)
         {
         }
@@ -80,7 +80,7 @@ namespace Box3D::Internal
         AZStd::atomic<AZ::u32> m_nextGeneration;
     };
 
-    [[nodiscard]] constexpr WorldHandle MakeWorldHandle(AZ::u32 index, AZ::u32 generation) noexcept
+    [[nodiscard]] constexpr WorldHandle MakeWorldHandle(const AZ::u32 index, const AZ::u32 generation) noexcept
     {
         if (index >= MaximumWorldCount || generation == 0)
         {
@@ -91,7 +91,7 @@ namespace Box3D::Internal
         return HandleAccess::Create<WorldHandle>(static_cast<AZ::u64>(generation) << 32 | payload);
     }
 
-    [[nodiscard]] constexpr bool DecodeWorldHandle(WorldHandle handle, WorldHandleParts& parts) noexcept
+    [[nodiscard]] constexpr bool DecodeWorldHandle(const WorldHandle handle, WorldHandleParts& parts) noexcept
     {
         const AZ::u64 value = HandleAccess::GetValue(handle);
         const AZ::u64 payload = value & HandlePayloadMask;
@@ -106,7 +106,7 @@ namespace Box3D::Internal
     }
 
     template<class HandleType>
-    [[nodiscard]] constexpr HandleType MakeWorldMemberHandle(AZ::u32 worldIndex, AZ::u32 index, AZ::u32 generation) noexcept
+    [[nodiscard]] constexpr HandleType MakeWorldMemberHandle(const AZ::u32 worldIndex, const AZ::u32 index, const AZ::u32 generation) noexcept
     {
         if (worldIndex >= MaximumWorldCount || index > MaximumWorldMemberIndex || generation == 0)
         {
@@ -134,7 +134,7 @@ namespace Box3D::Internal
     }
 
     template<class HandleType>
-    [[nodiscard]] constexpr HandleType MakeRegistryHandle(AZ::u32 index, AZ::u32 generation) noexcept
+    [[nodiscard]] constexpr HandleType MakeRegistryHandle(const AZ::u32 index, const AZ::u32 generation) noexcept
     {
         if (generation == 0)
         {

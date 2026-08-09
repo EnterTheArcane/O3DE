@@ -53,7 +53,7 @@ namespace Box3D::Editor
             }
 
             debugDisplay.PushPremultipliedMatrix(transform);
-            const auto point = [&heightfield](AZ::u32 column, AZ::u32 row)
+            const auto point = [&heightfield](const AZ::u32 column, const AZ::u32 row)
             {
                 const float height = heightfield.m_samples[row * heightfield.m_columnCount + column];
                 return AZ::Vector3(

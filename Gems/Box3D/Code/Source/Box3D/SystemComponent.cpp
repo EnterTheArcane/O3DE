@@ -70,7 +70,7 @@ namespace Box3D
     namespace
     {
         template<class Query>
-        QueryHitCollection CollectQueryHits(AZ::u32 maxHitCount, Query&& query)
+        QueryHitCollection CollectQueryHits(const AZ::u32 maxHitCount, Query&& query)
         {
             QueryHitCollection result;
             result.m_hits.resize(maxHitCount);
@@ -95,7 +95,7 @@ namespace Box3D
             request.m_filter = parameters.m_filter;
             return CollectQueryHits(
                 parameters.m_maxHitCount,
-                [system, worldHandle, &request](AZStd::span<QueryHit> hits)
+                [system, worldHandle, &request](const AZStd::span<QueryHit> hits)
                 {
                     return system->ShapeCast(worldHandle, request, hits);
                 });
@@ -115,7 +115,7 @@ namespace Box3D
             request.m_filter = parameters.m_filter;
             return CollectQueryHits(
                 parameters.m_maxHitCount,
-                [system, worldHandle, &request](AZStd::span<QueryHit> hits)
+                [system, worldHandle, &request](const AZStd::span<QueryHit> hits)
                 {
                     return system->Overlap(worldHandle, request, hits);
                 });
@@ -331,42 +331,42 @@ namespace Box3D
         return m_system != nullptr ? m_system->CookShape(configuration) : CookedShapeHandle{};
     }
 
-    bool SystemComponent::DestroyCookedShape(CookedShapeHandle cookedShapeHandle)
+    bool SystemComponent::DestroyCookedShape(const CookedShapeHandle cookedShapeHandle)
     {
         return m_system != nullptr && m_system->DestroyCookedShape(cookedShapeHandle);
     }
 
-    bool SystemComponent::IsCookedShapeValid(CookedShapeHandle cookedShapeHandle) const
+    bool SystemComponent::IsCookedShapeValid(const CookedShapeHandle cookedShapeHandle) const
     {
         return m_system != nullptr && m_system->IsValid(cookedShapeHandle);
     }
 
-    AZ::Aabb SystemComponent::GetCookedShapeAabb(CookedShapeHandle cookedShapeHandle) const
+    AZ::Aabb SystemComponent::GetCookedShapeAabb(const CookedShapeHandle cookedShapeHandle) const
     {
         return m_system != nullptr ? m_system->GetAabb(cookedShapeHandle) : AZ::Aabb::CreateNull();
     }
 
     CookedRaycastResult SystemComponent::RaycastCookedShape(
-        CookedShapeHandle cookedShapeHandle, const AZ::Vector3& start, const AZ::Vector3& direction, float distance) const
+        const CookedShapeHandle cookedShapeHandle, const AZ::Vector3& start, const AZ::Vector3& direction, const float distance) const
     {
         CookedRaycastResult result;
         result.m_found = m_system != nullptr && m_system->Raycast(cookedShapeHandle, start, direction, distance, result.m_hit);
         return result;
     }
 
-    StatisticsSnapshot SystemComponent::GetWorldStatistics(WorldHandle worldHandle, StatisticsFlags flags) const
+    StatisticsSnapshot SystemComponent::GetWorldStatistics(const WorldHandle worldHandle, const StatisticsFlags flags) const
     {
         WorldStatistics statistics;
         const bool found = m_system != nullptr && m_system->GetWorldStatistics(worldHandle, flags, statistics);
         return StatisticsSnapshot::Create(statistics, found);
     }
 
-    bool SystemComponent::StartRecording(WorldHandle worldHandle, size_t initialCapacityBytes)
+    bool SystemComponent::StartRecording(const WorldHandle worldHandle, const size_t initialCapacityBytes)
     {
         return m_system != nullptr && m_system->StartRecording(worldHandle, initialCapacityBytes);
     }
 
-    RecordingResult SystemComponent::StopRecording(WorldHandle worldHandle)
+    RecordingResult SystemComponent::StopRecording(const WorldHandle worldHandle)
     {
         RecordingResult result;
         AZStd::vector<AZ::u8> data;
@@ -378,12 +378,12 @@ namespace Box3D
         return result;
     }
 
-    bool SystemComponent::ValidateRecording(const RecordingData& data, AZ::u32 workerCount) const
+    bool SystemComponent::ValidateRecording(const RecordingData& data, const AZ::u32 workerCount) const
     {
         return m_system != nullptr && m_system->ValidateRecording(data.GetData(), workerCount);
     }
 
-    ReplayHandle SystemComponent::CreateReplay(const RecordingData& data, AZ::u32 workerCount)
+    ReplayHandle SystemComponent::CreateReplay(const RecordingData& data, const AZ::u32 workerCount)
     {
         if (m_system == nullptr)
         {
@@ -416,7 +416,7 @@ namespace Box3D
         return Internal::MakeRegistryHandle<ReplayHandle>(replayIndex, slot.m_generation);
     }
 
-    bool SystemComponent::DestroyReplay(ReplayHandle replayHandle)
+    bool SystemComponent::DestroyReplay(const ReplayHandle replayHandle)
     {
         AZStd::lock_guard lock(m_replayMutex);
         AZ::u32 replayIndex = 0;
@@ -438,27 +438,27 @@ namespace Box3D
         return true;
     }
 
-    bool SystemComponent::IsReplayValid(ReplayHandle replayHandle) const
+    bool SystemComponent::IsReplayValid(const ReplayHandle replayHandle) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         return FindReplay(replayHandle) != nullptr;
     }
 
-    ReplayInfoResult SystemComponent::GetReplayInfo(ReplayHandle replayHandle) const
+    ReplayInfoResult SystemComponent::GetReplayInfo(const ReplayHandle replayHandle) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
         return replay != nullptr ? ReplayInfoResult{ replay->GetInfo(), true } : ReplayInfoResult{};
     }
 
-    bool SystemComponent::StepReplay(ReplayHandle replayHandle)
+    bool SystemComponent::StepReplay(const ReplayHandle replayHandle)
     {
         AZStd::lock_guard lock(m_replayMutex);
         IReplay* replay = FindReplay(replayHandle);
         return replay != nullptr && replay->Step();
     }
 
-    bool SystemComponent::RestartReplay(ReplayHandle replayHandle)
+    bool SystemComponent::RestartReplay(const ReplayHandle replayHandle)
     {
         AZStd::lock_guard lock(m_replayMutex);
         IReplay* replay = FindReplay(replayHandle);
@@ -470,7 +470,7 @@ namespace Box3D
         return true;
     }
 
-    bool SystemComponent::SeekReplay(ReplayHandle replayHandle, AZ::u32 frame)
+    bool SystemComponent::SeekReplay(const ReplayHandle replayHandle, const AZ::u32 frame)
     {
         AZStd::lock_guard lock(m_replayMutex);
         IReplay* replay = FindReplay(replayHandle);
@@ -482,35 +482,35 @@ namespace Box3D
         return true;
     }
 
-    AZ::u32 SystemComponent::GetReplayFrame(ReplayHandle replayHandle) const
+    AZ::u32 SystemComponent::GetReplayFrame(const ReplayHandle replayHandle) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
         return replay != nullptr ? replay->GetFrame() : 0;
     }
 
-    bool SystemComponent::IsReplayAtEnd(ReplayHandle replayHandle) const
+    bool SystemComponent::IsReplayAtEnd(const ReplayHandle replayHandle) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
         return replay != nullptr && replay->IsAtEnd();
     }
 
-    bool SystemComponent::HasReplayDiverged(ReplayHandle replayHandle) const
+    bool SystemComponent::HasReplayDiverged(const ReplayHandle replayHandle) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
         return replay != nullptr && replay->HasDiverged();
     }
 
-    AZ::s32 SystemComponent::GetReplayDivergenceFrame(ReplayHandle replayHandle) const
+    AZ::s32 SystemComponent::GetReplayDivergenceFrame(const ReplayHandle replayHandle) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
         return replay != nullptr ? replay->GetDivergenceFrame() : -1;
     }
 
-    bool SystemComponent::SetReplayWorkerCount(ReplayHandle replayHandle, AZ::u32 workerCount)
+    bool SystemComponent::SetReplayWorkerCount(const ReplayHandle replayHandle, const AZ::u32 workerCount)
     {
         AZStd::lock_guard lock(m_replayMutex);
         IReplay* replay = FindReplay(replayHandle);
@@ -522,7 +522,7 @@ namespace Box3D
         return true;
     }
 
-    bool SystemComponent::SetReplayKeyframePolicy(ReplayHandle replayHandle, size_t budgetBytes, AZ::u32 minimumInterval)
+    bool SystemComponent::SetReplayKeyframePolicy(const ReplayHandle replayHandle, const size_t budgetBytes, const AZ::u32 minimumInterval)
     {
         AZStd::lock_guard lock(m_replayMutex);
         IReplay* replay = FindReplay(replayHandle);
@@ -534,42 +534,42 @@ namespace Box3D
         return true;
     }
 
-    size_t SystemComponent::GetReplayKeyframeBudget(ReplayHandle replayHandle) const
+    size_t SystemComponent::GetReplayKeyframeBudget(const ReplayHandle replayHandle) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
         return replay != nullptr ? replay->GetKeyframeBudget() : 0;
     }
 
-    AZ::u32 SystemComponent::GetReplayMinimumKeyframeInterval(ReplayHandle replayHandle) const
+    AZ::u32 SystemComponent::GetReplayMinimumKeyframeInterval(const ReplayHandle replayHandle) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
         return replay != nullptr ? replay->GetMinimumKeyframeInterval() : 0;
     }
 
-    AZ::u32 SystemComponent::GetReplayKeyframeInterval(ReplayHandle replayHandle) const
+    AZ::u32 SystemComponent::GetReplayKeyframeInterval(const ReplayHandle replayHandle) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
         return replay != nullptr ? replay->GetKeyframeInterval() : 0;
     }
 
-    size_t SystemComponent::GetReplayKeyframeBytes(ReplayHandle replayHandle) const
+    size_t SystemComponent::GetReplayKeyframeBytes(const ReplayHandle replayHandle) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
         return replay != nullptr ? replay->GetKeyframeBytes() : 0;
     }
 
-    AZ::u32 SystemComponent::GetReplayBodyCount(ReplayHandle replayHandle) const
+    AZ::u32 SystemComponent::GetReplayBodyCount(const ReplayHandle replayHandle) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
         return replay != nullptr ? replay->GetBodyCount() : 0;
     }
 
-    ReplayBodyResult SystemComponent::GetReplayBody(ReplayHandle replayHandle, AZ::u32 index) const
+    ReplayBodyResult SystemComponent::GetReplayBody(const ReplayHandle replayHandle, const AZ::u32 index) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
@@ -578,14 +578,14 @@ namespace Box3D
         return result;
     }
 
-    AZ::u32 SystemComponent::GetReplayQueryCount(ReplayHandle replayHandle) const
+    AZ::u32 SystemComponent::GetReplayQueryCount(const ReplayHandle replayHandle) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
         return replay != nullptr ? replay->GetFrameQueryCount() : 0;
     }
 
-    ReplayQueryResult SystemComponent::GetReplayQuery(ReplayHandle replayHandle, AZ::u32 index) const
+    ReplayQueryResult SystemComponent::GetReplayQuery(const ReplayHandle replayHandle, const AZ::u32 index) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
@@ -594,7 +594,7 @@ namespace Box3D
         return result;
     }
 
-    ReplayQueryHitResult SystemComponent::GetReplayQueryHit(ReplayHandle replayHandle, AZ::u32 queryIndex, AZ::u32 hitIndex) const
+    ReplayQueryHitResult SystemComponent::GetReplayQueryHit(const ReplayHandle replayHandle, const AZ::u32 queryIndex, const AZ::u32 hitIndex) const
     {
         AZStd::lock_guard lock(m_replayMutex);
         const IReplay* replay = FindReplay(replayHandle);
@@ -603,17 +603,17 @@ namespace Box3D
         return result;
     }
 
-    bool SystemComponent::RebuildStaticTree(WorldHandle worldHandle)
+    bool SystemComponent::RebuildStaticTree(const WorldHandle worldHandle)
     {
         return m_system != nullptr && m_system->RebuildStaticTree(worldHandle);
     }
 
-    IReplay* SystemComponent::FindReplay(ReplayHandle replayHandle)
+    IReplay* SystemComponent::FindReplay(const ReplayHandle replayHandle)
     {
         return const_cast<IReplay*>(static_cast<const SystemComponent&>(*this).FindReplay(replayHandle));
     }
 
-    const IReplay* SystemComponent::FindReplay(ReplayHandle replayHandle) const
+    const IReplay* SystemComponent::FindReplay(const ReplayHandle replayHandle) const
     {
         AZ::u32 replayIndex = 0;
         AZ::u32 generation = 0;
@@ -630,19 +630,19 @@ namespace Box3D
         return m_system != nullptr ? m_system->CreateMaterial(configuration) : MaterialHandle{};
     }
 
-    bool SystemComponent::UpdateMaterial(MaterialHandle materialHandle, const MaterialConfiguration& configuration)
+    bool SystemComponent::UpdateMaterial(const MaterialHandle materialHandle, const MaterialConfiguration& configuration)
     {
         return m_system != nullptr && m_system->UpdateMaterial(materialHandle, configuration);
     }
 
-    MaterialResult SystemComponent::GetMaterial(MaterialHandle materialHandle) const
+    MaterialResult SystemComponent::GetMaterial(const MaterialHandle materialHandle) const
     {
         MaterialResult result;
         result.m_found = m_system != nullptr && m_system->GetMaterial(materialHandle, result.m_configuration);
         return result;
     }
 
-    bool SystemComponent::DestroyMaterial(MaterialHandle materialHandle)
+    bool SystemComponent::DestroyMaterial(const MaterialHandle materialHandle)
     {
         return m_system != nullptr && m_system->DestroyMaterial(materialHandle);
     }
@@ -658,17 +658,17 @@ namespace Box3D
         return m_system->CreateWorld(runtimeConfiguration);
     }
 
-    bool SystemComponent::DestroyWorld(WorldHandle worldHandle)
+    bool SystemComponent::DestroyWorld(const WorldHandle worldHandle)
     {
         return m_system != nullptr && m_system->DestroyWorld(worldHandle);
     }
 
-    bool SystemComponent::StepWorld(WorldHandle worldHandle, float fixedTimeStep)
+    bool SystemComponent::StepWorld(const WorldHandle worldHandle, const float fixedTimeStep)
     {
         return m_system != nullptr && m_system->StepWorld(worldHandle, fixedTimeStep);
     }
 
-    ClosestQueryResult SystemComponent::RaycastClosest(WorldHandle worldHandle, const RaycastRequest& request) const
+    ClosestQueryResult SystemComponent::RaycastClosest(const WorldHandle worldHandle, const RaycastRequest& request) const
     {
         ClosestQueryResult result;
         result.m_found = m_system != nullptr && m_system->RaycastClosest(worldHandle, request, result.m_hit);
@@ -676,7 +676,7 @@ namespace Box3D
     }
 
     ClosestQueryResultCollection SystemComponent::RaycastClosestBatch(
-        WorldHandle worldHandle, const RaycastRequestCollection& requestCollection) const
+        const WorldHandle worldHandle, const RaycastRequestCollection& requestCollection) const
     {
         const AZStd::span<const RaycastRequest> requests = requestCollection.GetRequests();
         ClosestQueryResultCollection collection;
@@ -694,34 +694,34 @@ namespace Box3D
         return collection;
     }
 
-    QueryHitCollection SystemComponent::Raycast(WorldHandle worldHandle, const RaycastRequest& request, AZ::u32 maxHitCount) const
+    QueryHitCollection SystemComponent::Raycast(WorldHandle worldHandle, const RaycastRequest& request, const AZ::u32 maxHitCount) const
     {
         return m_system != nullptr ? CollectQueryHits(
                                          maxHitCount,
-                                         [this, worldHandle, &request](AZStd::span<QueryHit> hits)
+                                         [this, worldHandle, &request](const AZStd::span<QueryHit> hits)
                                          {
                                              return m_system->Raycast(worldHandle, request, hits);
                                          })
                                    : QueryHitCollection{};
     }
 
-    QueryHitCollection SystemComponent::OverlapAabb(WorldHandle worldHandle, const AabbOverlapRequest& request, AZ::u32 maxHitCount) const
+    QueryHitCollection SystemComponent::OverlapAabb(WorldHandle worldHandle, const AabbOverlapRequest& request, const AZ::u32 maxHitCount) const
     {
         return m_system != nullptr ? CollectQueryHits(
                                          maxHitCount,
-                                         [this, worldHandle, &request](AZStd::span<QueryHit> hits)
+                                         [this, worldHandle, &request](const AZStd::span<QueryHit> hits)
                                          {
                                              return m_system->OverlapAabb(worldHandle, request, hits);
                                          })
                                    : QueryHitCollection{};
     }
 
-    size_t SystemComponent::GetContactPointCount(WorldHandle worldHandle) const
+    size_t SystemComponent::GetContactPointCount(const WorldHandle worldHandle) const
     {
         return m_system != nullptr ? m_system->GetStepEvents(worldHandle).m_contactPoints.size() : 0;
     }
 
-    ContactPoint SystemComponent::GetContactPointAt(WorldHandle worldHandle, size_t index) const
+    ContactPoint SystemComponent::GetContactPointAt(const WorldHandle worldHandle, const size_t index) const
     {
         if (m_system == nullptr)
         {
@@ -752,7 +752,7 @@ namespace Box3D
 
 #undef BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS
 
-    void SystemComponent::OnTick(float deltaTime, [[maybe_unused]] AZ::ScriptTimePoint time)
+    void SystemComponent::OnTick(const float deltaTime, [[maybe_unused]] AZ::ScriptTimePoint time)
     {
         m_system->StepAutoSimulatedWorlds(deltaTime);
     }

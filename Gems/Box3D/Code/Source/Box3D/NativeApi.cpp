@@ -68,7 +68,7 @@ namespace Box3D
         }
     }
 
-    AZ::u8 MeshGeometry::GetMaterialIndex(size_t faceIndex) const
+    AZ::u8 MeshGeometry::GetMaterialIndex(const size_t faceIndex) const
     {
         const auto* mesh = static_cast<const b3MeshData*>(m_data);
         return mesh != nullptr && faceIndex < aznumeric_cast<size_t>(mesh->triangleCount) ? b3GetMeshMaterialIndices(mesh)[faceIndex] : 0;
@@ -87,7 +87,7 @@ namespace Box3D
         }
     }
 
-    AZ::u8 HeightFieldGeometry::GetMaterialIndex(size_t faceIndex) const
+    AZ::u8 HeightFieldGeometry::GetMaterialIndex(const size_t faceIndex) const
     {
         const auto* heightField = static_cast<const b3HeightFieldData*>(m_data);
         const size_t faceCount = heightField != nullptr
@@ -143,7 +143,7 @@ namespace Box3D
     {
         constexpr float MinimumGeometryScale = 0.01f;
 
-        bool IsValidGeometryScale(const AZ::Vector3& scale, bool allowNegative = true)
+        bool IsValidGeometryScale(const AZ::Vector3& scale, const bool allowNegative = true)
         {
             return scale.IsFinite() && AZStd::abs(scale.GetX()) >= MinimumGeometryScale &&
                 AZStd::abs(scale.GetY()) >= MinimumGeometryScale && AZStd::abs(scale.GetZ()) >= MinimumGeometryScale &&
@@ -199,7 +199,7 @@ namespace Box3D
 
         AZStd::atomic<IMaterialCallbacks*> s_materialCallbacks{};
 
-        float MixFriction(float valueA, uint64_t materialIdA, float valueB, uint64_t materialIdB)
+        float MixFriction(const float valueA, const uint64_t materialIdA, const float valueB, const uint64_t materialIdB)
         {
             if (const IMaterialCallbacks* callbacks = s_materialCallbacks.load(AZStd::memory_order_acquire))
             {
@@ -208,7 +208,7 @@ namespace Box3D
             return std::sqrt(valueA * valueB);
         }
 
-        float MixRestitution(float valueA, uint64_t materialIdA, float valueB, uint64_t materialIdB)
+        float MixRestitution(const float valueA, const uint64_t materialIdA, const float valueB, const uint64_t materialIdB)
         {
             if (const IMaterialCallbacks* callbacks = s_materialCallbacks.load(AZStd::memory_order_acquire))
             {
@@ -278,12 +278,12 @@ namespace Box3D
             delete nativeTask;
         }
 
-        bool FilterContact(b3ShapeId shapeA, b3ShapeId shapeB, void* context)
+        bool FilterContact(const b3ShapeId shapeA, const b3ShapeId shapeB, void* context)
         {
             return static_cast<IContactCallbacks*>(context)->ShouldCollide({ b3StoreShapeId(shapeA) }, { b3StoreShapeId(shapeB) });
         }
 
-        bool FilterPreSolveContact(b3ShapeId shapeA, b3ShapeId shapeB, b3Pos position, b3Vec3 normal, void* context)
+        bool FilterPreSolveContact(const b3ShapeId shapeA, const b3ShapeId shapeB, const b3Pos position, const b3Vec3 normal, void* context)
         {
             return static_cast<IContactCallbacks*>(context)->BeforeSolve(
                 { b3StoreShapeId(shapeA) }, { b3StoreShapeId(shapeB) }, FromNativePosition(position), FromNative(normal));
@@ -299,7 +299,7 @@ namespace Box3D
             DestroyReplayDebugShape(shape, context);
         }
 
-        void* AllocateNativeMemory(int32_t size, int32_t alignment)
+        void* AllocateNativeMemory(const int32_t size, const int32_t alignment)
         {
             return size > 0 && alignment > 0 ? AZ::AllocatorInstance<NativeAllocator>::Get().Allocate(
                                                    aznumeric_cast<size_t>(size), aznumeric_cast<size_t>(alignment), 0, "Box3D Native")
@@ -312,7 +312,7 @@ namespace Box3D
         }
 
         int ReportNativeAssertion(
-            [[maybe_unused]] const char* condition, [[maybe_unused]] const char* fileName, [[maybe_unused]] int lineNumber)
+            [[maybe_unused]] const char* condition, [[maybe_unused]] const char* fileName, [[maybe_unused]] const int lineNumber)
         {
             AZ_Error(
                 "Box3D",
@@ -356,7 +356,7 @@ namespace Box3D
             return { value.x, value.z, -value.y };
         }
 
-        AZ::Vector3 FromNativePosition(b3Pos value)
+        AZ::Vector3 FromNativePosition(const b3Pos value)
         {
             return { aznumeric_cast<float>(value.x), aznumeric_cast<float>(value.z), aznumeric_cast<float>(-value.y) };
         }
@@ -396,7 +396,7 @@ namespace Box3D
             return { { value.GetX(), -value.GetZ(), value.GetY() }, value.GetW() };
         }
 
-        AZ::Quaternion FromNative(b3Quat value)
+        AZ::Quaternion FromNative(const b3Quat value)
         {
             return AZ::Quaternion(value.v.x, value.v.z, -value.v.y, value.s);
         }
@@ -433,7 +433,7 @@ namespace Box3D
             return AZ::Matrix3x3::CreateFromColumns(FromNative(value.cx), FromNative(value.cz), -FromNative(value.cy));
         }
 
-        b3BodyType ToNative(NativeBodyType type)
+        b3BodyType ToNative(const NativeBodyType type)
         {
             switch (type)
             {
@@ -447,7 +447,7 @@ namespace Box3D
             }
         }
 
-        NativeBodyType FromNative(b3BodyType type)
+        NativeBodyType FromNative(const b3BodyType type)
         {
             switch (type)
             {
@@ -515,13 +515,13 @@ namespace Box3D
         };
 
         float OnCastHit(
-            b3ShapeId shapeId,
-            b3Pos point,
-            b3Vec3 normal,
-            float fraction,
-            uint64_t userMaterialId,
-            int triangleIndex,
-            int childIndex,
+            const b3ShapeId shapeId,
+            const b3Pos point,
+            const b3Vec3 normal,
+            const float fraction,
+            const uint64_t userMaterialId,
+            const int triangleIndex,
+            const int childIndex,
             void* context)
         {
             auto* castContext = static_cast<CastContext*>(context);
@@ -542,7 +542,7 @@ namespace Box3D
             void* m_context;
         };
 
-        bool OnOverlapHit(b3ShapeId shapeId, void* context)
+        bool OnOverlapHit(const b3ShapeId shapeId, void* context)
         {
             auto* overlapContext = static_cast<OverlapContext*>(context);
             const OverlapCandidate candidate{ { b3StoreShapeId(shapeId) }, b3Shape_GetUserData(shapeId) };
@@ -557,7 +557,7 @@ namespace Box3D
             bool m_overlapped = false;
         };
 
-        bool OnBodyOverlapHit(b3ShapeId shapeId, void* context)
+        bool OnBodyOverlapHit(const b3ShapeId shapeId, void* context)
         {
             auto* overlapContext = static_cast<BodyOverlapContext*>(context);
             const b3BodyId bodyId = b3Shape_GetBody(shapeId);
@@ -583,7 +583,7 @@ namespace Box3D
 
         struct MoverScratchData final
         {
-            explicit MoverScratchData(size_t maximumPlaneCount)
+            explicit MoverScratchData(const size_t maximumPlaneCount)
                 : m_planeCapacity(maximumPlaneCount)
             {
                 m_entries.reserve(maximumPlaneCount);
@@ -620,7 +620,7 @@ namespace Box3D
             AZStd::vector<b3ShapeId> m_visitorIds;
         };
 
-        bool CollectMoverPlanes(b3ShapeId shapeId, const b3PlaneResult* planeResults, int planeCount, void* context)
+        bool CollectMoverPlanes(const b3ShapeId shapeId, const b3PlaneResult* planeResults, const int planeCount, void* context)
         {
             auto& data = *static_cast<MoverScratchData*>(context);
             const b3BodyId bodyId = b3Shape_GetBody(shapeId);
@@ -672,7 +672,7 @@ namespace Box3D
             return true;
         }
 
-        bool FilterMoverShape(b3ShapeId shapeId, void* context)
+        bool FilterMoverShape(const b3ShapeId shapeId, void* context)
         {
             const b3BodyId bodyId = b3Shape_GetBody(shapeId);
             const auto& data = *static_cast<const MoverScratchData*>(context);
@@ -720,7 +720,7 @@ namespace Box3D
             return left.m_result.m_point.GetZ() < right.m_result.m_point.GetZ();
         }
 
-        b3ShapeProxy ToNativeProxy(AZStd::span<const AZ::Vector3> points, float radius, b3Vec3* nativePoints)
+        b3ShapeProxy ToNativeProxy(const AZStd::span<const AZ::Vector3> points, const float radius, b3Vec3* nativePoints)
         {
             const size_t pointCount = AZStd::min(points.size(), size_t{ B3_MAX_SHAPE_CAST_POINTS });
             for (size_t pointIndex = 0; pointIndex < pointCount; ++pointIndex)
@@ -730,7 +730,7 @@ namespace Box3D
             return { nativePoints, aznumeric_cast<int>(pointCount), radius };
         }
 
-        constexpr AZ::u32 ToUnsigned(int value)
+        constexpr AZ::u32 ToUnsigned(const int value)
         {
             return value > 0 ? static_cast<AZ::u32>(value) : 0;
         }
@@ -763,20 +763,20 @@ namespace Box3D
             AZStd::vector<ReplayDebugPrimitive> m_primitives;
         };
 
-        AZ::Color GetDebugColor(b3HexColor color)
+        AZ::Color GetDebugColor(const b3HexColor color)
         {
             const AZ::u32 packed = static_cast<AZ::u32>(color);
             return AZ::Color::CreateFromRgba(
                 static_cast<AZ::u8>(packed >> 16), static_cast<AZ::u8>(packed >> 8), static_cast<AZ::u8>(packed), 255);
         }
 
-        DebugMaterialPreset GetDebugMaterial(b3HexColor color)
+        DebugMaterialPreset GetDebugMaterial(const b3HexColor color)
         {
             return static_cast<DebugMaterialPreset>(
                 AZStd::min(static_cast<AZ::u32>(color) >> 24, static_cast<AZ::u32>(DebugMaterialPreset::Metallic)));
         }
 
-        bool DrawDebugShape(void* shape, b3WorldTransform transform, b3HexColor color, void* context)
+        bool DrawDebugShape(void* shape, b3WorldTransform transform, const b3HexColor color, void* context)
         {
             const auto* debugShape = static_cast<const ReplayDebugShape*>(shape);
             if (debugShape == nullptr)
@@ -1017,12 +1017,12 @@ namespace Box3D
             delete static_cast<ReplayDebugShape*>(shape);
         }
 
-        bool DrawReplayDebugShape(void* shape, b3WorldTransform transform, b3HexColor color, void* context)
+        bool DrawReplayDebugShape(void* shape, b3WorldTransform transform, const b3HexColor color, void* context)
         {
             return DrawDebugShape(shape, transform, color, context);
         }
 
-        void DrawDebugLine(b3Pos start, b3Pos end, b3HexColor color, void* context)
+        void DrawDebugLine(const b3Pos start, const b3Pos end, const b3HexColor color, void* context)
         {
             static_cast<DebugContext*>(context)->m_renderer.DrawLine(
                 FromNativePosition(start), FromNativePosition(end), GetDebugColor(color));
@@ -1033,34 +1033,34 @@ namespace Box3D
             static_cast<DebugContext*>(context)->m_renderer.DrawTransform(FromNative(transform));
         }
 
-        void DrawDebugPoint(b3Pos position, float size, b3HexColor color, void* context)
+        void DrawDebugPoint(const b3Pos position, const float size, const b3HexColor color, void* context)
         {
             static_cast<DebugContext*>(context)->m_renderer.DrawPoint(FromNativePosition(position), size, GetDebugColor(color));
         }
 
-        void DrawDebugSphere(b3Pos position, float radius, b3HexColor color, float opacity, void* context)
+        void DrawDebugSphere(const b3Pos position, const float radius, const b3HexColor color, const float opacity, void* context)
         {
             static_cast<DebugContext*>(context)->m_renderer.DrawSphere(FromNativePosition(position), radius, GetDebugColor(color), opacity);
         }
 
-        void DrawDebugCapsule(b3Pos start, b3Pos end, float radius, b3HexColor color, float opacity, void* context)
+        void DrawDebugCapsule(const b3Pos start, const b3Pos end, const float radius, const b3HexColor color, const float opacity, void* context)
         {
             static_cast<DebugContext*>(context)->m_renderer.DrawCapsule(
                 FromNativePosition(start), FromNativePosition(end), radius, GetDebugColor(color), opacity);
         }
 
-        void DrawDebugBounds(b3AABB bounds, b3HexColor color, void* context)
+        void DrawDebugBounds(b3AABB bounds, const b3HexColor color, void* context)
         {
             static_cast<DebugContext*>(context)->m_renderer.DrawBounds(FromNative(bounds), GetDebugColor(color));
         }
 
-        void DrawDebugBox(b3Vec3 extents, b3WorldTransform transform, b3HexColor color, void* context)
+        void DrawDebugBox(const b3Vec3 extents, b3WorldTransform transform, const b3HexColor color, void* context)
         {
             static_cast<DebugContext*>(context)->m_renderer.DrawBox(
                 AZ::Vector3(extents.x, extents.z, extents.y), FromNative(transform), GetDebugColor(color));
         }
 
-        void DrawDebugText(b3Pos position, const char* value, b3HexColor color, void* context)
+        void DrawDebugText(const b3Pos position, const char* value, const b3HexColor color, void* context)
         {
             static_cast<DebugContext*>(context)->m_renderer.DrawText(
                 FromNativePosition(position), value != nullptr ? value : "", GetDebugColor(color));
@@ -1238,7 +1238,7 @@ namespace Box3D
         return AZStd::shared_ptr<const CompoundGeometry>(aznew CompoundGeometry(clone, AZStd::move(cloneMaterialSources)));
     }
 
-    MoverScratch::MoverScratch(size_t maximumPlaneCount)
+    MoverScratch::MoverScratch(const size_t maximumPlaneCount)
         : m_data(aznew MoverScratchData(maximumPlaneCount))
     {
     }
@@ -1327,7 +1327,7 @@ namespace Box3D
             b3RecPlayer_Restart(m_player);
         }
 
-        void Seek(AZ::u32 frame) override
+        void Seek(const AZ::u32 frame) override
         {
             const DeterministicFloatScope floatScope;
             b3RecPlayer_SeekFrame(
@@ -1354,14 +1354,14 @@ namespace Box3D
             return b3RecPlayer_GetDivergeFrame(m_player);
         }
 
-        void SetWorkerCount(AZ::u32 workerCount) override
+        void SetWorkerCount(const AZ::u32 workerCount) override
         {
             b3RecPlayer_SetWorkerCount(
                 m_player,
                 aznumeric_cast<int>(AZStd::clamp(workerCount, AZ::u32{ 1 }, aznumeric_cast<AZ::u32>((AZStd::numeric_limits<int>::max)()))));
         }
 
-        void SetKeyframePolicy(size_t budgetBytes, AZ::u32 minimumInterval) override
+        void SetKeyframePolicy(const size_t budgetBytes, const AZ::u32 minimumInterval) override
         {
             b3RecPlayer_SetKeyframePolicy(
                 m_player,
@@ -1394,7 +1394,7 @@ namespace Box3D
             return ToUnsigned(b3RecPlayer_GetBodyCount(m_player));
         }
 
-        bool GetBody(AZ::u32 index, ReplayBody& body) const override
+        bool GetBody(const AZ::u32 index, ReplayBody& body) const override
         {
             body = {};
             if (index >= GetBodyCount())
@@ -1420,7 +1420,7 @@ namespace Box3D
             return ToUnsigned(b3RecPlayer_GetFrameQueryCount(m_player));
         }
 
-        bool GetFrameQuery(AZ::u32 index, ReplayQuery& query) const override
+        bool GetFrameQuery(const AZ::u32 index, ReplayQuery& query) const override
         {
             query = {};
             if (index >= GetFrameQueryCount())
@@ -1467,7 +1467,7 @@ namespace Box3D
             return true;
         }
 
-        bool GetFrameQueryHit(AZ::u32 queryIndex, AZ::u32 hitIndex, ReplayQueryHit& hit) const override
+        bool GetFrameQueryHit(const AZ::u32 queryIndex, const AZ::u32 hitIndex, ReplayQueryHit& hit) const override
         {
             hit = {};
             ReplayQuery query;
@@ -1489,7 +1489,7 @@ namespace Box3D
             return true;
         }
 
-        bool Draw(const DebugDrawSettings& settings, IDebugRenderer& renderer, AZ::s32 queryIndex, AZ::s32 selectedQueryIndex) override
+        bool Draw(const DebugDrawSettings& settings, IDebugRenderer& renderer, const AZ::s32 queryIndex, const AZ::s32 selectedQueryIndex) override
         {
             if (!AZ::IsFiniteFloat(settings.m_forceScale) || settings.m_forceScale < 0.0f || !AZ::IsFiniteFloat(settings.m_jointScale) ||
                 settings.m_jointScale < 0.0f || queryIndex < -1 || selectedQueryIndex < -1 ||
@@ -1521,7 +1521,7 @@ namespace Box3D
         return { version.major, version.minor, version.revision };
     }
 
-    AZStd::unique_ptr<Recording> CreateRecording(size_t initialCapacityBytes)
+    AZStd::unique_ptr<Recording> CreateRecording(const size_t initialCapacityBytes)
     {
         if (initialCapacityBytes > aznumeric_cast<size_t>((AZStd::numeric_limits<int>::max)()))
         {
@@ -1531,7 +1531,7 @@ namespace Box3D
         return recording != nullptr ? AZStd::unique_ptr<Recording>(aznew Recording(recording)) : nullptr;
     }
 
-    bool StartRecording(WorldId worldId, Recording& recording)
+    bool StartRecording(const WorldId worldId, Recording& recording)
     {
         auto* nativeRecording = static_cast<b3Recording*>(recording.m_data);
         if (!IsValid(worldId) || nativeRecording == nullptr)
@@ -1543,7 +1543,7 @@ namespace Box3D
         return b3Recording_GetSize(nativeRecording) > 0;
     }
 
-    bool StopRecording(WorldId worldId, Recording& recording, AZStd::vector<AZ::u8>& data)
+    bool StopRecording(const WorldId worldId, Recording& recording, AZStd::vector<AZ::u8>& data)
     {
         data.clear();
         auto* nativeRecording = static_cast<b3Recording*>(recording.m_data);
@@ -1562,7 +1562,7 @@ namespace Box3D
         return true;
     }
 
-    bool ValidateRecording(AZStd::span<const AZ::u8> data, AZ::u32 workerCount)
+    bool ValidateRecording(const AZStd::span<const AZ::u8> data, const AZ::u32 workerCount)
     {
         const DeterministicFloatScope floatScope;
         return !data.empty() && data.size() <= aznumeric_cast<size_t>((AZStd::numeric_limits<int>::max)()) && workerCount > 0 &&
@@ -1570,7 +1570,7 @@ namespace Box3D
             b3ValidateReplay(data.data(), aznumeric_cast<int>(data.size()), aznumeric_cast<int>(workerCount));
     }
 
-    AZStd::unique_ptr<IReplay> CreateReplay(AZStd::span<const AZ::u8> data, AZ::u32 workerCount)
+    AZStd::unique_ptr<IReplay> CreateReplay(const AZStd::span<const AZ::u8> data, const AZ::u32 workerCount)
     {
         if (data.empty() || data.size() > aznumeric_cast<size_t>((AZStd::numeric_limits<int>::max)()) || workerCount == 0 ||
             workerCount > aznumeric_cast<AZ::u32>((AZStd::numeric_limits<int>::max)()))
@@ -1582,19 +1582,19 @@ namespace Box3D
         return player != nullptr ? AZStd::unique_ptr<IReplay>(aznew ReplayInstance(player)) : nullptr;
     }
 
-    void SetLengthUnitsPerMeter(float lengthUnitsPerMeter)
+    void SetLengthUnitsPerMeter(const float lengthUnitsPerMeter)
     {
         InstallNativeCallbacks();
         b3SetLengthUnitsPerMeter(lengthUnitsPerMeter);
     }
 
-    void SetStallWarningThreshold(float seconds)
+    void SetStallWarningThreshold(const float seconds)
     {
         InstallNativeCallbacks();
         b3SetStallThreshold(seconds);
     }
 
-    bool DrawWorld(WorldId worldId, const DebugDrawSettings& settings, IDebugRenderer& renderer)
+    bool DrawWorld(const WorldId worldId, const DebugDrawSettings& settings, IDebugRenderer& renderer)
     {
         if (!IsValid(worldId) || !AZ::IsFiniteFloat(settings.m_forceScale) || settings.m_forceScale < 0.0f ||
             !AZ::IsFiniteFloat(settings.m_jointScale) || settings.m_jointScale < 0.0f)
@@ -1644,7 +1644,7 @@ namespace Box3D
         return { b3StoreWorldId(world) };
     }
 
-    void DestroyWorld(WorldId worldId)
+    void DestroyWorld(const WorldId worldId)
     {
         if (IsValid(worldId))
         {
@@ -1652,18 +1652,18 @@ namespace Box3D
         }
     }
 
-    bool IsValid(WorldId worldId)
+    bool IsValid(const WorldId worldId)
     {
         return worldId.IsValid() && b3World_IsValid(b3LoadWorldId(worldId.m_value));
     }
 
-    void Step(WorldId worldId, float timeStep, AZ::u32 subStepCount)
+    void Step(const WorldId worldId, const float timeStep, const AZ::u32 subStepCount)
     {
         const DeterministicFloatScope floatScope;
         b3World_Step(b3LoadWorldId(worldId.m_value), timeStep, aznumeric_cast<int>(subStepCount));
     }
 
-    void ReconfigureWorld(WorldId worldId, const NativeWorldConfiguration& configuration)
+    void ReconfigureWorld(const WorldId worldId, const NativeWorldConfiguration& configuration)
     {
         const b3WorldId world = b3LoadWorldId(worldId.m_value);
         b3World_SetRestitutionThreshold(world, configuration.m_restitutionThreshold);
@@ -1680,7 +1680,7 @@ namespace Box3D
         b3World_EnableSpeculative(world, configuration.m_enableSpeculative);
     }
 
-    void SetContactCallbacks(WorldId worldId, IContactCallbacks* callbacks, bool enableCustomFilterCallback, bool enablePreSolveCallback)
+    void SetContactCallbacks(const WorldId worldId, IContactCallbacks* callbacks, const bool enableCustomFilterCallback, const bool enablePreSolveCallback)
     {
         if (!IsValid(worldId))
         {
@@ -1691,22 +1691,22 @@ namespace Box3D
         b3World_SetPreSolveCallback(world, callbacks != nullptr && enablePreSolveCallback ? FilterPreSolveContact : nullptr, callbacks);
     }
 
-    void SetGravity(WorldId worldId, const AZ::Vector3& gravity)
+    void SetGravity(const WorldId worldId, const AZ::Vector3& gravity)
     {
         b3World_SetGravity(b3LoadWorldId(worldId.m_value), ToNative(gravity));
     }
 
-    AZ::Vector3 GetGravity(WorldId worldId)
+    AZ::Vector3 GetGravity(const WorldId worldId)
     {
         return FromNative(b3World_GetGravity(b3LoadWorldId(worldId.m_value)));
     }
 
-    AZ::Aabb GetWorldAabb(WorldId worldId)
+    AZ::Aabb GetWorldAabb(const WorldId worldId)
     {
         return IsValid(worldId) ? FromNative(b3World_GetBounds(b3LoadWorldId(worldId.m_value))) : AZ::Aabb::CreateNull();
     }
 
-    bool RebuildStaticTree(WorldId worldId)
+    bool RebuildStaticTree(const WorldId worldId)
     {
         if (!IsValid(worldId))
         {
@@ -1716,7 +1716,7 @@ namespace Box3D
         return true;
     }
 
-    bool Explode(WorldId worldId, const AZ::Vector3& position, AZ::u64 maskBits, float radius, float falloff, float impulsePerArea)
+    bool Explode(const WorldId worldId, const AZ::Vector3& position, const AZ::u64 maskBits, const float radius, const float falloff, const float impulsePerArea)
     {
         if (!IsValid(worldId) || !position.IsFinite() || !AZ::IsFiniteFloat(radius) || radius < 0.0f || !AZ::IsFiniteFloat(falloff) ||
             falloff < 0.0f || !AZ::IsFiniteFloat(impulsePerArea))
@@ -1827,8 +1827,8 @@ namespace Box3D
     }
 
     void GetStepEvents(
-        WorldId worldId,
-        StepEventFlags flags,
+        const WorldId worldId,
+        const StepEventFlags flags,
         AZStd::vector<BodyMove>& bodyMoves,
         AZStd::vector<SensorTransition>& sensorTransitions,
         AZStd::vector<ContactTransition>& contactTransitions,
@@ -1984,7 +1984,7 @@ namespace Box3D
         }
 
         void ConvertAndSortContacts(
-            AZStd::span<const b3ContactData> nativeContacts,
+            const AZStd::span<const b3ContactData> nativeContacts,
             AZStd::vector<ContactData>& contacts,
             AZStd::vector<NativeContactPoint>& points)
         {
@@ -2013,7 +2013,7 @@ namespace Box3D
         }
     } // namespace
 
-    bool GetContactData(ContactId contactId, ContactData& contactData, AZStd::vector<NativeContactPoint>& points)
+    bool GetContactData(const ContactId contactId, ContactData& contactData, AZStd::vector<NativeContactPoint>& points)
     {
         contactData = {};
         points.clear();
@@ -2033,7 +2033,7 @@ namespace Box3D
     }
 
     bool GetTouchingContacts(
-        BodyId bodyId, ContactScratch& scratch, AZStd::vector<ContactData>& contacts, AZStd::vector<NativeContactPoint>& points)
+        const BodyId bodyId, ContactScratch& scratch, AZStd::vector<ContactData>& contacts, AZStd::vector<NativeContactPoint>& points)
     {
         contacts.clear();
         points.clear();
@@ -2052,7 +2052,7 @@ namespace Box3D
     }
 
     bool GetTouchingContacts(
-        ShapeId shapeId, ContactScratch& scratch, AZStd::vector<ContactData>& contacts, AZStd::vector<NativeContactPoint>& points)
+        const ShapeId shapeId, ContactScratch& scratch, AZStd::vector<ContactData>& contacts, AZStd::vector<NativeContactPoint>& points)
     {
         contacts.clear();
         points.clear();
@@ -2070,7 +2070,7 @@ namespace Box3D
         return true;
     }
 
-    bool GetShapeData(ShapeId shapeId, ShapeData& shapeData)
+    bool GetShapeData(const ShapeId shapeId, ShapeData& shapeData)
     {
         shapeData = {};
         if (!IsValid(shapeId))
@@ -2084,7 +2084,7 @@ namespace Box3D
         return true;
     }
 
-    bool GetSensorOverlaps(BodyId bodyId, SensorScratch& scratch, AZStd::vector<SensorOverlapData>& overlaps)
+    bool GetSensorOverlaps(const BodyId bodyId, SensorScratch& scratch, AZStd::vector<SensorOverlapData>& overlaps)
     {
         overlaps.clear();
         if (!IsValid(bodyId))
@@ -2129,7 +2129,7 @@ namespace Box3D
         return true;
     }
 
-    bool GetSensorOverlaps(ShapeId shapeId, SensorScratch& scratch, AZStd::vector<SensorOverlapData>& overlaps)
+    bool GetSensorOverlaps(const ShapeId shapeId, SensorScratch& scratch, AZStd::vector<SensorOverlapData>& overlaps)
     {
         overlaps.clear();
         if (!IsValid(shapeId))
@@ -2167,19 +2167,19 @@ namespace Box3D
     }
 
     bool MoveCapsule(
-        WorldId worldId,
+        const WorldId worldId,
         const AZ::Vector3& position,
         const AZ::Vector3& center1,
         const AZ::Vector3& center2,
-        float radius,
+        const float radius,
         const AZ::Vector3& translation,
-        float deltaTime,
-        AZ::u64 categoryBits,
-        AZ::u64 maskBits,
-        BodyId ignoredBodyIdA,
-        BodyId ignoredBodyIdB,
-        AZ::u32 maximumIterations,
-        float minimumTranslation,
+        const float deltaTime,
+        const AZ::u64 categoryBits,
+        const AZ::u64 maskBits,
+        const BodyId ignoredBodyIdA,
+        const BodyId ignoredBodyIdB,
+        const AZ::u32 maximumIterations,
+        const float minimumTranslation,
         MoverScratch& scratch,
         MoverResult& result)
     {
@@ -2339,12 +2339,12 @@ namespace Box3D
     }
 
     void CastRay(
-        WorldId worldId,
+        const WorldId worldId,
         const AZ::Vector3& start,
         const AZ::Vector3& translation,
-        AZ::u64 categoryBits,
-        AZ::u64 maskBits,
-        CastCallback callback,
+        const AZ::u64 categoryBits,
+        const AZ::u64 maskBits,
+        const CastCallback callback,
         void* context)
     {
         if (!IsValid(worldId) || callback == nullptr)
@@ -2361,11 +2361,11 @@ namespace Box3D
     }
 
     bool CastRayClosest(
-        WorldId worldId,
+        const WorldId worldId,
         const AZ::Vector3& start,
         const AZ::Vector3& translation,
-        AZ::u64 categoryBits,
-        AZ::u64 maskBits,
+        const AZ::u64 categoryBits,
+        const AZ::u64 maskBits,
         ClosestCastHit& hit)
     {
         if (!IsValid(worldId))
@@ -2396,7 +2396,7 @@ namespace Box3D
     }
 
     bool CastRay(
-        BodyId bodyId, const AZ::Vector3& start, const AZ::Vector3& translation, AZ::u64 categoryBits, AZ::u64 maskBits, CastHit& hit)
+        const BodyId bodyId, const AZ::Vector3& start, const AZ::Vector3& translation, const AZ::u64 categoryBits, const AZ::u64 maskBits, CastHit& hit)
     {
         if (!IsValid(bodyId))
         {
@@ -2428,13 +2428,13 @@ namespace Box3D
     }
 
     bool CastShape(
-        BodyId bodyId,
+        const BodyId bodyId,
         const AZ::Vector3& origin,
         AZStd::span<const AZ::Vector3> points,
-        float radius,
+        const float radius,
         const AZ::Vector3& translation,
-        AZ::u64 categoryBits,
-        AZ::u64 maskBits,
+        const AZ::u64 categoryBits,
+        const AZ::u64 maskBits,
         CastHit& hit)
     {
         hit = {};
@@ -2476,13 +2476,13 @@ namespace Box3D
     }
 
     bool OverlapShape(
-        BodyId bodyId,
+        const BodyId bodyId,
         const AZ::Vector3& origin,
         AZStd::span<const AZ::Vector3> points,
-        float radius,
-        AZ::u64 categoryBits,
-        AZ::u64 maskBits,
-        OverlapPredicate predicate,
+        const float radius,
+        const AZ::u64 categoryBits,
+        const AZ::u64 maskBits,
+        const OverlapPredicate predicate,
         void* context)
     {
         if (!IsValid(bodyId) || !origin.IsFinite() || !AZ::IsFiniteFloat(radius) || radius < 0.0f || points.empty() ||
@@ -2515,7 +2515,7 @@ namespace Box3D
     }
 
     bool CastRaySphere(
-        const AZ::Vector3& center, float radius, const AZ::Vector3& start, const AZ::Vector3& translation, GeometryCastHit& hit)
+        const AZ::Vector3& center, const float radius, const AZ::Vector3& start, const AZ::Vector3& translation, GeometryCastHit& hit)
     {
         if (!center.IsFinite() || !start.IsFinite() || !translation.IsFinite() || !AZ::IsFiniteFloat(radius) || radius < 0.0f)
         {
@@ -2530,7 +2530,7 @@ namespace Box3D
     bool CastRayCapsule(
         const AZ::Vector3& center1,
         const AZ::Vector3& center2,
-        float radius,
+        const float radius,
         const AZ::Vector3& start,
         const AZ::Vector3& translation,
         GeometryCastHit& hit)
@@ -2608,14 +2608,14 @@ namespace Box3D
     }
 
     void CastShape(
-        WorldId worldId,
+        const WorldId worldId,
         const AZ::Vector3& origin,
-        AZStd::span<const AZ::Vector3> points,
-        float radius,
+        const AZStd::span<const AZ::Vector3> points,
+        const float radius,
         const AZ::Vector3& translation,
-        AZ::u64 categoryBits,
-        AZ::u64 maskBits,
-        CastCallback callback,
+        const AZ::u64 categoryBits,
+        const AZ::u64 maskBits,
+        const CastCallback callback,
         void* context)
     {
         if (!IsValid(worldId) || points.empty() || points.size() > B3_MAX_SHAPE_CAST_POINTS || callback == nullptr)
@@ -2634,13 +2634,13 @@ namespace Box3D
     }
 
     TreeVisitStatistics OverlapShape(
-        WorldId worldId,
+        const WorldId worldId,
         const AZ::Vector3& origin,
-        AZStd::span<const AZ::Vector3> points,
-        float radius,
-        AZ::u64 categoryBits,
-        AZ::u64 maskBits,
-        OverlapCallback callback,
+        const AZStd::span<const AZ::Vector3> points,
+        const float radius,
+        const AZ::u64 categoryBits,
+        const AZ::u64 maskBits,
+        const OverlapCallback callback,
         void* context)
     {
         if (!IsValid(worldId) || points.empty() || points.size() > B3_MAX_SHAPE_CAST_POINTS || callback == nullptr)
@@ -2662,7 +2662,7 @@ namespace Box3D
     }
 
     TreeVisitStatistics OverlapAabb(
-        WorldId worldId, const AZ::Aabb& bounds, AZ::u64 categoryBits, AZ::u64 maskBits, OverlapCallback callback, void* context)
+        const WorldId worldId, const AZ::Aabb& bounds, const AZ::u64 categoryBits, const AZ::u64 maskBits, const OverlapCallback callback, void* context)
     {
         if (!IsValid(worldId) || !bounds.IsValid() || callback == nullptr)
         {
@@ -2683,7 +2683,7 @@ namespace Box3D
         return { ToUnsigned(statistics.nodeVisits), ToUnsigned(statistics.leafVisits) };
     }
 
-    BodyId CreateBody(WorldId worldId, const BodyConfiguration& configuration)
+    BodyId CreateBody(const WorldId worldId, const BodyConfiguration& configuration)
     {
         b3BodyDef definition = b3DefaultBodyDef();
         definition.type = ToNative(configuration.m_type);
@@ -2710,7 +2710,7 @@ namespace Box3D
         return { b3StoreBodyId(b3CreateBody(b3LoadWorldId(worldId.m_value), &definition)) };
     }
 
-    void DestroyBody(BodyId bodyId)
+    void DestroyBody(const BodyId bodyId)
     {
         if (IsValid(bodyId))
         {
@@ -2718,17 +2718,17 @@ namespace Box3D
         }
     }
 
-    bool IsValid(BodyId bodyId)
+    bool IsValid(const BodyId bodyId)
     {
         return bodyId.IsValid() && b3Body_IsValid(b3LoadBodyId(bodyId.m_value));
     }
 
-    NativeBodyType GetBodyType(BodyId bodyId)
+    NativeBodyType GetBodyType(const BodyId bodyId)
     {
         return FromNative(b3Body_GetType(b3LoadBodyId(bodyId.m_value)));
     }
 
-    bool SetBodyType(BodyId bodyId, NativeBodyType type)
+    bool SetBodyType(const BodyId bodyId, const NativeBodyType type)
     {
         if (!IsValid(bodyId))
         {
@@ -2739,101 +2739,101 @@ namespace Box3D
         return b3Body_GetType(nativeId) == ToNative(type);
     }
 
-    void SetBodyName(BodyId bodyId, AZ::Name name)
+    void SetBodyName(const BodyId bodyId, AZ::Name name)
     {
         b3Body_SetName(b3LoadBodyId(bodyId.m_value), name.IsEmpty() ? nullptr : name.GetCStr());
     }
 
-    AZ::Transform GetBodyTransform(BodyId bodyId)
+    AZ::Transform GetBodyTransform(const BodyId bodyId)
     {
         return FromNative(b3Body_GetTransform(b3LoadBodyId(bodyId.m_value)));
     }
 
-    void SetBodyTransform(BodyId bodyId, const AZ::Transform& transform)
+    void SetBodyTransform(const BodyId bodyId, const AZ::Transform& transform)
     {
         const b3WorldTransform nativeTransform = ToNative(transform);
         b3Body_SetTransform(b3LoadBodyId(bodyId.m_value), nativeTransform.p, nativeTransform.q);
     }
 
-    AZ::Vector3 GetBodyLocalPoint(BodyId bodyId, const AZ::Vector3& worldPoint)
+    AZ::Vector3 GetBodyLocalPoint(const BodyId bodyId, const AZ::Vector3& worldPoint)
     {
         return FromNative(b3Body_GetLocalPoint(b3LoadBodyId(bodyId.m_value), ToNativePosition(worldPoint)));
     }
 
-    AZ::Vector3 GetBodyWorldPoint(BodyId bodyId, const AZ::Vector3& localPoint)
+    AZ::Vector3 GetBodyWorldPoint(const BodyId bodyId, const AZ::Vector3& localPoint)
     {
         return FromNativePosition(b3Body_GetWorldPoint(b3LoadBodyId(bodyId.m_value), ToNative(localPoint)));
     }
 
-    AZ::Vector3 GetBodyLocalVector(BodyId bodyId, const AZ::Vector3& worldVector)
+    AZ::Vector3 GetBodyLocalVector(const BodyId bodyId, const AZ::Vector3& worldVector)
     {
         return FromNative(b3Body_GetLocalVector(b3LoadBodyId(bodyId.m_value), ToNative(worldVector)));
     }
 
-    AZ::Vector3 GetBodyWorldVector(BodyId bodyId, const AZ::Vector3& localVector)
+    AZ::Vector3 GetBodyWorldVector(const BodyId bodyId, const AZ::Vector3& localVector)
     {
         return FromNative(b3Body_GetWorldVector(b3LoadBodyId(bodyId.m_value), ToNative(localVector)));
     }
 
-    AZ::Vector3 GetLinearVelocity(BodyId bodyId)
+    AZ::Vector3 GetLinearVelocity(const BodyId bodyId)
     {
         return FromNative(b3Body_GetLinearVelocity(b3LoadBodyId(bodyId.m_value)));
     }
 
-    void SetLinearVelocity(BodyId bodyId, const AZ::Vector3& velocity)
+    void SetLinearVelocity(const BodyId bodyId, const AZ::Vector3& velocity)
     {
         b3Body_SetLinearVelocity(b3LoadBodyId(bodyId.m_value), ToNative(velocity));
     }
 
-    AZ::Vector3 GetAngularVelocity(BodyId bodyId)
+    AZ::Vector3 GetAngularVelocity(const BodyId bodyId)
     {
         return FromNative(b3Body_GetAngularVelocity(b3LoadBodyId(bodyId.m_value)));
     }
 
-    void SetAngularVelocity(BodyId bodyId, const AZ::Vector3& velocity)
+    void SetAngularVelocity(const BodyId bodyId, const AZ::Vector3& velocity)
     {
         b3Body_SetAngularVelocity(b3LoadBodyId(bodyId.m_value), ToNative(velocity));
     }
 
-    AZ::Vector3 GetLinearVelocityAtLocalPoint(BodyId bodyId, const AZ::Vector3& localPoint)
+    AZ::Vector3 GetLinearVelocityAtLocalPoint(const BodyId bodyId, const AZ::Vector3& localPoint)
     {
         return FromNative(b3Body_GetLocalPointVelocity(b3LoadBodyId(bodyId.m_value), ToNative(localPoint)));
     }
 
-    AZ::Vector3 GetLinearVelocityAtWorldPoint(BodyId bodyId, const AZ::Vector3& worldPoint)
+    AZ::Vector3 GetLinearVelocityAtWorldPoint(const BodyId bodyId, const AZ::Vector3& worldPoint)
     {
         const b3Pos point = ToNativePosition(worldPoint);
         return FromNative(b3Body_GetWorldPointVelocity(b3LoadBodyId(bodyId.m_value), point));
     }
 
-    void SetKinematicTarget(BodyId bodyId, const AZ::Transform& transform, float timeStep, bool wake)
+    void SetKinematicTarget(const BodyId bodyId, const AZ::Transform& transform, const float timeStep, const bool wake)
     {
         b3Body_SetTargetTransform(b3LoadBodyId(bodyId.m_value), ToNative(transform), timeStep, wake);
     }
 
-    void ApplyLinearImpulse(BodyId bodyId, const AZ::Vector3& impulse, bool wake)
+    void ApplyLinearImpulse(const BodyId bodyId, const AZ::Vector3& impulse, const bool wake)
     {
         b3Body_ApplyLinearImpulseToCenter(b3LoadBodyId(bodyId.m_value), ToNative(impulse), wake);
     }
 
-    void ApplyLinearImpulse(BodyId bodyId, const AZ::Vector3& impulse, const AZ::Vector3& worldPoint, bool wake)
+    void ApplyLinearImpulse(const BodyId bodyId, const AZ::Vector3& impulse, const AZ::Vector3& worldPoint, const bool wake)
     {
         const b3Pos point = ToNativePosition(worldPoint);
         b3Body_ApplyLinearImpulse(b3LoadBodyId(bodyId.m_value), ToNative(impulse), point, wake);
     }
 
-    void ApplyAngularImpulse(BodyId bodyId, const AZ::Vector3& impulse, bool wake)
+    void ApplyAngularImpulse(const BodyId bodyId, const AZ::Vector3& impulse, const bool wake)
     {
         b3Body_ApplyAngularImpulse(b3LoadBodyId(bodyId.m_value), ToNative(impulse), wake);
     }
 
-    NativeMassProperties GetMassProperties(BodyId bodyId)
+    NativeMassProperties GetMassProperties(const BodyId bodyId)
     {
         const b3MassData massData = b3Body_GetMassData(b3LoadBodyId(bodyId.m_value));
         return { FromNative(massData.inertia), FromNative(massData.center), massData.mass };
     }
 
-    NativeMassProperties GetShapeMassProperties(ShapeId shapeId)
+    NativeMassProperties GetShapeMassProperties(const ShapeId shapeId)
     {
         if (!IsValid(shapeId))
         {
@@ -2844,83 +2844,83 @@ namespace Box3D
         return { FromNative(massData.inertia), FromNative(massData.center), massData.mass };
     }
 
-    void SetMassProperties(BodyId bodyId, const NativeMassProperties& properties)
+    void SetMassProperties(const BodyId bodyId, const NativeMassProperties& properties)
     {
         const b3MassData massData = { properties.m_mass, ToNative(properties.m_center), ToNative(properties.m_inertia) };
         b3Body_SetMassData(b3LoadBodyId(bodyId.m_value), massData);
     }
 
-    void ApplyMassFromShapes(BodyId bodyId)
+    void ApplyMassFromShapes(const BodyId bodyId)
     {
         b3Body_ApplyMassFromShapes(b3LoadBodyId(bodyId.m_value));
     }
 
-    AZ::Matrix3x3 GetWorldInverseInertia(BodyId bodyId)
+    AZ::Matrix3x3 GetWorldInverseInertia(const BodyId bodyId)
     {
         return FromNative(b3Body_GetWorldInverseRotationalInertia(b3LoadBodyId(bodyId.m_value)));
     }
 
-    AZ::Vector3 GetWorldCenterOfMass(BodyId bodyId)
+    AZ::Vector3 GetWorldCenterOfMass(const BodyId bodyId)
     {
         return FromNativePosition(b3Body_GetWorldCenterOfMass(b3LoadBodyId(bodyId.m_value)));
     }
 
-    float GetLinearDamping(BodyId bodyId)
+    float GetLinearDamping(const BodyId bodyId)
     {
         return b3Body_GetLinearDamping(b3LoadBodyId(bodyId.m_value));
     }
 
-    void SetLinearDamping(BodyId bodyId, float damping)
+    void SetLinearDamping(const BodyId bodyId, const float damping)
     {
         b3Body_SetLinearDamping(b3LoadBodyId(bodyId.m_value), damping);
     }
 
-    float GetAngularDamping(BodyId bodyId)
+    float GetAngularDamping(const BodyId bodyId)
     {
         return b3Body_GetAngularDamping(b3LoadBodyId(bodyId.m_value));
     }
 
-    void SetAngularDamping(BodyId bodyId, float damping)
+    void SetAngularDamping(const BodyId bodyId, const float damping)
     {
         b3Body_SetAngularDamping(b3LoadBodyId(bodyId.m_value), damping);
     }
 
-    float GetGravityScale(BodyId bodyId)
+    float GetGravityScale(const BodyId bodyId)
     {
         return b3Body_GetGravityScale(b3LoadBodyId(bodyId.m_value));
     }
 
-    void SetGravityScale(BodyId bodyId, float scale)
+    void SetGravityScale(const BodyId bodyId, const float scale)
     {
         b3Body_SetGravityScale(b3LoadBodyId(bodyId.m_value), scale);
     }
 
-    bool IsAwake(BodyId bodyId)
+    bool IsAwake(const BodyId bodyId)
     {
         return b3Body_IsAwake(b3LoadBodyId(bodyId.m_value));
     }
 
-    void SetAwake(BodyId bodyId, bool awake)
+    void SetAwake(const BodyId bodyId, const bool awake)
     {
         b3Body_SetAwake(b3LoadBodyId(bodyId.m_value), awake);
     }
 
-    float GetSleepThreshold(BodyId bodyId)
+    float GetSleepThreshold(const BodyId bodyId)
     {
         return b3Body_GetSleepThreshold(b3LoadBodyId(bodyId.m_value));
     }
 
-    void SetSleepThreshold(BodyId bodyId, float threshold)
+    void SetSleepThreshold(const BodyId bodyId, const float threshold)
     {
         b3Body_SetSleepThreshold(b3LoadBodyId(bodyId.m_value), threshold);
     }
 
-    bool IsBodyEnabled(BodyId bodyId)
+    bool IsBodyEnabled(const BodyId bodyId)
     {
         return b3Body_IsEnabled(b3LoadBodyId(bodyId.m_value));
     }
 
-    void SetBodyEnabled(BodyId bodyId, bool enabled)
+    void SetBodyEnabled(const BodyId bodyId, const bool enabled)
     {
         if (enabled)
         {
@@ -2932,7 +2932,7 @@ namespace Box3D
         }
     }
 
-    void SetBodyHitEventsEnabled(BodyId bodyId, bool enabled)
+    void SetBodyHitEventsEnabled(const BodyId bodyId, const bool enabled)
     {
         if (IsValid(bodyId))
         {
@@ -2940,7 +2940,7 @@ namespace Box3D
         }
     }
 
-    void ApplyForce(BodyId bodyId, const AZ::Vector3& force, bool wake)
+    void ApplyForce(const BodyId bodyId, const AZ::Vector3& force, const bool wake)
     {
         if (IsValid(bodyId) && force.IsFinite())
         {
@@ -2948,7 +2948,7 @@ namespace Box3D
         }
     }
 
-    void ApplyForce(BodyId bodyId, const AZ::Vector3& force, const AZ::Vector3& worldPoint, bool wake)
+    void ApplyForce(const BodyId bodyId, const AZ::Vector3& force, const AZ::Vector3& worldPoint, const bool wake)
     {
         if (IsValid(bodyId) && force.IsFinite() && worldPoint.IsFinite())
         {
@@ -2956,7 +2956,7 @@ namespace Box3D
         }
     }
 
-    void ApplyTorque(BodyId bodyId, const AZ::Vector3& torque, bool wake)
+    void ApplyTorque(const BodyId bodyId, const AZ::Vector3& torque, const bool wake)
     {
         if (IsValid(bodyId) && torque.IsFinite())
         {
@@ -2964,7 +2964,7 @@ namespace Box3D
         }
     }
 
-    NativeMotionLocks GetMotionLocks(BodyId bodyId)
+    NativeMotionLocks GetMotionLocks(const BodyId bodyId)
     {
         if (!IsValid(bodyId))
         {
@@ -2974,7 +2974,7 @@ namespace Box3D
         return { locks.linearX, locks.linearZ, locks.linearY, locks.angularX, locks.angularZ, locks.angularY };
     }
 
-    void SetMotionLocks(BodyId bodyId, const NativeMotionLocks& locks)
+    void SetMotionLocks(const BodyId bodyId, const NativeMotionLocks& locks)
     {
         if (IsValid(bodyId))
         {
@@ -2984,17 +2984,17 @@ namespace Box3D
         }
     }
 
-    void SetBullet(BodyId bodyId, bool enabled)
+    void SetBullet(const BodyId bodyId, const bool enabled)
     {
         b3Body_SetBullet(b3LoadBodyId(bodyId.m_value), enabled);
     }
 
-    bool IsBullet(BodyId bodyId)
+    bool IsBullet(const BodyId bodyId)
     {
         return b3Body_IsBullet(b3LoadBodyId(bodyId.m_value));
     }
 
-    void SetBodySleepEnabled(BodyId bodyId, bool enabled)
+    void SetBodySleepEnabled(const BodyId bodyId, const bool enabled)
     {
         if (IsValid(bodyId))
         {
@@ -3002,12 +3002,12 @@ namespace Box3D
         }
     }
 
-    bool IsBodySleepEnabled(BodyId bodyId)
+    bool IsBodySleepEnabled(const BodyId bodyId)
     {
         return IsValid(bodyId) && b3Body_IsSleepEnabled(b3LoadBodyId(bodyId.m_value));
     }
 
-    void SetBodyContactRecyclingEnabled(BodyId bodyId, bool enabled)
+    void SetBodyContactRecyclingEnabled(const BodyId bodyId, const bool enabled)
     {
         if (IsValid(bodyId))
         {
@@ -3015,12 +3015,12 @@ namespace Box3D
         }
     }
 
-    bool IsBodyContactRecyclingEnabled(BodyId bodyId)
+    bool IsBodyContactRecyclingEnabled(const BodyId bodyId)
     {
         return IsValid(bodyId) && b3Body_IsContactRecyclingEnabled(b3LoadBodyId(bodyId.m_value));
     }
 
-    AZ::Aabb GetBodyAabb(BodyId bodyId)
+    AZ::Aabb GetBodyAabb(const BodyId bodyId)
     {
         if (!IsValid(bodyId))
         {
@@ -3030,7 +3030,7 @@ namespace Box3D
         return FromNative(aabb);
     }
 
-    bool GetBodyClosestPoint(BodyId bodyId, const AZ::Vector3& target, AZ::Vector3& position, float& distance)
+    bool GetBodyClosestPoint(const BodyId bodyId, const AZ::Vector3& target, AZ::Vector3& position, float& distance)
     {
         position = AZ::Vector3::CreateZero();
         distance = 0.0f;
@@ -3051,7 +3051,7 @@ namespace Box3D
         return position.IsFinite();
     }
 
-    bool GetBodyJoints(BodyId bodyId, JointScratch& scratch)
+    bool GetBodyJoints(const BodyId bodyId, JointScratch& scratch)
     {
         auto* data = static_cast<JointScratchData*>(scratch.m_data);
         if (!IsValid(bodyId) || data == nullptr)
@@ -3269,7 +3269,7 @@ namespace Box3D
         return { b3StoreJointId(jointId) };
     }
 
-    bool UpdateJoint(JointId jointId, const NativeJointConfiguration& configuration)
+    bool UpdateJoint(const JointId jointId, const NativeJointConfiguration& configuration)
     {
         if (!IsValid(jointId))
         {
@@ -3426,7 +3426,7 @@ namespace Box3D
         return true;
     }
 
-    void DestroyJoint(JointId jointId, bool wakeAttachedBodies)
+    void DestroyJoint(const JointId jointId, const bool wakeAttachedBodies)
     {
         if (IsValid(jointId))
         {
@@ -3434,7 +3434,7 @@ namespace Box3D
         }
     }
 
-    void WakeJointBodies(JointId jointId)
+    void WakeJointBodies(const JointId jointId)
     {
         if (IsValid(jointId))
         {
@@ -3442,37 +3442,37 @@ namespace Box3D
         }
     }
 
-    bool IsValid(JointId jointId)
+    bool IsValid(const JointId jointId)
     {
         return jointId.IsValid() && b3Joint_IsValid(b3LoadJointId(jointId.m_value));
     }
 
-    void* GetJointUserData(JointId jointId)
+    void* GetJointUserData(const JointId jointId)
     {
         return IsValid(jointId) ? b3Joint_GetUserData(b3LoadJointId(jointId.m_value)) : nullptr;
     }
 
-    AZ::Vector3 GetJointConstraintForce(JointId jointId)
+    AZ::Vector3 GetJointConstraintForce(const JointId jointId)
     {
         return IsValid(jointId) ? FromNative(b3Joint_GetConstraintForce(b3LoadJointId(jointId.m_value))) : AZ::Vector3::CreateZero();
     }
 
-    AZ::Vector3 GetJointConstraintTorque(JointId jointId)
+    AZ::Vector3 GetJointConstraintTorque(const JointId jointId)
     {
         return IsValid(jointId) ? FromNative(b3Joint_GetConstraintTorque(b3LoadJointId(jointId.m_value))) : AZ::Vector3::CreateZero();
     }
 
-    float GetJointLinearSeparation(JointId jointId)
+    float GetJointLinearSeparation(const JointId jointId)
     {
         return IsValid(jointId) ? b3Joint_GetLinearSeparation(b3LoadJointId(jointId.m_value)) : 0.0f;
     }
 
-    float GetJointAngularSeparation(JointId jointId)
+    float GetJointAngularSeparation(const JointId jointId)
     {
         return IsValid(jointId) ? b3Joint_GetAngularSeparation(b3LoadJointId(jointId.m_value)) : 0.0f;
     }
 
-    JointState GetJointState(JointId jointId, JointKind kind)
+    JointState GetJointState(const JointId jointId, const JointKind kind)
     {
         if (!IsValid(jointId))
         {
@@ -3528,7 +3528,7 @@ namespace Box3D
         return AZStd::monostate{};
     }
 
-    ShapeId CreateSphereShape(BodyId bodyId, const NativeShapeConfiguration& configuration, const AZ::Vector3& center, float radius)
+    ShapeId CreateSphereShape(const BodyId bodyId, const NativeShapeConfiguration& configuration, const AZ::Vector3& center, const float radius)
     {
         if (!IsValid(bodyId) || !center.IsFinite() || !AZ::IsFiniteFloat(radius) || radius <= 0.0f)
         {
@@ -3540,7 +3540,7 @@ namespace Box3D
     }
 
     ShapeId CreateCapsuleShape(
-        BodyId bodyId, const NativeShapeConfiguration& configuration, const AZ::Vector3& center1, const AZ::Vector3& center2, float radius)
+        const BodyId bodyId, const NativeShapeConfiguration& configuration, const AZ::Vector3& center1, const AZ::Vector3& center2, const float radius)
     {
         if (!IsValid(bodyId) || !center1.IsFinite() || !center2.IsFinite() || !AZ::IsFiniteFloat(radius) || radius <= 0.0f)
         {
@@ -3551,7 +3551,7 @@ namespace Box3D
         return { b3StoreShapeId(b3CreateCapsuleShape(b3LoadBodyId(bodyId.m_value), &definition.m_value, &capsule)) };
     }
 
-    bool SetSphereShape(ShapeId shapeId, const AZ::Vector3& center, float radius)
+    bool SetSphereShape(const ShapeId shapeId, const AZ::Vector3& center, const float radius)
     {
         if (!IsValid(shapeId) || !center.IsFinite() || !AZ::IsFiniteFloat(radius) || radius <= 0.0f)
         {
@@ -3563,7 +3563,7 @@ namespace Box3D
         return b3Shape_GetType(nativeShapeId) == b3_sphereShape;
     }
 
-    bool SetCapsuleShape(ShapeId shapeId, const AZ::Vector3& center1, const AZ::Vector3& center2, float radius)
+    bool SetCapsuleShape(const ShapeId shapeId, const AZ::Vector3& center1, const AZ::Vector3& center2, const float radius)
     {
         if (!IsValid(shapeId) || !center1.IsFinite() || !center2.IsFinite() || !AZ::IsFiniteFloat(radius) || radius <= 0.0f)
         {
@@ -3576,16 +3576,16 @@ namespace Box3D
     }
 
     ShapeId CreateBoxShape(
-        BodyId bodyId, const NativeShapeConfiguration& configuration, const AZ::Vector3& halfExtents, const AZ::Transform& localTransform)
+        const BodyId bodyId, const NativeShapeConfiguration& configuration, const AZ::Vector3& halfExtents, const AZ::Transform& localTransform)
     {
         const AZStd::unique_ptr<HullGeometry> geometry = CreateBoxGeometry(halfExtents, GeometryTransform{ localTransform });
         return geometry != nullptr ? CreateHullShape(bodyId, configuration, *geometry) : ShapeId{};
     }
 
     ShapeId CreateHullShape(
-        BodyId bodyId,
+        const BodyId bodyId,
         const NativeShapeConfiguration& configuration,
-        AZStd::span<const AZ::Vector3> points,
+        const AZStd::span<const AZ::Vector3> points,
         const AZ::Vector3& scale,
         const AZ::Transform& localTransform)
     {
@@ -3631,7 +3631,7 @@ namespace Box3D
     }
 
     AZStd::unique_ptr<HullGeometry> CreateCylinderGeometry(
-        float height, float radius, AZ::u8 subdivisionCount, const GeometryTransform& transform)
+        const float height, const float radius, const AZ::u8 subdivisionCount, const GeometryTransform& transform)
     {
         InstallNativeCallbacks();
         if (!AZ::IsFiniteFloat(height) || height <= 0.0f || !AZ::IsFiniteFloat(radius) || radius <= 0.0f || subdivisionCount < 3 ||
@@ -3667,7 +3667,7 @@ namespace Box3D
         return hull != nullptr ? AZStd::unique_ptr<HullGeometry>(aznew HullGeometry(hull)) : nullptr;
     }
 
-    AZStd::unique_ptr<HullGeometry> CreateHullGeometry(AZStd::span<const AZ::Vector3> points, const GeometryTransform& transform)
+    AZStd::unique_ptr<HullGeometry> CreateHullGeometry(const AZStd::span<const AZ::Vector3> points, const GeometryTransform& transform)
     {
         InstallNativeCallbacks();
         if (points.size() < 4 || points.size() > 254 || !IsRigidTransform(transform.m_localTransform) ||
@@ -3714,7 +3714,7 @@ namespace Box3D
         return transformedHull != nullptr ? AZStd::unique_ptr<HullGeometry>(aznew HullGeometry(transformedHull)) : nullptr;
     }
 
-    ShapeId CreateHullShape(BodyId bodyId, const NativeShapeConfiguration& configuration, const HullGeometry& geometry)
+    ShapeId CreateHullShape(const BodyId bodyId, const NativeShapeConfiguration& configuration, const HullGeometry& geometry)
     {
         const b3HullData* hull = GeometryCastAccess::Get(geometry);
         if (!IsValid(bodyId) || hull == nullptr)
@@ -3726,7 +3726,7 @@ namespace Box3D
         return { b3StoreShapeId(b3CreateHullShape(b3LoadBodyId(bodyId.m_value), &definition.m_value, hull)) };
     }
 
-    bool SetHullShape(ShapeId shapeId, const HullGeometry& geometry)
+    bool SetHullShape(const ShapeId shapeId, const HullGeometry& geometry)
     {
         const b3HullData* hull = GeometryCastAccess::Get(geometry);
         if (!IsValid(shapeId) || hull == nullptr)
@@ -3739,13 +3739,13 @@ namespace Box3D
     }
 
     AZStd::unique_ptr<MeshGeometry> CreateMeshGeometry(
-        AZStd::span<const AZ::Vector3> vertices,
-        AZStd::span<const AZ::u32> indices,
+        const AZStd::span<const AZ::Vector3> vertices,
+        const AZStd::span<const AZ::u32> indices,
         AZStd::span<const AZ::u8> materialIndices,
-        float weldTolerance,
-        bool weldVertices,
-        bool useMedianSplit,
-        bool identifyEdges)
+        const float weldTolerance,
+        const bool weldVertices,
+        const bool useMedianSplit,
+        const bool identifyEdges)
     {
         InstallNativeCallbacks();
         if (vertices.size() < 3 || indices.empty() || indices.size() % 3 != 0 || !AZ::IsFiniteFloat(weldTolerance) ||
@@ -3793,7 +3793,7 @@ namespace Box3D
         return mesh != nullptr ? AZStd::unique_ptr<MeshGeometry>(aznew MeshGeometry(mesh)) : nullptr;
     }
 
-    ShapeId CreateMeshShape(BodyId bodyId, const NativeShapeConfiguration& configuration, const MeshGeometry& geometry)
+    ShapeId CreateMeshShape(const BodyId bodyId, const NativeShapeConfiguration& configuration, const MeshGeometry& geometry)
     {
         if (!IsValid(bodyId) || geometry.m_data == nullptr || GetBodyType(bodyId) != NativeBodyType::Static)
         {
@@ -3808,7 +3808,7 @@ namespace Box3D
             b3Vec3{ 1.0f, 1.0f, 1.0f })) };
     }
 
-    bool SetMeshShape(ShapeId shapeId, const MeshGeometry& geometry)
+    bool SetMeshShape(const ShapeId shapeId, const MeshGeometry& geometry)
     {
         const b3MeshData* mesh = GeometryCastAccess::Get(geometry);
         if (!IsValid(shapeId) || mesh == nullptr ||
@@ -3822,15 +3822,15 @@ namespace Box3D
     }
 
     AZStd::unique_ptr<HeightFieldGeometry> CreateHeightFieldGeometry(
-        AZStd::span<const float> heights,
+        const AZStd::span<const float> heights,
         AZStd::span<const AZ::u8> materialIndices,
-        size_t columnCount,
-        size_t rowCount,
+        const size_t columnCount,
+        const size_t rowCount,
         const AZ::Vector2& gridResolution,
         const AZ::Vector3& scale,
         float minimumHeight,
         float maximumHeight,
-        bool clockwise)
+        const bool clockwise)
     {
         InstallNativeCallbacks();
         constexpr size_t maximumByteCount = aznumeric_cast<size_t>((AZStd::numeric_limits<int>::max)());
@@ -3851,7 +3851,7 @@ namespace Box3D
             return {};
         }
 
-        const auto alignToEightBytes = [](size_t byteCount)
+        const auto alignToEightBytes = [](const size_t byteCount)
         {
             return (byteCount + 7) & ~size_t{ 7 };
         };
@@ -3915,7 +3915,7 @@ namespace Box3D
         return heightField != nullptr ? AZStd::unique_ptr<HeightFieldGeometry>(aznew HeightFieldGeometry(heightField)) : nullptr;
     }
 
-    ShapeId CreateHeightFieldShape(BodyId bodyId, const NativeShapeConfiguration& configuration, const HeightFieldGeometry& geometry)
+    ShapeId CreateHeightFieldShape(const BodyId bodyId, const NativeShapeConfiguration& configuration, const HeightFieldGeometry& geometry)
     {
         if (!IsValid(bodyId) || geometry.m_data == nullptr || GetBodyType(bodyId) != NativeBodyType::Static)
         {
@@ -4052,7 +4052,7 @@ namespace Box3D
         return AZStd::unique_ptr<CompoundGeometry>(aznew CompoundGeometry(compound, AZStd::move(materialSources)));
     }
 
-    ShapeId CreateCompoundShape(BodyId bodyId, const NativeShapeConfiguration& configuration, const CompoundGeometry& geometry)
+    ShapeId CreateCompoundShape(const BodyId bodyId, const NativeShapeConfiguration& configuration, const CompoundGeometry& geometry)
     {
         if (!IsValid(bodyId) || geometry.m_data == nullptr || GetBodyType(bodyId) != NativeBodyType::Static || configuration.m_isSensor)
         {
@@ -4618,7 +4618,7 @@ namespace Box3D
             geometry);
     }
 
-    void DestroyShape(ShapeId shapeId, bool updateBodyMass)
+    void DestroyShape(const ShapeId shapeId, const bool updateBodyMass)
     {
         if (IsValid(shapeId))
         {
@@ -4626,12 +4626,12 @@ namespace Box3D
         }
     }
 
-    bool IsValid(ShapeId shapeId)
+    bool IsValid(const ShapeId shapeId)
     {
         return shapeId.IsValid() && b3Shape_IsValid(b3LoadShapeId(shapeId.m_value));
     }
 
-    bool GetShapeState(ShapeId shapeId, NativeShapeState& state)
+    bool GetShapeState(const ShapeId shapeId, NativeShapeState& state)
     {
         state = {};
         if (!IsValid(shapeId))
@@ -4679,7 +4679,7 @@ namespace Box3D
         return true;
     }
 
-    void SetShapeFilter(ShapeId shapeId, AZ::u64 categoryBits, AZ::u64 maskBits, AZ::s32 groupIndex)
+    void SetShapeFilter(const ShapeId shapeId, const AZ::u64 categoryBits, const AZ::u64 maskBits, const AZ::s32 groupIndex)
     {
         b3Filter filter = b3Shape_GetFilter(b3LoadShapeId(shapeId.m_value));
         filter.categoryBits = categoryBits;
@@ -4688,7 +4688,7 @@ namespace Box3D
         b3Shape_SetFilter(b3LoadShapeId(shapeId.m_value), filter, true);
     }
 
-    bool SetShapeDensity(ShapeId shapeId, float density, bool updateBodyMass)
+    bool SetShapeDensity(const ShapeId shapeId, const float density, const bool updateBodyMass)
     {
         if (!IsValid(shapeId) || !AZ::IsFiniteFloat(density) || density < 0.0f)
         {
@@ -4698,7 +4698,7 @@ namespace Box3D
         return true;
     }
 
-    bool SetShapeFriction(ShapeId shapeId, float friction)
+    bool SetShapeFriction(const ShapeId shapeId, const float friction)
     {
         if (!IsValid(shapeId) || !AZ::IsFiniteFloat(friction) || friction < 0.0f)
         {
@@ -4713,7 +4713,7 @@ namespace Box3D
         return true;
     }
 
-    bool SetShapeRestitution(ShapeId shapeId, float restitution)
+    bool SetShapeRestitution(const ShapeId shapeId, const float restitution)
     {
         if (!IsValid(shapeId) || !AZ::IsFiniteFloat(restitution) || restitution < 0.0f)
         {
@@ -4728,12 +4728,12 @@ namespace Box3D
         return true;
     }
 
-    size_t GetShapeMaterialCount(ShapeId shapeId)
+    size_t GetShapeMaterialCount(const ShapeId shapeId)
     {
         return IsValid(shapeId) ? aznumeric_cast<size_t>(b3Shape_GetMeshMaterialCount(b3LoadShapeId(shapeId.m_value))) : 0;
     }
 
-    bool GetShapeMaterials(ShapeId shapeId, AZStd::span<SurfaceMaterial> materials)
+    bool GetShapeMaterials(const ShapeId shapeId, AZStd::span<SurfaceMaterial> materials)
     {
         if (!IsValid(shapeId) || materials.size() != GetShapeMaterialCount(shapeId))
         {
@@ -4754,7 +4754,7 @@ namespace Box3D
         return true;
     }
 
-    void SetShapeSurfaceMaterial(ShapeId shapeId, const SurfaceMaterial& material)
+    void SetShapeSurfaceMaterial(const ShapeId shapeId, const SurfaceMaterial& material)
     {
         if (IsValid(shapeId))
         {
@@ -4762,7 +4762,7 @@ namespace Box3D
         }
     }
 
-    bool SetShapeMaterials(ShapeId shapeId, AZStd::span<const SurfaceMaterial> materials)
+    bool SetShapeMaterials(const ShapeId shapeId, const AZStd::span<const SurfaceMaterial> materials)
     {
         if (!IsValid(shapeId) || materials.empty())
         {
@@ -4785,7 +4785,7 @@ namespace Box3D
         return true;
     }
 
-    bool SetShapeEventSubscriptions(ShapeId shapeId, bool sensorEvents, bool contactEvents, bool hitEvents, bool preSolveEvents)
+    bool SetShapeEventSubscriptions(const ShapeId shapeId, const bool sensorEvents, const bool contactEvents, const bool hitEvents, const bool preSolveEvents)
     {
         if (!IsValid(shapeId))
         {
@@ -4799,13 +4799,13 @@ namespace Box3D
         return true;
     }
 
-    AZ::Aabb GetShapeAabb(ShapeId shapeId)
+    AZ::Aabb GetShapeAabb(const ShapeId shapeId)
     {
         const b3AABB aabb = b3Shape_GetAABB(b3LoadShapeId(shapeId.m_value));
         return FromNative(aabb);
     }
 
-    bool GetShapeClosestPoint(ShapeId shapeId, const AZ::Vector3& target, AZ::Vector3& position)
+    bool GetShapeClosestPoint(const ShapeId shapeId, const AZ::Vector3& target, AZ::Vector3& position)
     {
         if (!IsValid(shapeId) || !target.IsFinite())
         {
@@ -4815,7 +4815,7 @@ namespace Box3D
         return position.IsFinite();
     }
 
-    bool CastRay(ShapeId shapeId, const AZ::Vector3& start, const AZ::Vector3& translation, GeometryCastHit& hit)
+    bool CastRay(const ShapeId shapeId, const AZ::Vector3& start, const AZ::Vector3& translation, GeometryCastHit& hit)
     {
         hit = {};
         if (!IsValid(shapeId) || !start.IsFinite() || !translation.IsFinite() || translation.IsZero())
@@ -4844,7 +4844,7 @@ namespace Box3D
         return true;
     }
 
-    bool ApplyWind(ShapeId shapeId, const AZ::Vector3& velocity, float drag, float lift, float maximumSpeed, bool wake)
+    bool ApplyWind(const ShapeId shapeId, const AZ::Vector3& velocity, const float drag, const float lift, const float maximumSpeed, const bool wake)
     {
         if (!IsValid(shapeId) || !velocity.IsFinite() || !AZ::IsFiniteFloat(drag) || drag < 0.0f || !AZ::IsFiniteFloat(lift) ||
             !AZ::IsFiniteFloat(maximumSpeed) || maximumSpeed < 0.0f)

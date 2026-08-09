@@ -18,7 +18,7 @@
 
 namespace Box3D
 {
-    ExplosionComponent::ExplosionComponent(ExplosionConfiguration configuration, AZ::Name worldName, bool explodeOnActivate)
+    ExplosionComponent::ExplosionComponent(ExplosionConfiguration configuration, AZ::Name worldName, const bool explodeOnActivate)
         : m_configuration(AZStd::move(configuration))
         , m_worldName(AZStd::move(worldName))
         , m_explodeOnActivate(explodeOnActivate)
@@ -122,7 +122,7 @@ namespace Box3D
         m_effects = nullptr;
     }
 
-    WindComponent::WindComponent(WindConfiguration configuration, bool enabled)
+    WindComponent::WindComponent(WindConfiguration configuration, const bool enabled)
         : m_configuration(AZStd::move(configuration))
         , m_enabled(enabled)
     {
@@ -202,7 +202,7 @@ namespace Box3D
         m_configuration = configuration;
     }
 
-    void WindComponent::SetEnabled(bool enabled)
+    void WindComponent::SetEnabled(const bool enabled)
     {
         m_enabled = enabled;
     }

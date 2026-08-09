@@ -115,7 +115,7 @@ namespace Box3D
         return m_configuration.m_properties.m_isSensor;
     }
 
-    bool HeightfieldColliderComponent::UpdateShape(size_t index, const ShapeConfiguration& configuration)
+    bool HeightfieldColliderComponent::UpdateShape(const size_t index, const ShapeConfiguration& configuration)
     {
         if (index != 0 || !AZStd::holds_alternative<HeightfieldShapeConfiguration>(configuration.m_geometry))
         {
@@ -159,7 +159,7 @@ namespace Box3D
         return true;
     }
 
-    bool HeightfieldColliderComponent::SetCollisionFilter(size_t index, const CollisionFilter& collisionFilter)
+    bool HeightfieldColliderComponent::SetCollisionFilter(const size_t index, const CollisionFilter& collisionFilter)
     {
         if (index != 0 || (m_system != nullptr && !m_system->SetShapeCollisionFilter(m_worldHandle, m_shapeHandle, collisionFilter)))
         {
@@ -169,7 +169,7 @@ namespace Box3D
         return true;
     }
 
-    bool HeightfieldColliderComponent::SetMaterials(size_t index, AZStd::span<const MaterialHandle> materials)
+    bool HeightfieldColliderComponent::SetMaterials(const size_t index, AZStd::span<const MaterialHandle> materials)
     {
         if (index != 0 || (m_system != nullptr && !m_system->SetShapeMaterials(m_worldHandle, m_shapeHandle, materials)))
         {
@@ -317,7 +317,7 @@ namespace Box3D
     }
 
     bool HeightfieldColliderComponent::UpdateHeights(
-        AZ::u32 startColumn, AZ::u32 startRow, AZ::u32 columnCount, AZ::u32 rowCount, AZStd::span<const float> heights)
+        const AZ::u32 startColumn, const AZ::u32 startRow, const AZ::u32 columnCount, const AZ::u32 rowCount, AZStd::span<const float> heights)
     {
         const auto* current = AZStd::get_if<HeightfieldShapeConfiguration>(&m_configuration.m_geometry);
         if (current == nullptr || columnCount == 0 || rowCount == 0 || columnCount > current->m_columnCount ||
@@ -339,7 +339,7 @@ namespace Box3D
     }
 
     bool HeightfieldColliderComponent::UpdateMaterials(
-        AZ::u32 startColumn, AZ::u32 startRow, AZ::u32 columnCount, AZ::u32 rowCount, AZStd::span<const AZ::u8> materialIndices)
+        const AZ::u32 startColumn, const AZ::u32 startRow, const AZ::u32 columnCount, const AZ::u32 rowCount, AZStd::span<const AZ::u8> materialIndices)
     {
         const auto* current = AZStd::get_if<HeightfieldShapeConfiguration>(&m_configuration.m_geometry);
         if (current == nullptr || current->m_columnCount < 2 || current->m_rowCount < 2)
@@ -414,7 +414,7 @@ namespace Box3D
         }
     }
 
-    bool HeightfieldColliderComponent::UpdateScale(float scale)
+    bool HeightfieldColliderComponent::UpdateScale(const float scale)
     {
         if (!AZ::IsFiniteFloat(scale) || scale < 0.01f)
         {

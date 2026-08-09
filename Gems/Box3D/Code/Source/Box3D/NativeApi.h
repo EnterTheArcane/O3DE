@@ -477,7 +477,7 @@ namespace Box3D
         {
             m_scale = AZ::Vector3::CreateOne() * m_localTransform.ExtractUniformScale();
         }
-        GeometryTransform(AZ::Transform transform, float uniformScale)
+        GeometryTransform(AZ::Transform transform, const float uniformScale)
             : m_localTransform(AZStd::move(transform))
             , m_postScale(AZ::Vector3::CreateOne() * uniformScale)
         {

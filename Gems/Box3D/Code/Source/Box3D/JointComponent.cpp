@@ -42,7 +42,7 @@ namespace Box3D
         }
     };
 
-    JointComponent::JointComponent(JointConfiguration configuration, AZ::EntityId parentEntityId)
+    JointComponent::JointComponent(JointConfiguration configuration, const AZ::EntityId parentEntityId)
         : m_configuration(AZStd::move(configuration))
         , m_parentEntityId(parentEntityId)
     {

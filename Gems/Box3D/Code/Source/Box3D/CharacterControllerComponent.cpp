@@ -164,7 +164,7 @@ namespace Box3D
         return state;
     }
 
-    bool CharacterControllerComponent::Move(const AZ::Vector3& velocity, float fixedTimeStep)
+    bool CharacterControllerComponent::Move(const AZ::Vector3& velocity, const float fixedTimeStep)
     {
         if (m_system == nullptr || !m_system->MoveCharacter(m_worldHandle, m_characterHandle, velocity, fixedTimeStep))
         {

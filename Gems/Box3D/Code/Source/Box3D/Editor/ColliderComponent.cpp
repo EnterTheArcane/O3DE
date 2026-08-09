@@ -33,7 +33,7 @@ namespace Box3D::Editor
             AZ_CLASS_ALLOCATOR(OffsetComponentMode, AZ::SystemAllocator);
             AZ_RTTI(OffsetComponentMode, "{535356E4-2609-4421-ADCD-0BEFDAB38B80}", AzToolsFramework::BaseShapeComponentMode);
 
-            OffsetComponentMode(const AZ::EntityComponentIdPair& entityComponentIdPair, AZ::Uuid componentType)
+            OffsetComponentMode(const AZ::EntityComponentIdPair& entityComponentIdPair, const AZ::Uuid componentType)
                 : BaseShapeComponentMode(entityComponentIdPair, componentType)
             {
                 auto offsetEdit = AZStd::make_unique<AzToolsFramework::ShapeTranslationOffsetViewportEdit>();
@@ -263,7 +263,7 @@ namespace Box3D::Editor
         return 0.0f;
     }
 
-    void ColliderComponent::SetRadius(float radius)
+    void ColliderComponent::SetRadius(const float radius)
     {
         if (m_activeShapeIndex >= m_shapes.size() || !AZ::IsFiniteFloat(radius) || radius <= 0.0f)
         {
@@ -309,7 +309,7 @@ namespace Box3D::Editor
         return 0.0f;
     }
 
-    void ColliderComponent::SetHeight(float height)
+    void ColliderComponent::SetHeight(const float height)
     {
         if (m_activeShapeIndex >= m_shapes.size() || !AZ::IsFiniteFloat(height) || height <= 0.0f)
         {

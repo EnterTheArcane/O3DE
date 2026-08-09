@@ -41,7 +41,7 @@ namespace Box3D::Editor
                 "{A398A96D-952F-4D79-B35D-00ED402647DF}",
                 AzToolsFramework::ComponentModeFramework::EditorBaseComponentMode);
 
-            JointFrameComponentMode(const AZ::EntityComponentIdPair& entityComponentIdPair, AZ::Uuid componentType)
+            JointFrameComponentMode(const AZ::EntityComponentIdPair& entityComponentIdPair, const AZ::Uuid componentType)
                 : EditorBaseComponentMode(entityComponentIdPair, componentType)
                 , m_translationManipulators(
                       AzToolsFramework::TranslationManipulators::Dimensions::Three,
@@ -74,7 +74,7 @@ namespace Box3D::Editor
                 m_frameButtons[static_cast<AZ::u8>(JointFrame::Parent)] = createButton("Edit the parent joint frame");
                 m_frameButtons[static_cast<AZ::u8>(JointFrame::Child)] = createButton("Edit the child joint frame");
                 m_frameSelectionHandler = AZ::Event<AzToolsFramework::ViewportUi::ButtonId>::Handler(
-                    [this](AzToolsFramework::ViewportUi::ButtonId buttonId)
+                    [this](const AzToolsFramework::ViewportUi::ButtonId buttonId)
                     {
                         if (buttonId == m_frameButtons[static_cast<AZ::u8>(JointFrame::Parent)])
                         {
@@ -146,7 +146,7 @@ namespace Box3D::Editor
             }
 
         private:
-            void SetFrame(JointFrame frame)
+            void SetFrame(const JointFrame frame)
             {
                 TeardownManipulators();
                 m_frame = frame;
@@ -476,13 +476,13 @@ namespace Box3D::Editor
         gameEntity->CreateComponent<Box3D::JointComponent>(configuration, m_parentEntity);
     }
 
-    AZ::Transform JointComponentBase::GetLocalFrame(JointFrame frame) const
+    AZ::Transform JointComponentBase::GetLocalFrame(const JointFrame frame) const
     {
         const JointCommonConfiguration& configuration = GetCommonConfiguration();
         return frame == JointFrame::Parent ? configuration.m_parentLocalFrame : configuration.m_childLocalFrame;
     }
 
-    void JointComponentBase::SetLocalFrame(JointFrame frame, const AZ::Transform& localFrame)
+    void JointComponentBase::SetLocalFrame(const JointFrame frame, const AZ::Transform& localFrame)
     {
         if (!localFrame.IsFinite())
         {
@@ -500,7 +500,7 @@ namespace Box3D::Editor
             AzToolsFramework::Refresh_Values);
     }
 
-    AZ::Transform JointComponentBase::GetFrameSpace(JointFrame frame) const
+    AZ::Transform JointComponentBase::GetFrameSpace(const JointFrame frame) const
     {
         AZ::Transform frameSpace = AZ::Transform::CreateIdentity();
         if (frame == JointFrame::Child)

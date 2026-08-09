@@ -151,7 +151,7 @@ namespace Box3D::Editor
         return m_configuration.m_radius;
     }
 
-    void CharacterControllerComponent::SetRadius(float radius)
+    void CharacterControllerComponent::SetRadius(const float radius)
     {
         if (!AZ::IsFiniteFloat(radius) || radius <= 0.0f)
         {
@@ -167,7 +167,7 @@ namespace Box3D::Editor
         return m_configuration.m_height;
     }
 
-    void CharacterControllerComponent::SetHeight(float height)
+    void CharacterControllerComponent::SetHeight(const float height)
     {
         if (!AZ::IsFiniteFloat(height) || height < 2.0f * m_configuration.m_radius)
         {

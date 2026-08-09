@@ -115,7 +115,7 @@ namespace Box3D
             });
     }
 
-    bool ColliderComponent::UpdateShape(size_t index, const ShapeConfiguration& configuration)
+    bool ColliderComponent::UpdateShape(const size_t index, const ShapeConfiguration& configuration)
     {
         if (index >= m_shapeConfigurations.size())
         {
@@ -158,7 +158,7 @@ namespace Box3D
         return true;
     }
 
-    bool ColliderComponent::SetCollisionFilter(size_t index, const CollisionFilter& collisionFilter)
+    bool ColliderComponent::SetCollisionFilter(const size_t index, const CollisionFilter& collisionFilter)
     {
         if (index >= m_shapeConfigurations.size())
         {
@@ -172,7 +172,7 @@ namespace Box3D
         return true;
     }
 
-    bool ColliderComponent::SetMaterials(size_t index, AZStd::span<const MaterialHandle> materials)
+    bool ColliderComponent::SetMaterials(const size_t index, AZStd::span<const MaterialHandle> materials)
     {
         if (index >= m_shapeConfigurations.size())
         {
@@ -206,7 +206,7 @@ namespace Box3D
         ColliderRequestBus::Handler::BusDisconnect();
     }
 
-    bool ColliderComponent::Attach(ISystem& system, WorldHandle worldHandle, BodyHandle bodyHandle, float uniformScale)
+    bool ColliderComponent::Attach(ISystem& system, const WorldHandle worldHandle, const BodyHandle bodyHandle, const float uniformScale)
     {
         if (!AZ::IsFiniteFloat(uniformScale) || uniformScale <= 0.0f)
         {
@@ -252,7 +252,7 @@ namespace Box3D
         return true;
     }
 
-    bool ColliderComponent::UpdateUniformScale(float uniformScale)
+    bool ColliderComponent::UpdateUniformScale(const float uniformScale)
     {
         if (!AZ::IsFiniteFloat(uniformScale) || uniformScale <= 0.0f)
         {
