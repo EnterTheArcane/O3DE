@@ -29,7 +29,7 @@
 
 namespace Box3D::Editor
 {
-    namespace
+    namespace ComponentModes
     {
         class JointFrameComponentMode final
             : public AzToolsFramework::ComponentModeFramework::EditorBaseComponentMode
@@ -243,7 +243,7 @@ namespace Box3D::Editor
             AZStd::array<AzToolsFramework::ViewportUi::ButtonId, 2> m_frameButtons;
             AZ::Event<AzToolsFramework::ViewportUi::ButtonId>::Handler m_frameSelectionHandler;
         };
-    } // namespace
+    } // namespace ComponentModes
 
     void JointComponentBase::Activate()
     {
@@ -303,7 +303,7 @@ namespace Box3D::Editor
                     componentType,
                     [entityComponentIdPair, componentType]
                     {
-                        return AZStd::make_unique<JointFrameComponentMode>(entityComponentIdPair, componentType);
+                        return AZStd::make_unique<ComponentModes::JointFrameComponentMode>(entityComponentIdPair, componentType);
                     });
                 AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequestBus::Broadcast(
                     &AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequests::AddComponentModes,
