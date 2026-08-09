@@ -8,6 +8,8 @@
 #include <AzTest/AzTest.h>
 
 #include <AzCore/Component/Entity.h>
+#include <AzCore/std/algorithm.h>
+#include <AzFramework/Input/System/InputSystemComponent.h>
 #include <AzFramework/UnitTest/TestDebugDisplayRequests.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Manipulators/BoxManipulatorRequestBus.h>
@@ -36,10 +38,34 @@ namespace Box3D::Editor
 {
     namespace
     {
+        class HeadlessComponentModeTestApplication final
+            : public UnitTest::ToolsTestApplication
+        {
+        public:
+            HeadlessComponentModeTestApplication()
+                : UnitTest::ToolsTestApplication("Box3DComponentModeTests")
+            {
+            }
+
+            AZ::ComponentTypeList GetRequiredSystemComponents() const override
+            {
+                AZ::ComponentTypeList components = UnitTest::ToolsTestApplication::GetRequiredSystemComponents();
+                components.erase(
+                    AZStd::remove(components.begin(), components.end(), azrtti_typeid<AzFramework::InputSystemComponent>()),
+                    components.end());
+                return components;
+            }
+        };
+
         class ComponentModeTests
             : public UnitTest::ToolsApplicationFixture<false>
         {
         protected:
+            AZStd::unique_ptr<UnitTest::ToolsTestApplication> CreateTestApplication() override
+            {
+                return AZStd::make_unique<HeadlessComponentModeTestApplication>();
+            }
+
             void SetUpEditorFixtureImpl() override
             {
                 ReflectJoints(GetApplication()->GetSerializeContext());
