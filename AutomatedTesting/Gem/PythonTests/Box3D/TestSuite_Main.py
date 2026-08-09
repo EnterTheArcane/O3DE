@@ -1,0 +1,23 @@
+"""
+Copyright (c) Contributors to the Open 3D Engine Project.
+For complete copyright and license terms please see the LICENSE at the root of this distribution.
+
+SPDX-License-Identifier: Apache-2.0 OR MIT
+"""
+
+import pytest
+
+from ly_test_tools.o3de.editor_test import EditorSingleTest, EditorTestSuite
+
+
+@pytest.mark.SUITE_main
+@pytest.mark.parametrize("launcher_platform", ["windows_editor"])
+@pytest.mark.parametrize("project", ["AutomatedTesting"])
+class TestAutomation(EditorTestSuite):
+    global_extra_cmdline_args = ["-BatchMode", "-autotest_mode", "-rhi=Null", "-NullRenderer"]
+
+    class test_Box3D_ComponentSmoke(EditorSingleTest):
+        from .tests import Box3D_ComponentSmoke as test_module
+
+    class test_Box3D_FeatureComponents(EditorSingleTest):
+        from .tests import Box3D_FeatureComponents as test_module
