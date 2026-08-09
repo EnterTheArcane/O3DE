@@ -2566,8 +2566,11 @@ namespace Box3D
             return { 0, requests.size() };
         }
 
+        constexpr size_t minimumRaycastsPerJob = 128;
+        const size_t jobCount = AZStd::min(
+            requestCount / minimumRaycastsPerJob, static_cast<size_t>(m_systemConfiguration.m_workerCount));
         const bool canRunConcurrently = m_recording == nullptr && m_configuration.m_jobContext != nullptr &&
-            m_systemConfiguration.m_workerCount > 1 && requestCount >= m_systemConfiguration.m_workerCount * 2 &&
+            jobCount > 1 &&
             AZStd::all_of(requests.begin(),
                           requests.begin() + requestCount,
                           [this](const RaycastRequest& request)
@@ -2585,7 +2588,6 @@ namespace Box3D
             return { requestCount, requests.size() };
         }
 
-        const size_t jobCount = AZStd::min(requestCount, static_cast<size_t>(m_systemConfiguration.m_workerCount));
         const size_t requestsPerJob = (requestCount + jobCount - 1) / jobCount;
         const auto processRequests = [this, requests, results](size_t beginIndex, size_t endIndex)
         {

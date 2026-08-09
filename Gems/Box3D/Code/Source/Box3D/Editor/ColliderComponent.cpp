@@ -24,7 +24,7 @@
 
 namespace Box3D::Editor
 {
-    namespace
+    namespace ComponentModes
     {
         class OffsetComponentMode final
             : public AzToolsFramework::BaseShapeComponentMode
@@ -62,7 +62,7 @@ namespace Box3D::Editor
                 return azrtti_typeid<OffsetComponentMode>();
             }
         };
-    } // namespace
+    } // namespace ComponentModes
 
     void ColliderComponent::Reflect(AZ::ReflectContext* context)
     {
@@ -180,7 +180,8 @@ namespace Box3D::Editor
                     return;
                 }
                 const auto builder =
-                    AzToolsFramework::ComponentModeFramework::CreateComponentModeBuilder<ColliderComponent, OffsetComponentMode>(pair);
+                    AzToolsFramework::ComponentModeFramework::CreateComponentModeBuilder<
+                        ColliderComponent, ComponentModes::OffsetComponentMode>(pair);
                 AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequestBus::Broadcast(
                     &AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequests::AddComponentModes,
                     AzToolsFramework::ComponentModeFramework::EntityAndComponentModeBuilders(pair.GetEntityId(), builder));

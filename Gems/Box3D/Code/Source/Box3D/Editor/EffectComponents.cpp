@@ -23,7 +23,7 @@
 
 namespace Box3D::Editor
 {
-    namespace
+    namespace ComponentModes
     {
         class VelocityComponentMode final
             : public AzToolsFramework::BaseShapeComponentMode
@@ -61,7 +61,7 @@ namespace Box3D::Editor
                 return azrtti_typeid<VelocityComponentMode>();
             }
         };
-    } // namespace
+    } // namespace ComponentModes
 
     void ExplosionComponent::Reflect(AZ::ReflectContext* context)
     {
@@ -292,7 +292,8 @@ namespace Box3D::Editor
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
         const AZ::EntityComponentIdPair entityComponentIdPair(GetEntityId(), GetId());
         AzToolsFramework::ShapeManipulatorRequestBus::Handler::BusConnect(entityComponentIdPair);
-        m_componentModeDelegate.ConnectWithSingleComponentMode<WindComponent, VelocityComponentMode>(entityComponentIdPair, this);
+        m_componentModeDelegate.ConnectWithSingleComponentMode<WindComponent, ComponentModes::VelocityComponentMode>(
+            entityComponentIdPair, this);
     }
 
     void WindComponent::Deactivate()

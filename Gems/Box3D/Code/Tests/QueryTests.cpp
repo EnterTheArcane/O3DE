@@ -160,7 +160,8 @@ namespace Box3D::Tests
         shapeConfiguration.m_geometry = SphereShapeConfiguration{ 0.5f };
         ASSERT_TRUE(system.CreateShape(worldHandle, bodyHandle, shapeConfiguration).IsValid());
 
-        AZStd::array<RaycastRequest, 64> requests;
+        constexpr size_t batchQueryCount = 512;
+        AZStd::array<RaycastRequest, batchQueryCount> requests;
         for (size_t requestIndex = 0; requestIndex < requests.size(); ++requestIndex)
         {
             if (requestIndex % 2 == 0)
@@ -176,13 +177,13 @@ namespace Box3D::Tests
             requests[requestIndex].m_distance = 4.0f;
         }
 
-        AZStd::array<ClosestQueryResult, 32> truncatedResults;
+        AZStd::array<ClosestQueryResult, batchQueryCount / 2> truncatedResults;
         BufferResult batchResult = system.RaycastClosestBatch(worldHandle, requests, truncatedResults);
         EXPECT_EQ(batchResult.m_count, truncatedResults.size());
         EXPECT_EQ(batchResult.m_requiredCount, requests.size());
         EXPECT_TRUE(batchResult.HasOverflow());
 
-        AZStd::array<ClosestQueryResult, 64> results;
+        AZStd::array<ClosestQueryResult, batchQueryCount> results;
         batchResult = system.RaycastClosestBatch(worldHandle, requests, results);
         EXPECT_EQ(batchResult.m_count, requests.size());
         EXPECT_FALSE(batchResult.HasOverflow());
@@ -196,11 +197,11 @@ namespace Box3D::Tests
             }
         }
 
-        const AZStd::array<ClosestQueryResult, 64> baselineResults = results;
+        const AZStd::array<ClosestQueryResult, batchQueryCount> baselineResults = results;
         const int callerRoundingMode = std::fegetround();
         const size_t workerCount = jobManager.GetNumWorkerThreads();
         const bool poisonedWorkers = ChangeWorkerRoundingModes(jobContext, workerCount, FE_UPWARD);
-        AZStd::array<ClosestQueryResult, 64> poisonedResults;
+        AZStd::array<ClosestQueryResult, batchQueryCount> poisonedResults;
         batchResult = system.RaycastClosestBatch(worldHandle, requests, poisonedResults);
         const bool restoredWorkers = ChangeWorkerRoundingModes(jobContext, workerCount, FE_TONEAREST, FE_UPWARD);
 

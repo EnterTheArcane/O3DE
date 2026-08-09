@@ -13,17 +13,17 @@ reported as `WarmupMs`, before samples are accepted.
 
 | Workload | Box3D | PhysX | Ratio | Result |
 |---|---:|---:|---:|---|
-| 128 falling spheres, 4 workers | 144.71 us | 253.72 us | 0.570 | 1.75x faster |
-| 1024 falling spheres, 4 workers | 773.56 us | 1320.01 us | 0.586 | 1.71x faster |
-| Create and destroy 128 bodies | 75.29 us | 4387.22 us | 0.017 | 58.3x faster |
-| Create and destroy 1024 bodies | 782.36 us | 35031.14 us | 0.022 | 44.8x faster |
-| 128 closest raycasts, scalar API | 16.88 us | 18.03 us | 0.936 | 6.4% lower latency |
-| 128 closest raycasts, batch API | 19.33 us | 23.51 us | 0.822 | 17.8% lower latency |
-| 1024 closest raycasts, batch API | 65.58 us | 218.43 us | 0.300 | 3.33x faster |
-| Sphere overlap returning 25 stable-order hits | 0.795 us | 0.936 us | 0.849 | 15.1% lower latency |
+| 128 falling spheres, 4 workers | 146.24 us | 253.72 us | 0.576 | 1.74x faster |
+| 1024 falling spheres, 4 workers | 780.87 us | 1320.01 us | 0.592 | 1.69x faster |
+| Create and destroy 128 bodies | 74.90 us | 4387.22 us | 0.017 | 58.6x faster |
+| Create and destroy 1024 bodies | 774.83 us | 35031.14 us | 0.022 | 45.2x faster |
+| 128 closest raycasts, scalar API | 16.99 us | 18.03 us | 0.942 | 5.8% lower latency |
+| 128 closest raycasts, batch API | 17.53 us | 23.51 us | 0.745 | 25.5% lower latency |
+| 1024 closest raycasts, batch API | 69.13 us | 218.43 us | 0.317 | 3.15x faster |
+| Sphere overlap returning 25 stable-order hits | 0.796 us | 0.936 us | 0.851 | 14.9% lower latency |
 
 The strict comparator passes every median, repetition-tail, bootstrap, policy, signature, and stability gate. The largest Box3D/PhysX
-bootstrap upper bound is 0.952 for scalar raycasting, and the largest coefficient of variation in either report is 2.875%. The comparator
+bootstrap upper bound is 0.959 for scalar raycasting, and the largest coefficient of variation in either report is 2.875%. The comparator
 requires the reported worker count, notification policy, simulation policy, quality counters, query cardinality, and batch warmup to match;
 missing or inconsistent counters fail the comparison.
 
@@ -32,7 +32,7 @@ The closest-ray path retains validation, deterministic synchronization, full hit
 native closest callback writes its result directly. Axis-aligned traversal prevalidates child bounds while the parent is cache-hot, visits
 the only matching child without calculating an irrelevant ordering key, and revalidates deferred children after a closer hit clips the ray.
 Tests compare closest and all-hit results for all six axis directions, collision filters, initial overlaps, arbitrary rays, and recycled
-shape IDs. The current native median is 15.83 us for 128 rays with 11 node visits and one leaf visit; the complete public path is 16.88 us.
+shape IDs. The current native median is 15.83 us for 128 rays with 11 node visits and one leaf visit; the complete public path is 16.99 us.
 The validation-only floor is 1.54 us for 128 rejected requests. A valid empty-world query takes 3.96 us versus PhysX at 6.37 us.
 
 The exact overlap path classifies box hulls once at creation, uses sphere-versus-box distance with native overlap slop, and retains GJK for
@@ -45,6 +45,20 @@ uncontended reader protocol regressed wall time; bypassing validation and splitt
 the native result ABI for provider identity was not repeatably beneficial. Release IPO, compact native identities, direct closest dispatch,
 child prevalidation, and the allocation-free batch surface were retained because they improved complete public calls without weakening the
 contract. Auditing upstream `main` at `3fc20f5b453ba9e14cdf54ecafa87a2a4bcdf53c` found no equivalent query changes.
+
+Batch queries keep workloads of 128 requests or fewer on the caller thread; larger batches allocate at least 128 requests to each AZ job.
+This avoids thread wake-up overhead for short batches while preserving four-way execution for 512- and 1024-query workloads. The worker
+partitions establish and restore the deterministic floating-point environment once per partition.
+
+## Linux corroboration
+
+The final Clang 21 Release build is non-unity. Runtime and editor suites, 64 repetitions of the determinism and concurrent-batch stress
+tests, and an installed-engine consumer all pass. Affinity-matched 30-repetition reports use four distinct physical cores. Every Box3D
+median is below its PhysX match: simulation ratios are 0.639-0.740, lifecycle ratios are 0.125-0.172, and query ratios are 0.450-0.969.
+Every Box3D workload remains below the 5% variation limit. One PhysX 128-body lifecycle repetition was preempted by the Windows host and
+raises that reference workload's coefficient of variation to 7.495%; therefore Windows remains the timing authority instead of weakening
+the comparator's stability gate. The preserved reports are `build/linux_box3d/BenchmarkResults/Box3D.FinalAffinity.Samples30.json` and
+`build/linux_box3d/BenchmarkResults/PhysX.FinalAffinity.Samples30.json`.
 
 ## Authored workload capture
 
@@ -83,7 +97,7 @@ ctest --test-dir build/box3d_automatedtesting -C Profile `
 
 The comparator exits with failure while a required workload exceeds its threshold, a workload signature differs, either provider exceeds
 the variation gate, or the bootstrap upper bound regresses. The passing raw reports are
-`build/windows/BenchmarkResults/Box3D.FinalWarmOptimized.Samples30.json` and
+`build/windows/BenchmarkResults/Box3D.FinalPartitioned.Samples30.json` and
 `build/windows/BenchmarkResults/PhysX.FinalWarmOptimized.Samples30.json`. Native and fixed-cost attribution is retained in
 `build/windows/BenchmarkResults/Box3D.FinalWarmOptimized.Diagnostics.Samples30.json`; the matched PhysX empty-world diagnostic is in
 `build/windows/BenchmarkResults/PhysX.FinalWarmOptimized.Diagnostics.Samples30.json`.
