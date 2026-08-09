@@ -7,6 +7,7 @@ public surfaces use engine types and qualified names without redundant words.
 |---|---|---|---|
 | Source dependency | Source-tree `FindBox3D.cmake`, pinned v0.1.0 source, audited consolidated patch | Windows and Linux source configure, non-unity build, and unit tests | Verified |
 | Installed dependency | Installed `FindBox3D.cmake` and packaged source/header metadata | Installed-engine consumers configure, build, link, and run on Windows and Linux | Verified |
+| Precision ABI | Source and installed precision option with packaged ABI marker | Clang 21 Debug ASan compiles the non-unity native dependency, provider boundary, all public-header isolation units, and editor at double precision; runtime and editor suites pass | Verified |
 | Coexistence | Unique `Box3DSystemService`; no generic physics service or singleton registration | PhysX and Box3D configure together; unit test preserves any existing `AzPhysics::SystemInterface` registration | Verified |
 | World lifetime and stepping | `Box3D::ISystem`, strong generational handles | Default/custom world, stale handle, live configuration, fixed-step tests | Verified |
 | Static, kinematic, and dynamic bodies | Provider-owned configurations, state, properties, mass, force, impulse, velocity, transform, and closest-point APIs | Conversion, mutation, force/impulse, kinematic, bulk-mass, contact, sensor, naming, and unsupported-type transaction tests | Verified |
@@ -30,7 +31,11 @@ public surfaces use engine types and qualified names without redundant words.
 | AutomatedTesting | Dedicated Box3D levels and prefabs in the existing `AutomatedTesting` project | Live authored scenarios cover mutable terrain, body/material/collider mutation, cooking, queries, every notification family, statistics, recording/replay, static-tree rebuild, all nine joint families, character motion, wind, and explosion | Verified on Windows Profile |
 | Performance | Physics profiler scopes, opt-out simulation datapoints, matched provider benchmarks, native-boundary diagnostics, and authored DX12 capture | The strict 30-repetition Windows Release comparator passes every median, repetition-tail, bootstrap, workload-signature, and stability gate. Simulation is 1.69-1.74x faster, lifecycle is 45.2-58.6x faster, scalar and batch raycasts are 1.06-3.15x faster, and exact stable-order overlap has 14.9% lower latency. Linux corroborates every ratio while Windows remains the timing authority. `PERFORMANCE.md` retains the raw-report paths and attribution evidence | Verified |
 | Public-header hygiene | AzCore-only API target, no native declarations, isolated translation units | Every public header compiles alone in the non-unity target on Windows Profile and Linux Release | Verified |
-| Platform matrix | Windows, Linux, macOS, and supported consoles | Windows Debug, Profile, and Release builds/tests pass; Linux Release non-unity build and unit tests pass with Clang 21; ARM64 runtime, macOS, and console validation remain unavailable locally | Open |
+| Platform matrix | Windows, Linux, macOS, and supported consoles | Windows Debug, Profile, and Release builds/tests pass; Linux Release non-unity and Debug ASan/double-precision builds pass with Clang 21; the runtime suite passes with ASan leak detection, and all 33 editor tests pass with ASan memory-access checks. ARM64 runtime, macOS, and console validation remain unavailable locally | Open |
+
+The ASan editor run disables leak reporting after preserving a report of 119,714 process-lifetime bytes in Qt and AzToolsFramework viewport
+UI allocations; the provider runtime suite passes with leak reporting enabled. Its headless component-mode fixture also avoids a WSL
+`libxkbcommon-x11` over-read in the native keyboard initialization path, which is outside the Gem.
 
 ## Representation policy
 
