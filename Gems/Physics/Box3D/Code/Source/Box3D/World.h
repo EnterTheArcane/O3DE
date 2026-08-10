@@ -30,15 +30,17 @@ namespace Box3D
 
         World(
             System& system,
-              AZ::u32 worldIndex,
-              WorldHandle worldHandle,
-              const WorldConfiguration& configuration,
-              const SystemConfiguration& systemConfiguration,
-              Internal::GenerationSource& bodyGenerations,
-              Internal::GenerationSource& shapeGenerations,
-              Internal::GenerationSource& jointGenerations,
-              Internal::GenerationSource& characterGenerations);
+            AZ::u32 worldIndex,
+            WorldHandle worldHandle,
+            const WorldConfiguration& configuration,
+            const SystemConfiguration& systemConfiguration,
+            Internal::GenerationSource& bodyGenerations,
+            Internal::GenerationSource& shapeGenerations,
+            Internal::GenerationSource& jointGenerations,
+            Internal::GenerationSource& characterGenerations);
+
         ~World();
+
         AZ_DISABLE_COPY_MOVE(World);
 
         [[nodiscard]]
@@ -355,8 +357,12 @@ namespace Box3D
             float& distance) const;
 
         [[nodiscard]]
-        bool RaycastShape(ShapeHandle shapeHandle, const AZ::Vector3& start, const AZ::Vector3& direction, float distance, QueryHit& hit)
-            const;
+        bool RaycastShape(
+            ShapeHandle shapeHandle,
+            const AZ::Vector3& start,
+            const AZ::Vector3& direction,
+            float distance,
+            QueryHit& hit) const;
 
         [[nodiscard]]
         ContactSnapshotResult GetShapeContacts(

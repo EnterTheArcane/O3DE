@@ -143,7 +143,6 @@ namespace Box3D
     {
         if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-
             behaviorContext->Class<WorldHandle>("WorldHandle")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "box3d")
@@ -917,34 +916,27 @@ namespace Box3D
         return {};
     }
 
-#define BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS(Name, Configuration)                                                                          \
-    QueryHitCollection SystemComponent::ShapeCast##Name(                                                                                   \
-        WorldHandle worldHandle, const Configuration& geometry, const ConvexCastParameters& parameters) const                              \
-    {                                                                                                                                      \
-        return ShapeCast(m_system.get(), worldHandle, geometry, parameters);                                                               \
-    }                                                                                                                                      \
-                                                                                                                                           \
-    QueryHitCollection SystemComponent::Overlap##Name(                                                                                     \
-        WorldHandle worldHandle, const Configuration& geometry, const ConvexOverlapParameters& parameters) const                           \
-    {                                                                                                                                      \
-        return Overlap(m_system.get(), worldHandle, geometry, parameters);                                                                 \
+#define BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS(Name, Configuration) \
+    QueryHitCollection SystemComponent::ShapeCast##Name( \
+        WorldHandle worldHandle, const Configuration& geometry, const ConvexCastParameters& parameters) const \
+    { \
+        return ShapeCast(m_system.get(), worldHandle, geometry, parameters); \
+    } \
+    QueryHitCollection SystemComponent::Overlap##Name( \
+        WorldHandle worldHandle, const Configuration& geometry, const ConvexOverlapParameters& parameters) const \
+    { \
+        return Overlap(m_system.get(), worldHandle, geometry, parameters); \
     }
 
-    BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS(
-        Sphere,
-        SphereShapeConfiguration)
-    BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS(
-        Capsule,
-        CapsuleShapeConfiguration)
-    BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS(
-        Box,
-        BoxShapeConfiguration)
-    BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS(
-        Cylinder,
-        CylinderShapeConfiguration)
-    BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS(
-        ConvexHull,
-        ConvexHullShapeConfiguration)
+    BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS(Sphere, SphereShapeConfiguration)
+
+    BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS(Capsule, CapsuleShapeConfiguration)
+
+    BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS(Box, BoxShapeConfiguration)
+
+    BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS(Cylinder, CylinderShapeConfiguration)
+
+    BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS(ConvexHull, ConvexHullShapeConfiguration)
 
 #undef BOX3D_IMPLEMENT_CONVEX_QUERY_METHODS
 

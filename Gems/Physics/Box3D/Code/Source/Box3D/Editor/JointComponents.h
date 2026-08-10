@@ -43,7 +43,6 @@ namespace Box3D::Editor
 
     protected:
         virtual ~IJointManipulatorRequests() = default;
-
     };
 
     using JointManipulatorRequestBus = AZ::EBus<IJointManipulatorRequests>;
@@ -56,6 +55,7 @@ namespace Box3D::Editor
     {
     public:
         AZ_RTTI(JointComponentBase, "{0577A917-FEA9-45EF-A047-0356A8D4F98B}", AzToolsFramework::Components::EditorComponentBase);
+
         AZ_CLASS_ALLOCATOR(JointComponentBase, AZ::SystemAllocator);
 
         static void Reflect(AZ::ReflectContext* context);

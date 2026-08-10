@@ -83,7 +83,6 @@ namespace Box3D
 
         if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-
             behaviorContext->Enum<static_cast<AZ::u8>(CharacterSupportState::Unsupported)>("CharacterSupportState_Unsupported")
                 ->Enum<static_cast<AZ::u8>(CharacterSupportState::Supported)>("CharacterSupportState_Supported")
                 ->Enum<static_cast<AZ::u8>(CharacterSupportState::Sliding)>("CharacterSupportState_Sliding");

@@ -72,13 +72,14 @@ namespace Box3D::Tests
         [[nodiscard]]
         AZ::u64 ReadArm64FloatControl()
         {
+
 #if defined(_M_ARM64) || defined(_M_ARM64EC)
-            return static_cast<AZ::u64>(_ReadStatusReg(ARM64_FPCR));
+        return static_cast<AZ::u64>(_ReadStatusReg(ARM64_FPCR));
 #elif defined(__clang__)
-            return __arm_rsr64("fpcr");
+        return __arm_rsr64 ("fpcr");
 #else
-            AZ::u64 control = 0;
-            __asm__ volatile("mrs %0, fpcr" : "=r"(control));
+        AZ::u64 control = 0;
+        __asm__ volatile("mrs %0, fpcr": "=r"(control));
             return control;
 #endif
         }
@@ -86,12 +87,13 @@ namespace Box3D::Tests
         void WriteArm64FloatControl(
             AZ::u64 control)
         {
+
 #if defined(_M_ARM64) || defined(_M_ARM64EC)
-            _WriteStatusReg(ARM64_FPCR, static_cast<__int64>(control));
+        _WriteStatusReg(ARM64_FPCR, static_cast<__int64>(control));
 #elif defined(__clang__)
-            __arm_wsr64("fpcr", control);
+        __arm_wsr64 ("fpcr", control);
 #else
-            __asm__ volatile("msr fpcr, %0" : : "r"(control));
+        __asm__ volatile("msr fpcr, %0": : "r"(control));
 #endif
         }
 #endif
@@ -1083,7 +1085,9 @@ namespace Box3D::Tests
         configurations[4].m_geometry = ConvexHullShapeConfiguration{
             {AZ::Vector3(0.0f, 0.0f, 0.0f), AZ::Vector3(1.0f, 0.0f, 0.0f), AZ::Vector3(0.0f, 1.0f, 0.0f), AZ::Vector3(0.0f, 0.0f, 1.0f)}};
         configurations[5].m_geometry = TriangleMeshShapeConfiguration{
-            {AZ::Vector3(0.0f, 0.0f, 0.0f), AZ::Vector3(1.0f, 0.0f, 0.0f), AZ::Vector3(0.0f, 1.0f, 0.0f)}, {0, 1, 2}, {}};
+            {AZ::Vector3(0.0f, 0.0f, 0.0f), AZ::Vector3(1.0f, 0.0f, 0.0f), AZ::Vector3(0.0f, 1.0f, 0.0f)},
+            {0, 1, 2},
+            {}};
         configurations[6].m_geometry =
             HeightfieldShapeConfiguration{{0.0f, 0.0f, 0.0f, 0.0f}, {}, 2, 2, AZ::Vector2::CreateOne(), 1.0f, false};
         CompoundShapeConfiguration compound;
@@ -1211,7 +1215,7 @@ namespace Box3D::Tests
                     events.m_bodyMoves.end(),
                     [](const BodyMoveEvent& left, const BodyMoveEvent& right)
                     {
-                        return left.m_bodyHandle < right.m_bodyHandle;
+                    return left.m_bodyHandle < right.m_bodyHandle;
                     }));
             sawHit = sawHit || !events.m_contactHits.empty();
             for (const ContactEvent& event : events.m_contactEvents)
@@ -1235,7 +1239,7 @@ namespace Box3D::Tests
                 events.m_contactEvents.end(),
                 [](const ContactEvent& event)
                 {
-                    return event.m_phase == EventPhase::Persist;
+                return event.m_phase == EventPhase::Persist;
                 }),
             events.m_contactEvents.end());
 
@@ -1248,7 +1252,7 @@ namespace Box3D::Tests
                 events.m_contactEvents.end(),
                 [](const ContactEvent& event)
                 {
-                    return event.m_phase == EventPhase::End;
+                return event.m_phase == EventPhase::End;
                 }),
             events.m_contactEvents.end());
     }

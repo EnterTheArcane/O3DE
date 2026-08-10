@@ -33,6 +33,7 @@ namespace Box3D
     {
     public:
         AZ_CLASS_ALLOCATOR(System, AZ::SystemAllocator);
+
         AZ_RTTI(System, "{DF0E67A4-324A-4890-B168-CD326D7A6A89}", ISystem, ICooking, IDiagnostics, IEffects);
 
         explicit System(

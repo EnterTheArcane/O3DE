@@ -50,7 +50,6 @@ namespace Box3D
 
         if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-
             behaviorContext->EBus<CharacterRequestBus>("Box3DCharacterRequestBus")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "box3d")

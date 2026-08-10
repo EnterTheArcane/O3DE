@@ -31,6 +31,7 @@ namespace Box3D::Editor
         {
         public:
             AZ_CLASS_ALLOCATOR(OffsetComponentMode, AZ::SystemAllocator);
+
             AZ_RTTI(OffsetComponentMode, "{535356E4-2609-4421-ADCD-0BEFDAB38B80}", AzToolsFramework::BaseShapeComponentMode);
 
             OffsetComponentMode(
@@ -402,8 +403,7 @@ namespace Box3D::Editor
     {
         SetDirty();
         if (m_componentModeDelegate.AddedToComponentMode()
-            && (m_activeShapeIndex >= m_shapes.size()
-            || m_shapes[m_activeShapeIndex].m_geometry.index() != m_componentModeGeometryIndex))
+            && (m_activeShapeIndex >= m_shapes.size() || m_shapes[m_activeShapeIndex].m_geometry.index() != m_componentModeGeometryIndex))
         {
             AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequestBus::Broadcast(
                 &AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequests::EndComponentMode);

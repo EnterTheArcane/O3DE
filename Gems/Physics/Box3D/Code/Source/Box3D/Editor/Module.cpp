@@ -32,6 +32,7 @@ namespace Box3D::Editor
     {
     public:
         AZ_RTTI(Module, ModuleTypeId, AZ::Module);
+
         AZ_CLASS_ALLOCATOR(Module, AZ::SystemAllocator);
 
         Module()

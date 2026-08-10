@@ -129,7 +129,10 @@ namespace Box3D::Editor
                         else if constexpr (AZStd::is_same_v<Type, CylinderShapeConfiguration>)
                         {
                             debugDisplay.DrawWireCylinder(
-                                AZ::Vector3::CreateZero(), AZ::Vector3::CreateAxisZ(), typedGeometry.m_radius, typedGeometry.m_height);
+                                AZ::Vector3::CreateZero(),
+                                AZ::Vector3::CreateAxisZ(),
+                                typedGeometry.m_radius,
+                                typedGeometry.m_height);
                         }
                         else if constexpr (AZStd::is_same_v<Type, ConvexHullShapeConfiguration>)
                         {

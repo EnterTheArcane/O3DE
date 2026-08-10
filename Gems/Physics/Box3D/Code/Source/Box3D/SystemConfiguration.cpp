@@ -77,56 +77,23 @@ namespace Box3D
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_contactSpeed, "Contact speed", "")
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_contactRecycleDistance, "Contact recycle distance", "")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_contactRecycleDistance, "Contact recycle distance", "")
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default,
-                        &SystemConfiguration::m_restitutionThreshold,
-                        "Restitution threshold",
-                        "Relative speed below which restitution is disabled.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_restitutionThreshold, "Restitution threshold", "Relative speed below which restitution is disabled.")
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_hitEventThreshold, "Hit event threshold", "")
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_maximumLinearSpeed, "Maximum linear speed", "")
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default,
-                        &SystemConfiguration::m_lengthUnitsPerMeter,
-                        "Length units per meter",
-                        "Simulation length units represented by one meter. The default uses meters directly.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_lengthUnitsPerMeter, "Length units per meter", "Simulation length units represented by one meter. The default uses meters directly.")
                     ->Attribute(AZ::Edit::Attributes::Min, AZ::Constants::FloatEpsilon)
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default,
-                        &SystemConfiguration::m_stallWarningThresholdSeconds,
-                        "Stall warning threshold",
-                        "Seconds before continuous-collision stalls are reported. The maximum float disables reporting.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_stallWarningThresholdSeconds, "Stall warning threshold", "Seconds before continuous-collision stalls are reported. The maximum float disables reporting.")
                     ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default,
-                        &SystemConfiguration::m_staticShapeCapacity,
-                        "Static shape capacity",
-                        "Initial static broad-phase capacity. Zero selects the native default.")
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default,
-                        &SystemConfiguration::m_dynamicShapeCapacity,
-                        "Dynamic shape capacity",
-                        "Initial dynamic broad-phase capacity. Zero selects the native default.")
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default,
-                        &SystemConfiguration::m_staticBodyCapacity,
-                        "Static body capacity",
-                        "Initial static body capacity. Zero selects the native default.")
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default,
-                        &SystemConfiguration::m_dynamicBodyCapacity,
-                        "Dynamic body capacity",
-                        "Initial dynamic and kinematic body capacity. Zero selects the native default.")
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default,
-                        &SystemConfiguration::m_contactCapacity,
-                        "Contact capacity",
-                        "Initial contact capacity. Zero selects the native default.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_staticShapeCapacity, "Static shape capacity", "Initial static broad-phase capacity. Zero selects the native default.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_dynamicShapeCapacity, "Dynamic shape capacity", "Initial dynamic broad-phase capacity. Zero selects the native default.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_staticBodyCapacity, "Static body capacity", "Initial static body capacity. Zero selects the native default.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_dynamicBodyCapacity, "Dynamic body capacity", "Initial dynamic and kinematic body capacity. Zero selects the native default.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_contactCapacity, "Contact capacity", "Initial contact capacity. Zero selects the native default.")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_enableSleep, "Sleeping", "")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_enableContinuous, "Continuous collision", "")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &SystemConfiguration::m_enableWarmStarting, "Warm starting", "")
@@ -136,7 +103,6 @@ namespace Box3D
 
         if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-
             behaviorContext->Enum<static_cast<AZ::u8>(StepEventTypes::None)>("StepEventTypes_None")
                 ->Enum<static_cast<AZ::u8>(StepEventTypes::BodyMoves)>("StepEventTypes_BodyMoves")
                 ->Enum<static_cast<AZ::u8>(StepEventTypes::Sensors)>("StepEventTypes_Sensors")

@@ -211,6 +211,7 @@ namespace Box3D
     {
     public:
         AZ_RTTI(IReplay, IReplayTypeId);
+
         virtual ~IReplay() = default;
 
         [[nodiscard]]
@@ -288,6 +289,7 @@ namespace Box3D
     {
     public:
         AZ_RTTI(IDiagnostics, IDiagnosticsTypeId);
+
         virtual ~IDiagnostics() = default;
 
         [[nodiscard]]

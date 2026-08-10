@@ -53,7 +53,8 @@ namespace Box3D::Tests
         System system;
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         const AZ::Transform transform = AZ::Transform::CreateFromQuaternionAndTranslation(
-            AZ::Quaternion::CreateRotationZ(AZ::Constants::HalfPi), AZ::Vector3(3.0f, 4.0f, 5.0f));
+            AZ::Quaternion::CreateRotationZ(AZ::Constants::HalfPi),
+            AZ::Vector3(3.0f, 4.0f, 5.0f));
         const BodyHandle bodyHandle = CreateDynamicSphere(system, worldHandle, transform);
         ASSERT_TRUE(bodyHandle.IsValid());
         ASSERT_TRUE(system.SetLinearVelocity(worldHandle, bodyHandle, AZ::Vector3(2.0f, 3.0f, 4.0f)));

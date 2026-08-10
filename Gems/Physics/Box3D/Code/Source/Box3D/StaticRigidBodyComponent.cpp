@@ -44,7 +44,6 @@ namespace Box3D
 
         if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-
             behaviorContext->Class<StaticRigidBodyComponent>("Box3D::StaticRigidBodyComponent")->RequestBus("Box3DRigidBodyRequestBus");
         }
     }

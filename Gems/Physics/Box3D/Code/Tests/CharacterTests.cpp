@@ -118,7 +118,8 @@ namespace Box3D::Tests
         System system;
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         const AZ::Transform slopeTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
-            AZ::Quaternion::CreateRotationY(AZ::DegToRad(45.0f)), AZ::Vector3::CreateAxisZ(-0.1f));
+            AZ::Quaternion::CreateRotationY(AZ::DegToRad(45.0f)),
+            AZ::Vector3::CreateAxisZ(-0.1f));
         const BodyHandle slope = CreateBody(system, worldHandle, BodyType::Static, slopeTransform);
         ASSERT_TRUE(CreateBox(system, worldHandle, slope, AZ::Vector3(2.0f, 2.0f, 0.1f)).IsValid());
 

@@ -56,6 +56,7 @@ namespace Box3D
     {
     public:
         AZ_RTTI(IEffects, IEffectsTypeId);
+
         virtual ~IEffects() = default;
 
         [[nodiscard]]

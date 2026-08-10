@@ -21,8 +21,7 @@ namespace Box3D
     namespace
     {
         template<typename Value, class Variant>
-        Value GetVariantValue(
-            const Variant& variant)
+        Value GetVariantValue(const Variant& variant)
         {
             const Value* value = AZStd::get_if<Value>(&variant);
             if (value)
@@ -39,8 +38,7 @@ namespace Box3D
         , public AZ::BehaviorEBusHandler
     {
     public:
-        AZ_EBUS_BEHAVIOR_BINDER(
-            JointNotificationBusBehaviorHandler, "{F1FEC305-1898-48FC-9F37-D3F976026517}", AZ::SystemAllocator, OnThresholdExceeded);
+        AZ_EBUS_BEHAVIOR_BINDER(JointNotificationBusBehaviorHandler, "{F1FEC305-1898-48FC-9F37-D3F976026517}", AZ::SystemAllocator, OnThresholdExceeded);
 
         void OnThresholdExceeded(
             const JointThresholdEvent& event) override
@@ -80,7 +78,6 @@ namespace Box3D
 
         if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-
             behaviorContext->EBus<JointRequestBus>("Box3DJointRequestBus")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "box3d")

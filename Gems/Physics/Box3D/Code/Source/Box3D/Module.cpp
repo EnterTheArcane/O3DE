@@ -25,6 +25,7 @@ namespace Box3D
     {
     public:
         AZ_RTTI(Module, ModuleTypeId, AZ::Module);
+
         AZ_CLASS_ALLOCATOR(Module, AZ::SystemAllocator);
 
         Module()

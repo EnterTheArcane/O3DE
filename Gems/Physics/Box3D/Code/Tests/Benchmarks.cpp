@@ -33,12 +33,12 @@ namespace Box3D::Benchmarks
             explicit JobContextScope(
                 AZ::u32 workerCount)
                 : m_jobManager(
-                      [workerCount]
-                      {
-                          AZ::JobManagerDesc descriptor;
-                          descriptor.m_workerThreads.resize(workerCount);
-                          return descriptor;
-                      }())
+                    [workerCount]
+                    {
+                        AZ::JobManagerDesc descriptor;
+                        descriptor.m_workerThreads.resize(workerCount);
+                        return descriptor;
+                    }())
                 , m_jobContext(m_jobManager)
             {
             }
@@ -335,7 +335,9 @@ namespace Box3D::Benchmarks
         for (AZ::u32 obstacleIndex = 0; obstacleIndex < obstacleCount; ++obstacleIndex)
         {
             const AZ::Vector3 position(
-                2.0f * static_cast<float>(obstacleIndex % rowWidth), 2.0f * static_cast<float>(obstacleIndex / rowWidth), -0.5f);
+                2.0f * static_cast<float>(obstacleIndex % rowWidth),
+                2.0f * static_cast<float>(obstacleIndex / rowWidth),
+                -0.5f);
             const BodyHandle bodyHandle = CreateBody(system, worldHandle, BodyType::Static, position);
             if (!bodyHandle || !CreateBox(system, worldHandle, bodyHandle, AZ::Vector3(0.5f)))
             {
@@ -359,7 +361,9 @@ namespace Box3D::Benchmarks
             {
                 const AZ::u32 obstacleIndex = rayIndex % obstacleCount;
                 request.m_start = AZ::Vector3(
-                    2.0f * static_cast<float>(obstacleIndex % rowWidth), 2.0f * static_cast<float>(obstacleIndex / rowWidth), 10.0f);
+                    2.0f * static_cast<float>(obstacleIndex % rowWidth),
+                    2.0f * static_cast<float>(obstacleIndex / rowWidth),
+                    10.0f);
                 benchmark::DoNotOptimize(worldQueries->RaycastClosest(request, hit));
             }
         }
@@ -398,7 +402,9 @@ namespace Box3D::Benchmarks
         for (AZ::u32 obstacleIndex = 0; obstacleIndex < obstacleCount; ++obstacleIndex)
         {
             const AZ::Vector3 position(
-                2.0f * static_cast<float>(obstacleIndex % rowWidth), 2.0f * static_cast<float>(obstacleIndex / rowWidth), -0.5f);
+                2.0f * static_cast<float>(obstacleIndex % rowWidth),
+                2.0f * static_cast<float>(obstacleIndex / rowWidth),
+                -0.5f);
             const BodyHandle bodyHandle = CreateBody(system, worldHandle, BodyType::Static, position);
             if (!bodyHandle || !CreateBox(system, worldHandle, bodyHandle, AZ::Vector3(0.5f)))
             {
@@ -418,7 +424,9 @@ namespace Box3D::Benchmarks
         {
             const AZ::u32 obstacleIndex = rayIndex % obstacleCount;
             requests[rayIndex].m_start = AZ::Vector3(
-                2.0f * static_cast<float>(obstacleIndex % rowWidth), 2.0f * static_cast<float>(obstacleIndex / rowWidth), 10.0f);
+                2.0f * static_cast<float>(obstacleIndex % rowWidth),
+                2.0f * static_cast<float>(obstacleIndex / rowWidth),
+                10.0f);
             requests[rayIndex].m_direction = -AZ::Vector3::CreateAxisZ();
             requests[rayIndex].m_distance = 20.0f;
         }
@@ -456,7 +464,9 @@ namespace Box3D::Benchmarks
         for (AZ::u32 obstacleIndex = 0; obstacleIndex < obstacleCount; ++obstacleIndex)
         {
             const AZ::Vector3 position(
-                2.0f * static_cast<float>(obstacleIndex % rowWidth), 2.0f * static_cast<float>(obstacleIndex / rowWidth), 0.0f);
+                2.0f * static_cast<float>(obstacleIndex % rowWidth),
+                2.0f * static_cast<float>(obstacleIndex / rowWidth),
+                0.0f);
             const BodyHandle bodyHandle = CreateBody(system, worldHandle, BodyType::Static, position);
             if (!bodyHandle || !CreateSphere(system, worldHandle, bodyHandle))
             {
@@ -497,7 +507,9 @@ namespace Box3D::Benchmarks
         for (AZ::u32 obstacleIndex = 0; obstacleIndex < obstacleCount; ++obstacleIndex)
         {
             const AZ::Vector3 position(
-                2.0f * static_cast<float>(obstacleIndex % rowWidth), 2.0f * static_cast<float>(obstacleIndex / rowWidth), 0.0f);
+                2.0f * static_cast<float>(obstacleIndex % rowWidth),
+                2.0f * static_cast<float>(obstacleIndex / rowWidth),
+                0.0f);
             const BodyHandle bodyHandle = CreateBody(system, worldHandle, BodyType::Static, position);
             if (!bodyHandle || !CreateBox(system, worldHandle, bodyHandle, AZ::Vector3(0.5f)))
             {
@@ -648,7 +660,9 @@ namespace Box3D::Benchmarks
             {
                 const AZ::u32 obstacleIndex = rayIndex % obstacleCount;
                 const AZ::Vector3 start(
-                    2.0f * static_cast<float>(obstacleIndex % rowWidth), 2.0f * static_cast<float>(obstacleIndex / rowWidth), 10.0f);
+                    2.0f * static_cast<float>(obstacleIndex % rowWidth),
+                    2.0f * static_cast<float>(obstacleIndex / rowWidth),
+                    10.0f);
                 benchmark::DoNotOptimize(
                     CastRayClosest(worldId, start, -20.0f * AZ::Vector3::CreateAxisZ(), 1, AZStd::numeric_limits<AZ::u64>::max(), hit));
             }
@@ -716,7 +730,14 @@ namespace Box3D::Benchmarks
         {
             hitCount = 0;
             treeStatistics = OverlapShape(
-                worldId, AZ::Vector3(32.0f, 32.0f, 0.0f), points, 5.0f, 1, AZStd::numeric_limits<AZ::u64>::max(), countHit, &hitCount);
+                worldId,
+                AZ::Vector3(32.0f, 32.0f, 0.0f),
+                points,
+                5.0f,
+                1,
+                AZStd::numeric_limits<AZ::u64>::max(),
+                countHit,
+                &hitCount);
             benchmark::DoNotOptimize(hitCount);
         }
 

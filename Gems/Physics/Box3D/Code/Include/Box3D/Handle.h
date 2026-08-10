@@ -139,7 +139,6 @@ namespace Box3D
             return m_requiredCount > m_count;
         }
     };
-
 } // namespace Box3D
 
 namespace AZ

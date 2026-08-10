@@ -30,7 +30,6 @@ namespace Box3D
 
             return {};
         }
-
     } // namespace
 
     CompoundChildType CompoundChildShapeConfiguration::GetType() const
@@ -256,7 +255,6 @@ namespace Box3D
 
         if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-
             behaviorContext->Class<SphereShapeConfiguration>("SphereShapeConfiguration")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "box3d")

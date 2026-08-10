@@ -46,6 +46,7 @@ namespace Box3D
     {
     public:
         AZ_RTTI(JsonShapeGeometrySerializer, "{FA3026F9-3349-4D12-9E43-D831A65FA63D}", JsonTaggedVariantSerializerBase);
+
         AZ_CLASS_ALLOCATOR_DECL;
 
         AZ::JsonSerializationResult::Result Load(
@@ -60,7 +61,6 @@ namespace Box3D
             const void* defaultValue,
             const AZ::Uuid& valueTypeId,
             AZ::JsonSerializerContext& context) override;
-
     };
 
     class JsonCompoundChildGeometrySerializer final
@@ -68,6 +68,7 @@ namespace Box3D
     {
     public:
         AZ_RTTI(JsonCompoundChildGeometrySerializer, "{4B6A8D88-E3EA-4696-B3CE-6C132597AE3C}", JsonTaggedVariantSerializerBase);
+
         AZ_CLASS_ALLOCATOR_DECL;
 
         AZ::JsonSerializationResult::Result Load(
@@ -89,6 +90,7 @@ namespace Box3D
     {
     public:
         AZ_RTTI(JsonJointConfigurationSerializer, "{7203F295-7ED4-4D2F-A08A-863DE54C397F}", JsonTaggedVariantSerializerBase);
+
         AZ_CLASS_ALLOCATOR_DECL;
 
         AZ::JsonSerializationResult::Result Load(

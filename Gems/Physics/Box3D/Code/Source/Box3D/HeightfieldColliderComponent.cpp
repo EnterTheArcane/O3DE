@@ -51,7 +51,6 @@ namespace Box3D
 
         if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-
             behaviorContext->EBus<HeightfieldRequestBus>("Box3DHeightfieldRequestBus")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "box3d")
@@ -487,7 +486,9 @@ namespace Box3D
 
         ShapeConfiguration runtimeConfiguration{m_configuration.m_geometry, m_configuration.m_properties};
         runtimeConfiguration.m_properties.m_materials.insert(
-            runtimeConfiguration.m_properties.m_materials.end(), m_ownedMaterials.begin(), m_ownedMaterials.end());
+            runtimeConfiguration.m_properties.m_materials.end(),
+            m_ownedMaterials.begin(),
+            m_ownedMaterials.end());
         return m_system->UpdateShape(m_worldHandle, m_shapeHandle, runtimeConfiguration, scale);
     }
 } // namespace Box3D

@@ -168,7 +168,10 @@ namespace Box3D::Tests
 
         const BodyHandle contactBody = CreateEventBody(system, worldHandle, BodyType::Static, 10.0f * AZ::Vector3::CreateAxisX());
         const BodyHandle contactVisitor = CreateEventBody(
-            system, worldHandle, BodyType::Dynamic, 10.0f * AZ::Vector3::CreateAxisX() + 5.0f * AZ::Vector3::CreateAxisZ());
+            system,
+            worldHandle,
+            BodyType::Dynamic,
+            10.0f * AZ::Vector3::CreateAxisX() + 5.0f * AZ::Vector3::CreateAxisZ());
         ShapeConfiguration contactConfiguration;
         contactConfiguration.m_geometry = SphereShapeConfiguration{1.0f};
         contactConfiguration.m_properties.m_enableContactEvents = true;
@@ -191,12 +194,12 @@ namespace Box3D::Tests
         ASSERT_TRUE(system.ApplyLinearImpulse(worldHandle, jointChild, 100.0f * AZ::Vector3::CreateAxisX()));
 
         for (AZ::u32 step = 0; step < 120
-             && (handler.m_bodyMoveCount == 0
-             || handler.m_sensorCount == 0
-             || handler.m_contactCount == 0
-             || handler.m_contactHitCount == 0
-                 || handler.m_jointThresholdCount == 0);
-             ++step)
+            && (handler.m_bodyMoveCount == 0
+                || handler.m_sensorCount == 0
+                || handler.m_contactCount == 0
+                || handler.m_contactHitCount == 0
+                || handler.m_jointThresholdCount == 0);
+            ++step)
         {
             ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
         }
@@ -211,10 +214,10 @@ namespace Box3D::Tests
         EXPECT_EQ(handler.m_lastSensor.m_visitorBody, sensorVisitor);
         EXPECT_EQ(handler.m_lastSensor.m_visitorShape, visitorShape);
         EXPECT_TRUE(
-        (handler.m_lastContactHit.m_bodyA == contactBody
-            && handler.m_lastContactHit.m_bodyB == contactVisitor)
+            (handler.m_lastContactHit.m_bodyA == contactBody
+                && handler.m_lastContactHit.m_bodyB == contactVisitor)
             || (handler.m_lastContactHit.m_bodyA == contactVisitor
-            && handler.m_lastContactHit.m_bodyB == contactBody));
+                && handler.m_lastContactHit.m_bodyB == contactBody));
         EXPECT_EQ(handler.m_lastJointThreshold.m_jointHandle, jointHandle);
     }
 

@@ -61,6 +61,7 @@ namespace Box3D::Internal
             : m_nextGeneration(firstGeneration)
         {
         }
+
         AZ_DISABLE_COPY_MOVE(GenerationSource);
 
         [[nodiscard]]
@@ -75,7 +76,10 @@ namespace Box3D::Internal
                     nextGeneration = 0;
                 }
                 if (m_nextGeneration.compare_exchange_weak(
-                        generation, nextGeneration, AZStd::memory_order_relaxed, AZStd::memory_order_relaxed))
+                    generation,
+                    nextGeneration,
+                    AZStd::memory_order_relaxed,
+                    AZStd::memory_order_relaxed))
                 {
                     return generation;
                 }

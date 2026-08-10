@@ -30,6 +30,7 @@ namespace Box3D::Editor
         {
         public:
             AZ_CLASS_ALLOCATOR(VelocityComponentMode, AZ::SystemAllocator);
+
             AZ_RTTI(VelocityComponentMode, "{EC42DDBB-3C3F-451B-8B9A-EFE72CCB8D90}", AzToolsFramework::BaseShapeComponentMode);
 
             VelocityComponentMode(
@@ -140,8 +141,7 @@ namespace Box3D::Editor
         AzToolsFramework::RadiusManipulatorRequestBus::Handler::BusConnect(entityComponentIdPair);
         AzToolsFramework::ShapeManipulatorRequestBus::Handler::BusConnect(entityComponentIdPair);
         const bool allowAsymmetricalEditing = true;
-        m_componentModeDelegate.ConnectWithSingleComponentMode<ExplosionComponent, AzToolsFramework::SphereComponentMode>(
-            entityComponentIdPair, this, allowAsymmetricalEditing);
+        m_componentModeDelegate.ConnectWithSingleComponentMode<ExplosionComponent, AzToolsFramework::SphereComponentMode>(entityComponentIdPair, this, allowAsymmetricalEditing);
     }
 
     void ExplosionComponent::Deactivate()

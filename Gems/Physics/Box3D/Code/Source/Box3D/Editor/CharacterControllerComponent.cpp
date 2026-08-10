@@ -78,8 +78,7 @@ namespace Box3D::Editor
         AzToolsFramework::RadiusManipulatorRequestBus::Handler::BusConnect(entityComponentIdPair);
         AzToolsFramework::ShapeManipulatorRequestBus::Handler::BusConnect(entityComponentIdPair);
         const bool allowAsymmetricalEditing = false;
-        m_componentModeDelegate.ConnectWithSingleComponentMode<CharacterControllerComponent, AzToolsFramework::CapsuleComponentMode>(
-            entityComponentIdPair, this, allowAsymmetricalEditing);
+        m_componentModeDelegate.ConnectWithSingleComponentMode<CharacterControllerComponent, AzToolsFramework::CapsuleComponentMode>(entityComponentIdPair, this, allowAsymmetricalEditing);
     }
 
     void CharacterControllerComponent::Deactivate()

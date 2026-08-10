@@ -29,8 +29,7 @@ namespace Box3D
 
         JointComponent(
             JointConfiguration configuration,
-            AZ::EntityId parentEntityId = AZ::EntityId()
-        );
+            AZ::EntityId parentEntityId = AZ::EntityId());
 
         ~JointComponent() override = default;
 

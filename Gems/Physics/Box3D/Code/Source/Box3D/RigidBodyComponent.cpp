@@ -77,7 +77,6 @@ namespace Box3D
 
         if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-
             behaviorContext->Enum<static_cast<AZ::u8>(BodyType::Static)>("BodyType_Static")
                 ->Enum<static_cast<AZ::u8>(BodyType::Kinematic)>("BodyType_Kinematic")
                 ->Enum<static_cast<AZ::u8>(BodyType::Dynamic)>("BodyType_Dynamic");

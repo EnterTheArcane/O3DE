@@ -32,6 +32,7 @@ namespace Box3D
         {
             return GetShapeHandles().size();
         }
+
         [[nodiscard]]
         virtual ShapeHandle GetShapeHandleAt(
             size_t index) const
@@ -44,6 +45,7 @@ namespace Box3D
 
             return {};
         }
+
         [[nodiscard]]
         virtual AZ::Aabb GetAabb() const = 0;
 
@@ -125,7 +127,6 @@ namespace Box3D
         virtual bool SetMaterials(
             size_t index,
             AZStd::span<const MaterialHandle> materials) = 0;
-
 
         virtual bool SetMaterialsFromCollection(
             size_t index,

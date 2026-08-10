@@ -901,14 +901,14 @@ namespace Box3D
         }
 
         for (AZ::u32 shapeIndex = bodySlot->m_firstShapeIndex; shapeIndex != InvalidSlotIndex;
-             shapeIndex = m_shapeSlots[shapeIndex].m_nextShapeIndex)
+            shapeIndex = m_shapeSlots[shapeIndex].m_nextShapeIndex)
         {
             const ShapeSlot& shapeSlot = m_shapeSlots[shapeIndex];
             UnregisterShape(shapeSlot.m_nativeId);
             m_retiredShapes.push_back(
-                {shapeSlot.m_nativeId,
-                    bodyHandle,
-                    Internal::MakeWorldMemberHandle<ShapeHandle>(m_worldIndex, shapeIndex, shapeSlot.m_generation)});
+            {shapeSlot.m_nativeId,
+             bodyHandle,
+             Internal::MakeWorldMemberHandle<ShapeHandle>(m_worldIndex, shapeIndex, shapeSlot.m_generation)});
         }
         Box3D::DestroyBody(bodySlot->m_nativeId);
         AZ::u32 shapeIndex = bodySlot->m_firstShapeIndex;
@@ -1060,7 +1060,7 @@ namespace Box3D
         if (properties.m_bodyType != BodyType::Static)
         {
             for (AZ::u32 shapeIndex = slot->m_firstShapeIndex; shapeIndex != InvalidSlotIndex;
-                 shapeIndex = m_shapeSlots[shapeIndex].m_nextShapeIndex)
+                shapeIndex = m_shapeSlots[shapeIndex].m_nextShapeIndex)
             {
                 NativeShapeState shapeState;
                 if (!Box3D::GetShapeState(m_shapeSlots[shapeIndex].m_nativeId, shapeState)
@@ -1080,11 +1080,11 @@ namespace Box3D
         Box3D::SetMotionLocks(
             slot->m_nativeId,
             {properties.m_motionLocks.m_linearX,
-                properties.m_motionLocks.m_linearY,
-                properties.m_motionLocks.m_linearZ,
-                properties.m_motionLocks.m_angularX,
-                properties.m_motionLocks.m_angularY,
-                properties.m_motionLocks.m_angularZ});
+             properties.m_motionLocks.m_linearY,
+             properties.m_motionLocks.m_linearZ,
+             properties.m_motionLocks.m_angularX,
+             properties.m_motionLocks.m_angularY,
+             properties.m_motionLocks.m_angularZ});
         Box3D::SetLinearDamping(slot->m_nativeId, properties.m_linearDamping);
         Box3D::SetAngularDamping(slot->m_nativeId, properties.m_angularDamping);
         Box3D::SetGravityScale(slot->m_nativeId, properties.m_gravityScale);
@@ -1585,12 +1585,12 @@ namespace Box3D
 
         CastHit nativeHit;
         if (!Box3D::CastRay(
-                bodySlot->m_nativeId,
-                request.m_start,
-                request.m_direction.GetNormalized() * request.m_distance,
-                request.m_filter.m_categoryBits,
-                request.m_filter.m_maskBits,
-                nativeHit))
+            bodySlot->m_nativeId,
+            request.m_start,
+            request.m_direction.GetNormalized() * request.m_distance,
+            request.m_filter.m_categoryBits,
+            request.m_filter.m_maskBits,
+            nativeHit))
         {
             return false;
         }
@@ -1633,14 +1633,14 @@ namespace Box3D
 
         CastHit nativeHit;
         if (!Box3D::CastShape(
-                bodySlot->m_nativeId,
-                request.m_start.GetTranslation(),
-                proxy.GetPoints(),
-                proxy.m_radius,
-                request.m_translation,
-                request.m_filter.m_categoryBits,
-                request.m_filter.m_maskBits,
-                nativeHit))
+            bodySlot->m_nativeId,
+            request.m_start.GetTranslation(),
+            proxy.GetPoints(),
+            proxy.m_radius,
+            request.m_translation,
+            request.m_filter.m_categoryBits,
+            request.m_filter.m_maskBits,
+            nativeHit))
         {
             return false;
         }
@@ -1827,7 +1827,9 @@ namespace Box3D
             }
 
             NativeGeometry geometry = CookGeometry(
-                configuration.m_geometry, GeometryTransform{configuration.m_properties.m_localTransform, uniformScale}, nativeMaterials);
+                configuration.m_geometry,
+                GeometryTransform{configuration.m_properties.m_localTransform, uniformScale},
+                nativeMaterials);
             if (Box3D::SetShapeGeometry(shapeSlot->m_nativeId, geometry))
             {
                 Box3D::SetShapeFilter(
@@ -2122,7 +2124,13 @@ namespace Box3D
             material.m_friction = friction;
         }
         return RecreateShapeWithMaterials(
-            shapeHandle, *shapeSlot, resources, materials, state.m_density, shapeSlot->m_explosionScale, resources.m_materials);
+            shapeHandle,
+            *shapeSlot,
+            resources,
+            materials,
+            state.m_density,
+            shapeSlot->m_explosionScale,
+            resources.m_materials);
     }
 
     bool World::SetShapeRestitution(
@@ -2156,7 +2164,13 @@ namespace Box3D
             material.m_restitution = restitution;
         }
         return RecreateShapeWithMaterials(
-            shapeHandle, *shapeSlot, resources, materials, state.m_density, shapeSlot->m_explosionScale, resources.m_materials);
+            shapeHandle,
+            *shapeSlot,
+            resources,
+            materials,
+            state.m_density,
+            shapeSlot->m_explosionScale,
+            resources.m_materials);
     }
 
     bool World::SetShapeEventSubscriptions(
@@ -2341,7 +2355,13 @@ namespace Box3D
             {
                 const ShapeHandle shapeHandle = Internal::MakeWorldMemberHandle<ShapeHandle>(m_worldIndex, shapeIndex, slot.m_generation);
                 if (!RecreateShapeWithMaterials(
-                        shapeHandle, slot, resources, nativeMaterials, density, explosionScale, resources.m_materials))
+                    shapeHandle,
+                    slot,
+                    resources,
+                    nativeMaterials,
+                    density,
+                    explosionScale,
+                    resources.m_materials))
                 {
                     return false;
                 }
@@ -2859,10 +2879,10 @@ namespace Box3D
         const AZ::Vector3 upperCenter = (configuration.m_height - configuration.m_radius) * up;
         const AZ::Vector3 initialPosition = resources.m_state.m_basePosition;
         const auto move = [this, &configuration, &lowerCenter, &upperCenter, fixedTimeStep](
-                              const AZ::Vector3& position,
-                              const AZ::Vector3& requestedTranslation,
-                              MoverScratch& scratch,
-                              MoverResult& result)
+            const AZ::Vector3& position,
+            const AZ::Vector3& requestedTranslation,
+            MoverScratch& scratch,
+            MoverResult& result)
         {
             return Box3D::MoveCapsule(
                 m_nativeId,
@@ -2891,12 +2911,12 @@ namespace Box3D
         const auto hasWalkableSupport = [&up, walkableDot](const MoverScratch& scratch)
         {
             return AZStd::find_if(
-                       scratch.GetPlanes().begin(),
-                       scratch.GetPlanes().end(),
-                       [&up, walkableDot](const MoverPlane& plane)
-                       {
-                           return plane.m_normal.Dot(up) >= walkableDot;
-                       })
+                    scratch.GetPlanes().begin(),
+                    scratch.GetPlanes().end(),
+                    [&up, walkableDot](const MoverPlane& plane)
+                    {
+                        return plane.m_normal.Dot(up) >= walkableDot;
+                    })
                 != scratch.GetPlanes().end();
         };
 
@@ -2914,8 +2934,7 @@ namespace Box3D
                 MoverResult settledResult;
                 const AZ::Vector3 stepUp = configuration.m_stepHeight * up;
                 const bool raised = move(initialPosition, stepUp, *m_characterStepScratch, raisedResult)
-                    && (raisedResult.m_position - initialPosition).Dot(up) + configuration.m_minimumMovementDistance
-                        >= configuration.m_stepHeight;
+                    && (raisedResult.m_position - initialPosition).Dot(up) + configuration.m_minimumMovementDistance >= configuration.m_stepHeight;
                 const bool advanced = raised && move(raisedResult.m_position, translation, *m_characterStepScratch, advancedResult);
                 const bool settled = advanced
                     && move(
@@ -3190,12 +3209,12 @@ namespace Box3D
         }
         ClosestCastHit nativeHit;
         if (!Box3D::CastRayClosest(
-                m_nativeId,
-                request.m_start,
-                direction * request.m_distance,
-                request.m_filter.m_collisionFilter.m_categoryBits,
-                request.m_filter.m_collisionFilter.m_maskBits,
-                nativeHit))
+            m_nativeId,
+            request.m_start,
+            direction * request.m_distance,
+            request.m_filter.m_collisionFilter.m_categoryBits,
+            request.m_filter.m_collisionFilter.m_maskBits,
+            nativeHit))
         {
             return false;
         }
@@ -3285,8 +3304,7 @@ namespace Box3D
             const ShapeSlot& shapeSlot = *resolvedShape.m_slot;
             const BodySlot* bodySlot = queryContext.m_world.FindBodySlot(shapeSlot.m_bodyHandle);
             if (!bodySlot
-                || (!queryContext.m_filter.m_includeSensors
-                && shapeSlot.m_isSensor)
+                || (!queryContext.m_filter.m_includeSensors && shapeSlot.m_isSensor)
                 || !IncludesBodyType(queryContext.m_filter.m_bodyTypes, bodySlot->m_type))
             {
                 return 1.0f;
@@ -3380,7 +3398,10 @@ namespace Box3D
         }
 
         const RaycastRequest raycastTemplate{
-            request.m_start.GetTranslation(), request.m_translation.GetNormalized(), request.m_filter, request.m_translation.GetLength()};
+            request.m_start.GetTranslation(),
+            request.m_translation.GetNormalized(),
+            request.m_filter,
+            request.m_translation.GetLength()};
         struct Context final
         {
             const World& m_world;
@@ -3533,8 +3554,7 @@ namespace Box3D
             auto& queryContext = *static_cast<Context*>(opaqueContext);
             ResolvedShape resolvedShape;
             if (!queryContext.m_world.ResolveShape(candidate.m_shapeUserData, candidate.m_shapeId, resolvedShape)
-                || (queryContext.m_filterSensors
-                && resolvedShape.m_slot->m_isSensor))
+                || (queryContext.m_filterSensors && resolvedShape.m_slot->m_isSensor))
             {
                 return true;
             }
@@ -3646,8 +3666,7 @@ namespace Box3D
             auto& queryContext = *static_cast<Context*>(opaqueContext);
             ResolvedShape resolvedShape;
             if (!queryContext.m_world.ResolveShape(candidate.m_shapeUserData, candidate.m_shapeId, resolvedShape)
-                || (queryContext.m_filterSensors
-                && resolvedShape.m_slot->m_isSensor))
+                || (queryContext.m_filterSensors && resolvedShape.m_slot->m_isSensor))
             {
                 return true;
             }
@@ -3836,12 +3855,12 @@ namespace Box3D
         {
             const ShapeSlot& shapeSlot = m_shapeSlots[shapeIndex];
             applied = Box3D::ApplyWind(
-                          shapeSlot.m_nativeId,
-                          configuration.m_velocity,
-                          configuration.m_drag,
-                          configuration.m_lift,
-                          configuration.m_maximumSpeed,
-                          configuration.m_wake)
+                    shapeSlot.m_nativeId,
+                    configuration.m_velocity,
+                    configuration.m_drag,
+                    configuration.m_lift,
+                    configuration.m_maximumSpeed,
+                    configuration.m_wake)
                 || applied;
             shapeIndex = shapeSlot.m_nextShapeIndex;
         }
@@ -4299,9 +4318,15 @@ namespace Box3D
         for (const ContactData& nativeContact : nativeContacts)
         {
             const ShapeData shapeA{
-                nativeContact.m_shapeIdA, nativeContact.m_bodyIdA, nativeContact.m_shapeUserDataA, nativeContact.m_bodyUserDataA};
+                nativeContact.m_shapeIdA,
+                nativeContact.m_bodyIdA,
+                nativeContact.m_shapeUserDataA,
+                nativeContact.m_bodyUserDataA};
             const ShapeData shapeB{
-                nativeContact.m_shapeIdB, nativeContact.m_bodyIdB, nativeContact.m_shapeUserDataB, nativeContact.m_bodyUserDataB};
+                nativeContact.m_shapeIdB,
+                nativeContact.m_bodyIdB,
+                nativeContact.m_shapeUserDataB,
+                nativeContact.m_bodyUserDataB};
             const BodyHandle bodyA = GetBodyHandle(shapeA);
             const BodyHandle bodyB = GetBodyHandle(shapeB);
             const ShapeHandle shapeHandleA = GetShapeHandle(shapeA);
@@ -4630,18 +4655,18 @@ namespace Box3D
                 continue;
             }
             m_contactHitEvents.push_back(
-                {bodyA,
-                    bodyB,
-                    shapeA,
-                    shapeB,
-                    Internal::HandleAccess::Create<MaterialHandle>(nativeEvent.m_userMaterialIdA),
-                    Internal::HandleAccess::Create<MaterialHandle>(nativeEvent.m_userMaterialIdB),
-                    nativeEvent.m_position,
-                    nativeEvent.m_normal,
-                    nativeEvent.m_approachSpeed,
-                    nativeEvent.m_triangleIndex,
-                    nativeEvent.m_childIndexA,
-                    nativeEvent.m_childIndexB});
+            {bodyA,
+             bodyB,
+             shapeA,
+             shapeB,
+             Internal::HandleAccess::Create<MaterialHandle>(nativeEvent.m_userMaterialIdA),
+             Internal::HandleAccess::Create<MaterialHandle>(nativeEvent.m_userMaterialIdB),
+             nativeEvent.m_position,
+             nativeEvent.m_normal,
+             nativeEvent.m_approachSpeed,
+             nativeEvent.m_triangleIndex,
+             nativeEvent.m_childIndexA,
+             nativeEvent.m_childIndexB});
         }
         AZStd::sort(
             m_contactHitEvents.begin(),

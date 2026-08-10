@@ -115,8 +115,7 @@ namespace Box3D
                 using Alternative = AZStd::remove_cvref_t<decltype(alternative)>;
                 rapidjson::Value typeValue;
                 result.Combine(StoreTypeId(typeValue, azrtti_typeid<Alternative>(), context));
-                outputValue.AddMember(
-                    rapidjson::StringRef(AZ::JsonSerialization::TypeIdFieldIdentifier), AZStd::move(typeValue), context.GetJsonAllocator());
+                outputValue.AddMember(rapidjson::StringRef(AZ::JsonSerialization::TypeIdFieldIdentifier), AZStd::move(typeValue), context.GetJsonAllocator());
 
                 const Alternative* defaultAlternative = nullptr;
                 if (defaults)
@@ -143,7 +142,9 @@ namespace Box3D
     }
 
     AZ_CLASS_ALLOCATOR_IMPL(JsonShapeGeometrySerializer, AZ::SystemAllocator);
+
     AZ_CLASS_ALLOCATOR_IMPL(JsonCompoundChildGeometrySerializer, AZ::SystemAllocator);
+
     AZ_CLASS_ALLOCATOR_IMPL(JsonJointConfigurationSerializer, AZ::SystemAllocator);
 
     AZ::JsonSerializationResult::Result JsonShapeGeometrySerializer::Load(

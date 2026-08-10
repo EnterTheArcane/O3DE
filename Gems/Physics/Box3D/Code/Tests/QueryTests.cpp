@@ -85,7 +85,7 @@ namespace Box3D::Tests
                     [&startedWorkerCount, &releaseWorkers, &succeeded, newRoundingMode, expectedRoundingMode]
                     {
                         if ((expectedRoundingMode != -1
-                            && std::fegetround() != expectedRoundingMode)
+                                && std::fegetround() != expectedRoundingMode)
                             || std::fesetround(newRoundingMode) != 0)
                         {
                             succeeded.store(false);

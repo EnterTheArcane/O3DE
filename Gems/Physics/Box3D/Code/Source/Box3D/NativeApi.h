@@ -1018,7 +1018,6 @@ namespace Box3D
         virtual bool ShouldCollide(
             ShapeId shapeA,
             ShapeId shapeB) = 0;
-
     };
 
     //! Resolves provider material handles before invoking application-defined mixing policy.
@@ -1040,7 +1039,6 @@ namespace Box3D
             AZ::u64 materialIdA,
             float valueB,
             AZ::u64 materialIdB) const = 0;
-
     };
 
     class Recording final

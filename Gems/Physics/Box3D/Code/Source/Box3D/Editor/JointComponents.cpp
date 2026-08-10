@@ -36,6 +36,7 @@ namespace Box3D::Editor
         {
         public:
             AZ_CLASS_ALLOCATOR(JointFrameComponentMode, AZ::SystemAllocator);
+
             AZ_RTTI(
                 JointFrameComponentMode,
                 "{A398A96D-952F-4D79-B35D-00ED402647DF}",
@@ -110,9 +111,15 @@ namespace Box3D::Editor
                 AZ::Transform localFrame = AZ::Transform::CreateIdentity();
                 AZ::Transform frameSpace = AZ::Transform::CreateIdentity();
                 JointManipulatorRequestBus::EventResult(
-                    localFrame, GetEntityComponentIdPair(), &JointManipulatorRequestBus::Events::GetLocalFrame, m_frame);
+                    localFrame,
+                    GetEntityComponentIdPair(),
+                    &JointManipulatorRequestBus::Events::GetLocalFrame,
+                    m_frame);
                 JointManipulatorRequestBus::EventResult(
-                    frameSpace, GetEntityComponentIdPair(), &JointManipulatorRequestBus::Events::GetFrameSpace, m_frame);
+                    frameSpace,
+                    GetEntityComponentIdPair(),
+                    &JointManipulatorRequestBus::Events::GetFrameSpace,
+                    m_frame);
                 m_translationManipulators.SetSpace(frameSpace);
                 m_translationManipulators.SetLocalTransform(localFrame);
                 m_translationManipulators.SetBoundsDirty();
@@ -176,7 +183,10 @@ namespace Box3D::Editor
                 {
                     AZ::Transform updatedFrame = AZ::Transform::CreateIdentity();
                     JointManipulatorRequestBus::EventResult(
-                        updatedFrame, pair, &JointManipulatorRequestBus::Events::GetLocalFrame, m_frame);
+                        updatedFrame,
+                        pair,
+                        &JointManipulatorRequestBus::Events::GetLocalFrame,
+                        m_frame);
                     updatedFrame.SetTranslation(action.LocalPosition());
                     JointManipulatorRequestBus::Event(pair, &JointManipulatorRequestBus::Events::SetLocalFrame, m_frame, updatedFrame);
                 };
@@ -203,16 +213,14 @@ namespace Box3D::Editor
                     manipulator->InstallLeftMouseDownCallback(
                         [this, pair]([[maybe_unused]] const AzToolsFramework::AngularManipulator::Action& action)
                         {
-                        JointManipulatorRequestBus::EventResult(
-                        m_rotationStart, pair, &JointManipulatorRequestBus::Events::GetLocalFrame, m_frame);
+                            JointManipulatorRequestBus::EventResult(m_rotationStart, pair, &JointManipulatorRequestBus::Events::GetLocalFrame, m_frame);
                         });
                     manipulator->InstallMouseMoveCallback(
                         [this, pair](const AzToolsFramework::AngularManipulator::Action& action)
                         {
-                        const AZ::Transform updatedFrame =
-                        m_rotationStart * AZ::Transform::CreateFromQuaternion(action.m_current.m_delta);
-                        JointManipulatorRequestBus::Event(
-                        pair, &JointManipulatorRequestBus::Events::SetLocalFrame, m_frame, updatedFrame);
+                            const AZ::Transform updatedFrame =
+                                m_rotationStart * AZ::Transform::CreateFromQuaternion(action.m_current.m_delta);
+                            JointManipulatorRequestBus::Event(pair, &JointManipulatorRequestBus::Events::SetLocalFrame, m_frame, updatedFrame);
                         });
                     manipulator->Register(AzToolsFramework::GetMainManipulatorManagerId());
                 }
@@ -572,58 +580,23 @@ namespace Box3D::Editor
             ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             ->DataElement(AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_length, "Length", "Target anchor distance.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &DistanceJointConfiguration::m_enableSpring,
-                "Enable spring",
-                "Use a spring to reach the target length.")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &DistanceJointConfiguration::m_lowerSpringForce,
-                "Lower spring force",
-                "Minimum spring force.")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &DistanceJointConfiguration::m_upperSpringForce,
-                "Upper spring force",
-                "Maximum spring force.")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_hertz, "Spring frequency", "Spring response frequency.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_enableSpring, "Enable spring", "Use a spring to reach the target length.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_lowerSpringForce, "Lower spring force", "Minimum spring force.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_upperSpringForce, "Upper spring force", "Maximum spring force.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_hertz, "Spring frequency", "Spring response frequency.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Suffix, " Hz")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_dampingRatio, "Spring damping ratio", "Spring damping.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_dampingRatio, "Spring damping ratio", "Spring damping.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_enableLimit, "Enable limit", "Restrict the anchor distance.")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &DistanceJointConfiguration::m_minLength,
-                "Minimum length",
-                "Shortest allowed anchor distance.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_enableLimit, "Enable limit", "Restrict the anchor distance.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_minLength, "Minimum length", "Shortest allowed anchor distance.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &DistanceJointConfiguration::m_maxLength,
-                "Maximum length",
-                "Longest allowed anchor distance.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_maxLength, "Maximum length", "Longest allowed anchor distance.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &DistanceJointConfiguration::m_enableMotor,
-                "Enable motor",
-                "Drive the distance at the requested speed.")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &DistanceJointConfiguration::m_maxMotorForce,
-                "Maximum motor force",
-                "Maximum force applied by the motor.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_enableMotor, "Enable motor", "Drive the distance at the requested speed.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_maxMotorForce, "Maximum motor force", "Maximum force applied by the motor.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &DistanceJointConfiguration::m_motorSpeed,
-                "Motor speed",
-                "Requested change in distance per second.");
+            ->DataElement(AZ::Edit::UIHandlers::Default, &DistanceJointConfiguration::m_motorSpeed, "Motor speed", "Requested change in distance per second.");
     }
 
     void ReflectConfiguration(
@@ -646,65 +619,25 @@ namespace Box3D::Editor
             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &MotorJointConfiguration::m_common, "Joint", "")
             ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &MotorJointConfiguration::m_linearVelocity,
-                "Linear velocity",
-                "Target relative linear velocity.")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &MotorJointConfiguration::m_angularVelocity,
-                "Angular velocity",
-                "Target relative angular velocity in radians per second.")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &MotorJointConfiguration::m_maxVelocityForce,
-                "Maximum velocity force",
-                "Maximum force used to reach linear velocity.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotorJointConfiguration::m_linearVelocity, "Linear velocity", "Target relative linear velocity.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotorJointConfiguration::m_angularVelocity, "Angular velocity", "Target relative angular velocity in radians per second.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotorJointConfiguration::m_maxVelocityForce, "Maximum velocity force", "Maximum force used to reach linear velocity.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &MotorJointConfiguration::m_maxVelocityTorque,
-                "Maximum velocity torque",
-                "Maximum torque used to reach angular velocity.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotorJointConfiguration::m_maxVelocityTorque, "Maximum velocity torque", "Maximum torque used to reach angular velocity.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &MotorJointConfiguration::m_linearHertz,
-                "Linear spring frequency",
-                "Linear position spring frequency.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotorJointConfiguration::m_linearHertz, "Linear spring frequency", "Linear position spring frequency.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Suffix, " Hz")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &MotorJointConfiguration::m_linearDampingRatio,
-                "Linear damping ratio",
-                "Linear position spring damping.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotorJointConfiguration::m_linearDampingRatio, "Linear damping ratio", "Linear position spring damping.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &MotorJointConfiguration::m_maxSpringForce,
-                "Maximum spring force",
-                "Maximum linear spring force.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotorJointConfiguration::m_maxSpringForce, "Maximum spring force", "Maximum linear spring force.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &MotorJointConfiguration::m_angularHertz,
-                "Angular spring frequency",
-                "Angular position spring frequency.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotorJointConfiguration::m_angularHertz, "Angular spring frequency", "Angular position spring frequency.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Suffix, " Hz")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &MotorJointConfiguration::m_angularDampingRatio,
-                "Angular damping ratio",
-                "Angular position spring damping.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotorJointConfiguration::m_angularDampingRatio, "Angular damping ratio", "Angular position spring damping.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &MotorJointConfiguration::m_maxSpringTorque,
-                "Maximum spring torque",
-                "Maximum angular spring torque.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotorJointConfiguration::m_maxSpringTorque, "Maximum spring torque", "Maximum angular spring torque.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f);
     }
 
@@ -717,54 +650,20 @@ namespace Box3D::Editor
             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &PrismaticJointConfiguration::m_common, "Joint", "")
             ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &PrismaticJointConfiguration::m_enableSpring,
-                "Enable spring",
-                "Drive toward the target translation with a spring.")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &PrismaticJointConfiguration::m_targetTranslation,
-                "Target translation",
-                "Spring target along the joint axis.")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default, &PrismaticJointConfiguration::m_hertz, "Spring frequency", "Translation spring frequency.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &PrismaticJointConfiguration::m_enableSpring, "Enable spring", "Drive toward the target translation with a spring.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &PrismaticJointConfiguration::m_targetTranslation, "Target translation", "Spring target along the joint axis.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &PrismaticJointConfiguration::m_hertz, "Spring frequency", "Translation spring frequency.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Suffix, " Hz")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &PrismaticJointConfiguration::m_dampingRatio,
-                "Spring damping ratio",
-                "Translation spring damping.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &PrismaticJointConfiguration::m_dampingRatio, "Spring damping ratio", "Translation spring damping.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &PrismaticJointConfiguration::m_enableLimit,
-                "Enable limit",
-                "Restrict translation along the joint axis.")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &PrismaticJointConfiguration::m_lowerTranslation,
-                "Lower translation",
-                "Minimum translation along the joint axis.")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &PrismaticJointConfiguration::m_upperTranslation,
-                "Upper translation",
-                "Maximum translation along the joint axis.")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &PrismaticJointConfiguration::m_enableMotor,
-                "Enable motor",
-                "Drive translation along the joint axis.")
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default,
-                &PrismaticJointConfiguration::m_maxMotorForce,
-                "Maximum motor force",
-                "Maximum force applied by the motor.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &PrismaticJointConfiguration::m_enableLimit, "Enable limit", "Restrict translation along the joint axis.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &PrismaticJointConfiguration::m_lowerTranslation, "Lower translation", "Minimum translation along the joint axis.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &PrismaticJointConfiguration::m_upperTranslation, "Upper translation", "Maximum translation along the joint axis.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &PrismaticJointConfiguration::m_enableMotor, "Enable motor", "Drive translation along the joint axis.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &PrismaticJointConfiguration::m_maxMotorForce, "Maximum motor force", "Maximum force applied by the motor.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-            ->DataElement(
-                AZ::Edit::UIHandlers::Default, &PrismaticJointConfiguration::m_motorSpeed, "Motor speed", "Target translation speed.");
+            ->DataElement(AZ::Edit::UIHandlers::Default, &PrismaticJointConfiguration::m_motorSpeed, "Motor speed", "Target translation speed.");
     }
 
     void ReflectConfiguration(
@@ -788,7 +687,10 @@ namespace Box3D::Editor
                 "Spring target angle in radians.")
             ->Attribute(AZ::Edit::Attributes::Suffix, " rad")
             ->DataElement(
-                AZ::Edit::UIHandlers::Default, &RevoluteJointConfiguration::m_hertz, "Spring frequency", "Angular spring frequency.")
+                AZ::Edit::UIHandlers::Default,
+                &RevoluteJointConfiguration::m_hertz,
+                "Spring frequency",
+                "Angular spring frequency.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Suffix, " Hz")
             ->DataElement(
@@ -803,10 +705,16 @@ namespace Box3D::Editor
                 "Enable limit",
                 "Restrict rotation around the joint axis.")
             ->DataElement(
-                AZ::Edit::UIHandlers::Default, &RevoluteJointConfiguration::m_lowerAngle, "Lower angle", "Minimum angle in radians.")
+                AZ::Edit::UIHandlers::Default,
+                &RevoluteJointConfiguration::m_lowerAngle,
+                "Lower angle",
+                "Minimum angle in radians.")
             ->Attribute(AZ::Edit::Attributes::Suffix, " rad")
             ->DataElement(
-                AZ::Edit::UIHandlers::Default, &RevoluteJointConfiguration::m_upperAngle, "Upper angle", "Maximum angle in radians.")
+                AZ::Edit::UIHandlers::Default,
+                &RevoluteJointConfiguration::m_upperAngle,
+                "Upper angle",
+                "Maximum angle in radians.")
             ->Attribute(AZ::Edit::Attributes::Suffix, " rad")
             ->DataElement(
                 AZ::Edit::UIHandlers::Default,
@@ -847,7 +755,10 @@ namespace Box3D::Editor
                 "Target rotation",
                 "Spring target relative rotation.")
             ->DataElement(
-                AZ::Edit::UIHandlers::Default, &SphericalJointConfiguration::m_hertz, "Spring frequency", "Rotation spring frequency.")
+                AZ::Edit::UIHandlers::Default,
+                &SphericalJointConfiguration::m_hertz,
+                "Spring frequency",
+                "Rotation spring frequency.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Suffix, " Hz")
             ->DataElement(
@@ -862,7 +773,10 @@ namespace Box3D::Editor
                 "Enable cone limit",
                 "Restrict swing away from the joint axis.")
             ->DataElement(
-                AZ::Edit::UIHandlers::Default, &SphericalJointConfiguration::m_coneAngle, "Cone angle", "Maximum swing angle in radians.")
+                AZ::Edit::UIHandlers::Default,
+                &SphericalJointConfiguration::m_coneAngle,
+                "Cone angle",
+                "Maximum swing angle in radians.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Max, SphericalJointConfiguration::MaximumConeAngle)
             ->Attribute(AZ::Edit::Attributes::Suffix, " rad")
@@ -911,7 +825,10 @@ namespace Box3D::Editor
             ->DataElement(AZ::Edit::UIHandlers::Default, &WeldJointConfiguration::m_common, "Joint", "")
             ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             ->DataElement(
-                AZ::Edit::UIHandlers::Default, &WeldJointConfiguration::m_linearHertz, "Linear frequency", "Linear correction frequency.")
+                AZ::Edit::UIHandlers::Default,
+                &WeldJointConfiguration::m_linearHertz,
+                "Linear frequency",
+                "Linear correction frequency.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Suffix, " Hz")
             ->DataElement(
@@ -978,7 +895,10 @@ namespace Box3D::Editor
                 "Upper suspension limit",
                 "Maximum suspension translation.")
             ->DataElement(
-                AZ::Edit::UIHandlers::Default, &WheelJointConfiguration::m_enableSpinMotor, "Enable spin motor", "Drive wheel spin.")
+                AZ::Edit::UIHandlers::Default,
+                &WheelJointConfiguration::m_enableSpinMotor,
+                "Enable spin motor",
+                "Drive wheel spin.")
             ->DataElement(
                 AZ::Edit::UIHandlers::Default,
                 &WheelJointConfiguration::m_spinSpeed,
@@ -992,7 +912,10 @@ namespace Box3D::Editor
                 "Maximum wheel motor torque.")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->DataElement(
-                AZ::Edit::UIHandlers::Default, &WheelJointConfiguration::m_enableSteering, "Enable steering", "Drive wheel steering.")
+                AZ::Edit::UIHandlers::Default,
+                &WheelJointConfiguration::m_enableSteering,
+                "Enable steering",
+                "Drive wheel steering.")
             ->DataElement(
                 AZ::Edit::UIHandlers::Default,
                 &WheelJointConfiguration::m_targetSteeringAngle,

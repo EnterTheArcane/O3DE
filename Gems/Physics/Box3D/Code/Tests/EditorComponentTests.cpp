@@ -169,15 +169,21 @@ namespace Box3D::Editor
         const AZ::EntityComponentIdPair pair(editorEntity->GetId(), editorComponent->GetId());
         AZ::Vector3 dimensions = AZ::Vector3::CreateZero();
         AzToolsFramework::BoxManipulatorRequestBus::EventResult(
-            dimensions, pair, &AzToolsFramework::BoxManipulatorRequestBus::Events::GetDimensions);
+            dimensions,
+            pair,
+            &AzToolsFramework::BoxManipulatorRequestBus::Events::GetDimensions);
         EXPECT_TRUE(dimensions.IsClose(AZ::Vector3::CreateOne()));
 
         const AZ::Vector3 expectedDimensions(2.0f, 3.0f, 4.0f);
         const AZ::Vector3 expectedOffset(5.0f, 6.0f, 7.0f);
         AzToolsFramework::BoxManipulatorRequestBus::Event(
-            pair, &AzToolsFramework::BoxManipulatorRequestBus::Events::SetDimensions, expectedDimensions);
+            pair,
+            &AzToolsFramework::BoxManipulatorRequestBus::Events::SetDimensions,
+            expectedDimensions);
         AzToolsFramework::ShapeManipulatorRequestBus::Event(
-            pair, &AzToolsFramework::ShapeManipulatorRequestBus::Events::SetTranslationOffset, expectedOffset);
+            pair,
+            &AzToolsFramework::ShapeManipulatorRequestBus::Events::SetTranslationOffset,
+            expectedOffset);
 
         AZ::Entity gameEntity;
         editorComponent->BuildGameEntity(&gameEntity);
@@ -256,13 +262,19 @@ namespace Box3D::Editor
 
         const AZ::EntityComponentIdPair pair(editorEntity->GetId(), editorComponent->GetId());
         AzToolsFramework::RadiusManipulatorRequestBus::Event(
-            pair, &AzToolsFramework::RadiusManipulatorRequestBus::Events::SetRadius, 0.75f);
+            pair,
+            &AzToolsFramework::RadiusManipulatorRequestBus::Events::SetRadius,
+            0.75f);
         float height = 0.0f;
         AzToolsFramework::CapsuleManipulatorRequestBus::EventResult(
-            height, pair, &AzToolsFramework::CapsuleManipulatorRequestBus::Events::GetHeight);
+            height,
+            pair,
+            &AzToolsFramework::CapsuleManipulatorRequestBus::Events::GetHeight);
         EXPECT_FLOAT_EQ(height, 1.5f);
         AzToolsFramework::CapsuleManipulatorRequestBus::Event(
-            pair, &AzToolsFramework::CapsuleManipulatorRequestBus::Events::SetHeight, 2.0f);
+            pair,
+            &AzToolsFramework::CapsuleManipulatorRequestBus::Events::SetHeight,
+            2.0f);
 
         AZ::Entity gameEntity;
         editorComponent->BuildGameEntity(&gameEntity);
@@ -405,7 +417,9 @@ namespace Box3D::Editor
         const AZ::Vector3 expectedPosition(1.0f, 2.0f, 3.0f);
         AzToolsFramework::RadiusManipulatorRequestBus::Event(pair, &AzToolsFramework::RadiusManipulatorRequestBus::Events::SetRadius, 4.0f);
         AzToolsFramework::ShapeManipulatorRequestBus::Event(
-            pair, &AzToolsFramework::ShapeManipulatorRequestBus::Events::SetTranslationOffset, expectedPosition);
+            pair,
+            &AzToolsFramework::ShapeManipulatorRequestBus::Events::SetTranslationOffset,
+            expectedPosition);
 
         AZ::Entity gameEntity;
         editorComponent->BuildGameEntity(&gameEntity);
@@ -443,7 +457,9 @@ namespace Box3D::Editor
         const AZ::EntityComponentIdPair pair(editorEntity->GetId(), editorComponent->GetId());
         const AZ::Vector3 expectedVelocity(3.0f, -2.0f, 1.0f);
         AzToolsFramework::ShapeManipulatorRequestBus::Event(
-            pair, &AzToolsFramework::ShapeManipulatorRequestBus::Events::SetTranslationOffset, expectedVelocity);
+            pair,
+            &AzToolsFramework::ShapeManipulatorRequestBus::Events::SetTranslationOffset,
+            expectedVelocity);
 
         AZ::Entity gameEntity;
         editorComponent->BuildGameEntity(&gameEntity);
@@ -480,7 +496,8 @@ namespace Box3D::Editor
         const AZ::EntityComponentIdPair pair(editorEntity->GetId(), editorComponent->GetId());
         const AZ::Transform expectedParent = AZ::Transform::CreateTranslation(AZ::Vector3(1.0f, 2.0f, 3.0f));
         const AZ::Transform expectedChild = AZ::Transform::CreateFromQuaternionAndTranslation(
-            AZ::Quaternion::CreateRotationZ(AZ::Constants::QuarterPi), AZ::Vector3(-1.0f, -2.0f, -3.0f));
+            AZ::Quaternion::CreateRotationZ(AZ::Constants::QuarterPi),
+            AZ::Vector3(-1.0f, -2.0f, -3.0f));
         JointManipulatorRequestBus::Event(pair, &JointManipulatorRequestBus::Events::SetLocalFrame, JointFrame::Parent, expectedParent);
         JointManipulatorRequestBus::Event(pair, &JointManipulatorRequestBus::Events::SetLocalFrame, JointFrame::Child, expectedChild);
 

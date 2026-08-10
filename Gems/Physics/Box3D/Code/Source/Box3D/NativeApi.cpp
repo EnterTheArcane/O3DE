@@ -177,8 +177,7 @@ namespace Box3D
                 && AZStd::abs(scale.GetX()) >= MinimumGeometryScale
                 && AZStd::abs(scale.GetY()) >= MinimumGeometryScale
                 && AZStd::abs(scale.GetZ()) >= MinimumGeometryScale
-                && (allowNegative
-                || scale.GetMinElement() > 0.0f);
+                && (allowNegative || scale.GetMinElement() > 0.0f);
         }
 
         bool IsRigidTransform(
@@ -361,7 +360,10 @@ namespace Box3D
             void* context)
         {
             return static_cast<IContactCallbacks*>(context)->BeforeSolve(
-                {b3StoreShapeId(shapeA)}, {b3StoreShapeId(shapeB)}, FromNativePosition(position), FromNative(normal));
+                {b3StoreShapeId(shapeA)},
+                {b3StoreShapeId(shapeB)},
+                FromNativePosition(position),
+                FromNative(normal));
         }
 
         void* CreateNativeDebugShape(
@@ -385,7 +387,10 @@ namespace Box3D
             if (size > 0 && alignment > 0)
             {
                 return AZ::AllocatorInstance<NativeAllocator>::Get().Allocate(
-                    aznumeric_cast<size_t>(size), aznumeric_cast<size_t>(alignment), 0, "Box3D Native");
+                    aznumeric_cast<size_t>(size),
+                    aznumeric_cast<size_t>(alignment),
+                    0,
+                    "Box3D Native");
             }
 
             return nullptr;
@@ -818,14 +823,14 @@ namespace Box3D
                     plane.point.z = 0.0f;
                 }
                 data.m_entries.push_back(
-                    {{plane.plane, (AZStd::numeric_limits<float>::max)(), 0.0f, true},
-                        {storedShapeId,
-                            storedBodyId,
-                            shapeUserData,
-                            bodyUserData,
-                            FromNativePosition(b3OffsetPos(data.m_origin, plane.point)),
-                            FromNative(plane.plane.normal),
-                            0.0f}});
+                {{plane.plane, (AZStd::numeric_limits<float>::max)(), 0.0f, true},
+                 {storedShapeId,
+                  storedBodyId,
+                  shapeUserData,
+                  bodyUserData,
+                  FromNativePosition(b3OffsetPos(data.m_origin, plane.point)),
+                  FromNative(plane.plane.normal),
+                  0.0f}});
             }
             return true;
         }
@@ -941,7 +946,10 @@ namespace Box3D
         {
             const AZ::u32 packed = static_cast<AZ::u32>(color);
             return AZ::Color::CreateFromRgba(
-                static_cast<AZ::u8>(packed >> 16), static_cast<AZ::u8>(packed >> 8), static_cast<AZ::u8>(packed), 255);
+                static_cast<AZ::u8>(packed >> 16),
+                static_cast<AZ::u8>(packed >> 8),
+                static_cast<AZ::u8>(packed),
+                255);
         }
 
         DebugMaterialPreset GetDebugMaterial(
@@ -1079,8 +1087,8 @@ namespace Box3D
                     primitive.m_indices.insert(
                         primitive.m_indices.end(),
                         {aznumeric_cast<AZ::u32>(triangle.index1),
-                            aznumeric_cast<AZ::u32>(triangle.index2),
-                            aznumeric_cast<AZ::u32>(triangle.index3)});
+                         aznumeric_cast<AZ::u32>(triangle.index2),
+                         aznumeric_cast<AZ::u32>(triangle.index3)});
                 }
                 return true;
             };
@@ -1221,7 +1229,9 @@ namespace Box3D
             void* context)
         {
             static_cast<DebugContext*>(context)->m_renderer.DrawLine(
-                FromNativePosition(start), FromNativePosition(end), GetDebugColor(color));
+                FromNativePosition(start),
+                FromNativePosition(end),
+                GetDebugColor(color));
         }
 
         void DrawDebugTransform(
@@ -1259,7 +1269,11 @@ namespace Box3D
             void* context)
         {
             static_cast<DebugContext*>(context)->m_renderer.DrawCapsule(
-                FromNativePosition(start), FromNativePosition(end), radius, GetDebugColor(color), opacity);
+                FromNativePosition(start),
+                FromNativePosition(end),
+                radius,
+                GetDebugColor(color),
+                opacity);
         }
 
         void DrawDebugBounds(
@@ -1277,7 +1291,9 @@ namespace Box3D
             void* context)
         {
             static_cast<DebugContext*>(context)->m_renderer.DrawBox(
-                AZ::Vector3(extents.x, extents.z, extents.y), FromNative(transform), GetDebugColor(color));
+                AZ::Vector3(extents.x, extents.z, extents.y),
+                FromNative(transform),
+                GetDebugColor(color));
         }
 
         void DrawDebugText(
@@ -1313,8 +1329,15 @@ namespace Box3D
             if (settings.m_bounds.IsValid())
             {
                 draw.drawingBounds =
-                    {{settings.m_bounds.GetMin().GetX(), -settings.m_bounds.GetMax().GetZ(), settings.m_bounds.GetMin().GetY()},
-                       {settings.m_bounds.GetMax().GetX(), -settings.m_bounds.GetMin().GetZ(), settings.m_bounds.GetMax().GetY()}};
+                {{
+                    settings.m_bounds.GetMin().GetX(),
+                    -settings.m_bounds.GetMax().GetZ(),
+                    settings.m_bounds.GetMin().GetY()
+                }, {
+                    settings.m_bounds.GetMax().GetX(),
+                    -settings.m_bounds.GetMin().GetZ(),
+                    settings.m_bounds.GetMax().GetY()
+                }};
             }
             draw.forceScale = settings.m_forceScale;
             draw.jointScale = settings.m_jointScale;
@@ -1454,7 +1477,7 @@ namespace Box3D
         {
             size_t inputIndex = 0;
             while (inputIndex < nativeMaterials.size()
-                   && nativeMaterials[inputIndex].userMaterialId != cloneMaterials[materialIndex].userMaterialId)
+                && nativeMaterials[inputIndex].userMaterialId != cloneMaterials[materialIndex].userMaterialId)
             {
                 ++inputIndex;
             }
@@ -2254,10 +2277,10 @@ namespace Box3D
                     AZ::u32 contactId[3];
                     b3StoreContactId(event.contactId, contactId);
                     contactTransitions.push_back(
-                        {ContactTransitionType::Begin,
-                            {contactId[0], contactId[1], contactId[2]},
-                            {b3StoreShapeId(event.shapeIdA)},
-                            {b3StoreShapeId(event.shapeIdB)}});
+                    {ContactTransitionType::Begin,
+                     {contactId[0], contactId[1], contactId[2]},
+                     {b3StoreShapeId(event.shapeIdA)},
+                     {b3StoreShapeId(event.shapeIdB)}});
                 }
                 for (int eventIndex = 0; eventIndex < contactEvents.endCount; ++eventIndex)
                 {
@@ -2265,10 +2288,10 @@ namespace Box3D
                     AZ::u32 contactId[3];
                     b3StoreContactId(event.contactId, contactId);
                     contactTransitions.push_back(
-                        {ContactTransitionType::End,
-                            {contactId[0], contactId[1], contactId[2]},
-                            {b3StoreShapeId(event.shapeIdA)},
-                            {b3StoreShapeId(event.shapeIdB)}});
+                    {ContactTransitionType::End,
+                     {contactId[0], contactId[1], contactId[2]},
+                     {b3StoreShapeId(event.shapeIdA)},
+                     {b3StoreShapeId(event.shapeIdB)}});
                 }
             }
 
@@ -2279,16 +2302,16 @@ namespace Box3D
                 {
                     const b3ContactHitEvent& event = contactEvents.hitEvents[eventIndex];
                     contactHits.push_back(
-                        {{b3StoreShapeId(event.shapeIdA)},
-                            {b3StoreShapeId(event.shapeIdB)},
-                            FromNativePosition(event.point),
-                            FromNative(event.normal),
-                            event.approachSpeed,
-                            event.userMaterialIdA,
-                            event.userMaterialIdB,
-                            event.triangleIndex,
-                            event.childIndexA,
-                            event.childIndexB});
+                    {{b3StoreShapeId(event.shapeIdA)},
+                     {b3StoreShapeId(event.shapeIdB)},
+                     FromNativePosition(event.point),
+                     FromNative(event.normal),
+                     event.approachSpeed,
+                     event.userMaterialIdA,
+                     event.userMaterialIdB,
+                     event.triangleIndex,
+                     event.childIndexA,
+                     event.childIndexB});
                 }
             }
         }
@@ -2342,11 +2365,11 @@ namespace Box3D
                     const b3Pos pointA = centerA + point.anchorA;
                     const b3Pos pointB = centerB + point.anchorB;
                     points.push_back(
-                        {0.5f * (FromNativePosition(pointA) + FromNativePosition(pointB)),
-                            FromNative(manifold.normal),
-                            point.totalNormalImpulse * FromNative(manifold.normal),
-                            point.separation,
-                            point.triangleIndex});
+                    {0.5f * (FromNativePosition(pointA) + FromNativePosition(pointB)),
+                     FromNative(manifold.normal),
+                     point.totalNormalImpulse * FromNative(manifold.normal),
+                     point.separation,
+                     point.triangleIndex});
                 }
             }
             contactData.m_pointCount = points.size() - contactData.m_firstPoint;
@@ -2619,16 +2642,16 @@ namespace Box3D
             data->m_invalidPlane = false;
             const int planeCapacity = aznumeric_cast<int>(data->m_planeCapacity);
             if (b3World_CollideMoverWithCapacity(
-                    nativeWorldId,
-                    current,
-                    &mover,
-                    planeCapacity,
-                    true,
-                    b3LoadBodyId(ignoredBodyIdA.m_value),
-                    b3LoadBodyId(ignoredBodyIdB.m_value),
-                    filter,
-                    CollectMoverPlanes,
-                    data))
+                nativeWorldId,
+                current,
+                &mover,
+                planeCapacity,
+                true,
+                b3LoadBodyId(ignoredBodyIdA.m_value),
+                b3LoadBodyId(ignoredBodyIdB.m_value),
+                filter,
+                CollectMoverPlanes,
+                data))
             {
                 data->m_overflow = true;
                 data->m_requiredPlaneCount = AZStd::max(data->m_requiredPlaneCount, data->m_planeCapacity + 1);
@@ -2876,7 +2899,14 @@ namespace Box3D
         filter.maskBits = maskBits;
         const b3BodyId nativeBodyId = b3LoadBodyId(bodyId.m_value);
         const b3BodyCastResult result = b3Body_CastShape(
-            nativeBodyId, ToNativePosition(origin), &proxy, ToNative(translation), filter, 1.0f, false, b3Body_GetTransform(nativeBodyId));
+            nativeBodyId,
+            ToNativePosition(origin),
+            &proxy,
+            ToNative(translation),
+            filter,
+            1.0f,
+            false,
+            b3Body_GetTransform(nativeBodyId));
         if (!result.hit)
         {
             return false;
@@ -3657,7 +3687,7 @@ namespace Box3D
         }
         if (configuration.m_kind == JointKind::Spherical
             && (!(std::isfinite)(configuration.m_spherical.m_coneAngle)
-            || configuration.m_spherical.m_coneAngle < 0.0f
+                || configuration.m_spherical.m_coneAngle < 0.0f
                 || configuration.m_spherical.m_coneAngle > SphericalJointConfiguration::MaximumConeAngle))
         {
             return {};
@@ -3848,7 +3878,7 @@ namespace Box3D
         }
         if (configuration.m_kind == JointKind::Spherical
             && (!(std::isfinite)(configuration.m_spherical.m_coneAngle)
-            || configuration.m_spherical.m_coneAngle < 0.0f
+                || configuration.m_spherical.m_coneAngle < 0.0f
                 || configuration.m_spherical.m_coneAngle > SphericalJointConfiguration::MaximumConeAngle))
         {
             return false;
@@ -3914,7 +3944,9 @@ namespace Box3D
             b3DistanceJoint_SetLength(joint, configuration.m_distance.m_length);
             b3DistanceJoint_EnableSpring(joint, configuration.m_distance.m_enableSpring);
             b3DistanceJoint_SetSpringForceRange(
-                joint, configuration.m_distance.m_lowerSpringForce, configuration.m_distance.m_upperSpringForce);
+                joint,
+                configuration.m_distance.m_lowerSpringForce,
+                configuration.m_distance.m_upperSpringForce);
             b3DistanceJoint_SetSpringHertz(joint, configuration.m_distance.m_hertz);
             b3DistanceJoint_SetSpringDampingRatio(joint, configuration.m_distance.m_dampingRatio);
             b3DistanceJoint_EnableLimit(joint, configuration.m_distance.m_enableLimit);
@@ -3964,7 +3996,9 @@ namespace Box3D
             b3SphericalJoint_SetConeLimit(joint, configuration.m_spherical.m_coneAngle);
             b3SphericalJoint_EnableTwistLimit(joint, configuration.m_spherical.m_enableTwistLimit);
             b3SphericalJoint_SetTwistLimits(
-                joint, configuration.m_spherical.m_lowerTwistAngle, configuration.m_spherical.m_upperTwistAngle);
+                joint,
+                configuration.m_spherical.m_lowerTwistAngle,
+                configuration.m_spherical.m_upperTwistAngle);
             b3SphericalJoint_EnableSpring(joint, configuration.m_spherical.m_enableSpring);
             b3SphericalJoint_SetSpringHertz(joint, configuration.m_spherical.m_hertz);
             b3SphericalJoint_SetSpringDampingRatio(joint, configuration.m_spherical.m_dampingRatio);
@@ -3985,7 +4019,9 @@ namespace Box3D
             b3WheelJoint_SetSuspensionDampingRatio(joint, configuration.m_wheel.m_suspensionDampingRatio);
             b3WheelJoint_EnableSuspensionLimit(joint, configuration.m_wheel.m_enableSuspensionLimit);
             b3WheelJoint_SetSuspensionLimits(
-                joint, configuration.m_wheel.m_lowerSuspensionLimit, configuration.m_wheel.m_upperSuspensionLimit);
+                joint,
+                configuration.m_wheel.m_lowerSuspensionLimit,
+                configuration.m_wheel.m_upperSuspensionLimit);
             b3WheelJoint_EnableSpinMotor(joint, configuration.m_wheel.m_enableSpinMotor);
             b3WheelJoint_SetSpinMotorSpeed(joint, configuration.m_wheel.m_spinSpeed);
             b3WheelJoint_SetMaxSpinTorque(joint, configuration.m_wheel.m_maxSpinTorque);
@@ -4106,7 +4142,9 @@ namespace Box3D
             if (b3Joint_GetType(joint) == b3_prismaticJoint)
             {
                 return PrismaticJointState{
-                    b3PrismaticJoint_GetTranslation(joint), b3PrismaticJoint_GetSpeed(joint), b3PrismaticJoint_GetMotorForce(joint)};
+                    b3PrismaticJoint_GetTranslation(joint),
+                    b3PrismaticJoint_GetSpeed(joint),
+                    b3PrismaticJoint_GetMotorForce(joint)};
             }
             break;
         case JointKind::Revolute:
@@ -4444,8 +4482,7 @@ namespace Box3D
             || indices.size() % 3 != 0
             || !AZ::IsFiniteFloat(weldTolerance)
             || weldTolerance < 0.0f
-            || (!materialIndices.empty()
-            && materialIndices.size() != indices.size() / 3))
+            || (!materialIndices.empty() && materialIndices.size() != indices.size() / 3))
         {
             return {};
         }
@@ -4711,9 +4748,9 @@ namespace Box3D
             }
             const b3WorldTransform transform = ToNative(hull.m_transform);
             hulls.push_back(
-                {GeometryCastAccess::Get(*hull.m_geometry),
-                    {ToNative(hull.m_transform.GetTranslation()), transform.q},
-                    ToNative(hull.m_material)});
+            {GeometryCastAccess::Get(*hull.m_geometry),
+             {ToNative(hull.m_transform.GetTranslation()), transform.q},
+             ToNative(hull.m_material)});
         }
 
         size_t meshMaterialCount = 0;
@@ -4753,11 +4790,11 @@ namespace Box3D
             }
             const b3WorldTransform transform = ToNative(mesh.m_transform);
             meshes.push_back(
-                {GeometryCastAccess::Get(*mesh.m_geometry),
-                    {ToNative(mesh.m_transform.GetTranslation()), transform.q},
-                    ToNativeScale(mesh.m_scale),
-                    meshMaterials.data() + materialOffset,
-                    aznumeric_cast<int>(mesh.m_materials.size())});
+            {GeometryCastAccess::Get(*mesh.m_geometry),
+             {ToNative(mesh.m_transform.GetTranslation()), transform.q},
+             ToNativeScale(mesh.m_scale),
+             meshMaterials.data() + materialOffset,
+             aznumeric_cast<int>(mesh.m_materials.size())});
         }
 
         b3CompoundDef nativeDefinition{};
@@ -4782,7 +4819,7 @@ namespace Box3D
         {
             size_t sourceIndex = 0;
             while (sourceIndex < definition.m_sourceMaterials.size()
-                   && definition.m_sourceMaterials[sourceIndex].m_userId != nativeMaterials[materialIndex].userMaterialId)
+                && definition.m_sourceMaterials[sourceIndex].m_userId != nativeMaterials[materialIndex].userMaterialId)
             {
                 ++sourceIndex;
             }
@@ -5001,8 +5038,7 @@ namespace Box3D
                         const GeometryTransform childTransform{child.m_localTransform};
                         if (!IsRigidTransform(childTransform.m_localTransform)
                             || !IsValidGeometryScale(childTransform.m_scale)
-                            || (!materials.empty()
-                            && child.m_materialIndex >= materials.size()))
+                            || (!materials.empty() && child.m_materialIndex >= materials.size()))
                         {
                             return AZStd::monostate{};
                         }
@@ -5053,10 +5089,10 @@ namespace Box3D
                                     }
                                     const float halfSegment = AZStd::max(0.5f * childGeometry.m_height - childGeometry.m_radius, 0.0f);
                                     capsules.push_back(
-                                        {transformPoint(-AZ::Vector3::CreateAxisZ(halfSegment)),
-                                            transformPoint(AZ::Vector3::CreateAxisZ(halfSegment)),
-                                            material,
-                                            childGeometry.m_radius * std::sqrt(basisLengthSq)});
+                                    {transformPoint(-AZ::Vector3::CreateAxisZ(halfSegment)),
+                                     transformPoint(AZ::Vector3::CreateAxisZ(halfSegment)),
+                                     material,
+                                     childGeometry.m_radius * std::sqrt(basisLengthSq)});
                                     return true;
                                 }
                                 else if constexpr (AZStd::is_same_v<ChildGeometry, BoxShapeConfiguration>)
@@ -5222,10 +5258,10 @@ namespace Box3D
                                     }
                                     meshMaterials.push_back(AZStd::move(childMaterials));
                                     meshes.push_back(
-                                        {meshGeometries.back().get(),
-                                            meshMaterials.back(),
-                                            AZ::Transform::CreateIdentity(),
-                                            AZ::Vector3::CreateOne()});
+                                    {meshGeometries.back().get(),
+                                     meshMaterials.back(),
+                                     AZ::Transform::CreateIdentity(),
+                                     AZ::Vector3::CreateOne()});
                                     return true;
                                 }
                             },
@@ -5262,7 +5298,11 @@ namespace Box3D
                 else if constexpr (AZStd::is_same_v<Geometry, NativeCapsuleGeometry>)
                 {
                     return CreateCapsuleShape(
-                        bodyId, configuration, nativeGeometry.m_center1, nativeGeometry.m_center2, nativeGeometry.m_radius);
+                        bodyId,
+                        configuration,
+                        nativeGeometry.m_center1,
+                        nativeGeometry.m_center2,
+                        nativeGeometry.m_radius);
                 }
                 else if constexpr (AZStd::is_same_v<Geometry, AZStd::shared_ptr<const HullGeometry>>)
                 {
@@ -5367,7 +5407,9 @@ namespace Box3D
                 else if constexpr (AZStd::is_same_v<Geometry, NativeCapsuleGeometry>)
                 {
                     const b3Capsule capsule{
-                        ToNative(nativeGeometry.m_center1), ToNative(nativeGeometry.m_center2), nativeGeometry.m_radius};
+                        ToNative(nativeGeometry.m_center1),
+                        ToNative(nativeGeometry.m_center2),
+                        nativeGeometry.m_radius};
                     return FromNative(b3ComputeCapsuleAABB(&capsule, b3Transform_identity));
                 }
                 else if constexpr (AZStd::is_same_v<Geometry, AZStd::shared_ptr<const HullGeometry>>)
@@ -5436,7 +5478,12 @@ namespace Box3D
                 else if constexpr (AZStd::is_same_v<Geometry, NativeCapsuleGeometry>)
                 {
                     return CastRayCapsule(
-                        nativeGeometry.m_center1, nativeGeometry.m_center2, nativeGeometry.m_radius, start, translation, hit);
+                        nativeGeometry.m_center1,
+                        nativeGeometry.m_center2,
+                        nativeGeometry.m_radius,
+                        start,
+                        translation,
+                        hit);
                 }
                 else
                 {
