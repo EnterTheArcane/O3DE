@@ -22,7 +22,7 @@
         "Gems/AtomTressFX",
         "Gems/AudioSystem",
         "Gems/BarrierInput",
-        "Gems/Box3D",
+        "Gems/Physics/Box3D",
         "Gems/Camera",
         "Gems/CameraFramework",
         "Gems/CertificateManager",

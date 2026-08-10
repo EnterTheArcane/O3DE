@@ -22,7 +22,6 @@ add_subdirectory(Atom)
 
 ## Physics ##
 add_subdirectory(Physics)
-add_subdirectory(Box3D)
 
 ## ScriptCanvas ##
 add_subdirectory(scripting)

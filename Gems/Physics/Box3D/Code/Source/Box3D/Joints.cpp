@@ -1,0 +1,345 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ */
+
+#include <Box3D/Joints.h>
+
+#include <Box3D/ConfigurationSerializer.h>
+
+#include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/Serialization/Json/RegistrationContext.h>
+#include <AzCore/Serialization/SerializeContext.h>
+
+namespace Box3D
+{
+    void ReflectJoints(
+        AZ::ReflectContext* context)
+    {
+        if (auto* jsonContext = azrtti_cast<AZ::JsonRegistrationContext*>(context))
+        {
+            jsonContext->Serializer<JsonJointConfigurationSerializer>()->HandlesType<JointConfiguration>();
+        }
+
+        if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext
+                ->Class<JointCommonConfiguration>()
+                ->Field("ParentLocalFrame", &JointCommonConfiguration::m_parentLocalFrame)
+                ->Field("ChildLocalFrame", &JointCommonConfiguration::m_childLocalFrame)
+                ->Field("ForceThreshold", &JointCommonConfiguration::m_forceThreshold)
+                ->Field("TorqueThreshold", &JointCommonConfiguration::m_torqueThreshold)
+                ->Field("ConstraintHertz", &JointCommonConfiguration::m_constraintHertz)
+                ->Field("ConstraintDampingRatio", &JointCommonConfiguration::m_constraintDampingRatio)
+                ->Field("DrawScale", &JointCommonConfiguration::m_drawScale)
+                ->Field("CollideConnected", &JointCommonConfiguration::m_collideConnected);
+
+            serializeContext
+                ->Class<ParallelJointConfiguration>()
+                ->Field("Common", &ParallelJointConfiguration::m_common)
+                ->Field("Hertz", &ParallelJointConfiguration::m_hertz)
+                ->Field("DampingRatio", &ParallelJointConfiguration::m_dampingRatio)
+                ->Field("MaxTorque", &ParallelJointConfiguration::m_maxTorque);
+
+            serializeContext
+                ->Class<DistanceJointConfiguration>()
+                ->Field("Common", &DistanceJointConfiguration::m_common)
+                ->Field("Length", &DistanceJointConfiguration::m_length)
+                ->Field("LowerSpringForce", &DistanceJointConfiguration::m_lowerSpringForce)
+                ->Field("UpperSpringForce", &DistanceJointConfiguration::m_upperSpringForce)
+                ->Field("Hertz", &DistanceJointConfiguration::m_hertz)
+                ->Field("DampingRatio", &DistanceJointConfiguration::m_dampingRatio)
+                ->Field("MinLength", &DistanceJointConfiguration::m_minLength)
+                ->Field("MaxLength", &DistanceJointConfiguration::m_maxLength)
+                ->Field("MaxMotorForce", &DistanceJointConfiguration::m_maxMotorForce)
+                ->Field("MotorSpeed", &DistanceJointConfiguration::m_motorSpeed)
+                ->Field("EnableSpring", &DistanceJointConfiguration::m_enableSpring)
+                ->Field("EnableLimit", &DistanceJointConfiguration::m_enableLimit)
+                ->Field("EnableMotor", &DistanceJointConfiguration::m_enableMotor);
+
+            serializeContext->Class<FilterJointConfiguration>()->Field("Common", &FilterJointConfiguration::m_common);
+
+            serializeContext
+                ->Class<MotorJointConfiguration>()
+                ->Field("Common", &MotorJointConfiguration::m_common)
+                ->Field("LinearVelocity", &MotorJointConfiguration::m_linearVelocity)
+                ->Field("AngularVelocity", &MotorJointConfiguration::m_angularVelocity)
+                ->Field("MaxVelocityForce", &MotorJointConfiguration::m_maxVelocityForce)
+                ->Field("MaxVelocityTorque", &MotorJointConfiguration::m_maxVelocityTorque)
+                ->Field("LinearHertz", &MotorJointConfiguration::m_linearHertz)
+                ->Field("LinearDampingRatio", &MotorJointConfiguration::m_linearDampingRatio)
+                ->Field("MaxSpringForce", &MotorJointConfiguration::m_maxSpringForce)
+                ->Field("AngularHertz", &MotorJointConfiguration::m_angularHertz)
+                ->Field("AngularDampingRatio", &MotorJointConfiguration::m_angularDampingRatio)
+                ->Field("MaxSpringTorque", &MotorJointConfiguration::m_maxSpringTorque);
+
+            serializeContext
+                ->Class<PrismaticJointConfiguration>()
+                ->Field("Common", &PrismaticJointConfiguration::m_common)
+                ->Field("Hertz", &PrismaticJointConfiguration::m_hertz)
+                ->Field("DampingRatio", &PrismaticJointConfiguration::m_dampingRatio)
+                ->Field("TargetTranslation", &PrismaticJointConfiguration::m_targetTranslation)
+                ->Field("LowerTranslation", &PrismaticJointConfiguration::m_lowerTranslation)
+                ->Field("UpperTranslation", &PrismaticJointConfiguration::m_upperTranslation)
+                ->Field("MaxMotorForce", &PrismaticJointConfiguration::m_maxMotorForce)
+                ->Field("MotorSpeed", &PrismaticJointConfiguration::m_motorSpeed)
+                ->Field("EnableSpring", &PrismaticJointConfiguration::m_enableSpring)
+                ->Field("EnableLimit", &PrismaticJointConfiguration::m_enableLimit)
+                ->Field("EnableMotor", &PrismaticJointConfiguration::m_enableMotor);
+
+            serializeContext
+                ->Class<RevoluteJointConfiguration>()
+                ->Field("Common", &RevoluteJointConfiguration::m_common)
+                ->Field("TargetAngle", &RevoluteJointConfiguration::m_targetAngle)
+                ->Field("Hertz", &RevoluteJointConfiguration::m_hertz)
+                ->Field("DampingRatio", &RevoluteJointConfiguration::m_dampingRatio)
+                ->Field("LowerAngle", &RevoluteJointConfiguration::m_lowerAngle)
+                ->Field("UpperAngle", &RevoluteJointConfiguration::m_upperAngle)
+                ->Field("MaxMotorTorque", &RevoluteJointConfiguration::m_maxMotorTorque)
+                ->Field("MotorSpeed", &RevoluteJointConfiguration::m_motorSpeed)
+                ->Field("EnableSpring", &RevoluteJointConfiguration::m_enableSpring)
+                ->Field("EnableLimit", &RevoluteJointConfiguration::m_enableLimit)
+                ->Field("EnableMotor", &RevoluteJointConfiguration::m_enableMotor);
+
+            serializeContext
+                ->Class<SphericalJointConfiguration>()
+                ->Field("Common", &SphericalJointConfiguration::m_common)
+                ->Field("TargetRotation", &SphericalJointConfiguration::m_targetRotation)
+                ->Field("MotorVelocity", &SphericalJointConfiguration::m_motorVelocity)
+                ->Field("Hertz", &SphericalJointConfiguration::m_hertz)
+                ->Field("DampingRatio", &SphericalJointConfiguration::m_dampingRatio)
+                ->Field("ConeAngle", &SphericalJointConfiguration::m_coneAngle)
+                ->Field("LowerTwistAngle", &SphericalJointConfiguration::m_lowerTwistAngle)
+                ->Field("UpperTwistAngle", &SphericalJointConfiguration::m_upperTwistAngle)
+                ->Field("MaxMotorTorque", &SphericalJointConfiguration::m_maxMotorTorque)
+                ->Field("EnableSpring", &SphericalJointConfiguration::m_enableSpring)
+                ->Field("EnableConeLimit", &SphericalJointConfiguration::m_enableConeLimit)
+                ->Field("EnableTwistLimit", &SphericalJointConfiguration::m_enableTwistLimit)
+                ->Field("EnableMotor", &SphericalJointConfiguration::m_enableMotor);
+
+            serializeContext
+                ->Class<WeldJointConfiguration>()
+                ->Field("Common", &WeldJointConfiguration::m_common)
+                ->Field("LinearHertz", &WeldJointConfiguration::m_linearHertz)
+                ->Field("AngularHertz", &WeldJointConfiguration::m_angularHertz)
+                ->Field("LinearDampingRatio", &WeldJointConfiguration::m_linearDampingRatio)
+                ->Field("AngularDampingRatio", &WeldJointConfiguration::m_angularDampingRatio);
+
+            serializeContext
+                ->Class<WheelJointConfiguration>()
+                ->Field("Common", &WheelJointConfiguration::m_common)
+                ->Field("SuspensionHertz", &WheelJointConfiguration::m_suspensionHertz)
+                ->Field("SuspensionDampingRatio", &WheelJointConfiguration::m_suspensionDampingRatio)
+                ->Field("LowerSuspensionLimit", &WheelJointConfiguration::m_lowerSuspensionLimit)
+                ->Field("UpperSuspensionLimit", &WheelJointConfiguration::m_upperSuspensionLimit)
+                ->Field("MaxSpinTorque", &WheelJointConfiguration::m_maxSpinTorque)
+                ->Field("SpinSpeed", &WheelJointConfiguration::m_spinSpeed)
+                ->Field("SteeringHertz", &WheelJointConfiguration::m_steeringHertz)
+                ->Field("SteeringDampingRatio", &WheelJointConfiguration::m_steeringDampingRatio)
+                ->Field("TargetSteeringAngle", &WheelJointConfiguration::m_targetSteeringAngle)
+                ->Field("MaxSteeringTorque", &WheelJointConfiguration::m_maxSteeringTorque)
+                ->Field("LowerSteeringLimit", &WheelJointConfiguration::m_lowerSteeringLimit)
+                ->Field("UpperSteeringLimit", &WheelJointConfiguration::m_upperSteeringLimit)
+                ->Field("EnableSuspensionSpring", &WheelJointConfiguration::m_enableSuspensionSpring)
+                ->Field("EnableSuspensionLimit", &WheelJointConfiguration::m_enableSuspensionLimit)
+                ->Field("EnableSpinMotor", &WheelJointConfiguration::m_enableSpinMotor)
+                ->Field("EnableSteering", &WheelJointConfiguration::m_enableSteering)
+                ->Field("EnableSteeringLimit", &WheelJointConfiguration::m_enableSteeringLimit);
+        }
+
+        if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+
+            behaviorContext->Class<JointCommonConfiguration>("JointCommonConfiguration")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Constructor<>()
+                ->Property("parentBody", BehaviorValueProperty(&JointCommonConfiguration::m_parentBody))
+                ->Property("childBody", BehaviorValueProperty(&JointCommonConfiguration::m_childBody))
+                ->Property("parentLocalFrame", BehaviorValueProperty(&JointCommonConfiguration::m_parentLocalFrame))
+                ->Property("childLocalFrame", BehaviorValueProperty(&JointCommonConfiguration::m_childLocalFrame))
+                ->Property("forceThreshold", BehaviorValueProperty(&JointCommonConfiguration::m_forceThreshold))
+                ->Property("torqueThreshold", BehaviorValueProperty(&JointCommonConfiguration::m_torqueThreshold))
+                ->Property("constraintHertz", BehaviorValueProperty(&JointCommonConfiguration::m_constraintHertz))
+                ->Property("constraintDampingRatio", BehaviorValueProperty(&JointCommonConfiguration::m_constraintDampingRatio))
+                ->Property("drawScale", BehaviorValueProperty(&JointCommonConfiguration::m_drawScale))
+                ->Property("collideConnected", BehaviorValueProperty(&JointCommonConfiguration::m_collideConnected));
+
+            behaviorContext->Class<ParallelJointConfiguration>("ParallelJointConfiguration")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Constructor<>()
+                ->Property("common", BehaviorValueProperty(&ParallelJointConfiguration::m_common))
+                ->Property("hertz", BehaviorValueProperty(&ParallelJointConfiguration::m_hertz))
+                ->Property("dampingRatio", BehaviorValueProperty(&ParallelJointConfiguration::m_dampingRatio))
+                ->Property("maxTorque", BehaviorValueProperty(&ParallelJointConfiguration::m_maxTorque));
+
+            behaviorContext->Class<DistanceJointConfiguration>("DistanceJointConfiguration")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Constructor<>()
+                ->Property("common", BehaviorValueProperty(&DistanceJointConfiguration::m_common))
+                ->Property("length", BehaviorValueProperty(&DistanceJointConfiguration::m_length))
+                ->Property("lowerSpringForce", BehaviorValueProperty(&DistanceJointConfiguration::m_lowerSpringForce))
+                ->Property("upperSpringForce", BehaviorValueProperty(&DistanceJointConfiguration::m_upperSpringForce))
+                ->Property("hertz", BehaviorValueProperty(&DistanceJointConfiguration::m_hertz))
+                ->Property("dampingRatio", BehaviorValueProperty(&DistanceJointConfiguration::m_dampingRatio))
+                ->Property("minLength", BehaviorValueProperty(&DistanceJointConfiguration::m_minLength))
+                ->Property("maxLength", BehaviorValueProperty(&DistanceJointConfiguration::m_maxLength))
+                ->Property("maxMotorForce", BehaviorValueProperty(&DistanceJointConfiguration::m_maxMotorForce))
+                ->Property("motorSpeed", BehaviorValueProperty(&DistanceJointConfiguration::m_motorSpeed))
+                ->Property("enableSpring", BehaviorValueProperty(&DistanceJointConfiguration::m_enableSpring))
+                ->Property("enableLimit", BehaviorValueProperty(&DistanceJointConfiguration::m_enableLimit))
+                ->Property("enableMotor", BehaviorValueProperty(&DistanceJointConfiguration::m_enableMotor));
+
+            behaviorContext->Class<FilterJointConfiguration>("FilterJointConfiguration")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Constructor<>()
+                ->Property("common", BehaviorValueProperty(&FilterJointConfiguration::m_common));
+
+            behaviorContext->Class<MotorJointConfiguration>("MotorJointConfiguration")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Constructor<>()
+                ->Property("common", BehaviorValueProperty(&MotorJointConfiguration::m_common))
+                ->Property("linearVelocity", BehaviorValueProperty(&MotorJointConfiguration::m_linearVelocity))
+                ->Property("angularVelocity", BehaviorValueProperty(&MotorJointConfiguration::m_angularVelocity))
+                ->Property("maxVelocityForce", BehaviorValueProperty(&MotorJointConfiguration::m_maxVelocityForce))
+                ->Property("maxVelocityTorque", BehaviorValueProperty(&MotorJointConfiguration::m_maxVelocityTorque))
+                ->Property("linearHertz", BehaviorValueProperty(&MotorJointConfiguration::m_linearHertz))
+                ->Property("linearDampingRatio", BehaviorValueProperty(&MotorJointConfiguration::m_linearDampingRatio))
+                ->Property("maxSpringForce", BehaviorValueProperty(&MotorJointConfiguration::m_maxSpringForce))
+                ->Property("angularHertz", BehaviorValueProperty(&MotorJointConfiguration::m_angularHertz))
+                ->Property("angularDampingRatio", BehaviorValueProperty(&MotorJointConfiguration::m_angularDampingRatio))
+                ->Property("maxSpringTorque", BehaviorValueProperty(&MotorJointConfiguration::m_maxSpringTorque));
+
+            behaviorContext->Class<PrismaticJointConfiguration>("PrismaticJointConfiguration")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Constructor<>()
+                ->Property("common", BehaviorValueProperty(&PrismaticJointConfiguration::m_common))
+                ->Property("hertz", BehaviorValueProperty(&PrismaticJointConfiguration::m_hertz))
+                ->Property("dampingRatio", BehaviorValueProperty(&PrismaticJointConfiguration::m_dampingRatio))
+                ->Property("targetTranslation", BehaviorValueProperty(&PrismaticJointConfiguration::m_targetTranslation))
+                ->Property("lowerTranslation", BehaviorValueProperty(&PrismaticJointConfiguration::m_lowerTranslation))
+                ->Property("upperTranslation", BehaviorValueProperty(&PrismaticJointConfiguration::m_upperTranslation))
+                ->Property("maxMotorForce", BehaviorValueProperty(&PrismaticJointConfiguration::m_maxMotorForce))
+                ->Property("motorSpeed", BehaviorValueProperty(&PrismaticJointConfiguration::m_motorSpeed))
+                ->Property("enableSpring", BehaviorValueProperty(&PrismaticJointConfiguration::m_enableSpring))
+                ->Property("enableLimit", BehaviorValueProperty(&PrismaticJointConfiguration::m_enableLimit))
+                ->Property("enableMotor", BehaviorValueProperty(&PrismaticJointConfiguration::m_enableMotor));
+
+            behaviorContext->Class<RevoluteJointConfiguration>("RevoluteJointConfiguration")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Constructor<>()
+                ->Property("common", BehaviorValueProperty(&RevoluteJointConfiguration::m_common))
+                ->Property("targetAngle", BehaviorValueProperty(&RevoluteJointConfiguration::m_targetAngle))
+                ->Property("hertz", BehaviorValueProperty(&RevoluteJointConfiguration::m_hertz))
+                ->Property("dampingRatio", BehaviorValueProperty(&RevoluteJointConfiguration::m_dampingRatio))
+                ->Property("lowerAngle", BehaviorValueProperty(&RevoluteJointConfiguration::m_lowerAngle))
+                ->Property("upperAngle", BehaviorValueProperty(&RevoluteJointConfiguration::m_upperAngle))
+                ->Property("maxMotorTorque", BehaviorValueProperty(&RevoluteJointConfiguration::m_maxMotorTorque))
+                ->Property("motorSpeed", BehaviorValueProperty(&RevoluteJointConfiguration::m_motorSpeed))
+                ->Property("enableSpring", BehaviorValueProperty(&RevoluteJointConfiguration::m_enableSpring))
+                ->Property("enableLimit", BehaviorValueProperty(&RevoluteJointConfiguration::m_enableLimit))
+                ->Property("enableMotor", BehaviorValueProperty(&RevoluteJointConfiguration::m_enableMotor));
+
+            behaviorContext->Class<SphericalJointConfiguration>("SphericalJointConfiguration")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Constructor<>()
+                ->Property("common", BehaviorValueProperty(&SphericalJointConfiguration::m_common))
+                ->Property("targetRotation", BehaviorValueProperty(&SphericalJointConfiguration::m_targetRotation))
+                ->Property("motorVelocity", BehaviorValueProperty(&SphericalJointConfiguration::m_motorVelocity))
+                ->Property("hertz", BehaviorValueProperty(&SphericalJointConfiguration::m_hertz))
+                ->Property("dampingRatio", BehaviorValueProperty(&SphericalJointConfiguration::m_dampingRatio))
+                ->Property("coneAngle", BehaviorValueProperty(&SphericalJointConfiguration::m_coneAngle))
+                ->Property("lowerTwistAngle", BehaviorValueProperty(&SphericalJointConfiguration::m_lowerTwistAngle))
+                ->Property("upperTwistAngle", BehaviorValueProperty(&SphericalJointConfiguration::m_upperTwistAngle))
+                ->Property("maxMotorTorque", BehaviorValueProperty(&SphericalJointConfiguration::m_maxMotorTorque))
+                ->Property("enableSpring", BehaviorValueProperty(&SphericalJointConfiguration::m_enableSpring))
+                ->Property("enableConeLimit", BehaviorValueProperty(&SphericalJointConfiguration::m_enableConeLimit))
+                ->Property("enableTwistLimit", BehaviorValueProperty(&SphericalJointConfiguration::m_enableTwistLimit))
+                ->Property("enableMotor", BehaviorValueProperty(&SphericalJointConfiguration::m_enableMotor));
+
+            behaviorContext->Class<WeldJointConfiguration>("WeldJointConfiguration")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Constructor<>()
+                ->Property("common", BehaviorValueProperty(&WeldJointConfiguration::m_common))
+                ->Property("linearHertz", BehaviorValueProperty(&WeldJointConfiguration::m_linearHertz))
+                ->Property("angularHertz", BehaviorValueProperty(&WeldJointConfiguration::m_angularHertz))
+                ->Property("linearDampingRatio", BehaviorValueProperty(&WeldJointConfiguration::m_linearDampingRatio))
+                ->Property("angularDampingRatio", BehaviorValueProperty(&WeldJointConfiguration::m_angularDampingRatio));
+
+            behaviorContext->Class<WheelJointConfiguration>("WheelJointConfiguration")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Constructor<>()
+                ->Property("common", BehaviorValueProperty(&WheelJointConfiguration::m_common))
+                ->Property("suspensionHertz", BehaviorValueProperty(&WheelJointConfiguration::m_suspensionHertz))
+                ->Property("suspensionDampingRatio", BehaviorValueProperty(&WheelJointConfiguration::m_suspensionDampingRatio))
+                ->Property("lowerSuspensionLimit", BehaviorValueProperty(&WheelJointConfiguration::m_lowerSuspensionLimit))
+                ->Property("upperSuspensionLimit", BehaviorValueProperty(&WheelJointConfiguration::m_upperSuspensionLimit))
+                ->Property("maxSpinTorque", BehaviorValueProperty(&WheelJointConfiguration::m_maxSpinTorque))
+                ->Property("spinSpeed", BehaviorValueProperty(&WheelJointConfiguration::m_spinSpeed))
+                ->Property("steeringHertz", BehaviorValueProperty(&WheelJointConfiguration::m_steeringHertz))
+                ->Property("steeringDampingRatio", BehaviorValueProperty(&WheelJointConfiguration::m_steeringDampingRatio))
+                ->Property("targetSteeringAngle", BehaviorValueProperty(&WheelJointConfiguration::m_targetSteeringAngle))
+                ->Property("maxSteeringTorque", BehaviorValueProperty(&WheelJointConfiguration::m_maxSteeringTorque))
+                ->Property("lowerSteeringLimit", BehaviorValueProperty(&WheelJointConfiguration::m_lowerSteeringLimit))
+                ->Property("upperSteeringLimit", BehaviorValueProperty(&WheelJointConfiguration::m_upperSteeringLimit))
+                ->Property("enableSuspensionSpring", BehaviorValueProperty(&WheelJointConfiguration::m_enableSuspensionSpring))
+                ->Property("enableSuspensionLimit", BehaviorValueProperty(&WheelJointConfiguration::m_enableSuspensionLimit))
+                ->Property("enableSpinMotor", BehaviorValueProperty(&WheelJointConfiguration::m_enableSpinMotor))
+                ->Property("enableSteering", BehaviorValueProperty(&WheelJointConfiguration::m_enableSteering))
+                ->Property("enableSteeringLimit", BehaviorValueProperty(&WheelJointConfiguration::m_enableSteeringLimit));
+
+            behaviorContext->Class<DistanceJointState>("DistanceJointState")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Property("length", BehaviorValueProperty(&DistanceJointState::m_length))
+                ->Property("motorForce", BehaviorValueProperty(&DistanceJointState::m_motorForce));
+
+            behaviorContext->Class<PrismaticJointState>("PrismaticJointState")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Property("translation", BehaviorValueProperty(&PrismaticJointState::m_translation))
+                ->Property("speed", BehaviorValueProperty(&PrismaticJointState::m_speed))
+                ->Property("motorForce", BehaviorValueProperty(&PrismaticJointState::m_motorForce));
+
+            behaviorContext->Class<RevoluteJointState>("RevoluteJointState")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Property("angle", BehaviorValueProperty(&RevoluteJointState::m_angle))
+                ->Property("motorTorque", BehaviorValueProperty(&RevoluteJointState::m_motorTorque));
+
+            behaviorContext->Class<SphericalJointState>("SphericalJointState")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Property("motorTorque", BehaviorValueProperty(&SphericalJointState::m_motorTorque))
+                ->Property("coneAngle", BehaviorValueProperty(&SphericalJointState::m_coneAngle))
+                ->Property("twistAngle", BehaviorValueProperty(&SphericalJointState::m_twistAngle));
+
+            behaviorContext->Class<WheelJointState>("WheelJointState")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Property("spinSpeed", BehaviorValueProperty(&WheelJointState::m_spinSpeed))
+                ->Property("spinTorque", BehaviorValueProperty(&WheelJointState::m_spinTorque))
+                ->Property("steeringAngle", BehaviorValueProperty(&WheelJointState::m_steeringAngle))
+                ->Property("steeringTorque", BehaviorValueProperty(&WheelJointState::m_steeringTorque));
+
+            behaviorContext->Class<JointMeasurements>("JointMeasurements")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "box3d")
+                ->Property("constraintForce", BehaviorValueProperty(&JointMeasurements::m_constraintForce))
+                ->Property("constraintTorque", BehaviorValueProperty(&JointMeasurements::m_constraintTorque))
+                ->Property("linearSeparation", BehaviorValueProperty(&JointMeasurements::m_linearSeparation))
+                ->Property("angularSeparation", BehaviorValueProperty(&JointMeasurements::m_angularSeparation));
+        }
+    }
+} // namespace Box3D
