@@ -6,7 +6,7 @@
 #
 #
 
-add_subdirectory(AZSLC)
+add_subdirectory(AZSL)
 add_subdirectory(SceneAPI) # Needs to go before AssetProcessor since it provides a builder
 add_subdirectory(AssetProcessor)
 add_subdirectory(AzTestRunner)
