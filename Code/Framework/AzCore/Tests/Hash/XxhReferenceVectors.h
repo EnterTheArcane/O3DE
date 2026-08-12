@@ -49,6 +49,10 @@
 
 namespace UnitTest
 {
+    using AZ::u8;
+    using AZ::u32;
+    using AZ::u64;
+
     inline constexpr u32 XxhSeedPrime32 = 2654435761u;
     inline constexpr u64 XxhSeedPrime64 = 11400714785074694797ull;
 

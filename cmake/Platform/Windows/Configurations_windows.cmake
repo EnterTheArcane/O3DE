@@ -19,9 +19,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
             WIN64
             NOMINMAX
 
-        COMPILATION
-            /arch:AVX2
-
         LINK
             /MACHINE:X64
     )
@@ -44,7 +41,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
             NOMINMAX
 
         COMPILATION
-            -mavx2
+            -msse3
             -mf16c
             -Wno-deprecated-declarations
     )

@@ -39,12 +39,11 @@
 
 #pragma once
 
-#include <AzCore/Hash/Internal/ByteReader.h>
+#include <AzCore/base.h>
+#include <AzCore/std/bit.h>
 #include <AzCore/std/hash.h>
 #include <AzCore/std/string/string_view.h>
 #include <AzCore/RTTI/TypeInfoSimple.h>
-
-#include <bit>
 
 namespace AZ
 {
@@ -53,6 +52,16 @@ namespace AZ
 
 namespace AZ::Hash::Private::Xxh32
 {
+    template<typename T>
+    [[nodiscard]]
+    constexpr u32 ReadLE32(const T* p) noexcept
+    {
+        return static_cast<u32>(static_cast<u8>(p[0]))
+            | (static_cast<u32>(static_cast<u8>(p[1])) << 8)
+            | (static_cast<u32>(static_cast<u8>(p[2])) << 16)
+            | (static_cast<u32>(static_cast<u8>(p[3])) << 24);
+    }
+
     inline constexpr u32 Prime32_1 = 0x9E3779B1u;
     inline constexpr u32 Prime32_2 = 0x85EBCA77u;
     inline constexpr u32 Prime32_3 = 0xC2B2AE3Du;
@@ -63,11 +72,11 @@ namespace AZ::Hash::Private::Xxh32
     constexpr u32 Round(u32 acc, const u32 lane) noexcept
     {
         acc += lane * Prime32_2;
-        acc = std::rotl(acc, 13);
+        acc = AZStd::rotl(acc, 13);
         return acc * Prime32_1;
     }
 
-    template <typename T>
+    template<typename T>
     [[nodiscard]]
     constexpr u32 Hash(const T* input, const AZStd::size_t len, const u32 seed) noexcept
     {
@@ -89,7 +98,7 @@ namespace AZ::Hash::Private::Xxh32
                 acc3 = Round(acc3, ReadLE32(p)); p += 4;
                 acc4 = Round(acc4, ReadLE32(p)); p += 4;
             } while (p <= limit);
-            acc = std::rotl(acc1, 1) + std::rotl(acc2, 7) + std::rotl(acc3, 12) + std::rotl(acc4, 18);
+            acc = AZStd::rotl(acc1, 1) + AZStd::rotl(acc2, 7) + AZStd::rotl(acc3, 12) + AZStd::rotl(acc4, 18);
         }
         else
         {
@@ -101,13 +110,13 @@ namespace AZ::Hash::Private::Xxh32
         while (end - p >= 4)
         {
             acc += ReadLE32(p) * Prime32_3;
-            acc = std::rotl(acc, 17) * Prime32_4;
+            acc = AZStd::rotl(acc, 17) * Prime32_4;
             p += 4;
         }
         while (p < end)
         {
             acc += static_cast<u32>(static_cast<u8>(*p)) * Prime32_5;
-            acc = std::rotl(acc, 11) * Prime32_1;
+            acc = AZStd::rotl(acc, 11) * Prime32_1;
             p += 1;
         }
 
@@ -140,7 +149,7 @@ namespace AZ::Hash
         {
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr Xxh32(const char (&str)[N], const u32 seed = 0)
             : m_value{Private::Xxh32::Hash(str, N - 1, seed)}
         {
@@ -201,7 +210,7 @@ consteval AZ::Hash::Xxh32 operator""_xxh32(const char* str, const AZStd::size_t 
     return AZ::Hash::Xxh32{AZStd::string_view{str, count}};
 }
 
-template <>
+template<>
 struct AZStd::hash<AZ::Hash::Xxh32>
 {
     constexpr AZStd::size_t operator()(const AZ::Hash::Xxh32 input) const noexcept
@@ -212,6 +221,23 @@ struct AZStd::hash<AZ::Hash::Xxh32>
 
 namespace AZ::Hash::Private::Xxh64Detail
 {
+    template<typename T>
+    [[nodiscard]]
+    constexpr u32 ReadLE32(const T* p) noexcept
+    {
+        return static_cast<u32>(static_cast<u8>(p[0]))
+            | (static_cast<u32>(static_cast<u8>(p[1])) << 8)
+            | (static_cast<u32>(static_cast<u8>(p[2])) << 16)
+            | (static_cast<u32>(static_cast<u8>(p[3])) << 24);
+    }
+
+    template<typename T>
+    [[nodiscard]]
+    constexpr u64 ReadLE64(const T* p) noexcept
+    {
+        return static_cast<u64>(ReadLE32(p)) | (static_cast<u64>(ReadLE32(p + 4)) << 32);
+    }
+
     inline constexpr u64 Prime64_1 = 0x9E3779B185EBCA87ull;
     inline constexpr u64 Prime64_2 = 0xC2B2AE3D27D4EB4Full;
     inline constexpr u64 Prime64_3 = 0x165667B19E3779F9ull;
@@ -222,7 +248,7 @@ namespace AZ::Hash::Private::Xxh64Detail
     constexpr u64 Round(u64 acc, const u64 lane) noexcept
     {
         acc += lane * Prime64_2;
-        acc = std::rotl(acc, 31);
+        acc = AZStd::rotl(acc, 31);
         return acc * Prime64_1;
     }
 
@@ -233,7 +259,7 @@ namespace AZ::Hash::Private::Xxh64Detail
         return acc * Prime64_1 + Prime64_4;
     }
 
-    template <typename T>
+    template<typename T>
     [[nodiscard]]
     constexpr u64 Hash(const T* input, const AZStd::size_t len, const u64 seed) noexcept
     {
@@ -255,7 +281,7 @@ namespace AZ::Hash::Private::Xxh64Detail
                 acc3 = Round(acc3, ReadLE64(p)); p += 8;
                 acc4 = Round(acc4, ReadLE64(p)); p += 8;
             } while (p <= limit);
-            acc = std::rotl(acc1, 1) + std::rotl(acc2, 7) + std::rotl(acc3, 12) + std::rotl(acc4, 18);
+            acc = AZStd::rotl(acc1, 1) + AZStd::rotl(acc2, 7) + AZStd::rotl(acc3, 12) + AZStd::rotl(acc4, 18);
             acc = MergeRound(acc, acc1);
             acc = MergeRound(acc, acc2);
             acc = MergeRound(acc, acc3);
@@ -271,19 +297,19 @@ namespace AZ::Hash::Private::Xxh64Detail
         while (end - p >= 8)
         {
             acc ^= Round(0, ReadLE64(p));
-            acc = std::rotl(acc, 27) * Prime64_1 + Prime64_4;
+            acc = AZStd::rotl(acc, 27) * Prime64_1 + Prime64_4;
             p += 8;
         }
         if (end - p >= 4)
         {
             acc ^= static_cast<u64>(ReadLE32(p)) * Prime64_1;
-            acc = std::rotl(acc, 23) * Prime64_2 + Prime64_3;
+            acc = AZStd::rotl(acc, 23) * Prime64_2 + Prime64_3;
             p += 4;
         }
         while (p < end)
         {
             acc ^= static_cast<u64>(static_cast<u8>(*p)) * Prime64_5;
-            acc = std::rotl(acc, 11) * Prime64_1;
+            acc = AZStd::rotl(acc, 11) * Prime64_1;
             p += 1;
         }
 
@@ -316,7 +342,7 @@ namespace AZ::Hash
         {
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr Xxh64(const char (&str)[N], const u64 seed = 0)
             : m_value{Private::Xxh64Detail::Hash(str, N - 1, seed)}
         {
@@ -377,7 +403,7 @@ consteval AZ::Hash::Xxh64 operator""_xxh64(const char* str, const AZStd::size_t 
     return AZ::Hash::Xxh64{AZStd::string_view{str, count}};
 }
 
-template <>
+template<>
 struct AZStd::hash<AZ::Hash::Xxh64>
 {
     constexpr AZStd::size_t operator()(const AZ::Hash::Xxh64 input) const noexcept

@@ -21,6 +21,7 @@ set(FILES
     AZStd/Allocators.cpp
     AZStd/Atomics.cpp
     AZStd/Any.cpp
+    AZStd/Bit.cpp
     AZStd/Bitset.cpp
     AZStd/Charconv.cpp
     AZStd/ConceptsTests.cpp

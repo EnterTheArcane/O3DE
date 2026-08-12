@@ -33,11 +33,11 @@
 
 #pragma once
 
+#include <AzCore/std/bit.h>
+#include <AzCore/std/concepts/concepts.h>
 #include <AzCore/std/hash.h>
 #include <AzCore/std/string/string_view.h>
 #include <AzCore/RTTI/TypeInfoSimple.h>
-
-#include <bit>
 
 namespace AZ
 {
@@ -77,38 +77,21 @@ namespace AZ::Hash::Private::City
     inline constexpr u32 C2 = 0x1B873593u;
 
     // Cyclic permutation: (a, b, c) -> (c, a, b).
-    template <typename T>
+    template<typename T>
     constexpr void Permute3(T& a, T& b, T& c) noexcept
     {
         AZStd::swap(a, b);
         AZStd::swap(a, c);
     }
 
-    // constexpr byte reversal. Replaces std::byteswap (which is C++23) to keep the port compatible with C++20.
-    template <std::unsigned_integral T>
-    [[nodiscard]]
-    constexpr T ByteSwap(const T value) noexcept
-    {
-        if constexpr (sizeof(T) == 4)
-        {
-            return (value << 24) | ((value & 0x0000FF00u) << 8) | ((value & 0x00FF0000u) >> 8) | (value >> 24);
-        }
-        else
-        {
-            return (value << 56) | ((value & 0x000000000000FF00ull) << 40) | ((value & 0x0000000000FF0000ull) << 24) |
-                ((value & 0x00000000FF000000ull) << 8) | ((value & 0x000000FF00000000ull) >> 8) |
-                ((value & 0x0000FF0000000000ull) >> 24) | ((value & 0x00FF000000000000ull) >> 40) | (value >> 56);
-        }
-    }
-
     // Read a little-endian unsigned integer of size sizeof(T) from a byte-addressable source.
     // Constexpr-safe: at compile time the bytes are assembled one at a time.
     // At runtime a single std::memcpy and optional byteswap is used so the compiler can lower it to a native unaligned load.
-    template <std::unsigned_integral T>
+    template<AZStd::unsigned_integral T>
     [[nodiscard]]
     constexpr T Fetch(const char* p) noexcept
     {
-        if (std::is_constant_evaluated())
+        if (az_builtin_is_constant_evaluated())
         {
             T r = 0;
             for (AZStd::size_t i = 0; i < sizeof(T); ++i)
@@ -119,9 +102,9 @@ namespace AZ::Hash::Private::City
         }
         T r{};
         std::memcpy(&r, p, sizeof(T));
-        if constexpr (std::endian::native == std::endian::big)
+        if constexpr (AZStd::endian::native == AZStd::endian::big)
         {
-            r = ByteSwap(r);
+            r = AZStd::byteswap(r);
         }
         return r;
     }
@@ -191,10 +174,10 @@ namespace AZ::Hash::Private::City
     constexpr u32 Mur(u32 a, u32 h) noexcept
     {
         a *= C1;
-        a = std::rotr(a, 17);
+        a = AZStd::rotr(a, 17);
         a *= C2;
         h ^= a;
-        h = std::rotr(h, 19);
+        h = AZStd::rotr(h, 19);
         return h * 5u + 0xE6546B64u;
     }
 
@@ -256,66 +239,66 @@ namespace AZ::Hash::Private::City
         u32 g = C1 * h;
         u32 f = g;
         {
-            const u32 a0 = std::rotr(Fetch32(s + len - 4) * C1, 17) * C2;
-            const u32 a1 = std::rotr(Fetch32(s + len - 8) * C1, 17) * C2;
-            const u32 a2 = std::rotr(Fetch32(s + len - 16) * C1, 17) * C2;
-            const u32 a3 = std::rotr(Fetch32(s + len - 12) * C1, 17) * C2;
-            const u32 a4 = std::rotr(Fetch32(s + len - 20) * C1, 17) * C2;
+            const u32 a0 = AZStd::rotr(Fetch32(s + len - 4) * C1, 17) * C2;
+            const u32 a1 = AZStd::rotr(Fetch32(s + len - 8) * C1, 17) * C2;
+            const u32 a2 = AZStd::rotr(Fetch32(s + len - 16) * C1, 17) * C2;
+            const u32 a3 = AZStd::rotr(Fetch32(s + len - 12) * C1, 17) * C2;
+            const u32 a4 = AZStd::rotr(Fetch32(s + len - 20) * C1, 17) * C2;
             h ^= a0;
-            h = std::rotr(h, 19);
+            h = AZStd::rotr(h, 19);
             h = h * 5u + 0xE6546B64u;
             h ^= a2;
-            h = std::rotr(h, 19);
+            h = AZStd::rotr(h, 19);
             h = h * 5u + 0xE6546B64u;
             g ^= a1;
-            g = std::rotr(g, 19);
+            g = AZStd::rotr(g, 19);
             g = g * 5u + 0xE6546B64u;
             g ^= a3;
-            g = std::rotr(g, 19);
+            g = AZStd::rotr(g, 19);
             g = g * 5u + 0xE6546B64u;
             f += a4;
-            f = std::rotr(f, 19);
+            f = AZStd::rotr(f, 19);
             f = f * 5u + 0xE6546B64u;
         }
         AZStd::size_t iters = (len - 1) / 20;
         do
         {
-            const u32 a0 = std::rotr(Fetch32(s) * C1, 17) * C2;
+            const u32 a0 = AZStd::rotr(Fetch32(s) * C1, 17) * C2;
             const u32 a1 = Fetch32(s + 4);
-            const u32 a2 = std::rotr(Fetch32(s + 8) * C1, 17) * C2;
-            const u32 a3 = std::rotr(Fetch32(s + 12) * C1, 17) * C2;
+            const u32 a2 = AZStd::rotr(Fetch32(s + 8) * C1, 17) * C2;
+            const u32 a3 = AZStd::rotr(Fetch32(s + 12) * C1, 17) * C2;
             const u32 a4 = Fetch32(s + 16);
             h ^= a0;
-            h = std::rotr(h, 18);
+            h = AZStd::rotr(h, 18);
             h = h * 5u + 0xE6546B64u;
             f += a1;
-            f = std::rotr(f, 19);
+            f = AZStd::rotr(f, 19);
             f = f * C1;
             g += a2;
-            g = std::rotr(g, 18);
+            g = AZStd::rotr(g, 18);
             g = g * 5u + 0xE6546B64u;
             h ^= a3 + a1;
-            h = std::rotr(h, 19);
+            h = AZStd::rotr(h, 19);
             h = h * 5u + 0xE6546B64u;
             g ^= a4;
-            g = ByteSwap(g) * 5u;
+            g = AZStd::byteswap(g) * 5u;
             h += a4 * 5u;
-            h = ByteSwap(h);
+            h = AZStd::byteswap(h);
             f += a0;
             Permute3(f, h, g);
             s += 20;
         }
         while (--iters != 0);
-        g = std::rotr(g, 11) * C1;
-        g = std::rotr(g, 17) * C1;
-        f = std::rotr(f, 11) * C1;
-        f = std::rotr(f, 17) * C1;
-        h = std::rotr(h + g, 19);
+        g = AZStd::rotr(g, 11) * C1;
+        g = AZStd::rotr(g, 17) * C1;
+        f = AZStd::rotr(f, 11) * C1;
+        f = AZStd::rotr(f, 17) * C1;
+        h = AZStd::rotr(h + g, 19);
         h = h * 5u + 0xE6546B64u;
-        h = std::rotr(h, 17) * C1;
-        h = std::rotr(h + f, 19);
+        h = AZStd::rotr(h, 17) * C1;
+        h = AZStd::rotr(h + f, 19);
         h = h * 5u + 0xE6546B64u;
-        h = std::rotr(h, 17) * C1;
+        h = AZStd::rotr(h, 17) * C1;
         return h;
     }
 
@@ -327,8 +310,8 @@ namespace AZ::Hash::Private::City
             const u64 mul = K2 + len * 2;
             const u64 a = Fetch64(s) + K2;
             const u64 b = Fetch64(s + len - 8);
-            const u64 c = std::rotr(b, 37) * mul + a;
-            const u64 d = (std::rotr(a, 25) + b) * mul;
+            const u64 c = AZStd::rotr(b, 37) * mul + a;
+            const u64 d = (AZStd::rotr(a, 25) + b) * mul;
             return HashLen16(c, d, mul);
         }
         if (len >= 4)
@@ -358,8 +341,8 @@ namespace AZ::Hash::Private::City
         const u64 c = Fetch64(s + len - 8) * mul;
         const u64 d = Fetch64(s + len - 16) * K2;
         return HashLen16(
-            std::rotr(a + b, 43) + std::rotr(c, 30) + d,
-            a + std::rotr(b + K2, 18) + c,
+            AZStd::rotr(a + b, 43) + AZStd::rotr(c, 30) + d,
+            a + AZStd::rotr(b + K2, 18) + c,
             mul);
     }
 
@@ -374,11 +357,11 @@ namespace AZ::Hash::Private::City
         u64 b) noexcept
     {
         a += w;
-        b = std::rotr(b + a + z, 21);
+        b = AZStd::rotr(b + a + z, 21);
         const u64 c = a;
         a += x;
         a += y;
-        b += std::rotr(a, 44);
+        b += AZStd::rotr(a, 44);
         return u128{.a = a + z, .b = b + c};
     }
 
@@ -404,13 +387,13 @@ namespace AZ::Hash::Private::City
         const u64 f = Fetch64(s + 24) * 9;
         const u64 g = Fetch64(s + len - 8);
         const u64 h = Fetch64(s + len - 16) * mul;
-        const u64 u = std::rotr(a + g, 43) + (std::rotr(b, 30) + c) * 9;
+        const u64 u = AZStd::rotr(a + g, 43) + (AZStd::rotr(b, 30) + c) * 9;
         const u64 v = ((a + g) ^ d) + f + 1;
-        const u64 w = ByteSwap((u + v) * mul) + h;
-        const u64 x = std::rotr(e + f, 42) + c;
-        const u64 y = (ByteSwap((v + w) * mul) + g) * mul;
+        const u64 w = AZStd::byteswap((u + v) * mul) + h;
+        const u64 x = AZStd::rotr(e + f, 42) + c;
+        const u64 y = (AZStd::byteswap((v + w) * mul) + g) * mul;
         const u64 z = e + f + c;
-        a = ByteSwap((x + z) * mul + y) + b;
+        a = AZStd::byteswap((x + z) * mul + y) + b;
         const u64 b2 = ShiftMix((z + a) * mul + d + h) * mul;
         return b2 + x;
     }
@@ -443,11 +426,11 @@ namespace AZ::Hash::Private::City
         len = (len - 1) & ~static_cast<AZStd::size_t>(63);
         do
         {
-            x = std::rotr(x + y + v.a + Fetch64(s + 8), 37) * K1;
-            y = std::rotr(y + v.b + Fetch64(s + 48), 42) * K1;
+            x = AZStd::rotr(x + y + v.a + Fetch64(s + 8), 37) * K1;
+            y = AZStd::rotr(y + v.b + Fetch64(s + 48), 42) * K1;
             x ^= w.b;
             y += v.a + Fetch64(s + 40);
-            z = std::rotr(z + w.a, 33) * K1;
+            z = AZStd::rotr(z + w.a, 33) * K1;
             v = WeakHashLen32WithSeeds(s, v.b * K1, x + w.a);
             w = WeakHashLen32WithSeeds(s + 32, z + w.b, y + Fetch64(s + 16));
             AZStd::swap(z, x);
@@ -528,28 +511,28 @@ namespace AZ::Hash::Private::City
         u64 x = seed.a;
         u64 y = seed.b;
         u64 z = len * K1;
-        v.a = std::rotr(y ^ K1, 49) * K1 + Fetch64(s);
-        v.b = std::rotr(v.a, 42) * K1 + Fetch64(s + 8);
-        w.a = std::rotr(y + z, 35) * K1 + x;
-        w.b = std::rotr(x + Fetch64(s + 88), 53) * K1;
+        v.a = AZStd::rotr(y ^ K1, 49) * K1 + Fetch64(s);
+        v.b = AZStd::rotr(v.a, 42) * K1 + Fetch64(s + 8);
+        w.a = AZStd::rotr(y + z, 35) * K1 + x;
+        w.b = AZStd::rotr(x + Fetch64(s + 88), 53) * K1;
 
         // Same inner loop as Compute64(), manually unrolled.
         do
         {
-            x = std::rotr(x + y + v.a + Fetch64(s + 8), 37) * K1;
-            y = std::rotr(y + v.b + Fetch64(s + 48), 42) * K1;
+            x = AZStd::rotr(x + y + v.a + Fetch64(s + 8), 37) * K1;
+            y = AZStd::rotr(y + v.b + Fetch64(s + 48), 42) * K1;
             x ^= w.b;
             y += v.a + Fetch64(s + 40);
-            z = std::rotr(z + w.a, 33) * K1;
+            z = AZStd::rotr(z + w.a, 33) * K1;
             v = WeakHashLen32WithSeeds(s, v.b * K1, x + w.a);
             w = WeakHashLen32WithSeeds(s + 32, z + w.b, y + Fetch64(s + 16));
             AZStd::swap(z, x);
             s += 64;
-            x = std::rotr(x + y + v.a + Fetch64(s + 8), 37) * K1;
-            y = std::rotr(y + v.b + Fetch64(s + 48), 42) * K1;
+            x = AZStd::rotr(x + y + v.a + Fetch64(s + 8), 37) * K1;
+            y = AZStd::rotr(y + v.b + Fetch64(s + 48), 42) * K1;
             x ^= w.b;
             y += v.a + Fetch64(s + 40);
-            z = std::rotr(z + w.a, 33) * K1;
+            z = AZStd::rotr(z + w.a, 33) * K1;
             v = WeakHashLen32WithSeeds(s, v.b * K1, x + w.a);
             w = WeakHashLen32WithSeeds(s + 32, z + w.b, y + Fetch64(s + 16));
             AZStd::swap(z, x);
@@ -557,16 +540,16 @@ namespace AZ::Hash::Private::City
             len -= 128;
         }
         while (len >= 128);
-        x += std::rotr(v.a + z, 49) * K0;
-        y = y * K0 + std::rotr(w.b, 37);
-        z = z * K0 + std::rotr(w.a, 27);
+        x += AZStd::rotr(v.a + z, 49) * K0;
+        y = y * K0 + AZStd::rotr(w.b, 37);
+        z = z * K0 + AZStd::rotr(w.a, 27);
         w.a *= 9;
         v.a *= K0;
         // If 0 < len < 128, hash up to 4 chunks of 32 bytes each from the end of s.
         for (AZStd::size_t tail_done = 0; tail_done < len;)
         {
             tail_done += 32;
-            y = std::rotr(x + y, 42) * K0 + v.b;
+            y = AZStd::rotr(x + y, 42) * K0 + v.b;
             w.a += Fetch64(s + len - tail_done + 16);
             x = x * K0 + w.a;
             z += w.b + Fetch64(s + len - tail_done);
@@ -578,10 +561,7 @@ namespace AZ::Hash::Private::City
         // Use two different 56-byte-to-8-byte hashes to get a 16-byte final result.
         x = HashLen16(x, v.a);
         y = HashLen16(y + z, w.a);
-        return u128{
-            .a = HashLen16(x + v.b, w.b) + y,
-            .b = HashLen16(x + w.b, y + v.b)
-        };
+        return u128{HashLen16(x + v.b, w.b) + y, HashLen16(x + w.b, y + v.b)};
     }
 
     [[nodiscard]]
@@ -612,7 +592,7 @@ namespace AZ::Hash
         {
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr City32(const char (&str)[N])
             : m_value{Private::City::Compute32(str, N - 1)}
         {
@@ -680,7 +660,7 @@ namespace AZ::Hash
         {
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr City64(const char (&str)[N])
             : m_value{Private::City::Compute64(str, N - 1)}
         {
@@ -701,7 +681,7 @@ namespace AZ::Hash
         {
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr City64(const char (&str)[N], const u64 seed)
             : m_value{Private::City::Compute64WithSeed(str, N - 1, seed)}
         {
@@ -722,7 +702,7 @@ namespace AZ::Hash
         {
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr City64(const char (&str)[N], const u64 seed0, const u64 seed1)
             : m_value{Private::City::Compute64WithSeeds(str, N - 1, seed0, seed1)}
         {
@@ -790,7 +770,7 @@ namespace AZ::Hash
         {
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr City128(const char (&str)[N])
         {
             const auto h = Private::City::Compute128(str, N - 1);
@@ -819,7 +799,7 @@ namespace AZ::Hash
             m_high = h.b;
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr City128(const char (&str)[N], const City128 seed)
         {
             const auto h = Private::City::Compute128WithSeed(str, N - 1, u128{.a = seed.m_low, .b = seed.m_high});
@@ -903,7 +883,7 @@ consteval AZ::Hash::City128 operator""_city128(const char* str, const AZStd::siz
     return AZ::Hash::City128{AZStd::string_view{str, count}};
 }
 
-template <>
+template<>
 struct AZStd::hash<AZ::Hash::City32>
 {
     constexpr AZStd::size_t operator()(const AZ::Hash::City32 input) const noexcept
@@ -912,7 +892,7 @@ struct AZStd::hash<AZ::Hash::City32>
     }
 };
 
-template <>
+template<>
 struct AZStd::hash<AZ::Hash::City64>
 {
     constexpr AZStd::size_t operator()(const AZ::Hash::City64 input) const noexcept
@@ -921,7 +901,7 @@ struct AZStd::hash<AZ::Hash::City64>
     }
 };
 
-template <>
+template<>
 struct AZStd::hash<AZ::Hash::City128>
 {
     constexpr AZStd::size_t operator()(const AZ::Hash::City128 input) const noexcept

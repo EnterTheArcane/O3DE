@@ -163,7 +163,6 @@ set(FILES
     Hash/Fnv.h
     Hash/HashReflection.cpp
     Hash/HashReflection.h
-    Hash/Internal/ByteReader.h
     Hash/Xxh.cpp
     Hash/Xxh.h
     Hash/Xxh3.cpp

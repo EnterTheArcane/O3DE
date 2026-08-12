@@ -43,7 +43,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 
 #if AZ_TRAIT_USE_PLATFORM_SIMD_SSE
-#include <immintrin.h>
+#include <emmintrin.h>
 #elif AZ_TRAIT_USE_PLATFORM_SIMD_NEON
 #include <arm_neon.h>
 #endif
@@ -85,31 +85,34 @@ namespace AZ::Hash::Private::Xxh3
 
 #if AZ_TRAIT_USE_PLATFORM_SIMD_SSE
 
-        void Accumulate512(__m256i* acc, const u8* stripe, const u8* secret) noexcept
+        // SSE: four 128-bit registers hold the 8 accumulators (2 lanes each).
+        void Accumulate512(__m128i (&acc)[4], const u8* stripe, const u8* secret) noexcept
         {
-            for (int i = 0; i < 2; ++i)
+            for (int i = 0; i < 4; ++i)
             {
-                const __m256i data = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(stripe + 32 * i));
-                const __m256i key = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(secret + 32 * i));
-                const __m256i dataKey = _mm256_xor_si256(data, key);
-                const __m256i product = _mm256_mul_epu32(dataKey, _mm256_srli_epi64(dataKey, 32));
-                const __m256i dataSwap = _mm256_shuffle_epi32(data, _MM_SHUFFLE(1, 0, 3, 2));
-                acc[i] = _mm256_add_epi64(product, _mm256_add_epi64(acc[i], dataSwap));
+                const __m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i*>(stripe + 16 * i));
+                const __m128i key = _mm_loadu_si128(reinterpret_cast<const __m128i*>(secret + 16 * i));
+                const __m128i dataKey = _mm_xor_si128(data, key);
+                const __m128i product = _mm_mul_epu32(dataKey, _mm_srli_epi64(dataKey, 32));
+                // Swap the two 64-bit lanes: the canonical acc[i ^ 1] += stripe[i] cross-lane add.
+                const __m128i dataSwap = _mm_shuffle_epi32(data, _MM_SHUFFLE(1, 0, 3, 2));
+                acc[i] = _mm_add_epi64(product, _mm_add_epi64(acc[i], dataSwap));
             }
         }
 
-        void Scramble(__m256i* acc, const u8* scrambleSecret) noexcept
+        void Scramble(__m128i (&acc)[4], const u8* scrambleSecret) noexcept
         {
-            const __m256i prime = _mm256_set1_epi64x(static_cast<long long>(static_cast<u64>(Prime32_1)));
-            for (int i = 0; i < 2; ++i)
+            const __m128i prime = _mm_set1_epi64x(static_cast<long long>(static_cast<u64>(Prime32_1)));
+            for (int i = 0; i < 4; ++i)
             {
-                __m256i value = acc[i];
-                value = _mm256_xor_si256(value, _mm256_srli_epi64(value, 47));
-                const __m256i dataKey =
-                    _mm256_xor_si256(value, _mm256_loadu_si256(reinterpret_cast<const __m256i*>(scrambleSecret + 32 * i)));
-                const __m256i prodLo = _mm256_mul_epu32(dataKey, prime);
-                const __m256i prodHi = _mm256_mul_epu32(_mm256_srli_epi64(dataKey, 32), prime);
-                acc[i] = _mm256_add_epi64(prodLo, _mm256_slli_epi64(prodHi, 32));
+                __m128i value = acc[i];
+                value = _mm_xor_si128(value, _mm_srli_epi64(value, 47));
+                const __m128i dataKey =
+                    _mm_xor_si128(value, _mm_loadu_si128(reinterpret_cast<const __m128i*>(scrambleSecret + 16 * i)));
+                // dataKey * Prime32_1 (mod 2^64) split as low32*prime + ((high32*prime) << 32).
+                const __m128i prodLo = _mm_mul_epu32(dataKey, prime);
+                const __m128i prodHi = _mm_mul_epu32(_mm_srli_epi64(dataKey, 32), prime);
+                acc[i] = _mm_add_epi64(prodLo, _mm_slli_epi64(prodHi, 32));
             }
         }
 
@@ -118,17 +121,12 @@ namespace AZ::Hash::Private::Xxh3
             const auto secretStore = InitCustomSecret(seed);
             const u8* secret = secretStore.data();
 
-            alignas(32) u64 acc[8] = {
-                InitAcc[0],
-                InitAcc[1],
-                InitAcc[2],
-                InitAcc[3],
-                InitAcc[4],
-                InitAcc[5],
-                InitAcc[6],
-                InitAcc[7],
+            __m128i acc[4] = {
+                _mm_set_epi64x(static_cast<long long>(InitAcc[1]), static_cast<long long>(InitAcc[0])),
+                _mm_set_epi64x(static_cast<long long>(InitAcc[3]), static_cast<long long>(InitAcc[2])),
+                _mm_set_epi64x(static_cast<long long>(InitAcc[5]), static_cast<long long>(InitAcc[4])),
+                _mm_set_epi64x(static_cast<long long>(InitAcc[7]), static_cast<long long>(InitAcc[6])),
             };
-            __m256i* accVec = reinterpret_cast<__m256i*>(acc);
 
             const AZStd::size_t nbBlocks = (len - 1) / BlockSize;
             for (AZStd::size_t block = 0; block < nbBlocks; ++block)
@@ -136,25 +134,31 @@ namespace AZ::Hash::Private::Xxh3
                 const u8* blockStart = data + block * BlockSize;
                 for (AZStd::size_t stripe = 0; stripe < StripesPerBlock; ++stripe)
                 {
-                    Accumulate512(accVec, blockStart + stripe * StripeLen, secret + stripe * 8);
+                    Accumulate512(acc, blockStart + stripe * StripeLen, secret + stripe * 8);
                 }
-                Scramble(accVec, secret + (Secret.size() - StripeLen));
+                Scramble(acc, secret + (Secret.size() - StripeLen));
             }
             const AZStd::size_t nbStripes = ((len - 1) - nbBlocks * BlockSize) / StripeLen;
             const u8* lastBlock = data + nbBlocks * BlockSize;
             for (AZStd::size_t stripe = 0; stripe < nbStripes; ++stripe)
             {
-                Accumulate512(accVec, lastBlock + stripe * StripeLen, secret + stripe * 8);
+                Accumulate512(acc, lastBlock + stripe * StripeLen, secret + stripe * 8);
             }
-            Accumulate512(accVec, data + len - StripeLen, secret + (Secret.size() - 71));
+            Accumulate512(acc, data + len - StripeLen, secret + (Secret.size() - 71));
 
-            const u64 low = FinalMerge(acc, static_cast<u64>(len) * Prime64_1, secret, 11);
+            u64 accScalar[8];
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(accScalar + 0), acc[0]);
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(accScalar + 2), acc[1]);
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(accScalar + 4), acc[2]);
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(accScalar + 6), acc[3]);
+
+            const u64 low = FinalMerge(accScalar, static_cast<u64>(len) * Prime64_1, secret, 11);
             u64 high = 0;
             if (want128)
             {
-                high = FinalMerge(acc, ~(static_cast<u64>(len) * Prime64_2), secret, Secret.size() - 75);
+                high = FinalMerge(accScalar, ~(static_cast<u64>(len) * Prime64_2), secret, Secret.size() - 75);
             }
-            return u128{.a = low, .b = high};
+            return u128{low, high};
         }
 
 #elif AZ_TRAIT_USE_PLATFORM_SIMD_NEON
@@ -234,7 +238,7 @@ namespace AZ::Hash::Private::Xxh3
             {
                 high = FinalMerge(accScalar, ~(static_cast<u64>(len) * Prime64_2), secret, Secret.size() - 75);
             }
-            return u128{.a = low, .b = high};
+            return u128{low, high};
         }
 
 #else // scalar (no SIMD backend): reuse the constexpr scalar long path directly.

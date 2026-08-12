@@ -43,7 +43,7 @@ namespace AZ::Hash
         {
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr Fnv32(const char (&str)[N])
             : m_value(OffsetBasis)
         {
@@ -141,7 +141,7 @@ namespace AZ::Hash
         {
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr Fnv64(const char (&str)[N])
             : m_value(OffsetBasis)
         {
@@ -227,7 +227,7 @@ consteval AZ::Hash::Fnv64 operator""_fnv64(const char* str, const AZStd::size_t 
     return AZ::Hash::Fnv64{AZStd::string_view{str, count}};
 }
 
-template <>
+template<>
 struct AZStd::hash<AZ::Hash::Fnv32>
 {
     constexpr AZStd::size_t operator()(const AZ::Hash::Fnv32 input) const noexcept
@@ -236,7 +236,7 @@ struct AZStd::hash<AZ::Hash::Fnv32>
     }
 };
 
-template <>
+template<>
 struct AZStd::hash<AZ::Hash::Fnv64>
 {
     constexpr AZStd::size_t operator()(const AZ::Hash::Fnv64 input) const noexcept

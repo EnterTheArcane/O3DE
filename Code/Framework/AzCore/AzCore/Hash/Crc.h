@@ -41,7 +41,7 @@ namespace AZ::Hash
         {
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr Crc32(const char (&str)[N])
             : m_value(InitialValue)
         {
@@ -143,7 +143,7 @@ consteval AZ::Hash::Crc32 operator""_crc32(const char* str, const AZStd::size_t 
     return AZ::Hash::Crc32{AZStd::string_view{str, count}};
 }
 
-template <>
+template<>
 struct AZStd::hash<AZ::Hash::Crc32>
 {
     constexpr AZStd::size_t operator()(const AZ::Hash::Crc32 input) const noexcept
@@ -176,7 +176,7 @@ namespace AZ::Hash
         {
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr Crc64(const char (&str)[N])
             : m_value(InitialValue)
         {
@@ -278,7 +278,7 @@ consteval AZ::Hash::Crc64 operator""_crc64(const char* str, const AZStd::size_t 
     return AZ::Hash::Crc64{AZStd::string_view{str, count}};
 }
 
-template <>
+template<>
 struct AZStd::hash<AZ::Hash::Crc64>
 {
     constexpr AZStd::size_t operator()(const AZ::Hash::Crc64 input) const noexcept

@@ -39,12 +39,11 @@
 
 #pragma once
 
-#include <AzCore/Hash/Internal/ByteReader.h>
+#include <AzCore/base.h>
+#include <AzCore/std/bit.h>
 #include <AzCore/std/hash.h>
 #include <AzCore/std/string/string_view.h>
 #include <AzCore/RTTI/TypeInfoSimple.h>
-
-#include <bit>
 
 namespace AZ
 {
@@ -53,6 +52,23 @@ namespace AZ
 
 namespace AZ::Hash::Private::Xxh3
 {
+    template<typename T>
+    [[nodiscard]]
+    constexpr u32 ReadLE32(const T* p) noexcept
+    {
+        return static_cast<u32>(static_cast<u8>(p[0]))
+            | (static_cast<u32>(static_cast<u8>(p[1])) << 8)
+            | (static_cast<u32>(static_cast<u8>(p[2])) << 16)
+            | (static_cast<u32>(static_cast<u8>(p[3])) << 24);
+    }
+
+    template<typename T>
+    [[nodiscard]]
+    constexpr u64 ReadLE64(const T* p) noexcept
+    {
+        return static_cast<u64>(ReadLE32(p)) | (static_cast<u64>(ReadLE32(p + 4)) << 32);
+    }
+
     inline constexpr u32 Prime32_1 = 0x9E3779B1u;
     inline constexpr u32 Prime32_2 = 0x85EBCA77u;
     inline constexpr u32 Prime32_3 = 0xC2B2AE3Du;
@@ -93,7 +109,7 @@ namespace AZ::Hash::Private::Xxh3
         const u64 cross = (loLo >> 32) + (hiLo & 0xFFFFFFFFull) + loHi;
         const u64 high = (hiLo >> 32) + (cross >> 32) + hiHi;
         const u64 low = (cross << 32) | (loLo & 0xFFFFFFFFull);
-        return u128{.a = low, .b = high};
+        return u128{low, high};
     }
 
     [[nodiscard]]
@@ -101,28 +117,6 @@ namespace AZ::Hash::Private::Xxh3
     {
         const auto [low, high] = Mult64to128(a, b);
         return low ^ high;
-    }
-
-    [[nodiscard]]
-    constexpr u32 Bswap32(const u32 value) noexcept
-    {
-        return (value << 24)
-            | ((value & 0x0000FF00u) << 8)
-            | ((value & 0x00FF0000u) >> 8)
-            | (value >> 24);
-    }
-
-    [[nodiscard]]
-    constexpr u64 Bswap64(const u64 value) noexcept
-    {
-        return (value << 56)
-            | ((value & 0x000000000000FF00ull) << 40)
-            | ((value & 0x0000000000FF0000ull) << 24)
-            | ((value & 0x00000000FF000000ull) << 8)
-            | ((value & 0x000000FF00000000ull) >> 8)
-            | ((value & 0x0000FF0000000000ull) >> 24)
-            | ((value & 0x00FF000000000000ull) >> 40)
-            | (value >> 56);
     }
 
     [[nodiscard]]
@@ -148,7 +142,7 @@ namespace AZ::Hash::Private::Xxh3
     [[nodiscard]]
     constexpr u64 Rrmxmx(u64 value, const u64 length) noexcept
     {
-        value ^= std::rotl(value, 49) ^ std::rotl(value, 24);
+        value ^= AZStd::rotl(value, 49) ^ AZStd::rotl(value, 24);
         value *= PrimeMx_2;
         value ^= (value >> 35) + length;
         value *= PrimeMx_2;
@@ -170,7 +164,7 @@ namespace AZ::Hash::Private::Xxh3
     }
 
     // Mixes a 16-byte data chunk with a 16-byte secret segment and the seed (default-secret path, <=240 bytes).
-    template <typename T>
+    template<typename T>
     [[nodiscard]]
     constexpr u64 MixStep(
         const T* data,
@@ -209,7 +203,7 @@ namespace AZ::Hash::Private::Xxh3
     };
 
     // Scalar per-stripe accumulation (canonical definition that the SIMD kernels replicate exactly).
-    template <typename T>
+    template<typename T>
     constexpr void Accumulate512Scalar(u64 (&acc)[8], const T* stripe, const u8* secret) noexcept
     {
         for (AZStd::size_t i = 0; i < 8; ++i)
@@ -250,7 +244,7 @@ namespace AZ::Hash::Private::Xxh3
     }
 
     // Scalar long-path hash (>240 bytes) producing {low, high}. The low half alone is the XXH3-64 result.
-    template <typename T>
+    template<typename T>
     [[nodiscard]]
     constexpr u128 HashLongScalar(
         const T* data,
@@ -293,14 +287,14 @@ namespace AZ::Hash::Private::Xxh3
         {
             high = FinalMerge(acc, ~(static_cast<u64>(len) * Prime64_2), secret, Secret.size() - 75);
         }
-        return u128{.a = low, .b = high};
+        return u128{low, high};
     }
 
     AZCORE_API u64 Hash64(const AZStd::byte* data, AZStd::size_t len, u64 seed) noexcept;
     AZCORE_API u128 Hash128(const AZStd::byte* data, AZStd::size_t len, u64 seed) noexcept;
 
     // XXH3-64 length buckets (<=240 bytes). The >240 long path is HashLongScalar, defined above.
-    template <typename T>
+    template<typename T>
     [[nodiscard]]
     constexpr u64 Hash64Scalar(const T* data, const AZStd::size_t len, const u64 seed) noexcept
     {
@@ -322,7 +316,7 @@ namespace AZ::Hash::Private::Xxh3
         {
             const u32 inputFirst = ReadLE32(data);
             const u32 inputLast = ReadLE32(data + len - 4);
-            const u64 modifiedSeed = seed ^ (static_cast<u64>(Bswap32(static_cast<u32>(seed))) << 32);
+            const u64 modifiedSeed = seed ^ (static_cast<u64>(AZStd::byteswap(static_cast<u32>(seed))) << 32);
             const u64 combined = static_cast<u64>(inputLast) | (static_cast<u64>(inputFirst) << 32);
             const u64 value = ((SecretLE64(8) ^ SecretLE64(16)) - modifiedSeed) ^ combined;
             return Rrmxmx(value, len);
@@ -333,7 +327,7 @@ namespace AZ::Hash::Private::Xxh3
             const u64 inputLast = ReadLE64(data + len - 8);
             const u64 low = ((SecretLE64(24) ^ SecretLE64(32)) + seed) ^ inputFirst;
             const u64 high = ((SecretLE64(40) ^ SecretLE64(48)) - seed) ^ inputLast;
-            const u64 value = static_cast<u64>(len) + Bswap64(low) + high + Mul128Fold(low, high);
+            const u64 value = static_cast<u64>(len) + AZStd::byteswap(low) + high + Mul128Fold(low, high);
             return Avalanche(value);
         }
         if (len <= 128)
@@ -366,11 +360,11 @@ namespace AZ::Hash::Private::Xxh3
         return HashLongScalar(data, len, seed, false).a;
     }
 
-    template <typename T>
+    template<typename T>
     [[nodiscard]]
     constexpr u64 Dispatch64(const T* data, const AZStd::size_t len, const u64 seed)
     {
-        if (std::is_constant_evaluated())
+        if (az_builtin_is_constant_evaluated())
         {
             return Hash64Scalar(data, len, seed);
         }
@@ -400,7 +394,7 @@ namespace AZ::Hash
         {
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr Xxh3(const char (&str)[N], const u64 seed = 0)
             : m_value{Private::Xxh3::Dispatch64(str, N - 1, seed)}
         {
@@ -461,7 +455,7 @@ consteval AZ::Hash::Xxh3 operator""_xxh3(const char* str, const AZStd::size_t co
     return AZ::Hash::Xxh3{AZStd::string_view{str, count}};
 }
 
-template <>
+template<>
 struct AZStd::hash<AZ::Hash::Xxh3>
 {
     constexpr AZStd::size_t operator()(const AZ::Hash::Xxh3 input) const noexcept
@@ -472,7 +466,7 @@ struct AZStd::hash<AZ::Hash::Xxh3>
 
 namespace AZ::Hash::Private::Xxh3
 {
-    template <typename T>
+    template<typename T>
     constexpr void MixTwoChunks(
         u64 (&acc)[2],
         const T* data,
@@ -492,13 +486,13 @@ namespace AZ::Hash::Private::Xxh3
     }
 
     // XXH3-128 length buckets (<=240 bytes). The >240 long path is HashLongScalar, defined above.
-    template <typename T>
+    template<typename T>
     [[nodiscard]]
     constexpr u128 Hash128Scalar(const T* data, const AZStd::size_t len, const u64 seed) noexcept
     {
         if (len == 0)
         {
-            return u128{.a = Avalanche64(seed ^ SecretLE64(64) ^ SecretLE64(72)), .b = Avalanche64(seed ^ SecretLE64(80) ^ SecretLE64(88))};
+            return u128{Avalanche64(seed ^ SecretLE64(64) ^ SecretLE64(72)), Avalanche64(seed ^ SecretLE64(80) ^ SecretLE64(88))};
         }
         if (len <= 3)
         {
@@ -510,14 +504,14 @@ namespace AZ::Hash::Private::Xxh3
             const u64 low = ((static_cast<u64>(SecretLE32(0) ^ SecretLE32(4)) + seed) ^ combined);
             const u64 high =
                 (static_cast<u64>(SecretLE32(8) ^ SecretLE32(12)) - seed)
-                ^ static_cast<u64>(std::rotl(Bswap32(combined), 13));
-            return u128{.a = Avalanche64(low), .b = Avalanche64(high)};
+                ^ static_cast<u64>(AZStd::rotl(AZStd::byteswap(combined), 13));
+            return u128{Avalanche64(low), Avalanche64(high)};
         }
         if (len <= 8)
         {
             const u32 inputFirst = ReadLE32(data);
             const u32 inputLast = ReadLE32(data + len - 4);
-            const u64 modifiedSeed = seed ^ (static_cast<u64>(Bswap32(static_cast<u32>(seed))) << 32);
+            const u64 modifiedSeed = seed ^ (static_cast<u64>(AZStd::byteswap(static_cast<u32>(seed))) << 32);
             const u64 combined = static_cast<u64>(inputFirst) | (static_cast<u64>(inputLast) << 32);
             const u64 value = ((SecretLE64(16) ^ SecretLE64(24)) + modifiedSeed) ^ combined;
             const u128 product = Mult64to128(value, Prime64_1 + (static_cast<u64>(len) << 2));
@@ -529,7 +523,7 @@ namespace AZ::Hash::Private::Xxh3
             low *= PrimeMx_2;
             low ^= low >> 28;
             high = Avalanche(high);
-            return u128{.a = low, .b = high};
+            return u128{low, high};
         }
         if (len <= 16)
         {
@@ -539,13 +533,14 @@ namespace AZ::Hash::Private::Xxh3
             const u64 val2 = ((SecretLE64(48) ^ SecretLE64(56)) + seed) ^ inputLast;
             const u128 product = Mult64to128(val1, Prime64_1);
             u64 low = product.a + (static_cast<u64>(len - 1) << 54);
-            u64 high = product.b + (static_cast<u64>(static_cast<u32>(val2 >> 32)) << 32) +
-                static_cast<u64>(static_cast<u32>(val2)) * Prime32_2;
-            low ^= Bswap64(high);
+            u64 high = product.b
+                + (static_cast<u64>(static_cast<u32>(val2 >> 32)) << 32)
+                + static_cast<u64>(static_cast<u32>(val2)) * Prime32_2;
+            low ^= AZStd::byteswap(high);
             const u128 product2 = Mult64to128(low, Prime64_2);
             low = product2.a;
             high = product2.b + high * Prime64_2;
-            return u128{.a = Avalanche(low), .b = Avalanche(high)};
+            return u128{Avalanche(low), Avalanche(high)};
         }
 
         u64 acc[2] = {static_cast<u64>(len) * Prime64_1, 0};
@@ -578,16 +573,15 @@ namespace AZ::Hash::Private::Xxh3
         }
 
         const u64 low = acc[0] + acc[1];
-        const u64 high =
-            acc[0] * Prime64_1 + acc[1] * Prime64_4 + (static_cast<u64>(len) - seed) * Prime64_2;
-        return u128{.a = Avalanche(low), .b = static_cast<u64>(0) - Avalanche(high)};
+        const u64 high = acc[0] * Prime64_1 + acc[1] * Prime64_4 + (static_cast<u64>(len) - seed) * Prime64_2;
+        return u128{Avalanche(low), static_cast<u64>(0) - Avalanche(high)};
     }
 
-    template <typename T>
+    template<typename T>
     [[nodiscard]]
     constexpr u128 Dispatch128(const T* data, const AZStd::size_t len, const u64 seed)
     {
-        if (std::is_constant_evaluated())
+        if (az_builtin_is_constant_evaluated())
         {
             return Hash128Scalar(data, len, seed);
         }
@@ -617,7 +611,7 @@ namespace AZ::Hash
         {
         }
 
-        template <AZStd::size_t N>
+        template<AZStd::size_t N>
         constexpr Xxh128(const char (&str)[N], const u64 seed = 0)
         {
             const u128 result = Private::Xxh3::Dispatch128(str, N - 1, seed);
@@ -689,7 +683,7 @@ consteval AZ::Hash::Xxh128 operator""_xxh128(const char* str, const AZStd::size_
     return AZ::Hash::Xxh128{AZStd::string_view{str, count}};
 }
 
-template <>
+template<>
 struct AZStd::hash<AZ::Hash::Xxh128>
 {
     constexpr AZStd::size_t operator()(const AZ::Hash::Xxh128 input) const noexcept
