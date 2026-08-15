@@ -7,7 +7,9 @@
 
 o3de_gem_setup("Jolt")
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
+# Jolt is built as an implementation detail of this Gem rather than being published
+# as a 3rdParty:: package, so it is included directly instead of being placed on
+# CMAKE_MODULE_PATH for find_package() to discover.
+include(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/JoltNative.cmake)
 
 add_subdirectory(Code)

@@ -5,7 +5,19 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 #
 
-if(TARGET 3rdParty::Jolt)
+# Builds the native Jolt static library for this Gem.
+#
+# This is deliberately NOT a find module and Jolt is deliberately NOT published as
+# 3rdParty::Jolt. The library is an implementation detail of the Jolt Gem: its ABI
+# depends on the JPH_* macros it was compiled with, so anything that links it must
+# be compiled with exactly the same configuration. Consumers go through
+# Gem::${gem_name}.API instead, which exposes no Jolt types or headers.
+#
+# Keeping Jolt out of the 3rdParty:: namespace also keeps it out of
+# ly_parse_third_party_dependencies, so no find_package() is ever issued for it and
+# no find module has to be shipped to installed engines.
+
+if(TARGET Jolt)
     return()
 endif()
 
@@ -161,6 +173,9 @@ o3de_fixup_fetchcontent_targets(
 
 FetchContent_GetProperties(JoltPhysics SOURCE_DIR jolt_source_dir)
 set_property(TARGET Jolt PROPERTY JOLT_SOURCE_ROOT "${jolt_source_dir}")
+
+# The Gem publishes its own headers under the Jolt/ include prefix, so a Gem header
+# must never shadow a native Jolt header for translation units that see both.
 get_target_property(Jolt_NATIVE_SOURCES Jolt SOURCES)
 set(Jolt_NATIVE_HEADERS)
 foreach(jolt_native_source IN LISTS Jolt_NATIVE_SOURCES)
@@ -171,11 +186,6 @@ foreach(jolt_native_source IN LISTS Jolt_NATIVE_SOURCES)
         list(APPEND Jolt_NATIVE_HEADERS "${jolt_native_source}")
     endif()
 endforeach()
-list(SORT Jolt_NATIVE_HEADERS)
-set(Jolt_NATIVE_HEADER_LINES ${Jolt_NATIVE_HEADERS})
-list(TRANSFORM Jolt_NATIVE_HEADER_LINES PREPEND "    \"")
-list(TRANSFORM Jolt_NATIVE_HEADER_LINES APPEND "\"")
-list(JOIN Jolt_NATIVE_HEADER_LINES "\n" Jolt_NATIVE_HEADER_LINES)
 include(${this_gem_root}/Code/jolt_api_files.cmake)
 foreach(jolt_public_header IN LISTS FILES)
     string(REGEX REPLACE "^Include/" "" jolt_relative_header "${jolt_public_header}")
@@ -186,53 +196,12 @@ foreach(jolt_public_header IN LISTS FILES)
         )
     endif()
 endforeach()
-configure_file(
-    ${CMAKE_CURRENT_LIST_DIR}/Installer/JoltPackage.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/JoltPackage.cmake
-    @ONLY
-)
-configure_file(
-    ${CMAKE_CURRENT_LIST_DIR}/Installer/JoltNativeHeaders.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/JoltNativeHeaders.cmake
-    @ONLY
-)
-ly_install(FILES ${CMAKE_CURRENT_LIST_DIR}/Installer/FindJolt.cmake DESTINATION cmake/3rdParty)
-foreach(jolt_native_header IN LISTS Jolt_NATIVE_HEADERS)
-    get_filename_component(jolt_native_header_directory "${jolt_native_header}" DIRECTORY)
-    ly_install(
-        FILES "${jolt_source_dir}/${jolt_native_header}"
-        DESTINATION "include/${jolt_native_header_directory}"
-        COMPONENT CORE
-    )
-endforeach()
+
+# Only the license ships. Jolt's headers and sources are intentionally not installed:
+# nothing in an installed engine compiles against them, and withholding them is what
+# stops downstream code from including Jolt directly.
 ly_install(FILES
     ${jolt_source_dir}/LICENSE
-    ${CMAKE_CURRENT_BINARY_DIR}/JoltNativeHeaders.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/JoltPackage.cmake
     DESTINATION include/Jolt
     COMPONENT CORE
 )
-include(${this_gem_root}/Code/jolt_gpu_hair_shader_files.cmake)
-include(${this_gem_root}/Code/jolt_gpu_hair_vulkan_native_files.cmake)
-set(jolt_gpu_hair_install_sources
-    ${JOLT_GPU_HAIR_SHADER_FILES}
-    ${JOLT_GPU_HAIR_VULKAN_NATIVE_FILES}
-)
-if(PAL_PLATFORM_NAME STREQUAL "Windows")
-    include(${this_gem_root}/Code/jolt_gpu_hair_dx12_native_files.cmake)
-    list(APPEND jolt_gpu_hair_install_sources ${JOLT_GPU_HAIR_DX12_NATIVE_FILES})
-endif()
-if(PAL_PLATFORM_NAME STREQUAL "Mac" OR PAL_PLATFORM_NAME STREQUAL "iOS")
-    include(${this_gem_root}/Code/jolt_gpu_hair_metal_native_files.cmake)
-    list(APPEND jolt_gpu_hair_install_sources ${JOLT_GPU_HAIR_METAL_NATIVE_FILES})
-endif()
-foreach(jolt_gpu_hair_source IN LISTS jolt_gpu_hair_install_sources)
-    get_filename_component(jolt_gpu_hair_source_directory "${jolt_gpu_hair_source}" DIRECTORY)
-    ly_install(
-        FILES "${jolt_source_dir}/${jolt_gpu_hair_source}"
-        DESTINATION "include/Jolt/Source/${jolt_gpu_hair_source_directory}"
-        COMPONENT CORE
-    )
-endforeach()
-
-set(Jolt_FOUND TRUE PARENT_SCOPE)

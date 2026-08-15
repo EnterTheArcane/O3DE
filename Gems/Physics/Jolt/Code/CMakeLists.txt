@@ -33,7 +33,7 @@ ly_add_target(
         PUBLIC
             AZ::AzCore
         PRIVATE
-            3rdParty::Jolt
+            Jolt
             Gem::${gem_name}.API
 )
 set_property(TARGET ${gem_name}.Private.Static PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
@@ -43,10 +43,7 @@ else()
     target_compile_options(${gem_name}.Private.Static PRIVATE -fno-rtti)
 endif()
 
-get_target_property(jolt_native_target 3rdParty::Jolt ALIASED_TARGET)
-if(NOT jolt_native_target)
-    set(jolt_native_target 3rdParty::Jolt)
-endif()
+set(jolt_native_target Jolt)
 get_target_property(jolt_source_dir ${jolt_native_target} JOLT_SOURCE_ROOT)
 if(NOT jolt_source_dir)
     message(FATAL_ERROR "The Jolt package did not provide its native source root.")
@@ -285,7 +282,7 @@ if(jolt_gpu_hair_dx12_supported OR jolt_gpu_hair_vulkan_supported OR jolt_gpu_ha
     set(jolt_gpu_hair_files_cmake jolt_gpu_hair_files.cmake)
     set(jolt_gpu_hair_compile_definitions)
     set(jolt_gpu_hair_build_dependencies
-        3rdParty::Jolt
+        Jolt
         AZ::AzCore
         Gem::${gem_name}.API
         Gem::Atom_RHI.Public
@@ -303,7 +300,7 @@ if(jolt_gpu_hair_dx12_supported OR jolt_gpu_hair_vulkan_supported OR jolt_gpu_ha
                 O3DE_PRIVATE_TARGET TRUE
             BUILD_DEPENDENCIES
                 PRIVATE
-                    3rdParty::Jolt
+                    Jolt
         )
         target_include_directories(
             ${gem_name}.GpuHair.DX12.Native
@@ -342,7 +339,7 @@ if(jolt_gpu_hair_dx12_supported OR jolt_gpu_hair_vulkan_supported OR jolt_gpu_ha
                 O3DE_PRIVATE_TARGET TRUE
             BUILD_DEPENDENCIES
                 PRIVATE
-                    3rdParty::Jolt
+                    Jolt
                     Gem::Atom_RHI_Vulkan.Interface
         )
         target_include_directories(
@@ -374,7 +371,7 @@ if(jolt_gpu_hair_dx12_supported OR jolt_gpu_hair_vulkan_supported OR jolt_gpu_ha
                 O3DE_PRIVATE_TARGET TRUE
             BUILD_DEPENDENCIES
                 PRIVATE
-                    3rdParty::Jolt
+                    Jolt
         )
         target_include_directories(
             ${gem_name}.GpuHair.Metal.Native
@@ -440,7 +437,7 @@ if(jolt_gpu_hair_dx12_supported OR jolt_gpu_hair_vulkan_supported OR jolt_gpu_ha
                 Source
         BUILD_DEPENDENCIES
             PRIVATE
-                3rdParty::Jolt
+                Jolt
                 AZ::AzCore
                 Gem::${gem_name}.API
                 Gem::${gem_name}.GpuHair.Static
@@ -485,7 +482,7 @@ if(jolt_gpu_hair_dx12_supported OR jolt_gpu_hair_vulkan_supported OR jolt_gpu_ha
                     JPH_USE_DX12
             BUILD_DEPENDENCIES
                 PRIVATE
-                    3rdParty::Jolt
+                    Jolt
                     AZ::AzTest
                     AZ::AzFramework
                     Gem::${gem_name}.Private.Static
@@ -530,7 +527,7 @@ if(jolt_gpu_hair_dx12_supported OR jolt_gpu_hair_vulkan_supported OR jolt_gpu_ha
                     JPH_USE_VK
             BUILD_DEPENDENCIES
                 PRIVATE
-                    3rdParty::Jolt
+                    Jolt
                     AZ::AzTest
                     AZ::AzFramework
                     Gem::${gem_name}.Private.Static
@@ -568,7 +565,7 @@ if(jolt_gpu_hair_dx12_supported OR jolt_gpu_hair_vulkan_supported OR jolt_gpu_ha
                     JPH_USE_MTL
             BUILD_DEPENDENCIES
                 PRIVATE
-                    3rdParty::Jolt
+                    Jolt
                     AZ::AzTest
                     AZ::AzFramework
                     Gem::${gem_name}.Private.Static
@@ -682,7 +679,7 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
                 Tests
         BUILD_DEPENDENCIES
             PRIVATE
-                3rdParty::Jolt
+                Jolt
                 AZ::AzTest
                 AZ::AzFramework
                 Gem::Atom_RHI.Public
@@ -751,3 +748,33 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
         ly_add_googletest(NAME Gem::${gem_name}.Editor.Builder.Tests)
     endif()
 endif()
+
+# This directory's targets are re-declared as IMPORTED libraries in an installed
+# engine, and the STATIC ones carry their private Jolt dependency into that
+# declaration. Nothing re-runs this file there, so emit the imported Jolt target into
+# the generated permutation.cmake ahead of the targets that link it.
+#
+# Only the archive is published. Jolt's headers are not installed, so the target is
+# link-only and cannot be used to compile against Jolt directly.
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} APPEND_STRING PROPERTY O3DE_SUBDIRECTORY_INSTALL_CODE
+[==[
+if(NOT TARGET Jolt)
+    add_library(Jolt STATIC IMPORTED GLOBAL)
+    set(jolt_library_folder "${LY_ROOT_FOLDER}/lib/${PAL_PLATFORM_NAME}")
+    set_target_properties(Jolt PROPERTIES
+        IMPORTED_LOCATION "${jolt_library_folder}/profile/${CMAKE_STATIC_LIBRARY_PREFIX}Jolt${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        IMPORTED_LOCATION_DEBUG "${jolt_library_folder}/debug/${CMAKE_STATIC_LIBRARY_PREFIX}Jolt${CMAKE_STATIC_LIBRARY_SUFFIX}"
+        IMPORTED_LOCATION_RELEASE "${jolt_library_folder}/release/${CMAKE_STATIC_LIBRARY_PREFIX}Jolt${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    )
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        target_link_options(Jolt INTERFACE
+            "$<$<CONFIG:Release>:${CMAKE_CXX_LINK_OPTIONS_IPO}>"
+        )
+    else()
+        target_link_options(Jolt INTERFACE
+            "$<$<CONFIG:Release>:${CMAKE_CXX_COMPILE_OPTIONS_IPO}>"
+            "$<$<CONFIG:Release>:${CMAKE_CXX_LINK_OPTIONS_IPO}>"
+        )
+    endif()
+endif()
+]==])
