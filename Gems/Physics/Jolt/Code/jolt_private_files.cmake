@@ -38,7 +38,6 @@ set(FILES
     Source/Jolt/FloatEnvironment.h
     Source/Jolt/HairInternal.cpp
     Source/Jolt/HairInternal.h
-    Source/Jolt/HairComputeProvider.h
     Source/Jolt/HairComponent.cpp
     Source/Jolt/HairComponent.h
     Source/Jolt/HairComponentConfiguration.cpp

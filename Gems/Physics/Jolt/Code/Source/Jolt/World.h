@@ -75,7 +75,6 @@ namespace Jolt
 
     class DebugCapture;
     class DebugRenderer;
-    class IHairRenderBuffers;
     class System;
 
     class World final
@@ -1869,17 +1868,6 @@ namespace Jolt
         bool DisableHairAutoUpdate(HairHandle hairHandle);
 
         [[nodiscard]]
-        bool AcquireHairRenderBuffer(
-            HairHandle hairHandle,
-            HairRenderBuffer& buffer);
-
-        [[nodiscard]]
-        bool ImportHairRenderBufferHandoff(
-            AZ::RHI::FrameGraphBuilder& frameGraphBuilder,
-            HairHandle hairHandle,
-            AZ::u64 token);
-
-        [[nodiscard]]
         bool GetHairState(
             HairHandle hairHandle,
             HairState& state) const;
@@ -2236,7 +2224,6 @@ namespace Jolt
         {
             AZStd::unique_ptr<NativeHair> m_hair;
             AZStd::unique_ptr<HairAutoUpdateState> m_autoUpdateState;
-            AZStd::unique_ptr<IHairRenderBuffers> m_renderBuffers;
             WorldTransform m_worldTransform;
             HairDefinitionHandle m_definitionHandle;
             AZ::u32 m_generation = 1;

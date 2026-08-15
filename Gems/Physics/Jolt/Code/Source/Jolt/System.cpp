@@ -12,7 +12,6 @@
 #include <Jolt/CustomConvexShape.h>
 #include <Jolt/DebugRenderer.h>
 #include <Jolt/FloatEnvironment.h>
-#include <Jolt/HairComputeProvider.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/NativeShapeFactory.h>
 #include <Jolt/Profiler.h>
@@ -572,18 +571,7 @@ namespace Jolt
 
     RuntimeInfo System::GetRuntimeInfo() const
     {
-        RuntimeInfo runtimeInfo = m_nativeRuntime.GetRuntimeInfo();
-        runtimeInfo.m_hairComputeBackend = m_configuration.m_hairComputeBackend;
-        if (m_configuration.m_hairComputeBackend == HairComputeBackend::DeterministicCpu)
-        {
-            runtimeInfo.m_hairDeterminism = DeterminismCertification::SameBinary;
-        }
-        else
-        {
-            runtimeInfo.m_hairDeterminism = DeterminismCertification::None;
-        }
-
-        return runtimeInfo;
+        return m_nativeRuntime.GetRuntimeInfo();
     }
 
     bool System::RegisterCustomConstraintProvider(
@@ -4336,30 +4324,6 @@ namespace Jolt
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
         return world && world->DisableHairAutoUpdate(hairHandle);
-    }
-
-    bool System::AcquireHairRenderBuffer(
-        const WorldHandle worldHandle,
-        const HairHandle hairHandle,
-        HairRenderBuffer& buffer)
-    {
-        AZStd::shared_lock lock(m_worldMutex);
-        World* world = FindWorldUnlocked(worldHandle);
-        return world && world->AcquireHairRenderBuffer(hairHandle, buffer);
-    }
-
-    bool System::ImportHairRenderBufferHandoff(
-        AZ::RHI::FrameGraphBuilder& frameGraphBuilder,
-        const WorldHandle worldHandle,
-        const HairHandle hairHandle,
-        const AZ::u64 token)
-    {
-        AZStd::shared_lock lock(m_worldMutex);
-        World* world = FindWorldUnlocked(worldHandle);
-        return world && world->ImportHairRenderBufferHandoff(
-            frameGraphBuilder,
-            hairHandle,
-            token);
     }
 
     bool System::GetHairState(
@@ -9623,63 +9587,23 @@ namespace Jolt
             return true;
         }
 
-        if (m_configuration.m_hairComputeBackend == HairComputeBackend::None)
-        {
-            AZ_Error("Jolt", false, "Hair simulation is disabled by the system configuration.");
-            return false;
-        }
-
-        IHairComputeProvider* provider = nullptr;
-        JPH::ComputeSystemResult computeResult;
-        if (m_configuration.m_hairComputeBackend == HairComputeBackend::PlatformGpu)
-        {
-            if (!m_configuration.m_allowNondeterministicHair)
-            {
-                AZ_Error(
-                    "Jolt",
-                    false,
-                    "Platform GPU hair is not deterministic and must be explicitly allowed by the system configuration.");
-                return false;
-            }
-
-            provider = AZ::Interface<IHairComputeProvider>::Get();
-            if (!provider || provider->GetBackend() != HairComputeBackend::PlatformGpu)
-            {
-                AZ_Error("Jolt", false, "The platform GPU hair backend is not available in this process.");
-                return false;
-            }
-
-            computeResult = provider->CreateComputeSystem();
-        }
-        else if (m_configuration.m_hairComputeBackend == HairComputeBackend::DeterministicCpu)
-        {
-            computeResult = JPH::CreateComputeSystemCPU();
-        }
-        else
-        {
-            AZ_Error("Jolt", false, "The configured hair compute backend is invalid.");
-            return false;
-        }
+        JPH::ComputeSystemResult computeResult = JPH::CreateComputeSystemCPU();
 
         if (computeResult.HasError())
         {
             AZ_Error(
                 "Jolt",
                 false,
-                "Failed to create the configured hair compute system: %s",
+                "Failed to create the CPU hair compute system: %s",
                 computeResult.GetError().c_str());
             return false;
         }
 
         auto runtime = AZStd::make_unique<HairRuntime>();
         runtime->m_computeSystem = computeResult.Get();
-        runtime->m_backend = m_configuration.m_hairComputeBackend;
-        if (runtime->m_backend == HairComputeBackend::DeterministicCpu)
-        {
-            const JPH::Ref<JPH::ComputeSystemCPU> cpuComputeSystem =
-                JPH::StaticCast<JPH::ComputeSystemCPU>(runtime->m_computeSystem);
-            JPH::HairRegisterShaders(cpuComputeSystem);
-        }
+        const JPH::Ref<JPH::ComputeSystemCPU> cpuComputeSystem =
+            JPH::StaticCast<JPH::ComputeSystemCPU>(runtime->m_computeSystem);
+        JPH::HairRegisterShaders(cpuComputeSystem);
         runtime->m_shaders = new JPH::HairShaders();
         runtime->m_shaders->Init(runtime->m_computeSystem);
         if (!runtime->m_shaders->mApplyDeltaTransformCS
@@ -9698,7 +9622,7 @@ namespace Jolt
             || !runtime->m_shaders->mUpdateVelocityCS
             || !runtime->m_shaders->mUpdateVelocityIntegrateCS)
         {
-            AZ_Error("Jolt", false, "The configured hair compute backend did not load every required shader.");
+            AZ_Error("Jolt", false, "The CPU hair compute system did not register every required shader.");
             return false;
         }
 

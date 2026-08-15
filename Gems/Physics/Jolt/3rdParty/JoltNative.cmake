@@ -22,7 +22,7 @@ if(TARGET Jolt)
 endif()
 
 set(jolt_source_revision "e77f175595e64cb44218cc9d9d56fc365ad0e36a")
-set(jolt_patch_revision "jolt-v5.6.0-o3de-10")
+set(jolt_patch_revision "jolt-v5.6.0-o3de-11")
 set(jolt_archive_hash "6e069ee0172478cc78182047aac87e5310ba14a67a53348ae14cc37801fd3f8e")
 set(jolt_archive_name "v5.6.0.tar.gz")
 set(jolt_patch_file "${CMAKE_CURRENT_LIST_DIR}/jolt-5.6.0-o3de.patch")

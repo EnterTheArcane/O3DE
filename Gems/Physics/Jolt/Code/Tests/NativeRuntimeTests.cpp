@@ -31,12 +31,11 @@ namespace Jolt
         const RuntimeInfo runtimeInfo = runtime.GetRuntimeInfo();
         EXPECT_EQ(runtimeInfo.m_version, (Version{.m_major = 5, .m_minor = 6, .m_patch = 0}));
         EXPECT_NE(runtimeInfo.m_buildFingerprint, 0);
-        EXPECT_EQ(runtimeInfo.m_patchHash, "2dbbaa5cbcb0c2c9d409d86959ab7901b6304b00ea9f76120a76238d1daafac5");
-        EXPECT_EQ(runtimeInfo.m_patchRevision, "jolt-v5.6.0-o3de-10");
+        EXPECT_EQ(runtimeInfo.m_patchHash, "dc8b6c02b75a54cb659980254ca472070dcb3e7e67bd1b72ca5ab313008b75d2");
+        EXPECT_EQ(runtimeInfo.m_patchRevision, "jolt-v5.6.0-o3de-11");
         EXPECT_EQ(runtimeInfo.m_sourceRevision, "e77f175595e64cb44218cc9d9d56fc365ad0e36a");
         EXPECT_EQ(runtimeInfo.m_hairDeterminism, DeterminismCertification::SameBinary);
         EXPECT_EQ(runtimeInfo.m_physicsDeterminism, DeterminismCertification::CrossPlatform);
-        EXPECT_EQ(runtimeInfo.m_hairComputeBackend, HairComputeBackend::DeterministicCpu);
         EXPECT_FALSE(runtimeInfo.m_configuration.empty());
         EXPECT_NE(
             runtimeInfo.m_configuration.find("Cross Platform Deterministic"),

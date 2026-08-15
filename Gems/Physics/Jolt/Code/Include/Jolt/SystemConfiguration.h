@@ -24,13 +24,6 @@ namespace AZ
 
 namespace Jolt
 {
-    enum class HairComputeBackend : AZ::u8
-    {
-        None = 0,
-        DeterministicCpu,
-        PlatformGpu,
-    };
-
     enum class MaterialCombineMode : AZ::u8
     {
         None = 0,
@@ -169,13 +162,10 @@ namespace Jolt
 
         WorldConfiguration m_defaultWorld;
 
-        HairComputeBackend m_hairComputeBackend = HairComputeBackend::DeterministicCpu;
         float m_softBodyTriangleThickness = 0.1f;
 
-        bool m_allowNondeterministicHair = false;
         bool m_createDefaultWorld = true;
     };
 } // namespace Jolt
 
-AZ_TYPE_INFO_SPECIALIZE(Jolt::HairComputeBackend, "{9A628A11-A1A2-42AF-9023-A773D2C3D58C}");
 AZ_TYPE_INFO_SPECIALIZE(Jolt::MaterialCombineMode, "{9580D0CB-D536-4789-A67B-D3B8380CD5B7}");

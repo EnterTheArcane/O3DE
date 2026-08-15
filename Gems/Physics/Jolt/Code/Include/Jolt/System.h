@@ -43,11 +43,6 @@
 #include <AzCore/std/string/string_view.h>
 #include <AzCore/std/containers/span.h>
 
-namespace AZ::RHI
-{
-    class FrameGraphBuilder;
-} // namespace AZ::RHI
-
 namespace Jolt
 {
     struct SceneAssetData;
@@ -110,7 +105,6 @@ namespace Jolt
 
         DeterminismCertification m_hairDeterminism = DeterminismCertification::None;
         DeterminismCertification m_physicsDeterminism = DeterminismCertification::None;
-        HairComputeBackend m_hairComputeBackend = HairComputeBackend::None;
         Precision m_precision = Precision::None;
         SimdLevel m_simdLevel = SimdLevel::None;
 
@@ -685,21 +679,6 @@ namespace Jolt
         virtual bool DisableHairAutoUpdate(
             WorldHandle worldHandle,
             HairHandle hairHandle) = 0;
-
-        //! Acquires the most recently completed renderer-owned hair positions without a GPU-to-CPU copy.
-        [[nodiscard]]
-        virtual bool AcquireHairRenderBuffer(
-            WorldHandle worldHandle,
-            HairHandle hairHandle,
-            HairRenderBuffer& buffer) = 0;
-
-        //! Adds the ownership-return scope after all render consumers of the acquired token.
-        [[nodiscard]]
-        virtual bool ImportHairRenderBufferHandoff(
-            AZ::RHI::FrameGraphBuilder& frameGraphBuilder,
-            WorldHandle worldHandle,
-            HairHandle hairHandle,
-            AZ::u64 token) = 0;
 
         [[nodiscard]]
         virtual bool GetHairState(

@@ -261,7 +261,6 @@ namespace Jolt
             .m_sourceRevision = JOLT_NATIVE_SOURCE_REVISION,
             .m_hairDeterminism = DeterminismCertification::SameBinary,
             .m_physicsDeterminism = DeterminismCertification::None,
-            .m_hairComputeBackend = HairComputeBackend::DeterministicCpu,
             .m_precision = Precision::Single,
             .m_simdLevel = SimdLevel::Scalar,
         };

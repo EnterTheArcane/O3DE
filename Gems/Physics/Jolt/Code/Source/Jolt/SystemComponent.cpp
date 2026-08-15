@@ -265,9 +265,6 @@ namespace Jolt
                 ->Property(
                     "physicsDeterminism",
                     JOLT_BEHAVIOR_VALUE_PROPERTY(&RuntimeInfo::m_physicsDeterminism))
-                ->Property(
-                    "hairComputeBackend",
-                    JOLT_BEHAVIOR_VALUE_PROPERTY(&RuntimeInfo::m_hairComputeBackend))
                 ->Property("precision", JOLT_BEHAVIOR_VALUE_PROPERTY(&RuntimeInfo::m_precision))
                 ->Property("simdLevel", JOLT_BEHAVIOR_VALUE_PROPERTY(&RuntimeInfo::m_simdLevel))
                 ->Property(

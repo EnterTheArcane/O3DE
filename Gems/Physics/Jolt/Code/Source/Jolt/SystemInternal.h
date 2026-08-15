@@ -738,19 +738,6 @@ namespace Jolt
             HairHandle hairHandle) override;
 
         [[nodiscard]]
-        bool AcquireHairRenderBuffer(
-            WorldHandle worldHandle,
-            HairHandle hairHandle,
-            HairRenderBuffer& buffer) override;
-
-        [[nodiscard]]
-        bool ImportHairRenderBufferHandoff(
-            AZ::RHI::FrameGraphBuilder& frameGraphBuilder,
-            WorldHandle worldHandle,
-            HairHandle hairHandle,
-            AZ::u64 token) override;
-
-        [[nodiscard]]
         bool GetHairState(
             WorldHandle worldHandle,
             HairHandle hairHandle,
@@ -2973,7 +2960,6 @@ namespace Jolt
         {
             JPH::Ref<JPH::ComputeSystem> m_computeSystem;
             JPH::Ref<JPH::HairShaders> m_shaders;
-            HairComputeBackend m_backend = HairComputeBackend::None;
         };
 
         struct SceneDefinitionSlot final

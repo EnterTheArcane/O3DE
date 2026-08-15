@@ -516,18 +516,12 @@ namespace Jolt
             serializeContext
                 ->Class<SystemConfiguration>()
                 ->Field("DefaultWorld", &SystemConfiguration::m_defaultWorld)
-                ->Field("HairComputeBackend", &SystemConfiguration::m_hairComputeBackend)
                 ->Field("SoftBodyTriangleThickness", &SystemConfiguration::m_softBodyTriangleThickness)
-                ->Field("AllowNondeterministicHair", &SystemConfiguration::m_allowNondeterministicHair)
                 ->Field("CreateDefaultWorld", &SystemConfiguration::m_createDefaultWorld);
         }
 
         if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-            JOLT_BEHAVIOR_ENUM(*behaviorContext, HairComputeBackend, None);
-            JOLT_BEHAVIOR_ENUM(*behaviorContext, HairComputeBackend, DeterministicCpu);
-            JOLT_BEHAVIOR_ENUM(*behaviorContext, HairComputeBackend, PlatformGpu);
-
             behaviorContext->Class<SystemConfiguration>("JoltSystemConfiguration")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "jolt")
@@ -536,14 +530,8 @@ namespace Jolt
                 ->Constructor<>()
                 ->Property("defaultWorld", JOLT_BEHAVIOR_VALUE_PROPERTY(&SystemConfiguration::m_defaultWorld))
                 ->Property(
-                    "hairComputeBackend",
-                    JOLT_BEHAVIOR_VALUE_PROPERTY(&SystemConfiguration::m_hairComputeBackend))
-                ->Property(
                     "softBodyTriangleThickness",
                     JOLT_BEHAVIOR_VALUE_PROPERTY(&SystemConfiguration::m_softBodyTriangleThickness))
-                ->Property(
-                    "allowNondeterministicHair",
-                    JOLT_BEHAVIOR_VALUE_PROPERTY(&SystemConfiguration::m_allowNondeterministicHair))
                 ->Property(
                     "createDefaultWorld",
                     JOLT_BEHAVIOR_VALUE_PROPERTY(&SystemConfiguration::m_createDefaultWorld));

@@ -10,7 +10,6 @@
 #include <Jolt/CpuComputeQueue.h>
 #include <Jolt/CustomConstraintInternal.h>
 #include <Jolt/DebugRenderer.h>
-#include <Jolt/HairComputeProvider.h>
 #include <Jolt/Internal/HandleEncoding.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/NativeShapeFactory.h>
@@ -21,7 +20,6 @@
 
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Debug/Trace.h>
-#include <AzCore/Interface/Interface.h>
 #include <AzCore/Jobs/JobCompletion.h>
 #include <AzCore/Jobs/Job.h>
 #include <AzCore/Jobs/JobManager.h>
@@ -16159,20 +16157,6 @@ namespace Jolt
             }
         }
 
-        if (HasStateFlag(configuration.m_flags, StateSnapshotFlags::Hair)
-            && m_system.m_hairRuntime
-            && m_system.m_hairRuntime->m_backend != HairComputeBackend::DeterministicCpu)
-        {
-            for (const HairSlot& slot : m_hairSlots)
-            {
-                if (slot.m_hair)
-                {
-                    snapshot.m_data.clear();
-                    return false;
-                }
-            }
-        }
-
         snapshot.m_configuration = configuration;
         snapshot.m_eventSequence = 0;
         if (HasStateFlag(configuration.m_flags, StateSnapshotFlags::Global))
@@ -17743,8 +17727,7 @@ namespace Jolt
             recorder.WriteBytes(&occupied, sizeof(occupied));
             if (slot.m_hair)
             {
-                if (!m_system.m_hairRuntime
-                    || m_system.m_hairRuntime->m_backend != HairComputeBackend::DeterministicCpu)
+                if (!m_system.m_hairRuntime)
                 {
                     return false;
                 }
@@ -23272,29 +23255,9 @@ namespace Jolt
 
         if (!m_hairComputeQueue)
         {
-            if (m_system.m_hairRuntime->m_backend == HairComputeBackend::DeterministicCpu)
-            {
-                m_hairComputeQueue = new CpuComputeQueue(
-                    m_jobContext,
-                    aznumeric_cast<AZ::u32>(m_jobSystem->GetMaxConcurrency()));
-            }
-            else
-            {
-                JPH::ComputeQueueResult queueResult =
-                    m_system.m_hairRuntime->m_computeSystem->CreateComputeQueue();
-                if (queueResult.HasError())
-                {
-                    AZ_Error(
-                        "Jolt",
-                        false,
-                        "Failed to create the configured hair compute queue: %s",
-                        queueResult.GetError().c_str());
-                    m_system.ReleaseHairDefinition(configuration.m_definitionHandle);
-                    return {};
-                }
-
-                m_hairComputeQueue = queueResult.Get();
-            }
+            m_hairComputeQueue = new CpuComputeQueue(
+                m_jobContext,
+                aznumeric_cast<AZ::u32>(m_jobSystem->GetMaxConcurrency()));
         }
 
         auto hair = AZStd::make_unique<NativeHair>(
@@ -23303,25 +23266,6 @@ namespace Jolt
             ToNativeRotation(configuration.m_worldTransform.m_rotation),
             ToNativeObjectLayer(configuration.m_objectLayer));
         hair->SetScalpToHead(ToNativeTransform(configuration.m_scalpToHeadTransform));
-
-        AZStd::unique_ptr<IHairRenderBuffers> renderBuffers;
-        IHairComputeProvider* hairComputeProvider = AZ::Interface<IHairComputeProvider>::Get();
-        if (m_system.m_hairRuntime->m_backend == HairComputeBackend::PlatformGpu
-            && hairComputeProvider
-            && hairComputeProvider->GetBackend() == HairComputeBackend::PlatformGpu)
-        {
-            renderBuffers = hairComputeProvider->CreateRenderBuffers(
-                *m_system.m_hairRuntime->m_computeSystem,
-                aznumeric_cast<AZ::u32>(settings->mRenderVertices.size()),
-                sizeof(JPH::Float3));
-            if (renderBuffers
-                && !renderBuffers->Initialize(*hair))
-            {
-                AZ_Error("Jolt", false, "Failed to create renderer-owned hair position buffers.");
-                m_system.ReleaseHairDefinition(configuration.m_definitionHandle);
-                return {};
-            }
-        }
 
         if (!hair->Init(m_system.m_hairRuntime->m_computeSystem))
         {
@@ -23349,7 +23293,6 @@ namespace Jolt
 
         HairSlot& slot = m_hairSlots[hairIndex];
         slot.m_hair = AZStd::move(hair);
-        slot.m_renderBuffers = AZStd::move(renderBuffers);
         slot.m_worldTransform = configuration.m_worldTransform;
         slot.m_definitionHandle = configuration.m_definitionHandle;
         slot.m_initialized = false;
@@ -23368,14 +23311,7 @@ namespace Jolt
             return false;
         }
 
-        if (slot->m_renderBuffers
-            && !slot->m_renderBuffers->PrepareForDestruction())
-        {
-            return false;
-        }
-
         slot->m_hair.reset();
-        slot->m_renderBuffers.reset();
         slot->m_autoUpdateState.reset();
         m_system.ReleaseHairDefinition(slot->m_definitionHandle);
         slot->m_definitionHandle = {};
@@ -23456,14 +23392,6 @@ namespace Jolt
             return false;
         }
 
-        if (m_system.m_hairRuntime->m_backend == HairComputeBackend::PlatformGpu)
-        {
-            m_hairComputeQueue->ExecuteAndWait();
-            if (slot->m_renderBuffers)
-            {
-                slot->m_renderBuffers->CompleteUpdate();
-            }
-        }
         return true;
     }
 
@@ -23540,31 +23468,6 @@ namespace Jolt
         return true;
     }
 
-    bool World::AcquireHairRenderBuffer(
-        const HairHandle hairHandle,
-        HairRenderBuffer& buffer)
-    {
-        AZStd::lock_guard lock(m_mutex);
-        buffer = {};
-        HairSlot* slot = FindHair(hairHandle);
-        return slot
-            && slot->m_initialized
-            && slot->m_renderBuffers
-            && slot->m_renderBuffers->Acquire(buffer);
-    }
-
-    bool World::ImportHairRenderBufferHandoff(
-        AZ::RHI::FrameGraphBuilder& frameGraphBuilder,
-        const HairHandle hairHandle,
-        const AZ::u64 token)
-    {
-        AZStd::lock_guard lock(m_mutex);
-        HairSlot* slot = FindHair(hairHandle);
-        return slot
-            && slot->m_renderBuffers
-            && slot->m_renderBuffers->ImportHandoff(frameGraphBuilder, token);
-    }
-
     bool World::UpdateHairUnlocked(
         HairSlot& slot,
         const float deltaTime,
@@ -23596,12 +23499,6 @@ namespace Jolt
         for (const AZ::Transform& transform : jointModelTransforms)
         {
             m_hairJointTransforms.push_back(ToNativeTransform(transform));
-        }
-
-        if (slot.m_renderBuffers
-            && !slot.m_renderBuffers->BeginUpdate(*slot.m_hair))
-        {
-            return false;
         }
 
         const JPH::Mat44* jointTransforms = nullptr;
@@ -24002,7 +23899,6 @@ namespace Jolt
         }
         m_bodyRemovalsSinceBroadPhaseMaintenance = 0;
 
-        bool hairUpdated = false;
         for (HairSlot& slot : m_hairSlots)
         {
             if (!slot.m_hair || !slot.m_autoUpdateState)
@@ -24015,21 +23911,6 @@ namespace Jolt
                 slot.m_autoUpdateState->m_jointToHair,
                 slot.m_autoUpdateState->m_jointModelTransforms);
             AZ_Assert(updated, "Validated hair auto-update failed.");
-            hairUpdated |= updated;
-        }
-        if (hairUpdated
-            && m_system.m_hairRuntime->m_backend == HairComputeBackend::PlatformGpu)
-        {
-            m_hairComputeQueue->ExecuteAndWait();
-            for (HairSlot& slot : m_hairSlots)
-            {
-                if (slot.m_hair
-                    && slot.m_autoUpdateState
-                    && slot.m_renderBuffers)
-                {
-                    slot.m_renderBuffers->CompleteUpdate();
-                }
-            }
         }
         m_lastUpdateNanoseconds = static_cast<AZ::u64>(
             std::chrono::duration_cast<std::chrono::nanoseconds>(

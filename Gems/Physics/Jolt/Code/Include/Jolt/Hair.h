@@ -18,18 +18,11 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Vector4.h>
-#include <AzCore/Name/Name.h>
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/base.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/span.h>
 #include <AzCore/std/containers/vector.h>
-
-namespace AZ::RHI
-{
-    class Buffer;
-    class FrameGraphBuilder;
-} // namespace AZ::RHI
 
 namespace Jolt
 {
@@ -230,24 +223,4 @@ namespace Jolt
         QueryResult m_gridCells;
     };
 
-    struct HairRenderBuffer final
-    {
-        //! A renderable position buffer remains valid for the hair lifetime. Its contents are owned by
-        //! rendering until the matching token is returned through ImportHairRenderBufferHandoff.
-        [[nodiscard]]
-        explicit operator bool() const
-        {
-            return m_buffer
-                && !m_attachmentId.IsEmpty()
-                && m_token != 0
-                && m_vertexCount != 0
-                && m_stride != 0;
-        }
-
-        AZ::Name m_attachmentId;
-        AZ::RHI::Buffer* m_buffer = nullptr;
-        AZ::u64 m_token = 0;
-        AZ::u32 m_vertexCount = 0;
-        AZ::u32 m_stride = 0;
-    };
 } // namespace Jolt

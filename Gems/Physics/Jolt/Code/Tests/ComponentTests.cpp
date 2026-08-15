@@ -540,7 +540,6 @@ namespace Jolt
         EXPECT_TRUE(behaviorContext.m_properties.contains("ConstraintKind_Hinge"));
         EXPECT_TRUE(behaviorContext.m_properties.contains("FaceCollectionMode_Collect"));
         EXPECT_TRUE(behaviorContext.m_properties.contains("GroundState_OnGround"));
-        EXPECT_TRUE(behaviorContext.m_properties.contains("HairComputeBackend_DeterministicCpu"));
         EXPECT_TRUE(behaviorContext.m_properties.contains("MaterialCombineMode_GeometricMean"));
         EXPECT_TRUE(behaviorContext.m_properties.contains("Precision_Single"));
         EXPECT_TRUE(behaviorContext.m_properties.contains("RestoreSafety_Transactional"));

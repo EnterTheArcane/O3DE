@@ -19,6 +19,9 @@ class TestAutomation(EditorTestSuite):
     class test_Jolt_AdvancedComponents(EditorSingleTest):
         from .tests import Jolt_AdvancedComponents as test_module
 
+    class test_Jolt_CpuHair(EditorSingleTest):
+        from .tests import Jolt_CpuHair as test_module
+
     class test_Jolt_ComponentSmoke(EditorSingleTest):
         from .tests import Jolt_ComponentSmoke as test_module
 

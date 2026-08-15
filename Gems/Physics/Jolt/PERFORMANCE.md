@@ -154,7 +154,7 @@ At 128 bodies the recovery capture accounts for more than half of transactional 
 recovery capture and reduces the median by 66.4%. The safety policy is captured with the snapshot, reflected for scripts, and required to
 match across every part of a multipart restore.
 
-## Authored DX12 capture
+## Authored Profile capture
 
 `AutomatedTesting::JoltTests_Benchmark` creates an 8 by 8 by 4 stack, waits for 120 simulation ticks, keeps every body active, and captures
 30 CPU frame samples through the engine profiling capture bus. The current Windows Profile run kept all 256 bodies active, reported no

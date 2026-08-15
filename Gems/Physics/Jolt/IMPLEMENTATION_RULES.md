@@ -16,8 +16,7 @@ configuration wins over legacy language-version examples.
 - Make deterministic behavior explicit: fixed integer ticks, canonical mutation/event/query ordering, stable keys, compatibility
   fingerprints, and per-tick digests. Canonicalize and restore the floating-point environment on every calling and worker thread that
   performs physics work. Include CPU hair in snapshots and deterministic validation, but certify it only for the same binary until the
-  supported platform matrix proves bitwise cross-platform equivalence. Do not silently substitute a GPU hair backend in an authoritative
-  world.
+  supported platform matrix proves bitwise cross-platform equivalence. CPU Hair is the only supported Hair backend.
 - Keep the native Jolt allocator, job system, tracing, profiling, and assertion boundaries integrated with existing AzCore facilities.
   Do not invent parallel infrastructure.
 
@@ -75,8 +74,8 @@ configuration wins over legacy language-version examples.
 - Keep private sources under `Source/Jolt`, editor sources under `Source/Jolt/Editor`, and editor types in `namespace Jolt::Editor`. Mirror the
   public include hierarchy and use package-qualified private includes.
 - Preserve explicit CMake manifests and IDE hierarchy. Put platform implementations behind PAL files instead of shared-file conditionals.
-- Source and installed engines must both work. Keep both `FindJolt.cmake` implementations ABI-compatible and all third-party compile policy
-  target-local.
+- Source and installed engines must both work through the private `JoltNative.cmake` integration. Do not add a `FindJolt.cmake`, publish a
+  `3rdParty::Jolt` target, install native headers, or expose native ABI policy to consumers. Keep all third-party compile policy target-local.
 
 ## Verification
 
