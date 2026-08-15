@@ -5,8 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  */
 
-#include <Jolt/Editor/SceneBuilder.h>
-#include <Jolt/Editor/SkeletonBuilder.h>
+#include <Jolt/Editor/AssetBuilder.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/SceneAsset.h>
 #include <Jolt/SkeletonAsset.h>
@@ -195,39 +194,47 @@ namespace Jolt::Editor
         };
     } // namespace
 
-    TEST(EditorSceneBuilderTests, RegistrationFingerprintsNativeBuildIdentity)
+    TEST(EditorAssetBuilderTests, RegistrationFingerprintsNativeBuildIdentity)
     {
         NameDictionaryScope nameDictionaryScope;
         SystemComponentScope systemComponentScope;
         BuilderRegistrationCapture registrationCapture;
 
-        SceneBuilder sceneBuilder;
-        sceneBuilder.Register();
-        sceneBuilder.BusDisconnect();
+        AssetBuilder builder;
+        builder.Register();
+        builder.BusDisconnect();
 
-        SkeletonBuilder skeletonBuilder;
-        skeletonBuilder.Register();
-        skeletonBuilder.BusDisconnect();
-
-        ASSERT_EQ(registrationCapture.m_descriptors.size(), 2);
+        ASSERT_EQ(registrationCapture.m_descriptors.size(), 1);
         const AZStd::string fingerprint = AZStd::string::format(
             "%016llx",
             static_cast<unsigned long long>(GetNativeBuildFingerprint()));
         EXPECT_EQ(
             registrationCapture.m_descriptors[0].m_analysisFingerprint,
-            AZStd::string::format("JoltScene:%s", fingerprint.c_str()));
-        EXPECT_EQ(registrationCapture.m_descriptors[0].m_version, 2);
-
-        EXPECT_EQ(
-            registrationCapture.m_descriptors[1].m_analysisFingerprint,
-            AZStd::string::format("JoltSkeleton:%s", fingerprint.c_str()));
-        EXPECT_EQ(registrationCapture.m_descriptors[1].m_version, 2);
+            AZStd::string::format("JoltAssets:%s", fingerprint.c_str()));
+        EXPECT_EQ(registrationCapture.m_descriptors[0].m_version, 5);
+        ASSERT_EQ(registrationCapture.m_descriptors[0].m_patterns.size(), 1);
+        EXPECT_EQ(registrationCapture.m_descriptors[0].m_patterns[0].m_pattern, "*.jolt.json");
     }
 
-    TEST(EditorSceneBuilderTests, CreatesOneCriticalJobPerPlatformAndHonorsShutdown)
+    TEST(EditorAssetBuilderTests, CreatesOneCriticalJobPerPlatformAndHonorsShutdown)
     {
-        SceneBuilder builder;
+        FileIoScope fileIoScope;
+        AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
+        const AZStd::optional<AZ::IO::FixedMaxPath> scenePath = AZ::Test::CreateTestFile(
+            temporaryDirectory,
+            "scene.jolt.json",
+            R"({"Type":"JsonSerialization","Version":1,"ClassName":"SceneSourceData","ClassData":{}})");
+        ASSERT_TRUE(scenePath);
+        const AZStd::optional<AZ::IO::FixedMaxPath> skeletonPath = AZ::Test::CreateTestFile(
+            temporaryDirectory,
+            "skeleton.jolt.json",
+            R"({"Type":"JsonSerialization","Version":1,"ClassName":"SkeletonSourceData","ClassData":{}})");
+        ASSERT_TRUE(skeletonPath);
+
+        AssetBuilder builder;
         AssetBuilderSDK::CreateJobsRequest request;
+        request.m_watchFolder = temporaryDirectory.GetDirectory();
+        request.m_sourceFile = "scene.jolt.json";
         request.m_enabledPlatforms.emplace_back("pc", AZStd::unordered_set<AZStd::string>{});
         request.m_enabledPlatforms.emplace_back("linux", AZStd::unordered_set<AZStd::string>{});
 
@@ -239,29 +246,90 @@ namespace Jolt::Editor
         EXPECT_TRUE(response.m_createJobOutputs[1].m_critical);
         EXPECT_EQ(response.m_createJobOutputs[0].m_jobKey, "Jolt Scene");
 
-        builder.ShutDown();
-        AssetBuilderSDK::CreateJobsResponse shutdownResponse;
-        builder.CreateJobs(request, shutdownResponse);
-        EXPECT_EQ(shutdownResponse.m_result, AssetBuilderSDK::CreateJobsResultCode::ShuttingDown);
-        EXPECT_TRUE(shutdownResponse.m_createJobOutputs.empty());
-
-        SkeletonBuilder skeletonBuilder;
+        request.m_sourceFile = "skeleton.jolt.json";
         AssetBuilderSDK::CreateJobsResponse skeletonResponse;
-        skeletonBuilder.CreateJobs(request, skeletonResponse);
+        builder.CreateJobs(request, skeletonResponse);
         EXPECT_EQ(skeletonResponse.m_result, AssetBuilderSDK::CreateJobsResultCode::Success);
         ASSERT_EQ(skeletonResponse.m_createJobOutputs.size(), 2);
         EXPECT_TRUE(skeletonResponse.m_createJobOutputs[0].m_critical);
         EXPECT_TRUE(skeletonResponse.m_createJobOutputs[1].m_critical);
         EXPECT_EQ(skeletonResponse.m_createJobOutputs[0].m_jobKey, "Jolt Skeleton");
 
-        skeletonBuilder.ShutDown();
-        AssetBuilderSDK::CreateJobsResponse skeletonShutdownResponse;
-        skeletonBuilder.CreateJobs(request, skeletonShutdownResponse);
-        EXPECT_EQ(skeletonShutdownResponse.m_result, AssetBuilderSDK::CreateJobsResultCode::ShuttingDown);
-        EXPECT_TRUE(skeletonShutdownResponse.m_createJobOutputs.empty());
+        builder.ShutDown();
+        AssetBuilderSDK::CreateJobsResponse shutdownResponse;
+        builder.CreateJobs(request, shutdownResponse);
+        EXPECT_EQ(shutdownResponse.m_result, AssetBuilderSDK::CreateJobsResultCode::ShuttingDown);
+        EXPECT_TRUE(shutdownResponse.m_createJobOutputs.empty());
     }
 
-    TEST(EditorSceneBuilderTests, ProcessesJsonSourceIntoLoadableBinaryAsset)
+    TEST(EditorAssetBuilderTests, RejectsUnsupportedDocumentClassesWithoutPublishingProducts)
+    {
+        FileIoScope fileIoScope;
+        AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
+        const AZStd::optional<AZ::IO::FixedMaxPath> sourcePath = AZ::Test::CreateTestFile(
+            temporaryDirectory,
+            "unsupported.jolt.json",
+            R"({"Type":"JsonSerialization","Version":1,"ClassName":"UnknownSourceData","ClassData":{}})");
+        ASSERT_TRUE(sourcePath);
+
+        AssetBuilder builder;
+        AssetBuilderSDK::CreateJobsRequest createRequest;
+        createRequest.m_watchFolder = temporaryDirectory.GetDirectory();
+        createRequest.m_sourceFile = "unsupported.jolt.json";
+        createRequest.m_enabledPlatforms.emplace_back("pc", AZStd::unordered_set<AZStd::string>{});
+        AssetBuilderSDK::CreateJobsResponse createResponse;
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        builder.CreateJobs(createRequest, createResponse);
+        EXPECT_EQ(createResponse.m_result, AssetBuilderSDK::CreateJobsResultCode::Failed);
+        EXPECT_TRUE(createResponse.m_createJobOutputs.empty());
+
+        AssetBuilderSDK::ProcessJobRequest processRequest;
+        processRequest.m_fullPath = sourcePath->String();
+        processRequest.m_sourceFile = "unsupported.jolt.json";
+        processRequest.m_tempDirPath = temporaryDirectory.GetDirectory();
+        AssetBuilderSDK::ProcessJobResponse processResponse;
+        builder.ProcessJob(processRequest, processResponse);
+        EXPECT_EQ(processResponse.m_resultCode, AssetBuilderSDK::ProcessJobResult_Failed);
+        EXPECT_TRUE(processResponse.m_outputProducts.empty());
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
+    }
+
+    TEST(EditorAssetBuilderTests, RejectsInvalidDocumentEnvelopes)
+    {
+        FileIoScope fileIoScope;
+        AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
+        constexpr AZStd::array InvalidDocuments = {
+            R"({"Version":1,"ClassName":"SceneSourceData","ClassData":{}})",
+            R"({"Type":"JsonSerialization","Version":2,"ClassName":"SceneSourceData","ClassData":{}})",
+            R"({"Type":"JsonSerialization","Version":1,"ClassData":{}})",
+        };
+
+        AssetBuilder builder;
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        for (size_t documentIndex = 0; documentIndex < InvalidDocuments.size(); ++documentIndex)
+        {
+            const AZStd::string sourceFile = AZStd::string::format(
+                "invalid_%zu.jolt.json",
+                documentIndex);
+            const AZStd::optional<AZ::IO::FixedMaxPath> sourcePath = AZ::Test::CreateTestFile(
+                temporaryDirectory,
+                AZ::IO::PathView(sourceFile),
+                InvalidDocuments[documentIndex]);
+            ASSERT_TRUE(sourcePath);
+
+            AssetBuilderSDK::CreateJobsRequest request;
+            request.m_watchFolder = temporaryDirectory.GetDirectory();
+            request.m_sourceFile = sourceFile;
+            request.m_enabledPlatforms.emplace_back("pc", AZStd::unordered_set<AZStd::string>{});
+            AssetBuilderSDK::CreateJobsResponse response;
+            builder.CreateJobs(request, response);
+            EXPECT_EQ(response.m_result, AssetBuilderSDK::CreateJobsResultCode::Failed);
+            EXPECT_TRUE(response.m_createJobOutputs.empty());
+        }
+        AZ_TEST_STOP_TRACE_SUPPRESSION(3);
+    }
+
+    TEST(EditorAssetBuilderTests, ProcessesJsonSourceIntoLoadableBinaryAsset)
     {
         NameDictionaryScope nameDictionaryScope;
         FileIoScope fileIoScope;
@@ -299,7 +367,7 @@ namespace Jolt::Editor
         AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
         const AZStd::optional<AZ::IO::FixedMaxPath> sourcePath = AZ::Test::CreateTestFile(
             temporaryDirectory,
-            "source/test.joltscene",
+            "source/test_scene.jolt.json",
             "{}");
         ASSERT_TRUE(sourcePath);
         AZStd::string serializationIssues;
@@ -331,16 +399,19 @@ namespace Jolt::Editor
         SystemComponentScope systemComponentScope;
         ASSERT_TRUE(AZ::Interface<ISystem>::Get());
 
-        SceneBuilder builder;
+        AssetBuilder builder;
         AssetBuilderSDK::ProcessJobRequest request;
         request.m_fullPath = sourcePath->String();
-        request.m_sourceFile = "test.joltscene";
+        request.m_sourceFile = "test_scene.jolt.json";
         request.m_tempDirPath = temporaryDirectory.GetDirectory();
         AssetBuilderSDK::ProcessJobResponse response;
         builder.ProcessJob(request, response);
         ASSERT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
         ASSERT_EQ(response.m_outputProducts.size(), 1);
         EXPECT_EQ(response.m_outputProducts.front().m_productAssetType, SceneAssetTypeId);
+        EXPECT_EQ(response.m_outputProducts.front().m_productSubID, 1);
+        EXPECT_TRUE(
+            AZStd::string_view(response.m_outputProducts.front().m_productFileName).ends_with("test_scene.jolt"));
 
         SceneAsset loadedAsset;
         EXPECT_TRUE(AZ::Utils::LoadObjectFromFileInPlace(
@@ -374,7 +445,7 @@ namespace Jolt::Editor
         EXPECT_TRUE(system->DestroySceneDefinition(definitionHandle));
     }
 
-    TEST(EditorSceneBuilderTests, ProcessesSkeletonAndAnimationsIntoValidatedNativeArchives)
+    TEST(EditorAssetBuilderTests, ProcessesSkeletonAndAnimationsIntoValidatedNativeArchives)
     {
         NameDictionaryScope nameDictionaryScope;
         FileIoScope fileIoScope;
@@ -418,7 +489,7 @@ namespace Jolt::Editor
         AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
         const AZStd::optional<AZ::IO::FixedMaxPath> sourcePath = AZ::Test::CreateTestFile(
             temporaryDirectory,
-            "source/test.joltskeleton",
+            "source/test_skeleton.jolt.json",
             "{}");
         ASSERT_TRUE(sourcePath);
         const AZ::Outcome<void, AZStd::string> saveResult = AZ::JsonSerializationUtils::SaveObjectToFile(
@@ -439,17 +510,20 @@ namespace Jolt::Editor
 
         AssetBuilderSDK::ProcessJobRequest request;
         request.m_fullPath = sourcePath->String();
-        request.m_sourceFile = "test.joltskeleton";
+        request.m_sourceFile = "test_skeleton.jolt.json";
         request.m_tempDirPath = temporaryDirectory.GetDirectory();
         AssetBuilderSDK::ProcessJobResponse response;
-        SkeletonBuilder builder;
-        EXPECT_EQ(AZ::Interface<ISystem>::Get(), nullptr);
+        AssetBuilder builder;
+        EXPECT_FALSE(AZ::Interface<ISystem>::Get());
         builder.Register();
-        EXPECT_EQ(AZ::Interface<ISystem>::Get(), nullptr);
+        EXPECT_FALSE(AZ::Interface<ISystem>::Get());
         builder.ProcessJob(request, response);
         ASSERT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
         ASSERT_EQ(response.m_outputProducts.size(), 1);
         EXPECT_EQ(response.m_outputProducts.front().m_productAssetType, SkeletonAssetTypeId);
+        EXPECT_EQ(response.m_outputProducts.front().m_productSubID, 1);
+        EXPECT_TRUE(
+            AZStd::string_view(response.m_outputProducts.front().m_productFileName).ends_with("test_skeleton.jolt"));
 
         SkeletonAsset loadedAsset;
         ASSERT_TRUE(AZ::Utils::LoadObjectFromFileInPlace(
@@ -462,7 +536,7 @@ namespace Jolt::Editor
 
         SystemComponentScope systemComponentScope;
         ISystem* system = AZ::Interface<ISystem>::Get();
-        ASSERT_NE(system, nullptr);
+        ASSERT_TRUE(system);
         const SkeletonDefinitionHandle skeletonHandle = system->ImportSkeletonDefinition(loadedAsset.m_data.m_skeleton);
         ASSERT_TRUE(skeletonHandle);
         const SkeletalAnimationHandle animationHandle =

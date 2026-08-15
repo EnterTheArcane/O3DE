@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include <Jolt/Editor/SkeletonBuilder.h>
 #include <Jolt/System.h>
 #include <Jolt/TypeIds.h>
 
@@ -19,14 +18,14 @@
 
 namespace Jolt::Editor
 {
-    class SceneBuilder final
+    class AssetBuilder final
         : public AssetBuilderSDK::AssetBuilderCommandBus::Handler
     {
     public:
-        AZ_RTTI(SceneBuilder, SceneBuilderTypeId);
+        AZ_RTTI(AssetBuilder, AssetBuilderTypeId);
 
-        SceneBuilder() = default;
-        ~SceneBuilder() override;
+        AssetBuilder() = default;
+        ~AssetBuilder() override;
 
         void Register();
 
@@ -62,7 +61,6 @@ namespace Jolt::Editor
         void Deactivate() override;
 
     private:
-        SceneBuilder m_builder;
-        SkeletonBuilder m_skeletonBuilder;
+        AssetBuilder m_builder;
     };
 } // namespace Jolt::Editor

@@ -748,9 +748,10 @@
                     "Configuration": {
                         "Asset": {
                             "assetId": {
-                                "guid": "{B3CA5A90-579A-5AF7-9026-B04D52963394}"
+                                "guid": "{17BB9A47-027C-5E54-9783-2D9621925370}",
+                                "subId": 1
                             },
-                            "assetHint": "assets/physics/jolt/test_scene.joltscene"
+                            "assetHint": "assets/physics/jolt/test_scene.jolt"
                         }
                     }
                 },
@@ -810,9 +811,10 @@
                     "Configuration": {
                         "Asset": {
                             "assetId": {
-                                "guid": "{A62C6992-9441-5B36-A8BB-6E33768F1F4D}"
+                                "guid": "{789AAEAD-6FDB-582B-A738-5478E1A89B9C}",
+                                "subId": 1
                             },
-                            "assetHint": "assets/physics/jolt/test_skeleton.joltskeleton"
+                            "assetHint": "assets/physics/jolt/test_skeleton.jolt"
                         }
                     }
                 },

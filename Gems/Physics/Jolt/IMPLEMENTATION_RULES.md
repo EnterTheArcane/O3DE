@@ -74,6 +74,9 @@ configuration wins over legacy language-version examples.
 - Keep private sources under `Source/Jolt`, editor sources under `Source/Jolt/Editor`, and editor types in `namespace Jolt::Editor`. Mirror the
   public include hierarchy and use package-qualified private includes.
 - Preserve explicit CMake manifests and IDE hierarchy. Put platform implementations behind PAL files instead of shared-file conditionals.
+- Store JSON-authored Jolt source documents as `*.jolt.json`. Route the closed document set by its stable root `ClassName` and reject unknown
+  classes before processing. Compile each document to a `.jolt` product and use its catalog asset type, not its extension, to identify the
+  runtime schema. Reserve product sub-ID zero for the engine's generic JSON product and use stable nonzero sub-IDs for compiled products.
 - Source and installed engines must both work through the private `JoltNative.cmake` integration. Do not add a `FindJolt.cmake`, publish a
   `3rdParty::Jolt` target, install native headers, or expose native ABI policy to consumers. Keep all third-party compile policy target-local.
 

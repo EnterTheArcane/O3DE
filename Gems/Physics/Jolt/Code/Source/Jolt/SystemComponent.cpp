@@ -477,10 +477,7 @@ namespace Jolt
                 SkeletonAssetTypeId);
             AZ::Data::AssetCatalogRequestBus::Broadcast(
                 &AZ::Data::AssetCatalogRequests::AddExtension,
-                "joltscene");
-            AZ::Data::AssetCatalogRequestBus::Broadcast(
-                &AZ::Data::AssetCatalogRequests::AddExtension,
-                "joltskeleton");
+                "jolt");
         }
     }
 

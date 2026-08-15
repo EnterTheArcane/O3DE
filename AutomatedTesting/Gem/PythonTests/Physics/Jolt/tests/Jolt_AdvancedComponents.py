@@ -71,14 +71,14 @@ def Jolt_AdvancedComponents():
         editor_components.append(component)
 
     skeleton_asset = Asset.find_asset_by_path(
-        "assets/physics/jolt/test_skeleton.joltskeleton"
+        "assets/physics/jolt/test_skeleton.jolt"
     )
     editor_components[4].set_component_property_value(
         "Configuration|Asset",
         skeleton_asset.id,
     )
     scene_asset = Asset.find_asset_by_path(
-        "assets/physics/jolt/test_scene.joltscene"
+        "assets/physics/jolt/test_scene.jolt"
     )
     editor_components[5].set_component_property_value(
         "Configuration|Asset",

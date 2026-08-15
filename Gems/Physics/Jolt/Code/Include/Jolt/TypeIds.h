@@ -74,7 +74,7 @@ namespace Jolt
     inline constexpr AZ::TypeId SceneAssetDataTypeId{"{32EA50CD-B2D4-489D-9160-C2130520EADC}"};
     inline constexpr AZ::TypeId SceneSourceDataTypeId{"{A107BA80-FE2F-4213-A56E-4188CB76149C}"};
     inline constexpr AZ::TypeId SceneAssetTypeId{"{08D40858-7159-4DD8-B18D-83578C71BB96}"};
-    inline constexpr AZ::TypeId SceneBuilderTypeId{"{453D17FB-C6CB-4059-94FC-3273FF3C1C55}"};
+    inline constexpr AZ::TypeId AssetBuilderTypeId{"{453D17FB-C6CB-4059-94FC-3273FF3C1C55}"};
     inline constexpr AZ::TypeId BuilderComponentTypeId{"{0B35BDEC-51D9-4B10-A264-7135836EFFAD}"};
     inline constexpr AZ::TypeId NamedSkeletalAnimationSourceTypeId{"{5D7BD42D-DD1B-4A97-A9B6-7CC046748C7D}"};
     inline constexpr AZ::TypeId NamedSkeletalAnimationAssetTypeId{"{965670C6-7174-4889-A403-026A28FBBF57}"};
@@ -85,7 +85,6 @@ namespace Jolt
     inline constexpr AZ::TypeId SkeletonSourceDataTypeId{"{6ABA401F-6C33-4EAC-816D-C004BCF403C3}"};
     inline constexpr AZ::TypeId SkeletonAssetDataTypeId{"{BFACCCB9-FD8C-4ED4-8253-AEEF6696AE2F}"};
     inline constexpr AZ::TypeId SkeletonAssetTypeId{"{545271AB-9343-42F5-B579-BC37D072F16B}"};
-    inline constexpr AZ::TypeId SkeletonBuilderTypeId{"{8A3A24DB-B8E6-4688-B365-F7E46AC1C9B4}"};
     inline constexpr AZ::TypeId SkeletonComponentConfigurationTypeId{"{8027EB75-5EDF-41CF-ABF9-856FA1243FE3}"};
     inline constexpr AZ::TypeId SkeletonComponentTypeId{"{0B4872D0-DCFC-409A-BA16-A31BEE7FE8C5}"};
     inline constexpr AZ::TypeId EditorSkeletonComponentTypeId{"{9FD80DCE-7450-46EE-B7DB-24C2C6EBB705}"};

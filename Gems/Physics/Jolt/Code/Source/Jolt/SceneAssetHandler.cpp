@@ -74,7 +74,7 @@ namespace Jolt
     void SceneAssetHandler::GetAssetTypeExtensions(
         AZStd::vector<AZStd::string>& extensions)
     {
-        extensions.emplace_back("joltscene");
+        extensions.emplace_back("jolt");
     }
 
     const char* SceneAssetHandler::GetAssetTypeDisplayName() const

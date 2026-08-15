@@ -6,5 +6,5 @@
 #
 
 set(FILES
-    Tests/EditorSceneBuilderTests.cpp
+    Tests/EditorAssetBuilderTests.cpp
 )

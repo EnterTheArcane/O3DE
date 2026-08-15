@@ -2431,6 +2431,10 @@ namespace Jolt
         SkeletonAssetHandler assetHandler;
         EXPECT_EQ(assetHandler.GetComponentTypeId(), EditorSkeletonComponentTypeId);
         EXPECT_TRUE(assetHandler.CanCreateComponent({}));
+        AZStd::vector<AZStd::string> extensions;
+        assetHandler.GetAssetTypeExtensions(extensions);
+        EXPECT_EQ(extensions, AZStd::vector<AZStd::string>{"jolt"});
+
         System system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
@@ -2577,6 +2581,10 @@ namespace Jolt
         SceneAssetHandler assetHandler;
         EXPECT_EQ(assetHandler.GetComponentTypeId(), EditorSceneComponentTypeId);
         EXPECT_TRUE(assetHandler.CanCreateComponent({}));
+        AZStd::vector<AZStd::string> extensions;
+        assetHandler.GetAssetTypeExtensions(extensions);
+        EXPECT_EQ(extensions, AZStd::vector<AZStd::string>{"jolt"});
+
         System system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 

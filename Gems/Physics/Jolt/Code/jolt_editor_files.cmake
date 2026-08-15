@@ -6,10 +6,8 @@
 #
 
 set(FILES
-    Source/Jolt/Editor/SceneBuilder.cpp
-    Source/Jolt/Editor/SceneBuilder.h
-    Source/Jolt/Editor/SkeletonBuilder.cpp
-    Source/Jolt/Editor/SkeletonBuilder.h
+    Source/Jolt/Editor/AssetBuilder.cpp
+    Source/Jolt/Editor/AssetBuilder.h
     Source/Jolt/Editor/SkeletonComponent.cpp
     Source/Jolt/Editor/SkeletonComponent.h
     Source/Jolt/Editor/CharacterDebug.cpp

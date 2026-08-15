@@ -75,7 +75,7 @@ namespace Jolt
     void SkeletonAssetHandler::GetAssetTypeExtensions(
         AZStd::vector<AZStd::string>& extensions)
     {
-        extensions.emplace_back("joltskeleton");
+        extensions.emplace_back("jolt");
     }
 
     const char* SkeletonAssetHandler::GetAssetTypeDisplayName() const

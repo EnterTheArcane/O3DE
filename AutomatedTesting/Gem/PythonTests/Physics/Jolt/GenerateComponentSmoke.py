@@ -41,13 +41,13 @@ def GenerateComponentSmoke():
 
     scene = EditorEntity.create_editor_entity("Jolt Saved Scene", level_id)
     scene_component = scene.add_component("Jolt Scene")
-    scene_asset = Asset.find_asset_by_path("assets/physics/jolt/test_scene.joltscene")
+    scene_asset = Asset.find_asset_by_path("assets/physics/jolt/test_scene.jolt")
     scene_component.set_component_property_value("Configuration|Asset", scene_asset.id)
     components.TransformBus(bus.Event, "SetWorldTranslation", scene.id, math.Vector3(10.0, 0.0, 0.0))
 
     skeleton = EditorEntity.create_editor_entity("Jolt Saved Skeleton", level_id)
     skeleton_component = skeleton.add_component("Jolt Skeleton")
-    skeleton_asset = Asset.find_asset_by_path("assets/physics/jolt/test_skeleton.joltskeleton")
+    skeleton_asset = Asset.find_asset_by_path("assets/physics/jolt/test_skeleton.jolt")
     skeleton_component.set_component_property_value("Configuration|Asset", skeleton_asset.id)
     components.TransformBus(bus.Event, "SetWorldTranslation", skeleton.id, math.Vector3(20.0, 0.0, 0.0))
 

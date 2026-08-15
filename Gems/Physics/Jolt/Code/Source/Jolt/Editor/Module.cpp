@@ -16,7 +16,7 @@
 #include <Jolt/Editor/RagdollComponent.h>
 #include <Jolt/Editor/RigidBodyComponent.h>
 #include <Jolt/Editor/SceneComponent.h>
-#include <Jolt/Editor/SceneBuilder.h>
+#include <Jolt/Editor/AssetBuilder.h>
 #include <Jolt/Editor/SkeletonComponent.h>
 #include <Jolt/Editor/SoftBodyComponent.h>
 #include <Jolt/Editor/StaticRigidBodyComponent.h>

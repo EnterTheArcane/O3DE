@@ -38,7 +38,7 @@ namespace Jolt
                         AZ::Edit::UIHandlers::Default,
                         &SkeletonComponentConfiguration::m_asset,
                         "Asset",
-                        "A compiled .joltskeleton asset.");
+                        "A compiled .jolt skeleton asset.");
             }
         }
     }
