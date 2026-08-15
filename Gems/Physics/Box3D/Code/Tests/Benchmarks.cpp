@@ -22,21 +22,41 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/limits.h>
 #include <AzTest/AzTest.h>
+#include <AzTest/Benchmark/BenchmarkEnvironment.h>
 
 namespace Box3D::Benchmarks
 {
     namespace
     {
+        constexpr AZ::u32 ValidationFrameCount = 600;
+        constexpr float MatchedGridSpacing = 1.1f;
+        constexpr AZ::u32 WarmupFrameCount = 600;
+
+        void AddCpuAffinityCounters(
+            benchmark::State& state,
+            const AZ::Test::ScopedBenchmarkCpuAffinity& cpuAffinity)
+        {
+            state.counters["AffinityConstrained"] = 0;
+            if (cpuAffinity.IsConstrained())
+            {
+                state.counters["AffinityConstrained"] = 1;
+            }
+            state.counters["AffinityProcessors"] = cpuAffinity.GetProcessorCount();
+        }
+
         class JobContextScope final
         {
         public:
             explicit JobContextScope(
                 AZ::u32 workerCount)
-                : m_jobManager(
+                : m_cpuAffinity(AZ::Test::GetBenchmarkCpuAffinity())
+                , m_jobManager(
                     [workerCount]
                     {
                         AZ::JobManagerDesc descriptor;
-                        descriptor.m_workerThreads.resize(workerCount);
+                        AZ::Test::GetBenchmarkCpuAffinity().ConfigureJobManagerThreads(
+                            descriptor,
+                            workerCount);
                         return descriptor;
                     }())
                 , m_jobContext(m_jobManager)
@@ -49,7 +69,14 @@ namespace Box3D::Benchmarks
                 return m_jobContext;
             }
 
+            void AddCounters(
+                benchmark::State& state) const
+            {
+                AddCpuAffinityCounters(state, m_cpuAffinity);
+            }
+
         private:
+            const AZ::Test::ScopedBenchmarkCpuAffinity& m_cpuAffinity;
             AZ::JobManager m_jobManager;
             AZ::JobContext m_jobContext;
         };
@@ -59,12 +86,15 @@ namespace Box3D::Benchmarks
             System& system,
             WorldHandle worldHandle,
             BodyType bodyType,
-            const AZ::Vector3& position)
+            const AZ::Vector3& position,
+            const float damping = 0.0f)
         {
             RigidBodyConfiguration configuration;
             configuration.m_bodyType = bodyType;
             configuration.m_transform = AZ::Transform::CreateTranslation(position);
+            configuration.m_angularDamping = damping;
             configuration.m_enableSleep = false;
+            configuration.m_linearDamping = damping;
             return system.CreateBody(worldHandle, configuration);
         }
 
@@ -73,10 +103,15 @@ namespace Box3D::Benchmarks
             System& system,
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float radius = 0.5f)
+            float radius = 0.5f,
+            MaterialHandle materialHandle = MaterialHandle::Invalid)
         {
             ShapeConfiguration configuration;
             configuration.m_geometry = SphereShapeConfiguration{radius};
+            if (materialHandle)
+            {
+                configuration.m_properties.m_materials.push_back(materialHandle);
+            }
             configuration.m_properties.m_enableContactEvents = false;
             configuration.m_properties.m_enableHitEvents = false;
             return system.CreateShape(worldHandle, bodyHandle, configuration);
@@ -87,10 +122,15 @@ namespace Box3D::Benchmarks
             System& system,
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            const AZ::Vector3& halfExtents)
+            const AZ::Vector3& halfExtents,
+            MaterialHandle materialHandle = MaterialHandle::Invalid)
         {
             ShapeConfiguration configuration;
             configuration.m_geometry = BoxShapeConfiguration{halfExtents};
+            if (materialHandle)
+            {
+                configuration.m_properties.m_materials.push_back(materialHandle);
+            }
             configuration.m_properties.m_enableContactEvents = false;
             configuration.m_properties.m_enableHitEvents = false;
             return system.CreateShape(worldHandle, bodyHandle, configuration);
@@ -120,7 +160,7 @@ namespace Box3D::Benchmarks
         }
     } // namespace
 
-    void StepFallingSpheres(
+    void StepFallingBoxes(
         benchmark::State& state)
     {
         const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
@@ -151,14 +191,34 @@ namespace Box3D::Benchmarks
             return;
         }
 
+        MaterialConfiguration materialConfiguration;
+        materialConfiguration.m_friction = 0.0f;
+        materialConfiguration.m_restitution = 0.0f;
+        const MaterialHandle materialHandle = system.CreateMaterial(materialConfiguration);
+        if (!materialHandle)
+        {
+            state.SkipWithError("Failed to create the benchmark material.");
+            return;
+        }
+
         const BodyHandle ground = CreateBody(system, worldHandle, BodyType::Static, AZ::Vector3(0.0f, 0.0f, -0.5f));
-        if (!ground || !CreateBox(system, worldHandle, ground, AZ::Vector3(64.0f, 64.0f, 0.5f)))
+        if (!ground
+            || !CreateBox(
+                system,
+                worldHandle,
+                ground,
+                AZ::Vector3(64.0f, 64.0f, 0.5f),
+                materialHandle))
         {
             state.SkipWithError("Failed to create the benchmark ground.");
             return;
         }
 
-        constexpr AZ::u32 rowWidth = 16;
+        AZ::u32 rowWidth = 16;
+        if (bodyCount > rowWidth * rowWidth)
+        {
+            rowWidth = 32;
+        }
         AZStd::vector<BodyHandle> bodies;
         bodies.reserve(bodyCount);
         for (AZ::u32 bodyIndex = 0; bodyIndex < bodyCount; ++bodyIndex)
@@ -167,11 +227,24 @@ namespace Box3D::Benchmarks
             const AZ::u32 rowIndex = (bodyIndex / rowWidth) % rowWidth;
             const AZ::u32 columnIndex = bodyIndex % rowWidth;
             const AZ::Vector3 position(
-                static_cast<float>(columnIndex) - 0.5f * static_cast<float>(rowWidth),
-                static_cast<float>(rowIndex) - 0.5f * static_cast<float>(rowWidth),
-                0.6f + static_cast<float>(layerIndex) * 1.1f);
-            const BodyHandle bodyHandle = CreateBody(system, worldHandle, BodyType::Dynamic, position);
-            if (!bodyHandle || !CreateSphere(system, worldHandle, bodyHandle))
+                MatchedGridSpacing
+                    * (static_cast<float>(columnIndex) - 0.5f * static_cast<float>(rowWidth)),
+                MatchedGridSpacing
+                    * (static_cast<float>(rowIndex) - 0.5f * static_cast<float>(rowWidth)),
+                0.6f + static_cast<float>(layerIndex) * MatchedGridSpacing);
+            const BodyHandle bodyHandle = CreateBody(
+                system,
+                worldHandle,
+                BodyType::Dynamic,
+                position,
+                1.0f);
+            if (!bodyHandle
+                || !CreateBox(
+                    system,
+                    worldHandle,
+                    bodyHandle,
+                    AZ::Vector3(0.5f),
+                    materialHandle))
             {
                 state.SkipWithError("Failed to create a benchmark body.");
                 return;
@@ -179,57 +252,15 @@ namespace Box3D::Benchmarks
             bodies.push_back(bodyHandle);
         }
 
-        constexpr AZ::u32 minimumWarmupTickCount = 30;
-        constexpr AZ::u32 maximumWarmupTickCount = 600;
-        constexpr AZ::u32 requiredStableTickCount = 5;
-        constexpr float maximumStableDisplacement = 0.02f;
-        AZStd::vector<AZ::Vector3> previousPositions(bodyCount);
-        AZ::u32 stableTickCount = 0;
-        AZ::u32 warmupTickCount = 0;
-        for (; warmupTickCount < maximumWarmupTickCount && stableTickCount < requiredStableTickCount; ++warmupTickCount)
+        for (AZ::u32 warmupTick = 0; warmupTick < WarmupFrameCount; ++warmupTick)
         {
-            bool statesValid = true;
-            for (size_t bodyIndex = 0; bodyIndex < bodies.size(); ++bodyIndex)
-            {
-                BodyState bodyState;
-                statesValid = system.GetBodyState(worldHandle, bodies[bodyIndex], bodyState) && statesValid;
-                previousPositions[bodyIndex] = bodyState.m_transform.GetTranslation();
-            }
-            if (!statesValid || !system.StepWorld(worldHandle, worldConfiguration.m_fixedTimeStep))
+            if (!system.StepWorld(worldHandle, worldConfiguration.m_fixedTimeStep))
             {
                 state.SkipWithError("Failed to warm the benchmark world.");
                 return;
             }
-
-            float maximumDisplacement = 0.0f;
-            for (size_t bodyIndex = 0; bodyIndex < bodies.size(); ++bodyIndex)
-            {
-                BodyState bodyState;
-                statesValid = system.GetBodyState(worldHandle, bodies[bodyIndex], bodyState) && statesValid;
-                maximumDisplacement =
-                    AZStd::max(maximumDisplacement, bodyState.m_transform.GetTranslation().GetDistance(previousPositions[bodyIndex]));
-            }
-            if (warmupTickCount + 1 >= minimumWarmupTickCount && statesValid && maximumDisplacement <= maximumStableDisplacement)
-            {
-                ++stableTickCount;
-            }
-            else
-            {
-                stableTickCount = 0;
-            }
-        }
-        if (stableTickCount < requiredStableTickCount)
-        {
-            state.SkipWithError("The benchmark world did not reach the required steady state.");
-            return;
         }
 
-        for ([[maybe_unused]] auto iteration : state)
-        {
-            benchmark::DoNotOptimize(system.StepWorld(worldHandle, worldConfiguration.m_fixedTimeStep));
-        }
-
-        benchmark::DoNotOptimize(system.GetStateDigest(worldHandle));
         AZStd::vector<AZ::Vector3> positions;
         positions.reserve(bodies.size());
         bool statesValid = true;
@@ -244,10 +275,16 @@ namespace Box3D::Benchmarks
             }
             positions.push_back(bodyState.m_transform.GetTranslation());
         }
-        const bool validationStepCompleted = system.StepWorld(worldHandle, worldConfiguration.m_fixedTimeStep);
+
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            benchmark::DoNotOptimize(system.StepWorld(worldHandle, worldConfiguration.m_fixedTimeStep));
+        }
+
+        benchmark::DoNotOptimize(system.GetStateDigest(worldHandle));
         float minimumHeight = AZStd::numeric_limits<float>::max();
         float maximumDisplacement = 0.0f;
-        bool qualityValid = validationStepCompleted && statesValid;
+        bool qualityValid = statesValid;
         for (size_t bodyIndex = 0; bodyIndex < bodies.size(); ++bodyIndex)
         {
             BodyState bodyState;
@@ -260,10 +297,15 @@ namespace Box3D::Benchmarks
         }
         qualityValid = qualityValid && minimumHeight >= 0.45f && maximumDisplacement <= 0.02f;
         AddStepCounters(state, system, worldHandle);
+        jobContextScope.AddCounters(state);
+        state.counters["AngularDamping"] = 1;
         state.counters["DynamicBodies"] = bodyCount;
+        state.counters["Friction"] = 0;
         state.counters["Ccd"] = 0;
         state.counters["MaximumDisplacement"] = maximumDisplacement;
         state.counters["MinimumHeight"] = minimumHeight;
+        state.counters["Layers"] = (bodyCount - 1) / (rowWidth * rowWidth) + 1;
+        state.counters["LinearDamping"] = 1;
         state.counters["Notifications"] = 0;
         state.counters["QualityValid"] = 0;
         if (qualityValid)
@@ -271,8 +313,12 @@ namespace Box3D::Benchmarks
             state.counters["QualityValid"] = 1;
         }
         state.counters["Sleep"] = 0;
-        state.counters["WarmupTicks"] = warmupTickCount;
-        state.counters["WarmupStable"] = 1;
+        state.counters["GridSpacingMillimeters"] = 1100;
+        state.counters["RowWidth"] = rowWidth;
+        state.counters["Restitution"] = 0;
+        state.counters["ValidationFrames"] = ValidationFrameCount;
+        state.counters["WarmupTicks"] = WarmupFrameCount;
+        state.counters["WarmupCompleted"] = 1;
         state.SetItemsProcessed(state.iterations() * bodyCount);
     }
 
@@ -281,6 +327,7 @@ namespace Box3D::Benchmarks
     {
         const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
+        const AZ::Test::ScopedBenchmarkCpuAffinity& cpuAffinity = AZ::Test::GetBenchmarkCpuAffinity();
         SystemConfiguration systemConfiguration;
         systemConfiguration.m_workerCount = workerCount;
         systemConfiguration.m_dynamicBodyCapacity = bodyCount;
@@ -307,6 +354,7 @@ namespace Box3D::Benchmarks
         }
 
         state.counters["DynamicBodies"] = bodyCount;
+        AddCpuAffinityCounters(state, cpuAffinity);
         state.counters["Notifications"] = 0;
         state.counters["Workers"] = workerCount;
         state.SetItemsProcessed(state.iterations() * bodyCount);
@@ -318,6 +366,7 @@ namespace Box3D::Benchmarks
         const AZ::u32 obstacleCount = aznumeric_cast<AZ::u32>(state.range(0));
         const AZ::u32 rayCount = aznumeric_cast<AZ::u32>(state.range(1));
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(2));
+        const AZ::Test::ScopedBenchmarkCpuAffinity& cpuAffinity = AZ::Test::GetBenchmarkCpuAffinity();
         SystemConfiguration systemConfiguration;
         systemConfiguration.m_workerCount = workerCount;
         systemConfiguration.m_staticBodyCapacity = obstacleCount;
@@ -355,6 +404,7 @@ namespace Box3D::Benchmarks
         request.m_direction = -AZ::Vector3::CreateAxisZ();
         request.m_distance = 20.0f;
         QueryHit hit;
+        bool qualityValid = false;
         for ([[maybe_unused]] auto iteration : state)
         {
             for (AZ::u32 rayIndex = 0; rayIndex < rayCount; ++rayIndex)
@@ -364,11 +414,18 @@ namespace Box3D::Benchmarks
                     2.0f * static_cast<float>(obstacleIndex % rowWidth),
                     2.0f * static_cast<float>(obstacleIndex / rowWidth),
                     10.0f);
-                benchmark::DoNotOptimize(worldQueries->RaycastClosest(request, hit));
+                qualityValid = worldQueries->RaycastClosest(request, hit);
+                benchmark::DoNotOptimize(qualityValid);
             }
         }
 
         state.counters["Obstacles"] = obstacleCount;
+        AddCpuAffinityCounters(state, cpuAffinity);
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
         state.counters["Workers"] = workerCount;
         state.SetItemsProcessed(state.iterations() * rayCount);
     }
@@ -433,17 +490,35 @@ namespace Box3D::Benchmarks
 
         constexpr auto warmupDuration = AZStd::chrono::milliseconds(100);
         const auto warmupDeadline = AZStd::chrono::steady_clock::now() + warmupDuration;
+        BufferResult batchResult;
         do
         {
-            benchmark::DoNotOptimize(system.RaycastClosestBatch(worldHandle, requests, results));
+            batchResult = system.RaycastClosestBatch(worldHandle, requests, results);
+            benchmark::DoNotOptimize(batchResult);
         } while (AZStd::chrono::steady_clock::now() < warmupDeadline);
 
         for ([[maybe_unused]] auto iteration : state)
         {
-            benchmark::DoNotOptimize(system.RaycastClosestBatch(worldHandle, requests, results));
+            batchResult = system.RaycastClosestBatch(worldHandle, requests, results);
+            benchmark::DoNotOptimize(batchResult);
         }
 
+        bool qualityValid = batchResult.m_count == rayCount
+            && batchResult.m_requiredCount == rayCount;
+        for (const ClosestQueryResult& result : results)
+        {
+            qualityValid = result.m_found
+                && result.m_hit.m_bodyHandle
+                && result.m_hit.m_shapeHandle
+                && qualityValid;
+        }
         state.counters["Obstacles"] = obstacleCount;
+        jobContextScope.AddCounters(state);
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
         state.counters["WarmupMs"] = static_cast<double>(warmupDuration.count());
         state.counters["Workers"] = workerCount;
         state.SetItemsProcessed(state.iterations() * rayCount);
@@ -496,6 +571,7 @@ namespace Box3D::Benchmarks
         const AZ::u32 obstacleCount = aznumeric_cast<AZ::u32>(state.range(0));
         const AZ::u32 queryCount = aznumeric_cast<AZ::u32>(state.range(1));
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(2));
+        const AZ::Test::ScopedBenchmarkCpuAffinity& cpuAffinity = AZ::Test::GetBenchmarkCpuAffinity();
         SystemConfiguration systemConfiguration;
         systemConfiguration.m_workerCount = workerCount;
         systemConfiguration.m_staticBodyCapacity = obstacleCount;
@@ -539,6 +615,7 @@ namespace Box3D::Benchmarks
 
         constexpr size_t expectedHitCount = 25;
         state.counters["ActualHits"] = aznumeric_cast<double>(result.m_requiredHitCount);
+        AddCpuAffinityCounters(state, cpuAffinity);
         state.counters["ExpectedHits"] = expectedHitCount;
         state.counters["Obstacles"] = obstacleCount;
         state.counters["QualityValid"] = 0;
@@ -757,8 +834,8 @@ namespace Box3D::Benchmarks
         DestroyWorld(worldId);
     }
 
-    BENCHMARK(StepFallingSpheres)
-        ->Name("Box3D/Step/FallingSpheres")
+    BENCHMARK(StepFallingBoxes)
+        ->Name("Box3D/Step/FallingBoxes")
         ->Args({128, 1})
         ->Args({128, 4})
         ->Args({128, 8})
@@ -766,7 +843,8 @@ namespace Box3D::Benchmarks
         ->Args({1024, 4})
         ->Args({1024, 8})
         ->Unit(benchmark::kMicrosecond)
-        ->UseRealTime();
+        ->UseRealTime()
+        ->Iterations(ValidationFrameCount);
 
     BENCHMARK(CreateDestroyBodies)
         ->Name("Box3D/Lifecycle/CreateDestroyBodies")

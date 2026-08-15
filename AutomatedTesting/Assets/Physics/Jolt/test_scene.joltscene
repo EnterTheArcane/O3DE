@@ -1,0 +1,36 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "SceneSourceData",
+    "ClassData": {
+        "Name": "AutomatedTestingScene",
+        "Shapes": [
+            {
+                "$type": "SceneSourceShapeData",
+                "Value": {
+                    "Geometry": {
+                        "$type": "{E564307C-50D4-4422-A367-08940A8144F2}",
+                        "Value": {}
+                    },
+                    "UserData": 101
+                }
+            }
+        ],
+        "Bodies": [
+            {
+                "$type": "SceneAssetRigidBody",
+                "Value": {
+                    "Transform": {
+                        "Position": {
+                            "X": 0.0,
+                            "Y": 0.0,
+                            "Z": 2.0
+                        }
+                    },
+                    "Name": "AuthoredBox",
+                    "ShapeIndex": 0
+                }
+            }
+        ]
+    }
+}

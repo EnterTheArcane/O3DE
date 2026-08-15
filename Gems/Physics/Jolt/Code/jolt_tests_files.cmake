@@ -1,0 +1,130 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+
+set(FILES
+    Tests/Benchmarks.cpp
+    Tests/ComponentTests.cpp
+    Tests/ConfigurationSerializerTests.cpp
+    Tests/DebugRendererTests.cpp
+    Tests/HandleTests.cpp
+    Tests/Headers/BodyConfiguration.cpp
+    Tests/Headers/BodyCollision.cpp
+    Tests/Headers/BodyBus.cpp
+    Tests/Headers/Character.cpp
+    Tests/Headers/CharacterBus.cpp
+    Tests/Headers/CharacterConfiguration.cpp
+    Tests/Headers/ColliderBus.cpp
+    Tests/Headers/Collision.cpp
+    Tests/Headers/Constraint.cpp
+    Tests/Headers/ConstraintBus.cpp
+    Tests/Headers/ConstraintComponentConfiguration.cpp
+    Tests/Headers/Cooking.cpp
+    Tests/Headers/CustomConstraint.cpp
+    Tests/Headers/CustomShape.cpp
+    Tests/Headers/DebugDraw.cpp
+    Tests/Headers/Diagnostics.cpp
+    Tests/Headers/Event.cpp
+    Tests/Headers/Hair.cpp
+    Tests/Headers/HairBus.cpp
+    Tests/Headers/HairComponentConfiguration.cpp
+    Tests/Headers/Handle.cpp
+    Tests/Headers/Material.cpp
+    Tests/Headers/Path.cpp
+    Tests/Headers/PathBus.cpp
+    Tests/Headers/Query.cpp
+    Tests/Headers/Ragdoll.cpp
+    Tests/Headers/RagdollBus.cpp
+    Tests/Headers/RagdollComponentConfiguration.cpp
+    Tests/Headers/RigidBodyBus.cpp
+    Tests/Headers/RigidBodyConfiguration.cpp
+    Tests/Headers/Rollback.cpp
+    Tests/Headers/Scene.cpp
+    Tests/Headers/SceneAsset.cpp
+    Tests/Headers/SceneBus.cpp
+    Tests/Headers/SceneComponentConfiguration.cpp
+    Tests/Headers/Simulation.cpp
+    Tests/Headers/Shape.cpp
+    Tests/Headers/ShapeConfiguration.cpp
+    Tests/Headers/Skeleton.cpp
+    Tests/Headers/SkeletonAsset.cpp
+    Tests/Headers/SkeletonComponentBus.cpp
+    Tests/Headers/SkeletonComponentConfiguration.cpp
+    Tests/Headers/SoftBody.cpp
+    Tests/Headers/SoftBodyBus.cpp
+    Tests/Headers/SoftBodyComponentConfiguration.cpp
+    Tests/Headers/StaticRigidBodyBus.cpp
+    Tests/Headers/System.cpp
+    Tests/Headers/SystemConfiguration.cpp
+    Tests/Headers/TypeIds.cpp
+    Tests/Headers/Vehicle.cpp
+    Tests/Headers/VehicleBus.cpp
+    Tests/Headers/VehicleComponentConfiguration.cpp
+    Tests/Headers/VirtualCharacterBus.cpp
+    Tests/Headers/WorldTypes.cpp
+    Tests/Headers/WorldQueryBus.cpp
+    Tests/NativeRuntimeTests.cpp
+    Tests/SimulationTests.cpp
+    Tests/TestsMain.cpp
+)
+
+set(SKIP_UNITY_BUILD_INCLUSION_FILES
+    Tests/Headers/BodyConfiguration.cpp
+    Tests/Headers/BodyCollision.cpp
+    Tests/Headers/BodyBus.cpp
+    Tests/Headers/Character.cpp
+    Tests/Headers/CharacterBus.cpp
+    Tests/Headers/CharacterConfiguration.cpp
+    Tests/Headers/ColliderBus.cpp
+    Tests/Headers/Collision.cpp
+    Tests/Headers/Constraint.cpp
+    Tests/Headers/ConstraintBus.cpp
+    Tests/Headers/ConstraintComponentConfiguration.cpp
+    Tests/Headers/Cooking.cpp
+    Tests/Headers/CustomConstraint.cpp
+    Tests/Headers/CustomShape.cpp
+    Tests/Headers/DebugDraw.cpp
+    Tests/Headers/Diagnostics.cpp
+    Tests/Headers/Event.cpp
+    Tests/Headers/Hair.cpp
+    Tests/Headers/HairBus.cpp
+    Tests/Headers/HairComponentConfiguration.cpp
+    Tests/Headers/Handle.cpp
+    Tests/Headers/Material.cpp
+    Tests/Headers/Path.cpp
+    Tests/Headers/PathBus.cpp
+    Tests/Headers/Query.cpp
+    Tests/Headers/Ragdoll.cpp
+    Tests/Headers/RagdollBus.cpp
+    Tests/Headers/RagdollComponentConfiguration.cpp
+    Tests/Headers/RigidBodyBus.cpp
+    Tests/Headers/RigidBodyConfiguration.cpp
+    Tests/Headers/Rollback.cpp
+    Tests/Headers/Scene.cpp
+    Tests/Headers/SceneAsset.cpp
+    Tests/Headers/SceneBus.cpp
+    Tests/Headers/SceneComponentConfiguration.cpp
+    Tests/Headers/Simulation.cpp
+    Tests/Headers/Shape.cpp
+    Tests/Headers/ShapeConfiguration.cpp
+    Tests/Headers/Skeleton.cpp
+    Tests/Headers/SkeletonAsset.cpp
+    Tests/Headers/SkeletonComponentBus.cpp
+    Tests/Headers/SkeletonComponentConfiguration.cpp
+    Tests/Headers/SoftBody.cpp
+    Tests/Headers/SoftBodyBus.cpp
+    Tests/Headers/SoftBodyComponentConfiguration.cpp
+    Tests/Headers/StaticRigidBodyBus.cpp
+    Tests/Headers/System.cpp
+    Tests/Headers/SystemConfiguration.cpp
+    Tests/Headers/TypeIds.cpp
+    Tests/Headers/Vehicle.cpp
+    Tests/Headers/VehicleBus.cpp
+    Tests/Headers/VehicleComponentConfiguration.cpp
+    Tests/Headers/VirtualCharacterBus.cpp
+    Tests/Headers/WorldTypes.cpp
+    Tests/Headers/WorldQueryBus.cpp
+)

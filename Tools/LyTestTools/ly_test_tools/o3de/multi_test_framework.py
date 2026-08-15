@@ -938,7 +938,8 @@ class MultiTestSuite(object):
 
         executable_log_content = log_content_function(run_id, log_name, workspace)
         results = self._get_results_using_output([test_spec], output, executable_log_content)
-        results[test_spec.__name__] = test_result
+        if not isinstance(test_result, Result.Pass):
+            results[test_spec.__name__] = test_result
         return results
 
     ####################

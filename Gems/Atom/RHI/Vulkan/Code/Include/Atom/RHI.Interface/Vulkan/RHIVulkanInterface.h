@@ -7,6 +7,7 @@
  */
 #pragma once
 
+#include <Atom/RHI.Reflect/AttachmentEnums.h>
 #include <Atom/RHI/Device.h>
 #include <Atom/RHI/DeviceBuffer.h>
 #include <Atom/RHI/DeviceFence.h>
@@ -27,8 +28,24 @@ namespace AZ
         //! - Returning resources in a valid state
 
         //! Provide access to native device handles
+        VkInstance GetInstanceNativeHandle();
         VkDevice GetDeviceNativeHandle(RHI::Device& device);
         VkPhysicalDevice GetPhysicalDeviceNativeHandle(const RHI::PhysicalDevice& device);
+        PFN_vkGetInstanceProcAddr GetInstanceProcAddr();
+        PFN_vkGetDeviceProcAddr GetDeviceProcAddr(RHI::Device& device);
+
+        //! Return the queue family selected by the renderer for a hardware queue class.
+        uint32_t GetCommandQueueFamilyIndex(
+            RHI::Device& device,
+            RHI::HardwareQueueClass hardwareQueueClass);
+
+        //! Submit native command buffers through the renderer-owned queue thread.
+        VkResult SubmitCommandBuffers(
+            RHI::Device& device,
+            RHI::HardwareQueueClass hardwareQueueClass,
+            uint32_t submitCount,
+            const VkSubmitInfo* submitInfos,
+            VkFence fence);
 
         //! Provide access to native fence handle and value
         VkSemaphore GetFenceNativeHandle(RHI::DeviceFence& fence);
@@ -40,6 +57,13 @@ namespace AZ
         size_t GetBufferMemoryViewSize(RHI::DeviceBuffer& buffer);
         size_t GetBufferAllocationSize(RHI::DeviceBuffer& buffer);
         size_t GetBufferAllocationOffset(RHI::DeviceBuffer& buffer);
+
+        //! Updates the frame graph's queue ownership and access state after native queue access.
+        void SetBufferStateAfterExternalAccess(
+            RHI::DeviceBuffer& buffer,
+            RHI::HardwareQueueClass hardwareQueueClass,
+            VkPipelineStageFlags pipelineStage,
+            VkAccessFlags access);
 
         //! Provide access to native VkImage, VKDeviceMemory as well as size and offset
         VkImage GetNativeImage(RHI::DeviceImage& image);

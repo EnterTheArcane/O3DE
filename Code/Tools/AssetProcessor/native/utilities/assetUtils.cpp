@@ -9,6 +9,7 @@
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Math/Sha1.h>
+#include <AzCore/Math/Uuid.h>
 #include <AzCore/Settings/SettingsRegistry.h>
 
 #include <native/assetprocessor.h>
@@ -194,15 +195,17 @@ namespace AssetUtilsInternal
 
         if (AZ::SettingsRegistryMergeUtils::DumpSettingsRegistryToStream(settingsRegistry, "", apSettingsStream, apDumperSettings))
         {
-            constexpr const char* AssetProcessorTmpSetreg = "asset_processor.setreg.tmp";
             // Write to a temporary file first before renaming it to the final file location
             // This is needed to reduce the potential of a race condition which occurs when other applications attempt to load settings registry
             // files from the project's user Registry folder while the AssetProcessor is writing the file out the asset_processor.setreg
             // at the same time
-            QString tempDirValue;
-            AssetUtilities::CreateTempWorkspace(tempDirValue);
-            QDir tempDir(tempDirValue);
-            AZ::IO::FixedMaxPath tmpSetregPath = tempDir.absoluteFilePath(QString(AssetProcessorTmpSetreg)).toUtf8().data();
+            const AZ::IO::FixedMaxPath setregDirectory = setregPath.ParentPath();
+            AZ::IO::SystemFile::CreateDir(setregDirectory.c_str());
+
+            AZ::IO::FixedMaxPath tmpSetregPath = setregDirectory;
+            tmpSetregPath /= AZ::IO::FixedMaxPathString::format(
+                "asset_processor.%s.setreg.tmp",
+                AZ::Uuid::CreateRandom().ToFixedString().c_str());
 
             constexpr auto modeFlags = AZ::IO::SystemFile::SF_OPEN_WRITE_ONLY | AZ::IO::SystemFile::SF_OPEN_CREATE
                 | AZ::IO::SystemFile::SF_OPEN_CREATE_PATH;
@@ -213,10 +216,13 @@ namespace AssetUtilsInternal
                 apSetregFile.Close();
                 if (bytesWritten == apSettingsJson.size())
                 {
-                    // Create the directory to contain the moved setreg file
-                    AZ::IO::SystemFile::CreateDir(AZ::IO::FixedMaxPath(setregPath.ParentPath()).c_str());
-                    return AZ::IO::SystemFile::Rename(tmpSetregPath.c_str(), setregPath.c_str(), true);
+                    if (AZ::IO::SystemFile::Rename(tmpSetregPath.c_str(), setregPath.c_str(), true))
+                    {
+                        return true;
+                    }
                 }
+
+                AZ::IO::SystemFile::Delete(tmpSetregPath.c_str());
             }
             else
             {

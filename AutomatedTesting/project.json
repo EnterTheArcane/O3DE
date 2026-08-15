@@ -18,6 +18,7 @@
         "AudioSystem",
         "AutomatedTesting",
         "Box3D",
+        "Jolt",
         "Camera",
         "CameraFramework",
         "CertificateManager",

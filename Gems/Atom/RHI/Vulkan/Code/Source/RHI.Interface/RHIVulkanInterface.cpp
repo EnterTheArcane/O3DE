@@ -9,16 +9,24 @@
 #include <Atom/RHI.Interface/Vulkan/RHIVulkanInterface.h>
 
 #include <RHI/Buffer.h>
+#include <RHI/CommandQueueContext.h>
 #include <RHI/Device.h>
 #include <RHI/Fence.h>
 #include <RHI/Image.h>
+#include <RHI/Instance.h>
 #include <RHI/PhysicalDevice.h>
+#include <RHI/Queue.h>
 #include <RHI/TimelineSemaphoreFence.h>
 
 namespace AZ
 {
     namespace Vulkan
     {
+        VkInstance GetInstanceNativeHandle()
+        {
+            return Instance::GetInstance().GetNativeInstance();
+        }
+
         VkDevice GetDeviceNativeHandle(RHI::Device& device)
         {
             AZ_Assert(azrtti_cast<Device*>(&device), "%s can only be called with a Vulkan RHI object", __FUNCTION__);
@@ -29,6 +37,49 @@ namespace AZ
         {
             AZ_Assert(azrtti_cast<const PhysicalDevice*>(&device), "%s can only be called with a Vulkan RHI object", __FUNCTION__);
             return static_cast<const PhysicalDevice&>(device).GetNativePhysicalDevice();
+        }
+
+        PFN_vkGetInstanceProcAddr GetInstanceProcAddr()
+        {
+            return Instance::GetInstance().GetContext().GetInstanceProcAddr;
+        }
+
+        PFN_vkGetDeviceProcAddr GetDeviceProcAddr(RHI::Device& device)
+        {
+            AZ_Assert(azrtti_cast<Device*>(&device), "%s can only be called with a Vulkan RHI object", __FUNCTION__);
+            return static_cast<Device&>(device).GetContext().GetDeviceProcAddr;
+        }
+
+        uint32_t GetCommandQueueFamilyIndex(
+            RHI::Device& device,
+            const RHI::HardwareQueueClass hardwareQueueClass)
+        {
+            AZ_Assert(azrtti_cast<Device*>(&device), "%s can only be called with a Vulkan RHI object", __FUNCTION__);
+            return static_cast<Device&>(device).GetCommandQueueContext().GetQueueFamilyIndex(hardwareQueueClass);
+        }
+
+        VkResult SubmitCommandBuffers(
+            RHI::Device& device,
+            const RHI::HardwareQueueClass hardwareQueueClass,
+            const uint32_t submitCount,
+            const VkSubmitInfo* submitInfos,
+            const VkFence fence)
+        {
+            AZ_Assert(azrtti_cast<Device*>(&device), "%s can only be called with a Vulkan RHI object", __FUNCTION__);
+            Device& vulkanDevice = static_cast<Device&>(device);
+            CommandQueue& commandQueue = vulkanDevice.GetCommandQueueContext().GetCommandQueue(hardwareQueueClass);
+            VkResult result = VK_ERROR_UNKNOWN;
+            commandQueue.QueueCommand(
+                [&vulkanDevice, submitCount, submitInfos, fence, &result](void* nativeQueue)
+                {
+                    result = vulkanDevice.GetContext().QueueSubmit(
+                        static_cast<Queue*>(nativeQueue)->GetNativeQueue(),
+                        submitCount,
+                        submitInfos,
+                        fence);
+                });
+            commandQueue.FlushCommands();
+            return result;
         }
 
         VkSemaphore GetFenceNativeHandle(RHI::DeviceFence& fence)
@@ -96,6 +147,20 @@ namespace AZ
                 return vulkanBuffer.GetBufferMemoryView()->GetAllocation()->GetMemoryViewOffset() +
                     vulkanBuffer.GetBufferMemoryView()->GetOffset();
             }
+        }
+
+        void SetBufferStateAfterExternalAccess(
+            RHI::DeviceBuffer& buffer,
+            const RHI::HardwareQueueClass hardwareQueueClass,
+            const VkPipelineStageFlags pipelineStage,
+            const VkAccessFlags access)
+        {
+            AZ_Assert(azrtti_cast<Buffer*>(&buffer), "%s can only be called with a Vulkan RHI object", __FUNCTION__);
+            Buffer& vulkanBuffer = static_cast<Buffer&>(buffer);
+            Device& device = static_cast<Device&>(vulkanBuffer.GetDevice());
+            vulkanBuffer.SetOwnerQueue(
+                device.GetCommandQueueContext().GetCommandQueue(hardwareQueueClass).GetId());
+            vulkanBuffer.SetPipelineAccess({pipelineStage, access});
         }
 
         VkImage GetNativeImage(RHI::DeviceImage& image)

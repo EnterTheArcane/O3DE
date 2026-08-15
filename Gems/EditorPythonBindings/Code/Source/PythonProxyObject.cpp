@@ -792,6 +792,8 @@ namespace EditorPythonBindings
                 // find the target module of the behavior's static methods
                 auto moduleName = Module::GetName(behaviorClass->m_attributes);
                 pybind11::module subModule = Module::DeterminePackageModule(modulePackageMap, moduleName ? *moduleName : "", parentModule, defaultModule, false);
+                AZStd::string scriptClassName = behaviorClass->m_name;
+                Scope::FetchScriptName(behaviorClass->m_attributes, scriptClassName);
 
                 // early detection of instance based elements like constructors or properties
                 bool hasMemberMethods = behaviorClass->m_constructors.empty() == false;
@@ -808,7 +810,10 @@ namespace EditorPythonBindings
                         if (!PythonProxyObjectManagement::IsMemberLike(*behaviorMethod, behaviorClass->m_typeId))
                         {
                             // the name of the static method will be "azlmbr.<sub_module>.<Behavior Class>_<Behavior Method>"
-                            AZStd::string globalMethodName = AZStd::string::format("%s_%s", behaviorClass->m_name.c_str(), methodName.c_str());
+                            AZStd::string globalMethodName = AZStd::string::format(
+                                "%s_%s",
+                                scriptClassName.c_str(),
+                                methodName.c_str());
 
                             if (behaviorMethod->HasResult())
                             {
@@ -846,7 +851,10 @@ namespace EditorPythonBindings
                     {
                         // the name of the property will be "azlmbr.<Module>.<Behavior Class>_<Behavior Property>"
                         AZStd::string constantPropertyName =
-                            AZStd::string::format("%s_%s", behaviorClass->m_name.c_str(), propertyEntryName.c_str());
+                            AZStd::string::format(
+                                "%s_%s",
+                                scriptClassName.c_str(),
+                                propertyEntryName.c_str());
 
                         pybind11::object constantValue = Call::StaticMethod(behaviorProperty->m_getter, {});
                         pybind11::setattr(subModule, constantPropertyName.c_str(), constantValue);
@@ -862,11 +870,12 @@ namespace EditorPythonBindings
                 // register all Behavior Class types with a Python function to construct an instance
                 if (exportBehaviorClass)
                 {
-                    const char* behaviorClassName = behaviorClass->m_name.c_str();
-                    subModule.attr(behaviorClassName) = pybind11::cpp_function([behaviorClassName](pybind11::args pythonArgs)
-                    {
-                        return ConstructPythonProxyObjectByTypename(behaviorClassName, pythonArgs);
-                    });
+                    const AZStd::string reflectedClassName = behaviorClass->m_name;
+                    subModule.attr(scriptClassName.c_str()) = pybind11::cpp_function(
+                        [reflectedClassName](pybind11::args pythonArgs)
+                        {
+                            return ConstructPythonProxyObjectByTypename(reflectedClassName.c_str(), pythonArgs);
+                        });
 
                     AZStd::string subModuleName = pybind11::cast<AZStd::string>(subModule.attr("__name__"));
 
@@ -875,9 +884,9 @@ namespace EditorPythonBindings
                     if (syntaxName)
                     {
                         const char* properSyntax = syntaxName.value().c_str();
-                        subModule.attr(properSyntax) = pybind11::cpp_function([behaviorClassName](pybind11::args pythonArgs)
+                        subModule.attr(properSyntax) = pybind11::cpp_function([reflectedClassName](pybind11::args pythonArgs)
                         {
-                            return ConstructPythonProxyObjectByTypename(behaviorClassName, pythonArgs);
+                            return ConstructPythonProxyObjectByTypename(reflectedClassName.c_str(), pythonArgs);
                         });
                         PythonSymbolEventBus::QueueBroadcast(&PythonSymbolEventBus::Events::LogClassWithName, subModuleName, behaviorClass, syntaxName.value());
                     }

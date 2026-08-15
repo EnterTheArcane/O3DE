@@ -46,3 +46,4 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED AND PAL_TRAIT_BUILD_HOST_TOOLS)
 endif()
 
 add_subdirectory(Box3D)
+add_subdirectory(Jolt)

@@ -45,29 +45,39 @@ namespace AtomToolsFramework
 
     bool RenderViewportWidget::InitializeViewportContext(AzFramework::ViewportId id)
     {
-        if (m_viewportContext != nullptr)
+        if (m_viewportContext)
         {
-            AZ_Assert(id == AzFramework::InvalidViewportId || m_viewportContext->GetId() == id, "Attempted to reinitialize RenderViewportWidget with a different ID");
+            AZ_Assert(
+                id == AzFramework::InvalidViewportId
+                || m_viewportContext->GetId() == id,
+                "Attempted to reinitialize RenderViewportWidget with a different ID");
             return true;
         }
 
         auto viewportContextManager = AZ::Interface<AZ::RPI::ViewportContextRequestsInterface>::Get();
         AZ_Assert(viewportContextManager, "Attempted to initialize RenderViewportWidget without ViewportContextManager");
 
-        if (viewportContextManager == nullptr)
+        if (!viewportContextManager)
+        {
+            return false;
+        }
+
+        auto* rhiSystem = AZ::RHI::RHISystemInterface::Get();
+        AZ_Assert(rhiSystem, "Attempted to initialize RenderViewportWidget without an RHI system");
+        if (!rhiSystem)
         {
             return false;
         }
 
         // Before we do anything else, we must create a ViewportContext which will give us a ViewportId if we didn't manually specify one.
         AZ::RPI::ViewportContextRequestsInterface::CreationParameters params;
-        params.device = AZ::RHI::RHISystemInterface::Get()->GetDevice();
+        params.device = rhiSystem->GetDevice();
         params.windowHandle = reinterpret_cast<AzFramework::NativeWindowHandle>(winId());
         params.id = id;
         AzFramework::WindowRequestBus::Handler::BusConnect(params.windowHandle);
         m_viewportContext = viewportContextManager->CreateViewportContext(AZ::Name(), params);
 
-        if (m_viewportContext == nullptr)
+        if (!m_viewportContext)
         {
             return false;
         }

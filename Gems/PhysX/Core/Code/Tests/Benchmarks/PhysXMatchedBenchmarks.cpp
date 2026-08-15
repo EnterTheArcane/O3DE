@@ -8,15 +8,19 @@
 #ifdef HAVE_BENCHMARK
 
 #include <Benchmarks/PhysXBenchmarksCommon.h>
+#include <PhysX/Material/PhysXMaterialConfiguration.h>
 
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobManager.h>
+#include <AzCore/std/algorithm.h>
 #include <AzCore/std/chrono/chrono.h>
+#include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/limits.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzTest/Benchmark/BenchmarkEnvironment.h>
 #include <AzFramework/Physics/Common/PhysicsSceneQueries.h>
 #include <AzFramework/Physics/Common/PhysicsSimulatedBody.h>
 #include <AzFramework/Physics/Common/PhysicsTypes.h>
@@ -32,6 +36,9 @@ namespace PhysX::Benchmarks
     namespace
     {
         constexpr float MatchedTimeStep = 1.0f / 60.0f;
+        constexpr float MatchedGridSpacing = 1.1f;
+        constexpr AZ::u32 WarmupFrameCount = 600;
+        constexpr AZ::u32 ValidationFrameCount = 600;
 
         [[nodiscard]] bool IsValid(AzPhysics::SimulatedBodyHandle handle)
         {
@@ -51,12 +58,15 @@ namespace PhysX::Benchmarks
         {
         public:
             explicit JobContextScope(AZ::u32 workerCount)
-                : m_previousJobContext(AZ::JobContext::GetGlobalContext())
+                : m_cpuAffinity(AZ::Test::GetBenchmarkCpuAffinity())
+                , m_previousJobContext(AZ::JobContext::GetGlobalContext())
                 , m_jobManager(
                       [workerCount]
                       {
                           AZ::JobManagerDesc descriptor;
-                          descriptor.m_workerThreads.resize(workerCount);
+                          AZ::Test::GetBenchmarkCpuAffinity().ConfigureJobManagerThreads(
+                              descriptor,
+                              workerCount);
                           return descriptor;
                       }())
                 , m_jobContext(m_jobManager)
@@ -71,13 +81,25 @@ namespace PhysX::Benchmarks
                 AZ::JobContext::SetGlobalContext(m_previousJobContext);
             }
 
+            void AddCounters(
+                benchmark::State& state) const
+            {
+                state.counters["AffinityConstrained"] = 0;
+                if (m_cpuAffinity.IsConstrained())
+                {
+                    state.counters["AffinityConstrained"] = 1;
+                }
+                state.counters["AffinityProcessors"] = m_cpuAffinity.GetProcessorCount();
+            }
+
         private:
+            const AZ::Test::ScopedBenchmarkCpuAffinity& m_cpuAffinity;
             AZ::JobContext* m_previousJobContext = nullptr;
             AZ::JobManager m_jobManager;
             AZ::JobContext m_jobContext;
         };
 
-        class FallingSpheresFixture
+        class FallingBoxesFixture
             : public PhysXBaseBenchmarkFixture
         {
         public:
@@ -114,12 +136,20 @@ namespace PhysX::Benchmarks
                 m_maximumDisplacement = 0.0f;
                 m_minimumHeight = AZStd::numeric_limits<float>::max();
                 m_qualityValid = false;
-                m_warmupStable = false;
+                m_warmupCompleted = false;
                 m_warmupTickCount = 0;
                 m_workerCount = aznumeric_cast<AZ::u32>(state.range(1));
                 m_jobContext = AZStd::make_unique<JobContextScope>(m_workerCount);
                 SetUpInternal();
                 const auto collider = AZStd::make_shared<Physics::ColliderConfiguration>();
+                PhysX::MaterialConfiguration materialConfiguration;
+                materialConfiguration.m_dynamicFriction = 0.0f;
+                materialConfiguration.m_staticFriction = 0.0f;
+                materialConfiguration.m_restitution = 0.0f;
+                collider->m_materialSlots.SetSlots(Physics::MaterialDefaultSlot::Default);
+                collider->m_materialSlots.SetMaterialAsset(
+                    0,
+                    materialConfiguration.CreateMaterialAsset());
 
                 AzPhysics::StaticRigidBodyConfiguration groundConfiguration;
                 groundConfiguration.m_position = AZ::Vector3(0.0f, 0.0f, -0.5f);
@@ -128,79 +158,86 @@ namespace PhysX::Benchmarks
                 m_ready = IsValid(m_defaultScene->AddSimulatedBody(&groundConfiguration));
 
                 const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
-                AzPhysics::SimulatedBodyHandleList bodies;
-                bodies.reserve(bodyCount);
-                const auto sphere = AZStd::make_shared<Physics::SphereShapeConfiguration>(0.5f);
+                if (bodyCount > m_bodies.size())
+                {
+                    m_ready = false;
+                    return;
+                }
+                m_bodyCount = bodyCount;
+                const auto box = AZStd::make_shared<Physics::BoxShapeConfiguration>(AZ::Vector3::CreateOne());
                 AzPhysics::RigidBodyConfiguration bodyConfiguration;
-                bodyConfiguration.m_linearDamping = 0.0f;
-                bodyConfiguration.m_angularDamping = 0.0f;
+                bodyConfiguration.m_linearDamping = 1.0f;
+                bodyConfiguration.m_angularDamping = 1.0f;
                 bodyConfiguration.m_sleepMinEnergy = 0.0f;
-                bodyConfiguration.m_colliderAndShapeData = AzPhysics::ShapeColliderPair(collider, sphere);
+                bodyConfiguration.m_colliderAndShapeData = AzPhysics::ShapeColliderPair(collider, box);
 
-                constexpr AZ::u32 rowWidth = 16;
+                AZ::u32 rowWidth = 16;
+                if (bodyCount > rowWidth * rowWidth)
+                {
+                    rowWidth = 32;
+                }
+                m_rowWidth = rowWidth;
                 for (AZ::u32 bodyIndex = 0; m_ready && bodyIndex < bodyCount; ++bodyIndex)
                 {
                     const AZ::u32 layerIndex = bodyIndex / (rowWidth * rowWidth);
                     const AZ::u32 rowIndex = (bodyIndex / rowWidth) % rowWidth;
                     const AZ::u32 columnIndex = bodyIndex % rowWidth;
                     bodyConfiguration.m_position = AZ::Vector3(
-                        static_cast<float>(columnIndex) - 0.5f * static_cast<float>(rowWidth),
-                        static_cast<float>(rowIndex) - 0.5f * static_cast<float>(rowWidth),
-                        0.6f + static_cast<float>(layerIndex) * 1.1f);
+                        MatchedGridSpacing
+                            * (static_cast<float>(columnIndex) - 0.5f * static_cast<float>(rowWidth)),
+                        MatchedGridSpacing
+                            * (static_cast<float>(rowIndex) - 0.5f * static_cast<float>(rowWidth)),
+                        0.6f + static_cast<float>(layerIndex) * MatchedGridSpacing);
                     const AzPhysics::SimulatedBodyHandle bodyHandle = m_defaultScene->AddSimulatedBody(&bodyConfiguration);
                     m_ready = IsValid(bodyHandle);
-                    bodies.push_back(bodyHandle);
+                    m_bodies[bodyIndex] = bodyHandle;
                 }
 
-                constexpr AZ::u32 minimumWarmupTickCount = 30;
-                constexpr AZ::u32 maximumWarmupTickCount = 600;
-                constexpr AZ::u32 requiredStableTickCount = 5;
-                constexpr float maximumStableDisplacement = 0.02f;
-                AZStd::vector<AZ::Vector3> previousPositions(bodyCount);
-                AZ::u32 stableTickCount = 0;
-                for (; m_ready && m_warmupTickCount < maximumWarmupTickCount && stableTickCount < requiredStableTickCount;
-                     ++m_warmupTickCount)
+                for (AZ::u32 warmupTick = 0; m_ready && warmupTick < WarmupFrameCount; ++warmupTick)
                 {
-                    for (size_t bodyIndex = 0; bodyIndex < bodies.size(); ++bodyIndex)
-                    {
-                        AzPhysics::SimulatedBody* body = m_defaultScene->GetSimulatedBodyFromHandle(bodies[bodyIndex]);
-                        previousPositions[bodyIndex] = body != nullptr ? body->GetTransform().GetTranslation() : AZ::Vector3::CreateZero();
-                    }
                     StepScene1Tick(MatchedTimeStep);
-
-                    m_maximumDisplacement = 0.0f;
-                    m_minimumHeight = AZStd::numeric_limits<float>::max();
-                    for (size_t bodyIndex = 0; bodyIndex < bodies.size(); ++bodyIndex)
-                    {
-                        AzPhysics::SimulatedBody* body = m_defaultScene->GetSimulatedBodyFromHandle(bodies[bodyIndex]);
-                        const AZ::Vector3 position = body != nullptr ? body->GetTransform().GetTranslation() : AZ::Vector3::CreateZero();
-                        m_minimumHeight = AZStd::min(m_minimumHeight, position.GetZ());
-                        m_maximumDisplacement = AZStd::max(m_maximumDisplacement, position.GetDistance(previousPositions[bodyIndex]));
-                    }
-                    stableTickCount = m_warmupTickCount + 1 >= minimumWarmupTickCount && m_maximumDisplacement <= maximumStableDisplacement
-                        ? stableTickCount + 1
-                        : 0;
                 }
-                m_warmupStable = stableTickCount == requiredStableTickCount;
-                m_qualityValid = m_warmupStable && m_minimumHeight >= 0.45f;
+                m_warmupTickCount = WarmupFrameCount;
+                m_warmupCompleted = m_ready;
             }
 
+            static constexpr size_t MaximumMatchedBodyCount = 1024;
+
+            AZStd::array<AzPhysics::SimulatedBodyHandle, MaximumMatchedBodyCount> m_bodies;
             bool m_ready = false;
             bool m_qualityValid = false;
-            bool m_warmupStable = false;
+            bool m_warmupCompleted = false;
             float m_maximumDisplacement = 0.0f;
             float m_minimumHeight = AZStd::numeric_limits<float>::max();
             AZ::u32 m_workerCount = 1;
             AZ::u32 m_warmupTickCount = 0;
+            AZ::u32 m_rowWidth = 16;
+            size_t m_bodyCount = 0;
             AZStd::unique_ptr<JobContextScope> m_jobContext;
         };
 
-        BENCHMARK_DEFINE_F(FallingSpheresFixture, Step)(benchmark::State& state)
+        BENCHMARK_DEFINE_F(FallingBoxesFixture, Step)(benchmark::State& state)
         {
             if (!m_ready)
             {
                 state.SkipWithError("Failed to create the matched PhysX sphere workload.");
                 return;
+            }
+
+            AZStd::vector<AZ::Vector3> positions;
+            positions.reserve(m_bodyCount);
+            bool statesValid = true;
+            for (size_t bodyIndex = 0; bodyIndex < m_bodyCount; ++bodyIndex)
+            {
+                const AzPhysics::SimulatedBodyHandle bodyHandle = m_bodies[bodyIndex];
+                const AzPhysics::SimulatedBody* body = m_defaultScene->GetSimulatedBodyFromHandle(bodyHandle);
+                if (!body)
+                {
+                    positions.push_back(AZ::Vector3::CreateZero());
+                    statesValid = false;
+                    continue;
+                }
+                positions.push_back(body->GetTransform().GetTranslation());
             }
 
             for ([[maybe_unused]] auto iteration : state)
@@ -209,22 +246,63 @@ namespace PhysX::Benchmarks
                 m_defaultScene->FinishSimulation();
             }
 
+            m_maximumDisplacement = 0.0f;
+            m_minimumHeight = AZStd::numeric_limits<float>::max();
+            for (size_t bodyIndex = 0; bodyIndex < m_bodyCount; ++bodyIndex)
+            {
+                const AzPhysics::SimulatedBody* body =
+                    m_defaultScene->GetSimulatedBodyFromHandle(m_bodies[bodyIndex]);
+                if (!body)
+                {
+                    statesValid = false;
+                    continue;
+                }
+
+                const AZ::Vector3 position = body->GetTransform().GetTranslation();
+                statesValid = position.IsFinite() && positions[bodyIndex].IsFinite() && statesValid;
+                m_minimumHeight = AZStd::min(m_minimumHeight, position.GetZ());
+                m_maximumDisplacement = AZStd::max(
+                    m_maximumDisplacement,
+                    position.GetDistance(positions[bodyIndex]));
+            }
+            m_qualityValid = m_warmupCompleted
+                && statesValid
+                && m_minimumHeight >= 0.45f
+                && m_maximumDisplacement <= 0.02f;
+
             const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
             state.SetItemsProcessed(state.iterations() * bodyCount);
+            state.counters["AngularDamping"] = 1;
             state.counters["Ccd"] = 0;
             state.counters["DynamicBodies"] = bodyCount;
+            state.counters["Friction"] = 0;
+            state.counters["Layers"] = (bodyCount - 1) / (m_rowWidth * m_rowWidth) + 1;
+            state.counters["LinearDamping"] = 1;
             state.counters["MaximumDisplacement"] = m_maximumDisplacement;
             state.counters["MinimumHeight"] = m_minimumHeight;
             state.counters["Notifications"] = 0;
-            state.counters["QualityValid"] = m_qualityValid ? 1 : 0;
+            state.counters["QualityValid"] = 0;
+            if (m_qualityValid)
+            {
+                state.counters["QualityValid"] = 1;
+            }
             state.counters["Sleep"] = 0;
+            state.counters["GridSpacingMillimeters"] = 1100;
+            state.counters["RowWidth"] = m_rowWidth;
+            state.counters["Restitution"] = 0;
+            state.counters["ValidationFrames"] = ValidationFrameCount;
             state.counters["WarmupTicks"] = m_warmupTickCount;
-            state.counters["WarmupStable"] = m_warmupStable ? 1 : 0;
+            state.counters["WarmupCompleted"] = 0;
+            if (m_warmupCompleted)
+            {
+                state.counters["WarmupCompleted"] = 1;
+            }
+            m_jobContext->AddCounters(state);
             state.counters["Workers"] = m_workerCount;
         }
 
-        BENCHMARK_REGISTER_F(FallingSpheresFixture, Step)
-            ->Name("PhysX/Step/FallingSpheres")
+        BENCHMARK_REGISTER_F(FallingBoxesFixture, Step)
+            ->Name("PhysX/Step/FallingBoxes")
             ->Args({ 128, 1 })
             ->Args({ 128, 4 })
             ->Args({ 128, 8 })
@@ -232,7 +310,8 @@ namespace PhysX::Benchmarks
             ->Args({ 1024, 4 })
             ->Args({ 1024, 8 })
             ->Unit(benchmark::kMicrosecond)
-            ->UseRealTime();
+            ->UseRealTime()
+            ->Iterations(ValidationFrameCount);
 
         class LifecycleFixture
             : public PhysXBaseBenchmarkFixture
@@ -303,6 +382,7 @@ namespace PhysX::Benchmarks
             }
 
             state.counters["DynamicBodies"] = bodyCount;
+            m_jobContext->AddCounters(state);
             state.counters["Notifications"] = 0;
             state.counters["Workers"] = m_workerCount;
             state.SetItemsProcessed(state.iterations() * bodyCount);
@@ -391,6 +471,7 @@ namespace PhysX::Benchmarks
             hits.m_hits.reserve(1);
 
             constexpr AZ::u32 rowWidth = 32;
+            bool qualityValid = false;
             for ([[maybe_unused]] auto iteration : state)
             {
                 for (AZ::u32 rayIndex = 0; rayIndex < rayCount; ++rayIndex)
@@ -399,12 +480,20 @@ namespace PhysX::Benchmarks
                     request.m_start = AZ::Vector3(
                         2.0f * static_cast<float>(obstacleIndex % rowWidth), 2.0f * static_cast<float>(obstacleIndex / rowWidth), 10.0f);
                     hits.m_hits.clear();
-                    benchmark::DoNotOptimize(m_defaultScene->QueryScene(&request, hits));
+                    qualityValid = m_defaultScene->QueryScene(&request, hits)
+                        && hits.m_hits.size() == 1;
+                    benchmark::DoNotOptimize(qualityValid);
                 }
             }
 
             state.SetItemsProcessed(state.iterations() * rayCount);
+            m_jobContext->AddCounters(state);
             state.counters["Obstacles"] = obstacleCount;
+            state.counters["QualityValid"] = 0;
+            if (qualityValid)
+            {
+                state.counters["QualityValid"] = 1;
+            }
             state.counters["Workers"] = m_workerCount;
         }
 
@@ -434,6 +523,7 @@ namespace PhysX::Benchmarks
             }
 
             state.SetItemsProcessed(state.iterations() * rayCount);
+            m_jobContext->AddCounters(state);
             state.counters["Workers"] = m_workerCount;
         }
 
@@ -474,8 +564,24 @@ namespace PhysX::Benchmarks
                 benchmark::DoNotOptimize(m_defaultScene->QuerySceneBatch(requests));
             }
 
+            const AzPhysics::SceneQueryHitsList validationResults =
+                m_defaultScene->QuerySceneBatch(requests);
+            const bool qualityValid = validationResults.size() == rayCount
+                && AZStd::all_of(
+                    validationResults.begin(),
+                    validationResults.end(),
+                    [](const AzPhysics::SceneQueryHits& result)
+                    {
+                        return result.m_hits.size() == 1;
+                    });
             state.SetItemsProcessed(state.iterations() * rayCount);
+            m_jobContext->AddCounters(state);
             state.counters["Obstacles"] = obstacleCount;
+            state.counters["QualityValid"] = 0;
+            if (qualityValid)
+            {
+                state.counters["QualityValid"] = 1;
+            }
             state.counters["WarmupMs"] = static_cast<double>(warmupDuration.count());
             state.counters["Workers"] = m_workerCount;
         }
@@ -505,9 +611,14 @@ namespace PhysX::Benchmarks
 
             const AZ::u32 obstacleCount = aznumeric_cast<AZ::u32>(state.range(0));
             state.counters["ActualHits"] = aznumeric_cast<double>(hits.m_hits.size());
+            m_jobContext->AddCounters(state);
             state.counters["ExpectedHits"] = expectedHitCount;
             state.counters["Obstacles"] = obstacleCount;
-            state.counters["QualityValid"] = hits.m_hits.size() == expectedHitCount ? 1 : 0;
+            state.counters["QualityValid"] = 0;
+            if (hits.m_hits.size() == expectedHitCount)
+            {
+                state.counters["QualityValid"] = 1;
+            }
             state.counters["Workers"] = m_workerCount;
             state.SetItemsProcessed(state.iterations() * queryCount);
         }

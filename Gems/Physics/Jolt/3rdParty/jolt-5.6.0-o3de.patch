@@ -1,0 +1,747 @@
+diff --git a/Jolt/Compute/DX12/ComputeBufferDX12.cpp b/Jolt/Compute/DX12/ComputeBufferDX12.cpp
+index 469a647..f452f71 100644
+--- a/Jolt/Compute/DX12/ComputeBufferDX12.cpp
++++ b/Jolt/Compute/DX12/ComputeBufferDX12.cpp
+@@ -79,6 +79,16 @@ bool ComputeBufferDX12::Initialize(const void *inData)
+ 	return true;
+ }
+ 
++bool ComputeBufferDX12::InitializeExternal(ID3D12Resource *inBuffer, D3D12_RESOURCE_STATES inState)
++{
++	if (mType != EType::RWBuffer || inBuffer == nullptr || inBuffer->GetDesc().Width < mSize * mStride)
++		return false;
++
++	mBufferGPU = inBuffer;
++	mCurrentState = inState;
++	return true;
++}
++
+ bool ComputeBufferDX12::Barrier(ID3D12GraphicsCommandList *inCommandList, D3D12_RESOURCE_STATES inTo) const
+ {
+ 	// Check if state changed
+diff --git a/Jolt/Compute/DX12/ComputeBufferDX12.h b/Jolt/Compute/DX12/ComputeBufferDX12.h
+index 403a807..0d89b26 100644
+--- a/Jolt/Compute/DX12/ComputeBufferDX12.h
++++ b/Jolt/Compute/DX12/ComputeBufferDX12.h
+@@ -24,6 +24,7 @@ public:
+ 									ComputeBufferDX12(ComputeSystemDX12 *inComputeSystem, EType inType, uint64 inSize, uint inStride);
+ 
+ 	bool							Initialize(const void *inData);
++	bool							InitializeExternal(ID3D12Resource *inBuffer, D3D12_RESOURCE_STATES inState);
+ 
+ 	ID3D12Resource *				GetResourceCPU() const									{ return mBufferCPU.Get(); }
+ 	ID3D12Resource *				GetResourceGPU() const									{ return mBufferGPU.Get(); }
+diff --git a/Jolt/Compute/MTL/ComputeBufferMTL.h b/Jolt/Compute/MTL/ComputeBufferMTL.h
+index 86239a5..f3daa4c 100644
+--- a/Jolt/Compute/MTL/ComputeBufferMTL.h
++++ b/Jolt/Compute/MTL/ComputeBufferMTL.h
+@@ -21,6 +21,7 @@ public:
+ 	virtual							~ComputeBufferMTL() override;
+ 
+ 	bool							Initialize(const void *inData);
++	bool							InitializeExternal(id<MTLBuffer> inBuffer);
+ 
+ 	virtual ComputeBufferResult		CreateReadBackBuffer() const override;
+ 
+@@ -31,7 +32,7 @@ private:
+ 	virtual void					UnmapInternal() override;
+ 
+ 	ComputeSystemMTL *				mComputeSystem;
+-	id<MTLBuffer>					mBuffer;
++	id<MTLBuffer>					mBuffer = nil;
+ };
+ 
+ JPH_NAMESPACE_END
+diff --git a/Jolt/Compute/MTL/ComputeBufferMTL.mm b/Jolt/Compute/MTL/ComputeBufferMTL.mm
+index aaf999d..601f23c 100644
+--- a/Jolt/Compute/MTL/ComputeBufferMTL.mm
++++ b/Jolt/Compute/MTL/ComputeBufferMTL.mm
+@@ -26,6 +26,15 @@ bool ComputeBufferMTL::Initialize(const void *inData)
+ 	return mBuffer != nil;
+ }
+ 
++bool ComputeBufferMTL::InitializeExternal(id<MTLBuffer> inBuffer)
++{
++	if (mType != EType::RWBuffer || inBuffer == nil || inBuffer.length < mSize * mStride)
++		return false;
++
++	mBuffer = [inBuffer retain];
++	return true;
++}
++
+ ComputeBufferMTL::~ComputeBufferMTL()
+ {
+ 	[mBuffer release];
+diff --git a/Jolt/Compute/VK/ComputeBufferVK.cpp b/Jolt/Compute/VK/ComputeBufferVK.cpp
+index 2041ca8..6b55f39 100644
+--- a/Jolt/Compute/VK/ComputeBufferVK.cpp
++++ b/Jolt/Compute/VK/ComputeBufferVK.cpp
+@@ -63,9 +63,22 @@ bool ComputeBufferVK::Initialize(const void *inData)
+ 	return true;
+ }
+ 
++bool ComputeBufferVK::InitializeExternal(VkBuffer inBuffer, VkPipelineStageFlags inStage, VkAccessFlagBits inAccessFlags)
++{
++	if (mType != EType::RWBuffer || inBuffer == VK_NULL_HANDLE)
++		return false;
++
++	mBufferGPU.mBuffer = inBuffer;
++	mAccessStage = inStage;
++	mAccessFlagBits = inAccessFlags;
++	mOwnsBufferGPU = false;
++	return true;
++}
++
+ ComputeBufferVK::~ComputeBufferVK()
+ {
+-	mComputeSystem->FreeBuffer(mBufferGPU);
++	if (mOwnsBufferGPU)
++		mComputeSystem->FreeBuffer(mBufferGPU);
+ 	mComputeSystem->FreeBuffer(mBufferCPU);
+ }
+ 
+diff --git a/Jolt/Compute/VK/ComputeBufferVK.h b/Jolt/Compute/VK/ComputeBufferVK.h
+index a2849e2..e0c721b 100644
+--- a/Jolt/Compute/VK/ComputeBufferVK.h
++++ b/Jolt/Compute/VK/ComputeBufferVK.h
+@@ -25,6 +25,7 @@ public:
+ 	virtual							~ComputeBufferVK() override;
+ 
+ 	bool							Initialize(const void *inData);
++	bool							InitializeExternal(VkBuffer inBuffer, VkPipelineStageFlags inStage, VkAccessFlagBits inAccessFlags);
+ 
+ 	virtual ComputeBufferResult		CreateReadBackBuffer() const override;
+ 
+@@ -42,6 +43,7 @@ private:
+ 	ComputeSystemVK *				mComputeSystem;
+ 	mutable BufferVK				mBufferCPU;
+ 	BufferVK						mBufferGPU;
++	bool							mOwnsBufferGPU = true;
+ 	mutable bool					mNeedsSync = false;										///< If this buffer needs to be synced from CPU to GPU
+ 	mutable VkAccessFlagBits		mAccessFlagBits = VK_ACCESS_SHADER_READ_BIT;			///< Access flags of the last usage, used for barriers
+ 	mutable VkPipelineStageFlags	mAccessStage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;	///< Pipeline stage of the last usage, used for barriers
+diff --git a/Jolt/Compute/VK/ComputeQueueVK.cpp b/Jolt/Compute/VK/ComputeQueueVK.cpp
+index c3805c6..8e18e97 100644
+--- a/Jolt/Compute/VK/ComputeQueueVK.cpp
++++ b/Jolt/Compute/VK/ComputeQueueVK.cpp
+@@ -261,7 +261,7 @@ void ComputeQueueVK::Execute()
+ 	submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+ 	submit.commandBufferCount = 1;
+ 	submit.pCommandBuffers = &mCommandBuffer;
+-	if (VKFailed(mComputeSystem->mVkQueueSubmit(mQueue, 1, &submit, mFence)))
++	if (VKFailed(mComputeSystem->QueueSubmit(mQueue, 1, &submit, mFence)))
+ 		return;
+ 
+ 	// Clear the current shader
+diff --git a/Jolt/Compute/VK/ComputeSystemVK.cpp b/Jolt/Compute/VK/ComputeSystemVK.cpp
+index 5101c64..e82a926 100644
+--- a/Jolt/Compute/VK/ComputeSystemVK.cpp
++++ b/Jolt/Compute/VK/ComputeSystemVK.cpp
+@@ -88,9 +88,9 @@ bool ComputeSystemVK::Initialize(VkPhysicalDevice inPhysicalDevice, PFN_vkGetDev
+ 	return true;
+ }
+ 
+-void ComputeSystemVK::Shutdown()
++void ComputeSystemVK::Shutdown(bool inWaitForDeviceIdle)
+ {
+-	if (mDevice != VK_NULL_HANDLE)
++	if (inWaitForDeviceIdle && mDevice != VK_NULL_HANDLE)
+ 		mVkDeviceWaitIdle(mDevice);
+ 
+ 	// Free the dummy buffer
+@@ -99,6 +99,20 @@ void ComputeSystemVK::Shutdown()
+ 	ShutdownMemory();
+ }
+ 
++void ComputeSystemVK::SetQueueSubmitFunction(QueueSubmitFunction inFunction, void *inUserData)
++{
++	mQueueSubmitFunction = inFunction;
++	mQueueSubmitUserData = inUserData;
++}
++
++VkResult ComputeSystemVK::QueueSubmit(VkQueue inQueue, uint32 inSubmitCount, const VkSubmitInfo *inSubmitInfo, VkFence inFence) const
++{
++	if (mQueueSubmitFunction != nullptr)
++		return mQueueSubmitFunction(mQueueSubmitUserData, inQueue, inSubmitCount, inSubmitInfo, inFence);
++
++	return mVkQueueSubmit(inQueue, inSubmitCount, inSubmitInfo, inFence);
++}
++
+ ComputeShaderResult ComputeSystemVK::CreateComputeShader(const char *inName, uint32 inGroupSizeX, uint32 inGroupSizeY, uint32 inGroupSizeZ)
+ {
+ 	ComputeShaderResult result;
+diff --git a/Jolt/Compute/VK/ComputeSystemVK.h b/Jolt/Compute/VK/ComputeSystemVK.h
+index 558cb86..8aa64a3 100644
+--- a/Jolt/Compute/VK/ComputeSystemVK.h
++++ b/Jolt/Compute/VK/ComputeSystemVK.h
+@@ -21,7 +21,7 @@ public:
+ 
+ 	// Initialize / shutdown the compute system
+ 	bool							Initialize(VkPhysicalDevice inPhysicalDevice, PFN_vkGetDeviceProcAddr inVkGetDeviceProcAddr, VkDevice inDevice, uint32 inComputeQueueIndex, ComputeSystemResult &outResult);
+-	void							Shutdown();
++	void							Shutdown(bool inWaitForDeviceIdle = true);
+ 
+ 	// See: ComputeSystem
+ 	virtual ComputeShaderResult		CreateComputeShader(const char *inName, uint32 inGroupSizeX, uint32 inGroupSizeY, uint32 inGroupSizeZ) override;
+@@ -31,6 +31,11 @@ public:
+ 	/// Access to the Vulkan device
+ 	VkDevice						GetDevice() const												{ return mDevice; }
+ 
++	/// Override queue submission when the host application owns and serializes access to the queue.
++	using QueueSubmitFunction = VkResult (*)(void *inUserData, VkQueue inQueue, uint32 inSubmitCount, const VkSubmitInfo *inSubmitInfo, VkFence inFence);
++	void							SetQueueSubmitFunction(QueueSubmitFunction inFunction, void *inUserData);
++	VkResult						QueueSubmit(VkQueue inQueue, uint32 inSubmitCount, const VkSubmitInfo *inSubmitInfo, VkFence inFence) const;
++
+ 	/// Allow the application to override buffer creation and memory mapping in case it uses its own allocator
+ 	virtual bool					CreateBuffer(VkDeviceSize inSize, VkBufferUsageFlags inUsage, VkMemoryPropertyFlags inProperties, BufferVK &outBuffer) = 0;
+ 	virtual void					FreeBuffer(BufferVK &ioBuffer) = 0;
+@@ -91,6 +96,9 @@ protected:
+ 	uint32							mComputeQueueIndex = 0;
+ 
+ private:
++	QueueSubmitFunction			mQueueSubmitFunction = nullptr;
++	void *							mQueueSubmitUserData = nullptr;
++
+ 	// Buffer that can be bound when we have no buffer
+ 	BufferVK						mDummyBuffer;
+ };
+diff --git a/Jolt/Geometry/RayAABox.h b/Jolt/Geometry/RayAABox.h
+index 90a08f6..12215a6 100644
+--- a/Jolt/Geometry/RayAABox.h
++++ b/Jolt/Geometry/RayAABox.h
+@@ -131,6 +131,27 @@ JPH_INLINE Vec4 RayAABox4(Vec3Arg inOrigin, const RayInvDirection &inInvDirectio
+ 	return Vec4::sSelect(t_min, flt_max, no_intersection);
+ }
+ 
++/// Intersect 4 AABBs with a ray that has exactly one non-zero direction component.
++/// The parallel bounds are provided first and the bounds along the ray direction last.
++JPH_INLINE Vec4 RayAABox4AxisAligned(float inParallelOrigin1, float inParallelOrigin2, float inRayOrigin, float inInvDirection, Vec4Arg inParallelBoundsMin1, Vec4Arg inParallelBoundsMin2, Vec4Arg inRayBoundsMin, Vec4Arg inParallelBoundsMax1, Vec4Arg inParallelBoundsMax2, Vec4Arg inRayBoundsMax)
++{
++	Vec4 ray_origin = Vec4::sReplicate(inRayOrigin);
++	Vec4 inv_direction = Vec4::sReplicate(inInvDirection);
++	Vec4 t1 = (inRayBoundsMin - ray_origin) * inv_direction;
++	Vec4 t2 = (inRayBoundsMax - ray_origin) * inv_direction;
++	Vec4 t_min = Vec4::sMin(t1, t2);
++	Vec4 t_max = Vec4::sMax(t1, t2);
++
++	Vec4 parallel_origin1 = Vec4::sReplicate(inParallelOrigin1);
++	Vec4 parallel_origin2 = Vec4::sReplicate(inParallelOrigin2);
++	UVec4 no_intersection = UVec4::sOr(
++		UVec4::sOr(Vec4::sLess(parallel_origin1, inParallelBoundsMin1), Vec4::sGreater(parallel_origin1, inParallelBoundsMax1)),
++		UVec4::sOr(Vec4::sLess(parallel_origin2, inParallelBoundsMin2), Vec4::sGreater(parallel_origin2, inParallelBoundsMax2)));
++	no_intersection = UVec4::sOr(no_intersection, Vec4::sLess(t_max, Vec4::sZero()));
++	no_intersection = UVec4::sOr(no_intersection, Vec4::sGreater(inRayBoundsMin, inRayBoundsMax));
++	return Vec4::sSelect(t_min, Vec4::sReplicate(FLT_MAX), no_intersection);
++}
++
+ /// Intersect AABB with ray, returns minimal and maximal distance along ray or FLT_MAX, -FLT_MAX if no hit
+ /// Note: Can return negative value for outMin if ray starts in box
+ JPH_INLINE void RayAABox(Vec3Arg inOrigin, const RayInvDirection &inInvDirection, Vec3Arg inBoundsMin, Vec3Arg inBoundsMax, float &outMin, float &outMax)
+diff --git a/Jolt/Physics/Collision/BroadPhase/BroadPhase.h b/Jolt/Physics/Collision/BroadPhase/BroadPhase.h
+index c4d9861..0b91a8b 100644
+--- a/Jolt/Physics/Collision/BroadPhase/BroadPhase.h
++++ b/Jolt/Physics/Collision/BroadPhase/BroadPhase.h
+@@ -95,6 +95,9 @@ public:
+ 	/// Same as BroadPhaseQuery::CastAABox but can be implemented in a way to take no broad phase locks.
+ 	virtual void		CastAABoxNoLock(const AABoxCast &inBox, CastShapeBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const = 0;
+ 
++	/// Same as BroadPhaseQuery::CastRay but can be implemented in a way to take no broad phase locks.
++	virtual void		CastRayNoLock(const RayCast &inRay, RayCastBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const = 0;
++
+ #ifdef JPH_TRACK_BROADPHASE_STATS
+ 	/// Trace the collected broadphase stats in CSV form.
+ 	/// This report can be used to judge and tweak the efficiency of the broadphase.
+diff --git a/Jolt/Physics/Collision/BroadPhase/BroadPhaseBruteForce.cpp b/Jolt/Physics/Collision/BroadPhase/BroadPhaseBruteForce.cpp
+index fc23321..c4de1de 100644
+--- a/Jolt/Physics/Collision/BroadPhase/BroadPhaseBruteForce.cpp
++++ b/Jolt/Physics/Collision/BroadPhase/BroadPhaseBruteForce.cpp
+@@ -89,6 +89,12 @@ void BroadPhaseBruteForce::CastRay(const RayCast &inRay, RayCastBodyCollector &i
+ {
+ 	shared_lock lock(mMutex);
+ 
++	CastRayNoLock(inRay, ioCollector, inBroadPhaseLayerFilter, inObjectLayerFilter);
++}
++
++void BroadPhaseBruteForce::CastRayNoLock(const RayCast &inRay, RayCastBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const
++{
++
+ 	// Load ray
+ 	Vec3 origin(inRay.mOrigin);
+ 	RayInvDirection inv_direction(inRay.mDirection);
+diff --git a/Jolt/Physics/Collision/BroadPhase/BroadPhaseBruteForce.h b/Jolt/Physics/Collision/BroadPhase/BroadPhaseBruteForce.h
+index c3e20f5..3fbf480 100644
+--- a/Jolt/Physics/Collision/BroadPhase/BroadPhaseBruteForce.h
++++ b/Jolt/Physics/Collision/BroadPhase/BroadPhaseBruteForce.h
+@@ -21,6 +21,7 @@ public:
+ 	virtual void		NotifyBodiesAABBChanged(BodyID *ioBodies, int inNumber, bool inTakeLock) override;
+ 	virtual void		NotifyBodiesLayerChanged(BodyID *ioBodies, int inNumber) override;
+ 	virtual void		CastRay(const RayCast &inRay, RayCastBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
++	virtual void		CastRayNoLock(const RayCast &inRay, RayCastBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
+ 	virtual void		CollideAABox(const AABox &inBox, CollideShapeBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
+ 	virtual void		CollideSphere(Vec3Arg inCenter, float inRadius, CollideShapeBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
+ 	virtual void		CollidePoint(Vec3Arg inPoint, CollideShapeBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
+diff --git a/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.cpp b/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.cpp
+index db427e9..3c10c82 100644
+--- a/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.cpp
++++ b/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.cpp
+@@ -418,14 +418,19 @@ void BroadPhaseQuadTree::NotifyBodiesLayerChanged(BodyID *ioBodies, int inNumber
+ }
+ 
+ void BroadPhaseQuadTree::CastRay(const RayCast &inRay, RayCastBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const
++{
++	// Prevent this from running in parallel with node deletion in FrameSync(), see notes there
++	shared_lock lock(mQueryLocks[mQueryLockIdx]);
++
++	CastRayNoLock(inRay, ioCollector, inBroadPhaseLayerFilter, inObjectLayerFilter);
++}
++
++void BroadPhaseQuadTree::CastRayNoLock(const RayCast &inRay, RayCastBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const
+ {
+ 	JPH_PROFILE_FUNCTION();
+ 
+ 	JPH_ASSERT(mMaxBodies == mBodyManager->GetMaxBodies());
+ 
+-	// Prevent this from running in parallel with node deletion in FrameSync(), see notes there
+-	shared_lock lock(mQueryLocks[mQueryLockIdx]);
+-
+ 	// Loop over all layers and test the ones that could hit
+ 	for (BroadPhaseLayer::Type l = 0; l < mNumLayers; ++l)
+ 	{
+diff --git a/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.h b/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.h
+index ae97c10..2ed45e3 100644
+--- a/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.h
++++ b/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.h
+@@ -34,6 +34,7 @@ public:
+ 	virtual void			NotifyBodiesAABBChanged(BodyID *ioBodies, int inNumber, bool inTakeLock) override;
+ 	virtual void			NotifyBodiesLayerChanged(BodyID *ioBodies, int inNumber) override;
+ 	virtual void			CastRay(const RayCast &inRay, RayCastBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
++	virtual void			CastRayNoLock(const RayCast &inRay, RayCastBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
+ 	virtual void			CollideAABox(const AABox &inBox, CollideShapeBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
+ 	virtual void			CollideSphere(Vec3Arg inCenter, float inRadius, CollideShapeBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
+ 	virtual void			CollidePoint(Vec3Arg inPoint, CollideShapeBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
+diff --git a/Jolt/Physics/Collision/BroadPhase/QuadTree.cpp b/Jolt/Physics/Collision/BroadPhase/QuadTree.cpp
+index 3b2683d..85ee448 100644
+--- a/Jolt/Physics/Collision/BroadPhase/QuadTree.cpp
++++ b/Jolt/Physics/Collision/BroadPhase/QuadTree.cpp
+@@ -1085,7 +1085,8 @@ void QuadTree::CastRay(const RayCast &inRay, RayCastBodyCollector &ioCollector,
+ 		JPH_INLINE				Visitor(const RayCast &inRay, RayCastBodyCollector &ioCollector) :
+ 			mOrigin(inRay.mOrigin),
+ 			mInvDirection(inRay.mDirection),
+-			mCollector(ioCollector)
++			mCollector(ioCollector),
++			mAxis(GetAxis(inRay.mDirection))
+ 		{
+ 			mFractionStack.resize(cStackSize);
+ 			mFractionStack[0] = -1;
+@@ -1107,7 +1108,22 @@ void QuadTree::CastRay(const RayCast &inRay, RayCastBodyCollector &ioCollector,
+ 		JPH_INLINE int			VisitNodes(Vec4Arg inBoundsMinX, Vec4Arg inBoundsMinY, Vec4Arg inBoundsMinZ, Vec4Arg inBoundsMaxX, Vec4Arg inBoundsMaxY, Vec4Arg inBoundsMaxZ, UVec4 &ioChildNodeIDs, int inStackTop)
+ 		{
+ 			// Test the ray against 4 bounding boxes
+-			Vec4 fraction = RayAABox4(mOrigin, mInvDirection, inBoundsMinX, inBoundsMinY, inBoundsMinZ, inBoundsMaxX, inBoundsMaxY, inBoundsMaxZ);
++			Vec4 fraction;
++			switch (mAxis)
++			{
++			case 0:
++				fraction = RayAABox4AxisAligned(mOrigin.GetY(), mOrigin.GetZ(), mOrigin.GetX(), mInvDirection.mInvDirection.GetX(), inBoundsMinY, inBoundsMinZ, inBoundsMinX, inBoundsMaxY, inBoundsMaxZ, inBoundsMaxX);
++				break;
++			case 1:
++				fraction = RayAABox4AxisAligned(mOrigin.GetX(), mOrigin.GetZ(), mOrigin.GetY(), mInvDirection.mInvDirection.GetY(), inBoundsMinX, inBoundsMinZ, inBoundsMinY, inBoundsMaxX, inBoundsMaxZ, inBoundsMaxY);
++				break;
++			case 2:
++				fraction = RayAABox4AxisAligned(mOrigin.GetX(), mOrigin.GetY(), mOrigin.GetZ(), mInvDirection.mInvDirection.GetZ(), inBoundsMinX, inBoundsMinY, inBoundsMinZ, inBoundsMaxX, inBoundsMaxY, inBoundsMaxZ);
++				break;
++			default:
++				fraction = RayAABox4(mOrigin, mInvDirection, inBoundsMinX, inBoundsMinY, inBoundsMinZ, inBoundsMaxX, inBoundsMaxY, inBoundsMaxZ);
++				break;
++			}
+ 
+ 			// Sort so that highest values are first (we want to first process closer hits and we process stack top to bottom)
+ 			return SortReverseAndStore(fraction, mCollector.GetEarlyOutFraction(), ioChildNodeIDs, &mFractionStack[inStackTop]);
+@@ -1128,10 +1144,22 @@ void QuadTree::CastRay(const RayCast &inRay, RayCastBodyCollector &ioCollector,
+ 		}
+ 
+ 	private:
++		JPH_INLINE static int	GetAxis(Vec3Arg inDirection)
++		{
++			if (inDirection.GetX() != 0.0f && inDirection.GetY() == 0.0f && inDirection.GetZ() == 0.0f)
++				return 0;
++			if (inDirection.GetX() == 0.0f && inDirection.GetY() != 0.0f && inDirection.GetZ() == 0.0f)
++				return 1;
++			if (inDirection.GetX() == 0.0f && inDirection.GetY() == 0.0f && inDirection.GetZ() != 0.0f)
++				return 2;
++			return -1;
++		}
++
+ 		Vec3					mOrigin;
+ 		RayInvDirection			mInvDirection;
+ 		RayCastBodyCollector &	mCollector;
+ 		Array<float, STLLocalAllocator<float, cStackSize>> mFractionStack;
++		int						mAxis;
+ 	};
+ 
+ 	Visitor visitor(inRay, ioCollector);
+diff --git a/Jolt/Physics/Constraints/ConstraintManager.cpp b/Jolt/Physics/Constraints/ConstraintManager.cpp
+index 509bddb..f7ceb56 100644
+--- a/Jolt/Physics/Constraints/ConstraintManager.cpp
++++ b/Jolt/Physics/Constraints/ConstraintManager.cpp
+@@ -209,20 +209,34 @@ void ConstraintManager::SaveState(StateRecorder &inStream, const StateRecorderFi
+ 	// Write state of constraints
+ 	if (inFilter != nullptr)
+ 	{
+-		// Determine which constraints to save
+-		Array<Constraint *> constraints;
+-		constraints.reserve(mConstraints.size());
+-		for (const Ref<Constraint> &c : mConstraints)
+-			if (inFilter->ShouldSaveConstraint(*c))
+-				constraints.push_back(c);
+-
+-		// Save them
+-		uint32 num_constraints = (uint32)constraints.size();
+-		inStream.Write(num_constraints);
+-		for (const Constraint *c : constraints)
++		uint32 num_constraints = inFilter->GetNumConstraintsToSave();
++		if (num_constraints == ~uint32(0))
+ 		{
+-			inStream.Write(c->mConstraintIndex);
+-			c->SaveState(inStream);
++			// Determine which constraints to save
++			Array<Constraint *> constraints;
++			constraints.reserve(mConstraints.size());
++			for (const Ref<Constraint> &c : mConstraints)
++				if (inFilter->ShouldSaveConstraint(*c))
++					constraints.push_back(c);
++
++			// Save them
++			num_constraints = (uint32)constraints.size();
++			inStream.Write(num_constraints);
++			for (const Constraint *c : constraints)
++			{
++				inStream.Write(c->mConstraintIndex);
++				c->SaveState(inStream);
++			}
++		}
++		else
++		{
++			inStream.Write(num_constraints);
++			for (const Ref<Constraint> &c : mConstraints)
++				if (inFilter->ShouldSaveConstraint(*c))
++				{
++					inStream.Write(c->mConstraintIndex);
++					c->SaveState(inStream);
++				}
+ 		}
+ 	}
+ 	else
+diff --git a/Jolt/Physics/Constraints/ContactConstraintManager.cpp b/Jolt/Physics/Constraints/ContactConstraintManager.cpp
+index efb7aee..631720a 100644
+--- a/Jolt/Physics/Constraints/ContactConstraintManager.cpp
++++ b/Jolt/Physics/Constraints/ContactConstraintManager.cpp
+@@ -468,26 +468,22 @@ void ContactConstraintManager::ManifoldCache::SaveState(StateRecorder &inStream,
+ {
+ 	JPH_ASSERT(mIsFinalized);
+ 
+-	// Get contents of cache
+-	Array<const BPKeyValue *> all_bp;
+-	GetAllBodyPairsSorted(all_bp);
+-
+-	// Determine which ones to save
+-	Array<const BPKeyValue *> selected_bp;
+-	if (inFilter == nullptr)
+-		selected_bp = std::move(all_bp);
+-	else
++	// Get contents of cache in deterministic order and filter it in place
++	mBodyPairStateScratch.clear();
++	GetAllBodyPairsSorted(mBodyPairStateScratch);
++	if (inFilter != nullptr)
+ 	{
+-		selected_bp.reserve(all_bp.size());
+-		for (const BPKeyValue *bp_kv : all_bp)
++		size_t selected_count = 0;
++		for (const BPKeyValue *bp_kv : mBodyPairStateScratch)
+ 			if (inFilter->ShouldSaveContact(bp_kv->GetKey().mBodyA, bp_kv->GetKey().mBodyB))
+-				selected_bp.push_back(bp_kv);
++				mBodyPairStateScratch[selected_count++] = bp_kv;
++		mBodyPairStateScratch.resize(selected_count);
+ 	}
+ 
+ 	// Write body pairs
+-	uint32 num_body_pairs = uint32(selected_bp.size());
++	uint32 num_body_pairs = uint32(mBodyPairStateScratch.size());
+ 	inStream.Write(num_body_pairs);
+-	for (const BPKeyValue *bp_kv : selected_bp)
++	for (const BPKeyValue *bp_kv : mBodyPairStateScratch)
+ 	{
+ 		// Write body pair key
+ 		inStream.Write(bp_kv->GetKey());
+@@ -497,15 +493,15 @@ void ContactConstraintManager::ManifoldCache::SaveState(StateRecorder &inStream,
+ 		bp.SaveState(inStream);
+ 
+ 		// Get attached manifolds
+-		Array<const MKeyValue *> all_m;
+-		GetAllManifoldsSorted(bp, all_m);
++		mManifoldStateScratch.clear();
++		GetAllManifoldsSorted(bp, mManifoldStateScratch);
+ 
+ 		// Write num manifolds
+-		uint32 num_manifolds = uint32(all_m.size());
++		uint32 num_manifolds = uint32(mManifoldStateScratch.size());
+ 		inStream.Write(num_manifolds);
+ 
+ 		// Write all manifolds
+-		for (const MKeyValue *m_kv : all_m)
++		for (const MKeyValue *m_kv : mManifoldStateScratch)
+ 		{
+ 			// Write key
+ 			inStream.Write(m_kv->GetKey());
+@@ -524,27 +520,26 @@ void ContactConstraintManager::ManifoldCache::SaveState(StateRecorder &inStream,
+ 		}
+ 	}
+ 
+-	// Get CCD manifolds
+-	Array<const MKeyValue *> all_m;
+-	GetAllCCDManifoldsSorted(all_m);
+-
+-	// Determine which ones to save
+-	Array<const MKeyValue *> selected_m;
+-	if (inFilter == nullptr)
+-		selected_m = std::move(all_m);
+-	else
++	// Get CCD manifolds in deterministic order and filter them in place
++	mManifoldStateScratch.clear();
++	GetAllCCDManifoldsSorted(mManifoldStateScratch);
++	if (inFilter != nullptr)
+ 	{
+-		selected_m.reserve(all_m.size());
+-		for (const MKeyValue *m_kv : all_m)
++		size_t selected_count = 0;
++		for (const MKeyValue *m_kv : mManifoldStateScratch)
+ 			if (inFilter->ShouldSaveContact(m_kv->GetKey().GetBody1ID(), m_kv->GetKey().GetBody2ID()))
+-				selected_m.push_back(m_kv);
++				mManifoldStateScratch[selected_count++] = m_kv;
++		mManifoldStateScratch.resize(selected_count);
+ 	}
+ 
+ 	// Write all CCD manifold keys
+-	uint32 num_manifolds = uint32(selected_m.size());
++	uint32 num_manifolds = uint32(mManifoldStateScratch.size());
+ 	inStream.Write(num_manifolds);
+-	for (const MKeyValue *m_kv : selected_m)
++	for (const MKeyValue *m_kv : mManifoldStateScratch)
+ 		inStream.Write(m_kv->GetKey());
++
++	mBodyPairStateScratch.clear();
++	mManifoldStateScratch.clear();
+ }
+ 
+ bool ContactConstraintManager::ManifoldCache::RestoreState(const ManifoldCache &inReadCache, StateRecorder &inStream, const StateRecorderFilter *inFilter)
+diff --git a/Jolt/Physics/Constraints/ContactConstraintManager.h b/Jolt/Physics/Constraints/ContactConstraintManager.h
+index d76f3fc..e55be29 100644
+--- a/Jolt/Physics/Constraints/ContactConstraintManager.h
++++ b/Jolt/Physics/Constraints/ContactConstraintManager.h
+@@ -419,6 +419,10 @@ private:
+ 		/// Simple hash map for BodyPair -> CachedBodyPair
+ 		BodyPairMap				mCachedBodyPairs { mAllocator };
+ 
++		/// Reusable deterministic state-capture ordering buffers
++		mutable Array<const BPKeyValue *>	mBodyPairStateScratch;
++		mutable Array<const MKeyValue *>	mManifoldStateScratch;
++
+ #ifdef JPH_ENABLE_ASSERTS
+ 		bool					mIsFinalized = false;						///< Marks if this buffer is complete
+ #endif
+diff --git a/Jolt/Physics/Hair/Hair.cpp b/Jolt/Physics/Hair/Hair.cpp
+index 779f853..2f0bea0 100644
+--- a/Jolt/Physics/Hair/Hair.cpp
++++ b/Jolt/Physics/Hair/Hair.cpp
+@@ -39,8 +39,18 @@ Hair::~Hair()
+ 		delete [] mRenderPositions;
+ }
+ 
+-void Hair::Init(ComputeSystem *inComputeSystem)
++bool Hair::Init(ComputeSystem *inComputeSystem)
+ {
++	auto create_buffer = [inComputeSystem](Ref<ComputeBuffer> &outBuffer, ComputeBuffer::EType inType, uint64 inSize, uint inStride, const void *inData = nullptr) -> bool
++	{
++		ComputeBufferResult result = inComputeSystem->CreateComputeBuffer(inType, inSize, inStride, inData);
++		if (!result.IsValid())
++			return false;
++
++		outBuffer = result.Get();
++		return static_cast<bool>(outBuffer);
++	};
++
+ 	// Create compute buffers
+ 	size_t num_vertices_padded = mSettings->GetNumVerticesPadded();
+ 	size_t grid_size = mSettings->mNeutralDensity.size();
+@@ -48,14 +58,16 @@ void Hair::Init(ComputeSystem *inComputeSystem)
+ 
+ 	if (!mSettings->mScalpInverseBindPose.empty() && !mSettings->mScalpVertices.empty())
+ 	{
+-		mScalpJointMatricesCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::UploadBuffer, mSettings->mScalpInverseBindPose.size() * sizeof(Mat44), sizeof(Mat44)).Get();
+-		mScalpVerticesCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::RWBuffer, mSettings->mScalpVertices.size(), sizeof(Float3)).Get();
++		if (!create_buffer(mScalpJointMatricesCB, ComputeBuffer::EType::UploadBuffer, mSettings->mScalpInverseBindPose.size() * sizeof(Mat44), sizeof(Mat44))
++			|| !create_buffer(mScalpVerticesCB, ComputeBuffer::EType::RWBuffer, mSettings->mScalpVertices.size(), sizeof(Float3)))
++			return false;
+ 		mScalpTrianglesCB = mSettings->mScalpTrianglesCB;
+ 	}
+ 
+ 	if (mScalpVerticesCB != nullptr)
+ 	{
+-		mGlobalPoseTransformsCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::RWBuffer, mSettings->mSimStrands.size(), sizeof(JPH_HairGlobalPoseTransform)).Get();
++		if (!create_buffer(mGlobalPoseTransformsCB, ComputeBuffer::EType::RWBuffer, mSettings->mSimStrands.size(), sizeof(JPH_HairGlobalPoseTransform)))
++			return false;
+ 	}
+ 	else
+ 	{
+@@ -64,18 +76,23 @@ void Hair::Init(ComputeSystem *inComputeSystem)
+ 		identity.mPosition = JPH_float3(0, 0, 0);
+ 		identity.mRotation = JPH_float4(0, 0, 0, 1);
+ 		Array<JPH_HairGlobalPoseTransform> identity_array(mSettings->mSimStrands.size(), identity);
+-		mGlobalPoseTransformsCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::RWBuffer, mSettings->mSimStrands.size(), sizeof(JPH_HairGlobalPoseTransform), identity_array.data()).Get();
++		if (!create_buffer(mGlobalPoseTransformsCB, ComputeBuffer::EType::RWBuffer, mSettings->mSimStrands.size(), sizeof(JPH_HairGlobalPoseTransform), identity_array.data()))
++			return false;
+ 	}
+ 
+-	mCollisionPlanesCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::RWBuffer, num_vertices_padded, sizeof(JPH_HairCollisionPlane)).Get();
+-	mMaterialsCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::UploadBuffer, mSettings->mMaterials.size(), sizeof(JPH_HairMaterial)).Get();
+-	mPreviousPositionsCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::RWBuffer, num_vertices_padded, sizeof(JPH_HairPosition)).Get();
+-	mPositionsCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::RWBuffer, num_vertices_padded, sizeof(JPH_HairPosition)).Get();
+-	mVelocitiesCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::RWBuffer, num_vertices_padded, sizeof(JPH_HairVelocity)).Get();
+-	mConstantsCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::ConstantBuffer, 1, sizeof(JPH_HairUpdateContext)).Get();
+-	mVelocityAndDensityCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::RWBuffer, grid_size, sizeof(Float4)).Get();
+-	if (!mRenderPositionsOverridden)
+-		mRenderPositionsCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::RWBuffer, num_render_vertices, sizeof(Float3)).Get();
++	if (!create_buffer(mCollisionPlanesCB, ComputeBuffer::EType::RWBuffer, num_vertices_padded, sizeof(JPH_HairCollisionPlane))
++		|| !create_buffer(mMaterialsCB, ComputeBuffer::EType::UploadBuffer, mSettings->mMaterials.size(), sizeof(JPH_HairMaterial))
++		|| !create_buffer(mPreviousPositionsCB, ComputeBuffer::EType::RWBuffer, num_vertices_padded, sizeof(JPH_HairPosition))
++		|| !create_buffer(mPositionsCB, ComputeBuffer::EType::RWBuffer, num_vertices_padded, sizeof(JPH_HairPosition))
++		|| !create_buffer(mVelocitiesCB, ComputeBuffer::EType::RWBuffer, num_vertices_padded, sizeof(JPH_HairVelocity))
++		|| !create_buffer(mConstantsCB, ComputeBuffer::EType::ConstantBuffer, 1, sizeof(JPH_HairUpdateContext))
++		|| !create_buffer(mVelocityAndDensityCB, ComputeBuffer::EType::RWBuffer, grid_size, sizeof(Float4)))
++		return false;
++
++	if (mRenderPositionsOverridden)
++		return static_cast<bool>(mRenderPositionsCB);
++
++	return create_buffer(mRenderPositionsCB, ComputeBuffer::EType::RWBuffer, num_render_vertices, sizeof(Float3));
+ }
+ 
+ void Hair::InitializeContext(UpdateContext &outCtx, float inDeltaTime, const PhysicsSystem &inSystem)
+@@ -140,6 +157,9 @@ void Hair::InitializeContext(UpdateContext &outCtx, float inDeltaTime, const Phy
+ 
+ 							virtual void		AddHit(const TransformedShape &inResult) override
+ 							{
++								if (inResult.mShape->GetSubType() != EShapeSubType::ConvexHull)
++									return;
++
+ 								mHits.emplace_back(Mat44::sRotationTranslation(inResult.mShapeRotation, Vec3(inResult.mShapePositionCOM)),
+ 									inResult.GetShapeScale(),
+ 									mHeadTransform.Multiply3x3Transposed(mBody.GetPointVelocity(mHeadTransform * inResult.mShapePositionCOM)), // Calculate velocity of shape at its center of mass position
+diff --git a/Jolt/Physics/Hair/Hair.h b/Jolt/Physics/Hair/Hair.h
+index 2ec0988..2e15734 100644
+--- a/Jolt/Physics/Hair/Hair.h
++++ b/Jolt/Physics/Hair/Hair.h
+@@ -39,7 +39,7 @@ public:
+ 										~Hair();
+ 
+ 	/// Initialize
+-	void								Init(ComputeSystem *inComputeSystem);
++	bool								Init(ComputeSystem *inComputeSystem);
+ 
+ 	/// Position and rotation of the hair in world space
+ 	void								SetPosition(RVec3Arg inPosition)				{ mPosition = inPosition; }
+diff --git a/Jolt/Physics/Hair/HairSettings.cpp b/Jolt/Physics/Hair/HairSettings.cpp
+index 75135d9..8fb5cfa 100644
+--- a/Jolt/Physics/Hair/HairSettings.cpp
++++ b/Jolt/Physics/Hair/HairSettings.cpp
+@@ -641,19 +641,31 @@ void HairSettings::Init(float &outMaxDistSqHairToScalp)
+ 	}
+ }
+ 
+-void HairSettings::InitCompute(ComputeSystem *inComputeSystem)
++bool HairSettings::InitCompute(ComputeSystem *inComputeSystem)
+ {
++	auto create_buffer = [inComputeSystem](Ref<ComputeBuffer> &outBuffer, ComputeBuffer::EType inType, uint64 inSize, uint inStride, const void *inData = nullptr) -> bool
++	{
++		ComputeBufferResult result = inComputeSystem->CreateComputeBuffer(inType, inSize, inStride, inData);
++		if (!result.IsValid())
++			return false;
++
++		outBuffer = result.Get();
++		return static_cast<bool>(outBuffer);
++	};
++
+ 	// Optional: We can attach the roots of the hairs to the scalp
+ 	if (!mScalpTriangles.empty() && !mSkinPoints.empty())
+ 	{
+-		mScalpTrianglesCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, mScalpTriangles.size() * 3, sizeof(uint32), mScalpTriangles.data()).Get();
+-		mSkinPointsCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, mSkinPoints.size(), sizeof(SkinPoint), mSkinPoints.data()).Get();
++		if (!create_buffer(mScalpTrianglesCB, ComputeBuffer::EType::Buffer, mScalpTriangles.size() * 3, sizeof(uint32), mScalpTriangles.data())
++			|| !create_buffer(mSkinPointsCB, ComputeBuffer::EType::Buffer, mSkinPoints.size(), sizeof(SkinPoint), mSkinPoints.data()))
++			return false;
+ 
+ 		// We can skin the scalp or the skinned vertices can be provided externally
+ 		if (!mScalpVertices.empty() && !mScalpInverseBindPose.empty() && !mScalpSkinWeights.empty())
+ 		{
+-			mScalpVerticesCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, mScalpVertices.size(), sizeof(Float3), mScalpVertices.data()).Get();
+-			mScalpSkinWeightsCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, mScalpSkinWeights.size(), sizeof(JPH_HairSkinWeight), mScalpSkinWeights.data()).Get();
++			if (!create_buffer(mScalpVerticesCB, ComputeBuffer::EType::Buffer, mScalpVertices.size(), sizeof(Float3), mScalpVertices.data())
++				|| !create_buffer(mScalpSkinWeightsCB, ComputeBuffer::EType::Buffer, mScalpSkinWeights.size(), sizeof(JPH_HairSkinWeight), mScalpSkinWeights.data()))
++				return false;
+ 		}
+ 	}
+ 
+@@ -740,16 +752,16 @@ void HairSettings::InitCompute(ComputeSystem *inComputeSystem)
+ 			}
+ 		}
+ 
+-	mVerticesPositionCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, vertices_position.size(), sizeof(Float3), vertices_position.data()).Get();
+-	mVerticesBishopCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, vertices_bishop.size(), sizeof(uint32), vertices_bishop.data()).Get();
+-	mVerticesOmega0CB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, vertices_omega0.size(), sizeof(uint32), vertices_omega0.data()).Get();
+-	mVerticesLengthCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, vertices_length.size(), sizeof(float), vertices_length.data()).Get();
+-	mVerticesFixedCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, vertices_fixed.size(), sizeof(uint32), vertices_fixed.data()).Get();
+-	mVerticesStrandFractionCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, vertices_strand_fraction.size(), sizeof(uint32), vertices_strand_fraction.data()).Get();
+-	mStrandVertexCountsCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, strand_vertex_counts.size() / sizeof(uint32), sizeof(uint32), strand_vertex_counts.data()).Get();
+-	mStrandMaterialIndexCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, strand_material_indices.size() / sizeof(uint32), sizeof(uint32), strand_material_indices.data()).Get();
+-	mNeutralDensityCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, mNeutralDensity.size(), sizeof(float), mNeutralDensity.data()).Get();
+-	mSVertexInfluencesCB = inComputeSystem->CreateComputeBuffer(ComputeBuffer::EType::Buffer, mRenderVertices.size() * cHairNumSVertexInfluences, sizeof(JPH_HairSVertexInfluence), svertex_influences.data()).Get();
++	return create_buffer(mVerticesPositionCB, ComputeBuffer::EType::Buffer, vertices_position.size(), sizeof(Float3), vertices_position.data())
++		&& create_buffer(mVerticesBishopCB, ComputeBuffer::EType::Buffer, vertices_bishop.size(), sizeof(uint32), vertices_bishop.data())
++		&& create_buffer(mVerticesOmega0CB, ComputeBuffer::EType::Buffer, vertices_omega0.size(), sizeof(uint32), vertices_omega0.data())
++		&& create_buffer(mVerticesLengthCB, ComputeBuffer::EType::Buffer, vertices_length.size(), sizeof(float), vertices_length.data())
++		&& create_buffer(mVerticesFixedCB, ComputeBuffer::EType::Buffer, vertices_fixed.size(), sizeof(uint32), vertices_fixed.data())
++		&& create_buffer(mVerticesStrandFractionCB, ComputeBuffer::EType::Buffer, vertices_strand_fraction.size(), sizeof(uint32), vertices_strand_fraction.data())
++		&& create_buffer(mStrandVertexCountsCB, ComputeBuffer::EType::Buffer, strand_vertex_counts.size() / sizeof(uint32), sizeof(uint32), strand_vertex_counts.data())
++		&& create_buffer(mStrandMaterialIndexCB, ComputeBuffer::EType::Buffer, strand_material_indices.size() / sizeof(uint32), sizeof(uint32), strand_material_indices.data())
++		&& create_buffer(mNeutralDensityCB, ComputeBuffer::EType::Buffer, mNeutralDensity.size(), sizeof(float), mNeutralDensity.data())
++		&& create_buffer(mSVertexInfluencesCB, ComputeBuffer::EType::Buffer, mRenderVertices.size() * cHairNumSVertexInfluences, sizeof(JPH_HairSVertexInfluence), svertex_influences.data());
+ }
+ 
+ void HairSettings::SaveBinaryState(StreamOut &inStream) const
+diff --git a/Jolt/Physics/Hair/HairSettings.h b/Jolt/Physics/Hair/HairSettings.h
+index f8ceddc..a194207 100644
+--- a/Jolt/Physics/Hair/HairSettings.h
++++ b/Jolt/Physics/Hair/HairSettings.h
+@@ -241,7 +241,7 @@ public:
+ 	void				Init(float &outMaxDistSqHairToScalp);
+ 
+ 	/// Must be called after Init to setup the compute buffers
+-	void				InitCompute(ComputeSystem *inComputeSystem);
++	bool				InitCompute(ComputeSystem *inComputeSystem);
+ 
+ 	/// Sample the neutral density at a grid position
+ 	float				GetNeutralDensity(uint32 inX, uint32 inY, uint32 inZ) const
+diff --git a/Jolt/Physics/StateRecorder.h b/Jolt/Physics/StateRecorder.h
+index c3bd477..2c295b4 100644
+--- a/Jolt/Physics/StateRecorder.h
++++ b/Jolt/Physics/StateRecorder.h
+@@ -90,6 +90,9 @@ public:
+ 	/// If the state of a specific constraint should be saved
+ 	virtual bool		ShouldSaveConstraint([[maybe_unused]] const Constraint &inConstraint) const	{ return true; }
+ 
++	/// Exact number of constraints selected by this filter, or the maximum uint32 value when it is not available
++	virtual uint32		GetNumConstraintsToSave() const								{ return ~uint32(0); }
++
+ 	/// If the state of a specific contact should be saved
+ 	virtual bool		ShouldSaveContact([[maybe_unused]] const BodyID &inBody1, [[maybe_unused]] const BodyID &inBody2) const { return true; }
+ 

@@ -1,0 +1,9708 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ */
+
+#include <Jolt/SystemInternal.h>
+
+#include <Jolt/AssetBuilderSystem.h>
+#include <Jolt/ComponentDependencyManager.h>
+#include <Jolt/CustomConvexShape.h>
+#include <Jolt/DebugRenderer.h>
+#include <Jolt/FloatEnvironment.h>
+#include <Jolt/HairComputeProvider.h>
+#include <Jolt/NativeRuntime.h>
+#include <Jolt/NativeShapeFactory.h>
+#include <Jolt/Profiler.h>
+
+#include <Jolt/Internal/HandleEncoding.h>
+#include <Jolt/World.h>
+
+#include <AzCore/Debug/Trace.h>
+#include <AzCore/Interface/Interface.h>
+#include <AzCore/Jobs/JobCompletion.h>
+#include <AzCore/Jobs/JobFunction.h>
+#include <AzCore/Math/MathUtils.h>
+#include <AzCore/Utils/TypeHash.h>
+#include <AzCore/std/algorithm.h>
+#include <AzCore/std/containers/array.h>
+#include <AzCore/std/containers/fixed_vector.h>
+#include <AzCore/std/parallel/atomic.h>
+#include <AzCore/std/parallel/lock.h>
+#include <AzCore/std/limits.h>
+#include <AzCore/std/utility/move.h>
+
+#include <Jolt/Core/StreamIn.h>
+#include <Jolt/Core/StreamOut.h>
+#include <Jolt/Compute/CPU/ComputeSystemCPU.h>
+#include <Jolt/ObjectStream/TypeDeclarations.h>
+#include <Jolt/Physics/Constraints/PathConstraintPathHermite.h>
+#include <Jolt/Physics/Collision/Shape/Shape.h>
+#include <Jolt/Physics/Collision/Shape/MeshShape.h>
+#include <Jolt/Physics/Collision/Shape/OffsetCenterOfMassShape.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
+#include <Jolt/Physics/Collision/Shape/ScaledShape.h>
+#include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
+#include <Jolt/Physics/Collision/RayCast.h>
+#include <Jolt/Core/UnorderedSet.h>
+#include <Jolt/Shaders/HairWrapper.h>
+#include <Jolt/Skeleton/SkeletalAnimation.h>
+#include <Jolt/Skeleton/Skeleton.h>
+
+#include <cmath>
+#include <cstring>
+
+namespace Jolt
+{
+    namespace
+    {
+        constexpr AZ::u32 MaximumSubGroupCount = 65'536;
+        constexpr AZ::u32 CookedShapeArchiveFormatVersion = 1;
+        constexpr AZ::u32 SkeletalAnimationArchiveFormatVersion = 1;
+        constexpr AZ::u32 SkeletonDefinitionArchiveFormatVersion = 1;
+        constexpr AZ::u32 SoftBodyDefinitionArchiveFormatVersion = 1;
+        constexpr size_t MaximumNativeArchiveSize = size_t{1} << 30;
+
+        [[nodiscard]]
+        AZ::Transform FromNativeTransform(
+            JPH::Mat44Arg transform)
+        {
+            const JPH::Vec3 firstColumn = transform.GetColumn3(0);
+            const JPH::Vec3 secondColumn = transform.GetColumn3(1);
+            const JPH::Vec3 thirdColumn = transform.GetColumn3(2);
+            const JPH::Vec3 translation = transform.GetTranslation();
+            return AZ::Transform::CreateFromMatrix3x3AndTranslation(
+                AZ::Matrix3x3::CreateFromColumns(
+                    {firstColumn.GetX(), firstColumn.GetY(), firstColumn.GetZ()},
+                    {secondColumn.GetX(), secondColumn.GetY(), secondColumn.GetZ()},
+                    {thirdColumn.GetX(), thirdColumn.GetY(), thirdColumn.GetZ()}),
+                {translation.GetX(), translation.GetY(), translation.GetZ()});
+        }
+
+        [[nodiscard]]
+        PathSample FromNativePathSample(
+            const JPH::PathConstraintPath& path,
+            const float fraction)
+        {
+            JPH::Vec3 position;
+            JPH::Vec3 tangent;
+            JPH::Vec3 normal;
+            JPH::Vec3 binormal;
+            path.GetPointOnPath(fraction, position, tangent, normal, binormal);
+            return {
+                .m_position = {position.GetX(), position.GetY(), position.GetZ()},
+                .m_tangent = {tangent.GetX(), tangent.GetY(), tangent.GetZ()},
+                .m_normal = {normal.GetX(), normal.GetY(), normal.GetZ()},
+                .m_binormal = {binormal.GetX(), binormal.GetY(), binormal.GetZ()},
+                .m_fraction = fraction,
+                .m_valid = true,
+            };
+        }
+
+        [[nodiscard]]
+        bool IsValidCustomPathPoint(
+            const CustomPathPoint& point)
+        {
+            if (!point.m_position.IsFinite()
+                || !point.m_tangent.IsFinite()
+                || point.m_tangent.IsZero()
+                || !point.m_normal.IsFinite()
+                || point.m_normal.IsZero())
+            {
+                return false;
+            }
+
+            const AZ::Vector3 tangent = point.m_tangent.GetNormalized();
+            const AZ::Vector3 normal = point.m_normal.GetNormalized();
+            return AZStd::abs(tangent.Dot(normal)) < 1.0f - 1.0e-4f;
+        }
+
+        class CustomPathAdapter final
+            : public JPH::PathConstraintPath
+        {
+            JPH_DECLARE_SERIALIZABLE_VIRTUAL(JPH_NO_EXPORT, CustomPathAdapter)
+
+        public:
+            CustomPathAdapter() = default;
+
+            CustomPathAdapter(
+                ICustomPathProvider& provider,
+                AZStd::vector<AZ::u8> data,
+                const float maximumFraction)
+                : m_provider(&provider)
+                , m_data(AZStd::move(data))
+                , m_maximumFraction(maximumFraction)
+            {
+            }
+
+            float GetPathMaxFraction() const override
+            {
+                return m_maximumFraction;
+            }
+
+            float GetClosestPoint(
+                const JPH::Vec3Arg position,
+                const float fractionHint) const override
+            {
+                const float clampedHint = AZStd::clamp(fractionHint, 0.0f, m_maximumFraction);
+                if (!m_provider)
+                {
+                    return clampedHint;
+                }
+
+                float fraction = clampedHint;
+                if (!m_provider->FindClosestFraction(
+                        m_data,
+                        {position.GetX(), position.GetY(), position.GetZ()},
+                        clampedHint,
+                        fraction)
+                    || !AZ::IsFiniteFloat(fraction)
+                    || fraction < 0.0f
+                    || fraction > m_maximumFraction)
+                {
+                    AZ_Assert(false, "A custom path provider returned an invalid closest fraction.");
+                    return clampedHint;
+                }
+
+                return fraction;
+            }
+
+            void GetPointOnPath(
+                const float fraction,
+                JPH::Vec3& position,
+                JPH::Vec3& tangent,
+                JPH::Vec3& normal,
+                JPH::Vec3& binormal) const override
+            {
+                CustomPathPoint point;
+                if (!m_provider
+                    || !m_provider->Sample(m_data, fraction, point)
+                    || !IsValidCustomPathPoint(point))
+                {
+                    AZ_Assert(false, "A custom path provider returned an invalid path point.");
+                    position = JPH::Vec3::sZero();
+                    tangent = JPH::Vec3::sAxisX();
+                    normal = JPH::Vec3::sAxisZ();
+                    binormal = JPH::Vec3::sAxisY();
+                    return;
+                }
+
+                const AZ::Vector3 normalizedTangent = point.m_tangent.GetNormalized();
+                const AZ::Vector3 orthogonalNormal =
+                    (point.m_normal - normalizedTangent * normalizedTangent.Dot(point.m_normal)).GetNormalized();
+                const AZ::Vector3 normalizedBinormal = orthogonalNormal.Cross(normalizedTangent);
+                position = JPH::Vec3(
+                    point.m_position.GetX(),
+                    point.m_position.GetY(),
+                    point.m_position.GetZ());
+                tangent = JPH::Vec3(
+                    normalizedTangent.GetX(),
+                    normalizedTangent.GetY(),
+                    normalizedTangent.GetZ());
+                normal = JPH::Vec3(
+                    orthogonalNormal.GetX(),
+                    orthogonalNormal.GetY(),
+                    orthogonalNormal.GetZ());
+                binormal = JPH::Vec3(
+                    normalizedBinormal.GetX(),
+                    normalizedBinormal.GetY(),
+                    normalizedBinormal.GetZ());
+            }
+
+        private:
+            ICustomPathProvider* m_provider = nullptr;
+            AZStd::vector<AZ::u8> m_data;
+            float m_maximumFraction = 0.0f;
+        };
+
+        AZ_PUSH_DISABLE_WARNING(4505, "-Wunused-function")
+        JPH_IMPLEMENT_SERIALIZABLE_VIRTUAL(CustomPathAdapter)
+        {
+            JPH_ADD_BASE_CLASS(CustomPathAdapter, JPH::PathConstraintPath)
+        }
+        AZ_POP_DISABLE_WARNING
+
+        class GroupFilterAdapter final
+            : public JPH::GroupFilter
+        {
+            JPH_DECLARE_SERIALIZABLE_VIRTUAL(JPH_NO_EXPORT, GroupFilterAdapter)
+
+        public:
+            GroupFilterAdapter() = default;
+
+            explicit GroupFilterAdapter(
+                IGroupFilter* callbacks)
+                : m_callbacks(callbacks)
+            {
+            }
+
+            [[nodiscard]]
+            bool CanCollide(
+                const JPH::CollisionGroup& firstGroup,
+                const JPH::CollisionGroup& secondGroup) const override
+            {
+                if (!m_callbacks)
+                {
+                    return false;
+                }
+
+                return m_callbacks->CanCollide(
+                    {
+                        .m_groupId = CollisionGroupId(firstGroup.GetGroupID()),
+                        .m_subGroupId = CollisionSubGroupId(firstGroup.GetSubGroupID()),
+                    },
+                    {
+                        .m_groupId = CollisionGroupId(secondGroup.GetGroupID()),
+                        .m_subGroupId = CollisionSubGroupId(secondGroup.GetSubGroupID()),
+                    });
+            }
+
+            [[nodiscard]]
+            IGroupFilter* GetCallbacks() const
+            {
+                return m_callbacks;
+            }
+
+        private:
+            IGroupFilter* m_callbacks = nullptr;
+        };
+
+        AZ_PUSH_DISABLE_WARNING(4505, "-Wunused-function")
+        JPH_IMPLEMENT_SERIALIZABLE_VIRTUAL(GroupFilterAdapter)
+        {
+            JPH_ADD_BASE_CLASS(GroupFilterAdapter, JPH::GroupFilter)
+        }
+        AZ_POP_DISABLE_WARNING
+
+        class NativeArchiveWriter final
+            : public JPH::StreamOut
+        {
+        public:
+            void WriteBytes(
+                const void* data,
+                const size_t byteCount) override
+            {
+                if (m_failed || byteCount > MaximumNativeArchiveSize - m_data.size())
+                {
+                    m_failed = true;
+                    return;
+                }
+
+                const size_t previousSize = m_data.size();
+                m_data.resize(previousSize + byteCount);
+                if (byteCount > 0)
+                {
+                    std::memcpy(m_data.data() + previousSize, data, byteCount);
+                }
+            }
+
+            [[nodiscard]]
+            bool IsFailed() const override
+            {
+                return m_failed;
+            }
+
+            [[nodiscard]]
+            AZStd::vector<AZ::u8> TakeData()
+            {
+                return AZStd::move(m_data);
+            }
+
+        private:
+            AZStd::vector<AZ::u8> m_data;
+            bool m_failed = false;
+        };
+
+        class NativeArchiveReader final
+            : public JPH::StreamIn
+        {
+        public:
+            explicit NativeArchiveReader(
+                const AZStd::span<const AZ::u8> data)
+                : m_data(data)
+            {
+            }
+
+            void ReadBytes(
+                void* data,
+                const size_t byteCount) override
+            {
+                if (m_failed || byteCount > m_data.size() - m_offset)
+                {
+                    m_failed = true;
+                    m_eof = true;
+                    if (byteCount > 0)
+                    {
+                        std::memset(data, 0, byteCount);
+                    }
+                    return;
+                }
+
+                if (byteCount > 0)
+                {
+                    std::memcpy(data, m_data.data() + m_offset, byteCount);
+                    m_offset += byteCount;
+                }
+            }
+
+            [[nodiscard]]
+            bool IsEOF() const override
+            {
+                return m_eof;
+            }
+
+            [[nodiscard]]
+            bool IsFailed() const override
+            {
+                return m_failed;
+            }
+
+            [[nodiscard]]
+            bool IsFullyConsumed() const
+            {
+                return m_offset == m_data.size();
+            }
+
+        private:
+            AZStd::span<const AZ::u8> m_data;
+            size_t m_offset = 0;
+            bool m_eof = false;
+            bool m_failed = false;
+        };
+
+        [[nodiscard]]
+        constexpr AZ::u64 MixGroupFilterValue(AZ::u64 value)
+        {
+            value += 0x9e3779b97f4a7c15ULL;
+            value = (value ^ (value >> 30)) * 0xbf58476d1ce4e5b9ULL;
+            value = (value ^ (value >> 27)) * 0x94d049bb133111ebULL;
+            return value ^ (value >> 31);
+        }
+
+        [[nodiscard]]
+        constexpr AZ::u64 GetSubGroupPairHash(
+            CollisionSubGroupId firstSubGroup,
+            CollisionSubGroupId secondSubGroup)
+        {
+            if (secondSubGroup.GetValue() < firstSubGroup.GetValue())
+            {
+                const CollisionSubGroupId temporary = firstSubGroup;
+                firstSubGroup = secondSubGroup;
+                secondSubGroup = temporary;
+            }
+            const AZ::u64 pair = static_cast<AZ::u64>(firstSubGroup.GetValue()) << 32
+                | secondSubGroup.GetValue();
+            return MixGroupFilterValue(pair);
+        }
+
+        [[nodiscard]]
+        bool IsValidSubGroupPair(
+            const CollisionSubGroupId firstSubGroup,
+            const CollisionSubGroupId secondSubGroup,
+            const AZ::u32 subGroupCount)
+        {
+            return firstSubGroup
+                && secondSubGroup
+                && firstSubGroup != secondSubGroup
+                && firstSubGroup.GetValue() < subGroupCount
+                && secondSubGroup.GetValue() < subGroupCount;
+        }
+
+        [[nodiscard]]
+        JPH::Mat44 ToNativeSystemTransform(
+            const AZ::Transform& transform)
+        {
+            JPH::Mat44 result = JPH::Mat44::sIdentity();
+            const AZ::Vector3 basisX = transform.GetBasisX();
+            const AZ::Vector3 basisY = transform.GetBasisY();
+            const AZ::Vector3 basisZ = transform.GetBasisZ();
+            const AZ::Vector3 translation = transform.GetTranslation();
+            result.SetColumn3(0, {basisX.GetX(), basisX.GetY(), basisX.GetZ()});
+            result.SetColumn3(1, {basisY.GetX(), basisY.GetY(), basisY.GetZ()});
+            result.SetColumn3(2, {basisZ.GetX(), basisZ.GetY(), basisZ.GetZ()});
+            result.SetTranslation({translation.GetX(), translation.GetY(), translation.GetZ()});
+            return result;
+        }
+
+        [[nodiscard]]
+        JPH::Quat ToNativeSystemRotation(
+            const AZ::Quaternion& rotation)
+        {
+            const AZ::Quaternion normalizedRotation = rotation.GetNormalized();
+            return {
+                normalizedRotation.GetX(),
+                normalizedRotation.GetY(),
+                normalizedRotation.GetZ(),
+                normalizedRotation.GetW(),
+            };
+        }
+
+        [[nodiscard]]
+        AZ::Quaternion FromNativeSystemRotation(
+            const JPH::QuatArg rotation)
+        {
+            return AZ::Quaternion(
+                rotation.GetX(),
+                rotation.GetY(),
+                rotation.GetZ(),
+                rotation.GetW());
+        }
+
+        template<class SourceContainer, class Target, class Converter>
+        [[nodiscard]]
+        QueryResult CopyConvertedRange(
+            const SourceContainer& source,
+            const AZStd::span<Target> target,
+            const Converter& converter)
+        {
+            const size_t copiedCount = AZStd::min(source.size(), target.size());
+            for (size_t index = 0; index < copiedCount; ++index)
+            {
+                target[index] = converter(source[index]);
+            }
+            return {
+                .m_hitCount = aznumeric_cast<AZ::u32>(copiedCount),
+                .m_requiredHitCount = aznumeric_cast<AZ::u32>(source.size()),
+            };
+        }
+
+        [[nodiscard]]
+        JPH::Vec3 ToNativeSystemVector(
+            const AZ::Vector3& vector)
+        {
+            return {vector.GetX(), vector.GetY(), vector.GetZ()};
+        }
+
+        [[nodiscard]]
+        bool IsValidHairGradient(
+            const HairGradient& gradient)
+        {
+            return AZ::IsFiniteFloat(gradient.m_minimum)
+                && AZ::IsFiniteFloat(gradient.m_maximum)
+                && AZ::IsFiniteFloat(gradient.m_minimumFraction)
+                && AZ::IsFiniteFloat(gradient.m_maximumFraction)
+                && gradient.m_minimumFraction >= 0.0f
+                && gradient.m_maximumFraction <= 1.0f
+                && gradient.m_minimumFraction < gradient.m_maximumFraction;
+        }
+
+        [[nodiscard]]
+        JPH::HairSettings::Gradient ToNativeHairGradient(
+            const HairGradient& gradient)
+        {
+            return {
+                gradient.m_minimum,
+                gradient.m_maximum,
+                gradient.m_minimumFraction,
+                gradient.m_maximumFraction,
+            };
+        }
+    } // namespace
+
+    AZStd::unique_ptr<ISystem> CreateAssetBuilderSystem()
+    {
+        SystemConfiguration configuration;
+        configuration.m_createDefaultWorld = false;
+        AZStd::unique_ptr<System> system = AZStd::make_unique<System>(
+            AZStd::move(configuration),
+            nullptr,
+            SystemRegistration::Isolated);
+        if (!*system)
+        {
+            return {};
+        }
+
+        return system;
+    }
+
+    System::System(
+        SystemConfiguration configuration,
+        AZ::JobContext* jobContext,
+        const SystemRegistration registration)
+        : m_nativeRuntime(configuration.m_softBodyTriangleThickness)
+        , m_configuration(AZStd::move(configuration))
+        , m_jobContext(jobContext)
+    {
+        if (!m_nativeRuntime)
+        {
+            return;
+        }
+
+        if (registration == SystemRegistration::Global
+            && (AZ::Interface<ISystem>::Get() || AZ::Interface<ICooking>::Get()))
+        {
+            AZ_Error("Jolt", false, "Only one Jolt system can be active at a time.");
+            return;
+        }
+
+        if (registration == SystemRegistration::Global)
+        {
+            AZ::Interface<ISystem>::Register(this);
+            AZ::Interface<ICooking>::Register(this);
+            m_registered = true;
+        }
+        m_debugRenderer = AZStd::make_unique<DebugRenderer>();
+        m_dependencyManager = AZStd::make_unique<ComponentDependencyManager>();
+        if (m_configuration.m_createDefaultWorld)
+        {
+            m_defaultWorldHandle = CreateWorld(m_configuration.m_defaultWorld);
+            if (!m_defaultWorldHandle)
+            {
+                AZ_Error("Jolt", false, "Failed to create the configured default world.");
+            }
+        }
+        m_initialized = true;
+    }
+
+    System::~System()
+    {
+        if (m_registered)
+        {
+            AZ::Interface<ICooking>::Unregister(this);
+            AZ::Interface<ISystem>::Unregister(this);
+        }
+    }
+
+    const SystemConfiguration& System::GetConfiguration() const
+    {
+        return m_configuration;
+    }
+
+    RuntimeInfo System::GetRuntimeInfo() const
+    {
+        RuntimeInfo runtimeInfo = m_nativeRuntime.GetRuntimeInfo();
+        runtimeInfo.m_hairComputeBackend = m_configuration.m_hairComputeBackend;
+        if (m_configuration.m_hairComputeBackend == HairComputeBackend::DeterministicCpu)
+        {
+            runtimeInfo.m_hairDeterminism = DeterminismCertification::SameBinary;
+        }
+        else
+        {
+            runtimeInfo.m_hairDeterminism = DeterminismCertification::None;
+        }
+
+        return runtimeInfo;
+    }
+
+    bool System::RegisterCustomConstraintProvider(
+        ICustomConstraintProvider* provider)
+    {
+        if (!provider)
+        {
+            return false;
+        }
+
+        const AZ::TypeId providerId = provider->GetId();
+        if (providerId.IsNull())
+        {
+            return false;
+        }
+
+        AZStd::lock_guard lock(m_customConstraintProviderMutex);
+        return m_customConstraintProviders.emplace(
+            providerId,
+            CustomConstraintProviderEntry{
+                .m_provider = provider,
+            }).second;
+    }
+
+    bool System::UnregisterCustomConstraintProvider(
+        ICustomConstraintProvider* provider)
+    {
+        if (!provider)
+        {
+            return false;
+        }
+
+        AZStd::lock_guard lock(m_customConstraintProviderMutex);
+        const auto providerIterator = m_customConstraintProviders.find(provider->GetId());
+        if (providerIterator == m_customConstraintProviders.end()
+            || providerIterator->second.m_provider != provider
+            || providerIterator->second.m_referenceCount != 0)
+        {
+            return false;
+        }
+
+        m_customConstraintProviders.erase(providerIterator);
+        return true;
+    }
+
+    bool System::RegisterCustomPathProvider(
+        ICustomPathProvider* provider)
+    {
+        if (!provider)
+        {
+            return false;
+        }
+
+        const AZ::TypeId providerId = provider->GetId();
+        if (providerId.IsNull())
+        {
+            return false;
+        }
+
+        AZStd::lock_guard lock(m_customPathProviderMutex);
+        return m_customPathProviders.emplace(
+            providerId,
+            CustomPathProviderEntry{
+                .m_provider = provider,
+            }).second;
+    }
+
+    bool System::UnregisterCustomPathProvider(
+        ICustomPathProvider* provider)
+    {
+        if (!provider)
+        {
+            return false;
+        }
+
+        AZStd::lock_guard lock(m_customPathProviderMutex);
+        const auto providerIterator = m_customPathProviders.find(provider->GetId());
+        if (providerIterator == m_customPathProviders.end()
+            || providerIterator->second.m_provider != provider
+            || providerIterator->second.m_referenceCount != 0)
+        {
+            return false;
+        }
+
+        m_customPathProviders.erase(providerIterator);
+        return true;
+    }
+
+    bool System::RegisterCustomConvexShapeProvider(
+        ICustomConvexShapeProvider* provider)
+    {
+        if (!provider)
+        {
+            return false;
+        }
+
+        const AZ::TypeId providerId = provider->GetId();
+        if (providerId.IsNull())
+        {
+            return false;
+        }
+
+        AZStd::lock_guard lock(m_customConvexShapeProviderMutex);
+        return m_customConvexShapeProviders.emplace(providerId, provider).second;
+    }
+
+    bool System::UnregisterCustomConvexShapeProvider(
+        ICustomConvexShapeProvider* provider)
+    {
+        if (!provider)
+        {
+            return false;
+        }
+
+        AZStd::lock_guard lock(m_customConvexShapeProviderMutex);
+        const auto providerIterator = m_customConvexShapeProviders.find(provider->GetId());
+        if (providerIterator == m_customConvexShapeProviders.end()
+            || providerIterator->second != provider)
+        {
+            return false;
+        }
+
+        m_customConvexShapeProviders.erase(providerIterator);
+        return true;
+    }
+
+    ICustomConstraintProvider* System::AcquireCustomConstraintProvider(
+        const AZ::TypeId providerId,
+        const AZStd::span<const AZ::u8> data,
+        AZ::u32& maximumRowCount,
+        AZ::u32& stateByteCount,
+        AZ::u64& providerVersion)
+    {
+        AZStd::lock_guard lock(m_customConstraintProviderMutex);
+        const auto providerIterator = m_customConstraintProviders.find(providerId);
+        if (providerIterator == m_customConstraintProviders.end())
+        {
+            return nullptr;
+        }
+
+        ICustomConstraintProvider& provider = *providerIterator->second.m_provider;
+        maximumRowCount = provider.GetMaximumRowCount(data);
+        if (maximumRowCount == 0)
+        {
+            return nullptr;
+        }
+
+        stateByteCount = provider.GetStateByteCount(data);
+        providerVersion = provider.GetVersion();
+        ++providerIterator->second.m_referenceCount;
+        return &provider;
+    }
+
+    void System::ReleaseCustomConstraintProvider(
+        const AZ::TypeId providerId)
+    {
+        AZStd::lock_guard lock(m_customConstraintProviderMutex);
+        const auto providerIterator = m_customConstraintProviders.find(providerId);
+        AZ_Assert(
+            providerIterator != m_customConstraintProviders.end()
+                && providerIterator->second.m_referenceCount > 0,
+            "Custom constraint provider ownership is inconsistent.");
+        if (providerIterator != m_customConstraintProviders.end()
+            && providerIterator->second.m_referenceCount > 0)
+        {
+            --providerIterator->second.m_referenceCount;
+        }
+    }
+
+    ICustomPathProvider* System::AcquireCustomPathProvider(
+        const AZ::TypeId providerId,
+        const AZStd::span<const AZ::u8> data,
+        float& maximumFraction,
+        AZ::u64& providerVersion)
+    {
+        AZStd::lock_guard lock(m_customPathProviderMutex);
+        const auto providerIterator = m_customPathProviders.find(providerId);
+        if (providerIterator == m_customPathProviders.end())
+        {
+            return nullptr;
+        }
+
+        ICustomPathProvider& provider = *providerIterator->second.m_provider;
+        maximumFraction = provider.GetMaximumFraction(data);
+        if (!AZ::IsFiniteFloat(maximumFraction) || maximumFraction <= 0.0f)
+        {
+            return nullptr;
+        }
+
+        CustomPathPoint startPoint;
+        CustomPathPoint endPoint;
+        if (!provider.Sample(data, 0.0f, startPoint)
+            || !IsValidCustomPathPoint(startPoint)
+            || !provider.Sample(data, maximumFraction, endPoint)
+            || !IsValidCustomPathPoint(endPoint))
+        {
+            return nullptr;
+        }
+
+        providerVersion = provider.GetVersion();
+        ++providerIterator->second.m_referenceCount;
+        return &provider;
+    }
+
+    void System::ReleaseCustomPathProvider(
+        const AZ::TypeId providerId)
+    {
+        AZStd::lock_guard lock(m_customPathProviderMutex);
+        const auto providerIterator = m_customPathProviders.find(providerId);
+        AZ_Assert(
+            providerIterator != m_customPathProviders.end()
+                && providerIterator->second.m_referenceCount > 0,
+            "Custom path provider ownership is inconsistent.");
+        if (providerIterator != m_customPathProviders.end()
+            && providerIterator->second.m_referenceCount > 0)
+        {
+            --providerIterator->second.m_referenceCount;
+        }
+    }
+
+    MaterialHandle System::CreateMaterial(
+        const MaterialConfiguration& configuration)
+    {
+        if (!configuration.m_debugColor.IsFinite())
+        {
+            return {};
+        }
+
+        AZStd::lock_guard lock(m_materialMutex);
+        AZ::u32 materialIndex = 0;
+        if (!m_freeMaterialSlots.empty())
+        {
+            materialIndex = m_freeMaterialSlots.back();
+            m_freeMaterialSlots.pop_back();
+        }
+        else
+        {
+            if (m_materialSlots.size() >= Internal::HandlePayloadMask)
+            {
+                return {};
+            }
+            materialIndex = static_cast<AZ::u32>(m_materialSlots.size());
+            m_materialSlots.emplace_back();
+        }
+
+        MaterialSlot& slot = m_materialSlots[materialIndex];
+        const MaterialHandle materialHandle =
+            Internal::MakeResourceHandle<MaterialHandle>(materialIndex, slot.m_generation);
+        slot.m_material = new NativeMaterial(materialHandle, configuration);
+        return materialHandle;
+    }
+
+    bool System::DestroyMaterial(
+        const MaterialHandle materialHandle)
+    {
+        AZStd::lock_guard lock(m_materialMutex);
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(materialHandle, parts)
+            || parts.m_index >= m_materialSlots.size())
+        {
+            return false;
+        }
+
+        MaterialSlot& slot = m_materialSlots[parts.m_index];
+        if (!slot.m_material || slot.m_generation != parts.m_generation || slot.m_referenceCount > 0)
+        {
+            return false;
+        }
+
+        slot.m_material = nullptr;
+        if (Internal::AdvanceGeneration(slot.m_generation))
+        {
+            m_freeMaterialSlots.push_back(parts.m_index);
+        }
+        return true;
+    }
+
+    bool System::IsValid(
+        const MaterialHandle materialHandle) const
+    {
+        AZStd::shared_lock lock(m_materialMutex);
+        return FindMaterialUnlocked(materialHandle);
+    }
+
+    CookedShapeHandle System::CookShape(
+        const ShapeConfiguration& configuration)
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::CookShape");
+        const DeterministicFloatScope floatScope;
+        if (!AZ::IsFiniteFloat(configuration.m_density) || configuration.m_density <= 0.0f)
+        {
+            return {};
+        }
+
+        const bool isHeightfield = AZStd::holds_alternative<HeightfieldShapeConfiguration>(configuration.m_geometry);
+        const bool isMesh = AZStd::holds_alternative<MeshShapeConfiguration>(configuration.m_geometry);
+        const bool isEmpty = AZStd::holds_alternative<EmptyShapeConfiguration>(configuration.m_geometry);
+        if ((isEmpty && !configuration.m_materials.empty())
+            || (!isHeightfield && !isMesh && configuration.m_materials.size() > 1))
+        {
+            return {};
+        }
+
+        JPH::PhysicsMaterialList materials;
+        if (!AcquireMaterials(configuration.m_materials, materials))
+        {
+            return {};
+        }
+
+        NativeShapeResult nativeResult;
+        if (const auto* customConfiguration = AZStd::get_if<CustomConvexShapeConfiguration>(
+            &configuration.m_geometry))
+        {
+            AZStd::shared_lock providerLock(m_customConvexShapeProviderMutex);
+            const auto providerIterator = m_customConvexShapeProviders.find(customConfiguration->m_providerId);
+            if (providerIterator == m_customConvexShapeProviders.end())
+            {
+                nativeResult.m_error = "No custom convex-shape provider is registered for this identifier.";
+            }
+            else
+            {
+                CustomConvexShapeData data;
+                const ICustomConvexShapeProvider& provider = *providerIterator->second;
+                if (!provider.Cook(customConfiguration->m_data, data))
+                {
+                    nativeResult.m_error = "The custom convex-shape provider rejected its input data.";
+                }
+                else
+                {
+                    const AZ::u64 providerVersion = provider.GetVersion();
+                    AZ::HashValue64 sourceHash = AZ::TypeHash64(
+                        providerVersion,
+                        AZ::HashValue64(static_cast<AZ::u64>(customConfiguration->m_providerId.GetHash())));
+                    if (!customConfiguration->m_data.empty())
+                    {
+                        sourceHash = AZ::TypeHash64(
+                            customConfiguration->m_data.data(),
+                            customConfiguration->m_data.size(),
+                            sourceHash);
+                    }
+                    for (const AZ::Vector3& point : data.m_points)
+                    {
+                        const AZStd::array components = {
+                            point.GetX(),
+                            point.GetY(),
+                            point.GetZ(),
+                        };
+                        sourceHash = AZ::TypeHash64(components, sourceHash);
+                    }
+                    sourceHash = AZ::TypeHash64(data.m_hullTolerance, sourceHash);
+                    sourceHash = AZ::TypeHash64(data.m_maximumConvexRadius, sourceHash);
+                    sourceHash = AZ::TypeHash64(data.m_maximumConvexRadiusError, sourceHash);
+
+                    const JPH::PhysicsMaterial* material = nullptr;
+                    if (!materials.empty())
+                    {
+                        material = materials.front();
+                    }
+                    nativeResult = CreateNativeCustomConvexShape(
+                        data,
+                        {
+                            .m_providerId = customConfiguration->m_providerId,
+                            .m_providerVersion = providerVersion,
+                            .m_sourceHash = static_cast<AZ::u64>(sourceHash),
+                        },
+                        material,
+                        configuration.m_density);
+                }
+            }
+        }
+        else
+        {
+            nativeResult = CreateNativeShape(configuration, materials);
+        }
+        if (!nativeResult)
+        {
+            AZ_Error("Jolt", false, "Failed to cook shape: %s", nativeResult.m_error.c_str());
+            ReleaseMaterials(configuration.m_materials);
+            return {};
+        }
+
+        const CookedShapeHandle cookedShapeHandle = StoreCookedShape(
+            nativeResult.m_shape,
+            configuration.m_materials,
+            {});
+        if (!cookedShapeHandle)
+        {
+            ReleaseMaterials(configuration.m_materials);
+        }
+        return cookedShapeHandle;
+    }
+
+    CookedShapeHandle System::CookShape(
+        const CookedCompoundShapeConfiguration& configuration)
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::CookCompoundShape");
+        const DeterministicFloatScope floatScope;
+        if (configuration.m_children.empty())
+        {
+            return {};
+        }
+
+        JPH::StaticCompoundShapeSettings staticSettings;
+        AZStd::vector<CookedShapeHandle> childHandles;
+        childHandles.reserve(configuration.m_children.size());
+        for (const CookedCompoundChildConfiguration& child : configuration.m_children)
+        {
+            const float rotationLengthSq = child.m_rotation.GetLengthSq();
+            if (!child.m_position.IsFinite()
+                || !child.m_rotation.IsFinite()
+                || !AZ::IsFiniteFloat(rotationLengthSq)
+                || rotationLengthSq <= 0.0f)
+            {
+                for (const CookedShapeHandle childHandle : childHandles)
+                {
+                    ReleaseCookedShape(childHandle);
+                }
+                return {};
+            }
+
+            JPH::RefConst<JPH::Shape> childShape;
+            if (!AcquireCookedShape(child.m_shapeHandle, childShape))
+            {
+                for (const CookedShapeHandle childHandle : childHandles)
+                {
+                    ReleaseCookedShape(childHandle);
+                }
+                return {};
+            }
+            childHandles.push_back(child.m_shapeHandle);
+
+            staticSettings.AddShape(
+                ToNativeSystemVector(child.m_position),
+                ToNativeSystemRotation(child.m_rotation),
+                childShape,
+                child.m_userData);
+        }
+
+        JPH::Shape::ShapeResult nativeResult = staticSettings.Create();
+
+        CookedShapeHandle cookedShapeHandle;
+        if (!nativeResult.HasError())
+        {
+            nativeResult.Get()->SetUserData(configuration.m_userData);
+            cookedShapeHandle = StoreCookedShape(nativeResult.Get(), {}, childHandles);
+        }
+        else
+        {
+            AZ_Error("Jolt", false, "Failed to cook compound shape: %s", nativeResult.GetError().c_str());
+        }
+
+        for (const CookedShapeHandle childHandle : childHandles)
+        {
+            ReleaseCookedShape(childHandle);
+        }
+        return cookedShapeHandle;
+    }
+
+    CookedShapeHandle System::CookShape(
+        const CookedDecoratedShapeConfiguration& configuration)
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::CookDecoratedShape");
+        const DeterministicFloatScope floatScope;
+        JPH::Shape::ShapeResult nativeResult;
+        CookedShapeHandle childHandle;
+        bool childAcquired = false;
+        AZStd::visit(
+            [&](const auto& geometry)
+            {
+                using Geometry = AZStd::remove_cvref_t<decltype(geometry)>;
+                childHandle = geometry.m_shapeHandle;
+                JPH::RefConst<JPH::Shape> childShape;
+                if (!AcquireCookedShape(childHandle, childShape))
+                {
+                    nativeResult.SetError("Cooked decorated shape child handle is invalid.");
+                    return;
+                }
+                childAcquired = true;
+
+                if constexpr (AZStd::is_same_v<Geometry, CookedOffsetCenterOfMassShapeConfiguration>)
+                {
+                    if (!geometry.m_offset.IsFinite())
+                    {
+                        nativeResult.SetError("Center of mass offset must be finite.");
+                        return;
+                    }
+
+                    JPH::OffsetCenterOfMassShapeSettings settings(
+                        ToNativeSystemVector(geometry.m_offset),
+                        childShape);
+                    nativeResult = settings.Create();
+                }
+                else if constexpr (AZStd::is_same_v<Geometry, CookedRotatedTranslatedShapeConfiguration>)
+                {
+                    const float rotationLengthSq = geometry.m_rotation.GetLengthSq();
+                    if (!geometry.m_position.IsFinite()
+                        || !geometry.m_rotation.IsFinite()
+                        || !AZ::IsFiniteFloat(rotationLengthSq)
+                        || rotationLengthSq <= 0.0f)
+                    {
+                        nativeResult.SetError("Decorated shape transform must be finite.");
+                        return;
+                    }
+
+                    JPH::RotatedTranslatedShapeSettings settings(
+                        ToNativeSystemVector(geometry.m_position),
+                        ToNativeSystemRotation(geometry.m_rotation),
+                        childShape);
+                    nativeResult = settings.Create();
+                }
+                else if constexpr (AZStd::is_same_v<Geometry, CookedScaledShapeConfiguration>)
+                {
+                    if (!geometry.m_scale.IsFinite()
+                        || geometry.m_scale.GetX() == 0.0f
+                        || geometry.m_scale.GetY() == 0.0f
+                        || geometry.m_scale.GetZ() == 0.0f)
+                    {
+                        nativeResult.SetError("Decorated shape scale must be finite and nonzero.");
+                        return;
+                    }
+
+                    JPH::ScaledShapeSettings settings(
+                        childShape,
+                        ToNativeSystemVector(geometry.m_scale));
+                    nativeResult = settings.Create();
+                }
+            },
+            configuration.m_geometry);
+
+        CookedShapeHandle cookedShapeHandle;
+        if (!nativeResult.HasError())
+        {
+            nativeResult.Get()->SetUserData(configuration.m_userData);
+            cookedShapeHandle = StoreCookedShape(nativeResult.Get(), {}, {childHandle});
+        }
+        else
+        {
+            AZ_Error("Jolt", false, "Failed to cook decorated shape: %s", nativeResult.GetError().c_str());
+        }
+
+        if (childAcquired)
+        {
+            ReleaseCookedShape(childHandle);
+        }
+        return cookedShapeHandle;
+    }
+
+    bool System::ExportSkeletonDefinition(
+        const SkeletonDefinitionHandle skeletonHandle,
+        SkeletonDefinitionArchive& archive) const
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ExportSkeletonDefinition");
+        const DeterministicFloatScope floatScope;
+
+        JPH::Ref<JPH::Skeleton> skeleton;
+        AZ::u32 jointCount = 0;
+        {
+            AZStd::shared_lock lock(m_skeletonMutex);
+            const SkeletonDefinitionSlot* slot = FindSkeletonDefinitionUnlocked(skeletonHandle);
+            if (!slot)
+            {
+                return false;
+            }
+
+            skeleton = slot->m_skeleton;
+            jointCount = aznumeric_cast<AZ::u32>(slot->m_joints.size());
+        }
+
+        NativeArchiveWriter writer;
+        skeleton->SaveBinaryState(writer);
+        if (writer.IsFailed())
+        {
+            return false;
+        }
+
+        SkeletonDefinitionArchive exportedArchive;
+        exportedArchive.m_binaryState = writer.TakeData();
+        if (exportedArchive.m_binaryState.empty())
+        {
+            return false;
+        }
+
+        exportedArchive.m_buildFingerprint = GetNativeBuildFingerprint();
+        exportedArchive.m_contentHash = static_cast<AZ::u64>(AZ::TypeHash64(
+            exportedArchive.m_binaryState.data(),
+            exportedArchive.m_binaryState.size()));
+        exportedArchive.m_formatVersion = SkeletonDefinitionArchiveFormatVersion;
+        exportedArchive.m_jointCount = jointCount;
+        archive = AZStd::move(exportedArchive);
+        return true;
+    }
+
+    SkeletonDefinitionHandle System::ImportSkeletonDefinition(
+        const SkeletonDefinitionArchive& archive)
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ImportSkeletonDefinition");
+        const DeterministicFloatScope floatScope;
+        if (archive.m_formatVersion != SkeletonDefinitionArchiveFormatVersion
+            || archive.m_buildFingerprint != GetNativeBuildFingerprint()
+            || archive.m_binaryState.empty()
+            || archive.m_binaryState.size() > MaximumNativeArchiveSize
+            || archive.m_jointCount == 0
+            || archive.m_jointCount >= Internal::HandlePayloadMask
+            || archive.m_contentHash != static_cast<AZ::u64>(AZ::TypeHash64(
+                archive.m_binaryState.data(),
+                archive.m_binaryState.size())))
+        {
+            return {};
+        }
+
+        NativeArchiveReader reader(archive.m_binaryState);
+        JPH::Skeleton::SkeletonResult result = JPH::Skeleton::sRestoreFromBinaryState(reader);
+        if (result.HasError()
+            || reader.IsFailed()
+            || !reader.IsFullyConsumed()
+            || !result.Get()->AreJointsCorrectlyOrdered()
+            || aznumeric_cast<AZ::u32>(result.Get()->GetJointCount()) != archive.m_jointCount)
+        {
+            return {};
+        }
+
+        AZStd::vector<SkeletonJoint> joints;
+        joints.reserve(archive.m_jointCount);
+        for (const JPH::Skeleton::Joint& nativeJoint : result.Get()->GetJoints())
+        {
+            AZ::Name name(nativeJoint.mName.c_str());
+            if (name.IsEmpty()
+                || nativeJoint.mParentJointIndex < -1
+                || nativeJoint.mParentJointIndex >= aznumeric_cast<AZ::s32>(joints.size())
+                || AZStd::find_if(
+                    joints.begin(),
+                    joints.end(),
+                    [&name](const SkeletonJoint& joint)
+                    {
+                        return joint.m_name == name;
+                    }) != joints.end())
+            {
+                return {};
+            }
+
+            joints.push_back({
+                .m_name = AZStd::move(name),
+                .m_parentIndex = nativeJoint.mParentJointIndex,
+            });
+        }
+
+        return StoreSkeletonDefinition(
+            result.Get(),
+            AZStd::move(joints));
+    }
+
+    bool System::ExportSkeletalAnimation(
+        const SkeletalAnimationHandle animationHandle,
+        SkeletalAnimationArchive& archive) const
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ExportSkeletalAnimation");
+        const DeterministicFloatScope floatScope;
+
+        JPH::Ref<JPH::SkeletalAnimation> animation;
+        AZ::u32 jointCount = 0;
+        {
+            AZStd::shared_lock lock(m_skeletonMutex);
+            const SkeletalAnimationSlot* slot = FindSkeletalAnimationUnlocked(animationHandle);
+            if (!slot)
+            {
+                return false;
+            }
+
+            animation = slot->m_animation;
+            jointCount = aznumeric_cast<AZ::u32>(slot->m_jointNames.size());
+        }
+
+        NativeArchiveWriter writer;
+        animation->SaveBinaryState(writer);
+        if (writer.IsFailed())
+        {
+            return false;
+        }
+
+        SkeletalAnimationArchive exportedArchive;
+        exportedArchive.m_binaryState = writer.TakeData();
+        if (exportedArchive.m_binaryState.empty())
+        {
+            return false;
+        }
+
+        exportedArchive.m_buildFingerprint = GetNativeBuildFingerprint();
+        exportedArchive.m_contentHash = static_cast<AZ::u64>(AZ::TypeHash64(
+            exportedArchive.m_binaryState.data(),
+            exportedArchive.m_binaryState.size()));
+        exportedArchive.m_formatVersion = SkeletalAnimationArchiveFormatVersion;
+        exportedArchive.m_jointCount = jointCount;
+        archive = AZStd::move(exportedArchive);
+        return true;
+    }
+
+    SkeletalAnimationHandle System::ImportSkeletalAnimation(
+        const SkeletalAnimationArchive& archive)
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ImportSkeletalAnimation");
+        const DeterministicFloatScope floatScope;
+        if (archive.m_formatVersion != SkeletalAnimationArchiveFormatVersion
+            || archive.m_buildFingerprint != GetNativeBuildFingerprint()
+            || archive.m_binaryState.empty()
+            || archive.m_binaryState.size() > MaximumNativeArchiveSize
+            || archive.m_jointCount >= Internal::HandlePayloadMask
+            || archive.m_contentHash != static_cast<AZ::u64>(AZ::TypeHash64(
+                archive.m_binaryState.data(),
+                archive.m_binaryState.size())))
+        {
+            return {};
+        }
+
+        NativeArchiveReader reader(archive.m_binaryState);
+        JPH::SkeletalAnimation::AnimationResult result =
+            JPH::SkeletalAnimation::sRestoreFromBinaryState(reader);
+        if (result.HasError()
+            || reader.IsFailed()
+            || !reader.IsFullyConsumed()
+            || result.Get()->GetAnimatedJoints().size() != archive.m_jointCount)
+        {
+            return {};
+        }
+
+        AZStd::vector<AZ::Name> jointNames;
+        jointNames.reserve(archive.m_jointCount);
+        for (const JPH::SkeletalAnimation::AnimatedJoint& nativeJoint : result.Get()->GetAnimatedJoints())
+        {
+            AZ::Name name(nativeJoint.mJointName.c_str());
+            if (name.IsEmpty()
+                || nativeJoint.mKeyframes.empty()
+                || AZStd::find(jointNames.begin(), jointNames.end(), name) != jointNames.end())
+            {
+                return {};
+            }
+
+            float previousTime = -1.0f;
+            for (const JPH::SkeletalAnimation::Keyframe& keyframe : nativeJoint.mKeyframes)
+            {
+                if (!keyframe.mRotation.IsNormalized()
+                    || !std::isfinite(keyframe.mTranslation.GetX())
+                    || !std::isfinite(keyframe.mTranslation.GetY())
+                    || !std::isfinite(keyframe.mTranslation.GetZ())
+                    || !std::isfinite(keyframe.mTime)
+                    || keyframe.mTime < 0.0f
+                    || keyframe.mTime <= previousTime)
+                {
+                    return {};
+                }
+                previousTime = keyframe.mTime;
+            }
+            jointNames.push_back(AZStd::move(name));
+        }
+
+        return StoreSkeletalAnimation(
+            result.Get(),
+            AZStd::move(jointNames));
+    }
+
+    bool System::ExportShape(
+        const CookedShapeHandle cookedShapeHandle,
+        CookedShapeArchive& archive,
+        AZStd::vector<MaterialHandle>& materialHandles,
+        AZStd::vector<CookedShapeHandle>& childShapeHandles) const
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ExportShape");
+        const DeterministicFloatScope floatScope;
+
+        JPH::RefConst<JPH::Shape> shape;
+        AZStd::vector<CookedShapeHandle> storedChildHandles;
+        {
+            AZStd::shared_lock lock(m_cookedShapeMutex);
+            const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+            if (!slot)
+            {
+                return false;
+            }
+
+            shape = slot->m_shape;
+            storedChildHandles = slot->m_childHandles;
+        }
+
+        NativeArchiveWriter writer;
+        shape->SaveBinaryState(writer);
+        if (writer.IsFailed())
+        {
+            return false;
+        }
+
+        JPH::PhysicsMaterialList nativeMaterials;
+        shape->SaveMaterialState(nativeMaterials);
+        if (nativeMaterials.size() > AZStd::numeric_limits<AZ::u32>::max())
+        {
+            return false;
+        }
+
+        AZStd::vector<MaterialHandle> exportedMaterialHandles;
+        exportedMaterialHandles.reserve(nativeMaterials.size());
+        for (const JPH::PhysicsMaterial* material : nativeMaterials)
+        {
+            if (!material)
+            {
+                exportedMaterialHandles.push_back(MaterialHandle::Invalid);
+                continue;
+            }
+
+            const MaterialHandle materialHandle = FindMaterialHandle(material);
+            if (!materialHandle)
+            {
+                return false;
+            }
+            exportedMaterialHandles.push_back(materialHandle);
+        }
+
+        JPH::ShapeList nativeChildShapes;
+        shape->SaveSubShapeState(nativeChildShapes);
+        if (nativeChildShapes.size() != storedChildHandles.size()
+            || nativeChildShapes.size() > AZStd::numeric_limits<AZ::u32>::max())
+        {
+            return false;
+        }
+
+        {
+            AZStd::shared_lock lock(m_cookedShapeMutex);
+            for (size_t childIndex = 0; childIndex < storedChildHandles.size(); ++childIndex)
+            {
+                const CookedShapeSlot* childSlot = FindCookedShapeUnlocked(storedChildHandles[childIndex]);
+                if (!childSlot || childSlot->m_shape.GetPtr() != nativeChildShapes[childIndex].GetPtr())
+                {
+                    return false;
+                }
+            }
+        }
+
+        CookedShapeArchive exportedArchive;
+        exportedArchive.m_binaryState = writer.TakeData();
+        if (exportedArchive.m_binaryState.empty())
+        {
+            return false;
+        }
+        exportedArchive.m_buildFingerprint = GetNativeBuildFingerprint();
+        exportedArchive.m_contentHash = static_cast<AZ::u64>(AZ::TypeHash64(
+            exportedArchive.m_binaryState.data(),
+            exportedArchive.m_binaryState.size()));
+        exportedArchive.m_formatVersion = CookedShapeArchiveFormatVersion;
+        exportedArchive.m_materialCount = static_cast<AZ::u32>(exportedMaterialHandles.size());
+        exportedArchive.m_childShapeCount = static_cast<AZ::u32>(storedChildHandles.size());
+
+        archive = AZStd::move(exportedArchive);
+        materialHandles = AZStd::move(exportedMaterialHandles);
+        childShapeHandles = AZStd::move(storedChildHandles);
+        return true;
+    }
+
+    CookedShapeHandle System::ImportShape(
+        const CookedShapeArchive& archive,
+        const AZStd::span<const MaterialHandle> materialHandles,
+        const AZStd::span<const CookedShapeHandle> childShapeHandles)
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ImportShape");
+        const DeterministicFloatScope floatScope;
+        if (archive.m_formatVersion != CookedShapeArchiveFormatVersion
+            || archive.m_buildFingerprint != GetNativeBuildFingerprint()
+            || archive.m_binaryState.empty()
+            || archive.m_binaryState.size() > MaximumNativeArchiveSize
+            || archive.m_materialCount != materialHandles.size()
+            || archive.m_childShapeCount != childShapeHandles.size()
+            || archive.m_contentHash != static_cast<AZ::u64>(AZ::TypeHash64(
+                archive.m_binaryState.data(),
+                archive.m_binaryState.size())))
+        {
+            return {};
+        }
+
+        NativeArchiveReader reader(archive.m_binaryState);
+        JPH::Shape::ShapeResult nativeResult = JPH::Shape::sRestoreFromBinaryState(reader);
+        if (nativeResult.HasError()
+            || reader.IsFailed()
+            || !reader.IsFullyConsumed()
+            || !IsNativeCustomConvexShapeValid(*nativeResult.Get()))
+        {
+            return {};
+        }
+
+        JPH::PhysicsMaterialList expectedMaterials;
+        nativeResult.Get()->SaveMaterialState(expectedMaterials);
+        JPH::ShapeList expectedChildShapes;
+        nativeResult.Get()->SaveSubShapeState(expectedChildShapes);
+        if (expectedMaterials.size() != materialHandles.size()
+            || expectedChildShapes.size() != childShapeHandles.size())
+        {
+            return {};
+        }
+
+        AZStd::vector<MaterialHandle> retainedMaterialHandles;
+        retainedMaterialHandles.reserve(materialHandles.size());
+        for (const MaterialHandle materialHandle : materialHandles)
+        {
+            if (materialHandle)
+            {
+                retainedMaterialHandles.push_back(materialHandle);
+            }
+        }
+
+        JPH::PhysicsMaterialList acquiredMaterials;
+        if (!AcquireMaterials(retainedMaterialHandles, acquiredMaterials))
+        {
+            return {};
+        }
+
+        JPH::PhysicsMaterialList nativeMaterials;
+        nativeMaterials.reserve(materialHandles.size());
+        size_t acquiredMaterialIndex = 0;
+        for (const MaterialHandle materialHandle : materialHandles)
+        {
+            if (materialHandle)
+            {
+                nativeMaterials.push_back(acquiredMaterials[acquiredMaterialIndex]);
+                ++acquiredMaterialIndex;
+            }
+            else
+            {
+                nativeMaterials.emplace_back(nullptr);
+            }
+        }
+
+        JPH::ShapeList nativeChildShapes;
+        nativeChildShapes.reserve(childShapeHandles.size());
+        size_t acquiredChildCount = 0;
+        for (const CookedShapeHandle childShapeHandle : childShapeHandles)
+        {
+            JPH::RefConst<JPH::Shape> childShape;
+            if (!AcquireCookedShape(childShapeHandle, childShape))
+            {
+                for (size_t childIndex = 0; childIndex < acquiredChildCount; ++childIndex)
+                {
+                    ReleaseCookedShape(childShapeHandles[childIndex]);
+                }
+                ReleaseMaterials(retainedMaterialHandles);
+                return {};
+            }
+            nativeChildShapes.push_back(AZStd::move(childShape));
+            ++acquiredChildCount;
+        }
+
+        nativeResult.Get()->RestoreMaterialState(
+            nativeMaterials.data(),
+            static_cast<JPH::uint>(nativeMaterials.size()));
+        nativeResult.Get()->RestoreSubShapeState(
+            nativeChildShapes.data(),
+            static_cast<JPH::uint>(nativeChildShapes.size()));
+
+        const CookedShapeHandle cookedShapeHandle = StoreCookedShape(
+            nativeResult.Get(),
+            retainedMaterialHandles,
+            {childShapeHandles.begin(), childShapeHandles.end()});
+        for (const CookedShapeHandle childShapeHandle : childShapeHandles)
+        {
+            ReleaseCookedShape(childShapeHandle);
+        }
+        if (!cookedShapeHandle)
+        {
+            ReleaseMaterials(retainedMaterialHandles);
+        }
+        return cookedShapeHandle;
+    }
+
+    bool System::DestroyCookedShape(
+        const CookedShapeHandle cookedShapeHandle)
+    {
+        AZStd::vector<MaterialHandle> materialHandles;
+        {
+            AZStd::lock_guard lock(m_cookedShapeMutex);
+            Internal::ResourceHandleParts parts;
+            if (!Internal::DecodeResourceHandle(cookedShapeHandle, parts)
+                || parts.m_index >= m_cookedShapeSlots.size())
+            {
+                return false;
+            }
+
+            CookedShapeSlot& slot = m_cookedShapeSlots[parts.m_index];
+            if (!slot.m_shape
+                || slot.m_generation != parts.m_generation
+                || slot.m_referenceCount > 0
+                || slot.m_parentCount > 0)
+            {
+                return false;
+            }
+
+            slot.m_shape = nullptr;
+            materialHandles = AZStd::move(slot.m_materialHandles);
+            for (const CookedShapeHandle childHandle : slot.m_childHandles)
+            {
+                CookedShapeSlot* childSlot = FindCookedShapeUnlocked(childHandle);
+                AZ_Assert(childSlot && childSlot->m_parentCount > 0, "Cooked shape ownership is inconsistent.");
+                if (childSlot && childSlot->m_parentCount > 0)
+                {
+                    --childSlot->m_parentCount;
+                }
+            }
+            slot.m_childHandles.clear();
+            if (Internal::AdvanceGeneration(slot.m_generation))
+            {
+                m_freeCookedShapeSlots.push_back(parts.m_index);
+            }
+        }
+
+        ReleaseMaterials(materialHandles);
+        return true;
+    }
+
+    bool System::IsValid(
+        const CookedShapeHandle cookedShapeHandle) const
+    {
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        return FindCookedShapeUnlocked(cookedShapeHandle);
+    }
+
+    bool System::GetStats(
+        const CookedShapeHandle cookedShapeHandle,
+        ShapeStats& stats) const
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        if (!slot)
+        {
+            return false;
+        }
+
+        const JPH::Shape::Stats nativeStats = slot->m_shape->GetStats();
+        const JPH::AABox nativeBounds = slot->m_shape->GetLocalBounds();
+        stats = {
+            .m_localBounds = AZ::Aabb::CreateFromMinMax(
+                {nativeBounds.mMin.GetX(), nativeBounds.mMin.GetY(), nativeBounds.mMin.GetZ()},
+                {nativeBounds.mMax.GetX(), nativeBounds.mMax.GetY(), nativeBounds.mMax.GetZ()}),
+            .m_memorySize = nativeStats.mSizeBytes,
+            .m_triangleCount = nativeStats.mNumTriangles,
+        };
+        return true;
+    }
+
+    bool System::GetStatsRecursive(
+        const CookedShapeHandle cookedShapeHandle,
+        ShapeStats& stats) const
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        if (!slot)
+        {
+            return false;
+        }
+
+        JPH::Shape::VisitedShapes visitedShapes;
+        const JPH::Shape::Stats nativeStats = slot->m_shape->GetStatsRecursive(visitedShapes);
+        const JPH::AABox nativeBounds = slot->m_shape->GetLocalBounds();
+        stats = {
+            .m_localBounds = AZ::Aabb::CreateFromMinMax(
+                {nativeBounds.mMin.GetX(), nativeBounds.mMin.GetY(), nativeBounds.mMin.GetZ()},
+                {nativeBounds.mMax.GetX(), nativeBounds.mMax.GetY(), nativeBounds.mMax.GetZ()}),
+            .m_memorySize = nativeStats.mSizeBytes,
+            .m_triangleCount = nativeStats.mNumTriangles,
+        };
+        return true;
+    }
+
+    bool System::GetProperties(
+        const CookedShapeHandle cookedShapeHandle,
+        ShapeProperties& properties) const
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        if (!slot)
+        {
+            return false;
+        }
+
+        const JPH::AABox nativeBounds = slot->m_shape->GetLocalBounds();
+        const JPH::MassProperties nativeMassProperties = slot->m_shape->GetMassProperties();
+        const JPH::Vec3 nativeCenterOfMass = slot->m_shape->GetCenterOfMass();
+        ShapeKind shapeKind = ShapeKind::None;
+        switch (slot->m_shape->GetSubType())
+        {
+        case JPH::EShapeSubType::Box:
+            shapeKind = ShapeKind::Box;
+            break;
+        case JPH::EShapeSubType::Capsule:
+            shapeKind = ShapeKind::Capsule;
+            break;
+        case JPH::EShapeSubType::ConvexHull:
+            shapeKind = ShapeKind::ConvexHull;
+            break;
+        case JPH::EShapeSubType::UserConvex1:
+            shapeKind = ShapeKind::CustomConvex;
+            break;
+        case JPH::EShapeSubType::Cylinder:
+            shapeKind = ShapeKind::Cylinder;
+            break;
+        case JPH::EShapeSubType::Empty:
+            shapeKind = ShapeKind::Empty;
+            break;
+        case JPH::EShapeSubType::HeightField:
+            shapeKind = ShapeKind::Heightfield;
+            break;
+        case JPH::EShapeSubType::Mesh:
+            shapeKind = ShapeKind::Mesh;
+            break;
+        case JPH::EShapeSubType::MutableCompound:
+            shapeKind = ShapeKind::MutableCompound;
+            break;
+        case JPH::EShapeSubType::OffsetCenterOfMass:
+            shapeKind = ShapeKind::OffsetCenterOfMass;
+            break;
+        case JPH::EShapeSubType::Plane:
+            shapeKind = ShapeKind::Plane;
+            break;
+        case JPH::EShapeSubType::RotatedTranslated:
+            shapeKind = ShapeKind::RotatedTranslated;
+            break;
+        case JPH::EShapeSubType::Scaled:
+            shapeKind = ShapeKind::Scaled;
+            break;
+        case JPH::EShapeSubType::SoftBody:
+            shapeKind = ShapeKind::SoftBody;
+            break;
+        case JPH::EShapeSubType::Sphere:
+            shapeKind = ShapeKind::Sphere;
+            break;
+        case JPH::EShapeSubType::StaticCompound:
+            shapeKind = ShapeKind::StaticCompound;
+            break;
+        case JPH::EShapeSubType::TaperedCapsule:
+            shapeKind = ShapeKind::TaperedCapsule;
+            break;
+        case JPH::EShapeSubType::TaperedCylinder:
+            shapeKind = ShapeKind::TaperedCylinder;
+            break;
+        case JPH::EShapeSubType::Triangle:
+            shapeKind = ShapeKind::Triangle;
+            break;
+        default:
+            break;
+        }
+
+        properties = {
+            .m_inertia = AZ::Matrix3x3::CreateFromColumns(
+                {
+                    nativeMassProperties.mInertia(0, 0),
+                    nativeMassProperties.mInertia(1, 0),
+                    nativeMassProperties.mInertia(2, 0),
+                },
+                {
+                    nativeMassProperties.mInertia(0, 1),
+                    nativeMassProperties.mInertia(1, 1),
+                    nativeMassProperties.mInertia(2, 1),
+                },
+                {
+                    nativeMassProperties.mInertia(0, 2),
+                    nativeMassProperties.mInertia(1, 2),
+                    nativeMassProperties.mInertia(2, 2),
+                }),
+            .m_localBounds = AZ::Aabb::CreateFromMinMax(
+                {nativeBounds.mMin.GetX(), nativeBounds.mMin.GetY(), nativeBounds.mMin.GetZ()},
+                {nativeBounds.mMax.GetX(), nativeBounds.mMax.GetY(), nativeBounds.mMax.GetZ()}),
+            .m_centerOfMass = {
+                nativeCenterOfMass.GetX(),
+                nativeCenterOfMass.GetY(),
+                nativeCenterOfMass.GetZ(),
+            },
+            .m_innerRadius = slot->m_shape->GetInnerRadius(),
+            .m_mass = nativeMassProperties.mMass,
+            .m_volume = slot->m_shape->GetVolume(),
+            .m_subShapeIdBitCount = slot->m_shape->GetSubShapeIDBitsRecursive(),
+            .m_kind = shapeKind,
+            .m_mustBeStatic = slot->m_shape->MustBeStatic(),
+        };
+        return true;
+    }
+
+    bool System::GetUserData(
+        const CookedShapeHandle cookedShapeHandle,
+        AZ::u64& userData) const
+    {
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        if (!slot)
+        {
+            return false;
+        }
+
+        userData = slot->m_shape->GetUserData();
+        return true;
+    }
+
+    bool System::GetCustomConvexShapeInfo(
+        const CookedShapeHandle cookedShapeHandle,
+        CustomConvexShapeInfo& info) const
+    {
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        return slot && GetNativeCustomConvexShapeInfo(*slot->m_shape, info);
+    }
+
+    bool System::GetSubShapeUserData(
+        const CookedShapeHandle cookedShapeHandle,
+        const SubShapeId subShapeId,
+        AZ::u64& userData) const
+    {
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        if (!slot || !IsPotentiallyValidSubShapeId(*slot->m_shape, subShapeId))
+        {
+            return false;
+        }
+
+        JPH::SubShapeID nativeSubShapeId;
+        nativeSubShapeId.SetValue(subShapeId.GetValue());
+        userData = slot->m_shape->GetSubShapeUserData(nativeSubShapeId);
+        return true;
+    }
+
+    bool System::GetDirectChildShape(
+        const CookedShapeHandle cookedShapeHandle,
+        const SubShapeId subShapeId,
+        CookedShapeHandle& childShapeHandle,
+        SubShapeTransform& transform) const
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        if (!slot)
+        {
+            return false;
+        }
+
+        AZ::u32 childIndex = 0;
+        SubShapeTransform resolvedTransform;
+        if (!GetNativeDirectChildShape(
+                *slot->m_shape,
+                subShapeId,
+                resolvedTransform,
+                childIndex))
+        {
+            return false;
+        }
+
+        CookedShapeHandle resolvedHandle = cookedShapeHandle;
+        if (childIndex != AZStd::numeric_limits<AZ::u32>::max())
+        {
+            if (childIndex >= slot->m_childHandles.size())
+            {
+                return false;
+            }
+            resolvedHandle = slot->m_childHandles[childIndex];
+        }
+
+        childShapeHandle = resolvedHandle;
+        transform = resolvedTransform;
+        return true;
+    }
+
+    BufferResult System::GetMeshMaterials(
+        const CookedShapeHandle cookedShapeHandle,
+        const AZStd::span<MaterialHandle> materialHandles) const
+    {
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        const JPH::MeshShape* mesh = FindNativeMesh(*slot->m_shape);
+        if (!mesh)
+        {
+            return {};
+        }
+        const JPH::PhysicsMaterialList& nativeMaterials = mesh->GetMaterialList();
+        if (nativeMaterials.size() > AZStd::numeric_limits<AZ::u32>::max())
+        {
+            return {};
+        }
+
+        const AZ::u32 requiredCount = aznumeric_cast<AZ::u32>(nativeMaterials.size());
+        if (materialHandles.size() < nativeMaterials.size())
+        {
+            return {.m_requiredCount = requiredCount};
+        }
+
+        for (size_t materialIndex = 0; materialIndex < nativeMaterials.size(); ++materialIndex)
+        {
+            const MaterialHandle materialHandle = FindMaterialHandle(nativeMaterials[materialIndex]);
+            if (!materialHandle)
+            {
+                return {};
+            }
+            materialHandles[materialIndex] = materialHandle;
+        }
+
+        return {
+            .m_count = requiredCount,
+            .m_requiredCount = requiredCount,
+        };
+    }
+
+    bool System::GetMeshTriangleMaterialIndex(
+        const CookedShapeHandle cookedShapeHandle,
+        const SubShapeId subShapeId,
+        AZ::u32& materialIndex) const
+    {
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        return slot && GetNativeMeshTriangleMaterialIndex(*slot->m_shape, subShapeId, materialIndex);
+    }
+
+    bool System::GetMeshTriangleUserData(
+        const CookedShapeHandle cookedShapeHandle,
+        const SubShapeId subShapeId,
+        AZ::u32& userData) const
+    {
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        return slot && GetNativeMeshTriangleUserData(*slot->m_shape, subShapeId, userData);
+    }
+
+    bool System::GetCompoundChildCount(
+        const CookedShapeHandle cookedShapeHandle,
+        AZ::u32& childCount) const
+    {
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        if (!slot || slot->m_shape->GetSubType() != JPH::EShapeSubType::StaticCompound)
+        {
+            return false;
+        }
+
+        const auto* compound = static_cast<const JPH::StaticCompoundShape*>(slot->m_shape.GetPtr());
+        childCount = compound->GetNumSubShapes();
+        return true;
+    }
+
+    bool System::GetCompoundChild(
+        const CookedShapeHandle cookedShapeHandle,
+        const AZ::u32 childIndex,
+        CookedCompoundChildConfiguration& child) const
+    {
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        if (!slot
+            || slot->m_shape->GetSubType() != JPH::EShapeSubType::StaticCompound
+            || childIndex >= slot->m_childHandles.size())
+        {
+            return false;
+        }
+
+        const auto* compound = static_cast<const JPH::StaticCompoundShape*>(slot->m_shape.GetPtr());
+        const JPH::CompoundShape::SubShape& nativeChild = compound->GetSubShape(childIndex);
+        const JPH::Quat nativeRotation = nativeChild.GetRotation();
+        const JPH::Vec3 nativePosition = nativeChild.GetPositionCOM()
+            + compound->GetCenterOfMass()
+            - nativeRotation * nativeChild.mShape->GetCenterOfMass();
+        child = {
+            .m_position = AZ::Vector3(
+                nativePosition.GetX(),
+                nativePosition.GetY(),
+                nativePosition.GetZ()),
+            .m_rotation = AZ::Quaternion(
+                nativeRotation.GetX(),
+                nativeRotation.GetY(),
+                nativeRotation.GetZ(),
+                nativeRotation.GetW()),
+            .m_shapeHandle = slot->m_childHandles[childIndex],
+            .m_userData = compound->GetCompoundUserData(childIndex),
+        };
+        return true;
+    }
+
+    bool System::GetCompoundChildIndex(
+        const CookedShapeHandle cookedShapeHandle,
+        const SubShapeId subShapeId,
+        AZ::u32& childIndex) const
+    {
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        if (!slot
+            || slot->m_shape->GetSubType() != JPH::EShapeSubType::StaticCompound
+            || !IsPotentiallyValidSubShapeId(*slot->m_shape, subShapeId))
+        {
+            return false;
+        }
+
+        const auto* compound = static_cast<const JPH::StaticCompoundShape*>(slot->m_shape.GetPtr());
+        JPH::SubShapeID nativeSubShapeId;
+        nativeSubShapeId.SetValue(subShapeId.GetValue());
+        JPH::SubShapeID remainder;
+        const AZ::u32 nativeChildIndex = compound->GetSubShapeIndexFromID(nativeSubShapeId, remainder);
+        if (nativeChildIndex >= slot->m_childHandles.size())
+        {
+            return false;
+        }
+
+        childIndex = nativeChildIndex;
+        return true;
+    }
+
+    bool System::Raycast(
+        const CookedShapeHandle cookedShapeHandle,
+        const AZ::Vector3& start,
+        const AZ::Vector3& direction,
+        const float distance,
+        CookedRaycastHit& hit) const
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::RaycastCookedShape");
+        const DeterministicFloatScope floatScope;
+        if (!start.IsFinite()
+            || !direction.IsFinite()
+            || direction.IsZero()
+            || !AZ::IsFiniteFloat(distance)
+            || distance <= 0.0f)
+        {
+            return false;
+        }
+
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        if (!slot)
+        {
+            return false;
+        }
+
+        const AZ::Vector3 normalizedDirection = direction.GetNormalized();
+        const AZ::Vector3 displacement = normalizedDirection * distance;
+        const JPH::Vec3 centerOfMass = slot->m_shape->GetCenterOfMass();
+        const JPH::RayCast ray(
+            JPH::Vec3(
+                start.GetX() - centerOfMass.GetX(),
+                start.GetY() - centerOfMass.GetY(),
+                start.GetZ() - centerOfMass.GetZ()),
+            ToNativeSystemVector(displacement));
+        JPH::RayCastResult nativeHit;
+        if (!slot->m_shape->CastRay(ray, JPH::SubShapeIDCreator(), nativeHit))
+        {
+            return false;
+        }
+
+        const JPH::Vec3 nativeHitPosition = ray.GetPointOnRay(nativeHit.mFraction);
+        const JPH::Vec3 nativeNormal = slot->m_shape->GetSurfaceNormal(
+            nativeHit.mSubShapeID2,
+            nativeHitPosition);
+        hit = {
+            .m_position = start + displacement * nativeHit.mFraction,
+            .m_normal = {nativeNormal.GetX(), nativeNormal.GetY(), nativeNormal.GetZ()},
+            .m_materialHandle = FindMaterialHandle(slot->m_shape->GetMaterial(nativeHit.mSubShapeID2)),
+            .m_subShapeId = SubShapeId(nativeHit.mSubShapeID2.GetValue()),
+            .m_distance = distance * nativeHit.mFraction,
+            .m_fraction = nativeHit.mFraction,
+        };
+        return true;
+    }
+
+    GroupFilterHandle System::CreateGroupFilter(
+        const AZ::u32 subGroupCount,
+        IGroupFilter* filter)
+    {
+        if (!filter || subGroupCount > MaximumSubGroupCount)
+        {
+            return {};
+        }
+
+        JPH::Ref<JPH::GroupFilter> nativeFilter = new GroupFilterAdapter(filter);
+        const AZ::u64 stateHash = MixGroupFilterValue(subGroupCount)
+            ^ MixGroupFilterValue(filter->GetStateHash());
+        return StoreGroupFilter(
+            AZStd::move(nativeFilter),
+            subGroupCount,
+            stateHash,
+            true);
+    }
+
+    GroupFilterHandle System::CreateGroupFilterTable(
+        const GroupFilterTableConfiguration& configuration)
+    {
+        if (configuration.m_subGroupCount > MaximumSubGroupCount)
+        {
+            return {};
+        }
+        for (const SubGroupPair& disabledPair : configuration.m_disabledPairs)
+        {
+            if (!IsValidSubGroupPair(
+                    disabledPair.m_first,
+                    disabledPair.m_second,
+                    configuration.m_subGroupCount))
+            {
+                return {};
+            }
+        }
+
+        JPH::Ref<JPH::GroupFilterTable> filter = new JPH::GroupFilterTable(configuration.m_subGroupCount);
+        AZ::u64 stateHash = MixGroupFilterValue(configuration.m_subGroupCount);
+        for (const SubGroupPair& disabledPair : configuration.m_disabledPairs)
+        {
+            if (filter->IsCollisionEnabled(disabledPair.m_first.GetValue(), disabledPair.m_second.GetValue()))
+            {
+                filter->DisableCollision(disabledPair.m_first.GetValue(), disabledPair.m_second.GetValue());
+                stateHash ^= GetSubGroupPairHash(disabledPair.m_first, disabledPair.m_second);
+            }
+        }
+
+        JPH::Ref<JPH::GroupFilter> baseFilter = filter.GetPtr();
+        return StoreGroupFilter(
+            AZStd::move(baseFilter),
+            configuration.m_subGroupCount,
+            stateHash,
+            false);
+    }
+
+    GroupFilterHandle System::StoreGroupFilter(
+        JPH::Ref<JPH::GroupFilter> filter,
+        const AZ::u32 subGroupCount,
+        const AZ::u64 stateHash,
+        const bool isCustom)
+    {
+        AZStd::lock_guard lock(m_groupFilterMutex);
+        AZ::u32 filterIndex = 0;
+        if (!m_freeGroupFilterSlots.empty())
+        {
+            filterIndex = m_freeGroupFilterSlots.back();
+            m_freeGroupFilterSlots.pop_back();
+        }
+        else
+        {
+            if (m_groupFilterSlots.size() >= Internal::HandlePayloadMask)
+            {
+                return {};
+            }
+            filterIndex = static_cast<AZ::u32>(m_groupFilterSlots.size());
+            m_groupFilterSlots.emplace_back();
+        }
+
+        GroupFilterSlot& slot = m_groupFilterSlots[filterIndex];
+        slot.m_filter = AZStd::move(filter);
+        slot.m_stateHash = stateHash;
+        slot.m_subGroupCount = subGroupCount;
+        slot.m_isCustom = isCustom;
+        return Internal::MakeResourceHandle<GroupFilterHandle>(filterIndex, slot.m_generation);
+    }
+
+    bool System::DestroyGroupFilter(
+        const GroupFilterHandle filterHandle)
+    {
+        AZStd::lock_guard lock(m_groupFilterMutex);
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(filterHandle, parts)
+            || parts.m_index >= m_groupFilterSlots.size())
+        {
+            return false;
+        }
+
+        GroupFilterSlot& slot = m_groupFilterSlots[parts.m_index];
+        if (!slot.m_filter || slot.m_generation != parts.m_generation || slot.m_referenceCount > 0)
+        {
+            return false;
+        }
+
+        slot.m_filter = nullptr;
+        slot.m_stateHash = 0;
+        slot.m_subGroupCount = 0;
+        slot.m_isCustom = false;
+        if (Internal::AdvanceGeneration(slot.m_generation))
+        {
+            m_freeGroupFilterSlots.push_back(parts.m_index);
+        }
+        return true;
+    }
+
+    bool System::IsValid(
+        const GroupFilterHandle filterHandle) const
+    {
+        AZStd::shared_lock lock(m_groupFilterMutex);
+        return FindGroupFilterUnlocked(filterHandle);
+    }
+
+    bool System::NotifyGroupFilterChanged(
+        const GroupFilterHandle filterHandle)
+    {
+        AZStd::lock_guard worldLock(m_worldMutex);
+        AZStd::lock_guard filterLock(m_groupFilterMutex);
+        GroupFilterSlot* slot = FindGroupFilterUnlocked(filterHandle);
+        if (!slot || !slot->m_isCustom)
+        {
+            return false;
+        }
+
+        const auto* filter = static_cast<const GroupFilterAdapter*>(slot->m_filter.GetPtr());
+        IGroupFilter* callbacks = filter->GetCallbacks();
+        if (!callbacks)
+        {
+            return false;
+        }
+
+        slot->m_stateHash = MixGroupFilterValue(slot->m_subGroupCount)
+            ^ MixGroupFilterValue(callbacks->GetStateHash());
+        RefreshGroupFilterInWorlds(filterHandle);
+        return true;
+    }
+
+    bool System::GetSubGroupCollisionEnabled(
+        const GroupFilterHandle filterHandle,
+        const CollisionSubGroupId firstSubGroup,
+        const CollisionSubGroupId secondSubGroup,
+        bool& enabled) const
+    {
+        AZStd::shared_lock lock(m_groupFilterMutex);
+        const GroupFilterSlot* slot = FindGroupFilterUnlocked(filterHandle);
+        if (!slot
+            || slot->m_isCustom
+            || !IsValidSubGroupPair(firstSubGroup, secondSubGroup, slot->m_subGroupCount))
+        {
+            return false;
+        }
+
+        const auto* filter = static_cast<const JPH::GroupFilterTable*>(slot->m_filter.GetPtr());
+        enabled = filter->IsCollisionEnabled(firstSubGroup.GetValue(), secondSubGroup.GetValue());
+        return true;
+    }
+
+    bool System::SetSubGroupCollisionEnabled(
+        const GroupFilterHandle filterHandle,
+        const CollisionSubGroupId firstSubGroup,
+        const CollisionSubGroupId secondSubGroup,
+        const bool enabled)
+    {
+        AZStd::lock_guard worldLock(m_worldMutex);
+        AZStd::lock_guard filterLock(m_groupFilterMutex);
+        GroupFilterSlot* slot = FindGroupFilterUnlocked(filterHandle);
+        if (!slot
+            || slot->m_isCustom
+            || !IsValidSubGroupPair(firstSubGroup, secondSubGroup, slot->m_subGroupCount))
+        {
+            return false;
+        }
+
+        auto* filter = static_cast<JPH::GroupFilterTable*>(slot->m_filter.GetPtr());
+        const bool currentValue = filter->IsCollisionEnabled(
+            firstSubGroup.GetValue(),
+            secondSubGroup.GetValue());
+        if (currentValue == enabled)
+        {
+            return true;
+        }
+        if (enabled)
+        {
+            filter->EnableCollision(firstSubGroup.GetValue(), secondSubGroup.GetValue());
+        }
+        else
+        {
+            filter->DisableCollision(firstSubGroup.GetValue(), secondSubGroup.GetValue());
+        }
+        slot->m_stateHash ^= GetSubGroupPairHash(firstSubGroup, secondSubGroup);
+        RefreshGroupFilterInWorlds(filterHandle);
+        return true;
+    }
+
+    void System::RefreshGroupFilterInWorlds(
+        const GroupFilterHandle filterHandle)
+    {
+        for (WorldSlot& worldSlot : m_worldSlots)
+        {
+            if (worldSlot.m_world)
+            {
+                worldSlot.m_world->NotifyGroupFilterChanged(filterHandle);
+            }
+        }
+    }
+
+    PathHandle System::CreatePath(
+        const HermitePathConfiguration& configuration)
+    {
+        const DeterministicFloatScope floatScope;
+        if (configuration.m_points.size() < 2
+            || (configuration.m_isLooping && configuration.m_points.size() < 3))
+        {
+            return {};
+        }
+
+        JPH::Ref<JPH::PathConstraintPathHermite> path = new JPH::PathConstraintPathHermite();
+        for (const HermitePathPoint& point : configuration.m_points)
+        {
+            if (!point.m_position.IsFinite()
+                || !point.m_tangent.IsFinite()
+                || point.m_tangent.IsZero()
+                || !point.m_normal.IsFinite()
+                || point.m_normal.IsZero()
+                || !AZ::IsClose(point.m_tangent.GetNormalized().Dot(point.m_normal.GetNormalized()), 0.0f, 1.0e-3f))
+            {
+                return {};
+            }
+            path->AddPoint(
+                JPH::Vec3(point.m_position.GetX(), point.m_position.GetY(), point.m_position.GetZ()),
+                JPH::Vec3(point.m_tangent.GetX(), point.m_tangent.GetY(), point.m_tangent.GetZ()),
+                JPH::Vec3(point.m_normal.GetX(), point.m_normal.GetY(), point.m_normal.GetZ()).Normalized());
+        }
+        path->SetIsLooping(configuration.m_isLooping);
+
+        return StorePath(path.GetPtr());
+    }
+
+    PathHandle System::CreatePath(
+        const CustomPathConfiguration& configuration)
+    {
+        const DeterministicFloatScope floatScope;
+        if (configuration.m_providerId.IsNull())
+        {
+            return {};
+        }
+
+        float maximumFraction = 0.0f;
+        AZ::u64 providerVersion = 0;
+        ICustomPathProvider* provider = AcquireCustomPathProvider(
+            configuration.m_providerId,
+            configuration.m_data,
+            maximumFraction,
+            providerVersion);
+        if (!provider)
+        {
+            return {};
+        }
+
+        JPH::Ref<CustomPathAdapter> path = new CustomPathAdapter(
+            *provider,
+            configuration.m_data,
+            maximumFraction);
+        path->SetIsLooping(configuration.m_isLooping);
+
+        AZ::HashValue64 sourceHash = AZ::TypeHash64(
+            providerVersion,
+            AZ::HashValue64(static_cast<AZ::u64>(configuration.m_providerId.GetHash())));
+        sourceHash = AZ::TypeHash64(configuration.m_isLooping, sourceHash);
+        if (!configuration.m_data.empty())
+        {
+            sourceHash = AZ::TypeHash64(
+                configuration.m_data.data(),
+                configuration.m_data.size(),
+                sourceHash);
+        }
+
+        const PathHandle pathHandle = StorePath(
+            path.GetPtr(),
+            configuration.m_providerId,
+            providerVersion,
+            static_cast<AZ::u64>(sourceHash));
+        if (!pathHandle)
+        {
+            ReleaseCustomPathProvider(configuration.m_providerId);
+        }
+        return pathHandle;
+    }
+
+    PathHandle System::StorePath(
+        JPH::RefConst<JPH::PathConstraintPath> path,
+        const AZ::TypeId customProviderId,
+        const AZ::u64 customProviderVersion,
+        const AZ::u64 sourceHash)
+    {
+        if (!path)
+        {
+            return {};
+        }
+
+        AZStd::lock_guard lock(m_pathMutex);
+        AZ::u32 pathIndex = 0;
+        if (!m_freePathSlots.empty())
+        {
+            pathIndex = m_freePathSlots.back();
+            m_freePathSlots.pop_back();
+        }
+        else
+        {
+            if (m_pathSlots.size() >= Internal::HandlePayloadMask)
+            {
+                return {};
+            }
+            pathIndex = static_cast<AZ::u32>(m_pathSlots.size());
+            m_pathSlots.emplace_back();
+        }
+
+        PathSlot& slot = m_pathSlots[pathIndex];
+        slot.m_path = AZStd::move(path);
+        slot.m_customProviderId = customProviderId;
+        slot.m_customProviderVersion = customProviderVersion;
+        slot.m_sourceHash = sourceHash;
+        return Internal::MakeResourceHandle<PathHandle>(pathIndex, slot.m_generation);
+    }
+
+    bool System::DestroyPath(
+        const PathHandle pathHandle)
+    {
+        AZ::TypeId customProviderId = AZ::TypeId::CreateNull();
+        {
+            AZStd::lock_guard lock(m_pathMutex);
+            Internal::ResourceHandleParts parts;
+            if (!Internal::DecodeResourceHandle(pathHandle, parts)
+                || parts.m_index >= m_pathSlots.size())
+            {
+                return false;
+            }
+
+            PathSlot& slot = m_pathSlots[parts.m_index];
+            if (!slot.m_path || slot.m_generation != parts.m_generation || slot.m_constraintCount > 0)
+            {
+                return false;
+            }
+
+            slot.m_path = nullptr;
+            customProviderId = slot.m_customProviderId;
+            slot.m_customProviderId = AZ::TypeId::CreateNull();
+            slot.m_customProviderVersion = 0;
+            slot.m_sourceHash = 0;
+            if (Internal::AdvanceGeneration(slot.m_generation))
+            {
+                m_freePathSlots.push_back(parts.m_index);
+            }
+        }
+
+        if (!customProviderId.IsNull())
+        {
+            ReleaseCustomPathProvider(customProviderId);
+        }
+        return true;
+    }
+
+    bool System::IsValid(
+        const PathHandle pathHandle) const
+    {
+        AZStd::shared_lock lock(m_pathMutex);
+        return FindPathUnlocked(pathHandle);
+    }
+
+    bool System::GetPathState(
+        const PathHandle pathHandle,
+        PathState& state) const
+    {
+        const DeterministicFloatScope floatScope;
+        state = {};
+        AZStd::shared_lock lock(m_pathMutex);
+        const PathSlot* slot = FindPathUnlocked(pathHandle);
+        if (!slot)
+        {
+            return false;
+        }
+
+        state = {
+            .m_maximumFraction = slot->m_path->GetPathMaxFraction(),
+            .m_isLooping = slot->m_path->IsLooping(),
+        };
+        return true;
+    }
+
+    bool System::GetCustomPathInfo(
+        const PathHandle pathHandle,
+        CustomPathInfo& info) const
+    {
+        info = {};
+        AZStd::shared_lock lock(m_pathMutex);
+        const PathSlot* slot = FindPathUnlocked(pathHandle);
+        if (!slot || slot->m_customProviderId.IsNull())
+        {
+            return false;
+        }
+
+        info = {
+            .m_providerId = slot->m_customProviderId,
+            .m_providerVersion = slot->m_customProviderVersion,
+            .m_sourceHash = slot->m_sourceHash,
+        };
+        return true;
+    }
+
+    bool System::SamplePath(
+        const PathHandle pathHandle,
+        const float fraction,
+        PathSample& sample) const
+    {
+        const DeterministicFloatScope floatScope;
+        sample = {};
+        AZStd::shared_lock lock(m_pathMutex);
+        const PathSlot* slot = FindPathUnlocked(pathHandle);
+        if (!slot
+            || !AZ::IsFiniteFloat(fraction)
+            || fraction < 0.0f
+            || fraction > slot->m_path->GetPathMaxFraction())
+        {
+            return false;
+        }
+
+        sample = FromNativePathSample(*slot->m_path, fraction);
+        return true;
+    }
+
+    bool System::FindClosestPathPoint(
+        const PathHandle pathHandle,
+        const AZ::Vector3& position,
+        const float fractionHint,
+        PathSample& sample) const
+    {
+        const DeterministicFloatScope floatScope;
+        sample = {};
+        AZStd::shared_lock lock(m_pathMutex);
+        const PathSlot* slot = FindPathUnlocked(pathHandle);
+        if (!slot
+            || !position.IsFinite()
+            || !AZ::IsFiniteFloat(fractionHint)
+            || fractionHint < 0.0f
+            || fractionHint > slot->m_path->GetPathMaxFraction())
+        {
+            return false;
+        }
+
+        const float fraction = slot->m_path->GetClosestPoint(
+            JPH::Vec3(position.GetX(), position.GetY(), position.GetZ()),
+            fractionHint);
+        sample = FromNativePathSample(*slot->m_path, fraction);
+        return true;
+    }
+
+    SoftBodyDefinitionHandle System::CreateSoftBodyDefinition(
+        const SoftBodyDefinitionConfiguration& configuration,
+        SoftBodyOptimizationRemap* optimizationRemap)
+    {
+        const DeterministicFloatScope floatScope;
+        if (optimizationRemap)
+        {
+            *optimizationRemap = {};
+        }
+        if (configuration.m_vertices.empty()
+            || !AZ::IsFiniteFloat(configuration.m_shearAngleTolerance)
+            || configuration.m_shearAngleTolerance < 0.0f
+            || configuration.m_shearAngleTolerance > AZ::Constants::Pi)
+        {
+            return {};
+        }
+
+        size_t materialCount = configuration.m_materials.size();
+        if (materialCount == 0)
+        {
+            materialCount = 1;
+        }
+        for (const SoftBodyVertex& vertex : configuration.m_vertices)
+        {
+            if (!vertex.m_position.IsFinite()
+                || !vertex.m_velocity.IsFinite()
+                || !AZ::IsFiniteFloat(vertex.m_inverseMass)
+                || vertex.m_inverseMass < 0.0f)
+            {
+                return {};
+            }
+        }
+        for (const SoftBodyFace& face : configuration.m_faces)
+        {
+            if (face.m_firstVertex >= configuration.m_vertices.size()
+                || face.m_secondVertex >= configuration.m_vertices.size()
+                || face.m_thirdVertex >= configuration.m_vertices.size()
+                || face.m_firstVertex == face.m_secondVertex
+                || face.m_firstVertex == face.m_thirdVertex
+                || face.m_secondVertex == face.m_thirdVertex
+                || face.m_materialIndex >= materialCount)
+            {
+                return {};
+            }
+        }
+        for (const SoftBodyVertexAttributes& attributes : configuration.m_vertexAttributes)
+        {
+            if (!AZ::IsFiniteFloat(attributes.m_bendCompliance)
+                || attributes.m_bendCompliance < 0.0f
+                || !AZ::IsFiniteFloat(attributes.m_compliance)
+                || attributes.m_compliance < 0.0f
+                || !AZ::IsFiniteFloat(attributes.m_longRangeMaximumDistanceMultiplier)
+                || attributes.m_longRangeMaximumDistanceMultiplier <= 0.0f
+                || !AZ::IsFiniteFloat(attributes.m_shearCompliance)
+                || attributes.m_shearCompliance < 0.0f)
+            {
+                return {};
+            }
+        }
+        for (const SoftBodyEdgeConstraint& constraint : configuration.m_edgeConstraints)
+        {
+            if (constraint.m_firstVertex >= configuration.m_vertices.size()
+                || constraint.m_secondVertex >= configuration.m_vertices.size()
+                || constraint.m_firstVertex == constraint.m_secondVertex
+                || !AZ::IsFiniteFloat(constraint.m_compliance)
+                || constraint.m_compliance < 0.0f
+                || (constraint.m_restLength != -1.0f
+                    && (!AZ::IsFiniteFloat(constraint.m_restLength)
+                        || constraint.m_restLength < 0.0f)))
+            {
+                return {};
+            }
+        }
+        for (const SoftBodyDihedralBendConstraint& constraint : configuration.m_dihedralBendConstraints)
+        {
+            if (constraint.m_firstVertex >= configuration.m_vertices.size()
+                || constraint.m_secondVertex >= configuration.m_vertices.size()
+                || constraint.m_thirdVertex >= configuration.m_vertices.size()
+                || constraint.m_fourthVertex >= configuration.m_vertices.size()
+                || !AZ::IsFiniteFloat(constraint.m_compliance)
+                || constraint.m_compliance < 0.0f
+                || (!constraint.m_calculateInitialAngle
+                    && (!AZ::IsFiniteFloat(constraint.m_initialAngle)
+                        || constraint.m_initialAngle < -AZ::Constants::Pi
+                        || constraint.m_initialAngle > AZ::Constants::Pi)))
+            {
+                return {};
+            }
+        }
+        for (const SoftBodyLongRangeConstraint& constraint : configuration.m_longRangeConstraints)
+        {
+            if (constraint.m_fixedVertex >= configuration.m_vertices.size()
+                || constraint.m_dynamicVertex >= configuration.m_vertices.size()
+                || constraint.m_fixedVertex == constraint.m_dynamicVertex
+                || !AZ::IsFiniteFloat(constraint.m_maximumDistance)
+                || constraint.m_maximumDistance < 0.0f)
+            {
+                return {};
+            }
+        }
+        for (const SoftBodyRodStretchShearConstraint& constraint : configuration.m_rodStretchShearConstraints)
+        {
+            if (constraint.m_firstVertex >= configuration.m_vertices.size()
+                || constraint.m_secondVertex >= configuration.m_vertices.size()
+                || constraint.m_firstVertex == constraint.m_secondVertex
+                || !AZ::IsFiniteFloat(constraint.m_compliance)
+                || constraint.m_compliance < 0.0f
+                || (constraint.m_restLength != -1.0f
+                    && (!AZ::IsFiniteFloat(constraint.m_restLength)
+                        || constraint.m_restLength <= 0.0f))
+                || (constraint.m_inverseMass != -1.0f
+                    && (!AZ::IsFiniteFloat(constraint.m_inverseMass)
+                        || constraint.m_inverseMass < 0.0f))
+                || (!constraint.m_calculateBishopRotation
+                    && (!constraint.m_bishopRotation.IsFinite()
+                        || constraint.m_bishopRotation.GetLengthSq() <= 0.0f)))
+            {
+                return {};
+            }
+        }
+        for (const SoftBodyRodBendTwistConstraint& constraint : configuration.m_rodBendTwistConstraints)
+        {
+            if (constraint.m_firstRod >= configuration.m_rodStretchShearConstraints.size()
+                || constraint.m_secondRod >= configuration.m_rodStretchShearConstraints.size()
+                || constraint.m_firstRod == constraint.m_secondRod
+                || !AZ::IsFiniteFloat(constraint.m_compliance)
+                || constraint.m_compliance < 0.0f
+                || (!constraint.m_calculateInitialRotation
+                    && (!constraint.m_initialRotation.IsFinite()
+                        || constraint.m_initialRotation.GetLengthSq() <= 0.0f)))
+            {
+                return {};
+            }
+        }
+        for (const SoftBodyVolumeConstraint& constraint : configuration.m_volumeConstraints)
+        {
+            if (constraint.m_firstVertex >= configuration.m_vertices.size()
+                || constraint.m_secondVertex >= configuration.m_vertices.size()
+                || constraint.m_thirdVertex >= configuration.m_vertices.size()
+                || constraint.m_fourthVertex >= configuration.m_vertices.size()
+                || !AZ::IsFiniteFloat(constraint.m_compliance)
+                || constraint.m_compliance < 0.0f
+                || (!constraint.m_calculateRestVolume
+                    && !AZ::IsFiniteFloat(constraint.m_restVolume)))
+            {
+                return {};
+            }
+        }
+        for (const SoftBodyInverseBind& inverseBind : configuration.m_inverseBinds)
+        {
+            if (!inverseBind.m_transform.IsFinite())
+            {
+                return {};
+            }
+        }
+        for (const SoftBodySkinConstraint& constraint : configuration.m_skinConstraints)
+        {
+            if (constraint.m_vertex >= configuration.m_vertices.size()
+                || !AZ::IsFiniteFloat(constraint.m_backstopDistance)
+                || !AZ::IsFiniteFloat(constraint.m_backstopRadius)
+                || constraint.m_backstopRadius < 0.0f
+                || !AZ::IsFiniteFloat(constraint.m_maximumDistance)
+                || constraint.m_maximumDistance < 0.0f)
+            {
+                return {};
+            }
+
+            float totalWeight = 0.0f;
+            for (const SoftBodySkinWeight& weight : constraint.m_weights)
+            {
+                if (!AZ::IsFiniteFloat(weight.m_weight)
+                    || weight.m_weight < 0.0f
+                    || (weight.m_weight > 0.0f
+                        && weight.m_inverseBindIndex >= configuration.m_inverseBinds.size()))
+                {
+                    return {};
+                }
+                totalWeight += weight.m_weight;
+            }
+            if (!AZ::IsFiniteFloat(totalWeight) || totalWeight <= 0.0f)
+            {
+                return {};
+            }
+        }
+
+        JPH::PhysicsMaterialList materials;
+        if (!AcquireMaterials(configuration.m_materials, materials))
+        {
+            return {};
+        }
+
+        JPH::Ref<JPH::SoftBodySharedSettings> settings = new JPH::SoftBodySharedSettings();
+        settings->mVertices.reserve(configuration.m_vertices.size());
+        for (const SoftBodyVertex& vertex : configuration.m_vertices)
+        {
+            settings->mVertices.emplace_back(
+                JPH::Float3(vertex.m_position.GetX(), vertex.m_position.GetY(), vertex.m_position.GetZ()),
+                JPH::Float3(vertex.m_velocity.GetX(), vertex.m_velocity.GetY(), vertex.m_velocity.GetZ()),
+                vertex.m_inverseMass);
+        }
+        settings->mFaces.reserve(configuration.m_faces.size());
+        for (const SoftBodyFace& face : configuration.m_faces)
+        {
+            settings->AddFace({
+                face.m_firstVertex,
+                face.m_secondVertex,
+                face.m_thirdVertex,
+                face.m_materialIndex,
+            });
+        }
+        if (!materials.empty())
+        {
+            settings->mMaterials = materials;
+        }
+
+        JPH::Array<JPH::SoftBodySharedSettings::VertexAttributes> attributes;
+        if (configuration.m_vertexAttributes.empty())
+        {
+            attributes.emplace_back();
+        }
+        else
+        {
+            attributes.reserve(configuration.m_vertexAttributes.size());
+            for (const SoftBodyVertexAttributes& source : configuration.m_vertexAttributes)
+            {
+                JPH::SoftBodySharedSettings::ELRAType attachmentType =
+                    JPH::SoftBodySharedSettings::ELRAType::None;
+                if (source.m_longRangeAttachmentType == SoftBodyLongRangeAttachmentType::EuclideanDistance)
+                {
+                    attachmentType = JPH::SoftBodySharedSettings::ELRAType::EuclideanDistance;
+                }
+                else if (source.m_longRangeAttachmentType == SoftBodyLongRangeAttachmentType::GeodesicDistance)
+                {
+                    attachmentType = JPH::SoftBodySharedSettings::ELRAType::GeodesicDistance;
+                }
+                attributes.emplace_back(
+                    source.m_compliance,
+                    source.m_shearCompliance,
+                    source.m_bendCompliance,
+                    attachmentType,
+                    source.m_longRangeMaximumDistanceMultiplier);
+            }
+        }
+
+        JPH::SoftBodySharedSettings::EBendType bendType = JPH::SoftBodySharedSettings::EBendType::None;
+        if (configuration.m_bendType == SoftBodyBendType::Dihedral)
+        {
+            bendType = JPH::SoftBodySharedSettings::EBendType::Dihedral;
+        }
+        else if (configuration.m_bendType == SoftBodyBendType::Distance)
+        {
+            bendType = JPH::SoftBodySharedSettings::EBendType::Distance;
+        }
+        if (configuration.m_createFaceConstraints)
+        {
+            settings->CreateConstraints(
+                attributes.data(),
+                static_cast<JPH::uint>(attributes.size()),
+                bendType,
+                configuration.m_shearAngleTolerance);
+        }
+
+        const size_t edgeConstraintStart = settings->mEdgeConstraints.size();
+        settings->mEdgeConstraints.reserve(
+            settings->mEdgeConstraints.size() + configuration.m_edgeConstraints.size());
+        for (const SoftBodyEdgeConstraint& constraint : configuration.m_edgeConstraints)
+        {
+            settings->mEdgeConstraints.emplace_back(
+                constraint.m_firstVertex,
+                constraint.m_secondVertex,
+                constraint.m_compliance);
+        }
+        if (!configuration.m_edgeConstraints.empty())
+        {
+            settings->CalculateEdgeLengths();
+            for (size_t sourceIndex = 0; sourceIndex < configuration.m_edgeConstraints.size(); ++sourceIndex)
+            {
+                const float restLength = configuration.m_edgeConstraints[sourceIndex].m_restLength;
+                if (restLength >= 0.0f)
+                {
+                    settings->mEdgeConstraints[edgeConstraintStart + sourceIndex].mRestLength = restLength;
+                }
+            }
+        }
+
+        const size_t dihedralBendConstraintStart = settings->mDihedralBendConstraints.size();
+        settings->mDihedralBendConstraints.reserve(
+            settings->mDihedralBendConstraints.size() + configuration.m_dihedralBendConstraints.size());
+        for (const SoftBodyDihedralBendConstraint& constraint : configuration.m_dihedralBendConstraints)
+        {
+            settings->mDihedralBendConstraints.emplace_back(
+                constraint.m_firstVertex,
+                constraint.m_secondVertex,
+                constraint.m_thirdVertex,
+                constraint.m_fourthVertex,
+                constraint.m_compliance);
+        }
+        if (!configuration.m_dihedralBendConstraints.empty())
+        {
+            settings->CalculateBendConstraintConstants();
+            for (size_t sourceIndex = 0; sourceIndex < configuration.m_dihedralBendConstraints.size(); ++sourceIndex)
+            {
+                const SoftBodyDihedralBendConstraint& source =
+                    configuration.m_dihedralBendConstraints[sourceIndex];
+                if (!source.m_calculateInitialAngle)
+                {
+                    settings->mDihedralBendConstraints[dihedralBendConstraintStart + sourceIndex].mInitialAngle =
+                        source.m_initialAngle;
+                }
+            }
+        }
+
+        settings->mLRAConstraints.reserve(
+            settings->mLRAConstraints.size() + configuration.m_longRangeConstraints.size());
+        for (const SoftBodyLongRangeConstraint& constraint : configuration.m_longRangeConstraints)
+        {
+            settings->mLRAConstraints.emplace_back(
+                constraint.m_fixedVertex,
+                constraint.m_dynamicVertex,
+                constraint.m_maximumDistance);
+        }
+
+        const size_t rodStretchShearConstraintStart = settings->mRodStretchShearConstraints.size();
+        settings->mRodStretchShearConstraints.reserve(
+            settings->mRodStretchShearConstraints.size() + configuration.m_rodStretchShearConstraints.size());
+        for (const SoftBodyRodStretchShearConstraint& constraint : configuration.m_rodStretchShearConstraints)
+        {
+            settings->mRodStretchShearConstraints.emplace_back(
+                constraint.m_firstVertex,
+                constraint.m_secondVertex,
+                constraint.m_compliance);
+        }
+        const size_t rodBendTwistConstraintStart = settings->mRodBendTwistConstraints.size();
+        settings->mRodBendTwistConstraints.reserve(
+            settings->mRodBendTwistConstraints.size() + configuration.m_rodBendTwistConstraints.size());
+        for (const SoftBodyRodBendTwistConstraint& constraint : configuration.m_rodBendTwistConstraints)
+        {
+            settings->mRodBendTwistConstraints.emplace_back(
+                constraint.m_firstRod,
+                constraint.m_secondRod,
+                constraint.m_compliance);
+        }
+        if (!configuration.m_rodStretchShearConstraints.empty())
+        {
+            settings->CalculateRodProperties();
+            for (size_t sourceIndex = 0; sourceIndex < configuration.m_rodStretchShearConstraints.size(); ++sourceIndex)
+            {
+                const SoftBodyRodStretchShearConstraint& source =
+                    configuration.m_rodStretchShearConstraints[sourceIndex];
+                JPH::SoftBodySharedSettings::RodStretchShear& target =
+                    settings->mRodStretchShearConstraints[rodStretchShearConstraintStart + sourceIndex];
+                if (source.m_restLength >= 0.0f)
+                {
+                    target.mLength = source.m_restLength;
+                }
+                if (source.m_inverseMass >= 0.0f)
+                {
+                    target.mInvMass = source.m_inverseMass;
+                }
+                if (!source.m_calculateBishopRotation)
+                {
+                    target.mBishop = ToNativeSystemRotation(source.m_bishopRotation);
+                }
+            }
+            for (size_t sourceIndex = 0; sourceIndex < configuration.m_rodBendTwistConstraints.size(); ++sourceIndex)
+            {
+                const SoftBodyRodBendTwistConstraint& source =
+                    configuration.m_rodBendTwistConstraints[sourceIndex];
+                if (!source.m_calculateInitialRotation)
+                {
+                    settings->mRodBendTwistConstraints[rodBendTwistConstraintStart + sourceIndex].mOmega0 =
+                        ToNativeSystemRotation(source.m_initialRotation);
+                }
+            }
+        }
+
+        const size_t volumeConstraintStart = settings->mVolumeConstraints.size();
+        settings->mVolumeConstraints.reserve(
+            settings->mVolumeConstraints.size() + configuration.m_volumeConstraints.size());
+        for (const SoftBodyVolumeConstraint& constraint : configuration.m_volumeConstraints)
+        {
+            settings->mVolumeConstraints.emplace_back(
+                constraint.m_firstVertex,
+                constraint.m_secondVertex,
+                constraint.m_thirdVertex,
+                constraint.m_fourthVertex,
+                constraint.m_compliance);
+        }
+        if (!configuration.m_volumeConstraints.empty())
+        {
+            settings->CalculateVolumeConstraintVolumes();
+            for (size_t sourceIndex = 0; sourceIndex < configuration.m_volumeConstraints.size(); ++sourceIndex)
+            {
+                const SoftBodyVolumeConstraint& source = configuration.m_volumeConstraints[sourceIndex];
+                if (!source.m_calculateRestVolume)
+                {
+                    settings->mVolumeConstraints[volumeConstraintStart + sourceIndex].mSixRestVolume =
+                        6.0f * source.m_restVolume;
+                }
+            }
+        }
+        settings->mInvBindMatrices.reserve(configuration.m_inverseBinds.size());
+        for (const SoftBodyInverseBind& inverseBind : configuration.m_inverseBinds)
+        {
+            settings->mInvBindMatrices.emplace_back(
+                inverseBind.m_jointIndex,
+                ToNativeSystemTransform(inverseBind.m_transform));
+        }
+        settings->mSkinnedConstraints.reserve(configuration.m_skinConstraints.size());
+        for (const SoftBodySkinConstraint& constraint : configuration.m_skinConstraints)
+        {
+            JPH::SoftBodySharedSettings::Skinned nativeConstraint(
+                constraint.m_vertex,
+                constraint.m_maximumDistance,
+                constraint.m_backstopDistance,
+                constraint.m_backstopRadius);
+            size_t nativeWeightIndex = 0;
+            for (const SoftBodySkinWeight& weight : constraint.m_weights)
+            {
+                if (weight.m_weight > 0.0f)
+                {
+                    nativeConstraint.mWeights[nativeWeightIndex] = {
+                        weight.m_inverseBindIndex,
+                        weight.m_weight,
+                    };
+                    ++nativeWeightIndex;
+                }
+            }
+            nativeConstraint.NormalizeWeights();
+            settings->mSkinnedConstraints.push_back(nativeConstraint);
+        }
+        if (!configuration.m_skinConstraints.empty())
+        {
+            settings->CalculateSkinnedConstraintNormals();
+        }
+
+        SoftBodyOptimizationRemap generatedOptimizationRemap;
+        const auto copyRemap =
+            [](const JPH::Array<JPH::uint>& source, AZStd::vector<AZ::u32>& target)
+            {
+                target.reserve(source.size());
+                for (const JPH::uint index : source)
+                {
+                    target.push_back(index);
+                }
+            };
+        const auto createIdentityRemap =
+            [](const size_t size, AZStd::vector<AZ::u32>& target)
+            {
+                target.reserve(size);
+                for (size_t index = 0; index < size; ++index)
+                {
+                    target.push_back(aznumeric_cast<AZ::u32>(index));
+                }
+            };
+        if (configuration.m_optimize)
+        {
+            JPH::SoftBodySharedSettings::OptimizationResults results;
+            settings->Optimize(results);
+            copyRemap(results.mDihedralBendRemap, generatedOptimizationRemap.m_dihedralBendConstraints);
+            copyRemap(results.mEdgeRemap, generatedOptimizationRemap.m_edgeConstraints);
+            copyRemap(results.mLRARemap, generatedOptimizationRemap.m_longRangeConstraints);
+            copyRemap(results.mRodBendTwistConstraintRemap, generatedOptimizationRemap.m_rodBendTwistConstraints);
+            copyRemap(results.mRodStretchShearConstraintRemap, generatedOptimizationRemap.m_rodStretchShearConstraints);
+            copyRemap(results.mSkinnedRemap, generatedOptimizationRemap.m_skinConstraints);
+            copyRemap(results.mVolumeRemap, generatedOptimizationRemap.m_volumeConstraints);
+        }
+        else
+        {
+            createIdentityRemap(
+                settings->mDihedralBendConstraints.size(),
+                generatedOptimizationRemap.m_dihedralBendConstraints);
+            createIdentityRemap(settings->mEdgeConstraints.size(), generatedOptimizationRemap.m_edgeConstraints);
+            createIdentityRemap(settings->mLRAConstraints.size(), generatedOptimizationRemap.m_longRangeConstraints);
+            createIdentityRemap(
+                settings->mRodBendTwistConstraints.size(),
+                generatedOptimizationRemap.m_rodBendTwistConstraints);
+            createIdentityRemap(
+                settings->mRodStretchShearConstraints.size(),
+                generatedOptimizationRemap.m_rodStretchShearConstraints);
+            createIdentityRemap(settings->mSkinnedConstraints.size(), generatedOptimizationRemap.m_skinConstraints);
+            createIdentityRemap(settings->mVolumeConstraints.size(), generatedOptimizationRemap.m_volumeConstraints);
+        }
+
+        const SoftBodyDefinitionHandle definitionHandle = StoreSoftBodyDefinition(
+            settings,
+            configuration.m_materials);
+        if (definitionHandle && optimizationRemap)
+        {
+            *optimizationRemap = AZStd::move(generatedOptimizationRemap);
+        }
+        return definitionHandle;
+    }
+
+    bool System::ExportSoftBodyDefinition(
+        const SoftBodyDefinitionHandle definitionHandle,
+        SoftBodyDefinitionArchive& archive,
+        AZStd::vector<MaterialHandle>& materialHandles) const
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ExportSoftBodyDefinition");
+        const DeterministicFloatScope floatScope;
+
+        JPH::RefConst<JPH::SoftBodySharedSettings> settings;
+        AZStd::vector<MaterialHandle> exportedMaterialHandles;
+        {
+            AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+            const SoftBodyDefinitionSlot* slot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+            if (!slot)
+            {
+                return false;
+            }
+            settings = slot->m_settings;
+            exportedMaterialHandles = slot->m_materialHandles;
+        }
+
+        NativeArchiveWriter writer;
+        settings->SaveBinaryState(writer);
+        if (writer.IsFailed())
+        {
+            return false;
+        }
+
+        SoftBodyDefinitionArchive exportedArchive;
+        exportedArchive.m_binaryState = writer.TakeData();
+        if (exportedArchive.m_binaryState.empty()
+            || exportedMaterialHandles.size() > AZStd::numeric_limits<AZ::u32>::max())
+        {
+            return false;
+        }
+        exportedArchive.m_buildFingerprint = GetNativeBuildFingerprint();
+        exportedArchive.m_contentHash = static_cast<AZ::u64>(AZ::TypeHash64(
+            exportedArchive.m_binaryState.data(),
+            exportedArchive.m_binaryState.size()));
+        exportedArchive.m_formatVersion = SoftBodyDefinitionArchiveFormatVersion;
+        exportedArchive.m_materialCount = aznumeric_cast<AZ::u32>(exportedMaterialHandles.size());
+
+        archive = AZStd::move(exportedArchive);
+        materialHandles = AZStd::move(exportedMaterialHandles);
+        return true;
+    }
+
+    SoftBodyDefinitionHandle System::ImportSoftBodyDefinition(
+        const SoftBodyDefinitionArchive& archive,
+        const AZStd::span<const MaterialHandle> materialHandles)
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ImportSoftBodyDefinition");
+        const DeterministicFloatScope floatScope;
+        if (archive.m_formatVersion != SoftBodyDefinitionArchiveFormatVersion
+            || archive.m_buildFingerprint != GetNativeBuildFingerprint()
+            || archive.m_binaryState.empty()
+            || archive.m_binaryState.size() > MaximumNativeArchiveSize
+            || archive.m_materialCount != materialHandles.size()
+            || archive.m_contentHash != static_cast<AZ::u64>(AZ::TypeHash64(
+                archive.m_binaryState.data(),
+                archive.m_binaryState.size())))
+        {
+            return {};
+        }
+
+        NativeArchiveReader reader(archive.m_binaryState);
+        JPH::Ref<JPH::SoftBodySharedSettings> settings = new JPH::SoftBodySharedSettings();
+        settings->RestoreBinaryState(reader);
+        if (reader.IsFailed() || !reader.IsFullyConsumed())
+        {
+            return {};
+        }
+
+        JPH::PhysicsMaterialList nativeMaterials;
+        if (!AcquireMaterials(materialHandles, nativeMaterials))
+        {
+            return {};
+        }
+        if (!nativeMaterials.empty())
+        {
+            settings->mMaterials = AZStd::move(nativeMaterials);
+        }
+
+        return StoreSoftBodyDefinition(
+            settings,
+            {materialHandles.begin(), materialHandles.end()});
+    }
+
+    bool System::DestroySoftBodyDefinition(
+        const SoftBodyDefinitionHandle definitionHandle)
+    {
+        AZStd::lock_guard lock(m_softBodyDefinitionMutex);
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(definitionHandle, parts)
+            || parts.m_index >= m_softBodyDefinitionSlots.size())
+        {
+            return false;
+        }
+
+        SoftBodyDefinitionSlot& slot = m_softBodyDefinitionSlots[parts.m_index];
+        if (!slot.m_settings || slot.m_generation != parts.m_generation || slot.m_bodyCount > 0)
+        {
+            return false;
+        }
+
+        slot.m_settings = nullptr;
+        ReleaseMaterials(slot.m_materialHandles);
+        slot.m_materialHandles.clear();
+        if (Internal::AdvanceGeneration(slot.m_generation))
+        {
+            m_freeSoftBodyDefinitionSlots.push_back(parts.m_index);
+        }
+        return true;
+    }
+
+    bool System::IsValid(
+        const SoftBodyDefinitionHandle definitionHandle) const
+    {
+        AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+        return FindSoftBodyDefinitionUnlocked(definitionHandle);
+    }
+
+    bool System::GetSoftBodyDefinitionState(
+        const SoftBodyDefinitionHandle definitionHandle,
+        SoftBodyDefinitionState& state) const
+    {
+        state = {};
+        AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+        const SoftBodyDefinitionSlot* slot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return false;
+        }
+
+        const JPH::SoftBodySharedSettings& settings = *slot->m_settings;
+        state = {
+            .m_vertexCount = aznumeric_cast<AZ::u32>(settings.mVertices.size()),
+            .m_faceCount = aznumeric_cast<AZ::u32>(settings.mFaces.size()),
+            .m_materialCount = aznumeric_cast<AZ::u32>(settings.mMaterials.size()),
+            .m_dihedralBendConstraintCount =
+                aznumeric_cast<AZ::u32>(settings.mDihedralBendConstraints.size()),
+            .m_edgeConstraintCount = aznumeric_cast<AZ::u32>(settings.mEdgeConstraints.size()),
+            .m_longRangeConstraintCount = aznumeric_cast<AZ::u32>(settings.mLRAConstraints.size()),
+            .m_rodBendTwistConstraintCount =
+                aznumeric_cast<AZ::u32>(settings.mRodBendTwistConstraints.size()),
+            .m_rodStretchShearConstraintCount =
+                aznumeric_cast<AZ::u32>(settings.mRodStretchShearConstraints.size()),
+            .m_skinConstraintCount = aznumeric_cast<AZ::u32>(settings.mSkinnedConstraints.size()),
+            .m_volumeConstraintCount = aznumeric_cast<AZ::u32>(settings.mVolumeConstraints.size()),
+            .m_inverseBindCount = aznumeric_cast<AZ::u32>(settings.mInvBindMatrices.size()),
+        };
+        return true;
+    }
+
+    QueryResult System::GetSoftBodyDefinitionDihedralBendConstraints(
+        const SoftBodyDefinitionHandle definitionHandle,
+        const AZStd::span<SoftBodyDihedralBendConstraint> constraints) const
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+        const SoftBodyDefinitionSlot* slot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        return CopyConvertedRange(
+            slot->m_settings->mDihedralBendConstraints,
+            constraints,
+            [](const JPH::SoftBodySharedSettings::DihedralBend& source)
+            {
+                return SoftBodyDihedralBendConstraint{
+                    .m_firstVertex = source.mVertex[0],
+                    .m_secondVertex = source.mVertex[1],
+                    .m_thirdVertex = source.mVertex[2],
+                    .m_fourthVertex = source.mVertex[3],
+                    .m_compliance = source.mCompliance,
+                    .m_initialAngle = source.mInitialAngle,
+                    .m_calculateInitialAngle = false,
+                };
+            });
+    }
+
+    QueryResult System::GetSoftBodyDefinitionEdgeConstraints(
+        const SoftBodyDefinitionHandle definitionHandle,
+        const AZStd::span<SoftBodyEdgeConstraint> constraints) const
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+        const SoftBodyDefinitionSlot* slot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        return CopyConvertedRange(
+            slot->m_settings->mEdgeConstraints,
+            constraints,
+            [](const JPH::SoftBodySharedSettings::Edge& source)
+            {
+                return SoftBodyEdgeConstraint{
+                    .m_firstVertex = source.mVertex[0],
+                    .m_secondVertex = source.mVertex[1],
+                    .m_compliance = source.mCompliance,
+                    .m_restLength = source.mRestLength,
+                };
+            });
+    }
+
+    QueryResult System::GetSoftBodyDefinitionFaces(
+        const SoftBodyDefinitionHandle definitionHandle,
+        const AZStd::span<SoftBodyFace> faces) const
+    {
+        AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+        const SoftBodyDefinitionSlot* slot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        return CopyConvertedRange(
+            slot->m_settings->mFaces,
+            faces,
+            [](const JPH::SoftBodySharedSettings::Face& source)
+            {
+                return SoftBodyFace{
+                    .m_firstVertex = source.mVertex[0],
+                    .m_secondVertex = source.mVertex[1],
+                    .m_thirdVertex = source.mVertex[2],
+                    .m_materialIndex = source.mMaterialIndex,
+                };
+            });
+    }
+
+    QueryResult System::GetSoftBodyDefinitionInverseBinds(
+        const SoftBodyDefinitionHandle definitionHandle,
+        const AZStd::span<SoftBodyInverseBind> inverseBinds) const
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+        const SoftBodyDefinitionSlot* slot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        return CopyConvertedRange(
+            slot->m_settings->mInvBindMatrices,
+            inverseBinds,
+            [](const JPH::SoftBodySharedSettings::InvBind& source)
+            {
+                return SoftBodyInverseBind{
+                    .m_transform = FromNativeTransform(source.mInvBind),
+                    .m_jointIndex = source.mJointIndex,
+                };
+            });
+    }
+
+    QueryResult System::GetSoftBodyDefinitionLongRangeConstraints(
+        const SoftBodyDefinitionHandle definitionHandle,
+        const AZStd::span<SoftBodyLongRangeConstraint> constraints) const
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+        const SoftBodyDefinitionSlot* slot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        return CopyConvertedRange(
+            slot->m_settings->mLRAConstraints,
+            constraints,
+            [](const JPH::SoftBodySharedSettings::LRA& source)
+            {
+                return SoftBodyLongRangeConstraint{
+                    .m_fixedVertex = source.mVertex[0],
+                    .m_dynamicVertex = source.mVertex[1],
+                    .m_maximumDistance = source.mMaxDistance,
+                };
+            });
+    }
+
+    QueryResult System::GetSoftBodyDefinitionMaterials(
+        const SoftBodyDefinitionHandle definitionHandle,
+        const AZStd::span<MaterialHandle> materials) const
+    {
+        AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+        const SoftBodyDefinitionSlot* slot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        const size_t materialCount = slot->m_settings->mMaterials.size();
+        const size_t copiedCount = AZStd::min(materialCount, materials.size());
+        if (slot->m_materialHandles.empty())
+        {
+            AZStd::fill_n(materials.begin(), copiedCount, MaterialHandle::Invalid);
+        }
+        else
+        {
+            AZStd::copy(
+                slot->m_materialHandles.begin(),
+                slot->m_materialHandles.begin() + copiedCount,
+                materials.begin());
+        }
+        return {
+            .m_hitCount = aznumeric_cast<AZ::u32>(copiedCount),
+            .m_requiredHitCount = aznumeric_cast<AZ::u32>(materialCount),
+        };
+    }
+
+    QueryResult System::GetSoftBodyDefinitionRodBendTwistConstraints(
+        const SoftBodyDefinitionHandle definitionHandle,
+        const AZStd::span<SoftBodyRodBendTwistConstraint> constraints) const
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+        const SoftBodyDefinitionSlot* slot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        return CopyConvertedRange(
+            slot->m_settings->mRodBendTwistConstraints,
+            constraints,
+            [](const JPH::SoftBodySharedSettings::RodBendTwist& source)
+            {
+                return SoftBodyRodBendTwistConstraint{
+                    .m_firstRod = source.mRod[0],
+                    .m_secondRod = source.mRod[1],
+                    .m_initialRotation = FromNativeSystemRotation(source.mOmega0),
+                    .m_compliance = source.mCompliance,
+                    .m_calculateInitialRotation = false,
+                };
+            });
+    }
+
+    QueryResult System::GetSoftBodyDefinitionRodStretchShearConstraints(
+        const SoftBodyDefinitionHandle definitionHandle,
+        const AZStd::span<SoftBodyRodStretchShearConstraint> constraints) const
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+        const SoftBodyDefinitionSlot* slot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        return CopyConvertedRange(
+            slot->m_settings->mRodStretchShearConstraints,
+            constraints,
+            [](const JPH::SoftBodySharedSettings::RodStretchShear& source)
+            {
+                return SoftBodyRodStretchShearConstraint{
+                    .m_firstVertex = source.mVertex[0],
+                    .m_secondVertex = source.mVertex[1],
+                    .m_bishopRotation = FromNativeSystemRotation(source.mBishop),
+                    .m_compliance = source.mCompliance,
+                    .m_inverseMass = source.mInvMass,
+                    .m_restLength = source.mLength,
+                    .m_calculateBishopRotation = false,
+                };
+            });
+    }
+
+    QueryResult System::GetSoftBodyDefinitionSkinConstraints(
+        const SoftBodyDefinitionHandle definitionHandle,
+        const AZStd::span<SoftBodySkinConstraint> constraints) const
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+        const SoftBodyDefinitionSlot* slot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        return CopyConvertedRange(
+            slot->m_settings->mSkinnedConstraints,
+            constraints,
+            [](const JPH::SoftBodySharedSettings::Skinned& source)
+            {
+                SoftBodySkinConstraint result{
+                    .m_vertex = source.mVertex,
+                    .m_backstopDistance = source.mBackStopDistance,
+                    .m_backstopRadius = source.mBackStopRadius,
+                    .m_maximumDistance = source.mMaxDistance,
+                };
+                for (size_t weightIndex = 0; weightIndex < result.m_weights.size(); ++weightIndex)
+                {
+                    result.m_weights[weightIndex] = {
+                        .m_inverseBindIndex = source.mWeights[weightIndex].mInvBindIndex,
+                        .m_weight = source.mWeights[weightIndex].mWeight,
+                    };
+                }
+                return result;
+            });
+    }
+
+    QueryResult System::GetSoftBodyDefinitionVertices(
+        const SoftBodyDefinitionHandle definitionHandle,
+        const AZStd::span<SoftBodyVertex> vertices) const
+    {
+        AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+        const SoftBodyDefinitionSlot* slot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        return CopyConvertedRange(
+            slot->m_settings->mVertices,
+            vertices,
+            [](const JPH::SoftBodySharedSettings::Vertex& source)
+            {
+                const JPH::Vec3 position(source.mPosition);
+                const JPH::Vec3 velocity(source.mVelocity);
+                return SoftBodyVertex{
+                    .m_position = {position.GetX(), position.GetY(), position.GetZ()},
+                    .m_velocity = {velocity.GetX(), velocity.GetY(), velocity.GetZ()},
+                    .m_inverseMass = source.mInvMass,
+                };
+            });
+    }
+
+    QueryResult System::GetSoftBodyDefinitionVolumeConstraints(
+        const SoftBodyDefinitionHandle definitionHandle,
+        const AZStd::span<SoftBodyVolumeConstraint> constraints) const
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::shared_lock lock(m_softBodyDefinitionMutex);
+        const SoftBodyDefinitionSlot* slot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        return CopyConvertedRange(
+            slot->m_settings->mVolumeConstraints,
+            constraints,
+            [](const JPH::SoftBodySharedSettings::Volume& source)
+            {
+                return SoftBodyVolumeConstraint{
+                    .m_firstVertex = source.mVertex[0],
+                    .m_secondVertex = source.mVertex[1],
+                    .m_thirdVertex = source.mVertex[2],
+                    .m_fourthVertex = source.mVertex[3],
+                    .m_compliance = source.mCompliance,
+                    .m_restVolume = source.mSixRestVolume / 6.0f,
+                    .m_calculateRestVolume = false,
+                };
+            });
+    }
+
+    HairDefinitionHandle System::CreateHairDefinition(
+        const HairDefinitionConfiguration& configuration)
+    {
+        const DeterministicFloatScope floatScope;
+        if (configuration.m_vertices.empty()
+            || configuration.m_strands.empty()
+            || configuration.m_materials.empty()
+            || configuration.m_gridSizeX < 2
+            || configuration.m_gridSizeY < 2
+            || configuration.m_gridSizeZ < 2)
+        {
+            return {};
+        }
+
+        const AZ::u64 gridArea =
+            static_cast<AZ::u64>(configuration.m_gridSizeX) * configuration.m_gridSizeY;
+        if (gridArea > AZStd::numeric_limits<AZ::u32>::max() / configuration.m_gridSizeZ
+            || configuration.m_iterationsPerSecond == 0
+            || (configuration.m_verticesPerStrand == 1)
+            || !AZ::IsFiniteFloat(configuration.m_maximumDeltaTime)
+            || configuration.m_maximumDeltaTime <= 0.0f
+            || !configuration.m_initialGravity.IsFinite()
+            || !configuration.m_simulationBoundsPadding.IsFinite()
+            || configuration.m_simulationBoundsPadding.GetMinElement() < 0.0f)
+        {
+            return {};
+        }
+
+        for (const HairVertex& vertex : configuration.m_vertices)
+        {
+            if (!vertex.m_position.IsFinite()
+                || !AZ::IsFiniteFloat(vertex.m_inverseMass)
+                || vertex.m_inverseMass < 0.0f)
+            {
+                return {};
+            }
+        }
+        for (const HairStrand& strand : configuration.m_strands)
+        {
+            if (strand.m_beginVertex >= configuration.m_vertices.size()
+                || strand.m_endVertex > configuration.m_vertices.size()
+                || strand.m_endVertex - strand.m_beginVertex < 2
+                || strand.m_materialIndex >= configuration.m_materials.size())
+            {
+                return {};
+            }
+        }
+        for (const HairMaterialConfiguration& material : configuration.m_materials)
+        {
+            if (!IsValidHairGradient(material.m_globalPose)
+                || !IsValidHairGradient(material.m_gravityFactor)
+                || !IsValidHairGradient(material.m_gridVelocityFactor)
+                || !IsValidHairGradient(material.m_radius)
+                || !IsValidHairGradient(material.m_skinGlobalPose)
+                || !IsValidHairGradient(material.m_worldTransformInfluence)
+                || !AZ::IsFiniteFloat(material.m_angularDamping)
+                || material.m_angularDamping < 0.0f
+                || !AZ::IsFiniteFloat(material.m_bendCompliance)
+                || material.m_bendCompliance < 0.0f
+                || !AZ::IsFiniteFloat(material.m_friction)
+                || material.m_friction < 0.0f
+                || !AZ::IsFiniteFloat(material.m_gravityPreloadFactor)
+                || !AZ::IsFiniteFloat(material.m_gridDensityForceFactor)
+                || !AZ::IsFiniteFloat(material.m_inertiaMultiplier)
+                || material.m_inertiaMultiplier <= 0.0f
+                || !AZ::IsFiniteFloat(material.m_linearDamping)
+                || material.m_linearDamping < 0.0f
+                || !AZ::IsFiniteFloat(material.m_maximumAngularVelocity)
+                || material.m_maximumAngularVelocity < 0.0f
+                || !AZ::IsFiniteFloat(material.m_maximumLinearVelocity)
+                || material.m_maximumLinearVelocity < 0.0f
+                || !AZ::IsFiniteFloat(material.m_simulationStrandFraction)
+                || material.m_simulationStrandFraction <= 0.0f
+                || material.m_simulationStrandFraction > 1.0f
+                || !AZ::IsFiniteFloat(material.m_stretchCompliance)
+                || material.m_stretchCompliance < 0.0f)
+            {
+                return {};
+            }
+            for (const float multiplier : material.m_bendComplianceMultipliers)
+            {
+                if (!AZ::IsFiniteFloat(multiplier) || multiplier < 0.0f)
+                {
+                    return {};
+                }
+            }
+        }
+
+        const bool hasScalp = !configuration.m_scalpVertices.empty()
+            || !configuration.m_scalpTriangles.empty()
+            || !configuration.m_scalpInverseBindPoses.empty()
+            || !configuration.m_scalpSkinWeights.empty()
+            || configuration.m_scalpSkinWeightsPerVertex > 0;
+        if (hasScalp
+            && (configuration.m_scalpVertices.empty()
+                || configuration.m_scalpTriangles.empty()
+                || configuration.m_scalpInverseBindPoses.empty()
+                || configuration.m_scalpSkinWeightsPerVertex == 0
+                || configuration.m_scalpSkinWeights.size()
+                    != configuration.m_scalpVertices.size() * configuration.m_scalpSkinWeightsPerVertex))
+        {
+            return {};
+        }
+        for (const AZ::Vector3& vertex : configuration.m_scalpVertices)
+        {
+            if (!vertex.IsFinite())
+            {
+                return {};
+            }
+        }
+        for (const HairTriangle& triangle : configuration.m_scalpTriangles)
+        {
+            if (triangle.m_firstVertex >= configuration.m_scalpVertices.size()
+                || triangle.m_secondVertex >= configuration.m_scalpVertices.size()
+                || triangle.m_thirdVertex >= configuration.m_scalpVertices.size()
+                || triangle.m_firstVertex == triangle.m_secondVertex
+                || triangle.m_firstVertex == triangle.m_thirdVertex
+                || triangle.m_secondVertex == triangle.m_thirdVertex)
+            {
+                return {};
+            }
+        }
+        for (const AZ::Transform& inverseBindPose : configuration.m_scalpInverseBindPoses)
+        {
+            if (!inverseBindPose.IsFinite())
+            {
+                return {};
+            }
+        }
+        for (const HairSkinWeight& skinWeight : configuration.m_scalpSkinWeights)
+        {
+            if (skinWeight.m_jointIndex >= configuration.m_scalpInverseBindPoses.size()
+                || !AZ::IsFiniteFloat(skinWeight.m_weight)
+                || skinWeight.m_weight < 0.0f)
+            {
+                return {};
+            }
+        }
+
+        JPH::Ref<JPH::HairSettings> settings = new JPH::HairSettings();
+        settings->mMaterials.reserve(configuration.m_materials.size());
+        for (const HairMaterialConfiguration& material : configuration.m_materials)
+        {
+            JPH::HairSettings::Material nativeMaterial;
+            nativeMaterial.mGlobalPose = ToNativeHairGradient(material.m_globalPose);
+            nativeMaterial.mGravityFactor = ToNativeHairGradient(material.m_gravityFactor);
+            nativeMaterial.mGridVelocityFactor = ToNativeHairGradient(material.m_gridVelocityFactor);
+            nativeMaterial.mHairRadius = ToNativeHairGradient(material.m_radius);
+            nativeMaterial.mSkinGlobalPose = ToNativeHairGradient(material.m_skinGlobalPose);
+            nativeMaterial.mWorldTransformInfluence = ToNativeHairGradient(material.m_worldTransformInfluence);
+            nativeMaterial.mBendComplianceMultiplier = {
+                material.m_bendComplianceMultipliers[0],
+                material.m_bendComplianceMultipliers[1],
+                material.m_bendComplianceMultipliers[2],
+                material.m_bendComplianceMultipliers[3],
+            };
+            nativeMaterial.mAngularDamping = material.m_angularDamping;
+            nativeMaterial.mBendCompliance = material.m_bendCompliance;
+            nativeMaterial.mFriction = material.m_friction;
+            nativeMaterial.mGravityPreloadFactor = material.m_gravityPreloadFactor;
+            nativeMaterial.mGridDensityForceFactor = material.m_gridDensityForceFactor;
+            nativeMaterial.mInertiaMultiplier = material.m_inertiaMultiplier;
+            nativeMaterial.mLinearDamping = material.m_linearDamping;
+            nativeMaterial.mMaxAngularVelocity = material.m_maximumAngularVelocity;
+            nativeMaterial.mMaxLinearVelocity = material.m_maximumLinearVelocity;
+            nativeMaterial.mSimulationStrandsFraction = material.m_simulationStrandFraction;
+            nativeMaterial.mStretchCompliance = material.m_stretchCompliance;
+            nativeMaterial.mEnableCollision = material.m_enableCollision;
+            nativeMaterial.mEnableLRA = material.m_enableLongRangeAttachments;
+            settings->mMaterials.push_back(nativeMaterial);
+        }
+
+        JPH::Array<JPH::HairSettings::SVertex> vertices;
+        vertices.reserve(configuration.m_vertices.size());
+        for (const HairVertex& vertex : configuration.m_vertices)
+        {
+            vertices.emplace_back(
+                JPH::Float3(vertex.m_position.GetX(), vertex.m_position.GetY(), vertex.m_position.GetZ()),
+                vertex.m_inverseMass);
+        }
+        JPH::Array<JPH::HairSettings::SStrand> strands;
+        strands.reserve(configuration.m_strands.size());
+        for (const HairStrand& strand : configuration.m_strands)
+        {
+            strands.emplace_back(
+                strand.m_beginVertex,
+                strand.m_endVertex,
+                strand.m_materialIndex);
+        }
+        if (configuration.m_verticesPerStrand >= 2)
+        {
+            JPH::HairSettings::sResample(vertices, strands, configuration.m_verticesPerStrand);
+        }
+
+        settings->mScalpVertices.reserve(configuration.m_scalpVertices.size());
+        for (const AZ::Vector3& vertex : configuration.m_scalpVertices)
+        {
+            settings->mScalpVertices.emplace_back(vertex.GetX(), vertex.GetY(), vertex.GetZ());
+        }
+        settings->mScalpTriangles.reserve(configuration.m_scalpTriangles.size());
+        for (const HairTriangle& triangle : configuration.m_scalpTriangles)
+        {
+            settings->mScalpTriangles.emplace_back(
+                triangle.m_firstVertex,
+                triangle.m_secondVertex,
+                triangle.m_thirdVertex);
+        }
+        settings->mScalpInverseBindPose.reserve(configuration.m_scalpInverseBindPoses.size());
+        for (const AZ::Transform& inverseBindPose : configuration.m_scalpInverseBindPoses)
+        {
+            settings->mScalpInverseBindPose.push_back(ToNativeSystemTransform(inverseBindPose));
+        }
+        settings->mScalpSkinWeights.reserve(configuration.m_scalpSkinWeights.size());
+        for (const HairSkinWeight& skinWeight : configuration.m_scalpSkinWeights)
+        {
+            JPH::HairSettings::SkinWeight nativeSkinWeight;
+            nativeSkinWeight.mJointIdx = skinWeight.m_jointIndex;
+            nativeSkinWeight.mWeight = skinWeight.m_weight;
+            settings->mScalpSkinWeights.push_back(nativeSkinWeight);
+        }
+
+        settings->mScalpNumSkinWeightsPerVertex = configuration.m_scalpSkinWeightsPerVertex;
+        settings->mNumIterationsPerSecond = configuration.m_iterationsPerSecond;
+        settings->mMaxDeltaTime = configuration.m_maximumDeltaTime;
+        settings->mGridSize = JPH::UVec4(
+            configuration.m_gridSizeX,
+            configuration.m_gridSizeY,
+            configuration.m_gridSizeZ,
+            0);
+        settings->mSimulationBoundsPadding = JPH::Vec3(
+            configuration.m_simulationBoundsPadding.GetX(),
+            configuration.m_simulationBoundsPadding.GetY(),
+            configuration.m_simulationBoundsPadding.GetZ());
+        settings->mInitialGravity = JPH::Vec3(
+            configuration.m_initialGravity.GetX(),
+            configuration.m_initialGravity.GetY(),
+            configuration.m_initialGravity.GetZ());
+        settings->InitRenderAndSimulationStrands(vertices, strands);
+        float maximumHairToScalpDistanceSquared = 0.0f;
+        settings->Init(maximumHairToScalpDistanceSquared);
+
+        if (!EnsureHairRuntime())
+        {
+            return {};
+        }
+
+        AZStd::lock_guard lock(m_hairDefinitionMutex);
+        if (!settings->InitCompute(m_hairRuntime->m_computeSystem))
+        {
+            AZ_Error("Jolt", false, "Failed to allocate the hair definition compute buffers.");
+            return {};
+        }
+
+        AZ::u32 definitionIndex = 0;
+        if (!m_freeHairDefinitionSlots.empty())
+        {
+            definitionIndex = m_freeHairDefinitionSlots.back();
+            m_freeHairDefinitionSlots.pop_back();
+        }
+        else
+        {
+            if (m_hairDefinitionSlots.size() >= Internal::HandlePayloadMask)
+            {
+                return {};
+            }
+            definitionIndex = aznumeric_cast<AZ::u32>(m_hairDefinitionSlots.size());
+            m_hairDefinitionSlots.emplace_back();
+        }
+
+        HairDefinitionSlot& slot = m_hairDefinitionSlots[definitionIndex];
+        slot.m_settings = settings;
+        slot.m_maximumHairToScalpDistanceSquared = maximumHairToScalpDistanceSquared;
+        return Internal::MakeResourceHandle<HairDefinitionHandle>(definitionIndex, slot.m_generation);
+    }
+
+    bool System::DestroyHairDefinition(
+        const HairDefinitionHandle definitionHandle)
+    {
+        AZStd::lock_guard lock(m_hairDefinitionMutex);
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(definitionHandle, parts)
+            || parts.m_index >= m_hairDefinitionSlots.size())
+        {
+            return false;
+        }
+
+        HairDefinitionSlot& slot = m_hairDefinitionSlots[parts.m_index];
+        if (!slot.m_settings || slot.m_generation != parts.m_generation || slot.m_instanceCount > 0)
+        {
+            return false;
+        }
+
+        slot.m_settings = nullptr;
+        slot.m_maximumHairToScalpDistanceSquared = 0.0f;
+        if (Internal::AdvanceGeneration(slot.m_generation))
+        {
+            m_freeHairDefinitionSlots.push_back(parts.m_index);
+        }
+        return true;
+    }
+
+    bool System::IsValid(
+        const HairDefinitionHandle definitionHandle) const
+    {
+        AZStd::shared_lock lock(m_hairDefinitionMutex);
+        return FindHairDefinitionUnlocked(definitionHandle);
+    }
+
+    bool System::GetHairDefinitionState(
+        const HairDefinitionHandle definitionHandle,
+        HairDefinitionState& state) const
+    {
+        AZStd::shared_lock lock(m_hairDefinitionMutex);
+        const HairDefinitionSlot* slot = FindHairDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return false;
+        }
+
+        const JPH::HairSettings& settings = *slot->m_settings;
+        const JPH::Vec3 minimum = settings.mSimulationBounds.mMin;
+        const JPH::Vec3 maximum = settings.mSimulationBounds.mMax;
+        state = {
+            .m_simulationBounds = AZ::Aabb::CreateFromMinMax(
+                {minimum.GetX(), minimum.GetY(), minimum.GetZ()},
+                {maximum.GetX(), maximum.GetY(), maximum.GetZ()}),
+            .m_gridCellCount = aznumeric_cast<AZ::u32>(settings.mNeutralDensity.size()),
+            .m_jointCount = aznumeric_cast<AZ::u32>(settings.mScalpInverseBindPose.size()),
+            .m_maximumVerticesPerStrand = settings.mMaxVerticesPerStrand,
+            .m_paddedSimulationVertexCount = settings.GetNumVerticesPadded(),
+            .m_renderVertexCount = aznumeric_cast<AZ::u32>(settings.mRenderVertices.size()),
+            .m_scalpVertexCount = aznumeric_cast<AZ::u32>(settings.mScalpVertices.size()),
+            .m_simulationVertexCount = aznumeric_cast<AZ::u32>(settings.mSimVertices.size()),
+            .m_densityScale = settings.mDensityScale,
+            .m_maximumHairToScalpDistanceSquared = slot->m_maximumHairToScalpDistanceSquared,
+        };
+        return true;
+    }
+
+    QueryResult System::GetHairNeutralDensity(
+        const HairDefinitionHandle definitionHandle,
+        const AZStd::span<float> density) const
+    {
+        AZStd::shared_lock lock(m_hairDefinitionMutex);
+        const HairDefinitionSlot* slot = FindHairDefinitionUnlocked(definitionHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        const JPH::Array<float>& nativeDensity = slot->m_settings->mNeutralDensity;
+        const size_t hitCount = AZStd::min(density.size(), nativeDensity.size());
+        if (hitCount > 0)
+        {
+            AZStd::copy(nativeDensity.begin(), nativeDensity.begin() + hitCount, density.begin());
+        }
+        return {
+            .m_hitCount = aznumeric_cast<AZ::u32>(hitCount),
+            .m_requiredHitCount = aznumeric_cast<AZ::u32>(nativeDensity.size()),
+        };
+    }
+
+    bool System::SkinHairScalpVertices(
+        const HairDefinitionHandle definitionHandle,
+        const AZ::Transform& jointToHair,
+        const AZStd::span<const AZ::Transform> jointModelTransforms,
+        const AZStd::span<AZ::Transform> preparedJointTransforms,
+        const AZStd::span<AZ::Vector3> scalpVertices) const
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::shared_lock lock(m_hairDefinitionMutex);
+        const HairDefinitionSlot* slot = FindHairDefinitionUnlocked(definitionHandle);
+        if (!slot || !jointToHair.IsFinite())
+        {
+            return false;
+        }
+
+        const JPH::HairSettings& settings = *slot->m_settings;
+        const size_t jointCount = settings.mScalpInverseBindPose.size();
+        const size_t vertexCount = settings.mScalpVertices.size();
+        if (jointModelTransforms.size() != jointCount
+            || preparedJointTransforms.size() < jointCount
+            || scalpVertices.size() < vertexCount)
+        {
+            return false;
+        }
+
+        for (size_t jointIndex = 0; jointIndex < jointCount; ++jointIndex)
+        {
+            if (!jointModelTransforms[jointIndex].IsFinite())
+            {
+                return false;
+            }
+        }
+
+        for (size_t jointIndex = 0; jointIndex < jointCount; ++jointIndex)
+        {
+            preparedJointTransforms[jointIndex] =
+                jointToHair
+                * jointModelTransforms[jointIndex]
+                * FromNativeTransform(settings.mScalpInverseBindPose[jointIndex]);
+        }
+
+        for (size_t vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex)
+        {
+            AZ::Vector3& skinnedVertex = scalpVertices[vertexIndex];
+            skinnedVertex = AZ::Vector3::CreateZero();
+            const JPH::Float3& nativeVertex = settings.mScalpVertices[vertexIndex];
+            const AZ::Vector3 vertex{
+                nativeVertex.x,
+                nativeVertex.y,
+                nativeVertex.z,
+            };
+            const size_t firstWeightIndex = vertexIndex * settings.mScalpNumSkinWeightsPerVertex;
+            const size_t weightEnd = firstWeightIndex + settings.mScalpNumSkinWeightsPerVertex;
+            for (size_t weightIndex = firstWeightIndex; weightIndex < weightEnd; ++weightIndex)
+            {
+                const JPH::HairSettings::SkinWeight& weight = settings.mScalpSkinWeights[weightIndex];
+                if (weight.mWeight <= 0.0f)
+                {
+                    continue;
+                }
+
+                skinnedVertex +=
+                    preparedJointTransforms[weight.mJointIdx].TransformPoint(vertex) * weight.mWeight;
+            }
+        }
+        return true;
+    }
+
+    WorldHandle System::CreateWorld(
+        const WorldConfiguration& configuration)
+    {
+        const DeterministicFloatScope floatScope;
+        AZStd::lock_guard lock(m_worldMutex);
+        AZ::u32 worldIndex = 0;
+        bool appendedSlot = false;
+        if (!m_freeWorldSlots.empty())
+        {
+            worldIndex = m_freeWorldSlots.back();
+            m_freeWorldSlots.pop_back();
+        }
+        else
+        {
+            if (m_worldSlots.size() >= Internal::MaximumWorldCount)
+            {
+                return {};
+            }
+            worldIndex = static_cast<AZ::u32>(m_worldSlots.size());
+            m_worldSlots.emplace_back();
+            appendedSlot = true;
+        }
+
+        WorldSlot& slot = m_worldSlots[worldIndex];
+        const WorldHandle worldHandle = Internal::MakeWorldHandle(worldIndex, slot.m_generation);
+        slot.m_world = AZStd::make_unique<World>(
+            *this,
+            worldHandle,
+            worldIndex,
+            configuration,
+            m_jobContext);
+        if (!*slot.m_world)
+        {
+            slot.m_world.reset();
+            if (appendedSlot)
+            {
+                m_worldSlots.pop_back();
+            }
+            else
+            {
+                m_freeWorldSlots.push_back(worldIndex);
+            }
+            return {};
+        }
+
+        return worldHandle;
+    }
+
+    bool System::DestroyWorld(
+        const WorldHandle worldHandle)
+    {
+        AZStd::lock_guard lock(m_worldMutex);
+        Internal::WorldHandleParts parts;
+        if (!Internal::DecodeWorldHandle(worldHandle, parts)
+            || parts.m_index >= m_worldSlots.size())
+        {
+            return false;
+        }
+
+        WorldSlot& slot = m_worldSlots[parts.m_index];
+        if (!slot.m_world || slot.m_generation != parts.m_generation)
+        {
+            return false;
+        }
+
+        const bool hadDebugCapture = slot.m_world->IsDebugCaptureEnabled();
+        slot.m_world.reset();
+        if (hadDebugCapture)
+        {
+            [[maybe_unused]] const AZ::u32 previousCaptureWorldCount = m_debugCaptureWorldCount.fetch_sub(1);
+            AZ_Assert(previousCaptureWorldCount > 0, "The Jolt debug-capture world count underflowed.");
+        }
+        if (Internal::AdvanceGeneration(slot.m_generation))
+        {
+            m_freeWorldSlots.push_back(parts.m_index);
+        }
+        if (m_defaultWorldHandle == worldHandle)
+        {
+            m_defaultWorldHandle = {};
+        }
+        return true;
+    }
+
+    WorldHandle System::GetDefaultWorldHandle() const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        return m_defaultWorldHandle;
+    }
+
+    const IWorldQueries* System::GetWorldQueries(
+        const WorldHandle worldHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        return FindWorldUnlocked(worldHandle);
+    }
+
+    bool System::IsValid(
+        const WorldHandle worldHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        return FindWorldUnlocked(worldHandle);
+    }
+
+    bool System::GetWorldGravity(
+        const WorldHandle worldHandle,
+        AZ::Vector3& gravity) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetGravity(gravity);
+    }
+
+    bool System::SetWorldGravity(
+        const WorldHandle worldHandle,
+        const AZ::Vector3& gravity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetGravity(gravity);
+    }
+
+    bool System::GetSimulationConfiguration(
+        const WorldHandle worldHandle,
+        SimulationConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetSimulationConfiguration(configuration);
+    }
+
+    bool System::UpdateSimulationConfiguration(
+        const WorldHandle worldHandle,
+        const SimulationConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->UpdateSimulationConfiguration(configuration);
+    }
+
+    bool System::GetWorldRuntimeConfiguration(
+        const WorldHandle worldHandle,
+        WorldRuntimeConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetRuntimeConfiguration(configuration);
+    }
+
+    bool System::UpdateWorldRuntimeConfiguration(
+        const WorldHandle worldHandle,
+        const WorldRuntimeConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->UpdateRuntimeConfiguration(configuration);
+    }
+
+    bool System::StepWorld(
+        const WorldHandle worldHandle,
+        const float fixedTimeStep)
+    {
+        return static_cast<bool>(StepWorldDetailed(worldHandle, fixedTimeStep));
+    }
+
+    SimulationResult System::StepWorldDetailed(
+        const WorldHandle worldHandle,
+        const float fixedTimeStep)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {.m_errors = SimulationError::InvalidRequest};
+        }
+
+        if (m_debugCaptureWorldCount.load() > 0)
+        {
+            AZStd::lock_guard rendererLock(m_debugRendererMutex);
+            return world->StepDetailed(fixedTimeStep, m_debugRenderer.get());
+        }
+        return world->StepDetailed(fixedTimeStep, nullptr);
+    }
+
+    bool System::StepAutoSimulatedWorlds(
+        const float elapsedTime)
+    {
+        return static_cast<bool>(StepAutoSimulatedWorldsDetailed(elapsedTime));
+    }
+
+    SimulationResult System::StepAutoSimulatedWorldsDetailed(
+        const float elapsedTime)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        AZStd::unique_lock<AZStd::mutex> rendererLock(m_debugRendererMutex, AZStd::defer_lock);
+        DebugRenderer* debugRenderer = nullptr;
+        if (m_debugCaptureWorldCount.load() > 0)
+        {
+            rendererLock.lock();
+            debugRenderer = m_debugRenderer.get();
+        }
+
+        World* callerWorld = nullptr;
+        size_t worldCount = 0;
+        bool canStepConcurrently = !debugRenderer
+            && m_jobContext
+            && m_jobContext->GetJobManager().GetNumWorkerThreads() > 0;
+        for (WorldSlot& slot : m_worldSlots)
+        {
+            if (slot.m_world)
+            {
+                if (!callerWorld)
+                {
+                    callerWorld = slot.m_world.get();
+                }
+                ++worldCount;
+                canStepConcurrently = canStepConcurrently
+                    && slot.m_world->GetWorkerCount() == 1;
+            }
+        }
+        canStepConcurrently = canStepConcurrently && worldCount > 1;
+
+        SimulationResult aggregate;
+        if (canStepConcurrently)
+        {
+            AZStd::atomic<AZ::u64> updateNanoseconds{0};
+            AZStd::atomic<AZ::u32> stepCount{0};
+            AZStd::atomic<AZ::u8> errors{0};
+            AZ::JobCompletion completion(m_jobContext);
+            completion.Reset(true);
+            AZStd::fixed_vector<AZ::Job*, Internal::MaximumWorldCount - 1> jobs;
+            for (WorldSlot& slot : m_worldSlots)
+            {
+                World* world = slot.m_world.get();
+                if (!world || world == callerWorld)
+                {
+                    continue;
+                }
+                AZ::Job* job = AZ::CreateJobFunction(
+                    [world, elapsedTime, &updateNanoseconds, &stepCount, &errors]
+                    {
+                        const SimulationResult result = world->StepAutomaticallyDetailed(
+                            elapsedTime,
+                            nullptr);
+                        updateNanoseconds.fetch_add(
+                            result.m_updateNanoseconds,
+                            AZStd::memory_order_relaxed);
+                        stepCount.fetch_add(
+                            result.m_stepCount,
+                            AZStd::memory_order_relaxed);
+                        errors.fetch_or(
+                            static_cast<AZ::u8>(result.m_errors),
+                            AZStd::memory_order_relaxed);
+                    },
+                    true,
+                    m_jobContext);
+                job->SetDependent(&completion);
+                jobs.push_back(job);
+            }
+
+            for (AZ::Job* job : jobs)
+            {
+                job->Start();
+            }
+            aggregate = callerWorld->StepAutomaticallyDetailed(
+                elapsedTime,
+                nullptr);
+            completion.StartAndWaitForCompletion();
+            aggregate.m_updateNanoseconds += updateNanoseconds.load(AZStd::memory_order_relaxed);
+            aggregate.m_stepCount += stepCount.load(AZStd::memory_order_relaxed);
+            aggregate.m_errors |= static_cast<SimulationError>(errors.load(AZStd::memory_order_relaxed));
+        }
+        else
+        {
+            for (WorldSlot& slot : m_worldSlots)
+            {
+                if (slot.m_world)
+                {
+                    const SimulationResult result = slot.m_world->StepAutomaticallyDetailed(
+                        elapsedTime,
+                        debugRenderer);
+                    aggregate.m_errors |= result.m_errors;
+                    aggregate.m_stepCount += result.m_stepCount;
+                    aggregate.m_updateNanoseconds += result.m_updateNanoseconds;
+                }
+            }
+        }
+        return aggregate;
+    }
+
+    EventView System::GetEvents(
+        const WorldHandle worldHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->GetEvents();
+    }
+
+    bool System::SetContactCallbacks(
+        const WorldHandle worldHandle,
+        IContactCallbacks* callbacks)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetContactCallbacks(callbacks);
+    }
+
+    bool System::SetBodyPairCollider(
+        const WorldHandle worldHandle,
+        IBodyPairCollider* collider)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyPairCollider(collider);
+    }
+
+    bool System::SetSimulationShapeFilter(
+        const WorldHandle worldHandle,
+        ISimulationShapeFilter* filter)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetSimulationShapeFilter(filter);
+    }
+
+    bool System::SetSoftBodyContactCallbacks(
+        const WorldHandle worldHandle,
+        ISoftBodyContactCallbacks* callbacks)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetSoftBodyContactCallbacks(callbacks);
+    }
+
+    bool System::AddStepListener(
+        const WorldHandle worldHandle,
+        IStepListener* listener)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddStepListener(listener);
+    }
+
+    bool System::RemoveStepListener(
+        const WorldHandle worldHandle,
+        IStepListener* listener)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RemoveStepListener(listener);
+    }
+
+    HairHandle System::CreateHair(
+        const WorldHandle worldHandle,
+        const HairConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->CreateHair(configuration);
+    }
+
+    bool System::DestroyHair(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyHair(hairHandle);
+    }
+
+    bool System::IsValid(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsValid(hairHandle);
+    }
+
+    bool System::SetHairTransform(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle,
+        const WorldTransform& worldTransform,
+        const bool teleport)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetHairTransform(hairHandle, worldTransform, teleport);
+    }
+
+    bool System::SetHairScalpToHeadTransform(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle,
+        const AZ::Transform& scalpToHeadTransform)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetHairScalpToHeadTransform(hairHandle, scalpToHeadTransform);
+    }
+
+    bool System::UpdateHair(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle,
+        const float deltaTime,
+        const AZ::Transform& jointToHair,
+        const AZStd::span<const AZ::Transform> jointModelTransforms)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->UpdateHair(
+            hairHandle,
+            deltaTime,
+            jointToHair,
+            jointModelTransforms);
+    }
+
+    bool System::EnableHairAutoUpdate(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle,
+        const AZ::Transform& jointToHair,
+        const AZStd::span<const AZ::Transform> jointModelTransforms)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->EnableHairAutoUpdate(hairHandle, jointToHair, jointModelTransforms);
+    }
+
+    bool System::DisableHairAutoUpdate(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DisableHairAutoUpdate(hairHandle);
+    }
+
+    bool System::AcquireHairRenderBuffer(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle,
+        HairRenderBuffer& buffer)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AcquireHairRenderBuffer(hairHandle, buffer);
+    }
+
+    bool System::ImportHairRenderBufferHandoff(
+        AZ::RHI::FrameGraphBuilder& frameGraphBuilder,
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle,
+        const AZ::u64 token)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ImportHairRenderBufferHandoff(
+            frameGraphBuilder,
+            hairHandle,
+            token);
+    }
+
+    bool System::GetHairState(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle,
+        HairState& state) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetHairState(hairHandle, state);
+    }
+
+    bool System::GetHairReadback(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle,
+        const HairReadbackBuffers& buffers,
+        HairReadbackResult& result) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetHairReadback(hairHandle, buffers, result);
+    }
+
+    QueryResult System::GetHairVertexStates(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle,
+        const AZStd::span<HairVertexState> states) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->GetHairVertexStates(hairHandle, states);
+    }
+
+    QueryResult System::GetHairRenderPositions(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle,
+        const AZStd::span<AZ::Vector3> positions) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->GetHairRenderPositions(hairHandle, positions);
+    }
+
+    QueryResult System::GetHairScalpPositions(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle,
+        const AZStd::span<AZ::Vector3> positions) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->GetHairScalpPositions(hairHandle, positions);
+    }
+
+    QueryResult System::GetHairGridCellStates(
+        const WorldHandle worldHandle,
+        const HairHandle hairHandle,
+        const AZStd::span<HairGridCellState> states) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->GetHairGridCellStates(hairHandle, states);
+    }
+
+    ShapeHandle System::CreateShape(
+        const WorldHandle worldHandle,
+        const ShapeConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateShape(configuration);
+        }
+
+        return {};
+    }
+
+    ShapeHandle System::CreateShape(
+        const WorldHandle worldHandle,
+        const CompoundShapeConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateShape(configuration);
+        }
+
+        return {};
+    }
+
+    ShapeHandle System::CreateShape(
+        const WorldHandle worldHandle,
+        const DecoratedShapeConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateShape(configuration);
+        }
+
+        return {};
+    }
+
+    ShapeHandle System::CreateShape(
+        const WorldHandle worldHandle,
+        const CookedShapeHandle cookedShapeHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateShape(cookedShapeHandle);
+        }
+
+        return {};
+    }
+
+    ShapeHandle System::CloneShape(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CloneShape(shapeHandle);
+        }
+
+        return {};
+    }
+
+    ShapeHandle System::ScaleShape(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const AZ::Vector3& scale)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->ScaleShape(shapeHandle, scale);
+    }
+
+    bool System::DestroyShape(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyShape(shapeHandle);
+    }
+
+    bool System::IsValid(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsValid(shapeHandle);
+    }
+
+    bool System::GetShapeStats(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        ShapeStats& stats) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetShapeStats(shapeHandle, stats);
+    }
+
+    bool System::GetShapeStatsRecursive(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        ShapeStats& stats) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetShapeStatsRecursive(shapeHandle, stats);
+    }
+
+    bool System::GetShapeProperties(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        ShapeProperties& properties) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetShapeProperties(shapeHandle, properties);
+    }
+
+    bool System::GetShapeSubmergedVolume(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const SubmergedVolumeRequest& request,
+        SubmergedVolumeResult& result) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetShapeSubmergedVolume(shapeHandle, request, result);
+    }
+
+    bool System::GetPrimitiveShapeState(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        PrimitiveShapeState& state) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetPrimitiveShapeState(shapeHandle, state);
+    }
+
+    bool System::GetConvexHullState(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        ConvexHullState& state) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetConvexHullState(shapeHandle, state);
+    }
+
+    BufferResult System::GetConvexHullPointsRelativeToCenterOfMass(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const AZStd::span<AZ::Vector3> points) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetConvexHullPointsRelativeToCenterOfMass(shapeHandle, points);
+        }
+        return {};
+    }
+
+    BufferResult System::GetConvexHullPlanesRelativeToCenterOfMass(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const AZStd::span<AZ::Plane> planes) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetConvexHullPlanesRelativeToCenterOfMass(shapeHandle, planes);
+        }
+        return {};
+    }
+
+    BufferResult System::GetConvexHullFaceVertexIndices(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const AZ::u32 faceIndex,
+        const AZStd::span<AZ::u32> vertexIndices) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetConvexHullFaceVertexIndices(
+                shapeHandle,
+                faceIndex,
+                vertexIndices);
+        }
+        return {};
+    }
+
+    bool System::GetShapeMaterial(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const SubShapeId subShapeId,
+        MaterialHandle& materialHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetShapeMaterial(
+                shapeHandle,
+                subShapeId,
+                materialHandle);
+    }
+
+    bool System::GetShapeSurfaceNormal(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const SubShapeId subShapeId,
+        const AZ::Vector3& localSurfacePosition,
+        AZ::Vector3& normal) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetShapeSurfaceNormal(
+                shapeHandle,
+                subShapeId,
+                localSurfacePosition,
+                normal);
+    }
+
+    bool System::GetShapeUserData(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        AZ::u64& userData) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetShapeUserData(shapeHandle, userData);
+    }
+
+    bool System::GetShapeSubShapeUserData(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const SubShapeId subShapeId,
+        AZ::u64& userData) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetShapeSubShapeUserData(
+                shapeHandle,
+                subShapeId,
+                userData);
+    }
+
+    bool System::GetDirectChildShape(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const SubShapeId subShapeId,
+        ShapeHandle& childShapeHandle,
+        SubShapeTransform& transform) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetDirectChildShape(
+                shapeHandle,
+                subShapeId,
+                childShapeHandle,
+                transform);
+    }
+
+    bool System::GetDecoratedShapeConfiguration(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        DecoratedShapeConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetDecoratedShapeConfiguration(
+                shapeHandle,
+                configuration);
+    }
+
+    BufferResult System::GetMeshMaterials(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const AZStd::span<MaterialHandle> materialHandles) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetMeshMaterials(shapeHandle, materialHandles);
+        }
+        return {};
+    }
+
+    bool System::GetMeshTriangleMaterialIndex(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const SubShapeId subShapeId,
+        AZ::u32& materialIndex) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetMeshTriangleMaterialIndex(
+                shapeHandle,
+                subShapeId,
+                materialIndex);
+    }
+
+    bool System::GetMeshTriangleUserData(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const SubShapeId subShapeId,
+        AZ::u32& userData) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetMeshTriangleUserData(
+                shapeHandle,
+                subShapeId,
+                userData);
+    }
+
+    bool System::IsShapeScaleValid(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const AZ::Vector3& scale) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsShapeScaleValid(shapeHandle, scale);
+    }
+
+    bool System::MakeShapeScaleValid(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const AZ::Vector3& scale,
+        AZ::Vector3& validScale) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->MakeShapeScaleValid(
+                shapeHandle,
+                scale,
+                validScale);
+    }
+
+    bool System::GetHeightfieldState(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        HeightfieldState& state) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetHeightfieldState(shapeHandle, state);
+    }
+
+    bool System::GetHeightfieldPosition(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const AZ::u32 column,
+        const AZ::u32 row,
+        AZ::Vector3& position) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetHeightfieldPosition(
+                shapeHandle,
+                column,
+                row,
+                position);
+    }
+
+    bool System::ProjectOntoHeightfield(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const AZ::Vector3& localPosition,
+        AZ::Vector3& surfacePosition,
+        SubShapeId& subShapeId) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->ProjectOntoHeightfield(
+                shapeHandle,
+                localPosition,
+                surfacePosition,
+                subShapeId);
+    }
+
+    bool System::IsHeightfieldNoCollision(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const AZ::u32 column,
+        const AZ::u32 row,
+        bool& noCollision) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->IsHeightfieldNoCollision(
+                shapeHandle,
+                column,
+                row,
+                noCollision);
+    }
+
+    QueryResult System::GetHeightfieldHeights(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const HeightfieldRegion& region,
+        const AZStd::span<float> heights) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetHeightfieldHeights(shapeHandle, region, heights);
+        }
+        return {};
+    }
+
+    QueryResult System::GetHeightfieldMaterialIndices(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const HeightfieldRegion& region,
+        const AZStd::span<AZ::u8> materialIndices) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetHeightfieldMaterialIndices(shapeHandle, region, materialIndices);
+        }
+        return {};
+    }
+
+    QueryResult System::GetHeightfieldMaterials(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const AZStd::span<MaterialHandle> materialHandles) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetHeightfieldMaterials(shapeHandle, materialHandles);
+        }
+        return {};
+    }
+
+    bool System::GetHeightfieldSubShapeCoordinates(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const SubShapeId subShapeId,
+        HeightfieldSubShapeCoordinates& coordinates) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetHeightfieldSubShapeCoordinates(
+                shapeHandle,
+                subShapeId,
+                coordinates);
+    }
+
+    bool System::UpdateHeightfieldHeights(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const HeightfieldRegion& region,
+        const AZStd::span<const float> heights,
+        const HeightfieldUpdateConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateHeightfieldHeights(
+                shapeHandle,
+                region,
+                heights,
+                configuration);
+    }
+
+    bool System::UpdateHeightfieldMaterials(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const HeightfieldRegion& region,
+        const AZStd::span<const AZ::u8> materialIndices,
+        const AZStd::span<const MaterialHandle> materialHandles,
+        const bool activateBodies)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateHeightfieldMaterials(
+                shapeHandle,
+                region,
+                materialIndices,
+                materialHandles,
+                activateBodies);
+    }
+
+    bool System::AddMutableCompoundChild(
+        const WorldHandle worldHandle,
+        const ShapeHandle compoundShapeHandle,
+        const CompoundChildConfiguration& child,
+        const AZ::u32 insertionIndex,
+        AZ::u32& childIndex,
+        const MutableCompoundUpdateConfiguration& updateConfiguration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->AddMutableCompoundChild(
+                compoundShapeHandle,
+                child,
+                insertionIndex,
+                childIndex,
+                updateConfiguration);
+    }
+
+    bool System::RemoveMutableCompoundChild(
+        const WorldHandle worldHandle,
+        const ShapeHandle compoundShapeHandle,
+        const AZ::u32 childIndex,
+        const MutableCompoundUpdateConfiguration& updateConfiguration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->RemoveMutableCompoundChild(
+                compoundShapeHandle,
+                childIndex,
+                updateConfiguration);
+    }
+
+    bool System::UpdateMutableCompoundChild(
+        const WorldHandle worldHandle,
+        const ShapeHandle compoundShapeHandle,
+        const AZ::u32 childIndex,
+        const CompoundChildConfiguration& child,
+        const MutableCompoundUpdateConfiguration& updateConfiguration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateMutableCompoundChild(
+                compoundShapeHandle,
+                childIndex,
+                child,
+                updateConfiguration);
+    }
+
+    bool System::UpdateMutableCompoundChildTransforms(
+        const WorldHandle worldHandle,
+        const ShapeHandle compoundShapeHandle,
+        const AZ::u32 startIndex,
+        const AZStd::span<const AZ::Vector3> positions,
+        const AZStd::span<const AZ::Quaternion> rotations,
+        const MutableCompoundUpdateConfiguration& updateConfiguration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateMutableCompoundChildTransforms(
+                compoundShapeHandle,
+                startIndex,
+                positions,
+                rotations,
+                updateConfiguration);
+    }
+
+    bool System::AdjustMutableCompoundCenterOfMass(
+        const WorldHandle worldHandle,
+        const ShapeHandle compoundShapeHandle,
+        const bool updateMassProperties,
+        const bool activateBodies)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->AdjustMutableCompoundCenterOfMass(
+                compoundShapeHandle,
+                updateMassProperties,
+                activateBodies);
+    }
+
+    bool System::GetCompoundChildCount(
+        const WorldHandle worldHandle,
+        const ShapeHandle compoundShapeHandle,
+        AZ::u32& childCount) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetCompoundChildCount(compoundShapeHandle, childCount);
+    }
+
+    bool System::GetCompoundChild(
+        const WorldHandle worldHandle,
+        const ShapeHandle compoundShapeHandle,
+        const AZ::u32 childIndex,
+        CompoundChildConfiguration& child) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetCompoundChild(
+                compoundShapeHandle,
+                childIndex,
+                child);
+    }
+
+    bool System::GetCompoundChildIndex(
+        const WorldHandle worldHandle,
+        const ShapeHandle compoundShapeHandle,
+        const SubShapeId subShapeId,
+        AZ::u32& childIndex) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetCompoundChildIndex(
+                compoundShapeHandle,
+                subShapeId,
+                childIndex);
+    }
+
+    BodyHandle System::CreateBody(
+        const WorldHandle worldHandle,
+        const BodyConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateBody(configuration);
+        }
+
+        return {};
+    }
+
+    BodyHandle System::CreateBodyWithId(
+        const WorldHandle worldHandle,
+        const BodyId bodyId,
+        const BodyConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateBodyWithId(bodyId, configuration);
+        }
+
+        return {};
+    }
+
+    BodyHandle System::CreateSoftBody(
+        const WorldHandle worldHandle,
+        const SoftBodyConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateSoftBody(configuration);
+        }
+
+        return {};
+    }
+
+    BodyHandle System::CreateSoftBodyWithId(
+        const WorldHandle worldHandle,
+        const BodyId bodyId,
+        const SoftBodyConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateSoftBodyWithId(bodyId, configuration);
+        }
+
+        return {};
+    }
+
+    bool System::AddBodyToSimulation(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddBodyToSimulation(bodyHandle, activate);
+    }
+
+    bool System::AddBodiesToSimulation(
+        const WorldHandle worldHandle,
+        const AZStd::span<const BodyHandle> bodyHandles,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddBodiesToSimulation(bodyHandles, activate);
+    }
+
+    bool System::RemoveBodyFromSimulation(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RemoveBodyFromSimulation(bodyHandle);
+    }
+
+    bool System::RemoveBodiesFromSimulation(
+        const WorldHandle worldHandle,
+        const AZStd::span<const BodyHandle> bodyHandles)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RemoveBodiesFromSimulation(bodyHandles);
+    }
+
+    bool System::DestroyBody(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyBody(bodyHandle);
+    }
+
+    bool System::DestroyBodies(
+        const WorldHandle worldHandle,
+        const AZStd::span<const BodyHandle> bodyHandles)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyBodies(bodyHandles);
+    }
+
+    bool System::IsBodyInSimulation(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsBodyInSimulation(bodyHandle);
+    }
+
+    bool System::IsValid(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsValid(bodyHandle);
+    }
+
+    bool System::SetBodyMoveEventsEnabled(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const bool enabled)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyMoveEventsEnabled(bodyHandle, enabled);
+    }
+
+    RagdollDefinitionHandle System::CreateRagdollDefinition(
+        const WorldHandle worldHandle,
+        const RagdollDefinitionConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateRagdollDefinition(configuration);
+        }
+
+        return {};
+    }
+
+    bool System::DestroyRagdollDefinition(
+        const WorldHandle worldHandle,
+        const RagdollDefinitionHandle definitionHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyRagdollDefinition(definitionHandle);
+    }
+
+    bool System::IsValid(
+        const WorldHandle worldHandle,
+        const RagdollDefinitionHandle definitionHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsValid(definitionHandle);
+    }
+
+    QueryResult System::GetRagdollBodyConstraintIndices(
+        const WorldHandle worldHandle,
+        const RagdollDefinitionHandle definitionHandle,
+        const AZStd::span<AZ::s32> constraintIndices) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetRagdollBodyConstraintIndices(definitionHandle, constraintIndices);
+        }
+
+        return {};
+    }
+
+    QueryResult System::GetRagdollConstraintBodyPairs(
+        const WorldHandle worldHandle,
+        const RagdollDefinitionHandle definitionHandle,
+        const AZStd::span<RagdollConstraintBodyPair> bodyPairs) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetRagdollConstraintBodyPairs(definitionHandle, bodyPairs);
+        }
+
+        return {};
+    }
+
+    RagdollHandle System::CreateRagdoll(
+        const WorldHandle worldHandle,
+        const RagdollConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateRagdoll(configuration);
+        }
+
+        return {};
+    }
+
+    bool System::AddRagdollToSimulation(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddRagdollToSimulation(ragdollHandle, activate);
+    }
+
+    bool System::RemoveRagdollFromSimulation(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RemoveRagdollFromSimulation(ragdollHandle);
+    }
+
+    bool System::DestroyRagdoll(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyRagdoll(ragdollHandle);
+    }
+
+    bool System::IsValid(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsValid(ragdollHandle);
+    }
+
+    bool System::IsRagdollInSimulation(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsRagdollInSimulation(ragdollHandle);
+    }
+
+    bool System::GetRagdollState(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        RagdollState& state) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetRagdollState(ragdollHandle, state);
+    }
+
+    bool System::SetRagdollCollisionGroupId(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        const AZ::u32 collisionGroupId)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetRagdollCollisionGroupId(ragdollHandle, collisionGroupId);
+    }
+
+    QueryResult System::GetRagdollBodies(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        const AZStd::span<BodyHandle> bodyHandles) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetRagdollBodies(ragdollHandle, bodyHandles);
+        }
+
+        return {};
+    }
+
+    QueryResult System::GetRagdollConstraints(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        const AZStd::span<ConstraintHandle> constraintHandles) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetRagdollConstraints(ragdollHandle, constraintHandles);
+        }
+
+        return {};
+    }
+
+    bool System::ActivateRagdoll(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ActivateRagdoll(ragdollHandle);
+    }
+
+    bool System::SetRagdollPose(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        const WorldPosition rootPosition,
+        const AZStd::span<const AZ::Transform> modelTransforms)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetRagdollPose(ragdollHandle, rootPosition, modelTransforms);
+    }
+
+    QueryResult System::GetRagdollPose(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        WorldPosition& rootPosition,
+        const AZStd::span<AZ::Transform> modelTransforms) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetRagdollPose(ragdollHandle, rootPosition, modelTransforms);
+        }
+
+        return {};
+    }
+
+    bool System::DriveRagdollKinematically(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        const WorldPosition rootPosition,
+        const AZStd::span<const AZ::Transform> modelTransforms,
+        const float deltaTime)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->DriveRagdollKinematically(
+                ragdollHandle,
+                rootPosition,
+                modelTransforms,
+                deltaTime);
+    }
+
+    bool System::DriveRagdollMotors(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        const AZStd::span<const AZ::Transform> modelTransforms)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DriveRagdollMotors(ragdollHandle, modelTransforms);
+    }
+
+    bool System::DriveRagdollMotors(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        const AZStd::span<const AZ::Transform> previousModelTransforms,
+        const AZStd::span<const AZ::Transform> modelTransforms,
+        const float deltaTime)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->DriveRagdollMotors(
+                ragdollHandle,
+                previousModelTransforms,
+                modelTransforms,
+                deltaTime);
+    }
+
+    bool System::ResetRagdollWarmStart(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ResetRagdollWarmStart(ragdollHandle);
+    }
+
+    bool System::SetRagdollVelocity(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        const AZ::Vector3 linearVelocity,
+        const AZ::Vector3 angularVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->SetRagdollVelocity(
+                ragdollHandle,
+                linearVelocity,
+                angularVelocity);
+    }
+
+    bool System::SetRagdollLinearVelocity(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        const AZ::Vector3 linearVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetRagdollLinearVelocity(ragdollHandle, linearVelocity);
+    }
+
+    bool System::AddRagdollLinearVelocity(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        const AZ::Vector3 linearVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddRagdollLinearVelocity(ragdollHandle, linearVelocity);
+    }
+
+    bool System::AddRagdollImpulse(
+        const WorldHandle worldHandle,
+        const RagdollHandle ragdollHandle,
+        const AZ::Vector3 impulse)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddRagdollImpulse(ragdollHandle, impulse);
+    }
+
+    ConstraintHandle System::CreateConstraint(
+        const WorldHandle worldHandle,
+        const ConstraintConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->CreateConstraint(configuration);
+    }
+
+    bool System::AddConstraintToSimulation(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddConstraintToSimulation(constraintHandle);
+    }
+
+    bool System::AddConstraintsToSimulation(
+        const WorldHandle worldHandle,
+        const AZStd::span<const ConstraintHandle> constraintHandles)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddConstraintsToSimulation(constraintHandles);
+    }
+
+    bool System::RemoveConstraintFromSimulation(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RemoveConstraintFromSimulation(constraintHandle);
+    }
+
+    bool System::RemoveConstraintsFromSimulation(
+        const WorldHandle worldHandle,
+        const AZStd::span<const ConstraintHandle> constraintHandles)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RemoveConstraintsFromSimulation(constraintHandles);
+    }
+
+    bool System::DestroyConstraint(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyConstraint(constraintHandle);
+    }
+
+    bool System::DestroyConstraints(
+        const WorldHandle worldHandle,
+        const AZStd::span<const ConstraintHandle> constraintHandles)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyConstraints(constraintHandles);
+    }
+
+    bool System::IsConstraintInSimulation(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsConstraintInSimulation(constraintHandle);
+    }
+
+    bool System::IsValid(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsValid(constraintHandle);
+    }
+
+    bool System::SetConstraintEnabled(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const bool enabled)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetConstraintEnabled(constraintHandle, enabled);
+    }
+
+    bool System::GetConstraintState(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        ConstraintState& state) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetConstraintState(constraintHandle, state);
+    }
+
+    bool System::GetConstraintConfiguration(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        ConstraintConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetConstraintConfiguration(constraintHandle, configuration);
+    }
+
+    bool System::GetConstraintUserData(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        AZ::u64& userData) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetConstraintUserData(constraintHandle, userData);
+    }
+
+    bool System::SetConstraintUserData(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const AZ::u64 userData)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetConstraintUserData(constraintHandle, userData);
+    }
+
+    bool System::GetConstraintDebugDrawSize(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        float& debugDrawSize) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetConstraintDebugDrawSize(constraintHandle, debugDrawSize);
+    }
+
+    bool System::SetConstraintDebugDrawSize(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const float debugDrawSize)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetConstraintDebugDrawSize(constraintHandle, debugDrawSize);
+    }
+
+    bool System::GetConstraintMeasurements(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        ConstraintMeasurements& measurements) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetConstraintMeasurements(constraintHandle, measurements);
+    }
+
+    bool System::GetCustomConstraintInfo(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        CustomConstraintInfo& info) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetCustomConstraintInfo(constraintHandle, info);
+    }
+
+    BufferResult System::GetCustomConstraintImpulses(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const AZStd::span<float> impulses) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->GetCustomConstraintImpulses(constraintHandle, impulses);
+    }
+
+    BufferResult System::GetCustomConstraintState(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const AZStd::span<AZ::u8> state) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->GetCustomConstraintState(constraintHandle, state);
+    }
+
+    bool System::SetCustomConstraintState(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const AZStd::span<const AZ::u8> state)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetCustomConstraintState(constraintHandle, state);
+    }
+
+    bool System::ResetConstraintWarmStart(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ResetConstraintWarmStart(constraintHandle);
+    }
+
+    bool System::UpdateConstraintSolverConfiguration(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const ConstraintSolverConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateConstraintSolverConfiguration(
+                constraintHandle,
+                configuration);
+    }
+
+    bool System::UpdateConeLimit(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const float halfConeAngle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->UpdateConeLimit(constraintHandle, halfConeAngle);
+    }
+
+    bool System::UpdateDistanceLimits(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const float minimumDistance,
+        const float maximumDistance,
+        const SpringConfiguration& spring)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateDistanceLimits(
+                constraintHandle,
+                minimumDistance,
+                maximumDistance,
+                spring);
+    }
+
+    bool System::UpdateHingeLimits(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const float minimumAngle,
+        const float maximumAngle,
+        const SpringConfiguration& spring,
+        const float maximumFrictionTorque)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateHingeLimits(
+                constraintHandle,
+                minimumAngle,
+                maximumAngle,
+                spring,
+                maximumFrictionTorque);
+    }
+
+    bool System::UpdateHingeMotor(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const MotorConfiguration& motor,
+        const float targetAngle,
+        const float targetAngularVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateHingeMotor(
+                constraintHandle,
+                motor,
+                targetAngle,
+                targetAngularVelocity);
+    }
+
+    bool System::SetHingeTargetOrientation(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const AZ::Quaternion& targetOrientation)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->SetHingeTargetOrientation(
+                constraintHandle,
+                targetOrientation);
+    }
+
+    bool System::UpdatePathMotor(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const MotorConfiguration& motor,
+        const float targetPathFraction,
+        const float targetVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdatePathMotor(
+                constraintHandle,
+                motor,
+                targetPathFraction,
+                targetVelocity);
+    }
+
+    bool System::UpdatePathProperties(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const PathHandle pathHandle,
+        const float pathFraction,
+        const float maximumFrictionForce)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdatePathProperties(
+                constraintHandle,
+                pathHandle,
+                pathFraction,
+                maximumFrictionForce);
+    }
+
+    bool System::UpdatePointAnchors(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const ConstraintSpace space,
+        const WorldPosition& firstPoint,
+        const WorldPosition& secondPoint)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdatePointAnchors(
+                constraintHandle,
+                space,
+                firstPoint,
+                secondPoint);
+    }
+
+    bool System::UpdatePulleyLimits(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const float minimumLength,
+        const float maximumLength)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdatePulleyLimits(
+                constraintHandle,
+                minimumLength,
+                maximumLength);
+    }
+
+    bool System::UpdateSixDofLimits(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const AZStd::span<const SixDofAxisLimitConfiguration> axes)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->UpdateSixDofLimits(constraintHandle, axes);
+    }
+
+    bool System::UpdateSixDofMotors(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const AZStd::span<const MotorConfiguration> motors,
+        const AZ::Vector3& targetAngularVelocity,
+        const AZ::Quaternion& targetOrientation,
+        const AZ::Vector3& targetPosition,
+        const AZ::Vector3& targetVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateSixDofMotors(
+                constraintHandle,
+                motors,
+                targetAngularVelocity,
+                targetOrientation,
+                targetPosition,
+                targetVelocity);
+    }
+
+    bool System::UpdateSliderMotor(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const MotorConfiguration& motor,
+        const float targetPosition,
+        const float targetVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateSliderMotor(
+                constraintHandle,
+                motor,
+                targetPosition,
+                targetVelocity);
+    }
+
+    bool System::UpdateSliderLimits(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const float minimumPosition,
+        const float maximumPosition,
+        const SpringConfiguration& spring,
+        const float maximumFrictionForce)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateSliderLimits(
+                constraintHandle,
+                minimumPosition,
+                maximumPosition,
+                spring,
+                maximumFrictionForce);
+    }
+
+    bool System::UpdateSwingTwistMotors(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const MotorConfiguration& swingMotor,
+        const MotorConfiguration& twistMotor,
+        const AZ::Vector3& targetAngularVelocity,
+        const AZ::Quaternion& targetOrientation)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateSwingTwistMotors(
+                constraintHandle,
+                swingMotor,
+                twistMotor,
+                targetAngularVelocity,
+                targetOrientation);
+    }
+
+    bool System::UpdateSwingTwistLimits(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle,
+        const float normalHalfConeAngle,
+        const float planeHalfConeAngle,
+        const float twistMinimumAngle,
+        const float twistMaximumAngle,
+        const float maximumFrictionTorque)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateSwingTwistLimits(
+                constraintHandle,
+                normalHalfConeAngle,
+                planeHalfConeAngle,
+                twistMinimumAngle,
+                twistMaximumAngle,
+                maximumFrictionTorque);
+    }
+
+    bool System::GetBodyState(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        BodyState& state) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyState(bodyHandle, state);
+    }
+
+    bool System::GetBodyCenterOfMassTransform(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        WorldTransform& transform) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyCenterOfMassTransform(bodyHandle, transform);
+    }
+
+    bool System::GetBodyConfiguration(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        BodyConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyConfiguration(bodyHandle, configuration);
+    }
+
+    bool System::GetBodyUserData(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        AZ::u64& userData) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyUserData(bodyHandle, userData);
+    }
+
+    bool System::SetBodyUserData(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::u64 userData)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyUserData(bodyHandle, userData);
+    }
+
+    bool System::GetBodyRuntimeConfiguration(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        BodyRuntimeConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyRuntimeConfiguration(bodyHandle, configuration);
+    }
+
+    bool System::GetBodySimulationStatistics(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        BodySimulationStatistics& statistics) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodySimulationStatistics(bodyHandle, statistics);
+    }
+
+    bool System::ApplyBodyConfiguration(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const BodyConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ApplyBodyConfiguration(bodyHandle, configuration);
+    }
+
+    QueryResult System::GetSoftBodyVertices(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        AZStd::span<SoftBodyVertex> vertices) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetSoftBodyVertices(bodyHandle, vertices);
+        }
+        return {};
+    }
+
+    QueryResult System::GetSoftBodyFaces(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        AZStd::span<SoftBodyFace> faces) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetSoftBodyFaces(bodyHandle, faces);
+        }
+        return {};
+    }
+
+    bool System::GetSoftBodyLocalBounds(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        AZ::Aabb& bounds) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetSoftBodyLocalBounds(bodyHandle, bounds);
+    }
+
+    QueryResult System::GetSoftBodyMaterials(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        AZStd::span<MaterialHandle> materials) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetSoftBodyMaterials(bodyHandle, materials);
+        }
+        return {};
+    }
+
+    QueryResult System::GetSoftBodyRodStates(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        AZStd::span<SoftBodyRodState> rods) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetSoftBodyRodStates(bodyHandle, rods);
+        }
+        return {};
+    }
+
+    bool System::GetSoftBodyRuntimeConfiguration(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        SoftBodyRuntimeConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetSoftBodyRuntimeConfiguration(bodyHandle, configuration);
+    }
+
+    bool System::ApplySoftBodyConfiguration(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const SoftBodyConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ApplySoftBodyConfiguration(bodyHandle, configuration);
+    }
+
+    bool System::GetSoftBodyVolume(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        float& volume) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetSoftBodyVolume(bodyHandle, volume);
+    }
+
+    bool System::RecalculateSoftBodyMassProperties(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RecalculateSoftBodyMassProperties(bodyHandle, activate);
+    }
+
+    bool System::SkinSoftBody(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZStd::span<const AZ::Transform> jointTransformsRelativeToCenterOfMass,
+        const bool hardSkinAll)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->SkinSoftBody(
+                bodyHandle,
+                jointTransformsRelativeToCenterOfMass,
+                hardSkinAll);
+    }
+
+    bool System::UpdateSoftBodyManually(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const float deltaTime)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->UpdateSoftBodyManually(bodyHandle, deltaTime);
+    }
+
+    bool System::UpdateSoftBodyRuntimeConfiguration(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const SoftBodyRuntimeConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->UpdateSoftBodyRuntimeConfiguration(bodyHandle, configuration);
+    }
+
+    bool System::SetSoftBodyVertexInverseMass(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::u32 vertexIndex,
+        const float inverseMass)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetSoftBodyVertexInverseMass(bodyHandle, vertexIndex, inverseMass);
+    }
+
+    bool System::SetSoftBodyVertexInverseMasses(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::u32 startVertexIndex,
+        const AZStd::span<const float> inverseMasses)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->SetSoftBodyVertexInverseMasses(
+                bodyHandle,
+                startVertexIndex,
+                inverseMasses);
+    }
+
+    bool System::SetSoftBodyVertexVelocity(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::u32 vertexIndex,
+        const AZ::Vector3& velocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetSoftBodyVertexVelocity(bodyHandle, vertexIndex, velocity);
+    }
+
+    bool System::SetSoftBodyVertexVelocities(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::u32 startVertexIndex,
+        const AZStd::span<const AZ::Vector3> velocities)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->SetSoftBodyVertexVelocities(
+                bodyHandle,
+                startVertexIndex,
+                velocities);
+    }
+
+    VirtualCharacterHandle System::CreateVirtualCharacter(
+        const WorldHandle worldHandle,
+        const VirtualCharacterConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateVirtualCharacter(configuration);
+        }
+        return {};
+    }
+
+    bool System::DestroyVirtualCharacter(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyVirtualCharacter(characterHandle);
+    }
+
+    bool System::IsValid(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsValid(characterHandle);
+    }
+
+    bool System::GetVirtualCharacterState(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        VirtualCharacterState& state) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetVirtualCharacterState(characterHandle, state);
+    }
+
+    bool System::GetVirtualCharacterUserData(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        AZ::u64& userData) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetVirtualCharacterUserData(characterHandle, userData);
+    }
+
+    bool System::SetVirtualCharacterUserData(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const AZ::u64 userData)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetVirtualCharacterUserData(characterHandle, userData);
+    }
+
+    bool System::GetVirtualCharacterRuntimeConfiguration(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        VirtualCharacterRuntimeConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetVirtualCharacterRuntimeConfiguration(characterHandle, configuration);
+    }
+
+    QueryResult System::CheckVirtualCharacterCollision(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const CharacterCollisionRequest& request,
+        const AZStd::span<CharacterCollisionHit> hits,
+        const ICharacterCollisionFilter* filter) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CheckVirtualCharacterCollision(
+                characterHandle,
+                request,
+                hits,
+                filter);
+        }
+
+        return {};
+    }
+
+    bool System::UpdateVirtualCharacterRuntimeConfiguration(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const VirtualCharacterRuntimeConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->UpdateVirtualCharacterRuntimeConfiguration(characterHandle, configuration);
+    }
+
+    bool System::SetVirtualCharacterShape(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const ShapeHandle shapeHandle,
+        const float maximumPenetrationDepth)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->SetVirtualCharacterShape(characterHandle, shapeHandle, maximumPenetrationDepth);
+    }
+
+    bool System::SetVirtualCharacterInnerBodyShape(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const ShapeHandle shapeHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->SetVirtualCharacterInnerBodyShape(
+                characterHandle,
+                shapeHandle);
+    }
+
+    bool System::SetVirtualCharacterTransform(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const WorldTransform& transform)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetVirtualCharacterTransform(characterHandle, transform);
+    }
+
+    bool System::SetVirtualCharacterVelocity(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const AZ::Vector3& velocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetVirtualCharacterVelocity(characterHandle, velocity);
+    }
+
+    bool System::CancelVirtualCharacterVelocityTowardsSteepSlopes(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const AZ::Vector3& desiredVelocity,
+        AZ::Vector3& adjustedVelocity) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->CancelVirtualCharacterVelocityTowardsSteepSlopes(
+                characterHandle,
+                desiredVelocity,
+                adjustedVelocity);
+    }
+
+    bool System::BeginVirtualCharacterContactTracking(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->BeginVirtualCharacterContactTracking(characterHandle);
+    }
+
+    bool System::EndVirtualCharacterContactTracking(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->EndVirtualCharacterContactTracking(characterHandle);
+    }
+
+    bool System::SetVirtualCharacterContactCallbacks(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        IVirtualCharacterContactCallbacks* callbacks)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->SetVirtualCharacterContactCallbacks(
+                characterHandle,
+                callbacks);
+    }
+
+    bool System::CanVirtualCharacterWalkStairs(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const AZ::Vector3& desiredVelocity) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->CanVirtualCharacterWalkStairs(characterHandle, desiredVelocity);
+    }
+
+    bool System::WalkVirtualCharacterStairs(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const VirtualCharacterStairConfiguration& configuration,
+        const IQueryFilter* filter)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return false;
+        }
+
+        if (m_debugCaptureWorldCount.load() > 0)
+        {
+            AZStd::lock_guard rendererLock(m_debugRendererMutex);
+            return world->WalkVirtualCharacterStairs(
+                characterHandle,
+                configuration,
+                filter,
+                m_debugRenderer.get());
+        }
+        return world->WalkVirtualCharacterStairs(
+            characterHandle,
+            configuration,
+            filter,
+            nullptr);
+    }
+
+    bool System::StickVirtualCharacterToFloor(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const AZ::Vector3& stepDown,
+        const IQueryFilter* filter)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return false;
+        }
+
+        if (m_debugCaptureWorldCount.load() > 0)
+        {
+            AZStd::lock_guard rendererLock(m_debugRendererMutex);
+            return world->StickVirtualCharacterToFloor(
+                characterHandle,
+                stepDown,
+                filter,
+                m_debugRenderer.get());
+        }
+        return world->StickVirtualCharacterToFloor(
+            characterHandle,
+            stepDown,
+            filter,
+            nullptr);
+    }
+
+    bool System::RefreshVirtualCharacterContacts(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const IQueryFilter* filter)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RefreshVirtualCharacterContacts(characterHandle, filter);
+    }
+
+    bool System::UpdateVirtualCharacterGroundVelocity(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->UpdateVirtualCharacterGroundVelocity(characterHandle);
+    }
+
+    QueryResult System::GetVirtualCharacterContacts(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const AZStd::span<VirtualCharacterContact> contacts) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetVirtualCharacterContacts(characterHandle, contacts);
+        }
+        return {};
+    }
+
+    bool System::HasVirtualCharacterCollidedWith(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const BodyHandle bodyHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->HasVirtualCharacterCollidedWith(characterHandle, bodyHandle);
+    }
+
+    bool System::HaveVirtualCharactersCollided(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle firstCharacterHandle,
+        const VirtualCharacterHandle secondCharacterHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->HaveVirtualCharactersCollided(
+                firstCharacterHandle,
+                secondCharacterHandle);
+    }
+
+    bool System::UpdateVirtualCharacter(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const float deltaTime,
+        const VirtualCharacterUpdateConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return false;
+        }
+
+        if (m_debugCaptureWorldCount.load() > 0)
+        {
+            AZStd::lock_guard rendererLock(m_debugRendererMutex);
+            return world->UpdateVirtualCharacter(
+                characterHandle,
+                deltaTime,
+                configuration,
+                m_debugRenderer.get());
+        }
+        return world->UpdateVirtualCharacter(
+            characterHandle,
+            deltaTime,
+            configuration,
+            nullptr);
+    }
+
+    bool System::EnableVirtualCharacterAutoUpdate(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle,
+        const VirtualCharacterUpdateConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->EnableVirtualCharacterAutoUpdate(characterHandle, configuration);
+    }
+
+    bool System::DisableVirtualCharacterAutoUpdate(
+        const WorldHandle worldHandle,
+        const VirtualCharacterHandle characterHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DisableVirtualCharacterAutoUpdate(characterHandle);
+    }
+
+    CharacterHandle System::CreateCharacter(
+        const WorldHandle worldHandle,
+        const CharacterConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateCharacter(configuration);
+        }
+        return {};
+    }
+
+    bool System::DestroyCharacter(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyCharacter(characterHandle);
+    }
+
+    bool System::IsValid(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsValid(characterHandle);
+    }
+
+    bool System::GetCharacterState(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        CharacterState& state) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetCharacterState(characterHandle, state);
+    }
+
+    bool System::GetCharacterUserData(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        AZ::u64& userData) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetCharacterUserData(characterHandle, userData);
+    }
+
+    bool System::SetCharacterUserData(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        const AZ::u64 userData)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetCharacterUserData(characterHandle, userData);
+    }
+
+    bool System::GetCharacterRuntimeConfiguration(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        CharacterRuntimeConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetCharacterRuntimeConfiguration(
+                characterHandle,
+                configuration);
+    }
+
+    QueryResult System::CheckCharacterCollision(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        const CharacterCollisionRequest& request,
+        const AZStd::span<CharacterCollisionHit> hits,
+        const ICharacterCollisionFilter* filter) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CheckCharacterCollision(
+                characterHandle,
+                request,
+                hits,
+                filter);
+        }
+
+        return {};
+    }
+
+    bool System::UpdateCharacterRuntimeConfiguration(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        const CharacterRuntimeConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateCharacterRuntimeConfiguration(
+                characterHandle,
+                configuration);
+    }
+
+    bool System::SetCharacterShape(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        const ShapeHandle shapeHandle,
+        const float maximumPenetrationDepth)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetCharacterShape(characterHandle, shapeHandle, maximumPenetrationDepth);
+    }
+
+    bool System::SetCharacterTransform(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        const WorldTransform& transform,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetCharacterTransform(characterHandle, transform, activate);
+    }
+
+    bool System::SetCharacterVelocity(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        const AZ::Vector3& velocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetCharacterVelocity(characterHandle, velocity);
+    }
+
+    bool System::AddCharacterImpulse(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        const AZ::Vector3& impulse)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddCharacterImpulse(characterHandle, impulse);
+    }
+
+    bool System::ApplyVehicleEngineDamping(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const float deltaTime)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ApplyVehicleEngineDamping(vehicleHandle, deltaTime);
+    }
+
+    bool System::ApplyVehicleEngineTorque(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const float torque,
+        const float deltaTime)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ApplyVehicleEngineTorque(vehicleHandle, torque, deltaTime);
+    }
+
+    bool System::CalculateVehicleEngineTorque(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const float acceleration,
+        float& torque) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->CalculateVehicleEngineTorque(vehicleHandle, acceleration, torque);
+    }
+
+    VehicleHandle System::CreateWheeledVehicle(
+        const WorldHandle worldHandle,
+        const WheeledVehicleConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateWheeledVehicle(configuration);
+        }
+        return {};
+    }
+
+    VehicleHandle System::CreateMotorcycle(
+        const WorldHandle worldHandle,
+        const MotorcycleConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateMotorcycle(configuration);
+        }
+
+        return {};
+    }
+
+    VehicleHandle System::CreateTrackedVehicle(
+        const WorldHandle worldHandle,
+        const TrackedVehicleConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CreateTrackedVehicle(configuration);
+        }
+
+        return {};
+    }
+
+    bool System::DestroyVehicle(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyVehicle(vehicleHandle);
+    }
+
+    bool System::IsValid(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsValid(vehicleHandle);
+    }
+
+    QueryResult System::GetWheeledVehicleState(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        WheeledVehicleState& state,
+        AZStd::span<WheelState> wheels) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetWheeledVehicleState(vehicleHandle, state, wheels);
+        }
+        return {};
+    }
+
+    QueryResult System::GetMotorcycleState(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        MotorcycleState& state,
+        const AZStd::span<WheelState> wheels) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetMotorcycleState(vehicleHandle, state, wheels);
+        }
+
+        return {};
+    }
+
+    QueryResult System::GetTrackedVehicleState(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        TrackedVehicleState& state,
+        const AZStd::span<WheelState> wheels) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetTrackedVehicleState(vehicleHandle, state, wheels);
+        }
+
+        return {};
+    }
+
+    bool System::GetVehicleRuntimeConfiguration(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        VehicleRuntimeConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetVehicleRuntimeConfiguration(
+                vehicleHandle,
+                configuration);
+    }
+
+    bool System::GetVehicleCollisionConfiguration(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        VehicleCollisionConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetVehicleCollisionConfiguration(
+                vehicleHandle,
+                configuration);
+    }
+
+    bool System::GetVehicleEngineConfiguration(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        VehicleEngineConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetVehicleEngineConfiguration(
+                vehicleHandle,
+                configuration);
+    }
+
+    bool System::GetVehicleDifferentialLimitedSlipRatio(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        float& ratio) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetVehicleDifferentialLimitedSlipRatio(vehicleHandle, ratio);
+    }
+
+    bool System::GetVehiclePowertrainState(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        VehiclePowertrainState& state) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetVehiclePowertrainState(
+                vehicleHandle,
+                state);
+    }
+
+    bool System::GetVehicleTransmissionConfiguration(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        VehicleTransmissionConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetVehicleTransmissionConfiguration(
+                vehicleHandle,
+                configuration);
+    }
+
+    bool System::GetVehicleTrackConfiguration(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const AZ::u32 trackIndex,
+        VehicleTrackConfiguration& configuration) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetVehicleTrackConfiguration(
+                vehicleHandle,
+                trackIndex,
+                configuration);
+    }
+
+    bool System::GetWheelLocalBasis(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const AZ::u32 wheelIndex,
+        WheelBasis& basis) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetWheelLocalBasis(vehicleHandle, wheelIndex, basis);
+    }
+
+    bool System::GetWheelLocalTransform(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const AZ::u32 wheelIndex,
+        const AZ::Vector3& wheelRight,
+        const AZ::Vector3& wheelUp,
+        AZ::Transform& transform) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetWheelLocalTransform(
+                vehicleHandle,
+                wheelIndex,
+                wheelRight,
+                wheelUp,
+                transform);
+    }
+
+    bool System::GetWheelWorldTransform(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const AZ::u32 wheelIndex,
+        const AZ::Vector3& wheelRight,
+        const AZ::Vector3& wheelUp,
+        WorldTransform& transform) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetWheelWorldTransform(
+                vehicleHandle,
+                wheelIndex,
+                wheelRight,
+                wheelUp,
+                transform);
+    }
+
+    QueryResult System::QueryVehicleAntiRollBars(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const AZStd::span<VehicleAntiRollBarConfiguration> antiRollBars) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->QueryVehicleAntiRollBars(vehicleHandle, antiRollBars);
+        }
+        return {};
+    }
+
+    QueryResult System::QueryVehicleDifferentials(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const AZStd::span<VehicleDifferentialConfiguration> differentials) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->QueryVehicleDifferentials(vehicleHandle, differentials);
+        }
+        return {};
+    }
+
+    bool System::UpdateVehicleRuntimeConfiguration(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const VehicleRuntimeConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateVehicleRuntimeConfiguration(
+                vehicleHandle,
+                configuration);
+    }
+
+    bool System::SetWheelMotion(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const AZ::u32 wheelIndex,
+        const WheelMotion& motion)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->SetWheelMotion(
+                vehicleHandle,
+                wheelIndex,
+                motion);
+    }
+
+    bool System::SetVehiclePowertrainControl(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const VehiclePowertrainControl& control)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->SetVehiclePowertrainControl(
+                vehicleHandle,
+                control);
+    }
+
+    bool System::SetVehicleCallbacks(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        IVehicleCallbacks* callbacks)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetVehicleCallbacks(vehicleHandle, callbacks);
+    }
+
+    bool System::SetVehicleCollisionFilter(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const IVehicleCollisionFilter* filter)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetVehicleCollisionFilter(vehicleHandle, filter);
+    }
+
+    bool System::SetVehicleDifferentialLimitedSlipRatio(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const float ratio)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetVehicleDifferentialLimitedSlipRatio(vehicleHandle, ratio);
+    }
+
+    bool System::SetVehicleTrackAngularVelocity(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const AZ::u32 trackIndex,
+        const float angularVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->SetVehicleTrackAngularVelocity(
+                vehicleHandle,
+                trackIndex,
+                angularVelocity);
+    }
+
+    bool System::SetWheeledVehicleInput(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const WheeledVehicleInput& input)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetWheeledVehicleInput(vehicleHandle, input);
+    }
+
+    bool System::UpdateMotorcycleController(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const MotorcycleControllerUpdateConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->UpdateMotorcycleController(vehicleHandle, configuration);
+    }
+
+    bool System::UpdateVehicleAntiRollBars(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const AZStd::span<const VehicleAntiRollBarConfiguration> antiRollBars)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->UpdateVehicleAntiRollBars(vehicleHandle, antiRollBars);
+    }
+
+    bool System::UpdateVehicleCollisionConfiguration(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const VehicleCollisionConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateVehicleCollisionConfiguration(
+                vehicleHandle,
+                configuration);
+    }
+
+    bool System::UpdateVehicleDifferentials(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const AZStd::span<const VehicleDifferentialConfiguration> differentials)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->UpdateVehicleDifferentials(vehicleHandle, differentials);
+    }
+
+    bool System::UpdateVehicleEngineConfiguration(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const VehicleEngineConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateVehicleEngineConfiguration(
+                vehicleHandle,
+                configuration);
+    }
+
+    bool System::UpdateVehicleTransmissionConfiguration(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const VehicleTransmissionConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateVehicleTransmissionConfiguration(
+                vehicleHandle,
+                configuration);
+    }
+
+    bool System::UpdateVehicleTrackConfiguration(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const AZ::u32 trackIndex,
+        const VehicleTrackConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateVehicleTrackConfiguration(
+                vehicleHandle,
+                trackIndex,
+                configuration);
+    }
+
+    bool System::SetTrackedVehicleInput(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        const TrackedVehicleInput& input)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetTrackedVehicleInput(vehicleHandle, input);
+    }
+
+    BodySnapshotHandle System::CaptureBodyState(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CaptureBodyState(bodyHandle);
+        }
+
+        return {};
+    }
+
+    bool System::CaptureBodyState(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const BodySnapshotHandle snapshotHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->CaptureBodyState(bodyHandle, snapshotHandle);
+    }
+
+    bool System::DestroyBodyStateSnapshot(
+        const WorldHandle worldHandle,
+        const BodySnapshotHandle snapshotHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyBodyStateSnapshot(snapshotHandle);
+    }
+
+    bool System::IsValid(
+        const WorldHandle worldHandle,
+        const BodySnapshotHandle snapshotHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsValid(snapshotHandle);
+    }
+
+    bool System::RestoreBodyState(
+        const WorldHandle worldHandle,
+        const BodySnapshotHandle snapshotHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RestoreBodyState(snapshotHandle);
+    }
+
+    StateSnapshotHandle System::CaptureWorldState(
+        const WorldHandle worldHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CaptureState();
+        }
+        return {};
+    }
+
+    bool System::CaptureWorldState(
+        const WorldHandle worldHandle,
+        const StateSnapshotHandle snapshotHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->CaptureState(snapshotHandle);
+    }
+
+    StateSnapshotHandle System::CaptureWorldState(
+        const WorldHandle worldHandle,
+        const StateSnapshotConfiguration& configuration,
+        const AZStd::span<const BodyHandle> bodyHandles)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CaptureState(configuration, bodyHandles);
+        }
+
+        return {};
+    }
+
+    bool System::CaptureWorldState(
+        const WorldHandle worldHandle,
+        const StateSnapshotHandle snapshotHandle,
+        const StateSnapshotConfiguration& configuration,
+        const AZStd::span<const BodyHandle> bodyHandles)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->CaptureState(
+                snapshotHandle,
+                configuration,
+                bodyHandles);
+    }
+
+    bool System::CaptureWorldStateParts(
+        const WorldHandle worldHandle,
+        const StateSnapshotConfiguration& configuration,
+        const AZStd::span<const BodyHandle> bodyHandles,
+        const AZStd::span<const AZ::u32> partitionBodyCounts,
+        const AZStd::span<StateSnapshotHandle> snapshotHandles)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->CaptureStateParts(
+                configuration,
+                bodyHandles,
+                partitionBodyCounts,
+                snapshotHandles);
+    }
+
+    bool System::ExportWorldStateArchive(
+        const WorldHandle worldHandle,
+        const AZStd::span<const StateSnapshotHandle> snapshotHandles,
+        StateSnapshotArchive& archive)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ExportStateArchive(snapshotHandles, archive);
+    }
+
+    bool System::ImportWorldStateArchive(
+        const WorldHandle worldHandle,
+        const StateSnapshotArchive& archive,
+        const AZStd::span<StateSnapshotHandle> snapshotHandles)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ImportStateArchive(archive, snapshotHandles);
+    }
+
+    bool System::DestroyStateSnapshot(
+        const WorldHandle worldHandle,
+        const StateSnapshotHandle snapshotHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyStateSnapshot(snapshotHandle);
+    }
+
+    bool System::IsValid(
+        const WorldHandle worldHandle,
+        const StateSnapshotHandle snapshotHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsValid(snapshotHandle);
+    }
+
+    bool System::RestoreWorldState(
+        const WorldHandle worldHandle,
+        const StateSnapshotHandle snapshotHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RestoreState(snapshotHandle);
+    }
+
+    bool System::RestoreWorldStateParts(
+        const WorldHandle worldHandle,
+        const AZStd::span<const StateSnapshotHandle> snapshotHandles)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RestoreStateParts(snapshotHandles);
+    }
+
+    bool System::ValidateWorldState(
+        const WorldHandle worldHandle,
+        const StateSnapshotHandle snapshotHandle,
+        StateValidationResult& result)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ValidateState(snapshotHandle, result);
+    }
+
+    bool System::GetWorldStateDigest(
+        const WorldHandle worldHandle,
+        WorldStateDigest& digest) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetStateDigest(digest);
+    }
+
+    bool System::GetWorldStatistics(
+        const WorldHandle worldHandle,
+        WorldStatistics& statistics) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetStatistics(statistics);
+    }
+
+    bool System::DrawDebug(
+        const WorldHandle worldHandle,
+        const DebugDrawSettings& settings,
+        IDebugRenderer& renderer,
+        const IDebugFilter* filter)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (!world || !m_debugRenderer)
+        {
+            return false;
+        }
+
+        AZStd::lock_guard rendererLock(m_debugRendererMutex);
+        return world->DrawDebug(
+            settings,
+            renderer,
+            *m_debugRenderer,
+            filter);
+    }
+
+    bool System::ConfigureDebugCapture(
+        const WorldHandle worldHandle,
+        const DebugCaptureConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (!world || !m_debugRenderer)
+        {
+            return false;
+        }
+
+        AZStd::lock_guard rendererLock(m_debugRendererMutex);
+        const bool wasEnabled = world->IsDebugCaptureEnabled();
+        if (!world->ConfigureDebugCapture(configuration))
+        {
+            return false;
+        }
+
+        const bool isEnabled = world->IsDebugCaptureEnabled();
+        if (wasEnabled == isEnabled)
+        {
+            return true;
+        }
+        if (isEnabled)
+        {
+            m_debugCaptureWorldCount.fetch_add(1);
+            return true;
+        }
+
+        [[maybe_unused]] const AZ::u32 previousCaptureWorldCount = m_debugCaptureWorldCount.fetch_sub(1);
+        AZ_Assert(previousCaptureWorldCount > 0, "The Jolt debug-capture world count underflowed.");
+        return true;
+    }
+
+    bool System::GetDebugCaptureStatistics(
+        const WorldHandle worldHandle,
+        DebugCaptureStatistics& statistics) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetDebugCaptureStatistics(statistics);
+    }
+
+    QueryResult System::GetBodies(
+        const WorldHandle worldHandle,
+        const BodyKind kind,
+        const bool activeOnly,
+        const AZStd::span<BodyHandle> bodies) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetBodies(
+                kind,
+                activeOnly,
+                bodies);
+        }
+
+        return {};
+    }
+
+    bool System::GetBodyId(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        BodyId& bodyId) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyId(bodyHandle, bodyId);
+    }
+
+    bool System::ActivateBody(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ActivateBody(bodyHandle);
+    }
+
+    bool System::ActivateBodies(
+        const WorldHandle worldHandle,
+        const AZStd::span<const BodyHandle> bodyHandles)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ActivateBodies(bodyHandles);
+    }
+
+    bool System::ActivateBodiesInBounds(
+        const WorldHandle worldHandle,
+        const BroadPhaseAabb& bounds,
+        const ObjectLayer collisionLayer)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->ActivateBodiesInBounds(
+                bounds,
+                collisionLayer);
+    }
+
+    bool System::DeactivateBody(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DeactivateBody(bodyHandle);
+    }
+
+    bool System::DeactivateBodies(
+        const WorldHandle worldHandle,
+        const AZStd::span<const BodyHandle> bodyHandles)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DeactivateBodies(bodyHandles);
+    }
+
+    bool System::ResetBodySleepTimer(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ResetBodySleepTimer(bodyHandle);
+    }
+
+    bool System::InvalidateBodyContactCache(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->InvalidateBodyContactCache(bodyHandle);
+    }
+
+    bool System::GetBodyPointVelocity(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const WorldPosition& point,
+        AZ::Vector3& velocity) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyPointVelocity(bodyHandle, point, velocity);
+    }
+
+    bool System::GetBodyMotionType(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        MotionType& motionType) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyMotionType(bodyHandle, motionType);
+    }
+
+    bool System::GetBodyObjectLayer(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        ObjectLayer& objectLayer) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyObjectLayer(bodyHandle, objectLayer);
+    }
+
+    bool System::GetBodyCollisionGroup(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        CollisionGroupConfiguration& collisionGroup) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyCollisionGroup(bodyHandle, collisionGroup);
+    }
+
+    bool System::GetBodyShape(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        ShapeHandle& shapeHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyShape(bodyHandle, shapeHandle);
+    }
+
+    bool System::GetBodyAccumulatedForceAndTorque(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        AZ::Vector3& force,
+        AZ::Vector3& torque) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetBodyAccumulatedForceAndTorque(
+                bodyHandle,
+                force,
+                torque);
+    }
+
+    bool System::ResetBodyAccumulatedForce(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ResetBodyAccumulatedForce(bodyHandle);
+    }
+
+    bool System::ResetBodyAccumulatedTorque(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ResetBodyAccumulatedTorque(bodyHandle);
+    }
+
+    bool System::ResetBodyMotion(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ResetBodyMotion(bodyHandle);
+    }
+
+    bool System::GetBodyBounds(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        BroadPhaseAabb& bounds) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyBounds(bodyHandle, bounds);
+    }
+
+    bool System::GetBodySubmergedVolume(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const WorldPosition& surfacePosition,
+        const AZ::Vector3& surfaceNormal,
+        SubmergedVolumeResult& result) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetBodySubmergedVolume(
+                bodyHandle,
+                surfacePosition,
+                surfaceNormal,
+                result);
+    }
+
+    bool System::GetBodySurfaceNormal(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const SubShapeId subShapeId,
+        const WorldPosition& surfacePosition,
+        AZ::Vector3& normal) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetBodySurfaceNormal(
+                bodyHandle,
+                subShapeId,
+                surfacePosition,
+                normal);
+    }
+
+    bool System::GetBodyMaterial(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const SubShapeId subShapeId,
+        MaterialHandle& materialHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetBodyMaterial(
+                bodyHandle,
+                subShapeId,
+                materialHandle);
+    }
+
+    bool System::GetBodyPosition(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        WorldPosition& position) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyPosition(bodyHandle, position);
+    }
+
+    bool System::GetBodyRotation(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        AZ::Quaternion& rotation) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyRotation(bodyHandle, rotation);
+    }
+
+    bool System::GetBodyVelocities(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        AZ::Vector3& linearVelocity,
+        AZ::Vector3& angularVelocity) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetBodyVelocities(
+                bodyHandle,
+                linearVelocity,
+                angularVelocity);
+    }
+
+    bool System::GetBodyLinearVelocity(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        AZ::Vector3& linearVelocity) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyLinearVelocity(bodyHandle, linearVelocity);
+    }
+
+    bool System::GetBodyAngularVelocity(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        AZ::Vector3& angularVelocity) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyAngularVelocity(bodyHandle, angularVelocity);
+    }
+
+    bool System::SetBodyPosition(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const WorldPosition& position,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyPosition(bodyHandle, position, activate);
+    }
+
+    bool System::SetBodyRotation(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::Quaternion& rotation,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyRotation(bodyHandle, rotation, activate);
+    }
+
+    bool System::SetBodyTransform(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const WorldTransform& transform,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyTransform(bodyHandle, transform, activate);
+    }
+
+    bool System::SetBodyTransformWhenChanged(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const WorldTransform& transform,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyTransformWhenChanged(bodyHandle, transform, activate);
+    }
+
+    bool System::SetBodyVelocities(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::Vector3& linearVelocity,
+        const AZ::Vector3& angularVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyVelocities(bodyHandle, linearVelocity, angularVelocity);
+    }
+
+    bool System::SetBodyLinearVelocity(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::Vector3& linearVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyLinearVelocity(bodyHandle, linearVelocity);
+    }
+
+    bool System::SetBodyAngularVelocity(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::Vector3& angularVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyAngularVelocity(bodyHandle, angularVelocity);
+    }
+
+    bool System::AddBodyVelocities(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::Vector3& linearVelocity,
+        const AZ::Vector3& angularVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddBodyVelocities(bodyHandle, linearVelocity, angularVelocity);
+    }
+
+    bool System::AddBodyLinearVelocity(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::Vector3& linearVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddBodyLinearVelocity(bodyHandle, linearVelocity);
+    }
+
+    bool System::SetBodyTransformAndVelocities(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const WorldTransform& transform,
+        const AZ::Vector3& linearVelocity,
+        const AZ::Vector3& angularVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->SetBodyTransformAndVelocities(
+                bodyHandle,
+                transform,
+                linearVelocity,
+                angularVelocity);
+    }
+
+    bool System::MoveBodyKinematically(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const WorldTransform& target,
+        const float duration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->MoveBodyKinematically(bodyHandle, target, duration);
+    }
+
+    bool System::AddForce(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::Vector3& force,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddForce(bodyHandle, force, activate);
+    }
+
+    bool System::AddForceAtPosition(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::Vector3& force,
+        const WorldPosition& position,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddForceAtPosition(bodyHandle, force, position, activate);
+    }
+
+    bool System::AddTorque(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::Vector3& torque,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddTorque(bodyHandle, torque, activate);
+    }
+
+    bool System::AddForceAndTorque(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::Vector3& force,
+        const AZ::Vector3& torque,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddForceAndTorque(bodyHandle, force, torque, activate);
+    }
+
+    bool System::ApplyBuoyancyImpulse(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const BuoyancyConfiguration& configuration)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return false;
+        }
+
+        if (m_debugCaptureWorldCount.load() > 0)
+        {
+            AZStd::lock_guard rendererLock(m_debugRendererMutex);
+            return world->ApplyBuoyancyImpulse(
+                bodyHandle,
+                configuration,
+                m_debugRenderer.get());
+        }
+        return world->ApplyBuoyancyImpulse(
+            bodyHandle,
+            configuration,
+            nullptr);
+    }
+
+    bool System::GetBodyFriction(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        float& friction) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyFriction(bodyHandle, friction);
+    }
+
+    bool System::SetBodyFriction(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const float friction)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyFriction(bodyHandle, friction);
+    }
+
+    bool System::GetBodyRestitution(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        float& restitution) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyRestitution(bodyHandle, restitution);
+    }
+
+    bool System::SetBodyRestitution(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const float restitution)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyRestitution(bodyHandle, restitution);
+    }
+
+    bool System::GetBodyGravityFactor(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        float& gravityFactor) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyGravityFactor(bodyHandle, gravityFactor);
+    }
+
+    bool System::SetBodyGravityFactor(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const float gravityFactor)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyGravityFactor(bodyHandle, gravityFactor);
+    }
+
+    bool System::GetBodyMaximumLinearVelocity(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        float& maximumLinearVelocity) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyMaximumLinearVelocity(bodyHandle, maximumLinearVelocity);
+    }
+
+    bool System::SetBodyMaximumLinearVelocity(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const float maximumLinearVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyMaximumLinearVelocity(bodyHandle, maximumLinearVelocity);
+    }
+
+    bool System::GetBodyMaximumAngularVelocity(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        float& maximumAngularVelocity) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyMaximumAngularVelocity(bodyHandle, maximumAngularVelocity);
+    }
+
+    bool System::SetBodyMaximumAngularVelocity(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const float maximumAngularVelocity)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyMaximumAngularVelocity(bodyHandle, maximumAngularVelocity);
+    }
+
+    bool System::GetBodyMotionQuality(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        MotionQuality& motionQuality) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyMotionQuality(bodyHandle, motionQuality);
+    }
+
+    bool System::SetBodyMotionQuality(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const MotionQuality motionQuality)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyMotionQuality(bodyHandle, motionQuality);
+    }
+
+    bool System::IsBodyManifoldReductionEnabled(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        bool& enabled) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsBodyManifoldReductionEnabled(bodyHandle, enabled);
+    }
+
+    bool System::SetBodyManifoldReductionEnabled(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const bool enabled)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyManifoldReductionEnabled(bodyHandle, enabled);
+    }
+
+    bool System::IsBodySensor(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        bool& sensor) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsBodySensor(bodyHandle, sensor);
+    }
+
+    bool System::SetBodySensor(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const bool sensor)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodySensor(bodyHandle, sensor);
+    }
+
+    bool System::GetBodyLinearDamping(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        float& linearDamping) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyLinearDamping(bodyHandle, linearDamping);
+    }
+
+    bool System::SetBodyLinearDamping(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const float linearDamping)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyLinearDamping(bodyHandle, linearDamping);
+    }
+
+    bool System::GetBodyAngularDamping(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        float& angularDamping) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyAngularDamping(bodyHandle, angularDamping);
+    }
+
+    bool System::SetBodyAngularDamping(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const float angularDamping)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyAngularDamping(bodyHandle, angularDamping);
+    }
+
+    bool System::IsBodySleepingAllowed(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        bool& sleepingAllowed) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsBodySleepingAllowed(bodyHandle, sleepingAllowed);
+    }
+
+    bool System::SetBodySleepingAllowed(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const bool sleepingAllowed)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodySleepingAllowed(bodyHandle, sleepingAllowed);
+    }
+
+    bool System::IsBodyGyroscopicForceEnabled(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        bool& enabled) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsBodyGyroscopicForceEnabled(bodyHandle, enabled);
+    }
+
+    bool System::SetBodyGyroscopicForceEnabled(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const bool enabled)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyGyroscopicForceEnabled(bodyHandle, enabled);
+    }
+
+    bool System::IsBodyKinematicVsNonDynamicCollisionEnabled(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        bool& enabled) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsBodyKinematicVsNonDynamicCollisionEnabled(bodyHandle, enabled);
+    }
+
+    bool System::SetBodyKinematicVsNonDynamicCollisionEnabled(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const bool enabled)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyKinematicVsNonDynamicCollisionEnabled(bodyHandle, enabled);
+    }
+
+    bool System::IsBodyEnhancedInternalEdgeRemovalEnabled(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        bool& enabled) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsBodyEnhancedInternalEdgeRemovalEnabled(bodyHandle, enabled);
+    }
+
+    bool System::SetBodyEnhancedInternalEdgeRemovalEnabled(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const bool enabled)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyEnhancedInternalEdgeRemovalEnabled(bodyHandle, enabled);
+    }
+
+    bool System::GetBodySolverStepCounts(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        AZ::u8& velocityStepCount,
+        AZ::u8& positionStepCount) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->GetBodySolverStepCounts(
+                bodyHandle,
+                velocityStepCount,
+                positionStepCount);
+    }
+
+    bool System::SetBodySolverStepCounts(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::u8 velocityStepCount,
+        const AZ::u8 positionStepCount)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->SetBodySolverStepCounts(
+                bodyHandle,
+                velocityStepCount,
+                positionStepCount);
+    }
+
+    bool System::UpdateBodyRuntimeConfiguration(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const BodyRuntimeConfiguration& configuration,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->UpdateBodyRuntimeConfiguration(
+                bodyHandle,
+                configuration,
+                activate);
+    }
+
+    bool System::GetBodyInverseInertia(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        AZ::Matrix3x3& inverseInertia) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyInverseInertia(bodyHandle, inverseInertia);
+    }
+
+    bool System::GetBodyInverseMass(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        float& inverseMass) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBodyInverseMass(bodyHandle, inverseMass);
+    }
+
+    bool System::AddImpulse(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::Vector3& impulse)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddImpulse(bodyHandle, impulse);
+    }
+
+    bool System::AddImpulseAtPosition(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::Vector3& impulse,
+        const WorldPosition& position)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddImpulseAtPosition(bodyHandle, impulse, position);
+    }
+
+    bool System::AddAngularImpulse(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const AZ::Vector3& angularImpulse)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddAngularImpulse(bodyHandle, angularImpulse);
+    }
+
+    bool System::SetBodyShape(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const ShapeHandle shapeHandle,
+        const bool updateMassProperties,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyShape(bodyHandle, shapeHandle, updateMassProperties, activate);
+    }
+
+    bool System::SetBodyMotionType(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const MotionType motionType,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyMotionType(bodyHandle, motionType, activate);
+    }
+
+    bool System::SetBodyObjectLayer(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const ObjectLayer objectLayer)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyObjectLayer(bodyHandle, objectLayer);
+    }
+
+    bool System::SetBodyCollisionGroup(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const CollisionGroupConfiguration& collisionGroup,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->SetBodyCollisionGroup(bodyHandle, collisionGroup, activate);
+    }
+
+    bool System::RaycastShapeClosest(
+        const WorldHandle worldHandle,
+        const ShapeRaycastRequest& request,
+        ShapeRaycastHit& hit) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RaycastShapeClosest(request, hit);
+    }
+
+    QueryResult System::RaycastShapeAll(
+        const WorldHandle worldHandle,
+        const ShapeRaycastRequest& request,
+        const AZStd::span<ShapeRaycastHit> hits) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->RaycastShapeAll(request, hits);
+    }
+
+    QueryResult System::CollideShapePoint(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const AZ::Vector3& localPosition,
+        const IQueryFilter* filter,
+        const AZStd::span<ShapePointHit> hits) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->CollideShapePoint(
+            shapeHandle,
+            localPosition,
+            filter,
+            hits);
+    }
+
+    bool System::CollideShapePointAny(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const AZ::Vector3& localPosition,
+        const IQueryFilter* filter) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->CollideShapePointAny(
+                shapeHandle,
+                localPosition,
+                filter);
+    }
+
+    QueryResult System::CollectShapeTriangles(
+        const WorldHandle worldHandle,
+        const ShapeTriangleCollectionRequest& request,
+        const AZStd::span<ShapeTriangle> triangles) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->CollectShapeTriangles(request, triangles);
+    }
+
+    bool System::RaycastTransformedShapeClosest(
+        const WorldHandle worldHandle,
+        const TransformedShape& shape,
+        const TransformedShapeRaycastRequest& request,
+        RaycastHit& hit) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RaycastTransformedShapeClosest(shape, request, hit);
+    }
+
+    QueryResult System::RaycastTransformedShapeAll(
+        const WorldHandle worldHandle,
+        const TransformedShape& shape,
+        const TransformedShapeRaycastRequest& request,
+        const AZStd::span<RaycastHit> hits) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->RaycastTransformedShapeAll(shape, request, hits);
+    }
+
+    QueryResult System::CollideTransformedShapePoint(
+        const WorldHandle worldHandle,
+        const TransformedShape& shape,
+        const WorldPosition& position,
+        const IQueryFilter* filter,
+        const AZStd::span<OverlapHit> hits) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->CollideTransformedShapePoint(shape, position, filter, hits);
+    }
+
+    bool System::CollideTransformedShapePointAny(
+        const WorldHandle worldHandle,
+        const TransformedShape& shape,
+        const WorldPosition& position,
+        const IQueryFilter* filter) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->CollideTransformedShapePointAny(shape, position, filter);
+    }
+
+    QueryResult System::CollectTransformedShapeChildren(
+        const WorldHandle worldHandle,
+        const TransformedShape& shape,
+        const BroadPhaseAabb& bounds,
+        const IQueryFilter* filter,
+        const AZStd::span<TransformedShape> children) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->CollectTransformedShapeChildren(shape, bounds, filter, children);
+    }
+
+    QueryResult System::CollectTransformedShapeTriangles(
+        const WorldHandle worldHandle,
+        const TransformedShape& shape,
+        const BroadPhaseAabb& bounds,
+        const AZStd::span<TransformedTriangle> triangles) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->CollectTransformedShapeTriangles(shape, bounds, triangles);
+    }
+
+    bool System::GetTransformedShapeSurfaceNormal(
+        const WorldHandle worldHandle,
+        const TransformedShape& shape,
+        const SubShapeId subShapeId,
+        const WorldPosition& position,
+        AZ::Vector3& normal) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetTransformedShapeSurfaceNormal(shape, subShapeId, position, normal);
+    }
+
+    QueryResult System::GetTransformedShapeSupportingFace(
+        const WorldHandle worldHandle,
+        const TransformedShape& shape,
+        const SubShapeId subShapeId,
+        const AZ::Vector3& direction,
+        const AZStd::span<WorldPosition> vertices) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->GetTransformedShapeSupportingFace(shape, subShapeId, direction, vertices);
+    }
+
+    bool System::RaycastClosest(
+        const WorldHandle worldHandle,
+        const RaycastRequest& request,
+        RaycastHit& hit) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RaycastClosest(request, hit);
+    }
+
+    BufferResult System::RaycastClosestBatch(
+        const WorldHandle worldHandle,
+        const AZStd::span<const RaycastRequest> requests,
+        const AZStd::span<ClosestRaycastResult> results) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->RaycastClosestBatch(requests, results);
+    }
+
+    bool System::RaycastAny(
+        const WorldHandle worldHandle,
+        const RaycastRequest& request) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RaycastAny(request);
+    }
+
+    QueryResult System::RaycastAll(
+        const WorldHandle worldHandle,
+        const RaycastRequest& request,
+        const AZStd::span<RaycastHit> hits) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->RaycastAll(request, hits);
+    }
+
+    QueryResult System::RaycastClosestPerBody(
+        const WorldHandle worldHandle,
+        const RaycastRequest& request,
+        const AZStd::span<RaycastHit> hits) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->RaycastClosestPerBody(request, hits);
+    }
+
+    QueryResult System::OverlapPoint(
+        const WorldHandle worldHandle,
+        const PointOverlapRequest& request,
+        const AZStd::span<OverlapHit> hits) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->OverlapPoint(request, hits);
+    }
+
+    bool System::OverlapPointAny(
+        const WorldHandle worldHandle,
+        const PointOverlapRequest& request) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->OverlapPointAny(request);
+    }
+
+    QueryResult System::CollideShape(
+        const WorldHandle worldHandle,
+        const ShapeOverlapRequest& request,
+        const AZStd::span<ShapeOverlapHit> hits,
+        const ShapeQueryFaceBuffers& faceBuffers) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CollideShape(request, hits, faceBuffers);
+        }
+        return {};
+    }
+
+    QueryResult System::OverlapShape(
+        const WorldHandle worldHandle,
+        const ShapeOverlapRequest& request,
+        const AZStd::span<OverlapHit> hits) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->OverlapShape(request, hits);
+        }
+        return {};
+    }
+
+    bool System::OverlapShapeAny(
+        const WorldHandle worldHandle,
+        const ShapeOverlapRequest& request) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->OverlapShapeAny(request);
+    }
+
+    bool System::CastShapeClosest(
+        const WorldHandle worldHandle,
+        const ShapeCastRequest& request,
+        ShapeCastHit& hit,
+        const ShapeQueryFaceBuffers& faceBuffers) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->CastShapeClosest(request, hit, faceBuffers);
+    }
+
+    QueryResult System::CastShapeAll(
+        const WorldHandle worldHandle,
+        const ShapeCastRequest& request,
+        const AZStd::span<ShapeCastHit> hits,
+        const ShapeQueryFaceBuffers& faceBuffers) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CastShapeAll(request, hits, faceBuffers);
+        }
+        return {};
+    }
+
+    QueryResult System::CastShapeClosestPerBody(
+        const WorldHandle worldHandle,
+        const ShapeCastRequest& request,
+        const AZStd::span<ShapeCastHit> hits,
+        const ShapeQueryFaceBuffers& faceBuffers) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+            return world->CastShapeClosestPerBody(request, hits, faceBuffers);
+    }
+
+    QueryResult System::OverlapBroadPhase(
+        const WorldHandle worldHandle,
+        const BroadPhaseOverlapRequest& request,
+        const AZStd::span<BroadPhaseHit> hits) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->OverlapBroadPhase(request, hits);
+        }
+        return {};
+    }
+
+    bool System::OverlapBroadPhaseAny(
+        const WorldHandle worldHandle,
+        const BroadPhaseOverlapRequest& request) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->OverlapBroadPhaseAny(request);
+    }
+
+    bool System::CastBroadPhaseClosest(
+        const WorldHandle worldHandle,
+        const BroadPhaseCastRequest& request,
+        BroadPhaseCastHit& hit) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->CastBroadPhaseClosest(request, hit);
+    }
+
+    QueryResult System::CastBroadPhaseAll(
+        const WorldHandle worldHandle,
+        const BroadPhaseCastRequest& request,
+        const AZStd::span<BroadPhaseCastHit> hits) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->CastBroadPhaseAll(request, hits);
+        }
+        return {};
+    }
+
+    QueryResult System::CollectShapesInBounds(
+        const WorldHandle worldHandle,
+        const ShapeCollectionRequest& request,
+        const AZStd::span<TransformedShape> shapes) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->CollectShapesInBounds(request, shapes);
+    }
+
+    QueryResult System::GetSupportingFace(
+        const WorldHandle worldHandle,
+        const SupportingFaceRequest& request,
+        const AZStd::span<WorldPosition> vertices) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->GetSupportingFace(request, vertices);
+    }
+
+    QueryResult System::CollectTriangles(
+        const WorldHandle worldHandle,
+        const TriangleCollectionRequest& request,
+        const AZStd::span<TransformedTriangle> triangles) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->CollectTriangles(request, triangles);
+    }
+
+    bool System::GetBroadPhaseBounds(
+        const WorldHandle worldHandle,
+        BroadPhaseAabb& bounds) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetBroadPhaseBounds(bounds);
+    }
+
+    bool System::OptimizeBroadPhase(
+        const WorldHandle worldHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->OptimizeBroadPhase();
+    }
+
+    bool System::WereBodiesInContact(
+        const WorldHandle worldHandle,
+        const BodyHandle firstBodyHandle,
+        const BodyHandle secondBodyHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->WereBodiesInContact(firstBodyHandle, secondBodyHandle);
+    }
+
+    World* System::FindWorldUnlocked(
+        const WorldHandle worldHandle)
+    {
+        return const_cast<World*>(static_cast<const System&>(*this).FindWorldUnlocked(worldHandle));
+    }
+
+    const World* System::FindWorldUnlocked(
+        const WorldHandle worldHandle) const
+    {
+        Internal::WorldHandleParts parts;
+        if (!Internal::DecodeWorldHandle(worldHandle, parts)
+            || parts.m_index >= m_worldSlots.size())
+        {
+            return nullptr;
+        }
+
+        const WorldSlot& slot = m_worldSlots[parts.m_index];
+        if (slot.m_generation != parts.m_generation)
+        {
+            return nullptr;
+        }
+
+        return slot.m_world.get();
+    }
+
+    bool System::AcquireMaterials(
+        const AZStd::span<const MaterialHandle> materialHandles,
+        JPH::PhysicsMaterialList& materials)
+    {
+        AZStd::lock_guard lock(m_materialMutex);
+        for (const MaterialHandle materialHandle : materialHandles)
+        {
+            if (!FindMaterialUnlocked(materialHandle))
+            {
+                return false;
+            }
+        }
+
+        materials.reserve(materialHandles.size());
+        for (const MaterialHandle materialHandle : materialHandles)
+        {
+            Internal::ResourceHandleParts parts;
+            [[maybe_unused]] const bool decoded = Internal::DecodeResourceHandle(materialHandle, parts);
+            AZ_Assert(decoded, "A validated material handle could not be decoded.");
+            MaterialSlot& slot = m_materialSlots[parts.m_index];
+            ++slot.m_referenceCount;
+            materials.emplace_back(static_cast<const JPH::PhysicsMaterial*>(slot.m_material.GetPtr()));
+        }
+        return true;
+    }
+
+    void System::ReleaseMaterials(
+        const AZStd::span<const MaterialHandle> materialHandles)
+    {
+        AZStd::lock_guard lock(m_materialMutex);
+        for (const MaterialHandle materialHandle : materialHandles)
+        {
+            Internal::ResourceHandleParts parts;
+            const bool decoded = Internal::DecodeResourceHandle(materialHandle, parts);
+            AZ_Assert(decoded && parts.m_index < m_materialSlots.size(), "Material reference ownership is inconsistent.");
+            if (!decoded || parts.m_index >= m_materialSlots.size())
+            {
+                continue;
+            }
+            MaterialSlot& slot = m_materialSlots[parts.m_index];
+            AZ_Assert(
+                slot.m_material && slot.m_generation == parts.m_generation && slot.m_referenceCount > 0,
+                "Material reference ownership is inconsistent.");
+            if (slot.m_material && slot.m_generation == parts.m_generation && slot.m_referenceCount > 0)
+            {
+                --slot.m_referenceCount;
+            }
+        }
+    }
+
+    const System::MaterialSlot* System::FindMaterialUnlocked(
+        const MaterialHandle materialHandle) const
+    {
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(materialHandle, parts)
+            || parts.m_index >= m_materialSlots.size())
+        {
+            return nullptr;
+        }
+
+        const MaterialSlot& slot = m_materialSlots[parts.m_index];
+        if (slot.m_generation != parts.m_generation || !slot.m_material)
+        {
+            return nullptr;
+        }
+
+        return &slot;
+    }
+
+    MaterialHandle System::FindMaterialHandle(
+        const JPH::PhysicsMaterial* material) const
+    {
+        if (!material || material == JPH::PhysicsMaterial::sDefault)
+        {
+            return {};
+        }
+
+        return static_cast<const NativeMaterial*>(material)->GetHandle();
+    }
+
+    bool System::AcquireCookedShape(
+        const CookedShapeHandle cookedShapeHandle,
+        JPH::RefConst<JPH::Shape>& shape)
+    {
+        AZStd::lock_guard lock(m_cookedShapeMutex);
+        CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        if (!slot)
+        {
+            return false;
+        }
+
+        if (slot->m_referenceCount == AZStd::numeric_limits<AZ::u32>::max())
+        {
+            return false;
+        }
+
+        ++slot->m_referenceCount;
+        shape = slot->m_shape;
+        return true;
+    }
+
+    CookedShapeHandle System::StoreCookedShape(
+        const JPH::Shape* shape,
+        AZStd::vector<MaterialHandle> materialHandles,
+        AZStd::vector<CookedShapeHandle> childHandles)
+    {
+        if (!shape)
+        {
+            return {};
+        }
+
+        AZStd::lock_guard lock(m_cookedShapeMutex);
+        for (size_t childIndex = 0; childIndex < childHandles.size(); ++childIndex)
+        {
+            CookedShapeSlot* childSlot = FindCookedShapeUnlocked(childHandles[childIndex]);
+            if (!childSlot)
+            {
+                return {};
+            }
+
+            size_t duplicateCount = 0;
+            for (size_t previousIndex = 0; previousIndex < childIndex; ++previousIndex)
+            {
+                if (childHandles[previousIndex] == childHandles[childIndex])
+                {
+                    ++duplicateCount;
+                }
+            }
+            if (duplicateCount >= AZStd::numeric_limits<AZ::u32>::max() - childSlot->m_parentCount)
+            {
+                return {};
+            }
+        }
+
+        AZ::u32 cookedShapeIndex = 0;
+        if (!m_freeCookedShapeSlots.empty())
+        {
+            cookedShapeIndex = m_freeCookedShapeSlots.back();
+            m_freeCookedShapeSlots.pop_back();
+        }
+        else
+        {
+            if (m_cookedShapeSlots.size() >= Internal::HandlePayloadMask)
+            {
+                return {};
+            }
+            cookedShapeIndex = static_cast<AZ::u32>(m_cookedShapeSlots.size());
+            m_cookedShapeSlots.emplace_back();
+        }
+
+        CookedShapeSlot& slot = m_cookedShapeSlots[cookedShapeIndex];
+        slot.m_shape = shape;
+        slot.m_materialHandles = AZStd::move(materialHandles);
+        slot.m_childHandles = AZStd::move(childHandles);
+        for (const CookedShapeHandle childHandle : slot.m_childHandles)
+        {
+            ++FindCookedShapeUnlocked(childHandle)->m_parentCount;
+        }
+        return Internal::MakeResourceHandle<CookedShapeHandle>(cookedShapeIndex, slot.m_generation);
+    }
+
+    void System::ReleaseCookedShape(
+        const CookedShapeHandle cookedShapeHandle)
+    {
+        AZStd::lock_guard lock(m_cookedShapeMutex);
+        CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        AZ_Assert(slot && slot->m_referenceCount > 0, "Cooked shape ownership is inconsistent.");
+        if (slot && slot->m_referenceCount > 0)
+        {
+            --slot->m_referenceCount;
+        }
+    }
+
+    System::CookedShapeSlot* System::FindCookedShapeUnlocked(
+        const CookedShapeHandle cookedShapeHandle)
+    {
+        return const_cast<CookedShapeSlot*>(
+            static_cast<const System&>(*this).FindCookedShapeUnlocked(cookedShapeHandle));
+    }
+
+    const System::CookedShapeSlot* System::FindCookedShapeUnlocked(
+        const CookedShapeHandle cookedShapeHandle) const
+    {
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(cookedShapeHandle, parts)
+            || parts.m_index >= m_cookedShapeSlots.size())
+        {
+            return nullptr;
+        }
+
+        const CookedShapeSlot& slot = m_cookedShapeSlots[parts.m_index];
+        if (!slot.m_shape || slot.m_generation != parts.m_generation)
+        {
+            return nullptr;
+        }
+
+        return &slot;
+    }
+
+    bool System::AcquireCollisionGroup(
+        const CollisionGroupConfiguration& configuration,
+        JPH::CollisionGroup& collisionGroup)
+    {
+        if (!configuration.m_filterHandle)
+        {
+            collisionGroup = JPH::CollisionGroup(
+                nullptr,
+                configuration.m_groupId.GetValue(),
+                configuration.m_subGroupId.GetValue());
+            return true;
+        }
+
+        AZStd::lock_guard lock(m_groupFilterMutex);
+        GroupFilterSlot* slot = FindGroupFilterUnlocked(configuration.m_filterHandle);
+        if (!slot
+            || (configuration.m_groupId
+                && (!configuration.m_subGroupId
+                    || configuration.m_subGroupId.GetValue() >= slot->m_subGroupCount)))
+        {
+            return false;
+        }
+
+        ++slot->m_referenceCount;
+        collisionGroup = JPH::CollisionGroup(
+            slot->m_filter,
+            configuration.m_groupId.GetValue(),
+            configuration.m_subGroupId.GetValue());
+        return true;
+    }
+
+    void System::ReleaseGroupFilter(
+        const GroupFilterHandle filterHandle)
+    {
+        if (!filterHandle)
+        {
+            return;
+        }
+
+        AZStd::lock_guard lock(m_groupFilterMutex);
+        Internal::ResourceHandleParts parts;
+        const bool decoded = Internal::DecodeResourceHandle(filterHandle, parts);
+        AZ_Assert(decoded && parts.m_index < m_groupFilterSlots.size(), "Group filter ownership is inconsistent.");
+        if (!decoded || parts.m_index >= m_groupFilterSlots.size())
+        {
+            return;
+        }
+
+        GroupFilterSlot& slot = m_groupFilterSlots[parts.m_index];
+        AZ_Assert(
+            slot.m_filter && slot.m_generation == parts.m_generation && slot.m_referenceCount > 0,
+            "Group filter ownership is inconsistent.");
+        if (slot.m_filter && slot.m_generation == parts.m_generation && slot.m_referenceCount > 0)
+        {
+            --slot.m_referenceCount;
+        }
+    }
+
+    bool System::GetGroupFilterStateHash(
+        const GroupFilterHandle filterHandle,
+        AZ::u64& stateHash) const
+    {
+        AZStd::shared_lock lock(m_groupFilterMutex);
+        const GroupFilterSlot* slot = FindGroupFilterUnlocked(filterHandle);
+        if (!slot)
+        {
+            return false;
+        }
+
+        stateHash = slot->m_stateHash;
+        return true;
+    }
+
+    bool System::CaptureGroupFilterParticipantState(
+        const GroupFilterHandle filterHandle,
+        AZStd::vector<AZ::u8>& state,
+        AZ::TypeId& typeId,
+        AZ::u64& stateHash,
+        AZ::u32& version) const
+    {
+        AZStd::shared_lock lock(m_groupFilterMutex);
+        const GroupFilterSlot* slot = FindGroupFilterUnlocked(filterHandle);
+        if (!slot)
+        {
+            return false;
+        }
+
+        state.clear();
+        typeId = AZ::TypeId::CreateNull();
+        stateHash = 0;
+        version = 0;
+        if (!slot->m_isCustom)
+        {
+            return true;
+        }
+
+        const auto* filter = static_cast<const GroupFilterAdapter*>(slot->m_filter.GetPtr());
+        const IGroupFilter* callbacks = filter->GetCallbacks();
+        if (!callbacks)
+        {
+            return false;
+        }
+        typeId = callbacks->GetStateTypeId();
+        version = callbacks->GetStateVersion();
+        if (typeId.IsNull())
+        {
+            typeId = AZ::TypeId::CreateNull();
+            version = 0;
+            return false;
+        }
+        const size_t stateByteCount = callbacks->GetStateByteCount();
+        if (stateByteCount >= (size_t{1} << 30))
+        {
+            return false;
+        }
+        state.resize(stateByteCount + 1);
+        state.front() = 1;
+        if (!callbacks->CaptureState(AZStd::span(state).subspan(1)))
+        {
+            state.clear();
+            return false;
+        }
+        stateHash = callbacks->GetStateHash();
+        return true;
+    }
+
+    bool System::RestoreGroupFilterParticipantState(
+        const GroupFilterHandle filterHandle,
+        const AZStd::span<const AZ::u8> state,
+        const AZ::TypeId typeId,
+        const AZ::u64 stateHash,
+        const AZ::u32 version)
+    {
+        AZStd::lock_guard lock(m_groupFilterMutex);
+        GroupFilterSlot* slot = FindGroupFilterUnlocked(filterHandle);
+        const bool present = !state.empty();
+        if (!slot
+            || slot->m_isCustom != present)
+        {
+            return false;
+        }
+        if (!present)
+        {
+            return typeId.IsNull()
+                && stateHash == 0
+                && version == 0;
+        }
+
+        auto* filter = static_cast<GroupFilterAdapter*>(slot->m_filter.GetPtr());
+        const IGroupFilter* callbacks = filter->GetCallbacks();
+        if (!callbacks
+            || callbacks->GetStateTypeId() != typeId
+            || callbacks->GetStateVersion() != version
+            || state.front() != 1
+            || !callbacks->RestoreState(state.subspan(1))
+            || callbacks->GetStateHash() != stateHash)
+        {
+            return false;
+        }
+        slot->m_stateHash = MixGroupFilterValue(slot->m_subGroupCount)
+            ^ MixGroupFilterValue(stateHash);
+        return true;
+    }
+
+    System::GroupFilterSlot* System::FindGroupFilterUnlocked(
+        const GroupFilterHandle filterHandle)
+    {
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(filterHandle, parts)
+            || parts.m_index >= m_groupFilterSlots.size())
+        {
+            return nullptr;
+        }
+
+        GroupFilterSlot& slot = m_groupFilterSlots[parts.m_index];
+        if (slot.m_generation != parts.m_generation || !slot.m_filter)
+        {
+            return nullptr;
+        }
+
+        return &slot;
+    }
+
+    const System::GroupFilterSlot* System::FindGroupFilterUnlocked(
+        const GroupFilterHandle filterHandle) const
+    {
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(filterHandle, parts)
+            || parts.m_index >= m_groupFilterSlots.size())
+        {
+            return nullptr;
+        }
+
+        const GroupFilterSlot& slot = m_groupFilterSlots[parts.m_index];
+        if (slot.m_generation != parts.m_generation || !slot.m_filter)
+        {
+            return nullptr;
+        }
+
+        return &slot;
+    }
+
+    bool System::AcquirePath(
+        const PathHandle pathHandle,
+        JPH::RefConst<JPH::PathConstraintPath>& path)
+    {
+        AZStd::lock_guard lock(m_pathMutex);
+        Internal::ResourceHandleParts parts;
+        const PathSlot* constPathSlot = FindPathUnlocked(pathHandle);
+        if (!constPathSlot
+            || !Internal::DecodeResourceHandle(pathHandle, parts)
+            || constPathSlot->m_constraintCount == AZStd::numeric_limits<AZ::u32>::max())
+        {
+            return false;
+        }
+
+        PathSlot& pathSlot = m_pathSlots[parts.m_index];
+        ++pathSlot.m_constraintCount;
+        path = pathSlot.m_path;
+        return true;
+    }
+
+    void System::ReleasePath(
+        const PathHandle pathHandle)
+    {
+        AZStd::lock_guard lock(m_pathMutex);
+        Internal::ResourceHandleParts parts;
+        const bool decoded = Internal::DecodeResourceHandle(pathHandle, parts);
+        AZ_Assert(decoded && parts.m_index < m_pathSlots.size(), "Path reference ownership is inconsistent.");
+        if (!decoded || parts.m_index >= m_pathSlots.size())
+        {
+            return;
+        }
+
+        PathSlot& slot = m_pathSlots[parts.m_index];
+        AZ_Assert(
+            slot.m_path && slot.m_generation == parts.m_generation && slot.m_constraintCount > 0,
+            "Path reference ownership is inconsistent.");
+        if (slot.m_path && slot.m_generation == parts.m_generation && slot.m_constraintCount > 0)
+        {
+            --slot.m_constraintCount;
+        }
+    }
+
+    const System::PathSlot* System::FindPathUnlocked(
+        const PathHandle pathHandle) const
+    {
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(pathHandle, parts)
+            || parts.m_index >= m_pathSlots.size())
+        {
+            return nullptr;
+        }
+
+        const PathSlot& slot = m_pathSlots[parts.m_index];
+        if (slot.m_generation != parts.m_generation || !slot.m_path)
+        {
+            return nullptr;
+        }
+
+        return &slot;
+    }
+
+    SoftBodyDefinitionHandle System::StoreSoftBodyDefinition(
+        JPH::RefConst<JPH::SoftBodySharedSettings> settings,
+        AZStd::vector<MaterialHandle> materialHandles)
+    {
+        AZStd::lock_guard lock(m_softBodyDefinitionMutex);
+        AZ::u32 definitionIndex = 0;
+        if (!m_freeSoftBodyDefinitionSlots.empty())
+        {
+            definitionIndex = m_freeSoftBodyDefinitionSlots.back();
+            m_freeSoftBodyDefinitionSlots.pop_back();
+        }
+        else
+        {
+            if (m_softBodyDefinitionSlots.size() >= Internal::HandlePayloadMask)
+            {
+                ReleaseMaterials(materialHandles);
+                return {};
+            }
+            definitionIndex = static_cast<AZ::u32>(m_softBodyDefinitionSlots.size());
+            m_softBodyDefinitionSlots.emplace_back();
+        }
+
+        SoftBodyDefinitionSlot& slot = m_softBodyDefinitionSlots[definitionIndex];
+        slot.m_settings = AZStd::move(settings);
+        slot.m_materialHandles = AZStd::move(materialHandles);
+        return Internal::MakeResourceHandle<SoftBodyDefinitionHandle>(definitionIndex, slot.m_generation);
+    }
+
+    bool System::AcquireSoftBodyDefinition(
+        const SoftBodyDefinitionHandle definitionHandle,
+        JPH::RefConst<JPH::SoftBodySharedSettings>& settings)
+    {
+        AZStd::lock_guard lock(m_softBodyDefinitionMutex);
+        Internal::ResourceHandleParts parts;
+        const SoftBodyDefinitionSlot* definitionSlot = FindSoftBodyDefinitionUnlocked(definitionHandle);
+        if (!definitionSlot
+            || !Internal::DecodeResourceHandle(definitionHandle, parts)
+            || definitionSlot->m_bodyCount == AZStd::numeric_limits<AZ::u32>::max())
+        {
+            return false;
+        }
+
+        SoftBodyDefinitionSlot& mutableSlot = m_softBodyDefinitionSlots[parts.m_index];
+        ++mutableSlot.m_bodyCount;
+        settings = mutableSlot.m_settings;
+        return true;
+    }
+
+    void System::ReleaseSoftBodyDefinition(
+        const SoftBodyDefinitionHandle definitionHandle)
+    {
+        AZStd::lock_guard lock(m_softBodyDefinitionMutex);
+        Internal::ResourceHandleParts parts;
+        const bool decoded = Internal::DecodeResourceHandle(definitionHandle, parts);
+        AZ_Assert(
+            decoded && parts.m_index < m_softBodyDefinitionSlots.size(),
+            "Soft body definition ownership is inconsistent.");
+        if (!decoded || parts.m_index >= m_softBodyDefinitionSlots.size())
+        {
+            return;
+        }
+
+        SoftBodyDefinitionSlot& slot = m_softBodyDefinitionSlots[parts.m_index];
+        AZ_Assert(
+            slot.m_settings && slot.m_generation == parts.m_generation && slot.m_bodyCount > 0,
+            "Soft body definition ownership is inconsistent.");
+        if (slot.m_settings && slot.m_generation == parts.m_generation && slot.m_bodyCount > 0)
+        {
+            --slot.m_bodyCount;
+        }
+    }
+
+    const System::SoftBodyDefinitionSlot* System::FindSoftBodyDefinitionUnlocked(
+        const SoftBodyDefinitionHandle definitionHandle) const
+    {
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(definitionHandle, parts)
+            || parts.m_index >= m_softBodyDefinitionSlots.size())
+        {
+            return nullptr;
+        }
+
+        const SoftBodyDefinitionSlot& slot = m_softBodyDefinitionSlots[parts.m_index];
+        if (slot.m_generation != parts.m_generation || !slot.m_settings)
+        {
+            return nullptr;
+        }
+
+        return &slot;
+    }
+
+    bool System::AcquireHairDefinition(
+        const HairDefinitionHandle definitionHandle,
+        JPH::RefConst<JPH::HairSettings>& settings)
+    {
+        AZStd::lock_guard lock(m_hairDefinitionMutex);
+        Internal::ResourceHandleParts parts;
+        const HairDefinitionSlot* definitionSlot = FindHairDefinitionUnlocked(definitionHandle);
+        if (!definitionSlot
+            || !Internal::DecodeResourceHandle(definitionHandle, parts)
+            || definitionSlot->m_instanceCount == AZStd::numeric_limits<AZ::u32>::max())
+        {
+            return false;
+        }
+
+        HairDefinitionSlot& mutableSlot = m_hairDefinitionSlots[parts.m_index];
+        ++mutableSlot.m_instanceCount;
+        settings = mutableSlot.m_settings;
+        return true;
+    }
+
+    void System::ReleaseHairDefinition(
+        const HairDefinitionHandle definitionHandle)
+    {
+        AZStd::lock_guard lock(m_hairDefinitionMutex);
+        Internal::ResourceHandleParts parts;
+        const bool decoded = Internal::DecodeResourceHandle(definitionHandle, parts);
+        AZ_Assert(
+            decoded && parts.m_index < m_hairDefinitionSlots.size(),
+            "Hair definition ownership is inconsistent.");
+        if (!decoded || parts.m_index >= m_hairDefinitionSlots.size())
+        {
+            return;
+        }
+
+        HairDefinitionSlot& slot = m_hairDefinitionSlots[parts.m_index];
+        AZ_Assert(
+            slot.m_settings && slot.m_generation == parts.m_generation && slot.m_instanceCount > 0,
+            "Hair definition ownership is inconsistent.");
+        if (slot.m_settings && slot.m_generation == parts.m_generation && slot.m_instanceCount > 0)
+        {
+            --slot.m_instanceCount;
+        }
+    }
+
+    const System::HairDefinitionSlot* System::FindHairDefinitionUnlocked(
+        const HairDefinitionHandle definitionHandle) const
+    {
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(definitionHandle, parts)
+            || parts.m_index >= m_hairDefinitionSlots.size())
+        {
+            return nullptr;
+        }
+
+        const HairDefinitionSlot& slot = m_hairDefinitionSlots[parts.m_index];
+        if (slot.m_generation != parts.m_generation || !slot.m_settings)
+        {
+            return nullptr;
+        }
+
+        return &slot;
+    }
+
+    bool System::EnsureHairRuntime()
+    {
+        AZStd::lock_guard lock(m_hairDefinitionMutex);
+        if (m_hairRuntime)
+        {
+            return true;
+        }
+
+        if (m_configuration.m_hairComputeBackend == HairComputeBackend::None)
+        {
+            AZ_Error("Jolt", false, "Hair simulation is disabled by the system configuration.");
+            return false;
+        }
+
+        IHairComputeProvider* provider = nullptr;
+        JPH::ComputeSystemResult computeResult;
+        if (m_configuration.m_hairComputeBackend == HairComputeBackend::PlatformGpu)
+        {
+            if (!m_configuration.m_allowNondeterministicHair)
+            {
+                AZ_Error(
+                    "Jolt",
+                    false,
+                    "Platform GPU hair is not deterministic and must be explicitly allowed by the system configuration.");
+                return false;
+            }
+
+            provider = AZ::Interface<IHairComputeProvider>::Get();
+            if (!provider || provider->GetBackend() != HairComputeBackend::PlatformGpu)
+            {
+                AZ_Error("Jolt", false, "The platform GPU hair backend is not available in this process.");
+                return false;
+            }
+
+            computeResult = provider->CreateComputeSystem();
+        }
+        else if (m_configuration.m_hairComputeBackend == HairComputeBackend::DeterministicCpu)
+        {
+            computeResult = JPH::CreateComputeSystemCPU();
+        }
+        else
+        {
+            AZ_Error("Jolt", false, "The configured hair compute backend is invalid.");
+            return false;
+        }
+
+        if (computeResult.HasError())
+        {
+            AZ_Error(
+                "Jolt",
+                false,
+                "Failed to create the configured hair compute system: %s",
+                computeResult.GetError().c_str());
+            return false;
+        }
+
+        auto runtime = AZStd::make_unique<HairRuntime>();
+        runtime->m_computeSystem = computeResult.Get();
+        runtime->m_backend = m_configuration.m_hairComputeBackend;
+        if (runtime->m_backend == HairComputeBackend::DeterministicCpu)
+        {
+            const JPH::Ref<JPH::ComputeSystemCPU> cpuComputeSystem =
+                JPH::StaticCast<JPH::ComputeSystemCPU>(runtime->m_computeSystem);
+            JPH::HairRegisterShaders(cpuComputeSystem);
+        }
+        runtime->m_shaders = new JPH::HairShaders();
+        runtime->m_shaders->Init(runtime->m_computeSystem);
+        if (!runtime->m_shaders->mApplyDeltaTransformCS
+            || !runtime->m_shaders->mApplyGlobalPoseCS
+            || !runtime->m_shaders->mCalculateCollisionPlanesCS
+            || !runtime->m_shaders->mCalculateRenderPositionsCS
+            || !runtime->m_shaders->mGridAccumulateCS
+            || !runtime->m_shaders->mGridClearCS
+            || !runtime->m_shaders->mGridNormalizeCS
+            || !runtime->m_shaders->mIntegrateCS
+            || !runtime->m_shaders->mSkinRootsCS
+            || !runtime->m_shaders->mSkinVerticesCS
+            || !runtime->m_shaders->mTeleportCS
+            || !runtime->m_shaders->mUpdateRootsCS
+            || !runtime->m_shaders->mUpdateStrandsCS
+            || !runtime->m_shaders->mUpdateVelocityCS
+            || !runtime->m_shaders->mUpdateVelocityIntegrateCS)
+        {
+            AZ_Error("Jolt", false, "The configured hair compute backend did not load every required shader.");
+            return false;
+        }
+
+        m_hairRuntime = AZStd::move(runtime);
+        return true;
+    }
+} // namespace Jolt

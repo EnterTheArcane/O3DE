@@ -1,0 +1,373 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ */
+
+#include <Jolt/Diagnostics.h>
+
+#include <Jolt/BehaviorReflection.h>
+
+#include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/Serialization/SerializeContext.h>
+
+namespace Jolt
+{
+    void ReflectDiagnostics(
+        AZ::ReflectContext* context)
+    {
+        if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext
+                ->Class<SimulationResult>()
+                ->Field("UpdateNanoseconds", &SimulationResult::m_updateNanoseconds)
+                ->Field("StepCount", &SimulationResult::m_stepCount)
+                ->Field("Errors", &SimulationResult::m_errors);
+
+            serializeContext
+                ->Class<WorldStateDigest>()
+                ->Field("Hash", &WorldStateDigest::m_hash)
+                ->Field("StateByteCount", &WorldStateDigest::m_stateByteCount);
+
+            serializeContext
+                ->Class<BodySimulationStatistics>()
+                ->Field("BroadPhaseTicks", &BodySimulationStatistics::m_broadPhaseTicks)
+                ->Field("CcdTicks", &BodySimulationStatistics::m_ccdTicks)
+                ->Field("NarrowPhaseTicks", &BodySimulationStatistics::m_narrowPhaseTicks)
+                ->Field("PositionConstraintTicks", &BodySimulationStatistics::m_positionConstraintTicks)
+                ->Field("UpdateBoundsTicks", &BodySimulationStatistics::m_updateBoundsTicks)
+                ->Field("VelocityConstraintTicks", &BodySimulationStatistics::m_velocityConstraintTicks)
+                ->Field("ContactConstraintCount", &BodySimulationStatistics::m_contactConstraintCount)
+                ->Field("CollisionStepCount", &BodySimulationStatistics::m_collisionStepCount)
+                ->Field("PositionStepCount", &BodySimulationStatistics::m_positionStepCount)
+                ->Field("VelocityStepCount", &BodySimulationStatistics::m_velocityStepCount)
+                ->Field("IsLargeIsland", &BodySimulationStatistics::m_isLargeIsland);
+
+            serializeContext
+                ->Class<StateValidationResult>()
+                ->Field("FirstMismatchByte", &StateValidationResult::m_firstMismatchByte)
+                ->Field("Matches", &StateValidationResult::m_matches);
+
+            serializeContext
+                ->Class<StateSnapshotConfiguration>()
+                ->Field("Flags", &StateSnapshotConfiguration::m_flags)
+                ->Field("RestoreSafety", &StateSnapshotConfiguration::m_restoreSafety)
+                ->Field("FilterBodies", &StateSnapshotConfiguration::m_filterBodies);
+
+            serializeContext
+                ->Class<StateSnapshotArchive>()
+                ->Field("BinaryState", &StateSnapshotArchive::m_binaryState)
+                ->Field("BuildFingerprint", &StateSnapshotArchive::m_buildFingerprint)
+                ->Field("ContentHash", &StateSnapshotArchive::m_contentHash)
+                ->Field("FormatVersion", &StateSnapshotArchive::m_formatVersion)
+                ->Field("SnapshotCount", &StateSnapshotArchive::m_snapshotCount);
+
+            serializeContext
+                ->Class<WorldStatistics>()
+                ->Field("ShapeBytes", &WorldStatistics::m_shapeBytes)
+                ->Field("ShapeTriangleCount", &WorldStatistics::m_shapeTriangleCount)
+                ->Field("TempAllocatorCapacityBytes", &WorldStatistics::m_tempAllocatorCapacityBytes)
+                ->Field("TempAllocatorUsageBytes", &WorldStatistics::m_tempAllocatorUsageBytes)
+                ->Field("LastUpdateNanoseconds", &WorldStatistics::m_lastUpdateNanoseconds)
+                ->Field("LastUpdateErrors", &WorldStatistics::m_lastUpdateErrors)
+                ->Field("LastUpdateJobCount", &WorldStatistics::m_lastUpdateJobCount)
+                ->Field("LastUpdateMaximumTaskCount", &WorldStatistics::m_lastUpdateMaximumTaskCount)
+                ->Field("LastUpdateTaskCount", &WorldStatistics::m_lastUpdateTaskCount)
+                ->Field("ActiveDynamicBodyCount", &WorldStatistics::m_activeDynamicBodyCount)
+                ->Field("ActiveKinematicBodyCount", &WorldStatistics::m_activeKinematicBodyCount)
+                ->Field("ActiveSoftBodyCount", &WorldStatistics::m_activeSoftBodyCount)
+                ->Field("BodyCapacity", &WorldStatistics::m_bodyCapacity)
+                ->Field("BodyCount", &WorldStatistics::m_bodyCount)
+                ->Field("DynamicBodyCount", &WorldStatistics::m_dynamicBodyCount)
+                ->Field("KinematicBodyCount", &WorldStatistics::m_kinematicBodyCount)
+                ->Field("SoftBodyCount", &WorldStatistics::m_softBodyCount)
+                ->Field("StaticBodyCount", &WorldStatistics::m_staticBodyCount)
+                ->Field("ActiveConstraintCount", &WorldStatistics::m_activeConstraintCount)
+                ->Field("ConstraintCount", &WorldStatistics::m_constraintCount)
+                ->Field("ShapeCount", &WorldStatistics::m_shapeCount)
+                ->Field("BodySnapshotCount", &WorldStatistics::m_bodySnapshotCount)
+                ->Field("CharacterCount", &WorldStatistics::m_characterCount)
+                ->Field("HairCount", &WorldStatistics::m_hairCount)
+                ->Field("RagdollCount", &WorldStatistics::m_ragdollCount)
+                ->Field("SceneInstanceCount", &WorldStatistics::m_sceneInstanceCount)
+                ->Field("StateSnapshotCount", &WorldStatistics::m_stateSnapshotCount)
+                ->Field("VehicleCount", &WorldStatistics::m_vehicleCount)
+                ->Field("VirtualCharacterCount", &WorldStatistics::m_virtualCharacterCount);
+        }
+
+        if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(SimulationError::None)>("SimulationError_None")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(SimulationError::BodyPairCacheFull)>(
+                "SimulationError_BodyPairCacheFull")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(SimulationError::ContactConstraintsFull)>(
+                "SimulationError_ContactConstraintsFull")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(SimulationError::InvalidRequest)>(
+                "SimulationError_InvalidRequest")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(SimulationError::ManifoldCacheFull)>(
+                "SimulationError_ManifoldCacheFull")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(StateSnapshotFlags::None)>("StateSnapshotFlags_None")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(StateSnapshotFlags::Bodies)>("StateSnapshotFlags_Bodies")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(StateSnapshotFlags::Constraints)>(
+                "StateSnapshotFlags_Constraints")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(StateSnapshotFlags::Contacts)>(
+                "StateSnapshotFlags_Contacts")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(StateSnapshotFlags::Global)>("StateSnapshotFlags_Global")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(StateSnapshotFlags::Hair)>("StateSnapshotFlags_Hair")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(StateSnapshotFlags::All)>("StateSnapshotFlags_All")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(RestoreSafety::None)>("RestoreSafety_None")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(RestoreSafety::Transactional)>(
+                "RestoreSafety_Transactional")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(RestoreSafety::Validated)>("RestoreSafety_Validated")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->Class<SimulationResult>("SimulationResult")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property(
+                    "updateNanoseconds",
+                    BehaviorValueGetter(&SimulationResult::m_updateNanoseconds),
+                    nullptr)
+                ->Property("stepCount", BehaviorValueGetter(&SimulationResult::m_stepCount), nullptr)
+                ->Property("errors", BehaviorValueGetter(&SimulationResult::m_errors), nullptr);
+
+            behaviorContext->Class<WorldStateDigest>("WorldStateDigest")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property("hash", BehaviorValueGetter(&WorldStateDigest::m_hash), nullptr)
+                ->Property(
+                    "stateByteCount",
+                    BehaviorValueGetter(&WorldStateDigest::m_stateByteCount),
+                    nullptr);
+
+            behaviorContext->Class<BodySimulationStatistics>("BodySimulationStatistics")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property(
+                    "broadPhaseTicks",
+                    BehaviorValueGetter(&BodySimulationStatistics::m_broadPhaseTicks),
+                    nullptr)
+                ->Property("ccdTicks", BehaviorValueGetter(&BodySimulationStatistics::m_ccdTicks), nullptr)
+                ->Property(
+                    "narrowPhaseTicks",
+                    BehaviorValueGetter(&BodySimulationStatistics::m_narrowPhaseTicks),
+                    nullptr)
+                ->Property(
+                    "positionConstraintTicks",
+                    BehaviorValueGetter(&BodySimulationStatistics::m_positionConstraintTicks),
+                    nullptr)
+                ->Property(
+                    "updateBoundsTicks",
+                    BehaviorValueGetter(&BodySimulationStatistics::m_updateBoundsTicks),
+                    nullptr)
+                ->Property(
+                    "velocityConstraintTicks",
+                    BehaviorValueGetter(&BodySimulationStatistics::m_velocityConstraintTicks),
+                    nullptr)
+                ->Property(
+                    "contactConstraintCount",
+                    BehaviorValueGetter(&BodySimulationStatistics::m_contactConstraintCount),
+                    nullptr)
+                ->Property(
+                    "collisionStepCount",
+                    BehaviorValueGetter(&BodySimulationStatistics::m_collisionStepCount),
+                    nullptr)
+                ->Property(
+                    "positionStepCount",
+                    BehaviorValueGetter(&BodySimulationStatistics::m_positionStepCount),
+                    nullptr)
+                ->Property(
+                    "velocityStepCount",
+                    BehaviorValueGetter(&BodySimulationStatistics::m_velocityStepCount),
+                    nullptr)
+                ->Property(
+                    "isLargeIsland",
+                    BehaviorValueGetter(&BodySimulationStatistics::m_isLargeIsland),
+                    nullptr);
+
+            behaviorContext->Class<StateValidationResult>("StateValidationResult")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property(
+                    "firstMismatchByte",
+                    BehaviorValueGetter(&StateValidationResult::m_firstMismatchByte),
+                    nullptr)
+                ->Property("matches", BehaviorValueGetter(&StateValidationResult::m_matches), nullptr);
+
+            behaviorContext->Class<StateSnapshotConfiguration>("StateSnapshotConfiguration")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property("flags", JOLT_BEHAVIOR_VALUE_PROPERTY(&StateSnapshotConfiguration::m_flags))
+                ->Property(
+                    "restoreSafety",
+                    JOLT_BEHAVIOR_VALUE_PROPERTY(&StateSnapshotConfiguration::m_restoreSafety))
+                ->Property(
+                    "filterBodies",
+                    JOLT_BEHAVIOR_VALUE_PROPERTY(&StateSnapshotConfiguration::m_filterBodies));
+
+            behaviorContext->Class<StateSnapshotArchive>("StateSnapshotArchive")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property("binaryState", JOLT_BEHAVIOR_VALUE_PROPERTY(&StateSnapshotArchive::m_binaryState))
+                ->Property(
+                    "buildFingerprint",
+                    JOLT_BEHAVIOR_VALUE_PROPERTY(&StateSnapshotArchive::m_buildFingerprint))
+                ->Property("contentHash", JOLT_BEHAVIOR_VALUE_PROPERTY(&StateSnapshotArchive::m_contentHash))
+                ->Property("formatVersion", JOLT_BEHAVIOR_VALUE_PROPERTY(&StateSnapshotArchive::m_formatVersion))
+                ->Property("snapshotCount", JOLT_BEHAVIOR_VALUE_PROPERTY(&StateSnapshotArchive::m_snapshotCount));
+
+            behaviorContext->Class<WorldStatistics>("WorldStatistics")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property("shapeBytes", BehaviorValueGetter(&WorldStatistics::m_shapeBytes), nullptr)
+                ->Property(
+                    "shapeTriangleCount",
+                    BehaviorValueGetter(&WorldStatistics::m_shapeTriangleCount),
+                    nullptr)
+                ->Property(
+                    "tempAllocatorCapacityBytes",
+                    BehaviorValueGetter(&WorldStatistics::m_tempAllocatorCapacityBytes),
+                    nullptr)
+                ->Property(
+                    "tempAllocatorUsageBytes",
+                    BehaviorValueGetter(&WorldStatistics::m_tempAllocatorUsageBytes),
+                    nullptr)
+                ->Property(
+                    "lastUpdateNanoseconds",
+                    BehaviorValueGetter(&WorldStatistics::m_lastUpdateNanoseconds),
+                    nullptr)
+                ->Property(
+                    "lastUpdateErrors",
+                    BehaviorValueGetter(&WorldStatistics::m_lastUpdateErrors),
+                    nullptr)
+                ->Property(
+                    "lastUpdateJobCount",
+                    BehaviorValueGetter(&WorldStatistics::m_lastUpdateJobCount),
+                    nullptr)
+                ->Property(
+                    "lastUpdateMaximumTaskCount",
+                    BehaviorValueGetter(&WorldStatistics::m_lastUpdateMaximumTaskCount),
+                    nullptr)
+                ->Property(
+                    "lastUpdateTaskCount",
+                    BehaviorValueGetter(&WorldStatistics::m_lastUpdateTaskCount),
+                    nullptr)
+                ->Property(
+                    "activeDynamicBodyCount",
+                    BehaviorValueGetter(&WorldStatistics::m_activeDynamicBodyCount),
+                    nullptr)
+                ->Property(
+                    "activeKinematicBodyCount",
+                    BehaviorValueGetter(&WorldStatistics::m_activeKinematicBodyCount),
+                    nullptr)
+                ->Property(
+                    "activeSoftBodyCount",
+                    BehaviorValueGetter(&WorldStatistics::m_activeSoftBodyCount),
+                    nullptr)
+                ->Property("bodyCapacity", BehaviorValueGetter(&WorldStatistics::m_bodyCapacity), nullptr)
+                ->Property("bodyCount", BehaviorValueGetter(&WorldStatistics::m_bodyCount), nullptr)
+                ->Property(
+                    "dynamicBodyCount",
+                    BehaviorValueGetter(&WorldStatistics::m_dynamicBodyCount),
+                    nullptr)
+                ->Property(
+                    "kinematicBodyCount",
+                    BehaviorValueGetter(&WorldStatistics::m_kinematicBodyCount),
+                    nullptr)
+                ->Property(
+                    "softBodyCount",
+                    BehaviorValueGetter(&WorldStatistics::m_softBodyCount),
+                    nullptr)
+                ->Property(
+                    "staticBodyCount",
+                    BehaviorValueGetter(&WorldStatistics::m_staticBodyCount),
+                    nullptr)
+                ->Property(
+                    "activeConstraintCount",
+                    BehaviorValueGetter(&WorldStatistics::m_activeConstraintCount),
+                    nullptr)
+                ->Property(
+                    "constraintCount",
+                    BehaviorValueGetter(&WorldStatistics::m_constraintCount),
+                    nullptr)
+                ->Property("shapeCount", BehaviorValueGetter(&WorldStatistics::m_shapeCount), nullptr)
+                ->Property(
+                    "bodySnapshotCount",
+                    BehaviorValueGetter(&WorldStatistics::m_bodySnapshotCount),
+                    nullptr)
+                ->Property(
+                    "characterCount",
+                    BehaviorValueGetter(&WorldStatistics::m_characterCount),
+                    nullptr)
+                ->Property("hairCount", BehaviorValueGetter(&WorldStatistics::m_hairCount), nullptr)
+                ->Property(
+                    "ragdollCount",
+                    BehaviorValueGetter(&WorldStatistics::m_ragdollCount),
+                    nullptr)
+                ->Property(
+                    "sceneInstanceCount",
+                    BehaviorValueGetter(&WorldStatistics::m_sceneInstanceCount),
+                    nullptr)
+                ->Property(
+                    "stateSnapshotCount",
+                    BehaviorValueGetter(&WorldStatistics::m_stateSnapshotCount),
+                    nullptr)
+                ->Property("vehicleCount", BehaviorValueGetter(&WorldStatistics::m_vehicleCount), nullptr)
+                ->Property(
+                    "virtualCharacterCount",
+                    BehaviorValueGetter(&WorldStatistics::m_virtualCharacterCount),
+                    nullptr);
+        }
+    }
+} // namespace Jolt

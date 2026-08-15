@@ -78,6 +78,14 @@ namespace AZ
             return dx12Buffer.GetMemoryView().GetHeapOffset();
         }
 
+        void SetBufferStateAfterExternalAccess(
+            RHI::DeviceBuffer& buffer,
+            const D3D12_RESOURCE_STATES state)
+        {
+            AZ_Assert(azrtti_cast<Buffer*>(&buffer), "%s can only be called with a DX12 RHI object", __FUNCTION__);
+            static_cast<Buffer&>(buffer).m_initialAttachmentState = state;
+        }
+
         ID3D12Resource* GetImageResource(RHI::DeviceImage& image)
         {
             AZ_Assert(azrtti_cast<Image*>(&image), "%s can only be called with a DX12 RHI object", __FUNCTION__);

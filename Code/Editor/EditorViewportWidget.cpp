@@ -628,7 +628,10 @@ void EditorViewportWidget::OnEditorNotifyEvent(EEditorNotifyEvent event)
         // we restore the default viewport camera when closing the level to ensure if there is a pushed view group for a particular
         // editor camera component (view entity) it is popped/cleared to return to a default state when opening the next level
         SetDefaultCamera();
-        m_renderViewport->SetScene(nullptr);
+        if (m_renderViewport)
+        {
+            m_renderViewport->SetScene(nullptr);
+        }
         break;
 
     case eNotify_OnEndLoad:
@@ -2232,4 +2235,3 @@ AZStd::optional<AzFramework::ViewportBorderPadding> EditorViewportWidget::GetVie
 
     return AZStd::nullopt;
 }
-

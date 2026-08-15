@@ -27,7 +27,7 @@ def make_report(provider: str, step_time: float, raycast_time: float) -> dict:
         for _ in range(3):
             benchmarks.append(
                 make_result(
-                    f"{provider}/Step/FallingSpheres/{body_count}/4/real_time",
+                    f"{provider}/Step/FallingBoxes/{body_count}/4/real_time",
                     step_time,
                     Ccd=0,
                     DynamicBodies=body_count,

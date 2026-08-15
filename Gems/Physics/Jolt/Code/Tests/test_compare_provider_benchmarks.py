@@ -1,0 +1,114 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+
+import sys
+import unittest
+from unittest.mock import patch
+
+import compare_provider_benchmarks
+
+
+def make_report(provider: str, time_microseconds: float) -> dict:
+    benchmarks = []
+    for workload in compare_provider_benchmarks.WORKLOADS:
+        for repetition_index in range(30):
+            result = {
+                "name": f"{provider}/{workload['suffix']}",
+                "run_type": "iteration",
+                "repetition_index": repetition_index,
+                "iterations": workload.get("iterations", 100),
+                "real_time": time_microseconds,
+                "time_unit": "us",
+                "AffinityConstrained": 1,
+                "AffinityProcessors": 8,
+            }
+            result.update(workload.get("exact", {}))
+            result.update(workload.get("provider_exact", {}).get(provider, {}))
+            result.update(workload.get("minimum", {}))
+            result.update(workload.get("maximum", {}))
+            benchmarks.append(result)
+    return {
+        "context": {
+            "host_name": "benchmark-host",
+            "num_cpus": 16,
+            "mhz_per_cpu": 4_500,
+            "caches": [{"level": 3, "size": 32 * 1024 * 1024}],
+            "library_build_type": "release",
+        },
+        "benchmarks": benchmarks,
+    }
+
+
+def run_comparison(reports: dict[str, dict]) -> int:
+    arguments = [
+        "compare_provider_benchmarks.py",
+        "Jolt.json",
+        "Box3D.json",
+        "PhysX.json",
+    ]
+    report_sequence = [reports["Jolt"], reports["Box3D"], reports["PhysX"]]
+    with patch.object(sys, "argv", arguments):
+        with patch.object(compare_provider_benchmarks, "load_report", side_effect=report_sequence):
+            return compare_provider_benchmarks.main()
+
+
+class CompareProviderBenchmarksTests(unittest.TestCase):
+    def test_accepts_valid_faster_jolt_report(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        self.assertEqual(run_comparison(reports), 0)
+
+    def test_rejects_non_release_report(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["Jolt"]["context"]["library_build_type"] = "profile"
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_invalid_quality_counter(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["Jolt"]["benchmarks"][0]["QualityValid"] = 0
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_unconstrained_cpu_topology(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["Jolt"]["benchmarks"][0]["AffinityConstrained"] = 0
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_wrong_affinity_processor_count(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["PhysX"]["benchmarks"][0]["AffinityProcessors"] = 4
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_jolt_performance_regression(self):
+        reports = {
+            "Jolt": make_report("Jolt", 110.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        self.assertEqual(run_comparison(reports), 1)
+
+
+if __name__ == "__main__":
+    unittest.main()

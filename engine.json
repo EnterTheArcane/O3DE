@@ -23,6 +23,7 @@
         "Gems/AudioSystem",
         "Gems/BarrierInput",
         "Gems/Physics/Box3D",
+        "Gems/Physics/Jolt",
         "Gems/Camera",
         "Gems/CameraFramework",
         "Gems/CertificateManager",

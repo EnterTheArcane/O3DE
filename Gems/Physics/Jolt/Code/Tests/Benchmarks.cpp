@@ -1,0 +1,2597 @@
+/*
+ * Copyright (c) Contributors to the Open 3D Engine Project.
+ * For complete copyright and license terms please see the LICENSE at the root of this distribution.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ */
+
+#ifdef HAVE_BENCHMARK
+
+#include <Jolt/SystemInternal.h>
+
+#include <AzCore/Casting/numeric_cast.h>
+#include <AzCore/Jobs/JobContext.h>
+#include <AzCore/Jobs/JobManager.h>
+#include <AzCore/Math/Vector2.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Name/NameDictionary.h>
+#include <AzCore/std/algorithm.h>
+#include <AzCore/std/chrono/chrono.h>
+#include <AzCore/std/containers/array.h>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/limits.h>
+#include <AzCore/std/string/string.h>
+#include <AzTest/AzTest.h>
+#include <AzTest/Benchmark/BenchmarkEnvironment.h>
+
+namespace Jolt::Benchmarks
+{
+    namespace
+    {
+        constexpr float MatchedTimeStep = 1.0f / 60.0f;
+        constexpr float MatchedGridSpacing = 1.1f;
+        constexpr AZ::u32 WarmupFrameCount = 600;
+        constexpr AZ::u32 ValidationFrameCount = 600;
+
+        class NameDictionaryScope final
+        {
+        public:
+            NameDictionaryScope()
+            {
+                if (!AZ::Interface<AZ::NameDictionary>::Get())
+                {
+                    AZ::NameDictionary::Create();
+                    m_ownsDictionary = true;
+                }
+            }
+
+            ~NameDictionaryScope()
+            {
+                if (m_ownsDictionary)
+                {
+                    AZ::NameDictionary::Destroy();
+                }
+            }
+
+            AZ_DISABLE_COPY_MOVE(NameDictionaryScope);
+
+        private:
+            bool m_ownsDictionary = false;
+        };
+
+        class JobContextScope final
+        {
+        public:
+            explicit JobContextScope(
+                const AZ::u32 workerCount)
+                : m_cpuAffinity(AZ::Test::GetBenchmarkCpuAffinity())
+                , m_jobManager(
+                    [workerCount]
+                    {
+                        AZ::u32 backgroundWorkerCount = 0;
+                        if (workerCount > 1)
+                        {
+                            backgroundWorkerCount = workerCount - 1;
+                        }
+                        AZ::JobManagerDesc descriptor;
+                        AZ::Test::GetBenchmarkCpuAffinity().ConfigureJobManagerThreads(
+                            descriptor,
+                            backgroundWorkerCount);
+                        return descriptor;
+                    }())
+                , m_jobContext(m_jobManager)
+            {
+            }
+
+            [[nodiscard]]
+            AZ::JobContext& Get()
+            {
+                return m_jobContext;
+            }
+
+            void AddCounters(
+                benchmark::State& state) const
+            {
+                state.counters["AffinityConstrained"] = 0;
+                if (m_cpuAffinity.IsConstrained())
+                {
+                    state.counters["AffinityConstrained"] = 1;
+                }
+                state.counters["AffinityProcessors"] = m_cpuAffinity.GetProcessorCount();
+            }
+
+        private:
+            const AZ::Test::ScopedBenchmarkCpuAffinity& m_cpuAffinity;
+            AZ::JobManager m_jobManager;
+            AZ::JobContext m_jobContext;
+        };
+
+        [[nodiscard]]
+        SystemConfiguration CreateSystemConfiguration(
+            const AZ::u32 workerCount,
+            const AZ::u32 maximumBodyCount,
+            const bool useMatchedSolverPolicy = false)
+        {
+            SystemConfiguration configuration;
+            configuration.m_defaultWorld.m_autoSimulate = false;
+            configuration.m_defaultWorld.m_collectActivationEvents = false;
+            configuration.m_defaultWorld.m_collectContactEvents = false;
+            configuration.m_defaultWorld.m_workerCount = workerCount;
+            configuration.m_defaultWorld.m_capacity.m_maxBodies = maximumBodyCount;
+            configuration.m_defaultWorld.m_capacity.m_maxBodyPairs = maximumBodyCount * 16;
+            configuration.m_defaultWorld.m_capacity.m_maxContactConstraints = maximumBodyCount * 16;
+            configuration.m_defaultWorld.m_simulation.m_allowSleeping = false;
+            if (useMatchedSolverPolicy)
+            {
+                configuration.m_defaultWorld.m_simulation.m_penetrationSlop = 0.001f;
+                configuration.m_defaultWorld.m_simulation.m_positionStepCount = 4;
+                configuration.m_defaultWorld.m_simulation.m_velocityStepCount = 2;
+                if (workerCount == 1)
+                {
+                    configuration.m_defaultWorld.m_simulation.m_useLargeIslandSplitter = false;
+                }
+            }
+            return configuration;
+        }
+
+        [[nodiscard]]
+        AZ::Vector3 ToVector3(
+            const WorldPosition& position)
+        {
+            return AZ::Vector3(
+                aznumeric_cast<float>(position.m_x),
+                aznumeric_cast<float>(position.m_y),
+                aznumeric_cast<float>(position.m_z));
+        }
+
+        [[nodiscard]]
+        ShapeHandle CreateBox(
+            System& system,
+            const WorldHandle worldHandle,
+            const AZ::Vector3& dimensions)
+        {
+            ShapeConfiguration configuration;
+            configuration.m_geometry = BoxShapeConfiguration{.m_dimensions = dimensions};
+            return system.CreateShape(worldHandle, configuration);
+        }
+
+        [[nodiscard]]
+        ShapeHandle CreateSphere(
+            System& system,
+            const WorldHandle worldHandle,
+            const float radius)
+        {
+            ShapeConfiguration configuration;
+            configuration.m_geometry = SphereShapeConfiguration{.m_radius = radius};
+            return system.CreateShape(worldHandle, configuration);
+        }
+
+        struct HairBenchmarkScenario final
+        {
+            HairDefinitionHandle m_definitionHandle;
+            HairHandle m_hairHandle;
+            HairDefinitionState m_definitionState;
+        };
+
+        [[nodiscard]]
+        bool CreateHairBenchmarkScenario(
+            System& system,
+            const WorldHandle worldHandle,
+            const AZ::u32 strandCount,
+            const AZ::u32 verticesPerStrand,
+            const AZ::u32 gridSize,
+            HairBenchmarkScenario& scenario)
+        {
+            HairDefinitionConfiguration definitionConfiguration;
+            definitionConfiguration.m_vertices.reserve(
+                static_cast<size_t>(strandCount) * verticesPerStrand);
+            definitionConfiguration.m_strands.reserve(strandCount);
+            constexpr AZ::u32 strandRowWidth = 32;
+            constexpr float strandSpacing = 0.01f;
+            constexpr float vertexSpacing = 0.01f;
+            for (AZ::u32 strandIndex = 0; strandIndex < strandCount; ++strandIndex)
+            {
+                const AZ::u32 beginVertex = aznumeric_cast<AZ::u32>(definitionConfiguration.m_vertices.size());
+                const float rootX = strandSpacing * aznumeric_cast<float>(strandIndex % strandRowWidth);
+                const float rootY = strandSpacing * aznumeric_cast<float>(strandIndex / strandRowWidth);
+                for (AZ::u32 vertexIndex = 0; vertexIndex < verticesPerStrand; ++vertexIndex)
+                {
+                    definitionConfiguration.m_vertices.push_back({
+                        .m_position = AZ::Vector3(
+                            rootX,
+                            rootY,
+                            1.0f - vertexSpacing * aznumeric_cast<float>(vertexIndex)),
+                        .m_inverseMass = 1.0f,
+                    });
+                }
+                definitionConfiguration.m_vertices[beginVertex].m_inverseMass = 0.0f;
+                definitionConfiguration.m_strands.push_back({
+                    .m_beginVertex = beginVertex,
+                    .m_endVertex = aznumeric_cast<AZ::u32>(definitionConfiguration.m_vertices.size()),
+                    .m_materialIndex = 0,
+                });
+            }
+            definitionConfiguration.m_materials.resize(1);
+            definitionConfiguration.m_materials[0].m_simulationStrandFraction = 1.0f;
+            definitionConfiguration.m_gridSizeX = gridSize;
+            definitionConfiguration.m_gridSizeY = gridSize;
+            definitionConfiguration.m_gridSizeZ = gridSize;
+
+            scenario.m_definitionHandle = system.CreateHairDefinition(definitionConfiguration);
+            if (!scenario.m_definitionHandle
+                || !system.GetHairDefinitionState(scenario.m_definitionHandle, scenario.m_definitionState))
+            {
+                return false;
+            }
+
+            HairConfiguration hairConfiguration;
+            hairConfiguration.m_definitionHandle = scenario.m_definitionHandle;
+            hairConfiguration.m_objectLayer = DefaultLayers::Moving;
+            scenario.m_hairHandle = system.CreateHair(worldHandle, hairConfiguration);
+            return static_cast<bool>(scenario.m_hairHandle);
+        }
+
+        [[nodiscard]]
+        BodyHandle CreateBody(
+            System& system,
+            const WorldHandle worldHandle,
+            const ShapeHandle shapeHandle,
+            const MotionType motionType,
+            const AZ::Vector3& position,
+            const float damping = 0.0f,
+            const bool useMatchedMaterial = false)
+        {
+            BodyConfiguration configuration;
+            configuration.m_shapeHandle = shapeHandle;
+            configuration.m_transform.m_position = {
+                .m_x = position.GetX(),
+                .m_y = position.GetY(),
+                .m_z = position.GetZ(),
+            };
+            configuration.m_motionType = motionType;
+            configuration.m_allowSleeping = false;
+            configuration.m_angularDamping = damping;
+            configuration.m_linearDamping = damping;
+            if (useMatchedMaterial)
+            {
+                configuration.m_friction = 0.0f;
+                configuration.m_restitution = 0.0f;
+            }
+            if (motionType == MotionType::Static)
+            {
+                configuration.m_activate = false;
+                configuration.m_objectLayer = DefaultLayers::NonMoving;
+            }
+            return system.CreateBody(worldHandle, configuration);
+        }
+
+        void AddWorldCounters(
+            benchmark::State& state,
+            System& system,
+            const WorldHandle worldHandle)
+        {
+            WorldStatistics statistics;
+            if (!system.GetWorldStatistics(worldHandle, statistics))
+            {
+                return;
+            }
+
+            state.counters["ActiveDynamicBodies"] = statistics.m_activeDynamicBodyCount;
+            state.counters["Bodies"] = statistics.m_bodyCount;
+            state.counters["Constraints"] = statistics.m_constraintCount;
+            state.counters["Jobs"] = statistics.m_lastUpdateJobCount;
+            state.counters["MaximumTasks"] = statistics.m_lastUpdateMaximumTaskCount;
+            state.counters["ShapeBytes"] = aznumeric_cast<double>(statistics.m_shapeBytes);
+            state.counters["Tasks"] = statistics.m_lastUpdateTaskCount;
+            state.counters["TempAllocatorBytes"] = aznumeric_cast<double>(statistics.m_tempAllocatorUsageBytes);
+            state.counters["UpdateNs"] = aznumeric_cast<double>(statistics.m_lastUpdateNanoseconds);
+        }
+
+        [[nodiscard]]
+        bool CreateQueryGrid(
+            System& system,
+            const WorldHandle worldHandle,
+            const AZ::u32 obstacleCount)
+        {
+            const ShapeHandle obstacleShape = CreateBox(
+                system,
+                worldHandle,
+                AZ::Vector3::CreateOne());
+            if (!obstacleShape)
+            {
+                return false;
+            }
+
+            constexpr AZ::u32 rowWidth = 32;
+            for (AZ::u32 obstacleIndex = 0; obstacleIndex < obstacleCount; ++obstacleIndex)
+            {
+                const AZ::Vector3 position(
+                    2.0f * aznumeric_cast<float>(obstacleIndex % rowWidth),
+                    2.0f * aznumeric_cast<float>(obstacleIndex / rowWidth),
+                    -0.5f);
+                if (!CreateBody(
+                    system,
+                    worldHandle,
+                    obstacleShape,
+                    MotionType::Static,
+                    position))
+                {
+                    return false;
+                }
+            }
+
+            return system.OptimizeBroadPhase(worldHandle);
+        }
+
+        [[nodiscard]]
+        bool CreateBodiesForDestruction(
+            System& system,
+            const WorldHandle worldHandle,
+            const ShapeHandle shapeHandle,
+            const AZ::u32 bodyCount,
+            AZStd::vector<BodyHandle>& bodyHandles)
+        {
+            bodyHandles.clear();
+            BodyConfiguration configuration;
+            configuration.m_shapeHandle = shapeHandle;
+            for (AZ::u32 bodyIndex = 0; bodyIndex < bodyCount; ++bodyIndex)
+            {
+                configuration.m_transform.m_position.m_z = bodyIndex;
+                const BodyHandle bodyHandle = system.CreateBody(worldHandle, configuration);
+                if (!bodyHandle)
+                {
+                    return false;
+                }
+                bodyHandles.push_back(bodyHandle);
+            }
+            return true;
+        }
+
+        [[nodiscard]]
+        bool CreateConstraintsForMembership(
+            System& system,
+            const WorldHandle worldHandle,
+            const ShapeHandle shapeHandle,
+            const AZ::u32 constraintCount,
+            AZStd::vector<ConstraintHandle>& constraintHandles)
+        {
+            const BodyHandle firstBodyHandle = CreateBody(
+                system,
+                worldHandle,
+                shapeHandle,
+                MotionType::Dynamic,
+                AZ::Vector3::CreateZero());
+            if (!firstBodyHandle)
+            {
+                return false;
+            }
+
+            constraintHandles.clear();
+            constraintHandles.reserve(constraintCount);
+            ConstraintConfiguration configuration;
+            configuration.m_firstBodyHandle = firstBodyHandle;
+            configuration.m_geometry = PointConstraintConfiguration{};
+            configuration.m_startInSimulation = false;
+            for (AZ::u32 constraintIndex = 0; constraintIndex < constraintCount; ++constraintIndex)
+            {
+                configuration.m_secondBodyHandle = CreateBody(
+                    system,
+                    worldHandle,
+                    shapeHandle,
+                    MotionType::Dynamic,
+                    AZ::Vector3(0.0f, 0.0f, aznumeric_cast<float>(constraintIndex + 1)));
+                if (!configuration.m_secondBodyHandle)
+                {
+                    return false;
+                }
+
+                const ConstraintHandle constraintHandle =
+                    system.CreateConstraint(worldHandle, configuration);
+                if (!constraintHandle)
+                {
+                    return false;
+                }
+                constraintHandles.push_back(constraintHandle);
+            }
+            return true;
+        }
+
+        bool CreateBodiesForConstraintDestruction(
+            System& system,
+            const WorldHandle worldHandle,
+            const ShapeHandle shapeHandle,
+            const AZ::u32 constraintCount,
+            AZStd::vector<BodyHandle>& bodyHandles)
+        {
+            bodyHandles.clear();
+            bodyHandles.reserve(constraintCount + 1);
+            for (AZ::u32 bodyIndex = 0; bodyIndex <= constraintCount; ++bodyIndex)
+            {
+                const BodyHandle bodyHandle = CreateBody(
+                    system,
+                    worldHandle,
+                    shapeHandle,
+                    MotionType::Dynamic,
+                    AZ::Vector3(0.0f, 0.0f, aznumeric_cast<float>(bodyIndex)));
+                if (!bodyHandle)
+                {
+                    return false;
+                }
+                bodyHandles.push_back(bodyHandle);
+            }
+            return true;
+        }
+
+        bool CreateConstraintsForDestruction(
+            System& system,
+            const WorldHandle worldHandle,
+            const AZStd::span<const BodyHandle> bodyHandles,
+            AZStd::vector<ConstraintHandle>& constraintHandles)
+        {
+            if (bodyHandles.size() < 2)
+            {
+                return false;
+            }
+
+            constraintHandles.clear();
+            constraintHandles.reserve(bodyHandles.size() - 1);
+            ConstraintConfiguration configuration;
+            configuration.m_firstBodyHandle = bodyHandles.front();
+            configuration.m_geometry = PointConstraintConfiguration{};
+            for (const BodyHandle bodyHandle : bodyHandles.subspan(1))
+            {
+                configuration.m_secondBodyHandle = bodyHandle;
+                const ConstraintHandle constraintHandle =
+                    system.CreateConstraint(worldHandle, configuration);
+                if (!constraintHandle)
+                {
+                    return false;
+                }
+                constraintHandles.push_back(constraintHandle);
+            }
+            return true;
+        }
+
+        [[nodiscard]]
+        SoftBodyDefinitionConfiguration CreateSoftBodyBenchmarkDefinition(
+            const AZ::u32 gridSize)
+        {
+            SoftBodyDefinitionConfiguration configuration;
+            const size_t vertexCount = static_cast<size_t>(gridSize) * gridSize;
+            configuration.m_vertices.reserve(vertexCount);
+            configuration.m_faces.reserve(static_cast<size_t>(gridSize - 1) * (gridSize - 1) * 2);
+            configuration.m_edgeConstraints.reserve(static_cast<size_t>(gridSize - 1) * gridSize * 2);
+            for (AZ::u32 row = 0; row < gridSize; ++row)
+            {
+                for (AZ::u32 column = 0; column < gridSize; ++column)
+                {
+                    configuration.m_vertices.push_back({
+                        .m_position = AZ::Vector3(
+                            aznumeric_cast<float>(column) * 0.1f,
+                            aznumeric_cast<float>(row) * 0.1f,
+                            0.0f),
+                    });
+                    const AZ::u32 vertexIndex = row * gridSize + column;
+                    if (column > 0)
+                    {
+                        configuration.m_edgeConstraints.push_back({
+                            .m_firstVertex = vertexIndex - 1,
+                            .m_secondVertex = vertexIndex,
+                        });
+                    }
+                    if (row > 0)
+                    {
+                        configuration.m_edgeConstraints.push_back({
+                            .m_firstVertex = vertexIndex - gridSize,
+                            .m_secondVertex = vertexIndex,
+                        });
+                    }
+                    if (row == 0 || column == 0)
+                    {
+                        continue;
+                    }
+
+                    const AZ::u32 lowerRight = vertexIndex;
+                    const AZ::u32 lowerLeft = vertexIndex - 1;
+                    const AZ::u32 upperRight = vertexIndex - gridSize;
+                    const AZ::u32 upperLeft = upperRight - 1;
+                    configuration.m_faces.push_back({
+                        .m_firstVertex = upperLeft,
+                        .m_secondVertex = lowerLeft,
+                        .m_thirdVertex = lowerRight,
+                    });
+                    configuration.m_faces.push_back({
+                        .m_firstVertex = upperLeft,
+                        .m_secondVertex = lowerRight,
+                        .m_thirdVertex = upperRight,
+                    });
+                }
+            }
+            return configuration;
+        }
+
+        struct RagdollBenchmarkScenario final
+        {
+            SkeletonDefinitionHandle m_skeletonHandle;
+            ShapeHandle m_shapeHandle;
+            RagdollDefinitionHandle m_definitionHandle;
+            RagdollConfiguration m_configuration;
+            RagdollHandle m_ragdollHandle;
+        };
+
+        bool CreateRagdollBenchmarkScenario(
+            System& system,
+            const WorldHandle worldHandle,
+            const AZ::u32 partCount,
+            RagdollBenchmarkScenario& scenario)
+        {
+            SkeletonDefinitionConfiguration skeletonConfiguration;
+            skeletonConfiguration.m_joints.reserve(partCount);
+            for (AZ::u32 partIndex = 0; partIndex < partCount; ++partIndex)
+            {
+                AZ::s32 parentIndex = -1;
+                if (partIndex > 0)
+                {
+                    parentIndex = aznumeric_cast<AZ::s32>(partIndex - 1);
+                }
+                skeletonConfiguration.m_joints.push_back({
+                    .m_name = AZ::Name(AZStd::string::format("part_%u", partIndex)),
+                    .m_parentIndex = parentIndex,
+                });
+            }
+            scenario.m_skeletonHandle = system.CreateSkeletonDefinition(skeletonConfiguration);
+
+            scenario.m_shapeHandle = CreateSphere(system, worldHandle, 0.25f);
+            if (!scenario.m_skeletonHandle || !scenario.m_shapeHandle)
+            {
+                return false;
+            }
+
+            RagdollDefinitionConfiguration definitionConfiguration;
+            definitionConfiguration.m_skeletonHandle = scenario.m_skeletonHandle;
+            definitionConfiguration.m_parts.resize(partCount);
+            for (AZ::u32 partIndex = 0; partIndex < partCount; ++partIndex)
+            {
+                RagdollPartConfiguration& part = definitionConfiguration.m_parts[partIndex];
+                part.m_body.m_shapeHandle = scenario.m_shapeHandle;
+                part.m_body.m_transform.m_position.m_z = aznumeric_cast<double>(partIndex) * 0.5;
+                if (partIndex > 0)
+                {
+                    HingeConstraintConfiguration hinge;
+                    hinge.m_firstPoint.m_z = 0.25;
+                    hinge.m_secondPoint.m_z = -0.25;
+                    part.m_toParent = hinge;
+                }
+            }
+            scenario.m_definitionHandle = system.CreateRagdollDefinition(
+                worldHandle,
+                definitionConfiguration);
+            if (!scenario.m_definitionHandle)
+            {
+                return false;
+            }
+
+            scenario.m_configuration.m_definitionHandle = scenario.m_definitionHandle;
+            scenario.m_configuration.m_name = AZ::Name::FromStringLiteral("benchmark_ragdoll", nullptr);
+            scenario.m_ragdollHandle = system.CreateRagdoll(worldHandle, scenario.m_configuration);
+            if (!scenario.m_ragdollHandle)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        void DestroyRagdollBenchmarkScenario(
+            System& system,
+            const WorldHandle worldHandle,
+            RagdollBenchmarkScenario& scenario)
+        {
+            if (scenario.m_ragdollHandle)
+            {
+                [[maybe_unused]] const bool destroyed =
+                    system.DestroyRagdoll(worldHandle, scenario.m_ragdollHandle);
+            }
+            if (scenario.m_definitionHandle)
+            {
+                [[maybe_unused]] const bool destroyed =
+                    system.DestroyRagdollDefinition(worldHandle, scenario.m_definitionHandle);
+            }
+            if (scenario.m_shapeHandle)
+            {
+                [[maybe_unused]] const bool destroyed =
+                    system.DestroyShape(worldHandle, scenario.m_shapeHandle);
+            }
+            if (scenario.m_skeletonHandle)
+            {
+                [[maybe_unused]] const bool destroyed =
+                    system.DestroySkeletonDefinition(scenario.m_skeletonHandle);
+            }
+            scenario = {};
+        }
+    } // namespace
+
+    void StepFallingBoxesImpl(
+        benchmark::State& state,
+        const bool useMatchedSolverPolicy)
+    {
+        const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(
+                workerCount,
+                bodyCount + 1,
+                useMatchedSolverPolicy),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+        const ShapeHandle floorShape = CreateBox(
+            system,
+            worldHandle,
+            AZ::Vector3(128.0f, 128.0f, 1.0f));
+        const BodyHandle floorBody = CreateBody(
+            system,
+            worldHandle,
+            floorShape,
+            MotionType::Static,
+            AZ::Vector3(0.0f, 0.0f, -0.5f));
+        const ShapeHandle bodyShape = CreateBox(
+            system,
+            worldHandle,
+            AZ::Vector3::CreateOne());
+        if (!system || !worldHandle || !floorShape || !floorBody || !bodyShape)
+        {
+            state.SkipWithError("Failed to create the Jolt box benchmark world.");
+            return;
+        }
+
+        AZ::u32 rowWidth = 16;
+        if (bodyCount > rowWidth * rowWidth)
+        {
+            rowWidth = 32;
+        }
+        AZStd::vector<BodyHandle> bodies;
+        bodies.reserve(bodyCount);
+        for (AZ::u32 bodyIndex = 0; bodyIndex < bodyCount; ++bodyIndex)
+        {
+            const AZ::u32 layerIndex = bodyIndex / (rowWidth * rowWidth);
+            const AZ::u32 rowIndex = (bodyIndex / rowWidth) % rowWidth;
+            const AZ::u32 columnIndex = bodyIndex % rowWidth;
+            const AZ::Vector3 position(
+                MatchedGridSpacing
+                    * (aznumeric_cast<float>(columnIndex) - 0.5f * aznumeric_cast<float>(rowWidth)),
+                MatchedGridSpacing
+                    * (aznumeric_cast<float>(rowIndex) - 0.5f * aznumeric_cast<float>(rowWidth)),
+                0.6f + aznumeric_cast<float>(layerIndex) * MatchedGridSpacing);
+            const BodyHandle bodyHandle = CreateBody(
+                system,
+                worldHandle,
+                bodyShape,
+                MotionType::Dynamic,
+                position,
+                1.0f,
+                true);
+            if (!bodyHandle)
+            {
+                state.SkipWithError("Failed to create a Jolt benchmark body.");
+                return;
+            }
+            bodies.push_back(bodyHandle);
+        }
+
+        constexpr float maximumAllowedDisplacement = 0.02f;
+        for (AZ::u32 warmupTick = 0; warmupTick < WarmupFrameCount; ++warmupTick)
+        {
+            if (!system.StepWorld(worldHandle, MatchedTimeStep))
+            {
+                state.SkipWithError("Failed to warm the Jolt benchmark world.");
+                return;
+            }
+        }
+
+        AZStd::vector<AZ::Vector3> positions;
+        positions.reserve(bodies.size());
+        bool qualityValid = true;
+        for (const BodyHandle bodyHandle : bodies)
+        {
+            BodyState bodyState;
+            qualityValid = system.GetBodyState(worldHandle, bodyHandle, bodyState)
+                && qualityValid;
+            positions.push_back(ToVector3(bodyState.m_transform.m_position));
+        }
+
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            benchmark::DoNotOptimize(system.StepWorld(worldHandle, MatchedTimeStep));
+        }
+
+        float maximumDisplacement = 0.0f;
+        float maximumHorizontalDisplacement = 0.0f;
+        float maximumVerticalDisplacement = 0.0f;
+        float minimumHeight = AZStd::numeric_limits<float>::max();
+        for (size_t bodyIndex = 0; bodyIndex < bodies.size(); ++bodyIndex)
+        {
+            BodyState bodyState;
+            qualityValid = system.GetBodyState(worldHandle, bodies[bodyIndex], bodyState)
+                && qualityValid;
+            const AZ::Vector3 position = ToVector3(bodyState.m_transform.m_position);
+            qualityValid = position.IsFinite() && qualityValid;
+            const AZ::Vector3 displacement = position - positions[bodyIndex];
+            minimumHeight = AZStd::min(minimumHeight, position.GetZ());
+            maximumDisplacement = AZStd::max(
+                maximumDisplacement,
+                displacement.GetLength());
+            maximumHorizontalDisplacement = AZStd::max(
+                maximumHorizontalDisplacement,
+                AZ::Vector2(displacement.GetX(), displacement.GetY()).GetLength());
+            maximumVerticalDisplacement = AZStd::max(
+                maximumVerticalDisplacement,
+                std::abs(displacement.GetZ()));
+        }
+        qualityValid = minimumHeight >= 0.45f
+            && maximumDisplacement <= maximumAllowedDisplacement
+            && qualityValid;
+
+        AddWorldCounters(state, system, worldHandle);
+        jobContext.AddCounters(state);
+        state.counters["Ccd"] = 0;
+        state.counters["DynamicBodies"] = bodyCount;
+        state.counters["Friction"] = 0;
+        state.counters["AngularDamping"] = 1;
+        state.counters["LargeIslandSplitter"] = 1;
+        state.counters["Layers"] = (bodyCount - 1) / (rowWidth * rowWidth) + 1;
+        state.counters["LinearDamping"] = 1;
+        state.counters["MaximumDisplacement"] = maximumDisplacement;
+        state.counters["MaximumHorizontalDisplacement"] = maximumHorizontalDisplacement;
+        state.counters["MaximumVerticalDisplacement"] = maximumVerticalDisplacement;
+        state.counters["MinimumHeight"] = minimumHeight;
+        state.counters["Notifications"] = 0;
+        state.counters["PenetrationSlopMillimeters"] = 20;
+        state.counters["PositionSteps"] = 2;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Sleep"] = 0;
+        state.counters["GridSpacingMillimeters"] = 1100;
+        state.counters["RowWidth"] = rowWidth;
+        state.counters["Restitution"] = 0;
+        state.counters["ValidationFrames"] = ValidationFrameCount;
+        state.counters["VelocitySteps"] = 10;
+        if (useMatchedSolverPolicy)
+        {
+            if (workerCount == 1)
+            {
+                state.counters["LargeIslandSplitter"] = 0;
+            }
+            state.counters["PenetrationSlopMillimeters"] = 1;
+            state.counters["PositionSteps"] = 4;
+            state.counters["VelocitySteps"] = 2;
+        }
+        state.counters["WarmupCompleted"] = 1;
+        state.counters["WarmupTicks"] = WarmupFrameCount;
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * bodyCount);
+    }
+
+    void StepFallingBoxes(
+        benchmark::State& state)
+    {
+        StepFallingBoxesImpl(state, true);
+    }
+
+    void StepFallingBoxesDefaultQuality(
+        benchmark::State& state)
+    {
+        StepFallingBoxesImpl(state, false);
+    }
+
+    void StepAutomaticWorlds(
+        benchmark::State& state)
+    {
+        const AZ::u32 worldCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 bodiesPerWorld = aznumeric_cast<AZ::u32>(state.range(1));
+        const AZ::u32 workersPerWorld = aznumeric_cast<AZ::u32>(state.range(2));
+        JobContextScope jobContext(AZStd::max(worldCount, workersPerWorld));
+
+        SystemConfiguration systemConfiguration = CreateSystemConfiguration(
+            workersPerWorld,
+            bodiesPerWorld + 1);
+        systemConfiguration.m_createDefaultWorld = false;
+        systemConfiguration.m_defaultWorld.m_autoSimulate = true;
+        System system(systemConfiguration, &jobContext.Get());
+        if (!system)
+        {
+            state.SkipWithError("Failed to create the Jolt multi-world benchmark system.");
+            return;
+        }
+
+        AZStd::vector<WorldHandle> worldHandles;
+        worldHandles.reserve(worldCount);
+        for (AZ::u32 worldIndex = 0; worldIndex < worldCount; ++worldIndex)
+        {
+            const WorldHandle worldHandle = system.CreateWorld(systemConfiguration.m_defaultWorld);
+            const ShapeHandle floorShape = CreateBox(
+                system,
+                worldHandle,
+                AZ::Vector3(64.0f, 64.0f, 1.0f));
+            const BodyHandle floorBody = CreateBody(
+                system,
+                worldHandle,
+                floorShape,
+                MotionType::Static,
+                AZ::Vector3(0.0f, 0.0f, -0.5f));
+            const ShapeHandle bodyShape = CreateBox(
+                system,
+                worldHandle,
+                AZ::Vector3::CreateOne());
+            if (!worldHandle || !floorShape || !floorBody || !bodyShape)
+            {
+                state.SkipWithError("Failed to create a Jolt multi-world benchmark world.");
+                return;
+            }
+
+            constexpr AZ::u32 rowWidth = 16;
+            for (AZ::u32 bodyIndex = 0; bodyIndex < bodiesPerWorld; ++bodyIndex)
+            {
+                const AZ::u32 layerIndex = bodyIndex / (rowWidth * rowWidth);
+                const AZ::u32 rowIndex = (bodyIndex / rowWidth) % rowWidth;
+                const AZ::u32 columnIndex = bodyIndex % rowWidth;
+                const AZ::Vector3 position(
+                    MatchedGridSpacing
+                        * (aznumeric_cast<float>(columnIndex) - 0.5f * rowWidth),
+                    MatchedGridSpacing
+                        * (aznumeric_cast<float>(rowIndex) - 0.5f * rowWidth),
+                    0.6f + aznumeric_cast<float>(layerIndex) * MatchedGridSpacing);
+                if (!CreateBody(
+                    system,
+                    worldHandle,
+                    bodyShape,
+                    MotionType::Dynamic,
+                    position))
+                {
+                    state.SkipWithError("Failed to create a Jolt multi-world benchmark body.");
+                    return;
+                }
+            }
+            worldHandles.push_back(worldHandle);
+        }
+
+        constexpr AZ::u32 warmupFrameCount = 120;
+        for (AZ::u32 frameIndex = 0; frameIndex < warmupFrameCount; ++frameIndex)
+        {
+            if (!system.StepAutoSimulatedWorlds(MatchedTimeStep))
+            {
+                state.SkipWithError("Failed to warm the Jolt multi-world benchmark.");
+                return;
+            }
+        }
+
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            qualityValid = system.StepAutoSimulatedWorlds(MatchedTimeStep)
+                && qualityValid;
+            benchmark::DoNotOptimize(qualityValid);
+        }
+
+        jobContext.AddCounters(state);
+        state.counters["BodiesPerWorld"] = bodiesPerWorld;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["TotalBodies"] = bodiesPerWorld * worldCount;
+        state.counters["WorkersPerWorld"] = workersPerWorld;
+        state.counters["Worlds"] = worldCount;
+        state.SetItemsProcessed(state.iterations() * bodiesPerWorld * worldCount);
+    }
+
+    void CreateDestroyBodies(
+        benchmark::State& state)
+    {
+        const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, bodyCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        if (!system || !worldHandle)
+        {
+            state.SkipWithError("Failed to create the Jolt lifecycle benchmark world.");
+            return;
+        }
+
+        AZStd::vector<BodyHandle> bodies;
+        bodies.reserve(bodyCount);
+        AZStd::vector<ShapeHandle> shapes;
+        shapes.reserve(bodyCount);
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            for (AZ::u32 bodyIndex = 0; bodyIndex < bodyCount; ++bodyIndex)
+            {
+                const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
+                const BodyHandle bodyHandle = CreateBody(
+                    system,
+                    worldHandle,
+                    shapeHandle,
+                    MotionType::Dynamic,
+                    AZ::Vector3(0.0f, 0.0f, aznumeric_cast<float>(bodyIndex)));
+                if (!shapeHandle || !bodyHandle)
+                {
+                    state.SkipWithError("Failed to create a Jolt lifecycle benchmark body.");
+                    return;
+                }
+                benchmark::DoNotOptimize(bodyHandle);
+                bodies.push_back(bodyHandle);
+                shapes.push_back(shapeHandle);
+            }
+            for (size_t bodyIndex = 0; bodyIndex < bodies.size(); ++bodyIndex)
+            {
+                const bool bodyDestroyed = system.DestroyBody(worldHandle, bodies[bodyIndex]);
+                const bool shapeDestroyed = system.DestroyShape(worldHandle, shapes[bodyIndex]);
+                benchmark::DoNotOptimize(bodyDestroyed);
+                benchmark::DoNotOptimize(shapeDestroyed);
+                if (!bodyDestroyed || !shapeDestroyed)
+                {
+                    state.SkipWithError("Failed to destroy a Jolt lifecycle benchmark body.");
+                    return;
+                }
+            }
+            bodies.clear();
+            shapes.clear();
+        }
+
+        state.counters["DynamicBodies"] = bodyCount;
+        jobContext.AddCounters(state);
+        state.counters["Notifications"] = 0;
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * bodyCount);
+    }
+
+    void ChangeRagdollMembership(
+        benchmark::State& state)
+    {
+        NameDictionaryScope nameDictionary;
+        const AZ::u32 partCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, partCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        RagdollBenchmarkScenario scenario;
+        if (!system
+            || !worldHandle
+            || !CreateRagdollBenchmarkScenario(system, worldHandle, partCount, scenario)
+            || !system.RemoveRagdollFromSimulation(worldHandle, scenario.m_ragdollHandle)
+            || !system.AddRagdollToSimulation(worldHandle, scenario.m_ragdollHandle, true))
+        {
+            state.SkipWithError("Failed to prepare the Jolt ragdoll membership benchmark.");
+            return;
+        }
+
+        bool changedMembership = false;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            changedMembership = system.RemoveRagdollFromSimulation(worldHandle, scenario.m_ragdollHandle)
+                && system.AddRagdollToSimulation(worldHandle, scenario.m_ragdollHandle, true);
+            benchmark::DoNotOptimize(changedMembership);
+            if (!changedMembership)
+            {
+                state.SkipWithError("Failed to change Jolt ragdoll simulation membership.");
+                break;
+            }
+        }
+
+        DestroyRagdollBenchmarkScenario(system, worldHandle, scenario);
+        jobContext.AddCounters(state);
+        state.counters["Parts"] = partCount;
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * partCount * 2);
+    }
+
+    void RecreateRagdoll(
+        benchmark::State& state)
+    {
+        NameDictionaryScope nameDictionary;
+        const AZ::u32 partCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, partCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        RagdollBenchmarkScenario scenario;
+        if (!system
+            || !worldHandle
+            || !CreateRagdollBenchmarkScenario(system, worldHandle, partCount, scenario)
+            || !system.DestroyRagdoll(worldHandle, scenario.m_ragdollHandle))
+        {
+            state.SkipWithError("Failed to prepare the Jolt ragdoll recreation benchmark.");
+            return;
+        }
+        scenario.m_ragdollHandle = {};
+
+        bool recreated = false;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            scenario.m_ragdollHandle = system.CreateRagdoll(worldHandle, scenario.m_configuration);
+            recreated = scenario.m_ragdollHandle
+                && system.DestroyRagdoll(worldHandle, scenario.m_ragdollHandle);
+            benchmark::DoNotOptimize(recreated);
+            scenario.m_ragdollHandle = {};
+            if (!recreated)
+            {
+                state.SkipWithError("Failed to recreate a Jolt ragdoll.");
+                break;
+            }
+        }
+
+        DestroyRagdollBenchmarkScenario(system, worldHandle, scenario);
+        jobContext.AddCounters(state);
+        state.counters["Parts"] = partCount;
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * partCount * 2);
+    }
+
+    void CreateSoftBodyDefinition(
+        benchmark::State& state)
+    {
+        const AZ::u32 gridSize = aznumeric_cast<AZ::u32>(state.range(0));
+        SystemConfiguration systemConfiguration;
+        systemConfiguration.m_createDefaultWorld = false;
+        System system(systemConfiguration, nullptr);
+        const SoftBodyDefinitionConfiguration configuration =
+            CreateSoftBodyBenchmarkDefinition(gridSize);
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            const SoftBodyDefinitionHandle definitionHandle =
+                system.CreateSoftBodyDefinition(configuration);
+            benchmark::DoNotOptimize(definitionHandle);
+            if (!definitionHandle || !system.DestroySoftBodyDefinition(definitionHandle))
+            {
+                state.SkipWithError("Failed to create or destroy a soft body definition.");
+                return;
+            }
+        }
+
+        state.counters["Edges"] = aznumeric_cast<double>(configuration.m_edgeConstraints.size());
+        state.counters["Faces"] = aznumeric_cast<double>(configuration.m_faces.size());
+        state.counters["Vertices"] = aznumeric_cast<double>(configuration.m_vertices.size());
+        state.SetItemsProcessed(state.iterations() * configuration.m_vertices.size());
+    }
+
+    void ImportSoftBodyDefinition(
+        benchmark::State& state)
+    {
+        const AZ::u32 gridSize = aznumeric_cast<AZ::u32>(state.range(0));
+        SystemConfiguration systemConfiguration;
+        systemConfiguration.m_createDefaultWorld = false;
+        System system(systemConfiguration, nullptr);
+        const SoftBodyDefinitionConfiguration configuration =
+            CreateSoftBodyBenchmarkDefinition(gridSize);
+        const SoftBodyDefinitionHandle sourceHandle = system.CreateSoftBodyDefinition(configuration);
+        SoftBodyDefinitionArchive archive;
+        AZStd::vector<MaterialHandle> materialHandles;
+        if (!sourceHandle
+            || !system.ExportSoftBodyDefinition(sourceHandle, archive, materialHandles)
+            || !system.DestroySoftBodyDefinition(sourceHandle))
+        {
+            state.SkipWithError("Failed to prepare a cooked soft body definition.");
+            return;
+        }
+
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            const SoftBodyDefinitionHandle definitionHandle =
+                system.ImportSoftBodyDefinition(archive, materialHandles);
+            benchmark::DoNotOptimize(definitionHandle);
+            if (!definitionHandle || !system.DestroySoftBodyDefinition(definitionHandle))
+            {
+                state.SkipWithError("Failed to import or destroy a soft body definition.");
+                return;
+            }
+        }
+
+        state.counters["ArchiveBytes"] = aznumeric_cast<double>(archive.m_binaryState.size());
+        state.counters["Edges"] = aznumeric_cast<double>(configuration.m_edgeConstraints.size());
+        state.counters["Faces"] = aznumeric_cast<double>(configuration.m_faces.size());
+        state.counters["Vertices"] = aznumeric_cast<double>(configuration.m_vertices.size());
+        state.SetBytesProcessed(state.iterations() * archive.m_binaryState.size());
+        state.SetItemsProcessed(state.iterations() * configuration.m_vertices.size());
+    }
+
+    void BenchmarkFilteredRollbackState(
+        benchmark::State& state)
+    {
+        const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const bool restoreState = state.range(1) != 0;
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, bodyCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
+        if (!system || !worldHandle || !shapeHandle)
+        {
+            state.SkipWithError("Failed to create the rollback recapture benchmark world.");
+            return;
+        }
+
+        AZStd::vector<BodyHandle> bodyHandles;
+        bodyHandles.reserve(bodyCount);
+        for (AZ::u32 bodyIndex = 0; bodyIndex < bodyCount; ++bodyIndex)
+        {
+            const BodyHandle bodyHandle = CreateBody(
+                system,
+                worldHandle,
+                shapeHandle,
+                MotionType::Dynamic,
+                AZ::Vector3(aznumeric_cast<float>(bodyIndex) * 2.0f, 0.0f, 0.0f));
+            if (!bodyHandle)
+            {
+                state.SkipWithError("Failed to create a rollback recapture benchmark body.");
+                return;
+            }
+            bodyHandles.push_back(bodyHandle);
+        }
+
+        ConstraintConfiguration constraintConfiguration;
+        constraintConfiguration.m_geometry = PointConstraintConfiguration{};
+        for (size_t bodyIndex = 1; bodyIndex < bodyHandles.size(); ++bodyIndex)
+        {
+            constraintConfiguration.m_firstBodyHandle = bodyHandles[bodyIndex - 1];
+            constraintConfiguration.m_secondBodyHandle = bodyHandles[bodyIndex];
+            if (!system.CreateConstraint(worldHandle, constraintConfiguration))
+            {
+                state.SkipWithError("Failed to create a rollback recapture benchmark constraint.");
+                return;
+            }
+        }
+
+        StateSnapshotConfiguration snapshotConfiguration{
+            .m_flags = StateSnapshotFlags::Bodies | StateSnapshotFlags::Constraints,
+            .m_filterBodies = true,
+        };
+        if (state.range(1) == 2)
+        {
+            snapshotConfiguration.m_restoreSafety = RestoreSafety::Validated;
+        }
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(
+            worldHandle,
+            snapshotConfiguration,
+            bodyHandles);
+        if (!snapshotHandle
+            || !system.CaptureWorldState(
+                worldHandle,
+                snapshotHandle,
+                snapshotConfiguration,
+                bodyHandles)
+            || !system.CaptureWorldState(
+                worldHandle,
+                snapshotHandle,
+                snapshotConfiguration,
+                bodyHandles))
+        {
+            state.SkipWithError("Failed to warm the rollback recapture benchmark.");
+            return;
+        }
+
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            if (restoreState)
+            {
+                qualityValid = system.RestoreWorldState(
+                    worldHandle,
+                    snapshotHandle)
+                    && qualityValid;
+            }
+            else
+            {
+                qualityValid = system.CaptureWorldState(
+                    worldHandle,
+                    snapshotHandle,
+                    snapshotConfiguration,
+                    bodyHandles)
+                    && qualityValid;
+            }
+            benchmark::DoNotOptimize(qualityValid);
+        }
+
+        state.counters["Bodies"] = bodyCount;
+        state.counters["Constraints"] = bodyCount - 1;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * (bodyCount * 2 - 1));
+    }
+
+    void CreateDestroyCookedCompounds(
+        benchmark::State& state)
+    {
+        const AZ::u32 compoundCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, 1),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        if (!system || !worldHandle)
+        {
+            state.SkipWithError("Failed to create the Jolt cooked compound lifecycle benchmark world.");
+            return;
+        }
+
+        ShapeConfiguration boxConfiguration;
+        boxConfiguration.m_geometry = BoxShapeConfiguration{};
+        const CookedShapeHandle boxHandle = system.CookShape(boxConfiguration);
+
+        CookedDecoratedShapeConfiguration scaledConfiguration;
+        scaledConfiguration.m_geometry = CookedScaledShapeConfiguration{
+            .m_shapeHandle = boxHandle,
+            .m_scale = AZ::Vector3(2.0f, 1.0f, 0.5f),
+        };
+        const CookedShapeHandle scaledHandle = system.CookShape(scaledConfiguration);
+
+        CookedCompoundShapeConfiguration compoundConfiguration;
+        compoundConfiguration.m_children = {
+            {
+                .m_position = -AZ::Vector3::CreateAxisX(2.0f),
+                .m_shapeHandle = scaledHandle,
+            },
+            {
+                .m_position = AZ::Vector3::CreateAxisX(2.0f),
+                .m_shapeHandle = boxHandle,
+            },
+            {
+                .m_position = AZ::Vector3::CreateAxisY(2.0f),
+                .m_shapeHandle = boxHandle,
+            },
+        };
+        const CookedShapeHandle compoundHandle = system.CookShape(compoundConfiguration);
+        if (!boxHandle || !scaledHandle || !compoundHandle)
+        {
+            state.SkipWithError("Failed to cook the Jolt compound lifecycle benchmark shapes.");
+            return;
+        }
+
+        AZStd::vector<ShapeHandle> compounds;
+        compounds.reserve(compoundCount);
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            for (AZ::u32 compoundIndex = 0; compoundIndex < compoundCount; ++compoundIndex)
+            {
+                const ShapeHandle shapeHandle = system.CreateShape(worldHandle, compoundHandle);
+                if (!shapeHandle)
+                {
+                    state.SkipWithError("Failed to instantiate a Jolt cooked compound benchmark shape.");
+                    return;
+                }
+                benchmark::DoNotOptimize(shapeHandle);
+                compounds.push_back(shapeHandle);
+            }
+
+            for (const ShapeHandle shapeHandle : compounds)
+            {
+                const bool destroyed = system.DestroyShape(worldHandle, shapeHandle);
+                benchmark::DoNotOptimize(destroyed);
+                if (!destroyed)
+                {
+                    state.SkipWithError("Failed to destroy a Jolt cooked compound benchmark shape.");
+                    return;
+                }
+            }
+            compounds.clear();
+        }
+
+        if (!system.DestroyCookedShape(compoundHandle)
+            || !system.DestroyCookedShape(scaledHandle)
+            || !system.DestroyCookedShape(boxHandle))
+        {
+            state.SkipWithError("Failed to release the Jolt cooked compound benchmark shapes.");
+            return;
+        }
+
+        state.counters["ChildPlacements"] = 3;
+        state.counters["Compounds"] = compoundCount;
+        state.counters["UniqueChildren"] = 2;
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * compoundCount);
+    }
+
+    void ChangeBodyMembershipIndividually(
+        benchmark::State& state)
+    {
+        const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, bodyCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
+        if (!system || !worldHandle || !shapeHandle)
+        {
+            state.SkipWithError("Failed to create the individual-membership benchmark world.");
+            return;
+        }
+
+        AZStd::vector<BodyHandle> bodyHandles;
+        bodyHandles.reserve(bodyCount);
+        BodyConfiguration configuration;
+        configuration.m_shapeHandle = shapeHandle;
+        configuration.m_startInSimulation = false;
+        for (AZ::u32 bodyIndex = 0; bodyIndex < bodyCount; ++bodyIndex)
+        {
+            configuration.m_transform.m_position.m_z = bodyIndex;
+            const BodyHandle bodyHandle = system.CreateBody(worldHandle, configuration);
+            if (!bodyHandle)
+            {
+                state.SkipWithError("Failed to create an individual-membership benchmark body.");
+                return;
+            }
+            bodyHandles.push_back(bodyHandle);
+        }
+
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            for (const BodyHandle bodyHandle : bodyHandles)
+            {
+                qualityValid = system.AddBodyToSimulation(worldHandle, bodyHandle, false)
+                    && qualityValid;
+            }
+            for (const BodyHandle bodyHandle : bodyHandles)
+            {
+                qualityValid = system.RemoveBodyFromSimulation(worldHandle, bodyHandle)
+                    && qualityValid;
+            }
+            benchmark::DoNotOptimize(qualityValid);
+        }
+
+        state.counters["Bodies"] = bodyCount;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * bodyCount * 2);
+    }
+
+    void ReadBodyVelocities(
+        benchmark::State& state)
+    {
+        const AZ::u32 readCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const bool combined = state.range(1) != 0;
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, 1),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
+        const BodyHandle bodyHandle = CreateBody(
+            system,
+            worldHandle,
+            shapeHandle,
+            MotionType::Dynamic,
+            AZ::Vector3::CreateZero());
+        if (!system || !worldHandle || !shapeHandle || !bodyHandle)
+        {
+            state.SkipWithError("Failed to create the body-velocity benchmark world.");
+            return;
+        }
+
+        const AZ::Vector3 expectedLinearVelocity(1.0f, 2.0f, 3.0f);
+        const AZ::Vector3 expectedAngularVelocity(4.0f, 5.0f, 6.0f);
+        if (!system.SetBodyVelocities(
+                worldHandle,
+                bodyHandle,
+                expectedLinearVelocity,
+                expectedAngularVelocity))
+        {
+            state.SkipWithError("Failed to initialize the body-velocity benchmark.");
+            return;
+        }
+
+        AZ::Vector3 linearVelocity;
+        AZ::Vector3 angularVelocity;
+        bool qualityValid = true;
+        if (combined)
+        {
+            for ([[maybe_unused]] auto iteration : state)
+            {
+                for (AZ::u32 readIndex = 0; readIndex < readCount; ++readIndex)
+                {
+                    qualityValid = system.GetBodyVelocities(
+                        worldHandle,
+                        bodyHandle,
+                        linearVelocity,
+                        angularVelocity)
+                        && qualityValid;
+                    benchmark::DoNotOptimize(linearVelocity);
+                    benchmark::DoNotOptimize(angularVelocity);
+                }
+                benchmark::DoNotOptimize(qualityValid);
+            }
+        }
+        else
+        {
+            for ([[maybe_unused]] auto iteration : state)
+            {
+                for (AZ::u32 readIndex = 0; readIndex < readCount; ++readIndex)
+                {
+                    qualityValid = system.GetBodyLinearVelocity(
+                        worldHandle,
+                        bodyHandle,
+                        linearVelocity)
+                        && system.GetBodyAngularVelocity(
+                            worldHandle,
+                            bodyHandle,
+                            angularVelocity)
+                        && qualityValid;
+                    benchmark::DoNotOptimize(linearVelocity);
+                    benchmark::DoNotOptimize(angularVelocity);
+                }
+                benchmark::DoNotOptimize(qualityValid);
+            }
+        }
+
+        qualityValid = qualityValid
+            && linearVelocity.IsClose(expectedLinearVelocity)
+            && angularVelocity.IsClose(expectedAngularVelocity);
+        state.counters["Combined"] = 0;
+        if (combined)
+        {
+            state.counters["Combined"] = 1;
+        }
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Reads"] = readCount;
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * readCount);
+    }
+
+    void ChangeBodyMembershipInBulk(
+        benchmark::State& state)
+    {
+        const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, bodyCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
+        if (!system || !worldHandle || !shapeHandle)
+        {
+            state.SkipWithError("Failed to create the bulk-membership benchmark world.");
+            return;
+        }
+
+        AZStd::vector<BodyHandle> bodyHandles;
+        bodyHandles.reserve(bodyCount);
+        BodyConfiguration configuration;
+        configuration.m_shapeHandle = shapeHandle;
+        configuration.m_startInSimulation = false;
+        for (AZ::u32 bodyIndex = 0; bodyIndex < bodyCount; ++bodyIndex)
+        {
+            configuration.m_transform.m_position.m_z = bodyIndex;
+            const BodyHandle bodyHandle = system.CreateBody(worldHandle, configuration);
+            if (!bodyHandle)
+            {
+                state.SkipWithError("Failed to create a bulk-membership benchmark body.");
+                return;
+            }
+            bodyHandles.push_back(bodyHandle);
+        }
+
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            qualityValid = system.AddBodiesToSimulation(worldHandle, bodyHandles, false)
+                && qualityValid;
+            qualityValid = system.RemoveBodiesFromSimulation(worldHandle, bodyHandles)
+                && qualityValid;
+            benchmark::DoNotOptimize(qualityValid);
+        }
+
+        state.counters["Bodies"] = bodyCount;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * bodyCount * 2);
+    }
+
+    void DestroyBodiesIndividually(
+        benchmark::State& state)
+    {
+        const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, bodyCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
+        if (!system || !worldHandle || !shapeHandle)
+        {
+            state.SkipWithError("Failed to create the individual-destruction benchmark world.");
+            return;
+        }
+
+        AZStd::vector<BodyHandle> bodyHandles;
+        bodyHandles.reserve(bodyCount);
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            state.PauseTiming();
+            const bool created = CreateBodiesForDestruction(
+                system,
+                worldHandle,
+                shapeHandle,
+                bodyCount,
+                bodyHandles);
+            state.ResumeTiming();
+            if (!created)
+            {
+                state.SkipWithError("Failed to create individual-destruction benchmark bodies.");
+                return;
+            }
+
+            for (const BodyHandle bodyHandle : bodyHandles)
+            {
+                qualityValid = system.DestroyBody(worldHandle, bodyHandle)
+                    && qualityValid;
+            }
+            benchmark::DoNotOptimize(qualityValid);
+        }
+
+        state.counters["Bodies"] = bodyCount;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * bodyCount);
+    }
+
+    void DestroyBodiesInBulk(
+        benchmark::State& state)
+    {
+        const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, bodyCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
+        if (!system || !worldHandle || !shapeHandle)
+        {
+            state.SkipWithError("Failed to create the bulk-destruction benchmark world.");
+            return;
+        }
+
+        AZStd::vector<BodyHandle> bodyHandles;
+        bodyHandles.reserve(bodyCount);
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            state.PauseTiming();
+            const bool created = CreateBodiesForDestruction(
+                system,
+                worldHandle,
+                shapeHandle,
+                bodyCount,
+                bodyHandles);
+            state.ResumeTiming();
+            if (!created)
+            {
+                state.SkipWithError("Failed to create bulk-destruction benchmark bodies.");
+                return;
+            }
+
+            qualityValid = system.DestroyBodies(worldHandle, bodyHandles)
+                && qualityValid;
+            benchmark::DoNotOptimize(qualityValid);
+        }
+
+        state.counters["Bodies"] = bodyCount;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * bodyCount);
+    }
+
+    void ChangeConstraintMembershipIndividually(
+        benchmark::State& state)
+    {
+        const AZ::u32 constraintCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, constraintCount + 1),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
+        AZStd::vector<ConstraintHandle> constraintHandles;
+        if (!system
+            || !worldHandle
+            || !shapeHandle
+            || !CreateConstraintsForMembership(
+                system,
+                worldHandle,
+                shapeHandle,
+                constraintCount,
+                constraintHandles))
+        {
+            state.SkipWithError("Failed to create the individual constraint-membership benchmark world.");
+            return;
+        }
+
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            for (const ConstraintHandle constraintHandle : constraintHandles)
+            {
+                qualityValid = system.AddConstraintToSimulation(worldHandle, constraintHandle)
+                    && qualityValid;
+            }
+            for (const ConstraintHandle constraintHandle : constraintHandles)
+            {
+                qualityValid = system.RemoveConstraintFromSimulation(worldHandle, constraintHandle)
+                    && qualityValid;
+            }
+            benchmark::DoNotOptimize(qualityValid);
+        }
+
+        state.counters["Constraints"] = constraintCount;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * constraintCount * 2);
+    }
+
+    void ChangeConstraintMembershipInBulk(
+        benchmark::State& state)
+    {
+        const AZ::u32 constraintCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, constraintCount + 1),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
+        AZStd::vector<ConstraintHandle> constraintHandles;
+        if (!system
+            || !worldHandle
+            || !shapeHandle
+            || !CreateConstraintsForMembership(
+                system,
+                worldHandle,
+                shapeHandle,
+                constraintCount,
+                constraintHandles))
+        {
+            state.SkipWithError("Failed to create the bulk constraint-membership benchmark world.");
+            return;
+        }
+
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            qualityValid = system.AddConstraintsToSimulation(worldHandle, constraintHandles)
+                && qualityValid;
+            qualityValid = system.RemoveConstraintsFromSimulation(worldHandle, constraintHandles)
+                && qualityValid;
+            benchmark::DoNotOptimize(qualityValid);
+        }
+
+        state.counters["Constraints"] = constraintCount;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * constraintCount * 2);
+    }
+
+    void DestroyConstraintsIndividually(
+        benchmark::State& state)
+    {
+        const AZ::u32 constraintCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, constraintCount + 1),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
+        AZStd::vector<BodyHandle> bodyHandles;
+        if (!system
+            || !worldHandle
+            || !shapeHandle
+            || !CreateBodiesForConstraintDestruction(
+                system,
+                worldHandle,
+                shapeHandle,
+                constraintCount,
+                bodyHandles))
+        {
+            state.SkipWithError("Failed to create the individual constraint-destruction benchmark world.");
+            return;
+        }
+
+        AZStd::vector<ConstraintHandle> constraintHandles;
+        constraintHandles.reserve(constraintCount);
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            state.PauseTiming();
+            const bool created = CreateConstraintsForDestruction(
+                system,
+                worldHandle,
+                bodyHandles,
+                constraintHandles);
+            state.ResumeTiming();
+            if (!created)
+            {
+                state.SkipWithError("Failed to create individual-destruction benchmark constraints.");
+                return;
+            }
+
+            for (const ConstraintHandle constraintHandle : constraintHandles)
+            {
+                qualityValid = system.DestroyConstraint(worldHandle, constraintHandle)
+                    && qualityValid;
+            }
+            benchmark::DoNotOptimize(qualityValid);
+        }
+
+        state.counters["Constraints"] = constraintCount;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * constraintCount);
+    }
+
+    void DestroyConstraintsInBulk(
+        benchmark::State& state)
+    {
+        const AZ::u32 constraintCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, constraintCount + 1),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
+        AZStd::vector<BodyHandle> bodyHandles;
+        if (!system
+            || !worldHandle
+            || !shapeHandle
+            || !CreateBodiesForConstraintDestruction(
+                system,
+                worldHandle,
+                shapeHandle,
+                constraintCount,
+                bodyHandles))
+        {
+            state.SkipWithError("Failed to create the bulk constraint-destruction benchmark world.");
+            return;
+        }
+
+        AZStd::vector<ConstraintHandle> constraintHandles;
+        constraintHandles.reserve(constraintCount);
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            state.PauseTiming();
+            const bool created = CreateConstraintsForDestruction(
+                system,
+                worldHandle,
+                bodyHandles,
+                constraintHandles);
+            state.ResumeTiming();
+            if (!created)
+            {
+                state.SkipWithError("Failed to create bulk-destruction benchmark constraints.");
+                return;
+            }
+
+            qualityValid = system.DestroyConstraints(worldHandle, constraintHandles)
+                && qualityValid;
+            benchmark::DoNotOptimize(qualityValid);
+        }
+
+        state.counters["Constraints"] = constraintCount;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * constraintCount);
+    }
+
+    void RaycastGrid(
+        benchmark::State& state)
+    {
+        const AZ::u32 obstacleCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 rayCount = aznumeric_cast<AZ::u32>(state.range(1));
+        const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(2));
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, obstacleCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        if (!system
+            || !worldHandle
+            || !CreateQueryGrid(system, worldHandle, obstacleCount))
+        {
+            state.SkipWithError("Failed to create the Jolt raycast benchmark grid.");
+            return;
+        }
+
+        RaycastRequest request;
+        const IWorldQueries* worldQueries = system.GetWorldQueries(worldHandle);
+        if (!worldQueries)
+        {
+            state.SkipWithError("Failed to acquire the Jolt query benchmark world view.");
+            return;
+        }
+        request.m_displacement = -AZ::Vector3::CreateAxisZ(20.0f);
+        RaycastHit hit;
+        bool qualityValid = false;
+        constexpr AZ::u32 rowWidth = 32;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            for (AZ::u32 rayIndex = 0; rayIndex < rayCount; ++rayIndex)
+            {
+                const AZ::u32 obstacleIndex = rayIndex % obstacleCount;
+                request.m_start = {
+                    .m_x = 2.0 * static_cast<double>(obstacleIndex % rowWidth),
+                    .m_y = 2.0 * static_cast<double>(obstacleIndex / rowWidth),
+                    .m_z = 10.0,
+                };
+                qualityValid = worldQueries->RaycastClosest(request, hit);
+                benchmark::DoNotOptimize(qualityValid);
+                benchmark::DoNotOptimize(hit);
+            }
+        }
+
+        state.counters["Obstacles"] = obstacleCount;
+        jobContext.AddCounters(state);
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * rayCount);
+    }
+
+    void RaycastEmptyWorld(
+        benchmark::State& state)
+    {
+        const AZ::u32 rayCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, 1),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        if (!system || !worldHandle)
+        {
+            state.SkipWithError("Failed to create the empty Jolt query world.");
+            return;
+        }
+        const IWorldQueries* worldQueries = system.GetWorldQueries(worldHandle);
+        if (!worldQueries)
+        {
+            state.SkipWithError("Failed to acquire the empty Jolt query world view.");
+            return;
+        }
+
+        RaycastRequest request;
+        request.m_displacement = AZ::Vector3::CreateAxisX(20.0f);
+        RaycastHit hit;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            for (AZ::u32 rayIndex = 0; rayIndex < rayCount; ++rayIndex)
+            {
+                benchmark::DoNotOptimize(worldQueries->RaycastClosest(request, hit));
+            }
+        }
+
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * rayCount);
+    }
+
+    void RaycastBroadPhaseGrid(
+        benchmark::State& state)
+    {
+        const AZ::u32 obstacleCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 rayCount = aznumeric_cast<AZ::u32>(state.range(1));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, obstacleCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        if (!system
+            || !worldHandle
+            || !CreateQueryGrid(system, worldHandle, obstacleCount))
+        {
+            state.SkipWithError("Failed to create the Jolt broad-phase raycast benchmark grid.");
+            return;
+        }
+
+        const IWorldQueries* worldQueries = system.GetWorldQueries(worldHandle);
+        if (!worldQueries)
+        {
+            state.SkipWithError("Failed to acquire the Jolt broad-phase query benchmark world view.");
+            return;
+        }
+
+        BroadPhaseCastRequest request;
+        request.m_geometry = BroadPhaseRay{
+            .m_displacement = -AZ::Vector3::CreateAxisZ(20.0f),
+        };
+        BroadPhaseRay& ray = AZStd::get<BroadPhaseRay>(request.m_geometry);
+        BroadPhaseCastHit hit;
+        bool qualityValid = false;
+        constexpr AZ::u32 rowWidth = 32;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            for (AZ::u32 rayIndex = 0; rayIndex < rayCount; ++rayIndex)
+            {
+                const AZ::u32 obstacleIndex = rayIndex % obstacleCount;
+                ray.m_start = {
+                    .m_x = 2.0 * static_cast<double>(obstacleIndex % rowWidth),
+                    .m_y = 2.0 * static_cast<double>(obstacleIndex / rowWidth),
+                    .m_z = 10.0,
+                };
+                qualityValid = worldQueries->CastBroadPhaseClosest(request, hit);
+                benchmark::DoNotOptimize(qualityValid);
+                benchmark::DoNotOptimize(hit);
+            }
+        }
+
+        state.counters["Obstacles"] = obstacleCount;
+        jobContext.AddCounters(state);
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * rayCount);
+    }
+
+    void RaycastClosestBatchGrid(
+        benchmark::State& state)
+    {
+        const AZ::u32 obstacleCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 rayCount = aznumeric_cast<AZ::u32>(state.range(1));
+        const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(2));
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, obstacleCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        if (!system
+            || !worldHandle
+            || !CreateQueryGrid(system, worldHandle, obstacleCount))
+        {
+            state.SkipWithError("Failed to create the Jolt batch raycast benchmark grid.");
+            return;
+        }
+        const IWorldQueries* worldQueries = system.GetWorldQueries(worldHandle);
+        if (!worldQueries)
+        {
+            state.SkipWithError("Failed to acquire the Jolt batch query world view.");
+            return;
+        }
+
+        AZStd::vector<RaycastRequest> requests(rayCount);
+        AZStd::vector<ClosestRaycastResult> results(rayCount);
+        constexpr AZ::u32 rowWidth = 32;
+        for (AZ::u32 rayIndex = 0; rayIndex < rayCount; ++rayIndex)
+        {
+            const AZ::u32 obstacleIndex = rayIndex % obstacleCount;
+            requests[rayIndex].m_start = {
+                .m_x = 2.0 * static_cast<double>(obstacleIndex % rowWidth),
+                .m_y = 2.0 * static_cast<double>(obstacleIndex / rowWidth),
+                .m_z = 10.0,
+            };
+            requests[rayIndex].m_displacement = -AZ::Vector3::CreateAxisZ(20.0f);
+        }
+
+        constexpr auto warmupDuration = AZStd::chrono::milliseconds(100);
+        const auto warmupDeadline = AZStd::chrono::steady_clock::now() + warmupDuration;
+        BufferResult batchResult;
+        do
+        {
+            batchResult = worldQueries->RaycastClosestBatch(requests, results);
+            benchmark::DoNotOptimize(batchResult);
+        } while (AZStd::chrono::steady_clock::now() < warmupDeadline);
+
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            batchResult = worldQueries->RaycastClosestBatch(requests, results);
+            benchmark::DoNotOptimize(batchResult);
+        }
+
+        bool qualityValid = batchResult.m_count == rayCount
+            && batchResult.m_requiredCount == rayCount
+            && batchResult.IsComplete();
+        for (const ClosestRaycastResult& result : results)
+        {
+            qualityValid = result.m_found
+                && result.m_hit.m_bodyHandle
+                && result.m_hit.m_shapeHandle
+                && qualityValid;
+        }
+        state.counters["Obstacles"] = obstacleCount;
+        jobContext.AddCounters(state);
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["WarmupMs"] = static_cast<double>(warmupDuration.count());
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * rayCount);
+    }
+
+    void OverlapSphereGrid(
+        benchmark::State& state)
+    {
+        const AZ::u32 obstacleCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 queryCount = aznumeric_cast<AZ::u32>(state.range(1));
+        const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(2));
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, obstacleCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle queryShape = CreateSphere(system, worldHandle, 5.0f);
+        if (!system
+            || !worldHandle
+            || !queryShape
+            || !CreateQueryGrid(system, worldHandle, obstacleCount))
+        {
+            state.SkipWithError("Failed to create the Jolt overlap benchmark grid.");
+            return;
+        }
+        const IWorldQueries* worldQueries = system.GetWorldQueries(worldHandle);
+        if (!worldQueries)
+        {
+            state.SkipWithError("Failed to acquire the Jolt overlap query world view.");
+            return;
+        }
+
+        constexpr AZ::u32 expectedHitCount = 25;
+        ShapeOverlapRequest request;
+        request.m_shapeHandle = queryShape;
+        request.m_transform.m_position = {.m_x = 32.0, .m_y = 32.0};
+        AZStd::array<OverlapHit, expectedHitCount> hits;
+        QueryResult result;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            for (AZ::u32 queryIndex = 0; queryIndex < queryCount; ++queryIndex)
+            {
+                result = worldQueries->OverlapShape(request, hits);
+                benchmark::DoNotOptimize(result);
+                benchmark::DoNotOptimize(hits);
+            }
+        }
+
+        const bool qualityValid = result.m_hitCount == expectedHitCount
+            && result.m_requiredHitCount == expectedHitCount
+            && result.IsComplete();
+        state.counters["ActualHits"] = result.m_hitCount;
+        jobContext.AddCounters(state);
+        state.counters["ExpectedHits"] = expectedHitCount;
+        state.counters["Obstacles"] = obstacleCount;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * queryCount);
+    }
+
+    void OverlapSphereGridCountOnly(
+        benchmark::State& state)
+    {
+        const AZ::u32 obstacleCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, obstacleCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle queryShape = CreateSphere(system, worldHandle, 5.0f);
+        if (!system
+            || !worldHandle
+            || !queryShape
+            || !CreateQueryGrid(system, worldHandle, obstacleCount))
+        {
+            state.SkipWithError("Failed to create the Jolt count-only overlap benchmark grid.");
+            return;
+        }
+
+        constexpr AZ::u32 expectedHitCount = 25;
+        ShapeOverlapRequest request;
+        request.m_shapeHandle = queryShape;
+        request.m_transform.m_position = {.m_x = 32.0, .m_y = 32.0};
+        QueryResult result;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            result = system.OverlapShape(worldHandle, request, {});
+            benchmark::DoNotOptimize(result);
+        }
+
+        state.counters["ActualHits"] = result.m_requiredHitCount;
+        state.counters["ExpectedHits"] = expectedHitCount;
+        state.counters["Obstacles"] = obstacleCount;
+        state.counters["QualityValid"] = 0;
+        if (result.m_hitCount == 0
+            && result.m_requiredHitCount == expectedHitCount)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations());
+    }
+
+    void OverlapSphereGridBroadPhase(
+        benchmark::State& state)
+    {
+        const AZ::u32 obstacleCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, obstacleCount),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        if (!system
+            || !worldHandle
+            || !CreateQueryGrid(system, worldHandle, obstacleCount))
+        {
+            state.SkipWithError("Failed to create the Jolt broad-phase overlap benchmark grid.");
+            return;
+        }
+
+        constexpr AZ::u32 expectedHitCount = 25;
+        BroadPhaseOverlapRequest request;
+        request.m_geometry = BroadPhaseSphere{
+            .m_center = {.m_x = 32.0, .m_y = 32.0},
+            .m_radius = 5.0f,
+        };
+        AZStd::array<BroadPhaseHit, expectedHitCount> hits;
+        QueryResult result;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            result = system.OverlapBroadPhase(worldHandle, request, hits);
+            benchmark::DoNotOptimize(result);
+            benchmark::DoNotOptimize(hits);
+        }
+
+        state.counters["ActualHits"] = result.m_hitCount;
+        state.counters["ExpectedHits"] = expectedHitCount;
+        state.counters["Obstacles"] = obstacleCount;
+        state.counters["QualityValid"] = 0;
+        if (result.m_hitCount == expectedHitCount
+            && result.m_requiredHitCount == expectedHitCount
+            && result.IsComplete())
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations());
+    }
+
+    void UpdateHair(
+        benchmark::State& state)
+    {
+        const AZ::u32 strandCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 verticesPerStrand = aznumeric_cast<AZ::u32>(state.range(1));
+        const AZ::u32 gridSize = aznumeric_cast<AZ::u32>(state.range(2));
+        const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(3));
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, 1),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        HairBenchmarkScenario scenario;
+        if (!system
+            || !worldHandle
+            || !CreateHairBenchmarkScenario(
+                system,
+                worldHandle,
+                strandCount,
+                verticesPerStrand,
+                gridSize,
+                scenario))
+        {
+            state.SkipWithError("Failed to create the Jolt hair update benchmark scenario.");
+            return;
+        }
+
+        constexpr float timeStep = 1.0f / 60.0f;
+        constexpr AZ::u32 warmupStepCount = 4;
+        for (AZ::u32 stepIndex = 0; stepIndex < warmupStepCount; ++stepIndex)
+        {
+            if (!system.UpdateHair(
+                worldHandle,
+                scenario.m_hairHandle,
+                timeStep,
+                AZ::Transform::CreateIdentity(),
+                {}))
+            {
+                state.SkipWithError("Failed to warm up the Jolt hair update benchmark.");
+                return;
+            }
+        }
+
+        bool updateSucceeded = false;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            updateSucceeded = system.UpdateHair(
+                worldHandle,
+                scenario.m_hairHandle,
+                timeStep,
+                AZ::Transform::CreateIdentity(),
+                {});
+            benchmark::DoNotOptimize(updateSucceeded);
+        }
+
+        state.counters["GridCells"] = scenario.m_definitionState.m_gridCellCount;
+        state.counters["QualityValid"] = 0;
+        if (updateSucceeded)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["SimulationVertices"] = scenario.m_definitionState.m_simulationVertexCount;
+        state.counters["Strands"] = strandCount;
+        state.counters["VerticesPerStrand"] = verticesPerStrand;
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(
+            state.iterations() * scenario.m_definitionState.m_simulationVertexCount);
+    }
+
+    void ReadBackHair(
+        benchmark::State& state)
+    {
+        const AZ::u32 strandCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 verticesPerStrand = aznumeric_cast<AZ::u32>(state.range(1));
+        const AZ::u32 gridSize = aznumeric_cast<AZ::u32>(state.range(2));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, 1),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        HairBenchmarkScenario scenario;
+        if (!system
+            || !worldHandle
+            || !CreateHairBenchmarkScenario(
+                system,
+                worldHandle,
+                strandCount,
+                verticesPerStrand,
+                gridSize,
+                scenario)
+            || !system.UpdateHair(
+                worldHandle,
+                scenario.m_hairHandle,
+                MatchedTimeStep,
+                AZ::Transform::CreateIdentity(),
+                {}))
+        {
+            state.SkipWithError("Failed to create the Jolt hair readback benchmark scenario.");
+            return;
+        }
+
+        AZStd::vector<HairVertexState> vertexStates(scenario.m_definitionState.m_simulationVertexCount);
+        AZStd::vector<AZ::Vector3> renderPositions(scenario.m_definitionState.m_renderVertexCount);
+        AZStd::vector<HairGridCellState> gridCells(scenario.m_definitionState.m_gridCellCount);
+        HairReadbackBuffers buffers{
+            .m_vertexStates = vertexStates,
+            .m_renderPositions = renderPositions,
+            .m_gridCells = gridCells,
+        };
+        HairReadbackResult result;
+        if (!system.GetHairReadback(worldHandle, scenario.m_hairHandle, buffers, result))
+        {
+            state.SkipWithError("Failed to warm up the Jolt hair readback benchmark.");
+            return;
+        }
+
+        bool readbackSucceeded = false;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            readbackSucceeded = system.GetHairReadback(
+                worldHandle,
+                scenario.m_hairHandle,
+                buffers,
+                result);
+            benchmark::DoNotOptimize(readbackSucceeded);
+            benchmark::DoNotOptimize(vertexStates);
+            benchmark::DoNotOptimize(renderPositions);
+            benchmark::DoNotOptimize(gridCells);
+        }
+
+        const bool qualityValid = readbackSucceeded
+            && result.m_vertexStates.IsComplete()
+            && result.m_renderPositions.IsComplete()
+            && result.m_gridCells.IsComplete();
+        state.counters["GridCells"] = scenario.m_definitionState.m_gridCellCount;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["SimulationVertices"] = scenario.m_definitionState.m_simulationVertexCount;
+        state.counters["Strands"] = strandCount;
+        state.counters["VerticesPerStrand"] = verticesPerStrand;
+        state.counters["Workers"] = workerCount;
+        const size_t bytesPerReadback = vertexStates.size() * sizeof(HairVertexState)
+            + renderPositions.size() * sizeof(AZ::Vector3)
+            + gridCells.size() * sizeof(HairGridCellState);
+        state.SetBytesProcessed(state.iterations() * bytesPerReadback);
+    }
+
+    BENCHMARK(StepFallingBoxes)
+        ->Name("Jolt/Step/FallingBoxes")
+        ->Args({128, 1})
+        ->Args({128, 4})
+        ->Args({128, 8})
+        ->Args({1024, 1})
+        ->Args({1024, 4})
+        ->Args({1024, 8})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime()
+        ->Iterations(ValidationFrameCount);
+
+    BENCHMARK(StepFallingBoxesDefaultQuality)
+        ->Name("Jolt/Diagnostic/Step/FallingBoxesDefaultQuality")
+        ->Args({1024, 1})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime()
+        ->Iterations(ValidationFrameCount);
+
+    BENCHMARK(StepAutomaticWorlds)
+        ->Name("Jolt/Diagnostic/Step/AutomaticWorlds")
+        ->Args({1, 128, 1})
+        ->Args({2, 128, 1})
+        ->Args({4, 128, 1})
+        ->Args({1, 1024, 1})
+        ->Args({2, 1024, 1})
+        ->Args({4, 1024, 1})
+        ->ArgNames({"Worlds", "BodiesPerWorld", "WorkersPerWorld"})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime()
+        ->Iterations(ValidationFrameCount);
+
+    BENCHMARK(CreateDestroyBodies)
+        ->Name("Jolt/Lifecycle/CreateDestroyBodies")
+        ->Args({128, 1})
+        ->Args({1024, 1})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(ChangeRagdollMembership)
+        ->Name("Jolt/Lifecycle/ChangeRagdollMembership")
+        ->Arg(64)
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(RecreateRagdoll)
+        ->Name("Jolt/Lifecycle/RecreateRagdoll")
+        ->Arg(64)
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(CreateSoftBodyDefinition)
+        ->Name("Jolt/Lifecycle/CreateSoftBodyDefinition")
+        ->Arg(32)
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(ImportSoftBodyDefinition)
+        ->Name("Jolt/Lifecycle/ImportSoftBodyDefinition")
+        ->Arg(32)
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(BenchmarkFilteredRollbackState)
+        ->Name("Jolt/Rollback/RecaptureFilteredState")
+        ->Args({128, 0})
+        ->Args({1024, 0})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(BenchmarkFilteredRollbackState)
+        ->Name("Jolt/Rollback/RestoreFilteredStateTransactional")
+        ->Args({128, 1})
+        ->Args({1024, 1})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(BenchmarkFilteredRollbackState)
+        ->Name("Jolt/Rollback/RestoreFilteredStateValidated")
+        ->Args({128, 2})
+        ->Args({1024, 2})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(CreateDestroyCookedCompounds)
+        ->Name("Jolt/Lifecycle/CreateDestroyCookedCompounds")
+        ->Args({128})
+        ->Args({1024})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(ChangeBodyMembershipIndividually)
+        ->Name("Jolt/Lifecycle/ChangeBodyMembershipIndividually")
+        ->Args({128})
+        ->Args({1024})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(ReadBodyVelocities)
+        ->Name("Jolt/Diagnostic/ReadBodyVelocities")
+        ->Args({1024, 0})
+        ->Args({1024, 1})
+        ->ArgNames({"Reads", "Combined"})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(ChangeBodyMembershipInBulk)
+        ->Name("Jolt/Lifecycle/ChangeBodyMembershipInBulk")
+        ->Args({128})
+        ->Args({1024})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(DestroyBodiesIndividually)
+        ->Name("Jolt/Lifecycle/DestroyBodiesIndividually")
+        ->Args({128})
+        ->Args({1024})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(DestroyBodiesInBulk)
+        ->Name("Jolt/Lifecycle/DestroyBodiesInBulk")
+        ->Args({128})
+        ->Args({1024})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(ChangeConstraintMembershipIndividually)
+        ->Name("Jolt/Lifecycle/ChangeConstraintMembershipIndividually")
+        ->Args({128})
+        ->Args({1024})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(ChangeConstraintMembershipInBulk)
+        ->Name("Jolt/Lifecycle/ChangeConstraintMembershipInBulk")
+        ->Args({128})
+        ->Args({1024})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(DestroyConstraintsIndividually)
+        ->Name("Jolt/Lifecycle/DestroyConstraintsIndividually")
+        ->Args({128})
+        ->Args({1024})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(DestroyConstraintsInBulk)
+        ->Name("Jolt/Lifecycle/DestroyConstraintsInBulk")
+        ->Args({128})
+        ->Args({1024})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(RaycastGrid)
+        ->Name("Jolt/Query/RaycastGrid")
+        ->Args({1024, 128, 1})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(RaycastEmptyWorld)
+        ->Name("Jolt/Diagnostic/RaycastEmptyWorld")
+        ->Args({128})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(RaycastBroadPhaseGrid)
+        ->Name("Jolt/Diagnostic/RaycastBroadPhaseGrid")
+        ->Args({1024, 128})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(RaycastClosestBatchGrid)
+        ->Name("Jolt/Query/RaycastClosestBatchGrid")
+        ->Args({1024, 1024, 1})
+        ->Args({1024, 128, 4})
+        ->Args({1024, 1024, 4})
+        ->Args({1024, 1024, 8})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(OverlapSphereGrid)
+        ->Name("Jolt/Query/OverlapSphereGrid")
+        ->Args({1024, 1, 1})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(OverlapSphereGridCountOnly)
+        ->Name("Jolt/Diagnostic/OverlapSphereGridCountOnly")
+        ->Args({1024})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(OverlapSphereGridBroadPhase)
+        ->Name("Jolt/Diagnostic/OverlapSphereGridBroadPhase")
+        ->Args({1024})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(UpdateHair)
+        ->Name("Jolt/Hair/Update")
+        ->Args({256, 16, 32, 1})
+        ->Args({256, 16, 32, 4})
+        ->Args({1024, 16, 32, 1})
+        ->Args({1024, 16, 32, 4})
+        ->Args({1024, 16, 32, 8})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(ReadBackHair)
+        ->Name("Jolt/Hair/Readback")
+        ->Args({256, 16, 32})
+        ->Args({1024, 16, 32})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+} // namespace Jolt::Benchmarks
+
+#endif // HAVE_BENCHMARK

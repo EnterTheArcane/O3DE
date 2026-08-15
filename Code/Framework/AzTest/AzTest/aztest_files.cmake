@@ -9,6 +9,8 @@
 set(FILES
     AzTest.h
     AzTest.cpp
+    Benchmark/BenchmarkEnvironment.h
+    Benchmark/BenchmarkEnvironment.cpp
     ColorizedOutput.cpp
     Platform.h
     Printers.h

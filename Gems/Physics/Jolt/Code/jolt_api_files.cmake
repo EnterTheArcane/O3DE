@@ -1,0 +1,65 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+
+set(FILES
+    Include/Jolt/BodyConfiguration.h
+    Include/Jolt/BodyCollision.h
+    Include/Jolt/BodyBus.h
+    Include/Jolt/CharacterBus.h
+    Include/Jolt/ColliderBus.h
+    Include/Jolt/Character.h
+    Include/Jolt/CharacterConfiguration.h
+    Include/Jolt/Collision.h
+    Include/Jolt/Constraint.h
+    Include/Jolt/ConstraintBus.h
+    Include/Jolt/ConstraintComponentConfiguration.h
+    Include/Jolt/Cooking.h
+    Include/Jolt/CustomConstraint.h
+    Include/Jolt/CustomShape.h
+    Include/Jolt/DebugDraw.h
+    Include/Jolt/Diagnostics.h
+    Include/Jolt/Event.h
+    Include/Jolt/Hair.h
+    Include/Jolt/HairBus.h
+    Include/Jolt/HairComponentConfiguration.h
+    Include/Jolt/Handle.h
+    Include/Jolt/Material.h
+    Include/Jolt/Path.h
+    Include/Jolt/PathBus.h
+    Include/Jolt/Query.h
+    Include/Jolt/Ragdoll.h
+    Include/Jolt/RagdollBus.h
+    Include/Jolt/RagdollComponentConfiguration.h
+    Include/Jolt/RigidBodyBus.h
+    Include/Jolt/RigidBodyConfiguration.h
+    Include/Jolt/Rollback.h
+    Include/Jolt/Scene.h
+    Include/Jolt/SceneAsset.h
+    Include/Jolt/SceneBus.h
+    Include/Jolt/SceneComponentConfiguration.h
+    Include/Jolt/Simulation.h
+    Include/Jolt/Shape.h
+    Include/Jolt/ShapeConfiguration.h
+    Include/Jolt/StaticRigidBodyBus.h
+    Include/Jolt/Skeleton.h
+    Include/Jolt/SkeletonAsset.h
+    Include/Jolt/SkeletonBus.h
+    Include/Jolt/SkeletonComponentBus.h
+    Include/Jolt/SkeletonComponentConfiguration.h
+    Include/Jolt/SoftBody.h
+    Include/Jolt/SoftBodyBus.h
+    Include/Jolt/SoftBodyComponentConfiguration.h
+    Include/Jolt/System.h
+    Include/Jolt/SystemConfiguration.h
+    Include/Jolt/TypeIds.h
+    Include/Jolt/Vehicle.h
+    Include/Jolt/VehicleBus.h
+    Include/Jolt/VehicleComponentConfiguration.h
+    Include/Jolt/VirtualCharacterBus.h
+    Include/Jolt/WorldTypes.h
+    Include/Jolt/WorldQueryBus.h
+)

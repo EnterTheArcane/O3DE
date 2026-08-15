@@ -1,0 +1,42 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "SkeletonSourceData",
+    "ClassData": {
+        "Skeleton": {
+            "Joints": [
+                {
+                    "Name": "root"
+                },
+                {
+                    "Name": "child",
+                    "ParentIndex": 0
+                }
+            ]
+        },
+        "Animations": [
+            {
+                "Configuration": {
+                    "Joints": [
+                        {
+                            "Keyframes": [
+                                {},
+                                {
+                                    "Translation": [
+                                        1.0,
+                                        0.0,
+                                        0.0
+                                    ],
+                                    "Time": 1.0
+                                }
+                            ],
+                            "Name": "child"
+                        }
+                    ]
+                },
+                "Name": "Walk"
+            }
+        ],
+        "Name": "AutomatedTestingSkeleton"
+    }
+}

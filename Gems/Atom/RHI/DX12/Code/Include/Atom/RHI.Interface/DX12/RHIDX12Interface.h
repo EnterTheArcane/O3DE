@@ -44,6 +44,11 @@ namespace AZ
         size_t GetBufferAllocationOffset(RHI::DeviceBuffer& buffer);
         size_t GetBufferHeapOffset(RHI::DeviceBuffer& buffer);
 
+        //! Updates the frame graph's resource state after native queue access.
+        void SetBufferStateAfterExternalAccess(
+            RHI::DeviceBuffer& buffer,
+            D3D12_RESOURCE_STATES state);
+
         //! Provide access to native image resource, heap as well as size and offset
         ID3D12Resource* GetImageResource(RHI::DeviceImage& image);
         ID3D12Heap* GetImageHeap(RHI::DeviceImage& image);

@@ -165,8 +165,8 @@ def main() -> int:
     failed = False
     print("Bodies  Metric  Box3D (us)  PhysX (us)  Ratio")
     for body_count in arguments.body_count or [128, 1024]:
-        box3d_name = f"Box3D/Step/FallingSpheres/{body_count}/{arguments.worker_count}/real_time"
-        physx_name = f"PhysX/Step/FallingSpheres/{body_count}/{arguments.worker_count}/real_time"
+        box3d_name = f"Box3D/Step/FallingBoxes/{body_count}/{arguments.worker_count}/real_time"
+        physx_name = f"PhysX/Step/FallingBoxes/{body_count}/{arguments.worker_count}/real_time"
         expected_counters = {
             "Ccd": 0,
             "DynamicBodies": body_count,
