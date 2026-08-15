@@ -16,16 +16,6 @@ set(jolt_archive_name "v5.6.0.tar.gz")
 set(jolt_patch_file "${CMAKE_CURRENT_LIST_DIR}/jolt-5.6.0-o3de.patch")
 file(SHA256 "${jolt_patch_file}" jolt_patch_hash)
 
-if(LY_PACKAGE_DOWNLOAD_CACHE_LOCATION)
-    set(
-        jolt_source_archive
-        "${LY_PACKAGE_DOWNLOAD_CACHE_LOCATION}/JoltPhysics/${jolt_archive_hash}-${jolt_archive_name}")
-else()
-    set(
-        jolt_source_archive
-        "${CMAKE_BINARY_DIR}/downloads/JoltPhysics/${jolt_archive_hash}-${jolt_archive_name}")
-endif()
-
 option(LY_JOLT_DOUBLE_PRECISION "Build Jolt with double-precision world positions" OFF)
 option(LY_JOLT_ENABLE_DEBUG_RENDERING "Build the native diagnostic renderer" ON)
 option(
@@ -55,15 +45,7 @@ block()
         URL_HASH "${jolt_archive_hash}"
         GIT "https://github.com/jrouwe/JoltPhysics.git"
         GIT_HASH "${jolt_source_revision}"
-        PATCH_COMMAND ${CMAKE_COMMAND}
-            "-DSOURCE_DIR=<SOURCE_DIR>"
-            "-DSOURCE_ARCHIVE=${jolt_source_archive}"
-            "-DSOURCE_REVISION=${jolt_source_revision}"
-            "-DPATCH_FILE=${jolt_patch_file}"
-            "-DREPOSITORY_ROOT=${LY_ROOT_FOLDER}"
-            "-DPATCH_MARKER_FILE=o3de-patch-version"
-            "-DPATCH_MARKER_TEXT=${jolt_patch_revision}-${jolt_patch_hash}"
-            -P "${CMAKE_CURRENT_LIST_DIR}/ApplyPatch.cmake"
+        PATCH_FILES "${jolt_patch_file}"
         SOURCE_SUBDIR Build
         EXCLUDE_FROM_ALL
     )
