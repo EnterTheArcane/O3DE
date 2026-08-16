@@ -21,6 +21,14 @@ namespace Jolt
     inline constexpr AZ::TypeId CustomConvexShapeConfigurationTypeId{"{14F1465B-82DB-46E6-8F2E-5C468B7A08F1}"};
     inline constexpr AZ::TypeId CustomConvexShapeInfoTypeId{"{51493D94-DA05-49FD-95DE-9B06391445CE}"};
     inline constexpr AZ::TypeId ICustomConvexShapeProviderTypeId{"{5829B669-258E-49AB-8633-51BA20BAE56B}"};
+    inline constexpr AZ::TypeId CustomShapeConfigurationTypeId{"{4A93D529-7BED-4B29-AF14-EC1AAC452956}"};
+    inline constexpr AZ::TypeId CustomShapeDependencyTypeId{"{50364B2C-59C8-4CC1-9AB1-322F2D1B1E57}"};
+    inline constexpr AZ::TypeId CustomShapeInfoTypeId{"{9D39C0A6-C444-4DD2-BE6A-6CB814E55847}"};
+    inline constexpr AZ::TypeId CustomShapeTriangleTypeId{"{47DE716A-0BF0-48A1-B85B-6D8EFB696333}"};
+    inline constexpr AZ::TypeId ICustomShapeCastCollectorTypeId{"{C405CB93-F5D2-44DD-9D60-37A69CD0E661}"};
+    inline constexpr AZ::TypeId ICustomShapeCollisionCollectorTypeId{"{97212D92-27E7-4940-AF08-60EED9E433D7}"};
+    inline constexpr AZ::TypeId ICustomShapeProviderTypeId{"{06A39C06-CE3E-423D-884D-D91EC09B46B2}"};
+    inline constexpr AZ::TypeId ICustomShapeViewTypeId{"{9309F7C7-3685-4981-B79D-391E7D1B8E32}"};
     inline constexpr AZ::TypeId CustomPathConfigurationTypeId{"{74EA9C84-9325-4229-B474-EC32472E39D8}"};
     inline constexpr AZ::TypeId CustomPathInfoTypeId{"{B2A718CA-840D-45F0-9E99-275A277E8CCE}"};
     inline constexpr AZ::TypeId CustomPathPointTypeId{"{6F3D3FEA-14E5-4F83-8328-75308BCB8625}"};
@@ -323,6 +331,9 @@ namespace Jolt
     inline constexpr AZ::TypeId EditorTrackedVehicleComponentTypeId{"{B0A656F0-325B-4537-8B48-B65AECAA329B}"};
     inline constexpr AZ::TypeId WorldStateDigestTypeId{"{0DE70D91-A2BC-4882-BAF8-3837A05E7EF4}"};
     inline constexpr AZ::TypeId BodySimulationStatisticsTypeId{"{BD80D2B9-F832-4CD8-9EED-671F7C3B5ED7}"};
+    inline constexpr AZ::TypeId BroadPhaseStatisticsTypeId{"{3E80F154-EFDC-4C78-AD52-AB71D5069E7B}"};
+    inline constexpr AZ::TypeId DiagnosticStatisticsResultTypeId{"{3A7BCE0A-D792-49E0-991B-495D0EF0323C}"};
+    inline constexpr AZ::TypeId NarrowPhaseStatisticsTypeId{"{475F301F-C07D-4F45-AD63-6FFDF52D4643}"};
     inline constexpr AZ::TypeId PointConstraintConfigurationTypeId{"{65BCFFBF-62A0-4B3C-9942-A249B1A8CE73}"};
     inline constexpr AZ::TypeId DistanceConstraintConfigurationTypeId{"{A748295A-8FB7-4C45-AFB4-9304E8267193}"};
     inline constexpr AZ::TypeId ConeConstraintConfigurationTypeId{"{61068D35-D3C3-40A8-B04D-6B3A97EB54C1}"};
@@ -333,6 +344,13 @@ namespace Jolt
     inline constexpr AZ::TypeId ShapeCastHitTypeId{"{392283EA-FE81-4D5C-84E7-1A81EAB1EC5B}"};
     inline constexpr AZ::TypeId ShapeRaycastRequestTypeId{"{DE6BBBB8-0AE0-4F4B-87E4-693CCC090308}"};
     inline constexpr AZ::TypeId TransformedShapeRaycastRequestTypeId{"{F28ED106-243C-42BA-9A90-B014541747D1}"};
+    inline constexpr AZ::TypeId ShapePlacementTypeId{"{D1A4BB7A-49AF-46EF-A738-FE67B7619898}"};
+    inline constexpr AZ::TypeId TransformedShapeCollisionRequestTypeId{"{1741EB5E-CB39-44CF-A4BB-D4AFF325BF6E}"};
+    inline constexpr AZ::TypeId TransformedShapeCastRequestTypeId{"{139BB0B4-2728-46BB-BB98-E90E7757EF1B}"};
+    inline constexpr AZ::TypeId TransformedShapeCollisionHitTypeId{"{AFDD5A7D-B08F-444F-A247-2C9A66B61185}"};
+    inline constexpr AZ::TypeId TransformedShapeCastHitTypeId{"{B56FCBEF-8850-4B7F-87E5-F4635C842645}"};
+    inline constexpr AZ::TypeId ITransformedShapeCastCollectorTypeId{"{5049E03A-7576-494B-BC77-4EEE88552429}"};
+    inline constexpr AZ::TypeId ITransformedShapeCollisionCollectorTypeId{"{CED5B391-1958-4819-A752-D3DA62285D88}"};
     inline constexpr AZ::TypeId ShapeRaycastHitTypeId{"{609534F1-FBB8-48F7-8782-2D127B5A9AEB}"};
     inline constexpr AZ::TypeId ShapePointHitTypeId{"{EE1A8B5B-E58E-4559-A771-6EEF7D942EC6}"};
     inline constexpr AZ::TypeId ShapeTriangleCollectionRequestTypeId{"{1A5BCDF0-F462-4918-BC3D-791375D6B4B2}"};

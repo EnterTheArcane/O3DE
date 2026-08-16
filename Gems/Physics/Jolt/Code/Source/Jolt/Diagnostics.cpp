@@ -45,6 +45,34 @@ namespace Jolt
                 ->Field("IsLargeIsland", &BodySimulationStatistics::m_isLargeIsland);
 
             serializeContext
+                ->Class<DiagnosticStatisticsResult>()
+                ->Field("Count", &DiagnosticStatisticsResult::m_count)
+                ->Field("RequiredCount", &DiagnosticStatisticsResult::m_requiredCount)
+                ->Field("Status", &DiagnosticStatisticsResult::m_status);
+
+            serializeContext
+                ->Class<BroadPhaseStatistics>()
+                ->Field("FilterDescriptionHash", &BroadPhaseStatistics::m_filterDescriptionHash)
+                ->Field("TotalTicks", &BroadPhaseStatistics::m_totalTicks)
+                ->Field("CollectorTicks", &BroadPhaseStatistics::m_collectorTicks)
+                ->Field("QueryCount", &BroadPhaseStatistics::m_queryCount)
+                ->Field("NodesVisited", &BroadPhaseStatistics::m_nodesVisited)
+                ->Field("BodiesVisited", &BroadPhaseStatistics::m_bodiesVisited)
+                ->Field("HitsReported", &BroadPhaseStatistics::m_hitsReported)
+                ->Field("BroadPhaseLayer", &BroadPhaseStatistics::m_broadPhaseLayer)
+                ->Field("QueryKind", &BroadPhaseStatistics::m_queryKind);
+
+            serializeContext
+                ->Class<NarrowPhaseStatistics>()
+                ->Field("TotalTicks", &NarrowPhaseStatistics::m_totalTicks)
+                ->Field("ChildTicks", &NarrowPhaseStatistics::m_childTicks)
+                ->Field("QueryCount", &NarrowPhaseStatistics::m_queryCount)
+                ->Field("HitsReported", &NarrowPhaseStatistics::m_hitsReported)
+                ->Field("FirstShapeKind", &NarrowPhaseStatistics::m_firstShapeKind)
+                ->Field("SecondShapeKind", &NarrowPhaseStatistics::m_secondShapeKind)
+                ->Field("QueryKind", &NarrowPhaseStatistics::m_queryKind);
+
+            serializeContext
                 ->Class<StateValidationResult>()
                 ->Field("FirstMismatchByte", &StateValidationResult::m_firstMismatchByte)
                 ->Field("Matches", &StateValidationResult::m_matches);
@@ -121,6 +149,23 @@ namespace Jolt
                 "SimulationError_ManifoldCacheFull")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DiagnosticStatisticsStatus, None);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DiagnosticStatisticsStatus, Complete);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DiagnosticStatisticsStatus, Overflow);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DiagnosticStatisticsStatus, Unavailable);
+
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, BroadPhaseQueryKind, None);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, BroadPhaseQueryKind, CastAabb);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, BroadPhaseQueryKind, CollideAabb);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, BroadPhaseQueryKind, CollideOrientedBox);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, BroadPhaseQueryKind, CollidePoint);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, BroadPhaseQueryKind, CollideSphere);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, BroadPhaseQueryKind, Raycast);
+
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, NarrowPhaseQueryKind, None);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, NarrowPhaseQueryKind, Cast);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, NarrowPhaseQueryKind, Collide);
 
             behaviorContext->EnumProperty<static_cast<AZ::u8>(StateSnapshotFlags::None)>("StateSnapshotFlags_None")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
@@ -231,6 +276,46 @@ namespace Jolt
                     "isLargeIsland",
                     BehaviorValueGetter(&BodySimulationStatistics::m_isLargeIsland),
                     nullptr);
+
+            behaviorContext->Class<DiagnosticStatisticsResult>("DiagnosticStatisticsResult")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property("count", BehaviorValueGetter(&DiagnosticStatisticsResult::m_count), nullptr)
+                ->Property(
+                    "requiredCount",
+                    BehaviorValueGetter(&DiagnosticStatisticsResult::m_requiredCount),
+                    nullptr)
+                ->Property("status", BehaviorValueGetter(&DiagnosticStatisticsResult::m_status), nullptr);
+
+            behaviorContext->Class<BroadPhaseStatistics>("BroadPhaseStatistics")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property(
+                    "filterDescriptionHash",
+                    BehaviorValueGetter(&BroadPhaseStatistics::m_filterDescriptionHash),
+                    nullptr)
+                ->Property("totalTicks", BehaviorValueGetter(&BroadPhaseStatistics::m_totalTicks), nullptr)
+                ->Property("collectorTicks", BehaviorValueGetter(&BroadPhaseStatistics::m_collectorTicks), nullptr)
+                ->Property("queryCount", BehaviorValueGetter(&BroadPhaseStatistics::m_queryCount), nullptr)
+                ->Property("nodesVisited", BehaviorValueGetter(&BroadPhaseStatistics::m_nodesVisited), nullptr)
+                ->Property("bodiesVisited", BehaviorValueGetter(&BroadPhaseStatistics::m_bodiesVisited), nullptr)
+                ->Property("hitsReported", BehaviorValueGetter(&BroadPhaseStatistics::m_hitsReported), nullptr)
+                ->Property("broadPhaseLayer", BehaviorValueGetter(&BroadPhaseStatistics::m_broadPhaseLayer), nullptr)
+                ->Property("queryKind", BehaviorValueGetter(&BroadPhaseStatistics::m_queryKind), nullptr);
+
+            behaviorContext->Class<NarrowPhaseStatistics>("NarrowPhaseStatistics")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property("totalTicks", BehaviorValueGetter(&NarrowPhaseStatistics::m_totalTicks), nullptr)
+                ->Property("childTicks", BehaviorValueGetter(&NarrowPhaseStatistics::m_childTicks), nullptr)
+                ->Property("queryCount", BehaviorValueGetter(&NarrowPhaseStatistics::m_queryCount), nullptr)
+                ->Property("hitsReported", BehaviorValueGetter(&NarrowPhaseStatistics::m_hitsReported), nullptr)
+                ->Property("firstShapeKind", BehaviorValueGetter(&NarrowPhaseStatistics::m_firstShapeKind), nullptr)
+                ->Property("secondShapeKind", BehaviorValueGetter(&NarrowPhaseStatistics::m_secondShapeKind), nullptr)
+                ->Property("queryKind", BehaviorValueGetter(&NarrowPhaseStatistics::m_queryKind), nullptr);
 
             behaviorContext->Class<StateValidationResult>("StateValidationResult")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)

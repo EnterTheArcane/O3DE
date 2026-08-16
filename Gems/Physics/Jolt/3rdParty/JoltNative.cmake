@@ -22,7 +22,7 @@ if(TARGET Jolt)
 endif()
 
 set(jolt_source_revision "e77f175595e64cb44218cc9d9d56fc365ad0e36a")
-set(jolt_patch_revision "jolt-v5.6.0-o3de-11")
+set(jolt_patch_revision "jolt-v5.6.0-o3de-14")
 set(jolt_archive_hash "6e069ee0172478cc78182047aac87e5310ba14a67a53348ae14cc37801fd3f8e")
 set(jolt_archive_name "v5.6.0.tar.gz")
 set(jolt_patch_file "${CMAKE_CURRENT_LIST_DIR}/jolt-5.6.0-o3de.patch")
@@ -37,6 +37,14 @@ option(
 option(
     LY_JOLT_ENABLE_SIMULATION_STATISTICS
     "Collect per-body native simulation cost counters for diagnostic builds"
+    OFF)
+option(
+    LY_JOLT_ENABLE_BROADPHASE_STATISTICS
+    "Collect native broadphase query counters"
+    OFF)
+option(
+    LY_JOLT_ENABLE_NARROWPHASE_STATISTICS
+    "Collect native narrowphase query counters"
     OFF)
 set(
     LY_JOLT_SIMD_LEVEL
@@ -89,8 +97,8 @@ block()
     set(OVERRIDE_CXX_FLAGS OFF)
     set(PROFILER_IN_DEBUG_AND_RELEASE OFF)
     set(PROFILER_IN_DISTRIBUTION ${LY_JOLT_ENABLE_DETAILED_PROFILING})
-    set(TRACK_BROADPHASE_STATS OFF)
-    set(TRACK_NARROWPHASE_STATS OFF)
+    set(TRACK_BROADPHASE_STATS ${LY_JOLT_ENABLE_BROADPHASE_STATISTICS})
+    set(TRACK_NARROWPHASE_STATS ${LY_JOLT_ENABLE_NARROWPHASE_STATISTICS})
     set(USE_ASSERTS OFF)
     set(USE_AVX OFF)
     set(USE_AVX2 OFF)

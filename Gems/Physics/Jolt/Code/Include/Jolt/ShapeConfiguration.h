@@ -226,6 +226,7 @@ namespace Jolt
         BoxShapeConfiguration,
         CapsuleShapeConfiguration,
         ConvexHullShapeConfiguration,
+        CustomShapeConfiguration,
         CustomConvexShapeConfiguration,
         CylinderShapeConfiguration,
         EmptyShapeConfiguration,

@@ -31,10 +31,10 @@ index 90a08f6..12215a6 100644
  /// Note: Can return negative value for outMin if ray starts in box
  JPH_INLINE void RayAABox(Vec3Arg inOrigin, const RayInvDirection &inInvDirection, Vec3Arg inBoundsMin, Vec3Arg inBoundsMax, float &outMin, float &outMax)
 diff --git a/Jolt/Physics/Collision/BroadPhase/BroadPhase.h b/Jolt/Physics/Collision/BroadPhase/BroadPhase.h
-index c4d9861..0b91a8b 100644
+index c4d9861..1d26e2d 100644
 --- a/Jolt/Physics/Collision/BroadPhase/BroadPhase.h
 +++ b/Jolt/Physics/Collision/BroadPhase/BroadPhase.h
-@@ -95,6 +95,9 @@ public:
+@@ -95,10 +95,42 @@ public:
  	/// Same as BroadPhaseQuery::CastAABox but can be implemented in a way to take no broad phase locks.
  	virtual void		CastAABoxNoLock(const AABoxCast &inBox, CastShapeBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const = 0;
  
@@ -42,8 +42,41 @@ index c4d9861..0b91a8b 100644
 +	virtual void		CastRayNoLock(const RayCast &inRay, RayCastBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const = 0;
 +
  #ifdef JPH_TRACK_BROADPHASE_STATS
++	enum class EStatisticsQuery : uint8
++	{
++		None,
++		CastAABox,
++		CollideAABox,
++		CollideOrientedBox,
++		CollidePoint,
++		CollideSphere,
++		CastRay,
++	};
++
++	struct Statistics
++	{
++		uint64				mFilterDescriptionHash = 0;
++		uint64				mTotalTicks = 0;
++		uint64				mCollectorTicks = 0;
++		uint64				mNumQueries = 0;
++		uint64				mNodesVisited = 0;
++		uint64				mBodiesVisited = 0;
++		uint64				mHitsReported = 0;
++		uint32				mBroadPhaseLayer = 0;
++		EStatisticsQuery	mQuery = EStatisticsQuery::None;
++	};
++
++	using StatisticsVisitor = void (*)(const Statistics &, void *);
++
  	/// Trace the collected broadphase stats in CSV form.
  	/// This report can be used to judge and tweak the efficiency of the broadphase.
+ 	virtual void		ReportStats()														{ /* Can be implemented by derived classes */ }
++
++	/// Copies statistics into caller-owned storage. Resetting retains all map allocations.
++	virtual uint32		VisitStatistics(StatisticsVisitor, void *, bool)				{ return 0; }
+ #endif // JPH_TRACK_BROADPHASE_STATS
+ 
+ protected:
 diff --git a/Jolt/Physics/Collision/BroadPhase/BroadPhaseBruteForce.cpp b/Jolt/Physics/Collision/BroadPhase/BroadPhaseBruteForce.cpp
 index fc23321..c4de1de 100644
 --- a/Jolt/Physics/Collision/BroadPhase/BroadPhaseBruteForce.cpp
@@ -74,7 +107,7 @@ index c3e20f5..3fbf480 100644
  	virtual void		CollideSphere(Vec3Arg inCenter, float inRadius, CollideShapeBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
  	virtual void		CollidePoint(Vec3Arg inPoint, CollideShapeBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
 diff --git a/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.cpp b/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.cpp
-index db427e9..3c10c82 100644
+index db427e9..fd3914d 100644
 --- a/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.cpp
 +++ b/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.cpp
 @@ -418,14 +418,19 @@ void BroadPhaseQuadTree::NotifyBodiesLayerChanged(BodyID *ioBodies, int inNumber
@@ -100,8 +133,35 @@ index db427e9..3c10c82 100644
  	// Loop over all layers and test the ones that could hit
  	for (BroadPhaseLayer::Type l = 0; l < mNumLayers; ++l)
  	{
+@@ -624,6 +629,26 @@ void BroadPhaseQuadTree::ReportStats()
+ 		mLayers[l].ReportStats(total_ticks);
+ }
+ 
++uint32 BroadPhaseQuadTree::VisitStatistics(StatisticsVisitor inVisitor, void *inContext, bool inReset)
++{
++	uint32 count = 0;
++	for (BroadPhaseLayer::Type layer = 0; layer < mNumLayers; ++layer)
++	{
++		QuadTree &tree = mLayers[layer];
++#define JPH_VISIT_BROADPHASE_STATISTICS(member, query) \
++		count += tree.VisitStatistics(query, layer, tree.member, inVisitor, inContext, inReset)
++
++		JPH_VISIT_BROADPHASE_STATISTICS(mCastAABoxStats, EStatisticsQuery::CastAABox);
++		JPH_VISIT_BROADPHASE_STATISTICS(mCollideAABoxStats, EStatisticsQuery::CollideAABox);
++		JPH_VISIT_BROADPHASE_STATISTICS(mCollideOrientedBoxStats, EStatisticsQuery::CollideOrientedBox);
++		JPH_VISIT_BROADPHASE_STATISTICS(mCollidePointStats, EStatisticsQuery::CollidePoint);
++		JPH_VISIT_BROADPHASE_STATISTICS(mCollideSphereStats, EStatisticsQuery::CollideSphere);
++		JPH_VISIT_BROADPHASE_STATISTICS(mCastRayStats, EStatisticsQuery::CastRay);
++#undef JPH_VISIT_BROADPHASE_STATISTICS
++	}
++	return count;
++}
++
+ #endif // JPH_TRACK_BROADPHASE_STATS
+ 
+ JPH_NAMESPACE_END
 diff --git a/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.h b/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.h
-index ae97c10..2ed45e3 100644
+index ae97c10..4c0bb9a 100644
 --- a/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.h
 +++ b/Jolt/Physics/Collision/BroadPhase/BroadPhaseQuadTree.h
 @@ -34,6 +34,7 @@ public:
@@ -112,8 +172,16 @@ index ae97c10..2ed45e3 100644
  	virtual void			CollideAABox(const AABox &inBox, CollideShapeBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
  	virtual void			CollideSphere(Vec3Arg inCenter, float inRadius, CollideShapeBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
  	virtual void			CollidePoint(Vec3Arg inPoint, CollideShapeBodyCollector &ioCollector, const BroadPhaseLayerFilter &inBroadPhaseLayerFilter, const ObjectLayerFilter &inObjectLayerFilter) const override;
+@@ -44,6 +45,7 @@ public:
+ 	virtual AABox			GetBounds() const override;
+ #ifdef JPH_TRACK_BROADPHASE_STATS
+ 	virtual void			ReportStats() override;
++	virtual uint32			VisitStatistics(StatisticsVisitor inVisitor, void *inContext, bool inReset) override;
+ #endif // JPH_TRACK_BROADPHASE_STATS
+ 
+ private:
 diff --git a/Jolt/Physics/Collision/BroadPhase/QuadTree.cpp b/Jolt/Physics/Collision/BroadPhase/QuadTree.cpp
-index 3b2683d..85ee448 100644
+index 3b2683d..068ded6 100644
 --- a/Jolt/Physics/Collision/BroadPhase/QuadTree.cpp
 +++ b/Jolt/Physics/Collision/BroadPhase/QuadTree.cpp
 @@ -1085,7 +1085,8 @@ void QuadTree::CastRay(const RayCast &inRay, RayCastBodyCollector &ioCollector,
@@ -173,6 +241,107 @@ index 3b2683d..85ee448 100644
  	};
  
  	Visitor visitor(inRay, ioCollector);
+@@ -1701,6 +1729,43 @@ void QuadTree::DumpTree(const NodeID &inRoot, const char *inFileNamePrefix) cons
+ 
+ #ifdef JPH_TRACK_BROADPHASE_STATS
+ 
++uint32 QuadTree::VisitStatistics(BroadPhase::EStatisticsQuery inQuery, uint32 inBroadPhaseLayer, const LayerToStats &inLayer, BroadPhase::StatisticsVisitor inVisitor, void *inContext, bool inReset) const
++{
++	unique_lock lock(mStatsMutex);
++	uint32 count = 0;
++
++	for (LayerToStats::value_type &entry : const_cast<LayerToStats &>(inLayer))
++	{
++		uint64 hash = 14695981039346656037ULL;
++		for (char value : entry.first)
++		{
++			hash ^= uint8(value);
++			hash *= 1099511628211ULL;
++		}
++
++		BroadPhase::Statistics value;
++		value.mFilterDescriptionHash = hash;
++		value.mTotalTicks = entry.second.mTotalTicks;
++		value.mCollectorTicks = entry.second.mCollectorTicks;
++		value.mNumQueries = entry.second.mNumQueries;
++		value.mNodesVisited = entry.second.mNodesVisited;
++		value.mBodiesVisited = entry.second.mBodiesVisited;
++		value.mHitsReported = entry.second.mHitsReported;
++		value.mBroadPhaseLayer = inBroadPhaseLayer;
++		value.mQuery = inQuery;
++
++		if (value.mNumQueries != 0 || value.mHitsReported != 0 || value.mTotalTicks != 0)
++		{
++			inVisitor(value, inContext);
++			++count;
++		}
++
++		if (inReset)
++			entry.second = {};
++	}
++	return count;
++}
++
+ uint64 QuadTree::GetTicks100Pct(const LayerToStats &inLayer) const
+ {
+ 	uint64 total_ticks = 0;
+diff --git a/Jolt/Physics/Collision/BroadPhase/QuadTree.h b/Jolt/Physics/Collision/BroadPhase/QuadTree.h
+index 0514039..b1cbdd1 100644
+--- a/Jolt/Physics/Collision/BroadPhase/QuadTree.h
++++ b/Jolt/Physics/Collision/BroadPhase/QuadTree.h
+@@ -7,6 +7,7 @@
+ #include <Jolt/Core/FixedSizeFreeList.h>
+ #include <Jolt/Core/Atomics.h>
+ #include <Jolt/Core/NonCopyable.h>
++#include <Jolt/Core/UnorderedMap.h>
+ #include <Jolt/Physics/Body/BodyManager.h>
+ #include <Jolt/Physics/Collision/BroadPhase/BroadPhase.h>
+ 
+@@ -171,11 +172,11 @@ public:
+ 	/// Destructor
+ 								~QuadTree();
+ 
+-#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
++#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED) || defined(JPH_TRACK_BROADPHASE_STATS)
+ 	/// Name of the tree for debugging purposes
+ 	void						SetName(const char *inName)			{ mName = inName; }
+ 	inline const char *			GetName() const						{ return mName; }
+-#endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED
++#endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED || JPH_TRACK_BROADPHASE_STATS
+ 
+ 	/// Check if there is anything in the tree
+ 	inline bool					HasBodies() const					{ return mNumBodies != 0; }
+@@ -344,6 +345,8 @@ private:
+ 	atomic<bool>				mIsDirty = false;
+ 
+ #ifdef JPH_TRACK_BROADPHASE_STATS
++	friend class BroadPhaseQuadTree;
++
+ 	/// Mutex protecting the various LayerToStats members
+ 	mutable Mutex				mStatsMutex;
+ 
+@@ -359,6 +362,8 @@ private:
+ 
+ 	using LayerToStats = UnorderedMap<String, Stat>;
+ 
++	uint32					VisitStatistics(BroadPhase::EStatisticsQuery inQuery, uint32 inBroadPhaseLayer, const LayerToStats &inLayer, BroadPhase::StatisticsVisitor inVisitor, void *inContext, bool inReset) const;
++
+ 	/// Sum up all the ticks in a layer
+ 	uint64						GetTicks100Pct(const LayerToStats &inLayer) const;
+ 
+@@ -380,10 +385,10 @@ private:
+ 	template <class Visitor>
+ 	JPH_INLINE void				WalkTree(const ObjectLayerFilter &inObjectLayerFilter, const TrackingVector &inTracking, Visitor &ioVisitor JPH_IF_TRACK_BROADPHASE_STATS(, LayerToStats &ioStats)) const;
+ 
+-#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
++#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED) || defined(JPH_TRACK_BROADPHASE_STATS)
+ 	/// Name of this tree for debugging purposes
+ 	const char *				mName = "Layer";
+-#endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED
++#endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED || JPH_TRACK_BROADPHASE_STATS
+ };
+ 
+ JPH_NAMESPACE_END
 diff --git a/Jolt/Physics/Constraints/ConstraintManager.cpp b/Jolt/Physics/Constraints/ConstraintManager.cpp
 index 509bddb..f7ceb56 100644
 --- a/Jolt/Physics/Constraints/ConstraintManager.cpp
@@ -524,6 +693,31 @@ index f8ceddc..a194207 100644
  
  	/// Sample the neutral density at a grid position
  	float				GetNeutralDensity(uint32 inX, uint32 inY, uint32 inZ) const
+diff --git a/Jolt/Physics/PhysicsSystem.h b/Jolt/Physics/PhysicsSystem.h
+index b244a51..6ce70b3 100644
+--- a/Jolt/Physics/PhysicsSystem.h
++++ b/Jolt/Physics/PhysicsSystem.h
+@@ -5,6 +5,7 @@
+ #pragma once
+ 
+ #include <Jolt/Physics/Body/BodyInterface.h>
++#include <Jolt/Physics/Collision/BroadPhase/BroadPhase.h>
+ #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
+ #include <Jolt/Physics/Collision/ContactListener.h>
+ #include <Jolt/Physics/Constraints/ContactConstraintManager.h>
+@@ -257,6 +258,12 @@ public:
+ #ifdef JPH_TRACK_BROADPHASE_STATS
+ 	/// Trace the accumulated broadphase stats to the TTY
+ 	void						ReportBroadphaseStats()										{ mBroadPhase->ReportStats(); }
++
++	/// Copies broadphase statistics into caller-owned storage.
++	uint32 VisitBroadPhaseStatistics(BroadPhase::StatisticsVisitor inVisitor, void *inContext, bool inReset)
++	{
++		return mBroadPhase->VisitStatistics(inVisitor, inContext, inReset);
++	}
+ #endif // JPH_TRACK_BROADPHASE_STATS
+ 
+ #if defined(JPH_TRACK_SIMULATION_STATS) && defined(JPH_PROFILE_ENABLED)
 diff --git a/Jolt/Physics/StateRecorder.h b/Jolt/Physics/StateRecorder.h
 index c3bd477..2c295b4 100644
 --- a/Jolt/Physics/StateRecorder.h

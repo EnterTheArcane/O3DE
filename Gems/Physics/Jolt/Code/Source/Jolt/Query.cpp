@@ -9,6 +9,7 @@
 
 #include <Jolt/BehaviorReflection.h>
 #include <Jolt/Reflection.h>
+#include <Jolt/TransformedShapeLease.h>
 
 #include <Jolt/Physics/Collision/TransformedShape.h>
 
@@ -22,6 +23,7 @@ namespace Jolt
 {
     static_assert(sizeof(JPH::TransformedShape) <= 96);
     static_assert(alignof(JPH::TransformedShape) <= alignof(TransformedShape));
+    static_assert(sizeof(TransformedShape) <= 176);
 
     TransformedShape::TransformedShape()
     {
@@ -34,7 +36,14 @@ namespace Jolt
         , m_bodyHandle(other.m_bodyHandle)
         , m_materialHandle(other.m_materialHandle)
         , m_shapeHandle(other.m_shapeHandle)
+        , m_userData(other.m_userData)
+        , m_shapeKind(other.m_shapeKind)
+        , m_leaseOwner(other.m_leaseOwner)
     {
+        if (m_leaseOwner)
+        {
+            Internal::AcquireTransformedShapeLease(m_leaseOwner, m_shapeHandle);
+        }
         AZStd::construct_at(
             reinterpret_cast<JPH::TransformedShape*>(m_nativeStorage),
             *reinterpret_cast<const JPH::TransformedShape*>(other.m_nativeStorage));
@@ -46,28 +55,53 @@ namespace Jolt
         , m_bodyHandle(other.m_bodyHandle)
         , m_materialHandle(other.m_materialHandle)
         , m_shapeHandle(other.m_shapeHandle)
+        , m_userData(other.m_userData)
+        , m_shapeKind(other.m_shapeKind)
+        , m_leaseOwner(other.m_leaseOwner)
     {
         AZStd::construct_at(
             reinterpret_cast<JPH::TransformedShape*>(m_nativeStorage),
             AZStd::move(*reinterpret_cast<JPH::TransformedShape*>(other.m_nativeStorage)));
+        other.m_worldHandle = WorldHandle::Invalid;
+        other.m_bodyHandle = BodyHandle::Invalid;
+        other.m_materialHandle = MaterialHandle::Invalid;
+        other.m_shapeHandle = ShapeHandle::Invalid;
+        other.m_userData = 0;
+        other.m_shapeKind = ShapeKind::None;
+        other.m_leaseOwner = nullptr;
     }
 
     TransformedShape::~TransformedShape()
     {
         AZStd::destroy_at(reinterpret_cast<JPH::TransformedShape*>(m_nativeStorage));
+        if (m_leaseOwner)
+        {
+            Internal::ReleaseTransformedShapeLease(m_leaseOwner, m_shapeHandle);
+        }
     }
 
     TransformedShape& TransformedShape::operator=(const TransformedShape& other)
     {
         if (this != &other)
         {
+            if (other.m_leaseOwner)
+            {
+                Internal::AcquireTransformedShapeLease(other.m_leaseOwner, other.m_shapeHandle);
+            }
             *reinterpret_cast<JPH::TransformedShape*>(m_nativeStorage) =
                 *reinterpret_cast<const JPH::TransformedShape*>(other.m_nativeStorage);
+            if (m_leaseOwner)
+            {
+                Internal::ReleaseTransformedShapeLease(m_leaseOwner, m_shapeHandle);
+            }
             m_worldOrigin = other.m_worldOrigin;
             m_worldHandle = other.m_worldHandle;
             m_bodyHandle = other.m_bodyHandle;
             m_materialHandle = other.m_materialHandle;
             m_shapeHandle = other.m_shapeHandle;
+            m_userData = other.m_userData;
+            m_shapeKind = other.m_shapeKind;
+            m_leaseOwner = other.m_leaseOwner;
         }
         return *this;
     }
@@ -78,11 +112,25 @@ namespace Jolt
         {
             *reinterpret_cast<JPH::TransformedShape*>(m_nativeStorage) =
                 AZStd::move(*reinterpret_cast<JPH::TransformedShape*>(other.m_nativeStorage));
+            if (m_leaseOwner)
+            {
+                Internal::ReleaseTransformedShapeLease(m_leaseOwner, m_shapeHandle);
+            }
             m_worldOrigin = other.m_worldOrigin;
             m_worldHandle = other.m_worldHandle;
             m_bodyHandle = other.m_bodyHandle;
             m_materialHandle = other.m_materialHandle;
             m_shapeHandle = other.m_shapeHandle;
+            m_userData = other.m_userData;
+            m_shapeKind = other.m_shapeKind;
+            m_leaseOwner = other.m_leaseOwner;
+            other.m_worldHandle = WorldHandle::Invalid;
+            other.m_bodyHandle = BodyHandle::Invalid;
+            other.m_materialHandle = MaterialHandle::Invalid;
+            other.m_shapeHandle = ShapeHandle::Invalid;
+            other.m_userData = 0;
+            other.m_shapeKind = ShapeKind::None;
+            other.m_leaseOwner = nullptr;
         }
         return *this;
     }
@@ -134,6 +182,11 @@ namespace Jolt
         return m_shapeHandle;
     }
 
+    ShapeKind TransformedShape::GetShapeKind() const
+    {
+        return m_shapeKind;
+    }
+
     SubShapeId TransformedShape::GetSubShapeId() const
     {
         const JPH::SubShapeID subShapeId =
@@ -159,6 +212,16 @@ namespace Jolt
                 rotation.GetZ(),
                 rotation.GetW()),
         };
+    }
+
+    AZ::u64 TransformedShape::GetUserData() const
+    {
+        return m_userData;
+    }
+
+    WorldHandle TransformedShape::GetWorldHandle() const
+    {
+        return m_worldHandle;
     }
 
     AZStd::span<WorldPosition> ShapeQueryFaceBuffers::GetQueryFace(
@@ -246,6 +309,12 @@ namespace Jolt
                 ->Field("TreatConvexAsSolid", &TransformedShapeRaycastRequest::m_treatConvexAsSolid);
 
             serializeContext
+                ->Class<ShapePlacement>()
+                ->Field("ShapeHandle", &ShapePlacement::m_shapeHandle)
+                ->Field("Transform", &ShapePlacement::m_transform)
+                ->Field("UniformScale", &ShapePlacement::m_uniformScale);
+
+            serializeContext
                 ->Class<ShapeOverlapRequest>()
                 ->Field("ShapeHandle", &ShapeOverlapRequest::m_shapeHandle)
                 ->Field("Transform", &ShapeOverlapRequest::m_transform)
@@ -280,6 +349,43 @@ namespace Jolt
                 ->Field("FaceCollectionMode", &ShapeCastRequest::m_faceCollectionMode)
                 ->Field("ReturnDeepestPoint", &ShapeCastRequest::m_returnDeepestPoint)
                 ->Field("UseShrunkenShapeAndConvexRadius", &ShapeCastRequest::m_useShrunkenShapeAndConvexRadius);
+
+            serializeContext
+                ->Class<TransformedShapeCollisionRequest>()
+                ->Field(
+                    "ActiveEdgeMovementDirection",
+                    &TransformedShapeCollisionRequest::m_activeEdgeMovementDirection)
+                ->Field("CollisionTolerance", &TransformedShapeCollisionRequest::m_collisionTolerance)
+                ->Field(
+                    "InternalEdgeRemovalVertexTolerance",
+                    &TransformedShapeCollisionRequest::m_internalEdgeRemovalVertexTolerance)
+                ->Field(
+                    "MaximumSeparationDistance",
+                    &TransformedShapeCollisionRequest::m_maximumSeparationDistance)
+                ->Field("PenetrationTolerance", &TransformedShapeCollisionRequest::m_penetrationTolerance)
+                ->Field("BackFaceMode", &TransformedShapeCollisionRequest::m_backFaceMode)
+                ->Field("ActiveEdgeMode", &TransformedShapeCollisionRequest::m_activeEdgeMode)
+                ->Field("FaceCollectionMode", &TransformedShapeCollisionRequest::m_faceCollectionMode)
+                ->Field("RemoveInternalEdges", &TransformedShapeCollisionRequest::m_removeInternalEdges);
+
+            serializeContext
+                ->Class<TransformedShapeCastRequest>()
+                ->Field("Displacement", &TransformedShapeCastRequest::m_displacement)
+                ->Field(
+                    "ActiveEdgeMovementDirection",
+                    &TransformedShapeCastRequest::m_activeEdgeMovementDirection)
+                ->Field("CollisionTolerance", &TransformedShapeCastRequest::m_collisionTolerance)
+                ->Field("ExtraConvexRadius", &TransformedShapeCastRequest::m_extraConvexRadius)
+                ->Field("MaximumFraction", &TransformedShapeCastRequest::m_maximumFraction)
+                ->Field("PenetrationTolerance", &TransformedShapeCastRequest::m_penetrationTolerance)
+                ->Field("ConvexBackFaceMode", &TransformedShapeCastRequest::m_convexBackFaceMode)
+                ->Field("TriangleBackFaceMode", &TransformedShapeCastRequest::m_triangleBackFaceMode)
+                ->Field("ActiveEdgeMode", &TransformedShapeCastRequest::m_activeEdgeMode)
+                ->Field("FaceCollectionMode", &TransformedShapeCastRequest::m_faceCollectionMode)
+                ->Field("ReturnDeepestPoint", &TransformedShapeCastRequest::m_returnDeepestPoint)
+                ->Field(
+                    "UseShrunkenShapeAndConvexRadius",
+                    &TransformedShapeCastRequest::m_useShrunkenShapeAndConvexRadius);
 
             serializeContext
                 ->Class<BroadPhaseAabb>()
@@ -404,6 +510,33 @@ namespace Jolt
                 ->Field("IsBackFaceHit", &ShapeCastHit::m_isBackFaceHit);
 
             serializeContext
+                ->Class<TransformedShapeCollisionHit>()
+                ->Field("FirstContactPosition", &TransformedShapeCollisionHit::m_firstContactPosition)
+                ->Field("SecondContactPosition", &TransformedShapeCollisionHit::m_secondContactPosition)
+                ->Field("PenetrationAxis", &TransformedShapeCollisionHit::m_penetrationAxis)
+                ->Field("FirstWorldHandle", &TransformedShapeCollisionHit::m_firstWorldHandle)
+                ->Field("SecondWorldHandle", &TransformedShapeCollisionHit::m_secondWorldHandle)
+                ->Field("FirstBodyHandle", &TransformedShapeCollisionHit::m_firstBodyHandle)
+                ->Field("SecondBodyHandle", &TransformedShapeCollisionHit::m_secondBodyHandle)
+                ->Field("FirstMaterialHandle", &TransformedShapeCollisionHit::m_firstMaterialHandle)
+                ->Field("SecondMaterialHandle", &TransformedShapeCollisionHit::m_secondMaterialHandle)
+                ->Field("FirstShapeHandle", &TransformedShapeCollisionHit::m_firstShapeHandle)
+                ->Field("SecondShapeHandle", &TransformedShapeCollisionHit::m_secondShapeHandle)
+                ->Field("FirstSubShapeId", &TransformedShapeCollisionHit::m_firstSubShapeId)
+                ->Field("SecondSubShapeId", &TransformedShapeCollisionHit::m_secondSubShapeId)
+                ->Field("FirstUserData", &TransformedShapeCollisionHit::m_firstUserData)
+                ->Field("SecondUserData", &TransformedShapeCollisionHit::m_secondUserData)
+                ->Field("PenetrationDepth", &TransformedShapeCollisionHit::m_penetrationDepth)
+                ->Field("FirstFaceVertexCount", &TransformedShapeCollisionHit::m_firstFaceVertexCount)
+                ->Field("SecondFaceVertexCount", &TransformedShapeCollisionHit::m_secondFaceVertexCount);
+
+            serializeContext
+                ->Class<TransformedShapeCastHit>()
+                ->Field("Collision", &TransformedShapeCastHit::m_collision)
+                ->Field("Fraction", &TransformedShapeCastHit::m_fraction)
+                ->Field("IsBackFaceHit", &TransformedShapeCastHit::m_isBackFaceHit);
+
+            serializeContext
                 ->Class<BroadPhaseHit>()
                 ->Field("BodyHandle", &BroadPhaseHit::m_bodyHandle);
 
@@ -457,6 +590,7 @@ namespace Jolt
         JOLT_BEHAVIOR_ENUM(*behaviorContext, ShapeKind, Box);
         JOLT_BEHAVIOR_ENUM(*behaviorContext, ShapeKind, Capsule);
         JOLT_BEHAVIOR_ENUM(*behaviorContext, ShapeKind, ConvexHull);
+        JOLT_BEHAVIOR_ENUM(*behaviorContext, ShapeKind, Custom);
         JOLT_BEHAVIOR_ENUM(*behaviorContext, ShapeKind, CustomConvex);
         JOLT_BEHAVIOR_ENUM(*behaviorContext, ShapeKind, Cylinder);
         JOLT_BEHAVIOR_ENUM(*behaviorContext, ShapeKind, Empty);
@@ -575,6 +709,79 @@ namespace Jolt
             ->Property(
                 "treatConvexAsSolid",
                 JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeRaycastRequest::m_treatConvexAsSolid));
+
+        behaviorContext->Class<ShapePlacement>("ShapePlacement")
+            ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+            ->Attribute(AZ::Script::Attributes::Module, "jolt")
+            ->Constructor<>()
+            ->Property("shapeHandle", JOLT_BEHAVIOR_VALUE_PROPERTY(&ShapePlacement::m_shapeHandle))
+            ->Property("transform", JOLT_BEHAVIOR_VALUE_PROPERTY(&ShapePlacement::m_transform))
+            ->Property("uniformScale", JOLT_BEHAVIOR_VALUE_PROPERTY(&ShapePlacement::m_uniformScale));
+
+        behaviorContext->Class<TransformedShapeCollisionRequest>("TransformedShapeCollisionRequest")
+            ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+            ->Attribute(AZ::Script::Attributes::Module, "jolt")
+            ->Constructor<>()
+            ->Property(
+                "activeEdgeMovementDirection",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCollisionRequest::m_activeEdgeMovementDirection))
+            ->Property(
+                "collisionTolerance",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCollisionRequest::m_collisionTolerance))
+            ->Property(
+                "internalEdgeRemovalVertexTolerance",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCollisionRequest::m_internalEdgeRemovalVertexTolerance))
+            ->Property(
+                "maximumSeparationDistance",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCollisionRequest::m_maximumSeparationDistance))
+            ->Property(
+                "penetrationTolerance",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCollisionRequest::m_penetrationTolerance))
+            ->Property("backFaceMode", JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCollisionRequest::m_backFaceMode))
+            ->Property("activeEdgeMode", JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCollisionRequest::m_activeEdgeMode))
+            ->Property(
+                "faceCollectionMode",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCollisionRequest::m_faceCollectionMode))
+            ->Property(
+                "removeInternalEdges",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCollisionRequest::m_removeInternalEdges));
+
+        behaviorContext->Class<TransformedShapeCastRequest>("TransformedShapeCastRequest")
+            ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+            ->Attribute(AZ::Script::Attributes::Module, "jolt")
+            ->Constructor<>()
+            ->Property("displacement", JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCastRequest::m_displacement))
+            ->Property(
+                "activeEdgeMovementDirection",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCastRequest::m_activeEdgeMovementDirection))
+            ->Property(
+                "collisionTolerance",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCastRequest::m_collisionTolerance))
+            ->Property(
+                "extraConvexRadius",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCastRequest::m_extraConvexRadius))
+            ->Property(
+                "maximumFraction",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCastRequest::m_maximumFraction))
+            ->Property(
+                "penetrationTolerance",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCastRequest::m_penetrationTolerance))
+            ->Property(
+                "convexBackFaceMode",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCastRequest::m_convexBackFaceMode))
+            ->Property(
+                "triangleBackFaceMode",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCastRequest::m_triangleBackFaceMode))
+            ->Property("activeEdgeMode", JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCastRequest::m_activeEdgeMode))
+            ->Property(
+                "faceCollectionMode",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCastRequest::m_faceCollectionMode))
+            ->Property(
+                "returnDeepestPoint",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCastRequest::m_returnDeepestPoint))
+            ->Property(
+                "useShrunkenShapeAndConvexRadius",
+                JOLT_BEHAVIOR_VALUE_PROPERTY(&TransformedShapeCastRequest::m_useShrunkenShapeAndConvexRadius));
 
         behaviorContext->Class<ShapeOverlapRequest>("ShapeOverlapRequest")
             ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
@@ -839,6 +1046,53 @@ namespace Jolt
             ->Property("targetFaceVertexCount", BehaviorValueGetter(&ShapeCastHit::m_targetFaceVertexCount), nullptr)
             ->Property("isBackFaceHit", BehaviorValueGetter(&ShapeCastHit::m_isBackFaceHit), nullptr);
 
+        behaviorContext->Class<TransformedShapeCollisionHit>("TransformedShapeCollisionHit")
+            ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+            ->Attribute(AZ::Script::Attributes::Module, "jolt")
+            ->Property(
+                "firstContactPosition",
+                BehaviorValueGetter(&TransformedShapeCollisionHit::m_firstContactPosition),
+                nullptr)
+            ->Property(
+                "secondContactPosition",
+                BehaviorValueGetter(&TransformedShapeCollisionHit::m_secondContactPosition),
+                nullptr)
+            ->Property("penetrationAxis", BehaviorValueGetter(&TransformedShapeCollisionHit::m_penetrationAxis), nullptr)
+            ->Property("firstWorldHandle", BehaviorValueGetter(&TransformedShapeCollisionHit::m_firstWorldHandle), nullptr)
+            ->Property("secondWorldHandle", BehaviorValueGetter(&TransformedShapeCollisionHit::m_secondWorldHandle), nullptr)
+            ->Property("firstBodyHandle", BehaviorValueGetter(&TransformedShapeCollisionHit::m_firstBodyHandle), nullptr)
+            ->Property("secondBodyHandle", BehaviorValueGetter(&TransformedShapeCollisionHit::m_secondBodyHandle), nullptr)
+            ->Property(
+                "firstMaterialHandle",
+                BehaviorValueGetter(&TransformedShapeCollisionHit::m_firstMaterialHandle),
+                nullptr)
+            ->Property(
+                "secondMaterialHandle",
+                BehaviorValueGetter(&TransformedShapeCollisionHit::m_secondMaterialHandle),
+                nullptr)
+            ->Property("firstShapeHandle", BehaviorValueGetter(&TransformedShapeCollisionHit::m_firstShapeHandle), nullptr)
+            ->Property("secondShapeHandle", BehaviorValueGetter(&TransformedShapeCollisionHit::m_secondShapeHandle), nullptr)
+            ->Property("firstSubShapeId", BehaviorValueGetter(&TransformedShapeCollisionHit::m_firstSubShapeId), nullptr)
+            ->Property("secondSubShapeId", BehaviorValueGetter(&TransformedShapeCollisionHit::m_secondSubShapeId), nullptr)
+            ->Property("firstUserData", BehaviorValueGetter(&TransformedShapeCollisionHit::m_firstUserData), nullptr)
+            ->Property("secondUserData", BehaviorValueGetter(&TransformedShapeCollisionHit::m_secondUserData), nullptr)
+            ->Property("penetrationDepth", BehaviorValueGetter(&TransformedShapeCollisionHit::m_penetrationDepth), nullptr)
+            ->Property(
+                "firstFaceVertexCount",
+                BehaviorValueGetter(&TransformedShapeCollisionHit::m_firstFaceVertexCount),
+                nullptr)
+            ->Property(
+                "secondFaceVertexCount",
+                BehaviorValueGetter(&TransformedShapeCollisionHit::m_secondFaceVertexCount),
+                nullptr);
+
+        behaviorContext->Class<TransformedShapeCastHit>("TransformedShapeCastHit")
+            ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+            ->Attribute(AZ::Script::Attributes::Module, "jolt")
+            ->Property("collision", BehaviorValueGetter(&TransformedShapeCastHit::m_collision), nullptr)
+            ->Property("fraction", BehaviorValueGetter(&TransformedShapeCastHit::m_fraction), nullptr)
+            ->Property("isBackFaceHit", BehaviorValueGetter(&TransformedShapeCastHit::m_isBackFaceHit), nullptr);
+
         behaviorContext->Class<BroadPhaseHit>("BroadPhaseHit")
             ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
             ->Attribute(AZ::Script::Attributes::Module, "jolt")
@@ -859,7 +1113,10 @@ namespace Jolt
             ->Property("bodyHandle", &TransformedShape::GetBodyHandle, nullptr)
             ->Property("materialHandle", &TransformedShape::GetMaterialHandle, nullptr)
             ->Property("shapeHandle", &TransformedShape::GetShapeHandle, nullptr)
-            ->Property("subShapeId", &TransformedShape::GetSubShapeId, nullptr);
+            ->Property("shapeKind", &TransformedShape::GetShapeKind, nullptr)
+            ->Property("subShapeId", &TransformedShape::GetSubShapeId, nullptr)
+            ->Property("userData", &TransformedShape::GetUserData, nullptr)
+            ->Property("worldHandle", &TransformedShape::GetWorldHandle, nullptr);
 
         behaviorContext->Class<TransformedTriangle>("TransformedTriangle")
             ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)

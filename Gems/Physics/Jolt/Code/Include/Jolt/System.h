@@ -108,7 +108,9 @@ namespace Jolt
         Precision m_precision = Precision::None;
         SimdLevel m_simdLevel = SimdLevel::None;
 
+        bool m_broadPhaseStatistics = false;
         bool m_detailedProfiling = false;
+        bool m_narrowPhaseStatistics = false;
         bool m_simulationStatistics = false;
     };
 
@@ -2139,6 +2141,19 @@ namespace Jolt
             WorldHandle worldHandle,
             WorldStatistics& statistics) const = 0;
 
+        //! Reads allocation-free native broadphase counters. Reset preserves native map capacity.
+        [[nodiscard]]
+        virtual DiagnosticStatisticsResult GetBroadPhaseStatistics(
+            WorldHandle worldHandle,
+            AZStd::span<BroadPhaseStatistics> statistics,
+            bool reset) = 0;
+
+        //! Reads process-wide native narrowphase counters.
+        [[nodiscard]]
+        virtual DiagnosticStatisticsResult GetNarrowPhaseStatistics(
+            AZStd::span<NarrowPhaseStatistics> statistics,
+            bool reset) = 0;
+
         virtual bool DrawDebug(
             WorldHandle worldHandle,
             const DebugDrawSettings& settings,
@@ -2719,6 +2734,67 @@ namespace Jolt
             SubShapeId subShapeId,
             const AZ::Vector3& direction,
             AZStd::span<WorldPosition> vertices) const = 0;
+
+        [[nodiscard]]
+        virtual bool RetainShape(
+            WorldHandle worldHandle,
+            ShapeHandle shapeHandle,
+            const WorldTransform& transform,
+            float uniformScale,
+            TransformedShape& shape) const = 0;
+
+        [[nodiscard]]
+        virtual QueryResult CollideTransformedShapes(
+            WorldHandle worldHandle,
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCollisionRequest& request,
+            AZStd::span<TransformedShapeCollisionHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers = {}) const = 0;
+
+        [[nodiscard]]
+        virtual bool CollideTransformedShapes(
+            WorldHandle worldHandle,
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCollisionRequest& request,
+            ITransformedShapeCollisionCollector& collector) const = 0;
+
+        [[nodiscard]]
+        virtual QueryResult CollideTransformedShapes(
+            WorldHandle worldHandle,
+            const ShapePlacement& firstShape,
+            const ShapePlacement& secondShape,
+            const TransformedShapeCollisionRequest& request,
+            AZStd::span<TransformedShapeCollisionHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers = {}) const = 0;
+
+        [[nodiscard]]
+        virtual QueryResult CastTransformedShape(
+            WorldHandle worldHandle,
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCastRequest& request,
+            AZStd::span<TransformedShapeCastHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers = {}) const = 0;
+
+        [[nodiscard]]
+        virtual bool CastTransformedShape(
+            WorldHandle worldHandle,
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCastRequest& request,
+            ITransformedShapeCastCollector& collector) const = 0;
+
+        [[nodiscard]]
+        virtual QueryResult CastTransformedShape(
+            WorldHandle worldHandle,
+            const ShapePlacement& firstShape,
+            const ShapePlacement& secondShape,
+            const TransformedShapeCastRequest& request,
+            AZStd::span<TransformedShapeCastHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers = {}) const = 0;
+
         [[nodiscard]]
         virtual bool RaycastClosest(
             WorldHandle worldHandle,

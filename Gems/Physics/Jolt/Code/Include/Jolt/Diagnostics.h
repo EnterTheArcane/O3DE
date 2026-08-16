@@ -7,10 +7,12 @@
 
 #pragma once
 
+#include <Jolt/Query.h>
 #include <Jolt/TypeIds.h>
 
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/base.h>
+#include <AzCore/std/containers/span.h>
 #include <AzCore/std/containers/vector.h>
 
 namespace AZ
@@ -75,6 +77,77 @@ namespace Jolt
         AZ::u8 m_positionStepCount = 0;
         AZ::u8 m_velocityStepCount = 0;
         bool m_isLargeIsland = false;
+    };
+
+    enum class DiagnosticStatisticsStatus : AZ::u8
+    {
+        None = 0,
+        Complete,
+        Overflow,
+        Unavailable,
+    };
+
+    enum class BroadPhaseQueryKind : AZ::u8
+    {
+        None = 0,
+        CastAabb,
+        CollideAabb,
+        CollideOrientedBox,
+        CollidePoint,
+        CollideSphere,
+        Raycast,
+    };
+
+    enum class NarrowPhaseQueryKind : AZ::u8
+    {
+        None = 0,
+        Cast,
+        Collide,
+    };
+
+    struct DiagnosticStatisticsResult final
+    {
+        AZ_TYPE_INFO(DiagnosticStatisticsResult, DiagnosticStatisticsResultTypeId);
+
+        AZ::u32 m_count = 0;
+        AZ::u32 m_requiredCount = 0;
+        DiagnosticStatisticsStatus m_status = DiagnosticStatisticsStatus::None;
+
+        [[nodiscard]]
+        constexpr explicit operator bool() const noexcept
+        {
+            return m_status == DiagnosticStatisticsStatus::Complete;
+        }
+    };
+
+    //! Broadphase counters are per world and accumulate until explicitly reset.
+    struct BroadPhaseStatistics final
+    {
+        AZ_TYPE_INFO(BroadPhaseStatistics, BroadPhaseStatisticsTypeId);
+
+        AZ::u64 m_filterDescriptionHash = 0;
+        AZ::u64 m_totalTicks = 0;
+        AZ::u64 m_collectorTicks = 0;
+        AZ::u64 m_queryCount = 0;
+        AZ::u64 m_nodesVisited = 0;
+        AZ::u64 m_bodiesVisited = 0;
+        AZ::u64 m_hitsReported = 0;
+        AZ::u32 m_broadPhaseLayer = 0;
+        BroadPhaseQueryKind m_queryKind = BroadPhaseQueryKind::None;
+    };
+
+    //! Narrowphase counters are process-wide and accumulate until explicitly reset.
+    struct NarrowPhaseStatistics final
+    {
+        AZ_TYPE_INFO(NarrowPhaseStatistics, NarrowPhaseStatisticsTypeId);
+
+        AZ::u64 m_totalTicks = 0;
+        AZ::u64 m_childTicks = 0;
+        AZ::u64 m_queryCount = 0;
+        AZ::u64 m_hitsReported = 0;
+        ShapeKind m_firstShapeKind = ShapeKind::None;
+        ShapeKind m_secondShapeKind = ShapeKind::None;
+        NarrowPhaseQueryKind m_queryKind = NarrowPhaseQueryKind::None;
     };
 
     struct StateValidationResult final
@@ -173,3 +246,9 @@ namespace Jolt
 AZ_TYPE_INFO_SPECIALIZE(Jolt::StateSnapshotFlags, "{66C982E6-7530-492B-8E45-3EC39234391E}");
 
 AZ_TYPE_INFO_SPECIALIZE(Jolt::SimulationError, "{826890EC-7B26-4C15-8596-7DF75FCD04E1}");
+
+AZ_TYPE_INFO_SPECIALIZE(Jolt::DiagnosticStatisticsStatus, "{BF697872-10BD-498B-B2CE-F12614322A92}");
+
+AZ_TYPE_INFO_SPECIALIZE(Jolt::BroadPhaseQueryKind, "{6A540946-6DB1-48D3-B76C-A4025295EF30}");
+
+AZ_TYPE_INFO_SPECIALIZE(Jolt::NarrowPhaseQueryKind, "{4D2D7359-D430-4897-9681-37F0729E70B3}");

@@ -96,6 +96,7 @@ namespace Jolt
         static void Reflect(AZ::ReflectContext* context);
 
         AZStd::vector<AZ::u8> m_binaryState;
+        AZStd::vector<CustomShapeDependency> m_dependencies;
         AZ::u64 m_buildFingerprint = 0;
         AZ::u64 m_contentHash = 0;
         AZ::u32 m_formatVersion = 0;
@@ -128,6 +129,12 @@ namespace Jolt
         virtual bool RegisterCustomConvexShapeProvider(ICustomConvexShapeProvider* provider) = 0;
 
         virtual bool UnregisterCustomConvexShapeProvider(ICustomConvexShapeProvider* provider) = 0;
+
+        [[nodiscard]]
+        virtual ProviderRegistrationResult RegisterCustomShapeProvider(ICustomShapeProvider* provider) = 0;
+
+        [[nodiscard]]
+        virtual ProviderRegistrationResult UnregisterCustomShapeProvider(ICustomShapeProvider* provider) = 0;
 
         //! Creates the native shape once and retains all referenced materials until destruction.
         [[nodiscard]]
@@ -183,6 +190,16 @@ namespace Jolt
         virtual bool GetCustomConvexShapeInfo(
             CookedShapeHandle cookedShapeHandle,
             CustomConvexShapeInfo& info) const = 0;
+
+        [[nodiscard]]
+        virtual bool GetCustomShapeInfo(
+            CookedShapeHandle cookedShapeHandle,
+            CustomShapeInfo& info) const = 0;
+
+        [[nodiscard]]
+        virtual BufferResult GetCustomShapeDependencies(
+            CookedShapeHandle cookedShapeHandle,
+            AZStd::span<CustomShapeDependency> dependencies) const = 0;
 
         //! The sub-shape ID must originate from a query against this shape.
         [[nodiscard]]

@@ -268,8 +268,14 @@ namespace Jolt
                 ->Property("precision", JOLT_BEHAVIOR_VALUE_PROPERTY(&RuntimeInfo::m_precision))
                 ->Property("simdLevel", JOLT_BEHAVIOR_VALUE_PROPERTY(&RuntimeInfo::m_simdLevel))
                 ->Property(
+                    "broadPhaseStatistics",
+                    JOLT_BEHAVIOR_VALUE_PROPERTY(&RuntimeInfo::m_broadPhaseStatistics))
+                ->Property(
                     "detailedProfiling",
                     JOLT_BEHAVIOR_VALUE_PROPERTY(&RuntimeInfo::m_detailedProfiling))
+                ->Property(
+                    "narrowPhaseStatistics",
+                    JOLT_BEHAVIOR_VALUE_PROPERTY(&RuntimeInfo::m_narrowPhaseStatistics))
                 ->Property(
                     "simulationStatistics",
                     JOLT_BEHAVIOR_VALUE_PROPERTY(&RuntimeInfo::m_simulationStatistics))

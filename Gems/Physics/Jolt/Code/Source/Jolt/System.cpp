@@ -10,6 +10,7 @@
 #include <Jolt/AssetBuilderSystem.h>
 #include <Jolt/ComponentDependencyManager.h>
 #include <Jolt/CustomConvexShape.h>
+#include <Jolt/CustomShapeInternal.h>
 #include <Jolt/DebugRenderer.h>
 #include <Jolt/FloatEnvironment.h>
 #include <Jolt/NativeRuntime.h>
@@ -45,6 +46,7 @@
 #include <Jolt/Physics/Collision/Shape/ScaledShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 #include <Jolt/Physics/Collision/RayCast.h>
+#include <Jolt/Physics/Collision/NarrowPhaseStats.h>
 #include <Jolt/Core/UnorderedSet.h>
 #include <Jolt/Shaders/HairWrapper.h>
 #include <Jolt/Skeleton/SkeletalAnimation.h>
@@ -63,6 +65,74 @@ namespace Jolt
         constexpr AZ::u32 SkeletonDefinitionArchiveFormatVersion = 1;
         constexpr AZ::u32 SoftBodyDefinitionArchiveFormatVersion = 1;
         constexpr size_t MaximumNativeArchiveSize = size_t{1} << 30;
+
+        [[nodiscard]]
+        AZ::u64 CalculateCookedShapeArchiveHash(
+            const AZStd::span<const AZ::u8> binaryState,
+            const AZStd::span<const CustomShapeDependency> dependencies)
+        {
+            AZ::HashValue64 hash = AZ::TypeHash64(
+                binaryState.data(),
+                binaryState.size());
+            hash = AZ::TypeHash64(dependencies.size(), hash);
+            for (const CustomShapeDependency& dependency : dependencies)
+            {
+                hash = AZ::TypeHash64(dependency.m_path, hash);
+                hash = AZ::TypeHash64(dependency.m_contentHash, hash);
+            }
+            return static_cast<AZ::u64>(hash);
+        }
+
+        [[nodiscard]]
+        ShapeKind FromNativeShapeKind(
+            const JPH::EShapeSubType shapeKind)
+        {
+            switch (shapeKind)
+            {
+            case JPH::EShapeSubType::Box:
+                return ShapeKind::Box;
+            case JPH::EShapeSubType::Capsule:
+                return ShapeKind::Capsule;
+            case JPH::EShapeSubType::ConvexHull:
+                return ShapeKind::ConvexHull;
+            case JPH::EShapeSubType::User1:
+                return ShapeKind::Custom;
+            case JPH::EShapeSubType::UserConvex1:
+                return ShapeKind::CustomConvex;
+            case JPH::EShapeSubType::Cylinder:
+                return ShapeKind::Cylinder;
+            case JPH::EShapeSubType::Empty:
+                return ShapeKind::Empty;
+            case JPH::EShapeSubType::HeightField:
+                return ShapeKind::Heightfield;
+            case JPH::EShapeSubType::Mesh:
+                return ShapeKind::Mesh;
+            case JPH::EShapeSubType::MutableCompound:
+                return ShapeKind::MutableCompound;
+            case JPH::EShapeSubType::OffsetCenterOfMass:
+                return ShapeKind::OffsetCenterOfMass;
+            case JPH::EShapeSubType::Plane:
+                return ShapeKind::Plane;
+            case JPH::EShapeSubType::RotatedTranslated:
+                return ShapeKind::RotatedTranslated;
+            case JPH::EShapeSubType::Scaled:
+                return ShapeKind::Scaled;
+            case JPH::EShapeSubType::SoftBody:
+                return ShapeKind::SoftBody;
+            case JPH::EShapeSubType::Sphere:
+                return ShapeKind::Sphere;
+            case JPH::EShapeSubType::StaticCompound:
+                return ShapeKind::StaticCompound;
+            case JPH::EShapeSubType::TaperedCapsule:
+                return ShapeKind::TaperedCapsule;
+            case JPH::EShapeSubType::TaperedCylinder:
+                return ShapeKind::TaperedCylinder;
+            case JPH::EShapeSubType::Triangle:
+                return ShapeKind::Triangle;
+            default:
+                return ShapeKind::None;
+            }
+        }
 
         [[nodiscard]]
         AZ::Transform FromNativeTransform(
@@ -698,6 +768,90 @@ namespace Jolt
         return true;
     }
 
+    ProviderRegistrationResult System::RegisterCustomShapeProvider(
+        ICustomShapeProvider* provider)
+    {
+        if (!provider
+            || provider->GetId().IsNull()
+            || provider->GetVersion() == 0)
+        {
+            return ProviderRegistrationResult::Invalid;
+        }
+
+        AZStd::lock_guard lock(m_customShapeProviderMutex);
+        const bool inserted = m_customShapeProviders.emplace(
+            provider->GetId(),
+            CustomShapeProviderEntry{
+                .m_provider = provider,
+            }).second;
+        if (!inserted)
+        {
+            return ProviderRegistrationResult::AlreadyRegistered;
+        }
+        return ProviderRegistrationResult::Success;
+    }
+
+    ProviderRegistrationResult System::UnregisterCustomShapeProvider(
+        ICustomShapeProvider* provider)
+    {
+        if (!provider)
+        {
+            return ProviderRegistrationResult::Invalid;
+        }
+
+        AZStd::lock_guard lock(m_customShapeProviderMutex);
+        const auto providerIterator = m_customShapeProviders.find(provider->GetId());
+        if (providerIterator == m_customShapeProviders.end()
+            || providerIterator->second.m_provider != provider)
+        {
+            return ProviderRegistrationResult::NotRegistered;
+        }
+        if (providerIterator->second.m_referenceCount > 0)
+        {
+            return ProviderRegistrationResult::InUse;
+        }
+
+        m_customShapeProviders.erase(providerIterator);
+        return ProviderRegistrationResult::Success;
+    }
+
+    ICustomShapeProvider* System::AcquireCustomShapeProvider(
+        const AZ::TypeId providerId,
+        const AZ::u64 requiredVersion)
+    {
+        AZStd::lock_guard lock(m_customShapeProviderMutex);
+        const auto providerIterator = m_customShapeProviders.find(providerId);
+        if (providerIterator == m_customShapeProviders.end()
+            || providerIterator->second.m_referenceCount == AZStd::numeric_limits<AZ::u32>::max())
+        {
+            return nullptr;
+        }
+
+        ICustomShapeProvider* provider = providerIterator->second.m_provider;
+        if (!provider || (requiredVersion != 0 && provider->GetVersion() != requiredVersion))
+        {
+            return nullptr;
+        }
+        ++providerIterator->second.m_referenceCount;
+        return provider;
+    }
+
+    void System::ReleaseCustomShapeProvider(
+        const AZ::TypeId providerId)
+    {
+        AZStd::lock_guard lock(m_customShapeProviderMutex);
+        const auto providerIterator = m_customShapeProviders.find(providerId);
+        AZ_Assert(
+            providerIterator != m_customShapeProviders.end()
+                && providerIterator->second.m_referenceCount > 0,
+            "Custom-shape provider ownership is inconsistent.");
+        if (providerIterator != m_customShapeProviders.end()
+            && providerIterator->second.m_referenceCount > 0)
+        {
+            --providerIterator->second.m_referenceCount;
+        }
+    }
+
     ICustomConstraintProvider* System::AcquireCustomConstraintProvider(
         const AZ::TypeId providerId,
         const AZStd::span<const AZ::u8> data,
@@ -869,8 +1023,9 @@ namespace Jolt
         const bool isHeightfield = AZStd::holds_alternative<HeightfieldShapeConfiguration>(configuration.m_geometry);
         const bool isMesh = AZStd::holds_alternative<MeshShapeConfiguration>(configuration.m_geometry);
         const bool isEmpty = AZStd::holds_alternative<EmptyShapeConfiguration>(configuration.m_geometry);
+        const bool isCustom = AZStd::holds_alternative<CustomShapeConfiguration>(configuration.m_geometry);
         if ((isEmpty && !configuration.m_materials.empty())
-            || (!isHeightfield && !isMesh && configuration.m_materials.size() > 1))
+            || (!isHeightfield && !isMesh && !isCustom && configuration.m_materials.size() > 1))
         {
             return {};
         }
@@ -882,26 +1037,49 @@ namespace Jolt
         }
 
         NativeShapeResult nativeResult;
-        if (const auto* customConfiguration = AZStd::get_if<CustomConvexShapeConfiguration>(
+        AZ::TypeId customProviderId = AZ::TypeId::CreateNull();
+        AZStd::vector<CustomShapeDependency> customDependencies;
+        if (const auto* customConfiguration = AZStd::get_if<CustomShapeConfiguration>(
             &configuration.m_geometry))
         {
-            AZStd::shared_lock providerLock(m_customConvexShapeProviderMutex);
-            const auto providerIterator = m_customConvexShapeProviders.find(customConfiguration->m_providerId);
-            if (providerIterator == m_customConvexShapeProviders.end())
+            ICustomShapeProvider* provider = AcquireCustomShapeProvider(customConfiguration->m_providerId);
+            if (!provider)
             {
-                nativeResult.m_error = "No custom convex-shape provider is registered for this identifier.";
+                nativeResult.m_error = "No compatible custom-shape provider is registered for this identifier.";
             }
             else
             {
-                CustomConvexShapeData data;
-                const ICustomConvexShapeProvider& provider = *providerIterator->second;
-                if (!provider.Cook(customConfiguration->m_data, data))
+                CustomShapeData data;
+                if (!provider->Cook(customConfiguration->m_data, data))
                 {
-                    nativeResult.m_error = "The custom convex-shape provider rejected its input data.";
+                    nativeResult.m_error = "The custom-shape provider rejected its input data.";
+                    ReleaseCustomShapeProvider(customConfiguration->m_providerId);
+                }
+                else if (data.m_runtimeData.size() > MaximumCustomShapeRuntimeDataSize)
+                {
+                    nativeResult.m_error = "Custom-shape runtime data exceeds the supported archive limit.";
+                    ReleaseCustomShapeProvider(customConfiguration->m_providerId);
+                }
+                else if (data.m_geometryKind == CustomShapeGeometryKind::Convex
+                    && configuration.m_materials.size() > 1)
+                {
+                    nativeResult.m_error = "A convex custom shape accepts at most one material.";
+                    ReleaseCustomShapeProvider(customConfiguration->m_providerId);
+                }
+                else if (AZStd::any_of(
+                    data.m_dependencies.begin(),
+                    data.m_dependencies.end(),
+                    [](const CustomShapeDependency& dependency)
+                    {
+                        return dependency.m_path.empty() || dependency.m_contentHash == 0;
+                    }))
+                {
+                    nativeResult.m_error = "Custom-shape dependencies require a path and content hash.";
+                    ReleaseCustomShapeProvider(customConfiguration->m_providerId);
                 }
                 else
                 {
-                    const AZ::u64 providerVersion = provider.GetVersion();
+                    const AZ::u64 providerVersion = provider->GetVersion();
                     AZ::HashValue64 sourceHash = AZ::TypeHash64(
                         providerVersion,
                         AZ::HashValue64(static_cast<AZ::u64>(customConfiguration->m_providerId.GetHash())));
@@ -910,6 +1088,99 @@ namespace Jolt
                         sourceHash = AZ::TypeHash64(
                             customConfiguration->m_data.data(),
                             customConfiguration->m_data.size(),
+                            sourceHash);
+                    }
+                    for (const AZ::Vector3& vertex : data.m_vertices)
+                    {
+                        const AZStd::array components = {
+                            vertex.GetX(),
+                            vertex.GetY(),
+                            vertex.GetZ(),
+                        };
+                        sourceHash = AZ::TypeHash64(components, sourceHash);
+                    }
+                    for (const CustomShapeTriangle& triangle : data.m_triangles)
+                    {
+                        const AZStd::array values = {
+                            triangle.m_firstVertex,
+                            triangle.m_secondVertex,
+                            triangle.m_thirdVertex,
+                            triangle.m_materialIndex,
+                            triangle.m_userData,
+                        };
+                        sourceHash = AZ::TypeHash64(values, sourceHash);
+                    }
+                    for (const CustomShapeDependency& dependency : data.m_dependencies)
+                    {
+                        sourceHash = AZ::TypeHash64(dependency.m_path, sourceHash);
+                        sourceHash = AZ::TypeHash64(dependency.m_contentHash, sourceHash);
+                    }
+                    if (!data.m_runtimeData.empty())
+                    {
+                        sourceHash = AZ::TypeHash64(
+                            data.m_runtimeData.data(),
+                            data.m_runtimeData.size(),
+                            sourceHash);
+                    }
+                    sourceHash = AZ::TypeHash64(data.m_activeEdgeCosineThreshold, sourceHash);
+                    sourceHash = AZ::TypeHash64(data.m_hullTolerance, sourceHash);
+                    sourceHash = AZ::TypeHash64(data.m_maximumConvexRadius, sourceHash);
+                    sourceHash = AZ::TypeHash64(data.m_maximumConvexRadiusError, sourceHash);
+                    sourceHash = AZ::TypeHash64(data.m_maximumTrianglesPerLeaf, sourceHash);
+                    sourceHash = AZ::TypeHash64(data.m_geometryKind, sourceHash);
+                    sourceHash = AZ::TypeHash64(data.m_perTriangleUserData, sourceHash);
+
+                    nativeResult = CreateNativeCustomShape(
+                        data,
+                        {
+                            .m_providerId = customConfiguration->m_providerId,
+                            .m_providerVersion = providerVersion,
+                            .m_sourceHash = static_cast<AZ::u64>(sourceHash),
+                        },
+                        *provider,
+                        materials,
+                        configuration.m_density,
+                        configuration.m_userData);
+                    if (nativeResult)
+                    {
+                        customProviderId = customConfiguration->m_providerId;
+                        customDependencies = AZStd::move(data.m_dependencies);
+                    }
+                    else
+                    {
+                        ReleaseCustomShapeProvider(customConfiguration->m_providerId);
+                    }
+                }
+            }
+        }
+        else if (const auto* customConvexConfiguration = AZStd::get_if<CustomConvexShapeConfiguration>(
+            &configuration.m_geometry))
+        {
+            AZStd::shared_lock providerLock(m_customConvexShapeProviderMutex);
+            const auto providerIterator = m_customConvexShapeProviders.find(customConvexConfiguration->m_providerId);
+            if (providerIterator == m_customConvexShapeProviders.end())
+            {
+                nativeResult.m_error = "No custom convex-shape provider is registered for this identifier.";
+            }
+            else
+            {
+                CustomConvexShapeData data;
+                const ICustomConvexShapeProvider& provider = *providerIterator->second;
+                if (!provider.Cook(customConvexConfiguration->m_data, data))
+                {
+                    nativeResult.m_error = "The custom convex-shape provider rejected its input data.";
+                }
+                else
+                {
+                    const AZ::u64 providerVersion = provider.GetVersion();
+                    AZ::HashValue64 sourceHash = AZ::TypeHash64(
+                        providerVersion,
+                        AZ::HashValue64(static_cast<AZ::u64>(customConvexConfiguration->m_providerId.GetHash())));
+                    if (!customConvexConfiguration->m_data.empty())
+                    {
+                        sourceHash = AZ::TypeHash64(
+                            customConvexConfiguration->m_data.data(),
+                            customConvexConfiguration->m_data.size(),
                             sourceHash);
                     }
                     for (const AZ::Vector3& point : data.m_points)
@@ -933,7 +1204,7 @@ namespace Jolt
                     nativeResult = CreateNativeCustomConvexShape(
                         data,
                         {
-                            .m_providerId = customConfiguration->m_providerId,
+                            .m_providerId = customConvexConfiguration->m_providerId,
                             .m_providerVersion = providerVersion,
                             .m_sourceHash = static_cast<AZ::u64>(sourceHash),
                         },
@@ -952,14 +1223,21 @@ namespace Jolt
             ReleaseMaterials(configuration.m_materials);
             return {};
         }
+        const_cast<JPH::Shape*>(nativeResult.m_shape.GetPtr())->SetUserData(configuration.m_userData);
 
         const CookedShapeHandle cookedShapeHandle = StoreCookedShape(
             nativeResult.m_shape,
             configuration.m_materials,
-            {});
+            {},
+            customProviderId,
+            AZStd::move(customDependencies));
         if (!cookedShapeHandle)
         {
             ReleaseMaterials(configuration.m_materials);
+            if (!customProviderId.IsNull())
+            {
+                ReleaseCustomShapeProvider(customProviderId);
+            }
         }
         return cookedShapeHandle;
     }
@@ -1342,6 +1620,7 @@ namespace Jolt
 
         JPH::RefConst<JPH::Shape> shape;
         AZStd::vector<CookedShapeHandle> storedChildHandles;
+        AZStd::vector<CustomShapeDependency> storedDependencies;
         {
             AZStd::shared_lock lock(m_cookedShapeMutex);
             const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
@@ -1352,6 +1631,7 @@ namespace Jolt
 
             shape = slot->m_shape;
             storedChildHandles = slot->m_childHandles;
+            storedDependencies = slot->m_customDependencies;
         }
 
         NativeArchiveWriter writer;
@@ -1408,14 +1688,15 @@ namespace Jolt
 
         CookedShapeArchive exportedArchive;
         exportedArchive.m_binaryState = writer.TakeData();
+        exportedArchive.m_dependencies = AZStd::move(storedDependencies);
         if (exportedArchive.m_binaryState.empty())
         {
             return false;
         }
         exportedArchive.m_buildFingerprint = GetNativeBuildFingerprint();
-        exportedArchive.m_contentHash = static_cast<AZ::u64>(AZ::TypeHash64(
-            exportedArchive.m_binaryState.data(),
-            exportedArchive.m_binaryState.size()));
+        exportedArchive.m_contentHash = CalculateCookedShapeArchiveHash(
+            exportedArchive.m_binaryState,
+            exportedArchive.m_dependencies);
         exportedArchive.m_formatVersion = CookedShapeArchiveFormatVersion;
         exportedArchive.m_materialCount = static_cast<AZ::u32>(exportedMaterialHandles.size());
         exportedArchive.m_childShapeCount = static_cast<AZ::u32>(storedChildHandles.size());
@@ -1439,9 +1720,16 @@ namespace Jolt
             || archive.m_binaryState.size() > MaximumNativeArchiveSize
             || archive.m_materialCount != materialHandles.size()
             || archive.m_childShapeCount != childShapeHandles.size()
-            || archive.m_contentHash != static_cast<AZ::u64>(AZ::TypeHash64(
-                archive.m_binaryState.data(),
-                archive.m_binaryState.size())))
+            || AZStd::any_of(
+                archive.m_dependencies.begin(),
+                archive.m_dependencies.end(),
+                [](const CustomShapeDependency& dependency)
+                {
+                    return dependency.m_path.empty() || dependency.m_contentHash == 0;
+                })
+            || archive.m_contentHash != CalculateCookedShapeArchiveHash(
+                archive.m_binaryState,
+                archive.m_dependencies))
         {
             return {};
         }
@@ -1451,6 +1739,7 @@ namespace Jolt
         if (nativeResult.HasError()
             || reader.IsFailed()
             || !reader.IsFullyConsumed()
+            || !IsNativeCustomShapeValid(*nativeResult.Get())
             || !IsNativeCustomConvexShapeValid(*nativeResult.Get()))
         {
             return {};
@@ -1524,10 +1813,36 @@ namespace Jolt
             nativeChildShapes.data(),
             static_cast<JPH::uint>(nativeChildShapes.size()));
 
+        CustomShapeInfo customShapeInfo;
+        AZ::TypeId customProviderId = AZ::TypeId::CreateNull();
+        if (GetNativeCustomShapeInfo(*nativeResult.Get(), customShapeInfo))
+        {
+            ICustomShapeProvider* provider = AcquireCustomShapeProvider(
+                customShapeInfo.m_providerId,
+                customShapeInfo.m_providerVersion);
+            if (!provider
+                || !BindNativeCustomShapeProvider(*nativeResult.Get(), *provider))
+            {
+                if (provider)
+                {
+                    ReleaseCustomShapeProvider(customShapeInfo.m_providerId);
+                }
+                for (const CookedShapeHandle childShapeHandle : childShapeHandles)
+                {
+                    ReleaseCookedShape(childShapeHandle);
+                }
+                ReleaseMaterials(retainedMaterialHandles);
+                return {};
+            }
+            customProviderId = customShapeInfo.m_providerId;
+        }
+
         const CookedShapeHandle cookedShapeHandle = StoreCookedShape(
             nativeResult.Get(),
             retainedMaterialHandles,
-            {childShapeHandles.begin(), childShapeHandles.end()});
+            {childShapeHandles.begin(), childShapeHandles.end()},
+            customProviderId,
+            archive.m_dependencies);
         for (const CookedShapeHandle childShapeHandle : childShapeHandles)
         {
             ReleaseCookedShape(childShapeHandle);
@@ -1535,6 +1850,10 @@ namespace Jolt
         if (!cookedShapeHandle)
         {
             ReleaseMaterials(retainedMaterialHandles);
+            if (!customProviderId.IsNull())
+            {
+                ReleaseCustomShapeProvider(customProviderId);
+            }
         }
         return cookedShapeHandle;
     }
@@ -1543,6 +1862,7 @@ namespace Jolt
         const CookedShapeHandle cookedShapeHandle)
     {
         AZStd::vector<MaterialHandle> materialHandles;
+        AZ::TypeId customProviderId = AZ::TypeId::CreateNull();
         {
             AZStd::lock_guard lock(m_cookedShapeMutex);
             Internal::ResourceHandleParts parts;
@@ -1563,6 +1883,9 @@ namespace Jolt
 
             slot.m_shape = nullptr;
             materialHandles = AZStd::move(slot.m_materialHandles);
+            customProviderId = slot.m_customProviderId;
+            slot.m_customProviderId = AZ::TypeId::CreateNull();
+            slot.m_customDependencies.clear();
             for (const CookedShapeHandle childHandle : slot.m_childHandles)
             {
                 CookedShapeSlot* childSlot = FindCookedShapeUnlocked(childHandle);
@@ -1580,6 +1903,10 @@ namespace Jolt
         }
 
         ReleaseMaterials(materialHandles);
+        if (!customProviderId.IsNull())
+        {
+            ReleaseCustomShapeProvider(customProviderId);
+        }
         return true;
     }
 
@@ -1654,69 +1981,7 @@ namespace Jolt
         const JPH::AABox nativeBounds = slot->m_shape->GetLocalBounds();
         const JPH::MassProperties nativeMassProperties = slot->m_shape->GetMassProperties();
         const JPH::Vec3 nativeCenterOfMass = slot->m_shape->GetCenterOfMass();
-        ShapeKind shapeKind = ShapeKind::None;
-        switch (slot->m_shape->GetSubType())
-        {
-        case JPH::EShapeSubType::Box:
-            shapeKind = ShapeKind::Box;
-            break;
-        case JPH::EShapeSubType::Capsule:
-            shapeKind = ShapeKind::Capsule;
-            break;
-        case JPH::EShapeSubType::ConvexHull:
-            shapeKind = ShapeKind::ConvexHull;
-            break;
-        case JPH::EShapeSubType::UserConvex1:
-            shapeKind = ShapeKind::CustomConvex;
-            break;
-        case JPH::EShapeSubType::Cylinder:
-            shapeKind = ShapeKind::Cylinder;
-            break;
-        case JPH::EShapeSubType::Empty:
-            shapeKind = ShapeKind::Empty;
-            break;
-        case JPH::EShapeSubType::HeightField:
-            shapeKind = ShapeKind::Heightfield;
-            break;
-        case JPH::EShapeSubType::Mesh:
-            shapeKind = ShapeKind::Mesh;
-            break;
-        case JPH::EShapeSubType::MutableCompound:
-            shapeKind = ShapeKind::MutableCompound;
-            break;
-        case JPH::EShapeSubType::OffsetCenterOfMass:
-            shapeKind = ShapeKind::OffsetCenterOfMass;
-            break;
-        case JPH::EShapeSubType::Plane:
-            shapeKind = ShapeKind::Plane;
-            break;
-        case JPH::EShapeSubType::RotatedTranslated:
-            shapeKind = ShapeKind::RotatedTranslated;
-            break;
-        case JPH::EShapeSubType::Scaled:
-            shapeKind = ShapeKind::Scaled;
-            break;
-        case JPH::EShapeSubType::SoftBody:
-            shapeKind = ShapeKind::SoftBody;
-            break;
-        case JPH::EShapeSubType::Sphere:
-            shapeKind = ShapeKind::Sphere;
-            break;
-        case JPH::EShapeSubType::StaticCompound:
-            shapeKind = ShapeKind::StaticCompound;
-            break;
-        case JPH::EShapeSubType::TaperedCapsule:
-            shapeKind = ShapeKind::TaperedCapsule;
-            break;
-        case JPH::EShapeSubType::TaperedCylinder:
-            shapeKind = ShapeKind::TaperedCylinder;
-            break;
-        case JPH::EShapeSubType::Triangle:
-            shapeKind = ShapeKind::Triangle;
-            break;
-        default:
-            break;
-        }
+        const ShapeKind shapeKind = FromNativeShapeKind(slot->m_shape->GetSubType());
 
         properties = {
             .m_inertia = AZ::Matrix3x3::CreateFromColumns(
@@ -1775,6 +2040,44 @@ namespace Jolt
         AZStd::shared_lock lock(m_cookedShapeMutex);
         const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
         return slot && GetNativeCustomConvexShapeInfo(*slot->m_shape, info);
+    }
+
+    bool System::GetCustomShapeInfo(
+        const CookedShapeHandle cookedShapeHandle,
+        CustomShapeInfo& info) const
+    {
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        return slot && GetNativeCustomShapeInfo(*slot->m_shape, info);
+    }
+
+    BufferResult System::GetCustomShapeDependencies(
+        const CookedShapeHandle cookedShapeHandle,
+        const AZStd::span<CustomShapeDependency> dependencies) const
+    {
+        AZStd::shared_lock lock(m_cookedShapeMutex);
+        const CookedShapeSlot* slot = FindCookedShapeUnlocked(cookedShapeHandle);
+        if (!slot
+            || slot->m_customProviderId.IsNull()
+            || slot->m_customDependencies.size() > AZStd::numeric_limits<AZ::u32>::max())
+        {
+            return {};
+        }
+
+        const AZ::u32 requiredCount = aznumeric_cast<AZ::u32>(slot->m_customDependencies.size());
+        if (dependencies.size() < slot->m_customDependencies.size())
+        {
+            return {.m_requiredCount = requiredCount};
+        }
+
+        AZStd::copy(
+            slot->m_customDependencies.begin(),
+            slot->m_customDependencies.end(),
+            dependencies.begin());
+        return {
+            .m_count = requiredCount,
+            .m_requiredCount = requiredCount,
+        };
     }
 
     bool System::GetSubShapeUserData(
@@ -3942,6 +4245,11 @@ namespace Jolt
 
         WorldSlot& slot = m_worldSlots[parts.m_index];
         if (!slot.m_world || slot.m_generation != parts.m_generation)
+        {
+            return false;
+        }
+
+        if (slot.m_world->HasTransformedShapeLeases())
         {
             return false;
         }
@@ -7475,6 +7783,91 @@ namespace Jolt
         return world && world->GetStatistics(statistics);
     }
 
+    DiagnosticStatisticsResult System::GetBroadPhaseStatistics(
+        const WorldHandle worldHandle,
+        const AZStd::span<BroadPhaseStatistics> statistics,
+        const bool reset)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+        return world->GetBroadPhaseStatistics(statistics, reset);
+    }
+
+    DiagnosticStatisticsResult System::GetNarrowPhaseStatistics(
+        const AZStd::span<NarrowPhaseStatistics> statistics,
+        const bool reset)
+    {
+#if defined(JPH_TRACK_NARROWPHASE_STATS)
+        const auto readCounter = [reset](JPH::atomic<JPH::uint64>& counter)
+        {
+            if (reset)
+            {
+                return counter.exchange(0);
+            }
+            return counter.load();
+        };
+
+        DiagnosticStatisticsResult result;
+        for (JPH::uint firstIndex = 0; firstIndex < JPH::NumSubShapeTypes; ++firstIndex)
+        {
+            for (JPH::uint secondIndex = 0; secondIndex < JPH::NumSubShapeTypes; ++secondIndex)
+            {
+                for (AZ::u8 queryIndex = 0; queryIndex < 2; ++queryIndex)
+                {
+                    JPH::NarrowPhaseStat* nativeStatistics = &JPH::NarrowPhaseStat::sCollideShape[firstIndex][secondIndex];
+                    NarrowPhaseQueryKind queryKind = NarrowPhaseQueryKind::Collide;
+                    if (queryIndex == 1)
+                    {
+                        nativeStatistics = &JPH::NarrowPhaseStat::sCastShape[firstIndex][secondIndex];
+                        queryKind = NarrowPhaseQueryKind::Cast;
+                    }
+
+                    NarrowPhaseStatistics value{
+                        .m_totalTicks = readCounter(nativeStatistics->mTotalTicks),
+                        .m_childTicks = readCounter(nativeStatistics->mChildTicks),
+                        .m_queryCount = readCounter(nativeStatistics->mNumQueries),
+                        .m_hitsReported = readCounter(nativeStatistics->mHitsReported),
+                        .m_firstShapeKind = FromNativeShapeKind(JPH::sAllSubShapeTypes[firstIndex]),
+                        .m_secondShapeKind = FromNativeShapeKind(JPH::sAllSubShapeTypes[secondIndex]),
+                        .m_queryKind = queryKind,
+                    };
+                    if (value.m_totalTicks == 0
+                        && value.m_childTicks == 0
+                        && value.m_queryCount == 0
+                        && value.m_hitsReported == 0)
+                    {
+                        continue;
+                    }
+
+                    if (result.m_requiredCount < statistics.size())
+                    {
+                        statistics[result.m_requiredCount] = value;
+                        ++result.m_count;
+                    }
+                    ++result.m_requiredCount;
+                }
+            }
+        }
+
+        result.m_status = DiagnosticStatisticsStatus::Complete;
+        if (result.m_requiredCount > statistics.size())
+        {
+            result.m_status = DiagnosticStatisticsStatus::Overflow;
+        }
+        return result;
+#else
+        AZ_UNUSED(statistics);
+        AZ_UNUSED(reset);
+        return {
+            .m_status = DiagnosticStatisticsStatus::Unavailable,
+        };
+#endif
+    }
+
     bool System::DrawDebug(
         const WorldHandle worldHandle,
         const DebugDrawSettings& settings,
@@ -8651,6 +9044,174 @@ namespace Jolt
         return world->GetTransformedShapeSupportingFace(shape, subShapeId, direction, vertices);
     }
 
+    bool System::RetainShape(
+        const WorldHandle worldHandle,
+        const ShapeHandle shapeHandle,
+        const WorldTransform& transform,
+        const float uniformScale,
+        TransformedShape& shape) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RetainShape(shapeHandle, transform, uniformScale, shape);
+    }
+
+    QueryResult System::CollideTransformedShapes(
+        const WorldHandle worldHandle,
+        const TransformedShape& firstShape,
+        const TransformedShape& secondShape,
+        const TransformedShapeCollisionRequest& request,
+        const AZStd::span<TransformedShapeCollisionHit> hits,
+        const ShapeQueryFaceBuffers& faceBuffers) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->CollideTransformedShapes(
+            firstShape,
+            secondShape,
+            request,
+            hits,
+            faceBuffers);
+    }
+
+    bool System::CollideTransformedShapes(
+        const WorldHandle worldHandle,
+        const TransformedShape& firstShape,
+        const TransformedShape& secondShape,
+        const TransformedShapeCollisionRequest& request,
+        ITransformedShapeCollisionCollector& collector) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->CollideTransformedShapes(
+            firstShape,
+            secondShape,
+            request,
+            collector);
+    }
+
+    QueryResult System::CollideTransformedShapes(
+        const WorldHandle worldHandle,
+        const ShapePlacement& firstShape,
+        const ShapePlacement& secondShape,
+        const TransformedShapeCollisionRequest& request,
+        const AZStd::span<TransformedShapeCollisionHit> hits,
+        const ShapeQueryFaceBuffers& faceBuffers) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        TransformedShape retainedFirstShape;
+        TransformedShape retainedSecondShape;
+        if (!world->RetainShape(
+                firstShape.m_shapeHandle,
+                firstShape.m_transform,
+                firstShape.m_uniformScale,
+                retainedFirstShape)
+            || !world->RetainShape(
+                secondShape.m_shapeHandle,
+                secondShape.m_transform,
+                secondShape.m_uniformScale,
+                retainedSecondShape))
+        {
+            return {};
+        }
+
+        return world->CollideTransformedShapes(
+            retainedFirstShape,
+            retainedSecondShape,
+            request,
+            hits,
+            faceBuffers);
+    }
+
+    QueryResult System::CastTransformedShape(
+        const WorldHandle worldHandle,
+        const TransformedShape& firstShape,
+        const TransformedShape& secondShape,
+        const TransformedShapeCastRequest& request,
+        const AZStd::span<TransformedShapeCastHit> hits,
+        const ShapeQueryFaceBuffers& faceBuffers) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        return world->CastTransformedShape(
+            firstShape,
+            secondShape,
+            request,
+            hits,
+            faceBuffers);
+    }
+
+    bool System::CastTransformedShape(
+        const WorldHandle worldHandle,
+        const TransformedShape& firstShape,
+        const TransformedShape& secondShape,
+        const TransformedShapeCastRequest& request,
+        ITransformedShapeCastCollector& collector) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->CastTransformedShape(
+            firstShape,
+            secondShape,
+            request,
+            collector);
+    }
+
+    QueryResult System::CastTransformedShape(
+        const WorldHandle worldHandle,
+        const ShapePlacement& firstShape,
+        const ShapePlacement& secondShape,
+        const TransformedShapeCastRequest& request,
+        const AZStd::span<TransformedShapeCastHit> hits,
+        const ShapeQueryFaceBuffers& faceBuffers) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (!world)
+        {
+            return {};
+        }
+
+        TransformedShape retainedFirstShape;
+        TransformedShape retainedSecondShape;
+        if (!world->RetainShape(
+                firstShape.m_shapeHandle,
+                firstShape.m_transform,
+                firstShape.m_uniformScale,
+                retainedFirstShape)
+            || !world->RetainShape(
+                secondShape.m_shapeHandle,
+                secondShape.m_transform,
+                secondShape.m_uniformScale,
+                retainedSecondShape))
+        {
+            return {};
+        }
+
+        return world->CastTransformedShape(
+            retainedFirstShape,
+            retainedSecondShape,
+            request,
+            hits,
+            faceBuffers);
+    }
+
     bool System::RaycastClosest(
         const WorldHandle worldHandle,
         const RaycastRequest& request,
@@ -9067,7 +9628,9 @@ namespace Jolt
     CookedShapeHandle System::StoreCookedShape(
         const JPH::Shape* shape,
         AZStd::vector<MaterialHandle> materialHandles,
-        AZStd::vector<CookedShapeHandle> childHandles)
+        AZStd::vector<CookedShapeHandle> childHandles,
+        const AZ::TypeId customProviderId,
+        AZStd::vector<CustomShapeDependency> customDependencies)
     {
         if (!shape)
         {
@@ -9117,6 +9680,8 @@ namespace Jolt
         slot.m_shape = shape;
         slot.m_materialHandles = AZStd::move(materialHandles);
         slot.m_childHandles = AZStd::move(childHandles);
+        slot.m_customDependencies = AZStd::move(customDependencies);
+        slot.m_customProviderId = customProviderId;
         for (const CookedShapeHandle childHandle : slot.m_childHandles)
         {
             ++FindCookedShapeUnlocked(childHandle)->m_parentCount;

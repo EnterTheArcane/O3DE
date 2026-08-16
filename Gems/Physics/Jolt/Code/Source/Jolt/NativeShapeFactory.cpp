@@ -166,9 +166,11 @@ namespace Jolt
                         nativeResult = RotateYToZ(nativeResult.Get());
                     }
                 }
-                else if constexpr (AZStd::is_same_v<Geometry, CustomConvexShapeConfiguration>)
+                else if constexpr (
+                    AZStd::is_same_v<Geometry, CustomConvexShapeConfiguration>
+                    || AZStd::is_same_v<Geometry, CustomShapeConfiguration>)
                 {
-                    nativeResult.SetError("Custom convex geometry must be resolved by its registered provider.");
+                    nativeResult.SetError("Custom geometry must be resolved by its registered provider.");
                 }
                 else if constexpr (AZStd::is_same_v<Geometry, EmptyShapeConfiguration>)
                 {

@@ -54,6 +54,7 @@
 #include <Jolt/Physics/Collision/CollideShapeVsShapePerLeaf.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/CollisionDispatch.h>
+#include <Jolt/Physics/Collision/InternalEdgeRemovingCollector.h>
 #include <Jolt/Physics/Collision/EstimateCollisionResponse.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
@@ -1021,6 +1022,10 @@ namespace Jolt
                 return ShapeKind::TaperedCylinder;
             case JPH::EShapeSubType::Triangle:
                 return ShapeKind::Triangle;
+            case JPH::EShapeSubType::User1:
+                return ShapeKind::Custom;
+            case JPH::EShapeSubType::UserConvex1:
+                return ShapeKind::CustomConvex;
             default:
                 return ShapeKind::None;
             }
@@ -3394,6 +3399,58 @@ namespace Jolt
         BodyHandle m_bodyHandle;
     };
 
+    class World::RetainedShapePairFilterAdapter final
+        : public JPH::ShapeFilter
+    {
+    public:
+        using JPH::ShapeFilter::ShouldCollide;
+
+        RetainedShapePairFilterAdapter(
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const IQueryFilter* callback)
+            : m_firstShape(firstShape)
+            , m_secondShape(secondShape)
+            , m_callback(callback)
+        {
+        }
+
+        bool ShouldCollide(
+            const JPH::Shape* firstShape,
+            const JPH::SubShapeID& firstSubShapeId,
+            const JPH::Shape* secondShape,
+            const JPH::SubShapeID& secondSubShapeId) const override
+        {
+            if (!m_callback)
+            {
+                return true;
+            }
+            if (!firstShape || !secondShape)
+            {
+                return false;
+            }
+
+            const SimulationShape first = {
+                .m_bodyHandle = m_firstShape.m_bodyHandle,
+                .m_rootShapeHandle = m_firstShape.m_shapeHandle,
+                .m_subShapeId = SubShapeId(firstSubShapeId.GetValue()),
+                .m_kind = FromNativeShapeKind(firstShape->GetSubType()),
+            };
+            const SimulationShape second = {
+                .m_bodyHandle = m_secondShape.m_bodyHandle,
+                .m_rootShapeHandle = m_secondShape.m_shapeHandle,
+                .m_subShapeId = SubShapeId(secondSubShapeId.GetValue()),
+                .m_kind = FromNativeShapeKind(secondShape->GetSubType()),
+            };
+            return m_callback->ShouldIncludeShapePair(first, second);
+        }
+
+    private:
+        const TransformedShape& m_firstShape;
+        const TransformedShape& m_secondShape;
+        const IQueryFilter* m_callback = nullptr;
+    };
+
     class World::ClosestRaycastCollector final
         : public JPH::RayCastBodyCollector
     {
@@ -3975,6 +4032,555 @@ namespace Jolt
         BodyHandle m_bodyHandle;
         QueryResult m_result;
         bool m_sorted = false;
+    };
+
+    class World::RetainedShapeCollisionCollector final
+        : public JPH::CollideShapeCollector
+    {
+    public:
+        RetainedShapeCollisionCollector(
+            const World& world,
+            const JPH::RVec3& baseOffset,
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const JPH::TransformedShape& firstNativeShape,
+            const JPH::TransformedShape& secondNativeShape,
+            const AZStd::span<TransformedShapeCollisionHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers)
+            : m_world(world)
+            , m_baseOffset(baseOffset)
+            , m_firstShape(firstShape)
+            , m_secondShape(secondShape)
+            , m_firstNativeShape(firstNativeShape)
+            , m_secondNativeShape(secondNativeShape)
+            , m_hits(hits)
+            , m_faceBuffers(faceBuffers)
+        {
+        }
+
+        void AddHit(
+            const JPH::CollideShapeResult& nativeHit) override
+        {
+            if (m_result.m_requiredHitCount < AZStd::numeric_limits<AZ::u32>::max())
+            {
+                ++m_result.m_requiredHitCount;
+            }
+            if (m_hits.empty())
+            {
+                return;
+            }
+
+            TransformedShapeCollisionHit hit{
+                .m_firstContactPosition = FromNativePosition(
+                    m_baseOffset + nativeHit.mContactPointOn1,
+                    m_world.m_configuration.m_origin),
+                .m_secondContactPosition = FromNativePosition(
+                    m_baseOffset + nativeHit.mContactPointOn2,
+                    m_world.m_configuration.m_origin),
+                .m_penetrationAxis = FromNativeVector(nativeHit.mPenetrationAxis),
+                .m_firstWorldHandle = m_firstShape.m_worldHandle,
+                .m_secondWorldHandle = m_secondShape.m_worldHandle,
+                .m_firstBodyHandle = m_firstShape.m_bodyHandle,
+                .m_secondBodyHandle = m_secondShape.m_bodyHandle,
+                .m_firstMaterialHandle = m_world.m_system.FindMaterialHandle(
+                    m_firstNativeShape.GetMaterial(nativeHit.mSubShapeID1)),
+                .m_secondMaterialHandle = m_world.m_system.FindMaterialHandle(
+                    m_secondNativeShape.GetMaterial(nativeHit.mSubShapeID2)),
+                .m_firstShapeHandle = m_firstShape.m_shapeHandle,
+                .m_secondShapeHandle = m_secondShape.m_shapeHandle,
+                .m_firstSubShapeId = SubShapeId(nativeHit.mSubShapeID1.GetValue()),
+                .m_secondSubShapeId = SubShapeId(nativeHit.mSubShapeID2.GetValue()),
+                .m_firstUserData = m_firstNativeShape.GetSubShapeUserData(nativeHit.mSubShapeID1),
+                .m_secondUserData = m_secondNativeShape.GetSubShapeUserData(nativeHit.mSubShapeID2),
+                .m_penetrationDepth = nativeHit.mPenetrationDepth,
+            };
+
+            size_t insertionIndex = 0;
+            while (insertionIndex < m_result.m_hitCount
+                && IsBefore(m_hits[insertionIndex], hit))
+            {
+                ++insertionIndex;
+            }
+            if (m_result.m_hitCount < m_hits.size())
+            {
+                for (size_t moveIndex = m_result.m_hitCount; moveIndex > insertionIndex; --moveIndex)
+                {
+                    m_hits[moveIndex] = AZStd::move(m_hits[moveIndex - 1]);
+                    MoveFaces(moveIndex - 1, moveIndex);
+                }
+                ++m_result.m_hitCount;
+            }
+            else if (insertionIndex < m_result.m_hitCount)
+            {
+                for (size_t moveIndex = m_result.m_hitCount - 1; moveIndex > insertionIndex; --moveIndex)
+                {
+                    m_hits[moveIndex] = AZStd::move(m_hits[moveIndex - 1]);
+                    MoveFaces(moveIndex - 1, moveIndex);
+                }
+            }
+            else
+            {
+                return;
+            }
+
+            hit.m_firstFaceVertexCount = CopyShapeQueryFace(
+                nativeHit.mShape1Face,
+                m_baseOffset,
+                m_world.m_configuration.m_origin,
+                m_faceBuffers.GetQueryFace(aznumeric_cast<AZ::u32>(insertionIndex)));
+            hit.m_secondFaceVertexCount = CopyShapeQueryFace(
+                nativeHit.mShape2Face,
+                m_baseOffset,
+                m_world.m_configuration.m_origin,
+                m_faceBuffers.GetTargetFace(aznumeric_cast<AZ::u32>(insertionIndex)));
+            m_hits[insertionIndex] = AZStd::move(hit);
+        }
+
+        [[nodiscard]]
+        QueryResult GetResult() const
+        {
+            return m_result;
+        }
+
+    private:
+        friend class RetainedShapeCastCollector;
+
+        [[nodiscard]]
+        static bool IsBefore(
+            const TransformedShapeCollisionHit& first,
+            const TransformedShapeCollisionHit& second)
+        {
+            if (first.m_firstSubShapeId != second.m_firstSubShapeId)
+            {
+                return first.m_firstSubShapeId.GetValue() < second.m_firstSubShapeId.GetValue();
+            }
+            if (first.m_secondSubShapeId != second.m_secondSubShapeId)
+            {
+                return first.m_secondSubShapeId.GetValue() < second.m_secondSubShapeId.GetValue();
+            }
+            if (first.m_penetrationDepth != second.m_penetrationDepth)
+            {
+                return first.m_penetrationDepth > second.m_penetrationDepth;
+            }
+            if (first.m_firstContactPosition.m_x != second.m_firstContactPosition.m_x)
+            {
+                return first.m_firstContactPosition.m_x < second.m_firstContactPosition.m_x;
+            }
+            if (first.m_firstContactPosition.m_y != second.m_firstContactPosition.m_y)
+            {
+                return first.m_firstContactPosition.m_y < second.m_firstContactPosition.m_y;
+            }
+            if (first.m_firstContactPosition.m_z != second.m_firstContactPosition.m_z)
+            {
+                return first.m_firstContactPosition.m_z < second.m_firstContactPosition.m_z;
+            }
+            if (first.m_secondContactPosition.m_x != second.m_secondContactPosition.m_x)
+            {
+                return first.m_secondContactPosition.m_x < second.m_secondContactPosition.m_x;
+            }
+            if (first.m_secondContactPosition.m_y != second.m_secondContactPosition.m_y)
+            {
+                return first.m_secondContactPosition.m_y < second.m_secondContactPosition.m_y;
+            }
+            return first.m_secondContactPosition.m_z < second.m_secondContactPosition.m_z;
+        }
+
+        void MoveFaces(
+            const size_t sourceIndex,
+            const size_t targetIndex)
+        {
+            const AZStd::span<WorldPosition> sourceQueryFace =
+                m_faceBuffers.GetQueryFace(aznumeric_cast<AZ::u32>(sourceIndex));
+            const AZStd::span<WorldPosition> targetQueryFace =
+                m_faceBuffers.GetQueryFace(aznumeric_cast<AZ::u32>(targetIndex));
+            AZStd::copy(
+                sourceQueryFace.begin(),
+                sourceQueryFace.begin() + AZStd::min(sourceQueryFace.size(), targetQueryFace.size()),
+                targetQueryFace.begin());
+
+            const AZStd::span<WorldPosition> sourceTargetFace =
+                m_faceBuffers.GetTargetFace(aznumeric_cast<AZ::u32>(sourceIndex));
+            const AZStd::span<WorldPosition> targetTargetFace =
+                m_faceBuffers.GetTargetFace(aznumeric_cast<AZ::u32>(targetIndex));
+            AZStd::copy(
+                sourceTargetFace.begin(),
+                sourceTargetFace.begin() + AZStd::min(sourceTargetFace.size(), targetTargetFace.size()),
+                targetTargetFace.begin());
+        }
+
+        const World& m_world;
+        JPH::RVec3 m_baseOffset;
+        const TransformedShape& m_firstShape;
+        const TransformedShape& m_secondShape;
+        const JPH::TransformedShape& m_firstNativeShape;
+        const JPH::TransformedShape& m_secondNativeShape;
+        AZStd::span<TransformedShapeCollisionHit> m_hits;
+        ShapeQueryFaceBuffers m_faceBuffers;
+        QueryResult m_result;
+    };
+
+    class World::RetainedShapeCastCollector final
+        : public JPH::CastShapeCollector
+    {
+    public:
+        RetainedShapeCastCollector(
+            const World& world,
+            const JPH::RVec3& baseOffset,
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const JPH::TransformedShape& firstNativeShape,
+            const JPH::TransformedShape& secondNativeShape,
+            const AZStd::span<TransformedShapeCastHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers,
+            const float maximumFraction)
+            : m_world(world)
+            , m_baseOffset(baseOffset)
+            , m_firstShape(firstShape)
+            , m_secondShape(secondShape)
+            , m_firstNativeShape(firstNativeShape)
+            , m_secondNativeShape(secondNativeShape)
+            , m_hits(hits)
+            , m_faceBuffers(faceBuffers)
+        {
+            UpdateEarlyOutFraction(maximumFraction);
+        }
+
+        void AddHit(
+            const JPH::ShapeCastResult& nativeHit) override
+        {
+            if (m_result.m_requiredHitCount < AZStd::numeric_limits<AZ::u32>::max())
+            {
+                ++m_result.m_requiredHitCount;
+            }
+            if (m_hits.empty())
+            {
+                return;
+            }
+
+            TransformedShapeCastHit hit{
+                .m_collision = {
+                    .m_firstContactPosition = FromNativePosition(
+                        m_baseOffset + nativeHit.mContactPointOn1,
+                        m_world.m_configuration.m_origin),
+                    .m_secondContactPosition = FromNativePosition(
+                        m_baseOffset + nativeHit.mContactPointOn2,
+                        m_world.m_configuration.m_origin),
+                    .m_penetrationAxis = FromNativeVector(nativeHit.mPenetrationAxis),
+                    .m_firstWorldHandle = m_firstShape.m_worldHandle,
+                    .m_secondWorldHandle = m_secondShape.m_worldHandle,
+                    .m_firstBodyHandle = m_firstShape.m_bodyHandle,
+                    .m_secondBodyHandle = m_secondShape.m_bodyHandle,
+                    .m_firstMaterialHandle = m_world.m_system.FindMaterialHandle(
+                        m_firstNativeShape.GetMaterial(nativeHit.mSubShapeID1)),
+                    .m_secondMaterialHandle = m_world.m_system.FindMaterialHandle(
+                        m_secondNativeShape.GetMaterial(nativeHit.mSubShapeID2)),
+                    .m_firstShapeHandle = m_firstShape.m_shapeHandle,
+                    .m_secondShapeHandle = m_secondShape.m_shapeHandle,
+                    .m_firstSubShapeId = SubShapeId(nativeHit.mSubShapeID1.GetValue()),
+                    .m_secondSubShapeId = SubShapeId(nativeHit.mSubShapeID2.GetValue()),
+                    .m_firstUserData = m_firstNativeShape.GetSubShapeUserData(nativeHit.mSubShapeID1),
+                    .m_secondUserData = m_secondNativeShape.GetSubShapeUserData(nativeHit.mSubShapeID2),
+                    .m_penetrationDepth = nativeHit.mPenetrationDepth,
+                },
+                .m_fraction = nativeHit.mFraction,
+                .m_isBackFaceHit = nativeHit.mIsBackFaceHit,
+            };
+
+            size_t insertionIndex = 0;
+            while (insertionIndex < m_result.m_hitCount
+                && IsBefore(m_hits[insertionIndex], hit))
+            {
+                ++insertionIndex;
+            }
+            if (m_result.m_hitCount < m_hits.size())
+            {
+                for (size_t moveIndex = m_result.m_hitCount; moveIndex > insertionIndex; --moveIndex)
+                {
+                    m_hits[moveIndex] = AZStd::move(m_hits[moveIndex - 1]);
+                    MoveFaces(moveIndex - 1, moveIndex);
+                }
+                ++m_result.m_hitCount;
+            }
+            else if (insertionIndex < m_result.m_hitCount)
+            {
+                for (size_t moveIndex = m_result.m_hitCount - 1; moveIndex > insertionIndex; --moveIndex)
+                {
+                    m_hits[moveIndex] = AZStd::move(m_hits[moveIndex - 1]);
+                    MoveFaces(moveIndex - 1, moveIndex);
+                }
+            }
+            else
+            {
+                return;
+            }
+
+            hit.m_collision.m_firstFaceVertexCount = CopyShapeQueryFace(
+                nativeHit.mShape1Face,
+                m_baseOffset,
+                m_world.m_configuration.m_origin,
+                m_faceBuffers.GetQueryFace(aznumeric_cast<AZ::u32>(insertionIndex)));
+            hit.m_collision.m_secondFaceVertexCount = CopyShapeQueryFace(
+                nativeHit.mShape2Face,
+                m_baseOffset,
+                m_world.m_configuration.m_origin,
+                m_faceBuffers.GetTargetFace(aznumeric_cast<AZ::u32>(insertionIndex)));
+            m_hits[insertionIndex] = AZStd::move(hit);
+        }
+
+        [[nodiscard]]
+        QueryResult GetResult() const
+        {
+            return m_result;
+        }
+
+    private:
+        [[nodiscard]]
+        static bool IsBefore(
+            const TransformedShapeCastHit& first,
+            const TransformedShapeCastHit& second)
+        {
+            if (first.m_fraction != second.m_fraction)
+            {
+                return first.m_fraction < second.m_fraction;
+            }
+            return RetainedShapeCollisionCollector::IsBefore(first.m_collision, second.m_collision);
+        }
+
+        void MoveFaces(
+            const size_t sourceIndex,
+            const size_t targetIndex)
+        {
+            const AZStd::span<WorldPosition> sourceQueryFace =
+                m_faceBuffers.GetQueryFace(aznumeric_cast<AZ::u32>(sourceIndex));
+            const AZStd::span<WorldPosition> targetQueryFace =
+                m_faceBuffers.GetQueryFace(aznumeric_cast<AZ::u32>(targetIndex));
+            AZStd::copy(
+                sourceQueryFace.begin(),
+                sourceQueryFace.begin() + AZStd::min(sourceQueryFace.size(), targetQueryFace.size()),
+                targetQueryFace.begin());
+
+            const AZStd::span<WorldPosition> sourceTargetFace =
+                m_faceBuffers.GetTargetFace(aznumeric_cast<AZ::u32>(sourceIndex));
+            const AZStd::span<WorldPosition> targetTargetFace =
+                m_faceBuffers.GetTargetFace(aznumeric_cast<AZ::u32>(targetIndex));
+            AZStd::copy(
+                sourceTargetFace.begin(),
+                sourceTargetFace.begin() + AZStd::min(sourceTargetFace.size(), targetTargetFace.size()),
+                targetTargetFace.begin());
+        }
+
+        const World& m_world;
+        JPH::RVec3 m_baseOffset;
+        const TransformedShape& m_firstShape;
+        const TransformedShape& m_secondShape;
+        const JPH::TransformedShape& m_firstNativeShape;
+        const JPH::TransformedShape& m_secondNativeShape;
+        AZStd::span<TransformedShapeCastHit> m_hits;
+        ShapeQueryFaceBuffers m_faceBuffers;
+        QueryResult m_result;
+    };
+
+    class World::RetainedShapeCollisionCallback final
+        : public JPH::CollideShapeCollector
+    {
+    public:
+        RetainedShapeCollisionCallback(
+            const World& world,
+            const JPH::RVec3& baseOffset,
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const JPH::TransformedShape& firstNativeShape,
+            const JPH::TransformedShape& secondNativeShape,
+            ITransformedShapeCollisionCollector& collector)
+            : m_world(world)
+            , m_baseOffset(baseOffset)
+            , m_firstShape(firstShape)
+            , m_secondShape(secondShape)
+            , m_firstNativeShape(firstNativeShape)
+            , m_secondNativeShape(secondNativeShape)
+            , m_collector(collector)
+        {
+            const float earlyOutFraction = collector.GetEarlyOutFraction();
+            if (!AZ::IsFiniteFloat(earlyOutFraction)
+                || earlyOutFraction > GetEarlyOutFraction())
+            {
+                m_valid = false;
+                return;
+            }
+            UpdateEarlyOutFraction(earlyOutFraction);
+        }
+
+        void AddHit(const JPH::CollideShapeResult& nativeHit) override
+        {
+            if (!m_valid)
+            {
+                ForceEarlyOut();
+                return;
+            }
+
+            RetainedShapeCollisionCollector mapper(
+                m_world,
+                m_baseOffset,
+                m_firstShape,
+                m_secondShape,
+                m_firstNativeShape,
+                m_secondNativeShape,
+                AZStd::span(&m_hit, 1),
+                {
+                    .m_queryVertices = m_firstFace,
+                    .m_targetVertices = m_secondFace,
+                });
+            mapper.AddHit(nativeHit);
+            if (mapper.GetResult().m_hitCount != 1)
+            {
+                m_valid = false;
+                ForceEarlyOut();
+                return;
+            }
+
+            const float previousEarlyOutFraction = GetEarlyOutFraction();
+            const bool continueTraversal = m_collector.AddHit(
+                m_hit,
+                AZStd::span(m_firstFace.data(), m_hit.m_firstFaceVertexCount),
+                AZStd::span(m_secondFace.data(), m_hit.m_secondFaceVertexCount));
+            if (!continueTraversal)
+            {
+                ForceEarlyOut();
+                return;
+            }
+
+            const float earlyOutFraction = m_collector.GetEarlyOutFraction();
+            if (!AZ::IsFiniteFloat(earlyOutFraction)
+                || earlyOutFraction > previousEarlyOutFraction)
+            {
+                m_valid = false;
+                ForceEarlyOut();
+                return;
+            }
+            UpdateEarlyOutFraction(earlyOutFraction);
+        }
+
+        [[nodiscard]]
+        bool IsValid() const
+        {
+            return m_valid;
+        }
+
+    private:
+        const World& m_world;
+        JPH::RVec3 m_baseOffset;
+        const TransformedShape& m_firstShape;
+        const TransformedShape& m_secondShape;
+        const JPH::TransformedShape& m_firstNativeShape;
+        const JPH::TransformedShape& m_secondNativeShape;
+        ITransformedShapeCollisionCollector& m_collector;
+        TransformedShapeCollisionHit m_hit;
+        AZStd::array<WorldPosition, MaximumSupportingFaceVertexCount> m_firstFace;
+        AZStd::array<WorldPosition, MaximumSupportingFaceVertexCount> m_secondFace;
+        bool m_valid = true;
+    };
+
+    class World::RetainedShapeCastCallback final
+        : public JPH::CastShapeCollector
+    {
+    public:
+        RetainedShapeCastCallback(
+            const World& world,
+            const JPH::RVec3& baseOffset,
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const JPH::TransformedShape& firstNativeShape,
+            const JPH::TransformedShape& secondNativeShape,
+            ITransformedShapeCastCollector& collector,
+            const float maximumFraction)
+            : m_world(world)
+            , m_baseOffset(baseOffset)
+            , m_firstShape(firstShape)
+            , m_secondShape(secondShape)
+            , m_firstNativeShape(firstNativeShape)
+            , m_secondNativeShape(secondNativeShape)
+            , m_collector(collector)
+        {
+            UpdateEarlyOutFraction(maximumFraction);
+            const float earlyOutFraction = collector.GetEarlyOutFraction();
+            if (!AZ::IsFiniteFloat(earlyOutFraction)
+                || earlyOutFraction > maximumFraction)
+            {
+                m_valid = false;
+                return;
+            }
+            UpdateEarlyOutFraction(earlyOutFraction);
+        }
+
+        void AddHit(const JPH::ShapeCastResult& nativeHit) override
+        {
+            if (!m_valid)
+            {
+                ForceEarlyOut();
+                return;
+            }
+
+            RetainedShapeCastCollector mapper(
+                m_world,
+                m_baseOffset,
+                m_firstShape,
+                m_secondShape,
+                m_firstNativeShape,
+                m_secondNativeShape,
+                AZStd::span(&m_hit, 1),
+                {
+                    .m_queryVertices = m_firstFace,
+                    .m_targetVertices = m_secondFace,
+                },
+                GetEarlyOutFraction());
+            mapper.AddHit(nativeHit);
+            if (mapper.GetResult().m_hitCount != 1)
+            {
+                m_valid = false;
+                ForceEarlyOut();
+                return;
+            }
+
+            const float previousEarlyOutFraction = GetEarlyOutFraction();
+            const bool continueTraversal = m_collector.AddHit(
+                m_hit,
+                AZStd::span(m_firstFace.data(), m_hit.m_collision.m_firstFaceVertexCount),
+                AZStd::span(m_secondFace.data(), m_hit.m_collision.m_secondFaceVertexCount));
+            if (!continueTraversal)
+            {
+                ForceEarlyOut();
+                return;
+            }
+
+            const float earlyOutFraction = m_collector.GetEarlyOutFraction();
+            if (!AZ::IsFiniteFloat(earlyOutFraction)
+                || earlyOutFraction > previousEarlyOutFraction)
+            {
+                m_valid = false;
+                ForceEarlyOut();
+                return;
+            }
+            UpdateEarlyOutFraction(earlyOutFraction);
+        }
+
+        [[nodiscard]]
+        bool IsValid() const
+        {
+            return m_valid;
+        }
+
+    private:
+        const World& m_world;
+        JPH::RVec3 m_baseOffset;
+        const TransformedShape& m_firstShape;
+        const TransformedShape& m_secondShape;
+        const JPH::TransformedShape& m_firstNativeShape;
+        const JPH::TransformedShape& m_secondNativeShape;
+        ITransformedShapeCastCollector& m_collector;
+        TransformedShapeCastHit m_hit;
+        AZStd::array<WorldPosition, MaximumSupportingFaceVertexCount> m_firstFace;
+        AZStd::array<WorldPosition, MaximumSupportingFaceVertexCount> m_secondFace;
+        bool m_valid = true;
     };
 
     World::VehicleCollisionFilterAdapter::VehicleCollisionFilterAdapter(
@@ -4560,6 +5166,9 @@ namespace Jolt
         , m_jobContext(jobContext)
         , m_handle(handle)
         , m_worldIndex(worldIndex)
+        , m_transformedShapeLeaseState(aznew TransformedShapeLeaseState{
+              .m_world = this,
+          })
     {
         if (!ValidateWorldConfiguration(m_configuration))
         {
@@ -4634,6 +5243,21 @@ namespace Jolt
 
     World::~World()
     {
+        TransformedShapeLeaseState* leaseState = m_transformedShapeLeaseState;
+        bool destroyLeaseState = false;
+        {
+            AZStd::lock_guard leaseStateLock(leaseState->m_mutex);
+            leaseState->m_world = nullptr;
+            AZ_Assert(leaseState->m_referenceCount > 0, "The transformed-shape lease state reference count underflowed.");
+            --leaseState->m_referenceCount;
+            destroyLeaseState = leaseState->m_referenceCount == 0;
+        }
+        if (destroyLeaseState)
+        {
+            delete leaseState;
+        }
+        m_transformedShapeLeaseState = nullptr;
+
         if (!m_initialized)
         {
             return;
@@ -5318,6 +5942,8 @@ namespace Jolt
             return {};
         }
 
+        AZStd::lock_guard leaseLock(m_transformedShapeLeaseMutex);
+
         for (size_t childIndex = 0; childIndex < childHandles.size(); ++childIndex)
         {
             ShapeSlot* childSlot = FindShape(childHandles[childIndex]);
@@ -5375,11 +6001,13 @@ namespace Jolt
         const ShapeHandle shapeHandle)
     {
         AZStd::lock_guard lock(m_mutex);
+        AZStd::unique_lock leaseLock(m_transformedShapeLeaseMutex);
         ShapeSlot* slot = FindShape(shapeHandle);
         if (!slot
             || slot->m_bodyCount > 0
             || slot->m_parentCount > 0
             || slot->m_ragdollDefinitionCount > 0
+            || slot->m_transformedShapeLeaseCount > 0
             || slot->m_sceneInstanceHandle)
         {
             return false;
@@ -5417,6 +6045,8 @@ namespace Jolt
             m_freeShapeSlots.push_back(parts.m_index);
         }
 
+        leaseLock.unlock();
+
         if (ownsChildHandles)
         {
             AZStd::sort(childHandles.begin(), childHandles.end());
@@ -5433,6 +6063,7 @@ namespace Jolt
                     && childSlot->m_bodyCount == 0
                     && childSlot->m_parentCount == 0
                     && childSlot->m_ragdollDefinitionCount == 0
+                    && childSlot->m_transformedShapeLeaseCount == 0
                     && !childSlot->m_sceneInstanceHandle)
                 {
                     [[maybe_unused]] const bool destroyed = DestroyShape(childHandle);
@@ -18053,6 +18684,128 @@ namespace Jolt
         return true;
     }
 
+    DiagnosticStatisticsResult World::GetBroadPhaseStatistics(
+        const AZStd::span<BroadPhaseStatistics> statistics,
+        const bool reset)
+    {
+#if defined(JPH_TRACK_BROADPHASE_STATS)
+        struct CollectionContext final
+        {
+            AZStd::span<BroadPhaseStatistics> m_statistics;
+            AZ::u32 m_requiredCount = 0;
+        };
+
+        const auto visitor = [](const JPH::BroadPhase::Statistics& native, void* opaqueContext)
+        {
+            auto& context = *static_cast<CollectionContext*>(opaqueContext);
+            BroadPhaseQueryKind queryKind = BroadPhaseQueryKind::None;
+            switch (native.mQuery)
+            {
+            case JPH::BroadPhase::EStatisticsQuery::CastAABox:
+                queryKind = BroadPhaseQueryKind::CastAabb;
+                break;
+            case JPH::BroadPhase::EStatisticsQuery::CollideAABox:
+                queryKind = BroadPhaseQueryKind::CollideAabb;
+                break;
+            case JPH::BroadPhase::EStatisticsQuery::CollideOrientedBox:
+                queryKind = BroadPhaseQueryKind::CollideOrientedBox;
+                break;
+            case JPH::BroadPhase::EStatisticsQuery::CollidePoint:
+                queryKind = BroadPhaseQueryKind::CollidePoint;
+                break;
+            case JPH::BroadPhase::EStatisticsQuery::CollideSphere:
+                queryKind = BroadPhaseQueryKind::CollideSphere;
+                break;
+            case JPH::BroadPhase::EStatisticsQuery::CastRay:
+                queryKind = BroadPhaseQueryKind::Raycast;
+                break;
+            default:
+                break;
+            }
+
+            BroadPhaseStatistics value{
+                .m_filterDescriptionHash = native.mFilterDescriptionHash,
+                .m_totalTicks = native.mTotalTicks,
+                .m_collectorTicks = native.mCollectorTicks,
+                .m_queryCount = native.mNumQueries,
+                .m_nodesVisited = native.mNodesVisited,
+                .m_bodiesVisited = native.mBodiesVisited,
+                .m_hitsReported = native.mHitsReported,
+                .m_broadPhaseLayer = native.mBroadPhaseLayer,
+                .m_queryKind = queryKind,
+            };
+
+            const auto less = [](const BroadPhaseStatistics& left, const BroadPhaseStatistics& right)
+            {
+                if (left.m_queryKind != right.m_queryKind)
+                {
+                    return left.m_queryKind < right.m_queryKind;
+                }
+                if (left.m_broadPhaseLayer != right.m_broadPhaseLayer)
+                {
+                    return left.m_broadPhaseLayer < right.m_broadPhaseLayer;
+                }
+                return left.m_filterDescriptionHash < right.m_filterDescriptionHash;
+            };
+
+            size_t insertIndex = 0;
+            const size_t writtenCount = AZStd::min<size_t>(
+                context.m_requiredCount,
+                context.m_statistics.size());
+            while (insertIndex < writtenCount
+                && less(context.m_statistics[insertIndex], value))
+            {
+                ++insertIndex;
+            }
+
+            if (writtenCount < context.m_statistics.size())
+            {
+                for (size_t moveIndex = writtenCount; moveIndex > insertIndex; --moveIndex)
+                {
+                    context.m_statistics[moveIndex] = context.m_statistics[moveIndex - 1];
+                }
+                context.m_statistics[insertIndex] = value;
+            }
+            else if (insertIndex < writtenCount)
+            {
+                for (size_t moveIndex = writtenCount - 1; moveIndex > insertIndex; --moveIndex)
+                {
+                    context.m_statistics[moveIndex] = context.m_statistics[moveIndex - 1];
+                }
+                context.m_statistics[insertIndex] = value;
+            }
+            ++context.m_requiredCount;
+        };
+
+        AZStd::lock_guard lock(m_mutex);
+        CollectionContext context{
+            .m_statistics = statistics,
+        };
+        const JPH::uint nativeCount = m_physicsSystem.VisitBroadPhaseStatistics(
+            visitor,
+            &context,
+            reset);
+        AZ_Assert(nativeCount == context.m_requiredCount, "Broadphase statistics enumeration is inconsistent.");
+
+        DiagnosticStatisticsResult result{
+            .m_count = AZStd::min<AZ::u32>(context.m_requiredCount, aznumeric_cast<AZ::u32>(statistics.size())),
+            .m_requiredCount = context.m_requiredCount,
+            .m_status = DiagnosticStatisticsStatus::Complete,
+        };
+        if (result.m_requiredCount > statistics.size())
+        {
+            result.m_status = DiagnosticStatisticsStatus::Overflow;
+        }
+        return result;
+#else
+        AZ_UNUSED(statistics);
+        AZ_UNUSED(reset);
+        return {
+            .m_status = DiagnosticStatisticsStatus::Unavailable,
+        };
+#endif
+    }
+
     bool World::DrawDebug(
         const DebugDrawSettings& settings,
         IDebugRenderer& renderer,
@@ -20929,15 +21682,16 @@ namespace Jolt
         for (size_t childIndex = 0; childIndex < childCount; ++childIndex)
         {
             const JPH::TransformedShape& nativeChild = collector.mHits[childIndex];
-            const JPH::SubShapeID subShapeId = nativeChild.mSubShapeIDCreator.GetID();
             TransformedShape& child = children[result.m_hitCount];
-            *reinterpret_cast<JPH::TransformedShape*>(child.m_nativeStorage) = nativeChild;
-            child.m_worldOrigin = shape.m_worldOrigin;
-            child.m_worldHandle = shape.m_worldHandle;
-            child.m_bodyHandle = shape.m_bodyHandle;
-            child.m_materialHandle = m_system.FindMaterialHandle(nativeChild.GetMaterial(subShapeId));
-            child.m_shapeHandle = shape.m_shapeHandle;
-            ++result.m_hitCount;
+            if (InitializeTransformedShape(
+                    nativeChild,
+                    shape.m_shapeHandle,
+                    shape.m_bodyHandle,
+                    shape.m_worldOrigin,
+                    child))
+            {
+                ++result.m_hitCount;
+            }
         }
         return result;
     }
@@ -21078,6 +21832,400 @@ namespace Jolt
                 shape.m_worldOrigin);
         }
         return result;
+    }
+
+    bool World::RetainShape(
+        const ShapeHandle shapeHandle,
+        const WorldTransform& transform,
+        const float uniformScale,
+        TransformedShape& shape) const
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RetainShape");
+        DeterministicWorldQueryLock lock(m_mutex);
+        const ShapeSlot* slot = FindShape(shapeHandle);
+        const JPH::Vec3 nativeScale = JPH::Vec3::sReplicate(uniformScale);
+        if (!slot
+            || !ValidateWorldTransform(transform)
+            || !AZ::IsFiniteFloat(uniformScale)
+            || uniformScale <= 0.0f
+            || !slot->m_shape->IsValidScale(nativeScale))
+        {
+            return false;
+        }
+
+        JPH::TransformedShape nativeShape;
+        nativeShape.mShape = slot->m_shape;
+        nativeShape.mBodyID = JPH::BodyID();
+        nativeShape.SetWorldTransform(
+            ToNativePosition(transform.m_position, m_configuration.m_origin),
+            ToNativeRotation(transform.m_rotation),
+            nativeScale);
+        return InitializeTransformedShape(
+            nativeShape,
+            shapeHandle,
+            BodyHandle::Invalid,
+            m_configuration.m_origin,
+            shape);
+    }
+
+    QueryResult World::CollideTransformedShapes(
+        const TransformedShape& firstShape,
+        const TransformedShape& secondShape,
+        const TransformedShapeCollisionRequest& request,
+        const AZStd::span<TransformedShapeCollisionHit> hits,
+        const ShapeQueryFaceBuffers& faceBuffers) const
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollideTransformedShapes");
+        DeterministicWorldQueryLock lock(m_mutex);
+        const JPH::TransformedShape* firstNativeShape = GetNativeTransformedShape(firstShape);
+        const JPH::TransformedShape* secondNativeShape = GetNativeTransformedShape(secondShape);
+        const float internalEdgeToleranceSq =
+            request.m_internalEdgeRemovalVertexTolerance * request.m_internalEdgeRemovalVertexTolerance;
+        if (!firstNativeShape
+            || !secondNativeShape
+            || !request.m_activeEdgeMovementDirection.IsFinite()
+            || !AZ::IsFiniteFloat(request.m_internalEdgeRemovalVertexTolerance)
+            || request.m_internalEdgeRemovalVertexTolerance < 0.0f
+            || !AZ::IsFiniteFloat(internalEdgeToleranceSq)
+            || !AZ::IsFiniteFloat(request.m_maximumSeparationDistance)
+            || request.m_maximumSeparationDistance < 0.0f
+            || (request.m_filter
+                && (!request.m_filter->ShouldIncludeBody(firstShape.m_bodyHandle)
+                    || !request.m_filter->ShouldIncludeBody(secondShape.m_bodyHandle))))
+        {
+            return {};
+        }
+
+        JPH::CollideShapeSettings settings;
+        if (!ApplyShapeQuerySettings(
+                request.m_activeEdgeMode,
+                request.m_faceCollectionMode,
+                request.m_activeEdgeMovementDirection,
+                request.m_collisionTolerance,
+                request.m_penetrationTolerance,
+                settings)
+            || !ApplyBackFaceMode(request.m_backFaceMode, settings.mBackFaceMode))
+        {
+            return {};
+        }
+        settings.mInternalEdgeRemovalVertexToleranceSq = internalEdgeToleranceSq;
+        settings.mMaxSeparationDistance = request.m_maximumSeparationDistance;
+        if (request.m_removeInternalEdges)
+        {
+            settings.mActiveEdgeMode = JPH::EActiveEdgeMode::CollideWithAll;
+            settings.mCollectFacesMode = JPH::ECollectFacesMode::CollectFaces;
+        }
+
+        const JPH::RVec3 baseOffset = firstNativeShape->mShapePositionCOM;
+        const JPH::Mat44 firstTransform = firstNativeShape->GetCenterOfMassTransform()
+            .PostTranslated(-baseOffset)
+            .ToMat44();
+        const JPH::Mat44 secondTransform = secondNativeShape->GetCenterOfMassTransform()
+            .PostTranslated(-baseOffset)
+            .ToMat44();
+        RetainedShapeCollisionCollector collector(
+            *this,
+            baseOffset,
+            firstShape,
+            secondShape,
+            *firstNativeShape,
+            *secondNativeShape,
+            hits,
+            faceBuffers);
+        const RetainedShapePairFilterAdapter filter(firstShape, secondShape, request.m_filter);
+        if (request.m_removeInternalEdges)
+        {
+            JPH::InternalEdgeRemovingCollector::sCollideShapeVsShape(
+                firstNativeShape->mShape,
+                secondNativeShape->mShape,
+                firstNativeShape->GetShapeScale(),
+                secondNativeShape->GetShapeScale(),
+                firstTransform,
+                secondTransform,
+                firstNativeShape->mSubShapeIDCreator,
+                secondNativeShape->mSubShapeIDCreator,
+                settings,
+                collector,
+                filter);
+        }
+        else
+        {
+            JPH::CollisionDispatch::sCollideShapeVsShape(
+                firstNativeShape->mShape,
+                secondNativeShape->mShape,
+                firstNativeShape->GetShapeScale(),
+                secondNativeShape->GetShapeScale(),
+                firstTransform,
+                secondTransform,
+                firstNativeShape->mSubShapeIDCreator,
+                secondNativeShape->mSubShapeIDCreator,
+                settings,
+                collector,
+                filter);
+        }
+        return collector.GetResult();
+    }
+
+    bool World::CollideTransformedShapes(
+        const TransformedShape& firstShape,
+        const TransformedShape& secondShape,
+        const TransformedShapeCollisionRequest& request,
+        ITransformedShapeCollisionCollector& collector) const
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollideTransformedShapes");
+        DeterministicWorldQueryLock lock(m_mutex);
+        const JPH::TransformedShape* firstNativeShape = GetNativeTransformedShape(firstShape);
+        const JPH::TransformedShape* secondNativeShape = GetNativeTransformedShape(secondShape);
+        const float internalEdgeToleranceSq =
+            request.m_internalEdgeRemovalVertexTolerance * request.m_internalEdgeRemovalVertexTolerance;
+        if (!firstNativeShape
+            || !secondNativeShape
+            || !request.m_activeEdgeMovementDirection.IsFinite()
+            || !AZ::IsFiniteFloat(request.m_internalEdgeRemovalVertexTolerance)
+            || request.m_internalEdgeRemovalVertexTolerance < 0.0f
+            || !AZ::IsFiniteFloat(internalEdgeToleranceSq)
+            || !AZ::IsFiniteFloat(request.m_maximumSeparationDistance)
+            || request.m_maximumSeparationDistance < 0.0f
+            || (request.m_filter
+                && (!request.m_filter->ShouldIncludeBody(firstShape.m_bodyHandle)
+                    || !request.m_filter->ShouldIncludeBody(secondShape.m_bodyHandle))))
+        {
+            return false;
+        }
+
+        JPH::CollideShapeSettings settings;
+        if (!ApplyShapeQuerySettings(
+                request.m_activeEdgeMode,
+                request.m_faceCollectionMode,
+                request.m_activeEdgeMovementDirection,
+                request.m_collisionTolerance,
+                request.m_penetrationTolerance,
+                settings)
+            || !ApplyBackFaceMode(request.m_backFaceMode, settings.mBackFaceMode))
+        {
+            return false;
+        }
+        settings.mInternalEdgeRemovalVertexToleranceSq = internalEdgeToleranceSq;
+        settings.mMaxSeparationDistance = request.m_maximumSeparationDistance;
+        if (request.m_removeInternalEdges)
+        {
+            settings.mActiveEdgeMode = JPH::EActiveEdgeMode::CollideWithAll;
+            settings.mCollectFacesMode = JPH::ECollectFacesMode::CollectFaces;
+        }
+
+        const JPH::RVec3 baseOffset = firstNativeShape->mShapePositionCOM;
+        const JPH::Mat44 firstTransform = firstNativeShape->GetCenterOfMassTransform()
+            .PostTranslated(-baseOffset)
+            .ToMat44();
+        const JPH::Mat44 secondTransform = secondNativeShape->GetCenterOfMassTransform()
+            .PostTranslated(-baseOffset)
+            .ToMat44();
+        RetainedShapeCollisionCallback nativeCollector(
+            *this,
+            baseOffset,
+            firstShape,
+            secondShape,
+            *firstNativeShape,
+            *secondNativeShape,
+            collector);
+        if (!nativeCollector.IsValid())
+        {
+            return false;
+        }
+
+        const RetainedShapePairFilterAdapter filter(firstShape, secondShape, request.m_filter);
+        if (request.m_removeInternalEdges)
+        {
+            JPH::InternalEdgeRemovingCollector::sCollideShapeVsShape(
+                firstNativeShape->mShape,
+                secondNativeShape->mShape,
+                firstNativeShape->GetShapeScale(),
+                secondNativeShape->GetShapeScale(),
+                firstTransform,
+                secondTransform,
+                firstNativeShape->mSubShapeIDCreator,
+                secondNativeShape->mSubShapeIDCreator,
+                settings,
+                nativeCollector,
+                filter);
+        }
+        else
+        {
+            JPH::CollisionDispatch::sCollideShapeVsShape(
+                firstNativeShape->mShape,
+                secondNativeShape->mShape,
+                firstNativeShape->GetShapeScale(),
+                secondNativeShape->GetShapeScale(),
+                firstTransform,
+                secondTransform,
+                firstNativeShape->mSubShapeIDCreator,
+                secondNativeShape->mSubShapeIDCreator,
+                settings,
+                nativeCollector,
+                filter);
+        }
+        return nativeCollector.IsValid();
+    }
+
+    QueryResult World::CastTransformedShape(
+        const TransformedShape& firstShape,
+        const TransformedShape& secondShape,
+        const TransformedShapeCastRequest& request,
+        const AZStd::span<TransformedShapeCastHit> hits,
+        const ShapeQueryFaceBuffers& faceBuffers) const
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CastTransformedShape");
+        DeterministicWorldQueryLock lock(m_mutex);
+        const JPH::TransformedShape* firstNativeShape = GetNativeTransformedShape(firstShape);
+        const JPH::TransformedShape* secondNativeShape = GetNativeTransformedShape(secondShape);
+        if (!firstNativeShape
+            || !secondNativeShape
+            || !request.m_displacement.IsFinite()
+            || request.m_displacement.IsZero()
+            || !AZ::IsFiniteFloat(request.m_maximumFraction)
+            || request.m_maximumFraction <= 0.0f
+            || request.m_maximumFraction > 1.0f
+            || (request.m_filter
+                && (!request.m_filter->ShouldIncludeBody(firstShape.m_bodyHandle)
+                    || !request.m_filter->ShouldIncludeBody(secondShape.m_bodyHandle))))
+        {
+            return {};
+        }
+
+        JPH::ShapeCastSettings settings;
+        if (!ApplyShapeQuerySettings(
+                request.m_activeEdgeMode,
+                request.m_faceCollectionMode,
+                request.m_activeEdgeMovementDirection,
+                request.m_collisionTolerance,
+                request.m_penetrationTolerance,
+                settings)
+            || !ApplyBackFaceMode(request.m_convexBackFaceMode, settings.mBackFaceModeConvex)
+            || !ApplyBackFaceMode(request.m_triangleBackFaceMode, settings.mBackFaceModeTriangles)
+            || !AZ::IsFiniteFloat(request.m_extraConvexRadius)
+            || request.m_extraConvexRadius < 0.0f)
+        {
+            return {};
+        }
+        settings.mExtraConvexRadius = request.m_extraConvexRadius;
+        settings.mReturnDeepestPoint = request.m_returnDeepestPoint;
+        settings.mUseShrunkenShapeAndConvexRadius = request.m_useShrunkenShapeAndConvexRadius;
+
+        const JPH::RVec3 baseOffset = firstNativeShape->mShapePositionCOM;
+        const JPH::RShapeCast nativeCast(
+            firstNativeShape->mShape,
+            firstNativeShape->GetShapeScale(),
+            firstNativeShape->GetCenterOfMassTransform(),
+            ToNativeVector(request.m_displacement));
+        const JPH::Mat44 secondTransform = secondNativeShape->GetCenterOfMassTransform()
+            .PostTranslated(-baseOffset)
+            .ToMat44();
+        const JPH::ShapeCast localCast = static_cast<JPH::ShapeCast>(
+            nativeCast.PostTranslated(-baseOffset));
+        RetainedShapeCastCollector collector(
+            *this,
+            baseOffset,
+            firstShape,
+            secondShape,
+            *firstNativeShape,
+            *secondNativeShape,
+            hits,
+            faceBuffers,
+            request.m_maximumFraction);
+        const RetainedShapePairFilterAdapter filter(firstShape, secondShape, request.m_filter);
+        JPH::CollisionDispatch::sCastShapeVsShapeWorldSpace(
+            localCast,
+            settings,
+            secondNativeShape->mShape,
+            secondNativeShape->GetShapeScale(),
+            filter,
+            secondTransform,
+            firstNativeShape->mSubShapeIDCreator,
+            secondNativeShape->mSubShapeIDCreator,
+            collector);
+        return collector.GetResult();
+    }
+
+    bool World::CastTransformedShape(
+        const TransformedShape& firstShape,
+        const TransformedShape& secondShape,
+        const TransformedShapeCastRequest& request,
+        ITransformedShapeCastCollector& collector) const
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CastTransformedShape");
+        DeterministicWorldQueryLock lock(m_mutex);
+        const JPH::TransformedShape* firstNativeShape = GetNativeTransformedShape(firstShape);
+        const JPH::TransformedShape* secondNativeShape = GetNativeTransformedShape(secondShape);
+        if (!firstNativeShape
+            || !secondNativeShape
+            || !request.m_displacement.IsFinite()
+            || request.m_displacement.IsZero()
+            || !AZ::IsFiniteFloat(request.m_maximumFraction)
+            || request.m_maximumFraction <= 0.0f
+            || request.m_maximumFraction > 1.0f
+            || (request.m_filter
+                && (!request.m_filter->ShouldIncludeBody(firstShape.m_bodyHandle)
+                    || !request.m_filter->ShouldIncludeBody(secondShape.m_bodyHandle))))
+        {
+            return false;
+        }
+
+        JPH::ShapeCastSettings settings;
+        if (!ApplyShapeQuerySettings(
+                request.m_activeEdgeMode,
+                request.m_faceCollectionMode,
+                request.m_activeEdgeMovementDirection,
+                request.m_collisionTolerance,
+                request.m_penetrationTolerance,
+                settings)
+            || !ApplyBackFaceMode(request.m_convexBackFaceMode, settings.mBackFaceModeConvex)
+            || !ApplyBackFaceMode(request.m_triangleBackFaceMode, settings.mBackFaceModeTriangles)
+            || !AZ::IsFiniteFloat(request.m_extraConvexRadius)
+            || request.m_extraConvexRadius < 0.0f)
+        {
+            return false;
+        }
+        settings.mExtraConvexRadius = request.m_extraConvexRadius;
+        settings.mReturnDeepestPoint = request.m_returnDeepestPoint;
+        settings.mUseShrunkenShapeAndConvexRadius = request.m_useShrunkenShapeAndConvexRadius;
+
+        const JPH::RVec3 baseOffset = firstNativeShape->mShapePositionCOM;
+        const JPH::RShapeCast nativeCast(
+            firstNativeShape->mShape,
+            firstNativeShape->GetShapeScale(),
+            firstNativeShape->GetCenterOfMassTransform(),
+            ToNativeVector(request.m_displacement));
+        const JPH::Mat44 secondTransform = secondNativeShape->GetCenterOfMassTransform()
+            .PostTranslated(-baseOffset)
+            .ToMat44();
+        const JPH::ShapeCast localCast = static_cast<JPH::ShapeCast>(
+            nativeCast.PostTranslated(-baseOffset));
+        RetainedShapeCastCallback nativeCollector(
+            *this,
+            baseOffset,
+            firstShape,
+            secondShape,
+            *firstNativeShape,
+            *secondNativeShape,
+            collector,
+            request.m_maximumFraction);
+        if (!nativeCollector.IsValid())
+        {
+            return false;
+        }
+
+        const RetainedShapePairFilterAdapter filter(firstShape, secondShape, request.m_filter);
+        JPH::CollisionDispatch::sCastShapeVsShapeWorldSpace(
+            localCast,
+            settings,
+            secondNativeShape->mShape,
+            secondNativeShape->GetShapeScale(),
+            filter,
+            secondTransform,
+            firstNativeShape->mSubShapeIDCreator,
+            secondNativeShape->mSubShapeIDCreator,
+            nativeCollector);
+        return nativeCollector.IsValid();
     }
 
     bool World::RaycastClosest(
@@ -22760,15 +23908,16 @@ namespace Jolt
                 continue;
             }
 
-            const JPH::SubShapeID subShapeId = nativeShape.mSubShapeIDCreator.GetID();
             TransformedShape& shape = shapes[result.m_hitCount];
-            *reinterpret_cast<JPH::TransformedShape*>(shape.m_nativeStorage) = nativeShape;
-            shape.m_worldOrigin = m_configuration.m_origin;
-            shape.m_worldHandle = m_handle;
-            shape.m_bodyHandle = bodyHandle;
-            shape.m_materialHandle = m_system.FindMaterialHandle(nativeShape.GetMaterial(subShapeId));
-            shape.m_shapeHandle = bodySlot->m_shapeHandle;
-            ++result.m_hitCount;
+            if (InitializeTransformedShape(
+                    nativeShape,
+                    bodySlot->m_shapeHandle,
+                    bodyHandle,
+                    m_configuration.m_origin,
+                    shape))
+            {
+                ++result.m_hitCount;
+            }
         }
         return result;
     }
@@ -25632,12 +26781,119 @@ namespace Jolt
     const JPH::TransformedShape* World::GetNativeTransformedShape(
         const TransformedShape& shape) const
     {
-        if (!shape || shape.m_worldHandle != m_handle)
+        if (!shape
+            || shape.m_worldHandle != m_handle
+            || shape.m_leaseOwner != m_transformedShapeLeaseState)
         {
             return nullptr;
         }
 
         return reinterpret_cast<const JPH::TransformedShape*>(shape.m_nativeStorage);
+    }
+
+    bool World::InitializeTransformedShape(
+        const JPH::TransformedShape& nativeShape,
+        const ShapeHandle rootShapeHandle,
+        const BodyHandle bodyHandle,
+        const WorldPosition& worldOrigin,
+        TransformedShape& shape) const
+    {
+        if (!nativeShape.mShape)
+        {
+            return false;
+        }
+
+        TransformedShape retainedShape;
+        {
+            AZStd::lock_guard stateLock(m_transformedShapeLeaseState->m_mutex);
+            AZStd::lock_guard leaseLock(m_transformedShapeLeaseMutex);
+            ShapeSlot* rootSlot = const_cast<World*>(this)->FindShape(rootShapeHandle);
+            if (!rootSlot
+                || rootSlot->m_transformedShapeLeaseCount == AZStd::numeric_limits<AZ::u32>::max())
+            {
+                return false;
+            }
+
+            ++rootSlot->m_transformedShapeLeaseCount;
+            ++m_transformedShapeLeaseState->m_referenceCount;
+            *reinterpret_cast<JPH::TransformedShape*>(retainedShape.m_nativeStorage) = nativeShape;
+            retainedShape.m_worldOrigin = worldOrigin;
+            retainedShape.m_worldHandle = m_handle;
+            retainedShape.m_bodyHandle = bodyHandle;
+            retainedShape.m_materialHandle = m_system.FindMaterialHandle(
+                nativeShape.GetMaterial(nativeShape.mSubShapeIDCreator.GetID()));
+            retainedShape.m_shapeHandle = rootShapeHandle;
+            retainedShape.m_userData = rootSlot->m_shape->GetUserData();
+            retainedShape.m_shapeKind = FromNativeShapeKind(nativeShape.mShape->GetSubType());
+            retainedShape.m_leaseOwner = m_transformedShapeLeaseState;
+        }
+
+        shape = AZStd::move(retainedShape);
+        return true;
+    }
+
+    void Internal::AcquireTransformedShapeLease(
+        void* owner,
+        const ShapeHandle shapeHandle)
+    {
+        auto& state = *static_cast<TransformedShapeLeaseState*>(owner);
+        AZStd::lock_guard stateLock(state.m_mutex);
+        ++state.m_referenceCount;
+        if (World* world = state.m_world)
+        {
+            AZStd::lock_guard leaseLock(world->m_transformedShapeLeaseMutex);
+            World::ShapeSlot* slot = world->FindShape(shapeHandle);
+            AZ_Assert(slot, "Cannot copy a stale transformed-shape lease.");
+            AZ_Assert(
+                !slot || slot->m_transformedShapeLeaseCount < AZStd::numeric_limits<AZ::u32>::max(),
+                "Transformed-shape lease count overflowed.");
+            if (slot && slot->m_transformedShapeLeaseCount < AZStd::numeric_limits<AZ::u32>::max())
+            {
+                ++slot->m_transformedShapeLeaseCount;
+            }
+        }
+    }
+
+    void Internal::ReleaseTransformedShapeLease(
+        void* owner,
+        const ShapeHandle shapeHandle)
+    {
+        auto* state = static_cast<TransformedShapeLeaseState*>(owner);
+        bool destroyState = false;
+        {
+            AZStd::lock_guard stateLock(state->m_mutex);
+            if (World* world = state->m_world)
+            {
+                AZStd::lock_guard leaseLock(world->m_transformedShapeLeaseMutex);
+                World::ShapeSlot* slot = world->FindShape(shapeHandle);
+                AZ_Assert(
+                    slot && slot->m_transformedShapeLeaseCount > 0,
+                    "Transformed-shape lease ownership is inconsistent.");
+                if (slot && slot->m_transformedShapeLeaseCount > 0)
+                {
+                    --slot->m_transformedShapeLeaseCount;
+                }
+            }
+            AZ_Assert(state->m_referenceCount > 0, "The transformed-shape lease state reference count underflowed.");
+            --state->m_referenceCount;
+            destroyState = state->m_referenceCount == 0;
+        }
+        if (destroyState)
+        {
+            delete state;
+        }
+    }
+
+    bool World::HasTransformedShapeLeases() const
+    {
+        AZStd::lock_guard lock(m_transformedShapeLeaseMutex);
+        return AZStd::any_of(
+            m_shapeSlots.begin(),
+            m_shapeSlots.end(),
+            [](const ShapeSlot& slot)
+            {
+                return slot.m_transformedShapeLeaseCount > 0;
+            });
     }
 
     bool World::BuildOverlapHit(

@@ -90,6 +90,12 @@ namespace Jolt
         bool UnregisterCustomConvexShapeProvider(ICustomConvexShapeProvider* provider) override;
 
         [[nodiscard]]
+        ProviderRegistrationResult RegisterCustomShapeProvider(ICustomShapeProvider* provider) override;
+
+        [[nodiscard]]
+        ProviderRegistrationResult UnregisterCustomShapeProvider(ICustomShapeProvider* provider) override;
+
+        [[nodiscard]]
         MaterialHandle CreateMaterial(const MaterialConfiguration& configuration) override;
 
         bool DestroyMaterial(MaterialHandle materialHandle) override;
@@ -148,6 +154,16 @@ namespace Jolt
         bool GetCustomConvexShapeInfo(
             CookedShapeHandle cookedShapeHandle,
             CustomConvexShapeInfo& info) const override;
+
+        [[nodiscard]]
+        bool GetCustomShapeInfo(
+            CookedShapeHandle cookedShapeHandle,
+            CustomShapeInfo& info) const override;
+
+        [[nodiscard]]
+        BufferResult GetCustomShapeDependencies(
+            CookedShapeHandle cookedShapeHandle,
+            AZStd::span<CustomShapeDependency> dependencies) const override;
 
         [[nodiscard]]
         bool GetSubShapeUserData(
@@ -2171,6 +2187,17 @@ namespace Jolt
             WorldHandle worldHandle,
             WorldStatistics& statistics) const override;
 
+        [[nodiscard]]
+        DiagnosticStatisticsResult GetBroadPhaseStatistics(
+            WorldHandle worldHandle,
+            AZStd::span<BroadPhaseStatistics> statistics,
+            bool reset) override;
+
+        [[nodiscard]]
+        DiagnosticStatisticsResult GetNarrowPhaseStatistics(
+            AZStd::span<NarrowPhaseStatistics> statistics,
+            bool reset) override;
+
         bool DrawDebug(
             WorldHandle worldHandle,
             const DebugDrawSettings& settings,
@@ -2749,6 +2776,67 @@ namespace Jolt
             SubShapeId subShapeId,
             const AZ::Vector3& direction,
             AZStd::span<WorldPosition> vertices) const override;
+
+        [[nodiscard]]
+        bool RetainShape(
+            WorldHandle worldHandle,
+            ShapeHandle shapeHandle,
+            const WorldTransform& transform,
+            float uniformScale,
+            TransformedShape& shape) const override;
+
+        [[nodiscard]]
+        QueryResult CollideTransformedShapes(
+            WorldHandle worldHandle,
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCollisionRequest& request,
+            AZStd::span<TransformedShapeCollisionHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers) const override;
+
+        [[nodiscard]]
+        bool CollideTransformedShapes(
+            WorldHandle worldHandle,
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCollisionRequest& request,
+            ITransformedShapeCollisionCollector& collector) const override;
+
+        [[nodiscard]]
+        QueryResult CollideTransformedShapes(
+            WorldHandle worldHandle,
+            const ShapePlacement& firstShape,
+            const ShapePlacement& secondShape,
+            const TransformedShapeCollisionRequest& request,
+            AZStd::span<TransformedShapeCollisionHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers) const override;
+
+        [[nodiscard]]
+        QueryResult CastTransformedShape(
+            WorldHandle worldHandle,
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCastRequest& request,
+            AZStd::span<TransformedShapeCastHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers) const override;
+
+        [[nodiscard]]
+        bool CastTransformedShape(
+            WorldHandle worldHandle,
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCastRequest& request,
+            ITransformedShapeCastCollector& collector) const override;
+
+        [[nodiscard]]
+        QueryResult CastTransformedShape(
+            WorldHandle worldHandle,
+            const ShapePlacement& firstShape,
+            const ShapePlacement& secondShape,
+            const TransformedShapeCastRequest& request,
+            AZStd::span<TransformedShapeCastHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers) const override;
+
         [[nodiscard]]
         bool RaycastClosest(
             WorldHandle worldHandle,
@@ -2904,11 +2992,19 @@ namespace Jolt
             AZ::u32 m_referenceCount = 0;
         };
 
+        struct CustomShapeProviderEntry final
+        {
+            ICustomShapeProvider* m_provider = nullptr;
+            AZ::u32 m_referenceCount = 0;
+        };
+
         struct CookedShapeSlot final
         {
             JPH::RefConst<JPH::Shape> m_shape;
             AZStd::vector<MaterialHandle> m_materialHandles;
             AZStd::vector<CookedShapeHandle> m_childHandles;
+            AZStd::vector<CustomShapeDependency> m_customDependencies;
+            AZ::TypeId m_customProviderId = AZ::TypeId::CreateNull();
             AZ::u32 m_generation = 1;
             AZ::u32 m_referenceCount = 0;
             AZ::u32 m_parentCount = 0;
@@ -3068,6 +3164,13 @@ namespace Jolt
         void ReleaseCustomPathProvider(AZ::TypeId providerId);
 
         [[nodiscard]]
+        ICustomShapeProvider* AcquireCustomShapeProvider(
+            AZ::TypeId providerId,
+            AZ::u64 requiredVersion = 0);
+
+        void ReleaseCustomShapeProvider(AZ::TypeId providerId);
+
+        [[nodiscard]]
         const MaterialSlot* FindMaterialUnlocked(MaterialHandle materialHandle) const;
 
         [[nodiscard]]
@@ -3082,7 +3185,9 @@ namespace Jolt
         CookedShapeHandle StoreCookedShape(
             const JPH::Shape* shape,
             AZStd::vector<MaterialHandle> materialHandles,
-            AZStd::vector<CookedShapeHandle> childHandles);
+            AZStd::vector<CookedShapeHandle> childHandles,
+            AZ::TypeId customProviderId = AZ::TypeId::CreateNull(),
+            AZStd::vector<CustomShapeDependency> customDependencies = {});
 
         void ReleaseCookedShape(CookedShapeHandle cookedShapeHandle);
 
@@ -3258,6 +3363,8 @@ namespace Jolt
 
         mutable AZStd::shared_mutex m_customConvexShapeProviderMutex;
         AZStd::unordered_map<AZ::TypeId, ICustomConvexShapeProvider*> m_customConvexShapeProviders;
+        mutable AZStd::shared_mutex m_customShapeProviderMutex;
+        AZStd::unordered_map<AZ::TypeId, CustomShapeProviderEntry> m_customShapeProviders;
 
         mutable AZStd::shared_mutex m_cookedShapeMutex;
         AZStd::vector<CookedShapeSlot> m_cookedShapeSlots;

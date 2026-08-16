@@ -146,7 +146,9 @@ namespace Jolt::Editor
                         {
                             debugDisplay.DrawPolyLine(typedGeometry.m_points, true);
                         }
-                        else if constexpr (AZStd::is_same_v<Type, CustomConvexShapeConfiguration>)
+                        else if constexpr (
+                            AZStd::is_same_v<Type, CustomConvexShapeConfiguration>
+                            || AZStd::is_same_v<Type, CustomShapeConfiguration>)
                         {
                             if (typedGeometry.m_editorBounds.IsValid())
                             {
@@ -275,7 +277,9 @@ namespace Jolt::Editor
                             bounds.AddPoint(transform.TransformPoint(point));
                         }
                     }
-                    else if constexpr (AZStd::is_same_v<Type, CustomConvexShapeConfiguration>)
+                    else if constexpr (
+                        AZStd::is_same_v<Type, CustomConvexShapeConfiguration>
+                        || AZStd::is_same_v<Type, CustomShapeConfiguration>)
                     {
                         if (typedGeometry.m_editorBounds.IsValid())
                         {

@@ -29,6 +29,8 @@ set(FILES
     Source/Jolt/CustomConstraintInternal.h
     Source/Jolt/CustomConvexShape.cpp
     Source/Jolt/CustomConvexShape.h
+    Source/Jolt/CustomShapeInternal.cpp
+    Source/Jolt/CustomShapeInternal.h
     Source/Jolt/DebugRenderer.cpp
     Source/Jolt/DebugDraw.cpp
     Source/Jolt/DebugRenderer.h
@@ -75,6 +77,7 @@ set(FILES
     Source/Jolt/SceneComponentConfiguration.cpp
     Source/Jolt/System.cpp
     Source/Jolt/SystemInternal.h
+    Source/Jolt/TransformedShapeLease.h
     Source/Jolt/StateRecorder.cpp
     Source/Jolt/StateRecorder.h
     Source/Jolt/StateArchive.cpp

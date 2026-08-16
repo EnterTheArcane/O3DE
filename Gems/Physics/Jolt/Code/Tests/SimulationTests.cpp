@@ -237,6 +237,277 @@ namespace Jolt
             mutable AZStd::atomic<AZ::u32> m_cookCount = 0;
         };
 
+        class TestCustomShapeProvider final
+            : public ICustomShapeProvider
+        {
+        public:
+            AZ_RTTI(
+                TestCustomShapeProvider,
+                "{848D48B9-DF40-4B35-B4C5-F35A4DA93D57}",
+                ICustomShapeProvider);
+
+            [[nodiscard]]
+            AZ::TypeId GetId() const override
+            {
+                return azrtti_typeid<TestCustomShapeProvider>();
+            }
+
+            [[nodiscard]]
+            AZ::u64 GetVersion() const override
+            {
+                return m_version;
+            }
+
+            [[nodiscard]]
+            bool Cook(
+                const AZStd::span<const AZ::u8> input,
+                CustomShapeData& output) const override
+            {
+                ++m_cookCount;
+                if (input.size() != 1)
+                {
+                    return false;
+                }
+                if (input.front() == 0)
+                {
+                    return true;
+                }
+                if (input.front() == 5)
+                {
+                    output.m_vertices = {
+                        {-1.0f, -1.0f, 0.0f},
+                        {1.0f, -1.0f, 0.0f},
+                        {1.0f, 1.0f, 0.0f},
+                        {-1.0f, 1.0f, 0.0f},
+                    };
+                    output.m_triangles = {
+                        {
+                            .m_firstVertex = 0,
+                            .m_secondVertex = 1,
+                            .m_thirdVertex = 2,
+                            .m_materialIndex = 0,
+                            .m_userData = 41,
+                        },
+                        {
+                            .m_firstVertex = 0,
+                            .m_secondVertex = 2,
+                            .m_thirdVertex = 3,
+                            .m_materialIndex = 1,
+                            .m_userData = 42,
+                        },
+                    };
+                    output.m_dependencies = {{"Objects/CustomMesh.source", 0x87654321}};
+                    output.m_geometryKind = CustomShapeGeometryKind::Mesh;
+                    output.m_perTriangleUserData = true;
+                    output.m_runtimeData = {input.front(), 7};
+                    return true;
+                }
+
+                const float halfExtent = 0.25f * input.front();
+                output.m_vertices = {
+                    {-halfExtent, -halfExtent, -halfExtent},
+                    {halfExtent, -halfExtent, -halfExtent},
+                    {-halfExtent, halfExtent, -halfExtent},
+                    {halfExtent, halfExtent, -halfExtent},
+                    {-halfExtent, -halfExtent, halfExtent},
+                    {halfExtent, -halfExtent, halfExtent},
+                    {-halfExtent, halfExtent, halfExtent},
+                    {halfExtent, halfExtent, halfExtent},
+                };
+                output.m_dependencies = {{"Objects/CustomShape.source", 0x12345678}};
+                output.m_geometryKind = CustomShapeGeometryKind::Convex;
+                output.m_runtimeData = {input.front(), 7};
+                return true;
+            }
+
+            CustomShapeDispatchResult Collide(
+                const ICustomShapeView& firstShape,
+                const ICustomShapeView& secondShape,
+                const CustomShapeCollisionSettings& settings,
+                ICustomShapeCollisionCollector& collector) const override
+            {
+                if (!m_useDispatch)
+                {
+                    return CustomShapeDispatchResult::Unsupported;
+                }
+
+                ++m_collisionCount;
+                const ICustomShapeView* customShape = &firstShape;
+                const ICustomShapeView* otherShape = &secondShape;
+                if (customShape->GetProviderId().IsNull())
+                {
+                    customShape = &secondShape;
+                    otherShape = &firstShape;
+                }
+                AZStd::array<AZ::Vector3, MaximumSupportingFaceVertexCount> supportingFace;
+                const QueryResult supportingFaceResult = customShape->GetSupportingFace(
+                    SubShapeId::Root,
+                    AZ::Vector3::CreateAxisX(),
+                    supportingFace);
+                CustomShapeRaycastHit raycastHit;
+                const bool raycastSucceeded = customShape->Raycast(
+                    {
+                        .m_start = {2.0f, 0.0f, 0.0f},
+                        .m_displacement = {-4.0f, 0.0f, 0.0f},
+                    },
+                    raycastHit);
+                AZStd::array<CustomShapeTriangleVertices, 16> triangles;
+                const QueryResult triangleResult = customShape->CollectTriangles(
+                    AZ::Aabb::CreateCenterRadius(AZ::Vector3::CreateZero(), 8.0f),
+                    triangles);
+                m_viewEvidence = customShape->GetProviderId() == GetId()
+                    && customShape->GetProviderVersion() == GetVersion()
+                    && customShape->GetRuntimeData().size() == 2
+                    && customShape->GetProperties().m_kind == ShapeKind::Custom
+                    && customShape->GetStats().m_memorySize > 0
+                    && customShape->GetMaterial(SubShapeId::Root)
+                    && customShape->GetUserData(SubShapeId::Root) == 0xABCDEF
+                    && supportingFaceResult.m_requiredHitCount > 0
+                    && raycastSucceeded
+                    && triangleResult.m_requiredHitCount > 0
+                    && (otherShape->GetProviderId().IsNull()
+                        || otherShape->GetProviderId() == GetId())
+                    && settings.m_faceCollectionMode == FaceCollectionMode::Collect;
+
+                AZStd::array firstFace = {
+                    AZ::Vector3(0.0f, -0.5f, -0.5f),
+                    AZ::Vector3(0.0f, 0.5f, -0.5f),
+                    AZ::Vector3(0.0f, 0.5f, 0.5f),
+                };
+                CustomShapeCollisionHit hit = {
+                    .m_firstFace = firstFace,
+                    .m_firstContactPosition = AZ::Vector3::CreateZero(),
+                    .m_secondContactPosition = AZ::Vector3::CreateAxisX(),
+                    .m_penetrationAxis = AZ::Vector3::CreateAxisX(),
+                    .m_firstSubShapeId = SubShapeId::Root,
+                    .m_secondSubShapeId = SubShapeId::Root,
+                    .m_penetrationDepth = 0.75f,
+                };
+                if (m_returnInvalidOutput)
+                {
+                    hit.m_penetrationAxis.SetX(AZStd::numeric_limits<float>::quiet_NaN());
+                }
+                [[maybe_unused]] const bool accepted = collector.AddHit(hit);
+                return CustomShapeDispatchResult::Handled;
+            }
+
+            CustomShapeDispatchResult Cast(
+                const ICustomShapeView&,
+                const ICustomShapeView&,
+                const CustomShapeCastSettings& settings,
+                ICustomShapeCastCollector& collector) const override
+            {
+                if (!m_useDispatch)
+                {
+                    return CustomShapeDispatchResult::Unsupported;
+                }
+
+                ++m_castCount;
+                m_castEvidence = settings.m_displacement == AZ::Vector3::CreateAxisX(4.0f);
+                [[maybe_unused]] const bool accepted = collector.AddHit({
+                    .m_collision = {
+                        .m_firstContactPosition = AZ::Vector3::CreateZero(),
+                        .m_secondContactPosition = AZ::Vector3::CreateAxisX(),
+                        .m_penetrationAxis = AZ::Vector3::CreateAxisX(),
+                        .m_firstSubShapeId = SubShapeId::Root,
+                        .m_secondSubShapeId = SubShapeId::Root,
+                        .m_penetrationDepth = 0.0f,
+                    },
+                    .m_fraction = 0.25f,
+                });
+                return CustomShapeDispatchResult::Handled;
+            }
+
+            mutable AZStd::atomic<AZ::u32> m_cookCount = 0;
+            mutable AZStd::atomic<AZ::u32> m_collisionCount = 0;
+            mutable AZStd::atomic<AZ::u32> m_castCount = 0;
+            mutable AZStd::atomic<bool> m_castEvidence = false;
+            mutable AZStd::atomic<bool> m_viewEvidence = false;
+            AZ::u64 m_version = 19;
+            bool m_returnInvalidOutput = false;
+            bool m_useDispatch = false;
+        };
+
+        class RecordingTransformedShapeCollisionCollector final
+            : public ITransformedShapeCollisionCollector
+        {
+        public:
+            AZ_RTTI(
+                RecordingTransformedShapeCollisionCollector,
+                "{92E44B6B-2F2E-4096-BE6A-A2F5DF4C6732}",
+                ITransformedShapeCollisionCollector);
+
+            float GetEarlyOutFraction() const override
+            {
+                return m_earlyOutFraction;
+            }
+
+            bool AddHit(
+                const TransformedShapeCollisionHit& hit,
+                const AZStd::span<const WorldPosition> firstFace,
+                const AZStd::span<const WorldPosition> secondFace) override
+            {
+                m_hit = hit;
+                m_firstFaceVertexCount = aznumeric_cast<AZ::u32>(firstFace.size());
+                m_secondFaceVertexCount = aznumeric_cast<AZ::u32>(secondFace.size());
+                ++m_hitCount;
+                m_earlyOutFraction = -hit.m_penetrationDepth;
+                if (m_increaseEarlyOutFraction)
+                {
+                    m_earlyOutFraction = AZStd::numeric_limits<float>::max();
+                }
+                return m_continueTraversal;
+            }
+
+            TransformedShapeCollisionHit m_hit;
+            float m_earlyOutFraction = AZStd::numeric_limits<float>::max();
+            AZ::u32 m_firstFaceVertexCount = 0;
+            AZ::u32 m_secondFaceVertexCount = 0;
+            AZ::u32 m_hitCount = 0;
+            bool m_continueTraversal = false;
+            bool m_increaseEarlyOutFraction = false;
+        };
+
+        class RecordingTransformedShapeCastCollector final
+            : public ITransformedShapeCastCollector
+        {
+        public:
+            AZ_RTTI(
+                RecordingTransformedShapeCastCollector,
+                "{74CAC71F-54B6-47F5-A20B-C4ED96A0177D}",
+                ITransformedShapeCastCollector);
+
+            float GetEarlyOutFraction() const override
+            {
+                return m_earlyOutFraction;
+            }
+
+            bool AddHit(
+                const TransformedShapeCastHit& hit,
+                const AZStd::span<const WorldPosition> firstFace,
+                const AZStd::span<const WorldPosition> secondFace) override
+            {
+                m_hit = hit;
+                m_firstFaceVertexCount = aznumeric_cast<AZ::u32>(firstFace.size());
+                m_secondFaceVertexCount = aznumeric_cast<AZ::u32>(secondFace.size());
+                ++m_hitCount;
+                m_earlyOutFraction = hit.m_fraction;
+                if (m_increaseEarlyOutFraction)
+                {
+                    m_earlyOutFraction = 2.0f;
+                }
+                return m_continueTraversal;
+            }
+
+            TransformedShapeCastHit m_hit;
+            float m_earlyOutFraction = 1.0f;
+            AZ::u32 m_firstFaceVertexCount = 0;
+            AZ::u32 m_secondFaceVertexCount = 0;
+            AZ::u32 m_hitCount = 0;
+            bool m_continueTraversal = false;
+            bool m_increaseEarlyOutFraction = false;
+        };
+
         class TestCustomPathProvider final
             : public ICustomPathProvider
         {
@@ -2332,6 +2603,113 @@ namespace Jolt
 
         const RuntimeInfo runtimeInfo = system.GetRuntimeInfo();
         EXPECT_EQ(runtimeInfo.m_hairDeterminism, DeterminismCertification::SameBinary);
+    }
+
+    TEST(SimulationTests, NativeDiagnosticStatisticsReportAvailabilityCapacityAndReset)
+    {
+        System system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const RuntimeInfo runtimeInfo = system.GetRuntimeInfo();
+        const SphereOnFloor scene = CreateSphereOnFloor(system);
+        ASSERT_TRUE(scene.m_floorBodyHandle);
+        ASSERT_TRUE(scene.m_sphereBodyHandle);
+
+        AZStd::array<BroadPhaseStatistics, 64> broadPhaseStatistics;
+        AZStd::array<NarrowPhaseStatistics, 64> narrowPhaseStatistics;
+        const DiagnosticStatisticsResult initialBroadPhaseResult = system.GetBroadPhaseStatistics(
+            scene.m_worldHandle,
+            broadPhaseStatistics,
+            true);
+        const DiagnosticStatisticsResult initialNarrowPhaseResult = system.GetNarrowPhaseStatistics(
+            narrowPhaseStatistics,
+            true);
+
+        RaycastHit raycastHit;
+        ASSERT_TRUE(system.RaycastClosest(
+            scene.m_worldHandle,
+            RaycastRequest{
+                .m_start = {.m_z = 5.0},
+                .m_displacement = -AZ::Vector3::CreateAxisZ(10.0f),
+            },
+            raycastHit));
+
+        AZStd::array<ShapeOverlapHit, 4> overlapHits;
+        const QueryResult overlapResult = system.CollideShape(
+            scene.m_worldHandle,
+            ShapeOverlapRequest{
+                .m_shapeHandle = scene.m_sphereShapeHandle,
+                .m_transform = {
+                    .m_position = {.m_z = 0.5},
+                },
+            },
+            overlapHits);
+        EXPECT_GT(overlapResult.m_hitCount, 0);
+
+        if (runtimeInfo.m_broadPhaseStatistics)
+        {
+            EXPECT_NE(initialBroadPhaseResult.m_status, DiagnosticStatisticsStatus::Unavailable);
+            const DiagnosticStatisticsResult overflowResult = system.GetBroadPhaseStatistics(
+                scene.m_worldHandle,
+                {},
+                false);
+            EXPECT_EQ(overflowResult.m_status, DiagnosticStatisticsStatus::Overflow);
+            EXPECT_GT(overflowResult.m_requiredCount, 0);
+
+            const DiagnosticStatisticsResult result = system.GetBroadPhaseStatistics(
+                scene.m_worldHandle,
+                broadPhaseStatistics,
+                true);
+            EXPECT_TRUE(result);
+            EXPECT_GT(result.m_count, 0);
+            EXPECT_GT(broadPhaseStatistics.front().m_queryCount, 0);
+            EXPECT_NE(broadPhaseStatistics.front().m_queryKind, BroadPhaseQueryKind::None);
+
+            const DiagnosticStatisticsResult resetResult = system.GetBroadPhaseStatistics(
+                scene.m_worldHandle,
+                broadPhaseStatistics,
+                false);
+            EXPECT_TRUE(resetResult);
+            EXPECT_EQ(resetResult.m_count, 0);
+        }
+        else
+        {
+            EXPECT_EQ(initialBroadPhaseResult.m_status, DiagnosticStatisticsStatus::Unavailable);
+            EXPECT_EQ(
+                system.GetBroadPhaseStatistics(scene.m_worldHandle, broadPhaseStatistics, false).m_status,
+                DiagnosticStatisticsStatus::Unavailable);
+        }
+
+        if (runtimeInfo.m_narrowPhaseStatistics)
+        {
+            EXPECT_NE(initialNarrowPhaseResult.m_status, DiagnosticStatisticsStatus::Unavailable);
+            const DiagnosticStatisticsResult overflowResult = system.GetNarrowPhaseStatistics({}, false);
+            EXPECT_EQ(overflowResult.m_status, DiagnosticStatisticsStatus::Overflow);
+            EXPECT_GT(overflowResult.m_requiredCount, 0);
+
+            const DiagnosticStatisticsResult result = system.GetNarrowPhaseStatistics(
+                narrowPhaseStatistics,
+                true);
+            EXPECT_TRUE(result);
+            EXPECT_GT(result.m_count, 0);
+            EXPECT_GT(narrowPhaseStatistics.front().m_queryCount, 0);
+            EXPECT_NE(narrowPhaseStatistics.front().m_queryKind, NarrowPhaseQueryKind::None);
+
+            const DiagnosticStatisticsResult resetResult = system.GetNarrowPhaseStatistics(
+                narrowPhaseStatistics,
+                false);
+            EXPECT_TRUE(resetResult);
+            EXPECT_EQ(resetResult.m_count, 0);
+        }
+        else
+        {
+            EXPECT_EQ(initialNarrowPhaseResult.m_status, DiagnosticStatisticsStatus::Unavailable);
+            EXPECT_EQ(
+                system.GetNarrowPhaseStatistics(narrowPhaseStatistics, false).m_status,
+                DiagnosticStatisticsStatus::Unavailable);
+        }
+
+        DestroySphereOnFloor(system, scene);
     }
 
     TEST(SimulationTests, DynamicSphereSettlesOnStaticFloor)
@@ -10750,6 +11128,108 @@ namespace Jolt
         EXPECT_TRUE(transformedFaceResult.IsComplete());
         EXPECT_EQ(transformedFaceResult.m_hitCount, 4);
 
+        WorldTransform secondShapeTransform = bodyConfiguration.m_transform;
+        secondShapeTransform.m_position.m_x += 2.5;
+        TransformedShape secondRetainedShape;
+        ASSERT_TRUE(system.RetainShape(
+            worldHandle,
+            shapeHandle,
+            secondShapeTransform,
+            1.0f,
+            secondRetainedShape));
+
+        AZStd::array<TransformedShapeCollisionHit, 8> pairHits;
+        AZStd::array<WorldPosition, 8 * MaximumSupportingFaceVertexCount> firstFaceVertices;
+        AZStd::array<WorldPosition, 8 * MaximumSupportingFaceVertexCount> secondFaceVertices;
+        TransformedShapeCollisionRequest collisionRequest;
+        collisionRequest.m_faceCollectionMode = FaceCollectionMode::Collect;
+        const QueryResult pairResult = system.CollideTransformedShapes(
+            worldHandle,
+            retainedShape,
+            secondRetainedShape,
+            collisionRequest,
+            pairHits,
+            {
+                .m_queryVertices = firstFaceVertices,
+                .m_targetVertices = secondFaceVertices,
+            });
+        ASSERT_GT(pairResult.m_hitCount, 0);
+        EXPECT_TRUE(pairResult.IsComplete());
+        EXPECT_EQ(pairHits.front().m_firstBodyHandle, bodyHandle);
+        EXPECT_EQ(pairHits.front().m_firstMaterialHandle, materialHandle);
+        EXPECT_EQ(pairHits.front().m_firstShapeHandle, scaledShapeHandle);
+        EXPECT_EQ(pairHits.front().m_secondShapeHandle, shapeHandle);
+        EXPECT_GT(pairHits.front().m_firstFaceVertexCount, 0);
+        EXPECT_GT(pairHits.front().m_secondFaceVertexCount, 0);
+
+        const QueryResult placedPairResult = system.CollideTransformedShapes(
+            worldHandle,
+            ShapePlacement{
+                .m_shapeHandle = scaledShapeHandle,
+                .m_transform = bodyConfiguration.m_transform,
+            },
+            ShapePlacement{
+                .m_shapeHandle = shapeHandle,
+                .m_transform = secondShapeTransform,
+            },
+            collisionRequest,
+            pairHits,
+            {});
+        EXPECT_EQ(placedPairResult.m_hitCount, pairResult.m_hitCount);
+
+        secondShapeTransform.m_position.m_x += 4.5;
+        ASSERT_TRUE(system.RetainShape(
+            worldHandle,
+            shapeHandle,
+            secondShapeTransform,
+            1.0f,
+            secondRetainedShape));
+        AZStd::array<TransformedShapeCastHit, 4> pairCastHits;
+        TransformedShapeCastRequest pairCastRequest;
+        pairCastRequest.m_displacement = AZ::Vector3::CreateAxisX(10.0f);
+        const QueryResult pairCastResult = system.CastTransformedShape(
+            worldHandle,
+            retainedShape,
+            secondRetainedShape,
+            pairCastRequest,
+            pairCastHits,
+            {});
+        ASSERT_GT(pairCastResult.m_hitCount, 0);
+        EXPECT_TRUE(pairCastResult.IsComplete());
+        EXPECT_EQ(pairCastHits.front().m_collision.m_firstShapeHandle, scaledShapeHandle);
+        EXPECT_EQ(pairCastHits.front().m_collision.m_secondShapeHandle, shapeHandle);
+        EXPECT_NEAR(pairCastHits.front().m_fraction, 0.4f, 1.0e-4f);
+
+        const QueryResult placedCastResult = system.CastTransformedShape(
+            worldHandle,
+            ShapePlacement{
+                .m_shapeHandle = scaledShapeHandle,
+                .m_transform = bodyConfiguration.m_transform,
+            },
+            ShapePlacement{
+                .m_shapeHandle = shapeHandle,
+                .m_transform = secondShapeTransform,
+            },
+            pairCastRequest,
+            pairCastHits,
+            {});
+        EXPECT_EQ(placedCastResult.m_hitCount, pairCastResult.m_hitCount);
+
+        EXPECT_EQ(
+            system.CollideTransformedShapes(
+                worldHandle,
+                ShapePlacement{
+                    .m_shapeHandle = ShapeHandle::Invalid,
+                },
+                ShapePlacement{
+                    .m_shapeHandle = shapeHandle,
+                    .m_transform = secondShapeTransform,
+                },
+                collisionRequest,
+                pairHits,
+                {}).m_hitCount,
+            0);
+
         EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
         EXPECT_TRUE(system.RaycastTransformedShapeClosest(
             worldHandle,
@@ -10766,6 +11246,24 @@ namespace Jolt
             transformedRaycastHit));
         EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
 
+        System otherSystem(
+            CreateSerialSystemConfiguration(),
+            nullptr,
+            SystemRegistration::Isolated);
+        ASSERT_TRUE(otherSystem);
+        EXPECT_FALSE(otherSystem.RaycastTransformedShapeClosest(
+            otherSystem.GetDefaultWorldHandle(),
+            retainedShape,
+            transformedRaycastRequest,
+            transformedRaycastHit));
+
+        EXPECT_FALSE(system.DestroyShape(worldHandle, scaledShapeHandle));
+        EXPECT_FALSE(system.DestroyShape(worldHandle, shapeHandle));
+        EXPECT_FALSE(system.DestroyWorld(worldHandle));
+        secondRetainedShape = {};
+        childShapes[0] = {};
+        retainedShape = {};
+        transformedShapes[0] = {};
         EXPECT_TRUE(system.DestroyShape(worldHandle, scaledShapeHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
         EXPECT_TRUE(system.DestroyMaterial(materialHandle));
@@ -13217,6 +13715,12 @@ namespace Jolt
         EXPECT_EQ(info.m_providerId, provider.GetId());
         EXPECT_EQ(info.m_providerVersion, provider.GetVersion());
         EXPECT_NE(info.m_sourceHash, 0);
+        AZStd::array<CustomShapeDependency, 1> customDependencies;
+        const BufferResult dependencyResult = system.GetCustomShapeDependencies(
+            cookedShapeHandle,
+            customDependencies);
+        ASSERT_TRUE(dependencyResult.IsComplete());
+        ASSERT_EQ(dependencyResult.m_count, 0);
 
         CookedRaycastHit hit;
         ASSERT_TRUE(system.Raycast(
@@ -13235,6 +13739,7 @@ namespace Jolt
             archive,
             materialHandles,
             childShapeHandles));
+        EXPECT_TRUE(archive.m_dependencies.empty());
 
         ASSERT_TRUE(system.UnregisterCustomConvexShapeProvider(&provider));
         EXPECT_FALSE(system.UnregisterCustomConvexShapeProvider(&provider));
@@ -13247,6 +13752,9 @@ namespace Jolt
         ASSERT_TRUE(system.GetCustomConvexShapeInfo(importedShapeHandle, info));
         EXPECT_EQ(info.m_providerId, provider.GetId());
         EXPECT_EQ(info.m_providerVersion, provider.GetVersion());
+        ASSERT_TRUE(system.GetCustomShapeDependencies(
+            importedShapeHandle,
+            customDependencies).IsComplete());
         EXPECT_EQ(provider.m_cookCount.load(), 1);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -13360,6 +13868,422 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
         EXPECT_TRUE(system.DestroyCookedShape(importedShapeHandle));
         EXPECT_TRUE(system.DestroyCookedShape(cookedShapeHandle));
+        EXPECT_TRUE(system.DestroyMaterial(materialHandle));
+    }
+
+    TEST(SimulationTests, CustomShapesRetainProvidersAcrossCookingArchivesAndRuntimeUse)
+    {
+        System system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        TestCustomShapeProvider provider;
+        EXPECT_EQ(
+            system.RegisterCustomShapeProvider(nullptr),
+            ProviderRegistrationResult::Invalid);
+        provider.m_version = 0;
+        EXPECT_EQ(
+            system.RegisterCustomShapeProvider(&provider),
+            ProviderRegistrationResult::Invalid);
+        provider.m_version = 19;
+        ASSERT_EQ(
+            system.RegisterCustomShapeProvider(&provider),
+            ProviderRegistrationResult::Success);
+        EXPECT_EQ(
+            system.RegisterCustomShapeProvider(&provider),
+            ProviderRegistrationResult::AlreadyRegistered);
+
+        ShapeConfiguration invalidConfiguration;
+        invalidConfiguration.m_geometry = CustomShapeConfiguration{
+            .m_data = {0},
+            .m_providerId = provider.GetId(),
+        };
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        EXPECT_FALSE(system.CookShape(invalidConfiguration));
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+
+        const MaterialHandle materialHandle = system.CreateMaterial({
+            .m_debugName = "General custom shape",
+            .m_debugColor = AZ::Colors::Purple,
+        });
+        ASSERT_TRUE(materialHandle);
+        const MaterialHandle secondMaterialHandle = system.CreateMaterial({
+            .m_debugName = "General custom mesh triangle",
+            .m_debugColor = AZ::Colors::Cyan,
+        });
+        ASSERT_TRUE(secondMaterialHandle);
+
+        ShapeConfiguration configuration;
+        configuration.m_geometry = CustomShapeConfiguration{
+            .m_data = {4},
+            .m_editorBounds = AZ::Aabb::CreateCenterRadius(AZ::Vector3::CreateZero(), 1.0f),
+            .m_providerId = provider.GetId(),
+        };
+        configuration.m_materials = {materialHandle};
+        configuration.m_userData = 0xABCDEF;
+
+        const CookedShapeHandle cookedShapeHandle = system.CookShape(configuration);
+        ASSERT_TRUE(cookedShapeHandle);
+        EXPECT_EQ(provider.m_cookCount.load(), 2);
+        EXPECT_EQ(
+            system.UnregisterCustomShapeProvider(&provider),
+            ProviderRegistrationResult::InUse);
+
+        ShapeProperties properties;
+        ASSERT_TRUE(system.GetProperties(cookedShapeHandle, properties));
+        EXPECT_EQ(properties.m_kind, ShapeKind::Custom);
+        EXPECT_FALSE(properties.m_mustBeStatic);
+        EXPECT_GT(properties.m_innerRadius, 0.0f);
+        EXPECT_GT(properties.m_volume, 0.0f);
+
+        AZ::u64 subShapeUserData = 0;
+        ASSERT_TRUE(system.GetSubShapeUserData(
+            cookedShapeHandle,
+            SubShapeId::Root,
+            subShapeUserData));
+        EXPECT_EQ(subShapeUserData, configuration.m_userData);
+
+        CustomShapeInfo info;
+        ASSERT_TRUE(system.GetCustomShapeInfo(cookedShapeHandle, info));
+        EXPECT_EQ(info.m_providerId, provider.GetId());
+        EXPECT_EQ(info.m_providerVersion, provider.GetVersion());
+        EXPECT_NE(info.m_sourceHash, 0);
+
+        ShapeConfiguration meshConfiguration;
+        meshConfiguration.m_geometry = CustomShapeConfiguration{
+            .m_data = {5},
+            .m_editorBounds = AZ::Aabb::CreateCenterHalfExtents(
+                AZ::Vector3::CreateZero(),
+                AZ::Vector3(1.0f, 1.0f, 0.01f)),
+            .m_providerId = provider.GetId(),
+        };
+        meshConfiguration.m_materials = {materialHandle, secondMaterialHandle};
+        const CookedShapeHandle meshShapeHandle = system.CookShape(meshConfiguration);
+        ASSERT_TRUE(meshShapeHandle);
+        EXPECT_EQ(provider.m_cookCount.load(), 3);
+
+        ASSERT_TRUE(system.GetProperties(meshShapeHandle, properties));
+        EXPECT_EQ(properties.m_kind, ShapeKind::Custom);
+        EXPECT_TRUE(properties.m_mustBeStatic);
+
+        CookedRaycastHit meshHit;
+        ASSERT_TRUE(system.Raycast(
+            meshShapeHandle,
+            {0.5f, -0.5f, 1.0f},
+            -AZ::Vector3::CreateAxisZ(),
+            2.0f,
+            meshHit));
+        EXPECT_EQ(meshHit.m_materialHandle, materialHandle);
+        ASSERT_TRUE(system.GetSubShapeUserData(
+            meshShapeHandle,
+            meshHit.m_subShapeId,
+            subShapeUserData));
+        EXPECT_EQ(subShapeUserData, 41);
+
+        ASSERT_TRUE(system.Raycast(
+            meshShapeHandle,
+            {-0.5f, 0.5f, 1.0f},
+            -AZ::Vector3::CreateAxisZ(),
+            2.0f,
+            meshHit));
+        EXPECT_EQ(meshHit.m_materialHandle, secondMaterialHandle);
+        ASSERT_TRUE(system.GetSubShapeUserData(
+            meshShapeHandle,
+            meshHit.m_subShapeId,
+            subShapeUserData));
+        EXPECT_EQ(subShapeUserData, 42);
+
+        CookedShapeArchive archive;
+        AZStd::vector<MaterialHandle> materialHandles;
+        AZStd::vector<CookedShapeHandle> childShapeHandles;
+        ASSERT_TRUE(system.ExportShape(
+            cookedShapeHandle,
+            archive,
+            materialHandles,
+            childShapeHandles));
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, cookedShapeHandle);
+        ASSERT_TRUE(shapeHandle);
+        const BodyHandle bodyHandle = system.CreateBody(
+            worldHandle,
+            BodyConfiguration{
+                .m_shapeHandle = shapeHandle,
+                .m_motionType = MotionType::Static,
+            });
+        ASSERT_TRUE(bodyHandle);
+
+        RaycastHit raycastHit;
+        ASSERT_TRUE(system.RaycastClosest(
+            worldHandle,
+            RaycastRequest{
+                .m_start = {.m_z = 2.0},
+                .m_displacement = -AZ::Vector3::CreateAxisZ(4.0f),
+            },
+            raycastHit));
+        EXPECT_EQ(raycastHit.m_bodyHandle, bodyHandle);
+        EXPECT_EQ(raycastHit.m_materialHandle, materialHandle);
+        EXPECT_EQ(raycastHit.m_shapeHandle, shapeHandle);
+
+        TransformedShape retainedShape;
+        ASSERT_TRUE(system.RetainShape(
+            worldHandle,
+            shapeHandle,
+            {},
+            1.0f,
+            retainedShape));
+        EXPECT_EQ(retainedShape.GetUserData(), configuration.m_userData);
+
+        ShapeConfiguration sphereConfiguration;
+        sphereConfiguration.m_geometry = SphereShapeConfiguration{
+            .m_radius = 0.5f,
+        };
+        const CookedShapeHandle sphereCookedShapeHandle = system.CookShape(sphereConfiguration);
+        ASSERT_TRUE(sphereCookedShapeHandle);
+        const ShapeHandle sphereShapeHandle = system.CreateShape(
+            worldHandle,
+            sphereCookedShapeHandle);
+        ASSERT_TRUE(sphereShapeHandle);
+        TransformedShape retainedSphere;
+        WorldTransform sphereTransform;
+        sphereTransform.m_position.m_x = 10.0;
+        ASSERT_TRUE(system.RetainShape(
+            worldHandle,
+            sphereShapeHandle,
+            sphereTransform,
+            1.0f,
+            retainedSphere));
+
+        provider.m_useDispatch = true;
+        AZStd::array<TransformedShapeCollisionHit, 2> collisionHits;
+        AZStd::array<WorldPosition, MaximumSupportingFaceVertexCount * 2> firstFaceVertices;
+        AZStd::array<WorldPosition, MaximumSupportingFaceVertexCount * 2> secondFaceVertices;
+        QueryResult pairResult = system.CollideTransformedShapes(
+            worldHandle,
+            retainedShape,
+            retainedSphere,
+            {
+                .m_faceCollectionMode = FaceCollectionMode::Collect,
+            },
+            collisionHits,
+            {
+                .m_queryVertices = firstFaceVertices,
+                .m_targetVertices = secondFaceVertices,
+            });
+        ASSERT_TRUE(pairResult.IsComplete());
+        ASSERT_EQ(pairResult.m_hitCount, 1);
+        EXPECT_FLOAT_EQ(collisionHits[0].m_penetrationDepth, 0.75f);
+        EXPECT_EQ(collisionHits[0].m_firstFaceVertexCount, 3);
+        EXPECT_EQ(provider.m_collisionCount.load(), 1);
+        EXPECT_TRUE(provider.m_viewEvidence.load());
+
+        RecordingTransformedShapeCollisionCollector collisionCollector;
+        EXPECT_TRUE(system.CollideTransformedShapes(
+            worldHandle,
+            retainedShape,
+            retainedSphere,
+            {
+                .m_faceCollectionMode = FaceCollectionMode::Collect,
+            },
+            collisionCollector));
+        EXPECT_EQ(collisionCollector.m_hitCount, 1);
+        EXPECT_EQ(collisionCollector.m_firstFaceVertexCount, 3);
+        EXPECT_FLOAT_EQ(collisionCollector.m_hit.m_penetrationDepth, 0.75f);
+
+        RecordingTransformedShapeCollisionCollector invalidCollisionCollector;
+        invalidCollisionCollector.m_earlyOutFraction =
+            AZStd::numeric_limits<float>::quiet_NaN();
+        EXPECT_FALSE(system.CollideTransformedShapes(
+            worldHandle,
+            retainedShape,
+            retainedSphere,
+            {},
+            invalidCollisionCollector));
+        EXPECT_EQ(invalidCollisionCollector.m_hitCount, 0);
+
+        pairResult = system.CollideTransformedShapes(
+            worldHandle,
+            retainedSphere,
+            retainedShape,
+            {
+                .m_faceCollectionMode = FaceCollectionMode::Collect,
+            },
+            collisionHits,
+            {
+                .m_queryVertices = firstFaceVertices,
+                .m_targetVertices = secondFaceVertices,
+            });
+        ASSERT_TRUE(pairResult.IsComplete());
+        ASSERT_EQ(pairResult.m_hitCount, 1);
+        EXPECT_EQ(provider.m_collisionCount.load(), 3);
+        EXPECT_TRUE(provider.m_viewEvidence.load());
+
+        TransformedShape retainedCustomCopy;
+        WorldTransform customCopyTransform;
+        customCopyTransform.m_position.m_y = 10.0;
+        ASSERT_TRUE(system.RetainShape(
+            worldHandle,
+            shapeHandle,
+            customCopyTransform,
+            1.0f,
+            retainedCustomCopy));
+        pairResult = system.CollideTransformedShapes(
+            worldHandle,
+            retainedShape,
+            retainedCustomCopy,
+            {
+                .m_faceCollectionMode = FaceCollectionMode::Collect,
+            },
+            collisionHits,
+            {
+                .m_queryVertices = firstFaceVertices,
+                .m_targetVertices = secondFaceVertices,
+            });
+        ASSERT_TRUE(pairResult.IsComplete());
+        ASSERT_EQ(pairResult.m_hitCount, 1);
+        EXPECT_EQ(provider.m_collisionCount.load(), 4);
+        EXPECT_TRUE(provider.m_viewEvidence.load());
+
+        AZStd::array<TransformedShapeCastHit, 2> castHits;
+        const QueryResult castResult = system.CastTransformedShape(
+            worldHandle,
+            retainedShape,
+            retainedSphere,
+            {
+                .m_displacement = AZ::Vector3::CreateAxisX(4.0f),
+            },
+            castHits,
+            {});
+        ASSERT_TRUE(castResult.IsComplete());
+        ASSERT_EQ(castResult.m_hitCount, 1);
+        EXPECT_FLOAT_EQ(castHits[0].m_fraction, 0.25f);
+        EXPECT_EQ(provider.m_castCount.load(), 1);
+        EXPECT_TRUE(provider.m_castEvidence.load());
+
+        RecordingTransformedShapeCastCollector castCollector;
+        EXPECT_TRUE(system.CastTransformedShape(
+            worldHandle,
+            retainedShape,
+            retainedSphere,
+            {
+                .m_displacement = AZ::Vector3::CreateAxisX(4.0f),
+            },
+            castCollector));
+        EXPECT_EQ(castCollector.m_hitCount, 1);
+        EXPECT_FLOAT_EQ(castCollector.m_hit.m_fraction, 0.25f);
+
+        const QueryResult reverseCastResult = system.CastTransformedShape(
+            worldHandle,
+            retainedSphere,
+            retainedShape,
+            {
+                .m_displacement = AZ::Vector3::CreateAxisX(4.0f),
+            },
+            castHits,
+            {});
+        ASSERT_TRUE(reverseCastResult.IsComplete());
+        EXPECT_EQ(reverseCastResult.m_hitCount, 1);
+        EXPECT_EQ(provider.m_castCount.load(), 3);
+
+        provider.m_returnInvalidOutput = true;
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        pairResult = system.CollideTransformedShapes(
+            worldHandle,
+            retainedShape,
+            retainedSphere,
+            {
+                .m_faceCollectionMode = FaceCollectionMode::Collect,
+            },
+            collisionHits,
+            {
+                .m_queryVertices = firstFaceVertices,
+                .m_targetVertices = secondFaceVertices,
+            });
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(pairResult.m_hitCount, 0);
+        provider.m_returnInvalidOutput = false;
+        provider.m_useDispatch = false;
+
+        retainedShape = {};
+        retainedSphere = {};
+        retainedCustomCopy = {};
+
+        EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+        EXPECT_TRUE(system.DestroyCookedShape(meshShapeHandle));
+        EXPECT_TRUE(system.DestroyCookedShape(cookedShapeHandle));
+        EXPECT_EQ(
+            system.UnregisterCustomShapeProvider(&provider),
+            ProviderRegistrationResult::Success);
+
+        EXPECT_FALSE(system.ImportShape(
+            archive,
+            materialHandles,
+            childShapeHandles));
+        ASSERT_EQ(
+            system.RegisterCustomShapeProvider(&provider),
+            ProviderRegistrationResult::Success);
+
+        const CookedShapeHandle importedShapeHandle = system.ImportShape(
+            archive,
+            materialHandles,
+            childShapeHandles);
+        ASSERT_TRUE(importedShapeHandle);
+        ASSERT_TRUE(system.GetCustomShapeInfo(importedShapeHandle, info));
+        EXPECT_EQ(info.m_providerId, provider.GetId());
+        EXPECT_EQ(info.m_providerVersion, provider.GetVersion());
+        EXPECT_EQ(provider.m_cookCount.load(), 3);
+        EXPECT_EQ(
+            system.UnregisterCustomShapeProvider(&provider),
+            ProviderRegistrationResult::InUse);
+
+        const ShapeHandle importedWorldShapeHandle = system.CreateShape(
+            worldHandle,
+            importedShapeHandle);
+        ASSERT_TRUE(importedWorldShapeHandle);
+        ASSERT_TRUE(system.RetainShape(
+            worldHandle,
+            importedWorldShapeHandle,
+            {},
+            1.0f,
+            retainedShape));
+        ASSERT_TRUE(system.RetainShape(
+            worldHandle,
+            sphereShapeHandle,
+            sphereTransform,
+            1.0f,
+            retainedSphere));
+        provider.m_useDispatch = true;
+        pairResult = system.CollideTransformedShapes(
+            worldHandle,
+            retainedShape,
+            retainedSphere,
+            {
+                .m_faceCollectionMode = FaceCollectionMode::Collect,
+            },
+            collisionHits,
+            {
+                .m_queryVertices = firstFaceVertices,
+                .m_targetVertices = secondFaceVertices,
+            });
+        ASSERT_TRUE(pairResult.IsComplete());
+        EXPECT_EQ(pairResult.m_hitCount, 1);
+        EXPECT_EQ(provider.m_collisionCount.load(), 6);
+        EXPECT_TRUE(provider.m_viewEvidence.load());
+        provider.m_useDispatch = false;
+        retainedShape = {};
+        retainedSphere = {};
+        EXPECT_TRUE(system.DestroyShape(worldHandle, importedWorldShapeHandle));
+
+        EXPECT_TRUE(system.DestroyCookedShape(importedShapeHandle));
+        EXPECT_EQ(
+            system.UnregisterCustomShapeProvider(&provider),
+            ProviderRegistrationResult::Success);
+        EXPECT_EQ(
+            system.UnregisterCustomShapeProvider(&provider),
+            ProviderRegistrationResult::NotRegistered);
+        EXPECT_TRUE(system.DestroyShape(worldHandle, sphereShapeHandle));
+        EXPECT_TRUE(system.DestroyCookedShape(sphereCookedShapeHandle));
+        EXPECT_TRUE(system.DestroyMaterial(secondMaterialHandle));
         EXPECT_TRUE(system.DestroyMaterial(materialHandle));
     }
 
@@ -13859,6 +14783,10 @@ namespace Jolt
         EXPECT_EQ(transformedShapes[1].GetShapeHandle(), shapeHandle);
 
         EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
+        for (TransformedShape& transformedShape : transformedShapes)
+        {
+            transformedShape = {};
+        }
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
         EXPECT_FALSE(system.IsValid(worldHandle, scaledChild.m_shapeHandle));
         EXPECT_FALSE(system.IsValid(worldHandle, firstBoxChild.m_shapeHandle));
@@ -14717,6 +15645,11 @@ namespace Jolt
             directChildTransform));
 
         EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
+        truncatedShapes.front() = {};
+        for (TransformedShape& transformedShape : transformedShapes)
+        {
+            transformedShape = {};
+        }
         EXPECT_TRUE(system.DestroyShape(worldHandle, mutableHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, compoundHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, scaledHandle));

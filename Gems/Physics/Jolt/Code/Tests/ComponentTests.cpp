@@ -386,6 +386,7 @@ namespace Jolt
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<ActivationEvent>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<BodyMoveEvent>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<BodySimulationStatistics>()));
+            EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<BroadPhaseStatistics>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<ContactEvent>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<ContactPoint>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<DebugCaptureConfiguration>()));
@@ -393,6 +394,8 @@ namespace Jolt
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<DebugDrawSettings>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<DebugHairDrawSettings>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<SimulationResult>()));
+            EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<DiagnosticStatisticsResult>()));
+            EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<NarrowPhaseStatistics>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<StateSnapshotArchive>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<StateSnapshotConfiguration>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<StateValidationResult>()));
@@ -734,11 +737,15 @@ namespace Jolt
         EXPECT_TRUE(runtimeInfo->m_methods.contains("GetPatchHash"));
         EXPECT_TRUE(runtimeInfo->m_methods.contains("GetPatchRevision"));
         EXPECT_TRUE(runtimeInfo->m_methods.contains("GetSourceRevision"));
+        EXPECT_TRUE(runtimeInfo->m_properties.contains("broadPhaseStatistics"));
+        EXPECT_TRUE(runtimeInfo->m_properties.contains("narrowPhaseStatistics"));
 
         EXPECT_TRUE(behaviorContext.m_classes.contains("BodyCollection"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("JoltBoxShapeConfiguration"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("CustomConvexShapeConfiguration"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("CustomConvexShapeInfo"));
+        EXPECT_TRUE(behaviorContext.m_classes.contains("CustomShapeConfiguration"));
+        EXPECT_TRUE(behaviorContext.m_classes.contains("CustomShapeInfo"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("CustomConstraintInfo"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("HermitePathPoint"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("PathSample"));
@@ -794,6 +801,9 @@ namespace Jolt
         EXPECT_TRUE(behaviorContext.m_classes.contains("QueryResult"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("BufferResult"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("BodySimulationStatistics"));
+        EXPECT_TRUE(behaviorContext.m_classes.contains("BroadPhaseStatistics"));
+        EXPECT_TRUE(behaviorContext.m_classes.contains("DiagnosticStatisticsResult"));
+        EXPECT_TRUE(behaviorContext.m_classes.contains("NarrowPhaseStatistics"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("RaycastHit"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("JoltRaycastRequestCollection"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("ClosestRaycastResultCollection"));
@@ -806,9 +816,14 @@ namespace Jolt
         EXPECT_TRUE(behaviorContext.m_classes.contains("ShapeCastHit"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("JoltShapeCastRequest"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("ShapeOverlapHit"));
+        EXPECT_TRUE(behaviorContext.m_classes.contains("ShapePlacement"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("SupportingFaceVertexCollection"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("SubShapeTransform"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("TransformedShape"));
+        EXPECT_TRUE(behaviorContext.m_classes.contains("TransformedShapeCastHit"));
+        EXPECT_TRUE(behaviorContext.m_classes.contains("TransformedShapeCastRequest"));
+        EXPECT_TRUE(behaviorContext.m_classes.contains("TransformedShapeCollisionHit"));
+        EXPECT_TRUE(behaviorContext.m_classes.contains("TransformedShapeCollisionRequest"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("TransformedShapeCollection"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("TransformedTriangleCollection"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("WorldTransform"));

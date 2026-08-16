@@ -55,6 +55,7 @@ namespace Jolt
             serializeContext
                 ->Class<CookedShapeArchive>()
                 ->Field("BinaryState", &CookedShapeArchive::m_binaryState)
+                ->Field("Dependencies", &CookedShapeArchive::m_dependencies)
                 ->Field("BuildFingerprint", &CookedShapeArchive::m_buildFingerprint)
                 ->Field("ContentHash", &CookedShapeArchive::m_contentHash)
                 ->Field("FormatVersion", &CookedShapeArchive::m_formatVersion)
@@ -75,6 +76,12 @@ namespace Jolt
                 ->Field("ProviderId", &CustomConvexShapeInfo::m_providerId)
                 ->Field("ProviderVersion", &CustomConvexShapeInfo::m_providerVersion)
                 ->Field("SourceHash", &CustomConvexShapeInfo::m_sourceHash);
+
+            serializeContext
+                ->Class<CustomShapeInfo>()
+                ->Field("ProviderId", &CustomShapeInfo::m_providerId)
+                ->Field("ProviderVersion", &CustomShapeInfo::m_providerVersion)
+                ->Field("SourceHash", &CustomShapeInfo::m_sourceHash);
         }
 
         if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
@@ -130,6 +137,13 @@ namespace Jolt
                 ->Property("providerId", BehaviorValueGetter(&CustomConvexShapeInfo::m_providerId), nullptr)
                 ->Property("providerVersion", BehaviorValueGetter(&CustomConvexShapeInfo::m_providerVersion), nullptr)
                 ->Property("sourceHash", BehaviorValueGetter(&CustomConvexShapeInfo::m_sourceHash), nullptr);
+
+            behaviorContext->Class<CustomShapeInfo>("CustomShapeInfo")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Property("providerId", BehaviorValueGetter(&CustomShapeInfo::m_providerId), nullptr)
+                ->Property("providerVersion", BehaviorValueGetter(&CustomShapeInfo::m_providerVersion), nullptr)
+                ->Property("sourceHash", BehaviorValueGetter(&CustomShapeInfo::m_sourceHash), nullptr);
         }
     }
 } // namespace Jolt

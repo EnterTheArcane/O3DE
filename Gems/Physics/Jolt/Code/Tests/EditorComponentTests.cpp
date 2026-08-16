@@ -1300,4 +1300,23 @@ namespace Jolt::Editor
             {5.0f, 7.0f, 9.0f})));
     }
 
+    TEST(EditorComponentTests, CustomShapeUsesAuthoredEditorBounds)
+    {
+        const AZ::Aabb localBounds = AZ::Aabb::CreateFromMinMax(
+            {-2.0f, -3.0f, -4.0f},
+            {2.0f, 3.0f, 4.0f});
+        const ShapeGeometry geometry = CustomShapeConfiguration{
+            .m_editorBounds = localBounds,
+            .m_providerId = CustomShapeConfigurationTypeId,
+        };
+        const AZ::Matrix3x4 transform = AZ::Matrix3x4::CreateTranslation(
+            AZ::Vector3(5.0f, 6.0f, 7.0f));
+
+        const AZ::Aabb bounds = CalculateShapeBounds(geometry, transform);
+
+        EXPECT_TRUE(bounds.IsClose(AZ::Aabb::CreateFromMinMax(
+            {3.0f, 3.0f, 3.0f},
+            {7.0f, 9.0f, 11.0f})));
+    }
+
 } // namespace Jolt::Editor

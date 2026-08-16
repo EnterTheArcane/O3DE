@@ -11,6 +11,7 @@
 #include <Jolt/HairInternal.h>
 #include <Jolt/JobSystem.h>
 #include <Jolt/System.h>
+#include <Jolt/TransformedShapeLease.h>
 
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/std/containers/array.h>
@@ -76,6 +77,14 @@ namespace Jolt
     class DebugCapture;
     class DebugRenderer;
     class System;
+    class World;
+
+    struct TransformedShapeLeaseState final
+    {
+        AZStd::mutex m_mutex;
+        World* m_world = nullptr;
+        size_t m_referenceCount = 1;
+    };
 
     class World final
         : public IWorldQueries
@@ -101,6 +110,9 @@ namespace Jolt
         {
             return m_initialized;
         }
+
+        [[nodiscard]]
+        bool HasTransformedShapeLeases() const;
 
         [[nodiscard]]
         bool GetGravity(AZ::Vector3& gravity) const;
@@ -1241,6 +1253,11 @@ namespace Jolt
         [[nodiscard]]
         bool GetStatistics(WorldStatistics& statistics) const;
 
+        [[nodiscard]]
+        DiagnosticStatisticsResult GetBroadPhaseStatistics(
+            AZStd::span<BroadPhaseStatistics> statistics,
+            bool reset);
+
         bool DrawDebug(
             const DebugDrawSettings& settings,
             IDebugRenderer& renderer,
@@ -1716,6 +1733,44 @@ namespace Jolt
             SubShapeId subShapeId,
             const AZ::Vector3& direction,
             AZStd::span<WorldPosition> vertices) const override;
+
+        [[nodiscard]]
+        bool RetainShape(
+            ShapeHandle shapeHandle,
+            const WorldTransform& transform,
+            float uniformScale,
+            TransformedShape& shape) const override;
+
+        [[nodiscard]]
+        QueryResult CollideTransformedShapes(
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCollisionRequest& request,
+            AZStd::span<TransformedShapeCollisionHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers) const override;
+
+        [[nodiscard]]
+        bool CollideTransformedShapes(
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCollisionRequest& request,
+            ITransformedShapeCollisionCollector& collector) const override;
+
+        [[nodiscard]]
+        QueryResult CastTransformedShape(
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCastRequest& request,
+            AZStd::span<TransformedShapeCastHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers) const override;
+
+        [[nodiscard]]
+        bool CastTransformedShape(
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCastRequest& request,
+            ITransformedShapeCastCollector& collector) const override;
+
         [[nodiscard]]
         bool RaycastClosest(
             const RaycastRequest& request,
@@ -1909,17 +1964,30 @@ namespace Jolt
             DebugRenderer* debugRenderer);
 
     private:
+        friend void Internal::AcquireTransformedShapeLease(
+            void* owner,
+            ShapeHandle shapeHandle);
+
+        friend void Internal::ReleaseTransformedShapeLease(
+            void* owner,
+            ShapeHandle shapeHandle);
+
         struct VehicleSlot;
 
         class CharacterCollisionCollector;
         class ClosestRaycastCollector;
         class NativeBodyPairCollisionCollector;
         class RaycastBatchJob;
+        class RetainedShapeCastCollector;
+        class RetainedShapeCastCallback;
+        class RetainedShapeCollisionCollector;
+        class RetainedShapeCollisionCallback;
         struct RaycastBatchWorkspace;
         class ShapeIdentityOverlapCollector;
         class ShapeOverlapCollector;
         class SphereIdentityOverlapCollector;
         class StandaloneShapeFilterAdapter;
+        class RetainedShapePairFilterAdapter;
 
         class StepContext final
             : public IVehicleStepContext
@@ -2119,6 +2187,7 @@ namespace Jolt
             AZ::u32 m_bodyCount = 0;
             AZ::u32 m_parentCount = 0;
             AZ::u32 m_ragdollDefinitionCount = 0;
+            AZ::u32 m_transformedShapeLeaseCount = 0;
             SceneInstanceHandle m_sceneInstanceHandle;
             bool m_ownsChildHandles = false;
         };
@@ -2670,6 +2739,14 @@ namespace Jolt
             const TransformedShape& shape) const;
 
         [[nodiscard]]
+        bool InitializeTransformedShape(
+            const JPH::TransformedShape& nativeShape,
+            ShapeHandle rootShapeHandle,
+            BodyHandle bodyHandle,
+            const WorldPosition& worldOrigin,
+            TransformedShape& shape) const;
+
+        [[nodiscard]]
         bool BuildOverlapHit(
             const JPH::CollidePointResult& nativeHit,
             OverlapHit& hit) const;
@@ -2994,6 +3071,8 @@ namespace Jolt
         AZStd::unique_ptr<DebugCapture> m_debugCapture;
         mutable AZStd::mutex m_raycastBatchWorkspaceMutex;
         mutable AZStd::vector<AZStd::unique_ptr<RaycastBatchWorkspace>> m_raycastBatchWorkspaces;
+        mutable AZStd::mutex m_transformedShapeLeaseMutex;
+        TransformedShapeLeaseState* m_transformedShapeLeaseState = nullptr;
         JPH::Array<JPH::Mat44> m_softBodySkinTransforms;
         JPH::Array<JPH::Mat44> m_hairJointTransforms;
 

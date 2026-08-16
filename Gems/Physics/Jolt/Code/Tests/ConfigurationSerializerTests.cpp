@@ -197,6 +197,16 @@ namespace Jolt
             *serializeContext,
             *jsonContext);
 
+        ExpectTaggedJsonRoundTrip(
+            "GeneralCustomShapeGeometry",
+            ShapeGeometry{CustomShapeConfiguration{
+                .m_data = {4, 5, 6},
+                .m_editorBounds = AZ::Aabb::CreateCenterRadius(AZ::Vector3::CreateOne(), 3.0f),
+                .m_providerId = CustomShapeConfigurationTypeId,
+            }},
+            *serializeContext,
+            *jsonContext);
+
         using OptionalConstraintGeometry = AZStd::optional<ConstraintGeometry>;
         ExpectTaggedJsonRoundTrip(
             "EngagedOptionalConstraintGeometry",

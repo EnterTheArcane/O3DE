@@ -15,6 +15,7 @@
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/RTTI/RTTI.h>
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/base.h>
 #include <AzCore/std/containers/span.h>
@@ -98,6 +99,7 @@ namespace Jolt
         Box,
         Capsule,
         ConvexHull,
+        Custom,
         CustomConvex,
         Cylinder,
         Empty,
@@ -208,6 +210,16 @@ namespace Jolt
         bool m_treatConvexAsSolid = true;
     };
 
+    //! Places one retained world shape for an immediate exact pair query.
+    struct ShapePlacement final
+    {
+        AZ_TYPE_INFO(ShapePlacement, ShapePlacementTypeId);
+
+        ShapeHandle m_shapeHandle;
+        WorldTransform m_transform;
+        float m_uniformScale = 1.0f;
+    };
+
     struct ShapeOverlapRequest final
     {
         AZ_TYPE_INFO(ShapeOverlapRequest, ShapeOverlapRequestTypeId);
@@ -242,6 +254,47 @@ namespace Jolt
         float m_collisionTolerance = 1.0e-4f;
         float m_extraConvexRadius = 0.0f;
         float m_penetrationTolerance = 1.0e-4f;
+        ActiveEdgeMode m_activeEdgeMode = ActiveEdgeMode::CollideOnlyWithActive;
+        FaceCollectionMode m_faceCollectionMode = FaceCollectionMode::None;
+        bool m_returnDeepestPoint = false;
+        bool m_useShrunkenShapeAndConvexRadius = false;
+    };
+
+    //! Controls an exact collision query between two retained transformed shapes.
+    struct TransformedShapeCollisionRequest final
+    {
+        AZ_TYPE_INFO(TransformedShapeCollisionRequest, TransformedShapeCollisionRequestTypeId);
+
+        AZ::Vector3 m_activeEdgeMovementDirection = AZ::Vector3::CreateZero();
+        const IQueryFilter* m_filter = nullptr;
+
+        float m_collisionTolerance = 1.0e-4f;
+        float m_internalEdgeRemovalVertexTolerance = 1.0e-4f;
+        float m_maximumSeparationDistance = 0.0f;
+        float m_penetrationTolerance = 1.0e-4f;
+
+        BackFaceMode m_backFaceMode = BackFaceMode::Ignore;
+        ActiveEdgeMode m_activeEdgeMode = ActiveEdgeMode::CollideOnlyWithActive;
+        FaceCollectionMode m_faceCollectionMode = FaceCollectionMode::None;
+        bool m_removeInternalEdges = false;
+    };
+
+    //! Controls an exact cast of the first retained shape against the second.
+    struct TransformedShapeCastRequest final
+    {
+        AZ_TYPE_INFO(TransformedShapeCastRequest, TransformedShapeCastRequestTypeId);
+
+        AZ::Vector3 m_displacement = AZ::Vector3::CreateZero();
+        AZ::Vector3 m_activeEdgeMovementDirection = AZ::Vector3::CreateZero();
+        const IQueryFilter* m_filter = nullptr;
+
+        float m_collisionTolerance = 1.0e-4f;
+        float m_extraConvexRadius = 0.0f;
+        float m_maximumFraction = 1.0f;
+        float m_penetrationTolerance = 1.0e-4f;
+
+        BackFaceMode m_convexBackFaceMode = BackFaceMode::Ignore;
+        BackFaceMode m_triangleBackFaceMode = BackFaceMode::Ignore;
         ActiveEdgeMode m_activeEdgeMode = ActiveEdgeMode::CollideOnlyWithActive;
         FaceCollectionMode m_faceCollectionMode = FaceCollectionMode::None;
         bool m_returnDeepestPoint = false;
@@ -442,6 +495,84 @@ namespace Jolt
         bool m_isBackFaceHit = false;
     };
 
+    //! Exact collision result whose identities remain meaningful after either source body is destroyed.
+    struct TransformedShapeCollisionHit final
+    {
+        AZ_TYPE_INFO(TransformedShapeCollisionHit, TransformedShapeCollisionHitTypeId);
+
+        WorldPosition m_firstContactPosition;
+        WorldPosition m_secondContactPosition;
+        AZ::Vector3 m_penetrationAxis = AZ::Vector3::CreateZero();
+
+        WorldHandle m_firstWorldHandle;
+        WorldHandle m_secondWorldHandle;
+        BodyHandle m_firstBodyHandle;
+        BodyHandle m_secondBodyHandle;
+        MaterialHandle m_firstMaterialHandle;
+        MaterialHandle m_secondMaterialHandle;
+        ShapeHandle m_firstShapeHandle;
+        ShapeHandle m_secondShapeHandle;
+        SubShapeId m_firstSubShapeId;
+        SubShapeId m_secondSubShapeId;
+
+        AZ::u64 m_firstUserData = 0;
+        AZ::u64 m_secondUserData = 0;
+        float m_penetrationDepth = 0.0f;
+        AZ::u8 m_firstFaceVertexCount = 0;
+        AZ::u8 m_secondFaceVertexCount = 0;
+    };
+
+    struct TransformedShapeCastHit final
+    {
+        AZ_TYPE_INFO(TransformedShapeCastHit, TransformedShapeCastHitTypeId);
+
+        TransformedShapeCollisionHit m_collision;
+        float m_fraction = 0.0f;
+        bool m_isBackFaceHit = false;
+    };
+
+    //! Synchronous collision sink. Face spans are valid only during AddHit.
+    //! Callbacks follow deterministic native traversal order, must not reenter ISystem, and may be concurrent across caller threads.
+    //! GetEarlyOutFraction may only stay unchanged or decrease after a hit. Use the span overload for canonical result ordering.
+    class ITransformedShapeCollisionCollector
+    {
+    public:
+        AZ_RTTI(ITransformedShapeCollisionCollector, ITransformedShapeCollisionCollectorTypeId);
+
+        virtual ~ITransformedShapeCollisionCollector() = default;
+
+        [[nodiscard]]
+        virtual float GetEarlyOutFraction() const = 0;
+
+        //! Return false to stop traversal immediately.
+        [[nodiscard]]
+        virtual bool AddHit(
+            const TransformedShapeCollisionHit& hit,
+            AZStd::span<const WorldPosition> firstFace,
+            AZStd::span<const WorldPosition> secondFace) = 0;
+    };
+
+    //! Synchronous cast sink. Face spans are valid only during AddHit.
+    //! Callbacks follow deterministic native traversal order, must not reenter ISystem, and may be concurrent across caller threads.
+    //! GetEarlyOutFraction may only stay unchanged or decrease after a hit. Use the span overload for canonical result ordering.
+    class ITransformedShapeCastCollector
+    {
+    public:
+        AZ_RTTI(ITransformedShapeCastCollector, ITransformedShapeCastCollectorTypeId);
+
+        virtual ~ITransformedShapeCastCollector() = default;
+
+        [[nodiscard]]
+        virtual float GetEarlyOutFraction() const = 0;
+
+        //! Return false to stop traversal immediately.
+        [[nodiscard]]
+        virtual bool AddHit(
+            const TransformedShapeCastHit& hit,
+            AZStd::span<const WorldPosition> firstFace,
+            AZStd::span<const WorldPosition> secondFace) = 0;
+    };
+
     //! Each hit owns a fixed 32-vertex partition in both spans. Faces are written only when requested.
     struct ShapeQueryFaceBuffers final
     {
@@ -470,6 +601,8 @@ namespace Jolt
         float m_fraction = 0.0f;
     };
 
+    //! Immutable shape lease. Explicit shape and world destruction fail while a lease exists.
+    //! Forced system shutdown invalidates world queries, but outstanding lease values remain safe to destroy.
     class TransformedShape final
     {
     public:
@@ -503,10 +636,19 @@ namespace Jolt
         ShapeHandle GetShapeHandle() const;
 
         [[nodiscard]]
+        ShapeKind GetShapeKind() const;
+
+        [[nodiscard]]
         SubShapeId GetSubShapeId() const;
 
         [[nodiscard]]
         WorldTransform GetTransform() const;
+
+        [[nodiscard]]
+        AZ::u64 GetUserData() const;
+
+        [[nodiscard]]
+        WorldHandle GetWorldHandle() const;
 
     private:
         friend class World;
@@ -515,10 +657,15 @@ namespace Jolt
 
         alignas(16) AZ::u8 m_nativeStorage[NativeStorageSize]{};
         WorldPosition m_worldOrigin;
+
         WorldHandle m_worldHandle;
         BodyHandle m_bodyHandle;
         MaterialHandle m_materialHandle;
         ShapeHandle m_shapeHandle;
+
+        AZ::u64 m_userData = 0;
+        ShapeKind m_shapeKind = ShapeKind::None;
+        void* m_leaseOwner = nullptr;
     };
 
     struct TransformedTriangle final
@@ -666,6 +813,44 @@ namespace Jolt
             SubShapeId subShapeId,
             const AZ::Vector3& direction,
             AZStd::span<WorldPosition> vertices) const = 0;
+
+        //! Retains an immutable shape and its provider/material dependencies independently of a body.
+        [[nodiscard]]
+        virtual bool RetainShape(
+            ShapeHandle shapeHandle,
+            const WorldTransform& transform,
+            float uniformScale,
+            TransformedShape& shape) const = 0;
+
+        [[nodiscard]]
+        virtual QueryResult CollideTransformedShapes(
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCollisionRequest& request,
+            AZStd::span<TransformedShapeCollisionHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers = {}) const = 0;
+
+        [[nodiscard]]
+        virtual bool CollideTransformedShapes(
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCollisionRequest& request,
+            ITransformedShapeCollisionCollector& collector) const = 0;
+
+        [[nodiscard]]
+        virtual QueryResult CastTransformedShape(
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCastRequest& request,
+            AZStd::span<TransformedShapeCastHit> hits,
+            const ShapeQueryFaceBuffers& faceBuffers = {}) const = 0;
+
+        [[nodiscard]]
+        virtual bool CastTransformedShape(
+            const TransformedShape& firstShape,
+            const TransformedShape& secondShape,
+            const TransformedShapeCastRequest& request,
+            ITransformedShapeCastCollector& collector) const = 0;
 
         [[nodiscard]]
         virtual bool RaycastClosest(

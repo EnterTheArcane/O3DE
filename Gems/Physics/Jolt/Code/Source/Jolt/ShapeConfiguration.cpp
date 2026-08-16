@@ -54,6 +54,25 @@ namespace Jolt
                 ->Field("ProviderId", &CustomConvexShapeConfiguration::m_providerId);
 
             serializeContext
+                ->Class<CustomShapeTriangle>()
+                ->Field("FirstVertex", &CustomShapeTriangle::m_firstVertex)
+                ->Field("SecondVertex", &CustomShapeTriangle::m_secondVertex)
+                ->Field("ThirdVertex", &CustomShapeTriangle::m_thirdVertex)
+                ->Field("MaterialIndex", &CustomShapeTriangle::m_materialIndex)
+                ->Field("UserData", &CustomShapeTriangle::m_userData);
+
+            serializeContext
+                ->Class<CustomShapeDependency>()
+                ->Field("Path", &CustomShapeDependency::m_path)
+                ->Field("ContentHash", &CustomShapeDependency::m_contentHash);
+
+            serializeContext
+                ->Class<CustomShapeConfiguration>()
+                ->Field("Data", &CustomShapeConfiguration::m_data)
+                ->Field("EditorBounds", &CustomShapeConfiguration::m_editorBounds)
+                ->Field("ProviderId", &CustomShapeConfiguration::m_providerId);
+
+            serializeContext
                 ->Class<CylinderShapeConfiguration>()
                 ->Field("Height", &CylinderShapeConfiguration::m_height)
                 ->Field("Radius", &CylinderShapeConfiguration::m_radius)
@@ -208,6 +227,17 @@ namespace Jolt
             JOLT_BEHAVIOR_ENUM(*behaviorContext, MeshBuildQuality, FavorBuildSpeed);
             JOLT_BEHAVIOR_ENUM(*behaviorContext, MeshBuildQuality, FavorRuntimePerformance);
 
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, CustomShapeGeometryKind, None);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, CustomShapeGeometryKind, Convex);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, CustomShapeGeometryKind, Mesh);
+
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, ProviderRegistrationResult, None);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, ProviderRegistrationResult, AlreadyRegistered);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, ProviderRegistrationResult, InUse);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, ProviderRegistrationResult, Invalid);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, ProviderRegistrationResult, NotRegistered);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, ProviderRegistrationResult, Success);
+
             if (ShouldReflect(
                 *behaviorContext,
                 behaviorContext->m_classes.contains("JoltBoxShapeConfiguration")))
@@ -247,6 +277,17 @@ namespace Jolt
                     ->Property(
                         "providerId",
                         JOLT_BEHAVIOR_VALUE_PROPERTY(&CustomConvexShapeConfiguration::m_providerId));
+
+                behaviorContext->Class<CustomShapeConfiguration>("CustomShapeConfiguration")
+                    ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                    ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                    ->Property("data", JOLT_BEHAVIOR_VALUE_PROPERTY(&CustomShapeConfiguration::m_data))
+                    ->Property(
+                        "editorBounds",
+                        JOLT_BEHAVIOR_VALUE_PROPERTY(&CustomShapeConfiguration::m_editorBounds))
+                    ->Property(
+                        "providerId",
+                        JOLT_BEHAVIOR_VALUE_PROPERTY(&CustomShapeConfiguration::m_providerId));
 
                 behaviorContext->Class<CylinderShapeConfiguration>("JoltCylinderShapeConfiguration")
                     ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)

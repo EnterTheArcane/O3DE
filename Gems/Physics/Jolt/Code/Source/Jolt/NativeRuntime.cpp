@@ -9,6 +9,7 @@
 
 #include <Jolt/Allocator.h>
 #include <Jolt/CustomConvexShape.h>
+#include <Jolt/CustomShapeInternal.h>
 
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Math/MathUtils.h>
@@ -175,6 +176,7 @@ namespace Jolt
 
             JPH::Factory::sInstance = new JPH::Factory();
             JPH::RegisterTypes();
+            RegisterCustomShapeType();
             RegisterCustomConvexShapeType();
             JPH::RegisterHair();
             JPH::CollideSoftBodyVerticesVsTriangles::sTriangleThickness = softBodyTriangleThickness;
@@ -294,6 +296,12 @@ namespace Jolt
 #endif
 #if defined(JPH_EXTERNAL_PROFILE)
         runtimeInfo.m_detailedProfiling = true;
+#endif
+#if defined(JPH_TRACK_BROADPHASE_STATS)
+        runtimeInfo.m_broadPhaseStatistics = true;
+#endif
+#if defined(JPH_TRACK_NARROWPHASE_STATS)
+        runtimeInfo.m_narrowPhaseStatistics = true;
 #endif
 #if defined(JPH_TRACK_SIMULATION_STATS)
         runtimeInfo.m_simulationStatistics = true;
