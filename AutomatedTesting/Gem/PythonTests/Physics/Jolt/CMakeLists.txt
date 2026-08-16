@@ -17,6 +17,8 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED AND PAL_TRAIT_BUILD_HOST_TOOLS)
             AutomatedTesting.Assets
         COMPONENT
             Physics
+        TIMEOUT
+            1500
     )
 
     ly_add_pytest(

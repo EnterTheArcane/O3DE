@@ -62,6 +62,7 @@ elseif(MSVC AND CMAKE_C_COMPILER_ID STREQUAL "Clang")
     target_compile_options(Box3DNative INTERFACE
         ${O3DE_COMPILE_OPTION_DISABLE_FAST_MATH}
         /clang:-ffp-contract=off
+        -Wno-overriding-option
     )
 elseif(CMAKE_C_COMPILER_ID MATCHES "^(AppleClang|Clang|GNU)$")
     target_compile_options(Box3DNative INTERFACE

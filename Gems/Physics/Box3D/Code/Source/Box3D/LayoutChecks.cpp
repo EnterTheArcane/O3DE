@@ -26,7 +26,7 @@ namespace Box3D
     static_assert(sizeof(CookedShapeHandle) == sizeof(AZ::u64));
     static_assert(sizeof(ReplayHandle) == sizeof(AZ::u64));
 
-    static_assert(!WorldHandle::Invalid);
+    static_assert(!WorldHandle{});
 
     static_assert(std::is_trivially_copyable_v<WorldHandle>);
     static_assert(std::is_trivially_copyable_v<BodyHandle>);

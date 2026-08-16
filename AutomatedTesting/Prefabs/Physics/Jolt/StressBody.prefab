@@ -1,0 +1,94 @@
+{
+    "ContainerEntity": {
+        "Id": "ContainerEntity",
+        "Name": "StressBody",
+        "Components": {
+            "EditorLockComponent": {
+                "$type": "EditorLockComponent",
+                "Id": 1
+            },
+            "EditorPrefabComponent": {
+                "$type": "EditorPrefabComponent",
+                "Id": 2
+            },
+            "EditorVisibilityComponent": {
+                "$type": "EditorVisibilityComponent",
+                "Id": 3
+            },
+            "TransformComponent": {
+                "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                "Id": 4,
+                "Parent Entity": ""
+            }
+        }
+    },
+    "Entities": {
+        "Entity_[1]": {
+            "Id": "Entity_[1]",
+            "Name": "Jolt Stress Body",
+            "Components": {
+                "ColliderComponent": {
+                    "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
+                    "Id": 16891509312487778074,
+                    "Shapes": [
+                        {
+                            "Shape": {
+                                "Geometry": {
+                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
+                                }
+                            }
+                        },
+                        {
+                            "Shape": {
+                                "Geometry": {
+                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "EditorDisabledCompositionComponent": {
+                    "$type": "EditorDisabledCompositionComponent",
+                    "Id": 10074485572582426291
+                },
+                "EditorEntityIconComponent": {
+                    "$type": "EditorEntityIconComponent",
+                    "Id": 15948543427250603852
+                },
+                "EditorEntitySortComponent": {
+                    "$type": "EditorEntitySortComponent",
+                    "Id": 2939666014144258671
+                },
+                "EditorInspectorComponent": {
+                    "$type": "EditorInspectorComponent",
+                    "Id": 7726823378452312901
+                },
+                "EditorLockComponent": {
+                    "$type": "EditorLockComponent",
+                    "Id": 387733178691699993
+                },
+                "EditorOnlyEntityComponent": {
+                    "$type": "EditorOnlyEntityComponent",
+                    "Id": 14069213625520316103
+                },
+                "EditorPendingCompositionComponent": {
+                    "$type": "EditorPendingCompositionComponent",
+                    "Id": 6291288379436917925
+                },
+                "EditorVisibilityComponent": {
+                    "$type": "EditorVisibilityComponent",
+                    "Id": 178843097139045499
+                },
+                "RigidBodyComponent": {
+                    "$type": "{C285A3AD-D89B-4486-BD8B-D3E6F25F144D} RigidBodyComponent",
+                    "Id": 9031279471490038643
+                },
+                "TransformComponent": {
+                    "$type": "{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0} TransformComponent",
+                    "Id": 12535748097564772906,
+                    "Parent Entity": "ContainerEntity"
+                }
+            }
+        }
+    }
+}

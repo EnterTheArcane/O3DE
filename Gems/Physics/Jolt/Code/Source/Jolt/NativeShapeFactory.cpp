@@ -111,15 +111,27 @@ namespace Jolt
                 }
                 else if constexpr (AZStd::is_same_v<Geometry, ConvexHullShapeConfiguration>)
                 {
-                    if (geometry.m_points.size() < 4
-                        || !AZ::IsFiniteFloat(geometry.m_hullTolerance)
-                        || geometry.m_hullTolerance <= 0.0f
-                        || !AZ::IsFiniteFloat(geometry.m_maximumConvexRadius)
-                        || geometry.m_maximumConvexRadius < 0.0f
-                        || !AZ::IsFiniteFloat(geometry.m_maximumConvexRadiusError)
+                    if (geometry.m_points.size() < 4)
+                    {
+                        nativeResult.SetError("A convex hull requires at least four points.");
+                        return;
+                    }
+                    if (!AZ::IsFiniteFloat(geometry.m_hullTolerance)
+                        || geometry.m_hullTolerance <= 0.0f)
+                    {
+                        nativeResult.SetError("Convex hull tolerance must be finite and positive.");
+                        return;
+                    }
+                    if (!AZ::IsFiniteFloat(geometry.m_maximumConvexRadius)
+                        || geometry.m_maximumConvexRadius < 0.0f)
+                    {
+                        nativeResult.SetError("Convex hull maximum radius must be finite and non-negative.");
+                        return;
+                    }
+                    if (!AZ::IsFiniteFloat(geometry.m_maximumConvexRadiusError)
                         || geometry.m_maximumConvexRadiusError < 0.0f)
                     {
-                        nativeResult.SetError("Invalid convex hull points or tolerances.");
+                        nativeResult.SetError("Convex hull maximum radius error must be finite and non-negative.");
                         return;
                     }
 
@@ -202,26 +214,59 @@ namespace Jolt
                     {
                         materialCount = 1;
                     }
-                    if (geometry.m_sampleCount < 4
-                        || geometry.m_blockSize < 2
-                        || geometry.m_blockSize > 8
-                        || geometry.m_sampleCount / geometry.m_blockSize < 2
-                        || geometry.m_bitsPerSample == 0
-                        || geometry.m_bitsPerSample > JPH::HeightFieldShapeConstants::cMaxBitsPerSample
-                        || geometry.m_heights.size() != sampleValueCount
-                        || (!geometry.m_materialIndices.empty() && geometry.m_materialIndices.size() != cellCount)
-                        || !geometry.m_origin.IsFinite()
-                        || !geometry.m_spacing.IsFinite()
-                        || geometry.m_spacing.GetX() <= 0.0f
-                        || geometry.m_spacing.GetY() <= 0.0f
-                        || !AZ::IsFiniteFloat(geometry.m_activeEdgeCosineThreshold)
-                        || geometry.m_activeEdgeCosineThreshold > 1.0f
-                        || (geometry.m_overrideHeightRange
-                            && (!AZ::IsFiniteFloat(geometry.m_minimumHeight)
-                                || !AZ::IsFiniteFloat(geometry.m_maximumHeight)
-                                || geometry.m_minimumHeight >= geometry.m_maximumHeight)))
+                    if (geometry.m_sampleCount < 4)
                     {
-                        nativeResult.SetError("Invalid heightfield samples, dimensions, materials, or compression settings.");
+                        nativeResult.SetError("A heightfield requires at least four samples per side.");
+                        return;
+                    }
+                    if (geometry.m_blockSize < 2
+                        || geometry.m_blockSize > 8
+                        || geometry.m_sampleCount / geometry.m_blockSize < 2)
+                    {
+                        nativeResult.SetError("Heightfield block size must be between two and eight with at least two blocks per side.");
+                        return;
+                    }
+                    if (geometry.m_bitsPerSample == 0
+                        || geometry.m_bitsPerSample > JPH::HeightFieldShapeConstants::cMaxBitsPerSample)
+                    {
+                        nativeResult.SetError("Heightfield bits per sample exceed the native compression format.");
+                        return;
+                    }
+                    if (geometry.m_heights.size() != sampleValueCount)
+                    {
+                        nativeResult.SetError("Heightfield sample data must contain sampleCount squared values.");
+                        return;
+                    }
+                    if (!geometry.m_materialIndices.empty()
+                        && geometry.m_materialIndices.size() != cellCount)
+                    {
+                        nativeResult.SetError("Heightfield material indices must contain one value per cell.");
+                        return;
+                    }
+                    if (!geometry.m_origin.IsFinite())
+                    {
+                        nativeResult.SetError("Heightfield origin must be finite.");
+                        return;
+                    }
+                    if (!geometry.m_spacing.IsFinite()
+                        || geometry.m_spacing.GetX() <= 0.0f
+                        || geometry.m_spacing.GetY() <= 0.0f)
+                    {
+                        nativeResult.SetError("Heightfield spacing must be finite and positive.");
+                        return;
+                    }
+                    if (!AZ::IsFiniteFloat(geometry.m_activeEdgeCosineThreshold)
+                        || geometry.m_activeEdgeCosineThreshold > 1.0f)
+                    {
+                        nativeResult.SetError("Heightfield active-edge cosine threshold must be finite and no greater than one.");
+                        return;
+                    }
+                    if (geometry.m_overrideHeightRange
+                        && (!AZ::IsFiniteFloat(geometry.m_minimumHeight)
+                            || !AZ::IsFiniteFloat(geometry.m_maximumHeight)
+                            || geometry.m_minimumHeight >= geometry.m_maximumHeight))
+                    {
+                        nativeResult.SetError("Heightfield override range must contain finite increasing values.");
                         return;
                     }
 
@@ -300,15 +345,31 @@ namespace Jolt
                 }
                 else if constexpr (AZStd::is_same_v<Geometry, MeshShapeConfiguration>)
                 {
-                    if (geometry.m_vertices.size() < 3
-                        || geometry.m_triangles.empty()
-                        || !AZ::IsFiniteFloat(geometry.m_activeEdgeCosineThreshold)
-                        || geometry.m_activeEdgeCosineThreshold > 1.0f
-                        || geometry.m_maximumTrianglesPerLeaf == 0
-                        || geometry.m_maximumTrianglesPerLeaf > MaximumMeshTrianglesPerLeaf
-                        || geometry.m_buildQuality == MeshBuildQuality::None)
+                    if (geometry.m_vertices.size() < 3)
                     {
-                        nativeResult.SetError("Invalid mesh vertices, triangles, or build settings.");
+                        nativeResult.SetError("A mesh requires at least three vertices.");
+                        return;
+                    }
+                    if (geometry.m_triangles.empty())
+                    {
+                        nativeResult.SetError("A mesh requires at least one triangle.");
+                        return;
+                    }
+                    if (!AZ::IsFiniteFloat(geometry.m_activeEdgeCosineThreshold)
+                        || geometry.m_activeEdgeCosineThreshold > 1.0f)
+                    {
+                        nativeResult.SetError("Mesh active-edge cosine threshold must be finite and no greater than one.");
+                        return;
+                    }
+                    if (geometry.m_maximumTrianglesPerLeaf == 0
+                        || geometry.m_maximumTrianglesPerLeaf > MaximumMeshTrianglesPerLeaf)
+                    {
+                        nativeResult.SetError("Mesh maximum triangles per leaf is outside the supported range.");
+                        return;
+                    }
+                    if (geometry.m_buildQuality == MeshBuildQuality::None)
+                    {
+                        nativeResult.SetError("Mesh build quality must select a supported construction policy.");
                         return;
                     }
 

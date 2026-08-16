@@ -1132,6 +1132,9 @@ namespace Jolt
             {
                 continue;
             }
+            [[maybe_unused]] const bool moveEventsDisabled =
+                SetBodyMoveEventsEnabled(bodyHandle, false);
+            AZ_Assert(moveEventsDisabled, "A ragdoll body move subscription must be removable during destruction.");
             ShapeSlot* shapeSlot = FindShape(bodySlot->m_shapeHandle);
             if (shapeSlot && shapeSlot->m_bodyCount > 0)
             {

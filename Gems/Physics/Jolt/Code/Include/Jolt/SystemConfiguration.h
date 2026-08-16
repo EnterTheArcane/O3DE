@@ -103,6 +103,7 @@ namespace Jolt
         float m_fixedTimeStep = 1.0f / 60.0f;
         AZ::u32 m_collisionStepCount = 1;
         AZ::u32 m_maximumCatchUpSteps = 4;
+        AZ::u32 m_workerCount = 4;
 
         bool m_autoSimulate = true;
         bool m_collectActivationEvents = false;

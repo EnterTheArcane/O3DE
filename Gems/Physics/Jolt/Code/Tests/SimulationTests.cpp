@@ -3713,9 +3713,69 @@ namespace Jolt
         invalidConfiguration = configuration;
         invalidConfiguration.m_frictionCombineMode = MaterialCombineMode::None;
         EXPECT_FALSE(system.UpdateWorldRuntimeConfiguration(worldHandle, invalidConfiguration));
+        invalidConfiguration = configuration;
+        invalidConfiguration.m_workerCount = 0;
+        EXPECT_FALSE(system.UpdateWorldRuntimeConfiguration(worldHandle, invalidConfiguration));
 
         EXPECT_TRUE(system.RemoveStepListener(worldHandle, &listener));
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
+    }
+
+    TEST(SimulationTests, RuntimeWorkerCountPreservesSnapshotsAndDeterministicState)
+    {
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(8);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        System system(CreateSerialSystemConfiguration(), &jobContext);
+        ASSERT_TRUE(system);
+
+        const SphereOnFloor scene = CreateSphereOnFloor(system);
+        ASSERT_TRUE(scene.m_floorBodyHandle);
+        ASSERT_TRUE(scene.m_sphereBodyHandle);
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(scene.m_worldHandle);
+        ASSERT_TRUE(snapshotHandle);
+
+        constexpr AZStd::array workerCounts = {AZ::u32{1}, AZ::u32{4}, AZ::u32{8}};
+        AZStd::array<WorldStateDigest, workerCounts.size()> digests;
+        WorldRuntimeConfiguration configuration;
+        ASSERT_TRUE(system.GetWorldRuntimeConfiguration(scene.m_worldHandle, configuration));
+        for (size_t workerIndex = 0; workerIndex < workerCounts.size(); ++workerIndex)
+        {
+            configuration.m_workerCount = workerCounts[workerIndex];
+            ASSERT_TRUE(system.UpdateWorldRuntimeConfiguration(scene.m_worldHandle, configuration));
+            ASSERT_TRUE(system.RestoreWorldState(scene.m_worldHandle, snapshotHandle));
+            bool scheduledParallelJob = false;
+            for (AZ::u32 step = 0; step < 180; ++step)
+            {
+                ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+                WorldStatistics statistics;
+                ASSERT_TRUE(system.GetWorldStatistics(scene.m_worldHandle, statistics));
+                scheduledParallelJob = scheduledParallelJob
+                    || statistics.m_lastUpdateJobCount > 0;
+            }
+
+            ASSERT_TRUE(system.GetWorldStateDigest(scene.m_worldHandle, digests[workerIndex]));
+            if (workerCounts[workerIndex] == 1)
+            {
+                EXPECT_FALSE(scheduledParallelJob);
+            }
+            else
+            {
+                EXPECT_TRUE(scheduledParallelJob);
+            }
+        }
+
+        EXPECT_EQ(digests[0], digests[1]);
+        EXPECT_EQ(digests[0], digests[2]);
+
+        WorldRuntimeConfiguration returnedConfiguration;
+        ASSERT_TRUE(system.GetWorldRuntimeConfiguration(scene.m_worldHandle, returnedConfiguration));
+        EXPECT_EQ(returnedConfiguration.m_workerCount, 8);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, snapshotHandle));
+        DestroySphereOnFloor(system, scene);
     }
 
     TEST(SimulationTests, BodyPairColliderSupportsEveryNativeCollisionMode)

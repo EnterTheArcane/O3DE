@@ -382,6 +382,7 @@ namespace Jolt
                 ->Field("FixedTimeStep", &WorldRuntimeConfiguration::m_fixedTimeStep)
                 ->Field("CollisionStepCount", &WorldRuntimeConfiguration::m_collisionStepCount)
                 ->Field("MaximumCatchUpSteps", &WorldRuntimeConfiguration::m_maximumCatchUpSteps)
+                ->Field("WorkerCount", &WorldRuntimeConfiguration::m_workerCount)
                 ->Field("AutoSimulate", &WorldRuntimeConfiguration::m_autoSimulate)
                 ->Field("CollectActivationEvents", &WorldRuntimeConfiguration::m_collectActivationEvents)
                 ->Field("CollectContactEvents", &WorldRuntimeConfiguration::m_collectContactEvents)
@@ -416,6 +417,9 @@ namespace Jolt
                 ->Property(
                     "maximumCatchUpSteps",
                     JOLT_BEHAVIOR_VALUE_PROPERTY(&WorldRuntimeConfiguration::m_maximumCatchUpSteps))
+                ->Property(
+                    "workerCount",
+                    JOLT_BEHAVIOR_VALUE_PROPERTY(&WorldRuntimeConfiguration::m_workerCount))
                 ->Property(
                     "autoSimulate",
                     JOLT_BEHAVIOR_VALUE_PROPERTY(&WorldRuntimeConfiguration::m_autoSimulate))

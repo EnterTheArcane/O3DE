@@ -930,6 +930,10 @@ namespace Jolt
             behaviorContext.m_classes.at("JoltSystemConfiguration");
         EXPECT_TRUE(systemConfiguration->m_properties.contains("softBodyTriangleThickness"));
 
+        const AZ::BehaviorClass* worldRuntimeConfiguration =
+            behaviorContext.m_classes.at("WorldRuntimeConfiguration");
+        EXPECT_TRUE(worldRuntimeConfiguration->m_properties.contains("workerCount"));
+
         const AZ::BehaviorClass* convexHullTopology = behaviorContext.m_classes.at("ConvexHullTopology");
         EXPECT_TRUE(convexHullTopology->m_methods.contains("GetFaceCount"));
         EXPECT_TRUE(convexHullTopology->m_methods.contains("GetFaceVertexCount"));

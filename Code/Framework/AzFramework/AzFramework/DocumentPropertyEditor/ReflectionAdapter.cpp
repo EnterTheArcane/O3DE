@@ -383,10 +383,9 @@ namespace AZ::DocumentPropertyEditor
             }
 
             static AZStd::unique_ptr<ContainerElement> CreateContainerElement(
-                void* instance, size_t elementIndex, const Reflection::IAttributes& attributes)
+                size_t elementIndex,
+                const Reflection::IAttributes& attributes)
             {
-                AZ_Assert(instance != nullptr, "Instance was nullptr when attempting to create a ContainerElement");
-
                 AZ::Serialize::IDataContainer* parentContainer{};
                 if (auto parentContainerValue = attributes.Find(AZ::Reflection::DescriptorAttributes::ParentContainer);
                     parentContainerValue && !parentContainerValue->IsNull())
@@ -406,20 +405,6 @@ namespace AZ::DocumentPropertyEditor
                     if (parentContainerInstanceObject.has_value() && parentContainerInstanceObject->IsValid())
                     {
                         parentContainerInstance = parentContainerInstanceObject->m_address;
-                    }
-
-                    // Check if this element is actually standing in for a direct child of a container. This is used in scenarios like
-                    // maps, where the direct children are actually pairs of key/value, but we need to only show the value as an
-                    // editable item who pretends that they can be removed directly from the container
-                    auto containerElementOverrideValue = attributes.Find(AZ::Reflection::DescriptorAttributes::ContainerElementOverride);
-                    if (containerElementOverrideValue)
-                    {
-                        AZStd::optional<AZ::PointerObject> containerElementOverrideObject =
-                            AZ::Dom::Utils::ValueToType<AZ::PointerObject>(*containerElementOverrideValue);
-                        if (containerElementOverrideObject.has_value() && containerElementOverrideObject->IsValid())
-                        {
-                            instance = containerElementOverrideObject->m_address;
-                        }
                     }
 
                     return AZStd::make_unique<ContainerElement>(parentContainer, parentContainerInstance, elementIndex);
@@ -619,7 +604,7 @@ namespace AZ::DocumentPropertyEditor
             }
             m_builder.EndPropertyEditor();
 
-            CheckContainerElement(instance, attributes);
+            CheckContainerElement(attributes);
 
             if (createRow)
             {
@@ -856,7 +841,7 @@ namespace AZ::DocumentPropertyEditor
             m_builder.EndPropertyEditor();
         }
 
-        void CheckContainerElement(void* instance, const Reflection::IAttributes& attributes)
+        void CheckContainerElement(const Reflection::IAttributes& attributes)
         {
             auto parentContainerAttribute = attributes.Find(AZ::Reflection::DescriptorAttributes::ParentContainer);
             auto parentContainerInstanceAttribute = attributes.Find(AZ::Reflection::DescriptorAttributes::ParentContainerInstance);
@@ -886,13 +871,13 @@ namespace AZ::DocumentPropertyEditor
                 auto containerEntry = m_containers.ValueAtPath(m_builder.GetCurrentPath(), AZ::Dom::PrefixTreeMatch::ExactPath);
                 if (containerEntry)
                 {
-                    containerEntry->m_element = ContainerElement::CreateContainerElement(instance, containerIndex, attributes);
+                    containerEntry->m_element = ContainerElement::CreateContainerElement(containerIndex, attributes);
                 }
                 else
                 {
                     m_containers.SetValue(
                         m_builder.GetCurrentPath(),
-                        ContainerEntry{ nullptr, ContainerElement::CreateContainerElement(instance, containerIndex, attributes) });
+                        ContainerEntry{nullptr, ContainerElement::CreateContainerElement(containerIndex, attributes)});
                 }
 
                 bool parentCanBeModified = true;

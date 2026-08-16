@@ -1667,6 +1667,7 @@ namespace Jolt
                 .m_fixedTimeStep = configuration.m_fixedTimeStep,
                 .m_collisionStepCount = configuration.m_collisionStepCount,
                 .m_maximumCatchUpSteps = configuration.m_maximumCatchUpSteps,
+                .m_workerCount = configuration.m_workerCount,
                 .m_autoSimulate = configuration.m_autoSimulate,
                 .m_collectActivationEvents = configuration.m_collectActivationEvents,
                 .m_collectContactEvents = configuration.m_collectContactEvents,
@@ -1683,7 +1684,8 @@ namespace Jolt
                 && AZ::IsFiniteFloat(configuration.m_fixedTimeStep)
                 && configuration.m_fixedTimeStep > 0.0f
                 && configuration.m_collisionStepCount > 0
-                && configuration.m_maximumCatchUpSteps > 0;
+                && configuration.m_maximumCatchUpSteps > 0
+                && configuration.m_workerCount > 0;
         }
 
         [[nodiscard]]
@@ -5492,7 +5494,11 @@ namespace Jolt
         {
             return true;
         }
-        if (!AdvanceGlobalConfigurationRevision())
+
+        WorldRuntimeConfiguration physicsConfiguration = configuration;
+        physicsConfiguration.m_workerCount = current.m_workerCount;
+        if (physicsConfiguration != current
+            && !AdvanceGlobalConfigurationRevision())
         {
             return false;
         }
@@ -5514,6 +5520,25 @@ namespace Jolt
         if (frictionCombineChanged || restitutionCombineChanged)
         {
             InvalidateAllContactCaches();
+        }
+        if (configuration.m_workerCount != current.m_workerCount)
+        {
+            const bool useParallelJobSystem = m_jobContext
+                && configuration.m_workerCount > 1
+                && m_jobContext->GetJobManager().GetNumWorkerThreads() > 0;
+            if (useParallelJobSystem)
+            {
+                m_jobSystem = AZStd::make_unique<JobSystem>(
+                    m_configuration.m_capacity.m_maxJobs,
+                    m_configuration.m_capacity.m_maxBarriers,
+                    configuration.m_workerCount,
+                    m_jobContext);
+            }
+            else
+            {
+                m_jobSystem = AZStd::make_unique<JPH::JobSystemSingleThreaded>(
+                    m_configuration.m_capacity.m_maxJobs);
+            }
         }
         if (configuration.m_collectActivationEvents != current.m_collectActivationEvents)
         {
@@ -5556,6 +5581,7 @@ namespace Jolt
         m_configuration.m_fixedTimeStep = configuration.m_fixedTimeStep;
         m_configuration.m_collisionStepCount = configuration.m_collisionStepCount;
         m_configuration.m_maximumCatchUpSteps = configuration.m_maximumCatchUpSteps;
+        m_configuration.m_workerCount = configuration.m_workerCount;
         m_configuration.m_autoSimulate = configuration.m_autoSimulate;
         m_configuration.m_collectActivationEvents = configuration.m_collectActivationEvents;
         m_configuration.m_collectContactEvents = configuration.m_collectContactEvents;
@@ -13163,6 +13189,9 @@ namespace Jolt
             return false;
         }
 
+        [[maybe_unused]] const bool moveEventsDisabled =
+            SetBodyMoveEventsEnabled(characterSlot->m_bodyHandle, false);
+        AZ_Assert(moveEventsDisabled, "A character body move subscription must be removable during destruction.");
         characterSlot->m_character->RemoveFromPhysicsSystem();
         MaintainBroadPhaseAfterBodyRemovals(1);
         characterSlot->m_character = nullptr;
