@@ -77,7 +77,10 @@ namespace Jolt
             hash = AZ::TypeHash64(dependencies.size(), hash);
             for (const CustomShapeDependency& dependency : dependencies)
             {
-                hash = AZ::TypeHash64(dependency.m_path, hash);
+                hash = AZ::TypeHash64(
+                    reinterpret_cast<const AZ::u8*>(dependency.m_path.data()),
+                    dependency.m_path.size(),
+                    hash);
                 hash = AZ::TypeHash64(dependency.m_contentHash, hash);
             }
             return static_cast<AZ::u64>(hash);
@@ -1112,7 +1115,10 @@ namespace Jolt
                     }
                     for (const CustomShapeDependency& dependency : data.m_dependencies)
                     {
-                        sourceHash = AZ::TypeHash64(dependency.m_path, sourceHash);
+                        sourceHash = AZ::TypeHash64(
+                            reinterpret_cast<const AZ::u8*>(dependency.m_path.data()),
+                            dependency.m_path.size(),
+                            sourceHash);
                         sourceHash = AZ::TypeHash64(dependency.m_contentHash, sourceHash);
                     }
                     if (!data.m_runtimeData.empty())

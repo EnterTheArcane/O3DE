@@ -7,9 +7,10 @@
 
 #include <Jolt/SkeletonAssetHandler.h>
 
+#include <Jolt/AssetProduct.h>
 #include <Jolt/SkeletonAsset.h>
 
-#include <AzCore/Serialization/Utils.h>
+#include <AzCore/std/utility/move.h>
 
 namespace Jolt
 {
@@ -47,11 +48,21 @@ namespace Jolt
         [[maybe_unused]] const AZ::Data::AssetFilterCB& assetLoadFilter)
     {
         SkeletonAsset* skeletonAsset = asset.GetAs<SkeletonAsset>();
-        if (!skeletonAsset || !stream || !AZ::Utils::LoadObjectFromStreamInPlace(*stream, *skeletonAsset))
+        if (!skeletonAsset || !stream)
         {
             return LoadResult::Error;
         }
 
+        SkeletonAsset loadedAsset;
+        if (!LoadAssetProduct(
+                *stream,
+                &loadedAsset,
+                SkeletonAssetTypeId))
+        {
+            return LoadResult::Error;
+        }
+
+        skeletonAsset->m_data = AZStd::move(loadedAsset.m_data);
         return LoadResult::LoadComplete;
     }
 

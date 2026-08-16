@@ -305,6 +305,8 @@ namespace Jolt::Editor
     {
         if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
+            ConstraintComponentConfiguration::Reflect(serializeContext);
+
             serializeContext
                 ->Class<ConstraintComponent, AzToolsFramework::Components::EditorComponentBase>()
                 ->Field("Configuration", &ConstraintComponent::m_configuration)

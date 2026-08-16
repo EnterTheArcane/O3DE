@@ -7,4 +7,12 @@
 
 #include <AzTest/AzTest.h>
 
+#if defined(JOLT_TESTS_WITH_TOOLS)
+#include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
+#endif
+
+#if defined(JOLT_TESTS_WITH_TOOLS)
+AZ_TOOLS_UNIT_TEST_HOOK(DEFAULT_UNIT_TEST_ENV);
+#else
 AZ_UNIT_TEST_HOOK(DEFAULT_UNIT_TEST_ENV);
+#endif

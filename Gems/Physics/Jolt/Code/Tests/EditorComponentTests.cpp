@@ -36,10 +36,12 @@
 #include <Jolt/VirtualCharacterControllerComponent.h>
 
 #include <AzTest/AzTest.h>
+#include <AzTest/Utils.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/IO/ByteContainerStream.h>
 #include <AzCore/Interface/Interface.h>
+#include <AzCore/Memory/AllocatorManager.h>
 #include <AzCore/Name/Name.h>
 #include <AzCore/Name/NameDictionary.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -50,15 +52,21 @@
 #include <AzCore/std/utility/move.h>
 #include <AzFramework/Input/System/InputSystemComponent.h>
 #include <AzFramework/UnitTest/TestDebugDisplayRequests.h>
+#include <AzToolsFramework/ComponentMode/ComponentModeDelegate.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Manipulators/BoxManipulatorRequestBus.h>
 #include <AzToolsFramework/Manipulators/CapsuleManipulatorRequestBus.h>
 #include <AzToolsFramework/Manipulators/CylinderManipulatorRequestBus.h>
 #include <AzToolsFramework/Manipulators/RadiusManipulatorRequestBus.h>
 #include <AzToolsFramework/Manipulators/ShapeManipulatorRequestBus.h>
+#include <AzToolsFramework/Prefab/Instance/Instance.h>
+#include <AzToolsFramework/Prefab/Instance/InstanceToTemplateInterface.h>
+#include <AzToolsFramework/Prefab/Instance/InstanceUpdateExecutorInterface.h>
+#include <AzToolsFramework/Prefab/PrefabLoaderInterface.h>
+#include <AzToolsFramework/Prefab/PrefabSystemComponent.h>
+#include <AzToolsFramework/Prefab/Undo/PrefabUndo.h>
+#include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
-
-AZ_TOOLS_UNIT_TEST_HOOK(DEFAULT_UNIT_TEST_ENV);
 
 namespace Jolt::Editor
 {
@@ -135,6 +143,107 @@ namespace Jolt::Editor
             }
 
             UnitTest::ViewportManagerWrapper m_viewportManager;
+        };
+
+        class PrefabComponentTests
+            : public UnitTest::ToolsApplicationFixture<>
+        {
+        public:
+            ~PrefabComponentTests() override
+            {
+                // A tools application can release process caches created by earlier suites,
+                // so only net growth indicates a fixture leak.
+                AZ::GetGlobalSerializeContextModule().Cleanup();
+                AZ::AllocatorManager::Instance().GarbageCollect();
+
+                AllocatedSizesMap allocatedSizesAfterTest = GetAllocatedSizes();
+                for (const auto& [allocator, sizeAfterTestRan] : allocatedSizesAfterTest)
+                {
+                    size_t sizeBeforeTestRan = 0;
+                    if (const auto allocationIterator = m_allocatedSizes.find(allocator);
+                        allocationIterator != m_allocatedSizes.end())
+                    {
+                        sizeBeforeTestRan = allocationIterator->second;
+                    }
+
+                    EXPECT_LE(sizeAfterTestRan, sizeBeforeTestRan)
+                        << "for allocator " << allocator->GetName();
+                }
+
+                m_allocatedSizes = AZStd::move(allocatedSizesAfterTest);
+            }
+
+        protected:
+            void SetUpEditorFixtureImpl() override
+            {
+                AZ::SerializeContext* serializeContext =
+                    GetApplication()->GetSerializeContext();
+                SystemComponent::Reflect(serializeContext);
+                Jolt::CharacterControllerComponent::Reflect(serializeContext);
+                Jolt::ColliderComponent::Reflect(serializeContext);
+                Jolt::ConstraintComponent::Reflect(serializeContext);
+                Jolt::HairComponent::Reflect(serializeContext);
+                Jolt::PathComponent::Reflect(serializeContext);
+                Jolt::RagdollComponent::Reflect(serializeContext);
+                Jolt::RigidBodyComponent::Reflect(serializeContext);
+                Jolt::SceneComponent::Reflect(serializeContext);
+                Jolt::SkeletonComponent::Reflect(serializeContext);
+                Jolt::SoftBodyComponent::Reflect(serializeContext);
+                Jolt::StaticRigidBodyComponent::Reflect(serializeContext);
+                Jolt::WheeledVehicleComponent::Reflect(serializeContext);
+                Jolt::MotorcycleComponent::Reflect(serializeContext);
+                Jolt::TrackedVehicleComponent::Reflect(serializeContext);
+                Jolt::VirtualCharacterControllerComponent::Reflect(serializeContext);
+                SystemComponent::Reflect(GetApplication()->GetBehaviorContext());
+                GetApplication()->RegisterComponentDescriptor(
+                    CharacterControllerComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    ColliderComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    ConstraintComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    HairComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    PathComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    RagdollComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    RigidBodyComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    SceneComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    SkeletonComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    SoftBodyComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    StaticRigidBodyComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    WheeledVehicleComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    MotorcycleComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    TrackedVehicleComponent::CreateDescriptor());
+                GetApplication()->RegisterComponentDescriptor(
+                    VirtualCharacterControllerComponent::CreateDescriptor());
+
+                AZ::Entity* systemEntity = GetApplication()->FindEntity(AZ::SystemEntityId);
+                ASSERT_TRUE(systemEntity);
+                m_prefabSystem = systemEntity->FindComponent<AzToolsFramework::Prefab::PrefabSystemComponent>();
+                ASSERT_TRUE(m_prefabSystem);
+                m_prefabLoader = AZ::Interface<AzToolsFramework::Prefab::PrefabLoaderInterface>::Get();
+                ASSERT_TRUE(m_prefabLoader);
+                m_instanceToTemplate =
+                    AZ::Interface<AzToolsFramework::Prefab::InstanceToTemplateInterface>::Get();
+                ASSERT_TRUE(m_instanceToTemplate);
+                m_instanceUpdateExecutor =
+                    AZ::Interface<AzToolsFramework::Prefab::InstanceUpdateExecutorInterface>::Get();
+                ASSERT_TRUE(m_instanceUpdateExecutor);
+            }
+
+            AzToolsFramework::Prefab::PrefabSystemComponent* m_prefabSystem = nullptr;
+            AzToolsFramework::Prefab::PrefabLoaderInterface* m_prefabLoader = nullptr;
+            AzToolsFramework::Prefab::InstanceToTemplateInterface* m_instanceToTemplate = nullptr;
+            AzToolsFramework::Prefab::InstanceUpdateExecutorInterface* m_instanceUpdateExecutor = nullptr;
         };
 
         void ExpectColliderComponentMode(
@@ -256,6 +365,632 @@ namespace Jolt::Editor
         }
 
         AZ::GetGlobalSerializeContextModule().Cleanup();
+    }
+
+    TEST(EditorComponentTests, EveryAuthorableComponentPreservesNonDefaultConfiguration)
+    {
+        NameDictionaryScope nameDictionaryScope;
+        {
+            AZ::SerializeContext serializeContext;
+            serializeContext.CreateEditContext();
+            AZ::Data::AssetData::Reflect(&serializeContext);
+            AZ::Entity::Reflect(&serializeContext);
+            AZ::Name::Reflect(&serializeContext);
+            AzToolsFramework::Components::EditorComponentBase::Reflect(&serializeContext);
+            AzToolsFramework::ComponentModeFramework::ComponentModeDelegate::Reflect(&serializeContext);
+            SystemComponent::Reflect(&serializeContext);
+            Jolt::CharacterControllerComponent::Reflect(&serializeContext);
+            Jolt::ColliderComponent::Reflect(&serializeContext);
+            Jolt::ConstraintComponent::Reflect(&serializeContext);
+            Jolt::HairComponent::Reflect(&serializeContext);
+            Jolt::PathComponent::Reflect(&serializeContext);
+            Jolt::RagdollComponent::Reflect(&serializeContext);
+            Jolt::RigidBodyComponent::Reflect(&serializeContext);
+            Jolt::SceneComponent::Reflect(&serializeContext);
+            Jolt::SkeletonComponent::Reflect(&serializeContext);
+            Jolt::SoftBodyComponent::Reflect(&serializeContext);
+            Jolt::StaticRigidBodyComponent::Reflect(&serializeContext);
+            Jolt::WheeledVehicleComponent::Reflect(&serializeContext);
+            Jolt::MotorcycleComponent::Reflect(&serializeContext);
+            Jolt::TrackedVehicleComponent::Reflect(&serializeContext);
+            Jolt::VirtualCharacterControllerComponent::Reflect(&serializeContext);
+            CharacterControllerComponent::Reflect(&serializeContext);
+            ColliderComponent::Reflect(&serializeContext);
+            ConstraintComponent::Reflect(&serializeContext);
+            HairComponent::Reflect(&serializeContext);
+            PathComponent::Reflect(&serializeContext);
+            RagdollComponent::Reflect(&serializeContext);
+            RigidBodyComponent::Reflect(&serializeContext);
+            SceneComponent::Reflect(&serializeContext);
+            SkeletonComponent::Reflect(&serializeContext);
+            SoftBodyComponent::Reflect(&serializeContext);
+            StaticRigidBodyComponent::Reflect(&serializeContext);
+            WheeledVehicleComponent::Reflect(&serializeContext);
+            MotorcycleComponent::Reflect(&serializeContext);
+            TrackedVehicleComponent::Reflect(&serializeContext);
+            VirtualCharacterControllerComponent::Reflect(&serializeContext);
+
+            CharacterComponentConfiguration characterConfiguration;
+            characterConfiguration.m_userData = 0x0102'0304'0506'0708;
+            characterConfiguration.m_mass = 91.0f;
+            characterConfiguration.m_enhancedInternalEdgeRemoval = true;
+            CharacterControllerComponent character(AZStd::move(characterConfiguration));
+            ExpectBinaryRoundTrip(character, serializeContext);
+
+            ColliderShapeConfiguration colliderShape;
+            colliderShape.m_shape.m_geometry = CapsuleShapeConfiguration{
+                .m_cylinderHeight = 2.5f,
+                .m_radius = 0.75f,
+            };
+            colliderShape.m_shape.m_userData = 0x1112'1314'1516'1718;
+            colliderShape.m_localTransform =
+                AZ::Transform::CreateTranslation(AZ::Vector3(1.0f, 2.0f, 3.0f));
+            ColliderComponent collider({colliderShape});
+            ExpectBinaryRoundTrip(collider, serializeContext);
+
+            ConstraintComponentConfiguration constraintConfiguration;
+            constraintConfiguration.m_geometry = HingeConstraintConfiguration{
+                .m_maximumLimit = 0.75f,
+                .m_minimumLimit = -0.5f,
+            };
+            constraintConfiguration.m_userData = 0x2122'2324'2526'2728;
+            constraintConfiguration.m_priority = 7;
+            ConstraintComponent constraint(AZStd::move(constraintConfiguration));
+            ExpectBinaryRoundTrip(constraint, serializeContext);
+
+            HairComponentConfiguration hairConfiguration = HairComponentConfiguration::CreateDefault();
+            hairConfiguration.m_jointModelTransforms = {
+                AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisX(0.25f)),
+            };
+            hairConfiguration.m_jointToHair =
+                AZ::Transform::CreateRotationZ(AZ::Constants::QuarterPi);
+            hairConfiguration.m_autoUpdate = false;
+            HairComponent hair(AZStd::move(hairConfiguration));
+            ExpectBinaryRoundTrip(hair, serializeContext);
+
+            HermitePathConfiguration pathConfiguration;
+            pathConfiguration.m_points = {
+                {
+                    .m_position = AZ::Vector3(-1.0f, 0.0f, 0.5f),
+                    .m_tangent = AZ::Vector3::CreateAxisX(2.0f),
+                },
+                {
+                    .m_position = AZ::Vector3(2.0f, 1.0f, 0.5f),
+                    .m_tangent = AZ::Vector3::CreateAxisY(2.0f),
+                },
+            };
+            pathConfiguration.m_isLooping = true;
+            PathComponent path(AZStd::move(pathConfiguration));
+            ExpectBinaryRoundTrip(path, serializeContext);
+
+            RagdollComponentConfiguration ragdollConfiguration =
+                RagdollComponentConfiguration::CreateDefault();
+            ragdollConfiguration.m_baseConstraintPriority = 5;
+            ragdollConfiguration.m_minimumCollisionSeparation = 0.125f;
+            ragdollConfiguration.m_stabilize = false;
+            RagdollComponent ragdoll(AZStd::move(ragdollConfiguration));
+            ExpectBinaryRoundTrip(ragdoll, serializeContext);
+
+            RigidBodyConfiguration rigidBodyConfiguration;
+            rigidBodyConfiguration.m_initialLinearVelocity = AZ::Vector3(1.0f, 2.0f, 3.0f);
+            rigidBodyConfiguration.m_initialAngularVelocity = AZ::Vector3(-1.0f, -2.0f, -3.0f);
+            rigidBodyConfiguration.m_userData = 0x3132'3334'3536'3738;
+            rigidBodyConfiguration.m_allowDynamicOrKinematic = true;
+            RigidBodyComponent rigidBody(AZStd::move(rigidBodyConfiguration));
+            ExpectBinaryRoundTrip(rigidBody, serializeContext);
+
+            SceneComponentConfiguration sceneConfiguration;
+            sceneConfiguration.m_asset = AZ::Data::Asset<SceneAsset>(
+                AZ::Data::AssetId(AZ::Uuid("{23BB23A5-AD82-449E-9652-AF9BB3A14091}"), 3),
+                SceneAssetTypeId,
+                "Physics/Jolt/EditorScene.jolt");
+            sceneConfiguration.m_asset.SetAutoLoadBehavior(AZ::Data::AssetLoadBehavior::NoLoad);
+            SceneComponent scene(AZStd::move(sceneConfiguration));
+            ExpectBinaryRoundTrip(scene, serializeContext);
+
+            SkeletonComponentConfiguration skeletonConfiguration;
+            skeletonConfiguration.m_asset = AZ::Data::Asset<SkeletonAsset>(
+                AZ::Data::AssetId(AZ::Uuid("{51F05DB1-64F0-4759-B954-289F95DE9FE8}"), 4),
+                SkeletonAssetTypeId,
+                "Physics/Jolt/EditorSkeleton.jolt");
+            skeletonConfiguration.m_asset.SetAutoLoadBehavior(AZ::Data::AssetLoadBehavior::NoLoad);
+            SkeletonComponent skeleton(AZStd::move(skeletonConfiguration));
+            ExpectBinaryRoundTrip(skeleton, serializeContext);
+
+            SoftBodyComponentConfiguration softBodyConfiguration =
+                SoftBodyComponentConfiguration::CreateDefault();
+            softBodyConfiguration.m_body.m_userData = 0x4142'4344'4546'4748;
+            softBodyConfiguration.m_body.m_pressure = 0.25f;
+            softBodyConfiguration.m_enabled = false;
+            SoftBodyComponent softBody(AZStd::move(softBodyConfiguration));
+            ExpectBinaryRoundTrip(softBody, serializeContext);
+
+            StaticRigidBodyConfiguration staticRigidBodyConfiguration;
+            staticRigidBodyConfiguration.m_userData = 0x5152'5354'5556'5758;
+            staticRigidBodyConfiguration.m_friction = 0.7f;
+            staticRigidBodyConfiguration.m_restitution = 0.4f;
+            staticRigidBodyConfiguration.m_isSensor = true;
+            StaticRigidBodyComponent staticRigidBody(AZStd::move(staticRigidBodyConfiguration));
+            ExpectBinaryRoundTrip(staticRigidBody, serializeContext);
+
+            WheeledVehicleComponentConfiguration wheeledConfiguration =
+                WheeledVehicleComponentConfiguration::CreateDefault();
+            wheeledConfiguration.m_enabled = false;
+            wheeledConfiguration.m_vehicle.m_collisionSphereRadius = 0.45f;
+            WheeledVehicleComponent wheeled(AZStd::move(wheeledConfiguration));
+            ExpectBinaryRoundTrip(wheeled, serializeContext);
+
+            MotorcycleComponentConfiguration motorcycleConfiguration =
+                MotorcycleComponentConfiguration::CreateDefault();
+            motorcycleConfiguration.m_enabled = false;
+            motorcycleConfiguration.m_motorcycle.m_controller.m_maximumLeanAngle = 0.5f;
+            MotorcycleComponent motorcycle(AZStd::move(motorcycleConfiguration));
+            ExpectBinaryRoundTrip(motorcycle, serializeContext);
+
+            TrackedVehicleComponentConfiguration trackedConfiguration =
+                TrackedVehicleComponentConfiguration::CreateDefault();
+            trackedConfiguration.m_enabled = false;
+            trackedConfiguration.m_vehicle.m_collisionSphereRadius = 0.55f;
+            TrackedVehicleComponent tracked(AZStd::move(trackedConfiguration));
+            ExpectBinaryRoundTrip(tracked, serializeContext);
+
+            VirtualCharacterComponentConfiguration virtualCharacterConfiguration;
+            virtualCharacterConfiguration.m_userData = 0x9192'9394'9596'9798;
+            virtualCharacterConfiguration.m_mass = 82.0f;
+            virtualCharacterConfiguration.m_createInnerBody = true;
+            VirtualCharacterControllerComponent virtualCharacter(
+                AZStd::move(virtualCharacterConfiguration));
+            ExpectBinaryRoundTrip(virtualCharacter, serializeContext);
+
+            serializeContext.EnableRemoveReflection();
+            VirtualCharacterControllerComponent::Reflect(&serializeContext);
+            TrackedVehicleComponent::Reflect(&serializeContext);
+            MotorcycleComponent::Reflect(&serializeContext);
+            WheeledVehicleComponent::Reflect(&serializeContext);
+            StaticRigidBodyComponent::Reflect(&serializeContext);
+            SoftBodyComponent::Reflect(&serializeContext);
+            SkeletonComponent::Reflect(&serializeContext);
+            SceneComponent::Reflect(&serializeContext);
+            RigidBodyComponent::Reflect(&serializeContext);
+            RagdollComponent::Reflect(&serializeContext);
+            PathComponent::Reflect(&serializeContext);
+            HairComponent::Reflect(&serializeContext);
+            ConstraintComponent::Reflect(&serializeContext);
+            ColliderComponent::Reflect(&serializeContext);
+            CharacterControllerComponent::Reflect(&serializeContext);
+            Jolt::VirtualCharacterControllerComponent::Reflect(&serializeContext);
+            Jolt::TrackedVehicleComponent::Reflect(&serializeContext);
+            Jolt::MotorcycleComponent::Reflect(&serializeContext);
+            Jolt::WheeledVehicleComponent::Reflect(&serializeContext);
+            Jolt::StaticRigidBodyComponent::Reflect(&serializeContext);
+            Jolt::SoftBodyComponent::Reflect(&serializeContext);
+            Jolt::SkeletonComponent::Reflect(&serializeContext);
+            Jolt::SceneComponent::Reflect(&serializeContext);
+            Jolt::RigidBodyComponent::Reflect(&serializeContext);
+            Jolt::RagdollComponent::Reflect(&serializeContext);
+            Jolt::PathComponent::Reflect(&serializeContext);
+            Jolt::HairComponent::Reflect(&serializeContext);
+            Jolt::ConstraintComponent::Reflect(&serializeContext);
+            Jolt::ColliderComponent::Reflect(&serializeContext);
+            Jolt::CharacterControllerComponent::Reflect(&serializeContext);
+            SystemComponent::Reflect(&serializeContext);
+            AzToolsFramework::ComponentModeFramework::ComponentModeDelegate::Reflect(&serializeContext);
+            AzToolsFramework::Components::EditorComponentBase::Reflect(&serializeContext);
+            AZ::Name::Reflect(&serializeContext);
+            AZ::Entity::Reflect(&serializeContext);
+            AZ::Data::AssetData::Reflect(&serializeContext);
+            serializeContext.DisableRemoveReflection();
+        }
+
+        AZ::GetGlobalSerializeContextModule().Cleanup();
+    }
+
+    TEST_F(PrefabComponentTests, NonDefaultRigidBodySupportsPrefabUndoRedoAndSaveReload)
+    {
+        RigidBodyConfiguration configuration;
+        configuration.m_initialLinearVelocity = AZ::Vector3(1.0f, 2.0f, 3.0f);
+        configuration.m_initialAngularVelocity = AZ::Vector3(-1.0f, -2.0f, -3.0f);
+        configuration.m_userData = 0x1234'5678'9abc'def0;
+        configuration.m_allowDynamicOrKinematic = true;
+
+        AZ::Entity* sourceEntity = aznew AZ::Entity("Jolt prefab body");
+        sourceEntity->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+        sourceEntity->CreateComponent<ColliderComponent>();
+        sourceEntity->CreateComponent<RigidBodyComponent>(AZStd::move(configuration));
+        sourceEntity->Init();
+        sourceEntity->Activate();
+        const AZ::EntityId sourceEntityId = sourceEntity->GetId();
+
+        AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
+        const AZ::IO::FixedMaxPath prefabPath =
+            AZ::IO::FixedMaxPath(temporaryDirectory.GetDirectory()) / "JoltPhase3.prefab";
+        AZStd::unique_ptr<AzToolsFramework::Prefab::Instance> sourceInstance =
+            m_prefabSystem->CreatePrefab(
+                {sourceEntity},
+                {},
+                prefabPath);
+        ASSERT_TRUE(sourceInstance);
+        const AzToolsFramework::Prefab::TemplateId sourceTemplateId =
+            sourceInstance->GetTemplateId();
+        const AzToolsFramework::Prefab::EntityAliasOptionalReference entityAliasReference =
+            sourceInstance->GetEntityAlias(sourceEntityId);
+        ASSERT_TRUE(entityAliasReference);
+        const AzToolsFramework::Prefab::EntityAlias entityAlias = entityAliasReference.value();
+
+        const auto expectConfiguration =
+            [](AZ::Entity& entity, const AZ::u64 expectedUserData)
+            {
+                const RigidBodyComponent* editorComponent =
+                    entity.FindComponent<RigidBodyComponent>();
+                ASSERT_TRUE(editorComponent);
+
+                AZ::Entity runtimeEntity;
+                const_cast<RigidBodyComponent*>(editorComponent)->BuildGameEntity(&runtimeEntity);
+                const Jolt::RigidBodyComponent* runtimeComponent =
+                    runtimeEntity.FindComponent<Jolt::RigidBodyComponent>();
+                ASSERT_TRUE(runtimeComponent);
+                EXPECT_EQ(runtimeComponent->GetUserData(), expectedUserData);
+            };
+
+        const AzToolsFramework::Prefab::EntityOptionalReference sourceEntityReference =
+            sourceInstance->GetEntity(entityAlias);
+        ASSERT_TRUE(sourceEntityReference);
+        AZ::Entity& ownedSourceEntity = sourceEntityReference->get();
+        AzToolsFramework::Prefab::PrefabDom entityBeforeUpdate;
+        m_instanceToTemplate->GenerateEntityDomBySerializing(
+            entityBeforeUpdate,
+            ownedSourceEntity);
+
+        ownedSourceEntity.Deactivate();
+        RigidBodyComponent* originalComponent =
+            ownedSourceEntity.FindComponent<RigidBodyComponent>();
+        ASSERT_TRUE(originalComponent);
+        ASSERT_TRUE(ownedSourceEntity.RemoveComponent(originalComponent));
+        delete originalComponent;
+        RigidBodyConfiguration changedConfiguration;
+        changedConfiguration.m_userData = 0xfedc'ba98'7654'3210;
+        ownedSourceEntity.CreateComponent<RigidBodyComponent>(AZStd::move(changedConfiguration));
+        ownedSourceEntity.Activate();
+
+        AzToolsFramework::Prefab::PrefabDom entityAfterUpdate;
+        m_instanceToTemplate->GenerateEntityDomBySerializing(
+            entityAfterUpdate,
+            ownedSourceEntity);
+        AzToolsFramework::Prefab::PrefabDom patch;
+        m_instanceToTemplate->GeneratePatch(
+            patch,
+            entityBeforeUpdate,
+            entityAfterUpdate);
+        AzToolsFramework::Prefab::PrefabUndoEntityUpdate undoNode("Jolt component configuration");
+        undoNode.Capture(
+            entityBeforeUpdate,
+            entityAfterUpdate,
+            ownedSourceEntity.GetId());
+        ASSERT_TRUE(m_instanceToTemplate->PatchEntityInTemplate(
+            patch,
+            ownedSourceEntity.GetId()));
+
+        undoNode.Undo();
+        m_instanceUpdateExecutor->UpdateTemplateInstancesInQueue();
+        AZStd::unique_ptr<AzToolsFramework::Prefab::Instance> undoInstance =
+            m_prefabSystem->InstantiatePrefab(sourceTemplateId);
+        ASSERT_TRUE(undoInstance);
+        const AzToolsFramework::Prefab::EntityOptionalReference undoEntity =
+            undoInstance->GetEntity(entityAlias);
+        ASSERT_TRUE(undoEntity);
+        expectConfiguration(undoEntity->get(), 0x1234'5678'9abc'def0);
+        undoInstance.reset();
+
+        undoNode.Redo();
+        m_instanceUpdateExecutor->UpdateTemplateInstancesInQueue();
+        AZStd::unique_ptr<AzToolsFramework::Prefab::Instance> redoInstance =
+            m_prefabSystem->InstantiatePrefab(sourceTemplateId);
+        ASSERT_TRUE(redoInstance);
+        const AzToolsFramework::Prefab::EntityOptionalReference redoEntity =
+            redoInstance->GetEntity(entityAlias);
+        ASSERT_TRUE(redoEntity);
+        expectConfiguration(redoEntity->get(), 0xfedc'ba98'7654'3210);
+        redoInstance.reset();
+
+        undoNode.Undo();
+        m_instanceUpdateExecutor->UpdateTemplateInstancesInQueue();
+
+        AZStd::unique_ptr<AzToolsFramework::Prefab::Instance> copiedInstance =
+            m_prefabSystem->InstantiatePrefab(sourceTemplateId);
+        ASSERT_TRUE(copiedInstance);
+        const AzToolsFramework::Prefab::EntityOptionalReference copiedEntity =
+            copiedInstance->GetEntity(entityAlias);
+        ASSERT_TRUE(copiedEntity);
+        expectConfiguration(copiedEntity->get(), 0x1234'5678'9abc'def0);
+
+        ASSERT_TRUE(m_prefabLoader->SaveTemplateToFile(sourceTemplateId, prefabPath));
+        copiedInstance.reset();
+        sourceInstance.reset();
+        m_prefabSystem->RemoveTemplate(sourceTemplateId);
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        const AzToolsFramework::Prefab::TemplateId reloadedTemplateId =
+            m_prefabLoader->LoadTemplateFromFile(prefabPath);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        ASSERT_NE(reloadedTemplateId, AzToolsFramework::Prefab::InvalidTemplateId);
+        AZStd::unique_ptr<AzToolsFramework::Prefab::Instance> reloadedInstance =
+            m_prefabSystem->InstantiatePrefab(reloadedTemplateId);
+        ASSERT_TRUE(reloadedInstance);
+        const AzToolsFramework::Prefab::EntityOptionalReference reloadedEntity =
+            reloadedInstance->GetEntity(entityAlias);
+        ASSERT_TRUE(reloadedEntity);
+        expectConfiguration(reloadedEntity->get(), 0x1234'5678'9abc'def0);
+    }
+
+    TEST_F(PrefabComponentTests, EveryAuthorableComponentSurvivesPrefabCopyAndSaveReload)
+    {
+        struct PrefabExpectation final
+        {
+            AZ::EntityId m_sourceEntityId;
+            AZ::TypeId m_editorComponentType;
+            AZ::TypeId m_runtimeComponentType;
+            AzToolsFramework::Prefab::EntityAlias m_entityAlias;
+        };
+
+        AZ::SerializeContext* serializeContext = GetApplication()->GetSerializeContext();
+        ASSERT_TRUE(serializeContext);
+
+        const auto serializeComponent =
+            [serializeContext](
+                const AZ::Component& component,
+                const AZ::TypeId& componentType)
+            {
+                AZ::Component& mutableComponent = const_cast<AZ::Component&>(component);
+                const AZ::ComponentId componentId = mutableComponent.GetId();
+                const AZStd::string serializedIdentifier =
+                    mutableComponent.GetSerializedIdentifier();
+                mutableComponent.SetId(AZ::InvalidComponentId);
+                mutableComponent.SetSerializedIdentifier({});
+
+                AZStd::vector<char> serializedComponent;
+                AZ::IO::ByteContainerStream stream(&serializedComponent);
+                EXPECT_TRUE(AZ::Utils::SaveObjectToStream(
+                    stream,
+                    AZ::DataStream::ST_BINARY,
+                    &component,
+                    componentType,
+                    serializeContext));
+                mutableComponent.SetSerializedIdentifier(serializedIdentifier);
+                mutableComponent.SetId(componentId);
+                return serializedComponent;
+            };
+
+        AZStd::vector<AZ::Entity*> sourceEntities;
+        AZStd::vector<PrefabExpectation> expectations;
+        const auto addComponent =
+            [&sourceEntities, &expectations]<class Component, class RuntimeComponent, class Configuration>(
+                const char* entityName,
+                Configuration configuration)
+            {
+                AZ::Entity* entity = aznew AZ::Entity(entityName);
+                entity->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+                Component* component = entity->CreateComponent<Component>(AZStd::move(configuration));
+                expectations.push_back(PrefabExpectation{
+                    .m_sourceEntityId = entity->GetId(),
+                    .m_editorComponentType = azrtti_typeid<Component>(),
+                    .m_runtimeComponentType = azrtti_typeid<RuntimeComponent>(),
+                });
+                AZ_UNUSED(component);
+                sourceEntities.push_back(entity);
+            };
+
+        CharacterComponentConfiguration characterConfiguration;
+        characterConfiguration.m_mass = 91.0f;
+        characterConfiguration.m_userData = 0x0102'0304'0506'0708;
+        addComponent.operator()<CharacterControllerComponent, Jolt::CharacterControllerComponent>(
+            "Jolt character",
+            AZStd::move(characterConfiguration));
+
+        ColliderShapeConfiguration colliderShape;
+        colliderShape.m_shape.m_geometry = CapsuleShapeConfiguration{
+            .m_cylinderHeight = 2.5f,
+            .m_radius = 0.75f,
+        };
+        colliderShape.m_shape.m_userData = 0x1112'1314'1516'1718;
+        addComponent.operator()<ColliderComponent, Jolt::ColliderComponent>(
+            "Jolt collider",
+            AZStd::vector{colliderShape});
+
+        ConstraintComponentConfiguration constraintConfiguration;
+        constraintConfiguration.m_geometry = HingeConstraintConfiguration{
+            .m_maximumLimit = 0.75f,
+            .m_minimumLimit = -0.5f,
+        };
+        constraintConfiguration.m_priority = 7;
+        addComponent.operator()<ConstraintComponent, Jolt::ConstraintComponent>(
+            "Jolt constraint",
+            AZStd::move(constraintConfiguration));
+
+        HairComponentConfiguration hairConfiguration = HairComponentConfiguration::CreateDefault();
+        hairConfiguration.m_autoUpdate = false;
+        hairConfiguration.m_jointToHair =
+            AZ::Transform::CreateRotationZ(AZ::Constants::QuarterPi);
+        addComponent.operator()<HairComponent, Jolt::HairComponent>(
+            "Jolt Hair",
+            AZStd::move(hairConfiguration));
+
+        HermitePathConfiguration pathConfiguration = HermitePathConfiguration::CreateDefault();
+        pathConfiguration.m_isLooping = true;
+        pathConfiguration.m_points[0].m_position = AZ::Vector3(-1.0f, 0.0f, 0.5f);
+        pathConfiguration.m_points[1].m_position = AZ::Vector3(2.0f, 1.0f, 0.5f);
+        addComponent.operator()<PathComponent, Jolt::PathComponent>(
+            "Jolt path",
+            AZStd::move(pathConfiguration));
+
+        RagdollComponentConfiguration ragdollConfiguration =
+            RagdollComponentConfiguration::CreateDefault();
+        ragdollConfiguration.m_baseConstraintPriority = 5;
+        ragdollConfiguration.m_stabilize = false;
+        addComponent.operator()<RagdollComponent, Jolt::RagdollComponent>(
+            "Jolt ragdoll",
+            AZStd::move(ragdollConfiguration));
+
+        RigidBodyConfiguration rigidBodyConfiguration;
+        rigidBodyConfiguration.m_initialLinearVelocity = AZ::Vector3(1.0f, 2.0f, 3.0f);
+        rigidBodyConfiguration.m_userData = 0x3132'3334'3536'3738;
+        addComponent.operator()<RigidBodyComponent, Jolt::RigidBodyComponent>(
+            "Jolt rigid body",
+            AZStd::move(rigidBodyConfiguration));
+
+        SceneComponentConfiguration sceneConfiguration;
+        sceneConfiguration.m_asset = AZ::Data::Asset<SceneAsset>(
+            AZ::Data::AssetId(AZ::Uuid("{26C17D7A-B1B4-4A90-BF27-E10287247A12}"), 3),
+            SceneAssetTypeId,
+            "Physics/Jolt/PrefabScene.jolt");
+        sceneConfiguration.m_asset.SetAutoLoadBehavior(AZ::Data::AssetLoadBehavior::NoLoad);
+        addComponent.operator()<SceneComponent, Jolt::SceneComponent>(
+            "Jolt scene",
+            AZStd::move(sceneConfiguration));
+
+        SkeletonComponentConfiguration skeletonConfiguration;
+        skeletonConfiguration.m_asset = AZ::Data::Asset<SkeletonAsset>(
+            AZ::Data::AssetId(AZ::Uuid("{F3E742F7-77D7-4C8E-8A49-BC17E712B847}"), 4),
+            SkeletonAssetTypeId,
+            "Physics/Jolt/PrefabSkeleton.jolt");
+        skeletonConfiguration.m_asset.SetAutoLoadBehavior(AZ::Data::AssetLoadBehavior::NoLoad);
+        addComponent.operator()<SkeletonComponent, Jolt::SkeletonComponent>(
+            "Jolt skeleton",
+            AZStd::move(skeletonConfiguration));
+
+        SoftBodyComponentConfiguration softBodyConfiguration =
+            SoftBodyComponentConfiguration::CreateDefault();
+        softBodyConfiguration.m_body.m_pressure = 0.25f;
+        softBodyConfiguration.m_enabled = false;
+        addComponent.operator()<SoftBodyComponent, Jolt::SoftBodyComponent>(
+            "Jolt soft body",
+            AZStd::move(softBodyConfiguration));
+
+        StaticRigidBodyConfiguration staticBodyConfiguration;
+        staticBodyConfiguration.m_friction = 0.7f;
+        staticBodyConfiguration.m_isSensor = true;
+        staticBodyConfiguration.m_userData = 0x5152'5354'5556'5758;
+        addComponent.operator()<StaticRigidBodyComponent, Jolt::StaticRigidBodyComponent>(
+            "Jolt static rigid body",
+            AZStd::move(staticBodyConfiguration));
+
+        WheeledVehicleComponentConfiguration wheeledConfiguration =
+            WheeledVehicleComponentConfiguration::CreateDefault();
+        wheeledConfiguration.m_enabled = false;
+        wheeledConfiguration.m_vehicle.m_collisionSphereRadius = 0.45f;
+        addComponent.operator()<WheeledVehicleComponent, Jolt::WheeledVehicleComponent>(
+            "Jolt wheeled vehicle",
+            AZStd::move(wheeledConfiguration));
+
+        MotorcycleComponentConfiguration motorcycleConfiguration =
+            MotorcycleComponentConfiguration::CreateDefault();
+        motorcycleConfiguration.m_enabled = false;
+        motorcycleConfiguration.m_motorcycle.m_controller.m_maximumLeanAngle = 0.5f;
+        addComponent.operator()<MotorcycleComponent, Jolt::MotorcycleComponent>(
+            "Jolt motorcycle",
+            AZStd::move(motorcycleConfiguration));
+
+        TrackedVehicleComponentConfiguration trackedConfiguration =
+            TrackedVehicleComponentConfiguration::CreateDefault();
+        trackedConfiguration.m_enabled = false;
+        trackedConfiguration.m_vehicle.m_collisionSphereRadius = 0.55f;
+        addComponent.operator()<TrackedVehicleComponent, Jolt::TrackedVehicleComponent>(
+            "Jolt tracked vehicle",
+            AZStd::move(trackedConfiguration));
+
+        VirtualCharacterComponentConfiguration virtualCharacterConfiguration;
+        virtualCharacterConfiguration.m_createInnerBody = true;
+        virtualCharacterConfiguration.m_mass = 82.0f;
+        virtualCharacterConfiguration.m_userData = 0x9192'9394'9596'9798;
+        addComponent.operator()<VirtualCharacterControllerComponent, Jolt::VirtualCharacterControllerComponent>(
+            "Jolt virtual character",
+            AZStd::move(virtualCharacterConfiguration));
+
+        AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
+        const AZ::IO::FixedMaxPath prefabPath =
+            AZ::IO::FixedMaxPath(temporaryDirectory.GetDirectory()) / "JoltAuthorableComponents.prefab";
+        AZStd::unique_ptr<AzToolsFramework::Prefab::Instance> sourceInstance =
+            m_prefabSystem->CreatePrefab(
+                sourceEntities,
+                {},
+                prefabPath);
+        ASSERT_TRUE(sourceInstance);
+        const AzToolsFramework::Prefab::TemplateId sourceTemplateId =
+            sourceInstance->GetTemplateId();
+
+        const auto serializeRuntimeExport =
+            [&serializeComponent](
+                AZ::Entity& entity,
+                const PrefabExpectation& expectation)
+            {
+                AZ::Component* component =
+                    entity.FindComponent(expectation.m_editorComponentType);
+                auto* editorComponent =
+                    azrtti_cast<AzToolsFramework::Components::EditorComponentBase*>(component);
+                EXPECT_TRUE(editorComponent);
+                if (!editorComponent)
+                {
+                    return AZStd::vector<char>{};
+                }
+
+                AZ::Entity runtimeEntity;
+                editorComponent->BuildGameEntity(&runtimeEntity);
+                const AZ::Component* runtimeComponent =
+                    runtimeEntity.FindComponent(expectation.m_runtimeComponentType);
+                EXPECT_TRUE(runtimeComponent);
+                if (!runtimeComponent)
+                {
+                    return AZStd::vector<char>{};
+                }
+
+                return serializeComponent(
+                    *runtimeComponent,
+                    expectation.m_runtimeComponentType);
+            };
+
+        for (PrefabExpectation& expectation : expectations)
+        {
+            const AzToolsFramework::Prefab::EntityAliasOptionalReference entityAlias =
+                sourceInstance->GetEntityAlias(expectation.m_sourceEntityId);
+            ASSERT_TRUE(entityAlias);
+            expectation.m_entityAlias = entityAlias->get();
+            const AzToolsFramework::Prefab::EntityOptionalReference sourceEntity =
+                sourceInstance->GetEntity(expectation.m_entityAlias);
+            ASSERT_TRUE(sourceEntity);
+            EXPECT_FALSE(serializeRuntimeExport(sourceEntity->get(), expectation).empty());
+        }
+
+        const auto expectInstance =
+            [&expectations, &serializeRuntimeExport](
+                AzToolsFramework::Prefab::Instance& instance)
+            {
+                for (const PrefabExpectation& expectation : expectations)
+                {
+                    const AzToolsFramework::Prefab::EntityOptionalReference entity =
+                        instance.GetEntity(expectation.m_entityAlias);
+                    ASSERT_TRUE(entity);
+                    EXPECT_FALSE(serializeRuntimeExport(entity->get(), expectation).empty());
+                }
+            };
+
+        AZStd::unique_ptr<AzToolsFramework::Prefab::Instance> copiedInstance =
+            m_prefabSystem->InstantiatePrefab(sourceTemplateId);
+        ASSERT_TRUE(copiedInstance);
+        expectInstance(*copiedInstance);
+
+        ASSERT_TRUE(m_prefabLoader->SaveTemplateToFile(sourceTemplateId, prefabPath));
+        copiedInstance.reset();
+        sourceInstance.reset();
+        m_prefabSystem->RemoveTemplate(sourceTemplateId);
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        const AzToolsFramework::Prefab::TemplateId reloadedTemplateId =
+            m_prefabLoader->LoadTemplateFromFile(prefabPath);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(15);
+        ASSERT_NE(reloadedTemplateId, AzToolsFramework::Prefab::InvalidTemplateId);
+        AZStd::unique_ptr<AzToolsFramework::Prefab::Instance> reloadedInstance =
+            m_prefabSystem->InstantiatePrefab(reloadedTemplateId);
+        ASSERT_TRUE(reloadedInstance);
+        expectInstance(*reloadedInstance);
     }
 
     TEST(EditorComponentTests, RuntimeConstraintGeometryRoundTripsThroughSerialization)

@@ -163,12 +163,51 @@ o3de_add_variant_dependencies_for_gem_dependencies(
 )
 
 if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
+    set(jolt_test_files
+        jolt_tests_files.cmake
+    )
+    set(jolt_test_dependencies
+        Jolt
+        AZ::AzTest
+        AZ::AzFramework
+        Gem::${gem_name}.Private.Static
+    )
+
+    if(PAL_TRAIT_BUILD_HOST_TOOLS)
+        list(APPEND jolt_test_files
+            jolt_tools_tests_files.cmake
+        )
+        list(APPEND jolt_test_dependencies
+            AZ::AssetBuilderSDK
+            AZ::AzCoreTestCommon
+            AZ::AzToolsFramework
+            AZ::AzToolsFrameworkTestCommon
+            Gem::${gem_name}.Editor.Static
+        )
+    endif()
+
+    ly_add_target(
+        NAME ${gem_name}.TestProviders MODULE
+        NAMESPACE Gem
+        OUTPUT_NAME ${gem_name}.TestProviders
+        FILES_CMAKE
+            jolt_test_provider_files.cmake
+        INCLUDE_DIRECTORIES
+            PRIVATE
+                Include
+                Tests
+        BUILD_DEPENDENCIES
+            PRIVATE
+                AZ::AzCore
+                Gem::${gem_name}.API
+    )
+
     ly_add_target(
         NAME ${gem_name}.Tests ${PAL_TRAIT_TEST_TARGET_TYPE}
         NAMESPACE Gem
         OUTPUT_NAME ${gem_name}.Tests.Gem
         FILES_CMAKE
-            jolt_tests_files.cmake
+            ${jolt_test_files}
         INCLUDE_DIRECTORIES
             PRIVATE
                 Include
@@ -176,16 +215,14 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
                 Tests
         BUILD_DEPENDENCIES
             PRIVATE
-                Jolt
-                AZ::AzTest
-                AZ::AzFramework
-                Gem::${gem_name}.Private.Static
+                ${jolt_test_dependencies}
     )
-    if(MSVC)
-        target_compile_options(${gem_name}.Tests PRIVATE /GR-)
-    else()
-        target_compile_options(${gem_name}.Tests PRIVATE -fno-rtti)
+
+    if(PAL_TRAIT_BUILD_HOST_TOOLS)
+        target_compile_definitions(${gem_name}.Tests PRIVATE JOLT_TESTS_WITH_TOOLS)
     endif()
+
+    add_dependencies(${gem_name}.Tests ${gem_name}.TestProviders)
 
     ly_add_googletest(NAME Gem::${gem_name}.Tests)
 
@@ -195,54 +232,6 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
         COMPONENT Physics
         TIMEOUT 600
     )
-
-    if(PAL_TRAIT_BUILD_HOST_TOOLS)
-        ly_add_target(
-            NAME ${gem_name}.Editor.Tests ${PAL_TRAIT_TEST_TARGET_TYPE}
-            NAMESPACE Gem
-            OUTPUT_NAME ${gem_name}.Editor.Tests.Gem
-            FILES_CMAKE
-                jolt_editor_tests_files.cmake
-            INCLUDE_DIRECTORIES
-                PRIVATE
-                    Include
-                    Source
-                    Tests
-            BUILD_DEPENDENCIES
-                PRIVATE
-                    AZ::AssetBuilderSDK
-                    AZ::AzCoreTestCommon
-                    AZ::AzTest
-                    AZ::AzToolsFramework
-                    AZ::AzToolsFrameworkTestCommon
-                    Gem::${gem_name}.Editor.Static
-        )
-
-        ly_add_googletest(NAME Gem::${gem_name}.Editor.Tests)
-
-        ly_add_target(
-            NAME ${gem_name}.Editor.Builder.Tests ${PAL_TRAIT_TEST_TARGET_TYPE}
-            NAMESPACE Gem
-            OUTPUT_NAME ${gem_name}.Editor.Builder.Tests.Gem
-            FILES_CMAKE
-                jolt_editor_builder_tests_files.cmake
-            INCLUDE_DIRECTORIES
-                PRIVATE
-                    Include
-                    Source
-                    Tests
-            BUILD_DEPENDENCIES
-                PRIVATE
-                    AZ::AssetBuilderSDK
-                    AZ::AzCoreTestCommon
-                    AZ::AzTest
-                    AZ::AzToolsFramework
-                    AZ::AzToolsFrameworkTestCommon
-                    Gem::${gem_name}.Editor.Static
-        )
-
-        ly_add_googletest(NAME Gem::${gem_name}.Editor.Builder.Tests)
-    endif()
 endif()
 
 # This directory's targets are re-declared as IMPORTED libraries in an installed

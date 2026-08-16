@@ -12,15 +12,24 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/std/utility/move.h>
 #include <AzFramework/Translation/TranslationDef.h>
 
 namespace Jolt::Editor
 {
+    StaticRigidBodyComponent::StaticRigidBodyComponent(
+        StaticRigidBodyConfiguration configuration)
+        : m_configuration(AZStd::move(configuration))
+    {
+    }
+
     void StaticRigidBodyComponent::Reflect(
         AZ::ReflectContext* context)
     {
         if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
+            StaticRigidBodyConfiguration::Reflect(serializeContext);
+
             serializeContext
                 ->Class<StaticRigidBodyComponent, AzToolsFramework::Components::EditorComponentBase>()
                 ->Field("Configuration", &StaticRigidBodyComponent::m_configuration);

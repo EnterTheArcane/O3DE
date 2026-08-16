@@ -131,42 +131,6 @@ namespace Jolt
             return false;
         }
 
-        [[nodiscard]]
-        bool ToNativeActiveEdgeMode(
-            const ActiveEdgeMode source,
-            JPH::EActiveEdgeMode& target)
-        {
-            if (source == ActiveEdgeMode::CollideOnlyWithActive)
-            {
-                target = JPH::EActiveEdgeMode::CollideOnlyWithActive;
-                return true;
-            }
-            if (source == ActiveEdgeMode::CollideWithAll)
-            {
-                target = JPH::EActiveEdgeMode::CollideWithAll;
-                return true;
-            }
-            return false;
-        }
-
-        [[nodiscard]]
-        bool ToNativeFaceCollectionMode(
-            const FaceCollectionMode source,
-            JPH::ECollectFacesMode& target)
-        {
-            if (source == FaceCollectionMode::None)
-            {
-                target = JPH::ECollectFacesMode::NoFaces;
-                return true;
-            }
-            if (source == FaceCollectionMode::Collect)
-            {
-                target = JPH::ECollectFacesMode::CollectFaces;
-                return true;
-            }
-            return false;
-        }
-
         class CustomShape final
             : public JPH::Shape
         {

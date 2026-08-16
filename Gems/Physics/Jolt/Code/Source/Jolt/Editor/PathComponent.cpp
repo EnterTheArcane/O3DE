@@ -85,6 +85,8 @@ namespace Jolt::Editor
     {
         if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
+            HermitePathConfiguration::Reflect(serializeContext);
+
             serializeContext
                 ->Class<PathComponent, AzToolsFramework::Components::EditorComponentBase>()
                 ->Field("Configuration", &PathComponent::m_configuration);

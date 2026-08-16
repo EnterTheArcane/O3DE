@@ -8,6 +8,7 @@
 #include <Jolt/Editor/AssetBuilder.h>
 
 #include <Jolt/AssetBuilderSystem.h>
+#include <Jolt/AssetProduct.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/SceneAsset.h>
 #include <Jolt/SkeletonAsset.h>
@@ -18,8 +19,9 @@
 #include <AzCore/Serialization/EditContextConstants.inl>
 #include <AzCore/Serialization/Json/JsonUtils.h>
 #include <AzCore/Serialization/SerializeContext.h>
-#include <AzCore/Serialization/Utils.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/std/containers/span.h>
+#include <AzCore/std/containers/vector.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -115,7 +117,8 @@ namespace Jolt::Editor
             const AssetBuilderSDK::ProcessJobRequest& request,
             const AssetType& asset,
             const AZ::Data::AssetType& assetType,
-            AssetBuilderSDK::ProcessJobResponse& response)
+            AssetBuilderSDK::ProcessJobResponse& response,
+            const AZStd::span<const CustomShapeDependency> sourceDependencies = {})
         {
             AZStd::string fileName;
             AzFramework::StringFunc::Path::GetFullFileName(
@@ -149,11 +152,11 @@ namespace Jolt::Editor
                 return false;
             }
 
-            if (!AZ::Utils::SaveObjectToFile(
+            if (!SaveAssetProduct(
                 productPath,
-                AZ::DataStream::ST_BINARY,
                 &asset,
-                serializeContext))
+                assetType,
+                *serializeContext))
             {
                 AZ_Error(
                     "Jolt",
@@ -165,6 +168,12 @@ namespace Jolt::Editor
             }
 
             AssetBuilderSDK::JobProduct product(productPath, assetType, CompiledProductSubId);
+            for (const CustomShapeDependency& dependency : sourceDependencies)
+            {
+                product.m_pathDependencies.emplace(
+                    dependency.m_path,
+                    AssetBuilderSDK::ProductPathDependencyType::SourceFile);
+            }
             product.m_dependenciesHandled = true;
             response.m_outputProducts.push_back(AZStd::move(product));
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
@@ -193,7 +202,7 @@ namespace Jolt::Editor
             "*.jolt.json",
             AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
         descriptor.m_busId = azrtti_typeid<AssetBuilder>();
-        descriptor.m_version = 5;
+        descriptor.m_version = 7;
         descriptor.m_analysisFingerprint = AZStd::string::format(
             "JoltAssets:%016llx",
             static_cast<unsigned long long>(GetNativeBuildFingerprint()));
@@ -207,7 +216,7 @@ namespace Jolt::Editor
             {
                 ProcessJob(request, response);
             };
-        descriptor.m_flags = AssetBuilderSDK::AssetBuilderDesc::BF_EmitsNoDependencies;
+        descriptor.m_flags = AssetBuilderSDK::AssetBuilderDesc::BF_None;
 
         BusConnect(descriptor.m_busId);
         AssetBuilderSDK::AssetBuilderBus::Broadcast(
@@ -324,11 +333,21 @@ namespace Jolt::Editor
                 return;
             }
 
+            AZStd::vector<CustomShapeDependency> sourceDependencies;
+            for (const SceneAssetShape& shape : sceneAsset.m_data.m_shapes)
+            {
+                sourceDependencies.insert(
+                    sourceDependencies.end(),
+                    shape.m_archive.m_dependencies.begin(),
+                    shape.m_archive.m_dependencies.end());
+            }
+
             SaveProduct(
                 request,
                 sceneAsset,
                 SceneAssetTypeId,
-                response);
+                response,
+                sourceDependencies);
             return;
         }
 

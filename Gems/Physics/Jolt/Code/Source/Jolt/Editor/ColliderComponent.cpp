@@ -88,6 +88,8 @@ namespace Jolt::Editor
     {
         if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
+            ColliderShapeConfiguration::Reflect(serializeContext);
+
             serializeContext
                 ->Class<ColliderComponent, AzToolsFramework::Components::EditorComponentBase>()
                 ->Field("Shapes", &ColliderComponent::m_configurations)

@@ -29,6 +29,9 @@ namespace Jolt::Editor
             EditorHairComponentTypeId,
             AzToolsFramework::Components::EditorComponentBase);
 
+        HairComponent() = default;
+        explicit HairComponent(HairComponentConfiguration configuration);
+
         static void Reflect(AZ::ReflectContext* context);
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);

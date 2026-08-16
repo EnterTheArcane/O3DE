@@ -30,6 +30,7 @@ namespace Jolt::Editor
             AzToolsFramework::Components::EditorComponentBase);
 
         RagdollComponent();
+        explicit RagdollComponent(RagdollComponentConfiguration configuration);
 
         static void Reflect(AZ::ReflectContext* context);
 

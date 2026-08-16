@@ -6,16 +6,20 @@
  */
 
 #include <Jolt/Editor/AssetBuilder.h>
+#include <Jolt/AssetProduct.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/SceneAsset.h>
 #include <Jolt/SkeletonAsset.h>
+#include <Jolt/SoftBodyComponentConfiguration.h>
 #include <Jolt/System.h>
 #include <Jolt/SystemComponent.h>
 
 #include <AzTest/AzTest.h>
 #include <AzTest/Utils.h>
 
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Component/Entity.h>
+#include <AzCore/IO/ByteContainerStream.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/Name/Name.h>
@@ -25,14 +29,12 @@
 #include <AzCore/Serialization/Json/JsonUtils.h>
 #include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
-#include <AzCore/Serialization/Utils.h>
 #include <AzCore/UnitTest/MockComponentApplication.h>
+#include <AzCore/Utils/TypeHash.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzToolsFramework/UnitTest/AzToolsFrameworkTestHelpers.h>
-
-AZ_TOOLS_UNIT_TEST_HOOK(DEFAULT_UNIT_TEST_ENV);
 
 namespace Jolt::Editor
 {
@@ -192,6 +194,54 @@ namespace Jolt::Editor
 
             AZStd::vector<AssetBuilderSDK::AssetBuilderDesc> m_descriptors;
         };
+
+        class BuilderCustomShapeProvider final
+            : public ICustomShapeProvider
+        {
+        public:
+            [[nodiscard]]
+            AZ::TypeId GetId() const override
+            {
+                return AZ::TypeId("{83086C50-834C-4789-AD1F-8AC45C1E70E1}");
+            }
+
+            [[nodiscard]]
+            AZ::u64 GetVersion() const override
+            {
+                return 1;
+            }
+
+            [[nodiscard]]
+            bool Cook(
+                const AZStd::span<const AZ::u8> input,
+                CustomShapeData& output) const override
+            {
+                if (input.size() != m_expectedInput.size()
+                    || input[0] != m_expectedInput[0]
+                    || input[1] != m_expectedInput[1])
+                {
+                    return false;
+                }
+
+                output.m_vertices = {
+                    {-1.0f, -1.0f, -1.0f},
+                    {1.0f, -1.0f, -1.0f},
+                    {-1.0f, 1.0f, -1.0f},
+                    {1.0f, 1.0f, -1.0f},
+                    {-1.0f, -1.0f, 1.0f},
+                    {1.0f, -1.0f, 1.0f},
+                    {-1.0f, 1.0f, 1.0f},
+                    {1.0f, 1.0f, 1.0f},
+                };
+                output.m_dependencies = {{"Objects/Jolt/BuilderCustomShape.source", 0x0123456789abcdef}};
+                output.m_geometryKind = CustomShapeGeometryKind::Convex;
+                output.m_runtimeData.assign(input.begin(), input.end());
+                return true;
+            }
+
+        private:
+            inline static constexpr AZStd::array<AZ::u8, 2> m_expectedInput = {4, 2};
+        };
     } // namespace
 
     TEST(EditorAssetBuilderTests, RegistrationFingerprintsNativeBuildIdentity)
@@ -211,7 +261,10 @@ namespace Jolt::Editor
         EXPECT_EQ(
             registrationCapture.m_descriptors[0].m_analysisFingerprint,
             AZStd::string::format("JoltAssets:%s", fingerprint.c_str()));
-        EXPECT_EQ(registrationCapture.m_descriptors[0].m_version, 5);
+        EXPECT_EQ(registrationCapture.m_descriptors[0].m_version, 7);
+        EXPECT_EQ(
+            registrationCapture.m_descriptors[0].m_flags,
+            AssetBuilderSDK::AssetBuilderDesc::BF_None);
         ASSERT_EQ(registrationCapture.m_descriptors[0].m_patterns.size(), 1);
         EXPECT_EQ(registrationCapture.m_descriptors[0].m_patterns[0].m_pattern, "*.jolt.json");
     }
@@ -329,6 +382,40 @@ namespace Jolt::Editor
         AZ_TEST_STOP_TRACE_SUPPRESSION(3);
     }
 
+    TEST(EditorAssetBuilderTests, RejectsMalformedAndTruncatedJsonWithoutPublishingProducts)
+    {
+        FileIoScope fileIoScope;
+        AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
+        constexpr AZStd::array InvalidDocuments = {
+            R"({"Type":"JsonSerialization","Version":1,"ClassName":"SceneSourceData","ClassData":)",
+            R"({"Type":"JsonSerialization")",
+        };
+
+        AssetBuilder builder;
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        for (size_t documentIndex = 0; documentIndex < InvalidDocuments.size(); ++documentIndex)
+        {
+            const AZStd::string sourceFile = AZStd::string::format(
+                "malformed_%zu.jolt.json",
+                documentIndex);
+            const AZStd::optional<AZ::IO::FixedMaxPath> sourcePath = AZ::Test::CreateTestFile(
+                temporaryDirectory,
+                AZ::IO::PathView(sourceFile),
+                InvalidDocuments[documentIndex]);
+            ASSERT_TRUE(sourcePath);
+
+            AssetBuilderSDK::ProcessJobRequest request;
+            request.m_fullPath = sourcePath->String();
+            request.m_sourceFile = sourceFile;
+            request.m_tempDirPath = temporaryDirectory.GetDirectory();
+            AssetBuilderSDK::ProcessJobResponse response;
+            builder.ProcessJob(request, response);
+            EXPECT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResult_Failed);
+            EXPECT_TRUE(response.m_outputProducts.empty());
+        }
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
+    }
+
     TEST(EditorAssetBuilderTests, ProcessesJsonSourceIntoLoadableBinaryAsset)
     {
         NameDictionaryScope nameDictionaryScope;
@@ -341,10 +428,24 @@ namespace Jolt::Editor
         ON_CALL(application, GetJsonRegistrationContext())
             .WillByDefault(::testing::Return(jsonRegistrationScope.Get()));
 
+        SystemComponentScope systemComponentScope;
+
         SceneSourceData sourceData;
         sourceData.m_name = AZ::Name("BuilderScene");
+        BuilderCustomShapeProvider customShapeProvider;
+        ISystem* system = AZ::Interface<ISystem>::Get();
+        ASSERT_TRUE(system);
+        ICooking* cooking = AZ::Interface<ICooking>::Get();
+        ASSERT_TRUE(cooking);
+        ASSERT_EQ(
+            cooking->RegisterCustomShapeProvider(&customShapeProvider),
+            ProviderRegistrationResult::Success);
+
         sourceData.m_shapes.push_back(SceneSourceShapeData{
-            .m_geometry = BoxShapeConfiguration{},
+            .m_geometry = CustomShapeConfiguration{
+                .m_data = {4, 2},
+                .m_providerId = customShapeProvider.GetId(),
+            },
         });
         sourceData.m_bodies.emplace_back(SceneAssetRigidBody{
             .m_name = AZ::Name("Floor"),
@@ -362,6 +463,49 @@ namespace Jolt::Editor
             .m_name = AZ::Name("Distance"),
             .m_firstBodyIndex = 0,
             .m_secondBodyIndex = 1,
+        });
+
+        SoftBodyComponentConfiguration softBodyConfiguration =
+            SoftBodyComponentConfiguration::CreateDefault();
+        softBodyConfiguration.m_definition.m_inverseBinds = {
+            {
+                .m_transform = AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisX(0.25f)),
+                .m_jointIndex = 0,
+            },
+        };
+        SoftBodySkinConstraint& skinConstraint =
+            softBodyConfiguration.m_definition.m_skinConstraints.emplace_back();
+        skinConstraint.m_weights[0] = {
+            .m_inverseBindIndex = 0,
+            .m_weight = 1.0f,
+        };
+        skinConstraint.m_vertex = 0;
+        skinConstraint.m_backstopDistance = 0.1f;
+        skinConstraint.m_backstopRadius = 0.2f;
+        skinConstraint.m_maximumDistance = 0.3f;
+        const SoftBodyDefinitionConfiguration& definition = softBodyConfiguration.m_definition;
+        sourceData.m_softBodyDefinitions.push_back(SceneSourceSoftBodyDefinition{
+            .m_vertices = definition.m_vertices,
+            .m_faces = definition.m_faces,
+            .m_materialIndices = {},
+            .m_vertexAttributes = definition.m_vertexAttributes,
+            .m_edgeConstraints = definition.m_edgeConstraints,
+            .m_dihedralBendConstraints = definition.m_dihedralBendConstraints,
+            .m_longRangeConstraints = definition.m_longRangeConstraints,
+            .m_rodStretchShearConstraints = definition.m_rodStretchShearConstraints,
+            .m_rodBendTwistConstraints = definition.m_rodBendTwistConstraints,
+            .m_volumeConstraints = definition.m_volumeConstraints,
+            .m_inverseBinds = definition.m_inverseBinds,
+            .m_skinConstraints = definition.m_skinConstraints,
+            .m_shearAngleTolerance = definition.m_shearAngleTolerance,
+            .m_bendType = definition.m_bendType,
+            .m_createFaceConstraints = definition.m_createFaceConstraints,
+            .m_optimize = definition.m_optimize,
+        });
+        sourceData.m_bodies.push_back(SceneAssetSoftBody{
+            .m_transform = {.m_position = {.m_x = 4.0, .m_z = 2.0}},
+            .m_name = AZ::Name("Cloth"),
+            .m_definitionIndex = 0,
         });
 
         AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
@@ -396,9 +540,6 @@ namespace Jolt::Editor
             &serializationSettings);
         ASSERT_TRUE(saveResult.IsSuccess()) << serializationIssues.c_str() << saveResult.GetError().c_str();
 
-        SystemComponentScope systemComponentScope;
-        ASSERT_TRUE(AZ::Interface<ISystem>::Get());
-
         AssetBuilder builder;
         AssetBuilderSDK::ProcessJobRequest request;
         request.m_fullPath = sourcePath->String();
@@ -410,23 +551,142 @@ namespace Jolt::Editor
         ASSERT_EQ(response.m_outputProducts.size(), 1);
         EXPECT_EQ(response.m_outputProducts.front().m_productAssetType, SceneAssetTypeId);
         EXPECT_EQ(response.m_outputProducts.front().m_productSubID, 1);
+        ASSERT_EQ(response.m_outputProducts.front().m_pathDependencies.size(), 1);
+        const AssetBuilderSDK::ProductPathDependency& productDependency =
+            *response.m_outputProducts.front().m_pathDependencies.begin();
+        EXPECT_EQ(productDependency.m_dependencyPath, "Objects/Jolt/BuilderCustomShape.source");
+        EXPECT_EQ(
+            productDependency.m_dependencyType,
+            AssetBuilderSDK::ProductPathDependencyType::SourceFile);
         EXPECT_TRUE(
             AZStd::string_view(response.m_outputProducts.front().m_productFileName).ends_with("test_scene.jolt"));
 
+        AZ::IO::SystemFile productFile;
+        ASSERT_TRUE(productFile.Open(
+            response.m_outputProducts.front().m_productFileName.c_str(),
+            AZ::IO::SystemFile::SF_OPEN_READ_ONLY));
+        const AZ::IO::SystemFile::SizeType productSize = productFile.Length();
+        ASSERT_GT(productSize, 1);
+        AZStd::vector<AZ::u8> productBytes(aznumeric_cast<size_t>(productSize));
+        EXPECT_EQ(productFile.Read(productSize, productBytes.data()), productSize);
+        productFile.Close();
+
+        AZStd::vector<AZ::u8> truncatedProduct(
+            productBytes.begin(),
+            productBytes.begin() + productBytes.size() / 2);
+        AZ::IO::ByteContainerStream truncatedProductStream(&truncatedProduct);
+        SceneAsset truncatedAsset;
+        truncatedAsset.m_data.m_name = AZ::Name("Unchanged");
+        EXPECT_FALSE(LoadAssetProduct(
+            truncatedProductStream,
+            &truncatedAsset,
+            SceneAssetTypeId,
+            serializeContextScope.Get()));
+        EXPECT_EQ(truncatedAsset.m_data.m_name, AZ::Name("Unchanged"));
+
+        AZStd::vector<AZ::u8> corruptProduct = productBytes;
+        corruptProduct.back() ^= 1;
+        AZ::IO::ByteContainerStream corruptProductStream(&corruptProduct);
+        SceneAsset corruptAsset;
+        corruptAsset.m_data.m_name = AZ::Name("Unchanged");
+        EXPECT_FALSE(LoadAssetProduct(
+            corruptProductStream,
+            &corruptAsset,
+            SceneAssetTypeId,
+            serializeContextScope.Get()));
+        EXPECT_EQ(corruptAsset.m_data.m_name, AZ::Name("Unchanged"));
+
+        constexpr size_t ProductVersionOffset = 8;
+        AZStd::vector<AZ::u8> unsupportedProduct = productBytes;
+        unsupportedProduct[ProductVersionOffset] = 2;
+        AZ::IO::ByteContainerStream unsupportedProductStream(&unsupportedProduct);
+        SceneAsset unsupportedAsset;
+        unsupportedAsset.m_data.m_name = AZ::Name("Unchanged");
+        EXPECT_FALSE(LoadAssetProduct(
+            unsupportedProductStream,
+            &unsupportedAsset,
+            SceneAssetTypeId,
+            serializeContextScope.Get()));
+        EXPECT_EQ(unsupportedAsset.m_data.m_name, AZ::Name("Unchanged"));
+
         SceneAsset loadedAsset;
-        EXPECT_TRUE(AZ::Utils::LoadObjectFromFileInPlace(
-            response.m_outputProducts.front().m_productFileName,
-            loadedAsset,
+        AZ::IO::ByteContainerStream productStream(&productBytes);
+        EXPECT_TRUE(LoadAssetProduct(
+            productStream,
+            &loadedAsset,
+            SceneAssetTypeId,
             serializeContextScope.Get()));
         EXPECT_EQ(loadedAsset.m_data.m_name, sourceData.m_name);
         ASSERT_EQ(loadedAsset.m_data.m_shapes.size(), 1);
         EXPECT_FALSE(loadedAsset.m_data.m_shapes[0].m_archive.m_binaryState.empty());
         EXPECT_NE(loadedAsset.m_data.m_shapes[0].m_archive.m_buildFingerprint, 0);
-        EXPECT_EQ(loadedAsset.m_data.m_bodies.size(), 2);
+        ASSERT_EQ(loadedAsset.m_data.m_shapes[0].m_archive.m_dependencies.size(), 1);
+        EXPECT_EQ(
+            loadedAsset.m_data.m_shapes[0].m_archive.m_dependencies[0].m_path,
+            "Objects/Jolt/BuilderCustomShape.source");
+        EXPECT_NE(loadedAsset.m_data.m_shapes[0].m_archive.m_dependencies[0].m_contentHash, 0);
+        EXPECT_NE(loadedAsset.m_data.m_shapes[0].m_archive.m_contentHash, 0);
+        EXPECT_NE(loadedAsset.m_data.m_shapes[0].m_archive.m_formatVersion, 0);
+        EXPECT_EQ(
+            loadedAsset.m_data.m_shapes[0].m_archive.m_buildFingerprint,
+            GetNativeBuildFingerprint());
+        EXPECT_EQ(loadedAsset.m_data.m_shapes[0].m_archive.m_materialCount, 1);
+        EXPECT_EQ(loadedAsset.m_data.m_shapes[0].m_archive.m_childShapeCount, 0);
+        AZ::HashValue64 shapeArchiveHash = AZ::TypeHash64(
+            loadedAsset.m_data.m_shapes[0].m_archive.m_binaryState.data(),
+            loadedAsset.m_data.m_shapes[0].m_archive.m_binaryState.size());
+        shapeArchiveHash = AZ::TypeHash64(
+            loadedAsset.m_data.m_shapes[0].m_archive.m_dependencies.size(),
+            shapeArchiveHash);
+        for (const CustomShapeDependency& dependency : loadedAsset.m_data.m_shapes[0].m_archive.m_dependencies)
+        {
+            shapeArchiveHash = AZ::TypeHash64(
+                reinterpret_cast<const AZ::u8*>(dependency.m_path.data()),
+                dependency.m_path.size(),
+                shapeArchiveHash);
+            shapeArchiveHash = AZ::TypeHash64(dependency.m_contentHash, shapeArchiveHash);
+        }
+        EXPECT_EQ(
+            loadedAsset.m_data.m_shapes[0].m_archive.m_contentHash,
+            static_cast<AZ::u64>(shapeArchiveHash));
+        ASSERT_EQ(loadedAsset.m_data.m_softBodyDefinitions.size(), 1);
+        EXPECT_FALSE(loadedAsset.m_data.m_softBodyDefinitions[0].m_archive.m_binaryState.empty());
+        EXPECT_NE(loadedAsset.m_data.m_softBodyDefinitions[0].m_archive.m_buildFingerprint, 0);
+        EXPECT_EQ(loadedAsset.m_data.m_bodies.size(), 3);
         EXPECT_EQ(loadedAsset.m_data.m_constraints.size(), 1);
 
-        ISystem* system = AZ::Interface<ISystem>::Get();
-        ASSERT_TRUE(system);
+        const AZStd::array<MaterialHandle, 1> shapeMaterials = {MaterialHandle::Invalid};
+        const CookedShapeHandle importedShapeHandle = cooking->ImportShape(
+            loadedAsset.m_data.m_shapes[0].m_archive,
+            shapeMaterials,
+            {});
+        ASSERT_TRUE(importedShapeHandle);
+        EXPECT_TRUE(cooking->DestroyCookedShape(importedShapeHandle));
+
+        const SoftBodyDefinitionHandle importedSoftBodyHandle = system->ImportSoftBodyDefinition(
+            loadedAsset.m_data.m_softBodyDefinitions[0].m_archive,
+            {});
+        ASSERT_TRUE(importedSoftBodyHandle);
+        EXPECT_TRUE(system->DestroySoftBodyDefinition(importedSoftBodyHandle));
+
+        const SceneDefinitionHandle baselineDefinitionHandle =
+            system->CreateSceneDefinition(loadedAsset.m_data);
+        ASSERT_TRUE(baselineDefinitionHandle);
+        EXPECT_TRUE(system->DestroySceneDefinition(baselineDefinitionHandle));
+
+        EXPECT_EQ(
+            cooking->UnregisterCustomShapeProvider(&customShapeProvider),
+            ProviderRegistrationResult::Success);
+        EXPECT_FALSE(system->CreateSceneDefinition(loadedAsset.m_data));
+        ASSERT_EQ(
+            cooking->RegisterCustomShapeProvider(&customShapeProvider),
+            ProviderRegistrationResult::Success);
+
+        const AZ::u32 validArchiveVersion = loadedAsset.m_data.m_shapes[0].m_archive.m_formatVersion;
+        loadedAsset.m_data.m_shapes[0].m_archive.m_formatVersion = validArchiveVersion + 1;
+        EXPECT_FALSE(system->CreateSceneDefinition(loadedAsset.m_data));
+        loadedAsset.m_data.m_shapes[0].m_archive.m_formatVersion = validArchiveVersion;
+
         const SceneDefinitionHandle definitionHandle = system->CreateSceneDefinition(loadedAsset.m_data);
         ASSERT_TRUE(definitionHandle);
         const WorldHandle worldHandle = system->GetDefaultWorldHandle();
@@ -434,15 +694,19 @@ namespace Jolt::Editor
             worldHandle,
             definitionHandle);
         ASSERT_TRUE(instanceHandle);
-        AZStd::array<BodyHandle, 2> bodies;
+        AZStd::array<BodyHandle, 3> bodies;
         AZStd::array<ConstraintHandle, 1> constraints;
         EXPECT_TRUE(system->GetSceneBodies(worldHandle, instanceHandle, bodies).IsComplete());
         EXPECT_TRUE(system->GetSceneConstraints(worldHandle, instanceHandle, constraints).IsComplete());
         EXPECT_TRUE(bodies[0]);
         EXPECT_TRUE(bodies[1]);
+        EXPECT_TRUE(bodies[2]);
         EXPECT_TRUE(constraints[0]);
         EXPECT_TRUE(system->DestroySceneInstance(worldHandle, instanceHandle));
         EXPECT_TRUE(system->DestroySceneDefinition(definitionHandle));
+        EXPECT_EQ(
+            cooking->UnregisterCustomShapeProvider(&customShapeProvider),
+            ProviderRegistrationResult::Success);
     }
 
     TEST(EditorAssetBuilderTests, ProcessesSkeletonAndAnimationsIntoValidatedNativeArchives)
@@ -526,9 +790,10 @@ namespace Jolt::Editor
             AZStd::string_view(response.m_outputProducts.front().m_productFileName).ends_with("test_skeleton.jolt"));
 
         SkeletonAsset loadedAsset;
-        ASSERT_TRUE(AZ::Utils::LoadObjectFromFileInPlace(
+        ASSERT_TRUE(LoadAssetProductFile(
             response.m_outputProducts.front().m_productFileName,
-            loadedAsset,
+            &loadedAsset,
+            SkeletonAssetTypeId,
             serializeContextScope.Get()));
         EXPECT_EQ(loadedAsset.m_data.m_name.GetStringView(), sourceData.m_name);
         ASSERT_EQ(loadedAsset.m_data.m_animations.size(), 1);

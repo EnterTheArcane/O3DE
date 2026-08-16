@@ -6,5 +6,6 @@
 #
 
 set(FILES
-    Tests/EditorComponentTests.cpp
+    Tests/ProviderModule.cpp
+    Tests/ProviderModuleApi.h
 )

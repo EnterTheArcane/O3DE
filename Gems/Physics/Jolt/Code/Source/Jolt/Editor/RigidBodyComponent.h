@@ -23,6 +23,9 @@ namespace Jolt::Editor
             EditorRigidBodyComponentTypeId,
             AzToolsFramework::Components::EditorComponentBase);
 
+        RigidBodyComponent() = default;
+        explicit RigidBodyComponent(RigidBodyConfiguration configuration);
+
         static void Reflect(AZ::ReflectContext* context);
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);

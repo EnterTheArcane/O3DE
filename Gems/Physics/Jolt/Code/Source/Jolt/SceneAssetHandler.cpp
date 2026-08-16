@@ -7,10 +7,11 @@
 
 #include <Jolt/SceneAssetHandler.h>
 
+#include <Jolt/AssetProduct.h>
 #include <Jolt/SceneAsset.h>
 #include <Jolt/TypeIds.h>
 
-#include <AzCore/Serialization/Utils.h>
+#include <AzCore/std/utility/move.h>
 
 namespace Jolt
 {
@@ -47,10 +48,21 @@ namespace Jolt
         [[maybe_unused]] const AZ::Data::AssetFilterCB& assetLoadFilter)
     {
         SceneAsset* sceneAsset = asset.GetAs<SceneAsset>();
-        if (!sceneAsset || !stream || !AZ::Utils::LoadObjectFromStreamInPlace(*stream, *sceneAsset))
+        if (!sceneAsset || !stream)
         {
             return LoadResult::Error;
         }
+
+        SceneAsset loadedAsset;
+        if (!LoadAssetProduct(
+                *stream,
+                &loadedAsset,
+                SceneAssetTypeId))
+        {
+            return LoadResult::Error;
+        }
+
+        sceneAsset->m_data = AZStd::move(loadedAsset.m_data);
         return LoadResult::LoadComplete;
     }
 

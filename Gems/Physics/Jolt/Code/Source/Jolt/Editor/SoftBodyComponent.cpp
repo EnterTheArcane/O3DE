@@ -108,6 +108,8 @@ namespace Jolt::Editor
     {
         if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
+            SoftBodyComponentConfiguration::Reflect(serializeContext);
+
             serializeContext
                 ->Class<SoftBodyComponent, AzToolsFramework::Components::EditorComponentBase>()
                 ->Field("Configuration", &SoftBodyComponent::m_configuration);

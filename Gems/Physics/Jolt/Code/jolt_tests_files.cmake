@@ -9,6 +9,7 @@ set(FILES
     Tests/Benchmarks.cpp
     Tests/ComponentTests.cpp
     Tests/ConfigurationSerializerTests.cpp
+    Tests/CrossModuleProviderTests.cpp
     Tests/DebugRendererTests.cpp
     Tests/HandleTests.cpp
     Tests/Headers/BodyConfiguration.cpp
@@ -67,6 +68,7 @@ set(FILES
     Tests/Headers/WorldTypes.cpp
     Tests/Headers/WorldQueryBus.cpp
     Tests/NativeRuntimeTests.cpp
+    Tests/ProviderModuleApi.h
     Tests/SimulationTests.cpp
     Tests/TestsMain.cpp
 )

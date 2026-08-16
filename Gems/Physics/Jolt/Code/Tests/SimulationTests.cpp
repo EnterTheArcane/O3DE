@@ -21,6 +21,7 @@
 #include <AzCore/Utils/TypeHash.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/containers/array.h>
+#include <AzCore/std/functional.h>
 #include <AzCore/std/limits.h>
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/thread.h>
@@ -1919,43 +1920,6 @@ namespace Jolt
             SystemConfiguration configuration;
             configuration.m_defaultWorld.m_workerCount = 1;
             return configuration;
-        }
-
-        [[nodiscard]]
-        HairDefinitionHandle CreateMinimalHairDefinition(
-            ISystem& system)
-        {
-            HairDefinitionConfiguration configuration;
-            configuration.m_vertices = {
-                {.m_position = AZ::Vector3::CreateAxisZ(), .m_inverseMass = 0.0f},
-                {.m_position = AZ::Vector3::CreateAxisZ(0.5f)},
-                {.m_position = AZ::Vector3::CreateZero()},
-            };
-            configuration.m_strands = {
-                {.m_beginVertex = 0, .m_endVertex = 3, .m_materialIndex = 0},
-            };
-            configuration.m_materials.resize(1);
-            configuration.m_scalpVertices = {
-                AZ::Vector3(-1.0f, -1.0f, 1.0f),
-                AZ::Vector3(1.0f, -1.0f, 1.0f),
-                AZ::Vector3(0.0f, 1.0f, 1.0f),
-            };
-            configuration.m_scalpTriangles = {
-                {.m_firstVertex = 0, .m_secondVertex = 1, .m_thirdVertex = 2},
-            };
-            configuration.m_scalpInverseBindPoses = {
-                AZ::Transform::CreateIdentity(),
-            };
-            configuration.m_scalpSkinWeights = {
-                {.m_jointIndex = 0, .m_weight = 1.0f},
-                {.m_jointIndex = 0, .m_weight = 1.0f},
-                {.m_jointIndex = 0, .m_weight = 1.0f},
-            };
-            configuration.m_scalpSkinWeightsPerVertex = 1;
-            configuration.m_gridSizeX = 2;
-            configuration.m_gridSizeY = 2;
-            configuration.m_gridSizeZ = 2;
-            return system.CreateHairDefinition(configuration);
         }
 
         [[nodiscard]]
@@ -11162,6 +11126,74 @@ namespace Jolt
         EXPECT_GT(pairHits.front().m_firstFaceVertexCount, 0);
         EXPECT_GT(pairHits.front().m_secondFaceVertexCount, 0);
 
+        AZStd::atomic_bool beginConcurrentQueries{false};
+        AZStd::atomic_bool firstConcurrentQuerySucceeded{true};
+        AZStd::atomic_bool secondConcurrentQuerySucceeded{true};
+        AZStd::atomic_bool firstFloatEnvironmentRestored{false};
+        AZStd::atomic_bool secondFloatEnvironmentRestored{false};
+        AZStd::array<TransformedShapeCollisionHit, 1> firstConcurrentHits;
+        AZStd::array<TransformedShapeCollisionHit, 1> secondConcurrentHits;
+        const auto runConcurrentQueries =
+            [&](const int roundingMode,
+                AZStd::atomic_bool& succeeded,
+                AZStd::atomic_bool& restored,
+                AZStd::array<TransformedShapeCollisionHit, 1>& concurrentHits)
+            {
+                std::fesetround(roundingMode);
+                while (!beginConcurrentQueries.load(AZStd::memory_order_acquire))
+                {
+                    AZStd::this_thread::yield();
+                }
+
+                for (AZ::u32 queryIndex = 0; queryIndex < 256; ++queryIndex)
+                {
+                    const QueryResult result = system.CollideTransformedShapes(
+                        worldHandle,
+                        retainedShape,
+                        secondRetainedShape,
+                        collisionRequest,
+                        concurrentHits,
+                        {});
+                    if (result.m_hitCount == 0)
+                    {
+                        succeeded.store(false, AZStd::memory_order_release);
+                        break;
+                    }
+                }
+                restored.store(
+                    std::fegetround() == roundingMode,
+                    AZStd::memory_order_release);
+            };
+        AZStd::thread firstQueryThread(
+            runConcurrentQueries,
+            FE_DOWNWARD,
+            AZStd::ref(firstConcurrentQuerySucceeded),
+            AZStd::ref(firstFloatEnvironmentRestored),
+            AZStd::ref(firstConcurrentHits));
+        AZStd::thread secondQueryThread(
+            runConcurrentQueries,
+            FE_UPWARD,
+            AZStd::ref(secondConcurrentQuerySucceeded),
+            AZStd::ref(secondFloatEnvironmentRestored),
+            AZStd::ref(secondConcurrentHits));
+        beginConcurrentQueries.store(true, AZStd::memory_order_release);
+        firstQueryThread.join();
+        secondQueryThread.join();
+
+        EXPECT_TRUE(firstConcurrentQuerySucceeded.load(AZStd::memory_order_acquire));
+        EXPECT_TRUE(secondConcurrentQuerySucceeded.load(AZStd::memory_order_acquire));
+        EXPECT_TRUE(firstFloatEnvironmentRestored.load(AZStd::memory_order_acquire));
+        EXPECT_TRUE(secondFloatEnvironmentRestored.load(AZStd::memory_order_acquire));
+        EXPECT_EQ(
+            firstConcurrentHits.front().m_firstSubShapeId,
+            secondConcurrentHits.front().m_firstSubShapeId);
+        EXPECT_EQ(
+            firstConcurrentHits.front().m_secondSubShapeId,
+            secondConcurrentHits.front().m_secondSubShapeId);
+        EXPECT_FLOAT_EQ(
+            firstConcurrentHits.front().m_penetrationDepth,
+            secondConcurrentHits.front().m_penetrationDepth);
+
         const QueryResult placedPairResult = system.CollideTransformedShapes(
             worldHandle,
             ShapePlacement{
@@ -11176,6 +11208,36 @@ namespace Jolt
             pairHits,
             {});
         EXPECT_EQ(placedPairResult.m_hitCount, pairResult.m_hitCount);
+
+        ShapeConfiguration recyclableShapeConfiguration;
+        recyclableShapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle staleShapeHandle = system.CreateShape(
+            worldHandle,
+            recyclableShapeConfiguration);
+        ASSERT_TRUE(staleShapeHandle);
+        ASSERT_TRUE(system.DestroyShape(worldHandle, staleShapeHandle));
+        const ShapeHandle replacementShapeHandle = system.CreateShape(
+            worldHandle,
+            recyclableShapeConfiguration);
+        ASSERT_TRUE(replacementShapeHandle);
+        ASSERT_NE(staleShapeHandle, replacementShapeHandle);
+        pairHits.front().m_penetrationDepth = 123.0f;
+        const QueryResult stalePlacementResult = system.CollideTransformedShapes(
+            worldHandle,
+            ShapePlacement{
+                .m_shapeHandle = staleShapeHandle,
+                .m_transform = bodyConfiguration.m_transform,
+            },
+            ShapePlacement{
+                .m_shapeHandle = shapeHandle,
+                .m_transform = secondShapeTransform,
+            },
+            collisionRequest,
+            pairHits,
+            {});
+        EXPECT_EQ(stalePlacementResult.m_hitCount, 0);
+        EXPECT_FLOAT_EQ(pairHits.front().m_penetrationDepth, 123.0f);
+        EXPECT_TRUE(system.DestroyShape(worldHandle, replacementShapeHandle));
 
         secondShapeTransform.m_position.m_x += 4.5;
         ASSERT_TRUE(system.RetainShape(
@@ -14269,6 +14331,73 @@ namespace Jolt
         EXPECT_EQ(pairResult.m_hitCount, 1);
         EXPECT_EQ(provider.m_collisionCount.load(), 6);
         EXPECT_TRUE(provider.m_viewEvidence.load());
+
+        AZStd::atomic_bool beginConcurrentQueries{false};
+        AZStd::atomic_bool firstConcurrentQuerySucceeded{true};
+        AZStd::atomic_bool secondConcurrentQuerySucceeded{true};
+        AZStd::atomic_bool firstFloatEnvironmentRestored{false};
+        AZStd::atomic_bool secondFloatEnvironmentRestored{false};
+        const auto runConcurrentQueries =
+            [&](const int roundingMode,
+                AZStd::atomic_bool& succeeded,
+                AZStd::atomic_bool& restored)
+            {
+                std::fesetround(roundingMode);
+                while (!beginConcurrentQueries.load(AZStd::memory_order_acquire))
+                {
+                    AZStd::this_thread::yield();
+                }
+
+                for (AZ::u32 queryIndex = 0; queryIndex < 128; ++queryIndex)
+                {
+                    AZStd::array<TransformedShapeCollisionHit, 1> concurrentHits;
+                    AZStd::array<WorldPosition, 4> concurrentFirstFaceVertices;
+                    AZStd::array<WorldPosition, 4> concurrentSecondFaceVertices;
+                    const QueryResult concurrentResult = system.CollideTransformedShapes(
+                        worldHandle,
+                        retainedShape,
+                        retainedSphere,
+                        {
+                            .m_faceCollectionMode = FaceCollectionMode::Collect,
+                        },
+                        concurrentHits,
+                        {
+                            .m_queryVertices = concurrentFirstFaceVertices,
+                            .m_targetVertices = concurrentSecondFaceVertices,
+                        });
+                    if (!concurrentResult.IsComplete()
+                        || concurrentResult.m_hitCount != 1
+                        || concurrentHits.front().m_penetrationDepth != 0.75f)
+                    {
+                        succeeded.store(false, AZStd::memory_order_release);
+                        break;
+                    }
+                }
+
+                restored.store(
+                    std::fegetround() == roundingMode,
+                    AZStd::memory_order_release);
+            };
+        AZStd::thread firstQueryThread(
+            runConcurrentQueries,
+            FE_DOWNWARD,
+            AZStd::ref(firstConcurrentQuerySucceeded),
+            AZStd::ref(firstFloatEnvironmentRestored));
+        AZStd::thread secondQueryThread(
+            runConcurrentQueries,
+            FE_UPWARD,
+            AZStd::ref(secondConcurrentQuerySucceeded),
+            AZStd::ref(secondFloatEnvironmentRestored));
+        beginConcurrentQueries.store(true, AZStd::memory_order_release);
+        firstQueryThread.join();
+        secondQueryThread.join();
+
+        EXPECT_TRUE(firstConcurrentQuerySucceeded.load(AZStd::memory_order_acquire));
+        EXPECT_TRUE(secondConcurrentQuerySucceeded.load(AZStd::memory_order_acquire));
+        EXPECT_TRUE(firstFloatEnvironmentRestored.load(AZStd::memory_order_acquire));
+        EXPECT_TRUE(secondFloatEnvironmentRestored.load(AZStd::memory_order_acquire));
+        EXPECT_EQ(provider.m_collisionCount.load(), 262);
+
         provider.m_useDispatch = false;
         retainedShape = {};
         retainedSphere = {};

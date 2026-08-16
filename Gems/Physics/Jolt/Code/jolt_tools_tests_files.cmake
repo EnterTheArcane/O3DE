@@ -7,4 +7,10 @@
 
 set(FILES
     Tests/EditorAssetBuilderTests.cpp
+    Tests/EditorComponentTests.cpp
+)
+
+set(SKIP_UNITY_BUILD_INCLUSION_FILES
+    Tests/EditorAssetBuilderTests.cpp
+    Tests/EditorComponentTests.cpp
 )

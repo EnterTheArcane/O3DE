@@ -98,19 +98,19 @@ Build both Profile and Release in the primary tree, then compile the no-unity, d
 
 ```bash
 cmake --build build/jolt_mac --config Profile \
-    --target Jolt.Tests Jolt.Editor.Tests Jolt.Editor.Builder.Tests Editor AssetProcessor \
+    --target Jolt.Tests Editor AssetProcessor \
     --parallel "$jobs"
 
 cmake --build build/jolt_mac --config Release \
-    --target Jolt.Tests Jolt.Editor.Tests Jolt.Editor.Builder.Tests Editor AssetProcessor \
+    --target Jolt.Tests Editor AssetProcessor \
     --parallel "$jobs"
 
 cmake --build build/jolt_mac_no_unity --config Profile \
-    --target Jolt.Tests Jolt.Editor.Tests Jolt.Editor.Builder.Tests \
+    --target Jolt.Tests \
     --parallel "$jobs"
 
 cmake --build build/jolt_mac_double --config Profile \
-    --target Jolt.Tests Jolt.Editor.Tests Jolt.Editor.Builder.Tests \
+    --target Jolt.Tests \
     --parallel "$jobs"
 
 cmake --build build/jolt_mac_mono --config Profile \
@@ -119,21 +119,21 @@ cmake --build build/jolt_mac_mono --config Profile \
 ```
 
 If a generated target name differs on the current branch, use `cmake --build <tree> --target help` and record the resolved target; do not
-silently skip it. Run the three focused suites in every applicable configuration:
+silently skip it. The host-tools `Jolt.Tests` target contains the runtime, editor, and builder tests. Run it in every applicable configuration:
 
 ```bash
 for configuration in Profile Release; do
     ctest --test-dir build/jolt_mac --build-config "$configuration" \
-        -R '^Gem::Jolt\.(Tests|Editor\.Tests|Editor\.Builder\.Tests)\.main::TEST_RUN$' \
+        -R '^Gem::Jolt\.Tests\.main::TEST_RUN$' \
         --output-on-failure
 done
 
 ctest --test-dir build/jolt_mac_no_unity --build-config Profile \
-    -R '^Gem::Jolt\.(Tests|Editor\.Tests|Editor\.Builder\.Tests)\.main::TEST_RUN$' \
+    -R '^Gem::Jolt\.Tests\.main::TEST_RUN$' \
     --output-on-failure
 
 ctest --test-dir build/jolt_mac_double --build-config Profile \
-    -R '^Gem::Jolt\.(Tests|Editor\.Tests|Editor\.Builder\.Tests)\.main::TEST_RUN$' \
+    -R '^Gem::Jolt\.Tests\.main::TEST_RUN$' \
     --output-on-failure
 ```
 
@@ -197,11 +197,11 @@ cmake --preset mac-ninja-no-unity -S . -B build/jolt_mac_asan \
     -DLY_BUILD_WITH_ADDRESS_SANITIZER=ON
 
 cmake --build build/jolt_mac_asan --config Profile \
-    --target Jolt.Tests Jolt.Editor.Tests Jolt.Editor.Builder.Tests \
+    --target Jolt.Tests \
     --parallel "$jobs"
 
 ctest --test-dir build/jolt_mac_asan --build-config Profile \
-    -R '^Gem::Jolt\.(Tests|Editor\.Tests|Editor\.Builder\.Tests)\.main::TEST_RUN$' \
+    -R '^Gem::Jolt\.Tests\.main::TEST_RUN$' \
     --output-on-failure
 ```
 

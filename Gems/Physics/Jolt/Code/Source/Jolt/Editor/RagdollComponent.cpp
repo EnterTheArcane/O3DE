@@ -14,6 +14,7 @@
 #include <AzCore/Math/Matrix3x4.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/std/utility/move.h>
 #include <AzFramework/Translation/TranslationDef.h>
 #include <AzFramework/Viewport/ViewportColors.h>
 
@@ -21,11 +22,19 @@ namespace Jolt::Editor
 {
     RagdollComponent::RagdollComponent() = default;
 
+    RagdollComponent::RagdollComponent(
+        RagdollComponentConfiguration configuration)
+        : m_configuration(AZStd::move(configuration))
+    {
+    }
+
     void RagdollComponent::Reflect(
         AZ::ReflectContext* context)
     {
         if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
+            RagdollComponentConfiguration::Reflect(serializeContext);
+
             serializeContext
                 ->Class<RagdollComponent, AzToolsFramework::Components::EditorComponentBase>()
                 ->Field("Configuration", &RagdollComponent::m_configuration);
