@@ -637,7 +637,7 @@ namespace AZ::ShaderCompiler
         {
             outstream << (attrInfo.m_argList.begin() == attrInfo.m_argList.end() ? "" : Unescape(Undecorate("\"", *attrInfo.m_argList.begin())));
             auto outVer = [&](const AttributeInfo::Argument& arg) { outstream << " " << Unescape(Undecorate("\"", arg)); };
-            for_each(std::next(attrInfo.m_argList.begin()), attrInfo.m_argList.end(), outVer);
+            std::for_each(std::next(attrInfo.m_argList.begin()), attrInfo.m_argList.end(), outVer);
             outstream << '\n';
         }
 
@@ -693,7 +693,6 @@ namespace AZ::ShaderCompiler
 
     void CodeEmitter::EmitTypeAlias(const IdentifierUID& uid, const TypeAliasInfo& aliasInfo, const Options& options) const
     {
-        using SF = StorageFlag;
         m_out << "typedef " << GetTranslatedName(aliasInfo.m_canonicalType, UsageContext::ReferenceSite, options)
               << " " << GetTranslatedName(uid, UsageContext::DeclarationSite) << ";\n";
     }

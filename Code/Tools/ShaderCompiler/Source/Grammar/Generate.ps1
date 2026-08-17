@@ -12,6 +12,9 @@ $ErrorActionPreference = "Stop"
 
 $grammarDirectory = $PSScriptRoot
 $antlrJar = Join-Path $grammarDirectory "antlr4.jar"
+$antlrJarDownload = "$antlrJar.download"
+$antlrJarUri = "https://www.antlr.org/download/antlr-4.13.2-complete.jar"
+$antlrJarSha256 = "EAE2DFA119A64327444672AFF63E9EC35A20180DC5B8090B7A6AB85125DF4D76"
 $lexerGrammar = Join-Path $grammarDirectory "azslLexer.g4"
 $parserGrammar = Join-Path $grammarDirectory "azslParser.g4"
 
@@ -19,6 +22,48 @@ $java = Get-Command java -CommandType Application -ErrorAction SilentlyContinue
 if (-not $java)
 {
     throw "Java was not found on PATH. Install a Java runtime before regenerating the grammar."
+}
+
+function Test-AntlrJar
+{
+    if (-not (Test-Path -LiteralPath $antlrJar -PathType Leaf))
+    {
+        return $false
+    }
+
+    $actualHash = (Get-FileHash -LiteralPath $antlrJar -Algorithm SHA256).Hash
+    if ($actualHash -eq $antlrJarSha256)
+    {
+        return $true
+    }
+
+    Write-Warning "Removing ANTLR JAR with unexpected SHA-256: $actualHash"
+    Remove-Item -LiteralPath $antlrJar -Force
+    return $false
+}
+
+if (-not (Test-AntlrJar))
+{
+    try
+    {
+        Write-Host "Downloading ANTLR 4.13.2..."
+        Invoke-WebRequest -Uri $antlrJarUri -OutFile $antlrJarDownload
+
+        $actualHash = (Get-FileHash -LiteralPath $antlrJarDownload -Algorithm SHA256).Hash
+        if ($actualHash -ne $antlrJarSha256)
+        {
+            throw "Downloaded ANTLR JAR has SHA-256 '$actualHash'; expected '$antlrJarSha256'."
+        }
+
+        Move-Item -LiteralPath $antlrJarDownload -Destination $antlrJar
+    }
+    finally
+    {
+        if (Test-Path -LiteralPath $antlrJarDownload)
+        {
+            Remove-Item -LiteralPath $antlrJarDownload -Force
+        }
+    }
 }
 
 function Invoke-Antlr
@@ -38,7 +83,7 @@ function Invoke-Antlr
         "-o"
         $grammarDirectory
         "-listener"
-        "-visitor"
+        "-no-visitor"
     ) + $AdditionalArguments + @($Grammar)
 
     & $java.Source @antlrArguments

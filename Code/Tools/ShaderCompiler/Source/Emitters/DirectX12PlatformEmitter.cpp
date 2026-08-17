@@ -136,7 +136,7 @@ namespace AZ::ShaderCompiler
         auto retInfo = varInfo->GetTypeRefInfo();
         
         // Volatile is not allowed for global variables, so we create a function to wrap it.
-        std:string varName = "sc_" + JoinAllNestedNamesWithUnderscore(symbolUid.m_name);
+        std::string varName = "sc_" + JoinAllNestedNamesWithUnderscore(symbolUid.m_name);
         std::string retType = codeEmitter.GetTranslatedName(retInfo, UsageContext::ReferenceSite);
         std::string functionName = "GetSpecializationConstant_" + JoinAllNestedNamesWithUnderscore(symbolUid.m_name) + "()";
 

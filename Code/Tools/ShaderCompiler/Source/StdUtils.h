@@ -7,21 +7,13 @@
  */
 #pragma once
 
-// setup of low level library includes in this file.
-// if not defined -> fallback to std
-
-#ifdef _WIN32 
-// I don't recommend custom lib utilities on windows because they don't have natvis and are hard to debug.
-#elif __APPLE__
-#define USE_TINY_OPTIONAL
-#define USE_MPARK_VARIANT
-#else
-// Use the proper std lib
-#endif
-
 #include <cassert>
 #include <cctype>
 #include <cfloat>
+
+#include <AzCore/std/containers/variant.h>
+#include <AzCore/std/function/invoke.h>
+#include <AzCore/std/optional.h>
 
 #include <algorithm>
 #include <array>
@@ -36,51 +28,22 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#ifdef USE_MPARK_VARIANT
-#include "variant.hpp"
-namespace StdUtils = mpark;
-#else
-#include <variant>
-namespace StdUtils = std;
-#endif
-
-#if defined(USE_MPARK_VARIANT) && !defined(_WIN32)
-// one shortcut for is_invocable, because Xcode9 couldn't get it right:
 template <typename C, typename... T>
-using is_invocable = mpark::lib::is_invocable<C, T...>;
-// same for invoke_result
-template <typename C, typename... T>
-using invoke_result_t = mpark::lib::invoke_result_t<C, T...>;
-#else
-template <typename C, typename... T>
-using is_invocable = std::is_invocable<C, T...>;
+using is_invocable = AZStd::is_invocable<C, T...>;
 
 template <typename C, typename... T>
-using invoke_result_t = std::invoke_result_t<C, T...>;
-#endif
+using invoke_result_t = AZStd::invoke_result_t<C, T...>;
 
-#if defined(USE_TINY_OPTIONAL)
-#include <tiny/optional.h>
-#else // std
-#include <optional>
-inline constexpr auto none = std::nullopt;
-#endif
+namespace StdUtils = AZStd;
+inline constexpr auto none = AZStd::nullopt;
 
 namespace AZ
 {
-    // C++17 `std::variant` for C++11/14/17
-    using StdUtils::get;
-    using StdUtils::holds_alternative;
-    using StdUtils::monostate;
-    using StdUtils::variant;
-
-    // Alternatives for the C++17 std::optional
-#if defined(USE_TINY_OPTIONAL)
-    using tiny::none;
-    using tiny::optional;
-#else
-    using std::optional;
-#endif
+    using AZStd::get;
+    using AZStd::holds_alternative;
+    using AZStd::monostate;
+    using AZStd::optional;
+    using AZStd::variant;
 
     // Configure basic symbols so we can use them unqualified -> easy to change to AzStd without big refactorings.
 

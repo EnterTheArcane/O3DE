@@ -206,7 +206,7 @@ namespace AZ::ShaderCompiler
 namespace
 {
     using ID = enum I : int {};
-    ID operator "" _id (unsigned long long i) { return ID(i); }
+    ID operator""_id (unsigned long long i) { return ID(i); }
 }
 
 namespace AZ::Tests

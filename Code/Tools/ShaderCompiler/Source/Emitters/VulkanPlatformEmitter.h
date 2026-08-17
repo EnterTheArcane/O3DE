@@ -8,7 +8,7 @@
 #pragma once
 
 #include <AzslcPlatformEmitter.h>
-#include <CommonVulkanPlatformEmitter.h>
+#include "CommonVulkanPlatformEmitter.h"
 
 namespace AZ::ShaderCompiler
 {

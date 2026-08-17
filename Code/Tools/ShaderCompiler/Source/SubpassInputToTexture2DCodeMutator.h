@@ -71,7 +71,7 @@ namespace AZ::ShaderCompiler
         //! Cached when RunMiddleEndMutations is called.
         IntermediateRepresentation* m_ir = nullptr;
 
-        CommonTokenStream* m_stream = nullptr;
+        [[maybe_unused]] CommonTokenStream* m_stream = nullptr;
 
         //! A map of TokenIndex to Mutation. If a TokenIndex is present,
         //! it means it should produce mutated text during emission.

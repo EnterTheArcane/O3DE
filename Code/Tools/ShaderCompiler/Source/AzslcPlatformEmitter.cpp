@@ -10,9 +10,22 @@
 
 #include "AzslcEmitter.h"
 #include "AzslcPlatformEmitter.h"
+#include "Emitters/DirectX12PlatformEmitter.h"
+#include "Emitters/MetalPlatformEmitter.h"
+#include "Emitters/VulkanPlatformEmitter.h"
 
 namespace AZ::ShaderCompiler
 {
+    namespace
+    {
+        void RegisterPlatformEmitters()
+        {
+            (void)DirectX12PlatformEmitter::RegisterPlatformEmitter();
+            (void)MetalPlatformEmitter::RegisterPlatformEmitter();
+            (void)VulkanPlatformEmitter::RegisterPlatformEmitter();
+        }
+    }
+
     const PlatformEmitter* PlatformEmitter::GetDefaultEmitter() noexcept(true)
     {
         // The default platform emitter is never registered and will never be a result in PlatformEmitter::GetEmitter()
@@ -25,6 +38,7 @@ namespace AZ::ShaderCompiler
 
     const PlatformEmitter* PlatformEmitter::GetEmitter(const string& key) noexcept(true)
     {
+        RegisterPlatformEmitters();
         std::lock_guard<std::mutex> lock(emitterListMutex);
 
         try

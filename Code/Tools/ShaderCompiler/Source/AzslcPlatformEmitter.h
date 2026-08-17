@@ -40,10 +40,8 @@ namespace AZ::ShaderCompiler
 
         PlatformEmitter(PlatformEmitter const&) = delete;
         void operator=(PlatformEmitter const&)  = delete;
-        void operator=(PlatformEmitter const&& other)
-        {
-            return *this = std::move(other);
-        }
+        PlatformEmitter(PlatformEmitter&&) = delete;
+        PlatformEmitter& operator=(PlatformEmitter&&) = delete;
 
     protected:
         PlatformEmitter() {};

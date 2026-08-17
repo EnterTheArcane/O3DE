@@ -11,47 +11,47 @@
 
 // preprocessor sadness. would not have to do that if we had BOOST.PP
 #define MSVCFIX_EXPAND(x) x
-#define AZ_FOR_EACH_1(pppredicate,  val, x)      pppredicate(x, val)
-#define AZ_FOR_EACH_2(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_1 (pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_3(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_2 (pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_4(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_3 (pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_5(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_4 (pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_6(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_5 (pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_7(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_6 (pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_8(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_7 (pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_9(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_8 (pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_10(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_9 (pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_11(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_10(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_12(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_11(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_13(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_12(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_14(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_13(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_15(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_14(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_16(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_15(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_17(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_16(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_18(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_17(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_19(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_18(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_20(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_19(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_21(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_20(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_22(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_21(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_23(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_22(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_24(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_23(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_25(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_24(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_26(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_25(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_27(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_26(pppredicate, val + 1, __VA_ARGS__))
-#define AZ_FOR_EACH_28(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZ_FOR_EACH_27(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_1(pppredicate,  val, x)      pppredicate(x, val)
+#define AZSLC_FOR_EACH_2(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_1 (pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_3(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_2 (pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_4(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_3 (pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_5(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_4 (pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_6(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_5 (pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_7(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_6 (pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_8(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_7 (pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_9(pppredicate,  val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_8 (pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_10(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_9 (pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_11(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_10(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_12(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_11(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_13(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_12(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_14(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_13(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_15(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_14(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_16(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_15(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_17(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_16(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_18(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_17(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_19(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_18(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_20(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_19(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_21(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_20(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_22(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_21(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_23(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_22(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_24(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_23(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_25(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_24(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_26(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_25(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_27(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_26(pppredicate, val + 1, __VA_ARGS__))
+#define AZSLC_FOR_EACH_28(pppredicate, val, x, ...) pppredicate(x, val) MSVCFIX_EXPAND(AZSLC_FOR_EACH_27(pppredicate, val + 1, __VA_ARGS__))
 #define AZ_FIRST_ARG_(N, ...) N
 #define AZ_FIRST_ARG(args) AZ_FIRST_ARG_ args  // hack needed for MSVC bug
 // Laurent Deniau's method
-#define AZ_FOR_EACH_NARG(...) AZ_FOR_EACH_NARG_(__VA_ARGS__, AZ_FOR_EACH_RSEQ_N())
-#define AZ_FOR_EACH_NARG_(...) MSVCFIX_EXPAND(AZ_FOR_EACH_ARG_N(__VA_ARGS__))
-#define AZ_FOR_EACH_ARG_N(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, N, ...) N
-#define AZ_FOR_EACH_RSEQ_N() 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+#define AZSLC_FOR_EACH_NARG(...) AZSLC_FOR_EACH_NARG_(__VA_ARGS__, AZSLC_FOR_EACH_RSEQ_N())
+#define AZSLC_FOR_EACH_NARG_(...) MSVCFIX_EXPAND(AZSLC_FOR_EACH_ARG_N(__VA_ARGS__))
+#define AZSLC_FOR_EACH_ARG_N(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, N, ...) N
+#define AZSLC_FOR_EACH_RSEQ_N() 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
 #define AZ_CONCATENATE(x,y) x##y
-#define AZ_FOR_EACH_(N, pppredicate, val, ...) MSVCFIX_EXPAND(AZ_CONCATENATE(AZ_FOR_EACH_, N)(pppredicate, val, __VA_ARGS__))
+#define AZSLC_FOR_EACH_(N, pppredicate, val, ...) MSVCFIX_EXPAND(AZ_CONCATENATE(AZSLC_FOR_EACH_, N)(pppredicate, val, __VA_ARGS__))
 // Final API:
-// use as such:  AZ_FOR_EACH( LAMBDAMACRO_1ARG, LIST_OF_PARAMETERS* )
-#define AZ_FOR_EACH(pppredicate, ...)\
-    AZ_FOR_EACH_(AZ_FOR_EACH_NARG(__VA_ARGS__), pppredicate, 0, __VA_ARGS__)
+// use as such:  AZSLC_FOR_EACH( LAMBDAMACRO_1ARG, LIST_OF_PARAMETERS* )
+#define AZSLC_FOR_EACH(pppredicate, ...)\
+    AZSLC_FOR_EACH_(AZSLC_FOR_EACH_NARG(__VA_ARGS__), pppredicate, 0, __VA_ARGS__)
 
 
 #define GEN_ONE_ENUMERATOR_LINE(X, val)          X,
@@ -65,7 +65,7 @@ static constexpr string_view ToStr(EnumType enumValue)\
 {\
   switch (enumValue)\
   {\
-    AZ_FOR_EACH( GEN_ONE_CASE, __VA_ARGS__ )\
+    AZSLC_FOR_EACH( GEN_ONE_CASE, __VA_ARGS__ )\
     default: break;\
   }\
   return "<error>";\
@@ -76,7 +76,7 @@ static constexpr string_view ToStr(EnumType enumValue)\
 #define GEN_FROM_STRING_FUNCTION(...)\
 static constexpr EnumType FromStr(string_view str)\
 {\
-  AZ_FOR_EACH( GEN_ONE_IF_STR_EQ, __VA_ARGS__ )\
+  AZSLC_FOR_EACH( GEN_ONE_IF_STR_EQ, __VA_ARGS__ )\
   return EndEnumeratorSentinel_;\
 }
 
@@ -87,14 +87,14 @@ struct EnumTypeName\
     /** the real internal enum type */\
     enum EnumType\
     {\
-        AZ_FOR_EACH( EnumeratorInit, __VA_ARGS__ )\
-        EnumeratorInit(EndEnumeratorSentinel_, AZ_FOR_EACH_NARG(__VA_ARGS__))\
+        AZSLC_FOR_EACH( EnumeratorInit, __VA_ARGS__ )\
+        EnumeratorInit(EndEnumeratorSentinel_, AZSLC_FOR_EACH_NARG(__VA_ARGS__))\
     };\
     \
     template <auto... Values> struct MetaVals{};\
     /** meta programming access of enumerators in the form of a template value list */\
     using MetaValueList = MetaVals<\
-        AZ_FOR_EACH( GEN_ONE_ENUMERATOR_LINE, __VA_ARGS__ )\
+        AZSLC_FOR_EACH( GEN_ONE_ENUMERATOR_LINE, __VA_ARGS__ )\
         EndEnumeratorSentinel_\
     >;\
     /** construction by default and by implicit conversion from the internal enum type */\

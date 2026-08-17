@@ -14,9 +14,9 @@
 #include "DiagnosticStream.h"
 
 #include "antlr4-runtime.h"
-#include "generated/azslLexer.h"
-#include "generated/azslParserBaseListener.h"
-#include "generated/azslParser.h"
+#include "azslLexer.h"
+#include "azslParserBaseListener.h"
+#include "azslParser.h"
 
 #include "AzslcPredefinedTypes.h"
 
@@ -281,7 +281,7 @@ namespace AZ::ShaderCompiler
         string GetDisplayName() const
         {
             vector<StorageFlag> bag;
-            auto end = std::copy_if(StorageFlag::Enumerate{}.begin(), StorageFlag::Enumerate{}.end(), std::back_inserter(bag),
+            std::copy_if(StorageFlag::Enumerate{}.begin(), StorageFlag::Enumerate{}.end(), std::back_inserter(bag),
                                     [&](auto sf) -> bool { return (m_flag & sf) && (sf & ~StorageFlag::Other); });
             // Join will call operator<< on StorageFlag::EnumType for stringification
             return string{Trim(Join(bag.begin(), bag.end(), " ") + " " + Join(m_others.begin(), m_others.end(), " "))};
@@ -917,8 +917,8 @@ namespace AZ::ShaderCompiler
             for (auto* identifier : ctx->qualifiedId()->nestedNameSpecifier()->Identifier())
             {
                 action(IdExpressionPart{identifier->getSymbol(), IdExpressionPart::NestedNameSpecifier});
-                auto* nextToken = identifier->getSymbol()->getTokenSource()->nextToken().get();
-                action(IdExpressionPart{nextToken, IdExpressionPart::ScopeResolutionOperator});
+                std::unique_ptr<Token> nextToken = identifier->getSymbol()->getTokenSource()->nextToken();
+                action(IdExpressionPart{nextToken.get(), IdExpressionPart::ScopeResolutionOperator});
             }
             Token* last = ctx->qualifiedId()->unqualifiedId()->Identifier()->getSymbol();
             action(IdExpressionPart{last, IdExpressionPart::QualifiedLeaf});
@@ -1328,7 +1328,7 @@ namespace AZ::ShaderCompiler
         else if (ctx->Void())
         {
             assert(string_view{AZ::ShaderCompiler::Predefined::Void[0]} == ctx->Void()->getText());
-            return {UnqualifiedName{ctx->Void()->getText()}}; // "void"
+            return {{UnqualifiedName{ctx->Void()->getText()}}}; // "void"
         }
         // this could be a typeof, let's return the node for further resolve!
         return {ExtractedTypeExt{UnqualifiedName{ctx->getText()}, ctx}};

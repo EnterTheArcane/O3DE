@@ -374,7 +374,6 @@ namespace AZ
 
 #ifndef NDEBUG
 #include <cassert>
-#include "variant.hpp"
 #include <string>
 
 namespace AZ::Tests
@@ -401,10 +400,10 @@ namespace AZ::Tests
             });
 
         {  // check that the variant factory works
-            using mpark::variant;
-            using mpark::monostate;
-            using mpark::get;
-            using mpark::holds_alternative;
+            using AZStd::variant;
+            using AZStd::monostate;
+            using AZStd::get;
+            using AZStd::holds_alternative;
 
             struct S { bool b = true; };
             using V = variant<monostate, int, string, S>;
