@@ -9,24 +9,22 @@ if(NOT PAL_TRAIT_BUILD_HOST_TOOLS)
     return()
 endif()
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty)
-
 ly_add_target(
     NAME ShaderCompiler STATIC
     NAMESPACE AZ
-    NO_UNITY
     FILES_CMAKE
         shadercompiler_files.cmake
     INCLUDE_DIRECTORIES
         PRIVATE
             Source
             Source/External
-            Source/Grammar
     BUILD_DEPENDENCIES
         PRIVATE
             AZ::AzCore
-            3rdParty::ANTLR4
 )
+
+include(3rdParty/antlr4.cmake)
+target_link_libraries(ShaderCompiler PUBLIC 3rdParty::antlr4)
 
 target_compile_options(ShaderCompiler PRIVATE
     ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS}
@@ -41,19 +39,16 @@ target_compile_options(ShaderCompiler PRIVATE
 ly_add_target(
     NAME azslc EXECUTABLE
     NAMESPACE AZ
-    NO_UNITY
     FILES_CMAKE
         azslc_files.cmake
     INCLUDE_DIRECTORIES
         PRIVATE
             Source
             Source/External
-            Source/Grammar
     BUILD_DEPENDENCIES
         PRIVATE
-            AZ::ShaderCompiler
             AZ::AzCore
-            3rdParty::ANTLR4
+            AZ::ShaderCompiler
 )
 
 target_compile_options(azslc PRIVATE

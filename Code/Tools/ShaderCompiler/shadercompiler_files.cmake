@@ -82,3 +82,10 @@ set(FILES
     Source/Texture2DMSto2DCodeMutator.h
     Source/exportKeywords.py
 )
+
+set(SKIP_UNITY_BUILD_INCLUSION_FILES
+    Source/Grammar/azslLexer.cpp
+    Source/Grammar/azslParser.cpp
+    Source/Grammar/azslParserBaseListener.cpp
+    Source/Grammar/azslParserListener.cpp
+)

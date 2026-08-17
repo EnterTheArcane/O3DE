@@ -12,7 +12,7 @@
 namespace AZ::ShaderCompiler
 {
     static constexpr char DirectX12PlatformEmitterName[] = "dx";
-    static const PlatformEmitter* s_platformEmitter = DirectX12PlatformEmitter::RegisterPlatformEmitter();
+    static const PlatformEmitter* s_directX12PlatformEmitter = DirectX12PlatformEmitter::RegisterPlatformEmitter();
 
     const PlatformEmitter* DirectX12PlatformEmitter::RegisterPlatformEmitter() noexcept(false)
     {

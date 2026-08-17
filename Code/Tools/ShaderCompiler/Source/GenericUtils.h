@@ -460,7 +460,7 @@ namespace AZ
         {
             if constexpr (typename DetectedOr<EnumTypeTemplateParam, SubEnumType, EnumTypeTemplateParam>::value_t())
             {
-                using It = typename EnumTypeTemplateParam::Iterator;
+                using It [[maybe_unused]] = typename EnumTypeTemplateParam::Iterator;
                 assert(*(++It{ EnumType(4) }) == 8);  // verify that the reflectable enum is a power enum (flag-able).
             }
         }

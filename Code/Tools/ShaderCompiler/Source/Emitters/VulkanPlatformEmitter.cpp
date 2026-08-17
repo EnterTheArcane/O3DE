@@ -12,7 +12,7 @@
 namespace AZ::ShaderCompiler
 {
     static constexpr char VulkanPlatformEmitterName[] = "vk";
-    static const PlatformEmitter* s_platformEmitter = VulkanPlatformEmitter::RegisterPlatformEmitter();
+    static const PlatformEmitter* s_vulkanPlatformEmitter = VulkanPlatformEmitter::RegisterPlatformEmitter();
 
     const PlatformEmitter* VulkanPlatformEmitter::RegisterPlatformEmitter() noexcept(false)
     {

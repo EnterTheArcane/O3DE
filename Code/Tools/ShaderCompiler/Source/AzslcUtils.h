@@ -14,9 +14,9 @@
 #include "DiagnosticStream.h"
 
 #include "antlr4-runtime.h"
-#include "azslLexer.h"
-#include "azslParserBaseListener.h"
-#include "azslParser.h"
+#include <Grammar/azslLexer.h>
+#include <Grammar/azslParserBaseListener.h>
+#include <Grammar/azslParser.h>
 
 #include "AzslcPredefinedTypes.h"
 
