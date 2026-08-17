@@ -5,7 +5,7 @@ ShaderCompiler is O3DE's AZSL compiler.
 The host-tools build provides two internal CMake targets:
 
 - `AZ::ShaderCompiler` is the static compiler implementation.
-- `AZ::azslc` is the command-line executable and produces `azslc`.
+- `AZ::Azslc` is the command-line executable and produces `azslc`.
 
 ShaderCompiler does not yet expose a supported C++ API. Its headers under `Source`
 are implementation details.
@@ -15,7 +15,7 @@ are implementation details.
 Configure O3DE normally, then build the command-line target:
 
 ```console
-cmake --build <build-directory> --target azslc --config Profile
+cmake --build <build-directory> --target Azslc --config Profile
 ```
 
 The executable is written to `<build-directory>/bin/profile/azslc` (or

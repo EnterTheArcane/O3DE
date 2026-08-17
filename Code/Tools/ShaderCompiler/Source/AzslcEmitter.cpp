@@ -218,8 +218,8 @@ namespace AZ::ShaderCompiler
     //! setup all scope migrations (srg content to global, local structs to global)
     void CodeEmitter::SetupScopeMigrations(const Options& options)
     {
-        m_translations.SetAccessSymbolQueryFunctor([=](QualifiedNameView qnv){return m_ir->GetKindInfo(IdentifierUID{qnv});});
-        m_translations.SetGetSeenatFunctor([=](QualifiedNameView qnv) -> vector<Seenat>&
+        m_translations.SetAccessSymbolQueryFunctor([this](QualifiedNameView qnv){return m_ir->GetKindInfo(IdentifierUID{qnv});});
+        m_translations.SetGetSeenatFunctor([this](QualifiedNameView qnv) -> vector<Seenat>&
                                             {
                                                 auto* uidkind = m_ir->GetIdAndKindInfo(qnv);
                                                 if (uidkind)
@@ -290,9 +290,8 @@ namespace AZ::ShaderCompiler
             {
                 for_each(srgInfo->m_CBs.begin(), srgInfo->m_CBs.end(), [this](const IdentifierUID& viewUid)
                          {
-                             auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(viewUid.GetName());
                              // all buffer types references must be mutated to [0]
-                             assert(varInfo->GetTypeClass() == TypeClass::ConstantBuffer);
+                             assert(m_ir->GetSymbolSubAs<VarInfo>(viewUid.GetName())->GetTypeClass() == TypeClass::ConstantBuffer);
                              m_translations.AddCustomBehavior(viewUid.GetName(),
                                                               BehaviorEvent::OnReference,
                                                               [this](QualifiedNameView, UsageContext, const string& proposition, ssize_t tokenId)
@@ -316,7 +315,7 @@ namespace AZ::ShaderCompiler
                             // we need to mutate this to MyRsc_SRGConstantBuffer.MyRsc_m_f4
                             m_translations.AddCustomBehavior(fieldUid.GetName(),
                                                             BehaviorEvent::OnReference,
-                                                            [this, srgUID=srgUID](QualifiedNameView, UsageContext, string proposition, ssize_t)
+                                                            [srgUID = srgUID](QualifiedNameView, UsageContext, string proposition, ssize_t)
                                                             {
                                                                 string constantBufferId = UnMangle(MakeSrgConstantsCBName(srgUID));
                                                                 string translatedFieldId = UnMangle(string{ExtractLeaf(ReMangle(proposition))});
@@ -579,11 +578,11 @@ namespace AZ::ShaderCompiler
         if (auto attrList = m_ir->m_symbols.GetAttributeList(uid))
         {
             for_each(attrList->begin(), attrList->end(),
-                     [=](auto&& attrInfo)
+                     [this, omissionList](auto&& attrInfo)
                      {
                          if (!IsIn(attrInfo.m_attribute, omissionList))
                          {
-                            EmitAttribute(attrInfo);
+                            this->EmitAttribute(attrInfo);
                          }
                      });
         }

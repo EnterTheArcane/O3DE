@@ -305,7 +305,7 @@ namespace AZ::ShaderCompiler
                 // establish vertical links
                 string path;
                 IdentifierUID parent;
-                ForEachPathPart(disambiguated.GetName(), [this, &solver, &path, &parent, &isFunctionOrVariableOrType](PathPart part)
+                ForEachPathPart(disambiguated.GetName(), [&solver, &path, &parent, &isFunctionOrVariableOrType](PathPart part)
                                 {
                                     path = JoinPath(path, part.m_slice);
                                     auto [isFunc, isVar, _] = isFunctionOrVariableOrType(path);

@@ -240,8 +240,6 @@ namespace AZ::ShaderCompiler
                 // In turn if all Seenats for any given used SRG are removed then the SRG becomes unused.
                 vector<misc::Interval> unusedSrgScopes = getSymbolScopesFunc(srgUid);
 
-                SRGInfo* srgInfo = GetSymbolSubAs<SRGInfo>(srgUid.GetName());
-
                 vector<IdentifierUID> symbolsToDelete = GetChildren(srgUid);
                 for (const auto& uid : symbolsToDelete)
                 {
@@ -498,8 +496,6 @@ namespace AZ::ShaderCompiler
                     + ") in layout member "
                     + memberId.m_name };
             }
-            TypeClass varClass = exportedType.m_typeClass;
-
             size = varInfo.m_typeInfoExt.GetTotalSize(layoutPacking, isRowMajor);
             auto startAt = startingOffset;
             nextMemberStartingOffset = startingOffset;
@@ -514,7 +510,7 @@ namespace AZ::ShaderCompiler
             }
 
             // Compound types are not supported in root constants.
-            assert(!IsProductType(varClass));
+            assert(!IsProductType(exportedType.m_typeClass));
 
             if (varInfo.GetTypeClass() == TypeClass::Enum)
             {
@@ -598,7 +594,6 @@ namespace AZ::ShaderCompiler
         if (middleEndconfigration.m_padRootConstantCB)
         {
             const auto layoutPacking = middleEndconfigration.m_packConstantBuffers;
-            uint32_t startAt = Packing::AlignOffset(layoutPacking, 0, Packing::Alignment::asStructStart, 0, 0);
             uint32_t strideSize = CalculateSizeOfRootConstantsCB(rootConstantStructUid, middleEndconfigration.m_isRowMajor, layoutPacking);
             uint32_t endOffset = 0;
             switch (layoutPacking)

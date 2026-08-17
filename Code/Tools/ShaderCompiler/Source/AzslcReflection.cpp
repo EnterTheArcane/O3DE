@@ -121,7 +121,6 @@ namespace AZ::ShaderCompiler
         {
             auto& attrVarInfo = *m_ir->GetSymbolSubAs<VarInfo>(memberVar.m_name);
 
-            bool buildOMResult = false;
             if (!semanticOverride.empty())
             {
                 if (!BuildOMElement(jsonVal, attrVarInfo.m_typeInfoExt, semanticOverride, semanticIndex, false))
@@ -269,7 +268,7 @@ namespace AZ::ShaderCompiler
 
             Json::Value semanticStreams(Json::arrayValue);
             const auto& funcSubInfo = sym.GetSubRefAs<FunctionInfo>();
-            for (const auto it : funcSubInfo.GetParameters(false))
+            for (const auto& it : funcSubInfo.GetParameters(false))
             {
                 if (!it.m_varId.IsEmpty())
                 {
@@ -815,7 +814,7 @@ namespace AZ::ShaderCompiler
             const auto& layoutPacking = options.m_packConstantBuffers;
             Json::Value structLayout(Json::arrayValue);
             uint32_t startAt = 0;
-            uint32_t strideSize = BuildUserDefinedMemberLayout(structLayout, m_ir->m_rootConstantStructUID, options, options.m_packConstantBuffers, startAt, "");
+            uint32_t strideSize = BuildUserDefinedMemberLayout(structLayout, m_ir->m_rootConstantStructUID, options, layoutPacking, startAt, "");
             strideSize = GetPlatformEmitter().AlignRootConstants(strideSize);
 
             rootConstantLayout["inputsForRootConstants"] = structLayout;

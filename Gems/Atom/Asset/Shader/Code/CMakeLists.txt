@@ -108,14 +108,14 @@ ly_add_target(
     RUNTIME_DEPENDENCIES
         3rdParty::DirectXShaderCompilerDxc
         3rdParty::SPIRVCross
-        AZ::azslc
+        AZ::Azslc
 )
 
 ly_add_target_files(
     TARGETS
         ${gem_name}.Builders
     FILES
-        $<TARGET_FILE:azslc>
+        $<TARGET_FILE:Azslc>
     OUTPUT_SUBDIRECTORY
         Builders/AZSLc
 )

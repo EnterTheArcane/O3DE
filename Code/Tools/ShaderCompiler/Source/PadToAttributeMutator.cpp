@@ -273,8 +273,6 @@ namespace AZ::ShaderCompiler
                     + memberId.m_name};
             }
             TypeClass varClass = exportedType.m_typeClass;
-            bool isPrefedined  = IsPredefinedType(varClass); 
-
             size = varInfo.m_typeInfoExt.GetTotalSize(layoutPacking, emitRowMajor);
             auto startAt = offset;
 

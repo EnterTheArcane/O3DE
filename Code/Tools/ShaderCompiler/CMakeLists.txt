@@ -17,7 +17,6 @@ ly_add_target(
     INCLUDE_DIRECTORIES
         PRIVATE
             Source
-            Source/External
     BUILD_DEPENDENCIES
         PRIVATE
             AZ::AzCore
@@ -25,35 +24,31 @@ ly_add_target(
 
 include(3rdParty/antlr4.cmake)
 target_link_libraries(ShaderCompiler PUBLIC 3rdParty::antlr4)
+target_include_directories(ShaderCompiler SYSTEM PRIVATE Source/External)
 
 target_compile_options(ShaderCompiler PRIVATE
     ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS}
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-deprecated-enum-compare>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-deprecated-this-capture>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-range-loop-construct>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-unused-function>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-unused-lambda-capture>
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-unused-variable>
 )
 
 ly_add_target(
-    NAME azslc EXECUTABLE
+    NAME Azslc EXECUTABLE
+    OUTPUT_NAME azslc
     NAMESPACE AZ
     FILES_CMAKE
         azslc_files.cmake
     INCLUDE_DIRECTORIES
         PRIVATE
             Source
-            Source/External
     BUILD_DEPENDENCIES
         PRIVATE
             AZ::AzCore
             AZ::ShaderCompiler
 )
 
-target_compile_options(azslc PRIVATE
+target_include_directories(Azslc SYSTEM PRIVATE Source/External)
+
+target_compile_options(Azslc PRIVATE
     ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS}
-    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-deprecated-declarations>
 )
 
 set_source_files_properties(

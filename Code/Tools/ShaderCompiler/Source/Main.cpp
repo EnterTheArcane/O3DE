@@ -6,7 +6,7 @@
  *
  */
 
-#include "External/CLI11.hpp"
+#include <CLI11.hpp>
 
 #include "AzslcReflection.h"
 #include "AzslcEmitter.h"

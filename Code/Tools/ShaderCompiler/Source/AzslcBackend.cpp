@@ -143,7 +143,7 @@ namespace AZ::ShaderCompiler
     BindingType RootParamTypeToBindingType(RootParamType paramType)
     {
         // the 2 enum orders are arranged the same for this to work
-        return BindingType::EnumType( paramType < BindingType::EndEnumeratorSentinel_ ? int(paramType) : BindingType::B );
+        return BindingType::EnumType( int(paramType) < int(BindingType::EndEnumeratorSentinel_) ? int(paramType) : BindingType::B );
     }
 
     RootParamType FindParamType(const ExtendedTypeInfo& typeInfoExt)
@@ -642,7 +642,7 @@ namespace AZ::ShaderCompiler
             RootSigDesc::SrgDesc srgDesc;
             srgDesc.m_uid = srgUid;
 
-            for (const auto tId : srgInfo->m_srViews)
+            for (const auto& tId : srgInfo->m_srViews)
             {
                 if (useUniqueIndices && std::find(srgInfo->m_unboundedArrays.begin(), srgInfo->m_unboundedArrays.end(), tId) != srgInfo->m_unboundedArrays.end())
                 {
@@ -653,7 +653,7 @@ namespace AZ::ShaderCompiler
                 srgDesc.m_parameters.push_back(
                     ReflectOneExternalResourceAndWrapWithUnifyIndices(tId, bindInfo, rootSig) );
             }
-            for (const auto sId : srgInfo->m_samplers)
+            for (const auto& sId : srgInfo->m_samplers)
             {
                 if (useUniqueIndices && !srgInfo->m_unboundedArrays.empty() && srgInfo->m_unboundedArrays[0] == sId)
                 {
@@ -674,7 +674,7 @@ namespace AZ::ShaderCompiler
             }
             if (!options.m_emitConstantBufferBody)  // emitCB is the SM5- "cbufer{}" block syntax. !emitCB is the "ConstantBuffer<>" SM5.1+ syntax
             {
-                for (const auto cId : srgInfo->m_CBs)
+                for (const auto& cId : srgInfo->m_CBs)
                 {
                     srgDesc.m_parameters.push_back(
                         ReflectOneExternalResourceAndWrapWithUnifyIndices(cId, bindInfo, rootSig));
@@ -689,7 +689,7 @@ namespace AZ::ShaderCompiler
             // must be added after that last resource in the register space.
             if (useUniqueIndices)
             {
-                for (const auto tId : srgInfo->m_unboundedArrays)
+                for (const auto& tId : srgInfo->m_unboundedArrays)
                 {
                     srgDesc.m_parameters.push_back(
                         ReflectOneExternalResourceAndWrapWithUnifyIndices(tId, bindInfo, rootSig));

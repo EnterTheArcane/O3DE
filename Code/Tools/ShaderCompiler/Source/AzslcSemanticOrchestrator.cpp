@@ -41,17 +41,6 @@ namespace AZ::ShaderCompiler
             return qualifiers;
         }
 
-        TypeQualifiers ExtractTypeQualifiers(AstType* ctx)
-        {
-            return ctx->storageFlags() ? ExtractTypeQualifiers(ctx->storageFlags()) : TypeQualifiers{};
-        }
-
-        TypeQualifiers ExtractTypeQualifiers(AstUnnamedVarDecl* ctx)
-        {
-            azslParser::StorageFlagsContext* flags = ExtractStorageFlagsFromUnnamedVariableDeclarator(ctx);
-            return flags ? ExtractTypeQualifiers(flags) : TypeQualifiers{};
-        }
-
         void CheckFunctionReturnTypeModifierNotOptionNorRootconstant(const TypeQualifiers& qualifier, size_t line)
         {
             auto ngFlags = Modifiers{StorageFlag::Option} | StorageFlag::Rootconstant;

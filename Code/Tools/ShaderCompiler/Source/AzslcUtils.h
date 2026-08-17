@@ -429,7 +429,7 @@ namespace AZ::ShaderCompiler
         // Some standards (std140/std430) have extended alignment rules for structures, which dictate that
         //  the alignment inside a struct behaves like base rather than scalar.
         // For all other cases the alignment doesn't change so we can return the input.
-        static Layout GetExtendedLayout(const Layout& scalarLayout)
+        [[maybe_unused]] static Layout GetExtendedLayout(const Layout& scalarLayout)
         {
             if (scalarLayout == Layout::RelaxedStd430Packing)
             {
@@ -454,7 +454,7 @@ namespace AZ::ShaderCompiler
             return (value + mask) & ~mask;
         }
 
-        static uint32_t AlignStructToLargestMember(Layout layout, uint32_t currentSize, uint32_t memberSize)
+        [[maybe_unused]] static uint32_t AlignStructToLargestMember(Layout layout, uint32_t currentSize, uint32_t memberSize)
         {
             if (memberSize == 0)
             {
@@ -504,7 +504,7 @@ namespace AZ::ShaderCompiler
         //!          https://github.com/microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst#memory-layout-rules
         //! OpenGL : https://www.khronos.org/registry/OpenGL/specs/gl/glspec45.core.pdf#page=159
         //!          https://github.com/Microsoft/DirectXShaderCompiler/blob/master/docs/SPIR-V.rst
-        static uint32_t AlignOffset(Layout layout, uint32_t currentSize, const Alignment& alignment, uint32_t rows, uint32_t cols)
+        [[maybe_unused]] static uint32_t AlignOffset(Layout layout, uint32_t currentSize, const Alignment& alignment, uint32_t rows, uint32_t cols)
         {
             switch (layout)
             {
@@ -568,7 +568,7 @@ namespace AZ::ShaderCompiler
 
         //! Packs the next chunk of data to the current offset and returns the new offset
         //! Alignment - dictates the alignment rules to follow for packing nextChunkSize
-        static uint32_t PackNextChunk(Layout layout, uint32_t nextChunkSize, uint32_t& offset)
+        [[maybe_unused]] static uint32_t PackNextChunk(Layout layout, uint32_t nextChunkSize, uint32_t& offset)
         {
             switch (layout)
             {

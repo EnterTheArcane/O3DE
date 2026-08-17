@@ -9,7 +9,7 @@ both. If a different environment is used, install PyYAML there first.
 Build `azslc`, change to this directory, and pass the executable to `testapp.py`:
 
 ```console
-cmake --build <build-directory> --target azslc --config Profile
+cmake --build <build-directory> --target Azslc --config Profile
 cd <engine-root>/Code/Tools/ShaderCompiler/Tests
 python testapp.py --silent \
     --compiler <build-directory>/bin/profile/azslc \
