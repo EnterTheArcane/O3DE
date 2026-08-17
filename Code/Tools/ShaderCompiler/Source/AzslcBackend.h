@@ -10,7 +10,7 @@
 #include "AzslcListener.h"
 #include "NewLineCounterStream.h"
 
-#include "jsoncpp/dist/json/json.h"
+#include "jsoncpp/json/json.h"
 #include "AzslcRegisters.h"
 
 namespace AZ::ShaderCompiler
