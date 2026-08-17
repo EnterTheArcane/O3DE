@@ -13,8 +13,24 @@
 
 namespace Jolt
 {
+    struct NativeMemoryStatistics final
+    {
+        AZ::u64 m_allocatedBytes = 0;
+        AZ::u64 m_peakAllocatedBytes = 0;
+        AZ::u64 m_allocationCount = 0;
+        AZ::u64 m_freeCount = 0;
+        AZ::u64 m_reallocationCount = 0;
+    };
+
     [[nodiscard]]
     AZ::u64 GetNativeBuildFingerprint();
+
+    void AcquireNativeMemoryStatistics();
+
+    void ReleaseNativeMemoryStatistics();
+
+    [[nodiscard]]
+    NativeMemoryStatistics GetNativeMemoryStatistics(bool reset);
 
     class NativeRuntime final
     {

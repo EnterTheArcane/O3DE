@@ -315,6 +315,16 @@ namespace Jolt
             WorldHandle worldHandle,
             WorldStatistics& statistics) const override;
 
+        bool ConfigurePerformanceStatistics(
+            WorldHandle worldHandle,
+            PerformanceStatisticsFlags flags) override;
+
+        [[nodiscard]]
+        bool GetPerformanceStatistics(
+            WorldHandle worldHandle,
+            WorldPerformanceStatistics& statistics,
+            bool reset) override;
+
         bool ConfigureDebugCapture(
             WorldHandle worldHandle,
             const DebugCaptureConfiguration& configuration) override;

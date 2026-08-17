@@ -398,7 +398,60 @@ namespace Jolt
 
     DebugCaptureStatistics DebugCapture::GetStatistics() const
     {
-        return m_statistics;
+        DebugCaptureStatistics statistics;
+        {
+            AZStd::lock_guard lock(m_geometryMutex);
+            statistics.m_geometryCount = aznumeric_cast<AZ::u32>(m_geometry.size());
+            statistics.m_droppedGeometryCount = m_statistics.m_droppedGeometryCount;
+        }
+        {
+            AZStd::lock_guard lock(m_lineMutex);
+            statistics.m_lineCount = aznumeric_cast<AZ::u32>(m_lines.size());
+            statistics.m_droppedLineCount = m_statistics.m_droppedLineCount;
+        }
+        {
+            AZStd::lock_guard lock(m_textMutex);
+            statistics.m_textCount = aznumeric_cast<AZ::u32>(m_texts.size());
+            statistics.m_droppedTextCount = m_statistics.m_droppedTextCount;
+            statistics.m_textByteCount = aznumeric_cast<AZ::u32>(m_textBytes.size());
+        }
+        {
+            AZStd::lock_guard lock(m_triangleMutex);
+            statistics.m_triangleCount = aznumeric_cast<AZ::u32>(m_triangles.size());
+            statistics.m_droppedTriangleCount = m_statistics.m_droppedTriangleCount;
+        }
+        return statistics;
+    }
+
+    AZ::u64 DebugCapture::GetRetainedBytes() const
+    {
+        AZ::u64 retainedBytes = 0;
+        {
+            AZStd::lock_guard lock(m_geometryMutex);
+            retainedBytes += m_geometry.capacity() * sizeof(GeometryRecord);
+            for (const GeometryRecord& geometry : m_geometry)
+            {
+                if (geometry.m_batch)
+                {
+                    retainedBytes += geometry.m_batch->m_vertices.capacity() * sizeof(DebugVertex);
+                    retainedBytes += geometry.m_batch->m_indices.capacity() * sizeof(AZ::u32);
+                }
+            }
+        }
+        {
+            AZStd::lock_guard lock(m_lineMutex);
+            retainedBytes += m_lines.capacity() * sizeof(LineRecord);
+        }
+        {
+            AZStd::lock_guard lock(m_textMutex);
+            retainedBytes += m_texts.capacity() * sizeof(TextRecord);
+            retainedBytes += m_textBytes.capacity();
+        }
+        {
+            AZStd::lock_guard lock(m_triangleMutex);
+            retainedBytes += m_triangles.capacity() * sizeof(TriangleRecord);
+        }
+        return retainedBytes;
     }
 
     void DebugCapture::RecordGeometry(

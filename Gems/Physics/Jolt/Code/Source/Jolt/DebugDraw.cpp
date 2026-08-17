@@ -70,6 +70,16 @@ namespace Jolt
             JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCaptureFlags, VirtualCharacterStickToFloor);
             JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCaptureFlags, VirtualCharacterSupportingVolumes);
             JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCaptureFlags, VirtualCharacterWalkStairs);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCaptureFlags, BroadPhaseBounds);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCaptureFlags, CharacterGround);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCaptureFlags, Constraints);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCaptureFlags, ConstraintLimits);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCaptureFlags, ConstraintReferenceFrames);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCaptureFlags, Hair);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCaptureFlags, Queries);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCaptureFlags, RagdollHierarchy);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCaptureFlags, SoftBodies);
+            JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCaptureFlags, VehicleContacts);
 
             JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCullMode, None);
             JOLT_BEHAVIOR_ENUM(*behaviorContext, DebugCullMode, BackFace);

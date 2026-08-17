@@ -6,6 +6,7 @@
 #
 
 import argparse
+import hashlib
 import json
 import math
 import random
@@ -247,6 +248,15 @@ WORKLOADS = (
 )
 
 
+def workload_signature() -> str:
+    encoded_workloads = json.dumps(
+        WORKLOADS,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded_workloads).hexdigest()
+
+
 def load_report(path: Path) -> dict:
     with path.open(encoding="utf-8") as report_file:
         return json.load(report_file)
@@ -279,19 +289,81 @@ def validate_context(reports: dict[str, dict]) -> None:
                 f"Jolt={reference_frequency}, {provider}={provider_frequency}"
             )
 
+    required_metadata = (
+        "binary_sha256",
+        "benchmark_filter",
+        "build_configuration",
+        "compiler_id",
+        "compiler_version",
+        "cpu_affinity_policy",
+        "minimum_time",
+        "provider",
+        "raw_samples",
+        "repetitions",
+        "source_diff_sha256",
+        "source_revision",
+        "workload_signature",
+    )
+    reference_metadata = reports["Jolt"].get("qualification", {})
+    for provider, report in reports.items():
+        metadata = report.get("qualification", {})
+        for field in required_metadata:
+            if not metadata.get(field):
+                raise ValueError(f"{provider} benchmark report is missing qualification field {field}.")
+        if metadata["build_configuration"].lower() != "release":
+            raise ValueError(f"{provider} qualification metadata is not for a Release build.")
+        if metadata["workload_signature"] != workload_signature():
+            raise ValueError(f"{provider} benchmark workload signature is stale or invalid.")
+        for field in (
+            "build_configuration",
+            "compiler_id",
+            "compiler_version",
+            "cpu_affinity_policy",
+            "minimum_time",
+            "raw_samples",
+            "repetitions",
+            "source_diff_sha256",
+            "source_revision",
+            "workload_signature",
+        ):
+            if metadata[field] != reference_metadata.get(field):
+                raise ValueError(
+                    f"Benchmark qualification differs for {field}: "
+                    f"Jolt={reference_metadata.get(field)!r}, {provider}={metadata[field]!r}"
+                )
+
+    binary_hashes = [
+        report["qualification"]["binary_sha256"]
+        for report in reports.values()
+    ]
+    if len(set(binary_hashes)) != len(binary_hashes):
+        raise ValueError("Provider benchmark reports contain duplicate binary fingerprints.")
+
 
 def load_samples(
     report: dict,
     provider: str,
     name: str,
     workload: dict,
-    minimum_repetitions: int,
+    expected_repetitions: int,
 ) -> tuple[list[float], int]:
     samples = []
     affinity_processor_counts = set()
+    repetition_indices = set()
     for result in report.get("benchmarks", []):
         if result.get("name") != name or result.get("run_type", "iteration") != "iteration":
             continue
+
+        repetition_index = result.get("repetition_index")
+        if (
+            not isinstance(repetition_index, int)
+            or repetition_index < 0
+            or repetition_index >= expected_repetitions
+        ):
+            raise ValueError(f"{name} has invalid repetition index {repetition_index!r}.")
+        if repetition_index in repetition_indices:
+            raise ValueError(f"{name} has duplicate repetition index {repetition_index}.")
+        repetition_indices.add(repetition_index)
 
         exact_counters = dict(workload.get("exact", {}))
         exact_counters.update(workload.get("provider_exact", {}).get(provider, {}))
@@ -330,11 +402,14 @@ def load_samples(
         time_unit = result.get("time_unit")
         if time_unit not in TIME_UNIT_TO_MICROSECONDS:
             raise ValueError(f"{name} has unsupported time unit {time_unit!r}.")
-        samples.append(float(result["real_time"]) * TIME_UNIT_TO_MICROSECONDS[time_unit])
+        real_time = float(result.get("real_time", math.nan))
+        if not math.isfinite(real_time) or real_time <= 0.0:
+            raise ValueError(f"{name} has invalid real time {real_time!r}.")
+        samples.append(real_time * TIME_UNIT_TO_MICROSECONDS[time_unit])
 
-    if len(samples) < minimum_repetitions:
+    if len(samples) != expected_repetitions:
         raise ValueError(
-            f"{name} has {len(samples)} raw repetitions; expected at least {minimum_repetitions}."
+            f"{name} has {len(samples)} raw repetitions; expected exactly {expected_repetitions}."
         )
     if len(affinity_processor_counts) != 1:
         raise ValueError(
@@ -384,7 +459,7 @@ def main() -> int:
     parser.add_argument("--maximum-bootstrap-ratio", type=float, default=1.05)
     parser.add_argument("--maximum-repetition-tail-ratio", type=float, default=1.10)
     parser.add_argument("--maximum-cv", type=float, default=0.05)
-    parser.add_argument("--minimum-repetitions", type=int, default=30)
+    parser.add_argument("--repetitions", type=int, default=30)
     arguments = parser.parse_args()
 
     reports = {
@@ -394,6 +469,21 @@ def main() -> int:
     }
     try:
         validate_context(reports)
+        for provider, report in reports.items():
+            metadata = report["qualification"]
+            if metadata["provider"] != provider:
+                raise ValueError(
+                    f"{provider} benchmark metadata identifies provider {metadata['provider']!r}."
+                )
+            if metadata["repetitions"] != arguments.repetitions:
+                raise ValueError(
+                    f"{provider} benchmark metadata has {metadata['repetitions']} repetitions; "
+                    f"expected {arguments.repetitions}."
+                )
+            if metadata["raw_samples"] is not True:
+                raise ValueError(f"{provider} benchmark report does not contain raw samples.")
+            if float(metadata["minimum_time"]) <= 0.0:
+                raise ValueError(f"{provider} benchmark report has an invalid minimum time.")
     except ValueError as error:
         print(error, file=sys.stderr)
         return 1
@@ -411,7 +501,7 @@ def main() -> int:
                     provider,
                     name,
                     workload,
-                    arguments.minimum_repetitions,
+                    arguments.repetitions,
                 )
             if len(set(provider_affinity_processor_counts.values())) != 1:
                 raise ValueError(

@@ -2578,7 +2578,6 @@ namespace Jolt
         const SphereOnFloor scene = CreateSphereOnFloor(system);
         ASSERT_TRUE(scene.m_floorBodyHandle);
         ASSERT_TRUE(scene.m_sphereBodyHandle);
-
         AZStd::array<BroadPhaseStatistics, 64> broadPhaseStatistics;
         AZStd::array<NarrowPhaseStatistics, 64> narrowPhaseStatistics;
         const DiagnosticStatisticsResult initialBroadPhaseResult = system.GetBroadPhaseStatistics(
@@ -2673,6 +2672,116 @@ namespace Jolt
                 DiagnosticStatisticsStatus::Unavailable);
         }
 
+        DestroySphereOnFloor(system, scene);
+    }
+
+    TEST(SimulationTests, PerformanceStatisticsAreOptInResettableAndAllocationFreeToRead)
+    {
+        System system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const SphereOnFloor scene = CreateSphereOnFloor(system);
+        ASSERT_TRUE(scene.m_floorBodyHandle);
+        ASSERT_TRUE(scene.m_sphereBodyHandle);
+
+        WorldPerformanceStatistics statistics;
+        ASSERT_TRUE(system.GetPerformanceStatistics(
+            scene.m_worldHandle,
+            statistics,
+            false));
+        EXPECT_EQ(statistics.m_enabledFlags, PerformanceStatisticsFlags::None);
+        EXPECT_EQ(statistics.m_queryCount, 0);
+
+        const auto invalidFlags = static_cast<PerformanceStatisticsFlags>(
+            static_cast<AZ::u16>(PerformanceStatisticsFlags::All) | (1 << 15));
+        EXPECT_FALSE(system.ConfigurePerformanceStatistics(scene.m_worldHandle, invalidFlags));
+        ASSERT_TRUE(system.ConfigurePerformanceStatistics(
+            scene.m_worldHandle,
+            PerformanceStatisticsFlags::All));
+
+        RaycastHit hit;
+        ASSERT_TRUE(system.RaycastClosest(
+            scene.m_worldHandle,
+            RaycastRequest{
+                .m_start = {.m_z = 5.0},
+                .m_displacement = -AZ::Vector3::CreateAxisZ(10.0f),
+            },
+            hit));
+        ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+        ASSERT_TRUE(system.OptimizeBroadPhase(scene.m_worldHandle));
+
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(scene.m_worldHandle);
+        ASSERT_TRUE(snapshotHandle);
+        ASSERT_TRUE(system.RestoreWorldState(scene.m_worldHandle, snapshotHandle));
+
+        ASSERT_TRUE(system.GetPerformanceStatistics(scene.m_worldHandle, statistics, false));
+        EXPECT_EQ(statistics.m_enabledFlags, PerformanceStatisticsFlags::All);
+        EXPECT_GT(statistics.m_intervalNanoseconds, 0);
+        EXPECT_EQ(statistics.m_bodies.m_count, 2);
+        EXPECT_GE(statistics.m_bodies.m_highWaterCount, statistics.m_bodies.m_count);
+        EXPECT_EQ(statistics.m_shapes.m_count, 2);
+        EXPECT_GT(statistics.m_wrapperRetainedBytes, 0);
+        EXPECT_GT(statistics.m_lockCount, 0);
+        EXPECT_EQ(statistics.m_queryCount, 1);
+        EXPECT_EQ(statistics.m_queryHitCount, 1);
+        EXPECT_GT(statistics.m_queryNanoseconds, 0);
+        EXPECT_EQ(statistics.m_snapshotCaptureCount, 1);
+        EXPECT_EQ(statistics.m_snapshotRestoreCount, 1);
+        EXPECT_GT(statistics.m_snapshotBytes, 0);
+        EXPECT_GE(statistics.m_snapshotPeakBytes, statistics.m_snapshotBytes);
+        EXPECT_EQ(statistics.m_simulationStepCount, 1);
+        EXPECT_GT(statistics.m_simulationNanoseconds, 0);
+        EXPECT_EQ(statistics.m_broadPhaseOptimizeCount, 1);
+        EXPECT_GT(statistics.m_broadPhaseOptimizeNanoseconds, 0);
+
+        ASSERT_TRUE(system.GetPerformanceStatistics(scene.m_worldHandle, statistics, true));
+        EXPECT_EQ(statistics.m_queryCount, 1);
+
+        ASSERT_TRUE(system.GetPerformanceStatistics(scene.m_worldHandle, statistics, false));
+        EXPECT_EQ(statistics.m_queryCount, 0);
+        EXPECT_EQ(statistics.m_processNativeAllocationCount, 0);
+        EXPECT_EQ(statistics.m_processNativeFreeCount, 0);
+        EXPECT_EQ(statistics.m_snapshotCaptureCount, 0);
+        EXPECT_EQ(statistics.m_snapshotRestoreCount, 0);
+        EXPECT_EQ(statistics.m_simulationStepCount, 0);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, snapshotHandle));
+        EXPECT_TRUE(system.ConfigurePerformanceStatistics(
+            scene.m_worldHandle,
+            PerformanceStatisticsFlags::None));
+        DestroySphereOnFloor(system, scene);
+    }
+
+    TEST(SimulationTests, SnapshotRecaptureReusesRetainedStorage)
+    {
+        System system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const SphereOnFloor scene = CreateSphereOnFloor(system);
+        ASSERT_TRUE(system.ConfigurePerformanceStatistics(
+            scene.m_worldHandle,
+            PerformanceStatisticsFlags::Resources | PerformanceStatisticsFlags::Snapshots));
+
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(scene.m_worldHandle);
+        ASSERT_TRUE(snapshotHandle);
+
+        WorldPerformanceStatistics initialStatistics;
+        ASSERT_TRUE(system.GetPerformanceStatistics(scene.m_worldHandle, initialStatistics, true));
+        const AZ::u64 retainedBytes = initialStatistics.m_stateSnapshots.m_retainedBytes;
+        ASSERT_GT(retainedBytes, 0);
+
+        for (AZ::u32 iteration = 0; iteration < 16; ++iteration)
+        {
+            ASSERT_TRUE(system.CaptureWorldState(scene.m_worldHandle, snapshotHandle));
+        }
+
+        WorldPerformanceStatistics reuseStatistics;
+        ASSERT_TRUE(system.GetPerformanceStatistics(scene.m_worldHandle, reuseStatistics, false));
+        EXPECT_EQ(reuseStatistics.m_stateSnapshots.m_retainedBytes, retainedBytes);
+        EXPECT_EQ(reuseStatistics.m_snapshotCaptureCount, 16);
+        EXPECT_EQ(reuseStatistics.m_snapshotFailureCount, 0);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, snapshotHandle));
         DestroySphereOnFloor(system, scene);
     }
 
@@ -8399,6 +8508,16 @@ namespace Jolt
         EXPECT_EQ(state.m_groundState, GroundState::OnGround);
         EXPECT_TRUE(state.m_isSupported);
 
+        DebugCaptureConfiguration captureConfiguration;
+        captureConfiguration.m_flags = DebugCaptureFlags::CharacterGround;
+        ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        DebugCaptureStatistics captureStatistics;
+        ASSERT_TRUE(system.GetDebugCaptureStatistics(worldHandle, captureStatistics));
+        EXPECT_GT(captureStatistics.m_lineCount, 0);
+        captureConfiguration.m_flags = DebugCaptureFlags::None;
+        ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
+
         EXPECT_TRUE(system.DestroyCharacter(worldHandle, characterHandle));
         EXPECT_FALSE(system.IsValid(worldHandle, characterHandle));
         EXPECT_FALSE(system.IsValid(worldHandle, initialState.m_bodyHandle));
@@ -8498,6 +8617,16 @@ namespace Jolt
                 return wheel.m_hasContact;
             }));
         vehicleCollisionFilter.m_rejectedBodyHandle = BodyHandle::Invalid;
+
+        DebugCaptureConfiguration captureConfiguration;
+        captureConfiguration.m_flags = DebugCaptureFlags::VehicleContacts;
+        ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        DebugCaptureStatistics captureStatistics;
+        ASSERT_TRUE(system.GetDebugCaptureStatistics(worldHandle, captureStatistics));
+        EXPECT_GT(captureStatistics.m_lineCount, 0);
+        captureConfiguration.m_flags = DebugCaptureFlags::None;
+        ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
 
         VehicleRuntimeConfiguration runtimeConfiguration;
         ASSERT_TRUE(system.GetVehicleRuntimeConfiguration(
@@ -9927,7 +10056,7 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
     }
 
-    TEST(SimulationTests, PrewarmedFilteredStateRecaptureUsesOneNativeScratchAllocationPerCapture)
+    TEST(SimulationTests, PrewarmedFilteredStateRecaptureDoesNotAllocateNativeScratch)
     {
         constexpr AZ::u32 bodyCount = 128;
         System system(CreateSerialSystemConfiguration(), nullptr);
@@ -9998,7 +10127,7 @@ namespace Jolt
                     snapshotConfiguration,
                     bodyHandles));
             }
-            EXPECT_EQ(allocationCounter.GetAllocationCount(), 32);
+            EXPECT_EQ(allocationCounter.GetAllocationCount(), 0);
         }
 
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
@@ -11497,6 +11626,18 @@ namespace Jolt
             constraintRenderer));
         EXPECT_GT(constraintRenderer.m_lineCount, 0);
 
+        DebugCaptureConfiguration captureConfiguration;
+        captureConfiguration.m_flags = DebugCaptureFlags::Constraints
+            | DebugCaptureFlags::ConstraintLimits
+            | DebugCaptureFlags::ConstraintReferenceFrames;
+        ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        DebugCaptureStatistics captureStatistics;
+        ASSERT_TRUE(system.GetDebugCaptureStatistics(worldHandle, captureStatistics));
+        EXPECT_GT(captureStatistics.m_lineCount, 0);
+        captureConfiguration.m_flags = DebugCaptureFlags::None;
+        ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
+
         settings.m_shapeColor = DebugShapeColor::None;
         RecordingDebugRenderer invalidRenderer;
         EXPECT_FALSE(system.DrawDebug(
@@ -11689,7 +11830,7 @@ namespace Jolt
         EXPECT_LT(renderer.m_maximumLinePositionX, systemConfiguration.m_defaultWorld.m_origin.m_x + 20.0);
 
         DebugCaptureConfiguration invalidConfiguration = captureConfiguration;
-        invalidConfiguration.m_flags = static_cast<DebugCaptureFlags>(1 << 15);
+        invalidConfiguration.m_flags = static_cast<DebugCaptureFlags>(1u << 31);
         EXPECT_FALSE(system.ConfigureDebugCapture(worldHandle, invalidConfiguration));
 
         captureConfiguration.m_flags = DebugCaptureFlags::None;
@@ -11795,6 +11936,55 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
         EXPECT_TRUE(system.DestroyVirtualCharacter(worldHandle, characterHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, sphereShapeHandle));
+    }
+
+    TEST(SimulationTests, SimulationDebugCaptureIncludesBroadPhaseBoundsAndQueries)
+    {
+        System system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.5f};
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+        ASSERT_TRUE(shapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = shapeHandle;
+        bodyConfiguration.m_motionType = MotionType::Static;
+        const BodyHandle bodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+        ASSERT_TRUE(bodyHandle);
+
+        DebugCaptureConfiguration captureConfiguration;
+        captureConfiguration.m_flags = DebugCaptureFlags::BroadPhaseBounds | DebugCaptureFlags::Queries;
+        captureConfiguration.m_lineCapacity = 32;
+        ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+
+        DebugCaptureStatistics beforeQuery;
+        ASSERT_TRUE(system.GetDebugCaptureStatistics(worldHandle, beforeQuery));
+        EXPECT_EQ(beforeQuery.m_lineCount, 12);
+        EXPECT_EQ(beforeQuery.m_droppedLineCount, 0);
+
+        RaycastRequest request;
+        request.m_start.m_z = 2.0;
+        request.m_displacement = AZ::Vector3::CreateAxisZ(-4.0f);
+        RaycastHit hit;
+        ASSERT_TRUE(system.RaycastClosest(worldHandle, request, hit));
+
+        DebugCaptureStatistics afterQuery;
+        ASSERT_TRUE(system.GetDebugCaptureStatistics(worldHandle, afterQuery));
+        EXPECT_EQ(afterQuery.m_lineCount, beforeQuery.m_lineCount + 2);
+        EXPECT_EQ(afterQuery.m_droppedLineCount, 0);
+
+        DebugDrawSettings drawSettings;
+        drawSettings.m_flags = DebugDrawFlags::CapturedSimulation;
+        RecordingDebugRenderer renderer;
+        ASSERT_TRUE(system.DrawDebug(worldHandle, drawSettings, renderer));
+        EXPECT_EQ(renderer.m_lineCount, afterQuery.m_lineCount);
+
+        EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
     }
 
     TEST(SimulationTests, SimulationDebugCaptureIsIsolatedAcrossConcurrentWorldSteps)
@@ -13440,6 +13630,51 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyBody(worldHandle, secondBodyHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, firstBodyHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+    }
+
+    TEST(SimulationTests, ClosestRaycastBatchReleasesReusableJobsBeforeContextDestruction)
+    {
+        constexpr size_t requestCount = 256;
+        constexpr AZ::u32 lifetimeCount = 3;
+        for (AZ::u32 lifetimeIndex = 0; lifetimeIndex < lifetimeCount; ++lifetimeIndex)
+        {
+            SCOPED_TRACE(lifetimeIndex);
+            AZ::JobManagerDesc jobManagerDescriptor;
+            jobManagerDescriptor.m_workerThreads.resize(4);
+            AZ::JobManager jobManager(jobManagerDescriptor);
+            AZ::JobContext jobContext(jobManager);
+
+            SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+            systemConfiguration.m_defaultWorld.m_workerCount = 4;
+            System system(systemConfiguration, &jobContext);
+            ASSERT_TRUE(system);
+
+            const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+            ShapeConfiguration shapeConfiguration;
+            shapeConfiguration.m_geometry = BoxShapeConfiguration{};
+            const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+            ASSERT_TRUE(shapeHandle);
+
+            BodyConfiguration bodyConfiguration;
+            bodyConfiguration.m_shapeHandle = shapeHandle;
+            bodyConfiguration.m_motionType = MotionType::Static;
+            const BodyHandle bodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+            ASSERT_TRUE(bodyHandle);
+
+            AZStd::array<RaycastRequest, requestCount> requests;
+            for (RaycastRequest& request : requests)
+            {
+                request.m_start = {.m_z = 5.0};
+                request.m_displacement = -10.0f * AZ::Vector3::CreateAxisZ();
+            }
+            AZStd::array<ClosestRaycastResult, requestCount> results;
+            const BufferResult result = system.RaycastClosestBatch(worldHandle, requests, results);
+            EXPECT_EQ(result.m_count, requestCount);
+            EXPECT_TRUE(result.IsComplete());
+
+            EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
+            EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+        }
     }
 
     TEST(SimulationTests, HairCpuComputeIsExactAcrossWorkerCountsAndRestoresWorkerFloatEnvironment)

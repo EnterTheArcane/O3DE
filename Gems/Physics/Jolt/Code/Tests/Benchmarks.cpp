@@ -7,13 +7,17 @@
 
 #ifdef HAVE_BENCHMARK
 
+#include <Jolt/FloatEnvironment.h>
 #include <Jolt/SystemInternal.h>
+
+#include <ProviderModuleApi.h>
 
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobManager.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/Module/DynamicModuleHandle.h>
 #include <AzCore/Name/NameDictionary.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/chrono/chrono.h>
@@ -30,6 +34,8 @@ namespace Jolt::Benchmarks
     {
         constexpr float MatchedTimeStep = 1.0f / 60.0f;
         constexpr float MatchedGridSpacing = 1.1f;
+        constexpr AZ::u32 StatefulBenchmarkFrameCount = 120;
+        constexpr AZ::u32 VehicleBenchmarkFrameCount = 30;
         constexpr AZ::u32 WarmupFrameCount = 600;
         constexpr AZ::u32 ValidationFrameCount = 600;
 
@@ -58,6 +64,11 @@ namespace Jolt::Benchmarks
         private:
             bool m_ownsDictionary = false;
         };
+
+        void EnsureNameDictionary()
+        {
+            static NameDictionaryScope nameDictionary;
+        }
 
         class JobContextScope final
         {
@@ -112,6 +123,8 @@ namespace Jolt::Benchmarks
             const AZ::u32 maximumBodyCount,
             const bool useMatchedSolverPolicy = false)
         {
+            EnsureNameDictionary();
+
             SystemConfiguration configuration;
             configuration.m_defaultWorld.m_autoSimulate = false;
             configuration.m_defaultWorld.m_collectActivationEvents = false;
@@ -285,6 +298,37 @@ namespace Jolt::Benchmarks
             state.counters["Tasks"] = statistics.m_lastUpdateTaskCount;
             state.counters["TempAllocatorBytes"] = aznumeric_cast<double>(statistics.m_tempAllocatorUsageBytes);
             state.counters["UpdateNs"] = aznumeric_cast<double>(statistics.m_lastUpdateNanoseconds);
+        }
+
+        void AddPerformanceCounters(
+            benchmark::State& state,
+            System& system,
+            const WorldHandle worldHandle)
+        {
+            WorldPerformanceStatistics statistics;
+            if (!system.GetPerformanceStatistics(worldHandle, statistics, false))
+            {
+                return;
+            }
+
+            state.counters["NativeAllocationCount"] = aznumeric_cast<double>(
+                statistics.m_processNativeAllocationCount);
+            state.counters["NativeAllocatedBytes"] = aznumeric_cast<double>(
+                statistics.m_processNativeAllocatedBytes);
+            state.counters["NativeFreeCount"] = aznumeric_cast<double>(statistics.m_processNativeFreeCount);
+            state.counters["NativePeakAllocatedBytes"] = aznumeric_cast<double>(
+                statistics.m_processNativePeakAllocatedBytes);
+            state.counters["NativeReallocationCount"] = aznumeric_cast<double>(
+                statistics.m_processNativeReallocationCount);
+            state.counters["SnapshotBytes"] = aznumeric_cast<double>(statistics.m_snapshotBytes);
+            state.counters["SnapshotFailures"] = aznumeric_cast<double>(statistics.m_snapshotFailureCount);
+            state.counters["SnapshotPeakBytes"] = aznumeric_cast<double>(statistics.m_snapshotPeakBytes);
+            state.counters["TempAllocatorCurrentBytes"] = aznumeric_cast<double>(
+                statistics.m_tempAllocatorCurrentBytes);
+            state.counters["TempAllocatorPeakBytes"] = aznumeric_cast<double>(
+                statistics.m_tempAllocatorPeakBytes);
+            state.counters["WrapperRetainedBytes"] = aznumeric_cast<double>(
+                statistics.m_wrapperRetainedBytes);
         }
 
         [[nodiscard]]
@@ -905,6 +949,13 @@ namespace Jolt::Benchmarks
             state.SkipWithError("Failed to create the Jolt lifecycle benchmark world.");
             return;
         }
+        if (!system.ConfigurePerformanceStatistics(
+                worldHandle,
+                PerformanceStatisticsFlags::Memory | PerformanceStatisticsFlags::Resources))
+        {
+            state.SkipWithError("Failed to enable Jolt lifecycle allocation statistics.");
+            return;
+        }
 
         AZStd::vector<BodyHandle> bodies;
         bodies.reserve(bodyCount);
@@ -947,6 +998,7 @@ namespace Jolt::Benchmarks
         }
 
         state.counters["DynamicBodies"] = bodyCount;
+        AddPerformanceCounters(state, system, worldHandle);
         jobContext.AddCounters(state);
         state.counters["Notifications"] = 0;
         state.counters["Workers"] = workerCount;
@@ -956,7 +1008,6 @@ namespace Jolt::Benchmarks
     void ChangeRagdollMembership(
         benchmark::State& state)
     {
-        NameDictionaryScope nameDictionary;
         const AZ::u32 partCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
@@ -998,7 +1049,6 @@ namespace Jolt::Benchmarks
     void RecreateRagdoll(
         benchmark::State& state)
     {
-        NameDictionaryScope nameDictionary;
         const AZ::u32 partCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
@@ -1182,6 +1232,21 @@ namespace Jolt::Benchmarks
             state.SkipWithError("Failed to warm the rollback recapture benchmark.");
             return;
         }
+        if (!system.ConfigurePerformanceStatistics(
+                worldHandle,
+                PerformanceStatisticsFlags::Memory
+                    | PerformanceStatisticsFlags::Resources
+                    | PerformanceStatisticsFlags::Snapshots))
+        {
+            state.SkipWithError("Failed to enable rollback allocation statistics.");
+            return;
+        }
+        WorldPerformanceStatistics warmupStatistics;
+        if (!system.GetPerformanceStatistics(worldHandle, warmupStatistics, true))
+        {
+            state.SkipWithError("Failed to reset rollback allocation statistics.");
+            return;
+        }
 
         bool qualityValid = true;
         for ([[maybe_unused]] auto iteration : state)
@@ -1207,6 +1272,7 @@ namespace Jolt::Benchmarks
 
         state.counters["Bodies"] = bodyCount;
         state.counters["Constraints"] = bodyCount - 1;
+        AddPerformanceCounters(state, system, worldHandle);
         state.counters["QualityValid"] = 0;
         if (qualityValid)
         {
@@ -1938,6 +2004,27 @@ namespace Jolt::Benchmarks
         state.SetItemsProcessed(state.iterations() * rayCount);
     }
 
+    void QueryFloatScopeOverhead(
+        benchmark::State& state)
+    {
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            DeterministicFloatScope floatScope;
+            benchmark::DoNotOptimize(floatScope);
+        }
+    }
+
+    void QueryLockOverhead(
+        benchmark::State& state)
+    {
+        DeterministicWorldMutex mutex;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            DeterministicWorldQueryLock lock(mutex);
+            benchmark::DoNotOptimize(lock);
+        }
+    }
+
     void RaycastBroadPhaseGrid(
         benchmark::State& state)
     {
@@ -2376,6 +2463,969 @@ namespace Jolt::Benchmarks
         state.SetBytesProcessed(state.iterations() * bytesPerReadback);
     }
 
+    void StepConstraintCategory(
+        benchmark::State& state)
+    {
+        const AZ::u32 constraintCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
+        const AZ::u32 category = aznumeric_cast<AZ::u32>(state.range(2));
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, constraintCount + 16),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.2f);
+        if (!system || !worldHandle || !shapeHandle)
+        {
+            state.SkipWithError("Failed to create the constraint benchmark world.");
+            return;
+        }
+
+        AZStd::vector<BodyHandle> bodies;
+        bodies.reserve(constraintCount + 1);
+        for (AZ::u32 bodyIndex = 0; bodyIndex <= constraintCount; ++bodyIndex)
+        {
+            const BodyHandle bodyHandle = CreateBody(
+                system,
+                worldHandle,
+                shapeHandle,
+                MotionType::Dynamic,
+                AZ::Vector3(0.0f, 0.0f, aznumeric_cast<float>(bodyIndex) * 0.4f));
+            if (!bodyHandle)
+            {
+                state.SkipWithError("Failed to create a constraint benchmark body.");
+                return;
+            }
+            bodies.push_back(bodyHandle);
+        }
+
+        for (AZ::u32 constraintIndex = 0; constraintIndex < constraintCount; ++constraintIndex)
+        {
+            ConstraintConfiguration configuration;
+            configuration.m_firstBodyHandle = bodies[constraintIndex];
+            configuration.m_secondBodyHandle = bodies[constraintIndex + 1];
+            switch (category)
+            {
+            case 0:
+                configuration.m_geometry = ConeConstraintConfiguration{};
+                break;
+            case 1:
+                configuration.m_geometry = DistanceConstraintConfiguration{
+                    .m_maximumDistance = 0.4f,
+                    .m_minimumDistance = 0.4f,
+                };
+                break;
+            case 2:
+                configuration.m_geometry = FixedConstraintConfiguration{};
+                break;
+            case 3:
+                configuration.m_geometry = HingeConstraintConfiguration{};
+                break;
+            case 4:
+                configuration.m_geometry = PointConstraintConfiguration{};
+                break;
+            case 5:
+                configuration.m_geometry = SixDofConstraintConfiguration{};
+                break;
+            case 6:
+                configuration.m_geometry = SliderConstraintConfiguration{};
+                break;
+            case 7:
+                configuration.m_geometry = SwingTwistConstraintConfiguration{};
+                break;
+            default:
+                state.SkipWithError("Unknown constraint benchmark category.");
+                return;
+            }
+            if (!system.CreateConstraint(worldHandle, configuration))
+            {
+                state.SkipWithError("Failed to create a constraint benchmark constraint.");
+                return;
+            }
+        }
+
+        for (AZ::u32 warmup = 0; warmup < 60; ++warmup)
+        {
+            if (!system.StepWorld(worldHandle, MatchedTimeStep))
+            {
+                state.SkipWithError("Constraint benchmark warmup failed.");
+                return;
+            }
+        }
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            if (!system.StepWorld(worldHandle, MatchedTimeStep))
+            {
+                state.SkipWithError("Constraint benchmark step failed.");
+                break;
+            }
+        }
+
+        AddWorldCounters(state, system, worldHandle);
+        jobContext.AddCounters(state);
+        state.counters["ConstraintCategory"] = category;
+        state.counters["ConstraintCount"] = constraintCount;
+        state.counters["Workers"] = workerCount;
+    }
+
+    void StepSoftBodies(
+        benchmark::State& state)
+    {
+        const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
+        JobContextScope jobContext(workerCount);
+        System system(CreateSystemConfiguration(workerCount, bodyCount + 16), &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const SoftBodyDefinitionHandle definitionHandle =
+            system.CreateSoftBodyDefinition(CreateSoftBodyBenchmarkDefinition(8));
+        if (!system || !definitionHandle)
+        {
+            state.SkipWithError("Failed to create the soft-body benchmark definition.");
+            return;
+        }
+
+        for (AZ::u32 bodyIndex = 0; bodyIndex < bodyCount; ++bodyIndex)
+        {
+            SoftBodyConfiguration configuration;
+            configuration.m_definitionHandle = definitionHandle;
+            configuration.m_transform.m_position = {
+                .m_x = 1.0 * static_cast<double>(bodyIndex % 8),
+                .m_y = 1.0 * static_cast<double>(bodyIndex / 8),
+                .m_z = 4.0 + 0.1 * static_cast<double>(bodyIndex),
+            };
+            if (!system.CreateSoftBody(worldHandle, configuration))
+            {
+                state.SkipWithError("Failed to create a soft-body benchmark body.");
+                return;
+            }
+        }
+
+        for (AZ::u32 warmup = 0; warmup < 30; ++warmup)
+        {
+            if (!system.StepWorld(worldHandle, MatchedTimeStep))
+            {
+                state.SkipWithError("Soft-body benchmark warmup failed.");
+                return;
+            }
+        }
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            if (!system.StepWorld(worldHandle, MatchedTimeStep))
+            {
+                state.SkipWithError("Soft-body benchmark step failed.");
+                break;
+            }
+        }
+
+        AddWorldCounters(state, system, worldHandle);
+        jobContext.AddCounters(state);
+        state.counters["SoftBodies"] = bodyCount;
+        state.counters["Workers"] = workerCount;
+    }
+
+    void UpdateVirtualCharacters(
+        benchmark::State& state)
+    {
+        const AZ::u32 characterCount = aznumeric_cast<AZ::u32>(state.range(0));
+        System system(CreateSystemConfiguration(1, characterCount + 16), nullptr);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
+        AZStd::vector<VirtualCharacterHandle> characters;
+        characters.reserve(characterCount);
+        for (AZ::u32 characterIndex = 0; characterIndex < characterCount; ++characterIndex)
+        {
+            VirtualCharacterConfiguration configuration;
+            configuration.m_shapeHandle = shapeHandle;
+            configuration.m_transform.m_position = {
+                .m_x = static_cast<double>(characterIndex % 32),
+                .m_y = static_cast<double>(characterIndex / 32),
+                .m_z = 1.0,
+            };
+            const VirtualCharacterHandle handle = system.CreateVirtualCharacter(worldHandle, configuration);
+            if (!handle)
+            {
+                state.SkipWithError("Failed to create a virtual character benchmark resource.");
+                return;
+            }
+            characters.push_back(handle);
+        }
+
+        VirtualCharacterUpdateConfiguration updateConfiguration;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            for (const VirtualCharacterHandle handle : characters)
+            {
+                if (!system.UpdateVirtualCharacter(
+                        worldHandle,
+                        handle,
+                        MatchedTimeStep,
+                        updateConfiguration))
+                {
+                    state.SkipWithError("Virtual character benchmark update failed.");
+                    return;
+                }
+            }
+        }
+        state.counters["Characters"] = characterCount;
+        state.counters["Workers"] = 1;
+    }
+
+    void StepPhysicalCharacters(
+        benchmark::State& state)
+    {
+        const AZ::u32 characterCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, characterCount + 16),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        if (!system || !worldHandle)
+        {
+            state.SkipWithError("Failed to create the physical-character benchmark world.");
+            return;
+        }
+
+        ShapeConfiguration floorShapeConfiguration;
+        floorShapeConfiguration.m_geometry = BoxShapeConfiguration{
+            .m_dimensions = AZ::Vector3(256.0f, 256.0f, 1.0f),
+        };
+        const ShapeHandle floorShapeHandle = system.CreateShape(
+            worldHandle,
+            floorShapeConfiguration);
+        const BodyHandle floorBodyHandle = CreateBody(
+            system,
+            worldHandle,
+            floorShapeHandle,
+            MotionType::Static,
+            AZ::Vector3(0.0f, 0.0f, -0.5f));
+
+        ShapeConfiguration characterShapeConfiguration;
+        characterShapeConfiguration.m_geometry = CapsuleShapeConfiguration{
+            .m_cylinderHeight = 1.0f,
+            .m_radius = 0.35f,
+        };
+        const ShapeHandle characterShapeHandle = system.CreateShape(
+            worldHandle,
+            characterShapeConfiguration);
+        if (!floorShapeHandle || !floorBodyHandle || !characterShapeHandle)
+        {
+            state.SkipWithError("Failed to prepare physical-character benchmark shapes.");
+            return;
+        }
+
+        AZStd::vector<CharacterHandle> characterHandles;
+        characterHandles.reserve(characterCount);
+        for (AZ::u32 characterIndex = 0; characterIndex < characterCount; ++characterIndex)
+        {
+            CharacterConfiguration configuration;
+            configuration.m_shapeHandle = characterShapeHandle;
+            configuration.m_transform.m_position = WorldPosition(
+                aznumeric_cast<double>(characterIndex % 16) * 3.0,
+                aznumeric_cast<double>(characterIndex / 16) * 3.0,
+                1.0);
+            const CharacterHandle characterHandle = system.CreateCharacter(
+                worldHandle,
+                configuration);
+            if (!characterHandle)
+            {
+                state.SkipWithError("Failed to create a physical benchmark character.");
+                return;
+            }
+            characterHandles.push_back(characterHandle);
+        }
+
+        for (AZ::u32 frameIndex = 0; frameIndex < WarmupFrameCount; ++frameIndex)
+        {
+            if (!system.StepWorld(worldHandle, MatchedTimeStep))
+            {
+                state.SkipWithError("Failed to warm the physical-character benchmark.");
+                return;
+            }
+        }
+
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            for (const CharacterHandle characterHandle : characterHandles)
+            {
+                qualityValid = system.SetCharacterVelocity(
+                    worldHandle,
+                    characterHandle,
+                    AZ::Vector3::CreateAxisX(2.0f))
+                    && qualityValid;
+            }
+            qualityValid = system.StepWorld(worldHandle, MatchedTimeStep)
+                && qualityValid;
+            benchmark::DoNotOptimize(qualityValid);
+        }
+
+        jobContext.AddCounters(state);
+        state.counters["Characters"] = characterCount;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * characterCount);
+    }
+
+    void QueryRetainedShapePair(
+        benchmark::State& state)
+    {
+        const bool castShape = state.range(0) != 0;
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, 1),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
+        if (!system || !worldHandle || !shapeHandle)
+        {
+            state.SkipWithError("Failed to prepare the retained-pair benchmark world.");
+            return;
+        }
+
+        WorldTransform firstTransform;
+        WorldTransform secondTransform;
+        secondTransform.m_position = WorldPosition(0.75, 0.0, 0.0);
+        if (castShape)
+        {
+            firstTransform.m_position = WorldPosition(-2.0, 0.0, 0.0);
+            secondTransform.m_position = WorldPosition();
+        }
+
+        TransformedShape firstShape;
+        TransformedShape secondShape;
+        if (!system.RetainShape(
+                worldHandle,
+                shapeHandle,
+                firstTransform,
+                1.0f,
+                firstShape)
+            || !system.RetainShape(
+                worldHandle,
+                shapeHandle,
+                secondTransform,
+                1.0f,
+                secondShape))
+        {
+            state.SkipWithError("Failed to retain benchmark shapes.");
+            return;
+        }
+
+        bool qualityValid = true;
+        AZStd::array<TransformedShapeCollisionHit, 8> collisionHits;
+        AZStd::array<TransformedShapeCastHit, 8> castHits;
+        if (castShape)
+        {
+            TransformedShapeCastRequest request;
+            request.m_displacement = AZ::Vector3::CreateAxisX(4.0f);
+            for ([[maybe_unused]] auto iteration : state)
+            {
+                const QueryResult result = system.CastTransformedShape(
+                    worldHandle,
+                    firstShape,
+                    secondShape,
+                    request,
+                    castHits,
+                    {});
+                qualityValid = result.IsComplete()
+                    && result.m_hitCount > 0
+                    && qualityValid;
+                benchmark::DoNotOptimize(castHits);
+            }
+        }
+        else
+        {
+            TransformedShapeCollisionRequest request;
+            for ([[maybe_unused]] auto iteration : state)
+            {
+                const QueryResult result = system.CollideTransformedShapes(
+                    worldHandle,
+                    firstShape,
+                    secondShape,
+                    request,
+                    collisionHits,
+                    {});
+                qualityValid = result.IsComplete()
+                    && result.m_hitCount > 0
+                    && qualityValid;
+                benchmark::DoNotOptimize(collisionHits);
+            }
+        }
+
+        jobContext.AddCounters(state);
+        state.counters["Cast"] = 0;
+        if (castShape)
+        {
+            state.counters["Cast"] = 1;
+        }
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations());
+    }
+
+    void MapSkeletonPose(
+        benchmark::State& state)
+    {
+        const AZ::u32 jointCount = aznumeric_cast<AZ::u32>(state.range(0));
+        SystemConfiguration configuration;
+        configuration.m_createDefaultWorld = false;
+        System system(configuration, nullptr);
+
+        SkeletonDefinitionConfiguration sourceConfiguration;
+        SkeletonDefinitionConfiguration targetConfiguration;
+        SkeletonMapperConfiguration mapperConfiguration;
+        sourceConfiguration.m_joints.reserve(jointCount);
+        targetConfiguration.m_joints.reserve(jointCount);
+        mapperConfiguration.m_sourceNeutralModelTransforms.reserve(jointCount);
+        mapperConfiguration.m_targetNeutralModelTransforms.reserve(jointCount);
+        mapperConfiguration.m_jointMappings.reserve(jointCount);
+        for (AZ::u32 jointIndex = 0; jointIndex < jointCount; ++jointIndex)
+        {
+            AZ::s32 parentIndex = -1;
+            if (jointIndex > 0)
+            {
+                parentIndex = aznumeric_cast<AZ::s32>(jointIndex - 1);
+            }
+            const AZ::Name jointName(AZStd::string::format("joint_%u", jointIndex));
+            sourceConfiguration.m_joints.push_back({
+                .m_name = jointName,
+                .m_parentIndex = parentIndex,
+            });
+            targetConfiguration.m_joints.push_back({
+                .m_name = jointName,
+                .m_parentIndex = parentIndex,
+            });
+            const AZ::Transform neutralTransform = AZ::Transform::CreateTranslation(
+                AZ::Vector3::CreateAxisZ(aznumeric_cast<float>(jointIndex)));
+            mapperConfiguration.m_sourceNeutralModelTransforms.push_back(neutralTransform);
+            mapperConfiguration.m_targetNeutralModelTransforms.push_back(neutralTransform);
+            mapperConfiguration.m_jointMappings.push_back({
+                .m_sourceJoint = jointIndex,
+                .m_targetJoint = jointIndex,
+            });
+        }
+
+        const SkeletonDefinitionHandle sourceHandle = system.CreateSkeletonDefinition(
+            sourceConfiguration);
+        const SkeletonDefinitionHandle targetHandle = system.CreateSkeletonDefinition(
+            targetConfiguration);
+        mapperConfiguration.m_sourceSkeletonHandle = sourceHandle;
+        mapperConfiguration.m_targetSkeletonHandle = targetHandle;
+        const SkeletonMapperHandle mapperHandle = system.CreateSkeletonMapper(
+            mapperConfiguration);
+        if (!sourceHandle || !targetHandle || !mapperHandle)
+        {
+            state.SkipWithError("Failed to create the skeleton-mapping benchmark.");
+            return;
+        }
+
+        AZStd::vector<AZ::Transform> sourceModelTransforms =
+            mapperConfiguration.m_sourceNeutralModelTransforms;
+        AZStd::vector<AZ::Transform> targetLocalTransforms(jointCount);
+        AZStd::vector<AZ::Transform> targetModelTransforms(jointCount);
+        for (AZ::Transform& transform : targetLocalTransforms)
+        {
+            transform = AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisZ());
+        }
+
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            qualityValid = system.MapSkeletonPose(
+                mapperHandle,
+                sourceModelTransforms,
+                targetLocalTransforms,
+                targetModelTransforms)
+                && qualityValid;
+            benchmark::DoNotOptimize(targetModelTransforms);
+        }
+
+        state.counters["Joints"] = jointCount;
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = 1;
+        state.SetItemsProcessed(state.iterations() * jointCount);
+    }
+
+    void UpdateHeightfield(
+        benchmark::State& state)
+    {
+        const AZ::u32 sampleCount = aznumeric_cast<AZ::u32>(state.range(0));
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, 1),
+            &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+        HeightfieldShapeConfiguration heightfieldConfiguration;
+        heightfieldConfiguration.m_sampleCount = sampleCount;
+        heightfieldConfiguration.m_blockSize = 4;
+        heightfieldConfiguration.m_heights.resize(
+            aznumeric_cast<size_t>(sampleCount) * sampleCount,
+            0.0f);
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = heightfieldConfiguration;
+        const ShapeHandle shapeHandle = system.CreateShape(
+            worldHandle,
+            shapeConfiguration);
+        if (!system || !worldHandle || !shapeHandle)
+        {
+            state.SkipWithError("Failed to create the heightfield-update benchmark.");
+            return;
+        }
+
+        HeightfieldRegion region{
+            .m_columnCount = sampleCount,
+            .m_rowCount = sampleCount,
+        };
+        AZStd::vector<float> heights(
+            aznumeric_cast<size_t>(sampleCount) * sampleCount,
+            1.0f);
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            qualityValid = system.UpdateHeightfieldHeights(
+                worldHandle,
+                shapeHandle,
+                region,
+                heights)
+                && qualityValid;
+            benchmark::DoNotOptimize(qualityValid);
+        }
+
+        jobContext.AddCounters(state);
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Samples"] = aznumeric_cast<double>(heights.size());
+        state.counters["Workers"] = workerCount;
+        state.SetItemsProcessed(state.iterations() * heights.size());
+    }
+
+    void StepWheeledVehicles(
+        benchmark::State& state)
+    {
+        const AZ::u32 vehicleCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
+        const AZ::u32 controllerCategory = aznumeric_cast<AZ::u32>(state.range(2));
+        JobContextScope jobContext(workerCount);
+        System system(CreateSystemConfiguration(workerCount, vehicleCount + 32), &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle floorShape = CreateBox(system, worldHandle, AZ::Vector3(128.0f, 128.0f, 1.0f));
+        const ShapeHandle chassisShape = CreateBox(system, worldHandle, AZ::Vector3(1.8f, 4.0f, 0.6f));
+        const BodyHandle floorBody = CreateBody(
+            system,
+            worldHandle,
+            floorShape,
+            MotionType::Static,
+            AZ::Vector3(0.0f, 0.0f, -0.5f));
+        if (!floorBody || !chassisShape)
+        {
+            state.SkipWithError("Failed to create the vehicle benchmark floor.");
+            return;
+        }
+
+        for (AZ::u32 vehicleIndex = 0; vehicleIndex < vehicleCount; ++vehicleIndex)
+        {
+            const BodyHandle chassisBody = CreateBody(
+                system,
+                worldHandle,
+                chassisShape,
+                MotionType::Dynamic,
+                AZ::Vector3(
+                    4.0f * aznumeric_cast<float>(vehicleIndex % 8),
+                    6.0f * aznumeric_cast<float>(vehicleIndex / 8),
+                    0.8f));
+            WheeledVehicleConfiguration wheeledConfiguration;
+            wheeledConfiguration.m_bodyHandle = chassisBody;
+            wheeledConfiguration.m_wheels = {
+                {.m_position = AZ::Vector3(-0.8f, 1.4f, -0.25f), .m_maximumHandBrakeTorque = 0.0f},
+                {.m_position = AZ::Vector3(0.8f, 1.4f, -0.25f), .m_maximumHandBrakeTorque = 0.0f},
+                {.m_position = AZ::Vector3(-0.8f, -1.4f, -0.25f), .m_maximumSteerAngle = 0.0f},
+                {.m_position = AZ::Vector3(0.8f, -1.4f, -0.25f), .m_maximumSteerAngle = 0.0f},
+            };
+            wheeledConfiguration.m_differentials = {
+                {.m_leftWheel = 0, .m_rightWheel = 1},
+            };
+
+            VehicleHandle vehicleHandle;
+            if (controllerCategory == 0)
+            {
+                vehicleHandle = system.CreateWheeledVehicle(worldHandle, wheeledConfiguration);
+            }
+            else if (controllerCategory == 1)
+            {
+                MotorcycleConfiguration motorcycleConfiguration;
+                motorcycleConfiguration.m_wheeled = wheeledConfiguration;
+                motorcycleConfiguration.m_wheeled.m_antiRollBars.clear();
+                motorcycleConfiguration.m_wheeled.m_wheels = {
+                    {.m_position = AZ::Vector3(0.0f, 1.4f, -0.25f), .m_maximumHandBrakeTorque = 0.0f},
+                    {.m_position = AZ::Vector3(0.0f, -1.4f, -0.25f), .m_maximumSteerAngle = 0.0f},
+                };
+                motorcycleConfiguration.m_wheeled.m_differentials = {
+                    {.m_leftWheel = 0, .m_rightWheel = 1},
+                };
+                vehicleHandle = system.CreateMotorcycle(worldHandle, motorcycleConfiguration);
+            }
+            else if (controllerCategory == 2)
+            {
+                TrackedVehicleConfiguration trackedConfiguration;
+                trackedConfiguration.m_bodyHandle = chassisBody;
+                trackedConfiguration.m_wheels = {
+                    {.m_common = {.m_position = AZ::Vector3(-0.8f, 1.2f, -0.25f)}},
+                    {.m_common = {.m_position = AZ::Vector3(-0.8f, -1.2f, -0.25f)}},
+                    {.m_common = {.m_position = AZ::Vector3(0.8f, 1.2f, -0.25f)}},
+                    {.m_common = {.m_position = AZ::Vector3(0.8f, -1.2f, -0.25f)}},
+                };
+                trackedConfiguration.m_tracks[0].m_wheels = {0, 1};
+                trackedConfiguration.m_tracks[0].m_drivenWheel = 0;
+                trackedConfiguration.m_tracks[1].m_wheels = {2, 3};
+                trackedConfiguration.m_tracks[1].m_drivenWheel = 2;
+                vehicleHandle = system.CreateTrackedVehicle(worldHandle, trackedConfiguration);
+            }
+            if (!chassisBody || !vehicleHandle)
+            {
+                state.SkipWithError("Failed to create a vehicle benchmark resource.");
+                return;
+            }
+        }
+
+        for (AZ::u32 warmup = 0; warmup < 60; ++warmup)
+        {
+            if (!system.StepWorld(worldHandle, MatchedTimeStep))
+            {
+                state.SkipWithError("Vehicle benchmark warmup failed.");
+                return;
+            }
+        }
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            if (!system.StepWorld(worldHandle, MatchedTimeStep))
+            {
+                state.SkipWithError("Vehicle benchmark step failed.");
+                break;
+            }
+        }
+        AddWorldCounters(state, system, worldHandle);
+        jobContext.AddCounters(state);
+        state.counters["ControllerCategory"] = controllerCategory;
+        state.counters["Vehicles"] = vehicleCount;
+        state.counters["Workers"] = workerCount;
+    }
+
+    void StepRagdolls(
+        benchmark::State& state)
+    {
+        const AZ::u32 partCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
+        JobContextScope jobContext(workerCount);
+        System system(CreateSystemConfiguration(workerCount, partCount + 16), &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        RagdollBenchmarkScenario scenario;
+        if (!system || !CreateRagdollBenchmarkScenario(system, worldHandle, partCount, scenario))
+        {
+            state.SkipWithError("Failed to create the ragdoll step benchmark.");
+            return;
+        }
+
+        for (AZ::u32 warmup = 0; warmup < 60; ++warmup)
+        {
+            if (!system.StepWorld(worldHandle, MatchedTimeStep))
+            {
+                state.SkipWithError("Ragdoll benchmark warmup failed.");
+                return;
+            }
+        }
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            if (!system.StepWorld(worldHandle, MatchedTimeStep))
+            {
+                state.SkipWithError("Ragdoll benchmark step failed.");
+                break;
+            }
+        }
+        AddWorldCounters(state, system, worldHandle);
+        jobContext.AddCounters(state);
+        state.counters["Parts"] = partCount;
+        state.counters["Workers"] = workerCount;
+    }
+
+    void OptimizeBroadPhase(
+        benchmark::State& state)
+    {
+        const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
+        System system(CreateSystemConfiguration(1, bodyCount + 16), nullptr);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        if (!CreateQueryGrid(system, worldHandle, bodyCount))
+        {
+            state.SkipWithError("Failed to create the broadphase benchmark grid.");
+            return;
+        }
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            if (!system.OptimizeBroadPhase(worldHandle))
+            {
+                state.SkipWithError("Broadphase optimization failed.");
+                break;
+            }
+        }
+        state.counters["Bodies"] = bodyCount;
+        state.counters["Workers"] = 1;
+    }
+
+    void InstantiateScenes(
+        benchmark::State& state)
+    {
+        const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
+        System system(CreateSystemConfiguration(1, bodyCount + 16), nullptr);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.25f};
+        const CookedShapeHandle cookedShapeHandle = system.CookShape(shapeConfiguration);
+        SceneConfiguration sceneConfiguration;
+        sceneConfiguration.m_bodies.reserve(bodyCount);
+        for (AZ::u32 bodyIndex = 0; bodyIndex < bodyCount; ++bodyIndex)
+        {
+            SceneRigidBodyConfiguration body;
+            body.m_cookedShapeHandle = cookedShapeHandle;
+            body.m_body.m_transform.m_position.m_z = 0.55 * static_cast<double>(bodyIndex);
+            sceneConfiguration.m_bodies.push_back(body);
+        }
+        const SceneDefinitionHandle definitionHandle = system.CreateSceneDefinition(sceneConfiguration);
+        if (!cookedShapeHandle || !definitionHandle)
+        {
+            state.SkipWithError("Failed to create the scene benchmark definition.");
+            return;
+        }
+
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            const SceneInstanceHandle instanceHandle = system.InstantiateScene(worldHandle, definitionHandle);
+            if (!instanceHandle || !system.DestroySceneInstance(worldHandle, instanceHandle))
+            {
+                state.SkipWithError("Scene benchmark lifecycle failed.");
+                break;
+            }
+        }
+        state.counters["Bodies"] = bodyCount;
+        state.counters["Workers"] = 1;
+    }
+
+    void ReadPerformanceStatistics(
+        benchmark::State& state)
+    {
+        System system(CreateSystemConfiguration(1, 1'040), nullptr);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        if (!CreateQueryGrid(system, worldHandle, 1'024)
+            || !system.ConfigurePerformanceStatistics(
+                worldHandle,
+                PerformanceStatisticsFlags::Resources | PerformanceStatisticsFlags::Memory))
+        {
+            state.SkipWithError("Failed to create the statistics benchmark world.");
+            return;
+        }
+
+        WorldPerformanceStatistics statistics;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            if (!system.GetPerformanceStatistics(worldHandle, statistics, false))
+            {
+                state.SkipWithError("Performance statistics read failed.");
+                break;
+            }
+            benchmark::DoNotOptimize(statistics.m_wrapperRetainedBytes);
+        }
+        state.counters["Bodies"] = 1'024;
+        state.counters["Workers"] = 1;
+    }
+
+    void StepCollisionPolicy(
+        benchmark::State& state)
+    {
+        const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
+        const AZ::u32 policy = aznumeric_cast<AZ::u32>(state.range(2));
+        JobContextScope jobContext(workerCount);
+        SystemConfiguration configuration = CreateSystemConfiguration(workerCount, bodyCount + 16);
+        configuration.m_defaultWorld.m_collectActivationEvents = policy == 0 || policy == 3;
+        configuration.m_defaultWorld.m_collectContactEvents = policy == 0 || policy == 1;
+        configuration.m_defaultWorld.m_simulation.m_allowSleeping = policy == 3;
+        System system(configuration, &jobContext.Get());
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        const ShapeHandle floorShape = CreateBox(system, worldHandle, AZ::Vector3(64.0f, 64.0f, 1.0f));
+        const ShapeHandle sphereShape = CreateSphere(system, worldHandle, 0.25f);
+        const BodyHandle floorBody = CreateBody(
+            system,
+            worldHandle,
+            floorShape,
+            MotionType::Static,
+            AZ::Vector3(0.0f, 0.0f, -0.5f));
+        AZStd::vector<BodyHandle> bodies;
+        bodies.reserve(bodyCount);
+        for (AZ::u32 bodyIndex = 0; bodyIndex < bodyCount; ++bodyIndex)
+        {
+            BodyConfiguration bodyConfiguration;
+            bodyConfiguration.m_shapeHandle = sphereShape;
+            bodyConfiguration.m_transform.m_position = {
+                .m_x = 0.55 * static_cast<double>(bodyIndex % 16),
+                .m_y = 0.55 * static_cast<double>((bodyIndex / 16) % 16),
+                .m_z = 0.3 + 0.55 * static_cast<double>(bodyIndex / 256),
+            };
+            bodyConfiguration.m_isSensor = policy == 1;
+            if (policy == 2)
+            {
+                bodyConfiguration.m_motionQuality = MotionQuality::Continuous;
+                bodyConfiguration.m_linearVelocity = AZ::Vector3::CreateAxisZ(-100.0f);
+            }
+            const BodyHandle bodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+            if (!bodyHandle)
+            {
+                state.SkipWithError("Failed to create a collision-policy benchmark body.");
+                return;
+            }
+            bodies.push_back(bodyHandle);
+        }
+        if (!floorBody)
+        {
+            state.SkipWithError("Failed to create the collision-policy benchmark floor.");
+            return;
+        }
+
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            if (policy == 3
+                && (!system.DeactivateBodies(worldHandle, bodies)
+                    || !system.ActivateBodies(worldHandle, bodies)))
+            {
+                state.SkipWithError("Sleep/wake benchmark activation failed.");
+                break;
+            }
+            if (!system.StepWorld(worldHandle, MatchedTimeStep))
+            {
+                state.SkipWithError("Collision-policy benchmark step failed.");
+                break;
+            }
+            benchmark::DoNotOptimize(system.GetEvents(worldHandle).GetContacts().size());
+        }
+        AddWorldCounters(state, system, worldHandle);
+        jobContext.AddCounters(state);
+        state.counters["Bodies"] = bodyCount;
+        state.counters["Policy"] = policy;
+        state.counters["Workers"] = workerCount;
+    }
+
+    void StepCustomShapes(
+        benchmark::State& state)
+    {
+        const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
+        const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
+        AZStd::unique_ptr<AZ::DynamicModuleHandle> providerModule =
+            AZ::DynamicModuleHandle::Create("Jolt.TestProviders");
+        if (!providerModule
+            || !providerModule->Load(AZ::DynamicModuleHandle::LoadFlags::InitFuncRequired))
+        {
+            state.SkipWithError("Failed to load the custom shape benchmark provider.");
+            return;
+        }
+        const auto getProvider = providerModule->GetFunction<Tests::GetCustomShapeProviderFunction>(
+            Tests::GetCustomShapeProviderFunctionName);
+        ICustomShapeProvider* provider = nullptr;
+        if (getProvider)
+        {
+            provider = getProvider();
+        }
+        if (!provider)
+        {
+            state.SkipWithError("The custom shape benchmark provider is unavailable.");
+            return;
+        }
+
+        JobContextScope jobContext(workerCount);
+        System system(
+            CreateSystemConfiguration(workerCount, bodyCount + 16),
+            &jobContext.Get(),
+            SystemRegistration::Isolated);
+        if (!system
+            || system.RegisterCustomShapeProvider(provider) != ProviderRegistrationResult::Success)
+        {
+            state.SkipWithError("Failed to register the custom shape benchmark provider.");
+            return;
+        }
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        ShapeConfiguration customConfiguration;
+        customConfiguration.m_geometry = CustomShapeConfiguration{
+            .m_data = {4},
+            .m_providerId = provider->GetId(),
+        };
+        const CookedShapeHandle cookedCustomShape = system.CookShape(customConfiguration);
+        const ShapeHandle customShape = system.CreateShape(worldHandle, cookedCustomShape);
+        const ShapeHandle floorShape = CreateBox(system, worldHandle, AZ::Vector3(64.0f, 64.0f, 1.0f));
+        const BodyHandle floorBody = CreateBody(
+            system,
+            worldHandle,
+            floorShape,
+            MotionType::Static,
+            AZ::Vector3(0.0f, 0.0f, -0.5f));
+        if (!cookedCustomShape || !customShape || !floorBody)
+        {
+            state.SkipWithError("Failed to create the custom shape benchmark scene.");
+            return;
+        }
+
+        for (AZ::u32 bodyIndex = 0; bodyIndex < bodyCount; ++bodyIndex)
+        {
+            if (!CreateBody(
+                    system,
+                    worldHandle,
+                    customShape,
+                    MotionType::Dynamic,
+                    AZ::Vector3(
+                        0.55f * aznumeric_cast<float>(bodyIndex % 16),
+                        0.55f * aznumeric_cast<float>((bodyIndex / 16) % 16),
+                        0.3f + 0.55f * aznumeric_cast<float>(bodyIndex / 256))))
+            {
+                state.SkipWithError("Failed to create a custom shape benchmark body.");
+                return;
+            }
+        }
+        for (AZ::u32 warmup = 0; warmup < 60; ++warmup)
+        {
+            if (!system.StepWorld(worldHandle, MatchedTimeStep))
+            {
+                state.SkipWithError("Custom shape benchmark warmup failed.");
+                return;
+            }
+        }
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            if (!system.StepWorld(worldHandle, MatchedTimeStep))
+            {
+                state.SkipWithError("Custom shape benchmark step failed.");
+                break;
+            }
+        }
+        AddWorldCounters(state, system, worldHandle);
+        jobContext.AddCounters(state);
+        state.counters["Bodies"] = bodyCount;
+        state.counters["Workers"] = workerCount;
+    }
+
     BENCHMARK(StepFallingBoxes)
         ->Name("Jolt/Step/FallingBoxes")
         ->Args({128, 1})
@@ -2543,6 +3593,16 @@ namespace Jolt::Benchmarks
         ->Unit(benchmark::kMicrosecond)
         ->UseRealTime();
 
+    BENCHMARK(QueryFloatScopeOverhead)
+        ->Name("Jolt/Diagnostic/QueryFloatScopeOverhead")
+        ->Unit(benchmark::kNanosecond)
+        ->UseRealTime();
+
+    BENCHMARK(QueryLockOverhead)
+        ->Name("Jolt/Diagnostic/QueryLockOverhead")
+        ->Unit(benchmark::kNanosecond)
+        ->UseRealTime();
+
     BENCHMARK(RaycastBroadPhaseGrid)
         ->Name("Jolt/Diagnostic/RaycastBroadPhaseGrid")
         ->Args({1024, 128})
@@ -2590,6 +3650,135 @@ namespace Jolt::Benchmarks
         ->Name("Jolt/Hair/Readback")
         ->Args({256, 16, 32})
         ->Args({1024, 16, 32})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(StepConstraintCategory)
+        ->Name("Jolt/Constraint/StepCategory")
+        ->Args({128, 1, 0})
+        ->Args({128, 1, 1})
+        ->Args({128, 1, 2})
+        ->Args({128, 1, 3})
+        ->Args({128, 1, 4})
+        ->Args({128, 4, 4})
+        ->Args({128, 8, 4})
+        ->Args({128, 1, 5})
+        ->Args({128, 1, 6})
+        ->Args({128, 1, 7})
+        ->ArgNames({"Constraints", "Workers", "Category"})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime()
+        ->Iterations(StatefulBenchmarkFrameCount);
+
+    BENCHMARK(StepSoftBodies)
+        ->Name("Jolt/SoftBody/Step")
+        ->Args({16, 1})
+        ->Args({16, 4})
+        ->Args({16, 8})
+        ->ArgNames({"Bodies", "Workers"})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime()
+        ->Iterations(StatefulBenchmarkFrameCount);
+
+    BENCHMARK(StepCustomShapes)
+        ->Name("Jolt/CustomShape/Step")
+        ->Args({128, 1})
+        ->Args({128, 4})
+        ->Args({128, 8})
+        ->ArgNames({"Bodies", "Workers"})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime()
+        ->Iterations(StatefulBenchmarkFrameCount);
+
+    BENCHMARK(UpdateVirtualCharacters)
+        ->Name("Jolt/Character/VirtualUpdate")
+        ->Arg(128)
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime()
+        ->Iterations(StatefulBenchmarkFrameCount);
+
+    BENCHMARK(StepPhysicalCharacters)
+        ->Name("Jolt/Character/PhysicalStep")
+        ->Args({128, 1})
+        ->Args({128, 4})
+        ->Args({128, 8})
+        ->ArgNames({"Characters", "Workers"})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime()
+        ->Iterations(StatefulBenchmarkFrameCount);
+
+    BENCHMARK(QueryRetainedShapePair)
+        ->Name("Jolt/Query/RetainedShapePair")
+        ->Arg(0)
+        ->Arg(1)
+        ->ArgNames({"Cast"})
+        ->Unit(benchmark::kNanosecond)
+        ->UseRealTime();
+
+    BENCHMARK(MapSkeletonPose)
+        ->Name("Jolt/Skeleton/MapPose")
+        ->Arg(64)
+        ->Arg(256)
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(UpdateHeightfield)
+        ->Name("Jolt/Shape/UpdateHeightfield")
+        ->Arg(64)
+        ->Arg(128)
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(StepWheeledVehicles)
+        ->Name("Jolt/Vehicle/StepController")
+        ->Args({32, 1, 0})
+        ->Args({32, 4, 0})
+        ->Args({32, 8, 0})
+        ->Args({32, 1, 1})
+        ->Args({32, 1, 2})
+        ->ArgNames({"Vehicles", "Workers", "Controller"})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime()
+        ->Iterations(VehicleBenchmarkFrameCount);
+
+    BENCHMARK(StepRagdolls)
+        ->Name("Jolt/Ragdoll/Step")
+        ->Args({64, 1})
+        ->Args({64, 4})
+        ->Args({64, 8})
+        ->ArgNames({"Parts", "Workers"})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime()
+        ->Iterations(StatefulBenchmarkFrameCount);
+
+    BENCHMARK(StepCollisionPolicy)
+        ->Name("Jolt/Simulation/CollisionPolicy")
+        ->Args({128, 1, 0})
+        ->Args({128, 4, 0})
+        ->Args({128, 8, 0})
+        ->Args({128, 1, 1})
+        ->Args({128, 1, 2})
+        ->Args({128, 1, 3})
+        ->ArgNames({"Bodies", "Workers", "Policy"})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime()
+        ->Iterations(StatefulBenchmarkFrameCount);
+
+    BENCHMARK(OptimizeBroadPhase)
+        ->Name("Jolt/BroadPhase/Optimize")
+        ->Arg(1'024)
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(InstantiateScenes)
+        ->Name("Jolt/Scene/InstantiateDestroy")
+        ->Arg(128)
+        ->Arg(1'024)
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(ReadPerformanceStatistics)
+        ->Name("Jolt/Diagnostic/ReadPerformanceStatistics")
         ->Unit(benchmark::kMicrosecond)
         ->UseRealTime();
 } // namespace Jolt::Benchmarks

@@ -51,5 +51,9 @@ namespace Jolt::Internal
     &Jolt::Internal::BehaviorValuePropertyByValue<member>::Get, \
     &Jolt::Internal::BehaviorValuePropertyByValue<member>::Set
 
+#define JOLT_BEHAVIOR_READONLY_PROPERTY(member) \
+    &Jolt::Internal::BehaviorValuePropertyByValue<member>::Get, \
+    nullptr
+
 #define JOLT_BEHAVIOR_ENUM(context, type, value) \
     Jolt::Internal::ReflectEnum<static_cast<AZStd::underlying_type_t<type>>(type::value)>(context, #type "_" #value)

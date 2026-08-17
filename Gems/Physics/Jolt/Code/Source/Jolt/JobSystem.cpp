@@ -15,9 +15,22 @@
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobManager.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/std/chrono/chrono.h>
 
 namespace Jolt
 {
+    namespace
+    {
+        [[nodiscard]]
+        AZ::u64 GetSteadyNanoseconds()
+        {
+            return static_cast<AZ::u64>(
+                AZStd::chrono::duration_cast<AZStd::chrono::nanoseconds>(
+                    AZStd::chrono::steady_clock::now().time_since_epoch())
+                    .count());
+        }
+    } // namespace
+
     JobSystem::ProviderJob::ProviderJob(
         const char* name,
         const JPH::ColorArg color,
@@ -53,6 +66,8 @@ namespace Jolt
         while (true)
         {
             ProviderJob* job = nullptr;
+            bool collectTimings = false;
+            AZ::u64 queueLatencyNanoseconds = 0;
             {
                 AZStd::unique_lock lock(m_jobSystem.m_taskMutex);
                 while (m_jobSystem.m_queuedJobCount == 0
@@ -81,11 +96,31 @@ namespace Jolt
                     m_jobSystem.m_queueReadIndex = 0;
                 }
                 --m_jobSystem.m_queuedJobCount;
+                collectTimings = m_jobSystem.m_collectUpdateTimings;
+                if (collectTimings)
+                {
+                    queueLatencyNanoseconds = GetSteadyNanoseconds() - job->m_queuedNanoseconds;
+                }
             }
 
+            AZ::u64 executionStartNanoseconds = 0;
+            if (collectTimings)
+            {
+                executionStartNanoseconds = GetSteadyNanoseconds();
+            }
             {
                 JOLT_PROFILE_SCOPE(Physics, job->GetProfileName());
                 job->Execute();
+            }
+            if (collectTimings)
+            {
+                const AZ::u64 executionNanoseconds = GetSteadyNanoseconds() - executionStartNanoseconds;
+                AZStd::lock_guard lock(m_jobSystem.m_taskMutex);
+                m_jobSystem.m_updateStatistics.m_executionNanoseconds += executionNanoseconds;
+                m_jobSystem.m_updateStatistics.m_queueLatencyNanoseconds += queueLatencyNanoseconds;
+                m_jobSystem.m_updateStatistics.m_maximumQueueLatencyNanoseconds = AZStd::max(
+                    m_jobSystem.m_updateStatistics.m_maximumQueueLatencyNanoseconds,
+                    queueLatencyNanoseconds);
             }
             job->Release();
         }
@@ -122,12 +157,14 @@ namespace Jolt
         AZ_Assert(m_queuedJobCount == 0, "The Jolt job queue was not drained before destruction.");
     }
 
-    void JobSystem::BeginUpdate()
+    void JobSystem::BeginUpdate(
+        const bool collectTimings)
     {
         AZStd::lock_guard lock(m_taskMutex);
         AZ_Assert(!m_collectUpdateStatistics, "Jolt job statistics collection is already active.");
         m_updateStatistics = {};
         m_collectUpdateStatistics = true;
+        m_collectUpdateTimings = collectTimings;
     }
 
     JobSystem::UpdateStatistics JobSystem::EndUpdate()
@@ -135,6 +172,7 @@ namespace Jolt
         AZStd::lock_guard lock(m_taskMutex);
         AZ_Assert(m_collectUpdateStatistics, "Jolt job statistics collection is not active.");
         m_collectUpdateStatistics = false;
+        m_collectUpdateTimings = false;
         return m_updateStatistics;
     }
 
@@ -213,6 +251,10 @@ namespace Jolt
                     "The Jolt ready-job queue capacity is exhausted.");
                 ProviderJob* providerJob = static_cast<ProviderJob*>(jobs[jobIndex]);
                 providerJob->AddRef();
+                if (m_collectUpdateTimings)
+                {
+                    providerJob->m_queuedNanoseconds = GetSteadyNanoseconds();
+                }
                 m_queuedJobs[m_queueWriteIndex] = providerJob;
                 ++m_queueWriteIndex;
                 if (m_queueWriteIndex == m_queuedJobs.size())

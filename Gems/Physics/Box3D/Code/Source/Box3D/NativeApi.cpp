@@ -407,12 +407,12 @@ namespace Box3D
             [[maybe_unused]] const char* fileName,
             [[maybe_unused]] const int lineNumber)
         {
-            const char* reportedCondition = "<unknown>";
+            [[maybe_unused]] const char* reportedCondition = "<unknown>";
             if (condition)
             {
                 reportedCondition = condition;
             }
-            const char* reportedFileName = "<unknown>";
+            [[maybe_unused]] const char* reportedFileName = "<unknown>";
             if (fileName)
             {
                 reportedFileName = fileName;

@@ -19,6 +19,14 @@
 
 namespace Jolt
 {
+    struct WorldLockStatistics final
+    {
+        AZ::u64 m_contentionCount = 0;
+        AZ::u64 m_lockCount = 0;
+        AZ::u64 m_maximumWaitNanoseconds = 0;
+        AZ::u64 m_waitNanoseconds = 0;
+    };
+
     class FloatEnvironment final
     {
     public:
@@ -81,10 +89,24 @@ namespace Jolt
 
         void unlock_simulation();
 
+        void ConfigureStatistics(bool enabled);
+
+        [[nodiscard]]
+        WorldLockStatistics GetStatistics(bool reset);
+
     private:
+        void RecordLock(
+            AZ::u64 waitNanoseconds,
+            bool contended);
+
         AZStd::recursive_mutex m_operationMutex;
         AZStd::shared_mutex m_stateMutex;
         AZStd::atomic_uint32_t m_waitingWriterCount{0};
+        AZStd::atomic_uint64_t m_contentionCount{0};
+        AZStd::atomic_uint64_t m_lockCount{0};
+        AZStd::atomic_uint64_t m_maximumWaitNanoseconds{0};
+        AZStd::atomic_uint64_t m_waitNanoseconds{0};
+        AZStd::atomic_bool m_collectStatistics{false};
         FloatEnvironment m_environment;
         size_t m_operationDepth = 0;
         size_t m_stateWriteDepth = 0;

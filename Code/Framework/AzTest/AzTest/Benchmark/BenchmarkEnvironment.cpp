@@ -16,13 +16,98 @@
 #include <AzCore/std/utility/move.h>
 
 #include <cstddef>
+#include <cstdio>
+#include <cstdlib>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #include <AzCore/PlatformIncl.h>
+#elif defined(AZ_PLATFORM_LINUX)
+#include <sched.h>
 #endif
 
 namespace AZ::Test
 {
+    namespace
+    {
+#if defined(AZ_PLATFORM_LINUX)
+        [[nodiscard]]
+        bool IsPhysicalCoreSelected(
+            const AZ::u32 processorIndex,
+            const cpu_set_t& selectedProcessors)
+        {
+            char path[128]{};
+            std::snprintf(
+                path,
+                AZ_ARRAY_SIZE(path),
+                "/sys/devices/system/cpu/cpu%u/topology/thread_siblings_list",
+                processorIndex);
+
+            std::FILE* siblingsFile = std::fopen(path, "r");
+            if (!siblingsFile)
+            {
+                return false;
+            }
+
+            char siblings[1024]{};
+            const bool readSucceeded = std::fgets(
+                siblings,
+                AZ_ARRAY_SIZE(siblings),
+                siblingsFile);
+            std::fclose(siblingsFile);
+            if (!readSucceeded)
+            {
+                return false;
+            }
+
+            const char* cursor = siblings;
+            while (*cursor)
+            {
+                while (*cursor
+                    && (*cursor < '0' || *cursor > '9'))
+                {
+                    ++cursor;
+                }
+                if (!*cursor)
+                {
+                    break;
+                }
+
+                char* rangeEnd = nullptr;
+                const unsigned long firstProcessor = std::strtoul(
+                    cursor,
+                    &rangeEnd,
+                    10);
+                cursor = rangeEnd;
+                unsigned long lastProcessor = firstProcessor;
+                if (*cursor == '-')
+                {
+                    ++cursor;
+                    lastProcessor = std::strtoul(
+                        cursor,
+                        &rangeEnd,
+                        10);
+                    cursor = rangeEnd;
+                }
+
+                const unsigned long cappedLastProcessor = AZStd::min(
+                    lastProcessor,
+                    static_cast<unsigned long>(CPU_SETSIZE - 1));
+                for (unsigned long sibling = firstProcessor;
+                    sibling <= cappedLastProcessor;
+                    ++sibling)
+                {
+                    if (CPU_ISSET(static_cast<int>(sibling), &selectedProcessors))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+#endif
+    } // namespace
+
     struct ScopedBenchmarkCpuAffinity::Implementation final
     {
         explicit Implementation(
@@ -217,10 +302,10 @@ namespace AZ::Test
             }
 
             m_processorCount = selectedProcessorCount;
-            m_processorAffinityMasks.reserve(selectedProcessorAffinityMasks.size());
+            m_workerProcessorAffinities.reserve(selectedProcessorAffinityMasks.size());
             for (const DWORD_PTR processorAffinityMask : selectedProcessorAffinityMasks)
             {
-                m_processorAffinityMasks.push_back(static_cast<AZ::u64>(processorAffinityMask));
+                m_workerProcessorAffinities.push_back(static_cast<AZ::u64>(processorAffinityMask));
             }
             m_isConstrained = true;
 
@@ -242,6 +327,83 @@ namespace AZ::Test
                     m_benchmarkThreadHandle = nullptr;
                 }
             }
+#elif defined(AZ_PLATFORM_LINUX)
+            if (requestedProcessorCount == 0
+                || sched_getaffinity(
+                    0,
+                    sizeof(m_previousThreadAffinity),
+                    &m_previousThreadAffinity) != 0)
+            {
+                return;
+            }
+
+            cpu_set_t selectedProcessors;
+            CPU_ZERO(&selectedProcessors);
+            AZStd::vector<int> selectedProcessorIndices;
+            selectedProcessorIndices.reserve(requestedProcessorCount);
+            for (int processorIndex = 0;
+                processorIndex < CPU_SETSIZE
+                    && m_processorCount < requestedProcessorCount;
+                ++processorIndex)
+            {
+                if (CPU_ISSET(processorIndex, &m_previousThreadAffinity)
+                    && !IsPhysicalCoreSelected(
+                        aznumeric_cast<AZ::u32>(processorIndex),
+                        selectedProcessors))
+                {
+                    CPU_SET(processorIndex, &selectedProcessors);
+                    selectedProcessorIndices.push_back(processorIndex);
+                    ++m_processorCount;
+                }
+            }
+
+            for (int processorIndex = 0;
+                processorIndex < CPU_SETSIZE
+                    && m_processorCount < requestedProcessorCount;
+                ++processorIndex)
+            {
+                if (CPU_ISSET(processorIndex, &m_previousThreadAffinity)
+                    && !CPU_ISSET(processorIndex, &selectedProcessors))
+                {
+                    CPU_SET(processorIndex, &selectedProcessors);
+                    selectedProcessorIndices.push_back(processorIndex);
+                    ++m_processorCount;
+                }
+            }
+
+            if (m_processorCount != requestedProcessorCount)
+            {
+                m_processorCount = 0;
+                return;
+            }
+
+            for (const int processorIndex : selectedProcessorIndices)
+            {
+                m_workerProcessorAffinities.push_back(
+                    aznumeric_cast<AZ::u64>(processorIndex));
+            }
+
+            cpu_set_t benchmarkThreadProcessors = selectedProcessors;
+            if (m_workerProcessorAffinities.size() == selectedProcessorIndices.size())
+            {
+                CPU_ZERO(&benchmarkThreadProcessors);
+                CPU_SET(selectedProcessorIndices.front(), &benchmarkThreadProcessors);
+            }
+
+            if (!CPU_EQUAL(&benchmarkThreadProcessors, &m_previousThreadAffinity))
+            {
+                if (sched_setaffinity(
+                        0,
+                        sizeof(benchmarkThreadProcessors),
+                        &benchmarkThreadProcessors) != 0)
+                {
+                    m_workerProcessorAffinities.clear();
+                    m_processorCount = 0;
+                    return;
+                }
+                m_restoreThreadAffinity = true;
+            }
+            m_isConstrained = true;
 #else
             AZ_UNUSED(requestedProcessorCount);
 #endif
@@ -259,11 +421,19 @@ namespace AZ::Test
                 SetThreadAffinityMask(m_benchmarkThreadHandle, m_previousThreadAffinityMask);
                 CloseHandle(m_benchmarkThreadHandle);
             }
+#elif defined(AZ_PLATFORM_LINUX)
+            if (m_restoreThreadAffinity)
+            {
+                sched_setaffinity(
+                    0,
+                    sizeof(m_previousThreadAffinity),
+                    &m_previousThreadAffinity);
+            }
 #endif
         }
 
         AZ::u32 m_processorCount = 0;
-        AZStd::vector<AZ::u64> m_processorAffinityMasks;
+        AZStd::vector<AZ::u64> m_workerProcessorAffinities;
         bool m_isConstrained = false;
 
 #if defined(AZ_PLATFORM_WINDOWS)
@@ -271,6 +441,9 @@ namespace AZ::Test
         DWORD_PTR m_previousThreadAffinityMask = 0;
         HANDLE m_benchmarkThreadHandle = nullptr;
         bool m_restoreProcessAffinity = false;
+#elif defined(AZ_PLATFORM_LINUX)
+        cpu_set_t m_previousThreadAffinity{};
+        bool m_restoreThreadAffinity = false;
 #endif
     };
 
@@ -300,13 +473,13 @@ namespace AZ::Test
         for (AZ::u32 workerIndex = 0; workerIndex < workerCount; ++workerIndex)
         {
             int processorAffinityMask = -1;
-            if (!m_implementation->m_processorAffinityMasks.empty())
+            if (!m_implementation->m_workerProcessorAffinities.empty())
             {
-                const AZ::u64 nativeProcessorAffinityMask = m_implementation->m_processorAffinityMasks[
-                    (workerIndex + 1) % m_implementation->m_processorAffinityMasks.size()];
-                if (nativeProcessorAffinityMask <= aznumeric_cast<AZ::u64>(AZStd::numeric_limits<int>::max()))
+                const AZ::u64 nativeProcessorAffinity = m_implementation->m_workerProcessorAffinities[
+                    (workerIndex + 1) % m_implementation->m_workerProcessorAffinities.size()];
+                if (nativeProcessorAffinity <= aznumeric_cast<AZ::u64>(AZStd::numeric_limits<int>::max()))
                 {
-                    processorAffinityMask = aznumeric_cast<int>(nativeProcessorAffinityMask);
+                    processorAffinityMask = aznumeric_cast<int>(nativeProcessorAffinity);
                 }
             }
             descriptor.m_workerThreads.emplace_back(processorAffinityMask);

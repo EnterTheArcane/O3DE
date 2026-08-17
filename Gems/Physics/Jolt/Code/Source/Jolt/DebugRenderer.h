@@ -55,6 +55,9 @@ namespace Jolt
         [[nodiscard]]
         DebugCaptureStatistics GetStatistics() const;
 
+        [[nodiscard]]
+        AZ::u64 GetRetainedBytes() const;
+
         void RecordGeometry(
             DebugBatch& batch,
             const DebugGeometryConfiguration& configuration);

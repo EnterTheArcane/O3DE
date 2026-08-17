@@ -15,6 +15,7 @@
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/Memory/AllocatorInstance.h>
 #include <AzCore/Utils/TypeHash.h>
+#include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/mutex.h>
 
@@ -39,14 +40,51 @@ namespace Jolt
         AZ::u32 RuntimeReferenceCount = 0;
         float RuntimeSoftBodyTriangleThickness = 0.1f;
 
+        AZStd::atomic_uint32_t NativeMemoryStatisticsReferenceCount{0};
+        AZStd::atomic_uint64_t NativeAllocationCount{0};
+        AZStd::atomic_uint64_t NativeFreeCount{0};
+        AZStd::atomic<AZ::u64> NativePeakAllocatedBytes{0};
+        AZStd::atomic_uint64_t NativeReallocationCount{0};
+        AZStd::mutex NativeMemoryStatisticsMutex;
+
+        constexpr size_t Sha256CharacterCount = 64;
+        // Preserve readable padding for vectorized fixed-length comparisons.
+        alignas(64) constinit char NativePatchHashStorage[Sha256CharacterCount * 2] = JOLT_NATIVE_PATCH_HASH;
+        static_assert(sizeof(JOLT_NATIVE_PATCH_HASH) - 1 == Sha256CharacterCount);
+
+        [[nodiscard]]
+        bool IsNativeMemoryStatisticsEnabled()
+        {
+            return NativeMemoryStatisticsReferenceCount.load(AZStd::memory_order_relaxed) > 0;
+        }
+
+        void UpdateNativePeakAllocatedBytes()
+        {
+            const AZ::u64 allocatedBytes = AZ::AllocatorInstance<NativeAllocator>::Get().NumAllocatedBytes();
+            AZ::u64 peakBytes = NativePeakAllocatedBytes.load(AZStd::memory_order_relaxed);
+            while (peakBytes < allocatedBytes
+                && !NativePeakAllocatedBytes.compare_exchange_weak(
+                    peakBytes,
+                    allocatedBytes,
+                    AZStd::memory_order_relaxed))
+            {
+            }
+        }
+
         void* AllocateNativeMemory(
             const size_t size)
         {
-            return AZ::AllocatorInstance<NativeAllocator>::Get().Allocate(
+            void* memory = AZ::AllocatorInstance<NativeAllocator>::Get().Allocate(
                 size,
                 JPH_DEFAULT_ALLOCATE_ALIGNMENT,
                 0,
                 "Jolt Native");
+            if (IsNativeMemoryStatisticsEnabled())
+            {
+                NativeAllocationCount.fetch_add(1, AZStd::memory_order_relaxed);
+                UpdateNativePeakAllocatedBytes();
+            }
+            return memory;
         }
 
         void* ReallocateNativeMemory(
@@ -54,33 +92,53 @@ namespace Jolt
             [[maybe_unused]] const size_t oldSize,
             const size_t newSize)
         {
-            return AZ::AllocatorInstance<NativeAllocator>::Get().ReAllocate(
+            void* reallocatedMemory = AZ::AllocatorInstance<NativeAllocator>::Get().ReAllocate(
                 memory,
                 newSize,
                 JPH_DEFAULT_ALLOCATE_ALIGNMENT);
+            if (IsNativeMemoryStatisticsEnabled())
+            {
+                NativeReallocationCount.fetch_add(1, AZStd::memory_order_relaxed);
+                UpdateNativePeakAllocatedBytes();
+            }
+            return reallocatedMemory;
         }
 
         void FreeNativeMemory(
             void* memory)
         {
             AZ::AllocatorInstance<NativeAllocator>::Get().DeAllocate(memory);
+            if (memory && IsNativeMemoryStatisticsEnabled())
+            {
+                NativeFreeCount.fetch_add(1, AZStd::memory_order_relaxed);
+            }
         }
 
         void* AllocateAlignedNativeMemory(
             const size_t size,
             const size_t alignment)
         {
-            return AZ::AllocatorInstance<NativeAllocator>::Get().Allocate(
+            void* memory = AZ::AllocatorInstance<NativeAllocator>::Get().Allocate(
                 size,
                 alignment,
                 0,
                 "Jolt Native Aligned");
+            if (IsNativeMemoryStatisticsEnabled())
+            {
+                NativeAllocationCount.fetch_add(1, AZStd::memory_order_relaxed);
+                UpdateNativePeakAllocatedBytes();
+            }
+            return memory;
         }
 
         void FreeAlignedNativeMemory(
             void* memory)
         {
             AZ::AllocatorInstance<NativeAllocator>::Get().DeAllocate(memory);
+            if (memory && IsNativeMemoryStatisticsEnabled())
+            {
+                NativeFreeCount.fetch_add(1, AZStd::memory_order_relaxed);
+            }
         }
 
         void TraceNativeMessage(
@@ -234,6 +292,64 @@ namespace Jolt
         return fingerprint;
     }
 
+    void AcquireNativeMemoryStatistics()
+    {
+        AZStd::lock_guard lock(NativeMemoryStatisticsMutex);
+        const AZ::u32 previousReferenceCount = NativeMemoryStatisticsReferenceCount.load(
+            AZStd::memory_order_relaxed);
+        if (previousReferenceCount == 0)
+        {
+            NativeAllocationCount.store(0, AZStd::memory_order_relaxed);
+            NativeFreeCount.store(0, AZStd::memory_order_relaxed);
+            NativeReallocationCount.store(0, AZStd::memory_order_relaxed);
+            NativePeakAllocatedBytes.store(
+                AZ::AllocatorInstance<NativeAllocator>::Get().NumAllocatedBytes(),
+                AZStd::memory_order_relaxed);
+        }
+        NativeMemoryStatisticsReferenceCount.store(
+            previousReferenceCount + 1,
+            AZStd::memory_order_release);
+    }
+
+    void ReleaseNativeMemoryStatistics()
+    {
+        AZStd::lock_guard lock(NativeMemoryStatisticsMutex);
+        const AZ::u32 previousReferenceCount = NativeMemoryStatisticsReferenceCount.load(
+            AZStd::memory_order_relaxed);
+        AZ_Assert(previousReferenceCount > 0, "Jolt native memory statistics reference count underflowed.");
+        if (previousReferenceCount == 0)
+        {
+            return;
+        }
+        NativeMemoryStatisticsReferenceCount.store(
+            previousReferenceCount - 1,
+            AZStd::memory_order_release);
+    }
+
+    NativeMemoryStatistics GetNativeMemoryStatistics(
+        const bool reset)
+    {
+        NativeMemoryStatistics statistics{
+            .m_allocatedBytes = AZ::AllocatorInstance<NativeAllocator>::Get().NumAllocatedBytes(),
+        };
+        if (reset)
+        {
+            statistics.m_peakAllocatedBytes = NativePeakAllocatedBytes.exchange(
+                statistics.m_allocatedBytes,
+                AZStd::memory_order_relaxed);
+            statistics.m_allocationCount = NativeAllocationCount.exchange(0, AZStd::memory_order_relaxed);
+            statistics.m_freeCount = NativeFreeCount.exchange(0, AZStd::memory_order_relaxed);
+            statistics.m_reallocationCount = NativeReallocationCount.exchange(0, AZStd::memory_order_relaxed);
+            return statistics;
+        }
+
+        statistics.m_peakAllocatedBytes = NativePeakAllocatedBytes.load(AZStd::memory_order_relaxed);
+        statistics.m_allocationCount = NativeAllocationCount.load(AZStd::memory_order_relaxed);
+        statistics.m_freeCount = NativeFreeCount.load(AZStd::memory_order_relaxed);
+        statistics.m_reallocationCount = NativeReallocationCount.load(AZStd::memory_order_relaxed);
+        return statistics;
+    }
+
     NativeRuntime::NativeRuntime(
         const float softBodyTriangleThickness)
         : m_initialized(AcquireNativeRuntime(softBodyTriangleThickness))
@@ -250,22 +366,20 @@ namespace Jolt
 
     RuntimeInfo NativeRuntime::GetRuntimeInfo() const
     {
-        RuntimeInfo runtimeInfo{
-            .m_version = {
-                .m_major = JPH_VERSION_MAJOR,
-                .m_minor = JPH_VERSION_MINOR,
-                .m_patch = JPH_VERSION_PATCH,
-            },
-            .m_buildFingerprint = GetNativeBuildFingerprint(),
-            .m_configuration = JPH::GetConfigurationString(),
-            .m_patchHash = JOLT_NATIVE_PATCH_HASH,
-            .m_patchRevision = JOLT_NATIVE_PATCH_REVISION,
-            .m_sourceRevision = JOLT_NATIVE_SOURCE_REVISION,
-            .m_hairDeterminism = DeterminismCertification::SameBinary,
-            .m_physicsDeterminism = DeterminismCertification::None,
-            .m_precision = Precision::Single,
-            .m_simdLevel = SimdLevel::Scalar,
+        RuntimeInfo runtimeInfo;
+        runtimeInfo.m_version = {
+            .m_major = JPH_VERSION_MAJOR,
+            .m_minor = JPH_VERSION_MINOR,
+            .m_patch = JPH_VERSION_PATCH,
         };
+        runtimeInfo.m_buildFingerprint = GetNativeBuildFingerprint();
+        runtimeInfo.m_configuration = JPH::GetConfigurationString();
+        runtimeInfo.m_patchHash = AZStd::string_view(NativePatchHashStorage, Sha256CharacterCount);
+        runtimeInfo.m_patchRevision = JOLT_NATIVE_PATCH_REVISION;
+        runtimeInfo.m_sourceRevision = JOLT_NATIVE_SOURCE_REVISION;
+        runtimeInfo.m_hairDeterminism = DeterminismCertification::SameBinary;
+        runtimeInfo.m_precision = Precision::Single;
+        runtimeInfo.m_simdLevel = SimdLevel::Scalar;
 
 #if defined(JPH_DOUBLE_PRECISION)
         runtimeInfo.m_precision = Precision::Double;

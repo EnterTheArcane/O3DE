@@ -86,6 +86,49 @@ namespace Jolt
         size_t m_referenceCount = 1;
     };
 
+    struct WorldPerformanceAccumulator final
+    {
+        AZStd::atomic_uint64_t m_broadPhaseOptimizeCount{0};
+        AZStd::atomic_uint64_t m_broadPhaseOptimizeNanoseconds{0};
+        AZStd::atomic_uint64_t m_originShiftCount{0};
+
+        AZStd::atomic_uint64_t m_contactEventCount{0};
+        AZStd::atomic_uint64_t m_contactPointCount{0};
+
+        AZStd::atomic_uint64_t m_droppedEventCount{0};
+        AZStd::atomic_uint64_t m_eventHighWaterCount{0};
+        AZStd::atomic_uint64_t m_publishedEventCount{0};
+
+        AZStd::atomic_uint64_t m_queryCandidateCount{0};
+        AZStd::atomic_uint64_t m_queryCount{0};
+        AZStd::atomic_uint64_t m_queryHitCount{0};
+        AZStd::atomic_uint64_t m_queryNanoseconds{0};
+
+        AZStd::atomic_uint64_t m_snapshotCaptureCount{0};
+        AZStd::atomic_uint64_t m_snapshotCaptureNanoseconds{0};
+        AZStd::atomic_uint64_t m_snapshotFailureCount{0};
+        AZStd::atomic_uint64_t m_snapshotPeakBytes{0};
+        AZStd::atomic_uint64_t m_snapshotRestoreCount{0};
+        AZStd::atomic_uint64_t m_snapshotRestoreNanoseconds{0};
+
+        AZStd::atomic_uint64_t m_jobCount{0};
+        AZStd::atomic_uint64_t m_jobExecutionNanoseconds{0};
+        AZStd::atomic_uint64_t m_jobMaximumQueueLatencyNanoseconds{0};
+        AZStd::atomic_uint64_t m_jobQueueLatencyNanoseconds{0};
+        AZStd::atomic_uint64_t m_jobTaskCount{0};
+        AZStd::atomic_uint32_t m_jobMaximumActiveTaskCount{0};
+
+        AZStd::atomic_uint64_t m_hairReadbackBytes{0};
+        AZStd::atomic_uint64_t m_hairReadbackCount{0};
+        AZStd::atomic_uint64_t m_hairReadbackNanoseconds{0};
+        AZStd::atomic_uint64_t m_hairUpdateCount{0};
+        AZStd::atomic_uint64_t m_hairUpdateNanoseconds{0};
+
+        AZStd::atomic_uint64_t m_simulationErrorCount{0};
+        AZStd::atomic_uint64_t m_simulationNanoseconds{0};
+        AZStd::atomic_uint64_t m_simulationStepCount{0};
+    };
+
     class World final
         : public IWorldQueries
         , private JPH::BodyActivationListener
@@ -1253,6 +1296,13 @@ namespace Jolt
         [[nodiscard]]
         bool GetStatistics(WorldStatistics& statistics) const;
 
+        bool ConfigurePerformanceStatistics(PerformanceStatisticsFlags flags);
+
+        [[nodiscard]]
+        bool GetPerformanceStatistics(
+            WorldPerformanceStatistics& statistics,
+            bool reset);
+
         [[nodiscard]]
         DiagnosticStatisticsResult GetBroadPhaseStatistics(
             AZStd::span<BroadPhaseStatistics> statistics,
@@ -2192,6 +2242,13 @@ namespace Jolt
             bool m_ownsChildHandles = false;
         };
 
+        struct NativeShapeStatistics final
+        {
+            AZ::u64 m_retainedBytes = 0;
+            AZ::u64 m_triangleCount = 0;
+            AZ::u32 m_shapeCount = 0;
+        };
+
         struct BodySlot final
         {
             JPH::BodyID m_bodyId;
@@ -2465,6 +2522,7 @@ namespace Jolt
             RollbackParticipantState m_contactCallbackState;
             RollbackParticipantState m_simulationShapeFilterState;
             RollbackParticipantState m_softBodyContactCallbackState;
+            AZ::u32 m_filteredBodyStateCount = 0;
             AZ::u32 m_filteredConstraintStateCount = 0;
 
             AZStd::vector<AZ::u32> m_characterStateIndices;
@@ -2695,6 +2753,9 @@ namespace Jolt
 
         [[nodiscard]]
         bool AdvanceVehicleConfigurationRevision(VehicleSlot& slot);
+
+        [[nodiscard]]
+        NativeShapeStatistics GatherNativeShapeStatistics() const;
 
         void InvalidateAllContactCaches();
 
@@ -3053,6 +3114,17 @@ namespace Jolt
             double fixedTimeStep,
             DebugRenderer* debugRenderer);
 
+        [[nodiscard]]
+        bool IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags flag) const;
+
+        void ResetPerformanceStatistics();
+
+        void CaptureSupplementalDebug(DebugRenderer& debugRenderer);
+
+        void CaptureRaycastDebug(
+            const RaycastRequest& request,
+            const RaycastHit* hit) const;
+
         mutable DeterministicWorldMutex m_mutex;
         mutable AZStd::atomic_bool m_simulationInProgress{false};
 
@@ -3078,6 +3150,7 @@ namespace Jolt
 
         AZStd::vector<ShapeSlot> m_shapeSlots;
         AZStd::vector<AZ::u32> m_freeShapeSlots;
+        mutable AZStd::vector<const JPH::Shape*> m_statisticsShapePointers;
 
         AZStd::vector<BodySlot> m_bodySlots;
         AZStd::vector<AZ::u32> m_freeBodySlots;
@@ -3161,6 +3234,9 @@ namespace Jolt
         AZ::u64 m_lastUpdateNanoseconds = 0;
         JobSystem::UpdateStatistics m_lastUpdateJobStatistics;
         SimulationError m_lastUpdateErrors = SimulationError::None;
+        mutable WorldPerformanceAccumulator m_performanceStatistics;
+        AZStd::atomic_uint16_t m_performanceStatisticsFlags{0};
+        AZ::u64 m_performanceStatisticsStartNanoseconds = 0;
         AZStd::atomic_bool m_dispatchingStepListeners = false;
         bool m_initialized = false;
     };

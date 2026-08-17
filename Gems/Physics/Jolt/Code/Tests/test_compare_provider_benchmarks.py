@@ -39,6 +39,21 @@ def make_report(provider: str, time_microseconds: float) -> dict:
             "caches": [{"level": 3, "size": 32 * 1024 * 1024}],
             "library_build_type": "release",
         },
+        "qualification": {
+            "benchmark_filter": f"{provider}/matched",
+            "binary_sha256": f"{provider.lower()}-binary-hash",
+            "build_configuration": "Release",
+            "compiler_id": "Clang",
+            "compiler_version": "22.1.8",
+            "cpu_affinity_policy": "physical-core-group-0",
+            "minimum_time": 0.05,
+            "provider": provider,
+            "raw_samples": True,
+            "repetitions": 30,
+            "source_diff_sha256": "diff-hash",
+            "source_revision": "source-revision",
+            "workload_signature": compare_provider_benchmarks.workload_signature(),
+        },
         "benchmarks": benchmarks,
     }
 
@@ -107,6 +122,42 @@ class CompareProviderBenchmarksTests(unittest.TestCase):
             "Box3D": make_report("Box3D", 95.0),
             "PhysX": make_report("PhysX", 100.0),
         }
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_duplicate_repetition(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["Jolt"]["benchmarks"][1]["repetition_index"] = 0
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_invalid_sample(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["Jolt"]["benchmarks"][0]["real_time"] = float("nan")
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_stale_workload_signature(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["Jolt"]["qualification"]["workload_signature"] = "stale"
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_mismatched_source_revision(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["PhysX"]["qualification"]["source_revision"] = "other-revision"
         self.assertEqual(run_comparison(reports), 1)
 
 

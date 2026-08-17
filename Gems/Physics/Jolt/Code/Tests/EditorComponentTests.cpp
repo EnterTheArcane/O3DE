@@ -72,6 +72,16 @@ namespace Jolt::Editor
 {
     namespace
     {
+        char TestExecutableName[] = "JoltEditorTests";
+        char TestEnginePathOption[] = "--engine-path";
+        char TestEngineRoot[] = JOLT_TEST_ENGINE_ROOT;
+        char* TestApplicationArguments[] = {
+            TestExecutableName,
+            TestEnginePathOption,
+            TestEngineRoot,
+        };
+        constexpr int TestApplicationArgumentCount = 3;
+
         class NameDictionaryScope final
         {
         public:
@@ -103,7 +113,10 @@ namespace Jolt::Editor
         {
         public:
             HeadlessComponentModeTestApplication()
-                : UnitTest::ToolsTestApplication("JoltComponentModeTests")
+                : UnitTest::ToolsTestApplication(
+                    "JoltComponentModeTests",
+                    TestApplicationArgumentCount,
+                    TestApplicationArguments)
             {
             }
 
@@ -174,6 +187,14 @@ namespace Jolt::Editor
             }
 
         protected:
+            AZStd::unique_ptr<UnitTest::ToolsTestApplication> CreateTestApplication() override
+            {
+                return AZStd::make_unique<UnitTest::ToolsTestApplication>(
+                    "JoltPrefabTests",
+                    TestApplicationArgumentCount,
+                    TestApplicationArguments);
+            }
+
             void SetUpEditorFixtureImpl() override
             {
                 AZ::SerializeContext* serializeContext =

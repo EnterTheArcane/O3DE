@@ -7789,6 +7789,25 @@ namespace Jolt
         return world && world->GetStatistics(statistics);
     }
 
+    bool System::ConfigurePerformanceStatistics(
+        const WorldHandle worldHandle,
+        const PerformanceStatisticsFlags flags)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ConfigurePerformanceStatistics(flags);
+    }
+
+    bool System::GetPerformanceStatistics(
+        const WorldHandle worldHandle,
+        WorldPerformanceStatistics& statistics,
+        const bool reset)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->GetPerformanceStatistics(statistics, reset);
+    }
+
     DiagnosticStatisticsResult System::GetBroadPhaseStatistics(
         const WorldHandle worldHandle,
         const AZStd::span<BroadPhaseStatistics> statistics,
@@ -7868,9 +7887,9 @@ namespace Jolt
 #else
         AZ_UNUSED(statistics);
         AZ_UNUSED(reset);
-        return {
-            .m_status = DiagnosticStatisticsStatus::Unavailable,
-        };
+        DiagnosticStatisticsResult result;
+        result.m_status = DiagnosticStatisticsStatus::Unavailable;
+        return result;
 #endif
     }
 

@@ -122,6 +122,78 @@ namespace Jolt
                 ->Field("StateSnapshotCount", &WorldStatistics::m_stateSnapshotCount)
                 ->Field("VehicleCount", &WorldStatistics::m_vehicleCount)
                 ->Field("VirtualCharacterCount", &WorldStatistics::m_virtualCharacterCount);
+
+            serializeContext
+                ->Class<ResourceStatistics>()
+                ->Field("RetainedBytes", &ResourceStatistics::m_retainedBytes)
+                ->Field("Capacity", &ResourceStatistics::m_capacity)
+                ->Field("Count", &ResourceStatistics::m_count)
+                ->Field("HighWaterCount", &ResourceStatistics::m_highWaterCount);
+
+            serializeContext
+                ->Class<WorldPerformanceStatistics>()
+                ->Field("AvailableFlags", &WorldPerformanceStatistics::m_availableFlags)
+                ->Field("EnabledFlags", &WorldPerformanceStatistics::m_enabledFlags)
+                ->Field("IntervalNanoseconds", &WorldPerformanceStatistics::m_intervalNanoseconds)
+                ->Field("ProcessNativeAllocatedBytes", &WorldPerformanceStatistics::m_processNativeAllocatedBytes)
+                ->Field("ProcessNativePeakAllocatedBytes", &WorldPerformanceStatistics::m_processNativePeakAllocatedBytes)
+                ->Field("ProcessNativeAllocationCount", &WorldPerformanceStatistics::m_processNativeAllocationCount)
+                ->Field("ProcessNativeFreeCount", &WorldPerformanceStatistics::m_processNativeFreeCount)
+                ->Field("ProcessNativeReallocationCount", &WorldPerformanceStatistics::m_processNativeReallocationCount)
+                ->Field("TempAllocatorCapacityBytes", &WorldPerformanceStatistics::m_tempAllocatorCapacityBytes)
+                ->Field("TempAllocatorCurrentBytes", &WorldPerformanceStatistics::m_tempAllocatorCurrentBytes)
+                ->Field("TempAllocatorPeakBytes", &WorldPerformanceStatistics::m_tempAllocatorPeakBytes)
+                ->Field("WrapperRetainedBytes", &WorldPerformanceStatistics::m_wrapperRetainedBytes)
+                ->Field("Bodies", &WorldPerformanceStatistics::m_bodies)
+                ->Field("BodySnapshots", &WorldPerformanceStatistics::m_bodySnapshots)
+                ->Field("Characters", &WorldPerformanceStatistics::m_characters)
+                ->Field("Constraints", &WorldPerformanceStatistics::m_constraints)
+                ->Field("Hair", &WorldPerformanceStatistics::m_hair)
+                ->Field("Ragdolls", &WorldPerformanceStatistics::m_ragdolls)
+                ->Field("Scenes", &WorldPerformanceStatistics::m_scenes)
+                ->Field("Shapes", &WorldPerformanceStatistics::m_shapes)
+                ->Field("SoftBodies", &WorldPerformanceStatistics::m_softBodies)
+                ->Field("StateSnapshots", &WorldPerformanceStatistics::m_stateSnapshots)
+                ->Field("Vehicles", &WorldPerformanceStatistics::m_vehicles)
+                ->Field("VirtualCharacters", &WorldPerformanceStatistics::m_virtualCharacters)
+                ->Field("BroadPhaseOptimizeCount", &WorldPerformanceStatistics::m_broadPhaseOptimizeCount)
+                ->Field("BroadPhaseOptimizeNanoseconds", &WorldPerformanceStatistics::m_broadPhaseOptimizeNanoseconds)
+                ->Field("OriginShiftCount", &WorldPerformanceStatistics::m_originShiftCount)
+                ->Field("ContactEventCount", &WorldPerformanceStatistics::m_contactEventCount)
+                ->Field("ContactManifoldCount", &WorldPerformanceStatistics::m_contactManifoldCount)
+                ->Field("ContactPointCount", &WorldPerformanceStatistics::m_contactPointCount)
+                ->Field("DroppedEventCount", &WorldPerformanceStatistics::m_droppedEventCount)
+                ->Field("EventHighWaterCount", &WorldPerformanceStatistics::m_eventHighWaterCount)
+                ->Field("PublishedEventCount", &WorldPerformanceStatistics::m_publishedEventCount)
+                ->Field("QueryCandidateCount", &WorldPerformanceStatistics::m_queryCandidateCount)
+                ->Field("QueryCount", &WorldPerformanceStatistics::m_queryCount)
+                ->Field("QueryHitCount", &WorldPerformanceStatistics::m_queryHitCount)
+                ->Field("QueryNanoseconds", &WorldPerformanceStatistics::m_queryNanoseconds)
+                ->Field("SnapshotBytes", &WorldPerformanceStatistics::m_snapshotBytes)
+                ->Field("SnapshotCaptureCount", &WorldPerformanceStatistics::m_snapshotCaptureCount)
+                ->Field("SnapshotCaptureNanoseconds", &WorldPerformanceStatistics::m_snapshotCaptureNanoseconds)
+                ->Field("SnapshotFailureCount", &WorldPerformanceStatistics::m_snapshotFailureCount)
+                ->Field("SnapshotPeakBytes", &WorldPerformanceStatistics::m_snapshotPeakBytes)
+                ->Field("SnapshotRestoreCount", &WorldPerformanceStatistics::m_snapshotRestoreCount)
+                ->Field("SnapshotRestoreNanoseconds", &WorldPerformanceStatistics::m_snapshotRestoreNanoseconds)
+                ->Field("JobCount", &WorldPerformanceStatistics::m_jobCount)
+                ->Field("JobExecutionNanoseconds", &WorldPerformanceStatistics::m_jobExecutionNanoseconds)
+                ->Field("JobMaximumQueueLatencyNanoseconds", &WorldPerformanceStatistics::m_jobMaximumQueueLatencyNanoseconds)
+                ->Field("JobQueueLatencyNanoseconds", &WorldPerformanceStatistics::m_jobQueueLatencyNanoseconds)
+                ->Field("JobTaskCount", &WorldPerformanceStatistics::m_jobTaskCount)
+                ->Field("JobMaximumActiveTaskCount", &WorldPerformanceStatistics::m_jobMaximumActiveTaskCount)
+                ->Field("LockContentionCount", &WorldPerformanceStatistics::m_lockContentionCount)
+                ->Field("LockCount", &WorldPerformanceStatistics::m_lockCount)
+                ->Field("LockMaximumWaitNanoseconds", &WorldPerformanceStatistics::m_lockMaximumWaitNanoseconds)
+                ->Field("LockWaitNanoseconds", &WorldPerformanceStatistics::m_lockWaitNanoseconds)
+                ->Field("HairReadbackBytes", &WorldPerformanceStatistics::m_hairReadbackBytes)
+                ->Field("HairReadbackCount", &WorldPerformanceStatistics::m_hairReadbackCount)
+                ->Field("HairReadbackNanoseconds", &WorldPerformanceStatistics::m_hairReadbackNanoseconds)
+                ->Field("HairUpdateCount", &WorldPerformanceStatistics::m_hairUpdateCount)
+                ->Field("HairUpdateNanoseconds", &WorldPerformanceStatistics::m_hairUpdateNanoseconds)
+                ->Field("SimulationErrorCount", &WorldPerformanceStatistics::m_simulationErrorCount)
+                ->Field("SimulationNanoseconds", &WorldPerformanceStatistics::m_simulationNanoseconds)
+                ->Field("SimulationStepCount", &WorldPerformanceStatistics::m_simulationStepCount);
         }
 
         if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
@@ -166,6 +238,71 @@ namespace Jolt
             JOLT_BEHAVIOR_ENUM(*behaviorContext, NarrowPhaseQueryKind, None);
             JOLT_BEHAVIOR_ENUM(*behaviorContext, NarrowPhaseQueryKind, Cast);
             JOLT_BEHAVIOR_ENUM(*behaviorContext, NarrowPhaseQueryKind, Collide);
+
+            behaviorContext->EnumProperty<static_cast<AZ::u16>(PerformanceStatisticsFlags::None)>(
+                "PerformanceStatisticsFlags_None")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u16>(PerformanceStatisticsFlags::BroadPhase)>(
+                "PerformanceStatisticsFlags_BroadPhase")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u16>(PerformanceStatisticsFlags::Events)>(
+                "PerformanceStatisticsFlags_Events")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u16>(PerformanceStatisticsFlags::Hair)>(
+                "PerformanceStatisticsFlags_Hair")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u16>(PerformanceStatisticsFlags::Jobs)>(
+                "PerformanceStatisticsFlags_Jobs")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u16>(PerformanceStatisticsFlags::Locks)>(
+                "PerformanceStatisticsFlags_Locks")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u16>(PerformanceStatisticsFlags::Memory)>(
+                "PerformanceStatisticsFlags_Memory")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u16>(PerformanceStatisticsFlags::NarrowPhase)>(
+                "PerformanceStatisticsFlags_NarrowPhase")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u16>(PerformanceStatisticsFlags::Queries)>(
+                "PerformanceStatisticsFlags_Queries")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u16>(PerformanceStatisticsFlags::Resources)>(
+                "PerformanceStatisticsFlags_Resources")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u16>(PerformanceStatisticsFlags::Simulation)>(
+                "PerformanceStatisticsFlags_Simulation")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u16>(PerformanceStatisticsFlags::Snapshots)>(
+                "PerformanceStatisticsFlags_Snapshots")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u16>(PerformanceStatisticsFlags::All)>(
+                "PerformanceStatisticsFlags_All")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
 
             behaviorContext->EnumProperty<static_cast<AZ::u8>(StateSnapshotFlags::None)>("StateSnapshotFlags_None")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
@@ -453,6 +590,186 @@ namespace Jolt
                     "virtualCharacterCount",
                     BehaviorValueGetter(&WorldStatistics::m_virtualCharacterCount),
                     nullptr);
+
+            behaviorContext->Class<ResourceStatistics>("ResourceStatistics")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property(
+                    "retainedBytes",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&ResourceStatistics::m_retainedBytes))
+                ->Property("capacity", JOLT_BEHAVIOR_READONLY_PROPERTY(&ResourceStatistics::m_capacity))
+                ->Property("count", JOLT_BEHAVIOR_READONLY_PROPERTY(&ResourceStatistics::m_count))
+                ->Property(
+                    "highWaterCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&ResourceStatistics::m_highWaterCount));
+
+            behaviorContext->Class<WorldPerformanceStatistics>("WorldPerformanceStatistics")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property(
+                    "availableFlags",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_availableFlags))
+                ->Property(
+                    "enabledFlags",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_enabledFlags))
+                ->Property(
+                    "intervalNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_intervalNanoseconds))
+                ->Property(
+                    "processNativeAllocatedBytes",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_processNativeAllocatedBytes))
+                ->Property(
+                    "processNativePeakAllocatedBytes",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_processNativePeakAllocatedBytes))
+                ->Property(
+                    "processNativeAllocationCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_processNativeAllocationCount))
+                ->Property(
+                    "processNativeFreeCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_processNativeFreeCount))
+                ->Property(
+                    "processNativeReallocationCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_processNativeReallocationCount))
+                ->Property(
+                    "tempAllocatorCapacityBytes",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_tempAllocatorCapacityBytes))
+                ->Property(
+                    "tempAllocatorCurrentBytes",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_tempAllocatorCurrentBytes))
+                ->Property(
+                    "tempAllocatorPeakBytes",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_tempAllocatorPeakBytes))
+                ->Property(
+                    "wrapperRetainedBytes",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_wrapperRetainedBytes))
+                ->Property("bodies", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_bodies))
+                ->Property(
+                    "bodySnapshots",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_bodySnapshots))
+                ->Property("characters", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_characters))
+                ->Property("constraints", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_constraints))
+                ->Property("hair", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_hair))
+                ->Property("ragdolls", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_ragdolls))
+                ->Property("scenes", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_scenes))
+                ->Property("shapes", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_shapes))
+                ->Property("softBodies", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_softBodies))
+                ->Property(
+                    "stateSnapshots",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_stateSnapshots))
+                ->Property("vehicles", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_vehicles))
+                ->Property(
+                    "virtualCharacters",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_virtualCharacters))
+                ->Property(
+                    "broadPhaseOptimizeCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_broadPhaseOptimizeCount))
+                ->Property(
+                    "broadPhaseOptimizeNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_broadPhaseOptimizeNanoseconds))
+                ->Property(
+                    "originShiftCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_originShiftCount))
+                ->Property(
+                    "contactEventCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_contactEventCount))
+                ->Property(
+                    "contactManifoldCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_contactManifoldCount))
+                ->Property(
+                    "contactPointCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_contactPointCount))
+                ->Property(
+                    "droppedEventCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_droppedEventCount))
+                ->Property(
+                    "eventHighWaterCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_eventHighWaterCount))
+                ->Property(
+                    "publishedEventCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_publishedEventCount))
+                ->Property(
+                    "queryCandidateCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_queryCandidateCount))
+                ->Property("queryCount", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_queryCount))
+                ->Property(
+                    "queryHitCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_queryHitCount))
+                ->Property(
+                    "queryNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_queryNanoseconds))
+                ->Property(
+                    "snapshotBytes",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_snapshotBytes))
+                ->Property(
+                    "snapshotCaptureCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_snapshotCaptureCount))
+                ->Property(
+                    "snapshotCaptureNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_snapshotCaptureNanoseconds))
+                ->Property(
+                    "snapshotFailureCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_snapshotFailureCount))
+                ->Property(
+                    "snapshotPeakBytes",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_snapshotPeakBytes))
+                ->Property(
+                    "snapshotRestoreCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_snapshotRestoreCount))
+                ->Property(
+                    "snapshotRestoreNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_snapshotRestoreNanoseconds))
+                ->Property("jobCount", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_jobCount))
+                ->Property(
+                    "jobExecutionNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_jobExecutionNanoseconds))
+                ->Property(
+                    "jobMaximumQueueLatencyNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_jobMaximumQueueLatencyNanoseconds))
+                ->Property(
+                    "jobQueueLatencyNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_jobQueueLatencyNanoseconds))
+                ->Property(
+                    "jobTaskCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_jobTaskCount))
+                ->Property(
+                    "jobMaximumActiveTaskCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_jobMaximumActiveTaskCount))
+                ->Property(
+                    "lockContentionCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_lockContentionCount))
+                ->Property("lockCount", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_lockCount))
+                ->Property(
+                    "lockMaximumWaitNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_lockMaximumWaitNanoseconds))
+                ->Property(
+                    "lockWaitNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_lockWaitNanoseconds))
+                ->Property(
+                    "hairReadbackBytes",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_hairReadbackBytes))
+                ->Property(
+                    "hairReadbackCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_hairReadbackCount))
+                ->Property(
+                    "hairReadbackNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_hairReadbackNanoseconds))
+                ->Property(
+                    "hairUpdateCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_hairUpdateCount))
+                ->Property(
+                    "hairUpdateNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_hairUpdateNanoseconds))
+                ->Property(
+                    "simulationErrorCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_simulationErrorCount))
+                ->Property(
+                    "simulationNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_simulationNanoseconds))
+                ->Property(
+                    "simulationStepCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_simulationStepCount));
         }
     }
 } // namespace Jolt

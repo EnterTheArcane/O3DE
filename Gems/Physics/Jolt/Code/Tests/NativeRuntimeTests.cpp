@@ -29,10 +29,19 @@ namespace Jolt
         ASSERT_TRUE(runtime);
 
         const RuntimeInfo runtimeInfo = runtime.GetRuntimeInfo();
+        constexpr AZStd::string_view expectedPatchHash =
+            "ca1e87d9e13394b9ae973672514a4017ed79296e71c92f53c361556a36bf2d48";
+        constexpr size_t patchHashHalfLength = expectedPatchHash.size() / 2;
         EXPECT_EQ(runtimeInfo.m_version, (Version{.m_major = 5, .m_minor = 6, .m_patch = 0}));
         EXPECT_NE(runtimeInfo.m_buildFingerprint, 0);
-        EXPECT_EQ(runtimeInfo.m_patchHash, "297a0dc9ac15dc476c77164bc864dbe41d17cb4d954f1c64fd37b165b8f85757");
-        EXPECT_EQ(runtimeInfo.m_patchRevision, "jolt-v5.6.0-o3de-14");
+        ASSERT_EQ(runtimeInfo.m_patchHash.size(), expectedPatchHash.size());
+        EXPECT_EQ(
+            runtimeInfo.m_patchHash.substr(0, patchHashHalfLength),
+            expectedPatchHash.substr(0, patchHashHalfLength));
+        EXPECT_EQ(
+            runtimeInfo.m_patchHash.substr(patchHashHalfLength),
+            expectedPatchHash.substr(patchHashHalfLength));
+        EXPECT_EQ(runtimeInfo.m_patchRevision, "jolt-v5.6.0-o3de-16");
         EXPECT_EQ(runtimeInfo.m_sourceRevision, "e77f175595e64cb44218cc9d9d56fc365ad0e36a");
         EXPECT_EQ(runtimeInfo.m_hairDeterminism, DeterminismCertification::SameBinary);
         EXPECT_EQ(runtimeInfo.m_physicsDeterminism, DeterminismCertification::CrossPlatform);
@@ -75,6 +84,16 @@ namespace Jolt
 #else
         EXPECT_FALSE(runtimeInfo.m_detailedProfiling);
 #endif
+#if defined(JPH_TRACK_BROADPHASE_STATS)
+        EXPECT_TRUE(runtimeInfo.m_broadPhaseStatistics);
+#else
+        EXPECT_FALSE(runtimeInfo.m_broadPhaseStatistics);
+#endif
+#if defined(JPH_TRACK_NARROWPHASE_STATS)
+        EXPECT_TRUE(runtimeInfo.m_narrowPhaseStatistics);
+#else
+        EXPECT_FALSE(runtimeInfo.m_narrowPhaseStatistics);
+#endif
 #if defined(JPH_TRACK_SIMULATION_STATS)
         EXPECT_TRUE(runtimeInfo.m_simulationStatistics);
 #else
@@ -102,6 +121,7 @@ namespace Jolt
 
         {
             DeterministicFloatScope scope;
+            EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), 0);
             ASSERT_EQ(std::feraiseexcept(FE_OVERFLOW), 0);
         }
 

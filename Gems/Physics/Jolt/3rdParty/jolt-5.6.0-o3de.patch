@@ -1,3 +1,15 @@
+diff --git a/Build/CMakeLists.txt b/Build/CMakeLists.txt
+--- a/Build/CMakeLists.txt
++++ b/Build/CMakeLists.txt
+@@ -155,7 +155,7 @@ if (MSVC)
+ 	endif()
+ 
+ 	# Set general compiler flags
+-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:__cplusplus /Gm- /MP /nologo /diagnostics:classic /FC /fp:except- /Zc:inline")
++	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:__cplusplus /Gm- /MP /nologo /FC /fp:except- /Zc:inline")
+ 
+ 	# Enable warnings
+ 	if (ENABLE_ALL_WARNINGS)
 diff --git a/Jolt/Geometry/RayAABox.h b/Jolt/Geometry/RayAABox.h
 index 90a08f6..12215a6 100644
 --- a/Jolt/Geometry/RayAABox.h
@@ -719,10 +731,9 @@ index b244a51..6ce70b3 100644
  
  #if defined(JPH_TRACK_SIMULATION_STATS) && defined(JPH_PROFILE_ENABLED)
 diff --git a/Jolt/Physics/StateRecorder.h b/Jolt/Physics/StateRecorder.h
-index c3bd477..2c295b4 100644
 --- a/Jolt/Physics/StateRecorder.h
 +++ b/Jolt/Physics/StateRecorder.h
-@@ -90,6 +90,9 @@ public:
+@@ -90,9 +90,15 @@ public:
  	/// If the state of a specific constraint should be saved
  	virtual bool		ShouldSaveConstraint([[maybe_unused]] const Constraint &inConstraint) const	{ return true; }
  
@@ -731,4 +742,112 @@ index c3bd477..2c295b4 100644
 +
  	/// If the state of a specific contact should be saved
  	virtual bool		ShouldSaveContact([[maybe_unused]] const BodyID &inBody1, [[maybe_unused]] const BodyID &inBody2) const { return true; }
++
++	/// Exact number of bodies selected by this filter, or the maximum uint32 value when it is not available
++	virtual uint32		GetNumBodiesToSave() const									{ return ~uint32(0); }
  
+ 	///@}
+ 	///@name Functions called during RestoreState
+ 	///@{
+diff --git a/Jolt/Core/TempAllocator.h b/Jolt/Core/TempAllocator.h
+index 5b87f2c..f67dcc1 100644
+--- a/Jolt/Core/TempAllocator.h
++++ b/Jolt/Core/TempAllocator.h
+@@ -72,6 +72,8 @@ public:
+ 			}
+ 			void *address = mBase + mTop;
+ 			mTop = new_top;
++			if (mPeakUsage < mTop)
++				mPeakUsage = mTop;
+ 			return address;
+ 		}
+ 	}
+@@ -112,6 +114,18 @@ public:
+ 		return mTop;
+ 	}
+ 
++	/// Get peak usage in bytes since construction or the last reset
++	size_t							GetPeakUsage() const
++	{
++		return mPeakUsage;
++	}
++
++	/// Reset peak usage without releasing the fixed buffer
++	void							ResetPeakUsage()
++	{
++		mPeakUsage = mTop;
++	}
++
+ 	/// Check if an allocation of inSize can be made in this fixed buffer allocator
+ 	bool							CanAllocate(uint inSize) const
+ 	{
+@@ -128,4 +142,5 @@ private:
+ 	uint8 *							mBase;							///< Base address of the memory block
+ 	size_t							mSize;							///< Size of the memory block
+ 	size_t							mTop = 0;						///< End of currently allocated area
++	size_t							mPeakUsage = 0;				///< Maximum allocated area since the last reset
+ };
+diff --git a/Jolt/Physics/Body/BodyManager.cpp b/Jolt/Physics/Body/BodyManager.cpp
+--- a/Jolt/Physics/Body/BodyManager.cpp
++++ b/Jolt/Physics/Body/BodyManager.cpp
+@@ -706,21 +706,46 @@ void BodyManager::SaveState(StateRecorder &inStream, const StateRecorderFilter
+ 	{
+ 		LockAllBodies();
+ 
+-		// Determine which bodies to save
+-		Array<const Body *> bodies;
+-		bodies.reserve(mNumBodies);
+-		for (const Body *b : mBodies)
+-			if (sIsValidBodyPointer(b) && b->IsInBroadPhase() && (inFilter == nullptr || inFilter->ShouldSaveBody(*b)))
+-				bodies.push_back(b);
+-
+-		// Write state of bodies
+-		uint32 num_bodies = (uint32)bodies.size();
+-		inStream.Write(num_bodies);
+-		for (const Body *b : bodies)
++		uint32 num_bodies = ~uint32(0);
++		if (!inFilter)
+ 		{
+-			inStream.Write(b->GetID());
+-			inStream.Write(b->IsActive());
+-			b->SaveState(inStream);
++			num_bodies = 0;
++			for (const Body *b : mBodies)
++				if (sIsValidBodyPointer(b) && b->IsInBroadPhase())
++					++num_bodies;
++		}
++		else
++		{
++			num_bodies = inFilter->GetNumBodiesToSave();
++		}
++
++		if (num_bodies != ~uint32(0))
++		{
++			inStream.Write(num_bodies);
++			for (const Body *b : mBodies)
++				if (sIsValidBodyPointer(b) && b->IsInBroadPhase() && (!inFilter || inFilter->ShouldSaveBody(*b)))
++				{
++					inStream.Write(b->GetID());
++					inStream.Write(b->IsActive());
++					b->SaveState(inStream);
++				}
++		}
++		else
++		{
++			Array<const Body *> bodies;
++			bodies.reserve(mNumBodies);
++			for (const Body *b : mBodies)
++				if (sIsValidBodyPointer(b) && b->IsInBroadPhase() && inFilter->ShouldSaveBody(*b))
++					bodies.push_back(b);
++
++			num_bodies = (uint32)bodies.size();
++			inStream.Write(num_bodies);
++			for (const Body *b : bodies)
++			{
++				inStream.Write(b->GetID());
++				inStream.Write(b->IsActive());
++				b->SaveState(inStream);
++			}
+ 		}
+ 
+ 		UnlockAllBodies();

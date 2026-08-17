@@ -7,6 +7,8 @@
 
 #include <Jolt/FloatEnvironment.h>
 
+#include <AzCore/std/chrono/chrono.h>
+
 #if defined(_M_IX86) || defined(_M_X64)
 #include <intrin.h>
 #define JOLT_HAS_X86_FLOAT_CONTROL 1
@@ -42,6 +44,21 @@ namespace Jolt
         constexpr AZ::u64 DefaultFloatControl = 0x1f80;
         constexpr AZ::u64 FloatControlModeMask = 0xffc0;
         constexpr AZ::u64 FloatStatusMask = 0x3f;
+
+#if defined(__i386__) || defined(__x86_64__)
+        [[nodiscard]]
+        AZ::u16 ReadX87Status()
+        {
+            AZ::u16 status = 0;
+            __asm__ volatile("fnstsw %0" : "=am"(status));
+            return status;
+        }
+
+        void ClearX87Status()
+        {
+            __asm__ volatile("fnclex");
+        }
+#endif
 
         [[nodiscard]]
         AZ::u64 ReadFloatControl()
@@ -123,7 +140,11 @@ namespace Jolt
         bool controlIsCanonical = false;
 #if defined(_M_X64) || defined(__x86_64__)
         controlIsCanonical =
-            (currentControl & (FloatControlModeMask | FloatStatusMask)) == DefaultFloatControl;
+            (currentControl & FloatControlModeMask) == DefaultFloatControl;
+#if defined(__x86_64__)
+        controlIsCanonical = controlIsCanonical
+            && (ReadX87Status() & FloatStatusMask) == 0;
+#endif
 #elif JOLT_HAS_ARM64_FLOAT_CONTROL
         controlIsCanonical = std::fegetround() == FE_TONEAREST
             && (currentControl & FloatControlModeMask) == DefaultFloatControl;
@@ -131,6 +152,12 @@ namespace Jolt
         if (controlIsCanonical)
         {
             m_previousControl = currentControl;
+#if defined(_M_X64) || defined(__x86_64__)
+            if ((currentControl & FloatStatusMask) != 0)
+            {
+                WriteFloatControl(DefaultFloatControl);
+            }
+#endif
 #if JOLT_HAS_ARM64_FLOAT_CONTROL
             m_previousStatus = ReadFloatStatus();
 #endif
@@ -167,6 +194,13 @@ namespace Jolt
         {
             WriteFloatControl(m_previousControl);
         }
+#if defined(__i386__) || defined(__x86_64__)
+        if (!m_environmentCaptured
+            && (ReadX87Status() & FloatStatusMask) != 0)
+        {
+            ClearX87Status();
+        }
+#endif
 #if JOLT_HAS_ARM64_FLOAT_CONTROL
         if (ReadFloatStatus() != m_previousStatus)
         {
@@ -194,7 +228,24 @@ namespace Jolt
         if (m_stateWriteDepth == 0)
         {
             m_waitingWriterCount.fetch_add(1, AZStd::memory_order_acq_rel);
-            m_stateMutex.lock();
+            if (m_collectStatistics.load(AZStd::memory_order_relaxed))
+            {
+                const auto startTime = AZStd::chrono::steady_clock::now();
+                const bool acquiredWithoutWaiting = m_stateMutex.try_lock();
+                if (!acquiredWithoutWaiting)
+                {
+                    m_stateMutex.lock();
+                }
+                const AZ::u64 waitNanoseconds = static_cast<AZ::u64>(
+                    AZStd::chrono::duration_cast<AZStd::chrono::nanoseconds>(
+                        AZStd::chrono::steady_clock::now() - startTime)
+                        .count());
+                RecordLock(waitNanoseconds, !acquiredWithoutWaiting);
+            }
+            else
+            {
+                m_stateMutex.lock();
+            }
             m_waitingWriterCount.fetch_sub(1, AZStd::memory_order_release);
         }
         ++m_stateWriteDepth;
@@ -240,19 +291,40 @@ namespace Jolt
 
     void DeterministicWorldMutex::lock_shared()
     {
+        const bool collectStatistics = m_collectStatistics.load(AZStd::memory_order_relaxed);
+        AZStd::chrono::steady_clock::time_point startTime;
+        if (collectStatistics)
+        {
+            startTime = AZStd::chrono::steady_clock::now();
+        }
+        bool contended = false;
         AZStd::exponential_backoff backoff;
         while (true)
         {
             while (m_waitingWriterCount.load(AZStd::memory_order_acquire) > 0)
             {
+                contended = true;
                 backoff.wait();
             }
 
-            m_stateMutex.lock_shared();
+            if (!m_stateMutex.try_lock_shared())
+            {
+                contended = true;
+                m_stateMutex.lock_shared();
+            }
             if (m_waitingWriterCount.load(AZStd::memory_order_acquire) == 0)
             {
+                if (collectStatistics)
+                {
+                    const AZ::u64 waitNanoseconds = static_cast<AZ::u64>(
+                        AZStd::chrono::duration_cast<AZStd::chrono::nanoseconds>(
+                            AZStd::chrono::steady_clock::now() - startTime)
+                            .count());
+                    RecordLock(waitNanoseconds, contended);
+                }
                 return;
             }
+            contended = true;
             m_stateMutex.unlock_shared();
             backoff.wait();
         }
@@ -281,7 +353,24 @@ namespace Jolt
 
     void DeterministicWorldMutex::lock_simulation()
     {
-        m_operationMutex.lock();
+        if (m_collectStatistics.load(AZStd::memory_order_relaxed))
+        {
+            const auto startTime = AZStd::chrono::steady_clock::now();
+            const bool acquiredWithoutWaiting = m_operationMutex.try_lock();
+            if (!acquiredWithoutWaiting)
+            {
+                m_operationMutex.lock();
+            }
+            const AZ::u64 waitNanoseconds = static_cast<AZ::u64>(
+                AZStd::chrono::duration_cast<AZStd::chrono::nanoseconds>(
+                    AZStd::chrono::steady_clock::now() - startTime)
+                    .count());
+            RecordLock(waitNanoseconds, !acquiredWithoutWaiting);
+        }
+        else
+        {
+            m_operationMutex.lock();
+        }
         if (m_operationDepth == 0)
         {
             m_environment.Enter();
@@ -297,6 +386,58 @@ namespace Jolt
             m_environment.Leave();
         }
         m_operationMutex.unlock();
+    }
+
+    void DeterministicWorldMutex::ConfigureStatistics(
+        const bool enabled)
+    {
+        m_collectStatistics.store(enabled, AZStd::memory_order_release);
+        if (enabled)
+        {
+            [[maybe_unused]] const WorldLockStatistics resetStatistics = GetStatistics(true);
+        }
+    }
+
+    WorldLockStatistics DeterministicWorldMutex::GetStatistics(
+        const bool reset)
+    {
+        if (reset)
+        {
+            return {
+                .m_contentionCount = m_contentionCount.exchange(0, AZStd::memory_order_relaxed),
+                .m_lockCount = m_lockCount.exchange(0, AZStd::memory_order_relaxed),
+                .m_maximumWaitNanoseconds = m_maximumWaitNanoseconds.exchange(0, AZStd::memory_order_relaxed),
+                .m_waitNanoseconds = m_waitNanoseconds.exchange(0, AZStd::memory_order_relaxed),
+            };
+        }
+
+        return {
+            .m_contentionCount = m_contentionCount.load(AZStd::memory_order_relaxed),
+            .m_lockCount = m_lockCount.load(AZStd::memory_order_relaxed),
+            .m_maximumWaitNanoseconds = m_maximumWaitNanoseconds.load(AZStd::memory_order_relaxed),
+            .m_waitNanoseconds = m_waitNanoseconds.load(AZStd::memory_order_relaxed),
+        };
+    }
+
+    void DeterministicWorldMutex::RecordLock(
+        const AZ::u64 waitNanoseconds,
+        const bool contended)
+    {
+        m_lockCount.fetch_add(1, AZStd::memory_order_relaxed);
+        m_waitNanoseconds.fetch_add(waitNanoseconds, AZStd::memory_order_relaxed);
+        if (contended)
+        {
+            m_contentionCount.fetch_add(1, AZStd::memory_order_relaxed);
+        }
+
+        auto maximumWaitNanoseconds = m_maximumWaitNanoseconds.load(AZStd::memory_order_relaxed);
+        while (maximumWaitNanoseconds < waitNanoseconds
+            && !m_maximumWaitNanoseconds.compare_exchange_weak(
+                maximumWaitNanoseconds,
+                waitNanoseconds,
+                AZStd::memory_order_relaxed))
+        {
+        }
     }
 
     DeterministicWorldQueryLock::DeterministicWorldQueryLock(DeterministicWorldMutex& mutex)

@@ -604,6 +604,16 @@ namespace Jolt
             WorldHandle worldHandle,
             WorldStatistics& statistics) const = 0;
 
+        virtual bool ConfigurePerformanceStatistics(
+            WorldHandle worldHandle,
+            PerformanceStatisticsFlags flags) = 0;
+
+        [[nodiscard]]
+        virtual bool GetPerformanceStatistics(
+            WorldHandle worldHandle,
+            WorldPerformanceStatistics& statistics,
+            bool reset) = 0;
+
         virtual bool ConfigureDebugCapture(
             WorldHandle worldHandle,
             const DebugCaptureConfiguration& configuration) = 0;

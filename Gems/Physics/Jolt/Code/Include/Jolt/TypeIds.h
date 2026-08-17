@@ -334,6 +334,8 @@ namespace Jolt
     inline constexpr AZ::TypeId BroadPhaseStatisticsTypeId{"{3E80F154-EFDC-4C78-AD52-AB71D5069E7B}"};
     inline constexpr AZ::TypeId DiagnosticStatisticsResultTypeId{"{3A7BCE0A-D792-49E0-991B-495D0EF0323C}"};
     inline constexpr AZ::TypeId NarrowPhaseStatisticsTypeId{"{475F301F-C07D-4F45-AD63-6FFDF52D4643}"};
+    inline constexpr AZ::TypeId ResourceStatisticsTypeId{"{FE788B81-BDAB-46A5-B5A7-8410470790B1}"};
+    inline constexpr AZ::TypeId WorldPerformanceStatisticsTypeId{"{145009D4-2757-406A-9BFA-21A0FE9CC42D}"};
     inline constexpr AZ::TypeId PointConstraintConfigurationTypeId{"{65BCFFBF-62A0-4B3C-9942-A249B1A8CE73}"};
     inline constexpr AZ::TypeId DistanceConstraintConfigurationTypeId{"{A748295A-8FB7-4C45-AFB4-9304E8267193}"};
     inline constexpr AZ::TypeId ConeConstraintConfigurationTypeId{"{61068D35-D3C3-40A8-B04D-6B3A97EB54C1}"};

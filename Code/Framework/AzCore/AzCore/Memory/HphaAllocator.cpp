@@ -2531,6 +2531,9 @@ namespace AZ
     HphaSchemaBase<DebugAllocator>::HphaSchemaBase()
     {
         static_assert(sizeof(HpAllocator) <= sizeof(m_hpAllocatorBuffer), "Increase the m_hpAllocatorBuffer, it needs to be at least the sizeof(HpAllocator)");
+        static_assert(
+            alignof(HpAllocator) <= alignof(decltype(m_hpAllocatorBuffer)),
+            "Increase hpAllocatorStructureAlignment to satisfy the alignment of HpAllocator");
         m_allocator = new (&m_hpAllocatorBuffer) HpAllocator();
     }
 

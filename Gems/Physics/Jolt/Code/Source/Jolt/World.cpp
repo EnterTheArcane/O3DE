@@ -117,6 +117,184 @@ namespace Jolt
         constexpr AZ::u32 StateArchiveFormatVersion = 4;
         constexpr AZ::u32 VehicleTrackCount = static_cast<AZ::u32>(JPH::ETrackSide::Num);
 
+        [[nodiscard]]
+        AZ::u64 GetSteadyNanoseconds()
+        {
+            return static_cast<AZ::u64>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch())
+                    .count());
+        }
+
+        [[nodiscard]]
+        AZ::u64 ReadCounter(
+            AZStd::atomic_uint64_t& counter,
+            const bool reset)
+        {
+            if (reset)
+            {
+                return counter.exchange(0, AZStd::memory_order_relaxed);
+            }
+            return counter.load(AZStd::memory_order_relaxed);
+        }
+
+        [[nodiscard]]
+        AZ::u32 ReadCounter(
+            AZStd::atomic_uint32_t& counter,
+            const bool reset)
+        {
+            if (reset)
+            {
+                return counter.exchange(0, AZStd::memory_order_relaxed);
+            }
+            return counter.load(AZStd::memory_order_relaxed);
+        }
+
+        template<typename ValueType, typename CandidateType>
+        void UpdateMaximum(
+            AZStd::atomic<ValueType>& counter,
+            const CandidateType candidate)
+        {
+            const ValueType value = aznumeric_cast<ValueType>(candidate);
+            ValueType maximum = counter.load(AZStd::memory_order_relaxed);
+            while (maximum < value
+                && !counter.compare_exchange_weak(
+                    maximum,
+                    value,
+                    AZStd::memory_order_relaxed))
+            {
+            }
+        }
+
+        template<typename Element>
+        [[nodiscard]]
+        AZ::u64 GetVectorCapacityBytes(
+            const AZStd::vector<Element>& values)
+        {
+            return values.capacity() * sizeof(Element);
+        }
+
+        template<typename Element>
+        [[nodiscard]]
+        AZ::u64 GetVectorCapacityBytes(
+            const JPH::Array<Element>& values)
+        {
+            return values.capacity() * sizeof(Element);
+        }
+
+        template<typename Map>
+        [[nodiscard]]
+        AZ::u64 GetMapRetainedBytes(
+            const Map& values)
+        {
+            return values.bucket_count() * sizeof(void*)
+                + values.size() * (sizeof(typename Map::value_type) + 2 * sizeof(void*));
+        }
+
+        class PerformanceOperationScope final
+        {
+        public:
+            PerformanceOperationScope(
+                const bool enabled,
+                AZStd::atomic_uint64_t& durationCounter,
+                AZStd::atomic_uint64_t& successCounter,
+                AZStd::atomic_uint64_t& failureCounter)
+            {
+                if (enabled)
+                {
+                    m_durationCounter = &durationCounter;
+                    m_successCounter = &successCounter;
+                    m_failureCounter = &failureCounter;
+                    m_startNanoseconds = GetSteadyNanoseconds();
+                }
+            }
+
+            ~PerformanceOperationScope()
+            {
+                if (!m_durationCounter)
+                {
+                    return;
+                }
+
+                m_durationCounter->fetch_add(
+                    GetSteadyNanoseconds() - m_startNanoseconds,
+                    AZStd::memory_order_relaxed);
+                if (m_succeeded)
+                {
+                    m_successCounter->fetch_add(1, AZStd::memory_order_relaxed);
+                }
+                else
+                {
+                    m_failureCounter->fetch_add(1, AZStd::memory_order_relaxed);
+                }
+            }
+
+            AZ_DISABLE_COPY_MOVE(PerformanceOperationScope);
+
+            void Succeed()
+            {
+                m_succeeded = true;
+            }
+
+        private:
+            AZStd::atomic_uint64_t* m_durationCounter = nullptr;
+            AZStd::atomic_uint64_t* m_successCounter = nullptr;
+            AZStd::atomic_uint64_t* m_failureCounter = nullptr;
+            AZ::u64 m_startNanoseconds = 0;
+            bool m_succeeded = false;
+        };
+
+        class PerformanceQueryScope final
+        {
+        public:
+            PerformanceQueryScope(
+                const bool enabled,
+                WorldPerformanceAccumulator& statistics)
+            {
+                if (enabled)
+                {
+                    m_statistics = &statistics;
+                    m_startNanoseconds = GetSteadyNanoseconds();
+                }
+            }
+
+            ~PerformanceQueryScope()
+            {
+                if (!m_statistics)
+                {
+                    return;
+                }
+
+                m_statistics->m_queryCandidateCount.fetch_add(
+                    m_candidateCount,
+                    AZStd::memory_order_relaxed);
+                m_statistics->m_queryCount.fetch_add(m_queryCount, AZStd::memory_order_relaxed);
+                m_statistics->m_queryHitCount.fetch_add(m_hitCount, AZStd::memory_order_relaxed);
+                m_statistics->m_queryNanoseconds.fetch_add(
+                    GetSteadyNanoseconds() - m_startNanoseconds,
+                    AZStd::memory_order_relaxed);
+            }
+
+            AZ_DISABLE_COPY_MOVE(PerformanceQueryScope);
+
+            void SetCounts(
+                const AZ::u64 queryCount,
+                const AZ::u64 candidateCount,
+                const AZ::u64 hitCount)
+            {
+                m_queryCount = queryCount;
+                m_candidateCount = candidateCount;
+                m_hitCount = hitCount;
+            }
+
+        private:
+            WorldPerformanceAccumulator* m_statistics = nullptr;
+            AZ::u64 m_startNanoseconds = 0;
+            AZ::u64 m_candidateCount = 0;
+            AZ::u64 m_hitCount = 0;
+            AZ::u64 m_queryCount = 1;
+        };
+
         template<typename HandleType>
         void WriteHandle(
             Internal::StateArchiveWriter& writer,
@@ -778,11 +956,19 @@ namespace Jolt
             SnapshotStateFilter(
                 const AZStd::span<const AZ::u32> bodyIds,
                 const AZStd::span<const AZ::u64> constraintAddresses,
+                const AZ::u32 bodyStateCount,
                 const AZ::u32 constraintStateCount)
                 : m_bodyIds(bodyIds)
                 , m_constraintAddresses(constraintAddresses)
+                , m_bodyStateCount(bodyStateCount)
                 , m_constraintStateCount(constraintStateCount)
             {
+            }
+
+            [[nodiscard]]
+            JPH::uint GetNumBodiesToSave() const override
+            {
+                return m_bodyStateCount;
             }
 
             [[nodiscard]]
@@ -840,6 +1026,7 @@ namespace Jolt
 
             AZStd::span<const AZ::u32> m_bodyIds;
             AZStd::span<const AZ::u64> m_constraintAddresses;
+            AZ::u32 m_bodyStateCount = 0;
             AZ::u32 m_constraintStateCount = 0;
         };
 
@@ -3465,6 +3652,8 @@ namespace Jolt
             const bool lockBodies)
             : m_world(world)
             , m_ray(ray)
+            , m_localRay(ray)
+            , m_inverseDirection(m_localRay.mDirection)
             , m_hit(hit)
             , m_hitBody(hitBody)
             , m_lockBodies(lockBodies)
@@ -3503,13 +3692,11 @@ namespace Jolt
             if (shape->GetSubType() == JPH::EShapeSubType::Box
                 && (rotation == identity || rotation == -identity))
             {
-                const JPH::RayCast localRay(m_ray);
-                const JPH::RayInvDirection inverseDirection(localRay.mDirection);
                 const JPH::AABox& bounds = body.GetWorldSpaceBounds();
                 const float fraction = AZStd::max(
                     JPH::RayAABox(
-                        localRay.mOrigin,
-                        inverseDirection,
+                        m_localRay.mOrigin,
+                        m_inverseDirection,
                         bounds.mMin,
                         bounds.mMax),
                     0.0f);
@@ -3551,6 +3738,8 @@ namespace Jolt
 
         const World& m_world;
         JPH::RRayCast m_ray;
+        JPH::RayCast m_localRay;
+        JPH::RayInvDirection m_inverseDirection;
         JPH::RayCastResult& m_hit;
         const JPH::Body*& m_hitBody;
         bool m_lockBodies = false;
@@ -4445,6 +4634,7 @@ namespace Jolt
                 m_hit,
                 AZStd::span(m_firstFace.data(), m_hit.m_firstFaceVertexCount),
                 AZStd::span(m_secondFace.data(), m_hit.m_secondFaceVertexCount));
+            ++m_hitCount;
             if (!continueTraversal)
             {
                 ForceEarlyOut();
@@ -4468,6 +4658,12 @@ namespace Jolt
             return m_valid;
         }
 
+        [[nodiscard]]
+        AZ::u64 GetHitCount() const
+        {
+            return m_hitCount;
+        }
+
     private:
         const World& m_world;
         JPH::RVec3 m_baseOffset;
@@ -4479,6 +4675,7 @@ namespace Jolt
         TransformedShapeCollisionHit m_hit;
         AZStd::array<WorldPosition, MaximumSupportingFaceVertexCount> m_firstFace;
         AZStd::array<WorldPosition, MaximumSupportingFaceVertexCount> m_secondFace;
+        AZ::u64 m_hitCount = 0;
         bool m_valid = true;
     };
 
@@ -4548,6 +4745,7 @@ namespace Jolt
                 m_hit,
                 AZStd::span(m_firstFace.data(), m_hit.m_collision.m_firstFaceVertexCount),
                 AZStd::span(m_secondFace.data(), m_hit.m_collision.m_secondFaceVertexCount));
+            ++m_hitCount;
             if (!continueTraversal)
             {
                 ForceEarlyOut();
@@ -4571,6 +4769,12 @@ namespace Jolt
             return m_valid;
         }
 
+        [[nodiscard]]
+        AZ::u64 GetHitCount() const
+        {
+            return m_hitCount;
+        }
+
     private:
         const World& m_world;
         JPH::RVec3 m_baseOffset;
@@ -4582,6 +4786,7 @@ namespace Jolt
         TransformedShapeCastHit m_hit;
         AZStd::array<WorldPosition, MaximumSupportingFaceVertexCount> m_firstFace;
         AZStd::array<WorldPosition, MaximumSupportingFaceVertexCount> m_secondFace;
+        AZ::u64 m_hitCount = 0;
         bool m_valid = true;
     };
 
@@ -5172,6 +5377,7 @@ namespace Jolt
               .m_world = this,
           })
     {
+        m_performanceStatisticsStartNanoseconds = GetSteadyNanoseconds();
         if (!ValidateWorldConfiguration(m_configuration))
         {
             AZ_Error("Jolt", false, "Cannot create a world with invalid capacity, timing, gravity, or origin settings.");
@@ -5403,6 +5609,11 @@ namespace Jolt
                     m_system.ReleaseMaterials(slot.m_materialHandles);
                 }
             }
+        }
+
+        if (IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Memory))
+        {
+            ReleaseNativeMemoryStatistics();
         }
     }
 
@@ -6006,6 +6217,11 @@ namespace Jolt
             }
             shapeIndex = static_cast<AZ::u32>(m_shapeSlots.size());
             m_shapeSlots.emplace_back();
+        }
+
+        if (m_statisticsShapePointers.capacity() < m_shapeSlots.capacity())
+        {
+            m_statisticsShapePointers.reserve(m_shapeSlots.capacity());
         }
 
         ShapeSlot& slot = m_shapeSlots[shapeIndex];
@@ -15660,6 +15876,12 @@ namespace Jolt
     BodySnapshotHandle World::CaptureBodyState(
         const BodyHandle bodyHandle)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CaptureBodyState");
+        PerformanceOperationScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Snapshots),
+            m_performanceStatistics.m_snapshotCaptureNanoseconds,
+            m_performanceStatistics.m_snapshotCaptureCount,
+            m_performanceStatistics.m_snapshotFailureCount);
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* bodySlot = FindBody(bodyHandle);
         if (!bodySlot)
@@ -15704,16 +15926,24 @@ namespace Jolt
             return {};
         }
         snapshot.m_bodyHandle = bodyHandle;
-        return Internal::MakeWorldMemberHandle<BodySnapshotHandle>(
+        const BodySnapshotHandle snapshotHandle = Internal::MakeWorldMemberHandle<BodySnapshotHandle>(
             m_worldIndex,
             snapshotIndex,
             snapshot.m_generation);
+        statisticsScope.Succeed();
+        return snapshotHandle;
     }
 
     bool World::CaptureBodyState(
         const BodyHandle bodyHandle,
         const BodySnapshotHandle snapshotHandle)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RecaptureBodyState");
+        PerformanceOperationScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Snapshots),
+            m_performanceStatistics.m_snapshotCaptureNanoseconds,
+            m_performanceStatistics.m_snapshotCaptureCount,
+            m_performanceStatistics.m_snapshotFailureCount);
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* bodySlot = FindBody(bodyHandle);
         BodySnapshotSlot* snapshot = FindBodySnapshot(snapshotHandle);
@@ -15740,6 +15970,7 @@ namespace Jolt
         }
         snapshot->m_data.swap(m_bodySnapshotScratch);
         snapshot->m_bodyHandle = bodyHandle;
+        statisticsScope.Succeed();
         return true;
     }
 
@@ -15777,6 +16008,12 @@ namespace Jolt
     bool World::RestoreBodyState(
         const BodySnapshotHandle snapshotHandle)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RestoreBodyState");
+        PerformanceOperationScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Snapshots),
+            m_performanceStatistics.m_snapshotRestoreNanoseconds,
+            m_performanceStatistics.m_snapshotRestoreCount,
+            m_performanceStatistics.m_snapshotFailureCount);
         AZStd::lock_guard lock(m_mutex);
         const BodySnapshotSlot* snapshot = FindBodySnapshot(snapshotHandle);
         if (!snapshot)
@@ -15822,6 +16059,7 @@ namespace Jolt
             m_contactCacheInvalidBodyHandles.push_back(snapshot->m_bodyHandle);
         }
         ClearEventState();
+        statisticsScope.Succeed();
         return true;
     }
 
@@ -15854,6 +16092,12 @@ namespace Jolt
         const StateSnapshotConfiguration& configuration,
         const AZStd::span<const BodyHandle> bodyHandles)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CaptureState");
+        PerformanceOperationScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Snapshots),
+            m_performanceStatistics.m_snapshotCaptureNanoseconds,
+            m_performanceStatistics.m_snapshotCaptureCount,
+            m_performanceStatistics.m_snapshotFailureCount);
         AZStd::lock_guard lock(m_mutex);
         AZ::u32 snapshotIndex = 0;
         if (!ReserveStateSnapshotSlot(snapshotIndex))
@@ -15867,10 +16111,12 @@ namespace Jolt
             ReleaseStateSnapshotSlot(snapshotIndex);
             return {};
         }
-        return Internal::MakeWorldMemberHandle<StateSnapshotHandle>(
+        const StateSnapshotHandle snapshotHandle = Internal::MakeWorldMemberHandle<StateSnapshotHandle>(
             m_worldIndex,
             snapshotIndex,
             snapshot.m_generation);
+        statisticsScope.Succeed();
+        return snapshotHandle;
     }
 
     bool World::CaptureState(
@@ -15884,6 +16130,12 @@ namespace Jolt
         const StateSnapshotConfiguration& configuration,
         const AZStd::span<const BodyHandle> bodyHandles)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RecaptureState");
+        PerformanceOperationScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Snapshots),
+            m_performanceStatistics.m_snapshotCaptureNanoseconds,
+            m_performanceStatistics.m_snapshotCaptureCount,
+            m_performanceStatistics.m_snapshotFailureCount);
         AZStd::lock_guard lock(m_mutex);
         StateSnapshotSlot* snapshot = FindStateSnapshot(snapshotHandle);
         if (!snapshot)
@@ -15898,6 +16150,7 @@ namespace Jolt
         }
 
         AZStd::swap(*snapshot, m_stateSnapshotScratch);
+        statisticsScope.Succeed();
         return true;
     }
 
@@ -15907,6 +16160,12 @@ namespace Jolt
         const AZStd::span<const AZ::u32> partitionBodyCounts,
         const AZStd::span<StateSnapshotHandle> snapshotHandles)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CaptureStateParts");
+        PerformanceOperationScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Snapshots),
+            m_performanceStatistics.m_snapshotCaptureNanoseconds,
+            m_performanceStatistics.m_snapshotCaptureCount,
+            m_performanceStatistics.m_snapshotFailureCount);
         AZStd::lock_guard lock(m_mutex);
         for (StateSnapshotHandle& snapshotHandle : snapshotHandles)
         {
@@ -16024,6 +16283,7 @@ namespace Jolt
 
         if (capturedPartCount == snapshotHandles.size())
         {
+            statisticsScope.Succeed();
             return true;
         }
 
@@ -16286,6 +16546,7 @@ namespace Jolt
             return false;
         }
         snapshot.m_filteredBodyTopologyStates.resize(bodyTopologyCount);
+        snapshot.m_filteredBodyStateCount = 0;
         for (FilteredBodyTopologyState& state : snapshot.m_filteredBodyTopologyStates)
         {
             AZ::u8 bodyKind = 0;
@@ -16318,6 +16579,10 @@ namespace Jolt
             state.m_kind = static_cast<BodyKind>(bodyKind);
             state.m_motionType = static_cast<MotionType>(motionType);
             state.m_isInSimulation = isInSimulation != 0;
+            if (state.m_isInSimulation)
+            {
+                ++snapshot.m_filteredBodyStateCount;
+            }
         }
 
         size_t constraintTopologyCount = 0;
@@ -16407,6 +16672,7 @@ namespace Jolt
         const AZStd::span<const StateSnapshotHandle> snapshotHandles,
         StateSnapshotArchive& archive)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::ExportStateArchive");
         AZStd::lock_guard lock(m_mutex);
         archive = {};
         if (snapshotHandles.empty()
@@ -16462,6 +16728,7 @@ namespace Jolt
         const StateSnapshotArchive& archive,
         const AZStd::span<StateSnapshotHandle> snapshotHandles)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::ImportStateArchive");
         AZStd::lock_guard lock(m_mutex);
         for (StateSnapshotHandle& snapshotHandle : snapshotHandles)
         {
@@ -16827,6 +17094,7 @@ namespace Jolt
         snapshot.m_filteredBodyTopologyStates.clear();
         snapshot.m_filteredConstraintAddresses.clear();
         snapshot.m_filteredConstraintTopologyStates.clear();
+        snapshot.m_filteredBodyStateCount = 0;
         snapshot.m_filteredConstraintStateCount = 0;
         if (configuration.m_filterBodies)
         {
@@ -16872,6 +17140,14 @@ namespace Jolt
                         return first.m_bodyHandle == second.m_bodyHandle;
                     }),
                 snapshot.m_filteredBodyTopologyStates.end());
+
+            for (const FilteredBodyTopologyState& state : snapshot.m_filteredBodyTopologyStates)
+            {
+                if (state.m_isInSimulation)
+                {
+                    ++snapshot.m_filteredBodyStateCount;
+                }
+            }
 
             const auto ownsConstraint =
                 [&snapshot](const BodySlot* firstBodySlot, const BodySlot* secondBodySlot)
@@ -17084,6 +17360,7 @@ namespace Jolt
         SnapshotStateFilter stateFilter(
             snapshot.m_filteredBodyIds,
             snapshot.m_filteredConstraintAddresses,
+            snapshot.m_filteredBodyStateCount,
             snapshot.m_filteredConstraintStateCount);
         JPH::StateRecorderFilter* nativeFilter = nullptr;
         if (configuration.m_filterBodies)
@@ -17285,6 +17562,7 @@ namespace Jolt
         snapshot.m_filteredBodyTopologyStates.clear();
         snapshot.m_filteredConstraintAddresses.clear();
         snapshot.m_filteredConstraintTopologyStates.clear();
+        snapshot.m_filteredBodyStateCount = 0;
         snapshot.m_filteredConstraintStateCount = 0;
         snapshot.m_groupFilterStates.clear();
         snapshot.m_hairGenerations.clear();
@@ -17710,6 +17988,12 @@ namespace Jolt
     bool World::RestoreState(
         const StateSnapshotHandle snapshotHandle)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RestoreState");
+        PerformanceOperationScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Snapshots),
+            m_performanceStatistics.m_snapshotRestoreNanoseconds,
+            m_performanceStatistics.m_snapshotRestoreCount,
+            m_performanceStatistics.m_snapshotFailureCount);
         AZStd::lock_guard lock(m_mutex);
         const StateSnapshotSlot* snapshot = FindStateSnapshot(snapshotHandle);
         if (!snapshot
@@ -17778,6 +18062,7 @@ namespace Jolt
         {
             m_eventSequence = snapshot->m_eventSequence;
         }
+        statisticsScope.Succeed();
         return true;
     }
 
@@ -17871,6 +18156,12 @@ namespace Jolt
     bool World::RestoreStateParts(
         const AZStd::span<const StateSnapshotHandle> snapshotHandles)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RestoreStateParts");
+        PerformanceOperationScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Snapshots),
+            m_performanceStatistics.m_snapshotRestoreNanoseconds,
+            m_performanceStatistics.m_snapshotRestoreCount,
+            m_performanceStatistics.m_snapshotFailureCount);
         AZStd::lock_guard lock(m_mutex);
         if (snapshotHandles.empty())
         {
@@ -18009,6 +18300,7 @@ namespace Jolt
         }
 
         ClearEventState();
+        statisticsScope.Succeed();
         return true;
     }
 
@@ -18024,6 +18316,7 @@ namespace Jolt
         SnapshotStateFilter stateFilter(
             snapshot.m_filteredBodyIds,
             snapshot.m_filteredConstraintAddresses,
+            snapshot.m_filteredBodyStateCount,
             snapshot.m_filteredConstraintStateCount);
         JPH::StateRecorderFilter* nativeFilter = nullptr;
         if (snapshot.m_configuration.m_filterBodies)
@@ -18165,6 +18458,7 @@ namespace Jolt
         const StateSnapshotHandle snapshotHandle,
         StateValidationResult& result)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::ValidateState");
         AZStd::lock_guard lock(m_mutex);
         result = {};
         const StateSnapshotSlot* snapshot = FindStateSnapshot(snapshotHandle);
@@ -18267,6 +18561,7 @@ namespace Jolt
     bool World::GetStateDigest(
         WorldStateDigest& digest) const
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::GetStateDigest");
         AZStd::lock_guard lock(m_mutex);
         AZStd::vector<GroupFilterState> groupFilterStates;
         if (!CollectGroupFilterStates(groupFilterStates))
@@ -18596,6 +18891,38 @@ namespace Jolt
         return true;
     }
 
+    World::NativeShapeStatistics World::GatherNativeShapeStatistics() const
+    {
+        NativeShapeStatistics statistics;
+        m_statisticsShapePointers.clear();
+        for (const ShapeSlot& slot : m_shapeSlots)
+        {
+            if (!slot.m_shape)
+            {
+                continue;
+            }
+
+            ++statistics.m_shapeCount;
+            m_statisticsShapePointers.push_back(slot.m_shape.GetPtr());
+        }
+
+        AZStd::sort(m_statisticsShapePointers.begin(), m_statisticsShapePointers.end());
+        const JPH::Shape* previousShape = nullptr;
+        for (const JPH::Shape* nativeShape : m_statisticsShapePointers)
+        {
+            if (nativeShape == previousShape)
+            {
+                continue;
+            }
+
+            previousShape = nativeShape;
+            const JPH::Shape::Stats nativeStatistics = nativeShape->GetStats();
+            statistics.m_retainedBytes += nativeStatistics.mSizeBytes;
+            statistics.m_triangleCount += nativeStatistics.mNumTriangles;
+        }
+        return statistics;
+    }
+
     void World::InvalidateAllContactCaches()
     {
         JPH::BodyInterface& bodyInterface = m_physicsSystem.GetBodyInterface();
@@ -18632,17 +18959,10 @@ namespace Jolt
             .m_staticBodyCount = bodyStats.mNumBodiesStatic,
         };
 
-        JPH::Shape::VisitedShapes visitedShapes;
-        for (const ShapeSlot& slot : m_shapeSlots)
-        {
-            if (slot.m_shape)
-            {
-                const JPH::Shape::Stats shapeStats = slot.m_shape->GetStatsRecursive(visitedShapes);
-                statistics.m_shapeBytes += shapeStats.mSizeBytes;
-                statistics.m_shapeTriangleCount += shapeStats.mNumTriangles;
-                ++statistics.m_shapeCount;
-            }
-        }
+        const NativeShapeStatistics shapeStatistics = GatherNativeShapeStatistics();
+        statistics.m_shapeBytes = shapeStatistics.m_retainedBytes;
+        statistics.m_shapeTriangleCount = shapeStatistics.m_triangleCount;
+        statistics.m_shapeCount = shapeStatistics.m_shapeCount;
         for (const ConstraintSlot& slot : m_constraintSlots)
         {
             if (slot.m_constraint)
@@ -18711,6 +19031,664 @@ namespace Jolt
             }
         }
         return true;
+    }
+
+    bool World::ConfigurePerformanceStatistics(
+        const PerformanceStatisticsFlags flags)
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::ConfigurePerformanceStatistics");
+        AZStd::lock_guard lock(m_mutex);
+        if (!m_initialized
+            || (flags & ~PerformanceStatisticsFlags::All) != PerformanceStatisticsFlags::None)
+        {
+            return false;
+        }
+
+        const PerformanceStatisticsFlags previousFlags = static_cast<PerformanceStatisticsFlags>(
+            m_performanceStatisticsFlags.load(AZStd::memory_order_relaxed));
+        const bool trackedNativeMemory =
+            (previousFlags & PerformanceStatisticsFlags::Memory) != PerformanceStatisticsFlags::None;
+        const bool trackNativeMemory =
+            (flags & PerformanceStatisticsFlags::Memory) != PerformanceStatisticsFlags::None;
+        if (trackNativeMemory && !trackedNativeMemory)
+        {
+            AcquireNativeMemoryStatistics();
+        }
+
+        m_performanceStatisticsFlags.store(
+            static_cast<AZ::u16>(flags),
+            AZStd::memory_order_release);
+        m_mutex.ConfigureStatistics(
+            (flags & PerformanceStatisticsFlags::Locks) != PerformanceStatisticsFlags::None);
+        ResetPerformanceStatistics();
+
+        if (!trackNativeMemory && trackedNativeMemory)
+        {
+            ReleaseNativeMemoryStatistics();
+        }
+        return true;
+    }
+
+    bool World::GetPerformanceStatistics(
+        WorldPerformanceStatistics& statistics,
+        const bool reset)
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::GetPerformanceStatistics");
+        AZStd::lock_guard lock(m_mutex);
+        if (!m_initialized)
+        {
+            return false;
+        }
+
+        const PerformanceStatisticsFlags flags = static_cast<PerformanceStatisticsFlags>(
+            m_performanceStatisticsFlags.load(AZStd::memory_order_acquire));
+        statistics = WorldPerformanceStatistics{};
+        statistics.m_availableFlags = PerformanceStatisticsFlags::All;
+        statistics.m_enabledFlags = flags;
+        statistics.m_intervalNanoseconds =
+            GetSteadyNanoseconds() - m_performanceStatisticsStartNanoseconds;
+#if !defined(JPH_TRACK_BROADPHASE_STATS)
+        statistics.m_availableFlags &= ~PerformanceStatisticsFlags::BroadPhase;
+#endif
+#if !defined(JPH_TRACK_NARROWPHASE_STATS)
+        statistics.m_availableFlags &= ~PerformanceStatisticsFlags::NarrowPhase;
+#endif
+
+        if ((flags & PerformanceStatisticsFlags::Memory) != PerformanceStatisticsFlags::None)
+        {
+            const NativeMemoryStatistics nativeStatistics = GetNativeMemoryStatistics(reset);
+            statistics.m_processNativeAllocatedBytes = nativeStatistics.m_allocatedBytes;
+            statistics.m_processNativePeakAllocatedBytes = nativeStatistics.m_peakAllocatedBytes;
+            statistics.m_processNativeAllocationCount = nativeStatistics.m_allocationCount;
+            statistics.m_processNativeFreeCount = nativeStatistics.m_freeCount;
+            statistics.m_processNativeReallocationCount = nativeStatistics.m_reallocationCount;
+            statistics.m_tempAllocatorCapacityBytes = m_tempAllocator->GetSize();
+            statistics.m_tempAllocatorCurrentBytes = m_tempAllocator->GetUsage();
+            statistics.m_tempAllocatorPeakBytes = m_tempAllocator->GetPeakUsage();
+            if (reset)
+            {
+                m_tempAllocator->ResetPeakUsage();
+            }
+        }
+
+        if ((flags & PerformanceStatisticsFlags::Resources) != PerformanceStatisticsFlags::None)
+        {
+            const auto configureResource = [](
+                                               ResourceStatistics& resource,
+                                               const size_t count,
+                                               const size_t highWaterCount,
+                                               const size_t capacity,
+                                               const AZ::u64 retainedBytes)
+            {
+                resource.m_retainedBytes = retainedBytes;
+                resource.m_capacity = aznumeric_cast<AZ::u32>(capacity);
+                resource.m_count = aznumeric_cast<AZ::u32>(count);
+                resource.m_highWaterCount = aznumeric_cast<AZ::u32>(highWaterCount);
+            };
+
+            const NativeShapeStatistics nativeShapeStatistics = GatherNativeShapeStatistics();
+            AZ::u64 shapeBytes = GetVectorCapacityBytes(m_shapeSlots)
+                + GetVectorCapacityBytes(m_freeShapeSlots)
+                + GetVectorCapacityBytes(m_statisticsShapePointers)
+                + nativeShapeStatistics.m_retainedBytes;
+            for (const ShapeSlot& slot : m_shapeSlots)
+            {
+                shapeBytes += GetVectorCapacityBytes(slot.m_materialHandles);
+                shapeBytes += GetVectorCapacityBytes(slot.m_childHandles);
+            }
+            configureResource(
+                statistics.m_shapes,
+                nativeShapeStatistics.m_shapeCount,
+                m_shapeSlots.size(),
+                m_shapeSlots.capacity(),
+                shapeBytes);
+
+            size_t bodyCount = 0;
+            size_t softBodyCount = 0;
+            for (const BodySlot& slot : m_bodySlots)
+            {
+                if (slot.m_bodyId.IsInvalid())
+                {
+                    continue;
+                }
+                ++bodyCount;
+                if (slot.m_kind == BodyKind::Soft)
+                {
+                    ++softBodyCount;
+                }
+            }
+            const AZ::u64 bodyBytes = GetVectorCapacityBytes(m_bodySlots)
+                + GetVectorCapacityBytes(m_freeBodySlots)
+                + GetVectorCapacityBytes(m_bodyMoveHandles)
+                + GetVectorCapacityBytes(m_contactCacheInvalidBodyHandles);
+            configureResource(
+                statistics.m_bodies,
+                bodyCount,
+                m_bodySlots.size(),
+                m_bodySlots.capacity(),
+                bodyBytes);
+            configureResource(
+                statistics.m_softBodies,
+                softBodyCount,
+                softBodyCount,
+                m_bodySlots.capacity(),
+                0);
+
+            size_t constraintCount = 0;
+            for (const ConstraintSlot& slot : m_constraintSlots)
+            {
+                if (slot.m_constraint)
+                {
+                    ++constraintCount;
+                }
+            }
+            configureResource(
+                statistics.m_constraints,
+                constraintCount,
+                m_constraintSlots.size(),
+                m_constraintSlots.capacity(),
+                GetVectorCapacityBytes(m_constraintSlots) + GetVectorCapacityBytes(m_freeConstraintSlots));
+
+            size_t characterCount = 0;
+            for (const CharacterSlot& slot : m_characterSlots)
+            {
+                if (slot.m_character)
+                {
+                    ++characterCount;
+                }
+            }
+            configureResource(
+                statistics.m_characters,
+                characterCount,
+                m_characterSlots.size(),
+                m_characterSlots.capacity(),
+                GetVectorCapacityBytes(m_characterSlots) + GetVectorCapacityBytes(m_freeCharacterSlots));
+
+            size_t virtualCharacterCount = 0;
+            AZ::u64 virtualCharacterBytes = GetVectorCapacityBytes(m_virtualCharacterSlots)
+                + GetVectorCapacityBytes(m_freeVirtualCharacterSlots);
+            for (const VirtualCharacterSlot& slot : m_virtualCharacterSlots)
+            {
+                if (slot.m_character)
+                {
+                    ++virtualCharacterCount;
+                }
+                if (slot.m_contactProvenance)
+                {
+                    virtualCharacterBytes += GetVectorCapacityBytes(*slot.m_contactProvenance);
+                }
+            }
+            configureResource(
+                statistics.m_virtualCharacters,
+                virtualCharacterCount,
+                m_virtualCharacterSlots.size(),
+                m_virtualCharacterSlots.capacity(),
+                virtualCharacterBytes);
+
+            size_t vehicleCount = 0;
+            for (const VehicleSlot& slot : m_vehicleSlots)
+            {
+                if (slot.m_constraint)
+                {
+                    ++vehicleCount;
+                }
+            }
+            configureResource(
+                statistics.m_vehicles,
+                vehicleCount,
+                m_vehicleSlots.size(),
+                m_vehicleSlots.capacity(),
+                GetVectorCapacityBytes(m_vehicleSlots) + GetVectorCapacityBytes(m_freeVehicleSlots));
+
+            size_t ragdollCount = 0;
+            AZ::u64 ragdollBytes = GetVectorCapacityBytes(m_ragdollSlots)
+                + GetVectorCapacityBytes(m_freeRagdollSlots)
+                + GetVectorCapacityBytes(m_ragdollDefinitionSlots)
+                + GetVectorCapacityBytes(m_freeRagdollDefinitionSlots);
+            for (const RagdollSlot& slot : m_ragdollSlots)
+            {
+                if (slot.m_ragdoll)
+                {
+                    ++ragdollCount;
+                }
+                ragdollBytes += GetVectorCapacityBytes(slot.m_bodyHandles);
+                ragdollBytes += GetVectorCapacityBytes(slot.m_constraintHandles);
+                ragdollBytes += GetVectorCapacityBytes(slot.m_removedBodyMotionStates);
+            }
+            for (const RagdollDefinitionSlot& slot : m_ragdollDefinitionSlots)
+            {
+                ragdollBytes += GetVectorCapacityBytes(slot.m_shapeHandles);
+                ragdollBytes += GetVectorCapacityBytes(slot.m_neutralModelTransforms);
+            }
+            configureResource(
+                statistics.m_ragdolls,
+                ragdollCount,
+                m_ragdollSlots.size(),
+                m_ragdollSlots.capacity(),
+                ragdollBytes);
+
+            size_t hairCount = 0;
+            AZ::u64 hairBytes = GetVectorCapacityBytes(m_hairSlots)
+                + GetVectorCapacityBytes(m_freeHairSlots);
+            for (const HairSlot& slot : m_hairSlots)
+            {
+                if (slot.m_hair)
+                {
+                    ++hairCount;
+                }
+                if (slot.m_autoUpdateState)
+                {
+                    hairBytes += sizeof(HairAutoUpdateState);
+                    hairBytes += GetVectorCapacityBytes(slot.m_autoUpdateState->m_jointModelTransforms);
+                }
+            }
+            configureResource(
+                statistics.m_hair,
+                hairCount,
+                m_hairSlots.size(),
+                m_hairSlots.capacity(),
+                hairBytes);
+
+            size_t sceneCount = 0;
+            AZ::u64 sceneBytes = GetVectorCapacityBytes(m_sceneInstanceSlots)
+                + GetVectorCapacityBytes(m_freeSceneInstanceSlots);
+            for (const SceneInstanceSlot& slot : m_sceneInstanceSlots)
+            {
+                if (slot.m_definitionHandle)
+                {
+                    ++sceneCount;
+                }
+                sceneBytes += GetVectorCapacityBytes(slot.m_shapeHandles);
+                sceneBytes += GetVectorCapacityBytes(slot.m_bodyHandles);
+                sceneBytes += GetVectorCapacityBytes(slot.m_constraintHandles);
+            }
+            configureResource(
+                statistics.m_scenes,
+                sceneCount,
+                m_sceneInstanceSlots.size(),
+                m_sceneInstanceSlots.capacity(),
+                sceneBytes);
+
+            size_t bodySnapshotCount = 0;
+            AZ::u64 bodySnapshotBytes = GetVectorCapacityBytes(m_bodySnapshotSlots)
+                + GetVectorCapacityBytes(m_freeBodySnapshotSlots);
+            for (const BodySnapshotSlot& slot : m_bodySnapshotSlots)
+            {
+                if (!slot.m_data.empty())
+                {
+                    ++bodySnapshotCount;
+                }
+                bodySnapshotBytes += GetVectorCapacityBytes(slot.m_data);
+            }
+            configureResource(
+                statistics.m_bodySnapshots,
+                bodySnapshotCount,
+                m_bodySnapshotSlots.size(),
+                m_bodySnapshotSlots.capacity(),
+                bodySnapshotBytes);
+
+            size_t stateSnapshotCount = 0;
+            AZ::u64 stateSnapshotBytes = GetVectorCapacityBytes(m_stateSnapshotSlots)
+                + GetVectorCapacityBytes(m_freeStateSnapshotSlots);
+            const auto getNestedSnapshotBytes = [](const StateSnapshotSlot& slot)
+            {
+                AZ::u64 bytes = 0;
+                for (const NativeHair::State& hairState : slot.m_hairStates)
+                {
+                    bytes += hairState.m_globalPoseTransforms.m_data.capacity();
+                    bytes += hairState.m_positions.m_data.capacity();
+                    bytes += hairState.m_previousPositions.m_data.capacity();
+                    bytes += hairState.m_renderPositions.m_data.capacity();
+                    bytes += hairState.m_scalpVertices.m_data.capacity();
+                    bytes += hairState.m_targetGlobalPoseTransforms.m_data.capacity();
+                    bytes += hairState.m_targetPositions.m_data.capacity();
+                    bytes += hairState.m_velocities.m_data.capacity();
+                    bytes += hairState.m_velocityAndDensity.m_data.capacity();
+                }
+                for (const GroupFilterState& state : slot.m_groupFilterStates)
+                {
+                    bytes += GetVectorCapacityBytes(state.m_participantState.m_data);
+                }
+                for (const IndexedCallbackState& state : slot.m_virtualCharacterCallbackStates)
+                {
+                    bytes += GetVectorCapacityBytes(state.m_primaryState.m_data);
+                    bytes += GetVectorCapacityBytes(state.m_secondaryState.m_data);
+                }
+                for (const IndexedCallbackState& state : slot.m_vehicleCallbackStates)
+                {
+                    bytes += GetVectorCapacityBytes(state.m_primaryState.m_data);
+                    bytes += GetVectorCapacityBytes(state.m_secondaryState.m_data);
+                }
+                for (const RollbackParticipantState& state : slot.m_stepListenerStates)
+                {
+                    bytes += GetVectorCapacityBytes(state.m_data);
+                }
+                return bytes;
+            };
+            for (const StateSnapshotSlot& slot : m_stateSnapshotSlots)
+            {
+                if (!slot.m_data.empty())
+                {
+                    ++stateSnapshotCount;
+                }
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_data);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_bodyGenerations);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_characterGenerations);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_constraintGenerations);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_vehicleGenerations);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_virtualCharacterGenerations);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_hairGenerations);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_hairStates);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_hairWorldTransforms);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_hairInitialized);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_hairTeleported);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_groupFilterStates);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_virtualCharacterCallbackStates);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_vehicleCallbackStates);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_stepListenerStates);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_filteredBodyIds);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_filteredBodyTopologyStates);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_filteredConstraintAddresses);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_filteredConstraintTopologyStates);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_characterStateIndices);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_virtualCharacterStateIndices);
+                stateSnapshotBytes += getNestedSnapshotBytes(slot);
+            }
+            configureResource(
+                statistics.m_stateSnapshots,
+                stateSnapshotCount,
+                m_stateSnapshotSlots.size(),
+                m_stateSnapshotSlots.capacity(),
+                stateSnapshotBytes);
+
+            AZ::u64 workspaceBytes = GetVectorCapacityBytes(m_raycastBatchWorkspaces);
+            for (const AZStd::unique_ptr<RaycastBatchWorkspace>& workspace : m_raycastBatchWorkspaces)
+            {
+                if (workspace)
+                {
+                    workspaceBytes += sizeof(RaycastBatchWorkspace);
+                    workspaceBytes += GetVectorCapacityBytes(workspace->m_jobs);
+                }
+            }
+            workspaceBytes += GetVectorCapacityBytes(m_softBodySkinTransforms);
+            workspaceBytes += GetVectorCapacityBytes(m_hairJointTransforms);
+            workspaceBytes += GetVectorCapacityBytes(m_bodyIdScratch);
+            workspaceBytes += GetVectorCapacityBytes(m_constraintScratch);
+            workspaceBytes += GetVectorCapacityBytes(m_bodySnapshotScratch);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_data);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_bodyGenerations);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_characterGenerations);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_constraintGenerations);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_vehicleGenerations);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_virtualCharacterGenerations);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_hairGenerations);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_hairStates);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_hairWorldTransforms);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_hairInitialized);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_hairTeleported);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_groupFilterStates);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_virtualCharacterCallbackStates);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_vehicleCallbackStates);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_stepListenerStates);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_filteredBodyIds);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_filteredBodyTopologyStates);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_filteredConstraintAddresses);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_filteredConstraintTopologyStates);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_characterStateIndices);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_virtualCharacterStateIndices);
+            workspaceBytes += getNestedSnapshotBytes(m_stateSnapshotScratch);
+            workspaceBytes += GetVectorCapacityBytes(m_currentHairStateScratch);
+            workspaceBytes += GetVectorCapacityBytes(m_snapshotHairStateScratch);
+            workspaceBytes += GetVectorCapacityBytes(m_snapshotBodyHandleScratch);
+            workspaceBytes += GetVectorCapacityBytes(m_snapshotConstraintAddressScratch);
+            workspaceBytes += GetVectorCapacityBytes(m_snapshotConstraintTopologyScratch);
+            workspaceBytes += GetVectorCapacityBytes(m_snapshotPartBodyIdScratch);
+            workspaceBytes += GetVectorCapacityBytes(m_groupFilterScratch);
+            workspaceBytes += GetVectorCapacityBytes(m_stepListeners);
+
+            AZ::u64 eventBytes = 0;
+            {
+                AZStd::lock_guard eventLock(m_eventMutex);
+                eventBytes += GetMapRetainedBytes(m_contactCache);
+                eventBytes += GetVectorCapacityBytes(m_pendingContactEvents);
+                eventBytes += GetVectorCapacityBytes(m_pendingContactPoints);
+                eventBytes += GetVectorCapacityBytes(m_pendingActivationEvents);
+                eventBytes += GetVectorCapacityBytes(m_pendingBodyMoveEvents);
+                eventBytes += GetVectorCapacityBytes(m_pendingVirtualCharacterMoveEvents);
+                eventBytes += GetVectorCapacityBytes(m_contactEvents);
+                eventBytes += GetVectorCapacityBytes(m_contactPoints);
+                eventBytes += GetVectorCapacityBytes(m_activationEvents);
+                eventBytes += GetVectorCapacityBytes(m_bodyMoveEvents);
+                eventBytes += GetVectorCapacityBytes(m_virtualCharacterMoveEvents);
+            }
+
+            const AZ::u64 lookupBytes = GetMapRetainedBytes(m_ragdollHandlesByGroupId)
+                + GetMapRetainedBytes(m_virtualCharacterHandlesById);
+            AZ::u64 debugBytes = 0;
+            if (m_debugCapture)
+            {
+                debugBytes = sizeof(DebugCapture) + m_debugCapture->GetRetainedBytes();
+            }
+
+            statistics.m_wrapperRetainedBytes = shapeBytes
+                + bodyBytes
+                + statistics.m_constraints.m_retainedBytes
+                + statistics.m_characters.m_retainedBytes
+                + virtualCharacterBytes
+                + statistics.m_vehicles.m_retainedBytes
+                + ragdollBytes
+                + hairBytes
+                + sceneBytes
+                + bodySnapshotBytes
+                + stateSnapshotBytes
+                + workspaceBytes
+                + eventBytes
+                + lookupBytes
+                + debugBytes;
+        }
+
+        if ((flags & PerformanceStatisticsFlags::BroadPhase) != PerformanceStatisticsFlags::None)
+        {
+            statistics.m_broadPhaseOptimizeCount = ReadCounter(
+                m_performanceStatistics.m_broadPhaseOptimizeCount,
+                reset);
+            statistics.m_broadPhaseOptimizeNanoseconds = ReadCounter(
+                m_performanceStatistics.m_broadPhaseOptimizeNanoseconds,
+                reset);
+            statistics.m_originShiftCount = ReadCounter(
+                m_performanceStatistics.m_originShiftCount,
+                reset);
+        }
+
+        if ((flags & PerformanceStatisticsFlags::NarrowPhase) != PerformanceStatisticsFlags::None)
+        {
+            AZStd::lock_guard eventLock(m_eventMutex);
+            statistics.m_contactManifoldCount = m_contactCache.size();
+            statistics.m_contactEventCount = ReadCounter(
+                m_performanceStatistics.m_contactEventCount,
+                reset);
+            statistics.m_contactPointCount = ReadCounter(
+                m_performanceStatistics.m_contactPointCount,
+                reset);
+        }
+
+        if ((flags & PerformanceStatisticsFlags::Events) != PerformanceStatisticsFlags::None)
+        {
+            statistics.m_droppedEventCount = ReadCounter(
+                m_performanceStatistics.m_droppedEventCount,
+                reset);
+            statistics.m_eventHighWaterCount = ReadCounter(
+                m_performanceStatistics.m_eventHighWaterCount,
+                reset);
+            statistics.m_publishedEventCount = ReadCounter(
+                m_performanceStatistics.m_publishedEventCount,
+                reset);
+        }
+
+        if ((flags & PerformanceStatisticsFlags::Queries) != PerformanceStatisticsFlags::None)
+        {
+            statistics.m_queryCandidateCount = ReadCounter(
+                m_performanceStatistics.m_queryCandidateCount,
+                reset);
+            statistics.m_queryCount = ReadCounter(m_performanceStatistics.m_queryCount, reset);
+            statistics.m_queryHitCount = ReadCounter(m_performanceStatistics.m_queryHitCount, reset);
+            statistics.m_queryNanoseconds = ReadCounter(m_performanceStatistics.m_queryNanoseconds, reset);
+        }
+
+        if ((flags & PerformanceStatisticsFlags::Snapshots) != PerformanceStatisticsFlags::None)
+        {
+            AZ::u64 snapshotBytes = 0;
+            for (const BodySnapshotSlot& slot : m_bodySnapshotSlots)
+            {
+                snapshotBytes += slot.m_data.size();
+            }
+            for (const StateSnapshotSlot& slot : m_stateSnapshotSlots)
+            {
+                snapshotBytes += slot.m_data.size();
+                for (const NativeHair::State& hairState : slot.m_hairStates)
+                {
+                    snapshotBytes += hairState.m_globalPoseTransforms.m_data.size();
+                    snapshotBytes += hairState.m_positions.m_data.size();
+                    snapshotBytes += hairState.m_previousPositions.m_data.size();
+                    snapshotBytes += hairState.m_renderPositions.m_data.size();
+                    snapshotBytes += hairState.m_scalpVertices.m_data.size();
+                    snapshotBytes += hairState.m_targetGlobalPoseTransforms.m_data.size();
+                    snapshotBytes += hairState.m_targetPositions.m_data.size();
+                    snapshotBytes += hairState.m_velocities.m_data.size();
+                    snapshotBytes += hairState.m_velocityAndDensity.m_data.size();
+                }
+            }
+            statistics.m_snapshotBytes = snapshotBytes;
+            UpdateMaximum(m_performanceStatistics.m_snapshotPeakBytes, snapshotBytes);
+            statistics.m_snapshotCaptureCount = ReadCounter(
+                m_performanceStatistics.m_snapshotCaptureCount,
+                reset);
+            statistics.m_snapshotCaptureNanoseconds = ReadCounter(
+                m_performanceStatistics.m_snapshotCaptureNanoseconds,
+                reset);
+            statistics.m_snapshotFailureCount = ReadCounter(
+                m_performanceStatistics.m_snapshotFailureCount,
+                reset);
+            statistics.m_snapshotPeakBytes = ReadCounter(
+                m_performanceStatistics.m_snapshotPeakBytes,
+                reset);
+            statistics.m_snapshotRestoreCount = ReadCounter(
+                m_performanceStatistics.m_snapshotRestoreCount,
+                reset);
+            statistics.m_snapshotRestoreNanoseconds = ReadCounter(
+                m_performanceStatistics.m_snapshotRestoreNanoseconds,
+                reset);
+        }
+
+        if ((flags & PerformanceStatisticsFlags::Jobs) != PerformanceStatisticsFlags::None)
+        {
+            statistics.m_jobCount = ReadCounter(m_performanceStatistics.m_jobCount, reset);
+            statistics.m_jobExecutionNanoseconds = ReadCounter(
+                m_performanceStatistics.m_jobExecutionNanoseconds,
+                reset);
+            statistics.m_jobMaximumQueueLatencyNanoseconds = ReadCounter(
+                m_performanceStatistics.m_jobMaximumQueueLatencyNanoseconds,
+                reset);
+            statistics.m_jobQueueLatencyNanoseconds = ReadCounter(
+                m_performanceStatistics.m_jobQueueLatencyNanoseconds,
+                reset);
+            statistics.m_jobTaskCount = ReadCounter(m_performanceStatistics.m_jobTaskCount, reset);
+            statistics.m_jobMaximumActiveTaskCount = ReadCounter(
+                m_performanceStatistics.m_jobMaximumActiveTaskCount,
+                reset);
+        }
+
+        if ((flags & PerformanceStatisticsFlags::Locks) != PerformanceStatisticsFlags::None)
+        {
+            const WorldLockStatistics lockStatistics = m_mutex.GetStatistics(reset);
+            statistics.m_lockContentionCount = lockStatistics.m_contentionCount;
+            statistics.m_lockCount = lockStatistics.m_lockCount;
+            statistics.m_lockMaximumWaitNanoseconds = lockStatistics.m_maximumWaitNanoseconds;
+            statistics.m_lockWaitNanoseconds = lockStatistics.m_waitNanoseconds;
+        }
+
+        if ((flags & PerformanceStatisticsFlags::Hair) != PerformanceStatisticsFlags::None)
+        {
+            statistics.m_hairReadbackBytes = ReadCounter(
+                m_performanceStatistics.m_hairReadbackBytes,
+                reset);
+            statistics.m_hairReadbackCount = ReadCounter(
+                m_performanceStatistics.m_hairReadbackCount,
+                reset);
+            statistics.m_hairReadbackNanoseconds = ReadCounter(
+                m_performanceStatistics.m_hairReadbackNanoseconds,
+                reset);
+            statistics.m_hairUpdateCount = ReadCounter(
+                m_performanceStatistics.m_hairUpdateCount,
+                reset);
+            statistics.m_hairUpdateNanoseconds = ReadCounter(
+                m_performanceStatistics.m_hairUpdateNanoseconds,
+                reset);
+        }
+
+        if ((flags & PerformanceStatisticsFlags::Simulation) != PerformanceStatisticsFlags::None)
+        {
+            statistics.m_simulationErrorCount = ReadCounter(
+                m_performanceStatistics.m_simulationErrorCount,
+                reset);
+            statistics.m_simulationNanoseconds = ReadCounter(
+                m_performanceStatistics.m_simulationNanoseconds,
+                reset);
+            statistics.m_simulationStepCount = ReadCounter(
+                m_performanceStatistics.m_simulationStepCount,
+                reset);
+        }
+
+        if (reset)
+        {
+            m_performanceStatisticsStartNanoseconds = GetSteadyNanoseconds();
+        }
+        return true;
+    }
+
+    bool World::IsPerformanceStatisticsEnabled(
+        const PerformanceStatisticsFlags flag) const
+    {
+        const auto flags = static_cast<PerformanceStatisticsFlags>(
+            m_performanceStatisticsFlags.load(AZStd::memory_order_relaxed));
+        return (flags & flag) != PerformanceStatisticsFlags::None;
+    }
+
+    void World::ResetPerformanceStatistics()
+    {
+        m_performanceStatistics.m_broadPhaseOptimizeCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_broadPhaseOptimizeNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_originShiftCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_contactEventCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_contactPointCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_droppedEventCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_eventHighWaterCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_publishedEventCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_queryCandidateCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_queryCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_queryHitCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_queryNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_snapshotCaptureCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_snapshotCaptureNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_snapshotFailureCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_snapshotPeakBytes.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_snapshotRestoreCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_snapshotRestoreNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_jobCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_jobExecutionNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_jobMaximumQueueLatencyNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_jobQueueLatencyNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_jobTaskCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_jobMaximumActiveTaskCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_hairReadbackBytes.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_hairReadbackCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_hairReadbackNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_hairUpdateCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_hairUpdateNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_simulationErrorCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_simulationNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_simulationStepCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatisticsStartNanoseconds = GetSteadyNanoseconds();
     }
 
     DiagnosticStatisticsResult World::GetBroadPhaseStatistics(
@@ -18829,9 +19807,9 @@ namespace Jolt
 #else
         AZ_UNUSED(statistics);
         AZ_UNUSED(reset);
-        return {
-            .m_status = DiagnosticStatisticsStatus::Unavailable,
-        };
+        DiagnosticStatisticsResult result;
+        result.m_status = DiagnosticStatisticsStatus::Unavailable;
+        return result;
 #endif
     }
 
@@ -19037,6 +20015,7 @@ namespace Jolt
     bool World::ConfigureDebugCapture(
         const DebugCaptureConfiguration& configuration)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::ConfigureDebugCapture");
         AZStd::lock_guard lock(m_mutex);
         if (!m_initialized
             || (configuration.m_flags & ~DebugCaptureFlags::All) != DebugCaptureFlags::None)
@@ -19061,6 +20040,7 @@ namespace Jolt
     bool World::GetDebugCaptureStatistics(
         DebugCaptureStatistics& statistics) const
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::GetDebugCaptureStatistics");
         AZStd::lock_guard lock(m_mutex);
         if (!m_initialized)
         {
@@ -21197,6 +22177,9 @@ namespace Jolt
         ShapeRaycastHit& hit) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RaycastShapeClosest");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const ShapeSlot* shapeSlot = FindShape(request.m_shapeHandle);
         if (!shapeSlot
@@ -21230,12 +22213,14 @@ namespace Jolt
             JPH::SubShapeIDCreator(),
             collector,
             filter);
-        return collector.HadHit()
+        const bool found = collector.HadHit()
             && BuildShapeRaycastHit(
                 *shapeSlot->m_shape,
                 request,
                 collector.m_hit,
                 hit);
+        statisticsScope.SetCounts(1, 0, found);
+        return found;
     }
 
     QueryResult World::RaycastShapeAll(
@@ -21243,6 +22228,9 @@ namespace Jolt
         const AZStd::span<ShapeRaycastHit> hits) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RaycastShapeAll");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const ShapeSlot* shapeSlot = FindShape(request.m_shapeHandle);
         if (!shapeSlot
@@ -21299,6 +22287,7 @@ namespace Jolt
                 ++result.m_hitCount;
             }
         }
+        statisticsScope.SetCounts(1, collector.mHits.size(), result.m_hitCount);
         return result;
     }
 
@@ -21309,6 +22298,9 @@ namespace Jolt
         const AZStd::span<ShapePointHit> hits) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollideShapePoint");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const ShapeSlot* shapeSlot = FindShape(shapeHandle);
         if (!shapeSlot || !localPosition.IsFinite())
@@ -21344,6 +22336,7 @@ namespace Jolt
                 .m_subShapeId = SubShapeId(nativeSubShapeId.GetValue()),
             };
         }
+        statisticsScope.SetCounts(1, collector.mHits.size(), result.m_hitCount);
         return result;
     }
 
@@ -21353,6 +22346,9 @@ namespace Jolt
         const IQueryFilter* filter) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollideShapePointAny");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const ShapeSlot* shapeSlot = FindShape(shapeHandle);
         if (!shapeSlot || !localPosition.IsFinite())
@@ -21367,7 +22363,9 @@ namespace Jolt
             JPH::SubShapeIDCreator(),
             collector,
             nativeFilter);
-        return collector.HadHit();
+        const bool found = collector.HadHit();
+        statisticsScope.SetCounts(1, 0, found);
+        return found;
     }
 
     QueryResult World::CollectShapeTriangles(
@@ -21375,6 +22373,9 @@ namespace Jolt
         const AZStd::span<ShapeTriangle> triangles) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollectShapeTriangles");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const ShapeSlot* shapeSlot = FindShape(request.m_shapeHandle);
         if (!shapeSlot
@@ -21482,6 +22483,10 @@ namespace Jolt
 
         TriangleCollector collector(*this, bounds, triangles);
         transformedShape.CollectTransformedShapes(bounds, collector);
+        statisticsScope.SetCounts(
+            1,
+            collector.m_result.m_requiredHitCount,
+            collector.m_result.m_hitCount);
         return collector.m_result;
     }
 
@@ -21491,6 +22496,9 @@ namespace Jolt
         RaycastHit& hit) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RaycastTransformedShapeClosest");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
         if (!nativeShape
@@ -21523,8 +22531,10 @@ namespace Jolt
             request.m_filter,
             shape.m_bodyHandle);
         nativeShape->CastRay(ray, settings, collector, filter);
-        return collector.HadHit()
+        const bool found = collector.HadHit()
             && BuildTransformedShapeRaycastHit(shape, ray, collector.m_hit, hit);
+        statisticsScope.SetCounts(1, 0, found);
+        return found;
     }
 
     QueryResult World::RaycastTransformedShapeAll(
@@ -21533,6 +22543,9 @@ namespace Jolt
         const AZStd::span<RaycastHit> hits) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RaycastTransformedShapeAll");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
         if (!nativeShape
@@ -21588,6 +22601,7 @@ namespace Jolt
                 ++result.m_hitCount;
             }
         }
+        statisticsScope.SetCounts(1, collector.mHits.size(), result.m_hitCount);
         return result;
     }
 
@@ -21598,6 +22612,9 @@ namespace Jolt
         const AZStd::span<OverlapHit> hits) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollideTransformedShapePoint");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
         if (!nativeShape
@@ -21638,6 +22655,7 @@ namespace Jolt
                 .m_subShapeId = SubShapeId(subShapeId.GetValue()),
             };
         }
+        statisticsScope.SetCounts(1, collector.mHits.size(), result.m_hitCount);
         return result;
     }
 
@@ -21647,6 +22665,9 @@ namespace Jolt
         const IQueryFilter* filter) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollideTransformedShapePointAny");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
         if (!nativeShape
@@ -21665,7 +22686,9 @@ namespace Jolt
             ToNativePosition(position, shape.m_worldOrigin),
             collector,
             nativeFilter);
-        return collector.HadHit();
+        const bool found = collector.HadHit();
+        statisticsScope.SetCounts(1, 0, found);
+        return found;
     }
 
     QueryResult World::CollectTransformedShapeChildren(
@@ -21675,6 +22698,9 @@ namespace Jolt
         const AZStd::span<TransformedShape> children) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollectTransformedShapeChildren");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
         if (!nativeShape
@@ -21722,6 +22748,7 @@ namespace Jolt
                 ++result.m_hitCount;
             }
         }
+        statisticsScope.SetCounts(1, collector.mHits.size(), result.m_hitCount);
         return result;
     }
 
@@ -21731,6 +22758,9 @@ namespace Jolt
         const AZStd::span<TransformedTriangle> triangles) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollectTransformedShapeTriangles");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
         if (!nativeShape
@@ -21794,6 +22824,7 @@ namespace Jolt
                 ++result.m_hitCount;
             }
         }
+        statisticsScope.SetCounts(1, result.m_requiredHitCount, result.m_hitCount);
         return result;
     }
 
@@ -21905,6 +22936,9 @@ namespace Jolt
         const ShapeQueryFaceBuffers& faceBuffers) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollideTransformedShapes");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const JPH::TransformedShape* firstNativeShape = GetNativeTransformedShape(firstShape);
         const JPH::TransformedShape* secondNativeShape = GetNativeTransformedShape(secondShape);
@@ -21992,7 +23026,9 @@ namespace Jolt
                 collector,
                 filter);
         }
-        return collector.GetResult();
+        const QueryResult result = collector.GetResult();
+        statisticsScope.SetCounts(1, result.m_requiredHitCount, result.m_hitCount);
+        return result;
     }
 
     bool World::CollideTransformedShapes(
@@ -22002,6 +23038,9 @@ namespace Jolt
         ITransformedShapeCollisionCollector& collector) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollideTransformedShapes");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const JPH::TransformedShape* firstNativeShape = GetNativeTransformedShape(firstShape);
         const JPH::TransformedShape* secondNativeShape = GetNativeTransformedShape(secondShape);
@@ -22093,7 +23132,9 @@ namespace Jolt
                 nativeCollector,
                 filter);
         }
-        return nativeCollector.IsValid();
+        const bool valid = nativeCollector.IsValid();
+        statisticsScope.SetCounts(1, nativeCollector.GetHitCount(), nativeCollector.GetHitCount());
+        return valid;
     }
 
     QueryResult World::CastTransformedShape(
@@ -22104,6 +23145,9 @@ namespace Jolt
         const ShapeQueryFaceBuffers& faceBuffers) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CastTransformedShape");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const JPH::TransformedShape* firstNativeShape = GetNativeTransformedShape(firstShape);
         const JPH::TransformedShape* secondNativeShape = GetNativeTransformedShape(secondShape);
@@ -22172,7 +23216,9 @@ namespace Jolt
             firstNativeShape->mSubShapeIDCreator,
             secondNativeShape->mSubShapeIDCreator,
             collector);
-        return collector.GetResult();
+        const QueryResult result = collector.GetResult();
+        statisticsScope.SetCounts(1, result.m_requiredHitCount, result.m_hitCount);
+        return result;
     }
 
     bool World::CastTransformedShape(
@@ -22182,6 +23228,9 @@ namespace Jolt
         ITransformedShapeCastCollector& collector) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CastTransformedShape");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const JPH::TransformedShape* firstNativeShape = GetNativeTransformedShape(firstShape);
         const JPH::TransformedShape* secondNativeShape = GetNativeTransformedShape(secondShape);
@@ -22254,7 +23303,9 @@ namespace Jolt
             firstNativeShape->mSubShapeIDCreator,
             secondNativeShape->mSubShapeIDCreator,
             nativeCollector);
-        return nativeCollector.IsValid();
+        const bool valid = nativeCollector.IsValid();
+        statisticsScope.SetCounts(1, nativeCollector.GetHitCount(), nativeCollector.GetHitCount());
+        return valid;
     }
 
     bool World::RaycastClosest(
@@ -22262,8 +23313,19 @@ namespace Jolt
         RaycastHit& hit) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RaycastClosest");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
-        return RaycastClosestUnlocked(request, hit);
+        const bool found = RaycastClosestUnlocked(request, hit);
+        const RaycastHit* capturedHit = nullptr;
+        if (found)
+        {
+            capturedHit = &hit;
+        }
+        CaptureRaycastDebug(request, capturedHit);
+        statisticsScope.SetCounts(1, 0, found);
+        return found;
     }
 
     BufferResult World::RaycastClosestBatch(
@@ -22271,8 +23333,23 @@ namespace Jolt
         const AZStd::span<ClosestRaycastResult> results) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RaycastClosestBatch");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const size_t requestCount = AZStd::min(requests.size(), results.size());
+        const auto recordStatistics = [&statisticsScope, results, requestCount]()
+        {
+            AZ::u64 hitCount = 0;
+            for (size_t resultIndex = 0; resultIndex < requestCount; ++resultIndex)
+            {
+                if (results[resultIndex].m_found)
+                {
+                    ++hitCount;
+                }
+            }
+            statisticsScope.SetCounts(requestCount, 0, hitCount);
+        };
         BufferResult result;
         if (requestCount > AZStd::numeric_limits<AZ::u32>::max())
         {
@@ -22292,6 +23369,7 @@ namespace Jolt
         }
         if (requestCount == 0)
         {
+            recordStatistics();
             return result;
         }
 
@@ -22321,6 +23399,7 @@ namespace Jolt
         {
             DeterministicFloatScope floatScope;
             ProcessRaycastBatchRange(requests, results, 0, requestCount);
+            recordStatistics();
             return result;
         }
 
@@ -22373,8 +23452,13 @@ namespace Jolt
 
         {
             AZStd::lock_guard releaseLock(m_raycastBatchWorkspaceMutex);
+            for (size_t jobIndex = 0; jobIndex < backgroundJobCount; ++jobIndex)
+            {
+                workspace->m_jobs[jobIndex]->Reset(true);
+            }
             workspace->m_inUse = false;
         }
+        recordStatistics();
         return result;
     }
 
@@ -22599,6 +23683,9 @@ namespace Jolt
         const RaycastRequest& request) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RaycastAny");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         if (!IsFinite(request.m_start)
             || !request.m_displacement.IsFinite()
@@ -22650,7 +23737,9 @@ namespace Jolt
         {
             cast(JPH::BodyFilter{}, JPH::ShapeFilter{});
         }
-        return collector.HadHit();
+        const bool found = collector.HadHit();
+        statisticsScope.SetCounts(1, 0, found);
+        return found;
     }
 
     QueryResult World::RaycastAll(
@@ -22658,6 +23747,9 @@ namespace Jolt
         const AZStd::span<RaycastHit> hits) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RaycastAll");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         if (!IsFinite(request.m_start)
             || !request.m_displacement.IsFinite()
@@ -22743,6 +23835,7 @@ namespace Jolt
                 ++result.m_hitCount;
             }
         }
+        statisticsScope.SetCounts(1, collector.mHits.size(), result.m_hitCount);
         return result;
     }
 
@@ -22751,6 +23844,9 @@ namespace Jolt
         const AZStd::span<RaycastHit> hits) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RaycastClosestPerBody");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         if (!IsFinite(request.m_start)
             || !request.m_displacement.IsFinite()
@@ -22828,6 +23924,7 @@ namespace Jolt
                 ++result.m_hitCount;
             }
         }
+        statisticsScope.SetCounts(1, collector.m_hits.size(), result.m_hitCount);
         return result;
     }
 
@@ -22836,6 +23933,9 @@ namespace Jolt
         const AZStd::span<OverlapHit> hits) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::OverlapPoint");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         if (!IsFinite(request.m_position)
             || (request.m_filter.m_collisionLayer
@@ -22910,6 +24010,7 @@ namespace Jolt
                 ++result.m_hitCount;
             }
         }
+        statisticsScope.SetCounts(1, collector.mHits.size(), result.m_hitCount);
         return result;
     }
 
@@ -22917,6 +24018,9 @@ namespace Jolt
         const PointOverlapRequest& request) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::OverlapPointAny");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         if (!IsFinite(request.m_position)
             || (request.m_filter.m_collisionLayer
@@ -22961,7 +24065,9 @@ namespace Jolt
         {
             overlap(JPH::BodyFilter{}, JPH::ShapeFilter{});
         }
-        return collector.HadHit();
+        const bool found = collector.HadHit();
+        statisticsScope.SetCounts(1, 0, found);
+        return found;
     }
 
     QueryResult World::CollideShape(
@@ -22970,6 +24076,9 @@ namespace Jolt
         const ShapeQueryFaceBuffers& faceBuffers) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollideShape");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const JPH::RVec3 baseOffset = ToNativePosition(request.m_transform.m_position, m_configuration.m_origin);
         if (request.m_faceCollectionMode == FaceCollectionMode::Collect)
@@ -23019,6 +24128,7 @@ namespace Jolt
                     ++result.m_hitCount;
                 }
             }
+            statisticsScope.SetCounts(1, collector.mHits.size(), result.m_hitCount);
             return result;
         }
 
@@ -23027,7 +24137,9 @@ namespace Jolt
         {
             return {};
         }
-        return collector.Finalize();
+        const QueryResult result = collector.Finalize();
+        statisticsScope.SetCounts(1, result.m_requiredHitCount, result.m_hitCount);
+        return result;
     }
 
     QueryResult World::OverlapShape(
@@ -23035,6 +24147,9 @@ namespace Jolt
         const AZStd::span<OverlapHit> hits) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::OverlapShape");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const JPH::RVec3 baseOffset = ToNativePosition(request.m_transform.m_position, m_configuration.m_origin);
         const ShapeSlot* shapeSlot = FindOverlapShape(request);
@@ -23076,7 +24191,9 @@ namespace Jolt
             }
             if (sphereCollector.IsSupported())
             {
-                return identityCollector.Finalize();
+                const QueryResult result = identityCollector.Finalize();
+                statisticsScope.SetCounts(1, result.m_requiredHitCount, result.m_hitCount);
+                return result;
             }
         }
 
@@ -23085,17 +24202,24 @@ namespace Jolt
         {
             return {};
         }
-        return collector.Finalize();
+        const QueryResult result = collector.Finalize();
+        statisticsScope.SetCounts(1, result.m_requiredHitCount, result.m_hitCount);
+        return result;
     }
 
     bool World::OverlapShapeAny(
         const ShapeOverlapRequest& request) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::OverlapShapeAny");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const JPH::RVec3 baseOffset = ToNativePosition(request.m_transform.m_position, m_configuration.m_origin);
         JPH::AnyHitCollisionCollector<JPH::CollideShapeCollector> collector;
-        return ExecuteShapeOverlap(request, baseOffset, collector) && collector.HadHit();
+        const bool found = ExecuteShapeOverlap(request, baseOffset, collector) && collector.HadHit();
+        statisticsScope.SetCounts(1, 0, found);
+        return found;
     }
 
     bool World::ExecuteShapeOverlap(
@@ -23286,6 +24410,9 @@ namespace Jolt
         const ShapeQueryFaceBuffers& faceBuffers) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CastShapeClosest");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const ShapeSlot* shapeSlot = FindCastShape(request);
         if (!shapeSlot)
@@ -23372,13 +24499,15 @@ namespace Jolt
         {
             cast(JPH::BodyFilter{}, JPH::ShapeFilter{});
         }
-        return collector.HadHit()
+        const bool found = collector.HadHit()
             && BuildShapeCastHit(
                 collector.m_hit,
                 baseOffset,
                 0,
                 hit,
                 faceBuffers);
+        statisticsScope.SetCounts(1, 0, found);
+        return found;
     }
 
     QueryResult World::CastShapeAll(
@@ -23387,6 +24516,9 @@ namespace Jolt
         const ShapeQueryFaceBuffers& faceBuffers) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CastShapeAll");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const ShapeSlot* shapeSlot = FindCastShape(request);
         if (!shapeSlot)
@@ -23515,6 +24647,7 @@ namespace Jolt
                 ++result.m_hitCount;
             }
         }
+        statisticsScope.SetCounts(1, collector.mHits.size(), result.m_hitCount);
         return result;
     }
 
@@ -23524,6 +24657,9 @@ namespace Jolt
         const ShapeQueryFaceBuffers& faceBuffers) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CastShapeClosestPerBody");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const ShapeSlot* shapeSlot = FindCastShape(request);
         if (!shapeSlot)
@@ -23640,6 +24776,7 @@ namespace Jolt
                 ++result.m_hitCount;
             }
         }
+        statisticsScope.SetCounts(1, collector.m_hits.size(), result.m_hitCount);
         return result;
     }
 
@@ -23648,6 +24785,9 @@ namespace Jolt
         const AZStd::span<BroadPhaseHit> hits) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::OverlapBroadPhase");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         JPH::AllHitCollisionCollector<JPH::CollideShapeBodyCollector> collector;
         if (!CollectBroadPhaseOverlap(
@@ -23682,6 +24822,7 @@ namespace Jolt
                 ++result.m_hitCount;
             }
         }
+        statisticsScope.SetCounts(1, collector.mHits.size(), result.m_hitCount);
         return result;
     }
 
@@ -23695,15 +24836,20 @@ namespace Jolt
             return OverlapBroadPhase(request, hit).m_hitCount > 0;
         }
 
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         JPH::AnyHitCollisionCollector<JPH::CollideShapeBodyCollector> collector;
-        return CollectBroadPhaseOverlap(
-                   m_physicsSystem,
-                   m_configuration.m_origin,
-                   m_configuration.m_objectLayers.size(),
-                   request,
-                   collector)
+        const bool found = CollectBroadPhaseOverlap(
+            m_physicsSystem,
+            m_configuration.m_origin,
+            m_configuration.m_objectLayers.size(),
+            request,
+            collector)
             && collector.HadHit();
+        statisticsScope.SetCounts(1, 0, found);
+        return found;
     }
 
     bool World::CastBroadPhaseClosest(
@@ -23724,6 +24870,9 @@ namespace Jolt
             return true;
         }
 
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         CanonicalClosestHitCollector<JPH::RayCastBodyCollector> rayCollector;
         CanonicalClosestHitCollector<JPH::CastShapeBodyCollector> shapeCollector;
@@ -23764,6 +24913,7 @@ namespace Jolt
             .m_bodyHandle = bodyHandle,
             .m_fraction = nativeHit->mFraction,
         };
+        statisticsScope.SetCounts(1, 0, 1);
         return true;
     }
 
@@ -23772,6 +24922,9 @@ namespace Jolt
         const AZStd::span<BroadPhaseCastHit> hits) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CastBroadPhaseAll");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> rayCollector;
         JPH::AllHitCollisionCollector<JPH::CastShapeBodyCollector> shapeCollector;
@@ -23830,9 +24983,13 @@ namespace Jolt
 
         if (AZStd::holds_alternative<BroadPhaseRay>(request.m_geometry))
         {
-            return writeHits(rayCollector.mHits);
+            const QueryResult result = writeHits(rayCollector.mHits);
+            statisticsScope.SetCounts(1, rayCollector.mHits.size(), result.m_hitCount);
+            return result;
         }
-        return writeHits(shapeCollector.mHits);
+        const QueryResult result = writeHits(shapeCollector.mHits);
+        statisticsScope.SetCounts(1, shapeCollector.mHits.size(), result.m_hitCount);
+        return result;
     }
 
     QueryResult World::CollectShapesInBounds(
@@ -23840,6 +24997,9 @@ namespace Jolt
         const AZStd::span<TransformedShape> shapes) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollectShapesInBounds");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         if (!IsFinite(request.m_bounds.m_center)
             || !request.m_bounds.m_halfExtents.IsFinite()
@@ -23948,6 +25108,7 @@ namespace Jolt
                 ++result.m_hitCount;
             }
         }
+        statisticsScope.SetCounts(1, collector.mHits.size(), result.m_hitCount);
         return result;
     }
 
@@ -23956,6 +25117,9 @@ namespace Jolt
         const AZStd::span<WorldPosition> vertices) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::GetSupportingFace");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         if (!request.m_bodyHandle
             || !request.m_incidentDirection.IsFinite()
@@ -24033,6 +25197,7 @@ namespace Jolt
                 baseOffset + nativeVertices[vertexIndex],
                 m_configuration.m_origin);
         }
+        statisticsScope.SetCounts(1, nativeVertices.size(), result.m_hitCount);
         return result;
     }
 
@@ -24041,6 +25206,9 @@ namespace Jolt
         const AZStd::span<TransformedTriangle> triangles) const
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CollectTriangles");
+        PerformanceQueryScope statisticsScope(
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
+            m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         if (!request.m_bodyHandle
             || !IsFinite(request.m_bounds.m_center)
@@ -24167,7 +25335,9 @@ namespace Jolt
         const JPH::RVec3 baseOffset(center);
         TriangleCollector collector(bounds, baseOffset, m_configuration.m_origin, triangles, m_system);
         bodyLock.GetBody().GetTransformedShape().CollectTransformedShapes(bounds, collector);
-        return collector.GetResult();
+        const QueryResult result = collector.GetResult();
+        statisticsScope.SetCounts(1, result.m_requiredHitCount, result.m_hitCount);
+        return result;
     }
 
     bool World::GetBroadPhaseBounds(
@@ -24197,8 +25367,21 @@ namespace Jolt
             return false;
         }
 
+        AZ::u64 startNanoseconds = 0;
+        const bool collectStatistics = IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::BroadPhase);
+        if (collectStatistics)
+        {
+            startNanoseconds = GetSteadyNanoseconds();
+        }
         m_physicsSystem.OptimizeBroadPhase();
         m_bodyRemovalsSinceBroadPhaseMaintenance = 0;
+        if (collectStatistics)
+        {
+            m_performanceStatistics.m_broadPhaseOptimizeCount.fetch_add(1, AZStd::memory_order_relaxed);
+            m_performanceStatistics.m_broadPhaseOptimizeNanoseconds.fetch_add(
+                GetSteadyNanoseconds() - startNanoseconds,
+                AZStd::memory_order_relaxed);
+        }
         return true;
     }
 
@@ -24558,6 +25741,7 @@ namespace Jolt
         const AZ::Transform& jointToHair,
         const AZStd::span<const AZ::Transform> jointModelTransforms)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::UpdateHair");
         AZStd::lock_guard lock(m_mutex);
         HairSlot* slot = FindHair(hairHandle);
         if (!slot)
@@ -24672,6 +25856,13 @@ namespace Jolt
             }
         }
 
+        AZ::u64 startNanoseconds = 0;
+        const bool collectStatistics = IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Hair);
+        if (collectStatistics)
+        {
+            startNanoseconds = GetSteadyNanoseconds();
+        }
+
         m_hairJointTransforms.clear();
         m_hairJointTransforms.reserve(jointModelTransforms.size());
         for (const AZ::Transform& transform : jointModelTransforms)
@@ -24694,6 +25885,13 @@ namespace Jolt
             m_hairComputeQueue);
         slot.m_initialized = true;
         slot.m_teleported = false;
+        if (collectStatistics)
+        {
+            m_performanceStatistics.m_hairUpdateCount.fetch_add(1, AZStd::memory_order_relaxed);
+            m_performanceStatistics.m_hairUpdateNanoseconds.fetch_add(
+                GetSteadyNanoseconds() - startNanoseconds,
+                AZStd::memory_order_relaxed);
+        }
         return true;
     }
 
@@ -24737,6 +25935,13 @@ namespace Jolt
             return false;
         }
 
+        AZ::u64 startNanoseconds = 0;
+        const bool collectStatistics = IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Hair);
+        if (collectStatistics)
+        {
+            startNanoseconds = GetSteadyNanoseconds();
+        }
+
         JPH::Hair* hair = slot->m_hair.get();
         const JPH::HairSettings* settings = hair->GetHairSettings();
 
@@ -24777,6 +25982,13 @@ namespace Jolt
             && copiedScalpPositionCount == 0
             && copiedGridCellCount == 0)
         {
+            if (collectStatistics)
+            {
+                m_performanceStatistics.m_hairReadbackCount.fetch_add(1, AZStd::memory_order_relaxed);
+                m_performanceStatistics.m_hairReadbackNanoseconds.fetch_add(
+                    GetSteadyNanoseconds() - startNanoseconds,
+                    AZStd::memory_order_relaxed);
+            }
             return true;
         }
 
@@ -24830,6 +26042,18 @@ namespace Jolt
         }
 
         hair->UnlockReadBackBuffers();
+        if (collectStatistics)
+        {
+            const AZ::u64 copiedBytes = static_cast<AZ::u64>(copiedVertexCount) * sizeof(HairVertexState)
+                + static_cast<AZ::u64>(copiedRenderPositionCount) * sizeof(AZ::Vector3)
+                + static_cast<AZ::u64>(copiedScalpPositionCount) * sizeof(AZ::Vector3)
+                + static_cast<AZ::u64>(copiedGridCellCount) * sizeof(HairGridCellState);
+            m_performanceStatistics.m_hairReadbackBytes.fetch_add(copiedBytes, AZStd::memory_order_relaxed);
+            m_performanceStatistics.m_hairReadbackCount.fetch_add(1, AZStd::memory_order_relaxed);
+            m_performanceStatistics.m_hairReadbackNanoseconds.fetch_add(
+                GetSteadyNanoseconds() - startNanoseconds,
+                AZStd::memory_order_relaxed);
+        }
         return true;
     }
 
@@ -24897,6 +26121,7 @@ namespace Jolt
         const float fixedTimeStep,
         DebugRenderer* debugRenderer)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::Step");
         DeterministicSimulationLock lock(m_mutex);
         if (!m_initialized || !AZ::IsFiniteFloat(fixedTimeStep) || fixedTimeStep <= 0.0f)
         {
@@ -24918,6 +26143,220 @@ namespace Jolt
         return result;
     }
 
+    void World::CaptureSupplementalDebug(DebugRenderer& debugRenderer)
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CaptureSupplementalDebug");
+        if (!m_debugCapture)
+        {
+            return;
+        }
+
+        const DebugCaptureFlags flags = m_debugCapture->GetConfiguration().m_flags;
+        constexpr AZ::u32 BoundsColor = 0xffff00ff;
+        constexpr AZ::u32 CharacterColor = 0xff00ffff;
+        constexpr AZ::u32 RagdollColor = 0xffff80ff;
+        constexpr AZ::u32 VehicleColor = 0xff00ff00;
+
+        const auto recordNormal = [this](
+                                      const WorldPosition& position,
+                                      const AZ::Vector3& normal,
+                                      const AZ::u32 color)
+        {
+            const WorldPosition end{
+                .m_x = position.m_x + normal.GetX(),
+                .m_y = position.m_y + normal.GetY(),
+                .m_z = position.m_z + normal.GetZ(),
+            };
+            m_debugCapture->RecordLine(position, end, color);
+        };
+
+        if (HasDebugCaptureFlag(flags, DebugCaptureFlags::BroadPhaseBounds))
+        {
+            const JPH::AABox bounds = m_physicsSystem.GetBroadPhaseQuery().GetBounds();
+            if (bounds.IsValid())
+            {
+                AZStd::array<WorldPosition, 8> corners;
+                for (AZ::u32 cornerIndex = 0; cornerIndex < corners.size(); ++cornerIndex)
+                {
+                    JPH::Vec3 corner = bounds.mMin;
+                    if ((cornerIndex & 1) != 0)
+                    {
+                        corner.SetX(bounds.mMax.GetX());
+                    }
+                    if ((cornerIndex & 2) != 0)
+                    {
+                        corner.SetY(bounds.mMax.GetY());
+                    }
+                    if ((cornerIndex & 4) != 0)
+                    {
+                        corner.SetZ(bounds.mMax.GetZ());
+                    }
+                    corners[cornerIndex] = FromNativePosition(
+                        JPH::RVec3(corner),
+                        m_configuration.m_origin);
+                }
+
+                constexpr AZStd::array<AZStd::array<AZ::u8, 2>, 12> Edges = {{
+                    {0, 1}, {0, 2}, {0, 4}, {1, 3}, {1, 5}, {2, 3},
+                    {2, 6}, {3, 7}, {4, 5}, {4, 6}, {5, 7}, {6, 7},
+                }};
+                for (const auto& edge : Edges)
+                {
+                    m_debugCapture->RecordLine(corners[edge[0]], corners[edge[1]], BoundsColor);
+                }
+            }
+        }
+
+        if (HasDebugCaptureFlag(flags, DebugCaptureFlags::CharacterGround))
+        {
+            for (const CharacterSlot& slot : m_characterSlots)
+            {
+                if (slot.m_character)
+                {
+                    recordNormal(
+                        FromNativePosition(slot.m_character->GetGroundPosition(), m_configuration.m_origin),
+                        FromNativeVector(slot.m_character->GetGroundNormal()),
+                        CharacterColor);
+                }
+            }
+            for (const VirtualCharacterSlot& slot : m_virtualCharacterSlots)
+            {
+                if (slot.m_character)
+                {
+                    recordNormal(
+                        FromNativePosition(slot.m_character->GetGroundPosition(), m_configuration.m_origin),
+                        FromNativeVector(slot.m_character->GetGroundNormal()),
+                        CharacterColor);
+                }
+            }
+        }
+
+        if (HasDebugCaptureFlag(flags, DebugCaptureFlags::Constraints))
+        {
+            m_physicsSystem.DrawConstraints(&debugRenderer);
+        }
+        if (HasDebugCaptureFlag(flags, DebugCaptureFlags::ConstraintLimits))
+        {
+            m_physicsSystem.DrawConstraintLimits(&debugRenderer);
+        }
+        if (HasDebugCaptureFlag(flags, DebugCaptureFlags::ConstraintReferenceFrames))
+        {
+            m_physicsSystem.DrawConstraintReferenceFrame(&debugRenderer);
+        }
+
+        if (HasDebugCaptureFlag(flags, DebugCaptureFlags::Hair))
+        {
+            const JPH::Hair::DrawSettings settings{
+                .mDrawRods = true,
+                .mDrawRenderStrands = true,
+                .mRenderStrandColor = JPH::Hair::ERenderStrandColor::PerSimulatedStrand,
+            };
+            for (HairSlot& slot : m_hairSlots)
+            {
+                if (slot.m_hair)
+                {
+                    slot.m_hair->Draw(settings, &debugRenderer);
+                }
+            }
+        }
+
+        if (HasDebugCaptureFlag(flags, DebugCaptureFlags::RagdollHierarchy))
+        {
+            const JPH::BodyInterface& bodyInterface = m_physicsSystem.GetBodyInterface();
+            for (const RagdollSlot& slot : m_ragdollSlots)
+            {
+                if (!slot.m_ragdoll)
+                {
+                    continue;
+                }
+
+                const JPH::Skeleton::JointVector& joints =
+                    slot.m_ragdoll->GetRagdollSettings()->GetSkeleton()->GetJoints();
+                const JPH::Array<JPH::BodyID>& bodyIds = slot.m_ragdoll->GetBodyIDs();
+                const size_t partCount = AZStd::min(joints.size(), bodyIds.size());
+                for (size_t partIndex = 0; partIndex < partCount; ++partIndex)
+                {
+                    const int parentIndex = joints[partIndex].mParentJointIndex;
+                    if (parentIndex < 0 || aznumeric_cast<size_t>(parentIndex) >= partCount)
+                    {
+                        continue;
+                    }
+                    m_debugCapture->RecordLine(
+                        FromNativePosition(bodyInterface.GetPosition(bodyIds[parentIndex]), m_configuration.m_origin),
+                        FromNativePosition(bodyInterface.GetPosition(bodyIds[partIndex]), m_configuration.m_origin),
+                        RagdollColor);
+                }
+            }
+        }
+
+        if (HasDebugCaptureFlag(flags, DebugCaptureFlags::SoftBodies))
+        {
+            JPH::BodyManager::DrawSettings settings;
+            settings.mDrawSoftBodyVertices = true;
+            settings.mDrawSoftBodyEdgeConstraints = true;
+            settings.mDrawSoftBodyBendConstraints = true;
+            settings.mDrawSoftBodyVolumeConstraints = true;
+            settings.mDrawSoftBodySkinConstraints = true;
+            settings.mDrawSoftBodyLRAConstraints = true;
+            settings.mDrawSoftBodyRods = true;
+            m_physicsSystem.DrawBodies(settings, &debugRenderer);
+        }
+
+        if (HasDebugCaptureFlag(flags, DebugCaptureFlags::VehicleContacts))
+        {
+            for (const VehicleSlot& slot : m_vehicleSlots)
+            {
+                if (!slot.m_constraint)
+                {
+                    continue;
+                }
+                for (const JPH::Wheel* wheel : slot.m_constraint->GetWheels())
+                {
+                    if (wheel && wheel->HasContact())
+                    {
+                        recordNormal(
+                            FromNativePosition(wheel->GetContactPosition(), m_configuration.m_origin),
+                            FromNativeVector(wheel->GetContactNormal()),
+                            VehicleColor);
+                    }
+                }
+            }
+        }
+    }
+
+    void World::CaptureRaycastDebug(
+        const RaycastRequest& request,
+        const RaycastHit* hit) const
+    {
+        if (!m_debugCapture
+            || !HasDebugCaptureFlag(m_debugCapture->GetConfiguration().m_flags, DebugCaptureFlags::Queries))
+        {
+            return;
+        }
+
+        WorldPosition end{
+            .m_x = request.m_start.m_x + request.m_displacement.GetX(),
+            .m_y = request.m_start.m_y + request.m_displacement.GetY(),
+            .m_z = request.m_start.m_z + request.m_displacement.GetZ(),
+        };
+        AZ::u32 color = 0xff0000ff;
+        if (hit)
+        {
+            end = hit->m_position;
+            color = 0xff00ff00;
+        }
+        m_debugCapture->RecordLine(request.m_start, end, color);
+        if (hit)
+        {
+            const WorldPosition normalEnd{
+                .m_x = hit->m_position.m_x + hit->m_normal.GetX(),
+                .m_y = hit->m_position.m_y + hit->m_normal.GetY(),
+                .m_z = hit->m_position.m_z + hit->m_normal.GetZ(),
+            };
+            m_debugCapture->RecordLine(hit->m_position, normalEnd, 0xffffff00);
+        }
+    }
+
     JOLT_CAPTURE_COLD SimulationResult World::StepWithDebugCapture(
         const float fixedTimeStep,
         DebugRenderer* debugRenderer)
@@ -24933,6 +26372,7 @@ namespace Jolt
             debugRenderer,
             m_configuration.m_origin);
         const SimulationResult result = Update(fixedTimeStep);
+        CaptureSupplementalDebug(*debugRenderer);
         PublishEvents();
         return result;
     }
@@ -24941,6 +26381,7 @@ namespace Jolt
         const float elapsedTime,
         DebugRenderer* debugRenderer)
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::StepAutomatically");
         DeterministicSimulationLock lock(m_mutex);
         if (!m_initialized || !AZ::IsFiniteFloat(elapsedTime) || elapsedTime < 0.0f)
         {
@@ -25009,7 +26450,9 @@ namespace Jolt
             m_debugCapture.get(),
             debugRenderer,
             m_configuration.m_origin);
-        return RunAutomaticUpdates(fixedTimeStep);
+        const SimulationResult result = RunAutomaticUpdates(fixedTimeStep);
+        CaptureSupplementalDebug(*debugRenderer);
+        return result;
     }
 
 #undef JOLT_CAPTURE_COLD
@@ -25042,7 +26485,7 @@ namespace Jolt
         if (m_jobSystem->GetMaxConcurrency() > 1)
         {
             jobSystem = static_cast<JobSystem*>(m_jobSystem.get());
-            jobSystem->BeginUpdate();
+            jobSystem->BeginUpdate(IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Jobs));
         }
 
         const JPH::EPhysicsUpdateError error = m_physicsSystem.Update(
@@ -25074,6 +26517,27 @@ namespace Jolt
         if (jobSystem)
         {
             m_lastUpdateJobStatistics = jobSystem->EndUpdate();
+            if (IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Jobs))
+            {
+                m_performanceStatistics.m_jobCount.fetch_add(
+                    m_lastUpdateJobStatistics.m_jobCount,
+                    AZStd::memory_order_relaxed);
+                m_performanceStatistics.m_jobExecutionNanoseconds.fetch_add(
+                    m_lastUpdateJobStatistics.m_executionNanoseconds,
+                    AZStd::memory_order_relaxed);
+                m_performanceStatistics.m_jobQueueLatencyNanoseconds.fetch_add(
+                    m_lastUpdateJobStatistics.m_queueLatencyNanoseconds,
+                    AZStd::memory_order_relaxed);
+                m_performanceStatistics.m_jobTaskCount.fetch_add(
+                    m_lastUpdateJobStatistics.m_taskCount,
+                    AZStd::memory_order_relaxed);
+                UpdateMaximum(
+                    m_performanceStatistics.m_jobMaximumQueueLatencyNanoseconds,
+                    m_lastUpdateJobStatistics.m_maximumQueueLatencyNanoseconds);
+                UpdateMaximum(
+                    m_performanceStatistics.m_jobMaximumActiveTaskCount,
+                    m_lastUpdateJobStatistics.m_maximumTaskCount);
+            }
         }
         m_bodyRemovalsSinceBroadPhaseMaintenance = 0;
 
@@ -25118,6 +26582,18 @@ namespace Jolt
             if (slot.m_character)
             {
                 slot.m_character->PostSimulation(slot.m_maximumSeparationDistance);
+            }
+        }
+
+        if (IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Simulation))
+        {
+            m_performanceStatistics.m_simulationNanoseconds.fetch_add(
+                m_lastUpdateNanoseconds,
+                AZStd::memory_order_relaxed);
+            m_performanceStatistics.m_simulationStepCount.fetch_add(1, AZStd::memory_order_relaxed);
+            if (errors != SimulationError::None)
+            {
+                m_performanceStatistics.m_simulationErrorCount.fetch_add(1, AZStd::memory_order_relaxed);
             }
         }
 
@@ -25954,6 +27430,10 @@ namespace Jolt
             || manifold.mRelativeContactPointsOn1.size()
                 > AZStd::numeric_limits<AZ::u32>::max() - m_pendingContactPoints.size())
         {
+            if (IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Events))
+            {
+                m_performanceStatistics.m_droppedEventCount.fetch_add(1, AZStd::memory_order_relaxed);
+            }
             return;
         }
 
@@ -25981,6 +27461,7 @@ namespace Jolt
 
     void World::PublishEvents()
     {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::PublishEvents");
         if (!m_bodyMoveHandles.empty())
         {
             constexpr AZ::u32 invalidIndex = AZStd::numeric_limits<AZ::u32>::max();
@@ -26130,6 +27611,29 @@ namespace Jolt
             {
                 return first.m_characterHandle < second.m_characterHandle;
             });
+
+        const size_t publishedEventCount = m_pendingContactEvents.size()
+            + m_pendingActivationEvents.size()
+            + m_pendingBodyMoveEvents.size()
+            + m_pendingVirtualCharacterMoveEvents.size();
+        if (IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Events))
+        {
+            m_performanceStatistics.m_publishedEventCount.fetch_add(
+                publishedEventCount,
+                AZStd::memory_order_relaxed);
+            UpdateMaximum(
+                m_performanceStatistics.m_eventHighWaterCount,
+                aznumeric_cast<AZ::u64>(publishedEventCount));
+        }
+        if (IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::NarrowPhase))
+        {
+            m_performanceStatistics.m_contactEventCount.fetch_add(
+                m_pendingContactEvents.size(),
+                AZStd::memory_order_relaxed);
+            m_performanceStatistics.m_contactPointCount.fetch_add(
+                m_pendingContactPoints.size(),
+                AZStd::memory_order_relaxed);
+        }
 
         m_contactEvents.swap(m_pendingContactEvents);
         m_contactPoints.swap(m_pendingContactPoints);

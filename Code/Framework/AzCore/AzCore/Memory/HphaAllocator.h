@@ -57,9 +57,10 @@ namespace AZ
         // On Windows the sizeof HpAllocator is 8384
         // Up this value to 18 KiB to be safe
         static constexpr size_t hpAllocatorStructureSize = 18 * 1024;
+        static constexpr size_t hpAllocatorStructureAlignment = 128;
 
         HpAllocator*        m_allocator;
-        AZStd::aligned_storage_t<hpAllocatorStructureSize, 16> m_hpAllocatorBuffer;    ///< Memory buffer for HpAllocator
+        AZStd::aligned_storage_t<hpAllocatorStructureSize, hpAllocatorStructureAlignment> m_hpAllocatorBuffer;
     };
 
     // Template is externed here and explicitly instantiated in the cpp file

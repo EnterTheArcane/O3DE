@@ -789,6 +789,8 @@ namespace Jolt
             ->Event("ValidateWorldState", &IWorldQueryRequests::ValidateWorldState)
             ->Event("GetWorldStateDigest", &IWorldQueryRequests::GetWorldStateDigest)
             ->Event("GetWorldStatistics", &IWorldQueryRequests::GetWorldStatistics)
+            ->Event("ConfigurePerformanceStatistics", &IWorldQueryRequests::ConfigurePerformanceStatistics)
+            ->Event("GetPerformanceStatistics", &IWorldQueryRequests::GetPerformanceStatistics)
             ->Event("ConfigureDebugCapture", &IWorldQueryRequests::ConfigureDebugCapture)
             ->Event("GetDebugCaptureStatistics", &IWorldQueryRequests::GetDebugCaptureStatistics)
             ->Event("GetBodies", &IWorldQueryRequests::GetBodies)

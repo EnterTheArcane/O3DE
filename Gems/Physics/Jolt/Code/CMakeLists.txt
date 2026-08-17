@@ -219,7 +219,11 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
     )
 
     if(PAL_TRAIT_BUILD_HOST_TOOLS)
-        target_compile_definitions(${gem_name}.Tests PRIVATE JOLT_TESTS_WITH_TOOLS)
+        target_compile_definitions(
+            ${gem_name}.Tests PRIVATE
+            JOLT_TESTS_WITH_TOOLS
+            JOLT_TEST_ENGINE_ROOT="${LY_ROOT_FOLDER}"
+        )
     endif()
 
     add_dependencies(${gem_name}.Tests ${gem_name}.TestProviders)

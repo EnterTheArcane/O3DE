@@ -30,7 +30,7 @@ namespace Jolt
 {
     void ReflectDebugDraw(AZ::ReflectContext* context);
 
-    enum class DebugCaptureFlags : AZ::u16
+    enum class DebugCaptureFlags : AZ::u32
     {
         None = 0,
         ContactManifolds = 1 << 0,
@@ -43,7 +43,17 @@ namespace Jolt
         VirtualCharacterStickToFloor = 1 << 7,
         VirtualCharacterSupportingVolumes = 1 << 8,
         VirtualCharacterWalkStairs = 1 << 9,
-        All = (1 << 10) - 1,
+        BroadPhaseBounds = 1 << 10,
+        CharacterGround = 1 << 11,
+        Constraints = 1 << 12,
+        ConstraintLimits = 1 << 13,
+        ConstraintReferenceFrames = 1 << 14,
+        Hair = 1 << 15,
+        Queries = 1 << 16,
+        RagdollHierarchy = 1 << 17,
+        SoftBodies = 1 << 18,
+        VehicleContacts = 1 << 19,
+        All = (1 << 20) - 1,
     };
 
     AZ_DEFINE_ENUM_BITWISE_OPERATORS(DebugCaptureFlags)

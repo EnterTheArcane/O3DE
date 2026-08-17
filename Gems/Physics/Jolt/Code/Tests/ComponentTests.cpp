@@ -273,6 +273,7 @@ namespace Jolt
 
     TEST(ComponentTests, HandleReflectionRegistersEveryScriptVisibleHandleForSerialization)
     {
+        ComponentNameDictionaryScope nameDictionary;
         {
             AZ::SerializeContext serializeContext;
             SystemComponent::Reflect(&serializeContext);
@@ -320,6 +321,7 @@ namespace Jolt
 
     TEST(ComponentTests, CharacterRuntimeAndCollisionTypesReflectForSerialization)
     {
+        ComponentNameDictionaryScope nameDictionary;
         {
             AZ::SerializeContext serializeContext;
             SystemComponent::Reflect(&serializeContext);
@@ -343,6 +345,7 @@ namespace Jolt
 
     TEST(ComponentTests, RigidBodyRuntimeTypesReflectForSerialization)
     {
+        ComponentNameDictionaryScope nameDictionary;
         {
             AZ::SerializeContext serializeContext;
             RigidBodyComponent::Reflect(&serializeContext);
@@ -361,6 +364,7 @@ namespace Jolt
 
     TEST(ComponentTests, PathExtensionTypesReflectForSerialization)
     {
+        ComponentNameDictionaryScope nameDictionary;
         {
             AZ::SerializeContext serializeContext;
             PathComponent::Reflect(&serializeContext);
@@ -379,6 +383,7 @@ namespace Jolt
 
     TEST(ComponentTests, RuntimeEventDiagnosticAndSnapshotTypesReflectForSerialization)
     {
+        ComponentNameDictionaryScope nameDictionary;
         {
             AZ::SerializeContext serializeContext;
             SystemComponent::Reflect(&serializeContext);
@@ -396,11 +401,13 @@ namespace Jolt
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<SimulationResult>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<DiagnosticStatisticsResult>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<NarrowPhaseStatistics>()));
+            EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<ResourceStatistics>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<StateSnapshotArchive>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<StateSnapshotConfiguration>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<StateValidationResult>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<WorldStateDigest>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<WorldStatistics>()));
+            EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<WorldPerformanceStatistics>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<VirtualCharacterMoveEvent>()));
 
             serializeContext.EnableRemoveReflection();
@@ -413,6 +420,7 @@ namespace Jolt
 
     TEST(ComponentTests, SkeletonRuntimeTypesReflectForSerialization)
     {
+        ComponentNameDictionaryScope nameDictionary;
         {
             AZ::SerializeContext serializeContext;
             SystemComponent::Reflect(&serializeContext);
@@ -440,6 +448,7 @@ namespace Jolt
 
     TEST(ComponentTests, SceneRuntimeTypesReflectForSerialization)
     {
+        ComponentNameDictionaryScope nameDictionary;
         {
             AZ::SerializeContext serializeContext;
             SceneComponent::Reflect(&serializeContext);
@@ -459,6 +468,7 @@ namespace Jolt
 
     TEST(ComponentTests, VehicleRuntimeTypesReflectForSerialization)
     {
+        ComponentNameDictionaryScope nameDictionary;
         {
             AZ::SerializeContext serializeContext;
             WheeledVehicleComponent::Reflect(&serializeContext);
@@ -576,6 +586,16 @@ namespace Jolt
             "DebugCaptureFlags_VirtualCharacterStickToFloor",
             "DebugCaptureFlags_VirtualCharacterSupportingVolumes",
             "DebugCaptureFlags_VirtualCharacterWalkStairs",
+            "DebugCaptureFlags_BroadPhaseBounds",
+            "DebugCaptureFlags_CharacterGround",
+            "DebugCaptureFlags_Constraints",
+            "DebugCaptureFlags_ConstraintLimits",
+            "DebugCaptureFlags_ConstraintReferenceFrames",
+            "DebugCaptureFlags_Hair",
+            "DebugCaptureFlags_Queries",
+            "DebugCaptureFlags_RagdollHierarchy",
+            "DebugCaptureFlags_SoftBodies",
+            "DebugCaptureFlags_VehicleContacts",
             "DebugCullMode_None",
             "DebugCullMode_BackFace",
             "DebugCullMode_FrontFace",
@@ -832,6 +852,8 @@ namespace Jolt
         EXPECT_TRUE(behaviorContext.m_classes.contains("WorldRuntimeConfiguration"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("WorldStateDigest"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("WorldStatistics"));
+        EXPECT_TRUE(behaviorContext.m_classes.contains("ResourceStatistics"));
+        EXPECT_TRUE(behaviorContext.m_classes.contains("WorldPerformanceStatistics"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("JoltSystemConfiguration"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("VehicleAntiRollBarConfiguration"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("VehicleCollisionConfiguration"));
@@ -925,6 +947,13 @@ namespace Jolt
         EXPECT_TRUE(worldStatistics->m_properties.contains("ragdollCount"));
         EXPECT_TRUE(worldStatistics->m_properties.contains("sceneInstanceCount"));
         EXPECT_TRUE(worldStatistics->m_properties.contains("stateSnapshotCount"));
+
+        const AZ::BehaviorClass* performanceStatistics =
+            behaviorContext.m_classes.at("WorldPerformanceStatistics");
+        EXPECT_TRUE(performanceStatistics->m_properties.contains("queryCount"));
+        EXPECT_TRUE(performanceStatistics->m_properties.contains("simulationNanoseconds"));
+        EXPECT_TRUE(performanceStatistics->m_properties.contains("snapshotPeakBytes"));
+        EXPECT_TRUE(performanceStatistics->m_properties.contains("wrapperRetainedBytes"));
 
         const AZ::BehaviorClass* systemConfiguration =
             behaviorContext.m_classes.at("JoltSystemConfiguration");
@@ -1136,6 +1165,7 @@ namespace Jolt
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("CollideTransformedShapePoint"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("CollideTransformedShapePointAny"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("ConfigureDebugCapture"));
+        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("ConfigurePerformanceStatistics"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("CreateWorld"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("DestroyStateSnapshot"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("DestroyWorld"));
@@ -1144,6 +1174,7 @@ namespace Jolt
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetBodyId"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetDebugCaptureStatistics"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetGravity"));
+        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetPerformanceStatistics"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetRuntimeInfo"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetRuntimeConfiguration"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetSimulationConfiguration"));

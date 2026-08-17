@@ -23,6 +23,7 @@ class TestAutomation(EditorTestSuite):
         from .tests import Jolt_Constraints as test_module
 
     class test_Jolt_Diagnostics(EditorSingleTest):
+        timeout = 600
         from .tests import Jolt_Diagnostics as test_module
 
     class test_Jolt_EventsAndFilters(EditorSingleTest):

@@ -6,9 +6,9 @@ JoltPhysics 5.6.0 is fetched and built privately by `3rdParty/JoltNative.cmake`;
 not cross the Gem boundary. GPU Hair is deliberately outside this qualification. The immediate scope is macOS CPU; report iOS as a
 separate external gate.
 
-Windows currently has a validated CPU-only Profile and Release checkpoint. A pre-CPU-only Linux Clang run exists, but Linux is deferred
-until the Windows implementation stabilizes. Neither result is Apple evidence. Do not mark an Apple ledger row complete without running
-it on the recorded hardware and current working tree.
+Windows currently has validated CPU-only Profile and Release checkpoints with Clang and MSVC. A current WSL2 Clang Release tree passes
+the complete CPU suite, but its multiworker benchmark data remains too variable to qualify native Linux. None of these results is Apple
+evidence. Do not mark an Apple ledger row complete without running it on the recorded hardware and current working tree.
 
 ## Rules of engagement
 

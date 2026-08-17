@@ -2141,6 +2141,18 @@ namespace Jolt
             WorldHandle worldHandle,
             WorldStatistics& statistics) const = 0;
 
+        //! Enables selected counters. Disabled categories add no clocks or counter updates to their hot paths.
+        virtual bool ConfigurePerformanceStatistics(
+            WorldHandle worldHandle,
+            PerformanceStatisticsFlags flags) = 0;
+
+        //! Copies counters into caller-owned storage. Reset retains all allocated instrumentation storage.
+        [[nodiscard]]
+        virtual bool GetPerformanceStatistics(
+            WorldHandle worldHandle,
+            WorldPerformanceStatistics& statistics,
+            bool reset) = 0;
+
         //! Reads allocation-free native broadphase counters. Reset preserves native map capacity.
         [[nodiscard]]
         virtual DiagnosticStatisticsResult GetBroadPhaseStatistics(

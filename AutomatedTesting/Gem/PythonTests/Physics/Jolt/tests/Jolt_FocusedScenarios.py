@@ -881,6 +881,7 @@ def run_diagnostics():
     def runtime(recorder):
         import azlmbr.bus as bus
         import azlmbr.jolt as jolt
+        import azlmbr.math as math
 
         body_id = wait_for_runtime_entity("Jolt Diagnostics Body")
         world_handle = recorder.capture(
@@ -910,6 +911,47 @@ def run_diagnostics():
             ),
         )
         recorder.check("world resource counts", statistics.bodyCount >= 2 and statistics.shapeCount >= 2)
+
+        recorder.capture(
+            "performance statistics enabled",
+            lambda: jolt.JoltWorldQueryRequestBus(
+                bus.Broadcast,
+                "ConfigurePerformanceStatistics",
+                world_handle,
+                jolt.PerformanceStatisticsFlags_All,
+            ),
+        )
+        performance_raycast = jolt.RaycastRequest()
+        performance_raycast.start = create_world_position(jolt, 0.0, 0.0, 8.0)
+        performance_raycast.displacement = math.Vector3(0.0, 0.0, -12.0)
+        recorder.capture(
+            "instrumented diagnostic query dispatched",
+            lambda: jolt.JoltWorldQueryRequestBus(
+                bus.Broadcast,
+                "RaycastClosest",
+                world_handle,
+                performance_raycast,
+            ),
+            lambda result: result is not None,
+        )
+        performance_statistics = jolt.WorldPerformanceStatistics()
+        recorder.capture(
+            "performance statistics snapshot",
+            lambda: jolt.JoltWorldQueryRequestBus(
+                bus.Broadcast,
+                "GetPerformanceStatistics",
+                world_handle,
+                performance_statistics,
+                False,
+            ),
+        )
+        recorder.check(
+            "performance counters contain the instrumented workload",
+            performance_statistics.queryCount > 0
+            and performance_statistics.lockCount > 0
+            and performance_statistics.processNativeAllocatedBytes > 0
+            and performance_statistics.wrapperRetainedBytes > 0,
+        )
 
         debug_configuration = jolt.DebugCaptureConfiguration()
         debug_configuration.flags = jolt.DebugCaptureFlags_SubmergedVolumes

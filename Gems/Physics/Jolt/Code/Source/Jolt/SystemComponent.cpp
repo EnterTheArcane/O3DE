@@ -1309,6 +1309,22 @@ namespace Jolt
         return m_system && m_system->GetWorldStatistics(worldHandle, statistics);
     }
 
+    bool SystemComponent::ConfigurePerformanceStatistics(
+        const WorldHandle worldHandle,
+        const PerformanceStatisticsFlags flags)
+    {
+        return m_system && m_system->ConfigurePerformanceStatistics(worldHandle, flags);
+    }
+
+    bool SystemComponent::GetPerformanceStatistics(
+        const WorldHandle worldHandle,
+        WorldPerformanceStatistics& statistics,
+        const bool reset)
+    {
+        statistics = {};
+        return m_system && m_system->GetPerformanceStatistics(worldHandle, statistics, reset);
+    }
+
     bool SystemComponent::ConfigureDebugCapture(
         const WorldHandle worldHandle,
         const DebugCaptureConfiguration& configuration)

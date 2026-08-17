@@ -29,6 +29,9 @@ namespace Jolt
     public:
         struct UpdateStatistics final
         {
+            AZ::u64 m_executionNanoseconds = 0;
+            AZ::u64 m_maximumQueueLatencyNanoseconds = 0;
+            AZ::u64 m_queueLatencyNanoseconds = 0;
             AZ::u32 m_jobCount = 0;
             AZ::u32 m_maximumTaskCount = 0;
             AZ::u32 m_taskCount = 0;
@@ -44,7 +47,7 @@ namespace Jolt
 
         AZ_DISABLE_COPY_MOVE(JobSystem);
 
-        void BeginUpdate();
+        void BeginUpdate(bool collectTimings);
 
         [[nodiscard]]
         UpdateStatistics EndUpdate();
@@ -83,6 +86,8 @@ namespace Jolt
             [[nodiscard]]
             const char* GetProfileName() const;
 
+            AZ::u64 m_queuedNanoseconds = 0;
+
         private:
             const char* m_name = nullptr;
         };
@@ -118,6 +123,7 @@ namespace Jolt
         AZ::u32 m_workerCount = 1;
         AZ::u32 m_activeTaskCount = 0;
         bool m_collectUpdateStatistics = false;
+        bool m_collectUpdateTimings = false;
         bool m_stopTasks = false;
     };
 } // namespace Jolt
