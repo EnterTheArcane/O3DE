@@ -8,16 +8,17 @@
 
 #include <cassert>
 #include <cstdint>
-#include <mutex>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <utility>
 
 #include "Emitter.h"
+#include "Emitters/PlatformEmitter_DX12.h"
+#include "Emitters/PlatformEmitter_Metal.h"
+#include "Emitters/PlatformEmitter_Vulkan.h"
 #include "PlatformEmitter.h"
 
 namespace AZ::ShaderCompiler
@@ -29,40 +30,30 @@ namespace AZ::ShaderCompiler
         return &platformEmitter;
     }
 
-    std::unordered_map<std::string, const PlatformEmitter*>* s_emitters = nullptr;
-    std::mutex emitterListMutex;
+    void RegisterPlatformEmitters()
+    {
+        (void)PlatformEmitter_DX12::RegisterPlatformEmitter();
+        (void)PlatformEmitter_Metal::RegisterPlatformEmitter();
+        (void)PlatformEmitter_Vulkan::RegisterPlatformEmitter();
+    }
 
     const PlatformEmitter* PlatformEmitter::GetEmitter(const std::string& key) noexcept(true)
     {
-        std::lock_guard<std::mutex> lock(emitterListMutex);
-
-        try
+        RegisterPlatformEmitters();
+        if (key == "dx")
         {
-            return (*s_emitters)[key];
+            return PlatformEmitter_DX12::RegisterPlatformEmitter();
         }
-        catch (...)
+        if (key == "mt")
         {
-            // We should never return a default emitter here. This method searches by name only
-            return nullptr;
+            return PlatformEmitter_Metal::RegisterPlatformEmitter();
         }
-    }
-
-    void PlatformEmitter::SetEmitter(
-        const std::string& key,
-        const PlatformEmitter* const platformEmitter) noexcept(false)
-    {
-        std::lock_guard<std::mutex> lock(emitterListMutex);
-
-        if (!s_emitters)
+        if (key == "vk")
         {
-            s_emitters = new std::unordered_map<std::string, const PlatformEmitter*>();
+            return PlatformEmitter_Vulkan::RegisterPlatformEmitter();
         }
 
-        if (s_emitters->find(key) != s_emitters->end())
-        {
-            throw std::runtime_error{"PlatformEmitter::RegisterEmitter cannot register two platforms with the same key!"};
-        }
-        s_emitters->try_emplace(key, platformEmitter);
+        return nullptr;
     }
 
     // Virtual methods to be overridden

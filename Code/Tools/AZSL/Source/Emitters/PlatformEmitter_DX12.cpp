@@ -16,20 +16,9 @@
 
 namespace AZ::ShaderCompiler
 {
-    static constexpr char PlatformEmitter_DX12Name[] = "dx";
-    static const PlatformEmitter* s_platformEmitterDX12 = PlatformEmitter_DX12::RegisterPlatformEmitter();
-
     const PlatformEmitter* PlatformEmitter_DX12::RegisterPlatformEmitter() noexcept(false)
     {
         static PlatformEmitter_DX12 platformEmitter; // Static linkage, will be destroyed
-
-        static bool alreadyRegistered = false;
-        if (!alreadyRegistered)
-        {
-            PlatformEmitter::SetEmitter(PlatformEmitter_DX12Name, &platformEmitter);
-            alreadyRegistered = true;
-        }
-
         return &platformEmitter;
     }
 

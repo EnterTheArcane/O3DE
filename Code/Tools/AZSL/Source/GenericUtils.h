@@ -702,8 +702,7 @@ namespace AZ
                 });
 
             // find the "set" of intervals ending after:
-            static std::vector<IntervalT> endAfter;
-            endAfter.clear();
+            std::vector<IntervalT> endAfter;
             CopyIf(
                 m_oblasts.rbegin(),
                 m_oblasts.rend(),

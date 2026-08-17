@@ -13,12 +13,13 @@ endif()
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty)
 
 ly_add_target(
-    NAME AZSLC EXECUTABLE
+    NAME AZSL STATIC
     NAMESPACE AZ
-    OUTPUT_NAME azslc
     FILES_CMAKE
-        azslc_files.cmake
+        azsl_files.cmake
     INCLUDE_DIRECTORIES
+        PUBLIC
+            Include
         PRIVATE
             Source
     BUILD_DEPENDENCIES
@@ -27,7 +28,7 @@ ly_add_target(
             3rdParty::ANTLR4
 )
 
-target_compile_options(AZSLC PRIVATE
+target_compile_options(AZSL PRIVATE
     ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS}
 )
 
@@ -39,6 +40,25 @@ set_source_files_properties(
     Source/Grammar/azslParserListener.cpp
     Source/Grammar/azslParserVisitor.cpp
     PROPERTIES COMPILE_OPTIONS "$<IF:$<CXX_COMPILER_ID:MSVC>,/W0,-w>"
+)
+
+ly_add_target(
+    NAME AZSLC EXECUTABLE
+    NAMESPACE AZ
+    OUTPUT_NAME azslc
+    FILES_CMAKE
+        azslc_files.cmake
+    INCLUDE_DIRECTORIES
+        PRIVATE
+            Source
+    BUILD_DEPENDENCIES
+        PRIVATE
+            AZ::AZSL
+)
+
+target_compile_options(AZSLC PRIVATE
+    ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS}
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wno-deprecated-declarations>
 )
 
 add_subdirectory(Tests)

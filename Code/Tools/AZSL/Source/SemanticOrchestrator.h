@@ -112,7 +112,7 @@ namespace AZ::ShaderCompiler
         {
             auto idText = ctx->Name->getText();
             size_t line = ctx->Name->getLine();
-            verboseCout << line << ": " << Kind::ToStr(kind) << " decl: " << idText << "\n";
+            GetVerboseStream() << line << ": " << Kind::ToStr(kind) << " decl: " << idText << "\n";
             const auto uqNameView = UnqualifiedNameView{idText};
             if (auto* param = ExtractSpecificParent<azslParser::FunctionParamContext>(ctx))
             {

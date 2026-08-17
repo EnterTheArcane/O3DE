@@ -245,8 +245,7 @@ namespace AZ::ShaderCompiler
                 {
                     return uidkind->second.GetSeenats();
                 }
-                static std::vector<Seenat> s_empty;
-                return s_empty;
+                return m_emptySeenats;
             });
 
         const auto globalScope = QualifiedNameView{"/"};
@@ -318,7 +317,7 @@ namespace AZ::ShaderCompiler
                     srgInfo->m_CBs.end(),
                     [this](const IdentifierUID& viewUid)
                     {
-                        const auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(viewUid.GetName());
+                        [[maybe_unused]] const auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(viewUid.GetName());
                         // all buffer types references must be mutated to [0]
                         assert(varInfo->GetTypeClass() == TypeClass::ConstantBuffer);
                         m_translations.AddCustomBehavior(
@@ -1102,7 +1101,7 @@ namespace AZ::ShaderCompiler
         assert(!options.m_emitConstantBufferBody);
 
         const auto& bindInfo = rootSig.Get(cId);
-        const auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(cId.m_name);
+        [[maybe_unused]] const auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(cId.m_name);
         auto cbName = ReplaceSeparators(cId.m_name, Underscore);
 
         assert(varInfo->IsConstantBuffer());

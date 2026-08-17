@@ -115,7 +115,7 @@ namespace AZ::ShaderCompiler
         //        however, the semantics of that expression are not supported. And that's because "struct MyS" is visited
         //        AFTER the method registration, so MyS doesn't exist as a registered symbol yet.
         ExtractedComposedType extracted = ExtractComposedTypeNamesFromAstContext(className);
-        verboseCout << ctx->start->getLine() << ": register method: " << className->getText() << "::" << uqName << "\n";
+        GetVerboseStream() << ctx->start->getLine() << ": register method: " << className->getText() << "::" << uqName << "\n";
         // lookup for the symbol of the extracted scope
         IdAndKind* scopeIdKind = LookupSymbol(extracted.m_core.m_name);
         if (!scopeIdKind)
@@ -283,12 +283,12 @@ namespace AZ::ShaderCompiler
             || (statementGenre == AsFunc::Definition && Is<azslParser::HlslFunctionDefinitionContext*>(ctx->parent)));
 
         auto line = ctx->Name->getLine();
-        verboseCout << line << ": register func: " << fqUndecoratedName;
+        GetVerboseStream() << line << ": register func: " << fqUndecoratedName;
 
         // `/f` is undecorated. `/f(?int)` is decorated
         QualifiedName decoratedName = CreateDecoratedIdentityOfFunction(fqUndecoratedName, ctx->functionParams());
 
-        verboseCout << " full identity: " << decoratedName << "\n";
+        GetVerboseStream() << " full identity: " << decoratedName << "\n";
 
         // validation
         const bool isScopeCompositeType = IsScopeStructClassInterface();
@@ -651,7 +651,7 @@ namespace AZ::ShaderCompiler
         const auto typeCtx = ExtractTypeFromUnnamedVariableDeclarator(ctx, &paramCtx);
         auto idText = nameIdentifier->getText();
         size_t line = nameIdentifier->getLine();
-        verboseCout << ConcatString(line, ": var decl: ", idText, "\n");
+        GetVerboseStream() << ConcatString(line, ": var decl: ", idText, "\n");
         const auto uqNameView = UnqualifiedNameView{idText};
         // Register the variable in the symbol table early:
         IdAndKind& symbolRef = AddIdentifier(uqNameView, Kind::Variable, line);
@@ -1155,7 +1155,7 @@ namespace AZ::ShaderCompiler
     {
         auto idText = ctx->Name->getText();
         size_t line = ctx->Name->getLine();
-        verboseCout << line << ": srg decl: " << idText << "\n";
+        GetVerboseStream() << line << ": srg decl: " << idText << "\n";
         auto uqNameView = UnqualifiedNameView{idText};
         IdAndKind* srgSym = LookupSymbol(uqNameView);
         if (srgSym) // already exists
@@ -1241,7 +1241,7 @@ namespace AZ::ShaderCompiler
         info.GetSeenats().emplace_back(seenat);
 
         const std::string verboseMessage = ConcatString(seenat.m_where.m_line, ": seenat registered for ", uid.m_name, " at col ", seenat.m_where.m_charPos + 1, "\n");
-        verboseCout << verboseMessage;
+        GetVerboseStream() << verboseMessage;
     }
 
     void SemanticOrchestrator::RegisterSeenat(AstIdExpr* ctx)
@@ -1311,7 +1311,7 @@ namespace AZ::ShaderCompiler
                     {
                         overloadLine = std::to_string(argumentListCtx->start->getLine());
                     }
-                    verboseCout << overloadLine
+                    GetVerboseStream() << overloadLine
                         << message.str() << " It is not an error since that overload-set has homogeneous return type\n"; // at this point of the source. further declaration can change that.
                 }
                 else
@@ -1458,10 +1458,10 @@ namespace AZ::ShaderCompiler
             const KindInfo& lhsKindInfo = lhsSymbol->second;
             if (!lhsKindInfo.IsKindOneOf(Kind::Namespace, Kind::Class, Kind::Struct, Kind::Enum, Kind::Interface, Kind::ShaderResourceGroup, Kind::Function))
             {
-                DiagnosticStream* outputStream = &warningCout;
+                DiagnosticStream* outputStream = &GetWarningStream();
                 if (lhsKindInfo.GetKind() == Kind::Type)
                 {
-                    outputStream = &verboseCout;
+                    outputStream = &GetVerboseStream();
                 }
                 std::string expressionMessage;
                 if (lhsExpressionText)
@@ -1534,7 +1534,7 @@ namespace AZ::ShaderCompiler
         }
         catch (AllNull&)
         {
-            verboseCout << ctx->start->getLine() << ": unsupported expression in typeof: " << typeid(ctx).name() << "\n";
+            GetVerboseStream() << ctx->start->getLine() << ": unsupported expression in typeof: " << typeid(ctx).name() << "\n";
             return {"<fail>"};
         }
     }
@@ -1619,7 +1619,7 @@ namespace AZ::ShaderCompiler
         const auto lookup = ResolveOverload(LookupSymbol(uqName), GetArgumentListIfBelongsToFunctionCall(ctx));
         if (!lookup)
         {
-            verboseCout << ctx->start->getLine() << ": can't find typeof " << uqName << "\n";
+            GetVerboseStream() << ctx->start->getLine() << ": can't find typeof " << uqName << "\n";
             return {"<fail>"};
         }
         return GetTypeName(lookup); // this call is often the leaf of the TypeofExpr call tree.
@@ -1779,7 +1779,7 @@ namespace AZ::ShaderCompiler
                 int64_t nextDim = ExtractValueAsInt64(arrayDimensionVal, -1);
                 if (nextDim < 0)
                 {
-                    verboseCout << arrayDecl->start->getLine() << ": array rank specifier (" << nextDim << ") invalid or non foldable";
+                    GetVerboseStream() << arrayDecl->start->getLine() << ": array rank specifier (" << nextDim << ") invalid or non foldable";
                     arrayDimensions.PushBack(ArrayDimensions::Unknown);
                 }
                 else
@@ -1797,7 +1797,7 @@ namespace AZ::ShaderCompiler
     {
         using namespace std::string_literals;
         auto curScopeName = m_scope->m_currentScopePath;
-        verboseCout << ctx->RightBrace()->getSymbol()->getLine() << ": exit class " << curScopeName << ". verifying compliance...\n";
+        GetVerboseStream() << ctx->RightBrace()->getSymbol()->getLine() << ": exit class " << curScopeName << ". verifying compliance...\n";
         // Get iterator into the symbol database from current scope name. (current scope should be the currently closing class)
         // Access the KindInfo from iter->second, and "cast" the `anyInfo` variant to ClassInfo:
         const auto& classSubInfo = GetCurrentScopeSubInfoAs<ClassInfo>();
@@ -1808,7 +1808,7 @@ namespace AZ::ShaderCompiler
         for (auto b : classSubInfo.GetBases())
         {
             // get line location diagnostic message of its declaration keyword in source:
-            verboseCout << "  base: " << b.m_name << "\n";
+            GetVerboseStream() << "  base: " << b.m_name << "\n";
             // Fetch the base from name in the database
             auto* infoBase = m_symbols->GetIdAndKindInfo(b.m_name);
             assert(infoBase); // can't be undeclared since it already threw an error in RegisterBases.
@@ -1960,7 +1960,7 @@ namespace AZ::ShaderCompiler
                 // We only care the specified semantic is the same as the currently defined semantic for the srg.
                 if (srgInfo.m_semantic->GetNameLeaf() != semanticName)
                 {
-                    const LineDirectiveInfo* originalSrglineInfo = AzslcException::s_lineFinder->GetNearestPreprocessorLineDirective(srgInfo.m_declNode->Semantic->getLine());
+                    const LineDirectiveInfo* originalSrglineInfo = GetLineDirectiveFinder().GetNearestPreprocessorLineDirective(srgInfo.m_declNode->Semantic->getLine());
                     const std::string errorMsg = std::format(
                         "'partial' extension of ShaderResourceGroup [{}] with semantic [{}] shall not bind a different semantic than [{}] found in line {} of {}",
                         ctx->Name->getText(),
@@ -2269,16 +2269,16 @@ namespace AZ::ShaderCompiler
             const Token* tok,
             std::optional<std::string_view> identifier = std::nullopt)
         {
-            verboseCout << tok->getLine();
+            GetVerboseStream() << tok->getLine();
             if (identifier)
             {
-                verboseCout << ": constant folding failed for " << *identifier;
+                GetVerboseStream() << ": constant folding failed for " << *identifier;
             }
             else
             {
-                verboseCout << ": constant folding failed for " << std::string_view(tok->getText());
+                GetVerboseStream() << ": constant folding failed for " << std::string_view(tok->getText());
             }
-            return verboseCout;
+            return GetVerboseStream();
         };
     }
 
@@ -2451,7 +2451,7 @@ namespace AZ::ShaderCompiler
             int64_t nextDim = ExtractValueAsInt64(cVal, -1);
             if (nextDim < 0)
             {
-                verboseCout << "SemanticOrchestrator::TryFoldGenericArrayDimensions could not fold the next dimension (" << nextDim << ")!";
+        GetVerboseStream() << "SemanticOrchestrator::TryFoldGenericArrayDimensions could not fold the next dimension (" << nextDim << ")!";
                 return false;
                 // If we might want to allow such cases use this instead:
                 // extType.m_genericDimensions.PushBack(ArrayDimensions::unknown);

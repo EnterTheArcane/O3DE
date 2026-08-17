@@ -33,11 +33,13 @@ namespace AZ::ShaderCompiler
     public:
         const LineDirectiveInfo* GetNearestPreprocessorLineDirective(const size_t physicalLine) const
         {
-            const auto it = Infimum(m_lineMap, physicalLine);
-            if (it == m_lineMap.end())
+            auto it = m_lineMap.upper_bound(physicalLine);
+            if (it == m_lineMap.begin())
             {
                 return nullptr;
             }
+
+            --it;
 
             return &it->second;
         }

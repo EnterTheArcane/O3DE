@@ -406,9 +406,7 @@ namespace AZ::ShaderCompiler
 
     std::string Backend::GetTranspiledTokens(const misc::Interval interval) const
     {
-        static std::stringstream ss;
-        ss.str({});
-        ss.clear();
+        std::stringstream ss;
         MakeOStreamStreamable soss(ss);
         EmitTranspiledTokens(interval, soss);
         return ss.str();

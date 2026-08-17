@@ -49,9 +49,9 @@ namespace AZ::ShaderCompiler
         st.AddIdentifier(QualifiedNameView("/"), Kind::Namespace);
 
         // temporarily disable the verbosity since it completely bloats the output
-        verboseCout << " registering of all predefined types in fixed symbol table (kept silent)...";
-        const bool oldVerbosity = verboseCout.m_on;
-        verboseCout.m_on = false;
+        GetVerboseStream() << " registering of all predefined types in fixed symbol table (kept silent)...";
+        const bool oldVerbosity = GetVerboseStream().m_on;
+        GetVerboseStream().m_on = false;
 
         // another helpful canonicalization is for types.
         // let's register all predefined so that TypeRef can be simplified to IdentifierUID
@@ -63,8 +63,8 @@ namespace AZ::ShaderCompiler
             },
             AZ::ShaderCompiler::Predefined::All);
 
-        verboseCout.m_on = oldVerbosity;
-        verboseCout << " done\n";
+        GetVerboseStream().m_on = oldVerbosity;
+        GetVerboseStream() << " done\n";
 
         return st;
     }

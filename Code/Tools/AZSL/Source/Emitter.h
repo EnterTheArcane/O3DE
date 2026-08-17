@@ -280,6 +280,7 @@ namespace AZ::ShaderCompiler
         //! If not null it will be used during code emission to produce
         //! the mutations.
         std::vector<ICodeEmissionMutator*> m_codeMutators;
+        std::vector<Seenat> m_emptySeenats;
 
         //! We keep track here of the number of lines that have been emitted.
         //! Each symbol has an original line number (virtual and physical) where it appeared,

@@ -45,9 +45,10 @@
 
 namespace AZ::ShaderCompiler
 {
-    extern DiagnosticStream verboseCout;
-    extern DiagnosticStream warningCout;
-    extern Endl azEndl;
+    DiagnosticStream& GetVerboseStream();
+    DiagnosticStream& GetWarningStream();
+    std::ostream& GetInformationalStream();
+    PreprocessorLineDirectiveFinder& GetLineDirectiveFinder();
 
     using AstType = azslParser::TypeContext; // all usertypes and predefined, but cannot be Void
     using AstTypeofNode = azslParser::TypeofExpressionContext;
@@ -97,7 +98,7 @@ namespace AZ::ShaderCompiler
     // this format is the Microsoft standard for error list parsing "file(line,column): message"
     inline std::string DiagLine(const size_t line)
     {
-        return AzslcException::s_lineFinder->GetVirtualFileName(line) + "(" + std::to_string(line) + "):";
+        return GetLineDirectiveFinder().GetVirtualFileName(line) + "(" + std::to_string(line) + "):";
     }
 
     inline std::string DiagLine(const std::optional<int> line)
@@ -145,8 +146,8 @@ namespace AZ::ShaderCompiler
 
         if (lineNumber)
         {
-            fileName = AzslcException::s_lineFinder->GetVirtualFileName(*lineNumber);
-            virtualLine = ToString(AzslcException::s_lineFinder->GetVirtualLineNumber(*lineNumber));
+            fileName = GetLineDirectiveFinder().GetVirtualFileName(*lineNumber);
+            virtualLine = ToString(GetLineDirectiveFinder().GetVirtualLineNumber(*lineNumber));
         }
 
         if (column)
@@ -165,14 +166,14 @@ namespace AZ::ShaderCompiler
     template <typename... Types>
     inline void PrintWarning(Warn::EnumType level, std::optional<size_t> line, Types&&... messageBits)
     {
-        PrintWarning(warningCout, level, line, std::nullopt, messageBits...);
+        PrintWarning(GetWarningStream(), level, line, std::nullopt, messageBits...);
     }
 
     //! version for clients with a token (richest, preferred way)
     template <typename... Types>
     inline void PrintWarning(Warn::EnumType level, antlr4::Token* token, Types&&... messageBits)
     {
-        PrintWarning(warningCout, level, token->getLine(), token->getCharPositionInLine() + 1, messageBits...);
+        PrintWarning(GetWarningStream(), level, token->getLine(), token->getCharPositionInLine() + 1, messageBits...);
     }
 
     inline AstTypeofNode* ExtractTypeofAstNode(AstType* ctx)

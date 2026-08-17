@@ -31,7 +31,7 @@ namespace AZ::ShaderCompiler
         UpdateCurScopeUID();
         // keep track of the scope begin:
         m_scopeIntervals[m_currentScopeUID].a = tokenStreamPosition;
-        verboseCout << "Scope Entry. new current path is " << m_currentScopePath << azEndl;
+        GetVerboseStream() << "Scope Entry. new current path is " << m_currentScopePath << Endl{};
     }
 
     // classic variation that takes a cumulative leaf
@@ -47,7 +47,7 @@ namespace AZ::ShaderCompiler
         m_scopeIntervals[m_currentScopeUID].b = tokenStreamPosition;
         m_currentScopePath = m_oldScopePaths.top();
         m_oldScopePaths.pop();
-        verboseCout << "Exit scope. new current path is " << m_currentScopePath << azEndl;
+        GetVerboseStream() << "Exit scope. new current path is " << m_currentScopePath << Endl{};
 
         UpdateCurScopeUID();
     }
@@ -74,11 +74,11 @@ namespace AZ::ShaderCompiler
     // For debugging
     void ScopeTracker::DumpScopeIntervals() const
     {
-        std::cout << "\nScopeTracker::DumpScopeIntervals:\n";
+        GetInformationalStream() << "\nScopeTracker::DumpScopeIntervals:\n";
         for (const auto& [symId, interval] : m_scopeIntervals)
         {
-            std::cout << symId.GetName() << ": a=" << interval.a << ", b=" << interval.b << "\n";
+            GetInformationalStream() << symId.GetName() << ": a=" << interval.a << ", b=" << interval.b << "\n";
         }
-        std::cout << "\n";
+        GetInformationalStream() << "\n";
     }
 }

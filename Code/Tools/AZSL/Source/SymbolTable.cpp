@@ -101,7 +101,7 @@ namespace AZ::ShaderCompiler
         {
             // not found
             fetchedIdIt = m_symbols.insert(IdToKindMap::value_type{idUID, {}}).first;
-            verboseCout << "new identifier added to database. name " << idUID.m_name << " kind " << Kind::ToStr(kind) << "\n";
+            GetVerboseStream() << "new identifier added to database. name " << idUID.m_name << " kind " << Kind::ToStr(kind) << "\n";
         }
         // InitAs completely reassigns the subinfo with a freshly constructed type.
         fetchedIdIt->second.InitAs(kind);

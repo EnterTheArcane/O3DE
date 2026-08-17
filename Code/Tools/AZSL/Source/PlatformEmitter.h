@@ -65,13 +65,6 @@ namespace AZ::ShaderCompiler
         {
         }
 
-        //! Registers a new platform emitter with the specified name.
-        //! In order to provide robust assertion it throws an exception if more than one emitters try to use the same key.
-        //! The only intended use of this method is by the platform emitter itself. No other entity should register emitters.
-        //! @param key  The key used to search. The platform emitter will be registered under this key.
-        //! @param platformEmitter  An emitter to register, which must be of a class derived from this PlatformEmitter
-        static void SetEmitter(const std::string& key, const PlatformEmitter* const platformEmitter) noexcept(false);
-
     public:
         //! Gets the string emission for the root signature for this platform
         //! @param codeEmitter  Reference to the calling code emitter
@@ -118,4 +111,7 @@ namespace AZ::ShaderCompiler
         //! Returns the subpass input that the platform emitter supports.
         virtual SubpassInputSupportFlag GetSubpassInputSupport() const;
     };
+
+    //! Explicitly references every built-in emitter so static-library linkers retain their object files.
+    void RegisterPlatformEmitters();
 }

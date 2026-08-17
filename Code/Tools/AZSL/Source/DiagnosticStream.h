@@ -12,7 +12,6 @@
 
 #include <cassert>
 #include <functional>
-#include <iostream>
 #include <ostream>
 #include <stack>
 #include <string>
@@ -51,7 +50,7 @@ namespace AZ
     );
 
     //! stream manipulator: stack up a severity level on a DiagnosticStream object (streams used for warnings have stateful warning levels, they can be backup-ed and restored thanks to this)
-    //! you can use it by making an instance: e.g.: warningCout << PushLevel{} << Warn::W3 << "my warning level 3" << PopLevel{};
+    //! Example: diagnostics << PushLevel{} << Warn::W3 << "my warning level 3" << PopLevel{};
     struct PushLevel
     {
     };
@@ -79,12 +78,7 @@ namespace AZ
 
     struct DiagnosticStream
     {
-        DiagnosticStream()
-            : m_wrappedStream(std::cout)
-        {
-        }
-
-        DiagnosticStream(decltype(std::cout)& streamToWrap)
+        explicit DiagnosticStream(std::ostream& streamToWrap)
             : m_wrappedStream(streamToWrap)
         {
         }
@@ -205,7 +199,7 @@ namespace AZ
 
     public:
         bool m_on = true;
-        decltype(std::cout)& m_wrappedStream;
+        std::ostream& m_wrappedStream;
         //!< receive a message in case of a streamed element of a warning level enough to trigger an error
         std::function<void(std::string_view)> m_onErrorCallback;
 

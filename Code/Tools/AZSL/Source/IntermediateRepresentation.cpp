@@ -25,7 +25,6 @@
 
 namespace AZ::ShaderCompiler
 {
-    using std::cout;
     using std::endl;
 
     void IntermediateRepresentation::RegisterAttributeSpecifier(
@@ -151,7 +150,7 @@ namespace AZ::ShaderCompiler
         // We're not going to transform our flat vector to tree and to vector again,
         // instead we'll shift around the elements to respect that order.
         // And to do so, we'll use a dependency DAG and a topological solver.
-        verboseCout << "--Middle End--\n";
+        GetVerboseStream() << "--Middle End--\n";
 
         m_symbols.ReorderBySymbolDependency();
 
@@ -358,7 +357,7 @@ namespace AZ::ShaderCompiler
         return r;
     }
 
-    void DumpSymbols(IntermediateRepresentation& ir)
+    void DumpSymbols(IntermediateRepresentation& ir, std::ostream& output)
     {
         std::unordered_set<IdentifierUID> seen; // avoid functions delc/def repetitions
         // in YAML form
@@ -371,9 +370,9 @@ namespace AZ::ShaderCompiler
             seen.insert(uid);
             auto& [_, sym] = *ir.m_symbols.GetIdAndKindInfo(uid.m_name);
             assert(uid == _);
-            cout << "Symbol " << Decorate("'", uid.m_name) << ":\n";
-            cout << "  kind: " << Kind::ToStr(sym.GetKind()) << "\n";
-            cout << "  references:\n" << ToYaml(sym.GetSeenats().begin(), sym.GetSeenats().end(), "    ");
+            output << "Symbol " << Decorate("'", uid.m_name) << ":\n";
+            output << "  kind: " << Kind::ToStr(sym.GetKind()) << "\n";
+            output << "  references:\n" << ToYaml(sym.GetSeenats().begin(), sym.GetSeenats().end(), "    ");
             switch (sym.GetKind())
             {
             case Kind::Variable:
@@ -383,26 +382,26 @@ namespace AZ::ShaderCompiler
                     //  but they don't have actual type or declaration line, so we skip them here.
                     if (sub.m_declNode)
                     {
-                        cout << "  line: " << std::to_string(sub.m_declNode->start->getLine()) << "\n";
+                        output << "  line: " << std::to_string(sub.m_declNode->start->getLine()) << "\n";
                     }
                     else
                     {
-                        cout << "  line: NA\n";
+                        output << "  line: NA\n";
                     }
-                    cout << "  type:\n" << ToYaml(sub.m_typeInfoExt, ir, "    ") << "\n";
-                    cout << "  storage: " << sub.m_typeInfoExt.m_qualifiers.GetDisplayName() << "\n";
-                    cout << "  array dim: \"" << sub.m_typeInfoExt.m_arrayDims.ToString() << "\"\n";
+                    output << "  type:\n" << ToYaml(sub.m_typeInfoExt, ir, "    ") << "\n";
+                    output << "  storage: " << sub.m_typeInfoExt.m_qualifiers.GetDisplayName() << "\n";
+                    output << "  array dim: \"" << sub.m_typeInfoExt.m_arrayDims.ToString() << "\"\n";
                     if (sub.m_samplerState)
                     {
-                        cout << "  has sampler state: yes\n";
+                        output << "  has sampler state: yes\n";
                     }
                     else
                     {
-                        cout << "  has sampler state: no\n";
+                        output << "  has sampler state: no\n";
                     }
                     if (!std::holds_alternative<std::monostate>(sub.m_constVal))
                     {
-                        cout << "  val: " << ExtractValueAsInt64(sub.m_constVal) << "\n";
+                        output << "  val: " << ExtractValueAsInt64(sub.m_constVal) << "\n";
                     }
                 }
                 break;
@@ -412,12 +411,12 @@ namespace AZ::ShaderCompiler
             case Kind::Enum:
                 {
                     auto& sub = sym.GetSubRefAs<ClassInfo>();
-                    cout << "  line: " << sub.GetOriginalLineNumber() << "\n";
-                    cout << "  members:\n";
+                    output << "  line: " << sub.GetOriginalLineNumber() << "\n";
+                    output << "  members:\n";
                     for (auto&& member : sub.GetOrderedMembers())
                     {
                         const auto* subFieldSym = ir.m_symbols.GetIdAndKindInfo(member.m_name);
-                        cout << "    - {kind: " << Kind::ToStr(subFieldSym->second.GetKind())
+                        output << "    - {kind: " << Kind::ToStr(subFieldSym->second.GetKind())
                             << ", name: " << Decorate("'", member.m_name) << "}\n";
                     }
                 }
@@ -425,24 +424,24 @@ namespace AZ::ShaderCompiler
             case Kind::Function:
                 {
                     auto& sub = sym.GetSubRefAs<FunctionInfo>();
-                    cout << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
+                    output << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
                     const std::string defLine = sub.IsUndefinedFunction()
                         ? "undef"
                         : std::to_string(sub.m_defNode->start->getLine());
-                    cout << "  def line: " << defLine << "\n";
-                    cout << "  must override: " << sub.m_mustOverride << "\n";
-                    cout << "  is method: " << sub.m_isMethod << "\n";
-                    cout << "  is virtual: " << sub.m_isVirtual << "\n";
-                    cout << "  return type:\n" << ToYaml(sub.m_returnType, ir, "    ") << "\n";
-                    cout << "  storage: " << sub.m_returnType.m_qualifiers.GetDisplayName() << "\n";
-                    cout << "  has overriding children:\n" << ToYaml(sub.m_overrides.begin(), sub.m_overrides.end(), "    ");
+                    output << "  def line: " << defLine << "\n";
+                    output << "  must override: " << sub.m_mustOverride << "\n";
+                    output << "  is method: " << sub.m_isMethod << "\n";
+                    output << "  is virtual: " << sub.m_isVirtual << "\n";
+                    output << "  return type:\n" << ToYaml(sub.m_returnType, ir, "    ") << "\n";
+                    output << "  storage: " << sub.m_returnType.m_qualifiers.GetDisplayName() << "\n";
+                    output << "  has overriding children:\n" << ToYaml(sub.m_overrides.begin(), sub.m_overrides.end(), "    ");
                     std::string baseName;
                     if (sub.m_base)
                     {
                         baseName = sub.m_base->m_name.c_str();
                     }
-                    cout << "  is hiding base symbol: '" << baseName << "'\n";
-                    cout << "  parameters:\n";
+                    output << "  is hiding base symbol: '" << baseName << "'\n";
+                    output << "  parameters:\n";
                     for (auto& param : sub.GetParameters(1))
                     {
                         auto* varInfo = ir.GetSymbolSubAs<VarInfo>(param.m_varId.GetName());
@@ -453,12 +452,12 @@ namespace AZ::ShaderCompiler
                             {
                                 parameterName = "<unnamed>";
                             }
-                            cout << "    - name: '" << parameterName << "'\n"
+                            output << "    - name: '" << parameterName << "'\n"
                                 << "      type:\n" << ToYaml(varInfo->m_typeInfoExt, ir, "        ") << "\n";
                         }
                         else
                         {
-                            cout << "    - non-var identifier (type?): '" << ToYaml(param.m_typeInfo, ir, "        ") << "'\n";
+                            output << "    - non-var identifier (type?): '" << ToYaml(param.m_typeInfo, ir, "        ") << "'\n";
                         }
                     }
                 }
@@ -466,67 +465,67 @@ namespace AZ::ShaderCompiler
             case Kind::OverloadSet:
                 {
                     auto& sub = sym.GetSubRefAs<OverloadSetInfo>();
-                    cout << "  functions:\n";
+                    output << "  functions:\n";
                     sub.ForEach(
-                        [](auto& uid2)
+                        [&output](auto& uid2)
                         {
-                            cout << "    - '" << uid2.GetName() << "'\n";
+                            output << "    - '" << uid2.GetName() << "'\n";
                         });
                 }
                 break;
             case Kind::ShaderResourceGroup:
                 {
                     auto& sub = sym.GetSubRefAs<SRGInfo>();
-                    cout << "  line: " << sub.m_declNode->start->getLine() << "\n";
-                    cout << "  structs: ";
+                    output << "  line: " << sub.m_declNode->start->getLine() << "\n";
+                    output << "  structs: ";
                     std::for_each(
                         sub.m_structs.begin(),
                         sub.m_structs.end(),
-                        [](auto& uid2)
+                        [&output](auto& uid2)
                         {
-                            cout << uid2.GetNameLeaf() << ", ";
+                            output << uid2.GetNameLeaf() << ", ";
                         });
-                    cout << "\n";
-                    cout << "  srViews: ";
+                    output << "\n";
+                    output << "  srViews: ";
                     std::for_each(
                         sub.m_srViews.begin(),
                         sub.m_srViews.end(),
-                        [](auto& uid2)
+                        [&output](auto& uid2)
                         {
-                            cout << uid2.GetNameLeaf() << ", ";
+                            output << uid2.GetNameLeaf() << ", ";
                         });
-                    cout << "\n";
-                    cout << "  samplers: ";
+                    output << "\n";
+                    output << "  samplers: ";
                     std::for_each(
                         sub.m_samplers.begin(),
                         sub.m_samplers.end(),
-                        [](auto& uid2)
+                        [&output](auto& uid2)
                         {
-                            cout << uid2.GetNameLeaf() << ", ";
+                            output << uid2.GetNameLeaf() << ", ";
                         });
-                    cout << "\n";
-                    cout << "  CBs: ";
+                    output << "\n";
+                    output << "  CBs: ";
                     std::for_each(
                         sub.m_CBs.begin(),
                         sub.m_CBs.end(),
-                        [](auto& uid2)
+                        [&output](auto& uid2)
                         {
-                            cout << uid2.GetNameLeaf() << ", ";
+                            output << uid2.GetNameLeaf() << ", ";
                         });
-                    cout << "\n";
+                    output << "\n";
                 }
                 break;
             case Kind::Type:
                 {
                     auto& sub = sym.GetSubRefAs<TypeRefInfo>();
-                    cout << ToYaml(sub, ir, "  ") << "\n";
+                    output << ToYaml(sub, ir, "  ") << "\n";
                 }
                 break;
             case Kind::TypeAlias:
                 {
                     auto& sub = sym.GetSubRefAs<TypeAliasInfo>();
-                    cout << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
-                    cout << "  canonical type:\n" << ToYaml(sub.m_canonicalType, ir, "    ") << "\n";
+                    output << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
+                    output << "  canonical type:\n" << ToYaml(sub.m_canonicalType, ir, "    ") << "\n";
                 }
                 break;
             default:
@@ -617,7 +616,7 @@ namespace AZ::ShaderCompiler
                         + memberId.m_name).c_str()
                 };
             }
-            const TypeClass varClass = exportedType.m_typeClass;
+            [[maybe_unused]] const TypeClass varClass = exportedType.m_typeClass;
 
             size = varInfo.m_typeInfoExt.GetTotalSize(layoutPacking, isRowMajor);
             auto startAt = startingOffset;

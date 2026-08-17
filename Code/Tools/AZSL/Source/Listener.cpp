@@ -277,7 +277,7 @@ namespace AZ::ShaderCompiler
         if (ctx->KW_ext_print_message())
         {
             // [GFX TODO]: use a log channel that makes sense. e.g. INFORMATION ?
-            std::cout << Unescape(ctx->Message->getText());
+            GetInformationalStream() << Unescape(ctx->Message->getText());
         }
         else if (ctx->KW_ext_print_symbol())
         {
@@ -287,24 +287,24 @@ namespace AZ::ShaderCompiler
                 auto maybeSym = m_ir->m_sema.LookupSymbol(name);
                 if (!maybeSym)
                 {
-                    std::cout << "<not_found>";
+                    GetInformationalStream() << "<not_found>";
                 }
                 else
                 {
                     auto& [symId, sym] = *maybeSym;
                     if (ctx->KW_ext_prtsym_fully_qualified())
                     {
-                        std::cout << symId.m_name;
+                        GetInformationalStream() << symId.m_name;
                     }
                     else if (ctx->KW_ext_prtsym_least_qualified())
                     {
-                        std::cout << m_ir->m_symbols.FindLeastQualifiedName(m_ir->m_scope.m_currentScopePath, symId);
+                        GetInformationalStream() << m_ir->m_symbols.FindLeastQualifiedName(m_ir->m_scope.m_currentScopePath, symId);
                     }
                     else if (ctx->KW_ext_prtsym_constint_value())
                     {
                         if (sym.GetKind() != Kind::Variable)
                         {
-                            std::cout << "<not_a_var>";
+                            GetInformationalStream() << "<not_a_var>";
                         }
                         else
                         {
@@ -312,11 +312,11 @@ namespace AZ::ShaderCompiler
                             try
                             {
                                 const int64_t asInt = ExtractValueAsInt64(var.m_constVal);
-                                std::cout << asInt;
+                                GetInformationalStream() << asInt;
                             }
                             catch (std::exception e)
                             {
-                                std::cout << "<folding_failed>";
+                                GetInformationalStream() << "<folding_failed>";
                             }
                         }
                     }
@@ -327,18 +327,18 @@ namespace AZ::ShaderCompiler
                 const QualifiedName resolved = m_ir->m_sema.TypeofExpr(ctx->typeofExpression());
                 if (ctx->KW_ext_prtsym_fully_qualified())
                 {
-                    std::cout << resolved;
+                    GetInformationalStream() << resolved;
                 }
                 else if (ctx->KW_ext_prtsym_least_qualified())
                 {
                     const auto* idKind = m_ir->m_symbols.GetIdAndKindInfo(resolved);
                     if (idKind)
                     {
-                        std::cout << m_ir->m_symbols.FindLeastQualifiedName(m_ir->m_scope.m_currentScopePath, idKind->first);
+                        GetInformationalStream() << m_ir->m_symbols.FindLeastQualifiedName(m_ir->m_scope.m_currentScopePath, idKind->first);
                     }
                     else
                     {
-                        std::cout << resolved;
+                        GetInformationalStream() << resolved;
                     }
                 }
             }

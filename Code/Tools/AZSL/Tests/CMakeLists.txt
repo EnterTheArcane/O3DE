@@ -12,6 +12,60 @@ endif()
 
 update_pip_requirements("${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt" azslc_test_requirements)
 
+ly_add_target(
+    NAME AZSL.Tests EXECUTABLE
+    NAMESPACE AZ
+    FILES_CMAKE
+        azsl_test_files.cmake
+    INCLUDE_DIRECTORIES
+        PRIVATE
+            ../Source
+    BUILD_DEPENDENCIES
+        PRIVATE
+            AZ::AZSL
+            AZ::AzCore
+            AZ::AzTest
+)
+
+target_compile_options(AZSL.Tests PRIVATE
+    ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS}
+)
+
+ly_add_target(
+    NAME AZSL.ApiTestDriver EXECUTABLE
+    NAMESPACE AZ
+    FILES_CMAKE
+        azsl_api_test_driver_files.cmake
+    BUILD_DEPENDENCIES
+        PRIVATE
+            AZ::AZSL
+)
+
+target_compile_options(AZSL.ApiTestDriver PRIVATE
+    ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS}
+)
+
+ly_add_googletest(
+    NAME AZ::AZSL.Tests
+    TEST_COMMAND $<TARGET_FILE:AZ::AZSL.Tests> AzRunUnitTests
+)
+
+ly_add_test(
+    NAME AZ::AZSLC.CliApiParity
+    TEST_SUITE main
+    LABELS AZSLC.Parity
+    TIMEOUT 60
+    TEST_COMMAND
+        "${LY_PYTHON_VENV_PATH}/${LY_PYTHON_VENV_PYTHON}"
+        -s -B "${CMAKE_CURRENT_SOURCE_DIR}/cli_api_parity.py"
+        --compiler "$<TARGET_FILE:AZ::AZSLC>"
+        --api-driver "$<TARGET_FILE:AZ::AZSL.ApiTestDriver>"
+    RUNTIME_DEPENDENCIES
+        AZ::AZSLC
+        AZ::AZSL.ApiTestDriver
+    EXCLUDE_TEST_RUN_TARGET_FROM_IDE
+)
+
 set(AZSLC_CTEST_RUNNER "${CMAKE_CURRENT_SOURCE_DIR}/ctest-runner.py")
 include(azslc_test_files.cmake)
 

@@ -9,6 +9,7 @@
 #pragma once
 
 #include "antlr4-runtime.h"
+#include "CompilerContext.h"
 #include "GenericUtils.h"
 #include "PreprocessorLineDirectiveFinder.h"
 
@@ -181,6 +182,31 @@ namespace AZ::ShaderCompiler
             return m_errorCode;
         }
 
+        std::string_view GetErrorType() const
+        {
+            return m_errorType;
+        }
+
+        std::string_view GetErrorMessage() const
+        {
+            return RuntimeException::what();
+        }
+
+        const std::string& GetSourceFileName() const
+        {
+            return m_sourceFileName;
+        }
+
+        const std::optional<size_t>& GetSourceLine() const
+        {
+            return m_virtualLine;
+        }
+
+        const std::optional<size_t>& GetSourceColumn() const
+        {
+            return m_column;
+        }
+
         static std::string MakeErrorMessage(
             std::string_view filename,
             std::string_view line,
@@ -229,10 +255,12 @@ namespace AZ::ShaderCompiler
                 lineNumber = *m_line;
             }
 
-            std::string virtualLine;
+            const auto& lineFinder = GetLineDirectiveFinder();
+            std::string virtualLineText;
             if (m_line)
             {
-                virtualLine = ToString(s_lineFinder->GetVirtualLineNumber(*m_line));
+                m_virtualLine = lineFinder.GetVirtualLineNumber(*m_line);
+                virtualLineText = ToString(*m_virtualLine);
             }
 
             std::string column;
@@ -241,9 +269,10 @@ namespace AZ::ShaderCompiler
                 column = ToString(*m_column);
             }
 
+            m_sourceFileName = lineFinder.GetVirtualFileName(lineNumber);
             m_errorMessage = MakeErrorMessage(
-                s_lineFinder->GetVirtualFileName(lineNumber),
-                virtualLine,
+                m_sourceFileName,
+                virtualLineText,
                 column,
                 m_errorType,
                 m_errorCode != WX_WARNINGS_AS_ERRORS,
@@ -251,15 +280,14 @@ namespace AZ::ShaderCompiler
                 RuntimeException::what());
         }
 
-    public:
-        static inline PreprocessorLineDirectiveFinder* s_lineFinder;
-
     protected:
         const uint32_t m_errorCode;
         const std::string_view m_errorType;
         const Token* m_token;
         std::string m_errorMessage;
+        std::string m_sourceFileName;
         std::optional<size_t> m_line;
+        std::optional<size_t> m_virtualLine;
         std::optional<size_t> m_column;
     };
 
@@ -372,33 +400,22 @@ namespace AZ::ShaderCompiler
         {
             const bool isKeyword = m_isKeywordPredicate(recognizer, offendingSymbol);
             const std::string offendingText = offendingSymbol ? offendingSymbol->getText() : "<unknown>";
-            using Ex = AzslcException;
             std::string errorMessage;
             if (isKeyword)
             {
-                errorMessage = Ex::MakeErrorMessage(
-                    Ex::s_lineFinder->GetVirtualFileName(line),
-                    ToString(Ex::s_lineFinder->GetVirtualLineNumber(line)),
-                    ToString(charPositionInLine + 1),
-                    "syntax",
-                    true,
-                    ToString(PARSER_SYNTAX_ERROR),
-                    ConcatString(msg, " (", offendingText, " is a keyword)"));
+                errorMessage = ConcatString(msg, " (", offendingText, " is a keyword)");
             }
             else
             {
-                errorMessage = Ex::MakeErrorMessage(
-                    Ex::s_lineFinder->GetVirtualFileName(line),
-                    ToString(Ex::s_lineFinder->GetVirtualLineNumber(line)),
-                    ToString(charPositionInLine + 1),
-                    "syntax",
-                    true,
-                    ToString(PARSER_SYNTAX_ERROR),
-                    ConcatString(msg, " (", offendingText, " was unexpected)"));
+                errorMessage = ConcatString(msg, " (", offendingText, " was unexpected)");
             }
 
-            antlr4::ParseCancellationException parseException(std::string(errorMessage.c_str(), errorMessage.size()));
-            throw parseException;
+            throw AzslcException{
+                PARSER_SYNTAX_ERROR,
+                "syntax",
+                line,
+                charPositionInLine + 1,
+                errorMessage};
         }
 
         std::function<bool(antlr4::Recognizer*, antlr4::Token*)> m_isKeywordPredicate;
@@ -419,20 +436,20 @@ namespace AZ::ShaderCompiler
         }
     };
 
-    inline void OutputNestedAndException(const std::exception& e)
+    inline void OutputNestedException(const std::exception& e, std::ostream& output)
     {
-        std::cerr << e.what() << std::endl;
+        output << e.what() << std::endl;
         try
         {
             std::rethrow_if_nested(e);
         }
         catch (const std::exception& ne)
         {
-            OutputNestedAndException(ne);
+            OutputNestedException(ne, output);
         }
         catch (...)
         {
-            std::cerr << "Unknown exception" << std::endl;
+            output << "Unknown exception" << std::endl;
         }
     }
 }

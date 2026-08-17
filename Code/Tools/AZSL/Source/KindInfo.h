@@ -674,7 +674,7 @@ namespace AZ::ShaderCompiler
                 const bool ok = m_returnTypeSet.Merge(thatFunctionsReturnType);
                 if (!ok)
                 {
-                    verboseCout << "WARN: function " << functionBelongingToTheOverloadSet.m_name
+                    GetVerboseStream() << "WARN: function " << functionBelongingToTheOverloadSet.m_name
                         << " is introducing heterogeneity of return types to its overload-set\n";
                 }
             }

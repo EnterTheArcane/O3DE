@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <functional>
+#include <iosfwd>
 #include <regex>
 #include <stdexcept>
 #include <string>
@@ -380,5 +381,5 @@ namespace AZ::ShaderCompiler
 
     std::string ToYaml(const ExtendedTypeInfo& ext, const IntermediateRepresentation& ir, std::string_view indent);
 
-    void DumpSymbols(IntermediateRepresentation& ir);
+    void DumpSymbols(IntermediateRepresentation& ir, std::ostream& output);
 }

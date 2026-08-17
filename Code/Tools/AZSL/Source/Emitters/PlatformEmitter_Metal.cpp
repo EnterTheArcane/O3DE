@@ -16,20 +16,9 @@
 
 namespace AZ::ShaderCompiler
 {
-    static constexpr char PlatformEmitter_MetalName[] = "mt";
-    static const PlatformEmitter* s_platformEmitterMetal = PlatformEmitter_Metal::RegisterPlatformEmitter();
-
     const PlatformEmitter* PlatformEmitter_Metal::RegisterPlatformEmitter() noexcept(false)
     {
         static PlatformEmitter_Metal platformEmitter; // Static linkage, will be destroyed
-
-        static bool alreadyRegistered = false;
-        if (!alreadyRegistered)
-        {
-            PlatformEmitter::SetEmitter(PlatformEmitter_MetalName, &platformEmitter);
-            alreadyRegistered = true;
-        }
-
         return &platformEmitter;
     }
 

@@ -1214,18 +1214,18 @@ namespace AZ::ShaderCompiler
             // only options
             if (varInfo->CheckHasStorageFlag(StorageFlag::Option))
             {
-                verboseCout << "Analyzing " << uid << "\n";
+                GetVerboseStream() << "Analyzing " << uid << "\n";
                 int impactScore = 0;
                 // loop over appearances over the program
                 for (Seenat& ref : kindInfo->GetSeenats())
                 {
-                    verboseCout << "Seen-at line " << ref.m_where.m_line << "\n";
+                    GetVerboseStream() << "Seen-at line " << ref.m_where.m_line << "\n";
                     // determine an impact score
                     impactScore += AnalyzeImpact(ref.m_where) // dependent code that may be skipped depending on the value of that ref
                         + 1; // by virtue of being mentioned (seenat), we count the reference as an access of cost 1.
                 }
                 varInfo->m_estimatedCostImpact = impactScore;
-                verboseCout << uid << " final cost " << impactScore << "\n";
+                GetVerboseStream() << uid << " final cost " << impactScore << "\n";
             }
         }
     }
@@ -1355,7 +1355,7 @@ namespace AZ::ShaderCompiler
                 {
                     if (funcInfo->m_costScore == -1) // cost not yet discovered for this function
                     {
-                        verboseCout << " " << concrete << " non-memoized. discovering cost\n";
+                        GetVerboseStream() << " " << concrete << " non-memoized. discovering cost\n";
                         funcInfo->m_costScore = 0;
                         if (funcInfo->m_defNode) // undefined functions can't be explored
                         {
@@ -1366,7 +1366,7 @@ namespace AZ::ShaderCompiler
                         }
                     }
                     scoreAccumulator += funcInfo->m_costScore;
-                    verboseCout << " " << concrete << " cost score " << funcInfo->m_costScore << " added\n";
+                    GetVerboseStream() << " " << concrete << " cost score " << funcInfo->m_costScore << " added\n";
                 }
             }
             // other cases forfeited for now, but that would at least include things like eg braces (f)()
