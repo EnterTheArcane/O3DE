@@ -7475,11 +7475,7 @@ namespace Jolt
     {
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world
-            && world->SetVehicleTrackAngularVelocity(
-                vehicleHandle,
-                trackIndex,
-                angularVelocity);
+        return world && world->SetVehicleTrackAngularVelocity(vehicleHandle, trackIndex, angularVelocity);
     }
 
     bool System::SetWheeledVehicleInput(

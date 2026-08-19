@@ -61,8 +61,10 @@ configuration wins over legacy language-version examples.
 - Put a public `Reflect` immediately after the constructor/destructor block and isolate it with blank lines. Do not add reflection
   `Version(...)` until the V1 serialization contract is intentionally stabilized.
 - Put `[[nodiscard]]` on its own line; keep `[[maybe_unused]]` attached to its parameter.
-- Chop wrapped parameter/argument lists: break immediately after `(`, put each entry on its own line, and indent four spaces rather than
-  aligning to earlier text. Prefer the chopped form for declarations with two or more parameters.
+- Chop declaration and definition parameter lists when their types and names benefit from vertical scanning. Prefer the chopped form for
+  declarations with two or more parameters. Keep calls, return expressions, and initializers on one line when they fit the configured
+  line limit. When a call must wrap, break immediately after `(`, put each argument on its own line, and use ordinary four-space
+  indentation rather than aligning to earlier text.
 - Keep `=` on the declaration/expression line and begin a wrapped right-hand side on the next line. When a condition wraps, put every
   operand on its own line and place each `&&` or `||` at the beginning of its operand's line.
 - Put one blank line after every member-function declaration except the contiguous special-member block. Group methods logically, mirror
