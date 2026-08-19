@@ -148,7 +148,7 @@ namespace Jolt
             AZ_TracePrintf("Jolt", "%s", message);
         }
 
-#if defined(JPH_ENABLE_ASSERTS)
+#ifdef JPH_ENABLE_ASSERTS
         bool ReportNativeAssertion(
             const char* expression,
             const char* message,
@@ -217,7 +217,7 @@ namespace Jolt
             JPH::AlignedAllocate = AllocateAlignedNativeMemory;
             JPH::AlignedFree = FreeAlignedNativeMemory;
             JPH::Trace = TraceNativeMessage;
-#if defined(JPH_ENABLE_ASSERTS)
+#ifdef JPH_ENABLE_ASSERTS
             JPH::AssertFailed = ReportNativeAssertion;
 #endif
 
@@ -354,7 +354,7 @@ namespace Jolt
         runtimeInfo.m_precision = Precision::Single;
         runtimeInfo.m_simdLevel = SimdLevel::Scalar;
 
-#if defined(JPH_DOUBLE_PRECISION)
+#ifdef JPH_DOUBLE_PRECISION
         runtimeInfo.m_precision = Precision::Double;
 #endif
 #if defined(JPH_CPU_WASM) && defined(JPH_USE_SSE)
@@ -376,21 +376,21 @@ namespace Jolt
 #elif defined(JPH_USE_RVV)
         runtimeInfo.m_simdLevel = SimdLevel::Rvv;
 #endif
-#if defined(JPH_CROSS_PLATFORM_DETERMINISTIC)
+#ifdef JPH_CROSS_PLATFORM_DETERMINISTIC
         runtimeInfo.m_physicsDeterminism = DeterminismCertification::CrossPlatform;
 #else
         runtimeInfo.m_physicsDeterminism = DeterminismCertification::SameBinary;
 #endif
-#if defined(JPH_EXTERNAL_PROFILE)
+#ifdef JPH_EXTERNAL_PROFILE
         runtimeInfo.m_detailedProfiling = true;
 #endif
-#if defined(JPH_TRACK_BROADPHASE_STATS)
+#ifdef JPH_TRACK_BROADPHASE_STATS
         runtimeInfo.m_broadPhaseStatistics = true;
 #endif
-#if defined(JPH_TRACK_NARROWPHASE_STATS)
+#ifdef JPH_TRACK_NARROWPHASE_STATS
         runtimeInfo.m_narrowPhaseStatistics = true;
 #endif
-#if defined(JPH_TRACK_SIMULATION_STATS)
+#ifdef JPH_TRACK_SIMULATION_STATS
         runtimeInfo.m_simulationStatistics = true;
 #endif
 

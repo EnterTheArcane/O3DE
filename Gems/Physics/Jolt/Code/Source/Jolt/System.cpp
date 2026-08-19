@@ -7826,7 +7826,7 @@ namespace Jolt
         const AZStd::span<NarrowPhaseStatistics> statistics,
         const bool reset)
     {
-#if defined(JPH_TRACK_NARROWPHASE_STATS)
+#ifdef JPH_TRACK_NARROWPHASE_STATS
         const auto readCounter = [reset](JPH::atomic<JPH::uint64>& counter)
         {
             if (reset)

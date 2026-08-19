@@ -60,7 +60,7 @@ namespace Jolt
     };
 } // namespace Jolt
 
-#if defined(O3DE_GEM_NAME)
+#ifdef O3DE_GEM_NAME
 AZ_DECLARE_MODULE_CLASS(AZ_JOIN(Gem_, O3DE_GEM_NAME), Jolt::Module)
 #else
 AZ_DECLARE_MODULE_CLASS(Gem_Jolt, Jolt::Module)

@@ -18,7 +18,7 @@
 #include <Jolt/Core/Color.h>
 #include <Jolt/Core/StreamIn.h>
 #include <Jolt/Core/StreamOut.h>
-#if defined(JPH_DEBUG_RENDERER)
+#ifdef JPH_DEBUG_RENDERER
 #include <Jolt/Renderer/DebugRenderer.h>
 #endif
 
@@ -217,7 +217,7 @@ namespace Jolt
                 return triangleCount;
             }
 
-#if defined(JPH_DEBUG_RENDERER)
+#ifdef JPH_DEBUG_RENDERER
             void Draw(
                 JPH::DebugRenderer* renderer,
                 JPH::RMat44Arg centerOfMassTransform,

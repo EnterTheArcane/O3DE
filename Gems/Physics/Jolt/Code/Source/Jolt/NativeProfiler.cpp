@@ -8,7 +8,7 @@
 #include <Jolt/Jolt.h>
 #include <Jolt/Core/Profiler.h>
 
-#if defined(JPH_EXTERNAL_PROFILE)
+#ifdef JPH_EXTERNAL_PROFILE
 
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/std/createdestroy.h>

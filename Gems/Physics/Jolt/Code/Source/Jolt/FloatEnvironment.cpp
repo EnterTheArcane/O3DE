@@ -141,7 +141,7 @@ namespace Jolt
 #if defined(_M_X64) || defined(__x86_64__)
         controlIsCanonical =
             (currentControl & FloatControlModeMask) == DefaultFloatControl;
-#if defined(__x86_64__)
+#ifdef __x86_64__
         controlIsCanonical = controlIsCanonical
             && (ReadX87Status() & FloatStatusMask) == 0;
 #endif

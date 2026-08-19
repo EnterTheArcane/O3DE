@@ -694,7 +694,7 @@ namespace Jolt
             bool m_hadHit = false;
         };
 
-#if defined(AZ_COMPILER_MSVC)
+#ifdef AZ_COMPILER_MSVC
 #define JOLT_CAPTURE_COLD __declspec(noinline)
 #else
 #define JOLT_CAPTURE_COLD [[gnu::cold, gnu::noinline]]
@@ -11309,7 +11309,7 @@ namespace Jolt
         const BodyHandle bodyHandle,
         BodySimulationStatistics& statistics) const
     {
-#if defined(JPH_TRACK_SIMULATION_STATS)
+#ifdef JPH_TRACK_SIMULATION_STATS
         AZStd::lock_guard lock(m_mutex);
         const BodySlot* slot = FindBody(bodyHandle);
         if (!slot)
@@ -19087,10 +19087,10 @@ namespace Jolt
         statistics.m_enabledFlags = flags;
         statistics.m_intervalNanoseconds =
             GetSteadyNanoseconds() - m_performanceStatisticsStartNanoseconds;
-#if !defined(JPH_TRACK_BROADPHASE_STATS)
+#ifndef JPH_TRACK_BROADPHASE_STATS
         statistics.m_availableFlags &= ~PerformanceStatisticsFlags::BroadPhase;
 #endif
-#if !defined(JPH_TRACK_NARROWPHASE_STATS)
+#ifndef JPH_TRACK_NARROWPHASE_STATS
         statistics.m_availableFlags &= ~PerformanceStatisticsFlags::NarrowPhase;
 #endif
 
@@ -19695,7 +19695,7 @@ namespace Jolt
         const AZStd::span<BroadPhaseStatistics> statistics,
         const bool reset)
     {
-#if defined(JPH_TRACK_BROADPHASE_STATS)
+#ifdef JPH_TRACK_BROADPHASE_STATS
         struct CollectionContext final
         {
             AZStd::span<BroadPhaseStatistics> m_statistics;
@@ -23548,7 +23548,7 @@ namespace Jolt
         return RaycastClosestFilteredUnlocked(request, ray, hit);
     }
 
-#if defined(AZ_COMPILER_MSVC)
+#ifdef AZ_COMPILER_MSVC
 #define JOLT_QUERY_NO_INLINE __declspec(noinline)
 #else
 #define JOLT_QUERY_NO_INLINE __attribute__((noinline))
