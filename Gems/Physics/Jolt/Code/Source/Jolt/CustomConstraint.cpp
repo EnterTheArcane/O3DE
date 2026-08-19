@@ -9,6 +9,7 @@
 
 #include <Jolt/FloatEnvironment.h>
 
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/utility/move.h>

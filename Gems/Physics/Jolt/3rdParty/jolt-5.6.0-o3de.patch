@@ -851,3 +851,18 @@ diff --git a/Jolt/Physics/Body/BodyManager.cpp b/Jolt/Physics/Body/BodyManager.c
  		}
  
  		UnlockAllBodies();
+
+diff --git a/Jolt/Jolt.cmake b/Jolt/Jolt.cmake
+--- a/Jolt/Jolt.cmake
++++ b/Jolt/Jolt.cmake
+@@ -781,7 +781,9 @@ source_group(TREE ${JOLT_PHYSICS_ROOT} FILES ${JOLT_PHYSICS_SRC_FILES} ${JOLT_P
+ 
+ # Create Jolt lib
+-if (JPH_BUILD_SHARED_LIBS)
++if (JPH_BUILD_OBJECT_LIBS)
++	set(JPH_LIB_TYPE OBJECT)
++elseif (JPH_BUILD_SHARED_LIBS)
+ 	# Set default visibility to hidden
+ 	set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+ 
+ 	set(JPH_LIB_TYPE SHARED)

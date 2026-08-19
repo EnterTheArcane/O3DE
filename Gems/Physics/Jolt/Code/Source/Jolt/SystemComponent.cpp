@@ -284,24 +284,6 @@ namespace Jolt
                     [](const RuntimeInfo& runtimeInfo)
                     {
                         return AZStd::string(runtimeInfo.m_configuration);
-                    })
-                ->Method(
-                    "GetPatchHash",
-                    [](const RuntimeInfo& runtimeInfo)
-                    {
-                        return AZStd::string(runtimeInfo.m_patchHash);
-                    })
-                ->Method(
-                    "GetPatchRevision",
-                    [](const RuntimeInfo& runtimeInfo)
-                    {
-                        return AZStd::string(runtimeInfo.m_patchRevision);
-                    })
-                ->Method(
-                    "GetSourceRevision",
-                    [](const RuntimeInfo& runtimeInfo)
-                    {
-                        return AZStd::string(runtimeInfo.m_sourceRevision);
                     });
 
             behaviorContext->Class<WorldTransform>("WorldTransform")

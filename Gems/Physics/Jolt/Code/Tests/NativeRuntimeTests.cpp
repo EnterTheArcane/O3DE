@@ -29,20 +29,8 @@ namespace Jolt
         ASSERT_TRUE(runtime);
 
         const RuntimeInfo runtimeInfo = runtime.GetRuntimeInfo();
-        constexpr AZStd::string_view expectedPatchHash =
-            "ca1e87d9e13394b9ae973672514a4017ed79296e71c92f53c361556a36bf2d48";
-        constexpr size_t patchHashHalfLength = expectedPatchHash.size() / 2;
         EXPECT_EQ(runtimeInfo.m_version, (Version{.m_major = 5, .m_minor = 6, .m_patch = 0}));
         EXPECT_NE(runtimeInfo.m_buildFingerprint, 0);
-        ASSERT_EQ(runtimeInfo.m_patchHash.size(), expectedPatchHash.size());
-        EXPECT_EQ(
-            runtimeInfo.m_patchHash.substr(0, patchHashHalfLength),
-            expectedPatchHash.substr(0, patchHashHalfLength));
-        EXPECT_EQ(
-            runtimeInfo.m_patchHash.substr(patchHashHalfLength),
-            expectedPatchHash.substr(patchHashHalfLength));
-        EXPECT_EQ(runtimeInfo.m_patchRevision, "jolt-v5.6.0-o3de-16");
-        EXPECT_EQ(runtimeInfo.m_sourceRevision, "e77f175595e64cb44218cc9d9d56fc365ad0e36a");
         EXPECT_EQ(runtimeInfo.m_hairDeterminism, DeterminismCertification::SameBinary);
         EXPECT_EQ(runtimeInfo.m_physicsDeterminism, DeterminismCertification::CrossPlatform);
         EXPECT_FALSE(runtimeInfo.m_configuration.empty());

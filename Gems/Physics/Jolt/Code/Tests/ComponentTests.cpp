@@ -754,9 +754,6 @@ namespace Jolt
         const AZ::BehaviorClass* runtimeInfo = behaviorContext.m_classes.at("JoltRuntimeInfo");
         EXPECT_TRUE(runtimeInfo->m_properties.contains("buildFingerprint"));
         EXPECT_TRUE(runtimeInfo->m_methods.contains("GetConfiguration"));
-        EXPECT_TRUE(runtimeInfo->m_methods.contains("GetPatchHash"));
-        EXPECT_TRUE(runtimeInfo->m_methods.contains("GetPatchRevision"));
-        EXPECT_TRUE(runtimeInfo->m_methods.contains("GetSourceRevision"));
         EXPECT_TRUE(runtimeInfo->m_properties.contains("broadPhaseStatistics"));
         EXPECT_TRUE(runtimeInfo->m_properties.contains("narrowPhaseStatistics"));
 

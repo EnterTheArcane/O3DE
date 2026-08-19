@@ -99,9 +99,6 @@ namespace Jolt
         AZ::u64 m_buildFingerprint = 0;
 
         AZStd::string_view m_configuration;
-        AZStd::string_view m_patchHash;
-        AZStd::string_view m_patchRevision;
-        AZStd::string_view m_sourceRevision;
 
         DeterminismCertification m_hairDeterminism = DeterminismCertification::None;
         DeterminismCertification m_physicsDeterminism = DeterminismCertification::None;

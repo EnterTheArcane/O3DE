@@ -9,6 +9,8 @@
 
 #include <Jolt/MaterialInternal.h>
 
+#include <AzCore/Casting/numeric_cast.h>
+
 #include <Jolt/Physics/Collision/CollideSoftBodyVertexIterator.h>
 #include <Jolt/Physics/Collision/CollisionDispatch.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>

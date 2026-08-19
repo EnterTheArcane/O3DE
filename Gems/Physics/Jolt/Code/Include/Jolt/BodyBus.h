@@ -9,8 +9,8 @@
 
 #include <Jolt/Event.h>
 
-#include <AzCore/Component/ComponentBus.h>
 #include <AzCore/base.h>
+#include <AzCore/Component/ComponentBus.h>
 
 namespace Jolt
 {

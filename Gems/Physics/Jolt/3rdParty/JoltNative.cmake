@@ -21,12 +21,6 @@ if(TARGET Jolt)
     return()
 endif()
 
-set(jolt_source_revision "e77f175595e64cb44218cc9d9d56fc365ad0e36a")
-set(jolt_archive_hash "6e069ee0172478cc78182047aac87e5310ba14a67a53348ae14cc37801fd3f8e")
-set(jolt_archive_name "v5.6.0.tar.gz")
-set(jolt_patch_file "${CMAKE_CURRENT_LIST_DIR}/jolt-5.6.0-o3de.patch")
-file(SHA256 "${jolt_patch_file}" jolt_patch_hash)
-
 option(LY_JOLT_DOUBLE_PRECISION "Build Jolt with double-precision world positions" OFF)
 option(LY_JOLT_ENABLE_DEBUG_RENDERING "Build the native diagnostic renderer" ON)
 option(
@@ -45,26 +39,15 @@ option(
     LY_JOLT_ENABLE_NARROWPHASE_STATISTICS
     "Collect native narrowphase query counters"
     OFF)
-set(
-    LY_JOLT_SIMD_LEVEL
-    "AVX2"
-    CACHE STRING
-    "Jolt x86 SIMD level: SSE2, SSE41, SSE42, AVX, AVX2, or AVX512")
-set_property(CACHE LY_JOLT_SIMD_LEVEL PROPERTY STRINGS SSE2 SSE41 SSE42 AVX AVX2 AVX512)
-
-if(NOT LY_JOLT_SIMD_LEVEL MATCHES "^(SSE2|SSE41|SSE42|AVX|AVX2|AVX512)$")
-    message(FATAL_ERROR "LY_JOLT_SIMD_LEVEL must be SSE2, SSE41, SSE42, AVX, AVX2, or AVX512.")
-endif()
-
 block()
     o3de_fetch_content(JoltPhysics
         VERSION "v5.6.0"
         LICENSE "MIT"
-        URL "https://github.com/jrouwe/JoltPhysics/archive/refs/tags/${jolt_archive_name}"
-        URL_HASH "${jolt_archive_hash}"
+        URL "https://github.com/jrouwe/JoltPhysics/archive/refs/tags/v5.6.0.tar.gz"
+        URL_HASH "6e069ee0172478cc78182047aac87e5310ba14a67a53348ae14cc37801fd3f8e"
         GIT "https://github.com/jrouwe/JoltPhysics.git"
-        GIT_HASH "${jolt_source_revision}"
-        PATCH_FILES "${jolt_patch_file}"
+        GIT_HASH "e77f175595e64cb44218cc9d9d56fc365ad0e36a"
+        PATCH_FILES "${CMAKE_CURRENT_LIST_DIR}/jolt-5.6.0-o3de.patch"
         SOURCE_SUBDIR Build
         EXCLUDE_FROM_ALL
     )
@@ -83,6 +66,7 @@ block()
     set(FLOATING_POINT_EXCEPTIONS_ENABLED OFF)
     set(GENERATE_DEBUG_SYMBOLS OFF)
     set(INTERPROCEDURAL_OPTIMIZATION OFF)
+    set(JPH_BUILD_OBJECT_LIBS ON)
     set(JPH_BUILD_SHARED_LIBS OFF)
     set(JPH_SHADER_DEBUG_SYMBOLS OFF)
     set(JPH_SHADER_OPTIMIZATION ON)
@@ -99,6 +83,9 @@ block()
     set(TRACK_BROADPHASE_STATS ${LY_JOLT_ENABLE_BROADPHASE_STATISTICS})
     set(TRACK_NARROWPHASE_STATS ${LY_JOLT_ENABLE_NARROWPHASE_STATISTICS})
     set(USE_ASSERTS OFF)
+
+    # Jolt uses its SSE2 path when every optional x86 extension is disabled,
+    # matching the engine's portable x64 baseline.
     set(USE_AVX OFF)
     set(USE_AVX2 OFF)
     set(USE_AVX512 OFF)
@@ -111,46 +98,10 @@ block()
     set(USE_STATIC_MSVC_RUNTIME_LIBRARY OFF)
     set(USE_WASM_SIMD ON)
 
-    if(LY_JOLT_SIMD_LEVEL MATCHES "^(SSE41|SSE42|AVX|AVX2|AVX512)$")
-        set(USE_SSE4_1 ON)
-    endif()
-    if(LY_JOLT_SIMD_LEVEL MATCHES "^(SSE42|AVX|AVX2|AVX512)$")
-        set(USE_SSE4_2 ON)
-    endif()
-    if(LY_JOLT_SIMD_LEVEL MATCHES "^(AVX2|AVX512)$")
-        set(USE_LZCNT ON)
-        set(USE_TZCNT ON)
-    endif()
-    if(LY_JOLT_SIMD_LEVEL MATCHES "^(AVX|AVX2|AVX512)$")
-        set(USE_AVX ON)
-    endif()
-    if(LY_JOLT_SIMD_LEVEL MATCHES "^(AVX2|AVX512)$")
-        set(USE_AVX2 ON)
-        set(USE_F16C ON)
-    endif()
-    if(LY_JOLT_SIMD_LEVEL STREQUAL "AVX512")
-        set(USE_AVX512 ON)
-    endif()
-
     FetchContent_MakeAvailable(JoltPhysics)
 endblock()
 
-set_target_properties(Jolt PROPERTIES DEBUG_POSTFIX "")
-set_target_properties(Jolt PROPERTIES
-    JOLT_PATCH_HASH "${jolt_patch_hash}"
-    JOLT_SOURCE_REVISION "${jolt_source_revision}"
-)
 set_property(TARGET Jolt PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    target_link_options(Jolt INTERFACE
-        "$<$<CONFIG:Release>:${CMAKE_CXX_LINK_OPTIONS_IPO}>"
-    )
-else()
-    target_link_options(Jolt INTERFACE
-        "$<$<CONFIG:Release>:${CMAKE_CXX_COMPILE_OPTIONS_IPO}>"
-        "$<$<CONFIG:Release>:${CMAKE_CXX_LINK_OPTIONS_IPO}>"
-    )
-endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     target_compile_options(Jolt PUBLIC ${O3DE_COMPILE_OPTION_DISABLE_FAST_MATH})
@@ -173,36 +124,10 @@ endif()
 
 get_property(this_gem_root GLOBAL PROPERTY "@GEMROOT:${gem_name}@")
 ly_get_engine_relative_source_dir(${this_gem_root} relative_this_gem_root)
-o3de_fixup_fetchcontent_targets(
-    IDE_FOLDER "${relative_this_gem_root}/External"
-    TARGETS Jolt
-)
+set_property(TARGET Jolt PROPERTY FOLDER "${relative_this_gem_root}/External")
+target_compile_options(Jolt ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS})
 
 FetchContent_GetProperties(JoltPhysics SOURCE_DIR jolt_source_dir)
-set_property(TARGET Jolt PROPERTY JOLT_SOURCE_ROOT "${jolt_source_dir}")
-
-# The Gem publishes its own headers under the Jolt/ include prefix, so a Gem header
-# must never shadow a native Jolt header for translation units that see both.
-get_target_property(Jolt_NATIVE_SOURCES Jolt SOURCES)
-set(Jolt_NATIVE_HEADERS)
-foreach(jolt_native_source IN LISTS Jolt_NATIVE_SOURCES)
-    if(IS_ABSOLUTE "${jolt_native_source}")
-        file(RELATIVE_PATH jolt_native_source "${jolt_source_dir}" "${jolt_native_source}")
-    endif()
-    if(jolt_native_source MATCHES "^Jolt/.+\\.(h|inl)$")
-        list(APPEND Jolt_NATIVE_HEADERS "${jolt_native_source}")
-    endif()
-endforeach()
-include(${this_gem_root}/Code/jolt_api_files.cmake)
-foreach(jolt_public_header IN LISTS FILES)
-    string(REGEX REPLACE "^Include/" "" jolt_relative_header "${jolt_public_header}")
-    if(jolt_relative_header IN_LIST Jolt_NATIVE_HEADERS)
-        message(FATAL_ERROR
-            "Gem header ${jolt_relative_header} collides with a native Jolt header. "
-            "Rename the Gem header before exposing it through Gem::${gem_name}.API."
-        )
-    endif()
-endforeach()
 
 # Only the license ships. Jolt's headers and sources are intentionally not installed:
 # nothing in an installed engine compiles against them, and withholding them is what

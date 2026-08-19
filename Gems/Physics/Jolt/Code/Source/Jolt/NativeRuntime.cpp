@@ -47,11 +47,6 @@ namespace Jolt
         AZStd::atomic_uint64_t NativeReallocationCount{0};
         AZStd::mutex NativeMemoryStatisticsMutex;
 
-        constexpr size_t Sha256CharacterCount = 64;
-        // Preserve readable padding for vectorized fixed-length comparisons.
-        alignas(64) constinit char NativePatchHashStorage[Sha256CharacterCount * 2] = JOLT_NATIVE_PATCH_HASH;
-        static_assert(sizeof(JOLT_NATIVE_PATCH_HASH) - 1 == Sha256CharacterCount);
-
         [[nodiscard]]
         bool IsNativeMemoryStatisticsEnabled()
         {
@@ -263,30 +258,11 @@ namespace Jolt
     {
         static const AZ::u64 fingerprint = []
         {
-            constexpr AZ::u32 version = JPH_VERSION_MAJOR << 16
-                | JPH_VERSION_MINOR << 8
-                | JPH_VERSION_PATCH;
+            constexpr AZ::u32 version = JPH_VERSION_MAJOR << 16 | JPH_VERSION_MINOR << 8 | JPH_VERSION_PATCH;
             const char* configuration = JPH::GetConfigurationString();
-            const AZ::HashValue64 configurationHash = AZ::TypeHash64(
-                reinterpret_cast<const AZ::u8*>(configuration),
-                std::strlen(configuration));
-            constexpr AZStd::string_view sourceRevision = JOLT_NATIVE_SOURCE_REVISION;
-            const AZ::HashValue64 sourceRevisionHash = AZ::TypeHash64(
-                reinterpret_cast<const AZ::u8*>(sourceRevision.data()),
-                sourceRevision.size());
-            constexpr AZStd::string_view patchRevision = JOLT_NATIVE_PATCH_REVISION;
-            const AZ::HashValue64 patchRevisionHash = AZ::TypeHash64(
-                reinterpret_cast<const AZ::u8*>(patchRevision.data()),
-                patchRevision.size());
-            constexpr AZStd::string_view patchHash = JOLT_NATIVE_PATCH_HASH;
-            const AZ::HashValue64 patchContentHash = AZ::TypeHash64(
-                reinterpret_cast<const AZ::u8*>(patchHash.data()),
-                patchHash.size());
-
+            const AZ::HashValue64 configurationHash = AZ::TypeHash64(reinterpret_cast<const AZ::u8*>(configuration), std::strlen(configuration));
             AZ::HashValue64 buildHash = AZ::TypeHash64(version, configurationHash);
-            buildHash = AZ::TypeHash64(sourceRevisionHash, buildHash);
-            buildHash = AZ::TypeHash64(patchRevisionHash, buildHash);
-            buildHash = AZ::TypeHash64(patchContentHash, buildHash);
+            buildHash = AZ::TypeHash64(JOLT_NATIVE_PATCH_FINGERPRINT, buildHash);
             return static_cast<AZ::u64>(buildHash);
         }();
         return fingerprint;
@@ -374,9 +350,6 @@ namespace Jolt
         };
         runtimeInfo.m_buildFingerprint = GetNativeBuildFingerprint();
         runtimeInfo.m_configuration = JPH::GetConfigurationString();
-        runtimeInfo.m_patchHash = AZStd::string_view(NativePatchHashStorage, Sha256CharacterCount);
-        runtimeInfo.m_patchRevision = JOLT_NATIVE_PATCH_REVISION;
-        runtimeInfo.m_sourceRevision = JOLT_NATIVE_SOURCE_REVISION;
         runtimeInfo.m_hairDeterminism = DeterminismCertification::SameBinary;
         runtimeInfo.m_precision = Precision::Single;
         runtimeInfo.m_simdLevel = SimdLevel::Scalar;

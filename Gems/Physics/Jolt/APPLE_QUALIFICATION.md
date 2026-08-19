@@ -239,8 +239,8 @@ them as unavailable rather than passing them implicitly.
 | Configuration | Debug compile smoke, Profile qualification, Release timing |
 | Architecture | native arm64; x86_64 only on actual Intel hardware or as a separately labeled Rosetta compile/run experiment |
 
-For Apple Silicon, verify the effective private SIMD configuration in `RuntimeInfo` and native compile commands. Do not pass the
-x86-specific `LY_JOLT_SIMD_LEVEL` cache values to an ARM build unless `JoltNative.cmake` is explicitly updated to support that policy.
+For Apple Silicon, verify the effective private SIMD configuration in `RuntimeInfo` and native compile commands. `JoltNative.cmake`
+uses the engine's fixed platform baseline: SSE2 on x86, NEON on ARM, and SIMD128 on WebAssembly.
 
 ## Private FetchContent and installed-engine proof
 

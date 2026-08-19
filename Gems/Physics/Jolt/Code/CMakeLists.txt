@@ -33,37 +33,37 @@ ly_add_target(
         PUBLIC
             AZ::AzCore
         PRIVATE
-            Jolt
             Gem::${gem_name}.API
 )
 set_property(TARGET ${gem_name}.Private.Static PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+# Linking the object library folds native Jolt into this private archive.
+target_link_libraries(${gem_name}.Private.Static PRIVATE Jolt)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    target_link_options(${gem_name}.Private.Static INTERFACE
+        "$<$<CONFIG:Release>:${CMAKE_CXX_LINK_OPTIONS_IPO}>"
+    )
+else()
+    target_link_options(${gem_name}.Private.Static INTERFACE
+        "$<$<CONFIG:Release>:${CMAKE_CXX_COMPILE_OPTIONS_IPO}>"
+        "$<$<CONFIG:Release>:${CMAKE_CXX_LINK_OPTIONS_IPO}>"
+    )
+endif()
 if(MSVC)
     target_compile_options(${gem_name}.Private.Static PRIVATE /GR-)
 else()
     target_compile_options(${gem_name}.Private.Static PRIVATE -fno-rtti)
 endif()
 
-set(jolt_native_target Jolt)
-get_target_property(jolt_source_dir ${jolt_native_target} JOLT_SOURCE_ROOT)
-if(NOT jolt_source_dir)
-    message(FATAL_ERROR "The Jolt package did not provide its native source root.")
-endif()
-get_target_property(jolt_patch_revision ${jolt_native_target} JOLT_PATCH_REVISION)
-if(NOT jolt_patch_revision)
-    message(FATAL_ERROR "The Jolt package did not provide its patch revision.")
-endif()
-get_target_property(jolt_patch_hash ${jolt_native_target} JOLT_PATCH_HASH)
-if(NOT jolt_patch_hash)
-    message(FATAL_ERROR "The Jolt package did not provide its patch hash.")
-endif()
-get_target_property(jolt_source_revision ${jolt_native_target} JOLT_SOURCE_REVISION)
-if(NOT jolt_source_revision)
-    message(FATAL_ERROR "The Jolt package did not provide its source revision.")
-endif()
+set_property(
+    DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/../3rdParty/jolt-5.6.0-o3de.patch")
+file(
+    SHA256
+    "${CMAKE_CURRENT_LIST_DIR}/../3rdParty/jolt-5.6.0-o3de.patch"
+    jolt_patch_hash)
+string(SUBSTRING "${jolt_patch_hash}" 0 16 jolt_patch_fingerprint)
 target_compile_definitions(${gem_name}.Private.Static PRIVATE
-    JOLT_NATIVE_PATCH_HASH="${jolt_patch_hash}"
-    JOLT_NATIVE_PATCH_REVISION="${jolt_patch_revision}"
-    JOLT_NATIVE_SOURCE_REVISION="${jolt_source_revision}"
+    JOLT_NATIVE_PATCH_FINGERPRINT=0x${jolt_patch_fingerprint}ULL
 )
 
 ly_add_target(
@@ -237,33 +237,3 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
         TIMEOUT 600
     )
 endif()
-
-# This directory's targets are re-declared as IMPORTED libraries in an installed
-# engine, and the STATIC ones carry their private Jolt dependency into that
-# declaration. Nothing re-runs this file there, so emit the imported Jolt target into
-# the generated permutation.cmake ahead of the targets that link it.
-#
-# Only the archive is published. Jolt's headers are not installed, so the target is
-# link-only and cannot be used to compile against Jolt directly.
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} APPEND_STRING PROPERTY O3DE_SUBDIRECTORY_INSTALL_CODE
-[==[
-if(NOT TARGET Jolt)
-    add_library(Jolt STATIC IMPORTED GLOBAL)
-    set(jolt_library_folder "${LY_ROOT_FOLDER}/lib/${PAL_PLATFORM_NAME}")
-    set_target_properties(Jolt PROPERTIES
-        IMPORTED_LOCATION "${jolt_library_folder}/profile/${CMAKE_STATIC_LIBRARY_PREFIX}Jolt${CMAKE_STATIC_LIBRARY_SUFFIX}"
-        IMPORTED_LOCATION_DEBUG "${jolt_library_folder}/debug/${CMAKE_STATIC_LIBRARY_PREFIX}Jolt${CMAKE_STATIC_LIBRARY_SUFFIX}"
-        IMPORTED_LOCATION_RELEASE "${jolt_library_folder}/release/${CMAKE_STATIC_LIBRARY_PREFIX}Jolt${CMAKE_STATIC_LIBRARY_SUFFIX}"
-    )
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        target_link_options(Jolt INTERFACE
-            "$<$<CONFIG:Release>:${CMAKE_CXX_LINK_OPTIONS_IPO}>"
-        )
-    else()
-        target_link_options(Jolt INTERFACE
-            "$<$<CONFIG:Release>:${CMAKE_CXX_COMPILE_OPTIONS_IPO}>"
-            "$<$<CONFIG:Release>:${CMAKE_CXX_LINK_OPTIONS_IPO}>"
-        )
-    endif()
-endif()
-]==])
