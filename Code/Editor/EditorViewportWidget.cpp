@@ -159,7 +159,6 @@ static void MarkCameraEntityDirty(const AZ::EntityId entityId)
     AzToolsFramework::ScopedUndoBatch undoBatch("EditorCameraComponentEntityChange");
     undoBatch.MarkEntityDirty(entityId);
 }
-
 static void PopViewGroupForDefaultContext()
 {
     auto* atomViewportRequests = AZ::Interface<AZ::RPI::ViewportContextRequestsInterface>::Get();
@@ -628,10 +627,7 @@ void EditorViewportWidget::OnEditorNotifyEvent(EEditorNotifyEvent event)
         // we restore the default viewport camera when closing the level to ensure if there is a pushed view group for a particular
         // editor camera component (view entity) it is popped/cleared to return to a default state when opening the next level
         SetDefaultCamera();
-        if (m_renderViewport)
-        {
-            m_renderViewport->SetScene(nullptr);
-        }
+        m_renderViewport->SetScene(nullptr);
         break;
 
     case eNotify_OnEndLoad:

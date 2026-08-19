@@ -158,7 +158,6 @@ namespace UnitTest
                 behaviorContext->Class<PythonReflectionObjectProxyTester>("TestObject")
                     ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation)
                     ->Attribute(AZ::Script::Attributes::Module, "test.proxy")
-                    ->Attribute(AZ::Script::Attributes::Alias, "TestObjectAlias")
                     ->Method("doAdd", &PythonReflectionObjectProxyTester::DoAdd)
                     ->Property("myString", [](PythonReflectionObjectProxyTester* that) { return that->m_testString; }, [](PythonReflectionObjectProxyTester* that, AZStd::string_view value) { that->m_testString = value; })
                     ->Property("theBuffer", &PythonReflectionObjectProxyTester::GetBuffer, &PythonReflectionObjectProxyTester::SetBuffer)
@@ -1310,7 +1309,7 @@ namespace UnitTest
                 import azlmbr.object
                 import azlmbr.test.proxy
 
-                proxyTest = azlmbr.test.proxy.TestObjectAlias()
+                proxyTest = azlmbr.test.proxy.TestObject()
 
                 listOfAttributes = azlmbr.object.dir(proxyTest)
                 if (listOfAttributes is not None):

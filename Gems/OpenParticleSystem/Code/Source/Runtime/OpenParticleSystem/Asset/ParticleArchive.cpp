@@ -91,9 +91,9 @@ namespace OpenParticle
         auto alignSize = SimuCore::ParticleCore::ParticleDataPool::AlignSize(stride);
         auto& block = buffers[alignSize];
         AZ::u32 offset = static_cast<AZ::u32>(block.size());
-        block.resize(block.size() + alignSize, 0);
+        block.resize(block.size() + alignSize);
         AZ::u8* dst = &block[offset];
-        memcpy(dst, src, stride);
+        memcpy(dst, src, alignSize);
         
         return offset;
     }
@@ -274,13 +274,6 @@ namespace OpenParticle
 
     ParticleArchive& ParticleArchive::PreWarm(const AZStd::any& val)
     {
-        if (val.empty())
-        {
-            const SimuCore::ParticleCore::ParticleSystem::PreWarm preWarm{};
-            m_preWarm = BufferEmplace(m_buffers, &preWarm, sizeof(preWarm));
-            return *this;
-        }
-
         auto pair = AnySize(m_serializeContext, val);
         if (!pair.second)
         {

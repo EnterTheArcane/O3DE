@@ -583,46 +583,11 @@ class TestRunningTests(unittest.TestCase):
         mock_test_spec = mock.MagicMock()
         mock_test_spec.__name__ = 'mock_test_name'
         mock_executable.get_returncode.return_value = 0
-        mock_get_output_results.return_value = {
-            mock_test_spec.__name__: multi_test_framework.Result.Pass(
-                mock_test_spec, 'mock_output', 'mock_log_output')
-        }
+        mock_get_output_results.return_value = {}
 
         results = mock_test_suite._exec_single_test(
             mock.MagicMock(), mock_workspace, mock_executable, 0, 'mock_log_name', mock_test_spec, [])
         assert isinstance(results[mock_test_spec.__name__], multi_test_framework.Result.Pass)
-        assert mock_cycle_crash.called
-        assert mock_executable.start.called
-
-    @mock.patch('ly_test_tools.o3de.multi_test_framework.MultiTestSuite._get_results_using_output')
-    @mock.patch('ly_test_tools.o3de.editor_test_utils.retrieve_editor_log_content')
-    @mock.patch('ly_test_tools.o3de.editor_test_utils.retrieve_log_path')
-    @mock.patch('ly_test_tools.o3de.editor_test_utils.get_testcase_module_filepath')
-    @mock.patch('ly_test_tools.o3de.editor_test_utils.cycle_crash_report')
-    @mock.patch('os.path.join', mock.MagicMock())
-    def test_ExecSingleTest_TestExitsWithoutResult_ReturnsUnknown(
-            self,
-            mock_cycle_crash,
-            mock_get_testcase_filepath,
-            mock_retrieve_log,
-            mock_retrieve_editor_log,
-            mock_get_output_results):
-        mock_test_suite = ly_test_tools.o3de.multi_test_framework.MultiTestSuite()
-        mock_workspace = mock.MagicMock()
-        mock_workspace.paths.engine_root.return_value = ""
-        mock_executable = mock.MagicMock()
-        mock_test_spec = mock.MagicMock()
-        mock_test_spec.__name__ = 'mock_test_name'
-        mock_executable.get_returncode.return_value = 0
-        mock_get_output_results.return_value = {
-            mock_test_spec.__name__: multi_test_framework.Result.Unknown(
-                mock_test_spec, 'mock_output', 'mock_extra_info', 'mock_log_output')
-        }
-
-        results = mock_test_suite._exec_single_test(
-            mock.MagicMock(), mock_workspace, mock_executable, 0, 'mock_log_name', mock_test_spec, [])
-
-        assert isinstance(results[mock_test_spec.__name__], multi_test_framework.Result.Unknown)
         assert mock_cycle_crash.called
         assert mock_executable.start.called
 

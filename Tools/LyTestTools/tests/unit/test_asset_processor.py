@@ -6,10 +6,9 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 
 Unit tests for ly_test_tools.o3de.asset_processor
 """
-from collections import namedtuple
 import datetime
-import os
 import unittest.mock as mock
+import os
 
 import pytest
 
@@ -33,43 +32,6 @@ mock_project_path = os.path.join('some', 'dir', mock_project)
             mock.MagicMock(return_value=(mock_engine_root, mock_dev_path)))
 @mock.patch('ly_test_tools.o3de.asset_processor.logger.warning', mock.MagicMock())
 class TestAssetProcessor(object):
-
-    def test_ReadControlPort_LogEntryMissing_UsesLoopbackListener(self, tmp_path):
-        workspace = mock.MagicMock()
-        workspace.paths.ap_gui_log.return_value = str(tmp_path / "missing.log")
-        under_test = ly_test_tools.o3de.asset_processor.AssetProcessor(workspace)
-        under_test._ap_proc = mock.MagicMock(pid=42)
-        under_test._ap_proc.poll.return_value = None
-
-        address = namedtuple("Address", ["ip", "port"])
-        connection = namedtuple("Connection", ["status", "laddr"])
-        process = mock.MagicMock()
-        process.connections.return_value = [
-            connection(ly_test_tools.o3de.asset_processor.psutil.CONN_LISTEN, address("::", 4567)),
-            connection(ly_test_tools.o3de.asset_processor.psutil.CONN_LISTEN, address("127.0.0.1", 4568)),
-        ]
-
-        with mock.patch("ly_test_tools.o3de.asset_processor.psutil.Process", return_value=process):
-            assert under_test.read_control_port() == 4568
-
-    def test_ReadListeningPort_LogEntryMissing_UsesWildcardListener(self, tmp_path):
-        workspace = mock.MagicMock()
-        workspace.paths.ap_gui_log.return_value = str(tmp_path / "missing.log")
-        under_test = ly_test_tools.o3de.asset_processor.AssetProcessor(workspace)
-        under_test._ap_proc = mock.MagicMock(pid=42)
-        under_test._ap_proc.poll.return_value = None
-
-        address = namedtuple("Address", ["ip", "port"])
-        connection = namedtuple("Connection", ["status", "laddr"])
-        process = mock.MagicMock()
-        process.connections.return_value = [
-            connection(ly_test_tools.o3de.asset_processor.psutil.CONN_LISTEN, address("::", 4567)),
-            connection(ly_test_tools.o3de.asset_processor.psutil.CONN_LISTEN, address("127.0.0.1", 4568)),
-        ]
-
-        with mock.patch("ly_test_tools.o3de.asset_processor.psutil.Process", return_value=process):
-            assert under_test.read_listening_port() == 4567
-
 
     @mock.patch('ly_test_tools._internal.managers.workspace.AbstractWorkspaceManager')
     def test_Init_DefaultParams_MembersSetCorrectly(self, mock_workspace):

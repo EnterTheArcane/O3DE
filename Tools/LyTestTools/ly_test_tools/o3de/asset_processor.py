@@ -202,55 +202,26 @@ class AssetProcessor(object):
     def read_listening_port(self):
         return self.read_port_from_log("Listening Port")
 
-    def _read_port_from_process(self, port_type):
-        if not self._ap_proc or self._ap_proc.poll() is not None:
-            return None
-
-        try:
-            connections = psutil.Process(self._ap_proc.pid).connections(kind="tcp")
-        except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.ZombieProcess):
-            return None
-
-        loopback_addresses = {"127.0.0.1", "::1"}
-        wildcard_addresses = {"0.0.0.0", "::"}
-        expected_addresses = loopback_addresses
-        if port_type == "Listening Port":
-            expected_addresses = wildcard_addresses
-
-        listening_ports = {
-            connection.laddr.port
-            for connection in connections
-            if connection.status == psutil.CONN_LISTEN
-            and connection.laddr
-            and connection.laddr.ip in expected_addresses
-        }
-        if len(listening_ports) != 1:
-            return None
-
-        port = listening_ports.pop()
-        logger.debug(f"Read port type {port_type} from Asset Processor process: {port}")
-        return port
-
     def read_port_from_log(self, port_type):
         """
-        Read a port chosen by AP from its log or live process sockets.
+        Read the a port chosen by AP from the log
         """
         port = None
 
         def _get_port_from_log():
             nonlocal port
-            if os.path.exists(self._workspace.paths.ap_gui_log()):
-                log = APLogParser(self._workspace.paths.ap_gui_log())
-                if len(log.runs):
-                    try:
-                        port = log.runs[-1][port_type]
-                        logger.debug(f"Read port type {port_type} : {port}")
-                        return True
-                    except Exception as ex:  # intentionally broad
-                        logger.debug(f"Failed in LyTestTools to read port type {port_type} : {port} from file", exc_info=ex)
+            if not os.path.exists(self._workspace.paths.ap_gui_log()):
+                return False
 
-            port = self._read_port_from_process(port_type)
-            return port is not None
+            log = APLogParser(self._workspace.paths.ap_gui_log())
+            if len(log.runs):
+                try:
+                    port = log.runs[-1][port_type]
+                    logger.debug(f"Read port type {port_type} : {port}")
+                    return True
+                except Exception as ex:  # intentionally broad
+                    logger.debug(f"Failed in LyTestTools to read port type {port_type} : {port} from file", exc_info=ex)
+            return False
 
         # the timeout needs to be large enough to load all the dynamic libraries the AP-GUI loads since the control port
         # is opened after all the DLL loads, this can take a long time in a Debug build
