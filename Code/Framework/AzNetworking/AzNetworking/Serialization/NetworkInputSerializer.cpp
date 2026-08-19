@@ -23,6 +23,17 @@ namespace AzNetworking
         ;
     }
 
+    NetworkInputSerializer::NetworkInputSerializer(
+        uint8_t* buffer,
+        uint32_t bufferCapacity,
+        const Internal::SymbolSerializationContext& symbolSerializationContext)
+        : ISerializer(&symbolSerializationContext)
+        , m_bufferSize(0)
+        , m_bufferCapacity(bufferCapacity)
+        , m_buffer(buffer)
+    {
+    }
+
     SerializerMode NetworkInputSerializer::GetSerializerMode() const
     {
         return SerializerMode::ReadFromObject;

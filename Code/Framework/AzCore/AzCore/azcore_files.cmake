@@ -7,6 +7,7 @@
 #
 
 set(FILES
+    AzCore.natvis
     AzCoreModule.h
     AzCoreModule.cpp
     Asset/AssetCommon.cpp
@@ -713,6 +714,24 @@ set(FILES
     Statistics/StatisticsManager.h
     StringFunc/StringFunc.cpp
     StringFunc/StringFunc.h
+    Symbol/Internal/SymbolAllocator.h
+    Symbol/Internal/SymbolArena.h
+    Symbol/Internal/SymbolArena.cpp
+    Symbol/Internal/SymbolEntry.h
+    Symbol/Internal/SymbolFailure.h
+    Symbol/Internal/SymbolFailure.cpp
+    Symbol/Internal/SymbolGroup.h
+    Symbol/Internal/SymbolGroup.cpp
+    Symbol/Internal/SymbolTable.h
+    Symbol/Internal/SymbolTable.cpp
+    Symbol/Internal/SymbolValidation.h
+    Symbol/Symbol.h
+    Symbol/Symbol.cpp
+    Symbol/SymbolJsonSerializer.h
+    Symbol/SymbolJsonSerializer.cpp
+    Symbol/SymbolLiteral.h
+    Symbol/SymbolSerializer.h
+    Symbol/SymbolSerializer.cpp
     Task/Internal/Task.cpp
     Task/Internal/Task.inl
     Task/Internal/Task.h
@@ -744,6 +763,7 @@ set(FILES
     Utils/TypeHash.h
     Utils/Utils.cpp
     Utils/Utils.h
+    Utils/NoDestructor.h
     variadic.h
     XML/rapidxml.h
     XML/rapidxml_iterators.h

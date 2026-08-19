@@ -164,7 +164,9 @@ namespace AzNetworking
                 break;
             }
 
-            NetworkOutputSerializer serializer(buffer.GetBuffer(), static_cast<uint32_t>(buffer.GetSize()));
+            auto& symbolAdmissionPolicy = Internal::GetSymbolAdmissionPolicy(*this);
+            const Internal::SymbolSerializationContext symbolSerializationContext{SymbolAdmission::NetworkOrigin, &symbolAdmissionPolicy};
+            NetworkOutputSerializer serializer(buffer.GetBuffer(), static_cast<uint32_t>(buffer.GetSize()), symbolSerializationContext);
             if (m_state == ConnectionState::Connecting)
             {
                 const ConnectResult connectResult = m_networkInterface.GetConnectionListener().ValidateConnect(GetRemoteAddress(), header, serializer);
@@ -326,15 +328,15 @@ namespace AzNetworking
 
         const uint16_t headerSize = aznumeric_cast<uint16_t>(headerBuffer.GetSize());
         uint8_t* dstData = reinterpret_cast<uint8_t*>(m_sendRingbuffer.ReserveBlockForWrite(headerSize + payloadSize));
-            
+
         // We are in a "Reliable" Tcp send - the only way we fail to ReserveBlockForWrite here is
         // if the connection is interrupted and cannot send, or the send ringbuffer is full.
         // If that happens, invoke UpdateSend here, to drain the buffer, until the connection breaks, or we have enough room to send.
         // This has a possibility of introducing a deadlock if we loop forever.  So we wait for a timeout before we give up.
-        // 
+        //
         // This loop only has to wait until there is enough room in the ring buffer for ONE more packet, which is usually
         // cut into about 100k chunks, so it only has to wait long enough for the TCP stack to send and get 100k acked.
-        // 
+        //
         // It is possible the other side connection has stalled for a couple seconds too, as it is processing the command, without
         // calling recv, so choose a small but reasonable amount of time, say 10 seconds, enough to show a pause, but not enough for
         // the OS to consider the app dead.
@@ -355,7 +357,7 @@ namespace AzNetworking
                 AZLOG_ERROR("TcpConnection - timed out waiting for send buffer to have room.");
                 return false;
             }
-            UpdateSend(); 
+            UpdateSend();
             dstData = reinterpret_cast<uint8_t*>(m_sendRingbuffer.ReserveBlockForWrite(headerSize + payloadSize));
         }
 
@@ -378,7 +380,8 @@ namespace AzNetworking
 
     bool TcpConnection::ReceivePacketInternal(TcpPacketHeader& outHeader, TcpPacketEncodingBuffer& outBuffer, AZ::TimeMs currentTimeMs)
     {
-        NetworkOutputSerializer serializer(m_recvRingbuffer.GetReadBufferData(), m_recvRingbuffer.GetReadBufferSize());
+        constexpr Internal::SymbolSerializationContext existingOnlyContext{SymbolAdmission::ExistingOnly, nullptr};
+        NetworkOutputSerializer serializer(m_recvRingbuffer.GetReadBufferData(), m_recvRingbuffer.GetReadBufferSize(), existingOnlyContext);
         if (!outHeader.Serialize(serializer))
         {
             return false;

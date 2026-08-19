@@ -64,7 +64,7 @@ namespace Multiplayer
 
         //! Generate a migration packet for this entity.
         //! Unlike GenerateUpdatePacket, this method expects that you have *not* called PrepareSerialization first.
-        EntityMigrationMessage GenerateMigrationPacket(NetBindComponent* netBindComponent);
+        bool GenerateMigrationPacket(NetBindComponent* netBindComponent, EntityMigrationMessage& outMessage);
 
         //! Append an updated list of changed fields to the pending record.
         //! This can get called multiple times in a frame without harm, the changes will just keep accumulating.
@@ -79,7 +79,7 @@ namespace Multiplayer
 
         //! Generate an add/update/delete packet for this entity.
         //! This method expects that UpdatePendingRecord and PrepareSerialization have been called prior to this.
-        NetworkEntityUpdateMessage GenerateUpdatePacket(NetBindComponent* netBindComponent, bool wasMigrated);
+        bool GenerateUpdatePacket(NetBindComponent* netBindComponent, bool wasMigrated, NetworkEntityUpdateMessage& outMessage);
 
         //! Track the given packet id so that we can continue to send any fields currently changed until this packet
         //! (or later) has been acknowledged.
@@ -120,6 +120,7 @@ namespace Multiplayer
         //! Phase 3, finalize with the packet id
         void FinalizeUpdateEntityRecord(AzNetworking::PacketId packetId);
         void FinalizeDeleteEntityRecord(AzNetworking::PacketId packetId);
+        void AbortSerialization();
 
         //! The current state of entity replication - add / rebase / update / delete
         EntityReplicatorState m_replicatorState = EntityReplicatorState::Creating;

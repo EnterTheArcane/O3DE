@@ -9,6 +9,7 @@
 #include <Multiplayer/Components/NetBindComponent.h>
 #include <Multiplayer/Components/MultiplayerComponent.h>
 #include <Multiplayer/Components/MultiplayerController.h>
+#include <Multiplayer/IMultiplayer.h>
 #include <Multiplayer/INetworkSpawnableLibrary.h>
 #include <Multiplayer/NetworkEntity/INetworkEntityManager.h>
 #include <Multiplayer/NetworkEntity/NetworkEntityRpcMessage.h>
@@ -529,34 +530,66 @@ namespace Multiplayer
 
     bool NetBindComponent::HandlePropertyChangeMessage(AzNetworking::ISerializer& serializer, bool notifyChanges)
     {
-        const NetEntityRole netEntityRole = m_netEntityRole;
+        return HandlePropertyChangeMessage(serializer, m_netEntityRole, notifyChanges);
+    }
+
+    bool NetBindComponent::HandlePropertyChangeMessage(
+        AzNetworking::ISerializer& serializer,
+        NetEntityRole serializationRole,
+        bool notifyChanges)
+    {
+        const NetEntityRole netEntityRole = serializationRole;
         ReplicationRecord replicationRecord(netEntityRole);
-        replicationRecord.Serialize(serializer);
-        if ((serializer.GetSerializerMode() == AzNetworking::SerializerMode::WriteToObject) && (netEntityRole == NetEntityRole::Server))
+        if (!replicationRecord.Serialize(serializer))
         {
-            // Make sure to capture the entirety of the TotalRecord, before we clear out bits that haven't changed from our local state
-            // If this entity migrates, we need to send all bits that might have changed from original baseline
+            return false;
+        }
+
+        ReplicationRecord rollbackRecord = replicationRecord;
+        rollbackRecord.ResetConsumedBits();
+        AzNetworking::PacketEncodingBuffer rollbackData;
+        InputSerializer rollbackSerializer(
+            rollbackData.GetBuffer(),
+            static_cast<uint32_t>(rollbackData.GetCapacity()));
+        {
+            Internal::ScopedSerializationMetricSuppression metricSuppression;
+            if (!SerializeStateDeltaMessage(rollbackRecord, rollbackSerializer))
+            {
+                return false;
+            }
+        }
+        rollbackData.Resize(rollbackSerializer.GetSize());
+
+        replicationRecord.ResetConsumedBits();
+        if (!SerializeStateDeltaMessage(replicationRecord, serializer))
+        {
+            rollbackRecord.ResetConsumedBits();
+            OutputSerializer rollbackOutput(
+                rollbackData.GetBuffer(),
+                static_cast<uint32_t>(rollbackData.GetSize()));
+            Internal::ScopedSerializationMetricSuppression metricSuppression;
+            const bool restored = SerializeStateDeltaMessage(rollbackRecord, rollbackOutput);
+            AZ_Assert(restored, "Failed to restore network property state after deserialization failed");
+            return false;
+        }
+
+        if (netEntityRole == NetEntityRole::Server)
+        {
             m_totalRecord.Append(replicationRecord);
         }
-        // This will modify the replicationRecord and clear out bits that have not changed from the local state, this prevents us from notifying that something has changed multiple times
-        SerializeStateDeltaMessage(replicationRecord, serializer);
 
-        if (serializer.IsValid())
+        replicationRecord.ResetConsumedBits();
+        if (notifyChanges)
         {
-            replicationRecord.ResetConsumedBits();
-            if (notifyChanges)
-            {
-                NotifyStateDeltaChanges(replicationRecord);
-            }
-
-            // If we are deserializing on an entity, and this is a server simulation, then we need to remark our bits as dirty to replicate to the client
-            if ((serializer.GetSerializerMode() == AzNetworking::SerializerMode::WriteToObject) && (netEntityRole == NetEntityRole::Server))
-            {
-                m_currentRecord.Append(replicationRecord);
-                MarkDirty();
-            }
+            NotifyStateDeltaChanges(replicationRecord);
         }
-        return serializer.IsValid();
+
+        if (netEntityRole == NetEntityRole::Server)
+        {
+            m_currentRecord.Append(replicationRecord);
+            MarkDirty();
+        }
+        return true;
     }
 
     RpcSendEvent& NetBindComponent::GetSendAuthorityToClientRpcEvent()
@@ -657,17 +690,45 @@ namespace Multiplayer
     bool NetBindComponent::SerializeEntityCorrection(AzNetworking::ISerializer& serializer)
     {
         m_predictableRecord.ResetConsumedBits();
-        ReplicationRecord tmpRecord = m_predictableRecord;
+        ReplicationRecord correctionRecord = m_predictableRecord;
         // The m_predictableRecord is a record that that marks every NetworkProperty that has been set as Predictable
         // We copy this record and use a temporary so that SerializeStateDeltaMessage will not modify the m_predictableRecord
         // since SerializeStateDeltaMessage will clear the dirty bit for the NetworkProperty if it did not actually change
-        const bool success = SerializeStateDeltaMessage(tmpRecord, serializer);
-        if (serializer.GetSerializerMode() == AzNetworking::SerializerMode::WriteToObject)
+        if (serializer.GetSerializerMode() != AzNetworking::SerializerMode::WriteToObject)
         {
-            tmpRecord.ResetConsumedBits();
-            NotifyStateDeltaChanges(tmpRecord);
+            return SerializeStateDeltaMessage(correctionRecord, serializer);
         }
-        return success;
+
+        ReplicationRecord rollbackRecord = m_predictableRecord;
+        AzNetworking::PacketEncodingBuffer rollbackData;
+        InputSerializer rollbackSerializer(
+            rollbackData.GetBuffer(),
+            static_cast<uint32_t>(rollbackData.GetCapacity()));
+        {
+            Internal::ScopedSerializationMetricSuppression metricSuppression;
+            if (!SerializeStateDeltaMessage(rollbackRecord, rollbackSerializer))
+            {
+                return false;
+            }
+        }
+        rollbackData.Resize(rollbackSerializer.GetSize());
+
+        correctionRecord.ResetConsumedBits();
+        if (!SerializeStateDeltaMessage(correctionRecord, serializer))
+        {
+            rollbackRecord.ResetConsumedBits();
+            OutputSerializer rollbackOutput(
+                rollbackData.GetBuffer(),
+                static_cast<uint32_t>(rollbackData.GetSize()));
+            Internal::ScopedSerializationMetricSuppression metricSuppression;
+            const bool restored = SerializeStateDeltaMessage(rollbackRecord, rollbackOutput);
+            AZ_Assert(restored, "Failed to restore predictable state after correction deserialization failed");
+            return false;
+        }
+
+        correctionRecord.ResetConsumedBits();
+        NotifyStateDeltaChanges(correctionRecord);
+        return true;
     }
 
     bool NetBindComponent::SerializeStateDeltaMessage(ReplicationRecord& replicationRecord, AzNetworking::ISerializer& serializer)

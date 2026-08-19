@@ -12,6 +12,7 @@
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzNetworking/ConnectionLayer/SequenceGenerator.h>
 #include <AzNetworking/Serialization/HashSerializer.h>
+#include <AzNetworking/Serialization/Internal/SymbolAdmissionPolicy.h>
 #include <AzNetworking/Serialization/StringifySerializer.h>
 #include <Multiplayer/Components/NetworkHierarchyRootComponent.h>
 #include <Multiplayer/MultiplayerDebug.h>
@@ -276,10 +277,13 @@ namespace Multiplayer
 
         if (sv_ForceCorrections || (sv_EnableCorrections && (currentTimeMs - m_lastCorrectionSentTimeMs > sv_MinCorrectionTimeMs)))
         {
-            m_lastCorrectionSentTimeMs = currentTimeMs;
-
             AzNetworking::HashSerializer hashSerializer;
-            SerializeEntityCorrection(hashSerializer);
+            if (!SerializeEntityCorrection(hashSerializer))
+            {
+                AZLOG_ERROR("Failed to hash entity correction state");
+                return;
+            }
+            m_lastCorrectionSentTimeMs = currentTimeMs;
 
             const AZ::HashValue32 localAuthorityHash = hashSerializer.GetHash();
 
@@ -295,15 +299,12 @@ namespace Multiplayer
             {
                 // Produce correction for client
                 AzNetworking::PacketEncodingBuffer correction;
-                correction.Resize(correction.GetCapacity());
                 InputSerializer serializer(correction.GetBuffer(), static_cast<uint32_t>(correction.GetCapacity()));
-
-                // only deserialize if we have data (for client/server profile/debug mismatches)
-                if (correction.GetSize() > 0)
+                if (!SerializeEntityCorrection(serializer))
                 {
-                    SerializeEntityCorrection(serializer);
+                    AZLOG_ERROR("Failed to serialize entity correction state");
+                    return;
                 }
-
                 correction.Resize(serializer.GetSize());
 
                 AZLOG_INFO(
@@ -428,6 +429,10 @@ namespace Multiplayer
     )
     {
         AZ_Assert(invokingConnection != nullptr, "Invalid connection, cannot reprocess corrections.");
+        if (invokingConnection == nullptr)
+        {
+            return;
+        }
 
         INetworkTime* networkTime = GetNetworkTime();
 
@@ -473,12 +478,23 @@ namespace Multiplayer
             }
         }
 
+        // Apply the correction
+        auto& admissionPolicy = AzNetworking::Internal::GetSymbolAdmissionPolicy(*invokingConnection);
+        const AzNetworking::Internal::SymbolSerializationContext symbolSerializationContext{
+            AzNetworking::SymbolAdmission::NetworkOrigin,
+            &admissionPolicy};
+        OutputSerializer serializer(
+            correction.GetBuffer(),
+            static_cast<uint32_t>(correction.GetSize()),
+            symbolSerializationContext);
+        if (!SerializeEntityCorrection(serializer))
+        {
+            AZLOG_ERROR("Failed to deserialize entity correction state");
+            return;
+        }
+
         m_lastCorrectionHostFrameId = inputHostFrameId;
         m_lastCorrectionInputId = inputId;
-
-        // Apply the correction
-        OutputSerializer serializer(correction.GetBuffer(), static_cast<uint32_t>(correction.GetSize()));
-        SerializeEntityCorrection(serializer);
         GetNetBindComponent()->NotifyCorrection();
 
         const uint32_t inputHistorySize = static_cast<uint32_t>(m_inputHistory.Size());

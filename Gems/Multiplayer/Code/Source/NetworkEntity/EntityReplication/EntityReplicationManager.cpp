@@ -18,6 +18,7 @@
 #include <AzNetworking/ConnectionLayer/IConnection.h>
 #include <AzNetworking/ConnectionLayer/IConnectionListener.h>
 #include <AzNetworking/PacketLayer/IPacketHeader.h>
+#include <AzNetworking/Serialization/Internal/SymbolAdmissionPolicy.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Console/IConsole.h>
 #include <AzCore/Console/ILogger.h>
@@ -254,7 +255,15 @@ namespace Multiplayer
         while (!replicatorList.empty())
         {
             EntityReplicator* replicator = replicatorList.front();
-            NetworkEntityUpdateMessage updateMessage(replicator->GenerateUpdatePacket());
+            NetworkEntityUpdateMessage updateMessage;
+            if (!replicator->GenerateUpdatePacket(updateMessage))
+            {
+                AZLOG_ERROR(
+                    "Failed to serialize update for entity %llu",
+                    aznumeric_cast<AZ::u64>(replicator->GetEntityHandle().GetNetEntityId()));
+                replicatorList.pop_front();
+                continue;
+            }
 
             const uint32_t nextMessageSize = updateMessage.GetEstimatedSerializeSize();
 
@@ -660,13 +669,40 @@ namespace Multiplayer
         NetBindComponent* netBindComponent = replicatorEntity.GetNetBindComponent();
         AZ_Assert(netBindComponent != nullptr, "No NetBindComponent");
 
+        const bool changeNetworkRole = (netBindComponent->GetNetEntityRole() != localNetworkRole);
+        const bool createReplicator = (entityReplicator == nullptr)
+                                    || entityReplicator->IsMarkedForRemoval()
+                                    || entityReplicator->GetBoundLocalNetworkRole() != localNetworkRole;
+
+        bool didSucceed = false;
+        if (createReplicator)
+        {
+            didSucceed = netBindComponent->HandlePropertyChangeMessage(
+                serializer,
+                localNetworkRole,
+                notifySerializationChanges);
+        }
+        else
+        {
+            didSucceed = entityReplicator->HandlePropertyChangeMessage(packetId, &serializer, notifySerializationChanges);
+        }
+
+        if (!didSucceed)
+        {
+            if (createEntity)
+            {
+                // Entity creation is not detached today. Quarantine the failed instance
+                // without activating it so it cannot become observable gameplay state.
+                GetNetworkEntityManager()->MarkForRemoval(replicatorEntity);
+            }
+            return false;
+        }
+
         if (netBindComponent->GetOwningConnectionId() != invokingConnection->GetConnectionId())
         {
-            // Always ensure our owning connectionId is correct for correct rewind behaviour
             netBindComponent->SetOwningConnectionId(invokingConnection->GetConnectionId());
         }
 
-        const bool changeNetworkRole = (netBindComponent->GetNetEntityRole() != localNetworkRole);
         if (changeNetworkRole)
         {
             AZ_Assert(localNetworkRole != NetEntityRole::Authority, "UpdateMessage trying to set local role to Authority, this should only happen via migration");
@@ -681,21 +717,15 @@ namespace Multiplayer
 
             if (NetworkRoleHasController(localNetworkRole))
             {
-                // We defer activation until after the data has been deserialized into our entity.
-                // The packet may contain additional data that might be required for a component's proper activation.
                 netBindComponent->ConstructControllers();
             }
             else
             {
-                // We have lost control, deactivate and destroy the controllers
                 netBindComponent->DeactivateControllers(EntityIsMigrating::False);
                 netBindComponent->DestructControllers();
             }
         }
 
-        const bool createReplicator = (entityReplicator == nullptr)
-                                    || entityReplicator->IsMarkedForRemoval()
-                                    || entityReplicator->GetBoundLocalNetworkRole() != localNetworkRole;
         if (createReplicator)
         {
             // Make sure this entity that we're getting a packet on hasn't been marked for removal by someone else
@@ -716,8 +746,6 @@ namespace Multiplayer
         }
 
         //AZLOG(NET_RepUpdate, "EntityReplicationManager: Received PropertyChangeMessage message for entity id %u for type %s role %d", netEntityId, prefabEntityId.GetString(), localNetworkRole);
-
-        bool didSucceed = entityReplicator->HandlePropertyChangeMessage(packetId, &serializer, notifySerializationChanges);
 
         if (changeNetworkRole)
         {
@@ -913,7 +941,18 @@ namespace Multiplayer
             AZ_Assert(false, "Unhandled case");
         }
 
-        OutputSerializer outputSerializer(updateMessage.GetData()->GetBuffer(), static_cast<uint32_t>(updateMessage.GetData()->GetSize()));
+        if (invokingConnection == nullptr)
+        {
+            return false;
+        }
+        auto& admissionPolicy = AzNetworking::Internal::GetSymbolAdmissionPolicy(*invokingConnection);
+        const AzNetworking::Internal::SymbolSerializationContext symbolSerializationContext{
+            AzNetworking::SymbolAdmission::NetworkOrigin,
+            &admissionPolicy};
+        OutputSerializer outputSerializer(
+            updateMessage.GetData()->GetBuffer(),
+            static_cast<uint32_t>(updateMessage.GetData()->GetSize()),
+            symbolSerializationContext);
 
         PrefabEntityId prefabEntityId;
         if (updateMessage.GetHasValidPrefabId())
@@ -1021,7 +1060,7 @@ namespace Multiplayer
             );
             return false;
         }
-        return entityReplicator->HandleRpcMessage(nullptr, message);
+        return entityReplicator->HandleRpcMessage(&m_connection, message);
     }
 
     AZ::TimeMs EntityReplicationManager::GetResendTimeoutTimeMs() const
@@ -1301,6 +1340,14 @@ namespace Multiplayer
         if (netBindComponent && netBindComponent->GetNetEntityRole() == NetEntityRole::Authority)
         {
             EntityReplicator* replicator = AddEntityReplicator(entityHandle, NetEntityRole::Server);
+            EntityMigrationMessage message;
+            if (!replicator->GenerateMigrationPacket(message))
+            {
+                AZLOG_ERROR(
+                    "Failed to serialize migration for entity %llu",
+                    static_cast<AZ::u64>(netEntityId));
+                return;
+            }
 
             if (m_updateMode == EntityReplicationManager::Mode::LocalServerToRemoteServer)
             {
@@ -1313,8 +1360,6 @@ namespace Multiplayer
             }
 
             netBindComponent->DestructControllers();
-
-            EntityMigrationMessage message = replicator->GenerateMigrationPacket();
 
             m_sendMigrateEntityEvent.Signal(m_connection, message);
             AZLOG(NET_RepDeletes, "Migration packet sent %llu to remote host %s", static_cast<AZ::u64>(netEntityId), GetRemoteHostId().GetString().c_str());
@@ -1334,7 +1379,18 @@ namespace Multiplayer
             if (message.m_propertyUpdateData.GetSize() > 0)
             {
                 constexpr bool IsDeleted = false;
-                OutputSerializer outputSerializer(message.m_propertyUpdateData.GetBuffer(), static_cast<uint32_t>(message.m_propertyUpdateData.GetSize()));
+                if (invokingConnection == nullptr)
+                {
+                    return false;
+                }
+                auto& admissionPolicy = AzNetworking::Internal::GetSymbolAdmissionPolicy(*invokingConnection);
+                const AzNetworking::Internal::SymbolSerializationContext symbolSerializationContext{
+                    AzNetworking::SymbolAdmission::NetworkOrigin,
+                    &admissionPolicy};
+                OutputSerializer outputSerializer(
+                    message.m_propertyUpdateData.GetBuffer(),
+                    static_cast<uint32_t>(message.m_propertyUpdateData.GetSize()),
+                    symbolSerializationContext);
                 if (!HandlePropertyChangeMessage
                 (
                     invokingConnection,

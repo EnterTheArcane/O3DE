@@ -83,8 +83,10 @@ namespace Multiplayer
         bool PrepareToGenerateUpdatePacket();
         //! Generate an update packet.
         NetworkEntityUpdateMessage GenerateUpdatePacket();
+        bool GenerateUpdatePacket(NetworkEntityUpdateMessage& outMessage);
         //! Generate a migration packet.
         EntityMigrationMessage GenerateMigrationPacket();
+        bool GenerateMigrationPacket(EntityMigrationMessage& outMessage);
         //! After sending a generated packet, record the sent packet id for tracking acknowledgements.
         void RecordSentPacketId(AzNetworking::PacketId sentId);
 

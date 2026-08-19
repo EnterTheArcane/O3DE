@@ -1033,6 +1033,8 @@ namespace AZ::Serialize
     class AZCORE_API IDataSerializer
     {
     public:
+        static constexpr size_t TextConversionFailure = (std::numeric_limits<size_t>::max)();
+
         static IDataSerializerDeleter CreateDefaultDeleteDeleter();
         static IDataSerializerDeleter CreateNoDeleteDeleter();
 
@@ -1044,10 +1046,11 @@ namespace AZ::Serialize
         /// Load the class data from a stream.
         virtual bool    Load(void* classPtr, IO::GenericStream& stream, unsigned int version, bool isDataBigEndian = false) = 0;
 
-        /// Convert binary data to text.
+        /// Convert binary data to text. Returns TextConversionFailure when the binary representation cannot be expressed as text.
         virtual size_t  DataToText(IO::GenericStream& in, IO::GenericStream& out, bool isDataBigEndian /*= false*/) = 0;
 
-        /// Convert text data to binary, to support loading old version formats. We must respect text version if the text->binary format has changed!
+        /// Convert text data to binary, to support loading old version formats. Returns TextConversionFailure when the text is invalid.
+        /// We must respect text version if the text->binary format has changed!
         virtual size_t  TextToData(const char* text, unsigned int textVersion, IO::GenericStream& stream, bool isDataBigEndian = false) = 0;
 
         /// Compares two instances of the type.
@@ -2325,21 +2328,41 @@ namespace AZ::Serialize
                 }
                 else
                 {
+                    if (m_element.m_dataSize > m_element.m_byteStream.GetLength())
+                    {
+                        return false;
+                    }
+
                     if (m_element.m_dataType == DataElement::DT_TEXT)
                     {
                         // convert to binary so we can load the data
                         AZStd::string text;
                         text.resize_no_construct(m_element.m_dataSize);
-                        m_element.m_byteStream.Read(text.size(), reinterpret_cast<void*>(text.data()));
                         m_element.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                        m_element.m_dataSize = classData->m_serializer->TextToData(text.c_str(), m_element.m_version, m_element.m_byteStream);
-                        m_element.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
+                        if (m_element.m_byteStream.Read(text.size(), reinterpret_cast<void*>(text.data())) != text.size())
+                        {
+                            return false;
+                        }
+
+                        AZStd::vector<char> convertedBuffer;
+                        IO::ByteContainerStream<AZStd::vector<char>> convertedStream(&convertedBuffer);
+                        const size_t convertedSize = classData->m_serializer->TextToData(
+                            text.c_str(), m_element.m_version, convertedStream);
+                        if (convertedSize == IDataSerializer::TextConversionFailure || convertedSize > convertedBuffer.size())
+                        {
+                            return false;
+                        }
+
+                        convertedBuffer.resize(convertedSize);
+                        m_element.m_buffer = AZStd::move(convertedBuffer);
+                        m_element.m_byteStream = IO::ByteContainerStream<AZStd::vector<char>>(&m_element.m_buffer);
+                        m_element.m_dataSize = convertedSize;
                         m_element.m_dataType = DataElement::DT_BINARY;
                     }
 
-                    bool isLoaded = classData->m_serializer->Load(&value, m_element.m_byteStream, m_element.m_version, m_element.m_dataType == DataElement::DT_BINARY_BE);
-                    m_element.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN); // reset stream position
-                    return isLoaded;
+                    IO::MemoryStream dataStream(m_element.m_buffer.data(), m_element.m_dataSize);
+                    return classData->m_serializer->Load(
+                        &value, dataStream, m_element.m_version, m_element.m_dataType == DataElement::DT_BINARY_BE);
                 }
             }
             else
@@ -2632,4 +2655,3 @@ namespace AZ
 
 /// include implementation of SerializeContext::EnumBuilder
 #include <AzCore/Serialization/SerializeContextEnum.inl>
-

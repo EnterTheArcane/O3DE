@@ -1,0 +1,521 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <Type Name="AZStd::pair&lt;*&gt;">
+    <DisplayString>({first}, {second})</DisplayString>
+    <Expand>
+      <Item Name="first">first</Item>
+      <Item Name="second">second</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::reverse_iterator&lt;*&gt;" Priority="Medium">
+    <DisplayString>reverse_iterator base() {m_current}</DisplayString>
+    <Expand>
+      <Item Name="base()">m_current</Item>
+    </Expand>
+  </Type>
+
+  <!-- Partial Specialization for raw pointers and smart pointers which are indexable(supports operator[]). See natvis.xsd for more details-->
+  <Type Name="AZStd::reverse_iterator&lt;*&gt;" Priority="MediumHigh">
+    <SmartPointer Usage="Indexable">m_current - 1</SmartPointer>
+    <DisplayString>reverse_iterator {m_current[-1]}</DisplayString>
+    <Expand>
+      <Item Name="[ptr]">m_current - 1</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::vector&lt;*&gt;">
+    <DisplayString>vector[{m_last - m_start}]</DisplayString>
+    <Expand>
+      <Item Name="[capacity]">m_end - m_start</Item>
+      <ArrayItems>
+        <Size>m_last - m_start</Size>
+        <ValuePointer>m_start</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::span&lt;*&gt;">
+    <DisplayString>span[{m_size}]</DisplayString>
+    <Expand>
+      <Item Name="[size]">m_size</Item>
+      <ArrayItems>
+        <Size>m_size</Size>
+        <ValuePointer>m_data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::Internal::fixed_zero_size_storage&lt;*&gt;">
+    <AlternativeType Name="AZStd::fixed_vector&lt;*,0&gt;" />
+    <DisplayString>fixed_vector[0] capacity 0</DisplayString>
+    <Expand>
+      <Item Name="[size]">0</Item>
+      <Item Name="[capacity]">0</Item>
+      <ArrayItems>
+        <Size>0</Size>
+        <ValuePointer>nullptr</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::Internal::fixed_trivial_storage&lt;*,*&gt;">
+  <AlternativeType Name="AZStd::fixed_vector&lt;*,*&gt;" />
+    <DisplayString>fixed_vector[{(size_t)m_size}] capacity {$T2}</DisplayString>
+    <Expand>
+      <Item Name="[size]">(size_t)m_size</Item>
+      <Item Name="[capacity]">$T2</Item>
+      <ArrayItems>
+        <Size>m_size</Size>
+        <ValuePointer>($T1*)m_data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::Internal::fixed_non_trivial_storage&lt;*,*&gt;">
+    <AlternativeType Name="AZStd::fixed_vector&lt;*,*&gt;" />
+    <DisplayString>fixed_vector[{(size_t)m_size}] capacity {$T2}</DisplayString>
+    <Expand>
+      <Item Name="[size]">(size_t)m_size</Item>
+      <Item Name="[capacity]">$T2</Item>
+      <ArrayItems>
+        <Size>m_size</Size>
+        <ValuePointer>($T1*)m_data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::atomic&lt;*&gt;">
+    <AlternativeType Name="AZStd::internal::atomic_base&lt;*&gt;" />
+    <Expand>
+      <Item Name="Value">m_value</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::array&lt;*,*&gt;">
+    <DisplayString>array[{$T2}]</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>$T2</Size>
+        <ValuePointer>m_elements</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::bitset&lt;*&gt;">
+    <DisplayString>bitset[{$T1}]</DisplayString>
+    <Expand>
+      <IndexListItems>
+        <Size>$T1</Size>
+        <ValueNode>(m_bits[$i / BitsPerWord] &gt;&gt; ($i % BitsPerWord)) &amp; 1,d</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::bitset&lt;*&gt;::reference">
+    <DisplayString>{(m_bitSet.m_bits[m_pos / m_bitSet.BitsPerWord] &gt;&gt; (m_pos % m_bitSet.BitsPerWord)) &amp; 1,d}</DisplayString>
+    <Expand>
+      <Item Name="[bitset]">m_bitSet</Item>
+      <Item Name="[pos]">m_pos</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::list&lt;*&gt;">
+    <DisplayString>list[{m_numElements}]</DisplayString>
+    <Expand>
+      <LinkedListItems>
+        <Size>m_numElements</Size>
+        <HeadPointer>m_head.m_next</HeadPointer>
+        <NextPointer>m_next</NextPointer>
+        <ValueNode>(*(Internal::list_node&lt;$T1&gt;*)(this)).m_value</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::forward_list&lt;*&gt;">
+    <DisplayString>forward_list[{m_numElements}]</DisplayString>
+    <Expand>
+      <LinkedListItems>
+        <Size>m_numElements</Size>
+        <HeadPointer>m_head.m_next</HeadPointer>
+        <NextPointer>m_next</NextPointer>
+        <ValueNode>(*(Internal::forward_list_node&lt;$T1&gt;*)(this)).m_value</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::fixed_list&lt;*,*&gt;">
+    <DisplayString>fixed_list[{m_numElements}] capacity {$T2}</DisplayString>
+    <Expand>
+      <Item Name="[capacity]">$T2</Item>
+      <LinkedListItems>
+        <Size>m_numElements</Size>
+        <HeadPointer>m_head.m_next</HeadPointer>
+        <NextPointer>m_next</NextPointer>
+        <ValueNode>(*(Internal::list_node&lt;$T1&gt;*)(this)).m_value</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::fixed_forward_list&lt;*,*&gt;">
+    <DisplayString>fixed_forward_list[{m_numElements}] capacity {$T2}</DisplayString>
+    <Expand>
+      <Item Name="[capacity]">$T2</Item>
+      <LinkedListItems>
+        <Size>m_numElements</Size>
+        <HeadPointer>m_head.m_next</HeadPointer>
+        <NextPointer>m_next</NextPointer>
+        <ValueNode>(*(Internal::forward_list_node&lt;$T1&gt;*)(this)).m_value</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::intrusive_list&lt;*,AZStd::list_base_hook&lt;*&gt;&gt;">
+    <DisplayString>intrusive_list[{m_numElements}]</DisplayString>
+    <Expand>
+      <LinkedListItems>
+        <Size>m_numElements</Size>
+        <HeadPointer>((AZStd::intrusive_list_node&lt;$T1&gt;*)(m_root.m_buffer))-&gt;m_next</HeadPointer>
+        <NextPointer>m_next</NextPointer>
+        <ValueNode>*($T1*)this</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::intrusive_list&lt;*,AZStd::list_member_hook&lt;*,*&gt;&gt;">
+    <DisplayString>intrusive_list[{m_numElements}]</DisplayString>
+    <Expand>
+      <LinkedListItems>
+        <Size>m_numElements</Size>
+        <HeadPointer>(((AZStd::intrusive_list_node&lt;$T1&gt;*)(m_root.m_buffer + $T3))-&gt;m_next)</HeadPointer>
+        <NextPointer>(((AZStd::intrusive_list_node&lt;$T1&gt;*)((char*)this + $T3))-&gt;m_next)</NextPointer>
+        <ValueNode>*this</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::intrusive_slist&lt;*,AZStd::slist_base_hook&lt;*&gt;&gt;">
+    <DisplayString>intrusive_slist[{m_numElements}]</DisplayString>
+    <Expand>
+      <LinkedListItems>
+        <Size>m_numElements</Size>
+        <HeadPointer>((AZStd::intrusive_slist_node&lt;$T1,0&gt;*)(m_root.m_buffer))-&gt;m_next</HeadPointer>
+        <NextPointer>m_next</NextPointer>
+        <ValueNode>*($T1*)this</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::intrusive_slist&lt;*,AZStd::slist_member_hook&lt;*,*&gt;&gt;">
+    <DisplayString>intrusive_slist[{m_numElements}]</DisplayString>
+    <Expand>
+      <LinkedListItems>
+        <Size>m_numElements</Size>
+        <HeadPointer>(((AZStd::intrusive_slist_node&lt;$T1,0&gt;*)(m_root.m_buffer + $T3))-&gt;m_next)</HeadPointer>
+        <NextPointer>(((AZStd::intrusive_slist_node&lt;$T1,0&gt;*)((char*)this + $T3))-&gt;m_next)</NextPointer>
+        <ValueNode>*this</ValueNode>
+      </LinkedListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::intrusive_multiset_node&lt;*&gt;">
+    <DisplayString>intrusive_multiset_node</DisplayString>
+    <Expand>
+      <Item Name="Children">m_children</Item>
+      <Item Name="Neighbours">m_children</Item>
+      <Item Name="Parent">($T1*)((size_t)m_parentColorSide &amp; &#126;3)</Item>
+      <Item Name="Color">((size_t)m_parentColorSide &amp; 1)</Item>
+    </Expand>
+  </Type>
+
+
+  <Type Name="AZStd::intrusive_multiset&lt;*,AZStd::intrusive_multiset_base_hook&lt;*&gt;,*&gt;">
+    <DisplayString>intrusive_multiset[{m_numElements}]</DisplayString>
+    <Expand>
+      <Item Name="NumberElements">m_numElements</Item>
+      <Item Name="Root">((AZStd::intrusive_multiset_node&lt;$T1&gt;*)(m_head.m_buffer))-&gt;m_children[0]</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::intrusive_multiset&lt;*,AZStd::intrusive_multiset_member_hook&lt;*,*&gt;,*&gt;">
+    <DisplayString>intrusive_multiset[{m_numElements}]</DisplayString>
+    <Expand>
+      <Item Name="NumberElements">m_numElements</Item>
+      <Item Name="Root">((AZStd::intrusive_multiset_node&lt;$T1&gt;*)(m_head.m_buffer + $T3))-&gt;m_children[0]</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::list_const_iterator&lt;*&gt;">
+    <AlternativeType Name="AZStd::list_iterator&lt;*&gt;" />
+    <DisplayString>{*((Internal::list_node&lt;$T1&gt;*)(m_node))}</DisplayString>
+    <Expand>
+      <Item Name="[ptr]">(void*)(m_node), x</Item>
+      <Item Name="[value]">*((Internal::list_node&lt;$T1&gt;*)(m_node))</Item>
+      <Item Name="[next]">*(AZStd::list_const_iterator&lt;$T1&gt;*) (((Internal::list_node&lt;$T1&gt;*)(m_node))->m_next)</Item>
+      <Item Name="[prev]">*(AZStd::list_const_iterator&lt;$T1&gt;*) (((Internal::list_node&lt;$T1&gt;*)(m_node))->m_prev)</Item>
+    </Expand>
+  </Type>
+
+    <Type Name="AZStd::forward_list_const_iterator&lt;*&gt;">
+        <AlternativeType Name="AZStd::forward_list_iterator&lt;*&gt;" />
+        <DisplayString>{*((Internal::forward_list_node&lt;$T1&gt;*)(m_node))}</DisplayString>
+        <Expand>
+            <Item Name="[ptr]">(void*)(m_node), x</Item>
+            <Item Name="[value]">*((Internal::forward_list_node&lt;$T1&gt;*)(m_node))</Item>
+            <Item Name="[next]">*(AZStd::forward_list_const_iterator&lt;$T1&gt;*) (((Internal::forward_list_node&lt;$T1&gt;*)(m_node))->m_next)</Item>
+        </Expand>
+    </Type>
+
+  <Type Name="AZStd::intrusive_list&lt;*&gt;::const_iterator_impl">
+    <AlternativeType Name="AZStd::intrusive_list&lt;*&gt;::iterator_impl" />
+    <AlternativeType Name="AZStd::intrusive_slist&lt;*&gt;::const_iterator_impl" />
+    <AlternativeType Name="AZStd::intrusive_slist&lt;*&gt;::iterator_impl" />
+    <DisplayString>{*m_node}</DisplayString>
+    <Expand>
+      <Item Name="[ptr]">(void*)m_node, x</Item>
+      <Item Name="[value]">*m_node</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::deque&lt;*,*,*,*&gt;">
+    <DisplayString>deque[{m_size}]</DisplayString>
+    <Expand>
+      <IndexListItems>
+        <Size>m_size</Size>
+        <ValueNode>m_map[ (($i + m_firstOffset) / $T3 ) % m_mapSize][($i + m_firstOffset) % $T3]</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::deque&lt;*,*,*,*&gt;::const_iterator_impl">
+    <AlternativeType Name="AZStd::deque&lt;*,*,*,*&gt;::iterator_impl" />
+    <DisplayString Condition="m_offset &gt;= (m_container-&gt;m_firstOffset + m_container-&gt;m_size)">[end]</DisplayString>
+    <DisplayString Condition="m_offset &lt; (m_container-&gt;m_firstOffset + m_container-&gt;m_size)">deque[{m_offset-m_container-&gt;m_firstOffset}] = {m_container-&gt;m_map[(m_offset / $T3) % m_container-&gt;m_mapSize][m_offset % $T3]}</DisplayString>
+    <Expand>
+      <Item Condition="m_offset &lt; (m_container-&gt;m_firstOffset + m_container-&gt;m_size)" Name="[index]">m_offset-m_container-&gt;m_firstOffset</Item>
+      <Item Condition="m_offset &lt; (m_container-&gt;m_firstOffset + m_container-&gt;m_size)" Name="[value]">m_container-&gt;m_map[(m_offset / $T3) % m_container-&gt;m_mapSize][m_offset % $T3]</Item>
+      <Item Condition="m_offset &lt; (m_container-&gt;m_firstOffset + m_container-&gt;m_size)" Name="[ptr]">&amp;m_container-&gt;m_map[(m_offset / $T3) % m_container-&gt;m_mapSize][m_offset % $T3]</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::queue&lt;*&gt;">
+    <DisplayString>queue({m_container})</DisplayString>
+    <Expand>
+      <Item Name="container">m_container</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::stack&lt;*&gt;">
+    <DisplayString>stack({m_container})</DisplayString>
+    <Expand>
+      <Item Name="container">m_container</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::priority_queue&lt;*&gt;">
+    <DisplayString>priority_queue({m_container})</DisplayString>
+    <Expand>
+      <Item Name="container">m_container</Item>
+      <Item Name="compare">m_comp</Item>
+    </Expand>
+  </Type>
+
+  <!-- TODO: AZStd::ring_buffer -->
+
+  <Type Name="AZStd::rbtree_const_iterator&lt;*&gt;">
+    <AlternativeType Name="AZStd::rbtree_iterator&lt;*&gt;" />
+    <DisplayString>{m_node-&gt;m_value}</DisplayString>
+    <Expand>
+      <Item Name="[ptr]">(void*)&amp;m_node-&gt;m_value, x</Item>
+      <Item Name="[value]">m_node-&gt;m_value</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::Internal::rbtree_node_base">
+    <Expand>
+      <Synthetic Name="color">
+        <DisplayString Condition="((size_t)(m_parentColor) &amp; 1) == 1">Black</DisplayString>
+        <DisplayString Condition="((size_t)(m_parentColor) &amp; 1) == 0">Red</DisplayString>
+      </Synthetic>
+      <Item Name="parent">(AZStd::Internal::rbtree_node_base*)((uintptr_t)(m_parentColor) &amp; ~1ULL)</Item>
+      <Item Name="left">m_left</Item>
+      <Item Name="right">m_right</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::Internal::rbtree_node&lt;*&gt;">
+    <Expand>
+      <Item Name="value">m_value</Item>
+      <ExpandedItem>*(AZStd::Internal::rbtree_node_base*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::rbtree&lt;*&gt;">
+    <DisplayString>rbtree[{m_numElements}]</DisplayString>
+    <Expand>
+      <TreeItems>
+        <Size>m_numElements</Size>
+        <HeadPointer>m_head.m_parentColor</HeadPointer>
+        <LeftPointer>m_left</LeftPointer>
+        <RightPointer>m_right</RightPointer>
+        <ValueNode Condition="this != m_left">*((typename AZStd::rbtree&lt;$T1&gt;::node_type*)(this))</ValueNode>
+      </TreeItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::set&lt;*&gt;">
+    <AlternativeType Name="AZStd::multiset&lt;*&gt;" />
+    <DisplayString>ordered_set[{m_tree.m_numElements}]</DisplayString>
+    <Expand>
+      <TreeItems>
+        <Size>m_tree.m_numElements</Size>
+        <HeadPointer>m_tree.m_head.m_parentColor</HeadPointer>
+        <LeftPointer>m_left</LeftPointer>
+        <RightPointer>m_right</RightPointer>
+        <ValueNode Condition="this != m_left">(*(AZStd::Internal::rbtree_node&lt;$T1&gt;*)(this)).m_value</ValueNode>
+      </TreeItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::map&lt;*,*&gt;">
+    <AlternativeType Name="AZStd::multimap&lt;*,*&gt;" />
+    <DisplayString>ordered_map[{m_tree.m_numElements}]</DisplayString>
+    <Expand>
+      <TreeItems>
+        <Size>m_tree.m_numElements</Size>
+        <HeadPointer>m_tree.m_head.m_parentColor</HeadPointer>
+        <LeftPointer>m_left</LeftPointer>
+        <RightPointer>m_right</RightPointer>
+        <ValueNode Condition="this != m_left" Name="[{*($T1*)(this + 1)}]">*($T2*)(&amp;((*((AZStd::Internal::rbtree_node&lt;AZStd::pair&lt;$T1,$T2&gt; &gt;*)(this))).m_value.second))</ValueNode>
+      </TreeItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::hash_table&lt;*&gt;">
+    <AlternativeType Name="AZStd::unordered_map&lt;*&gt;" />
+    <AlternativeType Name="AZStd::unordered_multimap&lt;*&gt;" />
+    <AlternativeType Name="AZStd::unordered_set&lt;*&gt;" />
+    <AlternativeType Name="AZStd::unordered_multiset&lt;*&gt;" />
+    <DisplayString>hash_map[{m_data.m_list.m_numElements}]</DisplayString>
+    <Expand>
+      <Item Name="elements">m_data.m_list</Item>
+      <Item Name="load factor" Condition="m_data.m_numBuckets > 0">((float)m_data.m_list.m_numElements / (float)m_data.m_numBuckets)</Item>
+      <Item Name="max load factor">m_data.m_max_load_factor</Item>
+      <Item Name="buckets">m_data.m_vector</Item>
+    </Expand>
+  </Type>
+
+  <!-- -->
+
+  <Type Name="AZStd::basic_string&lt;char,*,*&gt;">
+    <DisplayString Condition="m_storage.m_first.m_shortData.m_packed.m_ssoActive">{m_storage.m_first.m_shortData.m_buffer,s}</DisplayString>
+    <DisplayString Condition="!m_storage.m_first.m_shortData.m_packed.m_ssoActive">{m_storage.m_first.m_allocatedData.m_data,s}</DisplayString>
+    <StringView Condition="m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_shortData.m_buffer,s</StringView>
+    <StringView Condition="!m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_allocatedData.m_data,s</StringView>
+    <Expand>
+      <Item Name="[size]" Condition="m_storage.m_first.m_shortData.m_packed.m_ssoActive">(size_t)m_storage.m_first.m_shortData.m_packed.m_size</Item>
+      <Item Name="[size]" Condition="!m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_allocatedData.m_size</Item>
+      <Item Name="[capacity]" Condition="m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_shortData.Capacity</Item>
+      <Item Name="[capacity]" Condition="!m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_allocatedData.m_capacity</Item>
+      <Item Name="[is packed]">(bool)m_storage.m_first.m_shortData.m_packed.m_ssoActive</Item>
+      <ArrayItems>
+        <Size Condition="m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_shortData.m_packed.m_size,u</Size>
+        <Size Condition="!m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_allocatedData.m_size</Size>
+        <ValuePointer Condition="m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_shortData.m_buffer</ValuePointer>
+        <ValuePointer Condition="!m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_allocatedData.m_data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::basic_string&lt;wchar_t,*&gt;">
+    <AlternativeType Name="AZStd::basic_string&lt;unsigned short,*&gt;" />
+    <DisplayString Condition="m_storage.m_first.m_shortData.m_packed.m_ssoActive">{m_storage.m_first.m_shortData.m_buffer,su}</DisplayString>
+    <DisplayString Condition="!m_storage.m_first.m_shortData.m_packed.m_ssoActive">{m_storage.m_first.m_allocatedData.m_data,su}</DisplayString>
+    <StringView Condition="m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_shortData.m_buffer,su</StringView>
+    <StringView Condition="!m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_allocatedData.m_data,su</StringView>
+    <Expand>
+      <Item Name="[size]" Condition="m_storage.m_first.m_shortData.m_packed.m_ssoActive">(size_t)m_storage.m_first.m_shortData.m_packed.m_size</Item>
+      <Item Name="[size]" Condition="!m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_allocatedData.m_size</Item>
+      <Item Name="[capacity]" Condition="m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_shortData.Capacity</Item>
+      <Item Name="[capacity]" Condition="!m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_allocatedData.m_capacity</Item>
+      <Item Name="[is packed]">(bool)m_storage.m_first.m_shortData.m_packed.m_ssoActive</Item>
+      <ArrayItems>
+        <Size Condition="m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_shortData.m_packed.m_size,u</Size>
+        <Size Condition="!m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_allocatedData.m_size</Size>
+        <ValuePointer Condition="m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_shortData.m_buffer</ValuePointer>
+        <ValuePointer Condition="!m_storage.m_first.m_shortData.m_packed.m_ssoActive">m_storage.m_first.m_allocatedData.m_data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="AZStd::basic_fixed_string&lt;char,*,*&gt;">
+    <DisplayString>{m_buffer,s}</DisplayString>
+    <StringView>m_buffer,s</StringView>
+    <E…21223 tokens truncated…es.m_start + 18)->m_value, view(simple)}/{(m_entries.m_start + 19)->m_value, view(simple)}/{(m_entries.m_start + 20)->m_value, view(simple)}/{(m_entries.m_start + 21)->m_value, view(simple)}/{(m_entries.m_start + 22)->m_value, view(simple)}/{(m_entries.m_start + 23)->m_value, view(simple)}/{(m_entries.m_start + 24)->m_value, view(simple)}/{(m_entries.m_start + 25)->m_value, view(simple)}/{(m_entries.m_start + 26)->m_value, view(simple)}/{(m_entries.m_start + 27)->m_value, view(simple)}/{(m_entries.m_start + 28)->m_value, view(simple)}/{(m_entries.m_start + 29)->m_value, view(simple)}/{(m_entries.m_start + 30)->m_value, view(simple)}/{(m_entries.m_start + 31)->m_value, view(simple)}/{(m_entries.m_start + 32)->m_value, view(simple)}/{(m_entries.m_start + 33)->m_value, view(simple)}/{(m_entries.m_start + 34)->m_value, view(simple)}/{(m_entries.m_start + 35)->m_value, view(simple)}/{(m_entries.m_start + 36)->m_value, view(simple)}/{(m_entries.m_start + 37)->m_value, view(simple)}/{(m_entries.m_start + 38)->m_value, view(simple)}/{(m_entries.m_start + 39)->m_value, view(simple)}/{(m_entries.m_start + 40)->m_value, view(simple)}</DisplayString>
+        <DisplayString Condition="size() == 42">/{m_entries.m_start->m_value, view(simple)}/{(m_entries.m_start + 1)->m_value, view(simple)}/{(m_entries.m_start + 2)->m_value, view(simple)}/{(m_entries.m_start + 3)->m_value, view(simple)}/{(m_entries.m_start + 4)->m_value, view(simple)}/{(m_entries.m_start + 5)->m_value, view(simple)}/{(m_entries.m_start + 6)->m_value, view(simple)}/{(m_entries.m_start + 7)->m_value, view(simple)}/{(m_entries.m_start + 8)->m_value, view(simple)}/{(m_entries.m_start + 9)->m_value, view(simple)}/{(m_entries.m_start + 10)->m_value, view(simple)}/{(m_entries.m_start + 11)->m_value, view(simple)}/{(m_entries.m_start + 12)->m_value, view(simple)}/{(m_entries.m_start + 13)->m_value, view(simple)}/{(m_entries.m_start + 14)->m_value, view(simple)}/{(m_entries.m_start + 15)->m_value, view(simple)}/{(m_entries.m_start + 16)->m_value, view(simple)}/{(m_entries.m_start + 17)->m_value, view(simple)}/{(m_entries.m_start + 18)->m_value, view(simple)}/{(m_entries.m_start + 19)->m_value, view(simple)}/{(m_entries.m_start + 20)->m_value, view(simple)}/{(m_entries.m_start + 21)->m_value, view(simple)}/{(m_entries.m_start + 22)->m_value, view(simple)}/{(m_entries.m_start + 23)->m_value, view(simple)}/{(m_entries.m_start + 24)->m_value, view(simple)}/{(m_entries.m_start + 25)->m_value, view(simple)}/{(m_entries.m_start + 26)->m_value, view(simple)}/{(m_entries.m_start + 27)->m_value, view(simple)}/{(m_entries.m_start + 28)->m_value, view(simple)}/{(m_entries.m_start + 29)->m_value, view(simple)}/{(m_entries.m_start + 30)->m_value, view(simple)}/{(m_entries.m_start + 31)->m_value, view(simple)}/{(m_entries.m_start + 32)->m_value, view(simple)}/{(m_entries.m_start + 33)->m_value, view(simple)}/{(m_entries.m_start + 34)->m_value, view(simple)}/{(m_entries.m_start + 35)->m_value, view(simple)}/{(m_entries.m_start + 36)->m_value, view(simple)}/{(m_entries.m_start + 37)->m_value, view(simple)}/{(m_entries.m_start + 38)->m_value, view(simple)}/{(m_entries.m_start + 39)->m_value, view(simple)}/{(m_entries.m_start + 40)->m_value, view(simple)}/{(m_entries.m_start + 41)->m_value, view(simple)}</DisplayString>
+        <DisplayString Condition="size() == 43">/{m_entries.m_start->m_value, view(simple)}/{(m_entries.m_start + 1)->m_value, view(simple)}/{(m_entries.m_start + 2)->m_value, view(simple)}/{(m_entries.m_start + 3)->m_value, view(simple)}/{(m_entries.m_start + 4)->m_value, view(simple)}/{(m_entries.m_start + 5)->m_value, view(simple)}/{(m_entries.m_start + 6)->m_value, view(simple)}/{(m_entries.m_start + 7)->m_value, view(simple)}/{(m_entries.m_start + 8)->m_value, view(simple)}/{(m_entries.m_start + 9)->m_value, view(simple)}/{(m_entries.m_start + 10)->m_value, view(simple)}/{(m_entries.m_start + 11)->m_value, view(simple)}/{(m_entries.m_start + 12)->m_value, view(simple)}/{(m_entries.m_start + 13)->m_value, view(simple)}/{(m_entries.m_start + 14)->m_value, view(simple)}/{(m_entries.m_start + 15)->m_value, view(simple)}/{(m_entries.m_start + 16)->m_value, view(simple)}/{(m_entries.m_start + 17)->m_value, view(simple)}/{(m_entries.m_start + 18)->m_value, view(simple)}/{(m_entries.m_start + 19)->m_value, view(simple)}/{(m_entries.m_start + 20)->m_value, view(simple)}/{(m_entries.m_start + 21)->m_value, view(simple)}/{(m_entries.m_start + 22)->m_value, view(simple)}/{(m_entries.m_start + 23)->m_value, view(simple)}/{(m_entries.m_start + 24)->m_value, view(simple)}/{(m_entries.m_start + 25)->m_value, view(simple)}/{(m_entries.m_start + 26)->m_value, view(simple)}/{(m_entries.m_start + 27)->m_value, view(simple)}/{(m_entries.m_start + 28)->m_value, view(simple)}/{(m_entries.m_start + 29)->m_value, view(simple)}/{(m_entries.m_start + 30)->m_value, view(simple)}/{(m_entries.m_start + 31)->m_value, view(simple)}/{(m_entries.m_start + 32)->m_value, view(simple)}/{(m_entries.m_start + 33)->m_value, view(simple)}/{(m_entries.m_start + 34)->m_value, view(simple)}/{(m_entries.m_start + 35)->m_value, view(simple)}/{(m_entries.m_start + 36)->m_value, view(simple)}/{(m_entries.m_start + 37)->m_value, view(simple)}/{(m_entries.m_start + 38)->m_value, view(simple)}/{(m_entries.m_start + 39)->m_value, view(simple)}/{(m_entries.m_start + 40)->m_value, view(simple)}/{(m_entries.m_start + 41)->m_value, view(simple)}/{(m_entries.m_start + 42)->m_value, view(simple)}</DisplayString>
+        <DisplayString Condition="size() == 44">/{m_entries.m_start->m_value, view(simple)}/{(m_entries.m_start + 1)->m_value, view(simple)}/{(m_entries.m_start + 2)->m_value, view(simple)}/{(m_entries.m_start + 3)->m_value, view(simple)}/{(m_entries.m_start + 4)->m_value, view(simple)}/{(m_entries.m_start + 5)->m_value, view(simple)}/{(m_entries.m_start + 6)->m_value, view(simple)}/{(m_entries.m_start + 7)->m_value, view(simple)}/{(m_entries.m_start + 8)->m_value, view(simple)}/{(m_entries.m_start + 9)->m_value, view(simple)}/{(m_entries.m_start + 10)->m_value, view(simple)}/{(m_entries.m_start + 11)->m_value, view(simple)}/{(m_entries.m_start + 12)->m_value, view(simple)}/{(m_entries.m_start + 13)->m_value, view(simple)}/{(m_entries.m_start + 14)->m_value, view(simple)}/{(m_entries.m_start + 15)->m_value, view(simple)}/{(m_entries.m_start + 16)->m_value, view(simple)}/{(m_entries.m_start + 17)->m_value, view(simple)}/{(m_entries.m_start + 18)->m_value, view(simple)}/{(m_entries.m_start + 19)->m_value, view(simple)}/{(m_entries.m_start + 20)->m_value, view(simple)}/{(m_entries.m_start + 21)->m_value, view(simple)}/{(m_entries.m_start + 22)->m_value, view(simple)}/{(m_entries.m_start + 23)->m_value, view(simple)}/{(m_entries.m_start + 24)->m_value, view(simple)}/{(m_entries.m_start + 25)->m_value, view(simple)}/{(m_entries.m_start + 26)->m_value, view(simple)}/{(m_entries.m_start + 27)->m_value, view(simple)}/{(m_entries.m_start + 28)->m_value, view(simple)}/{(m_entries.m_start + 29)->m_value, view(simple)}/{(m_entries.m_start + 30)->m_value, view(simple)}/{(m_entries.m_start + 31)->m_value, view(simple)}/{(m_entries.m_start + 32)->m_value, view(simple)}/{(m_entries.m_start + 33)->m_value, view(simple)}/{(m_entries.m_start + 34)->m_value, view(simple)}/{(m_entries.m_start + 35)->m_value, view(simple)}/{(m_entries.m_start + 36)->m_value, view(simple)}/{(m_entries.m_start + 37)->m_value, view(simple)}/{(m_entries.m_start + 38)->m_value, view(simple)}/{(m_entries.m_start + 39)->m_value, view(simple)}/{(m_entries.m_start + 40)->m_value, view(simple)}/{(m_entries.m_start + 41)->m_value, view(simple)}/{(m_entries.m_start + 42)->m_value, view(simple)}/{(m_entries.m_start + 43)->m_value, view(simple)}</DisplayString>
+        <DisplayString Condition="size() == 45">/{m_entries.m_start->m_value, view(simple)}/{(m_entries.m_start + 1)->m_value, view(simple)}/{(m_entries.m_start + 2)->m_value, view(simple)}/{(m_entries.m_start + 3)->m_value, view(simple)}/{(m_entries.m_start + 4)->m_value, view(simple)}/{(m_entries.m_start + 5)->m_value, view(simple)}/{(m_entries.m_start + 6)->m_value, view(simple)}/{(m_entries.m_start + 7)->m_value, view(simple)}/{(m_entries.m_start + 8)->m_value, view(simple)}/{(m_entries.m_start + 9)->m_value, view(simple)}/{(m_entries.m_start + 10)->m_value, view(simple)}/{(m_entries.m_start + 11)->m_value, view(simple)}/{(m_entries.m_start + 12)->m_value, view(simple)}/{(m_entries.m_start + 13)->m_value, view(simple)}/{(m_entries.m_start + 14)->m_value, view(simple)}/{(m_entries.m_start + 15)->m_value, view(simple)}/{(m_entries.m_start + 16)->m_value, view(simple)}/{(m_entries.m_start + 17)->m_value, view(simple)}/{(m_entries.m_start + 18)->m_value, view(simple)}/{(m_entries.m_start + 19)->m_value, view(simple)}/{(m_entries.m_start + 20)->m_value, view(simple)}/{(m_entries.m_start + 21)->m_value, view(simple)}/{(m_entries.m_start + 22)->m_value, view(simple)}/{(m_entries.m_start + 23)->m_value, view(simple)}/{(m_entries.m_start + 24)->m_value, view(simple)}/{(m_entries.m_start + 25)->m_value, view(simple)}/{(m_entries.m_start + 26)->m_value, view(simple)}/{(m_entries.m_start + 27)->m_value, view(simple)}/{(m_entries.m_start + 28)->m_value, view(simple)}/{(m_entries.m_start + 29)->m_value, view(simple)}/{(m_entries.m_start + 30)->m_value, view(simple)}/{(m_entries.m_start + 31)->m_value, view(simple)}/{(m_entries.m_start + 32)->m_value, view(simple)}/{(m_entries.m_start + 33)->m_value, view(simple)}/{(m_entries.m_start + 34)->m_value, view(simple)}/{(m_entries.m_start + 35)->m_value, view(simple)}/{(m_entries.m_start + 36)->m_value, view(simple)}/{(m_entries.m_start + 37)->m_value, view(simple)}/{(m_entries.m_start + 38)->m_value, view(simple)}/{(m_entries.m_start + 39)->m_value, view(simple)}/{(m_entries.m_start + 40)->m_value, view(simple)}/{(m_entries.m_start + 41)->m_value, view(simple)}/{(m_entries.m_start + 42)->m_value, view(simple)}/{(m_entries.m_start + 43)->m_value, view(simple)}/{(m_entries.m_start + 44)->m_value, view(simple)}</DisplayString>
+        <DisplayString Condition="size() == 46">/{m_entries.m_start->m_value, view(simple)}/{(m_entries.m_start + 1)->m_value, view(simple)}/{(m_entries.m_start + 2)->m_value, view(simple)}/{(m_entries.m_start + 3)->m_value, view(simple)}/{(m_entries.m_start + 4)->m_value, view(simple)}/{(m_entries.m_start + 5)->m_value, view(simple)}/{(m_entries.m_start + 6)->m_value, view(simple)}/{(m_entries.m_start + 7)->m_value, view(simple)}/{(m_entries.m_start + 8)->m_value, view(simple)}/{(m_entries.m_start + 9)->m_value, view(simple)}/{(m_entries.m_start + 10)->m_value, view(simple)}/{(m_entries.m_start + 11)->m_value, view(simple)}/{(m_entries.m_start + 12)->m_value, view(simple)}/{(m_entries.m_start + 13)->m_value, view(simple)}/{(m_entries.m_start + 14)->m_value, view(simple)}/{(m_entries.m_start + 15)->m_value, view(simple)}/{(m_entries.m_start + 16)->m_value, view(simple)}/{(m_entries.m_start + 17)->m_value, view(simple)}/{(m_entries.m_start + 18)->m_value, view(simple)}/{(m_entries.m_start + 19)->m_value, view(simple)}/{(m_entries.m_start + 20)->m_value, view(simple)}/{(m_entries.m_start + 21)->m_value, view(simple)}/{(m_entries.m_start + 22)->m_value, view(simple)}/{(m_entries.m_start + 23)->m_value, view(simple)}/{(m_entries.m_start + 24)->m_value, view(simple)}/{(m_entries.m_start + 25)->m_value, view(simple)}/{(m_entries.m_start + 26)->m_value, view(simple)}/{(m_entries.m_start + 27)->m_value, view(simple)}/{(m_entries.m_start + 28)->m_value, view(simple)}/{(m_entries.m_start + 29)->m_value, view(simple)}/{(m_entries.m_start + 30)->m_value, view(simple)}/{(m_entries.m_start + 31)->m_value, view(simple)}/{(m_entries.m_start + 32)->m_value, view(simple)}/{(m_entries.m_start + 33)->m_value, view(simple)}/{(m_entries.m_start + 34)->m_value, view(simple)}/{(m_entries.m_start + 35)->m_value, view(simple)}/{(m_entries.m_start + 36)->m_value, view(simple)}/{(m_entries.m_start + 37)->m_value, view(simple)}/{(m_entries.m_start + 38)->m_value, view(simple)}/{(m_entries.m_start + 39)->m_value, view(simple)}/{(m_entries.m_start + 40)->m_value, view(simple)}/{(m_entries.m_start + 41)->m_value, view(simple)}/{(m_entries.m_start + 42)->m_value, view(simple)}/{(m_entries.m_start + 43)->m_value, view(simple)}/{(m_entries.m_start + 44)->m_value, view(simple)}/{(m_entries.m_start + 45)->m_value, view(simple)}</DisplayString>
+        <DisplayString Condition="size() == 47">/{m_entries.m_start->m_value, view(simple)}/{(m_entries.m_start + 1)->m_value, view(simple)}/{(m_entries.m_start + 2)->m_value, view(simple)}/{(m_entries.m_start + 3)->m_value, view(simple)}/{(m_entries.m_start + 4)->m_value, view(simple)}/{(m_entries.m_start + 5)->m_value, view(simple)}/{(m_entries.m_start + 6)->m_value, view(simple)}/{(m_entries.m_start + 7)->m_value, view(simple)}/{(m_entries.m_start + 8)->m_value, view(simple)}/{(m_entries.m_start + 9)->m_value, view(simple)}/{(m_entries.m_start + 10)->m_value, view(simple)}/{(m_entries.m_start + 11)->m_value, view(simple)}/{(m_entries.m_start + 12)->m_value, view(simple)}/{(m_entries.m_start + 13)->m_value, view(simple)}/{(m_entries.m_start + 14)->m_value, view(simple)}/{(m_entries.m_start + 15)->m_value, view(simple)}/{(m_entries.m_start + 16)->m_value, view(simple)}/{(m_entries.m_start + 17)->m_value, view(simple)}/{(m_entries.m_start + 18)->m_value, view(simple)}/{(m_entries.m_start + 19)->m_value, view(simple)}/{(m_entries.m_start + 20)->m_value, view(simple)}/{(m_entries.m_start + 21)->m_value, view(simple)}/{(m_entries.m_start + 22)->m_value, view(simple)}/{(m_entries.m_start + 23)->m_value, view(simple)}/{(m_entries.m_start + 24)->m_value, view(simple)}/{(m_entries.m_start + 25)->m_value, view(simple)}/{(m_entries.m_start + 26)->m_value, view(simple)}/{(m_entries.m_start + 27)->m_value, view(simple)}/{(m_entries.m_start + 28)->m_value, view(simple)}/{(m_entries.m_start + 29)->m_value, view(simple)}/{(m_entries.m_start + 30)->m_value, view(simple)}/{(m_entries.m_start + 31)->m_value, view(simple)}/{(m_entries.m_start + 32)->m_value, view(simple)}/{(m_entries.m_start + 33)->m_value, view(simple)}/{(m_entries.m_start + 34)->m_value, view(simple)}/{(m_entries.m_start + 35)->m_value, view(simple)}/{(m_entries.m_start + 36)->m_value, view(simple)}/{(m_entries.m_start + 37)->m_value, view(simple)}/{(m_entries.m_start + 38)->m_value, view(simple)}/{(m_entries.m_start + 39)->m_value, view(simple)}/{(m_entries.m_start + 40)->m_value, view(simple)}/{(m_entries.m_start + 41)->m_value, view(simple)}/{(m_entries.m_start + 42)->m_value, view(simple)}/{(m_entries.m_start + 43)->m_value, view(simple)}/{(m_entries.m_start + 44)->m_value, view(simple)}/{(m_entries.m_start + 45)->m_value, view(simple)}/{(m_entries.m_start + 46)->m_value, view(simple)}</DisplayString>
+        <DisplayString Condition="size() == 48">/{m_entries.m_start->m_value, view(simple)}/{(m_entries.m_start + 1)->m_value, view(simple)}/{(m_entries.m_start + 2)->m_value, view(simple)}/{(m_entries.m_start + 3)->m_value, view(simple)}/{(m_entries.m_start + 4)->m_value, view(simple)}/{(m_entries.m_start + 5)->m_value, view(simple)}/{(m_entries.m_start + 6)->m_value, view(simple)}/{(m_entries.m_start + 7)->m_value, view(simple)}/{(m_entries.m_start + 8)->m_value, view(simple)}/{(m_entries.m_start + 9)->m_value, view(simple)}/{(m_entries.m_start + 10)->m_value, view(simple)}/{(m_entries.m_start + 11)->m_value, view(simple)}/{(m_entries.m_start + 12)->m_value, view(simple)}/{(m_entries.m_start + 13)->m_value, view(simple)}/{(m_entries.m_start + 14)->m_value, view(simple)}/{(m_entries.m_start + 15)->m_value, view(simple)}/{(m_entries.m_start + 16)->m_value, view(simple)}/{(m_entries.m_start + 17)->m_value, view(simple)}/{(m_entries.m_start + 18)->m_value, view(simple)}/{(m_entries.m_start + 19)->m_value, view(simple)}/{(m_entries.m_start + 20)->m_value, view(simple)}/{(m_entries.m_start + 21)->m_value, view(simple)}/{(m_entries.m_start + 22)->m_value, view(simple)}/{(m_entries.m_start + 23)->m_value, view(simple)}/{(m_entries.m_start + 24)->m_value, view(simple)}/{(m_entries.m_start + 25)->m_value, view(simple)}/{(m_entries.m_start + 26)->m_value, view(simple)}/{(m_entries.m_start + 27)->m_value, view(simple)}/{(m_entries.m_start + 28)->m_value, view(simple)}/{(m_entries.m_start + 29)->m_value, view(simple)}/{(m_entries.m_start + 30)->m_value, view(simple)}/{(m_entries.m_start + 31)->m_value, view(simple)}/{(m_entries.m_start + 32)->m_value, view(simple)}/{(m_entries.m_start + 33)->m_value, view(simple)}/{(m_entries.m_start + 34)->m_value, view(simple)}/{(m_entries.m_start + 35)->m_value, view(simple)}/{(m_entries.m_start + 36)->m_value, view(simple)}/{(m_entries.m_start + 37)->m_value, view(simple)}/{(m_entries.m_start + 38)->m_value, view(simple)}/{(m_entries.m_start + 39)->m_value, view(simple)}/{(m_entries.m_start + 40)->m_value, view(simple)}/{(m_entries.m_start + 41)->m_value, view(simple)}/{(m_entries.m_start + 42)->m_value, view(simple)}/{(m_entries.m_start + 43)->m_value, view(simple)}/{(m_entries.m_start + 44)->m_value, view(simple)}/{(m_entries.m_start + 45)->m_value, view(simple)}/{(m_entries.m_start + 46)->m_value, view(simple)}/{(m_entries.m_start + 47)->m_value, view(simple)}</DisplayString>
+    </Type>
+
+    <Type Name="AZ::Dom::PathEntry">
+        <!-- Shows the DomPathEntry m_value variant using a view option of simple to only show the plain value !-->
+        <DisplayString>{m_value, view(simple)}</DisplayString>
+        <Expand>
+            <ExpandedItem>m_value</ExpandedItem>
+        </Expand>
+    </Type>
+
+    <Type Name="AZ::Dom::DomPrefixTree&lt;*&gt;::Node">
+        <DisplayString Condition="m_data.has_value()">{m_data}</DisplayString>
+        <Expand>
+            <CustomListItems>
+                <Variable Name="rootNode" InitialValue="this"/>
+                <Variable Name="prefixPathEntry" InitialValue="(AZ::Dom::PathEntry*)0"/>
+                <Variable Name="childPrefixNode" InitialValue="(AZ::Dom::DomPrefixTree&lt;$T1&gt;::Node*)0"/>
+                <Variable Name="listHead" InitialValue="(AZStd::Internal::list_node&lt;AZStd::pair&lt;AZ::Dom::PathEntry,AZ::Dom::DomPrefixTree&lt;$T1&gt;::Node&gt; &gt;*)(&amp;rootNode-&gt;m_values.m_data.m_list.m_head)"/>
+                <Variable Name="listNode" InitialValue="(AZStd::Internal::list_node&lt;AZStd::pair&lt;AZ::Dom::PathEntry,AZ::Dom::DomPrefixTree&lt;$T1&gt;::Node&gt; &gt;*)(listHead-&gt;m_next)"/>
+                <Loop>
+                    <!-- If the prefix tree child value hash table is empty(via checking the unordered_map list), then teminate iteration of the DomPrefixTree -->
+                    <Break Condition="listNode == listHead"/>
+                    <Exec>prefixPathEntry = &amp;listNode-&gt;m_value.first</Exec>
+                    <Exec>childPrefixNode = &amp;listNode-&gt;m_value.second</Exec>
+                    <Item Name="{*prefixPathEntry}">*childPrefixNode</Item>
+                    <Exec>listNode = (AZStd::Internal::list_node&lt;AZStd::pair&lt;AZ::Dom::PathEntry,AZ::Dom::DomPrefixTree&lt;$T1&gt;::Node&gt; &gt;*)(listNode-&gt;m_next)</Exec>
+                </Loop>
+            </CustomListItems>
+        </Expand>
+    </Type>
+
+    <!-- Protip - Natvis uses pre-C++11 parsing of templates as it concerns the double greater than symbol token(>>)
+    It still parses it as a the right shift operator, whether than two template closing braces. So a space is needed between
+    two consecutive &gt; tokens in that case -->
+    <Type Name="AZ::Dom::DomPrefixTree&lt;*&gt;">
+        <DisplayString Condition="m_rootNode.m_data.has_value()">{m_rootNode.m_data}</DisplayString>
+        <Expand>
+            <Item Condition="m_rootNode.m_data.has_value()" Name="&quot;&quot;">m_rootNode</Item>
+        </Expand>
+    </Type>
+
+    <Type Name="AZ::SettingsRegistryImpl">
+        <DisplayString>{m_settings}</DisplayString>
+        <Expand>
+            <ExpandedItem>m_settings</ExpandedItem>
+        </Expand>
+    </Type>
+
+    <Type Name="AZ::Symbol">
+        <DisplayString Condition="m_entry == nullptr">&lt;empty&gt;</DisplayString>
+        <DisplayString Condition="m_entry != nullptr">{(const char*)(m_entry + 1),s}</DisplayString>
+        <StringView Condition="m_entry != nullptr">(const char*)(m_entry + 1),s</StringView>
+        <Expand>
+            <Item Name="length" Condition="m_entry != nullptr">m_entry-&gt;m_size</Item>
+        </Expand>
+    </Type>
+
+</AutoVisualizer>

@@ -304,15 +304,11 @@ namespace Multiplayer
             {
                 PrepareFullReplicationEntityRecord(netBindComponent);
             }
-            // After the first create, transition to updating.
-            m_replicatorState = PropertyPublisher::EntityReplicatorState::Updating;
             break;
 
         case PropertyPublisher::EntityReplicatorState::Rebasing:
             AZ_Assert(m_ownsLifetime == PropertyPublisher::OwnsLifetime::True, "Expected to own our lifetime if we rebase");
             PrepareRebaseEntityRecord(netBindComponent);
-            // After a rebase, transition to updating.
-            m_replicatorState = PropertyPublisher::EntityReplicatorState::Updating;
             break;
 
         case PropertyPublisher::EntityReplicatorState::Updating:
@@ -340,16 +336,22 @@ namespace Multiplayer
         if (cacheDelete)
         {
             AZ_Assert(!m_cachedDeleteMessage.GetIsDelete(), "Double-creating the cached delete message.");
-            m_cachedDeleteMessage = GenerateUpdatePacket(netBindComponent, wasMigrated);
-            AZ_Assert(m_cachedDeleteMessage.GetIsDelete(), "Cached delete message wasn't created successfully.");
+            cacheDelete = GenerateUpdatePacket(netBindComponent, wasMigrated, m_cachedDeleteMessage);
+            AZ_Assert(!cacheDelete || m_cachedDeleteMessage.GetIsDelete(), "Cached delete message wasn't created successfully.");
 
             // We can't call "Finalize" because no packet was sent, so we'll just manually set the phase back to "Ready".
-            m_serializationPhase = PropertyPublisher::EntityReplicatorSerializationPhase::Ready;
+            if (cacheDelete)
+            {
+                m_serializationPhase = PropertyPublisher::EntityReplicatorSerializationPhase::Ready;
+            }
         }
         return cacheDelete;
     }
 
-    NetworkEntityUpdateMessage PropertyPublisher::GenerateUpdatePacket(NetBindComponent* netBindComponent, bool wasMigrated)
+    bool PropertyPublisher::GenerateUpdatePacket(
+        NetBindComponent* netBindComponent,
+        bool wasMigrated,
+        NetworkEntityUpdateMessage& outMessage)
     {
         const bool sendPrefabId = !IsRemoteReplicatorEstablished();
 
@@ -358,10 +360,11 @@ namespace Multiplayer
 
         if (isDeleted && m_cachedDeleteMessage.GetIsDelete())
         {
-            return m_cachedDeleteMessage;
+            outMessage = m_cachedDeleteMessage;
+            return true;
         }
 
-        NetworkEntityUpdateMessage updateMessage(
+        NetworkEntityUpdateMessage candidateMessage(
             m_pendingRecord.GetRemoteNetworkRole(), netBindComponent->GetNetEntityId(), isDeleted, wasMigrated);
 
         // Only set the prefab id if the remote replicator hasn't been established yet. Once the remote replicator has been established
@@ -369,40 +372,63 @@ namespace Multiplayer
         // over the entity's lifetime.
         if (sendPrefabId)
         {
-            updateMessage.SetPrefabEntityId(netBindComponent->GetPrefabEntityId());
+            candidateMessage.SetPrefabEntityId(netBindComponent->GetPrefabEntityId());
         }
 
         InputSerializer inputSerializer(
-            updateMessage.ModifyData().GetBuffer(), static_cast<uint32_t>(updateMessage.ModifyData().GetCapacity()));
-        SerializeEntityRecord(inputSerializer, netBindComponent);
-        updateMessage.ModifyData().Resize(inputSerializer.GetSize());
+            candidateMessage.ModifyData().GetBuffer(), static_cast<uint32_t>(candidateMessage.ModifyData().GetCapacity()));
+        if (!SerializeEntityRecord(inputSerializer, netBindComponent))
+        {
+            AbortSerialization();
+            return false;
+        }
+        candidateMessage.ModifyData().Resize(inputSerializer.GetSize());
 
-        return updateMessage;
+        outMessage = AZStd::move(candidateMessage);
+        return true;
     }
 
-    EntityMigrationMessage PropertyPublisher::GenerateMigrationPacket(NetBindComponent* netBindComponent)
+    bool PropertyPublisher::GenerateMigrationPacket(
+        NetBindComponent* netBindComponent,
+        EntityMigrationMessage& outMessage)
     {
         AZ_Assert(netBindComponent, "Trying to migrate when NetBindComponent is null.");
         AZ_Assert(!IsDeleting(), "Trying to migrate a deleted entity");
 
-        EntityMigrationMessage message;
-        message.m_netEntityId = netBindComponent->GetNetEntityId();
-        message.m_prefabEntityId = netBindComponent->GetPrefabEntityId();
+        EntityMigrationMessage candidateMessage;
+        candidateMessage.m_netEntityId = netBindComponent->GetNetEntityId();
+        candidateMessage.m_prefabEntityId = netBindComponent->GetPrefabEntityId();
 
         // Send an update packet if it needs one
         UpdatePendingRecord(netBindComponent);
         bool needsNetworkPropertyUpdate = PrepareSerialization(netBindComponent);
         InputSerializer inputSerializer(
-            message.m_propertyUpdateData.GetBuffer(), static_cast<uint32_t>(message.m_propertyUpdateData.GetCapacity()));
+            candidateMessage.m_propertyUpdateData.GetBuffer(), static_cast<uint32_t>(candidateMessage.m_propertyUpdateData.GetCapacity()));
         if (needsNetworkPropertyUpdate)
         {
             // Write out entity state into the buffer
-            SerializeEntityRecord(inputSerializer, netBindComponent);
+            if (!SerializeEntityRecord(inputSerializer, netBindComponent))
+            {
+                AbortSerialization();
+                return false;
+            }
         }
-        AZ_Assert(inputSerializer.IsValid(), "Failed to migrate entity from server");
-        message.m_propertyUpdateData.Resize(inputSerializer.GetSize());
+        candidateMessage.m_propertyUpdateData.Resize(inputSerializer.GetSize());
 
-        return message;
+        outMessage = AZStd::move(candidateMessage);
+        return true;
+    }
+
+    void PropertyPublisher::AbortSerialization()
+    {
+        AZ_Assert(
+            m_serializationPhase == PropertyPublisher::EntityReplicatorSerializationPhase::Prepared,
+            "Unexpected serialization phase");
+        if (!m_sentRecords.empty() && m_sentRecords.front().m_sentPacketId == AzNetworking::InvalidPacketId)
+        {
+            m_sentRecords.pop_front();
+        }
+        m_serializationPhase = PropertyPublisher::EntityReplicatorSerializationPhase::Ready;
     }
 
     void PropertyPublisher::FinalizeSerialization(AzNetworking::PacketId sentId)
@@ -416,6 +442,7 @@ namespace Multiplayer
             AZ_Assert(false, "EntityReplicator: Initialize() was not called on this entity replicator");
             break;
         case PropertyPublisher::EntityReplicatorState::Creating:
+        case PropertyPublisher::EntityReplicatorState::Rebasing:
         case PropertyPublisher::EntityReplicatorState::Updating:
         {
             FinalizeUpdateEntityRecord(sentId);

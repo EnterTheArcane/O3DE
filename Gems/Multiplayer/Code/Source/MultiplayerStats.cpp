@@ -12,6 +12,30 @@
 
 namespace Multiplayer
 {
+    namespace
+    {
+        thread_local AZ::u32 SerializationMetricSuppressionDepth = 0;
+    }
+
+    namespace Internal
+    {
+        ScopedSerializationMetricSuppression::ScopedSerializationMetricSuppression()
+        {
+            ++SerializationMetricSuppressionDepth;
+        }
+
+        ScopedSerializationMetricSuppression::~ScopedSerializationMetricSuppression()
+        {
+            AZ_Assert(SerializationMetricSuppressionDepth > 0, "Unbalanced serialization metric suppression scope");
+            --SerializationMetricSuppressionDepth;
+        }
+
+        bool AreSerializationMetricsSuppressed()
+        {
+            return SerializationMetricSuppressionDepth > 0;
+        }
+    } // namespace Internal
+
     MultiplayerStats::Metric::Metric()
     {
         AZStd::uninitialized_fill_n(m_callHistory.data(), RingbufferSamples, 0);
@@ -33,21 +57,37 @@ namespace Multiplayer
 
     void MultiplayerStats::RecordEntitySerializeStart(AzNetworking::SerializerMode mode, AZ::EntityId entityId, const char* entityName)
     {
+        if (Internal::AreSerializationMetricsSuppressed())
+        {
+            return;
+        }
         m_events.m_entitySerializeStart.Signal(mode, entityId, entityName);
     }
 
     void MultiplayerStats::RecordComponentSerializeEnd(AzNetworking::SerializerMode mode, NetComponentId netComponentId)
     {
+        if (Internal::AreSerializationMetricsSuppressed())
+        {
+            return;
+        }
         m_events.m_componentSerializeEnd.Signal(mode, netComponentId);
     }
 
     void MultiplayerStats::RecordEntitySerializeStop(AzNetworking::SerializerMode mode, AZ::EntityId entityId, const char* entityName)
     {
+        if (Internal::AreSerializationMetricsSuppressed())
+        {
+            return;
+        }
         m_events.m_entitySerializeStop.Signal(mode, entityId, entityName);
     }
 
     void MultiplayerStats::RecordPropertySent(NetComponentId netComponentId, PropertyIndex propertyId, uint32_t totalBytes)
     {
+        if (Internal::AreSerializationMetricsSuppressed())
+        {
+            return;
+        }
         const uint16_t netComponentIndex = aznumeric_cast<uint16_t>(netComponentId);
         const uint16_t propertyIndex = aznumeric_cast<uint16_t>(propertyId);
         if (m_componentStats[netComponentIndex].m_propertyUpdatesSent.size() > propertyIndex)
@@ -68,6 +108,10 @@ namespace Multiplayer
 
     void MultiplayerStats::RecordPropertyReceived(NetComponentId netComponentId, PropertyIndex propertyId, uint32_t totalBytes)
     {
+        if (Internal::AreSerializationMetricsSuppressed())
+        {
+            return;
+        }
         const uint16_t netComponentIndex = aznumeric_cast<uint16_t>(netComponentId);
         const uint16_t propertyIndex = aznumeric_cast<uint16_t>(propertyId);
         if (m_componentStats[netComponentIndex].m_propertyUpdatesRecv.size() > propertyIndex)

@@ -16,9 +16,11 @@ set(FILES
     DataStructures/RingBufferBitsetTests.cpp
     DataStructures/TimeoutQueueTests.cpp
     Serialization/DeltaSerializerTests.cpp
+    Serialization/DeltaSerializerBenchmarks.cpp
     Serialization/HashSerializerTests.cpp
     Serialization/NetworkInputOutputSerializerTests.cpp
     Serialization/StringifySerializerTests.cpp
+    Serialization/SymbolSerializerTests.cpp
     Serialization/TrackChangedSerializerTests.cpp
     Serialization/TypeValidatingSerializerTests.cpp
     TcpTransport/TcpTransportTests.cpp

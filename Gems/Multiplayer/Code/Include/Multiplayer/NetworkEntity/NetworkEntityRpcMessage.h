@@ -12,6 +12,11 @@
 #include <AzNetworking/DataStructures/ByteBuffer.h>
 #include <Multiplayer/MultiplayerTypes.h>
 
+namespace AzNetworking
+{
+    class IConnection;
+}
+
 namespace Multiplayer
 {
     struct IRpcParamStruct;
@@ -71,6 +76,12 @@ namespace Multiplayer
         //! Reads the data contained inside this NetworkEntityRpcMessage's blob buffer and stores them in outParams.
         //! @param outParams the parameters instance to store to the resulting data inside
         bool GetRpcParams(IRpcParamStruct& outParams);
+
+        //! Decodes parameters received from a remote connection using that connection's
+        //! bounded Symbol admission policy.
+        bool GetRpcParams(
+            IRpcParamStruct& outParams,
+            AzNetworking::IConnection& invokingConnection);
 
         //! Base serialize method for all serializable structures or classes to implement.
         //! @param serializer ISerializer instance to use for serialization

@@ -23,6 +23,10 @@ namespace AzNetworking
         //! @param buffer         output buffer to read from
         //! @param bufferCapacity capacity of the buffer in bytes
         NetworkOutputSerializer(const uint8_t* buffer, uint32_t bufferCapacity);
+        NetworkOutputSerializer(
+            const uint8_t* buffer,
+            uint32_t bufferCapacity,
+            const Internal::SymbolSerializationContext& symbolSerializationContext);
 
         //! Returns the unread portion of the data stream.
         //! @return the unread portion of the data stream

@@ -123,6 +123,30 @@ namespace UnitTest
         }
     };
 
+    struct OverflowByteDeltaValue final
+    {
+        bool Serialize(AzNetworking::ISerializer& serializer)
+        {
+            uint32_t firstSize = static_cast<uint32_t>(m_first.size());
+            uint32_t secondSize = static_cast<uint32_t>(m_second.size());
+            return serializer.SerializeBytes(
+                m_first.data(),
+                static_cast<uint32_t>(m_first.size()),
+                false,
+                firstSize,
+                "First")
+                && serializer.SerializeBytes(
+                    m_second.data(),
+                    static_cast<uint32_t>(m_second.size()),
+                    false,
+                    secondSize,
+                    "Second");
+        }
+
+        AZStd::array<uint8_t, 768> m_first{};
+        AZStd::array<uint8_t, 768> m_second{};
+    };
+
     class DeltaSerializerTests
         : public UnitTest::LeakDetectionFixture
     {
@@ -174,7 +198,7 @@ namespace UnitTest
 
         EXPECT_TRUE(outContainer.Serialize(outSerializer));
 
-        for (uint32_t i = 0; i > outContainer.m_container.size(); ++i)
+        for (uint32_t i = 0; i < outContainer.m_container.size(); ++i)
         {
             EXPECT_EQ(inContainer.m_container[i].m_isValid, outContainer.m_container[i].m_isValid);
             EXPECT_EQ(inContainer.m_container[i].m_blendFactor, outContainer.m_container[i].m_blendFactor);
@@ -243,5 +267,25 @@ namespace UnitTest
         EXPECT_FALSE(applySerializer.GetTrackedChangesFlag());
         EXPECT_TRUE(applySerializer.BeginObject("CreateSerializer"));
         EXPECT_TRUE(applySerializer.EndObject("CreateSerializer"));
+    }
+
+    TEST_F(DeltaSerializerTests, OverflowByteRecordsCompareContentsAndRoundTrip)
+    {
+        OverflowByteDeltaValue base;
+        OverflowByteDeltaValue current;
+        current.m_second.back() = 0xFF;
+
+        AzNetworking::SerializerDelta delta;
+        AzNetworking::DeltaSerializerCreate createSerializer(delta);
+        ASSERT_TRUE(createSerializer.CreateDelta(base, current));
+        ASSERT_EQ(delta.GetNumDirtyBits(), 2);
+        EXPECT_FALSE(delta.GetDirtyBit(0));
+        EXPECT_TRUE(delta.GetDirtyBit(1));
+
+        OverflowByteDeltaValue output = base;
+        AzNetworking::DeltaSerializerApply applySerializer(delta);
+        ASSERT_TRUE(applySerializer.ApplyDelta(output));
+        EXPECT_EQ(output.m_first, current.m_first);
+        EXPECT_EQ(output.m_second, current.m_second);
     }
 }

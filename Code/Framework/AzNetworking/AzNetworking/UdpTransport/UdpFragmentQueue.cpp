@@ -139,7 +139,9 @@ namespace AzNetworking
         // We can erase all the chunks now, packet is completed
         m_packetFragments.erase(fragmentSequence);
 
-        NetworkOutputSerializer networkSerializer(buffer.GetBuffer(), static_cast<uint32_t>(buffer.GetSize()));
+        auto& symbolAdmissionPolicy = Internal::GetSymbolAdmissionPolicy(*connection);
+        const Internal::SymbolSerializationContext symbolSerializationContext{SymbolAdmission::NetworkOrigin, &symbolAdmissionPolicy};
+        NetworkOutputSerializer networkSerializer(buffer.GetBuffer(), static_cast<uint32_t>(buffer.GetSize()), symbolSerializationContext);
         {
             ISerializer& networkISerializer = networkSerializer; // To get the default typeinfo parameters in ISerializer
 

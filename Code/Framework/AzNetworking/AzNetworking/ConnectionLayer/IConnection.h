@@ -12,6 +12,7 @@
 #include <AzNetworking/Utilities/IpAddress.h>
 #include <AzNetworking/ConnectionLayer/ConnectionEnums.h>
 #include <AzNetworking/ConnectionLayer/ConnectionMetrics.h>
+#include <AzNetworking/Serialization/Internal/SymbolAdmissionPolicy.h>
 
 namespace AzNetworking
 {
@@ -135,12 +136,16 @@ namespace AzNetworking
 
     private:
 
+        friend Internal::SymbolAdmissionPolicy&
+            Internal::GetSymbolAdmissionPolicy(IConnection& connection);
+
         // The following data members are here in the interface for performance reasons
         ConnectionId      m_connectionId = InvalidConnectionId;
         IpAddress         m_remoteAddress;
         ConnectionMetrics m_connectionMetrics;
         ConnectionQuality m_connectionQuality;
         void*             m_userData = nullptr;
+        Internal::SymbolAdmissionPolicy m_symbolAdmissionPolicy;
     };
 }
 

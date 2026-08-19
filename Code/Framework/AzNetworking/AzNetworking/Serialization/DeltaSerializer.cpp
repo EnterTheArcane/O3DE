@@ -9,7 +9,11 @@
 #include <AzNetworking/Serialization/DeltaSerializer.h>
 #include <AzNetworking/Serialization/NetworkInputSerializer.h>
 #include <AzNetworking/Serialization/NetworkOutputSerializer.h>
-#include <AzCore/std/string/conversions.h>
+#include <AzCore/std/algorithm.h>
+#include <AzCore/std/limits.h>
+#include <AzCore/std/typetraits/is_trivially_copyable.h>
+
+#include <cstring>
 
 namespace AzNetworking
 {
@@ -68,21 +72,19 @@ namespace AzNetworking
         ;
     }
 
-    DeltaSerializerCreate::~DeltaSerializerCreate()
+    DeltaSerializerCreate::DeltaSerializerCreate(
+        SerializerDelta& delta,
+        const Internal::SymbolSerializationContext& symbolSerializationContext)
+        : ISerializer(&symbolSerializationContext)
+        , m_delta(delta)
+        , m_dataSerializer(
+            m_delta.GetBufferPtr(),
+            m_delta.GetBufferCapacity(),
+            symbolSerializationContext)
     {
-        // Delete any left over records that might be hanging around
-        for (auto iter : m_records)
-        {
-            if (iter)
-            {
-                // this will probably trigger ASAN, since we don't know what the type is.
-                // But it should also only happen in scenarios where we are crashing or have already asserted/warned
-                // about mismatched serialize/deserialize.
-                delete iter;  
-            }
-        }
-        m_records.clear();
     }
+
+    DeltaSerializerCreate::~DeltaSerializerCreate() = default;
 
     SerializerMode DeltaSerializerCreate::GetSerializerMode() const
     {
@@ -169,7 +171,107 @@ namespace AzNetworking
 
     bool DeltaSerializerCreate::SerializeBytes(uint8_t* buffer, uint32_t bufferCapacity, bool isString, uint32_t& outSize, const char* name)
     {
-        return SerializeHelper(buffer, bufferCapacity, isString, outSize, name);
+        const uint32_t objectPosition = m_objectCounter;
+        ++m_objectCounter;
+
+        if (outSize > bufferCapacity || (outSize > 0 && !buffer))
+        {
+            Invalidate();
+            return false;
+        }
+
+        if (m_gatheringRecords)
+        {
+            if (m_records.size() >= m_records.capacity())
+            {
+                Invalidate();
+                return false;
+            }
+
+            ValueRecord record;
+            if (!StoreRecordBytes(buffer, outSize, record))
+            {
+                Invalidate();
+                return false;
+            }
+            m_records.push_back(record);
+            return true;
+        }
+
+        if (objectPosition >= m_records.size())
+        {
+            Invalidate();
+            return false;
+        }
+
+        const ValueRecord& record = m_records[objectPosition];
+        const uint32_t baseOffset = static_cast<uint32_t>(record.m_value);
+        const uint32_t baseSize = static_cast<uint32_t>(record.m_value >> 32);
+        const bool different = baseSize != outSize
+            || (outSize > 0 && std::memcmp(GetRecordBytes() + baseOffset, buffer, outSize) != 0);
+        if (!m_delta.InsertDirtyBit(different))
+        {
+            Invalidate();
+            return false;
+        }
+
+        if (different && !SerializeHelperImpl(buffer, bufferCapacity, isString, outSize, name))
+        {
+            return false;
+        }
+        return true;
+    }
+
+    bool DeltaSerializerCreate::StoreRecordBytes(
+        const uint8_t* buffer,
+        const uint32_t size,
+        ValueRecord& record)
+    {
+        if (size > AZStd::numeric_limits<uint32_t>::max() - m_recordByteSize)
+        {
+            return false;
+        }
+
+        const uint32_t offset = m_recordByteSize;
+        const uint32_t newSize = offset + size;
+        record.m_value = (static_cast<uint64_t>(size) << 32) | offset;
+
+        if (m_overflowRecordBytes.empty() && newSize <= m_inlineRecordBytes.size())
+        {
+            if (size > 0)
+            {
+                std::memcpy(m_inlineRecordBytes.data() + offset, buffer, size);
+            }
+        }
+        else
+        {
+            if (m_overflowRecordBytes.empty())
+            {
+                const size_t reserveSize = AZStd::max<size_t>(MaxPacketSize, newSize);
+                m_overflowRecordBytes.reserve(reserveSize);
+                m_overflowRecordBytes.assign(
+                    m_inlineRecordBytes.begin(),
+                    m_inlineRecordBytes.begin() + m_recordByteSize);
+            }
+            m_overflowRecordBytes.resize_no_construct(newSize);
+            if (size > 0)
+            {
+                std::memcpy(m_overflowRecordBytes.data() + offset, buffer, size);
+            }
+        }
+
+        m_recordByteSize = newSize;
+        return true;
+    }
+
+    const uint8_t* DeltaSerializerCreate::GetRecordBytes() const
+    {
+        if (m_overflowRecordBytes.empty())
+        {
+            return m_inlineRecordBytes.data();
+        }
+
+        return m_overflowRecordBytes.data();
     }
 
     bool DeltaSerializerCreate::BeginObject([[maybe_unused]] const char* name)
@@ -200,68 +302,42 @@ namespace AzNetworking
     template <typename T>
     bool DeltaSerializerCreate::SerializeHelper(T& value, uint32_t bufferCapacity, bool isString, uint32_t& outSize, const char* name)
     {
-        // The way this functions is that it expects its operation to be done in two phases:
-        // First, it gathers records into the m_records vector for each object being serialized, representing the prior state
-        // Then it expects to be called again, on objects in exactly the same order but with the new state.
-        // It will then compare the two states and generate a delta in m_delta for the differences.
-        // Once it has done this, the value stored in m_records is no longer required, and can be deleted while we still
-        // are in a templated function that knows the type of T and can thus invoke the correct delete operator.
+        static_assert(AZStd::is_trivially_copyable_v<T>);
+        static_assert(sizeof(T) <= sizeof(uint64_t));
 
-        // if this starts be a bottleneck or memory hotspot, consider using a static frame buffer for m_records, the kind of datastructure
-        // that runs on pre-allocated memory and resets it every frame instead of frees it, to avoid needing to delete.
-
-        typedef AbstractValue::ValueT<T> ValueType;
-
-        uint32_t objectPos = m_objectCounter;
-        AbstractValue::BaseValue* baseValue = m_records.size() > m_objectCounter ? m_records[m_objectCounter] : nullptr;
+        const uint32_t objectPosition = m_objectCounter;
         ++m_objectCounter;
 
-        // If we are in the gather records phase, just save off the value records
         if (m_gatheringRecords)
         {
-            AZ_Assert(baseValue == nullptr, "Expected to create a new record but found a pre-existing one at index %d", m_objectCounter - 1);
-            baseValue = new ValueType(value);
-            m_records.push_back(baseValue);
-        }
-        else // If we are not gathering records, then we are comparing them
-        {
-            bool different = false;
-
-            if (baseValue)
+            if (m_records.size() >= m_records.capacity())
             {
-                // This record must match the same type that was pushed into the list during the gathering phase
-                ValueType* typedValue = static_cast<ValueType*>(baseValue);
-                // Are the two values different?
-                different = typedValue->GetValue() != value;
-            }
-            else
-            {
-                // No record? Then definitely different
-                different = true;
-            }
-
-            // Record a bit to track this information
-            if (!m_delta.InsertDirtyBit(different))
-            {
-                AZ_Assert(false, "Ran out of bits in DeltaSerializerCreate. You are probably trying to serialize an object with too many fields. Consider resizing the bitset in DeltaSerializerCreate");
+                Invalidate();
                 return false;
             }
 
-            // If different, also write the data into the delta's buffer
-            if (different)
-            {
-                if (!SerializeHelperImpl(value, bufferCapacity, isString, outSize, name))
-                {
-                    return false;
-                }
-            }
-
-            // once we get here, we don't need the record anymore, so discard it while we know what the type is.
-            delete static_cast<ValueType*>(baseValue);
-            m_records[objectPos] = nullptr;
+            ValueRecord record;
+            std::memcpy(&record.m_value, &value, sizeof(T));
+            m_records.push_back(record);
+            return true;
         }
 
-        return true;
+        if (objectPosition >= m_records.size())
+        {
+            Invalidate();
+            return false;
+        }
+
+        T baseValue;
+        std::memcpy(&baseValue, &m_records[objectPosition].m_value, sizeof(T));
+        const bool different = baseValue != value;
+        if (!m_delta.InsertDirtyBit(different))
+        {
+            Invalidate();
+            return false;
+        }
+
+        return !different || SerializeHelperImpl(value, bufferCapacity, isString, outSize, name);
     }
 
     template <typename T>
@@ -282,6 +358,18 @@ namespace AzNetworking
         , m_dataSerializer(m_delta.GetBufferPtr(), m_delta.GetBufferSize())
     {
         ;
+    }
+
+    DeltaSerializerApply::DeltaSerializerApply(
+        SerializerDelta& delta,
+        const Internal::SymbolSerializationContext& symbolSerializationContext)
+        : ISerializer(&symbolSerializationContext)
+        , m_delta(delta)
+        , m_dataSerializer(
+            m_delta.GetBufferPtr(),
+            m_delta.GetBufferSize(),
+            symbolSerializationContext)
+    {
     }
 
     DeltaSerializerApply::~DeltaSerializerApply()

@@ -8,6 +8,8 @@
 
 #include <Multiplayer/NetworkEntity/NetworkEntityRpcMessage.h>
 #include <Multiplayer/IMultiplayer.h>
+#include <AzNetworking/ConnectionLayer/IConnection.h>
+#include <AzNetworking/Serialization/Internal/SymbolAdmissionPolicy.h>
 #include <AzCore/Console/ILogger.h>
 
 namespace Multiplayer
@@ -70,6 +72,10 @@ namespace Multiplayer
             m_data = AZStd::make_unique<AzNetworking::PacketEncodingBuffer>();
             *m_data = (*rhs.m_data);
         }
+        else
+        {
+            m_data.reset();
+        }
 
         return *this;
     }
@@ -95,8 +101,15 @@ namespace Multiplayer
             + sizeof(NetComponentId)
             + sizeof(RpcIndex);
 
-        // 2-byte size header + the actual blob payload itself
-        const uint32_t sizeOfBlob = static_cast<uint32_t>((m_data != nullptr) ? sizeof(uint16_t) + m_data->GetSize() : 0);
+        // ByteBuffer serializes its logical size and SerializeBytes serializes its
+        // bounded byte count before the payload.
+        size_t dataSize = 0;
+        if (m_data)
+        {
+            dataSize = m_data->GetSize();
+        }
+        const uint32_t sizeOfBlob = static_cast<uint32_t>(
+            sizeof(uint16_t) + sizeof(uint16_t) + dataSize);
 
         // No sliceId, remote replicator already exists so we don't need to know what type of entity this is
         return sizeOfFields + sizeOfBlob;
@@ -129,50 +142,153 @@ namespace Multiplayer
 
     bool NetworkEntityRpcMessage::SetRpcParams(IRpcParamStruct& params)
     {
-        if (m_data == nullptr)
-        {
-            m_data = AZStd::make_unique<AzNetworking::PacketEncodingBuffer>();
-        }
-
-        RpcInputSerializer serializer(m_data->GetBuffer(), static_cast<uint32_t>(m_data->GetCapacity()));
+        auto candidateData = AZStd::make_unique<AzNetworking::PacketEncodingBuffer>();
+        RpcInputSerializer serializer(
+            candidateData->GetBuffer(),
+            static_cast<uint32_t>(candidateData->GetCapacity()));
         if (params.Serialize(serializer))
         {
-            m_data->Resize(serializer.GetSize());
+            if (serializer.GetSize() == 0)
+            {
+                m_data.reset();
+                return true;
+            }
+
+            candidateData->Resize(serializer.GetSize());
+            m_data = AZStd::move(candidateData);
             return true;
         }
 
-        // Serialization failed, just leave the blob at zero size
         return false;
     }
 
     bool NetworkEntityRpcMessage::GetRpcParams(IRpcParamStruct& outParams)
     {
-        if (m_data == nullptr)
+        const uint8_t* buffer = nullptr;
+        uint32_t size = 0;
+        if (m_data)
         {
-            AZLOG_ERROR("Trying to retrieve RpcParams from an NetworkEntityRpcMessage with no blob buffer, this NetworkEntityRpcMessage has not been constructed or serialized");
-            return false;
+            buffer = m_data->GetBuffer();
+            size = static_cast<uint32_t>(m_data->GetSize());
         }
+        RpcOutputSerializer serializer(buffer, size);
+        return outParams.Serialize(serializer);
+    }
 
-        RpcOutputSerializer serializer(m_data->GetBuffer(), static_cast<uint32_t>(m_data->GetSize()));
+    bool NetworkEntityRpcMessage::GetRpcParams(
+        IRpcParamStruct& outParams,
+        AzNetworking::IConnection& invokingConnection)
+    {
+        auto& admissionPolicy = AzNetworking::Internal::GetSymbolAdmissionPolicy(invokingConnection);
+        const AzNetworking::Internal::SymbolSerializationContext symbolSerializationContext{
+            AzNetworking::SymbolAdmission::NetworkOrigin,
+            &admissionPolicy};
+        const uint8_t* buffer = nullptr;
+        uint32_t size = 0;
+        if (m_data)
+        {
+            buffer = m_data->GetBuffer();
+            size = static_cast<uint32_t>(m_data->GetSize());
+        }
+        RpcOutputSerializer serializer(buffer, size, symbolSerializationContext);
         return outParams.Serialize(serializer);
     }
 
     bool NetworkEntityRpcMessage::Serialize(AzNetworking::ISerializer& serializer)
     {
-        serializer.Serialize(m_rpcDeliveryType, "RpcDeliveryType");
-        serializer.Serialize(m_entityId, "EntityId");
-        serializer.Serialize(m_componentId, "ComponentId");
-        serializer.Serialize(m_rpcIndex, "RpcIndex");
-
-        // m_data should never be nullptr, it contains serialized data for our Rpc params struct
-        if (m_data == nullptr)
+        RpcDeliveryType rpcDeliveryType = m_rpcDeliveryType;
+        NetEntityId entityId = m_entityId;
+        NetComponentId componentId = m_componentId;
+        RpcIndex rpcIndex = m_rpcIndex;
+        serializer.Serialize(rpcDeliveryType, "RpcDeliveryType");
+        serializer.Serialize(entityId, "EntityId");
+        serializer.Serialize(componentId, "ComponentId");
+        serializer.Serialize(rpcIndex, "RpcIndex");
+        if (!serializer.IsValid())
         {
-            m_data = AZStd::make_unique<AzNetworking::PacketEncodingBuffer>();
+            return false;
         }
-        serializer.Serialize(*m_data, "data");
+
+        using BlobSize = AZ::SizeType<AZ::RequiredBytesForValue<AzNetworking::MaxPacketSize>(), false>::Type;
+        BlobSize blobSize = 0;
+        if (m_data)
+        {
+            blobSize = static_cast<BlobSize>(m_data->GetSize());
+        }
+        serializer.BeginObject("data");
+        serializer.Serialize(blobSize, "Size", BlobSize{0}, static_cast<BlobSize>(AzNetworking::MaxPacketSize));
+        if (!serializer.IsValid())
+        {
+            return false;
+        }
+
+        AZStd::unique_ptr<AzNetworking::PacketEncodingBuffer> candidateData;
+        if (serializer.GetSerializerMode() == AzNetworking::SerializerMode::ReadFromObject)
+        {
+            uint8_t emptyBuffer = 0;
+            uint8_t* buffer = &emptyBuffer;
+            if (m_data)
+            {
+                buffer = m_data->GetBuffer();
+            }
+            uint32_t serializedSize = blobSize;
+            serializer.SerializeBytes(
+                buffer,
+                AzNetworking::MaxPacketSize,
+                false,
+                serializedSize,
+                "Buffer");
+            serializer.EndObject("data");
+            if (!serializer.IsValid() || serializedSize != blobSize)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            uint8_t emptyBuffer = 0;
+            uint8_t* buffer = &emptyBuffer;
+            if (blobSize > 0)
+            {
+                candidateData = AZStd::make_unique<AzNetworking::PacketEncodingBuffer>();
+                if (!candidateData->Resize(blobSize))
+                {
+                    return false;
+                }
+                buffer = candidateData->GetBuffer();
+            }
+
+            uint32_t serializedSize = blobSize;
+            serializer.SerializeBytes(
+                buffer,
+                AzNetworking::MaxPacketSize,
+                false,
+                serializedSize,
+                "Buffer");
+            serializer.EndObject("data");
+            if (!serializer.IsValid() || serializedSize != blobSize)
+            {
+                return false;
+            }
+
+        }
 
         // We intentionally do not serialize the reliability flag, or any other RPC metadata
-        return serializer.IsValid();
+        if (!serializer.IsValid())
+        {
+            return false;
+        }
+
+        if (serializer.GetSerializerMode() == AzNetworking::SerializerMode::WriteToObject)
+        {
+            m_rpcDeliveryType = rpcDeliveryType;
+            m_entityId = entityId;
+            m_componentId = componentId;
+            m_rpcIndex = rpcIndex;
+            m_data = AZStd::move(candidateData);
+        }
+
+        return true;
     }
 
     void NetworkEntityRpcMessage::SetReliability(ReliabilityType reliabilityType)

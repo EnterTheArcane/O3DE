@@ -10,15 +10,20 @@
 #include <TestMultiplayerComponent.h>
 #include <Source/NetworkEntity/NetworkEntityManager.h>
 #include <Source/NetworkEntity/EntityReplication/PropertyPublisher.h>
+#include <Source/NetworkEntity/EntityReplication/PropertySubscriber.h>
 #include <Source/EntityDomains/FullOwnershipEntityDomain.h>
 #include <Source/EntityDomains/NullEntityDomain.h>
 #include <Source/ReplicationWindows/NullReplicationWindow.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Console/Console.h>
 #include <AzCore/Name/Name.h>
+#include <AzCore/Symbol/Symbol.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzFramework/Components/TransformComponent.h>
+#include <AzNetworking/Serialization/NetworkInputSerializer.h>
+#include <AzNetworking/Serialization/Internal/SymbolAdmissionPolicy.h>
+#include <AzNetworking/Serialization/NetworkOutputSerializer.h>
 #include <AzNetworking/Serialization/StringifySerializer.h>
 #include <AzNetworking/UdpTransport/UdpPacketHeader.h>
 #include <AzTest/AzTest.h>
@@ -231,6 +236,17 @@ namespace Multiplayer
         AZ::Vector3 m_worldPoint;
     };
 
+    struct TestSymbolRpcStruct final
+        : public Multiplayer::IRpcParamStruct
+    {
+        bool Serialize(AzNetworking::ISerializer& serializer) override
+        {
+            return serializer.Serialize(m_symbol, "Symbol");
+        }
+
+        AZ::Symbol m_symbol;
+    };
+
     TEST_F(MultiplayerNetworkEntityTests, TestNetworkEntityRpcMessage)
     {
         ConstNetworkEntityHandle handle(m_root->m_entity.get(), m_networkEntityManager->GetNetworkEntityTracker());
@@ -285,7 +301,7 @@ namespace Multiplayer
 
         AzNetworking::StringifySerializer serializer;
         EXPECT_TRUE(message.Serialize(serializer));
-        EXPECT_EQ(message.GetEstimatedSerializeSize(), 15);
+        EXPECT_EQ(message.GetEstimatedSerializeSize(), 17);
 
         m_entityReplicationManager->AddDeferredRpcMessage(message);
         m_entityReplicationManager->AddDeferredRpcMessage(message2);
@@ -302,6 +318,231 @@ namespace Multiplayer
         NetworkEntityRpcVector rpcVector;
         rpcVector.push_back(message);
         m_entityReplicationManager->HandleEntityRpcMessages(m_mockConnection.get(), rpcVector);
+    }
+
+    TEST_F(MultiplayerNetworkEntityTests, RpcSymbolPayloadIsRawConnectionNeutralAndTransactional)
+    {
+        ConstNetworkEntityHandle handle(m_root->m_entity.get(), m_networkEntityManager->GetNetworkEntityTracker());
+        NetworkEntityRpcMessage sourceMessage(
+            RpcDeliveryType::AuthorityToClient,
+            handle.GetNetEntityId(),
+            handle.FindComponent<NetworkTransformComponent>()->GetNetComponentId(),
+            RpcIndex(3),
+            ReliabilityType::Reliable);
+        TestSymbolRpcStruct sourceParams;
+        sourceParams.m_symbol = AZ::Symbol{AZStd::string_view{"ConnectionNeutralRpcSymbol"}};
+        ASSERT_TRUE(sourceMessage.SetRpcParams(sourceParams));
+        EXPECT_EQ(
+            sourceMessage.GetEstimatedSerializeSize(),
+            17 + sizeof(AZ::u16) + sourceParams.m_symbol.GetStringView().size());
+
+        NetworkEntityRpcMessage copiedMessage = sourceMessage;
+        const IpAddress secondAddress("localhost", 2, ProtocolType::Udp);
+        NiceMock<IMultiplayerConnectionMock> secondConnection(
+            ConnectionId{2},
+            secondAddress,
+            ConnectionRole::Connector);
+        TestSymbolRpcStruct firstDestination;
+        TestSymbolRpcStruct secondDestination;
+        ASSERT_TRUE(copiedMessage.GetRpcParams(firstDestination, *m_mockConnection));
+        ASSERT_TRUE(sourceMessage.GetRpcParams(secondDestination, secondConnection));
+        EXPECT_EQ(firstDestination.m_symbol, sourceParams.m_symbol);
+        EXPECT_EQ(secondDestination.m_symbol, sourceParams.m_symbol);
+
+        AZStd::array<AZ::u8, 1024> buffer{};
+        AzNetworking::NetworkInputSerializer inputSerializer(
+            buffer.data(),
+            aznumeric_cast<AZ::u32>(buffer.size()));
+        ASSERT_TRUE(sourceMessage.Serialize(inputSerializer));
+
+        NetworkEntityRpcMessage preservedMessage(
+            RpcDeliveryType::AutonomousToAuthority,
+            NetEntityId{999},
+            NetComponentId{88},
+            RpcIndex{7},
+            ReliabilityType::Unreliable);
+        TestSymbolRpcStruct preservedParams;
+        preservedParams.m_symbol = AZ::Symbol{AZStd::string_view{"PreservedRpcSymbol"}};
+        ASSERT_TRUE(preservedMessage.SetRpcParams(preservedParams));
+        const NetworkEntityRpcMessage originalMessage = preservedMessage;
+
+        AzNetworking::NetworkOutputSerializer truncatedSerializer(
+            buffer.data(),
+            inputSerializer.GetSize() - 1);
+        EXPECT_FALSE(preservedMessage.Serialize(truncatedSerializer));
+        EXPECT_EQ(preservedMessage, originalMessage);
+        TestSymbolRpcStruct decodedPreservedParams;
+        ASSERT_TRUE(preservedMessage.GetRpcParams(decodedPreservedParams));
+        EXPECT_EQ(decodedPreservedParams.m_symbol, preservedParams.m_symbol);
+
+        AzNetworking::NetworkOutputSerializer outputSerializer(
+            buffer.data(),
+            inputSerializer.GetSize());
+        ASSERT_TRUE(preservedMessage.Serialize(outputSerializer));
+        EXPECT_EQ(preservedMessage, sourceMessage);
+        TestSymbolRpcStruct roundTripParams;
+        ASSERT_TRUE(preservedMessage.GetRpcParams(roundTripParams, *m_mockConnection));
+        EXPECT_EQ(roundTripParams.m_symbol, sourceParams.m_symbol);
+    }
+
+    TEST_F(MultiplayerNetworkEntityTests, PropertyMessageFailureRestoresValuesAndSuppressesNotifications)
+    {
+        AZStd::unique_ptr<EntityInfo> testEntity = AZStd::make_unique<EntityInfo>(
+            10,
+            "rollback",
+            NetEntityId{10},
+            EntityInfo::Role::None);
+        PopulateNetworkEntity(*testEntity);
+        testEntity->m_entity->CreateComponent<MultiplayerTest::TestInputDriverComponent>();
+        testEntity->m_entity->CreateComponent<MultiplayerTest::TestMultiplayerComponent>();
+        SetupEntity(testEntity->m_entity, testEntity->m_netId, NetEntityRole::Authority);
+        testEntity->m_entity->Activate();
+
+        NetBindComponent* netBindComponent = testEntity->m_entity->FindComponent<NetBindComponent>();
+        auto* component = testEntity->m_entity->FindComponent<MultiplayerTest::TestMultiplayerComponent>();
+        auto* controller = static_cast<MultiplayerTest::TestMultiplayerComponentController*>(component->GetController());
+        ASSERT_NE(netBindComponent, nullptr);
+        ASSERT_NE(component, nullptr);
+        ASSERT_NE(controller, nullptr);
+
+        const AZ::u32 updatedNumber = 42;
+        const AZ::Symbol updatedSymbol{AZStd::string_view{"UpdatedPropertySymbol"}};
+        controller->SetRollbackNumber(updatedNumber);
+        controller->SetRollbackSymbol(updatedSymbol);
+
+        ReplicationRecord outgoingRecord(NetEntityRole::Client);
+        netBindComponent->FillReplicationRecord(outgoingRecord);
+        AzNetworking::PacketEncodingBuffer buffer;
+        InputSerializer inputSerializer(
+            buffer.GetBuffer(),
+            aznumeric_cast<AZ::u32>(buffer.GetCapacity()));
+        ASSERT_TRUE(outgoingRecord.Serialize(inputSerializer));
+        ASSERT_TRUE(netBindComponent->SerializeStateDeltaMessage(outgoingRecord, inputSerializer));
+        ASSERT_TRUE(buffer.Resize(inputSerializer.GetSize()));
+
+        const AZ::u32 preservedNumber = 7;
+        const AZ::Symbol preservedSymbol{AZStd::string_view{"PreservedPropertySymbol"}};
+        controller->SetRollbackNumber(preservedNumber);
+        controller->SetRollbackSymbol(preservedSymbol);
+
+        AZ::u32 numberNotifications = 0;
+        AZ::u32 symbolNotifications = 0;
+        AZ::Event<AZ::u32>::Handler numberHandler(
+            [&numberNotifications](AZ::u32)
+            {
+                ++numberNotifications;
+            });
+        AZ::Event<AZ::Symbol>::Handler symbolHandler(
+            [&symbolNotifications](AZ::Symbol)
+            {
+                ++symbolNotifications;
+            });
+        component->RollbackNumberAddEvent(numberHandler);
+        component->RollbackSymbolAddEvent(symbolHandler);
+
+        auto& admissionPolicy = AzNetworking::Internal::GetSymbolAdmissionPolicy(*m_mockConnection);
+        const AzNetworking::Internal::SymbolSerializationContext symbolSerializationContext{
+            AzNetworking::SymbolAdmission::NetworkOrigin,
+            &admissionPolicy};
+        OutputSerializer truncatedSerializer(
+            buffer.GetBuffer(),
+            aznumeric_cast<AZ::u32>(buffer.GetSize() - 1),
+            symbolSerializationContext);
+        EXPECT_FALSE(netBindComponent->HandlePropertyChangeMessage(
+            truncatedSerializer,
+            NetEntityRole::Client,
+            true));
+        EXPECT_EQ(component->GetRollbackNumber(), preservedNumber);
+        EXPECT_EQ(component->GetRollbackSymbol(), preservedSymbol);
+        EXPECT_EQ(numberNotifications, 0);
+        EXPECT_EQ(symbolNotifications, 0);
+
+        OutputSerializer outputSerializer(
+            buffer.GetBuffer(),
+            aznumeric_cast<AZ::u32>(buffer.GetSize()),
+            symbolSerializationContext);
+        ASSERT_TRUE(netBindComponent->HandlePropertyChangeMessage(
+            outputSerializer,
+            NetEntityRole::Client,
+            true));
+        EXPECT_EQ(component->GetRollbackNumber(), updatedNumber);
+        EXPECT_EQ(component->GetRollbackSymbol(), updatedSymbol);
+        EXPECT_EQ(numberNotifications, 1);
+        EXPECT_EQ(symbolNotifications, 1);
+
+        AZStd::unique_ptr<EntityInfo> clientEntity = AZStd::make_unique<EntityInfo>(
+            11,
+            "rollback-client",
+            NetEntityId{11},
+            EntityInfo::Role::None);
+        PopulateNetworkEntity(*clientEntity);
+        clientEntity->m_entity->CreateComponent<MultiplayerTest::TestInputDriverComponent>();
+        clientEntity->m_entity->CreateComponent<MultiplayerTest::TestMultiplayerComponent>();
+        SetupEntity(clientEntity->m_entity, clientEntity->m_netId, NetEntityRole::Client);
+        clientEntity->m_entity->Activate();
+
+        NetBindComponent* clientNetBind = clientEntity->m_entity->FindComponent<NetBindComponent>();
+        auto* clientComponent = clientEntity->m_entity->FindComponent<MultiplayerTest::TestMultiplayerComponent>();
+        ASSERT_NE(clientNetBind, nullptr);
+        ASSERT_NE(clientComponent, nullptr);
+        PropertySubscriber subscriber(*m_entityReplicationManager, clientNetBind);
+
+        OutputSerializer failedSubscriberSerializer(
+            buffer.GetBuffer(),
+            aznumeric_cast<AZ::u32>(buffer.GetSize() - 1),
+            symbolSerializationContext);
+        EXPECT_FALSE(subscriber.HandlePropertyChangeMessage(
+            AzNetworking::PacketId{5},
+            &failedSubscriberSerializer,
+            true));
+        EXPECT_EQ(subscriber.GetLastReceivedPacketId(), AzNetworking::InvalidPacketId);
+        EXPECT_EQ(clientComponent->GetRollbackNumber(), 0);
+        EXPECT_TRUE(clientComponent->GetRollbackSymbol().IsEmpty());
+
+        OutputSerializer subscriberSerializer(
+            buffer.GetBuffer(),
+            aznumeric_cast<AZ::u32>(buffer.GetSize()),
+            symbolSerializationContext);
+        ASSERT_TRUE(subscriber.HandlePropertyChangeMessage(
+            AzNetworking::PacketId{5},
+            &subscriberSerializer,
+            true));
+        EXPECT_EQ(subscriber.GetLastReceivedPacketId(), AzNetworking::PacketId{5});
+        EXPECT_EQ(clientComponent->GetRollbackNumber(), updatedNumber);
+        EXPECT_EQ(clientComponent->GetRollbackSymbol(), updatedSymbol);
+
+        const AZ::u32 correctedNumber = 84;
+        const AZ::Symbol correctedSymbol{AZStd::string_view{"CorrectedPropertySymbol"}};
+        controller->SetRollbackNumber(correctedNumber);
+        controller->SetRollbackSymbol(correctedSymbol);
+        AzNetworking::PacketEncodingBuffer correctionBuffer;
+        InputSerializer correctionInput(
+            correctionBuffer.GetBuffer(),
+            aznumeric_cast<AZ::u32>(correctionBuffer.GetCapacity()));
+        ASSERT_TRUE(netBindComponent->SerializeEntityCorrection(correctionInput));
+        ASSERT_TRUE(correctionBuffer.Resize(correctionInput.GetSize()));
+
+        controller->SetRollbackNumber(updatedNumber);
+        controller->SetRollbackSymbol(updatedSymbol);
+        OutputSerializer truncatedCorrection(
+            correctionBuffer.GetBuffer(),
+            aznumeric_cast<AZ::u32>(correctionBuffer.GetSize() - 1),
+            symbolSerializationContext);
+        EXPECT_FALSE(netBindComponent->SerializeEntityCorrection(truncatedCorrection));
+        EXPECT_EQ(component->GetRollbackNumber(), updatedNumber);
+        EXPECT_EQ(component->GetRollbackSymbol(), updatedSymbol);
+        EXPECT_EQ(numberNotifications, 1);
+        EXPECT_EQ(symbolNotifications, 1);
+
+        OutputSerializer correctionOutput(
+            correctionBuffer.GetBuffer(),
+            aznumeric_cast<AZ::u32>(correctionBuffer.GetSize()),
+            symbolSerializationContext);
+        ASSERT_TRUE(netBindComponent->SerializeEntityCorrection(correctionOutput));
+        EXPECT_EQ(component->GetRollbackNumber(), correctedNumber);
+        EXPECT_EQ(component->GetRollbackSymbol(), correctedSymbol);
+        EXPECT_EQ(numberNotifications, 2);
+        EXPECT_EQ(symbolNotifications, 2);
     }
 
     TEST_F(MultiplayerNetworkEntityTests, TestNetworkEntityUpdateMessage)

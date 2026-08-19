@@ -122,16 +122,35 @@ namespace Multiplayer
         EXPECT_TRUE(inArray.Serialize(inSerializer));
 
         NetworkInputArray outArray;
-        AzNetworking::NetworkOutputSerializer outSerializer(buffer.data(), static_cast<uint32_t>(buffer.size()));
+        AzNetworking::NetworkOutputSerializer outSerializer(buffer.data(), inSerializer.GetSize());
 
         EXPECT_TRUE(outArray.Serialize(outSerializer));
 
-        for (uint32_t i = 0; i > NetworkInputArray::MaxElements; ++i)
+        for (uint32_t i = 0; i < NetworkInputArray::MaxElements; ++i)
         {
             EXPECT_EQ(inArray[i].GetClientInputId(), outArray[i].GetClientInputId());
             EXPECT_EQ(inArray[i].GetHostFrameId(), outArray[i].GetHostFrameId());
             EXPECT_NEAR(inArray[i].GetHostBlendFactor(), outArray[i].GetHostBlendFactor(), 0.001f);
             EXPECT_EQ(inArray[i].GetHostTimeMs(), outArray[i].GetHostTimeMs());
+        }
+
+        NetworkInputArray preservedArray = NetworkInputArray(handle);
+        for (uint32_t i = 0; i < NetworkInputArray::MaxElements; ++i)
+        {
+            preservedArray[i].SetClientInputId(ClientInputId(100 + i));
+            preservedArray[i].SetHostFrameId(HostFrameId(200 + i));
+            preservedArray[i].SetHostBlendFactor(300.0f + i);
+            preservedArray[i].SetHostTimeMs(AZ::TimeMs(400 + i));
+        }
+
+        AzNetworking::NetworkOutputSerializer truncatedSerializer(buffer.data(), inSerializer.GetSize() - 1);
+        EXPECT_FALSE(preservedArray.Serialize(truncatedSerializer));
+        for (uint32_t i = 0; i < NetworkInputArray::MaxElements; ++i)
+        {
+            EXPECT_EQ(preservedArray[i].GetClientInputId(), ClientInputId(100 + i));
+            EXPECT_EQ(preservedArray[i].GetHostFrameId(), HostFrameId(200 + i));
+            EXPECT_NEAR(preservedArray[i].GetHostBlendFactor(), 300.0f + i, 0.001f);
+            EXPECT_EQ(preservedArray[i].GetHostTimeMs(), AZ::TimeMs(400 + i));
         }
     }
 

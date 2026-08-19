@@ -3033,8 +3033,70 @@ namespace AZ::Serialize
 
         if (classElementFound)
         {
+            const auto reportError = [errorHandler](const char* message)
+            {
+                if (errorHandler)
+                {
+                    errorHandler->ReportError(message);
+                }
+                else
+                {
+                    AZ_Error("Serialize", false, "%s", message);
+                }
+            };
+
+            DataElement& rawElement = m_element;
+            if (m_classData->m_serializer && rawElement.m_dataSize != 0)
+            {
+                if (rawElement.m_dataSize > rawElement.m_byteStream.GetLength())
+                {
+                    const char* elementName = "<unknown>";
+                    if (rawElement.m_name)
+                    {
+                        elementName = rawElement.m_name;
+                    }
+                    const AZStd::string error = AZStd::string::format(
+                        R"(Raw element "%s" for class "%s" declares %zu bytes, but only %zu bytes are available.)",
+                        elementName,
+                        m_classData->m_name,
+                        rawElement.m_dataSize,
+                        rawElement.m_byteStream.GetLength());
+                    reportError(error.c_str());
+                    return false;
+                }
+
+                if (rawElement.m_dataType == DataElement::DT_TEXT)
+                {
+                    AZStd::string text;
+                    text.resize_no_construct(rawElement.m_dataSize);
+                    rawElement.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
+                    if (rawElement.m_byteStream.Read(text.size(), reinterpret_cast<void*>(text.data())) != text.size())
+                    {
+                        reportError("Failed to read the complete text value from a data element.");
+                        return false;
+                    }
+
+                    AZStd::vector<char> convertedBuffer;
+                    IO::ByteContainerStream<AZStd::vector<char>> convertedStream(&convertedBuffer);
+                    const size_t convertedSize = m_classData->m_serializer->TextToData(
+                        text.c_str(), rawElement.m_version, convertedStream);
+                    if (convertedSize == IDataSerializer::TextConversionFailure || convertedSize > convertedBuffer.size())
+                    {
+                        reportError("Failed to convert a data element text value to binary.");
+                        return false;
+                    }
+
+                    convertedBuffer.resize(convertedSize);
+                    rawElement.m_buffer = AZStd::move(convertedBuffer);
+                    rawElement.m_byteStream = IO::ByteContainerStream<AZStd::vector<char>>(&rawElement.m_buffer);
+                    rawElement.m_dataSize = convertedSize;
+                    rawElement.m_dataType = DataElement::DT_BINARY;
+                }
+            }
+
             void* dataAddress = nullptr;
             IDataContainer* dataContainer = parentDataElement->m_classData->m_container;
+            bool reservedElement = false;
             if (dataContainer) // container elements
             {
                 int& parentCurrentContainerElementIndex = nodeStack.back().m_currentContainerElementIndex;
@@ -3046,12 +3108,14 @@ namespace AZ::Serialize
                 else
                 {
                     dataAddress = dataContainer->ReserveElement(parentPtr, &classElement);
+                    reservedElement = dataAddress != nullptr;
                 }
 
                 if (dataAddress == nullptr)
                 {
                     AZStd::string error = AZStd::string::format("Failed to reserve element in container. The container may be full. Element %u will not be added to container.", static_cast<unsigned int>(parentCurrentContainerElementIndex));
-                    errorHandler->ReportError(error.c_str());
+                    reportError(error.c_str());
+                    return false;
                 }
 
                 parentCurrentContainerElementIndex++;
@@ -3062,24 +3126,47 @@ namespace AZ::Serialize
             }
 
             void* reserveAddress = dataAddress;
+            void* pointerStorage = nullptr;
+            void* originalPointer = nullptr;
+            void* allocatedPointer = nullptr;
 
             // create a new instance if needed
             if (classElement.m_flags & SerializeContext::ClassElement::FLG_POINTER)
             {
                 // create a new instance if we are referencing it by pointer
                 AZ_Assert(m_classData->m_factory != nullptr, "We are attempting to create '%s', but no factory is provided! Either provide factory or change data member '%s' to value not pointer!", m_classData->m_name, classElement.m_name);
-                void* newDataAddress = m_classData->m_factory->Create(m_classData->m_name);
+                if (!m_classData->m_factory)
+                {
+                    reportError("Cannot allocate a reflected pointer data element without a factory.");
+                    if (reservedElement)
+                    {
+                        dataContainer->FreeReservedElement(parentPtr, reserveAddress, nullptr);
+                    }
+                    return false;
+                }
+                pointerStorage = dataAddress;
+                originalPointer = *reinterpret_cast<void**>(pointerStorage);
+                allocatedPointer = m_classData->m_factory->Create(m_classData->m_name);
+                if (!allocatedPointer)
+                {
+                    reportError("Failed to allocate a reflected pointer data element.");
+                    if (reservedElement)
+                    {
+                        dataContainer->FreeReservedElement(parentPtr, reserveAddress, nullptr);
+                    }
+                    return false;
+                }
 
                 // we need to account for additional offsets if we have a pointer to
                 // a base class.
                 void* basePtr = nullptr;
                 if (m_element.m_id == classElement.m_typeId)
                 {
-                    basePtr = newDataAddress;
+                    basePtr = allocatedPointer;
                 }
                 else if(m_classData->m_azRtti && classElement.m_azRtti)
                 {
-                    basePtr = m_classData->m_azRtti->Cast(newDataAddress, classElement.m_azRtti->GetTypeId());
+                    basePtr = m_classData->m_azRtti->Cast(allocatedPointer, classElement.m_azRtti->GetTypeId());
                 }
                 AZ_Assert(basePtr != nullptr, dataContainer
                     ? "Can't cast container element %s(0x%x) to %s, make sure classes are registered in the system and not generics!"
@@ -3088,28 +3175,36 @@ namespace AZ::Serialize
                     , m_element.m_nameCrc
                     , m_classData->m_name);
 
-                *reinterpret_cast<void**>(dataAddress) = basePtr; // store the pointer in the class
-                dataAddress = newDataAddress;
-            }
-
-            DataElement& rawElement = m_element;
-            if (m_classData->m_serializer && rawElement.m_dataSize != 0)
-            {
-                rawElement.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                if (rawElement.m_dataType == DataElement::DT_TEXT)
+                if (!basePtr)
                 {
-                    // convert to binary so we can load the data
-                    AZStd::string text;
-                    text.resize_no_construct(rawElement.m_dataSize);
-                    rawElement.m_byteStream.Read(text.size(), reinterpret_cast<void*>(text.data()));
-                    rawElement.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                    rawElement.m_dataSize = m_classData->m_serializer->TextToData(text.c_str(), rawElement.m_version, rawElement.m_byteStream);
-                    rawElement.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                    rawElement.m_dataType = DataElement::DT_BINARY;
+                    m_classData->m_factory->Destroy(allocatedPointer);
+                    if (reservedElement)
+                    {
+                        dataContainer->FreeReservedElement(parentPtr, reserveAddress, nullptr);
+                    }
+                    reportError("Failed to cast a newly allocated reflected pointer data element.");
+                    return false;
                 }
 
-                bool isLoaded = m_classData->m_serializer->Load(dataAddress, rawElement.m_byteStream, rawElement.m_version, rawElement.m_dataType == DataElement::DT_BINARY_BE);
-                rawElement.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN); // reset stream position
+                *reinterpret_cast<void**>(pointerStorage) = basePtr; // store the pointer in the class
+                dataAddress = allocatedPointer;
+            }
+
+            const auto cleanupFailedPointer = [&]()
+            {
+                if (allocatedPointer)
+                {
+                    m_classData->m_factory->Destroy(allocatedPointer);
+                    *reinterpret_cast<void**>(pointerStorage) = originalPointer;
+                    allocatedPointer = nullptr;
+                }
+            };
+
+            if (m_classData->m_serializer && rawElement.m_dataSize != 0)
+            {
+                IO::MemoryStream dataStream(rawElement.m_buffer.data(), rawElement.m_dataSize);
+                const bool isLoaded = m_classData->m_serializer->Load(
+                    dataAddress, dataStream, rawElement.m_version, rawElement.m_dataType == DataElement::DT_BINARY_BE);
                 if (!isLoaded)
                 {
                     const AZStd::string error =
@@ -3118,16 +3213,13 @@ namespace AZ::Serialize
                             m_classData->m_name,
                             m_element.m_name);
 
-                    if (errorHandler)
+                    reportError(error.c_str());
+                    cleanupFailedPointer();
+                    if (reservedElement)
                     {
-                        errorHandler->ReportError(error.c_str());
+                        dataContainer->FreeReservedElement(parentPtr, reserveAddress, nullptr);
                     }
-                    else
-                    {
-                        AZ_Error("Serialize", false, "%s", error.c_str());
-                    }
-
-                    success = false;
+                    return false;
                 }
             }
 
@@ -3150,9 +3242,18 @@ namespace AZ::Serialize
             // Pop stack
             nodeStack.pop_back();
 
-            if (dataContainer)
+            if (dataContainer && success)
             {
                 dataContainer->StoreElement(parentPtr, reserveAddress);
+            }
+            else if (reservedElement)
+            {
+                cleanupFailedPointer();
+                dataContainer->FreeReservedElement(parentPtr, reserveAddress, nullptr);
+            }
+            else if (!success)
+            {
+                cleanupFailedPointer();
             }
         }
 

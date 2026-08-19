@@ -9,13 +9,13 @@
 #pragma once
 
 #include <AzNetworking/Serialization/ISerializer.h>
-#include <AzNetworking/Serialization/AbstractValue.h>
 #include <AzNetworking/Serialization/NetworkInputSerializer.h>
 #include <AzNetworking/Serialization/NetworkOutputSerializer.h>
 #include <AzNetworking/DataStructures/FixedSizeVectorBitset.h>
 #include <AzNetworking/DataStructures/ByteBuffer.h>
-#include <AzCore/Utils/TypeHash.h>
-#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/array.h>
+#include <AzCore/std/containers/fixed_vector.h>
+#include <AzCore/std/containers/vector.h>
 
 namespace AzNetworking
 {
@@ -42,7 +42,7 @@ namespace AzNetworking
     private:
 
         FixedSizeVectorBitset<255> m_dirtyBits;
-        ByteBuffer<1024> m_deltaBytes;
+        ByteBuffer<1025> m_deltaBytes;
     };
 
     //! A serializer that is used to produce a SerializerDelta between two objects.
@@ -55,6 +55,9 @@ namespace AzNetworking
     public:
 
         DeltaSerializerCreate(SerializerDelta& delta);
+        DeltaSerializerCreate(
+            SerializerDelta& delta,
+            const Internal::SymbolSerializationContext& symbolSerializationContext);
         ~DeltaSerializerCreate() override;
 
         template <typename TYPE>
@@ -91,6 +94,22 @@ namespace AzNetworking
         DeltaSerializerCreate(const DeltaSerializerCreate&) = delete;
         DeltaSerializerCreate& operator=(const DeltaSerializerCreate&) = delete;
 
+        struct ValueRecord final
+        {
+            uint64_t m_value = 0;
+        };
+
+        static constexpr uint32_t MaxRecordCount = 255;
+        static constexpr uint32_t InlineRecordByteCapacity = 1025;
+
+        bool StoreRecordBytes(
+            const uint8_t* buffer,
+            uint32_t size,
+            ValueRecord& record);
+
+        [[nodiscard]]
+        const uint8_t* GetRecordBytes() const;
+
         template <typename T>
         bool SerializeHelper(T& value, uint32_t bufferCapacity, bool isString, uint32_t& outSize, const char* name);
 
@@ -104,7 +123,10 @@ namespace AzNetworking
 
         bool m_gatheringRecords = false;
         uint32_t m_objectCounter = 0;
-        AZStd::vector<AbstractValue::BaseValue*> m_records;
+        uint32_t m_recordByteSize = 0;
+        AZStd::fixed_vector<ValueRecord, MaxRecordCount> m_records;
+        AZStd::array<uint8_t, InlineRecordByteCapacity> m_inlineRecordBytes;
+        AZStd::vector<uint8_t> m_overflowRecordBytes;
         NetworkInputSerializer m_dataSerializer;
     };
 
@@ -116,6 +138,9 @@ namespace AzNetworking
     public:
 
         DeltaSerializerApply(SerializerDelta& delta);
+        DeltaSerializerApply(
+            SerializerDelta& delta,
+            const Internal::SymbolSerializationContext& symbolSerializationContext);
         ~DeltaSerializerApply() override;
 
         template <typename TYPE>

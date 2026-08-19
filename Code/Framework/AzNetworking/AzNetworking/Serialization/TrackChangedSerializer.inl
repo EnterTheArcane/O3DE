@@ -19,6 +19,16 @@ namespace AzNetworking
     }
 
     template <typename BASE_TYPE>
+    TrackChangedSerializer<BASE_TYPE>::TrackChangedSerializer(
+        const uint8_t* buffer,
+        uint32_t bufferCapacity,
+        const Internal::SymbolSerializationContext& symbolSerializationContext)
+        : BASE_TYPE(buffer, bufferCapacity, symbolSerializationContext)
+        , m_hasChanged(false)
+    {
+    }
+
+    template <typename BASE_TYPE>
     SerializerMode TrackChangedSerializer<BASE_TYPE>::GetSerializerMode() const
     {
         return BASE_TYPE::GetSerializerMode();
@@ -150,7 +160,7 @@ namespace AzNetworking
             return false;
         }
         const bool result = BASE_TYPE::SerializeBytes(buffer, bufferCapacity, isString, outSize, name);
-        m_hasChanged |= (cached.IsSame(buffer, outSize));
+        m_hasChanged |= !cached.IsSame(buffer, outSize);
         return result;
     }
 

@@ -16,6 +16,8 @@
 
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Symbol/Symbol.h>
+#include <AzCore/Symbol/SymbolLiteral.h>
 #include <Tests/DLLTestVirtualClass.h>
 
 #include "ModuleTestBus.h"
@@ -86,6 +88,12 @@ extern "C" AZ_DLL_EXPORT void DoTests()
     // Use the bus to fire a message on the bus to verify it works across modules
     AZ::EntityId hackEntityIdAddress((AZ::u64)address); // HACK to pass the address to another module, otherwise we need to create a common EBus
     AZ::TransformNotificationBus::Broadcast(&AZ::TransformNotificationBus::Events::OnParentChanged, AZ::EntityId(), hackEntityIdAddress);
+}
+
+extern "C" AZ_DLL_EXPORT size_t GetCrossModuleSymbolIdentity()
+{
+    using namespace AZ::Literals;
+    return AZ::SymbolHash{}("CrossModuleSymbol"_sym);
 }
 
 

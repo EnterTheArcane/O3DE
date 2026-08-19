@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <AzCore/base.h>
 #include <AzCore/std/limits.h>
+#include <AzNetworking/Serialization/SymbolSerializationContext.h>
 
 namespace AzNetworking
 {
@@ -40,7 +41,7 @@ namespace AzNetworking
     {
     public:
 
-        ISerializer() = default;
+        explicit ISerializer(const Internal::SymbolSerializationContext* symbolSerializationContext = nullptr);
         virtual ~ISerializer() = default;
 
         //! Returns true if the serializer is valid and in a consistent state.
@@ -49,6 +50,10 @@ namespace AzNetworking
 
         //! Mark the serializer as invalid.
         void Invalidate();
+
+        //! Returns the narrow Symbol admission capability carried by this serializer.
+        //! A null constructor argument selects the trusted-local default.
+        const Internal::SymbolSerializationContext& GetSymbolSerializationContext() const;
 
         //! Returns an enum the represents the serializer mode.
         //! returns WriteToObject if the serializer is writing values to the objects it visits, otherwise returns ReadFromObject
@@ -218,6 +223,7 @@ namespace AzNetworking
         struct SerializeHelper;
 
         bool m_serializerValid = true; //< Here for performance reasons
+        const Internal::SymbolSerializationContext* m_symbolSerializationContext = nullptr;
     };
 }
 

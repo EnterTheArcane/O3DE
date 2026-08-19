@@ -65,6 +65,26 @@ namespace AzNetworking
     }
 
     template <typename BASE_TYPE>
+    TypeValidatingSerializer<BASE_TYPE>::TypeValidatingSerializer(
+        uint8_t* buffer,
+        uint32_t bufferCapacity,
+        const Internal::SymbolSerializationContext& symbolSerializationContext)
+        : BASE_TYPE(buffer, bufferCapacity, symbolSerializationContext)
+    {
+        AZ::Interface<AZ::IConsole>::Get()->GetCvarValue("net_validateSerializedTypes", m_enabled);
+    }
+
+    template <typename BASE_TYPE>
+    TypeValidatingSerializer<BASE_TYPE>::TypeValidatingSerializer(
+        const uint8_t* buffer,
+        uint32_t bufferCapacity,
+        const Internal::SymbolSerializationContext& symbolSerializationContext)
+        : BASE_TYPE(const_cast<uint8_t*>(buffer), bufferCapacity, symbolSerializationContext)
+    {
+        AZ::Interface<AZ::IConsole>::Get()->GetCvarValue("net_validateSerializedTypes", m_enabled);
+    }
+
+    template <typename BASE_TYPE>
     SerializerMode TypeValidatingSerializer<BASE_TYPE>::GetSerializerMode() const
     {
         return BASE_TYPE::GetSerializerMode();

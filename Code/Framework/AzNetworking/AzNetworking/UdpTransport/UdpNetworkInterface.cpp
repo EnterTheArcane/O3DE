@@ -214,7 +214,7 @@ namespace AzNetworking
                 connection->Disconnect(disconnectReason, TerminationEndpoint::Local);
                 continue;
             }
-            
+
             const ConnectionState connectionState = connection->GetConnectionState();
             if (connectionState == ConnectionState::Disconnecting || connectionState == ConnectionState::Disconnected)
             {
@@ -243,7 +243,8 @@ namespace AzNetworking
             // Decode the packet flag bitset first since it's always uncompressed
             UdpPacketHeader header;
             {
-                NetworkOutputSerializer flagSerializer(decodedPacketData, decodedPacketSize);
+                constexpr Internal::SymbolSerializationContext existingOnlyContext{SymbolAdmission::ExistingOnly, nullptr};
+                NetworkOutputSerializer flagSerializer(decodedPacketData, decodedPacketSize, existingOnlyContext);
                 if (!header.SerializePacketFlags(flagSerializer))
                 {
                     continue;
@@ -276,7 +277,9 @@ namespace AzNetworking
             else
             {
                 // Deserialize the packet header
-                NetworkOutputSerializer packetSerializer(decodedPacketData, decodedPacketSize);
+                auto& symbolAdmissionPolicy = Internal::GetSymbolAdmissionPolicy(*connection);
+                const Internal::SymbolSerializationContext symbolSerializationContext{SymbolAdmission::NetworkOrigin, &symbolAdmissionPolicy};
+                NetworkOutputSerializer packetSerializer(decodedPacketData, decodedPacketSize, symbolSerializationContext);
                 ISerializer& serializer = packetSerializer; // To get the default typeinfo parameters in ISerializer
                 if (!serializer.Serialize(header, "Header"))
                 {
@@ -609,7 +612,7 @@ namespace AzNetworking
                 packetData = writeBuffer.GetBuffer();
                 // Track byte delta caused by compression
                 GetMetrics().m_sendBytesCompressedDelta += (packetSize - compressionMemBytesUsed);
-            }        
+            }
         }
 
         AZLOG(NET_Debug, "Sending local sequence id %d, remote sequence id %d, %s, reliable id: %d, ack vector %x",
@@ -648,7 +651,8 @@ namespace AzNetworking
 
         CorePackets::InitiateConnectionPacket packet;
         {
-            NetworkOutputSerializer networkSerializer(connectPacket.m_buffer, connectPacket.m_receivedBytes);
+            constexpr Internal::SymbolSerializationContext existingOnlyContext{SymbolAdmission::ExistingOnly, nullptr};
+            NetworkOutputSerializer networkSerializer(connectPacket.m_buffer, connectPacket.m_receivedBytes, existingOnlyContext);
 
             // First, serialize out the header
             UdpPacketHeader header;
@@ -670,7 +674,7 @@ namespace AzNetworking
 
             // Next serialize the InitiateConnectionPacket itself
             {
-                NetworkOutputSerializer tempPacketSerializer(networkSerializer.GetUnreadData(), networkSerializer.GetUnreadSize());
+                NetworkOutputSerializer tempPacketSerializer(networkSerializer.GetUnreadData(), networkSerializer.GetUnreadSize(), existingOnlyContext);
                 if (!static_cast<ISerializer&>(tempPacketSerializer).Serialize(packet, "Packet"))
                 {
                     return;

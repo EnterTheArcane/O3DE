@@ -28,6 +28,7 @@
 #include <AzCore/Math/Aabb.h>
 #include <AzCore/Name/Name.h>
 #include <AzCore/Name/NameDictionary.h>
+#include <AzCore/Symbol/Symbol.h>
 #include <limits>
 
 namespace AzNetworking
@@ -471,5 +472,11 @@ namespace AzNetworking
             }
             return result;
         }
+    };
+
+    template <>
+    struct SerializeObjectHelper<AZ::Symbol>
+    {
+        static bool SerializeObject(ISerializer& serializer, AZ::Symbol& value);
     };
 }

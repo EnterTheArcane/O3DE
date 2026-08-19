@@ -7,6 +7,8 @@
 #
 
 set(FILES
+    ../AzCore/Symbol/Internal/SymbolArena.cpp
+    ../AzCore/Symbol/Internal/SymbolTable.cpp
     Main.cpp
     Asset/AssetCommon.cpp
     Asset/AssetDataStreamTests.cpp
@@ -179,6 +181,12 @@ set(FILES
     Name/NameJsonSerializerTests.cpp
     Name/NameBenchmarks.cpp
     Name/NameTests.cpp
+    Symbol/SymbolGroupTests.cpp
+    Symbol/SymbolBenchmarks.cpp
+    Symbol/SymbolJsonSerializerTests.cpp
+    Symbol/SymbolTests.cpp
+    Symbol/SymbolTestSupport.cpp
+    Symbol/SymbolTestSupport.h
     OrderedEventBenchmarks.cpp
     OrderedEventTests.cpp
     OutcomeTests.cpp
@@ -268,6 +276,7 @@ set(FILES
     TaskTests.cpp
     TickBusTest.cpp
     Time/TimeTests.cpp
+    Utils/NoDestructorTests.cpp
     UUIDTests.cpp
     XML.cpp
 )

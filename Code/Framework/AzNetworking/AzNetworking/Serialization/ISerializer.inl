@@ -17,6 +17,11 @@
 
 namespace AzNetworking
 {
+    inline ISerializer::ISerializer(const Internal::SymbolSerializationContext* symbolSerializationContext)
+        : m_symbolSerializationContext(symbolSerializationContext)
+    {
+    }
+
     // Identifies AZStd containers
     struct AzContainerHelper
     {
@@ -98,6 +103,16 @@ namespace AzNetworking
     inline void ISerializer::Invalidate()
     {
         m_serializerValid = false;
+    }
+
+    inline const Internal::SymbolSerializationContext& ISerializer::GetSymbolSerializationContext() const
+    {
+        static constexpr Internal::SymbolSerializationContext TrustedLocalContext;
+        if (m_symbolSerializationContext)
+        {
+            return *m_symbolSerializationContext;
+        }
+        return TrustedLocalContext;
     }
 
     inline bool ISerializer::Serialize(char& value, const char* name, uint8_t minValue, uint8_t maxValue)

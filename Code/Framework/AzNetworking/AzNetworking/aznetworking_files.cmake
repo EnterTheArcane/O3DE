@@ -56,11 +56,15 @@ set(FILES
     Serialization/HashSerializer.h
     Serialization/ISerializer.h
     Serialization/ISerializer.inl
+    Serialization/Internal/SymbolAdmissionPolicy.cpp
+    Serialization/Internal/SymbolAdmissionPolicy.h
     Serialization/NetworkInputSerializer.cpp
     Serialization/NetworkInputSerializer.h
     Serialization/NetworkOutputSerializer.cpp
     Serialization/NetworkOutputSerializer.h
     Serialization/NetworkOutputSerializer.inl
+    Serialization/SymbolSerializationContext.h
+    Serialization/SymbolSerializer.cpp
     Serialization/StringifySerializer.cpp
     Serialization/StringifySerializer.h
     Serialization/TrackChangedSerializer.h

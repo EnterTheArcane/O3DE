@@ -169,6 +169,10 @@ namespace Multiplayer
 
         bool HandleRpcMessage(AzNetworking::IConnection* invokingConnection, NetEntityRole remoteRole, NetworkEntityRpcMessage& message);
         bool HandlePropertyChangeMessage(AzNetworking::ISerializer& serializer, bool notifyChanges = true);
+        bool HandlePropertyChangeMessage(
+            AzNetworking::ISerializer& serializer,
+            NetEntityRole serializationRole,
+            bool notifyChanges);
 
         RpcSendEvent& GetSendAuthorityToClientRpcEvent();
         RpcSendEvent& GetSendAuthorityToAutonomousRpcEvent();

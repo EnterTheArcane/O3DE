@@ -318,10 +318,12 @@ void {{ ClassName }}::{{ UpperFirst(Property.attrib['Name']) }}({{ PrintRpcParam
     Multiplayer::NetworkEntityRpcMessage rpcMessage(Multiplayer::RpcDeliveryType::{{ InvokeFrom }}To{{ HandleOn }}, GetNetEntityId(), netComponentId, rpcId, isReliable);
 {%     if paramNames|count > 0 %}
     {{ UpperFirst(Component.attrib['Name']) }}Internal::{{ UpperFirst(Property.attrib['Name']) }}RpcStruct rpcStruct({{ ', '.join(paramNames) }});
-{%     else %}
-    Multiplayer::ComponentRpcEmptyStruct rpcStruct;
+    if (!rpcMessage.SetRpcParams(rpcStruct))
+    {
+        AZLOG_ERROR("Failed to serialize RPC parameters for {{ UpperFirst(Property.attrib['Name']) }}");
+        return;
+    }
 {%     endif %}
-    rpcMessage.SetRpcParams(rpcStruct);
     GetNetBindComponent()->{{ "GetSend" + InvokeFrom + "To" + HandleOn + "RpcEvent" }}().Signal(rpcMessage);
 }
 #endif
@@ -483,7 +485,15 @@ case {{ UpperFirst(Component.attrib['Name']) }}Internal::RemoteProcedure::{{ Upp
 {% else %}
         Multiplayer::ComponentRpcEmptyStruct rpcStruct;
 {% endif %}
-        const bool paramsSerialized = message.GetRpcParams(rpcStruct);
+        bool paramsSerialized = false;
+        if (invokingConnection)
+        {
+            paramsSerialized = message.GetRpcParams(rpcStruct, *invokingConnection);
+        }
+        else
+        {
+            paramsSerialized = message.GetRpcParams(rpcStruct);
+        }
         if (paramsSerialized && {{ ValidationFunction }})
         {
 {% if HandleOn == 'Authority' %}

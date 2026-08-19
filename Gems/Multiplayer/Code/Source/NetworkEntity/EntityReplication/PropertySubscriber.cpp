@@ -47,7 +47,12 @@ namespace Multiplayer
     bool PropertySubscriber::HandlePropertyChangeMessage(AzNetworking::PacketId packetId, AzNetworking::ISerializer* serializer, bool notifyChanges)
     {
         AZ_Assert(IsPacketIdValid(packetId), "Packet expected to be valid");
+        if (!m_netBindComponent->HandlePropertyChangeMessage(*serializer, notifyChanges))
+        {
+            return false;
+        }
+
         m_lastReceivedPacketId = packetId;
-        return m_netBindComponent->HandlePropertyChangeMessage(*serializer, notifyChanges);
+        return true;
     }
 }

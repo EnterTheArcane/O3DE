@@ -10,6 +10,7 @@
 #include <Multiplayer/NetworkEntity/INetworkEntityManager.h>
 #include <AzNetworking/Serialization/ISerializer.h>
 #include <AzNetworking/Serialization/DeltaSerializer.h>
+#include <AzCore/std/optional.h>
 
 namespace Multiplayer
 {
@@ -48,17 +49,30 @@ namespace Multiplayer
 
     bool NetworkInputArray::Serialize(AzNetworking::ISerializer& serializer)
     {
+        const bool isReading = serializer.GetSerializerMode() == AzNetworking::SerializerMode::WriteToObject;
+        AZStd::optional<decltype(m_inputs)> candidateInputs;
+        if (isReading)
+        {
+            candidateInputs.emplace(m_inputs);
+        }
+        auto* inputsPointer = &m_inputs;
+        if (isReading)
+        {
+            inputsPointer = &*candidateInputs;
+        }
+        auto& inputs = *inputsPointer;
+
         if (net_useInputDeltaSerialization)
         {
             // Use delta-serialization to compress input RPC bandwidth usage
             // Always serialize the full first element
-            if (!m_inputs[0].m_networkInput.Serialize(serializer))
+            if (!inputs[0].m_networkInput.Serialize(serializer))
             {
                 return false;
             }
 
             // For each subsequent element
-            for (uint32_t i = 1; i < m_inputs.size(); ++i)
+            for (uint32_t i = 1; i < inputs.size(); ++i)
             {
                 if (serializer.GetSerializerMode() == AzNetworking::SerializerMode::WriteToObject)
                 {
@@ -69,10 +83,10 @@ namespace Multiplayer
                         return false;
                     }
                     // Start with previous value
-                    m_inputs[i].m_networkInput = m_inputs[i - 1].m_networkInput;
+                    inputs[i].m_networkInput = inputs[i - 1].m_networkInput;
                     // Then apply delta
-                    AzNetworking::DeltaSerializerApply applySerializer(deltaSerializer);
-                    if (!applySerializer.ApplyDelta(m_inputs[i].m_networkInput))
+                    AzNetworking::DeltaSerializerApply applySerializer(deltaSerializer, serializer.GetSymbolSerializationContext());
+                    if (!applySerializer.ApplyDelta(inputs[i].m_networkInput))
                     {
                         return false;
                     }
@@ -82,7 +96,7 @@ namespace Multiplayer
                     AzNetworking::SerializerDelta deltaSerializer;
                     // Create the delta
                     AzNetworking::DeltaSerializerCreate createSerializer(deltaSerializer);
-                    if (!createSerializer.CreateDelta(m_inputs[i - 1].m_networkInput, m_inputs[i].m_networkInput))
+                    if (!createSerializer.CreateDelta(inputs[i - 1].m_networkInput, inputs[i].m_networkInput))
                     {
                         return false;
                     }
@@ -96,7 +110,15 @@ namespace Multiplayer
         }
         else
         {
-            return serializer.Serialize(m_inputs, "InputArray");
+            if (!serializer.Serialize(inputs, "InputArray"))
+            {
+                return false;
+            }
+        }
+
+        if (isReading)
+        {
+            m_inputs = AZStd::move(*candidateInputs);
         }
         return true;
     }

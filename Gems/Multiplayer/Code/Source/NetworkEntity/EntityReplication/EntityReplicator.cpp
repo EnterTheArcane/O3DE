@@ -535,14 +535,25 @@ namespace Multiplayer
 
     NetworkEntityUpdateMessage EntityReplicator::GenerateUpdatePacket()
     {
+        NetworkEntityUpdateMessage message;
+        const bool generated = GenerateUpdatePacket(message);
+        AZ_Assert(generated, "Failed to generate an entity update packet");
+        return message;
+    }
+
+    bool EntityReplicator::GenerateUpdatePacket(NetworkEntityUpdateMessage& outMessage)
+    {
         AZ_Assert(m_propertyPublisher, "Expected to have a property publisher");
         if (!m_propertyPublisher)
         {
-            return {};
+            return false;
         }
 
-        auto message = m_propertyPublisher->GenerateUpdatePacket(m_netBindComponent, WasMigrated());
-        if (message.GetIsDelete())
+        if (!m_propertyPublisher->GenerateUpdatePacket(m_netBindComponent, WasMigrated(), outMessage))
+        {
+            return false;
+        }
+        if (outMessage.GetIsDelete())
         {
             AZLOG(
                 NET_RepDeletes,
@@ -551,13 +562,21 @@ namespace Multiplayer
                 WasMigrated() ? "true" : "false",
                 m_replicationManager.GetRemoteHostId().GetString().c_str());
         }
-        return message;
+        return true;
     }
 
     EntityMigrationMessage EntityReplicator::GenerateMigrationPacket()
     {
+        EntityMigrationMessage message;
+        const bool generated = GenerateMigrationPacket(message);
+        AZ_Assert(generated, "Failed to generate an entity migration packet");
+        return message;
+    }
+
+    bool EntityReplicator::GenerateMigrationPacket(EntityMigrationMessage& outMessage)
+    {
         AZ_Assert(m_propertyPublisher, "Expected to have a property publisher");
-        return m_propertyPublisher ? m_propertyPublisher->GenerateMigrationPacket(m_netBindComponent) : EntityMigrationMessage();
+        return m_propertyPublisher && m_propertyPublisher->GenerateMigrationPacket(m_netBindComponent, outMessage);
     }
 
     bool EntityReplicator::IsReadyToPublish() const

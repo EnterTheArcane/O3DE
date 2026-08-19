@@ -46,6 +46,14 @@ namespace AzNetworking
         //! @param bufferCapacity capacity of the buffer in bytes
         TypeValidatingSerializer(uint8_t* buffer, uint32_t bufferCapacity);
         TypeValidatingSerializer(const uint8_t* buffer, uint32_t bufferCapacity);
+        TypeValidatingSerializer(
+            uint8_t* buffer,
+            uint32_t bufferCapacity,
+            const Internal::SymbolSerializationContext& symbolSerializationContext);
+        TypeValidatingSerializer(
+            const uint8_t* buffer,
+            uint32_t bufferCapacity,
+            const Internal::SymbolSerializationContext& symbolSerializationContext);
 
         // ISerializer interfaces
         SerializerMode GetSerializerMode() const override;

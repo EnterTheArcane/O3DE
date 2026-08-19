@@ -23,6 +23,10 @@ namespace AzNetworking
         //! @param buffer         input buffer to write to
         //! @param bufferCapacity capacity of the buffer in bytes
         NetworkInputSerializer(uint8_t* buffer, uint32_t bufferCapacity);
+        NetworkInputSerializer(
+            uint8_t* buffer,
+            uint32_t bufferCapacity,
+            const Internal::SymbolSerializationContext& symbolSerializationContext);
 
         //! Copies the provided bytes into the serialization output buffer.
         //! @param data     pointer to the data buffer to copy
