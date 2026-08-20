@@ -14,7 +14,7 @@
 
 namespace Jolt::Internal
 {
-    inline constexpr AZ::u32 MaximumWorldCount = 64;
+    inline constexpr AZ::u32 MaximumWorldCount = Jolt::MaximumWorldCount;
     inline constexpr AZ::u32 WorldIndexBits = 6;
     inline constexpr AZ::u64 WorldIndexMask = (AZ::u64{1} << WorldIndexBits) - 1;
     inline constexpr AZ::u64 HandlePayloadMask = AZStd::numeric_limits<AZ::u32>::max();

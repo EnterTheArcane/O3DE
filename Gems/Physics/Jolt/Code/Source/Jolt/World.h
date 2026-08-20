@@ -12,6 +12,7 @@
 #include <Jolt/Internal/HandleEncoding.h>
 #include <Jolt/JobSystem.h>
 #include <Jolt/Capabilities.h>
+#include <Jolt/EventInternal.h>
 #include <Jolt/TransformedShapeLease.h>
 
 #include <AzCore/Casting/numeric_cast.h>
@@ -1934,7 +1935,7 @@ namespace Jolt
             BodyHandle secondBodyHandle) const override;
 
         [[nodiscard]]
-        EventView GetEvents() const;
+        EventBatch GetEvents() const;
 
         bool SetContactCallbacks(
             ExtensionHandle extensionHandle,
@@ -2764,7 +2765,9 @@ namespace Jolt
 
         void CommitContactCacheRestore();
 
-        void ClearEventState(bool preserveContactCache = false);
+        void ClearEventState(
+            bool preserveContactCache = false,
+            bool advanceSequence = true);
 
         [[nodiscard]]
         bool GetFilteredBodyTopologyState(
@@ -3327,11 +3330,8 @@ namespace Jolt
         AZStd::vector<ActivationEvent> m_pendingActivationEvents;
         AZStd::vector<BodyMoveEvent> m_pendingBodyMoveEvents;
         AZStd::vector<VirtualCharacterMoveEvent> m_pendingVirtualCharacterMoveEvents;
-        AZStd::vector<ContactEvent> m_contactEvents;
-        AZStd::vector<ContactPoint> m_contactPoints;
-        AZStd::vector<ActivationEvent> m_activationEvents;
-        AZStd::vector<BodyMoveEvent> m_bodyMoveEvents;
-        AZStd::vector<VirtualCharacterMoveEvent> m_virtualCharacterMoveEvents;
+        EventBatchPool* m_eventBatchPool = EventBatchPool::Create();
+        EventBatch m_publishedEvents;
         AZ::u64 m_eventSequence = 0;
 
         ExtensionBinding<IContactCallbacks> m_contactCallbacks;

@@ -4796,12 +4796,36 @@ namespace Jolt
     bool RuntimeImplementation::StepAutoSimulatedWorlds(
         const float elapsedTime)
     {
-        return static_cast<bool>(StepAutoSimulatedWorldsDetailed(elapsedTime));
+        return static_cast<bool>(StepAutoSimulatedWorldsDetailedInternal(elapsedTime, {}, nullptr));
     }
 
     SimulationResult RuntimeImplementation::StepAutoSimulatedWorldsDetailed(
         const float elapsedTime)
     {
+        return StepAutoSimulatedWorldsDetailedInternal(elapsedTime, {}, nullptr);
+    }
+
+    SimulationResult RuntimeImplementation::StepAutoSimulatedWorldsDetailed(
+        const float elapsedTime,
+        AZStd::span<WorldEventBatch, MaximumWorldCount> eventBatches,
+        AZ::u32& eventBatchCount)
+    {
+        eventBatchCount = 0;
+        return StepAutoSimulatedWorldsDetailedInternal(elapsedTime, eventBatches, &eventBatchCount);
+    }
+
+    SimulationResult RuntimeImplementation::StepAutoSimulatedWorldsDetailedInternal(
+        const float elapsedTime,
+        AZStd::span<WorldEventBatch> eventBatches,
+        AZ::u32* eventBatchCount)
+    {
+        struct AutoSimulationEntry final
+        {
+            World* m_world = nullptr;
+            WorldHandle m_worldHandle;
+            SimulationResult m_result;
+        };
+
         AZStd::shared_lock lock(m_worldMutex);
         AZStd::unique_lock<AZStd::mutex> rendererLock(m_debugRendererMutex, AZStd::defer_lock);
         DebugRenderer* debugRenderer = nullptr;
@@ -4811,57 +4835,39 @@ namespace Jolt
             debugRenderer = m_debugRenderer.get();
         }
 
-        World* callerWorld = nullptr;
-        size_t worldCount = 0;
+        AZStd::fixed_vector<AutoSimulationEntry, Internal::MaximumWorldCount> worlds;
         bool canStepConcurrently = !debugRenderer
             && m_jobContext
             && m_jobContext->GetJobManager().GetNumWorkerThreads() > 0;
-        for (WorldSlot& slot : m_worldSlots)
+        for (AZ::u32 worldIndex = 0; worldIndex < m_worldSlots.size(); ++worldIndex)
         {
+            WorldSlot& slot = m_worldSlots[worldIndex];
             if (slot.m_world)
             {
-                if (!callerWorld)
-                {
-                    callerWorld = slot.m_world.get();
-                }
-                ++worldCount;
+                worlds.push_back({
+                    .m_world = slot.m_world.get(),
+                    .m_worldHandle = Internal::MakeWorldHandle(worldIndex, slot.m_generation),
+                });
                 canStepConcurrently = canStepConcurrently
                     && slot.m_world->GetWorkerCount() == 1;
             }
         }
-        canStepConcurrently = canStepConcurrently && worldCount > 1;
+        canStepConcurrently = canStepConcurrently && worlds.size() > 1;
 
-        SimulationResult aggregate;
         if (canStepConcurrently)
         {
-            AZStd::atomic<AZ::u64> updateNanoseconds{0};
-            AZStd::atomic<AZ::u32> stepCount{0};
-            AZStd::atomic<AZ::u8> errors{0};
             AZ::JobCompletion completion(m_jobContext);
             completion.Reset(true);
             AZStd::fixed_vector<AZ::Job*, Internal::MaximumWorldCount - 1> jobs;
-            for (WorldSlot& slot : m_worldSlots)
+            for (size_t worldIndex = 1; worldIndex < worlds.size(); ++worldIndex)
             {
-                World* world = slot.m_world.get();
-                if (!world || world == callerWorld)
-                {
-                    continue;
-                }
                 AZ::Job* job = AZ::CreateJobFunction(
-                    [world, elapsedTime, &updateNanoseconds, &stepCount, &errors]
+                    [&worlds, worldIndex, elapsedTime]
                     {
-                        const SimulationResult result = world->StepAutomaticallyDetailed(
+                        AutoSimulationEntry& entry = worlds[worldIndex];
+                        entry.m_result = entry.m_world->StepAutomaticallyDetailed(
                             elapsedTime,
                             nullptr);
-                        updateNanoseconds.fetch_add(
-                            result.m_updateNanoseconds,
-                            AZStd::memory_order_relaxed);
-                        stepCount.fetch_add(
-                            result.m_stepCount,
-                            AZStd::memory_order_relaxed);
-                        errors.fetch_or(
-                            static_cast<AZ::u8>(result.m_errors),
-                            AZStd::memory_order_relaxed);
                     },
                     true,
                     m_jobContext);
@@ -4873,33 +4879,39 @@ namespace Jolt
             {
                 job->Start();
             }
-            aggregate = callerWorld->StepAutomaticallyDetailed(
+            worlds.front().m_result = worlds.front().m_world->StepAutomaticallyDetailed(
                 elapsedTime,
                 nullptr);
             completion.StartAndWaitForCompletion();
-            aggregate.m_updateNanoseconds += updateNanoseconds.load(AZStd::memory_order_relaxed);
-            aggregate.m_stepCount += stepCount.load(AZStd::memory_order_relaxed);
-            aggregate.m_errors |= static_cast<SimulationError>(errors.load(AZStd::memory_order_relaxed));
         }
         else
         {
-            for (WorldSlot& slot : m_worldSlots)
+            for (AutoSimulationEntry& entry : worlds)
             {
-                if (slot.m_world)
-                {
-                    const SimulationResult result = slot.m_world->StepAutomaticallyDetailed(
-                        elapsedTime,
-                        debugRenderer);
-                    aggregate.m_errors |= result.m_errors;
-                    aggregate.m_stepCount += result.m_stepCount;
-                    aggregate.m_updateNanoseconds += result.m_updateNanoseconds;
-                }
+                entry.m_result = entry.m_world->StepAutomaticallyDetailed(elapsedTime, debugRenderer);
+            }
+        }
+
+        SimulationResult aggregate;
+        for (AutoSimulationEntry& entry : worlds)
+        {
+            aggregate.m_errors |= entry.m_result.m_errors;
+            aggregate.m_stepCount += entry.m_result.m_stepCount;
+            aggregate.m_updateNanoseconds += entry.m_result.m_updateNanoseconds;
+            if (eventBatchCount && entry.m_result.m_stepCount > 0)
+            {
+                AZ_Assert(*eventBatchCount < eventBatches.size(), "The automatic-simulation event buffer is too small.");
+                eventBatches[*eventBatchCount] = {
+                    .m_events = entry.m_world->GetEvents(),
+                    .m_worldHandle = entry.m_worldHandle,
+                };
+                ++*eventBatchCount;
             }
         }
         return aggregate;
     }
 
-    EventView RuntimeImplementation::GetEvents(
+    EventBatch RuntimeImplementation::GetEvents(
         const WorldHandle worldHandle) const
     {
         AZStd::shared_lock lock(m_worldMutex);

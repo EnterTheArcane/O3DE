@@ -39,6 +39,7 @@ set(FILES
     Source/Jolt/DebugRenderer.h
     Source/Jolt/Diagnostics.cpp
     Source/Jolt/Event.cpp
+    Source/Jolt/EventInternal.h
     Source/Jolt/FloatEnvironment.cpp
     Source/Jolt/FloatEnvironment.h
     Source/Jolt/HairInternal.cpp

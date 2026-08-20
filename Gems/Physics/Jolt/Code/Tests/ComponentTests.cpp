@@ -167,6 +167,11 @@ namespace Jolt
             {
                 ++m_bodyMoveCount;
                 m_lastBodyMove = event;
+                if (m_reenterOnBodyMove && m_worldSimulation)
+                {
+                    m_reenterOnBodyMove = false;
+                    m_reentrySucceeded = m_worldSimulation->StepWorld(m_worldHandle, 1.0f / 60.0f);
+                }
             }
 
             void OnContact(
@@ -188,10 +193,14 @@ namespace Jolt
             BodyMoveEvent m_lastBodyMove;
             ContactEvent m_lastContact;
             ContactPoint m_lastContactPoint;
+            WorldSimulation* m_worldSimulation = nullptr;
+            WorldHandle m_worldHandle;
             AZ::u32 m_activationCount = 0;
             AZ::u32 m_bodyMoveCount = 0;
             AZ::u32 m_contactCount = 0;
             AZ::u32 m_lastContactPointCount = 0;
+            bool m_reenterOnBodyMove = false;
+            bool m_reentrySucceeded = false;
         };
 
         class ComponentSkeletonNotifications final
@@ -2238,6 +2247,9 @@ namespace Jolt
         EXPECT_TRUE(additionalWorldIsValid);
 
         ComponentWorldNotifications notifications;
+        notifications.m_worldSimulation = WorldSimulation::Get();
+        notifications.m_worldHandle = additionalWorldHandle;
+        notifications.m_reenterOnBodyMove = true;
         notifications.BusConnect(additionalWorldHandle);
 
         const ShapeHandle additionalShapeHandle = shapes->CreateShape(
@@ -2280,6 +2292,7 @@ namespace Jolt
         EXPECT_GT(notifications.m_bodyMoveCount, 0);
         EXPECT_GT(notifications.m_contactCount, 0);
         EXPECT_GT(notifications.m_lastContactPointCount, 0);
+        EXPECT_TRUE(notifications.m_reentrySucceeded);
         EXPECT_TRUE(
             notifications.m_lastContact.m_firstBodyHandle == floorBodyHandle
             || notifications.m_lastContact.m_secondBodyHandle == floorBodyHandle);
@@ -3381,8 +3394,8 @@ namespace Jolt
         ASSERT_TRUE(characterHandle);
         ASSERT_TRUE(character->SetVelocity(AZ::Vector3::CreateAxisX(2.0f)));
         ASSERT_TRUE(system.StepAutoSimulatedWorlds(1.0f / 60.0f));
-        const AZStd::span<const VirtualCharacterMoveEvent> moves =
-            system.GetEvents(worldHandle).GetVirtualCharacterMoves();
+        const EventBatch events = system.GetEvents(worldHandle);
+        const AZStd::span<const VirtualCharacterMoveEvent> moves = events.GetVirtualCharacterMoves();
         ASSERT_EQ(moves.size(), 1);
         VirtualCharacterNotificationBus::Event(
             entity.GetId(),
@@ -3683,7 +3696,8 @@ namespace Jolt
         EXPECT_TRUE(centerOfMassTransform.m_rotation.IsClose(movedTransform.m_rotation));
 
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-        const AZStd::span<const BodyMoveEvent> moves = system.GetEvents(worldHandle).GetBodyMoves();
+        const EventBatch bodyEvents = system.GetEvents(worldHandle);
+        const AZStd::span<const BodyMoveEvent> moves = bodyEvents.GetBodyMoves();
         ASSERT_EQ(moves.size(), 1);
         EXPECT_EQ(moves.front().m_bodyHandle, bodyHandle);
         EXPECT_EQ(moves.front().m_entityId, entity.GetId());
@@ -3801,7 +3815,8 @@ namespace Jolt
 
         ASSERT_TRUE(character->SetVelocity(AZ::Vector3::CreateAxisY(2.0f)));
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-        const AZStd::span<const BodyMoveEvent> characterMoves = system.GetEvents(worldHandle).GetBodyMoves();
+        const EventBatch characterEvents = system.GetEvents(worldHandle);
+        const AZStd::span<const BodyMoveEvent> characterMoves = characterEvents.GetBodyMoves();
         ASSERT_EQ(characterMoves.size(), 1);
         EXPECT_EQ(characterMoves.front().m_bodyHandle, characterBodyHandle);
         BodyNotificationBus::Event(

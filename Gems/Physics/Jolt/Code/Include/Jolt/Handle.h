@@ -15,6 +15,8 @@
 
 namespace Jolt
 {
+    inline constexpr AZ::u32 MaximumWorldCount = 64;
+
     namespace Internal
     {
         class HandleAccess;

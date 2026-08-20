@@ -48,19 +48,13 @@ namespace Jolt
         void Deactivate() override;
 
     private:
-        struct WorldEventState final
-        {
-            WorldHandle m_worldHandle;
-            AZ::u64 m_lastSequence = 0;
-        };
-
         void OnTick(
             float deltaTime,
             AZ::ScriptTimePoint time) override;
 
         void DispatchWorldEvents(
             WorldHandle worldHandle,
-            AZ::u64& lastSequence);
+            const EventBatch& events);
 
         SkeletonDefinitionHandle CreateSkeletonDefinition(
             const SkeletonDefinitionConfiguration& configuration) override;
@@ -562,8 +556,5 @@ namespace Jolt
         AZStd::unique_ptr<SkeletonAssetHandler> m_skeletonAssetHandler;
         AZStd::unique_ptr<System> m_system;
         Runtime* m_runtime = nullptr;
-
-        AZStd::vector<WorldEventState> m_worldEventStates;
-        AZ::u64 m_defaultWorldLastEventSequence = 0;
     };
 } // namespace Jolt

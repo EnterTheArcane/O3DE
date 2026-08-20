@@ -5453,6 +5453,13 @@ namespace Jolt
 
     World::~World()
     {
+        m_publishedEvents = {};
+        if (m_eventBatchPool)
+        {
+            m_eventBatchPool->Shutdown();
+            m_eventBatchPool = nullptr;
+        }
+
         TransformedShapeLeaseState* leaseState = m_transformedShapeLeaseState;
         bool destroyLeaseState = false;
         {
@@ -5748,6 +5755,9 @@ namespace Jolt
             return true;
         }
 
+        bool clearEventState = false;
+        bool preserveContactCache = true;
+
         WorldRuntimeConfiguration physicsConfiguration = configuration;
         physicsConfiguration.m_workerCount = current.m_workerCount;
         if (physicsConfiguration != current
@@ -5802,9 +5812,7 @@ namespace Jolt
             else
             {
                 m_physicsSystem.SetBodyActivationListener(nullptr);
-                AZStd::lock_guard eventLock(m_eventMutex);
-                m_pendingActivationEvents.clear();
-                m_activationEvents.clear();
+                clearEventState = true;
             }
         }
         if (configuration.m_collectContactEvents != current.m_collectContactEvents)
@@ -5816,17 +5824,17 @@ namespace Jolt
             else
             {
                 m_physicsSystem.SetContactListener(nullptr);
-                AZStd::lock_guard eventLock(m_eventMutex);
-                m_contactCache.clear();
+                preserveContactCache = false;
             }
             if (!configuration.m_collectContactEvents)
             {
-                AZStd::lock_guard eventLock(m_eventMutex);
-                m_pendingContactEvents.clear();
-                m_pendingContactPoints.clear();
-                m_contactEvents.clear();
-                m_contactPoints.clear();
+                clearEventState = true;
             }
+        }
+
+        if (clearEventState)
+        {
+            ClearEventState(preserveContactCache);
         }
 
         m_configuration.m_frictionCombineMode = configuration.m_frictionCombineMode;
@@ -18361,13 +18369,14 @@ namespace Jolt
                     if (recoveryResult)
                     {
                         CommitContactCacheRestore();
-                        ClearEventState(true);
-                        if (HasStateFlag(
-                                m_stateSnapshotScratch.m_configuration.m_flags,
-                                StateSnapshotFlags::Global))
+                        const bool restoresEventSequence = HasStateFlag(
+                            m_stateSnapshotScratch.m_configuration.m_flags,
+                            StateSnapshotFlags::Global);
+                        if (restoresEventSequence)
                         {
                             m_eventSequence = m_stateSnapshotScratch.m_eventSequence;
                         }
+                        ClearEventState(true, !restoresEventSequence);
                         return {.m_status = StateRestoreStatus::Rejected};
                     }
                 }
@@ -18383,11 +18392,14 @@ namespace Jolt
         }
 
         CommitContactCacheRestore();
-        ClearEventState(true);
-        if (HasStateFlag(snapshot->m_configuration.m_flags, StateSnapshotFlags::Global))
+        const bool restoresEventSequence = HasStateFlag(
+            snapshot->m_configuration.m_flags,
+            StateSnapshotFlags::Global);
+        if (restoresEventSequence)
         {
             m_eventSequence = snapshot->m_eventSequence;
         }
+        ClearEventState(true, !restoresEventSequence);
         statisticsScope.Succeed();
         return {.m_status = StateRestoreStatus::Complete};
     }
@@ -18835,8 +18847,16 @@ namespace Jolt
     }
 
     void World::ClearEventState(
-        const bool preserveContactCache)
+        const bool preserveContactCache,
+        const bool advanceSequence)
     {
+        EventBatch emptyBatch = m_eventBatchPool->Acquire();
+        AZ_Assert(emptyBatch, "The event-batch pool rejected a live world.");
+        if (!emptyBatch)
+        {
+            return;
+        }
+
         AZStd::lock_guard eventLock(m_eventMutex);
         if (!preserveContactCache)
         {
@@ -18847,16 +18867,16 @@ namespace Jolt
         m_pendingActivationEvents.clear();
         m_pendingBodyMoveEvents.clear();
         m_pendingVirtualCharacterMoveEvents.clear();
-        m_contactEvents.clear();
-        m_contactPoints.clear();
-        m_activationEvents.clear();
-        m_bodyMoveEvents.clear();
-        m_virtualCharacterMoveEvents.clear();
-        ++m_eventSequence;
-        if (m_eventSequence == 0)
+        if (advanceSequence)
         {
             ++m_eventSequence;
+            if (m_eventSequence == 0)
+            {
+                ++m_eventSequence;
+            }
         }
+        emptyBatch.m_storage->m_sequence = m_eventSequence;
+        m_publishedEvents = AZStd::move(emptyBatch);
     }
 
     bool World::ValidateState(
@@ -19838,11 +19858,14 @@ namespace Jolt
                 eventBytes += GetVectorCapacityBytes(m_pendingActivationEvents);
                 eventBytes += GetVectorCapacityBytes(m_pendingBodyMoveEvents);
                 eventBytes += GetVectorCapacityBytes(m_pendingVirtualCharacterMoveEvents);
-                eventBytes += GetVectorCapacityBytes(m_contactEvents);
-                eventBytes += GetVectorCapacityBytes(m_contactPoints);
-                eventBytes += GetVectorCapacityBytes(m_activationEvents);
-                eventBytes += GetVectorCapacityBytes(m_bodyMoveEvents);
-                eventBytes += GetVectorCapacityBytes(m_virtualCharacterMoveEvents);
+                if (const EventBatchStorage* storage = m_publishedEvents.m_storage)
+                {
+                    eventBytes += GetVectorCapacityBytes(storage->m_contacts);
+                    eventBytes += GetVectorCapacityBytes(storage->m_contactPoints);
+                    eventBytes += GetVectorCapacityBytes(storage->m_activations);
+                    eventBytes += GetVectorCapacityBytes(storage->m_bodyMoves);
+                    eventBytes += GetVectorCapacityBytes(storage->m_virtualCharacterMoves);
+                }
             }
 
             const AZ::u64 lookupBytes = GetMapRetainedBytes(m_ragdollHandlesByGroupId)
@@ -25778,18 +25801,11 @@ namespace Jolt
             && m_physicsSystem.WereBodiesInContact(firstBodySlot->m_bodyId, secondBodySlot->m_bodyId);
     }
 
-    EventView World::GetEvents() const
+    EventBatch World::GetEvents() const
     {
         AZStd::lock_guard simulationLock(m_mutex);
         AZStd::lock_guard eventLock(m_eventMutex);
-        return {
-            m_contactEvents,
-            m_contactPoints,
-            m_activationEvents,
-            m_bodyMoveEvents,
-            m_virtualCharacterMoveEvents,
-            m_eventSequence,
-        };
+        return m_publishedEvents;
     }
 
     bool World::SetContactCallbacks(
@@ -28032,6 +28048,14 @@ namespace Jolt
             });
         }
 
+        EventBatch eventBatch = m_eventBatchPool->Acquire();
+        AZ_Assert(eventBatch, "The event-batch pool rejected a live world.");
+        if (!eventBatch)
+        {
+            return;
+        }
+
+        EventBatch previousBatch;
         AZStd::lock_guard lock(m_eventMutex);
         AZStd::sort(
             m_pendingContactEvents.begin(),
@@ -28105,11 +28129,12 @@ namespace Jolt
                 AZStd::memory_order_relaxed);
         }
 
-        m_contactEvents.swap(m_pendingContactEvents);
-        m_contactPoints.swap(m_pendingContactPoints);
-        m_activationEvents.swap(m_pendingActivationEvents);
-        m_bodyMoveEvents.swap(m_pendingBodyMoveEvents);
-        m_virtualCharacterMoveEvents.swap(m_pendingVirtualCharacterMoveEvents);
+        EventBatchStorage& storage = *eventBatch.m_storage;
+        storage.m_contacts.swap(m_pendingContactEvents);
+        storage.m_contactPoints.swap(m_pendingContactPoints);
+        storage.m_activations.swap(m_pendingActivationEvents);
+        storage.m_bodyMoves.swap(m_pendingBodyMoveEvents);
+        storage.m_virtualCharacterMoves.swap(m_pendingVirtualCharacterMoveEvents);
         m_pendingContactEvents.clear();
         m_pendingContactPoints.clear();
         m_pendingActivationEvents.clear();
@@ -28120,6 +28145,9 @@ namespace Jolt
         {
             ++m_eventSequence;
         }
+        storage.m_sequence = m_eventSequence;
+        previousBatch = AZStd::move(m_publishedEvents);
+        m_publishedEvents = AZStd::move(eventBatch);
     }
 
     const World::ShapeSlot* World::FindShape(

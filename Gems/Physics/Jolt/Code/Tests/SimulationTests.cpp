@@ -2893,8 +2893,9 @@ namespace Jolt
         ASSERT_TRUE(system.GetBodyState(scene.m_worldHandle, scene.m_sphereBodyHandle, sphereState));
         EXPECT_NEAR(sphereState.m_transform.m_position.m_z, 0.5, 0.02);
         EXPECT_NEAR(sphereState.m_linearVelocity.GetLength(), 0.0f, 0.01f);
-        EXPECT_TRUE(system.GetEvents(scene.m_worldHandle).GetActivations().empty());
-        EXPECT_TRUE(system.GetEvents(scene.m_worldHandle).GetContacts().empty());
+        const EventBatch events = system.GetEvents(scene.m_worldHandle);
+        EXPECT_TRUE(events.GetActivations().empty());
+        EXPECT_TRUE(events.GetContacts().empty());
 
         DestroySphereOnFloor(system, scene);
         EXPECT_FALSE(system.IsValid(scene.m_worldHandle, scene.m_sphereBodyHandle));
@@ -2954,10 +2955,15 @@ namespace Jolt
         ASSERT_TRUE(system.AddStepListener(secondWorldHandle, secondRegistration.GetHandle()));
 
         SimulationResult result;
+        AZStd::array<WorldEventBatch, MaximumWorldCount> eventBatches;
+        AZ::u32 eventBatchCount = 0;
         AZStd::thread stepThread(
-            [&system, &result]
+            [&system, &result, &eventBatches, &eventBatchCount]
             {
-                result = system.StepAutoSimulatedWorldsDetailed(1.0f / 60.0f);
+                result = system.StepAutoSimulatedWorldsDetailed(
+                    1.0f / 60.0f,
+                    eventBatches,
+                    eventBatchCount);
             });
         const bool bothWorldsEntered = WaitUntil(
             [&firstListener, &secondListener]
@@ -2972,6 +2978,13 @@ namespace Jolt
         EXPECT_TRUE(bothWorldsEntered);
         EXPECT_TRUE(result);
         EXPECT_EQ(result.m_stepCount, 2);
+        ASSERT_EQ(eventBatchCount, 2);
+        EXPECT_EQ(eventBatches[0].m_worldHandle, firstWorldHandle);
+        EXPECT_EQ(eventBatches[1].m_worldHandle, secondWorldHandle);
+        EXPECT_TRUE(eventBatches[0].m_events);
+        EXPECT_TRUE(eventBatches[1].m_events);
+        EXPECT_NE(eventBatches[0].m_events.GetSequence(), 0);
+        EXPECT_NE(eventBatches[1].m_events.GetSequence(), 0);
         EXPECT_TRUE(system.RemoveStepListener(firstWorldHandle, firstRegistration.GetHandle()));
         EXPECT_TRUE(system.RemoveStepListener(secondWorldHandle, secondRegistration.GetHandle()));
         EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
@@ -3797,7 +3810,8 @@ namespace Jolt
         EXPECT_FALSE(system.IsBodyInSimulation(worldHandle, unaddedBodyHandle));
 
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-        EXPECT_TRUE(system.GetEvents(worldHandle).GetBodyMoves().empty());
+        const EventBatch events = system.GetEvents(worldHandle);
+        EXPECT_TRUE(events.GetBodyMoves().empty());
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
     }
 
@@ -3842,7 +3856,8 @@ namespace Jolt
         EXPECT_TRUE(callbacks.m_responseEstimate.m_firstTangent.IsFinite());
         EXPECT_TRUE(callbacks.m_responseEstimate.m_secondTangent.IsFinite());
         EXPECT_TRUE(std::isfinite(callbacks.m_responseEstimate.m_frictionPoint.m_z));
-        EXPECT_TRUE(system.GetEvents(scene.m_worldHandle).GetContacts().empty());
+        const EventBatch contactEvents = system.GetEvents(scene.m_worldHandle);
+        EXPECT_TRUE(contactEvents.GetContacts().empty());
 
         WorldTransform separatedTransform;
         separatedTransform.m_position.m_z = 5.0;
@@ -3862,7 +3877,8 @@ namespace Jolt
         }
         EXPECT_GT(callbacks.m_removedCount, 0);
         EXPECT_EQ(callbacks.m_lastRemoved.m_phase, EventPhase::End);
-        EXPECT_TRUE(system.GetEvents(scene.m_worldHandle).GetContacts().empty());
+        const EventBatch removedEvents = system.GetEvents(scene.m_worldHandle);
+        EXPECT_TRUE(removedEvents.GetContacts().empty());
 
         EXPECT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, ExtensionHandle::Invalid));
         DestroySphereOnFloor(system, scene);
@@ -4410,26 +4426,30 @@ namespace Jolt
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-        EXPECT_FALSE(system.GetEvents(worldHandle).GetActivations().empty());
+        const EventBatch activationEvents = system.GetEvents(worldHandle);
+        EXPECT_FALSE(activationEvents.GetActivations().empty());
 
         bool foundContact = false;
         for (AZ::u32 step = 0; step < 180 && !foundContact; ++step)
         {
             ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-            foundContact = !system.GetEvents(worldHandle).GetContacts().empty();
+            const EventBatch events = system.GetEvents(worldHandle);
+            foundContact = !events.GetContacts().empty();
         }
         EXPECT_TRUE(foundContact);
 
         configuration.m_collectActivationEvents = false;
         configuration.m_collectContactEvents = false;
         ASSERT_TRUE(system.UpdateWorldRuntimeConfiguration(worldHandle, configuration));
-        EXPECT_TRUE(system.GetEvents(worldHandle).GetActivations().empty());
-        EXPECT_TRUE(system.GetEvents(worldHandle).GetContacts().empty());
+        const EventBatch disabledEvents = system.GetEvents(worldHandle);
+        EXPECT_TRUE(disabledEvents.GetActivations().empty());
+        EXPECT_TRUE(disabledEvents.GetContacts().empty());
 
         ASSERT_TRUE(system.DeactivateBody(worldHandle, scene.m_sphereBodyHandle));
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-        EXPECT_TRUE(system.GetEvents(worldHandle).GetActivations().empty());
-        EXPECT_TRUE(system.GetEvents(worldHandle).GetContacts().empty());
+        const EventBatch postStepEvents = system.GetEvents(worldHandle);
+        EXPECT_TRUE(postStepEvents.GetActivations().empty());
+        EXPECT_TRUE(postStepEvents.GetContacts().empty());
         DestroySphereOnFloor(system, scene);
     }
 
@@ -4510,7 +4530,8 @@ namespace Jolt
         EXPECT_FALSE(system.DestroyGroupFilter(filterHandle));
 
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-        EXPECT_TRUE(system.GetEvents(worldHandle).GetContacts().empty());
+        const EventBatch initialEvents = system.GetEvents(worldHandle);
+        EXPECT_TRUE(initialEvents.GetContacts().empty());
 
         ASSERT_TRUE(system.DeactivateBody(worldHandle, dynamicBodyHandle));
         BodyState state;
@@ -4526,7 +4547,8 @@ namespace Jolt
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
 
         bool foundBegin = false;
-        for (const ContactEvent& contact : system.GetEvents(worldHandle).GetContacts())
+        const EventBatch beginEvents = system.GetEvents(worldHandle);
+        for (const ContactEvent& contact : beginEvents.GetContacts())
         {
             if (contact.m_phase == EventPhase::Begin)
             {
@@ -4562,7 +4584,8 @@ namespace Jolt
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
 
         bool foundEnd = false;
-        for (const ContactEvent& contact : system.GetEvents(worldHandle).GetContacts())
+        const EventBatch endEvents = system.GetEvents(worldHandle);
+        for (const ContactEvent& contact : endEvents.GetContacts())
         {
             if (contact.m_phase == EventPhase::End)
             {
@@ -4633,7 +4656,8 @@ namespace Jolt
         EXPECT_FALSE(system.DestroyGroupFilter(filterHandle));
 
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-        EXPECT_TRUE(system.GetEvents(worldHandle).GetContacts().empty());
+        const EventBatch initialEvents = system.GetEvents(worldHandle);
+        EXPECT_TRUE(initialEvents.GetContacts().empty());
 
         ASSERT_TRUE(system.DeactivateBody(worldHandle, dynamicBodyHandle));
         filter.m_collisionEnabled = true;
@@ -4646,7 +4670,8 @@ namespace Jolt
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
 
         bool foundBegin = false;
-        for (const ContactEvent& contact : system.GetEvents(worldHandle).GetContacts())
+        const EventBatch beginEvents = system.GetEvents(worldHandle);
+        for (const ContactEvent& contact : beginEvents.GetContacts())
         {
             if (contact.m_phase == EventPhase::Begin)
             {
@@ -4680,7 +4705,8 @@ namespace Jolt
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
 
         bool foundEnd = false;
-        for (const ContactEvent& contact : system.GetEvents(worldHandle).GetContacts())
+        const EventBatch endEvents = system.GetEvents(worldHandle);
+        for (const ContactEvent& contact : endEvents.GetContacts())
         {
             if (contact.m_phase == EventPhase::End)
             {
@@ -7981,8 +8007,8 @@ namespace Jolt
         EXPECT_TRUE(state.m_isSupported);
         EXPECT_NEAR(state.m_transform.m_position.m_z, 0.5, 0.05);
 
-        const AZStd::span<const VirtualCharacterMoveEvent> moves =
-            system.GetEvents(worldHandle).GetVirtualCharacterMoves();
+        const EventBatch moveEvents = system.GetEvents(worldHandle);
+        const AZStd::span<const VirtualCharacterMoveEvent> moves = moveEvents.GetVirtualCharacterMoves();
         ASSERT_EQ(moves.size(), 1);
         EXPECT_EQ(moves.front().m_characterHandle, characterHandle);
         EXPECT_EQ(moves.front().m_entityId, characterConfiguration.m_entityId);
@@ -7997,7 +8023,8 @@ namespace Jolt
         ASSERT_TRUE(system.GetVirtualCharacterState(worldHandle, characterHandle, state));
         EXPECT_NEAR(state.m_transform.m_position.m_z, disabledTransform.m_position.m_z, 1.0e-6);
         EXPECT_TRUE(state.m_transform.m_rotation.IsClose(disabledTransform.m_rotation));
-        EXPECT_TRUE(system.GetEvents(worldHandle).GetVirtualCharacterMoves().empty());
+        const EventBatch disabledEvents = system.GetEvents(worldHandle);
+        EXPECT_TRUE(disabledEvents.GetVirtualCharacterMoves().empty());
 
         ShapeConfiguration replacementShapeConfiguration;
         replacementShapeConfiguration.m_geometry = CapsuleShapeConfiguration{
@@ -10487,7 +10514,8 @@ namespace Jolt
             true));
         ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
         AZ::u32 removalEventCount = 0;
-        for (const ContactEvent& event : system.GetEvents(scene.m_worldHandle).GetContacts())
+        const EventBatch removalEvents = system.GetEvents(scene.m_worldHandle);
+        for (const ContactEvent& event : removalEvents.GetContacts())
         {
             if (event.m_phase == EventPhase::End
                 && ((event.m_firstBodyHandle == scene.m_floorBodyHandle
@@ -17181,7 +17209,7 @@ namespace Jolt
         for (AZ::u32 step = 0; step < 120 && !receivedBegin; ++step)
         {
             ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
-            const EventView events = system.GetEvents(scene.m_worldHandle);
+            const EventBatch events = system.GetEvents(scene.m_worldHandle);
             for (const ActivationEvent& activation : events.GetActivations())
             {
                 if (activation.m_bodyHandle == scene.m_sphereBodyHandle
@@ -17213,7 +17241,7 @@ namespace Jolt
 
         EXPECT_TRUE(system.DestroyBody(scene.m_worldHandle, scene.m_sphereBodyHandle));
         ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
-        const EventView events = system.GetEvents(scene.m_worldHandle);
+        const EventBatch events = system.GetEvents(scene.m_worldHandle);
         bool receivedEnd = false;
         for (const ContactEvent& contact : events.GetContacts())
         {
@@ -17260,14 +17288,16 @@ namespace Jolt
         ASSERT_TRUE(secondBodyHandle);
 
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-        EXPECT_TRUE(system.GetEvents(worldHandle).GetBodyMoves().empty());
+        const EventBatch initialEvents = system.GetEvents(worldHandle);
+        EXPECT_TRUE(initialEvents.GetBodyMoves().empty());
 
         ASSERT_TRUE(system.SetBodyMoveEventsEnabled(worldHandle, firstBodyHandle, true));
         ASSERT_TRUE(system.SetBodyMoveEventsEnabled(worldHandle, secondBodyHandle, true));
         ASSERT_TRUE(system.SetBodyMoveEventsEnabled(worldHandle, firstBodyHandle, false));
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
 
-        const AZStd::span<const BodyMoveEvent> moves = system.GetEvents(worldHandle).GetBodyMoves();
+        const EventBatch moveEvents = system.GetEvents(worldHandle);
+        const AZStd::span<const BodyMoveEvent> moves = moveEvents.GetBodyMoves();
         ASSERT_EQ(moves.size(), 1);
         EXPECT_EQ(moves.front().m_bodyHandle, secondBodyHandle);
         EXPECT_GT(moves.front().m_transform.m_position.m_x, 0.0);
@@ -17275,11 +17305,79 @@ namespace Jolt
 
         ASSERT_TRUE(system.DestroyBody(worldHandle, secondBodyHandle));
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-        EXPECT_TRUE(system.GetEvents(worldHandle).GetBodyMoves().empty());
+        const EventBatch destroyedEvents = system.GetEvents(worldHandle);
+        EXPECT_TRUE(destroyedEvents.GetBodyMoves().empty());
 
         EXPECT_FALSE(system.SetBodyMoveEventsEnabled(worldHandle, secondBodyHandle, true));
         EXPECT_TRUE(system.DestroyBody(worldHandle, firstBodyHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+    }
+
+    TEST(SimulationTests, EventBatchesRemainImmutableAcrossReentrantStepsAndRuntimeDestruction)
+    {
+        EventBatch retainedEvents;
+        AZStd::array<BodyHandle, 2> expectedBodyHandles;
+        AZ::u64 expectedSequence = 0;
+
+        {
+            SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+            systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
+            Runtime system(systemConfiguration, nullptr);
+            ASSERT_TRUE(system);
+
+            const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+            ShapeConfiguration shapeConfiguration;
+            shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+            const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+            ASSERT_TRUE(shapeHandle);
+
+            BodyConfiguration firstConfiguration;
+            firstConfiguration.m_shapeHandle = shapeHandle;
+            firstConfiguration.m_transform.m_position.m_y = -2.0;
+            firstConfiguration.m_linearVelocity = AZ::Vector3::CreateAxisX(1.0f);
+            expectedBodyHandles[0] = system.CreateBody(worldHandle, firstConfiguration);
+
+            BodyConfiguration secondConfiguration = firstConfiguration;
+            secondConfiguration.m_transform.m_position.m_y = 2.0;
+            secondConfiguration.m_linearVelocity = AZ::Vector3::CreateAxisX(2.0f);
+            expectedBodyHandles[1] = system.CreateBody(worldHandle, secondConfiguration);
+            ASSERT_TRUE(expectedBodyHandles[0]);
+            ASSERT_TRUE(expectedBodyHandles[1]);
+            ASSERT_TRUE(system.SetBodyMoveEventsEnabled(worldHandle, expectedBodyHandles[0], true));
+            ASSERT_TRUE(system.SetBodyMoveEventsEnabled(worldHandle, expectedBodyHandles[1], true));
+
+            ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+            retainedEvents = system.GetEvents(worldHandle);
+            ASSERT_TRUE(retainedEvents);
+            expectedSequence = retainedEvents.GetSequence();
+            ASSERT_NE(expectedSequence, 0);
+
+            const AZStd::span<const BodyMoveEvent> moves = retainedEvents.GetBodyMoves();
+            ASSERT_EQ(moves.size(), expectedBodyHandles.size());
+            bool reentered = false;
+            for (size_t moveIndex = 0; moveIndex < moves.size(); ++moveIndex)
+            {
+                if (!reentered)
+                {
+                    ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+                    reentered = true;
+                }
+                EXPECT_EQ(moves[moveIndex].m_bodyHandle, expectedBodyHandles[moveIndex]);
+            }
+
+            EXPECT_EQ(retainedEvents.GetSequence(), expectedSequence);
+            EXPECT_EQ(retainedEvents.GetBodyMoves().size(), expectedBodyHandles.size());
+            EXPECT_TRUE(system.DestroyBody(worldHandle, expectedBodyHandles[1]));
+            EXPECT_TRUE(system.DestroyBody(worldHandle, expectedBodyHandles[0]));
+            EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+        }
+
+        ASSERT_TRUE(retainedEvents);
+        EXPECT_EQ(retainedEvents.GetSequence(), expectedSequence);
+        const AZStd::span<const BodyMoveEvent> moves = retainedEvents.GetBodyMoves();
+        ASSERT_EQ(moves.size(), expectedBodyHandles.size());
+        EXPECT_EQ(moves[0].m_bodyHandle, expectedBodyHandles[0]);
+        EXPECT_EQ(moves[1].m_bodyHandle, expectedBodyHandles[1]);
     }
 
     TEST(SimulationTests, FixedConstraintOwnsBodiesAndPreservesRelativePose)

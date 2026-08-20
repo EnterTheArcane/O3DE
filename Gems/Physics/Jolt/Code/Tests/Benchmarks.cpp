@@ -3319,7 +3319,8 @@ namespace Jolt::Benchmarks
                 state.SkipWithError("Collision-policy benchmark step failed.");
                 break;
             }
-            benchmark::DoNotOptimize(system.GetEvents(worldHandle).GetContacts().size());
+            const EventBatch events = system.GetEvents(worldHandle);
+            benchmark::DoNotOptimize(events.GetContacts().size());
         }
         AddWorldCounters(state, system, worldHandle);
         jobContext.AddCounters(state);

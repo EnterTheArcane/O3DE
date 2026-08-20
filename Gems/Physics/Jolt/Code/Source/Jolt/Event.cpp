@@ -5,15 +5,243 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  */
 
-#include <Jolt/Event.h>
+#include <Jolt/EventInternal.h>
 
 #include <Jolt/BehaviorReflection.h>
 
+#include <AzCore/Debug/Trace.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
 namespace Jolt
 {
+    EventBatch::EventBatch(EventBatchStorage* storage)
+        : m_storage(storage)
+    {
+    }
+
+    EventBatch::EventBatch(const EventBatch& other)
+        : m_storage(other.m_storage)
+    {
+        EventBatchPool::AddReference(m_storage);
+    }
+
+    EventBatch::EventBatch(EventBatch&& other) noexcept
+        : m_storage(other.m_storage)
+    {
+        other.m_storage = nullptr;
+    }
+
+    EventBatch::~EventBatch()
+    {
+        EventBatchPool::Release(m_storage);
+    }
+
+    EventBatch& EventBatch::operator=(const EventBatch& other)
+    {
+        if (this != &other)
+        {
+            EventBatchPool::AddReference(other.m_storage);
+            EventBatchPool::Release(m_storage);
+            m_storage = other.m_storage;
+        }
+        return *this;
+    }
+
+    EventBatch& EventBatch::operator=(EventBatch&& other) noexcept
+    {
+        if (this != &other)
+        {
+            EventBatchPool::Release(m_storage);
+            m_storage = other.m_storage;
+            other.m_storage = nullptr;
+        }
+        return *this;
+    }
+
+    EventBatch::operator bool() const
+    {
+        return m_storage;
+    }
+
+    AZ::u64 EventBatch::GetSequence() const
+    {
+        if (m_storage)
+        {
+            return m_storage->m_sequence;
+        }
+        return 0;
+    }
+
+    AZStd::span<const ActivationEvent> EventBatch::GetActivations() const &
+    {
+        if (m_storage)
+        {
+            return m_storage->m_activations;
+        }
+        return {};
+    }
+
+    AZStd::span<const ContactEvent> EventBatch::GetContacts() const &
+    {
+        if (m_storage)
+        {
+            return m_storage->m_contacts;
+        }
+        return {};
+    }
+
+    AZStd::span<const BodyMoveEvent> EventBatch::GetBodyMoves() const &
+    {
+        if (m_storage)
+        {
+            return m_storage->m_bodyMoves;
+        }
+        return {};
+    }
+
+    AZStd::span<const VirtualCharacterMoveEvent> EventBatch::GetVirtualCharacterMoves() const &
+    {
+        if (m_storage)
+        {
+            return m_storage->m_virtualCharacterMoves;
+        }
+        return {};
+    }
+
+    AZStd::span<const ContactPoint> EventBatch::GetContactPoints(const ContactEvent& contact) const &
+    {
+        if (!m_storage
+            || contact.m_firstPoint > m_storage->m_contactPoints.size()
+            || contact.m_pointCount > m_storage->m_contactPoints.size() - contact.m_firstPoint)
+        {
+            return {};
+        }
+
+        return AZStd::span<const ContactPoint>(m_storage->m_contactPoints).subspan(
+            contact.m_firstPoint,
+            contact.m_pointCount);
+    }
+
+    EventBatchPool* EventBatchPool::Create()
+    {
+        return aznew EventBatchPool;
+    }
+
+    EventBatchPool::~EventBatchPool()
+    {
+        AZ_Assert(!m_acceptingStorage, "The event-batch pool must be shut down before destruction.");
+        AZ_Assert(!m_freeStorage, "The event-batch pool retained storage during destruction.");
+    }
+
+    EventBatch EventBatchPool::Acquire()
+    {
+        EventBatchStorage* storage = nullptr;
+        {
+            AZStd::lock_guard lock(m_mutex);
+            if (!m_acceptingStorage)
+            {
+                return {};
+            }
+
+            if (m_freeStorage)
+            {
+                storage = m_freeStorage;
+                m_freeStorage = storage->m_nextFree;
+                storage->m_nextFree = nullptr;
+            }
+            else
+            {
+                storage = aznew EventBatchStorage(*this);
+                AddPoolReference();
+            }
+        }
+
+        storage->Clear();
+        storage->m_referenceCount.store(1, AZStd::memory_order_release);
+        return EventBatch(storage);
+    }
+
+    void EventBatchPool::Shutdown()
+    {
+        EventBatchStorage* freeStorage = nullptr;
+        {
+            AZStd::lock_guard lock(m_mutex);
+            if (!m_acceptingStorage)
+            {
+                return;
+            }
+
+            m_acceptingStorage = false;
+            freeStorage = m_freeStorage;
+            m_freeStorage = nullptr;
+        }
+
+        while (freeStorage)
+        {
+            EventBatchStorage* storage = freeStorage;
+            freeStorage = storage->m_nextFree;
+            delete storage;
+            ReleasePoolReference();
+        }
+        ReleasePoolReference();
+    }
+
+    void EventBatchPool::AddReference(EventBatchStorage* storage)
+    {
+        if (storage)
+        {
+            storage->m_referenceCount.fetch_add(1, AZStd::memory_order_relaxed);
+        }
+    }
+
+    void EventBatchPool::Release(EventBatchStorage* storage)
+    {
+        if (storage && storage->m_referenceCount.fetch_sub(1, AZStd::memory_order_acq_rel) == 1)
+        {
+            storage->m_pool.Recycle(storage);
+        }
+    }
+
+    void EventBatchPool::AddPoolReference()
+    {
+        m_referenceCount.fetch_add(1, AZStd::memory_order_relaxed);
+    }
+
+    void EventBatchPool::ReleasePoolReference()
+    {
+        if (m_referenceCount.fetch_sub(1, AZStd::memory_order_acq_rel) == 1)
+        {
+            delete this;
+        }
+    }
+
+    void EventBatchPool::Recycle(EventBatchStorage* storage)
+    {
+        {
+            AZStd::lock_guard lock(m_mutex);
+            if (m_acceptingStorage)
+            {
+                storage->m_nextFree = m_freeStorage;
+                m_freeStorage = storage;
+                return;
+            }
+        }
+
+        delete storage;
+        ReleasePoolReference();
+    }
+
+    void EventBatchStorage::Clear()
+    {
+        m_contacts.clear();
+        m_contactPoints.clear();
+        m_activations.clear();
+        m_bodyMoves.clear();
+        m_virtualCharacterMoves.clear();
+        m_sequence = 0;
+    }
+
     void ReflectEvents(
         AZ::ReflectContext* context)
     {

@@ -41,7 +41,13 @@ namespace Jolt
         SimulationResult StepAutoSimulatedWorldsDetailed(float elapsedTime);
 
         [[nodiscard]]
-        EventView GetEvents(WorldHandle worldHandle) const;
+        SimulationResult StepAutoSimulatedWorldsDetailed(
+            float elapsedTime,
+            AZStd::span<WorldEventBatch, MaximumWorldCount> eventBatches,
+            AZ::u32& eventBatchCount);
+
+        [[nodiscard]]
+        EventBatch GetEvents(WorldHandle worldHandle) const;
 
         bool SetContactCallbacks(
             WorldHandle worldHandle,

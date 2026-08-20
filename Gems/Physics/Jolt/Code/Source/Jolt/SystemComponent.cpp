@@ -27,6 +27,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/std/containers/array.h>
 #include <AzCore/std/string/string.h>
 
 namespace Jolt
@@ -447,9 +448,6 @@ namespace Jolt
         m_runtime = GetRuntime();
         AZ_Assert(m_runtime, "A valid Jolt system must publish its runtime capabilities.");
 
-        m_defaultWorldLastEventSequence = 0;
-        m_worldEventStates.clear();
-
         AZ::TickBus::Handler::BusConnect();
         SkeletonRequestBus::Handler::BusConnect();
         WorldQueryRequestBus::Handler::BusConnect();
@@ -474,8 +472,6 @@ namespace Jolt
         WorldQueryRequestBus::Handler::BusDisconnect();
         SkeletonRequestBus::Handler::BusDisconnect();
         AZ::TickBus::Handler::BusDisconnect();
-        m_worldEventStates.clear();
-        m_defaultWorldLastEventSequence = 0;
         m_skeletonAssetHandler.reset();
         m_sceneAssetHandler.reset();
         m_runtime = nullptr;
@@ -491,31 +487,27 @@ namespace Jolt
             return;
         }
 
-        m_runtime->StepAutoSimulatedWorlds(deltaTime);
-        DispatchWorldEvents(
-            m_runtime->GetDefaultWorldHandle(),
-            m_defaultWorldLastEventSequence);
-        for (WorldEventState& state : m_worldEventStates)
+        AZStd::array<WorldEventBatch, MaximumWorldCount> eventBatches;
+        AZ::u32 eventBatchCount = 0;
+        [[maybe_unused]] const SimulationResult result = m_runtime->StepAutoSimulatedWorldsDetailed(
+            deltaTime,
+            eventBatches,
+            eventBatchCount);
+        for (AZ::u32 eventBatchIndex = 0; eventBatchIndex < eventBatchCount; ++eventBatchIndex)
         {
-            DispatchWorldEvents(state.m_worldHandle, state.m_lastSequence);
+            const WorldEventBatch& eventBatch = eventBatches[eventBatchIndex];
+            DispatchWorldEvents(eventBatch.m_worldHandle, eventBatch.m_events);
         }
     }
 
     void SystemComponent::DispatchWorldEvents(
         const WorldHandle worldHandle,
-        AZ::u64& lastSequence)
+        const EventBatch& events)
     {
-        if (!m_runtime || !worldHandle)
+        if (!m_runtime || !worldHandle || !events)
         {
             return;
         }
-
-        const EventView events = m_runtime->GetEvents(worldHandle);
-        if (events.GetSequence() == 0 || events.GetSequence() == lastSequence)
-        {
-            return;
-        }
-        lastSequence = events.GetSequence();
 
         for (const BodyMoveEvent& event : events.GetBodyMoves())
         {
@@ -991,32 +983,13 @@ namespace Jolt
             return {};
         }
 
-        const WorldHandle worldHandle = m_runtime->CreateWorld(configuration);
-        if (worldHandle)
-        {
-            m_worldEventStates.push_back({.m_worldHandle = worldHandle});
-        }
-        return worldHandle;
+        return m_runtime->CreateWorld(configuration);
     }
 
     bool SystemComponent::DestroyWorld(
         const WorldHandle worldHandle)
     {
-        if (!m_runtime || !m_runtime->DestroyWorld(worldHandle))
-        {
-            return false;
-        }
-
-        m_worldEventStates.erase(
-            AZStd::remove_if(
-                m_worldEventStates.begin(),
-                m_worldEventStates.end(),
-                [worldHandle](const WorldEventState& state)
-                {
-                    return state.m_worldHandle == worldHandle;
-                }),
-            m_worldEventStates.end());
-        return true;
+        return m_runtime && m_runtime->DestroyWorld(worldHandle);
     }
 
     WorldHandle SystemComponent::GetDefaultWorldHandle() const
@@ -1060,23 +1033,7 @@ namespace Jolt
             return result;
         }
 
-        if (worldHandle == m_runtime->GetDefaultWorldHandle())
-        {
-            DispatchWorldEvents(worldHandle, m_defaultWorldLastEventSequence);
-            return result;
-        }
-
-        for (WorldEventState& state : m_worldEventStates)
-        {
-            if (state.m_worldHandle == worldHandle)
-            {
-                DispatchWorldEvents(worldHandle, state.m_lastSequence);
-                return result;
-            }
-        }
-
-        AZ::u64 lastSequence = 0;
-        DispatchWorldEvents(worldHandle, lastSequence);
+        DispatchWorldEvents(worldHandle, m_runtime->GetEvents(worldHandle));
         return result;
     }
 

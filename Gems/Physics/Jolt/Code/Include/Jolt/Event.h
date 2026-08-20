@@ -28,6 +28,9 @@ namespace AZ
 
 namespace Jolt
 {
+    class EventBatchPool;
+    struct EventBatchStorage;
+
     void ReflectEvents(AZ::ReflectContext* context);
 
     enum class ActivationState : AZ::u8
@@ -282,78 +285,63 @@ namespace Jolt
         AZStd::span<const ContactPoint> m_points;
     };
 
-    //! Views remain valid until the world is stepped, restored, or destroyed.
-    class EventView final
+    //! Immutable events from one published world generation. Copies share provider-owned storage.
+    class JOLT_API EventBatch final
     {
     public:
-        EventView() = default;
+        EventBatch() = default;
+        EventBatch(const EventBatch& other);
+        EventBatch(EventBatch&& other) noexcept;
+        ~EventBatch();
 
-        EventView(
-            AZStd::span<const ContactEvent> contacts,
-            AZStd::span<const ContactPoint> contactPoints,
-            AZStd::span<const ActivationEvent> activations,
-            AZStd::span<const BodyMoveEvent> bodyMoves,
-            AZStd::span<const VirtualCharacterMoveEvent> virtualCharacterMoves,
-            const AZ::u64 sequence)
-            : m_contacts(contacts)
-            , m_contactPoints(contactPoints)
-            , m_activations(activations)
-            , m_bodyMoves(bodyMoves)
-            , m_virtualCharacterMoves(virtualCharacterMoves)
-            , m_sequence(sequence)
-        {
-        }
+        EventBatch& operator=(const EventBatch& other);
+
+        EventBatch& operator=(EventBatch&& other) noexcept;
 
         [[nodiscard]]
-        AZ::u64 GetSequence() const
-        {
-            return m_sequence;
-        }
+        explicit operator bool() const;
 
         [[nodiscard]]
-        AZStd::span<const ActivationEvent> GetActivations() const
-        {
-            return m_activations;
-        }
+        AZ::u64 GetSequence() const;
 
         [[nodiscard]]
-        AZStd::span<const ContactEvent> GetContacts() const
-        {
-            return m_contacts;
-        }
+        AZStd::span<const ActivationEvent> GetActivations() const &;
+
+        AZStd::span<const ActivationEvent> GetActivations() const && = delete;
 
         [[nodiscard]]
-        AZStd::span<const BodyMoveEvent> GetBodyMoves() const
-        {
-            return m_bodyMoves;
-        }
+        AZStd::span<const ContactEvent> GetContacts() const &;
+
+        AZStd::span<const ContactEvent> GetContacts() const && = delete;
 
         [[nodiscard]]
-        AZStd::span<const VirtualCharacterMoveEvent> GetVirtualCharacterMoves() const
-        {
-            return m_virtualCharacterMoves;
-        }
+        AZStd::span<const BodyMoveEvent> GetBodyMoves() const &;
+
+        AZStd::span<const BodyMoveEvent> GetBodyMoves() const && = delete;
 
         [[nodiscard]]
-        AZStd::span<const ContactPoint> GetContactPoints(
-            const ContactEvent& contact) const
-        {
-            if (contact.m_firstPoint > m_contactPoints.size()
-                || contact.m_pointCount > m_contactPoints.size() - contact.m_firstPoint)
-            {
-                return {};
-            }
+        AZStd::span<const VirtualCharacterMoveEvent> GetVirtualCharacterMoves() const &;
 
-            return m_contactPoints.subspan(contact.m_firstPoint, contact.m_pointCount);
-        }
+        AZStd::span<const VirtualCharacterMoveEvent> GetVirtualCharacterMoves() const && = delete;
+
+        [[nodiscard]]
+        AZStd::span<const ContactPoint> GetContactPoints(const ContactEvent& contact) const &;
+
+        AZStd::span<const ContactPoint> GetContactPoints(const ContactEvent& contact) const && = delete;
 
     private:
-        AZStd::span<const ContactEvent> m_contacts;
-        AZStd::span<const ContactPoint> m_contactPoints;
-        AZStd::span<const ActivationEvent> m_activations;
-        AZStd::span<const BodyMoveEvent> m_bodyMoves;
-        AZStd::span<const VirtualCharacterMoveEvent> m_virtualCharacterMoves;
-        AZ::u64 m_sequence = 0;
+        friend class EventBatchPool;
+        friend class World;
+
+        explicit EventBatch(EventBatchStorage* storage);
+
+        EventBatchStorage* m_storage = nullptr;
+    };
+
+    struct WorldEventBatch final
+    {
+        EventBatch m_events;
+        WorldHandle m_worldHandle;
     };
 
     class IWorldNotifications

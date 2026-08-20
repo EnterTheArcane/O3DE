@@ -928,7 +928,18 @@ namespace Jolt
         return GetRuntimeImplementation(*this).StepAutoSimulatedWorldsDetailed(elapsedTime);
     }
 
-    EventView WorldSimulation::GetEvents(WorldHandle worldHandle) const
+    SimulationResult WorldSimulation::StepAutoSimulatedWorldsDetailed(
+        const float elapsedTime,
+        AZStd::span<WorldEventBatch, MaximumWorldCount> eventBatches,
+        AZ::u32& eventBatchCount)
+    {
+        return GetRuntimeImplementation(*this).StepAutoSimulatedWorldsDetailed(
+            elapsedTime,
+            eventBatches,
+            eventBatchCount);
+    }
+
+    EventBatch WorldSimulation::GetEvents(WorldHandle worldHandle) const
     {
         return GetRuntimeImplementation(*this).GetEvents(worldHandle);
     }
