@@ -736,14 +736,6 @@ namespace Jolt
             ->Method("GetRequiredHitCount", &BroadPhaseCastHitCollection::GetRequiredHitCount)
             ->Method("HasOverflow", &BroadPhaseCastHitCollection::HasOverflow);
 
-        behaviorContext->Class<TransformedShapeCollection>("TransformedShapeCollection")
-            ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
-            ->Attribute(AZ::Script::Attributes::Module, "jolt")
-            ->Method("GetShapeCount", &TransformedShapeCollection::GetShapeCount)
-            ->Method("GetShape", &TransformedShapeCollection::GetShape)
-            ->Method("GetRequiredShapeCount", &TransformedShapeCollection::GetRequiredShapeCount)
-            ->Method("HasOverflow", &TransformedShapeCollection::HasOverflow);
-
         behaviorContext->Class<SupportingFaceVertexCollection>("SupportingFaceVertexCollection")
             ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
             ->Attribute(AZ::Script::Attributes::Module, "jolt")
@@ -800,14 +792,6 @@ namespace Jolt
             ->Event("CollideShapePoint", &IWorldQueryRequests::CollideShapePoint)
             ->Event("CollideShapePointAny", &IWorldQueryRequests::CollideShapePointAny)
             ->Event("CollectShapeTriangles", &IWorldQueryRequests::CollectShapeTriangles)
-            ->Event("RaycastTransformedShapeClosest", &IWorldQueryRequests::RaycastTransformedShapeClosest)
-            ->Event("RaycastTransformedShapeAll", &IWorldQueryRequests::RaycastTransformedShapeAll)
-            ->Event("CollideTransformedShapePoint", &IWorldQueryRequests::CollideTransformedShapePoint)
-            ->Event("CollideTransformedShapePointAny", &IWorldQueryRequests::CollideTransformedShapePointAny)
-            ->Event("CollectTransformedShapeChildren", &IWorldQueryRequests::CollectTransformedShapeChildren)
-            ->Event("CollectTransformedShapeTriangles", &IWorldQueryRequests::CollectTransformedShapeTriangles)
-            ->Event("GetTransformedShapeSurfaceNormal", &IWorldQueryRequests::GetTransformedShapeSurfaceNormal)
-            ->Event("GetTransformedShapeSupportingFace", &IWorldQueryRequests::GetTransformedShapeSupportingFace)
             ->Event("RaycastClosest", &IWorldQueryRequests::RaycastClosest)
             ->Event("RaycastClosestBatch", &IWorldQueryRequests::RaycastClosestBatch)
             ->Event("RaycastClosestPerBody", &IWorldQueryRequests::RaycastClosestPerBody)
@@ -825,7 +809,6 @@ namespace Jolt
             ->Event("OverlapBroadPhaseAny", &IWorldQueryRequests::OverlapBroadPhaseAny)
             ->Event("CastBroadPhaseClosest", &IWorldQueryRequests::CastBroadPhaseClosest)
             ->Event("CastBroadPhaseAll", &IWorldQueryRequests::CastBroadPhaseAll)
-            ->Event("CollectShapesInBounds", &IWorldQueryRequests::CollectShapesInBounds)
             ->Event("GetSupportingFace", &IWorldQueryRequests::GetSupportingFace)
             ->Event("CollectTriangles", &IWorldQueryRequests::CollectTriangles)
             ->Event("GetBroadPhaseBounds", &IWorldQueryRequests::GetBroadPhaseBounds)
