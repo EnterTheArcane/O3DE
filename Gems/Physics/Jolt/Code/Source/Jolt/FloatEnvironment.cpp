@@ -17,13 +17,13 @@
 #include <xmmintrin.h>
 #define JOLT_HAS_X86_FLOAT_CONTROL 1
 #define JOLT_HAS_ARM64_FLOAT_CONTROL 0
+#elif (defined(_M_ARM64) || defined(_M_ARM64EC) || defined(__aarch64__)) && defined(__clang__)
+#include <arm_acle.h>
+#define JOLT_HAS_X86_FLOAT_CONTROL 0
+#define JOLT_HAS_ARM64_FLOAT_CONTROL 1
 #elif defined(_M_ARM64) || defined(_M_ARM64EC)
 #include <arm64intr.h>
 #include <intrin.h>
-#define JOLT_HAS_X86_FLOAT_CONTROL 0
-#define JOLT_HAS_ARM64_FLOAT_CONTROL 1
-#elif defined(__aarch64__) && defined(__clang__)
-#include <arm_acle.h>
 #define JOLT_HAS_X86_FLOAT_CONTROL 0
 #define JOLT_HAS_ARM64_FLOAT_CONTROL 1
 #elif defined(__aarch64__)
@@ -82,10 +82,10 @@ namespace Jolt
         [[nodiscard]]
         AZ::u64 ReadFloatControl()
         {
-#if defined(_M_ARM64) || defined(_M_ARM64EC)
-            return static_cast<AZ::u64>(_ReadStatusReg(ARM64_FPCR));
-#elif defined(__clang__)
+#if defined(__clang__)
             return __arm_rsr64("fpcr");
+#elif defined(_M_ARM64) || defined(_M_ARM64EC)
+            return static_cast<AZ::u64>(_ReadStatusReg(ARM64_FPCR));
 #else
             AZ::u64 control = 0;
             __asm__ volatile("mrs %0, fpcr" : "=r"(control));
@@ -96,10 +96,10 @@ namespace Jolt
         [[nodiscard]]
         AZ::u64 ReadFloatStatus()
         {
-#if defined(_M_ARM64) || defined(_M_ARM64EC)
-            return static_cast<AZ::u64>(_ReadStatusReg(ARM64_FPSR));
-#elif defined(__clang__)
+#if defined(__clang__)
             return __arm_rsr64("fpsr");
+#elif defined(_M_ARM64) || defined(_M_ARM64EC)
+            return static_cast<AZ::u64>(_ReadStatusReg(ARM64_FPSR));
 #else
             AZ::u64 status = 0;
             __asm__ volatile("mrs %0, fpsr" : "=r"(status));
@@ -110,10 +110,10 @@ namespace Jolt
         void WriteFloatControl(
             AZ::u64 control)
         {
-#if defined(_M_ARM64) || defined(_M_ARM64EC)
-            _WriteStatusReg(ARM64_FPCR, static_cast<__int64>(control));
-#elif defined(__clang__)
+#if defined(__clang__)
             __arm_wsr64("fpcr", control);
+#elif defined(_M_ARM64) || defined(_M_ARM64EC)
+            _WriteStatusReg(ARM64_FPCR, static_cast<__int64>(control));
 #else
             __asm__ volatile("msr fpcr, %0" : : "r"(control));
 #endif
@@ -122,10 +122,10 @@ namespace Jolt
         void WriteFloatStatus(
             const AZ::u64 status)
         {
-#if defined(_M_ARM64) || defined(_M_ARM64EC)
-            _WriteStatusReg(ARM64_FPSR, static_cast<__int64>(status));
-#elif defined(__clang__)
+#if defined(__clang__)
             __arm_wsr64("fpsr", status);
+#elif defined(_M_ARM64) || defined(_M_ARM64EC)
+            _WriteStatusReg(ARM64_FPSR, static_cast<__int64>(status));
 #else
             __asm__ volatile("msr fpsr, %0" : : "r"(status));
 #endif
@@ -137,6 +137,9 @@ namespace Jolt
     {
 #if JOLT_HAS_NATIVE_FLOAT_CONTROL
         const AZ::u64 currentControl = ReadFloatControl();
+#if JOLT_HAS_ARM64_FLOAT_CONTROL
+        m_previousStatus = ReadFloatStatus();
+#endif
         bool controlIsCanonical = false;
 #if defined(_M_X64) || defined(__x86_64__)
         controlIsCanonical =
@@ -159,7 +162,10 @@ namespace Jolt
             }
 #endif
 #if JOLT_HAS_ARM64_FLOAT_CONTROL
-            m_previousStatus = ReadFloatStatus();
+            if (m_previousStatus != 0)
+            {
+                WriteFloatStatus(0);
+            }
 #endif
             m_active = true;
             return;
@@ -174,6 +180,7 @@ namespace Jolt
         WriteFloatControl(DefaultFloatControl);
 #elif JOLT_HAS_ARM64_FLOAT_CONTROL
         WriteFloatControl(ReadFloatControl() & ~FloatControlModeMask);
+        WriteFloatStatus(0);
 #endif
         m_active = true;
     }

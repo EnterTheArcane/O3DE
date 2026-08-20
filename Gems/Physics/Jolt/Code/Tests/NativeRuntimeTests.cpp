@@ -228,6 +228,28 @@ namespace Jolt
         EXPECT_EQ(restoredExceptions, FE_DIVBYZERO);
     }
 
+    TEST(NativeRuntimeTests, DeterministicFloatScopeRestoresNoncanonicalEnvironment)
+    {
+        std::fenv_t originalEnvironment;
+        ASSERT_EQ(std::fegetenv(&originalEnvironment), 0);
+        ASSERT_EQ(std::fesetenv(FE_DFL_ENV), 0);
+        ASSERT_EQ(std::fesetround(FE_DOWNWARD), 0);
+        ASSERT_EQ(std::feraiseexcept(FE_DIVBYZERO), 0);
+
+        {
+            DeterministicFloatScope scope;
+            EXPECT_EQ(std::fegetround(), FE_TONEAREST);
+            EXPECT_EQ(std::fetestexcept(FE_ALL_EXCEPT), 0);
+            ASSERT_EQ(std::feraiseexcept(FE_OVERFLOW), 0);
+        }
+
+        const int restoredRoundingMode = std::fegetround();
+        const int restoredExceptions = std::fetestexcept(FE_ALL_EXCEPT);
+        ASSERT_EQ(std::fesetenv(&originalEnvironment), 0);
+        EXPECT_EQ(restoredRoundingMode, FE_DOWNWARD);
+        EXPECT_EQ(restoredExceptions, FE_DIVBYZERO);
+    }
+
     TEST(NativeRuntimeTests, ConfiguresSoftBodyTriangleThicknessForAllLiveOwners)
     {
         constexpr float triangleThickness = 0.25f;
