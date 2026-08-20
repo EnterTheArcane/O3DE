@@ -987,11 +987,26 @@ namespace Jolt
     bool SoftBodyComponent::UpdateRuntimeConfiguration(
         const SoftBodyRuntimeConfiguration& configuration)
     {
-        return m_system
-            && m_system->UpdateSoftBodyRuntimeConfiguration(
-                m_worldHandle,
-                m_bodyHandle,
-                configuration);
+        if (!m_system || !m_system->UpdateSoftBodyRuntimeConfiguration(m_worldHandle, m_bodyHandle, configuration))
+        {
+            return false;
+        }
+
+        m_configuration->m_body.m_friction = configuration.m_friction;
+        m_configuration->m_body.m_gravityFactor = configuration.m_gravityFactor;
+        m_configuration->m_body.m_linearDamping = configuration.m_linearDamping;
+        m_configuration->m_body.m_maximumLinearVelocity = configuration.m_maximumLinearVelocity;
+        m_configuration->m_body.m_pressure = configuration.m_pressure;
+        m_configuration->m_body.m_restitution = configuration.m_restitution;
+        m_configuration->m_body.m_skinnedMaximumDistanceMultiplier =
+            configuration.m_skinnedMaximumDistanceMultiplier;
+        m_configuration->m_body.m_vertexRadius = configuration.m_vertexRadius;
+        m_configuration->m_body.m_iterationCount = configuration.m_iterationCount;
+        m_configuration->m_body.m_allowSleeping = configuration.m_allowSleeping;
+        m_configuration->m_body.m_enableSkinConstraints = configuration.m_enableSkinConstraints;
+        m_configuration->m_body.m_facesDoubleSided = configuration.m_facesDoubleSided;
+        m_configuration->m_body.m_updatePosition = configuration.m_updatePosition;
+        return true;
     }
 
     bool SoftBodyComponent::GetVolume(

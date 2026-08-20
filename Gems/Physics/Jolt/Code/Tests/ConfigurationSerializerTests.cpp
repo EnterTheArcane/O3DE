@@ -409,6 +409,8 @@ namespace Jolt
             WheeledVehicleComponentConfiguration::CreateDefault();
         wheeledConfiguration.m_enabled = false;
         wheeledConfiguration.m_vehicle.m_collisionSphereRadius = 0.45f;
+        wheeledConfiguration.m_vehicle.m_gravityOverride = AZ::Vector3(1.0f, 2.0f, 3.0f);
+        wheeledConfiguration.m_vehicle.m_overrideGravity = true;
         ExpectTaggedJsonRoundTrip(
             "WheeledVehicleComponentConfiguration",
             wheeledConfiguration,
@@ -418,6 +420,8 @@ namespace Jolt
         MotorcycleComponentConfiguration motorcycleConfiguration =
             MotorcycleComponentConfiguration::CreateDefault();
         motorcycleConfiguration.m_enabled = false;
+        motorcycleConfiguration.m_motorcycle.m_wheeled.m_gravityOverride = AZ::Vector3(-2.0f, -3.0f, -4.0f);
+        motorcycleConfiguration.m_motorcycle.m_wheeled.m_overrideGravity = true;
         motorcycleConfiguration.m_motorcycle.m_controller.m_maximumLeanAngle = 0.5f;
         ExpectTaggedJsonRoundTrip(
             "MotorcycleComponentConfiguration",
@@ -429,6 +433,8 @@ namespace Jolt
             TrackedVehicleComponentConfiguration::CreateDefault();
         trackedConfiguration.m_enabled = false;
         trackedConfiguration.m_vehicle.m_collisionSphereRadius = 0.55f;
+        trackedConfiguration.m_vehicle.m_gravityOverride = AZ::Vector3(5.0f, 6.0f, 7.0f);
+        trackedConfiguration.m_vehicle.m_overrideGravity = true;
         ExpectTaggedJsonRoundTrip(
             "TrackedVehicleComponentConfiguration",
             trackedConfiguration,

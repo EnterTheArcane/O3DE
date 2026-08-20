@@ -67,6 +67,42 @@ namespace Jolt
             required.push_back(AZ_CRC_CE("JoltBodyService"));
         }
 
+        void ApplyCollisionConfiguration(
+            WheeledVehicleConfiguration& destination,
+            const VehicleCollisionConfiguration& source)
+        {
+            destination.m_up = source.m_up;
+            destination.m_collisionCylinderConvexRadiusFraction = source.m_cylinderConvexRadiusFraction;
+            destination.m_collisionMaximumSlopeAngle = source.m_maximumSlopeAngle;
+            destination.m_collisionSphereRadius = source.m_sphereRadius;
+            destination.m_collisionLayer = source.m_collisionLayer;
+            destination.m_collisionTestMode = source.m_mode;
+        }
+
+        void ApplyCollisionConfiguration(
+            TrackedVehicleConfiguration& destination,
+            const VehicleCollisionConfiguration& source)
+        {
+            destination.m_up = source.m_up;
+            destination.m_collisionCylinderConvexRadiusFraction = source.m_cylinderConvexRadiusFraction;
+            destination.m_collisionMaximumSlopeAngle = source.m_maximumSlopeAngle;
+            destination.m_collisionSphereRadius = source.m_sphereRadius;
+            destination.m_collisionLayer = source.m_collisionLayer;
+            destination.m_collisionTestMode = source.m_mode;
+        }
+
+        template<class Configuration>
+        void ApplyRuntimeConfiguration(
+            Configuration& destination,
+            const VehicleRuntimeConfiguration& source)
+        {
+            destination.m_gravityOverride = source.m_gravityOverride;
+            destination.m_maximumPitchRollAngle = source.m_maximumPitchRollAngle;
+            destination.m_collisionTestIntervalActive = source.m_collisionTestIntervalActive;
+            destination.m_collisionTestIntervalInactive = source.m_collisionTestIntervalInactive;
+            destination.m_overrideGravity = source.m_overrideGravity;
+        }
+
         void ReflectVehicleBehavior(AZ::BehaviorContext& behaviorContext)
         {
             if (!ShouldReflect(
@@ -920,11 +956,7 @@ namespace Jolt
 
     bool VehicleComponentBase::UpdateRuntimeConfiguration(const VehicleRuntimeConfiguration& configuration)
     {
-        return m_system
-            && m_system->UpdateVehicleRuntimeConfiguration(
-                m_worldHandle,
-                m_vehicleHandle,
-                configuration);
+        return m_system && m_system->UpdateVehicleRuntimeConfiguration(m_worldHandle, m_vehicleHandle, configuration);
     }
 
     bool VehicleComponentBase::UpdateAntiRollBars(
@@ -1119,12 +1151,22 @@ namespace Jolt
 
     bool WheeledVehicleComponent::EnableSimulation()
     {
-        return VehicleComponentBase::EnableSimulation();
+        if (!VehicleComponentBase::EnableSimulation())
+        {
+            return false;
+        }
+        m_configuration->m_enabled = true;
+        return true;
     }
 
     bool WheeledVehicleComponent::DisableSimulation()
     {
-        return VehicleComponentBase::DisableSimulation();
+        if (!VehicleComponentBase::DisableSimulation())
+        {
+            return false;
+        }
+        m_configuration->m_enabled = false;
+        return true;
     }
 
     bool WheeledVehicleComponent::IsSimulationEnabled() const
@@ -1210,7 +1252,12 @@ namespace Jolt
 
     bool WheeledVehicleComponent::SetDifferentialLimitedSlipRatio(const float ratio)
     {
-        return VehicleComponentBase::SetDifferentialLimitedSlipRatio(ratio);
+        if (!VehicleComponentBase::SetDifferentialLimitedSlipRatio(ratio))
+        {
+            return false;
+        }
+        m_configuration->m_vehicle.m_differentialLimitedSlipRatio = ratio;
+        return true;
     }
 
     bool WheeledVehicleComponent::SetPowertrainControl(const VehiclePowertrainControl& control)
@@ -1268,35 +1315,65 @@ namespace Jolt
 
     bool WheeledVehicleComponent::UpdateRuntimeConfiguration(const VehicleRuntimeConfiguration& configuration)
     {
-        return VehicleComponentBase::UpdateRuntimeConfiguration(configuration);
+        if (!VehicleComponentBase::UpdateRuntimeConfiguration(configuration))
+        {
+            return false;
+        }
+        ApplyRuntimeConfiguration(m_configuration->m_vehicle, configuration);
+        return true;
     }
 
     bool WheeledVehicleComponent::UpdateAntiRollBars(
         const AZStd::vector<VehicleAntiRollBarConfiguration>& antiRollBars)
     {
-        return VehicleComponentBase::UpdateAntiRollBars(antiRollBars);
+        if (!VehicleComponentBase::UpdateAntiRollBars(antiRollBars))
+        {
+            return false;
+        }
+        m_configuration->m_vehicle.m_antiRollBars = antiRollBars;
+        return true;
     }
 
     bool WheeledVehicleComponent::UpdateCollisionConfiguration(const VehicleCollisionConfiguration& configuration)
     {
-        return VehicleComponentBase::UpdateCollisionConfiguration(configuration);
+        if (!VehicleComponentBase::UpdateCollisionConfiguration(configuration))
+        {
+            return false;
+        }
+        ApplyCollisionConfiguration(m_configuration->m_vehicle, configuration);
+        return true;
     }
 
     bool WheeledVehicleComponent::UpdateDifferentials(
         const AZStd::vector<VehicleDifferentialConfiguration>& differentials)
     {
-        return VehicleComponentBase::UpdateDifferentials(differentials);
+        if (!VehicleComponentBase::UpdateDifferentials(differentials))
+        {
+            return false;
+        }
+        m_configuration->m_vehicle.m_differentials = differentials;
+        return true;
     }
 
     bool WheeledVehicleComponent::UpdateEngineConfiguration(const VehicleEngineConfiguration& configuration)
     {
-        return VehicleComponentBase::UpdateEngineConfiguration(configuration);
+        if (!VehicleComponentBase::UpdateEngineConfiguration(configuration))
+        {
+            return false;
+        }
+        m_configuration->m_vehicle.m_engine = configuration;
+        return true;
     }
 
     bool WheeledVehicleComponent::UpdateTransmissionConfiguration(
         const VehicleTransmissionConfiguration& configuration)
     {
-        return VehicleComponentBase::UpdateTransmissionConfiguration(configuration);
+        if (!VehicleComponentBase::UpdateTransmissionConfiguration(configuration))
+        {
+            return false;
+        }
+        m_configuration->m_vehicle.m_transmission = configuration;
+        return true;
     }
 
     void WheeledVehicleComponent::Activate()
@@ -1393,12 +1470,22 @@ namespace Jolt
 
     bool MotorcycleComponent::EnableSimulation()
     {
-        return VehicleComponentBase::EnableSimulation();
+        if (!VehicleComponentBase::EnableSimulation())
+        {
+            return false;
+        }
+        m_configuration->m_enabled = true;
+        return true;
     }
 
     bool MotorcycleComponent::DisableSimulation()
     {
-        return VehicleComponentBase::DisableSimulation();
+        if (!VehicleComponentBase::DisableSimulation())
+        {
+            return false;
+        }
+        m_configuration->m_enabled = false;
+        return true;
     }
 
     bool MotorcycleComponent::IsSimulationEnabled() const
@@ -1484,7 +1571,12 @@ namespace Jolt
 
     bool MotorcycleComponent::SetDifferentialLimitedSlipRatio(const float ratio)
     {
-        return VehicleComponentBase::SetDifferentialLimitedSlipRatio(ratio);
+        if (!VehicleComponentBase::SetDifferentialLimitedSlipRatio(ratio))
+        {
+            return false;
+        }
+        m_configuration->m_motorcycle.m_wheeled.m_differentialLimitedSlipRatio = ratio;
+        return true;
     }
 
     bool MotorcycleComponent::SetPowertrainControl(const VehiclePowertrainControl& control)
@@ -1544,44 +1636,83 @@ namespace Jolt
         const MotorcycleControllerUpdateConfiguration& configuration)
     {
         RuntimeImplementation* system = GetSystem();
-        return system
-            && system->UpdateMotorcycleController(
-                GetWorldHandle(),
-                GetVehicleHandle(),
-                configuration);
+        if (!system || !system->UpdateMotorcycleController(GetWorldHandle(), GetVehicleHandle(), configuration))
+        {
+            return false;
+        }
+
+        MotorcycleControllerConfiguration& controller = m_configuration->m_motorcycle.m_controller;
+        controller.m_leanSmoothingFactor = configuration.m_leanSmoothingFactor;
+        controller.m_springConstant = configuration.m_springConstant;
+        controller.m_springDamping = configuration.m_springDamping;
+        controller.m_springIntegrationCoefficient = configuration.m_springIntegrationCoefficient;
+        controller.m_springIntegrationCoefficientDecay = configuration.m_springIntegrationCoefficientDecay;
+        controller.m_enableLeanController = configuration.m_enableLeanController;
+        controller.m_enableLeanSteeringLimit = configuration.m_enableLeanSteeringLimit;
+        return true;
     }
 
     bool MotorcycleComponent::UpdateRuntimeConfiguration(const VehicleRuntimeConfiguration& configuration)
     {
-        return VehicleComponentBase::UpdateRuntimeConfiguration(configuration);
+        if (!VehicleComponentBase::UpdateRuntimeConfiguration(configuration))
+        {
+            return false;
+        }
+        ApplyRuntimeConfiguration(m_configuration->m_motorcycle.m_wheeled, configuration);
+        return true;
     }
 
     bool MotorcycleComponent::UpdateAntiRollBars(
         const AZStd::vector<VehicleAntiRollBarConfiguration>& antiRollBars)
     {
-        return VehicleComponentBase::UpdateAntiRollBars(antiRollBars);
+        if (!VehicleComponentBase::UpdateAntiRollBars(antiRollBars))
+        {
+            return false;
+        }
+        m_configuration->m_motorcycle.m_wheeled.m_antiRollBars = antiRollBars;
+        return true;
     }
 
     bool MotorcycleComponent::UpdateCollisionConfiguration(const VehicleCollisionConfiguration& configuration)
     {
-        return VehicleComponentBase::UpdateCollisionConfiguration(configuration);
+        if (!VehicleComponentBase::UpdateCollisionConfiguration(configuration))
+        {
+            return false;
+        }
+        ApplyCollisionConfiguration(m_configuration->m_motorcycle.m_wheeled, configuration);
+        return true;
     }
 
     bool MotorcycleComponent::UpdateDifferentials(
         const AZStd::vector<VehicleDifferentialConfiguration>& differentials)
     {
-        return VehicleComponentBase::UpdateDifferentials(differentials);
+        if (!VehicleComponentBase::UpdateDifferentials(differentials))
+        {
+            return false;
+        }
+        m_configuration->m_motorcycle.m_wheeled.m_differentials = differentials;
+        return true;
     }
 
     bool MotorcycleComponent::UpdateEngineConfiguration(const VehicleEngineConfiguration& configuration)
     {
-        return VehicleComponentBase::UpdateEngineConfiguration(configuration);
+        if (!VehicleComponentBase::UpdateEngineConfiguration(configuration))
+        {
+            return false;
+        }
+        m_configuration->m_motorcycle.m_wheeled.m_engine = configuration;
+        return true;
     }
 
     bool MotorcycleComponent::UpdateTransmissionConfiguration(
         const VehicleTransmissionConfiguration& configuration)
     {
-        return VehicleComponentBase::UpdateTransmissionConfiguration(configuration);
+        if (!VehicleComponentBase::UpdateTransmissionConfiguration(configuration))
+        {
+            return false;
+        }
+        m_configuration->m_motorcycle.m_wheeled.m_transmission = configuration;
+        return true;
     }
 
     void MotorcycleComponent::Activate()
@@ -1678,12 +1809,22 @@ namespace Jolt
 
     bool TrackedVehicleComponent::EnableSimulation()
     {
-        return VehicleComponentBase::EnableSimulation();
+        if (!VehicleComponentBase::EnableSimulation())
+        {
+            return false;
+        }
+        m_configuration->m_enabled = true;
+        return true;
     }
 
     bool TrackedVehicleComponent::DisableSimulation()
     {
-        return VehicleComponentBase::DisableSimulation();
+        if (!VehicleComponentBase::DisableSimulation())
+        {
+            return false;
+        }
+        m_configuration->m_enabled = false;
+        return true;
     }
 
     bool TrackedVehicleComponent::IsSimulationEnabled() const
@@ -1855,18 +1996,33 @@ namespace Jolt
 
     bool TrackedVehicleComponent::UpdateRuntimeConfiguration(const VehicleRuntimeConfiguration& configuration)
     {
-        return VehicleComponentBase::UpdateRuntimeConfiguration(configuration);
+        if (!VehicleComponentBase::UpdateRuntimeConfiguration(configuration))
+        {
+            return false;
+        }
+        ApplyRuntimeConfiguration(m_configuration->m_vehicle, configuration);
+        return true;
     }
 
     bool TrackedVehicleComponent::UpdateAntiRollBars(
         const AZStd::vector<VehicleAntiRollBarConfiguration>& antiRollBars)
     {
-        return VehicleComponentBase::UpdateAntiRollBars(antiRollBars);
+        if (!VehicleComponentBase::UpdateAntiRollBars(antiRollBars))
+        {
+            return false;
+        }
+        m_configuration->m_vehicle.m_antiRollBars = antiRollBars;
+        return true;
     }
 
     bool TrackedVehicleComponent::UpdateCollisionConfiguration(const VehicleCollisionConfiguration& configuration)
     {
-        return VehicleComponentBase::UpdateCollisionConfiguration(configuration);
+        if (!VehicleComponentBase::UpdateCollisionConfiguration(configuration))
+        {
+            return false;
+        }
+        ApplyCollisionConfiguration(m_configuration->m_vehicle, configuration);
+        return true;
     }
 
     bool TrackedVehicleComponent::UpdateDifferentials(
@@ -1877,13 +2033,23 @@ namespace Jolt
 
     bool TrackedVehicleComponent::UpdateEngineConfiguration(const VehicleEngineConfiguration& configuration)
     {
-        return VehicleComponentBase::UpdateEngineConfiguration(configuration);
+        if (!VehicleComponentBase::UpdateEngineConfiguration(configuration))
+        {
+            return false;
+        }
+        m_configuration->m_vehicle.m_engine = configuration;
+        return true;
     }
 
     bool TrackedVehicleComponent::UpdateTransmissionConfiguration(
         const VehicleTransmissionConfiguration& configuration)
     {
-        return VehicleComponentBase::UpdateTransmissionConfiguration(configuration);
+        if (!VehicleComponentBase::UpdateTransmissionConfiguration(configuration))
+        {
+            return false;
+        }
+        m_configuration->m_vehicle.m_transmission = configuration;
+        return true;
     }
 
     bool TrackedVehicleComponent::UpdateTrackConfiguration(
@@ -1891,12 +2057,18 @@ namespace Jolt
         const VehicleTrackConfiguration& configuration)
     {
         RuntimeImplementation* system = GetSystem();
-        return system
-            && system->UpdateVehicleTrackConfiguration(
+        if (!system
+            || trackIndex >= m_configuration->m_vehicle.m_tracks.size()
+            || !system->UpdateVehicleTrackConfiguration(
                 GetWorldHandle(),
                 GetVehicleHandle(),
                 trackIndex,
-                configuration);
+                configuration))
+        {
+            return false;
+        }
+        m_configuration->m_vehicle.m_tracks[trackIndex] = configuration;
+        return true;
     }
 
     void TrackedVehicleComponent::Activate()

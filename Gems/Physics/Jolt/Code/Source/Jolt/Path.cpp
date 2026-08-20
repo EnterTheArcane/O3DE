@@ -26,6 +26,26 @@ namespace Jolt
         return configuration;
     }
 
+    bool HermitePathConfiguration::IsValid() const
+    {
+        if (m_points.size() < 2 || (m_isLooping && m_points.size() < 3))
+        {
+            return false;
+        }
+
+        for (const HermitePathPoint& point : m_points)
+        {
+            if (!point.m_normal.IsFinite()
+                || point.m_normal.IsZero()
+                || !point.m_position.IsFinite()
+                || !point.m_tangent.IsFinite())
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     void HermitePathConfiguration::Reflect(
         AZ::ReflectContext* context)
     {

@@ -8,10 +8,24 @@
 #include <Jolt/ConstraintComponentConfiguration.h>
 
 #include <Jolt/Reflection.h>
+#include <AzCore/Math/Transform.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
 namespace Jolt
 {
+    AZ::Transform PathConstraintComponentConfiguration::ResolvePathFrame(
+        const AZ::Transform& pathEntityWorldTransform,
+        const AZ::Transform& firstBodyWorldTransform) const
+    {
+        AZ::Transform localFrame = AZ::Transform::CreateFromQuaternionAndTranslation(m_pathRotation, m_pathPosition);
+        AZ::Transform pathFrame = pathEntityWorldTransform * localFrame;
+        pathFrame.SetUniformScale(1.0f);
+
+        AZ::Transform firstBodyFrame = firstBodyWorldTransform;
+        firstBodyFrame.SetUniformScale(1.0f);
+        return firstBodyFrame.GetInverse() * pathFrame;
+    }
+
     void ConstraintComponentConfiguration::Reflect(
         AZ::ReflectContext* context)
     {

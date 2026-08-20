@@ -34,8 +34,6 @@ namespace Jolt::Editor
 
         static void Reflect(AZ::ReflectContext* context);
 
-        void Init() override;
-
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
@@ -63,7 +61,7 @@ namespace Jolt::Editor
             float& distance) override;
 
     private:
-        WheeledVehicleComponentConfiguration m_configuration;
+        WheeledVehicleComponentConfiguration m_configuration = WheeledVehicleComponentConfiguration::CreateDefault();
     };
 
     class MotorcycleComponent final
@@ -82,8 +80,6 @@ namespace Jolt::Editor
 
         static void Reflect(AZ::ReflectContext* context);
 
-        void Init() override;
-
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
@@ -111,7 +107,7 @@ namespace Jolt::Editor
             float& distance) override;
 
     private:
-        MotorcycleComponentConfiguration m_configuration;
+        MotorcycleComponentConfiguration m_configuration = MotorcycleComponentConfiguration::CreateDefault();
     };
 
     class TrackedVehicleComponent final
@@ -130,8 +126,6 @@ namespace Jolt::Editor
 
         static void Reflect(AZ::ReflectContext* context);
 
-        void Init() override;
-
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
@@ -159,6 +153,6 @@ namespace Jolt::Editor
             float& distance) override;
 
     private:
-        TrackedVehicleComponentConfiguration m_configuration;
+        TrackedVehicleComponentConfiguration m_configuration = TrackedVehicleComponentConfiguration::CreateDefault();
     };
 } // namespace Jolt::Editor

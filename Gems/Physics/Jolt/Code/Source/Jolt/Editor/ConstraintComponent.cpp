@@ -153,13 +153,18 @@ namespace Jolt::Editor
                     }
                     else if constexpr (AZStd::is_same_v<Geometry, PathConstraintComponentConfiguration>)
                     {
-                        const AZ::Vector3 pathPosition =
-                            GetEntityWorldTransform(geometry.m_pathEntityId).TransformPoint(geometry.m_pathPosition);
+                        AZ::Transform firstBodyFrame = firstBodyTransform;
+                        firstBodyFrame.SetUniformScale(1.0f);
+                        const AZ::Transform pathFrame = firstBodyFrame
+                            * geometry.ResolvePathFrame(
+                                GetEntityWorldTransform(geometry.m_pathEntityId),
+                                firstBodyTransform);
+                        const AZ::Vector3 pathPosition = pathFrame.GetTranslation();
                         visualization.AddLine(firstBodyPosition, pathPosition);
                         visualization.AddLine(pathPosition, secondBodyPosition);
                         visualization.m_firstAxisStart = pathPosition;
                         visualization.m_firstAxisEnd = pathPosition
-                            + drawScale * geometry.m_pathRotation.TransformVector(AZ::Vector3::CreateAxisX());
+                            + drawScale * pathFrame.TransformVector(AZ::Vector3::CreateAxisX());
                         visualization.m_secondAxisStart = secondBodyPosition;
                         visualization.m_secondAxisEnd = secondBodyPosition;
                     }

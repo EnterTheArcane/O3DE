@@ -30,6 +30,7 @@ namespace Jolt
         [[nodiscard]]
         virtual bool Resolve(
             ConstraintConfiguration& configuration,
+            AZ::EntityId firstBodyEntityId,
             ConstraintHandle& firstDependencyHandle,
             ConstraintHandle& secondDependencyHandle,
             PathHandle& pathHandle) const = 0;

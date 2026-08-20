@@ -40,8 +40,6 @@ namespace Jolt::Editor
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
 
-        void Init() override;
-
         void Activate() override;
 
         void Deactivate() override;
@@ -63,6 +61,6 @@ namespace Jolt::Editor
             float& distance) override;
 
     private:
-        HairComponentConfiguration m_configuration;
+        HairComponentConfiguration m_configuration = HairComponentConfiguration::CreateDefault();
     };
 } // namespace Jolt::Editor

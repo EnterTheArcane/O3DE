@@ -6018,6 +6018,89 @@ namespace Jolt
         EXPECT_TRUE(system.DestroySkeletonDefinition(targetHandle));
     }
 
+    TEST(SimulationTests, AutomaticSkeletonMappingRequiresCompleteCompatibleHierarchy)
+    {
+        NameDictionaryScope nameDictionaryScope;
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const auto createSkeleton = [&system](AZStd::vector<SkeletonJoint> joints)
+        {
+            SkeletonDefinitionConfiguration configuration;
+            configuration.m_joints = AZStd::move(joints);
+            return system.CreateSkeletonDefinition(configuration);
+        };
+        const auto createMapperConfiguration = [](
+            const SkeletonDefinitionHandle sourceHandle,
+            const size_t sourceJointCount,
+            const SkeletonDefinitionHandle targetHandle,
+            const size_t targetJointCount)
+        {
+            SkeletonMapperConfiguration configuration;
+            configuration.m_sourceSkeletonHandle = sourceHandle;
+            configuration.m_targetSkeletonHandle = targetHandle;
+            configuration.m_sourceNeutralModelTransforms.assign(
+                sourceJointCount,
+                AZ::Transform::CreateIdentity());
+            configuration.m_targetNeutralModelTransforms.assign(
+                targetJointCount,
+                AZ::Transform::CreateIdentity());
+            return configuration;
+        };
+
+        const SkeletonDefinitionHandle sourceHandle = createSkeleton({
+            {.m_name = AZ::Name("root"), .m_parentIndex = -1},
+            {.m_name = AZ::Name("child"), .m_parentIndex = 0},
+        });
+        ASSERT_TRUE(sourceHandle);
+
+        const SkeletonDefinitionHandle smallerTargetHandle = createSkeleton({
+            {.m_name = AZ::Name("root"), .m_parentIndex = -1},
+        });
+        ASSERT_TRUE(smallerTargetHandle);
+        EXPECT_FALSE(system.CreateSkeletonMapper(
+            createMapperConfiguration(sourceHandle, 2, smallerTargetHandle, 1)));
+
+        const SkeletonDefinitionHandle missingTargetHandle = createSkeleton({
+            {.m_name = AZ::Name("root"), .m_parentIndex = -1},
+            {.m_name = AZ::Name("other"), .m_parentIndex = 0},
+        });
+        ASSERT_TRUE(missingTargetHandle);
+        EXPECT_FALSE(system.CreateSkeletonMapper(
+            createMapperConfiguration(sourceHandle, 2, missingTargetHandle, 2)));
+
+        const SkeletonDefinitionHandle incompatibleTargetHandle = createSkeleton({
+            {.m_name = AZ::Name("root"), .m_parentIndex = -1},
+            {.m_name = AZ::Name("child"), .m_parentIndex = -1},
+        });
+        ASSERT_TRUE(incompatibleTargetHandle);
+        EXPECT_FALSE(system.CreateSkeletonMapper(
+            createMapperConfiguration(sourceHandle, 2, incompatibleTargetHandle, 2)));
+
+        const SkeletonDefinitionHandle compatibleTargetHandle = createSkeleton({
+            {.m_name = AZ::Name("root"), .m_parentIndex = -1},
+            {.m_name = AZ::Name("twist"), .m_parentIndex = 0},
+            {.m_name = AZ::Name("child"), .m_parentIndex = 1},
+        });
+        ASSERT_TRUE(compatibleTargetHandle);
+        const SkeletonMapperHandle mapperHandle = system.CreateSkeletonMapper(
+            createMapperConfiguration(sourceHandle, 2, compatibleTargetHandle, 3));
+        ASSERT_TRUE(mapperHandle);
+
+        SkeletonMapperState state;
+        ASSERT_TRUE(system.GetSkeletonMapperState(mapperHandle, state));
+        EXPECT_EQ(state.m_mappingCount, 2);
+        EXPECT_EQ(state.m_sourceJointCount, 2);
+        EXPECT_EQ(state.m_targetJointCount, 3);
+
+        EXPECT_TRUE(system.DestroySkeletonMapper(mapperHandle));
+        EXPECT_TRUE(system.DestroySkeletonDefinition(compatibleTargetHandle));
+        EXPECT_TRUE(system.DestroySkeletonDefinition(incompatibleTargetHandle));
+        EXPECT_TRUE(system.DestroySkeletonDefinition(missingTargetHandle));
+        EXPECT_TRUE(system.DestroySkeletonDefinition(smallerTargetHandle));
+        EXPECT_TRUE(system.DestroySkeletonDefinition(sourceHandle));
+    }
+
     TEST(SimulationTests, SkeletalAnimationsSampleReusablePosesWithoutNativeTypes)
     {
         NameDictionaryScope nameDictionaryScope;
@@ -18153,6 +18236,15 @@ namespace Jolt
             {.m_position = AZ::Vector3::CreateZero()},
             {.m_position = AZ::Vector3::CreateAxisX(10.0f)},
         };
+        EXPECT_TRUE(pathConfiguration.IsValid());
+        HermitePathConfiguration invalidPathConfiguration = pathConfiguration;
+        invalidPathConfiguration.m_isLooping = true;
+        EXPECT_FALSE(invalidPathConfiguration.IsValid());
+        EXPECT_FALSE(system.CreatePath(invalidPathConfiguration));
+        invalidPathConfiguration.m_isLooping = false;
+        invalidPathConfiguration.m_points[0].m_normal = AZ::Vector3::CreateZero();
+        EXPECT_FALSE(invalidPathConfiguration.IsValid());
+        EXPECT_FALSE(system.CreatePath(invalidPathConfiguration));
         const PathHandle pathHandle = system.CreatePath(pathConfiguration);
         ASSERT_TRUE(pathHandle);
 

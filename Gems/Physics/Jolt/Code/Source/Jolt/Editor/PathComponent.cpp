@@ -45,7 +45,7 @@ namespace Jolt::Editor
             const HermitePathConfiguration& configuration,
             Visitor&& visitor)
         {
-            if (configuration.m_points.size() < 2)
+            if (!configuration.IsValid())
             {
                 return;
             }
@@ -127,16 +127,6 @@ namespace Jolt::Editor
         AZ::ComponentDescriptor::DependencyArrayType& required)
     {
         required.push_back(AZ_CRC_CE("TransformService"));
-    }
-
-    void PathComponent::Init()
-    {
-        if (m_configuration.m_points.empty())
-        {
-            m_configuration = HermitePathConfiguration::CreateDefault();
-        }
-
-        AzToolsFramework::Components::EditorComponentBase::Init();
     }
 
     void PathComponent::Activate()

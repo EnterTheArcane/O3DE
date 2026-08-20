@@ -152,16 +152,6 @@ namespace Jolt::Editor
         Jolt::SoftBodyComponent::GetRequiredServices(required);
     }
 
-    void SoftBodyComponent::Init()
-    {
-        if (m_configuration.m_definition.m_vertices.empty())
-        {
-            m_configuration = SoftBodyComponentConfiguration::CreateDefault();
-        }
-
-        AzToolsFramework::Components::EditorComponentBase::Init();
-    }
-
     void SoftBodyComponent::Activate()
     {
         AzToolsFramework::Components::EditorComponentBase::Activate();

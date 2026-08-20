@@ -11,6 +11,7 @@
 #include <Jolt/SystemInternal.h>
 
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Component/TransformBus.h>
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -167,6 +168,12 @@ namespace Jolt
         incompatible.push_back(AZ_CRC_CE("JoltPathService"));
     }
 
+    void PathComponent::GetRequiredServices(
+        AZ::ComponentDescriptor::DependencyArrayType& required)
+    {
+        required.push_back(AZ_CRC_CE("TransformService"));
+    }
+
     PathHandle PathComponent::GetPathHandle() const
     {
         return m_pathHandle;
@@ -218,11 +225,6 @@ namespace Jolt
 
     void PathComponent::Activate()
     {
-        if (m_configuration.m_points.empty())
-        {
-            m_configuration = HermitePathConfiguration::CreateDefault();
-        }
-
         m_system = GetRuntime();
         PathRequestBus::Handler::BusConnect(GetEntityId());
         if (!m_system)
@@ -230,7 +232,26 @@ namespace Jolt
             return;
         }
 
-        m_pathHandle = m_system->CreatePath(m_configuration);
+        AZ::Transform entityTransform = AZ::Transform::CreateIdentity();
+        AZ::TransformBus::EventResult(entityTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
+        const float uniformScale = entityTransform.GetUniformScale();
+        if (!AZ::IsFiniteFloat(uniformScale) || AZ::IsClose(uniformScale, 0.0f, AZ::Constants::Tolerance))
+        {
+            AZ_Warning("Jolt", false, "Path component '%s' has an invalid uniform scale.", GetEntity()->GetName().c_str());
+            return;
+        }
+
+        HermitePathConfiguration runtimeConfiguration = m_configuration;
+        for (HermitePathPoint& point : runtimeConfiguration.m_points)
+        {
+            point.m_position *= uniformScale;
+            point.m_tangent *= uniformScale;
+            if (uniformScale < 0.0f)
+            {
+                point.m_normal = -point.m_normal;
+            }
+        }
+        m_pathHandle = m_system->CreatePath(runtimeConfiguration);
         if (!m_pathHandle)
         {
             AZ_Warning(

@@ -144,7 +144,10 @@ namespace Jolt::Editor
                         }
                         else if constexpr (AZStd::is_same_v<Type, ConvexHullShapeConfiguration>)
                         {
-                            debugDisplay.DrawPolyLine(typedGeometry.m_points, true);
+                            for (const AZ::Vector3& point : typedGeometry.m_points)
+                            {
+                                debugDisplay.DrawPoint(point, 5);
+                            }
                         }
                         else if constexpr (
                             AZStd::is_same_v<Type, CustomConvexShapeConfiguration>

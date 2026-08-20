@@ -173,7 +173,7 @@ namespace Jolt
             name,
             [](const RuntimeResources::Animation& candidate, const AZ::Name requestedName)
             {
-                return candidate.m_name.GetHash() < requestedName.GetHash();
+                return candidate.m_name.GetStringView() < requestedName.GetStringView();
             });
         if (animation != m_resources->m_animations.end()
             && animation->m_name == name)
@@ -350,7 +350,7 @@ namespace Jolt
             resources->m_animations.end(),
             [](const RuntimeResources::Animation& first, const RuntimeResources::Animation& second)
             {
-                return first.m_name.GetHash() < second.m_name.GetHash();
+                return first.m_name.GetStringView() < second.m_name.GetStringView();
             });
         const auto duplicateAnimation = AZStd::adjacent_find(
             resources->m_animations.begin(),

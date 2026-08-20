@@ -13922,6 +13922,7 @@ namespace Jolt
             || !IsSupportedLayer(configuration.m_collisionLayer, m_configuration.m_objectLayers.size())
             || !configuration.m_forward.IsFinite()
             || configuration.m_forward.IsZero()
+            || !configuration.m_gravityOverride.IsFinite()
             || !configuration.m_up.IsFinite()
             || configuration.m_up.IsZero()
             || !AZ::IsClose(
@@ -14234,8 +14235,16 @@ namespace Jolt
         const JPH::Ref<JPH::VehicleCollisionTester> collisionTester =
             CreateVehicleCollisionTester(collisionConfiguration);
         constraint->SetVehicleCollisionTester(collisionTester);
+        constraint->SetMaxPitchRollAngle(configuration.m_maximumPitchRollAngle);
         constraint->SetNumStepsBetweenCollisionTestActive(configuration.m_collisionTestIntervalActive);
         constraint->SetNumStepsBetweenCollisionTestInactive(configuration.m_collisionTestIntervalInactive);
+        if (configuration.m_overrideGravity)
+        {
+            slot.m_gravityFactorBeforeOverride =
+                m_physicsSystem.GetBodyInterface().GetGravityFactor(bodySlot->m_bodyId);
+            slot.m_hasGravityFactorBeforeOverride = true;
+            constraint->OverrideGravity(ToNativeVector(configuration.m_gravityOverride));
+        }
         m_physicsSystem.AddConstraint(constraint);
         m_physicsSystem.AddStepListener(constraint);
 
@@ -14278,6 +14287,7 @@ namespace Jolt
             || !IsSupportedLayer(configuration.m_collisionLayer, m_configuration.m_objectLayers.size())
             || !configuration.m_forward.IsFinite()
             || configuration.m_forward.IsZero()
+            || !configuration.m_gravityOverride.IsFinite()
             || !configuration.m_up.IsFinite()
             || configuration.m_up.IsZero()
             || !AZ::IsClose(
@@ -14557,8 +14567,16 @@ namespace Jolt
         const JPH::Ref<JPH::VehicleCollisionTester> collisionTester =
             CreateVehicleCollisionTester(collisionConfiguration);
         constraint->SetVehicleCollisionTester(collisionTester);
+        constraint->SetMaxPitchRollAngle(configuration.m_maximumPitchRollAngle);
         constraint->SetNumStepsBetweenCollisionTestActive(configuration.m_collisionTestIntervalActive);
         constraint->SetNumStepsBetweenCollisionTestInactive(configuration.m_collisionTestIntervalInactive);
+        if (configuration.m_overrideGravity)
+        {
+            slot.m_gravityFactorBeforeOverride =
+                m_physicsSystem.GetBodyInterface().GetGravityFactor(bodySlot->m_bodyId);
+            slot.m_hasGravityFactorBeforeOverride = true;
+            constraint->OverrideGravity(ToNativeVector(configuration.m_gravityOverride));
+        }
         m_physicsSystem.AddConstraint(constraint);
         m_physicsSystem.AddStepListener(constraint);
 

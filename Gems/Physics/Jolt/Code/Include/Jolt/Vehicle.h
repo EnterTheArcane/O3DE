@@ -144,6 +144,7 @@ namespace Jolt
 
         ObjectLayer m_collisionLayer = DefaultLayers::Moving;
         AZ::Vector3 m_forward = AZ::Vector3::CreateAxisY();
+        AZ::Vector3 m_gravityOverride = AZ::Vector3::CreateZero();
         AZ::Vector3 m_up = AZ::Vector3::CreateAxisZ();
 
         float m_collisionSphereRadius = 0.3f;
@@ -155,6 +156,7 @@ namespace Jolt
         AZ::u32 m_collisionTestIntervalActive = 1;
         AZ::u32 m_collisionTestIntervalInactive = 1;
         VehicleCollisionTestMode m_collisionTestMode = VehicleCollisionTestMode::Ray;
+        bool m_overrideGravity = false;
     };
 
     struct WheeledVehicleInput final
@@ -352,6 +354,7 @@ namespace Jolt
 
         ObjectLayer m_collisionLayer = DefaultLayers::Moving;
         AZ::Vector3 m_forward = AZ::Vector3::CreateAxisY();
+        AZ::Vector3 m_gravityOverride = AZ::Vector3::CreateZero();
         AZ::Vector3 m_up = AZ::Vector3::CreateAxisZ();
 
         float m_collisionSphereRadius = 0.3f;
@@ -362,6 +365,7 @@ namespace Jolt
         AZ::u32 m_collisionTestIntervalActive = 1;
         AZ::u32 m_collisionTestIntervalInactive = 1;
         VehicleCollisionTestMode m_collisionTestMode = VehicleCollisionTestMode::Ray;
+        bool m_overrideGravity = false;
     };
 
     struct TrackedVehicleInput final

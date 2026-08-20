@@ -77,16 +77,6 @@ namespace Jolt::Editor
         Jolt::RagdollComponent::GetRequiredServices(required);
     }
 
-    void RagdollComponent::Init()
-    {
-        if (m_configuration.m_parts.empty())
-        {
-            m_configuration = RagdollComponentConfiguration::CreateDefault();
-        }
-
-        AzToolsFramework::Components::EditorComponentBase::Init();
-    }
-
     void RagdollComponent::Activate()
     {
         AzToolsFramework::Components::EditorComponentBase::Activate();

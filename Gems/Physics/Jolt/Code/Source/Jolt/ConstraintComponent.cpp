@@ -12,6 +12,7 @@
 #include <Jolt/SystemInternal.h>
 
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Component/TransformBus.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/Name/Name.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -76,6 +77,7 @@ namespace Jolt
         [[nodiscard]]
         bool Resolve(
             ConstraintConfiguration& configuration,
+            const AZ::EntityId firstBodyEntityId,
             ConstraintHandle& firstDependencyHandle,
             ConstraintHandle& secondDependencyHandle,
             PathHandle& pathHandle) const override
@@ -115,10 +117,26 @@ namespace Jolt
                     return false;
                 }
 
+                AZ::Transform pathEntityWorldTransform = AZ::Transform::CreateIdentity();
+                AZ::TransformBus::EventResult(
+                    pathEntityWorldTransform,
+                    m_geometry.m_pathEntityId,
+                    &AZ::TransformInterface::GetWorldTM);
+                AZ::Transform firstBodyWorldTransform = AZ::Transform::CreateIdentity();
+                if (firstBodyEntityId.IsValid())
+                {
+                    AZ::TransformBus::EventResult(
+                        firstBodyWorldTransform,
+                        firstBodyEntityId,
+                        &AZ::TransformInterface::GetWorldTM);
+                }
+                const AZ::Transform pathFrame =
+                    m_geometry.ResolvePathFrame(pathEntityWorldTransform, firstBodyWorldTransform);
+
                 configuration.m_geometry = PathConstraintConfiguration{
                     .m_pathHandle = pathHandle,
-                    .m_pathPosition = m_geometry.m_pathPosition,
-                    .m_pathRotation = m_geometry.m_pathRotation,
+                    .m_pathPosition = pathFrame.GetTranslation(),
+                    .m_pathRotation = pathFrame.GetRotation(),
                     .m_positionMotor = m_geometry.m_positionMotor,
                     .m_maximumFrictionForce = m_geometry.m_maximumFrictionForce,
                     .m_pathFraction = m_geometry.m_pathFraction,
@@ -482,6 +500,7 @@ namespace Jolt
         if (!m_configuration.m_geometry
             || !m_configuration.m_geometry->Resolve(
                 configuration,
+                m_configuration.m_firstBodyEntityId,
                 m_firstDependencyHandle,
                 m_secondDependencyHandle,
                 m_pathHandle))
@@ -616,7 +635,13 @@ namespace Jolt
     bool ConstraintComponent::SetEnabled(
         const bool enabled)
     {
-        return m_system && m_system->SetConstraintEnabled(m_worldHandle, m_constraintHandle, enabled);
+        if (!m_system || !m_system->SetConstraintEnabled(m_worldHandle, m_constraintHandle, enabled))
+        {
+            return false;
+        }
+
+        m_configuration.m_enabled = enabled;
+        return true;
     }
 
     bool ConstraintComponent::ResetWarmStart()

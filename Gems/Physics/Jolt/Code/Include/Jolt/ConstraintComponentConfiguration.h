@@ -12,6 +12,7 @@
 #include <Jolt/Constraint.h>
 
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Math/Transform.h>
 
 namespace AZ
 {
@@ -35,6 +36,11 @@ namespace Jolt
     struct PathConstraintComponentConfiguration final
     {
         AZ_TYPE_INFO(PathConstraintComponentConfiguration, PathConstraintComponentConfigurationTypeId);
+
+        [[nodiscard]]
+        JOLT_API AZ::Transform ResolvePathFrame(
+            const AZ::Transform& pathEntityWorldTransform,
+            const AZ::Transform& firstBodyWorldTransform) const;
 
         AZ::EntityId m_pathEntityId = AZ::EntityId();
         AZ::Vector3 m_pathPosition = AZ::Vector3::CreateZero();

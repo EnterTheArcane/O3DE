@@ -2637,6 +2637,9 @@ namespace Jolt
 
         SkeletonComponentConfiguration componentConfiguration;
         componentConfiguration.m_asset = createAsset(AZ::Name("walk"), animationArchive);
+        NamedSkeletalAnimationAsset idleAnimation = componentConfiguration.m_asset->m_data.m_animations.front();
+        idleAnimation.m_name = AZ::Name("idle");
+        componentConfiguration.m_asset->m_data.m_animations.push_back(AZStd::move(idleAnimation));
         AZ::ComponentDescriptor* componentDescriptor = SkeletonComponent::CreateDescriptor();
         AZ::ComponentApplicationBus::Broadcast(
             &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
@@ -2654,19 +2657,24 @@ namespace Jolt
 
         const SkeletonDefinitionHandle initialSkeletonHandle = component->GetSkeletonHandle();
         const SkeletalAnimationHandle initialAnimationHandle = component->FindAnimation(AZ::Name("walk"));
+        const SkeletalAnimationHandle idleAnimationHandle = component->FindAnimation(AZ::Name("idle"));
         ASSERT_TRUE(component->IsReady());
         ASSERT_TRUE(initialSkeletonHandle);
         ASSERT_TRUE(initialAnimationHandle);
+        ASSERT_TRUE(idleAnimationHandle);
         EXPECT_TRUE(system.IsValid(initialSkeletonHandle));
         EXPECT_TRUE(system.IsValid(initialAnimationHandle));
-        AZStd::array<AZ::Name, 1> animationNames;
+        AZStd::array<AZ::Name, 2> animationNames;
         const BufferResult animationNameResult = component->GetAnimationNames(animationNames);
         EXPECT_TRUE(animationNameResult.IsComplete());
-        EXPECT_EQ(animationNames.front(), AZ::Name("walk"));
+        EXPECT_EQ(animationNames[0], AZ::Name("idle"));
+        EXPECT_EQ(animationNames[1], AZ::Name("walk"));
         const BufferResult boundedAnimationNameResult = component->GetAnimationNames({});
         EXPECT_TRUE(boundedAnimationNameResult.HasOverflow());
-        EXPECT_EQ(boundedAnimationNameResult.m_requiredCount, 1);
-        EXPECT_EQ(component->CopyAnimationNames(), AZStd::vector<AZ::Name>{AZ::Name("walk")});
+        EXPECT_EQ(boundedAnimationNameResult.m_requiredCount, 2);
+        EXPECT_EQ(
+            component->CopyAnimationNames(),
+            AZStd::vector<AZ::Name>({AZ::Name("idle"), AZ::Name("walk")}));
         EXPECT_EQ(notifications.m_readyCount, 1);
         EXPECT_EQ(notifications.m_lastReadyHandle, initialSkeletonHandle);
 
@@ -2702,6 +2710,7 @@ namespace Jolt
         EXPECT_EQ(component->FindAnimation(AZ::Name("walk")), initialAnimationHandle);
         EXPECT_TRUE(system.IsValid(initialSkeletonHandle));
         EXPECT_TRUE(system.IsValid(initialAnimationHandle));
+        EXPECT_TRUE(system.IsValid(idleAnimationHandle));
         EXPECT_EQ(notifications.m_readyCount, 1);
         EXPECT_EQ(notifications.m_reloadingCount, 0);
         EXPECT_TRUE(system.DestroySkeletonPose(blockingPoseHandle));
@@ -2718,6 +2727,7 @@ namespace Jolt
         EXPECT_FALSE(component->FindAnimation(AZ::Name("walk")));
         EXPECT_FALSE(system.IsValid(initialSkeletonHandle));
         EXPECT_FALSE(system.IsValid(initialAnimationHandle));
+        EXPECT_FALSE(system.IsValid(idleAnimationHandle));
         EXPECT_TRUE(system.IsValid(reloadedSkeletonHandle));
         EXPECT_TRUE(system.IsValid(reloadedAnimationHandle));
         EXPECT_EQ(notifications.m_readyCount, 2);
@@ -3115,6 +3125,7 @@ namespace Jolt
         SoftBodyRuntimeConfiguration runtimeConfiguration;
         ASSERT_TRUE(softBody->GetRuntimeConfiguration(runtimeConfiguration));
         runtimeConfiguration.m_iterationCount = 7;
+        runtimeConfiguration.m_pressure = 0.4f;
         EXPECT_TRUE(softBody->UpdateRuntimeConfiguration(runtimeConfiguration));
 
         AZ::Transform transform = AZ::Transform::CreateIdentity();
@@ -3132,6 +3143,10 @@ namespace Jolt
         EXPECT_NE(scaledDefinitionHandle, initialDefinitionHandle);
         EXPECT_FALSE(system.IsValid(initialDefinitionHandle));
         EXPECT_TRUE(system.IsValid(scaledDefinitionHandle));
+        SoftBodyRuntimeConfiguration scaledRuntimeConfiguration;
+        ASSERT_TRUE(softBody->GetRuntimeConfiguration(scaledRuntimeConfiguration));
+        EXPECT_EQ(scaledRuntimeConfiguration.m_iterationCount, 7);
+        EXPECT_FLOAT_EQ(scaledRuntimeConfiguration.m_pressure, 0.4f);
         const AZStd::vector<SoftBodyVertex> scaledVertices = softBody->CopyVertices();
         ASSERT_EQ(scaledVertices.size(), 3);
         EXPECT_TRUE(scaledVertices[0].m_position.IsClose(AZ::Vector3(-2.0f, 0.0f, 0.0f)));
@@ -3153,7 +3168,11 @@ namespace Jolt
     TEST(ComponentTests, PathOwnsTransientNativeHandle)
     {
         ComponentNameDictionaryScope nameDictionary;
+        AZ::ComponentDescriptor* transformDescriptor = AzFramework::TransformComponent::CreateDescriptor();
         AZ::ComponentDescriptor* pathDescriptor = PathComponent::CreateDescriptor();
+        AZ::ComponentApplicationBus::Broadcast(
+            &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
+            transformDescriptor);
         AZ::ComponentApplicationBus::Broadcast(
             &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
             pathDescriptor);
@@ -3170,9 +3189,13 @@ namespace Jolt
             },
         };
         AZ::Entity entity("Constraint path");
+        entity.CreateComponent<AzFramework::TransformComponent>();
         PathComponent* path = entity.CreateComponent<PathComponent>(configuration);
         ASSERT_TRUE(path);
         entity.Init();
+        AZ::Transform entityTransform = AZ::Transform::CreateIdentity();
+        entityTransform.SetUniformScale(2.0f);
+        AZ::TransformBus::Event(entity.GetId(), &AZ::TransformInterface::SetWorldTM, entityTransform);
         entity.Activate();
         const PathHandle pathHandle = path->GetPathHandle();
         EXPECT_TRUE(pathHandle);
@@ -3189,7 +3212,7 @@ namespace Jolt
 
         const PathSample sample = path->Sample(0.5f);
         EXPECT_TRUE(sample);
-        EXPECT_TRUE(sample.m_position.IsClose(AZ::Vector3::CreateAxisX(1.0f)));
+        EXPECT_TRUE(sample.m_position.IsClose(AZ::Vector3::CreateAxisX(2.0f)));
         EXPECT_FLOAT_EQ(sample.m_fraction, 0.5f);
 
         const PathSample closest = path->FindClosestPoint(
@@ -3206,7 +3229,11 @@ namespace Jolt
         AZ::ComponentApplicationBus::Broadcast(
             &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
             pathDescriptor);
+        AZ::ComponentApplicationBus::Broadcast(
+            &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
+            transformDescriptor);
         pathDescriptor->ReleaseDescriptor();
+        transformDescriptor->ReleaseDescriptor();
     }
 
     TEST(ComponentTests, WheeledVehicleTracksChassisLifecycleWithoutPolling)
@@ -3296,6 +3323,17 @@ namespace Jolt
         ASSERT_TRUE(vehicle->SetDifferentialLimitedSlipRatio(1.75f));
         EXPECT_FLOAT_EQ(vehicle->GetDifferentialLimitedSlipRatio(), 1.75f);
 
+        VehicleRuntimeConfiguration runtimeConfiguration = vehicle->GetRuntimeConfiguration();
+        runtimeConfiguration.m_gravityOverride = AZ::Vector3(0.0f, 0.0f, -4.0f);
+        runtimeConfiguration.m_maximumPitchRollAngle = 0.75f;
+        runtimeConfiguration.m_overrideGravity = true;
+        ASSERT_TRUE(vehicle->UpdateRuntimeConfiguration(runtimeConfiguration));
+
+        VehicleCollisionConfiguration collisionConfiguration = vehicle->GetCollisionConfiguration();
+        collisionConfiguration.m_sphereRadius = 0.45f;
+        collisionConfiguration.m_mode = VehicleCollisionTestMode::Sphere;
+        ASSERT_TRUE(vehicle->UpdateCollisionConfiguration(collisionConfiguration));
+
         const WheelBasis wheelBasis = vehicle->GetWheelLocalBasis(0);
         EXPECT_TRUE(wheelBasis.m_forward.IsNormalized());
         EXPECT_TRUE(vehicle->GetWheelLocalTransform(
@@ -3344,6 +3382,17 @@ namespace Jolt
         EXPECT_TRUE(secondVehicleHandle);
         EXPECT_NE(secondVehicleHandle, firstVehicleHandle);
         EXPECT_TRUE(vehicle->IsSimulationEnabled());
+        EXPECT_FLOAT_EQ(vehicle->GetEngineConfiguration().m_maximumTorque, 700.0f);
+        EXPECT_FLOAT_EQ(vehicle->GetDifferentialLimitedSlipRatio(), 1.75f);
+        EXPECT_FLOAT_EQ(vehicle->CopyDifferentials()[0].m_differentialRatio, 4.0f);
+        EXPECT_EQ(vehicle->GetTransmissionConfiguration().m_mode, TransmissionMode::Manual);
+        const VehicleRuntimeConfiguration recreatedRuntimeConfiguration = vehicle->GetRuntimeConfiguration();
+        EXPECT_TRUE(recreatedRuntimeConfiguration.m_overrideGravity);
+        EXPECT_TRUE(recreatedRuntimeConfiguration.m_gravityOverride.IsClose(AZ::Vector3(0.0f, 0.0f, -4.0f)));
+        EXPECT_FLOAT_EQ(recreatedRuntimeConfiguration.m_maximumPitchRollAngle, 0.75f);
+        const VehicleCollisionConfiguration recreatedCollisionConfiguration = vehicle->GetCollisionConfiguration();
+        EXPECT_FLOAT_EQ(recreatedCollisionConfiguration.m_sphereRadius, 0.45f);
+        EXPECT_EQ(recreatedCollisionConfiguration.m_mode, VehicleCollisionTestMode::Sphere);
         const AZ::u32 previousPreStepCount = vehicleCallbacks.m_preStepCount;
         EXPECT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
         EXPECT_GT(vehicleCallbacks.m_preStepCount, previousPreStepCount);
@@ -3532,9 +3581,18 @@ namespace Jolt
             },
         };
         AZ::Entity pathEntity("Constraint path");
+        pathEntity.CreateComponent<AzFramework::TransformComponent>();
         PathComponent* path = pathEntity.CreateComponent<PathComponent>(pathConfiguration);
         ASSERT_TRUE(path);
         pathEntity.Init();
+        AZ::Transform pathEntityTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+            AZ::Quaternion::CreateRotationZ(AZ::Constants::QuarterPi),
+            AZ::Vector3(3.0f, 4.0f, 5.0f));
+        pathEntityTransform.SetUniformScale(2.0f);
+        AZ::TransformBus::Event(
+            pathEntity.GetId(),
+            &AZ::TransformInterface::SetWorldTM,
+            pathEntityTransform);
         pathEntity.Activate();
 
         ConstraintComponentConfiguration constraintConfiguration;
@@ -3542,6 +3600,8 @@ namespace Jolt
         constraintConfiguration.m_secondBodyEntityId = secondBodyEntity.GetId();
         constraintConfiguration.m_geometry = PathConstraintComponentConfiguration{
             .m_pathEntityId = pathEntity.GetId(),
+            .m_pathPosition = AZ::Vector3::CreateAxisX(),
+            .m_pathRotation = AZ::Quaternion::CreateRotationX(AZ::Constants::QuarterPi),
         };
         AZ::Entity constraintEntity("Path constraint");
         ConstraintComponent* constraint =
@@ -3553,6 +3613,18 @@ namespace Jolt
         const ConstraintHandle firstConstraintHandle = constraint->GetConstraintHandle();
         ASSERT_TRUE(firstConstraintHandle);
         EXPECT_TRUE(system.IsValid(worldHandle, firstConstraintHandle));
+        ConstraintConfiguration resolvedConfiguration;
+        ASSERT_TRUE(system.GetConstraintConfiguration(worldHandle, firstConstraintHandle, resolvedConfiguration));
+        const auto* resolvedPath = AZStd::get_if<PathConstraintConfiguration>(&resolvedConfiguration.m_geometry);
+        ASSERT_TRUE(resolvedPath);
+        const AZ::Transform expectedPathFrame = pathEntityTransform
+            * AZ::Transform::CreateFromQuaternionAndTranslation(
+                AZ::Quaternion::CreateRotationX(AZ::Constants::QuarterPi),
+                AZ::Vector3::CreateAxisX());
+        EXPECT_TRUE(resolvedPath->m_pathPosition.IsClose(expectedPathFrame.GetTranslation()));
+        EXPECT_TRUE(resolvedPath->m_pathRotation.IsClose(expectedPathFrame.GetRotation()));
+        ASSERT_TRUE(constraint->SetEnabled(false));
+        EXPECT_FALSE(constraint->GetState().m_enabled);
 
         const BodyHandle firstBodyHandle = firstBody->GetBodyHandle();
         firstBodyEntity.Deactivate();
@@ -3565,6 +3637,7 @@ namespace Jolt
         EXPECT_TRUE(secondConstraintHandle);
         EXPECT_NE(secondConstraintHandle, firstConstraintHandle);
         EXPECT_TRUE(system.IsValid(worldHandle, secondConstraintHandle));
+        EXPECT_FALSE(constraint->GetState().m_enabled);
 
         pathEntity.Deactivate();
         EXPECT_FALSE(system.IsValid(worldHandle, secondConstraintHandle));

@@ -108,6 +108,28 @@ namespace Jolt::Editor
             bool m_created = false;
         };
 
+        class GeometryDrawRecorder final
+            : public UnitTest::NullDebugDisplayRequests
+        {
+        public:
+            void DrawLine(
+                [[maybe_unused]] const AZ::Vector3& first,
+                [[maybe_unused]] const AZ::Vector3& second) override
+            {
+                ++m_lineCount;
+            }
+
+            void DrawPoint(
+                const AZ::Vector3& point,
+                [[maybe_unused]] const int size) override
+            {
+                m_points.push_back(point);
+            }
+
+            AZStd::vector<AZ::Vector3> m_points;
+            AZ::u32 m_lineCount = 0;
+        };
+
         class HeadlessComponentModeTestApplication final
             : public UnitTest::ToolsTestApplication
         {
@@ -312,6 +334,28 @@ namespace Jolt::Editor
                 restored.get(),
                 &serializeContext));
             EXPECT_EQ(restoredBuffer, sourceBuffer);
+        }
+
+        template<typename Component>
+        void ExpectInitPreservesSerializedState(
+            Component& component,
+            AZ::SerializeContext& serializeContext)
+        {
+            const auto serialize = [&serializeContext](Component& value)
+            {
+                AZStd::vector<char> buffer;
+                AZ::IO::ByteContainerStream stream(&buffer);
+                EXPECT_TRUE(AZ::Utils::SaveObjectToStream(
+                    stream,
+                    AZ::DataStream::ST_BINARY,
+                    &value,
+                    &serializeContext));
+                return buffer;
+            };
+
+            const AZStd::vector<char> beforeInit = serialize(component);
+            component.Init();
+            EXPECT_EQ(serialize(component), beforeInit);
         }
     } // namespace
 
@@ -538,12 +582,16 @@ namespace Jolt::Editor
                 WheeledVehicleComponentConfiguration::CreateDefault();
             wheeledConfiguration.m_enabled = false;
             wheeledConfiguration.m_vehicle.m_collisionSphereRadius = 0.45f;
+            wheeledConfiguration.m_vehicle.m_gravityOverride = AZ::Vector3(1.0f, 2.0f, 3.0f);
+            wheeledConfiguration.m_vehicle.m_overrideGravity = true;
             WheeledVehicleComponent wheeled(AZStd::move(wheeledConfiguration));
             ExpectBinaryRoundTrip(wheeled, serializeContext);
 
             MotorcycleComponentConfiguration motorcycleConfiguration =
                 MotorcycleComponentConfiguration::CreateDefault();
             motorcycleConfiguration.m_enabled = false;
+            motorcycleConfiguration.m_motorcycle.m_wheeled.m_gravityOverride = AZ::Vector3(-2.0f, -3.0f, -4.0f);
+            motorcycleConfiguration.m_motorcycle.m_wheeled.m_overrideGravity = true;
             motorcycleConfiguration.m_motorcycle.m_controller.m_maximumLeanAngle = 0.5f;
             MotorcycleComponent motorcycle(AZStd::move(motorcycleConfiguration));
             ExpectBinaryRoundTrip(motorcycle, serializeContext);
@@ -552,8 +600,45 @@ namespace Jolt::Editor
                 TrackedVehicleComponentConfiguration::CreateDefault();
             trackedConfiguration.m_enabled = false;
             trackedConfiguration.m_vehicle.m_collisionSphereRadius = 0.55f;
+            trackedConfiguration.m_vehicle.m_gravityOverride = AZ::Vector3(5.0f, 6.0f, 7.0f);
+            trackedConfiguration.m_vehicle.m_overrideGravity = true;
             TrackedVehicleComponent tracked(AZStd::move(trackedConfiguration));
             ExpectBinaryRoundTrip(tracked, serializeContext);
+
+            HairComponentConfiguration emptyHairConfiguration;
+            emptyHairConfiguration.m_autoUpdate = false;
+            HairComponent emptyHair(AZStd::move(emptyHairConfiguration));
+            ExpectInitPreservesSerializedState(emptyHair, serializeContext);
+
+            HermitePathConfiguration emptyPathConfiguration;
+            emptyPathConfiguration.m_isLooping = true;
+            PathComponent emptyPath(AZStd::move(emptyPathConfiguration));
+            ExpectInitPreservesSerializedState(emptyPath, serializeContext);
+
+            RagdollComponentConfiguration emptyRagdollConfiguration;
+            emptyRagdollConfiguration.m_stabilize = false;
+            RagdollComponent emptyRagdoll(AZStd::move(emptyRagdollConfiguration));
+            ExpectInitPreservesSerializedState(emptyRagdoll, serializeContext);
+
+            SoftBodyComponentConfiguration emptySoftBodyConfiguration;
+            emptySoftBodyConfiguration.m_enabled = false;
+            SoftBodyComponent emptySoftBody(AZStd::move(emptySoftBodyConfiguration));
+            ExpectInitPreservesSerializedState(emptySoftBody, serializeContext);
+
+            WheeledVehicleComponentConfiguration emptyWheeledConfiguration;
+            emptyWheeledConfiguration.m_enabled = false;
+            WheeledVehicleComponent emptyWheeled(AZStd::move(emptyWheeledConfiguration));
+            ExpectInitPreservesSerializedState(emptyWheeled, serializeContext);
+
+            MotorcycleComponentConfiguration emptyMotorcycleConfiguration;
+            emptyMotorcycleConfiguration.m_enabled = false;
+            MotorcycleComponent emptyMotorcycle(AZStd::move(emptyMotorcycleConfiguration));
+            ExpectInitPreservesSerializedState(emptyMotorcycle, serializeContext);
+
+            TrackedVehicleComponentConfiguration emptyTrackedConfiguration;
+            emptyTrackedConfiguration.m_enabled = false;
+            TrackedVehicleComponent emptyTracked(AZStd::move(emptyTrackedConfiguration));
+            ExpectInitPreservesSerializedState(emptyTracked, serializeContext);
 
             VirtualCharacterComponentConfiguration virtualCharacterConfiguration;
             virtualCharacterConfiguration.m_userData = 0x9192'9394'9596'9798;
@@ -2054,6 +2139,23 @@ namespace Jolt::Editor
         EXPECT_TRUE(bounds.IsClose(AZ::Aabb::CreateFromMinMax(
             {3.0f, 3.0f, 3.0f},
             {5.0f, 7.0f, 9.0f})));
+    }
+
+    TEST(EditorComponentTests, ConvexHullPreviewDoesNotInventEdgesBetweenSourcePoints)
+    {
+        const AZStd::vector<AZ::Vector3> points = {
+            AZ::Vector3(1.0f, 0.0f, 0.0f),
+            AZ::Vector3(0.0f, 0.0f, 1.0f),
+            AZ::Vector3(0.0f, 1.0f, 0.0f),
+            AZ::Vector3(-1.0f, -1.0f, -1.0f),
+        };
+        const ShapeGeometry geometry = ConvexHullShapeConfiguration{.m_points = points};
+        GeometryDrawRecorder debugDisplay;
+
+        DrawShapeGeometry(debugDisplay, geometry, AZ::Matrix3x4::CreateIdentity());
+
+        EXPECT_EQ(debugDisplay.m_points, points);
+        EXPECT_EQ(debugDisplay.m_lineCount, 0);
     }
 
     TEST(EditorComponentTests, CustomShapeUsesAuthoredEditorBounds)

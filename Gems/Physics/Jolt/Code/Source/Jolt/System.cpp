@@ -3137,8 +3137,7 @@ namespace Jolt
         const HermitePathConfiguration& configuration)
     {
         const DeterministicFloatScope floatScope;
-        if (configuration.m_points.size() < 2
-            || (configuration.m_isLooping && configuration.m_points.size() < 3))
+        if (!configuration.IsValid())
         {
             return {};
         }

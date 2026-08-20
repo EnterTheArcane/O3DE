@@ -75,16 +75,6 @@ namespace Jolt::Editor
         Jolt::HairComponent::GetRequiredServices(required);
     }
 
-    void HairComponent::Init()
-    {
-        if (m_configuration.m_definition.m_vertices.empty())
-        {
-            m_configuration = HairComponentConfiguration::CreateDefault();
-        }
-
-        AzToolsFramework::Components::EditorComponentBase::Init();
-    }
-
     void HairComponent::Activate()
     {
         AzToolsFramework::Components::EditorComponentBase::Activate();

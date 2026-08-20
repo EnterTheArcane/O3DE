@@ -34,6 +34,8 @@ namespace Jolt
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
 
+        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
+
         [[nodiscard]]
         PathHandle GetPathHandle() const override;
 
@@ -59,7 +61,7 @@ namespace Jolt
 
         void Deactivate() override;
 
-        HermitePathConfiguration m_configuration;
+        HermitePathConfiguration m_configuration = HermitePathConfiguration::CreateDefault();
 
         RuntimeImplementation* m_system = nullptr;
         PathHandle m_pathHandle;

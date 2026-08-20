@@ -41,8 +41,6 @@ namespace Jolt::Editor
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
 
-        void Init() override;
-
         void Activate() override;
 
         void Deactivate() override;
@@ -64,7 +62,7 @@ namespace Jolt::Editor
             float& distance) override;
 
     private:
-        SoftBodyComponentConfiguration m_configuration;
+        SoftBodyComponentConfiguration m_configuration = SoftBodyComponentConfiguration::CreateDefault();
 
         AZStd::vector<AZ::Vector3> m_skinNormalScratch;
         AZStd::vector<AZ::u8> m_skinnedVertexScratch;

@@ -18,6 +18,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/std/limits.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/string/string.h>
@@ -1285,6 +1286,7 @@ namespace Jolt
             FindSkeletonDefinitionUnlocked(configuration.m_targetSkeletonHandle);
         if (!sourceSlot
             || !targetSlot
+            || sourceSlot->m_joints.size() > targetSlot->m_joints.size()
             || configuration.m_sourceNeutralModelTransforms.size() != sourceSlot->m_joints.size()
             || configuration.m_targetNeutralModelTransforms.size() != targetSlot->m_joints.size()
             || (!configuration.m_lockedTargetTranslations.empty()
@@ -1317,7 +1319,22 @@ namespace Jolt
             }
         }
 
-        if (!configuration.m_jointMappings.empty())
+        constexpr AZ::u32 InvalidJointIndex = AZStd::numeric_limits<AZ::u32>::max();
+        AZStd::vector<AZ::u32> targetJointBySource(sourceSlot->m_joints.size(), InvalidJointIndex);
+        AZStd::vector<AZ::s32> sourceJointByTarget(targetSlot->m_joints.size(), -1);
+        if (configuration.m_jointMappings.empty())
+        {
+            for (size_t sourceJoint = 0; sourceJoint < sourceSlot->m_joints.size(); ++sourceJoint)
+            {
+                const auto targetJoint = targetSlot->m_jointIndices.find(sourceSlot->m_joints[sourceJoint].m_name);
+                if (targetJoint == targetSlot->m_jointIndices.end())
+                {
+                    return {};
+                }
+                targetJointBySource[sourceJoint] = targetJoint->second;
+            }
+        }
+        else
         {
             if (configuration.m_jointMappings.size() != sourceSlot->m_joints.size())
             {
@@ -1331,15 +1348,41 @@ namespace Jolt
                 {
                     return {};
                 }
-                for (size_t previousIndex = 0; previousIndex < mappingIndex; ++previousIndex)
+
+                if (targetJointBySource[mapping.m_sourceJoint] != InvalidJointIndex)
                 {
-                    const SkeletonJointMapping& previous = configuration.m_jointMappings[previousIndex];
-                    if (mapping.m_sourceJoint == previous.m_sourceJoint
-                        || mapping.m_targetJoint == previous.m_targetJoint)
-                    {
-                        return {};
-                    }
+                    return {};
                 }
+                targetJointBySource[mapping.m_sourceJoint] = mapping.m_targetJoint;
+            }
+        }
+
+        for (size_t sourceJoint = 0; sourceJoint < targetJointBySource.size(); ++sourceJoint)
+        {
+            const AZ::u32 targetJoint = targetJointBySource[sourceJoint];
+            if (targetJoint == InvalidJointIndex || sourceJointByTarget[targetJoint] >= 0)
+            {
+                return {};
+            }
+            sourceJointByTarget[targetJoint] = aznumeric_cast<AZ::s32>(sourceJoint);
+        }
+
+        for (size_t sourceJoint = 0; sourceJoint < sourceSlot->m_joints.size(); ++sourceJoint)
+        {
+            AZ::s32 mappedSourceParent = -1;
+            AZ::s32 targetParent = targetSlot->m_joints[targetJointBySource[sourceJoint]].m_parentIndex;
+            while (targetParent >= 0)
+            {
+                mappedSourceParent = sourceJointByTarget[aznumeric_cast<size_t>(targetParent)];
+                if (mappedSourceParent >= 0)
+                {
+                    break;
+                }
+                targetParent = targetSlot->m_joints[aznumeric_cast<size_t>(targetParent)].m_parentIndex;
+            }
+            if (mappedSourceParent != sourceSlot->m_joints[sourceJoint].m_parentIndex)
+            {
+                return {};
             }
         }
 
@@ -1357,37 +1400,26 @@ namespace Jolt
         }
 
         JPH::Ref<JPH::SkeletonMapper> mapper = new JPH::SkeletonMapper();
-        if (configuration.m_jointMappings.empty())
+        mapper->Initialize(
+            sourceSlot->m_skeleton,
+            sourceNeutralPose.data(),
+            targetSlot->m_skeleton,
+            targetNeutralPose.data(),
+            [&targetJointBySource](
+                const JPH::Skeleton*,
+                const int sourceJoint,
+                const JPH::Skeleton*,
+                const int targetJoint)
+            {
+                return sourceJoint >= 0
+                    && aznumeric_cast<size_t>(sourceJoint) < targetJointBySource.size()
+                    && targetJoint >= 0
+                    && targetJointBySource[aznumeric_cast<size_t>(sourceJoint)]
+                        == aznumeric_cast<AZ::u32>(targetJoint);
+            });
+        if (mapper->GetMappings().size() != sourceSlot->m_joints.size())
         {
-            mapper->Initialize(
-                sourceSlot->m_skeleton,
-                sourceNeutralPose.data(),
-                targetSlot->m_skeleton,
-                targetNeutralPose.data());
-        }
-        else
-        {
-            mapper->Initialize(
-                sourceSlot->m_skeleton,
-                sourceNeutralPose.data(),
-                targetSlot->m_skeleton,
-                targetNeutralPose.data(),
-                [&configuration](
-                    const JPH::Skeleton*,
-                    const int sourceJoint,
-                    const JPH::Skeleton*,
-                    const int targetJoint)
-                {
-                    for (const SkeletonJointMapping& mapping : configuration.m_jointMappings)
-                    {
-                        if (mapping.m_sourceJoint == aznumeric_cast<AZ::u32>(sourceJoint)
-                            && mapping.m_targetJoint == aznumeric_cast<AZ::u32>(targetJoint))
-                        {
-                            return true;
-                        }
-                    }
-                    return false;
-                });
+            return {};
         }
 
         if (configuration.m_lockAllTargetTranslations)

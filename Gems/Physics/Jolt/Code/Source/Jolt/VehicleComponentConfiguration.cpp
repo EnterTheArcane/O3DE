@@ -128,6 +128,7 @@ namespace Jolt
                 ->Field("Transmission", &WheeledVehicleConfiguration::m_transmission)
                 ->Field("CollisionLayer", &WheeledVehicleConfiguration::m_collisionLayer)
                 ->Field("Forward", &WheeledVehicleConfiguration::m_forward)
+                ->Field("GravityOverride", &WheeledVehicleConfiguration::m_gravityOverride)
                 ->Field("Up", &WheeledVehicleConfiguration::m_up)
                 ->Field("CollisionSphereRadius", &WheeledVehicleConfiguration::m_collisionSphereRadius)
                 ->Field(
@@ -138,7 +139,8 @@ namespace Jolt
                 ->Field("MaximumPitchRollAngle", &WheeledVehicleConfiguration::m_maximumPitchRollAngle)
                 ->Field("CollisionTestIntervalActive", &WheeledVehicleConfiguration::m_collisionTestIntervalActive)
                 ->Field("CollisionTestIntervalInactive", &WheeledVehicleConfiguration::m_collisionTestIntervalInactive)
-                ->Field("CollisionTestMode", &WheeledVehicleConfiguration::m_collisionTestMode);
+                ->Field("CollisionTestMode", &WheeledVehicleConfiguration::m_collisionTestMode)
+                ->Field("OverrideGravity", &WheeledVehicleConfiguration::m_overrideGravity);
         }
 
         void ReflectCommonVehicleEditTypes(AZ::EditContext& editContext)
@@ -306,6 +308,11 @@ namespace Jolt
                 ->DataElement(AZ::Edit::UIHandlers::Default, &WheeledVehicleConfiguration::m_transmission, "Transmission", "")
                 ->DataElement(AZ::Edit::UIHandlers::Default, &WheeledVehicleConfiguration::m_collisionLayer, "Collision layer", "")
                 ->DataElement(AZ::Edit::UIHandlers::Default, &WheeledVehicleConfiguration::m_forward, "Forward", "")
+                ->DataElement(
+                    AZ::Edit::UIHandlers::Default,
+                    &WheeledVehicleConfiguration::m_gravityOverride,
+                    "Gravity override",
+                    "")
                 ->DataElement(AZ::Edit::UIHandlers::Default, &WheeledVehicleConfiguration::m_up, "Up", "")
                 ->DataElement(
                     AZ::Edit::UIHandlers::Default,
@@ -346,6 +353,11 @@ namespace Jolt
                     AZ::Edit::UIHandlers::Default,
                     &WheeledVehicleConfiguration::m_collisionTestMode,
                     "Collision test mode",
+                    "")
+                ->DataElement(
+                    AZ::Edit::UIHandlers::Default,
+                    &WheeledVehicleConfiguration::m_overrideGravity,
+                    "Override gravity",
                     "");
         }
     } // namespace
@@ -682,6 +694,7 @@ namespace Jolt
                     ->Field("Transmission", &TrackedVehicleConfiguration::m_transmission)
                     ->Field("CollisionLayer", &TrackedVehicleConfiguration::m_collisionLayer)
                     ->Field("Forward", &TrackedVehicleConfiguration::m_forward)
+                    ->Field("GravityOverride", &TrackedVehicleConfiguration::m_gravityOverride)
                     ->Field("Up", &TrackedVehicleConfiguration::m_up)
                     ->Field("CollisionSphereRadius", &TrackedVehicleConfiguration::m_collisionSphereRadius)
                     ->Field(
@@ -691,7 +704,8 @@ namespace Jolt
                     ->Field("MaximumPitchRollAngle", &TrackedVehicleConfiguration::m_maximumPitchRollAngle)
                     ->Field("CollisionTestIntervalActive", &TrackedVehicleConfiguration::m_collisionTestIntervalActive)
                     ->Field("CollisionTestIntervalInactive", &TrackedVehicleConfiguration::m_collisionTestIntervalInactive)
-                    ->Field("CollisionTestMode", &TrackedVehicleConfiguration::m_collisionTestMode);
+                    ->Field("CollisionTestMode", &TrackedVehicleConfiguration::m_collisionTestMode)
+                    ->Field("OverrideGravity", &TrackedVehicleConfiguration::m_overrideGravity);
             }
             if (reflectComponent)
             {
@@ -757,6 +771,11 @@ namespace Jolt
                         ->DataElement(AZ::Edit::UIHandlers::Default, &TrackedVehicleConfiguration::m_transmission, "Transmission", "")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &TrackedVehicleConfiguration::m_collisionLayer, "Collision layer", "")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &TrackedVehicleConfiguration::m_forward, "Forward", "")
+                        ->DataElement(
+                            AZ::Edit::UIHandlers::Default,
+                            &TrackedVehicleConfiguration::m_gravityOverride,
+                            "Gravity override",
+                            "")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &TrackedVehicleConfiguration::m_up, "Up", "")
                         ->DataElement(
                             AZ::Edit::UIHandlers::Default,
@@ -792,6 +811,11 @@ namespace Jolt
                             AZ::Edit::UIHandlers::Default,
                             &TrackedVehicleConfiguration::m_collisionTestMode,
                             "Collision test mode",
+                            "")
+                        ->DataElement(
+                            AZ::Edit::UIHandlers::Default,
+                            &TrackedVehicleConfiguration::m_overrideGravity,
+                            "Override gravity",
                             "");
                 }
                 if (reflectComponent)

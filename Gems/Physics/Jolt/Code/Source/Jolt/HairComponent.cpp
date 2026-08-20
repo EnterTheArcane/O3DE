@@ -602,21 +602,35 @@ namespace Jolt
         {
             return false;
         }
+        bool enabled = false;
         if (AZ::IsClose(m_uniformScale, 1.0f, AZ::Constants::Tolerance))
         {
-            return m_system->EnableHairAutoUpdate(
+            enabled = m_system->EnableHairAutoUpdate(
                 m_worldHandle,
                 m_hairHandle,
                 jointToHair,
                 jointModelTransforms);
         }
-        const AZStd::vector<AZ::Transform> scaledTransforms =
-            ScaleTranslations(jointModelTransforms, m_uniformScale);
-        return m_system->EnableHairAutoUpdate(
-            m_worldHandle,
-            m_hairHandle,
-            ScaleTranslation(jointToHair, m_uniformScale),
-            scaledTransforms);
+        else
+        {
+            const AZStd::vector<AZ::Transform> scaledTransforms =
+                ScaleTranslations(jointModelTransforms, m_uniformScale);
+            enabled = m_system->EnableHairAutoUpdate(
+                m_worldHandle,
+                m_hairHandle,
+                ScaleTranslation(jointToHair, m_uniformScale),
+                scaledTransforms);
+        }
+
+        if (!enabled)
+        {
+            return false;
+        }
+
+        m_configuration->m_autoUpdate = true;
+        m_configuration->m_jointToHair = jointToHair;
+        m_configuration->m_jointModelTransforms.assign(jointModelTransforms.begin(), jointModelTransforms.end());
+        return true;
     }
 
     bool HairComponent::EnableAutoUpdateFromTransforms(
@@ -628,7 +642,13 @@ namespace Jolt
 
     bool HairComponent::DisableAutoUpdate()
     {
-        return m_system && m_system->DisableHairAutoUpdate(m_worldHandle, m_hairHandle);
+        if (!m_system || !m_system->DisableHairAutoUpdate(m_worldHandle, m_hairHandle))
+        {
+            return false;
+        }
+
+        m_configuration->m_autoUpdate = false;
+        return true;
     }
 
     void HairComponent::Activate()

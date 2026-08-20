@@ -269,14 +269,6 @@ namespace Jolt::Editor
         }
     }
 
-    void WheeledVehicleComponent::Init()
-    {
-        if (m_configuration.m_vehicle.m_wheels.empty())
-        {
-            m_configuration = WheeledVehicleComponentConfiguration::CreateDefault();
-        }
-    }
-
     void WheeledVehicleComponent::GetProvidedServices(
         AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
@@ -389,14 +381,6 @@ namespace Jolt::Editor
         }
     }
 
-    void MotorcycleComponent::Init()
-    {
-        if (m_configuration.m_motorcycle.m_wheeled.m_wheels.empty())
-        {
-            m_configuration = MotorcycleComponentConfiguration::CreateDefault();
-        }
-    }
-
     void MotorcycleComponent::GetProvidedServices(
         AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
@@ -506,14 +490,6 @@ namespace Jolt::Editor
                         QT_TRANSLATE_NOOP("Jolt", "Track, wheel, suspension, collision, engine, and transmission settings."))
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly);
             }
-        }
-    }
-
-    void TrackedVehicleComponent::Init()
-    {
-        if (m_configuration.m_vehicle.m_wheels.empty())
-        {
-            m_configuration = TrackedVehicleComponentConfiguration::CreateDefault();
         }
     }
 

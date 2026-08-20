@@ -42,6 +42,9 @@ namespace Jolt
         [[nodiscard]]
         JOLT_API static HermitePathConfiguration CreateDefault();
 
+        [[nodiscard]]
+        JOLT_API bool IsValid() const;
+
         AZStd::vector<HermitePathPoint> m_points;
         bool m_isLooping = false;
     };
