@@ -1,0 +1,6 @@
+{
+    "PackageName": "zstd",
+    "URL": "https://github.com/facebook/zstd",
+    "License": "BSD-3-Clause",
+    "LicenseFile": "LICENSE.txt"
+}

@@ -1,0 +1,32 @@
+diff --git a/src/loslib.c b/src/loslib.c
+index 3e20d622..cbca1c5a 100644
+--- a/src/loslib.c
++++ b/src/loslib.c
+@@ -168,18 +168,27 @@ static int os_remove (lua_State *L) {
+ 
+ 
+ static int os_rename (lua_State *L) {
++#if !(defined(__APPLE__) && TARGET_OS_IPHONE) && !defined(ANDROID)
+   const char *fromname = luaL_checkstring(L, 1);
+   const char *toname = luaL_checkstring(L, 2);
+   return luaL_fileresult(L, rename(fromname, toname) == 0, NULL);
++#else
++  luaL_error(L, "os_rename not implemented on this platform");
++  return 1;
++#endif
+ }
+ 
+ 
+ static int os_tmpname (lua_State *L) {
++#if !(defined(__APPLE__) && TARGET_OS_IPHONE) && !defined(ANDROID)
+   char buff[LUA_TMPNAMBUFSIZE];
+   int err;
+   lua_tmpnam(buff, err);
+   if (l_unlikely(err))
++#endif
+     return luaL_error(L, "unable to generate a unique filename");
++#if !(defined(__APPLE__) && TARGET_OS_IPHONE) && !defined(ANDROID)
+   lua_pushstring(L, buff);
+   return 1;
++#endif
+ }

@@ -1,0 +1,69 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+
+set(FILES
+    Include/Lua/lapi.h
+    Include/Lua/lauxlib.h
+    Include/Lua/lcode.h
+    Include/Lua/lctype.h
+    Include/Lua/ldebug.h
+    Include/Lua/ldo.h
+    Include/Lua/lfunc.h
+    Include/Lua/lgc.h
+    Include/Lua/ljumptab.h
+    Include/Lua/llex.h
+    Include/Lua/llimits.h
+    Include/Lua/lmem.h
+    Include/Lua/lobject.h
+    Include/Lua/lopcodes.h
+    Include/Lua/lopnames.h
+    Include/Lua/lparser.h
+    Include/Lua/lprefix.h
+    Include/Lua/lstate.h
+    Include/Lua/lstring.h
+    Include/Lua/ltable.h
+    Include/Lua/ltm.h
+    Include/Lua/lua.h
+    Include/Lua/lua.hpp
+    Include/Lua/luaconf.h
+    Include/Lua/lualib.h
+    Include/Lua/lundump.h
+    Include/Lua/lvm.h
+    Include/Lua/lzio.h
+    Source/lapi.c
+    Source/lauxlib.c
+    Source/lbaselib.c
+    Source/lcode.c
+    Source/lcorolib.c
+    Source/lctype.c
+    Source/ldblib.c
+    Source/ldebug.c
+    Source/ldo.c
+    Source/ldump.c
+    Source/lfunc.c
+    Source/lgc.c
+    Source/linit.c
+    Source/liolib.c
+    Source/llex.c
+    Source/lmathlib.c
+    Source/lmem.c
+    Source/loadlib.c
+    Source/lobject.c
+    Source/lopcodes.c
+    Source/loslib.c
+    Source/lparser.c
+    Source/lstate.c
+    Source/lstring.c
+    Source/lstrlib.c
+    Source/ltable.c
+    Source/ltablib.c
+    Source/ltm.c
+    Source/lundump.c
+    Source/lutf8lib.c
+    Source/lvm.c
+    Source/lzio.c
+)

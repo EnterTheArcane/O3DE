@@ -1,0 +1,18 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+
+add_subdirectory(cityhash)
+add_subdirectory(lua)
+add_subdirectory(xxhash)
+add_subdirectory(lz4)
+add_subdirectory(mcpp)
+add_subdirectory(mikktspace)
+add_subdirectory(rapidjson)
+add_subdirectory(rapidxml)
+add_subdirectory(sqlite)
+add_subdirectory(zlib)
+add_subdirectory(zstd)

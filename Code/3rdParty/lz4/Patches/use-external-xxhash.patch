@@ -1,0 +1,13 @@
+diff --git a/lib/lz4frame.c b/lib/lz4frame.c
+index c8ebd28..3e5d5de 100644
+--- a/lib/lz4frame.c
++++ b/lib/lz4frame.c
+@@ -73,7 +73,7 @@
+ #define LZ4_HC_STATIC_LINKING_ONLY
+ #include "lz4hc.h"
+ #define XXH_STATIC_LINKING_ONLY
+-#include "xxhash.h"
++#include <xxhash.h>
+ 
+ 
+ /*-************************************

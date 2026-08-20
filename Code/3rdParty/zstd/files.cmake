@@ -1,0 +1,100 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+
+set(FILES
+    Include/zbuff.h
+    Include/zdict.h
+    Include/zstd.h
+    Include/zstd_errors.h
+    Source/common/allocations.h
+    Source/common/bits.h
+    Source/common/bitstream.h
+    Source/common/compiler.h
+    Source/common/cpu.h
+    Source/common/debug.c
+    Source/common/debug.h
+    Source/common/entropy_common.c
+    Source/common/error_private.c
+    Source/common/error_private.h
+    Source/common/fse.h
+    Source/common/fse_decompress.c
+    Source/common/huf.h
+    Source/common/mem.h
+    Source/common/pool.c
+    Source/common/pool.h
+    Source/common/portability_macros.h
+    Source/common/threading.c
+    Source/common/threading.h
+    Source/common/zstd_common.c
+    Source/common/zstd_deps.h
+    Source/common/zstd_internal.h
+    Source/common/zstd_trace.h
+    Source/compress/clevels.h
+    Source/compress/fse_compress.c
+    Source/compress/hist.c
+    Source/compress/hist.h
+    Source/compress/huf_compress.c
+    Source/compress/zstd_compress.c
+    Source/compress/zstd_compress_internal.h
+    Source/compress/zstd_compress_literals.c
+    Source/compress/zstd_compress_literals.h
+    Source/compress/zstd_compress_sequences.c
+    Source/compress/zstd_compress_sequences.h
+    Source/compress/zstd_compress_superblock.c
+    Source/compress/zstd_compress_superblock.h
+    Source/compress/zstd_cwksp.h
+    Source/compress/zstd_double_fast.c
+    Source/compress/zstd_double_fast.h
+    Source/compress/zstd_fast.c
+    Source/compress/zstd_fast.h
+    Source/compress/zstd_lazy.c
+    Source/compress/zstd_lazy.h
+    Source/compress/zstd_ldm.c
+    Source/compress/zstd_ldm.h
+    Source/compress/zstd_ldm_geartab.h
+    Source/compress/zstd_opt.c
+    Source/compress/zstd_opt.h
+    Source/compress/zstd_preSplit.c
+    Source/compress/zstd_preSplit.h
+    Source/compress/zstdmt_compress.c
+    Source/compress/zstdmt_compress.h
+    Source/decompress/huf_decompress.c
+    Source/decompress/zstd_ddict.c
+    Source/decompress/zstd_ddict.h
+    Source/decompress/zstd_decompress.c
+    Source/decompress/zstd_decompress_block.c
+    Source/decompress/zstd_decompress_block.h
+    Source/decompress/zstd_decompress_internal.h
+    Source/deprecated/zbuff.h
+    Source/deprecated/zbuff_common.c
+    Source/deprecated/zbuff_compress.c
+    Source/deprecated/zbuff_decompress.c
+    Source/dictBuilder/cover.c
+    Source/dictBuilder/cover.h
+    Source/dictBuilder/divsufsort.c
+    Source/dictBuilder/divsufsort.h
+    Source/dictBuilder/fastcover.c
+    Source/dictBuilder/zdict.c
+    Source/legacy/zstd_legacy.h
+    Source/legacy/zstd_v01.c
+    Source/legacy/zstd_v01.h
+    Source/legacy/zstd_v02.c
+    Source/legacy/zstd_v02.h
+    Source/legacy/zstd_v03.c
+    Source/legacy/zstd_v03.h
+    Source/legacy/zstd_v04.c
+    Source/legacy/zstd_v04.h
+    Source/legacy/zstd_v05.c
+    Source/legacy/zstd_v05.h
+    Source/legacy/zstd_v06.c
+    Source/legacy/zstd_v06.h
+    Source/legacy/zstd_v07.c
+    Source/legacy/zstd_v07.h
+    Source/zdict.h
+    Source/zstd.h
+    Source/zstd_errors.h
+)

@@ -1,0 +1,65 @@
+diff --git a/lib/common/zstd_internal.h b/lib/common/zstd_internal.h
+index 1f960f6..98f9d64 100644
+--- a/lib/common/zstd_internal.h
++++ b/lib/common/zstd_internal.h
+@@ -32,7 +32,7 @@
+ #ifndef XXH_STATIC_LINKING_ONLY
+ #  define XXH_STATIC_LINKING_ONLY  /* XXH64_state_t */
+ #endif
+-#include "xxhash.h"                /* XXH_reset, update, digest */
++#include <xxhash.h>                /* XXH_reset, update, digest */
+ #ifndef ZSTD_NO_TRACE
+ #  include "zstd_trace.h"
+ #else
+diff --git a/lib/dictBuilder/zdict.c b/lib/dictBuilder/zdict.c
+index 3ed60fd..f99a220 100644
+--- a/lib/dictBuilder/zdict.c
++++ b/lib/dictBuilder/zdict.c
+@@ -49,7 +49,7 @@
+ #include "../common/fse.h"           /* FSE_normalizeCount, FSE_writeNCount */
+ #include "../common/huf.h"           /* HUF_buildCTable, HUF_writeCTable */
+ #include "../common/zstd_internal.h" /* includes zstd.h */
+-#include "../common/xxhash.h"        /* XXH64 */
++#include <xxhash.h>                   /* XXH64 */
+ #include "../compress/zstd_compress_internal.h" /* ZSTD_loadCEntropy() */
+ #include "../zdict.h"
+ #include "divsufsort.h"
+diff --git a/lib/compress/zstd_ldm.c b/lib/compress/zstd_ldm.c
+index 6087d5b..9ef916b 100644
+--- a/lib/compress/zstd_ldm.c
++++ b/lib/compress/zstd_ldm.c
+@@ -11,7 +11,7 @@
+ #include "zstd_ldm.h"
+
+ #include "../common/debug.h"
+-#include "../common/xxhash.h"
++#include <xxhash.h>
+ #include "zstd_fast.h"          /* ZSTD_fillHashTable() */
+ #include "zstd_double_fast.h"   /* ZSTD_fillDoubleHashTable() */
+ #include "zstd_ldm_geartab.h"
+diff --git a/lib/decompress/zstd_decompress.c b/lib/decompress/zstd_decompress.c
+index 76ad0c8..ce905fb 100644
+--- a/lib/decompress/zstd_decompress.c
++++ b/lib/decompress/zstd_decompress.c
+@@ -64,7 +64,7 @@
+ #define FSE_STATIC_LINKING_ONLY
+ #include "../common/fse.h"
+ #include "../common/huf.h"
+-#include "../common/xxhash.h" /* XXH64_reset, XXH64_update, XXH64_digest, XXH64 */
++#include <xxhash.h> /* XXH64_reset, XXH64_update, XXH64_digest, XXH64 */
+ #include "zstd_decompress_internal.h"   /* ZSTD_DCtx */
+ #include "zstd_ddict.h"  /* ZSTD_DDictDictContent */
+ #include "zstd_decompress_block.h"   /* ZSTD_decompressBlock_internal */
+diff --git a/lib/legacy/zstd_v07.c b/lib/legacy/zstd_v07.c
+index ccd62a1..1a47948 100644
+--- a/lib/legacy/zstd_v07.c
++++ b/lib/legacy/zstd_v07.c
+@@ -17,7 +17,7 @@
+ #ifndef XXH_STATIC_LINKING_ONLY
+ #  define XXH_STATIC_LINKING_ONLY    /* XXH64_state_t */
+ #endif
+-#include "../common/xxhash.h"                  /* XXH64_* */
++#include <xxhash.h>                            /* XXH64_* */
+ #include "zstd_v07.h"
+
+ #define FSEv07_STATIC_LINKING_ONLY   /* FSEv07_MIN_TABLELOG */

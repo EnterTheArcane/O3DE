@@ -1,0 +1,6 @@
+{
+    "PackageName": "SQLite",
+    "URL": "https://www.sqlite.org/",
+    "License": "blessing",
+    "LicenseFile": "LICENSE.txt"
+}

@@ -1,0 +1,6 @@
+{
+    "PackageName": "cityhash",
+    "URL": "https://github.com/google/cityhash",
+    "License": "MIT",
+    "LicenseFile": "LICENSE.txt"
+}

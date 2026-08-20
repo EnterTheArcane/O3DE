@@ -1,0 +1,6 @@
+{
+    "PackageName": "lz4",
+    "URL": "https://github.com/lz4/lz4",
+    "License": "BSD-2-Clause",
+    "LicenseFile": "LICENSE.txt"
+}

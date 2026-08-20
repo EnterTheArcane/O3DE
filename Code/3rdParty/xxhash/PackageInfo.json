@@ -1,0 +1,6 @@
+{
+    "PackageName": "xxHash",
+    "URL": "https://github.com/Cyan4973/xxHash",
+    "License": "BSD-2-Clause",
+    "LicenseFile": "LICENSE.txt"
+}

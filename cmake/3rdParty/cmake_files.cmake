@@ -13,4 +13,5 @@ set(FILES
     FindPIX.cmake
     FindVkValidation.cmake
     FindWwise.cmake
+    FindZLIB.cmake
 )
