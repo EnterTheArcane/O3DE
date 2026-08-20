@@ -9,15 +9,19 @@
 #include <Jolt/SceneAsset.h>
 
 #include <AzTest/AzTest.h>
+#include <AzTest/Utils.h>
 
+#include <AzCore/IO/Path/Path.h>
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzCore/Jobs/JobCompletion.h>
 #include <AzCore/Jobs/JobContext.h>
+#include <AzCore/Jobs/JobEmpty.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManager.h>
 #include <AzCore/Jobs/JobManagerDesc.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/Name/NameDictionary.h>
+#include <AzCore/PlatformDef.h>
 #include <AzCore/Utils/TypeHash.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/containers/array.h>
@@ -25,6 +29,9 @@
 #include <AzCore/std/limits.h>
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/thread.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+
+#include <AzFramework/Process/ProcessWatcher.h>
 
 #include <cfenv>
 #include <chrono>
@@ -3882,6 +3889,351 @@ namespace Jolt
 
         EXPECT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, ExtensionHandle::Invalid));
         DestroySphereOnFloor(system, scene);
+    }
+
+    TEST(SimulationTests, AsyncOperationsOwnResultsAndSupportWorkerAwareWaits)
+    {
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(4);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        SystemConfiguration configuration = CreateSerialSystemConfiguration();
+        configuration.m_defaultWorld.m_autoSimulate = true;
+        configuration.m_defaultWorld.m_workerCount = 4;
+        Runtime system(configuration, &jobContext);
+        ASSERT_TRUE(system);
+
+        Operation<SimulationResult> invalidStepOperation = system.StepWorldAsync(
+            WorldHandle::Invalid,
+            1.0f / 60.0f);
+        ASSERT_TRUE(invalidStepOperation);
+        EXPECT_EQ(invalidStepOperation.Wait(), OperationStatus::Failed);
+        ASSERT_NE(invalidStepOperation.GetResult(), nullptr);
+        EXPECT_FALSE(static_cast<bool>(*invalidStepOperation.GetResult()));
+
+        Operation<CookedShapeHandle> cookingOperation = system.CookShapeAsync(ShapeConfiguration{
+            .m_geometry = SphereShapeConfiguration{.m_radius = 0.75f},
+        });
+        ASSERT_TRUE(cookingOperation);
+        EXPECT_EQ(cookingOperation.Wait(), OperationStatus::Succeeded);
+        const CookedShapeHandle* cookedShapeHandle = cookingOperation.GetResult();
+        ASSERT_NE(cookedShapeHandle, nullptr);
+        ASSERT_TRUE(*cookedShapeHandle);
+
+        const SphereOnFloor scene = CreateSphereOnFloor(system);
+        ASSERT_TRUE(scene.m_sphereBodyHandle);
+
+        Operation<SimulationResult> stepOperation = system.StepWorldAsync(scene.m_worldHandle, 1.0f / 60.0f);
+        ASSERT_TRUE(stepOperation);
+        EXPECT_EQ(stepOperation.Wait(), OperationStatus::Succeeded);
+        const SimulationResult* stepResult = stepOperation.GetResult();
+        ASSERT_NE(stepResult, nullptr);
+        EXPECT_EQ(stepResult->m_stepCount, 1);
+
+        constexpr size_t requestCount = 512;
+        AZStd::array<RaycastRequest, requestCount> requests;
+        for (size_t requestIndex = 0; requestIndex < requestCount; ++requestIndex)
+        {
+            requests[requestIndex].m_start = {.m_z = 5.0};
+            requests[requestIndex].m_displacement = -10.0f * AZ::Vector3::CreateAxisZ();
+        }
+        Operation<RaycastBatchOperationResult> raycastOperation = system.RaycastClosestBatchAsync(
+            scene.m_worldHandle,
+            requests);
+        ASSERT_TRUE(raycastOperation);
+        EXPECT_EQ(raycastOperation.Wait(), OperationStatus::Succeeded);
+        const RaycastBatchOperationResult* raycastResult = raycastOperation.GetResult();
+        ASSERT_NE(raycastResult, nullptr);
+        EXPECT_TRUE(raycastResult->GetBufferResult().IsComplete());
+        ASSERT_EQ(raycastResult->GetResults().size(), requestCount);
+        EXPECT_TRUE(AZStd::all_of(
+            raycastResult->GetResults().begin(),
+            raycastResult->GetResults().end(),
+            [](const ClosestRaycastResult& result)
+            {
+                return result.m_found;
+            }));
+        BlockingQueryFilter queryFilter;
+        requests[0].m_filter.m_callback = &queryFilter;
+        EXPECT_FALSE(system.RaycastClosestBatchAsync(scene.m_worldHandle, requests));
+        requests[0].m_filter.m_callback = nullptr;
+
+        Operation<StateSnapshotHandle> captureOperation = system.CaptureWorldStateAsync(scene.m_worldHandle);
+        ASSERT_TRUE(captureOperation);
+        EXPECT_EQ(captureOperation.Wait(), OperationStatus::Succeeded);
+        const StateSnapshotHandle* snapshotHandle = captureOperation.GetResult();
+        ASSERT_NE(snapshotHandle, nullptr);
+        ASSERT_TRUE(*snapshotHandle);
+
+        ASSERT_TRUE(system.SetBodyLinearVelocity(
+            scene.m_worldHandle,
+            scene.m_sphereBodyHandle,
+            AZ::Vector3(0.0f, 0.0f, 10.0f)));
+        ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+        Operation<StateRestoreResult> restoreOperation = system.RestoreWorldStateAsync(
+            scene.m_worldHandle,
+            *snapshotHandle);
+        ASSERT_TRUE(restoreOperation);
+        EXPECT_EQ(restoreOperation.Wait(), OperationStatus::Succeeded);
+        const StateRestoreResult* restoreResult = restoreOperation.GetResult();
+        ASSERT_NE(restoreResult, nullptr);
+        EXPECT_TRUE(static_cast<bool>(*restoreResult));
+
+        Operation<StateSnapshotHandle> bodyCaptureOperation = system.CaptureBodyStateAsync(
+            scene.m_worldHandle,
+            scene.m_sphereBodyHandle);
+        ASSERT_TRUE(bodyCaptureOperation);
+        EXPECT_EQ(bodyCaptureOperation.Wait(), OperationStatus::Succeeded);
+        const StateSnapshotHandle* bodySnapshotHandle = bodyCaptureOperation.GetResult();
+        ASSERT_NE(bodySnapshotHandle, nullptr);
+        ASSERT_TRUE(*bodySnapshotHandle);
+        ASSERT_TRUE(system.SetBodyLinearVelocity(
+            scene.m_worldHandle,
+            scene.m_sphereBodyHandle,
+            AZ::Vector3(0.0f, 0.0f, -5.0f)));
+        Operation<StateRestoreResult> bodyRestoreOperation = system.RestoreBodyStateAsync(
+            scene.m_worldHandle,
+            *bodySnapshotHandle);
+        ASSERT_TRUE(bodyRestoreOperation);
+        EXPECT_EQ(bodyRestoreOperation.Wait(), OperationStatus::Succeeded);
+        ASSERT_NE(bodyRestoreOperation.GetResult(), nullptr);
+        EXPECT_TRUE(static_cast<bool>(*bodyRestoreOperation.GetResult()));
+
+        SceneRigidBodyConfiguration sceneBody;
+        sceneBody.m_cookedShapeHandle = *cookedShapeHandle;
+        sceneBody.m_body.m_motionType = MotionType::Static;
+        sceneBody.m_body.m_objectLayer = DefaultLayers::NonMoving;
+        SceneConfiguration sceneConfiguration;
+        sceneConfiguration.m_bodies = {sceneBody};
+        const SceneDefinitionHandle definitionHandle = system.CreateSceneDefinition(sceneConfiguration);
+        ASSERT_TRUE(definitionHandle);
+        Operation<SceneInstanceHandle> instantiateOperation = system.InstantiateSceneAsync(
+            scene.m_worldHandle,
+            definitionHandle);
+        ASSERT_TRUE(instantiateOperation);
+        EXPECT_EQ(instantiateOperation.Wait(), OperationStatus::Succeeded);
+        const SceneInstanceHandle* instanceHandle = instantiateOperation.GetResult();
+        ASSERT_NE(instanceHandle, nullptr);
+        ASSERT_TRUE(*instanceHandle);
+
+        Operation<AutoSimulationOperationResult> automaticOperation = system.StepAutoSimulatedWorldsAsync(1.0f / 60.0f);
+        ASSERT_TRUE(automaticOperation);
+        EXPECT_EQ(automaticOperation.Wait(), OperationStatus::Succeeded);
+        const AutoSimulationOperationResult* automaticResult = automaticOperation.GetResult();
+        ASSERT_NE(automaticResult, nullptr);
+        EXPECT_EQ(automaticResult->GetSimulationResult().m_stepCount, 1);
+        ASSERT_EQ(automaticResult->GetEventBatches().size(), 1);
+        EXPECT_EQ(automaticResult->GetEventBatches()[0].m_worldHandle, scene.m_worldHandle);
+
+        EXPECT_TRUE(system.DestroySceneInstance(scene.m_worldHandle, *instanceHandle));
+        EXPECT_TRUE(system.DestroySceneDefinition(definitionHandle));
+        EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, *bodySnapshotHandle));
+        EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, *snapshotHandle));
+        DestroySphereOnFloor(system, scene);
+        EXPECT_TRUE(system.DestroyCookedShape(*cookedShapeHandle));
+    }
+
+    TEST(SimulationTests, DestroyingRunningOperationDoesNotWait)
+    {
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(2);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        SystemConfiguration configuration = CreateSerialSystemConfiguration();
+        configuration.m_defaultWorld.m_workerCount = 1;
+        Runtime system(configuration, &jobContext);
+        ASSERT_TRUE(system);
+
+        BlockingStepListener listener;
+        ScopedExtensionRegistration registration(system, &listener);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        ASSERT_TRUE(system.AddStepListener(worldHandle, registration.GetHandle()));
+
+        Operation<SimulationResult> operation = system.StepWorldAsync(worldHandle, 1.0f / 60.0f);
+        ASSERT_TRUE(operation);
+        ASSERT_TRUE(WaitUntil(
+            [&listener]
+            {
+                return listener.m_entered.load(AZStd::memory_order_acquire);
+            }));
+
+        AZStd::atomic_bool operationDestroyed{false};
+        AZStd::thread destroyThread(
+            [operation = AZStd::move(operation), &operationDestroyed]() mutable
+            {
+                operation.Reset();
+                operationDestroyed.store(true, AZStd::memory_order_release);
+            });
+        const bool destroyedWithoutWaiting = WaitUntil(
+            [&operationDestroyed]
+            {
+                return operationDestroyed.load(AZStd::memory_order_acquire);
+            });
+        listener.m_release.store(true, AZStd::memory_order_release);
+        destroyThread.join();
+
+        EXPECT_TRUE(destroyedWithoutWaiting);
+        EXPECT_TRUE(system.RemoveStepListener(worldHandle, registration.GetHandle()));
+    }
+
+    TEST(SimulationTests, QueuedOperationCanBeCanceledWithoutRunning)
+    {
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(1);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        Runtime system(CreateSerialSystemConfiguration(), &jobContext);
+        ASSERT_TRUE(system);
+
+        AZStd::atomic_bool blockerEntered{false};
+        AZStd::atomic_bool releaseBlocker{false};
+        AZ::JobEmpty blockerCompletion(false, &jobContext);
+        AZ::Job* blocker = AZ::CreateJobFunction(
+            [&blockerEntered, &releaseBlocker]
+            {
+                blockerEntered.store(true, AZStd::memory_order_release);
+                while (!releaseBlocker.load(AZStd::memory_order_acquire))
+                {
+                    AZStd::this_thread::yield();
+                }
+            },
+            true,
+            &jobContext);
+        blocker->SetDependent(&blockerCompletion);
+        blocker->Start();
+        ASSERT_TRUE(WaitUntil(
+            [&blockerEntered]
+            {
+                return blockerEntered.load(AZStd::memory_order_acquire);
+            }));
+
+        Operation<CookedShapeHandle> operation = system.CookShapeAsync(ShapeConfiguration{
+            .m_geometry = SphereShapeConfiguration{.m_radius = 0.5f},
+        });
+        ASSERT_TRUE(operation);
+        EXPECT_TRUE(operation.Cancel());
+        EXPECT_EQ(operation.GetStatus(), OperationStatus::Canceled);
+        releaseBlocker.store(true, AZStd::memory_order_release);
+        blockerCompletion.StartAndWaitForCompletion();
+        EXPECT_EQ(operation.Wait(), OperationStatus::Canceled);
+        EXPECT_EQ(operation.GetResult(), nullptr);
+    }
+
+    TEST(SimulationTests, CompletedOperationResultOutlivesRuntime)
+    {
+        Operation<CookedShapeHandle> operation;
+        CookedShapeHandle expectedHandle;
+        {
+            Runtime system(CreateSerialSystemConfiguration(), nullptr);
+            ASSERT_TRUE(system);
+            operation = system.CookShapeAsync(ShapeConfiguration{
+                .m_geometry = SphereShapeConfiguration{.m_radius = 0.5f},
+            });
+            ASSERT_TRUE(operation);
+            ASSERT_EQ(operation.Wait(), OperationStatus::Succeeded);
+            ASSERT_NE(operation.GetResult(), nullptr);
+            expectedHandle = *operation.GetResult();
+        }
+
+        EXPECT_EQ(operation.GetStatus(), OperationStatus::Succeeded);
+        ASSERT_NE(operation.GetResult(), nullptr);
+        EXPECT_EQ(*operation.GetResult(), expectedHandle);
+        operation.Reset();
+    }
+
+    TEST(SimulationTests, DISABLED_SaturatedWorkersCompleteNestedPhysicsWorkChild)
+    {
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(2);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        SystemConfiguration configuration = CreateSerialSystemConfiguration();
+        configuration.m_defaultWorld.m_workerCount = 2;
+        AZStd::array<AZStd::unique_ptr<Runtime>, 2> systems;
+        AZStd::array<SphereOnFloor, 2> scenes;
+        for (size_t systemIndex = 0; systemIndex < systems.size(); ++systemIndex)
+        {
+            systems[systemIndex] = AZStd::make_unique<Runtime>(
+                configuration,
+                &jobContext,
+                SystemRegistration::Isolated);
+            ASSERT_TRUE(*systems[systemIndex]);
+            scenes[systemIndex] = CreateSphereOnFloor(*systems[systemIndex]);
+            ASSERT_TRUE(scenes[systemIndex].m_sphereBodyHandle);
+        }
+
+        AZStd::atomic_uint32_t enteredParentCount{0};
+        AZStd::atomic_uint32_t successfulStepCount{0};
+        AZ::JobEmpty completion(false, &jobContext);
+        for (size_t systemIndex = 0; systemIndex < systems.size(); ++systemIndex)
+        {
+            AZ::Job* parent = AZ::CreateJobFunction(
+                [&systems, &scenes, &enteredParentCount, &successfulStepCount, systemIndex]
+                {
+                    enteredParentCount.fetch_add(1, AZStd::memory_order_acq_rel);
+                    while (enteredParentCount.load(AZStd::memory_order_acquire) != systems.size())
+                    {
+                        AZStd::this_thread::yield();
+                    }
+                    if (systems[systemIndex]->StepWorld(scenes[systemIndex].m_worldHandle, 1.0f / 60.0f))
+                    {
+                        successfulStepCount.fetch_add(1, AZStd::memory_order_release);
+                    }
+                },
+                true,
+                &jobContext);
+            parent->SetDependent(&completion);
+            parent->Start();
+        }
+        completion.StartAndWaitForCompletion();
+
+        EXPECT_EQ(successfulStepCount.load(AZStd::memory_order_acquire), systems.size());
+        for (size_t systemIndex = 0; systemIndex < systems.size(); ++systemIndex)
+        {
+            DestroySphereOnFloor(*systems[systemIndex], scenes[systemIndex]);
+        }
+    }
+
+    TEST(SimulationTests, SaturatedWorkerSchedulingCompletesBeforeWatchdog)
+    {
+        const AZ::IO::Path executableDirectory(AZ::Test::GetCurrentExecutablePath());
+        const AZ::IO::Path runnerPath =
+            executableDirectory / ("AzTestRunner" AZ_TRAIT_OS_EXECUTABLE_EXTENSION);
+        const AZ::IO::Path modulePath = executableDirectory /
+            (AZ_DYNAMIC_LIBRARY_PREFIX "Jolt.Tests.Gem" AZ_DYNAMIC_LIBRARY_EXTENSION);
+
+        AzFramework::ProcessLauncher::ProcessLaunchInfo launchInformation;
+        launchInformation.m_processExecutableString = runnerPath.Native();
+        launchInformation.m_commandlineParameters = AZStd::vector<AZStd::string>{
+            runnerPath.Native(),
+            modulePath.Native(),
+            "AzRunUnitTests",
+            "--gtest_filter=SimulationTests.DISABLED_SaturatedWorkersCompleteNestedPhysicsWorkChild",
+            "--gtest_also_run_disabled_tests",
+        };
+        launchInformation.m_workingDirectory = executableDirectory.Native();
+        launchInformation.m_showWindow = false;
+        AZStd::unique_ptr<AzFramework::ProcessWatcher> watcher(
+            AzFramework::ProcessWatcher::LaunchProcess(
+                launchInformation,
+                AzFramework::ProcessCommunicationType::COMMUNICATOR_TYPE_NONE));
+        ASSERT_TRUE(watcher);
+
+        AZ::u32 exitCode = 1;
+        const bool completed = watcher->WaitForProcessToExit(10, &exitCode);
+        if (!completed)
+        {
+            watcher->TerminateProcess(1);
+        }
+        EXPECT_TRUE(completed);
+        if (completed)
+        {
+            EXPECT_EQ(exitCode, 0);
+        }
     }
 
     TEST(SimulationTests, ExtensionRegistryTracksIdentityKindDependenciesAndStaleHandles)

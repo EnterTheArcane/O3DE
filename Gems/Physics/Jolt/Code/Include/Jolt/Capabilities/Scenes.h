@@ -8,6 +8,7 @@
 #pragma once
 
 #include <Jolt/Configuration.h>
+#include <Jolt/Operation.h>
 #include <Jolt/Query.h>
 #include <Jolt/Scene.h>
 #include <AzCore/std/parallel/atomic.h>
@@ -47,6 +48,11 @@ namespace Jolt
 
         [[nodiscard]]
         SceneInstanceHandle InstantiateScene(
+            WorldHandle worldHandle,
+            SceneDefinitionHandle definitionHandle);
+
+        [[nodiscard]]
+        Operation<SceneInstanceHandle> InstantiateSceneAsync(
             WorldHandle worldHandle,
             SceneDefinitionHandle definitionHandle);
 

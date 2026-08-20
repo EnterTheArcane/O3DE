@@ -235,14 +235,29 @@ namespace Jolt
         return GetRuntimeImplementation(*this).CookShape(configuration);
     }
 
+    Operation<CookedShapeHandle> Cooking::CookShapeAsync(const ShapeConfiguration& configuration)
+    {
+        return GetRuntimeImplementation(*this).CookShapeAsync(configuration);
+    }
+
     CookedShapeHandle Cooking::CookShape(const CookedCompoundShapeConfiguration& configuration)
     {
         return GetRuntimeImplementation(*this).CookShape(configuration);
     }
 
+    Operation<CookedShapeHandle> Cooking::CookShapeAsync(const CookedCompoundShapeConfiguration& configuration)
+    {
+        return GetRuntimeImplementation(*this).CookShapeAsync(configuration);
+    }
+
     CookedShapeHandle Cooking::CookShape(const CookedDecoratedShapeConfiguration& configuration)
     {
         return GetRuntimeImplementation(*this).CookShape(configuration);
+    }
+
+    Operation<CookedShapeHandle> Cooking::CookShapeAsync(const CookedDecoratedShapeConfiguration& configuration)
+    {
+        return GetRuntimeImplementation(*this).CookShapeAsync(configuration);
     }
 
     bool Cooking::ExportShape(
@@ -785,6 +800,13 @@ namespace Jolt
         return GetRuntimeImplementation(*this).InstantiateScene(worldHandle, definitionHandle);
     }
 
+    Operation<SceneInstanceHandle> Scenes::InstantiateSceneAsync(
+        WorldHandle worldHandle,
+        SceneDefinitionHandle definitionHandle)
+    {
+        return GetRuntimeImplementation(*this).InstantiateSceneAsync(worldHandle, definitionHandle);
+    }
+
     bool Scenes::DestroySceneInstance(
         WorldHandle worldHandle,
         SceneInstanceHandle instanceHandle)
@@ -918,6 +940,13 @@ namespace Jolt
         return GetRuntimeImplementation(*this).StepWorldDetailed(worldHandle, fixedTimeStep);
     }
 
+    Operation<SimulationResult> WorldSimulation::StepWorldAsync(
+        WorldHandle worldHandle,
+        float fixedTimeStep)
+    {
+        return GetRuntimeImplementation(*this).StepWorldAsync(worldHandle, fixedTimeStep);
+    }
+
     bool WorldSimulation::StepAutoSimulatedWorlds(float elapsedTime)
     {
         return GetRuntimeImplementation(*this).StepAutoSimulatedWorlds(elapsedTime);
@@ -926,6 +955,11 @@ namespace Jolt
     SimulationResult WorldSimulation::StepAutoSimulatedWorldsDetailed(float elapsedTime)
     {
         return GetRuntimeImplementation(*this).StepAutoSimulatedWorldsDetailed(elapsedTime);
+    }
+
+    Operation<AutoSimulationOperationResult> WorldSimulation::StepAutoSimulatedWorldsAsync(float elapsedTime)
+    {
+        return GetRuntimeImplementation(*this).StepAutoSimulatedWorldsAsync(elapsedTime);
     }
 
     SimulationResult WorldSimulation::StepAutoSimulatedWorldsDetailed(
@@ -1200,6 +1234,13 @@ namespace Jolt
         AZStd::span<ClosestRaycastResult> results) const
     {
         return GetRuntimeImplementation(*this).RaycastClosestBatch(worldHandle, requests, results);
+    }
+
+    Operation<RaycastBatchOperationResult> WorldQueries::RaycastClosestBatchAsync(
+        WorldHandle worldHandle,
+        AZStd::span<const RaycastRequest> requests) const
+    {
+        return GetRuntimeImplementation(*this).RaycastClosestBatchAsync(worldHandle, requests);
     }
 
     QueryResult WorldQueries::RaycastClosestPerBody(
@@ -4266,6 +4307,13 @@ namespace Jolt
         return GetRuntimeImplementation(*this).CaptureBodyState(worldHandle, bodyHandle);
     }
 
+    Operation<StateSnapshotHandle> Rollback::CaptureBodyStateAsync(
+        WorldHandle worldHandle,
+        BodyHandle bodyHandle)
+    {
+        return GetRuntimeImplementation(*this).CaptureBodyStateAsync(worldHandle, bodyHandle);
+    }
+
     bool Rollback::CaptureBodyState(
         WorldHandle worldHandle,
         BodyHandle bodyHandle,
@@ -4281,9 +4329,21 @@ namespace Jolt
         return GetRuntimeImplementation(*this).RestoreBodyState(worldHandle, snapshotHandle);
     }
 
+    Operation<StateRestoreResult> Rollback::RestoreBodyStateAsync(
+        WorldHandle worldHandle,
+        StateSnapshotHandle snapshotHandle)
+    {
+        return GetRuntimeImplementation(*this).RestoreBodyStateAsync(worldHandle, snapshotHandle);
+    }
+
     StateSnapshotHandle Rollback::CaptureWorldState(WorldHandle worldHandle)
     {
         return GetRuntimeImplementation(*this).CaptureWorldState(worldHandle);
+    }
+
+    Operation<StateSnapshotHandle> Rollback::CaptureWorldStateAsync(WorldHandle worldHandle)
+    {
+        return GetRuntimeImplementation(*this).CaptureWorldStateAsync(worldHandle);
     }
 
     bool Rollback::CaptureWorldState(
@@ -4355,6 +4415,13 @@ namespace Jolt
         StateSnapshotHandle snapshotHandle)
     {
         return GetRuntimeImplementation(*this).RestoreWorldState(worldHandle, snapshotHandle);
+    }
+
+    Operation<StateRestoreResult> Rollback::RestoreWorldStateAsync(
+        WorldHandle worldHandle,
+        StateSnapshotHandle snapshotHandle)
+    {
+        return GetRuntimeImplementation(*this).RestoreWorldStateAsync(worldHandle, snapshotHandle);
     }
 
     StateRestoreResult Rollback::RestoreWorldStateParts(

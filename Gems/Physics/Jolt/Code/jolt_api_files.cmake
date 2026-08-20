@@ -51,6 +51,7 @@ set(FILES
     Include/Jolt/HairComponentConfiguration.h
     Include/Jolt/Handle.h
     Include/Jolt/Material.h
+    Include/Jolt/Operation.h
     Include/Jolt/Path.h
     Include/Jolt/PathBus.h
     Include/Jolt/Query.h

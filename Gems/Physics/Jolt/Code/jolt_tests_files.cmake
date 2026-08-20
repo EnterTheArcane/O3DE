@@ -56,6 +56,7 @@ set(FILES
     Tests/Headers/HairComponentConfiguration.cpp
     Tests/Headers/Handle.cpp
     Tests/Headers/Material.cpp
+    Tests/Headers/Operation.cpp
     Tests/Headers/Path.cpp
     Tests/Headers/PathBus.cpp
     Tests/Headers/Query.cpp
@@ -140,6 +141,7 @@ set(SKIP_UNITY_BUILD_INCLUSION_FILES
     Tests/Headers/HairComponentConfiguration.cpp
     Tests/Headers/Handle.cpp
     Tests/Headers/Material.cpp
+    Tests/Headers/Operation.cpp
     Tests/Headers/Path.cpp
     Tests/Headers/PathBus.cpp
     Tests/Headers/Query.cpp

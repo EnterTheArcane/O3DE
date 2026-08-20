@@ -12,7 +12,7 @@
 
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Debug/Trace.h>
-#include <AzCore/Jobs/JobCompletion.h>
+#include <AzCore/Jobs/JobEmpty.h>
 #include <AzCore/std/algorithm.h>
 
 #include <Jolt/Compute/CPU/ComputeBufferCPU.h>
@@ -205,8 +205,7 @@ namespace Jolt
         }
         else
         {
-            AZ::JobCompletion completion(m_jobContext);
-            completion.Reset(true);
+            AZ::JobEmpty completion(false, m_jobContext);
             const size_t backgroundJobCount = partitionCount - 1;
             while (m_dispatchJobs.size() < backgroundJobCount)
             {

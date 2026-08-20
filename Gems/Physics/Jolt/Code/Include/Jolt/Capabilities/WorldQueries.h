@@ -8,13 +8,48 @@
 #pragma once
 
 #include <Jolt/Configuration.h>
+#include <Jolt/Operation.h>
 #include <Jolt/Query.h>
 #include <Jolt/WorldTypes.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
     class Runtime;
+
+    class RaycastBatchOperationResult final
+    {
+    public:
+        [[nodiscard]]
+        const BufferResult& GetBufferResult() const
+        {
+            return m_bufferResult;
+        }
+
+        [[nodiscard]]
+        AZStd::span<const ClosestRaycastResult> GetResults() const &
+        {
+            return m_results;
+        }
+
+        AZStd::span<const ClosestRaycastResult> GetResults() const && = delete;
+
+    private:
+        friend class RuntimeImplementation;
+
+        template<class Result, class Work>
+        friend class Internal::TypedOperationRecord;
+
+        void Reset()
+        {
+            m_bufferResult = {};
+            m_results.clear();
+        }
+
+        BufferResult m_bufferResult;
+        AZStd::vector<ClosestRaycastResult> m_results;
+    };
 
     class JOLT_API WorldQueries
     {
@@ -186,6 +221,12 @@ namespace Jolt
             WorldHandle worldHandle,
             AZStd::span<const RaycastRequest> requests,
             AZStd::span<ClosestRaycastResult> results) const;
+
+        //! Query callbacks are rejected because their lifetime cannot be retained by an asynchronous operation.
+        [[nodiscard]]
+        Operation<RaycastBatchOperationResult> RaycastClosestBatchAsync(
+            WorldHandle worldHandle,
+            AZStd::span<const RaycastRequest> requests) const;
 
         [[nodiscard]]
         QueryResult RaycastClosestPerBody(

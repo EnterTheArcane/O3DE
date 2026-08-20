@@ -70,11 +70,6 @@ namespace Jolt
             AZ::u64 queueLatencyNanoseconds = 0;
             {
                 AZStd::unique_lock lock(m_jobSystem.m_taskMutex);
-                while (m_jobSystem.m_queuedJobCount == 0
-                    && !m_jobSystem.m_stopTasks)
-                {
-                    m_jobSystem.m_taskCondition.wait(lock);
-                }
                 if (m_jobSystem.m_queuedJobCount == 0)
                 {
                     AZ_Assert(
@@ -83,7 +78,9 @@ namespace Jolt
                     --m_jobSystem.m_activeTaskCount;
                     if (m_jobSystem.m_activeTaskCount == 0)
                     {
-                        m_jobSystem.m_taskCondition.notify_all();
+                        AZ_Assert(
+                            m_jobSystem.m_queueReadIndex == m_jobSystem.m_queueWriteIndex,
+                            "The Jolt task queue indices are inconsistent.");
                     }
                     return;
                 }
@@ -138,6 +135,7 @@ namespace Jolt
         m_queuedJobs.resize(maximumJobCount);
         if (m_jobContext)
         {
+            m_taskCompletion.emplace(false, jobContext);
             const AZ::u32 availableWorkerCount = m_jobContext->GetJobManager().GetNumWorkerThreads() + 1;
             m_workerCount = AZStd::min(
                 AZStd::max(workerCount, AZ::u32{1}),
@@ -147,13 +145,8 @@ namespace Jolt
 
     JobSystem::~JobSystem()
     {
-        AZStd::unique_lock lock(m_taskMutex);
-        m_stopTasks = true;
-        m_taskCondition.notify_all();
-        while (m_activeTaskCount > 0)
-        {
-            m_taskCondition.wait(lock);
-        }
+        AZStd::lock_guard lock(m_taskMutex);
+        AZ_Assert(m_activeTaskCount == 0, "Jolt tasks remain active during job-system destruction.");
         AZ_Assert(m_queuedJobCount == 0, "The Jolt job queue was not drained before destruction.");
     }
 
@@ -185,15 +178,14 @@ namespace Jolt
         Barrier* barrier)
     {
         JobSystemWithBarrier::WaitForJobs(barrier);
-
-        AZStd::unique_lock lock(m_taskMutex);
-        m_stopTasks = true;
-        m_taskCondition.notify_all();
-        while (m_activeTaskCount > 0)
+        if (m_taskCompletion)
         {
-            m_taskCondition.wait(lock);
+            m_taskCompletion->StartAndWaitForCompletion();
+            m_taskCompletion->Reset(true);
         }
-        m_stopTasks = false;
+        AZStd::lock_guard lock(m_taskMutex);
+        AZ_Assert(m_activeTaskCount == 0, "The Jolt task join completed with active tasks remaining.");
+        AZ_Assert(m_queuedJobCount == 0, "The Jolt task join completed with queued jobs remaining.");
     }
 
     JPH::JobHandle JobSystem::CreateJob(
@@ -243,7 +235,6 @@ namespace Jolt
         AZ::u32 taskCount = 0;
         {
             AZStd::lock_guard lock(m_taskMutex);
-            AZ_Assert(!m_stopTasks, "Jolt jobs cannot be queued while the barrier is shutting down.");
             for (JPH::uint jobIndex = 0; jobIndex < jobCount; ++jobIndex)
             {
                 AZ_Assert(
@@ -280,10 +271,12 @@ namespace Jolt
             }
         }
 
-        m_taskCondition.notify_all();
+        AZ_Assert(taskCount == 0 || m_taskCompletion, "Parallel Jolt tasks require a job completion context.");
         for (AZ::u32 taskIndex = 0; taskIndex < taskCount; ++taskIndex)
         {
-            (aznew Task(*this, m_jobContext))->Start();
+            Task* task = aznew Task(*this, m_jobContext);
+            task->SetDependent(&*m_taskCompletion);
+            task->Start();
         }
     }
 

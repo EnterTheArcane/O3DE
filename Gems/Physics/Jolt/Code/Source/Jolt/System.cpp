@@ -15,6 +15,7 @@
 #include <Jolt/FloatEnvironment.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/NativeShapeFactory.h>
+#include <Jolt/OperationInternal.h>
 #include <Jolt/Profiler.h>
 
 #include <Jolt/Internal/HandleEncoding.h>
@@ -22,7 +23,7 @@
 
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Interface/Interface.h>
-#include <AzCore/Jobs/JobCompletion.h>
+#include <AzCore/Jobs/JobEmpty.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/Utils/TypeHash.h>
@@ -605,6 +606,7 @@ namespace Jolt
             return;
         }
 
+        m_operationPool = Internal::OperationPool::Create(m_jobContext);
         m_debugRenderer = AZStd::make_unique<DebugRenderer>();
         m_dependencyManager = AZStd::make_unique<ComponentDependencyManager>();
         if (m_configuration.m_createDefaultWorld)
@@ -619,7 +621,15 @@ namespace Jolt
         m_initialized = true;
     }
 
-    RuntimeImplementation::~RuntimeImplementation() = default;
+    RuntimeImplementation::~RuntimeImplementation()
+    {
+        if (m_operationPool)
+        {
+            m_operationPool->Drain();
+            m_operationPool->Shutdown();
+            m_operationPool = nullptr;
+        }
+    }
 
     Runtime::Runtime(
         SystemConfiguration configuration,
@@ -1779,6 +1789,113 @@ namespace Jolt
             ReleaseCookedShape(childHandle);
         }
         return cookedShapeHandle;
+    }
+
+    Operation<CookedShapeHandle> RuntimeImplementation::CookShapeAsync(
+        const ShapeConfiguration& configuration)
+    {
+        if (!m_operationPool)
+        {
+            return {};
+        }
+
+        struct Work final
+        {
+            RuntimeImplementation* m_runtime = nullptr;
+            ShapeConfiguration m_configuration;
+        };
+
+        return m_operationPool->CreateOperation<CookedShapeHandle>(
+            Work{
+                .m_runtime = this,
+                .m_configuration = configuration,
+            },
+            [](Work& work, CookedShapeHandle& result)
+            {
+                result = work.m_runtime->CookShape(work.m_configuration);
+                return static_cast<bool>(result);
+            });
+    }
+
+    Operation<CookedShapeHandle> RuntimeImplementation::CookShapeAsync(
+        const CookedCompoundShapeConfiguration& configuration)
+    {
+        if (!m_operationPool)
+        {
+            return {};
+        }
+
+        struct Work final
+        {
+            RuntimeImplementation* m_runtime = nullptr;
+            CookedCompoundShapeConfiguration m_configuration;
+        };
+
+        return m_operationPool->CreateOperation<CookedShapeHandle>(
+            Work{
+                .m_runtime = this,
+                .m_configuration = configuration,
+            },
+            [](Work& work, CookedShapeHandle& result)
+            {
+                result = work.m_runtime->CookShape(work.m_configuration);
+                return static_cast<bool>(result);
+            });
+    }
+
+    Operation<CookedShapeHandle> RuntimeImplementation::CookShapeAsync(
+        const CookedDecoratedShapeConfiguration& configuration)
+    {
+        if (!m_operationPool)
+        {
+            return {};
+        }
+
+        struct Work final
+        {
+            RuntimeImplementation* m_runtime = nullptr;
+            CookedDecoratedShapeConfiguration m_configuration;
+        };
+
+        return m_operationPool->CreateOperation<CookedShapeHandle>(
+            Work{
+                .m_runtime = this,
+                .m_configuration = configuration,
+            },
+            [](Work& work, CookedShapeHandle& result)
+            {
+                result = work.m_runtime->CookShape(work.m_configuration);
+                return static_cast<bool>(result);
+            });
+    }
+
+    Operation<SceneInstanceHandle> RuntimeImplementation::InstantiateSceneAsync(
+        const WorldHandle worldHandle,
+        const SceneDefinitionHandle definitionHandle)
+    {
+        if (!m_operationPool)
+        {
+            return {};
+        }
+
+        struct Work final
+        {
+            RuntimeImplementation* m_runtime = nullptr;
+            WorldHandle m_worldHandle;
+            SceneDefinitionHandle m_definitionHandle;
+        };
+
+        return m_operationPool->CreateOperation<SceneInstanceHandle>(
+            Work{
+                .m_runtime = this,
+                .m_worldHandle = worldHandle,
+                .m_definitionHandle = definitionHandle,
+            },
+            [](Work& work, SceneInstanceHandle& result)
+            {
+                result = work.m_runtime->InstantiateScene(work.m_worldHandle, work.m_definitionHandle);
+                return static_cast<bool>(result);
+            });
     }
 
     bool RuntimeImplementation::ExportSkeletonDefinition(
@@ -4793,6 +4910,35 @@ namespace Jolt
         return world->StepDetailed(fixedTimeStep, nullptr);
     }
 
+    Operation<SimulationResult> RuntimeImplementation::StepWorldAsync(
+        const WorldHandle worldHandle,
+        const float fixedTimeStep)
+    {
+        if (!m_operationPool)
+        {
+            return {};
+        }
+
+        struct Work final
+        {
+            RuntimeImplementation* m_runtime = nullptr;
+            WorldHandle m_worldHandle;
+            float m_fixedTimeStep = 0.0f;
+        };
+
+        return m_operationPool->CreateOperation<SimulationResult>(
+            Work{
+                .m_runtime = this,
+                .m_worldHandle = worldHandle,
+                .m_fixedTimeStep = fixedTimeStep,
+            },
+            [](Work& work, SimulationResult& result)
+            {
+                result = work.m_runtime->StepWorldDetailed(work.m_worldHandle, work.m_fixedTimeStep);
+                return static_cast<bool>(result);
+            });
+    }
+
     bool RuntimeImplementation::StepAutoSimulatedWorlds(
         const float elapsedTime)
     {
@@ -4803,6 +4949,35 @@ namespace Jolt
         const float elapsedTime)
     {
         return StepAutoSimulatedWorldsDetailedInternal(elapsedTime, {}, nullptr);
+    }
+
+    Operation<AutoSimulationOperationResult> RuntimeImplementation::StepAutoSimulatedWorldsAsync(
+        const float elapsedTime)
+    {
+        if (!m_operationPool)
+        {
+            return {};
+        }
+
+        struct Work final
+        {
+            RuntimeImplementation* m_runtime = nullptr;
+            float m_elapsedTime = 0.0f;
+        };
+
+        return m_operationPool->CreateOperation<AutoSimulationOperationResult>(
+            Work{
+                .m_runtime = this,
+                .m_elapsedTime = elapsedTime,
+            },
+            [](Work& work, AutoSimulationOperationResult& result)
+            {
+                result.m_simulationResult = work.m_runtime->StepAutoSimulatedWorldsDetailed(
+                    work.m_elapsedTime,
+                    result.m_eventBatches,
+                    result.m_eventBatchCount);
+                return static_cast<bool>(result.m_simulationResult);
+            });
     }
 
     SimulationResult RuntimeImplementation::StepAutoSimulatedWorldsDetailed(
@@ -4856,8 +5031,7 @@ namespace Jolt
 
         if (canStepConcurrently)
         {
-            AZ::JobCompletion completion(m_jobContext);
-            completion.Reset(true);
+            AZ::JobEmpty completion(false, m_jobContext);
             AZStd::fixed_vector<AZ::Job*, Internal::MaximumWorldCount - 1> jobs;
             for (size_t worldIndex = 1; worldIndex < worlds.size(); ++worldIndex)
             {
@@ -8158,6 +8332,35 @@ namespace Jolt
         return {};
     }
 
+    Operation<StateSnapshotHandle> RuntimeImplementation::CaptureBodyStateAsync(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle)
+    {
+        if (!m_operationPool)
+        {
+            return {};
+        }
+
+        struct Work final
+        {
+            RuntimeImplementation* m_runtime = nullptr;
+            WorldHandle m_worldHandle;
+            BodyHandle m_bodyHandle;
+        };
+
+        return m_operationPool->CreateOperation<StateSnapshotHandle>(
+            Work{
+                .m_runtime = this,
+                .m_worldHandle = worldHandle,
+                .m_bodyHandle = bodyHandle,
+            },
+            [](Work& work, StateSnapshotHandle& result)
+            {
+                result = work.m_runtime->CaptureBodyState(work.m_worldHandle, work.m_bodyHandle);
+                return static_cast<bool>(result);
+            });
+    }
+
     bool RuntimeImplementation::CaptureBodyState(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
@@ -8181,6 +8384,35 @@ namespace Jolt
         return world->RestoreBodyState(snapshotHandle);
     }
 
+    Operation<StateRestoreResult> RuntimeImplementation::RestoreBodyStateAsync(
+        const WorldHandle worldHandle,
+        const StateSnapshotHandle snapshotHandle)
+    {
+        if (!m_operationPool)
+        {
+            return {};
+        }
+
+        struct Work final
+        {
+            RuntimeImplementation* m_runtime = nullptr;
+            WorldHandle m_worldHandle;
+            StateSnapshotHandle m_snapshotHandle;
+        };
+
+        return m_operationPool->CreateOperation<StateRestoreResult>(
+            Work{
+                .m_runtime = this,
+                .m_worldHandle = worldHandle,
+                .m_snapshotHandle = snapshotHandle,
+            },
+            [](Work& work, StateRestoreResult& result)
+            {
+                result = work.m_runtime->RestoreBodyState(work.m_worldHandle, work.m_snapshotHandle);
+                return static_cast<bool>(result);
+            });
+    }
+
     StateSnapshotHandle RuntimeImplementation::CaptureWorldState(
         const WorldHandle worldHandle)
     {
@@ -8191,6 +8423,32 @@ namespace Jolt
             return world->CaptureState();
         }
         return {};
+    }
+
+    Operation<StateSnapshotHandle> RuntimeImplementation::CaptureWorldStateAsync(
+        const WorldHandle worldHandle)
+    {
+        if (!m_operationPool)
+        {
+            return {};
+        }
+
+        struct Work final
+        {
+            RuntimeImplementation* m_runtime = nullptr;
+            WorldHandle m_worldHandle;
+        };
+
+        return m_operationPool->CreateOperation<StateSnapshotHandle>(
+            Work{
+                .m_runtime = this,
+                .m_worldHandle = worldHandle,
+            },
+            [](Work& work, StateSnapshotHandle& result)
+            {
+                result = work.m_runtime->CaptureWorldState(work.m_worldHandle);
+                return static_cast<bool>(result);
+            });
     }
 
     bool RuntimeImplementation::CaptureWorldState(
@@ -8298,6 +8556,35 @@ namespace Jolt
             return {.m_status = StateRestoreStatus::Rejected};
         }
         return world->RestoreState(snapshotHandle);
+    }
+
+    Operation<StateRestoreResult> RuntimeImplementation::RestoreWorldStateAsync(
+        const WorldHandle worldHandle,
+        const StateSnapshotHandle snapshotHandle)
+    {
+        if (!m_operationPool)
+        {
+            return {};
+        }
+
+        struct Work final
+        {
+            RuntimeImplementation* m_runtime = nullptr;
+            WorldHandle m_worldHandle;
+            StateSnapshotHandle m_snapshotHandle;
+        };
+
+        return m_operationPool->CreateOperation<StateRestoreResult>(
+            Work{
+                .m_runtime = this,
+                .m_worldHandle = worldHandle,
+                .m_snapshotHandle = snapshotHandle,
+            },
+            [](Work& work, StateRestoreResult& result)
+            {
+                result = work.m_runtime->RestoreWorldState(work.m_worldHandle, work.m_snapshotHandle);
+                return static_cast<bool>(result);
+            });
     }
 
     StateRestoreResult RuntimeImplementation::RestoreWorldStateParts(
@@ -9812,6 +10099,47 @@ namespace Jolt
         }
 
         return world->RaycastClosestBatch(requests, results);
+    }
+
+    Operation<RaycastBatchOperationResult> RuntimeImplementation::RaycastClosestBatchAsync(
+        const WorldHandle worldHandle,
+        const AZStd::span<const RaycastRequest> requests) const
+    {
+        if (!m_operationPool
+            || AZStd::any_of(
+                requests.begin(),
+                requests.end(),
+                [](const RaycastRequest& request)
+                {
+                    return request.m_filter.m_callback;
+                }))
+        {
+            return {};
+        }
+
+        struct Work final
+        {
+            const RuntimeImplementation* m_runtime = nullptr;
+            WorldHandle m_worldHandle;
+            AZStd::vector<RaycastRequest> m_requests;
+        };
+
+        Work work{
+            .m_runtime = this,
+            .m_worldHandle = worldHandle,
+        };
+        work.m_requests.assign(requests.begin(), requests.end());
+        return m_operationPool->CreateOperation<RaycastBatchOperationResult>(
+            AZStd::move(work),
+            [](Work& operationWork, RaycastBatchOperationResult& result)
+            {
+                result.m_results.resize(operationWork.m_requests.size());
+                result.m_bufferResult = operationWork.m_runtime->RaycastClosestBatch(
+                    operationWork.m_worldHandle,
+                    operationWork.m_requests,
+                    result.m_results);
+                return result.m_bufferResult.m_requiredCount == operationWork.m_requests.size();
+            });
     }
 
     bool RuntimeImplementation::RaycastAny(

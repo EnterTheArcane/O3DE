@@ -24,6 +24,11 @@ configuration wins over legacy language-version examples.
   identifier, and publish only after the provider reports success. A later invalid result must not leak an earlier valid result.
 - Keep the native Jolt allocator, job system, tracing, profiling, and assertion boundaries integrated with existing AzCore facilities.
   Do not invent parallel infrastructure.
+- Keep immediate, caller-buffer operations synchronous when they are the lowest-overhead contract. Long or composable work may return a
+  move-only `Operation<Result>` whose immutable result storage is owned by the provider. Explicit waits must use worker-aware assistance;
+  destroying a token requests queued cancellation but never waits for running work.
+- Publish event data through immutable retained `EventBatch` generations. A span may view an owned batch, but it must never outlive or
+  escape the object that pins its storage. Do not hold provider or world locks while waiting, dispatching callbacks, or unloading code.
 
 ## Naming and readability
 

@@ -11,6 +11,7 @@
 
 #include <Jolt/CustomShape.h>
 #include <Jolt/Handle.h>
+#include <Jolt/Operation.h>
 #include <Jolt/Query.h>
 #include <Jolt/Shape.h>
 #include <Jolt/ShapeConfiguration.h>
@@ -132,10 +133,19 @@ namespace Jolt
         CookedShapeHandle CookShape(const ShapeConfiguration& configuration);
 
         [[nodiscard]]
+        Operation<CookedShapeHandle> CookShapeAsync(const ShapeConfiguration& configuration);
+
+        [[nodiscard]]
         CookedShapeHandle CookShape(const CookedCompoundShapeConfiguration& configuration);
 
         [[nodiscard]]
+        Operation<CookedShapeHandle> CookShapeAsync(const CookedCompoundShapeConfiguration& configuration);
+
+        [[nodiscard]]
         CookedShapeHandle CookShape(const CookedDecoratedShapeConfiguration& configuration);
+
+        [[nodiscard]]
+        Operation<CookedShapeHandle> CookShapeAsync(const CookedDecoratedShapeConfiguration& configuration);
 
         [[nodiscard]]
         bool ExportShape(

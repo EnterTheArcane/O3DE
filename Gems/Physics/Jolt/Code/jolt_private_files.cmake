@@ -59,6 +59,8 @@ set(FILES
     Source/Jolt/NativeProfiler.cpp
     Source/Jolt/NativeShapeFactory.cpp
     Source/Jolt/NativeShapeFactory.h
+    Source/Jolt/Operation.cpp
+    Source/Jolt/OperationInternal.h
     Source/Jolt/Path.cpp
     Source/Jolt/PathComponent.cpp
     Source/Jolt/PathComponent.h

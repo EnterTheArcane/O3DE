@@ -20,8 +20,8 @@
 
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Debug/Trace.h>
-#include <AzCore/Jobs/JobCompletion.h>
 #include <AzCore/Jobs/Job.h>
+#include <AzCore/Jobs/JobEmpty.h>
 #include <AzCore/Jobs/JobManager.h>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/Math/Matrix3x3.h>
@@ -23830,8 +23830,7 @@ namespace Jolt
             }
         }
 
-        AZ::JobCompletion completion(m_jobContext);
-        completion.Reset(true);
+        AZ::JobEmpty completion(false, m_jobContext);
         AZStd::atomic_size_t nextIndex{0};
         for (size_t jobIndex = 0; jobIndex < backgroundJobCount; ++jobIndex)
         {

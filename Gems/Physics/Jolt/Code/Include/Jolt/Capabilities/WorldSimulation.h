@@ -12,13 +12,40 @@
 #include <Jolt/Diagnostics.h>
 #include <Jolt/Event.h>
 #include <Jolt/Extension.h>
+#include <Jolt/Operation.h>
 #include <Jolt/Simulation.h>
 #include <Jolt/SoftBody.h>
+#include <AzCore/std/containers/array.h>
 #include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
     class Runtime;
+
+    class AutoSimulationOperationResult final
+    {
+    public:
+        [[nodiscard]]
+        const SimulationResult& GetSimulationResult() const
+        {
+            return m_simulationResult;
+        }
+
+        [[nodiscard]]
+        AZStd::span<const WorldEventBatch> GetEventBatches() const &
+        {
+            return AZStd::span<const WorldEventBatch>(m_eventBatches).first(m_eventBatchCount);
+        }
+
+        AZStd::span<const WorldEventBatch> GetEventBatches() const && = delete;
+
+    private:
+        friend class RuntimeImplementation;
+
+        SimulationResult m_simulationResult;
+        AZStd::array<WorldEventBatch, MaximumWorldCount> m_eventBatches;
+        AZ::u32 m_eventBatchCount = 0;
+    };
 
     class JOLT_API WorldSimulation
     {
@@ -35,10 +62,18 @@ namespace Jolt
             WorldHandle worldHandle,
             float fixedTimeStep);
 
+        [[nodiscard]]
+        Operation<SimulationResult> StepWorldAsync(
+            WorldHandle worldHandle,
+            float fixedTimeStep);
+
         bool StepAutoSimulatedWorlds(float elapsedTime);
 
         [[nodiscard]]
         SimulationResult StepAutoSimulatedWorldsDetailed(float elapsedTime);
+
+        [[nodiscard]]
+        Operation<AutoSimulationOperationResult> StepAutoSimulatedWorldsAsync(float elapsedTime);
 
         [[nodiscard]]
         SimulationResult StepAutoSimulatedWorldsDetailed(

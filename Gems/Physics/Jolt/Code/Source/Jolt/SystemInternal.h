@@ -43,6 +43,11 @@
 
 namespace Jolt
 {
+    namespace Internal
+    {
+        class OperationPool;
+    } // namespace Internal
+
     enum class SystemRegistration : AZ::u8
     {
         Global,
@@ -167,10 +172,19 @@ namespace Jolt
         CookedShapeHandle CookShape(const ShapeConfiguration& configuration);
 
         [[nodiscard]]
+        Operation<CookedShapeHandle> CookShapeAsync(const ShapeConfiguration& configuration);
+
+        [[nodiscard]]
         CookedShapeHandle CookShape(const CookedCompoundShapeConfiguration& configuration);
 
         [[nodiscard]]
+        Operation<CookedShapeHandle> CookShapeAsync(const CookedCompoundShapeConfiguration& configuration);
+
+        [[nodiscard]]
         CookedShapeHandle CookShape(const CookedDecoratedShapeConfiguration& configuration);
+
+        [[nodiscard]]
+        Operation<CookedShapeHandle> CookShapeAsync(const CookedDecoratedShapeConfiguration& configuration);
 
         [[nodiscard]]
         bool ExportShape(
@@ -666,6 +680,11 @@ namespace Jolt
             WorldHandle worldHandle,
             SceneDefinitionHandle definitionHandle);
 
+        [[nodiscard]]
+        Operation<SceneInstanceHandle> InstantiateSceneAsync(
+            WorldHandle worldHandle,
+            SceneDefinitionHandle definitionHandle);
+
         bool DestroySceneInstance(
             WorldHandle worldHandle,
             SceneInstanceHandle instanceHandle);
@@ -748,10 +767,18 @@ namespace Jolt
             WorldHandle worldHandle,
             float fixedTimeStep);
 
+        [[nodiscard]]
+        Operation<SimulationResult> StepWorldAsync(
+            WorldHandle worldHandle,
+            float fixedTimeStep);
+
         bool StepAutoSimulatedWorlds(float elapsedTime);
 
         [[nodiscard]]
         SimulationResult StepAutoSimulatedWorldsDetailed(float elapsedTime);
+
+        [[nodiscard]]
+        Operation<AutoSimulationOperationResult> StepAutoSimulatedWorldsAsync(float elapsedTime);
 
         [[nodiscard]]
         SimulationResult StepAutoSimulatedWorldsDetailed(
@@ -2176,6 +2203,11 @@ namespace Jolt
             WorldHandle worldHandle,
             BodyHandle bodyHandle);
 
+        [[nodiscard]]
+        Operation<StateSnapshotHandle> CaptureBodyStateAsync(
+            WorldHandle worldHandle,
+            BodyHandle bodyHandle);
+
         bool CaptureBodyState(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
@@ -2186,7 +2218,15 @@ namespace Jolt
             StateSnapshotHandle snapshotHandle);
 
         [[nodiscard]]
+        Operation<StateRestoreResult> RestoreBodyStateAsync(
+            WorldHandle worldHandle,
+            StateSnapshotHandle snapshotHandle);
+
+        [[nodiscard]]
         StateSnapshotHandle CaptureWorldState(WorldHandle worldHandle);
+
+        [[nodiscard]]
+        Operation<StateSnapshotHandle> CaptureWorldStateAsync(WorldHandle worldHandle);
 
         bool CaptureWorldState(
             WorldHandle worldHandle,
@@ -2232,6 +2272,11 @@ namespace Jolt
 
         [[nodiscard]]
         StateRestoreResult RestoreWorldState(
+            WorldHandle worldHandle,
+            StateSnapshotHandle snapshotHandle);
+
+        [[nodiscard]]
+        Operation<StateRestoreResult> RestoreWorldStateAsync(
             WorldHandle worldHandle,
             StateSnapshotHandle snapshotHandle);
 
@@ -2928,6 +2973,11 @@ namespace Jolt
             AZStd::span<ClosestRaycastResult> results) const;
 
         [[nodiscard]]
+        Operation<RaycastBatchOperationResult> RaycastClosestBatchAsync(
+            WorldHandle worldHandle,
+            AZStd::span<const RaycastRequest> requests) const;
+
+        [[nodiscard]]
         QueryResult RaycastClosestPerBody(
             WorldHandle worldHandle,
             const RaycastRequest& request,
@@ -3471,6 +3521,7 @@ namespace Jolt
         AZStd::unique_ptr<ComponentDependencyManager> m_dependencyManager;
         SystemConfiguration m_configuration;
         AZ::JobContext* m_jobContext = nullptr;
+        Internal::OperationPool* m_operationPool = nullptr;
 
         mutable AZStd::shared_mutex m_materialMutex;
         AZStd::vector<MaterialSlot> m_materialSlots;
@@ -3583,6 +3634,7 @@ namespace Jolt
         using RuntimeImplementation::SetSubGroupCollisionEnabled;
 
         using RuntimeImplementation::CookShape;
+        using RuntimeImplementation::CookShapeAsync;
         using RuntimeImplementation::ExportShape;
         using RuntimeImplementation::ImportShape;
         using RuntimeImplementation::DestroyCookedShape;
@@ -3654,6 +3706,7 @@ namespace Jolt
         using RuntimeImplementation::DestroySceneDefinition;
         using RuntimeImplementation::GetSceneDefinitionState;
         using RuntimeImplementation::InstantiateScene;
+        using RuntimeImplementation::InstantiateSceneAsync;
         using RuntimeImplementation::DestroySceneInstance;
         using RuntimeImplementation::GetSceneInstanceState;
         using RuntimeImplementation::GetSceneBodies;
@@ -3672,8 +3725,10 @@ namespace Jolt
 
         using RuntimeImplementation::StepWorld;
         using RuntimeImplementation::StepWorldDetailed;
+        using RuntimeImplementation::StepWorldAsync;
         using RuntimeImplementation::StepAutoSimulatedWorlds;
         using RuntimeImplementation::StepAutoSimulatedWorldsDetailed;
+        using RuntimeImplementation::StepAutoSimulatedWorldsAsync;
         using RuntimeImplementation::GetEvents;
         using RuntimeImplementation::SetContactCallbacks;
         using RuntimeImplementation::SetBodyPairCollider;
@@ -3700,6 +3755,7 @@ namespace Jolt
         using RuntimeImplementation::CastTransformedShape;
         using RuntimeImplementation::RaycastClosest;
         using RuntimeImplementation::RaycastClosestBatch;
+        using RuntimeImplementation::RaycastClosestBatchAsync;
         using RuntimeImplementation::RaycastClosestPerBody;
         using RuntimeImplementation::RaycastAny;
         using RuntimeImplementation::RaycastAll;
@@ -4056,13 +4112,17 @@ namespace Jolt
         using RuntimeImplementation::GetHairGridCellStates;
 
         using RuntimeImplementation::CaptureBodyState;
+        using RuntimeImplementation::CaptureBodyStateAsync;
         using RuntimeImplementation::RestoreBodyState;
+        using RuntimeImplementation::RestoreBodyStateAsync;
         using RuntimeImplementation::CaptureWorldState;
+        using RuntimeImplementation::CaptureWorldStateAsync;
         using RuntimeImplementation::CaptureWorldStateParts;
         using RuntimeImplementation::ExportWorldStateArchive;
         using RuntimeImplementation::ImportWorldStateArchive;
         using RuntimeImplementation::DestroyStateSnapshot;
         using RuntimeImplementation::RestoreWorldState;
+        using RuntimeImplementation::RestoreWorldStateAsync;
         using RuntimeImplementation::RestoreWorldStateParts;
         using RuntimeImplementation::ValidateWorldState;
         using RuntimeImplementation::GetWorldStateDigest;

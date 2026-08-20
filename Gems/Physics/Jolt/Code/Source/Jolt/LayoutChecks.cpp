@@ -15,6 +15,7 @@
 #include <Jolt/Event.h>
 #include <Jolt/Handle.h>
 #include <Jolt/Material.h>
+#include <Jolt/Operation.h>
 #include <Jolt/Path.h>
 #include <Jolt/Ragdoll.h>
 #include <Jolt/Skeleton.h>
@@ -83,6 +84,9 @@ static_assert(sizeof(Jolt::ContactEvent) <= 112);
 static_assert(sizeof(Jolt::ContactPoint) == sizeof(Jolt::WorldPosition) * 2);
 static_assert(sizeof(Jolt::ContactPointView) == sizeof(AZStd::span<const Jolt::ContactPoint>));
 static_assert(sizeof(Jolt::EventBatch) == sizeof(void*));
+static_assert(sizeof(Jolt::Operation<Jolt::SimulationResult>) == sizeof(void*));
+static_assert(std::is_move_constructible_v<Jolt::Operation<Jolt::SimulationResult>>);
+static_assert(!std::is_copy_constructible_v<Jolt::Operation<Jolt::SimulationResult>>);
 static_assert(sizeof(Jolt::WorldEventBatch) == sizeof(AZ::u64) * 2);
 static_assert(sizeof(Jolt::BodyConfiguration) == 304);
 static_assert(sizeof(Jolt::BodyState) == 176);

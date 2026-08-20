@@ -9,6 +9,7 @@
 
 #include <Jolt/Configuration.h>
 #include <Jolt/Diagnostics.h>
+#include <Jolt/Operation.h>
 #include <Jolt/Rollback.h>
 #include <AzCore/std/parallel/atomic.h>
 
@@ -27,6 +28,11 @@ namespace Jolt
             WorldHandle worldHandle,
             BodyHandle bodyHandle);
 
+        [[nodiscard]]
+        Operation<StateSnapshotHandle> CaptureBodyStateAsync(
+            WorldHandle worldHandle,
+            BodyHandle bodyHandle);
+
         bool CaptureBodyState(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
@@ -38,7 +44,15 @@ namespace Jolt
             StateSnapshotHandle snapshotHandle);
 
         [[nodiscard]]
+        Operation<StateRestoreResult> RestoreBodyStateAsync(
+            WorldHandle worldHandle,
+            StateSnapshotHandle snapshotHandle);
+
+        [[nodiscard]]
         StateSnapshotHandle CaptureWorldState(WorldHandle worldHandle);
+
+        [[nodiscard]]
+        Operation<StateSnapshotHandle> CaptureWorldStateAsync(WorldHandle worldHandle);
 
         bool CaptureWorldState(
             WorldHandle worldHandle,
@@ -86,6 +100,11 @@ namespace Jolt
 
         [[nodiscard]]
         StateRestoreResult RestoreWorldState(
+            WorldHandle worldHandle,
+            StateSnapshotHandle snapshotHandle);
+
+        [[nodiscard]]
+        Operation<StateRestoreResult> RestoreWorldStateAsync(
             WorldHandle worldHandle,
             StateSnapshotHandle snapshotHandle);
 

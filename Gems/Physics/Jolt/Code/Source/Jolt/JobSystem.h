@@ -9,9 +9,10 @@
 
 #include <Jolt/Configuration.h>
 #include <AzCore/Jobs/Job.h>
+#include <AzCore/Jobs/JobEmpty.h>
 #include <AzCore/base.h>
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/parallel/condition_variable.h>
+#include <AzCore/std/optional.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Core/FixedSizeFreeList.h>
@@ -115,7 +116,7 @@ namespace Jolt
         AvailableJobs m_jobs;
         AZStd::vector<ProviderJob*> m_queuedJobs;
         AZ::JobContext* m_jobContext = nullptr;
-        AZStd::condition_variable m_taskCondition;
+        AZStd::optional<AZ::JobEmpty> m_taskCompletion;
         AZStd::mutex m_taskMutex;
         size_t m_queueReadIndex = 0;
         size_t m_queueWriteIndex = 0;
@@ -125,6 +126,5 @@ namespace Jolt
         AZ::u32 m_activeTaskCount = 0;
         bool m_collectUpdateStatistics = false;
         bool m_collectUpdateTimings = false;
-        bool m_stopTasks = false;
     };
 } // namespace Jolt

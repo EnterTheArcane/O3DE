@@ -11,6 +11,7 @@
 #include <Jolt/Reflection.h>
 #include <Jolt/TransformedShapeLease.h>
 
+#include <Jolt/Jolt.h>
 #include <Jolt/Physics/Collision/TransformedShape.h>
 
 #include <AzCore/RTTI/BehaviorContext.h>
