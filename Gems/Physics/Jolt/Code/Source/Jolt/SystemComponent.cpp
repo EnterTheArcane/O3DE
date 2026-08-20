@@ -446,6 +446,8 @@ namespace Jolt
             m_system.reset();
             return;
         }
+        m_runtime = GetRuntime();
+        AZ_Assert(m_runtime, "A valid Jolt system must publish its runtime capabilities.");
 
         m_defaultWorldLastEventSequence = 0;
         m_worldEventStates.clear();
@@ -478,6 +480,7 @@ namespace Jolt
         m_defaultWorldLastEventSequence = 0;
         m_skeletonAssetHandler.reset();
         m_sceneAssetHandler.reset();
+        m_runtime = nullptr;
         m_system.reset();
     }
 
@@ -485,14 +488,14 @@ namespace Jolt
         const float deltaTime,
         [[maybe_unused]] const AZ::ScriptTimePoint time)
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return;
         }
 
-        m_system->StepAutoSimulatedWorlds(deltaTime);
+        m_runtime->StepAutoSimulatedWorlds(deltaTime);
         DispatchWorldEvents(
-            m_system->GetDefaultWorldHandle(),
+            m_runtime->GetDefaultWorldHandle(),
             m_defaultWorldLastEventSequence);
         for (WorldEventState& state : m_worldEventStates)
         {
@@ -504,12 +507,12 @@ namespace Jolt
         const WorldHandle worldHandle,
         AZ::u64& lastSequence)
     {
-        if (!m_system || !worldHandle)
+        if (!m_runtime || !worldHandle)
         {
             return;
         }
 
-        const EventView events = m_system->GetEvents(worldHandle);
+        const EventView events = m_runtime->GetEvents(worldHandle);
         if (events.GetSequence() == 0 || events.GetSequence() == lastSequence)
         {
             return;
@@ -578,30 +581,30 @@ namespace Jolt
     SkeletonDefinitionHandle SystemComponent::CreateSkeletonDefinition(
         const SkeletonDefinitionConfiguration& configuration)
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
 
-        return m_system->CreateSkeletonDefinition(configuration);
+        return m_runtime->CreateSkeletonDefinition(configuration);
     }
 
     bool SystemComponent::DestroySkeletonDefinition(
         const SkeletonDefinitionHandle skeletonHandle)
     {
-        return m_system && m_system->DestroySkeletonDefinition(skeletonHandle);
+        return m_runtime && m_runtime->DestroySkeletonDefinition(skeletonHandle);
     }
 
     bool SystemComponent::IsSkeletonDefinitionValid(
         const SkeletonDefinitionHandle skeletonHandle) const
     {
-        return m_system && m_system->IsValid(skeletonHandle);
+        return m_runtime && m_runtime->IsValid(skeletonHandle);
     }
 
     AZStd::vector<SkeletonJoint> SystemComponent::CopySkeletonJoints(
         const SkeletonDefinitionHandle skeletonHandle) const
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
@@ -609,7 +612,7 @@ namespace Jolt
         return CopyQueryResults<SkeletonJoint>(
             [this, skeletonHandle](const AZStd::span<SkeletonJoint> joints)
             {
-                return m_system->GetSkeletonJoints(skeletonHandle, joints);
+                return m_runtime->GetSkeletonJoints(skeletonHandle, joints);
             });
     }
 
@@ -618,7 +621,7 @@ namespace Jolt
         const AZ::Name jointName) const
     {
         AZ::u32 jointIndex = 0;
-        if (!m_system || !m_system->FindSkeletonJoint(skeletonHandle, jointName, jointIndex))
+        if (!m_runtime || !m_runtime->FindSkeletonJoint(skeletonHandle, jointName, jointIndex))
         {
             return -1;
         }
@@ -629,31 +632,31 @@ namespace Jolt
     SkeletalAnimationHandle SystemComponent::CreateSkeletalAnimation(
         const SkeletalAnimationConfiguration& configuration)
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
 
-        return m_system->CreateSkeletalAnimation(configuration);
+        return m_runtime->CreateSkeletalAnimation(configuration);
     }
 
     bool SystemComponent::UpdateSkeletalAnimation(
         const SkeletalAnimationHandle animationHandle,
         const SkeletalAnimationConfiguration& configuration)
     {
-        return m_system && m_system->UpdateSkeletalAnimation(animationHandle, configuration);
+        return m_runtime && m_runtime->UpdateSkeletalAnimation(animationHandle, configuration);
     }
 
     bool SystemComponent::DestroySkeletalAnimation(
         const SkeletalAnimationHandle animationHandle)
     {
-        return m_system && m_system->DestroySkeletalAnimation(animationHandle);
+        return m_runtime && m_runtime->DestroySkeletalAnimation(animationHandle);
     }
 
     bool SystemComponent::IsSkeletalAnimationValid(
         const SkeletalAnimationHandle animationHandle) const
     {
-        return m_system && m_system->IsValid(animationHandle);
+        return m_runtime && m_runtime->IsValid(animationHandle);
     }
 
     bool SystemComponent::GetSkeletalAnimationState(
@@ -661,7 +664,7 @@ namespace Jolt
         SkeletalAnimationState& state) const
     {
         state = {};
-        return m_system && m_system->GetSkeletalAnimationState(animationHandle, state);
+        return m_runtime && m_runtime->GetSkeletalAnimationState(animationHandle, state);
     }
 
     AZ::Name SystemComponent::GetSkeletalAnimatedJointName(
@@ -669,10 +672,10 @@ namespace Jolt
         const AZ::u32 jointIndex) const
     {
         AZ::Name jointName;
-        if (m_system)
+        if (m_runtime)
         {
             [[maybe_unused]] const bool found =
-                m_system->GetSkeletalAnimatedJointName(animationHandle, jointIndex, jointName);
+                m_runtime->GetSkeletalAnimatedJointName(animationHandle, jointIndex, jointName);
         }
         return jointName;
     }
@@ -681,7 +684,7 @@ namespace Jolt
         const SkeletalAnimationHandle animationHandle,
         const AZ::u32 jointIndex) const
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
@@ -689,7 +692,7 @@ namespace Jolt
         return CopyQueryResults<SkeletalAnimationKeyframe>(
             [this, animationHandle, jointIndex](const AZStd::span<SkeletalAnimationKeyframe> keyframes)
             {
-                return m_system->GetSkeletalAnimationKeyframes(animationHandle, jointIndex, keyframes);
+                return m_runtime->GetSkeletalAnimationKeyframes(animationHandle, jointIndex, keyframes);
             });
     }
 
@@ -697,37 +700,37 @@ namespace Jolt
         const SkeletalAnimationHandle animationHandle,
         const bool isLooping)
     {
-        return m_system && m_system->SetSkeletalAnimationLooping(animationHandle, isLooping);
+        return m_runtime && m_runtime->SetSkeletalAnimationLooping(animationHandle, isLooping);
     }
 
     bool SystemComponent::ScaleSkeletalAnimation(
         const SkeletalAnimationHandle animationHandle,
         const float scale)
     {
-        return m_system && m_system->ScaleSkeletalAnimation(animationHandle, scale);
+        return m_runtime && m_runtime->ScaleSkeletalAnimation(animationHandle, scale);
     }
 
     SkeletonPoseHandle SystemComponent::CreateSkeletonPose(
         const SkeletonDefinitionHandle skeletonHandle)
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
 
-        return m_system->CreateSkeletonPose(skeletonHandle);
+        return m_runtime->CreateSkeletonPose(skeletonHandle);
     }
 
     bool SystemComponent::DestroySkeletonPose(
         const SkeletonPoseHandle poseHandle)
     {
-        return m_system && m_system->DestroySkeletonPose(poseHandle);
+        return m_runtime && m_runtime->DestroySkeletonPose(poseHandle);
     }
 
     bool SystemComponent::IsSkeletonPoseValid(
         const SkeletonPoseHandle poseHandle) const
     {
-        return m_system && m_system->IsValid(poseHandle);
+        return m_runtime && m_runtime->IsValid(poseHandle);
     }
 
     bool SystemComponent::GetSkeletonPoseState(
@@ -735,34 +738,34 @@ namespace Jolt
         SkeletonPoseState& state) const
     {
         state = {};
-        return m_system && m_system->GetSkeletonPoseState(poseHandle, state);
+        return m_runtime && m_runtime->GetSkeletonPoseState(poseHandle, state);
     }
 
     bool SystemComponent::SetSkeletonPoseRootOffset(
         const SkeletonPoseHandle poseHandle,
         const WorldPosition& rootOffset)
     {
-        return m_system && m_system->SetSkeletonPoseRootOffset(poseHandle, rootOffset);
+        return m_runtime && m_runtime->SetSkeletonPoseRootOffset(poseHandle, rootOffset);
     }
 
     bool SystemComponent::SetSkeletonPoseLocalTransforms(
         const SkeletonPoseHandle poseHandle,
         const AZStd::vector<AZ::Transform>& localTransforms)
     {
-        return m_system && m_system->SetSkeletonPoseLocalTransforms(poseHandle, localTransforms);
+        return m_runtime && m_runtime->SetSkeletonPoseLocalTransforms(poseHandle, localTransforms);
     }
 
     bool SystemComponent::SetSkeletonPoseModelTransforms(
         const SkeletonPoseHandle poseHandle,
         const AZStd::vector<AZ::Transform>& modelTransforms)
     {
-        return m_system && m_system->SetSkeletonPoseModelTransforms(poseHandle, modelTransforms);
+        return m_runtime && m_runtime->SetSkeletonPoseModelTransforms(poseHandle, modelTransforms);
     }
 
     AZStd::vector<AZ::Transform> SystemComponent::CopySkeletonPoseLocalTransforms(
         const SkeletonPoseHandle poseHandle) const
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
@@ -770,14 +773,14 @@ namespace Jolt
         return CopyQueryResults<AZ::Transform>(
             [this, poseHandle](const AZStd::span<AZ::Transform> transforms)
             {
-                return m_system->GetSkeletonPoseLocalTransforms(poseHandle, transforms);
+                return m_runtime->GetSkeletonPoseLocalTransforms(poseHandle, transforms);
             });
     }
 
     AZStd::vector<AZ::Transform> SystemComponent::CopySkeletonPoseModelTransforms(
         const SkeletonPoseHandle poseHandle) const
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
@@ -785,7 +788,7 @@ namespace Jolt
         return CopyQueryResults<AZ::Transform>(
             [this, poseHandle](const AZStd::span<AZ::Transform> transforms)
             {
-                return m_system->GetSkeletonPoseModelTransforms(poseHandle, transforms);
+                return m_runtime->GetSkeletonPoseModelTransforms(poseHandle, transforms);
             });
     }
 
@@ -794,30 +797,30 @@ namespace Jolt
         const SkeletonPoseHandle poseHandle,
         const float time)
     {
-        return m_system && m_system->SampleSkeletalAnimation(animationHandle, poseHandle, time);
+        return m_runtime && m_runtime->SampleSkeletalAnimation(animationHandle, poseHandle, time);
     }
 
     SkeletonMapperHandle SystemComponent::CreateSkeletonMapper(
         const SkeletonMapperConfiguration& configuration)
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
 
-        return m_system->CreateSkeletonMapper(configuration);
+        return m_runtime->CreateSkeletonMapper(configuration);
     }
 
     bool SystemComponent::DestroySkeletonMapper(
         const SkeletonMapperHandle mapperHandle)
     {
-        return m_system && m_system->DestroySkeletonMapper(mapperHandle);
+        return m_runtime && m_runtime->DestroySkeletonMapper(mapperHandle);
     }
 
     bool SystemComponent::IsSkeletonMapperValid(
         const SkeletonMapperHandle mapperHandle) const
     {
-        return m_system && m_system->IsValid(mapperHandle);
+        return m_runtime && m_runtime->IsValid(mapperHandle);
     }
 
     bool SystemComponent::GetSkeletonMapperState(
@@ -825,13 +828,13 @@ namespace Jolt
         SkeletonMapperState& state) const
     {
         state = {};
-        return m_system && m_system->GetSkeletonMapperState(mapperHandle, state);
+        return m_runtime && m_runtime->GetSkeletonMapperState(mapperHandle, state);
     }
 
     AZStd::vector<SkeletonMapperMappingState> SystemComponent::CopySkeletonMapperMappings(
         const SkeletonMapperHandle mapperHandle) const
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
@@ -839,7 +842,7 @@ namespace Jolt
         return CopyQueryResults<SkeletonMapperMappingState>(
             [this, mapperHandle](const AZStd::span<SkeletonMapperMappingState> mappings)
             {
-                return m_system->GetSkeletonMapperMappings(mapperHandle, mappings);
+                return m_runtime->GetSkeletonMapperMappings(mapperHandle, mappings);
             });
     }
 
@@ -849,14 +852,14 @@ namespace Jolt
         SkeletonMapperChainState& state) const
     {
         state = {};
-        return m_system && m_system->GetSkeletonMapperChainState(mapperHandle, chainIndex, state);
+        return m_runtime && m_runtime->GetSkeletonMapperChainState(mapperHandle, chainIndex, state);
     }
 
     AZStd::vector<AZ::u32> SystemComponent::CopySkeletonMapperSourceChain(
         const SkeletonMapperHandle mapperHandle,
         const AZ::u32 chainIndex) const
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
@@ -864,7 +867,7 @@ namespace Jolt
         return CopyQueryResults<AZ::u32>(
             [this, mapperHandle, chainIndex](const AZStd::span<AZ::u32> jointIndices)
             {
-                return m_system->GetSkeletonMapperSourceChain(mapperHandle, chainIndex, jointIndices);
+                return m_runtime->GetSkeletonMapperSourceChain(mapperHandle, chainIndex, jointIndices);
             });
     }
 
@@ -872,7 +875,7 @@ namespace Jolt
         const SkeletonMapperHandle mapperHandle,
         const AZ::u32 chainIndex) const
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
@@ -880,14 +883,14 @@ namespace Jolt
         return CopyQueryResults<AZ::u32>(
             [this, mapperHandle, chainIndex](const AZStd::span<AZ::u32> jointIndices)
             {
-                return m_system->GetSkeletonMapperTargetChain(mapperHandle, chainIndex, jointIndices);
+                return m_runtime->GetSkeletonMapperTargetChain(mapperHandle, chainIndex, jointIndices);
             });
     }
 
     AZStd::vector<SkeletonMapperUnmappedJoint> SystemComponent::CopySkeletonMapperUnmappedJoints(
         const SkeletonMapperHandle mapperHandle) const
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
@@ -895,14 +898,14 @@ namespace Jolt
         return CopyQueryResults<SkeletonMapperUnmappedJoint>(
             [this, mapperHandle](const AZStd::span<SkeletonMapperUnmappedJoint> joints)
             {
-                return m_system->GetSkeletonMapperUnmappedJoints(mapperHandle, joints);
+                return m_runtime->GetSkeletonMapperUnmappedJoints(mapperHandle, joints);
             });
     }
 
     AZStd::vector<SkeletonMapperLockedTranslation> SystemComponent::CopySkeletonMapperLockedTranslations(
         const SkeletonMapperHandle mapperHandle) const
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
@@ -910,7 +913,7 @@ namespace Jolt
         return CopyQueryResults<SkeletonMapperLockedTranslation>(
             [this, mapperHandle](const AZStd::span<SkeletonMapperLockedTranslation> translations)
             {
-                return m_system->GetSkeletonMapperLockedTranslations(mapperHandle, translations);
+                return m_runtime->GetSkeletonMapperLockedTranslations(mapperHandle, translations);
             });
     }
 
@@ -919,8 +922,8 @@ namespace Jolt
         const AZ::u32 sourceJointIndex) const
     {
         AZ::u32 targetJointIndex = 0;
-        if (!m_system
-            || !m_system->GetMappedSkeletonJoint(mapperHandle, sourceJointIndex, targetJointIndex))
+        if (!m_runtime
+            || !m_runtime->GetMappedSkeletonJoint(mapperHandle, sourceJointIndex, targetJointIndex))
         {
             return -1;
         }
@@ -933,8 +936,8 @@ namespace Jolt
         const AZ::u32 targetJointIndex) const
     {
         bool locked = false;
-        return m_system
-            && m_system->IsSkeletonJointTranslationLocked(mapperHandle, targetJointIndex, locked)
+        return m_runtime
+            && m_runtime->IsSkeletonJointTranslationLocked(mapperHandle, targetJointIndex, locked)
             && locked;
     }
 
@@ -944,13 +947,13 @@ namespace Jolt
         const AZStd::vector<AZ::Transform>& targetLocalTransforms) const
     {
         SkeletonMapperState state;
-        if (!m_system || !m_system->GetSkeletonMapperState(mapperHandle, state))
+        if (!m_runtime || !m_runtime->GetSkeletonMapperState(mapperHandle, state))
         {
             return {};
         }
 
         AZStd::vector<AZ::Transform> targetModelTransforms(state.m_targetJointCount);
-        if (!m_system->MapSkeletonPose(
+        if (!m_runtime->MapSkeletonPose(
                 mapperHandle,
                 sourceModelTransforms,
                 targetLocalTransforms,
@@ -966,13 +969,13 @@ namespace Jolt
         const AZStd::vector<AZ::Transform>& targetModelTransforms) const
     {
         SkeletonMapperState state;
-        if (!m_system || !m_system->GetSkeletonMapperState(mapperHandle, state))
+        if (!m_runtime || !m_runtime->GetSkeletonMapperState(mapperHandle, state))
         {
             return {};
         }
 
         AZStd::vector<AZ::Transform> sourceModelTransforms(state.m_sourceJointCount);
-        if (!m_system->MapSkeletonPoseReverse(
+        if (!m_runtime->MapSkeletonPoseReverse(
                 mapperHandle,
                 targetModelTransforms,
                 sourceModelTransforms))
@@ -985,12 +988,12 @@ namespace Jolt
     WorldHandle SystemComponent::CreateWorld(
         const WorldConfiguration& configuration)
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
 
-        const WorldHandle worldHandle = m_system->CreateWorld(configuration);
+        const WorldHandle worldHandle = m_runtime->CreateWorld(configuration);
         if (worldHandle)
         {
             m_worldEventStates.push_back({.m_worldHandle = worldHandle});
@@ -1001,7 +1004,7 @@ namespace Jolt
     bool SystemComponent::DestroyWorld(
         const WorldHandle worldHandle)
     {
-        if (!m_system || !m_system->DestroyWorld(worldHandle))
+        if (!m_runtime || !m_runtime->DestroyWorld(worldHandle))
         {
             return false;
         }
@@ -1020,46 +1023,46 @@ namespace Jolt
 
     WorldHandle SystemComponent::GetDefaultWorldHandle() const
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
 
-        return m_system->GetDefaultWorldHandle();
+        return m_runtime->GetDefaultWorldHandle();
     }
 
     RuntimeInfo SystemComponent::GetRuntimeInfo() const
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
 
-        return m_system->GetRuntimeInfo();
+        return m_runtime->GetRuntimeInfo();
     }
 
     bool SystemComponent::IsWorldValid(
         const WorldHandle worldHandle) const
     {
-        return m_system && m_system->IsValid(worldHandle);
+        return m_runtime && m_runtime->IsValid(worldHandle);
     }
 
     SimulationResult SystemComponent::StepWorld(
         const WorldHandle worldHandle,
         const float fixedTimeStep)
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {.m_errors = SimulationError::InvalidRequest};
         }
 
-        const SimulationResult result = m_system->StepWorldDetailed(worldHandle, fixedTimeStep);
+        const SimulationResult result = m_runtime->StepWorldDetailed(worldHandle, fixedTimeStep);
         if (result.m_stepCount == 0)
         {
             return result;
         }
 
-        if (worldHandle == m_system->GetDefaultWorldHandle())
+        if (worldHandle == m_runtime->GetDefaultWorldHandle())
         {
             DispatchWorldEvents(worldHandle, m_defaultWorldLastEventSequence);
             return result;
@@ -1083,9 +1086,9 @@ namespace Jolt
         const WorldHandle worldHandle) const
     {
         AZ::Vector3 gravity = AZ::Vector3::CreateZero();
-        if (m_system)
+        if (m_runtime)
         {
-            [[maybe_unused]] const bool found = m_system->GetWorldGravity(worldHandle, gravity);
+            [[maybe_unused]] const bool found = m_runtime->GetWorldGravity(worldHandle, gravity);
         }
         return gravity;
     }
@@ -1094,17 +1097,17 @@ namespace Jolt
         const WorldHandle worldHandle,
         const AZ::Vector3& gravity)
     {
-        return m_system && m_system->SetWorldGravity(worldHandle, gravity);
+        return m_runtime && m_runtime->SetWorldGravity(worldHandle, gravity);
     }
 
     SimulationConfiguration SystemComponent::GetSimulationConfiguration(
         const WorldHandle worldHandle) const
     {
         SimulationConfiguration configuration;
-        if (m_system)
+        if (m_runtime)
         {
             [[maybe_unused]] const bool found =
-                m_system->GetSimulationConfiguration(worldHandle, configuration);
+                m_runtime->GetSimulationConfiguration(worldHandle, configuration);
         }
         return configuration;
     }
@@ -1113,17 +1116,17 @@ namespace Jolt
         const WorldHandle worldHandle,
         const SimulationConfiguration& configuration)
     {
-        return m_system && m_system->UpdateSimulationConfiguration(worldHandle, configuration);
+        return m_runtime && m_runtime->UpdateSimulationConfiguration(worldHandle, configuration);
     }
 
     WorldRuntimeConfiguration SystemComponent::GetRuntimeConfiguration(
         const WorldHandle worldHandle) const
     {
         WorldRuntimeConfiguration configuration;
-        if (m_system)
+        if (m_runtime)
         {
             [[maybe_unused]] const bool found =
-                m_system->GetWorldRuntimeConfiguration(worldHandle, configuration);
+                m_runtime->GetWorldRuntimeConfiguration(worldHandle, configuration);
         }
         return configuration;
     }
@@ -1132,18 +1135,18 @@ namespace Jolt
         const WorldHandle worldHandle,
         const WorldRuntimeConfiguration& configuration)
     {
-        return m_system && m_system->UpdateWorldRuntimeConfiguration(worldHandle, configuration);
+        return m_runtime && m_runtime->UpdateWorldRuntimeConfiguration(worldHandle, configuration);
     }
 
     StateSnapshotHandle SystemComponent::CaptureWorldState(
         const WorldHandle worldHandle)
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
 
-        return m_system->CaptureWorldState(worldHandle);
+        return m_runtime->CaptureWorldState(worldHandle);
     }
 
     StateSnapshotHandle SystemComponent::CaptureWorldStateConfigured(
@@ -1151,12 +1154,12 @@ namespace Jolt
         const StateSnapshotConfiguration& configuration,
         const AZStd::vector<BodyHandle>& bodyHandles)
     {
-        if (!m_system)
+        if (!m_runtime)
         {
             return {};
         }
 
-        return m_system->CaptureWorldState(
+        return m_runtime->CaptureWorldState(
             worldHandle,
             configuration,
             bodyHandles);
@@ -1169,8 +1172,8 @@ namespace Jolt
         const AZStd::vector<AZ::u32>& partitionBodyCounts)
     {
         AZStd::vector<StateSnapshotHandle> snapshotHandles(partitionBodyCounts.size());
-        if (!m_system
-            || !m_system->CaptureWorldStateParts(
+        if (!m_runtime
+            || !m_runtime->CaptureWorldStateParts(
                 worldHandle,
                 configuration,
                 bodyHandles,
@@ -1188,8 +1191,8 @@ namespace Jolt
         StateSnapshotArchive& archive)
     {
         archive = {};
-        return m_system
-            && m_system->ExportWorldStateArchive(
+        return m_runtime
+            && m_runtime->ExportWorldStateArchive(
                 worldHandle,
                 snapshotHandles,
                 archive);
@@ -1206,8 +1209,8 @@ namespace Jolt
         }
 
         AZStd::vector<StateSnapshotHandle> snapshotHandles(archive.m_snapshotCount);
-        if (!m_system
-            || !m_system->ImportWorldStateArchive(
+        if (!m_runtime
+            || !m_runtime->ImportWorldStateArchive(
                 worldHandle,
                 archive,
                 snapshotHandles))
@@ -1221,7 +1224,7 @@ namespace Jolt
         const WorldHandle worldHandle,
         const StateSnapshotHandle snapshotHandle)
     {
-        return m_system && m_system->CaptureWorldState(worldHandle, snapshotHandle);
+        return m_runtime && m_runtime->CaptureWorldState(worldHandle, snapshotHandle);
     }
 
     bool SystemComponent::RecaptureWorldStateConfigured(
@@ -1230,8 +1233,8 @@ namespace Jolt
         const StateSnapshotConfiguration& configuration,
         const AZStd::vector<BodyHandle>& bodyHandles)
     {
-        return m_system
-            && m_system->CaptureWorldState(
+        return m_runtime
+            && m_runtime->CaptureWorldState(
                 worldHandle,
                 snapshotHandle,
                 configuration,
@@ -1242,28 +1245,28 @@ namespace Jolt
         const WorldHandle worldHandle,
         const StateSnapshotHandle snapshotHandle)
     {
-        return m_system && m_system->DestroyStateSnapshot(worldHandle, snapshotHandle);
+        return m_runtime && m_runtime->DestroyStateSnapshot(worldHandle, snapshotHandle);
     }
 
     bool SystemComponent::IsStateSnapshotValid(
         const WorldHandle worldHandle,
         const StateSnapshotHandle snapshotHandle) const
     {
-        return m_system && m_system->IsValid(worldHandle, snapshotHandle);
+        return m_runtime && m_runtime->IsValid(worldHandle, snapshotHandle);
     }
 
     bool SystemComponent::RestoreWorldState(
         const WorldHandle worldHandle,
         const StateSnapshotHandle snapshotHandle)
     {
-        return m_system && m_system->RestoreWorldState(worldHandle, snapshotHandle);
+        return m_runtime && m_runtime->RestoreWorldState(worldHandle, snapshotHandle);
     }
 
     bool SystemComponent::RestoreWorldStateParts(
         const WorldHandle worldHandle,
         const AZStd::vector<StateSnapshotHandle>& snapshotHandles)
     {
-        return m_system && m_system->RestoreWorldStateParts(worldHandle, snapshotHandles);
+        return m_runtime && m_runtime->RestoreWorldStateParts(worldHandle, snapshotHandles);
     }
 
     bool SystemComponent::ValidateWorldState(
@@ -1272,7 +1275,7 @@ namespace Jolt
         StateValidationResult& result)
     {
         result = {};
-        return m_system && m_system->ValidateWorldState(worldHandle, snapshotHandle, result);
+        return m_runtime && m_runtime->ValidateWorldState(worldHandle, snapshotHandle, result);
     }
 
     bool SystemComponent::GetWorldStateDigest(
@@ -1280,7 +1283,7 @@ namespace Jolt
         WorldStateDigest& digest) const
     {
         digest = {};
-        return m_system && m_system->GetWorldStateDigest(worldHandle, digest);
+        return m_runtime && m_runtime->GetWorldStateDigest(worldHandle, digest);
     }
 
     bool SystemComponent::GetWorldStatistics(
@@ -1288,14 +1291,14 @@ namespace Jolt
         WorldStatistics& statistics) const
     {
         statistics = {};
-        return m_system && m_system->GetWorldStatistics(worldHandle, statistics);
+        return m_runtime && m_runtime->GetWorldStatistics(worldHandle, statistics);
     }
 
     bool SystemComponent::ConfigurePerformanceStatistics(
         const WorldHandle worldHandle,
         const PerformanceStatisticsFlags flags)
     {
-        return m_system && m_system->ConfigurePerformanceStatistics(worldHandle, flags);
+        return m_runtime && m_runtime->ConfigurePerformanceStatistics(worldHandle, flags);
     }
 
     bool SystemComponent::GetPerformanceStatistics(
@@ -1304,14 +1307,14 @@ namespace Jolt
         const bool reset)
     {
         statistics = {};
-        return m_system && m_system->GetPerformanceStatistics(worldHandle, statistics, reset);
+        return m_runtime && m_runtime->GetPerformanceStatistics(worldHandle, statistics, reset);
     }
 
     bool SystemComponent::ConfigureDebugCapture(
         const WorldHandle worldHandle,
         const DebugCaptureConfiguration& configuration)
     {
-        return m_system && m_system->ConfigureDebugCapture(worldHandle, configuration);
+        return m_runtime && m_runtime->ConfigureDebugCapture(worldHandle, configuration);
     }
 
     bool SystemComponent::GetDebugCaptureStatistics(
@@ -1319,7 +1322,7 @@ namespace Jolt
         DebugCaptureStatistics& statistics) const
     {
         statistics = {};
-        return m_system && m_system->GetDebugCaptureStatistics(worldHandle, statistics);
+        return m_runtime && m_runtime->GetDebugCaptureStatistics(worldHandle, statistics);
     }
 
     BodyCollection SystemComponent::GetBodies(
@@ -1329,13 +1332,13 @@ namespace Jolt
         const AZ::u32 maximumBodyCount) const
     {
         BodyCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_bodies.resize(AZStd::min(maximumBodyCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->GetBodies(
+        const QueryResult queryResult = m_runtime->GetBodies(
             worldHandle,
             kind,
             activeOnly,
@@ -1351,7 +1354,7 @@ namespace Jolt
         BodyId& bodyId) const
     {
         bodyId = {};
-        return m_system && m_system->GetBodyId(worldHandle, bodyHandle, bodyId);
+        return m_runtime && m_runtime->GetBodyId(worldHandle, bodyHandle, bodyId);
     }
 
     ClosestShapeRaycastResult SystemComponent::RaycastShapeClosest(
@@ -1359,7 +1362,7 @@ namespace Jolt
         const ShapeRaycastRequest& request) const
     {
         ClosestShapeRaycastResult result;
-        result.m_found = m_system && m_system->RaycastShapeClosest(worldHandle, request, result.m_hit);
+        result.m_found = m_runtime && m_runtime->RaycastShapeClosest(worldHandle, request, result.m_hit);
         return result;
     }
 
@@ -1369,13 +1372,13 @@ namespace Jolt
         const AZ::u32 maximumHitCount) const
     {
         ShapeRaycastHitCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_hits.resize(AZStd::min(maximumHitCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->RaycastShapeAll(
+        const QueryResult queryResult = m_runtime->RaycastShapeAll(
             worldHandle,
             request,
             result.m_hits);
@@ -1391,13 +1394,13 @@ namespace Jolt
         const AZ::u32 maximumHitCount) const
     {
         ShapePointHitCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_hits.resize(AZStd::min(maximumHitCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->CollideShapePoint(
+        const QueryResult queryResult = m_runtime->CollideShapePoint(
             worldHandle,
             shapeHandle,
             localPosition,
@@ -1413,8 +1416,8 @@ namespace Jolt
         const ShapeHandle shapeHandle,
         const AZ::Vector3& localPosition) const
     {
-        return m_system
-            && m_system->CollideShapePointAny(
+        return m_runtime
+            && m_runtime->CollideShapePointAny(
                 worldHandle,
                 shapeHandle,
                 localPosition);
@@ -1426,13 +1429,13 @@ namespace Jolt
         const AZ::u32 maximumTriangleCount) const
     {
         ShapeTriangleCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_triangles.resize(AZStd::min(maximumTriangleCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->CollectShapeTriangles(
+        const QueryResult queryResult = m_runtime->CollectShapeTriangles(
             worldHandle,
             request,
             result.m_triangles);
@@ -1447,8 +1450,8 @@ namespace Jolt
         const TransformedShapeRaycastRequest& request) const
     {
         ClosestRaycastResult result;
-        result.m_found = m_system
-            && m_system->RaycastTransformedShapeClosest(
+        result.m_found = m_runtime
+            && m_runtime->RaycastTransformedShapeClosest(
                 worldHandle,
                 shape,
                 request,
@@ -1463,13 +1466,13 @@ namespace Jolt
         const AZ::u32 maximumHitCount) const
     {
         RaycastHitCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_hits.resize(AZStd::min(maximumHitCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->RaycastTransformedShapeAll(
+        const QueryResult queryResult = m_runtime->RaycastTransformedShapeAll(
             worldHandle,
             shape,
             request,
@@ -1486,13 +1489,13 @@ namespace Jolt
         const AZ::u32 maximumHitCount) const
     {
         OverlapHitCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_hits.resize(AZStd::min(maximumHitCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->CollideTransformedShapePoint(
+        const QueryResult queryResult = m_runtime->CollideTransformedShapePoint(
             worldHandle,
             shape,
             position,
@@ -1508,8 +1511,8 @@ namespace Jolt
         const TransformedShape& shape,
         const WorldPosition& position) const
     {
-        return m_system
-            && m_system->CollideTransformedShapePointAny(
+        return m_runtime
+            && m_runtime->CollideTransformedShapePointAny(
                 worldHandle,
                 shape,
                 position);
@@ -1522,13 +1525,13 @@ namespace Jolt
         const AZ::u32 maximumShapeCount) const
     {
         TransformedShapeCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_shapes.resize(AZStd::min(maximumShapeCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->CollectTransformedShapeChildren(
+        const QueryResult queryResult = m_runtime->CollectTransformedShapeChildren(
             worldHandle,
             shape,
             bounds,
@@ -1546,13 +1549,13 @@ namespace Jolt
         const AZ::u32 maximumTriangleCount) const
     {
         TransformedTriangleCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_triangles.resize(AZStd::min(maximumTriangleCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->CollectTransformedShapeTriangles(
+        const QueryResult queryResult = m_runtime->CollectTransformedShapeTriangles(
             worldHandle,
             shape,
             bounds,
@@ -1569,8 +1572,8 @@ namespace Jolt
         const WorldPosition& position) const
     {
         SurfaceNormalResult result;
-        result.m_found = m_system
-            && m_system->GetTransformedShapeSurfaceNormal(
+        result.m_found = m_runtime
+            && m_runtime->GetTransformedShapeSurfaceNormal(
                 worldHandle,
                 shape,
                 subShapeId,
@@ -1587,7 +1590,7 @@ namespace Jolt
         const AZ::u32 maximumVertexCount) const
     {
         SupportingFaceVertexCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
@@ -1595,7 +1598,7 @@ namespace Jolt
         result.m_vertices.resize(AZStd::min(
             maximumVertexCount,
             MaximumSupportingFaceVertexCount));
-        const QueryResult queryResult = m_system->GetTransformedShapeSupportingFace(
+        const QueryResult queryResult = m_runtime->GetTransformedShapeSupportingFace(
             worldHandle,
             shape,
             subShapeId,
@@ -1611,7 +1614,7 @@ namespace Jolt
         const RaycastRequest& request) const
     {
         ClosestRaycastResult result;
-        result.m_found = m_system && m_system->RaycastClosest(worldHandle, request, result.m_hit);
+        result.m_found = m_runtime && m_runtime->RaycastClosest(worldHandle, request, result.m_hit);
         return result;
     }
 
@@ -1623,13 +1626,13 @@ namespace Jolt
         ClosestRaycastResultCollection collection;
         collection.m_requiredResultCount = aznumeric_cast<AZ::u32>(requests.size());
         collection.m_results.resize(requests.size());
-        if (!m_system)
+        if (!m_runtime)
         {
             collection.m_results.clear();
             return collection;
         }
 
-        const BufferResult result = m_system->RaycastClosestBatch(
+        const BufferResult result = m_runtime->RaycastClosestBatch(
             worldHandle,
             requests,
             collection.m_results);
@@ -1642,7 +1645,7 @@ namespace Jolt
         const WorldHandle worldHandle,
         const RaycastRequest& request) const
     {
-        return m_system && m_system->RaycastAny(worldHandle, request);
+        return m_runtime && m_runtime->RaycastAny(worldHandle, request);
     }
 
     RaycastHitCollection SystemComponent::RaycastAll(
@@ -1651,13 +1654,13 @@ namespace Jolt
         const AZ::u32 maximumHitCount) const
     {
         RaycastHitCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_hits.resize(AZStd::min(maximumHitCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->RaycastAll(worldHandle, request, result.m_hits);
+        const QueryResult queryResult = m_runtime->RaycastAll(worldHandle, request, result.m_hits);
         result.m_hits.resize(queryResult.m_hitCount);
         result.m_requiredHitCount = queryResult.m_requiredHitCount;
         return result;
@@ -1669,13 +1672,13 @@ namespace Jolt
         const AZ::u32 maximumHitCount) const
     {
         RaycastHitCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_hits.resize(AZStd::min(maximumHitCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->RaycastClosestPerBody(
+        const QueryResult queryResult = m_runtime->RaycastClosestPerBody(
             worldHandle,
             request,
             result.m_hits);
@@ -1690,13 +1693,13 @@ namespace Jolt
         const AZ::u32 maximumHitCount) const
     {
         OverlapHitCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_hits.resize(AZStd::min(maximumHitCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->OverlapPoint(worldHandle, request, result.m_hits);
+        const QueryResult queryResult = m_runtime->OverlapPoint(worldHandle, request, result.m_hits);
         result.m_hits.resize(queryResult.m_hitCount);
         result.m_requiredHitCount = queryResult.m_requiredHitCount;
         return result;
@@ -1706,7 +1709,7 @@ namespace Jolt
         const WorldHandle worldHandle,
         const PointOverlapRequest& request) const
     {
-        return m_system && m_system->OverlapPointAny(worldHandle, request);
+        return m_runtime && m_runtime->OverlapPointAny(worldHandle, request);
     }
 
     ShapeOverlapHitCollection SystemComponent::CollideShape(
@@ -1715,7 +1718,7 @@ namespace Jolt
         const AZ::u32 maximumHitCount) const
     {
         ShapeOverlapHitCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
@@ -1727,7 +1730,7 @@ namespace Jolt
             hitCapacity,
             result.m_queryFaceVertices,
             result.m_targetFaceVertices);
-        const QueryResult queryResult = m_system->CollideShape(
+        const QueryResult queryResult = m_runtime->CollideShape(
             worldHandle,
             request,
             result.m_hits,
@@ -1747,13 +1750,13 @@ namespace Jolt
         const AZ::u32 maximumHitCount) const
     {
         OverlapHitCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_hits.resize(AZStd::min(maximumHitCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->OverlapShape(worldHandle, request, result.m_hits);
+        const QueryResult queryResult = m_runtime->OverlapShape(worldHandle, request, result.m_hits);
         result.m_hits.resize(queryResult.m_hitCount);
         result.m_requiredHitCount = queryResult.m_requiredHitCount;
         return result;
@@ -1763,7 +1766,7 @@ namespace Jolt
         const WorldHandle worldHandle,
         const ShapeOverlapRequest& request) const
     {
-        return m_system && m_system->OverlapShapeAny(worldHandle, request);
+        return m_runtime && m_runtime->OverlapShapeAny(worldHandle, request);
     }
 
     ClosestShapeCastResult SystemComponent::CastShapeClosest(
@@ -1771,7 +1774,7 @@ namespace Jolt
         const ShapeCastRequest& request) const
     {
         ClosestShapeCastResult result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
@@ -1781,7 +1784,7 @@ namespace Jolt
             1,
             result.m_queryFaceVertices,
             result.m_targetFaceVertices);
-        result.m_found = m_system->CastShapeClosest(
+        result.m_found = m_runtime->CastShapeClosest(
             worldHandle,
             request,
             result.m_hit,
@@ -1804,7 +1807,7 @@ namespace Jolt
         const AZ::u32 maximumHitCount) const
     {
         ShapeCastHitCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
@@ -1816,7 +1819,7 @@ namespace Jolt
             hitCapacity,
             result.m_queryFaceVertices,
             result.m_targetFaceVertices);
-        const QueryResult queryResult = m_system->CastShapeAll(
+        const QueryResult queryResult = m_runtime->CastShapeAll(
             worldHandle,
             request,
             result.m_hits,
@@ -1836,7 +1839,7 @@ namespace Jolt
         const AZ::u32 maximumHitCount) const
     {
         ShapeCastHitCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
@@ -1848,7 +1851,7 @@ namespace Jolt
             hitCapacity,
             result.m_queryFaceVertices,
             result.m_targetFaceVertices);
-        const QueryResult queryResult = m_system->CastShapeClosestPerBody(
+        const QueryResult queryResult = m_runtime->CastShapeClosestPerBody(
             worldHandle,
             request,
             result.m_hits,
@@ -1868,13 +1871,13 @@ namespace Jolt
         const AZ::u32 maximumHitCount) const
     {
         BroadPhaseHitCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_hits.resize(AZStd::min(maximumHitCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->OverlapBroadPhase(worldHandle, request, result.m_hits);
+        const QueryResult queryResult = m_runtime->OverlapBroadPhase(worldHandle, request, result.m_hits);
         result.m_hits.resize(queryResult.m_hitCount);
         result.m_requiredHitCount = queryResult.m_requiredHitCount;
         return result;
@@ -1884,7 +1887,7 @@ namespace Jolt
         const WorldHandle worldHandle,
         const BroadPhaseOverlapRequest& request) const
     {
-        return m_system && m_system->OverlapBroadPhaseAny(worldHandle, request);
+        return m_runtime && m_runtime->OverlapBroadPhaseAny(worldHandle, request);
     }
 
     ClosestBroadPhaseCastResult SystemComponent::CastBroadPhaseClosest(
@@ -1892,7 +1895,7 @@ namespace Jolt
         const BroadPhaseCastRequest& request) const
     {
         ClosestBroadPhaseCastResult result;
-        result.m_found = m_system && m_system->CastBroadPhaseClosest(worldHandle, request, result.m_hit);
+        result.m_found = m_runtime && m_runtime->CastBroadPhaseClosest(worldHandle, request, result.m_hit);
         return result;
     }
 
@@ -1902,13 +1905,13 @@ namespace Jolt
         const AZ::u32 maximumHitCount) const
     {
         BroadPhaseCastHitCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_hits.resize(AZStd::min(maximumHitCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->CastBroadPhaseAll(worldHandle, request, result.m_hits);
+        const QueryResult queryResult = m_runtime->CastBroadPhaseAll(worldHandle, request, result.m_hits);
         result.m_hits.resize(queryResult.m_hitCount);
         result.m_requiredHitCount = queryResult.m_requiredHitCount;
         return result;
@@ -1920,13 +1923,13 @@ namespace Jolt
         const AZ::u32 maximumShapeCount) const
     {
         TransformedShapeCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_shapes.resize(AZStd::min(maximumShapeCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->CollectShapesInBounds(worldHandle, request, result.m_shapes);
+        const QueryResult queryResult = m_runtime->CollectShapesInBounds(worldHandle, request, result.m_shapes);
         result.m_shapes.resize(queryResult.m_hitCount);
         result.m_requiredShapeCount = queryResult.m_requiredHitCount;
         return result;
@@ -1938,7 +1941,7 @@ namespace Jolt
         const AZ::u32 maximumVertexCount) const
     {
         SupportingFaceVertexCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
@@ -1946,7 +1949,7 @@ namespace Jolt
         result.m_vertices.resize(AZStd::min(
             maximumVertexCount,
             MaximumSupportingFaceVertexCount));
-        const QueryResult queryResult = m_system->GetSupportingFace(
+        const QueryResult queryResult = m_runtime->GetSupportingFace(
             worldHandle,
             request,
             result.m_vertices);
@@ -1961,13 +1964,13 @@ namespace Jolt
         const AZ::u32 maximumTriangleCount) const
     {
         TransformedTriangleCollection result;
-        if (!m_system)
+        if (!m_runtime)
         {
             return result;
         }
 
         result.m_triangles.resize(AZStd::min(maximumTriangleCount, MaximumScriptQueryHits));
-        const QueryResult queryResult = m_system->CollectTriangles(
+        const QueryResult queryResult = m_runtime->CollectTriangles(
             worldHandle,
             request,
             result.m_triangles);
@@ -1980,14 +1983,14 @@ namespace Jolt
         const WorldHandle worldHandle) const
     {
         BroadPhaseBoundsResult result;
-        result.m_found = m_system && m_system->GetBroadPhaseBounds(worldHandle, result.m_bounds);
+        result.m_found = m_runtime && m_runtime->GetBroadPhaseBounds(worldHandle, result.m_bounds);
         return result;
     }
 
     bool SystemComponent::OptimizeBroadPhase(
         const WorldHandle worldHandle)
     {
-        return m_system && m_system->OptimizeBroadPhase(worldHandle);
+        return m_runtime && m_runtime->OptimizeBroadPhase(worldHandle);
     }
 
     bool SystemComponent::WereBodiesInContact(
@@ -1995,8 +1998,8 @@ namespace Jolt
         const BodyHandle firstBodyHandle,
         const BodyHandle secondBodyHandle) const
     {
-        return m_system
-            && m_system->WereBodiesInContact(
+        return m_runtime
+            && m_runtime->WereBodiesInContact(
                 worldHandle,
                 firstBodyHandle,
                 secondBodyHandle);

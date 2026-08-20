@@ -9,7 +9,7 @@
 
 #include <Jolt/BehaviorReflection.h>
 #include <Jolt/Reflection.h>
-#include <Jolt/System.h>
+#include <Jolt/SystemInternal.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Interface/Interface.h>
@@ -631,7 +631,7 @@ namespace Jolt
 
     void ConstraintComponent::Activate()
     {
-        m_system = AZ::Interface<ISystem>::Get();
+        m_system = GetRuntime();
         m_dependencyManager = AZ::Interface<IComponentDependencyManager>::Get();
         ConstraintRequestBus::Handler::BusConnect(GetEntityId());
         if (!m_dependencyManager)

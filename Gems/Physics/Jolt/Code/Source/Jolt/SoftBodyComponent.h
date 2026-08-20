@@ -18,7 +18,7 @@
 
 namespace Jolt
 {
-    class ISystem;
+    class RuntimeImplementation;
 
     class JOLT_API SoftBodyComponent final
         : public AZ::Component
@@ -219,7 +219,7 @@ namespace Jolt
         AZStd::unique_ptr<SoftBodyComponentConfiguration> m_configuration;
         AZStd::unique_ptr<AZStd::vector<MaterialHandle>> m_materialHandles;
 
-        ISystem* m_system = nullptr;
+        RuntimeImplementation* m_system = nullptr;
         WorldHandle m_worldHandle;
         BodyHandle m_bodyHandle;
         SoftBodyDefinitionHandle m_definitionHandle;

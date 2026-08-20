@@ -40,7 +40,7 @@ namespace Jolt::Editor
             AssetBuilderSDK::ProcessJobResponse& response) const;
 
     private:
-        AZStd::unique_ptr<ISystem> m_ownedSystem;
+        AZStd::unique_ptr<System> m_ownedSystem;
         AZStd::atomic_bool m_isShuttingDown = false;
     };
 

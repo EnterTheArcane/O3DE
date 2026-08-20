@@ -5363,7 +5363,7 @@ namespace Jolt
     };
 
     World::World(
-        System& system,
+        RuntimeImplementation& system,
         const WorldHandle handle,
         const AZ::u32 worldIndex,
         WorldConfiguration configuration,
@@ -25247,7 +25247,7 @@ namespace Jolt
                 const JPH::RVec3Arg baseOffset,
                 const WorldPosition& origin,
                 const AZStd::span<TransformedTriangle> triangles,
-                const System& system)
+                const RuntimeImplementation& system)
                 : m_bounds(bounds)
                 , m_baseOffset(baseOffset)
                 , m_origin(origin)
@@ -25322,7 +25322,7 @@ namespace Jolt
             JPH::RVec3 m_baseOffset;
             const WorldPosition& m_origin;
             AZStd::span<TransformedTriangle> m_triangles;
-            const System& m_system;
+            const RuntimeImplementation& m_system;
 
             AZStd::array<JPH::Float3, TriangleBatchSize * 3> m_nativeVertices;
             AZStd::array<const JPH::PhysicsMaterial*, TriangleBatchSize> m_nativeMaterials;

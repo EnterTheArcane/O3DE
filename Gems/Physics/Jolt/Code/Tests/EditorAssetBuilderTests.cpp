@@ -7,6 +7,7 @@
 
 #include <Jolt/Editor/AssetBuilder.h>
 #include <Jolt/AssetProduct.h>
+#include <Jolt/Capabilities.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/SceneAsset.h>
 #include <Jolt/SkeletonAsset.h>
@@ -433,12 +434,18 @@ namespace Jolt::Editor
         SceneSourceData sourceData;
         sourceData.m_name = AZ::Name("BuilderScene");
         BuilderCustomShapeProvider customShapeProvider;
-        ISystem* system = AZ::Interface<ISystem>::Get();
-        ASSERT_TRUE(system);
-        ICooking* cooking = AZ::Interface<ICooking>::Get();
+        Cooking* cooking = Cooking::Get();
         ASSERT_TRUE(cooking);
+        Extensions* extensions = Extensions::Get();
+        ASSERT_TRUE(extensions);
+        Scenes* scenes = Scenes::Get();
+        ASSERT_TRUE(scenes);
+        SoftBodies* softBodies = SoftBodies::Get();
+        ASSERT_TRUE(softBodies);
+        Worlds* worlds = Worlds::Get();
+        ASSERT_TRUE(worlds);
         ASSERT_EQ(
-            cooking->RegisterCustomShapeProvider(&customShapeProvider),
+            extensions->RegisterCustomShapeProvider(&customShapeProvider),
             ProviderRegistrationResult::Success);
 
         sourceData.m_shapes.push_back(SceneSourceShapeData{
@@ -663,49 +670,49 @@ namespace Jolt::Editor
         ASSERT_TRUE(importedShapeHandle);
         EXPECT_TRUE(cooking->DestroyCookedShape(importedShapeHandle));
 
-        const SoftBodyDefinitionHandle importedSoftBodyHandle = system->ImportSoftBodyDefinition(
+        const SoftBodyDefinitionHandle importedSoftBodyHandle = softBodies->ImportSoftBodyDefinition(
             loadedAsset.m_data.m_softBodyDefinitions[0].m_archive,
             {});
         ASSERT_TRUE(importedSoftBodyHandle);
-        EXPECT_TRUE(system->DestroySoftBodyDefinition(importedSoftBodyHandle));
+        EXPECT_TRUE(softBodies->DestroySoftBodyDefinition(importedSoftBodyHandle));
 
         const SceneDefinitionHandle baselineDefinitionHandle =
-            system->CreateSceneDefinition(loadedAsset.m_data);
+            scenes->CreateSceneDefinition(loadedAsset.m_data);
         ASSERT_TRUE(baselineDefinitionHandle);
-        EXPECT_TRUE(system->DestroySceneDefinition(baselineDefinitionHandle));
+        EXPECT_TRUE(scenes->DestroySceneDefinition(baselineDefinitionHandle));
 
         EXPECT_EQ(
-            cooking->UnregisterCustomShapeProvider(&customShapeProvider),
+            extensions->UnregisterCustomShapeProvider(&customShapeProvider),
             ProviderRegistrationResult::Success);
-        EXPECT_FALSE(system->CreateSceneDefinition(loadedAsset.m_data));
+        EXPECT_FALSE(scenes->CreateSceneDefinition(loadedAsset.m_data));
         ASSERT_EQ(
-            cooking->RegisterCustomShapeProvider(&customShapeProvider),
+            extensions->RegisterCustomShapeProvider(&customShapeProvider),
             ProviderRegistrationResult::Success);
 
         const AZ::u32 validArchiveVersion = loadedAsset.m_data.m_shapes[0].m_archive.m_formatVersion;
         loadedAsset.m_data.m_shapes[0].m_archive.m_formatVersion = validArchiveVersion + 1;
-        EXPECT_FALSE(system->CreateSceneDefinition(loadedAsset.m_data));
+        EXPECT_FALSE(scenes->CreateSceneDefinition(loadedAsset.m_data));
         loadedAsset.m_data.m_shapes[0].m_archive.m_formatVersion = validArchiveVersion;
 
-        const SceneDefinitionHandle definitionHandle = system->CreateSceneDefinition(loadedAsset.m_data);
+        const SceneDefinitionHandle definitionHandle = scenes->CreateSceneDefinition(loadedAsset.m_data);
         ASSERT_TRUE(definitionHandle);
-        const WorldHandle worldHandle = system->GetDefaultWorldHandle();
-        const SceneInstanceHandle instanceHandle = system->InstantiateScene(
+        const WorldHandle worldHandle = worlds->GetDefaultWorldHandle();
+        const SceneInstanceHandle instanceHandle = scenes->InstantiateScene(
             worldHandle,
             definitionHandle);
         ASSERT_TRUE(instanceHandle);
         AZStd::array<BodyHandle, 3> bodies;
         AZStd::array<ConstraintHandle, 1> constraints;
-        EXPECT_TRUE(system->GetSceneBodies(worldHandle, instanceHandle, bodies).IsComplete());
-        EXPECT_TRUE(system->GetSceneConstraints(worldHandle, instanceHandle, constraints).IsComplete());
+        EXPECT_TRUE(scenes->GetSceneBodies(worldHandle, instanceHandle, bodies).IsComplete());
+        EXPECT_TRUE(scenes->GetSceneConstraints(worldHandle, instanceHandle, constraints).IsComplete());
         EXPECT_TRUE(bodies[0]);
         EXPECT_TRUE(bodies[1]);
         EXPECT_TRUE(bodies[2]);
         EXPECT_TRUE(constraints[0]);
-        EXPECT_TRUE(system->DestroySceneInstance(worldHandle, instanceHandle));
-        EXPECT_TRUE(system->DestroySceneDefinition(definitionHandle));
+        EXPECT_TRUE(scenes->DestroySceneInstance(worldHandle, instanceHandle));
+        EXPECT_TRUE(scenes->DestroySceneDefinition(definitionHandle));
         EXPECT_EQ(
-            cooking->UnregisterCustomShapeProvider(&customShapeProvider),
+            extensions->UnregisterCustomShapeProvider(&customShapeProvider),
             ProviderRegistrationResult::Success);
     }
 
@@ -778,9 +785,9 @@ namespace Jolt::Editor
         request.m_tempDirPath = temporaryDirectory.GetDirectory();
         AssetBuilderSDK::ProcessJobResponse response;
         AssetBuilder builder;
-        EXPECT_FALSE(AZ::Interface<ISystem>::Get());
+        EXPECT_FALSE(RuntimeConfiguration::Get());
         builder.Register();
-        EXPECT_FALSE(AZ::Interface<ISystem>::Get());
+        EXPECT_TRUE(RuntimeConfiguration::Get());
         builder.ProcessJob(request, response);
         ASSERT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
         ASSERT_EQ(response.m_outputProducts.size(), 1);
@@ -799,27 +806,26 @@ namespace Jolt::Editor
         ASSERT_EQ(loadedAsset.m_data.m_animations.size(), 1);
         EXPECT_EQ(loadedAsset.m_data.m_animations.front().m_name.GetStringView(), sourceAnimation.m_name);
 
-        SystemComponentScope systemComponentScope;
-        ISystem* system = AZ::Interface<ISystem>::Get();
-        ASSERT_TRUE(system);
-        const SkeletonDefinitionHandle skeletonHandle = system->ImportSkeletonDefinition(loadedAsset.m_data.m_skeleton);
+        Skeletons* skeletons = Skeletons::Get();
+        ASSERT_TRUE(skeletons);
+        const SkeletonDefinitionHandle skeletonHandle = skeletons->ImportSkeletonDefinition(loadedAsset.m_data.m_skeleton);
         ASSERT_TRUE(skeletonHandle);
         const SkeletalAnimationHandle animationHandle =
-            system->ImportSkeletalAnimation(loadedAsset.m_data.m_animations.front().m_archive);
+            skeletons->ImportSkeletalAnimation(loadedAsset.m_data.m_animations.front().m_archive);
         ASSERT_TRUE(animationHandle);
 
         SkeletonJoint joints[2];
-        const QueryResult jointResult = system->GetSkeletonJoints(skeletonHandle, joints);
+        const QueryResult jointResult = skeletons->GetSkeletonJoints(skeletonHandle, joints);
         EXPECT_EQ(jointResult.m_hitCount, 2);
         EXPECT_EQ(joints[1].m_name.GetStringView(), "child");
 
         SkeletalAnimationState animationState;
-        ASSERT_TRUE(system->GetSkeletalAnimationState(animationHandle, animationState));
+        ASSERT_TRUE(skeletons->GetSkeletalAnimationState(animationHandle, animationState));
         EXPECT_EQ(animationState.m_jointCount, 1);
         EXPECT_FLOAT_EQ(animationState.m_duration, 1.0f);
 
-        EXPECT_TRUE(system->DestroySkeletalAnimation(animationHandle));
-        EXPECT_TRUE(system->DestroySkeletonDefinition(skeletonHandle));
+        EXPECT_TRUE(skeletons->DestroySkeletalAnimation(animationHandle));
+        EXPECT_TRUE(skeletons->DestroySkeletonDefinition(skeletonHandle));
         builder.ShutDown();
         builder.BusDisconnect();
     }

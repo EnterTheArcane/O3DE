@@ -6,6 +6,27 @@
 #
 
 set(FILES
+    Include/Jolt/Capabilities.h
+    Include/Jolt/Capabilities/Bodies.h
+    Include/Jolt/Capabilities/Characters.h
+    Include/Jolt/Capabilities/CollisionFilters.h
+    Include/Jolt/Capabilities/Constraints.h
+    Include/Jolt/Capabilities/Diagnostics.h
+    Include/Jolt/Capabilities/Extensions.h
+    Include/Jolt/Capabilities/Hair.h
+    Include/Jolt/Capabilities/Materials.h
+    Include/Jolt/Capabilities/Paths.h
+    Include/Jolt/Capabilities/Ragdolls.h
+    Include/Jolt/Capabilities/Rollback.h
+    Include/Jolt/Capabilities/RuntimeConfiguration.h
+    Include/Jolt/Capabilities/Scenes.h
+    Include/Jolt/Capabilities/Shapes.h
+    Include/Jolt/Capabilities/Skeletons.h
+    Include/Jolt/Capabilities/SoftBodies.h
+    Include/Jolt/Capabilities/Vehicles.h
+    Include/Jolt/Capabilities/WorldQueries.h
+    Include/Jolt/Capabilities/WorldSimulation.h
+    Include/Jolt/Capabilities/Worlds.h
     Include/Jolt/Configuration.h
     Include/Jolt/BodyConfiguration.h
     Include/Jolt/BodyCollision.h

@@ -9,10 +9,10 @@
 
 #include <Jolt/AssetBuilderSystem.h>
 #include <Jolt/AssetProduct.h>
+#include <Jolt/Capabilities.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/SceneAsset.h>
 #include <Jolt/SkeletonAsset.h>
-#include <Jolt/System.h>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Interface/Interface.h>
@@ -187,7 +187,7 @@ namespace Jolt::Editor
     {
         m_isShuttingDown.store(false, AZStd::memory_order_release);
 
-        if (!AZ::Interface<ISystem>::Get())
+        if (!RuntimeConfiguration::Get())
         {
             m_ownedSystem = CreateAssetBuilderSystem();
             if (!m_ownedSystem)
@@ -295,12 +295,9 @@ namespace Jolt::Editor
             return;
         }
 
-        ISystem* system = m_ownedSystem.get();
-        if (!system)
-        {
-            system = AZ::Interface<ISystem>::Get();
-        }
-        if (!system)
+        Scenes* scenes = Scenes::Get();
+        Skeletons* skeletons = Skeletons::Get();
+        if (!scenes || !skeletons)
         {
             AZ_Error("Jolt", false, "Cannot compile a Jolt source document without an active physics system.");
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
@@ -326,7 +323,7 @@ namespace Jolt::Editor
             }
 
             SceneAsset sceneAsset;
-            if (!system->BuildSceneAsset(sourceData, sceneAsset.m_data))
+            if (!scenes->BuildSceneAsset(sourceData, sceneAsset.m_data))
             {
                 AZ_Error("Jolt", false, "Failed to compile scene source '%s'.", request.m_fullPath.c_str());
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
@@ -379,7 +376,7 @@ namespace Jolt::Editor
             });
         }
 
-        const SkeletonDefinitionHandle skeletonHandle = system->CreateSkeletonDefinition(skeletonConfiguration);
+        const SkeletonDefinitionHandle skeletonHandle = skeletons->CreateSkeletonDefinition(skeletonConfiguration);
         if (!skeletonHandle)
         {
             AZ_Error("Jolt", false, "Failed to compile skeleton definition from '%s'.", request.m_fullPath.c_str());
@@ -387,10 +384,10 @@ namespace Jolt::Editor
             return;
         }
 
-        const bool skeletonExported = system->ExportSkeletonDefinition(
+        const bool skeletonExported = skeletons->ExportSkeletonDefinition(
             skeletonHandle,
             skeletonAsset.m_data.m_skeleton);
-        system->DestroySkeletonDefinition(skeletonHandle);
+        skeletons->DestroySkeletonDefinition(skeletonHandle);
         if (!skeletonExported)
         {
             AZ_Error("Jolt", false, "Failed to export skeleton definition from '%s'.", request.m_fullPath.c_str());
@@ -432,7 +429,7 @@ namespace Jolt::Editor
                 });
             }
 
-            const SkeletalAnimationHandle animationHandle = system->CreateSkeletalAnimation(animationConfiguration);
+            const SkeletalAnimationHandle animationHandle = skeletons->CreateSkeletalAnimation(animationConfiguration);
             if (!animationHandle)
             {
                 AZ_Error(
@@ -447,10 +444,10 @@ namespace Jolt::Editor
 
             NamedSkeletalAnimationAsset& productAnimation = skeletonAsset.m_data.m_animations.emplace_back();
             productAnimation.m_name = animationName;
-            const bool animationExported = system->ExportSkeletalAnimation(
+            const bool animationExported = skeletons->ExportSkeletalAnimation(
                 animationHandle,
                 productAnimation.m_archive);
-            system->DestroySkeletalAnimation(animationHandle);
+            skeletons->DestroySkeletalAnimation(animationHandle);
             if (!animationExported)
             {
                 AZ_Error(

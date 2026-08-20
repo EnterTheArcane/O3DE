@@ -150,7 +150,7 @@ namespace Jolt
     public:
         virtual ~IGroupFilter() = default;
 
-        //! Callbacks may run concurrently. They must be deterministic and thread-safe, and must not call ISystem.
+        //! Callbacks may run concurrently. They must be deterministic and thread-safe, and must not call runtime capabilities.
 
         [[nodiscard]]
         virtual bool CanCollide(

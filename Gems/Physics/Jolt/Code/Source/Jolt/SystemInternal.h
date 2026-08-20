@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Capabilities.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/MaterialInternal.h>
 #include <Jolt/System.h>
@@ -50,18 +51,16 @@ namespace Jolt
     class DebugRenderer;
     class World;
 
-    class JOLT_API System final
-        : public ISystem
-        , public ICooking
+    class JOLT_API RuntimeImplementation
     {
     public:
-        System(
+        RuntimeImplementation(
             SystemConfiguration configuration,
             AZ::JobContext* jobContext,
             SystemRegistration registration = SystemRegistration::Global);
-        ~System() override;
+        ~RuntimeImplementation();
 
-        AZ_DISABLE_COPY_MOVE(System);
+        AZ_DISABLE_COPY_MOVE(RuntimeImplementation);
 
         constexpr explicit operator bool() const noexcept
         {
@@ -69,148 +68,148 @@ namespace Jolt
         }
 
         [[nodiscard]]
-        const SystemConfiguration& GetConfiguration() const override;
+        const SystemConfiguration& GetConfiguration() const;
 
         [[nodiscard]]
-        RuntimeInfo GetRuntimeInfo() const override;
+        RuntimeInfo GetRuntimeInfo() const;
 
         [[nodiscard]]
-        bool RegisterCustomConstraintProvider(ICustomConstraintProvider* provider) override;
+        bool RegisterCustomConstraintProvider(ICustomConstraintProvider* provider);
 
-        bool UnregisterCustomConstraintProvider(ICustomConstraintProvider* provider) override;
-
-        [[nodiscard]]
-        bool RegisterCustomPathProvider(ICustomPathProvider* provider) override;
-
-        bool UnregisterCustomPathProvider(ICustomPathProvider* provider) override;
+        bool UnregisterCustomConstraintProvider(ICustomConstraintProvider* provider);
 
         [[nodiscard]]
-        bool RegisterCustomConvexShapeProvider(ICustomConvexShapeProvider* provider) override;
+        bool RegisterCustomPathProvider(ICustomPathProvider* provider);
 
-        bool UnregisterCustomConvexShapeProvider(ICustomConvexShapeProvider* provider) override;
-
-        [[nodiscard]]
-        ProviderRegistrationResult RegisterCustomShapeProvider(ICustomShapeProvider* provider) override;
+        bool UnregisterCustomPathProvider(ICustomPathProvider* provider);
 
         [[nodiscard]]
-        ProviderRegistrationResult UnregisterCustomShapeProvider(ICustomShapeProvider* provider) override;
+        bool RegisterCustomConvexShapeProvider(ICustomConvexShapeProvider* provider);
+
+        bool UnregisterCustomConvexShapeProvider(ICustomConvexShapeProvider* provider);
 
         [[nodiscard]]
-        MaterialHandle CreateMaterial(const MaterialConfiguration& configuration) override;
-
-        bool DestroyMaterial(MaterialHandle materialHandle) override;
+        ProviderRegistrationResult RegisterCustomShapeProvider(ICustomShapeProvider* provider);
 
         [[nodiscard]]
-        bool IsValid(MaterialHandle materialHandle) const override;
+        ProviderRegistrationResult UnregisterCustomShapeProvider(ICustomShapeProvider* provider);
 
         [[nodiscard]]
-        CookedShapeHandle CookShape(const ShapeConfiguration& configuration) override;
+        MaterialHandle CreateMaterial(const MaterialConfiguration& configuration);
+
+        bool DestroyMaterial(MaterialHandle materialHandle);
 
         [[nodiscard]]
-        CookedShapeHandle CookShape(const CookedCompoundShapeConfiguration& configuration) override;
+        bool IsValid(MaterialHandle materialHandle) const;
 
         [[nodiscard]]
-        CookedShapeHandle CookShape(const CookedDecoratedShapeConfiguration& configuration) override;
+        CookedShapeHandle CookShape(const ShapeConfiguration& configuration);
+
+        [[nodiscard]]
+        CookedShapeHandle CookShape(const CookedCompoundShapeConfiguration& configuration);
+
+        [[nodiscard]]
+        CookedShapeHandle CookShape(const CookedDecoratedShapeConfiguration& configuration);
 
         [[nodiscard]]
         bool ExportShape(
             CookedShapeHandle cookedShapeHandle,
             CookedShapeArchive& archive,
             AZStd::vector<MaterialHandle>& materialHandles,
-            AZStd::vector<CookedShapeHandle>& childShapeHandles) const override;
+            AZStd::vector<CookedShapeHandle>& childShapeHandles) const;
 
         [[nodiscard]]
         CookedShapeHandle ImportShape(
             const CookedShapeArchive& archive,
             AZStd::span<const MaterialHandle> materialHandles,
-            AZStd::span<const CookedShapeHandle> childShapeHandles) override;
+            AZStd::span<const CookedShapeHandle> childShapeHandles);
 
-        bool DestroyCookedShape(CookedShapeHandle cookedShapeHandle) override;
+        bool DestroyCookedShape(CookedShapeHandle cookedShapeHandle);
 
         [[nodiscard]]
-        bool IsValid(CookedShapeHandle cookedShapeHandle) const override;
+        bool IsValid(CookedShapeHandle cookedShapeHandle) const;
 
         [[nodiscard]]
         bool GetStats(
             CookedShapeHandle cookedShapeHandle,
-            ShapeStats& stats) const override;
+            ShapeStats& stats) const;
 
         [[nodiscard]]
         bool GetStatsRecursive(
             CookedShapeHandle cookedShapeHandle,
-            ShapeStats& stats) const override;
+            ShapeStats& stats) const;
 
         [[nodiscard]]
         bool GetProperties(
             CookedShapeHandle cookedShapeHandle,
-            ShapeProperties& properties) const override;
+            ShapeProperties& properties) const;
 
         [[nodiscard]]
         bool GetUserData(
             CookedShapeHandle cookedShapeHandle,
-            AZ::u64& userData) const override;
+            AZ::u64& userData) const;
 
         [[nodiscard]]
         bool GetCustomConvexShapeInfo(
             CookedShapeHandle cookedShapeHandle,
-            CustomConvexShapeInfo& info) const override;
+            CustomConvexShapeInfo& info) const;
 
         [[nodiscard]]
         bool GetCustomShapeInfo(
             CookedShapeHandle cookedShapeHandle,
-            CustomShapeInfo& info) const override;
+            CustomShapeInfo& info) const;
 
         [[nodiscard]]
         BufferResult GetCustomShapeDependencies(
             CookedShapeHandle cookedShapeHandle,
-            AZStd::span<CustomShapeDependency> dependencies) const override;
+            AZStd::span<CustomShapeDependency> dependencies) const;
 
         [[nodiscard]]
         bool GetSubShapeUserData(
             CookedShapeHandle cookedShapeHandle,
             SubShapeId subShapeId,
-            AZ::u64& userData) const override;
+            AZ::u64& userData) const;
 
         [[nodiscard]]
         bool GetDirectChildShape(
             CookedShapeHandle cookedShapeHandle,
             SubShapeId subShapeId,
             CookedShapeHandle& childShapeHandle,
-            SubShapeTransform& transform) const override;
+            SubShapeTransform& transform) const;
 
         [[nodiscard]]
         BufferResult GetMeshMaterials(
             CookedShapeHandle cookedShapeHandle,
-            AZStd::span<MaterialHandle> materialHandles) const override;
+            AZStd::span<MaterialHandle> materialHandles) const;
 
         [[nodiscard]]
         bool GetMeshTriangleMaterialIndex(
             CookedShapeHandle cookedShapeHandle,
             SubShapeId subShapeId,
-            AZ::u32& materialIndex) const override;
+            AZ::u32& materialIndex) const;
 
         [[nodiscard]]
         bool GetMeshTriangleUserData(
             CookedShapeHandle cookedShapeHandle,
             SubShapeId subShapeId,
-            AZ::u32& userData) const override;
+            AZ::u32& userData) const;
 
         [[nodiscard]]
         bool GetCompoundChildCount(
             CookedShapeHandle cookedShapeHandle,
-            AZ::u32& childCount) const override;
+            AZ::u32& childCount) const;
 
         [[nodiscard]]
         bool GetCompoundChild(
             CookedShapeHandle cookedShapeHandle,
             AZ::u32 childIndex,
-            CookedCompoundChildConfiguration& child) const override;
+            CookedCompoundChildConfiguration& child) const;
 
         [[nodiscard]]
         bool GetCompoundChildIndex(
             CookedShapeHandle cookedShapeHandle,
             SubShapeId subShapeId,
-            AZ::u32& childIndex) const override;
+            AZ::u32& childIndex) const;
 
         [[nodiscard]]
         bool Raycast(
@@ -218,680 +217,680 @@ namespace Jolt
             const AZ::Vector3& start,
             const AZ::Vector3& direction,
             float distance,
-            CookedRaycastHit& hit) const override;
+            CookedRaycastHit& hit) const;
 
         [[nodiscard]]
         GroupFilterHandle CreateGroupFilter(
             AZ::u32 subGroupCount,
-            IGroupFilter* filter) override;
+            IGroupFilter* filter);
 
         [[nodiscard]]
         GroupFilterHandle CreateGroupFilterTable(
-            const GroupFilterTableConfiguration& configuration) override;
+            const GroupFilterTableConfiguration& configuration);
 
-        bool DestroyGroupFilter(GroupFilterHandle filterHandle) override;
+        bool DestroyGroupFilter(GroupFilterHandle filterHandle);
 
         [[nodiscard]]
-        bool IsValid(GroupFilterHandle filterHandle) const override;
+        bool IsValid(GroupFilterHandle filterHandle) const;
 
-        bool NotifyGroupFilterChanged(GroupFilterHandle filterHandle) override;
+        bool NotifyGroupFilterChanged(GroupFilterHandle filterHandle);
 
         [[nodiscard]]
         bool GetSubGroupCollisionEnabled(
             GroupFilterHandle filterHandle,
             CollisionSubGroupId firstSubGroup,
             CollisionSubGroupId secondSubGroup,
-            bool& enabled) const override;
+            bool& enabled) const;
 
         bool SetSubGroupCollisionEnabled(
             GroupFilterHandle filterHandle,
             CollisionSubGroupId firstSubGroup,
             CollisionSubGroupId secondSubGroup,
-            bool enabled) override;
+            bool enabled);
 
         [[nodiscard]]
-        PathHandle CreatePath(const HermitePathConfiguration& configuration) override;
+        PathHandle CreatePath(const HermitePathConfiguration& configuration);
 
         [[nodiscard]]
-        PathHandle CreatePath(const CustomPathConfiguration& configuration) override;
+        PathHandle CreatePath(const CustomPathConfiguration& configuration);
 
-        bool DestroyPath(PathHandle pathHandle) override;
+        bool DestroyPath(PathHandle pathHandle);
 
         [[nodiscard]]
-        bool IsValid(PathHandle pathHandle) const override;
+        bool IsValid(PathHandle pathHandle) const;
 
         [[nodiscard]]
         bool GetPathState(
             PathHandle pathHandle,
-            PathState& state) const override;
+            PathState& state) const;
 
         [[nodiscard]]
         bool GetCustomPathInfo(
             PathHandle pathHandle,
-            CustomPathInfo& info) const override;
+            CustomPathInfo& info) const;
 
         bool SamplePath(
             PathHandle pathHandle,
             float fraction,
-            PathSample& sample) const override;
+            PathSample& sample) const;
 
         bool FindClosestPathPoint(
             PathHandle pathHandle,
             const AZ::Vector3& position,
             float fractionHint,
-            PathSample& sample) const override;
+            PathSample& sample) const;
 
         [[nodiscard]]
         SkeletonDefinitionHandle CreateSkeletonDefinition(
-            const SkeletonDefinitionConfiguration& configuration) override;
+            const SkeletonDefinitionConfiguration& configuration);
 
         [[nodiscard]]
         bool ExportSkeletonDefinition(
             SkeletonDefinitionHandle skeletonHandle,
-            SkeletonDefinitionArchive& archive) const override;
+            SkeletonDefinitionArchive& archive) const;
 
         [[nodiscard]]
         SkeletonDefinitionHandle ImportSkeletonDefinition(
-            const SkeletonDefinitionArchive& archive) override;
+            const SkeletonDefinitionArchive& archive);
 
-        bool DestroySkeletonDefinition(SkeletonDefinitionHandle skeletonHandle) override;
+        bool DestroySkeletonDefinition(SkeletonDefinitionHandle skeletonHandle);
 
         [[nodiscard]]
-        bool IsValid(SkeletonDefinitionHandle skeletonHandle) const override;
+        bool IsValid(SkeletonDefinitionHandle skeletonHandle) const;
 
         [[nodiscard]]
         QueryResult GetSkeletonJoints(
             SkeletonDefinitionHandle skeletonHandle,
-            AZStd::span<SkeletonJoint> joints) const override;
+            AZStd::span<SkeletonJoint> joints) const;
 
         [[nodiscard]]
         bool FindSkeletonJoint(
             SkeletonDefinitionHandle skeletonHandle,
             AZ::Name jointName,
-            AZ::u32& jointIndex) const override;
+            AZ::u32& jointIndex) const;
 
         [[nodiscard]]
         SkeletalAnimationHandle CreateSkeletalAnimation(
-            const SkeletalAnimationConfiguration& configuration) override;
+            const SkeletalAnimationConfiguration& configuration);
 
         [[nodiscard]]
         bool ExportSkeletalAnimation(
             SkeletalAnimationHandle animationHandle,
-            SkeletalAnimationArchive& archive) const override;
+            SkeletalAnimationArchive& archive) const;
 
         [[nodiscard]]
         SkeletalAnimationHandle ImportSkeletalAnimation(
-            const SkeletalAnimationArchive& archive) override;
+            const SkeletalAnimationArchive& archive);
 
         bool UpdateSkeletalAnimation(
             SkeletalAnimationHandle animationHandle,
-            const SkeletalAnimationConfiguration& configuration) override;
+            const SkeletalAnimationConfiguration& configuration);
 
-        bool DestroySkeletalAnimation(SkeletalAnimationHandle animationHandle) override;
+        bool DestroySkeletalAnimation(SkeletalAnimationHandle animationHandle);
 
         [[nodiscard]]
-        bool IsValid(SkeletalAnimationHandle animationHandle) const override;
+        bool IsValid(SkeletalAnimationHandle animationHandle) const;
 
         [[nodiscard]]
         bool GetSkeletalAnimationState(
             SkeletalAnimationHandle animationHandle,
-            SkeletalAnimationState& state) const override;
+            SkeletalAnimationState& state) const;
 
         [[nodiscard]]
         bool GetSkeletalAnimatedJointName(
             SkeletalAnimationHandle animationHandle,
             AZ::u32 jointIndex,
-            AZ::Name& jointName) const override;
+            AZ::Name& jointName) const;
 
         [[nodiscard]]
         QueryResult GetSkeletalAnimationKeyframes(
             SkeletalAnimationHandle animationHandle,
             AZ::u32 jointIndex,
-            AZStd::span<SkeletalAnimationKeyframe> keyframes) const override;
+            AZStd::span<SkeletalAnimationKeyframe> keyframes) const;
 
         bool SetSkeletalAnimationLooping(
             SkeletalAnimationHandle animationHandle,
-            bool isLooping) override;
+            bool isLooping);
 
         bool ScaleSkeletalAnimation(
             SkeletalAnimationHandle animationHandle,
-            float scale) override;
+            float scale);
 
         [[nodiscard]]
-        SkeletonPoseHandle CreateSkeletonPose(SkeletonDefinitionHandle skeletonHandle) override;
+        SkeletonPoseHandle CreateSkeletonPose(SkeletonDefinitionHandle skeletonHandle);
 
-        bool DestroySkeletonPose(SkeletonPoseHandle poseHandle) override;
+        bool DestroySkeletonPose(SkeletonPoseHandle poseHandle);
 
         [[nodiscard]]
-        bool IsValid(SkeletonPoseHandle poseHandle) const override;
+        bool IsValid(SkeletonPoseHandle poseHandle) const;
 
         [[nodiscard]]
         bool GetSkeletonPoseState(
             SkeletonPoseHandle poseHandle,
-            SkeletonPoseState& state) const override;
+            SkeletonPoseState& state) const;
 
         bool SetSkeletonPoseRootOffset(
             SkeletonPoseHandle poseHandle,
-            const WorldPosition& rootOffset) override;
+            const WorldPosition& rootOffset);
 
         bool SetSkeletonPoseLocalTransforms(
             SkeletonPoseHandle poseHandle,
-            AZStd::span<const AZ::Transform> localTransforms) override;
+            AZStd::span<const AZ::Transform> localTransforms);
 
         bool SetSkeletonPoseModelTransforms(
             SkeletonPoseHandle poseHandle,
-            AZStd::span<const AZ::Transform> modelTransforms) override;
+            AZStd::span<const AZ::Transform> modelTransforms);
 
         [[nodiscard]]
         QueryResult GetSkeletonPoseLocalTransforms(
             SkeletonPoseHandle poseHandle,
-            AZStd::span<AZ::Transform> localTransforms) const override;
+            AZStd::span<AZ::Transform> localTransforms) const;
 
         [[nodiscard]]
         QueryResult GetSkeletonPoseModelTransforms(
             SkeletonPoseHandle poseHandle,
-            AZStd::span<AZ::Transform> modelTransforms) const override;
+            AZStd::span<AZ::Transform> modelTransforms) const;
 
         bool SampleSkeletalAnimation(
             SkeletalAnimationHandle animationHandle,
             SkeletonPoseHandle poseHandle,
-            float time) override;
+            float time);
 
         [[nodiscard]]
         SkeletonMapperHandle CreateSkeletonMapper(
-            const SkeletonMapperConfiguration& configuration) override;
+            const SkeletonMapperConfiguration& configuration);
 
-        bool DestroySkeletonMapper(SkeletonMapperHandle mapperHandle) override;
+        bool DestroySkeletonMapper(SkeletonMapperHandle mapperHandle);
 
         [[nodiscard]]
-        bool IsValid(SkeletonMapperHandle mapperHandle) const override;
+        bool IsValid(SkeletonMapperHandle mapperHandle) const;
 
         [[nodiscard]]
         bool GetSkeletonMapperState(
             SkeletonMapperHandle mapperHandle,
-            SkeletonMapperState& state) const override;
+            SkeletonMapperState& state) const;
 
         [[nodiscard]]
         QueryResult GetSkeletonMapperMappings(
             SkeletonMapperHandle mapperHandle,
-            AZStd::span<SkeletonMapperMappingState> mappings) const override;
+            AZStd::span<SkeletonMapperMappingState> mappings) const;
 
         [[nodiscard]]
         bool GetSkeletonMapperChainState(
             SkeletonMapperHandle mapperHandle,
             AZ::u32 chainIndex,
-            SkeletonMapperChainState& state) const override;
+            SkeletonMapperChainState& state) const;
 
         [[nodiscard]]
         QueryResult GetSkeletonMapperSourceChain(
             SkeletonMapperHandle mapperHandle,
             AZ::u32 chainIndex,
-            AZStd::span<AZ::u32> jointIndices) const override;
+            AZStd::span<AZ::u32> jointIndices) const;
 
         [[nodiscard]]
         QueryResult GetSkeletonMapperTargetChain(
             SkeletonMapperHandle mapperHandle,
             AZ::u32 chainIndex,
-            AZStd::span<AZ::u32> jointIndices) const override;
+            AZStd::span<AZ::u32> jointIndices) const;
 
         [[nodiscard]]
         QueryResult GetSkeletonMapperUnmappedJoints(
             SkeletonMapperHandle mapperHandle,
-            AZStd::span<SkeletonMapperUnmappedJoint> joints) const override;
+            AZStd::span<SkeletonMapperUnmappedJoint> joints) const;
 
         [[nodiscard]]
         QueryResult GetSkeletonMapperLockedTranslations(
             SkeletonMapperHandle mapperHandle,
-            AZStd::span<SkeletonMapperLockedTranslation> translations) const override;
+            AZStd::span<SkeletonMapperLockedTranslation> translations) const;
 
         [[nodiscard]]
         bool GetMappedSkeletonJoint(
             SkeletonMapperHandle mapperHandle,
             AZ::u32 sourceJointIndex,
-            AZ::u32& targetJointIndex) const override;
+            AZ::u32& targetJointIndex) const;
 
         [[nodiscard]]
         bool IsSkeletonJointTranslationLocked(
             SkeletonMapperHandle mapperHandle,
             AZ::u32 targetJointIndex,
-            bool& locked) const override;
+            bool& locked) const;
 
         [[nodiscard]]
         bool MapSkeletonPose(
             SkeletonMapperHandle mapperHandle,
             AZStd::span<const AZ::Transform> sourceModelTransforms,
             AZStd::span<const AZ::Transform> targetLocalTransforms,
-            AZStd::span<AZ::Transform> targetModelTransforms) const override;
+            AZStd::span<AZ::Transform> targetModelTransforms) const;
 
         [[nodiscard]]
         bool MapSkeletonPoseReverse(
             SkeletonMapperHandle mapperHandle,
             AZStd::span<const AZ::Transform> targetModelTransforms,
-            AZStd::span<AZ::Transform> sourceModelTransforms) const override;
+            AZStd::span<AZ::Transform> sourceModelTransforms) const;
 
         [[nodiscard]]
         SoftBodyDefinitionHandle CreateSoftBodyDefinition(
             const SoftBodyDefinitionConfiguration& configuration,
-            SoftBodyOptimizationRemap* optimizationRemap = nullptr) override;
+            SoftBodyOptimizationRemap* optimizationRemap = nullptr);
 
         [[nodiscard]]
         bool ExportSoftBodyDefinition(
             SoftBodyDefinitionHandle definitionHandle,
             SoftBodyDefinitionArchive& archive,
-            AZStd::vector<MaterialHandle>& materialHandles) const override;
+            AZStd::vector<MaterialHandle>& materialHandles) const;
 
         [[nodiscard]]
         SoftBodyDefinitionHandle ImportSoftBodyDefinition(
             const SoftBodyDefinitionArchive& archive,
-            AZStd::span<const MaterialHandle> materialHandles) override;
+            AZStd::span<const MaterialHandle> materialHandles);
 
-        bool DestroySoftBodyDefinition(SoftBodyDefinitionHandle definitionHandle) override;
+        bool DestroySoftBodyDefinition(SoftBodyDefinitionHandle definitionHandle);
 
         [[nodiscard]]
-        bool IsValid(SoftBodyDefinitionHandle definitionHandle) const override;
+        bool IsValid(SoftBodyDefinitionHandle definitionHandle) const;
 
         [[nodiscard]]
         bool GetSoftBodyDefinitionState(
             SoftBodyDefinitionHandle definitionHandle,
-            SoftBodyDefinitionState& state) const override;
+            SoftBodyDefinitionState& state) const;
 
         [[nodiscard]]
         QueryResult GetSoftBodyDefinitionDihedralBendConstraints(
             SoftBodyDefinitionHandle definitionHandle,
-            AZStd::span<SoftBodyDihedralBendConstraint> constraints) const override;
+            AZStd::span<SoftBodyDihedralBendConstraint> constraints) const;
 
         [[nodiscard]]
         QueryResult GetSoftBodyDefinitionEdgeConstraints(
             SoftBodyDefinitionHandle definitionHandle,
-            AZStd::span<SoftBodyEdgeConstraint> constraints) const override;
+            AZStd::span<SoftBodyEdgeConstraint> constraints) const;
 
         [[nodiscard]]
         QueryResult GetSoftBodyDefinitionFaces(
             SoftBodyDefinitionHandle definitionHandle,
-            AZStd::span<SoftBodyFace> faces) const override;
+            AZStd::span<SoftBodyFace> faces) const;
 
         [[nodiscard]]
         QueryResult GetSoftBodyDefinitionInverseBinds(
             SoftBodyDefinitionHandle definitionHandle,
-            AZStd::span<SoftBodyInverseBind> inverseBinds) const override;
+            AZStd::span<SoftBodyInverseBind> inverseBinds) const;
 
         [[nodiscard]]
         QueryResult GetSoftBodyDefinitionLongRangeConstraints(
             SoftBodyDefinitionHandle definitionHandle,
-            AZStd::span<SoftBodyLongRangeConstraint> constraints) const override;
+            AZStd::span<SoftBodyLongRangeConstraint> constraints) const;
 
         [[nodiscard]]
         QueryResult GetSoftBodyDefinitionMaterials(
             SoftBodyDefinitionHandle definitionHandle,
-            AZStd::span<MaterialHandle> materials) const override;
+            AZStd::span<MaterialHandle> materials) const;
 
         [[nodiscard]]
         QueryResult GetSoftBodyDefinitionRodBendTwistConstraints(
             SoftBodyDefinitionHandle definitionHandle,
-            AZStd::span<SoftBodyRodBendTwistConstraint> constraints) const override;
+            AZStd::span<SoftBodyRodBendTwistConstraint> constraints) const;
 
         [[nodiscard]]
         QueryResult GetSoftBodyDefinitionRodStretchShearConstraints(
             SoftBodyDefinitionHandle definitionHandle,
-            AZStd::span<SoftBodyRodStretchShearConstraint> constraints) const override;
+            AZStd::span<SoftBodyRodStretchShearConstraint> constraints) const;
 
         [[nodiscard]]
         QueryResult GetSoftBodyDefinitionSkinConstraints(
             SoftBodyDefinitionHandle definitionHandle,
-            AZStd::span<SoftBodySkinConstraint> constraints) const override;
+            AZStd::span<SoftBodySkinConstraint> constraints) const;
 
         [[nodiscard]]
         QueryResult GetSoftBodyDefinitionVertices(
             SoftBodyDefinitionHandle definitionHandle,
-            AZStd::span<SoftBodyVertex> vertices) const override;
+            AZStd::span<SoftBodyVertex> vertices) const;
 
         [[nodiscard]]
         QueryResult GetSoftBodyDefinitionVolumeConstraints(
             SoftBodyDefinitionHandle definitionHandle,
-            AZStd::span<SoftBodyVolumeConstraint> constraints) const override;
+            AZStd::span<SoftBodyVolumeConstraint> constraints) const;
 
         [[nodiscard]]
         HairDefinitionHandle CreateHairDefinition(
-            const HairDefinitionConfiguration& configuration) override;
+            const HairDefinitionConfiguration& configuration);
 
-        bool DestroyHairDefinition(HairDefinitionHandle definitionHandle) override;
+        bool DestroyHairDefinition(HairDefinitionHandle definitionHandle);
 
         [[nodiscard]]
-        bool IsValid(HairDefinitionHandle definitionHandle) const override;
+        bool IsValid(HairDefinitionHandle definitionHandle) const;
 
         [[nodiscard]]
         bool GetHairDefinitionState(
             HairDefinitionHandle definitionHandle,
-            HairDefinitionState& state) const override;
+            HairDefinitionState& state) const;
 
         [[nodiscard]]
         QueryResult GetHairNeutralDensity(
             HairDefinitionHandle definitionHandle,
-            AZStd::span<float> density) const override;
+            AZStd::span<float> density) const;
 
         bool SkinHairScalpVertices(
             HairDefinitionHandle definitionHandle,
             const AZ::Transform& jointToHair,
             AZStd::span<const AZ::Transform> jointModelTransforms,
             AZStd::span<AZ::Transform> preparedJointTransforms,
-            AZStd::span<AZ::Vector3> scalpVertices) const override;
+            AZStd::span<AZ::Vector3> scalpVertices) const;
 
         [[nodiscard]]
-        SceneDefinitionHandle CreateSceneDefinition(const SceneConfiguration& configuration) override;
+        SceneDefinitionHandle CreateSceneDefinition(const SceneConfiguration& configuration);
 
         [[nodiscard]]
-        SceneDefinitionHandle CreateSceneDefinition(const SceneAssetData& assetData) override;
+        SceneDefinitionHandle CreateSceneDefinition(const SceneAssetData& assetData);
 
         [[nodiscard]]
         bool BuildSceneAsset(
             const SceneSourceData& sourceData,
-            SceneAssetData& assetData) override;
+            SceneAssetData& assetData);
 
-        bool DestroySceneDefinition(SceneDefinitionHandle definitionHandle) override;
+        bool DestroySceneDefinition(SceneDefinitionHandle definitionHandle);
 
         [[nodiscard]]
-        bool IsValid(SceneDefinitionHandle definitionHandle) const override;
+        bool IsValid(SceneDefinitionHandle definitionHandle) const;
 
         [[nodiscard]]
         bool GetSceneDefinitionState(
             SceneDefinitionHandle definitionHandle,
-            SceneDefinitionState& state) const override;
+            SceneDefinitionState& state) const;
 
         [[nodiscard]]
         SceneInstanceHandle InstantiateScene(
             WorldHandle worldHandle,
-            SceneDefinitionHandle definitionHandle) override;
+            SceneDefinitionHandle definitionHandle);
 
         bool DestroySceneInstance(
             WorldHandle worldHandle,
-            SceneInstanceHandle instanceHandle) override;
+            SceneInstanceHandle instanceHandle);
 
         [[nodiscard]]
         bool IsValid(
             WorldHandle worldHandle,
-            SceneInstanceHandle instanceHandle) const override;
+            SceneInstanceHandle instanceHandle) const;
 
         [[nodiscard]]
         bool GetSceneInstanceState(
             WorldHandle worldHandle,
             SceneInstanceHandle instanceHandle,
-            SceneInstanceState& state) const override;
+            SceneInstanceState& state) const;
 
         [[nodiscard]]
         QueryResult GetSceneBodies(
             WorldHandle worldHandle,
             SceneInstanceHandle instanceHandle,
-            AZStd::span<BodyHandle> bodyHandles) const override;
+            AZStd::span<BodyHandle> bodyHandles) const;
 
         [[nodiscard]]
         QueryResult GetSceneConstraints(
             WorldHandle worldHandle,
             SceneInstanceHandle instanceHandle,
-            AZStd::span<ConstraintHandle> constraintHandles) const override;
+            AZStd::span<ConstraintHandle> constraintHandles) const;
 
         [[nodiscard]]
-        WorldHandle CreateWorld(const WorldConfiguration& configuration) override;
+        WorldHandle CreateWorld(const WorldConfiguration& configuration);
 
-        bool DestroyWorld(WorldHandle worldHandle) override;
-
-        [[nodiscard]]
-        WorldHandle GetDefaultWorldHandle() const override;
+        bool DestroyWorld(WorldHandle worldHandle);
 
         [[nodiscard]]
-        const IWorldQueries* GetWorldQueries(WorldHandle worldHandle) const override;
+        WorldHandle GetDefaultWorldHandle() const;
 
         [[nodiscard]]
-        bool IsValid(WorldHandle worldHandle) const override;
+        const IWorldQueries* GetWorldQueries(WorldHandle worldHandle) const;
+
+        [[nodiscard]]
+        bool IsValid(WorldHandle worldHandle) const;
 
         [[nodiscard]]
         bool GetWorldGravity(
             WorldHandle worldHandle,
-            AZ::Vector3& gravity) const override;
+            AZ::Vector3& gravity) const;
 
         bool SetWorldGravity(
             WorldHandle worldHandle,
-            const AZ::Vector3& gravity) override;
+            const AZ::Vector3& gravity);
 
         [[nodiscard]]
         bool GetSimulationConfiguration(
             WorldHandle worldHandle,
-            SimulationConfiguration& configuration) const override;
+            SimulationConfiguration& configuration) const;
 
         bool UpdateSimulationConfiguration(
             WorldHandle worldHandle,
-            const SimulationConfiguration& configuration) override;
+            const SimulationConfiguration& configuration);
 
         [[nodiscard]]
         bool GetWorldRuntimeConfiguration(
             WorldHandle worldHandle,
-            WorldRuntimeConfiguration& configuration) const override;
+            WorldRuntimeConfiguration& configuration) const;
 
         bool UpdateWorldRuntimeConfiguration(
             WorldHandle worldHandle,
-            const WorldRuntimeConfiguration& configuration) override;
+            const WorldRuntimeConfiguration& configuration);
 
         bool StepWorld(
             WorldHandle worldHandle,
-            float fixedTimeStep) override;
+            float fixedTimeStep);
 
         [[nodiscard]]
         SimulationResult StepWorldDetailed(
             WorldHandle worldHandle,
-            float fixedTimeStep) override;
+            float fixedTimeStep);
 
-        bool StepAutoSimulatedWorlds(float elapsedTime) override;
-
-        [[nodiscard]]
-        SimulationResult StepAutoSimulatedWorldsDetailed(float elapsedTime) override;
+        bool StepAutoSimulatedWorlds(float elapsedTime);
 
         [[nodiscard]]
-        EventView GetEvents(WorldHandle worldHandle) const override;
+        SimulationResult StepAutoSimulatedWorldsDetailed(float elapsedTime);
+
+        [[nodiscard]]
+        EventView GetEvents(WorldHandle worldHandle) const;
 
         bool SetContactCallbacks(
             WorldHandle worldHandle,
-            IContactCallbacks* callbacks) override;
+            IContactCallbacks* callbacks);
 
         bool SetBodyPairCollider(
             WorldHandle worldHandle,
-            IBodyPairCollider* collider) override;
+            IBodyPairCollider* collider);
 
         bool SetSimulationShapeFilter(
             WorldHandle worldHandle,
-            ISimulationShapeFilter* filter) override;
+            ISimulationShapeFilter* filter);
 
         bool SetSoftBodyContactCallbacks(
             WorldHandle worldHandle,
-            ISoftBodyContactCallbacks* callbacks) override;
+            ISoftBodyContactCallbacks* callbacks);
 
         bool AddStepListener(
             WorldHandle worldHandle,
-            IStepListener* listener) override;
+            IStepListener* listener);
 
         bool RemoveStepListener(
             WorldHandle worldHandle,
-            IStepListener* listener) override;
+            IStepListener* listener);
 
         [[nodiscard]]
         HairHandle CreateHair(
             WorldHandle worldHandle,
-            const HairConfiguration& configuration) override;
+            const HairConfiguration& configuration);
 
         bool DestroyHair(
             WorldHandle worldHandle,
-            HairHandle hairHandle) override;
+            HairHandle hairHandle);
 
         [[nodiscard]]
         bool IsValid(
             WorldHandle worldHandle,
-            HairHandle hairHandle) const override;
+            HairHandle hairHandle) const;
 
         bool SetHairTransform(
             WorldHandle worldHandle,
             HairHandle hairHandle,
             const WorldTransform& worldTransform,
-            bool teleport) override;
+            bool teleport);
 
         bool SetHairScalpToHeadTransform(
             WorldHandle worldHandle,
             HairHandle hairHandle,
-            const AZ::Transform& scalpToHeadTransform) override;
+            const AZ::Transform& scalpToHeadTransform);
 
         bool UpdateHair(
             WorldHandle worldHandle,
             HairHandle hairHandle,
             float deltaTime,
             const AZ::Transform& jointToHair,
-            AZStd::span<const AZ::Transform> jointModelTransforms) override;
+            AZStd::span<const AZ::Transform> jointModelTransforms);
 
         bool EnableHairAutoUpdate(
             WorldHandle worldHandle,
             HairHandle hairHandle,
             const AZ::Transform& jointToHair,
-            AZStd::span<const AZ::Transform> jointModelTransforms) override;
+            AZStd::span<const AZ::Transform> jointModelTransforms);
 
         bool DisableHairAutoUpdate(
             WorldHandle worldHandle,
-            HairHandle hairHandle) override;
+            HairHandle hairHandle);
 
         [[nodiscard]]
         bool GetHairState(
             WorldHandle worldHandle,
             HairHandle hairHandle,
-            HairState& state) const override;
+            HairState& state) const;
 
         [[nodiscard]]
         bool GetHairReadback(
             WorldHandle worldHandle,
             HairHandle hairHandle,
             const HairReadbackBuffers& buffers,
-            HairReadbackResult& result) const override;
+            HairReadbackResult& result) const;
 
         [[nodiscard]]
         QueryResult GetHairVertexStates(
             WorldHandle worldHandle,
             HairHandle hairHandle,
-            AZStd::span<HairVertexState> states) const override;
+            AZStd::span<HairVertexState> states) const;
 
         [[nodiscard]]
         QueryResult GetHairRenderPositions(
             WorldHandle worldHandle,
             HairHandle hairHandle,
-            AZStd::span<AZ::Vector3> positions) const override;
+            AZStd::span<AZ::Vector3> positions) const;
 
         [[nodiscard]]
         QueryResult GetHairScalpPositions(
             WorldHandle worldHandle,
             HairHandle hairHandle,
-            AZStd::span<AZ::Vector3> positions) const override;
+            AZStd::span<AZ::Vector3> positions) const;
 
         [[nodiscard]]
         QueryResult GetHairGridCellStates(
             WorldHandle worldHandle,
             HairHandle hairHandle,
-            AZStd::span<HairGridCellState> states) const override;
+            AZStd::span<HairGridCellState> states) const;
 
         [[nodiscard]]
         ShapeHandle CreateShape(
             WorldHandle worldHandle,
-            const ShapeConfiguration& configuration) override;
+            const ShapeConfiguration& configuration);
 
         [[nodiscard]]
         ShapeHandle CreateShape(
             WorldHandle worldHandle,
-            const CompoundShapeConfiguration& configuration) override;
+            const CompoundShapeConfiguration& configuration);
 
         [[nodiscard]]
         ShapeHandle CreateShape(
             WorldHandle worldHandle,
-            const DecoratedShapeConfiguration& configuration) override;
+            const DecoratedShapeConfiguration& configuration);
 
         [[nodiscard]]
         ShapeHandle CreateShape(
             WorldHandle worldHandle,
-            CookedShapeHandle cookedShapeHandle) override;
+            CookedShapeHandle cookedShapeHandle);
 
         [[nodiscard]]
         ShapeHandle CloneShape(
             WorldHandle worldHandle,
-            ShapeHandle shapeHandle) override;
+            ShapeHandle shapeHandle);
 
         [[nodiscard]]
         ShapeHandle ScaleShape(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            const AZ::Vector3& scale) override;
+            const AZ::Vector3& scale);
 
         bool DestroyShape(
             WorldHandle worldHandle,
-            ShapeHandle shapeHandle) override;
+            ShapeHandle shapeHandle);
 
         [[nodiscard]]
         bool IsValid(
             WorldHandle worldHandle,
-            ShapeHandle shapeHandle) const override;
+            ShapeHandle shapeHandle) const;
 
         [[nodiscard]]
         bool GetShapeStats(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            ShapeStats& stats) const override;
+            ShapeStats& stats) const;
 
         [[nodiscard]]
         bool GetShapeStatsRecursive(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            ShapeStats& stats) const override;
+            ShapeStats& stats) const;
 
         [[nodiscard]]
         bool GetShapeProperties(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            ShapeProperties& properties) const override;
+            ShapeProperties& properties) const;
 
         [[nodiscard]]
         bool GetShapeSubmergedVolume(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
             const SubmergedVolumeRequest& request,
-            SubmergedVolumeResult& result) const override;
+            SubmergedVolumeResult& result) const;
 
         [[nodiscard]]
         bool GetPrimitiveShapeState(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            PrimitiveShapeState& state) const override;
+            PrimitiveShapeState& state) const;
 
         [[nodiscard]]
         bool GetConvexHullState(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            ConvexHullState& state) const override;
+            ConvexHullState& state) const;
 
         [[nodiscard]]
         BufferResult GetConvexHullPointsRelativeToCenterOfMass(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            AZStd::span<AZ::Vector3> points) const override;
+            AZStd::span<AZ::Vector3> points) const;
 
         [[nodiscard]]
         BufferResult GetConvexHullPlanesRelativeToCenterOfMass(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            AZStd::span<AZ::Plane> planes) const override;
+            AZStd::span<AZ::Plane> planes) const;
 
         [[nodiscard]]
         BufferResult GetConvexHullFaceVertexIndices(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
             AZ::u32 faceIndex,
-            AZStd::span<AZ::u32> vertexIndices) const override;
+            AZStd::span<AZ::u32> vertexIndices) const;
 
         [[nodiscard]]
         bool GetShapeMaterial(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
             SubShapeId subShapeId,
-            MaterialHandle& materialHandle) const override;
+            MaterialHandle& materialHandle) const;
 
         [[nodiscard]]
         bool GetShapeSurfaceNormal(
@@ -899,20 +898,20 @@ namespace Jolt
             ShapeHandle shapeHandle,
             SubShapeId subShapeId,
             const AZ::Vector3& localSurfacePosition,
-            AZ::Vector3& normal) const override;
+            AZ::Vector3& normal) const;
 
         [[nodiscard]]
         bool GetShapeUserData(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            AZ::u64& userData) const override;
+            AZ::u64& userData) const;
 
         [[nodiscard]]
         bool GetShapeSubShapeUserData(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
             SubShapeId subShapeId,
-            AZ::u64& userData) const override;
+            AZ::u64& userData) const;
 
         [[nodiscard]]
         bool GetDirectChildShape(
@@ -920,52 +919,52 @@ namespace Jolt
             ShapeHandle shapeHandle,
             SubShapeId subShapeId,
             ShapeHandle& childShapeHandle,
-            SubShapeTransform& transform) const override;
+            SubShapeTransform& transform) const;
 
         [[nodiscard]]
         bool GetDecoratedShapeConfiguration(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            DecoratedShapeConfiguration& configuration) const override;
+            DecoratedShapeConfiguration& configuration) const;
 
         [[nodiscard]]
         BufferResult GetMeshMaterials(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            AZStd::span<MaterialHandle> materialHandles) const override;
+            AZStd::span<MaterialHandle> materialHandles) const;
 
         [[nodiscard]]
         bool GetMeshTriangleMaterialIndex(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
             SubShapeId subShapeId,
-            AZ::u32& materialIndex) const override;
+            AZ::u32& materialIndex) const;
 
         [[nodiscard]]
         bool GetMeshTriangleUserData(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
             SubShapeId subShapeId,
-            AZ::u32& userData) const override;
+            AZ::u32& userData) const;
 
         [[nodiscard]]
         bool IsShapeScaleValid(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            const AZ::Vector3& scale) const override;
+            const AZ::Vector3& scale) const;
 
         [[nodiscard]]
         bool MakeShapeScaleValid(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
             const AZ::Vector3& scale,
-            AZ::Vector3& validScale) const override;
+            AZ::Vector3& validScale) const;
 
         [[nodiscard]]
         bool GetHeightfieldState(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            HeightfieldState& state) const override;
+            HeightfieldState& state) const;
 
         [[nodiscard]]
         bool GetHeightfieldPosition(
@@ -973,7 +972,7 @@ namespace Jolt
             ShapeHandle shapeHandle,
             AZ::u32 column,
             AZ::u32 row,
-            AZ::Vector3& position) const override;
+            AZ::Vector3& position) const;
 
         [[nodiscard]]
         bool ProjectOntoHeightfield(
@@ -981,7 +980,7 @@ namespace Jolt
             ShapeHandle shapeHandle,
             const AZ::Vector3& localPosition,
             AZ::Vector3& surfacePosition,
-            SubShapeId& subShapeId) const override;
+            SubShapeId& subShapeId) const;
 
         [[nodiscard]]
         bool IsHeightfieldNoCollision(
@@ -989,41 +988,41 @@ namespace Jolt
             ShapeHandle shapeHandle,
             AZ::u32 column,
             AZ::u32 row,
-            bool& noCollision) const override;
+            bool& noCollision) const;
 
         [[nodiscard]]
         QueryResult GetHeightfieldHeights(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
             const HeightfieldRegion& region,
-            AZStd::span<float> heights) const override;
+            AZStd::span<float> heights) const;
 
         [[nodiscard]]
         QueryResult GetHeightfieldMaterialIndices(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
             const HeightfieldRegion& region,
-            AZStd::span<AZ::u8> materialIndices) const override;
+            AZStd::span<AZ::u8> materialIndices) const;
 
         [[nodiscard]]
         QueryResult GetHeightfieldMaterials(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
-            AZStd::span<MaterialHandle> materialHandles) const override;
+            AZStd::span<MaterialHandle> materialHandles) const;
 
         [[nodiscard]]
         bool GetHeightfieldSubShapeCoordinates(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
             SubShapeId subShapeId,
-            HeightfieldSubShapeCoordinates& coordinates) const override;
+            HeightfieldSubShapeCoordinates& coordinates) const;
 
         bool UpdateHeightfieldHeights(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
             const HeightfieldRegion& region,
             AZStd::span<const float> heights,
-            const HeightfieldUpdateConfiguration& configuration = {}) override;
+            const HeightfieldUpdateConfiguration& configuration = {});
 
         bool UpdateHeightfieldMaterials(
             WorldHandle worldHandle,
@@ -1031,7 +1030,7 @@ namespace Jolt
             const HeightfieldRegion& region,
             AZStd::span<const AZ::u8> materialIndices,
             AZStd::span<const MaterialHandle> materialHandles,
-            bool activateBodies = true) override;
+            bool activateBodies = true);
 
         bool AddMutableCompoundChild(
             WorldHandle worldHandle,
@@ -1039,20 +1038,20 @@ namespace Jolt
             const CompoundChildConfiguration& child,
             AZ::u32 insertionIndex,
             AZ::u32& childIndex,
-            const MutableCompoundUpdateConfiguration& updateConfiguration = {}) override;
+            const MutableCompoundUpdateConfiguration& updateConfiguration = {});
 
         bool RemoveMutableCompoundChild(
             WorldHandle worldHandle,
             ShapeHandle compoundShapeHandle,
             AZ::u32 childIndex,
-            const MutableCompoundUpdateConfiguration& updateConfiguration = {}) override;
+            const MutableCompoundUpdateConfiguration& updateConfiguration = {});
 
         bool UpdateMutableCompoundChild(
             WorldHandle worldHandle,
             ShapeHandle compoundShapeHandle,
             AZ::u32 childIndex,
             const CompoundChildConfiguration& child,
-            const MutableCompoundUpdateConfiguration& updateConfiguration = {}) override;
+            const MutableCompoundUpdateConfiguration& updateConfiguration = {});
 
         bool UpdateMutableCompoundChildTransforms(
             WorldHandle worldHandle,
@@ -1060,362 +1059,362 @@ namespace Jolt
             AZ::u32 startIndex,
             AZStd::span<const AZ::Vector3> positions,
             AZStd::span<const AZ::Quaternion> rotations,
-            const MutableCompoundUpdateConfiguration& updateConfiguration = {}) override;
+            const MutableCompoundUpdateConfiguration& updateConfiguration = {});
 
         bool AdjustMutableCompoundCenterOfMass(
             WorldHandle worldHandle,
             ShapeHandle compoundShapeHandle,
             bool updateMassProperties,
-            bool activateBodies) override;
+            bool activateBodies);
 
         [[nodiscard]]
         bool GetCompoundChildCount(
             WorldHandle worldHandle,
             ShapeHandle compoundShapeHandle,
-            AZ::u32& childCount) const override;
+            AZ::u32& childCount) const;
 
         [[nodiscard]]
         bool GetCompoundChild(
             WorldHandle worldHandle,
             ShapeHandle compoundShapeHandle,
             AZ::u32 childIndex,
-            CompoundChildConfiguration& child) const override;
+            CompoundChildConfiguration& child) const;
 
         [[nodiscard]]
         bool GetCompoundChildIndex(
             WorldHandle worldHandle,
             ShapeHandle compoundShapeHandle,
             SubShapeId subShapeId,
-            AZ::u32& childIndex) const override;
+            AZ::u32& childIndex) const;
 
         [[nodiscard]]
         BodyHandle CreateBody(
             WorldHandle worldHandle,
-            const BodyConfiguration& configuration) override;
+            const BodyConfiguration& configuration);
 
         [[nodiscard]]
         BodyHandle CreateBodyWithId(
             WorldHandle worldHandle,
             BodyId bodyId,
-            const BodyConfiguration& configuration) override;
+            const BodyConfiguration& configuration);
 
         [[nodiscard]]
         BodyHandle CreateSoftBody(
             WorldHandle worldHandle,
-            const SoftBodyConfiguration& configuration) override;
+            const SoftBodyConfiguration& configuration);
 
         [[nodiscard]]
         BodyHandle CreateSoftBodyWithId(
             WorldHandle worldHandle,
             BodyId bodyId,
-            const SoftBodyConfiguration& configuration) override;
+            const SoftBodyConfiguration& configuration);
 
         bool AddBodyToSimulation(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool activate) override;
+            bool activate);
 
         bool AddBodiesToSimulation(
             WorldHandle worldHandle,
             AZStd::span<const BodyHandle> bodyHandles,
-            bool activate) override;
+            bool activate);
 
         bool RemoveBodyFromSimulation(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) override;
+            BodyHandle bodyHandle);
 
         bool RemoveBodiesFromSimulation(
             WorldHandle worldHandle,
-            AZStd::span<const BodyHandle> bodyHandles) override;
+            AZStd::span<const BodyHandle> bodyHandles);
 
         bool DestroyBody(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) override;
+            BodyHandle bodyHandle);
 
         bool DestroyBodies(
             WorldHandle worldHandle,
-            AZStd::span<const BodyHandle> bodyHandles) override;
+            AZStd::span<const BodyHandle> bodyHandles);
 
         [[nodiscard]]
         bool IsBodyInSimulation(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) const override;
+            BodyHandle bodyHandle) const;
 
         [[nodiscard]]
         bool IsValid(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) const override;
+            BodyHandle bodyHandle) const;
 
         bool SetBodyMoveEventsEnabled(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool enabled) override;
+            bool enabled);
 
         [[nodiscard]]
         RagdollDefinitionHandle CreateRagdollDefinition(
             WorldHandle worldHandle,
-            const RagdollDefinitionConfiguration& configuration) override;
+            const RagdollDefinitionConfiguration& configuration);
 
         bool DestroyRagdollDefinition(
             WorldHandle worldHandle,
-            RagdollDefinitionHandle definitionHandle) override;
+            RagdollDefinitionHandle definitionHandle);
 
         [[nodiscard]]
         bool IsValid(
             WorldHandle worldHandle,
-            RagdollDefinitionHandle definitionHandle) const override;
+            RagdollDefinitionHandle definitionHandle) const;
 
         [[nodiscard]]
         QueryResult GetRagdollBodyConstraintIndices(
             WorldHandle worldHandle,
             RagdollDefinitionHandle definitionHandle,
-            AZStd::span<AZ::s32> constraintIndices) const override;
+            AZStd::span<AZ::s32> constraintIndices) const;
 
         [[nodiscard]]
         QueryResult GetRagdollConstraintBodyPairs(
             WorldHandle worldHandle,
             RagdollDefinitionHandle definitionHandle,
-            AZStd::span<RagdollConstraintBodyPair> bodyPairs) const override;
+            AZStd::span<RagdollConstraintBodyPair> bodyPairs) const;
 
         [[nodiscard]]
         RagdollHandle CreateRagdoll(
             WorldHandle worldHandle,
-            const RagdollConfiguration& configuration) override;
+            const RagdollConfiguration& configuration);
 
         bool AddRagdollToSimulation(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
-            bool activate) override;
+            bool activate);
 
         bool RemoveRagdollFromSimulation(
             WorldHandle worldHandle,
-            RagdollHandle ragdollHandle) override;
+            RagdollHandle ragdollHandle);
 
         bool DestroyRagdoll(
             WorldHandle worldHandle,
-            RagdollHandle ragdollHandle) override;
+            RagdollHandle ragdollHandle);
 
         [[nodiscard]]
         bool IsValid(
             WorldHandle worldHandle,
-            RagdollHandle ragdollHandle) const override;
+            RagdollHandle ragdollHandle) const;
 
         [[nodiscard]]
         bool IsRagdollInSimulation(
             WorldHandle worldHandle,
-            RagdollHandle ragdollHandle) const override;
+            RagdollHandle ragdollHandle) const;
 
         [[nodiscard]]
         bool GetRagdollState(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
-            RagdollState& state) const override;
+            RagdollState& state) const;
 
         bool SetRagdollCollisionGroupId(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
-            AZ::u32 collisionGroupId) override;
+            AZ::u32 collisionGroupId);
 
         [[nodiscard]]
         QueryResult GetRagdollBodies(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
-            AZStd::span<BodyHandle> bodyHandles) const override;
+            AZStd::span<BodyHandle> bodyHandles) const;
 
         [[nodiscard]]
         QueryResult GetRagdollConstraints(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
-            AZStd::span<ConstraintHandle> constraintHandles) const override;
+            AZStd::span<ConstraintHandle> constraintHandles) const;
 
         bool ActivateRagdoll(
             WorldHandle worldHandle,
-            RagdollHandle ragdollHandle) override;
+            RagdollHandle ragdollHandle);
 
         bool SetRagdollPose(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
             WorldPosition rootPosition,
-            AZStd::span<const AZ::Transform> modelTransforms) override;
+            AZStd::span<const AZ::Transform> modelTransforms);
 
         [[nodiscard]]
         QueryResult GetRagdollPose(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
             WorldPosition& rootPosition,
-            AZStd::span<AZ::Transform> modelTransforms) const override;
+            AZStd::span<AZ::Transform> modelTransforms) const;
 
         bool DriveRagdollKinematically(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
             WorldPosition rootPosition,
             AZStd::span<const AZ::Transform> modelTransforms,
-            float deltaTime) override;
+            float deltaTime);
 
         bool DriveRagdollMotors(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
-            AZStd::span<const AZ::Transform> modelTransforms) override;
+            AZStd::span<const AZ::Transform> modelTransforms);
 
         bool DriveRagdollMotors(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
             AZStd::span<const AZ::Transform> previousModelTransforms,
             AZStd::span<const AZ::Transform> modelTransforms,
-            float deltaTime) override;
+            float deltaTime);
 
         bool ResetRagdollWarmStart(
             WorldHandle worldHandle,
-            RagdollHandle ragdollHandle) override;
+            RagdollHandle ragdollHandle);
 
         bool SetRagdollVelocity(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
             AZ::Vector3 linearVelocity,
-            AZ::Vector3 angularVelocity) override;
+            AZ::Vector3 angularVelocity);
 
         bool SetRagdollLinearVelocity(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
-            AZ::Vector3 linearVelocity) override;
+            AZ::Vector3 linearVelocity);
 
         bool AddRagdollLinearVelocity(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
-            AZ::Vector3 linearVelocity) override;
+            AZ::Vector3 linearVelocity);
 
         bool AddRagdollImpulse(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
-            AZ::Vector3 impulse) override;
+            AZ::Vector3 impulse);
 
         [[nodiscard]]
         ConstraintHandle CreateConstraint(
             WorldHandle worldHandle,
-            const ConstraintConfiguration& configuration) override;
+            const ConstraintConfiguration& configuration);
 
         bool AddConstraintToSimulation(
             WorldHandle worldHandle,
-            ConstraintHandle constraintHandle) override;
+            ConstraintHandle constraintHandle);
 
         bool AddConstraintsToSimulation(
             WorldHandle worldHandle,
-            AZStd::span<const ConstraintHandle> constraintHandles) override;
+            AZStd::span<const ConstraintHandle> constraintHandles);
 
         bool RemoveConstraintFromSimulation(
             WorldHandle worldHandle,
-            ConstraintHandle constraintHandle) override;
+            ConstraintHandle constraintHandle);
 
         bool RemoveConstraintsFromSimulation(
             WorldHandle worldHandle,
-            AZStd::span<const ConstraintHandle> constraintHandles) override;
+            AZStd::span<const ConstraintHandle> constraintHandles);
 
         bool DestroyConstraint(
             WorldHandle worldHandle,
-            ConstraintHandle constraintHandle) override;
+            ConstraintHandle constraintHandle);
 
         bool DestroyConstraints(
             WorldHandle worldHandle,
-            AZStd::span<const ConstraintHandle> constraintHandles) override;
+            AZStd::span<const ConstraintHandle> constraintHandles);
 
         [[nodiscard]]
         bool IsConstraintInSimulation(
             WorldHandle worldHandle,
-            ConstraintHandle constraintHandle) const override;
+            ConstraintHandle constraintHandle) const;
 
         [[nodiscard]]
         bool IsValid(
             WorldHandle worldHandle,
-            ConstraintHandle constraintHandle) const override;
+            ConstraintHandle constraintHandle) const;
 
         bool SetConstraintEnabled(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            bool enabled) override;
+            bool enabled);
 
         [[nodiscard]]
         bool GetConstraintState(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            ConstraintState& state) const override;
+            ConstraintState& state) const;
 
         [[nodiscard]]
         bool GetConstraintConfiguration(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            ConstraintConfiguration& configuration) const override;
+            ConstraintConfiguration& configuration) const;
 
         [[nodiscard]]
         bool GetConstraintUserData(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            AZ::u64& userData) const override;
+            AZ::u64& userData) const;
 
         bool SetConstraintUserData(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            AZ::u64 userData) override;
+            AZ::u64 userData);
 
         [[nodiscard]]
         bool GetConstraintDebugDrawSize(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            float& debugDrawSize) const override;
+            float& debugDrawSize) const;
 
         bool SetConstraintDebugDrawSize(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            float debugDrawSize) override;
+            float debugDrawSize);
 
         [[nodiscard]]
         bool GetConstraintMeasurements(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            ConstraintMeasurements& measurements) const override;
+            ConstraintMeasurements& measurements) const;
 
         [[nodiscard]]
         bool GetCustomConstraintInfo(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            CustomConstraintInfo& info) const override;
+            CustomConstraintInfo& info) const;
 
         [[nodiscard]]
         BufferResult GetCustomConstraintImpulses(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            AZStd::span<float> impulses) const override;
+            AZStd::span<float> impulses) const;
 
         [[nodiscard]]
         BufferResult GetCustomConstraintState(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            AZStd::span<AZ::u8> state) const override;
+            AZStd::span<AZ::u8> state) const;
 
         bool SetCustomConstraintState(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            AZStd::span<const AZ::u8> state) override;
+            AZStd::span<const AZ::u8> state);
 
         bool ResetConstraintWarmStart(
             WorldHandle worldHandle,
-            ConstraintHandle constraintHandle) override;
+            ConstraintHandle constraintHandle);
 
         bool UpdateConstraintSolverConfiguration(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            const ConstraintSolverConfiguration& configuration) override;
+            const ConstraintSolverConfiguration& configuration);
 
         bool UpdateConeLimit(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            float halfConeAngle) override;
+            float halfConeAngle);
 
         bool UpdateDistanceLimits(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
             float minimumDistance,
             float maximumDistance,
-            const SpringConfiguration& spring) override;
+            const SpringConfiguration& spring);
 
         bool UpdateHingeLimits(
             WorldHandle worldHandle,
@@ -1423,51 +1422,51 @@ namespace Jolt
             float minimumAngle,
             float maximumAngle,
             const SpringConfiguration& spring,
-            float maximumFrictionTorque) override;
+            float maximumFrictionTorque);
 
         bool UpdateHingeMotor(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
             const MotorConfiguration& motor,
             float targetAngle,
-            float targetAngularVelocity) override;
+            float targetAngularVelocity);
 
         bool SetHingeTargetOrientation(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            const AZ::Quaternion& targetOrientation) override;
+            const AZ::Quaternion& targetOrientation);
 
         bool UpdatePathMotor(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
             const MotorConfiguration& motor,
             float targetPathFraction,
-            float targetVelocity) override;
+            float targetVelocity);
 
         bool UpdatePathProperties(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
             PathHandle pathHandle,
             float pathFraction,
-            float maximumFrictionForce) override;
+            float maximumFrictionForce);
 
         bool UpdatePointAnchors(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
             ConstraintSpace space,
             const WorldPosition& firstPoint,
-            const WorldPosition& secondPoint) override;
+            const WorldPosition& secondPoint);
 
         bool UpdatePulleyLimits(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
             float minimumLength,
-            float maximumLength) override;
+            float maximumLength);
 
         bool UpdateSixDofLimits(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
-            AZStd::span<const SixDofAxisLimitConfiguration> axes) override;
+            AZStd::span<const SixDofAxisLimitConfiguration> axes);
 
         bool UpdateSixDofMotors(
             WorldHandle worldHandle,
@@ -1476,14 +1475,14 @@ namespace Jolt
             const AZ::Vector3& targetAngularVelocity,
             const AZ::Quaternion& targetOrientation,
             const AZ::Vector3& targetPosition,
-            const AZ::Vector3& targetVelocity) override;
+            const AZ::Vector3& targetVelocity);
 
         bool UpdateSliderMotor(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle,
             const MotorConfiguration& motor,
             float targetPosition,
-            float targetVelocity) override;
+            float targetVelocity);
 
         bool UpdateSliderLimits(
             WorldHandle worldHandle,
@@ -1491,7 +1490,7 @@ namespace Jolt
             float minimumPosition,
             float maximumPosition,
             const SpringConfiguration& spring,
-            float maximumFrictionForce) override;
+            float maximumFrictionForce);
 
         bool UpdateSwingTwistMotors(
             WorldHandle worldHandle,
@@ -1499,7 +1498,7 @@ namespace Jolt
             const MotorConfiguration& swingMotor,
             const MotorConfiguration& twistMotor,
             const AZ::Vector3& targetAngularVelocity,
-            const AZ::Quaternion& targetOrientation) override;
+            const AZ::Quaternion& targetOrientation);
 
         bool UpdateSwingTwistLimits(
             WorldHandle worldHandle,
@@ -1508,182 +1507,182 @@ namespace Jolt
             float planeHalfConeAngle,
             float twistMinimumAngle,
             float twistMaximumAngle,
-            float maximumFrictionTorque) override;
+            float maximumFrictionTorque);
 
         [[nodiscard]]
         bool GetBodyState(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            BodyState& state) const override;
+            BodyState& state) const;
 
         [[nodiscard]]
         bool GetBodyCenterOfMassTransform(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            WorldTransform& transform) const override;
+            WorldTransform& transform) const;
 
         [[nodiscard]]
         bool GetBodyConfiguration(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            BodyConfiguration& configuration) const override;
+            BodyConfiguration& configuration) const;
 
         [[nodiscard]]
         bool GetBodyUserData(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            AZ::u64& userData) const override;
+            AZ::u64& userData) const;
 
         bool SetBodyUserData(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            AZ::u64 userData) override;
+            AZ::u64 userData);
 
         [[nodiscard]]
         bool GetBodyRuntimeConfiguration(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            BodyRuntimeConfiguration& configuration) const override;
+            BodyRuntimeConfiguration& configuration) const;
 
         [[nodiscard]]
         bool GetBodySimulationStatistics(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            BodySimulationStatistics& statistics) const override;
+            BodySimulationStatistics& statistics) const;
 
         bool ApplyBodyConfiguration(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            const BodyConfiguration& configuration) override;
+            const BodyConfiguration& configuration);
 
         [[nodiscard]]
         QueryResult GetSoftBodyFaces(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            AZStd::span<SoftBodyFace> faces) const override;
+            AZStd::span<SoftBodyFace> faces) const;
 
         [[nodiscard]]
         bool GetSoftBodyLocalBounds(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            AZ::Aabb& bounds) const override;
+            AZ::Aabb& bounds) const;
 
         [[nodiscard]]
         QueryResult GetSoftBodyMaterials(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            AZStd::span<MaterialHandle> materials) const override;
+            AZStd::span<MaterialHandle> materials) const;
 
         [[nodiscard]]
         QueryResult GetSoftBodyRodStates(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            AZStd::span<SoftBodyRodState> rods) const override;
+            AZStd::span<SoftBodyRodState> rods) const;
 
         [[nodiscard]]
         bool GetSoftBodyRuntimeConfiguration(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            SoftBodyRuntimeConfiguration& configuration) const override;
+            SoftBodyRuntimeConfiguration& configuration) const;
 
         bool ApplySoftBodyConfiguration(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            const SoftBodyConfiguration& configuration) override;
+            const SoftBodyConfiguration& configuration);
 
         [[nodiscard]]
         QueryResult GetSoftBodyVertices(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            AZStd::span<SoftBodyVertex> vertices) const override;
+            AZStd::span<SoftBodyVertex> vertices) const;
 
         [[nodiscard]]
         bool GetSoftBodyVolume(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float& volume) const override;
+            float& volume) const;
 
         bool RecalculateSoftBodyMassProperties(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool activate) override;
+            bool activate);
 
         bool SkinSoftBody(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             AZStd::span<const AZ::Transform> jointTransformsRelativeToCenterOfMass,
-            bool hardSkinAll) override;
+            bool hardSkinAll);
 
         bool UpdateSoftBodyManually(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float deltaTime) override;
+            float deltaTime);
 
         bool UpdateSoftBodyRuntimeConfiguration(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            const SoftBodyRuntimeConfiguration& configuration) override;
+            const SoftBodyRuntimeConfiguration& configuration);
 
         bool SetSoftBodyVertexInverseMass(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             AZ::u32 vertexIndex,
-            float inverseMass) override;
+            float inverseMass);
 
         bool SetSoftBodyVertexInverseMasses(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             AZ::u32 startVertexIndex,
-            AZStd::span<const float> inverseMasses) override;
+            AZStd::span<const float> inverseMasses);
 
         bool SetSoftBodyVertexVelocity(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             AZ::u32 vertexIndex,
-            const AZ::Vector3& velocity) override;
+            const AZ::Vector3& velocity);
 
         bool SetSoftBodyVertexVelocities(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             AZ::u32 startVertexIndex,
-            AZStd::span<const AZ::Vector3> velocities) override;
+            AZStd::span<const AZ::Vector3> velocities);
 
         [[nodiscard]]
         VirtualCharacterHandle CreateVirtualCharacter(
             WorldHandle worldHandle,
-            const VirtualCharacterConfiguration& configuration) override;
+            const VirtualCharacterConfiguration& configuration);
 
         bool DestroyVirtualCharacter(
             WorldHandle worldHandle,
-            VirtualCharacterHandle characterHandle) override;
+            VirtualCharacterHandle characterHandle);
 
         [[nodiscard]]
         bool IsValid(
             WorldHandle worldHandle,
-            VirtualCharacterHandle characterHandle) const override;
+            VirtualCharacterHandle characterHandle) const;
 
         [[nodiscard]]
         bool GetVirtualCharacterState(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            VirtualCharacterState& state) const override;
+            VirtualCharacterState& state) const;
 
         [[nodiscard]]
         bool GetVirtualCharacterUserData(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            AZ::u64& userData) const override;
+            AZ::u64& userData) const;
 
         bool SetVirtualCharacterUserData(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            AZ::u64 userData) override;
+            AZ::u64 userData);
 
         [[nodiscard]]
         bool GetVirtualCharacterRuntimeConfiguration(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            VirtualCharacterRuntimeConfiguration& configuration) const override;
+            VirtualCharacterRuntimeConfiguration& configuration) const;
 
         [[nodiscard]]
         QueryResult CheckVirtualCharacterCollision(
@@ -1691,297 +1690,297 @@ namespace Jolt
             VirtualCharacterHandle characterHandle,
             const CharacterCollisionRequest& request,
             AZStd::span<CharacterCollisionHit> hits,
-            const ICharacterCollisionFilter* filter) const override;
+            const ICharacterCollisionFilter* filter = nullptr) const;
 
         bool UpdateVirtualCharacterRuntimeConfiguration(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            const VirtualCharacterRuntimeConfiguration& configuration) override;
+            const VirtualCharacterRuntimeConfiguration& configuration);
 
         bool SetVirtualCharacterShape(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
             ShapeHandle shapeHandle,
-            float maximumPenetrationDepth) override;
+            float maximumPenetrationDepth);
 
         bool SetVirtualCharacterInnerBodyShape(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            ShapeHandle shapeHandle) override;
+            ShapeHandle shapeHandle);
 
         bool SetVirtualCharacterTransform(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            const WorldTransform& transform) override;
+            const WorldTransform& transform);
 
         bool SetVirtualCharacterVelocity(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            const AZ::Vector3& velocity) override;
+            const AZ::Vector3& velocity);
 
         [[nodiscard]]
         bool CancelVirtualCharacterVelocityTowardsSteepSlopes(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
             const AZ::Vector3& desiredVelocity,
-            AZ::Vector3& adjustedVelocity) const override;
+            AZ::Vector3& adjustedVelocity) const;
 
         bool BeginVirtualCharacterContactTracking(
             WorldHandle worldHandle,
-            VirtualCharacterHandle characterHandle) override;
+            VirtualCharacterHandle characterHandle);
 
         bool EndVirtualCharacterContactTracking(
             WorldHandle worldHandle,
-            VirtualCharacterHandle characterHandle) override;
+            VirtualCharacterHandle characterHandle);
 
         bool SetVirtualCharacterContactCallbacks(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            IVirtualCharacterContactCallbacks* callbacks) override;
+            IVirtualCharacterContactCallbacks* callbacks);
 
         [[nodiscard]]
         bool CanVirtualCharacterWalkStairs(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            const AZ::Vector3& desiredVelocity) const override;
+            const AZ::Vector3& desiredVelocity) const;
 
         bool WalkVirtualCharacterStairs(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
             const VirtualCharacterStairConfiguration& configuration,
-            const IQueryFilter* filter = nullptr) override;
+            const IQueryFilter* filter = nullptr);
 
         bool StickVirtualCharacterToFloor(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
             const AZ::Vector3& stepDown,
-            const IQueryFilter* filter = nullptr) override;
+            const IQueryFilter* filter = nullptr);
 
         bool RefreshVirtualCharacterContacts(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            const IQueryFilter* filter = nullptr) override;
+            const IQueryFilter* filter = nullptr);
 
         bool UpdateVirtualCharacterGroundVelocity(
             WorldHandle worldHandle,
-            VirtualCharacterHandle characterHandle) override;
+            VirtualCharacterHandle characterHandle);
 
         [[nodiscard]]
         QueryResult GetVirtualCharacterContacts(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            AZStd::span<VirtualCharacterContact> contacts) const override;
+            AZStd::span<VirtualCharacterContact> contacts) const;
 
         [[nodiscard]]
         bool HasVirtualCharacterCollidedWith(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            BodyHandle bodyHandle) const override;
+            BodyHandle bodyHandle) const;
 
         [[nodiscard]]
         bool HaveVirtualCharactersCollided(
             WorldHandle worldHandle,
             VirtualCharacterHandle firstCharacterHandle,
-            VirtualCharacterHandle secondCharacterHandle) const override;
+            VirtualCharacterHandle secondCharacterHandle) const;
 
         bool UpdateVirtualCharacter(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
             float deltaTime,
-            const VirtualCharacterUpdateConfiguration& configuration) override;
+            const VirtualCharacterUpdateConfiguration& configuration);
 
         bool EnableVirtualCharacterAutoUpdate(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            const VirtualCharacterUpdateConfiguration& configuration) override;
+            const VirtualCharacterUpdateConfiguration& configuration);
 
         bool DisableVirtualCharacterAutoUpdate(
             WorldHandle worldHandle,
-            VirtualCharacterHandle characterHandle) override;
+            VirtualCharacterHandle characterHandle);
 
         [[nodiscard]]
         CharacterHandle CreateCharacter(
             WorldHandle worldHandle,
-            const CharacterConfiguration& configuration) override;
+            const CharacterConfiguration& configuration);
 
         bool DestroyCharacter(
             WorldHandle worldHandle,
-            CharacterHandle characterHandle) override;
+            CharacterHandle characterHandle);
 
         [[nodiscard]]
         bool IsValid(
             WorldHandle worldHandle,
-            CharacterHandle characterHandle) const override;
+            CharacterHandle characterHandle) const;
 
         [[nodiscard]]
         bool GetCharacterState(
             WorldHandle worldHandle,
             CharacterHandle characterHandle,
-            CharacterState& state) const override;
+            CharacterState& state) const;
 
         [[nodiscard]]
         bool GetCharacterUserData(
             WorldHandle worldHandle,
             CharacterHandle characterHandle,
-            AZ::u64& userData) const override;
+            AZ::u64& userData) const;
 
         bool SetCharacterUserData(
             WorldHandle worldHandle,
             CharacterHandle characterHandle,
-            AZ::u64 userData) override;
+            AZ::u64 userData);
 
         [[nodiscard]]
         bool GetCharacterRuntimeConfiguration(
             WorldHandle worldHandle,
             CharacterHandle characterHandle,
-            CharacterRuntimeConfiguration& configuration) const override;
+            CharacterRuntimeConfiguration& configuration) const;
 
         QueryResult CheckCharacterCollision(
             WorldHandle worldHandle,
             CharacterHandle characterHandle,
             const CharacterCollisionRequest& request,
             AZStd::span<CharacterCollisionHit> hits,
-            const ICharacterCollisionFilter* filter) const override;
+            const ICharacterCollisionFilter* filter = nullptr) const;
 
         bool UpdateCharacterRuntimeConfiguration(
             WorldHandle worldHandle,
             CharacterHandle characterHandle,
-            const CharacterRuntimeConfiguration& configuration) override;
+            const CharacterRuntimeConfiguration& configuration);
 
         bool SetCharacterShape(
             WorldHandle worldHandle,
             CharacterHandle characterHandle,
             ShapeHandle shapeHandle,
-            float maximumPenetrationDepth) override;
+            float maximumPenetrationDepth);
 
         bool SetCharacterTransform(
             WorldHandle worldHandle,
             CharacterHandle characterHandle,
             const WorldTransform& transform,
-            bool activate) override;
+            bool activate);
 
         bool SetCharacterVelocity(
             WorldHandle worldHandle,
             CharacterHandle characterHandle,
-            const AZ::Vector3& velocity) override;
+            const AZ::Vector3& velocity);
 
         bool AddCharacterImpulse(
             WorldHandle worldHandle,
             CharacterHandle characterHandle,
-            const AZ::Vector3& impulse) override;
+            const AZ::Vector3& impulse);
 
         bool ApplyVehicleEngineDamping(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            float deltaTime) override;
+            float deltaTime);
 
         bool ApplyVehicleEngineTorque(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
             float torque,
-            float deltaTime) override;
+            float deltaTime);
 
         [[nodiscard]]
         bool CalculateVehicleEngineTorque(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
             float acceleration,
-            float& torque) const override;
+            float& torque) const;
 
         [[nodiscard]]
         VehicleHandle CreateWheeledVehicle(
             WorldHandle worldHandle,
-            const WheeledVehicleConfiguration& configuration) override;
+            const WheeledVehicleConfiguration& configuration);
 
         [[nodiscard]]
         VehicleHandle CreateMotorcycle(
             WorldHandle worldHandle,
-            const MotorcycleConfiguration& configuration) override;
+            const MotorcycleConfiguration& configuration);
 
         [[nodiscard]]
         VehicleHandle CreateTrackedVehicle(
             WorldHandle worldHandle,
-            const TrackedVehicleConfiguration& configuration) override;
+            const TrackedVehicleConfiguration& configuration);
 
         bool DestroyVehicle(
             WorldHandle worldHandle,
-            VehicleHandle vehicleHandle) override;
+            VehicleHandle vehicleHandle);
 
         [[nodiscard]]
         bool IsValid(
             WorldHandle worldHandle,
-            VehicleHandle vehicleHandle) const override;
+            VehicleHandle vehicleHandle) const;
 
         [[nodiscard]]
         QueryResult GetWheeledVehicleState(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
             WheeledVehicleState& state,
-            AZStd::span<WheelState> wheels) const override;
+            AZStd::span<WheelState> wheels) const;
 
         [[nodiscard]]
         QueryResult GetMotorcycleState(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
             MotorcycleState& state,
-            AZStd::span<WheelState> wheels) const override;
+            AZStd::span<WheelState> wheels) const;
 
         [[nodiscard]]
         QueryResult GetTrackedVehicleState(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
             TrackedVehicleState& state,
-            AZStd::span<WheelState> wheels) const override;
+            AZStd::span<WheelState> wheels) const;
 
         [[nodiscard]]
         bool GetVehicleCollisionConfiguration(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            VehicleCollisionConfiguration& configuration) const override;
+            VehicleCollisionConfiguration& configuration) const;
 
         [[nodiscard]]
         bool GetVehicleDifferentialLimitedSlipRatio(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            float& ratio) const override;
+            float& ratio) const;
 
         [[nodiscard]]
         bool GetVehicleEngineConfiguration(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            VehicleEngineConfiguration& configuration) const override;
+            VehicleEngineConfiguration& configuration) const;
 
         [[nodiscard]]
         bool GetVehiclePowertrainState(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            VehiclePowertrainState& state) const override;
+            VehiclePowertrainState& state) const;
 
         [[nodiscard]]
         bool GetVehicleRuntimeConfiguration(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            VehicleRuntimeConfiguration& configuration) const override;
+            VehicleRuntimeConfiguration& configuration) const;
 
         [[nodiscard]]
         bool GetVehicleTransmissionConfiguration(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            VehicleTransmissionConfiguration& configuration) const override;
+            VehicleTransmissionConfiguration& configuration) const;
 
         [[nodiscard]]
         bool GetVehicleTrackConfiguration(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
             AZ::u32 trackIndex,
-            VehicleTrackConfiguration& configuration) const override;
+            VehicleTrackConfiguration& configuration) const;
 
         [[nodiscard]]
         bool GetWheelLocalBasis(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
             AZ::u32 wheelIndex,
-            WheelBasis& basis) const override;
+            WheelBasis& basis) const;
 
         [[nodiscard]]
         bool GetWheelLocalTransform(
@@ -1990,7 +1989,7 @@ namespace Jolt
             AZ::u32 wheelIndex,
             const AZ::Vector3& wheelRight,
             const AZ::Vector3& wheelUp,
-            AZ::Transform& transform) const override;
+            AZ::Transform& transform) const;
 
         [[nodiscard]]
         bool GetWheelWorldTransform(
@@ -1999,326 +1998,326 @@ namespace Jolt
             AZ::u32 wheelIndex,
             const AZ::Vector3& wheelRight,
             const AZ::Vector3& wheelUp,
-            WorldTransform& transform) const override;
+            WorldTransform& transform) const;
 
         [[nodiscard]]
         QueryResult QueryVehicleAntiRollBars(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            AZStd::span<VehicleAntiRollBarConfiguration> antiRollBars) const override;
+            AZStd::span<VehicleAntiRollBarConfiguration> antiRollBars) const;
 
         [[nodiscard]]
         QueryResult QueryVehicleDifferentials(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            AZStd::span<VehicleDifferentialConfiguration> differentials) const override;
+            AZStd::span<VehicleDifferentialConfiguration> differentials) const;
 
         bool SetTrackedVehicleInput(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            const TrackedVehicleInput& input) override;
+            const TrackedVehicleInput& input);
 
         bool SetVehicleCallbacks(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            IVehicleCallbacks* callbacks) override;
+            IVehicleCallbacks* callbacks);
 
         bool SetVehicleCollisionFilter(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            const IVehicleCollisionFilter* filter) override;
+            const IVehicleCollisionFilter* filter);
 
         bool SetVehicleDifferentialLimitedSlipRatio(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            float ratio) override;
+            float ratio);
 
         bool SetVehiclePowertrainControl(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            const VehiclePowertrainControl& control) override;
+            const VehiclePowertrainControl& control);
 
         bool SetVehicleTrackAngularVelocity(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
             AZ::u32 trackIndex,
-            float angularVelocity) override;
+            float angularVelocity);
 
         bool SetWheelMotion(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
             AZ::u32 wheelIndex,
-            const WheelMotion& motion) override;
+            const WheelMotion& motion);
 
         bool SetWheeledVehicleInput(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            const WheeledVehicleInput& input) override;
+            const WheeledVehicleInput& input);
 
         bool UpdateMotorcycleController(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            const MotorcycleControllerUpdateConfiguration& configuration) override;
+            const MotorcycleControllerUpdateConfiguration& configuration);
 
         bool UpdateVehicleAntiRollBars(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            AZStd::span<const VehicleAntiRollBarConfiguration> antiRollBars) override;
+            AZStd::span<const VehicleAntiRollBarConfiguration> antiRollBars);
 
         bool UpdateVehicleCollisionConfiguration(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            const VehicleCollisionConfiguration& configuration) override;
+            const VehicleCollisionConfiguration& configuration);
 
         bool UpdateVehicleDifferentials(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            AZStd::span<const VehicleDifferentialConfiguration> differentials) override;
+            AZStd::span<const VehicleDifferentialConfiguration> differentials);
 
         bool UpdateVehicleEngineConfiguration(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            const VehicleEngineConfiguration& configuration) override;
+            const VehicleEngineConfiguration& configuration);
 
         bool UpdateVehicleRuntimeConfiguration(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            const VehicleRuntimeConfiguration& configuration) override;
+            const VehicleRuntimeConfiguration& configuration);
 
         bool UpdateVehicleTransmissionConfiguration(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            const VehicleTransmissionConfiguration& configuration) override;
+            const VehicleTransmissionConfiguration& configuration);
 
         bool UpdateVehicleTrackConfiguration(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
             AZ::u32 trackIndex,
-            const VehicleTrackConfiguration& configuration) override;
+            const VehicleTrackConfiguration& configuration);
 
         [[nodiscard]]
         BodySnapshotHandle CaptureBodyState(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) override;
+            BodyHandle bodyHandle);
 
         bool CaptureBodyState(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            BodySnapshotHandle snapshotHandle) override;
+            BodySnapshotHandle snapshotHandle);
 
         bool DestroyBodyStateSnapshot(
             WorldHandle worldHandle,
-            BodySnapshotHandle snapshotHandle) override;
+            BodySnapshotHandle snapshotHandle);
 
         [[nodiscard]]
         bool IsValid(
             WorldHandle worldHandle,
-            BodySnapshotHandle snapshotHandle) const override;
+            BodySnapshotHandle snapshotHandle) const;
 
         bool RestoreBodyState(
             WorldHandle worldHandle,
-            BodySnapshotHandle snapshotHandle) override;
+            BodySnapshotHandle snapshotHandle);
 
         [[nodiscard]]
-        StateSnapshotHandle CaptureWorldState(WorldHandle worldHandle) override;
+        StateSnapshotHandle CaptureWorldState(WorldHandle worldHandle);
 
         bool CaptureWorldState(
             WorldHandle worldHandle,
-            StateSnapshotHandle snapshotHandle) override;
+            StateSnapshotHandle snapshotHandle);
 
         [[nodiscard]]
         StateSnapshotHandle CaptureWorldState(
             WorldHandle worldHandle,
             const StateSnapshotConfiguration& configuration,
-            AZStd::span<const BodyHandle> bodyHandles) override;
+            AZStd::span<const BodyHandle> bodyHandles);
 
         bool CaptureWorldState(
             WorldHandle worldHandle,
             StateSnapshotHandle snapshotHandle,
             const StateSnapshotConfiguration& configuration,
-            AZStd::span<const BodyHandle> bodyHandles) override;
+            AZStd::span<const BodyHandle> bodyHandles);
 
         bool CaptureWorldStateParts(
             WorldHandle worldHandle,
             const StateSnapshotConfiguration& configuration,
             AZStd::span<const BodyHandle> bodyHandles,
             AZStd::span<const AZ::u32> partitionBodyCounts,
-            AZStd::span<StateSnapshotHandle> snapshotHandles) override;
+            AZStd::span<StateSnapshotHandle> snapshotHandles);
 
         bool ExportWorldStateArchive(
             WorldHandle worldHandle,
             AZStd::span<const StateSnapshotHandle> snapshotHandles,
-            StateSnapshotArchive& archive) override;
+            StateSnapshotArchive& archive);
 
         bool ImportWorldStateArchive(
             WorldHandle worldHandle,
             const StateSnapshotArchive& archive,
-            AZStd::span<StateSnapshotHandle> snapshotHandles) override;
+            AZStd::span<StateSnapshotHandle> snapshotHandles);
 
         bool DestroyStateSnapshot(
             WorldHandle worldHandle,
-            StateSnapshotHandle snapshotHandle) override;
+            StateSnapshotHandle snapshotHandle);
 
         [[nodiscard]]
         bool IsValid(
             WorldHandle worldHandle,
-            StateSnapshotHandle snapshotHandle) const override;
+            StateSnapshotHandle snapshotHandle) const;
 
         bool RestoreWorldState(
             WorldHandle worldHandle,
-            StateSnapshotHandle snapshotHandle) override;
+            StateSnapshotHandle snapshotHandle);
 
         bool RestoreWorldStateParts(
             WorldHandle worldHandle,
-            AZStd::span<const StateSnapshotHandle> snapshotHandles) override;
+            AZStd::span<const StateSnapshotHandle> snapshotHandles);
 
         bool ValidateWorldState(
             WorldHandle worldHandle,
             StateSnapshotHandle snapshotHandle,
-            StateValidationResult& result) override;
+            StateValidationResult& result);
 
         [[nodiscard]]
         bool GetWorldStateDigest(
             WorldHandle worldHandle,
-            WorldStateDigest& digest) const override;
+            WorldStateDigest& digest) const;
 
         [[nodiscard]]
         bool GetWorldStatistics(
             WorldHandle worldHandle,
-            WorldStatistics& statistics) const override;
+            WorldStatistics& statistics) const;
 
         bool ConfigurePerformanceStatistics(
             WorldHandle worldHandle,
-            PerformanceStatisticsFlags flags) override;
+            PerformanceStatisticsFlags flags);
 
         [[nodiscard]]
         bool GetPerformanceStatistics(
             WorldHandle worldHandle,
             WorldPerformanceStatistics& statistics,
-            bool reset) override;
+            bool reset);
 
         [[nodiscard]]
         DiagnosticStatisticsResult GetBroadPhaseStatistics(
             WorldHandle worldHandle,
             AZStd::span<BroadPhaseStatistics> statistics,
-            bool reset) override;
+            bool reset);
 
         [[nodiscard]]
         DiagnosticStatisticsResult GetNarrowPhaseStatistics(
             AZStd::span<NarrowPhaseStatistics> statistics,
-            bool reset) override;
+            bool reset);
 
         bool DrawDebug(
             WorldHandle worldHandle,
             const DebugDrawSettings& settings,
             IDebugRenderer& renderer,
-            const IDebugFilter* filter = nullptr) override;
+            const IDebugFilter* filter = nullptr);
 
         bool ConfigureDebugCapture(
             WorldHandle worldHandle,
-            const DebugCaptureConfiguration& configuration) override;
+            const DebugCaptureConfiguration& configuration);
 
         [[nodiscard]]
         bool GetDebugCaptureStatistics(
             WorldHandle worldHandle,
-            DebugCaptureStatistics& statistics) const override;
+            DebugCaptureStatistics& statistics) const;
 
         QueryResult GetBodies(
             WorldHandle worldHandle,
             BodyKind kind,
             bool activeOnly,
-            AZStd::span<BodyHandle> bodies) const override;
+            AZStd::span<BodyHandle> bodies) const;
 
         [[nodiscard]]
         bool GetBodyId(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            BodyId& bodyId) const override;
+            BodyId& bodyId) const;
 
         bool ActivateBody(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) override;
+            BodyHandle bodyHandle);
 
         bool ActivateBodies(
             WorldHandle worldHandle,
-            AZStd::span<const BodyHandle> bodyHandles) override;
+            AZStd::span<const BodyHandle> bodyHandles);
 
         bool ActivateBodiesInBounds(
             WorldHandle worldHandle,
             const BroadPhaseAabb& bounds,
-            ObjectLayer collisionLayer = ObjectLayer::Invalid) override;
+            ObjectLayer collisionLayer = ObjectLayer::Invalid);
 
         bool DeactivateBody(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) override;
+            BodyHandle bodyHandle);
 
         bool DeactivateBodies(
             WorldHandle worldHandle,
-            AZStd::span<const BodyHandle> bodyHandles) override;
+            AZStd::span<const BodyHandle> bodyHandles);
 
         bool ResetBodySleepTimer(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) override;
+            BodyHandle bodyHandle);
 
         bool InvalidateBodyContactCache(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) override;
+            BodyHandle bodyHandle);
 
         [[nodiscard]]
         bool GetBodyPointVelocity(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const WorldPosition& point,
-            AZ::Vector3& velocity) const override;
+            AZ::Vector3& velocity) const;
 
         [[nodiscard]]
         bool GetBodyMotionType(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            MotionType& motionType) const override;
+            MotionType& motionType) const;
 
         [[nodiscard]]
         bool GetBodyObjectLayer(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            ObjectLayer& objectLayer) const override;
+            ObjectLayer& objectLayer) const;
 
         [[nodiscard]]
         bool GetBodyCollisionGroup(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            CollisionGroupConfiguration& collisionGroup) const override;
+            CollisionGroupConfiguration& collisionGroup) const;
 
         [[nodiscard]]
         bool GetBodyShape(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            ShapeHandle& shapeHandle) const override;
+            ShapeHandle& shapeHandle) const;
 
         [[nodiscard]]
         bool GetBodyAccumulatedForceAndTorque(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             AZ::Vector3& force,
-            AZ::Vector3& torque) const override;
+            AZ::Vector3& torque) const;
 
         bool ResetBodyAccumulatedForce(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) override;
+            BodyHandle bodyHandle);
 
         bool ResetBodyAccumulatedTorque(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) override;
+            BodyHandle bodyHandle);
 
         bool ResetBodyMotion(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) override;
+            BodyHandle bodyHandle);
 
         [[nodiscard]]
         bool GetBodyBounds(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            BroadPhaseAabb& bounds) const override;
+            BroadPhaseAabb& bounds) const;
 
         [[nodiscard]]
         bool GetBodySubmergedVolume(
@@ -2326,7 +2325,7 @@ namespace Jolt
             BodyHandle bodyHandle,
             const WorldPosition& surfacePosition,
             const AZ::Vector3& surfaceNormal,
-            SubmergedVolumeResult& result) const override;
+            SubmergedVolumeResult& result) const;
 
         [[nodiscard]]
         bool GetBodySurfaceNormal(
@@ -2334,377 +2333,377 @@ namespace Jolt
             BodyHandle bodyHandle,
             SubShapeId subShapeId,
             const WorldPosition& surfacePosition,
-            AZ::Vector3& normal) const override;
+            AZ::Vector3& normal) const;
 
         [[nodiscard]]
         bool GetBodyMaterial(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             SubShapeId subShapeId,
-            MaterialHandle& materialHandle) const override;
+            MaterialHandle& materialHandle) const;
 
         [[nodiscard]]
         bool GetBodyPosition(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            WorldPosition& position) const override;
+            WorldPosition& position) const;
 
         [[nodiscard]]
         bool GetBodyRotation(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            AZ::Quaternion& rotation) const override;
+            AZ::Quaternion& rotation) const;
 
         [[nodiscard]]
         bool GetBodyVelocities(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             AZ::Vector3& linearVelocity,
-            AZ::Vector3& angularVelocity) const override;
+            AZ::Vector3& angularVelocity) const;
 
         [[nodiscard]]
         bool GetBodyLinearVelocity(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            AZ::Vector3& linearVelocity) const override;
+            AZ::Vector3& linearVelocity) const;
 
         [[nodiscard]]
         bool GetBodyAngularVelocity(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            AZ::Vector3& angularVelocity) const override;
+            AZ::Vector3& angularVelocity) const;
 
         bool SetBodyPosition(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const WorldPosition& position,
-            bool activate) override;
+            bool activate);
 
         bool SetBodyRotation(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const AZ::Quaternion& rotation,
-            bool activate) override;
+            bool activate);
 
         bool SetBodyTransform(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const WorldTransform& transform,
-            bool activate) override;
+            bool activate);
 
         bool SetBodyTransformWhenChanged(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const WorldTransform& transform,
-            bool activate) override;
+            bool activate);
 
         bool SetBodyVelocities(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const AZ::Vector3& linearVelocity,
-            const AZ::Vector3& angularVelocity) override;
+            const AZ::Vector3& angularVelocity);
 
         bool SetBodyLinearVelocity(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            const AZ::Vector3& linearVelocity) override;
+            const AZ::Vector3& linearVelocity);
 
         bool SetBodyAngularVelocity(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            const AZ::Vector3& angularVelocity) override;
+            const AZ::Vector3& angularVelocity);
 
         bool AddBodyVelocities(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const AZ::Vector3& linearVelocity,
-            const AZ::Vector3& angularVelocity) override;
+            const AZ::Vector3& angularVelocity);
 
         bool AddBodyLinearVelocity(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            const AZ::Vector3& linearVelocity) override;
+            const AZ::Vector3& linearVelocity);
 
         bool SetBodyTransformAndVelocities(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const WorldTransform& transform,
             const AZ::Vector3& linearVelocity,
-            const AZ::Vector3& angularVelocity) override;
+            const AZ::Vector3& angularVelocity);
 
         bool MoveBodyKinematically(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const WorldTransform& target,
-            float duration) override;
+            float duration);
 
         bool AddForce(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const AZ::Vector3& force,
-            bool activate = true) override;
+            bool activate = true);
 
         bool AddForceAtPosition(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const AZ::Vector3& force,
             const WorldPosition& position,
-            bool activate = true) override;
+            bool activate = true);
 
         bool AddTorque(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const AZ::Vector3& torque,
-            bool activate = true) override;
+            bool activate = true);
 
         bool AddForceAndTorque(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const AZ::Vector3& force,
             const AZ::Vector3& torque,
-            bool activate = true) override;
+            bool activate = true);
 
         bool ApplyBuoyancyImpulse(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            const BuoyancyConfiguration& configuration) override;
+            const BuoyancyConfiguration& configuration);
 
         [[nodiscard]]
         bool GetBodyFriction(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float& friction) const override;
+            float& friction) const;
 
         bool SetBodyFriction(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float friction) override;
+            float friction);
 
         [[nodiscard]]
         bool GetBodyRestitution(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float& restitution) const override;
+            float& restitution) const;
 
         bool SetBodyRestitution(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float restitution) override;
+            float restitution);
 
         [[nodiscard]]
         bool GetBodyGravityFactor(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float& gravityFactor) const override;
+            float& gravityFactor) const;
 
         bool SetBodyGravityFactor(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float gravityFactor) override;
+            float gravityFactor);
 
         [[nodiscard]]
         bool GetBodyMaximumLinearVelocity(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float& maximumLinearVelocity) const override;
+            float& maximumLinearVelocity) const;
 
         bool SetBodyMaximumLinearVelocity(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float maximumLinearVelocity) override;
+            float maximumLinearVelocity);
 
         [[nodiscard]]
         bool GetBodyMaximumAngularVelocity(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float& maximumAngularVelocity) const override;
+            float& maximumAngularVelocity) const;
 
         bool SetBodyMaximumAngularVelocity(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float maximumAngularVelocity) override;
+            float maximumAngularVelocity);
 
         [[nodiscard]]
         bool GetBodyMotionQuality(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            MotionQuality& motionQuality) const override;
+            MotionQuality& motionQuality) const;
 
         bool SetBodyMotionQuality(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            MotionQuality motionQuality) override;
+            MotionQuality motionQuality);
 
         [[nodiscard]]
         bool IsBodyManifoldReductionEnabled(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool& enabled) const override;
+            bool& enabled) const;
 
         bool SetBodyManifoldReductionEnabled(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool enabled) override;
+            bool enabled);
 
         [[nodiscard]]
         bool IsBodySensor(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool& sensor) const override;
+            bool& sensor) const;
 
         bool SetBodySensor(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool sensor) override;
+            bool sensor);
 
         [[nodiscard]]
         bool GetBodyLinearDamping(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float& linearDamping) const override;
+            float& linearDamping) const;
 
         bool SetBodyLinearDamping(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float linearDamping) override;
+            float linearDamping);
 
         [[nodiscard]]
         bool GetBodyAngularDamping(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float& angularDamping) const override;
+            float& angularDamping) const;
 
         bool SetBodyAngularDamping(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float angularDamping) override;
+            float angularDamping);
 
         [[nodiscard]]
         bool IsBodySleepingAllowed(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool& sleepingAllowed) const override;
+            bool& sleepingAllowed) const;
 
         bool SetBodySleepingAllowed(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool sleepingAllowed) override;
+            bool sleepingAllowed);
 
         [[nodiscard]]
         bool IsBodyGyroscopicForceEnabled(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool& enabled) const override;
+            bool& enabled) const;
 
         bool SetBodyGyroscopicForceEnabled(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool enabled) override;
+            bool enabled);
 
         [[nodiscard]]
         bool IsBodyKinematicVsNonDynamicCollisionEnabled(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool& enabled) const override;
+            bool& enabled) const;
 
         bool SetBodyKinematicVsNonDynamicCollisionEnabled(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool enabled) override;
+            bool enabled);
 
         [[nodiscard]]
         bool IsBodyEnhancedInternalEdgeRemovalEnabled(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool& enabled) const override;
+            bool& enabled) const;
 
         bool SetBodyEnhancedInternalEdgeRemovalEnabled(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            bool enabled) override;
+            bool enabled);
 
         [[nodiscard]]
         bool GetBodySolverStepCounts(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             AZ::u8& velocityStepCount,
-            AZ::u8& positionStepCount) const override;
+            AZ::u8& positionStepCount) const;
 
         bool SetBodySolverStepCounts(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             AZ::u8 velocityStepCount,
-            AZ::u8 positionStepCount) override;
+            AZ::u8 positionStepCount);
 
         bool UpdateBodyRuntimeConfiguration(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const BodyRuntimeConfiguration& configuration,
-            bool activate) override;
+            bool activate);
 
         [[nodiscard]]
         bool GetBodyInverseInertia(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            AZ::Matrix3x3& inverseInertia) const override;
+            AZ::Matrix3x3& inverseInertia) const;
 
         [[nodiscard]]
         bool GetBodyInverseMass(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            float& inverseMass) const override;
+            float& inverseMass) const;
 
         bool AddImpulse(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            const AZ::Vector3& impulse) override;
+            const AZ::Vector3& impulse);
 
         bool AddImpulseAtPosition(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const AZ::Vector3& impulse,
-            const WorldPosition& position) override;
+            const WorldPosition& position);
 
         bool AddAngularImpulse(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            const AZ::Vector3& angularImpulse) override;
+            const AZ::Vector3& angularImpulse);
 
         bool SetBodyShape(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             ShapeHandle shapeHandle,
             bool updateMassProperties,
-            bool activate) override;
+            bool activate);
 
         bool SetBodyMotionType(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             MotionType motionType,
-            bool activate) override;
+            bool activate);
 
         bool SetBodyObjectLayer(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            ObjectLayer objectLayer) override;
+            ObjectLayer objectLayer);
 
         bool SetBodyCollisionGroup(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
             const CollisionGroupConfiguration& collisionGroup,
-            bool activate) override;
+            bool activate);
 
         [[nodiscard]]
         bool RaycastShapeClosest(
             WorldHandle worldHandle,
             const ShapeRaycastRequest& request,
-            ShapeRaycastHit& hit) const override;
+            ShapeRaycastHit& hit) const;
 
         [[nodiscard]]
         QueryResult RaycastShapeAll(
             WorldHandle worldHandle,
             const ShapeRaycastRequest& request,
-            AZStd::span<ShapeRaycastHit> hits) const override;
+            AZStd::span<ShapeRaycastHit> hits) const;
 
         [[nodiscard]]
         QueryResult CollideShapePoint(
@@ -2712,34 +2711,34 @@ namespace Jolt
             ShapeHandle shapeHandle,
             const AZ::Vector3& localPosition,
             const IQueryFilter* filter,
-            AZStd::span<ShapePointHit> hits) const override;
+            AZStd::span<ShapePointHit> hits) const;
 
         [[nodiscard]]
         bool CollideShapePointAny(
             WorldHandle worldHandle,
             ShapeHandle shapeHandle,
             const AZ::Vector3& localPosition,
-            const IQueryFilter* filter = nullptr) const override;
+            const IQueryFilter* filter = nullptr) const;
 
         [[nodiscard]]
         QueryResult CollectShapeTriangles(
             WorldHandle worldHandle,
             const ShapeTriangleCollectionRequest& request,
-            AZStd::span<ShapeTriangle> triangles) const override;
+            AZStd::span<ShapeTriangle> triangles) const;
 
         [[nodiscard]]
         bool RaycastTransformedShapeClosest(
             WorldHandle worldHandle,
             const TransformedShape& shape,
             const TransformedShapeRaycastRequest& request,
-            RaycastHit& hit) const override;
+            RaycastHit& hit) const;
 
         [[nodiscard]]
         QueryResult RaycastTransformedShapeAll(
             WorldHandle worldHandle,
             const TransformedShape& shape,
             const TransformedShapeRaycastRequest& request,
-            AZStd::span<RaycastHit> hits) const override;
+            AZStd::span<RaycastHit> hits) const;
 
         [[nodiscard]]
         QueryResult CollideTransformedShapePoint(
@@ -2747,14 +2746,14 @@ namespace Jolt
             const TransformedShape& shape,
             const WorldPosition& position,
             const IQueryFilter* filter,
-            AZStd::span<OverlapHit> hits) const override;
+            AZStd::span<OverlapHit> hits) const;
 
         [[nodiscard]]
         bool CollideTransformedShapePointAny(
             WorldHandle worldHandle,
             const TransformedShape& shape,
             const WorldPosition& position,
-            const IQueryFilter* filter = nullptr) const override;
+            const IQueryFilter* filter = nullptr) const;
 
         [[nodiscard]]
         QueryResult CollectTransformedShapeChildren(
@@ -2762,14 +2761,14 @@ namespace Jolt
             const TransformedShape& shape,
             const BroadPhaseAabb& bounds,
             const IQueryFilter* filter,
-            AZStd::span<TransformedShape> children) const override;
+            AZStd::span<TransformedShape> children) const;
 
         [[nodiscard]]
         QueryResult CollectTransformedShapeTriangles(
             WorldHandle worldHandle,
             const TransformedShape& shape,
             const BroadPhaseAabb& bounds,
-            AZStd::span<TransformedTriangle> triangles) const override;
+            AZStd::span<TransformedTriangle> triangles) const;
 
         [[nodiscard]]
         bool GetTransformedShapeSurfaceNormal(
@@ -2777,7 +2776,7 @@ namespace Jolt
             const TransformedShape& shape,
             SubShapeId subShapeId,
             const WorldPosition& position,
-            AZ::Vector3& normal) const override;
+            AZ::Vector3& normal) const;
 
         [[nodiscard]]
         QueryResult GetTransformedShapeSupportingFace(
@@ -2785,7 +2784,7 @@ namespace Jolt
             const TransformedShape& shape,
             SubShapeId subShapeId,
             const AZ::Vector3& direction,
-            AZStd::span<WorldPosition> vertices) const override;
+            AZStd::span<WorldPosition> vertices) const;
 
         [[nodiscard]]
         bool RetainShape(
@@ -2793,7 +2792,7 @@ namespace Jolt
             ShapeHandle shapeHandle,
             const WorldTransform& transform,
             float uniformScale,
-            TransformedShape& shape) const override;
+            TransformedShape& shape) const;
 
         [[nodiscard]]
         QueryResult CollideTransformedShapes(
@@ -2802,7 +2801,7 @@ namespace Jolt
             const TransformedShape& secondShape,
             const TransformedShapeCollisionRequest& request,
             AZStd::span<TransformedShapeCollisionHit> hits,
-            const ShapeQueryFaceBuffers& faceBuffers) const override;
+            const ShapeQueryFaceBuffers& faceBuffers) const;
 
         [[nodiscard]]
         bool CollideTransformedShapes(
@@ -2810,7 +2809,7 @@ namespace Jolt
             const TransformedShape& firstShape,
             const TransformedShape& secondShape,
             const TransformedShapeCollisionRequest& request,
-            ITransformedShapeCollisionCollector& collector) const override;
+            ITransformedShapeCollisionCollector& collector) const;
 
         [[nodiscard]]
         QueryResult CollideTransformedShapes(
@@ -2819,7 +2818,7 @@ namespace Jolt
             const ShapePlacement& secondShape,
             const TransformedShapeCollisionRequest& request,
             AZStd::span<TransformedShapeCollisionHit> hits,
-            const ShapeQueryFaceBuffers& faceBuffers) const override;
+            const ShapeQueryFaceBuffers& faceBuffers) const;
 
         [[nodiscard]]
         QueryResult CastTransformedShape(
@@ -2828,7 +2827,7 @@ namespace Jolt
             const TransformedShape& secondShape,
             const TransformedShapeCastRequest& request,
             AZStd::span<TransformedShapeCastHit> hits,
-            const ShapeQueryFaceBuffers& faceBuffers) const override;
+            const ShapeQueryFaceBuffers& faceBuffers) const;
 
         [[nodiscard]]
         bool CastTransformedShape(
@@ -2836,7 +2835,7 @@ namespace Jolt
             const TransformedShape& firstShape,
             const TransformedShape& secondShape,
             const TransformedShapeCastRequest& request,
-            ITransformedShapeCastCollector& collector) const override;
+            ITransformedShapeCastCollector& collector) const;
 
         [[nodiscard]]
         QueryResult CastTransformedShape(
@@ -2845,140 +2844,146 @@ namespace Jolt
             const ShapePlacement& secondShape,
             const TransformedShapeCastRequest& request,
             AZStd::span<TransformedShapeCastHit> hits,
-            const ShapeQueryFaceBuffers& faceBuffers) const override;
+            const ShapeQueryFaceBuffers& faceBuffers) const;
 
         [[nodiscard]]
         bool RaycastClosest(
             WorldHandle worldHandle,
             const RaycastRequest& request,
-            RaycastHit& hit) const override;
+            RaycastHit& hit) const;
 
         [[nodiscard]]
         BufferResult RaycastClosestBatch(
             WorldHandle worldHandle,
             AZStd::span<const RaycastRequest> requests,
-            AZStd::span<ClosestRaycastResult> results) const override;
+            AZStd::span<ClosestRaycastResult> results) const;
 
         [[nodiscard]]
         QueryResult RaycastClosestPerBody(
             WorldHandle worldHandle,
             const RaycastRequest& request,
-            AZStd::span<RaycastHit> hits) const override;
+            AZStd::span<RaycastHit> hits) const;
 
         [[nodiscard]]
         bool RaycastAny(
             WorldHandle worldHandle,
-            const RaycastRequest& request) const override;
+            const RaycastRequest& request) const;
 
         [[nodiscard]]
         QueryResult RaycastAll(
             WorldHandle worldHandle,
             const RaycastRequest& request,
-            AZStd::span<RaycastHit> hits) const override;
+            AZStd::span<RaycastHit> hits) const;
 
         [[nodiscard]]
         QueryResult OverlapPoint(
             WorldHandle worldHandle,
             const PointOverlapRequest& request,
-            AZStd::span<OverlapHit> hits) const override;
+            AZStd::span<OverlapHit> hits) const;
 
         [[nodiscard]]
         bool OverlapPointAny(
             WorldHandle worldHandle,
-            const PointOverlapRequest& request) const override;
+            const PointOverlapRequest& request) const;
 
         [[nodiscard]]
         QueryResult CollideShape(
             WorldHandle worldHandle,
             const ShapeOverlapRequest& request,
             AZStd::span<ShapeOverlapHit> hits,
-            const ShapeQueryFaceBuffers& faceBuffers = {}) const override;
+            const ShapeQueryFaceBuffers& faceBuffers = {}) const;
 
         [[nodiscard]]
         QueryResult OverlapShape(
             WorldHandle worldHandle,
             const ShapeOverlapRequest& request,
-            AZStd::span<OverlapHit> hits) const override;
+            AZStd::span<OverlapHit> hits) const;
 
         [[nodiscard]]
         bool OverlapShapeAny(
             WorldHandle worldHandle,
-            const ShapeOverlapRequest& request) const override;
+            const ShapeOverlapRequest& request) const;
 
         [[nodiscard]]
         bool CastShapeClosest(
             WorldHandle worldHandle,
             const ShapeCastRequest& request,
             ShapeCastHit& hit,
-            const ShapeQueryFaceBuffers& faceBuffers = {}) const override;
+            const ShapeQueryFaceBuffers& faceBuffers = {}) const;
 
         [[nodiscard]]
         QueryResult CastShapeClosestPerBody(
             WorldHandle worldHandle,
             const ShapeCastRequest& request,
             AZStd::span<ShapeCastHit> hits,
-            const ShapeQueryFaceBuffers& faceBuffers = {}) const override;
+            const ShapeQueryFaceBuffers& faceBuffers = {}) const;
 
         [[nodiscard]]
         QueryResult CastShapeAll(
             WorldHandle worldHandle,
             const ShapeCastRequest& request,
             AZStd::span<ShapeCastHit> hits,
-            const ShapeQueryFaceBuffers& faceBuffers = {}) const override;
+            const ShapeQueryFaceBuffers& faceBuffers = {}) const;
 
         [[nodiscard]]
         QueryResult OverlapBroadPhase(
             WorldHandle worldHandle,
             const BroadPhaseOverlapRequest& request,
-            AZStd::span<BroadPhaseHit> hits) const override;
+            AZStd::span<BroadPhaseHit> hits) const;
 
         [[nodiscard]]
         bool OverlapBroadPhaseAny(
             WorldHandle worldHandle,
-            const BroadPhaseOverlapRequest& request) const override;
+            const BroadPhaseOverlapRequest& request) const;
 
         [[nodiscard]]
         bool CastBroadPhaseClosest(
             WorldHandle worldHandle,
             const BroadPhaseCastRequest& request,
-            BroadPhaseCastHit& hit) const override;
+            BroadPhaseCastHit& hit) const;
 
         [[nodiscard]]
         QueryResult CastBroadPhaseAll(
             WorldHandle worldHandle,
             const BroadPhaseCastRequest& request,
-            AZStd::span<BroadPhaseCastHit> hits) const override;
+            AZStd::span<BroadPhaseCastHit> hits) const;
 
         [[nodiscard]]
         QueryResult CollectShapesInBounds(
             WorldHandle worldHandle,
             const ShapeCollectionRequest& request,
-            AZStd::span<TransformedShape> shapes) const override;
+            AZStd::span<TransformedShape> shapes) const;
 
         [[nodiscard]]
         QueryResult GetSupportingFace(
             WorldHandle worldHandle,
             const SupportingFaceRequest& request,
-            AZStd::span<WorldPosition> vertices) const override;
+            AZStd::span<WorldPosition> vertices) const;
 
         [[nodiscard]]
         QueryResult CollectTriangles(
             WorldHandle worldHandle,
             const TriangleCollectionRequest& request,
-            AZStd::span<TransformedTriangle> triangles) const override;
+            AZStd::span<TransformedTriangle> triangles) const;
 
         [[nodiscard]]
         bool GetBroadPhaseBounds(
             WorldHandle worldHandle,
-            BroadPhaseAabb& bounds) const override;
+            BroadPhaseAabb& bounds) const;
 
-        bool OptimizeBroadPhase(WorldHandle worldHandle) override;
+        bool OptimizeBroadPhase(WorldHandle worldHandle);
 
         [[nodiscard]]
         bool WereBodiesInContact(
             WorldHandle worldHandle,
             BodyHandle firstBodyHandle,
-            BodyHandle secondBodyHandle) const override;
+            BodyHandle secondBodyHandle) const;
+
+    protected:
+        void Invalidate()
+        {
+            m_initialized = false;
+        }
 
     private:
         friend class World;
@@ -3417,6 +3422,576 @@ namespace Jolt
         WorldHandle m_defaultWorldHandle;
 
         bool m_initialized = false;
+    };
+
+#if defined(AZ_COMPILER_MSVC) || (defined(AZ_COMPILER_CLANG) && defined(AZ_PLATFORM_WINDOWS))
+#define JOLT_RUNTIME_EMPTY_BASES __declspec(empty_bases)
+#else
+#define JOLT_RUNTIME_EMPTY_BASES
+#endif
+
+    class JOLT_API JOLT_RUNTIME_EMPTY_BASES Runtime final
+        : public RuntimeImplementation
+        , public RuntimeConfiguration
+        , public Extensions
+        , public Materials
+        , public CollisionFilters
+        , public Cooking
+        , public Paths
+        , public Skeletons
+        , public Scenes
+        , public Worlds
+        , public WorldSimulation
+        , public WorldQueries
+        , public Shapes
+        , public Bodies
+        , public Constraints
+        , public Characters
+        , public Vehicles
+        , public Ragdolls
+        , public SoftBodies
+        , public Hair
+        , public Rollback
+        , public Diagnostics
+    {
+    public:
+        Runtime(
+            SystemConfiguration configuration,
+            AZ::JobContext* jobContext,
+            SystemRegistration registration = SystemRegistration::Global);
+        ~Runtime();
+
+        AZ_DISABLE_COPY_MOVE(Runtime);
+
+        using RuntimeImplementation::GetConfiguration;
+        using RuntimeImplementation::GetRuntimeInfo;
+
+        using RuntimeImplementation::RegisterCustomConstraintProvider;
+        using RuntimeImplementation::UnregisterCustomConstraintProvider;
+        using RuntimeImplementation::RegisterCustomPathProvider;
+        using RuntimeImplementation::UnregisterCustomPathProvider;
+        using RuntimeImplementation::RegisterCustomConvexShapeProvider;
+        using RuntimeImplementation::UnregisterCustomConvexShapeProvider;
+        using RuntimeImplementation::RegisterCustomShapeProvider;
+        using RuntimeImplementation::UnregisterCustomShapeProvider;
+
+        using RuntimeImplementation::CreateMaterial;
+        using RuntimeImplementation::DestroyMaterial;
+        using RuntimeImplementation::IsValid;
+
+        using RuntimeImplementation::CreateGroupFilter;
+        using RuntimeImplementation::CreateGroupFilterTable;
+        using RuntimeImplementation::DestroyGroupFilter;
+        using RuntimeImplementation::NotifyGroupFilterChanged;
+        using RuntimeImplementation::GetSubGroupCollisionEnabled;
+        using RuntimeImplementation::SetSubGroupCollisionEnabled;
+
+        using RuntimeImplementation::CookShape;
+        using RuntimeImplementation::ExportShape;
+        using RuntimeImplementation::ImportShape;
+        using RuntimeImplementation::DestroyCookedShape;
+        using RuntimeImplementation::GetStats;
+        using RuntimeImplementation::GetStatsRecursive;
+        using RuntimeImplementation::GetProperties;
+        using RuntimeImplementation::GetUserData;
+        using RuntimeImplementation::GetCustomConvexShapeInfo;
+        using RuntimeImplementation::GetCustomShapeInfo;
+        using RuntimeImplementation::GetCustomShapeDependencies;
+        using RuntimeImplementation::GetSubShapeUserData;
+        using RuntimeImplementation::GetDirectChildShape;
+        using RuntimeImplementation::GetMeshMaterials;
+        using RuntimeImplementation::GetMeshTriangleMaterialIndex;
+        using RuntimeImplementation::GetMeshTriangleUserData;
+        using RuntimeImplementation::GetCompoundChildCount;
+        using RuntimeImplementation::GetCompoundChild;
+        using RuntimeImplementation::GetCompoundChildIndex;
+        using RuntimeImplementation::Raycast;
+
+        using RuntimeImplementation::CreatePath;
+        using RuntimeImplementation::DestroyPath;
+        using RuntimeImplementation::GetPathState;
+        using RuntimeImplementation::GetCustomPathInfo;
+        using RuntimeImplementation::SamplePath;
+        using RuntimeImplementation::FindClosestPathPoint;
+
+        using RuntimeImplementation::CreateSkeletonDefinition;
+        using RuntimeImplementation::ExportSkeletonDefinition;
+        using RuntimeImplementation::ImportSkeletonDefinition;
+        using RuntimeImplementation::DestroySkeletonDefinition;
+        using RuntimeImplementation::GetSkeletonJoints;
+        using RuntimeImplementation::FindSkeletonJoint;
+        using RuntimeImplementation::CreateSkeletalAnimation;
+        using RuntimeImplementation::ExportSkeletalAnimation;
+        using RuntimeImplementation::ImportSkeletalAnimation;
+        using RuntimeImplementation::UpdateSkeletalAnimation;
+        using RuntimeImplementation::DestroySkeletalAnimation;
+        using RuntimeImplementation::GetSkeletalAnimationState;
+        using RuntimeImplementation::GetSkeletalAnimatedJointName;
+        using RuntimeImplementation::GetSkeletalAnimationKeyframes;
+        using RuntimeImplementation::SetSkeletalAnimationLooping;
+        using RuntimeImplementation::ScaleSkeletalAnimation;
+        using RuntimeImplementation::CreateSkeletonPose;
+        using RuntimeImplementation::DestroySkeletonPose;
+        using RuntimeImplementation::GetSkeletonPoseState;
+        using RuntimeImplementation::SetSkeletonPoseRootOffset;
+        using RuntimeImplementation::SetSkeletonPoseLocalTransforms;
+        using RuntimeImplementation::SetSkeletonPoseModelTransforms;
+        using RuntimeImplementation::GetSkeletonPoseLocalTransforms;
+        using RuntimeImplementation::GetSkeletonPoseModelTransforms;
+        using RuntimeImplementation::SampleSkeletalAnimation;
+        using RuntimeImplementation::CreateSkeletonMapper;
+        using RuntimeImplementation::DestroySkeletonMapper;
+        using RuntimeImplementation::GetSkeletonMapperState;
+        using RuntimeImplementation::GetSkeletonMapperMappings;
+        using RuntimeImplementation::GetSkeletonMapperChainState;
+        using RuntimeImplementation::GetSkeletonMapperSourceChain;
+        using RuntimeImplementation::GetSkeletonMapperTargetChain;
+        using RuntimeImplementation::GetSkeletonMapperUnmappedJoints;
+        using RuntimeImplementation::GetSkeletonMapperLockedTranslations;
+        using RuntimeImplementation::GetMappedSkeletonJoint;
+        using RuntimeImplementation::IsSkeletonJointTranslationLocked;
+        using RuntimeImplementation::MapSkeletonPose;
+        using RuntimeImplementation::MapSkeletonPoseReverse;
+
+        using RuntimeImplementation::CreateSceneDefinition;
+        using RuntimeImplementation::BuildSceneAsset;
+        using RuntimeImplementation::DestroySceneDefinition;
+        using RuntimeImplementation::GetSceneDefinitionState;
+        using RuntimeImplementation::InstantiateScene;
+        using RuntimeImplementation::DestroySceneInstance;
+        using RuntimeImplementation::GetSceneInstanceState;
+        using RuntimeImplementation::GetSceneBodies;
+        using RuntimeImplementation::GetSceneConstraints;
+
+        using RuntimeImplementation::CreateWorld;
+        using RuntimeImplementation::DestroyWorld;
+        using RuntimeImplementation::GetDefaultWorldHandle;
+        using RuntimeImplementation::GetWorldQueries;
+        using RuntimeImplementation::GetWorldGravity;
+        using RuntimeImplementation::SetWorldGravity;
+        using RuntimeImplementation::GetSimulationConfiguration;
+        using RuntimeImplementation::UpdateSimulationConfiguration;
+        using RuntimeImplementation::GetWorldRuntimeConfiguration;
+        using RuntimeImplementation::UpdateWorldRuntimeConfiguration;
+
+        using RuntimeImplementation::StepWorld;
+        using RuntimeImplementation::StepWorldDetailed;
+        using RuntimeImplementation::StepAutoSimulatedWorlds;
+        using RuntimeImplementation::StepAutoSimulatedWorldsDetailed;
+        using RuntimeImplementation::GetEvents;
+        using RuntimeImplementation::SetContactCallbacks;
+        using RuntimeImplementation::SetBodyPairCollider;
+        using RuntimeImplementation::SetSimulationShapeFilter;
+        using RuntimeImplementation::SetSoftBodyContactCallbacks;
+        using RuntimeImplementation::AddStepListener;
+        using RuntimeImplementation::RemoveStepListener;
+
+        using RuntimeImplementation::RaycastShapeClosest;
+        using RuntimeImplementation::RaycastShapeAll;
+        using RuntimeImplementation::CollideShapePoint;
+        using RuntimeImplementation::CollideShapePointAny;
+        using RuntimeImplementation::CollectShapeTriangles;
+        using RuntimeImplementation::RaycastTransformedShapeClosest;
+        using RuntimeImplementation::RaycastTransformedShapeAll;
+        using RuntimeImplementation::CollideTransformedShapePoint;
+        using RuntimeImplementation::CollideTransformedShapePointAny;
+        using RuntimeImplementation::CollectTransformedShapeChildren;
+        using RuntimeImplementation::CollectTransformedShapeTriangles;
+        using RuntimeImplementation::GetTransformedShapeSurfaceNormal;
+        using RuntimeImplementation::GetTransformedShapeSupportingFace;
+        using RuntimeImplementation::RetainShape;
+        using RuntimeImplementation::CollideTransformedShapes;
+        using RuntimeImplementation::CastTransformedShape;
+        using RuntimeImplementation::RaycastClosest;
+        using RuntimeImplementation::RaycastClosestBatch;
+        using RuntimeImplementation::RaycastClosestPerBody;
+        using RuntimeImplementation::RaycastAny;
+        using RuntimeImplementation::RaycastAll;
+        using RuntimeImplementation::OverlapPoint;
+        using RuntimeImplementation::OverlapPointAny;
+        using RuntimeImplementation::CollideShape;
+        using RuntimeImplementation::OverlapShape;
+        using RuntimeImplementation::OverlapShapeAny;
+        using RuntimeImplementation::CastShapeClosest;
+        using RuntimeImplementation::CastShapeClosestPerBody;
+        using RuntimeImplementation::CastShapeAll;
+        using RuntimeImplementation::OverlapBroadPhase;
+        using RuntimeImplementation::OverlapBroadPhaseAny;
+        using RuntimeImplementation::CastBroadPhaseClosest;
+        using RuntimeImplementation::CastBroadPhaseAll;
+        using RuntimeImplementation::CollectShapesInBounds;
+        using RuntimeImplementation::GetSupportingFace;
+        using RuntimeImplementation::CollectTriangles;
+        using RuntimeImplementation::GetBroadPhaseBounds;
+        using RuntimeImplementation::OptimizeBroadPhase;
+        using RuntimeImplementation::WereBodiesInContact;
+
+        using RuntimeImplementation::CreateShape;
+        using RuntimeImplementation::CloneShape;
+        using RuntimeImplementation::ScaleShape;
+        using RuntimeImplementation::DestroyShape;
+        using RuntimeImplementation::GetShapeStats;
+        using RuntimeImplementation::GetShapeStatsRecursive;
+        using RuntimeImplementation::GetShapeProperties;
+        using RuntimeImplementation::GetShapeSubmergedVolume;
+        using RuntimeImplementation::GetPrimitiveShapeState;
+        using RuntimeImplementation::GetConvexHullState;
+        using RuntimeImplementation::GetConvexHullPointsRelativeToCenterOfMass;
+        using RuntimeImplementation::GetConvexHullPlanesRelativeToCenterOfMass;
+        using RuntimeImplementation::GetConvexHullFaceVertexIndices;
+        using RuntimeImplementation::GetShapeMaterial;
+        using RuntimeImplementation::GetShapeSurfaceNormal;
+        using RuntimeImplementation::GetShapeUserData;
+        using RuntimeImplementation::GetShapeSubShapeUserData;
+        using RuntimeImplementation::GetDecoratedShapeConfiguration;
+        using RuntimeImplementation::IsShapeScaleValid;
+        using RuntimeImplementation::MakeShapeScaleValid;
+        using RuntimeImplementation::GetHeightfieldState;
+        using RuntimeImplementation::GetHeightfieldPosition;
+        using RuntimeImplementation::ProjectOntoHeightfield;
+        using RuntimeImplementation::IsHeightfieldNoCollision;
+        using RuntimeImplementation::GetHeightfieldHeights;
+        using RuntimeImplementation::GetHeightfieldMaterialIndices;
+        using RuntimeImplementation::GetHeightfieldMaterials;
+        using RuntimeImplementation::GetHeightfieldSubShapeCoordinates;
+        using RuntimeImplementation::UpdateHeightfieldHeights;
+        using RuntimeImplementation::UpdateHeightfieldMaterials;
+        using RuntimeImplementation::AddMutableCompoundChild;
+        using RuntimeImplementation::RemoveMutableCompoundChild;
+        using RuntimeImplementation::UpdateMutableCompoundChild;
+        using RuntimeImplementation::UpdateMutableCompoundChildTransforms;
+        using RuntimeImplementation::AdjustMutableCompoundCenterOfMass;
+        using RuntimeImplementation::CreateBody;
+
+        using RuntimeImplementation::CreateBodyWithId;
+        using RuntimeImplementation::CreateSoftBody;
+        using RuntimeImplementation::AddBodiesToSimulation;
+        using RuntimeImplementation::RemoveBodyFromSimulation;
+        using RuntimeImplementation::RemoveBodiesFromSimulation;
+        using RuntimeImplementation::DestroyBody;
+        using RuntimeImplementation::DestroyBodies;
+        using RuntimeImplementation::IsBodyInSimulation;
+        using RuntimeImplementation::SetBodyMoveEventsEnabled;
+        using RuntimeImplementation::CreateRagdollDefinition;
+        using RuntimeImplementation::DestroyRagdollDefinition;
+        using RuntimeImplementation::GetRagdollBodyConstraintIndices;
+        using RuntimeImplementation::GetRagdollConstraintBodyPairs;
+        using RuntimeImplementation::UpdateDistanceLimits;
+        using RuntimeImplementation::UpdateHingeLimits;
+        using RuntimeImplementation::UpdateHingeMotor;
+        using RuntimeImplementation::SetHingeTargetOrientation;
+        using RuntimeImplementation::UpdatePathMotor;
+        using RuntimeImplementation::UpdatePathProperties;
+        using RuntimeImplementation::UpdatePointAnchors;
+        using RuntimeImplementation::UpdatePulleyLimits;
+        using RuntimeImplementation::UpdateSixDofLimits;
+        using RuntimeImplementation::UpdateSixDofMotors;
+        using RuntimeImplementation::UpdateSliderMotor;
+        using RuntimeImplementation::UpdateSliderLimits;
+        using RuntimeImplementation::UpdateSwingTwistMotors;
+        using RuntimeImplementation::UpdateSwingTwistLimits;
+        using RuntimeImplementation::GetBodyState;
+        using RuntimeImplementation::GetBodyCenterOfMassTransform;
+        using RuntimeImplementation::GetBodyConfiguration;
+        using RuntimeImplementation::GetBodies;
+        using RuntimeImplementation::GetBodyId;
+        using RuntimeImplementation::ActivateBody;
+        using RuntimeImplementation::ActivateBodies;
+        using RuntimeImplementation::ActivateBodiesInBounds;
+        using RuntimeImplementation::DeactivateBody;
+        using RuntimeImplementation::DeactivateBodies;
+        using RuntimeImplementation::ResetBodySleepTimer;
+        using RuntimeImplementation::InvalidateBodyContactCache;
+        using RuntimeImplementation::GetBodyPointVelocity;
+        using RuntimeImplementation::GetBodyMotionType;
+        using RuntimeImplementation::GetBodyObjectLayer;
+        using RuntimeImplementation::GetBodyCollisionGroup;
+        using RuntimeImplementation::GetBodyShape;
+        using RuntimeImplementation::GetBodyAccumulatedForceAndTorque;
+        using RuntimeImplementation::ResetBodyAccumulatedForce;
+        using RuntimeImplementation::ResetBodyAccumulatedTorque;
+        using RuntimeImplementation::ResetBodyMotion;
+        using RuntimeImplementation::GetBodyBounds;
+        using RuntimeImplementation::GetBodySubmergedVolume;
+        using RuntimeImplementation::GetBodySurfaceNormal;
+        using RuntimeImplementation::GetBodyMaterial;
+        using RuntimeImplementation::GetBodyPosition;
+        using RuntimeImplementation::GetBodyRotation;
+        using RuntimeImplementation::GetBodyVelocities;
+        using RuntimeImplementation::GetBodyLinearVelocity;
+        using RuntimeImplementation::GetBodyAngularVelocity;
+        using RuntimeImplementation::SetBodyPosition;
+        using RuntimeImplementation::SetBodyRotation;
+        using RuntimeImplementation::SetBodyTransform;
+        using RuntimeImplementation::SetBodyTransformWhenChanged;
+        using RuntimeImplementation::SetBodyVelocities;
+        using RuntimeImplementation::SetBodyLinearVelocity;
+        using RuntimeImplementation::SetBodyAngularVelocity;
+        using RuntimeImplementation::AddBodyVelocities;
+        using RuntimeImplementation::AddBodyLinearVelocity;
+        using RuntimeImplementation::SetBodyTransformAndVelocities;
+        using RuntimeImplementation::MoveBodyKinematically;
+        using RuntimeImplementation::AddForce;
+        using RuntimeImplementation::AddForceAtPosition;
+        using RuntimeImplementation::AddTorque;
+        using RuntimeImplementation::AddForceAndTorque;
+        using RuntimeImplementation::ApplyBuoyancyImpulse;
+        using RuntimeImplementation::GetBodyFriction;
+        using RuntimeImplementation::SetBodyFriction;
+        using RuntimeImplementation::GetBodyRestitution;
+        using RuntimeImplementation::SetBodyRestitution;
+        using RuntimeImplementation::GetBodyGravityFactor;
+        using RuntimeImplementation::SetBodyGravityFactor;
+        using RuntimeImplementation::GetBodyMaximumLinearVelocity;
+        using RuntimeImplementation::SetBodyMaximumLinearVelocity;
+        using RuntimeImplementation::GetBodyMaximumAngularVelocity;
+        using RuntimeImplementation::SetBodyMaximumAngularVelocity;
+        using RuntimeImplementation::GetBodyMotionQuality;
+        using RuntimeImplementation::SetBodyMotionQuality;
+        using RuntimeImplementation::IsBodyManifoldReductionEnabled;
+        using RuntimeImplementation::SetBodyManifoldReductionEnabled;
+        using RuntimeImplementation::IsBodySensor;
+        using RuntimeImplementation::SetBodySensor;
+        using RuntimeImplementation::GetBodyLinearDamping;
+        using RuntimeImplementation::SetBodyLinearDamping;
+        using RuntimeImplementation::GetBodyAngularDamping;
+        using RuntimeImplementation::SetBodyAngularDamping;
+        using RuntimeImplementation::IsBodySleepingAllowed;
+        using RuntimeImplementation::SetBodySleepingAllowed;
+        using RuntimeImplementation::IsBodyGyroscopicForceEnabled;
+        using RuntimeImplementation::SetBodyGyroscopicForceEnabled;
+        using RuntimeImplementation::IsBodyKinematicVsNonDynamicCollisionEnabled;
+        using RuntimeImplementation::SetBodyKinematicVsNonDynamicCollisionEnabled;
+        using RuntimeImplementation::IsBodyEnhancedInternalEdgeRemovalEnabled;
+        using RuntimeImplementation::SetBodyEnhancedInternalEdgeRemovalEnabled;
+        using RuntimeImplementation::GetBodySolverStepCounts;
+        using RuntimeImplementation::SetBodySolverStepCounts;
+        using RuntimeImplementation::UpdateBodyRuntimeConfiguration;
+        using RuntimeImplementation::GetBodyInverseInertia;
+        using RuntimeImplementation::GetBodyInverseMass;
+        using RuntimeImplementation::AddImpulse;
+        using RuntimeImplementation::AddImpulseAtPosition;
+        using RuntimeImplementation::AddAngularImpulse;
+        using RuntimeImplementation::SetBodyShape;
+        using RuntimeImplementation::SetBodyMotionType;
+        using RuntimeImplementation::SetBodyObjectLayer;
+        using RuntimeImplementation::SetBodyCollisionGroup;
+
+        using RuntimeImplementation::CreateConstraint;
+        using RuntimeImplementation::AddConstraintToSimulation;
+        using RuntimeImplementation::AddConstraintsToSimulation;
+        using RuntimeImplementation::RemoveConstraintFromSimulation;
+        using RuntimeImplementation::RemoveConstraintsFromSimulation;
+        using RuntimeImplementation::DestroyConstraint;
+        using RuntimeImplementation::DestroyConstraints;
+        using RuntimeImplementation::IsConstraintInSimulation;
+        using RuntimeImplementation::SetConstraintEnabled;
+        using RuntimeImplementation::GetConstraintState;
+        using RuntimeImplementation::GetConstraintConfiguration;
+        using RuntimeImplementation::GetConstraintUserData;
+        using RuntimeImplementation::SetConstraintUserData;
+        using RuntimeImplementation::GetConstraintDebugDrawSize;
+        using RuntimeImplementation::SetConstraintDebugDrawSize;
+        using RuntimeImplementation::GetConstraintMeasurements;
+        using RuntimeImplementation::GetCustomConstraintInfo;
+        using RuntimeImplementation::GetCustomConstraintImpulses;
+        using RuntimeImplementation::GetCustomConstraintState;
+        using RuntimeImplementation::SetCustomConstraintState;
+        using RuntimeImplementation::ResetConstraintWarmStart;
+        using RuntimeImplementation::UpdateConstraintSolverConfiguration;
+        using RuntimeImplementation::UpdateConeLimit;
+
+        using RuntimeImplementation::CreateVirtualCharacter;
+        using RuntimeImplementation::DestroyVirtualCharacter;
+        using RuntimeImplementation::GetVirtualCharacterState;
+        using RuntimeImplementation::GetVirtualCharacterUserData;
+        using RuntimeImplementation::SetVirtualCharacterUserData;
+        using RuntimeImplementation::GetVirtualCharacterRuntimeConfiguration;
+        using RuntimeImplementation::CheckVirtualCharacterCollision;
+        using RuntimeImplementation::UpdateVirtualCharacterRuntimeConfiguration;
+        using RuntimeImplementation::SetVirtualCharacterShape;
+        using RuntimeImplementation::SetVirtualCharacterInnerBodyShape;
+        using RuntimeImplementation::SetVirtualCharacterTransform;
+        using RuntimeImplementation::SetVirtualCharacterVelocity;
+        using RuntimeImplementation::CancelVirtualCharacterVelocityTowardsSteepSlopes;
+        using RuntimeImplementation::BeginVirtualCharacterContactTracking;
+        using RuntimeImplementation::EndVirtualCharacterContactTracking;
+        using RuntimeImplementation::SetVirtualCharacterContactCallbacks;
+        using RuntimeImplementation::CanVirtualCharacterWalkStairs;
+        using RuntimeImplementation::WalkVirtualCharacterStairs;
+        using RuntimeImplementation::StickVirtualCharacterToFloor;
+        using RuntimeImplementation::RefreshVirtualCharacterContacts;
+        using RuntimeImplementation::UpdateVirtualCharacterGroundVelocity;
+        using RuntimeImplementation::GetVirtualCharacterContacts;
+        using RuntimeImplementation::HasVirtualCharacterCollidedWith;
+        using RuntimeImplementation::HaveVirtualCharactersCollided;
+        using RuntimeImplementation::UpdateVirtualCharacter;
+        using RuntimeImplementation::EnableVirtualCharacterAutoUpdate;
+        using RuntimeImplementation::DisableVirtualCharacterAutoUpdate;
+        using RuntimeImplementation::CreateCharacter;
+        using RuntimeImplementation::DestroyCharacter;
+        using RuntimeImplementation::GetCharacterState;
+        using RuntimeImplementation::GetCharacterUserData;
+        using RuntimeImplementation::SetCharacterUserData;
+        using RuntimeImplementation::GetCharacterRuntimeConfiguration;
+        using RuntimeImplementation::CheckCharacterCollision;
+        using RuntimeImplementation::UpdateCharacterRuntimeConfiguration;
+        using RuntimeImplementation::SetCharacterShape;
+        using RuntimeImplementation::SetCharacterTransform;
+        using RuntimeImplementation::SetCharacterVelocity;
+        using RuntimeImplementation::AddCharacterImpulse;
+
+        using RuntimeImplementation::ApplyVehicleEngineDamping;
+        using RuntimeImplementation::ApplyVehicleEngineTorque;
+        using RuntimeImplementation::CalculateVehicleEngineTorque;
+        using RuntimeImplementation::CreateWheeledVehicle;
+        using RuntimeImplementation::CreateMotorcycle;
+        using RuntimeImplementation::CreateTrackedVehicle;
+        using RuntimeImplementation::DestroyVehicle;
+        using RuntimeImplementation::GetWheeledVehicleState;
+        using RuntimeImplementation::GetMotorcycleState;
+        using RuntimeImplementation::GetTrackedVehicleState;
+        using RuntimeImplementation::GetVehicleCollisionConfiguration;
+        using RuntimeImplementation::GetVehicleDifferentialLimitedSlipRatio;
+        using RuntimeImplementation::GetVehicleEngineConfiguration;
+        using RuntimeImplementation::GetVehiclePowertrainState;
+        using RuntimeImplementation::GetVehicleRuntimeConfiguration;
+        using RuntimeImplementation::GetVehicleTransmissionConfiguration;
+        using RuntimeImplementation::GetVehicleTrackConfiguration;
+        using RuntimeImplementation::GetWheelLocalBasis;
+        using RuntimeImplementation::GetWheelLocalTransform;
+        using RuntimeImplementation::GetWheelWorldTransform;
+        using RuntimeImplementation::QueryVehicleAntiRollBars;
+        using RuntimeImplementation::QueryVehicleDifferentials;
+        using RuntimeImplementation::SetTrackedVehicleInput;
+        using RuntimeImplementation::SetVehicleCallbacks;
+        using RuntimeImplementation::SetVehicleCollisionFilter;
+        using RuntimeImplementation::SetVehicleDifferentialLimitedSlipRatio;
+        using RuntimeImplementation::SetVehiclePowertrainControl;
+        using RuntimeImplementation::SetVehicleTrackAngularVelocity;
+        using RuntimeImplementation::SetWheelMotion;
+        using RuntimeImplementation::SetWheeledVehicleInput;
+        using RuntimeImplementation::UpdateMotorcycleController;
+        using RuntimeImplementation::UpdateVehicleAntiRollBars;
+        using RuntimeImplementation::UpdateVehicleCollisionConfiguration;
+        using RuntimeImplementation::UpdateVehicleDifferentials;
+        using RuntimeImplementation::UpdateVehicleEngineConfiguration;
+        using RuntimeImplementation::UpdateVehicleRuntimeConfiguration;
+        using RuntimeImplementation::UpdateVehicleTransmissionConfiguration;
+        using RuntimeImplementation::UpdateVehicleTrackConfiguration;
+
+        using RuntimeImplementation::CreateRagdoll;
+        using RuntimeImplementation::AddRagdollToSimulation;
+        using RuntimeImplementation::RemoveRagdollFromSimulation;
+        using RuntimeImplementation::DestroyRagdoll;
+        using RuntimeImplementation::IsRagdollInSimulation;
+        using RuntimeImplementation::GetRagdollState;
+        using RuntimeImplementation::SetRagdollCollisionGroupId;
+        using RuntimeImplementation::GetRagdollBodies;
+        using RuntimeImplementation::GetRagdollConstraints;
+        using RuntimeImplementation::ActivateRagdoll;
+        using RuntimeImplementation::SetRagdollPose;
+        using RuntimeImplementation::GetRagdollPose;
+        using RuntimeImplementation::DriveRagdollKinematically;
+        using RuntimeImplementation::DriveRagdollMotors;
+        using RuntimeImplementation::ResetRagdollWarmStart;
+        using RuntimeImplementation::SetRagdollVelocity;
+        using RuntimeImplementation::SetRagdollLinearVelocity;
+        using RuntimeImplementation::AddRagdollLinearVelocity;
+        using RuntimeImplementation::AddRagdollImpulse;
+
+        using RuntimeImplementation::CreateSoftBodyDefinition;
+        using RuntimeImplementation::ExportSoftBodyDefinition;
+        using RuntimeImplementation::ImportSoftBodyDefinition;
+        using RuntimeImplementation::DestroySoftBodyDefinition;
+        using RuntimeImplementation::GetSoftBodyDefinitionState;
+        using RuntimeImplementation::GetSoftBodyDefinitionDihedralBendConstraints;
+        using RuntimeImplementation::GetSoftBodyDefinitionEdgeConstraints;
+        using RuntimeImplementation::GetSoftBodyDefinitionFaces;
+        using RuntimeImplementation::GetSoftBodyDefinitionInverseBinds;
+        using RuntimeImplementation::GetSoftBodyDefinitionLongRangeConstraints;
+        using RuntimeImplementation::GetSoftBodyDefinitionMaterials;
+        using RuntimeImplementation::GetSoftBodyDefinitionRodBendTwistConstraints;
+        using RuntimeImplementation::GetSoftBodyDefinitionRodStretchShearConstraints;
+        using RuntimeImplementation::GetSoftBodyDefinitionSkinConstraints;
+        using RuntimeImplementation::GetSoftBodyDefinitionVertices;
+        using RuntimeImplementation::GetSoftBodyDefinitionVolumeConstraints;
+        using RuntimeImplementation::CreateSoftBodyWithId;
+        using RuntimeImplementation::AddBodyToSimulation;
+        using RuntimeImplementation::GetBodyUserData;
+        using RuntimeImplementation::SetBodyUserData;
+        using RuntimeImplementation::GetBodyRuntimeConfiguration;
+        using RuntimeImplementation::GetBodySimulationStatistics;
+        using RuntimeImplementation::ApplyBodyConfiguration;
+        using RuntimeImplementation::GetSoftBodyFaces;
+        using RuntimeImplementation::GetSoftBodyLocalBounds;
+        using RuntimeImplementation::GetSoftBodyMaterials;
+        using RuntimeImplementation::GetSoftBodyRodStates;
+        using RuntimeImplementation::GetSoftBodyRuntimeConfiguration;
+        using RuntimeImplementation::ApplySoftBodyConfiguration;
+        using RuntimeImplementation::GetSoftBodyVertices;
+        using RuntimeImplementation::GetSoftBodyVolume;
+        using RuntimeImplementation::RecalculateSoftBodyMassProperties;
+        using RuntimeImplementation::SkinSoftBody;
+        using RuntimeImplementation::UpdateSoftBodyManually;
+        using RuntimeImplementation::UpdateSoftBodyRuntimeConfiguration;
+        using RuntimeImplementation::SetSoftBodyVertexInverseMass;
+        using RuntimeImplementation::SetSoftBodyVertexInverseMasses;
+        using RuntimeImplementation::SetSoftBodyVertexVelocity;
+        using RuntimeImplementation::SetSoftBodyVertexVelocities;
+
+        using RuntimeImplementation::CreateHairDefinition;
+        using RuntimeImplementation::DestroyHairDefinition;
+        using RuntimeImplementation::GetHairDefinitionState;
+        using RuntimeImplementation::GetHairNeutralDensity;
+        using RuntimeImplementation::SkinHairScalpVertices;
+        using RuntimeImplementation::CreateHair;
+        using RuntimeImplementation::DestroyHair;
+        using RuntimeImplementation::SetHairTransform;
+        using RuntimeImplementation::SetHairScalpToHeadTransform;
+        using RuntimeImplementation::UpdateHair;
+        using RuntimeImplementation::EnableHairAutoUpdate;
+        using RuntimeImplementation::DisableHairAutoUpdate;
+        using RuntimeImplementation::GetHairState;
+        using RuntimeImplementation::GetHairReadback;
+        using RuntimeImplementation::GetHairVertexStates;
+        using RuntimeImplementation::GetHairRenderPositions;
+        using RuntimeImplementation::GetHairScalpPositions;
+        using RuntimeImplementation::GetHairGridCellStates;
+
+        using RuntimeImplementation::CaptureBodyState;
+        using RuntimeImplementation::DestroyBodyStateSnapshot;
+        using RuntimeImplementation::RestoreBodyState;
+        using RuntimeImplementation::CaptureWorldState;
+        using RuntimeImplementation::CaptureWorldStateParts;
+        using RuntimeImplementation::ExportWorldStateArchive;
+        using RuntimeImplementation::ImportWorldStateArchive;
+        using RuntimeImplementation::DestroyStateSnapshot;
+        using RuntimeImplementation::RestoreWorldState;
+        using RuntimeImplementation::RestoreWorldStateParts;
+        using RuntimeImplementation::ValidateWorldState;
+        using RuntimeImplementation::GetWorldStateDigest;
+
+        using RuntimeImplementation::GetWorldStatistics;
+        using RuntimeImplementation::ConfigurePerformanceStatistics;
+        using RuntimeImplementation::GetPerformanceStatistics;
+        using RuntimeImplementation::GetBroadPhaseStatistics;
+        using RuntimeImplementation::GetNarrowPhaseStatistics;
+        using RuntimeImplementation::DrawDebug;
+        using RuntimeImplementation::ConfigureDebugCapture;
+        using RuntimeImplementation::GetDebugCaptureStatistics;
+
+    private:
+        [[nodiscard]]
+        bool PublishCapabilities();
+
+        void UnpublishCapabilities();
+
         bool m_registered = false;
     };
+
+#undef JOLT_RUNTIME_EMPTY_BASES
+
+    [[nodiscard]]
+    Runtime* GetRuntime();
 } // namespace Jolt

@@ -15,7 +15,7 @@
 
 namespace Jolt
 {
-    class ISystem;
+    class RuntimeImplementation;
 
     class JOLT_API PathComponent final
         : public AZ::Component
@@ -61,7 +61,7 @@ namespace Jolt
 
         HermitePathConfiguration m_configuration;
 
-        ISystem* m_system = nullptr;
+        RuntimeImplementation* m_system = nullptr;
         PathHandle m_pathHandle;
     };
 } // namespace Jolt

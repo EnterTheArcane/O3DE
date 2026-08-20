@@ -10,7 +10,7 @@
 #include <Jolt/BehaviorReflection.h>
 #include <Jolt/BodyBus.h>
 #include <Jolt/Reflection.h>
-#include <Jolt/System.h>
+#include <Jolt/SystemInternal.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Interface/Interface.h>
@@ -919,7 +919,7 @@ namespace Jolt
     {
         m_entityId = entityId;
         m_enabled = enabled;
-        m_system = AZ::Interface<ISystem>::Get();
+        m_system = GetRuntime();
         m_dependencyManager = AZ::Interface<IComponentDependencyManager>::Get();
         if (!m_system || !m_dependencyManager)
         {
@@ -945,7 +945,7 @@ namespace Jolt
         m_entityId.SetInvalid();
     }
 
-    ISystem* VehicleComponentBase::GetSystem() const
+    RuntimeImplementation* VehicleComponentBase::GetSystem() const
     {
         return m_system;
     }
@@ -1146,7 +1146,7 @@ namespace Jolt
         WheeledVehicleState& state,
         const AZStd::span<WheelState> wheels) const
     {
-        ISystem* system = GetSystem();
+        RuntimeImplementation* system = GetSystem();
         if (!system)
         {
             return {};
@@ -1176,7 +1176,7 @@ namespace Jolt
 
     bool WheeledVehicleComponent::SetInput(const WheeledVehicleInput& input)
     {
-        ISystem* system = GetSystem();
+        RuntimeImplementation* system = GetSystem();
         return system
             && system->SetWheeledVehicleInput(GetWorldHandle(), GetVehicleHandle(), input);
     }
@@ -1242,7 +1242,7 @@ namespace Jolt
     }
 
     VehicleHandle WheeledVehicleComponent::CreateVehicle(
-        ISystem& system,
+        RuntimeImplementation& system,
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
@@ -1420,7 +1420,7 @@ namespace Jolt
         MotorcycleState& state,
         const AZStd::span<WheelState> wheels) const
     {
-        ISystem* system = GetSystem();
+        RuntimeImplementation* system = GetSystem();
         if (!system)
         {
             return {};
@@ -1450,7 +1450,7 @@ namespace Jolt
 
     bool MotorcycleComponent::SetInput(const WheeledVehicleInput& input)
     {
-        ISystem* system = GetSystem();
+        RuntimeImplementation* system = GetSystem();
         return system
             && system->SetWheeledVehicleInput(GetWorldHandle(), GetVehicleHandle(), input);
     }
@@ -1467,7 +1467,7 @@ namespace Jolt
     bool MotorcycleComponent::UpdateController(
         const MotorcycleControllerUpdateConfiguration& configuration)
     {
-        ISystem* system = GetSystem();
+        RuntimeImplementation* system = GetSystem();
         return system
             && system->UpdateMotorcycleController(
                 GetWorldHandle(),
@@ -1527,7 +1527,7 @@ namespace Jolt
     }
 
     VehicleHandle MotorcycleComponent::CreateVehicle(
-        ISystem& system,
+        RuntimeImplementation& system,
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
@@ -1653,7 +1653,7 @@ namespace Jolt
     VehicleTrackConfiguration TrackedVehicleComponent::GetTrackConfiguration(const AZ::u32 trackIndex) const
     {
         VehicleTrackConfiguration configuration;
-        ISystem* system = GetSystem();
+        RuntimeImplementation* system = GetSystem();
         if (system)
         {
             [[maybe_unused]] const bool found = system->GetVehicleTrackConfiguration(
@@ -1720,7 +1720,7 @@ namespace Jolt
         TrackedVehicleState& state,
         const AZStd::span<WheelState> wheels) const
     {
-        ISystem* system = GetSystem();
+        RuntimeImplementation* system = GetSystem();
         if (!system)
         {
             return {};
@@ -1750,7 +1750,7 @@ namespace Jolt
 
     bool TrackedVehicleComponent::SetInput(const TrackedVehicleInput& input)
     {
-        ISystem* system = GetSystem();
+        RuntimeImplementation* system = GetSystem();
         return system
             && system->SetTrackedVehicleInput(GetWorldHandle(), GetVehicleHandle(), input);
     }
@@ -1759,7 +1759,7 @@ namespace Jolt
         const AZ::u32 trackIndex,
         const float angularVelocity)
     {
-        ISystem* system = GetSystem();
+        RuntimeImplementation* system = GetSystem();
         return system
             && system->SetVehicleTrackAngularVelocity(
                 GetWorldHandle(),
@@ -1814,7 +1814,7 @@ namespace Jolt
         const AZ::u32 trackIndex,
         const VehicleTrackConfiguration& configuration)
     {
-        ISystem* system = GetSystem();
+        RuntimeImplementation* system = GetSystem();
         return system
             && system->UpdateVehicleTrackConfiguration(
                 GetWorldHandle(),
@@ -1842,7 +1842,7 @@ namespace Jolt
     }
 
     VehicleHandle TrackedVehicleComponent::CreateVehicle(
-        ISystem& system,
+        RuntimeImplementation& system,
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {

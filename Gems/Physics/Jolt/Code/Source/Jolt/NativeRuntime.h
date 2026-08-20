@@ -7,8 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Capabilities/RuntimeConfiguration.h>
 #include <Jolt/Configuration.h>
-#include <Jolt/System.h>
 
 #include <AzCore/base.h>
 

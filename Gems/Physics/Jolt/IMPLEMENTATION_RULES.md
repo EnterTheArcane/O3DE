@@ -26,7 +26,7 @@ configuration wins over legacy language-version examples.
   reuse, an API callback, RAII/lifetime control, platform separation, independent testing, or enough algorithmic complexity to justify it.
 - Test pointers directly (`if (pointer)` / `if (!pointer)`); do not compare them with `nullptr`.
 - Do not use conditional (`?:`) expressions without measured code-generation or lifetime evidence that explicit control flow is worse.
-- Prefix abstract interfaces and traits with `I`, but name their files for the capability (`Cooking.h` contains `ICooking`). Retain the
+- Prefix abstract interfaces and traits with `I`, but name their files for the capability. Retain the
   established EBus `Requests` and `Notifications` suffixes.
 - Read names as qualified phrases and omit repeated context: `Jolt::RigidBodyComponent`, not `Jolt::JoltRigidBodyComponent`.
 - Use `Raycast` in new APIs. Use UpperCamelCase for types/functions/enumerators/constants, lowerCamelCase for locals/parameters, `m_` for

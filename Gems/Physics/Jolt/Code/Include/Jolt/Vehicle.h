@@ -475,7 +475,7 @@ namespace Jolt
         virtual ~IVehicleCallbacks() = default;
 
         //! Called concurrently under simulation locks. The caller owns this object and its snapshot-external state.
-        //! It must remain alive while registered, be thread-safe and deterministic, and must not call ISystem.
+        //! It must remain alive while registered, be thread-safe and deterministic, and must not call runtime capabilities.
 
         [[nodiscard]]
         virtual AZ::u64 GetStateHash() const = 0;
@@ -528,7 +528,7 @@ namespace Jolt
         virtual ~IVehicleCollisionFilter() = default;
 
         //! Called concurrently under simulation locks. The caller owns this object and its snapshot-external state.
-        //! It must remain alive while registered, be thread-safe and deterministic, and must not call ISystem.
+        //! It must remain alive while registered, be thread-safe and deterministic, and must not call runtime capabilities.
 
         [[nodiscard]]
         virtual AZ::u64 GetStateHash() const = 0;

@@ -262,7 +262,7 @@ namespace Jolt
     };
 
     //! General custom-shape cooking provider. The identifier and nonzero version must remain stable while registered.
-    //! Cook may run concurrently, must be deterministic, and must not reenter ICooking or ISystem.
+    //! Cook may run concurrently, must be deterministic, and must not reenter Cooking or runtime capabilities.
     class ICustomShapeProvider
     {
     public:
@@ -282,7 +282,7 @@ namespace Jolt
             CustomShapeData& output) const = 0;
 
         //! Called only when this provider participates in a collision pair. Returning Unsupported uses the cooked fallback.
-        //! The callback must be thread-safe, deterministic, allocation-free, and must not reenter ISystem.
+        //! The callback must be thread-safe, deterministic, allocation-free, and must not reenter runtime capabilities.
         [[nodiscard]]
         virtual CustomShapeDispatchResult Collide(
             const ICustomShapeView&,
@@ -349,7 +349,7 @@ namespace Jolt
         [[nodiscard]]
         virtual AZ::u64 GetVersion() const = 0;
 
-        //! May be called concurrently. The implementation must be deterministic and must not call ICooking.
+        //! May be called concurrently. The implementation must be deterministic and must not call Cooking.
         [[nodiscard]]
         virtual bool Cook(
             AZStd::span<const AZ::u8> input,

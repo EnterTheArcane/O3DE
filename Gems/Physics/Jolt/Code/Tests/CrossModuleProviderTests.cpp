@@ -120,7 +120,7 @@ namespace Jolt::Tests
         SystemConfiguration systemConfiguration;
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
         systemConfiguration.m_defaultWorld.m_workerCount = 1;
-        System system(
+        Runtime system(
             systemConfiguration,
             nullptr,
             SystemRegistration::Isolated);

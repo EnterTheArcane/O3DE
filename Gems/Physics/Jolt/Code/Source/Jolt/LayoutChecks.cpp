@@ -26,6 +26,7 @@
 #include <Jolt/HairComponent.h>
 #include <Jolt/RagdollComponent.h>
 #include <Jolt/SoftBodyComponent.h>
+#include <Jolt/SystemInternal.h>
 #include <Jolt/VehicleComponents.h>
 
 #include <AzCore/Math/Vector3.h>
@@ -114,3 +115,36 @@ static_assert(sizeof(Jolt::SoftBodyComponent) <= 240);
 static_assert(sizeof(Jolt::WheeledVehicleComponent) <= 128);
 static_assert(sizeof(Jolt::MotorcycleComponent) <= 128);
 static_assert(sizeof(Jolt::TrackedVehicleComponent) <= 128);
+
+namespace
+{
+    struct RuntimeStorageProbe final
+        : Jolt::RuntimeImplementation
+    {
+        bool m_registered = false;
+    };
+} // namespace
+
+static_assert(std::is_empty_v<Jolt::RuntimeConfiguration>);
+static_assert(std::is_empty_v<Jolt::Extensions>);
+static_assert(std::is_empty_v<Jolt::Materials>);
+static_assert(std::is_empty_v<Jolt::CollisionFilters>);
+static_assert(std::is_empty_v<Jolt::Cooking>);
+static_assert(std::is_empty_v<Jolt::Paths>);
+static_assert(std::is_empty_v<Jolt::Skeletons>);
+static_assert(std::is_empty_v<Jolt::Scenes>);
+static_assert(std::is_empty_v<Jolt::Worlds>);
+static_assert(std::is_empty_v<Jolt::WorldSimulation>);
+static_assert(std::is_empty_v<Jolt::WorldQueries>);
+static_assert(std::is_empty_v<Jolt::Shapes>);
+static_assert(std::is_empty_v<Jolt::Bodies>);
+static_assert(std::is_empty_v<Jolt::Constraints>);
+static_assert(std::is_empty_v<Jolt::Characters>);
+static_assert(std::is_empty_v<Jolt::Vehicles>);
+static_assert(std::is_empty_v<Jolt::Ragdolls>);
+static_assert(std::is_empty_v<Jolt::SoftBodies>);
+static_assert(std::is_empty_v<Jolt::Hair>);
+static_assert(std::is_empty_v<Jolt::Rollback>);
+static_assert(std::is_empty_v<Jolt::Diagnostics>);
+static_assert(!std::is_polymorphic_v<Jolt::Runtime>);
+static_assert(sizeof(Jolt::Runtime) == sizeof(RuntimeStorageProbe));

@@ -66,7 +66,7 @@ namespace Jolt
     public:
         virtual ~IStepListener() = default;
 
-        //! Called under simulation locks and potentially on a worker. Do not call ISystem.
+        //! Called under simulation locks and potentially on a worker. Do not call runtime capabilities.
         //! The state hash must include behavior-affecting mutable state, but exclude observational state.
 
         [[nodiscard]]
@@ -83,7 +83,7 @@ namespace Jolt
     public:
         virtual ~ISimulationShapeFilter() = default;
 
-        //! Called concurrently under simulation locks. Implementations must not call ISystem.
+        //! Called concurrently under simulation locks. Implementations must not call runtime capabilities.
         //! The state hash must include behavior-affecting mutable state, but exclude observational state.
 
         [[nodiscard]]

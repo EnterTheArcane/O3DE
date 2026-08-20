@@ -18,7 +18,7 @@
 
 namespace Jolt
 {
-    class ISystem;
+    class RuntimeImplementation;
 
     class JOLT_API SkeletonComponent final
         : public AZ::Component
@@ -73,6 +73,6 @@ namespace Jolt
         SkeletonComponentConfiguration m_configuration;
         AZStd::unique_ptr<RuntimeResources> m_resources;
         const SkeletonAsset* m_loadedAsset = nullptr;
-        ISystem* m_system = nullptr;
+        RuntimeImplementation* m_system = nullptr;
     };
 } // namespace Jolt

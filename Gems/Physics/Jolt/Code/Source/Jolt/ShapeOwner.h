@@ -15,7 +15,7 @@
 
 namespace Jolt
 {
-    class ISystem;
+    class RuntimeImplementation;
 }
 
 namespace Jolt::Internal
@@ -30,14 +30,14 @@ namespace Jolt::Internal
 
     [[nodiscard]]
     bool CreateShapeSet(
-        ISystem& system,
+        RuntimeImplementation& system,
         WorldHandle worldHandle,
         AZStd::span<const ColliderShapeConfiguration> configurations,
         float uniformScale,
         ShapeSet& shapeSet);
 
     void DestroyShapeSet(
-        ISystem& system,
+        RuntimeImplementation& system,
         WorldHandle worldHandle,
         ShapeSet& shapeSet);
 } // namespace Jolt::Internal

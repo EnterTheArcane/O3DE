@@ -18,7 +18,7 @@
 
 namespace Jolt
 {
-    class ISystem;
+    class RuntimeImplementation;
 
     class JOLT_API VehicleComponentBase
         : private IBodyDependencyClient
@@ -116,7 +116,7 @@ namespace Jolt
         void DeactivateVehicle();
 
         [[nodiscard]]
-        ISystem* GetSystem() const;
+        RuntimeImplementation* GetSystem() const;
 
         [[nodiscard]]
         WorldHandle GetWorldHandle() const;
@@ -129,7 +129,7 @@ namespace Jolt
         };
 
         virtual VehicleHandle CreateVehicle(
-            ISystem& system,
+            RuntimeImplementation& system,
             WorldHandle worldHandle,
             BodyHandle bodyHandle) = 0;
 
@@ -143,7 +143,7 @@ namespace Jolt
 
         AZ::EntityId m_entityId;
 
-        ISystem* m_system = nullptr;
+        RuntimeImplementation* m_system = nullptr;
         IComponentDependencyManager* m_dependencyManager = nullptr;
         AZStd::unique_ptr<CallbackBindings> m_callbackBindings;
 
@@ -275,7 +275,7 @@ namespace Jolt
         void Deactivate() override;
 
         VehicleHandle CreateVehicle(
-            ISystem& system,
+            RuntimeImplementation& system,
             WorldHandle worldHandle,
             BodyHandle bodyHandle) override;
 
@@ -406,7 +406,7 @@ namespace Jolt
         void Deactivate() override;
 
         VehicleHandle CreateVehicle(
-            ISystem& system,
+            RuntimeImplementation& system,
             WorldHandle worldHandle,
             BodyHandle bodyHandle) override;
 
@@ -545,7 +545,7 @@ namespace Jolt
         void Deactivate() override;
 
         VehicleHandle CreateVehicle(
-            ISystem& system,
+            RuntimeImplementation& system,
             WorldHandle worldHandle,
             BodyHandle bodyHandle) override;
 

@@ -7,7 +7,7 @@
 
 #include <Jolt/WorldQueryBus.h>
 
-#include <Jolt/System.h>
+#include <Jolt/Capabilities.h>
 
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/RTTI/BehaviorContext.h>

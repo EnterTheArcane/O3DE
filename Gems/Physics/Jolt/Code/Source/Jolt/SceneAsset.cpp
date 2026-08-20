@@ -386,11 +386,11 @@ namespace Jolt
         }
     }
 
-    bool System::BuildSceneAsset(
+    bool RuntimeImplementation::BuildSceneAsset(
         const SceneSourceData& sourceData,
         SceneAssetData& assetData)
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::BuildSceneAsset");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::BuildSceneAsset");
         AZStd::vector<MaterialHandle> materials;
         AZStd::vector<CookedShapeHandle> shapes;
         AZStd::unordered_map<MaterialHandle, AZ::u32> materialIndices;
@@ -654,10 +654,10 @@ namespace Jolt
         return true;
     }
 
-    SceneDefinitionHandle System::CreateSceneDefinition(
+    SceneDefinitionHandle RuntimeImplementation::CreateSceneDefinition(
         const SceneAssetData& assetData)
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::CreateSceneDefinitionFromAsset");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::CreateSceneDefinitionFromAsset");
         AZStd::vector<MaterialHandle> materials;
         AZStd::vector<CookedShapeHandle> shapes;
         AZStd::vector<GroupFilterHandle> groupFilters;

@@ -212,7 +212,7 @@ namespace Jolt
     public:
         ~ICharacterCollisionFilter() override = default;
 
-        //! Called synchronously while the character operation holds world locks. Do not call ISystem.
+        //! Called synchronously while the character operation holds world locks. Do not call runtime capabilities.
 
         [[nodiscard]]
         virtual bool ShouldIncludeCharacter(
@@ -294,7 +294,7 @@ namespace Jolt
     public:
         virtual ~IVirtualCharacterContactCallbacks() = default;
 
-        //! Called synchronously while the character operation holds world locks. Do not call ISystem.
+        //! Called synchronously while the character operation holds world locks. Do not call runtime capabilities.
         //! The state hash must include behavior-affecting mutable state, but exclude observational state.
 
         [[nodiscard]]

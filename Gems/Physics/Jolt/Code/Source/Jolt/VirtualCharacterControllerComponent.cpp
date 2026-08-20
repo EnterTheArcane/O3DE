@@ -10,7 +10,7 @@
 #include <Jolt/BehaviorReflection.h>
 #include <Jolt/ColliderComponent.h>
 #include <Jolt/ComponentUtilities.h>
-#include <Jolt/System.h>
+#include <Jolt/SystemInternal.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Interface/Interface.h>
@@ -668,7 +668,7 @@ namespace Jolt
 
     void VirtualCharacterControllerComponent::Activate()
     {
-        m_system = AZ::Interface<ISystem>::Get();
+        m_system = GetRuntime();
         m_collider = GetEntity()->FindComponent<ColliderComponent>();
         VirtualCharacterRequestBus::Handler::BusConnect(GetEntityId());
         VirtualCharacterNotificationBus::Handler::BusConnect(GetEntityId());

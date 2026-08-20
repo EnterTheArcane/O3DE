@@ -10,7 +10,7 @@
 #include <Jolt/FloatEnvironment.h>
 #include <Jolt/HairInternal.h>
 #include <Jolt/JobSystem.h>
-#include <Jolt/System.h>
+#include <Jolt/Capabilities.h>
 #include <Jolt/TransformedShapeLease.h>
 
 #include <AzCore/Jobs/JobContext.h>
@@ -76,7 +76,7 @@ namespace Jolt
 
     class DebugCapture;
     class DebugRenderer;
-    class System;
+    class RuntimeImplementation;
     class World;
 
     struct TransformedShapeLeaseState final
@@ -140,7 +140,7 @@ namespace Jolt
     {
     public:
         World(
-            System& system,
+            RuntimeImplementation& system,
             WorldHandle handle,
             AZ::u32 worldIndex,
             WorldConfiguration configuration,
@@ -3128,7 +3128,7 @@ namespace Jolt
         mutable DeterministicWorldMutex m_mutex;
         mutable AZStd::atomic_bool m_simulationInProgress{false};
 
-        System& m_system;
+        RuntimeImplementation& m_system;
         WorldConfiguration m_configuration;
         AZ::JobContext* m_jobContext = nullptr;
         WorldHandle m_handle;

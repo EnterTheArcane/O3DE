@@ -239,14 +239,14 @@ namespace Jolt
     public:
         virtual ~IDebugFilter() = default;
 
-        //! Called while the world is locked. Implementations must not call ISystem.
+        //! Called while the world is locked. Implementations must not call runtime capabilities.
         [[nodiscard]]
         virtual bool ShouldDraw([[maybe_unused]] BodyHandle bodyHandle) const
         {
             return true;
         }
 
-        //! Called while the world is locked. Implementations must not call ISystem.
+        //! Called while the world is locked. Implementations must not call runtime capabilities.
         [[nodiscard]]
         virtual bool ShouldDraw([[maybe_unused]] HairHandle hairHandle) const
         {
@@ -259,7 +259,7 @@ namespace Jolt
     public:
         virtual ~IDebugRenderer() = default;
 
-        //! Drawing callbacks run while the world is locked and must not call ISystem.
+        //! Drawing callbacks run while the world is locked and must not call runtime capabilities.
         //! An empty index view identifies a non-indexed triangle list of consecutive vertex triples.
         virtual void DrawGeometry(
             AZStd::span<const DebugVertex> vertices,

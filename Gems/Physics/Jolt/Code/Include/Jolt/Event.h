@@ -201,7 +201,7 @@ namespace Jolt
     public:
         virtual ~IContactCallbacks() = default;
 
-        //! Callbacks run under simulation locks and may run concurrently. They must not call ISystem.
+        //! Callbacks run under simulation locks and may run concurrently. They must not call runtime capabilities.
         //! The state hash must include behavior-affecting mutable state, but exclude observational state.
 
         [[nodiscard]]

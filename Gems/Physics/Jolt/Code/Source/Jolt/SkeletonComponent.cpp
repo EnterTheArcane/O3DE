@@ -9,7 +9,7 @@
 
 #include <Jolt/BehaviorReflection.h>
 #include <Jolt/Reflection.h>
-#include <Jolt/System.h>
+#include <Jolt/SystemInternal.h>
 
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Component/Entity.h>
@@ -219,7 +219,7 @@ namespace Jolt
 
     void SkeletonComponent::Activate()
     {
-        m_system = AZ::Interface<ISystem>::Get();
+        m_system = GetRuntime();
         SkeletonComponentRequestBus::Handler::BusConnect(GetEntityId());
 
         const AZ::Data::AssetId assetId = m_configuration.m_asset.GetId();

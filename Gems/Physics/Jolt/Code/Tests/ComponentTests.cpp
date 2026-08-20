@@ -1308,7 +1308,7 @@ namespace Jolt
             &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
             bodyDescriptor);
 
-        System system(CreateComponentSystemConfiguration(), nullptr);
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         ColliderShapeConfiguration leftShape;
@@ -1428,7 +1428,7 @@ namespace Jolt
             &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
             bodyDescriptor);
 
-        System system(CreateComponentSystemConfiguration(), nullptr);
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         MeshShapeConfiguration mesh;
@@ -1530,7 +1530,7 @@ namespace Jolt
             &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
             bodyDescriptor);
 
-        System system(CreateComponentSystemConfiguration(), nullptr);
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         HeightfieldShapeConfiguration heightfield;
@@ -1660,8 +1660,10 @@ namespace Jolt
         SystemComponent component;
         component.Activate();
 
-        ISystem* system = AZ::Interface<ISystem>::Get();
-        if (!system)
+        Bodies* bodiesCapability = Bodies::Get();
+        Diagnostics* diagnostics = Diagnostics::Get();
+        Shapes* shapes = Shapes::Get();
+        if (!bodiesCapability || !diagnostics || !shapes)
         {
             component.Deactivate();
             FAIL() << "The system component did not create its runtime system.";
@@ -1676,7 +1678,7 @@ namespace Jolt
 
         ShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_geometry = BoxShapeConfiguration{};
-        const ShapeHandle shapeHandle = system->CreateShape(worldHandle, shapeConfiguration);
+        const ShapeHandle shapeHandle = shapes->CreateShape(worldHandle, shapeConfiguration);
         EXPECT_TRUE(shapeHandle);
 
         BodyConfiguration bodyConfiguration;
@@ -1684,9 +1686,9 @@ namespace Jolt
         bodyConfiguration.m_motionType = MotionType::Static;
         bodyConfiguration.m_objectLayer = DefaultLayers::NonMoving;
         bodyConfiguration.m_activate = false;
-        const BodyHandle firstBodyHandle = system->CreateBody(worldHandle, bodyConfiguration);
+        const BodyHandle firstBodyHandle = bodiesCapability->CreateBody(worldHandle, bodyConfiguration);
         bodyConfiguration.m_transform.m_position.m_z = 2.0;
-        const BodyHandle secondBodyHandle = system->CreateBody(worldHandle, bodyConfiguration);
+        const BodyHandle secondBodyHandle = bodiesCapability->CreateBody(worldHandle, bodyConfiguration);
         EXPECT_TRUE(firstBodyHandle);
         EXPECT_TRUE(secondBodyHandle);
 
@@ -1744,7 +1746,7 @@ namespace Jolt
             worldHandle);
         ASSERT_TRUE(snapshotHandle);
 
-        ASSERT_TRUE(system->GetWorldStatistics(worldHandle, statistics));
+        ASSERT_TRUE(diagnostics->GetWorldStatistics(worldHandle, statistics));
         EXPECT_EQ(statistics.m_stateSnapshotCount, 1);
 
         bool snapshotIsValid = false;
@@ -1757,7 +1759,7 @@ namespace Jolt
 
         WorldTransform movedTransform;
         movedTransform.m_position.m_z = 5.0;
-        ASSERT_TRUE(system->SetBodyTransform(
+        ASSERT_TRUE(bodiesCapability->SetBodyTransform(
             worldHandle,
             firstBodyHandle,
             movedTransform,
@@ -1775,7 +1777,7 @@ namespace Jolt
         EXPECT_FALSE(validationResult.m_matches);
 
         BodyState bodyStateAfterValidation;
-        ASSERT_TRUE(system->GetBodyState(worldHandle, firstBodyHandle, bodyStateAfterValidation));
+        ASSERT_TRUE(bodiesCapability->GetBodyState(worldHandle, firstBodyHandle, bodyStateAfterValidation));
         EXPECT_DOUBLE_EQ(bodyStateAfterValidation.m_transform.m_position.m_z, 5.0);
 
         WorldQueryRequestBus::BroadcastResult(
@@ -1796,7 +1798,7 @@ namespace Jolt
         EXPECT_TRUE(restored);
 
         BodyState restoredBodyState;
-        ASSERT_TRUE(system->GetBodyState(worldHandle, firstBodyHandle, restoredBodyState));
+        ASSERT_TRUE(bodiesCapability->GetBodyState(worldHandle, firstBodyHandle, restoredBodyState));
         EXPECT_DOUBLE_EQ(restoredBodyState.m_transform.m_position.m_z, 0.0);
 
         bool recaptured = false;
@@ -1808,7 +1810,7 @@ namespace Jolt
         EXPECT_TRUE(recaptured);
 
         movedTransform.m_position.m_z = 7.0;
-        ASSERT_TRUE(system->SetBodyTransform(
+        ASSERT_TRUE(bodiesCapability->SetBodyTransform(
             worldHandle,
             firstBodyHandle,
             movedTransform,
@@ -1820,7 +1822,7 @@ namespace Jolt
             snapshotHandle);
         EXPECT_TRUE(restored);
 
-        ASSERT_TRUE(system->GetBodyState(worldHandle, firstBodyHandle, restoredBodyState));
+        ASSERT_TRUE(bodiesCapability->GetBodyState(worldHandle, firstBodyHandle, restoredBodyState));
         EXPECT_DOUBLE_EQ(restoredBodyState.m_transform.m_position.m_z, 0.0);
 
         StateSnapshotConfiguration filteredConfiguration;
@@ -1860,7 +1862,7 @@ namespace Jolt
             worldHandle,
             filteredSnapshotHandle);
         EXPECT_FALSE(snapshotIsValid);
-        ASSERT_TRUE(system->GetWorldStatistics(worldHandle, statistics));
+        ASSERT_TRUE(diagnostics->GetWorldStatistics(worldHandle, statistics));
         EXPECT_EQ(statistics.m_stateSnapshotCount, 1);
 
         RaycastRequest request;
@@ -2180,7 +2182,7 @@ namespace Jolt
         ComponentWorldNotifications notifications;
         notifications.BusConnect(additionalWorldHandle);
 
-        const ShapeHandle additionalShapeHandle = system->CreateShape(
+        const ShapeHandle additionalShapeHandle = shapes->CreateShape(
             additionalWorldHandle,
             shapeConfiguration);
         ASSERT_TRUE(additionalShapeHandle);
@@ -2190,7 +2192,7 @@ namespace Jolt
         additionalBodyConfiguration.m_motionType = MotionType::Static;
         additionalBodyConfiguration.m_objectLayer = DefaultLayers::NonMoving;
         additionalBodyConfiguration.m_activate = false;
-        const BodyHandle floorBodyHandle = system->CreateBody(
+        const BodyHandle floorBodyHandle = bodiesCapability->CreateBody(
             additionalWorldHandle,
             additionalBodyConfiguration);
         ASSERT_TRUE(floorBodyHandle);
@@ -2199,11 +2201,11 @@ namespace Jolt
         additionalBodyConfiguration.m_motionType = MotionType::Dynamic;
         additionalBodyConfiguration.m_objectLayer = DefaultLayers::Moving;
         additionalBodyConfiguration.m_activate = true;
-        const BodyHandle movingBodyHandle = system->CreateBody(
+        const BodyHandle movingBodyHandle = bodiesCapability->CreateBody(
             additionalWorldHandle,
             additionalBodyConfiguration);
         ASSERT_TRUE(movingBodyHandle);
-        ASSERT_TRUE(system->SetBodyMoveEventsEnabled(
+        ASSERT_TRUE(bodiesCapability->SetBodyMoveEventsEnabled(
             additionalWorldHandle,
             movingBodyHandle,
             true));
@@ -2266,7 +2268,7 @@ namespace Jolt
             &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
             hairDescriptor);
 
-        System system(CreateComponentSystemConfiguration(), nullptr);
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         AZ::Entity entity("Hair");
@@ -2482,7 +2484,7 @@ namespace Jolt
         assetHandler.GetAssetTypeExtensions(extensions);
         EXPECT_EQ(extensions, AZStd::vector<AZStd::string>{"jolt"});
 
-        System system(CreateComponentSystemConfiguration(), nullptr);
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SkeletonDefinitionConfiguration skeletonConfiguration;
@@ -2632,7 +2634,7 @@ namespace Jolt
         assetHandler.GetAssetTypeExtensions(extensions);
         EXPECT_EQ(extensions, AZStd::vector<AZStd::string>{"jolt"});
 
-        System system(CreateComponentSystemConfiguration(), nullptr);
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SceneSourceData sourceData;
@@ -2752,7 +2754,7 @@ namespace Jolt
             &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
             ragdollDescriptor);
 
-        System system(CreateComponentSystemConfiguration(), nullptr);
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         AZ::Entity entity("Ragdoll");
@@ -2865,7 +2867,7 @@ namespace Jolt
             &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
             softBodyDescriptor);
 
-        System system(CreateComponentSystemConfiguration(), nullptr);
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SoftBodyComponentConfiguration configuration;
@@ -3001,7 +3003,7 @@ namespace Jolt
         AZ::ComponentApplicationBus::Broadcast(
             &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
             pathDescriptor);
-        System system(CreateComponentSystemConfiguration(), nullptr);
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         HermitePathConfiguration configuration;
@@ -3073,7 +3075,7 @@ namespace Jolt
             &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
             vehicleDescriptor);
 
-        System system(CreateComponentSystemConfiguration(), nullptr);
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         ColliderShapeConfiguration colliderShape;
@@ -3220,7 +3222,7 @@ namespace Jolt
 
         SystemConfiguration systemConfiguration = CreateComponentSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_autoSimulate = true;
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         ColliderShapeConfiguration colliderShape;
@@ -3326,7 +3328,7 @@ namespace Jolt
         AZ::ComponentApplicationBus::Broadcast(
             &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
             pathDescriptor);
-        System system(CreateComponentSystemConfiguration(), nullptr);
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         ColliderShapeConfiguration colliderShape;
@@ -3454,7 +3456,7 @@ namespace Jolt
         AZ::ComponentApplicationBus::Broadcast(
             &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
             staticBodyDescriptor);
-        System system(CreateComponentSystemConfiguration(), nullptr);
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         AZ::Entity entity("Moving sphere");

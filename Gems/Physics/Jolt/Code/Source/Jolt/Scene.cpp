@@ -175,10 +175,10 @@ namespace Jolt
         }
     }
 
-    SceneDefinitionHandle System::CreateSceneDefinition(
+    SceneDefinitionHandle RuntimeImplementation::CreateSceneDefinition(
         const SceneConfiguration& configuration)
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::CreateSceneDefinition");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::CreateSceneDefinition");
         if (configuration.m_bodies.size() > Internal::MaximumWorldMemberIndex
             || configuration.m_constraints.size() > Internal::MaximumWorldMemberIndex)
         {
@@ -349,7 +349,7 @@ namespace Jolt
         return Internal::MakeResourceHandle<SceneDefinitionHandle>(definitionIndex, slot.m_generation);
     }
 
-    bool System::DestroySceneDefinition(
+    bool RuntimeImplementation::DestroySceneDefinition(
         const SceneDefinitionHandle definitionHandle)
     {
         AZStd::vector<CookedShapeHandle> cookedShapeHandles;
@@ -439,14 +439,14 @@ namespace Jolt
         return true;
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const SceneDefinitionHandle definitionHandle) const
     {
         AZStd::shared_lock lock(m_sceneDefinitionMutex);
         return FindSceneDefinitionUnlocked(definitionHandle);
     }
 
-    bool System::GetSceneDefinitionState(
+    bool RuntimeImplementation::GetSceneDefinitionState(
         const SceneDefinitionHandle definitionHandle,
         SceneDefinitionState& state) const
     {
@@ -481,11 +481,11 @@ namespace Jolt
         return true;
     }
 
-    SceneInstanceHandle System::InstantiateScene(
+    SceneInstanceHandle RuntimeImplementation::InstantiateScene(
         const WorldHandle worldHandle,
         const SceneDefinitionHandle definitionHandle)
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::InstantiateScene");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::InstantiateScene");
         AZStd::shared_lock worldLock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
         if (!world)
@@ -507,7 +507,7 @@ namespace Jolt
         return instanceHandle;
     }
 
-    bool System::DestroySceneInstance(
+    bool RuntimeImplementation::DestroySceneInstance(
         const WorldHandle worldHandle,
         const SceneInstanceHandle instanceHandle)
     {
@@ -516,7 +516,7 @@ namespace Jolt
         return world && world->DestroySceneInstance(instanceHandle);
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle,
         const SceneInstanceHandle instanceHandle) const
     {
@@ -525,7 +525,7 @@ namespace Jolt
         return world && world->IsValid(instanceHandle);
     }
 
-    bool System::GetSceneInstanceState(
+    bool RuntimeImplementation::GetSceneInstanceState(
         const WorldHandle worldHandle,
         const SceneInstanceHandle instanceHandle,
         SceneInstanceState& state) const
@@ -535,7 +535,7 @@ namespace Jolt
         return world && world->GetSceneInstanceState(instanceHandle, state);
     }
 
-    QueryResult System::GetSceneBodies(
+    QueryResult RuntimeImplementation::GetSceneBodies(
         const WorldHandle worldHandle,
         const SceneInstanceHandle instanceHandle,
         const AZStd::span<BodyHandle> bodyHandles) const
@@ -549,7 +549,7 @@ namespace Jolt
         return world->GetSceneBodies(instanceHandle, bodyHandles);
     }
 
-    QueryResult System::GetSceneConstraints(
+    QueryResult RuntimeImplementation::GetSceneConstraints(
         const WorldHandle worldHandle,
         const SceneInstanceHandle instanceHandle,
         const AZStd::span<ConstraintHandle> constraintHandles) const
@@ -563,7 +563,7 @@ namespace Jolt
         return world->GetSceneConstraints(instanceHandle, constraintHandles);
     }
 
-    bool System::AcquireSceneDefinition(
+    bool RuntimeImplementation::AcquireSceneDefinition(
         const SceneDefinitionHandle definitionHandle,
         AZStd::shared_ptr<const SceneConfiguration>& configuration)
     {
@@ -579,7 +579,7 @@ namespace Jolt
         return true;
     }
 
-    void System::ReleaseSceneDefinition(
+    void RuntimeImplementation::ReleaseSceneDefinition(
         const SceneDefinitionHandle definitionHandle)
     {
         AZStd::lock_guard lock(m_sceneDefinitionMutex);
@@ -591,14 +591,14 @@ namespace Jolt
         }
     }
 
-    System::SceneDefinitionSlot* System::FindSceneDefinitionUnlocked(
+    RuntimeImplementation::SceneDefinitionSlot* RuntimeImplementation::FindSceneDefinitionUnlocked(
         const SceneDefinitionHandle definitionHandle)
     {
         return const_cast<SceneDefinitionSlot*>(
-            static_cast<const System&>(*this).FindSceneDefinitionUnlocked(definitionHandle));
+            static_cast<const RuntimeImplementation&>(*this).FindSceneDefinitionUnlocked(definitionHandle));
     }
 
-    const System::SceneDefinitionSlot* System::FindSceneDefinitionUnlocked(
+    const RuntimeImplementation::SceneDefinitionSlot* RuntimeImplementation::FindSceneDefinitionUnlocked(
         const SceneDefinitionHandle definitionHandle) const
     {
         Internal::ResourceHandleParts parts;

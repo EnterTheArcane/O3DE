@@ -9,7 +9,7 @@
 
 #include <Jolt/BehaviorReflection.h>
 #include <Jolt/ComponentUtilities.h>
-#include <Jolt/System.h>
+#include <Jolt/SystemInternal.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Interface/Interface.h>
@@ -1125,7 +1125,7 @@ namespace Jolt
                 SoftBodyComponentConfiguration::CreateDefault());
         }
 
-        m_system = AZ::Interface<ISystem>::Get();
+        m_system = GetRuntime();
         if (!m_system)
         {
             return;

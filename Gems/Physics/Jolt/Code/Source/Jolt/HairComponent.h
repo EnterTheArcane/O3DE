@@ -18,7 +18,7 @@
 
 namespace Jolt
 {
-    class ISystem;
+    class RuntimeImplementation;
 
     class JOLT_API HairComponent final
         : public AZ::Component
@@ -134,7 +134,7 @@ namespace Jolt
 
         AZStd::unique_ptr<HairComponentConfiguration> m_configuration;
 
-        ISystem* m_system = nullptr;
+        RuntimeImplementation* m_system = nullptr;
         WorldHandle m_worldHandle;
         HairDefinitionHandle m_definitionHandle;
         HairHandle m_hairHandle;

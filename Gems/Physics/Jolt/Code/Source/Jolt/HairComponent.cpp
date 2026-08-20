@@ -8,7 +8,7 @@
 #include <Jolt/HairComponent.h>
 
 #include <Jolt/ComponentUtilities.h>
-#include <Jolt/System.h>
+#include <Jolt/SystemInternal.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Interface/Interface.h>
@@ -638,7 +638,7 @@ namespace Jolt
             m_configuration = AZStd::make_unique<HairComponentConfiguration>(
                 HairComponentConfiguration::CreateDefault());
         }
-        m_system = AZ::Interface<ISystem>::Get();
+        m_system = GetRuntime();
         if (!m_system)
         {
             return;

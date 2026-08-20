@@ -18,7 +18,7 @@
 
 namespace Jolt
 {
-    class ISystem;
+    class RuntimeImplementation;
 
     class IConstraintRuntimeGeometry
     {
@@ -140,7 +140,7 @@ namespace Jolt
 
         RuntimeConfiguration m_configuration;
 
-        ISystem* m_system = nullptr;
+        RuntimeImplementation* m_system = nullptr;
         IComponentDependencyManager* m_dependencyManager = nullptr;
         WorldHandle m_worldHandle;
         ConstraintHandle m_constraintHandle;

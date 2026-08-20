@@ -8,7 +8,7 @@
 #include <Jolt/ColliderComponent.h>
 
 #include <Jolt/Reflection.h>
-#include <Jolt/System.h>
+#include <Jolt/SystemInternal.h>
 
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Math/MathUtils.h>
@@ -57,7 +57,7 @@ namespace Jolt
         template<class Configuration>
         [[nodiscard]]
         bool GetDecoratedConfiguration(
-            ISystem* system,
+            RuntimeImplementation* system,
             const WorldHandle worldHandle,
             const ShapeHandle shapeHandle,
             Configuration& configuration)
@@ -86,7 +86,7 @@ namespace Jolt
         template<class Configuration>
         [[nodiscard]]
         bool GetPrimitiveConfiguration(
-            ISystem* system,
+            RuntimeImplementation* system,
             const WorldHandle worldHandle,
             const ShapeHandle shapeHandle,
             Configuration& configuration)
@@ -1178,7 +1178,7 @@ namespace Jolt
     }
 
     bool ColliderComponent::CreateShapes(
-        ISystem& system,
+        RuntimeImplementation& system,
         const WorldHandle worldHandle,
         const float uniformScale)
     {

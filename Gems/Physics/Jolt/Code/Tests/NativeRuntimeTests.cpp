@@ -23,6 +23,95 @@
 
 namespace Jolt
 {
+    TEST(NativeRuntimeTests, PublishesCapabilitiesOnlyForTheActiveGlobalRuntime)
+    {
+        EXPECT_FALSE(RuntimeConfiguration::Get());
+        EXPECT_FALSE(Extensions::Get());
+        EXPECT_FALSE(Materials::Get());
+        EXPECT_FALSE(CollisionFilters::Get());
+        EXPECT_FALSE(Cooking::Get());
+        EXPECT_FALSE(Paths::Get());
+        EXPECT_FALSE(Skeletons::Get());
+        EXPECT_FALSE(Scenes::Get());
+        EXPECT_FALSE(Worlds::Get());
+        EXPECT_FALSE(WorldSimulation::Get());
+        EXPECT_FALSE(WorldQueries::Get());
+        EXPECT_FALSE(Shapes::Get());
+        EXPECT_FALSE(Bodies::Get());
+        EXPECT_FALSE(Constraints::Get());
+        EXPECT_FALSE(Characters::Get());
+        EXPECT_FALSE(Vehicles::Get());
+        EXPECT_FALSE(Ragdolls::Get());
+        EXPECT_FALSE(SoftBodies::Get());
+        EXPECT_FALSE(Hair::Get());
+        EXPECT_FALSE(Rollback::Get());
+        EXPECT_FALSE(Diagnostics::Get());
+
+        {
+            SystemConfiguration configuration;
+            configuration.m_createDefaultWorld = false;
+            System system(AZStd::move(configuration));
+            ASSERT_TRUE(system);
+
+            EXPECT_TRUE(RuntimeConfiguration::Get());
+            EXPECT_TRUE(Extensions::Get());
+            EXPECT_TRUE(Materials::Get());
+            EXPECT_TRUE(CollisionFilters::Get());
+            EXPECT_TRUE(Cooking::Get());
+            EXPECT_TRUE(Paths::Get());
+            EXPECT_TRUE(Skeletons::Get());
+            EXPECT_TRUE(Scenes::Get());
+            EXPECT_TRUE(Worlds::Get());
+            EXPECT_TRUE(WorldSimulation::Get());
+            EXPECT_TRUE(WorldQueries::Get());
+            EXPECT_TRUE(Shapes::Get());
+            EXPECT_TRUE(Bodies::Get());
+            EXPECT_TRUE(Constraints::Get());
+            EXPECT_TRUE(Characters::Get());
+            EXPECT_TRUE(Vehicles::Get());
+            EXPECT_TRUE(Ragdolls::Get());
+            EXPECT_TRUE(SoftBodies::Get());
+            EXPECT_TRUE(Hair::Get());
+            EXPECT_TRUE(Rollback::Get());
+            EXPECT_TRUE(Diagnostics::Get());
+
+            Runtime isolated(
+                SystemConfiguration{},
+                nullptr,
+                SystemRegistration::Isolated);
+            ASSERT_TRUE(isolated);
+
+            RuntimeConfiguration* publishedRuntime = RuntimeConfiguration::Get();
+            AZ_TEST_START_TRACE_SUPPRESSION;
+            System secondSystem(SystemConfiguration{});
+            AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+            EXPECT_FALSE(secondSystem);
+            EXPECT_EQ(RuntimeConfiguration::Get(), publishedRuntime);
+        }
+
+        EXPECT_FALSE(RuntimeConfiguration::Get());
+        EXPECT_FALSE(Extensions::Get());
+        EXPECT_FALSE(Materials::Get());
+        EXPECT_FALSE(CollisionFilters::Get());
+        EXPECT_FALSE(Cooking::Get());
+        EXPECT_FALSE(Paths::Get());
+        EXPECT_FALSE(Skeletons::Get());
+        EXPECT_FALSE(Scenes::Get());
+        EXPECT_FALSE(Worlds::Get());
+        EXPECT_FALSE(WorldSimulation::Get());
+        EXPECT_FALSE(WorldQueries::Get());
+        EXPECT_FALSE(Shapes::Get());
+        EXPECT_FALSE(Bodies::Get());
+        EXPECT_FALSE(Constraints::Get());
+        EXPECT_FALSE(Characters::Get());
+        EXPECT_FALSE(Vehicles::Get());
+        EXPECT_FALSE(Ragdolls::Get());
+        EXPECT_FALSE(SoftBodies::Get());
+        EXPECT_FALSE(Hair::Get());
+        EXPECT_FALSE(Rollback::Get());
+        EXPECT_FALSE(Diagnostics::Get());
+    }
+
     TEST(NativeRuntimeTests, ReportsPinnedDeterministicConfiguration)
     {
         NativeRuntime runtime;
@@ -157,7 +246,7 @@ namespace Jolt
 
         for (AZ::u32 iteration = 0; iteration < 20; ++iteration)
         {
-            System system(SystemConfiguration{}, &jobContext, SystemRegistration::Isolated);
+            Runtime system(SystemConfiguration{}, &jobContext, SystemRegistration::Isolated);
             ASSERT_TRUE(system);
 
             const WorldHandle worldHandle = system.GetDefaultWorldHandle();

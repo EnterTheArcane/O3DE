@@ -21,6 +21,7 @@
 namespace Jolt
 {
     class System;
+    class Runtime;
     class SceneAssetHandler;
     class SkeletonAssetHandler;
 
@@ -560,6 +561,7 @@ namespace Jolt
         AZStd::unique_ptr<SceneAssetHandler> m_sceneAssetHandler;
         AZStd::unique_ptr<SkeletonAssetHandler> m_skeletonAssetHandler;
         AZStd::unique_ptr<System> m_system;
+        Runtime* m_runtime = nullptr;
 
         AZStd::vector<WorldEventState> m_worldEventStates;
         AZ::u64 m_defaultWorldLastEventSequence = 0;

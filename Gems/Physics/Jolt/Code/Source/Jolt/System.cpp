@@ -573,14 +573,11 @@ namespace Jolt
         }
     } // namespace
 
-    AZStd::unique_ptr<ISystem> CreateAssetBuilderSystem()
+    AZStd::unique_ptr<System> CreateAssetBuilderSystem()
     {
         SystemConfiguration configuration;
         configuration.m_createDefaultWorld = false;
-        AZStd::unique_ptr<System> system = AZStd::make_unique<System>(
-            AZStd::move(configuration),
-            nullptr,
-            SystemRegistration::Isolated);
+        AZStd::unique_ptr<System> system = AZStd::make_unique<System>(AZStd::move(configuration));
         if (!*system)
         {
             return {};
@@ -589,7 +586,7 @@ namespace Jolt
         return system;
     }
 
-    System::System(
+    RuntimeImplementation::RuntimeImplementation(
         SystemConfiguration configuration,
         AZ::JobContext* jobContext,
         const SystemRegistration registration)
@@ -602,19 +599,12 @@ namespace Jolt
             return;
         }
 
-        if (registration == SystemRegistration::Global
-            && (AZ::Interface<ISystem>::Get() || AZ::Interface<ICooking>::Get()))
+        if (registration == SystemRegistration::Global && GetRuntime())
         {
             AZ_Error("Jolt", false, "Only one Jolt system can be active at a time.");
             return;
         }
 
-        if (registration == SystemRegistration::Global)
-        {
-            AZ::Interface<ISystem>::Register(this);
-            AZ::Interface<ICooking>::Register(this);
-            m_registered = true;
-        }
         m_debugRenderer = AZStd::make_unique<DebugRenderer>();
         m_dependencyManager = AZStd::make_unique<ComponentDependencyManager>();
         if (m_configuration.m_createDefaultWorld)
@@ -628,26 +618,132 @@ namespace Jolt
         m_initialized = true;
     }
 
-    System::~System()
+    RuntimeImplementation::~RuntimeImplementation() = default;
+
+    Runtime::Runtime(
+        SystemConfiguration configuration,
+        AZ::JobContext* jobContext,
+        const SystemRegistration registration)
+        : RuntimeImplementation(AZStd::move(configuration), jobContext, registration)
     {
-        if (m_registered)
+        if (!static_cast<bool>(*this) || registration == SystemRegistration::Isolated)
         {
-            AZ::Interface<ICooking>::Unregister(this);
-            AZ::Interface<ISystem>::Unregister(this);
+            return;
+        }
+
+        m_registered = PublishCapabilities();
+        if (!m_registered)
+        {
+            AZ_Error("Jolt", false, "Only one Jolt system can be active at a time.");
+            Invalidate();
         }
     }
 
-    const SystemConfiguration& System::GetConfiguration() const
+    Runtime::~Runtime()
+    {
+        if (m_registered)
+        {
+            UnpublishCapabilities();
+        }
+    }
+
+    bool Runtime::PublishCapabilities()
+    {
+        RuntimeConfiguration* expectedRuntimeConfiguration = nullptr;
+        if (!RuntimeConfiguration::s_instance.compare_exchange_strong(
+                expectedRuntimeConfiguration,
+                static_cast<RuntimeConfiguration*>(this),
+                AZStd::memory_order_acq_rel,
+                AZStd::memory_order_acquire))
+        {
+            return false;
+        }
+
+        Extensions::s_instance.store(static_cast<Extensions*>(this), AZStd::memory_order_release);
+        Materials::s_instance.store(static_cast<Materials*>(this), AZStd::memory_order_release);
+        CollisionFilters::s_instance.store(static_cast<CollisionFilters*>(this), AZStd::memory_order_release);
+        Cooking::s_instance.store(static_cast<Cooking*>(this), AZStd::memory_order_release);
+        Paths::s_instance.store(static_cast<Paths*>(this), AZStd::memory_order_release);
+        Skeletons::s_instance.store(static_cast<Skeletons*>(this), AZStd::memory_order_release);
+        Scenes::s_instance.store(static_cast<Scenes*>(this), AZStd::memory_order_release);
+        Worlds::s_instance.store(static_cast<Worlds*>(this), AZStd::memory_order_release);
+        WorldSimulation::s_instance.store(static_cast<WorldSimulation*>(this), AZStd::memory_order_release);
+        WorldQueries::s_instance.store(static_cast<WorldQueries*>(this), AZStd::memory_order_release);
+        Shapes::s_instance.store(static_cast<Shapes*>(this), AZStd::memory_order_release);
+        Bodies::s_instance.store(static_cast<Bodies*>(this), AZStd::memory_order_release);
+        Constraints::s_instance.store(static_cast<Constraints*>(this), AZStd::memory_order_release);
+        Characters::s_instance.store(static_cast<Characters*>(this), AZStd::memory_order_release);
+        Vehicles::s_instance.store(static_cast<Vehicles*>(this), AZStd::memory_order_release);
+        Ragdolls::s_instance.store(static_cast<Ragdolls*>(this), AZStd::memory_order_release);
+        SoftBodies::s_instance.store(static_cast<SoftBodies*>(this), AZStd::memory_order_release);
+        Hair::s_instance.store(static_cast<Hair*>(this), AZStd::memory_order_release);
+        Rollback::s_instance.store(static_cast<Rollback*>(this), AZStd::memory_order_release);
+        Diagnostics::s_instance.store(static_cast<Diagnostics*>(this), AZStd::memory_order_release);
+        return true;
+    }
+
+    void Runtime::UnpublishCapabilities()
+    {
+        RuntimeConfiguration::s_instance.store(nullptr, AZStd::memory_order_release);
+        Extensions::s_instance.store(nullptr, AZStd::memory_order_release);
+        Materials::s_instance.store(nullptr, AZStd::memory_order_release);
+        CollisionFilters::s_instance.store(nullptr, AZStd::memory_order_release);
+        Cooking::s_instance.store(nullptr, AZStd::memory_order_release);
+        Paths::s_instance.store(nullptr, AZStd::memory_order_release);
+        Skeletons::s_instance.store(nullptr, AZStd::memory_order_release);
+        Scenes::s_instance.store(nullptr, AZStd::memory_order_release);
+        Worlds::s_instance.store(nullptr, AZStd::memory_order_release);
+        WorldSimulation::s_instance.store(nullptr, AZStd::memory_order_release);
+        WorldQueries::s_instance.store(nullptr, AZStd::memory_order_release);
+        Shapes::s_instance.store(nullptr, AZStd::memory_order_release);
+        Bodies::s_instance.store(nullptr, AZStd::memory_order_release);
+        Constraints::s_instance.store(nullptr, AZStd::memory_order_release);
+        Characters::s_instance.store(nullptr, AZStd::memory_order_release);
+        Vehicles::s_instance.store(nullptr, AZStd::memory_order_release);
+        Ragdolls::s_instance.store(nullptr, AZStd::memory_order_release);
+        SoftBodies::s_instance.store(nullptr, AZStd::memory_order_release);
+        Hair::s_instance.store(nullptr, AZStd::memory_order_release);
+        Rollback::s_instance.store(nullptr, AZStd::memory_order_release);
+        Diagnostics::s_instance.store(nullptr, AZStd::memory_order_release);
+    }
+
+    Runtime* GetRuntime()
+    {
+        return static_cast<Runtime*>(RuntimeConfiguration::Get());
+    }
+
+    System::System(
+        SystemConfiguration configuration,
+        AZ::JobContext* jobContext)
+        : m_runtime(AZStd::make_unique<Runtime>(
+              AZStd::move(configuration),
+              jobContext,
+              SystemRegistration::Global))
+    {
+        if (!static_cast<bool>(*m_runtime))
+        {
+            m_runtime.reset();
+        }
+    }
+
+    System::~System() = default;
+
+    System::operator bool() const noexcept
+    {
+        return m_runtime && static_cast<bool>(*m_runtime);
+    }
+
+    const SystemConfiguration& RuntimeImplementation::GetConfiguration() const
     {
         return m_configuration;
     }
 
-    RuntimeInfo System::GetRuntimeInfo() const
+    RuntimeInfo RuntimeImplementation::GetRuntimeInfo() const
     {
         return m_nativeRuntime.GetRuntimeInfo();
     }
 
-    bool System::RegisterCustomConstraintProvider(
+    bool RuntimeImplementation::RegisterCustomConstraintProvider(
         ICustomConstraintProvider* provider)
     {
         if (!provider)
@@ -669,7 +765,7 @@ namespace Jolt
             }).second;
     }
 
-    bool System::UnregisterCustomConstraintProvider(
+    bool RuntimeImplementation::UnregisterCustomConstraintProvider(
         ICustomConstraintProvider* provider)
     {
         if (!provider)
@@ -690,7 +786,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::RegisterCustomPathProvider(
+    bool RuntimeImplementation::RegisterCustomPathProvider(
         ICustomPathProvider* provider)
     {
         if (!provider)
@@ -712,7 +808,7 @@ namespace Jolt
             }).second;
     }
 
-    bool System::UnregisterCustomPathProvider(
+    bool RuntimeImplementation::UnregisterCustomPathProvider(
         ICustomPathProvider* provider)
     {
         if (!provider)
@@ -733,7 +829,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::RegisterCustomConvexShapeProvider(
+    bool RuntimeImplementation::RegisterCustomConvexShapeProvider(
         ICustomConvexShapeProvider* provider)
     {
         if (!provider)
@@ -751,7 +847,7 @@ namespace Jolt
         return m_customConvexShapeProviders.emplace(providerId, provider).second;
     }
 
-    bool System::UnregisterCustomConvexShapeProvider(
+    bool RuntimeImplementation::UnregisterCustomConvexShapeProvider(
         ICustomConvexShapeProvider* provider)
     {
         if (!provider)
@@ -771,7 +867,7 @@ namespace Jolt
         return true;
     }
 
-    ProviderRegistrationResult System::RegisterCustomShapeProvider(
+    ProviderRegistrationResult RuntimeImplementation::RegisterCustomShapeProvider(
         ICustomShapeProvider* provider)
     {
         if (!provider
@@ -794,7 +890,7 @@ namespace Jolt
         return ProviderRegistrationResult::Success;
     }
 
-    ProviderRegistrationResult System::UnregisterCustomShapeProvider(
+    ProviderRegistrationResult RuntimeImplementation::UnregisterCustomShapeProvider(
         ICustomShapeProvider* provider)
     {
         if (!provider)
@@ -818,7 +914,7 @@ namespace Jolt
         return ProviderRegistrationResult::Success;
     }
 
-    ICustomShapeProvider* System::AcquireCustomShapeProvider(
+    ICustomShapeProvider* RuntimeImplementation::AcquireCustomShapeProvider(
         const AZ::TypeId providerId,
         const AZ::u64 requiredVersion)
     {
@@ -839,7 +935,7 @@ namespace Jolt
         return provider;
     }
 
-    void System::ReleaseCustomShapeProvider(
+    void RuntimeImplementation::ReleaseCustomShapeProvider(
         const AZ::TypeId providerId)
     {
         AZStd::lock_guard lock(m_customShapeProviderMutex);
@@ -855,7 +951,7 @@ namespace Jolt
         }
     }
 
-    ICustomConstraintProvider* System::AcquireCustomConstraintProvider(
+    ICustomConstraintProvider* RuntimeImplementation::AcquireCustomConstraintProvider(
         const AZ::TypeId providerId,
         const AZStd::span<const AZ::u8> data,
         AZ::u32& maximumRowCount,
@@ -882,7 +978,7 @@ namespace Jolt
         return &provider;
     }
 
-    void System::ReleaseCustomConstraintProvider(
+    void RuntimeImplementation::ReleaseCustomConstraintProvider(
         const AZ::TypeId providerId)
     {
         AZStd::lock_guard lock(m_customConstraintProviderMutex);
@@ -898,7 +994,7 @@ namespace Jolt
         }
     }
 
-    ICustomPathProvider* System::AcquireCustomPathProvider(
+    ICustomPathProvider* RuntimeImplementation::AcquireCustomPathProvider(
         const AZ::TypeId providerId,
         const AZStd::span<const AZ::u8> data,
         float& maximumFraction,
@@ -933,7 +1029,7 @@ namespace Jolt
         return &provider;
     }
 
-    void System::ReleaseCustomPathProvider(
+    void RuntimeImplementation::ReleaseCustomPathProvider(
         const AZ::TypeId providerId)
     {
         AZStd::lock_guard lock(m_customPathProviderMutex);
@@ -949,7 +1045,7 @@ namespace Jolt
         }
     }
 
-    MaterialHandle System::CreateMaterial(
+    MaterialHandle RuntimeImplementation::CreateMaterial(
         const MaterialConfiguration& configuration)
     {
         if (!configuration.m_debugColor.IsFinite())
@@ -981,7 +1077,7 @@ namespace Jolt
         return materialHandle;
     }
 
-    bool System::DestroyMaterial(
+    bool RuntimeImplementation::DestroyMaterial(
         const MaterialHandle materialHandle)
     {
         AZStd::lock_guard lock(m_materialMutex);
@@ -1006,17 +1102,17 @@ namespace Jolt
         return true;
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const MaterialHandle materialHandle) const
     {
         AZStd::shared_lock lock(m_materialMutex);
         return FindMaterialUnlocked(materialHandle);
     }
 
-    CookedShapeHandle System::CookShape(
+    CookedShapeHandle RuntimeImplementation::CookShape(
         const ShapeConfiguration& configuration)
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::CookShape");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::CookShape");
         const DeterministicFloatScope floatScope;
         if (!AZ::IsFiniteFloat(configuration.m_density) || configuration.m_density <= 0.0f)
         {
@@ -1248,10 +1344,10 @@ namespace Jolt
         return cookedShapeHandle;
     }
 
-    CookedShapeHandle System::CookShape(
+    CookedShapeHandle RuntimeImplementation::CookShape(
         const CookedCompoundShapeConfiguration& configuration)
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::CookCompoundShape");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::CookCompoundShape");
         const DeterministicFloatScope floatScope;
         if (configuration.m_children.empty())
         {
@@ -1314,10 +1410,10 @@ namespace Jolt
         return cookedShapeHandle;
     }
 
-    CookedShapeHandle System::CookShape(
+    CookedShapeHandle RuntimeImplementation::CookShape(
         const CookedDecoratedShapeConfiguration& configuration)
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::CookDecoratedShape");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::CookDecoratedShape");
         const DeterministicFloatScope floatScope;
         JPH::Shape::ShapeResult nativeResult;
         CookedShapeHandle childHandle;
@@ -1403,11 +1499,11 @@ namespace Jolt
         return cookedShapeHandle;
     }
 
-    bool System::ExportSkeletonDefinition(
+    bool RuntimeImplementation::ExportSkeletonDefinition(
         const SkeletonDefinitionHandle skeletonHandle,
         SkeletonDefinitionArchive& archive) const
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ExportSkeletonDefinition");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::ExportSkeletonDefinition");
         const DeterministicFloatScope floatScope;
 
         JPH::Ref<JPH::Skeleton> skeleton;
@@ -1448,10 +1544,10 @@ namespace Jolt
         return true;
     }
 
-    SkeletonDefinitionHandle System::ImportSkeletonDefinition(
+    SkeletonDefinitionHandle RuntimeImplementation::ImportSkeletonDefinition(
         const SkeletonDefinitionArchive& archive)
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ImportSkeletonDefinition");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::ImportSkeletonDefinition");
         const DeterministicFloatScope floatScope;
         if (archive.m_formatVersion != SkeletonDefinitionArchiveFormatVersion
             || archive.m_buildFingerprint != GetNativeBuildFingerprint()
@@ -1507,11 +1603,11 @@ namespace Jolt
             AZStd::move(joints));
     }
 
-    bool System::ExportSkeletalAnimation(
+    bool RuntimeImplementation::ExportSkeletalAnimation(
         const SkeletalAnimationHandle animationHandle,
         SkeletalAnimationArchive& archive) const
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ExportSkeletalAnimation");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::ExportSkeletalAnimation");
         const DeterministicFloatScope floatScope;
 
         JPH::Ref<JPH::SkeletalAnimation> animation;
@@ -1552,10 +1648,10 @@ namespace Jolt
         return true;
     }
 
-    SkeletalAnimationHandle System::ImportSkeletalAnimation(
+    SkeletalAnimationHandle RuntimeImplementation::ImportSkeletalAnimation(
         const SkeletalAnimationArchive& archive)
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ImportSkeletalAnimation");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::ImportSkeletalAnimation");
         const DeterministicFloatScope floatScope;
         if (archive.m_formatVersion != SkeletalAnimationArchiveFormatVersion
             || archive.m_buildFingerprint != GetNativeBuildFingerprint()
@@ -1615,13 +1711,13 @@ namespace Jolt
             AZStd::move(jointNames));
     }
 
-    bool System::ExportShape(
+    bool RuntimeImplementation::ExportShape(
         const CookedShapeHandle cookedShapeHandle,
         CookedShapeArchive& archive,
         AZStd::vector<MaterialHandle>& materialHandles,
         AZStd::vector<CookedShapeHandle>& childShapeHandles) const
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ExportShape");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::ExportShape");
         const DeterministicFloatScope floatScope;
 
         JPH::RefConst<JPH::Shape> shape;
@@ -1713,12 +1809,12 @@ namespace Jolt
         return true;
     }
 
-    CookedShapeHandle System::ImportShape(
+    CookedShapeHandle RuntimeImplementation::ImportShape(
         const CookedShapeArchive& archive,
         const AZStd::span<const MaterialHandle> materialHandles,
         const AZStd::span<const CookedShapeHandle> childShapeHandles)
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ImportShape");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::ImportShape");
         const DeterministicFloatScope floatScope;
         if (archive.m_formatVersion != CookedShapeArchiveFormatVersion
             || archive.m_buildFingerprint != GetNativeBuildFingerprint()
@@ -1864,7 +1960,7 @@ namespace Jolt
         return cookedShapeHandle;
     }
 
-    bool System::DestroyCookedShape(
+    bool RuntimeImplementation::DestroyCookedShape(
         const CookedShapeHandle cookedShapeHandle)
     {
         AZStd::vector<MaterialHandle> materialHandles;
@@ -1916,14 +2012,14 @@ namespace Jolt
         return true;
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const CookedShapeHandle cookedShapeHandle) const
     {
         AZStd::shared_lock lock(m_cookedShapeMutex);
         return FindCookedShapeUnlocked(cookedShapeHandle);
     }
 
-    bool System::GetStats(
+    bool RuntimeImplementation::GetStats(
         const CookedShapeHandle cookedShapeHandle,
         ShapeStats& stats) const
     {
@@ -1947,7 +2043,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::GetStatsRecursive(
+    bool RuntimeImplementation::GetStatsRecursive(
         const CookedShapeHandle cookedShapeHandle,
         ShapeStats& stats) const
     {
@@ -1972,7 +2068,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::GetProperties(
+    bool RuntimeImplementation::GetProperties(
         const CookedShapeHandle cookedShapeHandle,
         ShapeProperties& properties) const
     {
@@ -2024,7 +2120,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::GetUserData(
+    bool RuntimeImplementation::GetUserData(
         const CookedShapeHandle cookedShapeHandle,
         AZ::u64& userData) const
     {
@@ -2039,7 +2135,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::GetCustomConvexShapeInfo(
+    bool RuntimeImplementation::GetCustomConvexShapeInfo(
         const CookedShapeHandle cookedShapeHandle,
         CustomConvexShapeInfo& info) const
     {
@@ -2048,7 +2144,7 @@ namespace Jolt
         return slot && GetNativeCustomConvexShapeInfo(*slot->m_shape, info);
     }
 
-    bool System::GetCustomShapeInfo(
+    bool RuntimeImplementation::GetCustomShapeInfo(
         const CookedShapeHandle cookedShapeHandle,
         CustomShapeInfo& info) const
     {
@@ -2057,7 +2153,7 @@ namespace Jolt
         return slot && GetNativeCustomShapeInfo(*slot->m_shape, info);
     }
 
-    BufferResult System::GetCustomShapeDependencies(
+    BufferResult RuntimeImplementation::GetCustomShapeDependencies(
         const CookedShapeHandle cookedShapeHandle,
         const AZStd::span<CustomShapeDependency> dependencies) const
     {
@@ -2086,7 +2182,7 @@ namespace Jolt
         };
     }
 
-    bool System::GetSubShapeUserData(
+    bool RuntimeImplementation::GetSubShapeUserData(
         const CookedShapeHandle cookedShapeHandle,
         const SubShapeId subShapeId,
         AZ::u64& userData) const
@@ -2104,7 +2200,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::GetDirectChildShape(
+    bool RuntimeImplementation::GetDirectChildShape(
         const CookedShapeHandle cookedShapeHandle,
         const SubShapeId subShapeId,
         CookedShapeHandle& childShapeHandle,
@@ -2144,7 +2240,7 @@ namespace Jolt
         return true;
     }
 
-    BufferResult System::GetMeshMaterials(
+    BufferResult RuntimeImplementation::GetMeshMaterials(
         const CookedShapeHandle cookedShapeHandle,
         const AZStd::span<MaterialHandle> materialHandles) const
     {
@@ -2188,7 +2284,7 @@ namespace Jolt
         };
     }
 
-    bool System::GetMeshTriangleMaterialIndex(
+    bool RuntimeImplementation::GetMeshTriangleMaterialIndex(
         const CookedShapeHandle cookedShapeHandle,
         const SubShapeId subShapeId,
         AZ::u32& materialIndex) const
@@ -2198,7 +2294,7 @@ namespace Jolt
         return slot && GetNativeMeshTriangleMaterialIndex(*slot->m_shape, subShapeId, materialIndex);
     }
 
-    bool System::GetMeshTriangleUserData(
+    bool RuntimeImplementation::GetMeshTriangleUserData(
         const CookedShapeHandle cookedShapeHandle,
         const SubShapeId subShapeId,
         AZ::u32& userData) const
@@ -2208,7 +2304,7 @@ namespace Jolt
         return slot && GetNativeMeshTriangleUserData(*slot->m_shape, subShapeId, userData);
     }
 
-    bool System::GetCompoundChildCount(
+    bool RuntimeImplementation::GetCompoundChildCount(
         const CookedShapeHandle cookedShapeHandle,
         AZ::u32& childCount) const
     {
@@ -2224,7 +2320,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::GetCompoundChild(
+    bool RuntimeImplementation::GetCompoundChild(
         const CookedShapeHandle cookedShapeHandle,
         const AZ::u32 childIndex,
         CookedCompoundChildConfiguration& child) const
@@ -2260,7 +2356,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::GetCompoundChildIndex(
+    bool RuntimeImplementation::GetCompoundChildIndex(
         const CookedShapeHandle cookedShapeHandle,
         const SubShapeId subShapeId,
         AZ::u32& childIndex) const
@@ -2288,14 +2384,14 @@ namespace Jolt
         return true;
     }
 
-    bool System::Raycast(
+    bool RuntimeImplementation::Raycast(
         const CookedShapeHandle cookedShapeHandle,
         const AZ::Vector3& start,
         const AZ::Vector3& direction,
         const float distance,
         CookedRaycastHit& hit) const
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::RaycastCookedShape");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::RaycastCookedShape");
         const DeterministicFloatScope floatScope;
         if (!start.IsFinite()
             || !direction.IsFinite()
@@ -2343,7 +2439,7 @@ namespace Jolt
         return true;
     }
 
-    GroupFilterHandle System::CreateGroupFilter(
+    GroupFilterHandle RuntimeImplementation::CreateGroupFilter(
         const AZ::u32 subGroupCount,
         IGroupFilter* filter)
     {
@@ -2362,7 +2458,7 @@ namespace Jolt
             true);
     }
 
-    GroupFilterHandle System::CreateGroupFilterTable(
+    GroupFilterHandle RuntimeImplementation::CreateGroupFilterTable(
         const GroupFilterTableConfiguration& configuration)
     {
         if (configuration.m_subGroupCount > MaximumSubGroupCount)
@@ -2399,7 +2495,7 @@ namespace Jolt
             false);
     }
 
-    GroupFilterHandle System::StoreGroupFilter(
+    GroupFilterHandle RuntimeImplementation::StoreGroupFilter(
         JPH::Ref<JPH::GroupFilter> filter,
         const AZ::u32 subGroupCount,
         const AZ::u64 stateHash,
@@ -2430,7 +2526,7 @@ namespace Jolt
         return Internal::MakeResourceHandle<GroupFilterHandle>(filterIndex, slot.m_generation);
     }
 
-    bool System::DestroyGroupFilter(
+    bool RuntimeImplementation::DestroyGroupFilter(
         const GroupFilterHandle filterHandle)
     {
         AZStd::lock_guard lock(m_groupFilterMutex);
@@ -2458,14 +2554,14 @@ namespace Jolt
         return true;
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const GroupFilterHandle filterHandle) const
     {
         AZStd::shared_lock lock(m_groupFilterMutex);
         return FindGroupFilterUnlocked(filterHandle);
     }
 
-    bool System::NotifyGroupFilterChanged(
+    bool RuntimeImplementation::NotifyGroupFilterChanged(
         const GroupFilterHandle filterHandle)
     {
         AZStd::lock_guard worldLock(m_worldMutex);
@@ -2489,7 +2585,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::GetSubGroupCollisionEnabled(
+    bool RuntimeImplementation::GetSubGroupCollisionEnabled(
         const GroupFilterHandle filterHandle,
         const CollisionSubGroupId firstSubGroup,
         const CollisionSubGroupId secondSubGroup,
@@ -2509,7 +2605,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::SetSubGroupCollisionEnabled(
+    bool RuntimeImplementation::SetSubGroupCollisionEnabled(
         const GroupFilterHandle filterHandle,
         const CollisionSubGroupId firstSubGroup,
         const CollisionSubGroupId secondSubGroup,
@@ -2546,7 +2642,7 @@ namespace Jolt
         return true;
     }
 
-    void System::RefreshGroupFilterInWorlds(
+    void RuntimeImplementation::RefreshGroupFilterInWorlds(
         const GroupFilterHandle filterHandle)
     {
         for (WorldSlot& worldSlot : m_worldSlots)
@@ -2558,7 +2654,7 @@ namespace Jolt
         }
     }
 
-    PathHandle System::CreatePath(
+    PathHandle RuntimeImplementation::CreatePath(
         const HermitePathConfiguration& configuration)
     {
         const DeterministicFloatScope floatScope;
@@ -2590,7 +2686,7 @@ namespace Jolt
         return StorePath(path.GetPtr());
     }
 
-    PathHandle System::CreatePath(
+    PathHandle RuntimeImplementation::CreatePath(
         const CustomPathConfiguration& configuration)
     {
         const DeterministicFloatScope floatScope;
@@ -2641,7 +2737,7 @@ namespace Jolt
         return pathHandle;
     }
 
-    PathHandle System::StorePath(
+    PathHandle RuntimeImplementation::StorePath(
         JPH::RefConst<JPH::PathConstraintPath> path,
         const AZ::TypeId customProviderId,
         const AZ::u64 customProviderVersion,
@@ -2677,7 +2773,7 @@ namespace Jolt
         return Internal::MakeResourceHandle<PathHandle>(pathIndex, slot.m_generation);
     }
 
-    bool System::DestroyPath(
+    bool RuntimeImplementation::DestroyPath(
         const PathHandle pathHandle)
     {
         AZ::TypeId customProviderId = AZ::TypeId::CreateNull();
@@ -2714,14 +2810,14 @@ namespace Jolt
         return true;
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const PathHandle pathHandle) const
     {
         AZStd::shared_lock lock(m_pathMutex);
         return FindPathUnlocked(pathHandle);
     }
 
-    bool System::GetPathState(
+    bool RuntimeImplementation::GetPathState(
         const PathHandle pathHandle,
         PathState& state) const
     {
@@ -2741,7 +2837,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::GetCustomPathInfo(
+    bool RuntimeImplementation::GetCustomPathInfo(
         const PathHandle pathHandle,
         CustomPathInfo& info) const
     {
@@ -2761,7 +2857,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::SamplePath(
+    bool RuntimeImplementation::SamplePath(
         const PathHandle pathHandle,
         const float fraction,
         PathSample& sample) const
@@ -2782,7 +2878,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::FindClosestPathPoint(
+    bool RuntimeImplementation::FindClosestPathPoint(
         const PathHandle pathHandle,
         const AZ::Vector3& position,
         const float fractionHint,
@@ -2808,7 +2904,7 @@ namespace Jolt
         return true;
     }
 
-    SoftBodyDefinitionHandle System::CreateSoftBodyDefinition(
+    SoftBodyDefinitionHandle RuntimeImplementation::CreateSoftBodyDefinition(
         const SoftBodyDefinitionConfiguration& configuration,
         SoftBodyOptimizationRemap* optimizationRemap)
     {
@@ -3302,12 +3398,12 @@ namespace Jolt
         return definitionHandle;
     }
 
-    bool System::ExportSoftBodyDefinition(
+    bool RuntimeImplementation::ExportSoftBodyDefinition(
         const SoftBodyDefinitionHandle definitionHandle,
         SoftBodyDefinitionArchive& archive,
         AZStd::vector<MaterialHandle>& materialHandles) const
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ExportSoftBodyDefinition");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::ExportSoftBodyDefinition");
         const DeterministicFloatScope floatScope;
 
         JPH::RefConst<JPH::SoftBodySharedSettings> settings;
@@ -3349,11 +3445,11 @@ namespace Jolt
         return true;
     }
 
-    SoftBodyDefinitionHandle System::ImportSoftBodyDefinition(
+    SoftBodyDefinitionHandle RuntimeImplementation::ImportSoftBodyDefinition(
         const SoftBodyDefinitionArchive& archive,
         const AZStd::span<const MaterialHandle> materialHandles)
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::System::ImportSoftBodyDefinition");
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::ImportSoftBodyDefinition");
         const DeterministicFloatScope floatScope;
         if (archive.m_formatVersion != SoftBodyDefinitionArchiveFormatVersion
             || archive.m_buildFingerprint != GetNativeBuildFingerprint()
@@ -3390,7 +3486,7 @@ namespace Jolt
             {materialHandles.begin(), materialHandles.end()});
     }
 
-    bool System::DestroySoftBodyDefinition(
+    bool RuntimeImplementation::DestroySoftBodyDefinition(
         const SoftBodyDefinitionHandle definitionHandle)
     {
         AZStd::lock_guard lock(m_softBodyDefinitionMutex);
@@ -3417,14 +3513,14 @@ namespace Jolt
         return true;
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const SoftBodyDefinitionHandle definitionHandle) const
     {
         AZStd::shared_lock lock(m_softBodyDefinitionMutex);
         return FindSoftBodyDefinitionUnlocked(definitionHandle);
     }
 
-    bool System::GetSoftBodyDefinitionState(
+    bool RuntimeImplementation::GetSoftBodyDefinitionState(
         const SoftBodyDefinitionHandle definitionHandle,
         SoftBodyDefinitionState& state) const
     {
@@ -3456,7 +3552,7 @@ namespace Jolt
         return true;
     }
 
-    QueryResult System::GetSoftBodyDefinitionDihedralBendConstraints(
+    QueryResult RuntimeImplementation::GetSoftBodyDefinitionDihedralBendConstraints(
         const SoftBodyDefinitionHandle definitionHandle,
         const AZStd::span<SoftBodyDihedralBendConstraint> constraints) const
     {
@@ -3485,7 +3581,7 @@ namespace Jolt
             });
     }
 
-    QueryResult System::GetSoftBodyDefinitionEdgeConstraints(
+    QueryResult RuntimeImplementation::GetSoftBodyDefinitionEdgeConstraints(
         const SoftBodyDefinitionHandle definitionHandle,
         const AZStd::span<SoftBodyEdgeConstraint> constraints) const
     {
@@ -3511,7 +3607,7 @@ namespace Jolt
             });
     }
 
-    QueryResult System::GetSoftBodyDefinitionFaces(
+    QueryResult RuntimeImplementation::GetSoftBodyDefinitionFaces(
         const SoftBodyDefinitionHandle definitionHandle,
         const AZStd::span<SoftBodyFace> faces) const
     {
@@ -3536,7 +3632,7 @@ namespace Jolt
             });
     }
 
-    QueryResult System::GetSoftBodyDefinitionInverseBinds(
+    QueryResult RuntimeImplementation::GetSoftBodyDefinitionInverseBinds(
         const SoftBodyDefinitionHandle definitionHandle,
         const AZStd::span<SoftBodyInverseBind> inverseBinds) const
     {
@@ -3560,7 +3656,7 @@ namespace Jolt
             });
     }
 
-    QueryResult System::GetSoftBodyDefinitionLongRangeConstraints(
+    QueryResult RuntimeImplementation::GetSoftBodyDefinitionLongRangeConstraints(
         const SoftBodyDefinitionHandle definitionHandle,
         const AZStd::span<SoftBodyLongRangeConstraint> constraints) const
     {
@@ -3585,7 +3681,7 @@ namespace Jolt
             });
     }
 
-    QueryResult System::GetSoftBodyDefinitionMaterials(
+    QueryResult RuntimeImplementation::GetSoftBodyDefinitionMaterials(
         const SoftBodyDefinitionHandle definitionHandle,
         const AZStd::span<MaterialHandle> materials) const
     {
@@ -3615,7 +3711,7 @@ namespace Jolt
         };
     }
 
-    QueryResult System::GetSoftBodyDefinitionRodBendTwistConstraints(
+    QueryResult RuntimeImplementation::GetSoftBodyDefinitionRodBendTwistConstraints(
         const SoftBodyDefinitionHandle definitionHandle,
         const AZStd::span<SoftBodyRodBendTwistConstraint> constraints) const
     {
@@ -3642,7 +3738,7 @@ namespace Jolt
             });
     }
 
-    QueryResult System::GetSoftBodyDefinitionRodStretchShearConstraints(
+    QueryResult RuntimeImplementation::GetSoftBodyDefinitionRodStretchShearConstraints(
         const SoftBodyDefinitionHandle definitionHandle,
         const AZStd::span<SoftBodyRodStretchShearConstraint> constraints) const
     {
@@ -3671,7 +3767,7 @@ namespace Jolt
             });
     }
 
-    QueryResult System::GetSoftBodyDefinitionSkinConstraints(
+    QueryResult RuntimeImplementation::GetSoftBodyDefinitionSkinConstraints(
         const SoftBodyDefinitionHandle definitionHandle,
         const AZStd::span<SoftBodySkinConstraint> constraints) const
     {
@@ -3705,7 +3801,7 @@ namespace Jolt
             });
     }
 
-    QueryResult System::GetSoftBodyDefinitionVertices(
+    QueryResult RuntimeImplementation::GetSoftBodyDefinitionVertices(
         const SoftBodyDefinitionHandle definitionHandle,
         const AZStd::span<SoftBodyVertex> vertices) const
     {
@@ -3731,7 +3827,7 @@ namespace Jolt
             });
     }
 
-    QueryResult System::GetSoftBodyDefinitionVolumeConstraints(
+    QueryResult RuntimeImplementation::GetSoftBodyDefinitionVolumeConstraints(
         const SoftBodyDefinitionHandle definitionHandle,
         const AZStd::span<SoftBodyVolumeConstraint> constraints) const
     {
@@ -3760,7 +3856,7 @@ namespace Jolt
             });
     }
 
-    HairDefinitionHandle System::CreateHairDefinition(
+    HairDefinitionHandle RuntimeImplementation::CreateHairDefinition(
         const HairDefinitionConfiguration& configuration)
     {
         const DeterministicFloatScope floatScope;
@@ -4035,7 +4131,7 @@ namespace Jolt
         return Internal::MakeResourceHandle<HairDefinitionHandle>(definitionIndex, slot.m_generation);
     }
 
-    bool System::DestroyHairDefinition(
+    bool RuntimeImplementation::DestroyHairDefinition(
         const HairDefinitionHandle definitionHandle)
     {
         AZStd::lock_guard lock(m_hairDefinitionMutex);
@@ -4061,14 +4157,14 @@ namespace Jolt
         return true;
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const HairDefinitionHandle definitionHandle) const
     {
         AZStd::shared_lock lock(m_hairDefinitionMutex);
         return FindHairDefinitionUnlocked(definitionHandle);
     }
 
-    bool System::GetHairDefinitionState(
+    bool RuntimeImplementation::GetHairDefinitionState(
         const HairDefinitionHandle definitionHandle,
         HairDefinitionState& state) const
     {
@@ -4099,7 +4195,7 @@ namespace Jolt
         return true;
     }
 
-    QueryResult System::GetHairNeutralDensity(
+    QueryResult RuntimeImplementation::GetHairNeutralDensity(
         const HairDefinitionHandle definitionHandle,
         const AZStd::span<float> density) const
     {
@@ -4122,7 +4218,7 @@ namespace Jolt
         };
     }
 
-    bool System::SkinHairScalpVertices(
+    bool RuntimeImplementation::SkinHairScalpVertices(
         const HairDefinitionHandle definitionHandle,
         const AZ::Transform& jointToHair,
         const AZStd::span<const AZ::Transform> jointModelTransforms,
@@ -4190,7 +4286,7 @@ namespace Jolt
         return true;
     }
 
-    WorldHandle System::CreateWorld(
+    WorldHandle RuntimeImplementation::CreateWorld(
         const WorldConfiguration& configuration)
     {
         const DeterministicFloatScope floatScope;
@@ -4238,7 +4334,7 @@ namespace Jolt
         return worldHandle;
     }
 
-    bool System::DestroyWorld(
+    bool RuntimeImplementation::DestroyWorld(
         const WorldHandle worldHandle)
     {
         AZStd::lock_guard lock(m_worldMutex);
@@ -4278,27 +4374,27 @@ namespace Jolt
         return true;
     }
 
-    WorldHandle System::GetDefaultWorldHandle() const
+    WorldHandle RuntimeImplementation::GetDefaultWorldHandle() const
     {
         AZStd::shared_lock lock(m_worldMutex);
         return m_defaultWorldHandle;
     }
 
-    const IWorldQueries* System::GetWorldQueries(
+    const IWorldQueries* RuntimeImplementation::GetWorldQueries(
         const WorldHandle worldHandle) const
     {
         AZStd::shared_lock lock(m_worldMutex);
         return FindWorldUnlocked(worldHandle);
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle) const
     {
         AZStd::shared_lock lock(m_worldMutex);
         return FindWorldUnlocked(worldHandle);
     }
 
-    bool System::GetWorldGravity(
+    bool RuntimeImplementation::GetWorldGravity(
         const WorldHandle worldHandle,
         AZ::Vector3& gravity) const
     {
@@ -4307,7 +4403,7 @@ namespace Jolt
         return world && world->GetGravity(gravity);
     }
 
-    bool System::SetWorldGravity(
+    bool RuntimeImplementation::SetWorldGravity(
         const WorldHandle worldHandle,
         const AZ::Vector3& gravity)
     {
@@ -4316,7 +4412,7 @@ namespace Jolt
         return world && world->SetGravity(gravity);
     }
 
-    bool System::GetSimulationConfiguration(
+    bool RuntimeImplementation::GetSimulationConfiguration(
         const WorldHandle worldHandle,
         SimulationConfiguration& configuration) const
     {
@@ -4325,7 +4421,7 @@ namespace Jolt
         return world && world->GetSimulationConfiguration(configuration);
     }
 
-    bool System::UpdateSimulationConfiguration(
+    bool RuntimeImplementation::UpdateSimulationConfiguration(
         const WorldHandle worldHandle,
         const SimulationConfiguration& configuration)
     {
@@ -4334,7 +4430,7 @@ namespace Jolt
         return world && world->UpdateSimulationConfiguration(configuration);
     }
 
-    bool System::GetWorldRuntimeConfiguration(
+    bool RuntimeImplementation::GetWorldRuntimeConfiguration(
         const WorldHandle worldHandle,
         WorldRuntimeConfiguration& configuration) const
     {
@@ -4343,7 +4439,7 @@ namespace Jolt
         return world && world->GetRuntimeConfiguration(configuration);
     }
 
-    bool System::UpdateWorldRuntimeConfiguration(
+    bool RuntimeImplementation::UpdateWorldRuntimeConfiguration(
         const WorldHandle worldHandle,
         const WorldRuntimeConfiguration& configuration)
     {
@@ -4352,14 +4448,14 @@ namespace Jolt
         return world && world->UpdateRuntimeConfiguration(configuration);
     }
 
-    bool System::StepWorld(
+    bool RuntimeImplementation::StepWorld(
         const WorldHandle worldHandle,
         const float fixedTimeStep)
     {
         return static_cast<bool>(StepWorldDetailed(worldHandle, fixedTimeStep));
     }
 
-    SimulationResult System::StepWorldDetailed(
+    SimulationResult RuntimeImplementation::StepWorldDetailed(
         const WorldHandle worldHandle,
         const float fixedTimeStep)
     {
@@ -4378,13 +4474,13 @@ namespace Jolt
         return world->StepDetailed(fixedTimeStep, nullptr);
     }
 
-    bool System::StepAutoSimulatedWorlds(
+    bool RuntimeImplementation::StepAutoSimulatedWorlds(
         const float elapsedTime)
     {
         return static_cast<bool>(StepAutoSimulatedWorldsDetailed(elapsedTime));
     }
 
-    SimulationResult System::StepAutoSimulatedWorldsDetailed(
+    SimulationResult RuntimeImplementation::StepAutoSimulatedWorldsDetailed(
         const float elapsedTime)
     {
         AZStd::shared_lock lock(m_worldMutex);
@@ -4484,7 +4580,7 @@ namespace Jolt
         return aggregate;
     }
 
-    EventView System::GetEvents(
+    EventView RuntimeImplementation::GetEvents(
         const WorldHandle worldHandle) const
     {
         AZStd::shared_lock lock(m_worldMutex);
@@ -4497,7 +4593,7 @@ namespace Jolt
         return world->GetEvents();
     }
 
-    bool System::SetContactCallbacks(
+    bool RuntimeImplementation::SetContactCallbacks(
         const WorldHandle worldHandle,
         IContactCallbacks* callbacks)
     {
@@ -4506,7 +4602,7 @@ namespace Jolt
         return world && world->SetContactCallbacks(callbacks);
     }
 
-    bool System::SetBodyPairCollider(
+    bool RuntimeImplementation::SetBodyPairCollider(
         const WorldHandle worldHandle,
         IBodyPairCollider* collider)
     {
@@ -4515,7 +4611,7 @@ namespace Jolt
         return world && world->SetBodyPairCollider(collider);
     }
 
-    bool System::SetSimulationShapeFilter(
+    bool RuntimeImplementation::SetSimulationShapeFilter(
         const WorldHandle worldHandle,
         ISimulationShapeFilter* filter)
     {
@@ -4524,7 +4620,7 @@ namespace Jolt
         return world && world->SetSimulationShapeFilter(filter);
     }
 
-    bool System::SetSoftBodyContactCallbacks(
+    bool RuntimeImplementation::SetSoftBodyContactCallbacks(
         const WorldHandle worldHandle,
         ISoftBodyContactCallbacks* callbacks)
     {
@@ -4533,7 +4629,7 @@ namespace Jolt
         return world && world->SetSoftBodyContactCallbacks(callbacks);
     }
 
-    bool System::AddStepListener(
+    bool RuntimeImplementation::AddStepListener(
         const WorldHandle worldHandle,
         IStepListener* listener)
     {
@@ -4542,7 +4638,7 @@ namespace Jolt
         return world && world->AddStepListener(listener);
     }
 
-    bool System::RemoveStepListener(
+    bool RuntimeImplementation::RemoveStepListener(
         const WorldHandle worldHandle,
         IStepListener* listener)
     {
@@ -4551,7 +4647,7 @@ namespace Jolt
         return world && world->RemoveStepListener(listener);
     }
 
-    HairHandle System::CreateHair(
+    HairHandle RuntimeImplementation::CreateHair(
         const WorldHandle worldHandle,
         const HairConfiguration& configuration)
     {
@@ -4565,7 +4661,7 @@ namespace Jolt
         return world->CreateHair(configuration);
     }
 
-    bool System::DestroyHair(
+    bool RuntimeImplementation::DestroyHair(
         const WorldHandle worldHandle,
         const HairHandle hairHandle)
     {
@@ -4574,7 +4670,7 @@ namespace Jolt
         return world && world->DestroyHair(hairHandle);
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle,
         const HairHandle hairHandle) const
     {
@@ -4583,7 +4679,7 @@ namespace Jolt
         return world && world->IsValid(hairHandle);
     }
 
-    bool System::SetHairTransform(
+    bool RuntimeImplementation::SetHairTransform(
         const WorldHandle worldHandle,
         const HairHandle hairHandle,
         const WorldTransform& worldTransform,
@@ -4594,7 +4690,7 @@ namespace Jolt
         return world && world->SetHairTransform(hairHandle, worldTransform, teleport);
     }
 
-    bool System::SetHairScalpToHeadTransform(
+    bool RuntimeImplementation::SetHairScalpToHeadTransform(
         const WorldHandle worldHandle,
         const HairHandle hairHandle,
         const AZ::Transform& scalpToHeadTransform)
@@ -4604,7 +4700,7 @@ namespace Jolt
         return world && world->SetHairScalpToHeadTransform(hairHandle, scalpToHeadTransform);
     }
 
-    bool System::UpdateHair(
+    bool RuntimeImplementation::UpdateHair(
         const WorldHandle worldHandle,
         const HairHandle hairHandle,
         const float deltaTime,
@@ -4620,7 +4716,7 @@ namespace Jolt
             jointModelTransforms);
     }
 
-    bool System::EnableHairAutoUpdate(
+    bool RuntimeImplementation::EnableHairAutoUpdate(
         const WorldHandle worldHandle,
         const HairHandle hairHandle,
         const AZ::Transform& jointToHair,
@@ -4631,7 +4727,7 @@ namespace Jolt
         return world && world->EnableHairAutoUpdate(hairHandle, jointToHair, jointModelTransforms);
     }
 
-    bool System::DisableHairAutoUpdate(
+    bool RuntimeImplementation::DisableHairAutoUpdate(
         const WorldHandle worldHandle,
         const HairHandle hairHandle)
     {
@@ -4640,7 +4736,7 @@ namespace Jolt
         return world && world->DisableHairAutoUpdate(hairHandle);
     }
 
-    bool System::GetHairState(
+    bool RuntimeImplementation::GetHairState(
         const WorldHandle worldHandle,
         const HairHandle hairHandle,
         HairState& state) const
@@ -4650,7 +4746,7 @@ namespace Jolt
         return world && world->GetHairState(hairHandle, state);
     }
 
-    bool System::GetHairReadback(
+    bool RuntimeImplementation::GetHairReadback(
         const WorldHandle worldHandle,
         const HairHandle hairHandle,
         const HairReadbackBuffers& buffers,
@@ -4661,7 +4757,7 @@ namespace Jolt
         return world && world->GetHairReadback(hairHandle, buffers, result);
     }
 
-    QueryResult System::GetHairVertexStates(
+    QueryResult RuntimeImplementation::GetHairVertexStates(
         const WorldHandle worldHandle,
         const HairHandle hairHandle,
         const AZStd::span<HairVertexState> states) const
@@ -4676,7 +4772,7 @@ namespace Jolt
         return world->GetHairVertexStates(hairHandle, states);
     }
 
-    QueryResult System::GetHairRenderPositions(
+    QueryResult RuntimeImplementation::GetHairRenderPositions(
         const WorldHandle worldHandle,
         const HairHandle hairHandle,
         const AZStd::span<AZ::Vector3> positions) const
@@ -4691,7 +4787,7 @@ namespace Jolt
         return world->GetHairRenderPositions(hairHandle, positions);
     }
 
-    QueryResult System::GetHairScalpPositions(
+    QueryResult RuntimeImplementation::GetHairScalpPositions(
         const WorldHandle worldHandle,
         const HairHandle hairHandle,
         const AZStd::span<AZ::Vector3> positions) const
@@ -4706,7 +4802,7 @@ namespace Jolt
         return world->GetHairScalpPositions(hairHandle, positions);
     }
 
-    QueryResult System::GetHairGridCellStates(
+    QueryResult RuntimeImplementation::GetHairGridCellStates(
         const WorldHandle worldHandle,
         const HairHandle hairHandle,
         const AZStd::span<HairGridCellState> states) const
@@ -4721,7 +4817,7 @@ namespace Jolt
         return world->GetHairGridCellStates(hairHandle, states);
     }
 
-    ShapeHandle System::CreateShape(
+    ShapeHandle RuntimeImplementation::CreateShape(
         const WorldHandle worldHandle,
         const ShapeConfiguration& configuration)
     {
@@ -4735,7 +4831,7 @@ namespace Jolt
         return {};
     }
 
-    ShapeHandle System::CreateShape(
+    ShapeHandle RuntimeImplementation::CreateShape(
         const WorldHandle worldHandle,
         const CompoundShapeConfiguration& configuration)
     {
@@ -4749,7 +4845,7 @@ namespace Jolt
         return {};
     }
 
-    ShapeHandle System::CreateShape(
+    ShapeHandle RuntimeImplementation::CreateShape(
         const WorldHandle worldHandle,
         const DecoratedShapeConfiguration& configuration)
     {
@@ -4763,7 +4859,7 @@ namespace Jolt
         return {};
     }
 
-    ShapeHandle System::CreateShape(
+    ShapeHandle RuntimeImplementation::CreateShape(
         const WorldHandle worldHandle,
         const CookedShapeHandle cookedShapeHandle)
     {
@@ -4777,7 +4873,7 @@ namespace Jolt
         return {};
     }
 
-    ShapeHandle System::CloneShape(
+    ShapeHandle RuntimeImplementation::CloneShape(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle)
     {
@@ -4791,7 +4887,7 @@ namespace Jolt
         return {};
     }
 
-    ShapeHandle System::ScaleShape(
+    ShapeHandle RuntimeImplementation::ScaleShape(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const AZ::Vector3& scale)
@@ -4806,7 +4902,7 @@ namespace Jolt
         return world->ScaleShape(shapeHandle, scale);
     }
 
-    bool System::DestroyShape(
+    bool RuntimeImplementation::DestroyShape(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle)
     {
@@ -4815,7 +4911,7 @@ namespace Jolt
         return world && world->DestroyShape(shapeHandle);
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle) const
     {
@@ -4824,7 +4920,7 @@ namespace Jolt
         return world && world->IsValid(shapeHandle);
     }
 
-    bool System::GetShapeStats(
+    bool RuntimeImplementation::GetShapeStats(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         ShapeStats& stats) const
@@ -4834,7 +4930,7 @@ namespace Jolt
         return world && world->GetShapeStats(shapeHandle, stats);
     }
 
-    bool System::GetShapeStatsRecursive(
+    bool RuntimeImplementation::GetShapeStatsRecursive(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         ShapeStats& stats) const
@@ -4844,7 +4940,7 @@ namespace Jolt
         return world && world->GetShapeStatsRecursive(shapeHandle, stats);
     }
 
-    bool System::GetShapeProperties(
+    bool RuntimeImplementation::GetShapeProperties(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         ShapeProperties& properties) const
@@ -4854,7 +4950,7 @@ namespace Jolt
         return world && world->GetShapeProperties(shapeHandle, properties);
     }
 
-    bool System::GetShapeSubmergedVolume(
+    bool RuntimeImplementation::GetShapeSubmergedVolume(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const SubmergedVolumeRequest& request,
@@ -4865,7 +4961,7 @@ namespace Jolt
         return world && world->GetShapeSubmergedVolume(shapeHandle, request, result);
     }
 
-    bool System::GetPrimitiveShapeState(
+    bool RuntimeImplementation::GetPrimitiveShapeState(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         PrimitiveShapeState& state) const
@@ -4875,7 +4971,7 @@ namespace Jolt
         return world && world->GetPrimitiveShapeState(shapeHandle, state);
     }
 
-    bool System::GetConvexHullState(
+    bool RuntimeImplementation::GetConvexHullState(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         ConvexHullState& state) const
@@ -4885,7 +4981,7 @@ namespace Jolt
         return world && world->GetConvexHullState(shapeHandle, state);
     }
 
-    BufferResult System::GetConvexHullPointsRelativeToCenterOfMass(
+    BufferResult RuntimeImplementation::GetConvexHullPointsRelativeToCenterOfMass(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const AZStd::span<AZ::Vector3> points) const
@@ -4899,7 +4995,7 @@ namespace Jolt
         return {};
     }
 
-    BufferResult System::GetConvexHullPlanesRelativeToCenterOfMass(
+    BufferResult RuntimeImplementation::GetConvexHullPlanesRelativeToCenterOfMass(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const AZStd::span<AZ::Plane> planes) const
@@ -4913,7 +5009,7 @@ namespace Jolt
         return {};
     }
 
-    BufferResult System::GetConvexHullFaceVertexIndices(
+    BufferResult RuntimeImplementation::GetConvexHullFaceVertexIndices(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const AZ::u32 faceIndex,
@@ -4931,7 +5027,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::GetShapeMaterial(
+    bool RuntimeImplementation::GetShapeMaterial(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const SubShapeId subShapeId,
@@ -4946,7 +5042,7 @@ namespace Jolt
                 materialHandle);
     }
 
-    bool System::GetShapeSurfaceNormal(
+    bool RuntimeImplementation::GetShapeSurfaceNormal(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const SubShapeId subShapeId,
@@ -4963,7 +5059,7 @@ namespace Jolt
                 normal);
     }
 
-    bool System::GetShapeUserData(
+    bool RuntimeImplementation::GetShapeUserData(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         AZ::u64& userData) const
@@ -4973,7 +5069,7 @@ namespace Jolt
         return world && world->GetShapeUserData(shapeHandle, userData);
     }
 
-    bool System::GetShapeSubShapeUserData(
+    bool RuntimeImplementation::GetShapeSubShapeUserData(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const SubShapeId subShapeId,
@@ -4988,7 +5084,7 @@ namespace Jolt
                 userData);
     }
 
-    bool System::GetDirectChildShape(
+    bool RuntimeImplementation::GetDirectChildShape(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const SubShapeId subShapeId,
@@ -5005,7 +5101,7 @@ namespace Jolt
                 transform);
     }
 
-    bool System::GetDecoratedShapeConfiguration(
+    bool RuntimeImplementation::GetDecoratedShapeConfiguration(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         DecoratedShapeConfiguration& configuration) const
@@ -5018,7 +5114,7 @@ namespace Jolt
                 configuration);
     }
 
-    BufferResult System::GetMeshMaterials(
+    BufferResult RuntimeImplementation::GetMeshMaterials(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const AZStd::span<MaterialHandle> materialHandles) const
@@ -5032,7 +5128,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::GetMeshTriangleMaterialIndex(
+    bool RuntimeImplementation::GetMeshTriangleMaterialIndex(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const SubShapeId subShapeId,
@@ -5047,7 +5143,7 @@ namespace Jolt
                 materialIndex);
     }
 
-    bool System::GetMeshTriangleUserData(
+    bool RuntimeImplementation::GetMeshTriangleUserData(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const SubShapeId subShapeId,
@@ -5062,7 +5158,7 @@ namespace Jolt
                 userData);
     }
 
-    bool System::IsShapeScaleValid(
+    bool RuntimeImplementation::IsShapeScaleValid(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const AZ::Vector3& scale) const
@@ -5072,7 +5168,7 @@ namespace Jolt
         return world && world->IsShapeScaleValid(shapeHandle, scale);
     }
 
-    bool System::MakeShapeScaleValid(
+    bool RuntimeImplementation::MakeShapeScaleValid(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const AZ::Vector3& scale,
@@ -5087,7 +5183,7 @@ namespace Jolt
                 validScale);
     }
 
-    bool System::GetHeightfieldState(
+    bool RuntimeImplementation::GetHeightfieldState(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         HeightfieldState& state) const
@@ -5097,7 +5193,7 @@ namespace Jolt
         return world && world->GetHeightfieldState(shapeHandle, state);
     }
 
-    bool System::GetHeightfieldPosition(
+    bool RuntimeImplementation::GetHeightfieldPosition(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const AZ::u32 column,
@@ -5114,7 +5210,7 @@ namespace Jolt
                 position);
     }
 
-    bool System::ProjectOntoHeightfield(
+    bool RuntimeImplementation::ProjectOntoHeightfield(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const AZ::Vector3& localPosition,
@@ -5131,7 +5227,7 @@ namespace Jolt
                 subShapeId);
     }
 
-    bool System::IsHeightfieldNoCollision(
+    bool RuntimeImplementation::IsHeightfieldNoCollision(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const AZ::u32 column,
@@ -5148,7 +5244,7 @@ namespace Jolt
                 noCollision);
     }
 
-    QueryResult System::GetHeightfieldHeights(
+    QueryResult RuntimeImplementation::GetHeightfieldHeights(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const HeightfieldRegion& region,
@@ -5163,7 +5259,7 @@ namespace Jolt
         return {};
     }
 
-    QueryResult System::GetHeightfieldMaterialIndices(
+    QueryResult RuntimeImplementation::GetHeightfieldMaterialIndices(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const HeightfieldRegion& region,
@@ -5178,7 +5274,7 @@ namespace Jolt
         return {};
     }
 
-    QueryResult System::GetHeightfieldMaterials(
+    QueryResult RuntimeImplementation::GetHeightfieldMaterials(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const AZStd::span<MaterialHandle> materialHandles) const
@@ -5192,7 +5288,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::GetHeightfieldSubShapeCoordinates(
+    bool RuntimeImplementation::GetHeightfieldSubShapeCoordinates(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const SubShapeId subShapeId,
@@ -5207,7 +5303,7 @@ namespace Jolt
                 coordinates);
     }
 
-    bool System::UpdateHeightfieldHeights(
+    bool RuntimeImplementation::UpdateHeightfieldHeights(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const HeightfieldRegion& region,
@@ -5224,7 +5320,7 @@ namespace Jolt
                 configuration);
     }
 
-    bool System::UpdateHeightfieldMaterials(
+    bool RuntimeImplementation::UpdateHeightfieldMaterials(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const HeightfieldRegion& region,
@@ -5243,7 +5339,7 @@ namespace Jolt
                 activateBodies);
     }
 
-    bool System::AddMutableCompoundChild(
+    bool RuntimeImplementation::AddMutableCompoundChild(
         const WorldHandle worldHandle,
         const ShapeHandle compoundShapeHandle,
         const CompoundChildConfiguration& child,
@@ -5262,7 +5358,7 @@ namespace Jolt
                 updateConfiguration);
     }
 
-    bool System::RemoveMutableCompoundChild(
+    bool RuntimeImplementation::RemoveMutableCompoundChild(
         const WorldHandle worldHandle,
         const ShapeHandle compoundShapeHandle,
         const AZ::u32 childIndex,
@@ -5277,7 +5373,7 @@ namespace Jolt
                 updateConfiguration);
     }
 
-    bool System::UpdateMutableCompoundChild(
+    bool RuntimeImplementation::UpdateMutableCompoundChild(
         const WorldHandle worldHandle,
         const ShapeHandle compoundShapeHandle,
         const AZ::u32 childIndex,
@@ -5294,7 +5390,7 @@ namespace Jolt
                 updateConfiguration);
     }
 
-    bool System::UpdateMutableCompoundChildTransforms(
+    bool RuntimeImplementation::UpdateMutableCompoundChildTransforms(
         const WorldHandle worldHandle,
         const ShapeHandle compoundShapeHandle,
         const AZ::u32 startIndex,
@@ -5313,7 +5409,7 @@ namespace Jolt
                 updateConfiguration);
     }
 
-    bool System::AdjustMutableCompoundCenterOfMass(
+    bool RuntimeImplementation::AdjustMutableCompoundCenterOfMass(
         const WorldHandle worldHandle,
         const ShapeHandle compoundShapeHandle,
         const bool updateMassProperties,
@@ -5328,7 +5424,7 @@ namespace Jolt
                 activateBodies);
     }
 
-    bool System::GetCompoundChildCount(
+    bool RuntimeImplementation::GetCompoundChildCount(
         const WorldHandle worldHandle,
         const ShapeHandle compoundShapeHandle,
         AZ::u32& childCount) const
@@ -5338,7 +5434,7 @@ namespace Jolt
         return world && world->GetCompoundChildCount(compoundShapeHandle, childCount);
     }
 
-    bool System::GetCompoundChild(
+    bool RuntimeImplementation::GetCompoundChild(
         const WorldHandle worldHandle,
         const ShapeHandle compoundShapeHandle,
         const AZ::u32 childIndex,
@@ -5353,7 +5449,7 @@ namespace Jolt
                 child);
     }
 
-    bool System::GetCompoundChildIndex(
+    bool RuntimeImplementation::GetCompoundChildIndex(
         const WorldHandle worldHandle,
         const ShapeHandle compoundShapeHandle,
         const SubShapeId subShapeId,
@@ -5368,7 +5464,7 @@ namespace Jolt
                 childIndex);
     }
 
-    BodyHandle System::CreateBody(
+    BodyHandle RuntimeImplementation::CreateBody(
         const WorldHandle worldHandle,
         const BodyConfiguration& configuration)
     {
@@ -5382,7 +5478,7 @@ namespace Jolt
         return {};
     }
 
-    BodyHandle System::CreateBodyWithId(
+    BodyHandle RuntimeImplementation::CreateBodyWithId(
         const WorldHandle worldHandle,
         const BodyId bodyId,
         const BodyConfiguration& configuration)
@@ -5397,7 +5493,7 @@ namespace Jolt
         return {};
     }
 
-    BodyHandle System::CreateSoftBody(
+    BodyHandle RuntimeImplementation::CreateSoftBody(
         const WorldHandle worldHandle,
         const SoftBodyConfiguration& configuration)
     {
@@ -5411,7 +5507,7 @@ namespace Jolt
         return {};
     }
 
-    BodyHandle System::CreateSoftBodyWithId(
+    BodyHandle RuntimeImplementation::CreateSoftBodyWithId(
         const WorldHandle worldHandle,
         const BodyId bodyId,
         const SoftBodyConfiguration& configuration)
@@ -5426,7 +5522,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::AddBodyToSimulation(
+    bool RuntimeImplementation::AddBodyToSimulation(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const bool activate)
@@ -5436,7 +5532,7 @@ namespace Jolt
         return world && world->AddBodyToSimulation(bodyHandle, activate);
     }
 
-    bool System::AddBodiesToSimulation(
+    bool RuntimeImplementation::AddBodiesToSimulation(
         const WorldHandle worldHandle,
         const AZStd::span<const BodyHandle> bodyHandles,
         const bool activate)
@@ -5446,7 +5542,7 @@ namespace Jolt
         return world && world->AddBodiesToSimulation(bodyHandles, activate);
     }
 
-    bool System::RemoveBodyFromSimulation(
+    bool RuntimeImplementation::RemoveBodyFromSimulation(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
@@ -5455,7 +5551,7 @@ namespace Jolt
         return world && world->RemoveBodyFromSimulation(bodyHandle);
     }
 
-    bool System::RemoveBodiesFromSimulation(
+    bool RuntimeImplementation::RemoveBodiesFromSimulation(
         const WorldHandle worldHandle,
         const AZStd::span<const BodyHandle> bodyHandles)
     {
@@ -5464,7 +5560,7 @@ namespace Jolt
         return world && world->RemoveBodiesFromSimulation(bodyHandles);
     }
 
-    bool System::DestroyBody(
+    bool RuntimeImplementation::DestroyBody(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
@@ -5473,7 +5569,7 @@ namespace Jolt
         return world && world->DestroyBody(bodyHandle);
     }
 
-    bool System::DestroyBodies(
+    bool RuntimeImplementation::DestroyBodies(
         const WorldHandle worldHandle,
         const AZStd::span<const BodyHandle> bodyHandles)
     {
@@ -5482,7 +5578,7 @@ namespace Jolt
         return world && world->DestroyBodies(bodyHandles);
     }
 
-    bool System::IsBodyInSimulation(
+    bool RuntimeImplementation::IsBodyInSimulation(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle) const
     {
@@ -5491,7 +5587,7 @@ namespace Jolt
         return world && world->IsBodyInSimulation(bodyHandle);
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle) const
     {
@@ -5500,7 +5596,7 @@ namespace Jolt
         return world && world->IsValid(bodyHandle);
     }
 
-    bool System::SetBodyMoveEventsEnabled(
+    bool RuntimeImplementation::SetBodyMoveEventsEnabled(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const bool enabled)
@@ -5510,7 +5606,7 @@ namespace Jolt
         return world && world->SetBodyMoveEventsEnabled(bodyHandle, enabled);
     }
 
-    RagdollDefinitionHandle System::CreateRagdollDefinition(
+    RagdollDefinitionHandle RuntimeImplementation::CreateRagdollDefinition(
         const WorldHandle worldHandle,
         const RagdollDefinitionConfiguration& configuration)
     {
@@ -5524,7 +5620,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::DestroyRagdollDefinition(
+    bool RuntimeImplementation::DestroyRagdollDefinition(
         const WorldHandle worldHandle,
         const RagdollDefinitionHandle definitionHandle)
     {
@@ -5533,7 +5629,7 @@ namespace Jolt
         return world && world->DestroyRagdollDefinition(definitionHandle);
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle,
         const RagdollDefinitionHandle definitionHandle) const
     {
@@ -5542,7 +5638,7 @@ namespace Jolt
         return world && world->IsValid(definitionHandle);
     }
 
-    QueryResult System::GetRagdollBodyConstraintIndices(
+    QueryResult RuntimeImplementation::GetRagdollBodyConstraintIndices(
         const WorldHandle worldHandle,
         const RagdollDefinitionHandle definitionHandle,
         const AZStd::span<AZ::s32> constraintIndices) const
@@ -5557,7 +5653,7 @@ namespace Jolt
         return {};
     }
 
-    QueryResult System::GetRagdollConstraintBodyPairs(
+    QueryResult RuntimeImplementation::GetRagdollConstraintBodyPairs(
         const WorldHandle worldHandle,
         const RagdollDefinitionHandle definitionHandle,
         const AZStd::span<RagdollConstraintBodyPair> bodyPairs) const
@@ -5572,7 +5668,7 @@ namespace Jolt
         return {};
     }
 
-    RagdollHandle System::CreateRagdoll(
+    RagdollHandle RuntimeImplementation::CreateRagdoll(
         const WorldHandle worldHandle,
         const RagdollConfiguration& configuration)
     {
@@ -5586,7 +5682,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::AddRagdollToSimulation(
+    bool RuntimeImplementation::AddRagdollToSimulation(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const bool activate)
@@ -5596,7 +5692,7 @@ namespace Jolt
         return world && world->AddRagdollToSimulation(ragdollHandle, activate);
     }
 
-    bool System::RemoveRagdollFromSimulation(
+    bool RuntimeImplementation::RemoveRagdollFromSimulation(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle)
     {
@@ -5605,7 +5701,7 @@ namespace Jolt
         return world && world->RemoveRagdollFromSimulation(ragdollHandle);
     }
 
-    bool System::DestroyRagdoll(
+    bool RuntimeImplementation::DestroyRagdoll(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle)
     {
@@ -5614,7 +5710,7 @@ namespace Jolt
         return world && world->DestroyRagdoll(ragdollHandle);
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle) const
     {
@@ -5623,7 +5719,7 @@ namespace Jolt
         return world && world->IsValid(ragdollHandle);
     }
 
-    bool System::IsRagdollInSimulation(
+    bool RuntimeImplementation::IsRagdollInSimulation(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle) const
     {
@@ -5632,7 +5728,7 @@ namespace Jolt
         return world && world->IsRagdollInSimulation(ragdollHandle);
     }
 
-    bool System::GetRagdollState(
+    bool RuntimeImplementation::GetRagdollState(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         RagdollState& state) const
@@ -5642,7 +5738,7 @@ namespace Jolt
         return world && world->GetRagdollState(ragdollHandle, state);
     }
 
-    bool System::SetRagdollCollisionGroupId(
+    bool RuntimeImplementation::SetRagdollCollisionGroupId(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const AZ::u32 collisionGroupId)
@@ -5652,7 +5748,7 @@ namespace Jolt
         return world && world->SetRagdollCollisionGroupId(ragdollHandle, collisionGroupId);
     }
 
-    QueryResult System::GetRagdollBodies(
+    QueryResult RuntimeImplementation::GetRagdollBodies(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const AZStd::span<BodyHandle> bodyHandles) const
@@ -5667,7 +5763,7 @@ namespace Jolt
         return {};
     }
 
-    QueryResult System::GetRagdollConstraints(
+    QueryResult RuntimeImplementation::GetRagdollConstraints(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const AZStd::span<ConstraintHandle> constraintHandles) const
@@ -5682,7 +5778,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::ActivateRagdoll(
+    bool RuntimeImplementation::ActivateRagdoll(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle)
     {
@@ -5691,7 +5787,7 @@ namespace Jolt
         return world && world->ActivateRagdoll(ragdollHandle);
     }
 
-    bool System::SetRagdollPose(
+    bool RuntimeImplementation::SetRagdollPose(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const WorldPosition rootPosition,
@@ -5702,7 +5798,7 @@ namespace Jolt
         return world && world->SetRagdollPose(ragdollHandle, rootPosition, modelTransforms);
     }
 
-    QueryResult System::GetRagdollPose(
+    QueryResult RuntimeImplementation::GetRagdollPose(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         WorldPosition& rootPosition,
@@ -5718,7 +5814,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::DriveRagdollKinematically(
+    bool RuntimeImplementation::DriveRagdollKinematically(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const WorldPosition rootPosition,
@@ -5735,7 +5831,7 @@ namespace Jolt
                 deltaTime);
     }
 
-    bool System::DriveRagdollMotors(
+    bool RuntimeImplementation::DriveRagdollMotors(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const AZStd::span<const AZ::Transform> modelTransforms)
@@ -5745,7 +5841,7 @@ namespace Jolt
         return world && world->DriveRagdollMotors(ragdollHandle, modelTransforms);
     }
 
-    bool System::DriveRagdollMotors(
+    bool RuntimeImplementation::DriveRagdollMotors(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const AZStd::span<const AZ::Transform> previousModelTransforms,
@@ -5762,7 +5858,7 @@ namespace Jolt
                 deltaTime);
     }
 
-    bool System::ResetRagdollWarmStart(
+    bool RuntimeImplementation::ResetRagdollWarmStart(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle)
     {
@@ -5771,7 +5867,7 @@ namespace Jolt
         return world && world->ResetRagdollWarmStart(ragdollHandle);
     }
 
-    bool System::SetRagdollVelocity(
+    bool RuntimeImplementation::SetRagdollVelocity(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const AZ::Vector3 linearVelocity,
@@ -5786,7 +5882,7 @@ namespace Jolt
                 angularVelocity);
     }
 
-    bool System::SetRagdollLinearVelocity(
+    bool RuntimeImplementation::SetRagdollLinearVelocity(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const AZ::Vector3 linearVelocity)
@@ -5796,7 +5892,7 @@ namespace Jolt
         return world && world->SetRagdollLinearVelocity(ragdollHandle, linearVelocity);
     }
 
-    bool System::AddRagdollLinearVelocity(
+    bool RuntimeImplementation::AddRagdollLinearVelocity(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const AZ::Vector3 linearVelocity)
@@ -5806,7 +5902,7 @@ namespace Jolt
         return world && world->AddRagdollLinearVelocity(ragdollHandle, linearVelocity);
     }
 
-    bool System::AddRagdollImpulse(
+    bool RuntimeImplementation::AddRagdollImpulse(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const AZ::Vector3 impulse)
@@ -5816,7 +5912,7 @@ namespace Jolt
         return world && world->AddRagdollImpulse(ragdollHandle, impulse);
     }
 
-    ConstraintHandle System::CreateConstraint(
+    ConstraintHandle RuntimeImplementation::CreateConstraint(
         const WorldHandle worldHandle,
         const ConstraintConfiguration& configuration)
     {
@@ -5830,7 +5926,7 @@ namespace Jolt
         return world->CreateConstraint(configuration);
     }
 
-    bool System::AddConstraintToSimulation(
+    bool RuntimeImplementation::AddConstraintToSimulation(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle)
     {
@@ -5839,7 +5935,7 @@ namespace Jolt
         return world && world->AddConstraintToSimulation(constraintHandle);
     }
 
-    bool System::AddConstraintsToSimulation(
+    bool RuntimeImplementation::AddConstraintsToSimulation(
         const WorldHandle worldHandle,
         const AZStd::span<const ConstraintHandle> constraintHandles)
     {
@@ -5848,7 +5944,7 @@ namespace Jolt
         return world && world->AddConstraintsToSimulation(constraintHandles);
     }
 
-    bool System::RemoveConstraintFromSimulation(
+    bool RuntimeImplementation::RemoveConstraintFromSimulation(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle)
     {
@@ -5857,7 +5953,7 @@ namespace Jolt
         return world && world->RemoveConstraintFromSimulation(constraintHandle);
     }
 
-    bool System::RemoveConstraintsFromSimulation(
+    bool RuntimeImplementation::RemoveConstraintsFromSimulation(
         const WorldHandle worldHandle,
         const AZStd::span<const ConstraintHandle> constraintHandles)
     {
@@ -5866,7 +5962,7 @@ namespace Jolt
         return world && world->RemoveConstraintsFromSimulation(constraintHandles);
     }
 
-    bool System::DestroyConstraint(
+    bool RuntimeImplementation::DestroyConstraint(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle)
     {
@@ -5875,7 +5971,7 @@ namespace Jolt
         return world && world->DestroyConstraint(constraintHandle);
     }
 
-    bool System::DestroyConstraints(
+    bool RuntimeImplementation::DestroyConstraints(
         const WorldHandle worldHandle,
         const AZStd::span<const ConstraintHandle> constraintHandles)
     {
@@ -5884,7 +5980,7 @@ namespace Jolt
         return world && world->DestroyConstraints(constraintHandles);
     }
 
-    bool System::IsConstraintInSimulation(
+    bool RuntimeImplementation::IsConstraintInSimulation(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle) const
     {
@@ -5893,7 +5989,7 @@ namespace Jolt
         return world && world->IsConstraintInSimulation(constraintHandle);
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle) const
     {
@@ -5902,7 +5998,7 @@ namespace Jolt
         return world && world->IsValid(constraintHandle);
     }
 
-    bool System::SetConstraintEnabled(
+    bool RuntimeImplementation::SetConstraintEnabled(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const bool enabled)
@@ -5912,7 +6008,7 @@ namespace Jolt
         return world && world->SetConstraintEnabled(constraintHandle, enabled);
     }
 
-    bool System::GetConstraintState(
+    bool RuntimeImplementation::GetConstraintState(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         ConstraintState& state) const
@@ -5922,7 +6018,7 @@ namespace Jolt
         return world && world->GetConstraintState(constraintHandle, state);
     }
 
-    bool System::GetConstraintConfiguration(
+    bool RuntimeImplementation::GetConstraintConfiguration(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         ConstraintConfiguration& configuration) const
@@ -5932,7 +6028,7 @@ namespace Jolt
         return world && world->GetConstraintConfiguration(constraintHandle, configuration);
     }
 
-    bool System::GetConstraintUserData(
+    bool RuntimeImplementation::GetConstraintUserData(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         AZ::u64& userData) const
@@ -5942,7 +6038,7 @@ namespace Jolt
         return world && world->GetConstraintUserData(constraintHandle, userData);
     }
 
-    bool System::SetConstraintUserData(
+    bool RuntimeImplementation::SetConstraintUserData(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const AZ::u64 userData)
@@ -5952,7 +6048,7 @@ namespace Jolt
         return world && world->SetConstraintUserData(constraintHandle, userData);
     }
 
-    bool System::GetConstraintDebugDrawSize(
+    bool RuntimeImplementation::GetConstraintDebugDrawSize(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         float& debugDrawSize) const
@@ -5962,7 +6058,7 @@ namespace Jolt
         return world && world->GetConstraintDebugDrawSize(constraintHandle, debugDrawSize);
     }
 
-    bool System::SetConstraintDebugDrawSize(
+    bool RuntimeImplementation::SetConstraintDebugDrawSize(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const float debugDrawSize)
@@ -5972,7 +6068,7 @@ namespace Jolt
         return world && world->SetConstraintDebugDrawSize(constraintHandle, debugDrawSize);
     }
 
-    bool System::GetConstraintMeasurements(
+    bool RuntimeImplementation::GetConstraintMeasurements(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         ConstraintMeasurements& measurements) const
@@ -5982,7 +6078,7 @@ namespace Jolt
         return world && world->GetConstraintMeasurements(constraintHandle, measurements);
     }
 
-    bool System::GetCustomConstraintInfo(
+    bool RuntimeImplementation::GetCustomConstraintInfo(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         CustomConstraintInfo& info) const
@@ -5992,7 +6088,7 @@ namespace Jolt
         return world && world->GetCustomConstraintInfo(constraintHandle, info);
     }
 
-    BufferResult System::GetCustomConstraintImpulses(
+    BufferResult RuntimeImplementation::GetCustomConstraintImpulses(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const AZStd::span<float> impulses) const
@@ -6007,7 +6103,7 @@ namespace Jolt
         return world->GetCustomConstraintImpulses(constraintHandle, impulses);
     }
 
-    BufferResult System::GetCustomConstraintState(
+    BufferResult RuntimeImplementation::GetCustomConstraintState(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const AZStd::span<AZ::u8> state) const
@@ -6022,7 +6118,7 @@ namespace Jolt
         return world->GetCustomConstraintState(constraintHandle, state);
     }
 
-    bool System::SetCustomConstraintState(
+    bool RuntimeImplementation::SetCustomConstraintState(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const AZStd::span<const AZ::u8> state)
@@ -6032,7 +6128,7 @@ namespace Jolt
         return world && world->SetCustomConstraintState(constraintHandle, state);
     }
 
-    bool System::ResetConstraintWarmStart(
+    bool RuntimeImplementation::ResetConstraintWarmStart(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle)
     {
@@ -6041,7 +6137,7 @@ namespace Jolt
         return world && world->ResetConstraintWarmStart(constraintHandle);
     }
 
-    bool System::UpdateConstraintSolverConfiguration(
+    bool RuntimeImplementation::UpdateConstraintSolverConfiguration(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const ConstraintSolverConfiguration& configuration)
@@ -6054,7 +6150,7 @@ namespace Jolt
                 configuration);
     }
 
-    bool System::UpdateConeLimit(
+    bool RuntimeImplementation::UpdateConeLimit(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const float halfConeAngle)
@@ -6064,7 +6160,7 @@ namespace Jolt
         return world && world->UpdateConeLimit(constraintHandle, halfConeAngle);
     }
 
-    bool System::UpdateDistanceLimits(
+    bool RuntimeImplementation::UpdateDistanceLimits(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const float minimumDistance,
@@ -6081,7 +6177,7 @@ namespace Jolt
                 spring);
     }
 
-    bool System::UpdateHingeLimits(
+    bool RuntimeImplementation::UpdateHingeLimits(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const float minimumAngle,
@@ -6100,7 +6196,7 @@ namespace Jolt
                 maximumFrictionTorque);
     }
 
-    bool System::UpdateHingeMotor(
+    bool RuntimeImplementation::UpdateHingeMotor(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const MotorConfiguration& motor,
@@ -6117,7 +6213,7 @@ namespace Jolt
                 targetAngularVelocity);
     }
 
-    bool System::SetHingeTargetOrientation(
+    bool RuntimeImplementation::SetHingeTargetOrientation(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const AZ::Quaternion& targetOrientation)
@@ -6130,7 +6226,7 @@ namespace Jolt
                 targetOrientation);
     }
 
-    bool System::UpdatePathMotor(
+    bool RuntimeImplementation::UpdatePathMotor(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const MotorConfiguration& motor,
@@ -6147,7 +6243,7 @@ namespace Jolt
                 targetVelocity);
     }
 
-    bool System::UpdatePathProperties(
+    bool RuntimeImplementation::UpdatePathProperties(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const PathHandle pathHandle,
@@ -6164,7 +6260,7 @@ namespace Jolt
                 maximumFrictionForce);
     }
 
-    bool System::UpdatePointAnchors(
+    bool RuntimeImplementation::UpdatePointAnchors(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const ConstraintSpace space,
@@ -6181,7 +6277,7 @@ namespace Jolt
                 secondPoint);
     }
 
-    bool System::UpdatePulleyLimits(
+    bool RuntimeImplementation::UpdatePulleyLimits(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const float minimumLength,
@@ -6196,7 +6292,7 @@ namespace Jolt
                 maximumLength);
     }
 
-    bool System::UpdateSixDofLimits(
+    bool RuntimeImplementation::UpdateSixDofLimits(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const AZStd::span<const SixDofAxisLimitConfiguration> axes)
@@ -6206,7 +6302,7 @@ namespace Jolt
         return world && world->UpdateSixDofLimits(constraintHandle, axes);
     }
 
-    bool System::UpdateSixDofMotors(
+    bool RuntimeImplementation::UpdateSixDofMotors(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const AZStd::span<const MotorConfiguration> motors,
@@ -6227,7 +6323,7 @@ namespace Jolt
                 targetVelocity);
     }
 
-    bool System::UpdateSliderMotor(
+    bool RuntimeImplementation::UpdateSliderMotor(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const MotorConfiguration& motor,
@@ -6244,7 +6340,7 @@ namespace Jolt
                 targetVelocity);
     }
 
-    bool System::UpdateSliderLimits(
+    bool RuntimeImplementation::UpdateSliderLimits(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const float minimumPosition,
@@ -6263,7 +6359,7 @@ namespace Jolt
                 maximumFrictionForce);
     }
 
-    bool System::UpdateSwingTwistMotors(
+    bool RuntimeImplementation::UpdateSwingTwistMotors(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const MotorConfiguration& swingMotor,
@@ -6282,7 +6378,7 @@ namespace Jolt
                 targetOrientation);
     }
 
-    bool System::UpdateSwingTwistLimits(
+    bool RuntimeImplementation::UpdateSwingTwistLimits(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle,
         const float normalHalfConeAngle,
@@ -6303,7 +6399,7 @@ namespace Jolt
                 maximumFrictionTorque);
     }
 
-    bool System::GetBodyState(
+    bool RuntimeImplementation::GetBodyState(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         BodyState& state) const
@@ -6313,7 +6409,7 @@ namespace Jolt
         return world && world->GetBodyState(bodyHandle, state);
     }
 
-    bool System::GetBodyCenterOfMassTransform(
+    bool RuntimeImplementation::GetBodyCenterOfMassTransform(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         WorldTransform& transform) const
@@ -6323,7 +6419,7 @@ namespace Jolt
         return world && world->GetBodyCenterOfMassTransform(bodyHandle, transform);
     }
 
-    bool System::GetBodyConfiguration(
+    bool RuntimeImplementation::GetBodyConfiguration(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         BodyConfiguration& configuration) const
@@ -6333,7 +6429,7 @@ namespace Jolt
         return world && world->GetBodyConfiguration(bodyHandle, configuration);
     }
 
-    bool System::GetBodyUserData(
+    bool RuntimeImplementation::GetBodyUserData(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         AZ::u64& userData) const
@@ -6343,7 +6439,7 @@ namespace Jolt
         return world && world->GetBodyUserData(bodyHandle, userData);
     }
 
-    bool System::SetBodyUserData(
+    bool RuntimeImplementation::SetBodyUserData(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::u64 userData)
@@ -6353,7 +6449,7 @@ namespace Jolt
         return world && world->SetBodyUserData(bodyHandle, userData);
     }
 
-    bool System::GetBodyRuntimeConfiguration(
+    bool RuntimeImplementation::GetBodyRuntimeConfiguration(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         BodyRuntimeConfiguration& configuration) const
@@ -6363,7 +6459,7 @@ namespace Jolt
         return world && world->GetBodyRuntimeConfiguration(bodyHandle, configuration);
     }
 
-    bool System::GetBodySimulationStatistics(
+    bool RuntimeImplementation::GetBodySimulationStatistics(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         BodySimulationStatistics& statistics) const
@@ -6373,7 +6469,7 @@ namespace Jolt
         return world && world->GetBodySimulationStatistics(bodyHandle, statistics);
     }
 
-    bool System::ApplyBodyConfiguration(
+    bool RuntimeImplementation::ApplyBodyConfiguration(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const BodyConfiguration& configuration)
@@ -6383,7 +6479,7 @@ namespace Jolt
         return world && world->ApplyBodyConfiguration(bodyHandle, configuration);
     }
 
-    QueryResult System::GetSoftBodyVertices(
+    QueryResult RuntimeImplementation::GetSoftBodyVertices(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         AZStd::span<SoftBodyVertex> vertices) const
@@ -6397,7 +6493,7 @@ namespace Jolt
         return {};
     }
 
-    QueryResult System::GetSoftBodyFaces(
+    QueryResult RuntimeImplementation::GetSoftBodyFaces(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         AZStd::span<SoftBodyFace> faces) const
@@ -6411,7 +6507,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::GetSoftBodyLocalBounds(
+    bool RuntimeImplementation::GetSoftBodyLocalBounds(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         AZ::Aabb& bounds) const
@@ -6421,7 +6517,7 @@ namespace Jolt
         return world && world->GetSoftBodyLocalBounds(bodyHandle, bounds);
     }
 
-    QueryResult System::GetSoftBodyMaterials(
+    QueryResult RuntimeImplementation::GetSoftBodyMaterials(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         AZStd::span<MaterialHandle> materials) const
@@ -6435,7 +6531,7 @@ namespace Jolt
         return {};
     }
 
-    QueryResult System::GetSoftBodyRodStates(
+    QueryResult RuntimeImplementation::GetSoftBodyRodStates(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         AZStd::span<SoftBodyRodState> rods) const
@@ -6449,7 +6545,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::GetSoftBodyRuntimeConfiguration(
+    bool RuntimeImplementation::GetSoftBodyRuntimeConfiguration(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         SoftBodyRuntimeConfiguration& configuration) const
@@ -6459,7 +6555,7 @@ namespace Jolt
         return world && world->GetSoftBodyRuntimeConfiguration(bodyHandle, configuration);
     }
 
-    bool System::ApplySoftBodyConfiguration(
+    bool RuntimeImplementation::ApplySoftBodyConfiguration(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const SoftBodyConfiguration& configuration)
@@ -6469,7 +6565,7 @@ namespace Jolt
         return world && world->ApplySoftBodyConfiguration(bodyHandle, configuration);
     }
 
-    bool System::GetSoftBodyVolume(
+    bool RuntimeImplementation::GetSoftBodyVolume(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         float& volume) const
@@ -6479,7 +6575,7 @@ namespace Jolt
         return world && world->GetSoftBodyVolume(bodyHandle, volume);
     }
 
-    bool System::RecalculateSoftBodyMassProperties(
+    bool RuntimeImplementation::RecalculateSoftBodyMassProperties(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const bool activate)
@@ -6489,7 +6585,7 @@ namespace Jolt
         return world && world->RecalculateSoftBodyMassProperties(bodyHandle, activate);
     }
 
-    bool System::SkinSoftBody(
+    bool RuntimeImplementation::SkinSoftBody(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZStd::span<const AZ::Transform> jointTransformsRelativeToCenterOfMass,
@@ -6504,7 +6600,7 @@ namespace Jolt
                 hardSkinAll);
     }
 
-    bool System::UpdateSoftBodyManually(
+    bool RuntimeImplementation::UpdateSoftBodyManually(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const float deltaTime)
@@ -6514,7 +6610,7 @@ namespace Jolt
         return world && world->UpdateSoftBodyManually(bodyHandle, deltaTime);
     }
 
-    bool System::UpdateSoftBodyRuntimeConfiguration(
+    bool RuntimeImplementation::UpdateSoftBodyRuntimeConfiguration(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const SoftBodyRuntimeConfiguration& configuration)
@@ -6524,7 +6620,7 @@ namespace Jolt
         return world && world->UpdateSoftBodyRuntimeConfiguration(bodyHandle, configuration);
     }
 
-    bool System::SetSoftBodyVertexInverseMass(
+    bool RuntimeImplementation::SetSoftBodyVertexInverseMass(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::u32 vertexIndex,
@@ -6535,7 +6631,7 @@ namespace Jolt
         return world && world->SetSoftBodyVertexInverseMass(bodyHandle, vertexIndex, inverseMass);
     }
 
-    bool System::SetSoftBodyVertexInverseMasses(
+    bool RuntimeImplementation::SetSoftBodyVertexInverseMasses(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::u32 startVertexIndex,
@@ -6550,7 +6646,7 @@ namespace Jolt
                 inverseMasses);
     }
 
-    bool System::SetSoftBodyVertexVelocity(
+    bool RuntimeImplementation::SetSoftBodyVertexVelocity(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::u32 vertexIndex,
@@ -6561,7 +6657,7 @@ namespace Jolt
         return world && world->SetSoftBodyVertexVelocity(bodyHandle, vertexIndex, velocity);
     }
 
-    bool System::SetSoftBodyVertexVelocities(
+    bool RuntimeImplementation::SetSoftBodyVertexVelocities(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::u32 startVertexIndex,
@@ -6576,7 +6672,7 @@ namespace Jolt
                 velocities);
     }
 
-    VirtualCharacterHandle System::CreateVirtualCharacter(
+    VirtualCharacterHandle RuntimeImplementation::CreateVirtualCharacter(
         const WorldHandle worldHandle,
         const VirtualCharacterConfiguration& configuration)
     {
@@ -6589,7 +6685,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::DestroyVirtualCharacter(
+    bool RuntimeImplementation::DestroyVirtualCharacter(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle)
     {
@@ -6598,7 +6694,7 @@ namespace Jolt
         return world && world->DestroyVirtualCharacter(characterHandle);
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle) const
     {
@@ -6607,7 +6703,7 @@ namespace Jolt
         return world && world->IsValid(characterHandle);
     }
 
-    bool System::GetVirtualCharacterState(
+    bool RuntimeImplementation::GetVirtualCharacterState(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         VirtualCharacterState& state) const
@@ -6617,7 +6713,7 @@ namespace Jolt
         return world && world->GetVirtualCharacterState(characterHandle, state);
     }
 
-    bool System::GetVirtualCharacterUserData(
+    bool RuntimeImplementation::GetVirtualCharacterUserData(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         AZ::u64& userData) const
@@ -6627,7 +6723,7 @@ namespace Jolt
         return world && world->GetVirtualCharacterUserData(characterHandle, userData);
     }
 
-    bool System::SetVirtualCharacterUserData(
+    bool RuntimeImplementation::SetVirtualCharacterUserData(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const AZ::u64 userData)
@@ -6637,7 +6733,7 @@ namespace Jolt
         return world && world->SetVirtualCharacterUserData(characterHandle, userData);
     }
 
-    bool System::GetVirtualCharacterRuntimeConfiguration(
+    bool RuntimeImplementation::GetVirtualCharacterRuntimeConfiguration(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         VirtualCharacterRuntimeConfiguration& configuration) const
@@ -6647,7 +6743,7 @@ namespace Jolt
         return world && world->GetVirtualCharacterRuntimeConfiguration(characterHandle, configuration);
     }
 
-    QueryResult System::CheckVirtualCharacterCollision(
+    QueryResult RuntimeImplementation::CheckVirtualCharacterCollision(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const CharacterCollisionRequest& request,
@@ -6668,7 +6764,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::UpdateVirtualCharacterRuntimeConfiguration(
+    bool RuntimeImplementation::UpdateVirtualCharacterRuntimeConfiguration(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const VirtualCharacterRuntimeConfiguration& configuration)
@@ -6678,7 +6774,7 @@ namespace Jolt
         return world && world->UpdateVirtualCharacterRuntimeConfiguration(characterHandle, configuration);
     }
 
-    bool System::SetVirtualCharacterShape(
+    bool RuntimeImplementation::SetVirtualCharacterShape(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const ShapeHandle shapeHandle,
@@ -6690,7 +6786,7 @@ namespace Jolt
             && world->SetVirtualCharacterShape(characterHandle, shapeHandle, maximumPenetrationDepth);
     }
 
-    bool System::SetVirtualCharacterInnerBodyShape(
+    bool RuntimeImplementation::SetVirtualCharacterInnerBodyShape(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const ShapeHandle shapeHandle)
@@ -6703,7 +6799,7 @@ namespace Jolt
                 shapeHandle);
     }
 
-    bool System::SetVirtualCharacterTransform(
+    bool RuntimeImplementation::SetVirtualCharacterTransform(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const WorldTransform& transform)
@@ -6713,7 +6809,7 @@ namespace Jolt
         return world && world->SetVirtualCharacterTransform(characterHandle, transform);
     }
 
-    bool System::SetVirtualCharacterVelocity(
+    bool RuntimeImplementation::SetVirtualCharacterVelocity(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const AZ::Vector3& velocity)
@@ -6723,7 +6819,7 @@ namespace Jolt
         return world && world->SetVirtualCharacterVelocity(characterHandle, velocity);
     }
 
-    bool System::CancelVirtualCharacterVelocityTowardsSteepSlopes(
+    bool RuntimeImplementation::CancelVirtualCharacterVelocityTowardsSteepSlopes(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const AZ::Vector3& desiredVelocity,
@@ -6738,7 +6834,7 @@ namespace Jolt
                 adjustedVelocity);
     }
 
-    bool System::BeginVirtualCharacterContactTracking(
+    bool RuntimeImplementation::BeginVirtualCharacterContactTracking(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle)
     {
@@ -6747,7 +6843,7 @@ namespace Jolt
         return world && world->BeginVirtualCharacterContactTracking(characterHandle);
     }
 
-    bool System::EndVirtualCharacterContactTracking(
+    bool RuntimeImplementation::EndVirtualCharacterContactTracking(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle)
     {
@@ -6756,7 +6852,7 @@ namespace Jolt
         return world && world->EndVirtualCharacterContactTracking(characterHandle);
     }
 
-    bool System::SetVirtualCharacterContactCallbacks(
+    bool RuntimeImplementation::SetVirtualCharacterContactCallbacks(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         IVirtualCharacterContactCallbacks* callbacks)
@@ -6769,7 +6865,7 @@ namespace Jolt
                 callbacks);
     }
 
-    bool System::CanVirtualCharacterWalkStairs(
+    bool RuntimeImplementation::CanVirtualCharacterWalkStairs(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const AZ::Vector3& desiredVelocity) const
@@ -6779,7 +6875,7 @@ namespace Jolt
         return world && world->CanVirtualCharacterWalkStairs(characterHandle, desiredVelocity);
     }
 
-    bool System::WalkVirtualCharacterStairs(
+    bool RuntimeImplementation::WalkVirtualCharacterStairs(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const VirtualCharacterStairConfiguration& configuration,
@@ -6808,7 +6904,7 @@ namespace Jolt
             nullptr);
     }
 
-    bool System::StickVirtualCharacterToFloor(
+    bool RuntimeImplementation::StickVirtualCharacterToFloor(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const AZ::Vector3& stepDown,
@@ -6837,7 +6933,7 @@ namespace Jolt
             nullptr);
     }
 
-    bool System::RefreshVirtualCharacterContacts(
+    bool RuntimeImplementation::RefreshVirtualCharacterContacts(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const IQueryFilter* filter)
@@ -6847,7 +6943,7 @@ namespace Jolt
         return world && world->RefreshVirtualCharacterContacts(characterHandle, filter);
     }
 
-    bool System::UpdateVirtualCharacterGroundVelocity(
+    bool RuntimeImplementation::UpdateVirtualCharacterGroundVelocity(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle)
     {
@@ -6856,7 +6952,7 @@ namespace Jolt
         return world && world->UpdateVirtualCharacterGroundVelocity(characterHandle);
     }
 
-    QueryResult System::GetVirtualCharacterContacts(
+    QueryResult RuntimeImplementation::GetVirtualCharacterContacts(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const AZStd::span<VirtualCharacterContact> contacts) const
@@ -6870,7 +6966,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::HasVirtualCharacterCollidedWith(
+    bool RuntimeImplementation::HasVirtualCharacterCollidedWith(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const BodyHandle bodyHandle) const
@@ -6880,7 +6976,7 @@ namespace Jolt
         return world && world->HasVirtualCharacterCollidedWith(characterHandle, bodyHandle);
     }
 
-    bool System::HaveVirtualCharactersCollided(
+    bool RuntimeImplementation::HaveVirtualCharactersCollided(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle firstCharacterHandle,
         const VirtualCharacterHandle secondCharacterHandle) const
@@ -6893,7 +6989,7 @@ namespace Jolt
                 secondCharacterHandle);
     }
 
-    bool System::UpdateVirtualCharacter(
+    bool RuntimeImplementation::UpdateVirtualCharacter(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const float deltaTime,
@@ -6922,7 +7018,7 @@ namespace Jolt
             nullptr);
     }
 
-    bool System::EnableVirtualCharacterAutoUpdate(
+    bool RuntimeImplementation::EnableVirtualCharacterAutoUpdate(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
         const VirtualCharacterUpdateConfiguration& configuration)
@@ -6932,7 +7028,7 @@ namespace Jolt
         return world && world->EnableVirtualCharacterAutoUpdate(characterHandle, configuration);
     }
 
-    bool System::DisableVirtualCharacterAutoUpdate(
+    bool RuntimeImplementation::DisableVirtualCharacterAutoUpdate(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle)
     {
@@ -6941,7 +7037,7 @@ namespace Jolt
         return world && world->DisableVirtualCharacterAutoUpdate(characterHandle);
     }
 
-    CharacterHandle System::CreateCharacter(
+    CharacterHandle RuntimeImplementation::CreateCharacter(
         const WorldHandle worldHandle,
         const CharacterConfiguration& configuration)
     {
@@ -6954,7 +7050,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::DestroyCharacter(
+    bool RuntimeImplementation::DestroyCharacter(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle)
     {
@@ -6963,7 +7059,7 @@ namespace Jolt
         return world && world->DestroyCharacter(characterHandle);
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle) const
     {
@@ -6972,7 +7068,7 @@ namespace Jolt
         return world && world->IsValid(characterHandle);
     }
 
-    bool System::GetCharacterState(
+    bool RuntimeImplementation::GetCharacterState(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle,
         CharacterState& state) const
@@ -6982,7 +7078,7 @@ namespace Jolt
         return world && world->GetCharacterState(characterHandle, state);
     }
 
-    bool System::GetCharacterUserData(
+    bool RuntimeImplementation::GetCharacterUserData(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle,
         AZ::u64& userData) const
@@ -6992,7 +7088,7 @@ namespace Jolt
         return world && world->GetCharacterUserData(characterHandle, userData);
     }
 
-    bool System::SetCharacterUserData(
+    bool RuntimeImplementation::SetCharacterUserData(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle,
         const AZ::u64 userData)
@@ -7002,7 +7098,7 @@ namespace Jolt
         return world && world->SetCharacterUserData(characterHandle, userData);
     }
 
-    bool System::GetCharacterRuntimeConfiguration(
+    bool RuntimeImplementation::GetCharacterRuntimeConfiguration(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle,
         CharacterRuntimeConfiguration& configuration) const
@@ -7015,7 +7111,7 @@ namespace Jolt
                 configuration);
     }
 
-    QueryResult System::CheckCharacterCollision(
+    QueryResult RuntimeImplementation::CheckCharacterCollision(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle,
         const CharacterCollisionRequest& request,
@@ -7036,7 +7132,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::UpdateCharacterRuntimeConfiguration(
+    bool RuntimeImplementation::UpdateCharacterRuntimeConfiguration(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle,
         const CharacterRuntimeConfiguration& configuration)
@@ -7049,7 +7145,7 @@ namespace Jolt
                 configuration);
     }
 
-    bool System::SetCharacterShape(
+    bool RuntimeImplementation::SetCharacterShape(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle,
         const ShapeHandle shapeHandle,
@@ -7060,7 +7156,7 @@ namespace Jolt
         return world && world->SetCharacterShape(characterHandle, shapeHandle, maximumPenetrationDepth);
     }
 
-    bool System::SetCharacterTransform(
+    bool RuntimeImplementation::SetCharacterTransform(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle,
         const WorldTransform& transform,
@@ -7071,7 +7167,7 @@ namespace Jolt
         return world && world->SetCharacterTransform(characterHandle, transform, activate);
     }
 
-    bool System::SetCharacterVelocity(
+    bool RuntimeImplementation::SetCharacterVelocity(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle,
         const AZ::Vector3& velocity)
@@ -7081,7 +7177,7 @@ namespace Jolt
         return world && world->SetCharacterVelocity(characterHandle, velocity);
     }
 
-    bool System::AddCharacterImpulse(
+    bool RuntimeImplementation::AddCharacterImpulse(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle,
         const AZ::Vector3& impulse)
@@ -7091,7 +7187,7 @@ namespace Jolt
         return world && world->AddCharacterImpulse(characterHandle, impulse);
     }
 
-    bool System::ApplyVehicleEngineDamping(
+    bool RuntimeImplementation::ApplyVehicleEngineDamping(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const float deltaTime)
@@ -7101,7 +7197,7 @@ namespace Jolt
         return world && world->ApplyVehicleEngineDamping(vehicleHandle, deltaTime);
     }
 
-    bool System::ApplyVehicleEngineTorque(
+    bool RuntimeImplementation::ApplyVehicleEngineTorque(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const float torque,
@@ -7112,7 +7208,7 @@ namespace Jolt
         return world && world->ApplyVehicleEngineTorque(vehicleHandle, torque, deltaTime);
     }
 
-    bool System::CalculateVehicleEngineTorque(
+    bool RuntimeImplementation::CalculateVehicleEngineTorque(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const float acceleration,
@@ -7123,7 +7219,7 @@ namespace Jolt
         return world && world->CalculateVehicleEngineTorque(vehicleHandle, acceleration, torque);
     }
 
-    VehicleHandle System::CreateWheeledVehicle(
+    VehicleHandle RuntimeImplementation::CreateWheeledVehicle(
         const WorldHandle worldHandle,
         const WheeledVehicleConfiguration& configuration)
     {
@@ -7136,7 +7232,7 @@ namespace Jolt
         return {};
     }
 
-    VehicleHandle System::CreateMotorcycle(
+    VehicleHandle RuntimeImplementation::CreateMotorcycle(
         const WorldHandle worldHandle,
         const MotorcycleConfiguration& configuration)
     {
@@ -7150,7 +7246,7 @@ namespace Jolt
         return {};
     }
 
-    VehicleHandle System::CreateTrackedVehicle(
+    VehicleHandle RuntimeImplementation::CreateTrackedVehicle(
         const WorldHandle worldHandle,
         const TrackedVehicleConfiguration& configuration)
     {
@@ -7164,7 +7260,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::DestroyVehicle(
+    bool RuntimeImplementation::DestroyVehicle(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle)
     {
@@ -7173,7 +7269,7 @@ namespace Jolt
         return world && world->DestroyVehicle(vehicleHandle);
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle) const
     {
@@ -7182,7 +7278,7 @@ namespace Jolt
         return world && world->IsValid(vehicleHandle);
     }
 
-    QueryResult System::GetWheeledVehicleState(
+    QueryResult RuntimeImplementation::GetWheeledVehicleState(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         WheeledVehicleState& state,
@@ -7197,7 +7293,7 @@ namespace Jolt
         return {};
     }
 
-    QueryResult System::GetMotorcycleState(
+    QueryResult RuntimeImplementation::GetMotorcycleState(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         MotorcycleState& state,
@@ -7213,7 +7309,7 @@ namespace Jolt
         return {};
     }
 
-    QueryResult System::GetTrackedVehicleState(
+    QueryResult RuntimeImplementation::GetTrackedVehicleState(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         TrackedVehicleState& state,
@@ -7229,7 +7325,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::GetVehicleRuntimeConfiguration(
+    bool RuntimeImplementation::GetVehicleRuntimeConfiguration(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         VehicleRuntimeConfiguration& configuration) const
@@ -7242,7 +7338,7 @@ namespace Jolt
                 configuration);
     }
 
-    bool System::GetVehicleCollisionConfiguration(
+    bool RuntimeImplementation::GetVehicleCollisionConfiguration(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         VehicleCollisionConfiguration& configuration) const
@@ -7255,7 +7351,7 @@ namespace Jolt
                 configuration);
     }
 
-    bool System::GetVehicleEngineConfiguration(
+    bool RuntimeImplementation::GetVehicleEngineConfiguration(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         VehicleEngineConfiguration& configuration) const
@@ -7268,7 +7364,7 @@ namespace Jolt
                 configuration);
     }
 
-    bool System::GetVehicleDifferentialLimitedSlipRatio(
+    bool RuntimeImplementation::GetVehicleDifferentialLimitedSlipRatio(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         float& ratio) const
@@ -7278,7 +7374,7 @@ namespace Jolt
         return world && world->GetVehicleDifferentialLimitedSlipRatio(vehicleHandle, ratio);
     }
 
-    bool System::GetVehiclePowertrainState(
+    bool RuntimeImplementation::GetVehiclePowertrainState(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         VehiclePowertrainState& state) const
@@ -7291,7 +7387,7 @@ namespace Jolt
                 state);
     }
 
-    bool System::GetVehicleTransmissionConfiguration(
+    bool RuntimeImplementation::GetVehicleTransmissionConfiguration(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         VehicleTransmissionConfiguration& configuration) const
@@ -7304,7 +7400,7 @@ namespace Jolt
                 configuration);
     }
 
-    bool System::GetVehicleTrackConfiguration(
+    bool RuntimeImplementation::GetVehicleTrackConfiguration(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const AZ::u32 trackIndex,
@@ -7319,7 +7415,7 @@ namespace Jolt
                 configuration);
     }
 
-    bool System::GetWheelLocalBasis(
+    bool RuntimeImplementation::GetWheelLocalBasis(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const AZ::u32 wheelIndex,
@@ -7330,7 +7426,7 @@ namespace Jolt
         return world && world->GetWheelLocalBasis(vehicleHandle, wheelIndex, basis);
     }
 
-    bool System::GetWheelLocalTransform(
+    bool RuntimeImplementation::GetWheelLocalTransform(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const AZ::u32 wheelIndex,
@@ -7349,7 +7445,7 @@ namespace Jolt
                 transform);
     }
 
-    bool System::GetWheelWorldTransform(
+    bool RuntimeImplementation::GetWheelWorldTransform(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const AZ::u32 wheelIndex,
@@ -7368,7 +7464,7 @@ namespace Jolt
                 transform);
     }
 
-    QueryResult System::QueryVehicleAntiRollBars(
+    QueryResult RuntimeImplementation::QueryVehicleAntiRollBars(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const AZStd::span<VehicleAntiRollBarConfiguration> antiRollBars) const
@@ -7382,7 +7478,7 @@ namespace Jolt
         return {};
     }
 
-    QueryResult System::QueryVehicleDifferentials(
+    QueryResult RuntimeImplementation::QueryVehicleDifferentials(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const AZStd::span<VehicleDifferentialConfiguration> differentials) const
@@ -7396,7 +7492,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::UpdateVehicleRuntimeConfiguration(
+    bool RuntimeImplementation::UpdateVehicleRuntimeConfiguration(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const VehicleRuntimeConfiguration& configuration)
@@ -7409,7 +7505,7 @@ namespace Jolt
                 configuration);
     }
 
-    bool System::SetWheelMotion(
+    bool RuntimeImplementation::SetWheelMotion(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const AZ::u32 wheelIndex,
@@ -7424,7 +7520,7 @@ namespace Jolt
                 motion);
     }
 
-    bool System::SetVehiclePowertrainControl(
+    bool RuntimeImplementation::SetVehiclePowertrainControl(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const VehiclePowertrainControl& control)
@@ -7437,7 +7533,7 @@ namespace Jolt
                 control);
     }
 
-    bool System::SetVehicleCallbacks(
+    bool RuntimeImplementation::SetVehicleCallbacks(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         IVehicleCallbacks* callbacks)
@@ -7447,7 +7543,7 @@ namespace Jolt
         return world && world->SetVehicleCallbacks(vehicleHandle, callbacks);
     }
 
-    bool System::SetVehicleCollisionFilter(
+    bool RuntimeImplementation::SetVehicleCollisionFilter(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const IVehicleCollisionFilter* filter)
@@ -7457,7 +7553,7 @@ namespace Jolt
         return world && world->SetVehicleCollisionFilter(vehicleHandle, filter);
     }
 
-    bool System::SetVehicleDifferentialLimitedSlipRatio(
+    bool RuntimeImplementation::SetVehicleDifferentialLimitedSlipRatio(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const float ratio)
@@ -7467,7 +7563,7 @@ namespace Jolt
         return world && world->SetVehicleDifferentialLimitedSlipRatio(vehicleHandle, ratio);
     }
 
-    bool System::SetVehicleTrackAngularVelocity(
+    bool RuntimeImplementation::SetVehicleTrackAngularVelocity(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const AZ::u32 trackIndex,
@@ -7478,7 +7574,7 @@ namespace Jolt
         return world && world->SetVehicleTrackAngularVelocity(vehicleHandle, trackIndex, angularVelocity);
     }
 
-    bool System::SetWheeledVehicleInput(
+    bool RuntimeImplementation::SetWheeledVehicleInput(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const WheeledVehicleInput& input)
@@ -7488,7 +7584,7 @@ namespace Jolt
         return world && world->SetWheeledVehicleInput(vehicleHandle, input);
     }
 
-    bool System::UpdateMotorcycleController(
+    bool RuntimeImplementation::UpdateMotorcycleController(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const MotorcycleControllerUpdateConfiguration& configuration)
@@ -7498,7 +7594,7 @@ namespace Jolt
         return world && world->UpdateMotorcycleController(vehicleHandle, configuration);
     }
 
-    bool System::UpdateVehicleAntiRollBars(
+    bool RuntimeImplementation::UpdateVehicleAntiRollBars(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const AZStd::span<const VehicleAntiRollBarConfiguration> antiRollBars)
@@ -7508,7 +7604,7 @@ namespace Jolt
         return world && world->UpdateVehicleAntiRollBars(vehicleHandle, antiRollBars);
     }
 
-    bool System::UpdateVehicleCollisionConfiguration(
+    bool RuntimeImplementation::UpdateVehicleCollisionConfiguration(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const VehicleCollisionConfiguration& configuration)
@@ -7521,7 +7617,7 @@ namespace Jolt
                 configuration);
     }
 
-    bool System::UpdateVehicleDifferentials(
+    bool RuntimeImplementation::UpdateVehicleDifferentials(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const AZStd::span<const VehicleDifferentialConfiguration> differentials)
@@ -7531,7 +7627,7 @@ namespace Jolt
         return world && world->UpdateVehicleDifferentials(vehicleHandle, differentials);
     }
 
-    bool System::UpdateVehicleEngineConfiguration(
+    bool RuntimeImplementation::UpdateVehicleEngineConfiguration(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const VehicleEngineConfiguration& configuration)
@@ -7544,7 +7640,7 @@ namespace Jolt
                 configuration);
     }
 
-    bool System::UpdateVehicleTransmissionConfiguration(
+    bool RuntimeImplementation::UpdateVehicleTransmissionConfiguration(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const VehicleTransmissionConfiguration& configuration)
@@ -7557,7 +7653,7 @@ namespace Jolt
                 configuration);
     }
 
-    bool System::UpdateVehicleTrackConfiguration(
+    bool RuntimeImplementation::UpdateVehicleTrackConfiguration(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const AZ::u32 trackIndex,
@@ -7572,7 +7668,7 @@ namespace Jolt
                 configuration);
     }
 
-    bool System::SetTrackedVehicleInput(
+    bool RuntimeImplementation::SetTrackedVehicleInput(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
         const TrackedVehicleInput& input)
@@ -7582,7 +7678,7 @@ namespace Jolt
         return world && world->SetTrackedVehicleInput(vehicleHandle, input);
     }
 
-    BodySnapshotHandle System::CaptureBodyState(
+    BodySnapshotHandle RuntimeImplementation::CaptureBodyState(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
@@ -7596,7 +7692,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::CaptureBodyState(
+    bool RuntimeImplementation::CaptureBodyState(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const BodySnapshotHandle snapshotHandle)
@@ -7606,7 +7702,7 @@ namespace Jolt
         return world && world->CaptureBodyState(bodyHandle, snapshotHandle);
     }
 
-    bool System::DestroyBodyStateSnapshot(
+    bool RuntimeImplementation::DestroyBodyStateSnapshot(
         const WorldHandle worldHandle,
         const BodySnapshotHandle snapshotHandle)
     {
@@ -7615,7 +7711,7 @@ namespace Jolt
         return world && world->DestroyBodyStateSnapshot(snapshotHandle);
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle,
         const BodySnapshotHandle snapshotHandle) const
     {
@@ -7624,7 +7720,7 @@ namespace Jolt
         return world && world->IsValid(snapshotHandle);
     }
 
-    bool System::RestoreBodyState(
+    bool RuntimeImplementation::RestoreBodyState(
         const WorldHandle worldHandle,
         const BodySnapshotHandle snapshotHandle)
     {
@@ -7633,7 +7729,7 @@ namespace Jolt
         return world && world->RestoreBodyState(snapshotHandle);
     }
 
-    StateSnapshotHandle System::CaptureWorldState(
+    StateSnapshotHandle RuntimeImplementation::CaptureWorldState(
         const WorldHandle worldHandle)
     {
         AZStd::shared_lock lock(m_worldMutex);
@@ -7645,7 +7741,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::CaptureWorldState(
+    bool RuntimeImplementation::CaptureWorldState(
         const WorldHandle worldHandle,
         const StateSnapshotHandle snapshotHandle)
     {
@@ -7654,7 +7750,7 @@ namespace Jolt
         return world && world->CaptureState(snapshotHandle);
     }
 
-    StateSnapshotHandle System::CaptureWorldState(
+    StateSnapshotHandle RuntimeImplementation::CaptureWorldState(
         const WorldHandle worldHandle,
         const StateSnapshotConfiguration& configuration,
         const AZStd::span<const BodyHandle> bodyHandles)
@@ -7669,7 +7765,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::CaptureWorldState(
+    bool RuntimeImplementation::CaptureWorldState(
         const WorldHandle worldHandle,
         const StateSnapshotHandle snapshotHandle,
         const StateSnapshotConfiguration& configuration,
@@ -7684,7 +7780,7 @@ namespace Jolt
                 bodyHandles);
     }
 
-    bool System::CaptureWorldStateParts(
+    bool RuntimeImplementation::CaptureWorldStateParts(
         const WorldHandle worldHandle,
         const StateSnapshotConfiguration& configuration,
         const AZStd::span<const BodyHandle> bodyHandles,
@@ -7701,7 +7797,7 @@ namespace Jolt
                 snapshotHandles);
     }
 
-    bool System::ExportWorldStateArchive(
+    bool RuntimeImplementation::ExportWorldStateArchive(
         const WorldHandle worldHandle,
         const AZStd::span<const StateSnapshotHandle> snapshotHandles,
         StateSnapshotArchive& archive)
@@ -7711,7 +7807,7 @@ namespace Jolt
         return world && world->ExportStateArchive(snapshotHandles, archive);
     }
 
-    bool System::ImportWorldStateArchive(
+    bool RuntimeImplementation::ImportWorldStateArchive(
         const WorldHandle worldHandle,
         const StateSnapshotArchive& archive,
         const AZStd::span<StateSnapshotHandle> snapshotHandles)
@@ -7721,7 +7817,7 @@ namespace Jolt
         return world && world->ImportStateArchive(archive, snapshotHandles);
     }
 
-    bool System::DestroyStateSnapshot(
+    bool RuntimeImplementation::DestroyStateSnapshot(
         const WorldHandle worldHandle,
         const StateSnapshotHandle snapshotHandle)
     {
@@ -7730,7 +7826,7 @@ namespace Jolt
         return world && world->DestroyStateSnapshot(snapshotHandle);
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle,
         const StateSnapshotHandle snapshotHandle) const
     {
@@ -7739,7 +7835,7 @@ namespace Jolt
         return world && world->IsValid(snapshotHandle);
     }
 
-    bool System::RestoreWorldState(
+    bool RuntimeImplementation::RestoreWorldState(
         const WorldHandle worldHandle,
         const StateSnapshotHandle snapshotHandle)
     {
@@ -7748,7 +7844,7 @@ namespace Jolt
         return world && world->RestoreState(snapshotHandle);
     }
 
-    bool System::RestoreWorldStateParts(
+    bool RuntimeImplementation::RestoreWorldStateParts(
         const WorldHandle worldHandle,
         const AZStd::span<const StateSnapshotHandle> snapshotHandles)
     {
@@ -7757,7 +7853,7 @@ namespace Jolt
         return world && world->RestoreStateParts(snapshotHandles);
     }
 
-    bool System::ValidateWorldState(
+    bool RuntimeImplementation::ValidateWorldState(
         const WorldHandle worldHandle,
         const StateSnapshotHandle snapshotHandle,
         StateValidationResult& result)
@@ -7767,7 +7863,7 @@ namespace Jolt
         return world && world->ValidateState(snapshotHandle, result);
     }
 
-    bool System::GetWorldStateDigest(
+    bool RuntimeImplementation::GetWorldStateDigest(
         const WorldHandle worldHandle,
         WorldStateDigest& digest) const
     {
@@ -7776,7 +7872,7 @@ namespace Jolt
         return world && world->GetStateDigest(digest);
     }
 
-    bool System::GetWorldStatistics(
+    bool RuntimeImplementation::GetWorldStatistics(
         const WorldHandle worldHandle,
         WorldStatistics& statistics) const
     {
@@ -7785,7 +7881,7 @@ namespace Jolt
         return world && world->GetStatistics(statistics);
     }
 
-    bool System::ConfigurePerformanceStatistics(
+    bool RuntimeImplementation::ConfigurePerformanceStatistics(
         const WorldHandle worldHandle,
         const PerformanceStatisticsFlags flags)
     {
@@ -7794,7 +7890,7 @@ namespace Jolt
         return world && world->ConfigurePerformanceStatistics(flags);
     }
 
-    bool System::GetPerformanceStatistics(
+    bool RuntimeImplementation::GetPerformanceStatistics(
         const WorldHandle worldHandle,
         WorldPerformanceStatistics& statistics,
         const bool reset)
@@ -7804,7 +7900,7 @@ namespace Jolt
         return world && world->GetPerformanceStatistics(statistics, reset);
     }
 
-    DiagnosticStatisticsResult System::GetBroadPhaseStatistics(
+    DiagnosticStatisticsResult RuntimeImplementation::GetBroadPhaseStatistics(
         const WorldHandle worldHandle,
         const AZStd::span<BroadPhaseStatistics> statistics,
         const bool reset)
@@ -7818,7 +7914,7 @@ namespace Jolt
         return world->GetBroadPhaseStatistics(statistics, reset);
     }
 
-    DiagnosticStatisticsResult System::GetNarrowPhaseStatistics(
+    DiagnosticStatisticsResult RuntimeImplementation::GetNarrowPhaseStatistics(
         const AZStd::span<NarrowPhaseStatistics> statistics,
         const bool reset)
     {
@@ -7889,7 +7985,7 @@ namespace Jolt
 #endif
     }
 
-    bool System::DrawDebug(
+    bool RuntimeImplementation::DrawDebug(
         const WorldHandle worldHandle,
         const DebugDrawSettings& settings,
         IDebugRenderer& renderer,
@@ -7910,7 +8006,7 @@ namespace Jolt
             filter);
     }
 
-    bool System::ConfigureDebugCapture(
+    bool RuntimeImplementation::ConfigureDebugCapture(
         const WorldHandle worldHandle,
         const DebugCaptureConfiguration& configuration)
     {
@@ -7944,7 +8040,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::GetDebugCaptureStatistics(
+    bool RuntimeImplementation::GetDebugCaptureStatistics(
         const WorldHandle worldHandle,
         DebugCaptureStatistics& statistics) const
     {
@@ -7953,7 +8049,7 @@ namespace Jolt
         return world && world->GetDebugCaptureStatistics(statistics);
     }
 
-    QueryResult System::GetBodies(
+    QueryResult RuntimeImplementation::GetBodies(
         const WorldHandle worldHandle,
         const BodyKind kind,
         const bool activeOnly,
@@ -7972,7 +8068,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::GetBodyId(
+    bool RuntimeImplementation::GetBodyId(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         BodyId& bodyId) const
@@ -7982,7 +8078,7 @@ namespace Jolt
         return world && world->GetBodyId(bodyHandle, bodyId);
     }
 
-    bool System::ActivateBody(
+    bool RuntimeImplementation::ActivateBody(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
@@ -7991,7 +8087,7 @@ namespace Jolt
         return world && world->ActivateBody(bodyHandle);
     }
 
-    bool System::ActivateBodies(
+    bool RuntimeImplementation::ActivateBodies(
         const WorldHandle worldHandle,
         const AZStd::span<const BodyHandle> bodyHandles)
     {
@@ -8000,7 +8096,7 @@ namespace Jolt
         return world && world->ActivateBodies(bodyHandles);
     }
 
-    bool System::ActivateBodiesInBounds(
+    bool RuntimeImplementation::ActivateBodiesInBounds(
         const WorldHandle worldHandle,
         const BroadPhaseAabb& bounds,
         const ObjectLayer collisionLayer)
@@ -8013,7 +8109,7 @@ namespace Jolt
                 collisionLayer);
     }
 
-    bool System::DeactivateBody(
+    bool RuntimeImplementation::DeactivateBody(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
@@ -8022,7 +8118,7 @@ namespace Jolt
         return world && world->DeactivateBody(bodyHandle);
     }
 
-    bool System::DeactivateBodies(
+    bool RuntimeImplementation::DeactivateBodies(
         const WorldHandle worldHandle,
         const AZStd::span<const BodyHandle> bodyHandles)
     {
@@ -8031,7 +8127,7 @@ namespace Jolt
         return world && world->DeactivateBodies(bodyHandles);
     }
 
-    bool System::ResetBodySleepTimer(
+    bool RuntimeImplementation::ResetBodySleepTimer(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
@@ -8040,7 +8136,7 @@ namespace Jolt
         return world && world->ResetBodySleepTimer(bodyHandle);
     }
 
-    bool System::InvalidateBodyContactCache(
+    bool RuntimeImplementation::InvalidateBodyContactCache(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
@@ -8049,7 +8145,7 @@ namespace Jolt
         return world && world->InvalidateBodyContactCache(bodyHandle);
     }
 
-    bool System::GetBodyPointVelocity(
+    bool RuntimeImplementation::GetBodyPointVelocity(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const WorldPosition& point,
@@ -8060,7 +8156,7 @@ namespace Jolt
         return world && world->GetBodyPointVelocity(bodyHandle, point, velocity);
     }
 
-    bool System::GetBodyMotionType(
+    bool RuntimeImplementation::GetBodyMotionType(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         MotionType& motionType) const
@@ -8070,7 +8166,7 @@ namespace Jolt
         return world && world->GetBodyMotionType(bodyHandle, motionType);
     }
 
-    bool System::GetBodyObjectLayer(
+    bool RuntimeImplementation::GetBodyObjectLayer(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         ObjectLayer& objectLayer) const
@@ -8080,7 +8176,7 @@ namespace Jolt
         return world && world->GetBodyObjectLayer(bodyHandle, objectLayer);
     }
 
-    bool System::GetBodyCollisionGroup(
+    bool RuntimeImplementation::GetBodyCollisionGroup(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         CollisionGroupConfiguration& collisionGroup) const
@@ -8090,7 +8186,7 @@ namespace Jolt
         return world && world->GetBodyCollisionGroup(bodyHandle, collisionGroup);
     }
 
-    bool System::GetBodyShape(
+    bool RuntimeImplementation::GetBodyShape(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         ShapeHandle& shapeHandle) const
@@ -8100,7 +8196,7 @@ namespace Jolt
         return world && world->GetBodyShape(bodyHandle, shapeHandle);
     }
 
-    bool System::GetBodyAccumulatedForceAndTorque(
+    bool RuntimeImplementation::GetBodyAccumulatedForceAndTorque(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         AZ::Vector3& force,
@@ -8115,7 +8211,7 @@ namespace Jolt
                 torque);
     }
 
-    bool System::ResetBodyAccumulatedForce(
+    bool RuntimeImplementation::ResetBodyAccumulatedForce(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
@@ -8124,7 +8220,7 @@ namespace Jolt
         return world && world->ResetBodyAccumulatedForce(bodyHandle);
     }
 
-    bool System::ResetBodyAccumulatedTorque(
+    bool RuntimeImplementation::ResetBodyAccumulatedTorque(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
@@ -8133,7 +8229,7 @@ namespace Jolt
         return world && world->ResetBodyAccumulatedTorque(bodyHandle);
     }
 
-    bool System::ResetBodyMotion(
+    bool RuntimeImplementation::ResetBodyMotion(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
@@ -8142,7 +8238,7 @@ namespace Jolt
         return world && world->ResetBodyMotion(bodyHandle);
     }
 
-    bool System::GetBodyBounds(
+    bool RuntimeImplementation::GetBodyBounds(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         BroadPhaseAabb& bounds) const
@@ -8152,7 +8248,7 @@ namespace Jolt
         return world && world->GetBodyBounds(bodyHandle, bounds);
     }
 
-    bool System::GetBodySubmergedVolume(
+    bool RuntimeImplementation::GetBodySubmergedVolume(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const WorldPosition& surfacePosition,
@@ -8169,7 +8265,7 @@ namespace Jolt
                 result);
     }
 
-    bool System::GetBodySurfaceNormal(
+    bool RuntimeImplementation::GetBodySurfaceNormal(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const SubShapeId subShapeId,
@@ -8186,7 +8282,7 @@ namespace Jolt
                 normal);
     }
 
-    bool System::GetBodyMaterial(
+    bool RuntimeImplementation::GetBodyMaterial(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const SubShapeId subShapeId,
@@ -8201,7 +8297,7 @@ namespace Jolt
                 materialHandle);
     }
 
-    bool System::GetBodyPosition(
+    bool RuntimeImplementation::GetBodyPosition(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         WorldPosition& position) const
@@ -8211,7 +8307,7 @@ namespace Jolt
         return world && world->GetBodyPosition(bodyHandle, position);
     }
 
-    bool System::GetBodyRotation(
+    bool RuntimeImplementation::GetBodyRotation(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         AZ::Quaternion& rotation) const
@@ -8221,7 +8317,7 @@ namespace Jolt
         return world && world->GetBodyRotation(bodyHandle, rotation);
     }
 
-    bool System::GetBodyVelocities(
+    bool RuntimeImplementation::GetBodyVelocities(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         AZ::Vector3& linearVelocity,
@@ -8236,7 +8332,7 @@ namespace Jolt
                 angularVelocity);
     }
 
-    bool System::GetBodyLinearVelocity(
+    bool RuntimeImplementation::GetBodyLinearVelocity(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         AZ::Vector3& linearVelocity) const
@@ -8246,7 +8342,7 @@ namespace Jolt
         return world && world->GetBodyLinearVelocity(bodyHandle, linearVelocity);
     }
 
-    bool System::GetBodyAngularVelocity(
+    bool RuntimeImplementation::GetBodyAngularVelocity(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         AZ::Vector3& angularVelocity) const
@@ -8256,7 +8352,7 @@ namespace Jolt
         return world && world->GetBodyAngularVelocity(bodyHandle, angularVelocity);
     }
 
-    bool System::SetBodyPosition(
+    bool RuntimeImplementation::SetBodyPosition(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const WorldPosition& position,
@@ -8267,7 +8363,7 @@ namespace Jolt
         return world && world->SetBodyPosition(bodyHandle, position, activate);
     }
 
-    bool System::SetBodyRotation(
+    bool RuntimeImplementation::SetBodyRotation(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::Quaternion& rotation,
@@ -8278,7 +8374,7 @@ namespace Jolt
         return world && world->SetBodyRotation(bodyHandle, rotation, activate);
     }
 
-    bool System::SetBodyTransform(
+    bool RuntimeImplementation::SetBodyTransform(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const WorldTransform& transform,
@@ -8289,7 +8385,7 @@ namespace Jolt
         return world && world->SetBodyTransform(bodyHandle, transform, activate);
     }
 
-    bool System::SetBodyTransformWhenChanged(
+    bool RuntimeImplementation::SetBodyTransformWhenChanged(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const WorldTransform& transform,
@@ -8300,7 +8396,7 @@ namespace Jolt
         return world && world->SetBodyTransformWhenChanged(bodyHandle, transform, activate);
     }
 
-    bool System::SetBodyVelocities(
+    bool RuntimeImplementation::SetBodyVelocities(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::Vector3& linearVelocity,
@@ -8311,7 +8407,7 @@ namespace Jolt
         return world && world->SetBodyVelocities(bodyHandle, linearVelocity, angularVelocity);
     }
 
-    bool System::SetBodyLinearVelocity(
+    bool RuntimeImplementation::SetBodyLinearVelocity(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::Vector3& linearVelocity)
@@ -8321,7 +8417,7 @@ namespace Jolt
         return world && world->SetBodyLinearVelocity(bodyHandle, linearVelocity);
     }
 
-    bool System::SetBodyAngularVelocity(
+    bool RuntimeImplementation::SetBodyAngularVelocity(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::Vector3& angularVelocity)
@@ -8331,7 +8427,7 @@ namespace Jolt
         return world && world->SetBodyAngularVelocity(bodyHandle, angularVelocity);
     }
 
-    bool System::AddBodyVelocities(
+    bool RuntimeImplementation::AddBodyVelocities(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::Vector3& linearVelocity,
@@ -8342,7 +8438,7 @@ namespace Jolt
         return world && world->AddBodyVelocities(bodyHandle, linearVelocity, angularVelocity);
     }
 
-    bool System::AddBodyLinearVelocity(
+    bool RuntimeImplementation::AddBodyLinearVelocity(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::Vector3& linearVelocity)
@@ -8352,7 +8448,7 @@ namespace Jolt
         return world && world->AddBodyLinearVelocity(bodyHandle, linearVelocity);
     }
 
-    bool System::SetBodyTransformAndVelocities(
+    bool RuntimeImplementation::SetBodyTransformAndVelocities(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const WorldTransform& transform,
@@ -8369,7 +8465,7 @@ namespace Jolt
                 angularVelocity);
     }
 
-    bool System::MoveBodyKinematically(
+    bool RuntimeImplementation::MoveBodyKinematically(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const WorldTransform& target,
@@ -8380,7 +8476,7 @@ namespace Jolt
         return world && world->MoveBodyKinematically(bodyHandle, target, duration);
     }
 
-    bool System::AddForce(
+    bool RuntimeImplementation::AddForce(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::Vector3& force,
@@ -8391,7 +8487,7 @@ namespace Jolt
         return world && world->AddForce(bodyHandle, force, activate);
     }
 
-    bool System::AddForceAtPosition(
+    bool RuntimeImplementation::AddForceAtPosition(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::Vector3& force,
@@ -8403,7 +8499,7 @@ namespace Jolt
         return world && world->AddForceAtPosition(bodyHandle, force, position, activate);
     }
 
-    bool System::AddTorque(
+    bool RuntimeImplementation::AddTorque(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::Vector3& torque,
@@ -8414,7 +8510,7 @@ namespace Jolt
         return world && world->AddTorque(bodyHandle, torque, activate);
     }
 
-    bool System::AddForceAndTorque(
+    bool RuntimeImplementation::AddForceAndTorque(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::Vector3& force,
@@ -8426,7 +8522,7 @@ namespace Jolt
         return world && world->AddForceAndTorque(bodyHandle, force, torque, activate);
     }
 
-    bool System::ApplyBuoyancyImpulse(
+    bool RuntimeImplementation::ApplyBuoyancyImpulse(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const BuoyancyConfiguration& configuration)
@@ -8452,7 +8548,7 @@ namespace Jolt
             nullptr);
     }
 
-    bool System::GetBodyFriction(
+    bool RuntimeImplementation::GetBodyFriction(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         float& friction) const
@@ -8462,7 +8558,7 @@ namespace Jolt
         return world && world->GetBodyFriction(bodyHandle, friction);
     }
 
-    bool System::SetBodyFriction(
+    bool RuntimeImplementation::SetBodyFriction(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const float friction)
@@ -8472,7 +8568,7 @@ namespace Jolt
         return world && world->SetBodyFriction(bodyHandle, friction);
     }
 
-    bool System::GetBodyRestitution(
+    bool RuntimeImplementation::GetBodyRestitution(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         float& restitution) const
@@ -8482,7 +8578,7 @@ namespace Jolt
         return world && world->GetBodyRestitution(bodyHandle, restitution);
     }
 
-    bool System::SetBodyRestitution(
+    bool RuntimeImplementation::SetBodyRestitution(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const float restitution)
@@ -8492,7 +8588,7 @@ namespace Jolt
         return world && world->SetBodyRestitution(bodyHandle, restitution);
     }
 
-    bool System::GetBodyGravityFactor(
+    bool RuntimeImplementation::GetBodyGravityFactor(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         float& gravityFactor) const
@@ -8502,7 +8598,7 @@ namespace Jolt
         return world && world->GetBodyGravityFactor(bodyHandle, gravityFactor);
     }
 
-    bool System::SetBodyGravityFactor(
+    bool RuntimeImplementation::SetBodyGravityFactor(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const float gravityFactor)
@@ -8512,7 +8608,7 @@ namespace Jolt
         return world && world->SetBodyGravityFactor(bodyHandle, gravityFactor);
     }
 
-    bool System::GetBodyMaximumLinearVelocity(
+    bool RuntimeImplementation::GetBodyMaximumLinearVelocity(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         float& maximumLinearVelocity) const
@@ -8522,7 +8618,7 @@ namespace Jolt
         return world && world->GetBodyMaximumLinearVelocity(bodyHandle, maximumLinearVelocity);
     }
 
-    bool System::SetBodyMaximumLinearVelocity(
+    bool RuntimeImplementation::SetBodyMaximumLinearVelocity(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const float maximumLinearVelocity)
@@ -8532,7 +8628,7 @@ namespace Jolt
         return world && world->SetBodyMaximumLinearVelocity(bodyHandle, maximumLinearVelocity);
     }
 
-    bool System::GetBodyMaximumAngularVelocity(
+    bool RuntimeImplementation::GetBodyMaximumAngularVelocity(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         float& maximumAngularVelocity) const
@@ -8542,7 +8638,7 @@ namespace Jolt
         return world && world->GetBodyMaximumAngularVelocity(bodyHandle, maximumAngularVelocity);
     }
 
-    bool System::SetBodyMaximumAngularVelocity(
+    bool RuntimeImplementation::SetBodyMaximumAngularVelocity(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const float maximumAngularVelocity)
@@ -8552,7 +8648,7 @@ namespace Jolt
         return world && world->SetBodyMaximumAngularVelocity(bodyHandle, maximumAngularVelocity);
     }
 
-    bool System::GetBodyMotionQuality(
+    bool RuntimeImplementation::GetBodyMotionQuality(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         MotionQuality& motionQuality) const
@@ -8562,7 +8658,7 @@ namespace Jolt
         return world && world->GetBodyMotionQuality(bodyHandle, motionQuality);
     }
 
-    bool System::SetBodyMotionQuality(
+    bool RuntimeImplementation::SetBodyMotionQuality(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const MotionQuality motionQuality)
@@ -8572,7 +8668,7 @@ namespace Jolt
         return world && world->SetBodyMotionQuality(bodyHandle, motionQuality);
     }
 
-    bool System::IsBodyManifoldReductionEnabled(
+    bool RuntimeImplementation::IsBodyManifoldReductionEnabled(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         bool& enabled) const
@@ -8582,7 +8678,7 @@ namespace Jolt
         return world && world->IsBodyManifoldReductionEnabled(bodyHandle, enabled);
     }
 
-    bool System::SetBodyManifoldReductionEnabled(
+    bool RuntimeImplementation::SetBodyManifoldReductionEnabled(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const bool enabled)
@@ -8592,7 +8688,7 @@ namespace Jolt
         return world && world->SetBodyManifoldReductionEnabled(bodyHandle, enabled);
     }
 
-    bool System::IsBodySensor(
+    bool RuntimeImplementation::IsBodySensor(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         bool& sensor) const
@@ -8602,7 +8698,7 @@ namespace Jolt
         return world && world->IsBodySensor(bodyHandle, sensor);
     }
 
-    bool System::SetBodySensor(
+    bool RuntimeImplementation::SetBodySensor(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const bool sensor)
@@ -8612,7 +8708,7 @@ namespace Jolt
         return world && world->SetBodySensor(bodyHandle, sensor);
     }
 
-    bool System::GetBodyLinearDamping(
+    bool RuntimeImplementation::GetBodyLinearDamping(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         float& linearDamping) const
@@ -8622,7 +8718,7 @@ namespace Jolt
         return world && world->GetBodyLinearDamping(bodyHandle, linearDamping);
     }
 
-    bool System::SetBodyLinearDamping(
+    bool RuntimeImplementation::SetBodyLinearDamping(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const float linearDamping)
@@ -8632,7 +8728,7 @@ namespace Jolt
         return world && world->SetBodyLinearDamping(bodyHandle, linearDamping);
     }
 
-    bool System::GetBodyAngularDamping(
+    bool RuntimeImplementation::GetBodyAngularDamping(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         float& angularDamping) const
@@ -8642,7 +8738,7 @@ namespace Jolt
         return world && world->GetBodyAngularDamping(bodyHandle, angularDamping);
     }
 
-    bool System::SetBodyAngularDamping(
+    bool RuntimeImplementation::SetBodyAngularDamping(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const float angularDamping)
@@ -8652,7 +8748,7 @@ namespace Jolt
         return world && world->SetBodyAngularDamping(bodyHandle, angularDamping);
     }
 
-    bool System::IsBodySleepingAllowed(
+    bool RuntimeImplementation::IsBodySleepingAllowed(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         bool& sleepingAllowed) const
@@ -8662,7 +8758,7 @@ namespace Jolt
         return world && world->IsBodySleepingAllowed(bodyHandle, sleepingAllowed);
     }
 
-    bool System::SetBodySleepingAllowed(
+    bool RuntimeImplementation::SetBodySleepingAllowed(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const bool sleepingAllowed)
@@ -8672,7 +8768,7 @@ namespace Jolt
         return world && world->SetBodySleepingAllowed(bodyHandle, sleepingAllowed);
     }
 
-    bool System::IsBodyGyroscopicForceEnabled(
+    bool RuntimeImplementation::IsBodyGyroscopicForceEnabled(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         bool& enabled) const
@@ -8682,7 +8778,7 @@ namespace Jolt
         return world && world->IsBodyGyroscopicForceEnabled(bodyHandle, enabled);
     }
 
-    bool System::SetBodyGyroscopicForceEnabled(
+    bool RuntimeImplementation::SetBodyGyroscopicForceEnabled(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const bool enabled)
@@ -8692,7 +8788,7 @@ namespace Jolt
         return world && world->SetBodyGyroscopicForceEnabled(bodyHandle, enabled);
     }
 
-    bool System::IsBodyKinematicVsNonDynamicCollisionEnabled(
+    bool RuntimeImplementation::IsBodyKinematicVsNonDynamicCollisionEnabled(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         bool& enabled) const
@@ -8702,7 +8798,7 @@ namespace Jolt
         return world && world->IsBodyKinematicVsNonDynamicCollisionEnabled(bodyHandle, enabled);
     }
 
-    bool System::SetBodyKinematicVsNonDynamicCollisionEnabled(
+    bool RuntimeImplementation::SetBodyKinematicVsNonDynamicCollisionEnabled(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const bool enabled)
@@ -8712,7 +8808,7 @@ namespace Jolt
         return world && world->SetBodyKinematicVsNonDynamicCollisionEnabled(bodyHandle, enabled);
     }
 
-    bool System::IsBodyEnhancedInternalEdgeRemovalEnabled(
+    bool RuntimeImplementation::IsBodyEnhancedInternalEdgeRemovalEnabled(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         bool& enabled) const
@@ -8722,7 +8818,7 @@ namespace Jolt
         return world && world->IsBodyEnhancedInternalEdgeRemovalEnabled(bodyHandle, enabled);
     }
 
-    bool System::SetBodyEnhancedInternalEdgeRemovalEnabled(
+    bool RuntimeImplementation::SetBodyEnhancedInternalEdgeRemovalEnabled(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const bool enabled)
@@ -8732,7 +8828,7 @@ namespace Jolt
         return world && world->SetBodyEnhancedInternalEdgeRemovalEnabled(bodyHandle, enabled);
     }
 
-    bool System::GetBodySolverStepCounts(
+    bool RuntimeImplementation::GetBodySolverStepCounts(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         AZ::u8& velocityStepCount,
@@ -8747,7 +8843,7 @@ namespace Jolt
                 positionStepCount);
     }
 
-    bool System::SetBodySolverStepCounts(
+    bool RuntimeImplementation::SetBodySolverStepCounts(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::u8 velocityStepCount,
@@ -8762,7 +8858,7 @@ namespace Jolt
                 positionStepCount);
     }
 
-    bool System::UpdateBodyRuntimeConfiguration(
+    bool RuntimeImplementation::UpdateBodyRuntimeConfiguration(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const BodyRuntimeConfiguration& configuration,
@@ -8777,7 +8873,7 @@ namespace Jolt
                 activate);
     }
 
-    bool System::GetBodyInverseInertia(
+    bool RuntimeImplementation::GetBodyInverseInertia(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         AZ::Matrix3x3& inverseInertia) const
@@ -8787,7 +8883,7 @@ namespace Jolt
         return world && world->GetBodyInverseInertia(bodyHandle, inverseInertia);
     }
 
-    bool System::GetBodyInverseMass(
+    bool RuntimeImplementation::GetBodyInverseMass(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         float& inverseMass) const
@@ -8797,7 +8893,7 @@ namespace Jolt
         return world && world->GetBodyInverseMass(bodyHandle, inverseMass);
     }
 
-    bool System::AddImpulse(
+    bool RuntimeImplementation::AddImpulse(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::Vector3& impulse)
@@ -8807,7 +8903,7 @@ namespace Jolt
         return world && world->AddImpulse(bodyHandle, impulse);
     }
 
-    bool System::AddImpulseAtPosition(
+    bool RuntimeImplementation::AddImpulseAtPosition(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::Vector3& impulse,
@@ -8818,7 +8914,7 @@ namespace Jolt
         return world && world->AddImpulseAtPosition(bodyHandle, impulse, position);
     }
 
-    bool System::AddAngularImpulse(
+    bool RuntimeImplementation::AddAngularImpulse(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const AZ::Vector3& angularImpulse)
@@ -8828,7 +8924,7 @@ namespace Jolt
         return world && world->AddAngularImpulse(bodyHandle, angularImpulse);
     }
 
-    bool System::SetBodyShape(
+    bool RuntimeImplementation::SetBodyShape(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const ShapeHandle shapeHandle,
@@ -8840,7 +8936,7 @@ namespace Jolt
         return world && world->SetBodyShape(bodyHandle, shapeHandle, updateMassProperties, activate);
     }
 
-    bool System::SetBodyMotionType(
+    bool RuntimeImplementation::SetBodyMotionType(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const MotionType motionType,
@@ -8851,7 +8947,7 @@ namespace Jolt
         return world && world->SetBodyMotionType(bodyHandle, motionType, activate);
     }
 
-    bool System::SetBodyObjectLayer(
+    bool RuntimeImplementation::SetBodyObjectLayer(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const ObjectLayer objectLayer)
@@ -8861,7 +8957,7 @@ namespace Jolt
         return world && world->SetBodyObjectLayer(bodyHandle, objectLayer);
     }
 
-    bool System::SetBodyCollisionGroup(
+    bool RuntimeImplementation::SetBodyCollisionGroup(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
         const CollisionGroupConfiguration& collisionGroup,
@@ -8872,7 +8968,7 @@ namespace Jolt
         return world && world->SetBodyCollisionGroup(bodyHandle, collisionGroup, activate);
     }
 
-    bool System::RaycastShapeClosest(
+    bool RuntimeImplementation::RaycastShapeClosest(
         const WorldHandle worldHandle,
         const ShapeRaycastRequest& request,
         ShapeRaycastHit& hit) const
@@ -8882,7 +8978,7 @@ namespace Jolt
         return world && world->RaycastShapeClosest(request, hit);
     }
 
-    QueryResult System::RaycastShapeAll(
+    QueryResult RuntimeImplementation::RaycastShapeAll(
         const WorldHandle worldHandle,
         const ShapeRaycastRequest& request,
         const AZStd::span<ShapeRaycastHit> hits) const
@@ -8897,7 +8993,7 @@ namespace Jolt
         return world->RaycastShapeAll(request, hits);
     }
 
-    QueryResult System::CollideShapePoint(
+    QueryResult RuntimeImplementation::CollideShapePoint(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const AZ::Vector3& localPosition,
@@ -8918,7 +9014,7 @@ namespace Jolt
             hits);
     }
 
-    bool System::CollideShapePointAny(
+    bool RuntimeImplementation::CollideShapePointAny(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const AZ::Vector3& localPosition,
@@ -8933,7 +9029,7 @@ namespace Jolt
                 filter);
     }
 
-    QueryResult System::CollectShapeTriangles(
+    QueryResult RuntimeImplementation::CollectShapeTriangles(
         const WorldHandle worldHandle,
         const ShapeTriangleCollectionRequest& request,
         const AZStd::span<ShapeTriangle> triangles) const
@@ -8948,7 +9044,7 @@ namespace Jolt
         return world->CollectShapeTriangles(request, triangles);
     }
 
-    bool System::RaycastTransformedShapeClosest(
+    bool RuntimeImplementation::RaycastTransformedShapeClosest(
         const WorldHandle worldHandle,
         const TransformedShape& shape,
         const TransformedShapeRaycastRequest& request,
@@ -8959,7 +9055,7 @@ namespace Jolt
         return world && world->RaycastTransformedShapeClosest(shape, request, hit);
     }
 
-    QueryResult System::RaycastTransformedShapeAll(
+    QueryResult RuntimeImplementation::RaycastTransformedShapeAll(
         const WorldHandle worldHandle,
         const TransformedShape& shape,
         const TransformedShapeRaycastRequest& request,
@@ -8975,7 +9071,7 @@ namespace Jolt
         return world->RaycastTransformedShapeAll(shape, request, hits);
     }
 
-    QueryResult System::CollideTransformedShapePoint(
+    QueryResult RuntimeImplementation::CollideTransformedShapePoint(
         const WorldHandle worldHandle,
         const TransformedShape& shape,
         const WorldPosition& position,
@@ -8992,7 +9088,7 @@ namespace Jolt
         return world->CollideTransformedShapePoint(shape, position, filter, hits);
     }
 
-    bool System::CollideTransformedShapePointAny(
+    bool RuntimeImplementation::CollideTransformedShapePointAny(
         const WorldHandle worldHandle,
         const TransformedShape& shape,
         const WorldPosition& position,
@@ -9003,7 +9099,7 @@ namespace Jolt
         return world && world->CollideTransformedShapePointAny(shape, position, filter);
     }
 
-    QueryResult System::CollectTransformedShapeChildren(
+    QueryResult RuntimeImplementation::CollectTransformedShapeChildren(
         const WorldHandle worldHandle,
         const TransformedShape& shape,
         const BroadPhaseAabb& bounds,
@@ -9020,7 +9116,7 @@ namespace Jolt
         return world->CollectTransformedShapeChildren(shape, bounds, filter, children);
     }
 
-    QueryResult System::CollectTransformedShapeTriangles(
+    QueryResult RuntimeImplementation::CollectTransformedShapeTriangles(
         const WorldHandle worldHandle,
         const TransformedShape& shape,
         const BroadPhaseAabb& bounds,
@@ -9036,7 +9132,7 @@ namespace Jolt
         return world->CollectTransformedShapeTriangles(shape, bounds, triangles);
     }
 
-    bool System::GetTransformedShapeSurfaceNormal(
+    bool RuntimeImplementation::GetTransformedShapeSurfaceNormal(
         const WorldHandle worldHandle,
         const TransformedShape& shape,
         const SubShapeId subShapeId,
@@ -9048,7 +9144,7 @@ namespace Jolt
         return world && world->GetTransformedShapeSurfaceNormal(shape, subShapeId, position, normal);
     }
 
-    QueryResult System::GetTransformedShapeSupportingFace(
+    QueryResult RuntimeImplementation::GetTransformedShapeSupportingFace(
         const WorldHandle worldHandle,
         const TransformedShape& shape,
         const SubShapeId subShapeId,
@@ -9065,7 +9161,7 @@ namespace Jolt
         return world->GetTransformedShapeSupportingFace(shape, subShapeId, direction, vertices);
     }
 
-    bool System::RetainShape(
+    bool RuntimeImplementation::RetainShape(
         const WorldHandle worldHandle,
         const ShapeHandle shapeHandle,
         const WorldTransform& transform,
@@ -9077,7 +9173,7 @@ namespace Jolt
         return world && world->RetainShape(shapeHandle, transform, uniformScale, shape);
     }
 
-    QueryResult System::CollideTransformedShapes(
+    QueryResult RuntimeImplementation::CollideTransformedShapes(
         const WorldHandle worldHandle,
         const TransformedShape& firstShape,
         const TransformedShape& secondShape,
@@ -9100,7 +9196,7 @@ namespace Jolt
             faceBuffers);
     }
 
-    bool System::CollideTransformedShapes(
+    bool RuntimeImplementation::CollideTransformedShapes(
         const WorldHandle worldHandle,
         const TransformedShape& firstShape,
         const TransformedShape& secondShape,
@@ -9116,7 +9212,7 @@ namespace Jolt
             collector);
     }
 
-    QueryResult System::CollideTransformedShapes(
+    QueryResult RuntimeImplementation::CollideTransformedShapes(
         const WorldHandle worldHandle,
         const ShapePlacement& firstShape,
         const ShapePlacement& secondShape,
@@ -9155,7 +9251,7 @@ namespace Jolt
             faceBuffers);
     }
 
-    QueryResult System::CastTransformedShape(
+    QueryResult RuntimeImplementation::CastTransformedShape(
         const WorldHandle worldHandle,
         const TransformedShape& firstShape,
         const TransformedShape& secondShape,
@@ -9178,7 +9274,7 @@ namespace Jolt
             faceBuffers);
     }
 
-    bool System::CastTransformedShape(
+    bool RuntimeImplementation::CastTransformedShape(
         const WorldHandle worldHandle,
         const TransformedShape& firstShape,
         const TransformedShape& secondShape,
@@ -9194,7 +9290,7 @@ namespace Jolt
             collector);
     }
 
-    QueryResult System::CastTransformedShape(
+    QueryResult RuntimeImplementation::CastTransformedShape(
         const WorldHandle worldHandle,
         const ShapePlacement& firstShape,
         const ShapePlacement& secondShape,
@@ -9233,7 +9329,7 @@ namespace Jolt
             faceBuffers);
     }
 
-    bool System::RaycastClosest(
+    bool RuntimeImplementation::RaycastClosest(
         const WorldHandle worldHandle,
         const RaycastRequest& request,
         RaycastHit& hit) const
@@ -9243,7 +9339,7 @@ namespace Jolt
         return world && world->RaycastClosest(request, hit);
     }
 
-    BufferResult System::RaycastClosestBatch(
+    BufferResult RuntimeImplementation::RaycastClosestBatch(
         const WorldHandle worldHandle,
         const AZStd::span<const RaycastRequest> requests,
         const AZStd::span<ClosestRaycastResult> results) const
@@ -9258,7 +9354,7 @@ namespace Jolt
         return world->RaycastClosestBatch(requests, results);
     }
 
-    bool System::RaycastAny(
+    bool RuntimeImplementation::RaycastAny(
         const WorldHandle worldHandle,
         const RaycastRequest& request) const
     {
@@ -9267,7 +9363,7 @@ namespace Jolt
         return world && world->RaycastAny(request);
     }
 
-    QueryResult System::RaycastAll(
+    QueryResult RuntimeImplementation::RaycastAll(
         const WorldHandle worldHandle,
         const RaycastRequest& request,
         const AZStd::span<RaycastHit> hits) const
@@ -9282,7 +9378,7 @@ namespace Jolt
         return world->RaycastAll(request, hits);
     }
 
-    QueryResult System::RaycastClosestPerBody(
+    QueryResult RuntimeImplementation::RaycastClosestPerBody(
         const WorldHandle worldHandle,
         const RaycastRequest& request,
         const AZStd::span<RaycastHit> hits) const
@@ -9297,7 +9393,7 @@ namespace Jolt
         return world->RaycastClosestPerBody(request, hits);
     }
 
-    QueryResult System::OverlapPoint(
+    QueryResult RuntimeImplementation::OverlapPoint(
         const WorldHandle worldHandle,
         const PointOverlapRequest& request,
         const AZStd::span<OverlapHit> hits) const
@@ -9312,7 +9408,7 @@ namespace Jolt
         return world->OverlapPoint(request, hits);
     }
 
-    bool System::OverlapPointAny(
+    bool RuntimeImplementation::OverlapPointAny(
         const WorldHandle worldHandle,
         const PointOverlapRequest& request) const
     {
@@ -9321,7 +9417,7 @@ namespace Jolt
         return world && world->OverlapPointAny(request);
     }
 
-    QueryResult System::CollideShape(
+    QueryResult RuntimeImplementation::CollideShape(
         const WorldHandle worldHandle,
         const ShapeOverlapRequest& request,
         const AZStd::span<ShapeOverlapHit> hits,
@@ -9336,7 +9432,7 @@ namespace Jolt
         return {};
     }
 
-    QueryResult System::OverlapShape(
+    QueryResult RuntimeImplementation::OverlapShape(
         const WorldHandle worldHandle,
         const ShapeOverlapRequest& request,
         const AZStd::span<OverlapHit> hits) const
@@ -9350,7 +9446,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::OverlapShapeAny(
+    bool RuntimeImplementation::OverlapShapeAny(
         const WorldHandle worldHandle,
         const ShapeOverlapRequest& request) const
     {
@@ -9359,7 +9455,7 @@ namespace Jolt
         return world && world->OverlapShapeAny(request);
     }
 
-    bool System::CastShapeClosest(
+    bool RuntimeImplementation::CastShapeClosest(
         const WorldHandle worldHandle,
         const ShapeCastRequest& request,
         ShapeCastHit& hit,
@@ -9370,7 +9466,7 @@ namespace Jolt
         return world && world->CastShapeClosest(request, hit, faceBuffers);
     }
 
-    QueryResult System::CastShapeAll(
+    QueryResult RuntimeImplementation::CastShapeAll(
         const WorldHandle worldHandle,
         const ShapeCastRequest& request,
         const AZStd::span<ShapeCastHit> hits,
@@ -9385,7 +9481,7 @@ namespace Jolt
         return {};
     }
 
-    QueryResult System::CastShapeClosestPerBody(
+    QueryResult RuntimeImplementation::CastShapeClosestPerBody(
         const WorldHandle worldHandle,
         const ShapeCastRequest& request,
         const AZStd::span<ShapeCastHit> hits,
@@ -9401,7 +9497,7 @@ namespace Jolt
             return world->CastShapeClosestPerBody(request, hits, faceBuffers);
     }
 
-    QueryResult System::OverlapBroadPhase(
+    QueryResult RuntimeImplementation::OverlapBroadPhase(
         const WorldHandle worldHandle,
         const BroadPhaseOverlapRequest& request,
         const AZStd::span<BroadPhaseHit> hits) const
@@ -9415,7 +9511,7 @@ namespace Jolt
         return {};
     }
 
-    bool System::OverlapBroadPhaseAny(
+    bool RuntimeImplementation::OverlapBroadPhaseAny(
         const WorldHandle worldHandle,
         const BroadPhaseOverlapRequest& request) const
     {
@@ -9424,7 +9520,7 @@ namespace Jolt
         return world && world->OverlapBroadPhaseAny(request);
     }
 
-    bool System::CastBroadPhaseClosest(
+    bool RuntimeImplementation::CastBroadPhaseClosest(
         const WorldHandle worldHandle,
         const BroadPhaseCastRequest& request,
         BroadPhaseCastHit& hit) const
@@ -9434,7 +9530,7 @@ namespace Jolt
         return world && world->CastBroadPhaseClosest(request, hit);
     }
 
-    QueryResult System::CastBroadPhaseAll(
+    QueryResult RuntimeImplementation::CastBroadPhaseAll(
         const WorldHandle worldHandle,
         const BroadPhaseCastRequest& request,
         const AZStd::span<BroadPhaseCastHit> hits) const
@@ -9448,7 +9544,7 @@ namespace Jolt
         return {};
     }
 
-    QueryResult System::CollectShapesInBounds(
+    QueryResult RuntimeImplementation::CollectShapesInBounds(
         const WorldHandle worldHandle,
         const ShapeCollectionRequest& request,
         const AZStd::span<TransformedShape> shapes) const
@@ -9463,7 +9559,7 @@ namespace Jolt
         return world->CollectShapesInBounds(request, shapes);
     }
 
-    QueryResult System::GetSupportingFace(
+    QueryResult RuntimeImplementation::GetSupportingFace(
         const WorldHandle worldHandle,
         const SupportingFaceRequest& request,
         const AZStd::span<WorldPosition> vertices) const
@@ -9478,7 +9574,7 @@ namespace Jolt
         return world->GetSupportingFace(request, vertices);
     }
 
-    QueryResult System::CollectTriangles(
+    QueryResult RuntimeImplementation::CollectTriangles(
         const WorldHandle worldHandle,
         const TriangleCollectionRequest& request,
         const AZStd::span<TransformedTriangle> triangles) const
@@ -9493,7 +9589,7 @@ namespace Jolt
         return world->CollectTriangles(request, triangles);
     }
 
-    bool System::GetBroadPhaseBounds(
+    bool RuntimeImplementation::GetBroadPhaseBounds(
         const WorldHandle worldHandle,
         BroadPhaseAabb& bounds) const
     {
@@ -9502,7 +9598,7 @@ namespace Jolt
         return world && world->GetBroadPhaseBounds(bounds);
     }
 
-    bool System::OptimizeBroadPhase(
+    bool RuntimeImplementation::OptimizeBroadPhase(
         const WorldHandle worldHandle)
     {
         AZStd::shared_lock lock(m_worldMutex);
@@ -9510,7 +9606,7 @@ namespace Jolt
         return world && world->OptimizeBroadPhase();
     }
 
-    bool System::WereBodiesInContact(
+    bool RuntimeImplementation::WereBodiesInContact(
         const WorldHandle worldHandle,
         const BodyHandle firstBodyHandle,
         const BodyHandle secondBodyHandle) const
@@ -9520,13 +9616,13 @@ namespace Jolt
         return world && world->WereBodiesInContact(firstBodyHandle, secondBodyHandle);
     }
 
-    World* System::FindWorldUnlocked(
+    World* RuntimeImplementation::FindWorldUnlocked(
         const WorldHandle worldHandle)
     {
-        return const_cast<World*>(static_cast<const System&>(*this).FindWorldUnlocked(worldHandle));
+        return const_cast<World*>(static_cast<const RuntimeImplementation&>(*this).FindWorldUnlocked(worldHandle));
     }
 
-    const World* System::FindWorldUnlocked(
+    const World* RuntimeImplementation::FindWorldUnlocked(
         const WorldHandle worldHandle) const
     {
         Internal::WorldHandleParts parts;
@@ -9545,7 +9641,7 @@ namespace Jolt
         return slot.m_world.get();
     }
 
-    bool System::AcquireMaterials(
+    bool RuntimeImplementation::AcquireMaterials(
         const AZStd::span<const MaterialHandle> materialHandles,
         JPH::PhysicsMaterialList& materials)
     {
@@ -9571,7 +9667,7 @@ namespace Jolt
         return true;
     }
 
-    void System::ReleaseMaterials(
+    void RuntimeImplementation::ReleaseMaterials(
         const AZStd::span<const MaterialHandle> materialHandles)
     {
         AZStd::lock_guard lock(m_materialMutex);
@@ -9595,7 +9691,7 @@ namespace Jolt
         }
     }
 
-    const System::MaterialSlot* System::FindMaterialUnlocked(
+    const RuntimeImplementation::MaterialSlot* RuntimeImplementation::FindMaterialUnlocked(
         const MaterialHandle materialHandle) const
     {
         Internal::ResourceHandleParts parts;
@@ -9614,7 +9710,7 @@ namespace Jolt
         return &slot;
     }
 
-    MaterialHandle System::FindMaterialHandle(
+    MaterialHandle RuntimeImplementation::FindMaterialHandle(
         const JPH::PhysicsMaterial* material) const
     {
         if (!material || material == JPH::PhysicsMaterial::sDefault)
@@ -9625,7 +9721,7 @@ namespace Jolt
         return static_cast<const NativeMaterial*>(material)->GetHandle();
     }
 
-    bool System::AcquireCookedShape(
+    bool RuntimeImplementation::AcquireCookedShape(
         const CookedShapeHandle cookedShapeHandle,
         JPH::RefConst<JPH::Shape>& shape)
     {
@@ -9646,7 +9742,7 @@ namespace Jolt
         return true;
     }
 
-    CookedShapeHandle System::StoreCookedShape(
+    CookedShapeHandle RuntimeImplementation::StoreCookedShape(
         const JPH::Shape* shape,
         AZStd::vector<MaterialHandle> materialHandles,
         AZStd::vector<CookedShapeHandle> childHandles,
@@ -9710,7 +9806,7 @@ namespace Jolt
         return Internal::MakeResourceHandle<CookedShapeHandle>(cookedShapeIndex, slot.m_generation);
     }
 
-    void System::ReleaseCookedShape(
+    void RuntimeImplementation::ReleaseCookedShape(
         const CookedShapeHandle cookedShapeHandle)
     {
         AZStd::lock_guard lock(m_cookedShapeMutex);
@@ -9722,14 +9818,14 @@ namespace Jolt
         }
     }
 
-    System::CookedShapeSlot* System::FindCookedShapeUnlocked(
+    RuntimeImplementation::CookedShapeSlot* RuntimeImplementation::FindCookedShapeUnlocked(
         const CookedShapeHandle cookedShapeHandle)
     {
         return const_cast<CookedShapeSlot*>(
-            static_cast<const System&>(*this).FindCookedShapeUnlocked(cookedShapeHandle));
+            static_cast<const RuntimeImplementation&>(*this).FindCookedShapeUnlocked(cookedShapeHandle));
     }
 
-    const System::CookedShapeSlot* System::FindCookedShapeUnlocked(
+    const RuntimeImplementation::CookedShapeSlot* RuntimeImplementation::FindCookedShapeUnlocked(
         const CookedShapeHandle cookedShapeHandle) const
     {
         Internal::ResourceHandleParts parts;
@@ -9748,7 +9844,7 @@ namespace Jolt
         return &slot;
     }
 
-    bool System::AcquireCollisionGroup(
+    bool RuntimeImplementation::AcquireCollisionGroup(
         const CollisionGroupConfiguration& configuration,
         JPH::CollisionGroup& collisionGroup)
     {
@@ -9779,7 +9875,7 @@ namespace Jolt
         return true;
     }
 
-    void System::ReleaseGroupFilter(
+    void RuntimeImplementation::ReleaseGroupFilter(
         const GroupFilterHandle filterHandle)
     {
         if (!filterHandle)
@@ -9806,7 +9902,7 @@ namespace Jolt
         }
     }
 
-    bool System::GetGroupFilterStateHash(
+    bool RuntimeImplementation::GetGroupFilterStateHash(
         const GroupFilterHandle filterHandle,
         AZ::u64& stateHash) const
     {
@@ -9821,7 +9917,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::CaptureGroupFilterParticipantState(
+    bool RuntimeImplementation::CaptureGroupFilterParticipantState(
         const GroupFilterHandle filterHandle,
         AZStd::vector<AZ::u8>& state,
         AZ::TypeId& typeId,
@@ -9874,7 +9970,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::RestoreGroupFilterParticipantState(
+    bool RuntimeImplementation::RestoreGroupFilterParticipantState(
         const GroupFilterHandle filterHandle,
         const AZStd::span<const AZ::u8> state,
         const AZ::TypeId typeId,
@@ -9912,7 +10008,7 @@ namespace Jolt
         return true;
     }
 
-    System::GroupFilterSlot* System::FindGroupFilterUnlocked(
+    RuntimeImplementation::GroupFilterSlot* RuntimeImplementation::FindGroupFilterUnlocked(
         const GroupFilterHandle filterHandle)
     {
         Internal::ResourceHandleParts parts;
@@ -9931,7 +10027,7 @@ namespace Jolt
         return &slot;
     }
 
-    const System::GroupFilterSlot* System::FindGroupFilterUnlocked(
+    const RuntimeImplementation::GroupFilterSlot* RuntimeImplementation::FindGroupFilterUnlocked(
         const GroupFilterHandle filterHandle) const
     {
         Internal::ResourceHandleParts parts;
@@ -9950,7 +10046,7 @@ namespace Jolt
         return &slot;
     }
 
-    bool System::AcquirePath(
+    bool RuntimeImplementation::AcquirePath(
         const PathHandle pathHandle,
         JPH::RefConst<JPH::PathConstraintPath>& path)
     {
@@ -9970,7 +10066,7 @@ namespace Jolt
         return true;
     }
 
-    void System::ReleasePath(
+    void RuntimeImplementation::ReleasePath(
         const PathHandle pathHandle)
     {
         AZStd::lock_guard lock(m_pathMutex);
@@ -9992,7 +10088,7 @@ namespace Jolt
         }
     }
 
-    const System::PathSlot* System::FindPathUnlocked(
+    const RuntimeImplementation::PathSlot* RuntimeImplementation::FindPathUnlocked(
         const PathHandle pathHandle) const
     {
         Internal::ResourceHandleParts parts;
@@ -10011,7 +10107,7 @@ namespace Jolt
         return &slot;
     }
 
-    SoftBodyDefinitionHandle System::StoreSoftBodyDefinition(
+    SoftBodyDefinitionHandle RuntimeImplementation::StoreSoftBodyDefinition(
         JPH::RefConst<JPH::SoftBodySharedSettings> settings,
         AZStd::vector<MaterialHandle> materialHandles)
     {
@@ -10039,7 +10135,7 @@ namespace Jolt
         return Internal::MakeResourceHandle<SoftBodyDefinitionHandle>(definitionIndex, slot.m_generation);
     }
 
-    bool System::AcquireSoftBodyDefinition(
+    bool RuntimeImplementation::AcquireSoftBodyDefinition(
         const SoftBodyDefinitionHandle definitionHandle,
         JPH::RefConst<JPH::SoftBodySharedSettings>& settings)
     {
@@ -10059,7 +10155,7 @@ namespace Jolt
         return true;
     }
 
-    void System::ReleaseSoftBodyDefinition(
+    void RuntimeImplementation::ReleaseSoftBodyDefinition(
         const SoftBodyDefinitionHandle definitionHandle)
     {
         AZStd::lock_guard lock(m_softBodyDefinitionMutex);
@@ -10083,7 +10179,7 @@ namespace Jolt
         }
     }
 
-    const System::SoftBodyDefinitionSlot* System::FindSoftBodyDefinitionUnlocked(
+    const RuntimeImplementation::SoftBodyDefinitionSlot* RuntimeImplementation::FindSoftBodyDefinitionUnlocked(
         const SoftBodyDefinitionHandle definitionHandle) const
     {
         Internal::ResourceHandleParts parts;
@@ -10102,7 +10198,7 @@ namespace Jolt
         return &slot;
     }
 
-    bool System::AcquireHairDefinition(
+    bool RuntimeImplementation::AcquireHairDefinition(
         const HairDefinitionHandle definitionHandle,
         JPH::RefConst<JPH::HairSettings>& settings)
     {
@@ -10122,7 +10218,7 @@ namespace Jolt
         return true;
     }
 
-    void System::ReleaseHairDefinition(
+    void RuntimeImplementation::ReleaseHairDefinition(
         const HairDefinitionHandle definitionHandle)
     {
         AZStd::lock_guard lock(m_hairDefinitionMutex);
@@ -10146,7 +10242,7 @@ namespace Jolt
         }
     }
 
-    const System::HairDefinitionSlot* System::FindHairDefinitionUnlocked(
+    const RuntimeImplementation::HairDefinitionSlot* RuntimeImplementation::FindHairDefinitionUnlocked(
         const HairDefinitionHandle definitionHandle) const
     {
         Internal::ResourceHandleParts parts;
@@ -10165,7 +10261,7 @@ namespace Jolt
         return &slot;
     }
 
-    bool System::EnsureHairRuntime()
+    bool RuntimeImplementation::EnsureHairRuntime()
     {
         AZStd::lock_guard lock(m_hairDefinitionMutex);
         if (m_hairRuntime)

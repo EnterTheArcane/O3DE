@@ -15,6 +15,27 @@ set(FILES
     Tests/Headers/BodyConfiguration.cpp
     Tests/Headers/BodyCollision.cpp
     Tests/Headers/BodyBus.cpp
+    Tests/Headers/Capabilities.cpp
+    Tests/Headers/Capabilities/Bodies.cpp
+    Tests/Headers/Capabilities/Characters.cpp
+    Tests/Headers/Capabilities/CollisionFilters.cpp
+    Tests/Headers/Capabilities/Constraints.cpp
+    Tests/Headers/Capabilities/Diagnostics.cpp
+    Tests/Headers/Capabilities/Extensions.cpp
+    Tests/Headers/Capabilities/Hair.cpp
+    Tests/Headers/Capabilities/Materials.cpp
+    Tests/Headers/Capabilities/Paths.cpp
+    Tests/Headers/Capabilities/Ragdolls.cpp
+    Tests/Headers/Capabilities/Rollback.cpp
+    Tests/Headers/Capabilities/RuntimeConfiguration.cpp
+    Tests/Headers/Capabilities/Scenes.cpp
+    Tests/Headers/Capabilities/Shapes.cpp
+    Tests/Headers/Capabilities/Skeletons.cpp
+    Tests/Headers/Capabilities/SoftBodies.cpp
+    Tests/Headers/Capabilities/Vehicles.cpp
+    Tests/Headers/Capabilities/WorldQueries.cpp
+    Tests/Headers/Capabilities/WorldSimulation.cpp
+    Tests/Headers/Capabilities/Worlds.cpp
     Tests/Headers/Character.cpp
     Tests/Headers/CharacterBus.cpp
     Tests/Headers/CharacterConfiguration.cpp
@@ -77,6 +98,27 @@ set(SKIP_UNITY_BUILD_INCLUSION_FILES
     Tests/Headers/BodyConfiguration.cpp
     Tests/Headers/BodyCollision.cpp
     Tests/Headers/BodyBus.cpp
+    Tests/Headers/Capabilities.cpp
+    Tests/Headers/Capabilities/Bodies.cpp
+    Tests/Headers/Capabilities/Characters.cpp
+    Tests/Headers/Capabilities/CollisionFilters.cpp
+    Tests/Headers/Capabilities/Constraints.cpp
+    Tests/Headers/Capabilities/Diagnostics.cpp
+    Tests/Headers/Capabilities/Extensions.cpp
+    Tests/Headers/Capabilities/Hair.cpp
+    Tests/Headers/Capabilities/Materials.cpp
+    Tests/Headers/Capabilities/Paths.cpp
+    Tests/Headers/Capabilities/Ragdolls.cpp
+    Tests/Headers/Capabilities/Rollback.cpp
+    Tests/Headers/Capabilities/RuntimeConfiguration.cpp
+    Tests/Headers/Capabilities/Scenes.cpp
+    Tests/Headers/Capabilities/Shapes.cpp
+    Tests/Headers/Capabilities/Skeletons.cpp
+    Tests/Headers/Capabilities/SoftBodies.cpp
+    Tests/Headers/Capabilities/Vehicles.cpp
+    Tests/Headers/Capabilities/WorldQueries.cpp
+    Tests/Headers/Capabilities/WorldSimulation.cpp
+    Tests/Headers/Capabilities/Worlds.cpp
     Tests/Headers/Character.cpp
     Tests/Headers/CharacterBus.cpp
     Tests/Headers/CharacterConfiguration.cpp

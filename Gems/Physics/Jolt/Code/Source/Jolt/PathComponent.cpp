@@ -7,7 +7,7 @@
 
 #include <Jolt/PathComponent.h>
 
-#include <Jolt/System.h>
+#include <Jolt/SystemInternal.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Debug/Trace.h>
@@ -222,7 +222,7 @@ namespace Jolt
             m_configuration = HermitePathConfiguration::CreateDefault();
         }
 
-        m_system = AZ::Interface<ISystem>::Get();
+        m_system = GetRuntime();
         PathRequestBus::Handler::BusConnect(GetEntityId());
         if (!m_system)
         {

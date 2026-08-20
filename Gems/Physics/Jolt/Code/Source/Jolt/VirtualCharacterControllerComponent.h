@@ -18,7 +18,7 @@
 namespace Jolt
 {
     class ColliderComponent;
-    class ISystem;
+    class RuntimeImplementation;
 
     class JOLT_API VirtualCharacterControllerComponent final
         : public AZ::Component
@@ -122,7 +122,7 @@ namespace Jolt
 
         VirtualCharacterComponentConfiguration m_configuration;
 
-        ISystem* m_system = nullptr;
+        RuntimeImplementation* m_system = nullptr;
         ColliderComponent* m_collider = nullptr;
         WorldHandle m_worldHandle;
         VirtualCharacterHandle m_characterHandle;

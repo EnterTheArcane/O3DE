@@ -11,7 +11,7 @@
 #include <Jolt/ColliderComponent.h>
 #include <Jolt/ComponentUtilities.h>
 #include <Jolt/Reflection.h>
-#include <Jolt/System.h>
+#include <Jolt/SystemInternal.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Interface/Interface.h>
@@ -473,7 +473,7 @@ namespace Jolt
 
     void CharacterControllerComponent::Activate()
     {
-        m_system = AZ::Interface<ISystem>::Get();
+        m_system = GetRuntime();
         m_collider = GetEntity()->FindComponent<ColliderComponent>();
         CharacterRequestBus::Handler::BusConnect(GetEntityId());
         BodyRequestBus::Handler::BusConnect(GetEntityId());

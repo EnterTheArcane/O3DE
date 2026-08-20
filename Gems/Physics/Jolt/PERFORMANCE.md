@@ -227,7 +227,7 @@ zero CPU frame times in that configuration. The test rejects those zeroes instea
 
 ## Opt-in telemetry
 
-`ISystem::ConfigurePerformanceStatistics` enables only the requested counter groups for a world. Disabled query, event, snapshot, job,
+`Diagnostics::ConfigurePerformanceStatistics` enables only the requested counter groups for a world. Disabled query, event, snapshot, job,
 lock, Hair, and simulation counters do not read clocks. Lock timing uses the deterministic world mutex's contended path, job timing is
 captured by the AZ job adapter, and native allocation counters are process-wide because Jolt's allocator hooks are process-wide. Resource
 counts and retained capacities are read into a caller-owned `WorldPerformanceStatistics`; the read itself does not allocate. Resetting a

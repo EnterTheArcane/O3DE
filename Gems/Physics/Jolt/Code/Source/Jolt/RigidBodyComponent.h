@@ -18,7 +18,7 @@
 namespace Jolt
 {
     class ColliderComponent;
-    class ISystem;
+    class RuntimeImplementation;
 
     class JOLT_API RigidBodyComponent final
         : public AZ::Component
@@ -296,7 +296,7 @@ namespace Jolt
 
         RigidBodyConfiguration m_configuration;
 
-        ISystem* m_system = nullptr;
+        RuntimeImplementation* m_system = nullptr;
         ColliderComponent* m_collider = nullptr;
         WorldHandle m_worldHandle;
         BodyHandle m_bodyHandle;

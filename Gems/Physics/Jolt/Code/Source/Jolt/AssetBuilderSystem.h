@@ -14,5 +14,5 @@
 namespace Jolt
 {
     [[nodiscard]]
-    JOLT_API AZStd::unique_ptr<ISystem> CreateAssetBuilderSystem();
+    JOLT_API AZStd::unique_ptr<System> CreateAssetBuilderSystem();
 } // namespace Jolt

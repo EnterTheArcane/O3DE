@@ -66,7 +66,7 @@ namespace Jolt
 
     //! Generates bounded row batches while the native adapter owns warm-start and iterative solving.
     //! Velocity rows solve J * v + bias = 0. Position rows solve error = 0 using the supplied Jacobian.
-    //! Callbacks may run concurrently and must not call ISystem or mutate world state.
+    //! Callbacks may run concurrently and must not call runtime capabilities or mutate world state.
     class ICustomConstraintProvider
     {
     public:

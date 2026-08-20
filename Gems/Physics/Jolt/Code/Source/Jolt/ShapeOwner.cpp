@@ -7,14 +7,14 @@
 
 #include <Jolt/ShapeOwner.h>
 
-#include <Jolt/System.h>
+#include <Jolt/SystemInternal.h>
 
 #include <AzCore/Math/MathUtils.h>
 
 namespace Jolt::Internal
 {
     bool CreateShapeSet(
-        ISystem& system,
+        RuntimeImplementation& system,
         const WorldHandle worldHandle,
         const AZStd::span<const ColliderShapeConfiguration> configurations,
         const float uniformScale,
@@ -136,7 +136,7 @@ namespace Jolt::Internal
     }
 
     void DestroyShapeSet(
-        ISystem& system,
+        RuntimeImplementation& system,
         const WorldHandle worldHandle,
         ShapeSet& shapeSet)
     {

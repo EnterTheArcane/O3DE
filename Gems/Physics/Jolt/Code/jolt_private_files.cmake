@@ -11,6 +11,7 @@ set(FILES
     Source/Jolt/AssetProduct.h
     Source/Jolt/AssetBuilderSystem.h
     Source/Jolt/BehaviorReflection.h
+    Source/Jolt/Capabilities.cpp
     Source/Jolt/CharacterConfiguration.cpp
     Source/Jolt/CharacterControllerComponent.cpp
     Source/Jolt/CharacterControllerComponent.h

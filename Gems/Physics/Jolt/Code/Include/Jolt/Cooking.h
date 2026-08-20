@@ -21,6 +21,7 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/base.h>
 #include <AzCore/std/containers/span.h>
+#include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/containers/variant.h>
 #include <AzCore/std/containers/vector.h>
 
@@ -31,6 +32,7 @@ namespace AZ
 
 namespace Jolt
 {
+    class Runtime;
     struct CookedCompoundChildConfiguration final
     {
         AZ_TYPE_INFO(CookedCompoundChildConfiguration, CookedCompoundChildConfigurationTypeId);
@@ -119,149 +121,144 @@ namespace Jolt
     };
 
     //! Owns immutable native shapes that can be shared by bodies in multiple worlds.
-    class ICooking
+    class JOLT_API Cooking
     {
     public:
-        AZ_RTTI(ICooking, ICookingTypeId);
-
-        virtual ~ICooking() = default;
-
-        //! Keeps the provider alive across concurrent CookShape calls until unregistration completes.
         [[nodiscard]]
-        virtual bool RegisterCustomConvexShapeProvider(ICustomConvexShapeProvider* provider) = 0;
-
-        virtual bool UnregisterCustomConvexShapeProvider(ICustomConvexShapeProvider* provider) = 0;
-
-        [[nodiscard]]
-        virtual ProviderRegistrationResult RegisterCustomShapeProvider(ICustomShapeProvider* provider) = 0;
-
-        [[nodiscard]]
-        virtual ProviderRegistrationResult UnregisterCustomShapeProvider(ICustomShapeProvider* provider) = 0;
+        static Cooking* Get();
 
         //! Creates the native shape once and retains all referenced materials until destruction.
         [[nodiscard]]
-        virtual CookedShapeHandle CookShape(const ShapeConfiguration& configuration) = 0;
+        CookedShapeHandle CookShape(const ShapeConfiguration& configuration);
 
         [[nodiscard]]
-        virtual CookedShapeHandle CookShape(const CookedCompoundShapeConfiguration& configuration) = 0;
+        CookedShapeHandle CookShape(const CookedCompoundShapeConfiguration& configuration);
 
         [[nodiscard]]
-        virtual CookedShapeHandle CookShape(const CookedDecoratedShapeConfiguration& configuration) = 0;
+        CookedShapeHandle CookShape(const CookedDecoratedShapeConfiguration& configuration);
 
         [[nodiscard]]
-        virtual bool ExportShape(
+        bool ExportShape(
             CookedShapeHandle cookedShapeHandle,
             CookedShapeArchive& archive,
             AZStd::vector<MaterialHandle>& materialHandles,
-            AZStd::vector<CookedShapeHandle>& childShapeHandles) const = 0;
+            AZStd::vector<CookedShapeHandle>& childShapeHandles) const;
 
         [[nodiscard]]
-        virtual CookedShapeHandle ImportShape(
+        CookedShapeHandle ImportShape(
             const CookedShapeArchive& archive,
             AZStd::span<const MaterialHandle> materialHandles,
-            AZStd::span<const CookedShapeHandle> childShapeHandles) = 0;
+            AZStd::span<const CookedShapeHandle> childShapeHandles);
 
-        virtual bool DestroyCookedShape(CookedShapeHandle cookedShapeHandle) = 0;
+        bool DestroyCookedShape(CookedShapeHandle cookedShapeHandle);
 
         [[nodiscard]]
-        virtual bool IsValid(CookedShapeHandle cookedShapeHandle) const = 0;
+        bool IsValid(CookedShapeHandle cookedShapeHandle) const;
 
         //! Returns storage owned directly by the root shape.
         [[nodiscard]]
-        virtual bool GetStats(
+        bool GetStats(
             CookedShapeHandle cookedShapeHandle,
-            ShapeStats& stats) const = 0;
+            ShapeStats& stats) const;
 
         //! Includes each unique child shape once and may allocate traversal bookkeeping.
         [[nodiscard]]
-        virtual bool GetStatsRecursive(
+        bool GetStatsRecursive(
             CookedShapeHandle cookedShapeHandle,
-            ShapeStats& stats) const = 0;
+            ShapeStats& stats) const;
 
         [[nodiscard]]
-        virtual bool GetProperties(
+        bool GetProperties(
             CookedShapeHandle cookedShapeHandle,
-            ShapeProperties& properties) const = 0;
+            ShapeProperties& properties) const;
 
         [[nodiscard]]
-        virtual bool GetUserData(
+        bool GetUserData(
             CookedShapeHandle cookedShapeHandle,
-            AZ::u64& userData) const = 0;
+            AZ::u64& userData) const;
 
         [[nodiscard]]
-        virtual bool GetCustomConvexShapeInfo(
+        bool GetCustomConvexShapeInfo(
             CookedShapeHandle cookedShapeHandle,
-            CustomConvexShapeInfo& info) const = 0;
+            CustomConvexShapeInfo& info) const;
 
         [[nodiscard]]
-        virtual bool GetCustomShapeInfo(
+        bool GetCustomShapeInfo(
             CookedShapeHandle cookedShapeHandle,
-            CustomShapeInfo& info) const = 0;
+            CustomShapeInfo& info) const;
 
         [[nodiscard]]
-        virtual BufferResult GetCustomShapeDependencies(
+        BufferResult GetCustomShapeDependencies(
             CookedShapeHandle cookedShapeHandle,
-            AZStd::span<CustomShapeDependency> dependencies) const = 0;
+            AZStd::span<CustomShapeDependency> dependencies) const;
 
         //! The sub-shape ID must originate from a query against this shape.
         [[nodiscard]]
-        virtual bool GetSubShapeUserData(
+        bool GetSubShapeUserData(
             CookedShapeHandle cookedShapeHandle,
             SubShapeId subShapeId,
-            AZ::u64& userData) const = 0;
+            AZ::u64& userData) const;
 
         //! Resolves one level of a query sub-shape path in the root shape's center-of-mass space.
         [[nodiscard]]
-        virtual bool GetDirectChildShape(
+        bool GetDirectChildShape(
             CookedShapeHandle cookedShapeHandle,
             SubShapeId subShapeId,
             CookedShapeHandle& childShapeHandle,
-            SubShapeTransform& transform) const = 0;
+            SubShapeTransform& transform) const;
 
         //! Returns the ordered material list for a mesh or decorated mesh root.
         [[nodiscard]]
-        virtual BufferResult GetMeshMaterials(
+        BufferResult GetMeshMaterials(
             CookedShapeHandle cookedShapeHandle,
-            AZStd::span<MaterialHandle> materialHandles) const = 0;
+            AZStd::span<MaterialHandle> materialHandles) const;
 
         //! The sub-shape ID must identify a mesh triangle in this shape.
         [[nodiscard]]
-        virtual bool GetMeshTriangleMaterialIndex(
+        bool GetMeshTriangleMaterialIndex(
             CookedShapeHandle cookedShapeHandle,
             SubShapeId subShapeId,
-            AZ::u32& materialIndex) const = 0;
+            AZ::u32& materialIndex) const;
 
         //! The sub-shape ID must identify a mesh triangle in this shape.
         [[nodiscard]]
-        virtual bool GetMeshTriangleUserData(
+        bool GetMeshTriangleUserData(
             CookedShapeHandle cookedShapeHandle,
             SubShapeId subShapeId,
-            AZ::u32& userData) const = 0;
+            AZ::u32& userData) const;
 
         [[nodiscard]]
-        virtual bool GetCompoundChildCount(
+        bool GetCompoundChildCount(
             CookedShapeHandle cookedShapeHandle,
-            AZ::u32& childCount) const = 0;
+            AZ::u32& childCount) const;
 
         [[nodiscard]]
-        virtual bool GetCompoundChild(
+        bool GetCompoundChild(
             CookedShapeHandle cookedShapeHandle,
             AZ::u32 childIndex,
-            CookedCompoundChildConfiguration& child) const = 0;
+            CookedCompoundChildConfiguration& child) const;
 
         //! The sub-shape ID must originate from a query against this compound shape.
         [[nodiscard]]
-        virtual bool GetCompoundChildIndex(
+        bool GetCompoundChildIndex(
             CookedShapeHandle cookedShapeHandle,
             SubShapeId subShapeId,
-            AZ::u32& childIndex) const = 0;
+            AZ::u32& childIndex) const;
 
         [[nodiscard]]
-        virtual bool Raycast(
+        bool Raycast(
             CookedShapeHandle cookedShapeHandle,
             const AZ::Vector3& start,
             const AZ::Vector3& direction,
             float distance,
-            CookedRaycastHit& hit) const = 0;
+            CookedRaycastHit& hit) const;
+
+    private:
+        friend class Runtime;
+
+        Cooking() = default;
+        ~Cooking() = default;
+
+        static AZStd::atomic<Cooking*> s_instance;
     };
 } // namespace Jolt

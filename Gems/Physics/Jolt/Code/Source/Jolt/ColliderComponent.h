@@ -17,7 +17,7 @@
 
 namespace Jolt
 {
-    class ISystem;
+    class RuntimeImplementation;
     class RigidBodyComponent;
     class StaticRigidBodyComponent;
     class CharacterControllerComponent;
@@ -217,7 +217,7 @@ namespace Jolt
 
         [[nodiscard]]
         bool CreateShapes(
-            ISystem& system,
+            RuntimeImplementation& system,
             WorldHandle worldHandle,
             float uniformScale);
 
@@ -244,7 +244,7 @@ namespace Jolt
         AZStd::vector<ColliderShapeConfiguration> m_configurations{ColliderShapeConfiguration{}};
         Internal::ShapeSet m_shapeSet;
 
-        ISystem* m_system = nullptr;
+        RuntimeImplementation* m_system = nullptr;
         WorldHandle m_worldHandle;
         float m_uniformScale = 1.0f;
 

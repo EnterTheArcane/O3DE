@@ -9,7 +9,7 @@
 
 #include <Jolt/ColliderComponent.h>
 #include <Jolt/ComponentUtilities.h>
-#include <Jolt/System.h>
+#include <Jolt/SystemInternal.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Interface/Interface.h>
@@ -229,7 +229,7 @@ namespace Jolt
 
     void StaticRigidBodyComponent::Activate()
     {
-        m_system = AZ::Interface<ISystem>::Get();
+        m_system = GetRuntime();
         m_collider = GetEntity()->FindComponent<ColliderComponent>();
         StaticRigidBodyRequestBus::Handler::BusConnect(GetEntityId());
         BodyRequestBus::Handler::BusConnect(GetEntityId());

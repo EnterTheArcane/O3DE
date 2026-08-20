@@ -114,8 +114,6 @@ namespace Jolt
     inline constexpr AZ::TypeId WorldRuntimeConfigurationTypeId{"{6B3151C9-3188-4A49-AAB1-3B9D6D6F5D19}"};
     inline constexpr AZ::TypeId WorldPositionTypeId{"{47DA7D31-82C9-4690-88FB-55156154FFA7}"};
     inline constexpr AZ::TypeId WorldTransformTypeId{"{5A34B032-BA86-4381-A4F1-5CEAA3974FC9}"};
-    inline constexpr AZ::TypeId ISystemTypeId{"{B341DEF6-69CD-4AB9-BA77-02A357AA6372}"};
-    inline constexpr AZ::TypeId ICookingTypeId{"{9A225433-06D9-4C60-92B2-F1228D1C1AB7}"};
     inline constexpr AZ::TypeId IWorldQueriesTypeId{"{21B20B75-A02B-4A74-B4C9-11E1D7801CAC}"};
     inline constexpr AZ::TypeId CookedShapeArchiveTypeId{"{096A69C2-D44A-483D-923B-8B61813ECEEF}"};
     inline constexpr AZ::TypeId ShapePropertiesTypeId{"{E9317B04-D590-4C92-B6CB-5DDC2E070998}"};

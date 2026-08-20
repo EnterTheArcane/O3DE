@@ -1683,7 +1683,7 @@ namespace Jolt
                 m_removeRejected = !m_system->RemoveStepListener(m_worldHandle, this);
             }
 
-            ISystem* m_system = nullptr;
+            Runtime* m_system = nullptr;
             IStepListener* m_targetListener = nullptr;
             WorldHandle m_worldHandle;
             AZ::u32 m_attemptCount = 0;
@@ -1830,7 +1830,7 @@ namespace Jolt
 
         [[nodiscard]]
         SphereOnFloor CreateSphereOnFloor(
-            ISystem& system,
+            Runtime& system,
             const WorldHandle worldHandle)
         {
             SphereOnFloor scene;
@@ -1862,13 +1862,13 @@ namespace Jolt
 
         [[nodiscard]]
         SphereOnFloor CreateSphereOnFloor(
-            ISystem& system)
+            Runtime& system)
         {
             return CreateSphereOnFloor(system, system.GetDefaultWorldHandle());
         }
 
         void DestroySphereOnFloor(
-            ISystem& system,
+            Runtime& system,
             const SphereOnFloor& scene)
         {
             EXPECT_TRUE(system.DestroyBody(scene.m_worldHandle, scene.m_sphereBodyHandle));
@@ -1945,7 +1945,7 @@ namespace Jolt
             constexpr AZ::u32 verticesPerStrand = 8;
             SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
             systemConfiguration.m_defaultWorld.m_workerCount = workerCount;
-            System system(systemConfiguration, jobContext);
+            Runtime system(systemConfiguration, jobContext);
             HairDeterminismResult result;
             if (!system)
             {
@@ -2106,7 +2106,7 @@ namespace Jolt
         {
             SystemConfiguration configuration;
             configuration.m_defaultWorld.m_workerCount = workerCount;
-            System system(configuration, jobContext);
+            Runtime system(configuration, jobContext);
             if (!system)
             {
                 return {};
@@ -2165,7 +2165,7 @@ namespace Jolt
             SystemConfiguration configuration;
             configuration.m_defaultWorld.m_gravity = AZ::Vector3(0.0f, 0.0f, -4.0f);
             configuration.m_defaultWorld.m_workerCount = workerCount;
-            System system(configuration, jobContext);
+            Runtime system(configuration, jobContext);
             if (!system)
             {
                 return {};
@@ -2283,7 +2283,7 @@ namespace Jolt
             SystemConfiguration configuration;
             configuration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
             configuration.m_defaultWorld.m_workerCount = workerCount;
-            System system(configuration, jobContext);
+            Runtime system(configuration, jobContext);
             if (!system || !system.RegisterCustomConstraintProvider(&provider))
             {
                 return {};
@@ -2370,7 +2370,7 @@ namespace Jolt
         {
             SystemConfiguration configuration;
             configuration.m_defaultWorld.m_workerCount = workerCount;
-            System system(configuration, jobContext);
+            Runtime system(configuration, jobContext);
             if (!system)
             {
                 return {};
@@ -2453,7 +2453,7 @@ namespace Jolt
             NameDictionaryScope nameDictionaryScope;
             SystemConfiguration configuration;
             configuration.m_defaultWorld.m_workerCount = workerCount;
-            System system(configuration, jobContext);
+            Runtime system(configuration, jobContext);
             if (!system)
             {
                 return {};
@@ -2525,7 +2525,7 @@ namespace Jolt
     {
         SystemConfiguration configuration = CreateSerialSystemConfiguration();
         configuration.m_createDefaultWorld = false;
-        System system(configuration, nullptr);
+        Runtime system(configuration, nullptr);
         ASSERT_TRUE(system);
 
         const RuntimeInfo runtimeInfo = system.GetRuntimeInfo();
@@ -2534,7 +2534,7 @@ namespace Jolt
 
     TEST(SimulationTests, NativeDiagnosticStatisticsReportAvailabilityCapacityAndReset)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const RuntimeInfo runtimeInfo = system.GetRuntimeInfo();
@@ -2640,7 +2640,7 @@ namespace Jolt
 
     TEST(SimulationTests, PerformanceStatisticsAreOptInResettableAndAllocationFreeToRead)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -2717,7 +2717,7 @@ namespace Jolt
 
     TEST(SimulationTests, SnapshotRecaptureReusesRetainedStorage)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -2750,7 +2750,7 @@ namespace Jolt
 
     TEST(SimulationTests, DynamicSphereSettlesOnStaticFloor)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
         EXPECT_EQ(system.GetConfiguration().m_defaultWorld.m_workerCount, 1);
 
@@ -2789,7 +2789,7 @@ namespace Jolt
 
         SystemConfiguration configuration = CreateSerialSystemConfiguration();
         configuration.m_defaultWorld.m_workerCount = 4;
-        System system(configuration, &jobContext);
+        Runtime system(configuration, &jobContext);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -2817,7 +2817,7 @@ namespace Jolt
 
         SystemConfiguration configuration = CreateSerialSystemConfiguration();
         configuration.m_defaultWorld.m_autoSimulate = true;
-        System system(configuration, &jobContext);
+        Runtime system(configuration, &jobContext);
         ASSERT_TRUE(system);
 
         const WorldHandle firstWorldHandle = system.GetDefaultWorldHandle();
@@ -2863,7 +2863,7 @@ namespace Jolt
 
         SystemConfiguration configuration = CreateSerialSystemConfiguration();
         configuration.m_defaultWorld.m_workerCount = 2;
-        System system(configuration, &jobContext);
+        Runtime system(configuration, &jobContext);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -2882,7 +2882,7 @@ namespace Jolt
 
     TEST(SimulationTests, BodySimulationMembershipPreservesAllocatedState)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -2997,7 +2997,7 @@ namespace Jolt
         const BodyId invalidIndex(BodyId::MaximumIndex + 1, 1);
         EXPECT_FALSE(invalidIndex);
 
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3080,7 +3080,7 @@ namespace Jolt
     TEST(SimulationTests, AppliesCompleteRigidBodyConfigurationOutsideSimulation)
     {
         NameDictionaryScope nameDictionaryScope;
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3163,7 +3163,7 @@ namespace Jolt
 
     TEST(SimulationTests, ApplyingBodyConfigurationInvalidatesPreviousContacts)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -3211,7 +3211,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3283,7 +3283,7 @@ namespace Jolt
 
     TEST(SimulationTests, BodyCenterOfMassTransformIncludesShapeOffset)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3335,7 +3335,7 @@ namespace Jolt
 
     TEST(SimulationTests, WorldRuntimeSettingsAreValidatedAndInvalidateSnapshotsWhenChanged)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3389,7 +3389,7 @@ namespace Jolt
 
     TEST(SimulationTests, BulkBodyMembershipIsAtomicAndSupportsExistingConstraints)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3452,7 +3452,7 @@ namespace Jolt
 
     TEST(SimulationTests, ConstraintSimulationMembershipIsAtomicAndPreservesAllocatedState)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3565,7 +3565,7 @@ namespace Jolt
 
     TEST(SimulationTests, BulkBodyDestructionIsAtomicAcrossMixedMembership)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3617,7 +3617,7 @@ namespace Jolt
 
     TEST(SimulationTests, ContactCallbacksValidateModifyInspectAndRemoveContacts)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -3683,7 +3683,7 @@ namespace Jolt
 
     TEST(SimulationTests, ContactValidationCanRejectAnEntireBodyPair)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -3708,7 +3708,7 @@ namespace Jolt
     TEST(SimulationTests, MaterialCombineModesControlInitialContactSettings)
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3745,7 +3745,7 @@ namespace Jolt
 
     TEST(SimulationTests, WorldRuntimeConfigurationControlsAutomaticSteppingAndEnabledState)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3800,7 +3800,7 @@ namespace Jolt
         AZ::JobManager jobManager(jobManagerDescriptor);
         AZ::JobContext jobContext(jobManager);
 
-        System system(CreateSerialSystemConfiguration(), &jobContext);
+        Runtime system(CreateSerialSystemConfiguration(), &jobContext);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -3861,7 +3861,7 @@ namespace Jolt
         };
         for (const BodyCollisionOperation operation : operations)
         {
-            System system(CreateSerialSystemConfiguration(), nullptr);
+            Runtime system(CreateSerialSystemConfiguration(), nullptr);
             ASSERT_TRUE(system);
 
             const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3901,7 +3901,7 @@ namespace Jolt
 
     TEST(SimulationTests, BodyPairColliderCanRejectBodyPairs)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3926,7 +3926,7 @@ namespace Jolt
     {
         SystemConfiguration configuration = CreateSerialSystemConfiguration();
         configuration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(configuration, nullptr);
+        Runtime system(configuration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3975,7 +3975,7 @@ namespace Jolt
     {
         SystemConfiguration configuration = CreateSerialSystemConfiguration();
         configuration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(configuration, nullptr);
+        Runtime system(configuration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -4014,7 +4014,7 @@ namespace Jolt
 
     TEST(SimulationTests, SimulationShapeFilterReceivesProviderShapeIdentity)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -4049,7 +4049,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -4139,7 +4139,7 @@ namespace Jolt
 
     TEST(SimulationTests, WorldRuntimeConfigurationTogglesEventCollection)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -4181,7 +4181,7 @@ namespace Jolt
             .m_name = AZ::Name::FromStringLiteral("Ghost", nullptr),
             .m_broadPhaseLayer = DefaultBroadPhaseLayers::Moving,
         });
-        System system(configuration, nullptr);
+        Runtime system(configuration, nullptr);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -4206,7 +4206,7 @@ namespace Jolt
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
         systemConfiguration.m_defaultWorld.m_collectContactEvents = true;
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const CollisionSubGroupId firstSubGroup{0};
@@ -4324,7 +4324,7 @@ namespace Jolt
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
         systemConfiguration.m_defaultWorld.m_collectContactEvents = true;
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         TestGroupFilter filter;
@@ -4442,7 +4442,7 @@ namespace Jolt
         configuration.m_defaultWorld.m_fixedTimeStep = 0.1f;
         configuration.m_defaultWorld.m_gravity = AZ::Vector3::CreateAxisZ(-10.0f);
         configuration.m_defaultWorld.m_maximumCatchUpSteps = 2;
-        System system(configuration, nullptr);
+        Runtime system(configuration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -4491,7 +4491,7 @@ namespace Jolt
 
     TEST(SimulationTests, HandlesCannotCrossWorldBoundaries)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle firstWorldHandle = system.GetDefaultWorldHandle();
@@ -4515,7 +4515,7 @@ namespace Jolt
 
     TEST(SimulationTests, SimulationConfigurationIsValidatedAndDeterministicByConstruction)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         WorldConfiguration worldConfiguration;
@@ -4560,7 +4560,7 @@ namespace Jolt
 
     TEST(SimulationTests, CreatesEveryAnalyticAndConvexPrimitive)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -4612,7 +4612,7 @@ namespace Jolt
 
     TEST(SimulationTests, PrimitiveShapeStateReturnsExactNativeValues)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const MaterialHandle materialHandle = system.CreateMaterial(MaterialConfiguration{});
@@ -4754,7 +4754,7 @@ namespace Jolt
 
     TEST(SimulationTests, ConvexHullTopologyExposesCenterOfMassRelativeNativeGeometry)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -4893,7 +4893,7 @@ namespace Jolt
 
     TEST(SimulationTests, WorldShapesExposeNativePropertiesAndSurfaceData)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const MaterialHandle materialHandle = system.CreateMaterial(MaterialConfiguration{});
@@ -5080,7 +5080,7 @@ namespace Jolt
     TEST(SimulationTests, SkeletonMappingsPreserveProviderOwnershipAndCallerBuffers)
     {
         NameDictionaryScope nameDictionaryScope;
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SkeletonDefinitionConfiguration sourceConfiguration;
@@ -5235,7 +5235,7 @@ namespace Jolt
     TEST(SimulationTests, SkeletalAnimationsSampleReusablePosesWithoutNativeTypes)
     {
         NameDictionaryScope nameDictionaryScope;
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SkeletonDefinitionConfiguration skeletonConfiguration;
@@ -5393,7 +5393,7 @@ namespace Jolt
     TEST(SimulationTests, SkeletonAndAnimationArchivesRestoreValidatedNativeResources)
     {
         NameDictionaryScope nameDictionaryScope;
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SkeletonDefinitionConfiguration skeletonConfiguration;
@@ -5472,7 +5472,7 @@ namespace Jolt
         NameDictionaryScope nameDictionaryScope;
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         SkeletonDefinitionConfiguration skeletonConfiguration;
@@ -5669,7 +5669,7 @@ namespace Jolt
 
     TEST(SimulationTests, SoftBodyDefinitionsAreSharedAndTypeSafe)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const MaterialHandle materialHandle = system.CreateMaterial(MaterialConfiguration{});
@@ -5922,7 +5922,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         SoftBodyDefinitionConfiguration definitionConfiguration;
@@ -5970,7 +5970,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         SoftBodyDefinitionConfiguration definitionConfiguration;
@@ -6062,7 +6062,7 @@ namespace Jolt
 
     TEST(SimulationTests, SoftBodySkinningAppliesBlendedInverseBindsAndRestoresExactly)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SoftBodyDefinitionConfiguration definitionConfiguration;
@@ -6148,7 +6148,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         SoftBodyDefinitionConfiguration definitionConfiguration;
@@ -6273,7 +6273,7 @@ namespace Jolt
 
     TEST(SimulationTests, SoftBodyDefinitionArchivesRoundTripOptimizedNativeData)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const MaterialHandle materialHandle = system.CreateMaterial(MaterialConfiguration{});
@@ -6338,7 +6338,7 @@ namespace Jolt
     TEST(SimulationTests, AppliesCompleteSoftBodyConfigurationOutsideSimulation)
     {
         NameDictionaryScope nameDictionaryScope;
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const MaterialHandle materialHandle = system.CreateMaterial(MaterialConfiguration{});
@@ -6451,7 +6451,7 @@ namespace Jolt
 
     TEST(SimulationTests, SoftBodyDefinitionsExposeComputedConstraintDataWithoutAllocatingOutputs)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const MaterialHandle materialHandle = system.CreateMaterial(MaterialConfiguration{});
@@ -6679,7 +6679,7 @@ namespace Jolt
 
     TEST(SimulationTests, FacelessCosseratRodsCreateAndSimulate)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SoftBodyDefinitionConfiguration definitionConfiguration;
@@ -6742,7 +6742,7 @@ namespace Jolt
 
     TEST(SimulationTests, ManualSoftBodiesOnlyAdvanceThroughExplicitUpdates)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SoftBodyDefinitionConfiguration definitionConfiguration;
@@ -6815,7 +6815,7 @@ namespace Jolt
 
     TEST(SimulationTests, SoftBodyContactCallbacksExposeSettingsAndManifold)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -6888,7 +6888,7 @@ namespace Jolt
 
     TEST(SimulationTests, SoftBodyContactValidationAndMassScalingControlResponse)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -7013,7 +7013,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         SoftBodyDefinitionConfiguration definitionConfiguration;
@@ -7092,7 +7092,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -7166,7 +7166,7 @@ namespace Jolt
 
     TEST(SimulationTests, HairUsesSharedDefinitionsAndCallerOwnedStateBuffers)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         HairDefinitionConfiguration definitionConfiguration;
@@ -7592,7 +7592,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -7720,7 +7720,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -7862,7 +7862,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -7987,7 +7987,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -8260,7 +8260,7 @@ namespace Jolt
 
     TEST(SimulationTests, CharactersOwnBodiesAndRefreshGroundStateAfterSimulation)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -8492,7 +8492,7 @@ namespace Jolt
 
     TEST(SimulationTests, VehiclesOwnTheirChassisConstraintAndExposeBoundedState)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -9131,7 +9131,7 @@ namespace Jolt
 
     TEST(SimulationTests, WorldSnapshotsRestoreExactStateAndRejectTopologyChanges)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -9207,7 +9207,7 @@ namespace Jolt
 
     TEST(SimulationTests, WorldSnapshotArchivesRoundTripAndRejectCorruptionAtomically)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -9306,7 +9306,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -9377,7 +9377,7 @@ namespace Jolt
 
     TEST(SimulationTests, WorldSnapshotsRejectVirtualCharacterCallbackChanges)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -9424,7 +9424,7 @@ namespace Jolt
 
     TEST(SimulationTests, WorldSnapshotsRestoreMutableGlobalCallbackState)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -9475,7 +9475,7 @@ namespace Jolt
 
     TEST(SimulationTests, TransactionalRestoreRecoversCallbackStateAfterParticipantFailure)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -9531,7 +9531,7 @@ namespace Jolt
     {
         StateSnapshotArchive archive;
         {
-            System sourceSystem(CreateSerialSystemConfiguration(), nullptr);
+            Runtime sourceSystem(CreateSerialSystemConfiguration(), nullptr);
             ASSERT_TRUE(sourceSystem);
 
             const WorldHandle sourceWorldHandle = sourceSystem.GetDefaultWorldHandle();
@@ -9553,7 +9553,7 @@ namespace Jolt
         }
 
         {
-            System targetSystem(CreateSerialSystemConfiguration(), nullptr);
+            Runtime targetSystem(CreateSerialSystemConfiguration(), nullptr);
             ASSERT_TRUE(targetSystem);
 
             const WorldHandle targetWorldHandle = targetSystem.GetDefaultWorldHandle();
@@ -9601,7 +9601,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -9766,7 +9766,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -9860,7 +9860,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -10022,7 +10022,7 @@ namespace Jolt
     TEST(SimulationTests, PrewarmedFilteredStateRecaptureDoesNotAllocateNativeScratch)
     {
         constexpr AZ::u32 bodyCount = 128;
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -10107,7 +10107,7 @@ namespace Jolt
 
     TEST(SimulationTests, PrewarmedContactStateRecaptureDoesNotAllocateNativeScratch)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -10162,7 +10162,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -10294,7 +10294,7 @@ namespace Jolt
         ASSERT_NE(originalRoundingMode, -1);
         ASSERT_EQ(std::fesetround(FE_DOWNWARD), 0);
 
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         const bool stepSucceeded = system.StepWorld(system.GetDefaultWorldHandle(), 1.0f / 60.0f);
         const int restoredRoundingMode = std::fegetround();
 
@@ -10308,7 +10308,7 @@ namespace Jolt
         const int originalRoundingMode = std::fegetround();
         ASSERT_NE(originalRoundingMode, -1);
 
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         HermitePathConfiguration configuration;
@@ -10391,7 +10391,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -10493,7 +10493,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -10620,7 +10620,7 @@ namespace Jolt
 
     TEST(SimulationTests, StandaloneShapesExposeLocalRaycastsAndPointCollision)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -10758,7 +10758,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -10873,7 +10873,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -10948,7 +10948,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -11068,7 +11068,7 @@ namespace Jolt
             .m_y = -1'000'000'000.0,
             .m_z = 500'000'000.0,
         };
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -11460,7 +11460,7 @@ namespace Jolt
             transformedRaycastHit));
         EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
 
-        System otherSystem(
+        Runtime otherSystem(
             CreateSerialSystemConfiguration(),
             nullptr,
             SystemRegistration::Isolated);
@@ -11492,7 +11492,7 @@ namespace Jolt
             .m_y = -1'000'000'000.0,
             .m_z = 500'000'000.0,
         };
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -11618,7 +11618,7 @@ namespace Jolt
 
     TEST(SimulationTests, NativeShapeDetailFlagsAreScopedToEachDiagnosticDraw)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -11725,7 +11725,7 @@ namespace Jolt
             .m_y = -1'000'000'000.0,
             .m_z = 500'000'000.0,
         };
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -11824,7 +11824,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -11903,7 +11903,7 @@ namespace Jolt
 
     TEST(SimulationTests, SimulationDebugCaptureIncludesBroadPhaseBoundsAndQueries)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -11953,7 +11953,7 @@ namespace Jolt
     TEST(SimulationTests, SimulationDebugCaptureIsIsolatedAcrossConcurrentWorldSteps)
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle captureWorldHandle = system.GetDefaultWorldHandle();
@@ -12017,7 +12017,7 @@ namespace Jolt
             configuration.m_defaultWorld.m_fixedTimeStep = 0.1f;
             configuration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
             configuration.m_defaultWorld.m_maximumCatchUpSteps = 2;
-            System system(configuration, nullptr);
+            Runtime system(configuration, nullptr);
             EXPECT_TRUE(system);
 
             const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -12068,7 +12068,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -12455,7 +12455,7 @@ namespace Jolt
         configuration.m_defaultWorld.m_capacity.m_maxBodies = bodyCount + 1;
         configuration.m_defaultWorld.m_capacity.m_maxBodyPairs = bodyCount * 16;
         configuration.m_defaultWorld.m_capacity.m_maxContactConstraints = bodyCount * 16;
-        System system(configuration, nullptr);
+        Runtime system(configuration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -12493,7 +12493,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -12730,7 +12730,7 @@ namespace Jolt
 
     TEST(SimulationTests, StaticBodiesRequireMotionStorageBeforeChangingMotionType)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -12767,7 +12767,7 @@ namespace Jolt
 
     TEST(SimulationTests, ClosestRaycastReturnsProviderIdentityAndSurfaceData)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -12889,7 +12889,7 @@ namespace Jolt
 
     TEST(SimulationTests, QueriesRunConcurrentlyAndRestoreEachThreadFloatEnvironment)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -12950,7 +12950,7 @@ namespace Jolt
 
     TEST(SimulationTests, TopologyMutationWaitsForInFlightQuery)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -13018,7 +13018,7 @@ namespace Jolt
 
     TEST(SimulationTests, BroadPhaseQueryProgressesDuringSimulationUpdate)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -13077,7 +13077,7 @@ namespace Jolt
 
     TEST(SimulationTests, OptimizedSphereOverlapLocksBodiesDuringSimulationUpdate)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -13143,7 +13143,7 @@ namespace Jolt
 
     TEST(SimulationTests, ClosestRaycastBoxFastPathMatchesCanonicalNarrowPhase)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -13239,7 +13239,7 @@ namespace Jolt
 
     TEST(SimulationTests, ClosestPerBodyCastsReturnOneCanonicalHitForEachBody)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -13340,7 +13340,7 @@ namespace Jolt
 
     TEST(SimulationTests, ClosestQueriesResolveExactTiesCanonically)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -13467,7 +13467,7 @@ namespace Jolt
 
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_workerCount = 4;
-        System system(systemConfiguration, &jobContext);
+        Runtime system(systemConfiguration, &jobContext);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -13609,7 +13609,7 @@ namespace Jolt
 
             SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
             systemConfiguration.m_defaultWorld.m_workerCount = 4;
-            System system(systemConfiguration, &jobContext);
+            Runtime system(systemConfiguration, &jobContext);
             ASSERT_TRUE(system);
 
             const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -13703,7 +13703,7 @@ namespace Jolt
 
     TEST(SimulationTests, MaterialsRemainValidWhileShapesReferenceThem)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         MaterialConfiguration materialConfiguration;
@@ -13729,9 +13729,9 @@ namespace Jolt
 
     TEST(SimulationTests, CookedShapesShareNativeDataAcrossWorlds)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
-        EXPECT_EQ(AZ::Interface<ICooking>::Get(), static_cast<ICooking*>(&system));
+        EXPECT_EQ(Cooking::Get(), static_cast<Cooking*>(&system));
 
         const MaterialHandle firstMaterialHandle = system.CreateMaterial(MaterialConfiguration{});
         const MaterialHandle secondMaterialHandle = system.CreateMaterial(MaterialConfiguration{});
@@ -13936,7 +13936,7 @@ namespace Jolt
 
     TEST(SimulationTests, CookingRejectsInvalidGeometryAndStaleHandles)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         ShapeConfiguration invalidConfiguration;
@@ -13989,7 +13989,7 @@ namespace Jolt
 
     TEST(SimulationTests, CustomConvexShapesCookOnceAndRemainNativeAtRuntime)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         TestCustomConvexShapeProvider provider;
@@ -14193,7 +14193,7 @@ namespace Jolt
 
     TEST(SimulationTests, CustomShapesRetainProvidersAcrossCookingArchivesAndRuntimeUse)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         TestCustomShapeProvider provider;
@@ -14676,7 +14676,7 @@ namespace Jolt
 
     TEST(SimulationTests, ClosestRaycastBatchesFromIndependentCallersRunConcurrently)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -14733,7 +14733,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         TestCustomConstraintProvider provider;
@@ -14893,7 +14893,7 @@ namespace Jolt
 
     TEST(SimulationTests, CookedShapeArchivesRoundTripMaterialsAndRejectMismatchedData)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const MaterialHandle materialHandle = system.CreateMaterial(MaterialConfiguration{});
@@ -14967,7 +14967,7 @@ namespace Jolt
 
     TEST(SimulationTests, CookedShapeArchivesRemapCompoundDependenciesAndRetainThem)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         ShapeConfiguration boxConfiguration;
@@ -15100,7 +15100,7 @@ namespace Jolt
 
     TEST(SimulationTests, CookedCompositionsRetainChildrenAndInstantiateAsOneShape)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         ShapeConfiguration boxConfiguration;
@@ -15185,7 +15185,7 @@ namespace Jolt
     TEST(SimulationTests, SceneSourcesCompileCookedDependencyGraphsTransactionally)
     {
         NameDictionaryScope nameDictionaryScope;
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SceneSourceData sourceData;
@@ -15333,7 +15333,7 @@ namespace Jolt
     TEST(SimulationTests, SceneAssetsLoadHandleFreeDependenciesAndOwnTheirRuntimeResources)
     {
         NameDictionaryScope nameDictionaryScope;
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SceneAssetData assetData;
@@ -15424,7 +15424,7 @@ namespace Jolt
 
     TEST(SimulationTests, SceneAssetLoadingRollsBackAfterInvalidLocalDependency)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         SceneAssetData assetData;
@@ -15467,7 +15467,7 @@ namespace Jolt
     TEST(SimulationTests, SceneDefinitionsInstantiateMixedBodiesTransactionallyAndRetainDependencies)
     {
         NameDictionaryScope nameDictionaryScope;
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         ShapeConfiguration sphereConfiguration;
@@ -15633,7 +15633,7 @@ namespace Jolt
 
     TEST(SimulationTests, SceneInstantiationRollsBackEveryReservedResourceAfterValidationFailure)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         ShapeConfiguration shapeConfiguration;
@@ -15670,7 +15670,7 @@ namespace Jolt
 
     TEST(SimulationTests, SceneDefinitionsRejectForwardAndMismatchedConstraintDependencies)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         ShapeConfiguration shapeConfiguration;
@@ -15697,7 +15697,7 @@ namespace Jolt
 
     TEST(SimulationTests, SceneDefinitionsResolveConstraintDependenciesWithoutExposingWorldHandles)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         ShapeConfiguration shapeConfiguration;
@@ -15751,7 +15751,7 @@ namespace Jolt
 
     TEST(SimulationTests, SceneDefinitionsRetainUniquePathAndCollisionFilterResources)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         GroupFilterTableConfiguration groupFilterConfiguration;
@@ -15803,7 +15803,7 @@ namespace Jolt
 
     TEST(SimulationTests, ComposedShapesPreserveDependenciesAndProviderIdentity)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -16048,7 +16048,7 @@ namespace Jolt
 
     TEST(SimulationTests, MutableCompoundEditsPreserveBodyAndDependencyIdentity)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -16207,7 +16207,7 @@ namespace Jolt
 
     TEST(SimulationTests, MutableShapesCloneIndependentlyAndRetainDependencies)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -16291,7 +16291,7 @@ namespace Jolt
 
     TEST(SimulationTests, HeightfieldUsesPositiveYRowsAndZUpHeights)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         HeightfieldShapeConfiguration heightfield;
@@ -16365,7 +16365,7 @@ namespace Jolt
 
     TEST(SimulationTests, HeightfieldRuntimeDataUsesProviderCoordinatesAndSafeMutation)
     {
-        System system(CreateSerialSystemConfiguration(), nullptr);
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
 
         MaterialConfiguration firstMaterialConfiguration;
@@ -16569,7 +16569,7 @@ namespace Jolt
         SystemConfiguration configuration = CreateSerialSystemConfiguration();
         configuration.m_defaultWorld.m_collectActivationEvents = true;
         configuration.m_defaultWorld.m_collectContactEvents = true;
-        System system(configuration, nullptr);
+        Runtime system(configuration, nullptr);
         ASSERT_TRUE(system);
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -16636,7 +16636,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -16685,7 +16685,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -17036,7 +17036,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         TestCustomPathProvider provider;
@@ -17138,7 +17138,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -17259,7 +17259,7 @@ namespace Jolt
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();

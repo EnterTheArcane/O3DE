@@ -507,7 +507,7 @@ namespace Jolt
         }
     }
 
-    SkeletonDefinitionHandle System::CreateSkeletonDefinition(
+    SkeletonDefinitionHandle RuntimeImplementation::CreateSkeletonDefinition(
         const SkeletonDefinitionConfiguration& configuration)
     {
         if (configuration.m_joints.empty()
@@ -550,7 +550,7 @@ namespace Jolt
             {configuration.m_joints.begin(), configuration.m_joints.end()});
     }
 
-    SkeletonDefinitionHandle System::StoreSkeletonDefinition(
+    SkeletonDefinitionHandle RuntimeImplementation::StoreSkeletonDefinition(
         JPH::Ref<JPH::Skeleton> skeleton,
         AZStd::vector<SkeletonJoint> joints)
     {
@@ -583,7 +583,7 @@ namespace Jolt
         return Internal::MakeResourceHandle<SkeletonDefinitionHandle>(skeletonIndex, slot.m_generation);
     }
 
-    bool System::DestroySkeletonDefinition(
+    bool RuntimeImplementation::DestroySkeletonDefinition(
         const SkeletonDefinitionHandle skeletonHandle)
     {
         AZStd::lock_guard lock(m_skeletonMutex);
@@ -611,14 +611,14 @@ namespace Jolt
         return true;
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const SkeletonDefinitionHandle skeletonHandle) const
     {
         AZStd::shared_lock lock(m_skeletonMutex);
         return FindSkeletonDefinitionUnlocked(skeletonHandle);
     }
 
-    QueryResult System::GetSkeletonJoints(
+    QueryResult RuntimeImplementation::GetSkeletonJoints(
         const SkeletonDefinitionHandle skeletonHandle,
         AZStd::span<SkeletonJoint> joints) const
     {
@@ -640,7 +640,7 @@ namespace Jolt
         };
     }
 
-    bool System::FindSkeletonJoint(
+    bool RuntimeImplementation::FindSkeletonJoint(
         const SkeletonDefinitionHandle skeletonHandle,
         const AZ::Name jointName,
         AZ::u32& jointIndex) const
@@ -662,7 +662,7 @@ namespace Jolt
         return true;
     }
 
-    SkeletalAnimationHandle System::CreateSkeletalAnimation(
+    SkeletalAnimationHandle RuntimeImplementation::CreateSkeletalAnimation(
         const SkeletalAnimationConfiguration& configuration)
     {
         const DeterministicFloatScope floatScope;
@@ -678,7 +678,7 @@ namespace Jolt
             AZStd::move(jointNames));
     }
 
-    SkeletalAnimationHandle System::StoreSkeletalAnimation(
+    SkeletalAnimationHandle RuntimeImplementation::StoreSkeletalAnimation(
         JPH::Ref<JPH::SkeletalAnimation> animation,
         AZStd::vector<AZ::Name> jointNames)
     {
@@ -705,7 +705,7 @@ namespace Jolt
         return Internal::MakeResourceHandle<SkeletalAnimationHandle>(animationIndex, slot.m_generation);
     }
 
-    bool System::UpdateSkeletalAnimation(
+    bool RuntimeImplementation::UpdateSkeletalAnimation(
         const SkeletalAnimationHandle animationHandle,
         const SkeletalAnimationConfiguration& configuration)
     {
@@ -734,7 +734,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::DestroySkeletalAnimation(
+    bool RuntimeImplementation::DestroySkeletalAnimation(
         const SkeletalAnimationHandle animationHandle)
     {
         AZStd::lock_guard lock(m_skeletonMutex);
@@ -758,14 +758,14 @@ namespace Jolt
         return true;
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const SkeletalAnimationHandle animationHandle) const
     {
         AZStd::shared_lock lock(m_skeletonMutex);
         return FindSkeletalAnimationUnlocked(animationHandle);
     }
 
-    bool System::GetSkeletalAnimationState(
+    bool RuntimeImplementation::GetSkeletalAnimationState(
         const SkeletalAnimationHandle animationHandle,
         SkeletalAnimationState& state) const
     {
@@ -784,7 +784,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::GetSkeletalAnimatedJointName(
+    bool RuntimeImplementation::GetSkeletalAnimatedJointName(
         const SkeletalAnimationHandle animationHandle,
         const AZ::u32 jointIndex,
         AZ::Name& jointName) const
@@ -800,7 +800,7 @@ namespace Jolt
         return true;
     }
 
-    QueryResult System::GetSkeletalAnimationKeyframes(
+    QueryResult RuntimeImplementation::GetSkeletalAnimationKeyframes(
         const SkeletalAnimationHandle animationHandle,
         const AZ::u32 jointIndex,
         const AZStd::span<SkeletalAnimationKeyframe> keyframes) const
@@ -844,7 +844,7 @@ namespace Jolt
         };
     }
 
-    bool System::SetSkeletalAnimationLooping(
+    bool RuntimeImplementation::SetSkeletalAnimationLooping(
         const SkeletalAnimationHandle animationHandle,
         const bool isLooping)
     {
@@ -859,7 +859,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::ScaleSkeletalAnimation(
+    bool RuntimeImplementation::ScaleSkeletalAnimation(
         const SkeletalAnimationHandle animationHandle,
         const float scale)
     {
@@ -880,7 +880,7 @@ namespace Jolt
         return true;
     }
 
-    SkeletonPoseHandle System::CreateSkeletonPose(
+    SkeletonPoseHandle RuntimeImplementation::CreateSkeletonPose(
         const SkeletonDefinitionHandle skeletonHandle)
     {
         const DeterministicFloatScope floatScope;
@@ -917,7 +917,7 @@ namespace Jolt
         return Internal::MakeResourceHandle<SkeletonPoseHandle>(poseIndex, slot.m_generation);
     }
 
-    bool System::DestroySkeletonPose(
+    bool RuntimeImplementation::DestroySkeletonPose(
         const SkeletonPoseHandle poseHandle)
     {
         AZStd::lock_guard lock(m_skeletonMutex);
@@ -947,14 +947,14 @@ namespace Jolt
         return true;
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const SkeletonPoseHandle poseHandle) const
     {
         AZStd::shared_lock lock(m_skeletonMutex);
         return FindSkeletonPoseUnlocked(poseHandle);
     }
 
-    bool System::GetSkeletonPoseState(
+    bool RuntimeImplementation::GetSkeletonPoseState(
         const SkeletonPoseHandle poseHandle,
         SkeletonPoseState& state) const
     {
@@ -980,7 +980,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::SetSkeletonPoseRootOffset(
+    bool RuntimeImplementation::SetSkeletonPoseRootOffset(
         const SkeletonPoseHandle poseHandle,
         const WorldPosition& rootOffset)
     {
@@ -1008,7 +1008,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::SetSkeletonPoseLocalTransforms(
+    bool RuntimeImplementation::SetSkeletonPoseLocalTransforms(
         const SkeletonPoseHandle poseHandle,
         const AZStd::span<const AZ::Transform> localTransforms)
     {
@@ -1038,7 +1038,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::SetSkeletonPoseModelTransforms(
+    bool RuntimeImplementation::SetSkeletonPoseModelTransforms(
         const SkeletonPoseHandle poseHandle,
         const AZStd::span<const AZ::Transform> modelTransforms)
     {
@@ -1068,7 +1068,7 @@ namespace Jolt
         return true;
     }
 
-    QueryResult System::GetSkeletonPoseLocalTransforms(
+    QueryResult RuntimeImplementation::GetSkeletonPoseLocalTransforms(
         const SkeletonPoseHandle poseHandle,
         const AZStd::span<AZ::Transform> localTransforms) const
     {
@@ -1094,7 +1094,7 @@ namespace Jolt
         };
     }
 
-    QueryResult System::GetSkeletonPoseModelTransforms(
+    QueryResult RuntimeImplementation::GetSkeletonPoseModelTransforms(
         const SkeletonPoseHandle poseHandle,
         const AZStd::span<AZ::Transform> modelTransforms) const
     {
@@ -1120,7 +1120,7 @@ namespace Jolt
         };
     }
 
-    bool System::SampleSkeletalAnimation(
+    bool RuntimeImplementation::SampleSkeletalAnimation(
         const SkeletalAnimationHandle animationHandle,
         const SkeletonPoseHandle poseHandle,
         const float time)
@@ -1217,7 +1217,7 @@ namespace Jolt
         return true;
     }
 
-    SkeletonMapperHandle System::CreateSkeletonMapper(
+    SkeletonMapperHandle RuntimeImplementation::CreateSkeletonMapper(
         const SkeletonMapperConfiguration& configuration)
     {
         const DeterministicFloatScope floatScope;
@@ -1382,7 +1382,7 @@ namespace Jolt
         return Internal::MakeResourceHandle<SkeletonMapperHandle>(mapperIndex, slot.m_generation);
     }
 
-    bool System::DestroySkeletonMapper(
+    bool RuntimeImplementation::DestroySkeletonMapper(
         const SkeletonMapperHandle mapperHandle)
     {
         AZStd::lock_guard lock(m_skeletonMutex);
@@ -1414,14 +1414,14 @@ namespace Jolt
         return true;
     }
 
-    bool System::IsValid(
+    bool RuntimeImplementation::IsValid(
         const SkeletonMapperHandle mapperHandle) const
     {
         AZStd::shared_lock lock(m_skeletonMutex);
         return FindSkeletonMapperUnlocked(mapperHandle);
     }
 
-    bool System::GetSkeletonMapperState(
+    bool RuntimeImplementation::GetSkeletonMapperState(
         const SkeletonMapperHandle mapperHandle,
         SkeletonMapperState& state) const
     {
@@ -1446,7 +1446,7 @@ namespace Jolt
         return true;
     }
 
-    QueryResult System::GetSkeletonMapperMappings(
+    QueryResult RuntimeImplementation::GetSkeletonMapperMappings(
         const SkeletonMapperHandle mapperHandle,
         const AZStd::span<SkeletonMapperMappingState> mappings) const
     {
@@ -1475,7 +1475,7 @@ namespace Jolt
         };
     }
 
-    bool System::GetSkeletonMapperChainState(
+    bool RuntimeImplementation::GetSkeletonMapperChainState(
         const SkeletonMapperHandle mapperHandle,
         const AZ::u32 chainIndex,
         SkeletonMapperChainState& state) const
@@ -1495,7 +1495,7 @@ namespace Jolt
         return true;
     }
 
-    QueryResult System::GetSkeletonMapperSourceChain(
+    QueryResult RuntimeImplementation::GetSkeletonMapperSourceChain(
         const SkeletonMapperHandle mapperHandle,
         const AZ::u32 chainIndex,
         const AZStd::span<AZ::u32> jointIndices) const
@@ -1512,7 +1512,7 @@ namespace Jolt
             jointIndices);
     }
 
-    QueryResult System::GetSkeletonMapperTargetChain(
+    QueryResult RuntimeImplementation::GetSkeletonMapperTargetChain(
         const SkeletonMapperHandle mapperHandle,
         const AZ::u32 chainIndex,
         const AZStd::span<AZ::u32> jointIndices) const
@@ -1529,7 +1529,7 @@ namespace Jolt
             jointIndices);
     }
 
-    QueryResult System::GetSkeletonMapperUnmappedJoints(
+    QueryResult RuntimeImplementation::GetSkeletonMapperUnmappedJoints(
         const SkeletonMapperHandle mapperHandle,
         const AZStd::span<SkeletonMapperUnmappedJoint> joints) const
     {
@@ -1555,7 +1555,7 @@ namespace Jolt
         };
     }
 
-    QueryResult System::GetSkeletonMapperLockedTranslations(
+    QueryResult RuntimeImplementation::GetSkeletonMapperLockedTranslations(
         const SkeletonMapperHandle mapperHandle,
         const AZStd::span<SkeletonMapperLockedTranslation> translations) const
     {
@@ -1587,7 +1587,7 @@ namespace Jolt
         };
     }
 
-    bool System::GetMappedSkeletonJoint(
+    bool RuntimeImplementation::GetMappedSkeletonJoint(
         const SkeletonMapperHandle mapperHandle,
         const AZ::u32 sourceJointIndex,
         AZ::u32& targetJointIndex) const
@@ -1610,7 +1610,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::IsSkeletonJointTranslationLocked(
+    bool RuntimeImplementation::IsSkeletonJointTranslationLocked(
         const SkeletonMapperHandle mapperHandle,
         const AZ::u32 targetJointIndex,
         bool& locked) const
@@ -1627,7 +1627,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::MapSkeletonPose(
+    bool RuntimeImplementation::MapSkeletonPose(
         const SkeletonMapperHandle mapperHandle,
         const AZStd::span<const AZ::Transform> sourceModelTransforms,
         const AZStd::span<const AZ::Transform> targetLocalTransforms,
@@ -1676,7 +1676,7 @@ namespace Jolt
         return true;
     }
 
-    bool System::MapSkeletonPoseReverse(
+    bool RuntimeImplementation::MapSkeletonPoseReverse(
         const SkeletonMapperHandle mapperHandle,
         const AZStd::span<const AZ::Transform> targetModelTransforms,
         AZStd::span<AZ::Transform> sourceModelTransforms) const
@@ -1714,14 +1714,14 @@ namespace Jolt
         return true;
     }
 
-    System::SkeletonDefinitionSlot* System::FindSkeletonDefinitionUnlocked(
+    RuntimeImplementation::SkeletonDefinitionSlot* RuntimeImplementation::FindSkeletonDefinitionUnlocked(
         const SkeletonDefinitionHandle skeletonHandle)
     {
         return const_cast<SkeletonDefinitionSlot*>(
-            static_cast<const System*>(this)->FindSkeletonDefinitionUnlocked(skeletonHandle));
+            static_cast<const RuntimeImplementation*>(this)->FindSkeletonDefinitionUnlocked(skeletonHandle));
     }
 
-    const System::SkeletonDefinitionSlot* System::FindSkeletonDefinitionUnlocked(
+    const RuntimeImplementation::SkeletonDefinitionSlot* RuntimeImplementation::FindSkeletonDefinitionUnlocked(
         const SkeletonDefinitionHandle skeletonHandle) const
     {
         Internal::ResourceHandleParts parts;
@@ -1739,7 +1739,7 @@ namespace Jolt
         return &slot;
     }
 
-    bool System::AcquireSkeletonDefinition(
+    bool RuntimeImplementation::AcquireSkeletonDefinition(
         const SkeletonDefinitionHandle skeletonHandle,
         JPH::Ref<JPH::Skeleton>& skeleton)
     {
@@ -1755,7 +1755,7 @@ namespace Jolt
         return true;
     }
 
-    void System::ReleaseSkeletonDefinition(
+    void RuntimeImplementation::ReleaseSkeletonDefinition(
         const SkeletonDefinitionHandle skeletonHandle)
     {
         AZStd::lock_guard lock(m_skeletonMutex);
@@ -1769,7 +1769,7 @@ namespace Jolt
         }
     }
 
-    const System::SkeletonMapperSlot* System::FindSkeletonMapperUnlocked(
+    const RuntimeImplementation::SkeletonMapperSlot* RuntimeImplementation::FindSkeletonMapperUnlocked(
         const SkeletonMapperHandle mapperHandle) const
     {
         Internal::ResourceHandleParts parts;
@@ -1787,14 +1787,14 @@ namespace Jolt
         return &slot;
     }
 
-    System::SkeletalAnimationSlot* System::FindSkeletalAnimationUnlocked(
+    RuntimeImplementation::SkeletalAnimationSlot* RuntimeImplementation::FindSkeletalAnimationUnlocked(
         const SkeletalAnimationHandle animationHandle)
     {
         return const_cast<SkeletalAnimationSlot*>(
-            static_cast<const System&>(*this).FindSkeletalAnimationUnlocked(animationHandle));
+            static_cast<const RuntimeImplementation&>(*this).FindSkeletalAnimationUnlocked(animationHandle));
     }
 
-    const System::SkeletalAnimationSlot* System::FindSkeletalAnimationUnlocked(
+    const RuntimeImplementation::SkeletalAnimationSlot* RuntimeImplementation::FindSkeletalAnimationUnlocked(
         const SkeletalAnimationHandle animationHandle) const
     {
         Internal::ResourceHandleParts parts;
@@ -1812,14 +1812,14 @@ namespace Jolt
         return &slot;
     }
 
-    System::SkeletonPoseSlot* System::FindSkeletonPoseUnlocked(
+    RuntimeImplementation::SkeletonPoseSlot* RuntimeImplementation::FindSkeletonPoseUnlocked(
         const SkeletonPoseHandle poseHandle)
     {
         return const_cast<SkeletonPoseSlot*>(
-            static_cast<const System&>(*this).FindSkeletonPoseUnlocked(poseHandle));
+            static_cast<const RuntimeImplementation&>(*this).FindSkeletonPoseUnlocked(poseHandle));
     }
 
-    const System::SkeletonPoseSlot* System::FindSkeletonPoseUnlocked(
+    const RuntimeImplementation::SkeletonPoseSlot* RuntimeImplementation::FindSkeletonPoseUnlocked(
         const SkeletonPoseHandle poseHandle) const
     {
         Internal::ResourceHandleParts parts;

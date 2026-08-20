@@ -19,7 +19,7 @@
 
 namespace Jolt
 {
-    class ISystem;
+    class RuntimeImplementation;
 
     class JOLT_API RagdollComponent final
         : public AZ::Component
@@ -143,7 +143,7 @@ namespace Jolt
         AZStd::unique_ptr<RagdollComponentConfiguration> m_configuration;
         AZStd::unique_ptr<RuntimeResources> m_resources;
 
-        ISystem* m_system = nullptr;
+        RuntimeImplementation* m_system = nullptr;
         WorldHandle m_worldHandle;
         RagdollHandle m_ragdollHandle;
         BodyHandle m_rootBodyHandle;

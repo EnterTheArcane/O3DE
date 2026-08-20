@@ -134,7 +134,7 @@ namespace Jolt
     public:
         virtual ~IQueryFilter() = default;
 
-        //! Called synchronously while the target body is locked. Do not call ISystem.
+        //! Called synchronously while the target body is locked. Do not call runtime capabilities.
 
         [[nodiscard]]
         virtual bool ShouldIncludeBody([[maybe_unused]] BodyHandle bodyHandle) const
@@ -533,7 +533,7 @@ namespace Jolt
     };
 
     //! Synchronous collision sink. Face spans are valid only during AddHit.
-    //! Callbacks follow deterministic native traversal order, must not reenter ISystem, and may be concurrent across caller threads.
+    //! Callbacks follow deterministic native traversal order, must not reenter runtime capabilities, and may be concurrent across caller threads.
     //! GetEarlyOutFraction may only stay unchanged or decrease after a hit. Use the span overload for canonical result ordering.
     class ITransformedShapeCollisionCollector
     {
@@ -554,7 +554,7 @@ namespace Jolt
     };
 
     //! Synchronous cast sink. Face spans are valid only during AddHit.
-    //! Callbacks follow deterministic native traversal order, must not reenter ISystem, and may be concurrent across caller threads.
+    //! Callbacks follow deterministic native traversal order, must not reenter runtime capabilities, and may be concurrent across caller threads.
     //! GetEarlyOutFraction may only stay unchanged or decrease after a hit. Use the span overload for canonical result ordering.
     class ITransformedShapeCastCollector
     {

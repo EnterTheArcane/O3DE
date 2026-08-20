@@ -159,7 +159,7 @@ namespace Jolt::Benchmarks
 
         [[nodiscard]]
         ShapeHandle CreateBox(
-            System& system,
+            Runtime& system,
             const WorldHandle worldHandle,
             const AZ::Vector3& dimensions)
         {
@@ -170,7 +170,7 @@ namespace Jolt::Benchmarks
 
         [[nodiscard]]
         ShapeHandle CreateSphere(
-            System& system,
+            Runtime& system,
             const WorldHandle worldHandle,
             const float radius)
         {
@@ -188,7 +188,7 @@ namespace Jolt::Benchmarks
 
         [[nodiscard]]
         bool CreateHairBenchmarkScenario(
-            System& system,
+            Runtime& system,
             const WorldHandle worldHandle,
             const AZ::u32 strandCount,
             const AZ::u32 verticesPerStrand,
@@ -246,7 +246,7 @@ namespace Jolt::Benchmarks
 
         [[nodiscard]]
         BodyHandle CreateBody(
-            System& system,
+            Runtime& system,
             const WorldHandle worldHandle,
             const ShapeHandle shapeHandle,
             const MotionType motionType,
@@ -280,7 +280,7 @@ namespace Jolt::Benchmarks
 
         void AddWorldCounters(
             benchmark::State& state,
-            System& system,
+            Runtime& system,
             const WorldHandle worldHandle)
         {
             WorldStatistics statistics;
@@ -302,7 +302,7 @@ namespace Jolt::Benchmarks
 
         void AddPerformanceCounters(
             benchmark::State& state,
-            System& system,
+            Runtime& system,
             const WorldHandle worldHandle)
         {
             WorldPerformanceStatistics statistics;
@@ -333,7 +333,7 @@ namespace Jolt::Benchmarks
 
         [[nodiscard]]
         bool CreateQueryGrid(
-            System& system,
+            Runtime& system,
             const WorldHandle worldHandle,
             const AZ::u32 obstacleCount)
         {
@@ -369,7 +369,7 @@ namespace Jolt::Benchmarks
 
         [[nodiscard]]
         bool CreateBodiesForDestruction(
-            System& system,
+            Runtime& system,
             const WorldHandle worldHandle,
             const ShapeHandle shapeHandle,
             const AZ::u32 bodyCount,
@@ -393,7 +393,7 @@ namespace Jolt::Benchmarks
 
         [[nodiscard]]
         bool CreateConstraintsForMembership(
-            System& system,
+            Runtime& system,
             const WorldHandle worldHandle,
             const ShapeHandle shapeHandle,
             const AZ::u32 constraintCount,
@@ -441,7 +441,7 @@ namespace Jolt::Benchmarks
         }
 
         bool CreateBodiesForConstraintDestruction(
-            System& system,
+            Runtime& system,
             const WorldHandle worldHandle,
             const ShapeHandle shapeHandle,
             const AZ::u32 constraintCount,
@@ -467,7 +467,7 @@ namespace Jolt::Benchmarks
         }
 
         bool CreateConstraintsForDestruction(
-            System& system,
+            Runtime& system,
             const WorldHandle worldHandle,
             const AZStd::span<const BodyHandle> bodyHandles,
             AZStd::vector<ConstraintHandle>& constraintHandles)
@@ -564,7 +564,7 @@ namespace Jolt::Benchmarks
         };
 
         bool CreateRagdollBenchmarkScenario(
-            System& system,
+            Runtime& system,
             const WorldHandle worldHandle,
             const AZ::u32 partCount,
             RagdollBenchmarkScenario& scenario)
@@ -627,7 +627,7 @@ namespace Jolt::Benchmarks
         }
 
         void DestroyRagdollBenchmarkScenario(
-            System& system,
+            Runtime& system,
             const WorldHandle worldHandle,
             RagdollBenchmarkScenario& scenario)
         {
@@ -662,7 +662,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(
                 workerCount,
                 bodyCount + 1,
@@ -845,7 +845,7 @@ namespace Jolt::Benchmarks
             bodiesPerWorld + 1);
         systemConfiguration.m_createDefaultWorld = false;
         systemConfiguration.m_defaultWorld.m_autoSimulate = true;
-        System system(systemConfiguration, &jobContext.Get());
+        Runtime system(systemConfiguration, &jobContext.Get());
         if (!system)
         {
             state.SkipWithError("Failed to create the Jolt multi-world benchmark system.");
@@ -940,7 +940,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, bodyCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1011,7 +1011,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 partCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, partCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1052,7 +1052,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 partCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, partCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1095,7 +1095,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 gridSize = aznumeric_cast<AZ::u32>(state.range(0));
         SystemConfiguration systemConfiguration;
         systemConfiguration.m_createDefaultWorld = false;
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         const SoftBodyDefinitionConfiguration configuration =
             CreateSoftBodyBenchmarkDefinition(gridSize);
         for ([[maybe_unused]] auto iteration : state)
@@ -1122,7 +1122,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 gridSize = aznumeric_cast<AZ::u32>(state.range(0));
         SystemConfiguration systemConfiguration;
         systemConfiguration.m_createDefaultWorld = false;
-        System system(systemConfiguration, nullptr);
+        Runtime system(systemConfiguration, nullptr);
         const SoftBodyDefinitionConfiguration configuration =
             CreateSoftBodyBenchmarkDefinition(gridSize);
         const SoftBodyDefinitionHandle sourceHandle = system.CreateSoftBodyDefinition(configuration);
@@ -1163,7 +1163,7 @@ namespace Jolt::Benchmarks
         const bool restoreState = state.range(1) != 0;
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, bodyCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1288,7 +1288,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 compoundCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, 1),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1381,7 +1381,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, bodyCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1442,7 +1442,7 @@ namespace Jolt::Benchmarks
         const bool combined = state.range(1) != 0;
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, 1),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1538,7 +1538,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, bodyCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1592,7 +1592,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, bodyCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1646,7 +1646,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, bodyCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1697,7 +1697,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 constraintCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, constraintCount + 1),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1749,7 +1749,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 constraintCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, constraintCount + 1),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1795,7 +1795,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 constraintCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, constraintCount + 1),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1857,7 +1857,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 constraintCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, constraintCount + 1),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1917,7 +1917,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 rayCount = aznumeric_cast<AZ::u32>(state.range(1));
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(2));
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, obstacleCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -1973,7 +1973,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 rayCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, 1),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -2032,7 +2032,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 rayCount = aznumeric_cast<AZ::u32>(state.range(1));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, obstacleCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -2093,7 +2093,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 rayCount = aznumeric_cast<AZ::u32>(state.range(1));
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(2));
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, obstacleCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -2169,7 +2169,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 queryCount = aznumeric_cast<AZ::u32>(state.range(1));
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(2));
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, obstacleCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -2227,7 +2227,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 obstacleCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, obstacleCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -2271,7 +2271,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 obstacleCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, obstacleCount),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -2320,7 +2320,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 gridSize = aznumeric_cast<AZ::u32>(state.range(2));
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(3));
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, 1),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -2389,7 +2389,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 gridSize = aznumeric_cast<AZ::u32>(state.range(2));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, 1),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -2470,7 +2470,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
         const AZ::u32 category = aznumeric_cast<AZ::u32>(state.range(2));
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, constraintCount + 16),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -2574,7 +2574,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
         JobContextScope jobContext(workerCount);
-        System system(CreateSystemConfiguration(workerCount, bodyCount + 16), &jobContext.Get());
+        Runtime system(CreateSystemConfiguration(workerCount, bodyCount + 16), &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         const SoftBodyDefinitionHandle definitionHandle =
             system.CreateSoftBodyDefinition(CreateSoftBodyBenchmarkDefinition(8));
@@ -2627,7 +2627,7 @@ namespace Jolt::Benchmarks
         benchmark::State& state)
     {
         const AZ::u32 characterCount = aznumeric_cast<AZ::u32>(state.range(0));
-        System system(CreateSystemConfiguration(1, characterCount + 16), nullptr);
+        Runtime system(CreateSystemConfiguration(1, characterCount + 16), nullptr);
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         const ShapeHandle shapeHandle = CreateSphere(system, worldHandle, 0.5f);
         AZStd::vector<VirtualCharacterHandle> characters;
@@ -2676,7 +2676,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 characterCount = aznumeric_cast<AZ::u32>(state.range(0));
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, characterCount + 16),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -2777,7 +2777,7 @@ namespace Jolt::Benchmarks
         const bool castShape = state.range(0) != 0;
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, 1),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -2878,7 +2878,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 jointCount = aznumeric_cast<AZ::u32>(state.range(0));
         SystemConfiguration configuration;
         configuration.m_createDefaultWorld = false;
-        System system(configuration, nullptr);
+        Runtime system(configuration, nullptr);
 
         SkeletonDefinitionConfiguration sourceConfiguration;
         SkeletonDefinitionConfiguration targetConfiguration;
@@ -2965,7 +2965,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 sampleCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, 1),
             &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -3024,7 +3024,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
         const AZ::u32 controllerCategory = aznumeric_cast<AZ::u32>(state.range(2));
         JobContextScope jobContext(workerCount);
-        System system(CreateSystemConfiguration(workerCount, vehicleCount + 32), &jobContext.Get());
+        Runtime system(CreateSystemConfiguration(workerCount, vehicleCount + 32), &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         const ShapeHandle floorShape = CreateBox(system, worldHandle, AZ::Vector3(128.0f, 128.0f, 1.0f));
         const ShapeHandle chassisShape = CreateBox(system, worldHandle, AZ::Vector3(1.8f, 4.0f, 0.6f));
@@ -3134,7 +3134,7 @@ namespace Jolt::Benchmarks
         const AZ::u32 partCount = aznumeric_cast<AZ::u32>(state.range(0));
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
         JobContextScope jobContext(workerCount);
-        System system(CreateSystemConfiguration(workerCount, partCount + 16), &jobContext.Get());
+        Runtime system(CreateSystemConfiguration(workerCount, partCount + 16), &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         RagdollBenchmarkScenario scenario;
         if (!system || !CreateRagdollBenchmarkScenario(system, worldHandle, partCount, scenario))
@@ -3169,7 +3169,7 @@ namespace Jolt::Benchmarks
         benchmark::State& state)
     {
         const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
-        System system(CreateSystemConfiguration(1, bodyCount + 16), nullptr);
+        Runtime system(CreateSystemConfiguration(1, bodyCount + 16), nullptr);
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         if (!CreateQueryGrid(system, worldHandle, bodyCount))
         {
@@ -3192,7 +3192,7 @@ namespace Jolt::Benchmarks
         benchmark::State& state)
     {
         const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
-        System system(CreateSystemConfiguration(1, bodyCount + 16), nullptr);
+        Runtime system(CreateSystemConfiguration(1, bodyCount + 16), nullptr);
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
 
         ShapeConfiguration shapeConfiguration;
@@ -3230,7 +3230,7 @@ namespace Jolt::Benchmarks
     void ReadPerformanceStatistics(
         benchmark::State& state)
     {
-        System system(CreateSystemConfiguration(1, 1'040), nullptr);
+        Runtime system(CreateSystemConfiguration(1, 1'040), nullptr);
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         if (!CreateQueryGrid(system, worldHandle, 1'024)
             || !system.ConfigurePerformanceStatistics(
@@ -3266,7 +3266,7 @@ namespace Jolt::Benchmarks
         configuration.m_defaultWorld.m_collectActivationEvents = policy == 0 || policy == 3;
         configuration.m_defaultWorld.m_collectContactEvents = policy == 0 || policy == 1;
         configuration.m_defaultWorld.m_simulation.m_allowSleeping = policy == 3;
-        System system(configuration, &jobContext.Get());
+        Runtime system(configuration, &jobContext.Get());
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         const ShapeHandle floorShape = CreateBox(system, worldHandle, AZ::Vector3(64.0f, 64.0f, 1.0f));
         const ShapeHandle sphereShape = CreateSphere(system, worldHandle, 0.25f);
@@ -3357,7 +3357,7 @@ namespace Jolt::Benchmarks
         }
 
         JobContextScope jobContext(workerCount);
-        System system(
+        Runtime system(
             CreateSystemConfiguration(workerCount, bodyCount + 16),
             &jobContext.Get(),
             SystemRegistration::Isolated);

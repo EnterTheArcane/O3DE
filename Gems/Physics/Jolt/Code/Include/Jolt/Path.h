@@ -65,7 +65,7 @@ namespace Jolt
     };
 
     //! Supplies an immutable provider-defined path without exposing native path types.
-    //! Callbacks may run concurrently during simulation and must be deterministic, allocation-free, and must not call ISystem.
+    //! Callbacks may run concurrently during simulation and must be deterministic, allocation-free, and must not call runtime capabilities.
     class ICustomPathProvider
     {
     public:
