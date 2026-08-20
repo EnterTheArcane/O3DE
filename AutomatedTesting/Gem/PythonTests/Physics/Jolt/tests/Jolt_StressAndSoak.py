@@ -14,6 +14,7 @@ try:
     from .Jolt_ScenarioUtilities import create_world_position
     from .Jolt_ScenarioUtilities import enter_game_mode
     from .Jolt_ScenarioUtilities import exit_game_mode
+    from .Jolt_ScenarioUtilities import is_restore_complete
     from .Jolt_ScenarioUtilities import open_level
     from .Jolt_ScenarioUtilities import wait_for_runtime_entity
 except ImportError:
@@ -21,6 +22,7 @@ except ImportError:
     from Jolt_ScenarioUtilities import create_world_position
     from Jolt_ScenarioUtilities import enter_game_mode
     from Jolt_ScenarioUtilities import exit_game_mode
+    from Jolt_ScenarioUtilities import is_restore_complete
     from Jolt_ScenarioUtilities import open_level
     from Jolt_ScenarioUtilities import wait_for_runtime_entity
 
@@ -141,6 +143,7 @@ def Jolt_StressAndSoak():
                         world_handle,
                         initial_snapshot,
                     ),
+                    lambda result: is_restore_complete(jolt, result),
                 )
 
             configuration.workerCount = worker_count

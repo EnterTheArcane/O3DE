@@ -158,6 +158,29 @@ namespace Jolt
         bool m_matches = false;
     };
 
+    enum class StateRestoreStatus : AZ::u8
+    {
+        None = 0,
+        //! The requested state is active and the world remains usable.
+        Complete,
+        //! Validation or preparation failed before mutation, or the previous state was recovered.
+        Rejected,
+        //! Recovery failed after mutation. Only world destruction remains valid.
+        StateIndeterminate,
+    };
+
+    struct StateRestoreResult final
+    {
+        AZ_TYPE_INFO(StateRestoreResult, StateRestoreResultTypeId);
+
+        constexpr explicit operator bool() const noexcept
+        {
+            return m_status == StateRestoreStatus::Complete;
+        }
+
+        StateRestoreStatus m_status = StateRestoreStatus::None;
+    };
+
     enum class StateSnapshotFlags : AZ::u8
     {
         None = 0,
@@ -232,7 +255,6 @@ namespace Jolt
         AZ::u32 m_constraintCount = 0;
         AZ::u32 m_shapeCount = 0;
 
-        AZ::u32 m_bodySnapshotCount = 0;
         AZ::u32 m_characterCount = 0;
         AZ::u32 m_hairCount = 0;
         AZ::u32 m_ragdollCount = 0;
@@ -295,7 +317,6 @@ namespace Jolt
         AZ::u64 m_wrapperRetainedBytes = 0;
 
         ResourceStatistics m_bodies;
-        ResourceStatistics m_bodySnapshots;
         ResourceStatistics m_characters;
         ResourceStatistics m_constraints;
         ResourceStatistics m_hair;

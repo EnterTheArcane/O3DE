@@ -23,27 +23,19 @@ namespace Jolt
         static Rollback* Get();
 
         [[nodiscard]]
-        BodySnapshotHandle CaptureBodyState(
+        StateSnapshotHandle CaptureBodyState(
             WorldHandle worldHandle,
             BodyHandle bodyHandle);
 
         bool CaptureBodyState(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            BodySnapshotHandle snapshotHandle);
-
-        bool DestroyBodyStateSnapshot(
-            WorldHandle worldHandle,
-            BodySnapshotHandle snapshotHandle);
+            StateSnapshotHandle snapshotHandle);
 
         [[nodiscard]]
-        bool IsValid(
+        StateRestoreResult RestoreBodyState(
             WorldHandle worldHandle,
-            BodySnapshotHandle snapshotHandle) const;
-
-        bool RestoreBodyState(
-            WorldHandle worldHandle,
-            BodySnapshotHandle snapshotHandle);
+            StateSnapshotHandle snapshotHandle);
 
         [[nodiscard]]
         StateSnapshotHandle CaptureWorldState(WorldHandle worldHandle);
@@ -92,12 +84,14 @@ namespace Jolt
             WorldHandle worldHandle,
             StateSnapshotHandle snapshotHandle) const;
 
-        bool RestoreWorldState(
+        [[nodiscard]]
+        StateRestoreResult RestoreWorldState(
             WorldHandle worldHandle,
             StateSnapshotHandle snapshotHandle);
 
         //! Prevalidates a batch returned by CaptureWorldStateParts before beginning restore.
-        bool RestoreWorldStateParts(
+        [[nodiscard]]
+        StateRestoreResult RestoreWorldStateParts(
             WorldHandle worldHandle,
             AZStd::span<const StateSnapshotHandle> snapshotHandles);
 

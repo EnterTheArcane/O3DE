@@ -311,7 +311,6 @@ namespace Jolt
             const AZ::TypeId reflectedHandleTypeIds[] = {
                 azrtti_typeid<BodyId>(),
                 azrtti_typeid<BodyHandle>(),
-                azrtti_typeid<BodySnapshotHandle>(),
                 azrtti_typeid<CharacterHandle>(),
                 azrtti_typeid<ConstraintHandle>(),
                 azrtti_typeid<CookedShapeHandle>(),
@@ -457,6 +456,7 @@ namespace Jolt
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<DiagnosticStatisticsResult>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<NarrowPhaseStatistics>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<ResourceStatistics>()));
+            EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<StateRestoreResult>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<StateSnapshotArchive>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<StateSnapshotConfiguration>()));
             EXPECT_TRUE(serializeContext.FindClassData(azrtti_typeid<StateValidationResult>()));
@@ -614,6 +614,9 @@ namespace Jolt
         EXPECT_TRUE(behaviorContext.m_properties.contains("ShapeKind_ConvexHull"));
         EXPECT_TRUE(behaviorContext.m_properties.contains("SimdLevel_WasmSimd"));
         EXPECT_TRUE(behaviorContext.m_properties.contains("SimulationError_InvalidRequest"));
+        EXPECT_TRUE(behaviorContext.m_properties.contains("StateRestoreStatus_Complete"));
+        EXPECT_TRUE(behaviorContext.m_properties.contains("StateRestoreStatus_Rejected"));
+        EXPECT_TRUE(behaviorContext.m_properties.contains("StateRestoreStatus_StateIndeterminate"));
         EXPECT_TRUE(behaviorContext.m_properties.contains("StateSnapshotFlags_Bodies"));
         EXPECT_TRUE(behaviorContext.m_properties.contains("VehicleCollisionTestMode_Cylinder"));
 
@@ -770,7 +773,6 @@ namespace Jolt
 
         constexpr AZStd::array reflectedHandles = {
             "JoltBodyHandle",
-            "JoltBodySnapshotHandle",
             "JoltCharacterHandle",
             "JoltConstraintHandle",
             "JoltCookedShapeHandle",
@@ -835,6 +837,7 @@ namespace Jolt
         EXPECT_TRUE(behaviorContext.m_classes.contains("ContactPointView"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("JoltShapeProperties"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("SimulationResult"));
+        EXPECT_TRUE(behaviorContext.m_classes.contains("StateRestoreResult"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("StateSnapshotArchive"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("StateSnapshotConfiguration"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("StateValidationResult"));
@@ -992,7 +995,6 @@ namespace Jolt
         EXPECT_TRUE(hairState->m_properties.contains("scalpToHeadTransform"));
 
         const AZ::BehaviorClass* worldStatistics = behaviorContext.m_classes.at("WorldStatistics");
-        EXPECT_TRUE(worldStatistics->m_properties.contains("bodySnapshotCount"));
         EXPECT_TRUE(worldStatistics->m_properties.contains("hairCount"));
         EXPECT_TRUE(worldStatistics->m_properties.contains("lastUpdateJobCount"));
         EXPECT_TRUE(worldStatistics->m_properties.contains("lastUpdateMaximumTaskCount"));
@@ -1783,7 +1785,6 @@ namespace Jolt
             statistics);
         EXPECT_TRUE(foundStatistics);
         EXPECT_EQ(statistics.m_bodyCount, 2);
-        EXPECT_EQ(statistics.m_bodySnapshotCount, 0);
         EXPECT_EQ(statistics.m_stateSnapshotCount, 0);
 
         WorldStateDigest digest;
@@ -1846,7 +1847,7 @@ namespace Jolt
         EXPECT_TRUE(validated);
         EXPECT_FALSE(validationResult.m_matches);
 
-        bool restored = false;
+        StateRestoreResult restored;
         WorldQueryRequestBus::BroadcastResult(
             restored,
             &IWorldQueryRequests::RestoreWorldState,

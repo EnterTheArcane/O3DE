@@ -102,6 +102,7 @@ namespace Jolt
     inline constexpr AZ::TypeId BodyPairCollisionInputTypeId{"{2B78182F-8DBA-4A94-9D41-5540E546CCF5}"};
     inline constexpr AZ::TypeId BodyPairCollisionSettingsTypeId{"{EEB59F63-F613-4DF9-A9DD-2F5C0DA68461}"};
     inline constexpr AZ::TypeId StateValidationResultTypeId{"{B19E4A4C-F9B1-49C2-82D9-CB93CE51E182}"};
+    inline constexpr AZ::TypeId StateRestoreResultTypeId{"{44949799-998F-4B5A-89D9-7927167C5C82}"};
     inline constexpr AZ::TypeId StateSnapshotArchiveTypeId{"{B6ADE70C-4876-42F0-AF91-A149A0A54E4E}"};
     inline constexpr AZ::TypeId StateSnapshotConfigurationTypeId{"{56B4EC64-8BEC-4925-B401-81D87D930ED2}"};
     inline constexpr AZ::TypeId ModuleTypeId{"{9446F680-9969-460C-A5E1-7FF4610922F9}"};

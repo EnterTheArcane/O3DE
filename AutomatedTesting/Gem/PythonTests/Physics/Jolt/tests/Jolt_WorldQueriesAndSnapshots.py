@@ -35,6 +35,10 @@ def create_world_position(jolt, x, y, z):
     return position
 
 
+def is_restore_complete(jolt, result):
+    return getattr(result, "status", None) == jolt.StateRestoreStatus_Complete
+
+
 def Jolt_WorldQueriesAndSnapshots():
     import time
 
@@ -644,7 +648,7 @@ def Jolt_WorldQueriesAndSnapshots():
             and moved
             and digest_after_move_read
             and digest_before.hash != digest_after_move.hash
-            and restored
+            and is_restore_complete(jolt, restored)
             and validated
             and validation.matches
             and digest_after_restore_read
@@ -692,7 +696,7 @@ def Jolt_WorldQueriesAndSnapshots():
             and snapshot_archive.snapshotCount == 1
             and snapshot_archive.binaryState
             and moved_after_archive
-            and archive_restored
+            and is_restore_complete(jolt, archive_restored)
             and archive_digest_read
             and digest_before.hash == digest_after_archive.hash
             and archive_snapshot_destroyed
@@ -743,7 +747,7 @@ def Jolt_WorldQueriesAndSnapshots():
             multipart_bodies
             and multipart_snapshots_valid
             and multipart_moved
-            and multipart_restored
+            and is_restore_complete(jolt, multipart_restored)
             and abs(multipart_state.transform.position.z - 3.0) < 0.01
             and multipart_snapshots_destroyed
         ),
@@ -823,7 +827,7 @@ def Jolt_WorldQueriesAndSnapshots():
             and replay_velocity_set
             and rollback_snapshot.IsValid()
             and first_steps_succeeded
-            and rollback_restored
+            and is_restore_complete(jolt, rollback_restored)
             and second_steps_succeeded
             and first_digest_sequence == second_digest_sequence
             and rollback_snapshot_destroyed

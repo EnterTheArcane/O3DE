@@ -180,7 +180,6 @@ namespace Jolt
             JOLT_BEHAVIOR_ENUM(*behaviorContext, SimdLevel, WasmSimd);
 
             ReflectHandle<BodyHandle>(*behaviorContext, "JoltBodyHandle", "BodyHandle");
-            ReflectHandle<BodySnapshotHandle>(*behaviorContext, "JoltBodySnapshotHandle", "BodySnapshotHandle");
             ReflectHandle<CharacterHandle>(*behaviorContext, "JoltCharacterHandle", "CharacterHandle");
             ReflectHandle<ConstraintHandle>(*behaviorContext, "JoltConstraintHandle", "ConstraintHandle");
             ReflectHandle<CookedShapeHandle>(*behaviorContext, "JoltCookedShapeHandle", "CookedShapeHandle");
@@ -315,7 +314,6 @@ namespace Jolt
 
             ReflectHandles<
                 BodyHandle,
-                BodySnapshotHandle,
                 CharacterHandle,
                 ConstraintHandle,
                 CookedShapeHandle,
@@ -1255,18 +1253,26 @@ namespace Jolt
         return m_runtime && m_runtime->IsValid(worldHandle, snapshotHandle);
     }
 
-    bool SystemComponent::RestoreWorldState(
+    StateRestoreResult SystemComponent::RestoreWorldState(
         const WorldHandle worldHandle,
         const StateSnapshotHandle snapshotHandle)
     {
-        return m_runtime && m_runtime->RestoreWorldState(worldHandle, snapshotHandle);
+        if (!m_runtime)
+        {
+            return {.m_status = StateRestoreStatus::Rejected};
+        }
+        return m_runtime->RestoreWorldState(worldHandle, snapshotHandle);
     }
 
-    bool SystemComponent::RestoreWorldStateParts(
+    StateRestoreResult SystemComponent::RestoreWorldStateParts(
         const WorldHandle worldHandle,
         const AZStd::vector<StateSnapshotHandle>& snapshotHandles)
     {
-        return m_runtime && m_runtime->RestoreWorldStateParts(worldHandle, snapshotHandles);
+        if (!m_runtime)
+        {
+            return {.m_status = StateRestoreStatus::Rejected};
+        }
+        return m_runtime->RestoreWorldStateParts(worldHandle, snapshotHandles);
     }
 
     bool SystemComponent::ValidateWorldState(

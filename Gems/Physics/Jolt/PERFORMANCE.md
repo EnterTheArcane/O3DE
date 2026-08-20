@@ -199,9 +199,15 @@ tests rather than inferred from an unlinked object disassembly.
 ## Rollback restore safety
 
 Restore defaults to transactional safety: the provider captures the affected state into a reusable scratch snapshot immediately before
-mutation, restores the requested snapshot, and recovers the pre-operation state if any native, character, soft-body, or hair restore fails.
-`RestoreSafety::Validated` is the explicit lower-latency policy for internally owned rollback snapshots after topology and callback-state
-validation. It avoids the recovery capture while retaining all pre-mutation validation and exact stream-consumption checks.
+mutation. Every external participant completes a non-mutating `PrepareRestoreState` pass before native state changes, then performs an
+infallible `CommitRestoreState` pass after the native, character, soft-body, Hair, and contact-provenance state is complete. Contact-cache
+provenance is also prepared in retained scratch and swapped only at commit. A failed restore recovers the pre-operation state and returns
+`StateRestoreStatus::Rejected`; failed recovery returns `StateRestoreStatus::StateIndeterminate` and quarantines the world so only
+destruction remains available. Imported archives always use transactional recovery regardless of the policy recorded by their source.
+
+`RestoreSafety::Validated` is the explicit lower-latency policy for internally owned rollback snapshots after topology and participant-state
+validation. It avoids the recovery capture while retaining all pre-mutation validation and exact stream-consumption checks. Snapshots that
+contain caller-owned participant or Hair state still require recovery because those commits cross an external failure boundary.
 
 The same 30-repetition Release process measured filtered body-and-constraint restores after warming snapshot storage. All runs used one
 worker and reported `QualityValid=1`.
@@ -213,7 +219,8 @@ worker and reported `QualityValid=1`.
 
 At 128 bodies the recovery capture accounts for more than half of transactional restore time. At 1,024 bodies validated mode removes the
 recovery capture and reduces the median by 66.4%. The safety policy is captured with the snapshot, reflected for scripts, and required to
-match across every part of a multipart restore.
+match across every part of a multipart restore. These measurements predate the two-phase participant and contact-provenance remediation;
+Phase 7 must recapture them before they are treated as current qualification evidence.
 
 ## Authored Profile capture
 
@@ -234,8 +241,8 @@ counts and retained capacities are read into a caller-owned `WorldPerformanceSta
 snapshot clears interval counters and high-water marks without releasing retained storage. Resetting native allocation counters from one
 world begins a new process-wide memory interval for every world that has memory statistics enabled.
 
-The resource report covers bodies, shapes, constraints, characters, vehicles, ragdolls, soft bodies, CPU Hair, scenes, body snapshots,
-and world snapshots. Wrapper-retained bytes also include query workspaces, snapshot scratch, event queues, lookup structures, CPU Hair
+The resource report covers bodies, shapes, constraints, characters, vehicles, ragdolls, soft bodies, CPU Hair, scenes, and unified state
+snapshots. Wrapper-retained bytes also include query workspaces, snapshot scratch, contact provenance, event queues, lookup structures, CPU Hair
 joint storage, step listeners, and bounded debug capture. Vector capacities are exact; unordered-map nodes are a documented structural
 estimate because the standard container does not expose allocator-retained bytes. Native current/peak bytes,
 allocation/free/reallocation counts, and temporary allocator current/capacity/peak bytes remain separate so wrapper and native ownership

@@ -4181,7 +4181,7 @@ namespace Jolt
         return s_instance.load(AZStd::memory_order_acquire);
     }
 
-    BodySnapshotHandle Rollback::CaptureBodyState(
+    StateSnapshotHandle Rollback::CaptureBodyState(
         WorldHandle worldHandle,
         BodyHandle bodyHandle)
     {
@@ -4191,28 +4191,14 @@ namespace Jolt
     bool Rollback::CaptureBodyState(
         WorldHandle worldHandle,
         BodyHandle bodyHandle,
-        BodySnapshotHandle snapshotHandle)
+        StateSnapshotHandle snapshotHandle)
     {
         return GetRuntimeImplementation(*this).CaptureBodyState(worldHandle, bodyHandle, snapshotHandle);
     }
 
-    bool Rollback::DestroyBodyStateSnapshot(
+    StateRestoreResult Rollback::RestoreBodyState(
         WorldHandle worldHandle,
-        BodySnapshotHandle snapshotHandle)
-    {
-        return GetRuntimeImplementation(*this).DestroyBodyStateSnapshot(worldHandle, snapshotHandle);
-    }
-
-    bool Rollback::IsValid(
-        WorldHandle worldHandle,
-        BodySnapshotHandle snapshotHandle) const
-    {
-        return GetRuntimeImplementation(*this).IsValid(worldHandle, snapshotHandle);
-    }
-
-    bool Rollback::RestoreBodyState(
-        WorldHandle worldHandle,
-        BodySnapshotHandle snapshotHandle)
+        StateSnapshotHandle snapshotHandle)
     {
         return GetRuntimeImplementation(*this).RestoreBodyState(worldHandle, snapshotHandle);
     }
@@ -4286,14 +4272,14 @@ namespace Jolt
         return GetRuntimeImplementation(*this).IsValid(worldHandle, snapshotHandle);
     }
 
-    bool Rollback::RestoreWorldState(
+    StateRestoreResult Rollback::RestoreWorldState(
         WorldHandle worldHandle,
         StateSnapshotHandle snapshotHandle)
     {
         return GetRuntimeImplementation(*this).RestoreWorldState(worldHandle, snapshotHandle);
     }
 
-    bool Rollback::RestoreWorldStateParts(
+    StateRestoreResult Rollback::RestoreWorldStateParts(
         WorldHandle worldHandle,
         AZStd::span<const StateSnapshotHandle> snapshotHandles)
     {

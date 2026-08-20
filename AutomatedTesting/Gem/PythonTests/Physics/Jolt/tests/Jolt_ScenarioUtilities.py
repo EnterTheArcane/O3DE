@@ -18,6 +18,10 @@ def create_world_position(jolt, x, y, z):
     return position
 
 
+def is_restore_complete(jolt, result):
+    return getattr(result, "status", None) == jolt.StateRestoreStatus_Complete
+
+
 def open_level(recorder, directory, level):
     import os
 

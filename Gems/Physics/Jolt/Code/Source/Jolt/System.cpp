@@ -4353,7 +4353,8 @@ namespace Jolt
             return false;
         }
 
-        if (slot.m_world->HasLiveResources())
+        if (!slot.m_world->IsStateIndeterminate()
+            && slot.m_world->HasLiveResources())
         {
             return false;
         }
@@ -7680,7 +7681,7 @@ namespace Jolt
         return world && world->SetTrackedVehicleInput(vehicleHandle, input);
     }
 
-    BodySnapshotHandle RuntimeImplementation::CaptureBodyState(
+    StateSnapshotHandle RuntimeImplementation::CaptureBodyState(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
@@ -7697,38 +7698,24 @@ namespace Jolt
     bool RuntimeImplementation::CaptureBodyState(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle,
-        const BodySnapshotHandle snapshotHandle)
+        const StateSnapshotHandle snapshotHandle)
     {
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
         return world && world->CaptureBodyState(bodyHandle, snapshotHandle);
     }
 
-    bool RuntimeImplementation::DestroyBodyStateSnapshot(
+    StateRestoreResult RuntimeImplementation::RestoreBodyState(
         const WorldHandle worldHandle,
-        const BodySnapshotHandle snapshotHandle)
+        const StateSnapshotHandle snapshotHandle)
     {
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world && world->DestroyBodyStateSnapshot(snapshotHandle);
-    }
-
-    bool RuntimeImplementation::IsValid(
-        const WorldHandle worldHandle,
-        const BodySnapshotHandle snapshotHandle) const
-    {
-        AZStd::shared_lock lock(m_worldMutex);
-        const World* world = FindWorldUnlocked(worldHandle);
-        return world && world->IsValid(snapshotHandle);
-    }
-
-    bool RuntimeImplementation::RestoreBodyState(
-        const WorldHandle worldHandle,
-        const BodySnapshotHandle snapshotHandle)
-    {
-        AZStd::shared_lock lock(m_worldMutex);
-        World* world = FindWorldUnlocked(worldHandle);
-        return world && world->RestoreBodyState(snapshotHandle);
+        if (!world)
+        {
+            return {.m_status = StateRestoreStatus::Rejected};
+        }
+        return world->RestoreBodyState(snapshotHandle);
     }
 
     StateSnapshotHandle RuntimeImplementation::CaptureWorldState(
@@ -7837,22 +7824,30 @@ namespace Jolt
         return world && world->IsValid(snapshotHandle);
     }
 
-    bool RuntimeImplementation::RestoreWorldState(
+    StateRestoreResult RuntimeImplementation::RestoreWorldState(
         const WorldHandle worldHandle,
         const StateSnapshotHandle snapshotHandle)
     {
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world && world->RestoreState(snapshotHandle);
+        if (!world)
+        {
+            return {.m_status = StateRestoreStatus::Rejected};
+        }
+        return world->RestoreState(snapshotHandle);
     }
 
-    bool RuntimeImplementation::RestoreWorldStateParts(
+    StateRestoreResult RuntimeImplementation::RestoreWorldStateParts(
         const WorldHandle worldHandle,
         const AZStd::span<const StateSnapshotHandle> snapshotHandles)
     {
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world && world->RestoreStateParts(snapshotHandles);
+        if (!world)
+        {
+            return {.m_status = StateRestoreStatus::Rejected};
+        }
+        return world->RestoreStateParts(snapshotHandles);
     }
 
     bool RuntimeImplementation::ValidateWorldState(
@@ -9640,6 +9635,10 @@ namespace Jolt
             return nullptr;
         }
 
+        if (!slot.m_world || slot.m_world->IsStateIndeterminate())
+        {
+            return nullptr;
+        }
         return slot.m_world.get();
     }
 
@@ -9972,15 +9971,15 @@ namespace Jolt
         return true;
     }
 
-    bool RuntimeImplementation::RestoreGroupFilterParticipantState(
+    bool RuntimeImplementation::PrepareGroupFilterParticipantRestore(
         const GroupFilterHandle filterHandle,
         const AZStd::span<const AZ::u8> state,
         const AZ::TypeId typeId,
         const AZ::u64 stateHash,
-        const AZ::u32 version)
+        const AZ::u32 version) const
     {
-        AZStd::lock_guard lock(m_groupFilterMutex);
-        GroupFilterSlot* slot = FindGroupFilterUnlocked(filterHandle);
+        AZStd::shared_lock lock(m_groupFilterMutex);
+        const GroupFilterSlot* slot = FindGroupFilterUnlocked(filterHandle);
         const bool present = !state.empty();
         if (!slot
             || slot->m_isCustom != present)
@@ -9994,14 +9993,39 @@ namespace Jolt
                 && version == 0;
         }
 
-        auto* filter = static_cast<GroupFilterAdapter*>(slot->m_filter.GetPtr());
+        const auto* filter = static_cast<const GroupFilterAdapter*>(slot->m_filter.GetPtr());
         const IGroupFilter* callbacks = filter->GetCallbacks();
         if (!callbacks
             || callbacks->GetStateTypeId() != typeId
             || callbacks->GetStateVersion() != version
             || state.front() != 1
-            || !callbacks->RestoreState(state.subspan(1))
-            || callbacks->GetStateHash() != stateHash)
+            || !callbacks->PrepareRestoreState(state.subspan(1)))
+        {
+            return false;
+        }
+        return true;
+    }
+
+    bool RuntimeImplementation::CommitGroupFilterParticipantRestore(
+        const GroupFilterHandle filterHandle,
+        const AZStd::span<const AZ::u8> state,
+        const AZ::u64 stateHash)
+    {
+        AZStd::lock_guard lock(m_groupFilterMutex);
+        GroupFilterSlot* slot = FindGroupFilterUnlocked(filterHandle);
+        if (!slot || !slot->m_isCustom || state.empty() || state.front() != 1)
+        {
+            return false;
+        }
+
+        auto* filter = static_cast<GroupFilterAdapter*>(slot->m_filter.GetPtr());
+        const IGroupFilter* callbacks = filter->GetCallbacks();
+        if (!callbacks)
+        {
+            return false;
+        }
+        callbacks->CommitRestoreState(state.subspan(1));
+        if (callbacks->GetStateHash() != stateHash)
         {
             return false;
         }

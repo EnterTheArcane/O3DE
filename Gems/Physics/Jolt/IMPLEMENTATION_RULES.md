@@ -17,6 +17,9 @@ configuration wins over legacy language-version examples.
   fingerprints, and per-tick digests. Canonicalize and restore the floating-point environment on every calling and worker thread that
   performs physics work. Include CPU hair in snapshots and deterministic validation, but certify it only for the same binary until the
   supported platform matrix proves bitwise cross-platform equivalence. CPU Hair is the only supported Hair backend.
+- Treat rollback as a transaction. Validate and prepare every native and caller-owned participant before mutation; commit prepared
+  participant state only after native restoration succeeds. Recover the previous state on a post-mutation failure, and quarantine the
+  world with an explicit indeterminate result if recovery fails. Imported archives never bypass transactional recovery.
 - Keep the native Jolt allocator, job system, tracing, profiling, and assertion boundaries integrated with existing AzCore facilities.
   Do not invent parallel infrastructure.
 

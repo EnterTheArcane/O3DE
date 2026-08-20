@@ -73,11 +73,6 @@ namespace Jolt
         AZ_TYPE_INFO(BodyHandleTag, "{74A5936C-7EF0-4AC7-8C74-B936DD2E0688}");
     };
 
-    struct BodySnapshotHandleTag final
-    {
-        AZ_TYPE_INFO(BodySnapshotHandleTag, "{F4FD0B19-EB3D-4F84-A74A-835379C45E99}");
-    };
-
     struct CharacterHandleTag final
     {
         AZ_TYPE_INFO(CharacterHandleTag, "{5C305D1C-9B1E-4AA2-A6E9-AE6E5CFB97ED}");
@@ -189,7 +184,6 @@ namespace Jolt
     };
 
     using BodyHandle = Handle<BodyHandleTag>;
-    using BodySnapshotHandle = Handle<BodySnapshotHandleTag>;
     using CharacterHandle = Handle<CharacterHandleTag>;
     using ConstraintHandle = Handle<ConstraintHandleTag>;
     using CookedShapeHandle = Handle<CookedShapeHandleTag>;

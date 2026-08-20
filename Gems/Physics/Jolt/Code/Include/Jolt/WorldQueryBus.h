@@ -581,12 +581,12 @@ namespace Jolt
             WorldHandle worldHandle,
             StateSnapshotHandle snapshotHandle) const = 0;
 
-        virtual bool RestoreWorldState(
+        virtual StateRestoreResult RestoreWorldState(
             WorldHandle worldHandle,
             StateSnapshotHandle snapshotHandle) = 0;
 
         //! Prevalidates a batch returned by CaptureWorldStateParts before beginning restore.
-        virtual bool RestoreWorldStateParts(
+        virtual StateRestoreResult RestoreWorldStateParts(
             WorldHandle worldHandle,
             const AZStd::vector<StateSnapshotHandle>& snapshotHandles) = 0;
 

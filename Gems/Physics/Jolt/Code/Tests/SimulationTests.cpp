@@ -135,17 +135,16 @@ namespace Jolt
                 return true;
             }
 
-            bool RestoreState(const AZStd::span<const AZ::u8> state) const override
+            bool PrepareRestoreState(const AZStd::span<const AZ::u8> state) const override
             {
-                if (state.size() != GetStateByteCount()
-                    || state[sizeof(m_stateHash)] > 1)
-                {
-                    return false;
-                }
+                return state.size() == GetStateByteCount()
+                    && state[sizeof(m_stateHash)] <= 1;
+            }
 
+            void CommitRestoreState(const AZStd::span<const AZ::u8> state) const override
+            {
                 std::memcpy(&m_stateHash, state.data(), sizeof(m_stateHash));
                 m_collisionEnabled = state[sizeof(m_stateHash)] != 0;
-                return true;
             }
 
             mutable AZ::u64 m_stateHash = 1;
@@ -972,17 +971,16 @@ namespace Jolt
                 return true;
             }
 
-            bool RestoreState(const AZStd::span<const AZ::u8> state) const override
+            bool PrepareRestoreState(const AZStd::span<const AZ::u8> state) const override
             {
-                if (state.size() != sizeof(AZ::u64))
-                {
-                    return false;
-                }
+                return state.size() == sizeof(AZ::u64);
+            }
 
+            void CommitRestoreState(const AZStd::span<const AZ::u8> state) const override
+            {
                 AZ::u64 value = 0;
                 std::memcpy(&value, state.data(), sizeof(value));
                 m_rejectedBodyHandle = Internal::HandleAccess::FromValue<BodyHandle>(value);
-                return true;
             }
 
             [[nodiscard]]
@@ -1058,17 +1056,16 @@ namespace Jolt
                 return true;
             }
 
-            bool RestoreState(const AZStd::span<const AZ::u8> state) const override
+            bool PrepareRestoreState(const AZStd::span<const AZ::u8> state) const override
             {
-                if (state.size() != sizeof(AZ::u64))
-                {
-                    return false;
-                }
+                return state.size() == sizeof(AZ::u64);
+            }
 
+            void CommitRestoreState(const AZStd::span<const AZ::u8> state) const override
+            {
                 AZ::u64 value = 0;
                 std::memcpy(&value, state.data(), sizeof(value));
                 m_rejectedBodyHandle = Internal::HandleAccess::FromValue<BodyHandle>(value);
-                return true;
             }
 
             [[nodiscard]]
@@ -1630,19 +1627,25 @@ namespace Jolt
                 return true;
             }
 
-            bool RestoreState(const AZStd::span<const AZ::u8> state) const override
+            bool PrepareRestoreState(const AZStd::span<const AZ::u8> state) const override
             {
+                ++m_prepareCount;
                 if (m_remainingRestoreFailureCount > 0)
                 {
                     --m_remainingRestoreFailureCount;
                     return false;
                 }
-                if (state.size() != sizeof(m_state))
-                {
-                    return false;
-                }
+                return state.size() == sizeof(m_state);
+            }
+
+            void CommitRestoreState(const AZStd::span<const AZ::u8> state) const override
+            {
+                ++m_commitCount;
                 std::memcpy(&m_state, state.data(), sizeof(m_state));
-                return true;
+                if (m_corruptCommitState)
+                {
+                    ++m_state;
+                }
             }
 
             void OnStep(
@@ -1652,9 +1655,12 @@ namespace Jolt
             }
 
             mutable AZ::u64 m_state = 0;
+            mutable AZ::u32 m_commitCount = 0;
+            mutable AZ::u32 m_prepareCount = 0;
             mutable AZ::u32 m_remainingRestoreFailureCount = 0;
             AZ::TypeId m_typeId = StatefulStepListenerStateTypeId;
             AZ::u32 m_version = 0;
+            bool m_corruptCommitState = false;
         };
 
         class MutatingStepListener final
@@ -2744,6 +2750,25 @@ namespace Jolt
         EXPECT_EQ(reuseStatistics.m_snapshotCaptureCount, 16);
         EXPECT_EQ(reuseStatistics.m_snapshotFailureCount, 0);
 
+        BodyState capturedState;
+        ASSERT_TRUE(system.GetBodyState(scene.m_worldHandle, scene.m_sphereBodyHandle, capturedState));
+        WorldTransform movedTransform = capturedState.m_transform;
+        movedTransform.m_position.m_x = 10.0;
+        ASSERT_TRUE(system.SetBodyTransform(scene.m_worldHandle, scene.m_sphereBodyHandle, movedTransform, true));
+        EXPECT_FALSE(system.CaptureWorldState(
+            scene.m_worldHandle,
+            snapshotHandle,
+            {
+                .m_flags = StateSnapshotFlags::Bodies,
+                .m_filterBodies = true,
+            },
+            AZStd::array{BodyHandle::Invalid}));
+        EXPECT_TRUE(system.IsValid(scene.m_worldHandle, snapshotHandle));
+        ASSERT_TRUE(system.RestoreWorldState(scene.m_worldHandle, snapshotHandle));
+        BodyState restoredState;
+        ASSERT_TRUE(system.GetBodyState(scene.m_worldHandle, scene.m_sphereBodyHandle, restoredState));
+        EXPECT_EQ(restoredState.m_transform.m_position, capturedState.m_transform.m_position);
+
         EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, snapshotHandle));
         DestroySphereOnFloor(system, scene);
     }
@@ -2866,13 +2891,13 @@ namespace Jolt
         ASSERT_TRUE(firstScene.m_sphereShapeHandle);
         ASSERT_TRUE(firstScene.m_floorBodyHandle);
         ASSERT_TRUE(firstScene.m_sphereBodyHandle);
-        const BodySnapshotHandle firstBodySnapshot =
+        const StateSnapshotHandle firstBodySnapshot =
             system.CaptureBodyState(firstWorldHandle, firstScene.m_sphereBodyHandle);
         const StateSnapshotHandle firstStateSnapshot = system.CaptureWorldState(firstWorldHandle);
         ASSERT_TRUE(firstBodySnapshot);
         ASSERT_TRUE(firstStateSnapshot);
 
-        EXPECT_TRUE(system.DestroyBodyStateSnapshot(firstWorldHandle, firstBodySnapshot));
+        EXPECT_TRUE(system.DestroyStateSnapshot(firstWorldHandle, firstBodySnapshot));
         EXPECT_TRUE(system.DestroyStateSnapshot(firstWorldHandle, firstStateSnapshot));
         DestroySphereOnFloor(system, firstScene);
         ASSERT_TRUE(system.DestroyWorld(firstWorldHandle));
@@ -2884,7 +2909,7 @@ namespace Jolt
         ASSERT_TRUE(secondScene.m_sphereShapeHandle);
         ASSERT_TRUE(secondScene.m_floorBodyHandle);
         ASSERT_TRUE(secondScene.m_sphereBodyHandle);
-        const BodySnapshotHandle secondBodySnapshot =
+        const StateSnapshotHandle secondBodySnapshot =
             system.CaptureBodyState(secondWorldHandle, secondScene.m_sphereBodyHandle);
         const StateSnapshotHandle secondStateSnapshot = system.CaptureWorldState(secondWorldHandle);
         ASSERT_TRUE(secondBodySnapshot);
@@ -2911,7 +2936,7 @@ namespace Jolt
         EXPECT_FALSE(system.IsValid(secondWorldHandle, firstBodySnapshot));
         EXPECT_FALSE(system.IsValid(secondWorldHandle, firstStateSnapshot));
 
-        EXPECT_TRUE(system.DestroyBodyStateSnapshot(secondWorldHandle, secondBodySnapshot));
+        EXPECT_TRUE(system.DestroyStateSnapshot(secondWorldHandle, secondBodySnapshot));
         EXPECT_TRUE(system.DestroyStateSnapshot(secondWorldHandle, secondStateSnapshot));
         DestroySphereOnFloor(system, secondScene);
         EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
@@ -6119,7 +6144,7 @@ namespace Jolt
             runtimeConfiguration));
         EXPECT_TRUE(runtimeConfiguration.m_enableSkinConstraints);
 
-        const BodySnapshotHandle bodySnapshotHandle =
+        const StateSnapshotHandle bodySnapshotHandle =
             system.CaptureBodyState(worldHandle, bodyHandle);
         ASSERT_TRUE(bodySnapshotHandle);
         const StateSnapshotHandle worldSnapshotHandle = system.CaptureWorldState(worldHandle);
@@ -6163,7 +6188,7 @@ namespace Jolt
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
         expectFiniteVertices();
 
-        EXPECT_TRUE(system.DestroyBodyStateSnapshot(worldHandle, bodySnapshotHandle));
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, bodySnapshotHandle));
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, worldSnapshotHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
         EXPECT_TRUE(system.DestroySoftBodyDefinition(definitionHandle));
@@ -9337,7 +9362,7 @@ namespace Jolt
         EXPECT_FALSE(archive.m_binaryState.empty());
         EXPECT_NE(archive.m_buildFingerprint, 0);
         EXPECT_NE(archive.m_contentHash, 0);
-        EXPECT_EQ(archive.m_formatVersion, 4);
+        EXPECT_EQ(archive.m_formatVersion, 5);
         EXPECT_EQ(archive.m_snapshotCount, 1);
 
         const WorldHandle secondWorldHandle = system.CreateWorld(WorldConfiguration{});
@@ -9407,6 +9432,60 @@ namespace Jolt
         WorldStateDigest restoredDigest;
         ASSERT_TRUE(system.GetWorldStateDigest(scene.m_worldHandle, restoredDigest));
         EXPECT_EQ(restoredDigest, capturedDigest);
+        EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, importedHandles.front()));
+        DestroySphereOnFloor(system, scene);
+    }
+
+    TEST(SimulationTests, ImportedValidatedSnapshotsRecoverFromCorruptNativeState)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        SphereOnFloor scene = CreateSphereOnFloor(system);
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(
+            scene.m_worldHandle,
+            {
+                .m_flags = StateSnapshotFlags::Bodies,
+                .m_restoreSafety = RestoreSafety::Validated,
+            },
+            {});
+        ASSERT_TRUE(snapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            scene.m_worldHandle,
+            AZStd::array{snapshotHandle},
+            archive));
+        EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, snapshotHandle));
+
+        ASSERT_TRUE(system.SetBodyPosition(
+            scene.m_worldHandle,
+            scene.m_sphereBodyHandle,
+            {.m_x = 4.0, .m_z = 3.0},
+            true));
+        BodyState stateBeforeRestore;
+        ASSERT_TRUE(system.GetBodyState(scene.m_worldHandle, scene.m_sphereBodyHandle, stateBeforeRestore));
+
+        constexpr size_t archiveHeaderByteCount = sizeof(AZ::u32) * 3
+            + sizeof(AZ::u64)
+            + sizeof(AZ::u8);
+        constexpr size_t nativeStateOffset = archiveHeaderByteCount + sizeof(AZ::u32);
+        ASSERT_GT(archive.m_binaryState.size(), nativeStateOffset);
+        archive.m_binaryState[nativeStateOffset] = 0;
+        archive.m_contentHash = static_cast<AZ::u64>(AZ::TypeHash64(archive.m_binaryState));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        ASSERT_TRUE(system.ImportWorldStateArchive(scene.m_worldHandle, archive, importedHandles));
+        const StateRestoreResult result = system.RestoreWorldState(
+            scene.m_worldHandle,
+            importedHandles.front());
+        EXPECT_EQ(result.m_status, StateRestoreStatus::Rejected);
+        EXPECT_TRUE(system.IsValid(scene.m_worldHandle));
+
+        BodyState stateAfterRestore;
+        ASSERT_TRUE(system.GetBodyState(scene.m_worldHandle, scene.m_sphereBodyHandle, stateAfterRestore));
+        EXPECT_EQ(stateAfterRestore.m_transform.m_position, stateBeforeRestore.m_transform.m_position);
+        EXPECT_EQ(stateAfterRestore.m_linearVelocity, stateBeforeRestore.m_linearVelocity);
+
         EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, importedHandles.front()));
         DestroySphereOnFloor(system, scene);
     }
@@ -9601,13 +9680,18 @@ namespace Jolt
         secondListener.m_state = 40;
         secondListener.m_remainingRestoreFailureCount = 1;
 
-        EXPECT_FALSE(system.RestoreWorldState(worldHandle, snapshotHandle));
+        const StateRestoreResult rejectedRestore = system.RestoreWorldState(worldHandle, snapshotHandle);
+        EXPECT_EQ(rejectedRestore.m_status, StateRestoreStatus::Rejected);
         EXPECT_EQ(firstListener.m_state, 30);
         EXPECT_EQ(secondListener.m_state, 40);
+        EXPECT_EQ(firstListener.m_commitCount, 0);
+        EXPECT_EQ(secondListener.m_commitCount, 0);
 
         ASSERT_TRUE(system.RestoreWorldState(worldHandle, snapshotHandle));
         EXPECT_EQ(firstListener.m_state, 10);
         EXPECT_EQ(secondListener.m_state, 20);
+        EXPECT_EQ(firstListener.m_commitCount, 1);
+        EXPECT_EQ(secondListener.m_commitCount, 1);
 
         const StateSnapshotHandle validatedSnapshotHandle = system.CaptureWorldState(
             worldHandle,
@@ -9624,6 +9708,8 @@ namespace Jolt
         EXPECT_FALSE(system.RestoreWorldState(worldHandle, validatedSnapshotHandle));
         EXPECT_EQ(firstListener.m_state, 50);
         EXPECT_EQ(secondListener.m_state, 60);
+        EXPECT_EQ(firstListener.m_commitCount, 1);
+        EXPECT_EQ(secondListener.m_commitCount, 1);
         EXPECT_EQ(system.GetEvents(worldHandle).GetSequence(), eventSequenceBeforeRestore);
 
         ASSERT_TRUE(system.RestoreWorldState(worldHandle, validatedSnapshotHandle));
@@ -9634,6 +9720,33 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
         EXPECT_TRUE(system.RemoveStepListener(worldHandle, &secondListener));
         EXPECT_TRUE(system.RemoveStepListener(worldHandle, &firstListener));
+    }
+
+    TEST(SimulationTests, UnrecoverableRestoreQuarantinesTheWorld)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle worldHandle = system.CreateWorld(WorldConfiguration{});
+        ASSERT_TRUE(worldHandle);
+        StatefulStepListener listener;
+        listener.m_state = 10;
+        ASSERT_TRUE(system.AddStepListener(worldHandle, &listener));
+
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(snapshotHandle);
+        listener.m_state = 20;
+        listener.m_corruptCommitState = true;
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        const StateRestoreResult result = system.RestoreWorldState(worldHandle, snapshotHandle);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(result.m_status, StateRestoreStatus::StateIndeterminate);
+        EXPECT_FALSE(system.IsValid(worldHandle));
+        EXPECT_FALSE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        const SimulationResult automaticStepResult = system.StepAutoSimulatedWorldsDetailed(1.0f / 60.0f);
+        EXPECT_EQ(automaticStepResult.m_errors & SimulationError::InvalidRequest, SimulationError::InvalidRequest);
+        EXPECT_TRUE(system.DestroyWorld(worldHandle));
     }
 
     TEST(SimulationTests, SnapshotArchivesRejectRollbackParticipantSchemaMismatches)
@@ -9850,18 +9963,18 @@ namespace Jolt
         ASSERT_TRUE(system.SetBodyLinearDamping(worldHandle, firstBodyHandle, 0.25f));
         EXPECT_FALSE(system.RestoreWorldState(worldHandle, selectedConfigurationSnapshotHandle));
 
-        const StateSnapshotHandle globalConfigurationSnapshotHandle = system.CaptureWorldState(
+        const StateSnapshotHandle unrelatedWorldConfigurationSnapshotHandle = system.CaptureWorldState(
             worldHandle,
             {
                 .m_flags = StateSnapshotFlags::Bodies,
                 .m_filterBodies = true,
             },
             firstPartitionBodies);
-        ASSERT_TRUE(globalConfigurationSnapshotHandle);
+        ASSERT_TRUE(unrelatedWorldConfigurationSnapshotHandle);
         ASSERT_TRUE(system.SetWorldGravity(worldHandle, AZ::Vector3::CreateAxisZ(-1.0f)));
-        EXPECT_FALSE(system.RestoreWorldState(worldHandle, globalConfigurationSnapshotHandle));
+        EXPECT_TRUE(system.RestoreWorldState(worldHandle, unrelatedWorldConfigurationSnapshotHandle));
 
-        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, globalConfigurationSnapshotHandle));
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, unrelatedWorldConfigurationSnapshotHandle));
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, selectedConfigurationSnapshotHandle));
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, secondSnapshotHandle));
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, firstSnapshotHandle));
@@ -10128,6 +10241,78 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
     }
 
+    TEST(SimulationTests, ContactSnapshotsRestoreRemovalEventProvenance)
+    {
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_collectContactEvents = true;
+        Runtime system(systemConfiguration, nullptr);
+        ASSERT_TRUE(system);
+
+        SphereOnFloor scene = CreateSphereOnFloor(system);
+        ASSERT_TRUE(system.SetBodyPosition(
+            scene.m_worldHandle,
+            scene.m_sphereBodyHandle,
+            {.m_z = 0.45},
+            true));
+        ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+        ASSERT_TRUE(system.WereBodiesInContact(
+            scene.m_worldHandle,
+            scene.m_floorBodyHandle,
+            scene.m_sphereBodyHandle));
+
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(scene.m_worldHandle);
+        ASSERT_TRUE(snapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            scene.m_worldHandle,
+            AZStd::array{snapshotHandle},
+            archive));
+        EXPECT_EQ(archive.m_formatVersion, 5);
+
+        ASSERT_TRUE(system.SetBodyPosition(
+            scene.m_worldHandle,
+            scene.m_sphereBodyHandle,
+            {.m_z = 5.0},
+            true));
+        ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+        ASSERT_FALSE(system.WereBodiesInContact(
+            scene.m_worldHandle,
+            scene.m_floorBodyHandle,
+            scene.m_sphereBodyHandle));
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, snapshotHandle));
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        ASSERT_TRUE(system.ImportWorldStateArchive(scene.m_worldHandle, archive, importedHandles));
+        ASSERT_TRUE(system.RestoreWorldState(scene.m_worldHandle, importedHandles.front()));
+        ASSERT_TRUE(system.WereBodiesInContact(
+            scene.m_worldHandle,
+            scene.m_floorBodyHandle,
+            scene.m_sphereBodyHandle));
+
+        ASSERT_TRUE(system.SetBodyPosition(
+            scene.m_worldHandle,
+            scene.m_sphereBodyHandle,
+            {.m_z = 5.0},
+            true));
+        ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+        AZ::u32 removalEventCount = 0;
+        for (const ContactEvent& event : system.GetEvents(scene.m_worldHandle).GetContacts())
+        {
+            if (event.m_phase == EventPhase::End
+                && ((event.m_firstBodyHandle == scene.m_floorBodyHandle
+                        && event.m_secondBodyHandle == scene.m_sphereBodyHandle)
+                    || (event.m_firstBodyHandle == scene.m_sphereBodyHandle
+                        && event.m_secondBodyHandle == scene.m_floorBodyHandle)))
+            {
+                ++removalEventCount;
+            }
+        }
+        EXPECT_EQ(removalEventCount, 1);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, importedHandles.front()));
+        DestroySphereOnFloor(system, scene);
+    }
+
     TEST(SimulationTests, PrewarmedFilteredStateRecaptureDoesNotAllocateNativeScratch)
     {
         constexpr AZ::u32 bodyCount = 128;
@@ -10286,13 +10471,13 @@ namespace Jolt
         bodyConfiguration.m_linearVelocity = AZ::Vector3(1.0f, 2.0f, 3.0f);
         const BodyHandle bodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
         ASSERT_TRUE(bodyHandle);
-        const BodySnapshotHandle snapshotHandle = system.CaptureBodyState(worldHandle, bodyHandle);
+        const StateSnapshotHandle snapshotHandle = system.CaptureBodyState(worldHandle, bodyHandle);
         ASSERT_TRUE(snapshotHandle);
         EXPECT_TRUE(system.IsValid(worldHandle, snapshotHandle));
         const AZ::u64 eventSequenceBeforeRestore = system.GetEvents(worldHandle).GetSequence();
         WorldStatistics statistics;
         ASSERT_TRUE(system.GetWorldStatistics(worldHandle, statistics));
-        EXPECT_EQ(statistics.m_bodySnapshotCount, 1);
+        EXPECT_EQ(statistics.m_stateSnapshotCount, 1);
 
         BodyConfiguration unrelatedConfiguration;
         unrelatedConfiguration.m_shapeHandle = shapeHandle;
@@ -10333,12 +10518,25 @@ namespace Jolt
         ASSERT_TRUE(system.GetBodyState(worldHandle, bodyHandle, restoredState));
         EXPECT_EQ(restoredState.m_linearVelocity, AZ::Vector3::CreateAxisX(7.0f));
 
+        ASSERT_TRUE(system.SetBodyMotionType(worldHandle, bodyHandle, MotionType::Static, false));
+        BodyState stateBeforeRejectedRestore;
+        ASSERT_TRUE(system.GetBodyState(worldHandle, bodyHandle, stateBeforeRejectedRestore));
+        const StateRestoreResult rejectedRestore = system.RestoreBodyState(worldHandle, snapshotHandle);
+        EXPECT_EQ(rejectedRestore.m_status, StateRestoreStatus::Rejected);
+        BodyState stateAfterRejectedRestore;
+        BodyConfiguration configurationAfterRejectedRestore;
+        ASSERT_TRUE(system.GetBodyState(worldHandle, bodyHandle, stateAfterRejectedRestore));
+        ASSERT_TRUE(system.GetBodyConfiguration(worldHandle, bodyHandle, configurationAfterRejectedRestore));
+        EXPECT_EQ(stateAfterRejectedRestore.m_transform.m_position, stateBeforeRejectedRestore.m_transform.m_position);
+        EXPECT_EQ(stateAfterRejectedRestore.m_linearVelocity, stateBeforeRejectedRestore.m_linearVelocity);
+        EXPECT_EQ(configurationAfterRejectedRestore.m_motionType, MotionType::Static);
+
         EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
         EXPECT_FALSE(system.RestoreBodyState(worldHandle, snapshotHandle));
-        EXPECT_TRUE(system.DestroyBodyStateSnapshot(worldHandle, snapshotHandle));
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
         EXPECT_FALSE(system.IsValid(worldHandle, snapshotHandle));
         ASSERT_TRUE(system.GetWorldStatistics(worldHandle, statistics));
-        EXPECT_EQ(statistics.m_bodySnapshotCount, 0);
+        EXPECT_EQ(statistics.m_stateSnapshotCount, 0);
         EXPECT_TRUE(system.DestroyBody(worldHandle, unrelatedBodyHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
     }

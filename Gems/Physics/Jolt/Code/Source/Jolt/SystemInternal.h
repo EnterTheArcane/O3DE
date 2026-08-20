@@ -2107,27 +2107,18 @@ namespace Jolt
             const VehicleTrackConfiguration& configuration);
 
         [[nodiscard]]
-        BodySnapshotHandle CaptureBodyState(
+        StateSnapshotHandle CaptureBodyState(
             WorldHandle worldHandle,
             BodyHandle bodyHandle);
 
         bool CaptureBodyState(
             WorldHandle worldHandle,
             BodyHandle bodyHandle,
-            BodySnapshotHandle snapshotHandle);
+            StateSnapshotHandle snapshotHandle);
 
-        bool DestroyBodyStateSnapshot(
+        StateRestoreResult RestoreBodyState(
             WorldHandle worldHandle,
-            BodySnapshotHandle snapshotHandle);
-
-        [[nodiscard]]
-        bool IsValid(
-            WorldHandle worldHandle,
-            BodySnapshotHandle snapshotHandle) const;
-
-        bool RestoreBodyState(
-            WorldHandle worldHandle,
-            BodySnapshotHandle snapshotHandle);
+            StateSnapshotHandle snapshotHandle);
 
         [[nodiscard]]
         StateSnapshotHandle CaptureWorldState(WorldHandle worldHandle);
@@ -2174,11 +2165,13 @@ namespace Jolt
             WorldHandle worldHandle,
             StateSnapshotHandle snapshotHandle) const;
 
-        bool RestoreWorldState(
+        [[nodiscard]]
+        StateRestoreResult RestoreWorldState(
             WorldHandle worldHandle,
             StateSnapshotHandle snapshotHandle);
 
-        bool RestoreWorldStateParts(
+        [[nodiscard]]
+        StateRestoreResult RestoreWorldStateParts(
             WorldHandle worldHandle,
             AZStd::span<const StateSnapshotHandle> snapshotHandles);
 
@@ -3244,12 +3237,18 @@ namespace Jolt
             AZ::u32& version) const;
 
         [[nodiscard]]
-        bool RestoreGroupFilterParticipantState(
+        bool PrepareGroupFilterParticipantRestore(
             GroupFilterHandle filterHandle,
             AZStd::span<const AZ::u8> state,
             AZ::TypeId typeId,
             AZ::u64 stateHash,
-            AZ::u32 version);
+            AZ::u32 version) const;
+
+        [[nodiscard]]
+        bool CommitGroupFilterParticipantRestore(
+            GroupFilterHandle filterHandle,
+            AZStd::span<const AZ::u8> state,
+            AZ::u64 stateHash);
 
         [[nodiscard]]
         GroupFilterHandle StoreGroupFilter(
@@ -3973,7 +3972,6 @@ namespace Jolt
         using RuntimeImplementation::GetHairGridCellStates;
 
         using RuntimeImplementation::CaptureBodyState;
-        using RuntimeImplementation::DestroyBodyStateSnapshot;
         using RuntimeImplementation::RestoreBodyState;
         using RuntimeImplementation::CaptureWorldState;
         using RuntimeImplementation::CaptureWorldStateParts;

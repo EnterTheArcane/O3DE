@@ -161,6 +161,9 @@ namespace Jolt
         bool HasLiveResources() const;
 
         [[nodiscard]]
+        bool IsStateIndeterminate() const;
+
+        [[nodiscard]]
         bool GetGravity(AZ::Vector3& gravity) const;
 
         bool SetGravity(const AZ::Vector3& gravity);
@@ -1238,18 +1241,13 @@ namespace Jolt
             const VehicleTrackConfiguration& configuration);
 
         [[nodiscard]]
-        BodySnapshotHandle CaptureBodyState(BodyHandle bodyHandle);
+        StateSnapshotHandle CaptureBodyState(BodyHandle bodyHandle);
 
         bool CaptureBodyState(
             BodyHandle bodyHandle,
-            BodySnapshotHandle snapshotHandle);
+            StateSnapshotHandle snapshotHandle);
 
-        bool DestroyBodyStateSnapshot(BodySnapshotHandle snapshotHandle);
-
-        [[nodiscard]]
-        bool IsValid(BodySnapshotHandle snapshotHandle) const;
-
-        bool RestoreBodyState(BodySnapshotHandle snapshotHandle);
+        StateRestoreResult RestoreBodyState(StateSnapshotHandle snapshotHandle);
 
         [[nodiscard]]
         StateSnapshotHandle CaptureState();
@@ -1285,9 +1283,11 @@ namespace Jolt
         [[nodiscard]]
         bool IsValid(StateSnapshotHandle snapshotHandle) const;
 
-        bool RestoreState(StateSnapshotHandle snapshotHandle);
+        [[nodiscard]]
+        StateRestoreResult RestoreState(StateSnapshotHandle snapshotHandle);
 
-        bool RestoreStateParts(AZStd::span<const StateSnapshotHandle> snapshotHandles);
+        [[nodiscard]]
+        StateRestoreResult RestoreStateParts(AZStd::span<const StateSnapshotHandle> snapshotHandles);
 
         bool ValidateState(
             StateSnapshotHandle snapshotHandle,
@@ -2493,11 +2493,46 @@ namespace Jolt
                 const FilteredConstraintTopologyState&) = default;
         };
 
-        struct BodySnapshotSlot final
+        struct ContactCacheState final
         {
-            AZStd::vector<AZ::u8> m_data;
-            BodyHandle m_bodyHandle;
-            AZ::u32 m_generation = 1;
+            ContactEvent m_event;
+
+            AZ::u64 m_firstBodyConfigurationRevision = 0;
+            AZ::u64 m_firstShapeConfigurationRevision = 0;
+            AZ::u64 m_secondBodyConfigurationRevision = 0;
+            AZ::u64 m_secondShapeConfigurationRevision = 0;
+
+            AZ::u32 m_firstBodyId = 0;
+            AZ::u32 m_firstSubShapeId = 0;
+            AZ::u32 m_secondBodyId = 0;
+            AZ::u32 m_secondSubShapeId = 0;
+
+            friend bool operator==(
+                const ContactCacheState& first,
+                const ContactCacheState& second)
+            {
+                return first.m_event.m_firstBodyHandle == second.m_event.m_firstBodyHandle
+                    && first.m_event.m_secondBodyHandle == second.m_event.m_secondBodyHandle
+                    && first.m_event.m_firstShapeHandle == second.m_event.m_firstShapeHandle
+                    && first.m_event.m_secondShapeHandle == second.m_event.m_secondShapeHandle
+                    && first.m_event.m_firstMaterialHandle == second.m_event.m_firstMaterialHandle
+                    && first.m_event.m_secondMaterialHandle == second.m_event.m_secondMaterialHandle
+                    && first.m_event.m_firstSubShapeId == second.m_event.m_firstSubShapeId
+                    && first.m_event.m_secondSubShapeId == second.m_event.m_secondSubShapeId
+                    && first.m_event.m_normal == second.m_event.m_normal
+                    && first.m_event.m_penetrationDepth == second.m_event.m_penetrationDepth
+                    && first.m_event.m_firstPoint == second.m_event.m_firstPoint
+                    && first.m_event.m_pointCount == second.m_event.m_pointCount
+                    && first.m_event.m_phase == second.m_event.m_phase
+                    && first.m_firstBodyConfigurationRevision == second.m_firstBodyConfigurationRevision
+                    && first.m_firstShapeConfigurationRevision == second.m_firstShapeConfigurationRevision
+                    && first.m_secondBodyConfigurationRevision == second.m_secondBodyConfigurationRevision
+                    && first.m_secondShapeConfigurationRevision == second.m_secondShapeConfigurationRevision
+                    && first.m_firstBodyId == second.m_firstBodyId
+                    && first.m_firstSubShapeId == second.m_firstSubShapeId
+                    && first.m_secondBodyId == second.m_secondBodyId
+                    && first.m_secondSubShapeId == second.m_secondSubShapeId;
+            }
         };
 
         struct StateSnapshotSlot final
@@ -2521,6 +2556,7 @@ namespace Jolt
             AZStd::vector<FilteredBodyTopologyState> m_filteredBodyTopologyStates;
             AZStd::vector<AZ::u64> m_filteredConstraintAddresses;
             AZStd::vector<FilteredConstraintTopologyState> m_filteredConstraintTopologyStates;
+            AZStd::vector<ContactCacheState> m_contactCacheStates;
             RollbackParticipantState m_bodyPairColliderState;
             RollbackParticipantState m_contactCallbackState;
             RollbackParticipantState m_simulationShapeFilterState;
@@ -2678,12 +2714,6 @@ namespace Jolt
         void ActivateVehicleBody(const VehicleSlot& slot);
 
         [[nodiscard]]
-        const BodySnapshotSlot* FindBodySnapshot(BodySnapshotHandle snapshotHandle) const;
-
-        [[nodiscard]]
-        BodySnapshotSlot* FindBodySnapshot(BodySnapshotHandle snapshotHandle);
-
-        [[nodiscard]]
         const StateSnapshotSlot* FindStateSnapshot(StateSnapshotHandle snapshotHandle) const;
 
         [[nodiscard]]
@@ -2700,11 +2730,18 @@ namespace Jolt
 
         void ReleaseStateSnapshotSlot(AZ::u32 snapshotIndex);
 
-        bool RestoreStateUnlocked(
+        [[nodiscard]]
+        StateRestoreResult RestoreStateUnlocked(
             const StateSnapshotSlot& snapshot,
             bool isLastPart);
 
-        void ClearEventState();
+        [[nodiscard]]
+        bool PrepareContactCacheRestore(
+            AZStd::span<const StateSnapshotSlot* const> snapshots);
+
+        void CommitContactCacheRestore();
+
+        void ClearEventState(bool preserveContactCache = false);
 
         [[nodiscard]]
         bool GetFilteredBodyTopologyState(
@@ -2725,12 +2762,20 @@ namespace Jolt
             const RollbackParticipantState& state) const;
 
         [[nodiscard]]
-        bool RestoreRollbackParticipantState(
+        bool PrepareRollbackParticipantRestore(
             const IRollbackParticipant* participant,
             const RollbackParticipantState& state) const;
 
         [[nodiscard]]
-        bool RestoreRollbackParticipants(const StateSnapshotSlot& snapshot) const;
+        bool PrepareRollbackParticipantRestores(const StateSnapshotSlot& snapshot) const;
+
+        [[nodiscard]]
+        bool CommitRollbackParticipantRestore(
+            const IRollbackParticipant* participant,
+            const RollbackParticipantState& state) const;
+
+        [[nodiscard]]
+        bool CommitRollbackParticipantRestores(const StateSnapshotSlot& snapshot) const;
 
         [[nodiscard]]
         bool AreGroupFilterStatesCompatible(
@@ -3172,6 +3217,7 @@ namespace Jolt
 
         mutable DeterministicWorldMutex m_mutex;
         mutable AZStd::atomic_bool m_simulationInProgress{false};
+        AZStd::atomic_bool m_stateIndeterminate{false};
 
         RuntimeImplementation& m_system;
         Internal::WorldMemberGenerationSources& m_generationSources;
@@ -3236,10 +3282,6 @@ namespace Jolt
         AZStd::vector<VehicleSlot> m_vehicleSlots;
         AZStd::vector<AZ::u32> m_freeVehicleSlots;
 
-        AZStd::vector<BodySnapshotSlot> m_bodySnapshotSlots;
-        AZStd::vector<AZ::u32> m_freeBodySnapshotSlots;
-        AZStd::vector<AZ::u8> m_bodySnapshotScratch;
-
         AZStd::vector<StateSnapshotSlot> m_stateSnapshotSlots;
         AZStd::vector<AZ::u32> m_freeStateSnapshotSlots;
         StateSnapshotSlot m_stateSnapshotScratch;
@@ -3256,6 +3298,7 @@ namespace Jolt
 
         mutable AZStd::mutex m_eventMutex;
         AZStd::unordered_map<JPH::SubShapeIDPair, ContactEvent, ContactPairHasher> m_contactCache;
+        AZStd::unordered_map<JPH::SubShapeIDPair, ContactEvent, ContactPairHasher> m_contactCacheRestoreScratch;
         AZStd::vector<ContactEvent> m_pendingContactEvents;
         AZStd::vector<ContactPoint> m_pendingContactPoints;
         AZStd::vector<ActivationEvent> m_pendingActivationEvents;

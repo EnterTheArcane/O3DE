@@ -14,6 +14,7 @@ try:
     from .Jolt_ScenarioUtilities import create_world_position
     from .Jolt_ScenarioUtilities import enter_game_mode
     from .Jolt_ScenarioUtilities import exit_game_mode
+    from .Jolt_ScenarioUtilities import is_restore_complete
     from .Jolt_ScenarioUtilities import open_level
     from .Jolt_ScenarioUtilities import wait_for_condition
     from .Jolt_ScenarioUtilities import wait_for_runtime_entity
@@ -24,6 +25,7 @@ except ImportError:
     from Jolt_ScenarioUtilities import create_world_position
     from Jolt_ScenarioUtilities import enter_game_mode
     from Jolt_ScenarioUtilities import exit_game_mode
+    from Jolt_ScenarioUtilities import is_restore_complete
     from Jolt_ScenarioUtilities import open_level
     from Jolt_ScenarioUtilities import wait_for_condition
     from Jolt_ScenarioUtilities import wait_for_runtime_entity
@@ -831,6 +833,7 @@ def run_rollback_and_determinism():
                 world_handle,
                 snapshot,
             ),
+            lambda result: is_restore_complete(jolt, result),
         )
         second_digests = recorder.capture(
             "second deterministic digest sequence",
@@ -867,7 +870,7 @@ def run_rollback_and_determinism():
                 world_handle,
                 snapshot,
             ),
-            lambda restored: not restored,
+            lambda result: result.status == jolt.StateRestoreStatus_Rejected,
             True,
         )
 

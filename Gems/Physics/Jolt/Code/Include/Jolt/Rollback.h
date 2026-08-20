@@ -47,9 +47,16 @@ namespace Jolt
             return state.empty();
         }
 
-        virtual bool RestoreState(const AZStd::span<const AZ::u8> state) const
+        //! Validates and prepares a restore without changing observable state.
+        virtual bool PrepareRestoreState(const AZStd::span<const AZ::u8> state) const
         {
             return state.empty();
+        }
+
+        //! Commits state accepted by PrepareRestoreState. This operation must not fail.
+        virtual void CommitRestoreState(
+            [[maybe_unused]] const AZStd::span<const AZ::u8> state) const
+        {
         }
     };
 } // namespace Jolt

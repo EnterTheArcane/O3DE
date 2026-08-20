@@ -78,6 +78,10 @@ namespace Jolt
                 ->Field("Matches", &StateValidationResult::m_matches);
 
             serializeContext
+                ->Class<StateRestoreResult>()
+                ->Field("Status", &StateRestoreResult::m_status);
+
+            serializeContext
                 ->Class<StateSnapshotConfiguration>()
                 ->Field("Flags", &StateSnapshotConfiguration::m_flags)
                 ->Field("RestoreSafety", &StateSnapshotConfiguration::m_restoreSafety)
@@ -114,7 +118,6 @@ namespace Jolt
                 ->Field("ActiveConstraintCount", &WorldStatistics::m_activeConstraintCount)
                 ->Field("ConstraintCount", &WorldStatistics::m_constraintCount)
                 ->Field("ShapeCount", &WorldStatistics::m_shapeCount)
-                ->Field("BodySnapshotCount", &WorldStatistics::m_bodySnapshotCount)
                 ->Field("CharacterCount", &WorldStatistics::m_characterCount)
                 ->Field("HairCount", &WorldStatistics::m_hairCount)
                 ->Field("RagdollCount", &WorldStatistics::m_ragdollCount)
@@ -145,7 +148,6 @@ namespace Jolt
                 ->Field("TempAllocatorPeakBytes", &WorldPerformanceStatistics::m_tempAllocatorPeakBytes)
                 ->Field("WrapperRetainedBytes", &WorldPerformanceStatistics::m_wrapperRetainedBytes)
                 ->Field("Bodies", &WorldPerformanceStatistics::m_bodies)
-                ->Field("BodySnapshots", &WorldPerformanceStatistics::m_bodySnapshots)
                 ->Field("Characters", &WorldPerformanceStatistics::m_characters)
                 ->Field("Constraints", &WorldPerformanceStatistics::m_constraints)
                 ->Field("Hair", &WorldPerformanceStatistics::m_hair)
@@ -347,6 +349,25 @@ namespace Jolt
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "jolt");
 
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(StateRestoreStatus::None)>("StateRestoreStatus_None")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(StateRestoreStatus::Complete)>(
+                "StateRestoreStatus_Complete")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(StateRestoreStatus::Rejected)>(
+                "StateRestoreStatus_Rejected")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
+            behaviorContext->EnumProperty<static_cast<AZ::u8>(StateRestoreStatus::StateIndeterminate)>(
+                "StateRestoreStatus_StateIndeterminate")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt");
+
             behaviorContext->Class<SimulationResult>("SimulationResult")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "jolt")
@@ -464,6 +485,12 @@ namespace Jolt
                     nullptr)
                 ->Property("matches", BehaviorValueGetter(&StateValidationResult::m_matches), nullptr);
 
+            behaviorContext->Class<StateRestoreResult>("StateRestoreResult")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property("status", BehaviorValueGetter(&StateRestoreResult::m_status), nullptr);
+
             behaviorContext->Class<StateSnapshotConfiguration>("StateSnapshotConfiguration")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "jolt")
@@ -565,10 +592,6 @@ namespace Jolt
                     nullptr)
                 ->Property("shapeCount", BehaviorValueGetter(&WorldStatistics::m_shapeCount), nullptr)
                 ->Property(
-                    "bodySnapshotCount",
-                    BehaviorValueGetter(&WorldStatistics::m_bodySnapshotCount),
-                    nullptr)
-                ->Property(
                     "characterCount",
                     BehaviorValueGetter(&WorldStatistics::m_characterCount),
                     nullptr)
@@ -645,9 +668,6 @@ namespace Jolt
                     "wrapperRetainedBytes",
                     JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_wrapperRetainedBytes))
                 ->Property("bodies", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_bodies))
-                ->Property(
-                    "bodySnapshots",
-                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_bodySnapshots))
                 ->Property("characters", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_characters))
                 ->Property("constraints", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_constraints))
                 ->Property("hair", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_hair))

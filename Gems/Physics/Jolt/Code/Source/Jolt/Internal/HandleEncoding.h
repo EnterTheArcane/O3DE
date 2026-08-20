@@ -23,7 +23,6 @@ namespace Jolt::Internal
     enum class WorldMemberKind : AZ::u8
     {
         Body,
-        BodySnapshot,
         Character,
         Constraint,
         Hair,
@@ -44,12 +43,6 @@ namespace Jolt::Internal
     struct WorldMemberKindTraits<BodyHandle> final
     {
         static constexpr WorldMemberKind Kind = WorldMemberKind::Body;
-    };
-
-    template<>
-    struct WorldMemberKindTraits<BodySnapshotHandle> final
-    {
-        static constexpr WorldMemberKind Kind = WorldMemberKind::BodySnapshot;
     };
 
     template<>

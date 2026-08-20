@@ -114,7 +114,7 @@ namespace Jolt
     {
         constexpr AZ::u32 MaximumBarrierJobCount = 2'048;
         constexpr AZ::u32 StateArchiveMagic = 0x4A535341;
-        constexpr AZ::u32 StateArchiveFormatVersion = 4;
+        constexpr AZ::u32 StateArchiveFormatVersion = 5;
         constexpr AZ::u32 VehicleTrackCount = static_cast<AZ::u32>(JPH::ETrackSide::Num);
 
         [[nodiscard]]
@@ -15799,184 +15799,45 @@ namespace Jolt
         return true;
     }
 
-    BodySnapshotHandle World::CaptureBodyState(
+    StateSnapshotHandle World::CaptureBodyState(
         const BodyHandle bodyHandle)
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CaptureBodyState");
-        PerformanceOperationScope statisticsScope(
-            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Snapshots),
-            m_performanceStatistics.m_snapshotCaptureNanoseconds,
-            m_performanceStatistics.m_snapshotCaptureCount,
-            m_performanceStatistics.m_snapshotFailureCount);
-        AZStd::lock_guard lock(m_mutex);
-        const BodySlot* bodySlot = FindBody(bodyHandle);
-        if (!bodySlot)
-        {
-            return {};
-        }
-
-        AZ::u32 snapshotIndex = 0;
-        const BodySnapshotHandle snapshotHandle = ReserveWorldMemberSlot<BodySnapshotHandle>(
-            m_bodySnapshotSlots,
-            m_freeBodySnapshotSlots,
-            snapshotIndex);
-        if (!snapshotHandle)
-        {
-            return {};
-        }
-
-        BodySnapshotSlot& snapshot = m_bodySnapshotSlots[snapshotIndex];
-        JPH::BodyLockRead bodyLock(m_physicsSystem.GetBodyLockInterface(), bodySlot->m_bodyId);
-        if (!bodyLock.Succeeded())
-        {
-            m_freeBodySnapshotSlots.push_back(snapshotIndex);
-            return {};
-        }
-
-        NativeStateRecorder recorder(snapshot.m_data);
-        m_physicsSystem.SaveBodyState(bodyLock.GetBody(), recorder);
-        const AZ::u8 skinPoseInitialized = bodySlot->m_softBodySkinPoseInitialized;
-        const AZ::u8 skinConstraintsEnabled = bodySlot->m_softBodySkinConstraintsEnabled;
-        recorder.WriteBytes(&skinPoseInitialized, sizeof(skinPoseInitialized));
-        recorder.WriteBytes(&skinConstraintsEnabled, sizeof(skinConstraintsEnabled));
-        if (recorder.IsFailed())
-        {
-            snapshot.m_data.clear();
-            m_freeBodySnapshotSlots.push_back(snapshotIndex);
-            return {};
-        }
-        snapshot.m_bodyHandle = bodyHandle;
-        statisticsScope.Succeed();
-        return snapshotHandle;
+        const AZStd::array bodyHandles = {bodyHandle};
+        return CaptureState(
+            {
+                .m_flags = StateSnapshotFlags::Bodies,
+                .m_filterBodies = true,
+            },
+            bodyHandles);
     }
 
     bool World::CaptureBodyState(
         const BodyHandle bodyHandle,
-        const BodySnapshotHandle snapshotHandle)
+        const StateSnapshotHandle snapshotHandle)
     {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RecaptureBodyState");
-        PerformanceOperationScope statisticsScope(
-            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Snapshots),
-            m_performanceStatistics.m_snapshotCaptureNanoseconds,
-            m_performanceStatistics.m_snapshotCaptureCount,
-            m_performanceStatistics.m_snapshotFailureCount);
-        AZStd::lock_guard lock(m_mutex);
-        const BodySlot* bodySlot = FindBody(bodyHandle);
-        BodySnapshotSlot* snapshot = FindBodySnapshot(snapshotHandle);
-        if (!bodySlot || !snapshot)
-        {
-            return false;
-        }
-
-        JPH::BodyLockRead bodyLock(m_physicsSystem.GetBodyLockInterface(), bodySlot->m_bodyId);
-        if (!bodyLock.Succeeded())
-        {
-            return false;
-        }
-
-        NativeStateRecorder recorder(m_bodySnapshotScratch);
-        m_physicsSystem.SaveBodyState(bodyLock.GetBody(), recorder);
-        const AZ::u8 skinPoseInitialized = bodySlot->m_softBodySkinPoseInitialized;
-        const AZ::u8 skinConstraintsEnabled = bodySlot->m_softBodySkinConstraintsEnabled;
-        recorder.WriteBytes(&skinPoseInitialized, sizeof(skinPoseInitialized));
-        recorder.WriteBytes(&skinConstraintsEnabled, sizeof(skinConstraintsEnabled));
-        if (recorder.IsFailed())
-        {
-            return false;
-        }
-        snapshot->m_data.swap(m_bodySnapshotScratch);
-        snapshot->m_bodyHandle = bodyHandle;
-        statisticsScope.Succeed();
-        return true;
+        const AZStd::array bodyHandles = {bodyHandle};
+        return CaptureState(
+            snapshotHandle,
+            {
+                .m_flags = StateSnapshotFlags::Bodies,
+                .m_filterBodies = true,
+            },
+            bodyHandles);
     }
 
-    bool World::DestroyBodyStateSnapshot(
-        const BodySnapshotHandle snapshotHandle)
+    StateRestoreResult World::RestoreBodyState(
+        const StateSnapshotHandle snapshotHandle)
     {
         AZStd::lock_guard lock(m_mutex);
-        BodySnapshotSlot* snapshot = FindBodySnapshot(snapshotHandle);
-        if (!snapshot)
+        const StateSnapshotSlot* snapshot = FindStateSnapshot(snapshotHandle);
+        if (!snapshot
+            || snapshot->m_configuration.m_flags != StateSnapshotFlags::Bodies
+            || !snapshot->m_configuration.m_filterBodies
+            || snapshot->m_filteredBodyTopologyStates.size() != 1)
         {
-            return false;
+            return {.m_status = StateRestoreStatus::Rejected};
         }
-
-        Internal::WorldMemberHandleParts parts;
-        if (!Internal::DecodeWorldMemberHandle(snapshotHandle, parts))
-        {
-            return false;
-        }
-        snapshot->m_data.clear();
-        snapshot->m_bodyHandle = {};
-        if (Internal::AdvanceGeneration(snapshot->m_generation))
-        {
-            m_freeBodySnapshotSlots.push_back(parts.m_index);
-        }
-        return true;
-    }
-
-    bool World::IsValid(
-        const BodySnapshotHandle snapshotHandle) const
-    {
-        AZStd::lock_guard lock(m_mutex);
-        return FindBodySnapshot(snapshotHandle);
-    }
-
-    bool World::RestoreBodyState(
-        const BodySnapshotHandle snapshotHandle)
-    {
-        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RestoreBodyState");
-        PerformanceOperationScope statisticsScope(
-            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Snapshots),
-            m_performanceStatistics.m_snapshotRestoreNanoseconds,
-            m_performanceStatistics.m_snapshotRestoreCount,
-            m_performanceStatistics.m_snapshotFailureCount);
-        AZStd::lock_guard lock(m_mutex);
-        const BodySnapshotSlot* snapshot = FindBodySnapshot(snapshotHandle);
-        if (!snapshot)
-        {
-            return false;
-        }
-
-        BodySlot* bodySlot = FindBody(snapshot->m_bodyHandle);
-        if (!bodySlot)
-        {
-            return false;
-        }
-
-        JPH::BodyLockWrite bodyLock(m_physicsSystem.GetBodyLockInterface(), bodySlot->m_bodyId);
-        if (!bodyLock.Succeeded())
-        {
-            return false;
-        }
-
-        NativeStateRecorder recorder(snapshot->m_data);
-        m_physicsSystem.RestoreBodyState(bodyLock.GetBody(), recorder);
-        AZ::u8 skinPoseInitialized = 0;
-        AZ::u8 skinConstraintsEnabled = 0;
-        recorder.ReadBytes(&skinPoseInitialized, sizeof(skinPoseInitialized));
-        recorder.ReadBytes(&skinConstraintsEnabled, sizeof(skinConstraintsEnabled));
-        if (recorder.IsFailed() || !recorder.HasReadAllData())
-        {
-            return false;
-        }
-
-        bodySlot->m_softBodySkinPoseInitialized = skinPoseInitialized != 0;
-        bodySlot->m_softBodySkinConstraintsEnabled = skinConstraintsEnabled != 0;
-        if (bodySlot->m_kind == BodyKind::Soft)
-        {
-            auto* motionProperties =
-                static_cast<JPH::SoftBodyMotionProperties*>(bodyLock.GetBody().GetMotionProperties());
-            motionProperties->SetEnableSkinConstraints(
-                bodySlot->m_softBodySkinConstraintsEnabled && bodySlot->m_softBodySkinPoseInitialized);
-        }
-
-        if (bodyLock.GetBody().InvalidateContactCacheInternal())
-        {
-            m_contactCacheInvalidBodyHandles.push_back(snapshot->m_bodyHandle);
-        }
-        ClearEventState();
-        statisticsScope.Succeed();
-        return true;
+        return RestoreState(snapshotHandle);
     }
 
     StateSnapshotHandle World::CaptureState()
@@ -16298,6 +16159,32 @@ namespace Jolt
             writer.Write(static_cast<AZ::u8>(state.m_isVehicle));
         }
 
+        writer.WriteSize(snapshot.m_contactCacheStates.size());
+        for (const ContactCacheState& state : snapshot.m_contactCacheStates)
+        {
+            writer.Write(state.m_firstBodyConfigurationRevision);
+            writer.Write(state.m_firstShapeConfigurationRevision);
+            writer.Write(state.m_secondBodyConfigurationRevision);
+            writer.Write(state.m_secondShapeConfigurationRevision);
+            writer.Write(state.m_firstBodyId);
+            writer.Write(state.m_firstSubShapeId);
+            writer.Write(state.m_secondBodyId);
+            writer.Write(state.m_secondSubShapeId);
+            WriteHandle(writer, state.m_event.m_firstBodyHandle);
+            WriteHandle(writer, state.m_event.m_secondBodyHandle);
+            WriteHandle(writer, state.m_event.m_firstShapeHandle);
+            WriteHandle(writer, state.m_event.m_secondShapeHandle);
+            WriteHandle(writer, state.m_event.m_firstMaterialHandle);
+            WriteHandle(writer, state.m_event.m_secondMaterialHandle);
+            writer.Write(state.m_event.m_firstSubShapeId.GetValue());
+            writer.Write(state.m_event.m_secondSubShapeId.GetValue());
+            writer.Write(state.m_event.m_normal.GetX());
+            writer.Write(state.m_event.m_normal.GetY());
+            writer.Write(state.m_event.m_normal.GetZ());
+            writer.Write(state.m_event.m_penetrationDepth);
+            writer.Write(static_cast<AZ::u8>(state.m_event.m_phase));
+        }
+
         writeParticipantState(snapshot.m_bodyPairColliderState);
         writeParticipantState(snapshot.m_contactCallbackState);
         writeParticipantState(snapshot.m_simulationShapeFilterState);
@@ -16306,7 +16193,6 @@ namespace Jolt
         writer.WriteVector(snapshot.m_characterStateIndices);
         writer.WriteVector(snapshot.m_virtualCharacterStateIndices);
         writer.Write(static_cast<AZ::u8>(snapshot.m_configuration.m_flags));
-        writer.Write(static_cast<AZ::u8>(snapshot.m_configuration.m_restoreSafety));
         writer.Write(static_cast<AZ::u8>(snapshot.m_configuration.m_filterBodies));
         writer.Write(snapshot.m_configurationRevision);
         writer.Write(snapshot.m_eventSequence);
@@ -16543,8 +16429,132 @@ namespace Jolt
             snapshot.m_filteredConstraintAddresses.begin(),
             snapshot.m_filteredConstraintAddresses.end());
 
+        size_t contactCacheStateCount = 0;
+        constexpr size_t contactCacheStateByteCount = sizeof(AZ::u64) * 10
+            + sizeof(AZ::u32) * 4
+            + sizeof(AZ::u32) * 2
+            + sizeof(float) * 4
+            + sizeof(AZ::u8);
+        if (!ReadObjectCount(
+                reader,
+                contactCacheStateCount,
+                contactCacheStateByteCount))
+        {
+            return false;
+        }
+        snapshot.m_contactCacheStates.resize(contactCacheStateCount);
+        for (ContactCacheState& state : snapshot.m_contactCacheStates)
+        {
+            AZ::u32 firstSubShapeId = 0;
+            AZ::u32 secondSubShapeId = 0;
+            float normalX = 0.0f;
+            float normalY = 0.0f;
+            float normalZ = 0.0f;
+            AZ::u8 phase = 0;
+            if (!reader.Read(state.m_firstBodyConfigurationRevision)
+                || !reader.Read(state.m_firstShapeConfigurationRevision)
+                || !reader.Read(state.m_secondBodyConfigurationRevision)
+                || !reader.Read(state.m_secondShapeConfigurationRevision)
+                || !reader.Read(state.m_firstBodyId)
+                || !reader.Read(state.m_firstSubShapeId)
+                || !reader.Read(state.m_secondBodyId)
+                || !reader.Read(state.m_secondSubShapeId)
+                || !ReadHandle(reader, state.m_event.m_firstBodyHandle)
+                || !ReadHandle(reader, state.m_event.m_secondBodyHandle)
+                || !ReadHandle(reader, state.m_event.m_firstShapeHandle)
+                || !ReadHandle(reader, state.m_event.m_secondShapeHandle)
+                || !ReadHandle(reader, state.m_event.m_firstMaterialHandle)
+                || !ReadHandle(reader, state.m_event.m_secondMaterialHandle)
+                || !reader.Read(firstSubShapeId)
+                || !reader.Read(secondSubShapeId)
+                || !reader.Read(normalX)
+                || !reader.Read(normalY)
+                || !reader.Read(normalZ)
+                || !reader.Read(state.m_event.m_penetrationDepth)
+                || !reader.Read(phase)
+                || !state.m_event.m_firstBodyHandle
+                || !state.m_event.m_secondBodyHandle
+                || !state.m_event.m_firstShapeHandle
+                || !state.m_event.m_secondShapeHandle
+                || !RebindWorldMemberHandle(m_worldIndex, state.m_event.m_firstBodyHandle)
+                || !RebindWorldMemberHandle(m_worldIndex, state.m_event.m_secondBodyHandle)
+                || !RebindWorldMemberHandle(m_worldIndex, state.m_event.m_firstShapeHandle)
+                || !RebindWorldMemberHandle(m_worldIndex, state.m_event.m_secondShapeHandle)
+                || firstSubShapeId != state.m_firstSubShapeId
+                || secondSubShapeId != state.m_secondSubShapeId
+                || (phase != static_cast<AZ::u8>(EventPhase::Begin)
+                    && phase != static_cast<AZ::u8>(EventPhase::Persist))
+                || !AZ::IsFiniteFloat(normalX)
+                || !AZ::IsFiniteFloat(normalY)
+                || !AZ::IsFiniteFloat(normalZ)
+                || !AZ::IsFiniteFloat(state.m_event.m_penetrationDepth))
+            {
+                return false;
+            }
+
+            state.m_event.m_firstSubShapeId = SubShapeId(firstSubShapeId);
+            state.m_event.m_secondSubShapeId = SubShapeId(secondSubShapeId);
+            state.m_event.m_normal = AZ::Vector3(normalX, normalY, normalZ);
+            state.m_event.m_phase = static_cast<EventPhase>(phase);
+
+            const BodySlot* firstBody = FindBody(state.m_event.m_firstBodyHandle);
+            const BodySlot* secondBody = FindBody(state.m_event.m_secondBodyHandle);
+            const ShapeSlot* firstShape = FindShape(state.m_event.m_firstShapeHandle);
+            const ShapeSlot* secondShape = FindShape(state.m_event.m_secondShapeHandle);
+            if (!firstBody
+                || !secondBody
+                || !firstShape
+                || !secondShape
+                || firstBody->m_bodyId.GetIndexAndSequenceNumber() != state.m_firstBodyId
+                || secondBody->m_bodyId.GetIndexAndSequenceNumber() != state.m_secondBodyId
+                || firstBody->m_shapeHandle != state.m_event.m_firstShapeHandle
+                || secondBody->m_shapeHandle != state.m_event.m_secondShapeHandle
+                || firstBody->m_configurationRevision != state.m_firstBodyConfigurationRevision
+                || secondBody->m_configurationRevision != state.m_secondBodyConfigurationRevision
+                || firstShape->m_configurationRevision != state.m_firstShapeConfigurationRevision
+                || secondShape->m_configurationRevision != state.m_secondShapeConfigurationRevision
+                || (state.m_event.m_firstMaterialHandle
+                    && !m_system.IsValid(state.m_event.m_firstMaterialHandle))
+                || (state.m_event.m_secondMaterialHandle
+                    && !m_system.IsValid(state.m_event.m_secondMaterialHandle)))
+            {
+                return false;
+            }
+        }
+        const auto contactCacheStateLess =
+            [](const ContactCacheState& first, const ContactCacheState& second)
+            {
+                if (first.m_firstBodyId != second.m_firstBodyId)
+                {
+                    return first.m_firstBodyId < second.m_firstBodyId;
+                }
+                if (first.m_firstSubShapeId != second.m_firstSubShapeId)
+                {
+                    return first.m_firstSubShapeId < second.m_firstSubShapeId;
+                }
+                if (first.m_secondBodyId != second.m_secondBodyId)
+                {
+                    return first.m_secondBodyId < second.m_secondBodyId;
+                }
+                return first.m_secondSubShapeId < second.m_secondSubShapeId;
+            };
+        if (!AZStd::is_sorted(
+                snapshot.m_contactCacheStates.begin(),
+                snapshot.m_contactCacheStates.end(),
+                contactCacheStateLess)
+            || AZStd::adjacent_find(
+                snapshot.m_contactCacheStates.begin(),
+                snapshot.m_contactCacheStates.end(),
+                [&contactCacheStateLess](const ContactCacheState& first, const ContactCacheState& second)
+                {
+                    return !contactCacheStateLess(first, second)
+                        && !contactCacheStateLess(second, first);
+                }) != snapshot.m_contactCacheStates.end())
+        {
+            return false;
+        }
+
         AZ::u8 flags = 0;
-        AZ::u8 restoreSafety = 0;
         AZ::u8 filterBodies = 0;
         if (!readParticipantState(snapshot.m_bodyPairColliderState)
             || !readParticipantState(snapshot.m_contactCallbackState)
@@ -16554,23 +16564,40 @@ namespace Jolt
             || !reader.ReadVector(snapshot.m_characterStateIndices)
             || !reader.ReadVector(snapshot.m_virtualCharacterStateIndices)
             || !reader.Read(flags)
-            || !reader.Read(restoreSafety)
             || !reader.Read(filterBodies)
             || !reader.Read(snapshot.m_configurationRevision)
             || !reader.Read(snapshot.m_eventSequence)
             || !reader.Read(snapshot.m_globalConfigurationRevision)
             || flags == 0
             || (flags & ~static_cast<AZ::u8>(StateSnapshotFlags::All)) != 0
-            || restoreSafety == static_cast<AZ::u8>(RestoreSafety::None)
-            || restoreSafety > static_cast<AZ::u8>(RestoreSafety::Validated)
             || filterBodies > 1)
         {
             return false;
         }
         snapshot.m_configuration.m_flags = static_cast<StateSnapshotFlags>(flags);
-        snapshot.m_configuration.m_restoreSafety = static_cast<RestoreSafety>(restoreSafety);
+        snapshot.m_configuration.m_restoreSafety = RestoreSafety::Transactional;
         snapshot.m_configuration.m_filterBodies = filterBodies != 0;
         snapshot.m_partitionBatchId = 0;
+
+        if (!HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Contacts)
+            && !snapshot.m_contactCacheStates.empty())
+        {
+            return false;
+        }
+        if (snapshot.m_configuration.m_filterBodies)
+        {
+            for (const ContactCacheState& state : snapshot.m_contactCacheStates)
+            {
+                const AZ::u32 ownerBodyId = AZStd::min(state.m_firstBodyId, state.m_secondBodyId);
+                if (!AZStd::binary_search(
+                        snapshot.m_filteredBodyIds.begin(),
+                        snapshot.m_filteredBodyIds.end(),
+                        ownerBodyId))
+                {
+                    return false;
+                }
+            }
+        }
         return true;
     }
 
@@ -16802,7 +16829,7 @@ namespace Jolt
                 || participant->GetStateHash() == state.m_stateHash);
     }
 
-    bool World::RestoreRollbackParticipantState(
+    bool World::PrepareRollbackParticipantRestore(
         const IRollbackParticipant* participant,
         const RollbackParticipantState& state) const
     {
@@ -16815,15 +16842,14 @@ namespace Jolt
             return true;
         }
         return state.m_data.front() == 1
-            && participant->RestoreState(AZStd::span(state.m_data).subspan(1))
-            && participant->GetStateHash() == state.m_stateHash;
+            && participant->PrepareRestoreState(AZStd::span(state.m_data).subspan(1));
     }
 
-    bool World::RestoreRollbackParticipants(const StateSnapshotSlot& snapshot) const
+    bool World::PrepareRollbackParticipantRestores(const StateSnapshotSlot& snapshot) const
     {
         for (const GroupFilterState& state : snapshot.m_groupFilterStates)
         {
-            if (!m_system.RestoreGroupFilterParticipantState(
+            if (!m_system.PrepareGroupFilterParticipantRestore(
                     state.m_filterHandle,
                     state.m_participantState.m_data,
                     state.m_participantState.m_typeId,
@@ -16834,12 +16860,17 @@ namespace Jolt
             }
         }
 
-        if (!RestoreRollbackParticipantState(m_bodyPairCollider, snapshot.m_bodyPairColliderState)
-            || !RestoreRollbackParticipantState(m_contactCallbacks, snapshot.m_contactCallbackState)
-            || !RestoreRollbackParticipantState(
+        if (!HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Global))
+        {
+            return true;
+        }
+
+        if (!PrepareRollbackParticipantRestore(m_bodyPairCollider, snapshot.m_bodyPairColliderState)
+            || !PrepareRollbackParticipantRestore(m_contactCallbacks, snapshot.m_contactCallbackState)
+            || !PrepareRollbackParticipantRestore(
                 m_simulationShapeFilter,
                 snapshot.m_simulationShapeFilterState)
-            || !RestoreRollbackParticipantState(
+            || !PrepareRollbackParticipantRestore(
                 m_softBodyContactCallbacks,
                 snapshot.m_softBodyContactCallbackState)
             || snapshot.m_stepListenerStates.size() != m_stepListeners.size())
@@ -16849,7 +16880,7 @@ namespace Jolt
 
         for (size_t listenerIndex = 0; listenerIndex < m_stepListeners.size(); ++listenerIndex)
         {
-            if (!RestoreRollbackParticipantState(
+            if (!PrepareRollbackParticipantRestore(
                     m_stepListeners[listenerIndex],
                     snapshot.m_stepListenerStates[listenerIndex]))
             {
@@ -16870,8 +16901,8 @@ namespace Jolt
                 callbacks = slot.m_bindings->m_callbacks;
                 collisionFilter = slot.m_bindings->m_collisionFilter;
             }
-            if (!RestoreRollbackParticipantState(callbacks, state.m_primaryState)
-                || !RestoreRollbackParticipantState(collisionFilter, state.m_secondaryState))
+            if (!PrepareRollbackParticipantRestore(callbacks, state.m_primaryState)
+                || !PrepareRollbackParticipantRestore(collisionFilter, state.m_secondaryState))
             {
                 return false;
             }
@@ -16879,7 +16910,88 @@ namespace Jolt
         for (const IndexedCallbackState& state : snapshot.m_virtualCharacterCallbackStates)
         {
             if (state.m_slotIndex >= m_virtualCharacterSlots.size()
-                || !RestoreRollbackParticipantState(
+                || !PrepareRollbackParticipantRestore(
+                    m_virtualCharacterSlots[state.m_slotIndex].m_contactCallbacks,
+                    state.m_primaryState))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool World::CommitRollbackParticipantRestore(
+        const IRollbackParticipant* participant,
+        const RollbackParticipantState& state) const
+    {
+        if (!participant)
+        {
+            return state.m_data.empty();
+        }
+
+        participant->CommitRestoreState(AZStd::span(state.m_data).subspan(1));
+        return participant->GetStateHash() == state.m_stateHash;
+    }
+
+    bool World::CommitRollbackParticipantRestores(const StateSnapshotSlot& snapshot) const
+    {
+        for (const GroupFilterState& state : snapshot.m_groupFilterStates)
+        {
+            if (!state.m_participantState.m_data.empty()
+                && !m_system.CommitGroupFilterParticipantRestore(
+                    state.m_filterHandle,
+                    state.m_participantState.m_data,
+                    state.m_participantState.m_stateHash))
+            {
+                return false;
+            }
+        }
+
+        if (!HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Global))
+        {
+            return true;
+        }
+
+        if (!CommitRollbackParticipantRestore(m_bodyPairCollider, snapshot.m_bodyPairColliderState)
+            || !CommitRollbackParticipantRestore(m_contactCallbacks, snapshot.m_contactCallbackState)
+            || !CommitRollbackParticipantRestore(
+                m_simulationShapeFilter,
+                snapshot.m_simulationShapeFilterState)
+            || !CommitRollbackParticipantRestore(
+                m_softBodyContactCallbacks,
+                snapshot.m_softBodyContactCallbackState))
+        {
+            return false;
+        }
+
+        for (size_t listenerIndex = 0; listenerIndex < m_stepListeners.size(); ++listenerIndex)
+        {
+            if (!CommitRollbackParticipantRestore(
+                    m_stepListeners[listenerIndex],
+                    snapshot.m_stepListenerStates[listenerIndex]))
+            {
+                return false;
+            }
+        }
+        for (const IndexedCallbackState& state : snapshot.m_vehicleCallbackStates)
+        {
+            const VehicleSlot& slot = m_vehicleSlots[state.m_slotIndex];
+            IVehicleCallbacks* callbacks = nullptr;
+            const IVehicleCollisionFilter* collisionFilter = nullptr;
+            if (slot.m_bindings)
+            {
+                callbacks = slot.m_bindings->m_callbacks;
+                collisionFilter = slot.m_bindings->m_collisionFilter;
+            }
+            if (!CommitRollbackParticipantRestore(callbacks, state.m_primaryState)
+                || !CommitRollbackParticipantRestore(collisionFilter, state.m_secondaryState))
+            {
+                return false;
+            }
+        }
+        for (const IndexedCallbackState& state : snapshot.m_virtualCharacterCallbackStates)
+        {
+            if (!CommitRollbackParticipantRestore(
                     m_virtualCharacterSlots[state.m_slotIndex].m_contactCallbacks,
                     state.m_primaryState))
             {
@@ -17157,7 +17269,11 @@ namespace Jolt
             }
         }
 
-        if (!CollectGroupFilterStates(
+        const bool captureGlobalState = HasStateFlag(configuration.m_flags, StateSnapshotFlags::Global);
+        const bool captureGroupFilters = captureGlobalState
+            || HasStateFlag(configuration.m_flags, StateSnapshotFlags::Contacts);
+        if (captureGroupFilters
+            && !CollectGroupFilterStates(
                 snapshot.m_groupFilterStates,
                 snapshot.m_filteredBodyIds,
                 configuration.m_filterBodies))
@@ -17165,34 +17281,51 @@ namespace Jolt
             snapshot.m_data.clear();
             return false;
         }
+        if (!captureGroupFilters)
+        {
+            snapshot.m_groupFilterStates.clear();
+        }
 
-        if (!CaptureRollbackParticipantState(m_bodyPairCollider, snapshot.m_bodyPairColliderState)
-            || !CaptureRollbackParticipantState(m_contactCallbacks, snapshot.m_contactCallbackState)
-            || !CaptureRollbackParticipantState(m_simulationShapeFilter, snapshot.m_simulationShapeFilterState)
-            || !CaptureRollbackParticipantState(
-                m_softBodyContactCallbacks,
-                snapshot.m_softBodyContactCallbackState))
+        if (captureGlobalState
+            && (!CaptureRollbackParticipantState(m_bodyPairCollider, snapshot.m_bodyPairColliderState)
+                || !CaptureRollbackParticipantState(m_contactCallbacks, snapshot.m_contactCallbackState)
+                || !CaptureRollbackParticipantState(m_simulationShapeFilter, snapshot.m_simulationShapeFilterState)
+                || !CaptureRollbackParticipantState(
+                    m_softBodyContactCallbacks,
+                    snapshot.m_softBodyContactCallbackState)))
         {
             snapshot.m_data.clear();
             return false;
         }
-
-        snapshot.m_stepListenerStates.resize(m_stepListeners.size());
-        size_t listenerIndex = 0;
-        for (const IStepListener* listener : m_stepListeners)
+        if (!captureGlobalState)
         {
-            if (!CaptureRollbackParticipantState(
-                    listener,
-                    snapshot.m_stepListenerStates[listenerIndex]))
+            snapshot.m_bodyPairColliderState = {};
+            snapshot.m_contactCallbackState = {};
+            snapshot.m_simulationShapeFilterState = {};
+            snapshot.m_softBodyContactCallbackState = {};
+        }
+
+        snapshot.m_stepListenerStates.clear();
+        if (captureGlobalState)
+        {
+            snapshot.m_stepListenerStates.resize(m_stepListeners.size());
+            size_t listenerIndex = 0;
+            for (const IStepListener* listener : m_stepListeners)
             {
-                snapshot.m_data.clear();
-                return false;
+                if (!CaptureRollbackParticipantState(
+                        listener,
+                        snapshot.m_stepListenerStates[listenerIndex]))
+                {
+                    snapshot.m_data.clear();
+                    return false;
+                }
+                ++listenerIndex;
             }
-            ++listenerIndex;
         }
 
         size_t vehicleCallbackStateCount = 0;
-        if (HasStateFlag(configuration.m_flags, StateSnapshotFlags::Constraints))
+        if (captureGlobalState
+            && HasStateFlag(configuration.m_flags, StateSnapshotFlags::Constraints))
         {
             snapshot.m_vehicleCallbackStates.reserve(m_vehicleSlots.size());
             for (AZ::u32 vehicleIndex = 0; vehicleIndex < m_vehicleSlots.size(); ++vehicleIndex)
@@ -17233,7 +17366,8 @@ namespace Jolt
         snapshot.m_vehicleCallbackStates.resize(vehicleCallbackStateCount);
 
         size_t virtualCharacterCallbackStateCount = 0;
-        if (HasStateFlag(configuration.m_flags, StateSnapshotFlags::Bodies)
+        if (captureGlobalState
+            && HasStateFlag(configuration.m_flags, StateSnapshotFlags::Bodies)
             && !configuration.m_filterBodies)
         {
             snapshot.m_virtualCharacterCallbackStates.reserve(m_virtualCharacterSlots.size());
@@ -17262,6 +17396,76 @@ namespace Jolt
             }
         }
         snapshot.m_virtualCharacterCallbackStates.resize(virtualCharacterCallbackStateCount);
+
+        snapshot.m_contactCacheStates.clear();
+        if (HasStateFlag(configuration.m_flags, StateSnapshotFlags::Contacts))
+        {
+            AZStd::lock_guard eventLock(m_eventMutex);
+            snapshot.m_contactCacheStates.reserve(m_contactCache.size());
+            for (const auto& [pair, event] : m_contactCache)
+            {
+                const AZ::u32 firstBodyId = pair.GetBody1ID().GetIndexAndSequenceNumber();
+                const AZ::u32 secondBodyId = pair.GetBody2ID().GetIndexAndSequenceNumber();
+                const AZ::u32 ownerBodyId = AZStd::min(firstBodyId, secondBodyId);
+                if (configuration.m_filterBodies
+                    && !AZStd::binary_search(
+                        snapshot.m_filteredBodyIds.begin(),
+                        snapshot.m_filteredBodyIds.end(),
+                        ownerBodyId))
+                {
+                    continue;
+                }
+
+                const BodySlot* firstBody = FindBody(event.m_firstBodyHandle);
+                const BodySlot* secondBody = FindBody(event.m_secondBodyHandle);
+                const ShapeSlot* firstShape = FindShape(event.m_firstShapeHandle);
+                const ShapeSlot* secondShape = FindShape(event.m_secondShapeHandle);
+                if (!firstBody
+                    || !secondBody
+                    || !firstShape
+                    || !secondShape
+                    || firstBody->m_bodyId.GetIndexAndSequenceNumber() != firstBodyId
+                    || secondBody->m_bodyId.GetIndexAndSequenceNumber() != secondBodyId
+                    || firstBody->m_shapeHandle != event.m_firstShapeHandle
+                    || secondBody->m_shapeHandle != event.m_secondShapeHandle)
+                {
+                    snapshot.m_data.clear();
+                    snapshot.m_contactCacheStates.clear();
+                    return false;
+                }
+
+                snapshot.m_contactCacheStates.push_back({
+                    .m_event = event,
+                    .m_firstBodyConfigurationRevision = firstBody->m_configurationRevision,
+                    .m_firstShapeConfigurationRevision = firstShape->m_configurationRevision,
+                    .m_secondBodyConfigurationRevision = secondBody->m_configurationRevision,
+                    .m_secondShapeConfigurationRevision = secondShape->m_configurationRevision,
+                    .m_firstBodyId = firstBodyId,
+                    .m_firstSubShapeId = pair.GetSubShapeID1().GetValue(),
+                    .m_secondBodyId = secondBodyId,
+                    .m_secondSubShapeId = pair.GetSubShapeID2().GetValue(),
+                });
+            }
+            AZStd::sort(
+                snapshot.m_contactCacheStates.begin(),
+                snapshot.m_contactCacheStates.end(),
+                [](const ContactCacheState& first, const ContactCacheState& second)
+                {
+                    if (first.m_firstBodyId != second.m_firstBodyId)
+                    {
+                        return first.m_firstBodyId < second.m_firstBodyId;
+                    }
+                    if (first.m_firstSubShapeId != second.m_firstSubShapeId)
+                    {
+                        return first.m_firstSubShapeId < second.m_firstSubShapeId;
+                    }
+                    if (first.m_secondBodyId != second.m_secondBodyId)
+                    {
+                        return first.m_secondBodyId < second.m_secondBodyId;
+                    }
+                    return first.m_secondSubShapeId < second.m_secondSubShapeId;
+                });
+        }
 
         SnapshotStateFilter stateFilter(
             snapshot.m_filteredBodyIds,
@@ -17385,7 +17589,11 @@ namespace Jolt
         }
 
         snapshot.m_configurationRevision = m_configurationRevision;
-        snapshot.m_globalConfigurationRevision = m_globalConfigurationRevision;
+        snapshot.m_globalConfigurationRevision = 0;
+        if (captureGlobalState)
+        {
+            snapshot.m_globalConfigurationRevision = m_globalConfigurationRevision;
+        }
         snapshot.m_bodyGenerations.clear();
         snapshot.m_bodyGenerations.reserve(m_bodySlots.size());
         for (const BodySlot& slot : m_bodySlots)
@@ -17468,6 +17676,7 @@ namespace Jolt
         snapshot.m_filteredBodyTopologyStates.clear();
         snapshot.m_filteredConstraintAddresses.clear();
         snapshot.m_filteredConstraintTopologyStates.clear();
+        snapshot.m_contactCacheStates.clear();
         snapshot.m_filteredBodyStateCount = 0;
         snapshot.m_filteredConstraintStateCount = 0;
         snapshot.m_groupFilterStates.clear();
@@ -17573,26 +17782,65 @@ namespace Jolt
     bool World::ValidateSnapshotTopologyUnlocked(
         const StateSnapshotSlot& snapshot)
     {
-        if (snapshot.m_globalConfigurationRevision != m_globalConfigurationRevision
+        const bool hasGlobalState = HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Global);
+        if ((hasGlobalState
+                && snapshot.m_globalConfigurationRevision != m_globalConfigurationRevision)
             || (!snapshot.m_configuration.m_filterBodies
                 && snapshot.m_configurationRevision != m_configurationRevision))
         {
             return false;
         }
 
-        if (!IsRollbackParticipantCompatible(m_bodyPairCollider, snapshot.m_bodyPairColliderState)
-            || !IsRollbackParticipantCompatible(m_contactCallbacks, snapshot.m_contactCallbackState)
-            || !IsRollbackParticipantCompatible(
-                m_simulationShapeFilter,
-                snapshot.m_simulationShapeFilterState)
-            || !IsRollbackParticipantCompatible(
-                m_softBodyContactCallbacks,
-                snapshot.m_softBodyContactCallbackState)
-            || snapshot.m_stepListenerStates.size() != m_stepListeners.size())
+        const bool hasContactState = HasStateFlag(
+            snapshot.m_configuration.m_flags,
+            StateSnapshotFlags::Contacts);
+        if (!hasContactState && !snapshot.m_contactCacheStates.empty())
         {
             return false;
         }
-        for (size_t listenerIndex = 0; listenerIndex < m_stepListeners.size(); ++listenerIndex)
+        for (const ContactCacheState& state : snapshot.m_contactCacheStates)
+        {
+            const BodySlot* firstBody = FindBody(state.m_event.m_firstBodyHandle);
+            const BodySlot* secondBody = FindBody(state.m_event.m_secondBodyHandle);
+            const ShapeSlot* firstShape = FindShape(state.m_event.m_firstShapeHandle);
+            const ShapeSlot* secondShape = FindShape(state.m_event.m_secondShapeHandle);
+            const AZ::u32 ownerBodyId = AZStd::min(state.m_firstBodyId, state.m_secondBodyId);
+            if (!firstBody
+                || !secondBody
+                || !firstShape
+                || !secondShape
+                || firstBody->m_bodyId.GetIndexAndSequenceNumber() != state.m_firstBodyId
+                || secondBody->m_bodyId.GetIndexAndSequenceNumber() != state.m_secondBodyId
+                || firstBody->m_shapeHandle != state.m_event.m_firstShapeHandle
+                || secondBody->m_shapeHandle != state.m_event.m_secondShapeHandle
+                || firstBody->m_configurationRevision != state.m_firstBodyConfigurationRevision
+                || secondBody->m_configurationRevision != state.m_secondBodyConfigurationRevision
+                || firstShape->m_configurationRevision != state.m_firstShapeConfigurationRevision
+                || secondShape->m_configurationRevision != state.m_secondShapeConfigurationRevision
+                || (snapshot.m_configuration.m_filterBodies
+                    && !AZStd::binary_search(
+                        snapshot.m_filteredBodyIds.begin(),
+                        snapshot.m_filteredBodyIds.end(),
+                        ownerBodyId)))
+            {
+                return false;
+            }
+        }
+
+        if (hasGlobalState
+            && (!IsRollbackParticipantCompatible(m_bodyPairCollider, snapshot.m_bodyPairColliderState)
+                || !IsRollbackParticipantCompatible(m_contactCallbacks, snapshot.m_contactCallbackState)
+                || !IsRollbackParticipantCompatible(
+                    m_simulationShapeFilter,
+                    snapshot.m_simulationShapeFilterState)
+                || !IsRollbackParticipantCompatible(
+                    m_softBodyContactCallbacks,
+                    snapshot.m_softBodyContactCallbackState)
+                || snapshot.m_stepListenerStates.size() != m_stepListeners.size()))
+        {
+            return false;
+        }
+        for (size_t listenerIndex = 0; listenerIndex < snapshot.m_stepListenerStates.size(); ++listenerIndex)
         {
             if (!IsRollbackParticipantCompatible(
                     m_stepListeners[listenerIndex],
@@ -17638,6 +17886,8 @@ namespace Jolt
 
         if (snapshot.m_configuration.m_filterBodies)
         {
+            const bool validateGroupFilters = hasGlobalState
+                || HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Contacts);
             if (snapshot.m_filteredBodyTopologyStates.size() != snapshot.m_filteredBodyIds.size())
             {
                 return false;
@@ -17671,6 +17921,10 @@ namespace Jolt
                     || !snapshot.m_filteredConstraintTopologyStates.empty())
                 {
                     return false;
+                }
+                if (!validateGroupFilters)
+                {
+                    return snapshot.m_groupFilterStates.empty();
                 }
                 if (!CollectGroupFilterStates(
                         m_groupFilterScratch,
@@ -17783,6 +18037,10 @@ namespace Jolt
                 return false;
             }
 
+            if (!validateGroupFilters)
+            {
+                return snapshot.m_groupFilterStates.empty();
+            }
             return CollectGroupFilterStates(
                     m_groupFilterScratch,
                     snapshot.m_filteredBodyIds,
@@ -17883,6 +18141,12 @@ namespace Jolt
             }
         }
 
+        if (!hasGlobalState
+            && !HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Contacts))
+        {
+            return snapshot.m_groupFilterStates.empty();
+        }
+
         const bool filtersCollected = CollectGroupFilterStates(m_groupFilterScratch);
         const bool filtersCompatible = filtersCollected
             && AreGroupFilterStatesCompatible(
@@ -17891,7 +18155,7 @@ namespace Jolt
         return filtersCompatible;
     }
 
-    bool World::RestoreState(
+    StateRestoreResult World::RestoreState(
         const StateSnapshotHandle snapshotHandle)
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RestoreState");
@@ -17905,7 +18169,7 @@ namespace Jolt
         if (!snapshot
             || !ValidateSnapshotTopologyUnlocked(*snapshot))
         {
-            return false;
+            return {.m_status = StateRestoreStatus::Rejected};
         }
 
         const bool requiresFailureRecovery =
@@ -17940,36 +18204,63 @@ namespace Jolt
                     snapshot->m_configuration,
                     m_snapshotBodyHandleScratch))
             {
-                return false;
+                return {.m_status = StateRestoreStatus::Rejected};
             }
         }
 
-        if (!RestoreStateUnlocked(*snapshot, true))
+        const AZStd::array restoreSnapshots = {snapshot};
+        if (!PrepareContactCacheRestore(restoreSnapshots))
         {
-            bool stateRecovered = false;
+            return {.m_status = StateRestoreStatus::Rejected};
+        }
+
+        const StateRestoreResult restoreResult = RestoreStateUnlocked(*snapshot, true);
+        if (!restoreResult)
+        {
+            if (restoreResult.m_status == StateRestoreStatus::Rejected)
+            {
+                return restoreResult;
+            }
+
+            StateRestoreResult recoveryResult;
             if (requiresFailureRecovery)
             {
-                stateRecovered =
-                    RestoreStateUnlocked(m_stateSnapshotScratch, true);
-                AZ_Error(
-                    "Jolt",
-                    stateRecovered,
-                    "A failed state restore could not recover the state captured immediately before the operation.");
+                const AZStd::array recoverySnapshots = {&m_stateSnapshotScratch};
+                if (PrepareContactCacheRestore(recoverySnapshots))
+                {
+                    recoveryResult = RestoreStateUnlocked(m_stateSnapshotScratch, true);
+                    if (recoveryResult)
+                    {
+                        CommitContactCacheRestore();
+                        ClearEventState(true);
+                        if (HasStateFlag(
+                                m_stateSnapshotScratch.m_configuration.m_flags,
+                                StateSnapshotFlags::Global))
+                        {
+                            m_eventSequence = m_stateSnapshotScratch.m_eventSequence;
+                        }
+                        return {.m_status = StateRestoreStatus::Rejected};
+                    }
+                }
             }
-            if (!stateRecovered)
-            {
-                ClearEventState();
-            }
-            return false;
+
+            m_stateIndeterminate.store(true, AZStd::memory_order_release);
+            ClearEventState();
+            AZ_Error(
+                "Jolt",
+                false,
+                "State restore failed after mutation and the world could not be recovered. The world is quarantined.");
+            return {.m_status = StateRestoreStatus::StateIndeterminate};
         }
 
-        ClearEventState();
+        CommitContactCacheRestore();
+        ClearEventState(true);
         if (HasStateFlag(snapshot->m_configuration.m_flags, StateSnapshotFlags::Global))
         {
             m_eventSequence = snapshot->m_eventSequence;
         }
         statisticsScope.Succeed();
-        return true;
+        return {.m_status = StateRestoreStatus::Complete};
     }
 
     bool World::ValidateStatePartsUnlocked(
@@ -18059,7 +18350,7 @@ namespace Jolt
             });
     }
 
-    bool World::RestoreStateParts(
+    StateRestoreResult World::RestoreStateParts(
         const AZStd::span<const StateSnapshotHandle> snapshotHandles)
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RestoreStateParts");
@@ -18071,7 +18362,7 @@ namespace Jolt
         AZStd::lock_guard lock(m_mutex);
         if (snapshotHandles.empty())
         {
-            return false;
+            return {.m_status = StateRestoreStatus::Rejected};
         }
 
         m_snapshotPartBodyIdScratch.clear();
@@ -18079,6 +18370,8 @@ namespace Jolt
         RestoreSafety restoreSafety = RestoreSafety::None;
         AZ::u64 partitionBatchId = 0;
         bool firstPart = true;
+        AZStd::vector<const StateSnapshotSlot*> restoreSnapshots;
+        restoreSnapshots.reserve(snapshotHandles.size());
         for (const StateSnapshotHandle snapshotHandle : snapshotHandles)
         {
             const StateSnapshotSlot* snapshot = FindStateSnapshot(snapshotHandle);
@@ -18090,7 +18383,7 @@ namespace Jolt
                 || snapshot->m_filteredBodyIds.empty()
                 || !ValidateSnapshotTopologyUnlocked(*snapshot))
             {
-                return false;
+                return {.m_status = StateRestoreStatus::Rejected};
             }
 
             if (firstPart)
@@ -18100,7 +18393,7 @@ namespace Jolt
                 partitionBatchId = snapshot->m_partitionBatchId;
                 if (partitionBatchId == 0)
                 {
-                    return false;
+                    return {.m_status = StateRestoreStatus::Rejected};
                 }
                 firstPart = false;
             }
@@ -18108,13 +18401,14 @@ namespace Jolt
                 || snapshot->m_configuration.m_restoreSafety != restoreSafety
                 || snapshot->m_partitionBatchId != partitionBatchId)
             {
-                return false;
+                return {.m_status = StateRestoreStatus::Rejected};
             }
 
             m_snapshotPartBodyIdScratch.insert(
                 m_snapshotPartBodyIdScratch.end(),
                 snapshot->m_filteredBodyIds.begin(),
                 snapshot->m_filteredBodyIds.end());
+            restoreSnapshots.push_back(snapshot);
         }
 
         AZStd::sort(m_snapshotPartBodyIdScratch.begin(), m_snapshotPartBodyIdScratch.end());
@@ -18122,7 +18416,7 @@ namespace Jolt
                 m_snapshotPartBodyIdScratch.begin(),
                 m_snapshotPartBodyIdScratch.end()) != m_snapshotPartBodyIdScratch.end())
         {
-            return false;
+            return {.m_status = StateRestoreStatus::Rejected};
         }
 
         size_t liveBodyCount = 0;
@@ -18136,13 +18430,13 @@ namespace Jolt
                         m_snapshotPartBodyIdScratch.end(),
                         slot.m_bodyId.GetIndexAndSequenceNumber()))
                 {
-                    return false;
+                    return {.m_status = StateRestoreStatus::Rejected};
                 }
             }
         }
         if (m_snapshotPartBodyIdScratch.size() != liveBodyCount)
         {
-            return false;
+            return {.m_status = StateRestoreStatus::Rejected};
         }
 
         if (AZStd::any_of(
@@ -18153,7 +18447,7 @@ namespace Jolt
                     return slot.m_character;
                 }))
         {
-            return false;
+            return {.m_status = StateRestoreStatus::Rejected};
         }
 
         bool requiresFailureRecovery = restoreSafety == RestoreSafety::Transactional;
@@ -18177,46 +18471,67 @@ namespace Jolt
                     recoveryConfiguration,
                     {}))
             {
-                return false;
+                return {.m_status = StateRestoreStatus::Rejected};
             }
+        }
+
+        if (!PrepareContactCacheRestore(restoreSnapshots))
+        {
+            return {.m_status = StateRestoreStatus::Rejected};
         }
 
         for (size_t snapshotIndex = 0; snapshotIndex < snapshotHandles.size(); ++snapshotIndex)
         {
-            const StateSnapshotSlot* snapshot = FindStateSnapshot(snapshotHandles[snapshotIndex]);
+            const StateSnapshotSlot* snapshot = restoreSnapshots[snapshotIndex];
             const bool isLastPart = snapshotIndex + 1 == snapshotHandles.size();
-            if (!snapshot || !RestoreStateUnlocked(*snapshot, isLastPart))
+            const StateRestoreResult restoreResult = RestoreStateUnlocked(*snapshot, isLastPart);
+            if (!restoreResult)
             {
-                bool stateRecovered = false;
+                if (restoreResult.m_status == StateRestoreStatus::Rejected
+                    && snapshotIndex == 0)
+                {
+                    return restoreResult;
+                }
+
+                StateRestoreResult recoveryResult;
                 if (requiresFailureRecovery)
                 {
-                    stateRecovered =
-                        RestoreStateUnlocked(m_stateSnapshotScratch, true);
-                    AZ_Error(
-                        "Jolt",
-                        stateRecovered,
-                        "A failed multipart state restore could not recover the state captured immediately before the operation.");
+                    const AZStd::array recoverySnapshots = {&m_stateSnapshotScratch};
+                    if (PrepareContactCacheRestore(recoverySnapshots))
+                    {
+                        recoveryResult = RestoreStateUnlocked(m_stateSnapshotScratch, true);
+                        if (recoveryResult)
+                        {
+                            CommitContactCacheRestore();
+                            ClearEventState(true);
+                            return {.m_status = StateRestoreStatus::Rejected};
+                        }
+                    }
                 }
-                if (!stateRecovered)
-                {
-                    ClearEventState();
-                }
-                return false;
+
+                m_stateIndeterminate.store(true, AZStd::memory_order_release);
+                ClearEventState();
+                AZ_Error(
+                    "Jolt",
+                    false,
+                    "Multipart state restore failed after mutation and the world could not be recovered. The world is quarantined.");
+                return {.m_status = StateRestoreStatus::StateIndeterminate};
             }
         }
 
-        ClearEventState();
+        CommitContactCacheRestore();
+        ClearEventState(true);
         statisticsScope.Succeed();
-        return true;
+        return {.m_status = StateRestoreStatus::Complete};
     }
 
-    bool World::RestoreStateUnlocked(
+    StateRestoreResult World::RestoreStateUnlocked(
         const StateSnapshotSlot& snapshot,
         const bool isLastPart)
     {
-        if (!RestoreRollbackParticipants(snapshot))
+        if (!PrepareRollbackParticipantRestores(snapshot))
         {
-            return false;
+            return {.m_status = StateRestoreStatus::Rejected};
         }
 
         SnapshotStateFilter stateFilter(
@@ -18234,7 +18549,7 @@ namespace Jolt
         recorder.SetIsLastPart(isLastPart);
         if (!m_physicsSystem.RestoreState(recorder, nativeFilter))
         {
-            return false;
+            return {.m_status = StateRestoreStatus::StateIndeterminate};
         }
         for (const AZ::u32 characterIndex : snapshot.m_characterStateIndices)
         {
@@ -18258,7 +18573,7 @@ namespace Jolt
             recorder.ReadBytes(&softBodySkinStateCount, sizeof(softBodySkinStateCount));
             if (recorder.IsFailed() || softBodySkinStateCount > m_bodySlots.size())
             {
-                return false;
+                return {.m_status = StateRestoreStatus::StateIndeterminate};
             }
 
             for (AZ::u32 stateIndex = 0; stateIndex < softBodySkinStateCount; ++stateIndex)
@@ -18273,14 +18588,14 @@ namespace Jolt
                     || bodyIndex >= m_bodySlots.size()
                     || m_bodySlots[bodyIndex].m_kind != BodyKind::Soft)
                 {
-                    return false;
+                    return {.m_status = StateRestoreStatus::StateIndeterminate};
                 }
 
                 BodySlot& slot = m_bodySlots[bodyIndex];
                 JPH::BodyLockWrite bodyLock(m_physicsSystem.GetBodyLockInterface(), slot.m_bodyId);
                 if (!bodyLock.Succeeded())
                 {
-                    return false;
+                    return {.m_status = StateRestoreStatus::StateIndeterminate};
                 }
 
                 slot.m_softBodySkinPoseInitialized = skinPoseInitialized != 0;
@@ -18297,7 +18612,7 @@ namespace Jolt
         }
         if (recorder.IsFailed() || !recorder.HasReadAllData())
         {
-            return false;
+            return {.m_status = StateRestoreStatus::StateIndeterminate};
         }
 
         if (HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Hair))
@@ -18310,7 +18625,7 @@ namespace Jolt
                         snapshot.m_hairStates[hairIndex],
                         *m_system.m_hairRuntime->m_computeSystem))
                 {
-                    return false;
+                    return {.m_status = StateRestoreStatus::StateIndeterminate};
                 }
                 slot.m_worldTransform = snapshot.m_hairWorldTransforms[hairIndex];
                 slot.m_initialized = snapshot.m_hairInitialized[hairIndex] != 0;
@@ -18336,13 +18651,68 @@ namespace Jolt
             }
         }
 
+        if (!CommitRollbackParticipantRestores(snapshot))
+        {
+            return {.m_status = StateRestoreStatus::StateIndeterminate};
+        }
+        return {.m_status = StateRestoreStatus::Complete};
+    }
+
+    bool World::PrepareContactCacheRestore(
+        const AZStd::span<const StateSnapshotSlot* const> snapshots)
+    {
+        size_t contactCount = 0;
+        for (const StateSnapshotSlot* snapshot : snapshots)
+        {
+            if (!snapshot
+                || snapshot->m_contactCacheStates.size()
+                    > AZStd::numeric_limits<size_t>::max() - contactCount)
+            {
+                return false;
+            }
+            contactCount += snapshot->m_contactCacheStates.size();
+        }
+
+        m_contactCacheRestoreScratch.clear();
+        m_contactCacheRestoreScratch.reserve(contactCount);
+        for (const StateSnapshotSlot* snapshot : snapshots)
+        {
+            for (const ContactCacheState& state : snapshot->m_contactCacheStates)
+            {
+                JPH::SubShapeID firstSubShapeId;
+                firstSubShapeId.SetValue(state.m_firstSubShapeId);
+                JPH::SubShapeID secondSubShapeId;
+                secondSubShapeId.SetValue(state.m_secondSubShapeId);
+                const JPH::SubShapeIDPair pair(
+                    JPH::BodyID(state.m_firstBodyId),
+                    firstSubShapeId,
+                    JPH::BodyID(state.m_secondBodyId),
+                    secondSubShapeId);
+                if (!m_contactCacheRestoreScratch.emplace(pair, state.m_event).second)
+                {
+                    m_contactCacheRestoreScratch.clear();
+                    return false;
+                }
+            }
+        }
         return true;
     }
 
-    void World::ClearEventState()
+    void World::CommitContactCacheRestore()
     {
         AZStd::lock_guard eventLock(m_eventMutex);
-        m_contactCache.clear();
+        m_contactCache.swap(m_contactCacheRestoreScratch);
+        m_contactCacheRestoreScratch.clear();
+    }
+
+    void World::ClearEventState(
+        const bool preserveContactCache)
+    {
+        AZStd::lock_guard eventLock(m_eventMutex);
+        if (!preserveContactCache)
+        {
+            m_contactCache.clear();
+        }
         m_pendingContactEvents.clear();
         m_pendingContactPoints.clear();
         m_pendingActivationEvents.clear();
@@ -18445,6 +18815,7 @@ namespace Jolt
         }
 
         if (snapshot->m_groupFilterStates != m_stateSnapshotScratch.m_groupFilterStates
+            || snapshot->m_contactCacheStates != m_stateSnapshotScratch.m_contactCacheStates
             || snapshot->m_bodyPairColliderState != m_stateSnapshotScratch.m_bodyPairColliderState
             || snapshot->m_contactCallbackState != m_stateSnapshotScratch.m_contactCallbackState
             || snapshot->m_simulationShapeFilterState != m_stateSnapshotScratch.m_simulationShapeFilterState
@@ -18880,13 +19251,6 @@ namespace Jolt
                 }
             }
         }
-        for (const BodySnapshotSlot& slot : m_bodySnapshotSlots)
-        {
-            if (!slot.m_data.empty())
-            {
-                ++statistics.m_bodySnapshotCount;
-            }
-        }
         for (const CharacterSlot& slot : m_characterSlots)
         {
             if (slot.m_character)
@@ -19215,24 +19579,6 @@ namespace Jolt
                 m_sceneInstanceSlots.capacity(),
                 sceneBytes);
 
-            size_t bodySnapshotCount = 0;
-            AZ::u64 bodySnapshotBytes = GetVectorCapacityBytes(m_bodySnapshotSlots)
-                + GetVectorCapacityBytes(m_freeBodySnapshotSlots);
-            for (const BodySnapshotSlot& slot : m_bodySnapshotSlots)
-            {
-                if (!slot.m_data.empty())
-                {
-                    ++bodySnapshotCount;
-                }
-                bodySnapshotBytes += GetVectorCapacityBytes(slot.m_data);
-            }
-            configureResource(
-                statistics.m_bodySnapshots,
-                bodySnapshotCount,
-                m_bodySnapshotSlots.size(),
-                m_bodySnapshotSlots.capacity(),
-                bodySnapshotBytes);
-
             size_t stateSnapshotCount = 0;
             AZ::u64 stateSnapshotBytes = GetVectorCapacityBytes(m_stateSnapshotSlots)
                 + GetVectorCapacityBytes(m_freeStateSnapshotSlots);
@@ -19296,6 +19642,7 @@ namespace Jolt
                 stateSnapshotBytes += GetVectorCapacityBytes(slot.m_filteredBodyTopologyStates);
                 stateSnapshotBytes += GetVectorCapacityBytes(slot.m_filteredConstraintAddresses);
                 stateSnapshotBytes += GetVectorCapacityBytes(slot.m_filteredConstraintTopologyStates);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_contactCacheStates);
                 stateSnapshotBytes += GetVectorCapacityBytes(slot.m_characterStateIndices);
                 stateSnapshotBytes += GetVectorCapacityBytes(slot.m_virtualCharacterStateIndices);
                 stateSnapshotBytes += getNestedSnapshotBytes(slot);
@@ -19320,7 +19667,6 @@ namespace Jolt
             workspaceBytes += GetVectorCapacityBytes(m_hairJointTransforms);
             workspaceBytes += GetVectorCapacityBytes(m_bodyIdScratch);
             workspaceBytes += GetVectorCapacityBytes(m_constraintScratch);
-            workspaceBytes += GetVectorCapacityBytes(m_bodySnapshotScratch);
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_data);
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_bodyGenerations);
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_characterGenerations);
@@ -19340,6 +19686,7 @@ namespace Jolt
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_filteredBodyTopologyStates);
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_filteredConstraintAddresses);
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_filteredConstraintTopologyStates);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_contactCacheStates);
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_characterStateIndices);
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_virtualCharacterStateIndices);
             workspaceBytes += getNestedSnapshotBytes(m_stateSnapshotScratch);
@@ -19351,6 +19698,7 @@ namespace Jolt
             workspaceBytes += GetVectorCapacityBytes(m_snapshotPartBodyIdScratch);
             workspaceBytes += GetVectorCapacityBytes(m_groupFilterScratch);
             workspaceBytes += GetVectorCapacityBytes(m_stepListeners);
+            workspaceBytes += GetMapRetainedBytes(m_contactCacheRestoreScratch);
 
             AZ::u64 eventBytes = 0;
             {
@@ -19385,7 +19733,6 @@ namespace Jolt
                 + ragdollBytes
                 + hairBytes
                 + sceneBytes
-                + bodySnapshotBytes
                 + stateSnapshotBytes
                 + workspaceBytes
                 + eventBytes
@@ -19444,13 +19791,10 @@ namespace Jolt
         if ((flags & PerformanceStatisticsFlags::Snapshots) != PerformanceStatisticsFlags::None)
         {
             AZ::u64 snapshotBytes = 0;
-            for (const BodySnapshotSlot& slot : m_bodySnapshotSlots)
-            {
-                snapshotBytes += slot.m_data.size();
-            }
             for (const StateSnapshotSlot& slot : m_stateSnapshotSlots)
             {
                 snapshotBytes += slot.m_data.size();
+                snapshotBytes += slot.m_contactCacheStates.size() * sizeof(ContactCacheState);
                 for (const NativeHair::State& hairState : slot.m_hairStates)
                 {
                     snapshotBytes += hairState.m_globalPoseTransforms.m_data.size();
@@ -26020,7 +26364,10 @@ namespace Jolt
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::Step");
         DeterministicSimulationLock lock(m_mutex);
-        if (!m_initialized || !AZ::IsFiniteFloat(fixedTimeStep) || fixedTimeStep <= 0.0f)
+        if (!m_initialized
+            || m_stateIndeterminate.load(AZStd::memory_order_acquire)
+            || !AZ::IsFiniteFloat(fixedTimeStep)
+            || fixedTimeStep <= 0.0f)
         {
             return {.m_errors = SimulationError::InvalidRequest};
         }
@@ -26280,7 +26627,10 @@ namespace Jolt
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::StepAutomatically");
         DeterministicSimulationLock lock(m_mutex);
-        if (!m_initialized || !AZ::IsFiniteFloat(elapsedTime) || elapsedTime < 0.0f)
+        if (!m_initialized
+            || m_stateIndeterminate.load(AZStd::memory_order_acquire)
+            || !AZ::IsFiniteFloat(elapsedTime)
+            || elapsedTime < 0.0f)
         {
             return {.m_errors = SimulationError::InvalidRequest};
         }
@@ -27874,32 +28224,6 @@ namespace Jolt
         }
     }
 
-    const World::BodySnapshotSlot* World::FindBodySnapshot(
-        const BodySnapshotHandle snapshotHandle) const
-    {
-        Internal::WorldMemberHandleParts parts;
-        if (!Internal::DecodeWorldMemberHandle(snapshotHandle, parts)
-            || parts.m_worldIndex != m_worldIndex
-            || parts.m_index >= m_bodySnapshotSlots.size())
-        {
-            return nullptr;
-        }
-
-        const BodySnapshotSlot& slot = m_bodySnapshotSlots[parts.m_index];
-        if (slot.m_generation != parts.m_generation || slot.m_data.empty())
-        {
-            return nullptr;
-        }
-        return &slot;
-    }
-
-    World::BodySnapshotSlot* World::FindBodySnapshot(
-        const BodySnapshotHandle snapshotHandle)
-    {
-        return const_cast<BodySnapshotSlot*>(
-            static_cast<const World&>(*this).FindBodySnapshot(snapshotHandle));
-    }
-
     const World::StateSnapshotSlot* World::FindStateSnapshot(
         const StateSnapshotHandle snapshotHandle) const
     {
@@ -28339,8 +28663,12 @@ namespace Jolt
             || contains(m_virtualCharacterSlots, [](const VirtualCharacterSlot& slot) { return static_cast<bool>(slot.m_character); })
             || contains(m_characterSlots, [](const CharacterSlot& slot) { return static_cast<bool>(slot.m_character); })
             || contains(m_vehicleSlots, [](const VehicleSlot& slot) { return static_cast<bool>(slot.m_constraint); })
-            || contains(m_bodySnapshotSlots, [](const BodySnapshotSlot& slot) { return !slot.m_data.empty(); })
             || contains(m_stateSnapshotSlots, [](const StateSnapshotSlot& slot) { return !slot.m_data.empty(); });
+    }
+
+    bool World::IsStateIndeterminate() const
+    {
+        return m_stateIndeterminate.load(AZStd::memory_order_acquire);
     }
 
     bool World::BuildOverlapHit(

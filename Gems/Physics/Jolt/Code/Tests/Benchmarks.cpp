@@ -1253,10 +1253,7 @@ namespace Jolt::Benchmarks
         {
             if (restoreState)
             {
-                qualityValid = system.RestoreWorldState(
-                    worldHandle,
-                    snapshotHandle)
-                    && qualityValid;
+                qualityValid = static_cast<bool>(system.RestoreWorldState(worldHandle, snapshotHandle)) && qualityValid;
             }
             else
             {

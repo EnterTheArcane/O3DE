@@ -294,11 +294,11 @@ namespace Jolt
             WorldHandle worldHandle,
             StateSnapshotHandle snapshotHandle) const override;
 
-        bool RestoreWorldState(
+        StateRestoreResult RestoreWorldState(
             WorldHandle worldHandle,
             StateSnapshotHandle snapshotHandle) override;
 
-        bool RestoreWorldStateParts(
+        StateRestoreResult RestoreWorldStateParts(
             WorldHandle worldHandle,
             const AZStd::vector<StateSnapshotHandle>& snapshotHandles) override;
 
