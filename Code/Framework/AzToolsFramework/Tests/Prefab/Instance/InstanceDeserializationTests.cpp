@@ -6,12 +6,65 @@
  *
  */
 
+#include <AzCore/Component/Component.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/Prefab/PrefabDomUtils.h>
 #include <Prefab/PrefabTestFixture.h>
 
 namespace UnitTest
 {
+    namespace
+    {
+        class NonEmptyContainerComponent final
+            : public AZ::Component
+        {
+        public:
+            AZ_COMPONENT(NonEmptyContainerComponent, "{5CF2D38F-1210-4558-BAA2-DF5D140F7133}");
+
+            static void Reflect(AZ::ReflectContext* context)
+            {
+                if (auto* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+                {
+                    serializeContext
+                        ->Class<NonEmptyContainerComponent, AZ::Component>()
+                        ->Field("Values", &NonEmptyContainerComponent::m_values);
+                }
+            }
+
+            void Activate() override
+            {
+            }
+
+            void Deactivate() override
+            {
+            }
+
+            AZStd::vector<AZ::u32> m_values{1, 2};
+        };
+
+        class NonEmptyContainerReflectionScope final
+        {
+        public:
+            explicit NonEmptyContainerReflectionScope(AZ::SerializeContext& serializeContext)
+                : m_serializeContext(serializeContext)
+            {
+                NonEmptyContainerComponent::Reflect(&m_serializeContext);
+            }
+
+            ~NonEmptyContainerReflectionScope()
+            {
+                m_serializeContext.EnableRemoveReflection();
+                NonEmptyContainerComponent::Reflect(&m_serializeContext);
+                m_serializeContext.DisableRemoveReflection();
+            }
+
+        private:
+            AZ::SerializeContext& m_serializeContext;
+        };
+    } // namespace
+
     using InstanceDeserializationTest = PrefabTestFixture;
     using InstanceUniquePointer = AZStd::unique_ptr<AzToolsFramework::Prefab::Instance>;
 
@@ -167,6 +220,36 @@ namespace UnitTest
                 EXPECT_EQ(entity->GetState(), AZ::Entity::State::Active);
                 return true;
             });
+    }
+
+    TEST_F(InstanceDeserializationTest, LoadingInstanceReplacesDefaultContainerContents)
+    {
+        AZ::SerializeContext* serializeContext = GetApplication()->GetSerializeContext();
+        ASSERT_TRUE(serializeContext);
+        NonEmptyContainerReflectionScope reflectionScope(*serializeContext);
+
+        AZ::Entity* sourceEntity = CreateEntity("EntityWithContainer", false);
+        NonEmptyContainerComponent* sourceComponent = sourceEntity->CreateComponent<NonEmptyContainerComponent>();
+        sourceComponent->m_values = {3, 5, 8};
+        const AZ::EntityId sourceEntityId = sourceEntity->GetId();
+
+        InstanceUniquePointer sourceInstance = m_prefabSystemComponent->CreatePrefab(
+            AzToolsFramework::EntityList{sourceEntity}, {}, "container.prefab");
+        ASSERT_TRUE(sourceInstance);
+        const EntityAliasOptionalReference entityAlias = sourceInstance->GetEntityAlias(sourceEntityId);
+        ASSERT_TRUE(entityAlias);
+
+        PrefabDom prefabDom;
+        ASSERT_TRUE(PrefabDomUtils::StoreInstanceInPrefabDom(*sourceInstance, prefabDom));
+
+        Instance loadedInstance;
+        ASSERT_TRUE(PrefabDomUtils::LoadInstanceFromPrefabDom(loadedInstance, prefabDom));
+        const EntityOptionalReference loadedEntity = loadedInstance.GetEntity(entityAlias->get());
+        ASSERT_TRUE(loadedEntity);
+        const NonEmptyContainerComponent* loadedComponent =
+            loadedEntity->get().FindComponent<NonEmptyContainerComponent>();
+        ASSERT_TRUE(loadedComponent);
+        EXPECT_EQ(loadedComponent->m_values, (AZStd::vector<AZ::u32>{3, 5, 8}));
     }
 
     TEST_F(InstanceDeserializationTest, ReloadInstanceUponComponentAdd)

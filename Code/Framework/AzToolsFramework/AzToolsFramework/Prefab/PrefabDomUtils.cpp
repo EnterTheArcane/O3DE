@@ -181,6 +181,7 @@ namespace AzToolsFramework
                         settings.m_metadata.Add(deprecationTracker);
                     }
 
+                    settings.m_clearContainers = true;
                     AZ::JsonSerializationResult::ResultCode result = AZ::JsonSerialization::Load(instance, prefabDom, settings);
                     bool succeeded = (result.GetProcessing() != AZ::JsonSerializationResult::Processing::Halted);
 #ifdef AZ_ENABLE_TRACING
