@@ -8,9 +8,6 @@
 
 # this file allows you to specify all 3p packages (provided by O3DE or the operating system) for Linux.
 
-# shared by other platforms:
-ly_associate_package(PACKAGE_NAME pybind11-2.10.0-rev1-multiplatform                TARGETS pybind11                    PACKAGE_HASH 6690acc531d4b8cd453c19b448e2fb8066b2362cbdd2af1ad5df6e0019e6c6c4)
-
 # platform-specific:
 ly_associate_package(PACKAGE_NAME expat-2.4.2-rev2-linux-aarch64                             TARGETS expat                       PACKAGE_HASH 934a535c1492d11906789d7ddf105b1a530cf8d8fb126063ffde16c5caeb0179)
 ly_associate_package(PACKAGE_NAME AWSNativeSDK-1.11.288-rev1-linux-aarch64                   TARGETS AWSNativeSDK                PACKAGE_HASH 55791343d3aaa07a4242190cc9d6f1f2448c55125839255bdec25efdbab46efa)

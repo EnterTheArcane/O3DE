@@ -8,9 +8,6 @@
 
 # this file allows you to specify all 3p packages (provided by O3DE or the operating system) for Mac.
 
-# shared by other platforms:
-ly_associate_package(PACKAGE_NAME pybind11-2.10.0-rev1-multiplatform                TARGETS pybind11                    PACKAGE_HASH 6690acc531d4b8cd453c19b448e2fb8066b2362cbdd2af1ad5df6e0019e6c6c4)
-
 # platform-specific:
 ly_associate_package(PACKAGE_NAME expat-2.4.2-rev2-mac                              TARGETS expat                       PACKAGE_HASH 70f195977a17b08a4dc8687400fd7f2589e3b414d4961b562129166965b6f658)
 ly_associate_package(PACKAGE_NAME DirectXShaderCompilerDxc-1.8.2505.1-o3de-rev4-mac TARGETS DirectXShaderCompilerDxc    PACKAGE_HASH d2f8671430fffa59d6fd7383fe9422b197ff52d51b8235469588281b821b0c31)
