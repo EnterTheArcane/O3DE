@@ -539,6 +539,7 @@ namespace AZ
 // The call to GetO3deTypeName must be made unqualified without any namespace(such AZ::)
 // `GetO3deTypeName(AZ::Adl{}, AZStd::type_identity<Namespace::MyClass>{});`
 #define AZ_TYPE_INFO_INTERNAL_WITH_NAME_0(_ClassName, _DisplayName, _ClassUuid) \
+    [[maybe_unused]] \
     friend constexpr AZ::TypeNameString GetO3deTypeName(AZ::Adl, AZStd::type_identity<_ClassName>) \
     { \
         constexpr AZ::TypeNameString displayName(_DisplayName); \
