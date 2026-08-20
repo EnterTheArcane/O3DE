@@ -7,6 +7,7 @@
 
 #include <Jolt/SkeletonComponent.h>
 
+#include <Jolt/AssetProduct.h>
 #include <Jolt/BehaviorReflection.h>
 #include <Jolt/Reflection.h>
 #include <Jolt/SystemInternal.h>
@@ -289,8 +290,18 @@ namespace Jolt
             return false;
         }
 
+        const bool useNativeCache = IsNativeAssetCacheCompatible(
+            asset.m_data.m_nativeCachePlatform,
+            asset.m_data.m_nativeCacheBuildFingerprint);
         AZStd::unique_ptr<RuntimeResources> resources = AZStd::make_unique<RuntimeResources>();
-        resources->m_skeletonHandle = m_system->ImportSkeletonDefinition(asset.m_data.m_skeleton);
+        if (useNativeCache)
+        {
+            resources->m_skeletonHandle = m_system->ImportSkeletonDefinition(asset.m_data.m_skeleton);
+        }
+        if (!resources->m_skeletonHandle)
+        {
+            resources->m_skeletonHandle = m_system->CreateSkeletonDefinition(asset.m_data.m_sourceSkeleton);
+        }
         if (!resources->m_skeletonHandle)
         {
             return false;
@@ -309,8 +320,15 @@ namespace Jolt
                 return false;
             }
 
-            const SkeletalAnimationHandle animationHandle =
-                m_system->ImportSkeletalAnimation(sourceAnimation.m_archive);
+            SkeletalAnimationHandle animationHandle;
+            if (useNativeCache)
+            {
+                animationHandle = m_system->ImportSkeletalAnimation(sourceAnimation.m_archive);
+            }
+            if (!animationHandle)
+            {
+                animationHandle = m_system->CreateSkeletalAnimation(sourceAnimation.m_source);
+            }
             if (!animationHandle)
             {
                 for (const RuntimeResources::Animation& animation : resources->m_animations)

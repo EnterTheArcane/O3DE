@@ -15,6 +15,8 @@
 namespace Jolt
 {
     class Runtime;
+    struct SkeletalAnimationSource;
+    struct SkeletonDefinitionSource;
 
     class JOLT_API Skeletons
     {
@@ -25,6 +27,10 @@ namespace Jolt
         [[nodiscard]]
         SkeletonDefinitionHandle CreateSkeletonDefinition(
             const SkeletonDefinitionConfiguration& configuration);
+
+        [[nodiscard]]
+        SkeletonDefinitionHandle CreateSkeletonDefinition(
+            const SkeletonDefinitionSource& source);
 
         [[nodiscard]]
         bool ExportSkeletonDefinition(
@@ -54,6 +60,10 @@ namespace Jolt
         [[nodiscard]]
         SkeletalAnimationHandle CreateSkeletalAnimation(
             const SkeletalAnimationConfiguration& configuration);
+
+        [[nodiscard]]
+        SkeletalAnimationHandle CreateSkeletalAnimation(
+            const SkeletalAnimationSource& source);
 
         [[nodiscard]]
         bool ExportSkeletalAnimation(

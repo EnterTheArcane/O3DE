@@ -157,6 +157,11 @@ The import path validates the archive format, native build fingerprint, material
 publishing a definition handle. This benchmark measures definition creation and destruction only; scene material creation and body
 instantiation are outside both timed loops.
 
+Compiled scene and skeleton products treat canonical source data as authoritative and carry native archives only as optional acceleration
+caches. A cache is used only when its platform and native build fingerprint match exactly; missing, incompatible, or corrupt caches rebuild
+from canonical data. The table above therefore describes the compatible-cache fast path, not the portable reconstruction path. Asset-load
+qualification must report both paths separately and must not compare a relabelled host-native archive against a target-native product.
+
 ## Ragdoll simulation membership
 
 Disabling a ragdoll now removes its native bodies and constraints from simulation without destroying or rebuilding them. The provider

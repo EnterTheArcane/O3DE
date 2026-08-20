@@ -8,11 +8,43 @@
 #include <Jolt/SkeletonAsset.h>
 
 #include <Jolt/Reflection.h>
+#include <Jolt/SystemInternal.h>
 
 #include <AzCore/Serialization/SerializeContext.h>
 
 namespace Jolt
 {
+    SkeletonDefinitionHandle RuntimeImplementation::CreateSkeletonDefinition(
+        const SkeletonDefinitionSource& source)
+    {
+        SkeletonDefinitionConfiguration configuration;
+        configuration.m_joints.reserve(source.m_joints.size());
+        for (const SkeletonJointSource& sourceJoint : source.m_joints)
+        {
+            configuration.m_joints.push_back({
+                .m_name = AZ::Name(sourceJoint.m_name),
+                .m_parentIndex = sourceJoint.m_parentIndex,
+            });
+        }
+        return CreateSkeletonDefinition(configuration);
+    }
+
+    SkeletalAnimationHandle RuntimeImplementation::CreateSkeletalAnimation(
+        const SkeletalAnimationSource& source)
+    {
+        SkeletalAnimationConfiguration configuration;
+        configuration.m_isLooping = source.m_isLooping;
+        configuration.m_joints.reserve(source.m_joints.size());
+        for (const SkeletalAnimatedJointSource& sourceJoint : source.m_joints)
+        {
+            configuration.m_joints.push_back({
+                .m_name = AZ::Name(sourceJoint.m_name),
+                .m_keyframes = sourceJoint.m_keyframes,
+            });
+        }
+        return CreateSkeletalAnimation(configuration);
+    }
+
     void SkeletonAssetData::Reflect(
         AZ::ReflectContext* context)
     {
@@ -51,6 +83,7 @@ namespace Jolt
 
             serializeContext
                 ->Class<NamedSkeletalAnimationAsset>()
+                ->Field("Source", &NamedSkeletalAnimationAsset::m_source)
                 ->Field("Archive", &NamedSkeletalAnimationAsset::m_archive)
                 ->Field("Name", &NamedSkeletalAnimationAsset::m_name);
 
@@ -62,9 +95,12 @@ namespace Jolt
 
             serializeContext
                 ->Class<SkeletonAssetData>()
-                ->Field("Skeleton", &SkeletonAssetData::m_skeleton)
+                ->Field("SourceSkeleton", &SkeletonAssetData::m_sourceSkeleton)
                 ->Field("Animations", &SkeletonAssetData::m_animations)
-                ->Field("Name", &SkeletonAssetData::m_name);
+                ->Field("Name", &SkeletonAssetData::m_name)
+                ->Field("Skeleton", &SkeletonAssetData::m_skeleton)
+                ->Field("NativeCachePlatform", &SkeletonAssetData::m_nativeCachePlatform)
+                ->Field("NativeCacheBuildFingerprint", &SkeletonAssetData::m_nativeCacheBuildFingerprint);
         }
     }
 

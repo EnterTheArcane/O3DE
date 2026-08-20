@@ -102,8 +102,10 @@ namespace Jolt
 
         AZStd::vector<AZ::u8> m_binaryState;
         AZStd::vector<CustomShapeDependency> m_dependencies;
+        AZ::TypeId m_providerId = AZ::TypeId::CreateNull();
         AZ::u64 m_buildFingerprint = 0;
         AZ::u64 m_contentHash = 0;
+        AZ::u64 m_providerVersion = 0;
         AZ::u32 m_formatVersion = 0;
         AZ::u32 m_materialCount = 0;
         AZ::u32 m_childShapeCount = 0;

@@ -261,8 +261,8 @@ namespace Jolt::Editor
             static_cast<unsigned long long>(GetNativeBuildFingerprint()));
         EXPECT_EQ(
             registrationCapture.m_descriptors[0].m_analysisFingerprint,
-            AZStd::string::format("JoltAssets:%s", fingerprint.c_str()));
-        EXPECT_EQ(registrationCapture.m_descriptors[0].m_version, 7);
+            AZStd::string::format("JoltAssets:Portable2:%s", fingerprint.c_str()));
+        EXPECT_EQ(registrationCapture.m_descriptors[0].m_version, 8);
         EXPECT_EQ(
             registrationCapture.m_descriptors[0].m_flags,
             AssetBuilderSDK::AssetBuilderDesc::BF_None);
@@ -341,6 +341,7 @@ namespace Jolt::Editor
         processRequest.m_fullPath = sourcePath->String();
         processRequest.m_sourceFile = "unsupported.jolt.json";
         processRequest.m_tempDirPath = temporaryDirectory.GetDirectory();
+        processRequest.m_platformInfo.m_identifier = "pc";
         AssetBuilderSDK::ProcessJobResponse processResponse;
         builder.ProcessJob(processRequest, processResponse);
         EXPECT_EQ(processResponse.m_resultCode, AssetBuilderSDK::ProcessJobResult_Failed);
@@ -409,12 +410,36 @@ namespace Jolt::Editor
             request.m_fullPath = sourcePath->String();
             request.m_sourceFile = sourceFile;
             request.m_tempDirPath = temporaryDirectory.GetDirectory();
+            request.m_platformInfo.m_identifier = "pc";
             AssetBuilderSDK::ProcessJobResponse response;
             builder.ProcessJob(request, response);
             EXPECT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResult_Failed);
             EXPECT_TRUE(response.m_outputProducts.empty());
         }
         AZ_TEST_STOP_TRACE_SUPPRESSION(2);
+    }
+
+    TEST(EditorAssetBuilderTests, RejectsProcessJobWithoutTargetPlatform)
+    {
+        FileIoScope fileIoScope;
+        AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
+        const AZStd::optional<AZ::IO::FixedMaxPath> sourcePath = AZ::Test::CreateTestFile(
+            temporaryDirectory,
+            "scene.jolt.json",
+            R"({"Type":"JsonSerialization","Version":1,"ClassName":"SceneSourceData","ClassData":{}})");
+        ASSERT_TRUE(sourcePath);
+
+        AssetBuilderSDK::ProcessJobRequest request;
+        request.m_fullPath = sourcePath->String();
+        request.m_sourceFile = "scene.jolt.json";
+        request.m_tempDirPath = temporaryDirectory.GetDirectory();
+        AssetBuilderSDK::ProcessJobResponse response;
+        AssetBuilder builder;
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        builder.ProcessJob(request, response);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResult_Failed);
+        EXPECT_TRUE(response.m_outputProducts.empty());
     }
 
     TEST(EditorAssetBuilderTests, ProcessesJsonSourceIntoLoadableBinaryAsset)
@@ -552,6 +577,7 @@ namespace Jolt::Editor
         request.m_fullPath = sourcePath->String();
         request.m_sourceFile = "test_scene.jolt.json";
         request.m_tempDirPath = temporaryDirectory.GetDirectory();
+        request.m_platformInfo.m_identifier = "pc";
         AssetBuilderSDK::ProcessJobResponse response;
         builder.ProcessJob(request, response);
         ASSERT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
@@ -605,7 +631,7 @@ namespace Jolt::Editor
 
         constexpr size_t ProductVersionOffset = 8;
         AZStd::vector<AZ::u8> unsupportedProduct = productBytes;
-        unsupportedProduct[ProductVersionOffset] = 2;
+        unsupportedProduct[ProductVersionOffset] = 3;
         AZ::IO::ByteContainerStream unsupportedProductStream(&unsupportedProduct);
         SceneAsset unsupportedAsset;
         unsupportedAsset.m_data.m_name = AZ::Name("Unchanged");
@@ -623,8 +649,18 @@ namespace Jolt::Editor
             &loadedAsset,
             SceneAssetTypeId,
             serializeContextScope.Get()));
+        EXPECT_EQ(loadedAsset.m_data.m_nativeCachePlatform, GetNativeAssetPlatform());
+        EXPECT_EQ(loadedAsset.m_data.m_nativeCacheBuildFingerprint, GetNativeBuildFingerprint());
         EXPECT_EQ(loadedAsset.m_data.m_name, sourceData.m_name);
         ASSERT_EQ(loadedAsset.m_data.m_shapes.size(), 1);
+        const auto* customShapeSource = AZStd::get_if<SceneSourceShapeData>(&loadedAsset.m_data.m_shapes[0].m_source);
+        ASSERT_TRUE(customShapeSource);
+        const auto* customShapeConfiguration = AZStd::get_if<CustomShapeConfiguration>(&customShapeSource->m_geometry);
+        ASSERT_TRUE(customShapeConfiguration);
+        EXPECT_EQ(customShapeConfiguration->m_data, AZStd::vector<AZ::u8>({4, 2}));
+        EXPECT_EQ(customShapeConfiguration->m_providerId, customShapeProvider.GetId());
+        EXPECT_EQ(loadedAsset.m_data.m_shapes[0].m_providerId, customShapeProvider.GetId());
+        EXPECT_EQ(loadedAsset.m_data.m_shapes[0].m_providerVersion, customShapeProvider.GetVersion());
         EXPECT_FALSE(loadedAsset.m_data.m_shapes[0].m_archive.m_binaryState.empty());
         EXPECT_NE(loadedAsset.m_data.m_shapes[0].m_archive.m_buildFingerprint, 0);
         ASSERT_EQ(loadedAsset.m_data.m_shapes[0].m_archive.m_dependencies.size(), 1);
@@ -642,6 +678,12 @@ namespace Jolt::Editor
         AZ::HashValue64 shapeArchiveHash = AZ::TypeHash64(
             loadedAsset.m_data.m_shapes[0].m_archive.m_binaryState.data(),
             loadedAsset.m_data.m_shapes[0].m_archive.m_binaryState.size());
+        shapeArchiveHash = AZ::TypeHash64(
+            loadedAsset.m_data.m_shapes[0].m_archive.m_providerId,
+            shapeArchiveHash);
+        shapeArchiveHash = AZ::TypeHash64(
+            loadedAsset.m_data.m_shapes[0].m_archive.m_providerVersion,
+            shapeArchiveHash);
         shapeArchiveHash = AZ::TypeHash64(
             loadedAsset.m_data.m_shapes[0].m_archive.m_dependencies.size(),
             shapeArchiveHash);
@@ -684,13 +726,17 @@ namespace Jolt::Editor
         EXPECT_EQ(
             extensions->UnregisterExtension(customShapeRegistration.m_handle),
             ExtensionRegistrationStatus::Success);
+        AZ_TEST_START_TRACE_SUPPRESSION;
         EXPECT_FALSE(scenes->CreateSceneDefinition(loadedAsset.m_data));
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
         customShapeRegistration = extensions->RegisterExtension(&customShapeProvider, {});
         ASSERT_TRUE(customShapeRegistration);
 
         const AZ::u32 validArchiveVersion = loadedAsset.m_data.m_shapes[0].m_archive.m_formatVersion;
         loadedAsset.m_data.m_shapes[0].m_archive.m_formatVersion = validArchiveVersion + 1;
-        EXPECT_FALSE(scenes->CreateSceneDefinition(loadedAsset.m_data));
+        const SceneDefinitionHandle fallbackDefinitionHandle = scenes->CreateSceneDefinition(loadedAsset.m_data);
+        ASSERT_TRUE(fallbackDefinitionHandle);
+        EXPECT_TRUE(scenes->DestroySceneDefinition(fallbackDefinitionHandle));
         loadedAsset.m_data.m_shapes[0].m_archive.m_formatVersion = validArchiveVersion;
 
         const SceneDefinitionHandle definitionHandle = scenes->CreateSceneDefinition(loadedAsset.m_data);
@@ -710,6 +756,38 @@ namespace Jolt::Editor
         EXPECT_TRUE(constraints[0]);
         EXPECT_TRUE(scenes->DestroySceneInstance(worldHandle, instanceHandle));
         EXPECT_TRUE(scenes->DestroySceneDefinition(definitionHandle));
+
+        request.m_platformInfo.m_identifier = "linux";
+        AssetBuilderSDK::ProcessJobResponse portableResponse;
+        builder.ProcessJob(request, portableResponse);
+        ASSERT_EQ(portableResponse.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
+        ASSERT_EQ(portableResponse.m_outputProducts.size(), 1);
+
+        SceneAsset portableAsset;
+        ASSERT_TRUE(LoadAssetProductFile(
+            portableResponse.m_outputProducts.front().m_productFileName,
+            &portableAsset,
+            SceneAssetTypeId,
+            serializeContextScope.Get()));
+        EXPECT_TRUE(portableAsset.m_data.m_nativeCachePlatform.empty());
+        EXPECT_EQ(portableAsset.m_data.m_nativeCacheBuildFingerprint, 0);
+        ASSERT_EQ(portableAsset.m_data.m_shapes.size(), 1);
+        EXPECT_TRUE(portableAsset.m_data.m_shapes[0].m_archive.m_binaryState.empty());
+        ASSERT_EQ(portableAsset.m_data.m_shapes[0].m_dependencies.size(), 1);
+        EXPECT_EQ(portableAsset.m_data.m_shapes[0].m_providerId, customShapeProvider.GetId());
+        EXPECT_EQ(portableAsset.m_data.m_shapes[0].m_providerVersion, customShapeProvider.GetVersion());
+        EXPECT_EQ(
+            portableAsset.m_data.m_shapes[0].m_dependencies[0].m_path,
+            "Objects/Jolt/BuilderCustomShape.source");
+        const SceneDefinitionHandle portableDefinitionHandle = scenes->CreateSceneDefinition(portableAsset.m_data);
+        ASSERT_TRUE(portableDefinitionHandle);
+        EXPECT_TRUE(scenes->DestroySceneDefinition(portableDefinitionHandle));
+
+        const AZ::u64 providerVersion = portableAsset.m_data.m_shapes[0].m_providerVersion;
+        ++portableAsset.m_data.m_shapes[0].m_providerVersion;
+        EXPECT_FALSE(scenes->CreateSceneDefinition(portableAsset.m_data));
+        portableAsset.m_data.m_shapes[0].m_providerVersion = providerVersion;
+
         EXPECT_EQ(
             extensions->UnregisterExtension(customShapeRegistration.m_handle),
             ExtensionRegistrationStatus::Success);
@@ -782,6 +860,7 @@ namespace Jolt::Editor
         request.m_fullPath = sourcePath->String();
         request.m_sourceFile = "test_skeleton.jolt.json";
         request.m_tempDirPath = temporaryDirectory.GetDirectory();
+        request.m_platformInfo.m_identifier = "pc";
         AssetBuilderSDK::ProcessJobResponse response;
         AssetBuilder builder;
         EXPECT_FALSE(RuntimeConfiguration::Get());
@@ -801,9 +880,13 @@ namespace Jolt::Editor
             &loadedAsset,
             SkeletonAssetTypeId,
             serializeContextScope.Get()));
+        EXPECT_EQ(loadedAsset.m_data.m_nativeCachePlatform, GetNativeAssetPlatform());
+        EXPECT_EQ(loadedAsset.m_data.m_nativeCacheBuildFingerprint, GetNativeBuildFingerprint());
         EXPECT_EQ(loadedAsset.m_data.m_name.GetStringView(), sourceData.m_name);
+        ASSERT_EQ(loadedAsset.m_data.m_sourceSkeleton.m_joints.size(), 2);
         ASSERT_EQ(loadedAsset.m_data.m_animations.size(), 1);
         EXPECT_EQ(loadedAsset.m_data.m_animations.front().m_name.GetStringView(), sourceAnimation.m_name);
+        EXPECT_EQ(loadedAsset.m_data.m_animations.front().m_source.m_joints.size(), 1);
 
         Skeletons* skeletons = Skeletons::Get();
         ASSERT_TRUE(skeletons);
@@ -825,6 +908,35 @@ namespace Jolt::Editor
 
         EXPECT_TRUE(skeletons->DestroySkeletalAnimation(animationHandle));
         EXPECT_TRUE(skeletons->DestroySkeletonDefinition(skeletonHandle));
+
+        request.m_platformInfo.m_identifier = "linux";
+        AssetBuilderSDK::ProcessJobResponse portableResponse;
+        builder.ProcessJob(request, portableResponse);
+        ASSERT_EQ(portableResponse.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
+        ASSERT_EQ(portableResponse.m_outputProducts.size(), 1);
+
+        SkeletonAsset portableAsset;
+        ASSERT_TRUE(LoadAssetProductFile(
+            portableResponse.m_outputProducts.front().m_productFileName,
+            &portableAsset,
+            SkeletonAssetTypeId,
+            serializeContextScope.Get()));
+        EXPECT_TRUE(portableAsset.m_data.m_nativeCachePlatform.empty());
+        EXPECT_EQ(portableAsset.m_data.m_nativeCacheBuildFingerprint, 0);
+        EXPECT_TRUE(portableAsset.m_data.m_skeleton.m_binaryState.empty());
+        ASSERT_EQ(portableAsset.m_data.m_sourceSkeleton.m_joints.size(), 2);
+        ASSERT_EQ(portableAsset.m_data.m_animations.size(), 1);
+        EXPECT_TRUE(portableAsset.m_data.m_animations.front().m_archive.m_binaryState.empty());
+
+        const SkeletonDefinitionHandle portableSkeletonHandle =
+            skeletons->CreateSkeletonDefinition(portableAsset.m_data.m_sourceSkeleton);
+        const SkeletalAnimationHandle portableAnimationHandle =
+            skeletons->CreateSkeletalAnimation(portableAsset.m_data.m_animations.front().m_source);
+        ASSERT_TRUE(portableSkeletonHandle);
+        ASSERT_TRUE(portableAnimationHandle);
+        EXPECT_TRUE(skeletons->DestroySkeletalAnimation(portableAnimationHandle));
+        EXPECT_TRUE(skeletons->DestroySkeletonDefinition(portableSkeletonHandle));
+
         builder.ShutDown();
         builder.BusDisconnect();
     }

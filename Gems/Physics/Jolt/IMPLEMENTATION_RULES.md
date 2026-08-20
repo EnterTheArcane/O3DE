@@ -91,6 +91,10 @@ configuration wins over legacy language-version examples.
 - Store JSON-authored Jolt source documents as `*.jolt.json`. Route the closed document set by its stable root `ClassName` and reject unknown
   classes before processing. Compile each document to a `.jolt` product and use its catalog asset type, not its extension, to identify the
   runtime schema. Reserve product sub-ID zero for the engine's generic JSON product and use stable nonzero sub-IDs for compiled products.
+- Persist canonical, endian-defined asset data as the authoritative product representation. Native archives are optional acceleration
+  caches tagged with the exact platform and native build fingerprint. Never relabel host-native bytes for another target. A missing,
+  incompatible, or corrupt cache reconstructs from canonical data; invalid canonical data or mismatched provider identity, version, or
+  dependencies fails before replacing a live resource.
 - Source and installed engines must both work through the private `JoltNative.cmake` integration. Do not add a `FindJolt.cmake`, publish a
   `3rdParty::Jolt` target, install native headers, or expose native ABI policy to consumers. Keep all third-party compile policy target-local.
 

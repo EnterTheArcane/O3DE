@@ -7,7 +7,9 @@
 
 #include <Jolt/SceneAsset.h>
 
+#include <Jolt/AssetProduct.h>
 #include <Jolt/Profiler.h>
+#include <Jolt/Reflection.h>
 #include <Jolt/RigidBodyConfiguration.h>
 #include <Jolt/SoftBodyComponentConfiguration.h>
 #include <Jolt/SystemInternal.h>
@@ -40,6 +42,136 @@ namespace Jolt
             }
 
             collisionGroup.m_filterHandle = filters[filterIndex];
+            return true;
+        }
+
+        [[nodiscard]]
+        CookedShapeHandle CookSceneShape(
+            RuntimeImplementation& system,
+            const SceneSourceShape& sourceShape,
+            const AZStd::span<const MaterialHandle> materials,
+            const AZStd::span<const CookedShapeHandle> shapes)
+        {
+            CookedShapeHandle shapeHandle;
+            AZStd::visit(
+                [&](const auto& source)
+                {
+                    using Shape = AZStd::remove_cvref_t<decltype(source)>;
+                    if constexpr (AZStd::is_same_v<Shape, SceneSourceShapeData>)
+                    {
+                        ShapeConfiguration configuration;
+                        configuration.m_geometry = source.m_geometry;
+                        configuration.m_userData = source.m_userData;
+                        configuration.m_density = source.m_density;
+                        configuration.m_materials.reserve(source.m_materialIndices.size());
+                        for (const AZ::u32 materialIndex : source.m_materialIndices)
+                        {
+                            if (materialIndex >= materials.size())
+                            {
+                                return;
+                            }
+                            configuration.m_materials.push_back(materials[materialIndex]);
+                        }
+                        shapeHandle = system.CookShape(configuration);
+                    }
+                    else if constexpr (AZStd::is_same_v<Shape, SceneSourceCompoundShape>)
+                    {
+                        CookedCompoundShapeConfiguration configuration;
+                        configuration.m_children.reserve(source.m_children.size());
+                        for (const SceneSourceCompoundChild& child : source.m_children)
+                        {
+                            if (child.m_shapeIndex >= shapes.size())
+                            {
+                                return;
+                            }
+                            configuration.m_children.push_back({
+                                .m_position = child.m_position,
+                                .m_rotation = child.m_rotation,
+                                .m_shapeHandle = shapes[child.m_shapeIndex],
+                                .m_userData = child.m_userData,
+                            });
+                        }
+                        configuration.m_userData = source.m_userData;
+                        shapeHandle = system.CookShape(configuration);
+                    }
+                    else if constexpr (AZStd::is_same_v<Shape, SceneSourceOffsetCenterOfMassShape>)
+                    {
+                        if (source.m_shapeIndex >= shapes.size())
+                        {
+                            return;
+                        }
+                        shapeHandle = system.CookShape(CookedDecoratedShapeConfiguration{
+                            .m_geometry = CookedOffsetCenterOfMassShapeConfiguration{
+                                .m_shapeHandle = shapes[source.m_shapeIndex],
+                                .m_offset = source.m_offset,
+                            },
+                            .m_userData = source.m_userData,
+                        });
+                    }
+                    else if constexpr (AZStd::is_same_v<Shape, SceneSourceRotatedTranslatedShape>)
+                    {
+                        if (source.m_shapeIndex >= shapes.size())
+                        {
+                            return;
+                        }
+                        shapeHandle = system.CookShape(CookedDecoratedShapeConfiguration{
+                            .m_geometry = CookedRotatedTranslatedShapeConfiguration{
+                                .m_shapeHandle = shapes[source.m_shapeIndex],
+                                .m_position = source.m_position,
+                                .m_rotation = source.m_rotation,
+                            },
+                            .m_userData = source.m_userData,
+                        });
+                    }
+                    else if constexpr (AZStd::is_same_v<Shape, SceneSourceScaledShape>)
+                    {
+                        if (source.m_shapeIndex >= shapes.size())
+                        {
+                            return;
+                        }
+                        shapeHandle = system.CookShape(CookedDecoratedShapeConfiguration{
+                            .m_geometry = CookedScaledShapeConfiguration{
+                                .m_shapeHandle = shapes[source.m_shapeIndex],
+                                .m_scale = source.m_scale,
+                            },
+                            .m_userData = source.m_userData,
+                        });
+                    }
+                },
+                sourceShape);
+            return shapeHandle;
+        }
+
+        [[nodiscard]]
+        bool ResolveSoftBodyDefinition(
+            const SceneSourceSoftBodyDefinition& source,
+            const AZStd::span<const MaterialHandle> materials,
+            SoftBodyDefinitionConfiguration& configuration)
+        {
+            configuration.m_vertices = source.m_vertices;
+            configuration.m_faces = source.m_faces;
+            configuration.m_vertexAttributes = source.m_vertexAttributes;
+            configuration.m_edgeConstraints = source.m_edgeConstraints;
+            configuration.m_dihedralBendConstraints = source.m_dihedralBendConstraints;
+            configuration.m_longRangeConstraints = source.m_longRangeConstraints;
+            configuration.m_rodStretchShearConstraints = source.m_rodStretchShearConstraints;
+            configuration.m_rodBendTwistConstraints = source.m_rodBendTwistConstraints;
+            configuration.m_volumeConstraints = source.m_volumeConstraints;
+            configuration.m_inverseBinds = source.m_inverseBinds;
+            configuration.m_skinConstraints = source.m_skinConstraints;
+            configuration.m_shearAngleTolerance = source.m_shearAngleTolerance;
+            configuration.m_bendType = source.m_bendType;
+            configuration.m_createFaceConstraints = source.m_createFaceConstraints;
+            configuration.m_optimize = source.m_optimize;
+            configuration.m_materials.reserve(source.m_materialIndices.size());
+            for (const AZ::u32 materialIndex : source.m_materialIndices)
+            {
+                if (materialIndex >= materials.size())
+                {
+                    return false;
+                }
+                configuration.m_materials.push_back(materials[materialIndex]);
+            }
             return true;
         }
 
@@ -263,6 +395,10 @@ namespace Jolt
 
             serializeContext
                 ->Class<SceneAssetShape>()
+                ->Field("Source", &SceneAssetShape::m_source)
+                ->Field("Dependencies", &SceneAssetShape::m_dependencies)
+                ->Field("ProviderId", &SceneAssetShape::m_providerId)
+                ->Field("ProviderVersion", &SceneAssetShape::m_providerVersion)
                 ->Field("Archive", &SceneAssetShape::m_archive)
                 ->Field("MaterialIndices", &SceneAssetShape::m_materialIndices)
                 ->Field("ChildShapeIndices", &SceneAssetShape::m_childShapeIndices);
@@ -288,6 +424,7 @@ namespace Jolt
 
             serializeContext
                 ->Class<SceneAssetSoftBodyDefinition>()
+                ->Field("Source", &SceneAssetSoftBodyDefinition::m_source)
                 ->Field("Archive", &SceneAssetSoftBodyDefinition::m_archive)
                 ->Field("MaterialIndices", &SceneAssetSoftBodyDefinition::m_materialIndices);
 
@@ -347,7 +484,9 @@ namespace Jolt
                 ->Field("SoftBodyDefinitions", &SceneAssetData::m_softBodyDefinitions)
                 ->Field("Bodies", &SceneAssetData::m_bodies)
                 ->Field("Constraints", &SceneAssetData::m_constraints)
-                ->Field("Name", &SceneAssetData::m_name);
+                ->Field("Name", &SceneAssetData::m_name)
+                ->Field("NativeCachePlatform", &SceneAssetData::m_nativeCachePlatform)
+                ->Field("NativeCacheBuildFingerprint", &SceneAssetData::m_nativeCacheBuildFingerprint);
 
             serializeContext
                 ->Class<SceneSourceData>()
@@ -433,98 +572,18 @@ namespace Jolt
         compiled.m_bodies = sourceData.m_bodies;
         compiled.m_constraints = sourceData.m_constraints;
         compiled.m_name = sourceData.m_name;
+        compiled.m_nativeCachePlatform = GetNativeAssetPlatform();
+        compiled.m_nativeCacheBuildFingerprint = GetNativeBuildFingerprint();
         compiled.m_shapes.reserve(sourceData.m_shapes.size());
         compiled.m_softBodyDefinitions.reserve(sourceData.m_softBodyDefinitions.size());
 
         for (AZ::u32 shapeIndex = 0; shapeIndex < sourceData.m_shapes.size(); ++shapeIndex)
         {
-            CookedShapeHandle shapeHandle;
-            AZStd::visit(
-                [&](const auto& source)
-                {
-                    using Shape = AZStd::remove_cvref_t<decltype(source)>;
-                    if constexpr (AZStd::is_same_v<Shape, SceneSourceShapeData>)
-                    {
-                        ShapeConfiguration configuration;
-                        configuration.m_geometry = source.m_geometry;
-                        configuration.m_userData = source.m_userData;
-                        configuration.m_density = source.m_density;
-                        configuration.m_materials.reserve(source.m_materialIndices.size());
-                        for (const AZ::u32 materialIndex : source.m_materialIndices)
-                        {
-                            if (materialIndex >= materials.size())
-                            {
-                                return;
-                            }
-                            configuration.m_materials.push_back(materials[materialIndex]);
-                        }
-                        shapeHandle = CookShape(configuration);
-                    }
-                    else if constexpr (AZStd::is_same_v<Shape, SceneSourceCompoundShape>)
-                    {
-                        CookedCompoundShapeConfiguration configuration;
-                        configuration.m_children.reserve(source.m_children.size());
-                        for (const SceneSourceCompoundChild& child : source.m_children)
-                        {
-                            if (child.m_shapeIndex >= shapeIndex)
-                            {
-                                return;
-                            }
-                            configuration.m_children.push_back({
-                                .m_position = child.m_position,
-                                .m_rotation = child.m_rotation,
-                                .m_shapeHandle = shapes[child.m_shapeIndex],
-                                .m_userData = child.m_userData,
-                            });
-                        }
-                        configuration.m_userData = source.m_userData;
-                        shapeHandle = CookShape(configuration);
-                    }
-                    else if constexpr (AZStd::is_same_v<Shape, SceneSourceOffsetCenterOfMassShape>)
-                    {
-                        if (source.m_shapeIndex >= shapeIndex)
-                        {
-                            return;
-                        }
-                        shapeHandle = CookShape(CookedDecoratedShapeConfiguration{
-                            .m_geometry = CookedOffsetCenterOfMassShapeConfiguration{
-                                .m_shapeHandle = shapes[source.m_shapeIndex],
-                                .m_offset = source.m_offset,
-                            },
-                            .m_userData = source.m_userData,
-                        });
-                    }
-                    else if constexpr (AZStd::is_same_v<Shape, SceneSourceRotatedTranslatedShape>)
-                    {
-                        if (source.m_shapeIndex >= shapeIndex)
-                        {
-                            return;
-                        }
-                        shapeHandle = CookShape(CookedDecoratedShapeConfiguration{
-                            .m_geometry = CookedRotatedTranslatedShapeConfiguration{
-                                .m_shapeHandle = shapes[source.m_shapeIndex],
-                                .m_position = source.m_position,
-                                .m_rotation = source.m_rotation,
-                            },
-                            .m_userData = source.m_userData,
-                        });
-                    }
-                    else if constexpr (AZStd::is_same_v<Shape, SceneSourceScaledShape>)
-                    {
-                        if (source.m_shapeIndex >= shapeIndex)
-                        {
-                            return;
-                        }
-                        shapeHandle = CookShape(CookedDecoratedShapeConfiguration{
-                            .m_geometry = CookedScaledShapeConfiguration{
-                                .m_shapeHandle = shapes[source.m_shapeIndex],
-                                .m_scale = source.m_scale,
-                            },
-                            .m_userData = source.m_userData,
-                        });
-                    }
-                },
-                sourceData.m_shapes[shapeIndex]);
+            const CookedShapeHandle shapeHandle = CookSceneShape(
+                *this,
+                sourceData.m_shapes[shapeIndex],
+                materials,
+                shapes);
             if (!shapeHandle)
             {
                 releaseSourceResources();
@@ -534,6 +593,7 @@ namespace Jolt
             shapes.push_back(shapeHandle);
             shapeIndices.emplace(shapeHandle, shapeIndex);
             SceneAssetShape compiledShape;
+            compiledShape.m_source = sourceData.m_shapes[shapeIndex];
             AZStd::vector<MaterialHandle> shapeMaterials;
             AZStd::vector<CookedShapeHandle> childShapes;
             if (!ExportShape(shapeHandle, compiledShape.m_archive, shapeMaterials, childShapes))
@@ -541,6 +601,9 @@ namespace Jolt
                 releaseSourceResources();
                 return false;
             }
+            compiledShape.m_dependencies = compiledShape.m_archive.m_dependencies;
+            compiledShape.m_providerId = compiledShape.m_archive.m_providerId;
+            compiledShape.m_providerVersion = compiledShape.m_archive.m_providerVersion;
 
             compiledShape.m_materialIndices.reserve(shapeMaterials.size());
             for (const MaterialHandle materialHandle : shapeMaterials)
@@ -576,30 +639,10 @@ namespace Jolt
         for (const SceneSourceSoftBodyDefinition& source : sourceData.m_softBodyDefinitions)
         {
             SoftBodyDefinitionConfiguration configuration;
-            configuration.m_vertices = source.m_vertices;
-            configuration.m_faces = source.m_faces;
-            configuration.m_vertexAttributes = source.m_vertexAttributes;
-            configuration.m_edgeConstraints = source.m_edgeConstraints;
-            configuration.m_dihedralBendConstraints = source.m_dihedralBendConstraints;
-            configuration.m_longRangeConstraints = source.m_longRangeConstraints;
-            configuration.m_rodStretchShearConstraints = source.m_rodStretchShearConstraints;
-            configuration.m_rodBendTwistConstraints = source.m_rodBendTwistConstraints;
-            configuration.m_volumeConstraints = source.m_volumeConstraints;
-            configuration.m_inverseBinds = source.m_inverseBinds;
-            configuration.m_skinConstraints = source.m_skinConstraints;
-            configuration.m_shearAngleTolerance = source.m_shearAngleTolerance;
-            configuration.m_bendType = source.m_bendType;
-            configuration.m_createFaceConstraints = source.m_createFaceConstraints;
-            configuration.m_optimize = source.m_optimize;
-            configuration.m_materials.reserve(source.m_materialIndices.size());
-            for (const AZ::u32 materialIndex : source.m_materialIndices)
+            if (!ResolveSoftBodyDefinition(source, materials, configuration))
             {
-                if (materialIndex >= materials.size())
-                {
-                    releaseSourceResources();
-                    return false;
-                }
-                configuration.m_materials.push_back(materials[materialIndex]);
+                releaseSourceResources();
+                return false;
             }
 
             const SoftBodyDefinitionHandle definitionHandle = CreateSoftBodyDefinition(configuration);
@@ -610,6 +653,7 @@ namespace Jolt
             }
 
             SceneAssetSoftBodyDefinition compiledDefinition;
+            compiledDefinition.m_source = source;
             AZStd::vector<MaterialHandle> definitionMaterials;
             const bool exported = ExportSoftBodyDefinition(
                 definitionHandle,
@@ -697,6 +741,9 @@ namespace Jolt
                 AZ_Assert(destroyed, "Scene asset material rollback failed.");
             }
         };
+        const bool useNativeCache = IsNativeAssetCacheCompatible(
+            assetData.m_nativeCachePlatform,
+            assetData.m_nativeCacheBuildFingerprint);
 
         for (const MaterialConfiguration& configuration : assetData.m_materials)
         {
@@ -734,41 +781,80 @@ namespace Jolt
         for (AZ::u32 shapeIndex = 0; shapeIndex < assetData.m_shapes.size(); ++shapeIndex)
         {
             const SceneAssetShape& source = assetData.m_shapes[shapeIndex];
-            AZStd::vector<MaterialHandle> shapeMaterials;
-            shapeMaterials.reserve(source.m_materialIndices.size());
-            for (const AZ::u32 materialIndex : source.m_materialIndices)
+            CookedShapeHandle shapeHandle;
+            if (useNativeCache)
             {
-                if (materialIndex == InvalidAssetIndex)
+                bool cacheInputsValid = true;
+                AZStd::vector<MaterialHandle> shapeMaterials;
+                shapeMaterials.reserve(source.m_materialIndices.size());
+                for (const AZ::u32 materialIndex : source.m_materialIndices)
                 {
-                    shapeMaterials.push_back(MaterialHandle::Invalid);
+                    if (materialIndex == InvalidAssetIndex)
+                    {
+                        shapeMaterials.push_back(MaterialHandle::Invalid);
+                    }
+                    else if (materialIndex < materials.size())
+                    {
+                        shapeMaterials.push_back(materials[materialIndex]);
+                    }
+                    else
+                    {
+                        cacheInputsValid = false;
+                        break;
+                    }
                 }
-                else if (materialIndex < materials.size())
+
+                AZStd::vector<CookedShapeHandle> childShapes;
+                childShapes.reserve(source.m_childShapeIndices.size());
+                for (const AZ::u32 childShapeIndex : source.m_childShapeIndices)
                 {
-                    shapeMaterials.push_back(materials[materialIndex]);
+                    if (childShapeIndex >= shapeIndex)
+                    {
+                        cacheInputsValid = false;
+                        break;
+                    }
+                    childShapes.push_back(shapes[childShapeIndex]);
                 }
-                else
+                if (cacheInputsValid)
                 {
-                    rollback();
-                    return {};
+                    shapeHandle = ImportShape(source.m_archive, shapeMaterials, childShapes);
                 }
             }
 
-            AZStd::vector<CookedShapeHandle> childShapes;
-            childShapes.reserve(source.m_childShapeIndices.size());
-            for (const AZ::u32 childShapeIndex : source.m_childShapeIndices)
+            if (!shapeHandle)
             {
-                if (childShapeIndex >= shapeIndex)
+                shapeHandle = CookSceneShape(*this, source.m_source, materials, shapes);
+                if (shapeHandle)
                 {
-                    rollback();
-                    return {};
+                    CookedShapeArchive rebuiltArchive;
+                    AZStd::vector<MaterialHandle> rebuiltMaterials;
+                    AZStd::vector<CookedShapeHandle> rebuiltChildren;
+                    bool sourceMatches = ExportShape(
+                        shapeHandle,
+                        rebuiltArchive,
+                        rebuiltMaterials,
+                        rebuiltChildren);
+                    sourceMatches = sourceMatches
+                        && rebuiltArchive.m_providerId == source.m_providerId
+                        && rebuiltArchive.m_providerVersion == source.m_providerVersion
+                        && rebuiltArchive.m_dependencies.size() == source.m_dependencies.size();
+                    for (size_t dependencyIndex = 0;
+                         sourceMatches && dependencyIndex < source.m_dependencies.size();
+                         ++dependencyIndex)
+                    {
+                        sourceMatches = rebuiltArchive.m_dependencies[dependencyIndex].m_path
+                                == source.m_dependencies[dependencyIndex].m_path
+                            && rebuiltArchive.m_dependencies[dependencyIndex].m_contentHash
+                                == source.m_dependencies[dependencyIndex].m_contentHash;
+                    }
+                    if (!sourceMatches)
+                    {
+                        [[maybe_unused]] const bool destroyed = DestroyCookedShape(shapeHandle);
+                        AZ_Assert(destroyed, "A rejected portable scene shape must remain destroyable.");
+                        shapeHandle = CookedShapeHandle::Invalid;
+                    }
                 }
-                childShapes.push_back(shapes[childShapeIndex]);
             }
-
-            const CookedShapeHandle shapeHandle = ImportShape(
-                source.m_archive,
-                shapeMaterials,
-                childShapes);
             if (!shapeHandle)
             {
                 rollback();
@@ -779,21 +865,35 @@ namespace Jolt
 
         for (const SceneAssetSoftBodyDefinition& source : assetData.m_softBodyDefinitions)
         {
-            AZStd::vector<MaterialHandle> definitionMaterials;
-            definitionMaterials.reserve(source.m_materialIndices.size());
-            for (const AZ::u32 materialIndex : source.m_materialIndices)
+            SoftBodyDefinitionHandle definitionHandle;
+            if (useNativeCache)
             {
-                if (materialIndex >= materials.size())
+                bool cacheInputsValid = true;
+                AZStd::vector<MaterialHandle> definitionMaterials;
+                definitionMaterials.reserve(source.m_materialIndices.size());
+                for (const AZ::u32 materialIndex : source.m_materialIndices)
                 {
-                    rollback();
-                    return {};
+                    if (materialIndex >= materials.size())
+                    {
+                        cacheInputsValid = false;
+                        break;
+                    }
+                    definitionMaterials.push_back(materials[materialIndex]);
                 }
-                definitionMaterials.push_back(materials[materialIndex]);
+                if (cacheInputsValid)
+                {
+                    definitionHandle = ImportSoftBodyDefinition(source.m_archive, definitionMaterials);
+                }
             }
 
-            const SoftBodyDefinitionHandle definitionHandle = ImportSoftBodyDefinition(
-                source.m_archive,
-                definitionMaterials);
+            if (!definitionHandle)
+            {
+                SoftBodyDefinitionConfiguration configuration;
+                if (ResolveSoftBodyDefinition(source.m_source, materials, configuration))
+                {
+                    definitionHandle = CreateSoftBodyDefinition(configuration);
+                }
+            }
             if (!definitionHandle)
             {
                 rollback();

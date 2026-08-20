@@ -11,6 +11,7 @@
 
 #include <AzCore/RTTI/TypeInfoSimple.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/string/string_view.h>
 
 namespace AZ
 {
@@ -24,6 +25,14 @@ namespace AZ::IO
 
 namespace Jolt
 {
+    [[nodiscard]]
+    JOLT_API AZStd::string_view GetNativeAssetPlatform();
+
+    [[nodiscard]]
+    JOLT_API bool IsNativeAssetCacheCompatible(
+        AZStd::string_view platform,
+        AZ::u64 buildFingerprint);
+
     [[nodiscard]]
     JOLT_API bool SaveAssetProduct(
         const AZStd::string& path,

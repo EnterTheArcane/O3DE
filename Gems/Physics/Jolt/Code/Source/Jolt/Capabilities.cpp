@@ -479,6 +479,11 @@ namespace Jolt
         return GetRuntimeImplementation(*this).CreateSkeletonDefinition(configuration);
     }
 
+    SkeletonDefinitionHandle Skeletons::CreateSkeletonDefinition(const SkeletonDefinitionSource& source)
+    {
+        return GetRuntimeImplementation(*this).CreateSkeletonDefinition(source);
+    }
+
     bool Skeletons::ExportSkeletonDefinition(
         SkeletonDefinitionHandle skeletonHandle,
         SkeletonDefinitionArchive& archive) const
@@ -519,6 +524,11 @@ namespace Jolt
     SkeletalAnimationHandle Skeletons::CreateSkeletalAnimation(const SkeletalAnimationConfiguration& configuration)
     {
         return GetRuntimeImplementation(*this).CreateSkeletalAnimation(configuration);
+    }
+
+    SkeletalAnimationHandle Skeletons::CreateSkeletalAnimation(const SkeletalAnimationSource& source)
+    {
+        return GetRuntimeImplementation(*this).CreateSkeletalAnimation(source);
     }
 
     bool Skeletons::ExportSkeletalAnimation(

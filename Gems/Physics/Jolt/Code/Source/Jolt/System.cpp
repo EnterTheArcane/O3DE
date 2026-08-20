@@ -61,7 +61,7 @@ namespace Jolt
     namespace
     {
         constexpr AZ::u32 MaximumSubGroupCount = 65'536;
-        constexpr AZ::u32 CookedShapeArchiveFormatVersion = 1;
+        constexpr AZ::u32 CookedShapeArchiveFormatVersion = 2;
         constexpr AZ::u32 SkeletalAnimationArchiveFormatVersion = 1;
         constexpr AZ::u32 SkeletonDefinitionArchiveFormatVersion = 1;
         constexpr AZ::u32 SoftBodyDefinitionArchiveFormatVersion = 1;
@@ -70,11 +70,15 @@ namespace Jolt
         [[nodiscard]]
         AZ::u64 CalculateCookedShapeArchiveHash(
             const AZStd::span<const AZ::u8> binaryState,
-            const AZStd::span<const CustomShapeDependency> dependencies)
+            const AZStd::span<const CustomShapeDependency> dependencies,
+            const AZ::TypeId& providerId,
+            const AZ::u64 providerVersion)
         {
             AZ::HashValue64 hash = AZ::TypeHash64(
                 binaryState.data(),
                 binaryState.size());
+            hash = AZ::TypeHash64(providerId, hash);
+            hash = AZ::TypeHash64(providerVersion, hash);
             hash = AZ::TypeHash64(dependencies.size(), hash);
             for (const CustomShapeDependency& dependency : dependencies)
             {
@@ -2135,6 +2139,24 @@ namespace Jolt
             storedDependencies = slot->m_customDependencies;
         }
 
+        AZ::TypeId providerId = AZ::TypeId::CreateNull();
+        AZ::u64 providerVersion = 0;
+        CustomShapeInfo customShapeInfo;
+        if (GetNativeCustomShapeInfo(*shape, customShapeInfo))
+        {
+            providerId = customShapeInfo.m_providerId;
+            providerVersion = customShapeInfo.m_providerVersion;
+        }
+        else
+        {
+            CustomConvexShapeInfo customConvexShapeInfo;
+            if (GetNativeCustomConvexShapeInfo(*shape, customConvexShapeInfo))
+            {
+                providerId = customConvexShapeInfo.m_providerId;
+                providerVersion = customConvexShapeInfo.m_providerVersion;
+            }
+        }
+
         NativeArchiveWriter writer;
         shape->SaveBinaryState(writer);
         if (writer.IsFailed())
@@ -2190,6 +2212,7 @@ namespace Jolt
         CookedShapeArchive exportedArchive;
         exportedArchive.m_binaryState = writer.TakeData();
         exportedArchive.m_dependencies = AZStd::move(storedDependencies);
+        exportedArchive.m_providerId = providerId;
         if (exportedArchive.m_binaryState.empty())
         {
             return false;
@@ -2197,7 +2220,10 @@ namespace Jolt
         exportedArchive.m_buildFingerprint = GetNativeBuildFingerprint();
         exportedArchive.m_contentHash = CalculateCookedShapeArchiveHash(
             exportedArchive.m_binaryState,
-            exportedArchive.m_dependencies);
+            exportedArchive.m_dependencies,
+            exportedArchive.m_providerId,
+            providerVersion);
+        exportedArchive.m_providerVersion = providerVersion;
         exportedArchive.m_formatVersion = CookedShapeArchiveFormatVersion;
         exportedArchive.m_materialCount = static_cast<AZ::u32>(exportedMaterialHandles.size());
         exportedArchive.m_childShapeCount = static_cast<AZ::u32>(storedChildHandles.size());
@@ -2230,7 +2256,9 @@ namespace Jolt
                 })
             || archive.m_contentHash != CalculateCookedShapeArchiveHash(
                 archive.m_binaryState,
-                archive.m_dependencies))
+                archive.m_dependencies,
+                archive.m_providerId,
+                archive.m_providerVersion))
         {
             return {};
         }
@@ -2242,6 +2270,29 @@ namespace Jolt
             || !reader.IsFullyConsumed()
             || !IsNativeCustomShapeValid(*nativeResult.Get())
             || !IsNativeCustomConvexShapeValid(*nativeResult.Get()))
+        {
+            return {};
+        }
+
+        AZ::TypeId providerId = AZ::TypeId::CreateNull();
+        AZ::u64 providerVersion = 0;
+        CustomShapeInfo restoredCustomShapeInfo;
+        if (GetNativeCustomShapeInfo(*nativeResult.Get(), restoredCustomShapeInfo))
+        {
+            providerId = restoredCustomShapeInfo.m_providerId;
+            providerVersion = restoredCustomShapeInfo.m_providerVersion;
+        }
+        else
+        {
+            CustomConvexShapeInfo restoredCustomConvexShapeInfo;
+            if (GetNativeCustomConvexShapeInfo(*nativeResult.Get(), restoredCustomConvexShapeInfo))
+            {
+                providerId = restoredCustomConvexShapeInfo.m_providerId;
+                providerVersion = restoredCustomConvexShapeInfo.m_providerVersion;
+            }
+        }
+        if (archive.m_providerId != providerId
+            || archive.m_providerVersion != providerVersion)
         {
             return {};
         }

@@ -25,6 +25,7 @@
 #include <AzCore/std/containers/variant.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/limits.h>
+#include <AzCore/std/string/string.h>
 
 namespace AZ
 {
@@ -102,6 +103,11 @@ namespace Jolt
     {
         AZ_TYPE_INFO(SceneAssetShape, SceneAssetShapeTypeId);
 
+        SceneSourceShape m_source;
+        AZStd::vector<CustomShapeDependency> m_dependencies;
+        AZ::TypeId m_providerId = AZ::TypeId::CreateNull();
+        AZ::u64 m_providerVersion = 0;
+
         CookedShapeArchive m_archive;
         AZStd::vector<AZ::u32> m_materialIndices;
         AZStd::vector<AZ::u32> m_childShapeIndices;
@@ -134,6 +140,8 @@ namespace Jolt
     struct SceneAssetSoftBodyDefinition final
     {
         AZ_TYPE_INFO(SceneAssetSoftBodyDefinition, SceneAssetSoftBodyDefinitionTypeId);
+
+        SceneSourceSoftBodyDefinition m_source;
 
         SoftBodyDefinitionArchive m_archive;
         AZStd::vector<AZ::u32> m_materialIndices;
@@ -218,6 +226,9 @@ namespace Jolt
         AZStd::vector<SceneAssetBody> m_bodies;
         AZStd::vector<SceneAssetConstraint> m_constraints;
         AZ::Name m_name;
+
+        AZStd::string m_nativeCachePlatform;
+        AZ::u64 m_nativeCacheBuildFingerprint = 0;
     };
 
     struct SceneSourceData final

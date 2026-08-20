@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  */
 
+#include <Jolt/AssetProduct.h>
 #include <Jolt/CharacterControllerComponent.h>
 #include <Jolt/ColliderComponent.h>
 #include <Jolt/ComponentDependencyManager.h>
@@ -2597,9 +2598,22 @@ namespace Jolt
         ASSERT_TRUE(system.DestroySkeletalAnimation(sourceAnimationHandle));
         ASSERT_TRUE(system.DestroySkeletonDefinition(sourceSkeletonHandle));
 
+        SkeletonDefinitionSource skeletonSource;
+        skeletonSource.m_joints = {
+            {.m_name = "root", .m_parentIndex = -1},
+            {.m_name = "child", .m_parentIndex = 0},
+        };
+        SkeletalAnimationSource animationSource;
+        animationSource.m_joints = {
+            {
+                .m_keyframes = animationConfiguration.m_joints[0].m_keyframes,
+                .m_name = "child",
+            },
+        };
+
         const AZ::Data::AssetId assetId(AZ::Uuid::CreateRandom(), 1);
         const auto createAsset =
-            [&assetId, &skeletonArchive](
+            [&assetId, &animationSource, &skeletonArchive, &skeletonSource](
                 const AZ::Name animationName,
                 const SkeletalAnimationArchive& sourceArchive)
         {
@@ -2607,8 +2621,12 @@ namespace Jolt
                 assetId,
                 AZ::Data::AssetData::AssetStatus::Ready);
             assetData->m_data.m_name = AZ::Name("test_skeleton");
+            assetData->m_data.m_sourceSkeleton = skeletonSource;
             assetData->m_data.m_skeleton = skeletonArchive;
+            assetData->m_data.m_nativeCachePlatform = GetNativeAssetPlatform();
+            assetData->m_data.m_nativeCacheBuildFingerprint = GetNativeBuildFingerprint();
             assetData->m_data.m_animations.push_back({
+                .m_source = animationSource,
                 .m_archive = sourceArchive,
                 .m_name = animationName,
             });
@@ -2655,6 +2673,7 @@ namespace Jolt
         SkeletalAnimationArchive invalidArchive = animationArchive;
         ++invalidArchive.m_buildFingerprint;
         AZ::Data::Asset<SkeletonAsset> invalidAsset = createAsset(AZ::Name("invalid"), invalidArchive);
+        invalidAsset->m_data.m_animations.front().m_source.m_joints.front().m_name.clear();
         AZ_TEST_START_TRACE_SUPPRESSION;
         AZ::Data::AssetBus::Event(
             assetId,
@@ -2669,6 +2688,8 @@ namespace Jolt
         EXPECT_EQ(notifications.m_reloadingCount, 0);
 
         AZ::Data::Asset<SkeletonAsset> reloadedAsset = createAsset(AZ::Name("run"), animationArchive);
+        ++reloadedAsset->m_data.m_skeleton.m_formatVersion;
+        ++reloadedAsset->m_data.m_animations.front().m_archive.m_formatVersion;
         const SkeletonPoseHandle blockingPoseHandle = system.CreateSkeletonPose(initialSkeletonHandle);
         ASSERT_TRUE(blockingPoseHandle);
         AZ_TEST_START_TRACE_SUPPRESSION;
@@ -2788,6 +2809,9 @@ namespace Jolt
 
         SceneAssetData invalidSceneData = sceneData;
         ++invalidSceneData.m_shapes[0].m_archive.m_buildFingerprint;
+        invalidSceneData.m_shapes[0].m_source = SceneSourceScaledShape{
+            .m_shapeIndex = 0,
+        };
         AZ::Data::Asset<SceneAsset> invalidAsset = createAsset(invalidSceneData);
         AZ_TEST_START_TRACE_SUPPRESSION;
         AZ::Data::AssetBus::Event(

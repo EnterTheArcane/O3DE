@@ -56,8 +56,10 @@ namespace Jolt
                 ->Class<CookedShapeArchive>()
                 ->Field("BinaryState", &CookedShapeArchive::m_binaryState)
                 ->Field("Dependencies", &CookedShapeArchive::m_dependencies)
+                ->Field("ProviderId", &CookedShapeArchive::m_providerId)
                 ->Field("BuildFingerprint", &CookedShapeArchive::m_buildFingerprint)
                 ->Field("ContentHash", &CookedShapeArchive::m_contentHash)
+                ->Field("ProviderVersion", &CookedShapeArchive::m_providerVersion)
                 ->Field("FormatVersion", &CookedShapeArchive::m_formatVersion)
                 ->Field("MaterialCount", &CookedShapeArchive::m_materialCount)
                 ->Field("ChildShapeCount", &CookedShapeArchive::m_childShapeCount);

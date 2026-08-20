@@ -202,9 +202,9 @@ namespace Jolt::Editor
             "*.jolt.json",
             AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
         descriptor.m_busId = azrtti_typeid<AssetBuilder>();
-        descriptor.m_version = 7;
+        descriptor.m_version = 8;
         descriptor.m_analysisFingerprint = AZStd::string::format(
-            "JoltAssets:%016llx",
+            "JoltAssets:Portable2:%016llx",
             static_cast<unsigned long long>(GetNativeBuildFingerprint()));
         descriptor.m_createJobFunction =
             [this](const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response)
@@ -280,6 +280,12 @@ namespace Jolt::Editor
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
             return;
         }
+        if (request.m_platformInfo.m_identifier.empty())
+        {
+            AZ_Error("Jolt", false, "Cannot compile a Jolt asset without a target platform identifier.");
+            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+            return;
+        }
 
         const AZ::Outcome<const SourceDocumentType*, AZStd::string> sourceTypeResult =
             ReadSourceDocumentType(request.m_fullPath);
@@ -335,8 +341,25 @@ namespace Jolt::Editor
             {
                 sourceDependencies.insert(
                     sourceDependencies.end(),
-                    shape.m_archive.m_dependencies.begin(),
-                    shape.m_archive.m_dependencies.end());
+                    shape.m_dependencies.begin(),
+                    shape.m_dependencies.end());
+            }
+
+            if (request.m_platformInfo.m_identifier != GetNativeAssetPlatform())
+            {
+                sceneAsset.m_data.m_nativeCachePlatform.clear();
+                sceneAsset.m_data.m_nativeCacheBuildFingerprint = 0;
+                for (SceneAssetShape& shape : sceneAsset.m_data.m_shapes)
+                {
+                    shape.m_archive = {};
+                    shape.m_materialIndices.clear();
+                    shape.m_childShapeIndices.clear();
+                }
+                for (SceneAssetSoftBodyDefinition& definition : sceneAsset.m_data.m_softBodyDefinitions)
+                {
+                    definition.m_archive = {};
+                    definition.m_materialIndices.clear();
+                }
             }
 
             SaveProduct(
@@ -365,18 +388,11 @@ namespace Jolt::Editor
 
         SkeletonAsset skeletonAsset;
         skeletonAsset.m_data.m_name = AZ::Name(sourceData.m_name);
+        skeletonAsset.m_data.m_sourceSkeleton = sourceData.m_skeleton;
+        skeletonAsset.m_data.m_nativeCachePlatform = GetNativeAssetPlatform();
+        skeletonAsset.m_data.m_nativeCacheBuildFingerprint = GetNativeBuildFingerprint();
 
-        SkeletonDefinitionConfiguration skeletonConfiguration;
-        skeletonConfiguration.m_joints.reserve(sourceData.m_skeleton.m_joints.size());
-        for (const SkeletonJointSource& sourceJoint : sourceData.m_skeleton.m_joints)
-        {
-            skeletonConfiguration.m_joints.push_back({
-                .m_name = AZ::Name(sourceJoint.m_name),
-                .m_parentIndex = sourceJoint.m_parentIndex,
-            });
-        }
-
-        const SkeletonDefinitionHandle skeletonHandle = skeletons->CreateSkeletonDefinition(skeletonConfiguration);
+        const SkeletonDefinitionHandle skeletonHandle = skeletons->CreateSkeletonDefinition(sourceData.m_skeleton);
         if (!skeletonHandle)
         {
             AZ_Error("Jolt", false, "Failed to compile skeleton definition from '%s'.", request.m_fullPath.c_str());
@@ -418,18 +434,7 @@ namespace Jolt::Editor
                 return;
             }
 
-            SkeletalAnimationConfiguration animationConfiguration;
-            animationConfiguration.m_isLooping = sourceAnimation.m_configuration.m_isLooping;
-            animationConfiguration.m_joints.reserve(sourceAnimation.m_configuration.m_joints.size());
-            for (const SkeletalAnimatedJointSource& sourceJoint : sourceAnimation.m_configuration.m_joints)
-            {
-                animationConfiguration.m_joints.push_back({
-                    .m_name = AZ::Name(sourceJoint.m_name),
-                    .m_keyframes = sourceJoint.m_keyframes,
-                });
-            }
-
-            const SkeletalAnimationHandle animationHandle = skeletons->CreateSkeletalAnimation(animationConfiguration);
+            const SkeletalAnimationHandle animationHandle = skeletons->CreateSkeletalAnimation(sourceAnimation.m_configuration);
             if (!animationHandle)
             {
                 AZ_Error(
@@ -443,6 +448,7 @@ namespace Jolt::Editor
             }
 
             NamedSkeletalAnimationAsset& productAnimation = skeletonAsset.m_data.m_animations.emplace_back();
+            productAnimation.m_source = sourceAnimation.m_configuration;
             productAnimation.m_name = animationName;
             const bool animationExported = skeletons->ExportSkeletalAnimation(
                 animationHandle,
@@ -458,6 +464,17 @@ namespace Jolt::Editor
                     request.m_fullPath.c_str());
                 response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
                 return;
+            }
+        }
+
+        if (request.m_platformInfo.m_identifier != GetNativeAssetPlatform())
+        {
+            skeletonAsset.m_data.m_skeleton = {};
+            skeletonAsset.m_data.m_nativeCachePlatform.clear();
+            skeletonAsset.m_data.m_nativeCacheBuildFingerprint = 0;
+            for (NamedSkeletalAnimationAsset& animation : skeletonAsset.m_data.m_animations)
+            {
+                animation.m_archive = {};
             }
         }
 

@@ -360,6 +360,10 @@ namespace Jolt
             const SkeletonDefinitionConfiguration& configuration);
 
         [[nodiscard]]
+        SkeletonDefinitionHandle CreateSkeletonDefinition(
+            const SkeletonDefinitionSource& source);
+
+        [[nodiscard]]
         bool ExportSkeletonDefinition(
             SkeletonDefinitionHandle skeletonHandle,
             SkeletonDefinitionArchive& archive) const;
@@ -387,6 +391,10 @@ namespace Jolt
         [[nodiscard]]
         SkeletalAnimationHandle CreateSkeletalAnimation(
             const SkeletalAnimationConfiguration& configuration);
+
+        [[nodiscard]]
+        SkeletalAnimationHandle CreateSkeletalAnimation(
+            const SkeletalAnimationSource& source);
 
         [[nodiscard]]
         bool ExportSkeletalAnimation(

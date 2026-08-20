@@ -5,8 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  */
 
-#include <Jolt/SystemInternal.h>
+#include <Jolt/AssetProduct.h>
 #include <Jolt/SceneAsset.h>
+#include <Jolt/SystemInternal.h>
 
 #include <AzTest/AzTest.h>
 #include <AzTest/Utils.h>
@@ -15071,6 +15072,8 @@ namespace Jolt
             archive,
             materialHandles,
             childShapeHandles));
+        EXPECT_EQ(archive.m_providerId, provider.GetId());
+        EXPECT_EQ(archive.m_providerVersion, provider.GetVersion());
         EXPECT_TRUE(archive.m_dependencies.empty());
 
         ASSERT_EQ(
@@ -16445,6 +16448,8 @@ namespace Jolt
 
         SceneAssetData assetData;
         assetData.m_name = AZ::Name("HandleFreeScene");
+        assetData.m_nativeCachePlatform = GetNativeAssetPlatform();
+        assetData.m_nativeCacheBuildFingerprint = GetNativeBuildFingerprint();
         assetData.m_materials.push_back(MaterialConfiguration{});
         assetData.m_groupFilters.push_back({.m_subGroupCount = 2});
         assetData.m_paths.push_back({
@@ -16467,6 +16472,10 @@ namespace Jolt
         ASSERT_TRUE(sourceShape);
 
         SceneAssetShape assetShape;
+        assetShape.m_source = SceneSourceShapeData{
+            .m_geometry = BoxShapeConfiguration{},
+            .m_materialIndices = {0},
+        };
         AZStd::vector<MaterialHandle> exportedMaterials;
         AZStd::vector<CookedShapeHandle> exportedChildren;
         ASSERT_TRUE(system.ExportShape(
@@ -16535,6 +16544,8 @@ namespace Jolt
         ASSERT_TRUE(system);
 
         SceneAssetData assetData;
+        assetData.m_nativeCachePlatform = GetNativeAssetPlatform();
+        assetData.m_nativeCacheBuildFingerprint = GetNativeBuildFingerprint();
         assetData.m_materials.push_back(MaterialConfiguration{});
         assetData.m_groupFilters.push_back({.m_subGroupCount = 2});
         assetData.m_paths.push_back({
@@ -16552,6 +16563,9 @@ namespace Jolt
         ASSERT_TRUE(sourceShape);
 
         SceneAssetShape assetShape;
+        assetShape.m_source = SceneSourceScaledShape{
+            .m_shapeIndex = 0,
+        };
         AZStd::vector<MaterialHandle> exportedMaterials;
         AZStd::vector<CookedShapeHandle> exportedChildren;
         ASSERT_TRUE(system.ExportShape(
@@ -16565,6 +16579,9 @@ namespace Jolt
         EXPECT_FALSE(system.CreateSceneDefinition(assetData));
 
         assetData.m_shapes.front().m_childShapeIndices.clear();
+        assetData.m_shapes.front().m_source = SceneSourceShapeData{
+            .m_geometry = SphereShapeConfiguration{},
+        };
         const SceneDefinitionHandle definitionHandle = system.CreateSceneDefinition(assetData);
         ASSERT_TRUE(definitionHandle);
         EXPECT_TRUE(system.DestroySceneDefinition(definitionHandle));

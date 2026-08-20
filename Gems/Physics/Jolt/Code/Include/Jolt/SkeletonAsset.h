@@ -68,6 +68,8 @@ namespace Jolt
     {
         AZ_TYPE_INFO(NamedSkeletalAnimationAsset, NamedSkeletalAnimationAssetTypeId);
 
+        SkeletalAnimationSource m_source;
+
         SkeletalAnimationArchive m_archive;
         AZ::Name m_name;
     };
@@ -87,9 +89,13 @@ namespace Jolt
 
         JOLT_API static void Reflect(AZ::ReflectContext* context);
 
-        SkeletonDefinitionArchive m_skeleton;
+        SkeletonDefinitionSource m_sourceSkeleton;
         AZStd::vector<NamedSkeletalAnimationAsset> m_animations;
         AZ::Name m_name;
+
+        SkeletonDefinitionArchive m_skeleton;
+        AZStd::string m_nativeCachePlatform;
+        AZ::u64 m_nativeCacheBuildFingerprint = 0;
     };
 
     class JOLT_API SkeletonAsset final

@@ -7,9 +7,12 @@
 
 #include <Jolt/AssetProduct.h>
 
+#include <Jolt/NativeRuntime.h>
+
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/IO/ByteContainerStream.h>
 #include <AzCore/IO/GenericStreams.h>
+#include <AzCore/PlatformId/PlatformDefaults.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Utils/TypeHash.h>
 #include <AzCore/std/containers/array.h>
@@ -21,7 +24,7 @@ namespace Jolt
     namespace
     {
         constexpr AZStd::array<AZ::u8, 8> ProductMagic = {'J', 'O', 'L', 'T', 'A', 'S', 'S', 'T'};
-        constexpr AZ::u32 ProductFormatVersion = 1;
+        constexpr AZ::u32 ProductFormatVersion = 2;
         constexpr size_t VersionOffset = ProductMagic.size();
         constexpr size_t PayloadSizeOffset = VersionOffset + sizeof(AZ::u32);
         constexpr size_t PayloadHashOffset = PayloadSizeOffset + sizeof(AZ::u64);
@@ -52,6 +55,19 @@ namespace Jolt
             return value;
         }
     } // namespace
+
+    AZStd::string_view GetNativeAssetPlatform()
+    {
+        return AZ::OSPlatformToDefaultAssetPlatform(AZ_TRAIT_OS_PLATFORM_CODENAME);
+    }
+
+    bool IsNativeAssetCacheCompatible(
+        const AZStd::string_view platform,
+        const AZ::u64 buildFingerprint)
+    {
+        return platform == GetNativeAssetPlatform()
+            && buildFingerprint == GetNativeBuildFingerprint();
+    }
 
     bool SaveAssetProduct(
         const AZStd::string& path,
