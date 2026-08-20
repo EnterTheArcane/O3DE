@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/BodyConfiguration.h>
 #include <Jolt/DebugDraw.h>
 #include <Jolt/Diagnostics.h>
@@ -34,7 +35,7 @@ namespace Jolt
 
     void ReflectWorldQueries(AZ::ReflectContext* context);
 
-    struct ClosestShapeCastResult final
+    struct JOLT_API ClosestShapeCastResult final
     {
         AZ_TYPE_INFO(ClosestShapeCastResult, ClosestShapeCastResultTypeId);
 
@@ -92,7 +93,7 @@ namespace Jolt
         bool m_found = false;
     };
 
-    class RaycastRequestCollection final
+    class JOLT_API RaycastRequestCollection final
     {
     public:
         AZ_TYPE_INFO(RaycastRequestCollection, RaycastRequestCollectionTypeId);
@@ -114,7 +115,7 @@ namespace Jolt
         AZStd::vector<RaycastRequest> m_requests;
     };
 
-    class ClosestRaycastResultCollection final
+    class JOLT_API ClosestRaycastResultCollection final
     {
     public:
         AZ_TYPE_INFO(ClosestRaycastResultCollection, ClosestRaycastResultCollectionTypeId);
@@ -138,7 +139,7 @@ namespace Jolt
         AZ::u32 m_requiredResultCount = 0;
     };
 
-    class BodyCollection final
+    class JOLT_API BodyCollection final
     {
     public:
         AZ_TYPE_INFO(BodyCollection, BodyCollectionTypeId);
@@ -162,7 +163,7 @@ namespace Jolt
         AZ::u32 m_requiredBodyCount = 0;
     };
 
-    class RaycastHitCollection final
+    class JOLT_API RaycastHitCollection final
     {
     public:
         AZ_TYPE_INFO(RaycastHitCollection, RaycastHitCollectionTypeId);
@@ -186,7 +187,7 @@ namespace Jolt
         AZ::u32 m_requiredHitCount = 0;
     };
 
-    class OverlapHitCollection final
+    class JOLT_API OverlapHitCollection final
     {
     public:
         AZ_TYPE_INFO(OverlapHitCollection, OverlapHitCollectionTypeId);
@@ -210,7 +211,7 @@ namespace Jolt
         AZ::u32 m_requiredHitCount = 0;
     };
 
-    class ShapeOverlapHitCollection final
+    class JOLT_API ShapeOverlapHitCollection final
     {
     public:
         AZ_TYPE_INFO(ShapeOverlapHitCollection, ShapeOverlapHitCollectionTypeId);
@@ -252,7 +253,7 @@ namespace Jolt
         AZ::u32 m_requiredHitCount = 0;
     };
 
-    class ShapeCastHitCollection final
+    class JOLT_API ShapeCastHitCollection final
     {
     public:
         AZ_TYPE_INFO(ShapeCastHitCollection, ShapeCastHitCollectionTypeId);
@@ -294,7 +295,7 @@ namespace Jolt
         AZ::u32 m_requiredHitCount = 0;
     };
 
-    class ShapePointHitCollection final
+    class JOLT_API ShapePointHitCollection final
     {
     public:
         AZ_TYPE_INFO(ShapePointHitCollection, ShapePointHitCollectionTypeId);
@@ -318,7 +319,7 @@ namespace Jolt
         AZ::u32 m_requiredHitCount = 0;
     };
 
-    class ShapeRaycastHitCollection final
+    class JOLT_API ShapeRaycastHitCollection final
     {
     public:
         AZ_TYPE_INFO(ShapeRaycastHitCollection, ShapeRaycastHitCollectionTypeId);
@@ -342,7 +343,7 @@ namespace Jolt
         AZ::u32 m_requiredHitCount = 0;
     };
 
-    class ShapeTriangleCollection final
+    class JOLT_API ShapeTriangleCollection final
     {
     public:
         AZ_TYPE_INFO(ShapeTriangleCollection, ShapeTriangleCollectionTypeId);
@@ -366,7 +367,7 @@ namespace Jolt
         AZ::u32 m_requiredTriangleCount = 0;
     };
 
-    class BroadPhaseHitCollection final
+    class JOLT_API BroadPhaseHitCollection final
     {
     public:
         AZ_TYPE_INFO(BroadPhaseHitCollection, BroadPhaseHitCollectionTypeId);
@@ -390,7 +391,7 @@ namespace Jolt
         AZ::u32 m_requiredHitCount = 0;
     };
 
-    class BroadPhaseCastHitCollection final
+    class JOLT_API BroadPhaseCastHitCollection final
     {
     public:
         AZ_TYPE_INFO(BroadPhaseCastHitCollection, BroadPhaseCastHitCollectionTypeId);
@@ -414,7 +415,7 @@ namespace Jolt
         AZ::u32 m_requiredHitCount = 0;
     };
 
-    class TransformedShapeCollection final
+    class JOLT_API TransformedShapeCollection final
     {
     public:
         AZ_TYPE_INFO(TransformedShapeCollection, TransformedShapeCollectionTypeId);
@@ -438,7 +439,7 @@ namespace Jolt
         AZ::u32 m_requiredShapeCount = 0;
     };
 
-    class SupportingFaceVertexCollection final
+    class JOLT_API SupportingFaceVertexCollection final
     {
     public:
         AZ_TYPE_INFO(SupportingFaceVertexCollection, SupportingFaceVertexCollectionTypeId);
@@ -462,7 +463,7 @@ namespace Jolt
         AZ::u32 m_requiredVertexCount = 0;
     };
 
-    class TransformedTriangleCollection final
+    class JOLT_API TransformedTriangleCollection final
     {
     public:
         AZ_TYPE_INFO(TransformedTriangleCollection, TransformedTriangleCollectionTypeId);

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Box3D/Configuration.h>
 #include <Box3D/ColliderBus.h>
 #include <Box3D/HeightfieldBus.h>
 #include <Box3D/TypeIds.h>
@@ -20,7 +21,7 @@ namespace Box3D
 {
     class System;
 
-    class HeightfieldColliderComponent final
+    class BOX3D_API HeightfieldColliderComponent final
         : public AZ::Component
         , public ColliderRequestBus::Handler
         , public HeightfieldRequestBus::Handler

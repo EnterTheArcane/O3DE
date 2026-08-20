@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/Character.h>
 
 namespace AZ
@@ -20,7 +22,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(CharacterComponentConfiguration, CharacterComponentConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         CollisionGroupConfiguration m_collisionGroup;
         AZ::u64 m_userData = 0;
@@ -49,7 +51,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(VirtualCharacterComponentConfiguration, VirtualCharacterComponentConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         VirtualCharacterUpdateConfiguration m_update;
 

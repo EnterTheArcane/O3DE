@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/Material.h>
 #include <Jolt/Shape.h>
 #include <Jolt/ShapeConfiguration.h>
@@ -32,7 +33,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(ColliderShapeConfiguration, ColliderShapeConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         ShapeConfiguration m_shape;
         AZStd::vector<MaterialConfiguration> m_materials;
@@ -40,7 +41,7 @@ namespace Jolt
         AZ::u32 m_compoundUserData = 0;
     };
 
-    class HeightfieldSampleCollection final
+    class JOLT_API HeightfieldSampleCollection final
     {
     public:
         AZ_TYPE_INFO(HeightfieldSampleCollection, HeightfieldSampleCollectionTypeId);
@@ -71,7 +72,7 @@ namespace Jolt
         AZ::u32 m_requiredSampleCount = 0;
     };
 
-    class HeightfieldMaterialIndexCollection final
+    class JOLT_API HeightfieldMaterialIndexCollection final
     {
     public:
         AZ_TYPE_INFO(HeightfieldMaterialIndexCollection, HeightfieldMaterialIndexCollectionTypeId);
@@ -102,7 +103,7 @@ namespace Jolt
         AZ::u32 m_requiredIndexCount = 0;
     };
 
-    class MaterialCollection final
+    class JOLT_API MaterialCollection final
     {
     public:
         AZ_TYPE_INFO(MaterialCollection, MaterialCollectionTypeId);
@@ -133,7 +134,7 @@ namespace Jolt
         AZ::u32 m_requiredMaterialCount = 0;
     };
 
-    class ConvexHullTopology final
+    class JOLT_API ConvexHullTopology final
     {
     public:
         AZ_TYPE_INFO(ConvexHullTopology, ConvexHullTopologyTypeId);

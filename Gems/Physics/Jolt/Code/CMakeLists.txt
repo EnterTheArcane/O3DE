@@ -6,52 +6,40 @@
 #
 
 ly_add_target(
-    NAME ${gem_name}.API INTERFACE
+    NAME ${gem_name}.API ${PAL_TRAIT_MONOLITHIC_DRIVEN_LIBRARY_TYPE}
     NAMESPACE Gem
     FILES_CMAKE
         jolt_api_files.cmake
-    INCLUDE_DIRECTORIES
-        INTERFACE
-            Include
-    BUILD_DEPENDENCIES
-        INTERFACE
-            AZ::AzCore
-)
-
-ly_add_target(
-    NAME ${gem_name}.Private.Static STATIC
-    NAMESPACE Gem
-    FILES_CMAKE
         jolt_private_files.cmake
-    TARGET_PROPERTIES
-        O3DE_PRIVATE_TARGET TRUE
+    COMPILE_DEFINITIONS
+        PRIVATE
+            JOLT_API_EXPORTS
     INCLUDE_DIRECTORIES
         PRIVATE
-            Include
             Source
+        PUBLIC
+            Include
     BUILD_DEPENDENCIES
         PUBLIC
             AZ::AzCore
         PRIVATE
-            Gem::${gem_name}.API
+            Jolt
 )
-set_property(TARGET ${gem_name}.Private.Static PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-# Linking the object library folds native Jolt into this private archive.
-target_link_libraries(${gem_name}.Private.Static PRIVATE Jolt)
+set_property(TARGET ${gem_name}.API PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    target_link_options(${gem_name}.Private.Static INTERFACE
+    target_link_options(${gem_name}.API INTERFACE
         "$<$<CONFIG:Release>:${CMAKE_CXX_LINK_OPTIONS_IPO}>"
     )
 else()
-    target_link_options(${gem_name}.Private.Static INTERFACE
+    target_link_options(${gem_name}.API INTERFACE
         "$<$<CONFIG:Release>:${CMAKE_CXX_COMPILE_OPTIONS_IPO}>"
         "$<$<CONFIG:Release>:${CMAKE_CXX_LINK_OPTIONS_IPO}>"
     )
 endif()
 if(MSVC)
-    target_compile_options(${gem_name}.Private.Static PRIVATE /GR-)
+    target_compile_options(${gem_name}.API PRIVATE /GR-)
 else()
-    target_compile_options(${gem_name}.Private.Static PRIVATE -fno-rtti)
+    target_compile_options(${gem_name}.API PRIVATE -fno-rtti)
 endif()
 
 set_property(
@@ -62,7 +50,7 @@ file(
     "${CMAKE_CURRENT_LIST_DIR}/../3rdParty/jolt-5.6.0-o3de.patch"
     jolt_patch_hash)
 string(SUBSTRING "${jolt_patch_hash}" 0 16 jolt_patch_fingerprint)
-target_compile_definitions(${gem_name}.Private.Static PRIVATE
+target_compile_definitions(${gem_name}.API PRIVATE
     JOLT_NATIVE_PATCH_FINGERPRINT=0x${jolt_patch_fingerprint}ULL
 )
 
@@ -79,8 +67,6 @@ ly_add_target(
     BUILD_DEPENDENCIES
         PUBLIC
             Gem::${gem_name}.API
-        PRIVATE
-            Gem::${gem_name}.Private.Static
 )
 
 add_library(Gem::${gem_name} ALIAS ${gem_name}.Module)
@@ -120,7 +106,7 @@ if(PAL_TRAIT_BUILD_HOST_TOOLS)
             PUBLIC
                 AZ::AzFramework
                 AZ::AzToolsFramework
-                Gem::${gem_name}.Private.Static
+                Gem::${gem_name}.API
             PRIVATE
                 AZ::AssetBuilderSDK
     )
@@ -167,10 +153,9 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
         jolt_tests_files.cmake
     )
     set(jolt_test_dependencies
-        Jolt
         AZ::AzTest
         AZ::AzFramework
-        Gem::${gem_name}.Private.Static
+        Gem::${gem_name}.API
     )
 
     if(PAL_TRAIT_BUILD_HOST_TOOLS)
@@ -216,6 +201,12 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
         BUILD_DEPENDENCIES
             PRIVATE
                 ${jolt_test_dependencies}
+    )
+
+    target_include_directories(${gem_name}.Tests SYSTEM PRIVATE ${jolt_source_dir})
+    target_compile_definitions(
+        ${gem_name}.Tests PRIVATE
+        $<TARGET_PROPERTY:Jolt,INTERFACE_COMPILE_DEFINITIONS>
     )
 
     if(PAL_TRAIT_BUILD_HOST_TOOLS)

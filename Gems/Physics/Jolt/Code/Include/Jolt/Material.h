@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/TypeIds.h>
 
 #include <AzCore/Math/Color.h>
@@ -24,7 +26,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(MaterialConfiguration, MaterialConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZStd::string m_debugName;
         AZ::Color m_debugColor = AZ::Colors::Grey;

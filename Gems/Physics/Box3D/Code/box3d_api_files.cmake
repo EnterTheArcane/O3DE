@@ -6,6 +6,7 @@
 #
 
 set(FILES
+    Include/Box3D/Configuration.h
     Include/Box3D/Collision.h
     Include/Box3D/ColliderBus.h
     Include/Box3D/Cooking.h

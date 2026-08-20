@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Box3D/Configuration.h>
 #include <Box3D/CookingBus.h>
 #include <Box3D/DiagnosticsBus.h>
 #include <Box3D/MaterialBus.h>
@@ -24,7 +25,7 @@ namespace Box3D
 {
     class System;
 
-    class SystemComponent final
+    class BOX3D_API SystemComponent final
         : public AZ::Component
         , private AZ::TickBus::Handler
         , private CookingRequestBus::Handler

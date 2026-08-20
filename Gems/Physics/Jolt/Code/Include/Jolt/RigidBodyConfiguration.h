@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/BodyConfiguration.h>
 #include <Jolt/TypeIds.h>
 
@@ -24,7 +26,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(RigidBodyConfiguration, RigidBodyConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         BodyRuntimeConfiguration m_runtime;
         AZ::Vector3 m_initialLinearVelocity = AZ::Vector3::CreateZero();
@@ -43,7 +45,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(StaticRigidBodyConfiguration, StaticRigidBodyConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         CollisionGroupConfiguration m_collisionGroup;
         AZ::u64 m_userData = 0;

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/PathBus.h>
 #include <Jolt/TypeIds.h>
 
@@ -16,7 +17,7 @@ namespace Jolt
 {
     class ISystem;
 
-    class PathComponent final
+    class JOLT_API PathComponent final
         : public AZ::Component
         , public PathRequestBus::Handler
     {

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <AzCore/Jobs/Job.h>
 #include <AzCore/base.h>
 #include <AzCore/std/containers/vector.h>
@@ -23,7 +24,7 @@ namespace AZ
 
 namespace Jolt
 {
-    class JobSystem final
+    class JOLT_API JobSystem final
         : public JPH::JobSystemWithBarrier
     {
     public:

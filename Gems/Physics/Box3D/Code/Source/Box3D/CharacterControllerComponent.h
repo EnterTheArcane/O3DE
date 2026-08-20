@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Box3D/Configuration.h>
 #include <Box3D/CharacterBus.h>
 #include <Box3D/TypeIds.h>
 
@@ -18,7 +19,7 @@ namespace Box3D
 {
     class ISystem;
 
-    class CharacterControllerComponent final
+    class BOX3D_API CharacterControllerComponent final
         : public AZ::Component
         , public CharacterRequestBus::Handler
         , private CharacterNotificationBus::Handler

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/ComponentDependencyManager.h>
 #include <Jolt/TypeIds.h>
 #include <Jolt/VehicleBus.h>
@@ -19,7 +20,7 @@ namespace Jolt
 {
     class ISystem;
 
-    class VehicleComponentBase
+    class JOLT_API VehicleComponentBase
         : private IBodyDependencyClient
     {
     public:
@@ -153,7 +154,7 @@ namespace Jolt
         bool m_enabled = true;
     };
 
-    class WheeledVehicleComponent final
+    class JOLT_API WheeledVehicleComponent final
         : public AZ::Component
         , public WheeledVehicleRequestBus::Handler
         , private VehicleComponentBase
@@ -281,7 +282,7 @@ namespace Jolt
         AZStd::unique_ptr<WheeledVehicleComponentConfiguration> m_configuration;
     };
 
-    class MotorcycleComponent final
+    class JOLT_API MotorcycleComponent final
         : public AZ::Component
         , public MotorcycleRequestBus::Handler
         , private VehicleComponentBase
@@ -412,7 +413,7 @@ namespace Jolt
         AZStd::unique_ptr<MotorcycleComponentConfiguration> m_configuration;
     };
 
-    class TrackedVehicleComponent final
+    class JOLT_API TrackedVehicleComponent final
         : public AZ::Component
         , public TrackedVehicleRequestBus::Handler
         , private VehicleComponentBase

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Box3D/Configuration.h>
 #include <Box3D/CharacterConfiguration.h>
 #include <Box3D/Events.h>
 #include <Box3D/Handle.h>

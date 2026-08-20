@@ -7,13 +7,14 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetTypeInfoBus.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
 namespace Jolt
 {
-    class SceneAssetHandler final
+    class JOLT_API SceneAssetHandler final
         : public AZ::Data::AssetHandler
         , public AZ::AssetTypeInfoBus::Handler
     {

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/BodyBus.h>
 #include <Jolt/CharacterBus.h>
 #include <Jolt/CharacterConfiguration.h>
@@ -20,7 +21,7 @@ namespace Jolt
     class ColliderComponent;
     class ISystem;
 
-    class CharacterControllerComponent final
+    class JOLT_API CharacterControllerComponent final
         : public AZ::Component
         , public CharacterRequestBus::Handler
         , public BodyRequestBus::Handler

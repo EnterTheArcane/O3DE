@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/CustomShape.h>
 #include <Jolt/Handle.h>
 #include <Jolt/Query.h>
@@ -93,7 +95,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(CookedShapeArchive, CookedShapeArchiveTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZStd::vector<AZ::u8> m_binaryState;
         AZStd::vector<CustomShapeDependency> m_dependencies;

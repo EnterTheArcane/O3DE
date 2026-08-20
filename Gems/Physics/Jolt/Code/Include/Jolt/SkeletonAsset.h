@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/Skeleton.h>
 #include <Jolt/TypeIds.h>
 
@@ -84,14 +85,14 @@ namespace Jolt
     {
         AZ_TYPE_INFO(SkeletonAssetData, SkeletonAssetDataTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         SkeletonDefinitionArchive m_skeleton;
         AZStd::vector<NamedSkeletalAnimationAsset> m_animations;
         AZ::Name m_name;
     };
 
-    class SkeletonAsset final
+    class JOLT_API SkeletonAsset final
         : public AZ::Data::AssetData
     {
     public:

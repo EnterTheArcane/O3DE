@@ -8,10 +8,10 @@
 #include <Jolt/FloatEnvironment.h>
 #include <Jolt/JobSystem.h>
 #include <Jolt/NativeRuntime.h>
+#include <Jolt/SystemInternal.h>
 
 #include <Jolt/Geometry/RayAABox.h>
 #include <Jolt/Physics/Collision/Shape/ScaleHelpers.h>
-#include <Jolt/Physics/Collision/CollideSoftBodyVerticesVsTriangles.h>
 
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobManager.h>
@@ -126,9 +126,7 @@ namespace Jolt
 
         ASSERT_TRUE(first);
         ASSERT_TRUE(second);
-        EXPECT_EQ(
-            JPH::CollideSoftBodyVerticesVsTriangles::sTriangleThickness,
-            triangleThickness);
+        EXPECT_EQ(GetSoftBodyTriangleThickness(), triangleThickness);
 
         AZ_TEST_START_TRACE_SUPPRESSION;
         NativeRuntime conflicting(0.5f);
@@ -150,32 +148,39 @@ namespace Jolt
         EXPECT_FALSE(nonFinite);
     }
 
-    TEST(NativeRuntimeTests, WaitsForProviderTasksBeforeJobSystemDestruction)
+    TEST(NativeRuntimeTests, CompletesProviderTasksBeforeSystemDestruction)
     {
-        NativeRuntime runtime;
-        ASSERT_TRUE(runtime);
-
         AZ::JobManagerDesc jobManagerDescriptor;
         jobManagerDescriptor.m_workerThreads.resize(4);
         AZ::JobManager jobManager(jobManagerDescriptor);
         AZ::JobContext jobContext(jobManager);
 
-        for (AZ::u32 iteration = 0; iteration < 100; ++iteration)
+        for (AZ::u32 iteration = 0; iteration < 20; ++iteration)
         {
-            JobSystem jobSystem(1'024, 8, 4, &jobContext);
-            JPH::JobSystem::Barrier* barrier = jobSystem.CreateBarrier();
-            ASSERT_TRUE(barrier);
+            System system(SystemConfiguration{}, &jobContext, SystemRegistration::Isolated);
+            ASSERT_TRUE(system);
+
+            const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+            ShapeConfiguration shapeConfiguration;
+            shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+            const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+            ASSERT_TRUE(shapeHandle);
+
+            constexpr AZ::u32 bodyCount = 64;
+            for (AZ::u32 bodyIndex = 0; bodyIndex < bodyCount; ++bodyIndex)
             {
-                JPH::JobHandle job = jobSystem.CreateJob(
-                    "Lifetime validation",
-                    JPH::Color::sWhite,
-                    []() {},
-                    0);
-                ASSERT_TRUE(job.IsValid());
-                barrier->AddJob(job);
-                jobSystem.WaitForJobs(barrier);
+                BodyConfiguration bodyConfiguration;
+                bodyConfiguration.m_shapeHandle = shapeHandle;
+                bodyConfiguration.m_transform.m_position = {
+                    .m_x = aznumeric_cast<double>(bodyIndex % 8),
+                    .m_y = aznumeric_cast<double>(bodyIndex / 8),
+                    .m_z = 1.0,
+                };
+                ASSERT_TRUE(system.CreateBody(worldHandle, bodyConfiguration));
             }
-            jobSystem.DestroyBarrier(barrier);
+
+            EXPECT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
         }
     }
 

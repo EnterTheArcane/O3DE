@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/Handle.h>
 #include <Jolt/Collision.h>
 #include <Jolt/TypeIds.h>
@@ -603,7 +604,7 @@ namespace Jolt
 
     //! Immutable shape lease. Explicit shape and world destruction fail while a lease exists.
     //! Forced system shutdown invalidates world queries, but outstanding lease values remain safe to destroy.
-    class TransformedShape final
+    class JOLT_API TransformedShape final
     {
     public:
         AZ_TYPE_INFO(TransformedShape, TransformedShapeTypeId);

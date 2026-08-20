@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Box3D/Configuration.h>
 #include <Box3D/Joints.h>
 #include <Box3D/ShapeConfiguration.h>
 #include <Box3D/Statistics.h>
@@ -1143,12 +1144,12 @@ namespace Box3D
         IDebugRenderer& renderer);
 
     [[nodiscard]]
-    WorldId CreateWorld(const NativeWorldConfiguration& configuration);
+    BOX3D_API WorldId CreateWorld(const NativeWorldConfiguration& configuration);
 
-    void DestroyWorld(WorldId worldId);
+    BOX3D_API void DestroyWorld(WorldId worldId);
 
     [[nodiscard]]
-    bool IsValid(WorldId worldId);
+    BOX3D_API bool IsValid(WorldId worldId);
 
     void Step(
         WorldId worldId,
@@ -1176,7 +1177,7 @@ namespace Box3D
     AZ::Aabb GetWorldAabb(WorldId worldId);
 
     [[nodiscard]]
-    bool RebuildStaticTree(WorldId worldId);
+    BOX3D_API bool RebuildStaticTree(WorldId worldId);
 
     [[nodiscard]]
     bool Explode(
@@ -1280,7 +1281,7 @@ namespace Box3D
         void* context);
 
     [[nodiscard]]
-    bool CastRayClosest(
+    BOX3D_API bool CastRayClosest(
         WorldId worldId,
         const AZ::Vector3& start,
         const AZ::Vector3& translation,
@@ -1358,7 +1359,7 @@ namespace Box3D
         CastCallback callback,
         void* context);
 
-    TreeVisitStatistics OverlapShape(
+    BOX3D_API TreeVisitStatistics OverlapShape(
         WorldId worldId,
         const AZ::Vector3& origin,
         AZStd::span<const AZ::Vector3> points,
@@ -1399,14 +1400,14 @@ namespace Box3D
         void* context = nullptr);
 
     [[nodiscard]]
-    BodyId CreateBody(
+    BOX3D_API BodyId CreateBody(
         WorldId worldId,
         const BodyConfiguration& configuration);
 
     void DestroyBody(BodyId bodyId);
 
     [[nodiscard]]
-    bool IsValid(BodyId bodyId);
+    BOX3D_API bool IsValid(BodyId bodyId);
 
     [[nodiscard]]
     NativeBodyType GetBodyType(BodyId bodyId);
@@ -1651,7 +1652,7 @@ namespace Box3D
         const AZ::Vector3& center2,
         float radius);
     [[nodiscard]]
-    ShapeId CreateBoxShape(
+    BOX3D_API ShapeId CreateBoxShape(
         BodyId bodyId,
         const NativeShapeConfiguration& configuration,
         const AZ::Vector3& halfExtents,
@@ -1731,7 +1732,7 @@ namespace Box3D
         ShapeId shapeId,
         bool updateBodyMass = true);
     [[nodiscard]]
-    bool IsValid(ShapeId shapeId);
+    BOX3D_API bool IsValid(ShapeId shapeId);
     [[nodiscard]]
     bool GetShapeState(
         ShapeId shapeId,

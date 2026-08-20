@@ -24,7 +24,7 @@ namespace Box3D
 {
     class World;
 
-    class System final
+    class BOX3D_API System final
         : public AZ::Interface<ISystem>::Registrar
         , public AZ::Interface<ICooking>::Registrar
         , public AZ::Interface<IDiagnostics>::Registrar

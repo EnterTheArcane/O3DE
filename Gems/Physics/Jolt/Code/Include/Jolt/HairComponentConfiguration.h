@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/Hair.h>
 #include <Jolt/TypeIds.h>
 
@@ -18,7 +19,7 @@
 
 namespace Jolt
 {
-    struct HairComponentConfiguration final
+    struct JOLT_API HairComponentConfiguration final
     {
         AZ_TYPE_INFO(HairComponentConfiguration, HairComponentConfigurationTypeId);
         AZ_CLASS_ALLOCATOR(HairComponentConfiguration, AZ::SystemAllocator);

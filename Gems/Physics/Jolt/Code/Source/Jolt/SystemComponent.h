@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/SystemConfiguration.h>
 #include <Jolt/SkeletonBus.h>
 #include <Jolt/TypeIds.h>
@@ -23,7 +24,7 @@ namespace Jolt
     class SceneAssetHandler;
     class SkeletonAssetHandler;
 
-    class SystemComponent final
+    class JOLT_API SystemComponent final
         : public AZ::Component
         , private AZ::TickBus::Handler
         , private SkeletonRequestBus::Handler

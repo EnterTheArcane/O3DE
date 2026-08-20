@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/SkeletonComponentBus.h>
 #include <Jolt/SkeletonComponentConfiguration.h>
 #include <Jolt/TypeIds.h>
@@ -19,7 +20,7 @@ namespace Jolt
 {
     class ISystem;
 
-    class SkeletonComponent final
+    class JOLT_API SkeletonComponent final
         : public AZ::Component
         , public SkeletonComponentRequestBus::Handler
         , private AZ::Data::AssetBus::Handler

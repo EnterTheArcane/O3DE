@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Box3D/Configuration.h>
 #include <Box3D/Events.h>
 #include <Box3D/TypeIds.h>
 
@@ -37,13 +38,13 @@ namespace Box3D
         AZ_CLASS_ALLOCATOR_DECL;
         AZ_TYPE_INFO(SystemConfiguration, SystemConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        BOX3D_API static void Reflect(AZ::ReflectContext* context);
 
         static constexpr AZ::u32 DefaultWorkerCount = 4;
 
-        bool operator==(const SystemConfiguration& other) const;
+        BOX3D_API bool operator==(const SystemConfiguration& other) const;
 
-        bool operator!=(const SystemConfiguration& other) const;
+        BOX3D_API bool operator!=(const SystemConfiguration& other) const;
 
         AZ::u32 m_subStepCount = 4;
         AZ::u32 m_workerCount = DefaultWorkerCount;

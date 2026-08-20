@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/Handle.h>
 #include <Jolt/TypeIds.h>
 
@@ -35,10 +37,10 @@ namespace Jolt
     {
         AZ_TYPE_INFO(HermitePathConfiguration, HermitePathConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         [[nodiscard]]
-        static HermitePathConfiguration CreateDefault();
+        JOLT_API static HermitePathConfiguration CreateDefault();
 
         AZStd::vector<HermitePathPoint> m_points;
         bool m_isLooping = false;

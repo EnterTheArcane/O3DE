@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/ComponentDependencyManager.h>
 #include <Jolt/ConstraintBus.h>
 #include <Jolt/ConstraintComponentConfiguration.h>
@@ -42,7 +43,7 @@ namespace Jolt
             IConstraintDependencyClient& client) const = 0;
     };
 
-    class ConstraintComponent final
+    class JOLT_API ConstraintComponent final
         : public AZ::Component
         , public ConstraintRequestBus::Handler
         , private IConstraintDependencyClient

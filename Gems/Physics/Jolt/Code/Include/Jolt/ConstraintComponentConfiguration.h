@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/Constraint.h>
 
 #include <AzCore/Component/EntityId.h>
@@ -76,7 +78,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(ConstraintComponentConfiguration, ConstraintComponentConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZ::EntityId m_firstBodyEntityId = AZ::EntityId();
         AZ::EntityId m_secondBodyEntityId = AZ::EntityId();

@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/CustomShape.h>
 #include <Jolt/Handle.h>
 #include <Jolt/TypeIds.h>
@@ -260,7 +262,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(ShapeConfiguration, ShapeConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         ShapeGeometry m_geometry;
         AZStd::vector<MaterialHandle> m_materials;

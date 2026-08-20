@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/BodyBus.h>
 #include <Jolt/RagdollBus.h>
 #include <Jolt/RagdollComponentConfiguration.h>
@@ -20,7 +21,7 @@ namespace Jolt
 {
     class ISystem;
 
-    class RagdollComponent final
+    class JOLT_API RagdollComponent final
         : public AZ::Component
         , public RagdollRequestBus::Handler
         , private BodyNotificationBus::Handler

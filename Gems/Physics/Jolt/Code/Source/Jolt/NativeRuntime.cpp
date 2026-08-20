@@ -326,6 +326,11 @@ namespace Jolt
         return statistics;
     }
 
+    float GetSoftBodyTriangleThickness()
+    {
+        return JPH::CollideSoftBodyVerticesVsTriangles::sTriangleThickness;
+    }
+
     NativeRuntime::NativeRuntime(
         const float softBodyTriangleThickness)
         : m_initialized(AcquireNativeRuntime(softBodyTriangleThickness))

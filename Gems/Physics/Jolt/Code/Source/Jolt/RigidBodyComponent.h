@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/RigidBodyBus.h>
 #include <Jolt/RigidBodyConfiguration.h>
 #include <Jolt/TypeIds.h>
@@ -19,7 +20,7 @@ namespace Jolt
     class ColliderComponent;
     class ISystem;
 
-    class RigidBodyComponent final
+    class JOLT_API RigidBodyComponent final
         : public AZ::Component
         , public RigidBodyRequestBus::Handler
         , public BodyRequestBus::Handler

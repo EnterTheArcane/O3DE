@@ -6,37 +6,26 @@
 #
 
 ly_add_target(
-    NAME ${gem_name}.API INTERFACE
+    NAME ${gem_name}.API ${PAL_TRAIT_MONOLITHIC_DRIVEN_LIBRARY_TYPE}
     NAMESPACE Gem
     FILES_CMAKE
         box3d_api_files.cmake
-    INCLUDE_DIRECTORIES
-        INTERFACE
-            Include
-    BUILD_DEPENDENCIES
-        INTERFACE
-            AZ::AzCore
-)
-
-ly_add_target(
-    NAME ${gem_name}.Private.Static STATIC
-    NAMESPACE Gem
-    FILES_CMAKE
         box3d_private_files.cmake
-    TARGET_PROPERTIES
-        O3DE_PRIVATE_TARGET TRUE
+    COMPILE_DEFINITIONS
+        PRIVATE
+            BOX3D_API_EXPORTS
     INCLUDE_DIRECTORIES
         PRIVATE
-            Include
             Source
+        PUBLIC
+            Include
     BUILD_DEPENDENCIES
         PUBLIC
             AZ::AzCore
         PRIVATE
             3rdParty::Box3D
-            Gem::${gem_name}.API
 )
-set_property(TARGET ${gem_name}.Private.Static PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+set_property(TARGET ${gem_name}.API PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 
 ly_add_target(
     NAME ${gem_name}.Module ${PAL_TRAIT_MONOLITHIC_DRIVEN_MODULE_TYPE}
@@ -51,8 +40,6 @@ ly_add_target(
     BUILD_DEPENDENCIES
         PUBLIC
             Gem::${gem_name}.API
-        PRIVATE
-            Gem::${gem_name}.Private.Static
 )
 
 # Keep the Gem's canonical target while avoiding a case-insensitive project-name collision with upstream's `box3d` target.
@@ -91,7 +78,7 @@ if(PAL_TRAIT_BUILD_HOST_TOOLS)
             PUBLIC
                 AZ::AzFramework
                 AZ::AzToolsFramework
-                Gem::${gem_name}.Private.Static
+                Gem::${gem_name}.API
     )
 
     ly_add_target(
@@ -146,7 +133,7 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
             PRIVATE
                 AZ::AzTest
                 AZ::AzFramework
-                Gem::${gem_name}.Private.Static
+                Gem::${gem_name}.API
     )
 
     ly_add_googletest(NAME Gem::${gem_name}.Tests)

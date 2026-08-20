@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/HairBus.h>
 #include <Jolt/HairComponentConfiguration.h>
 #include <Jolt/TypeIds.h>
@@ -19,7 +20,7 @@ namespace Jolt
 {
     class ISystem;
 
-    class HairComponent final
+    class JOLT_API HairComponent final
         : public AZ::Component
         , public HairRequestBus::Handler
         , private AZ::TransformNotificationBus::Handler

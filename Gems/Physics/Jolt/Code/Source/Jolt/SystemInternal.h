@@ -50,7 +50,7 @@ namespace Jolt
     class DebugRenderer;
     class World;
 
-    class System final
+    class JOLT_API System final
         : public ISystem
         , public ICooking
     {

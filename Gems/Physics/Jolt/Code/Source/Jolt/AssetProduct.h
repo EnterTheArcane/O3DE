@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <AzCore/RTTI/TypeInfoSimple.h>
 #include <AzCore/std/string/string.h>
 
@@ -23,21 +25,21 @@ namespace AZ::IO
 namespace Jolt
 {
     [[nodiscard]]
-    bool SaveAssetProduct(
+    JOLT_API bool SaveAssetProduct(
         const AZStd::string& path,
         const void* asset,
         const AZ::TypeId& assetType,
         AZ::SerializeContext& serializeContext);
 
     [[nodiscard]]
-    bool LoadAssetProduct(
+    JOLT_API bool LoadAssetProduct(
         AZ::IO::GenericStream& stream,
         void* asset,
         const AZ::TypeId& assetType,
         AZ::SerializeContext* serializeContext = nullptr);
 
     [[nodiscard]]
-    bool LoadAssetProductFile(
+    JOLT_API bool LoadAssetProductFile(
         const AZStd::string& path,
         void* asset,
         const AZ::TypeId& assetType,

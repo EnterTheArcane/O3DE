@@ -7,12 +7,12 @@
 
 #pragma once
 
-#include <Jolt/System.h>
+#include <AzCore/PlatformDef.h>
 
-#include <AzCore/std/smart_ptr/unique_ptr.h>
-
-namespace Jolt
-{
-    [[nodiscard]]
-    JOLT_API AZStd::unique_ptr<ISystem> CreateAssetBuilderSystem();
-} // namespace Jolt
+#if defined(AZ_MONOLITHIC_BUILD)
+    #define BOX3D_API
+#elif defined(BOX3D_API_EXPORTS)
+    #define BOX3D_API AZ_DLL_EXPORT
+#else
+    #define BOX3D_API AZ_DLL_IMPORT
+#endif

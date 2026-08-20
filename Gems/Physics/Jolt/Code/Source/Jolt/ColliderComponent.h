@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/ColliderBus.h>
 #include <Jolt/ShapeOwner.h>
 #include <Jolt/TypeIds.h>
@@ -21,7 +22,7 @@ namespace Jolt
     class StaticRigidBodyComponent;
     class CharacterControllerComponent;
 
-    class ColliderComponent final
+    class JOLT_API ColliderComponent final
         : public AZ::Component
         , public ColliderRequestBus::Handler
     {

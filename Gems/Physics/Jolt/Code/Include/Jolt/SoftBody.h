@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/Rollback.h>
 
 #include <Jolt/Collision.h>
@@ -284,7 +286,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(SoftBodyDefinitionArchive, SoftBodyDefinitionArchiveTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZStd::vector<AZ::u8> m_binaryState;
         AZ::u64 m_buildFingerprint = 0;

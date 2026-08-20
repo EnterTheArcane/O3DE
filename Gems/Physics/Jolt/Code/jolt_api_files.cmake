@@ -6,6 +6,7 @@
 #
 
 set(FILES
+    Include/Jolt/Configuration.h
     Include/Jolt/BodyConfiguration.h
     Include/Jolt/BodyCollision.h
     Include/Jolt/BodyBus.h

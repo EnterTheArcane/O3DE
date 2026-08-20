@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/BodyConfiguration.h>
 #include <Jolt/ConstraintComponentConfiguration.h>
 #include <Jolt/Cooking.h>
@@ -207,7 +208,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(SceneAssetData, SceneAssetDataTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZStd::vector<MaterialConfiguration> m_materials;
         AZStd::vector<SceneAssetShape> m_shapes;
@@ -233,7 +234,7 @@ namespace Jolt
         AZ::Name m_name;
     };
 
-    class SceneAsset final
+    class JOLT_API SceneAsset final
         : public AZ::Data::AssetData
     {
     public:

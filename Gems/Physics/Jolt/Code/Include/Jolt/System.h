@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/BodyConfiguration.h>
 #include <Jolt/BodyCollision.h>
 #include <Jolt/Character.h>

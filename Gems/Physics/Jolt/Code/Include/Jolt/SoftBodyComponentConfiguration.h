@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/Material.h>
 #include <Jolt/SoftBody.h>
 #include <Jolt/TypeIds.h>
@@ -18,7 +19,7 @@
 
 namespace Jolt
 {
-    struct SoftBodyComponentConfiguration final
+    struct JOLT_API SoftBodyComponentConfiguration final
     {
         AZ_TYPE_INFO(SoftBodyComponentConfiguration, SoftBodyComponentConfigurationTypeId);
         AZ_CLASS_ALLOCATOR(SoftBodyComponentConfiguration, AZ::SystemAllocator);

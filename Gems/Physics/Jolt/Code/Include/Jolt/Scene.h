@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/BodyConfiguration.h>
 #include <Jolt/Constraint.h>
 #include <Jolt/Handle.h>
@@ -54,7 +56,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(SceneConfiguration, SceneConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZStd::vector<SceneBodyConfiguration> m_bodies;
         AZStd::vector<SceneConstraintConfiguration> m_constraints;

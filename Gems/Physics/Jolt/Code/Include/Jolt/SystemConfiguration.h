@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/TypeIds.h>
 #include <Jolt/Collision.h>
 #include <Jolt/WorldTypes.h>
@@ -38,7 +40,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(SimulationConfiguration, SimulationConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         [[nodiscard]]
         constexpr bool operator==(const SimulationConfiguration&) const = default;
@@ -77,7 +79,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(WorldCapacity, WorldCapacityTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZ::u32 m_maxBodies = 65'536;
         AZ::u32 m_bodyMutexCount = 0;
@@ -92,7 +94,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(WorldRuntimeConfiguration, WorldRuntimeConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         [[nodiscard]]
         constexpr bool operator==(const WorldRuntimeConfiguration&) const = default;
@@ -116,7 +118,7 @@ namespace Jolt
         AZ_CLASS_ALLOCATOR_DECL;
         AZ_TYPE_INFO(WorldConfiguration, WorldConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZ::Name m_name;
         WorldPosition m_origin;
@@ -159,7 +161,7 @@ namespace Jolt
         AZ_CLASS_ALLOCATOR_DECL;
         AZ_TYPE_INFO(SystemConfiguration, SystemConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         WorldConfiguration m_defaultWorld;
 

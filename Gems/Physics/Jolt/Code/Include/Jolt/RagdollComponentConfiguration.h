@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/ColliderBus.h>
 #include <Jolt/Ragdoll.h>
 #include <Jolt/RigidBodyConfiguration.h>
@@ -33,7 +34,7 @@ namespace Jolt
         MotionType m_motionType = MotionType::Dynamic;
     };
 
-    struct RagdollComponentConfiguration final
+    struct JOLT_API RagdollComponentConfiguration final
     {
         AZ_TYPE_INFO(RagdollComponentConfiguration, RagdollComponentConfigurationTypeId);
         AZ_CLASS_ALLOCATOR(RagdollComponentConfiguration, AZ::SystemAllocator);

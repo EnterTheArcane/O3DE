@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/DebugDraw.h>
 
 #include <AzCore/std/containers/vector.h>
@@ -17,7 +18,7 @@
 
 namespace Jolt
 {
-    class DebugBatch final
+    class JOLT_API DebugBatch final
         : public JPH::RefTargetVirtual
     {
     public:
@@ -36,7 +37,7 @@ namespace Jolt
         JPH::atomic<JPH::uint32> m_referenceCount = 0;
     };
 
-    class DebugCapture final
+    class JOLT_API DebugCapture final
     {
     public:
         DebugCapture() = default;

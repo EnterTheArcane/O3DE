@@ -26,8 +26,6 @@
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/thread.h>
 
-#include <Jolt/Core/Memory.h>
-
 #include <cfenv>
 #include <chrono>
 #include <cmath>
@@ -51,11 +49,6 @@ namespace Jolt
         inline constexpr AZ::TypeId RecordingBodyPairColliderStateTypeId{"{A100000D-010D-410D-810D-00000000000D}"};
         inline constexpr AZ::TypeId InvalidBodyPairColliderStateTypeId{"{A100000E-010E-410E-810E-00000000000E}"};
 
-        JPH::AllocateFunction s_originalNativeAllocate = nullptr;
-        JPH::ReallocateFunction s_originalNativeReallocate = nullptr;
-        JPH::AlignedAllocateFunction s_originalNativeAlignedAllocate = nullptr;
-        AZStd::atomic_size_t s_nativeAllocationCount = 0;
-
         [[nodiscard]]
         bool IsFiniteWorldPosition(
             const WorldPosition& position)
@@ -65,49 +58,18 @@ namespace Jolt
                 && std::isfinite(position.m_z);
         }
 
-        void* CountNativeAllocation(
-            const size_t size)
-        {
-            s_nativeAllocationCount.fetch_add(1, AZStd::memory_order_relaxed);
-            return s_originalNativeAllocate(size);
-        }
-
-        void* CountNativeReallocation(
-            void* memory,
-            const size_t oldSize,
-            const size_t newSize)
-        {
-            s_nativeAllocationCount.fetch_add(1, AZStd::memory_order_relaxed);
-            return s_originalNativeReallocate(memory, oldSize, newSize);
-        }
-
-        void* CountNativeAlignedAllocation(
-            const size_t size,
-            const size_t alignment)
-        {
-            s_nativeAllocationCount.fetch_add(1, AZStd::memory_order_relaxed);
-            return s_originalNativeAlignedAllocate(size, alignment);
-        }
-
         class NativeAllocationCounterScope final
         {
         public:
             NativeAllocationCounterScope()
             {
-                s_originalNativeAllocate = JPH::Allocate;
-                s_originalNativeReallocate = JPH::Reallocate;
-                s_originalNativeAlignedAllocate = JPH::AlignedAllocate;
-                s_nativeAllocationCount.store(0, AZStd::memory_order_relaxed);
-                JPH::Allocate = CountNativeAllocation;
-                JPH::Reallocate = CountNativeReallocation;
-                JPH::AlignedAllocate = CountNativeAlignedAllocation;
+                AcquireNativeMemoryStatistics();
+                [[maybe_unused]] const NativeMemoryStatistics initialStatistics = GetNativeMemoryStatistics(true);
             }
 
             ~NativeAllocationCounterScope()
             {
-                JPH::Allocate = s_originalNativeAllocate;
-                JPH::Reallocate = s_originalNativeReallocate;
-                JPH::AlignedAllocate = s_originalNativeAlignedAllocate;
+                ReleaseNativeMemoryStatistics();
             }
 
             AZ_DISABLE_COPY_MOVE(NativeAllocationCounterScope);
@@ -115,7 +77,8 @@ namespace Jolt
             [[nodiscard]]
             size_t GetAllocationCount() const
             {
-                return s_nativeAllocationCount.load(AZStd::memory_order_relaxed);
+                const NativeMemoryStatistics statistics = GetNativeMemoryStatistics(false);
+                return statistics.m_allocationCount + statistics.m_reallocationCount;
             }
         };
 

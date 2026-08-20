@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Box3D/Configuration.h>
 #include <Box3D/RigidBodyBus.h>
 #include <Box3D/TypeIds.h>
 
@@ -18,7 +19,7 @@ namespace Box3D
 {
     class ColliderComponent;
 
-    class StaticRigidBodyComponent final
+    class BOX3D_API StaticRigidBodyComponent final
         : public AZ::Component
         , public RigidBodyRequestBus::Handler
         , private AZ::TransformNotificationBus::Handler

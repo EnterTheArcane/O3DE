@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/Handle.h>
 #include <Jolt/TypeIds.h>
 #include <Jolt/WorldTypes.h>
@@ -38,7 +40,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(SkeletonDefinitionConfiguration, SkeletonDefinitionConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZStd::vector<SkeletonJoint> m_joints;
     };
@@ -145,7 +147,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(SkeletalAnimationConfiguration, SkeletalAnimationConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZStd::vector<SkeletalAnimatedJoint> m_joints;
         bool m_isLooping = true;

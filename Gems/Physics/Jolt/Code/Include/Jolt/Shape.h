@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/Query.h>
 #include <Jolt/TypeIds.h>
 #include <Jolt/WorldTypes.h>
@@ -28,7 +30,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(ShapeStats, ShapeStatsTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZ::Aabb m_localBounds = AZ::Aabb::CreateNull();
         AZ::u64 m_memorySize = 0;

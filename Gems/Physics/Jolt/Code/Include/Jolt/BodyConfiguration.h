@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/Collision.h>
 #include <Jolt/Handle.h>
 #include <Jolt/TypeIds.h>
@@ -46,7 +48,7 @@ namespace Jolt
             }
         }
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         [[nodiscard]]
         constexpr bool IsValid() const noexcept

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/System.h>
 
 #include <AzCore/base.h>
@@ -23,16 +24,19 @@ namespace Jolt
     };
 
     [[nodiscard]]
-    AZ::u64 GetNativeBuildFingerprint();
+    JOLT_API AZ::u64 GetNativeBuildFingerprint();
 
-    void AcquireNativeMemoryStatistics();
+    JOLT_API void AcquireNativeMemoryStatistics();
 
-    void ReleaseNativeMemoryStatistics();
+    JOLT_API void ReleaseNativeMemoryStatistics();
 
     [[nodiscard]]
-    NativeMemoryStatistics GetNativeMemoryStatistics(bool reset);
+    JOLT_API NativeMemoryStatistics GetNativeMemoryStatistics(bool reset);
 
-    class NativeRuntime final
+    [[nodiscard]]
+    JOLT_API float GetSoftBodyTriangleThickness();
+
+    class JOLT_API NativeRuntime final
     {
     public:
         explicit NativeRuntime(float softBodyTriangleThickness = 0.1f);

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Box3D/Configuration.h>
 #include <Box3D/JointBus.h>
 #include <Box3D/RigidBodyBus.h>
 #include <Box3D/TypeIds.h>
@@ -17,7 +18,7 @@ namespace Box3D
 {
     class System;
 
-    class JointComponent final
+    class BOX3D_API JointComponent final
         : public AZ::Component
         , public JointRequestBus::Handler
         , private RigidBodyNotificationBus::MultiHandler

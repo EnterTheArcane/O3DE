@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/SceneBus.h>
 #include <Jolt/SceneComponentConfiguration.h>
 #include <Jolt/TypeIds.h>
@@ -19,7 +20,7 @@ namespace Jolt
 {
     class ISystem;
 
-    class SceneComponent final
+    class JOLT_API SceneComponent final
         : public AZ::Component
         , public SceneRequestBus::Handler
         , private AZ::Data::AssetBus::Handler

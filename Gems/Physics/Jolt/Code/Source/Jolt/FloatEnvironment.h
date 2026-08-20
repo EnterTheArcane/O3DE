@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <AzCore/base.h>
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/exponential_backoff.h>
@@ -27,7 +29,7 @@ namespace Jolt
         AZ::u64 m_waitNanoseconds = 0;
     };
 
-    class FloatEnvironment final
+    class JOLT_API FloatEnvironment final
     {
     public:
         FloatEnvironment() = default;
@@ -52,7 +54,7 @@ namespace Jolt
         bool m_active = false;
     };
 
-    class DeterministicFloatScope final
+    class JOLT_API DeterministicFloatScope final
     {
     public:
         DeterministicFloatScope();
@@ -64,7 +66,7 @@ namespace Jolt
         FloatEnvironment m_environment;
     };
 
-    class DeterministicWorldMutex final
+    class JOLT_API DeterministicWorldMutex final
     {
     public:
         DeterministicWorldMutex() = default;
@@ -112,7 +114,7 @@ namespace Jolt
         size_t m_stateWriteDepth = 0;
     };
 
-    class DeterministicWorldQueryLock final
+    class JOLT_API DeterministicWorldQueryLock final
     {
     public:
         explicit DeterministicWorldQueryLock(DeterministicWorldMutex& mutex);
@@ -124,7 +126,7 @@ namespace Jolt
         AZStd::shared_lock<DeterministicWorldMutex> m_lock;
     };
 
-    class DeterministicSimulationLock final
+    class JOLT_API DeterministicSimulationLock final
     {
     public:
         explicit DeterministicSimulationLock(DeterministicWorldMutex& mutex);

@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/SkeletonAsset.h>
 #include <Jolt/TypeIds.h>
 
@@ -20,7 +22,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(SkeletonComponentConfiguration, SkeletonComponentConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZ::Data::Asset<SkeletonAsset> m_asset{AZ::Data::AssetLoadBehavior::NoLoad};
     };

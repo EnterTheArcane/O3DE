@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/Rollback.h>
 
 #include <Jolt/Handle.h>
@@ -43,7 +45,7 @@ namespace Jolt
         {
         }
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZ_TYPE_INFO(CollisionGroupId, "{49E28882-920E-4147-978A-2064CB194ED1}");
 
@@ -87,7 +89,7 @@ namespace Jolt
         {
         }
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZ_TYPE_INFO(CollisionSubGroupId, "{5AC1A651-408B-4FFC-821F-397628FB492E}");
 
@@ -120,7 +122,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(SubGroupPair, SubGroupPairTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         CollisionSubGroupId m_first;
         CollisionSubGroupId m_second;
@@ -130,7 +132,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(GroupFilterTableConfiguration, GroupFilterTableConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZ::u32 m_subGroupCount = 0;
         AZStd::vector<SubGroupPair> m_disabledPairs;
@@ -163,7 +165,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(CollisionGroupConfiguration, CollisionGroupConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         GroupFilterHandle m_filterHandle;
         CollisionGroupId m_groupId;
@@ -187,7 +189,7 @@ namespace Jolt
 
         AZ_TYPE_INFO(BroadPhaseLayer, BroadPhaseLayerTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         [[nodiscard]]
         constexpr ValueType GetValue() const noexcept
@@ -231,7 +233,7 @@ namespace Jolt
 
         AZ_TYPE_INFO(ObjectLayer, ObjectLayerTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         [[nodiscard]]
         constexpr ValueType GetValue() const noexcept
@@ -274,7 +276,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(BroadPhaseLayerConfiguration, BroadPhaseLayerConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZ::Name m_name;
     };
@@ -283,7 +285,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(ObjectLayerConfiguration, ObjectLayerConfigurationTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         AZ::Name m_name;
         AZStd::vector<ObjectLayer> m_collidesWith;

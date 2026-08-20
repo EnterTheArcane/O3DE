@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/SoftBodyBus.h>
 #include <Jolt/SoftBodyComponentConfiguration.h>
 #include <Jolt/TypeIds.h>
@@ -19,7 +20,7 @@ namespace Jolt
 {
     class ISystem;
 
-    class SoftBodyComponent final
+    class JOLT_API SoftBodyComponent final
         : public AZ::Component
         , public SoftBodyRequestBus::Handler
         , public BodyRequestBus::Handler

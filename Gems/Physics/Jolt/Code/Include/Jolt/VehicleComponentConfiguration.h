@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/TypeIds.h>
 #include <Jolt/Vehicle.h>
 
@@ -16,7 +17,7 @@
 
 namespace Jolt
 {
-    struct WheeledVehicleComponentConfiguration final
+    struct JOLT_API WheeledVehicleComponentConfiguration final
     {
         AZ_TYPE_INFO(WheeledVehicleComponentConfiguration, WheeledVehicleComponentConfigurationTypeId);
         AZ_CLASS_ALLOCATOR(WheeledVehicleComponentConfiguration, AZ::SystemAllocator);
@@ -30,7 +31,7 @@ namespace Jolt
         bool m_enabled = true;
     };
 
-    struct MotorcycleComponentConfiguration final
+    struct JOLT_API MotorcycleComponentConfiguration final
     {
         AZ_TYPE_INFO(MotorcycleComponentConfiguration, MotorcycleComponentConfigurationTypeId);
         AZ_CLASS_ALLOCATOR(MotorcycleComponentConfiguration, AZ::SystemAllocator);
@@ -44,7 +45,7 @@ namespace Jolt
         bool m_enabled = true;
     };
 
-    struct TrackedVehicleComponentConfiguration final
+    struct JOLT_API TrackedVehicleComponentConfiguration final
     {
         AZ_TYPE_INFO(TrackedVehicleComponentConfiguration, TrackedVehicleComponentConfigurationTypeId);
         AZ_CLASS_ALLOCATOR(TrackedVehicleComponentConfiguration, AZ::SystemAllocator);

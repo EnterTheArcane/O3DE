@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
+
 #include <Jolt/TypeIds.h>
 
 #include <AzCore/Math/Quaternion.h>
@@ -23,7 +25,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(WorldPosition, WorldPositionTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         [[nodiscard]]
         constexpr bool operator==(const WorldPosition&) const = default;
@@ -37,7 +39,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(WorldTransform, WorldTransformTypeId);
 
-        static void Reflect(AZ::ReflectContext* context);
+        JOLT_API static void Reflect(AZ::ReflectContext* context);
 
         WorldPosition m_position;
         AZ::Quaternion m_rotation = AZ::Quaternion::CreateIdentity();

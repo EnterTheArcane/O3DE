@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Box3D/Configuration.h>
 #include <Box3D/Effects.h>
 #include <Box3D/EffectsBus.h>
 #include <Box3D/RigidBodyBus.h>
@@ -18,7 +19,7 @@
 
 namespace Box3D
 {
-    class ExplosionComponent final
+    class BOX3D_API ExplosionComponent final
         : public AZ::Component
         , public ExplosionRequestBus::Handler
     {
@@ -61,7 +62,7 @@ namespace Box3D
         bool m_explodeOnActivate = false;
     };
 
-    class WindComponent final
+    class BOX3D_API WindComponent final
         : public AZ::Component
         , public WindRequestBus::Handler
         , private AZ::TickBus::Handler
