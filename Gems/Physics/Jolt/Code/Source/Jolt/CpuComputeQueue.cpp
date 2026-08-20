@@ -95,7 +95,17 @@ namespace Jolt
 
     CpuComputeQueue::~CpuComputeQueue()
     {
-        AZ_Assert(!m_shader && !m_wrapper, "A Jolt CPU compute dispatch was left incomplete.");
+        AZ_Assert(IsIdle(), "A Jolt CPU compute dispatch was left incomplete.");
+    }
+
+    AZ::u32 CpuComputeQueue::GetWorkerCount() const
+    {
+        return m_workerCount;
+    }
+
+    bool CpuComputeQueue::IsIdle() const
+    {
+        return !m_shader && !m_wrapper;
     }
 
     void CpuComputeQueue::SetShader(

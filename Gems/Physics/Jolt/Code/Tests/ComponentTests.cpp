@@ -1008,6 +1008,9 @@ namespace Jolt
         EXPECT_TRUE(worldStatistics->m_properties.contains("lastUpdateJobCount"));
         EXPECT_TRUE(worldStatistics->m_properties.contains("lastUpdateMaximumTaskCount"));
         EXPECT_TRUE(worldStatistics->m_properties.contains("lastUpdateTaskCount"));
+        EXPECT_TRUE(worldStatistics->m_properties.contains("requestedWorkerCount"));
+        EXPECT_TRUE(worldStatistics->m_properties.contains("effectiveWorkerCount"));
+        EXPECT_TRUE(worldStatistics->m_properties.contains("hairWorkerCount"));
         EXPECT_TRUE(worldStatistics->m_properties.contains("ragdollCount"));
         EXPECT_TRUE(worldStatistics->m_properties.contains("sceneInstanceCount"));
         EXPECT_TRUE(worldStatistics->m_properties.contains("stateSnapshotCount"));

@@ -170,7 +170,7 @@ namespace Jolt
         bool SetGravity(const AZ::Vector3& gravity);
 
         [[nodiscard]]
-        AZ::u32 GetWorkerCount() const;
+        AZ::u32 GetEffectiveWorkerCount() const;
 
         [[nodiscard]]
         bool GetSimulationConfiguration(SimulationConfiguration& configuration) const;
@@ -3229,6 +3229,12 @@ namespace Jolt
         SimulationResult RunAutomaticUpdatesWithDebugCapture(
             double fixedTimeStep,
             DebugRenderer* debugRenderer);
+
+        [[nodiscard]]
+        AZStd::unique_ptr<JPH::JobSystem> CreateJobSystem(AZ::u32 workerCount) const;
+
+        [[nodiscard]]
+        JPH::Ref<JPH::ComputeQueue> CreateHairComputeQueue(const JPH::JobSystem& jobSystem) const;
 
         [[nodiscard]]
         bool IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags flag) const;

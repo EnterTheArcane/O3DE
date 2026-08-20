@@ -5024,7 +5024,7 @@ namespace Jolt
                     .m_worldHandle = Internal::MakeWorldHandle(worldIndex, slot.m_generation),
                 });
                 canStepConcurrently = canStepConcurrently
-                    && slot.m_world->GetWorkerCount() == 1;
+                    && slot.m_world->GetEffectiveWorkerCount() == 1;
             }
         }
         canStepConcurrently = canStepConcurrently && worlds.size() > 1;

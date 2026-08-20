@@ -240,6 +240,9 @@ namespace Jolt
         AZ::u32 m_lastUpdateJobCount = 0;
         AZ::u32 m_lastUpdateMaximumTaskCount = 0;
         AZ::u32 m_lastUpdateTaskCount = 0;
+        AZ::u32 m_requestedWorkerCount = 0;
+        AZ::u32 m_effectiveWorkerCount = 0;
+        AZ::u32 m_hairWorkerCount = 0;
 
         AZ::u32 m_activeDynamicBodyCount = 0;
         AZ::u32 m_activeKinematicBodyCount = 0;

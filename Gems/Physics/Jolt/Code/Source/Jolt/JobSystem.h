@@ -56,6 +56,9 @@ namespace Jolt
 
         int GetMaxConcurrency() const override;
 
+        [[nodiscard]]
+        bool IsIdle();
+
         void WaitForJobs(Barrier* barrier) override;
 
         JobHandle CreateJob(

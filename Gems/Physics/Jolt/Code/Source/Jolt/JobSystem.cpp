@@ -145,9 +145,7 @@ namespace Jolt
 
     JobSystem::~JobSystem()
     {
-        AZStd::lock_guard lock(m_taskMutex);
-        AZ_Assert(m_activeTaskCount == 0, "Jolt tasks remain active during job-system destruction.");
-        AZ_Assert(m_queuedJobCount == 0, "The Jolt job queue was not drained before destruction.");
+        AZ_Assert(IsIdle(), "Jolt work remains active during job-system destruction.");
     }
 
     void JobSystem::BeginUpdate(
@@ -172,6 +170,12 @@ namespace Jolt
     int JobSystem::GetMaxConcurrency() const
     {
         return static_cast<int>(m_workerCount);
+    }
+
+    bool JobSystem::IsIdle()
+    {
+        AZStd::lock_guard lock(m_taskMutex);
+        return m_activeTaskCount == 0 && m_queuedJobCount == 0;
     }
 
     void JobSystem::WaitForJobs(

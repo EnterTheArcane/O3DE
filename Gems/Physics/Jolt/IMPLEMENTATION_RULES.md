@@ -27,6 +27,8 @@ configuration wins over legacy language-version examples.
 - Keep immediate, caller-buffer operations synchronous when they are the lowest-overhead contract. Long or composable work may return a
   move-only `Operation<Result>` whose immutable result storage is owned by the provider. Explicit waits must use worker-aware assistance;
   destroying a token requests queued cancellation but never waits for running work.
+- Prepare replacement execution resources before acquiring the world mutation lock. Reconfiguration commits only after the prior resources
+  are idle, swaps solver and CPU Hair policies together, and reports both requested and effective worker counts.
 - Publish event data through immutable retained `EventBatch` generations. A span may view an owned batch, but it must never outlive or
   escape the object that pins its storage. Do not hold provider or world locks while waiting, dispatching callbacks, or unloading code.
 

@@ -5362,6 +5362,33 @@ namespace Jolt
         const JPH::ShapeFilter& m_shapeFilter;
     };
 
+    AZStd::unique_ptr<JPH::JobSystem> World::CreateJobSystem(
+        const AZ::u32 workerCount) const
+    {
+        const bool useParallelJobSystem = m_jobContext
+            && workerCount > 1
+            && m_jobContext->GetJobManager().GetNumWorkerThreads() > 0;
+        if (useParallelJobSystem)
+        {
+            return AZStd::make_unique<JobSystem>(
+                m_configuration.m_capacity.m_maxJobs,
+                m_configuration.m_capacity.m_maxBarriers,
+                workerCount,
+                m_jobContext);
+        }
+
+        return AZStd::make_unique<JPH::JobSystemSingleThreaded>(
+            m_configuration.m_capacity.m_maxJobs);
+    }
+
+    JPH::Ref<JPH::ComputeQueue> World::CreateHairComputeQueue(
+        const JPH::JobSystem& jobSystem) const
+    {
+        return new CpuComputeQueue(
+            m_jobContext,
+            aznumeric_cast<AZ::u32>(jobSystem.GetMaxConcurrency()));
+    }
+
     World::World(
         RuntimeImplementation& system,
         Internal::WorldMemberGenerationSources& generationSources,
@@ -5410,22 +5437,7 @@ namespace Jolt
             objectLayerCount);
 
         m_tempAllocator = AZStd::make_unique<JPH::TempAllocatorImpl>(m_configuration.m_capacity.m_tempAllocatorBytes);
-        const bool useParallelJobSystem = jobContext
-            && m_configuration.m_workerCount > 1
-            && jobContext->GetJobManager().GetNumWorkerThreads() > 0;
-        if (useParallelJobSystem)
-        {
-            m_jobSystem = AZStd::make_unique<JobSystem>(
-                m_configuration.m_capacity.m_maxJobs,
-                m_configuration.m_capacity.m_maxBarriers,
-                m_configuration.m_workerCount,
-                jobContext);
-        }
-        else
-        {
-            m_jobSystem = AZStd::make_unique<JPH::JobSystemSingleThreaded>(
-                m_configuration.m_capacity.m_maxJobs);
-        }
+        m_jobSystem = CreateJobSystem(m_configuration.m_workerCount);
         m_physicsSystem.Init(
             m_configuration.m_capacity.m_maxBodies,
             m_configuration.m_capacity.m_bodyMutexCount,
@@ -5696,9 +5708,10 @@ namespace Jolt
         return true;
     }
 
-    AZ::u32 World::GetWorkerCount() const
+    AZ::u32 World::GetEffectiveWorkerCount() const
     {
-        return m_configuration.m_workerCount;
+        AZStd::lock_guard lock(m_mutex);
+        return aznumeric_cast<AZ::u32>(m_jobSystem->GetMaxConcurrency());
     }
 
     bool World::GetSimulationConfiguration(
@@ -5743,16 +5756,31 @@ namespace Jolt
     bool World::UpdateRuntimeConfiguration(
         const WorldRuntimeConfiguration& configuration)
     {
-        AZStd::lock_guard lock(m_mutex);
         if (!ValidateWorldRuntimeConfiguration(configuration))
         {
             return false;
         }
 
-        const WorldRuntimeConfiguration current = ExtractRuntimeConfiguration(m_configuration);
+        AZStd::unique_lock lock(m_mutex);
+        WorldRuntimeConfiguration current = ExtractRuntimeConfiguration(m_configuration);
         if (configuration == current)
         {
             return true;
+        }
+
+        AZStd::unique_ptr<JPH::JobSystem> preparedJobSystem;
+        JPH::Ref<JPH::ComputeQueue> preparedHairComputeQueue;
+        if (configuration.m_workerCount != current.m_workerCount)
+        {
+            lock.unlock();
+            preparedJobSystem = CreateJobSystem(configuration.m_workerCount);
+            preparedHairComputeQueue = CreateHairComputeQueue(*preparedJobSystem);
+            lock.lock();
+            current = ExtractRuntimeConfiguration(m_configuration);
+            if (configuration == current)
+            {
+                return true;
+            }
         }
 
         bool clearEventState = false;
@@ -5786,22 +5814,22 @@ namespace Jolt
         }
         if (configuration.m_workerCount != current.m_workerCount)
         {
-            const bool useParallelJobSystem = m_jobContext
-                && configuration.m_workerCount > 1
-                && m_jobContext->GetJobManager().GetNumWorkerThreads() > 0;
-            if (useParallelJobSystem)
+            AZ_Assert(preparedJobSystem, "Jolt execution resources were not prepared before reconfiguration.");
+            if (m_jobSystem->GetMaxConcurrency() > 1)
             {
-                m_jobSystem = AZStd::make_unique<JobSystem>(
-                    m_configuration.m_capacity.m_maxJobs,
-                    m_configuration.m_capacity.m_maxBarriers,
-                    configuration.m_workerCount,
-                    m_jobContext);
+                AZ_Assert(
+                    static_cast<JobSystem*>(m_jobSystem.get())->IsIdle(),
+                    "Jolt execution resources cannot be replaced while work remains active.");
             }
-            else
+            if (m_hairComputeQueue)
             {
-                m_jobSystem = AZStd::make_unique<JPH::JobSystemSingleThreaded>(
-                    m_configuration.m_capacity.m_maxJobs);
+                auto* hairComputeQueue = static_cast<CpuComputeQueue*>(m_hairComputeQueue.GetPtr());
+                AZ_Assert(
+                    hairComputeQueue->IsIdle(),
+                    "Jolt Hair execution resources cannot be replaced during a dispatch.");
+                m_hairComputeQueue = AZStd::move(preparedHairComputeQueue);
             }
+            m_jobSystem = AZStd::move(preparedJobSystem);
         }
         if (configuration.m_collectActivationEvents != current.m_collectActivationEvents)
         {
@@ -19374,6 +19402,8 @@ namespace Jolt
             .m_lastUpdateJobCount = m_lastUpdateJobStatistics.m_jobCount,
             .m_lastUpdateMaximumTaskCount = m_lastUpdateJobStatistics.m_maximumTaskCount,
             .m_lastUpdateTaskCount = m_lastUpdateJobStatistics.m_taskCount,
+            .m_requestedWorkerCount = m_configuration.m_workerCount,
+            .m_effectiveWorkerCount = aznumeric_cast<AZ::u32>(m_jobSystem->GetMaxConcurrency()),
             .m_activeDynamicBodyCount = bodyStats.mNumActiveBodiesDynamic,
             .m_activeKinematicBodyCount = bodyStats.mNumActiveBodiesKinematic,
             .m_activeSoftBodyCount = bodyStats.mNumActiveSoftBodies,
@@ -19384,6 +19414,11 @@ namespace Jolt
             .m_softBodyCount = bodyStats.mNumSoftBodies,
             .m_staticBodyCount = bodyStats.mNumBodiesStatic,
         };
+        if (m_hairComputeQueue)
+        {
+            statistics.m_hairWorkerCount =
+                static_cast<const CpuComputeQueue*>(m_hairComputeQueue.GetPtr())->GetWorkerCount();
+        }
 
         const NativeShapeStatistics shapeStatistics = GatherNativeShapeStatistics();
         statistics.m_shapeBytes = shapeStatistics.m_retainedBytes;
@@ -26104,9 +26139,7 @@ namespace Jolt
 
         if (!m_hairComputeQueue)
         {
-            m_hairComputeQueue = new CpuComputeQueue(
-                m_jobContext,
-                aznumeric_cast<AZ::u32>(m_jobSystem->GetMaxConcurrency()));
+            m_hairComputeQueue = CreateHairComputeQueue(*m_jobSystem);
         }
 
         auto hair = AZStd::make_unique<NativeHair>(

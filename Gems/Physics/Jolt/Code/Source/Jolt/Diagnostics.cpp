@@ -106,6 +106,9 @@ namespace Jolt
                 ->Field("LastUpdateJobCount", &WorldStatistics::m_lastUpdateJobCount)
                 ->Field("LastUpdateMaximumTaskCount", &WorldStatistics::m_lastUpdateMaximumTaskCount)
                 ->Field("LastUpdateTaskCount", &WorldStatistics::m_lastUpdateTaskCount)
+                ->Field("RequestedWorkerCount", &WorldStatistics::m_requestedWorkerCount)
+                ->Field("EffectiveWorkerCount", &WorldStatistics::m_effectiveWorkerCount)
+                ->Field("HairWorkerCount", &WorldStatistics::m_hairWorkerCount)
                 ->Field("ActiveDynamicBodyCount", &WorldStatistics::m_activeDynamicBodyCount)
                 ->Field("ActiveKinematicBodyCount", &WorldStatistics::m_activeKinematicBodyCount)
                 ->Field("ActiveSoftBodyCount", &WorldStatistics::m_activeSoftBodyCount)
@@ -551,6 +554,18 @@ namespace Jolt
                 ->Property(
                     "lastUpdateTaskCount",
                     BehaviorValueGetter(&WorldStatistics::m_lastUpdateTaskCount),
+                    nullptr)
+                ->Property(
+                    "requestedWorkerCount",
+                    BehaviorValueGetter(&WorldStatistics::m_requestedWorkerCount),
+                    nullptr)
+                ->Property(
+                    "effectiveWorkerCount",
+                    BehaviorValueGetter(&WorldStatistics::m_effectiveWorkerCount),
+                    nullptr)
+                ->Property(
+                    "hairWorkerCount",
+                    BehaviorValueGetter(&WorldStatistics::m_hairWorkerCount),
                     nullptr)
                 ->Property(
                     "activeDynamicBodyCount",

@@ -43,6 +43,12 @@ namespace Jolt
 
         AZ_DISABLE_COPY_MOVE(CpuComputeQueue);
 
+        [[nodiscard]]
+        AZ::u32 GetWorkerCount() const;
+
+        [[nodiscard]]
+        bool IsIdle() const;
+
         void SetShader(const JPH::ComputeShader* shader) override;
 
         void SetConstantBuffer(

@@ -4440,6 +4440,9 @@ namespace Jolt
                 ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
                 WorldStatistics statistics;
                 ASSERT_TRUE(system.GetWorldStatistics(scene.m_worldHandle, statistics));
+                EXPECT_EQ(statistics.m_requestedWorkerCount, workerCounts[workerIndex]);
+                EXPECT_EQ(statistics.m_effectiveWorkerCount, workerCounts[workerIndex]);
+                EXPECT_EQ(statistics.m_hairWorkerCount, 0);
                 scheduledParallelJob = scheduledParallelJob
                     || statistics.m_lastUpdateJobCount > 0;
             }
@@ -4464,6 +4467,130 @@ namespace Jolt
 
         EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, snapshotHandle));
         DestroySphereOnFloor(system, scene);
+    }
+
+    TEST(SimulationTests, WorkerReconfigurationRebuildsHairExecutionResources)
+    {
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(4);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_workerCount = 1;
+        Runtime system(systemConfiguration, &jobContext);
+        ASSERT_TRUE(system);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        WorldStatistics statistics;
+        ASSERT_TRUE(system.GetWorldStatistics(worldHandle, statistics));
+        EXPECT_EQ(statistics.m_requestedWorkerCount, 1);
+        EXPECT_EQ(statistics.m_effectiveWorkerCount, 1);
+        EXPECT_EQ(statistics.m_hairWorkerCount, 0);
+
+        HairDefinitionConfiguration definitionConfiguration;
+        definitionConfiguration.m_vertices = {
+            {.m_position = AZ::Vector3::CreateAxisZ(), .m_inverseMass = 0.0f},
+            {.m_position = AZ::Vector3::CreateZero()},
+        };
+        definitionConfiguration.m_strands = {
+            {.m_beginVertex = 0, .m_endVertex = 2, .m_materialIndex = 0},
+        };
+        definitionConfiguration.m_materials.resize(1);
+        const HairDefinitionHandle definitionHandle = system.CreateHairDefinition(definitionConfiguration);
+        ASSERT_TRUE(definitionHandle);
+
+        HairConfiguration hairConfiguration;
+        hairConfiguration.m_definitionHandle = definitionHandle;
+        hairConfiguration.m_objectLayer = DefaultLayers::Moving;
+        const HairHandle hairHandle = system.CreateHair(worldHandle, hairConfiguration);
+        ASSERT_TRUE(hairHandle);
+        ASSERT_TRUE(system.GetWorldStatistics(worldHandle, statistics));
+        EXPECT_EQ(statistics.m_hairWorkerCount, 1);
+        EXPECT_TRUE(system.UpdateHair(worldHandle, hairHandle, 1.0f / 60.0f, AZ::Transform::CreateIdentity(), {}));
+
+        WorldRuntimeConfiguration runtimeConfiguration;
+        ASSERT_TRUE(system.GetWorldRuntimeConfiguration(worldHandle, runtimeConfiguration));
+        runtimeConfiguration.m_workerCount = 8;
+        ASSERT_TRUE(system.UpdateWorldRuntimeConfiguration(worldHandle, runtimeConfiguration));
+        ASSERT_TRUE(system.GetWorldStatistics(worldHandle, statistics));
+        EXPECT_EQ(statistics.m_requestedWorkerCount, 8);
+        EXPECT_EQ(statistics.m_effectiveWorkerCount, 5);
+        EXPECT_EQ(statistics.m_hairWorkerCount, 5);
+        EXPECT_TRUE(system.UpdateHair(worldHandle, hairHandle, 1.0f / 60.0f, AZ::Transform::CreateIdentity(), {}));
+
+        runtimeConfiguration.m_workerCount = 1;
+        ASSERT_TRUE(system.UpdateWorldRuntimeConfiguration(worldHandle, runtimeConfiguration));
+        ASSERT_TRUE(system.GetWorldStatistics(worldHandle, statistics));
+        EXPECT_EQ(statistics.m_requestedWorkerCount, 1);
+        EXPECT_EQ(statistics.m_effectiveWorkerCount, 1);
+        EXPECT_EQ(statistics.m_hairWorkerCount, 1);
+        EXPECT_TRUE(system.UpdateHair(worldHandle, hairHandle, 1.0f / 60.0f, AZ::Transform::CreateIdentity(), {}));
+
+        EXPECT_TRUE(system.DestroyHair(worldHandle, hairHandle));
+        EXPECT_TRUE(system.DestroyHairDefinition(definitionHandle));
+    }
+
+    TEST(SimulationTests, WorkerReconfigurationCommitsAfterAnActiveStep)
+    {
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(4);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_workerCount = 2;
+        Runtime system(systemConfiguration, &jobContext);
+        ASSERT_TRUE(system);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        BlockingStepListener listener;
+        ScopedExtensionRegistration registration(system, &listener);
+        ASSERT_TRUE(system.AddStepListener(worldHandle, registration.GetHandle()));
+
+        WorldRuntimeConfiguration runtimeConfiguration;
+        ASSERT_TRUE(system.GetWorldRuntimeConfiguration(worldHandle, runtimeConfiguration));
+        runtimeConfiguration.m_workerCount = 4;
+
+        Operation<SimulationResult> stepOperation = system.StepWorldAsync(worldHandle, 1.0f / 60.0f);
+        ASSERT_TRUE(stepOperation);
+        ASSERT_TRUE(WaitUntil(
+            [&listener]
+            {
+                return listener.m_entered.load(AZStd::memory_order_acquire);
+            }));
+
+        AZStd::atomic_bool updateStarted{false};
+        AZStd::atomic_bool updateCompleted{false};
+        bool updateSucceeded = false;
+        AZStd::thread updateThread(
+            [&system, worldHandle, &runtimeConfiguration, &updateStarted, &updateCompleted, &updateSucceeded]
+            {
+                updateStarted.store(true, AZStd::memory_order_release);
+                updateSucceeded = system.UpdateWorldRuntimeConfiguration(worldHandle, runtimeConfiguration);
+                updateCompleted.store(true, AZStd::memory_order_release);
+            });
+        ASSERT_TRUE(WaitUntil(
+            [&updateStarted]
+            {
+                return updateStarted.load(AZStd::memory_order_acquire);
+            }));
+        for (AZ::u32 yieldCount = 0; yieldCount < 1'000; ++yieldCount)
+        {
+            AZStd::this_thread::yield();
+        }
+        EXPECT_FALSE(updateCompleted.load(AZStd::memory_order_acquire));
+
+        listener.m_release.store(true, AZStd::memory_order_release);
+        updateThread.join();
+        EXPECT_TRUE(updateSucceeded);
+        EXPECT_EQ(stepOperation.Wait(), OperationStatus::Succeeded);
+
+        WorldStatistics statistics;
+        ASSERT_TRUE(system.GetWorldStatistics(worldHandle, statistics));
+        EXPECT_EQ(statistics.m_requestedWorkerCount, 4);
+        EXPECT_EQ(statistics.m_effectiveWorkerCount, 4);
+        EXPECT_TRUE(system.RemoveStepListener(worldHandle, registration.GetHandle()));
     }
 
     TEST(SimulationTests, BodyPairColliderSupportsEveryNativeCollisionMode)
