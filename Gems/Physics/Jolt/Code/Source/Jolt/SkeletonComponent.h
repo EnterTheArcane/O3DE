@@ -68,7 +68,7 @@ namespace Jolt
 
         bool LoadAsset(const SkeletonAsset& asset);
 
-        void ReleaseResources(bool notify);
+        bool ReleaseResources(bool notify);
 
         SkeletonComponentConfiguration m_configuration;
         AZStd::unique_ptr<RuntimeResources> m_resources;

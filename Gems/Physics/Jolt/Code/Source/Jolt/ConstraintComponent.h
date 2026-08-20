@@ -122,7 +122,7 @@ namespace Jolt
             WorldHandle worldHandle,
             BodyHandle bodyHandle) override;
 
-        void OnBodyDependencyDestroying(
+        bool OnBodyDependencyDestroying(
             WorldHandle worldHandle,
             BodyHandle bodyHandle) override;
 
@@ -130,13 +130,13 @@ namespace Jolt
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle) override;
 
-        void OnConstraintDependencyDestroying(
+        bool OnConstraintDependencyDestroying(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle) override;
 
         void OnPathDependencyCreated(PathHandle pathHandle) override;
 
-        void OnPathDependencyDestroying(PathHandle pathHandle) override;
+        bool OnPathDependencyDestroying(PathHandle pathHandle) override;
 
         RuntimeConfiguration m_configuration;
 

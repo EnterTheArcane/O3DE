@@ -511,15 +511,20 @@ namespace Jolt
         }
 
         const ConstraintHandle constraintHandle = m_constraintHandle;
+        if (m_dependencyManager
+            && !m_dependencyManager->PrepareConstraintDestruction(GetEntityId(), m_worldHandle, constraintHandle))
+        {
+            return false;
+        }
+        if (!m_system->DestroyConstraint(m_worldHandle, constraintHandle))
+        {
+            return false;
+        }
         ConstraintNotificationBus::Event(
             GetEntityId(),
             &IConstraintNotifications::OnConstraintDestroying,
             m_worldHandle,
             constraintHandle);
-        if (!m_system->DestroyConstraint(m_worldHandle, constraintHandle))
-        {
-            return false;
-        }
         m_constraintHandle = {};
         m_firstBodyHandle = {};
         m_secondBodyHandle = {};
@@ -681,15 +686,16 @@ namespace Jolt
         [[maybe_unused]] const bool enabled = EnableSimulation();
     }
 
-    void ConstraintComponent::OnBodyDependencyDestroying(
+    bool ConstraintComponent::OnBodyDependencyDestroying(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
         if (worldHandle == m_worldHandle
             && (bodyHandle == m_firstBodyHandle || bodyHandle == m_secondBodyHandle))
         {
-            [[maybe_unused]] const bool disabled = DisableSimulation();
+            return DisableSimulation();
         }
+        return true;
     }
 
     void ConstraintComponent::OnConstraintDependencyCreated(
@@ -699,15 +705,16 @@ namespace Jolt
         [[maybe_unused]] const bool enabled = EnableSimulation();
     }
 
-    void ConstraintComponent::OnConstraintDependencyDestroying(
+    bool ConstraintComponent::OnConstraintDependencyDestroying(
         const WorldHandle worldHandle,
         const ConstraintHandle constraintHandle)
     {
         if (worldHandle == m_worldHandle
             && (constraintHandle == m_firstDependencyHandle || constraintHandle == m_secondDependencyHandle))
         {
-            [[maybe_unused]] const bool disabled = DisableSimulation();
+            return DisableSimulation();
         }
+        return true;
     }
 
     void ConstraintComponent::OnPathDependencyCreated(
@@ -716,12 +723,13 @@ namespace Jolt
         [[maybe_unused]] const bool enabled = EnableSimulation();
     }
 
-    void ConstraintComponent::OnPathDependencyDestroying(
+    bool ConstraintComponent::OnPathDependencyDestroying(
         const PathHandle pathHandle)
     {
         if (pathHandle == m_pathHandle)
         {
-            [[maybe_unused]] const bool disabled = DisableSimulation();
+            return DisableSimulation();
         }
+        return true;
     }
 } // namespace Jolt

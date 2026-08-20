@@ -7,6 +7,7 @@
 
 #include <Jolt/CharacterControllerComponent.h>
 #include <Jolt/ColliderComponent.h>
+#include <Jolt/ComponentDependencyManager.h>
 #include <Jolt/ConstraintComponent.h>
 #include <Jolt/HairComponent.h>
 #include <Jolt/PathComponent.h>
@@ -261,6 +262,35 @@ namespace Jolt
             AZ::u32 m_releasedCount = 0;
         };
 
+        class DependencyTestClient final
+            : public IBodyDependencyClient
+        {
+        public:
+            void OnBodyDependencyCreated(
+                [[maybe_unused]] WorldHandle worldHandle,
+                [[maybe_unused]] BodyHandle bodyHandle) override
+            {
+            }
+
+            bool OnBodyDependencyDestroying(
+                [[maybe_unused]] WorldHandle worldHandle,
+                [[maybe_unused]] BodyHandle bodyHandle) override
+            {
+                ++m_destroyingCount;
+                if (m_clientToUnregister)
+                {
+                    m_manager->UnregisterBody(m_entityId, *m_clientToUnregister);
+                }
+                return m_succeeds;
+            }
+
+            ComponentDependencyManager* m_manager = nullptr;
+            IBodyDependencyClient* m_clientToUnregister = nullptr;
+            AZ::EntityId m_entityId;
+            AZ::u32 m_destroyingCount = 0;
+            bool m_succeeds = true;
+        };
+
         SystemConfiguration CreateComponentSystemConfiguration()
         {
             SystemConfiguration configuration;
@@ -317,6 +347,31 @@ namespace Jolt
         }
 
         AZ::GetGlobalSerializeContextModule().Cleanup();
+    }
+
+    TEST(ComponentTests, DependencyPreparationSurvivesClientRemovalAndReportsFailure)
+    {
+        ComponentDependencyManager manager;
+        const AZ::EntityId entityId(42);
+        DependencyTestClient firstClient;
+        DependencyTestClient removedClient;
+        DependencyTestClient finalClient;
+        firstClient.m_manager = &manager;
+        firstClient.m_clientToUnregister = &removedClient;
+        firstClient.m_entityId = entityId;
+        finalClient.m_succeeds = false;
+
+        manager.RegisterBody(entityId, firstClient);
+        manager.RegisterBody(entityId, removedClient);
+        manager.RegisterBody(entityId, finalClient);
+
+        EXPECT_FALSE(manager.PrepareBodyDestruction(entityId, WorldHandle::Invalid, BodyHandle::Invalid));
+        EXPECT_EQ(firstClient.m_destroyingCount, 1);
+        EXPECT_EQ(removedClient.m_destroyingCount, 0);
+        EXPECT_EQ(finalClient.m_destroyingCount, 1);
+
+        manager.UnregisterBody(entityId, firstClient);
+        manager.UnregisterBody(entityId, finalClient);
     }
 
     TEST(ComponentTests, CharacterRuntimeAndCollisionTypesReflectForSerialization)
@@ -2242,6 +2297,9 @@ namespace Jolt
 
         notifications.BusDisconnect();
 
+        EXPECT_TRUE(bodiesCapability->DestroyBody(additionalWorldHandle, movingBodyHandle));
+        EXPECT_TRUE(bodiesCapability->DestroyBody(additionalWorldHandle, floorBodyHandle));
+        EXPECT_TRUE(shapes->DestroyShape(additionalWorldHandle, additionalShapeHandle));
         bool destroyedWorld = false;
         WorldQueryRequestBus::BroadcastResult(
             destroyedWorld,
@@ -2594,6 +2652,22 @@ namespace Jolt
         EXPECT_EQ(notifications.m_reloadingCount, 0);
 
         AZ::Data::Asset<SkeletonAsset> reloadedAsset = createAsset(AZ::Name("run"), animationArchive);
+        const SkeletonPoseHandle blockingPoseHandle = system.CreateSkeletonPose(initialSkeletonHandle);
+        ASSERT_TRUE(blockingPoseHandle);
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        AZ::Data::AssetBus::Event(
+            assetId,
+            &AZ::Data::AssetBus::Events::OnAssetReloaded,
+            AZ::Data::Asset<AZ::Data::AssetData>(reloadedAsset));
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(component->GetSkeletonHandle(), initialSkeletonHandle);
+        EXPECT_EQ(component->FindAnimation(AZ::Name("walk")), initialAnimationHandle);
+        EXPECT_TRUE(system.IsValid(initialSkeletonHandle));
+        EXPECT_TRUE(system.IsValid(initialAnimationHandle));
+        EXPECT_EQ(notifications.m_readyCount, 1);
+        EXPECT_EQ(notifications.m_reloadingCount, 0);
+        EXPECT_TRUE(system.DestroySkeletonPose(blockingPoseHandle));
+
         AZ::Data::AssetBus::Event(
             assetId,
             &AZ::Data::AssetBus::Events::OnAssetReloaded,
@@ -2689,7 +2763,8 @@ namespace Jolt
         ASSERT_TRUE(initialInstanceHandle);
         EXPECT_TRUE(system.IsValid(initialDefinitionHandle));
         EXPECT_TRUE(system.IsValid(system.GetDefaultWorldHandle(), initialInstanceHandle));
-        ASSERT_EQ(component->CopyBodies().size(), 1);
+        const AZStd::vector<BodyHandle> initialBodies = component->CopyBodies();
+        ASSERT_EQ(initialBodies.size(), 1);
         EXPECT_TRUE(component->CopyConstraints().empty());
         EXPECT_EQ(notifications.m_readyCount, 1);
         EXPECT_EQ(notifications.m_lastReadyHandle, initialInstanceHandle);
@@ -2713,6 +2788,42 @@ namespace Jolt
         SceneAssetData reloadedSceneData = sceneData;
         reloadedSceneData.m_name = AZ::Name("ReloadedComponentScene");
         AZ::Data::Asset<SceneAsset> reloadedAsset = createAsset(reloadedSceneData);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        ShapeConfiguration externalShapeConfiguration;
+        externalShapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle externalShapeHandle = system.CreateShape(worldHandle, externalShapeConfiguration);
+        ASSERT_TRUE(externalShapeHandle);
+        BodyConfiguration externalBodyConfiguration;
+        externalBodyConfiguration.m_shapeHandle = externalShapeHandle;
+        const BodyHandle externalBodyHandle = system.CreateBody(worldHandle, externalBodyConfiguration);
+        ASSERT_TRUE(externalBodyHandle);
+        ConstraintConfiguration externalConstraintConfiguration;
+        externalConstraintConfiguration.m_firstBodyHandle = initialBodies.front();
+        externalConstraintConfiguration.m_secondBodyHandle = externalBodyHandle;
+        externalConstraintConfiguration.m_geometry = FixedConstraintConfiguration{};
+        const ConstraintHandle externalConstraintHandle =
+            system.CreateConstraint(worldHandle, externalConstraintConfiguration);
+        ASSERT_TRUE(externalConstraintHandle);
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        AZ::Data::AssetBus::Event(
+            assetId,
+            &AZ::Data::AssetBus::Events::OnAssetReloaded,
+            AZ::Data::Asset<AZ::Data::AssetData>(reloadedAsset));
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(component->GetDefinitionHandle(), initialDefinitionHandle);
+        EXPECT_EQ(component->GetInstanceHandle(), initialInstanceHandle);
+        EXPECT_TRUE(system.IsValid(initialDefinitionHandle));
+        EXPECT_TRUE(system.IsValid(worldHandle, initialInstanceHandle));
+        EXPECT_TRUE(system.IsValid(worldHandle, initialBodies.front()));
+        EXPECT_EQ(notifications.m_readyCount, 1);
+        EXPECT_EQ(notifications.m_reloadingCount, 0);
+
+        EXPECT_TRUE(system.DestroyConstraint(worldHandle, externalConstraintHandle));
+        EXPECT_TRUE(system.DestroyBody(worldHandle, externalBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, externalShapeHandle));
+
         AZ::Data::AssetBus::Event(
             assetId,
             &AZ::Data::AssetBus::Events::OnAssetReloaded,

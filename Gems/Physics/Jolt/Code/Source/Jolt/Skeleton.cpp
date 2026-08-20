@@ -758,6 +758,63 @@ namespace Jolt
         return true;
     }
 
+    bool RuntimeImplementation::DestroySkeletonResources(
+        const SkeletonDefinitionHandle skeletonHandle,
+        const AZStd::span<const SkeletalAnimationHandle> animationHandles)
+    {
+        AZStd::lock_guard lock(m_skeletonMutex);
+        SkeletonDefinitionSlot* skeletonSlot = FindSkeletonDefinitionUnlocked(skeletonHandle);
+        Internal::ResourceHandleParts skeletonParts;
+        if (!skeletonSlot
+            || skeletonSlot->m_mapperCount > 0
+            || skeletonSlot->m_poseCount > 0
+            || skeletonSlot->m_ragdollDefinitionCount > 0
+            || !Internal::DecodeResourceHandle(skeletonHandle, skeletonParts))
+        {
+            return false;
+        }
+
+        AZStd::vector<Internal::ResourceHandleParts> animationParts;
+        animationParts.reserve(animationHandles.size());
+        for (const SkeletalAnimationHandle animationHandle : animationHandles)
+        {
+            Internal::ResourceHandleParts parts;
+            if (!FindSkeletalAnimationUnlocked(animationHandle)
+                || !Internal::DecodeResourceHandle(animationHandle, parts)
+                || AZStd::find_if(
+                    animationParts.begin(),
+                    animationParts.end(),
+                    [&](const Internal::ResourceHandleParts& existing)
+                    {
+                        return existing.m_index == parts.m_index;
+                    }) != animationParts.end())
+            {
+                return false;
+            }
+            animationParts.push_back(parts);
+        }
+
+        for (const Internal::ResourceHandleParts& parts : animationParts)
+        {
+            SkeletalAnimationSlot& animationSlot = m_skeletalAnimationSlots[parts.m_index];
+            animationSlot.m_animation = nullptr;
+            animationSlot.m_jointNames.clear();
+            if (Internal::AdvanceGeneration(animationSlot.m_generation))
+            {
+                m_freeSkeletalAnimationSlots.push_back(parts.m_index);
+            }
+        }
+
+        skeletonSlot->m_skeleton = nullptr;
+        skeletonSlot->m_jointIndices.clear();
+        skeletonSlot->m_joints.clear();
+        if (Internal::AdvanceGeneration(skeletonSlot->m_generation))
+        {
+            m_freeSkeletonDefinitionSlots.push_back(skeletonParts.m_index);
+        }
+        return true;
+    }
+
     bool RuntimeImplementation::IsValid(
         const SkeletalAnimationHandle animationHandle) const
     {

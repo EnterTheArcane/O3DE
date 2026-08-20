@@ -7,6 +7,7 @@
 
 #include <Jolt/PathComponent.h>
 
+#include <Jolt/ComponentDependencyManager.h>
 #include <Jolt/SystemInternal.h>
 
 #include <AzCore/Component/Entity.h>
@@ -251,13 +252,19 @@ namespace Jolt
     {
         if (m_system && m_pathHandle)
         {
-            PathNotificationBus::Event(
-                GetEntityId(),
-                &IPathNotifications::OnPathDestroying,
-                m_pathHandle);
-            if (m_system->DestroyPath(m_pathHandle))
+            auto* dependencyManager = AZ::Interface<IComponentDependencyManager>::Get();
+            bool prepared = true;
+            if (dependencyManager)
+            {
+                prepared = dependencyManager->PreparePathDestruction(GetEntityId(), m_pathHandle);
+            }
+            if (prepared && m_system->DestroyPath(m_pathHandle))
             {
                 const PathHandle pathHandle = m_pathHandle;
+                PathNotificationBus::Event(
+                    GetEntityId(),
+                    &IPathNotifications::OnPathDestroying,
+                    pathHandle);
                 m_pathHandle = {};
                 PathNotificationBus::Event(
                     GetEntityId(),

@@ -158,7 +158,7 @@ namespace Jolt
         }
 
         [[nodiscard]]
-        bool HasTransformedShapeLeases() const;
+        bool HasLiveResources() const;
 
         [[nodiscard]]
         bool GetGravity(AZ::Vector3& gravity) const;

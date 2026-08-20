@@ -178,6 +178,23 @@ namespace Jolt
 #endif
     }
 
+    TEST(NativeRuntimeTests, FailedDefaultWorldCreationDoesNotPublishCapabilities)
+    {
+        SystemConfiguration configuration;
+        configuration.m_defaultWorld.m_simulation.m_positionStepCount = 0;
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        System system(AZStd::move(configuration));
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
+
+        EXPECT_FALSE(system);
+        EXPECT_FALSE(RuntimeConfiguration::Get());
+        EXPECT_FALSE(Worlds::Get());
+        EXPECT_FALSE(WorldSimulation::Get());
+        EXPECT_FALSE(WorldQueries::Get());
+        EXPECT_FALSE(Bodies::Get());
+    }
+
     TEST(NativeRuntimeTests, SupportsOverlappingOwners)
     {
         NativeRuntime first;

@@ -28314,16 +28314,33 @@ namespace Jolt
         }
     }
 
-    bool World::HasTransformedShapeLeases() const
+    bool World::HasLiveResources() const
     {
-        AZStd::lock_guard lock(m_transformedShapeLeaseMutex);
-        return AZStd::any_of(
-            m_shapeSlots.begin(),
-            m_shapeSlots.end(),
-            [](const ShapeSlot& slot)
-            {
-                return slot.m_transformedShapeLeaseCount > 0;
-            });
+        AZStd::lock_guard lock(m_mutex);
+        const JPH::BodyManager::BodyStats bodyStatistics = m_physicsSystem.GetBodyStats();
+        if (bodyStatistics.mNumBodies > 0)
+        {
+            return true;
+        }
+
+        const auto contains = []<typename Slot>(
+                                  const AZStd::vector<Slot>& slots,
+                                  auto&& isOccupied)
+        {
+            return AZStd::any_of(slots.begin(), slots.end(), AZStd::forward<decltype(isOccupied)>(isOccupied));
+        };
+
+        return contains(m_shapeSlots, [](const ShapeSlot& slot) { return static_cast<bool>(slot.m_shape); })
+            || contains(m_constraintSlots, [](const ConstraintSlot& slot) { return static_cast<bool>(slot.m_constraint); })
+            || contains(m_sceneInstanceSlots, [](const SceneInstanceSlot& slot) { return static_cast<bool>(slot.m_definitionHandle); })
+            || contains(m_ragdollDefinitionSlots, [](const RagdollDefinitionSlot& slot) { return static_cast<bool>(slot.m_settings); })
+            || contains(m_ragdollSlots, [](const RagdollSlot& slot) { return static_cast<bool>(slot.m_ragdoll); })
+            || contains(m_hairSlots, [](const HairSlot& slot) { return static_cast<bool>(slot.m_hair); })
+            || contains(m_virtualCharacterSlots, [](const VirtualCharacterSlot& slot) { return static_cast<bool>(slot.m_character); })
+            || contains(m_characterSlots, [](const CharacterSlot& slot) { return static_cast<bool>(slot.m_character); })
+            || contains(m_vehicleSlots, [](const VehicleSlot& slot) { return static_cast<bool>(slot.m_constraint); })
+            || contains(m_bodySnapshotSlots, [](const BodySnapshotSlot& slot) { return !slot.m_data.empty(); })
+            || contains(m_stateSnapshotSlots, [](const StateSnapshotSlot& slot) { return !slot.m_data.empty(); });
     }
 
     bool World::BuildOverlapHit(

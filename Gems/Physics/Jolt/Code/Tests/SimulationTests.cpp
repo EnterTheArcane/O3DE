@@ -2872,6 +2872,9 @@ namespace Jolt
         ASSERT_TRUE(firstBodySnapshot);
         ASSERT_TRUE(firstStateSnapshot);
 
+        EXPECT_TRUE(system.DestroyBodyStateSnapshot(firstWorldHandle, firstBodySnapshot));
+        EXPECT_TRUE(system.DestroyStateSnapshot(firstWorldHandle, firstStateSnapshot));
+        DestroySphereOnFloor(system, firstScene);
         ASSERT_TRUE(system.DestroyWorld(firstWorldHandle));
 
         const WorldHandle secondWorldHandle = system.CreateWorld(WorldConfiguration{});
@@ -4618,6 +4621,26 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyWorld(worldHandle));
     }
 
+    TEST(SimulationTests, DestroyWorldRejectsLiveResourcesWithoutInvalidatingThem)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle worldHandle = system.CreateWorld(WorldConfiguration{});
+        ASSERT_TRUE(worldHandle);
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+        ASSERT_TRUE(shapeHandle);
+
+        EXPECT_FALSE(system.DestroyWorld(worldHandle));
+        EXPECT_TRUE(system.IsValid(worldHandle, shapeHandle));
+
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(worldHandle));
+    }
+
     TEST(SimulationTests, CreatesEveryAnalyticAndConvexPrimitive)
     {
         Runtime system(CreateSerialSystemConfiguration(), nullptr);
@@ -5718,6 +5741,32 @@ namespace Jolt
         EXPECT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
 
         EXPECT_TRUE(system.RemoveRagdollFromSimulation(worldHandle, ragdollHandle));
+
+        ShapeConfiguration externalShapeConfiguration;
+        externalShapeConfiguration.m_geometry = BoxShapeConfiguration{};
+        const ShapeHandle externalShapeHandle = system.CreateShape(worldHandle, externalShapeConfiguration);
+        ASSERT_TRUE(externalShapeHandle);
+        BodyConfiguration externalBodyConfiguration;
+        externalBodyConfiguration.m_shapeHandle = externalShapeHandle;
+        externalBodyConfiguration.m_motionType = MotionType::Static;
+        const BodyHandle externalBodyHandle = system.CreateBody(worldHandle, externalBodyConfiguration);
+        ASSERT_TRUE(externalBodyHandle);
+        ConstraintConfiguration externalConstraintConfiguration;
+        externalConstraintConfiguration.m_firstBodyHandle = bodyHandles[0];
+        externalConstraintConfiguration.m_secondBodyHandle = externalBodyHandle;
+        externalConstraintConfiguration.m_geometry = FixedConstraintConfiguration{};
+        const ConstraintHandle externalConstraintHandle =
+            system.CreateConstraint(worldHandle, externalConstraintConfiguration);
+        ASSERT_TRUE(externalConstraintHandle);
+
+        EXPECT_FALSE(system.DestroyRagdoll(worldHandle, ragdollHandle));
+        EXPECT_TRUE(system.IsValid(worldHandle, ragdollHandle));
+        EXPECT_TRUE(system.IsValid(worldHandle, bodyHandles[0]));
+        EXPECT_TRUE(system.IsValid(worldHandle, constraintHandles[0]));
+
+        EXPECT_TRUE(system.DestroyConstraint(worldHandle, externalConstraintHandle));
+        EXPECT_TRUE(system.DestroyBody(worldHandle, externalBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, externalShapeHandle));
         EXPECT_TRUE(system.DestroyRagdoll(worldHandle, ragdollHandle));
         EXPECT_FALSE(system.IsValid(worldHandle, ragdollHandle));
         EXPECT_FALSE(system.IsValid(worldHandle, bodyHandles[0]));
@@ -15682,6 +15731,7 @@ namespace Jolt
         EXPECT_FALSE(system.IsValid(firstWorldHandle, firstConstraints[0]));
         ASSERT_TRUE(system.GetWorldStatistics(firstWorldHandle, firstWorldStatistics));
         EXPECT_EQ(firstWorldStatistics.m_sceneInstanceCount, 0);
+        EXPECT_TRUE(system.DestroySceneInstance(secondWorldHandle, secondInstanceHandle));
         EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
         ASSERT_TRUE(system.GetSceneDefinitionState(definitionHandle, definitionState));
         EXPECT_EQ(definitionState.m_instanceCount, 0);

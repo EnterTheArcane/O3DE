@@ -244,7 +244,10 @@ namespace Jolt
     void SkeletonComponent::Deactivate()
     {
         AZ::Data::AssetBus::Handler::BusDisconnect();
-        ReleaseResources(true);
+        if (!ReleaseResources(true))
+        {
+            AZ_Error("Jolt", false, "Failed to release skeleton resources for entity '%s'.", GetEntity()->GetName().c_str());
+        }
         SkeletonComponentRequestBus::Handler::BusDisconnect();
         m_system = nullptr;
     }
@@ -274,12 +277,8 @@ namespace Jolt
     }
 
     void SkeletonComponent::OnAssetError(
-        AZ::Data::Asset<AZ::Data::AssetData> asset)
+        [[maybe_unused]] AZ::Data::Asset<AZ::Data::AssetData> asset)
     {
-        if (asset.GetId() == m_configuration.m_asset.GetId())
-        {
-            ReleaseResources(true);
-        }
     }
 
     bool SkeletonComponent::LoadAsset(
@@ -352,14 +351,34 @@ namespace Jolt
             return false;
         }
 
+        const auto destroyResources = [&](const RuntimeResources& ownedResources)
+        {
+            AZStd::vector<SkeletalAnimationHandle> animationHandles;
+            animationHandles.reserve(ownedResources.m_animations.size());
+            for (const RuntimeResources::Animation& animation : ownedResources.m_animations)
+            {
+                animationHandles.push_back(animation.m_handle);
+            }
+            return m_system->DestroySkeletonResources(ownedResources.m_skeletonHandle, animationHandles);
+        };
+
+        SkeletonDefinitionHandle previousSkeletonHandle;
         if (m_resources)
         {
+            previousSkeletonHandle = m_resources->m_skeletonHandle;
+            if (!destroyResources(*m_resources))
+            {
+                [[maybe_unused]] const bool replacementDestroyed = destroyResources(*resources);
+                AZ_Assert(replacementDestroyed, "Unpublished skeleton resources must remain destroyable.");
+                return false;
+            }
+            m_resources.reset();
+            m_loadedAsset = nullptr;
             SkeletonComponentNotificationBus::Event(
                 GetEntityId(),
                 &ISkeletonComponentNotifications::OnSkeletonReloading,
-                m_resources->m_skeletonHandle);
+                previousSkeletonHandle);
         }
-        ReleaseResources(false);
         m_resources = AZStd::move(resources);
         m_loadedAsset = &asset;
         SkeletonComponentNotificationBus::Event(
@@ -369,19 +388,24 @@ namespace Jolt
         return true;
     }
 
-    void SkeletonComponent::ReleaseResources(
+    bool SkeletonComponent::ReleaseResources(
         const bool notify)
     {
         if (!m_resources || !m_system)
         {
-            return;
+            return true;
         }
 
+        AZStd::vector<SkeletalAnimationHandle> animationHandles;
+        animationHandles.reserve(m_resources->m_animations.size());
         for (const RuntimeResources::Animation& animation : m_resources->m_animations)
         {
-            m_system->DestroySkeletalAnimation(animation.m_handle);
+            animationHandles.push_back(animation.m_handle);
         }
-        m_system->DestroySkeletonDefinition(m_resources->m_skeletonHandle);
+        if (!m_system->DestroySkeletonResources(m_resources->m_skeletonHandle, animationHandles))
+        {
+            return false;
+        }
         m_resources.reset();
         m_loadedAsset = nullptr;
         if (notify)
@@ -390,5 +414,6 @@ namespace Jolt
                 GetEntityId(),
                 &ISkeletonComponentNotifications::OnSkeletonReleased);
         }
+        return true;
     }
 } // namespace Jolt

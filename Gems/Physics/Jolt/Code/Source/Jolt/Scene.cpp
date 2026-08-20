@@ -352,6 +352,7 @@ namespace Jolt
     bool RuntimeImplementation::DestroySceneDefinition(
         const SceneDefinitionHandle definitionHandle)
     {
+        AZStd::lock_guard resourceLock(m_sceneResourceMutex);
         AZStd::vector<CookedShapeHandle> cookedShapeHandles;
         AZStd::vector<GroupFilterHandle> groupFilterHandles;
         AZStd::vector<PathHandle> pathHandles;
@@ -486,6 +487,7 @@ namespace Jolt
         const SceneDefinitionHandle definitionHandle)
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::RuntimeImplementation::InstantiateScene");
+        AZStd::lock_guard resourceLock(m_sceneResourceMutex);
         AZStd::shared_lock worldLock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
         if (!world)
@@ -511,9 +513,29 @@ namespace Jolt
         const WorldHandle worldHandle,
         const SceneInstanceHandle instanceHandle)
     {
+        AZStd::lock_guard resourceLock(m_sceneResourceMutex);
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
         return world && world->DestroySceneInstance(instanceHandle);
+    }
+
+    bool RuntimeImplementation::DestroySceneResources(
+        const WorldHandle worldHandle,
+        const SceneInstanceHandle instanceHandle,
+        const SceneDefinitionHandle definitionHandle)
+    {
+        AZStd::lock_guard resourceLock(m_sceneResourceMutex);
+        SceneDefinitionState definitionState;
+        if (!GetSceneDefinitionState(definitionHandle, definitionState)
+            || definitionState.m_instanceCount != 1
+            || !DestroySceneInstance(worldHandle, instanceHandle))
+        {
+            return false;
+        }
+
+        [[maybe_unused]] const bool definitionDestroyed = DestroySceneDefinition(definitionHandle);
+        AZ_Assert(definitionDestroyed, "A preflighted component scene definition must be destroyable.");
+        return definitionDestroyed;
     }
 
     bool RuntimeImplementation::IsValid(

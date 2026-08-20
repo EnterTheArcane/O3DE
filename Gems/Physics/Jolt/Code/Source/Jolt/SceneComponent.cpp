@@ -209,7 +209,10 @@ namespace Jolt
     void SceneComponent::Deactivate()
     {
         AZ::Data::AssetBus::Handler::BusDisconnect();
-        ReleaseResources(true);
+        if (!ReleaseResources(true))
+        {
+            AZ_Error("Jolt", false, "Failed to release scene resources for entity '%s'.", GetEntity()->GetName().c_str());
+        }
         SceneRequestBus::Handler::BusDisconnect();
         m_system = nullptr;
     }
@@ -299,14 +302,24 @@ namespace Jolt
             return false;
         }
 
+        SceneInstanceHandle previousInstanceHandle;
         if (m_resources)
         {
+            previousInstanceHandle = m_resources->m_instanceHandle;
+            if (!ReleaseResources(false))
+            {
+                [[maybe_unused]] const bool replacementDestroyed = m_system->DestroySceneResources(
+                    resources->m_worldHandle,
+                    resources->m_instanceHandle,
+                    resources->m_definitionHandle);
+                AZ_Assert(replacementDestroyed, "Unpublished scene resources must remain destroyable.");
+                return false;
+            }
             SceneNotificationBus::Event(
                 GetEntityId(),
                 &ISceneNotifications::OnSceneReloading,
-                m_resources->m_instanceHandle);
+                previousInstanceHandle);
         }
-        ReleaseResources(false);
         m_resources = AZStd::move(resources);
         m_loadedAsset = &asset;
         SceneNotificationBus::Event(
@@ -316,18 +329,21 @@ namespace Jolt
         return true;
     }
 
-    void SceneComponent::ReleaseResources(
+    bool SceneComponent::ReleaseResources(
         const bool notify)
     {
         if (!m_resources || !m_system)
         {
-            return;
+            return true;
         }
 
-        m_system->DestroySceneInstance(
+        if (!m_system->DestroySceneResources(
             m_resources->m_worldHandle,
-            m_resources->m_instanceHandle);
-        m_system->DestroySceneDefinition(m_resources->m_definitionHandle);
+            m_resources->m_instanceHandle,
+            m_resources->m_definitionHandle))
+        {
+            return false;
+        }
         m_resources.reset();
         m_loadedAsset = nullptr;
         if (notify)
@@ -336,5 +352,6 @@ namespace Jolt
                 GetEntityId(),
                 &ISceneNotifications::OnSceneReleased);
         }
+        return true;
     }
 } // namespace Jolt

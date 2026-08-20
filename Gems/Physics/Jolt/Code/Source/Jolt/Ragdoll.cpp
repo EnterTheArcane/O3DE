@@ -1045,6 +1045,51 @@ namespace Jolt
             return false;
         }
 
+        AZStd::unordered_map<BodyHandle, AZ::u32> internalBodyConstraints;
+        AZStd::unordered_map<ConstraintHandle, AZ::u32> internalConstraintParents;
+        internalBodyConstraints.reserve(slot->m_bodyHandles.size());
+        internalConstraintParents.reserve(slot->m_constraintHandles.size());
+        for (const ConstraintHandle constraintHandle : slot->m_constraintHandles)
+        {
+            const ConstraintSlot* constraintSlot = FindConstraint(constraintHandle);
+            if (!constraintSlot || constraintSlot->m_ragdollHandle != ragdollHandle)
+            {
+                return false;
+            }
+
+            ++internalBodyConstraints[constraintSlot->m_firstBodyHandle];
+            ++internalBodyConstraints[constraintSlot->m_secondBodyHandle];
+            for (const ConstraintHandle dependencyHandle : constraintSlot->m_dependencyHandles)
+            {
+                if (dependencyHandle)
+                {
+                    ++internalConstraintParents[dependencyHandle];
+                }
+            }
+        }
+        for (const BodyHandle bodyHandle : slot->m_bodyHandles)
+        {
+            const BodySlot* bodySlot = FindBody(bodyHandle);
+            if (!bodySlot
+                || bodySlot->m_ragdollHandle != ragdollHandle
+                || bodySlot->m_characterHandle
+                || bodySlot->m_virtualCharacterHandle
+                || bodySlot->m_vehicleHandle
+                || bodySlot->m_sceneInstanceHandle
+                || bodySlot->m_constraintCount != internalBodyConstraints[bodyHandle])
+            {
+                return false;
+            }
+        }
+        for (const ConstraintHandle constraintHandle : slot->m_constraintHandles)
+        {
+            const ConstraintSlot* constraintSlot = FindConstraint(constraintHandle);
+            if (constraintSlot->m_parentCount != internalConstraintParents[constraintHandle])
+            {
+                return false;
+            }
+        }
+
         if (slot->m_isInSimulation)
         {
             slot->m_ragdoll->RemoveFromPhysicsSystem();

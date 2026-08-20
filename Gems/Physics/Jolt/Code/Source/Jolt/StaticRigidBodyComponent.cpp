@@ -8,6 +8,7 @@
 #include <Jolt/StaticRigidBodyComponent.h>
 
 #include <Jolt/ColliderComponent.h>
+#include <Jolt/ComponentDependencyManager.h>
 #include <Jolt/ComponentUtilities.h>
 #include <Jolt/SystemInternal.h>
 
@@ -147,16 +148,22 @@ namespace Jolt
             return true;
         }
         const BodyHandle bodyHandle = m_bodyHandle;
-        BodyNotificationBus::Event(
-            GetEntityId(),
-            &IBodyNotifications::OnBodyDestroying,
-            m_worldHandle,
-            bodyHandle);
+        auto* dependencyManager = AZ::Interface<IComponentDependencyManager>::Get();
+        if (dependencyManager
+            && !dependencyManager->PrepareBodyDestruction(GetEntityId(), m_worldHandle, bodyHandle))
+        {
+            return false;
+        }
         if (!m_system->DestroyBody(m_worldHandle, bodyHandle))
         {
             return false;
         }
 
+        BodyNotificationBus::Event(
+            GetEntityId(),
+            &IBodyNotifications::OnBodyDestroying,
+            m_worldHandle,
+            bodyHandle);
         m_bodyHandle = {};
         m_collider->DestroyShapes();
         BodyNotificationBus::Event(

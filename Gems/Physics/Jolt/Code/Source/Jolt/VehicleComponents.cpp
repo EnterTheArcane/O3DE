@@ -965,16 +965,18 @@ namespace Jolt
         }
     }
 
-    void VehicleComponentBase::OnBodyDependencyDestroying(
+    bool VehicleComponentBase::OnBodyDependencyDestroying(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
     {
         if (worldHandle == m_worldHandle && bodyHandle == m_bodyHandle)
         {
             const bool enabled = m_enabled;
-            DisableSimulation();
+            const bool disabled = DisableSimulation();
             m_enabled = enabled;
+            return disabled;
         }
+        return true;
     }
 
     WheeledVehicleComponent::WheeledVehicleComponent() = default;

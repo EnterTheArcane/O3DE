@@ -330,6 +330,10 @@ namespace Jolt
 
         bool DestroySkeletalAnimation(SkeletalAnimationHandle animationHandle);
 
+        bool DestroySkeletonResources(
+            SkeletonDefinitionHandle skeletonHandle,
+            AZStd::span<const SkeletalAnimationHandle> animationHandles);
+
         [[nodiscard]]
         bool IsValid(SkeletalAnimationHandle animationHandle) const;
 
@@ -606,6 +610,11 @@ namespace Jolt
         bool DestroySceneInstance(
             WorldHandle worldHandle,
             SceneInstanceHandle instanceHandle);
+
+        bool DestroySceneResources(
+            WorldHandle worldHandle,
+            SceneInstanceHandle instanceHandle,
+            SceneDefinitionHandle definitionHandle);
 
         [[nodiscard]]
         bool IsValid(
@@ -3404,6 +3413,7 @@ namespace Jolt
         AZStd::vector<AZ::u32> m_freeHairDefinitionSlots;
         AZStd::unique_ptr<HairRuntime> m_hairRuntime;
 
+        mutable AZStd::recursive_mutex m_sceneResourceMutex;
         mutable AZStd::shared_mutex m_sceneDefinitionMutex;
         AZStd::vector<SceneDefinitionSlot> m_sceneDefinitionSlots;
         AZStd::vector<AZ::u32> m_freeSceneDefinitionSlots;

@@ -613,6 +613,7 @@ namespace Jolt
             if (!m_defaultWorldHandle)
             {
                 AZ_Error("Jolt", false, "Failed to create the configured default world.");
+                return;
             }
         }
         m_initialized = true;
@@ -4352,7 +4353,7 @@ namespace Jolt
             return false;
         }
 
-        if (slot.m_world->HasTransformedShapeLeases())
+        if (slot.m_world->HasLiveResources())
         {
             return false;
         }

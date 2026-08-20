@@ -30,7 +30,8 @@ namespace Jolt
             {
                 connect(entityId);
             }
-            auto& entityClients = iterator->second;
+
+            auto& entityClients = iterator->second.m_clients;
             if (AZStd::find(entityClients.begin(), entityClients.end(), &client) == entityClients.end())
             {
                 entityClients.push_back(&client);
@@ -50,33 +51,85 @@ namespace Jolt
                 return;
             }
 
-            auto& entityClients = iterator->second;
-            entityClients.erase(
-                AZStd::remove(entityClients.begin(), entityClients.end(), &client),
-                entityClients.end());
-            if (entityClients.empty())
+            auto& clientList = iterator->second;
+            if (clientList.m_dispatchDepth > 0)
+            {
+                for (Client*& registeredClient : clientList.m_clients)
+                {
+                    if (registeredClient == &client)
+                    {
+                        registeredClient = nullptr;
+                    }
+                }
+                return;
+            }
+
+            clientList.m_clients.erase(
+                AZStd::remove(clientList.m_clients.begin(), clientList.m_clients.end(), &client),
+                clientList.m_clients.end());
+            if (clientList.m_clients.empty())
             {
                 disconnect(entityId);
                 clients.erase(iterator);
             }
         }
 
-        template<typename Map, typename Visitor>
-        void VisitClients(
-            const Map& clients,
+        template<typename Map, typename Visitor, typename Disconnect>
+        bool VisitClients(
+            Map& clients,
             const AZ::EntityId entityId,
-            Visitor&& visitor)
+            Visitor&& visitor,
+            Disconnect&& disconnect)
         {
-            const auto iterator = clients.find(entityId);
+            auto iterator = clients.find(entityId);
             if (iterator == clients.end())
             {
-                return;
+                return true;
             }
 
-            for (auto* client : iterator->second)
+            ++iterator->second.m_dispatchDepth;
+            const size_t clientCount = iterator->second.m_clients.size();
+            bool succeeded = true;
+            for (size_t clientIndex = 0; clientIndex < clientCount; ++clientIndex)
             {
-                visitor(*client);
+                iterator = clients.find(entityId);
+                AZ_Assert(iterator != clients.end(), "A dispatching dependency list cannot be removed.");
+                if (iterator == clients.end() || clientIndex >= iterator->second.m_clients.size())
+                {
+                    succeeded = false;
+                    break;
+                }
+
+                auto* client = iterator->second.m_clients[clientIndex];
+                if (client && !visitor(*client))
+                {
+                    succeeded = false;
+                    break;
+                }
             }
+
+            iterator = clients.find(entityId);
+            AZ_Assert(iterator != clients.end(), "A dispatching dependency list cannot be removed.");
+            if (iterator == clients.end())
+            {
+                return false;
+            }
+
+            auto& clientList = iterator->second;
+            AZ_Assert(clientList.m_dispatchDepth > 0, "The dependency dispatch depth underflowed.");
+            --clientList.m_dispatchDepth;
+            if (clientList.m_dispatchDepth == 0)
+            {
+                clientList.m_clients.erase(
+                    AZStd::remove(clientList.m_clients.begin(), clientList.m_clients.end(), nullptr),
+                    clientList.m_clients.end());
+                if (clientList.m_clients.empty())
+                {
+                    disconnect(entityId);
+                    clients.erase(iterator);
+                }
+            }
+            return succeeded;
         }
     } // namespace
 
@@ -177,6 +230,59 @@ namespace Jolt
             });
     }
 
+    bool ComponentDependencyManager::PrepareBodyDestruction(
+        const AZ::EntityId entityId,
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle)
+    {
+        return VisitClients(
+            m_bodyClients,
+            entityId,
+            [&](IBodyDependencyClient& client)
+            {
+                return client.OnBodyDependencyDestroying(worldHandle, bodyHandle);
+            },
+            [&](const AZ::EntityId id)
+            {
+                BodyNotificationBus::MultiHandler::BusDisconnect(id);
+            });
+    }
+
+    bool ComponentDependencyManager::PrepareConstraintDestruction(
+        const AZ::EntityId entityId,
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle)
+    {
+        return VisitClients(
+            m_constraintClients,
+            entityId,
+            [&](IConstraintDependencyClient& client)
+            {
+                return client.OnConstraintDependencyDestroying(worldHandle, constraintHandle);
+            },
+            [&](const AZ::EntityId id)
+            {
+                ConstraintNotificationBus::MultiHandler::BusDisconnect(id);
+            });
+    }
+
+    bool ComponentDependencyManager::PreparePathDestruction(
+        const AZ::EntityId entityId,
+        const PathHandle pathHandle)
+    {
+        return VisitClients(
+            m_pathClients,
+            entityId,
+            [&](IConstraintDependencyClient& client)
+            {
+                return client.OnPathDependencyDestroying(pathHandle);
+            },
+            [&](const AZ::EntityId id)
+            {
+                PathNotificationBus::MultiHandler::BusDisconnect(id);
+            });
+    }
+
     void ComponentDependencyManager::OnBodyCreated(
         const WorldHandle worldHandle,
         const BodyHandle bodyHandle)
@@ -186,30 +292,17 @@ namespace Jolt
         {
             return;
         }
-        VisitClients(
+        [[maybe_unused]] const bool notified = VisitClients(
             m_bodyClients,
             *entityId,
             [&](IBodyDependencyClient& client)
             {
                 client.OnBodyDependencyCreated(worldHandle, bodyHandle);
-            });
-    }
-
-    void ComponentDependencyManager::OnBodyDestroying(
-        const WorldHandle worldHandle,
-        const BodyHandle bodyHandle)
-    {
-        const AZ::EntityId* entityId = BodyNotificationBus::GetCurrentBusId();
-        if (!entityId)
-        {
-            return;
-        }
-        VisitClients(
-            m_bodyClients,
-            *entityId,
-            [&](IBodyDependencyClient& client)
+                return true;
+            },
+            [&](const AZ::EntityId id)
             {
-                client.OnBodyDependencyDestroying(worldHandle, bodyHandle);
+                BodyNotificationBus::MultiHandler::BusDisconnect(id);
             });
     }
 
@@ -222,30 +315,17 @@ namespace Jolt
         {
             return;
         }
-        VisitClients(
+        [[maybe_unused]] const bool notified = VisitClients(
             m_constraintClients,
             *entityId,
             [&](IConstraintDependencyClient& client)
             {
                 client.OnConstraintDependencyCreated(worldHandle, constraintHandle);
-            });
-    }
-
-    void ComponentDependencyManager::OnConstraintDestroying(
-        const WorldHandle worldHandle,
-        const ConstraintHandle constraintHandle)
-    {
-        const AZ::EntityId* entityId = ConstraintNotificationBus::GetCurrentBusId();
-        if (!entityId)
-        {
-            return;
-        }
-        VisitClients(
-            m_constraintClients,
-            *entityId,
-            [&](IConstraintDependencyClient& client)
+                return true;
+            },
+            [&](const AZ::EntityId id)
             {
-                client.OnConstraintDependencyDestroying(worldHandle, constraintHandle);
+                ConstraintNotificationBus::MultiHandler::BusDisconnect(id);
             });
     }
 
@@ -257,29 +337,17 @@ namespace Jolt
         {
             return;
         }
-        VisitClients(
+        [[maybe_unused]] const bool notified = VisitClients(
             m_pathClients,
             *entityId,
             [&](IConstraintDependencyClient& client)
             {
                 client.OnPathDependencyCreated(pathHandle);
-            });
-    }
-
-    void ComponentDependencyManager::OnPathDestroying(
-        const PathHandle pathHandle)
-    {
-        const AZ::EntityId* entityId = PathNotificationBus::GetCurrentBusId();
-        if (!entityId)
-        {
-            return;
-        }
-        VisitClients(
-            m_pathClients,
-            *entityId,
-            [&](IConstraintDependencyClient& client)
+                return true;
+            },
+            [&](const AZ::EntityId id)
             {
-                client.OnPathDependencyDestroying(pathHandle);
+                PathNotificationBus::MultiHandler::BusDisconnect(id);
             });
     }
 } // namespace Jolt

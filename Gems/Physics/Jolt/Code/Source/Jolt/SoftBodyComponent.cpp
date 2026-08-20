@@ -8,6 +8,7 @@
 #include <Jolt/SoftBodyComponent.h>
 
 #include <Jolt/BehaviorReflection.h>
+#include <Jolt/ComponentDependencyManager.h>
 #include <Jolt/ComponentUtilities.h>
 #include <Jolt/SystemInternal.h>
 
@@ -551,15 +552,21 @@ namespace Jolt
         }
 
         const BodyHandle bodyHandle = m_bodyHandle;
+        auto* dependencyManager = AZ::Interface<IComponentDependencyManager>::Get();
+        if (dependencyManager
+            && !dependencyManager->PrepareBodyDestruction(GetEntityId(), m_worldHandle, bodyHandle))
+        {
+            return false;
+        }
+        if (!m_system->DestroyBody(m_worldHandle, bodyHandle))
+        {
+            return false;
+        }
         BodyNotificationBus::Event(
             GetEntityId(),
             &IBodyNotifications::OnBodyDestroying,
             m_worldHandle,
             bodyHandle);
-        if (!m_system->DestroyBody(m_worldHandle, bodyHandle))
-        {
-            return false;
-        }
         m_bodyHandle = {};
         ReleaseDefinition();
         BodyNotificationBus::Event(

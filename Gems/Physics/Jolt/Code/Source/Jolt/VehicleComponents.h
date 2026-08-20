@@ -137,7 +137,7 @@ namespace Jolt
             WorldHandle worldHandle,
             BodyHandle bodyHandle) override;
 
-        void OnBodyDependencyDestroying(
+        bool OnBodyDependencyDestroying(
             WorldHandle worldHandle,
             BodyHandle bodyHandle) override;
 
