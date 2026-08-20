@@ -20,6 +20,8 @@ configuration wins over legacy language-version examples.
 - Treat rollback as a transaction. Validate and prepare every native and caller-owned participant before mutation; commit prepared
   participant state only after native restoration succeeds. Recover the previous state on a post-mutation failure, and quarantine the
   world with an explicit indeterminate result if recovery fails. Imported archives never bypass transactional recovery.
+- Treat extension output as untrusted until complete. Stage bounded callback results without allocation, validate every field and encoded
+  identifier, and publish only after the provider reports success. A later invalid result must not leak an earlier valid result.
 - Keep the native Jolt allocator, job system, tracing, profiling, and assertion boundaries integrated with existing AzCore facilities.
   Do not invent parallel infrastructure.
 

@@ -47,6 +47,7 @@ namespace Jolt
     };
 
     inline constexpr AZ::u32 MaximumCustomShapeRuntimeDataSize = 16 * 1024 * 1024;
+    inline constexpr AZ::u32 MaximumCustomShapeDispatchHitCount = 16;
 
     struct CustomShapeTriangle final
     {
@@ -243,6 +244,7 @@ namespace Jolt
         [[nodiscard]]
         virtual float GetEarlyOutFraction() const = 0;
 
+        //! Stages one hit for validation. False rejects the complete provider result and the provider must stop emitting hits.
         [[nodiscard]]
         virtual bool AddHit(const CustomShapeCollisionHit& hit) = 0;
     };
@@ -257,6 +259,7 @@ namespace Jolt
         [[nodiscard]]
         virtual float GetEarlyOutFraction() const = 0;
 
+        //! Stages one hit for validation. False rejects the complete provider result and the provider must stop emitting hits.
         [[nodiscard]]
         virtual bool AddHit(const CustomShapeCastHit& hit) = 0;
     };

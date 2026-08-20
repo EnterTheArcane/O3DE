@@ -346,11 +346,22 @@ namespace Jolt
                     .m_secondSubShapeId = SubShapeId::Root,
                     .m_penetrationDepth = 0.75f,
                 };
+                if (m_returnOverwideSubShapeId)
+                {
+                    hit.m_firstSubShapeId = SubShapeId(0);
+                }
+                for (AZ::u32 hitIndex = 0; hitIndex < m_dispatchHitCount; ++hitIndex)
+                {
+                    if (!collector.AddHit(hit))
+                    {
+                        break;
+                    }
+                }
                 if (m_returnInvalidOutput)
                 {
                     hit.m_penetrationAxis.SetX(AZStd::numeric_limits<float>::quiet_NaN());
+                    [[maybe_unused]] const bool accepted = collector.AddHit(hit);
                 }
-                [[maybe_unused]] const bool accepted = collector.AddHit(hit);
                 return CustomShapeDispatchResult::Handled;
             }
 
@@ -367,7 +378,7 @@ namespace Jolt
 
                 ++m_castCount;
                 m_castEvidence = settings.m_displacement == AZ::Vector3::CreateAxisX(4.0f);
-                [[maybe_unused]] const bool accepted = collector.AddHit({
+                CustomShapeCastHit hit = {
                     .m_collision = {
                         .m_firstContactPosition = AZ::Vector3::CreateZero(),
                         .m_secondContactPosition = AZ::Vector3::CreateAxisX(),
@@ -377,7 +388,23 @@ namespace Jolt
                         .m_penetrationDepth = 0.0f,
                     },
                     .m_fraction = 0.25f,
-                });
+                };
+                if (m_returnOverwideSubShapeId)
+                {
+                    hit.m_collision.m_firstSubShapeId = SubShapeId(0);
+                }
+                for (AZ::u32 hitIndex = 0; hitIndex < m_dispatchHitCount; ++hitIndex)
+                {
+                    if (!collector.AddHit(hit))
+                    {
+                        break;
+                    }
+                }
+                if (m_returnInvalidOutput)
+                {
+                    hit.m_fraction = AZStd::numeric_limits<float>::quiet_NaN();
+                    [[maybe_unused]] const bool accepted = collector.AddHit(hit);
+                }
                 return CustomShapeDispatchResult::Handled;
             }
 
@@ -387,7 +414,9 @@ namespace Jolt
             mutable AZStd::atomic<bool> m_castEvidence = false;
             mutable AZStd::atomic<bool> m_viewEvidence = false;
             AZ::u64 m_version = 19;
+            AZ::u32 m_dispatchHitCount = 1;
             bool m_returnInvalidOutput = false;
+            bool m_returnOverwideSubShapeId = false;
             bool m_useDispatch = false;
         };
 
@@ -14827,7 +14856,84 @@ namespace Jolt
             });
         AZ_TEST_STOP_TRACE_SUPPRESSION(1);
         EXPECT_EQ(pairResult.m_hitCount, 0);
+
+        RecordingTransformedShapeCollisionCollector invalidProviderCollisionCollector;
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        EXPECT_TRUE(system.CollideTransformedShapes(
+            worldHandle,
+            retainedShape,
+            retainedSphere,
+            {},
+            invalidProviderCollisionCollector));
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(invalidProviderCollisionCollector.m_hitCount, 0);
+
+        RecordingTransformedShapeCastCollector invalidProviderCastCollector;
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        EXPECT_TRUE(system.CastTransformedShape(
+            worldHandle,
+            retainedShape,
+            retainedSphere,
+            {
+                .m_displacement = AZ::Vector3::CreateAxisX(4.0f),
+            },
+            invalidProviderCastCollector));
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(invalidProviderCastCollector.m_hitCount, 0);
+
         provider.m_returnInvalidOutput = false;
+
+        provider.m_returnOverwideSubShapeId = true;
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        pairResult = system.CollideTransformedShapes(
+            worldHandle,
+            retainedShape,
+            retainedSphere,
+            {},
+            collisionHits,
+            {});
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(pairResult.m_hitCount, 0);
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        const QueryResult overwideCastResult = system.CastTransformedShape(
+            worldHandle,
+            retainedShape,
+            retainedSphere,
+            {
+                .m_displacement = AZ::Vector3::CreateAxisX(4.0f),
+            },
+            castHits,
+            {});
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(overwideCastResult.m_hitCount, 0);
+        provider.m_returnOverwideSubShapeId = false;
+
+        provider.m_dispatchHitCount = MaximumCustomShapeDispatchHitCount + 1;
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        pairResult = system.CollideTransformedShapes(
+            worldHandle,
+            retainedShape,
+            retainedSphere,
+            {},
+            collisionHits,
+            {});
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(pairResult.m_hitCount, 0);
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        const QueryResult excessiveCastResult = system.CastTransformedShape(
+            worldHandle,
+            retainedShape,
+            retainedSphere,
+            {
+                .m_displacement = AZ::Vector3::CreateAxisX(4.0f),
+            },
+            castHits,
+            {});
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(excessiveCastResult.m_hitCount, 0);
+        provider.m_dispatchHitCount = 1;
         provider.m_useDispatch = false;
 
         retainedShape = {};
@@ -14894,7 +15000,7 @@ namespace Jolt
             });
         ASSERT_TRUE(pairResult.IsComplete());
         EXPECT_EQ(pairResult.m_hitCount, 1);
-        EXPECT_EQ(provider.m_collisionCount.load(), 6);
+        EXPECT_EQ(provider.m_collisionCount.load(), 9);
         EXPECT_TRUE(provider.m_viewEvidence.load());
 
         AZStd::atomic_bool beginConcurrentQueries{false};
@@ -14961,7 +15067,7 @@ namespace Jolt
         EXPECT_TRUE(secondConcurrentQuerySucceeded.load(AZStd::memory_order_acquire));
         EXPECT_TRUE(firstFloatEnvironmentRestored.load(AZStd::memory_order_acquire));
         EXPECT_TRUE(secondFloatEnvironmentRestored.load(AZStd::memory_order_acquire));
-        EXPECT_EQ(provider.m_collisionCount.load(), 262);
+        EXPECT_EQ(provider.m_collisionCount.load(), 265);
 
         provider.m_useDispatch = false;
         retainedShape = {};

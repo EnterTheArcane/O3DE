@@ -10,6 +10,7 @@
 #include <Jolt/MaterialInternal.h>
 
 #include <AzCore/Casting/numeric_cast.h>
+#include <AzCore/std/containers/fixed_vector.h>
 
 #include <Jolt/Physics/Collision/CollideSoftBodyVertexIterator.h>
 #include <Jolt/Physics/Collision/CollisionDispatch.h>
@@ -890,6 +891,27 @@ namespace Jolt
         }
 
         [[nodiscard]]
+        bool CanMergeSubShapeId(
+            const JPH::Shape& shape,
+            const SubShapeId subShapeId)
+        {
+            const JPH::uint bitCount = shape.GetSubShapeIDBitsRecursive();
+            if (subShapeId == SubShapeId::Root)
+            {
+                return bitCount == 0;
+            }
+            if (bitCount == 0)
+            {
+                return false;
+            }
+            if (bitCount >= AZStd::numeric_limits<SubShapeId::ValueType>::digits)
+            {
+                return true;
+            }
+            return subShapeId.GetValue() < (SubShapeId::ValueType{1} << bitCount);
+        }
+
+        [[nodiscard]]
         JPH::SubShapeID MergeSubShapeId(
             const JPH::SubShapeIDCreator& creator,
             const SubShapeId subShapeId,
@@ -901,9 +923,7 @@ namespace Jolt
                 return creator.GetID();
             }
 
-            const JPH::SubShapeID::BiggerType mask =
-                (JPH::SubShapeID::BiggerType{1} << bitCount) - 1;
-            return creator.PushID(subShapeId.GetValue() & mask, bitCount).GetID();
+            return creator.PushID(subShapeId.GetValue(), bitCount).GetID();
         }
 
         class CustomShapeCollisionCollector final
@@ -942,7 +962,10 @@ namespace Jolt
                     || hit.m_penetrationAxis.IsZero()
                     || !AZ::IsFiniteFloat(hit.m_penetrationDepth)
                     || !IsValidFace(hit.m_firstFace)
-                    || !IsValidFace(hit.m_secondFace))
+                    || !IsValidFace(hit.m_secondFace)
+                    || !CanMergeSubShapeId(m_firstShape, hit.m_firstSubShapeId)
+                    || !CanMergeSubShapeId(m_secondShape, hit.m_secondSubShapeId)
+                    || m_hits.size() >= m_hits.max_size())
                 {
                     m_invalid = true;
                     return false;
@@ -964,9 +987,8 @@ namespace Jolt
                 {
                     nativeHit.mShape2Face.push_back(ToNativeCustomVector(vertex));
                 }
-                m_collector.AddHit(nativeHit);
-                m_hasOutput = true;
-                return !m_collector.ShouldEarlyOut();
+                m_hits.push_back(AZStd::move(nativeHit));
+                return true;
             }
 
             [[nodiscard]]
@@ -978,7 +1000,19 @@ namespace Jolt
             [[nodiscard]]
             bool HasOutput() const
             {
-                return m_hasOutput;
+                return !m_hits.empty();
+            }
+
+            void Commit()
+            {
+                for (const JPH::CollideShapeResult& hit : m_hits)
+                {
+                    m_collector.AddHit(hit);
+                    if (m_collector.ShouldEarlyOut())
+                    {
+                        break;
+                    }
+                }
             }
 
         private:
@@ -987,7 +1021,7 @@ namespace Jolt
             JPH::SubShapeIDCreator m_firstSubShapeId;
             JPH::SubShapeIDCreator m_secondSubShapeId;
             JPH::CollideShapeCollector& m_collector;
-            bool m_hasOutput = false;
+            AZStd::fixed_vector<JPH::CollideShapeResult, MaximumCustomShapeDispatchHitCount> m_hits;
             bool m_invalid = false;
         };
 
@@ -1030,7 +1064,10 @@ namespace Jolt
                     || hit.m_collision.m_penetrationAxis.IsZero()
                     || !AZ::IsFiniteFloat(hit.m_collision.m_penetrationDepth)
                     || !IsValidFace(hit.m_collision.m_firstFace)
-                    || !IsValidFace(hit.m_collision.m_secondFace))
+                    || !IsValidFace(hit.m_collision.m_secondFace)
+                    || !CanMergeSubShapeId(m_firstShape, hit.m_collision.m_firstSubShapeId)
+                    || !CanMergeSubShapeId(m_secondShape, hit.m_collision.m_secondSubShapeId)
+                    || m_hits.size() >= m_hits.max_size())
                 {
                     m_invalid = true;
                     return false;
@@ -1060,9 +1097,8 @@ namespace Jolt
                 {
                     nativeHit.mShape2Face.push_back(ToNativeCustomVector(vertex));
                 }
-                m_collector.AddHit(nativeHit);
-                m_hasOutput = true;
-                return !m_collector.ShouldEarlyOut();
+                m_hits.push_back(AZStd::move(nativeHit));
+                return true;
             }
 
             [[nodiscard]]
@@ -1074,7 +1110,19 @@ namespace Jolt
             [[nodiscard]]
             bool HasOutput() const
             {
-                return m_hasOutput;
+                return !m_hits.empty();
+            }
+
+            void Commit()
+            {
+                for (const JPH::ShapeCastResult& hit : m_hits)
+                {
+                    m_collector.AddHit(hit);
+                    if (m_collector.ShouldEarlyOut())
+                    {
+                        break;
+                    }
+                }
             }
 
         private:
@@ -1083,7 +1131,7 @@ namespace Jolt
             JPH::SubShapeIDCreator m_firstSubShapeId;
             JPH::SubShapeIDCreator m_secondSubShapeId;
             JPH::CastShapeCollector& m_collector;
-            bool m_hasOutput = false;
+            AZStd::fixed_vector<JPH::ShapeCastResult, MaximumCustomShapeDispatchHitCount> m_hits;
             bool m_invalid = false;
         };
 
@@ -1197,7 +1245,12 @@ namespace Jolt
                     "Custom-shape provider returned invalid collision output.");
                 return true;
             }
-            return result == CustomShapeDispatchResult::Handled;
+            if (result == CustomShapeDispatchResult::Handled)
+            {
+                collector.Commit();
+                return true;
+            }
+            return false;
         }
 
         [[nodiscard]]
@@ -1230,7 +1283,12 @@ namespace Jolt
                     "Custom-shape provider returned invalid cast output.");
                 return true;
             }
-            return result == CustomShapeDispatchResult::Handled;
+            if (result == CustomShapeDispatchResult::Handled)
+            {
+                collector.Commit();
+                return true;
+            }
+            return false;
         }
 
         void CollideCustomShape(
