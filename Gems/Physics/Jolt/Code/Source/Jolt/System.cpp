@@ -744,212 +744,487 @@ namespace Jolt
         return m_nativeRuntime.GetRuntimeInfo();
     }
 
-    bool RuntimeImplementation::RegisterCustomConstraintProvider(
-        ICustomConstraintProvider* provider)
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtension(
+        IBodyPairCollider* extension,
+        ExtensionHostLease hostLease)
     {
-        if (!provider)
+        if (!extension)
         {
-            return false;
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
         }
-
-        const AZ::TypeId providerId = provider->GetId();
-        if (providerId.IsNull())
-        {
-            return false;
-        }
-
-        AZStd::lock_guard lock(m_customConstraintProviderMutex);
-        return m_customConstraintProviders.emplace(
-            providerId,
-            CustomConstraintProviderEntry{
-                .m_provider = provider,
-            }).second;
+        return RegisterExtensionEntry(
+            extension,
+            extension->GetStateTypeId(),
+            extension->GetStateVersion(),
+            ExtensionKind::BodyPairCollider,
+            false,
+            AZStd::move(hostLease));
     }
 
-    bool RuntimeImplementation::UnregisterCustomConstraintProvider(
-        ICustomConstraintProvider* provider)
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtension(
+        IContactCallbacks* extension,
+        ExtensionHostLease hostLease)
     {
-        if (!provider)
+        if (!extension)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        return RegisterExtensionEntry(
+            extension,
+            extension->GetStateTypeId(),
+            extension->GetStateVersion(),
+            ExtensionKind::ContactCallbacks,
+            false,
+            AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtension(
+        ICustomConstraintProvider* extension,
+        ExtensionHostLease hostLease)
+    {
+        if (!extension)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        const AZ::TypeId id = extension->GetId();
+        const AZ::u64 version = extension->GetVersion();
+        if (id.IsNull() || version == 0)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        return RegisterExtensionEntry(
+            extension,
+            id,
+            version,
+            ExtensionKind::CustomConstraintProvider,
+            true,
+            AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtension(
+        ICustomConvexShapeProvider* extension,
+        ExtensionHostLease hostLease)
+    {
+        if (!extension)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        const AZ::TypeId id = extension->GetId();
+        const AZ::u64 version = extension->GetVersion();
+        if (id.IsNull() || version == 0)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        return RegisterExtensionEntry(
+            extension,
+            id,
+            version,
+            ExtensionKind::CustomConvexShapeProvider,
+            true,
+            AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtension(
+        ICustomPathProvider* extension,
+        ExtensionHostLease hostLease)
+    {
+        if (!extension)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        const AZ::TypeId id = extension->GetId();
+        const AZ::u64 version = extension->GetVersion();
+        if (id.IsNull() || version == 0)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        return RegisterExtensionEntry(
+            extension,
+            id,
+            version,
+            ExtensionKind::CustomPathProvider,
+            true,
+            AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtension(
+        ICustomShapeProvider* extension,
+        ExtensionHostLease hostLease)
+    {
+        if (!extension)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        const AZ::TypeId id = extension->GetId();
+        const AZ::u64 version = extension->GetVersion();
+        if (id.IsNull() || version == 0)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        return RegisterExtensionEntry(
+            extension,
+            id,
+            version,
+            ExtensionKind::CustomShapeProvider,
+            true,
+            AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtension(
+        IGroupFilter* extension,
+        ExtensionHostLease hostLease)
+    {
+        if (!extension)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        return RegisterExtensionEntry(
+            extension,
+            extension->GetStateTypeId(),
+            extension->GetStateVersion(),
+            ExtensionKind::GroupFilter,
+            false,
+            AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtension(
+        ISimulationShapeFilter* extension,
+        ExtensionHostLease hostLease)
+    {
+        if (!extension)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        return RegisterExtensionEntry(
+            extension,
+            extension->GetStateTypeId(),
+            extension->GetStateVersion(),
+            ExtensionKind::SimulationShapeFilter,
+            false,
+            AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtension(
+        ISoftBodyContactCallbacks* extension,
+        ExtensionHostLease hostLease)
+    {
+        if (!extension)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        return RegisterExtensionEntry(
+            extension,
+            extension->GetStateTypeId(),
+            extension->GetStateVersion(),
+            ExtensionKind::SoftBodyContactCallbacks,
+            false,
+            AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtension(
+        IStepListener* extension,
+        ExtensionHostLease hostLease)
+    {
+        if (!extension)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        return RegisterExtensionEntry(
+            extension,
+            extension->GetStateTypeId(),
+            extension->GetStateVersion(),
+            ExtensionKind::StepListener,
+            false,
+            AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtension(
+        IVehicleCallbacks* extension,
+        ExtensionHostLease hostLease)
+    {
+        if (!extension)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        return RegisterExtensionEntry(
+            extension,
+            extension->GetStateTypeId(),
+            extension->GetStateVersion(),
+            ExtensionKind::VehicleCallbacks,
+            false,
+            AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtension(
+        IVehicleCollisionFilter* extension,
+        ExtensionHostLease hostLease)
+    {
+        if (!extension)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        return RegisterExtensionEntry(
+            extension,
+            extension->GetStateTypeId(),
+            extension->GetStateVersion(),
+            ExtensionKind::VehicleCollisionFilter,
+            false,
+            AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtension(
+        IVirtualCharacterContactCallbacks* extension,
+        ExtensionHostLease hostLease)
+    {
+        if (!extension)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+        return RegisterExtensionEntry(
+            extension,
+            extension->GetStateTypeId(),
+            extension->GetStateVersion(),
+            ExtensionKind::VirtualCharacterContactCallbacks,
+            false,
+            AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult RuntimeImplementation::RegisterExtensionEntry(
+        void* extension,
+        const AZ::TypeId id,
+        const AZ::u64 version,
+        const ExtensionKind kind,
+        const bool uniqueIdentity,
+        ExtensionHostLease hostLease)
+    {
+        if (!extension || id.IsNull() || kind == ExtensionKind::None)
+        {
+            return {.m_status = ExtensionRegistrationStatus::Invalid};
+        }
+
+        AZStd::lock_guard lock(m_extensionMutex);
+        for (AZ::u32 extensionIndex = 0; extensionIndex < m_extensionSlots.size(); ++extensionIndex)
+        {
+            const ExtensionSlot& slot = m_extensionSlots[extensionIndex];
+            if (slot.m_extension
+                && slot.m_kind == kind
+                && (slot.m_extension == extension || (uniqueIdentity && slot.m_id == id)))
+            {
+                return {
+                    .m_handle = Internal::MakeResourceHandle<ExtensionHandle>(extensionIndex, slot.m_generation),
+                    .m_status = ExtensionRegistrationStatus::AlreadyRegistered,
+                };
+            }
+        }
+
+        AZ::u32 extensionIndex = 0;
+        if (!m_freeExtensionSlots.empty())
+        {
+            extensionIndex = m_freeExtensionSlots.back();
+            m_freeExtensionSlots.pop_back();
+        }
+        else
+        {
+            if (m_extensionSlots.size() >= Internal::HandlePayloadMask)
+            {
+                return {.m_status = ExtensionRegistrationStatus::CapacityExhausted};
+            }
+            extensionIndex = aznumeric_cast<AZ::u32>(m_extensionSlots.size());
+            m_extensionSlots.emplace_back();
+        }
+
+        ExtensionSlot& slot = m_extensionSlots[extensionIndex];
+        slot.m_hostLease = AZStd::move(hostLease);
+        slot.m_extension = extension;
+        slot.m_id = id;
+        slot.m_version = version;
+        slot.m_dependentCount = 0;
+        slot.m_kind = kind;
+        return {
+            .m_handle = Internal::MakeResourceHandle<ExtensionHandle>(extensionIndex, slot.m_generation),
+            .m_status = ExtensionRegistrationStatus::Success,
+        };
+    }
+
+    ExtensionRegistrationStatus RuntimeImplementation::UnregisterExtension(
+        const ExtensionHandle extensionHandle)
+    {
+        ExtensionHostLease releasedHost;
+        {
+            AZStd::lock_guard lock(m_extensionMutex);
+            Internal::ResourceHandleParts parts;
+            if (!Internal::DecodeResourceHandle(extensionHandle, parts)
+                || parts.m_index >= m_extensionSlots.size())
+            {
+                return ExtensionRegistrationStatus::NotRegistered;
+            }
+
+            ExtensionSlot& slot = m_extensionSlots[parts.m_index];
+            if (!slot.m_extension || slot.m_generation != parts.m_generation)
+            {
+                return ExtensionRegistrationStatus::NotRegistered;
+            }
+            if (slot.m_dependentCount > 0)
+            {
+                return ExtensionRegistrationStatus::InUse;
+            }
+
+            releasedHost = AZStd::move(slot.m_hostLease);
+            slot.m_extension = nullptr;
+            slot.m_id = AZ::TypeId::CreateNull();
+            slot.m_version = 0;
+            slot.m_kind = ExtensionKind::None;
+            if (Internal::AdvanceGeneration(slot.m_generation))
+            {
+                m_freeExtensionSlots.push_back(parts.m_index);
+            }
+        }
+        return ExtensionRegistrationStatus::Success;
+    }
+
+    bool RuntimeImplementation::GetExtensionInformation(
+        const ExtensionHandle extensionHandle,
+        ExtensionInformation& information) const
+    {
+        AZStd::lock_guard lock(m_extensionMutex);
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(extensionHandle, parts)
+            || parts.m_index >= m_extensionSlots.size())
         {
             return false;
         }
 
-        AZStd::lock_guard lock(m_customConstraintProviderMutex);
-        const auto providerIterator = m_customConstraintProviders.find(provider->GetId());
-        if (providerIterator == m_customConstraintProviders.end()
-            || providerIterator->second.m_provider != provider
-            || providerIterator->second.m_referenceCount != 0)
+        const ExtensionSlot& slot = m_extensionSlots[parts.m_index];
+        if (!slot.m_extension || slot.m_generation != parts.m_generation)
         {
             return false;
         }
 
-        m_customConstraintProviders.erase(providerIterator);
+        information = {
+            .m_id = slot.m_id,
+            .m_version = slot.m_version,
+            .m_dependentCount = slot.m_dependentCount,
+            .m_kind = slot.m_kind,
+            .m_hasHostLease = static_cast<bool>(slot.m_hostLease),
+        };
         return true;
     }
 
-    bool RuntimeImplementation::RegisterCustomPathProvider(
-        ICustomPathProvider* provider)
+    void* RuntimeImplementation::AcquireExtension(
+        const ExtensionHandle extensionHandle,
+        const ExtensionKind kind)
     {
-        if (!provider)
+        AZStd::lock_guard lock(m_extensionMutex);
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(extensionHandle, parts)
+            || parts.m_index >= m_extensionSlots.size())
         {
-            return false;
+            return nullptr;
         }
 
-        const AZ::TypeId providerId = provider->GetId();
-        if (providerId.IsNull())
+        ExtensionSlot& slot = m_extensionSlots[parts.m_index];
+        if (!slot.m_extension
+            || slot.m_generation != parts.m_generation
+            || slot.m_kind != kind
+            || slot.m_dependentCount == AZStd::numeric_limits<AZ::u32>::max())
         {
-            return false;
+            return nullptr;
         }
 
-        AZStd::lock_guard lock(m_customPathProviderMutex);
-        return m_customPathProviders.emplace(
-            providerId,
-            CustomPathProviderEntry{
-                .m_provider = provider,
-            }).second;
+        ++slot.m_dependentCount;
+        return slot.m_extension;
     }
 
-    bool RuntimeImplementation::UnregisterCustomPathProvider(
-        ICustomPathProvider* provider)
+    bool RuntimeImplementation::RetainExtension(
+        const ExtensionHandle extensionHandle,
+        const ExtensionKind kind)
     {
-        if (!provider)
+        if (AcquireExtension(extensionHandle, kind))
         {
-            return false;
+            return true;
         }
-
-        AZStd::lock_guard lock(m_customPathProviderMutex);
-        const auto providerIterator = m_customPathProviders.find(provider->GetId());
-        if (providerIterator == m_customPathProviders.end()
-            || providerIterator->second.m_provider != provider
-            || providerIterator->second.m_referenceCount != 0)
-        {
-            return false;
-        }
-
-        m_customPathProviders.erase(providerIterator);
-        return true;
+        return false;
     }
 
-    bool RuntimeImplementation::RegisterCustomConvexShapeProvider(
-        ICustomConvexShapeProvider* provider)
+    void* RuntimeImplementation::AcquireExtension(
+        const ExtensionKind kind,
+        const AZ::TypeId id,
+        const AZ::u64 requiredVersion,
+        ExtensionHandle& extensionHandle,
+        AZ::u64* registeredVersion)
     {
-        if (!provider)
+        AZStd::lock_guard lock(m_extensionMutex);
+        for (AZ::u32 extensionIndex = 0; extensionIndex < m_extensionSlots.size(); ++extensionIndex)
         {
-            return false;
+            ExtensionSlot& slot = m_extensionSlots[extensionIndex];
+            if (slot.m_extension
+                && slot.m_kind == kind
+                && slot.m_id == id
+                && (requiredVersion == 0 || slot.m_version == requiredVersion)
+                && slot.m_dependentCount != AZStd::numeric_limits<AZ::u32>::max())
+            {
+                ++slot.m_dependentCount;
+                extensionHandle = Internal::MakeResourceHandle<ExtensionHandle>(extensionIndex, slot.m_generation);
+                if (registeredVersion)
+                {
+                    *registeredVersion = slot.m_version;
+                }
+                return slot.m_extension;
+            }
         }
 
-        const AZ::TypeId providerId = provider->GetId();
-        if (providerId.IsNull())
+        extensionHandle = ExtensionHandle::Invalid;
+        if (registeredVersion)
         {
-            return false;
+            *registeredVersion = 0;
         }
-
-        AZStd::lock_guard lock(m_customConvexShapeProviderMutex);
-        return m_customConvexShapeProviders.emplace(providerId, provider).second;
+        return nullptr;
     }
 
-    bool RuntimeImplementation::UnregisterCustomConvexShapeProvider(
-        ICustomConvexShapeProvider* provider)
+    void RuntimeImplementation::ReleaseExtension(
+        const ExtensionHandle extensionHandle)
     {
-        if (!provider)
+        AZStd::lock_guard lock(m_extensionMutex);
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(extensionHandle, parts)
+            || parts.m_index >= m_extensionSlots.size())
         {
-            return false;
+            AZ_Assert(false, "Extension ownership is inconsistent.");
+            return;
         }
 
-        AZStd::lock_guard lock(m_customConvexShapeProviderMutex);
-        const auto providerIterator = m_customConvexShapeProviders.find(provider->GetId());
-        if (providerIterator == m_customConvexShapeProviders.end()
-            || providerIterator->second != provider)
+        ExtensionSlot& slot = m_extensionSlots[parts.m_index];
+        AZ_Assert(
+            slot.m_extension
+                && slot.m_generation == parts.m_generation
+                && slot.m_dependentCount > 0,
+            "Extension ownership is inconsistent.");
+        if (slot.m_extension
+            && slot.m_generation == parts.m_generation
+            && slot.m_dependentCount > 0)
         {
-            return false;
+            --slot.m_dependentCount;
         }
-
-        m_customConvexShapeProviders.erase(providerIterator);
-        return true;
-    }
-
-    ProviderRegistrationResult RuntimeImplementation::RegisterCustomShapeProvider(
-        ICustomShapeProvider* provider)
-    {
-        if (!provider
-            || provider->GetId().IsNull()
-            || provider->GetVersion() == 0)
-        {
-            return ProviderRegistrationResult::Invalid;
-        }
-
-        AZStd::lock_guard lock(m_customShapeProviderMutex);
-        const bool inserted = m_customShapeProviders.emplace(
-            provider->GetId(),
-            CustomShapeProviderEntry{
-                .m_provider = provider,
-            }).second;
-        if (!inserted)
-        {
-            return ProviderRegistrationResult::AlreadyRegistered;
-        }
-        return ProviderRegistrationResult::Success;
-    }
-
-    ProviderRegistrationResult RuntimeImplementation::UnregisterCustomShapeProvider(
-        ICustomShapeProvider* provider)
-    {
-        if (!provider)
-        {
-            return ProviderRegistrationResult::Invalid;
-        }
-
-        AZStd::lock_guard lock(m_customShapeProviderMutex);
-        const auto providerIterator = m_customShapeProviders.find(provider->GetId());
-        if (providerIterator == m_customShapeProviders.end()
-            || providerIterator->second.m_provider != provider)
-        {
-            return ProviderRegistrationResult::NotRegistered;
-        }
-        if (providerIterator->second.m_referenceCount > 0)
-        {
-            return ProviderRegistrationResult::InUse;
-        }
-
-        m_customShapeProviders.erase(providerIterator);
-        return ProviderRegistrationResult::Success;
     }
 
     ICustomShapeProvider* RuntimeImplementation::AcquireCustomShapeProvider(
         const AZ::TypeId providerId,
-        const AZ::u64 requiredVersion)
+        const AZ::u64 requiredVersion,
+        ExtensionHandle& extensionHandle,
+        AZ::u64* registeredVersion)
     {
-        AZStd::lock_guard lock(m_customShapeProviderMutex);
-        const auto providerIterator = m_customShapeProviders.find(providerId);
-        if (providerIterator == m_customShapeProviders.end()
-            || providerIterator->second.m_referenceCount == AZStd::numeric_limits<AZ::u32>::max())
-        {
-            return nullptr;
-        }
-
-        ICustomShapeProvider* provider = providerIterator->second.m_provider;
-        if (!provider || (requiredVersion != 0 && provider->GetVersion() != requiredVersion))
-        {
-            return nullptr;
-        }
-        ++providerIterator->second.m_referenceCount;
-        return provider;
+        return static_cast<ICustomShapeProvider*>(AcquireExtension(
+            ExtensionKind::CustomShapeProvider,
+            providerId,
+            requiredVersion,
+            extensionHandle,
+            registeredVersion));
     }
 
     void RuntimeImplementation::ReleaseCustomShapeProvider(
-        const AZ::TypeId providerId)
+        const ExtensionHandle extensionHandle)
     {
-        AZStd::lock_guard lock(m_customShapeProviderMutex);
-        const auto providerIterator = m_customShapeProviders.find(providerId);
-        AZ_Assert(
-            providerIterator != m_customShapeProviders.end()
-                && providerIterator->second.m_referenceCount > 0,
-            "Custom-shape provider ownership is inconsistent.");
-        if (providerIterator != m_customShapeProviders.end()
-            && providerIterator->second.m_referenceCount > 0)
-        {
-            --providerIterator->second.m_referenceCount;
-        }
+        ReleaseExtension(extensionHandle);
     }
 
     ICustomConstraintProvider* RuntimeImplementation::AcquireCustomConstraintProvider(
@@ -957,93 +1232,83 @@ namespace Jolt
         const AZStd::span<const AZ::u8> data,
         AZ::u32& maximumRowCount,
         AZ::u32& stateByteCount,
-        AZ::u64& providerVersion)
+        AZ::u64& providerVersion,
+        ExtensionHandle& extensionHandle)
     {
-        AZStd::lock_guard lock(m_customConstraintProviderMutex);
-        const auto providerIterator = m_customConstraintProviders.find(providerId);
-        if (providerIterator == m_customConstraintProviders.end())
+        auto* provider = static_cast<ICustomConstraintProvider*>(AcquireExtension(
+            ExtensionKind::CustomConstraintProvider,
+            providerId,
+            0,
+            extensionHandle,
+            &providerVersion));
+        if (!provider)
         {
             return nullptr;
         }
 
-        ICustomConstraintProvider& provider = *providerIterator->second.m_provider;
-        maximumRowCount = provider.GetMaximumRowCount(data);
+        maximumRowCount = provider->GetMaximumRowCount(data);
         if (maximumRowCount == 0)
         {
+            ReleaseExtension(extensionHandle);
+            extensionHandle = ExtensionHandle::Invalid;
             return nullptr;
         }
 
-        stateByteCount = provider.GetStateByteCount(data);
-        providerVersion = provider.GetVersion();
-        ++providerIterator->second.m_referenceCount;
-        return &provider;
+        stateByteCount = provider->GetStateByteCount(data);
+        return provider;
     }
 
     void RuntimeImplementation::ReleaseCustomConstraintProvider(
-        const AZ::TypeId providerId)
+        const ExtensionHandle extensionHandle)
     {
-        AZStd::lock_guard lock(m_customConstraintProviderMutex);
-        const auto providerIterator = m_customConstraintProviders.find(providerId);
-        AZ_Assert(
-            providerIterator != m_customConstraintProviders.end()
-                && providerIterator->second.m_referenceCount > 0,
-            "Custom constraint provider ownership is inconsistent.");
-        if (providerIterator != m_customConstraintProviders.end()
-            && providerIterator->second.m_referenceCount > 0)
-        {
-            --providerIterator->second.m_referenceCount;
-        }
+        ReleaseExtension(extensionHandle);
     }
 
     ICustomPathProvider* RuntimeImplementation::AcquireCustomPathProvider(
         const AZ::TypeId providerId,
         const AZStd::span<const AZ::u8> data,
         float& maximumFraction,
-        AZ::u64& providerVersion)
+        AZ::u64& providerVersion,
+        ExtensionHandle& extensionHandle)
     {
-        AZStd::lock_guard lock(m_customPathProviderMutex);
-        const auto providerIterator = m_customPathProviders.find(providerId);
-        if (providerIterator == m_customPathProviders.end())
+        auto* provider = static_cast<ICustomPathProvider*>(AcquireExtension(
+            ExtensionKind::CustomPathProvider,
+            providerId,
+            0,
+            extensionHandle,
+            &providerVersion));
+        if (!provider)
         {
             return nullptr;
         }
 
-        ICustomPathProvider& provider = *providerIterator->second.m_provider;
-        maximumFraction = provider.GetMaximumFraction(data);
+        maximumFraction = provider->GetMaximumFraction(data);
         if (!AZ::IsFiniteFloat(maximumFraction) || maximumFraction <= 0.0f)
         {
+            ReleaseExtension(extensionHandle);
+            extensionHandle = ExtensionHandle::Invalid;
             return nullptr;
         }
 
         CustomPathPoint startPoint;
         CustomPathPoint endPoint;
-        if (!provider.Sample(data, 0.0f, startPoint)
+        if (!provider->Sample(data, 0.0f, startPoint)
             || !IsValidCustomPathPoint(startPoint)
-            || !provider.Sample(data, maximumFraction, endPoint)
+            || !provider->Sample(data, maximumFraction, endPoint)
             || !IsValidCustomPathPoint(endPoint))
         {
+            ReleaseExtension(extensionHandle);
+            extensionHandle = ExtensionHandle::Invalid;
             return nullptr;
         }
 
-        providerVersion = provider.GetVersion();
-        ++providerIterator->second.m_referenceCount;
-        return &provider;
+        return provider;
     }
 
     void RuntimeImplementation::ReleaseCustomPathProvider(
-        const AZ::TypeId providerId)
+        const ExtensionHandle extensionHandle)
     {
-        AZStd::lock_guard lock(m_customPathProviderMutex);
-        const auto providerIterator = m_customPathProviders.find(providerId);
-        AZ_Assert(
-            providerIterator != m_customPathProviders.end()
-                && providerIterator->second.m_referenceCount > 0,
-            "Custom path provider ownership is inconsistent.");
-        if (providerIterator != m_customPathProviders.end()
-            && providerIterator->second.m_referenceCount > 0)
-        {
-            --providerIterator->second.m_referenceCount;
-        }
+        ReleaseExtension(extensionHandle);
     }
 
     MaterialHandle RuntimeImplementation::CreateMaterial(
@@ -1138,11 +1403,17 @@ namespace Jolt
 
         NativeShapeResult nativeResult;
         AZ::TypeId customProviderId = AZ::TypeId::CreateNull();
+        ExtensionHandle customProviderExtension;
+        AZ::u64 customProviderVersion = 0;
         AZStd::vector<CustomShapeDependency> customDependencies;
         if (const auto* customConfiguration = AZStd::get_if<CustomShapeConfiguration>(
             &configuration.m_geometry))
         {
-            ICustomShapeProvider* provider = AcquireCustomShapeProvider(customConfiguration->m_providerId);
+            ICustomShapeProvider* provider = AcquireCustomShapeProvider(
+                customConfiguration->m_providerId,
+                0,
+                customProviderExtension,
+                &customProviderVersion);
             if (!provider)
             {
                 nativeResult.m_error = "No compatible custom-shape provider is registered for this identifier.";
@@ -1153,18 +1424,21 @@ namespace Jolt
                 if (!provider->Cook(customConfiguration->m_data, data))
                 {
                     nativeResult.m_error = "The custom-shape provider rejected its input data.";
-                    ReleaseCustomShapeProvider(customConfiguration->m_providerId);
+                    ReleaseCustomShapeProvider(customProviderExtension);
+                    customProviderExtension = ExtensionHandle::Invalid;
                 }
                 else if (data.m_runtimeData.size() > MaximumCustomShapeRuntimeDataSize)
                 {
                     nativeResult.m_error = "Custom-shape runtime data exceeds the supported archive limit.";
-                    ReleaseCustomShapeProvider(customConfiguration->m_providerId);
+                    ReleaseCustomShapeProvider(customProviderExtension);
+                    customProviderExtension = ExtensionHandle::Invalid;
                 }
                 else if (data.m_geometryKind == CustomShapeGeometryKind::Convex
                     && configuration.m_materials.size() > 1)
                 {
                     nativeResult.m_error = "A convex custom shape accepts at most one material.";
-                    ReleaseCustomShapeProvider(customConfiguration->m_providerId);
+                    ReleaseCustomShapeProvider(customProviderExtension);
+                    customProviderExtension = ExtensionHandle::Invalid;
                 }
                 else if (AZStd::any_of(
                     data.m_dependencies.begin(),
@@ -1175,13 +1449,13 @@ namespace Jolt
                     }))
                 {
                     nativeResult.m_error = "Custom-shape dependencies require a path and content hash.";
-                    ReleaseCustomShapeProvider(customConfiguration->m_providerId);
+                    ReleaseCustomShapeProvider(customProviderExtension);
+                    customProviderExtension = ExtensionHandle::Invalid;
                 }
                 else
                 {
-                    const AZ::u64 providerVersion = provider->GetVersion();
                     AZ::HashValue64 sourceHash = AZ::TypeHash64(
-                        providerVersion,
+                        customProviderVersion,
                         AZ::HashValue64(static_cast<AZ::u64>(customConfiguration->m_providerId.GetHash())));
                     if (!customConfiguration->m_data.empty())
                     {
@@ -1237,7 +1511,7 @@ namespace Jolt
                         data,
                         {
                             .m_providerId = customConfiguration->m_providerId,
-                            .m_providerVersion = providerVersion,
+                            .m_providerVersion = customProviderVersion,
                             .m_sourceHash = static_cast<AZ::u64>(sourceHash),
                         },
                         *provider,
@@ -1251,7 +1525,8 @@ namespace Jolt
                     }
                     else
                     {
-                        ReleaseCustomShapeProvider(customConfiguration->m_providerId);
+                        ReleaseCustomShapeProvider(customProviderExtension);
+                        customProviderExtension = ExtensionHandle::Invalid;
                     }
                 }
             }
@@ -1259,23 +1534,27 @@ namespace Jolt
         else if (const auto* customConvexConfiguration = AZStd::get_if<CustomConvexShapeConfiguration>(
             &configuration.m_geometry))
         {
-            AZStd::shared_lock providerLock(m_customConvexShapeProviderMutex);
-            const auto providerIterator = m_customConvexShapeProviders.find(customConvexConfiguration->m_providerId);
-            if (providerIterator == m_customConvexShapeProviders.end())
+            ExtensionHandle providerExtension;
+            AZ::u64 providerVersion = 0;
+            auto* provider = static_cast<ICustomConvexShapeProvider*>(AcquireExtension(
+                ExtensionKind::CustomConvexShapeProvider,
+                customConvexConfiguration->m_providerId,
+                0,
+                providerExtension,
+                &providerVersion));
+            if (!provider)
             {
                 nativeResult.m_error = "No custom convex-shape provider is registered for this identifier.";
             }
             else
             {
                 CustomConvexShapeData data;
-                const ICustomConvexShapeProvider& provider = *providerIterator->second;
-                if (!provider.Cook(customConvexConfiguration->m_data, data))
+                if (!provider->Cook(customConvexConfiguration->m_data, data))
                 {
                     nativeResult.m_error = "The custom convex-shape provider rejected its input data.";
                 }
                 else
                 {
-                    const AZ::u64 providerVersion = provider.GetVersion();
                     AZ::HashValue64 sourceHash = AZ::TypeHash64(
                         providerVersion,
                         AZ::HashValue64(static_cast<AZ::u64>(customConvexConfiguration->m_providerId.GetHash())));
@@ -1314,6 +1593,7 @@ namespace Jolt
                         material,
                         configuration.m_density);
                 }
+                ReleaseExtension(providerExtension);
             }
         }
         else
@@ -1333,13 +1613,14 @@ namespace Jolt
             configuration.m_materials,
             {},
             customProviderId,
+            customProviderExtension,
             AZStd::move(customDependencies));
         if (!cookedShapeHandle)
         {
             ReleaseMaterials(configuration.m_materials);
-            if (!customProviderId.IsNull())
+            if (customProviderExtension)
             {
-                ReleaseCustomShapeProvider(customProviderId);
+                ReleaseCustomShapeProvider(customProviderExtension);
             }
         }
         return cookedShapeHandle;
@@ -1918,17 +2199,20 @@ namespace Jolt
 
         CustomShapeInfo customShapeInfo;
         AZ::TypeId customProviderId = AZ::TypeId::CreateNull();
+        ExtensionHandle customProviderExtension;
         if (GetNativeCustomShapeInfo(*nativeResult.Get(), customShapeInfo))
         {
             ICustomShapeProvider* provider = AcquireCustomShapeProvider(
                 customShapeInfo.m_providerId,
-                customShapeInfo.m_providerVersion);
+                customShapeInfo.m_providerVersion,
+                customProviderExtension);
             if (!provider
                 || !BindNativeCustomShapeProvider(*nativeResult.Get(), *provider))
             {
                 if (provider)
                 {
-                    ReleaseCustomShapeProvider(customShapeInfo.m_providerId);
+                    ReleaseCustomShapeProvider(customProviderExtension);
+                    customProviderExtension = ExtensionHandle::Invalid;
                 }
                 for (const CookedShapeHandle childShapeHandle : childShapeHandles)
                 {
@@ -1945,6 +2229,7 @@ namespace Jolt
             retainedMaterialHandles,
             {childShapeHandles.begin(), childShapeHandles.end()},
             customProviderId,
+            customProviderExtension,
             archive.m_dependencies);
         for (const CookedShapeHandle childShapeHandle : childShapeHandles)
         {
@@ -1953,9 +2238,9 @@ namespace Jolt
         if (!cookedShapeHandle)
         {
             ReleaseMaterials(retainedMaterialHandles);
-            if (!customProviderId.IsNull())
+            if (customProviderExtension)
             {
-                ReleaseCustomShapeProvider(customProviderId);
+                ReleaseCustomShapeProvider(customProviderExtension);
             }
         }
         return cookedShapeHandle;
@@ -1965,7 +2250,7 @@ namespace Jolt
         const CookedShapeHandle cookedShapeHandle)
     {
         AZStd::vector<MaterialHandle> materialHandles;
-        AZ::TypeId customProviderId = AZ::TypeId::CreateNull();
+        ExtensionHandle customProviderExtension;
         {
             AZStd::lock_guard lock(m_cookedShapeMutex);
             Internal::ResourceHandleParts parts;
@@ -1986,8 +2271,9 @@ namespace Jolt
 
             slot.m_shape = nullptr;
             materialHandles = AZStd::move(slot.m_materialHandles);
-            customProviderId = slot.m_customProviderId;
+            customProviderExtension = slot.m_customProviderExtension;
             slot.m_customProviderId = AZ::TypeId::CreateNull();
+            slot.m_customProviderExtension = ExtensionHandle::Invalid;
             slot.m_customDependencies.clear();
             for (const CookedShapeHandle childHandle : slot.m_childHandles)
             {
@@ -2006,9 +2292,9 @@ namespace Jolt
         }
 
         ReleaseMaterials(materialHandles);
-        if (!customProviderId.IsNull())
+        if (customProviderExtension)
         {
-            ReleaseCustomShapeProvider(customProviderId);
+            ReleaseCustomShapeProvider(customProviderExtension);
         }
         return true;
     }
@@ -2442,9 +2728,15 @@ namespace Jolt
 
     GroupFilterHandle RuntimeImplementation::CreateGroupFilter(
         const AZ::u32 subGroupCount,
-        IGroupFilter* filter)
+        const ExtensionHandle extensionHandle)
     {
-        if (!filter || subGroupCount > MaximumSubGroupCount)
+        if (subGroupCount > MaximumSubGroupCount)
+        {
+            return {};
+        }
+
+        auto* filter = static_cast<IGroupFilter*>(AcquireExtension(extensionHandle, ExtensionKind::GroupFilter));
+        if (!filter)
         {
             return {};
         }
@@ -2452,11 +2744,17 @@ namespace Jolt
         JPH::Ref<JPH::GroupFilter> nativeFilter = new GroupFilterAdapter(filter);
         const AZ::u64 stateHash = MixGroupFilterValue(subGroupCount)
             ^ MixGroupFilterValue(filter->GetStateHash());
-        return StoreGroupFilter(
+        const GroupFilterHandle filterHandle = StoreGroupFilter(
             AZStd::move(nativeFilter),
             subGroupCount,
             stateHash,
-            true);
+            true,
+            extensionHandle);
+        if (!filterHandle)
+        {
+            ReleaseExtension(extensionHandle);
+        }
+        return filterHandle;
     }
 
     GroupFilterHandle RuntimeImplementation::CreateGroupFilterTable(
@@ -2500,7 +2798,8 @@ namespace Jolt
         JPH::Ref<JPH::GroupFilter> filter,
         const AZ::u32 subGroupCount,
         const AZ::u64 stateHash,
-        const bool isCustom)
+        const bool isCustom,
+        const ExtensionHandle extensionHandle)
     {
         AZStd::lock_guard lock(m_groupFilterMutex);
         AZ::u32 filterIndex = 0;
@@ -2524,33 +2823,44 @@ namespace Jolt
         slot.m_stateHash = stateHash;
         slot.m_subGroupCount = subGroupCount;
         slot.m_isCustom = isCustom;
+        slot.m_extensionHandle = extensionHandle;
         return Internal::MakeResourceHandle<GroupFilterHandle>(filterIndex, slot.m_generation);
     }
 
     bool RuntimeImplementation::DestroyGroupFilter(
         const GroupFilterHandle filterHandle)
     {
-        AZStd::lock_guard lock(m_groupFilterMutex);
-        Internal::ResourceHandleParts parts;
-        if (!Internal::DecodeResourceHandle(filterHandle, parts)
-            || parts.m_index >= m_groupFilterSlots.size())
+        ExtensionHandle extensionHandle;
         {
-            return false;
+            AZStd::lock_guard lock(m_groupFilterMutex);
+            Internal::ResourceHandleParts parts;
+            if (!Internal::DecodeResourceHandle(filterHandle, parts)
+                || parts.m_index >= m_groupFilterSlots.size())
+            {
+                return false;
+            }
+
+            GroupFilterSlot& slot = m_groupFilterSlots[parts.m_index];
+            if (!slot.m_filter || slot.m_generation != parts.m_generation || slot.m_referenceCount > 0)
+            {
+                return false;
+            }
+
+            extensionHandle = slot.m_extensionHandle;
+            slot.m_filter = nullptr;
+            slot.m_stateHash = 0;
+            slot.m_subGroupCount = 0;
+            slot.m_isCustom = false;
+            slot.m_extensionHandle = ExtensionHandle::Invalid;
+            if (Internal::AdvanceGeneration(slot.m_generation))
+            {
+                m_freeGroupFilterSlots.push_back(parts.m_index);
+            }
         }
 
-        GroupFilterSlot& slot = m_groupFilterSlots[parts.m_index];
-        if (!slot.m_filter || slot.m_generation != parts.m_generation || slot.m_referenceCount > 0)
+        if (extensionHandle)
         {
-            return false;
-        }
-
-        slot.m_filter = nullptr;
-        slot.m_stateHash = 0;
-        slot.m_subGroupCount = 0;
-        slot.m_isCustom = false;
-        if (Internal::AdvanceGeneration(slot.m_generation))
-        {
-            m_freeGroupFilterSlots.push_back(parts.m_index);
+            ReleaseExtension(extensionHandle);
         }
         return true;
     }
@@ -2698,11 +3008,13 @@ namespace Jolt
 
         float maximumFraction = 0.0f;
         AZ::u64 providerVersion = 0;
+        ExtensionHandle providerExtension;
         ICustomPathProvider* provider = AcquireCustomPathProvider(
             configuration.m_providerId,
             configuration.m_data,
             maximumFraction,
-            providerVersion);
+            providerVersion,
+            providerExtension);
         if (!provider)
         {
             return {};
@@ -2729,11 +3041,12 @@ namespace Jolt
         const PathHandle pathHandle = StorePath(
             path.GetPtr(),
             configuration.m_providerId,
+            providerExtension,
             providerVersion,
             static_cast<AZ::u64>(sourceHash));
         if (!pathHandle)
         {
-            ReleaseCustomPathProvider(configuration.m_providerId);
+            ReleaseCustomPathProvider(providerExtension);
         }
         return pathHandle;
     }
@@ -2741,6 +3054,7 @@ namespace Jolt
     PathHandle RuntimeImplementation::StorePath(
         JPH::RefConst<JPH::PathConstraintPath> path,
         const AZ::TypeId customProviderId,
+        const ExtensionHandle customProviderExtension,
         const AZ::u64 customProviderVersion,
         const AZ::u64 sourceHash)
     {
@@ -2769,6 +3083,7 @@ namespace Jolt
         PathSlot& slot = m_pathSlots[pathIndex];
         slot.m_path = AZStd::move(path);
         slot.m_customProviderId = customProviderId;
+        slot.m_customProviderExtension = customProviderExtension;
         slot.m_customProviderVersion = customProviderVersion;
         slot.m_sourceHash = sourceHash;
         return Internal::MakeResourceHandle<PathHandle>(pathIndex, slot.m_generation);
@@ -2777,7 +3092,7 @@ namespace Jolt
     bool RuntimeImplementation::DestroyPath(
         const PathHandle pathHandle)
     {
-        AZ::TypeId customProviderId = AZ::TypeId::CreateNull();
+        ExtensionHandle customProviderExtension;
         {
             AZStd::lock_guard lock(m_pathMutex);
             Internal::ResourceHandleParts parts;
@@ -2794,8 +3109,9 @@ namespace Jolt
             }
 
             slot.m_path = nullptr;
-            customProviderId = slot.m_customProviderId;
+            customProviderExtension = slot.m_customProviderExtension;
             slot.m_customProviderId = AZ::TypeId::CreateNull();
+            slot.m_customProviderExtension = ExtensionHandle::Invalid;
             slot.m_customProviderVersion = 0;
             slot.m_sourceHash = 0;
             if (Internal::AdvanceGeneration(slot.m_generation))
@@ -2804,9 +3120,9 @@ namespace Jolt
             }
         }
 
-        if (!customProviderId.IsNull())
+        if (customProviderExtension)
         {
-            ReleaseCustomPathProvider(customProviderId);
+            ReleaseCustomPathProvider(customProviderExtension);
         }
         return true;
     }
@@ -4598,56 +4914,146 @@ namespace Jolt
 
     bool RuntimeImplementation::SetContactCallbacks(
         const WorldHandle worldHandle,
-        IContactCallbacks* callbacks)
+        const ExtensionHandle extensionHandle)
     {
+        auto* callbacks = static_cast<IContactCallbacks*>(AcquireExtension(
+            extensionHandle,
+            ExtensionKind::ContactCallbacks));
+        if (extensionHandle && !callbacks)
+        {
+            return false;
+        }
+
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world && world->SetContactCallbacks(callbacks);
+        if (!world)
+        {
+            if (extensionHandle)
+            {
+                ReleaseExtension(extensionHandle);
+            }
+            return false;
+        }
+        return world->SetContactCallbacks(extensionHandle, callbacks);
     }
 
     bool RuntimeImplementation::SetBodyPairCollider(
         const WorldHandle worldHandle,
-        IBodyPairCollider* collider)
+        const ExtensionHandle extensionHandle)
     {
+        auto* collider = static_cast<IBodyPairCollider*>(AcquireExtension(
+            extensionHandle,
+            ExtensionKind::BodyPairCollider));
+        if (extensionHandle && !collider)
+        {
+            return false;
+        }
+
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world && world->SetBodyPairCollider(collider);
+        if (!world)
+        {
+            if (extensionHandle)
+            {
+                ReleaseExtension(extensionHandle);
+            }
+            return false;
+        }
+        return world->SetBodyPairCollider(extensionHandle, collider);
     }
 
     bool RuntimeImplementation::SetSimulationShapeFilter(
         const WorldHandle worldHandle,
-        ISimulationShapeFilter* filter)
+        const ExtensionHandle extensionHandle)
     {
+        auto* filter = static_cast<ISimulationShapeFilter*>(AcquireExtension(
+            extensionHandle,
+            ExtensionKind::SimulationShapeFilter));
+        if (extensionHandle && !filter)
+        {
+            return false;
+        }
+
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world && world->SetSimulationShapeFilter(filter);
+        if (!world)
+        {
+            if (extensionHandle)
+            {
+                ReleaseExtension(extensionHandle);
+            }
+            return false;
+        }
+        return world->SetSimulationShapeFilter(extensionHandle, filter);
     }
 
     bool RuntimeImplementation::SetSoftBodyContactCallbacks(
         const WorldHandle worldHandle,
-        ISoftBodyContactCallbacks* callbacks)
+        const ExtensionHandle extensionHandle)
     {
+        auto* callbacks = static_cast<ISoftBodyContactCallbacks*>(AcquireExtension(
+            extensionHandle,
+            ExtensionKind::SoftBodyContactCallbacks));
+        if (extensionHandle && !callbacks)
+        {
+            return false;
+        }
+
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world && world->SetSoftBodyContactCallbacks(callbacks);
+        if (!world)
+        {
+            if (extensionHandle)
+            {
+                ReleaseExtension(extensionHandle);
+            }
+            return false;
+        }
+        return world->SetSoftBodyContactCallbacks(extensionHandle, callbacks);
     }
 
     bool RuntimeImplementation::AddStepListener(
         const WorldHandle worldHandle,
-        IStepListener* listener)
+        const ExtensionHandle extensionHandle)
     {
+        auto* listener = static_cast<IStepListener*>(AcquireExtension(
+            extensionHandle,
+            ExtensionKind::StepListener));
+        if (!listener)
+        {
+            return false;
+        }
+
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world && world->AddStepListener(listener);
+        if (!world)
+        {
+            ReleaseExtension(extensionHandle);
+            return false;
+        }
+        return world->AddStepListener(extensionHandle, listener);
     }
 
     bool RuntimeImplementation::RemoveStepListener(
         const WorldHandle worldHandle,
-        IStepListener* listener)
+        const ExtensionHandle extensionHandle)
     {
+        auto* listener = static_cast<IStepListener*>(AcquireExtension(
+            extensionHandle,
+            ExtensionKind::StepListener));
+        if (!listener)
+        {
+            return false;
+        }
+
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world && world->RemoveStepListener(listener);
+        if (!world)
+        {
+            ReleaseExtension(extensionHandle);
+            return false;
+        }
+        return world->RemoveStepListener(extensionHandle, listener);
     }
 
     HairHandle RuntimeImplementation::CreateHair(
@@ -6858,14 +7264,27 @@ namespace Jolt
     bool RuntimeImplementation::SetVirtualCharacterContactCallbacks(
         const WorldHandle worldHandle,
         const VirtualCharacterHandle characterHandle,
-        IVirtualCharacterContactCallbacks* callbacks)
+        const ExtensionHandle extensionHandle)
     {
+        auto* callbacks = static_cast<IVirtualCharacterContactCallbacks*>(AcquireExtension(
+            extensionHandle,
+            ExtensionKind::VirtualCharacterContactCallbacks));
+        if (extensionHandle && !callbacks)
+        {
+            return false;
+        }
+
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world
-            && world->SetVirtualCharacterContactCallbacks(
-                characterHandle,
-                callbacks);
+        if (!world)
+        {
+            if (extensionHandle)
+            {
+                ReleaseExtension(extensionHandle);
+            }
+            return false;
+        }
+        return world->SetVirtualCharacterContactCallbacks(characterHandle, extensionHandle, callbacks);
     }
 
     bool RuntimeImplementation::CanVirtualCharacterWalkStairs(
@@ -7539,21 +7958,53 @@ namespace Jolt
     bool RuntimeImplementation::SetVehicleCallbacks(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
-        IVehicleCallbacks* callbacks)
+        const ExtensionHandle extensionHandle)
     {
+        auto* callbacks = static_cast<IVehicleCallbacks*>(AcquireExtension(
+            extensionHandle,
+            ExtensionKind::VehicleCallbacks));
+        if (extensionHandle && !callbacks)
+        {
+            return false;
+        }
+
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world && world->SetVehicleCallbacks(vehicleHandle, callbacks);
+        if (!world)
+        {
+            if (extensionHandle)
+            {
+                ReleaseExtension(extensionHandle);
+            }
+            return false;
+        }
+        return world->SetVehicleCallbacks(vehicleHandle, extensionHandle, callbacks);
     }
 
     bool RuntimeImplementation::SetVehicleCollisionFilter(
         const WorldHandle worldHandle,
         const VehicleHandle vehicleHandle,
-        const IVehicleCollisionFilter* filter)
+        const ExtensionHandle extensionHandle)
     {
+        auto* filter = static_cast<IVehicleCollisionFilter*>(AcquireExtension(
+            extensionHandle,
+            ExtensionKind::VehicleCollisionFilter));
+        if (extensionHandle && !filter)
+        {
+            return false;
+        }
+
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world && world->SetVehicleCollisionFilter(vehicleHandle, filter);
+        if (!world)
+        {
+            if (extensionHandle)
+            {
+                ReleaseExtension(extensionHandle);
+            }
+            return false;
+        }
+        return world->SetVehicleCollisionFilter(vehicleHandle, extensionHandle, filter);
     }
 
     bool RuntimeImplementation::SetVehicleDifferentialLimitedSlipRatio(
@@ -9748,6 +10199,7 @@ namespace Jolt
         AZStd::vector<MaterialHandle> materialHandles,
         AZStd::vector<CookedShapeHandle> childHandles,
         const AZ::TypeId customProviderId,
+        const ExtensionHandle customProviderExtension,
         AZStd::vector<CustomShapeDependency> customDependencies)
     {
         if (!shape)
@@ -9800,6 +10252,7 @@ namespace Jolt
         slot.m_childHandles = AZStd::move(childHandles);
         slot.m_customDependencies = AZStd::move(customDependencies);
         slot.m_customProviderId = customProviderId;
+        slot.m_customProviderExtension = customProviderExtension;
         for (const CookedShapeHandle childHandle : slot.m_childHandles)
         {
             ++FindCookedShapeUnlocked(childHandle)->m_parentCount;

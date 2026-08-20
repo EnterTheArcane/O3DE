@@ -28,16 +28,6 @@ namespace Jolt
         Mesh,
     };
 
-    enum class ProviderRegistrationResult : AZ::u8
-    {
-        None = 0,
-        AlreadyRegistered,
-        InUse,
-        Invalid,
-        NotRegistered,
-        Success,
-    };
-
     enum class CustomShapeDispatchResult : AZ::u8
     {
         None = 0,
@@ -370,5 +360,4 @@ namespace Jolt
 } // namespace Jolt
 
 AZ_TYPE_INFO_SPECIALIZE(Jolt::CustomShapeGeometryKind, "{BE713BA7-53C1-4B14-8BC5-8246EE3F0D3F}");
-AZ_TYPE_INFO_SPECIALIZE(Jolt::ProviderRegistrationResult, "{29601816-36B2-453A-B901-3AA81AB5EC0C}");
 AZ_TYPE_INFO_SPECIALIZE(Jolt::CustomShapeDispatchResult, "{40D4B16F-A952-4AFD-86CB-8E702EFCB565}");

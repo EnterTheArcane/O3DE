@@ -5481,6 +5481,28 @@ namespace Jolt
         {
             m_physicsSystem.RemoveStepListener(this);
         }
+        for (const ExtensionBinding<IStepListener>& listener : m_stepListeners)
+        {
+            m_system.ReleaseExtension(listener.m_handle);
+        }
+        m_stepListeners.clear();
+        const ExtensionHandle worldExtensionHandles[] = {
+            m_bodyPairCollider.m_handle,
+            m_contactCallbacks.m_handle,
+            m_simulationShapeFilter.m_handle,
+            m_softBodyContactCallbacks.m_handle,
+        };
+        for (const ExtensionHandle extensionHandle : worldExtensionHandles)
+        {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
+        }
+        m_bodyPairCollider = {};
+        m_contactCallbacks = {};
+        m_simulationShapeFilter = {};
+        m_softBodyContactCallbacks = {};
         for (SceneInstanceSlot& slot : m_sceneInstanceSlots)
         {
             if (slot.m_definitionHandle)
@@ -5532,6 +5554,18 @@ namespace Jolt
                 slot.m_constraint = nullptr;
                 slot.m_collisionTester = nullptr;
             }
+            if (slot.m_bindings)
+            {
+                if (slot.m_bindings->m_callbacks.m_handle)
+                {
+                    m_system.ReleaseExtension(slot.m_bindings->m_callbacks.m_handle);
+                }
+                if (slot.m_bindings->m_collisionFilter.m_handle)
+                {
+                    m_system.ReleaseExtension(slot.m_bindings->m_collisionFilter.m_handle);
+                }
+                slot.m_bindings.reset();
+            }
         }
         for (ConstraintSlot& slot : m_constraintSlots)
         {
@@ -5548,10 +5582,11 @@ namespace Jolt
                     m_system.ReleasePath(slot.m_pathHandle);
                     slot.m_pathHandle = {};
                 }
-                if (!slot.m_customProviderId.IsNull())
+                if (slot.m_customProviderExtension)
                 {
-                    m_system.ReleaseCustomConstraintProvider(slot.m_customProviderId);
+                    m_system.ReleaseCustomConstraintProvider(slot.m_customProviderExtension);
                     slot.m_customProviderId = AZ::TypeId::CreateNull();
+                    slot.m_customProviderExtension = ExtensionHandle::Invalid;
                 }
             }
         }
@@ -5579,6 +5614,11 @@ namespace Jolt
                     innerBodySlot->m_bodyId = JPH::BodyID();
                 }
                 slot.m_character = nullptr;
+            }
+            if (slot.m_contactCallbacks.m_handle)
+            {
+                m_system.ReleaseExtension(slot.m_contactCallbacks.m_handle);
+                slot.m_contactCallbacks = {};
             }
         }
         for (BodySlot& slot : m_bodySlots)
@@ -5769,7 +5809,7 @@ namespace Jolt
         }
         if (configuration.m_collectContactEvents != current.m_collectContactEvents)
         {
-            if (configuration.m_collectContactEvents || m_contactCallbacks)
+            if (configuration.m_collectContactEvents || m_contactCallbacks.m_extension)
             {
                 m_physicsSystem.SetContactListener(this);
             }
@@ -8505,6 +8545,7 @@ namespace Jolt
         AZStd::array<ConstraintHandle, 2> dependencyHandles;
         PathHandle pathHandle;
         AZ::TypeId customProviderId = AZ::TypeId::CreateNull();
+        ExtensionHandle customProviderExtension;
         PathRotationConstraint pathRotationConstraint = PathRotationConstraint::None;
         const auto configureSettings =
             [&](JPH::ConstraintSettings& settings)
@@ -8579,7 +8620,8 @@ namespace Jolt
                         geometry.m_data,
                         maximumRowCount,
                         stateByteCount,
-                        providerVersion);
+                        providerVersion,
+                        customProviderExtension);
                     if (!provider)
                     {
                         return;
@@ -8588,7 +8630,8 @@ namespace Jolt
                     AZStd::vector<AZ::u8> state(stateByteCount);
                     if (!provider->InitializeState(geometry.m_data, state))
                     {
-                        m_system.ReleaseCustomConstraintProvider(geometry.m_providerId);
+                        m_system.ReleaseCustomConstraintProvider(customProviderExtension);
+                        customProviderExtension = ExtensionHandle::Invalid;
                         return;
                     }
 
@@ -8604,7 +8647,8 @@ namespace Jolt
                     JPH::Body* secondBody = bodyLock.GetBody(1);
                     if (!firstBody || !secondBody)
                     {
-                        m_system.ReleaseCustomConstraintProvider(geometry.m_providerId);
+                        m_system.ReleaseCustomConstraintProvider(customProviderExtension);
+                        customProviderExtension = ExtensionHandle::Invalid;
                         return;
                     }
 
@@ -9328,9 +9372,9 @@ namespace Jolt
             {
                 m_system.ReleasePath(pathHandle);
             }
-            if (!customProviderId.IsNull())
+            if (customProviderExtension)
             {
-                m_system.ReleaseCustomConstraintProvider(customProviderId);
+                m_system.ReleaseCustomConstraintProvider(customProviderExtension);
             }
             m_freeConstraintSlots.push_back(constraintIndex);
             return {};
@@ -9404,6 +9448,7 @@ namespace Jolt
         slot.m_dependencyHandles = dependencyHandles;
         slot.m_pathHandle = pathHandle;
         slot.m_customProviderId = customProviderId;
+        slot.m_customProviderExtension = customProviderExtension;
         slot.m_pathRotationConstraint = pathRotationConstraint;
         slot.m_entityId = configuration.m_entityId;
         slot.m_name = configuration.m_name;
@@ -9771,10 +9816,11 @@ namespace Jolt
             m_system.ReleasePath(slot.m_pathHandle);
             slot.m_pathHandle = {};
         }
-        if (!slot.m_customProviderId.IsNull())
+        if (slot.m_customProviderExtension)
         {
-            m_system.ReleaseCustomConstraintProvider(slot.m_customProviderId);
+            m_system.ReleaseCustomConstraintProvider(slot.m_customProviderExtension);
             slot.m_customProviderId = AZ::TypeId::CreateNull();
+            slot.m_customProviderExtension = ExtensionHandle::Invalid;
         }
     }
 
@@ -9792,6 +9838,7 @@ namespace Jolt
         slot.m_dependencyHandles = {};
         slot.m_pathHandle = {};
         slot.m_customProviderId = AZ::TypeId::CreateNull();
+        slot.m_customProviderExtension = ExtensionHandle::Invalid;
         slot.m_pathRotationConstraint = PathRotationConstraint::None;
         slot.m_entityId = AZ::EntityId();
         slot.m_name = AZ::Name();
@@ -12307,7 +12354,11 @@ namespace Jolt
         }
         slot->m_autoUpdateConfiguration.reset();
         slot->m_contactProvenance.reset();
-        slot->m_contactCallbacks = nullptr;
+        if (slot->m_contactCallbacks.m_handle)
+        {
+            m_system.ReleaseExtension(slot->m_contactCallbacks.m_handle);
+            slot->m_contactCallbacks = {};
+        }
         if (innerBodySlot)
         {
             ShapeSlot* innerBodyShapeSlot = FindShape(innerBodySlot->m_shapeHandle);
@@ -12782,24 +12833,41 @@ namespace Jolt
 
     bool World::SetVirtualCharacterContactCallbacks(
         const VirtualCharacterHandle characterHandle,
+        const ExtensionHandle extensionHandle,
         IVirtualCharacterContactCallbacks* callbacks)
     {
         AZStd::lock_guard lock(m_mutex);
         VirtualCharacterSlot* slot = FindVirtualCharacter(characterHandle);
         if (!slot || slot->m_contactTrackingDepth > 0)
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return false;
         }
-        if (slot->m_contactCallbacks == callbacks)
+        if (slot->m_contactCallbacks.m_handle == extensionHandle)
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return true;
         }
         if (!AdvanceConfigurationRevision())
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return false;
         }
 
-        slot->m_contactCallbacks = callbacks;
+        const ExtensionHandle previousExtensionHandle = slot->m_contactCallbacks.m_handle;
+        slot->m_contactCallbacks = {
+            .m_extension = callbacks,
+            .m_handle = extensionHandle,
+        };
         if (callbacks)
         {
             if (!slot->m_contactProvenance)
@@ -12813,6 +12881,10 @@ namespace Jolt
         {
             slot->m_character->SetListener(nullptr);
             slot->m_contactProvenance.reset();
+        }
+        if (previousExtensionHandle)
+        {
+            m_system.ReleaseExtension(previousExtensionHandle);
         }
         return true;
     }
@@ -14501,6 +14573,17 @@ namespace Jolt
         }
         slot->m_constraint = nullptr;
         slot->m_collisionTester = nullptr;
+        if (slot->m_bindings)
+        {
+            if (slot->m_bindings->m_callbacks.m_handle)
+            {
+                m_system.ReleaseExtension(slot->m_bindings->m_callbacks.m_handle);
+            }
+            if (slot->m_bindings->m_collisionFilter.m_handle)
+            {
+                m_system.ReleaseExtension(slot->m_bindings->m_collisionFilter.m_handle);
+            }
+        }
         slot->m_bindings.reset();
         slot->m_bodyHandle = {};
         slot->m_collisionConfiguration = {};
@@ -15132,25 +15215,38 @@ namespace Jolt
 
     bool World::SetVehicleCallbacks(
         const VehicleHandle vehicleHandle,
+        const ExtensionHandle extensionHandle,
         IVehicleCallbacks* callbacks)
     {
         AZStd::lock_guard lock(m_mutex);
         VehicleSlot* slot = FindVehicle(vehicleHandle);
         if (!slot)
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return false;
         }
-        IVehicleCallbacks* currentCallbacks = nullptr;
+        ExtensionHandle currentExtensionHandle;
         if (slot->m_bindings)
         {
-            currentCallbacks = slot->m_bindings->m_callbacks;
+            currentExtensionHandle = slot->m_bindings->m_callbacks.m_handle;
         }
-        if (currentCallbacks == callbacks)
+        if (currentExtensionHandle == extensionHandle)
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return true;
         }
         if (!AdvanceVehicleConfigurationRevision(*slot))
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return false;
         }
 
@@ -15193,11 +15289,15 @@ namespace Jolt
             }
             if (slot->m_bindings)
             {
-                slot->m_bindings->m_callbacks = nullptr;
-                if (!slot->m_bindings->m_collisionFilter)
+                slot->m_bindings->m_callbacks = {};
+                if (!slot->m_bindings->m_collisionFilter.m_extension)
                 {
                     slot->m_bindings.reset();
                 }
+            }
+            if (currentExtensionHandle)
+            {
+                m_system.ReleaseExtension(currentExtensionHandle);
             }
             return true;
         }
@@ -15206,7 +15306,10 @@ namespace Jolt
         {
             slot->m_bindings = AZStd::make_unique<VehicleBindings>();
         }
-        slot->m_bindings->m_callbacks = callbacks;
+        slot->m_bindings->m_callbacks = {
+            .m_extension = callbacks,
+            .m_handle = extensionHandle,
+        };
 
         slot->m_constraint->SetPreStepCallback(
             [this, vehicleHandle, callbacks](
@@ -15344,30 +15447,47 @@ namespace Jolt
                     longitudinalImpulse = calculation.m_longitudinalImpulse;
                 });
         }
+        if (currentExtensionHandle)
+        {
+            m_system.ReleaseExtension(currentExtensionHandle);
+        }
         return true;
     }
 
     bool World::SetVehicleCollisionFilter(
         const VehicleHandle vehicleHandle,
-        const IVehicleCollisionFilter* filter)
+        const ExtensionHandle extensionHandle,
+        IVehicleCollisionFilter* filter)
     {
         AZStd::lock_guard lock(m_mutex);
         VehicleSlot* slot = FindVehicle(vehicleHandle);
         if (!slot)
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return false;
         }
-        const IVehicleCollisionFilter* currentFilter = nullptr;
+        ExtensionHandle currentExtensionHandle;
         if (slot->m_bindings)
         {
-            currentFilter = slot->m_bindings->m_collisionFilter;
+            currentExtensionHandle = slot->m_bindings->m_collisionFilter.m_handle;
         }
-        if (currentFilter == filter)
+        if (currentExtensionHandle == extensionHandle)
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return true;
         }
         if (!AdvanceVehicleConfigurationRevision(*slot))
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return false;
         }
 
@@ -15395,18 +15515,25 @@ namespace Jolt
                 slot->m_bindings = AZStd::make_unique<VehicleBindings>();
             }
             slot->m_bindings->m_collisionFilterAdapter = AZStd::move(collisionFilterAdapter);
-            slot->m_bindings->m_collisionFilter = filter;
+            slot->m_bindings->m_collisionFilter = {
+                .m_extension = filter,
+                .m_handle = extensionHandle,
+            };
         }
         else if (slot->m_bindings)
         {
             slot->m_bindings->m_collisionFilterAdapter.reset();
-            slot->m_bindings->m_collisionFilter = nullptr;
-            if (!slot->m_bindings->m_callbacks)
+            slot->m_bindings->m_collisionFilter = {};
+            if (!slot->m_bindings->m_callbacks.m_extension)
             {
                 slot->m_bindings.reset();
             }
         }
         ActivateVehicleBody(*slot);
+        if (currentExtensionHandle)
+        {
+            m_system.ReleaseExtension(currentExtensionHandle);
+        }
         return true;
     }
 
@@ -15516,7 +15643,7 @@ namespace Jolt
         const IVehicleCollisionFilter* collisionFilter = nullptr;
         if (slot->m_bindings)
         {
-            collisionFilter = slot->m_bindings->m_collisionFilter;
+            collisionFilter = slot->m_bindings->m_collisionFilter.m_extension;
         }
         if (collisionFilter)
         {
@@ -16865,13 +16992,13 @@ namespace Jolt
             return true;
         }
 
-        if (!PrepareRollbackParticipantRestore(m_bodyPairCollider, snapshot.m_bodyPairColliderState)
-            || !PrepareRollbackParticipantRestore(m_contactCallbacks, snapshot.m_contactCallbackState)
+        if (!PrepareRollbackParticipantRestore(m_bodyPairCollider.m_extension, snapshot.m_bodyPairColliderState)
+            || !PrepareRollbackParticipantRestore(m_contactCallbacks.m_extension, snapshot.m_contactCallbackState)
             || !PrepareRollbackParticipantRestore(
-                m_simulationShapeFilter,
+                m_simulationShapeFilter.m_extension,
                 snapshot.m_simulationShapeFilterState)
             || !PrepareRollbackParticipantRestore(
-                m_softBodyContactCallbacks,
+                m_softBodyContactCallbacks.m_extension,
                 snapshot.m_softBodyContactCallbackState)
             || snapshot.m_stepListenerStates.size() != m_stepListeners.size())
         {
@@ -16881,7 +17008,7 @@ namespace Jolt
         for (size_t listenerIndex = 0; listenerIndex < m_stepListeners.size(); ++listenerIndex)
         {
             if (!PrepareRollbackParticipantRestore(
-                    m_stepListeners[listenerIndex],
+                    m_stepListeners[listenerIndex].m_extension,
                     snapshot.m_stepListenerStates[listenerIndex]))
             {
                 return false;
@@ -16898,8 +17025,8 @@ namespace Jolt
             const IVehicleCollisionFilter* collisionFilter = nullptr;
             if (slot.m_bindings)
             {
-                callbacks = slot.m_bindings->m_callbacks;
-                collisionFilter = slot.m_bindings->m_collisionFilter;
+                callbacks = slot.m_bindings->m_callbacks.m_extension;
+                collisionFilter = slot.m_bindings->m_collisionFilter.m_extension;
             }
             if (!PrepareRollbackParticipantRestore(callbacks, state.m_primaryState)
                 || !PrepareRollbackParticipantRestore(collisionFilter, state.m_secondaryState))
@@ -16911,7 +17038,7 @@ namespace Jolt
         {
             if (state.m_slotIndex >= m_virtualCharacterSlots.size()
                 || !PrepareRollbackParticipantRestore(
-                    m_virtualCharacterSlots[state.m_slotIndex].m_contactCallbacks,
+                    m_virtualCharacterSlots[state.m_slotIndex].m_contactCallbacks.m_extension,
                     state.m_primaryState))
             {
                 return false;
@@ -16952,13 +17079,13 @@ namespace Jolt
             return true;
         }
 
-        if (!CommitRollbackParticipantRestore(m_bodyPairCollider, snapshot.m_bodyPairColliderState)
-            || !CommitRollbackParticipantRestore(m_contactCallbacks, snapshot.m_contactCallbackState)
+        if (!CommitRollbackParticipantRestore(m_bodyPairCollider.m_extension, snapshot.m_bodyPairColliderState)
+            || !CommitRollbackParticipantRestore(m_contactCallbacks.m_extension, snapshot.m_contactCallbackState)
             || !CommitRollbackParticipantRestore(
-                m_simulationShapeFilter,
+                m_simulationShapeFilter.m_extension,
                 snapshot.m_simulationShapeFilterState)
             || !CommitRollbackParticipantRestore(
-                m_softBodyContactCallbacks,
+                m_softBodyContactCallbacks.m_extension,
                 snapshot.m_softBodyContactCallbackState))
         {
             return false;
@@ -16967,7 +17094,7 @@ namespace Jolt
         for (size_t listenerIndex = 0; listenerIndex < m_stepListeners.size(); ++listenerIndex)
         {
             if (!CommitRollbackParticipantRestore(
-                    m_stepListeners[listenerIndex],
+                    m_stepListeners[listenerIndex].m_extension,
                     snapshot.m_stepListenerStates[listenerIndex]))
             {
                 return false;
@@ -16980,8 +17107,8 @@ namespace Jolt
             const IVehicleCollisionFilter* collisionFilter = nullptr;
             if (slot.m_bindings)
             {
-                callbacks = slot.m_bindings->m_callbacks;
-                collisionFilter = slot.m_bindings->m_collisionFilter;
+                callbacks = slot.m_bindings->m_callbacks.m_extension;
+                collisionFilter = slot.m_bindings->m_collisionFilter.m_extension;
             }
             if (!CommitRollbackParticipantRestore(callbacks, state.m_primaryState)
                 || !CommitRollbackParticipantRestore(collisionFilter, state.m_secondaryState))
@@ -16992,7 +17119,7 @@ namespace Jolt
         for (const IndexedCallbackState& state : snapshot.m_virtualCharacterCallbackStates)
         {
             if (!CommitRollbackParticipantRestore(
-                    m_virtualCharacterSlots[state.m_slotIndex].m_contactCallbacks,
+                    m_virtualCharacterSlots[state.m_slotIndex].m_contactCallbacks.m_extension,
                     state.m_primaryState))
             {
                 return false;
@@ -17287,11 +17414,13 @@ namespace Jolt
         }
 
         if (captureGlobalState
-            && (!CaptureRollbackParticipantState(m_bodyPairCollider, snapshot.m_bodyPairColliderState)
-                || !CaptureRollbackParticipantState(m_contactCallbacks, snapshot.m_contactCallbackState)
-                || !CaptureRollbackParticipantState(m_simulationShapeFilter, snapshot.m_simulationShapeFilterState)
+            && (!CaptureRollbackParticipantState(m_bodyPairCollider.m_extension, snapshot.m_bodyPairColliderState)
+                || !CaptureRollbackParticipantState(m_contactCallbacks.m_extension, snapshot.m_contactCallbackState)
                 || !CaptureRollbackParticipantState(
-                    m_softBodyContactCallbacks,
+                    m_simulationShapeFilter.m_extension,
+                    snapshot.m_simulationShapeFilterState)
+                || !CaptureRollbackParticipantState(
+                    m_softBodyContactCallbacks.m_extension,
                     snapshot.m_softBodyContactCallbackState)))
         {
             snapshot.m_data.clear();
@@ -17310,10 +17439,10 @@ namespace Jolt
         {
             snapshot.m_stepListenerStates.resize(m_stepListeners.size());
             size_t listenerIndex = 0;
-            for (const IStepListener* listener : m_stepListeners)
+            for (const ExtensionBinding<IStepListener>& listener : m_stepListeners)
             {
                 if (!CaptureRollbackParticipantState(
-                        listener,
+                        listener.m_extension,
                         snapshot.m_stepListenerStates[listenerIndex]))
                 {
                     snapshot.m_data.clear();
@@ -17352,8 +17481,8 @@ namespace Jolt
                 const IVehicleCollisionFilter* collisionFilter = nullptr;
                 if (slot.m_bindings)
                 {
-                    callbacks = slot.m_bindings->m_callbacks;
-                    collisionFilter = slot.m_bindings->m_collisionFilter;
+                    callbacks = slot.m_bindings->m_callbacks.m_extension;
+                    collisionFilter = slot.m_bindings->m_collisionFilter.m_extension;
                 }
                 if (!CaptureRollbackParticipantState(callbacks, state.m_primaryState)
                     || !CaptureRollbackParticipantState(collisionFilter, state.m_secondaryState))
@@ -17386,7 +17515,7 @@ namespace Jolt
                     ++virtualCharacterCallbackStateCount;
                     state.m_slotIndex = characterIndex;
                     if (!CaptureRollbackParticipantState(
-                            slot.m_contactCallbacks,
+                            slot.m_contactCallbacks.m_extension,
                             state.m_primaryState))
                     {
                         snapshot.m_data.clear();
@@ -17828,13 +17957,13 @@ namespace Jolt
         }
 
         if (hasGlobalState
-            && (!IsRollbackParticipantCompatible(m_bodyPairCollider, snapshot.m_bodyPairColliderState)
-                || !IsRollbackParticipantCompatible(m_contactCallbacks, snapshot.m_contactCallbackState)
+            && (!IsRollbackParticipantCompatible(m_bodyPairCollider.m_extension, snapshot.m_bodyPairColliderState)
+                || !IsRollbackParticipantCompatible(m_contactCallbacks.m_extension, snapshot.m_contactCallbackState)
                 || !IsRollbackParticipantCompatible(
-                    m_simulationShapeFilter,
+                    m_simulationShapeFilter.m_extension,
                     snapshot.m_simulationShapeFilterState)
                 || !IsRollbackParticipantCompatible(
-                    m_softBodyContactCallbacks,
+                    m_softBodyContactCallbacks.m_extension,
                     snapshot.m_softBodyContactCallbackState)
                 || snapshot.m_stepListenerStates.size() != m_stepListeners.size()))
         {
@@ -17843,7 +17972,7 @@ namespace Jolt
         for (size_t listenerIndex = 0; listenerIndex < snapshot.m_stepListenerStates.size(); ++listenerIndex)
         {
             if (!IsRollbackParticipantCompatible(
-                    m_stepListeners[listenerIndex],
+                    m_stepListeners[listenerIndex].m_extension,
                     snapshot.m_stepListenerStates[listenerIndex]))
             {
                 return false;
@@ -17861,8 +17990,8 @@ namespace Jolt
             const IVehicleCollisionFilter* collisionFilter = nullptr;
             if (slot.m_bindings)
             {
-                callbacks = slot.m_bindings->m_callbacks;
-                collisionFilter = slot.m_bindings->m_collisionFilter;
+                callbacks = slot.m_bindings->m_callbacks.m_extension;
+                collisionFilter = slot.m_bindings->m_collisionFilter.m_extension;
             }
             if (!IsRollbackParticipantCompatible(callbacks, state.m_primaryState)
                 || !IsRollbackParticipantCompatible(collisionFilter, state.m_secondaryState))
@@ -17878,7 +18007,7 @@ namespace Jolt
             }
 
             const VirtualCharacterSlot& slot = m_virtualCharacterSlots[state.m_slotIndex];
-            if (!IsRollbackParticipantCompatible(slot.m_contactCallbacks, state.m_primaryState))
+            if (!IsRollbackParticipantCompatible(slot.m_contactCallbacks.m_extension, state.m_primaryState))
             {
                 return false;
             }
@@ -18904,19 +19033,19 @@ namespace Jolt
         recorder.WriteBytes(&m_configurationRevision, sizeof(m_configurationRevision));
         recorder.WriteBytes(&m_eventSequence, sizeof(m_eventSequence));
 
-        if (!writeParticipantState(m_bodyPairCollider)
-            || !writeParticipantState(m_contactCallbacks)
-            || !writeParticipantState(m_simulationShapeFilter)
-            || !writeParticipantState(m_softBodyContactCallbacks))
+        if (!writeParticipantState(m_bodyPairCollider.m_extension)
+            || !writeParticipantState(m_contactCallbacks.m_extension)
+            || !writeParticipantState(m_simulationShapeFilter.m_extension)
+            || !writeParticipantState(m_softBodyContactCallbacks.m_extension))
         {
             return false;
         }
 
         const AZ::u32 stepListenerCount = aznumeric_cast<AZ::u32>(m_stepListeners.size());
         recorder.WriteBytes(&stepListenerCount, sizeof(stepListenerCount));
-        for (const IStepListener* listener : m_stepListeners)
+        for (const ExtensionBinding<IStepListener>& listener : m_stepListeners)
         {
-            if (!writeParticipantState(listener))
+            if (!writeParticipantState(listener.m_extension))
             {
                 return false;
             }
@@ -18930,8 +19059,8 @@ namespace Jolt
             const IVehicleCollisionFilter* collisionFilter = nullptr;
             if (slot.m_bindings)
             {
-                callbacks = slot.m_bindings->m_callbacks;
-                collisionFilter = slot.m_bindings->m_collisionFilter;
+                callbacks = slot.m_bindings->m_callbacks.m_extension;
+                collisionFilter = slot.m_bindings->m_collisionFilter.m_extension;
             }
             if (!writeParticipantState(callbacks)
                 || !writeParticipantState(collisionFilter))
@@ -18944,7 +19073,7 @@ namespace Jolt
         recorder.WriteBytes(&virtualCharacterSlotCount, sizeof(virtualCharacterSlotCount));
         for (const VirtualCharacterSlot& slot : m_virtualCharacterSlots)
         {
-            if (!writeParticipantState(slot.m_contactCallbacks))
+            if (!writeParticipantState(slot.m_contactCallbacks.m_extension))
             {
                 return false;
             }
@@ -25664,20 +25793,33 @@ namespace Jolt
     }
 
     bool World::SetContactCallbacks(
+        const ExtensionHandle extensionHandle,
         IContactCallbacks* callbacks)
     {
         AZStd::lock_guard lock(m_mutex);
-        if (callbacks == m_contactCallbacks)
+        if (extensionHandle == m_contactCallbacks.m_handle)
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return true;
         }
         if (!AdvanceGlobalConfigurationRevision())
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return false;
         }
 
-        m_contactCallbacks = callbacks;
-        if (m_contactCallbacks || m_configuration.m_collectContactEvents)
+        const ExtensionHandle previousExtensionHandle = m_contactCallbacks.m_handle;
+        m_contactCallbacks = {
+            .m_extension = callbacks,
+            .m_handle = extensionHandle,
+        };
+        if (m_contactCallbacks.m_extension || m_configuration.m_collectContactEvents)
         {
             m_physicsSystem.SetContactListener(this);
         }
@@ -25688,24 +25830,41 @@ namespace Jolt
             m_contactCache.clear();
         }
         InvalidateAllContactCaches();
+        if (previousExtensionHandle)
+        {
+            m_system.ReleaseExtension(previousExtensionHandle);
+        }
         return true;
     }
 
     bool World::SetBodyPairCollider(
+        const ExtensionHandle extensionHandle,
         IBodyPairCollider* collider)
     {
         AZStd::lock_guard lock(m_mutex);
-        if (collider == m_bodyPairCollider)
+        if (extensionHandle == m_bodyPairCollider.m_handle)
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return true;
         }
         if (!AdvanceGlobalConfigurationRevision())
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return false;
         }
 
-        m_bodyPairCollider = collider;
-        if (m_bodyPairCollider)
+        const ExtensionHandle previousExtensionHandle = m_bodyPairCollider.m_handle;
+        m_bodyPairCollider = {
+            .m_extension = collider,
+            .m_handle = extensionHandle,
+        };
+        if (m_bodyPairCollider.m_extension)
         {
             m_physicsSystem.SetSimCollideBodyVsBody(
                 [this](
@@ -25732,24 +25891,41 @@ namespace Jolt
             m_physicsSystem.SetSimCollideBodyVsBody(&JPH::PhysicsSystem::sDefaultSimCollideBodyVsBody);
         }
         InvalidateAllContactCaches();
+        if (previousExtensionHandle)
+        {
+            m_system.ReleaseExtension(previousExtensionHandle);
+        }
         return true;
     }
 
     bool World::SetSimulationShapeFilter(
+        const ExtensionHandle extensionHandle,
         ISimulationShapeFilter* filter)
     {
         AZStd::lock_guard lock(m_mutex);
-        if (filter == m_simulationShapeFilter)
+        if (extensionHandle == m_simulationShapeFilter.m_handle)
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return true;
         }
         if (!AdvanceGlobalConfigurationRevision())
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return false;
         }
 
-        m_simulationShapeFilter = filter;
-        if (m_simulationShapeFilter)
+        const ExtensionHandle previousExtensionHandle = m_simulationShapeFilter.m_handle;
+        m_simulationShapeFilter = {
+            .m_extension = filter,
+            .m_handle = extensionHandle,
+        };
+        if (m_simulationShapeFilter.m_extension)
         {
             m_physicsSystem.SetSimShapeFilter(this);
         }
@@ -25758,24 +25934,41 @@ namespace Jolt
             m_physicsSystem.SetSimShapeFilter(nullptr);
         }
         InvalidateAllContactCaches();
+        if (previousExtensionHandle)
+        {
+            m_system.ReleaseExtension(previousExtensionHandle);
+        }
         return true;
     }
 
     bool World::SetSoftBodyContactCallbacks(
+        const ExtensionHandle extensionHandle,
         ISoftBodyContactCallbacks* callbacks)
     {
         AZStd::lock_guard lock(m_mutex);
-        if (callbacks == m_softBodyContactCallbacks)
+        if (extensionHandle == m_softBodyContactCallbacks.m_handle)
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return true;
         }
         if (!AdvanceGlobalConfigurationRevision())
         {
+            if (extensionHandle)
+            {
+                m_system.ReleaseExtension(extensionHandle);
+            }
             return false;
         }
 
-        m_softBodyContactCallbacks = callbacks;
-        if (m_softBodyContactCallbacks)
+        const ExtensionHandle previousExtensionHandle = m_softBodyContactCallbacks.m_handle;
+        m_softBodyContactCallbacks = {
+            .m_extension = callbacks,
+            .m_handle = extensionHandle,
+        };
+        if (m_softBodyContactCallbacks.m_extension)
         {
             m_physicsSystem.SetSoftBodyContactListener(this);
         }
@@ -25783,29 +25976,46 @@ namespace Jolt
         {
             m_physicsSystem.SetSoftBodyContactListener(nullptr);
         }
+        if (previousExtensionHandle)
+        {
+            m_system.ReleaseExtension(previousExtensionHandle);
+        }
         return true;
     }
 
     bool World::AddStepListener(
+        const ExtensionHandle extensionHandle,
         IStepListener* listener)
     {
         if (!listener || m_dispatchingStepListeners.load(AZStd::memory_order_acquire))
         {
+            m_system.ReleaseExtension(extensionHandle);
             return false;
         }
 
         AZStd::lock_guard lock(m_mutex);
         if (m_dispatchingStepListeners.load(AZStd::memory_order_relaxed)
-            || AZStd::find(m_stepListeners.begin(), m_stepListeners.end(), listener) != m_stepListeners.end())
+            || AZStd::any_of(
+                m_stepListeners.begin(),
+                m_stepListeners.end(),
+                [extensionHandle](const ExtensionBinding<IStepListener>& binding)
+                {
+                    return binding.m_handle == extensionHandle;
+                }))
         {
+            m_system.ReleaseExtension(extensionHandle);
             return false;
         }
         if (!AdvanceGlobalConfigurationRevision())
         {
+            m_system.ReleaseExtension(extensionHandle);
             return false;
         }
 
-        m_stepListeners.push_back(listener);
+        m_stepListeners.push_back({
+            .m_extension = listener,
+            .m_handle = extensionHandle,
+        });
         if (m_stepListeners.size() == 1)
         {
             m_physicsSystem.AddStepListener(this);
@@ -25814,30 +26024,43 @@ namespace Jolt
     }
 
     bool World::RemoveStepListener(
+        const ExtensionHandle extensionHandle,
         IStepListener* listener)
     {
         if (!listener || m_dispatchingStepListeners.load(AZStd::memory_order_acquire))
         {
+            m_system.ReleaseExtension(extensionHandle);
             return false;
         }
 
         AZStd::lock_guard lock(m_mutex);
         if (m_dispatchingStepListeners.load(AZStd::memory_order_relaxed))
         {
+            m_system.ReleaseExtension(extensionHandle);
             return false;
         }
 
-        const auto listenerIterator = AZStd::find(m_stepListeners.begin(), m_stepListeners.end(), listener);
+        const auto listenerIterator = AZStd::find_if(
+            m_stepListeners.begin(),
+            m_stepListeners.end(),
+            [extensionHandle](const ExtensionBinding<IStepListener>& binding)
+            {
+                return binding.m_handle == extensionHandle;
+            });
         if (listenerIterator == m_stepListeners.end())
         {
+            m_system.ReleaseExtension(extensionHandle);
             return false;
         }
         if (!AdvanceGlobalConfigurationRevision())
         {
+            m_system.ReleaseExtension(extensionHandle);
             return false;
         }
 
         m_stepListeners.erase(listenerIterator);
+        m_system.ReleaseExtension(extensionHandle);
+        m_system.ReleaseExtension(extensionHandle);
         if (m_stepListeners.empty())
         {
             m_physicsSystem.RemoveStepListener(this);
@@ -26909,7 +27132,7 @@ namespace Jolt
             Internal::HandleAccess::FromValue<BodyHandle>(body.GetUserData());
         const BodySlot* bodySlot = FindBody(bodyHandle);
         if (!characterSlot
-            || !characterSlot->m_contactCallbacks
+            || !characterSlot->m_contactCallbacks.m_extension
             || !bodySlot
             || bodySlot->m_bodyId != body.GetID())
         {
@@ -26918,7 +27141,7 @@ namespace Jolt
 
         AZ::Vector3 callbackLinearVelocity = FromNativeVector(linearVelocity);
         AZ::Vector3 callbackAngularVelocity = FromNativeVector(angularVelocity);
-        characterSlot->m_contactCallbacks->OnAdjustBodyVelocity(
+        characterSlot->m_contactCallbacks.m_extension->OnAdjustBodyVelocity(
             characterHandle,
             bodyHandle,
             callbackLinearVelocity,
@@ -26943,9 +27166,9 @@ namespace Jolt
         VirtualCharacterSlot* slot = FindVirtualCharacter(*character, characterHandle);
         VirtualCharacterContact contact;
         return slot
-            && slot->m_contactCallbacks
+            && slot->m_contactCallbacks.m_extension
             && BuildVirtualCharacterContact(nativeContact, contact)
-            && slot->m_contactCallbacks->OnContactValidate(characterHandle, contact);
+            && slot->m_contactCallbacks.m_extension->OnContactValidate(characterHandle, contact);
     }
 
     void World::OnContactAdded(
@@ -26962,7 +27185,7 @@ namespace Jolt
         VirtualCharacterSlot* slot = FindVirtualCharacter(*character, characterHandle);
         VirtualCharacterContact contact;
         if (!slot
-            || !slot->m_contactCallbacks
+            || !slot->m_contactCallbacks.m_extension
             || !BuildVirtualCharacterContact(nativeContact, contact))
         {
             return;
@@ -26973,7 +27196,7 @@ namespace Jolt
             .m_canPushCharacter = settings.mCanPushCharacter,
             .m_canReceiveImpulses = settings.mCanReceiveImpulses,
         };
-        slot->m_contactCallbacks->OnContactAdded(
+        slot->m_contactCallbacks.m_extension->OnContactAdded(
             characterHandle,
             contact,
             callbackSettings);
@@ -26995,7 +27218,7 @@ namespace Jolt
         VirtualCharacterSlot* slot = FindVirtualCharacter(*character, characterHandle);
         VirtualCharacterContact contact;
         if (!slot
-            || !slot->m_contactCallbacks
+            || !slot->m_contactCallbacks.m_extension
             || !BuildVirtualCharacterContact(nativeContact, contact))
         {
             return;
@@ -27006,7 +27229,7 @@ namespace Jolt
             .m_canPushCharacter = settings.mCanPushCharacter,
             .m_canReceiveImpulses = settings.mCanReceiveImpulses,
         };
-        slot->m_contactCallbacks->OnContactPersisted(
+        slot->m_contactCallbacks.m_extension->OnContactPersisted(
             characterHandle,
             contact,
             callbackSettings);
@@ -27026,7 +27249,7 @@ namespace Jolt
 
         VirtualCharacterHandle characterHandle;
         VirtualCharacterSlot* slot = FindVirtualCharacter(*character, characterHandle);
-        if (!slot || !slot->m_contactCallbacks)
+        if (!slot || !slot->m_contactCallbacks.m_extension)
         {
             return;
         }
@@ -27042,7 +27265,7 @@ namespace Jolt
         {
             [[maybe_unused]] const bool found = FindBodyHandle(bodyId, bodyHandle);
         }
-        slot->m_contactCallbacks->OnContactRemoved(
+        slot->m_contactCallbacks.m_extension->OnContactRemoved(
             characterHandle,
             bodyHandle,
             SubShapeId(subShapeId.GetValue()));
@@ -27068,7 +27291,7 @@ namespace Jolt
         VirtualCharacterSlot* slot = FindVirtualCharacter(*character, characterHandle);
         BodyHandle bodyHandle;
         if (!slot
-            || !slot->m_contactCallbacks
+            || !slot->m_contactCallbacks.m_extension
             || !FindBodyHandle(bodyId, bodyHandle))
         {
             return;
@@ -27084,7 +27307,7 @@ namespace Jolt
             .m_subShapeId = SubShapeId(subShapeId.GetValue()),
         };
         AZ::Vector3 callbackVelocity = FromNativeVector(newCharacterVelocity);
-        slot->m_contactCallbacks->OnContactSolve(
+        slot->m_contactCallbacks.m_extension->OnContactSolve(
             characterHandle,
             contact,
             callbackVelocity);
@@ -27107,9 +27330,9 @@ namespace Jolt
         VirtualCharacterSlot* slot = FindVirtualCharacter(*character, characterHandle);
         VirtualCharacterContact contact;
         return slot
-            && slot->m_contactCallbacks
+            && slot->m_contactCallbacks.m_extension
             && BuildVirtualCharacterContact(nativeContact, contact)
-            && slot->m_contactCallbacks->OnCharacterContactValidate(characterHandle, contact);
+            && slot->m_contactCallbacks.m_extension->OnCharacterContactValidate(characterHandle, contact);
     }
 
     void World::OnCharacterContactAdded(
@@ -27126,7 +27349,7 @@ namespace Jolt
         VirtualCharacterSlot* slot = FindVirtualCharacter(*character, characterHandle);
         VirtualCharacterContact contact;
         if (!slot
-            || !slot->m_contactCallbacks
+            || !slot->m_contactCallbacks.m_extension
             || !BuildVirtualCharacterContact(nativeContact, contact))
         {
             return;
@@ -27137,7 +27360,7 @@ namespace Jolt
             .m_canPushCharacter = settings.mCanPushCharacter,
             .m_canReceiveImpulses = settings.mCanReceiveImpulses,
         };
-        slot->m_contactCallbacks->OnCharacterContactAdded(
+        slot->m_contactCallbacks.m_extension->OnCharacterContactAdded(
             characterHandle,
             contact,
             callbackSettings);
@@ -27159,7 +27382,7 @@ namespace Jolt
         VirtualCharacterSlot* slot = FindVirtualCharacter(*character, characterHandle);
         VirtualCharacterContact contact;
         if (!slot
-            || !slot->m_contactCallbacks
+            || !slot->m_contactCallbacks.m_extension
             || !BuildVirtualCharacterContact(nativeContact, contact))
         {
             return;
@@ -27170,7 +27393,7 @@ namespace Jolt
             .m_canPushCharacter = settings.mCanPushCharacter,
             .m_canReceiveImpulses = settings.mCanReceiveImpulses,
         };
-        slot->m_contactCallbacks->OnCharacterContactPersisted(
+        slot->m_contactCallbacks.m_extension->OnCharacterContactPersisted(
             characterHandle,
             contact,
             callbackSettings);
@@ -27190,7 +27413,7 @@ namespace Jolt
 
         VirtualCharacterHandle characterHandle;
         VirtualCharacterSlot* slot = FindVirtualCharacter(*character, characterHandle);
-        if (!slot || !slot->m_contactCallbacks)
+        if (!slot || !slot->m_contactCallbacks.m_extension)
         {
             return;
         }
@@ -27210,7 +27433,7 @@ namespace Jolt
                 otherCharacterHandle = handleEntry->second;
             }
         }
-        slot->m_contactCallbacks->OnCharacterContactRemoved(
+        slot->m_contactCallbacks.m_extension->OnCharacterContactRemoved(
             characterHandle,
             otherCharacterHandle,
             SubShapeId(subShapeId.GetValue()));
@@ -27236,7 +27459,7 @@ namespace Jolt
         VirtualCharacterSlot* slot = FindVirtualCharacter(*character, characterHandle);
         const VirtualCharacterHandle otherCharacterHandle =
             GetVirtualCharacterHandle(*otherCharacter);
-        if (!slot || !slot->m_contactCallbacks || !otherCharacterHandle)
+        if (!slot || !slot->m_contactCallbacks.m_extension || !otherCharacterHandle)
         {
             return;
         }
@@ -27251,7 +27474,7 @@ namespace Jolt
             .m_subShapeId = SubShapeId(subShapeId.GetValue()),
         };
         AZ::Vector3 callbackVelocity = FromNativeVector(newCharacterVelocity);
-        slot->m_contactCallbacks->OnCharacterContactSolve(
+        slot->m_contactCallbacks.m_extension->OnCharacterContactSolve(
             characterHandle,
             contact,
             callbackVelocity);
@@ -27276,7 +27499,7 @@ namespace Jolt
             Internal::HandleAccess::FromValue<BodyHandle>(secondBody.GetUserData());
         const BodySlot* firstBodySlot = FindBody(firstBodyHandle);
         const BodySlot* secondBodySlot = FindBody(secondBodyHandle);
-        if (!m_bodyPairCollider
+        if (!m_bodyPairCollider.m_extension
             || !firstBodySlot
             || !secondBodySlot
             || firstBodySlot->m_bodyId != firstBody.GetID()
@@ -27332,7 +27555,7 @@ namespace Jolt
             settings,
             collector,
             shapeFilter);
-        m_bodyPairCollider->Collide(input, callbackSettings, callbackCollector);
+        m_bodyPairCollider.m_extension->Collide(input, callbackSettings, callbackCollector);
     }
 
     void World::OnStep(
@@ -27350,9 +27573,9 @@ namespace Jolt
         };
         StepContext stepContext(*this);
         m_dispatchingStepListeners.store(true, AZStd::memory_order_release);
-        for (IStepListener* listener : m_stepListeners)
+        for (const ExtensionBinding<IStepListener>& listener : m_stepListeners)
         {
-            listener->OnStep(information, stepContext);
+            listener.m_extension->OnStep(information, stepContext);
         }
         m_dispatchingStepListeners.store(false, AZStd::memory_order_release);
     }
@@ -27363,7 +27586,7 @@ namespace Jolt
         const JPH::RVec3Arg baseOffset,
         const JPH::CollideShapeResult& collision)
     {
-        if (!m_contactCallbacks)
+        if (!m_contactCallbacks.m_extension)
         {
             return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
         }
@@ -27398,7 +27621,7 @@ namespace Jolt
             .m_secondSubShapeId = SubShapeId(collision.mSubShapeID2.GetValue()),
             .m_penetrationDepth = collision.mPenetrationDepth,
         };
-        switch (m_contactCallbacks->OnContactValidate(contact))
+        switch (m_contactCallbacks.m_extension->OnContactValidate(contact))
         {
         case ContactDecision::AcceptAllForPair:
             return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
@@ -27455,9 +27678,9 @@ namespace Jolt
             m_contactCache.erase(contactIterator);
         }
 
-        if (m_contactCallbacks)
+        if (m_contactCallbacks.m_extension)
         {
-            m_contactCallbacks->OnContactRemoved(event);
+            m_contactCallbacks.m_extension->OnContactRemoved(event);
         }
     }
 
@@ -27466,7 +27689,7 @@ namespace Jolt
         const JPH::Body& otherBody,
         JPH::SoftBodyContactSettings& settings)
     {
-        if (!m_softBodyContactCallbacks)
+        if (!m_softBodyContactCallbacks.m_extension)
         {
             return JPH::SoftBodyValidateResult::AcceptContact;
         }
@@ -27491,7 +27714,7 @@ namespace Jolt
             .m_otherBodyInverseInertiaScale = settings.mInvInertiaScale2,
             .m_isSensor = settings.mIsSensor,
         };
-        const SoftBodyContactDecision decision = m_softBodyContactCallbacks->OnContactValidate(
+        const SoftBodyContactDecision decision = m_softBodyContactCallbacks.m_extension->OnContactValidate(
             softBodyHandle,
             otherBodyHandle,
             callbackSettings);
@@ -27517,7 +27740,7 @@ namespace Jolt
         const JPH::Body& softBody,
         const JPH::SoftBodyManifold& manifold)
     {
-        if (!m_softBodyContactCallbacks)
+        if (!m_softBodyContactCallbacks.m_extension)
         {
             return;
         }
@@ -27537,7 +27760,7 @@ namespace Jolt
             softBody.GetCenterOfMassTransform(),
             m_physicsSystem.GetBodyInterfaceNoLock(),
             m_configuration.m_origin);
-        m_softBodyContactCallbacks->OnContactAdded(softBodyHandle, contactManifold);
+        m_softBodyContactCallbacks.m_extension->OnContactAdded(softBodyHandle, contactManifold);
     }
 
     bool World::ShouldCollide(
@@ -27548,7 +27771,7 @@ namespace Jolt
         const JPH::Shape* secondShape,
         const JPH::SubShapeID& secondSubShapeId) const
     {
-        if (!m_simulationShapeFilter)
+        if (!m_simulationShapeFilter.m_extension)
         {
             return true;
         }
@@ -27581,7 +27804,7 @@ namespace Jolt
             .m_subShapeId = SubShapeId(secondSubShapeId.GetValue()),
             .m_kind = FromNativeShapeKind(secondShape->GetSubType()),
         };
-        return m_simulationShapeFilter->ShouldCollide(first, second);
+        return m_simulationShapeFilter.m_extension->ShouldCollide(first, second);
     }
 
     void World::ProcessContact(
@@ -27591,7 +27814,7 @@ namespace Jolt
         JPH::ContactSettings& settings,
         const EventPhase phase)
     {
-        if (m_contactCallbacks)
+        if (m_contactCallbacks.m_extension)
         {
             const BodyHandle firstBodyHandle =
                 Internal::HandleAccess::FromValue<BodyHandle>(firstBody.GetUserData());
@@ -27616,18 +27839,18 @@ namespace Jolt
                 ContactSettings callbackSettings = FromNativeContactSettings(settings);
                 if (phase == EventPhase::Begin)
                 {
-                    m_contactCallbacks->OnContactAdded(contactManifold, callbackSettings);
+                    m_contactCallbacks.m_extension->OnContactAdded(contactManifold, callbackSettings);
                 }
                 else
                 {
-                    m_contactCallbacks->OnContactPersisted(contactManifold, callbackSettings);
+                    m_contactCallbacks.m_extension->OnContactPersisted(contactManifold, callbackSettings);
                 }
                 [[maybe_unused]] const bool settingsApplied =
                     ApplyContactSettings(callbackSettings, settings);
             }
         }
 
-        if (m_configuration.m_collectContactEvents || m_contactCallbacks)
+        if (m_configuration.m_collectContactEvents || m_contactCallbacks.m_extension)
         {
             RecordContact(firstBody, secondBody, manifold, phase);
         }

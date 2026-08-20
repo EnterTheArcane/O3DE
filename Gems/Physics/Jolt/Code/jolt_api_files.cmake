@@ -45,6 +45,7 @@ set(FILES
     Include/Jolt/DebugDraw.h
     Include/Jolt/Diagnostics.h
     Include/Jolt/Event.h
+    Include/Jolt/Extension.h
     Include/Jolt/Hair.h
     Include/Jolt/HairBus.h
     Include/Jolt/HairComponentConfiguration.h

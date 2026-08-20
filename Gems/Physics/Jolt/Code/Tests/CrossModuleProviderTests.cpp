@@ -13,7 +13,9 @@
 
 #include <AzCore/Module/DynamicModuleHandle.h>
 #include <AzCore/std/containers/array.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/smart_ptr/weak_ptr.h>
 
 namespace Jolt::Tests
 {
@@ -27,25 +29,26 @@ namespace Jolt::Tests
             [[nodiscard]]
             bool Load()
             {
-                m_module = AZ::DynamicModuleHandle::Create("Jolt.TestProviders");
-                if (!m_module
-                    || !m_module->Load(AZ::DynamicModuleHandle::LoadFlags::InitFuncRequired))
+                AZStd::unique_ptr<AZ::DynamicModuleHandle> module =
+                    AZ::DynamicModuleHandle::Create("Jolt.TestProviders");
+                if (!module
+                    || !module->Load(AZ::DynamicModuleHandle::LoadFlags::InitFuncRequired))
                 {
                     return false;
                 }
 
                 const auto getConstraintProvider =
-                    m_module->GetFunction<GetCustomConstraintProviderFunction>(
+                    module->GetFunction<GetCustomConstraintProviderFunction>(
                         GetCustomConstraintProviderFunctionName);
                 const auto getPathProvider =
-                    m_module->GetFunction<GetCustomPathProviderFunction>(
+                    module->GetFunction<GetCustomPathProviderFunction>(
                         GetCustomPathProviderFunctionName);
                 const auto getShapeProvider =
-                    m_module->GetFunction<GetCustomShapeProviderFunction>(
+                    module->GetFunction<GetCustomShapeProviderFunction>(
                         GetCustomShapeProviderFunctionName);
-                m_getEvidence = m_module->GetFunction<GetProviderEvidenceFunction>(
+                m_getEvidence = module->GetFunction<GetProviderEvidenceFunction>(
                     GetProviderEvidenceFunctionName);
-                m_resetEvidence = m_module->GetFunction<ResetProviderEvidenceFunction>(
+                m_resetEvidence = module->GetFunction<ResetProviderEvidenceFunction>(
                     ResetProviderEvidenceFunctionName);
                 if (!getConstraintProvider
                     || !getPathProvider
@@ -53,7 +56,6 @@ namespace Jolt::Tests
                     || !m_getEvidence
                     || !m_resetEvidence)
                 {
-                    m_module.reset();
                     return false;
                 }
 
@@ -64,31 +66,36 @@ namespace Jolt::Tests
                     || !m_pathProvider
                     || !m_shapeProvider)
                 {
-                    m_module.reset();
                     return false;
                 }
 
+                m_module = AZStd::shared_ptr<AZ::DynamicModuleHandle>(AZStd::move(module));
+                m_weakModule = m_module;
                 m_resetEvidence();
                 return true;
             }
 
-            [[nodiscard]]
-            bool Unload()
+            void ReleaseOwner()
             {
                 m_constraintProvider = nullptr;
                 m_pathProvider = nullptr;
                 m_shapeProvider = nullptr;
                 m_getEvidence = nullptr;
                 m_resetEvidence = nullptr;
-
-                if (!m_module)
-                {
-                    return false;
-                }
-
-                const bool unloaded = m_module->Unload();
                 m_module.reset();
-                return unloaded;
+            }
+
+            [[nodiscard]]
+            ExtensionHostLease GetHostLease() const
+            {
+                return ExtensionHostLease(m_module);
+            }
+
+            [[nodiscard]]
+            bool IsLoaded() const
+            {
+                const AZStd::shared_ptr<AZ::DynamicModuleHandle> module = m_weakModule.lock();
+                return module && module->IsLoaded();
             }
 
             [[nodiscard]]
@@ -106,7 +113,8 @@ namespace Jolt::Tests
 
             AZ_DISABLE_COPY_MOVE(LoadedProviders);
 
-            AZStd::unique_ptr<AZ::DynamicModuleHandle> m_module;
+            AZStd::shared_ptr<AZ::DynamicModuleHandle> m_module;
+            AZStd::weak_ptr<AZ::DynamicModuleHandle> m_weakModule;
             ICustomConstraintProvider* m_constraintProvider = nullptr;
             ICustomPathProvider* m_pathProvider = nullptr;
             ICustomShapeProvider* m_shapeProvider = nullptr;
@@ -128,11 +136,15 @@ namespace Jolt::Tests
 
         LoadedProviders providers;
         ASSERT_TRUE(providers.Load());
-        ASSERT_EQ(
-            system.RegisterCustomShapeProvider(providers.m_shapeProvider),
-            ProviderRegistrationResult::Success);
-        ASSERT_TRUE(system.RegisterCustomPathProvider(providers.m_pathProvider));
-        ASSERT_TRUE(system.RegisterCustomConstraintProvider(providers.m_constraintProvider));
+        const ExtensionRegistrationResult shapeRegistration =
+            system.RegisterExtension(providers.m_shapeProvider, providers.GetHostLease());
+        const ExtensionRegistrationResult pathRegistration =
+            system.RegisterExtension(providers.m_pathProvider, providers.GetHostLease());
+        const ExtensionRegistrationResult constraintRegistration =
+            system.RegisterExtension(providers.m_constraintProvider, providers.GetHostLease());
+        ASSERT_TRUE(shapeRegistration);
+        ASSERT_TRUE(pathRegistration);
+        ASSERT_TRUE(constraintRegistration);
 
         ShapeConfiguration customShapeConfiguration;
         customShapeConfiguration.m_geometry = CustomShapeConfiguration{
@@ -256,10 +268,14 @@ namespace Jolt::Tests
         EXPECT_EQ(evidence.m_velocityConstraintCount, 1);
 
         EXPECT_EQ(
-            system.UnregisterCustomShapeProvider(providers.m_shapeProvider),
-            ProviderRegistrationResult::InUse);
-        EXPECT_FALSE(system.UnregisterCustomPathProvider(providers.m_pathProvider));
-        EXPECT_FALSE(system.UnregisterCustomConstraintProvider(providers.m_constraintProvider));
+            system.UnregisterExtension(shapeRegistration.m_handle),
+            ExtensionRegistrationStatus::InUse);
+        EXPECT_EQ(
+            system.UnregisterExtension(pathRegistration.m_handle),
+            ExtensionRegistrationStatus::InUse);
+        EXPECT_EQ(
+            system.UnregisterExtension(constraintRegistration.m_handle),
+            ExtensionRegistrationStatus::InUse);
 
         const ShapeHandle staleShapeHandle = customShapeHandle;
         const PathHandle stalePathHandle = pathHandle;
@@ -275,27 +291,37 @@ namespace Jolt::Tests
         ASSERT_TRUE(system.DestroyShape(worldHandle, customShapeHandle));
         ASSERT_TRUE(system.DestroyCookedShape(cookedShapeHandle));
 
+        providers.ReleaseOwner();
+        EXPECT_TRUE(providers.IsLoaded());
         ASSERT_EQ(
-            system.UnregisterCustomShapeProvider(providers.m_shapeProvider),
-            ProviderRegistrationResult::Success);
-        ASSERT_TRUE(system.UnregisterCustomPathProvider(providers.m_pathProvider));
-        ASSERT_TRUE(system.UnregisterCustomConstraintProvider(providers.m_constraintProvider));
+            system.UnregisterExtension(shapeRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
+        ASSERT_EQ(
+            system.UnregisterExtension(pathRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
+        ASSERT_EQ(
+            system.UnregisterExtension(constraintRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
+        EXPECT_FALSE(providers.IsLoaded());
         EXPECT_FALSE(system.ImportShape(
             archive,
             materialHandles,
             childShapeHandles));
-        ASSERT_TRUE(providers.Unload());
 
         EXPECT_FALSE(system.IsValid(worldHandle, staleShapeHandle));
         EXPECT_FALSE(system.IsValid(stalePathHandle));
         EXPECT_FALSE(system.IsValid(worldHandle, staleConstraintHandle));
 
         ASSERT_TRUE(providers.Load());
-        ASSERT_EQ(
-            system.RegisterCustomShapeProvider(providers.m_shapeProvider),
-            ProviderRegistrationResult::Success);
-        ASSERT_TRUE(system.RegisterCustomPathProvider(providers.m_pathProvider));
-        ASSERT_TRUE(system.RegisterCustomConstraintProvider(providers.m_constraintProvider));
+        const ExtensionRegistrationResult reloadedShapeRegistration =
+            system.RegisterExtension(providers.m_shapeProvider, providers.GetHostLease());
+        const ExtensionRegistrationResult reloadedPathRegistration =
+            system.RegisterExtension(providers.m_pathProvider, providers.GetHostLease());
+        const ExtensionRegistrationResult reloadedConstraintRegistration =
+            system.RegisterExtension(providers.m_constraintProvider, providers.GetHostLease());
+        ASSERT_TRUE(reloadedShapeRegistration);
+        ASSERT_TRUE(reloadedPathRegistration);
+        ASSERT_TRUE(reloadedConstraintRegistration);
 
         const CookedShapeHandle reloadedShapeHandle = system.ImportShape(
             archive,
@@ -308,11 +334,17 @@ namespace Jolt::Tests
         EXPECT_EQ(reloadedInfo.m_providerVersion, providers.m_shapeProvider->GetVersion());
         ASSERT_TRUE(system.DestroyCookedShape(reloadedShapeHandle));
 
+        providers.ReleaseOwner();
+        EXPECT_TRUE(providers.IsLoaded());
         ASSERT_EQ(
-            system.UnregisterCustomShapeProvider(providers.m_shapeProvider),
-            ProviderRegistrationResult::Success);
-        ASSERT_TRUE(system.UnregisterCustomPathProvider(providers.m_pathProvider));
-        ASSERT_TRUE(system.UnregisterCustomConstraintProvider(providers.m_constraintProvider));
-        EXPECT_TRUE(providers.Unload());
+            system.UnregisterExtension(reloadedShapeRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
+        ASSERT_EQ(
+            system.UnregisterExtension(reloadedPathRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
+        ASSERT_EQ(
+            system.UnregisterExtension(reloadedConstraintRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
+        EXPECT_FALSE(providers.IsLoaded());
     }
 } // namespace Jolt::Tests

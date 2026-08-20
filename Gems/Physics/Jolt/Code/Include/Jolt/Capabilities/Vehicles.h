@@ -8,6 +8,7 @@
 #pragma once
 
 #include <Jolt/Configuration.h>
+#include <Jolt/Extension.h>
 #include <Jolt/Vehicle.h>
 #include <AzCore/std/parallel/atomic.h>
 
@@ -172,12 +173,12 @@ namespace Jolt
         bool SetVehicleCallbacks(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            IVehicleCallbacks* callbacks);
+            ExtensionHandle extensionHandle);
 
         bool SetVehicleCollisionFilter(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            const IVehicleCollisionFilter* filter);
+            ExtensionHandle extensionHandle);
 
         bool SetVehicleDifferentialLimitedSlipRatio(
             WorldHandle worldHandle,

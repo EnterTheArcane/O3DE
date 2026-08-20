@@ -774,56 +774,118 @@ namespace Jolt
         return differentials;
     }
 
-    bool VehicleComponentBase::SetCallbacks(IVehicleCallbacks* callbacks)
+    bool VehicleComponentBase::SetCallbacks(const ExtensionHandle extensionHandle)
     {
-        if (callbacks)
+        if (!m_system)
         {
-            if (!m_callbackBindings)
-            {
-                m_callbackBindings = AZStd::make_unique<CallbackBindings>();
-            }
-            m_callbackBindings->m_callbacks = callbacks;
+            return false;
         }
-        else if (m_callbackBindings)
+
+        ExtensionHandle previousHandle;
+        if (m_callbackBindings)
         {
-            m_callbackBindings->m_callbacks = nullptr;
-            if (!m_callbackBindings->m_collisionFilter)
+            previousHandle = m_callbackBindings->m_callbacks;
+        }
+        if (extensionHandle == previousHandle)
+        {
+            return true;
+        }
+
+        AZStd::unique_ptr<CallbackBindings> newBindings;
+        if (extensionHandle && !m_callbackBindings)
+        {
+            newBindings = AZStd::make_unique<CallbackBindings>();
+        }
+        if (extensionHandle
+            && !m_system->RetainExtension(extensionHandle, ExtensionKind::VehicleCallbacks))
+        {
+            return false;
+        }
+        if (m_vehicleHandle
+            && !m_system->SetVehicleCallbacks(m_worldHandle, m_vehicleHandle, extensionHandle))
+        {
+            if (extensionHandle)
+            {
+                m_system->ReleaseExtension(extensionHandle);
+            }
+            return false;
+        }
+
+        if (newBindings)
+        {
+            m_callbackBindings = AZStd::move(newBindings);
+        }
+        if (m_callbackBindings)
+        {
+            m_callbackBindings->m_callbacks = extensionHandle;
+            if (!m_callbackBindings->m_callbacks
+                && !m_callbackBindings->m_collisionFilter)
             {
                 m_callbackBindings.reset();
             }
         }
-        if (!m_vehicleHandle)
+        if (previousHandle)
         {
-            return true;
+            m_system->ReleaseExtension(previousHandle);
         }
-        return m_system
-            && m_system->SetVehicleCallbacks(m_worldHandle, m_vehicleHandle, callbacks);
+        return true;
     }
 
-    bool VehicleComponentBase::SetCollisionFilter(const IVehicleCollisionFilter* filter)
+    bool VehicleComponentBase::SetCollisionFilter(const ExtensionHandle extensionHandle)
     {
-        if (filter)
+        if (!m_system)
         {
-            if (!m_callbackBindings)
-            {
-                m_callbackBindings = AZStd::make_unique<CallbackBindings>();
-            }
-            m_callbackBindings->m_collisionFilter = filter;
+            return false;
         }
-        else if (m_callbackBindings)
+
+        ExtensionHandle previousHandle;
+        if (m_callbackBindings)
         {
-            m_callbackBindings->m_collisionFilter = nullptr;
-            if (!m_callbackBindings->m_callbacks)
+            previousHandle = m_callbackBindings->m_collisionFilter;
+        }
+        if (extensionHandle == previousHandle)
+        {
+            return true;
+        }
+
+        AZStd::unique_ptr<CallbackBindings> newBindings;
+        if (extensionHandle && !m_callbackBindings)
+        {
+            newBindings = AZStd::make_unique<CallbackBindings>();
+        }
+        if (extensionHandle
+            && !m_system->RetainExtension(extensionHandle, ExtensionKind::VehicleCollisionFilter))
+        {
+            return false;
+        }
+        if (m_vehicleHandle
+            && !m_system->SetVehicleCollisionFilter(m_worldHandle, m_vehicleHandle, extensionHandle))
+        {
+            if (extensionHandle)
+            {
+                m_system->ReleaseExtension(extensionHandle);
+            }
+            return false;
+        }
+
+        if (newBindings)
+        {
+            m_callbackBindings = AZStd::move(newBindings);
+        }
+        if (m_callbackBindings)
+        {
+            m_callbackBindings->m_collisionFilter = extensionHandle;
+            if (!m_callbackBindings->m_callbacks
+                && !m_callbackBindings->m_collisionFilter)
             {
                 m_callbackBindings.reset();
             }
         }
-        if (!m_vehicleHandle)
+        if (previousHandle)
         {
-            return true;
+            m_system->ReleaseExtension(previousHandle);
         }
-        return m_system
-            && m_system->SetVehicleCollisionFilter(m_worldHandle, m_vehicleHandle, filter);
+        return true;
     }
 
     bool VehicleComponentBase::SetDifferentialLimitedSlipRatio(const float ratio)
@@ -939,6 +1001,18 @@ namespace Jolt
         if (m_dependencyManager)
         {
             m_dependencyManager->UnregisterBody(m_entityId, *this);
+        }
+        if (m_callbackBindings)
+        {
+            if (m_callbackBindings->m_callbacks)
+            {
+                m_system->ReleaseExtension(m_callbackBindings->m_callbacks);
+            }
+            if (m_callbackBindings->m_collisionFilter)
+            {
+                m_system->ReleaseExtension(m_callbackBindings->m_collisionFilter);
+            }
+            m_callbackBindings.reset();
         }
         m_dependencyManager = nullptr;
         m_system = nullptr;
@@ -1124,14 +1198,14 @@ namespace Jolt
         return VehicleComponentBase::CopyDifferentials();
     }
 
-    bool WheeledVehicleComponent::SetCallbacks(IVehicleCallbacks* callbacks)
+    bool WheeledVehicleComponent::SetCallbacks(const ExtensionHandle extensionHandle)
     {
-        return VehicleComponentBase::SetCallbacks(callbacks);
+        return VehicleComponentBase::SetCallbacks(extensionHandle);
     }
 
-    bool WheeledVehicleComponent::SetCollisionFilter(const IVehicleCollisionFilter* filter)
+    bool WheeledVehicleComponent::SetCollisionFilter(const ExtensionHandle extensionHandle)
     {
-        return VehicleComponentBase::SetCollisionFilter(filter);
+        return VehicleComponentBase::SetCollisionFilter(extensionHandle);
     }
 
     bool WheeledVehicleComponent::SetDifferentialLimitedSlipRatio(const float ratio)
@@ -1398,14 +1472,14 @@ namespace Jolt
         return VehicleComponentBase::CopyDifferentials();
     }
 
-    bool MotorcycleComponent::SetCallbacks(IVehicleCallbacks* callbacks)
+    bool MotorcycleComponent::SetCallbacks(const ExtensionHandle extensionHandle)
     {
-        return VehicleComponentBase::SetCallbacks(callbacks);
+        return VehicleComponentBase::SetCallbacks(extensionHandle);
     }
 
-    bool MotorcycleComponent::SetCollisionFilter(const IVehicleCollisionFilter* filter)
+    bool MotorcycleComponent::SetCollisionFilter(const ExtensionHandle extensionHandle)
     {
-        return VehicleComponentBase::SetCollisionFilter(filter);
+        return VehicleComponentBase::SetCollisionFilter(extensionHandle);
     }
 
     bool MotorcycleComponent::SetDifferentialLimitedSlipRatio(const float ratio)
@@ -1698,14 +1772,14 @@ namespace Jolt
         return VehicleComponentBase::CopyDifferentials();
     }
 
-    bool TrackedVehicleComponent::SetCallbacks(IVehicleCallbacks* callbacks)
+    bool TrackedVehicleComponent::SetCallbacks(const ExtensionHandle extensionHandle)
     {
-        return VehicleComponentBase::SetCallbacks(callbacks);
+        return VehicleComponentBase::SetCallbacks(extensionHandle);
     }
 
-    bool TrackedVehicleComponent::SetCollisionFilter(const IVehicleCollisionFilter* filter)
+    bool TrackedVehicleComponent::SetCollisionFilter(const ExtensionHandle extensionHandle)
     {
-        return VehicleComponentBase::SetCollisionFilter(filter);
+        return VehicleComponentBase::SetCollisionFilter(extensionHandle);
     }
 
     bool TrackedVehicleComponent::SetDifferentialLimitedSlipRatio(const float ratio)

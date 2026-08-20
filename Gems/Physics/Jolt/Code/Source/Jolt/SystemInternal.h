@@ -76,25 +76,84 @@ namespace Jolt
         RuntimeInfo GetRuntimeInfo() const;
 
         [[nodiscard]]
-        bool RegisterCustomConstraintProvider(ICustomConstraintProvider* provider);
-
-        bool UnregisterCustomConstraintProvider(ICustomConstraintProvider* provider);
-
-        [[nodiscard]]
-        bool RegisterCustomPathProvider(ICustomPathProvider* provider);
-
-        bool UnregisterCustomPathProvider(ICustomPathProvider* provider);
+        ExtensionRegistrationResult RegisterExtension(
+            IBodyPairCollider* extension,
+            ExtensionHostLease hostLease);
 
         [[nodiscard]]
-        bool RegisterCustomConvexShapeProvider(ICustomConvexShapeProvider* provider);
-
-        bool UnregisterCustomConvexShapeProvider(ICustomConvexShapeProvider* provider);
-
-        [[nodiscard]]
-        ProviderRegistrationResult RegisterCustomShapeProvider(ICustomShapeProvider* provider);
+        ExtensionRegistrationResult RegisterExtension(
+            IContactCallbacks* extension,
+            ExtensionHostLease hostLease);
 
         [[nodiscard]]
-        ProviderRegistrationResult UnregisterCustomShapeProvider(ICustomShapeProvider* provider);
+        ExtensionRegistrationResult RegisterExtension(
+            ICustomConstraintProvider* extension,
+            ExtensionHostLease hostLease);
+
+        [[nodiscard]]
+        ExtensionRegistrationResult RegisterExtension(
+            ICustomConvexShapeProvider* extension,
+            ExtensionHostLease hostLease);
+
+        [[nodiscard]]
+        ExtensionRegistrationResult RegisterExtension(
+            ICustomPathProvider* extension,
+            ExtensionHostLease hostLease);
+
+        [[nodiscard]]
+        ExtensionRegistrationResult RegisterExtension(
+            ICustomShapeProvider* extension,
+            ExtensionHostLease hostLease);
+
+        [[nodiscard]]
+        ExtensionRegistrationResult RegisterExtension(
+            IGroupFilter* extension,
+            ExtensionHostLease hostLease);
+
+        [[nodiscard]]
+        ExtensionRegistrationResult RegisterExtension(
+            ISimulationShapeFilter* extension,
+            ExtensionHostLease hostLease);
+
+        [[nodiscard]]
+        ExtensionRegistrationResult RegisterExtension(
+            ISoftBodyContactCallbacks* extension,
+            ExtensionHostLease hostLease);
+
+        [[nodiscard]]
+        ExtensionRegistrationResult RegisterExtension(
+            IStepListener* extension,
+            ExtensionHostLease hostLease);
+
+        [[nodiscard]]
+        ExtensionRegistrationResult RegisterExtension(
+            IVehicleCallbacks* extension,
+            ExtensionHostLease hostLease);
+
+        [[nodiscard]]
+        ExtensionRegistrationResult RegisterExtension(
+            IVehicleCollisionFilter* extension,
+            ExtensionHostLease hostLease);
+
+        [[nodiscard]]
+        ExtensionRegistrationResult RegisterExtension(
+            IVirtualCharacterContactCallbacks* extension,
+            ExtensionHostLease hostLease);
+
+        [[nodiscard]]
+        ExtensionRegistrationStatus UnregisterExtension(ExtensionHandle extensionHandle);
+
+        [[nodiscard]]
+        bool GetExtensionInformation(
+            ExtensionHandle extensionHandle,
+            ExtensionInformation& information) const;
+
+        [[nodiscard]]
+        bool RetainExtension(
+            ExtensionHandle extensionHandle,
+            ExtensionKind kind);
+
+        void ReleaseExtension(ExtensionHandle extensionHandle);
 
         [[nodiscard]]
         MaterialHandle CreateMaterial(const MaterialConfiguration& configuration);
@@ -224,7 +283,7 @@ namespace Jolt
         [[nodiscard]]
         GroupFilterHandle CreateGroupFilter(
             AZ::u32 subGroupCount,
-            IGroupFilter* filter);
+            ExtensionHandle extensionHandle);
 
         [[nodiscard]]
         GroupFilterHandle CreateGroupFilterTable(
@@ -699,27 +758,27 @@ namespace Jolt
 
         bool SetContactCallbacks(
             WorldHandle worldHandle,
-            IContactCallbacks* callbacks);
+            ExtensionHandle extensionHandle);
 
         bool SetBodyPairCollider(
             WorldHandle worldHandle,
-            IBodyPairCollider* collider);
+            ExtensionHandle extensionHandle);
 
         bool SetSimulationShapeFilter(
             WorldHandle worldHandle,
-            ISimulationShapeFilter* filter);
+            ExtensionHandle extensionHandle);
 
         bool SetSoftBodyContactCallbacks(
             WorldHandle worldHandle,
-            ISoftBodyContactCallbacks* callbacks);
+            ExtensionHandle extensionHandle);
 
         bool AddStepListener(
             WorldHandle worldHandle,
-            IStepListener* listener);
+            ExtensionHandle extensionHandle);
 
         bool RemoveStepListener(
             WorldHandle worldHandle,
-            IStepListener* listener);
+            ExtensionHandle extensionHandle);
 
         [[nodiscard]]
         HairHandle CreateHair(
@@ -1747,7 +1806,7 @@ namespace Jolt
         bool SetVirtualCharacterContactCallbacks(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            IVirtualCharacterContactCallbacks* callbacks);
+            ExtensionHandle extensionHandle);
 
         [[nodiscard]]
         bool CanVirtualCharacterWalkStairs(
@@ -2031,12 +2090,12 @@ namespace Jolt
         bool SetVehicleCallbacks(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            IVehicleCallbacks* callbacks);
+            ExtensionHandle extensionHandle);
 
         bool SetVehicleCollisionFilter(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle,
-            const IVehicleCollisionFilter* filter);
+            ExtensionHandle extensionHandle);
 
         bool SetVehicleDifferentialLimitedSlipRatio(
             WorldHandle worldHandle,
@@ -2999,22 +3058,15 @@ namespace Jolt
             AZ::u32 m_referenceCount = 0;
         };
 
-        struct CustomConstraintProviderEntry final
+        struct ExtensionSlot final
         {
-            ICustomConstraintProvider* m_provider = nullptr;
-            AZ::u32 m_referenceCount = 0;
-        };
-
-        struct CustomPathProviderEntry final
-        {
-            ICustomPathProvider* m_provider = nullptr;
-            AZ::u32 m_referenceCount = 0;
-        };
-
-        struct CustomShapeProviderEntry final
-        {
-            ICustomShapeProvider* m_provider = nullptr;
-            AZ::u32 m_referenceCount = 0;
+            ExtensionHostLease m_hostLease;
+            void* m_extension = nullptr;
+            AZ::TypeId m_id = AZ::TypeId::CreateNull();
+            AZ::u64 m_version = 0;
+            AZ::u32 m_dependentCount = 0;
+            AZ::u32 m_generation = 1;
+            ExtensionKind m_kind = ExtensionKind::None;
         };
 
         struct CookedShapeSlot final
@@ -3024,6 +3076,7 @@ namespace Jolt
             AZStd::vector<CookedShapeHandle> m_childHandles;
             AZStd::vector<CustomShapeDependency> m_customDependencies;
             AZ::TypeId m_customProviderId = AZ::TypeId::CreateNull();
+            ExtensionHandle m_customProviderExtension;
             AZ::u32 m_generation = 1;
             AZ::u32 m_referenceCount = 0;
             AZ::u32 m_parentCount = 0;
@@ -3033,6 +3086,7 @@ namespace Jolt
         {
             JPH::Ref<JPH::GroupFilter> m_filter;
             AZ::u64 m_stateHash = 0;
+            ExtensionHandle m_extensionHandle;
             AZ::u32 m_generation = 1;
             AZ::u32 m_referenceCount = 0;
             AZ::u32 m_subGroupCount = 0;
@@ -3049,6 +3103,7 @@ namespace Jolt
         {
             JPH::RefConst<JPH::PathConstraintPath> m_path;
             AZ::TypeId m_customProviderId = AZ::TypeId::CreateNull();
+            ExtensionHandle m_customProviderExtension;
             AZ::u64 m_customProviderVersion = 0;
             AZ::u64 m_sourceHash = 0;
             AZ::u32 m_generation = 1;
@@ -3164,30 +3219,56 @@ namespace Jolt
         void ReleaseMaterials(AZStd::span<const MaterialHandle> materialHandles);
 
         [[nodiscard]]
+        ExtensionRegistrationResult RegisterExtensionEntry(
+            void* extension,
+            AZ::TypeId id,
+            AZ::u64 version,
+            ExtensionKind kind,
+            bool uniqueIdentity,
+            ExtensionHostLease hostLease);
+
+        [[nodiscard]]
+        void* AcquireExtension(
+            ExtensionHandle extensionHandle,
+            ExtensionKind kind);
+
+        [[nodiscard]]
+        void* AcquireExtension(
+            ExtensionKind kind,
+            AZ::TypeId id,
+            AZ::u64 requiredVersion,
+            ExtensionHandle& extensionHandle,
+            AZ::u64* registeredVersion = nullptr);
+
+        [[nodiscard]]
         ICustomConstraintProvider* AcquireCustomConstraintProvider(
             AZ::TypeId providerId,
             AZStd::span<const AZ::u8> data,
             AZ::u32& maximumRowCount,
             AZ::u32& stateByteCount,
-            AZ::u64& providerVersion);
+            AZ::u64& providerVersion,
+            ExtensionHandle& extensionHandle);
 
-        void ReleaseCustomConstraintProvider(AZ::TypeId providerId);
+        void ReleaseCustomConstraintProvider(ExtensionHandle extensionHandle);
 
         [[nodiscard]]
         ICustomPathProvider* AcquireCustomPathProvider(
             AZ::TypeId providerId,
             AZStd::span<const AZ::u8> data,
             float& maximumFraction,
-            AZ::u64& providerVersion);
+            AZ::u64& providerVersion,
+            ExtensionHandle& extensionHandle);
 
-        void ReleaseCustomPathProvider(AZ::TypeId providerId);
+        void ReleaseCustomPathProvider(ExtensionHandle extensionHandle);
 
         [[nodiscard]]
         ICustomShapeProvider* AcquireCustomShapeProvider(
             AZ::TypeId providerId,
-            AZ::u64 requiredVersion = 0);
+            AZ::u64 requiredVersion,
+            ExtensionHandle& extensionHandle,
+            AZ::u64* registeredVersion = nullptr);
 
-        void ReleaseCustomShapeProvider(AZ::TypeId providerId);
+        void ReleaseCustomShapeProvider(ExtensionHandle extensionHandle);
 
         [[nodiscard]]
         const MaterialSlot* FindMaterialUnlocked(MaterialHandle materialHandle) const;
@@ -3206,6 +3287,7 @@ namespace Jolt
             AZStd::vector<MaterialHandle> materialHandles,
             AZStd::vector<CookedShapeHandle> childHandles,
             AZ::TypeId customProviderId = AZ::TypeId::CreateNull(),
+            ExtensionHandle customProviderExtension = ExtensionHandle::Invalid,
             AZStd::vector<CustomShapeDependency> customDependencies = {});
 
         void ReleaseCookedShape(CookedShapeHandle cookedShapeHandle);
@@ -3255,7 +3337,8 @@ namespace Jolt
             JPH::Ref<JPH::GroupFilter> filter,
             AZ::u32 subGroupCount,
             AZ::u64 stateHash,
-            bool isCustom);
+            bool isCustom,
+            ExtensionHandle extensionHandle = ExtensionHandle::Invalid);
 
         void RefreshGroupFilterInWorlds(GroupFilterHandle filterHandle);
 
@@ -3269,6 +3352,7 @@ namespace Jolt
         PathHandle StorePath(
             JPH::RefConst<JPH::PathConstraintPath> path,
             AZ::TypeId customProviderId = AZ::TypeId::CreateNull(),
+            ExtensionHandle customProviderExtension = ExtensionHandle::Invalid,
             AZ::u64 customProviderVersion = 0,
             AZ::u64 sourceHash = 0);
 
@@ -3380,16 +3464,9 @@ namespace Jolt
         AZStd::vector<MaterialSlot> m_materialSlots;
         AZStd::vector<AZ::u32> m_freeMaterialSlots;
 
-        mutable AZStd::mutex m_customConstraintProviderMutex;
-        AZStd::unordered_map<AZ::TypeId, CustomConstraintProviderEntry> m_customConstraintProviders;
-
-        mutable AZStd::mutex m_customPathProviderMutex;
-        AZStd::unordered_map<AZ::TypeId, CustomPathProviderEntry> m_customPathProviders;
-
-        mutable AZStd::shared_mutex m_customConvexShapeProviderMutex;
-        AZStd::unordered_map<AZ::TypeId, ICustomConvexShapeProvider*> m_customConvexShapeProviders;
-        mutable AZStd::shared_mutex m_customShapeProviderMutex;
-        AZStd::unordered_map<AZ::TypeId, CustomShapeProviderEntry> m_customShapeProviders;
+        mutable AZStd::mutex m_extensionMutex;
+        AZStd::vector<ExtensionSlot> m_extensionSlots;
+        AZStd::vector<AZ::u32> m_freeExtensionSlots;
 
         mutable AZStd::shared_mutex m_cookedShapeMutex;
         AZStd::vector<CookedShapeSlot> m_cookedShapeSlots;
@@ -3478,14 +3555,9 @@ namespace Jolt
         using RuntimeImplementation::GetConfiguration;
         using RuntimeImplementation::GetRuntimeInfo;
 
-        using RuntimeImplementation::RegisterCustomConstraintProvider;
-        using RuntimeImplementation::UnregisterCustomConstraintProvider;
-        using RuntimeImplementation::RegisterCustomPathProvider;
-        using RuntimeImplementation::UnregisterCustomPathProvider;
-        using RuntimeImplementation::RegisterCustomConvexShapeProvider;
-        using RuntimeImplementation::UnregisterCustomConvexShapeProvider;
-        using RuntimeImplementation::RegisterCustomShapeProvider;
-        using RuntimeImplementation::UnregisterCustomShapeProvider;
+        using RuntimeImplementation::RegisterExtension;
+        using RuntimeImplementation::UnregisterExtension;
+        using RuntimeImplementation::GetExtensionInformation;
 
         using RuntimeImplementation::CreateMaterial;
         using RuntimeImplementation::DestroyMaterial;

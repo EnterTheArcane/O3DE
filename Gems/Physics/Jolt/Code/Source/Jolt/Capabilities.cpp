@@ -45,44 +45,108 @@ namespace Jolt
         return s_instance.load(AZStd::memory_order_acquire);
     }
 
-    bool Extensions::RegisterCustomConstraintProvider(ICustomConstraintProvider* provider)
+    ExtensionRegistrationResult Extensions::RegisterExtension(
+        IBodyPairCollider* extension,
+        ExtensionHostLease hostLease)
     {
-        return GetRuntimeImplementation(*this).RegisterCustomConstraintProvider(provider);
+        return GetRuntimeImplementation(*this).RegisterExtension(extension, AZStd::move(hostLease));
     }
 
-    bool Extensions::UnregisterCustomConstraintProvider(ICustomConstraintProvider* provider)
+    ExtensionRegistrationResult Extensions::RegisterExtension(
+        IContactCallbacks* extension,
+        ExtensionHostLease hostLease)
     {
-        return GetRuntimeImplementation(*this).UnregisterCustomConstraintProvider(provider);
+        return GetRuntimeImplementation(*this).RegisterExtension(extension, AZStd::move(hostLease));
     }
 
-    bool Extensions::RegisterCustomPathProvider(ICustomPathProvider* provider)
+    ExtensionRegistrationResult Extensions::RegisterExtension(
+        ICustomConstraintProvider* extension,
+        ExtensionHostLease hostLease)
     {
-        return GetRuntimeImplementation(*this).RegisterCustomPathProvider(provider);
+        return GetRuntimeImplementation(*this).RegisterExtension(extension, AZStd::move(hostLease));
     }
 
-    bool Extensions::UnregisterCustomPathProvider(ICustomPathProvider* provider)
+    ExtensionRegistrationResult Extensions::RegisterExtension(
+        ICustomConvexShapeProvider* extension,
+        ExtensionHostLease hostLease)
     {
-        return GetRuntimeImplementation(*this).UnregisterCustomPathProvider(provider);
+        return GetRuntimeImplementation(*this).RegisterExtension(extension, AZStd::move(hostLease));
     }
 
-    bool Extensions::RegisterCustomConvexShapeProvider(ICustomConvexShapeProvider* provider)
+    ExtensionRegistrationResult Extensions::RegisterExtension(
+        ICustomPathProvider* extension,
+        ExtensionHostLease hostLease)
     {
-        return GetRuntimeImplementation(*this).RegisterCustomConvexShapeProvider(provider);
+        return GetRuntimeImplementation(*this).RegisterExtension(extension, AZStd::move(hostLease));
     }
 
-    bool Extensions::UnregisterCustomConvexShapeProvider(ICustomConvexShapeProvider* provider)
+    ExtensionRegistrationResult Extensions::RegisterExtension(
+        ICustomShapeProvider* extension,
+        ExtensionHostLease hostLease)
     {
-        return GetRuntimeImplementation(*this).UnregisterCustomConvexShapeProvider(provider);
+        return GetRuntimeImplementation(*this).RegisterExtension(extension, AZStd::move(hostLease));
     }
 
-    ProviderRegistrationResult Extensions::RegisterCustomShapeProvider(ICustomShapeProvider* provider)
+    ExtensionRegistrationResult Extensions::RegisterExtension(
+        IGroupFilter* extension,
+        ExtensionHostLease hostLease)
     {
-        return GetRuntimeImplementation(*this).RegisterCustomShapeProvider(provider);
+        return GetRuntimeImplementation(*this).RegisterExtension(extension, AZStd::move(hostLease));
     }
 
-    ProviderRegistrationResult Extensions::UnregisterCustomShapeProvider(ICustomShapeProvider* provider)
+    ExtensionRegistrationResult Extensions::RegisterExtension(
+        ISimulationShapeFilter* extension,
+        ExtensionHostLease hostLease)
     {
-        return GetRuntimeImplementation(*this).UnregisterCustomShapeProvider(provider);
+        return GetRuntimeImplementation(*this).RegisterExtension(extension, AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult Extensions::RegisterExtension(
+        ISoftBodyContactCallbacks* extension,
+        ExtensionHostLease hostLease)
+    {
+        return GetRuntimeImplementation(*this).RegisterExtension(extension, AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult Extensions::RegisterExtension(
+        IStepListener* extension,
+        ExtensionHostLease hostLease)
+    {
+        return GetRuntimeImplementation(*this).RegisterExtension(extension, AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult Extensions::RegisterExtension(
+        IVehicleCallbacks* extension,
+        ExtensionHostLease hostLease)
+    {
+        return GetRuntimeImplementation(*this).RegisterExtension(extension, AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult Extensions::RegisterExtension(
+        IVehicleCollisionFilter* extension,
+        ExtensionHostLease hostLease)
+    {
+        return GetRuntimeImplementation(*this).RegisterExtension(extension, AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationResult Extensions::RegisterExtension(
+        IVirtualCharacterContactCallbacks* extension,
+        ExtensionHostLease hostLease)
+    {
+        return GetRuntimeImplementation(*this).RegisterExtension(extension, AZStd::move(hostLease));
+    }
+
+    ExtensionRegistrationStatus Extensions::UnregisterExtension(
+        const ExtensionHandle extensionHandle)
+    {
+        return GetRuntimeImplementation(*this).UnregisterExtension(extensionHandle);
+    }
+
+    bool Extensions::GetExtensionInformation(
+        const ExtensionHandle extensionHandle,
+        ExtensionInformation& information) const
+    {
+        return GetRuntimeImplementation(*this).GetExtensionInformation(extensionHandle, information);
     }
 
     AZStd::atomic<Materials*> Materials::s_instance;
@@ -116,9 +180,9 @@ namespace Jolt
 
     GroupFilterHandle CollisionFilters::CreateGroupFilter(
         AZ::u32 subGroupCount,
-        IGroupFilter* filter)
+        ExtensionHandle extensionHandle)
     {
-        return GetRuntimeImplementation(*this).CreateGroupFilter(subGroupCount, filter);
+        return GetRuntimeImplementation(*this).CreateGroupFilter(subGroupCount, extensionHandle);
     }
 
     GroupFilterHandle CollisionFilters::CreateGroupFilterTable(const GroupFilterTableConfiguration& configuration)
@@ -871,44 +935,44 @@ namespace Jolt
 
     bool WorldSimulation::SetContactCallbacks(
         WorldHandle worldHandle,
-        IContactCallbacks* callbacks)
+        ExtensionHandle extensionHandle)
     {
-        return GetRuntimeImplementation(*this).SetContactCallbacks(worldHandle, callbacks);
+        return GetRuntimeImplementation(*this).SetContactCallbacks(worldHandle, extensionHandle);
     }
 
     bool WorldSimulation::SetBodyPairCollider(
         WorldHandle worldHandle,
-        IBodyPairCollider* collider)
+        ExtensionHandle extensionHandle)
     {
-        return GetRuntimeImplementation(*this).SetBodyPairCollider(worldHandle, collider);
+        return GetRuntimeImplementation(*this).SetBodyPairCollider(worldHandle, extensionHandle);
     }
 
     bool WorldSimulation::SetSimulationShapeFilter(
         WorldHandle worldHandle,
-        ISimulationShapeFilter* filter)
+        ExtensionHandle extensionHandle)
     {
-        return GetRuntimeImplementation(*this).SetSimulationShapeFilter(worldHandle, filter);
+        return GetRuntimeImplementation(*this).SetSimulationShapeFilter(worldHandle, extensionHandle);
     }
 
     bool WorldSimulation::SetSoftBodyContactCallbacks(
         WorldHandle worldHandle,
-        ISoftBodyContactCallbacks* callbacks)
+        ExtensionHandle extensionHandle)
     {
-        return GetRuntimeImplementation(*this).SetSoftBodyContactCallbacks(worldHandle, callbacks);
+        return GetRuntimeImplementation(*this).SetSoftBodyContactCallbacks(worldHandle, extensionHandle);
     }
 
     bool WorldSimulation::AddStepListener(
         WorldHandle worldHandle,
-        IStepListener* listener)
+        ExtensionHandle extensionHandle)
     {
-        return GetRuntimeImplementation(*this).AddStepListener(worldHandle, listener);
+        return GetRuntimeImplementation(*this).AddStepListener(worldHandle, extensionHandle);
     }
 
     bool WorldSimulation::RemoveStepListener(
         WorldHandle worldHandle,
-        IStepListener* listener)
+        ExtensionHandle extensionHandle)
     {
-        return GetRuntimeImplementation(*this).RemoveStepListener(worldHandle, listener);
+        return GetRuntimeImplementation(*this).RemoveStepListener(worldHandle, extensionHandle);
     }
 
     AZStd::atomic<WorldQueries*> WorldQueries::s_instance;
@@ -2999,9 +3063,12 @@ namespace Jolt
     bool Characters::SetVirtualCharacterContactCallbacks(
         WorldHandle worldHandle,
         VirtualCharacterHandle characterHandle,
-        IVirtualCharacterContactCallbacks* callbacks)
+        ExtensionHandle extensionHandle)
     {
-        return GetRuntimeImplementation(*this).SetVirtualCharacterContactCallbacks(worldHandle, characterHandle, callbacks);
+        return GetRuntimeImplementation(*this).SetVirtualCharacterContactCallbacks(
+            worldHandle,
+            characterHandle,
+            extensionHandle);
     }
 
     bool Characters::CanVirtualCharacterWalkStairs(
@@ -3408,17 +3475,17 @@ namespace Jolt
     bool Vehicles::SetVehicleCallbacks(
         WorldHandle worldHandle,
         VehicleHandle vehicleHandle,
-        IVehicleCallbacks* callbacks)
+        ExtensionHandle extensionHandle)
     {
-        return GetRuntimeImplementation(*this).SetVehicleCallbacks(worldHandle, vehicleHandle, callbacks);
+        return GetRuntimeImplementation(*this).SetVehicleCallbacks(worldHandle, vehicleHandle, extensionHandle);
     }
 
     bool Vehicles::SetVehicleCollisionFilter(
         WorldHandle worldHandle,
         VehicleHandle vehicleHandle,
-        const IVehicleCollisionFilter* filter)
+        ExtensionHandle extensionHandle)
     {
-        return GetRuntimeImplementation(*this).SetVehicleCollisionFilter(worldHandle, vehicleHandle, filter);
+        return GetRuntimeImplementation(*this).SetVehicleCollisionFilter(worldHandle, vehicleHandle, extensionHandle);
     }
 
     bool Vehicles::SetVehicleDifferentialLimitedSlipRatio(

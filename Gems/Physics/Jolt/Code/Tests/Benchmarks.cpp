@@ -24,6 +24,7 @@
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/limits.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
 #include <AzTest/AzTest.h>
 #include <AzTest/Benchmark/BenchmarkEnvironment.h>
@@ -3332,7 +3333,7 @@ namespace Jolt::Benchmarks
     {
         const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
         const AZ::u32 workerCount = aznumeric_cast<AZ::u32>(state.range(1));
-        AZStd::unique_ptr<AZ::DynamicModuleHandle> providerModule =
+        AZStd::shared_ptr<AZ::DynamicModuleHandle> providerModule =
             AZ::DynamicModuleHandle::Create("Jolt.TestProviders");
         if (!providerModule
             || !providerModule->Load(AZ::DynamicModuleHandle::LoadFlags::InitFuncRequired))
@@ -3358,8 +3359,14 @@ namespace Jolt::Benchmarks
             CreateSystemConfiguration(workerCount, bodyCount + 16),
             &jobContext.Get(),
             SystemRegistration::Isolated);
-        if (!system
-            || system.RegisterCustomShapeProvider(provider) != ProviderRegistrationResult::Success)
+        if (!system)
+        {
+            state.SkipWithError("Failed to register the custom shape benchmark provider.");
+            return;
+        }
+        const ExtensionRegistrationResult providerRegistration =
+            system.RegisterExtension(provider, ExtensionHostLease(providerModule));
+        if (!providerRegistration)
         {
             state.SkipWithError("Failed to register the custom shape benchmark provider.");
             return;

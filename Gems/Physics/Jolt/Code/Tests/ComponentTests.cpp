@@ -3232,8 +3232,15 @@ namespace Jolt
 
         ComponentVehicleCallbacks vehicleCallbacks;
         ComponentVehicleCollisionFilter vehicleCollisionFilter;
-        EXPECT_TRUE(vehicle->SetCallbacks(&vehicleCallbacks));
-        EXPECT_TRUE(vehicle->SetCollisionFilter(&vehicleCollisionFilter));
+        const ExtensionRegistrationResult callbacksRegistration =
+            system.RegisterExtension(&vehicleCallbacks, {});
+        const ExtensionRegistrationResult filterRegistration =
+            system.RegisterExtension(&vehicleCollisionFilter, {});
+        ASSERT_TRUE(callbacksRegistration);
+        ASSERT_TRUE(filterRegistration);
+        EXPECT_TRUE(vehicle->SetCallbacks(callbacksRegistration.m_handle));
+        EXPECT_TRUE(vehicle->SetCollisionFilter(filterRegistration.m_handle));
+        EXPECT_FALSE(vehicle->SetCollisionFilter(callbacksRegistration.m_handle));
         EXPECT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
         EXPECT_GT(vehicleCallbacks.m_preStepCount, 0);
 
@@ -3285,6 +3292,12 @@ namespace Jolt
         ASSERT_TRUE(body->DisableSimulation());
         EXPECT_FALSE(system.IsValid(worldHandle, firstVehicleHandle));
         EXPECT_FALSE(vehicle->IsSimulationEnabled());
+        EXPECT_EQ(
+            system.UnregisterExtension(callbacksRegistration.m_handle),
+            ExtensionRegistrationStatus::InUse);
+        EXPECT_EQ(
+            system.UnregisterExtension(filterRegistration.m_handle),
+            ExtensionRegistrationStatus::InUse);
 
         ASSERT_TRUE(body->EnableSimulation());
         const VehicleHandle secondVehicleHandle = vehicle->GetVehicleHandle();
@@ -3294,8 +3307,14 @@ namespace Jolt
         const AZ::u32 previousPreStepCount = vehicleCallbacks.m_preStepCount;
         EXPECT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
         EXPECT_GT(vehicleCallbacks.m_preStepCount, previousPreStepCount);
-        EXPECT_TRUE(vehicle->SetCallbacks(nullptr));
-        EXPECT_TRUE(vehicle->SetCollisionFilter(nullptr));
+        EXPECT_TRUE(vehicle->SetCallbacks(ExtensionHandle::Invalid));
+        EXPECT_TRUE(vehicle->SetCollisionFilter(ExtensionHandle::Invalid));
+        EXPECT_EQ(
+            system.UnregisterExtension(callbacksRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
+        EXPECT_EQ(
+            system.UnregisterExtension(filterRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
 
         entity.Deactivate();
         EXPECT_FALSE(system.IsValid(worldHandle, secondVehicleHandle));

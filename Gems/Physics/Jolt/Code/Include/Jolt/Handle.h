@@ -103,6 +103,11 @@ namespace Jolt
         AZ_TYPE_INFO(HairDefinitionHandleTag, "{E0A4376D-F1B1-4C19-85CC-E0956A816743}");
     };
 
+    struct ExtensionHandleTag final
+    {
+        AZ_TYPE_INFO(ExtensionHandleTag, "{4AE4B9B2-4E99-49F9-A605-C1FAE74BD0A0}");
+    };
+
     struct MaterialHandleTag final
     {
         AZ_TYPE_INFO(MaterialHandleTag, "{7677A85F-3191-4CB0-8B7C-83A5BF83A48B}");
@@ -187,6 +192,7 @@ namespace Jolt
     using CharacterHandle = Handle<CharacterHandleTag>;
     using ConstraintHandle = Handle<ConstraintHandleTag>;
     using CookedShapeHandle = Handle<CookedShapeHandleTag>;
+    using ExtensionHandle = Handle<ExtensionHandleTag>;
     using GroupFilterHandle = Handle<GroupFilterHandleTag>;
     using HairHandle = Handle<HairHandleTag>;
     using HairDefinitionHandle = Handle<HairDefinitionHandleTag>;

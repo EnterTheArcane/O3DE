@@ -45,6 +45,7 @@ static_assert(sizeof(Jolt::BodyHandle) == sizeof(AZ::u64));
 static_assert(sizeof(Jolt::BodyId) == sizeof(AZ::u32));
 static_assert(sizeof(Jolt::CollisionGroup) == sizeof(AZ::u64));
 static_assert(sizeof(Jolt::CookedShapeHandle) == sizeof(AZ::u64));
+static_assert(sizeof(Jolt::ExtensionHandle) == sizeof(AZ::u64));
 static_assert(sizeof(Jolt::SceneDefinitionHandle) == sizeof(AZ::u64));
 static_assert(sizeof(Jolt::SceneInstanceHandle) == sizeof(AZ::u64));
 static_assert(sizeof(Jolt::SkeletalAnimationHandle) == sizeof(AZ::u64));

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Handle.h>
 #include <Jolt/Query.h>
 #include <Jolt/Vehicle.h>
 
@@ -89,9 +90,9 @@ namespace Jolt
         [[nodiscard]]
         virtual AZStd::vector<VehicleDifferentialConfiguration> CopyDifferentials() const = 0;
 
-        virtual bool SetCallbacks(IVehicleCallbacks* callbacks) = 0;
+        virtual bool SetCallbacks(ExtensionHandle extensionHandle) = 0;
 
-        virtual bool SetCollisionFilter(const IVehicleCollisionFilter* filter) = 0;
+        virtual bool SetCollisionFilter(ExtensionHandle extensionHandle) = 0;
 
         virtual bool SetDifferentialLimitedSlipRatio(float ratio) = 0;
 

@@ -951,6 +951,7 @@ namespace Jolt
 
         bool SetVirtualCharacterContactCallbacks(
             VirtualCharacterHandle characterHandle,
+            ExtensionHandle extensionHandle,
             IVirtualCharacterContactCallbacks* callbacks);
 
         [[nodiscard]]
@@ -1179,11 +1180,13 @@ namespace Jolt
 
         bool SetVehicleCallbacks(
             VehicleHandle vehicleHandle,
+            ExtensionHandle extensionHandle,
             IVehicleCallbacks* callbacks);
 
         bool SetVehicleCollisionFilter(
             VehicleHandle vehicleHandle,
-            const IVehicleCollisionFilter* filter);
+            ExtensionHandle extensionHandle,
+            IVehicleCollisionFilter* filter);
 
         bool SetVehicleDifferentialLimitedSlipRatio(
             VehicleHandle vehicleHandle,
@@ -1933,17 +1936,29 @@ namespace Jolt
         [[nodiscard]]
         EventView GetEvents() const;
 
-        bool SetContactCallbacks(IContactCallbacks* callbacks);
+        bool SetContactCallbacks(
+            ExtensionHandle extensionHandle,
+            IContactCallbacks* callbacks);
 
-        bool SetBodyPairCollider(IBodyPairCollider* collider);
+        bool SetBodyPairCollider(
+            ExtensionHandle extensionHandle,
+            IBodyPairCollider* collider);
 
-        bool SetSimulationShapeFilter(ISimulationShapeFilter* filter);
+        bool SetSimulationShapeFilter(
+            ExtensionHandle extensionHandle,
+            ISimulationShapeFilter* filter);
 
-        bool SetSoftBodyContactCallbacks(ISoftBodyContactCallbacks* callbacks);
+        bool SetSoftBodyContactCallbacks(
+            ExtensionHandle extensionHandle,
+            ISoftBodyContactCallbacks* callbacks);
 
-        bool AddStepListener(IStepListener* listener);
+        bool AddStepListener(
+            ExtensionHandle extensionHandle,
+            IStepListener* listener);
 
-        bool RemoveStepListener(IStepListener* listener);
+        bool RemoveStepListener(
+            ExtensionHandle extensionHandle,
+            IStepListener* listener);
 
         [[nodiscard]]
         HairHandle CreateHair(const HairConfiguration& configuration);
@@ -2284,6 +2299,7 @@ namespace Jolt
             AZStd::array<ConstraintHandle, 2> m_dependencyHandles;
             PathHandle m_pathHandle;
             AZ::TypeId m_customProviderId = AZ::TypeId::CreateNull();
+            ExtensionHandle m_customProviderExtension;
             AZ::EntityId m_entityId;
             AZ::Name m_name;
             AZ::u64 m_userData = 0;
@@ -2360,6 +2376,13 @@ namespace Jolt
             bool m_teleported = true;
         };
 
+        template<class Interface>
+        struct ExtensionBinding final
+        {
+            Interface* m_extension = nullptr;
+            ExtensionHandle m_handle;
+        };
+
         struct VirtualCharacterSlot final
         {
             struct ContactProvenance final
@@ -2374,7 +2397,7 @@ namespace Jolt
             JPH::Ref<JPH::CharacterVirtual> m_character;
             AZStd::unique_ptr<VirtualCharacterUpdateConfiguration> m_autoUpdateConfiguration;
             AZStd::unique_ptr<AZStd::vector<ContactProvenance>> m_contactProvenance;
-            IVirtualCharacterContactCallbacks* m_contactCallbacks = nullptr;
+            ExtensionBinding<IVirtualCharacterContactCallbacks> m_contactCallbacks;
             BodyHandle m_innerBodyHandle;
             ShapeHandle m_shapeHandle;
             AZ::EntityId m_entityId;
@@ -2402,8 +2425,8 @@ namespace Jolt
         {
             AZStd::unique_ptr<VehicleCollisionFilterAdapter> m_collisionFilterAdapter;
 
-            IVehicleCallbacks* m_callbacks = nullptr;
-            const IVehicleCollisionFilter* m_collisionFilter = nullptr;
+            ExtensionBinding<IVehicleCallbacks> m_callbacks;
+            ExtensionBinding<IVehicleCollisionFilter> m_collisionFilter;
         };
 
         struct VehicleSlot final
@@ -3311,11 +3334,11 @@ namespace Jolt
         AZStd::vector<VirtualCharacterMoveEvent> m_virtualCharacterMoveEvents;
         AZ::u64 m_eventSequence = 0;
 
-        IContactCallbacks* m_contactCallbacks = nullptr;
-        IBodyPairCollider* m_bodyPairCollider = nullptr;
-        ISimulationShapeFilter* m_simulationShapeFilter = nullptr;
-        ISoftBodyContactCallbacks* m_softBodyContactCallbacks = nullptr;
-        AZStd::vector<IStepListener*> m_stepListeners;
+        ExtensionBinding<IContactCallbacks> m_contactCallbacks;
+        ExtensionBinding<IBodyPairCollider> m_bodyPairCollider;
+        ExtensionBinding<ISimulationShapeFilter> m_simulationShapeFilter;
+        ExtensionBinding<ISoftBodyContactCallbacks> m_softBodyContactCallbacks;
+        AZStd::vector<ExtensionBinding<IStepListener>> m_stepListeners;
 
         double m_accumulatedTime = 0.0;
         AZ::u64 m_configurationRevision = 1;

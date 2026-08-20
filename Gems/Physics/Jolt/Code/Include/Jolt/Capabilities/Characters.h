@@ -9,6 +9,7 @@
 
 #include <Jolt/Character.h>
 #include <Jolt/Configuration.h>
+#include <Jolt/Extension.h>
 #include <Jolt/Query.h>
 #include <AzCore/std/parallel/atomic.h>
 
@@ -111,7 +112,7 @@ namespace Jolt
         bool SetVirtualCharacterContactCallbacks(
             WorldHandle worldHandle,
             VirtualCharacterHandle characterHandle,
-            IVirtualCharacterContactCallbacks* callbacks);
+            ExtensionHandle extensionHandle);
 
         [[nodiscard]]
         bool CanVirtualCharacterWalkStairs(

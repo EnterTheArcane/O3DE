@@ -9,6 +9,7 @@
 
 #include <Jolt/Collision.h>
 #include <Jolt/Configuration.h>
+#include <Jolt/Extension.h>
 #include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
@@ -21,11 +22,10 @@ namespace Jolt
         [[nodiscard]]
         static CollisionFilters* Get();
 
-        //! The caller owns filter, which must outlive the returned handle and every body that references it.
         [[nodiscard]]
         GroupFilterHandle CreateGroupFilter(
             AZ::u32 subGroupCount,
-            IGroupFilter* filter);
+            ExtensionHandle extensionHandle);
 
         [[nodiscard]]
         GroupFilterHandle CreateGroupFilterTable(

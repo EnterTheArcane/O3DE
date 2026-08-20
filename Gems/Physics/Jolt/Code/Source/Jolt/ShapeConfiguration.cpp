@@ -231,13 +231,6 @@ namespace Jolt
             JOLT_BEHAVIOR_ENUM(*behaviorContext, CustomShapeGeometryKind, Convex);
             JOLT_BEHAVIOR_ENUM(*behaviorContext, CustomShapeGeometryKind, Mesh);
 
-            JOLT_BEHAVIOR_ENUM(*behaviorContext, ProviderRegistrationResult, None);
-            JOLT_BEHAVIOR_ENUM(*behaviorContext, ProviderRegistrationResult, AlreadyRegistered);
-            JOLT_BEHAVIOR_ENUM(*behaviorContext, ProviderRegistrationResult, InUse);
-            JOLT_BEHAVIOR_ENUM(*behaviorContext, ProviderRegistrationResult, Invalid);
-            JOLT_BEHAVIOR_ENUM(*behaviorContext, ProviderRegistrationResult, NotRegistered);
-            JOLT_BEHAVIOR_ENUM(*behaviorContext, ProviderRegistrationResult, Success);
-
             if (ShouldReflect(
                 *behaviorContext,
                 behaviorContext->m_classes.contains("JoltBoxShapeConfiguration")))

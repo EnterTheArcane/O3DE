@@ -11,6 +11,7 @@
 #include <Jolt/Configuration.h>
 #include <Jolt/Diagnostics.h>
 #include <Jolt/Event.h>
+#include <Jolt/Extension.h>
 #include <Jolt/Simulation.h>
 #include <Jolt/SoftBody.h>
 #include <AzCore/std/parallel/atomic.h>
@@ -44,27 +45,27 @@ namespace Jolt
 
         bool SetContactCallbacks(
             WorldHandle worldHandle,
-            IContactCallbacks* callbacks);
+            ExtensionHandle extensionHandle);
 
         bool SetBodyPairCollider(
             WorldHandle worldHandle,
-            IBodyPairCollider* collider);
+            ExtensionHandle extensionHandle);
 
         bool SetSimulationShapeFilter(
             WorldHandle worldHandle,
-            ISimulationShapeFilter* filter);
+            ExtensionHandle extensionHandle);
 
         bool SetSoftBodyContactCallbacks(
             WorldHandle worldHandle,
-            ISoftBodyContactCallbacks* callbacks);
+            ExtensionHandle extensionHandle);
 
         bool AddStepListener(
             WorldHandle worldHandle,
-            IStepListener* listener);
+            ExtensionHandle extensionHandle);
 
         bool RemoveStepListener(
             WorldHandle worldHandle,
-            IStepListener* listener);
+            ExtensionHandle extensionHandle);
 
     private:
         friend class Runtime;

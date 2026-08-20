@@ -49,6 +49,54 @@ namespace Jolt
         inline constexpr AZ::TypeId RecordingBodyPairColliderStateTypeId{"{A100000D-010D-410D-810D-00000000000D}"};
         inline constexpr AZ::TypeId InvalidBodyPairColliderStateTypeId{"{A100000E-010E-410E-810E-00000000000E}"};
 
+        template<class Interface>
+        class ScopedExtensionRegistration final
+        {
+        public:
+            ScopedExtensionRegistration(
+                Runtime& runtime,
+                Interface* extension)
+                : m_runtime(runtime)
+            {
+                const ExtensionRegistrationResult result = m_runtime.RegisterExtension(extension, {});
+                EXPECT_EQ(result.m_status, ExtensionRegistrationStatus::Success);
+                m_handle = result.m_handle;
+            }
+
+            ~ScopedExtensionRegistration()
+            {
+                if (m_handle)
+                {
+                    EXPECT_EQ(
+                        m_runtime.UnregisterExtension(m_handle),
+                        ExtensionRegistrationStatus::Success);
+                }
+            }
+
+            AZ_DISABLE_COPY_MOVE(ScopedExtensionRegistration);
+
+            [[nodiscard]]
+            ExtensionHandle GetHandle() const
+            {
+                return m_handle;
+            }
+
+            [[nodiscard]]
+            ExtensionRegistrationStatus Unregister()
+            {
+                const ExtensionRegistrationStatus status = m_runtime.UnregisterExtension(m_handle);
+                if (status == ExtensionRegistrationStatus::Success)
+                {
+                    m_handle = ExtensionHandle::Invalid;
+                }
+                return status;
+            }
+
+        private:
+            Runtime& m_runtime;
+            ExtensionHandle m_handle;
+        };
+
         [[nodiscard]]
         bool IsFiniteWorldPosition(
             const WorldPosition& position)
@@ -319,7 +367,7 @@ namespace Jolt
                     AZ::Aabb::CreateCenterRadius(AZ::Vector3::CreateZero(), 8.0f),
                     triangles);
                 m_viewEvidence = customShape->GetProviderId() == GetId()
-                    && customShape->GetProviderVersion() == GetVersion()
+                    && customShape->GetProviderVersion() == m_expectedViewVersion
                     && customShape->GetRuntimeData().size() == 2
                     && customShape->GetProperties().m_kind == ShapeKind::Custom
                     && customShape->GetStats().m_memorySize > 0
@@ -413,6 +461,7 @@ namespace Jolt
             mutable AZStd::atomic<AZ::u32> m_castCount = 0;
             mutable AZStd::atomic<bool> m_castEvidence = false;
             mutable AZStd::atomic<bool> m_viewEvidence = false;
+            AZ::u64 m_expectedViewVersion = 19;
             AZ::u64 m_version = 19;
             AZ::u32 m_dispatchHitCount = 1;
             bool m_returnInvalidOutput = false;
@@ -1706,7 +1755,8 @@ namespace Jolt
             AZ::u64 GetStateHash() const override
             {
                 return AZStd::hash<WorldHandle>{}(m_worldHandle)
-                    ^ (reinterpret_cast<AZ::u64>(m_targetListener) << 1);
+                    ^ (AZStd::hash<ExtensionHandle>{}(m_targetListenerHandle) << 1)
+                    ^ (AZStd::hash<ExtensionHandle>{}(m_selfHandle) << 2);
             }
 
             void OnStep(
@@ -1714,12 +1764,13 @@ namespace Jolt
                 [[maybe_unused]] IStepContext& context) override
             {
                 ++m_attemptCount;
-                m_addRejected = !m_system->AddStepListener(m_worldHandle, m_targetListener);
-                m_removeRejected = !m_system->RemoveStepListener(m_worldHandle, this);
+                m_addRejected = !m_system->AddStepListener(m_worldHandle, m_targetListenerHandle);
+                m_removeRejected = !m_system->RemoveStepListener(m_worldHandle, m_selfHandle);
             }
 
             Runtime* m_system = nullptr;
-            IStepListener* m_targetListener = nullptr;
+            ExtensionHandle m_targetListenerHandle;
+            ExtensionHandle m_selfHandle;
             WorldHandle m_worldHandle;
             AZ::u32 m_attemptCount = 0;
             bool m_addRejected = false;
@@ -2319,7 +2370,12 @@ namespace Jolt
             configuration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
             configuration.m_defaultWorld.m_workerCount = workerCount;
             Runtime system(configuration, jobContext);
-            if (!system || !system.RegisterCustomConstraintProvider(&provider))
+            if (!system)
+            {
+                return {};
+            }
+            const ExtensionRegistrationResult providerRegistration = system.RegisterExtension(&provider, {});
+            if (!providerRegistration)
             {
                 return {};
             }
@@ -2458,8 +2514,12 @@ namespace Jolt
 
             RecordingVehicleCallbacks callbacks;
             RecordingVehicleCollisionFilter filter;
-            if (!system.SetVehicleCallbacks(worldHandle, vehicleHandle, &callbacks)
-                || !system.SetVehicleCollisionFilter(worldHandle, vehicleHandle, &filter))
+            const ExtensionRegistrationResult callbacksRegistration = system.RegisterExtension(&callbacks, {});
+            const ExtensionRegistrationResult filterRegistration = system.RegisterExtension(&filter, {});
+            if (!callbacksRegistration
+                || !filterRegistration
+                || !system.SetVehicleCallbacks(worldHandle, vehicleHandle, callbacksRegistration.m_handle)
+                || !system.SetVehicleCollisionFilter(worldHandle, vehicleHandle, filterRegistration.m_handle))
             {
                 return {};
             }
@@ -2474,6 +2534,13 @@ namespace Jolt
 
             WorldStateDigest digest;
             if (!system.GetWorldStateDigest(worldHandle, digest))
+            {
+                return {};
+            }
+            if (!system.SetVehicleCallbacks(worldHandle, vehicleHandle, ExtensionHandle::Invalid)
+                || !system.SetVehicleCollisionFilter(worldHandle, vehicleHandle, ExtensionHandle::Invalid)
+                || system.UnregisterExtension(callbacksRegistration.m_handle) != ExtensionRegistrationStatus::Success
+                || system.UnregisterExtension(filterRegistration.m_handle) != ExtensionRegistrationStatus::Success)
             {
                 return {};
             }
@@ -2881,8 +2948,10 @@ namespace Jolt
 
         BlockingStepListener firstListener;
         BlockingStepListener secondListener;
-        ASSERT_TRUE(system.AddStepListener(firstWorldHandle, &firstListener));
-        ASSERT_TRUE(system.AddStepListener(secondWorldHandle, &secondListener));
+        ScopedExtensionRegistration firstRegistration(system, &firstListener);
+        ScopedExtensionRegistration secondRegistration(system, &secondListener);
+        ASSERT_TRUE(system.AddStepListener(firstWorldHandle, firstRegistration.GetHandle()));
+        ASSERT_TRUE(system.AddStepListener(secondWorldHandle, secondRegistration.GetHandle()));
 
         SimulationResult result;
         AZStd::thread stepThread(
@@ -2903,8 +2972,8 @@ namespace Jolt
         EXPECT_TRUE(bothWorldsEntered);
         EXPECT_TRUE(result);
         EXPECT_EQ(result.m_stepCount, 2);
-        EXPECT_TRUE(system.RemoveStepListener(firstWorldHandle, &firstListener));
-        EXPECT_TRUE(system.RemoveStepListener(secondWorldHandle, &secondListener));
+        EXPECT_TRUE(system.RemoveStepListener(firstWorldHandle, firstRegistration.GetHandle()));
+        EXPECT_TRUE(system.RemoveStepListener(secondWorldHandle, secondRegistration.GetHandle()));
         EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
     }
 
@@ -3739,7 +3808,8 @@ namespace Jolt
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
         RecordingContactCallbacks callbacks;
-        ASSERT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, &callbacks));
+        ScopedExtensionRegistration registration(system, &callbacks);
+        ASSERT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, registration.GetHandle()));
         for (AZ::u32 step = 0; step < 180 && callbacks.m_persistedCount == 0; ++step)
         {
             ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
@@ -3794,8 +3864,66 @@ namespace Jolt
         EXPECT_EQ(callbacks.m_lastRemoved.m_phase, EventPhase::End);
         EXPECT_TRUE(system.GetEvents(scene.m_worldHandle).GetContacts().empty());
 
-        EXPECT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, nullptr));
+        EXPECT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, ExtensionHandle::Invalid));
         DestroySphereOnFloor(system, scene);
+    }
+
+    TEST(SimulationTests, ExtensionRegistryTracksIdentityKindDependenciesAndStaleHandles)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        EXPECT_EQ(
+            system.RegisterExtension(static_cast<IContactCallbacks*>(nullptr), {}).m_status,
+            ExtensionRegistrationStatus::Invalid);
+
+        RecordingContactCallbacks firstCallbacks;
+        RecordingContactCallbacks secondCallbacks;
+        const ExtensionRegistrationResult firstRegistration = system.RegisterExtension(&firstCallbacks, {});
+        const ExtensionRegistrationResult secondRegistration = system.RegisterExtension(&secondCallbacks, {});
+        ASSERT_TRUE(firstRegistration);
+        ASSERT_TRUE(secondRegistration);
+        EXPECT_NE(firstRegistration.m_handle, secondRegistration.m_handle);
+
+        const ExtensionRegistrationResult duplicateRegistration = system.RegisterExtension(&firstCallbacks, {});
+        EXPECT_EQ(duplicateRegistration.m_status, ExtensionRegistrationStatus::AlreadyRegistered);
+        EXPECT_EQ(duplicateRegistration.m_handle, firstRegistration.m_handle);
+
+        ExtensionInformation information;
+        ASSERT_TRUE(system.GetExtensionInformation(firstRegistration.m_handle, information));
+        EXPECT_EQ(information.m_id, RecordingContactStateTypeId);
+        EXPECT_EQ(information.m_kind, ExtensionKind::ContactCallbacks);
+        EXPECT_EQ(information.m_dependentCount, 0);
+        EXPECT_FALSE(information.m_hasHostLease);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        EXPECT_FALSE(system.SetSimulationShapeFilter(worldHandle, firstRegistration.m_handle));
+        ASSERT_TRUE(system.SetContactCallbacks(worldHandle, firstRegistration.m_handle));
+        ASSERT_TRUE(system.GetExtensionInformation(firstRegistration.m_handle, information));
+        EXPECT_EQ(information.m_dependentCount, 1);
+        EXPECT_EQ(
+            system.UnregisterExtension(firstRegistration.m_handle),
+            ExtensionRegistrationStatus::InUse);
+
+        ASSERT_TRUE(system.SetContactCallbacks(worldHandle, secondRegistration.m_handle));
+        ASSERT_TRUE(system.GetExtensionInformation(firstRegistration.m_handle, information));
+        EXPECT_EQ(information.m_dependentCount, 0);
+        ASSERT_TRUE(system.GetExtensionInformation(secondRegistration.m_handle, information));
+        EXPECT_EQ(information.m_dependentCount, 1);
+
+        EXPECT_EQ(
+            system.UnregisterExtension(firstRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
+        EXPECT_FALSE(system.GetExtensionInformation(firstRegistration.m_handle, information));
+        EXPECT_FALSE(system.SetContactCallbacks(worldHandle, firstRegistration.m_handle));
+        EXPECT_EQ(
+            system.UnregisterExtension(firstRegistration.m_handle),
+            ExtensionRegistrationStatus::NotRegistered);
+
+        EXPECT_TRUE(system.SetContactCallbacks(worldHandle, ExtensionHandle::Invalid));
+        EXPECT_EQ(
+            system.UnregisterExtension(secondRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
     }
 
     TEST(SimulationTests, ContactValidationCanRejectAnEntireBodyPair)
@@ -3806,7 +3934,8 @@ namespace Jolt
         const SphereOnFloor scene = CreateSphereOnFloor(system);
         RecordingContactCallbacks callbacks;
         callbacks.m_decision = ContactDecision::RejectAllForPair;
-        ASSERT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, &callbacks));
+        ScopedExtensionRegistration registration(system, &callbacks);
+        ASSERT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, registration.GetHandle()));
         for (AZ::u32 step = 0; step < 120; ++step)
         {
             ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
@@ -3818,7 +3947,7 @@ namespace Jolt
         EXPECT_EQ(callbacks.m_addedCount, 0);
         EXPECT_LT(sphereState.m_transform.m_position.m_z, -2.0);
 
-        EXPECT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, nullptr));
+        EXPECT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, ExtensionHandle::Invalid));
         DestroySphereOnFloor(system, scene);
     }
 
@@ -3846,7 +3975,8 @@ namespace Jolt
             true));
 
         RecordingContactCallbacks callbacks;
-        ASSERT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, &callbacks));
+        ScopedExtensionRegistration registration(system, &callbacks);
+        ASSERT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, registration.GetHandle()));
         for (AZ::u32 step = 0; step < 180 && callbacks.m_addedCount == 0; ++step)
         {
             ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
@@ -3856,7 +3986,7 @@ namespace Jolt
         EXPECT_NEAR(callbacks.m_initialSettings.m_combinedFriction, 0.5f, 1.0e-6f);
         EXPECT_NEAR(callbacks.m_initialSettings.m_combinedRestitution, 0.4f, 1.0e-6f);
 
-        EXPECT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, nullptr));
+        EXPECT_TRUE(system.SetContactCallbacks(scene.m_worldHandle, ExtensionHandle::Invalid));
         DestroySphereOnFloor(system, scene);
     }
 
@@ -3878,7 +4008,8 @@ namespace Jolt
         EXPECT_FALSE(system.RestoreWorldState(worldHandle, snapshotHandle));
 
         RecordingStepListener listener;
-        ASSERT_TRUE(system.AddStepListener(worldHandle, &listener));
+        ScopedExtensionRegistration registration(system, &listener);
+        ASSERT_TRUE(system.AddStepListener(worldHandle, registration.GetHandle()));
         EXPECT_TRUE(system.StepAutoSimulatedWorlds(1.0f / 60.0f));
         EXPECT_EQ(listener.m_callCount, 0);
 
@@ -3906,7 +4037,7 @@ namespace Jolt
         invalidConfiguration.m_workerCount = 0;
         EXPECT_FALSE(system.UpdateWorldRuntimeConfiguration(worldHandle, invalidConfiguration));
 
-        EXPECT_TRUE(system.RemoveStepListener(worldHandle, &listener));
+        EXPECT_TRUE(system.RemoveStepListener(worldHandle, registration.GetHandle()));
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
     }
 
@@ -3986,7 +4117,8 @@ namespace Jolt
             ASSERT_TRUE(snapshotHandle);
             RecordingBodyPairCollider collider;
             collider.m_operation = operation;
-            ASSERT_TRUE(system.SetBodyPairCollider(worldHandle, &collider));
+            ScopedExtensionRegistration registration(system, &collider);
+            ASSERT_TRUE(system.SetBodyPairCollider(worldHandle, registration.GetHandle()));
             EXPECT_FALSE(system.RestoreWorldState(worldHandle, snapshotHandle));
 
             const SphereOnFloor scene = CreateSphereOnFloor(system);
@@ -4010,7 +4142,7 @@ namespace Jolt
             EXPECT_GT(collider.m_lastSettings.m_penetrationTolerance, 0.0f);
             EXPECT_GT(state.m_transform.m_position.m_z, 0.4);
 
-            EXPECT_TRUE(system.SetBodyPairCollider(worldHandle, nullptr));
+            EXPECT_TRUE(system.SetBodyPairCollider(worldHandle, ExtensionHandle::Invalid));
             EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
             DestroySphereOnFloor(system, scene);
         }
@@ -4023,7 +4155,8 @@ namespace Jolt
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         RecordingBodyPairCollider collider;
-        ASSERT_TRUE(system.SetBodyPairCollider(worldHandle, &collider));
+        ScopedExtensionRegistration registration(system, &collider);
+        ASSERT_TRUE(system.SetBodyPairCollider(worldHandle, registration.GetHandle()));
         const SphereOnFloor scene = CreateSphereOnFloor(system);
         for (AZ::u32 step = 0; step < 120; ++step)
         {
@@ -4035,7 +4168,7 @@ namespace Jolt
         EXPECT_GT(collider.m_callCount, 0);
         EXPECT_LT(state.m_transform.m_position.m_z, -2.0);
 
-        EXPECT_TRUE(system.SetBodyPairCollider(worldHandle, nullptr));
+        EXPECT_TRUE(system.SetBodyPairCollider(worldHandle, ExtensionHandle::Invalid));
         DestroySphereOnFloor(system, scene);
     }
 
@@ -4049,9 +4182,11 @@ namespace Jolt
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         RecordingBodyPairCollider collider;
         collider.m_operation = BodyCollisionOperation::CustomHit;
-        ASSERT_TRUE(system.SetBodyPairCollider(worldHandle, &collider));
+        ScopedExtensionRegistration colliderRegistration(system, &collider);
+        ASSERT_TRUE(system.SetBodyPairCollider(worldHandle, colliderRegistration.GetHandle()));
         RecordingContactCallbacks contactCallbacks;
-        ASSERT_TRUE(system.SetContactCallbacks(worldHandle, &contactCallbacks));
+        ScopedExtensionRegistration contactRegistration(system, &contactCallbacks);
+        ASSERT_TRUE(system.SetContactCallbacks(worldHandle, contactRegistration.GetHandle()));
 
         ShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.5f};
@@ -4081,8 +4216,8 @@ namespace Jolt
             || (contactCallbacks.m_firstBodyHandle == staticBodyHandle
                 && contactCallbacks.m_secondBodyHandle == dynamicBodyHandle));
 
-        EXPECT_TRUE(system.SetContactCallbacks(worldHandle, nullptr));
-        EXPECT_TRUE(system.SetBodyPairCollider(worldHandle, nullptr));
+        EXPECT_TRUE(system.SetContactCallbacks(worldHandle, ExtensionHandle::Invalid));
+        EXPECT_TRUE(system.SetBodyPairCollider(worldHandle, ExtensionHandle::Invalid));
         EXPECT_TRUE(system.DestroyBody(worldHandle, dynamicBodyHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, staticBodyHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
@@ -4097,7 +4232,8 @@ namespace Jolt
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         InvalidBodyPairCollider collider;
-        ASSERT_TRUE(system.SetBodyPairCollider(worldHandle, &collider));
+        ScopedExtensionRegistration registration(system, &collider);
+        ASSERT_TRUE(system.SetBodyPairCollider(worldHandle, registration.GetHandle()));
 
         ShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.5f};
@@ -4123,7 +4259,7 @@ namespace Jolt
         EXPECT_TRUE(collider.m_invalidSettingsRejected);
         EXPECT_FALSE(system.WereBodiesInContact(worldHandle, dynamicBodyHandle, staticBodyHandle));
 
-        EXPECT_TRUE(system.SetBodyPairCollider(worldHandle, nullptr));
+        EXPECT_TRUE(system.SetBodyPairCollider(worldHandle, ExtensionHandle::Invalid));
         EXPECT_TRUE(system.DestroyBody(worldHandle, dynamicBodyHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, staticBodyHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
@@ -4137,7 +4273,8 @@ namespace Jolt
         const SphereOnFloor scene = CreateSphereOnFloor(system);
         RecordingSimulationShapeFilter filter;
         filter.m_rejectedBodyHandle = scene.m_sphereBodyHandle;
-        ASSERT_TRUE(system.SetSimulationShapeFilter(scene.m_worldHandle, &filter));
+        ScopedExtensionRegistration registration(system, &filter);
+        ASSERT_TRUE(system.SetSimulationShapeFilter(scene.m_worldHandle, registration.GetHandle()));
         for (AZ::u32 step = 0; step < 120; ++step)
         {
             ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
@@ -4158,7 +4295,7 @@ namespace Jolt
                 && filter.m_lastSecondShape.m_kind == ShapeKind::Box));
         EXPECT_LT(sphereState.m_transform.m_position.m_z, -2.0);
 
-        EXPECT_TRUE(system.SetSimulationShapeFilter(scene.m_worldHandle, nullptr));
+        EXPECT_TRUE(system.SetSimulationShapeFilter(scene.m_worldHandle, ExtensionHandle::Invalid));
         DestroySphereOnFloor(system, scene);
     }
 
@@ -4211,19 +4348,24 @@ namespace Jolt
         RecordingStepListener mutationTarget;
         MutatingStepListener mutatingListener;
         mutatingListener.m_system = &system;
-        mutatingListener.m_targetListener = &mutationTarget;
         mutatingListener.m_worldHandle = worldHandle;
-        ASSERT_TRUE(system.AddStepListener(worldHandle, &listener));
-        ASSERT_TRUE(system.AddStepListener(worldHandle, &secondListener));
-        ASSERT_TRUE(system.AddStepListener(worldHandle, &mutatingListener));
-        EXPECT_FALSE(system.AddStepListener(worldHandle, &listener));
-        EXPECT_FALSE(system.AddStepListener(worldHandle, nullptr));
+        ScopedExtensionRegistration listenerRegistration(system, &listener);
+        ScopedExtensionRegistration secondListenerRegistration(system, &secondListener);
+        ScopedExtensionRegistration mutationTargetRegistration(system, &mutationTarget);
+        ScopedExtensionRegistration mutatingListenerRegistration(system, &mutatingListener);
+        mutatingListener.m_targetListenerHandle = mutationTargetRegistration.GetHandle();
+        mutatingListener.m_selfHandle = mutatingListenerRegistration.GetHandle();
+        ASSERT_TRUE(system.AddStepListener(worldHandle, listenerRegistration.GetHandle()));
+        ASSERT_TRUE(system.AddStepListener(worldHandle, secondListenerRegistration.GetHandle()));
+        ASSERT_TRUE(system.AddStepListener(worldHandle, mutatingListenerRegistration.GetHandle()));
+        EXPECT_FALSE(system.AddStepListener(worldHandle, listenerRegistration.GetHandle()));
+        EXPECT_FALSE(system.AddStepListener(worldHandle, ExtensionHandle::Invalid));
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-        EXPECT_TRUE(system.RemoveStepListener(worldHandle, &listener));
-        EXPECT_TRUE(system.RemoveStepListener(worldHandle, &secondListener));
-        EXPECT_TRUE(system.RemoveStepListener(worldHandle, &mutatingListener));
-        EXPECT_FALSE(system.RemoveStepListener(worldHandle, &secondListener));
-        EXPECT_FALSE(system.RemoveStepListener(worldHandle, nullptr));
+        EXPECT_TRUE(system.RemoveStepListener(worldHandle, listenerRegistration.GetHandle()));
+        EXPECT_TRUE(system.RemoveStepListener(worldHandle, secondListenerRegistration.GetHandle()));
+        EXPECT_TRUE(system.RemoveStepListener(worldHandle, mutatingListenerRegistration.GetHandle()));
+        EXPECT_FALSE(system.RemoveStepListener(worldHandle, secondListenerRegistration.GetHandle()));
+        EXPECT_FALSE(system.RemoveStepListener(worldHandle, ExtensionHandle::Invalid));
 
         EXPECT_EQ(listener.m_callCount, 2);
         EXPECT_EQ(secondListener.m_callCount, 2);
@@ -4445,8 +4587,9 @@ namespace Jolt
         ASSERT_TRUE(system);
 
         TestGroupFilter filter;
-        EXPECT_FALSE(system.CreateGroupFilter(2, nullptr));
-        const GroupFilterHandle filterHandle = system.CreateGroupFilter(2, &filter);
+        EXPECT_FALSE(system.CreateGroupFilter(2, ExtensionHandle::Invalid));
+        ScopedExtensionRegistration registration(system, &filter);
+        const GroupFilterHandle filterHandle = system.CreateGroupFilter(2, registration.GetHandle());
         ASSERT_TRUE(filterHandle);
         EXPECT_FALSE(system.NotifyGroupFilterChanged(GroupFilterHandle::Invalid));
 
@@ -7021,7 +7164,8 @@ namespace Jolt
         ASSERT_TRUE(softBodyHandle);
 
         RecordingSoftBodyContactCallbacks callbacks;
-        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, &callbacks));
+        ScopedExtensionRegistration registration(system, &callbacks);
+        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, registration.GetHandle()));
         for (AZ::u32 step = 0; step < 120 && callbacks.m_addedCount == 0; ++step)
         {
             ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
@@ -7042,7 +7186,7 @@ namespace Jolt
         EXPECT_FLOAT_EQ(callbacks.m_lastSettings.m_otherBodyInverseMassScale, 1.0f);
         EXPECT_FLOAT_EQ(callbacks.m_lastSettings.m_otherBodyInverseInertiaScale, 1.0f);
 
-        EXPECT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, nullptr));
+        EXPECT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, ExtensionHandle::Invalid));
         EXPECT_TRUE(system.DestroyBody(worldHandle, softBodyHandle));
         EXPECT_TRUE(system.DestroySoftBodyDefinition(definitionHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, floorBodyHandle));
@@ -7099,7 +7243,8 @@ namespace Jolt
 
         RecordingSoftBodyContactCallbacks rejectedCallbacks;
         rejectedCallbacks.m_decision = SoftBodyContactDecision::Reject;
-        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, &rejectedCallbacks));
+        ScopedExtensionRegistration rejectedRegistration(system, &rejectedCallbacks);
+        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, rejectedRegistration.GetHandle()));
         const BodyHandle rejectedBodyHandle = createFallingSoftBody();
         ASSERT_TRUE(rejectedBodyHandle);
         for (AZ::u32 step = 0; step < 120; ++step)
@@ -7117,7 +7262,8 @@ namespace Jolt
         RecordingSoftBodyContactCallbacks invalidSettingsCallbacks;
         invalidSettingsCallbacks.m_responseSettings.m_softBodyInverseMassScale =
             AZStd::numeric_limits<float>::quiet_NaN();
-        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, &invalidSettingsCallbacks));
+        ScopedExtensionRegistration invalidSettingsRegistration(system, &invalidSettingsCallbacks);
+        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, invalidSettingsRegistration.GetHandle()));
         const BodyHandle invalidSettingsBodyHandle = createFallingSoftBody();
         ASSERT_TRUE(invalidSettingsBodyHandle);
         for (AZ::u32 step = 0; step < 120; ++step)
@@ -7134,7 +7280,8 @@ namespace Jolt
 
         RecordingSoftBodyContactCallbacks responsiveCallbacks;
         responsiveCallbacks.m_responseSettings = {};
-        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, &responsiveCallbacks));
+        ScopedExtensionRegistration responsiveRegistration(system, &responsiveCallbacks);
+        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, responsiveRegistration.GetHandle()));
         const BodyHandle responsiveBodyHandle = createFallingSoftBody();
         ASSERT_TRUE(responsiveBodyHandle);
         for (AZ::u32 step = 0; step < 120; ++step)
@@ -7151,7 +7298,8 @@ namespace Jolt
         RecordingSoftBodyContactCallbacks zeroMassScaleCallbacks;
         zeroMassScaleCallbacks.m_responseSettings = {};
         zeroMassScaleCallbacks.m_responseSettings.m_softBodyInverseMassScale = 0.0f;
-        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, &zeroMassScaleCallbacks));
+        ScopedExtensionRegistration zeroMassScaleRegistration(system, &zeroMassScaleCallbacks);
+        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, zeroMassScaleRegistration.GetHandle()));
         const BodyHandle zeroMassScaleBodyHandle = createFallingSoftBody();
         ASSERT_TRUE(zeroMassScaleBodyHandle);
         for (AZ::u32 step = 0; step < 120; ++step)
@@ -7165,7 +7313,7 @@ namespace Jolt
         EXPECT_EQ(zeroMassScaleCallbacks.m_addedCount, 0);
         EXPECT_LT(zeroMassScaleBodyState.m_transform.m_position.m_z, -1.0);
 
-        EXPECT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, nullptr));
+        EXPECT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, ExtensionHandle::Invalid));
         EXPECT_TRUE(system.DestroyBody(worldHandle, zeroMassScaleBodyHandle));
         EXPECT_TRUE(system.DestroySoftBodyDefinition(definitionHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, floorBodyHandle));
@@ -7229,7 +7377,8 @@ namespace Jolt
 
         RecordingSoftBodyContactCallbacks callbacks;
         callbacks.m_responseSettings = {};
-        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, &callbacks));
+        ScopedExtensionRegistration registration(system, &callbacks);
+        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, registration.GetHandle()));
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
 
         EXPECT_GT(callbacks.m_validationCount, 0);
@@ -7244,7 +7393,7 @@ namespace Jolt
         ASSERT_TRUE(system.GetBodyLinearVelocity(worldHandle, softBodyHandle, softBodyVelocity));
         EXPECT_LT(softBodyVelocity.GetX(), 0.0f);
 
-        EXPECT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, nullptr));
+        EXPECT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, ExtensionHandle::Invalid));
         EXPECT_TRUE(system.DestroyBody(worldHandle, sphereBodyHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, sphereShapeHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, softBodyHandle));
@@ -7296,7 +7445,8 @@ namespace Jolt
 
         RecordingSoftBodyContactCallbacks callbacks;
         callbacks.m_responseSettings.m_isSensor = true;
-        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, &callbacks));
+        ScopedExtensionRegistration registration(system, &callbacks);
+        ASSERT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, registration.GetHandle()));
         for (AZ::u32 step = 0; step < 10 && callbacks.m_maximumSensorCount < 2; ++step)
         {
             ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
@@ -7319,7 +7469,7 @@ namespace Jolt
                 secondSensorBodyHandle),
             callbacks.m_sensorBodyHandles.end());
 
-        EXPECT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, nullptr));
+        EXPECT_TRUE(system.SetSoftBodyContactCallbacks(worldHandle, ExtensionHandle::Invalid));
         EXPECT_TRUE(system.DestroyBody(worldHandle, softBodyHandle));
         EXPECT_TRUE(system.DestroySoftBodyDefinition(definitionHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, secondSensorBodyHandle));
@@ -8180,10 +8330,11 @@ namespace Jolt
             system.CreateVirtualCharacter(worldHandle, characterConfiguration);
         ASSERT_TRUE(characterHandle);
         RecordingVirtualCharacterContactCallbacks callbacks;
+        ScopedExtensionRegistration registration(system, &callbacks);
         ASSERT_TRUE(system.SetVirtualCharacterContactCallbacks(
             worldHandle,
             characterHandle,
-            &callbacks));
+            registration.GetHandle()));
 
         VirtualCharacterRuntimeConfiguration runtimeConfiguration;
         ASSERT_TRUE(system.GetVirtualCharacterRuntimeConfiguration(
@@ -8415,7 +8566,7 @@ namespace Jolt
         EXPECT_TRUE(system.SetVirtualCharacterContactCallbacks(
             worldHandle,
             characterHandle,
-            nullptr));
+            ExtensionHandle::Invalid));
         EXPECT_TRUE(system.DestroyVirtualCharacter(worldHandle, characterHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, characterShapeHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, floorShapeHandle));
@@ -8714,18 +8865,20 @@ namespace Jolt
         const StateSnapshotHandle callbackSnapshot = system.CaptureWorldState(worldHandle);
         ASSERT_TRUE(callbackSnapshot);
         RecordingVehicleCallbacks vehicleCallbacks;
+        ScopedExtensionRegistration vehicleCallbacksRegistration(system, &vehicleCallbacks);
         ASSERT_TRUE(system.SetVehicleCallbacks(
             worldHandle,
             vehicleHandle,
-            &vehicleCallbacks));
+            vehicleCallbacksRegistration.GetHandle()));
         EXPECT_FALSE(system.RestoreWorldState(worldHandle, callbackSnapshot));
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, callbackSnapshot));
 
         RecordingVehicleCollisionFilter vehicleCollisionFilter;
+        ScopedExtensionRegistration vehicleFilterRegistration(system, &vehicleCollisionFilter);
         ASSERT_TRUE(system.SetVehicleCollisionFilter(
             worldHandle,
             vehicleHandle,
-            &vehicleCollisionFilter));
+            vehicleFilterRegistration.GetHandle()));
         vehicleCollisionFilter.m_rejectedBodyHandle = floorBodyHandle;
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
         AZStd::array<WheelState, 4> filteredWheels;
@@ -9136,8 +9289,8 @@ namespace Jolt
         EXPECT_FALSE(vehicleCollisionFilter.m_receivedInvalidObjectLayer);
 
         const AZ::u32 preStepCount = vehicleCallbacks.m_preStepCount;
-        EXPECT_TRUE(system.SetVehicleCallbacks(worldHandle, vehicleHandle, nullptr));
-        EXPECT_TRUE(system.SetVehicleCollisionFilter(worldHandle, vehicleHandle, nullptr));
+        EXPECT_TRUE(system.SetVehicleCallbacks(worldHandle, vehicleHandle, ExtensionHandle::Invalid));
+        EXPECT_TRUE(system.SetVehicleCollisionFilter(worldHandle, vehicleHandle, ExtensionHandle::Invalid));
         EXPECT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
         EXPECT_EQ(vehicleCallbacks.m_preStepCount, preStepCount);
 
@@ -9212,10 +9365,11 @@ namespace Jolt
         ASSERT_TRUE(trackedHandle);
 
         RecordingVehicleCallbacks trackedCallbacks;
+        ScopedExtensionRegistration trackedCallbacksRegistration(system, &trackedCallbacks);
         ASSERT_TRUE(system.SetVehicleCallbacks(
             worldHandle,
             trackedHandle,
-            &trackedCallbacks));
+            trackedCallbacksRegistration.GetHandle()));
 
         AZStd::array<WheelState, 4> trackedWheels;
         TrackedVehicleState trackedState;
@@ -9284,6 +9438,7 @@ namespace Jolt
         EXPECT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
         EXPECT_GT(trackedCallbacks.m_preStepCount, 0);
         EXPECT_EQ(trackedCallbacks.m_tireImpulseCount, 0);
+        EXPECT_TRUE(system.SetVehicleCallbacks(worldHandle, trackedHandle, ExtensionHandle::Invalid));
         EXPECT_TRUE(system.DestroyVehicle(worldHandle, trackedHandle));
 
         EXPECT_TRUE(system.DestroyBody(worldHandle, chassisBodyHandle));
@@ -9610,10 +9765,11 @@ namespace Jolt
         ASSERT_TRUE(characterHandle);
 
         RecordingVirtualCharacterContactCallbacks callbacks;
+        ScopedExtensionRegistration registration(system, &callbacks);
         ASSERT_TRUE(system.SetVirtualCharacterContactCallbacks(
             worldHandle,
             characterHandle,
-            &callbacks));
+            registration.GetHandle()));
         const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
         ASSERT_TRUE(snapshotHandle);
 
@@ -9625,13 +9781,13 @@ namespace Jolt
         EXPECT_TRUE(system.SetVirtualCharacterContactCallbacks(
             worldHandle,
             characterHandle,
-            &callbacks));
+            registration.GetHandle()));
         EXPECT_TRUE(system.RestoreWorldState(worldHandle, snapshotHandle));
 
         EXPECT_TRUE(system.SetVirtualCharacterContactCallbacks(
             worldHandle,
             characterHandle,
-            nullptr));
+            ExtensionHandle::Invalid));
         EXPECT_FALSE(system.RestoreWorldState(worldHandle, snapshotHandle));
 
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
@@ -9646,7 +9802,8 @@ namespace Jolt
 
         SphereOnFloor scene = CreateSphereOnFloor(system);
         RecordingSimulationShapeFilter filter;
-        ASSERT_TRUE(system.SetSimulationShapeFilter(scene.m_worldHandle, &filter));
+        ScopedExtensionRegistration registration(system, &filter);
+        ASSERT_TRUE(system.SetSimulationShapeFilter(scene.m_worldHandle, registration.GetHandle()));
 
         WorldStateDigest capturedDigest;
         ASSERT_TRUE(system.GetWorldStateDigest(scene.m_worldHandle, capturedDigest));
@@ -9686,7 +9843,7 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, importedHandles.front()));
 
         EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, snapshotHandle));
-        EXPECT_TRUE(system.SetSimulationShapeFilter(scene.m_worldHandle, nullptr));
+        EXPECT_TRUE(system.SetSimulationShapeFilter(scene.m_worldHandle, ExtensionHandle::Invalid));
         DestroySphereOnFloor(system, scene);
     }
 
@@ -9700,8 +9857,10 @@ namespace Jolt
         StatefulStepListener secondListener;
         firstListener.m_state = 10;
         secondListener.m_state = 20;
-        ASSERT_TRUE(system.AddStepListener(worldHandle, &firstListener));
-        ASSERT_TRUE(system.AddStepListener(worldHandle, &secondListener));
+        ScopedExtensionRegistration firstRegistration(system, &firstListener);
+        ScopedExtensionRegistration secondRegistration(system, &secondListener);
+        ASSERT_TRUE(system.AddStepListener(worldHandle, firstRegistration.GetHandle()));
+        ASSERT_TRUE(system.AddStepListener(worldHandle, secondRegistration.GetHandle()));
 
         const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
         ASSERT_TRUE(snapshotHandle);
@@ -9747,8 +9906,8 @@ namespace Jolt
 
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, validatedSnapshotHandle));
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
-        EXPECT_TRUE(system.RemoveStepListener(worldHandle, &secondListener));
-        EXPECT_TRUE(system.RemoveStepListener(worldHandle, &firstListener));
+        EXPECT_TRUE(system.RemoveStepListener(worldHandle, secondRegistration.GetHandle()));
+        EXPECT_TRUE(system.RemoveStepListener(worldHandle, firstRegistration.GetHandle()));
     }
 
     TEST(SimulationTests, UnrecoverableRestoreQuarantinesTheWorld)
@@ -9760,7 +9919,8 @@ namespace Jolt
         ASSERT_TRUE(worldHandle);
         StatefulStepListener listener;
         listener.m_state = 10;
-        ASSERT_TRUE(system.AddStepListener(worldHandle, &listener));
+        ScopedExtensionRegistration registration(system, &listener);
+        ASSERT_TRUE(system.AddStepListener(worldHandle, registration.GetHandle()));
 
         const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
         ASSERT_TRUE(snapshotHandle);
@@ -9788,7 +9948,8 @@ namespace Jolt
             const WorldHandle sourceWorldHandle = sourceSystem.GetDefaultWorldHandle();
             StatefulStepListener sourceListener;
             sourceListener.m_state = 77;
-            ASSERT_TRUE(sourceSystem.AddStepListener(sourceWorldHandle, &sourceListener));
+            ScopedExtensionRegistration sourceRegistration(sourceSystem, &sourceListener);
+            ASSERT_TRUE(sourceSystem.AddStepListener(sourceWorldHandle, sourceRegistration.GetHandle()));
 
             const StateSnapshotHandle sourceSnapshotHandle =
                 sourceSystem.CaptureWorldState(sourceWorldHandle);
@@ -9800,7 +9961,7 @@ namespace Jolt
             EXPECT_TRUE(sourceSystem.DestroyStateSnapshot(
                 sourceWorldHandle,
                 sourceSnapshotHandle));
-            EXPECT_TRUE(sourceSystem.RemoveStepListener(sourceWorldHandle, &sourceListener));
+            EXPECT_TRUE(sourceSystem.RemoveStepListener(sourceWorldHandle, sourceRegistration.GetHandle()));
         }
 
         {
@@ -9811,7 +9972,8 @@ namespace Jolt
             StatefulStepListener targetListener;
             targetListener.m_state = 22;
             targetListener.m_typeId = InvalidBodyPairColliderStateTypeId;
-            ASSERT_TRUE(targetSystem.AddStepListener(targetWorldHandle, &targetListener));
+            ScopedExtensionRegistration targetRegistration(targetSystem, &targetListener);
+            ASSERT_TRUE(targetSystem.AddStepListener(targetWorldHandle, targetRegistration.GetHandle()));
 
             AZStd::array<StateSnapshotHandle, 1> importedHandles;
             EXPECT_FALSE(targetSystem.ImportWorldStateArchive(
@@ -9844,7 +10006,7 @@ namespace Jolt
             EXPECT_TRUE(targetSystem.DestroyStateSnapshot(
                 targetWorldHandle,
                 importedHandles.front()));
-            EXPECT_TRUE(targetSystem.RemoveStepListener(targetWorldHandle, &targetListener));
+            EXPECT_TRUE(targetSystem.RemoveStepListener(targetWorldHandle, targetRegistration.GetHandle()));
         }
     }
 
@@ -13362,7 +13524,8 @@ namespace Jolt
         ASSERT_TRUE(scene.m_sphereBodyHandle);
 
         BlockingStepListener listener;
-        ASSERT_TRUE(system.AddStepListener(scene.m_worldHandle, &listener));
+        ScopedExtensionRegistration registration(system, &listener);
+        ASSERT_TRUE(system.AddStepListener(scene.m_worldHandle, registration.GetHandle()));
         AZStd::atomic_bool stepSucceeded{false};
         AZStd::thread stepThread(
             [&system, &scene, &stepSucceeded]()
@@ -13406,7 +13569,7 @@ namespace Jolt
         EXPECT_TRUE(queryCompletedDuringStep);
         EXPECT_TRUE(queryFound.load(AZStd::memory_order_acquire));
         EXPECT_TRUE(stepSucceeded.load(AZStd::memory_order_acquire));
-        EXPECT_TRUE(system.RemoveStepListener(scene.m_worldHandle, &listener));
+        EXPECT_TRUE(system.RemoveStepListener(scene.m_worldHandle, registration.GetHandle()));
 
         DestroySphereOnFloor(system, scene);
     }
@@ -13421,7 +13584,8 @@ namespace Jolt
         ASSERT_TRUE(scene.m_sphereBodyHandle);
 
         BlockingStepListener listener;
-        ASSERT_TRUE(system.AddStepListener(scene.m_worldHandle, &listener));
+        ScopedExtensionRegistration registration(system, &listener);
+        ASSERT_TRUE(system.AddStepListener(scene.m_worldHandle, registration.GetHandle()));
         AZStd::atomic_bool stepSucceeded{false};
         AZStd::thread stepThread(
             [&system, &scene, &stepSucceeded]()
@@ -13472,7 +13636,7 @@ namespace Jolt
                 return hit.m_bodyHandle == scene.m_sphereBodyHandle;
             }));
         EXPECT_TRUE(stepSucceeded.load(AZStd::memory_order_acquire));
-        EXPECT_TRUE(system.RemoveStepListener(scene.m_worldHandle, &listener));
+        EXPECT_TRUE(system.RemoveStepListener(scene.m_worldHandle, registration.GetHandle()));
 
         DestroySphereOnFloor(system, scene);
     }
@@ -14329,9 +14493,14 @@ namespace Jolt
         ASSERT_TRUE(system);
 
         TestCustomConvexShapeProvider provider;
-        EXPECT_FALSE(system.RegisterCustomConvexShapeProvider(nullptr));
-        ASSERT_TRUE(system.RegisterCustomConvexShapeProvider(&provider));
-        EXPECT_FALSE(system.RegisterCustomConvexShapeProvider(&provider));
+        EXPECT_EQ(
+            system.RegisterExtension(static_cast<ICustomConvexShapeProvider*>(nullptr), {}).m_status,
+            ExtensionRegistrationStatus::Invalid);
+        const ExtensionRegistrationResult providerRegistration = system.RegisterExtension(&provider, {});
+        ASSERT_TRUE(providerRegistration);
+        EXPECT_EQ(
+            system.RegisterExtension(&provider, {}).m_status,
+            ExtensionRegistrationStatus::AlreadyRegistered);
 
         const MaterialHandle materialHandle = system.CreateMaterial({
             .m_debugName = "Custom convex",
@@ -14397,8 +14566,12 @@ namespace Jolt
             childShapeHandles));
         EXPECT_TRUE(archive.m_dependencies.empty());
 
-        ASSERT_TRUE(system.UnregisterCustomConvexShapeProvider(&provider));
-        EXPECT_FALSE(system.UnregisterCustomConvexShapeProvider(&provider));
+        ASSERT_EQ(
+            system.UnregisterExtension(providerRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
+        EXPECT_EQ(
+            system.UnregisterExtension(providerRegistration.m_handle),
+            ExtensionRegistrationStatus::NotRegistered);
 
         const CookedShapeHandle importedShapeHandle = system.ImportShape(
             archive,
@@ -14534,19 +14707,24 @@ namespace Jolt
 
         TestCustomShapeProvider provider;
         EXPECT_EQ(
-            system.RegisterCustomShapeProvider(nullptr),
-            ProviderRegistrationResult::Invalid);
+            system.RegisterExtension(static_cast<ICustomShapeProvider*>(nullptr), {}).m_status,
+            ExtensionRegistrationStatus::Invalid);
         provider.m_version = 0;
         EXPECT_EQ(
-            system.RegisterCustomShapeProvider(&provider),
-            ProviderRegistrationResult::Invalid);
+            system.RegisterExtension(&provider, {}).m_status,
+            ExtensionRegistrationStatus::Invalid);
         provider.m_version = 19;
-        ASSERT_EQ(
-            system.RegisterCustomShapeProvider(&provider),
-            ProviderRegistrationResult::Success);
+        ExtensionRegistrationResult providerRegistration = system.RegisterExtension(&provider, {});
+        ASSERT_TRUE(providerRegistration);
+        ExtensionInformation providerInformation;
+        ASSERT_TRUE(system.GetExtensionInformation(providerRegistration.m_handle, providerInformation));
+        EXPECT_EQ(providerInformation.m_version, 19);
         EXPECT_EQ(
-            system.RegisterCustomShapeProvider(&provider),
-            ProviderRegistrationResult::AlreadyRegistered);
+            system.RegisterExtension(&provider, {}).m_status,
+            ExtensionRegistrationStatus::AlreadyRegistered);
+        provider.m_version = 23;
+        ASSERT_TRUE(system.GetExtensionInformation(providerRegistration.m_handle, providerInformation));
+        EXPECT_EQ(providerInformation.m_version, 19);
 
         ShapeConfiguration invalidConfiguration;
         invalidConfiguration.m_geometry = CustomShapeConfiguration{
@@ -14581,8 +14759,8 @@ namespace Jolt
         ASSERT_TRUE(cookedShapeHandle);
         EXPECT_EQ(provider.m_cookCount.load(), 2);
         EXPECT_EQ(
-            system.UnregisterCustomShapeProvider(&provider),
-            ProviderRegistrationResult::InUse);
+            system.UnregisterExtension(providerRegistration.m_handle),
+            ExtensionRegistrationStatus::InUse);
 
         ShapeProperties properties;
         ASSERT_TRUE(system.GetProperties(cookedShapeHandle, properties));
@@ -14601,7 +14779,7 @@ namespace Jolt
         CustomShapeInfo info;
         ASSERT_TRUE(system.GetCustomShapeInfo(cookedShapeHandle, info));
         EXPECT_EQ(info.m_providerId, provider.GetId());
-        EXPECT_EQ(info.m_providerVersion, provider.GetVersion());
+        EXPECT_EQ(info.m_providerVersion, providerInformation.m_version);
         EXPECT_NE(info.m_sourceHash, 0);
 
         ShapeConfiguration meshConfiguration;
@@ -14945,16 +15123,16 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyCookedShape(meshShapeHandle));
         EXPECT_TRUE(system.DestroyCookedShape(cookedShapeHandle));
         EXPECT_EQ(
-            system.UnregisterCustomShapeProvider(&provider),
-            ProviderRegistrationResult::Success);
+            system.UnregisterExtension(providerRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
 
         EXPECT_FALSE(system.ImportShape(
             archive,
             materialHandles,
             childShapeHandles));
-        ASSERT_EQ(
-            system.RegisterCustomShapeProvider(&provider),
-            ProviderRegistrationResult::Success);
+        provider.m_version = providerInformation.m_version;
+        providerRegistration = system.RegisterExtension(&provider, {});
+        ASSERT_TRUE(providerRegistration);
 
         const CookedShapeHandle importedShapeHandle = system.ImportShape(
             archive,
@@ -14966,8 +15144,8 @@ namespace Jolt
         EXPECT_EQ(info.m_providerVersion, provider.GetVersion());
         EXPECT_EQ(provider.m_cookCount.load(), 3);
         EXPECT_EQ(
-            system.UnregisterCustomShapeProvider(&provider),
-            ProviderRegistrationResult::InUse);
+            system.UnregisterExtension(providerRegistration.m_handle),
+            ExtensionRegistrationStatus::InUse);
 
         const ShapeHandle importedWorldShapeHandle = system.CreateShape(
             worldHandle,
@@ -15076,11 +15254,11 @@ namespace Jolt
 
         EXPECT_TRUE(system.DestroyCookedShape(importedShapeHandle));
         EXPECT_EQ(
-            system.UnregisterCustomShapeProvider(&provider),
-            ProviderRegistrationResult::Success);
+            system.UnregisterExtension(providerRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
         EXPECT_EQ(
-            system.UnregisterCustomShapeProvider(&provider),
-            ProviderRegistrationResult::NotRegistered);
+            system.UnregisterExtension(providerRegistration.m_handle),
+            ExtensionRegistrationStatus::NotRegistered);
         EXPECT_TRUE(system.DestroyShape(worldHandle, sphereShapeHandle));
         EXPECT_TRUE(system.DestroyCookedShape(sphereCookedShapeHandle));
         EXPECT_TRUE(system.DestroyMaterial(secondMaterialHandle));
@@ -15150,9 +15328,14 @@ namespace Jolt
         ASSERT_TRUE(system);
 
         TestCustomConstraintProvider provider;
-        EXPECT_FALSE(system.RegisterCustomConstraintProvider(nullptr));
-        ASSERT_TRUE(system.RegisterCustomConstraintProvider(&provider));
-        EXPECT_FALSE(system.RegisterCustomConstraintProvider(&provider));
+        EXPECT_EQ(
+            system.RegisterExtension(static_cast<ICustomConstraintProvider*>(nullptr), {}).m_status,
+            ExtensionRegistrationStatus::Invalid);
+        const ExtensionRegistrationResult providerRegistration = system.RegisterExtension(&provider, {});
+        ASSERT_TRUE(providerRegistration);
+        EXPECT_EQ(
+            system.RegisterExtension(&provider, {}).m_status,
+            ExtensionRegistrationStatus::AlreadyRegistered);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         ShapeConfiguration shapeConfiguration;
@@ -15187,7 +15370,9 @@ namespace Jolt
             worldHandle,
             constraintConfiguration);
         ASSERT_TRUE(constraintHandle);
-        EXPECT_FALSE(system.UnregisterCustomConstraintProvider(&provider));
+        EXPECT_EQ(
+            system.UnregisterExtension(providerRegistration.m_handle),
+            ExtensionRegistrationStatus::InUse);
 
         ConstraintState constraintState;
         ASSERT_TRUE(system.GetConstraintState(worldHandle, constraintHandle, constraintState));
@@ -15293,7 +15478,9 @@ namespace Jolt
 
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
         EXPECT_TRUE(system.DestroyConstraint(worldHandle, constraintHandle));
-        EXPECT_TRUE(system.UnregisterCustomConstraintProvider(&provider));
+        EXPECT_EQ(
+            system.UnregisterExtension(providerRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
 
         customConfiguration.m_data = {0};
         constraintConfiguration.m_geometry = customConfiguration;
@@ -17454,9 +17641,14 @@ namespace Jolt
         ASSERT_TRUE(system);
 
         TestCustomPathProvider provider;
-        EXPECT_FALSE(system.RegisterCustomPathProvider(nullptr));
-        ASSERT_TRUE(system.RegisterCustomPathProvider(&provider));
-        EXPECT_FALSE(system.RegisterCustomPathProvider(&provider));
+        EXPECT_EQ(
+            system.RegisterExtension(static_cast<ICustomPathProvider*>(nullptr), {}).m_status,
+            ExtensionRegistrationStatus::Invalid);
+        const ExtensionRegistrationResult providerRegistration = system.RegisterExtension(&provider, {});
+        ASSERT_TRUE(providerRegistration);
+        EXPECT_EQ(
+            system.RegisterExtension(&provider, {}).m_status,
+            ExtensionRegistrationStatus::AlreadyRegistered);
 
         CustomPathConfiguration invalidConfiguration;
         invalidConfiguration.m_providerId = provider.GetId();
@@ -17468,7 +17660,9 @@ namespace Jolt
         configuration.m_isLooping = true;
         const PathHandle pathHandle = system.CreatePath(configuration);
         ASSERT_TRUE(pathHandle);
-        EXPECT_FALSE(system.UnregisterCustomPathProvider(&provider));
+        EXPECT_EQ(
+            system.UnregisterExtension(providerRegistration.m_handle),
+            ExtensionRegistrationStatus::InUse);
 
         PathState state;
         ASSERT_TRUE(system.GetPathState(pathHandle, state));
@@ -17538,14 +17732,20 @@ namespace Jolt
         EXPECT_EQ(duplicateInfo.m_sourceHash, info.m_sourceHash);
 
         EXPECT_TRUE(system.DestroyPath(duplicatePathHandle));
-        EXPECT_FALSE(system.UnregisterCustomPathProvider(&provider));
+        EXPECT_EQ(
+            system.UnregisterExtension(providerRegistration.m_handle),
+            ExtensionRegistrationStatus::InUse);
         EXPECT_TRUE(system.DestroyConstraint(worldHandle, constraintHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, secondBodyHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, firstBodyHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
         EXPECT_TRUE(system.DestroyPath(pathHandle));
-        EXPECT_TRUE(system.UnregisterCustomPathProvider(&provider));
-        EXPECT_FALSE(system.UnregisterCustomPathProvider(&provider));
+        EXPECT_EQ(
+            system.UnregisterExtension(providerRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
+        EXPECT_EQ(
+            system.UnregisterExtension(providerRegistration.m_handle),
+            ExtensionRegistrationStatus::NotRegistered);
     }
 
     TEST(SimulationTests, BodyEnumerationIsBoundedStableAndFilterable)

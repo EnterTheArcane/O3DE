@@ -50,6 +50,7 @@ set(FILES
     Tests/Headers/DebugDraw.cpp
     Tests/Headers/Diagnostics.cpp
     Tests/Headers/Event.cpp
+    Tests/Headers/Extension.cpp
     Tests/Headers/Hair.cpp
     Tests/Headers/HairBus.cpp
     Tests/Headers/HairComponentConfiguration.cpp
@@ -133,6 +134,7 @@ set(SKIP_UNITY_BUILD_INCLUSION_FILES
     Tests/Headers/DebugDraw.cpp
     Tests/Headers/Diagnostics.cpp
     Tests/Headers/Event.cpp
+    Tests/Headers/Extension.cpp
     Tests/Headers/Hair.cpp
     Tests/Headers/HairBus.cpp
     Tests/Headers/HairComponentConfiguration.cpp

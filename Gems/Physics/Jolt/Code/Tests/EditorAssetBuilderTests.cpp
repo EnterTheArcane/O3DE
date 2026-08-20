@@ -444,9 +444,9 @@ namespace Jolt::Editor
         ASSERT_TRUE(softBodies);
         Worlds* worlds = Worlds::Get();
         ASSERT_TRUE(worlds);
-        ASSERT_EQ(
-            extensions->RegisterCustomShapeProvider(&customShapeProvider),
-            ProviderRegistrationResult::Success);
+        ExtensionRegistrationResult customShapeRegistration =
+            extensions->RegisterExtension(&customShapeProvider, {});
+        ASSERT_TRUE(customShapeRegistration);
 
         sourceData.m_shapes.push_back(SceneSourceShapeData{
             .m_geometry = CustomShapeConfiguration{
@@ -682,12 +682,11 @@ namespace Jolt::Editor
         EXPECT_TRUE(scenes->DestroySceneDefinition(baselineDefinitionHandle));
 
         EXPECT_EQ(
-            extensions->UnregisterCustomShapeProvider(&customShapeProvider),
-            ProviderRegistrationResult::Success);
+            extensions->UnregisterExtension(customShapeRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
         EXPECT_FALSE(scenes->CreateSceneDefinition(loadedAsset.m_data));
-        ASSERT_EQ(
-            extensions->RegisterCustomShapeProvider(&customShapeProvider),
-            ProviderRegistrationResult::Success);
+        customShapeRegistration = extensions->RegisterExtension(&customShapeProvider, {});
+        ASSERT_TRUE(customShapeRegistration);
 
         const AZ::u32 validArchiveVersion = loadedAsset.m_data.m_shapes[0].m_archive.m_formatVersion;
         loadedAsset.m_data.m_shapes[0].m_archive.m_formatVersion = validArchiveVersion + 1;
@@ -712,8 +711,8 @@ namespace Jolt::Editor
         EXPECT_TRUE(scenes->DestroySceneInstance(worldHandle, instanceHandle));
         EXPECT_TRUE(scenes->DestroySceneDefinition(definitionHandle));
         EXPECT_EQ(
-            extensions->UnregisterCustomShapeProvider(&customShapeProvider),
-            ProviderRegistrationResult::Success);
+            extensions->UnregisterExtension(customShapeRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
     }
 
     TEST(EditorAssetBuilderTests, ProcessesSkeletonAndAnimationsIntoValidatedNativeArchives)

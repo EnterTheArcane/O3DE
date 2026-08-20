@@ -84,9 +84,9 @@ namespace Jolt
         [[nodiscard]]
         AZStd::vector<VehicleDifferentialConfiguration> CopyDifferentials() const;
 
-        bool SetCallbacks(IVehicleCallbacks* callbacks);
+        bool SetCallbacks(ExtensionHandle extensionHandle);
 
-        bool SetCollisionFilter(const IVehicleCollisionFilter* filter);
+        bool SetCollisionFilter(ExtensionHandle extensionHandle);
 
         bool SetDifferentialLimitedSlipRatio(float ratio);
 
@@ -124,8 +124,8 @@ namespace Jolt
     private:
         struct CallbackBindings final
         {
-            IVehicleCallbacks* m_callbacks = nullptr;
-            const IVehicleCollisionFilter* m_collisionFilter = nullptr;
+            ExtensionHandle m_callbacks;
+            ExtensionHandle m_collisionFilter;
         };
 
         virtual VehicleHandle CreateVehicle(
@@ -232,9 +232,9 @@ namespace Jolt
         [[nodiscard]]
         AZStd::vector<VehicleDifferentialConfiguration> CopyDifferentials() const override;
 
-        bool SetCallbacks(IVehicleCallbacks* callbacks) override;
+        bool SetCallbacks(ExtensionHandle extensionHandle) override;
 
-        bool SetCollisionFilter(const IVehicleCollisionFilter* filter) override;
+        bool SetCollisionFilter(ExtensionHandle extensionHandle) override;
 
         bool SetDifferentialLimitedSlipRatio(float ratio) override;
 
@@ -360,9 +360,9 @@ namespace Jolt
         [[nodiscard]]
         AZStd::vector<VehicleDifferentialConfiguration> CopyDifferentials() const override;
 
-        bool SetCallbacks(IVehicleCallbacks* callbacks) override;
+        bool SetCallbacks(ExtensionHandle extensionHandle) override;
 
-        bool SetCollisionFilter(const IVehicleCollisionFilter* filter) override;
+        bool SetCollisionFilter(ExtensionHandle extensionHandle) override;
 
         bool SetDifferentialLimitedSlipRatio(float ratio) override;
 
@@ -494,9 +494,9 @@ namespace Jolt
         [[nodiscard]]
         AZStd::vector<VehicleDifferentialConfiguration> CopyDifferentials() const override;
 
-        bool SetCallbacks(IVehicleCallbacks* callbacks) override;
+        bool SetCallbacks(ExtensionHandle extensionHandle) override;
 
-        bool SetCollisionFilter(const IVehicleCollisionFilter* filter) override;
+        bool SetCollisionFilter(ExtensionHandle extensionHandle) override;
 
         bool SetDifferentialLimitedSlipRatio(float ratio) override;
 
