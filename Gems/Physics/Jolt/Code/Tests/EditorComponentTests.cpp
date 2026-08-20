@@ -41,14 +41,18 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/IO/ByteContainerStream.h>
 #include <AzCore/Interface/Interface.h>
+#include <AzCore/JSON/stringbuffer.h>
+#include <AzCore/JSON/writer.h>
 #include <AzCore/Memory/AllocatorManager.h>
 #include <AzCore/Name/Name.h>
 #include <AzCore/Name/NameDictionary.h>
+#include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/string/string.h>
 #include <AzCore/std/utility/move.h>
 #include <AzFramework/Input/System/InputSystemComponent.h>
 #include <AzFramework/UnitTest/TestDebugDisplayRequests.h>
@@ -240,6 +244,7 @@ namespace Jolt::Editor
                 Jolt::TrackedVehicleComponent::Reflect(serializeContext);
                 Jolt::VirtualCharacterControllerComponent::Reflect(serializeContext);
                 SystemComponent::Reflect(GetApplication()->GetBehaviorContext());
+                SystemComponent::Reflect(GetApplication()->GetJsonRegistrationContext());
                 GetApplication()->RegisterComponentDescriptor(
                     CharacterControllerComponent::CreateDescriptor());
                 GetApplication()->RegisterComponentDescriptor(
@@ -283,6 +288,14 @@ namespace Jolt::Editor
                 m_instanceUpdateExecutor =
                     AZ::Interface<AzToolsFramework::Prefab::InstanceUpdateExecutorInterface>::Get();
                 ASSERT_TRUE(m_instanceUpdateExecutor);
+            }
+
+            void TearDownEditorFixtureImpl() override
+            {
+                AZ::JsonRegistrationContext* jsonContext = GetApplication()->GetJsonRegistrationContext();
+                jsonContext->EnableRemoveReflection();
+                SystemComponent::Reflect(jsonContext);
+                jsonContext->DisableRemoveReflection();
             }
 
             AzToolsFramework::Prefab::PrefabSystemComponent* m_prefabSystem = nullptr;
@@ -834,10 +847,12 @@ namespace Jolt::Editor
     {
         struct PrefabExpectation final
         {
+            const char* m_name = nullptr;
             AZ::EntityId m_sourceEntityId;
             AZ::TypeId m_editorComponentType;
             AZ::TypeId m_runtimeComponentType;
             AzToolsFramework::Prefab::EntityAlias m_entityAlias;
+            AZStd::string m_expectedConfiguration;
         };
 
         AZ::SerializeContext* serializeContext = GetApplication()->GetSerializeContext();
@@ -879,6 +894,7 @@ namespace Jolt::Editor
                 entity->CreateComponent<AzToolsFramework::Components::TransformComponent>();
                 Component* component = entity->CreateComponent<Component>(AZStd::move(configuration));
                 expectations.push_back(PrefabExpectation{
+                    .m_name = entityName,
                     .m_sourceEntityId = entity->GetId(),
                     .m_editorComponentType = azrtti_typeid<Component>(),
                     .m_runtimeComponentType = azrtti_typeid<RuntimeComponent>(),
@@ -1055,6 +1071,50 @@ namespace Jolt::Editor
                     expectation.m_runtimeComponentType);
             };
 
+        const auto serializeEditorConfiguration =
+            [this](
+                AZ::Entity& entity,
+                const PrefabExpectation& expectation)
+            {
+                AzToolsFramework::Prefab::PrefabDom entityDom;
+                m_instanceToTemplate->GenerateEntityDomBySerializing(entityDom, entity);
+                const auto components = entityDom.FindMember("Components");
+                EXPECT_NE(components, entityDom.MemberEnd());
+                if (components == entityDom.MemberEnd() || !components->value.IsObject())
+                {
+                    return AZStd::string{};
+                }
+
+                const AZStd::string typeId = expectation.m_editorComponentType.ToString<AZStd::string>();
+                for (auto component = components->value.MemberBegin(); component != components->value.MemberEnd(); ++component)
+                {
+                    if (!component->value.IsObject())
+                    {
+                        continue;
+                    }
+
+                    const auto type = component->value.FindMember("$type");
+                    if (type == component->value.MemberEnd()
+                        || !type->value.IsString()
+                        || AZStd::string_view(type->value.GetString(), type->value.GetStringLength()).find(typeId)
+                            == AZStd::string_view::npos)
+                    {
+                        continue;
+                    }
+
+                    rapidjson::Document configuration;
+                    configuration.CopyFrom(component->value, configuration.GetAllocator());
+                    configuration.RemoveMember("Id");
+                    rapidjson::StringBuffer buffer;
+                    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+                    configuration.Accept(writer);
+                    return AZStd::string(buffer.GetString(), buffer.GetSize());
+                }
+
+                ADD_FAILURE() << "Editor component was absent from the serialized prefab entity";
+                return AZStd::string{};
+            };
+
         for (PrefabExpectation& expectation : expectations)
         {
             const AzToolsFramework::Prefab::EntityAliasOptionalReference entityAlias =
@@ -1064,18 +1124,24 @@ namespace Jolt::Editor
             const AzToolsFramework::Prefab::EntityOptionalReference sourceEntity =
                 sourceInstance->GetEntity(expectation.m_entityAlias);
             ASSERT_TRUE(sourceEntity);
+            expectation.m_expectedConfiguration = serializeEditorConfiguration(sourceEntity->get(), expectation);
+            EXPECT_FALSE(expectation.m_expectedConfiguration.empty());
             EXPECT_FALSE(serializeRuntimeExport(sourceEntity->get(), expectation).empty());
         }
 
         const auto expectInstance =
-            [&expectations, &serializeRuntimeExport](
+            [&expectations, &serializeEditorConfiguration, &serializeRuntimeExport](
                 AzToolsFramework::Prefab::Instance& instance)
             {
                 for (const PrefabExpectation& expectation : expectations)
                 {
+                    SCOPED_TRACE(expectation.m_name);
                     const AzToolsFramework::Prefab::EntityOptionalReference entity =
                         instance.GetEntity(expectation.m_entityAlias);
                     ASSERT_TRUE(entity);
+                    EXPECT_EQ(
+                        serializeEditorConfiguration(entity->get(), expectation),
+                        expectation.m_expectedConfiguration);
                     EXPECT_FALSE(serializeRuntimeExport(entity->get(), expectation).empty());
                 }
             };
@@ -1083,7 +1149,10 @@ namespace Jolt::Editor
         AZStd::unique_ptr<AzToolsFramework::Prefab::Instance> copiedInstance =
             m_prefabSystem->InstantiatePrefab(sourceTemplateId);
         ASSERT_TRUE(copiedInstance);
-        expectInstance(*copiedInstance);
+        {
+            SCOPED_TRACE("Copied instance");
+            expectInstance(*copiedInstance);
+        }
 
         ASSERT_TRUE(m_prefabLoader->SaveTemplateToFile(sourceTemplateId, prefabPath));
         copiedInstance.reset();
@@ -1098,7 +1167,10 @@ namespace Jolt::Editor
         AZStd::unique_ptr<AzToolsFramework::Prefab::Instance> reloadedInstance =
             m_prefabSystem->InstantiatePrefab(reloadedTemplateId);
         ASSERT_TRUE(reloadedInstance);
-        expectInstance(*reloadedInstance);
+        {
+            SCOPED_TRACE("Reloaded instance");
+            expectInstance(*reloadedInstance);
+        }
     }
 
     TEST(EditorComponentTests, RuntimeConstraintGeometryRoundTripsThroughSerialization)

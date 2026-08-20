@@ -31,10 +31,15 @@
 
 #include <AzTest/AzTest.h>
 
+#include <AzCore/Asset/AssetManagerComponent.h>
+#include <AzCore/Asset/AssetSerializer.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/JSON/document.h>
+#include <AzCore/JSON/stringbuffer.h>
+#include <AzCore/JSON/writer.h>
 #include <AzCore/Name/Name.h>
 #include <AzCore/Serialization/Json/JsonSerialization.h>
+#include <AzCore/Serialization/Json/JsonSystemComponent.h>
 #include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/optional.h>
@@ -45,12 +50,20 @@ namespace Jolt
 {
     namespace
     {
-        template<typename Variant>
+        class AssetManagerReflection final
+            : public AZ::AssetManagerComponent
+        {
+        public:
+            using AZ::AssetManagerComponent::Reflect;
+        };
+
+        template<typename Variant, typename Validator>
         void ExpectTaggedJsonRoundTrip(
             const char* name,
             const Variant& source,
             AZ::SerializeContext& serializeContext,
-            AZ::JsonRegistrationContext& jsonContext)
+            AZ::JsonRegistrationContext& jsonContext,
+            Validator validator)
         {
             SCOPED_TRACE(name);
             AZ::JsonSerializerSettings serializerSettings;
@@ -79,9 +92,14 @@ namespace Jolt
                 storeResult.GetProcessing(),
                 AZ::JsonSerializationResult::Processing::Halted)
                 << report.c_str();
+            ASSERT_NE(
+                storeResult.GetOutcome(),
+                AZ::JsonSerializationResult::Outcomes::DefaultsUsed)
+                << report.c_str();
 
             Variant restored;
             AZ::JsonDeserializerSettings deserializerSettings;
+            deserializerSettings.m_clearContainers = true;
             deserializerSettings.m_serializeContext = &serializeContext;
             deserializerSettings.m_registrationContext = &jsonContext;
             deserializerSettings.m_reporting = serializerSettings.m_reporting;
@@ -94,6 +112,7 @@ namespace Jolt
                 loadResult.GetProcessing(),
                 AZ::JsonSerializationResult::Processing::Halted)
                 << report.c_str();
+            validator(restored);
             if constexpr (requires { restored.index(); source.index(); })
             {
                 EXPECT_EQ(restored.index(), source.index());
@@ -114,7 +133,30 @@ namespace Jolt
                 restoredStoreResult.GetProcessing(),
                 AZ::JsonSerializationResult::Processing::Halted)
                 << report.c_str();
-            EXPECT_EQ(restoredDocument, sourceDocument);
+            rapidjson::StringBuffer sourceBuffer;
+            rapidjson::Writer<rapidjson::StringBuffer> sourceWriter(sourceBuffer);
+            sourceDocument.Accept(sourceWriter);
+
+            rapidjson::StringBuffer restoredBuffer;
+            rapidjson::Writer<rapidjson::StringBuffer> restoredWriter(restoredBuffer);
+            restoredDocument.Accept(restoredWriter);
+            EXPECT_EQ(restoredDocument, sourceDocument)
+                << "Source: " << sourceBuffer.GetString() << "\nRestored: " << restoredBuffer.GetString();
+        }
+
+        template<typename Variant>
+        void ExpectTaggedJsonRoundTrip(
+            const char* name,
+            const Variant& source,
+            AZ::SerializeContext& serializeContext,
+            AZ::JsonRegistrationContext& jsonContext)
+        {
+            ExpectTaggedJsonRoundTrip(
+                name,
+                source,
+                serializeContext,
+                jsonContext,
+                [](const Variant&) {});
         }
     } // namespace
 
@@ -129,6 +171,7 @@ namespace Jolt
         SoftBodyComponent::Reflect(serializeContext.get());
 
         auto jsonContext = AZStd::make_unique<AZ::JsonRegistrationContext>();
+        AZ::JsonSystemComponent::Reflect(jsonContext.get());
         SystemComponent::Reflect(jsonContext.get());
 
         ExpectTaggedJsonRoundTrip(
@@ -231,6 +274,7 @@ namespace Jolt
 
         jsonContext->EnableRemoveReflection();
         SystemComponent::Reflect(jsonContext.get());
+        AZ::JsonSystemComponent::Reflect(jsonContext.get());
         jsonContext->DisableRemoveReflection();
 
         serializeContext->EnableRemoveReflection();
@@ -250,9 +294,11 @@ namespace Jolt
     TEST(ConfigurationSerializerTests, EveryAuthorableConfigurationRoundTripsNonDefaultJson)
     {
         auto serializeContext = AZStd::make_unique<AZ::SerializeContext>();
-        AZ::Data::AssetData::Reflect(serializeContext.get());
+        AssetManagerReflection::Reflect(serializeContext.get());
         AZ::Entity::Reflect(serializeContext.get());
         AZ::Name::Reflect(serializeContext.get());
+        serializeContext->RegisterGenericType<AZ::Data::Asset<SceneAsset>>();
+        serializeContext->RegisterGenericType<AZ::Data::Asset<SkeletonAsset>>();
         SystemComponent::Reflect(serializeContext.get());
         CharacterControllerComponent::Reflect(serializeContext.get());
         ColliderComponent::Reflect(serializeContext.get());
@@ -271,6 +317,8 @@ namespace Jolt
         VirtualCharacterControllerComponent::Reflect(serializeContext.get());
 
         auto jsonContext = AZStd::make_unique<AZ::JsonRegistrationContext>();
+        AZ::JsonSystemComponent::Reflect(jsonContext.get());
+        AssetManagerReflection::Reflect(jsonContext.get());
         SystemComponent::Reflect(jsonContext.get());
 
         CharacterComponentConfiguration characterConfiguration;
@@ -281,7 +329,13 @@ namespace Jolt
             "CharacterComponentConfiguration",
             characterConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const CharacterComponentConfiguration& restored)
+            {
+                EXPECT_EQ(restored.m_userData, 0x0102'0304'0506'0708);
+                EXPECT_FLOAT_EQ(restored.m_mass, 91.0f);
+                EXPECT_TRUE(restored.m_enhancedInternalEdgeRemoval);
+            });
 
         ColliderShapeConfiguration colliderConfiguration;
         colliderConfiguration.m_shape.m_geometry = CapsuleShapeConfiguration{
@@ -295,7 +349,17 @@ namespace Jolt
             "ColliderShapeConfiguration",
             colliderConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const ColliderShapeConfiguration& restored)
+            {
+                const auto* capsule = AZStd::get_if<CapsuleShapeConfiguration>(
+                    &restored.m_shape.m_geometry);
+                ASSERT_TRUE(capsule);
+                EXPECT_FLOAT_EQ(capsule->m_cylinderHeight, 2.5f);
+                EXPECT_FLOAT_EQ(capsule->m_radius, 0.75f);
+                EXPECT_EQ(restored.m_shape.m_userData, 0x1112'1314'1516'1718);
+                EXPECT_TRUE(restored.m_localTransform.GetTranslation().IsClose(AZ::Vector3(1.0f, 2.0f, 3.0f)));
+            });
 
         ConstraintComponentConfiguration constraintConfiguration;
         constraintConfiguration.m_geometry = HingeConstraintConfiguration{
@@ -308,7 +372,16 @@ namespace Jolt
             "ConstraintComponentConfiguration",
             constraintConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const ConstraintComponentConfiguration& restored)
+            {
+                const auto* hinge = AZStd::get_if<HingeConstraintConfiguration>(&restored.m_geometry);
+                ASSERT_TRUE(hinge);
+                EXPECT_FLOAT_EQ(hinge->m_maximumLimit, 0.75f);
+                EXPECT_FLOAT_EQ(hinge->m_minimumLimit, -0.5f);
+                EXPECT_EQ(restored.m_userData, 0x2122'2324'2526'2728);
+                EXPECT_EQ(restored.m_priority, 7);
+            });
 
         HairComponentConfiguration hairConfiguration = HairComponentConfiguration::CreateDefault();
         hairConfiguration.m_jointModelTransforms = {
@@ -319,7 +392,13 @@ namespace Jolt
             "HairComponentConfiguration",
             hairConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const HairComponentConfiguration& restored)
+            {
+                ASSERT_EQ(restored.m_jointModelTransforms.size(), 1);
+                EXPECT_TRUE(restored.m_jointModelTransforms[0].GetTranslation().IsClose(AZ::Vector3::CreateAxisX(0.25f)));
+                EXPECT_FALSE(restored.m_autoUpdate);
+            });
 
         HermitePathConfiguration pathConfiguration;
         pathConfiguration.m_points = {
@@ -337,7 +416,14 @@ namespace Jolt
             "HermitePathConfiguration",
             pathConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const HermitePathConfiguration& restored)
+            {
+                ASSERT_EQ(restored.m_points.size(), 2);
+                EXPECT_TRUE(restored.m_points[0].m_position.IsClose(AZ::Vector3(-1.0f, 0.0f, 0.5f)));
+                EXPECT_TRUE(restored.m_points[1].m_tangent.IsClose(AZ::Vector3::CreateAxisY(2.0f)));
+                EXPECT_TRUE(restored.m_isLooping);
+            });
 
         RagdollComponentConfiguration ragdollConfiguration =
             RagdollComponentConfiguration::CreateDefault();
@@ -347,7 +433,12 @@ namespace Jolt
             "RagdollComponentConfiguration",
             ragdollConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const RagdollComponentConfiguration& restored)
+            {
+                EXPECT_EQ(restored.m_baseConstraintPriority, 5);
+                EXPECT_FLOAT_EQ(restored.m_minimumCollisionSeparation, 0.125f);
+            });
 
         RigidBodyConfiguration rigidBodyConfiguration;
         rigidBodyConfiguration.m_initialLinearVelocity = AZ::Vector3(1.0f, 2.0f, 3.0f);
@@ -357,7 +448,13 @@ namespace Jolt
             "RigidBodyConfiguration",
             rigidBodyConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const RigidBodyConfiguration& restored)
+            {
+                EXPECT_TRUE(restored.m_initialLinearVelocity.IsClose(AZ::Vector3(1.0f, 2.0f, 3.0f)));
+                EXPECT_EQ(restored.m_userData, 0x3132'3334'3536'3738);
+                EXPECT_TRUE(restored.m_allowDynamicOrKinematic);
+            });
 
         SceneComponentConfiguration sceneConfiguration;
         sceneConfiguration.m_asset = AZ::Data::Asset<SceneAsset>(
@@ -369,7 +466,14 @@ namespace Jolt
             "SceneComponentConfiguration",
             sceneConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const SceneComponentConfiguration& restored)
+            {
+                EXPECT_EQ(
+                    restored.m_asset.GetId(),
+                    AZ::Data::AssetId(AZ::Uuid("{23BB23A5-AD82-449E-9652-AF9BB3A14091}"), 3));
+                EXPECT_EQ(restored.m_asset.GetHint(), "Physics/Jolt/JsonScene.jolt");
+            });
 
         SkeletonComponentConfiguration skeletonConfiguration;
         skeletonConfiguration.m_asset = AZ::Data::Asset<SkeletonAsset>(
@@ -381,7 +485,14 @@ namespace Jolt
             "SkeletonComponentConfiguration",
             skeletonConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const SkeletonComponentConfiguration& restored)
+            {
+                EXPECT_EQ(
+                    restored.m_asset.GetId(),
+                    AZ::Data::AssetId(AZ::Uuid("{51F05DB1-64F0-4759-B954-289F95DE9FE8}"), 4));
+                EXPECT_EQ(restored.m_asset.GetHint(), "Physics/Jolt/JsonSkeleton.jolt");
+            });
 
         SoftBodyComponentConfiguration softBodyConfiguration =
             SoftBodyComponentConfiguration::CreateDefault();
@@ -392,7 +503,13 @@ namespace Jolt
             "SoftBodyComponentConfiguration",
             softBodyConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const SoftBodyComponentConfiguration& restored)
+            {
+                EXPECT_EQ(restored.m_body.m_userData, 0x4142'4344'4546'4748);
+                EXPECT_FLOAT_EQ(restored.m_body.m_pressure, 0.25f);
+                EXPECT_FALSE(restored.m_enabled);
+            });
 
         StaticRigidBodyConfiguration staticRigidBodyConfiguration;
         staticRigidBodyConfiguration.m_userData = 0x5152'5354'5556'5758;
@@ -403,7 +520,14 @@ namespace Jolt
             "StaticRigidBodyConfiguration",
             staticRigidBodyConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const StaticRigidBodyConfiguration& restored)
+            {
+                EXPECT_EQ(restored.m_userData, 0x5152'5354'5556'5758);
+                EXPECT_FLOAT_EQ(restored.m_friction, 0.7f);
+                EXPECT_FLOAT_EQ(restored.m_restitution, 0.4f);
+                EXPECT_TRUE(restored.m_isSensor);
+            });
 
         WheeledVehicleComponentConfiguration wheeledConfiguration =
             WheeledVehicleComponentConfiguration::CreateDefault();
@@ -415,7 +539,14 @@ namespace Jolt
             "WheeledVehicleComponentConfiguration",
             wheeledConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const WheeledVehicleComponentConfiguration& restored)
+            {
+                EXPECT_FALSE(restored.m_enabled);
+                EXPECT_FLOAT_EQ(restored.m_vehicle.m_collisionSphereRadius, 0.45f);
+                EXPECT_TRUE(restored.m_vehicle.m_gravityOverride.IsClose(AZ::Vector3(1.0f, 2.0f, 3.0f)));
+                EXPECT_TRUE(restored.m_vehicle.m_overrideGravity);
+            });
 
         MotorcycleComponentConfiguration motorcycleConfiguration =
             MotorcycleComponentConfiguration::CreateDefault();
@@ -427,7 +558,15 @@ namespace Jolt
             "MotorcycleComponentConfiguration",
             motorcycleConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const MotorcycleComponentConfiguration& restored)
+            {
+                EXPECT_FALSE(restored.m_enabled);
+                EXPECT_TRUE(
+                    restored.m_motorcycle.m_wheeled.m_gravityOverride.IsClose(AZ::Vector3(-2.0f, -3.0f, -4.0f)));
+                EXPECT_TRUE(restored.m_motorcycle.m_wheeled.m_overrideGravity);
+                EXPECT_FLOAT_EQ(restored.m_motorcycle.m_controller.m_maximumLeanAngle, 0.5f);
+            });
 
         TrackedVehicleComponentConfiguration trackedConfiguration =
             TrackedVehicleComponentConfiguration::CreateDefault();
@@ -439,7 +578,14 @@ namespace Jolt
             "TrackedVehicleComponentConfiguration",
             trackedConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const TrackedVehicleComponentConfiguration& restored)
+            {
+                EXPECT_FALSE(restored.m_enabled);
+                EXPECT_FLOAT_EQ(restored.m_vehicle.m_collisionSphereRadius, 0.55f);
+                EXPECT_TRUE(restored.m_vehicle.m_gravityOverride.IsClose(AZ::Vector3(5.0f, 6.0f, 7.0f)));
+                EXPECT_TRUE(restored.m_vehicle.m_overrideGravity);
+            });
 
         VirtualCharacterComponentConfiguration virtualCharacterConfiguration;
         virtualCharacterConfiguration.m_userData = 0x9192'9394'9596'9798;
@@ -449,10 +595,18 @@ namespace Jolt
             "VirtualCharacterComponentConfiguration",
             virtualCharacterConfiguration,
             *serializeContext,
-            *jsonContext);
+            *jsonContext,
+            [](const VirtualCharacterComponentConfiguration& restored)
+            {
+                EXPECT_EQ(restored.m_userData, 0x9192'9394'9596'9798);
+                EXPECT_FLOAT_EQ(restored.m_mass, 82.0f);
+                EXPECT_TRUE(restored.m_createInnerBody);
+            });
 
         jsonContext->EnableRemoveReflection();
         SystemComponent::Reflect(jsonContext.get());
+        AssetManagerReflection::Reflect(jsonContext.get());
+        AZ::JsonSystemComponent::Reflect(jsonContext.get());
         jsonContext->DisableRemoveReflection();
 
         serializeContext->EnableRemoveReflection();
@@ -474,7 +628,7 @@ namespace Jolt
         SystemComponent::Reflect(serializeContext.get());
         AZ::Name::Reflect(serializeContext.get());
         AZ::Entity::Reflect(serializeContext.get());
-        AZ::Data::AssetData::Reflect(serializeContext.get());
+        AssetManagerReflection::Reflect(serializeContext.get());
         serializeContext->DisableRemoveReflection();
 
         jsonContext.reset();

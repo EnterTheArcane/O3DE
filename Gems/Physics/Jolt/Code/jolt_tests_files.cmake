@@ -41,6 +41,7 @@ set(FILES
     Tests/Headers/CharacterConfiguration.cpp
     Tests/Headers/ColliderBus.cpp
     Tests/Headers/Collision.cpp
+    Tests/Headers/Configuration.cpp
     Tests/Headers/Constraint.cpp
     Tests/Headers/ConstraintBus.cpp
     Tests/Headers/ConstraintComponentConfiguration.cpp
@@ -75,6 +76,7 @@ set(FILES
     Tests/Headers/ShapeConfiguration.cpp
     Tests/Headers/Skeleton.cpp
     Tests/Headers/SkeletonAsset.cpp
+    Tests/Headers/SkeletonBus.cpp
     Tests/Headers/SkeletonComponentBus.cpp
     Tests/Headers/SkeletonComponentConfiguration.cpp
     Tests/Headers/SoftBody.cpp
@@ -126,6 +128,7 @@ set(SKIP_UNITY_BUILD_INCLUSION_FILES
     Tests/Headers/CharacterConfiguration.cpp
     Tests/Headers/ColliderBus.cpp
     Tests/Headers/Collision.cpp
+    Tests/Headers/Configuration.cpp
     Tests/Headers/Constraint.cpp
     Tests/Headers/ConstraintBus.cpp
     Tests/Headers/ConstraintComponentConfiguration.cpp
@@ -160,6 +163,7 @@ set(SKIP_UNITY_BUILD_INCLUSION_FILES
     Tests/Headers/ShapeConfiguration.cpp
     Tests/Headers/Skeleton.cpp
     Tests/Headers/SkeletonAsset.cpp
+    Tests/Headers/SkeletonBus.cpp
     Tests/Headers/SkeletonComponentBus.cpp
     Tests/Headers/SkeletonComponentConfiguration.cpp
     Tests/Headers/SoftBody.cpp

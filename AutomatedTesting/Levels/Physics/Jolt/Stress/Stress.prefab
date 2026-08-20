@@ -570,13 +570,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -638,13 +631,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 16891509312487778074,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -722,13 +708,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -786,13 +765,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 782114538373457159,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -860,13 +832,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 5313107401346978382,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -974,23 +939,22 @@
                                     "RightWheel": 3
                                 }
                             ],
+                            "Engine": {
+                                "MaximumTorque": 575.0
+                            },
                             "Transmission": {
                                 "ForwardGearRatios": [
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
+                                    2.66,
+                                    1.78,
+                                    1.3,
                                     1.0,
-                                    0.7400000095367432,
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
-                                    1.0,
-                                    0.7400000095367432
+                                    0.74
                                 ],
                                 "ReverseGearRatios": [
-                                    -2.9000000953674316,
-                                    -2.9000000953674316
-                                ]
+                                    -2.9
+                                ],
+                                "ShiftDownRpm": 2100.0,
+                                "ShiftUpRpm": 4200.0
                             }
                         }
                     }
@@ -1175,13 +1139,7 @@
                                 "Shapes": [
                                     {
                                         "Shape": {
-                                            "Geometry": {
-                                                "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "Shape": {
+                                            "Density": 925.0,
                                             "Geometry": {
                                                 "$type": "{C4264778-5AA2-4457-84FF-EB00D3B53D03} SphereShapeConfiguration",
                                                 "Value": {
@@ -1197,13 +1155,7 @@
                                 "Shapes": [
                                     {
                                         "Shape": {
-                                            "Geometry": {
-                                                "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "Shape": {
+                                            "Density": 925.0,
                                             "Geometry": {
                                                 "$type": "{C4264778-5AA2-4457-84FF-EB00D3B53D03} SphereShapeConfiguration",
                                                 "Value": {
@@ -1232,7 +1184,9 @@
                                     }
                                 }
                             }
-                        ]
+                        ],
+                        "BaseConstraintPriority": 3,
+                        "MinimumCollisionSeparation": 0.05
                     }
                 },
                 "TransformComponent": {

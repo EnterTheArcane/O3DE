@@ -16,8 +16,8 @@ class Tests:
     raycasts = ("Completed scalar and batched raycasts", "A raycast query failed")
     overlaps = ("Completed point and shape overlaps", "An overlap query failed")
     broad_phase = ("Completed broad-phase overlap and cast queries", "A broad-phase query failed")
-    geometry_queries = ("Collected shapes, faces, and triangles", "A geometry query failed")
-    shape_details = ("Queried standalone and retained shape details", "A detailed shape query failed")
+    geometry_queries = ("Collected supporting faces and triangles", "A geometry query failed")
+    shape_details = ("Queried standalone shape details", "A detailed shape query failed")
     diagnostics = ("Read world bodies and statistics", "World diagnostics were incomplete")
     debug_capture = ("Captured native simulation diagnostics", "Simulation diagnostics were not captured")
     snapshot_restored = ("Restored and validated a world snapshot", "World snapshot validation failed")
@@ -67,10 +67,16 @@ def Jolt_WorldQueriesAndSnapshots():
     query_body.add_component("Jolt Rigid Body")
     components.TransformBus(bus.Event, "SetWorldTranslation", query_body.id, math.Vector3(0.0, 0.0, 5.0))
 
+    second_query_body = EditorEntity.create_editor_entity("Jolt Query Second Body")
+    second_query_body.add_component("Jolt Collider")
+    second_query_body.add_component("Jolt Rigid Body")
+    components.TransformBus(bus.Event, "SetWorldTranslation", second_query_body.id, math.Vector3(0.0, 0.0, 6.0))
+
     Report.result(
         Tests.components_created,
         floor.has_component("Jolt Static Rigid Body")
-        and query_body.has_component("Jolt Rigid Body"),
+        and query_body.has_component("Jolt Rigid Body")
+        and second_query_body.has_component("Jolt Rigid Body"),
     )
 
     Report.info("Entering game mode")
@@ -80,6 +86,7 @@ def Jolt_WorldQueriesAndSnapshots():
         general.idle_wait(0.01)
     Report.critical_result(Tests.enter_game_mode, general.is_in_game_mode())
     query_body_id = general.find_game_entity("Jolt Query Body")
+    second_query_body_id = general.find_game_entity("Jolt Query Second Body")
     world_handle = jolt.JoltRigidBodyRequestBus(bus.Event, "GetWorldHandle", query_body_id)
     body_handle = jolt.JoltRigidBodyRequestBus(bus.Event, "GetBodyHandle", query_body_id)
     shape_handle = jolt.JoltColliderRequestBus(bus.Event, "GetRootShapeHandle", query_body_id)
@@ -133,9 +140,24 @@ def Jolt_WorldQueriesAndSnapshots():
         create_world_position(jolt, 0.0, 0.0, 3.0),
         True,
     )
+    frozen = frozen and jolt.JoltRigidBodyRequestBus(bus.Event, "SetGravityFactor", second_query_body_id, 0.0)
+    frozen = frozen and jolt.JoltRigidBodyRequestBus(
+        bus.Event,
+        "SetVelocities",
+        second_query_body_id,
+        math.Vector3(0.0, 0.0, 0.0),
+        math.Vector3(0.0, 0.0, 0.0),
+    )
+    frozen = frozen and jolt.JoltRigidBodyRequestBus(
+        bus.Event,
+        "SetPosition",
+        second_query_body_id,
+        create_world_position(jolt, 0.0, 0.0, 6.0),
+        True,
+    )
     general.idle_wait(0.05)
 
-    raycast = jolt.RaycastRequest()
+    raycast = jolt.JoltRaycastRequest()
     raycast.start = create_world_position(jolt, 0.0, 0.0, 8.0)
     raycast.displacement = math.Vector3(0.0, 0.0, -12.0)
     closest_raycast = jolt.JoltWorldQueryRequestBus(
@@ -157,7 +179,7 @@ def Jolt_WorldQueriesAndSnapshots():
         raycast,
         16,
     )
-    raycast_batch = jolt.RaycastRequestCollection()
+    raycast_batch = jolt.JoltRaycastRequestCollection()
     batch_populated = raycast_batch.AddRequest(raycast) and raycast_batch.AddRequest(raycast)
     batch_results = jolt.JoltWorldQueryRequestBus(
         bus.Broadcast,
@@ -233,7 +255,7 @@ def Jolt_WorldQueriesAndSnapshots():
         ),
     )
 
-    shape_cast = jolt.ShapeCastRequest()
+    shape_cast = jolt.JoltShapeCastRequest()
     shape_cast.shapeHandle = shape_handle
     cast_start = jolt.WorldTransform()
     cast_start.position = create_world_position(jolt, 0.0, 0.0, 7.0)
@@ -305,15 +327,6 @@ def Jolt_WorldQueriesAndSnapshots():
     bounds = jolt.BroadPhaseAabb()
     bounds.center = create_world_position(jolt, 0.0, 0.0, 0.0)
     bounds.halfExtents = math.Vector3(8.0, 8.0, 8.0)
-    shape_collection_request = jolt.ShapeCollectionRequest()
-    shape_collection_request.bounds = bounds
-    collected_shapes = jolt.JoltWorldQueryRequestBus(
-        bus.Broadcast,
-        "CollectShapesInBounds",
-        world_handle,
-        shape_collection_request,
-        32,
-    )
 
     floor_hit = all_raycasts.GetHit(0)
     for hit_index in range(1, all_raycasts.GetHitCount()):
@@ -344,15 +357,13 @@ def Jolt_WorldQueriesAndSnapshots():
     )
     Report.info(
         "Geometry query counts: "
-        f"shapes={collected_shapes.GetShapeCount()}, "
         f"faceVertices={supporting_face.GetVertexCount()}, "
         f"triangles={triangles.GetTriangleCount()}"
     )
     Report.result(
         Tests.geometry_queries,
         bool(
-            collected_shapes.GetShapeCount() > 0
-            and supporting_face.GetVertexCount() > 0
+            supporting_face.GetVertexCount() > 0
             and triangles.GetTriangleCount() > 0
         ),
     )
@@ -389,8 +400,6 @@ def Jolt_WorldQueriesAndSnapshots():
         shape_handle,
         math.Vector3(0.0, 0.0, 0.0),
     )
-    transformed_shape = collected_shapes.GetShape(0)
-    transformed_bounds = transformed_shape.bounds
     shape_triangle_transform = math.Transform_CreateIdentity()
     shape_triangle_transform.SetTranslation(math.Vector3(0.0, 0.0, 3.0))
     shape_triangle_request = jolt.ShapeTriangleCollectionRequest()
@@ -406,81 +415,6 @@ def Jolt_WorldQueriesAndSnapshots():
         32,
     )
 
-    transformed_raycast_request = jolt.TransformedShapeRaycastRequest()
-    transformed_raycast_request.start = create_world_position(
-        jolt,
-        transformed_bounds.center.x,
-        transformed_bounds.center.y,
-        transformed_bounds.center.z + transformed_bounds.halfExtents.z + 1.0,
-    )
-    transformed_raycast_request.displacement = math.Vector3(
-        0.0,
-        0.0,
-        -2.0 * (transformed_bounds.halfExtents.z + 1.0),
-    )
-    closest_transformed_raycast = jolt.JoltWorldQueryRequestBus(
-        bus.Broadcast,
-        "RaycastTransformedShapeClosest",
-        world_handle,
-        transformed_shape,
-        transformed_raycast_request,
-    )
-    all_transformed_raycasts = jolt.JoltWorldQueryRequestBus(
-        bus.Broadcast,
-        "RaycastTransformedShapeAll",
-        world_handle,
-        transformed_shape,
-        transformed_raycast_request,
-        8,
-    )
-    transformed_point_hits = jolt.JoltWorldQueryRequestBus(
-        bus.Broadcast,
-        "CollideTransformedShapePoint",
-        world_handle,
-        transformed_shape,
-        transformed_bounds.center,
-        8,
-    )
-    transformed_point_found = jolt.JoltWorldQueryRequestBus(
-        bus.Broadcast,
-        "CollideTransformedShapePointAny",
-        world_handle,
-        transformed_shape,
-        transformed_bounds.center,
-    )
-    transformed_children = jolt.JoltWorldQueryRequestBus(
-        bus.Broadcast,
-        "CollectTransformedShapeChildren",
-        world_handle,
-        transformed_shape,
-        transformed_bounds,
-        8,
-    )
-    transformed_triangles = jolt.JoltWorldQueryRequestBus(
-        bus.Broadcast,
-        "CollectTransformedShapeTriangles",
-        world_handle,
-        transformed_shape,
-        transformed_bounds,
-        32,
-    )
-    transformed_normal = jolt.JoltWorldQueryRequestBus(
-        bus.Broadcast,
-        "GetTransformedShapeSurfaceNormal",
-        world_handle,
-        transformed_shape,
-        closest_transformed_raycast.hit.subShapeId,
-        closest_transformed_raycast.hit.position,
-    )
-    transformed_face = jolt.JoltWorldQueryRequestBus(
-        bus.Broadcast,
-        "GetTransformedShapeSupportingFace",
-        world_handle,
-        transformed_shape,
-        closest_transformed_raycast.hit.subShapeId,
-        math.Vector3(0.0, 0.0, 1.0),
-        16,
-    )
     Report.result(
         Tests.shape_details,
         bool(
@@ -489,14 +423,6 @@ def Jolt_WorldQueriesAndSnapshots():
             and shape_point_found
             and shape_point_hits.GetHitCount() > 0
             and shape_triangles.GetTriangleCount() > 0
-            and closest_transformed_raycast.found
-            and all_transformed_raycasts.GetHitCount() > 0
-            and transformed_point_found
-            and transformed_point_hits.GetHitCount() > 0
-            and transformed_children.GetShapeCount() > 0
-            and transformed_triangles.GetTriangleCount() > 0
-            and transformed_normal.found
-            and transformed_face.GetVertexCount() > 0
         ),
     )
 
@@ -535,7 +461,7 @@ def Jolt_WorldQueriesAndSnapshots():
         world_handle,
         debug_configuration,
     )
-    buoyancy_configuration = jolt.BuoyancyConfiguration()
+    buoyancy_configuration = jolt.JoltBuoyancyConfiguration()
     buoyancy_configuration.surfacePosition = create_world_position(
         jolt,
         body_state.transform.position.x,

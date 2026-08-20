@@ -37,13 +37,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },

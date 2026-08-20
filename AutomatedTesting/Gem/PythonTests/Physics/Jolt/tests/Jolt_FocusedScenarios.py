@@ -95,10 +95,10 @@ def run_shapes_and_cooking():
                         "GetShapeCount",
                         entity_id,
                     ),
-                    lambda value: value > 0,
+                    lambda value: value == 1,
                     0,
                 )
-                if shape_count > 0:
+                if shape_count == 1:
                     recorder.capture(
                         f"{shape_name} root handle",
                         lambda entity_id=entity_id: jolt.JoltColliderRequestBus(
@@ -661,7 +661,18 @@ def run_scenes_and_assets():
 
 def run_queries():
     def setup(recorder):
-        return _open_base_with_world(recorder, "Jolt Queries")
+        import azlmbr.math as math
+
+        if not _open_base_with_world(recorder, "Jolt Queries"):
+            return False
+
+        create_editor_entity(
+            recorder,
+            "Jolt Queries Second Body",
+            ("Jolt Collider", "Jolt Rigid Body"),
+            math.Vector3(0.0, 0.0, 6.0),
+        )
+        return recorder.passed
 
     def runtime(recorder):
         import azlmbr.bus as bus
@@ -669,6 +680,7 @@ def run_queries():
         import azlmbr.math as math
 
         body_id = wait_for_runtime_entity("Jolt Queries Body")
+        second_body_id = wait_for_runtime_entity("Jolt Queries Second Body")
         world_handle = recorder.capture(
             "query world handle",
             lambda: jolt.JoltRigidBodyRequestBus(bus.Event, "GetWorldHandle", body_id),
@@ -688,8 +700,22 @@ def run_queries():
                 True,
             ),
         )
+        recorder.capture(
+            "second query body frozen",
+            lambda: jolt.JoltRigidBodyRequestBus(bus.Event, "SetGravityFactor", second_body_id, 0.0),
+        )
+        recorder.capture(
+            "second query body positioned",
+            lambda: jolt.JoltRigidBodyRequestBus(
+                bus.Event,
+                "SetPosition",
+                second_body_id,
+                create_world_position(jolt, 0.0, 0.0, 6.0),
+                True,
+            ),
+        )
 
-        raycast = jolt.RaycastRequest()
+        raycast = jolt.JoltRaycastRequest()
         raycast.start = create_world_position(jolt, 0.0, 0.0, 8.0)
         raycast.displacement = math.Vector3(0.0, 0.0, -12.0)
         recorder.capture(
@@ -892,7 +918,7 @@ def run_diagnostics():
             lambda: jolt.JoltRigidBodyRequestBus(bus.Event, "GetWorldHandle", body_id),
             lambda handle: handle.IsValid(),
         )
-        invalid_world = jolt.WorldHandle()
+        invalid_world = jolt.JoltWorldHandle()
         recorder.capture(
             "invalid world handle rejected",
             lambda: jolt.JoltWorldQueryRequestBus(
@@ -924,7 +950,7 @@ def run_diagnostics():
                 jolt.PerformanceStatisticsFlags_All,
             ),
         )
-        performance_raycast = jolt.RaycastRequest()
+        performance_raycast = jolt.JoltRaycastRequest()
         performance_raycast.start = create_world_position(jolt, 0.0, 0.0, 8.0)
         performance_raycast.displacement = math.Vector3(0.0, 0.0, -12.0)
         recorder.capture(
@@ -973,7 +999,7 @@ def run_diagnostics():
             lambda value: value is not None,
         )
         if body_state is not None:
-            buoyancy = jolt.BuoyancyConfiguration()
+            buoyancy = jolt.JoltBuoyancyConfiguration()
             buoyancy.surfacePosition = create_world_position(
                 jolt,
                 body_state.transform.position.x,
@@ -1022,9 +1048,32 @@ def run_diagnostics():
 
 
 def run_saved_feature_gallery():
+    import hashlib
+    import json
+    from pathlib import Path
+
+    import azlmbr.legacy.general as general
+    import azlmbr.paths
+
     recorder = ScenarioRecorder("Jolt_SavedFeatureGallery")
     entered_game_mode = False
     try:
+        gallery_path = (
+            Path(azlmbr.paths.projectroot)
+            / "Levels"
+            / "Physics"
+            / "Jolt"
+            / "FeatureGallery"
+            / "FeatureGallery.prefab"
+        )
+        original_gallery_hash = hashlib.sha256(gallery_path.read_bytes()).digest()
+        gallery = json.loads(gallery_path.read_text(encoding="utf-8"))
+        gallery_entity_names = sorted(
+            entity["Name"]
+            for entity in gallery["Entities"].values()
+            if entity.get("Name", "").startswith("Jolt Gallery ")
+        )
+        recorder.check("feature gallery entity inventory", len(gallery_entity_names) == 51)
         if not _open_gallery(recorder):
             return
 
@@ -1034,6 +1083,7 @@ def run_saved_feature_gallery():
         authored_components = (
             ("Jolt Gallery Dynamic Body", "Jolt Rigid Body"),
             ("Jolt Gallery Static Body", "Jolt Static Rigid Body"),
+            ("Jolt Gallery Box", "Jolt Collider"),
             ("Jolt Gallery Constraint Cone", "Jolt Constraint"),
             ("Jolt Gallery Character", "Jolt Character Controller"),
             ("Jolt Gallery Virtual Character", "Jolt Virtual Character Controller"),
@@ -1047,22 +1097,32 @@ def run_saved_feature_gallery():
             ("Jolt Gallery Scene", "Jolt Scene"),
             ("Jolt Gallery Hair", "Jolt Hair"),
         )
-        for entity_name, component_name in authored_components:
-            entity = EditorEntity.find_editor_entity(entity_name)
-            recorder.check(
-                f"saved {component_name}",
-                lambda entity=entity, component_name=component_name: entity.exists()
-                and entity.has_component(component_name),
-            )
 
-        import azlmbr.legacy.general as general
+        def verify_authored_entities(stage):
+            for entity_name in gallery_entity_names:
+                entity = EditorEntity.find_editor_entity(entity_name)
+                recorder.check(f"{stage} entity {entity_name}", entity.exists())
 
-        general.save_level()
+            for entity_name, component_name in authored_components:
+                entity = EditorEntity.find_editor_entity(entity_name)
+                recorder.check(
+                    f"{stage} {component_name}",
+                    lambda entity=entity, component_name=component_name: entity.exists()
+                    and entity.has_component(component_name),
+                )
+
+        verify_authored_entities("authored")
+
         helper.open_level("Physics/Jolt", "FeatureGallery")
-        recorder.check("feature gallery save and reload", general.get_current_level_name() == "FeatureGallery")
+        recorder.check("feature gallery reloaded", general.get_current_level_name() == "FeatureGallery")
+        recorder.check(
+            "feature gallery reload preserved its checked-in source",
+            hashlib.sha256(gallery_path.read_bytes()).digest() == original_gallery_hash,
+        )
+        verify_authored_entities("reloaded")
         entered_game_mode = enter_game_mode(recorder)
         if entered_game_mode:
-            for entity_name, _ in authored_components:
+            for entity_name in gallery_entity_names:
                 recorder.check(
                     f"runtime export {entity_name}",
                     wait_for_runtime_entity(entity_name).IsValid(),

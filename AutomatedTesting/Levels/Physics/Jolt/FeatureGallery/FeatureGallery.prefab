@@ -97,11 +97,6 @@
             "Component_[9562516168917670048]": {
                 "$type": "EditorVisibilityComponent",
                 "Id": 9562516168917670048
-            },
-            "LocalViewBookmarkComponent": {
-                "$type": "LocalViewBookmarkComponent",
-                "Id": 210032726515750058,
-                "LocalBookmarkFileName": "FeatureGallery_17868718614934791.setreg"
             }
         }
     },
@@ -618,41 +613,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -714,41 +674,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 7658783038957766027,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -820,34 +745,6 @@
                         {
                             "Shape": {
                                 "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration",
                                     "Value": {
                                         "Dimensions": [
@@ -855,18 +752,11 @@
                                             1.0,
                                             0.75
                                         ],
-                                        "ConvexRadius": 0.03999999910593033
+                                        "ConvexRadius": 0.04
                                     }
                                 },
                                 "UserData": 81842421366784,
                                 "Density": 975.0
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
                             }
                         }
                     ]
@@ -932,49 +822,14 @@
                         {
                             "Shape": {
                                 "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
                                     "$type": "{66D56089-A4EA-4B20-ADA1-09AB7682554A} CapsuleShapeConfiguration",
                                     "Value": {
                                         "CylinderHeight": 1.75,
-                                        "Radius": 0.4000000059604645
+                                        "Radius": 0.4
                                     }
                                 },
                                 "UserData": 81842421366785,
                                 "Density": 976.0
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
                             }
                         }
                     ]
@@ -1040,34 +895,6 @@
                         {
                             "Shape": {
                                 "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
                                     "$type": "{72BB7A35-821E-454A-9E8A-5F95CA77FB90} ConvexHullShapeConfiguration",
                                     "Value": {
                                         "Points": [
@@ -1092,19 +919,13 @@
                                                 -0.75
                                             ]
                                         ],
-                                        "MaximumConvexRadius": 0.03999999910593033,
-                                        "MaximumConvexRadiusError": 0.019999999552965164
+                                        "HullTolerance": 0.001,
+                                        "MaximumConvexRadius": 0.04,
+                                        "MaximumConvexRadiusError": 0.02
                                     }
                                 },
                                 "UserData": 81842421366786,
                                 "Density": 977.0
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
                             }
                         }
                     ]
@@ -1170,50 +991,15 @@
                         {
                             "Shape": {
                                 "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
                                     "$type": "{3B313DF0-8CAA-4D44-B17F-DFC56B5ED0EF} CylinderShapeConfiguration",
                                     "Value": {
                                         "Height": 1.5,
-                                        "Radius": 0.550000011920929,
-                                        "ConvexRadius": 0.03999999910593033
+                                        "Radius": 0.55,
+                                        "ConvexRadius": 0.04
                                     }
                                 },
                                 "UserData": 81842421366787,
                                 "Density": 978.0
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
                             }
                         }
                     ]
@@ -1279,52 +1065,17 @@
                         {
                             "Shape": {
                                 "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "EmptyShapeConfiguration",
+                                    "$type": "{73CACE27-6412-4A22-AEE4-8EDD7CCE2AF4} EmptyShapeConfiguration",
                                     "Value": {
                                         "CenterOfMass": [
-                                            0.10000000149011612,
+                                            0.1,
                                             0.0,
                                             0.0
                                         ]
                                     }
                                 },
-                                "UserData": 81842421366788,
-                                "Density": 979.0
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
+                                "Density": 979.0,
+                                "UserData": 81842421366788
                             }
                         }
                     ]
@@ -1390,76 +1141,47 @@
                         {
                             "Shape": {
                                 "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
                                     "$type": "{8F8E2D77-A806-4AC1-8690-591B9E8C1728} HeightfieldShapeConfiguration",
                                     "Value": {
                                         "Heights": [
-                                            {},
-                                            0.10000000149011612,
-                                            0.20000000298023224,
-                                            0.30000001192092896,
-                                            0.10000000149011612,
-                                            0.20000000298023224,
-                                            0.30000001192092896,
-                                            0.4000000059604645,
-                                            0.20000000298023224,
-                                            0.30000001192092896,
-                                            0.4000000059604645,
+                                            0.0,
+                                            0.1,
+                                            0.2,
+                                            0.3,
+                                            0.1,
+                                            0.2,
+                                            0.3,
+                                            0.4,
+                                            0.2,
+                                            0.3,
+                                            0.4,
                                             0.5,
-                                            0.30000001192092896,
-                                            0.4000000059604645,
+                                            0.3,
+                                            0.4,
                                             0.5,
-                                            0.6000000238418579
+                                            0.6
                                         ],
                                         "Origin": [
                                             -1.5,
                                             -1.5,
                                             0.0
                                         ],
-                                        "ActiveEdgeCosineThreshold": 0.9900000095367432,
+                                        "Spacing": [
+                                            1.0,
+                                            1.0
+                                        ],
+                                        "ActiveEdgeCosineThreshold": 0.99,
+                                        "BitsPerSample": 8,
+                                        "BlockSize": 2,
+                                        "MaterialCapacity": 1,
                                         "MaximumHeight": 1.0,
                                         "MinimumHeight": -1.0,
-                                        "MaterialCapacity": 1,
-                                        "SampleCount": 4,
-                                        "OverrideHeightRange": true
+                                        "OverrideHeightRange": true,
+                                        "SampleCount": 4
                                     }
                                 },
                                 "UserData": 81842421366789,
                                 "Density": 980.0
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
                             }
                         }
                     ]
@@ -1525,35 +1247,7 @@
                         {
                             "Shape": {
                                 "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "MeshShapeConfiguration",
+                                    "$type": "{8B9A9F9E-6FA3-4E2F-98E4-58217003A8D3} MeshShapeConfiguration",
                                     "Value": {
                                         "Vertices": [
                                             [
@@ -1579,30 +1273,26 @@
                                         ],
                                         "Triangles": [
                                             {
+                                                "FirstVertex": 0,
                                                 "SecondVertex": 1,
                                                 "ThirdVertex": 2,
                                                 "UserData": 4097
                                             },
                                             {
+                                                "FirstVertex": 0,
                                                 "SecondVertex": 2,
                                                 "ThirdVertex": 3,
                                                 "UserData": 4098
                                             }
                                         ],
-                                        "ActiveEdgeCosineThreshold": 0.9900000095367432,
+                                        "ActiveEdgeCosineThreshold": 0.99,
+                                        "BuildQuality": "FavorRuntimePerformance",
                                         "MaximumTrianglesPerLeaf": 4,
                                         "PerTriangleUserData": true
                                     }
                                 },
-                                "UserData": 81842421366790,
-                                "Density": 981.0
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
+                                "Density": 981.0,
+                                "UserData": 81842421366790
                             }
                         }
                     ]
@@ -1668,49 +1358,19 @@
                         {
                             "Shape": {
                                 "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "PlaneShapeConfiguration",
+                                    "$type": "{023A0815-EA74-4CEC-807C-3445BC03B33F} PlaneShapeConfiguration",
                                     "Value": {
+                                        "Normal": [
+                                            0.0,
+                                            0.0,
+                                            1.0
+                                        ],
                                         "Distance": 0.25,
                                         "HalfExtent": 2.0
                                     }
                                 },
-                                "UserData": 81842421366791,
-                                "Density": 982.0
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
+                                "Density": 982.0,
+                                "UserData": 81842421366791
                             }
                         }
                     ]
@@ -1776,48 +1436,13 @@
                         {
                             "Shape": {
                                 "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
                                     "$type": "{C4264778-5AA2-4457-84FF-EB00D3B53D03} SphereShapeConfiguration",
                                     "Value": {
-                                        "Radius": 0.699999988079071
+                                        "Radius": 0.7
                                     }
                                 },
                                 "UserData": 81842421366792,
                                 "Density": 983.0
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
                             }
                         }
                     ]
@@ -1883,50 +1508,15 @@
                         {
                             "Shape": {
                                 "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "TaperedCapsuleShapeConfiguration",
+                                    "$type": "{3864A80A-0279-4277-AF41-4F18C796EEA4} TaperedCapsuleShapeConfiguration",
                                     "Value": {
                                         "Height": 1.5,
-                                        "BottomRadius": 0.550000011920929,
-                                        "TopRadius": 0.30000001192092896
+                                        "BottomRadius": 0.55,
+                                        "TopRadius": 0.3
                                     }
                                 },
-                                "UserData": 81842421366793,
-                                "Density": 984.0
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
+                                "Density": 984.0,
+                                "UserData": 81842421366793
                             }
                         }
                     ]
@@ -1992,51 +1582,16 @@
                         {
                             "Shape": {
                                 "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "TaperedCylinderShapeConfiguration",
+                                    "$type": "{B93230C8-8419-4ABB-8E87-C951364F4CB2} TaperedCylinderShapeConfiguration",
                                     "Value": {
                                         "Height": 1.5,
-                                        "BottomRadius": 0.6499999761581421,
-                                        "TopRadius": 0.3499999940395355,
-                                        "ConvexRadius": 0.03999999910593033
+                                        "BottomRadius": 0.65,
+                                        "TopRadius": 0.35,
+                                        "ConvexRadius": 0.04
                                     }
                                 },
-                                "UserData": 81842421366794,
-                                "Density": 985.0
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
+                                "Density": 985.0,
+                                "UserData": 81842421366794
                             }
                         }
                     ]
@@ -2102,35 +1657,7 @@
                         {
                             "Shape": {
                                 "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "TriangleShapeConfiguration",
+                                    "$type": "{00E82F22-CB32-4390-BB1D-ED5A14544C7D} TriangleShapeConfiguration",
                                     "Value": {
                                         "FirstVertex": [
                                             -0.75,
@@ -2147,18 +1674,11 @@
                                             0.75,
                                             0.25
                                         ],
-                                        "ConvexRadius": 0.009999999776482582
+                                        "ConvexRadius": 0.01
                                     }
                                 },
-                                "UserData": 81842421366795,
-                                "Density": 986.0
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
+                                "Density": 986.0,
+                                "UserData": 81842421366795
                             }
                         }
                     ]
@@ -2221,41 +1741,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 9143205150115822181,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -2329,41 +1814,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -2376,16 +1826,17 @@
                         "Geometry": {
                             "$type": "ConeConstraintConfiguration",
                             "Value": {
+                                "HalfConeAngle": 0.65,
                                 "SecondPoint": {
                                     "Z": -2.0
-                                },
-                                "HalfConeAngle": 0.6499999761581421
+                                }
                             }
                         },
                         "UserData": 81842421367040,
                         "Priority": 1,
                         "PositionStepCount": 2,
-                        "VelocityStepCount": 2
+                        "VelocityStepCount": 2,
+                        "Enabled": true
                     }
                 },
                 "EditorDisabledCompositionComponent": {
@@ -2446,41 +1897,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 5312458254450391166,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -2554,41 +1970,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -2599,7 +1980,14 @@
                         "FirstBodyEntityId": "Entity_[700218746440]",
                         "SecondBodyEntityId": "Entity_[704513713736]",
                         "Geometry": {
-                            "$type": "CustomConstraintConfiguration"
+                            "$type": "CustomConstraintConfiguration",
+                            "Value": {
+                                "Data": [
+                                    17,
+                                    34,
+                                    51
+                                ]
+                            }
                         },
                         "UserData": 81842421367041,
                         "Priority": 2,
@@ -2666,41 +2054,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 16828341946501848610,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -2774,41 +2127,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -2828,7 +2146,8 @@
                         "UserData": 81842421367042,
                         "Priority": 3,
                         "PositionStepCount": 2,
-                        "VelocityStepCount": 2
+                        "VelocityStepCount": 2,
+                        "Enabled": true
                     }
                 },
                 "EditorDisabledCompositionComponent": {
@@ -2889,41 +2208,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 1085597919501725241,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -2997,41 +2281,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -3044,16 +2293,17 @@
                         "Geometry": {
                             "$type": "FixedConstraintConfiguration",
                             "Value": {
+                                "AutoDetectPoint": false,
                                 "SecondPoint": {
                                     "Z": -2.0
-                                },
-                                "AutoDetectPoint": false
+                                }
                             }
                         },
                         "UserData": 81842421367043,
                         "Priority": 4,
                         "PositionStepCount": 2,
-                        "VelocityStepCount": 2
+                        "VelocityStepCount": 2,
+                        "Enabled": true
                     }
                 },
                 "EditorDisabledCompositionComponent": {
@@ -3114,41 +2364,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 16676681356493650785,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -3216,41 +2431,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 8223078404647886203,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -3345,41 +2525,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -3447,41 +2592,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -3494,18 +2604,19 @@
                         "Geometry": {
                             "$type": "HingeConstraintConfiguration",
                             "Value": {
-                                "SecondPoint": {
-                                    "Z": -2.0
-                                },
                                 "MaximumFrictionTorque": 0.25,
                                 "MaximumLimit": 0.75,
-                                "MinimumLimit": -0.5
+                                "MinimumLimit": -0.5,
+                                "SecondPoint": {
+                                    "Z": -2.0
+                                }
                             }
                         },
                         "UserData": 81842421367045,
                         "Priority": 6,
                         "PositionStepCount": 2,
-                        "VelocityStepCount": 2
+                        "VelocityStepCount": 2,
+                        "Enabled": true
                     }
                 },
                 "EditorDisabledCompositionComponent": {
@@ -3566,41 +2677,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 16037176647852954728,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -3674,41 +2750,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -3721,8 +2762,8 @@
                         "Geometry": {
                             "$type": "PathConstraintComponentConfiguration",
                             "Value": {
-                                "PathEntityId": "Entity_[833362732616]",
                                 "MaximumFrictionForce": 2.0,
+                                "PathEntityId": "Entity_[833362732616]",
                                 "TargetPathFraction": 0.5,
                                 "TargetVelocity": 0.25
                             }
@@ -3730,7 +2771,8 @@
                         "UserData": 81842421367046,
                         "Priority": 7,
                         "PositionStepCount": 2,
-                        "VelocityStepCount": 2
+                        "VelocityStepCount": 2,
+                        "Enabled": true
                     }
                 },
                 "EditorDisabledCompositionComponent": {
@@ -3791,41 +2833,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 4039873749954686382,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -3899,41 +2906,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -3954,7 +2926,8 @@
                         "UserData": 81842421367047,
                         "Priority": 8,
                         "PositionStepCount": 2,
-                        "VelocityStepCount": 2
+                        "VelocityStepCount": 2,
+                        "Enabled": true
                     }
                 },
                 "EditorDisabledCompositionComponent": {
@@ -4015,41 +2988,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 1185752368924885093,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -4123,41 +3061,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -4173,18 +3076,19 @@
                                 "FirstFixedPoint": {
                                     "Z": 2.0
                                 },
-                                "SecondFixedPoint": {
-                                    "Z": 2.0
-                                },
                                 "MaximumLength": 5.0,
                                 "MinimumLength": 1.0,
-                                "Ratio": 1.5
+                                "Ratio": 1.5,
+                                "SecondFixedPoint": {
+                                    "Z": 2.0
+                                }
                             }
                         },
                         "UserData": 81842421367048,
                         "Priority": 9,
                         "PositionStepCount": 2,
-                        "VelocityStepCount": 2
+                        "VelocityStepCount": 2,
+                        "Enabled": true
                     }
                 },
                 "EditorDisabledCompositionComponent": {
@@ -4245,41 +3149,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 5951439546369663031,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -4347,41 +3216,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 6947121164860269258,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -4476,41 +3310,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -4578,41 +3377,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -4625,26 +3389,28 @@
                         "Geometry": {
                             "$type": "SixDofConstraintConfiguration",
                             "Value": {
-                                "TranslationX": {
-                                    "MaximumLimit": 0.5,
-                                    "MinimumLimit": -0.5
-                                },
                                 "TargetAngularVelocity": [
                                     0.0,
                                     0.0,
                                     0.25
                                 ],
                                 "TargetPosition": [
-                                    0.10000000149011612,
-                                    0.20000000298023224,
-                                    0.30000001192092896
-                                ]
+                                    0.1,
+                                    0.2,
+                                    0.3
+                                ],
+                                "TranslationX": {
+                                    "MaximumLimit": 0.5,
+                                    "MinimumLimit": -0.5,
+                                    "Mode": "Limited"
+                                }
                             }
                         },
                         "UserData": 81842421367050,
                         "Priority": 11,
                         "PositionStepCount": 2,
-                        "VelocityStepCount": 2
+                        "VelocityStepCount": 2,
+                        "Enabled": true
                     }
                 },
                 "EditorDisabledCompositionComponent": {
@@ -4705,41 +3471,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 14864022087254761228,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -4813,41 +3544,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -4860,19 +3556,20 @@
                         "Geometry": {
                             "$type": "SliderConstraintConfiguration",
                             "Value": {
-                                "SecondPoint": {
-                                    "Z": -2.0
-                                },
                                 "MaximumFrictionForce": 0.5,
                                 "MaximumLimit": 1.0,
                                 "MinimumLimit": -1.0,
+                                "SecondPoint": {
+                                    "Z": -2.0
+                                },
                                 "TargetPosition": 0.25
                             }
                         },
                         "UserData": 81842421367051,
                         "Priority": 12,
                         "PositionStepCount": 2,
-                        "VelocityStepCount": 2
+                        "VelocityStepCount": 2,
+                        "Enabled": true
                     }
                 },
                 "EditorDisabledCompositionComponent": {
@@ -4933,41 +3630,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 2628232985595160602,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -5041,41 +3703,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -5088,12 +3715,12 @@
                         "Geometry": {
                             "$type": "SwingTwistConstraintConfiguration",
                             "Value": {
+                                "MaximumFrictionTorque": 0.5,
+                                "NormalHalfConeAngle": 0.8,
+                                "PlaneHalfConeAngle": 0.6,
                                 "SecondPoint": {
                                     "Z": -2.0
                                 },
-                                "MaximumFrictionTorque": 0.5,
-                                "NormalHalfConeAngle": 0.800000011920929,
-                                "PlaneHalfConeAngle": 0.6000000238418579,
                                 "TwistMaximumAngle": 0.5,
                                 "TwistMinimumAngle": -0.5
                             }
@@ -5101,7 +3728,8 @@
                         "UserData": 81842421367052,
                         "Priority": 13,
                         "PositionStepCount": 2,
-                        "VelocityStepCount": 2
+                        "VelocityStepCount": 2,
+                        "Enabled": true
                     }
                 },
                 "EditorDisabledCompositionComponent": {
@@ -5172,41 +3800,6 @@
                                     "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
                                 }
                             }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
                         }
                     ]
                 },
@@ -5264,41 +3857,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 12539502909074705934,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -5366,41 +3924,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 10247564274179805738,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -5508,47 +4031,22 @@
                                     "RightWheel": 3
                                 }
                             ],
+                            "Engine": {
+                                "MaximumTorque": 525.0
+                            },
                             "Transmission": {
                                 "ForwardGearRatios": [
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
+                                    2.66,
+                                    1.78,
+                                    1.3,
                                     1.0,
-                                    0.7400000095367432,
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
-                                    1.0,
-                                    0.7400000095367432,
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
-                                    1.0,
-                                    0.7400000095367432,
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
-                                    1.0,
-                                    0.7400000095367432,
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
-                                    1.0,
-                                    0.7400000095367432,
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
-                                    1.0,
-                                    0.7400000095367432
+                                    0.74
                                 ],
                                 "ReverseGearRatios": [
-                                    -2.9000000953674316,
-                                    -2.9000000953674316,
-                                    -2.9000000953674316,
-                                    -2.9000000953674316,
-                                    -2.9000000953674316,
-                                    -2.9000000953674316
-                                ]
+                                    -2.9
+                                ],
+                                "ShiftDownRpm": 2100.0,
+                                "ShiftUpRpm": 4200.0
                             }
                         }
                     }
@@ -5563,41 +4061,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 8661183283762826301,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -5670,46 +4133,21 @@
                                 ],
                                 "Transmission": {
                                     "ForwardGearRatios": [
-                                        2.6600000858306885,
-                                        1.7799999713897705,
-                                        1.2999999523162842,
+                                        2.66,
+                                        1.78,
+                                        1.3,
                                         1.0,
-                                        0.7400000095367432,
-                                        2.6600000858306885,
-                                        1.7799999713897705,
-                                        1.2999999523162842,
-                                        1.0,
-                                        0.7400000095367432,
-                                        2.6600000858306885,
-                                        1.7799999713897705,
-                                        1.2999999523162842,
-                                        1.0,
-                                        0.7400000095367432,
-                                        2.6600000858306885,
-                                        1.7799999713897705,
-                                        1.2999999523162842,
-                                        1.0,
-                                        0.7400000095367432,
-                                        2.6600000858306885,
-                                        1.7799999713897705,
-                                        1.2999999523162842,
-                                        1.0,
-                                        0.7400000095367432,
-                                        2.6600000858306885,
-                                        1.7799999713897705,
-                                        1.2999999523162842,
-                                        1.0,
-                                        0.7400000095367432
+                                        0.74
                                     ],
                                     "ReverseGearRatios": [
-                                        -2.9000000953674316,
-                                        -2.9000000953674316,
-                                        -2.9000000953674316,
-                                        -2.9000000953674316,
-                                        -2.9000000953674316,
-                                        -2.9000000953674316
-                                    ]
+                                        -2.9
+                                    ],
+                                    "ShiftDownRpm": 2100.0,
+                                    "ShiftUpRpm": 4200.0
                                 }
+                            },
+                            "Controller": {
+                                "MaximumLeanAngle": 0.7
                             }
                         }
                     }
@@ -5740,41 +4178,6 @@
                     "$type": "{0E7F9B70-6499-4E4A-ADCD-02AADA4B0B05} ColliderComponent",
                     "Id": 17098885300048300486,
                     "Shapes": [
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
-                        {
-                            "Shape": {
-                                "Geometry": {
-                                    "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                }
-                            }
-                        },
                         {
                             "Shape": {
                                 "Geometry": {
@@ -5905,47 +4308,22 @@
                                     "DrivenWheel": 5
                                 }
                             ],
+                            "Engine": {
+                                "MaximumTorque": 625.0
+                            },
                             "Transmission": {
                                 "ForwardGearRatios": [
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
+                                    2.66,
+                                    1.78,
+                                    1.3,
                                     1.0,
-                                    0.7400000095367432,
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
-                                    1.0,
-                                    0.7400000095367432,
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
-                                    1.0,
-                                    0.7400000095367432,
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
-                                    1.0,
-                                    0.7400000095367432,
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
-                                    1.0,
-                                    0.7400000095367432,
-                                    2.6600000858306885,
-                                    1.7799999713897705,
-                                    1.2999999523162842,
-                                    1.0,
-                                    0.7400000095367432
+                                    0.74
                                 ],
                                 "ReverseGearRatios": [
-                                    -2.9000000953674316,
-                                    -2.9000000953674316,
-                                    -2.9000000953674316,
-                                    -2.9000000953674316,
-                                    -2.9000000953674316,
-                                    -2.9000000953674316
-                                ]
+                                    -2.9
+                                ],
+                                "ShiftDownRpm": 2100.0,
+                                "ShiftUpRpm": 4200.0
                             }
                         }
                     }
@@ -6142,41 +4520,7 @@
                                 "Shapes": [
                                     {
                                         "Shape": {
-                                            "Geometry": {
-                                                "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "Shape": {
-                                            "Geometry": {
-                                                "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "Shape": {
-                                            "Geometry": {
-                                                "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "Shape": {
-                                            "Geometry": {
-                                                "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "Shape": {
-                                            "Geometry": {
-                                                "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "Shape": {
+                                            "Density": 925.0,
                                             "Geometry": {
                                                 "$type": "{C4264778-5AA2-4457-84FF-EB00D3B53D03} SphereShapeConfiguration",
                                                 "Value": {
@@ -6192,41 +4536,7 @@
                                 "Shapes": [
                                     {
                                         "Shape": {
-                                            "Geometry": {
-                                                "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "Shape": {
-                                            "Geometry": {
-                                                "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "Shape": {
-                                            "Geometry": {
-                                                "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "Shape": {
-                                            "Geometry": {
-                                                "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "Shape": {
-                                            "Geometry": {
-                                                "$type": "{E564307C-50D4-4422-A367-08940A8144F2} BoxShapeConfiguration"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "Shape": {
+                                            "Density": 925.0,
                                             "Geometry": {
                                                 "$type": "{C4264778-5AA2-4457-84FF-EB00D3B53D03} SphereShapeConfiguration",
                                                 "Value": {
@@ -6255,7 +4565,9 @@
                                     }
                                 }
                             }
-                        ]
+                        ],
+                        "BaseConstraintPriority": 3,
+                        "MinimumCollisionSeparation": 0.05
                     }
                 },
                 "TransformComponent": {

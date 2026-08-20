@@ -118,6 +118,76 @@ def _complete_level_container(project_root, document):
             break
 
 
+def _find_component(entity, component_type):
+    for component in entity.get("Components", {}).values():
+        if component_type in component.get("$type", ""):
+            return component
+
+    raise RuntimeError(f"Entity {entity.get('Name', '<unnamed>')} has no {component_type}")
+
+
+def _set_canonical_transmission(vehicle):
+    vehicle["Transmission"] = {
+        "ForwardGearRatios": [2.66, 1.78, 1.3, 1.0, 0.74],
+        "ReverseGearRatios": [-2.9],
+        "ShiftDownRpm": 2100.0,
+        "ShiftUpRpm": 4200.0,
+    }
+
+
+def _set_canonical_ragdoll(entity):
+    sphere = {
+        "Shape": {
+            "Density": 925.0,
+            "Geometry": {
+                "$type": "{C4264778-5AA2-4457-84FF-EB00D3B53D03} SphereShapeConfiguration",
+                "Value": {
+                    "Radius": 0.25,
+                },
+            },
+        },
+    }
+    component = _find_component(entity, "RagdollComponent")
+    component["Configuration"] = {
+        "Skeleton": {
+            "Joints": [
+                {
+                    "Name": "root",
+                },
+                {
+                    "Name": "child",
+                    "ParentIndex": 0,
+                },
+            ],
+        },
+        "Parts": [
+            {
+                "Shapes": [sphere],
+                "ToParent": None,
+            },
+            {
+                "Shapes": [sphere],
+                "ModelTransform": {
+                    "Translation": [0.0, 0.0, 0.5],
+                },
+                "ToParent": {
+                    "$type": "HingeConstraintConfiguration",
+                    "Value": {
+                        "FirstPoint": {
+                            "Z": 0.25,
+                        },
+                        "SecondPoint": {
+                            "Z": -0.25,
+                        },
+                    },
+                },
+            },
+        ],
+        "BaseConstraintPriority": 3,
+        "MinimumCollisionSeparation": 0.05,
+    }
+
+
 def _patch_gallery_configuration(project_root):
     import json
     import os
@@ -265,9 +335,6 @@ def _patch_gallery_configuration(project_root):
             continue
 
         geometry = geometries.get(name[len(prefix):])
-        if geometry is None:
-            continue
-
         for component in entity.get("Components", {}).values():
             component_type = component.get("$type", "")
             if "ColliderComponent" not in component_type:
@@ -277,7 +344,18 @@ def _patch_gallery_configuration(project_root):
             if not shapes:
                 continue
 
-            shapes[0]["Shape"]["Geometry"] = {
+            if geometry is None:
+                component["Shapes"] = [shapes[0]]
+                break
+
+            shape_configuration = shapes[0]
+            for candidate in shapes:
+                candidate_geometry = candidate.get("Shape", {}).get("Geometry", {})
+                if candidate_geometry.get("$type") == geometry["$type"] and candidate_geometry.get("Value"):
+                    shape_configuration = candidate
+                    break
+
+            shape_configuration["Shape"]["Geometry"] = {
                 "$type": geometry["$type"],
                 "Value": {
                     key: value
@@ -285,8 +363,9 @@ def _patch_gallery_configuration(project_root):
                     if key != "$type"
                 },
             }
-            shapes[0]["Shape"]["Density"] = 975.0 + patched_shape_count
-            shapes[0]["Shape"]["UserData"] = 0x4A6F6C740000 + patched_shape_count
+            shape_configuration["Shape"]["Density"] = 975.0 + patched_shape_count
+            shape_configuration["Shape"]["UserData"] = 0x4A6F6C740000 + patched_shape_count
+            component["Shapes"] = [shape_configuration]
             patched_shape_count += 1
             break
 
@@ -299,6 +378,34 @@ def _patch_gallery_configuration(project_root):
         entity.get("Name", ""): entity
         for entity in document["Entities"].values()
     }
+    vehicle = _find_component(
+        entities_by_name["Jolt Gallery Wheeled Vehicle"],
+        "WheeledVehicleComponent",
+    )["Configuration"]["Vehicle"]
+    _set_canonical_transmission(vehicle)
+    vehicle["Engine"] = {
+        "MaximumTorque": 525.0,
+    }
+
+    motorcycle = _find_component(
+        entities_by_name["Jolt Gallery Motorcycle"],
+        "MotorcycleComponent",
+    )["Configuration"]["Motorcycle"]
+    _set_canonical_transmission(motorcycle["Wheeled"])
+    motorcycle["Controller"] = {
+        "MaximumLeanAngle": 0.7,
+    }
+
+    tracked_vehicle = _find_component(
+        entities_by_name["Jolt Gallery Tracked Vehicle"],
+        "TrackedVehicleComponent",
+    )["Configuration"]["Vehicle"]
+    _set_canonical_transmission(tracked_vehicle)
+    tracked_vehicle["Engine"] = {
+        "MaximumTorque": 625.0,
+    }
+    _set_canonical_ragdoll(entities_by_name["Jolt Gallery Ragdoll"])
+
     level_entity_id = document["ContainerEntity"]["Id"]
     for entity in document["Entities"].values():
         for component in entity.get("Components", {}).values():
@@ -513,9 +620,26 @@ def _patch_stress_assets(project_root):
         entity.get("Name", ""): entity
         for entity in document["Entities"].values()
     }
+    stress_vehicle = _find_component(
+        entities_by_name["Jolt Stress Vehicle"],
+        "WheeledVehicleComponent",
+    )["Configuration"]["Vehicle"]
+    _set_canonical_transmission(stress_vehicle)
+    stress_vehicle["Engine"] = {
+        "MaximumTorque": 575.0,
+    }
+    _set_canonical_ragdoll(entities_by_name["Jolt Stress Ragdoll"])
+
     level_entity_id = document["ContainerEntity"]["Id"]
     for entity in document["Entities"].values():
         for component in entity.get("Components", {}).values():
+            if (
+                entity.get("Name", "").startswith("Jolt Stress ")
+                and "ColliderComponent" in component.get("$type", "")
+                and component.get("Shapes")
+            ):
+                component["Shapes"] = [component["Shapes"][0]]
+
             if (
                 "TransformComponent" in component.get("$type", "")
                 and not component.get("Parent Entity")

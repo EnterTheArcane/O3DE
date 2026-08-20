@@ -174,7 +174,7 @@ def Jolt_ComponentSmoke():
         world_handle.IsValid() and body_handle.IsValid() and shape_handle.IsValid(),
     )
 
-    raycast = jolt.RaycastRequest()
+    raycast = jolt.JoltRaycastRequest()
     raycast_start = jolt.WorldPosition()
     raycast_start.x = 0.0
     raycast_start.y = 0.0
