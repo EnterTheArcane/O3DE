@@ -705,6 +705,26 @@ index f8ceddc..a194207 100644
  
  	/// Sample the neutral density at a grid position
  	float				GetNeutralDensity(uint32 inX, uint32 inY, uint32 inZ) const
+diff --git a/Jolt/Physics/PhysicsSystem.cpp b/Jolt/Physics/PhysicsSystem.cpp
+--- a/Jolt/Physics/PhysicsSystem.cpp
++++ b/Jolt/Physics/PhysicsSystem.cpp
+@@ -2939,12 +2939,12 @@ bool PhysicsSystem::RestoreState(StateRecorder &inStream, const StateRecorderFil
+ 		// Update bounding boxes for all bodies in the broadphase
+ 		if (inStream.IsLastPart())
+ 		{
+-			Array<BodyID> bodies;
++			mRestoreBodyIDsScratch.clear();
+ 			for (const Body *b : mBodyManager.GetBodies())
+ 				if (BodyManager::sIsValidBodyPointer(b) && b->IsInBroadPhase())
+-					bodies.push_back(b->GetID());
+-			if (!bodies.empty())
+-				mBroadPhase->NotifyBodiesAABBChanged(&bodies[0], (int)bodies.size());
++					mRestoreBodyIDsScratch.push_back(b->GetID());
++			if (!mRestoreBodyIDsScratch.empty())
++				mBroadPhase->NotifyBodiesAABBChanged(&mRestoreBodyIDsScratch[0], (int)mRestoreBodyIDsScratch.size());
+ 		}
+ 	}
+ 
 diff --git a/Jolt/Physics/PhysicsSystem.h b/Jolt/Physics/PhysicsSystem.h
 index b244a51..6ce70b3 100644
 --- a/Jolt/Physics/PhysicsSystem.h
@@ -730,6 +750,16 @@ index b244a51..6ce70b3 100644
  #endif // JPH_TRACK_BROADPHASE_STATS
  
  #if defined(JPH_TRACK_SIMULATION_STATS) && defined(JPH_PROFILE_ENABLED)
+@@ -355,6 +362,9 @@ private:
+ 	/// The broadphase does quick collision detection between body pairs
+ 	BroadPhase *				mBroadPhase = nullptr;
+ 
++	/// Reusable body list for restoring broadphase bounds
++	Array<BodyID>				mRestoreBodyIDsScratch;
++
+ 	/// The soft body contact listener
+ 	SoftBodyContactListener *	mSoftBodyContactListener = nullptr;
+ 
 diff --git a/Jolt/Physics/StateRecorder.h b/Jolt/Physics/StateRecorder.h
 --- a/Jolt/Physics/StateRecorder.h
 +++ b/Jolt/Physics/StateRecorder.h
