@@ -5823,7 +5823,7 @@ namespace Jolt
             }
             if (m_hairComputeQueue)
             {
-                auto* hairComputeQueue = static_cast<CpuComputeQueue*>(m_hairComputeQueue.GetPtr());
+                [[maybe_unused]] auto* hairComputeQueue = static_cast<CpuComputeQueue*>(m_hairComputeQueue.GetPtr());
                 AZ_Assert(
                     hairComputeQueue->IsIdle(),
                     "Jolt Hair execution resources cannot be replaced during a dispatch.");
