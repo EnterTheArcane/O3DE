@@ -11,6 +11,8 @@
 #include <AzNetworking/UdpTransport/UdpConnection.h>
 #include <AzNetworking/UdpTransport/DtlsSocket.h>
 #include <AzNetworking/UdpTransport/UdpSocket.h>
+#include <AzNetworking/ConnectionLayer/Internal/ConnectionDecodeAccess.h>
+#include <AzNetworking/Serialization/Internal/DecodeContext.h>
 #include <AzNetworking/Serialization/NetworkInputSerializer.h>
 #include <AzNetworking/Serialization/NetworkOutputSerializer.h>
 #include <AzNetworking/Framework/ICompressor.h>
@@ -243,8 +245,7 @@ namespace AzNetworking
             // Decode the packet flag bitset first since it's always uncompressed
             UdpPacketHeader header;
             {
-                constexpr Internal::SymbolSerializationContext existingOnlyContext{SymbolAdmission::ExistingOnly, nullptr};
-                NetworkOutputSerializer flagSerializer(decodedPacketData, decodedPacketSize, existingOnlyContext);
+                NetworkOutputSerializer flagSerializer(decodedPacketData, decodedPacketSize);
                 if (!header.SerializePacketFlags(flagSerializer))
                 {
                     continue;
@@ -277,9 +278,11 @@ namespace AzNetworking
             else
             {
                 // Deserialize the packet header
-                auto& symbolAdmissionPolicy = Internal::GetSymbolAdmissionPolicy(*connection);
-                const Internal::SymbolSerializationContext symbolSerializationContext{SymbolAdmission::NetworkOrigin, &symbolAdmissionPolicy};
-                NetworkOutputSerializer packetSerializer(decodedPacketData, decodedPacketSize, symbolSerializationContext);
+                Internal::DecodeSession<NetworkOutputSerializer> decodeSession{
+                    Internal::ConnectionDecodeAccess::GetPermanentAdmissionCount(*connection),
+                    decodedPacketData,
+                    decodedPacketSize};
+                NetworkOutputSerializer& packetSerializer = decodeSession.GetSerializer();
                 ISerializer& serializer = packetSerializer; // To get the default typeinfo parameters in ISerializer
                 if (!serializer.Serialize(header, "Header"))
                 {
@@ -651,8 +654,7 @@ namespace AzNetworking
 
         CorePackets::InitiateConnectionPacket packet;
         {
-            constexpr Internal::SymbolSerializationContext existingOnlyContext{SymbolAdmission::ExistingOnly, nullptr};
-            NetworkOutputSerializer networkSerializer(connectPacket.m_buffer, connectPacket.m_receivedBytes, existingOnlyContext);
+            NetworkOutputSerializer networkSerializer(connectPacket.m_buffer, connectPacket.m_receivedBytes);
 
             // First, serialize out the header
             UdpPacketHeader header;
@@ -674,7 +676,7 @@ namespace AzNetworking
 
             // Next serialize the InitiateConnectionPacket itself
             {
-                NetworkOutputSerializer tempPacketSerializer(networkSerializer.GetUnreadData(), networkSerializer.GetUnreadSize(), existingOnlyContext);
+                NetworkOutputSerializer tempPacketSerializer(networkSerializer.GetUnreadData(), networkSerializer.GetUnreadSize());
                 if (!static_cast<ISerializer&>(tempPacketSerializer).Serialize(packet, "Packet"))
                 {
                     return;

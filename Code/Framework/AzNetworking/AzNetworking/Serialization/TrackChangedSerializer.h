@@ -25,10 +25,6 @@ namespace AzNetworking
         //! @param buffer         output buffer to read from
         //! @param bufferCapacity capacity of the buffer in bytes
         TrackChangedSerializer(const uint8_t* buffer, uint32_t bufferCapacity);
-        TrackChangedSerializer(
-            const uint8_t* buffer,
-            uint32_t bufferCapacity,
-            const Internal::SymbolSerializationContext& symbolSerializationContext);
 
         // ISerializer interfaces
 

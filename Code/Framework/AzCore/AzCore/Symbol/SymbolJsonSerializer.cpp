@@ -9,6 +9,7 @@
 #include <AzCore/Symbol/SymbolJsonSerializer.h>
 
 #include <AzCore/Serialization/Json/JsonSerialization.h>
+#include <AzCore/Symbol/Internal/SymbolStorage.h>
 #include <AzCore/Symbol/Internal/SymbolValidation.h>
 #include <AzCore/Symbol/Symbol.h>
 #include <AzCore/std/string/string.h>

@@ -13,6 +13,7 @@
 #include <AzCore/Serialization/DataOverlayProviderMsgs.h>
 #include <AzCore/Serialization/DynamicSerializableField.h>
 #include <AzCore/Serialization/Locale.h>
+#include <AzCore/Serialization/Internal/PointerData.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Debug/Profiler.h>
@@ -212,6 +213,7 @@ namespace AZ
             SerializeContext::ErrorHandler      m_errorLogger;
             AZStd::atomic_int                   m_pending;
             bool                                m_readElementError = false;
+            bool                                m_rootElementRead = false;
 
             // used for xml streams
             rapidxml::xml_document<char>*       m_xmlDoc;
@@ -892,7 +894,10 @@ namespace AZ
                         if (!classContainer && pointerValue)
                         {
                             // The replacement is known-good now, so the previous pointee can be released.
-                            storageElement.m_pointerFactory->Destroy(pointerValue);
+                            Serialize::Internal::DestroyPointerData(
+                                m_sc,
+                                classElement,
+                                storageElement.m_pointerStorage);
                         }
                         pointerValue = storageElement.m_newPointerValue;
                         storageElement.m_allocatedPointer = nullptr;
@@ -1311,10 +1316,27 @@ namespace AZ
                 JSonReadNode& currentNode = m_jsonReadValues.back();
                 if (nextLevel)
                 {
+                    if (!currentNode.m_currentObject->IsObject())
+                    {
+                        m_errorLogger.ReportError("ObjectStream JSON element must be an object.");
+                        m_readElementError = true;
+                        return false;
+                    }
+
                     // Object array first element
                     auto memberIt = currentNode.m_currentObject->FindMember("Objects");
                     if (memberIt != currentNode.m_currentObject->MemberEnd())
                     {
+                        if (!memberIt->value.IsArray())
+                        {
+                            m_errorLogger.ReportError("ObjectStream JSON Objects member must be an array.");
+                            m_readElementError = true;
+                            return false;
+                        }
+                        if (memberIt->value.Empty())
+                        {
+                            return false;
+                        }
                         currentElement = memberIt->value.Begin();
                         m_jsonReadValues.push_back(JSonReadNode(&memberIt->value, currentElement));
                     }
@@ -1333,6 +1355,13 @@ namespace AZ
                         m_jsonReadValues.pop_back();
                         return false;
                     }
+                }
+
+                if (!currentElement->IsObject())
+                {
+                    m_errorLogger.ReportError("ObjectStream JSON Objects entries must be objects.");
+                    m_readElementError = true;
+                    return false;
                 }
 
 
@@ -1501,7 +1530,11 @@ namespace AZ
 
                 if (m_stream->GetCurPos() == m_stream->GetLength())
                 {
-                    // Reached the end of the stream. We may reach this state if we just skipped the root element
+                    if (isTopElement && !m_rootElementRead)
+                    {
+                        m_errorLogger.ReportError("ObjectStream binary data does not contain a root element.");
+                        m_readElementError = true;
+                    }
                     return false;
                 }
 
@@ -1514,6 +1547,11 @@ namespace AZ
                 if (flagsSize == ST_BINARYFLAG_ELEMENT_END)
                 {
                     return false;
+                }
+
+                if (isTopElement)
+                {
+                    m_rootElementRead = true;
                 }
 
                 // Read name
@@ -2249,6 +2287,7 @@ namespace AZ
             AZ_PROFILE_FUNCTION(AzCore);
 
             m_readElementError = false;
+            m_rootElementRead = false;
             ++m_pending;
 
             bool result = true;
@@ -2300,22 +2339,29 @@ namespace AZ
                         SetType(ST_BINARY);
 
                         u32 version = 0;
-                        m_stream->Read(sizeof(m_version), &version);
+                        if (m_stream->Read(sizeof(version), &version) != sizeof(version))
+                        {
+                            m_errorLogger.ReportError("ObjectStream binary data has a truncated version header.");
+                            result = false;
+                        }
                         AZStd::endian_swap(version);
                         m_version = version;
 
-                        if (m_version <= s_objectStreamVersion)
+                        if (result)
                         {
-                            result = LoadClass(m_inStream, convertedClassElement, nullptr, nullptr, m_flags) && result;
-                        }
-                        else
-                        {
-                            AZStd::string newVersionError = AZStd::string::format("ObjectStream binary load error: Stream is a newer version than object stream supports. ObjectStream version: %u, load stream version: %u",
-                                s_objectStreamVersion, m_version);
-                            m_errorLogger.ReportError(newVersionError.c_str());
+                            if (m_version <= s_objectStreamVersion)
+                            {
+                                result = LoadClass(m_inStream, convertedClassElement, nullptr, nullptr, m_flags) && result;
+                            }
+                            else
+                            {
+                                AZStd::string newVersionError = AZStd::string::format("ObjectStream binary load error: Stream is a newer version than object stream supports. ObjectStream version: %u, load stream version: %u",
+                                    s_objectStreamVersion, m_version);
+                                m_errorLogger.ReportError(newVersionError.c_str());
 
-                            // this is considered a "fatal" error since the entire stream is unreadable.
-                            result = false;
+                                // this is considered a "fatal" error since the entire stream is unreadable.
+                                result = false;
+                            }
                         }
                     }
                     else if (streamTag == s_xmlStreamTag)
@@ -2326,11 +2372,19 @@ namespace AZ
 
                         // first byte wes already read to determine file type.
                         *reinterpret_cast<u8*>(memoryBuffer.data()) = s_xmlStreamTag;
-                        m_stream->Read(len - sizeof(s_xmlStreamTag), memoryBuffer.data() + sizeof(s_xmlStreamTag));
+                        const IO::SizeType xmlBytes = len - sizeof(s_xmlStreamTag);
+                        if (m_stream->Read(xmlBytes, memoryBuffer.data() + sizeof(s_xmlStreamTag)) != xmlBytes)
+                        {
+                            m_errorLogger.ReportError("ObjectStream XML data is truncated.");
+                            result = false;
+                        }
                         memoryBuffer.back() = 0;
 
                         rapidxml::xml_document<char> xmlDoc;
-                        xmlDoc.parse<rapidxml::parse_no_data_nodes>(memoryBuffer.data());
+                        if (result)
+                        {
+                            xmlDoc.parse<rapidxml::parse_no_data_nodes>(memoryBuffer.data());
+                        }
                         m_xmlNode = xmlDoc.first_node();
 
                         if (m_xmlNode)
@@ -2378,42 +2432,65 @@ namespace AZ
 
                         // first byte wes already read to determine file type.
                         *reinterpret_cast<u8*>(memoryBuffer.data()) = s_jsonStreamTag;
-                        m_stream->Read(len - sizeof(s_jsonStreamTag), memoryBuffer.data() + sizeof(s_jsonStreamTag));
+                        const IO::SizeType jsonBytes = len - sizeof(s_jsonStreamTag);
+                        if (m_stream->Read(jsonBytes, memoryBuffer.data() + sizeof(s_jsonStreamTag)) != jsonBytes)
+                        {
+                            m_errorLogger.ReportError("ObjectStream JSON data is truncated.");
+                            result = false;
+                        }
                         memoryBuffer.back() = 0;
 
                         rapidjson::Document jsonDocument;
-                        jsonDocument.ParseInsitu(memoryBuffer.data());
-                        if (jsonDocument.HasParseError())
+                        if (result)
                         {
-                            AZ_Error("Serialize", false, "JSON parse error: %s (%u)", rapidjson::GetParseError_En(jsonDocument.GetParseError()), jsonDocument.GetErrorOffset());
-                            // this is considered a "fatal" error since the entire stream is unreadable.
-                            result = false;
-                        }
-                        else
-                        {
-                            m_version = jsonDocument["version"].GetUint();
-                            m_jsonDoc = &jsonDocument;
-
-                            AZ_Assert(m_jsonDoc->IsObject(), "We should have one root object");
-
-                            if (m_jsonDoc->HasMember("Objects"))
+                            jsonDocument.ParseInsitu(memoryBuffer.data());
+                            if (jsonDocument.HasParseError())
                             {
-                                m_jsonReadValues.push_back(JSonReadNode(nullptr, m_jsonDoc));
-                                if (m_version <= s_objectStreamVersion)
+                                AZ_Error("Serialize", false, "JSON parse error: %s (%u)", rapidjson::GetParseError_En(jsonDocument.GetParseError()), jsonDocument.GetErrorOffset());
+                                // this is considered a "fatal" error since the entire stream is unreadable.
+                                result = false;
+                            }
+                            else if (!jsonDocument.IsObject())
+                            {
+                                m_errorLogger.ReportError("ObjectStream JSON root must be an object.");
+                                result = false;
+                            }
+                            else
+                            {
+                                const auto versionMember = jsonDocument.FindMember("version");
+                                const auto objectsMember = jsonDocument.FindMember("Objects");
+                                if (versionMember == jsonDocument.MemberEnd()
+                                    || !versionMember->value.IsUint()
+                                    || objectsMember == jsonDocument.MemberEnd()
+                                    || !objectsMember->value.IsArray()
+                                    || objectsMember->value.Empty())
                                 {
-                                    result = LoadClass(m_inStream, convertedClassElement, nullptr, nullptr, m_flags) && result;
+                                    m_errorLogger.ReportError(
+                                        "ObjectStream JSON root must contain an unsigned version and a non-empty Objects array.");
+                                    result = false;
                                 }
                                 else
                                 {
-                                    AZStd::string newVersionError = AZStd::string::format("ObjectStream JSON load error: Stream is a newer version than object stream supports. ObjectStream version: %u, load stream version: %u",
-                                        s_objectStreamVersion, m_version);
-                                    m_errorLogger.ReportError(newVersionError.c_str());
+                                    m_version = versionMember->value.GetUint();
+                                    m_jsonDoc = &jsonDocument;
 
-                                    // this is considered a "fatal" error since the entire stream is unreadable.
-                                    result = false;
+                                    m_jsonReadValues.push_back(JSonReadNode(nullptr, m_jsonDoc));
+                                    if (m_version <= s_objectStreamVersion)
+                                    {
+                                        result = LoadClass(m_inStream, convertedClassElement, nullptr, nullptr, m_flags) && result;
+                                    }
+                                    else
+                                    {
+                                        AZStd::string newVersionError = AZStd::string::format("ObjectStream JSON load error: Stream is a newer version than object stream supports. ObjectStream version: %u, load stream version: %u",
+                                            s_objectStreamVersion, m_version);
+                                        m_errorLogger.ReportError(newVersionError.c_str());
+
+                                        // this is considered a "fatal" error since the entire stream is unreadable.
+                                        result = false;
+                                    }
+                                    m_jsonDoc = nullptr;
                                 }
                             }
-                            m_jsonDoc = nullptr;
                         }
                     }
                     else

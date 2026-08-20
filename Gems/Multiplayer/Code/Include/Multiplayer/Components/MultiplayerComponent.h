@@ -11,6 +11,8 @@
 #include <AzCore/Component/Component.h>
 #include <AzNetworking/Serialization/ISerializer.h>
 #include <AzNetworking/DataStructures/FixedSizeBitsetView.h>
+#include <AzCore/std/containers/fixed_vector.h>
+#include <AzCore/std/containers/vector.h>
 #include <Multiplayer/NetworkEntity/NetworkEntityHandle.h>
 #include <Multiplayer/MultiplayerStats.h>
 #include <Multiplayer/MultiplayerTypes.h>
@@ -29,6 +31,68 @@ namespace Multiplayer
     class ReplicationRecord;
     class NetBindComponent;
     class MultiplayerController;
+
+    namespace Internal
+    {
+        struct PreparedPropertyMetric final
+        {
+            NetComponentId m_componentId;
+            PropertyIndex m_propertyIndex;
+            AZ::u32 m_byteCount = 0;
+        };
+
+        //! Collects receive metrics while generated network properties are staged.
+        //! The owner publishes them only after the complete entity record commits.
+        class StateDeltaTransaction final
+        {
+        public:
+            void RecordPropertyMetric(
+                NetComponentId componentId,
+                PropertyIndex propertyIndex,
+                AZ::u32 byteCount)
+            {
+                PreparedPropertyMetric metric{
+                    componentId,
+                    propertyIndex,
+                    byteCount,
+                };
+                if (m_inlinePropertyMetrics.size() < m_inlinePropertyMetrics.capacity())
+                {
+                    m_inlinePropertyMetrics.push_back(metric);
+                }
+                else
+                {
+                    m_overflowPropertyMetrics.push_back(metric);
+                }
+            }
+
+            void CommitMetrics(MultiplayerStats& stats) const
+            {
+                for (const PreparedPropertyMetric& metric : m_inlinePropertyMetrics)
+                {
+                    stats.RecordPropertyReceived(
+                        metric.m_componentId,
+                        metric.m_propertyIndex,
+                        metric.m_byteCount);
+                }
+                for (const PreparedPropertyMetric& metric : m_overflowPropertyMetrics)
+                {
+                    stats.RecordPropertyReceived(
+                        metric.m_componentId,
+                        metric.m_propertyIndex,
+                        metric.m_byteCount);
+                }
+            }
+
+        private:
+            static constexpr size_t InlinePropertyMetricCount = 16;
+
+            AZStd::fixed_vector<PreparedPropertyMetric, InlinePropertyMetricCount> m_inlinePropertyMetrics;
+            AZStd::vector<PreparedPropertyMetric> m_overflowPropertyMetrics;
+        };
+
+        using StateDeltaContinuation = bool (*)(void* context);
+    } // namespace Internal
 
     class MultiplayerComponent
         : public AZ::Component
@@ -78,6 +142,20 @@ namespace Multiplayer
 
         virtual bool HandleRpcMessage(AzNetworking::IConnection* invokingConnection, NetEntityRole netEntityRole, NetworkEntityRpcMessage& rpcMessage) = 0;
         virtual bool SerializeStateDeltaMessage(ReplicationRecord& replicationRecord, AzNetworking::ISerializer& serializer) = 0;
+        virtual bool PrepareStateDeltaMessage(
+            ReplicationRecord& replicationRecord,
+            AzNetworking::ISerializer& serializer,
+            Internal::StateDeltaTransaction& transaction,
+            Internal::StateDeltaContinuation continuation,
+            void* continuationContext)
+        {
+            AZ_UNUSED(replicationRecord);
+            AZ_UNUSED(serializer);
+            AZ_UNUSED(transaction);
+            AZ_UNUSED(continuation);
+            AZ_UNUSED(continuationContext);
+            return false;
+        }
         virtual void NotifyStateDeltaChanges(ReplicationRecord& replicationRecord) = 0;
         virtual bool HasController() const = 0;
         virtual MultiplayerController* GetController() = 0;
@@ -117,7 +195,8 @@ namespace Multiplayer
         uint32_t currSerializerSize,
         NetComponentId componentId,
         PropertyIndex propertyIndex,
-        MultiplayerStats& stats
+        MultiplayerStats& stats,
+        Internal::StateDeltaTransaction* transaction = nullptr
     )
     {
         const uint32_t updateSize = (currSerializerSize - prevSerializerSize);
@@ -125,7 +204,14 @@ namespace Multiplayer
         {
             if (modifyRecord)
             {
-                stats.RecordPropertyReceived(componentId, propertyIndex, updateSize);
+                if (transaction)
+                {
+                    transaction->RecordPropertyMetric(componentId, propertyIndex, updateSize);
+                }
+                else
+                {
+                    stats.RecordPropertyReceived(componentId, propertyIndex, updateSize);
+                }
             }
             else
             {
@@ -144,7 +230,8 @@ namespace Multiplayer
         const char* name,
         NetComponentId componentId,
         PropertyIndex propertyIndex,
-        MultiplayerStats& stats
+        MultiplayerStats& stats,
+        Internal::StateDeltaTransaction* transaction = nullptr
     )
     {
         if (bitset.GetBit(bitIndex))
@@ -159,7 +246,14 @@ namespace Multiplayer
                 bitset.SetBit(bitIndex, false);
             }
             const uint32_t postUpdateSize = serializer.GetSize();
-            UpdateComponentMetrics(modifyRecord, prevUpdateSize, postUpdateSize, componentId, propertyIndex, stats);
+            UpdateComponentMetrics(
+                modifyRecord,
+                prevUpdateSize,
+                postUpdateSize,
+                componentId,
+                propertyIndex,
+                stats,
+                transaction);
         }
     }
 
@@ -171,7 +265,8 @@ namespace Multiplayer
         AZStd::array<TYPE, SIZE>& value,
         NetComponentId componentId,
         PropertyIndex propertyIndex,
-        MultiplayerStats& stats
+        MultiplayerStats& stats,
+        Internal::StateDeltaTransaction* transaction = nullptr
     )
     {
         const bool modifyRecord = serializer.GetSerializerMode() == AzNetworking::SerializerMode::WriteToObject;
@@ -189,7 +284,14 @@ namespace Multiplayer
             }
         }
         const uint32_t postUpdateSize = serializer.GetSize();
-        UpdateComponentMetrics(modifyRecord, prevUpdateSize, postUpdateSize, componentId, propertyIndex, stats);
+        UpdateComponentMetrics(
+            modifyRecord,
+            prevUpdateSize,
+            postUpdateSize,
+            componentId,
+            propertyIndex,
+            stats,
+            transaction);
     }
 
     template <typename TYPE, AZStd::size_t SIZE>
@@ -200,7 +302,8 @@ namespace Multiplayer
         AZStd::fixed_vector<TYPE, SIZE>& value,
         NetComponentId componentId,
         PropertyIndex propertyIndex,
-        MultiplayerStats& stats
+        MultiplayerStats& stats,
+        Internal::StateDeltaTransaction* transaction = nullptr
     )
     {
         const bool modifyRecord = serializer.GetSerializerMode() == AzNetworking::SerializerMode::WriteToObject;
@@ -231,6 +334,13 @@ namespace Multiplayer
             }
         }
         const uint32_t postUpdateSize = serializer.GetSize();
-        UpdateComponentMetrics(modifyRecord, prevUpdateSize, postUpdateSize, componentId, propertyIndex, stats);
+        UpdateComponentMetrics(
+            modifyRecord,
+            prevUpdateSize,
+            postUpdateSize,
+            componentId,
+            propertyIndex,
+            stats,
+            transaction);
     }
 }

@@ -11,11 +11,16 @@
 #include <stdint.h>
 #include <AzCore/base.h>
 #include <AzCore/std/limits.h>
-#include <AzNetworking/Serialization/SymbolSerializationContext.h>
 
 namespace AzNetworking
 {
     class IBitset;
+
+    namespace Internal
+    {
+        class DecodeAccess;
+        class DecodeContext;
+    } // namespace Internal
 
     enum class SerializerMode
     {
@@ -41,7 +46,11 @@ namespace AzNetworking
     {
     public:
 
-        explicit ISerializer(const Internal::SymbolSerializationContext* symbolSerializationContext = nullptr);
+        ISerializer() = default;
+        ISerializer(const ISerializer& rhs);
+        ISerializer(ISerializer&& rhs);
+        ISerializer& operator=(const ISerializer& rhs);
+        ISerializer& operator=(ISerializer&& rhs);
         virtual ~ISerializer() = default;
 
         //! Returns true if the serializer is valid and in a consistent state.
@@ -50,10 +59,6 @@ namespace AzNetworking
 
         //! Mark the serializer as invalid.
         void Invalidate();
-
-        //! Returns the narrow Symbol admission capability carried by this serializer.
-        //! A null constructor argument selects the trusted-local default.
-        const Internal::SymbolSerializationContext& GetSymbolSerializationContext() const;
 
         //! Returns an enum the represents the serializer mode.
         //! returns WriteToObject if the serializer is writing values to the objects it visits, otherwise returns ReadFromObject
@@ -223,7 +228,11 @@ namespace AzNetworking
         struct SerializeHelper;
 
         bool m_serializerValid = true; //< Here for performance reasons
-        const Internal::SymbolSerializationContext* m_symbolSerializationContext = nullptr;
+
+    private:
+        friend class Internal::DecodeAccess;
+
+        Internal::DecodeContext* m_decodeContext = nullptr;
     };
 }
 

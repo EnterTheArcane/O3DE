@@ -485,10 +485,24 @@ case {{ UpperFirst(Component.attrib['Name']) }}Internal::RemoteProcedure::{{ Upp
 {% else %}
         Multiplayer::ComponentRpcEmptyStruct rpcStruct;
 {% endif %}
+{% if HandleOn == 'Authority' %}
+#if AZ_TRAIT_SERVER
+        if ({{ ValidationFunction }} && !m_controller)
+        {
+{%   if Property.attrib['IsReliable']|booleanTrue %}
+            m_netBindComponent->{{ "GetSend" + InvokeFrom + "To" + HandleOn + "RpcEvent" }}().Signal(message);
+{%   endif %}
+            return true;
+        }
+#endif
+{% endif %}
         bool paramsSerialized = false;
         if (invokingConnection)
         {
-            paramsSerialized = message.GetRpcParams(rpcStruct, *invokingConnection);
+            paramsSerialized = Multiplayer::Internal::NetworkEntityRpcMessageDecode::GetRpcParams(
+                message,
+                rpcStruct,
+                *invokingConnection);
         }
         else
         {
@@ -498,21 +512,11 @@ case {{ UpperFirst(Component.attrib['Name']) }}Internal::RemoteProcedure::{{ Upp
         {
 {% if HandleOn == 'Authority' %}
 #if AZ_TRAIT_SERVER
-            if (m_controller)
-            {
-                AZ_Assert(GetNetBindComponent()->GetNetEntityRole() == Multiplayer::NetEntityRole::Authority, "Entity proxy does not have authority");
-                m_controller->Handle{{ UpperFirst(Property.attrib['Name']) }}(invokingConnection{{ PrintRpcParameters(', ', rpcParamList) }});
+            AZ_Assert(GetNetBindComponent()->GetNetEntityRole() == Multiplayer::NetEntityRole::Authority, "Entity proxy does not have authority");
+            m_controller->Handle{{ UpperFirst(Property.attrib['Name']) }}(invokingConnection{{ PrintRpcParameters(', ', rpcParamList) }});
 {%            if (Property.attrib['GenerateEventBindings']|booleanTrue == true) %}
-                m_controller->Get{{ UpperFirst(Property.attrib['Name']) }}Event().Signal({{ PrintRpcParameters('', rpcParamList) }});
+            m_controller->Get{{ UpperFirst(Property.attrib['Name']) }}Event().Signal({{ PrintRpcParameters('', rpcParamList) }});
 {%            endif %}
-            }
-            else // Note that this rpc is marked reliable, trigger the appropriate rpc event so it can be forwarded
-            {
-{%            if Property.attrib['IsReliable']|booleanTrue %}
-{#              if the rpc is not reliable we can simply drop it, also note message reliability type is default reliable in EntityRpcMessage #}
-                m_netBindComponent->{{ "GetSend" + InvokeFrom + "To" + HandleOn + "RpcEvent" }}().Signal(message);
-{%            endif %}
-            }
 #endif
 {% elif HandleOn == 'Autonomous' %}
 #if AZ_TRAIT_CLIENT
@@ -707,6 +711,113 @@ bool {{ ClassName }}::Serialize{{ AutoComponentMacros.GetNetPropertiesSetName(Re
 {% endif %}
     return serializer.IsValid();
 }
+{% endmacro %}
+{#
+
+#}
+{% macro DeclarePreparedPropertyCandidates(Component, ReplicateFrom, ReplicateTo) %}
+{% call(Property) AutoComponentMacros.ParseNetworkProperties(Component, ReplicateFrom, ReplicateTo) %}
+{% if ReplicateFrom == 'Authority' and ReplicateTo == 'Server' %}
+#if AZ_TRAIT_SERVER
+{% endif %}
+static_assert(
+    AZStd::is_copy_constructible_v<decltype(m_{{ LowerFirst(Property.attrib['Name']) }})>
+    && AZStd::is_move_assignable_v<decltype(m_{{ LowerFirst(Property.attrib['Name']) }})>,
+    "Transactional network properties must be copy constructible and move assignable");
+auto candidate{{ UpperFirst(Property.attrib['Name']) }} = m_{{ LowerFirst(Property.attrib['Name']) }};
+{% if ReplicateFrom == 'Authority' and ReplicateTo == 'Server' %}
+#endif
+{% endif %}
+{% endcall %}
+{% endmacro %}
+{#
+
+#}
+{% macro SerializePreparedNetworkPropertySet(Component, ReplicateFrom, ReplicateTo, RecordName) %}
+{% call(Property) AutoComponentMacros.ParseNetworkProperties(Component, ReplicateFrom, ReplicateTo) %}
+{% if ReplicateFrom == 'Authority' and ReplicateTo == 'Server' %}
+#if AZ_TRAIT_SERVER
+{% endif %}
+{% if Property.attrib['Container'] != 'None' and Property.attrib['Container'] != 'Object' %}
+{
+    const uint32_t firstBit = static_cast<uint32_t>({{ AutoComponentMacros.GetNetPropertiesQualifiedPropertyDirtyEnum(Component.attrib['Name'], ReplicateFrom, ReplicateTo, Property, 'Start') }});
+{% if Property.attrib['Container'] == 'Vector' %}
+    const uint32_t lastBit = static_cast<uint32_t>({{ AutoComponentMacros.GetNetPropertiesQualifiedPropertyDirtyEnum(Component.attrib['Name'], ReplicateFrom, ReplicateTo, Property, 'Size') }});
+{% else %}
+    const uint32_t lastBit = static_cast<uint32_t>({{ AutoComponentMacros.GetNetPropertiesQualifiedPropertyDirtyEnum(Component.attrib['Name'], ReplicateFrom, ReplicateTo, Property, 'End') }});
+{% endif %}
+
+    AzNetworking::FixedSizeBitsetView deltaRecord(record.m_{{ LowerFirst(AutoComponentMacros.GetNetPropertiesSetName(ReplicateFrom, ReplicateTo)) }}, firstBit, lastBit - firstBit + 1);
+    if (deltaRecord.AnySet())
+    {
+{% if Property.attrib['Container'] == 'Vector' %}
+        Multiplayer::SerializeNetworkPropertyHelperVector
+{% elif Property.attrib['Container'] == 'Array' %}
+        Multiplayer::SerializeNetworkPropertyHelperArray
+{% endif %}
+        (
+            serializer,
+            deltaRecord,
+            candidate{{ UpperFirst(Property.attrib['Name']) }},
+            GetNetComponentId(),
+            static_cast<Multiplayer::PropertyIndex>({{ UpperFirst(Component.attrib['Name']) }}Internal::NetworkProperties::{{ UpperFirst(Property.attrib['Name']) }}),
+            stats,
+            &transaction
+        );
+    }
+}
+{% else %}
+Multiplayer::SerializeNetworkPropertyHelper
+(
+    serializer,
+    record.m_{{ LowerFirst(AutoComponentMacros.GetNetPropertiesSetName(ReplicateFrom, ReplicateTo)) }},
+    static_cast<int32_t>({{ AutoComponentMacros.GetNetPropertiesQualifiedPropertyDirtyEnum(Component.attrib['Name'], ReplicateFrom, ReplicateTo, Property) }}),
+    candidate{{ UpperFirst(Property.attrib['Name']) }},
+    "{{ Property.attrib['Name'] }}",
+    GetNetComponentId(),
+    static_cast<Multiplayer::PropertyIndex>({{ UpperFirst(Component.attrib['Name']) }}Internal::NetworkProperties::{{ UpperFirst(Property.attrib['Name']) }}),
+    stats,
+    &transaction
+);
+{% endif %}
+{% if ReplicateFrom == 'Authority' and ReplicateTo == 'Server' %}
+#endif
+{% endif %}
+{% endcall %}
+{% endmacro %}
+{#
+
+#}
+{% macro CommitPreparedNetworkPropertySet(Component, ReplicateFrom, ReplicateTo) %}
+{% call(Property) AutoComponentMacros.ParseNetworkProperties(Component, ReplicateFrom, ReplicateTo) %}
+{% if ReplicateFrom == 'Authority' and ReplicateTo == 'Server' %}
+#if AZ_TRAIT_SERVER
+{% endif %}
+{% if Property.attrib['Container'] != 'None' and Property.attrib['Container'] != 'Object' %}
+{
+    const uint32_t firstBit = static_cast<uint32_t>({{ AutoComponentMacros.GetNetPropertiesQualifiedPropertyDirtyEnum(Component.attrib['Name'], ReplicateFrom, ReplicateTo, Property, 'Start') }});
+{% if Property.attrib['Container'] == 'Vector' %}
+    const uint32_t lastBit = static_cast<uint32_t>({{ AutoComponentMacros.GetNetPropertiesQualifiedPropertyDirtyEnum(Component.attrib['Name'], ReplicateFrom, ReplicateTo, Property, 'Size') }});
+{% else %}
+    const uint32_t lastBit = static_cast<uint32_t>({{ AutoComponentMacros.GetNetPropertiesQualifiedPropertyDirtyEnum(Component.attrib['Name'], ReplicateFrom, ReplicateTo, Property, 'End') }});
+{% endif %}
+    AzNetworking::FixedSizeBitsetView deltaRecord(record.m_{{ LowerFirst(AutoComponentMacros.GetNetPropertiesSetName(ReplicateFrom, ReplicateTo)) }}, firstBit, lastBit - firstBit + 1);
+    if (deltaRecord.AnySet())
+    {
+        m_{{ LowerFirst(Property.attrib['Name']) }} = AZStd::move(candidate{{ UpperFirst(Property.attrib['Name']) }});
+    }
+}
+{% else %}
+if (record.m_{{ LowerFirst(AutoComponentMacros.GetNetPropertiesSetName(ReplicateFrom, ReplicateTo)) }}.GetBit(
+        static_cast<int32_t>({{ AutoComponentMacros.GetNetPropertiesQualifiedPropertyDirtyEnum(Component.attrib['Name'], ReplicateFrom, ReplicateTo, Property) }})))
+{
+    m_{{ LowerFirst(Property.attrib['Name']) }} = AZStd::move(candidate{{ UpperFirst(Property.attrib['Name']) }});
+}
+{% endif %}
+{% if ReplicateFrom == 'Authority' and ReplicateTo == 'Server' %}
+#endif
+{% endif %}
+{% endcall %}
 {% endmacro %}
 {#
 
@@ -1214,9 +1325,12 @@ m_{{ LowerFirst(Property.attrib['Name']) }} = m_{{ LowerFirst(Property.attrib['N
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Component/Entity.h>
+#include <AzCore/std/typetraits/is_assignable.h>
+#include <AzCore/std/typetraits/is_constructible.h>
 #include <Multiplayer/MultiplayerDebug.h>
 #include <Multiplayer/Components/NetBindComponent.h>
 #include <Multiplayer/NetworkEntity/NetworkEntityRpcMessage.h>
+#include <Multiplayer/NetworkEntity/Internal/NetworkEntityRpcMessageDecode.h>
 {% if ComponentDerived or ControllerDerived %}
 #include <{{ Component.attrib['OverrideInclude'] }}>
 {% endif %}
@@ -1822,6 +1936,60 @@ namespace {{ Component.attrib['Namespace'] }}
         }
         serializer.EndObject("{{ ComponentBaseName }}");
         return serializer.IsValid();
+    }
+
+    bool {{ ComponentBaseName }}::PrepareStateDeltaMessage(
+        Multiplayer::ReplicationRecord& replicationRecord,
+        AzNetworking::ISerializer& serializer,
+        Multiplayer::Internal::StateDeltaTransaction& transaction,
+        Multiplayer::Internal::StateDeltaContinuation continuation,
+        void* continuationContext)
+    {
+        AZ_UNUSED(transaction);
+        if (!{{ RecordName }}::CanAttachRecord(replicationRecord))
+        {
+            AZ_Assert(false, "Unable to attach {{ ComponentName }}::{{ RecordName }}, no remaining available bits in record");
+            serializer.Invalidate();
+            return false;
+        }
+
+        {{ RecordName }} record = {{ RecordName }}::AttachRecord(replicationRecord);
+        [[maybe_unused]] Multiplayer::MultiplayerStats& stats = Multiplayer::GetMultiplayer()->GetStats();
+
+        {{ DeclarePreparedPropertyCandidates(Component, 'Authority', 'Client')|indent(8) }}
+        {{ DeclarePreparedPropertyCandidates(Component, 'Authority', 'Server')|indent(8) }}
+        {{ DeclarePreparedPropertyCandidates(Component, 'Authority', 'Autonomous')|indent(8) }}
+        {{ DeclarePreparedPropertyCandidates(Component, 'Autonomous', 'Authority')|indent(8) }}
+
+        serializer.BeginObject("{{ ComponentBaseName }}");
+        if (replicationRecord.ContainsAuthorityToClientBits())
+        {
+            {{ SerializePreparedNetworkPropertySet(Component, 'Authority', 'Client', RecordName)|indent(12) }}
+        }
+        if (replicationRecord.ContainsAuthorityToServerBits())
+        {
+            {{ SerializePreparedNetworkPropertySet(Component, 'Authority', 'Server', RecordName)|indent(12) }}
+        }
+        if (replicationRecord.ContainsAuthorityToAutonomousBits())
+        {
+            {{ SerializePreparedNetworkPropertySet(Component, 'Authority', 'Autonomous', RecordName)|indent(12) }}
+        }
+        if (replicationRecord.ContainsAutonomousToAuthorityBits())
+        {
+            {{ SerializePreparedNetworkPropertySet(Component, 'Autonomous', 'Authority', RecordName)|indent(12) }}
+        }
+        serializer.EndObject("{{ ComponentBaseName }}");
+
+        if (!serializer.IsValid() || !continuation || !continuation(continuationContext))
+        {
+            return false;
+        }
+
+        {{ CommitPreparedNetworkPropertySet(Component, 'Authority', 'Client')|indent(8) }}
+        {{ CommitPreparedNetworkPropertySet(Component, 'Authority', 'Server')|indent(8) }}
+        {{ CommitPreparedNetworkPropertySet(Component, 'Authority', 'Autonomous')|indent(8) }}
+        {{ CommitPreparedNetworkPropertySet(Component, 'Autonomous', 'Authority')|indent(8) }}
+        return true;
     }
 
     void {{ ComponentBaseName }}::NotifyStateDeltaChanges(Multiplayer::ReplicationRecord& replicationRecord)

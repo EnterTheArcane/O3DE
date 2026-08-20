@@ -23,17 +23,6 @@ namespace AzNetworking
         ;
     }
 
-    NetworkOutputSerializer::NetworkOutputSerializer(
-        const uint8_t* buffer,
-        uint32_t bufferCapacity,
-        const Internal::SymbolSerializationContext& symbolSerializationContext)
-        : ISerializer(&symbolSerializationContext)
-        , m_bufferPosition(0)
-        , m_bufferCapacity(bufferCapacity)
-        , m_buffer(buffer)
-    {
-    }
-
     SerializerMode NetworkOutputSerializer::GetSerializerMode() const
     {
         return SerializerMode::WriteToObject;
@@ -201,17 +190,22 @@ namespace AzNetworking
     bool NetworkOutputSerializer::SerializeBytes(uint8_t* data, uint32_t count)
     {
         const uint32_t currSize = m_bufferPosition;
-        const uint32_t nextSize = m_bufferPosition + count;
 
-        if (!m_serializerValid || (nextSize > m_bufferCapacity))
+        if (!m_serializerValid
+            || (count > 0 && data == nullptr)
+            || currSize > m_bufferCapacity
+            || count > m_bufferCapacity - currSize)
         {
             // Keep the failed boolean so we can verify serialization success
             m_serializerValid = false;
             return false;
         }
 
-        const uint8_t* readBuffer = (const uint8_t*)(m_buffer + currSize);
-        memcpy(data, readBuffer, count);
+        if (count > 0)
+        {
+            const uint8_t* readBuffer = (const uint8_t*)(m_buffer + currSize);
+            memcpy(data, readBuffer, count);
+        }
         m_bufferPosition += count;
         return true;
     }

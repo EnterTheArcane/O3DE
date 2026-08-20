@@ -11,8 +11,9 @@
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Symbol/Internal/SymbolFailure.h>
 #include <AzCore/Symbol/Internal/SymbolGroup.h>
+#include <AzCore/Symbol/Internal/SymbolStorage.h>
 #include <AzCore/Symbol/Symbol.h>
-#include <AzCore/Utils/NoDestructor.h>
+#include <AzCore/std/createdestroy.h>
 #include <AzCore/std/parallel/lock.h>
 
 #include <cstring>
@@ -25,6 +26,21 @@ namespace AZ::Internal
     {
         constexpr u8 SymbolTableEmptyControl = 0x80;
         constexpr size_t SymbolTableInvalidSlot = static_cast<size_t>(-1);
+
+        struct ExternalAdmissionState final
+        {
+            AZStd::mutex m_mutex;
+            u64 m_storageBytes = 0;
+            u32 m_symbolCount = 0;
+        };
+
+        ExternalAdmissionState& GetExternalAdmissionState()
+        {
+            alignas(ExternalAdmissionState) static AZStd::array<AZStd::byte, sizeof(ExternalAdmissionState)> stateStorage{};
+            static ExternalAdmissionState* state =
+                AZStd::construct_at(reinterpret_cast<ExternalAdmissionState*>(stateStorage.data()));
+            return *std::launder(state);
+        }
 
         [[nodiscard]]
         bool EntriesMatch(
@@ -120,11 +136,12 @@ namespace AZ::Internal
 
     SymbolTable& SymbolTable::Instance()
     {
-        static AZ::NoDestructor<SymbolTable> table;
-        return table.Get();
+        alignas(SymbolTable) static AZStd::array<AZStd::byte, sizeof(SymbolTable)> tableStorage{};
+        static SymbolTable* table = AZStd::construct_at(reinterpret_cast<SymbolTable*>(tableStorage.data()));
+        return *std::launder(table);
     }
 
-    const SymbolEntry* SymbolTable::Intern(
+    SymbolTable::InternResult SymbolTable::InternWithResult(
         const AZStd::string_view value,
         const u64 hash)
     {
@@ -146,7 +163,7 @@ namespace AZ::Internal
         ProbeResult result = Probe(shard, value, hash, mixedHash);
         if (result.m_entry)
         {
-            return result.m_entry;
+            return InternResult{result.m_entry, false};
         }
 
         if (shard.m_size >= shard.m_capacity - shard.m_capacity / 8)
@@ -164,7 +181,7 @@ namespace AZ::Internal
         shard.m_slots[result.m_emptySlot] = entry;
         shard.m_controls[result.m_emptySlot] = Fingerprint(mixedHash);
         ++shard.m_size;
-        return entry;
+        return InternResult{entry, true};
     }
 
     const SymbolEntry* SymbolTable::Find(
@@ -186,6 +203,40 @@ namespace AZ::Internal
             return nullptr;
         }
         return Probe(shard, value, hash, mixedHash).m_entry;
+    }
+
+    const SymbolEntry* SymbolTable::AdmitExternal(
+        const AZStd::string_view value,
+        const u64 hash,
+        u32& scopedAdmissionCount,
+        const u32 scopedAdmissionLimit,
+        const ExternalSymbolAdmissionLimits& processLimits)
+    {
+        ExternalAdmissionState& admissionState = GetExternalAdmissionState();
+        AZStd::lock_guard<AZStd::mutex> admissionLock(admissionState.m_mutex);
+        if (const SymbolEntry* entry = Find(value, hash))
+        {
+            return entry;
+        }
+
+        const u64 storageCost = processLimits.m_entryStorageBytes + value.size();
+        const bool hasProcessByteCapacity = admissionState.m_storageBytes <= processLimits.m_processStorageBytes
+            && storageCost <= processLimits.m_processStorageBytes - admissionState.m_storageBytes;
+        if (scopedAdmissionCount >= scopedAdmissionLimit
+            || admissionState.m_symbolCount >= processLimits.m_processSymbolCount
+            || !hasProcessByteCapacity)
+        {
+            return Find(value, hash);
+        }
+
+        const InternResult result = InternWithResult(value, hash);
+        if (result.m_inserted)
+        {
+            ++scopedAdmissionCount;
+            ++admissionState.m_symbolCount;
+            admissionState.m_storageBytes += storageCost;
+        }
+        return result.m_entry;
     }
 
     u64 SymbolTable::MixHash(u64 hash)

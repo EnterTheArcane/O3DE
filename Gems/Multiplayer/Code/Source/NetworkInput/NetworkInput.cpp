@@ -137,7 +137,10 @@ namespace Multiplayer
         // count for this entity - clients cannot legitimately need more than this.
         const uint16_t maxComponentCount = static_cast<uint16_t>(m_componentInputs.size());
         uint16_t componentInputCount = maxComponentCount;
-        serializer.Serialize(componentInputCount, "ComponentInputCount");
+        if (!serializer.Serialize(componentInputCount, "ComponentInputCount"))
+        {
+            return false;
+        }
         
         // Security: Clamp componentInputCount to prevent denial of service via
         // unbounded memory allocation. A malicious client could otherwise send
@@ -145,12 +148,12 @@ namespace Multiplayer
         // Allow some headroom above the original size for delta compression scenarios,
         // but cap at a reasonable maximum to prevent OOM attacks.
         constexpr uint16_t MaxComponentCountHeadroom = 32;
-        const uint16_t absoluteMaxCount = maxComponentCount + MaxComponentCountHeadroom;
+        const uint32_t absoluteMaxCount = static_cast<uint32_t>(maxComponentCount) + MaxComponentCountHeadroom;
         if (componentInputCount > absoluteMaxCount)
         {
-            AZLOG_ERROR("Potentially malicious componentInputCount %u received, clamping to maximum %u",
+            AZLOG_ERROR("Potentially malicious componentInputCount %u received, rejecting maximum %u",
                 componentInputCount, absoluteMaxCount);
-            componentInputCount = absoluteMaxCount;
+            return false;
         }
         
         m_componentInputs.resize(componentInputCount);
@@ -164,8 +167,15 @@ namespace Multiplayer
                 // This happens when deserializing a non-delta'd input command
                 // However in the delta serializer case, we use the previous input as our initial value
                 // which will have the NetworkInputs setup and therefore won't write out the componentId
-                NetComponentId componentId = m_componentInputs[i] ? m_componentInputs[i]->GetNetComponentId() : InvalidNetComponentId;
-                serializer.Serialize(componentId, "ComponentId");
+                NetComponentId componentId = InvalidNetComponentId;
+                if (m_componentInputs[i])
+                {
+                    componentId = m_componentInputs[i]->GetNetComponentId();
+                }
+                if (!serializer.Serialize(componentId, "ComponentId"))
+                {
+                    return false;
+                }
                 // Create a new input if we don't have one or the types do not match
                 if ((m_componentInputs[i] == nullptr) || (componentId != m_componentInputs[i]->GetNetComponentId()))
                 {
@@ -177,7 +187,10 @@ namespace Multiplayer
                     AZLOG_ERROR("Unexpected MultiplayerComponent type, unable to deserialize, dropping message");
                     return false;
                 }
-                serializer.Serialize(*m_componentInputs[i], "ComponentInput");
+                if (!serializer.Serialize(*m_componentInputs[i], "ComponentInput"))
+                {
+                    return false;
+                }
             }
             m_wasAttached = true;
         }
@@ -188,8 +201,11 @@ namespace Multiplayer
             for (auto& componentInput : m_componentInputs)
             {
                 NetComponentId componentId = componentInput->GetNetComponentId();
-                serializer.Serialize(componentId, "ComponentId");
-                serializer.Serialize(*componentInput, "ComponentInput");
+                if (!serializer.Serialize(componentId, "ComponentId")
+                    || !serializer.Serialize(*componentInput, "ComponentInput"))
+                {
+                    return false;
+                }
             }
         }
         return true;

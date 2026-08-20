@@ -7,6 +7,8 @@
 #
 
 set(FILES
+    # Compile private Symbol storage into the test module so collision and allocation-failure
+    # behavior can be exercised without exporting the implementation-only table API.
     ../AzCore/Symbol/Internal/SymbolArena.cpp
     ../AzCore/Symbol/Internal/SymbolTable.cpp
     Main.cpp
@@ -276,7 +278,6 @@ set(FILES
     TaskTests.cpp
     TickBusTest.cpp
     Time/TimeTests.cpp
-    Utils/NoDestructorTests.cpp
     UUIDTests.cpp
     XML.cpp
 )

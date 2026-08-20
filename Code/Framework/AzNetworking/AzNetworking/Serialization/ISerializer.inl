@@ -17,9 +17,28 @@
 
 namespace AzNetworking
 {
-    inline ISerializer::ISerializer(const Internal::SymbolSerializationContext* symbolSerializationContext)
-        : m_symbolSerializationContext(symbolSerializationContext)
+    inline ISerializer::ISerializer(const ISerializer& rhs)
+        : m_serializerValid{rhs.m_serializerValid}
     {
+    }
+
+    inline ISerializer::ISerializer(ISerializer&& rhs)
+        : m_serializerValid{rhs.m_serializerValid}
+    {
+    }
+
+    inline ISerializer& ISerializer::operator=(const ISerializer& rhs)
+    {
+        m_serializerValid = rhs.m_serializerValid;
+        m_decodeContext = nullptr;
+        return *this;
+    }
+
+    inline ISerializer& ISerializer::operator=(ISerializer&& rhs)
+    {
+        m_serializerValid = rhs.m_serializerValid;
+        m_decodeContext = nullptr;
+        return *this;
     }
 
     // Identifies AZStd containers
@@ -103,16 +122,6 @@ namespace AzNetworking
     inline void ISerializer::Invalidate()
     {
         m_serializerValid = false;
-    }
-
-    inline const Internal::SymbolSerializationContext& ISerializer::GetSymbolSerializationContext() const
-    {
-        static constexpr Internal::SymbolSerializationContext TrustedLocalContext;
-        if (m_symbolSerializationContext)
-        {
-            return *m_symbolSerializationContext;
-        }
-        return TrustedLocalContext;
     }
 
     inline bool ISerializer::Serialize(char& value, const char* name, uint8_t minValue, uint8_t maxValue)

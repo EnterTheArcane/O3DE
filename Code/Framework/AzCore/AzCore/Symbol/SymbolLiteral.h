@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <AzCore/Symbol/Internal/SymbolStorage.h>
 #include <AzCore/Symbol/Internal/SymbolValidation.h>
 #include <AzCore/Symbol/Symbol.h>
 
@@ -47,7 +48,7 @@ namespace AZ::Internal
             return Symbol{};
         }
 
-        static const Symbol symbol{spelling};
+        static const Symbol symbol = InternValidatedSymbol(spelling);
         return symbol;
     }
 } // namespace AZ::Internal

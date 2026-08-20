@@ -15,10 +15,12 @@
 #include <Multiplayer/NetworkEntity/NetworkEntityUpdateMessage.h>
 #include <Multiplayer/NetworkEntity/NetworkEntityRpcMessage.h>
 #include <Multiplayer/ReplicationWindows/IReplicationWindow.h>
+#include <Source/NetworkEntity/EntityReplication/PropertyPublisher.h>
 #include <AzNetworking/ConnectionLayer/IConnection.h>
 #include <AzNetworking/ConnectionLayer/IConnectionListener.h>
+#include <AzNetworking/ConnectionLayer/Internal/ConnectionDecodeAccess.h>
 #include <AzNetworking/PacketLayer/IPacketHeader.h>
-#include <AzNetworking/Serialization/Internal/SymbolAdmissionPolicy.h>
+#include <AzNetworking/Serialization/Internal/DecodeContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Console/IConsole.h>
 #include <AzCore/Console/ILogger.h>
@@ -669,22 +671,33 @@ namespace Multiplayer
         NetBindComponent* netBindComponent = replicatorEntity.GetNetBindComponent();
         AZ_Assert(netBindComponent != nullptr, "No NetBindComponent");
 
+        if (m_updateMode == Mode::LocalClientToRemoteServer
+            && netBindComponent->GetNetEntityRole() == NetEntityRole::Authority)
+        {
+            // A client connection cannot replace a locally authoritative entity with a remote proxy.
+            return false;
+        }
+
         const bool changeNetworkRole = (netBindComponent->GetNetEntityRole() != localNetworkRole);
         const bool createReplicator = (entityReplicator == nullptr)
                                     || entityReplicator->IsMarkedForRemoval()
                                     || entityReplicator->GetBoundLocalNetworkRole() != localNetworkRole;
 
         bool didSucceed = false;
+        ReplicationRecord notificationRecord;
         if (createReplicator)
         {
-            didSucceed = netBindComponent->HandlePropertyChangeMessage(
+            didSucceed = netBindComponent->PreparePropertyChangeMessage(
                 serializer,
                 localNetworkRole,
-                notifySerializationChanges);
+                notificationRecord);
         }
         else
         {
-            didSucceed = entityReplicator->HandlePropertyChangeMessage(packetId, &serializer, notifySerializationChanges);
+            didSucceed = entityReplicator->PreparePropertyChangeMessage(
+                packetId,
+                serializer,
+                notificationRecord);
         }
 
         if (!didSucceed)
@@ -767,6 +780,11 @@ namespace Multiplayer
         {
             // See if we have any outstanding RPCs that came in prior to creating the entity
             didSucceed &= m_orphanedEntityRpcs.DispatchOrphanedRpcs(*entityReplicator);
+        }
+
+        if (notifySerializationChanges)
+        {
+            netBindComponent->NotifyStateDeltaChanges(notificationRecord);
         }
 
         return didSucceed;
@@ -945,14 +963,11 @@ namespace Multiplayer
         {
             return false;
         }
-        auto& admissionPolicy = AzNetworking::Internal::GetSymbolAdmissionPolicy(*invokingConnection);
-        const AzNetworking::Internal::SymbolSerializationContext symbolSerializationContext{
-            AzNetworking::SymbolAdmission::NetworkOrigin,
-            &admissionPolicy};
-        OutputSerializer outputSerializer(
+        AzNetworking::Internal::DecodeSession<OutputSerializer> decodeSession{
+            AzNetworking::Internal::ConnectionDecodeAccess::GetPermanentAdmissionCount(*invokingConnection),
             updateMessage.GetData()->GetBuffer(),
-            static_cast<uint32_t>(updateMessage.GetData()->GetSize()),
-            symbolSerializationContext);
+            static_cast<uint32_t>(updateMessage.GetData()->GetSize())};
+        OutputSerializer& outputSerializer = decodeSession.GetSerializer();
 
         PrefabEntityId prefabEntityId;
         if (updateMessage.GetHasValidPrefabId())
@@ -1339,15 +1354,20 @@ namespace Multiplayer
 
         if (netBindComponent && netBindComponent->GetNetEntityRole() == NetEntityRole::Authority)
         {
-            EntityReplicator* replicator = AddEntityReplicator(entityHandle, NetEntityRole::Server);
             EntityMigrationMessage message;
-            if (!replicator->GenerateMigrationPacket(message))
+            PropertyPublisher migrationPublisher(
+                NetEntityRole::Server,
+                PropertyPublisher::OwnsLifetime::True,
+                m_connection);
+            if (!migrationPublisher.GenerateMigrationPacket(netBindComponent, message))
             {
                 AZLOG_ERROR(
                     "Failed to serialize migration for entity %llu",
                     static_cast<AZ::u64>(netEntityId));
                 return;
             }
+
+            AddEntityReplicator(entityHandle, NetEntityRole::Server);
 
             if (m_updateMode == EntityReplicationManager::Mode::LocalServerToRemoteServer)
             {
@@ -1383,14 +1403,11 @@ namespace Multiplayer
                 {
                     return false;
                 }
-                auto& admissionPolicy = AzNetworking::Internal::GetSymbolAdmissionPolicy(*invokingConnection);
-                const AzNetworking::Internal::SymbolSerializationContext symbolSerializationContext{
-                    AzNetworking::SymbolAdmission::NetworkOrigin,
-                    &admissionPolicy};
-                OutputSerializer outputSerializer(
+                AzNetworking::Internal::DecodeSession<OutputSerializer> decodeSession{
+                    AzNetworking::Internal::ConnectionDecodeAccess::GetPermanentAdmissionCount(*invokingConnection),
                     message.m_propertyUpdateData.GetBuffer(),
-                    static_cast<uint32_t>(message.m_propertyUpdateData.GetSize()),
-                    symbolSerializationContext);
+                    static_cast<uint32_t>(message.m_propertyUpdateData.GetSize())};
+                OutputSerializer& outputSerializer = decodeSession.GetSerializer();
                 if (!HandlePropertyChangeMessage
                 (
                     invokingConnection,

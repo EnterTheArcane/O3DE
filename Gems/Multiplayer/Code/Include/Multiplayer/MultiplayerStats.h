@@ -20,23 +20,6 @@ namespace AzNetworking
 
 namespace Multiplayer
 {
-    namespace Internal
-    {
-        //! Prevents rollback snapshots from being reported as network traffic.
-        class ScopedSerializationMetricSuppression final
-        {
-        public:
-            ScopedSerializationMetricSuppression();
-            ~ScopedSerializationMetricSuppression();
-
-            ScopedSerializationMetricSuppression(const ScopedSerializationMetricSuppression&) = delete;
-            ScopedSerializationMetricSuppression& operator=(const ScopedSerializationMetricSuppression&) = delete;
-        };
-
-        [[nodiscard]]
-        bool AreSerializationMetricsSuppressed();
-    } // namespace Internal
-
     struct MultiplayerStats
     {
         AZ::u64 m_entityCount = 0;

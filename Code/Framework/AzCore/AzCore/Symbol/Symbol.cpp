@@ -10,10 +10,12 @@
 
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Script/ScriptContext.h>
+#include <AzCore/Script/lua/lua.h>
 #include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Symbol/Internal/SymbolEntry.h>
 #include <AzCore/Symbol/Internal/SymbolFailure.h>
+#include <AzCore/Symbol/Internal/SymbolStorage.h>
 #include <AzCore/Symbol/Internal/SymbolTable.h>
 #include <AzCore/Symbol/Internal/SymbolValidation.h>
 #include <AzCore/Symbol/SymbolJsonSerializer.h>
@@ -112,11 +114,13 @@ namespace AZ
 
         if (dataContext.GetNumArguments() == 1 && dataContext.IsString(0, false))
         {
-            const char* value = nullptr;
-            dataContext.ReadArg<const char*>(0, value);
+            size_t valueLength = 0;
+            const char* value = lua_tolstring(
+                dataContext.GetNativeContext(),
+                dataContext.GetStartIndex(),
+                &valueLength);
             if (value)
             {
-                const size_t valueLength = strnlen(value, MaxLength + 1);
                 const AZStd::string_view spelling{value, valueLength};
                 if (Internal::ValidateSymbolSpelling(spelling) == Internal::SymbolValidationError::None)
                 {
@@ -134,20 +138,17 @@ namespace AZ
         ::new (thisPtr) Symbol{};
     }
 
-    size_t SymbolHash::operator()(const Symbol value) const
-    {
-        return reinterpret_cast<size_t>(value.m_entry);
-    }
-
-    bool SymbolEqual::operator()(
-        const Symbol lhs,
-        const Symbol rhs) const
-    {
-        return lhs == rhs;
-    }
-
     namespace Internal
     {
+        struct SymbolAccess final
+        {
+            [[nodiscard]]
+            static Symbol FromEntry(const SymbolEntry* entry)
+            {
+                return Symbol{entry};
+            }
+        };
+
         Symbol InternValidatedSymbol(const AZStd::string_view value)
         {
             if (value.empty())
@@ -155,21 +156,15 @@ namespace AZ
                 return {};
             }
 
-            const SymbolValidationError error = ValidateSymbolSpelling(value);
-            if (error != SymbolValidationError::None)
-            {
-                FailSymbol(GetSymbolValidationErrorMessage(error));
-            }
-
             const u64 hash = XXH3_64bits(value.data(), value.size());
-            return Symbol{SymbolTable::Instance().Intern(value, hash)};
+            return SymbolAccess::FromEntry(SymbolTable::Instance().Intern(value, hash));
         }
 
         bool FindSymbol(
             Symbol& result,
             const AZStd::string_view value)
         {
-            if (ValidateSymbolSpelling(value) != SymbolValidationError::None)
+            if (value.size() > Symbol::MaxLength)
             {
                 return false;
             }
@@ -185,7 +180,54 @@ namespace AZ
             {
                 return false;
             }
-            result = Symbol{entry};
+            result = SymbolAccess::FromEntry(entry);
+            return true;
+        }
+
+        bool AdmitExternalSymbol(
+            Symbol& result,
+            const AZStd::string_view value,
+            u32& scopedAdmissionCount,
+            const u32 scopedAdmissionLimit,
+            const ExternalSymbolAdmissionLimits& processLimits)
+        {
+            if (value.size() > Symbol::MaxLength)
+            {
+                return false;
+            }
+            if (value.empty())
+            {
+                result = {};
+                return true;
+            }
+
+            const u64 hash = XXH3_64bits(value.data(), value.size());
+            SymbolTable& table = SymbolTable::Instance();
+
+            // Table entries were validated before insertion, so an exact hit does not need another text scan.
+            if (const SymbolEntry* entry = table.Find(value, hash))
+            {
+                result = SymbolAccess::FromEntry(entry);
+                return true;
+            }
+
+            if (ValidateSymbolSpelling(value) != SymbolValidationError::None)
+            {
+                return false;
+            }
+
+            const SymbolEntry* entry = table.AdmitExternal(
+                value,
+                hash,
+                scopedAdmissionCount,
+                scopedAdmissionLimit,
+                processLimits);
+            if (!entry)
+            {
+                return false;
+            }
+
+            result = SymbolAccess::FromEntry(entry);
             return true;
         }
     } // namespace Internal

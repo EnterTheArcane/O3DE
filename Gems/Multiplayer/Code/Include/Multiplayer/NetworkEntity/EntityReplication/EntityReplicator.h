@@ -92,6 +92,10 @@ namespace Multiplayer
 
         // Interface for ReplicationManager to manage receiving entity changes
         bool HandlePropertyChangeMessage(AzNetworking::PacketId packetId, AzNetworking::ISerializer* serializer, bool notifyChanges);
+        bool PreparePropertyChangeMessage(
+            AzNetworking::PacketId packetId,
+            AzNetworking::ISerializer& serializer,
+            ReplicationRecord& notificationRecord);
         bool IsPacketIdValid(AzNetworking::PacketId packetId) const;
         AzNetworking::PacketId GetLastReceivedPacketId() const;
 

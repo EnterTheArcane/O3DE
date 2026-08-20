@@ -95,14 +95,35 @@ namespace AzNetworking
         return ProcessData(name, value);
     }
 
-    bool StringifySerializer::SerializeBytes(uint8_t* buffer, uint32_t, bool isString, uint32_t&, const char* name)
+    bool StringifySerializer::SerializeBytes(
+        uint8_t* buffer,
+        uint32_t bufferCapacity,
+        bool isString,
+        uint32_t& outSize,
+        const char* name)
     {
+        if (outSize > bufferCapacity)
+        {
+            return false;
+        }
+
         if (isString)
         {
-            AZ::CVarFixedString value = reinterpret_cast<char*>(buffer);
+            const AZStd::string value(reinterpret_cast<char*>(buffer), outSize);
             return ProcessData(name, value);
         }
-        return false;
+
+        constexpr char HexDigits[] = "0123456789ABCDEF";
+        AZStd::string value;
+        value.reserve(outSize * 2);
+        for (uint32_t byteIndex = 0; byteIndex < outSize; ++byteIndex)
+        {
+            const uint8_t byte = buffer[byteIndex];
+            value.push_back(HexDigits[byte >> 4]);
+            value.push_back(HexDigits[byte & 0x0F]);
+        }
+
+        return ProcessData(name, value);
     }
 
     bool StringifySerializer::BeginObject(const char* name)

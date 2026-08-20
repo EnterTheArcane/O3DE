@@ -624,6 +624,22 @@ namespace Multiplayer
         return m_propertySubscriber ? m_propertySubscriber->HandlePropertyChangeMessage(packetId, serializer, notifyChanges) : false;
     }
 
+    bool EntityReplicator::PreparePropertyChangeMessage(
+        const AzNetworking::PacketId packetId,
+        AzNetworking::ISerializer& serializer,
+        ReplicationRecord& notificationRecord)
+    {
+        AZ_Assert(m_propertySubscriber, "Expected to have a property subscriber.");
+        if (!m_propertySubscriber)
+        {
+            return false;
+        }
+        return m_propertySubscriber->PreparePropertyChangeMessage(
+            packetId,
+            serializer,
+            notificationRecord);
+    }
+
     bool EntityReplicator::PrepareToGenerateUpdatePacket()
     {
         AZ_Assert(m_propertyPublisher, "Expected to have a property publisher");

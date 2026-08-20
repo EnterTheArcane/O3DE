@@ -7,6 +7,7 @@
  */
 
 #include <AzNetworking/Serialization/DeltaSerializer.h>
+#include <AzNetworking/Serialization/Internal/DecodeContext.h>
 #include <AzNetworking/Serialization/NetworkInputSerializer.h>
 #include <AzNetworking/Serialization/NetworkOutputSerializer.h>
 #include <AzCore/std/algorithm.h>
@@ -19,7 +20,6 @@ namespace AzNetworking
 {
     SerializerDelta::SerializerDelta()
         : m_dirtyBits()
-        , m_deltaBytes()
     {
         ;
     }
@@ -41,47 +41,89 @@ namespace AzNetworking
 
     uint8_t* SerializerDelta::GetBufferPtr()
     {
-        return m_deltaBytes.GetBuffer();
+        if (m_overflowDeltaBytes.empty())
+        {
+            return m_inlineDeltaBytes.data();
+        }
+        return m_overflowDeltaBytes.data();
     }
 
     uint32_t SerializerDelta::GetBufferSize() const
     {
-        return static_cast<uint32_t>(m_deltaBytes.GetSize());
+        return m_deltaByteSize;
     }
 
     uint32_t SerializerDelta::GetBufferCapacity() const
     {
-        return static_cast<uint32_t>(m_deltaBytes.GetCapacity());
+        if (m_overflowDeltaBytes.empty())
+        {
+            return InlineBufferCapacity;
+        }
+        return static_cast<uint32_t>(m_overflowDeltaBytes.size());
     }
 
-    void SerializerDelta::SetBufferSize(uint32_t size)
+    bool SerializerDelta::EnsureBufferCapacity(const uint32_t size)
     {
-        m_deltaBytes.Resize(size);
+        if (size <= GetBufferCapacity())
+        {
+            return true;
+        }
+        if (size > MaxPacketSize)
+        {
+            return false;
+        }
+
+        m_overflowDeltaBytes.resize_no_construct(MaxPacketSize);
+        if (m_deltaByteSize > 0)
+        {
+            std::memcpy(m_overflowDeltaBytes.data(), m_inlineDeltaBytes.data(), m_deltaByteSize);
+        }
+        return true;
+    }
+
+    bool SerializerDelta::SetBufferSize(const uint32_t size)
+    {
+        if (!EnsureBufferCapacity(size))
+        {
+            return false;
+        }
+        m_deltaByteSize = size;
+        return true;
     }
 
     bool SerializerDelta::Serialize(ISerializer& serializer)
     {
-        return serializer.Serialize(m_dirtyBits, "DirtyBits")
-            && serializer.Serialize(m_deltaBytes, "DeltaBytes");
+        using SizeType = AZ::SizeType<AZ::RequiredBytesForValue<MaxPacketSize>(), false>::Type;
+
+        SizeType size = static_cast<SizeType>(m_deltaByteSize);
+        if (!serializer.Serialize(m_dirtyBits, "DirtyBits")
+            || !serializer.Serialize(size, "Size"))
+        {
+            return false;
+        }
+        if (serializer.GetSerializerMode() == SerializerMode::WriteToObject
+            && !SetBufferSize(size))
+        {
+            serializer.Invalidate();
+            return false;
+        }
+
+        uint32_t outSize = size;
+        if (!serializer.SerializeBytes(GetBufferPtr(), GetBufferCapacity(), false, outSize, "DeltaBytes")
+            || outSize != size)
+        {
+            serializer.Invalidate();
+            return false;
+        }
+
+        m_deltaByteSize = outSize;
+        return true;
     }
 
     DeltaSerializerCreate::DeltaSerializerCreate(SerializerDelta& delta)
         : m_delta(delta)
-        , m_dataSerializer(m_delta.GetBufferPtr(), m_delta.GetBufferCapacity())
     {
         ;
-    }
-
-    DeltaSerializerCreate::DeltaSerializerCreate(
-        SerializerDelta& delta,
-        const Internal::SymbolSerializationContext& symbolSerializationContext)
-        : ISerializer(&symbolSerializationContext)
-        , m_delta(delta)
-        , m_dataSerializer(
-            m_delta.GetBufferPtr(),
-            m_delta.GetBufferCapacity(),
-            symbolSerializationContext)
-    {
     }
 
     DeltaSerializerCreate::~DeltaSerializerCreate() = default;
@@ -343,14 +385,64 @@ namespace AzNetworking
     template <typename T>
     bool DeltaSerializerCreate::SerializeHelperImpl(T& value, uint32_t, bool, uint32_t&, const char* name)
     {
-        ISerializer& ser = m_dataSerializer; // Use interface since it fills in defaulted type info parameters
-        return ser.Serialize(value, name);
+        const uint64_t requiredCapacity = static_cast<uint64_t>(m_deltaByteOffset) + sizeof(T);
+        if (requiredCapacity > AZStd::numeric_limits<uint32_t>::max()
+            || !m_delta.EnsureBufferCapacity(static_cast<uint32_t>(requiredCapacity)))
+        {
+            Invalidate();
+            return false;
+        }
+
+        NetworkInputSerializer serializer(
+            m_delta.GetBufferPtr() + m_deltaByteOffset,
+            m_delta.GetBufferCapacity() - m_deltaByteOffset);
+        ISerializer& serializerInterface = serializer;
+        const bool result = serializerInterface.Serialize(value, name);
+        if (!result
+            || !serializer.IsValid()
+            || !m_delta.SetBufferSize(m_deltaByteOffset + serializer.GetSize()))
+        {
+            Invalidate();
+            return false;
+        }
+        m_deltaByteOffset += serializer.GetSize();
+        return true;
     }
 
     bool DeltaSerializerCreate::SerializeHelperImpl(uint8_t* buffer, uint32_t bufferCapacity, bool isString, uint32_t& outSize, const char* name)
     {
-        ISerializer& ser = m_dataSerializer; // Use interface since it fills in defaulted type info parameters
-        return ser.SerializeBytes(buffer, bufferCapacity, isString, outSize, name);
+        uint32_t lengthFieldSize = sizeof(uint8_t);
+        if (bufferCapacity > AZStd::numeric_limits<uint8_t>::max())
+        {
+            lengthFieldSize = sizeof(uint16_t);
+        }
+        if (bufferCapacity > AZStd::numeric_limits<uint16_t>::max())
+        {
+            lengthFieldSize = sizeof(uint32_t);
+        }
+        const uint64_t requiredCapacity = static_cast<uint64_t>(m_deltaByteOffset)
+            + outSize
+            + lengthFieldSize;
+        if (requiredCapacity > AZStd::numeric_limits<uint32_t>::max()
+            || !m_delta.EnsureBufferCapacity(static_cast<uint32_t>(requiredCapacity)))
+        {
+            Invalidate();
+            return false;
+        }
+
+        NetworkInputSerializer serializer(
+            m_delta.GetBufferPtr() + m_deltaByteOffset,
+            m_delta.GetBufferCapacity() - m_deltaByteOffset);
+        const bool result = serializer.SerializeBytes(buffer, bufferCapacity, isString, outSize, name);
+        if (!result
+            || !serializer.IsValid()
+            || !m_delta.SetBufferSize(m_deltaByteOffset + serializer.GetSize()))
+        {
+            Invalidate();
+            return false;
+        }
+        m_deltaByteOffset += serializer.GetSize();
+        return true;
     }
 
     DeltaSerializerApply::DeltaSerializerApply(SerializerDelta& delta)
@@ -358,18 +450,6 @@ namespace AzNetworking
         , m_dataSerializer(m_delta.GetBufferPtr(), m_delta.GetBufferSize())
     {
         ;
-    }
-
-    DeltaSerializerApply::DeltaSerializerApply(
-        SerializerDelta& delta,
-        const Internal::SymbolSerializationContext& symbolSerializationContext)
-        : ISerializer(&symbolSerializationContext)
-        , m_delta(delta)
-        , m_dataSerializer(
-            m_delta.GetBufferPtr(),
-            m_delta.GetBufferSize(),
-            symbolSerializationContext)
-    {
     }
 
     DeltaSerializerApply::~DeltaSerializerApply()
@@ -496,6 +576,7 @@ namespace AzNetworking
         // If we have run out of delta records, something has gone wrong
         if (m_nextDirtyBit >= m_delta.GetNumDirtyBits())
         {
+            Invalidate();
             return false;
         }
 
@@ -515,13 +596,25 @@ namespace AzNetworking
     template <typename T>
     bool DeltaSerializerApply::SerializeHelperImpl(T& value, uint32_t, bool, uint32_t&, const char* name)
     {
-        ISerializer& ser = m_dataSerializer; // Use interface since it fills in defaulted type info parameters
-        return ser.Serialize(value, name);
+        Internal::DecodeForwardScope decodeScope(*this, m_dataSerializer);
+        ISerializer& serializer = m_dataSerializer;
+        const bool result = serializer.Serialize(value, name);
+        if (!result)
+        {
+            Invalidate();
+        }
+        return result;
     }
 
     bool DeltaSerializerApply::SerializeHelperImpl(uint8_t* buffer, uint32_t bufferCapacity, bool isString, uint32_t& outSize, const char* name)
     {
-        ISerializer& ser = m_dataSerializer; // Use interface since it fills in defaulted type info parameters
-        return ser.SerializeBytes(buffer, bufferCapacity, isString, outSize, name);
+        Internal::DecodeForwardScope decodeScope(*this, m_dataSerializer);
+        ISerializer& serializer = m_dataSerializer;
+        const bool result = serializer.SerializeBytes(buffer, bufferCapacity, isString, outSize, name);
+        if (!result)
+        {
+            Invalidate();
+        }
+        return result;
     }
 }

@@ -13,6 +13,7 @@
 #include <AzCore/Serialization/DataOverlay.h>
 #include <AzCore/Serialization/DynamicSerializableField.h>
 #include <AzCore/Serialization/Locale.h>
+#include <AzCore/Serialization/Internal/PointerData.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Asset/AssetSerializer.h>
 
@@ -2998,7 +2999,17 @@ namespace AZ::Serialize
         return elementFound;
     }
 
-    bool DataElementNode::GetDataHierarchyEnumerate(SerializeContext::ErrorHandler* errorHandler, NodeStack& nodeStack)
+    bool DataElementNode::GetDataHierarchyEnumerate(
+        SerializeContext::ErrorHandler* errorHandler,
+        NodeStack& nodeStack)
+    {
+        return GetDataHierarchyEnumerate(nullptr, errorHandler, nodeStack);
+    }
+
+    bool DataElementNode::GetDataHierarchyEnumerate(
+        SerializeContext* context,
+        SerializeContext::ErrorHandler* errorHandler,
+        NodeStack& nodeStack)
     {
         if (nodeStack.empty())
         {
@@ -3073,6 +3084,11 @@ namespace AZ::Serialize
                     if (rawElement.m_byteStream.Read(text.size(), reinterpret_cast<void*>(text.data())) != text.size())
                     {
                         reportError("Failed to read the complete text value from a data element.");
+                        return false;
+                    }
+                    if (text.find('\0') != AZStd::string::npos)
+                    {
+                        reportError("A data element text value contains an embedded null byte.");
                         return false;
                     }
 
@@ -3232,7 +3248,7 @@ namespace AZ::Serialize
             for (int dataElementIndex = 0; dataElementIndex < m_subElements.size(); ++dataElementIndex)
             {
                 DataElementNode& subElement = m_subElements[dataElementIndex];
-                if (!subElement.GetDataHierarchyEnumerate(errorHandler, nodeStack))
+                if (!subElement.GetDataHierarchyEnumerate(context, errorHandler, nodeStack))
                 {
                     success = false;
                     break;
@@ -3241,6 +3257,14 @@ namespace AZ::Serialize
 
             // Pop stack
             nodeStack.pop_back();
+
+            if (allocatedPointer && originalPointer && context && success)
+            {
+                void* replacementPointer = *reinterpret_cast<void**>(pointerStorage);
+                *reinterpret_cast<void**>(pointerStorage) = originalPointer;
+                Internal::DestroyPointerData(context, &classElement, pointerStorage);
+                *reinterpret_cast<void**>(pointerStorage) = replacementPointer;
+            }
 
             if (dataContainer && success)
             {
@@ -3263,7 +3287,19 @@ namespace AZ::Serialize
     //=========================================================================
     // GetDataHierarchy
     //=========================================================================
-    bool DataElementNode::GetDataHierarchy(void* objectPtr, const Uuid& classId, SerializeContext::ErrorHandler* errorHandler)
+    bool DataElementNode::GetDataHierarchy(
+        void* objectPtr,
+        const Uuid& classId,
+        SerializeContext::ErrorHandler* errorHandler)
+    {
+        return GetDataHierarchy(objectPtr, classId, nullptr, errorHandler);
+    }
+
+    bool DataElementNode::GetDataHierarchy(
+        void* objectPtr,
+        const Uuid& classId,
+        SerializeContext* context,
+        SerializeContext::ErrorHandler* errorHandler)
     {
         (void)classId;
         AZ_Assert(m_element.m_id == classId, "GetDataHierarchy called with mismatched class type {%s} for element %s",
@@ -3278,7 +3314,7 @@ namespace AZ::Serialize
         bool success = true;
         for (size_t i = 0; i < m_subElements.size(); ++i)
         {
-            if (!m_subElements[i].GetDataHierarchyEnumerate(errorHandler, nodeStack))
+            if (!m_subElements[i].GetDataHierarchyEnumerate(context, errorHandler, nodeStack))
             {
                 success = false;
                 break;
@@ -3310,15 +3346,19 @@ namespace AZ::Serialize
     // FreeElementPointer
     // [12/7/2012]
     //=========================================================================
-    void IDataContainer::DeletePointerData(SerializeContext* context, const ClassElement* classElement, const void* element)
+    void Internal::DestroyPointerData(
+        SerializeContext* context,
+        const SerializeContext::ClassElement* classElement,
+        const void* element)
     {
         AZ_Assert(context != nullptr && classElement != nullptr && element != nullptr, "Invalid input");
         AZ::Uuid elemUuid = classElement->m_typeId;
+        const void* dataPtr = element;
         // find the class data for the specific element
         const ClassData* classData = classElement->m_genericClassInfo ? classElement->m_genericClassInfo->GetClassData() : context->FindClassData(elemUuid, nullptr, 0);
         if (classElement->m_flags & ClassElement::FLG_POINTER)
         {
-            const void* dataPtr = *reinterpret_cast<void* const*>(element);
+            dataPtr = *reinterpret_cast<void* const*>(element);
             // if dataAddress is a pointer in this case, cast it's value to a void* (or const void*) and dereference to get to the actual class.
             if (dataPtr && classElement->m_azRtti)
             {
@@ -3339,7 +3379,6 @@ namespace AZ::Serialize
         {
             if ((classElement->m_flags & ClassElement::FLG_POINTER) != 0)
             {
-                const void* dataPtr = *reinterpret_cast<void* const*>(element);
                 AZ_UNUSED(dataPtr); // this prevents a L4 warning if the below line is stripped out in release.
                 AZ_Warning("Serialization", false, "Failed to find class id%s for %p! Memory could leak.", elemUuid.ToFixedString().c_str(), dataPtr);
             }
@@ -3349,7 +3388,7 @@ namespace AZ::Serialize
         if (classData->m_container)  // if element is container forward the message
         {
             // clear all container data
-            classData->m_container->ClearElements(const_cast<void*>(element), context);
+            classData->m_container->ClearElements(const_cast<void*>(dataPtr), context);
         }
         else
         {
@@ -3359,7 +3398,6 @@ namespace AZ::Serialize
             }
 
             // if we get here, its a FLG_POINTER
-            const void* dataPtr = *reinterpret_cast<void* const*>(element);
             if (dataPtr == nullptr)
             {
                 return; // Pointer element is nullptr, nothing to delete
@@ -3373,6 +3411,11 @@ namespace AZ::Serialize
                 AZ_Warning("Serialization", false, "Failed to delete %p '%s' element, no destructor is provided! Memory could leak.", dataPtr, classData->m_name);
             }
         }
+    }
+
+    void IDataContainer::DeletePointerData(SerializeContext* context, const ClassElement* classElement, const void* element)
+    {
+        Internal::DestroyPointerData(context, classElement, element);
     }
 
     void IDataContainer::ElementsUpdated(void* instance)

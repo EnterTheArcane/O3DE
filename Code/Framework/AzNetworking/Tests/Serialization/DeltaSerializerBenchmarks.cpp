@@ -11,7 +11,9 @@
 #include <AzNetworking/Serialization/DeltaSerializer.h>
 #include <AzNetworking/Serialization/NetworkInputSerializer.h>
 #include <AzCore/Symbol/Symbol.h>
+#include <AzCore/Symbol/Internal/SymbolStorage.h>
 #include <AzCore/std/containers/array.h>
+#include <benchmark/benchmark.h>
 
 namespace UnitTest
 {
@@ -111,6 +113,47 @@ namespace UnitTest
             state.SetItemsProcessed(state.iterations());
         }
         BENCHMARK(BM_SymbolSerializerRaw);
+
+        void BM_ExistingExternalSymbolAdmission(benchmark::State& state)
+        {
+            constexpr AZStd::string_view spelling{"ExistingExternalAdmissionBenchmark"};
+            const AZ::Symbol existing{spelling};
+            AZ::u32 scopedAdmissionCount = 0;
+            constexpr AZ::Internal::ExternalSymbolAdmissionLimits limits{
+                262144,
+                64 * 1024 * 1024,
+                64,
+            };
+            benchmark::DoNotOptimize(existing);
+
+            for ([[maybe_unused]] auto iteration : state)
+            {
+                AZ::Symbol result;
+                benchmark::DoNotOptimize(AZ::Internal::AdmitExternalSymbol(
+                    result,
+                    spelling,
+                    scopedAdmissionCount,
+                    1024,
+                    limits));
+                benchmark::DoNotOptimize(result);
+            }
+        }
+        BENCHMARK(BM_ExistingExternalSymbolAdmission);
+
+        void BM_ExistingSymbolFind(benchmark::State& state)
+        {
+            constexpr AZStd::string_view spelling{"ExistingFindBenchmark"};
+            const AZ::Symbol existing{spelling};
+            benchmark::DoNotOptimize(existing);
+
+            for ([[maybe_unused]] auto iteration : state)
+            {
+                AZ::Symbol result;
+                benchmark::DoNotOptimize(AZ::Internal::FindSymbol(result, spelling));
+                benchmark::DoNotOptimize(result);
+            }
+        }
+        BENCHMARK(BM_ExistingSymbolFind);
     } // namespace
 } // namespace UnitTest
 

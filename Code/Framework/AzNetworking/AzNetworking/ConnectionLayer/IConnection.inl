@@ -25,15 +25,6 @@ namespace AzNetworking
         ;
     }
 
-    namespace Internal
-    {
-        inline SymbolAdmissionPolicy& GetSymbolAdmissionPolicy(
-            IConnection& connection)
-        {
-            return connection.m_symbolAdmissionPolicy;
-        }
-    } // namespace Internal
-
     inline ConnectionId IConnection::GetConnectionId() const
     {
         return m_connectionId;

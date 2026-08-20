@@ -27,6 +27,37 @@
 
 namespace Multiplayer
 {
+    namespace
+    {
+        struct StateDeltaPrepareContext final
+        {
+            AZStd::vector<MultiplayerComponent*>::iterator m_component;
+            AZStd::vector<MultiplayerComponent*>::iterator m_end;
+            ReplicationRecord& m_replicationRecord;
+            AzNetworking::ISerializer& m_serializer;
+            Internal::StateDeltaTransaction& m_transaction;
+        };
+
+        bool PrepareNextStateDeltaComponent(void* context)
+        {
+            auto& prepareContext = *reinterpret_cast<StateDeltaPrepareContext*>(context);
+            if (prepareContext.m_component == prepareContext.m_end)
+            {
+                return prepareContext.m_serializer.IsValid()
+                    && prepareContext.m_serializer.GetSize() == prepareContext.m_serializer.GetCapacity();
+            }
+
+            MultiplayerComponent* component = *prepareContext.m_component;
+            ++prepareContext.m_component;
+            return component->PrepareStateDeltaMessage(
+                prepareContext.m_replicationRecord,
+                prepareContext.m_serializer,
+                prepareContext.m_transaction,
+                PrepareNextStateDeltaComponent,
+                &prepareContext);
+        }
+    } // namespace
+
     void NetBindComponent::Reflect(AZ::ReflectContext* context)
     {
         PrefabEntityId::Reflect(context);
@@ -538,53 +569,62 @@ namespace Multiplayer
         NetEntityRole serializationRole,
         bool notifyChanges)
     {
-        const NetEntityRole netEntityRole = serializationRole;
-        ReplicationRecord replicationRecord(netEntityRole);
+        ReplicationRecord notificationRecord;
+        if (!PreparePropertyChangeMessage(serializer, serializationRole, notificationRecord))
+        {
+            return false;
+        }
+        if (notifyChanges)
+        {
+            NotifyStateDeltaChanges(notificationRecord);
+        }
+        return true;
+    }
+
+    bool NetBindComponent::PreparePropertyChangeMessage(
+        AzNetworking::ISerializer& serializer,
+        const NetEntityRole serializationRole,
+        ReplicationRecord& notificationRecord)
+    {
+        ReplicationRecord replicationRecord(serializationRole);
         if (!replicationRecord.Serialize(serializer))
         {
             return false;
         }
 
-        ReplicationRecord rollbackRecord = replicationRecord;
-        rollbackRecord.ResetConsumedBits();
-        AzNetworking::PacketEncodingBuffer rollbackData;
-        InputSerializer rollbackSerializer(
-            rollbackData.GetBuffer(),
-            static_cast<uint32_t>(rollbackData.GetCapacity()));
-        {
-            Internal::ScopedSerializationMetricSuppression metricSuppression;
-            if (!SerializeStateDeltaMessage(rollbackRecord, rollbackSerializer))
-            {
-                return false;
-            }
-        }
-        rollbackData.Resize(rollbackSerializer.GetSize());
-
+        const ReplicationRecord receivedRecord = replicationRecord;
         replicationRecord.ResetConsumedBits();
-        if (!SerializeStateDeltaMessage(replicationRecord, serializer))
+        Internal::StateDeltaTransaction transaction;
+        StateDeltaPrepareContext prepareContext{
+            m_multiplayerSerializationComponentVector.begin(),
+            m_multiplayerSerializationComponentVector.end(),
+            replicationRecord,
+            serializer,
+            transaction,
+        };
+        if (!PrepareNextStateDeltaComponent(&prepareContext))
         {
-            rollbackRecord.ResetConsumedBits();
-            OutputSerializer rollbackOutput(
-                rollbackData.GetBuffer(),
-                static_cast<uint32_t>(rollbackData.GetSize()));
-            Internal::ScopedSerializationMetricSuppression metricSuppression;
-            const bool restored = SerializeStateDeltaMessage(rollbackRecord, rollbackOutput);
-            AZ_Assert(restored, "Failed to restore network property state after deserialization failed");
             return false;
         }
 
-        if (netEntityRole == NetEntityRole::Server)
+        auto& stats = GetMultiplayer()->GetStats();
+        stats.RecordEntitySerializeStart(serializer.GetSerializerMode(), GetEntityId(), GetEntity()->GetName().c_str());
+        transaction.CommitMetrics(stats);
+        for (MultiplayerComponent* component : m_multiplayerSerializationComponentVector)
         {
-            m_totalRecord.Append(replicationRecord);
+            stats.RecordComponentSerializeEnd(serializer.GetSerializerMode(), component->GetNetComponentId());
+        }
+        stats.RecordEntitySerializeStop(serializer.GetSerializerMode(), GetEntityId(), GetEntity()->GetName().c_str());
+
+        if (serializationRole == NetEntityRole::Server)
+        {
+            m_totalRecord.Append(receivedRecord);
         }
 
         replicationRecord.ResetConsumedBits();
-        if (notifyChanges)
-        {
-            NotifyStateDeltaChanges(replicationRecord);
-        }
+        notificationRecord = replicationRecord;
 
-        if (netEntityRole == NetEntityRole::Server)
+        if (serializationRole == NetEntityRole::Server)
         {
             m_currentRecord.Append(replicationRecord);
             MarkDirty();
@@ -699,32 +739,28 @@ namespace Multiplayer
             return SerializeStateDeltaMessage(correctionRecord, serializer);
         }
 
-        ReplicationRecord rollbackRecord = m_predictableRecord;
-        AzNetworking::PacketEncodingBuffer rollbackData;
-        InputSerializer rollbackSerializer(
-            rollbackData.GetBuffer(),
-            static_cast<uint32_t>(rollbackData.GetCapacity()));
-        {
-            Internal::ScopedSerializationMetricSuppression metricSuppression;
-            if (!SerializeStateDeltaMessage(rollbackRecord, rollbackSerializer))
-            {
-                return false;
-            }
-        }
-        rollbackData.Resize(rollbackSerializer.GetSize());
-
         correctionRecord.ResetConsumedBits();
-        if (!SerializeStateDeltaMessage(correctionRecord, serializer))
+        Internal::StateDeltaTransaction transaction;
+        StateDeltaPrepareContext prepareContext{
+            m_multiplayerSerializationComponentVector.begin(),
+            m_multiplayerSerializationComponentVector.end(),
+            correctionRecord,
+            serializer,
+            transaction,
+        };
+        if (!PrepareNextStateDeltaComponent(&prepareContext))
         {
-            rollbackRecord.ResetConsumedBits();
-            OutputSerializer rollbackOutput(
-                rollbackData.GetBuffer(),
-                static_cast<uint32_t>(rollbackData.GetSize()));
-            Internal::ScopedSerializationMetricSuppression metricSuppression;
-            const bool restored = SerializeStateDeltaMessage(rollbackRecord, rollbackOutput);
-            AZ_Assert(restored, "Failed to restore predictable state after correction deserialization failed");
             return false;
         }
+
+        auto& stats = GetMultiplayer()->GetStats();
+        stats.RecordEntitySerializeStart(serializer.GetSerializerMode(), GetEntityId(), GetEntity()->GetName().c_str());
+        transaction.CommitMetrics(stats);
+        for (MultiplayerComponent* component : m_multiplayerSerializationComponentVector)
+        {
+            stats.RecordComponentSerializeEnd(serializer.GetSerializerMode(), component->GetNetComponentId());
+        }
+        stats.RecordEntitySerializeStop(serializer.GetSerializerMode(), GetEntityId(), GetEntity()->GetName().c_str());
 
         correctionRecord.ResetConsumedBits();
         NotifyStateDeltaChanges(correctionRecord);

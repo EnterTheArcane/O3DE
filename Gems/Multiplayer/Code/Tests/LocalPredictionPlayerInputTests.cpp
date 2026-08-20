@@ -19,6 +19,7 @@
 #include <AzFramework/Spawnable/SpawnableSystemComponent.h>
 #include <AzNetworking/UdpTransport/UdpPacketHeader.h>
 #include <AzNetworking/Framework/NetworkingSystemComponent.h>
+#include <AzNetworking/Serialization/NetworkInputSerializer.h>
 #include <AzTest/AzTest.h>
 #include <MultiplayerSystemComponent.h>
 #include <IMultiplayerConnectionMock.h>
@@ -460,6 +461,12 @@ namespace Multiplayer
         m_playerEntity->FindComponent<MultiplayerTest::TestMultiplayerComponent>()->m_processInputCallback = processInputCallback;
 
         AzNetworking::PacketEncodingBuffer buffer;
+        AzNetworking::NetworkInputSerializer correctionSerializer(
+            buffer.GetBuffer(), aznumeric_cast<AZ::u32>(buffer.GetCapacity()));
+        NetBindComponent* netBindComponent = m_playerEntity->FindComponent<NetBindComponent>();
+        ASSERT_NE(netBindComponent, nullptr);
+        ASSERT_TRUE(netBindComponent->SerializeEntityCorrection(correctionSerializer));
+        ASSERT_TRUE(buffer.Resize(correctionSerializer.GetSize()));
         controller->HandleSendClientInputCorrection(&connection, HostFrameId(0), ClientInputId(LargeCorrectionInputId), buffer);
 
         // The total number of corrections processed should be the number of inputs generated *past* the id we sent in the correction for

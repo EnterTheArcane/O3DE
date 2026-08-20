@@ -60,7 +60,10 @@ namespace AzNetworking
     {
         if (Resize(bufferSize))
         {
-            memcpy(m_buffer.data(), buffer, bufferSize);
+            if (bufferSize > 0)
+            {
+                memcpy(m_buffer.data(), buffer, bufferSize);
+            }
             return true;
         }
         return false;
@@ -69,8 +72,15 @@ namespace AzNetworking
     template <AZStd::size_t SIZE>
     bool ByteBuffer<SIZE>::IsSame(const uint8_t* buffer, AZStd::size_t bufferSize) const
     {
-        return (m_buffer.size() == bufferSize)
-            && (memcmp(m_buffer.data(), buffer, bufferSize) == 0);
+        if (m_buffer.size() != bufferSize)
+        {
+            return false;
+        }
+        if (bufferSize == 0)
+        {
+            return true;
+        }
+        return memcmp(m_buffer.data(), buffer, bufferSize) == 0;
     }
 
     template <AZStd::size_t SIZE>

@@ -29,6 +29,7 @@ namespace Multiplayer
     class NetworkInput;
     class ReplicationRecord;
     class MultiplayerComponent;
+    class PropertySubscriber;
 
     using EntityStopEvent = AZ::Event<const ConstNetworkEntityHandle&>;
     using EntityDirtiedEvent = AZ::Event<>;
@@ -206,6 +207,11 @@ namespace Multiplayer
         void FillTotalReplicationRecord(ReplicationRecord& replicationRecord) const;
 
     private:
+        bool PreparePropertyChangeMessage(
+            AzNetworking::ISerializer& serializer,
+            NetEntityRole serializationRole,
+            ReplicationRecord& notificationRecord);
+
         void PreInit(AZ::Entity* entity, const PrefabEntityId& prefabEntityId, NetEntityId netEntityId, NetEntityRole netEntityRole);
 
         void ConstructControllers();
@@ -278,6 +284,7 @@ namespace Multiplayer
 
         friend class NetworkEntityManager;
         friend class EntityReplicationManager;
+        friend class PropertySubscriber;
 
         friend class HierarchyTests;
         friend class HierarchyBenchmarkBase;

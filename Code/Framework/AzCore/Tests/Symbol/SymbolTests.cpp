@@ -12,6 +12,7 @@
 #include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Symbol/Internal/SymbolTable.h>
+#include <AzCore/Symbol/Internal/SymbolStorage.h>
 #include <AzCore/Symbol/Internal/SymbolValidation.h>
 #include <AzCore/Symbol/Symbol.h>
 #include <AzCore/Symbol/SymbolLiteral.h>
@@ -154,6 +155,24 @@ namespace UnitTest
             EXPECT_EQ(XXH3_64bits(input.data(), vector.m_length), vector.m_unseeded) << vector.m_length;
             EXPECT_EQ(XXH3_64bits_withSeed(input.data(), vector.m_length, Seed), vector.m_seeded) << vector.m_length;
         }
+    }
+
+    TEST_F(SymbolTests, VendoredXxh3StreamingMatchesOneShotHash)
+    {
+        AZStd::array<AZ::u8, 1024> input{};
+        for (size_t index = 0; index < input.size(); ++index)
+        {
+            input[index] = static_cast<AZ::u8>(index * 37 + 11);
+        }
+
+        XXH3_state_t* state = XXH3_createState();
+        ASSERT_NE(state, nullptr);
+        ASSERT_EQ(XXH3_64bits_reset(state), XXH_OK);
+        ASSERT_EQ(XXH3_64bits_update(state, input.data(), 17), XXH_OK);
+        ASSERT_EQ(XXH3_64bits_update(state, input.data() + 17, 224), XXH_OK);
+        ASSERT_EQ(XXH3_64bits_update(state, input.data() + 241, input.size() - 241), XXH_OK);
+        EXPECT_EQ(XXH3_64bits_digest(state), XXH3_64bits(input.data(), input.size()));
+        EXPECT_EQ(XXH3_freeState(state), XXH_OK);
     }
 
     TEST_F(SymbolTests, EmptySymbolHasStableNullState)

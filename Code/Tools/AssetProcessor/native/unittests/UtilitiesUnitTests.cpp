@@ -59,6 +59,23 @@ class UtilitiesUnitTests
 {
 };
 
+namespace
+{
+    class ScopedFileHashingOverride final
+    {
+    public:
+        ScopedFileHashingOverride()
+        {
+            AssetUtilities::SetUseFileHashOverride(true, true);
+        }
+
+        ~ScopedFileHashingOverride()
+        {
+            AssetUtilities::SetUseFileHashOverride(false, false);
+        }
+    };
+} // namespace
+
 TEST_F(UtilitiesUnitTests, NormalizeFilePath_FeedFilePathInDifferentFormats_Succeeds)
 {
     using namespace AzToolsFramework::AssetDatabase;
@@ -461,6 +478,7 @@ TEST_F(UtilitiesUnitTests, GetFileHashFromStream_NullPath_Returns0)
 
 TEST_F(UtilitiesUnitTests, GetFileHashFromStreamSmallFile_ReturnsExpectedHash)
 {
+    ScopedFileHashingOverride fileHashingOverride;
     QDir dir(m_assetDatabaseRequestsHandler->GetAssetRootDir().c_str());
     QString fileName(dir.filePath("test.txt"));
     CreateDummyFile(fileName);
@@ -470,6 +488,7 @@ TEST_F(UtilitiesUnitTests, GetFileHashFromStreamSmallFile_ReturnsExpectedHash)
 
 TEST_F(UtilitiesUnitTests, GetFileHashFromStream_SmallFileForced_ReturnsExpectedHash)
 {
+    ScopedFileHashingOverride fileHashingOverride;
     QDir dir(m_assetDatabaseRequestsHandler->GetAssetRootDir().c_str());
     QString fileName(dir.filePath("test.txt"));
     CreateDummyFile(fileName);

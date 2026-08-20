@@ -55,4 +55,22 @@ namespace Multiplayer
         m_lastReceivedPacketId = packetId;
         return true;
     }
+
+    bool PropertySubscriber::PreparePropertyChangeMessage(
+        const AzNetworking::PacketId packetId,
+        AzNetworking::ISerializer& serializer,
+        ReplicationRecord& notificationRecord)
+    {
+        AZ_Assert(IsPacketIdValid(packetId), "Packet expected to be valid");
+        if (!m_netBindComponent->PreparePropertyChangeMessage(
+                serializer,
+                m_netBindComponent->GetNetEntityRole(),
+                notificationRecord))
+        {
+            return false;
+        }
+
+        m_lastReceivedPacketId = packetId;
+        return true;
+    }
 }

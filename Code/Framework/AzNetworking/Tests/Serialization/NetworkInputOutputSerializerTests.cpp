@@ -9,6 +9,7 @@
 #include <AzCore/Console/Console.h>
 #include <AzNetworking/Serialization/NetworkInputSerializer.h>
 #include <AzNetworking/Serialization/NetworkOutputSerializer.h>
+#include <AzNetworking/DataStructures/ByteBuffer.h>
 #include <AzCore/std/string/memorytoascii.h>
 #include <AzCore/StringFunc/StringFunc.h>
 #include <AzCore/UnitTest/TestTypes.h>
@@ -200,6 +201,47 @@ namespace UnitTest
             InternalTestSerializeType(testValue, "string", expected);
         }
 
+    }
+
+    TEST_F(InputOutputSerializerTests, NullByteStorageSupportsOnlyZeroLengthPayloads)
+    {
+        AZStd::array<uint8_t, 4> encodedBytes{};
+        uint32_t byteCount = 0;
+        AzNetworking::NetworkInputSerializer inputSerializer(
+            encodedBytes.data(),
+            static_cast<uint32_t>(encodedBytes.size()));
+        EXPECT_TRUE(inputSerializer.SerializeBytes(
+            nullptr,
+            AzNetworking::MaxPacketSize,
+            false,
+            byteCount,
+            "Bytes"));
+
+        AzNetworking::NetworkOutputSerializer emptyOutput(
+            encodedBytes.data(),
+            inputSerializer.GetSize());
+        EXPECT_TRUE(emptyOutput.SerializeBytes(
+            nullptr,
+            AzNetworking::MaxPacketSize,
+            false,
+            byteCount,
+            "Bytes"));
+        EXPECT_EQ(byteCount, 0);
+
+        encodedBytes[0] = 0;
+        encodedBytes[1] = 1;
+        encodedBytes[2] = 0xA5;
+        AzNetworking::NetworkOutputSerializer nonEmptyOutput(
+            encodedBytes.data(),
+            3);
+        byteCount = 0;
+        EXPECT_FALSE(nonEmptyOutput.SerializeBytes(
+            nullptr,
+            AzNetworking::MaxPacketSize,
+            false,
+            byteCount,
+            "Bytes"));
+        EXPECT_FALSE(nonEmptyOutput.IsValid());
     }
 
 

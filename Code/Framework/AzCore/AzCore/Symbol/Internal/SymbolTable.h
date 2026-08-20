@@ -16,6 +16,8 @@
 
 namespace AZ::Internal
 {
+    struct ExternalSymbolAdmissionLimits;
+
     class SymbolTable final
     {
     public:
@@ -29,16 +31,33 @@ namespace AZ::Internal
         static SymbolTable& Instance();
 
         [[nodiscard]]
-        const SymbolEntry* Intern(AZStd::string_view value, u64 hash);
+        const SymbolEntry* Intern(AZStd::string_view value, u64 hash)
+        {
+            return InternWithResult(value, hash).m_entry;
+        }
 
         [[nodiscard]]
         const SymbolEntry* Find(AZStd::string_view value, u64 hash);
+
+        [[nodiscard]]
+        const SymbolEntry* AdmitExternal(
+            AZStd::string_view value,
+            u64 hash,
+            u32& scopedAdmissionCount,
+            u32 scopedAdmissionLimit,
+            const ExternalSymbolAdmissionLimits& processLimits);
 
     private:
         struct ProbeResult final
         {
             const SymbolEntry* m_entry = nullptr;
             size_t m_emptySlot = static_cast<size_t>(-1);
+        };
+
+        struct InternResult final
+        {
+            const SymbolEntry* m_entry = nullptr;
+            bool m_inserted = false;
         };
 
         static constexpr size_t ShardAlignment = 64;
@@ -80,6 +99,9 @@ namespace AZ::Internal
         static void InsertExisting(
             Shard& shard,
             const SymbolEntry* entry);
+
+        [[nodiscard]]
+        InternResult InternWithResult(AZStd::string_view value, u64 hash);
 
         static constexpr size_t ShardCount = 32;
         static constexpr size_t ShardIndexBitCount = 5;

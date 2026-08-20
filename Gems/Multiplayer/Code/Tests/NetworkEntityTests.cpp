@@ -22,7 +22,9 @@
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzNetworking/Serialization/NetworkInputSerializer.h>
-#include <AzNetworking/Serialization/Internal/SymbolAdmissionPolicy.h>
+#include <AzNetworking/ConnectionLayer/Internal/ConnectionDecodeAccess.h>
+#include <AzNetworking/Serialization/Internal/DecodeContext.h>
+#include <Multiplayer/NetworkEntity/Internal/NetworkEntityRpcMessageDecode.h>
 #include <AzNetworking/Serialization/NetworkOutputSerializer.h>
 #include <AzNetworking/Serialization/StringifySerializer.h>
 #include <AzNetworking/UdpTransport/UdpPacketHeader.h>
@@ -344,8 +346,14 @@ namespace Multiplayer
             ConnectionRole::Connector);
         TestSymbolRpcStruct firstDestination;
         TestSymbolRpcStruct secondDestination;
-        ASSERT_TRUE(copiedMessage.GetRpcParams(firstDestination, *m_mockConnection));
-        ASSERT_TRUE(sourceMessage.GetRpcParams(secondDestination, secondConnection));
+        ASSERT_TRUE(Internal::NetworkEntityRpcMessageDecode::GetRpcParams(
+            copiedMessage,
+            firstDestination,
+            *m_mockConnection));
+        ASSERT_TRUE(Internal::NetworkEntityRpcMessageDecode::GetRpcParams(
+            sourceMessage,
+            secondDestination,
+            secondConnection));
         EXPECT_EQ(firstDestination.m_symbol, sourceParams.m_symbol);
         EXPECT_EQ(secondDestination.m_symbol, sourceParams.m_symbol);
 
@@ -375,14 +383,64 @@ namespace Multiplayer
         ASSERT_TRUE(preservedMessage.GetRpcParams(decodedPreservedParams));
         EXPECT_EQ(decodedPreservedParams.m_symbol, preservedParams.m_symbol);
 
+        constexpr size_t BlobSizeOffset = 13;
+        constexpr size_t InnerSizeOffset = 15;
+        {
+            AZStd::array<AZ::u8, 18> contradictoryLengths{};
+            contradictoryLengths[InnerSizeOffset + 1] = 1;
+            contradictoryLengths.back() = 0x7F;
+            NetworkEntityRpcMessage malformedMessage = originalMessage;
+            AzNetworking::NetworkOutputSerializer malformedSerializer(
+                contradictoryLengths.data(),
+                aznumeric_cast<AZ::u32>(contradictoryLengths.size()));
+
+            EXPECT_FALSE(malformedMessage.Serialize(malformedSerializer));
+            EXPECT_EQ(malformedMessage, originalMessage);
+        }
+        {
+            AZStd::array<AZ::u8, 17> contradictoryLengths{};
+            contradictoryLengths[BlobSizeOffset + 1] = 1;
+            NetworkEntityRpcMessage malformedMessage = originalMessage;
+            AzNetworking::NetworkOutputSerializer malformedSerializer(
+                contradictoryLengths.data(),
+                aznumeric_cast<AZ::u32>(contradictoryLengths.size()));
+
+            EXPECT_FALSE(malformedMessage.Serialize(malformedSerializer));
+            EXPECT_EQ(malformedMessage, originalMessage);
+        }
+
         AzNetworking::NetworkOutputSerializer outputSerializer(
             buffer.data(),
             inputSerializer.GetSize());
         ASSERT_TRUE(preservedMessage.Serialize(outputSerializer));
         EXPECT_EQ(preservedMessage, sourceMessage);
         TestSymbolRpcStruct roundTripParams;
-        ASSERT_TRUE(preservedMessage.GetRpcParams(roundTripParams, *m_mockConnection));
+        ASSERT_TRUE(Internal::NetworkEntityRpcMessageDecode::GetRpcParams(
+            preservedMessage,
+            roundTripParams,
+            *m_mockConnection));
         EXPECT_EQ(roundTripParams.m_symbol, sourceParams.m_symbol);
+
+        AZStd::vector<AZ::u8> payloadWithTrailingByte(
+            buffer.begin(),
+            buffer.begin() + inputSerializer.GetSize());
+        payloadWithTrailingByte.push_back(0x00);
+        const AZ::u16 enlargedPayloadSize = aznumeric_cast<AZ::u16>(inputSerializer.GetSize() - 17 + 1);
+        payloadWithTrailingByte[BlobSizeOffset] = static_cast<AZ::u8>(enlargedPayloadSize >> 8);
+        payloadWithTrailingByte[BlobSizeOffset + 1] = static_cast<AZ::u8>(enlargedPayloadSize);
+        payloadWithTrailingByte[InnerSizeOffset] = static_cast<AZ::u8>(enlargedPayloadSize >> 8);
+        payloadWithTrailingByte[InnerSizeOffset + 1] = static_cast<AZ::u8>(enlargedPayloadSize);
+
+        NetworkEntityRpcMessage trailingPayloadMessage;
+        AzNetworking::NetworkOutputSerializer trailingPayloadSerializer(
+            payloadWithTrailingByte.data(),
+            aznumeric_cast<AZ::u32>(payloadWithTrailingByte.size()));
+        ASSERT_TRUE(trailingPayloadMessage.Serialize(trailingPayloadSerializer));
+        TestSymbolRpcStruct trailingPayloadParams;
+        EXPECT_FALSE(Internal::NetworkEntityRpcMessageDecode::GetRpcParams(
+            trailingPayloadMessage,
+            trailingPayloadParams,
+            *m_mockConnection));
     }
 
     TEST_F(MultiplayerNetworkEntityTests, PropertyMessageFailureRestoresValuesAndSuppressesNotifications)
@@ -440,14 +498,11 @@ namespace Multiplayer
         component->RollbackNumberAddEvent(numberHandler);
         component->RollbackSymbolAddEvent(symbolHandler);
 
-        auto& admissionPolicy = AzNetworking::Internal::GetSymbolAdmissionPolicy(*m_mockConnection);
-        const AzNetworking::Internal::SymbolSerializationContext symbolSerializationContext{
-            AzNetworking::SymbolAdmission::NetworkOrigin,
-            &admissionPolicy};
-        OutputSerializer truncatedSerializer(
+        AzNetworking::Internal::DecodeSession<OutputSerializer> truncatedSession{
+            AzNetworking::Internal::ConnectionDecodeAccess::GetPermanentAdmissionCount(*m_mockConnection),
             buffer.GetBuffer(),
-            aznumeric_cast<AZ::u32>(buffer.GetSize() - 1),
-            symbolSerializationContext);
+            aznumeric_cast<AZ::u32>(buffer.GetSize() - 1)};
+        OutputSerializer& truncatedSerializer = truncatedSession.GetSerializer();
         EXPECT_FALSE(netBindComponent->HandlePropertyChangeMessage(
             truncatedSerializer,
             NetEntityRole::Client,
@@ -457,10 +512,11 @@ namespace Multiplayer
         EXPECT_EQ(numberNotifications, 0);
         EXPECT_EQ(symbolNotifications, 0);
 
-        OutputSerializer outputSerializer(
+        AzNetworking::Internal::DecodeSession<OutputSerializer> outputSession{
+            AzNetworking::Internal::ConnectionDecodeAccess::GetPermanentAdmissionCount(*m_mockConnection),
             buffer.GetBuffer(),
-            aznumeric_cast<AZ::u32>(buffer.GetSize()),
-            symbolSerializationContext);
+            aznumeric_cast<AZ::u32>(buffer.GetSize())};
+        OutputSerializer& outputSerializer = outputSession.GetSerializer();
         ASSERT_TRUE(netBindComponent->HandlePropertyChangeMessage(
             outputSerializer,
             NetEntityRole::Client,
@@ -487,10 +543,28 @@ namespace Multiplayer
         ASSERT_NE(clientComponent, nullptr);
         PropertySubscriber subscriber(*m_entityReplicationManager, clientNetBind);
 
-        OutputSerializer failedSubscriberSerializer(
+        AZ::u32 clientNumberNotifications = 0;
+        AZ::u32 clientSymbolNotifications = 0;
+        AzNetworking::ConnectionId notificationConnectionId = AzNetworking::InvalidConnectionId;
+        AZ::Event<AZ::u32>::Handler clientNumberHandler(
+            [&clientNumberNotifications, &notificationConnectionId, clientNetBind](AZ::u32)
+            {
+                ++clientNumberNotifications;
+                notificationConnectionId = clientNetBind->GetOwningConnectionId();
+            });
+        AZ::Event<AZ::Symbol>::Handler clientSymbolHandler(
+            [&clientSymbolNotifications](AZ::Symbol)
+            {
+                ++clientSymbolNotifications;
+            });
+        clientComponent->RollbackNumberAddEvent(clientNumberHandler);
+        clientComponent->RollbackSymbolAddEvent(clientSymbolHandler);
+
+        AzNetworking::Internal::DecodeSession<OutputSerializer> failedSubscriberSession{
+            AzNetworking::Internal::ConnectionDecodeAccess::GetPermanentAdmissionCount(*m_mockConnection),
             buffer.GetBuffer(),
-            aznumeric_cast<AZ::u32>(buffer.GetSize() - 1),
-            symbolSerializationContext);
+            aznumeric_cast<AZ::u32>(buffer.GetSize() - 1)};
+        OutputSerializer& failedSubscriberSerializer = failedSubscriberSession.GetSerializer();
         EXPECT_FALSE(subscriber.HandlePropertyChangeMessage(
             AzNetworking::PacketId{5},
             &failedSubscriberSerializer,
@@ -499,17 +573,28 @@ namespace Multiplayer
         EXPECT_EQ(clientComponent->GetRollbackNumber(), 0);
         EXPECT_TRUE(clientComponent->GetRollbackSymbol().IsEmpty());
 
-        OutputSerializer subscriberSerializer(
+        AzNetworking::Internal::DecodeSession<OutputSerializer> subscriberSession{
+            AzNetworking::Internal::ConnectionDecodeAccess::GetPermanentAdmissionCount(*m_mockConnection),
             buffer.GetBuffer(),
-            aznumeric_cast<AZ::u32>(buffer.GetSize()),
-            symbolSerializationContext);
-        ASSERT_TRUE(subscriber.HandlePropertyChangeMessage(
+            aznumeric_cast<AZ::u32>(buffer.GetSize())};
+        OutputSerializer& subscriberSerializer = subscriberSession.GetSerializer();
+        ReplicationRecord notificationRecord;
+        ASSERT_TRUE(subscriber.PreparePropertyChangeMessage(
             AzNetworking::PacketId{5},
-            &subscriberSerializer,
-            true));
+            subscriberSerializer,
+            notificationRecord));
         EXPECT_EQ(subscriber.GetLastReceivedPacketId(), AzNetworking::PacketId{5});
         EXPECT_EQ(clientComponent->GetRollbackNumber(), updatedNumber);
         EXPECT_EQ(clientComponent->GetRollbackSymbol(), updatedSymbol);
+        EXPECT_EQ(clientNumberNotifications, 0);
+        EXPECT_EQ(clientSymbolNotifications, 0);
+
+        const AzNetworking::ConnectionId finalConnectionId{22};
+        clientNetBind->SetOwningConnectionId(finalConnectionId);
+        clientNetBind->NotifyStateDeltaChanges(notificationRecord);
+        EXPECT_EQ(clientNumberNotifications, 1);
+        EXPECT_EQ(clientSymbolNotifications, 1);
+        EXPECT_EQ(notificationConnectionId, finalConnectionId);
 
         const AZ::u32 correctedNumber = 84;
         const AZ::Symbol correctedSymbol{AZStd::string_view{"CorrectedPropertySymbol"}};
@@ -524,20 +609,22 @@ namespace Multiplayer
 
         controller->SetRollbackNumber(updatedNumber);
         controller->SetRollbackSymbol(updatedSymbol);
-        OutputSerializer truncatedCorrection(
+        AzNetworking::Internal::DecodeSession<OutputSerializer> truncatedCorrectionSession{
+            AzNetworking::Internal::ConnectionDecodeAccess::GetPermanentAdmissionCount(*m_mockConnection),
             correctionBuffer.GetBuffer(),
-            aznumeric_cast<AZ::u32>(correctionBuffer.GetSize() - 1),
-            symbolSerializationContext);
+            aznumeric_cast<AZ::u32>(correctionBuffer.GetSize() - 1)};
+        OutputSerializer& truncatedCorrection = truncatedCorrectionSession.GetSerializer();
         EXPECT_FALSE(netBindComponent->SerializeEntityCorrection(truncatedCorrection));
         EXPECT_EQ(component->GetRollbackNumber(), updatedNumber);
         EXPECT_EQ(component->GetRollbackSymbol(), updatedSymbol);
         EXPECT_EQ(numberNotifications, 1);
         EXPECT_EQ(symbolNotifications, 1);
 
-        OutputSerializer correctionOutput(
+        AzNetworking::Internal::DecodeSession<OutputSerializer> correctionSession{
+            AzNetworking::Internal::ConnectionDecodeAccess::GetPermanentAdmissionCount(*m_mockConnection),
             correctionBuffer.GetBuffer(),
-            aznumeric_cast<AZ::u32>(correctionBuffer.GetSize()),
-            symbolSerializationContext);
+            aznumeric_cast<AZ::u32>(correctionBuffer.GetSize())};
+        OutputSerializer& correctionOutput = correctionSession.GetSerializer();
         ASSERT_TRUE(netBindComponent->SerializeEntityCorrection(correctionOutput));
         EXPECT_EQ(component->GetRollbackNumber(), correctedNumber);
         EXPECT_EQ(component->GetRollbackSymbol(), correctedSymbol);
@@ -606,7 +693,9 @@ namespace Multiplayer
         EXPECT_FALSE(m_entityReplicationManager->HandleEntityUpdateMessage(m_mockConnection.get(), header, message));
         AZ_TEST_STOP_TRACE_SUPPRESSION(1);
         EXPECT_FALSE(m_entityReplicationManager->HandleEntityDeleteMessage(m_root->m_replicator.get(), header, message));
-        EXPECT_TRUE(m_entityReplicationManager->HandleEntityUpdateMessage(m_mockConnection.get(), header, constMessage));
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        EXPECT_FALSE(m_entityReplicationManager->HandleEntityUpdateMessage(m_mockConnection.get(), header, constMessage));
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     }
 
     TEST_F(MultiplayerNetworkEntityTests, EntityReplicatorNoDeleteSentIfCreateWasNotSent)

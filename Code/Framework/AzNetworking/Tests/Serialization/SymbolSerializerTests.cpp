@@ -7,12 +7,13 @@
  */
 
 #include <AzNetworking/Serialization/DeltaSerializer.h>
-#include <AzNetworking/Serialization/Internal/SymbolAdmissionPolicy.h>
+#include <AzNetworking/Serialization/Internal/DecodeContext.h>
 #include <AzNetworking/Serialization/NetworkInputSerializer.h>
 #include <AzNetworking/Serialization/NetworkOutputSerializer.h>
 #include <AzNetworking/Serialization/TrackChangedSerializer.h>
 #include <AzNetworking/Serialization/TypeValidatingSerializer.h>
 #include <AzCore/Console/Console.h>
+#include <AzCore/Symbol/Internal/SymbolStorage.h>
 #include <AzCore/Symbol/Symbol.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/std/algorithm.h>
@@ -33,6 +34,18 @@ namespace UnitTest
             }
 
             AZ::Symbol m_symbol;
+        };
+
+        struct SymbolAndIntegerValue final
+        {
+            bool Serialize(AzNetworking::ISerializer& serializer)
+            {
+                return serializer.Serialize(m_symbol, "Symbol")
+                    && serializer.Serialize(m_integer, "Integer");
+            }
+
+            AZ::Symbol m_symbol;
+            AZ::u32 m_integer = 0;
         };
 
         template <typename InputSerializer>
@@ -81,7 +94,7 @@ namespace UnitTest
         EXPECT_EQ(maximum.size(), AZ::Symbol::MaxLength + sizeof(AZ::u16));
     }
 
-    TEST_F(SymbolSerializerTests, TrustedLocalRoundTripPreservesCanonicalIdentity)
+    TEST_F(SymbolSerializerTests, ExistingOnlyRoundTripPreservesCanonicalIdentity)
     {
         const AZ::Symbol source{AZStd::string_view{"TrustedRoundTrip"}};
         const AZStd::vector<AZ::u8> encoded = EncodeSymbol<AzNetworking::NetworkInputSerializer>(source);
@@ -103,13 +116,9 @@ namespace UnitTest
         AZStd::copy(spelling.begin(), spelling.end(), encoded.begin() + sizeof(AZ::u16));
         AZ::Symbol destination{AZStd::string_view{"PreservedDestination"}};
         const AZ::Symbol original = destination;
-        AzNetworking::Internal::SymbolSerializationContext context{
-            AzNetworking::SymbolAdmission::ExistingOnly,
-            nullptr};
         AzNetworking::NetworkOutputSerializer serializer(
             encoded.data(),
-            aznumeric_cast<AZ::u32>(encoded.size()),
-            context);
+            aznumeric_cast<AZ::u32>(encoded.size()));
 
         EXPECT_FALSE(static_cast<AzNetworking::ISerializer&>(serializer).Serialize(destination, "Symbol"));
         EXPECT_EQ(destination, original);
@@ -122,44 +131,34 @@ namespace UnitTest
     {
         const AZ::Symbol source{AZStd::string_view{"ExistingOnlyKnown"}};
         const AZStd::vector<AZ::u8> encoded = EncodeSymbol<AzNetworking::NetworkInputSerializer>(source);
-        AzNetworking::Internal::SymbolSerializationContext context{
-            AzNetworking::SymbolAdmission::ExistingOnly,
-            nullptr};
         AZ::Symbol destination;
         AzNetworking::NetworkOutputSerializer serializer(
             encoded.data(),
-            aznumeric_cast<AZ::u32>(encoded.size()),
-            context);
+            aznumeric_cast<AZ::u32>(encoded.size()));
 
         EXPECT_TRUE(static_cast<AzNetworking::ISerializer&>(serializer).Serialize(destination, "Symbol"));
         EXPECT_EQ(destination, source);
     }
 
-    TEST_F(SymbolSerializerTests, NetworkOriginRequiresPolicyAndAdmitsTransactionally)
+    TEST_F(SymbolSerializerTests, ExternalOriginRequiresContextAndAdmitsPermanently)
     {
         const AZStd::string spelling = AZStd::string::format("NetworkOriginAdmission_%p", this);
         const AZStd::vector<AZ::u8> encoded = EncodeSpelling(spelling);
         AZ::Symbol destination{AZStd::string_view{"AdmissionDestination"}};
         const AZ::Symbol original = destination;
-        AzNetworking::Internal::SymbolSerializationContext missingPolicy{
-            AzNetworking::SymbolAdmission::NetworkOrigin,
-            nullptr};
         AzNetworking::NetworkOutputSerializer rejected(
             encoded.data(),
-            aznumeric_cast<AZ::u32>(encoded.size()),
-            missingPolicy);
+            aznumeric_cast<AZ::u32>(encoded.size()));
 
         EXPECT_FALSE(static_cast<AzNetworking::ISerializer&>(rejected).Serialize(destination, "Symbol"));
         EXPECT_EQ(destination, original);
 
-        AzNetworking::Internal::SymbolAdmissionPolicy policy;
-        AzNetworking::Internal::SymbolSerializationContext admittedContext{
-            AzNetworking::SymbolAdmission::NetworkOrigin,
-            &policy};
-        AzNetworking::NetworkOutputSerializer admitted(
+        AZ::u32 admissionCount = 0;
+        AzNetworking::Internal::DecodeSession<AzNetworking::NetworkOutputSerializer> decodeSession{
+            admissionCount,
             encoded.data(),
-            aznumeric_cast<AZ::u32>(encoded.size()),
-            admittedContext);
+            aznumeric_cast<AZ::u32>(encoded.size())};
+        AzNetworking::NetworkOutputSerializer& admitted = decodeSession.GetSerializer();
 
         EXPECT_TRUE(static_cast<AzNetworking::ISerializer&>(admitted).Serialize(destination, "Symbol"));
         EXPECT_EQ(destination.GetStringView(), spelling);
@@ -171,25 +170,26 @@ namespace UnitTest
         const AZStd::string secondSpelling = AZStd::string::format("AdmissionSecond_%p", this);
         const AZStd::vector<AZ::u8> firstEncoded = EncodeSpelling(firstSpelling);
         const AZStd::vector<AZ::u8> secondEncoded = EncodeSpelling(secondSpelling);
-        AzNetworking::Internal::SymbolAdmissionPolicy policy{1};
-        const AzNetworking::Internal::SymbolSerializationContext context{
-            AzNetworking::SymbolAdmission::NetworkOrigin,
-            &policy};
+        AZ::u32 admissionCount = 1023;
 
         AZ::Symbol destination;
-        AzNetworking::NetworkOutputSerializer firstSerializer(
-            firstEncoded.data(),
-            aznumeric_cast<AZ::u32>(firstEncoded.size()),
-            context);
-        ASSERT_TRUE(static_cast<AzNetworking::ISerializer&>(firstSerializer).Serialize(destination, "Symbol"));
+        {
+            AzNetworking::Internal::DecodeSession<AzNetworking::NetworkOutputSerializer> firstSession{
+                admissionCount,
+                firstEncoded.data(),
+                aznumeric_cast<AZ::u32>(firstEncoded.size())};
+            ASSERT_TRUE(static_cast<AzNetworking::ISerializer&>(firstSession.GetSerializer()).Serialize(destination, "Symbol"));
+        }
         EXPECT_EQ(destination.GetStringView(), firstSpelling);
 
         const AZ::Symbol original = destination;
-        AzNetworking::NetworkOutputSerializer secondSerializer(
-            secondEncoded.data(),
-            aznumeric_cast<AZ::u32>(secondEncoded.size()),
-            context);
-        EXPECT_FALSE(static_cast<AzNetworking::ISerializer&>(secondSerializer).Serialize(destination, "Symbol"));
+        {
+            AzNetworking::Internal::DecodeSession<AzNetworking::NetworkOutputSerializer> secondSession{
+                admissionCount,
+                secondEncoded.data(),
+                aznumeric_cast<AZ::u32>(secondEncoded.size())};
+            EXPECT_FALSE(static_cast<AzNetworking::ISerializer&>(secondSession.GetSerializer()).Serialize(destination, "Symbol"));
+        }
         EXPECT_EQ(destination, original);
 
         AZ::Symbol found;
@@ -201,8 +201,16 @@ namespace UnitTest
         const AZ::Symbol original{AZStd::string_view{"UnchangedOnMalformed"}};
         const AZStd::array<AZ::u8, 2> oversizedLength = {0x04, 0x00};
         const AZStd::array<AZ::u8, 4> malformedUtf8 = {0x00, 0x02, 0xC0, 0xAF};
+        const AZStd::array<AZ::u8, 5> embeddedNull = {0x00, 0x03, 'a', 0x00, 'b'};
+        const AZStd::array<AZ::u8, 3> controlCharacter = {0x00, 0x01, '\n'};
 
-        for (const auto& input : {AZStd::span<const AZ::u8>{oversizedLength}, AZStd::span<const AZ::u8>{malformedUtf8}})
+        for (const auto& input :
+            {
+                AZStd::span<const AZ::u8>{oversizedLength},
+                AZStd::span<const AZ::u8>{malformedUtf8},
+                AZStd::span<const AZ::u8>{embeddedNull},
+                AZStd::span<const AZ::u8>{controlCharacter},
+            })
         {
             AZ::Symbol destination = original;
             AzNetworking::NetworkOutputSerializer serializer(
@@ -247,5 +255,23 @@ namespace UnitTest
         AzNetworking::DeltaSerializerApply applySerializer(delta);
         ASSERT_TRUE(applySerializer.ApplyDelta(output));
         EXPECT_EQ(output.m_symbol, current.m_symbol);
+    }
+
+    TEST_F(SymbolSerializerTests, DeltaCanCarryMaximumSymbolAlongsideAnotherChangedField)
+    {
+        SymbolAndIntegerValue base;
+        SymbolAndIntegerValue current{
+            AZ::Symbol{AZStd::string(AZ::Symbol::MaxLength, 's')},
+            42};
+        AzNetworking::SerializerDelta delta;
+        AzNetworking::DeltaSerializerCreate createSerializer(delta);
+        ASSERT_TRUE(createSerializer.CreateDelta(base, current));
+        EXPECT_GT(delta.GetBufferSize(), AZ::Symbol::MaxLength + sizeof(AZ::u16));
+
+        SymbolAndIntegerValue output = base;
+        AzNetworking::DeltaSerializerApply applySerializer(delta);
+        ASSERT_TRUE(applySerializer.ApplyDelta(output));
+        EXPECT_EQ(output.m_symbol, current.m_symbol);
+        EXPECT_EQ(output.m_integer, current.m_integer);
     }
 } // namespace UnitTest

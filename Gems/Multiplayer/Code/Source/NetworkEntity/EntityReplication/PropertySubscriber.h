@@ -19,6 +19,7 @@ namespace Multiplayer
 {
     class NetBindComponent;
     class EntityReplicationManager;
+    class ReplicationRecord;
 
     //! @class PropertySubscriber
     //! @brief Private helper class for the EntityReplicator to help manage applying entity adds/updates/deletes to subscribers
@@ -35,6 +36,10 @@ namespace Multiplayer
         AzNetworking::PacketId GetLastReceivedPacketId() const;
 
         bool HandlePropertyChangeMessage(AzNetworking::PacketId packetId, AzNetworking::ISerializer* serializer, bool notifyChanges = true);
+        bool PreparePropertyChangeMessage(
+            AzNetworking::PacketId packetId,
+            AzNetworking::ISerializer& serializer,
+            ReplicationRecord& notificationRecord);
 
     private:
         EntityReplicationManager& m_replicationManager;

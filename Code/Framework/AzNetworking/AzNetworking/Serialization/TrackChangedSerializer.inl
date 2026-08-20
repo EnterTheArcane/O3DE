@@ -19,16 +19,6 @@ namespace AzNetworking
     }
 
     template <typename BASE_TYPE>
-    TrackChangedSerializer<BASE_TYPE>::TrackChangedSerializer(
-        const uint8_t* buffer,
-        uint32_t bufferCapacity,
-        const Internal::SymbolSerializationContext& symbolSerializationContext)
-        : BASE_TYPE(buffer, bufferCapacity, symbolSerializationContext)
-        , m_hasChanged(false)
-    {
-    }
-
-    template <typename BASE_TYPE>
     SerializerMode TrackChangedSerializer<BASE_TYPE>::GetSerializerMode() const
     {
         return BASE_TYPE::GetSerializerMode();
@@ -39,7 +29,10 @@ namespace AzNetworking
     {
         const bool cached = value;
         const bool result = BASE_TYPE::Serialize(value, name);
-        m_hasChanged |= (cached != value);
+        if (result && cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -48,7 +41,10 @@ namespace AzNetworking
     {
         const int8_t cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (result && cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -57,7 +53,10 @@ namespace AzNetworking
     {
         const int16_t cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (result && cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -66,7 +65,10 @@ namespace AzNetworking
     {
         const int32_t cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (result && cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -75,7 +77,10 @@ namespace AzNetworking
     {
         const long cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (result && cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -84,7 +89,10 @@ namespace AzNetworking
     {
         const AZ::s64 cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (result && cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -93,7 +101,10 @@ namespace AzNetworking
     {
         const uint8_t cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (result && cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -102,7 +113,10 @@ namespace AzNetworking
     {
         const uint16_t cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (result && cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -111,7 +125,10 @@ namespace AzNetworking
     {
         const uint32_t cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (result && cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -120,7 +137,10 @@ namespace AzNetworking
     {
         const unsigned long cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (result && cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -129,7 +149,10 @@ namespace AzNetworking
     {
         const AZ::u64 cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (result && cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -138,7 +161,10 @@ namespace AzNetworking
     {
         const float cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (result && cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -147,7 +173,10 @@ namespace AzNetworking
     {
         const double cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (result && cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -160,7 +189,10 @@ namespace AzNetworking
             return false;
         }
         const bool result = BASE_TYPE::SerializeBytes(buffer, bufferCapacity, isString, outSize, name);
-        m_hasChanged |= !cached.IsSame(buffer, outSize);
+        if (result && !cached.IsSame(buffer, outSize))
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 

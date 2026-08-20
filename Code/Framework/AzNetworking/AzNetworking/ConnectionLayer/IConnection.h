@@ -12,12 +12,16 @@
 #include <AzNetworking/Utilities/IpAddress.h>
 #include <AzNetworking/ConnectionLayer/ConnectionEnums.h>
 #include <AzNetworking/ConnectionLayer/ConnectionMetrics.h>
-#include <AzNetworking/Serialization/Internal/SymbolAdmissionPolicy.h>
 
 namespace AzNetworking
 {
     // Forwards
     class IPacket;
+
+    namespace Internal
+    {
+        class ConnectionDecodeAccess;
+    } // namespace Internal
 
     //! This is a strong typedef for representing a remote host that may be triggering time changes for backward reconciliation.
     AZ_TYPE_SAFE_INTEGRAL(ConnectionId, uint32_t);
@@ -136,8 +140,7 @@ namespace AzNetworking
 
     private:
 
-        friend Internal::SymbolAdmissionPolicy&
-            Internal::GetSymbolAdmissionPolicy(IConnection& connection);
+        friend class Internal::ConnectionDecodeAccess;
 
         // The following data members are here in the interface for performance reasons
         ConnectionId      m_connectionId = InvalidConnectionId;
@@ -145,7 +148,7 @@ namespace AzNetworking
         ConnectionMetrics m_connectionMetrics;
         ConnectionQuality m_connectionQuality;
         void*             m_userData = nullptr;
-        Internal::SymbolAdmissionPolicy m_symbolAdmissionPolicy;
+        AZ::u32          m_permanentDecodeAdmissionCount = 0;
     };
 }
 

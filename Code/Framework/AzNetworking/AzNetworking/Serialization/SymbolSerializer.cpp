@@ -8,8 +8,9 @@
 
 #include <AzNetworking/Serialization/ISerializer.h>
 
-#include <AzNetworking/Serialization/Internal/SymbolAdmissionPolicy.h>
-#include <AzCore/Symbol/Internal/SymbolValidation.h>
+#include <AzNetworking/Serialization/Internal/DecodeContext.h>
+#include <AzCore/Debug/Trace.h>
+#include <AzCore/Symbol/Internal/SymbolStorage.h>
 #include <AzCore/Symbol/Symbol.h>
 #include <AzCore/std/containers/array.h>
 
@@ -17,11 +18,19 @@
 
 namespace AzNetworking
 {
+    namespace
+    {
+        constexpr AZ::u32 MaxNewExternalSymbolsPerConnection = 1024;
+        constexpr AZ::u32 MaxExternalSymbols = 262144;
+        constexpr AZ::u64 MaxExternalSymbolBytes = 64 * 1024 * 1024;
+        constexpr AZ::u64 ExternalSymbolEntryStorageBytes = 64;
+    } // namespace
+
     bool SerializeObjectHelper<AZ::Symbol>::SerializeObject(
         ISerializer& serializer,
         AZ::Symbol& symbol)
     {
-        AZStd::array<AZ::u8, AZ::Symbol::MaxLength> spellingBuffer{};
+        AZStd::array<AZ::u8, AZ::Symbol::MaxLength> spellingBuffer;
         AZ::u32 spellingSize = 0;
 
         const AZStd::string_view currentSpelling = symbol.GetStringView();
@@ -42,33 +51,36 @@ namespace AzNetworking
         }
 
         const AZStd::string_view spelling{reinterpret_cast<const char*>(spellingBuffer.data()), spellingSize};
-        if (AZ::Internal::ValidateSymbolSpelling(spelling) != AZ::Internal::SymbolValidationError::None)
-        {
-            serializer.Invalidate();
-            return false;
-        }
-
         AZ::Symbol decodedSymbol;
-        const Internal::SymbolSerializationContext& context = serializer.GetSymbolSerializationContext();
-        switch (context.m_admission)
+        if (Internal::DecodeContext* context = Internal::DecodeAccess::Get(serializer))
         {
-        case SymbolAdmission::TrustedLocal:
-            decodedSymbol = AZ::Internal::InternValidatedSymbol(spelling);
-            break;
-        case SymbolAdmission::NetworkOrigin:
-            if (!context.m_policy || !Internal::AdmitNetworkOriginSymbol(spelling, *context.m_policy, decodedSymbol))
+            constexpr AZ::Internal::ExternalSymbolAdmissionLimits processLimits{
+                MaxExternalSymbols,
+                MaxExternalSymbolBytes,
+                ExternalSymbolEntryStorageBytes,
+            };
+            if (!AZ::Internal::AdmitExternalSymbol(
+                    decodedSymbol,
+                    spelling,
+                    context->GetPermanentAdmissionCount(),
+                    MaxNewExternalSymbolsPerConnection,
+                    processLimits))
             {
+                AZ_WarningOnce(
+                    "AzNetworking",
+                    false,
+                    "Rejected an invalid or over-budget external-origin Symbol spelling");
                 serializer.Invalidate();
                 return false;
             }
-            break;
-        case SymbolAdmission::ExistingOnly:
+        }
+        else
+        {
             if (!AZ::Internal::FindSymbol(decodedSymbol, spelling))
             {
                 serializer.Invalidate();
                 return false;
             }
-            break;
         }
 
         symbol = decodedSymbol;

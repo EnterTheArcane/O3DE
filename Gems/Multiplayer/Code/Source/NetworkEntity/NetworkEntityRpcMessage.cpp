@@ -8,8 +8,6 @@
 
 #include <Multiplayer/NetworkEntity/NetworkEntityRpcMessage.h>
 #include <Multiplayer/IMultiplayer.h>
-#include <AzNetworking/ConnectionLayer/IConnection.h>
-#include <AzNetworking/Serialization/Internal/SymbolAdmissionPolicy.h>
 #include <AzCore/Console/ILogger.h>
 
 namespace Multiplayer
@@ -172,26 +170,22 @@ namespace Multiplayer
             size = static_cast<uint32_t>(m_data->GetSize());
         }
         RpcOutputSerializer serializer(buffer, size);
-        return outParams.Serialize(serializer);
+        return DecodeRpcParams(outParams, serializer);
     }
 
-    bool NetworkEntityRpcMessage::GetRpcParams(
+    bool NetworkEntityRpcMessage::DecodeRpcParams(
         IRpcParamStruct& outParams,
-        AzNetworking::IConnection& invokingConnection)
+        AzNetworking::ISerializer& serializer)
     {
-        auto& admissionPolicy = AzNetworking::Internal::GetSymbolAdmissionPolicy(invokingConnection);
-        const AzNetworking::Internal::SymbolSerializationContext symbolSerializationContext{
-            AzNetworking::SymbolAdmission::NetworkOrigin,
-            &admissionPolicy};
-        const uint8_t* buffer = nullptr;
-        uint32_t size = 0;
+        uint32_t expectedSize = 0;
         if (m_data)
         {
-            buffer = m_data->GetBuffer();
-            size = static_cast<uint32_t>(m_data->GetSize());
+            expectedSize = static_cast<uint32_t>(m_data->GetSize());
         }
-        RpcOutputSerializer serializer(buffer, size, symbolSerializationContext);
-        return outParams.Serialize(serializer);
+
+        return outParams.Serialize(serializer)
+            && serializer.IsValid()
+            && serializer.GetSize() == expectedSize;
     }
 
     bool NetworkEntityRpcMessage::Serialize(AzNetworking::ISerializer& serializer)
@@ -215,9 +209,8 @@ namespace Multiplayer
         {
             blobSize = static_cast<BlobSize>(m_data->GetSize());
         }
-        serializer.BeginObject("data");
-        serializer.Serialize(blobSize, "Size", BlobSize{0}, static_cast<BlobSize>(AzNetworking::MaxPacketSize));
-        if (!serializer.IsValid())
+        if (!serializer.BeginObject("data")
+            || !serializer.Serialize(blobSize, "Size", BlobSize{0}, static_cast<BlobSize>(AzNetworking::MaxPacketSize)))
         {
             return false;
         }
@@ -232,22 +225,21 @@ namespace Multiplayer
                 buffer = m_data->GetBuffer();
             }
             uint32_t serializedSize = blobSize;
-            serializer.SerializeBytes(
-                buffer,
-                AzNetworking::MaxPacketSize,
-                false,
-                serializedSize,
-                "Buffer");
-            serializer.EndObject("data");
-            if (!serializer.IsValid() || serializedSize != blobSize)
+            if (!serializer.SerializeBytes(
+                    buffer,
+                    AzNetworking::MaxPacketSize,
+                    false,
+                    serializedSize,
+                    "Buffer")
+                || !serializer.EndObject("data")
+                || serializedSize != blobSize)
             {
                 return false;
             }
         }
         else
         {
-            uint8_t emptyBuffer = 0;
-            uint8_t* buffer = &emptyBuffer;
+            uint8_t* buffer = nullptr;
             if (blobSize > 0)
             {
                 candidateData = AZStd::make_unique<AzNetworking::PacketEncodingBuffer>();
@@ -259,14 +251,14 @@ namespace Multiplayer
             }
 
             uint32_t serializedSize = blobSize;
-            serializer.SerializeBytes(
-                buffer,
-                AzNetworking::MaxPacketSize,
-                false,
-                serializedSize,
-                "Buffer");
-            serializer.EndObject("data");
-            if (!serializer.IsValid() || serializedSize != blobSize)
+            if (!serializer.SerializeBytes(
+                    buffer,
+                    AzNetworking::MaxPacketSize,
+                    false,
+                    serializedSize,
+                    "Buffer")
+                || !serializer.EndObject("data")
+                || serializedSize != blobSize)
             {
                 return false;
             }

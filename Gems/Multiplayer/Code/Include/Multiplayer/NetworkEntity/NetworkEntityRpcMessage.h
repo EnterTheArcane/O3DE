@@ -12,14 +12,14 @@
 #include <AzNetworking/DataStructures/ByteBuffer.h>
 #include <Multiplayer/MultiplayerTypes.h>
 
-namespace AzNetworking
-{
-    class IConnection;
-}
-
 namespace Multiplayer
 {
     struct IRpcParamStruct;
+
+    namespace Internal
+    {
+        class NetworkEntityRpcMessageDecode;
+    } // namespace Internal
 
     //! @class NetworkEntityRpcMessage
     //! @brief Remote procedure call data.
@@ -77,12 +77,6 @@ namespace Multiplayer
         //! @param outParams the parameters instance to store to the resulting data inside
         bool GetRpcParams(IRpcParamStruct& outParams);
 
-        //! Decodes parameters received from a remote connection using that connection's
-        //! bounded Symbol admission policy.
-        bool GetRpcParams(
-            IRpcParamStruct& outParams,
-            AzNetworking::IConnection& invokingConnection);
-
         //! Base serialize method for all serializable structures or classes to implement.
         //! @param serializer ISerializer instance to use for serialization
         //! @return boolean true for success, false for serialization failure
@@ -97,6 +91,11 @@ namespace Multiplayer
         ReliabilityType GetReliability() const;
 
     private:
+        bool DecodeRpcParams(
+            IRpcParamStruct& outParams,
+            AzNetworking::ISerializer& serializer);
+
+        friend class Internal::NetworkEntityRpcMessageDecode;
 
         // Serialized payload data
         RpcDeliveryType m_rpcDeliveryType = RpcDeliveryType::None;

@@ -591,6 +591,7 @@ set(FILES
     Serialization/SerializationUtils.cpp
     Serialization/ObjectStream.cpp
     Serialization/ObjectStream.h
+    Serialization/Internal/PointerData.h
     Serialization/PointerObject.h
     Serialization/PointerObject.cpp
     Serialization/SerializeContext.cpp
@@ -722,6 +723,7 @@ set(FILES
     Symbol/Internal/SymbolFailure.cpp
     Symbol/Internal/SymbolGroup.h
     Symbol/Internal/SymbolGroup.cpp
+    Symbol/Internal/SymbolStorage.h
     Symbol/Internal/SymbolTable.h
     Symbol/Internal/SymbolTable.cpp
     Symbol/Internal/SymbolValidation.h
@@ -763,7 +765,6 @@ set(FILES
     Utils/TypeHash.h
     Utils/Utils.cpp
     Utils/Utils.h
-    Utils/NoDestructor.h
     variadic.h
     XML/rapidxml.h
     XML/rapidxml_iterators.h

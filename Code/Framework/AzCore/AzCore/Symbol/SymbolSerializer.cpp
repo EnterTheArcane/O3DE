@@ -9,6 +9,7 @@
 #include <AzCore/Symbol/SymbolSerializer.h>
 
 #include <AzCore/IO/GenericStreams.h>
+#include <AzCore/Symbol/Internal/SymbolStorage.h>
 #include <AzCore/Symbol/Internal/SymbolValidation.h>
 #include <AzCore/std/containers/array.h>
 

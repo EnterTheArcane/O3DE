@@ -9,6 +9,8 @@
 #include <AzNetworking/Serialization/DeltaSerializer.h>
 #include <AzCore/UnitTest/TestTypes.h>
 
+#include <cstring>
+
 namespace UnitTest
 {
     struct DeltaDataElement
@@ -147,6 +149,18 @@ namespace UnitTest
         AZStd::array<uint8_t, 768> m_second{};
     };
 
+    struct TwoFieldDeltaValue final
+    {
+        bool Serialize(AzNetworking::ISerializer& serializer)
+        {
+            return serializer.Serialize(m_first, "First")
+                && serializer.Serialize(m_second, "Second");
+        }
+
+        uint32_t m_first = 0;
+        uint32_t m_second = 0;
+    };
+
     class DeltaSerializerTests
         : public UnitTest::LeakDetectionFixture
     {
@@ -273,19 +287,92 @@ namespace UnitTest
     {
         OverflowByteDeltaValue base;
         OverflowByteDeltaValue current;
+        current.m_first.front() = 0x7F;
         current.m_second.back() = 0xFF;
 
         AzNetworking::SerializerDelta delta;
         AzNetworking::DeltaSerializerCreate createSerializer(delta);
         ASSERT_TRUE(createSerializer.CreateDelta(base, current));
         ASSERT_EQ(delta.GetNumDirtyBits(), 2);
-        EXPECT_FALSE(delta.GetDirtyBit(0));
+        EXPECT_TRUE(delta.GetDirtyBit(0));
         EXPECT_TRUE(delta.GetDirtyBit(1));
+        EXPECT_EQ(delta.GetBufferSize(), current.m_first.size() + current.m_second.size() + 2 * sizeof(uint16_t));
+        EXPECT_GT(delta.GetBufferSize(), 1025);
 
         OverflowByteDeltaValue output = base;
         AzNetworking::DeltaSerializerApply applySerializer(delta);
         ASSERT_TRUE(applySerializer.ApplyDelta(output));
         EXPECT_EQ(output.m_first, current.m_first);
         EXPECT_EQ(output.m_second, current.m_second);
+    }
+
+    TEST_F(DeltaSerializerTests, CreateAndApplyInstancesRejectReuse)
+    {
+        TwoFieldDeltaValue base;
+        TwoFieldDeltaValue current;
+        current.m_first = 42;
+
+        AzNetworking::SerializerDelta delta;
+        AzNetworking::DeltaSerializerCreate createSerializer(delta);
+        ASSERT_TRUE(createSerializer.CreateDelta(base, current));
+        EXPECT_FALSE(createSerializer.CreateDelta(base, current));
+
+        TwoFieldDeltaValue output = base;
+        AzNetworking::DeltaSerializerApply applySerializer(delta);
+        ASSERT_TRUE(applySerializer.ApplyDelta(output));
+        EXPECT_FALSE(applySerializer.ApplyDelta(output));
+    }
+
+    TEST_F(DeltaSerializerTests, ApplyRejectsMismatchedRecordCountsAndDataSizes)
+    {
+        const auto setBufferValue = [](AzNetworking::SerializerDelta& delta, uint32_t value, uint32_t size)
+        {
+            EXPECT_TRUE(delta.SetBufferSize(size));
+            std::memcpy(delta.GetBufferPtr(), &value, sizeof(value));
+        };
+
+        {
+            AzNetworking::SerializerDelta delta;
+            ASSERT_TRUE(delta.InsertDirtyBit(true));
+            setBufferValue(delta, 42, sizeof(uint32_t));
+
+            TwoFieldDeltaValue output;
+            AzNetworking::DeltaSerializerApply applySerializer(delta);
+            EXPECT_FALSE(applySerializer.ApplyDelta(output));
+        }
+
+        {
+            AzNetworking::SerializerDelta delta;
+            ASSERT_TRUE(delta.InsertDirtyBit(true));
+            ASSERT_TRUE(delta.InsertDirtyBit(false));
+            ASSERT_TRUE(delta.InsertDirtyBit(false));
+            setBufferValue(delta, 42, sizeof(uint32_t));
+
+            TwoFieldDeltaValue output;
+            AzNetworking::DeltaSerializerApply applySerializer(delta);
+            EXPECT_FALSE(applySerializer.ApplyDelta(output));
+        }
+
+        {
+            AzNetworking::SerializerDelta delta;
+            ASSERT_TRUE(delta.InsertDirtyBit(true));
+            ASSERT_TRUE(delta.InsertDirtyBit(false));
+            setBufferValue(delta, 42, sizeof(uint64_t));
+
+            TwoFieldDeltaValue output;
+            AzNetworking::DeltaSerializerApply applySerializer(delta);
+            EXPECT_FALSE(applySerializer.ApplyDelta(output));
+        }
+
+        {
+            AzNetworking::SerializerDelta delta;
+            ASSERT_TRUE(delta.InsertDirtyBit(true));
+            ASSERT_TRUE(delta.InsertDirtyBit(true));
+            setBufferValue(delta, 42, sizeof(uint32_t));
+
+            TwoFieldDeltaValue output;
+            AzNetworking::DeltaSerializerApply applySerializer(delta);
+            EXPECT_FALSE(applySerializer.ApplyDelta(output));
+        }
     }
 }

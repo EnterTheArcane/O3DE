@@ -1258,6 +1258,93 @@ using namespace AZ;
 
 namespace UnitTest
 {
+    namespace
+    {
+        class PointerReplacementPadding
+        {
+        public:
+            AZ_RTTI(PointerReplacementPadding, "{98137E5D-6545-455F-A756-E66F1A8B33B2}");
+            AZ_CLASS_ALLOCATOR(PointerReplacementPadding, AZ::SystemAllocator);
+
+            virtual ~PointerReplacementPadding() = default;
+
+            int m_padding = 0;
+        };
+
+        class PointerReplacementBase
+        {
+        public:
+            AZ_RTTI(PointerReplacementBase, "{D5407C79-4D33-4B09-806D-D1E18D4183BE}");
+            AZ_CLASS_ALLOCATOR(PointerReplacementBase, AZ::SystemAllocator);
+
+            virtual ~PointerReplacementBase() = default;
+
+            int m_value = 0;
+        };
+
+        class PointerReplacementOld final
+            : public PointerReplacementPadding
+            , public PointerReplacementBase
+        {
+        public:
+            AZ_RTTI(
+                PointerReplacementOld,
+                "{11F55840-C6F0-48C4-BF8D-111C58A3A66D}",
+                PointerReplacementPadding,
+                PointerReplacementBase);
+            AZ_CLASS_ALLOCATOR(PointerReplacementOld, AZ::SystemAllocator);
+
+            ~PointerReplacementOld() override
+            {
+                ++s_destructorCount;
+            }
+
+            static inline int s_destructorCount = 0;
+        };
+
+        class PointerReplacementNew final
+            : public PointerReplacementPadding
+            , public PointerReplacementBase
+        {
+        public:
+            AZ_RTTI(
+                PointerReplacementNew,
+                "{DCE5C810-C736-44A1-BE93-665DF241538E}",
+                PointerReplacementPadding,
+                PointerReplacementBase);
+            AZ_CLASS_ALLOCATOR(PointerReplacementNew, AZ::SystemAllocator);
+        };
+
+        struct PointerReplacementHolder final
+        {
+            AZ_TYPE_INFO(PointerReplacementHolder, "{BDF28E7F-E469-498A-BBF0-1F1B76AB7A9F}");
+
+            PointerReplacementHolder() = default;
+
+            ~PointerReplacementHolder()
+            {
+                delete m_value;
+            }
+
+            PointerReplacementHolder(const PointerReplacementHolder&) = delete;
+            PointerReplacementHolder& operator=(const PointerReplacementHolder&) = delete;
+
+            static void Reflect(AZ::SerializeContext& context)
+            {
+                context.Class<PointerReplacementPadding>()
+                    ->Field("Padding", &PointerReplacementPadding::m_padding);
+                context.Class<PointerReplacementBase>()
+                    ->Field("Value", &PointerReplacementBase::m_value);
+                context.Class<PointerReplacementOld, PointerReplacementPadding, PointerReplacementBase>();
+                context.Class<PointerReplacementNew, PointerReplacementPadding, PointerReplacementBase>();
+                context.Class<PointerReplacementHolder>()
+                    ->Field("Value", &PointerReplacementHolder::m_value);
+            }
+
+            PointerReplacementBase* m_value = nullptr;
+        };
+    } // namespace
+
     /*
     * Base class for all serialization unit tests
     */
@@ -4086,6 +4173,83 @@ TEST_F(SerializeBasicTest, BasicTypeTest_Succeed)
 
         ErrorTest test;
         test.run();
+    }
+
+    TEST_F(Serialization, ObjectStreamRejectsMalformedRootShapesAndTruncatedBinaryHeaders)
+    {
+        const auto load = [this](const void* data, size_t size)
+        {
+            AZ::IO::MemoryStream stream(data, size);
+            return AZ::ObjectStream::LoadBlocking(
+                &stream,
+                *m_serializeContext,
+                [](void*, const AZ::Uuid&, AZ::SerializeContext*)
+                {
+                });
+        };
+
+        struct MalformedJsonCase final
+        {
+            AZStd::string_view m_input;
+            int m_expectedErrorCount = 1;
+        };
+        const AZStd::array<MalformedJsonCase, 6> malformedJson = {{
+            {"[]"},
+            {R"({"Objects":[]})"},
+            {R"({"version":"0","Objects":[]})"},
+            {R"({"version":0,"Objects":{}})"},
+            {R"({"version":0,"Objects":[]})"},
+            {R"({"version":0,"Objects":[1]})"}}};
+        for (const MalformedJsonCase& testCase : malformedJson)
+        {
+            SCOPED_TRACE(testCase.m_input.data());
+            AZ_TEST_START_TRACE_SUPPRESSION;
+            EXPECT_FALSE(load(testCase.m_input.data(), testCase.m_input.size()));
+            AZ_TEST_STOP_TRACE_SUPPRESSION(testCase.m_expectedErrorCount);
+        }
+
+        const AZStd::array<AZ::u8, 2> truncatedVersion = {0, 0};
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        EXPECT_FALSE(load(truncatedVersion.data(), truncatedVersion.size()));
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+
+        const AZStd::array<AZ::u8, 5> headerWithoutRoot = {0, 0, 0, 0, 3};
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        EXPECT_FALSE(load(headerWithoutRoot.data(), headerWithoutRoot.size()));
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+    }
+
+    TEST_F(Serialization, PointerReplacementDestroysTheOldDynamicTypeAtItsAdjustedAddress)
+    {
+        PointerReplacementHolder::Reflect(*m_serializeContext);
+        PointerReplacementOld::s_destructorCount = 0;
+
+        PointerReplacementHolder source;
+        source.m_value = aznew PointerReplacementNew;
+        source.m_value->m_value = 42;
+
+        {
+            PointerReplacementHolder output;
+            output.m_value = aznew PointerReplacementOld;
+
+            AZStd::vector<AZ::u8> buffer;
+            AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> outputStream(&buffer);
+            ASSERT_TRUE(AZ::Utils::SaveObjectToStream(
+                outputStream,
+                AZ::ObjectStream::ST_BINARY,
+                &source,
+                m_serializeContext.get()));
+
+            AZ::IO::MemoryStream inputStream(buffer.data(), buffer.size());
+            ASSERT_TRUE(AZ::Utils::LoadObjectFromStreamInPlace(
+                inputStream,
+                output,
+                m_serializeContext.get()));
+            EXPECT_EQ(PointerReplacementOld::s_destructorCount, 1);
+            ASSERT_NE(azrtti_cast<PointerReplacementNew*>(output.m_value), nullptr);
+            EXPECT_EQ(output.m_value->m_value, source.m_value->m_value);
+        }
+
     }
 
     namespace EditTest

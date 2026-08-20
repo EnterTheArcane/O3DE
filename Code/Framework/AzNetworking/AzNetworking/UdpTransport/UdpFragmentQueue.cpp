@@ -9,6 +9,8 @@
 #include <AzNetworking/UdpTransport/UdpFragmentQueue.h>
 #include <AzNetworking/UdpTransport/UdpConnection.h>
 #include <AzNetworking/UdpTransport/UdpPacketHeader.h>
+#include <AzNetworking/ConnectionLayer/Internal/ConnectionDecodeAccess.h>
+#include <AzNetworking/Serialization/Internal/DecodeContext.h>
 #include <AzNetworking/Serialization/NetworkOutputSerializer.h>
 #include <AzNetworking/Utilities/NetworkCommon.h>
 #include <AzCore/Console/IConsole.h>
@@ -139,9 +141,11 @@ namespace AzNetworking
         // We can erase all the chunks now, packet is completed
         m_packetFragments.erase(fragmentSequence);
 
-        auto& symbolAdmissionPolicy = Internal::GetSymbolAdmissionPolicy(*connection);
-        const Internal::SymbolSerializationContext symbolSerializationContext{SymbolAdmission::NetworkOrigin, &symbolAdmissionPolicy};
-        NetworkOutputSerializer networkSerializer(buffer.GetBuffer(), static_cast<uint32_t>(buffer.GetSize()), symbolSerializationContext);
+        Internal::DecodeSession<NetworkOutputSerializer> decodeSession{
+            Internal::ConnectionDecodeAccess::GetPermanentAdmissionCount(*connection),
+            buffer.GetBuffer(),
+            static_cast<uint32_t>(buffer.GetSize())};
+        NetworkOutputSerializer& networkSerializer = decodeSession.GetSerializer();
         {
             ISerializer& networkISerializer = networkSerializer; // To get the default typeinfo parameters in ISerializer
 

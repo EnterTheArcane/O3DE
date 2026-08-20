@@ -32,6 +32,7 @@ set(FILES
     Include/Multiplayer/NetworkEntity/NetworkEntityHandle.h
     Include/Multiplayer/NetworkEntity/NetworkEntityHandle.inl
     Include/Multiplayer/NetworkEntity/NetworkEntityRpcMessage.h
+    Include/Multiplayer/NetworkEntity/Internal/NetworkEntityRpcMessageDecode.h
     Include/Multiplayer/NetworkEntity/NetworkEntityUpdateMessage.h
     Include/Multiplayer/NetworkEntity/EntityReplication/EntityReplicationManager.h
     Include/Multiplayer/NetworkEntity/EntityReplication/EntityReplicator.h

@@ -13,7 +13,9 @@
 #include <AzNetworking/Serialization/NetworkInputSerializer.h>
 #include <AzNetworking/Serialization/NetworkOutputSerializer.h>
 #include <AzNetworking/ConnectionLayer/IConnectionSet.h>
+#include <AzNetworking/ConnectionLayer/Internal/ConnectionDecodeAccess.h>
 #include <AzNetworking/Framework/ICompressor.h>
+#include <AzNetworking/Serialization/Internal/DecodeContext.h>
 #include <AzNetworking/AutoGen/CorePackets.AutoPackets.h>
 #include <AzCore/Console/IConsole.h>
 #include <AzCore/Console/ILogger.h>
@@ -164,9 +166,11 @@ namespace AzNetworking
                 break;
             }
 
-            auto& symbolAdmissionPolicy = Internal::GetSymbolAdmissionPolicy(*this);
-            const Internal::SymbolSerializationContext symbolSerializationContext{SymbolAdmission::NetworkOrigin, &symbolAdmissionPolicy};
-            NetworkOutputSerializer serializer(buffer.GetBuffer(), static_cast<uint32_t>(buffer.GetSize()), symbolSerializationContext);
+            Internal::DecodeSession<NetworkOutputSerializer> decodeSession{
+                Internal::ConnectionDecodeAccess::GetPermanentAdmissionCount(*this),
+                buffer.GetBuffer(),
+                static_cast<uint32_t>(buffer.GetSize())};
+            NetworkOutputSerializer& serializer = decodeSession.GetSerializer();
             if (m_state == ConnectionState::Connecting)
             {
                 const ConnectResult connectResult = m_networkInterface.GetConnectionListener().ValidateConnect(GetRemoteAddress(), header, serializer);
@@ -380,8 +384,7 @@ namespace AzNetworking
 
     bool TcpConnection::ReceivePacketInternal(TcpPacketHeader& outHeader, TcpPacketEncodingBuffer& outBuffer, AZ::TimeMs currentTimeMs)
     {
-        constexpr Internal::SymbolSerializationContext existingOnlyContext{SymbolAdmission::ExistingOnly, nullptr};
-        NetworkOutputSerializer serializer(m_recvRingbuffer.GetReadBufferData(), m_recvRingbuffer.GetReadBufferSize(), existingOnlyContext);
+        NetworkOutputSerializer serializer(m_recvRingbuffer.GetReadBufferData(), m_recvRingbuffer.GetReadBufferSize());
         if (!outHeader.Serialize(serializer))
         {
             return false;

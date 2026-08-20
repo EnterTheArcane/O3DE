@@ -16,6 +16,7 @@
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/fixed_vector.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/limits.h>
 
 namespace AzNetworking
 {
@@ -35,29 +36,32 @@ namespace AzNetworking
         uint32_t GetBufferSize() const;
         uint32_t GetBufferCapacity() const;
 
-        void SetBufferSize(uint32_t size);
+        bool EnsureBufferCapacity(uint32_t size);
+        bool SetBufferSize(uint32_t size);
 
         bool Serialize(ISerializer& serializer);
 
     private:
 
         FixedSizeVectorBitset<255> m_dirtyBits;
-        ByteBuffer<1025> m_deltaBytes;
+        static constexpr uint32_t InlineBufferCapacity = 1025;
+
+        AZStd::array<uint8_t, InlineBufferCapacity> m_inlineDeltaBytes;
+        AZStd::vector<uint8_t> m_overflowDeltaBytes;
+        uint32_t m_deltaByteSize = 0;
     };
 
     //! A serializer that is used to produce a SerializerDelta between two objects.
     //! This delta can be reapplied to the same base object to reconstruct the second object using 
     //! the DeltaSerializerApply serializer
     //! NOTE: The objects serialized must have a consistent serialization footprint i.e. no changes in branches during serialization
+    //! DeltaSerializerCreate instances are single-use.
     class DeltaSerializerCreate
         : public ISerializer
     {
     public:
 
         DeltaSerializerCreate(SerializerDelta& delta);
-        DeltaSerializerCreate(
-            SerializerDelta& delta,
-            const Internal::SymbolSerializationContext& symbolSerializationContext);
         ~DeltaSerializerCreate() override;
 
         template <typename TYPE>
@@ -127,20 +131,19 @@ namespace AzNetworking
         AZStd::fixed_vector<ValueRecord, MaxRecordCount> m_records;
         AZStd::array<uint8_t, InlineRecordByteCapacity> m_inlineRecordBytes;
         AZStd::vector<uint8_t> m_overflowRecordBytes;
-        NetworkInputSerializer m_dataSerializer;
+        uint32_t m_deltaByteOffset = 0;
+        bool m_hasCreatedDelta = false;
     };
 
     //! A serializer that is used to apply a SerializerDelta to a base object in order to reconstruct the second object.
     //! NOTE: The objects serialized must have a consistent serialization footprint i.e. no changes in branches during serialization
+    //! DeltaSerializerApply instances are single-use.
     class DeltaSerializerApply
         : public ISerializer
     {
     public:
 
         DeltaSerializerApply(SerializerDelta& delta);
-        DeltaSerializerApply(
-            SerializerDelta& delta,
-            const Internal::SymbolSerializationContext& symbolSerializationContext);
         ~DeltaSerializerApply() override;
 
         template <typename TYPE>
@@ -189,6 +192,7 @@ namespace AzNetworking
         SerializerDelta& m_delta;
         uint32_t m_nextDirtyBit = 0;
         NetworkOutputSerializer m_dataSerializer;
+        bool m_hasAppliedDelta = false;
     };
 }
 

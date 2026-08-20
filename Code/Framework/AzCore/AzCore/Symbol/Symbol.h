@@ -22,14 +22,7 @@ namespace AZ
     namespace Internal
     {
         struct SymbolEntry;
-
-        //! Interns spelling already checked by ValidateSymbolSpelling. Allocation failure terminates.
-        [[nodiscard]]
-        AZCORE_API Symbol InternValidatedSymbol(AZStd::string_view value);
-
-        //! Looks up spelling without creating permanent storage. Empty is always found as the null Symbol.
-        [[nodiscard]]
-        AZCORE_API bool FindSymbol(Symbol& result, AZStd::string_view value);
+        struct SymbolAccess;
     } // namespace Internal
 
     //! Process-local canonical string identity with permanent, AzCore-owned spelling storage.
@@ -87,21 +80,26 @@ namespace AZ
 
         const Internal::SymbolEntry* m_entry = nullptr;
 
-        friend Symbol Internal::InternValidatedSymbol(AZStd::string_view value);
-        friend bool Internal::FindSymbol(Symbol& result, AZStd::string_view value);
+        friend struct Internal::SymbolAccess;
         friend struct SymbolHash;
     };
 
-    struct AZCORE_API SymbolHash final
+    struct SymbolHash final
     {
         [[nodiscard]]
-        size_t operator()(Symbol value) const;
+        size_t operator()(Symbol value) const
+        {
+            return reinterpret_cast<size_t>(value.m_entry);
+        }
     };
 
-    struct AZCORE_API SymbolEqual final
+    struct SymbolEqual final
     {
         [[nodiscard]]
-        bool operator()(Symbol lhs, Symbol rhs) const;
+        constexpr bool operator()(Symbol lhs, Symbol rhs) const
+        {
+            return lhs == rhs;
+        }
     };
 } // namespace AZ
 

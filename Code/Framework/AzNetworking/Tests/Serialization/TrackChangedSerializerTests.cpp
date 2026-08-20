@@ -144,4 +144,20 @@ namespace UnitTest
         EXPECT_EQ(trackChangedSerializer.GetCapacity(), Capacity);
         EXPECT_EQ(trackChangedSerializer.GetSize(), ExpectedSerializedBytes);
     }
+
+    TEST_F(TrackChangedSerializerTests, FailedSerializationDoesNotReportAChange)
+    {
+        uint8_t serializedValue = 1;
+        AzNetworking::TrackChangedSerializer<AzNetworking::NetworkOutputSerializer> trackChangedSerializer(
+            &serializedValue,
+            0);
+        uint8_t outputValue = 0;
+
+        EXPECT_FALSE(trackChangedSerializer.Serialize(
+            outputValue,
+            "Value",
+            AZStd::numeric_limits<uint8_t>::min(),
+            AZStd::numeric_limits<uint8_t>::max()));
+        EXPECT_FALSE(trackChangedSerializer.GetTrackedChangesFlag());
+    }
 }

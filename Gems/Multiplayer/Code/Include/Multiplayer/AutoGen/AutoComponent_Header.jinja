@@ -579,6 +579,12 @@ namespace {{ Component.attrib['Namespace'] }}
         Multiplayer::NetComponentId GetNetComponentId() const override;
         bool HandleRpcMessage(AzNetworking::IConnection* invokingConnection, Multiplayer::NetEntityRole remoteRole, Multiplayer::NetworkEntityRpcMessage& rpcMessage) override;
         bool SerializeStateDeltaMessage(Multiplayer::ReplicationRecord& replicationRecord, AzNetworking::ISerializer& serializer) override;
+        bool PrepareStateDeltaMessage(
+            Multiplayer::ReplicationRecord& replicationRecord,
+            AzNetworking::ISerializer& serializer,
+            Multiplayer::Internal::StateDeltaTransaction& transaction,
+            Multiplayer::Internal::StateDeltaContinuation continuation,
+            void* continuationContext) override;
         void NotifyStateDeltaChanges(Multiplayer::ReplicationRecord& replicationRecord) override;
         bool HasController() const override;
         Multiplayer::MultiplayerController* GetController() override;

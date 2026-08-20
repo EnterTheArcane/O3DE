@@ -8,6 +8,7 @@
 
 #include <AzNetworking/Serialization/StringifySerializer.h>
 #include <AzCore/UnitTest/TestTypes.h>
+#include <AzCore/std/containers/array.h>
 
 namespace UnitTest
 {
@@ -98,5 +99,17 @@ namespace UnitTest
         AZ_TEST_START_TRACE_SUPPRESSION;
         stringifySerializer.Serialize(boolValue, "Bool");
         AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+    }
+
+    TEST_F(StringifySerializerTests, ByteBuffersAreRepresentedWithoutLosingEmbeddedZeros)
+    {
+        AzNetworking::StringifySerializer stringifySerializer;
+        AZStd::array<uint8_t, 4> bytes{ 0x00, 0x12, 0xAB, 0xFF };
+        uint32_t byteCount = static_cast<uint32_t>(bytes.size());
+
+        EXPECT_TRUE(stringifySerializer.SerializeBytes(bytes.data(), byteCount, false, byteCount, "Bytes"));
+        const auto valueIterator = stringifySerializer.GetValueMap().find("Bytes");
+        ASSERT_NE(valueIterator, stringifySerializer.GetValueMap().end());
+        EXPECT_EQ(valueIterator->second, "0012ABFF");
     }
 } // namespace UnitTest

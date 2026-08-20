@@ -1403,7 +1403,15 @@ namespace AZ::Serialize
         typedef AZStd::vector<DataElementNode> NodeArray;
 
         bool SetDataHierarchy(SerializeContext& sc, const void* objectPtr, const Uuid& classId, SerializeContext::ErrorHandler* errorHandler = nullptr, const ClassData* classData = nullptr);
-        bool GetDataHierarchy(void* objectPtr, const Uuid& classId, SerializeContext::ErrorHandler* errorHandler = nullptr);
+        bool GetDataHierarchy(
+            void* objectPtr,
+            const Uuid& classId,
+            SerializeContext::ErrorHandler* errorHandler = nullptr);
+        bool GetDataHierarchy(
+            void* objectPtr,
+            const Uuid& classId,
+            SerializeContext* context,
+            SerializeContext::ErrorHandler* errorHandler);
 
         struct DataElementInstanceData
         {
@@ -1413,7 +1421,13 @@ namespace AZ::Serialize
         };
 
         using NodeStack = AZStd::list<DataElementInstanceData>;
-        bool GetDataHierarchyEnumerate(SerializeContext::ErrorHandler* errorHandler, NodeStack& nodeStack);
+        bool GetDataHierarchyEnumerate(
+            SerializeContext::ErrorHandler* errorHandler,
+            NodeStack& nodeStack);
+        bool GetDataHierarchyEnumerate(
+            SerializeContext* context,
+            SerializeContext::ErrorHandler* errorHandler,
+            NodeStack& nodeStack);
         bool GetClassElement(ClassElement& classElement, const DataElementNode& parentDataElement, SerializeContext::ErrorHandler* errorHandler) const;
 
         DataElement         m_element; ///< Serialization data for this element.
@@ -2343,6 +2357,10 @@ namespace AZ::Serialize
                         {
                             return false;
                         }
+                        if (text.find('\0') != AZStd::string::npos)
+                        {
+                            return false;
+                        }
 
                         AZStd::vector<char> convertedBuffer;
                         IO::ByteContainerStream<AZStd::vector<char>> convertedStream(&convertedBuffer);
@@ -2386,9 +2404,10 @@ namespace AZ::Serialize
     // DataElementNode::GetDataHierarchy
     //=========================================================================
     template <typename T>
-    bool DataElementNode::GetDataHierarchy(SerializeContext&, T& value, SerializeContext::ErrorHandler* errorHandler)
+    bool DataElementNode::GetDataHierarchy(SerializeContext& context, T& value, SerializeContext::ErrorHandler* errorHandler)
     {
-        return GetData<T>(value, errorHandler);
+        const Uuid& classTypeId = SerializeGenericTypeInfo<T>::GetClassTypeId();
+        return GetDataHierarchy(&value, classTypeId, &context, errorHandler);
     }
 
     //=========================================================================

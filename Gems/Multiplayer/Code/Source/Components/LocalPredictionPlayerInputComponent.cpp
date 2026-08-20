@@ -11,8 +11,9 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzNetworking/ConnectionLayer/SequenceGenerator.h>
+#include <AzNetworking/ConnectionLayer/Internal/ConnectionDecodeAccess.h>
 #include <AzNetworking/Serialization/HashSerializer.h>
-#include <AzNetworking/Serialization/Internal/SymbolAdmissionPolicy.h>
+#include <AzNetworking/Serialization/Internal/DecodeContext.h>
 #include <AzNetworking/Serialization/StringifySerializer.h>
 #include <Multiplayer/Components/NetworkHierarchyRootComponent.h>
 #include <Multiplayer/MultiplayerDebug.h>
@@ -479,14 +480,11 @@ namespace Multiplayer
         }
 
         // Apply the correction
-        auto& admissionPolicy = AzNetworking::Internal::GetSymbolAdmissionPolicy(*invokingConnection);
-        const AzNetworking::Internal::SymbolSerializationContext symbolSerializationContext{
-            AzNetworking::SymbolAdmission::NetworkOrigin,
-            &admissionPolicy};
-        OutputSerializer serializer(
+        AzNetworking::Internal::DecodeSession<OutputSerializer> decodeSession{
+            AzNetworking::Internal::ConnectionDecodeAccess::GetPermanentAdmissionCount(*invokingConnection),
             correction.GetBuffer(),
-            static_cast<uint32_t>(correction.GetSize()),
-            symbolSerializationContext);
+            static_cast<uint32_t>(correction.GetSize())};
+        OutputSerializer& serializer = decodeSession.GetSerializer();
         if (!SerializeEntityCorrection(serializer))
         {
             AZLOG_ERROR("Failed to deserialize entity correction state");

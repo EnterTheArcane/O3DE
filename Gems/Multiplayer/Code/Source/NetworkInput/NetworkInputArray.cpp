@@ -10,6 +10,7 @@
 #include <Multiplayer/NetworkEntity/INetworkEntityManager.h>
 #include <AzNetworking/Serialization/ISerializer.h>
 #include <AzNetworking/Serialization/DeltaSerializer.h>
+#include <AzNetworking/Serialization/Internal/DecodeContext.h>
 #include <AzCore/std/optional.h>
 
 namespace Multiplayer
@@ -85,7 +86,8 @@ namespace Multiplayer
                     // Start with previous value
                     inputs[i].m_networkInput = inputs[i - 1].m_networkInput;
                     // Then apply delta
-                    AzNetworking::DeltaSerializerApply applySerializer(deltaSerializer, serializer.GetSymbolSerializationContext());
+                    AzNetworking::DeltaSerializerApply applySerializer(deltaSerializer);
+                    AzNetworking::Internal::DecodeForwardScope decodeScope(serializer, applySerializer);
                     if (!applySerializer.ApplyDelta(inputs[i].m_networkInput))
                     {
                         return false;
