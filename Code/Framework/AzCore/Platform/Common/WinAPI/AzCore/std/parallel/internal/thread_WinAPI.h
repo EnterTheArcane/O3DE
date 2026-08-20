@@ -8,8 +8,16 @@
 
 #pragma once
 
+#if defined(_M_ARM) || defined(_M_ARM64) || defined(_M_ARM64EC)
+#    include <intrin.h>
+#endif
+
 #ifndef YieldProcessor
-#    define YieldProcessor _mm_pause
+#    if defined(_M_ARM) || defined(_M_ARM64) || defined(_M_ARM64EC)
+#        define YieldProcessor __yield
+#    else
+#        define YieldProcessor _mm_pause
+#    endif
 #endif
 
 extern "C"
