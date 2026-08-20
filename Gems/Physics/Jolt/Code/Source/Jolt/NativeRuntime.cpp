@@ -30,6 +30,28 @@
 #include <cstdarg>
 #include <cstring>
 
+#if defined(_M_IX86) || defined(_M_X64)
+#include <intrin.h>
+#elif defined(__i386__) || defined(__x86_64__)
+#include <cpuid.h>
+#endif
+
+#if (defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)) \
+    && !defined(JPH_USE_SSE4_1)
+#error "The Jolt provider requires SSE4.1 on x86."
+#endif
+
+#if defined(JPH_USE_AVX) \
+    || defined(JPH_USE_AVX2) \
+    || defined(JPH_USE_AVX512) \
+    || defined(JPH_USE_F16C) \
+    || defined(JPH_USE_FMADD) \
+    || defined(JPH_USE_LZCNT) \
+    || defined(JPH_USE_SSE4_2) \
+    || defined(JPH_USE_TZCNT)
+#error "The Jolt provider's x86 instruction set must remain exactly SSE4.1."
+#endif
+
 namespace Jolt
 {
     namespace
@@ -46,6 +68,30 @@ namespace Jolt
         AZStd::atomic<AZ::u64> NativePeakAllocatedBytes{0};
         AZStd::atomic_uint64_t NativeReallocationCount{0};
         AZStd::mutex NativeMemoryStatisticsMutex;
+
+        [[nodiscard]]
+        bool SupportsRequiredInstructionSet()
+        {
+#if defined(_M_IX86) || defined(_M_X64)
+            int registers[4]{};
+            __cpuid(registers, 0);
+            if (registers[0] < 1)
+            {
+                return false;
+            }
+
+            __cpuidex(registers, 1, 0);
+            return (registers[2] & (1 << 19)) != 0;
+#elif defined(__i386__) || defined(__x86_64__)
+            unsigned int eax = 0;
+            unsigned int ebx = 0;
+            unsigned int ecx = 0;
+            unsigned int edx = 0;
+            return __get_cpuid(1, &eax, &ebx, &ecx, &edx) && (ecx & bit_SSE4_1) != 0;
+#else
+            return true;
+#endif
+        }
 
         [[nodiscard]]
         bool IsNativeMemoryStatisticsEnabled()
@@ -189,6 +235,12 @@ namespace Jolt
             const float softBodyTriangleThickness)
         {
             AZStd::lock_guard lock(RuntimeMutex);
+            if (!SupportsRequiredInstructionSet())
+            {
+                AZ_Error("Jolt", false, "Jolt requires a processor with SSE4.1 support.");
+                return false;
+            }
+
             if (!AZ::IsFiniteFloat(softBodyTriangleThickness)
                 || softBodyTriangleThickness < 0.0f)
             {

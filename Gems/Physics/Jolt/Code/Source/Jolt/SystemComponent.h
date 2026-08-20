@@ -20,6 +20,7 @@
 
 namespace Jolt
 {
+    class EventBatch;
     class System;
     class Runtime;
     class SceneAssetHandler;

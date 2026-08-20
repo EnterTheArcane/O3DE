@@ -15,6 +15,7 @@
 
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobManager.h>
+#include <AzCore/UnitTest/UnitTest.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/limits.h>
 #include <AzTest/AzTest.h>
@@ -129,6 +130,9 @@ namespace Jolt
 #if defined(JPH_CPU_WASM) && defined(JPH_USE_SSE)
         EXPECT_EQ(runtimeInfo.m_simdLevel, SimdLevel::WasmSimd);
         EXPECT_NE(runtimeInfo.m_configuration.find("WASM"), AZStd::string_view::npos);
+#elif defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
+        EXPECT_EQ(runtimeInfo.m_simdLevel, SimdLevel::Sse41);
+        EXPECT_NE(runtimeInfo.m_configuration.find("SSE4.1"), AZStd::string_view::npos);
 #elif defined(JPH_USE_AVX512)
         EXPECT_EQ(runtimeInfo.m_simdLevel, SimdLevel::Avx512);
         EXPECT_NE(runtimeInfo.m_configuration.find("AVX512"), AZStd::string_view::npos);

@@ -112,6 +112,8 @@ namespace Jolt::Editor
             : public UnitTest::NullDebugDisplayRequests
         {
         public:
+            using UnitTest::NullDebugDisplayRequests::DrawLine;
+
             void DrawLine(
                 [[maybe_unused]] const AZ::Vector3& first,
                 [[maybe_unused]] const AZ::Vector3& second) override
