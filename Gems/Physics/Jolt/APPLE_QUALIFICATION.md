@@ -298,7 +298,7 @@ module=$(find build/jolt_mac/bin/release -type f \
     \( -name 'libJolt.Tests.Gem.dylib' -o -name 'Jolt.Tests.Gem.dylib' \) -print -quit)
 
 "$runner" "$module" AzRunBenchmarks \
-    --benchmark_min_time=0.05 \
+    --benchmark_min_time=0.5 \
     --benchmark_repetitions=30 \
     --benchmark_report_aggregates_only=false \
     --benchmark_out=build/jolt_apple_results/benchmarks/Jolt.Raw30.json \
@@ -309,6 +309,7 @@ Report median, p95/p99 where raw per-frame samples exist, bootstrap ratio bounds
 CV at most 5%. Keep 1-, 4-, and 8-worker results separate; never average them together. Run matched Jolt/Box3D/PhysX workloads only when
 all three providers compile on the same machine, and pass their raw files through `Code/Tests/compare_provider_benchmarks.py` with the
 unchanged median 1.0, bootstrap 1.05, tail 1.10, 30-repetition, and 5% CV gates.
+Do not poll the benchmark process or run other local commands during timed capture; inspect the completed artifact afterward.
 
 Run Jolt-specific absolute workloads for constraints, characters, vehicles, ragdolls, soft bodies, CPU Hair, scenes, custom providers,
 events, sensors, CCD, sleep/wake, broadphase rebuild/origin shift, rollback, assets, topology churn, and 1/4/8-worker scaling as they land.

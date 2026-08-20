@@ -4,7 +4,31 @@ Release microbenchmarks are the timing authority. Profile captures attribute tim
 matched result is accepted only after the comparator verifies workload identity, worker count, notification policy, sleep and continuous
 collision policy, query cardinality, simulation quality, repetition count, and stability.
 
-## Current Windows baseline
+## Phase 7 benchmark policy
+
+Matched throughput and frame-tail measurements are separate workloads. Throughput workloads execute 600 frames per repetition under
+Google Benchmark's calibrated real-time measurement. Tail workloads execute exactly 1,024 consecutive frames per repetition and publish
+every raw frame as `Frame{index}Ns`. Each provider runs 30 tail windows, yielding 30,720 raw frames per configuration without trimming.
+
+The tail workload reports its within-window p50, p95, p99, and maximum. Its manual benchmark time is the p95 so the raw samples, summary
+counters, and Google Benchmark result can be cross-checked. The comparator independently reconstructs every window p95, applies the 5%
+CV gate to the 30 window p95 values, and applies the 1.10 tail-ratio gate to the pooled raw-frame p95. A percentile of per-repetition
+averages is not accepted as frame-tail evidence.
+
+Requested worker count means total execution participants. Every provider uses the caller plus `workerCount - 1` background workers. The
+artifacts record both values and the comparator rejects an inconsistent topology. All timed steps, lifecycle mutations, raycasts,
+batches, and overlaps contribute to explicit success counters; one valid final result cannot hide earlier failures. Jolt's timed
+lifecycle path disables allocation instrumentation and reports it as a separate diagnostic workload.
+
+Release captures use high process priority and exactly as many physical-core lanes as the requested worker count. On the Ryzen 9 7950X,
+one-worker captures use logical CPU 30, four-worker captures use 24, 26, 28, and 30, and eight-worker captures use the physical lanes
+16 through 30 on the same CCD. Affinity is established before child-process creation so the benchmark caller and every job worker inherit
+the intended topology. Each matched workload runs in its own fresh process so unrelated allocator, cache, and power-state history cannot
+contaminate a later workload. Qualification records the policy, compiler, configuration, source revision and complete dirty-source hash,
+runner and provider binary hashes, workload signature, repetition count, and minimum time. A report older than the runner, provider
+binary, or current source state is rejected.
+
+## Historical Phase 5 Windows baseline
 
 The following medians were captured on 2026-08-16 in isolated Release processes with 30 repetitions per provider. Every workload used the
 same provider policy and reported the expected resource and result counts. Ratios below 1.0 favor Jolt.
@@ -24,7 +48,8 @@ same provider policy and reported the expected resource and result counts. Ratio
 | 1024 closest raycasts, batch | 38.95 us | 45.31 us | 257.64 us | 0.860 | 0.151 |
 | Sphere overlap, 25 stable hits | 0.62 us | 0.66 us | 1.05 us | 0.951 | 0.596 |
 
-Jolt is faster than PhysX for every workload. Its samples pass the workload, result, median, bootstrap, repetition-tail, and 5% CV gates.
+Jolt is faster than PhysX for every workload. Its samples pass the Phase 5 workload, result, median, bootstrap, repetition-p95, and 5%
+CV gates.
 The complete three-provider comparison is not accepted as a qualification artifact because the unchanged comparator correctly rejects
 six PhysX series whose CV exceeds 5% on this host. The affected PhysX CVs range from 5.105% to 8.555%. No samples were trimmed and no
 threshold was relaxed. Jolt is also faster than Box3D in every measured workload except the 128-body lifecycle case, which is 1.070x;
@@ -38,6 +63,9 @@ The retained reports are:
 
 The corresponding `.Qualified.json` files contain the source, dirty-diff, binary, compiler, configuration, policy, and workload
 fingerprints consumed by the fail-closed comparator.
+
+These reports predate the Phase 7 raw-frame tail and exact execution-topology requirements. They remain historical optimization evidence,
+not current qualification artifacts.
 
 ## MSVC and WSL Clang checkpoint
 
@@ -227,6 +255,12 @@ recovery capture and reduces the median by 66.4%. The safety policy is captured 
 match across every part of a multipart restore. These measurements predate the two-phase participant and contact-provenance remediation;
 Phase 7 must recapture them before they are treated as current qualification evidence.
 
+The Phase 7 native patch also retains the body-ID workspace used to notify broadphase bounds after restore. The first restore grows that
+world-owned array; subsequent restores clear and reuse it. The final smoke covered recapture plus transactional and validated restore at
+128 and 1,024 bodies. All six workloads reported zero native allocations, frees, reallocations, native-byte growth, temporary-capacity
+growth, wrapper-capacity growth, and snapshot failures after warmup. The 24-byte array object and its high-water BodyID storage are owned
+by the native world and released with it. Final 30-repetition timing remains the authority for the performance table.
+
 ## Authored Profile capture
 
 `AutomatedTesting::JoltTests_Benchmark` creates an 8 by 8 by 4 stack, waits for 120 simulation ticks, keeps every body active, and captures
@@ -276,11 +310,33 @@ fast but invalid workload cannot pass.
 
 ## Benchmark artifact integrity
 
-`prepare_benchmark_artifact.py` refuses a non-Release report, a report older than its binary, or a missing binary. It adds SHA-256 hashes
-for the benchmark binary and workload definition, source revision and dirty-diff hash, compiler/configuration, affinity policy, filter,
-minimum time, repetition count, and raw-sample policy. The comparator rejects stale signatures, duplicate binary hashes, differing
-revisions or dirty states, mismatched compiler/build/affinity policies, duplicate or missing repetition indices, non-finite samples, and
-the existing median, bootstrap, repetition-tail, and CV gates.
+`prepare_benchmark_artifact.py` refuses a non-Release report, a report older than its provider binary or runner, a provider binary older
+than the current source state, or a missing input. It can merge disjoint captures and explicitly reindex repeated fresh-process batches
+only when their benchmark contexts match, with the same 1% frequency tolerance used by provider comparison. Local repetition indices
+must be contiguous and the merged result must contain exactly 30 repetitions. Batch-local aggregate rows are discarded because they do
+not describe the pooled sample; the comparator recomputes every statistic from the retained raw iterations. Every original capture
+context remains in the merged artifact. It hashes every raw report, the runner, provider binary, workload definition, tracked diff, and
+every untracked non-ignored source file. The artifact also records the revision, compiler/configuration, affinity policy, filter,
+minimum time, repetition count, reindexing policy, and raw-sample policy. The comparator rejects stale signatures, differing
+runner/source/configuration/affinity metadata, duplicate or missing repetitions, mismatched worker and affinity counts, invalid topology
+and quality counters, non-finite samples, missing raw frames, and the median, bootstrap, repetition-p95, pooled-frame-tail, and CV gates.
+
+Each workload begins with a separate recorded warmup process, then uses one fresh process for each of its 30 repetitions. Repeated world
+destruction and recreation is a different lifecycle workload and measurably contaminates both throughput and frame-tail variance. This
+preserves all 30 samples and all 30 measured 4,096-frame windows. No sample is trimmed or discarded, and warmup reports are retained and
+hashed without entering measured results.
+
+Throughput workloads use a 0.5-second minimum measurement window. A 0.05-second probe admitted isolated scheduler interruptions into an
+entire repetition and produced a 5.10% raycast CV; the same 30 fresh-process repetitions measured 0.77% CV at 0.5 seconds. Tail workloads
+retain every raw frame instead of relying on a longer aggregate interval. A 4,096-frame window reduced the measured PhysX four-worker tail
+CV from 9.03% at 1,024 frames to 1.40% without trimming a sample.
+
+The Windows recipe uses logical processors selected from a 10-second processor-utility and interrupt-rate sample, with one sibling per
+physical core. Re-measure quiet physical lanes on different hardware and record the exact selection in the affinity policy. Qualification
+uses response files for the hundreds of fresh-process report paths so Windows command-line length does not limit complete captures.
+Do not poll the benchmark process or run other local commands while a timed capture is active. Session polling reproduced a 6.43% Jolt
+batch-raycast CV and 9.01% PhysX tail-window CV; complete unpolled 30-process recaptures measured 1.46% and 0.84%, respectively, without
+replacing or trimming individual samples.
 
 `inspect_hot_assembly.py` runs LLVM objdump over selected functions and emits JSON plus Markdown counts for stack frames, instructions,
 out-of-line calls, conditional branches, conversions, vector instructions, and likely copies. These are diagnostic heuristics, not exact
@@ -302,6 +358,12 @@ The floating-point counts include the cold noncanonical fallback calls; the 9.22
 `World::GetPerformanceStatistics` is intentionally a cold, opt-in read path and remains the largest inspected function at a 1,032-byte
 frame. Its repeated-read unit test proves that this reporting complexity does not allocate.
 
+The current Phase 7 report is `build/jolt-phase7/assembly/Jolt.Release.Clang22.md`. The exported capability seam has no virtual dispatch:
+`WorldSimulation::Get` is 10 instructions with no stack frame or call, while `StepWorldDetailed`, `GetEvents`, `RaycastClosest`, and the
+common rollback overloads are 12-instruction, zero-frame tail transfers into `RuntimeImplementation`. The inspected batch-raycast wrapper
+has a 104-byte frame and two direct calls. `Internal::WaitForOperation` has a 56-byte frame and three calls, including the intentional
+worker-aware wait/assistance path. These counts are diagnostic compiler-output evidence, not brittle opcode gates.
+
 ## Allocator alignment validation
 
 ASan and LLDB isolated an intermittent `vmovaps` fault in AzCore's HPHA placement buffer: the public byte buffer was 16-byte aligned while
@@ -313,91 +375,296 @@ not a Jolt-specific alignment workaround.
 ## Reproduction
 
 ```powershell
-$buildDirectory = 'build/windows_jolt_phase5_clangcl'
-cmake --build $buildDirectory --config Release --target Jolt.Tests Jolt.TestProviders --parallel 24
+$buildDirectory = 'build/windows_jolt_clangcl_ninja'
+cmake --build $buildDirectory --config Release --target Jolt.Tests Box3D.Tests PhysX5.Tests --parallel 16
 
 ctest --test-dir $buildDirectory -C Release -R 'Gem::Jolt\.Tests\.main' --output-on-failure
 
-$runner = Resolve-Path "$buildDirectory/bin/Release/AzTestRunner.exe"
-$joltTests = Resolve-Path "$buildDirectory/bin/Release/Jolt.Tests.Gem.dll"
-$benchmarkResults = New-Item -ItemType Directory -Force "$buildDirectory/BenchmarkResults"
-$filter = 'Jolt/(Step/FallingBoxes|Lifecycle/CreateDestroyBodies|Query/RaycastGrid|Query/RaycastClosestBatchGrid/1024/(128/4|1024/4)|Query/OverlapSphereGrid)'
+$binaryDirectory = Resolve-Path "$buildDirectory/bin/Release"
+$runner = Resolve-Path "$binaryDirectory/AzTestRunner.exe"
+$benchmarkResults = New-Item -ItemType Directory -Force 'build/jolt-phase7/BenchmarkResults'
+$batchCount = 30
+$repetitionsPerBatch = 1
+$matchedSuffix =
+    '(Step/SettledBoxes|Tail/Step/SettledBoxes|Lifecycle/CreateDestroyBodies|' +
+    'Query/RaycastGrid|Query/RaycastClosestBatchGrid/1024/(128/4|1024/4)|Query/OverlapSphereGrid)'
+$matchedWorkloads = @(
+    [pscustomobject]@{ Name = 'Step128W1'; Filter = 'Step/SettledBoxes/128/1/iterations:600/real_time'; Mask = 0x01000000 }
+    [pscustomobject]@{ Name = 'Step128W4'; Filter = 'Step/SettledBoxes/128/4/iterations:600/real_time'; Mask = 0x25020000 }
+    [pscustomobject]@{ Name = 'Step128W8'; Filter = 'Step/SettledBoxes/128/8/iterations:600/real_time'; Mask = 0x659A0000 }
+    [pscustomobject]@{ Name = 'Step1024W1'; Filter = 'Step/SettledBoxes/1024/1/iterations:600/real_time'; Mask = 0x01000000 }
+    [pscustomobject]@{ Name = 'Step1024W4'; Filter = 'Step/SettledBoxes/1024/4/iterations:600/real_time'; Mask = 0x25020000 }
+    [pscustomobject]@{ Name = 'Step1024W8'; Filter = 'Step/SettledBoxes/1024/8/iterations:600/real_time'; Mask = 0x659A0000 }
+    [pscustomobject]@{ Name = 'Lifecycle128'; Filter = 'Lifecycle/CreateDestroyBodies/128/1/real_time'; Mask = 0x01000000 }
+    [pscustomobject]@{ Name = 'Lifecycle1024'; Filter = 'Lifecycle/CreateDestroyBodies/1024/1/real_time'; Mask = 0x01000000 }
+    [pscustomobject]@{ Name = 'Raycast'; Filter = 'Query/RaycastGrid/1024/128/1/real_time'; Mask = 0x01000000 }
+    [pscustomobject]@{ Name = 'BatchRaycast128'; Filter = 'Query/RaycastClosestBatchGrid/1024/128/4/real_time'; Mask = 0x25020000 }
+    [pscustomobject]@{ Name = 'BatchRaycast1024'; Filter = 'Query/RaycastClosestBatchGrid/1024/1024/4/real_time'; Mask = 0x25020000 }
+    [pscustomobject]@{ Name = 'Overlap'; Filter = 'Query/OverlapSphereGrid/1024/1/1/real_time'; Mask = 0x01000000 }
+    [pscustomobject]@{ Name = 'Tail128W1'; Filter = 'Tail/Step/SettledBoxes/128/1/iterations:1/manual_time'; Mask = 0x01000000 }
+    [pscustomobject]@{ Name = 'Tail128W4'; Filter = 'Tail/Step/SettledBoxes/128/4/iterations:1/manual_time'; Mask = 0x25020000 }
+    [pscustomobject]@{ Name = 'Tail128W8'; Filter = 'Tail/Step/SettledBoxes/128/8/iterations:1/manual_time'; Mask = 0x659A0000 }
+    [pscustomobject]@{ Name = 'Tail1024W1'; Filter = 'Tail/Step/SettledBoxes/1024/1/iterations:1/manual_time'; Mask = 0x01000000 }
+    [pscustomobject]@{ Name = 'Tail1024W4'; Filter = 'Tail/Step/SettledBoxes/1024/4/iterations:1/manual_time'; Mask = 0x25020000 }
+    [pscustomobject]@{ Name = 'Tail1024W8'; Filter = 'Tail/Step/SettledBoxes/1024/8/iterations:1/manual_time'; Mask = 0x659A0000 }
+)
 
-$startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-$startInfo.FileName = $runner
-$startInfo.UseShellExecute = $false
-$startInfo.WorkingDirectory = Split-Path $runner
-$startInfo.ArgumentList.Add($joltTests)
-$startInfo.ArgumentList.Add('AzRunBenchmarks')
-$startInfo.ArgumentList.Add("--benchmark_filter=$filter")
-$startInfo.ArgumentList.Add('--benchmark_min_time=0.05')
-$startInfo.ArgumentList.Add('--benchmark_repetitions=30')
-$startInfo.ArgumentList.Add('--benchmark_report_aggregates_only=false')
-$startInfo.ArgumentList.Add("--benchmark_out=$benchmarkResults/Jolt.Phase5.Matched.Final.Raw30.json")
-$startInfo.ArgumentList.Add('--benchmark_out_format=json')
-$process = [System.Diagnostics.Process]::Start($startInfo)
-$process.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::High
-$process.WaitForExit()
+function Invoke-ProviderBenchmark(
+    [string] $provider,
+    [string] $module,
+    [string] $filterSuffix,
+    [double] $minimumTime,
+    [string] $outputPath,
+    [Int64] $affinityMask,
+    [int] $repetitions)
+{
+    $filter = "^$provider/$filterSuffix"
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $runner
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.WorkingDirectory = $binaryDirectory
+    $startInfo.ArgumentList.Add((Resolve-Path "$binaryDirectory/$module"))
+    $startInfo.ArgumentList.Add('AzRunBenchmarks')
+    $startInfo.ArgumentList.Add("--benchmark_filter=$filter")
+    $startInfo.ArgumentList.Add("--benchmark_min_time=$minimumTime")
+    $startInfo.ArgumentList.Add("--benchmark_repetitions=$repetitions")
+    $startInfo.ArgumentList.Add('--benchmark_report_aggregates_only=false')
+    $startInfo.ArgumentList.Add('--benchmark_display_aggregates_only=true')
+    $startInfo.ArgumentList.Add("--benchmark_out=$outputPath")
+    $startInfo.ArgumentList.Add('--benchmark_out_format=json')
+
+    $benchmarkHost = [System.Diagnostics.Process]::GetCurrentProcess()
+    $previousAffinity = $benchmarkHost.ProcessorAffinity
+    try
+    {
+        $benchmarkHost.ProcessorAffinity = [IntPtr]$affinityMask
+        $process = [System.Diagnostics.Process]::Start($startInfo)
+    }
+    finally
+    {
+        $benchmarkHost.ProcessorAffinity = $previousAffinity
+    }
+    $process.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::High
+    if ($process.PriorityClass -ne [System.Diagnostics.ProcessPriorityClass]::High)
+    {
+        throw "$provider benchmark process did not retain High priority."
+    }
+    if ([Int64]$process.ProcessorAffinity -ne $affinityMask)
+    {
+        throw "$provider benchmark process did not retain the requested affinity."
+    }
+    $standardOutput = $process.StandardOutput.ReadToEndAsync()
+    $standardError = $process.StandardError.ReadToEndAsync()
+    $process.WaitForExit()
+    $standardOutput.GetAwaiter().GetResult() | Out-Null
+    $errorText = $standardError.GetAwaiter().GetResult()
+    if ($process.ExitCode -ne 0)
+    {
+        throw "$provider benchmark failed: $errorText"
+    }
+    if (!(Test-Path -LiteralPath $outputPath) -or (Get-Item -LiteralPath $outputPath).Length -eq 0)
+    {
+        throw "$provider benchmark produced no report: $outputPath"
+    }
+}
+
+$absoluteSuffix =
+    '(Diagnostic/AcquireRuntimeConfigurationCapability|Diagnostic/RaycastEmptyWorld|' +
+    'Query/OverlapSphereGrid/1024/1/1|Query/RaycastGrid/1024/128/1|' +
+    'Rollback/(RecaptureFilteredState|RestoreFilteredStateTransactional|RestoreFilteredStateValidated))'
+
+$joltAbsoluteRaw = "$benchmarkResults/Jolt.Phase7.Absolute.Raw30.json"
+$providers = @(
+    [pscustomobject]@{ Name = 'Jolt'; Module = 'Jolt.Tests.Gem.dll'; Raw = [System.Collections.Generic.List[string]]::new(); Warmup = [System.Collections.Generic.List[string]]::new() }
+    [pscustomobject]@{ Name = 'Box3D'; Module = 'Box3D.Tests.Gem.dll'; Raw = [System.Collections.Generic.List[string]]::new(); Warmup = [System.Collections.Generic.List[string]]::new() }
+    [pscustomobject]@{ Name = 'PhysX'; Module = 'PhysX5.Tests.Gem.dll'; Raw = [System.Collections.Generic.List[string]]::new(); Warmup = [System.Collections.Generic.List[string]]::new() }
+)
+
+$benchmarkHost = [System.Diagnostics.Process]::GetCurrentProcess()
+$previousPriority = $benchmarkHost.PriorityClass
+try
+{
+    $benchmarkHost.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::High
+    foreach ($provider in $providers)
+    {
+        foreach ($workload in $matchedWorkloads)
+        {
+            $warmupPath = "$benchmarkResults/$($provider.Name).Phase7.$($workload.Name).Warmup.json"
+            Invoke-ProviderBenchmark $provider.Name $provider.Module $workload.Filter 0.5 $warmupPath $workload.Mask 1
+            $provider.Warmup.Add($warmupPath)
+            for ($batchIndex = 0; $batchIndex -lt $batchCount; ++$batchIndex)
+            {
+                $rawPath =
+                    "$benchmarkResults/$($provider.Name).Phase7.$($workload.Name).Raw$repetitionsPerBatch.Batch$batchIndex.json"
+                Invoke-ProviderBenchmark `
+                    $provider.Name `
+                    $provider.Module `
+                    $workload.Filter `
+                    0.5 `
+                    $rawPath `
+                    $workload.Mask `
+                    $repetitionsPerBatch
+                $provider.Raw.Add($rawPath)
+            }
+        }
+    }
+    Invoke-ProviderBenchmark Jolt Jolt.Tests.Gem.dll $absoluteSuffix 0.2 $joltAbsoluteRaw 0x01000000 30
+}
+finally
+{
+    $benchmarkHost.PriorityClass = $previousPriority
+}
+
+$joltRaw = $providers[0].Raw.ToArray()
+$box3dRaw = $providers[1].Raw.ToArray()
+$physxRaw = $providers[2].Raw.ToArray()
+$joltWarmup = $providers[0].Warmup.ToArray()
+$box3dWarmup = $providers[1].Warmup.ToArray()
+$physxWarmup = $providers[2].Warmup.ToArray()
+
+function Get-AdditionalRawReportArguments([string[]] $rawPaths)
+{
+    $arguments = [System.Collections.Generic.List[string]]::new()
+    for ($rawPathIndex = 1; $rawPathIndex -lt $rawPaths.Count; ++$rawPathIndex)
+    {
+        $arguments.Add('--additional-raw-report')
+        $arguments.Add($rawPaths[$rawPathIndex])
+    }
+    return $arguments.ToArray()
+}
+
+function Get-WarmupReportArguments([string[]] $warmupPaths)
+{
+    $arguments = [System.Collections.Generic.List[string]]::new()
+    foreach ($warmupPath in $warmupPaths)
+    {
+        $arguments.Add('--warmup-report')
+        $arguments.Add($warmupPath)
+    }
+    return $arguments.ToArray()
+}
+
+$affinityPolicy = 'Ryzen 9 7950X measured quiet physical lanes: 1=24, 4=17,24,26,29, 8=17,19,20,23,24,26,29,30; inherited affinity; high priority'
+$joltTests = Resolve-Path "$binaryDirectory/Jolt.Tests.Gem.dll"
+$filter = "Jolt/$matchedSuffix"
+$joltAdditionalRawArguments = Get-AdditionalRawReportArguments $joltRaw
+$joltWarmupArguments = Get-WarmupReportArguments $joltWarmup
+$joltResponseFile = "$benchmarkResults/Jolt.Phase7.Qualification.rsp"
+[System.IO.File]::WriteAllLines($joltResponseFile, [string[]]($joltAdditionalRawArguments + $joltWarmupArguments))
 
 python Gems/Physics/Jolt/Code/Tests/prepare_benchmark_artifact.py `
-    $benchmarkResults/Jolt.Phase5.Matched.Final.Raw30.json `
-    $benchmarkResults/Jolt.Phase5.Matched.Final.Qualified.json `
+    $joltRaw[0] `
+    $benchmarkResults/Jolt.Phase7.MatchedAndTail.Qualified.json `
     $joltTests `
+    "@$joltResponseFile" `
+    --runner $runner `
     --source-root . `
     --provider Jolt `
     --compiler-id Clang `
     --compiler-version 22.1.8 `
     --build-configuration Release `
-    --cpu-affinity-policy "Eight physical cores, high process priority" `
+    --cpu-affinity-policy $affinityPolicy `
     --benchmark-filter $filter `
-    --minimum-time 0.05 `
+    --minimum-time 0.5 `
+    --repetitions 30 `
+    --reindex-repetitions
+
+$filter = "Jolt/$absoluteSuffix"
+python Gems/Physics/Jolt/Code/Tests/prepare_benchmark_artifact.py `
+    $joltAbsoluteRaw `
+    $benchmarkResults/Jolt.Phase7.Absolute.Qualified.json `
+    $joltTests `
+    --runner $runner `
+    --source-root . `
+    --provider Jolt `
+    --compiler-id Clang `
+    --compiler-version 22.1.8 `
+    --build-configuration Release `
+    --cpu-affinity-policy $affinityPolicy `
+    --benchmark-filter $filter `
+    --minimum-time 0.2 `
     --repetitions 30
 
-& $runner $joltTests `
-    AzRunBenchmarks `
-    --benchmark_filter="Jolt/Rollback/RecaptureFilteredState" `
-    --benchmark_min_time=0.05 `
-    --benchmark_repetitions=30 `
-    --benchmark_report_aggregates_only=false `
-    --benchmark_out="$benchmarkResults/Jolt.Phase5.Rollback.NoGrowth.Final.Raw30.json" `
-    --benchmark_out_format=json
+$box3dTests = Resolve-Path "$binaryDirectory/Box3D.Tests.Gem.dll"
+$filter = "Box3D/$matchedSuffix"
+$box3dAdditionalRawArguments = Get-AdditionalRawReportArguments $box3dRaw
+$box3dWarmupArguments = Get-WarmupReportArguments $box3dWarmup
+$box3dResponseFile = "$benchmarkResults/Box3D.Phase7.Qualification.rsp"
+[System.IO.File]::WriteAllLines($box3dResponseFile, [string[]]($box3dAdditionalRawArguments + $box3dWarmupArguments))
+python Gems/Physics/Jolt/Code/Tests/prepare_benchmark_artifact.py `
+    $box3dRaw[0] `
+    $benchmarkResults/Box3D.Phase7.MatchedAndTail.Qualified.json `
+    $box3dTests `
+    "@$box3dResponseFile" `
+    --runner $runner `
+    --source-root . `
+    --provider Box3D `
+    --compiler-id Clang `
+    --compiler-version 22.1.8 `
+    --build-configuration Release `
+    --cpu-affinity-policy $affinityPolicy `
+    --benchmark-filter $filter `
+    --minimum-time 0.5 `
+    --repetitions 30 `
+    --reindex-repetitions
+
+$physxTests = Resolve-Path "$binaryDirectory/PhysX5.Tests.Gem.dll"
+$filter = "PhysX/$matchedSuffix"
+$physxAdditionalRawArguments = Get-AdditionalRawReportArguments $physxRaw
+$physxWarmupArguments = Get-WarmupReportArguments $physxWarmup
+$physxResponseFile = "$benchmarkResults/PhysX.Phase7.Qualification.rsp"
+[System.IO.File]::WriteAllLines($physxResponseFile, [string[]]($physxAdditionalRawArguments + $physxWarmupArguments))
+python Gems/Physics/Jolt/Code/Tests/prepare_benchmark_artifact.py `
+    $physxRaw[0] `
+    $benchmarkResults/PhysX.Phase7.MatchedAndTail.Qualified.json `
+    $physxTests `
+    "@$physxResponseFile" `
+    --runner $runner `
+    --source-root . `
+    --provider PhysX `
+    --compiler-id Clang `
+    --compiler-version 22.1.8 `
+    --build-configuration Release `
+    --cpu-affinity-policy $affinityPolicy `
+    --benchmark-filter $filter `
+    --minimum-time 0.5 `
+    --repetitions 30 `
+    --reindex-repetitions
 
 python Gems/Physics/Jolt/Code/Tests/compare_provider_benchmarks.py `
-    build/windows_jolt_clangcl_ninja/BenchmarkResults/Jolt.Phase5.Matched.Final.Qualified.json `
-    build/windows_jolt_clangcl_ninja/BenchmarkResults/Box3D.Phase5.Matched.Final.Qualified.json `
-    build/windows_jolt_clangcl_ninja/BenchmarkResults/PhysX.Phase5.Matched.Final2.Qualified.json `
+    build/jolt-phase7/BenchmarkResults/Jolt.Phase7.MatchedAndTail.Qualified.json `
+    build/jolt-phase7/BenchmarkResults/Box3D.Phase7.MatchedAndTail.Qualified.json `
+    build/jolt-phase7/BenchmarkResults/PhysX.Phase7.MatchedAndTail.Qualified.json `
     --gate-provider PhysX `
     --repetitions 30 `
     --maximum-median-ratio 1.0 `
     --maximum-bootstrap-ratio 1.05 `
-    --maximum-repetition-tail-ratio 1.10 `
+    --maximum-repetition-p95-ratio 1.10 `
+    --maximum-frame-tail-ratio 1.10 `
     --maximum-cv 0.05
 
-$joltCodeBuild = Resolve-Path "$buildDirectory/External/Jolt-*/Code"
-$worldBitcode = "$joltCodeBuild/CMakeFiles/Jolt.Private.Static.dir/release/Unity/unity_6_cxx.cxx.obj"
-$floatAndJobsBitcode = "$joltCodeBuild/CMakeFiles/Jolt.Private.Static.dir/release/Unity/unity_2_cxx.cxx.obj"
-& D:/LLVM/22.1.8/bin/clang.exe -c -x ir --target=x86_64-pc-windows-msvc -O3 -fno-lto `
-    $worldBitcode -o "$benchmarkResults/Jolt.World.Assembly.obj"
-& D:/LLVM/22.1.8/bin/clang.exe -c -x ir --target=x86_64-pc-windows-msvc -O3 -fno-lto `
-    $floatAndJobsBitcode -o "$benchmarkResults/Jolt.FloatAndJobs.Assembly.obj"
+python Gems/Physics/Jolt/Code/Tests/validate_jolt_benchmarks.py `
+    build/jolt-phase7/BenchmarkResults/Jolt.Phase7.Absolute.Qualified.json `
+    --repetitions 30 `
+    --maximum-capability-nanoseconds 3.0 `
+    --maximum-capability-operation-ratio 0.02 `
+    --maximum-cv 0.05
 
 python Gems/Physics/Jolt/Code/Tests/inspect_hot_assembly.py `
-    $benchmarkResults/Jolt.World.Assembly.obj `
+    "$binaryDirectory/Jolt.API.dll" `
     --objdump D:/LLVM/22.1.8/bin/llvm-objdump.exe `
-    --symbol "Jolt::World::RaycastClosest" `
-    --symbol "Jolt::World::StepDetailed" `
-    --symbol "Jolt::World::GetPerformanceStatistics" `
-    --json-output $benchmarkResults/Jolt.Release.World.Assembly.json `
-    --markdown-output $benchmarkResults/Jolt.Release.World.Assembly.md
-
-python Gems/Physics/Jolt/Code/Tests/inspect_hot_assembly.py `
-    $benchmarkResults/Jolt.FloatAndJobs.Assembly.obj `
-    --objdump D:/LLVM/22.1.8/bin/llvm-objdump.exe `
-    --symbol "Jolt::JobSystem::QueueJob" `
-    --symbol "Jolt::FloatEnvironment::Enter" `
-    --symbol "Jolt::FloatEnvironment::Leave" `
-    --json-output $benchmarkResults/Jolt.Release.FloatAndJobs.Assembly.json `
-    --markdown-output $benchmarkResults/Jolt.Release.FloatAndJobs.Assembly.md
+    --symbol 'Jolt::WorldSimulation::Get\(' `
+    --symbol 'Jolt::WorldSimulation::StepWorldDetailed' `
+    --symbol 'Jolt::WorldQueries::RaycastClosest\(' `
+    --symbol 'Jolt::WorldQueries::RaycastClosestBatch\(' `
+    --symbol 'Jolt::Internal::WaitForOperation' `
+    --symbol 'Jolt::WorldSimulation::GetEvents' `
+    --symbol 'Jolt::Rollback::CaptureWorldState\(' `
+    --symbol 'Jolt::Rollback::RestoreWorldState\(' `
+    --json-output build/jolt-phase7/assembly/Jolt.Release.Clang22.json `
+    --markdown-output build/jolt-phase7/assembly/Jolt.Release.Clang22.md
 ```
 
 The comparator fails closed when any required workload or counter is missing, signatures differ, the providers report different policies,

@@ -25,6 +25,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/limits.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/std/sort.h>
 #include <AzCore/std/string/string.h>
 #include <AzTest/AzTest.h>
 #include <AzTest/Benchmark/BenchmarkEnvironment.h>
@@ -36,6 +37,7 @@ namespace Jolt::Benchmarks
         constexpr float MatchedTimeStep = 1.0f / 60.0f;
         constexpr float MatchedGridSpacing = 1.1f;
         constexpr AZ::u32 StatefulBenchmarkFrameCount = 120;
+        constexpr size_t TailSampleCount = 4096;
         constexpr AZ::u32 VehicleBenchmarkFrameCount = 30;
         constexpr AZ::u32 WarmupFrameCount = 600;
         constexpr AZ::u32 ValidationFrameCount = 600;
@@ -93,6 +95,10 @@ namespace Jolt::Benchmarks
                     }())
                 , m_jobContext(m_jobManager)
             {
+                if (workerCount > 1)
+                {
+                    m_backgroundWorkerCount = workerCount - 1;
+                }
             }
 
             [[nodiscard]]
@@ -110,10 +116,13 @@ namespace Jolt::Benchmarks
                     state.counters["AffinityConstrained"] = 1;
                 }
                 state.counters["AffinityProcessors"] = m_cpuAffinity.GetProcessorCount();
+                state.counters["BackgroundWorkers"] = m_backgroundWorkerCount;
+                state.counters["CallerParticipates"] = 1;
             }
 
         private:
             const AZ::Test::ScopedBenchmarkCpuAffinity& m_cpuAffinity;
+            AZ::u32 m_backgroundWorkerCount = 0;
             AZ::JobManager m_jobManager;
             AZ::JobContext m_jobContext;
         };
@@ -656,7 +665,8 @@ namespace Jolt::Benchmarks
         }
     } // namespace
 
-    void StepFallingBoxesImpl(
+    template<bool CaptureTailSamples>
+    void StepSettledBoxesImpl(
         benchmark::State& state,
         const bool useMatchedSolverPolicy)
     {
@@ -746,9 +756,51 @@ namespace Jolt::Benchmarks
             positions.push_back(ToVector3(bodyState.m_transform.m_position));
         }
 
-        for ([[maybe_unused]] auto iteration : state)
+        bool allStepsSucceeded = true;
+        AZ::u64 validationFrameCount = ValidationFrameCount;
+        if constexpr (CaptureTailSamples)
         {
-            benchmark::DoNotOptimize(system.StepWorld(worldHandle, MatchedTimeStep));
+            AZStd::array<double, TailSampleCount> tailSamples;
+            for ([[maybe_unused]] auto iteration : state)
+            {
+                for (double& sample : tailSamples)
+                {
+                    const auto start = AZStd::chrono::steady_clock::now();
+                    const bool stepSucceeded = system.StepWorld(worldHandle, MatchedTimeStep);
+                    const auto end = AZStd::chrono::steady_clock::now();
+                    sample = AZStd::chrono::duration<double, AZStd::nano>(end - start).count();
+                    allStepsSucceeded = stepSucceeded && allStepsSucceeded;
+                }
+
+                for (size_t sampleIndex = 0; sampleIndex < tailSamples.size(); ++sampleIndex)
+                {
+                    const AZStd::string sampleName = AZStd::string::format(
+                        "Frame%uNs",
+                        aznumeric_cast<unsigned int>(sampleIndex));
+                    state.counters[sampleName.c_str()] = tailSamples[sampleIndex];
+                }
+
+                AZStd::sort(tailSamples.begin(), tailSamples.end());
+                constexpr size_t p50Index = (TailSampleCount * 50 + 99) / 100 - 1;
+                constexpr size_t p95Index = (TailSampleCount * 95 + 99) / 100 - 1;
+                constexpr size_t p99Index = (TailSampleCount * 99 + 99) / 100 - 1;
+                state.SetIterationTime(tailSamples[p95Index] * 1.0e-9);
+                state.counters["TailMaximumNs"] = tailSamples.back();
+                state.counters["TailP50Ns"] = tailSamples[p50Index];
+                state.counters["TailP95Ns"] = tailSamples[p95Index];
+                state.counters["TailP99Ns"] = tailSamples[p99Index];
+                state.counters["TailSampleCount"] = TailSampleCount;
+            }
+            validationFrameCount = TailSampleCount;
+        }
+        else
+        {
+            for ([[maybe_unused]] auto iteration : state)
+            {
+                const bool stepSucceeded = system.StepWorld(worldHandle, MatchedTimeStep);
+                allStepsSucceeded = stepSucceeded && allStepsSucceeded;
+                benchmark::DoNotOptimize(stepSucceeded);
+            }
         }
 
         float maximumDisplacement = 0.0f;
@@ -776,6 +828,7 @@ namespace Jolt::Benchmarks
         }
         qualityValid = minimumHeight >= 0.45f
             && maximumDisplacement <= maximumAllowedDisplacement
+            && allStepsSucceeded
             && qualityValid;
 
         AddWorldCounters(state, system, worldHandle);
@@ -803,7 +856,7 @@ namespace Jolt::Benchmarks
         state.counters["GridSpacingMillimeters"] = 1100;
         state.counters["RowWidth"] = rowWidth;
         state.counters["Restitution"] = 0;
-        state.counters["ValidationFrames"] = ValidationFrameCount;
+        state.counters["ValidationFrames"] = aznumeric_cast<double>(validationFrameCount);
         state.counters["VelocitySteps"] = 10;
         if (useMatchedSolverPolicy)
         {
@@ -818,19 +871,25 @@ namespace Jolt::Benchmarks
         state.counters["WarmupCompleted"] = 1;
         state.counters["WarmupTicks"] = WarmupFrameCount;
         state.counters["Workers"] = workerCount;
-        state.SetItemsProcessed(state.iterations() * bodyCount);
+        state.SetItemsProcessed(validationFrameCount * bodyCount);
     }
 
-    void StepFallingBoxes(
+    void StepSettledBoxes(
         benchmark::State& state)
     {
-        StepFallingBoxesImpl(state, true);
+        StepSettledBoxesImpl<false>(state, true);
     }
 
-    void StepFallingBoxesDefaultQuality(
+    void StepSettledBoxesTail(
         benchmark::State& state)
     {
-        StepFallingBoxesImpl(state, false);
+        StepSettledBoxesImpl<true>(state, true);
+    }
+
+    void StepSettledBoxesDefaultQuality(
+        benchmark::State& state)
+    {
+        StepSettledBoxesImpl<false>(state, false);
     }
 
     void StepAutomaticWorlds(
@@ -935,8 +994,9 @@ namespace Jolt::Benchmarks
         state.SetItemsProcessed(state.iterations() * bodiesPerWorld * worldCount);
     }
 
-    void CreateDestroyBodies(
-        benchmark::State& state)
+    void CreateDestroyBodiesImpl(
+        benchmark::State& state,
+        const bool collectStatistics)
     {
         const AZ::u32 bodyCount = aznumeric_cast<AZ::u32>(state.range(0));
         constexpr AZ::u32 workerCount = 1;
@@ -950,14 +1010,14 @@ namespace Jolt::Benchmarks
             state.SkipWithError("Failed to create the Jolt lifecycle benchmark world.");
             return;
         }
-        if (!system.ConfigurePerformanceStatistics(
+        if (collectStatistics
+            && !system.ConfigurePerformanceStatistics(
                 worldHandle,
                 PerformanceStatisticsFlags::Memory | PerformanceStatisticsFlags::Resources))
         {
             state.SkipWithError("Failed to enable Jolt lifecycle allocation statistics.");
             return;
         }
-
         AZStd::vector<BodyHandle> bodies;
         bodies.reserve(bodyCount);
         AZStd::vector<ShapeHandle> shapes;
@@ -999,11 +1059,31 @@ namespace Jolt::Benchmarks
         }
 
         state.counters["DynamicBodies"] = bodyCount;
-        AddPerformanceCounters(state, system, worldHandle);
+        if (collectStatistics)
+        {
+            AddPerformanceCounters(state, system, worldHandle);
+        }
+        state.counters["InstrumentationEnabled"] = 0;
+        if (collectStatistics)
+        {
+            state.counters["InstrumentationEnabled"] = 1;
+        }
         jobContext.AddCounters(state);
         state.counters["Notifications"] = 0;
         state.counters["Workers"] = workerCount;
         state.SetItemsProcessed(state.iterations() * bodyCount);
+    }
+
+    void CreateDestroyBodies(
+        benchmark::State& state)
+    {
+        CreateDestroyBodiesImpl(state, false);
+    }
+
+    void CreateDestroyBodiesInstrumented(
+        benchmark::State& state)
+    {
+        CreateDestroyBodiesImpl(state, true);
     }
 
     void ChangeRagdollMembership(
@@ -1233,6 +1313,18 @@ namespace Jolt::Benchmarks
             state.SkipWithError("Failed to warm the rollback recapture benchmark.");
             return;
         }
+        if (restoreState)
+        {
+            constexpr AZ::u32 restoreWarmupCount = 2;
+            for (AZ::u32 warmupIndex = 0; warmupIndex < restoreWarmupCount; ++warmupIndex)
+            {
+                if (!system.RestoreWorldState(worldHandle, snapshotHandle))
+                {
+                    state.SkipWithError("Failed to warm the rollback restore benchmark.");
+                    return;
+                }
+            }
+        }
         if (!system.ConfigurePerformanceStatistics(
                 worldHandle,
                 PerformanceStatisticsFlags::Memory
@@ -1268,6 +1360,38 @@ namespace Jolt::Benchmarks
             benchmark::DoNotOptimize(qualityValid);
         }
 
+        WorldPerformanceStatistics finalStatistics;
+        if (!system.GetPerformanceStatistics(worldHandle, finalStatistics, false))
+        {
+            state.SkipWithError("Failed to read rollback allocation statistics.");
+            return;
+        }
+        AZ::u64 nativeAllocatedGrowthBytes = 0;
+        if (finalStatistics.m_processNativeAllocatedBytes > warmupStatistics.m_processNativeAllocatedBytes)
+        {
+            nativeAllocatedGrowthBytes =
+                finalStatistics.m_processNativeAllocatedBytes - warmupStatistics.m_processNativeAllocatedBytes;
+        }
+        AZ::u64 tempAllocatorCapacityGrowthBytes = 0;
+        if (finalStatistics.m_tempAllocatorCapacityBytes > warmupStatistics.m_tempAllocatorCapacityBytes)
+        {
+            tempAllocatorCapacityGrowthBytes =
+                finalStatistics.m_tempAllocatorCapacityBytes - warmupStatistics.m_tempAllocatorCapacityBytes;
+        }
+        AZ::u64 wrapperRetainedGrowthBytes = 0;
+        if (finalStatistics.m_wrapperRetainedBytes > warmupStatistics.m_wrapperRetainedBytes)
+        {
+            wrapperRetainedGrowthBytes = finalStatistics.m_wrapperRetainedBytes - warmupStatistics.m_wrapperRetainedBytes;
+        }
+        qualityValid = finalStatistics.m_processNativeAllocationCount == 0
+            && finalStatistics.m_processNativeFreeCount == 0
+            && finalStatistics.m_processNativeReallocationCount == 0
+            && nativeAllocatedGrowthBytes == 0
+            && finalStatistics.m_snapshotFailureCount == 0
+            && tempAllocatorCapacityGrowthBytes == 0
+            && wrapperRetainedGrowthBytes == 0
+            && qualityValid;
+
         state.counters["Bodies"] = bodyCount;
         state.counters["Constraints"] = bodyCount - 1;
         AddPerformanceCounters(state, system, worldHandle);
@@ -1276,6 +1400,10 @@ namespace Jolt::Benchmarks
         {
             state.counters["QualityValid"] = 1;
         }
+        state.counters["NativeAllocatedGrowthBytes"] = aznumeric_cast<double>(nativeAllocatedGrowthBytes);
+        state.counters["TempAllocatorCapacityGrowthBytes"] = aznumeric_cast<double>(
+            tempAllocatorCapacityGrowthBytes);
+        state.counters["WrapperRetainedGrowthBytes"] = aznumeric_cast<double>(wrapperRetainedGrowthBytes);
         state.counters["Workers"] = workerCount;
         state.SetItemsProcessed(state.iterations() * (bodyCount * 2 - 1));
     }
@@ -1936,7 +2064,7 @@ namespace Jolt::Benchmarks
         }
         request.m_displacement = -AZ::Vector3::CreateAxisZ(20.0f);
         RaycastHit hit;
-        bool qualityValid = false;
+        AZ::u64 successfulRayCount = 0;
         constexpr AZ::u32 rowWidth = 32;
         for ([[maybe_unused]] auto iteration : state)
         {
@@ -1948,12 +2076,15 @@ namespace Jolt::Benchmarks
                     .m_y = 2.0 * static_cast<double>(obstacleIndex / rowWidth),
                     .m_z = 10.0,
                 };
-                qualityValid = worldQueries->RaycastClosest(request, hit);
-                benchmark::DoNotOptimize(qualityValid);
+                const bool raySucceeded = worldQueries->RaycastClosest(request, hit);
+                successfulRayCount += raySucceeded;
+                benchmark::DoNotOptimize(raySucceeded);
                 benchmark::DoNotOptimize(hit);
             }
         }
 
+        const AZ::u64 expectedRayCount = aznumeric_cast<AZ::u64>(state.iterations()) * rayCount;
+        const bool qualityValid = successfulRayCount == expectedRayCount;
         state.counters["Obstacles"] = obstacleCount;
         jobContext.AddCounters(state);
         state.counters["QualityValid"] = 0;
@@ -1961,6 +2092,7 @@ namespace Jolt::Benchmarks
         {
             state.counters["QualityValid"] = 1;
         }
+        state.counters["SuccessfulQueries"] = aznumeric_cast<double>(successfulRayCount);
         state.counters["Workers"] = workerCount;
         state.SetItemsProcessed(state.iterations() * rayCount);
     }
@@ -2126,19 +2258,33 @@ namespace Jolt::Benchmarks
         constexpr auto warmupDuration = AZStd::chrono::milliseconds(100);
         const auto warmupDeadline = AZStd::chrono::steady_clock::now() + warmupDuration;
         BufferResult batchResult;
+        bool warmupCompleted = true;
         do
         {
             batchResult = worldQueries->RaycastClosestBatch(requests, results);
+            warmupCompleted = batchResult.m_count == rayCount
+                && batchResult.m_requiredCount == rayCount
+                && batchResult.IsComplete()
+                && warmupCompleted;
             benchmark::DoNotOptimize(batchResult);
         } while (AZStd::chrono::steady_clock::now() < warmupDeadline);
 
+        AZ::u64 completeBatchCount = 0;
         for ([[maybe_unused]] auto iteration : state)
         {
             batchResult = worldQueries->RaycastClosestBatch(requests, results);
+            if (batchResult.m_count == rayCount
+                && batchResult.m_requiredCount == rayCount
+                && batchResult.IsComplete())
+            {
+                ++completeBatchCount;
+            }
             benchmark::DoNotOptimize(batchResult);
         }
 
-        bool qualityValid = batchResult.m_count == rayCount
+        bool qualityValid = warmupCompleted
+            && completeBatchCount == aznumeric_cast<AZ::u64>(state.iterations())
+            && batchResult.m_count == rayCount
             && batchResult.m_requiredCount == rayCount
             && batchResult.IsComplete();
         for (const ClosestRaycastResult& result : results)
@@ -2154,6 +2300,12 @@ namespace Jolt::Benchmarks
         if (qualityValid)
         {
             state.counters["QualityValid"] = 1;
+        }
+        state.counters["CompleteOperations"] = aznumeric_cast<double>(completeBatchCount);
+        state.counters["WarmupCompleted"] = 0;
+        if (warmupCompleted)
+        {
+            state.counters["WarmupCompleted"] = 1;
         }
         state.counters["WarmupMs"] = static_cast<double>(warmupDuration.count());
         state.counters["Workers"] = workerCount;
@@ -2193,20 +2345,30 @@ namespace Jolt::Benchmarks
         request.m_transform.m_position = {.m_x = 32.0, .m_y = 32.0};
         AZStd::array<OverlapHit, expectedHitCount> hits;
         QueryResult result;
+        AZ::u64 completeQueryCount = 0;
         for ([[maybe_unused]] auto iteration : state)
         {
             for (AZ::u32 queryIndex = 0; queryIndex < queryCount; ++queryIndex)
             {
                 result = worldQueries->OverlapShape(request, hits);
+                if (result.m_hitCount == expectedHitCount
+                    && result.m_requiredHitCount == expectedHitCount
+                    && result.IsComplete())
+                {
+                    ++completeQueryCount;
+                }
                 benchmark::DoNotOptimize(result);
                 benchmark::DoNotOptimize(hits);
             }
         }
 
-        const bool qualityValid = result.m_hitCount == expectedHitCount
+        const AZ::u64 expectedQueryCount = aznumeric_cast<AZ::u64>(state.iterations()) * queryCount;
+        const bool qualityValid = completeQueryCount == expectedQueryCount
+            && result.m_hitCount == expectedHitCount
             && result.m_requiredHitCount == expectedHitCount
             && result.IsComplete();
         state.counters["ActualHits"] = result.m_hitCount;
+        state.counters["CompleteOperations"] = aznumeric_cast<double>(completeQueryCount);
         jobContext.AddCounters(state);
         state.counters["ExpectedHits"] = expectedHitCount;
         state.counters["Obstacles"] = obstacleCount;
@@ -3253,6 +3415,36 @@ namespace Jolt::Benchmarks
         state.counters["Workers"] = 1;
     }
 
+    void AcquireRuntimeConfigurationCapability(
+        benchmark::State& state)
+    {
+        constexpr AZ::u32 workerCount = 1;
+        JobContextScope jobContext(workerCount);
+        Runtime system(
+            CreateSystemConfiguration(workerCount, 1),
+            &jobContext.Get());
+        RuntimeConfiguration* expectedCapability = static_cast<RuntimeConfiguration*>(&system);
+        if (!system || RuntimeConfiguration::Get() != expectedCapability)
+        {
+            state.SkipWithError("Failed to publish the runtime-configuration capability.");
+            return;
+        }
+
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            RuntimeConfiguration* capability = RuntimeConfiguration::Get();
+            benchmark::DoNotOptimize(capability);
+        }
+
+        jobContext.AddCounters(state);
+        state.counters["QualityValid"] = 0;
+        if (RuntimeConfiguration::Get() == expectedCapability)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = workerCount;
+    }
+
     void StepCollisionPolicy(
         benchmark::State& state)
     {
@@ -3431,8 +3623,8 @@ namespace Jolt::Benchmarks
         state.counters["Workers"] = workerCount;
     }
 
-    BENCHMARK(StepFallingBoxes)
-        ->Name("Jolt/Step/FallingBoxes")
+    BENCHMARK(StepSettledBoxes)
+        ->Name("Jolt/Step/SettledBoxes")
         ->Args({128, 1})
         ->Args({128, 4})
         ->Args({128, 8})
@@ -3443,8 +3635,20 @@ namespace Jolt::Benchmarks
         ->UseRealTime()
         ->Iterations(ValidationFrameCount);
 
-    BENCHMARK(StepFallingBoxesDefaultQuality)
-        ->Name("Jolt/Diagnostic/Step/FallingBoxesDefaultQuality")
+    BENCHMARK(StepSettledBoxesTail)
+        ->Name("Jolt/Tail/Step/SettledBoxes")
+        ->Args({128, 1})
+        ->Args({128, 4})
+        ->Args({128, 8})
+        ->Args({1024, 1})
+        ->Args({1024, 4})
+        ->Args({1024, 8})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseManualTime()
+        ->Iterations(1);
+
+    BENCHMARK(StepSettledBoxesDefaultQuality)
+        ->Name("Jolt/Diagnostic/Step/SettledBoxesDefaultQuality")
         ->Args({1024, 1})
         ->Unit(benchmark::kMicrosecond)
         ->UseRealTime()
@@ -3785,6 +3989,18 @@ namespace Jolt::Benchmarks
     BENCHMARK(ReadPerformanceStatistics)
         ->Name("Jolt/Diagnostic/ReadPerformanceStatistics")
         ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(CreateDestroyBodiesInstrumented)
+        ->Name("Jolt/Diagnostic/Lifecycle/CreateDestroyBodiesInstrumented")
+        ->Args({128, 1})
+        ->Args({1024, 1})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(AcquireRuntimeConfigurationCapability)
+        ->Name("Jolt/Diagnostic/AcquireRuntimeConfigurationCapability")
+        ->Unit(benchmark::kNanosecond)
         ->UseRealTime();
 } // namespace Jolt::Benchmarks
 

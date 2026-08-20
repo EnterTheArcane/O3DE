@@ -16,6 +16,8 @@ from pathlib import Path
 
 
 PROVIDERS = ("Jolt", "Box3D", "PhysX")
+WORKLOAD_SCHEMA_VERSION = 5
+TAIL_SAMPLE_COUNT = 4096
 TIME_UNIT_TO_MICROSECONDS = {
     "ns": 0.001,
     "us": 1.0,
@@ -31,7 +33,7 @@ JOLT_MATCHED_STEP_POLICY = {
 WORKLOADS = (
     {
         "label": "Step 128/1",
-        "suffix": "Step/FallingBoxes/128/1/iterations:600/real_time",
+        "suffix": "Step/SettledBoxes/128/1/iterations:600/real_time",
         "exact": {
             "AngularDamping": 1,
             "Ccd": 0,
@@ -61,7 +63,7 @@ WORKLOADS = (
     },
     {
         "label": "Step 128/4",
-        "suffix": "Step/FallingBoxes/128/4/iterations:600/real_time",
+        "suffix": "Step/SettledBoxes/128/4/iterations:600/real_time",
         "exact": {
             "AngularDamping": 1,
             "Ccd": 0,
@@ -91,7 +93,7 @@ WORKLOADS = (
     },
     {
         "label": "Step 128/8",
-        "suffix": "Step/FallingBoxes/128/8/iterations:600/real_time",
+        "suffix": "Step/SettledBoxes/128/8/iterations:600/real_time",
         "exact": {
             "AngularDamping": 1,
             "Ccd": 0,
@@ -121,7 +123,7 @@ WORKLOADS = (
     },
     {
         "label": "Step 1024/1",
-        "suffix": "Step/FallingBoxes/1024/1/iterations:600/real_time",
+        "suffix": "Step/SettledBoxes/1024/1/iterations:600/real_time",
         "exact": {
             "AngularDamping": 1,
             "Ccd": 0,
@@ -151,7 +153,7 @@ WORKLOADS = (
     },
     {
         "label": "Step 1024/4",
-        "suffix": "Step/FallingBoxes/1024/4/iterations:600/real_time",
+        "suffix": "Step/SettledBoxes/1024/4/iterations:600/real_time",
         "exact": {
             "AngularDamping": 1,
             "Ccd": 0,
@@ -181,7 +183,7 @@ WORKLOADS = (
     },
     {
         "label": "Step 1024/8",
-        "suffix": "Step/FallingBoxes/1024/8/iterations:600/real_time",
+        "suffix": "Step/SettledBoxes/1024/8/iterations:600/real_time",
         "exact": {
             "AngularDamping": 1,
             "Ccd": 0,
@@ -212,27 +214,55 @@ WORKLOADS = (
     {
         "label": "Lifecycle 128",
         "suffix": "Lifecycle/CreateDestroyBodies/128/1/real_time",
-        "exact": {"DynamicBodies": 128, "Notifications": 0, "Workers": 1},
+        "exact": {
+            "DynamicBodies": 128,
+            "InstrumentationEnabled": 0,
+            "Notifications": 0,
+            "Workers": 1,
+        },
     },
     {
         "label": "Lifecycle 1024",
         "suffix": "Lifecycle/CreateDestroyBodies/1024/1/real_time",
-        "exact": {"DynamicBodies": 1024, "Notifications": 0, "Workers": 1},
+        "exact": {
+            "DynamicBodies": 1024,
+            "InstrumentationEnabled": 0,
+            "Notifications": 0,
+            "Workers": 1,
+        },
     },
     {
         "label": "Raycast 1024/128",
         "suffix": "Query/RaycastGrid/1024/128/1/real_time",
         "exact": {"Obstacles": 1024, "QualityValid": 1, "Workers": 1},
+        "completion_counter": "SuccessfulQueries",
+        "operations_per_iteration": 128,
     },
     {
         "label": "Batch raycast 1024/128",
         "suffix": "Query/RaycastClosestBatchGrid/1024/128/4/real_time",
-        "exact": {"Obstacles": 1024, "QualityValid": 1, "WarmupMs": 100, "Workers": 4},
+        "exact": {
+            "Obstacles": 1024,
+            "QualityValid": 1,
+            "WarmupCompleted": 1,
+            "WarmupMs": 100,
+            "Workers": 4,
+        },
+        "completion_counter": "CompleteOperations",
+        "operations_per_iteration": 1,
     },
     {
         "label": "Batch raycast 1024/1024",
         "suffix": "Query/RaycastClosestBatchGrid/1024/1024/4/real_time",
-        "exact": {"Obstacles": 1024, "QualityValid": 1, "WarmupMs": 100, "Workers": 4},
+        "exact": {
+            "Obstacles": 1024,
+            "QualityValid": 1,
+            "WarmupCompleted": 1,
+            "WarmupMs": 100,
+            "Workers": 4,
+        },
+        "completion_counter": "CompleteOperations",
+        "operations_per_iteration": 1,
     },
     {
         "label": "Sphere overlap 1024/1",
@@ -244,13 +274,39 @@ WORKLOADS = (
             "QualityValid": 1,
             "Workers": 1,
         },
+        "completion_counter": "CompleteOperations",
+        "operations_per_iteration": 1,
     },
 )
 
 
+def make_tail_workload(workload: dict) -> dict:
+    exact = dict(workload["exact"])
+    exact["TailSampleCount"] = TAIL_SAMPLE_COUNT
+    exact["ValidationFrames"] = TAIL_SAMPLE_COUNT
+    return {
+        "label": f"{workload['label']} frame tail",
+        "suffix": workload["suffix"]
+            .replace("Step/SettledBoxes", "Tail/Step/SettledBoxes")
+            .replace("iterations:600/real_time", "iterations:1/manual_time"),
+        "exact": exact,
+        "minimum": dict(workload.get("minimum", {})),
+        "maximum": dict(workload.get("maximum", {})),
+        "provider_exact": dict(workload.get("provider_exact", {})),
+        "iterations": 1,
+    }
+
+
+TAIL_WORKLOADS = tuple(make_tail_workload(workload) for workload in WORKLOADS[:6])
+
+
 def workload_signature() -> str:
     encoded_workloads = json.dumps(
-        WORKLOADS,
+        {
+            "schema_version": WORKLOAD_SCHEMA_VERSION,
+            "tail_workloads": TAIL_WORKLOADS,
+            "workloads": WORKLOADS,
+        },
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
@@ -300,8 +356,9 @@ def validate_context(reports: dict[str, dict]) -> None:
         "provider",
         "raw_samples",
         "repetitions",
-        "source_diff_sha256",
+        "runner_sha256",
         "source_revision",
+        "source_state_sha256",
         "workload_signature",
     )
     reference_metadata = reports["Jolt"].get("qualification", {})
@@ -322,8 +379,9 @@ def validate_context(reports: dict[str, dict]) -> None:
             "minimum_time",
             "raw_samples",
             "repetitions",
-            "source_diff_sha256",
+            "runner_sha256",
             "source_revision",
+            "source_state_sha256",
             "workload_signature",
         ):
             if metadata[field] != reference_metadata.get(field):
@@ -371,16 +429,32 @@ def load_samples(
             raise ValueError(
                 f"{name} was not constrained to the benchmark CPU topology."
             )
-        actual_affinity_processors = round(float(result.get("AffinityProcessors", 0)))
-        if actual_affinity_processors <= 0:
-            raise ValueError(f"{name} has no constrained benchmark processors.")
-        affinity_processor_counts.add(actual_affinity_processors)
         for counter, expected in exact_counters.items():
             if counter not in result or round(float(result[counter])) != expected:
                 raise ValueError(
                     f"{name} has invalid {counter}: expected {expected}, "
                     f"found {result.get(counter, 'missing')}"
                 )
+        worker_count = round(float(result.get("Workers", 0)))
+        actual_affinity_processors = round(float(result.get("AffinityProcessors", 0)))
+        if actual_affinity_processors != worker_count:
+            raise ValueError(
+                f"{name} has invalid AffinityProcessors: expected {worker_count}, "
+                f"found {actual_affinity_processors}."
+            )
+        affinity_processor_counts.add(actual_affinity_processors)
+        expected_background_workers = max(0, worker_count - 1)
+        expected_caller_participation = 1
+        if round(float(result.get("BackgroundWorkers", -1))) != expected_background_workers:
+            raise ValueError(
+                f"{name} has invalid BackgroundWorkers: expected "
+                f"{expected_background_workers}, found {result.get('BackgroundWorkers', 'missing')}"
+            )
+        if round(float(result.get("CallerParticipates", -1))) != expected_caller_participation:
+            raise ValueError(
+                f"{name} has invalid CallerParticipates: expected "
+                f"{expected_caller_participation}, found {result.get('CallerParticipates', 'missing')}"
+            )
         for counter, minimum in workload.get("minimum", {}).items():
             if counter not in result or float(result[counter]) < minimum:
                 raise ValueError(
@@ -398,6 +472,15 @@ def load_samples(
                 f"{name} has invalid iterations: expected {workload['iterations']}, "
                 f"found {result.get('iterations', 'missing')}"
             )
+        if completion_counter := workload.get("completion_counter"):
+            expected_completion_count = (
+                int(result.get("iterations", 0)) * workload["operations_per_iteration"]
+            )
+            if round(float(result.get(completion_counter, -1))) != expected_completion_count:
+                raise ValueError(
+                    f"{name} has invalid {completion_counter}: expected "
+                    f"{expected_completion_count}, found {result.get(completion_counter, 'missing')}"
+                )
 
         time_unit = result.get("time_unit")
         if time_unit not in TIME_UNIT_TO_MICROSECONDS:
@@ -423,6 +506,77 @@ def percentile(samples: list[float], probability: float) -> float:
     ordered = sorted(samples)
     index = max(0, math.ceil(probability * len(ordered)) - 1)
     return ordered[index]
+
+
+def load_tail_samples(
+    report: dict,
+    provider: str,
+    name: str,
+    workload: dict,
+    expected_repetitions: int,
+) -> tuple[list[float], list[float], int]:
+    reported_p95_samples, affinity_processor_count = load_samples(
+        report,
+        provider,
+        name,
+        workload,
+        expected_repetitions,
+    )
+    raw_frame_samples = []
+    p95_by_repetition = {}
+    for result in report.get("benchmarks", []):
+        if result.get("name") != name or result.get("run_type", "iteration") != "iteration":
+            continue
+
+        repetition_index = result["repetition_index"]
+        repetition_samples = []
+        for sample_index in range(TAIL_SAMPLE_COUNT):
+            counter = f"Frame{sample_index}Ns"
+            sample_nanoseconds = float(result.get(counter, math.nan))
+            if not math.isfinite(sample_nanoseconds) or sample_nanoseconds <= 0.0:
+                raise ValueError(
+                    f"{name} repetition {repetition_index} has invalid raw frame "
+                    f"sample {counter}: {result.get(counter, 'missing')}"
+                )
+            repetition_samples.append(sample_nanoseconds * 0.001)
+
+        expected_p95 = percentile(repetition_samples, 0.95)
+        reported_tail_p95 = float(result.get("TailP95Ns", math.nan)) * 0.001
+        if not math.isclose(reported_tail_p95, expected_p95, rel_tol=1.0e-9):
+            raise ValueError(
+                f"{name} repetition {repetition_index} reported TailP95Ns "
+                f"{reported_tail_p95} us but raw samples produce {expected_p95} us."
+            )
+
+        time_unit = result["time_unit"]
+        reported_real_time = float(result["real_time"]) * TIME_UNIT_TO_MICROSECONDS[time_unit]
+        if not math.isclose(reported_real_time, expected_p95, rel_tol=1.0e-6):
+            raise ValueError(
+                f"{name} repetition {repetition_index} reported real time "
+                f"{reported_real_time} us but raw samples produce p95 {expected_p95} us."
+            )
+
+        raw_frame_samples.extend(repetition_samples)
+        p95_by_repetition[repetition_index] = expected_p95
+
+    if len(raw_frame_samples) != expected_repetitions * TAIL_SAMPLE_COUNT:
+        raise ValueError(
+            f"{name} has {len(raw_frame_samples)} raw frame samples; expected "
+            f"{expected_repetitions * TAIL_SAMPLE_COUNT}."
+        )
+
+    ordered_p95_samples = [
+        p95_by_repetition[repetition_index]
+        for repetition_index in range(expected_repetitions)
+    ]
+    for reported, reconstructed in zip(reported_p95_samples, ordered_p95_samples):
+        if not math.isclose(reported, reconstructed, rel_tol=1.0e-6):
+            raise ValueError(
+                f"{name} reported p95 batch time {reported} us but raw samples "
+                f"produce {reconstructed} us."
+            )
+
+    return raw_frame_samples, ordered_p95_samples, affinity_processor_count
 
 
 def coefficient_of_variation(samples: list[float]) -> float:
@@ -457,7 +611,8 @@ def main() -> int:
     parser.add_argument("--gate-provider", choices=("Box3D", "PhysX"), default="PhysX")
     parser.add_argument("--maximum-median-ratio", type=float, default=1.0)
     parser.add_argument("--maximum-bootstrap-ratio", type=float, default=1.05)
-    parser.add_argument("--maximum-repetition-tail-ratio", type=float, default=1.10)
+    parser.add_argument("--maximum-repetition-p95-ratio", type=float, default=1.10)
+    parser.add_argument("--maximum-frame-tail-ratio", type=float, default=1.10)
     parser.add_argument("--maximum-cv", type=float, default=0.05)
     parser.add_argument("--repetitions", type=int, default=30)
     arguments = parser.parse_args()
@@ -537,7 +692,10 @@ def main() -> int:
 
         reference_samples = provider_samples[arguments.gate_provider]
         median_ratio = medians["Jolt"] / medians[arguments.gate_provider]
-        tail_ratio = percentile(provider_samples["Jolt"], 0.95) / percentile(reference_samples, 0.95)
+        repetition_p95_ratio = (
+            percentile(provider_samples["Jolt"], 0.95)
+            / percentile(reference_samples, 0.95)
+        )
         _, bootstrap_upper = bootstrap_median_ratio_interval(
             provider_samples["Jolt"],
             reference_samples,
@@ -550,10 +708,10 @@ def main() -> int:
                 file=sys.stderr,
             )
             failed = True
-        if tail_ratio > arguments.maximum_repetition_tail_ratio:
+        if repetition_p95_ratio > arguments.maximum_repetition_p95_ratio:
             print(
-                f"  {workload['label']} repetition p95 ratio {tail_ratio:.3f} exceeds "
-                f"{arguments.maximum_repetition_tail_ratio:.3f} against {arguments.gate_provider}.",
+                f"  {workload['label']} repetition p95 ratio {repetition_p95_ratio:.3f} exceeds "
+                f"{arguments.maximum_repetition_p95_ratio:.3f} against {arguments.gate_provider}.",
                 file=sys.stderr,
             )
             failed = True
@@ -561,6 +719,66 @@ def main() -> int:
             print(
                 f"  {workload['label']} bootstrap ratio upper bound {bootstrap_upper:.3f} exceeds "
                 f"{arguments.maximum_bootstrap_ratio:.3f} against {arguments.gate_provider}.",
+                file=sys.stderr,
+            )
+            failed = True
+
+    print("\nRaw-frame tail workload        Jolt p95  Box3D p95  PhysX p95  J/B    J/P")
+    for workload in TAIL_WORKLOADS:
+        provider_p95_samples = {}
+        provider_raw_frame_samples = {}
+        provider_affinity_processor_counts = {}
+        try:
+            for provider in PROVIDERS:
+                name = f"{provider}/{workload['suffix']}"
+                (
+                    provider_raw_frame_samples[provider],
+                    provider_p95_samples[provider],
+                    provider_affinity_processor_counts[provider],
+                ) = load_tail_samples(
+                    reports[provider],
+                    provider,
+                    name,
+                    workload,
+                    arguments.repetitions,
+                )
+            if len(set(provider_affinity_processor_counts.values())) != 1:
+                raise ValueError(
+                    f"{workload['label']} used different benchmark processor counts: "
+                    f"{provider_affinity_processor_counts}"
+                )
+        except ValueError as error:
+            print(error, file=sys.stderr)
+            failed = True
+            continue
+
+        p95 = {
+            provider: percentile(provider_raw_frame_samples[provider], 0.95)
+            for provider in PROVIDERS
+        }
+        jolt_to_box3d = p95["Jolt"] / p95["Box3D"]
+        jolt_to_physx = p95["Jolt"] / p95["PhysX"]
+        print(
+            f"{workload['label']:<29} {p95['Jolt']:>9.2f}  "
+            f"{p95['Box3D']:>10.2f}  {p95['PhysX']:>9.2f}  "
+            f"{jolt_to_box3d:>5.3f}  {jolt_to_physx:>5.3f}"
+        )
+
+        for provider in PROVIDERS:
+            cv = coefficient_of_variation(provider_p95_samples[provider])
+            if cv > arguments.maximum_cv:
+                print(
+                    f"  {workload['label']} {provider} p95-window CV {cv:.3%} exceeds "
+                    f"{arguments.maximum_cv:.3%}.",
+                    file=sys.stderr,
+                )
+                failed = True
+
+        frame_tail_ratio = p95["Jolt"] / p95[arguments.gate_provider]
+        if frame_tail_ratio > arguments.maximum_frame_tail_ratio:
+            print(
+                f"  {workload['label']} frame p95 ratio {frame_tail_ratio:.3f} exceeds "
+                f"{arguments.maximum_frame_tail_ratio:.3f} against {arguments.gate_provider}.",
                 file=sys.stderr,
             )
             failed = True

@@ -14,7 +14,11 @@ import compare_provider_benchmarks
 
 def make_report(provider: str, time_microseconds: float) -> dict:
     benchmarks = []
-    for workload in compare_provider_benchmarks.WORKLOADS:
+    workloads = (
+        compare_provider_benchmarks.WORKLOADS
+        + compare_provider_benchmarks.TAIL_WORKLOADS
+    )
+    for workload in workloads:
         for repetition_index in range(30):
             result = {
                 "name": f"{provider}/{workload['suffix']}",
@@ -24,12 +28,27 @@ def make_report(provider: str, time_microseconds: float) -> dict:
                 "real_time": time_microseconds,
                 "time_unit": "us",
                 "AffinityConstrained": 1,
-                "AffinityProcessors": 8,
             }
             result.update(workload.get("exact", {}))
             result.update(workload.get("provider_exact", {}).get(provider, {}))
             result.update(workload.get("minimum", {}))
             result.update(workload.get("maximum", {}))
+            worker_count = round(float(result.get("Workers", 0)))
+            result["AffinityProcessors"] = worker_count
+            result["BackgroundWorkers"] = max(0, worker_count - 1)
+            result["CallerParticipates"] = 1
+            if completion_counter := workload.get("completion_counter"):
+                result[completion_counter] = (
+                    result["iterations"] * workload["operations_per_iteration"]
+                )
+            if "TailSampleCount" in result:
+                sample_nanoseconds = time_microseconds * 1_000.0
+                for sample_index in range(compare_provider_benchmarks.TAIL_SAMPLE_COUNT):
+                    result[f"Frame{sample_index}Ns"] = sample_nanoseconds
+                result["TailMaximumNs"] = sample_nanoseconds
+                result["TailP50Ns"] = sample_nanoseconds
+                result["TailP95Ns"] = sample_nanoseconds
+                result["TailP99Ns"] = sample_nanoseconds
             benchmarks.append(result)
     return {
         "context": {
@@ -50,8 +69,9 @@ def make_report(provider: str, time_microseconds: float) -> dict:
             "provider": provider,
             "raw_samples": True,
             "repetitions": 30,
-            "source_diff_sha256": "diff-hash",
+            "runner_sha256": "runner-hash",
             "source_revision": "source-revision",
+            "source_state_sha256": "source-state-hash",
             "workload_signature": compare_provider_benchmarks.workload_signature(),
         },
         "benchmarks": benchmarks,
@@ -116,12 +136,75 @@ class CompareProviderBenchmarksTests(unittest.TestCase):
         reports["PhysX"]["benchmarks"][0]["AffinityProcessors"] = 4
         self.assertEqual(run_comparison(reports), 1)
 
+    def test_rejects_wrong_execution_topology(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["Box3D"]["benchmarks"][0]["BackgroundWorkers"] = 1
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_incomplete_timed_operations(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        ray_workload_index = next(
+            index
+            for index, workload in enumerate(compare_provider_benchmarks.WORKLOADS)
+            if workload["label"] == "Raycast 1024/128"
+        )
+        result_index = ray_workload_index * 30
+        reports["Jolt"]["benchmarks"][result_index]["SuccessfulQueries"] -= 1
+        self.assertEqual(run_comparison(reports), 1)
+
     def test_rejects_jolt_performance_regression(self):
         reports = {
             "Jolt": make_report("Jolt", 110.0),
             "Box3D": make_report("Box3D", 95.0),
             "PhysX": make_report("PhysX", 100.0),
         }
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_raw_frame_tail_regression(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        tail_name = (
+            f"Jolt/{compare_provider_benchmarks.TAIL_WORKLOADS[0]['suffix']}"
+        )
+        tail_results = [
+            result
+            for result in reports["Jolt"]["benchmarks"]
+            if result["name"] == tail_name
+        ]
+        for tail_result in tail_results[-2:]:
+            tail_result["real_time"] = 200.0
+            tail_result["TailMaximumNs"] = 200_000.0
+            tail_result["TailP50Ns"] = 200_000.0
+            tail_result["TailP95Ns"] = 200_000.0
+            tail_result["TailP99Ns"] = 200_000.0
+            for sample_index in range(compare_provider_benchmarks.TAIL_SAMPLE_COUNT):
+                tail_result[f"Frame{sample_index}Ns"] = 200_000.0
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_missing_raw_frame_tail_sample(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        tail_name = f"Jolt/{compare_provider_benchmarks.TAIL_WORKLOADS[0]['suffix']}"
+        tail_result = next(
+            result
+            for result in reports["Jolt"]["benchmarks"]
+            if result["name"] == tail_name
+        )
+        del tail_result[f"Frame{compare_provider_benchmarks.TAIL_SAMPLE_COUNT - 1}Ns"]
         self.assertEqual(run_comparison(reports), 1)
 
     def test_rejects_duplicate_repetition(self):
@@ -158,6 +241,15 @@ class CompareProviderBenchmarksTests(unittest.TestCase):
             "PhysX": make_report("PhysX", 100.0),
         }
         reports["PhysX"]["qualification"]["source_revision"] = "other-revision"
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_mismatched_runner(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["Box3D"]["qualification"]["runner_sha256"] = "different-runner"
         self.assertEqual(run_comparison(reports), 1)
 
 
