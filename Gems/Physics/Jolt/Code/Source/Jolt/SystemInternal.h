@@ -10,9 +10,11 @@
 #include <Jolt/Capabilities.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/MaterialInternal.h>
+#include <Jolt/Internal/HandleEncoding.h>
 #include <Jolt/System.h>
 
 #include <AzCore/Jobs/JobContext.h>
+#include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/parallel/shared_mutex.h>
@@ -3419,6 +3421,7 @@ namespace Jolt
         mutable AZStd::shared_mutex m_worldMutex;
         AZStd::vector<WorldSlot> m_worldSlots;
         AZStd::vector<AZ::u32> m_freeWorldSlots;
+        AZStd::array<Internal::WorldMemberGenerationSources, Internal::MaximumWorldCount> m_worldMemberGenerationSources;
         WorldHandle m_defaultWorldHandle;
 
         bool m_initialized = false;

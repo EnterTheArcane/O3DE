@@ -652,20 +652,14 @@ namespace Jolt
         }
 
         AZ::u32 definitionIndex = 0;
-        if (!m_freeRagdollDefinitionSlots.empty())
+        const RagdollDefinitionHandle definitionHandle = ReserveWorldMemberSlot<RagdollDefinitionHandle>(
+            m_ragdollDefinitionSlots,
+            m_freeRagdollDefinitionSlots,
+            definitionIndex);
+        if (!definitionHandle)
         {
-            definitionIndex = m_freeRagdollDefinitionSlots.back();
-            m_freeRagdollDefinitionSlots.pop_back();
-        }
-        else
-        {
-            if (m_ragdollDefinitionSlots.size() > Internal::MaximumWorldMemberIndex)
-            {
-                m_system.ReleaseSkeletonDefinition(configuration.m_skeletonHandle);
-                return {};
-            }
-            definitionIndex = aznumeric_cast<AZ::u32>(m_ragdollDefinitionSlots.size());
-            m_ragdollDefinitionSlots.emplace_back();
+            m_system.ReleaseSkeletonDefinition(configuration.m_skeletonHandle);
+            return {};
         }
 
         RagdollDefinitionSlot& slot = m_ragdollDefinitionSlots[definitionIndex];
@@ -678,10 +672,7 @@ namespace Jolt
         {
             ++FindShape(shapeHandle)->m_ragdollDefinitionCount;
         }
-        return Internal::MakeWorldMemberHandle<RagdollDefinitionHandle>(
-            m_worldIndex,
-            definitionIndex,
-            slot.m_generation);
+        return definitionHandle;
     }
 
     bool World::DestroyRagdollDefinition(
@@ -791,25 +782,13 @@ namespace Jolt
         }
 
         AZ::u32 ragdollIndex = 0;
-        if (!m_freeRagdollSlots.empty())
+        const RagdollHandle ragdollHandle =
+            ReserveWorldMemberSlot<RagdollHandle>(m_ragdollSlots, m_freeRagdollSlots, ragdollIndex);
+        if (!ragdollHandle)
         {
-            ragdollIndex = m_freeRagdollSlots.back();
-            m_freeRagdollSlots.pop_back();
-        }
-        else
-        {
-            if (m_ragdollSlots.size() > Internal::MaximumWorldMemberIndex)
-            {
-                return {};
-            }
-            ragdollIndex = aznumeric_cast<AZ::u32>(m_ragdollSlots.size());
-            m_ragdollSlots.emplace_back();
+            return {};
         }
         RagdollSlot& slot = m_ragdollSlots[ragdollIndex];
-        const RagdollHandle ragdollHandle = Internal::MakeWorldMemberHandle<RagdollHandle>(
-            m_worldIndex,
-            ragdollIndex,
-            slot.m_generation);
 
         AZ::u32 collisionGroupId = configuration.m_collisionGroupId;
         if (collisionGroupId == 0)
@@ -857,66 +836,43 @@ namespace Jolt
         for (size_t bodyOffset = 0; bodyOffset < ragdoll->GetBodyCount(); ++bodyOffset)
         {
             AZ::u32 bodyIndex = 0;
-            if (!m_freeBodySlots.empty())
+            const BodyHandle bodyHandle = ReserveWorldMemberSlot<BodyHandle>(m_bodySlots, m_freeBodySlots, bodyIndex);
+            if (!bodyHandle)
             {
-                bodyIndex = m_freeBodySlots.back();
-                m_freeBodySlots.pop_back();
-            }
-            else
-            {
-                if (m_bodySlots.size() > Internal::MaximumWorldMemberIndex)
+                ragdoll = nullptr;
+                for (const AZ::u32 reservedIndex : bodyIndices)
                 {
-                    ragdoll = nullptr;
-                    for (const AZ::u32 reservedIndex : bodyIndices)
-                    {
-                        m_freeBodySlots.push_back(reservedIndex);
-                    }
-                    m_freeRagdollSlots.push_back(ragdollIndex);
-                    return {};
+                    m_freeBodySlots.push_back(reservedIndex);
                 }
-                bodyIndex = aznumeric_cast<AZ::u32>(m_bodySlots.size());
-                m_bodySlots.emplace_back();
+                m_freeRagdollSlots.push_back(ragdollIndex);
+                return {};
             }
             bodyIndices.push_back(bodyIndex);
-            const BodySlot& bodySlot = m_bodySlots[bodyIndex];
-            slot.m_bodyHandles.push_back(Internal::MakeWorldMemberHandle<BodyHandle>(
-                m_worldIndex,
-                bodyIndex,
-                bodySlot.m_generation));
+            slot.m_bodyHandles.push_back(bodyHandle);
         }
         for (size_t constraintOffset = 0; constraintOffset < ragdoll->GetConstraintCount(); ++constraintOffset)
         {
             AZ::u32 constraintIndex = 0;
-            if (!m_freeConstraintSlots.empty())
+            const ConstraintHandle constraintHandle = ReserveWorldMemberSlot<ConstraintHandle>(
+                m_constraintSlots,
+                m_freeConstraintSlots,
+                constraintIndex);
+            if (!constraintHandle)
             {
-                constraintIndex = m_freeConstraintSlots.back();
-                m_freeConstraintSlots.pop_back();
-            }
-            else
-            {
-                if (m_constraintSlots.size() > Internal::MaximumWorldMemberIndex)
+                ragdoll = nullptr;
+                for (const AZ::u32 reservedIndex : bodyIndices)
                 {
-                    ragdoll = nullptr;
-                    for (const AZ::u32 reservedIndex : bodyIndices)
-                    {
-                        m_freeBodySlots.push_back(reservedIndex);
-                    }
-                    for (const AZ::u32 reservedIndex : constraintIndices)
-                    {
-                        m_freeConstraintSlots.push_back(reservedIndex);
-                    }
-                    m_freeRagdollSlots.push_back(ragdollIndex);
-                    return {};
+                    m_freeBodySlots.push_back(reservedIndex);
                 }
-                constraintIndex = aznumeric_cast<AZ::u32>(m_constraintSlots.size());
-                m_constraintSlots.emplace_back();
+                for (const AZ::u32 reservedIndex : constraintIndices)
+                {
+                    m_freeConstraintSlots.push_back(reservedIndex);
+                }
+                m_freeRagdollSlots.push_back(ragdollIndex);
+                return {};
             }
             constraintIndices.push_back(constraintIndex);
-            const ConstraintSlot& constraintSlot = m_constraintSlots[constraintIndex];
-            slot.m_constraintHandles.push_back(Internal::MakeWorldMemberHandle<ConstraintHandle>(
-                m_worldIndex,
-                constraintIndex,
-                constraintSlot.m_generation));
+            slot.m_constraintHandles.push_back(constraintHandle);
         }
 
         JPH::BodyInterface& bodyInterface = m_physicsSystem.GetBodyInterface();

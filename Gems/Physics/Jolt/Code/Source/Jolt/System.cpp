@@ -4313,6 +4313,7 @@ namespace Jolt
         const WorldHandle worldHandle = Internal::MakeWorldHandle(worldIndex, slot.m_generation);
         slot.m_world = AZStd::make_unique<World>(
             *this,
+            m_worldMemberGenerationSources[worldIndex],
             worldHandle,
             worldIndex,
             configuration,

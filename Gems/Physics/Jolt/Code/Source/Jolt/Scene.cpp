@@ -622,26 +622,16 @@ namespace Jolt
     {
         AZStd::lock_guard lock(m_mutex);
         AZ::u32 instanceIndex = 0;
-        if (!m_freeSceneInstanceSlots.empty())
+        const SceneInstanceHandle instanceHandle = ReserveWorldMemberSlot<SceneInstanceHandle>(
+            m_sceneInstanceSlots,
+            m_freeSceneInstanceSlots,
+            instanceIndex);
+        if (!instanceHandle)
         {
-            instanceIndex = m_freeSceneInstanceSlots.back();
-            m_freeSceneInstanceSlots.pop_back();
-        }
-        else
-        {
-            if (m_sceneInstanceSlots.size() > Internal::MaximumWorldMemberIndex)
-            {
-                return {};
-            }
-            instanceIndex = aznumeric_cast<AZ::u32>(m_sceneInstanceSlots.size());
-            m_sceneInstanceSlots.emplace_back();
+            return {};
         }
 
         SceneInstanceSlot& slot = m_sceneInstanceSlots[instanceIndex];
-        const SceneInstanceHandle instanceHandle = Internal::MakeWorldMemberHandle<SceneInstanceHandle>(
-            m_worldIndex,
-            instanceIndex,
-            slot.m_generation);
         AZStd::vector<ShapeHandle> shapeHandles;
         AZStd::vector<BodyHandle> bodyHandles;
         AZStd::vector<ConstraintHandle> constraintHandles;

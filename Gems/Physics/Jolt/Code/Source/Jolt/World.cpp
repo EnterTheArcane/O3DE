@@ -5364,11 +5364,13 @@ namespace Jolt
 
     World::World(
         RuntimeImplementation& system,
+        Internal::WorldMemberGenerationSources& generationSources,
         const WorldHandle handle,
         const AZ::u32 worldIndex,
         WorldConfiguration configuration,
         AZ::JobContext* jobContext)
         : m_system(system)
+        , m_generationSources(generationSources)
         , m_configuration(AZStd::move(configuration))
         , m_jobContext(jobContext)
         , m_handle(handle)
@@ -6204,19 +6206,10 @@ namespace Jolt
         }
 
         AZ::u32 shapeIndex = 0;
-        if (!m_freeShapeSlots.empty())
+        const ShapeHandle shapeHandle = ReserveWorldMemberSlot<ShapeHandle>(m_shapeSlots, m_freeShapeSlots, shapeIndex);
+        if (!shapeHandle)
         {
-            shapeIndex = m_freeShapeSlots.back();
-            m_freeShapeSlots.pop_back();
-        }
-        else
-        {
-            if (m_shapeSlots.size() > Internal::MaximumWorldMemberIndex)
-            {
-                return {};
-            }
-            shapeIndex = static_cast<AZ::u32>(m_shapeSlots.size());
-            m_shapeSlots.emplace_back();
+            return {};
         }
 
         if (m_statisticsShapePointers.capacity() < m_shapeSlots.capacity())
@@ -6236,7 +6229,7 @@ namespace Jolt
         {
             ++FindShape(childHandle)->m_parentCount;
         }
-        return Internal::MakeWorldMemberHandle<ShapeHandle>(m_worldIndex, shapeIndex, slot.m_generation);
+        return shapeHandle;
     }
 
     bool World::DestroyShape(
@@ -8256,24 +8249,14 @@ namespace Jolt
     BodyHandle World::ReserveBodySlot(
         AZ::u32& bodyIndex)
     {
-        if (!m_freeBodySlots.empty())
+        const BodyHandle bodyHandle = ReserveWorldMemberSlot<BodyHandle>(m_bodySlots, m_freeBodySlots, bodyIndex);
+        if (!bodyHandle)
         {
-            bodyIndex = m_freeBodySlots.back();
-            m_freeBodySlots.pop_back();
+            return {};
         }
-        else
-        {
-            if (m_bodySlots.size() > Internal::MaximumWorldMemberIndex)
-            {
-                return {};
-            }
-            bodyIndex = static_cast<AZ::u32>(m_bodySlots.size());
-            m_bodySlots.emplace_back();
-        }
-
         BodySlot& slot = m_bodySlots[bodyIndex];
         slot.m_configurationRevision = m_configurationRevision;
-        return Internal::MakeWorldMemberHandle<BodyHandle>(m_worldIndex, bodyIndex, slot.m_generation);
+        return bodyHandle;
     }
 
     void World::ReleaseBodySlot(
@@ -8510,24 +8493,14 @@ namespace Jolt
         }
 
         AZ::u32 constraintIndex = 0;
-        if (!m_freeConstraintSlots.empty())
+        const ConstraintHandle constraintHandle =
+            ReserveWorldMemberSlot<ConstraintHandle>(m_constraintSlots, m_freeConstraintSlots, constraintIndex);
+        if (!constraintHandle)
         {
-            constraintIndex = m_freeConstraintSlots.back();
-            m_freeConstraintSlots.pop_back();
-        }
-        else
-        {
-            if (m_constraintSlots.size() > Internal::MaximumWorldMemberIndex)
-            {
-                return {};
-            }
-            constraintIndex = static_cast<AZ::u32>(m_constraintSlots.size());
-            m_constraintSlots.emplace_back();
+            return {};
         }
 
         ConstraintSlot& slot = m_constraintSlots[constraintIndex];
-        const ConstraintHandle constraintHandle =
-            Internal::MakeWorldMemberHandle<ConstraintHandle>(m_worldIndex, constraintIndex, slot.m_generation);
         JPH::Ref<JPH::Constraint> nativeConstraint;
         AZStd::array<ConstraintHandle, 2> dependencyHandles;
         PathHandle pathHandle;
@@ -12185,19 +12158,13 @@ namespace Jolt
         }
 
         AZ::u32 characterIndex = 0;
-        if (!m_freeVirtualCharacterSlots.empty())
+        const VirtualCharacterHandle characterHandle = ReserveWorldMemberSlot<VirtualCharacterHandle>(
+            m_virtualCharacterSlots,
+            m_freeVirtualCharacterSlots,
+            characterIndex);
+        if (!characterHandle)
         {
-            characterIndex = m_freeVirtualCharacterSlots.back();
-            m_freeVirtualCharacterSlots.pop_back();
-        }
-        else
-        {
-            if (m_virtualCharacterSlots.size() > Internal::MaximumWorldMemberIndex)
-            {
-                return {};
-            }
-            characterIndex = aznumeric_cast<AZ::u32>(m_virtualCharacterSlots.size());
-            m_virtualCharacterSlots.emplace_back();
+            return {};
         }
 
         AZ::u32 innerBodyIndex = 0;
@@ -12245,11 +12212,6 @@ namespace Jolt
         settings.mUp = ToNativeVector(configuration.m_up.GetNormalized());
 
         VirtualCharacterSlot& slot = m_virtualCharacterSlots[characterIndex];
-        const VirtualCharacterHandle characterHandle =
-            Internal::MakeWorldMemberHandle<VirtualCharacterHandle>(
-                m_worldIndex,
-                characterIndex,
-                slot.m_generation);
 
         JPH::Ref<JPH::CharacterVirtual> character = new JPH::CharacterVirtual(
             &settings,
@@ -13285,27 +13247,15 @@ namespace Jolt
         }
 
         AZ::u32 characterIndex = 0;
-        if (!m_freeCharacterSlots.empty())
+        const CharacterHandle characterHandle =
+            ReserveWorldMemberSlot<CharacterHandle>(m_characterSlots, m_freeCharacterSlots, characterIndex);
+        if (!characterHandle)
         {
-            characterIndex = m_freeCharacterSlots.back();
-            m_freeCharacterSlots.pop_back();
-        }
-        else
-        {
-            if (m_characterSlots.size() > Internal::MaximumWorldMemberIndex)
-            {
-                m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
-                return {};
-            }
-            characterIndex = aznumeric_cast<AZ::u32>(m_characterSlots.size());
-            m_characterSlots.emplace_back();
+            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            return {};
         }
 
         CharacterSlot& characterSlot = m_characterSlots[characterIndex];
-        const CharacterHandle characterHandle = Internal::MakeWorldMemberHandle<CharacterHandle>(
-            m_worldIndex,
-            characterIndex,
-            characterSlot.m_generation);
         AZ::u32 bodyIndex = 0;
         const BodyHandle bodyHandle = ReserveBodySlot(bodyIndex);
         if (!bodyHandle)
@@ -14017,25 +13967,13 @@ namespace Jolt
         }
 
         AZ::u32 vehicleIndex = 0;
-        if (!m_freeVehicleSlots.empty())
+        const VehicleHandle vehicleHandle =
+            ReserveWorldMemberSlot<VehicleHandle>(m_vehicleSlots, m_freeVehicleSlots, vehicleIndex);
+        if (!vehicleHandle)
         {
-            vehicleIndex = m_freeVehicleSlots.back();
-            m_freeVehicleSlots.pop_back();
-        }
-        else
-        {
-            if (m_vehicleSlots.size() > Internal::MaximumWorldMemberIndex)
-            {
-                return {};
-            }
-            vehicleIndex = aznumeric_cast<AZ::u32>(m_vehicleSlots.size());
-            m_vehicleSlots.emplace_back();
+            return {};
         }
         VehicleSlot& slot = m_vehicleSlots[vehicleIndex];
-        const VehicleHandle vehicleHandle = Internal::MakeWorldMemberHandle<VehicleHandle>(
-            m_worldIndex,
-            vehicleIndex,
-            slot.m_generation);
 
         JPH::VehicleConstraintSettings settings;
         settings.mForward = ToNativeVector(configuration.m_forward.GetNormalized());
@@ -14397,25 +14335,13 @@ namespace Jolt
         }
 
         AZ::u32 vehicleIndex = 0;
-        if (!m_freeVehicleSlots.empty())
+        const VehicleHandle vehicleHandle =
+            ReserveWorldMemberSlot<VehicleHandle>(m_vehicleSlots, m_freeVehicleSlots, vehicleIndex);
+        if (!vehicleHandle)
         {
-            vehicleIndex = m_freeVehicleSlots.back();
-            m_freeVehicleSlots.pop_back();
-        }
-        else
-        {
-            if (m_vehicleSlots.size() > Internal::MaximumWorldMemberIndex)
-            {
-                return {};
-            }
-            vehicleIndex = aznumeric_cast<AZ::u32>(m_vehicleSlots.size());
-            m_vehicleSlots.emplace_back();
+            return {};
         }
         VehicleSlot& slot = m_vehicleSlots[vehicleIndex];
-        const VehicleHandle vehicleHandle = Internal::MakeWorldMemberHandle<VehicleHandle>(
-            m_worldIndex,
-            vehicleIndex,
-            slot.m_generation);
 
         JPH::VehicleConstraintSettings settings;
         settings.mForward = ToNativeVector(configuration.m_forward.GetNormalized());
@@ -15890,19 +15816,13 @@ namespace Jolt
         }
 
         AZ::u32 snapshotIndex = 0;
-        if (!m_freeBodySnapshotSlots.empty())
+        const BodySnapshotHandle snapshotHandle = ReserveWorldMemberSlot<BodySnapshotHandle>(
+            m_bodySnapshotSlots,
+            m_freeBodySnapshotSlots,
+            snapshotIndex);
+        if (!snapshotHandle)
         {
-            snapshotIndex = m_freeBodySnapshotSlots.back();
-            m_freeBodySnapshotSlots.pop_back();
-        }
-        else
-        {
-            if (m_bodySnapshotSlots.size() > Internal::MaximumWorldMemberIndex)
-            {
-                return {};
-            }
-            snapshotIndex = aznumeric_cast<AZ::u32>(m_bodySnapshotSlots.size());
-            m_bodySnapshotSlots.emplace_back();
+            return {};
         }
 
         BodySnapshotSlot& snapshot = m_bodySnapshotSlots[snapshotIndex];
@@ -15926,10 +15846,6 @@ namespace Jolt
             return {};
         }
         snapshot.m_bodyHandle = bodyHandle;
-        const BodySnapshotHandle snapshotHandle = Internal::MakeWorldMemberHandle<BodySnapshotHandle>(
-            m_worldIndex,
-            snapshotIndex,
-            snapshot.m_generation);
         statisticsScope.Succeed();
         return snapshotHandle;
     }
@@ -16071,21 +15987,11 @@ namespace Jolt
     bool World::ReserveStateSnapshotSlot(
         AZ::u32& snapshotIndex)
     {
-        if (!m_freeStateSnapshotSlots.empty())
-        {
-            snapshotIndex = m_freeStateSnapshotSlots.back();
-            m_freeStateSnapshotSlots.pop_back();
-            return true;
-        }
-
-        if (m_stateSnapshotSlots.size() > Internal::MaximumWorldMemberIndex)
-        {
-            return false;
-        }
-
-        snapshotIndex = aznumeric_cast<AZ::u32>(m_stateSnapshotSlots.size());
-        m_stateSnapshotSlots.emplace_back();
-        return true;
+        const StateSnapshotHandle snapshotHandle = ReserveWorldMemberSlot<StateSnapshotHandle>(
+            m_stateSnapshotSlots,
+            m_freeStateSnapshotSlots,
+            snapshotIndex);
+        return static_cast<bool>(snapshotHandle);
     }
 
     StateSnapshotHandle World::CaptureState(
@@ -25636,20 +25542,11 @@ namespace Jolt
         }
 
         AZ::u32 hairIndex = 0;
-        if (!m_freeHairSlots.empty())
+        const HairHandle hairHandle = ReserveWorldMemberSlot<HairHandle>(m_hairSlots, m_freeHairSlots, hairIndex);
+        if (!hairHandle)
         {
-            hairIndex = m_freeHairSlots.back();
-            m_freeHairSlots.pop_back();
-        }
-        else
-        {
-            if (m_hairSlots.size() > Internal::MaximumWorldMemberIndex)
-            {
-                m_system.ReleaseHairDefinition(configuration.m_definitionHandle);
-                return {};
-            }
-            hairIndex = aznumeric_cast<AZ::u32>(m_hairSlots.size());
-            m_hairSlots.emplace_back();
+            m_system.ReleaseHairDefinition(configuration.m_definitionHandle);
+            return {};
         }
 
         HairSlot& slot = m_hairSlots[hairIndex];
@@ -25658,7 +25555,7 @@ namespace Jolt
         slot.m_definitionHandle = configuration.m_definitionHandle;
         slot.m_initialized = false;
         slot.m_teleported = true;
-        return Internal::MakeWorldMemberHandle<HairHandle>(m_worldIndex, hairIndex, slot.m_generation);
+        return hairHandle;
     }
 
     bool World::DestroyHair(

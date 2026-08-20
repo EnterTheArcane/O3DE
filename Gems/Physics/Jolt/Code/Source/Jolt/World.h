@@ -9,10 +9,12 @@
 
 #include <Jolt/FloatEnvironment.h>
 #include <Jolt/HairInternal.h>
+#include <Jolt/Internal/HandleEncoding.h>
 #include <Jolt/JobSystem.h>
 #include <Jolt/Capabilities.h>
 #include <Jolt/TransformedShapeLease.h>
 
+#include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/vector.h>
@@ -141,6 +143,7 @@ namespace Jolt
     public:
         World(
             RuntimeImplementation& system,
+            Internal::WorldMemberGenerationSources& generationSources,
             WorldHandle handle,
             AZ::u32 worldIndex,
             WorldConfiguration configuration,
@@ -2593,6 +2596,48 @@ namespace Jolt
             BodyId requestedBodyId,
             const SoftBodyConfiguration& configuration);
 
+        template<typename HandleType, typename SlotType>
+        [[nodiscard]]
+        HandleType ReserveWorldMemberSlot(
+            AZStd::vector<SlotType>& slots,
+            AZStd::vector<AZ::u32>& freeSlots,
+            AZ::u32& slotIndex)
+        {
+            bool appendedSlot = false;
+            if (!freeSlots.empty())
+            {
+                slotIndex = freeSlots.back();
+                freeSlots.pop_back();
+            }
+            else
+            {
+                if (slots.size() > Internal::MaximumWorldMemberIndex)
+                {
+                    return {};
+                }
+
+                slotIndex = aznumeric_cast<AZ::u32>(slots.size());
+                slots.emplace_back();
+                appendedSlot = true;
+            }
+
+            SlotType& slot = slots[slotIndex];
+            if (!m_generationSources.Acquire<HandleType>(slot.m_generation))
+            {
+                if (appendedSlot)
+                {
+                    slots.pop_back();
+                }
+                else
+                {
+                    freeSlots.push_back(slotIndex);
+                }
+                return {};
+            }
+
+            return Internal::MakeWorldMemberHandle<HandleType>(m_worldIndex, slotIndex, slot.m_generation);
+        }
+
         [[nodiscard]]
         BodyHandle ReserveBodySlot(AZ::u32& bodyIndex);
 
@@ -3129,6 +3174,7 @@ namespace Jolt
         mutable AZStd::atomic_bool m_simulationInProgress{false};
 
         RuntimeImplementation& m_system;
+        Internal::WorldMemberGenerationSources& m_generationSources;
         WorldConfiguration m_configuration;
         AZ::JobContext* m_jobContext = nullptr;
         WorldHandle m_handle;

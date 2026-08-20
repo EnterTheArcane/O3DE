@@ -2854,6 +2854,66 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
     }
 
+    TEST(SimulationTests, WorldSlotReuseDoesNotReviveMemberHandles)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle firstWorldHandle = system.CreateWorld(WorldConfiguration{});
+        ASSERT_TRUE(firstWorldHandle);
+        const SphereOnFloor firstScene = CreateSphereOnFloor(system, firstWorldHandle);
+        ASSERT_TRUE(firstScene.m_floorShapeHandle);
+        ASSERT_TRUE(firstScene.m_sphereShapeHandle);
+        ASSERT_TRUE(firstScene.m_floorBodyHandle);
+        ASSERT_TRUE(firstScene.m_sphereBodyHandle);
+        const BodySnapshotHandle firstBodySnapshot =
+            system.CaptureBodyState(firstWorldHandle, firstScene.m_sphereBodyHandle);
+        const StateSnapshotHandle firstStateSnapshot = system.CaptureWorldState(firstWorldHandle);
+        ASSERT_TRUE(firstBodySnapshot);
+        ASSERT_TRUE(firstStateSnapshot);
+
+        ASSERT_TRUE(system.DestroyWorld(firstWorldHandle));
+
+        const WorldHandle secondWorldHandle = system.CreateWorld(WorldConfiguration{});
+        ASSERT_TRUE(secondWorldHandle);
+        const SphereOnFloor secondScene = CreateSphereOnFloor(system, secondWorldHandle);
+        ASSERT_TRUE(secondScene.m_floorShapeHandle);
+        ASSERT_TRUE(secondScene.m_sphereShapeHandle);
+        ASSERT_TRUE(secondScene.m_floorBodyHandle);
+        ASSERT_TRUE(secondScene.m_sphereBodyHandle);
+        const BodySnapshotHandle secondBodySnapshot =
+            system.CaptureBodyState(secondWorldHandle, secondScene.m_sphereBodyHandle);
+        const StateSnapshotHandle secondStateSnapshot = system.CaptureWorldState(secondWorldHandle);
+        ASSERT_TRUE(secondBodySnapshot);
+        ASSERT_TRUE(secondStateSnapshot);
+
+        Internal::WorldHandleParts firstWorldParts;
+        Internal::WorldHandleParts secondWorldParts;
+        ASSERT_TRUE(Internal::DecodeWorldHandle(firstWorldHandle, firstWorldParts));
+        ASSERT_TRUE(Internal::DecodeWorldHandle(secondWorldHandle, secondWorldParts));
+        EXPECT_EQ(firstWorldParts.m_index, secondWorldParts.m_index);
+        EXPECT_NE(firstWorldParts.m_generation, secondWorldParts.m_generation);
+
+        EXPECT_NE(firstScene.m_floorShapeHandle, secondScene.m_floorShapeHandle);
+        EXPECT_NE(firstScene.m_sphereShapeHandle, secondScene.m_sphereShapeHandle);
+        EXPECT_NE(firstScene.m_floorBodyHandle, secondScene.m_floorBodyHandle);
+        EXPECT_NE(firstScene.m_sphereBodyHandle, secondScene.m_sphereBodyHandle);
+        EXPECT_NE(firstBodySnapshot, secondBodySnapshot);
+        EXPECT_NE(firstStateSnapshot, secondStateSnapshot);
+
+        EXPECT_FALSE(system.IsValid(secondWorldHandle, firstScene.m_floorShapeHandle));
+        EXPECT_FALSE(system.IsValid(secondWorldHandle, firstScene.m_sphereShapeHandle));
+        EXPECT_FALSE(system.IsValid(secondWorldHandle, firstScene.m_floorBodyHandle));
+        EXPECT_FALSE(system.IsValid(secondWorldHandle, firstScene.m_sphereBodyHandle));
+        EXPECT_FALSE(system.IsValid(secondWorldHandle, firstBodySnapshot));
+        EXPECT_FALSE(system.IsValid(secondWorldHandle, firstStateSnapshot));
+
+        EXPECT_TRUE(system.DestroyBodyStateSnapshot(secondWorldHandle, secondBodySnapshot));
+        EXPECT_TRUE(system.DestroyStateSnapshot(secondWorldHandle, secondStateSnapshot));
+        DestroySphereOnFloor(system, secondScene);
+        EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
+    }
+
     TEST(SimulationTests, TwoThreadWorldUsesOneBackgroundJobWorker)
     {
         AZ::JobManagerDesc jobManagerDescriptor;
