@@ -56,6 +56,8 @@ namespace Jolt::Editor
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
 
+        static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
+
         void Activate() override;
 
         void Deactivate() override;

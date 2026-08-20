@@ -39,6 +39,15 @@
 
 namespace Jolt::Editor
 {
+    TEST(EditorAssetBuilderTests, BuilderComponentActivatesAfterRuntimeServiceWhenPresent)
+    {
+        AZ::ComponentDescriptor::DependencyArrayType dependentServices;
+        BuilderComponent::GetDependentServices(dependentServices);
+
+        ASSERT_EQ(dependentServices.size(), 1);
+        EXPECT_EQ(dependentServices[0], AZ_CRC_CE("JoltService"));
+    }
+
     namespace
     {
         class NameDictionaryScope final

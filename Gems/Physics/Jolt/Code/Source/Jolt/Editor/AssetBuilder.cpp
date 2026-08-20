@@ -510,6 +510,12 @@ namespace Jolt::Editor
         incompatible.push_back(AZ_CRC_CE("JoltBuilderService"));
     }
 
+    void BuilderComponent::GetDependentServices(
+        AZ::ComponentDescriptor::DependencyArrayType& dependent)
+    {
+        dependent.push_back(AZ_CRC_CE("JoltService"));
+    }
+
     void BuilderComponent::Activate()
     {
         m_builder.Register();
