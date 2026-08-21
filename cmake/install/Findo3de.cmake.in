@@ -21,7 +21,7 @@ macro(ly_find_o3de_packages)
     else()
         include("${LY_ROOT_FOLDER}/cmake/Platform/${PAL_PLATFORM_NAME}/Default/o3de_subdirectories_${PAL_PLATFORM_NAME_LOWERCASE}.cmake")
     endif()
-    find_package(LauncherGenerator)
+    include("${LY_ROOT_FOLDER}/cmake/FindLauncherGenerator.cmake")
 endmacro()
 
 

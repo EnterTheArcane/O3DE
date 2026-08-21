@@ -322,6 +322,22 @@ ly_install(FILES
                 "#pragma once\n",
             )
             write_file(install_root, "include/Jolt/LICENSE", "license\n")
+            permutation_path = write_file(
+                install_root,
+                "Gems/Physics/Jolt/Code/Platform/Windows/Default/permutation.cmake",
+                """ly_add_target(
+    NAME Jolt.API IMPORTED SHARED
+    RUNTIME_DEPENDENCIES
+    TARGET_PROPERTIES
+)
+ly_create_alias(
+    NAME Jolt
+    NAMESPACE Gem
+    INTERNAL_NAME Jolt.GemAlias
+    TARGETS Gem::Jolt.Module
+)
+""",
+            )
             write_file(
                 install_root,
                 "Gems/Physics/Jolt/Code/Platform/Windows/Default/Jolt.API_release.cmake",
@@ -341,6 +357,21 @@ ly_install(FILES
             )
             self.assertIn("1 public headers", result)
 
+            permutation_path.write_text(
+                permutation_path.read_text(encoding="utf-8").replace(
+                    "RUNTIME_DEPENDENCIES\n",
+                    "RUNTIME_DEPENDENCIES\n        Jolt\n",
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "private native runtime dependency"):
+                jolt_qualification.validate_installed_boundary(
+                    engine_root,
+                    install_root,
+                    "Release",
+                    False,
+                )
+
             write_file(install_root, "include/Jolt/Jolt.h", "namespace JPH {}\n")
             with self.assertRaisesRegex(ValueError, "only the Jolt license"):
                 jolt_qualification.validate_installed_boundary(
@@ -356,6 +387,7 @@ ly_install(FILES
             output_directory = engine_root / "build" / "qualification"
             output_directory.mkdir(parents=True)
             primary_build_directory = engine_root / "build" / "engine"
+            core_build_directory = engine_root / "build" / "core"
             write_file(
                 primary_build_directory,
                 "CMakeCache.txt",
@@ -399,6 +431,22 @@ ly_install(FILES
             write_file(install_root, "include/Jolt/LICENSE", "license\n")
             write_file(
                 install_root,
+                "Gems/Physics/Jolt/Code/Platform/Windows/Default/permutation.cmake",
+                """ly_add_target(
+    NAME Jolt.API IMPORTED SHARED
+    RUNTIME_DEPENDENCIES
+    TARGET_PROPERTIES
+)
+ly_create_alias(
+    NAME Jolt
+    NAMESPACE Gem
+    INTERNAL_NAME Jolt.GemAlias
+    TARGETS Gem::Jolt.Module
+)
+""",
+            )
+            write_file(
+                install_root,
                 "Gems/Physics/Jolt/Code/Platform/Windows/Default/Jolt.API_release.cmake",
                 "set_target_properties(Gem::Jolt.API PROPERTIES IMPORTED_LOCATION example)\n",
             )
@@ -416,6 +464,7 @@ ly_install(FILES
             jolt_qualification.add_installed_consumer(
                 runner,
                 primary_build_directory,
+                core_build_directory,
                 install_root,
                 output_directory / "consumer-build",
                 "Release",
@@ -424,8 +473,13 @@ ly_install(FILES
             )
 
             commands = {result.name: result.command for result in runner.results if result.command}
+            self.assertIn(
+                "-DLY_PROJECTS:STRING=",
+                commands["configure-installed-modular-engine"],
+            )
             self.assertNotIn("--target", commands["build-installed-modular-engine"])
             self.assertIn("CORE", commands["install-modular-core"])
+            self.assertIn(str(core_build_directory), commands["install-modular-core"])
             self.assertIn("DEFAULT", commands["install-modular-configuration"])
             self.assertIn("DEFAULT_RELEASE", commands["install-modular-binaries"])
             self.assertIn(

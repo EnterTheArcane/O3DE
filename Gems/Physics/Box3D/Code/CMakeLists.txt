@@ -42,8 +42,14 @@ ly_add_target(
             Gem::${gem_name}.API
 )
 
-# Keep the Gem's canonical target while avoiding a case-insensitive project-name collision with upstream's `box3d` target.
-add_library(Gem::${gem_name} ALIAS ${gem_name}.Module)
+# Keep the Gem's canonical target while avoiding a case-insensitive collision
+# between the private native library and the alias backing target.
+ly_create_alias(
+    NAME ${gem_name}
+    NAMESPACE Gem
+    INTERNAL_NAME ${gem_name}.GemAlias
+    TARGETS Gem::${gem_name}.Module
+)
 
 ly_add_source_properties(
     SOURCES

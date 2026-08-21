@@ -286,11 +286,12 @@ function(o3de_add_variant_dependencies_for_gem_dependencies)
 endfunction()
 
 # ly_create_alias
-# given an alias to create, and a list of one or more targets,
-# this creates an alias that depends on all of the given targets.
+# Given an alias to create, and a list of one or more targets, this creates an
+# alias that depends on all of the given targets. INTERNAL_NAME selects the
+# unqualified backing target when NAME would collide with another target.
 function(ly_create_alias)
     set(options)
-    set(oneValueArgs NAME NAMESPACE)
+    set(oneValueArgs NAME NAMESPACE INTERNAL_NAME)
     set(multiValueArgs TARGETS)
 
     cmake_parse_arguments(ly_create_alias "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -303,6 +304,10 @@ function(ly_create_alias)
         message(FATAL_ERROR "Provide the namespace of the alias to create using the NAMESPACE keyword")
     endif()
 
+    set(alias_internal_name ${ly_create_alias_NAME})
+    if(ly_create_alias_INTERNAL_NAME)
+        set(alias_internal_name ${ly_create_alias_INTERNAL_NAME})
+    endif()
 
     if(TARGET ${ly_create_alias_NAMESPACE}::${ly_create_alias_NAME})
         message(FATAL_ERROR "Target already exists, cannot create an alias for it: ${ly_create_alias_NAMESPACE}::${ly_create_alias_NAME}\n"
@@ -316,13 +321,13 @@ function(ly_create_alias)
     # To actually achieve this we have to create an interface library with those dependencies,
     # then we have to create an alias to that target.
     # By convention we create one without a namespace then alias the namespaced one.
-    if(TARGET ${ly_create_alias_NAME})
-        message(FATAL_ERROR "Internal alias target already exists, cannot create an alias for it: ${ly_create_alias_NAME}\n"
+    if(TARGET ${alias_internal_name})
+        message(FATAL_ERROR "Internal alias target already exists, cannot create an alias for it: ${alias_internal_name}\n"
                             "This could be a copy-paste error, where some part of the ly_create_alias call was changed but the other")
     endif()
 
-    add_library(${ly_create_alias_NAME} INTERFACE IMPORTED GLOBAL)
-    set_target_properties(${ly_create_alias_NAME} PROPERTIES GEM_MODULE TRUE)
+    add_library(${alias_internal_name} INTERFACE IMPORTED GLOBAL)
+    set_target_properties(${alias_internal_name} PROPERTIES GEM_MODULE TRUE)
 
     foreach(target_name ${ly_create_alias_TARGETS})
         if(TARGET ${target_name})
@@ -339,15 +344,15 @@ function(ly_create_alias)
     # add_dependencies must be called with at least one dependent target
     if(final_targets)
         ly_parse_third_party_dependencies("${final_targets}")
-        ly_add_dependencies(${ly_create_alias_NAME} ${final_targets})
+        ly_add_dependencies(${alias_internal_name} ${final_targets})
         # copy over all the dependent target interface properties to the alias
-        o3de_copy_targets_usage_requirements(TARGET ${ly_create_alias_NAME} SOURCE_TARGETS ${final_targets})
+        o3de_copy_targets_usage_requirements(TARGET ${alias_internal_name} SOURCE_TARGETS ${final_targets})
         # Register the targets this alias aliases
-        set_property(GLOBAL APPEND PROPERTY O3DE_ALIASED_TARGETS_${ly_create_alias_NAME} ${final_targets})
+        set_property(GLOBAL APPEND PROPERTY O3DE_ALIASED_TARGETS_${alias_internal_name} ${final_targets})
     endif()
 
     # now add the final alias:
-    add_library(${ly_create_alias_NAMESPACE}::${ly_create_alias_NAME} ALIAS ${ly_create_alias_NAME})
+    add_library(${ly_create_alias_NAMESPACE}::${ly_create_alias_NAME} ALIAS ${alias_internal_name})
 
 
     # Store off the arguments used by ly_create_alias into a DIRECTORY property
@@ -358,8 +363,11 @@ function(ly_create_alias)
     unset(create_alias_args)
     list(APPEND create_alias_args "${ly_create_alias_NAME},"
         NAME ${ly_create_alias_NAME}
-        NAMESPACE ${ly_create_alias_NAMESPACE}
-        TARGETS ${ly_create_alias_TARGETS})
+        NAMESPACE ${ly_create_alias_NAMESPACE})
+    if(ly_create_alias_INTERNAL_NAME)
+        list(APPEND create_alias_args INTERNAL_NAME ${ly_create_alias_INTERNAL_NAME})
+    endif()
+    list(APPEND create_alias_args TARGETS ${ly_create_alias_TARGETS})
     list(JOIN create_alias_args " " create_alias_args)
     set_property(DIRECTORY APPEND PROPERTY LY_CREATE_ALIAS_ARGUMENTS "${create_alias_args}")
 

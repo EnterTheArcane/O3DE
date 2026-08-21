@@ -480,6 +480,46 @@ def validate_installed_boundary(
     if forbidden_paths:
         errors.append(f"private native integration was installed: {', '.join(forbidden_paths)}")
 
+    permutation = "Default"
+    if monolithic:
+        permutation = "Monolithic"
+    permutation_descriptions = [
+        path
+        for path in installed_gem_root.rglob("permutation.cmake")
+        if permutation.lower() in {part.lower() for part in path.parts}
+    ]
+    if len(permutation_descriptions) != 1:
+        errors.append(
+            f"the installed engine must contain exactly one {permutation} Jolt permutation; "
+            f"found {len(permutation_descriptions)}"
+        )
+    else:
+        permutation_text = permutation_descriptions[0].read_text(encoding="utf-8", errors="replace")
+        canonical_alias = re.search(
+            r"ly_create_alias\(\s*NAME\s+Jolt\s+NAMESPACE\s+Gem\s+"
+            r"INTERNAL_NAME\s+Jolt\.GemAlias\s+TARGETS\s+Gem::Jolt\.Module\s*\)",
+            permutation_text,
+        )
+        if not canonical_alias:
+            errors.append("the installed permutation does not recreate the canonical Gem::Jolt alias")
+
+        api_target = re.search(
+            r"ly_add_target\(\s*NAME\s+Jolt\.API\b(?P<body>.*?)\n\)",
+            permutation_text,
+            re.DOTALL,
+        )
+        runtime_dependencies = None
+        if api_target:
+            runtime_dependencies = re.search(
+                r"RUNTIME_DEPENDENCIES(?P<body>.*?)TARGET_PROPERTIES",
+                api_target.group("body"),
+                re.DOTALL,
+            )
+        if not api_target or not runtime_dependencies:
+            errors.append("the installed permutation does not describe Jolt.API runtime dependencies")
+        elif runtime_dependencies.group("body").strip():
+            errors.append("the installed Jolt.API target retains a private native runtime dependency")
+
     configuration_lower = configuration.lower()
     target_descriptions = list(installed_gem_root.rglob(f"Jolt.API_{configuration_lower}.cmake"))
     if len(target_descriptions) != 1:
@@ -493,9 +533,6 @@ def validate_installed_boundary(
             if term in target_text:
                 errors.append(f"installed Jolt.API target exposes private native term {term!r}")
 
-    permutation = "Default"
-    if monolithic:
-        permutation = "Monolithic"
     binary_suffixes = {".a", ".dll", ".dylib", ".lib", ".so"}
     binaries = [
         path
@@ -869,6 +906,7 @@ def get_source_consumer_build_directory(
 def add_installed_consumer(
     runner: ValidationRunner,
     primary_build_directory: Path,
+    core_build_directory: Path,
     install_root: Path,
     consumer_build_directory: Path,
     configuration: str,
@@ -883,6 +921,30 @@ def add_installed_consumer(
         permutation = "monolithic"
         configuration_component = "MONOLITHIC"
         binary_component = f"MONOLITHIC_{configuration.upper()}"
+
+    configured = runner.run_command(
+        f"configure-installed-{permutation}-engine",
+        (
+            "cmake",
+            "-S",
+            str(runner.engine_root),
+            "-B",
+            str(primary_build_directory),
+            "-DLY_PROJECTS:STRING=",
+        ),
+        3_600,
+        environment,
+    )
+    if not configured:
+        runner.skip(f"build-installed-{permutation}-engine", f"{permutation} install configuration failed")
+        runner.skip(f"install-{permutation}-core", f"{permutation} install configuration failed")
+        runner.skip(f"install-{permutation}-configuration", f"{permutation} install configuration failed")
+        runner.skip(f"install-{permutation}-binaries", f"{permutation} install configuration failed")
+        runner.skip(f"audit-installed-{permutation}-boundary", f"{permutation} install configuration failed")
+        runner.skip(f"configure-installed-{permutation}-consumer", f"{permutation} install configuration failed")
+        runner.skip(f"build-installed-{permutation}-consumer", f"{permutation} install configuration failed")
+        runner.skip(f"run-installed-{permutation}-consumer", f"{permutation} install configuration failed")
+        return
 
     built = runner.run_command(
         f"build-installed-{permutation}-engine",
@@ -913,7 +975,7 @@ def add_installed_consumer(
         (
             "cmake",
             "--install",
-            str(primary_build_directory),
+            str(core_build_directory),
             "--config",
             configuration,
             "--component",
@@ -1389,6 +1451,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
                     add_installed_consumer(
                         runner,
                         modular_outcome.build_directory,
+                        modular_outcome.build_directory,
                         output_directory / "installed-msvc-modular",
                         output_directory / "consumer-installed-msvc-modular",
                         "Release",
@@ -1403,10 +1466,11 @@ def main(arguments: Sequence[str] | None = None) -> int:
                     )
 
                 monolithic_outcome = matrix_outcomes["msvc-monolithic"]
-                if monolithic_outcome.configured:
+                if monolithic_outcome.configured and modular_outcome.configured:
                     add_installed_consumer(
                         runner,
                         monolithic_outcome.build_directory,
+                        modular_outcome.build_directory,
                         output_directory / "installed-msvc-monolithic",
                         output_directory / "consumer-installed-msvc-monolithic",
                         "Release",
@@ -1417,7 +1481,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 else:
                     runner.skip(
                         "installed-msvc-monolithic-qualification",
-                        "MSVC monolithic matrix configuration failed",
+                        "MSVC modular or monolithic matrix configuration failed",
                     )
 
     final_git_state = capture_git_state(engine_root)

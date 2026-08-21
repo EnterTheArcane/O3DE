@@ -288,11 +288,16 @@ function(ly_pip_install_local_package_editable package_folder_path pip_package_n
         if (_pkg_in_engine_source)
             # In the read-only engine source: prefer a pre-built sdist under
             # <package>/dist/ (pip runs entirely from the tarball, never touching
-            # the source), else fall back to a plain non-editable install.
+            # the source). When no sdist is present, use the PEP 517 wheel path.
+            # Legacy setup.py install computes paths relative to the source tree
+            # and fails when the engine and Python venv are on different Windows
+            # drives.
             set(_pip_install_mode_args "")
             file(GLOB _pip_sdist_candidates "${package_folder_path}/dist/*.tar.gz")
             if (_pip_sdist_candidates)
                 list(GET _pip_sdist_candidates 0 _pip_install_target)
+            else()
+                set(_pip_install_mode_args "--use-pep517")
             endif()
         endif()
     endif()
@@ -377,4 +382,3 @@ if (NOT CMAKE_SCRIPT_MODE_FILE)
         ly_pip_install_local_package_editable(${LY_ROOT_FOLDER}/scripts/o3de o3de)
     endif()
 endif()
-

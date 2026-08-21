@@ -24,9 +24,8 @@ ly_add_target(
     BUILD_DEPENDENCIES
         PUBLIC
             AZ::AzCore
-        PRIVATE
-            Jolt
 )
+target_link_libraries(${gem_name}.API PRIVATE Jolt)
 set_property(TARGET ${gem_name}.API PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     target_link_options(${gem_name}.API INTERFACE
@@ -71,7 +70,12 @@ ly_add_target(
             Gem::${gem_name}.API
 )
 
-add_library(Gem::${gem_name} ALIAS ${gem_name}.Module)
+ly_create_alias(
+    NAME ${gem_name}
+    NAMESPACE Gem
+    INTERNAL_NAME ${gem_name}.GemAlias
+    TARGETS Gem::${gem_name}.Module
+)
 
 ly_add_source_properties(
     SOURCES
