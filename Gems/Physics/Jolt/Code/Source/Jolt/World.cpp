@@ -23773,12 +23773,15 @@ namespace Jolt
             m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
         const bool found = RaycastClosestUnlocked(request, hit);
-        const RaycastHit* capturedHit = nullptr;
-        if (found)
+        if (m_debugCapture)
         {
-            capturedHit = &hit;
+            const RaycastHit* capturedHit = nullptr;
+            if (found)
+            {
+                capturedHit = &hit;
+            }
+            CaptureRaycastDebug(request, capturedHit);
         }
-        CaptureRaycastDebug(request, capturedHit);
         statisticsScope.SetCounts(1, 0, found);
         return found;
     }

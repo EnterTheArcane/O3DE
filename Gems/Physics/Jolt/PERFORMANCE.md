@@ -364,6 +364,10 @@ common rollback overloads are 12-instruction, zero-frame tail transfers into `Ru
 has a 104-byte frame and two direct calls. `Internal::WaitForOperation` has a 56-byte frame and three calls, including the intentional
 worker-aware wait/assistance path. These counts are diagnostic compiler-output evidence, not brittle opcode gates.
 
+The default scalar raycast path checks for an active debug capture before entering the cold capture helper. On the same Clang 22.1.8
+Release binary and fixed CPU 24 affinity, 30 fresh-process repetitions improved from an 18.2504 microsecond median to 18.0405 microseconds
+(1.15%) with 3.41% CV. All samples were retained, including the 21.3829 microsecond maximum.
+
 ## Allocator alignment validation
 
 ASan and LLDB isolated an intermittent `vmovaps` fault in AzCore's HPHA placement buffer: the public byte buffer was 16-byte aligned while
