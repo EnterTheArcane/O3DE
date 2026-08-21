@@ -28,6 +28,26 @@ def write_file(root: Path, relative_path: str, contents: str) -> Path:
 
 
 class QualificationValidationTests(unittest.TestCase):
+    def test_automated_testing_uses_the_requested_stress_duration(self) -> None:
+        base_environment = {"EXAMPLE": "preserved"}
+
+        review_environment = jolt_qualification.get_automated_testing_environment(
+            base_environment,
+            "review",
+        )
+        full_environment = jolt_qualification.get_automated_testing_environment(
+            base_environment,
+            "full",
+        )
+
+        self.assertEqual(review_environment["JOLT_STRESS_MODE"], "review")
+        self.assertEqual(full_environment["JOLT_STRESS_MODE"], "full")
+        self.assertEqual(review_environment["EXAMPLE"], "preserved")
+        self.assertNotIn("JOLT_STRESS_MODE", base_environment)
+
+        with self.assertRaisesRegex(ValueError, "not part of 'quick'"):
+            jolt_qualification.get_automated_testing_environment(base_environment, "quick")
+
     def test_msvc_environment_preserves_an_existing_developer_shell(self) -> None:
         environment = {
             "PATH": "C:/VisualStudio/bin",

@@ -679,14 +679,31 @@ def add_python_tests(runner: ValidationRunner) -> None:
     )
 
 
+def get_automated_testing_environment(
+    base_environment: dict[str, str],
+    qualification_mode: str,
+) -> dict[str, str]:
+    if qualification_mode not in ("review", "full"):
+        raise ValueError(f"AutomatedTesting is not part of {qualification_mode!r} qualification")
+
+    stress_mode = "review"
+    if qualification_mode == "full":
+        stress_mode = "full"
+
+    automated_testing_environment = base_environment.copy()
+    automated_testing_environment["JOLT_STRESS_MODE"] = stress_mode
+    return automated_testing_environment
+
+
 def add_primary_build_and_tests(
     runner: ValidationRunner,
     build_directory: Path,
     configuration: str,
     parallel: int,
-    review: bool,
+    qualification_mode: str,
     environment: dict[str, str] | None = None,
 ) -> None:
+    review = qualification_mode in ("review", "full")
     targets = ["Jolt.Tests", "Jolt.Module", "Jolt.Editor"]
     if review:
         targets.extend(("AssetProcessor", "Editor", "AutomatedTesting.Assets"))
@@ -727,6 +744,10 @@ def add_primary_build_and_tests(
         environment,
     )
     if review:
+        automated_testing_environment = get_automated_testing_environment(
+            environment or runner.environment,
+            qualification_mode,
+        )
         runner.run_command(
             "jolt-automated-testing",
             (
@@ -740,7 +761,7 @@ def add_primary_build_and_tests(
                 "--output-on-failure",
             ),
             7_200,
-            environment,
+            automated_testing_environment,
         )
 
 
@@ -1426,7 +1447,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
             build_directory,
             options.configuration,
             max(1, options.parallel),
-            review,
+            options.mode,
             primary_environment,
         )
         if review:
