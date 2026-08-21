@@ -294,6 +294,53 @@ namespace UnitTest
         run();
     }
 
+    TEST_F(SystemAllocatorTest, UnknownSizeDeallocationPreservesAllocatedByteCount)
+    {
+        IAllocator& systemAllocator = AllocatorInstance<SystemAllocator>::Get();
+        const size_t allocatedBytesBeforeTest = systemAllocator.NumAllocatedBytes();
+
+        void* address = systemAllocator.Allocate(47, 16);
+        ASSERT_NE(address, nullptr);
+        EXPECT_GT(systemAllocator.NumAllocatedBytes(), allocatedBytesBeforeTest);
+
+        systemAllocator.DeAllocate(address, 0, 16);
+        EXPECT_EQ(systemAllocator.NumAllocatedBytes(), allocatedBytesBeforeTest);
+    }
+
+    TEST_F(SystemAllocatorTest, ReallocationPreservesAllocatedByteCount)
+    {
+        IAllocator& systemAllocator = AllocatorInstance<SystemAllocator>::Get();
+        const size_t allocatedBytesBeforeTest = systemAllocator.NumAllocatedBytes();
+
+        void* address = systemAllocator.Allocate(47, 16);
+        ASSERT_NE(address, nullptr);
+
+        void* reallocatedAddress = systemAllocator.ReAllocate(address, 113, 16);
+        if (!reallocatedAddress)
+        {
+            systemAllocator.DeAllocate(address, 0, 16);
+            FAIL() << "SystemAllocator failed to reallocate test memory";
+            return;
+        }
+
+        systemAllocator.DeAllocate(reallocatedAddress, 0, 16);
+        EXPECT_EQ(systemAllocator.NumAllocatedBytes(), allocatedBytesBeforeTest);
+    }
+
+    TEST_F(SystemAllocatorTest, NullReallocationPreservesAllocatedByteCount)
+    {
+        IAllocator& systemAllocator = AllocatorInstance<SystemAllocator>::Get();
+        const size_t allocatedBytesBeforeTest = systemAllocator.NumAllocatedBytes();
+
+        EXPECT_EQ(systemAllocator.get_allocated_size(nullptr, 16), 0);
+
+        void* address = systemAllocator.ReAllocate(nullptr, 47, 16);
+        ASSERT_NE(address, nullptr);
+
+        systemAllocator.DeAllocate(address, 0, 16);
+        EXPECT_EQ(systemAllocator.NumAllocatedBytes(), allocatedBytesBeforeTest);
+    }
+
     class PoolAllocatorTest
         : public MemoryTrackingFixture
     {

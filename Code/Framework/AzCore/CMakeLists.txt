@@ -117,11 +117,17 @@ ly_add_source_properties(
 
 if(LY_BUILD_WITH_ADDRESS_SANITIZER)
     # Default to use Malloc schema so ASan works well
+    set(AZCORE_ADDRESS_SANITIZER_COMPILE_DEFINITIONS AZCORE_SYSTEM_ALLOCATOR=AZCORE_SYSTEM_ALLOCATOR_MALLOC)
+    if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        list(APPEND AZCORE_ADDRESS_SANITIZER_COMPILE_DEFINITIONS $<$<CONFIG:Profile>:AZCORE_ADDRESS_SANITIZER_ENABLED>)
+    endif()
+
     ly_add_source_properties(
         SOURCES AzCore/Memory/SystemAllocator.cpp
         PROPERTY COMPILE_DEFINITIONS
-        VALUES AZCORE_SYSTEM_ALLOCATOR=AZCORE_SYSTEM_ALLOCATOR_MALLOC
+        VALUES ${AZCORE_ADDRESS_SANITIZER_COMPILE_DEFINITIONS}
     )
+    unset(AZCORE_ADDRESS_SANITIZER_COMPILE_DEFINITIONS)
 endif()
 
 ################################################################################
@@ -221,4 +227,3 @@ if(PAL_TRAIT_TEST_GOOGLE_TEST_SUPPORTED)
     endif()
 
 endif()
-

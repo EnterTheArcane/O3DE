@@ -109,14 +109,71 @@ ly_append_configurations_options(
 )
 
 if(LY_BUILD_WITH_ADDRESS_SANITIZER)
+    execute_process(
+        COMMAND "${CMAKE_CXX_COMPILER}" -print-resource-dir
+        OUTPUT_VARIABLE O3DE_CLANG_RESOURCE_DIRECTORY
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE O3DE_CLANG_RESOURCE_DIRECTORY_RESULT
+    )
+    if(NOT O3DE_CLANG_RESOURCE_DIRECTORY_RESULT EQUAL 0)
+        message(FATAL_ERROR "Unable to locate the clang runtime directory")
+    endif()
+
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|x86_64)$")
+        set(O3DE_CLANG_RUNTIME_ARCHITECTURE x86_64)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|aarch64)$")
+        set(O3DE_CLANG_RUNTIME_ARCHITECTURE aarch64)
+    else()
+        message(FATAL_ERROR "AddressSanitizer is unsupported for ${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+
+    set(
+        O3DE_CLANG_ASAN_RUNTIME_DIRECTORY
+        "${O3DE_CLANG_RESOURCE_DIRECTORY}/lib/windows"
+    )
+    set(
+        O3DE_CLANG_ASAN_DYNAMIC_LIBRARY
+        "${O3DE_CLANG_ASAN_RUNTIME_DIRECTORY}/clang_rt.asan_dynamic-${O3DE_CLANG_RUNTIME_ARCHITECTURE}.lib"
+    )
+    set(
+        O3DE_CLANG_ASAN_THUNK_LIBRARY
+        "${O3DE_CLANG_ASAN_RUNTIME_DIRECTORY}/clang_rt.asan_dynamic_runtime_thunk-${O3DE_CLANG_RUNTIME_ARCHITECTURE}.lib"
+    )
+    set(
+        O3DE_CLANG_ASAN_DYNAMIC_LIBRARY_FILE
+        "${O3DE_CLANG_ASAN_RUNTIME_DIRECTORY}/clang_rt.asan_dynamic-${O3DE_CLANG_RUNTIME_ARCHITECTURE}.dll"
+    )
+    foreach(
+        O3DE_CLANG_ASAN_FILE
+        IN ITEMS
+            "${O3DE_CLANG_ASAN_DYNAMIC_LIBRARY}"
+            "${O3DE_CLANG_ASAN_THUNK_LIBRARY}"
+            "${O3DE_CLANG_ASAN_DYNAMIC_LIBRARY_FILE}"
+    )
+        if(NOT EXISTS "${O3DE_CLANG_ASAN_FILE}")
+            message(
+                FATAL_ERROR
+                "Required clang AddressSanitizer runtime does not exist: ${O3DE_CLANG_ASAN_FILE}"
+            )
+        endif()
+    endforeach()
+
+    file(
+        COPY "${O3DE_CLANG_ASAN_DYNAMIC_LIBRARY_FILE}"
+        DESTINATION "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_PROFILE}"
+    )
+
     ly_append_configurations_options(
-        COMPILATION_DEBUG
+        COMPILATION_PROFILE
             -fsanitize=address
             -fno-omit-frame-pointer
 
-        LINK_NON_STATIC_DEBUG
-            -shared-libsan
-            -fsanitize=address
+        LINK_NON_STATIC_PROFILE
+            "${O3DE_CLANG_ASAN_DYNAMIC_LIBRARY}"
+            /include:__asan_seh_interceptor
+            "/wholearchive:${O3DE_CLANG_ASAN_THUNK_LIBRARY}"
+            /incremental:no
+            /opt:noicf
     )
 endif()
 

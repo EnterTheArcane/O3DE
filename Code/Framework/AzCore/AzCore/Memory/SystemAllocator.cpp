@@ -51,6 +51,13 @@
 #include <AzCore/std/parallel/atomic.h>
 #endif
 
+#if defined(AZCORE_ADDRESS_SANITIZER_ENABLED)
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <limits>
+#include <sanitizer/asan_interface.h>
+#endif
 
 namespace AZ
 {
@@ -61,6 +68,147 @@ namespace AZ
         // note that there should only be one instance, ever, of system allocator, and it is always accessed via the environment
         // which ensures that the code below is always running in the same context (usually in o3dekernel shared library).
         static AZStd::atomic<SystemAllocator::size_type> g_AllocatedBytes = {0};
+
+#if defined(AZCORE_ADDRESS_SANITIZER_ENABLED)
+        struct AllocationHeader final
+        {
+            void* m_baseAddress = nullptr;
+            SystemAllocator::size_type m_byteSize = 0;
+            SystemAllocator::size_type m_allocationSize = 0;
+        };
+
+        AllocationHeader ReadAllocationHeader(void* pointer)
+        {
+            auto* header = reinterpret_cast<AllocationHeader*>(
+                reinterpret_cast<std::uintptr_t>(pointer) - sizeof(AllocationHeader));
+            __asan_unpoison_memory_region(header, sizeof(AllocationHeader));
+            const AllocationHeader result = *header;
+            __asan_poison_memory_region(header, sizeof(AllocationHeader));
+            return result;
+        }
+
+        void* Allocate(SystemAllocator::size_type byteSize, SystemAllocator::align_type alignment)
+        {
+            SystemAllocator::align_type effectiveAlignment = alignment;
+            if (effectiveAlignment < alignof(AllocationHeader))
+            {
+                effectiveAlignment = alignof(AllocationHeader);
+            }
+
+            const SystemAllocator::size_type allocationOverhead = sizeof(AllocationHeader) + effectiveAlignment - 1;
+            if (byteSize > std::numeric_limits<SystemAllocator::size_type>::max() - allocationOverhead)
+            {
+                return nullptr;
+            }
+
+            const SystemAllocator::size_type allocationSize = byteSize + allocationOverhead;
+            void* baseAddress = std::malloc(allocationSize);
+            if (!baseAddress)
+            {
+                return nullptr;
+            }
+
+            const std::uintptr_t base = reinterpret_cast<std::uintptr_t>(baseAddress);
+            const std::uintptr_t unaligned = base + sizeof(AllocationHeader);
+            const std::uintptr_t aligned = (unaligned + effectiveAlignment - 1) & ~(effectiveAlignment - 1);
+            auto* header = reinterpret_cast<AllocationHeader*>(aligned - sizeof(AllocationHeader));
+            std::construct_at(
+                header,
+                AllocationHeader{
+                    .m_baseAddress = baseAddress,
+                    .m_byteSize = byteSize,
+                    .m_allocationSize = allocationSize,
+                });
+
+            const std::uintptr_t headerAddress = reinterpret_cast<std::uintptr_t>(header);
+            if (base < headerAddress)
+            {
+                __asan_poison_memory_region(baseAddress, headerAddress - base);
+            }
+            __asan_poison_memory_region(header, sizeof(AllocationHeader));
+
+            const std::uintptr_t allocationEnd = base + allocationSize;
+            const std::uintptr_t payloadEnd = aligned + byteSize;
+            if (payloadEnd < allocationEnd)
+            {
+                __asan_poison_memory_region(reinterpret_cast<void*>(payloadEnd), allocationEnd - payloadEnd);
+            }
+
+            return reinterpret_cast<void*>(aligned);
+        }
+
+        void Deallocate(void* pointer)
+        {
+            const AllocationHeader header = ReadAllocationHeader(pointer);
+            __asan_unpoison_memory_region(header.m_baseAddress, header.m_allocationSize);
+            std::free(header.m_baseAddress);
+        }
+
+        void* Reallocate(
+            void* pointer,
+            SystemAllocator::size_type newSize,
+            SystemAllocator::align_type newAlignment)
+        {
+            if (newSize == 0)
+            {
+                if (pointer)
+                {
+                    Deallocate(pointer);
+                }
+                return nullptr;
+            }
+
+            if (!pointer)
+            {
+                return Allocate(newSize, newAlignment);
+            }
+
+            const SystemAllocator::size_type previousSize = ReadAllocationHeader(pointer).m_byteSize;
+            void* newPointer = Allocate(newSize, newAlignment);
+            if (!newPointer)
+            {
+                return nullptr;
+            }
+
+            SystemAllocator::size_type copySize = previousSize;
+            if (newSize < copySize)
+            {
+                copySize = newSize;
+            }
+            std::memcpy(newPointer, pointer, copySize);
+            Deallocate(pointer);
+            return newPointer;
+        }
+#endif
+
+        void RemoveAllocatedBytes(SystemAllocator::size_type byteSize)
+        {
+            SystemAllocator::size_type allocatedBytes = g_AllocatedBytes.load();
+            while (allocatedBytes >= byteSize)
+            {
+                if (g_AllocatedBytes.compare_exchange_weak(allocatedBytes, allocatedBytes - byteSize))
+                {
+                    return;
+                }
+            }
+
+            AZ_Assert(
+                false,
+                "SystemAllocator: Deallocating %zu bytes with only %zu bytes tracked!",
+                byteSize,
+                allocatedBytes);
+        }
+
+        SystemAllocator::size_type GetAllocatedSize(
+            void* pointer,
+            [[maybe_unused]] SystemAllocator::align_type alignment)
+        {
+#if defined(AZCORE_ADDRESS_SANITIZER_ENABLED)
+            return ReadAllocationHeader(pointer).m_byteSize;
+#else
+            return AZ_OS_MSIZE(pointer, alignment);
+#endif
+        }
     };
 
 #endif
@@ -129,10 +277,14 @@ namespace AZ
         AZ_Assert((alignment & (alignment - 1)) == 0, "Alignment must be power of 2!");
 
 #if (AZCORE_SYSTEM_ALLOCATOR == AZCORE_SYSTEM_ALLOCATOR_MALLOC)
+    #if defined(AZCORE_ADDRESS_SANITIZER_ENABLED)
+        AllocateAddress address(SystemAllocatorPrivate::Allocate(byteSize, alignment), byteSize);
+    #else
         AllocateAddress address(AZ_OS_MALLOC(byteSize, alignment), byteSize);
+    #endif
         if (address)
         {
-            SystemAllocatorPrivate::g_AllocatedBytes += AZ_OS_MSIZE(address.m_value, alignment);
+            SystemAllocatorPrivate::g_AllocatedBytes += SystemAllocatorPrivate::GetAllocatedSize(address.m_value, alignment);
         }
 #else
         byteSize = MemorySizeAdjustedUp(byteSize);
@@ -177,12 +329,19 @@ namespace AZ
 
         #if (AZCORE_SYSTEM_ALLOCATOR == AZCORE_SYSTEM_ALLOCATOR_MALLOC)
             AZ_PROFILE_MEMORY_FREE(MemoryReserved, ptr);
-            byteSize = byteSize == 0 ? AZ_OS_MSIZE(ptr, alignment) : byteSize;
+            const size_type allocatedSize = SystemAllocatorPrivate::GetAllocatedSize(ptr, alignment);
+            if (byteSize == 0)
+            {
+                byteSize = allocatedSize;
+            }
             AZ_MEMORY_PROFILE(ProfileDeallocation(ptr, byteSize, alignment, nullptr));
-            AZ_Assert(SystemAllocatorPrivate::g_AllocatedBytes >= byteSize, "SystemAllocator: Deallocating more memory than allocated!");
-            SystemAllocatorPrivate::g_AllocatedBytes -= byteSize;
+            SystemAllocatorPrivate::RemoveAllocatedBytes(allocatedSize);
+        #if defined(AZCORE_ADDRESS_SANITIZER_ENABLED)
+            SystemAllocatorPrivate::Deallocate(ptr);
+        #else
             AZ_OS_FREE(ptr);
-            return byteSize;
+        #endif
+            return allocatedSize;
         #else
             byteSize = MemorySizeAdjustedUp(byteSize);
             AZ_PROFILE_MEMORY_FREE(MemoryReserved, ptr);
@@ -199,12 +358,25 @@ namespace AZ
     {
         #if (AZCORE_SYSTEM_ALLOCATOR == AZCORE_SYSTEM_ALLOCATOR_MALLOC)
             AZ_PROFILE_MEMORY_FREE(MemoryReserved, ptr);
-            AZ_Assert(SystemAllocatorPrivate::g_AllocatedBytes >= AZ_OS_MSIZE(ptr, newAlignment), "SystemAllocator: Deallocating more memory than allocated!");
-            SystemAllocatorPrivate::g_AllocatedBytes -= AZ_OS_MSIZE(ptr, newAlignment);
+            size_type previousAllocatedSize = 0;
+            if (ptr)
+            {
+                previousAllocatedSize = SystemAllocatorPrivate::GetAllocatedSize(ptr, newAlignment);
+            }
+        #if defined(AZCORE_ADDRESS_SANITIZER_ENABLED)
+            AllocateAddress newAddress(SystemAllocatorPrivate::Reallocate(ptr, newSize, newAlignment), newSize);
+        #else
             AllocateAddress newAddress(AZ_OS_REALLOC(ptr, newSize, newAlignment), newSize);
+        #endif
             if (newAddress)
             {
-                SystemAllocatorPrivate::g_AllocatedBytes += newSize;
+                SystemAllocatorPrivate::RemoveAllocatedBytes(previousAllocatedSize);
+                SystemAllocatorPrivate::g_AllocatedBytes +=
+                    SystemAllocatorPrivate::GetAllocatedSize(newAddress.m_value, newAlignment);
+            }
+            else if (ptr && newSize == 0)
+            {
+                SystemAllocatorPrivate::RemoveAllocatedBytes(previousAllocatedSize);
             }
             [[maybe_unused]] const size_type allocatedSize = newSize;
         #else
@@ -226,8 +398,13 @@ namespace AZ
     //=========================================================================
     auto SystemAllocator::get_allocated_size(pointer ptr, align_type alignment) const -> size_type
     {
+        if (!ptr)
+        {
+            return 0;
+        }
+
         #if (AZCORE_SYSTEM_ALLOCATOR == AZCORE_SYSTEM_ALLOCATOR_MALLOC)
-            return AZ_OS_MSIZE(ptr, alignment);
+            return SystemAllocatorPrivate::GetAllocatedSize(ptr, alignment);
         #else
             size_type allocSize = MemorySizeAdjustedDown(m_subAllocator->get_allocated_size(ptr, alignment));
             return allocSize;
