@@ -78,7 +78,7 @@ ly_add_source_properties(
         Source/Jolt/Module.cpp
     PROPERTY COMPILE_DEFINITIONS
         VALUES
-            O3DE_GEM_NAME=${gem_name}
+            O3DE_GEM_NAME=${gem_name}_Module
             O3DE_GEM_VERSION=${gem_version}
 )
 
