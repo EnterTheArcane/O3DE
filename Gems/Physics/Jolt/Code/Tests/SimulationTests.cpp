@@ -4090,7 +4090,12 @@ namespace Jolt
         destroyThread.join();
 
         EXPECT_TRUE(destroyedWithoutWaiting);
-        EXPECT_TRUE(system.RemoveStepListener(worldHandle, registration.GetHandle()));
+        const bool listenerRemovedAfterCompletion = WaitUntil(
+            [&system, worldHandle, &registration]
+            {
+                return system.RemoveStepListener(worldHandle, registration.GetHandle());
+            });
+        EXPECT_TRUE(listenerRemovedAfterCompletion);
     }
 
     TEST(SimulationTests, QueuedOperationCanBeCanceledWithoutRunning)
