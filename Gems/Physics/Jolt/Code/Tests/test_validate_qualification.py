@@ -39,6 +39,43 @@ class QualificationValidationTests(unittest.TestCase):
         self.assertEqual(result, environment)
         self.assertIsNot(result, environment)
 
+    def test_build_environment_loads_msvc_only_for_cl(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            build_directory = Path(temporary_directory)
+            cache_path = build_directory / "CMakeCache.txt"
+            base_environment = {"PATH": "base"}
+            developer_environment = {"PATH": "msvc"}
+
+            cache_path.write_text(
+                "CMAKE_CXX_COMPILER:FILEPATH=C:/VisualStudio/cl.exe\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(
+                jolt_qualification,
+                "load_msvc_environment",
+                return_value=developer_environment,
+            ) as load_environment:
+                result = jolt_qualification.load_build_environment(
+                    base_environment,
+                    build_directory,
+                )
+
+            self.assertEqual(result, developer_environment)
+            load_environment.assert_called_once_with(base_environment)
+
+            cache_path.write_text(
+                "CMAKE_CXX_COMPILER:FILEPATH=C:/LLVM/clang-cl.exe\n",
+                encoding="utf-8",
+            )
+            with mock.patch.object(jolt_qualification, "load_msvc_environment") as load_environment:
+                result = jolt_qualification.load_build_environment(
+                    base_environment,
+                    build_directory,
+                )
+
+            self.assertIsNone(result)
+            load_environment.assert_not_called()
+
     def test_runner_redirects_python_bytecode_beneath_its_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)

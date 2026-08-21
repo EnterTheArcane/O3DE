@@ -648,6 +648,7 @@ def add_primary_build_and_tests(
     configuration: str,
     parallel: int,
     review: bool,
+    environment: dict[str, str] | None = None,
 ) -> None:
     targets = ["Jolt.Tests", "Jolt.Module", "Jolt.Editor"]
     if review:
@@ -666,6 +667,7 @@ def add_primary_build_and_tests(
             str(parallel),
         ),
         14_400,
+        environment,
     )
     if not built:
         runner.skip("jolt-cpp-tests", "primary build failed")
@@ -685,6 +687,7 @@ def add_primary_build_and_tests(
             "--output-on-failure",
         ),
         1_800,
+        environment,
     )
     if review:
         runner.run_command(
@@ -700,6 +703,7 @@ def add_primary_build_and_tests(
                 "--output-on-failure",
             ),
             7_200,
+            environment,
         )
 
 
@@ -713,6 +717,20 @@ def read_cmake_cache_value(build_directory: Path, name: str) -> str:
         if match:
             return match.group(1)
     raise ValueError(f"CMake cache does not define {name}: {cache_path}")
+
+
+def load_build_environment(
+    base_environment: dict[str, str],
+    build_directory: Path,
+) -> dict[str, str] | None:
+    if platform.system() != "Windows" or not (build_directory / "CMakeCache.txt").is_file():
+        return None
+
+    compiler = Path(read_cmake_cache_value(build_directory, "CMAKE_CXX_COMPILER"))
+    if compiler.name.lower() != "cl.exe":
+        return None
+
+    return load_msvc_environment(base_environment)
 
 
 def prepare_consumer_source(engine_root: Path, destination: Path) -> Path:
@@ -826,6 +844,7 @@ def add_source_consumer(
     consumer_build_directory: Path,
     configuration: str,
     parallel: int,
+    environment: dict[str, str] | None = None,
 ) -> None:
     add_public_consumer(
         runner,
@@ -836,6 +855,7 @@ def add_source_consumer(
         parallel,
         "source",
         False,
+        environment,
     )
 
 
@@ -1312,12 +1332,14 @@ def main(arguments: Sequence[str] | None = None) -> int:
 
     if not options.static_only:
         review = options.mode in ("review", "full")
+        primary_environment = load_build_environment(runner.environment, build_directory)
         add_primary_build_and_tests(
             runner,
             build_directory,
             options.configuration,
             max(1, options.parallel),
             review,
+            primary_environment,
         )
         if review:
             add_source_consumer(
@@ -1326,6 +1348,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 matrix_root / "consumer-source",
                 options.configuration,
                 max(1, options.parallel),
+                primary_environment,
             )
         if options.mode == "full":
             matrix_outcomes = add_full_matrix(
