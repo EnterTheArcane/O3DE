@@ -271,6 +271,9 @@ namespace Jolt
                     "broadPhaseStatistics",
                     JOLT_BEHAVIOR_VALUE_PROPERTY(&RuntimeInfo::m_broadPhaseStatistics))
                 ->Property(
+                    "debugRendering",
+                    JOLT_BEHAVIOR_VALUE_PROPERTY(&RuntimeInfo::m_debugRendering))
+                ->Property(
                     "detailedProfiling",
                     JOLT_BEHAVIOR_VALUE_PROPERTY(&RuntimeInfo::m_detailedProfiling))
                 ->Property(

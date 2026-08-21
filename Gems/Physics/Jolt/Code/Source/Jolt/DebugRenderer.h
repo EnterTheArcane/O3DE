@@ -8,6 +8,9 @@
 #pragma once
 
 #include <Jolt/Configuration.h>
+
+#ifdef JPH_DEBUG_RENDERER
+
 #include <Jolt/DebugDraw.h>
 
 #include <AzCore/std/containers/vector.h>
@@ -204,3 +207,18 @@ namespace Jolt
         JPH::Vec3 m_cameraPosition = JPH::Vec3::sZero();
     };
 } // namespace Jolt
+
+#else
+
+namespace Jolt
+{
+    class DebugCapture final
+    {
+    };
+
+    class DebugRenderer final
+    {
+    };
+} // namespace Jolt
+
+#endif

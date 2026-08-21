@@ -288,7 +288,9 @@ namespace Jolt
             RegisterCustomShapeType();
             RegisterCustomConvexShapeType();
             JPH::RegisterHair();
+#ifdef JPH_DEBUG_RENDERER
             RuntimeDebugRenderer = AZStd::make_unique<DebugRenderer>();
+#endif
             JPH::CollideSoftBodyVerticesVsTriangles::sTriangleThickness = softBodyTriangleThickness;
             RuntimeSoftBodyTriangleThickness = softBodyTriangleThickness;
             RuntimeReferenceCount = 1;
@@ -427,6 +429,9 @@ namespace Jolt
         runtimeInfo.m_precision = Precision::Single;
         runtimeInfo.m_simdLevel = SimdLevel::Scalar;
 
+#ifdef JPH_DEBUG_RENDERER
+        runtimeInfo.m_debugRendering = true;
+#endif
 #ifdef JPH_DOUBLE_PRECISION
         runtimeInfo.m_precision = Precision::Double;
 #endif

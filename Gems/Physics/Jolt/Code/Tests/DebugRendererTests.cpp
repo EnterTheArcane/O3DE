@@ -12,6 +12,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
 
+#ifdef JPH_DEBUG_RENDERER
 namespace Jolt
 {
     namespace
@@ -138,3 +139,4 @@ namespace Jolt
         EXPECT_DOUBLE_EQ(renderer.m_triangleFirstPositions[1].m_x, 2.0);
     }
 } // namespace Jolt
+#endif

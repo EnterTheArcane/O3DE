@@ -74,6 +74,7 @@ namespace Jolt
         SimdLevel m_simdLevel = SimdLevel::None;
 
         bool m_broadPhaseStatistics = false;
+        bool m_debugRendering = false;
         bool m_detailedProfiling = false;
         bool m_narrowPhaseStatistics = false;
         bool m_simulationStatistics = false;

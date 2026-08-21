@@ -822,6 +822,7 @@ namespace Jolt
         EXPECT_TRUE(runtimeInfo->m_properties.contains("buildFingerprint"));
         EXPECT_TRUE(runtimeInfo->m_methods.contains("GetConfiguration"));
         EXPECT_TRUE(runtimeInfo->m_properties.contains("broadPhaseStatistics"));
+        EXPECT_TRUE(runtimeInfo->m_properties.contains("debugRendering"));
         EXPECT_TRUE(runtimeInfo->m_properties.contains("narrowPhaseStatistics"));
 
         EXPECT_TRUE(behaviorContext.m_classes.contains("BodyCollection"));

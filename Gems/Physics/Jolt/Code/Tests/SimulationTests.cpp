@@ -2651,6 +2651,20 @@ namespace Jolt
         const SphereOnFloor scene = CreateSphereOnFloor(system);
         ASSERT_TRUE(scene.m_floorBodyHandle);
         ASSERT_TRUE(scene.m_sphereBodyHandle);
+
+        if (!runtimeInfo.m_debugRendering)
+        {
+            DebugCaptureConfiguration captureConfiguration;
+            captureConfiguration.m_flags = DebugCaptureFlags::ContactManifolds;
+            EXPECT_FALSE(system.ConfigureDebugCapture(scene.m_worldHandle, captureConfiguration));
+
+            DebugCaptureStatistics captureStatistics;
+            EXPECT_FALSE(system.GetDebugCaptureStatistics(scene.m_worldHandle, captureStatistics));
+
+            RecordingDebugRenderer renderer;
+            EXPECT_FALSE(system.DrawDebug(scene.m_worldHandle, {}, renderer));
+        }
+
         AZStd::array<BroadPhaseStatistics, 64> broadPhaseStatistics;
         AZStd::array<NarrowPhaseStatistics, 64> narrowPhaseStatistics;
         const DiagnosticStatisticsResult initialBroadPhaseResult = system.GetBroadPhaseStatistics(
@@ -8371,44 +8385,33 @@ namespace Jolt
             EXPECT_TRUE(AZ::IsFiniteFloat(gridCell.GetDensity()));
         }
 
-        DebugDrawSettings debugSettings;
-        debugSettings.m_flags = DebugDrawFlags::None;
-        debugSettings.m_hair.m_flags = DebugHairDrawFlags::All;
-        RecordingDebugRenderer hairRenderer;
-        ASSERT_TRUE(system.DrawDebug(
-            worldHandle,
-            debugSettings,
-            hairRenderer));
-        EXPECT_GT(hairRenderer.m_lineCount, 0);
+        if (system.GetRuntimeInfo().m_debugRendering)
+        {
+            DebugDrawSettings debugSettings;
+            debugSettings.m_flags = DebugDrawFlags::None;
+            debugSettings.m_hair.m_flags = DebugHairDrawFlags::All;
+            RecordingDebugRenderer hairRenderer;
+            ASSERT_TRUE(system.DrawDebug(worldHandle, debugSettings, hairRenderer));
+            EXPECT_GT(hairRenderer.m_lineCount, 0);
 
-        SelectedDebugFilter debugFilter;
-        debugFilter.m_selectedHairHandle = hairHandle;
-        RecordingDebugRenderer selectedHairRenderer;
-        ASSERT_TRUE(system.DrawDebug(
-            worldHandle,
-            debugSettings,
-            selectedHairRenderer,
-            &debugFilter));
-        EXPECT_EQ(debugFilter.m_hairCallCount, 1);
-        EXPECT_EQ(selectedHairRenderer.m_lineCount, hairRenderer.m_lineCount);
+            SelectedDebugFilter debugFilter;
+            debugFilter.m_selectedHairHandle = hairHandle;
+            RecordingDebugRenderer selectedHairRenderer;
+            ASSERT_TRUE(system.DrawDebug(worldHandle, debugSettings, selectedHairRenderer, &debugFilter));
+            EXPECT_EQ(debugFilter.m_hairCallCount, 1);
+            EXPECT_EQ(selectedHairRenderer.m_lineCount, hairRenderer.m_lineCount);
 
-        debugFilter.m_selectedHairHandle = HairHandle::Invalid;
-        RecordingDebugRenderer rejectedHairRenderer;
-        ASSERT_TRUE(system.DrawDebug(
-            worldHandle,
-            debugSettings,
-            rejectedHairRenderer,
-            &debugFilter));
-        EXPECT_EQ(debugFilter.m_hairCallCount, 2);
-        EXPECT_EQ(rejectedHairRenderer.m_lineCount, 0);
+            debugFilter.m_selectedHairHandle = HairHandle::Invalid;
+            RecordingDebugRenderer rejectedHairRenderer;
+            ASSERT_TRUE(system.DrawDebug(worldHandle, debugSettings, rejectedHairRenderer, &debugFilter));
+            EXPECT_EQ(debugFilter.m_hairCallCount, 2);
+            EXPECT_EQ(rejectedHairRenderer.m_lineCount, 0);
 
-        debugSettings.m_hair.m_strandBegin = 1;
-        debugSettings.m_hair.m_strandEnd = 0;
-        RecordingDebugRenderer invalidHairRenderer;
-        EXPECT_FALSE(system.DrawDebug(
-            worldHandle,
-            debugSettings,
-            invalidHairRenderer));
+            debugSettings.m_hair.m_strandBegin = 1;
+            debugSettings.m_hair.m_strandEnd = 0;
+            RecordingDebugRenderer invalidHairRenderer;
+            EXPECT_FALSE(system.DrawDebug(worldHandle, debugSettings, invalidHairRenderer));
+        }
 
         HairReadbackResult countOnlyResult;
         ASSERT_TRUE(system.GetHairReadback(
@@ -9375,15 +9378,18 @@ namespace Jolt
         EXPECT_EQ(state.m_groundState, GroundState::OnGround);
         EXPECT_TRUE(state.m_isSupported);
 
-        DebugCaptureConfiguration captureConfiguration;
-        captureConfiguration.m_flags = DebugCaptureFlags::CharacterGround;
-        ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
-        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-        DebugCaptureStatistics captureStatistics;
-        ASSERT_TRUE(system.GetDebugCaptureStatistics(worldHandle, captureStatistics));
-        EXPECT_GT(captureStatistics.m_lineCount, 0);
-        captureConfiguration.m_flags = DebugCaptureFlags::None;
-        ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
+        if (system.GetRuntimeInfo().m_debugRendering)
+        {
+            DebugCaptureConfiguration captureConfiguration;
+            captureConfiguration.m_flags = DebugCaptureFlags::CharacterGround;
+            ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
+            ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+            DebugCaptureStatistics captureStatistics;
+            ASSERT_TRUE(system.GetDebugCaptureStatistics(worldHandle, captureStatistics));
+            EXPECT_GT(captureStatistics.m_lineCount, 0);
+            captureConfiguration.m_flags = DebugCaptureFlags::None;
+            ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
+        }
 
         EXPECT_TRUE(system.DestroyCharacter(worldHandle, characterHandle));
         EXPECT_FALSE(system.IsValid(worldHandle, characterHandle));
@@ -9487,15 +9493,18 @@ namespace Jolt
             }));
         vehicleCollisionFilter.m_rejectedBodyHandle = BodyHandle::Invalid;
 
-        DebugCaptureConfiguration captureConfiguration;
-        captureConfiguration.m_flags = DebugCaptureFlags::VehicleContacts;
-        ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
-        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
-        DebugCaptureStatistics captureStatistics;
-        ASSERT_TRUE(system.GetDebugCaptureStatistics(worldHandle, captureStatistics));
-        EXPECT_GT(captureStatistics.m_lineCount, 0);
-        captureConfiguration.m_flags = DebugCaptureFlags::None;
-        ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
+        if (system.GetRuntimeInfo().m_debugRendering)
+        {
+            DebugCaptureConfiguration captureConfiguration;
+            captureConfiguration.m_flags = DebugCaptureFlags::VehicleContacts;
+            ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
+            ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+            DebugCaptureStatistics captureStatistics;
+            ASSERT_TRUE(system.GetDebugCaptureStatistics(worldHandle, captureStatistics));
+            EXPECT_GT(captureStatistics.m_lineCount, 0);
+            captureConfiguration.m_flags = DebugCaptureFlags::None;
+            ASSERT_TRUE(system.ConfigureDebugCapture(worldHandle, captureConfiguration));
+        }
 
         VehicleRuntimeConfiguration runtimeConfiguration;
         ASSERT_TRUE(system.GetVehicleRuntimeConfiguration(
@@ -12583,6 +12592,10 @@ namespace Jolt
         };
         Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
+        if (!system.GetRuntimeInfo().m_debugRendering)
+        {
+            GTEST_SKIP() << "Native debug rendering is disabled in this build.";
+        }
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         ConvexHullShapeConfiguration convexHull;
@@ -12709,6 +12722,10 @@ namespace Jolt
     {
         Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
+        if (!system.GetRuntimeInfo().m_debugRendering)
+        {
+            GTEST_SKIP() << "Native debug rendering is disabled in this build.";
+        }
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         MeshShapeConfiguration mesh;
@@ -12816,6 +12833,10 @@ namespace Jolt
         };
         Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
+        if (!system.GetRuntimeInfo().m_debugRendering)
+        {
+            GTEST_SKIP() << "Native debug rendering is disabled in this build.";
+        }
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         ShapeConfiguration floorShapeConfiguration;
@@ -12915,6 +12936,10 @@ namespace Jolt
         systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
         Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
+        if (!system.GetRuntimeInfo().m_debugRendering)
+        {
+            GTEST_SKIP() << "Native debug rendering is disabled in this build.";
+        }
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         ShapeConfiguration sphereShapeConfiguration;
@@ -12994,6 +13019,10 @@ namespace Jolt
     {
         Runtime system(CreateSerialSystemConfiguration(), nullptr);
         ASSERT_TRUE(system);
+        if (!system.GetRuntimeInfo().m_debugRendering)
+        {
+            GTEST_SKIP() << "Native debug rendering is disabled in this build.";
+        }
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
         ShapeConfiguration shapeConfiguration;
@@ -13044,6 +13073,10 @@ namespace Jolt
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
         Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
+        if (!system.GetRuntimeInfo().m_debugRendering)
+        {
+            GTEST_SKIP() << "Native debug rendering is disabled in this build.";
+        }
 
         const WorldHandle captureWorldHandle = system.GetDefaultWorldHandle();
         const WorldHandle contactWorldHandle = system.CreateWorld(systemConfiguration.m_defaultWorld);
@@ -13100,6 +13133,10 @@ namespace Jolt
 
     TEST(SimulationTests, AutomaticSimulationCaptureAccumulatesEveryCatchUpStep)
     {
+#ifndef JPH_DEBUG_RENDERER
+        GTEST_SKIP() << "Native debug rendering is disabled in this build.";
+#endif
+
         const auto captureLineCount = [](const AZ::u32 catchUpStepCount)
         {
             SystemConfiguration configuration = CreateSerialSystemConfiguration();
@@ -15251,10 +15288,13 @@ namespace Jolt
         EXPECT_TRUE(triangleResult.IsComplete());
         EXPECT_EQ(triangles.front().m_materialHandle, materialHandle);
 
-        RecordingDebugRenderer renderer;
-        ASSERT_TRUE(system.DrawDebug(worldHandle, {}, renderer));
-        EXPECT_EQ(renderer.m_geometryCount, 1);
-        EXPECT_GT(renderer.m_vertexCount, 0);
+        if (system.GetRuntimeInfo().m_debugRendering)
+        {
+            RecordingDebugRenderer renderer;
+            ASSERT_TRUE(system.DrawDebug(worldHandle, {}, renderer));
+            EXPECT_EQ(renderer.m_geometryCount, 1);
+            EXPECT_GT(renderer.m_vertexCount, 0);
+        }
 
         WorldStateDigest capturedDigest;
         ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, capturedDigest));
@@ -18013,18 +18053,26 @@ namespace Jolt
         EXPECT_EQ(constraintState.m_userData, updatedUserData);
 
         float debugDrawSize = 0.0f;
-        ASSERT_TRUE(system.GetConstraintDebugDrawSize(
-            worldHandle,
-            constraintHandle,
-            debugDrawSize));
-        EXPECT_FLOAT_EQ(debugDrawSize, 1.0f);
-        EXPECT_FALSE(system.SetConstraintDebugDrawSize(worldHandle, constraintHandle, 0.0f));
-        EXPECT_TRUE(system.SetConstraintDebugDrawSize(worldHandle, constraintHandle, 2.5f));
-        ASSERT_TRUE(system.GetConstraintDebugDrawSize(
-            worldHandle,
-            constraintHandle,
-            debugDrawSize));
-        EXPECT_FLOAT_EQ(debugDrawSize, 2.5f);
+        if (system.GetRuntimeInfo().m_debugRendering)
+        {
+            ASSERT_TRUE(system.GetConstraintDebugDrawSize(
+                worldHandle,
+                constraintHandle,
+                debugDrawSize));
+            EXPECT_FLOAT_EQ(debugDrawSize, 1.0f);
+            EXPECT_FALSE(system.SetConstraintDebugDrawSize(worldHandle, constraintHandle, 0.0f));
+            EXPECT_TRUE(system.SetConstraintDebugDrawSize(worldHandle, constraintHandle, 2.5f));
+            ASSERT_TRUE(system.GetConstraintDebugDrawSize(
+                worldHandle,
+                constraintHandle,
+                debugDrawSize));
+            EXPECT_FLOAT_EQ(debugDrawSize, 2.5f);
+        }
+        else
+        {
+            EXPECT_FALSE(system.GetConstraintDebugDrawSize(worldHandle, constraintHandle, debugDrawSize));
+            EXPECT_FALSE(system.SetConstraintDebugDrawSize(worldHandle, constraintHandle, 2.5f));
+        }
 
         const ConstraintSolverConfiguration solverConfiguration{
             .m_priority = 7,

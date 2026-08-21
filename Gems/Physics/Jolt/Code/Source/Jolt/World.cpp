@@ -700,6 +700,8 @@ namespace Jolt
 #define JOLT_CAPTURE_COLD [[gnu::cold, gnu::noinline]]
 #endif
 
+#ifdef JPH_DEBUG_RENDERER
+
         [[nodiscard]]
         bool HasDebugDrawFlag(
             const DebugDrawFlags flags,
@@ -948,6 +950,8 @@ namespace Jolt
         private:
             const IDebugFilter* m_filter = nullptr;
         };
+
+#endif
 
         class SnapshotStateFilter final
             : public JPH::StateRecorderFilter
@@ -10312,6 +10316,11 @@ namespace Jolt
         const ConstraintHandle constraintHandle,
         float& debugDrawSize) const
     {
+#ifndef JPH_DEBUG_RENDERER
+        AZ_UNUSED(constraintHandle);
+        AZ_UNUSED(debugDrawSize);
+        return false;
+#else
         AZStd::lock_guard lock(m_mutex);
         const ConstraintSlot* slot = FindConstraint(constraintHandle);
         if (!slot)
@@ -10321,12 +10330,18 @@ namespace Jolt
 
         debugDrawSize = slot->m_constraint->GetDrawConstraintSize();
         return true;
+#endif
     }
 
     bool World::SetConstraintDebugDrawSize(
         const ConstraintHandle constraintHandle,
         const float debugDrawSize)
     {
+#ifndef JPH_DEBUG_RENDERER
+        AZ_UNUSED(constraintHandle);
+        AZ_UNUSED(debugDrawSize);
+        return false;
+#else
         AZStd::lock_guard lock(m_mutex);
         ConstraintSlot* slot = FindConstraint(constraintHandle);
         if (!slot
@@ -10338,6 +10353,7 @@ namespace Jolt
 
         slot->m_constraint->SetDrawConstraintSize(debugDrawSize);
         return true;
+#endif
     }
 
     bool World::GetConstraintMeasurements(
@@ -13007,6 +13023,10 @@ namespace Jolt
         const IQueryFilter* filter,
         DebugRenderer* debugRenderer)
     {
+#ifndef JPH_DEBUG_RENDERER
+        AZ_UNUSED(debugRenderer);
+        return WalkVirtualCharacterStairsUnlocked(slot, configuration, filter);
+#else
         AZ_Assert(debugRenderer, "An enabled Jolt debug capture requires the system debug renderer.");
         if (!debugRenderer)
         {
@@ -13018,6 +13038,7 @@ namespace Jolt
             debugRenderer,
             m_configuration.m_origin);
         return WalkVirtualCharacterStairsUnlocked(slot, configuration, filter);
+#endif
     }
 
     bool World::StickVirtualCharacterToFloor(
@@ -13083,6 +13104,10 @@ namespace Jolt
         const IQueryFilter* filter,
         DebugRenderer* debugRenderer)
     {
+#ifndef JPH_DEBUG_RENDERER
+        AZ_UNUSED(debugRenderer);
+        return StickVirtualCharacterToFloorUnlocked(slot, stepDown, filter);
+#else
         AZ_Assert(debugRenderer, "An enabled Jolt debug capture requires the system debug renderer.");
         if (!debugRenderer)
         {
@@ -13094,6 +13119,7 @@ namespace Jolt
             debugRenderer,
             m_configuration.m_origin);
         return StickVirtualCharacterToFloorUnlocked(slot, stepDown, filter);
+#endif
     }
 
     bool World::RefreshVirtualCharacterContacts(
@@ -13511,6 +13537,10 @@ namespace Jolt
         const VirtualCharacterUpdateConfiguration& configuration,
         DebugRenderer* debugRenderer)
     {
+#ifndef JPH_DEBUG_RENDERER
+        AZ_UNUSED(debugRenderer);
+        return UpdateVirtualCharacterUnlocked(slot, deltaTime, configuration);
+#else
         AZ_Assert(debugRenderer, "An enabled Jolt debug capture requires the system debug renderer.");
         if (!debugRenderer)
         {
@@ -13522,6 +13552,7 @@ namespace Jolt
             debugRenderer,
             m_configuration.m_origin);
         return UpdateVirtualCharacterUnlocked(slot, deltaTime, configuration);
+#endif
     }
 
     bool World::IsValid(
@@ -19924,10 +19955,12 @@ namespace Jolt
             const AZ::u64 lookupBytes = GetMapRetainedBytes(m_ragdollHandlesByGroupId)
                 + GetMapRetainedBytes(m_virtualCharacterHandlesById);
             AZ::u64 debugBytes = 0;
+#ifdef JPH_DEBUG_RENDERER
             if (m_debugCapture)
             {
                 debugBytes = sizeof(DebugCapture) + m_debugCapture->GetRetainedBytes();
             }
+#endif
 
             statistics.m_wrapperRetainedBytes = shapeBytes
                 + bodyBytes
@@ -20274,6 +20307,13 @@ namespace Jolt
         DebugRenderer& nativeRenderer,
         const IDebugFilter* filter)
     {
+#ifndef JPH_DEBUG_RENDERER
+        AZ_UNUSED(settings);
+        AZ_UNUSED(renderer);
+        AZ_UNUSED(nativeRenderer);
+        AZ_UNUSED(filter);
+        return false;
+#else
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::DrawDebug");
         AZStd::lock_guard lock(m_mutex);
         if (settings.m_shapeColor == DebugShapeColor::None
@@ -20465,11 +20505,16 @@ namespace Jolt
         }
         nativeRenderer.EndFrame();
         return true;
+#endif
     }
 
     bool World::ConfigureDebugCapture(
         const DebugCaptureConfiguration& configuration)
     {
+#ifndef JPH_DEBUG_RENDERER
+        AZ_UNUSED(configuration);
+        return false;
+#else
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::ConfigureDebugCapture");
         AZStd::lock_guard lock(m_mutex);
         if (!m_initialized
@@ -20490,11 +20535,16 @@ namespace Jolt
         }
         m_debugCapture->Configure(configuration);
         return true;
+#endif
     }
 
     bool World::GetDebugCaptureStatistics(
         DebugCaptureStatistics& statistics) const
     {
+#ifndef JPH_DEBUG_RENDERER
+        AZ_UNUSED(statistics);
+        return false;
+#else
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::GetDebugCaptureStatistics");
         AZStd::lock_guard lock(m_mutex);
         if (!m_initialized)
@@ -20508,12 +20558,17 @@ namespace Jolt
             statistics = m_debugCapture->GetStatistics();
         }
         return true;
+#endif
     }
 
     bool World::IsDebugCaptureEnabled() const
     {
+#ifndef JPH_DEBUG_RENDERER
+        return false;
+#else
         AZStd::lock_guard lock(m_mutex);
         return m_initialized && m_debugCapture;
+#endif
     }
 
     QueryResult World::GetBodies(
@@ -21594,6 +21649,10 @@ namespace Jolt
         const BuoyancyConfiguration& configuration,
         DebugRenderer* debugRenderer)
     {
+#ifndef JPH_DEBUG_RENDERER
+        AZ_UNUSED(debugRenderer);
+        return ApplyBuoyancyImpulseUnlocked(slot, configuration);
+#else
         AZ_Assert(debugRenderer, "An enabled Jolt debug capture requires the system debug renderer.");
         if (!debugRenderer)
         {
@@ -21605,6 +21664,7 @@ namespace Jolt
             debugRenderer,
             m_configuration.m_origin);
         return ApplyBuoyancyImpulseUnlocked(slot, configuration);
+#endif
     }
 
     bool World::GetBodyFriction(
@@ -26681,6 +26741,9 @@ namespace Jolt
 
     void World::CaptureSupplementalDebug(DebugRenderer& debugRenderer)
     {
+#ifndef JPH_DEBUG_RENDERER
+        AZ_UNUSED(debugRenderer);
+#else
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::CaptureSupplementalDebug");
         if (!m_debugCapture)
         {
@@ -26858,12 +26921,17 @@ namespace Jolt
                 }
             }
         }
+#endif
     }
 
     void World::CaptureRaycastDebug(
         const RaycastRequest& request,
         const RaycastHit* hit) const
     {
+#ifndef JPH_DEBUG_RENDERER
+        AZ_UNUSED(request);
+        AZ_UNUSED(hit);
+#else
         if (!m_debugCapture
             || !HasDebugCaptureFlag(m_debugCapture->GetConfiguration().m_flags, DebugCaptureFlags::Queries))
         {
@@ -26891,12 +26959,18 @@ namespace Jolt
             };
             m_debugCapture->RecordLine(hit->m_position, normalEnd, 0xffffff00);
         }
+#endif
     }
 
     JOLT_CAPTURE_COLD SimulationResult World::StepWithDebugCapture(
         const float fixedTimeStep,
         DebugRenderer* debugRenderer)
     {
+#ifndef JPH_DEBUG_RENDERER
+        AZ_UNUSED(fixedTimeStep);
+        AZ_UNUSED(debugRenderer);
+        return {.m_errors = SimulationError::InvalidRequest};
+#else
         AZ_Assert(debugRenderer, "An enabled Jolt debug capture requires the system debug renderer.");
         if (!debugRenderer)
         {
@@ -26911,6 +26985,7 @@ namespace Jolt
         CaptureSupplementalDebug(*debugRenderer);
         PublishEvents();
         return result;
+#endif
     }
 
     SimulationResult World::StepAutomaticallyDetailed(
@@ -26979,6 +27054,11 @@ namespace Jolt
         const double fixedTimeStep,
         DebugRenderer* debugRenderer)
     {
+#ifndef JPH_DEBUG_RENDERER
+        AZ_UNUSED(fixedTimeStep);
+        AZ_UNUSED(debugRenderer);
+        return {.m_errors = SimulationError::InvalidRequest};
+#else
         AZ_Assert(debugRenderer, "An enabled Jolt debug capture requires the system debug renderer.");
         if (!debugRenderer)
         {
@@ -26992,6 +27072,7 @@ namespace Jolt
         const SimulationResult result = RunAutomaticUpdates(fixedTimeStep);
         CaptureSupplementalDebug(*debugRenderer);
         return result;
+#endif
     }
 
 #undef JOLT_CAPTURE_COLD

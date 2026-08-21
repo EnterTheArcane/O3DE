@@ -211,6 +211,11 @@ namespace Jolt
 #else
         EXPECT_FALSE(runtimeInfo.m_detailedProfiling);
 #endif
+#if defined(JPH_DEBUG_RENDERER)
+        EXPECT_TRUE(runtimeInfo.m_debugRendering);
+#else
+        EXPECT_FALSE(runtimeInfo.m_debugRendering);
+#endif
 #if defined(JPH_TRACK_BROADPHASE_STATS)
         EXPECT_TRUE(runtimeInfo.m_broadPhaseStatistics);
 #else

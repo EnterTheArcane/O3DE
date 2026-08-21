@@ -7,6 +7,8 @@
 
 #include <Jolt/DebugRenderer.h>
 
+#ifdef JPH_DEBUG_RENDERER
+
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/std/algorithm.h>
@@ -815,3 +817,5 @@ namespace Jolt
             configuration);
     }
 } // namespace Jolt
+
+#endif
