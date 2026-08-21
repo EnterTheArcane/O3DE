@@ -5,7 +5,6 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 #
 
-set(sqlite_system_libraries)
 set(sqlite_feature_definitions)
 
 include(CheckSymbolExists)
@@ -14,32 +13,14 @@ check_symbol_exists(gmtime_r "time.h" SQLITE_HAVE_GMTIME_R)
 check_symbol_exists(localtime_r "time.h" SQLITE_HAVE_LOCALTIME_R)
 check_symbol_exists(posix_fallocate "fcntl.h" SQLITE_HAVE_POSIX_FALLOCATE)
 check_symbol_exists(strerror_r "string.h" SQLITE_HAVE_STRERROR_R)
-check_symbol_exists(usleep "unistd.h" SQLITE_HAVE_USLEEP)
 
-foreach(sqlite_feature FDATASYNC GMTIME_R LOCALTIME_R POSIX_FALLOCATE STRERROR_R USLEEP)
+foreach(sqlite_feature FDATASYNC GMTIME_R LOCALTIME_R POSIX_FALLOCATE STRERROR_R)
     if(SQLITE_HAVE_${sqlite_feature})
         list(APPEND sqlite_feature_definitions HAVE_${sqlite_feature}=1)
     endif()
 endforeach()
 
-if(CMAKE_DL_LIBS)
-    list(APPEND sqlite_system_libraries PUBLIC ${CMAKE_DL_LIBS})
-endif()
-if(UNIX)
-    find_package(Threads REQUIRED)
-    if(CMAKE_THREAD_LIBS_INIT)
-        if(NOT sqlite_system_libraries)
-            list(APPEND sqlite_system_libraries PUBLIC)
-        endif()
-        list(APPEND sqlite_system_libraries ${CMAKE_THREAD_LIBS_INIT})
-    endif()
-    if(NOT APPLE)
-        if(NOT sqlite_system_libraries)
-            list(APPEND sqlite_system_libraries PUBLIC)
-        endif()
-        list(APPEND sqlite_system_libraries m)
-    endif()
-endif()
+find_package(Threads REQUIRED)
 
 ly_add_3rdparty_target(
     NAME sqlite STATIC
@@ -48,13 +29,23 @@ ly_add_3rdparty_target(
     COMPILE_DEFINITIONS
         PRIVATE
             SQLITE_THREADSAFE=1
+            SQLITE_ENABLE_BYTECODE_VTAB
             SQLITE_ENABLE_COLUMN_METADATA
-            SQLITE_ENABLE_RTREE
+            SQLITE_ENABLE_DBPAGE_VTAB
+            SQLITE_ENABLE_DBSTAT_VTAB
+            SQLITE_ENABLE_FTS3
+            SQLITE_ENABLE_GEOPOLY
             SQLITE_ENABLE_MATH_FUNCTIONS
-            SQLITE_ENABLE_UNLOCK_NOTIFY
+            SQLITE_ENABLE_RTREE
+            SQLITE_ENABLE_STMTVTAB
             ${sqlite_feature_definitions}
-    BUILD_DEPENDENCIES ${sqlite_system_libraries}
-    TARGET_PROPERTIES C_VISIBILITY_PRESET hidden
+    BUILD_DEPENDENCIES
+        PUBLIC
+            Threads::Threads
+            ${CMAKE_DL_LIBS}
+            $<$<BOOL:${O3DE_HAVE_LIBM}>:m>
+    TARGET_PROPERTIES
+        C_VISIBILITY_PRESET hidden
 )
 
 ly_create_alias(NAME SQLite NAMESPACE 3rdParty TARGETS 3rdParty::sqlite)

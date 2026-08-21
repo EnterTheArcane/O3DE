@@ -15,7 +15,8 @@ ly_add_3rdparty_target(
     INCLUDE_DIRECTORIES
         PUBLIC Include
         PRIVATE Include/MikkTSpace
-    BUILD_DEPENDENCIES ${mikktspace_system_libraries}
+    BUILD_DEPENDENCIES
+        ${mikktspace_system_libraries}
 )
 
 ly_create_alias(NAME MikkTSpace NAMESPACE 3rdParty TARGETS 3rdParty::mikktspace)
