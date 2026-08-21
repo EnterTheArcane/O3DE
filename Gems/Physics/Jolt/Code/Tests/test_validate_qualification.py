@@ -426,6 +426,7 @@ ly_install(FILES
             commands = {result.name: result.command for result in runner.results if result.command}
             self.assertNotIn("--target", commands["build-installed-modular-engine"])
             self.assertIn("CORE", commands["install-modular-core"])
+            self.assertIn("DEFAULT", commands["install-modular-configuration"])
             self.assertIn("DEFAULT_RELEASE", commands["install-modular-binaries"])
             self.assertIn(
                 f"-DO3DE_ENGINE_ROOT={install_root.resolve().as_posix()}",

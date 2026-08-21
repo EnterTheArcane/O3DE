@@ -877,9 +877,11 @@ def add_installed_consumer(
     environment: dict[str, str] | None = None,
 ) -> None:
     permutation = "modular"
+    configuration_component = "DEFAULT"
     binary_component = f"DEFAULT_{configuration.upper()}"
     if monolithic:
         permutation = "monolithic"
+        configuration_component = "MONOLITHIC"
         binary_component = f"MONOLITHIC_{configuration.upper()}"
 
     built = runner.run_command(
@@ -898,6 +900,7 @@ def add_installed_consumer(
     )
     if not built:
         runner.skip(f"install-{permutation}-core", f"{permutation} engine build failed")
+        runner.skip(f"install-{permutation}-configuration", f"{permutation} engine build failed")
         runner.skip(f"install-{permutation}-binaries", f"{permutation} engine build failed")
         runner.skip(f"audit-installed-{permutation}-boundary", f"{permutation} engine build failed")
         runner.skip(f"configure-installed-{permutation}-consumer", f"{permutation} engine build failed")
@@ -915,6 +918,22 @@ def add_installed_consumer(
             configuration,
             "--component",
             "CORE",
+            "--prefix",
+            str(install_root.resolve()),
+        ),
+        7_200,
+        environment,
+    )
+    configuration_installed = runner.run_command(
+        f"install-{permutation}-configuration",
+        (
+            "cmake",
+            "--install",
+            str(primary_build_directory),
+            "--config",
+            configuration,
+            "--component",
+            configuration_component,
             "--prefix",
             str(install_root.resolve()),
         ),
@@ -944,7 +963,7 @@ def add_installed_consumer(
         runner.skip(f"run-installed-{permutation}-consumer", "dry run")
         return
 
-    if not core_installed or not binaries_installed:
+    if not core_installed or not configuration_installed or not binaries_installed:
         runner.skip(f"audit-installed-{permutation}-boundary", f"{permutation} install failed")
         runner.skip(f"configure-installed-{permutation}-consumer", f"{permutation} install failed")
         runner.skip(f"build-installed-{permutation}-consumer", f"{permutation} install failed")
