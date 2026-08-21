@@ -3523,8 +3523,7 @@ namespace Jolt
         const SkeletonPoseSlot* FindSkeletonPoseUnlocked(SkeletonPoseHandle poseHandle) const;
 
         NativeRuntime m_nativeRuntime;
-        mutable AZStd::mutex m_debugRendererMutex;
-        AZStd::unique_ptr<DebugRenderer> m_debugRenderer;
+        DebugRenderer* m_debugRenderer = nullptr;
         AZStd::atomic<AZ::u32> m_debugCaptureWorldCount = 0;
         AZStd::unique_ptr<ComponentDependencyManager> m_dependencyManager;
         SystemConfiguration m_configuration;

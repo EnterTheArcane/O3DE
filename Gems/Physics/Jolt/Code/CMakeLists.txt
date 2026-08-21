@@ -209,6 +209,13 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
         $<TARGET_PROPERTY:Jolt,INTERFACE_COMPILE_DEFINITIONS>
     )
 
+    if(NOT LY_MONOLITHIC_GAME)
+        target_compile_definitions(
+            ${gem_name}.Tests PRIVATE
+            $<$<CONFIG:Debug>:JOLT_TESTS_DEFINE_NATIVE_ASSERT_HANDLER>
+        )
+    endif()
+
     if(PAL_TRAIT_BUILD_HOST_TOOLS)
         target_compile_definitions(
             ${gem_name}.Tests PRIVATE

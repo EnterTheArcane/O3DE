@@ -11,9 +11,12 @@
 #include <Jolt/Configuration.h>
 
 #include <AzCore/base.h>
+#include <AzCore/std/parallel/mutex.h>
 
 namespace Jolt
 {
+    class DebugRenderer;
+
     struct NativeMemoryStatistics final
     {
         AZ::u64 m_allocatedBytes = 0;
@@ -35,6 +38,12 @@ namespace Jolt
 
     [[nodiscard]]
     JOLT_API float GetSoftBodyTriangleThickness();
+
+    [[nodiscard]]
+    DebugRenderer* GetNativeDebugRenderer();
+
+    [[nodiscard]]
+    AZStd::mutex& GetNativeDebugRendererMutex();
 
     class JOLT_API NativeRuntime final
     {

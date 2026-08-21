@@ -10,6 +10,7 @@
 #include <Jolt/Allocator.h>
 #include <Jolt/CustomConvexShape.h>
 #include <Jolt/CustomShapeInternal.h>
+#include <Jolt/DebugRenderer.h>
 
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Math/MathUtils.h>
@@ -18,6 +19,7 @@
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/mutex.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/ConfigurationString.h>
@@ -61,6 +63,8 @@ namespace Jolt
         AZStd::mutex RuntimeMutex;
         AZ::u32 RuntimeReferenceCount = 0;
         float RuntimeSoftBodyTriangleThickness = 0.1f;
+        AZStd::unique_ptr<DebugRenderer> RuntimeDebugRenderer;
+        AZStd::mutex RuntimeDebugRendererMutex;
 
         AZStd::atomic_uint32_t NativeMemoryStatisticsReferenceCount{0};
         AZStd::atomic_uint64_t NativeAllocationCount{0};
@@ -284,6 +288,7 @@ namespace Jolt
             RegisterCustomShapeType();
             RegisterCustomConvexShapeType();
             JPH::RegisterHair();
+            RuntimeDebugRenderer = AZStd::make_unique<DebugRenderer>();
             JPH::CollideSoftBodyVerticesVsTriangles::sTriangleThickness = softBodyTriangleThickness;
             RuntimeSoftBodyTriangleThickness = softBodyTriangleThickness;
             RuntimeReferenceCount = 1;
@@ -300,6 +305,7 @@ namespace Jolt
                 return;
             }
 
+            RuntimeDebugRenderer.reset();
             JPH::UnregisterTypes();
             delete JPH::Factory::sInstance;
             JPH::Factory::sInstance = nullptr;
@@ -381,6 +387,16 @@ namespace Jolt
     float GetSoftBodyTriangleThickness()
     {
         return JPH::CollideSoftBodyVerticesVsTriangles::sTriangleThickness;
+    }
+
+    DebugRenderer* GetNativeDebugRenderer()
+    {
+        return RuntimeDebugRenderer.get();
+    }
+
+    AZStd::mutex& GetNativeDebugRendererMutex()
+    {
+        return RuntimeDebugRendererMutex;
     }
 
     NativeRuntime::NativeRuntime(

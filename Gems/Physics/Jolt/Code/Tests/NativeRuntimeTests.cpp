@@ -13,6 +13,7 @@
 #include <Jolt/Geometry/RayAABox.h>
 #include <Jolt/Physics/Collision/Shape/ScaleHelpers.h>
 
+#include <AzCore/Debug/Trace.h>
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobManager.h>
 #include <AzCore/UnitTest/UnitTest.h>
@@ -21,6 +22,51 @@
 #include <AzTest/AzTest.h>
 
 #include <cfenv>
+
+#if defined(JOLT_TESTS_DEFINE_NATIVE_ASSERT_HANDLER) && defined(JPH_ENABLE_ASSERTS)
+namespace JPH
+{
+    namespace
+    {
+        bool ReportTestNativeAssertion(
+            const char* expression,
+            const char* message,
+            const char* fileName,
+            const JPH::uint lineNumber)
+        {
+            const char* reportedExpression = "<unknown>";
+            if (expression)
+            {
+                reportedExpression = expression;
+            }
+
+            const char* reportedMessage = "<none>";
+            if (message)
+            {
+                reportedMessage = message;
+            }
+
+            const char* reportedFileName = "<unknown>";
+            if (fileName)
+            {
+                reportedFileName = fileName;
+            }
+
+            AZ_Error(
+                "Jolt",
+                false,
+                "Native assertion failed in the test module: %s; %s (%s:%u)",
+                reportedExpression,
+                reportedMessage,
+                reportedFileName,
+                lineNumber);
+            return false;
+        }
+    } // namespace
+
+    AssertFailedFunction AssertFailed = ReportTestNativeAssertion;
+} // namespace JPH
+#endif
 
 namespace Jolt
 {

@@ -611,7 +611,7 @@ namespace Jolt
         }
 
         m_operationPool = Internal::OperationPool::Create(m_jobContext);
-        m_debugRenderer = AZStd::make_unique<DebugRenderer>();
+        m_debugRenderer = GetNativeDebugRenderer();
         m_dependencyManager = AZStd::make_unique<ComponentDependencyManager>();
         if (m_configuration.m_createDefaultWorld)
         {
@@ -4954,8 +4954,8 @@ namespace Jolt
 
         if (m_debugCaptureWorldCount.load() > 0)
         {
-            AZStd::lock_guard rendererLock(m_debugRendererMutex);
-            return world->StepDetailed(fixedTimeStep, m_debugRenderer.get());
+            AZStd::lock_guard rendererLock(GetNativeDebugRendererMutex());
+            return world->StepDetailed(fixedTimeStep, m_debugRenderer);
         }
         return world->StepDetailed(fixedTimeStep, nullptr);
     }
@@ -5052,12 +5052,12 @@ namespace Jolt
         };
 
         AZStd::shared_lock lock(m_worldMutex);
-        AZStd::unique_lock<AZStd::mutex> rendererLock(m_debugRendererMutex, AZStd::defer_lock);
+        AZStd::unique_lock<AZStd::mutex> rendererLock(GetNativeDebugRendererMutex(), AZStd::defer_lock);
         DebugRenderer* debugRenderer = nullptr;
         if (m_debugCaptureWorldCount.load() > 0)
         {
             rendererLock.lock();
-            debugRenderer = m_debugRenderer.get();
+            debugRenderer = m_debugRenderer;
         }
 
         AZStd::fixed_vector<AutoSimulationEntry, Internal::MaximumWorldCount> worlds;
@@ -7548,12 +7548,12 @@ namespace Jolt
 
         if (m_debugCaptureWorldCount.load() > 0)
         {
-            AZStd::lock_guard rendererLock(m_debugRendererMutex);
+            AZStd::lock_guard rendererLock(GetNativeDebugRendererMutex());
             return world->WalkVirtualCharacterStairs(
                 characterHandle,
                 configuration,
                 filter,
-                m_debugRenderer.get());
+                m_debugRenderer);
         }
         return world->WalkVirtualCharacterStairs(
             characterHandle,
@@ -7577,12 +7577,12 @@ namespace Jolt
 
         if (m_debugCaptureWorldCount.load() > 0)
         {
-            AZStd::lock_guard rendererLock(m_debugRendererMutex);
+            AZStd::lock_guard rendererLock(GetNativeDebugRendererMutex());
             return world->StickVirtualCharacterToFloor(
                 characterHandle,
                 stepDown,
                 filter,
-                m_debugRenderer.get());
+                m_debugRenderer);
         }
         return world->StickVirtualCharacterToFloor(
             characterHandle,
@@ -7662,12 +7662,12 @@ namespace Jolt
 
         if (m_debugCaptureWorldCount.load() > 0)
         {
-            AZStd::lock_guard rendererLock(m_debugRendererMutex);
+            AZStd::lock_guard rendererLock(GetNativeDebugRendererMutex());
             return world->UpdateVirtualCharacter(
                 characterHandle,
                 deltaTime,
                 configuration,
-                m_debugRenderer.get());
+                m_debugRenderer);
         }
         return world->UpdateVirtualCharacter(
             characterHandle,
@@ -8795,7 +8795,7 @@ namespace Jolt
             return false;
         }
 
-        AZStd::lock_guard rendererLock(m_debugRendererMutex);
+        AZStd::lock_guard rendererLock(GetNativeDebugRendererMutex());
         return world->DrawDebug(
             settings,
             renderer,
@@ -8814,7 +8814,7 @@ namespace Jolt
             return false;
         }
 
-        AZStd::lock_guard rendererLock(m_debugRendererMutex);
+        AZStd::lock_guard rendererLock(GetNativeDebugRendererMutex());
         const bool wasEnabled = world->IsDebugCaptureEnabled();
         if (!world->ConfigureDebugCapture(configuration))
         {
@@ -9333,11 +9333,11 @@ namespace Jolt
 
         if (m_debugCaptureWorldCount.load() > 0)
         {
-            AZStd::lock_guard rendererLock(m_debugRendererMutex);
+            AZStd::lock_guard rendererLock(GetNativeDebugRendererMutex());
             return world->ApplyBuoyancyImpulse(
                 bodyHandle,
                 configuration,
-                m_debugRenderer.get());
+                m_debugRenderer);
         }
         return world->ApplyBuoyancyImpulse(
             bodyHandle,
