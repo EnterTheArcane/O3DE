@@ -7,8 +7,8 @@ collision policy, query cardinality, simulation quality, repetition count, and s
 ## Phase 7 benchmark policy
 
 Matched throughput and frame-tail measurements are separate workloads. Throughput workloads execute 600 frames per repetition under
-Google Benchmark's calibrated real-time measurement. Tail workloads execute exactly 1,024 consecutive frames per repetition and publish
-every raw frame as `Frame{index}Ns`. Each provider runs 30 tail windows, yielding 30,720 raw frames per configuration without trimming.
+Google Benchmark's calibrated real-time measurement. Tail workloads execute exactly 4,096 consecutive frames per repetition and publish
+every raw frame as `Frame{index}Ns`. Each provider runs 30 tail windows, yielding 122,880 raw frames per configuration without trimming.
 
 The tail workload reports its within-window p50, p95, p99, and maximum. Its manual benchmark time is the p95 so the raw samples, summary
 counters, and Google Benchmark result can be cross-checked. The comparator independently reconstructs every window p95, applies the 5%
@@ -20,13 +20,33 @@ artifacts record both values and the comparator rejects an inconsistent topology
 batches, and overlaps contribute to explicit success counters; one valid final result cannot hide earlier failures. Jolt's timed
 lifecycle path disables allocation instrumentation and reports it as a separate diagnostic workload.
 
-Release captures use high process priority and exactly as many physical-core lanes as the requested worker count. On the Ryzen 9 7950X,
-one-worker captures use logical CPU 30, four-worker captures use 24, 26, 28, and 30, and eight-worker captures use the physical lanes
-16 through 30 on the same CCD. Affinity is established before child-process creation so the benchmark caller and every job worker inherit
-the intended topology. Each matched workload runs in its own fresh process so unrelated allocator, cache, and power-state history cannot
-contaminate a later workload. Qualification records the policy, compiler, configuration, source revision and complete dirty-source hash,
-runner and provider binary hashes, workload signature, repetition count, and minimum time. A report older than the runner, provider
-binary, or current source state is rejected.
+Release captures use high process priority and exactly as many physical-core lanes as the requested worker count. A 10-second processor
+utility and interrupt-rate sample on the Ryzen 9 7950X selected logical CPU 24 for one-worker captures; 17, 24, 26, and 29 for four-worker
+captures; and 17, 19, 20, 23, 24, 26, 29, and 30 for eight-worker captures. Affinity is established before child-process creation so the
+benchmark caller and every job worker inherit the intended topology. Each matched workload runs in its own fresh process so unrelated
+allocator, cache, and power-state history cannot contaminate a later workload. Qualification records the policy, compiler,
+configuration, source revision and complete dirty-source hash, runner and provider binary hashes, workload signature, repetition count,
+and minimum time. A report older than the runner, provider binary, or current source state is rejected.
+
+### Windows desktop scheduling gate
+
+Ordinary affinity is not exclusive ownership of a processor. Microsoft documents CPU Sets as soft affinity and reserves exclusive Core
+Reservation assignment to system policy. The current host reports 32 CPU Sets with zero `Allocated` and zero
+`AllocatedToTargetProcess`. Consequently, kernel interrupts, deferred procedure calls, and unrelated privileged work can still preempt a
+benchmark on its selected processor. [CPU Sets](https://learn.microsoft.com/en-us/windows/win32/procthread/cpu-sets)
+
+This limitation is reproduced rather than inferred. An otherwise unchanged benchmark-only experiment elevated the timed caller and job
+workers from `HIGH_PRIORITY_CLASS` with normal thread priority to `THREAD_PRIORITY_HIGHEST`. Every measured provider artifact confirmed
+that the elevation took effect. Across 30 fresh processes and 122,880 retained frames per provider, the 1,024-body, one-worker p95-window
+CV remained 9.23% for Box3D and 12.85% for PhysX. The policy was rejected because it did not remove the interruptions and base-priority-15
+CPU-bound threads can interfere with normal system operation. No production or benchmark scheduling code retains the experiment.
+[Scheduling Priorities](https://learn.microsoft.com/en-us/windows/win32/procthread/scheduling-priorities)
+
+The strict 5% CV gate therefore remains unavailable on this interactive desktop until a clean benchmark host or externally provisioned
+Core Reservation is used. The gate is not weakened, and no sample is trimmed, replaced, or retried. Windows Performance Recorder could
+not capture the required CPU profile in this session because the host rejected the request with `0xc5585011`; the missing privileged
+trace remains an environmental diagnostic gate rather than evidence of success. Functional validation, raw performance comparisons, and
+assembly inspection remain valid, but this capture is not labelled Windows performance qualification.
 
 ## Historical Phase 5 Windows baseline
 
@@ -366,7 +386,9 @@ worker-aware wait/assistance path. These counts are diagnostic compiler-output e
 
 The default scalar raycast path checks for an active debug capture before entering the cold capture helper. On the same Clang 22.1.8
 Release binary and fixed CPU 24 affinity, 30 fresh-process repetitions improved from an 18.2504 microsecond median to 18.0405 microseconds
-(1.15%) with 3.41% CV. All samples were retained, including the 21.3829 microsecond maximum.
+(1.15%) with 3.41% CV. All samples were retained, including the 21.3829 microsecond maximum. A subsequent exact-source comparison after
+relinking every module measured Jolt at 18.1018 microseconds with 0.79% CV and PhysX at 18.4084 microseconds with 3.80% CV across 30 fresh
+processes each. Jolt's median ratio was 0.9833, satisfying the scalar-query performance gate without trimming or retrying a sample.
 
 ## Allocator alignment validation
 
