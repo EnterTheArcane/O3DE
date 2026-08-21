@@ -26,13 +26,6 @@ namespace Jolt
     namespace
     {
         [[nodiscard]]
-        AZ::Vector3 FromNativeCustomConstraintVector(
-            const JPH::Vec3Arg value)
-        {
-            return {value.GetX(), value.GetY(), value.GetZ()};
-        }
-
-        [[nodiscard]]
         AZ::Quaternion FromNativeCustomConstraintRotation(
             const JPH::QuatArg rotation)
         {
@@ -341,13 +334,9 @@ namespace Jolt
         return {
             .m_firstBody = {
                 .m_centerOfMassTransform = FromNativeCustomConstraintTransform(firstCenterOfMassTransform, m_origin),
-                .m_angularVelocity = FromNativeCustomConstraintVector(mBody1->GetAngularVelocity()),
-                .m_linearVelocity = FromNativeCustomConstraintVector(mBody1->GetLinearVelocity()),
             },
             .m_secondBody = {
                 .m_centerOfMassTransform = FromNativeCustomConstraintTransform(secondCenterOfMassTransform, m_origin),
-                .m_angularVelocity = FromNativeCustomConstraintVector(mBody2->GetAngularVelocity()),
-                .m_linearVelocity = FromNativeCustomConstraintVector(mBody2->GetLinearVelocity()),
             },
             .m_firstFrame = FromNativeCustomConstraintTransform(firstCenterOfMassTransform * m_firstFrame, m_origin),
             .m_secondFrame = FromNativeCustomConstraintTransform(secondCenterOfMassTransform * m_secondFrame, m_origin),

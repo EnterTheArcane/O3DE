@@ -63,9 +63,7 @@ namespace Jolt
 
             serializeContext
                 ->Class<CustomConstraintBodyState>()
-                ->Field("CenterOfMassTransform", &CustomConstraintBodyState::m_centerOfMassTransform)
-                ->Field("AngularVelocity", &CustomConstraintBodyState::m_angularVelocity)
-                ->Field("LinearVelocity", &CustomConstraintBodyState::m_linearVelocity);
+                ->Field("CenterOfMassTransform", &CustomConstraintBodyState::m_centerOfMassTransform);
 
             serializeContext
                 ->Class<CustomConstraintContext>()

@@ -23,8 +23,6 @@ namespace Jolt
         AZ_TYPE_INFO(CustomConstraintBodyState, CustomConstraintBodyStateTypeId);
 
         WorldTransform m_centerOfMassTransform;
-        AZ::Vector3 m_angularVelocity = AZ::Vector3::CreateZero();
-        AZ::Vector3 m_linearVelocity = AZ::Vector3::CreateZero();
     };
 
     struct CustomConstraintContext final
