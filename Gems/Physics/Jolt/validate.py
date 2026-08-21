@@ -859,6 +859,13 @@ def add_source_consumer(
     )
 
 
+def get_source_consumer_build_directory(
+    matrix_root: Path,
+    primary_build_directory: Path,
+) -> Path:
+    return matrix_root / f"consumer-source-{primary_build_directory.name}"
+
+
 def add_installed_consumer(
     runner: ValidationRunner,
     primary_build_directory: Path,
@@ -1345,7 +1352,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
             add_source_consumer(
                 runner,
                 build_directory,
-                matrix_root / "consumer-source",
+                get_source_consumer_build_directory(matrix_root, build_directory),
                 options.configuration,
                 max(1, options.parallel),
                 primary_environment,

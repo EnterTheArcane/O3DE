@@ -103,6 +103,24 @@ class QualificationValidationTests(unittest.TestCase):
                     engine_root / "qualification",
                 )
 
+    def test_source_consumer_cache_is_isolated_by_primary_build(self) -> None:
+        matrix_root = Path("build/matrix")
+
+        self.assertEqual(
+            jolt_qualification.get_source_consumer_build_directory(
+                matrix_root,
+                Path("build/clang-unity-modular"),
+            ),
+            matrix_root / "consumer-source-clang-unity-modular",
+        )
+        self.assertEqual(
+            jolt_qualification.get_source_consumer_build_directory(
+                matrix_root,
+                Path("build/msvc-unity-modular"),
+            ),
+            matrix_root / "consumer-source-msvc-unity-modular",
+        )
+
     def test_feature_ledger_rejects_missing_and_empty_exposed_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             engine_root = Path(temporary_directory)
