@@ -1034,6 +1034,13 @@ def windows_full_matrix(
             targets=("Jolt.Tests", "Jolt.Module", "Jolt.Editor"),
         ),
         MatrixVariant(
+            name="msvc-no-unity",
+            preset="windows-ninja",
+            definitions=common + ("LY_UNITY_BUILD=OFF", "LY_MONOLITHIC_GAME=OFF"),
+            configurations=("Profile",),
+            targets=("Jolt.Tests", "Jolt.Module", "Jolt.Editor"),
+        ),
+        MatrixVariant(
             name="msvc-monolithic",
             preset="windows-ninja",
             definitions=common + ("LY_UNITY_BUILD=ON", "LY_MONOLITHIC_GAME=ON"),

@@ -471,6 +471,7 @@ ly_install(FILES
         self.assertIn("clang-asan", variants)
         self.assertIn("clang-monolithic", variants)
         self.assertIn("msvc-unity-modular", variants)
+        self.assertIn("msvc-no-unity", variants)
         self.assertIn("msvc-monolithic", variants)
         self.assertEqual(variants["clang-unity-modular"].preset, "windows-ninja")
         self.assertIn(
