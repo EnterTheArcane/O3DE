@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Box3D/Configuration.h>
 #include <Box3D/Handle.h>
 
 #include <AzCore/Math/MathUtils.h>
@@ -292,5 +293,5 @@ namespace Box3D
         float m_angularSeparation = 0.0f;
     };
 
-    void ReflectJoints(AZ::ReflectContext* context);
+    BOX3D_API void ReflectJoints(AZ::ReflectContext* context);
 } // namespace Box3D
