@@ -750,7 +750,7 @@ index b244a51..6ce70b3 100644
  #endif // JPH_TRACK_BROADPHASE_STATS
  
  #if defined(JPH_TRACK_SIMULATION_STATS) && defined(JPH_PROFILE_ENABLED)
-@@ -355,6 +362,9 @@ private:
+@@ -357,6 +364,9 @@ private:
  	/// The broadphase does quick collision detection between body pairs
  	BroadPhase *				mBroadPhase = nullptr;
  
