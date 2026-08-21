@@ -49,6 +49,7 @@ block()
     set(OLD_LOG_LEVEL ${CMAKE_MESSAGE_LOG_LEVEL})
     set(CMAKE_MESSAGE_LOG_LEVEL ${O3DE_FETCHCONTENT_MESSAGE_LEVEL})
 
+    o3de_disable_warnings()
     FetchContent_MakeAvailable(googletest)
 
     set(CMAKE_MESSAGE_LOG_LEVEL ${OLD_LOG_LEVEL})
@@ -59,7 +60,10 @@ block()
         endif()
         set_target_properties(${targetname} PROPERTIES FOLDER "3rdParty Dependencies")
         # Fast math is incompatible with googletest.
-        target_compile_options(${targetname} ${O3DE_TARGET_COMPILE_OPTION_DISABLE_FAST_MATH})
+        target_compile_options(${targetname}
+            ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS}
+            ${O3DE_TARGET_COMPILE_OPTION_DISABLE_FAST_MATH}
+        )
     endforeach()
 
     # Not ly_create_alias: it also registers these for auto-generated imported targets in the installer,

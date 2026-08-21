@@ -83,6 +83,7 @@ block()
     set(VCI_COMMON_DO_NOT_COPY_POST_BUILD ON)
 
     # the below line is what actualy runs its CMakeList.txt file and executes targets and so on:
+    o3de_disable_warnings()
     FetchContent_MakeAvailable(OpenMesh)
 
     set(CMAKE_MESSAGE_LOG_LEVEL ${OLD_LOG_LEVEL})
@@ -99,10 +100,11 @@ block()
         if (NOT TARGET ${OpenMesh_Target})
             continue()
         endif()
+
         # customize the compile options for the target, note that these defines already contain the 
         # appropriate level of visibility (PUBLIC / INTERFACE / PRIVATE) and may be blank for a given compiler.
         target_compile_options(${OpenMesh_Target}  
-            ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS}     # OpenMesh does not pass Warning Level 4
+            ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS}     # Override warning flags added by OpenMesh
             ${O3DE_COMPILE_OPTION_EXPORT_SYMBOLS}       # OpenMesh requires symbols to be exported.
             ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS})   # OpenMesh requires Exceptions enabled in it, and things that use it
 

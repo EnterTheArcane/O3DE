@@ -29,6 +29,7 @@ block()
     set(CMAKE_MESSAGE_LOG_LEVEL ${O3DE_FETCHCONTENT_MESSAGE_LEVEL})
     set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE)
 
+    o3de_disable_warnings()
     FetchContent_MakeAvailable(D3D12MemoryAllocator)
 
     set(CMAKE_WARN_DEPRECATED ON CACHE BOOL "" FORCE)

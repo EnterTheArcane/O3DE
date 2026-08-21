@@ -19,11 +19,10 @@ set(O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS PUBLIC /EHsc)
 # to cause them to export symbols.  This is thus blank
 set(O3DE_COMPILE_OPTION_EXPORT_SYMBOLS "")
 
-# By default, O3DE sets warning level 4 and sets warnings as errors.  If you're pulling in
-# external code (from 3rd Party libraries) you can't really control whether they generate
-# warnings or not, and its usually out of scope to fix them.  Add this compile option to 
-# those 3rd Party targets ONLY.
-set(O3DE_COMPILE_OPTION_DISABLE_WARNINGS PRIVATE /W0)
+# By default, O3DE sets warning level 4 and treats warnings as errors.
+# These options are appended by o3de_disable_warnings
+# after it removes the inherited warning policy from the current CMake variable scope.
+set(O3DE_COMPILE_OPTION_DISABLE_WARNINGS PRIVATE /W0 /WX-)
 
 # C++20 no longer allows to implicitly convert between enum values of different types or enum values and integral types.
 # This is problematic if 3rd-party libraries use such operations in header files.

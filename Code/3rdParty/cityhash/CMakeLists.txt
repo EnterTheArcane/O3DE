@@ -5,26 +5,8 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 #
 
-ly_add_target(
+ly_add_3rdparty_target(
     NAME cityhash STATIC
-    NAMESPACE 3rdParty
-    NO_UNITY
-    FILES_CMAKE files.cmake
-    INCLUDE_DIRECTORIES PUBLIC Include
-)
-
-target_compile_options(cityhash PRIVATE ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS})
-
-ly_get_engine_relative_source_dir(
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-    third_party_install_destination
-)
-
-ly_install_files(
-    FILES
-        LICENSE.txt
-        PackageInfo.json
-        README.md
-    DESTINATION
-        "${third_party_install_destination}"
+    INCLUDE_DIRECTORIES
+        PUBLIC Include
 )

@@ -54,6 +54,7 @@ block()
     set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
     # the below line is what actually runs its CMakeList.txt file, recurses into its subfolder, defines targets and so on:
+    o3de_disable_warnings()
     FetchContent_MakeAvailable(miniaudio)
 
     set(CMAKE_WARN_DEPRECATED ON CACHE BOOL "" FORCE)

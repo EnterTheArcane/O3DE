@@ -6,8 +6,4 @@
 #
 #
 
-# Set compiler options specific to this compiler
-function(PAL_Assimp_Lift_CxxFlagsWarnings)
-endfunction()
-
 set(O3DE_COMPILE_OPTION_PLATFORM_ASSIMP "")

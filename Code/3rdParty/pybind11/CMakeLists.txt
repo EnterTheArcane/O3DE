@@ -5,10 +5,8 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 #
 
-ly_add_target(
+ly_add_3rdparty_target(
     NAME pybind11 HEADERONLY
-    NAMESPACE 3rdParty
-    FILES_CMAKE files.cmake
 )
 
 target_compile_options(pybind11 INTERFACE $<$<CXX_COMPILER_ID:Clang>:-fsized-deallocation>)
@@ -16,18 +14,4 @@ target_compile_options(pybind11 INTERFACE $<$<CXX_COMPILER_ID:Clang>:-fsized-dea
 ly_target_include_system_directories(
     TARGET pybind11
     INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/Include"
-)
-
-ly_get_engine_relative_source_dir(
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-    third_party_install_destination
-)
-
-ly_install_files(
-    FILES
-        LICENSE.txt
-        PackageInfo.json
-        README.md
-    DESTINATION
-        "${third_party_install_destination}"
 )

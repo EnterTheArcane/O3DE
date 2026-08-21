@@ -59,7 +59,13 @@ block()
         SOURCE_SUBDIR CPP
     )
 
-    FetchContent_MakeAvailable(manifold)
+    set(CLIPPER2_UTILS OFF)
+    set(CLIPPER2_EXAMPLES OFF)
+    set(CLIPPER2_TESTS OFF)
+    set(CLIPPER2_USINGZ OFF CACHE BOOL "Build Clipper2Z support")
+
+    o3de_disable_warnings()
+    FetchContent_MakeAvailable(Clipper2 manifold)
 
     # O3DE promotes some off-by-default MSVC warnings to errors globally
     # (/we4265, /we5233 + /WX in Configurations_msvc.cmake) and manifold trips
@@ -105,14 +111,17 @@ block()
         message(FATAL_ERROR "WhiteBox Gem: failed to fetch/configure the manifold library")
     endif()
 
-    target_compile_options(manifold PRIVATE
+    target_compile_options(manifold
         ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS}
-        ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS})
+        ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS}
+    )
 
     # Clipper2 is fetched by manifold as a dependency (used for CrossSection)
-    if (TARGET Clipper2)
-        target_compile_options(Clipper2 PRIVATE ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS})
-    endif()
+    foreach(clipper2_target Clipper2 Clipper2Z)
+        if(TARGET ${clipper2_target})
+            target_compile_options(${clipper2_target} ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS})
+        endif()
+    endforeach()
 
     # Strip the bogus `-lm` entry from Clipper2 targets on Windows
     # (doesn't exist on Windows; leaks into link when using clang with MSVC ABI).
@@ -128,19 +137,6 @@ block()
                 endforeach()
             endif()
         endforeach()
-    endif()
-
-    # O3DE promotes some off-by-default MSVC warnings to errors via /weNNNN.
-    # /W0 (from O3DE_COMPILE_OPTION_DISABLE_WARNINGS) does NOT cancel per-warning
-    # /we flags - only an explicit /wd does. Disable the ones manifold trips over:
-    #   C4265 - class has virtual functions but non-virtual destructor (csg_tree.h)
-    #   C5233 - explicit lambda capture not used (edge_op.cpp)
-    if (MSVC)
-        set(manifold_msvc_warning_overrides /WX- /wd4265 /wd5233)
-        target_compile_options(manifold PRIVATE ${manifold_msvc_warning_overrides})
-        if (TARGET Clipper2)
-            target_compile_options(Clipper2 PRIVATE ${manifold_msvc_warning_overrides})
-        endif()
     endif()
 
     if (COMMAND ly_get_engine_relative_source_dir)

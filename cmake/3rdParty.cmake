@@ -359,8 +359,55 @@ function(ly_install_external_target 3RDPARTY_ROOT_DIRECTORY)
 
 endfunction()
 
+#! ly_add_3rdparty_target: Adds a locally-built 3rdParty target using O3DE conventions
+#
+# This wrapper supplies the 3rdParty namespace, disables unity builds and compiler warnings,
+# and installs the package's required provenance files.
+# It otherwise forwards arguments to ly_add_target unchanged.
+# FILES_CMAKE defaults to files.cmake when it is not specified.
+#
+# Each package directory must contain LICENSE.txt, PackageInfo.json and README.md.
+macro(ly_add_3rdparty_target)
+    o3de_disable_warnings()
+
+    block(SCOPE_FOR VARIABLES)
+        set(arguments ${ARGN})
+        cmake_parse_arguments(arg "" "NAME" "" ${arguments})
+
+        if(NOT arg_NAME)
+            message(FATAL_ERROR "ly_add_3rdparty_target requires NAME")
+        endif()
+
+        set(provenance_files LICENSE.txt PackageInfo.json README.md)
+        foreach(provenance_file IN LISTS provenance_files)
+            set(provenance_path "${CMAKE_CURRENT_SOURCE_DIR}/${provenance_file}")
+            if(NOT EXISTS "${provenance_path}" OR IS_DIRECTORY "${provenance_path}")
+                message(FATAL_ERROR "ly_add_3rdparty_target(${arg_NAME}) requires provenance file ${provenance_path}")
+            endif()
+        endforeach()
+
+        set(default_arguments)
+        if(NOT "FILES_CMAKE" IN_LIST arguments)
+            list(APPEND default_arguments FILES_CMAKE files.cmake)
+        endif()
+
+        ly_add_target(
+            ${arguments}
+            NAMESPACE 3rdParty
+            NO_UNITY
+            ${default_arguments}
+        )
+
+        ly_get_engine_relative_source_dir("${CMAKE_CURRENT_SOURCE_DIR}" install_destination)
+        ly_install_files(
+            FILES ${provenance_files}
+            DESTINATION "${install_destination}"
+        )
+    endblock()
+endmacro()
+
 # Utility function, pass it a single target or a list of targets, and it will do the following to them
-# 1. Turn off warnings as errors (we are not responsible for warnings in 3p libraries)
+# 1. Disable warnings added by the fetched project's own target configuration.
 # 2. Make sure its output directory is set to be different for each configuration so that binaries
 #    do not overwrite each other between, for example, debug and release.
 # 3. If the IDE the user is using has a visual display of folders, put the targets generated in that
@@ -405,6 +452,11 @@ function(o3de_fixup_fetchcontent_targets)
         # alias it with 3rdParty::targetname
         add_library(3rdParty::${TARGET_TO_FIXUP} ALIAS ${TARGET_TO_FIXUP})
 
+        # o3de_disable_warnings must be called before FetchContent_MakeAvailable to
+        # remove O3DE's inherited policy. These target options override warning flags that the
+        # fetched project may add to its own targets.
+        target_compile_options(${TARGET_TO_FIXUP} ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS})
+
         # We install headers for fetchcontent libraries explicitly, so clear any PUBLIC_HEADER property.
         # Installing the target below without a PUBLIC_HEADER DESTINATION would warn.
         set_property(TARGET ${TARGET_TO_FIXUP} PROPERTY PUBLIC_HEADER)
@@ -418,9 +470,6 @@ function(o3de_fixup_fetchcontent_targets)
                 RUNTIME_OUTPUT_DIRECTORY_${UCONF} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_${UCONF}}
                 LIBRARY_OUTPUT_DIRECTORY_${UCONF} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY_${UCONF}}
                 )
-
-            # 3p targets don't use warning-as-error
-            target_compile_options(${TARGET_TO_FIXUP} ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS})
 
             # install any libraries to the install/lib/<Profile/Debug/Release> folder
             ly_install(TARGETS ${TARGET_TO_FIXUP}

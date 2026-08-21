@@ -20,12 +20,14 @@ block()
         GIT_HASH "9d9890c73011d75920af614485296d1e03e95448"
     )
     set(MESHOPT_INSTALL OFF)
+    o3de_disable_warnings()
     FetchContent_MakeAvailable(meshoptimizer)
 endblock()
 
 get_property(this_gem_root GLOBAL PROPERTY "@GEMROOT:${gem_name}@")
 ly_get_engine_relative_source_dir(${this_gem_root} relative_this_gem_root)
 set_property(TARGET ${MESHOPTIMIZER_TARGET} PROPERTY FOLDER "${relative_this_gem_root}/External")
+target_compile_options(${MESHOPTIMIZER_TARGET} ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS})
 
 add_library(3rdParty::${MESHOPTIMIZER_TARGET} ALIAS ${MESHOPTIMIZER_TARGET})
 ly_install(FILES ${CMAKE_CURRENT_LIST_DIR}/Installer/Findmeshoptimizer.cmake DESTINATION cmake/3rdParty)

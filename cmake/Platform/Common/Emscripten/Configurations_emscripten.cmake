@@ -17,10 +17,9 @@ set(O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS PUBLIC -fexceptions)
 # to turn visibility back to default for those 3rd Party targets ONLY.
 set(O3DE_COMPILE_OPTION_EXPORT_SYMBOLS PRIVATE -fvisibility=default)
 
-# By default, O3DE sets warning level 4 and sets warnings as errors.  If you're pulling in
-# external code (from 3rd Party libraries) you can't really control whether they generate
-# warnings or not, and its usually out of scope to fix them.  Add this compile option to 
-# those 3rd Party targets ONLY.
+# By default, O3DE sets warning level 4 and treats warnings as errors.
+# These options are appended by o3de_disable_warnings
+# after it removes the inherited warning policy from the current CMake variable scope.
 set(O3DE_COMPILE_OPTION_DISABLE_WARNINGS PRIVATE -w)
 
 ly_append_configurations_options(
@@ -83,4 +82,3 @@ if(LY_BUILD_WITH_ADDRESS_SANITIZER)
     )
 endif()
 include(cmake/Platform/Common/TargetIncludeSystemDirectories_supported.cmake)
-

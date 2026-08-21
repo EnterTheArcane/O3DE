@@ -51,6 +51,7 @@ block()
     set(BUILD_SHARED_LIBS OFF)
     set(BUILD_FRAMEWORK OFF)
 
+    o3de_disable_warnings()
     FetchContent_MakeAvailable(RecastNavigation)
 
     # restore state
@@ -71,7 +72,7 @@ block()
         add_library(3rdParty::RecastNavigation::${Recast_Target} ALIAS ${Recast_Target})
     endforeach()
     
-    # standardize the IDE folder name, warnings-as-errors, and install the targets.
+    # Standardize the IDE folder name and install the targets.
     o3de_fixup_fetchcontent_targets(
         IDE_FOLDER 
             "${relative_this_gem_root}/External" 

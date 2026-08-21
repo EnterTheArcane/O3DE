@@ -19,7 +19,10 @@ o3de_fetch_content(v-hacd
     GIT_HASH "22ec20a7f8ea221ab600df869369b9c6a258cb10"
 )
 
-FetchContent_MakeAvailable(v-hacd)
+block()
+    o3de_disable_warnings()
+    FetchContent_MakeAvailable(v-hacd)
+endblock()
 
 FetchContent_GetProperties(v-hacd SOURCE_DIR V_HACD_SOURCE_DIR)
 add_library(3rdParty::v-hacd IMPORTED INTERFACE GLOBAL ${V_HACD_SOURCE_DIR}/include/VHACD.h)

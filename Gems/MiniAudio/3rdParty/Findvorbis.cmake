@@ -49,6 +49,7 @@ block()
     set(BUILD_TESTING OFF)
 
     # the below line is what actualy runs its CMakeLists.txt file and executes targets and so on:
+    o3de_disable_warnings()
     FetchContent_MakeAvailable(vorbis)
     set(CMAKE_WARN_DEPRECATED ON CACHE BOOL "" FORCE)
 endblock()

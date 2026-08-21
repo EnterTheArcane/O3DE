@@ -17,10 +17,9 @@ set(O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS PUBLIC -fexceptions)
 # to turn visibility back to default for those 3rd Party targets ONLY.
 set(O3DE_COMPILE_OPTION_EXPORT_SYMBOLS PRIVATE -fvisibility=default)
 
-# By default, O3DE sets warning level 4 and sets warnings as errors.  If you're pulling in
-# external code (from 3rd Party libraries) you can't really control whether they generate
-# warnings or not, and its usually out of scope to fix them.  Add this compile option to 
-# those 3rd Party targets ONLY.
+# By default, O3DE sets warning level 4 and treats warnings as errors.
+# These options are appended by o3de_disable_warnings
+# after it removes the inherited warning policy from the current CMake variable scope.
 set(O3DE_COMPILE_OPTION_DISABLE_WARNINGS PRIVATE -w)
 
 # C++20 no longer allows to implicitly convert between enum values of different types or enum values and integral types.

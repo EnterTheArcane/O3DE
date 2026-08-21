@@ -41,12 +41,9 @@ if(UNIX)
     endif()
 endif()
 
-ly_add_target(
+ly_add_3rdparty_target(
     NAME sqlite STATIC
-    NAMESPACE 3rdParty
     OUTPUT_NAME sqlite3
-    NO_UNITY
-    FILES_CMAKE files.cmake
     INCLUDE_DIRECTORIES PUBLIC Include
     COMPILE_DEFINITIONS
         PRIVATE
@@ -60,20 +57,4 @@ ly_add_target(
     TARGET_PROPERTIES C_VISIBILITY_PRESET hidden
 )
 
-target_compile_options(sqlite PRIVATE ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS})
-
 ly_create_alias(NAME SQLite NAMESPACE 3rdParty TARGETS 3rdParty::sqlite)
-
-ly_get_engine_relative_source_dir(
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-    third_party_install_destination
-)
-
-ly_install_files(
-    FILES
-        LICENSE.txt
-        PackageInfo.json
-        README.md
-    DESTINATION
-        "${third_party_install_destination}"
-)

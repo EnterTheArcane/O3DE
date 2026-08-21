@@ -61,16 +61,10 @@ block()
     # Include compiler settings for Assimp libraries based on compiler
     include(Platform/Common/${PAL_TRAIT_COMPILER_ID}/PAL_assimp_${PAL_TRAIT_COMPILER_ID_LOWERCASE}.cmake)
 
-    # Clear some specific O3DE's CXX_FLAGS before building Assimp, then restore them after
-    # (disabling them via target_compile_options() is not enough)
-    set(RESTORE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    PAL_Assimp_Lift_CxxFlagsWarnings()
+    o3de_disable_warnings()
 
     # the below line is what actualy runs its CMakeList.txt file and executes targets and so on:
     FetchContent_MakeAvailable(assimp)
-
-    # Restore compile options
-    set(CMAKE_CXX_FLAGS "${RESTORE_CXX_FLAGS}")
 
     set(CMAKE_MESSAGE_LOG_LEVEL ${OLD_LOG_LEVEL})
     set(CMAKE_WARN_DEPRECATED ON CACHE BOOL "" FORCE)
@@ -85,7 +79,7 @@ block()
         # customize the compile options for the target, note that these defines already contain the 
         # appropriate level of visibility (PUBLIC / INTERFACE / PRIVATE) and may be blank for a given compiler.
         target_compile_options(${Assimp_Target}  
-            ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS}   # Assimp does not pass Warning Level 4
+            ${O3DE_COMPILE_OPTION_DISABLE_WARNINGS}   # Override warning flags added by Assimp
             ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS}  # Assimp requires Exceptions enabled in it, and things that use it
             ${O3DE_COMPILE_OPTION_PLATFORM_ASSIMP})   # Assimp requires specific Warnings to be disabled
 
