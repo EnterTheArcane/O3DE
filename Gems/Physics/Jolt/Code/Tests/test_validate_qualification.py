@@ -9,6 +9,7 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as xml_tree
 from pathlib import Path
+from unittest import mock
 
 
 MODULE_PATH = Path(__file__).resolve().parents[2] / "validate.py"
@@ -27,6 +28,17 @@ def write_file(root: Path, relative_path: str, contents: str) -> Path:
 
 
 class QualificationValidationTests(unittest.TestCase):
+    def test_msvc_environment_preserves_an_existing_developer_shell(self) -> None:
+        environment = {
+            "PATH": "C:/VisualStudio/bin",
+            "VSCMD_VER": "18.9.0",
+        }
+        with mock.patch.object(jolt_qualification.shutil, "which", return_value="cl.exe"):
+            result = jolt_qualification.load_msvc_environment(environment)
+
+        self.assertEqual(result, environment)
+        self.assertIsNot(result, environment)
+
     def test_runner_redirects_python_bytecode_beneath_its_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
@@ -240,6 +252,131 @@ ly_install(FILES
             with self.assertRaisesRegex(ValueError, "private native term"):
                 jolt_qualification.validate_public_consumer(engine_root)
 
+    def test_installed_boundary_requires_public_headers_and_hides_native_jolt(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            install_root = engine_root / "build" / "installed"
+            write_file(
+                engine_root,
+                "Gems/Physics/Jolt/Code/Include/Jolt/Example.h",
+                "#pragma once\n",
+            )
+            write_file(
+                install_root,
+                "Gems/Physics/Jolt/Code/Include/Jolt/Example.h",
+                "#pragma once\n",
+            )
+            write_file(install_root, "include/Jolt/LICENSE", "license\n")
+            write_file(
+                install_root,
+                "Gems/Physics/Jolt/Code/Platform/Windows/Default/Jolt.API_release.cmake",
+                "set_target_properties(Gem::Jolt.API PROPERTIES IMPORTED_LOCATION example)\n",
+            )
+            write_file(
+                install_root,
+                "bin/Windows/release/Default/Jolt.API.dll",
+                "binary",
+            )
+
+            result = jolt_qualification.validate_installed_boundary(
+                engine_root,
+                install_root,
+                "Release",
+                False,
+            )
+            self.assertIn("1 public headers", result)
+
+            write_file(install_root, "include/Jolt/Jolt.h", "namespace JPH {}\n")
+            with self.assertRaisesRegex(ValueError, "only the Jolt license"):
+                jolt_qualification.validate_installed_boundary(
+                    engine_root,
+                    install_root,
+                    "Release",
+                    False,
+                )
+
+    def test_installed_consumer_uses_cmake_install_components(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            output_directory = engine_root / "build" / "qualification"
+            output_directory.mkdir(parents=True)
+            primary_build_directory = engine_root / "build" / "engine"
+            write_file(
+                primary_build_directory,
+                "CMakeCache.txt",
+                "\n".join(
+                    (
+                        "CMAKE_GENERATOR:INTERNAL=Ninja Multi-Config",
+                        "CMAKE_C_COMPILER:FILEPATH=C:/LLVM/clang-cl.exe",
+                        "CMAKE_CXX_COMPILER:FILEPATH=C:/LLVM/clang-cl.exe",
+                    )
+                ),
+            )
+
+            consumer_root = (
+                engine_root
+                / "Gems"
+                / "Physics"
+                / "Jolt"
+                / "Code"
+                / "Tests"
+                / "InstalledConsumer"
+            )
+            for relative_path in (
+                "CMakeLists.txt",
+                "jolt_installed_consumer_files.cmake",
+                "main.cpp",
+                "project.json",
+            ):
+                write_file(consumer_root, relative_path, relative_path)
+
+            write_file(
+                engine_root,
+                "Gems/Physics/Jolt/Code/Include/Jolt/Example.h",
+                "#pragma once\n",
+            )
+            install_root = output_directory / "installed-engine"
+            write_file(
+                install_root,
+                "Gems/Physics/Jolt/Code/Include/Jolt/Example.h",
+                "#pragma once\n",
+            )
+            write_file(install_root, "include/Jolt/LICENSE", "license\n")
+            write_file(
+                install_root,
+                "Gems/Physics/Jolt/Code/Platform/Windows/Default/Jolt.API_release.cmake",
+                "set_target_properties(Gem::Jolt.API PROPERTIES IMPORTED_LOCATION example)\n",
+            )
+            write_file(
+                install_root,
+                "bin/Windows/release/Default/Jolt.API.dll",
+                "binary",
+            )
+
+            runner = jolt_qualification.ValidationRunner(
+                engine_root,
+                output_directory,
+                dry_run=True,
+            )
+            jolt_qualification.add_installed_consumer(
+                runner,
+                primary_build_directory,
+                install_root,
+                output_directory / "consumer-build",
+                "Release",
+                8,
+                False,
+            )
+
+            commands = {result.name: result.command for result in runner.results if result.command}
+            self.assertNotIn("--target", commands["build-installed-modular-engine"])
+            self.assertIn("CORE", commands["install-modular-core"])
+            self.assertIn("DEFAULT_RELEASE", commands["install-modular-binaries"])
+            self.assertIn(
+                f"-DO3DE_ENGINE_ROOT={install_root.resolve().as_posix()}",
+                commands["configure-installed-modular-consumer"],
+            )
+
     def test_cmake_cache_reader_requires_the_requested_entry(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             build_directory = Path(temporary_directory)
@@ -323,13 +460,23 @@ ly_install(FILES
             self.assertEqual(test_suite.attrib["failures"], "1")
 
     def test_windows_matrix_covers_required_build_axes(self) -> None:
-        variants = {variant.name: variant for variant in jolt_qualification.windows_full_matrix()}
+        clang_root = Path("D:/LLVM/22.1.8")
+        variants = {
+            variant.name: variant
+            for variant in jolt_qualification.windows_full_matrix(clang_root)
+        }
         self.assertIn("clang-no-unity", variants)
         self.assertIn("clang-double", variants)
         self.assertIn("clang-diagnostics", variants)
         self.assertIn("clang-asan", variants)
         self.assertIn("clang-monolithic", variants)
         self.assertIn("msvc-unity-modular", variants)
+        self.assertIn("msvc-monolithic", variants)
+        self.assertEqual(variants["clang-unity-modular"].preset, "windows-ninja")
+        self.assertIn(
+            "CMAKE_CXX_COMPILER=D:/LLVM/22.1.8/bin/clang-cl.exe",
+            variants["clang-unity-modular"].definitions,
+        )
         self.assertEqual(
             variants["clang-unity-modular"].configurations,
             ("Debug", "Profile", "Release"),

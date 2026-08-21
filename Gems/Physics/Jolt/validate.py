@@ -59,6 +59,13 @@ class MatrixVariant:
     run_tests: bool = True
 
 
+@dataclasses.dataclass(frozen=True)
+class MatrixOutcome:
+    build_directory: Path
+    configured: bool
+    environment: dict[str, str] | None = None
+
+
 def find_engine_root(script_path: Path) -> Path:
     for candidate in (script_path.parent, *script_path.parents):
         if (candidate / "engine.json").is_file() and (candidate / "CMakeLists.txt").is_file():
@@ -88,6 +95,67 @@ def run_capture(engine_root: Path, command: Sequence[str]) -> bytes:
         stderr=subprocess.STDOUT,
     )
     return completed.stdout
+
+
+def load_msvc_environment(base_environment: dict[str, str]) -> dict[str, str]:
+    existing_compiler = shutil.which("cl.exe", path=base_environment.get("PATH"))
+    if base_environment.get("VSCMD_VER") and existing_compiler:
+        return base_environment.copy()
+
+    program_files_x86 = base_environment.get("ProgramFiles(x86)", "C:/Program Files (x86)")
+    vswhere_path = Path(program_files_x86) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe"
+    installation_path = ""
+    if vswhere_path.is_file():
+        completed = subprocess.run(
+            (
+                str(vswhere_path),
+                "-latest",
+                "-products",
+                "*",
+                "-requires",
+                "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                "-property",
+                "installationPath",
+            ),
+            check=False,
+            env=base_environment,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        if completed.returncode == 0:
+            installation_path = completed.stdout.strip()
+
+    vsdevcmd_path = Path(installation_path) / "Common7" / "Tools" / "VsDevCmd.bat"
+    if not installation_path or not vsdevcmd_path.is_file():
+        raise ValueError("A Visual Studio installation with the x64 C++ tools was not found.")
+
+    command = f'cmd.exe /d /c call "{vsdevcmd_path}" -no_logo -arch=x64 >nul && set'
+    completed = subprocess.run(
+        command,
+        check=False,
+        env=base_environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    if completed.returncode != 0:
+        details = completed.stdout.strip()
+        raise ValueError(
+            "Visual Studio developer environment setup failed with exit code "
+            f"{completed.returncode}: {details}"
+        )
+
+    environment: dict[str, str] = {}
+    for line in completed.stdout.splitlines():
+        name, separator, value = line.partition("=")
+        if separator and name:
+            environment[name] = value
+    if "PYTHONPYCACHEPREFIX" in base_environment:
+        environment["PYTHONPYCACHEPREFIX"] = base_environment["PYTHONPYCACHEPREFIX"]
+    if not shutil.which("cl.exe", path=environment.get("PATH")):
+        raise ValueError("Visual Studio developer environment did not provide cl.exe.")
+    return environment
 
 
 def capture_git_state(engine_root: Path) -> dict[str, object]:
@@ -365,6 +433,89 @@ def validate_public_consumer(engine_root: Path) -> str:
     return "Validated the public-only source and installed-engine consumer."
 
 
+def validate_installed_boundary(
+    engine_root: Path,
+    install_root: Path,
+    configuration: str,
+    monolithic: bool,
+) -> str:
+    source_include_root = engine_root / "Gems" / "Physics" / "Jolt" / "Code" / "Include"
+    installed_gem_root = install_root / "Gems" / "Physics" / "Jolt"
+    installed_include_root = installed_gem_root / "Code" / "Include"
+    errors: list[str] = []
+
+    source_headers = {
+        path.relative_to(source_include_root).as_posix()
+        for path in source_include_root.rglob("*.h")
+    }
+    installed_headers = {
+        path.relative_to(installed_include_root).as_posix()
+        for path in installed_include_root.rglob("*.h")
+    }
+    if installed_headers != source_headers:
+        missing = sorted(source_headers - installed_headers)
+        extra = sorted(installed_headers - source_headers)
+        if missing:
+            errors.append(f"installed public headers are missing: {', '.join(missing)}")
+        if extra:
+            errors.append(f"installed public headers contain unexpected files: {', '.join(extra)}")
+
+    native_include_root = install_root / "include" / "Jolt"
+    native_files = {
+        path.relative_to(native_include_root).as_posix()
+        for path in native_include_root.rglob("*")
+        if path.is_file()
+    }
+    if native_files != {"LICENSE"}:
+        errors.append(
+            "the installed native include boundary must contain only the Jolt license; "
+            f"found {', '.join(sorted(native_files)) or 'nothing'}"
+        )
+
+    forbidden_paths = [
+        path.relative_to(install_root).as_posix()
+        for path in install_root.rglob("*")
+        if path.is_file() and path.name in {"FindJolt.cmake", "JoltNative.cmake"}
+    ]
+    if forbidden_paths:
+        errors.append(f"private native integration was installed: {', '.join(forbidden_paths)}")
+
+    configuration_lower = configuration.lower()
+    target_descriptions = list(installed_gem_root.rglob(f"Jolt.API_{configuration_lower}.cmake"))
+    if len(target_descriptions) != 1:
+        errors.append(
+            "the installed engine must contain exactly one Jolt.API target description for "
+            f"{configuration}; found {len(target_descriptions)}"
+        )
+    else:
+        target_text = target_descriptions[0].read_text(encoding="utf-8", errors="replace")
+        for term in ("3rdParty::Jolt", "JoltNative", "JPH::"):
+            if term in target_text:
+                errors.append(f"installed Jolt.API target exposes private native term {term!r}")
+
+    permutation = "Default"
+    if monolithic:
+        permutation = "Monolithic"
+    binary_suffixes = {".a", ".dll", ".dylib", ".lib", ".so"}
+    binaries = [
+        path
+        for path in install_root.rglob("*Jolt.API*")
+        if path.is_file()
+        and path.suffix.lower() in binary_suffixes
+        and configuration_lower in {part.lower() for part in path.parts}
+        and permutation.lower() in {part.lower() for part in path.parts}
+    ]
+    if not binaries:
+        errors.append(f"the installed engine contains no {configuration} {permutation} Jolt.API binary")
+
+    if errors:
+        raise ValueError("; ".join(errors))
+    return (
+        f"Validated {len(installed_headers)} public headers and the "
+        f"{configuration} {permutation} installed Jolt.API boundary."
+    )
+
+
 class ValidationRunner:
     def __init__(
         self,
@@ -379,7 +530,7 @@ class ValidationRunner:
         self.environment["PYTHONPYCACHEPREFIX"] = str(output_directory / "python-cache")
         self.results: list[ValidationResult] = []
 
-    def run_check(self, name: str, check: Callable[[Path], str]) -> None:
+    def run_check(self, name: str, check: Callable[[Path], str]) -> bool:
         log_path = self.output_directory / f"{len(self.results):03d}-{name}.log"
         start = time.monotonic()
         status = "passed"
@@ -400,12 +551,14 @@ class ValidationRunner:
             )
         )
         print(f"[{status.upper()}] {name}: {message}", flush=True)
+        return status != "failed"
 
     def run_command(
         self,
         name: str,
         command: Sequence[str],
         timeout_seconds: int,
+        environment: dict[str, str] | None = None,
     ) -> bool:
         log_path = self.output_directory / f"{len(self.results):03d}-{name}.log"
         start = time.monotonic()
@@ -423,7 +576,7 @@ class ValidationRunner:
                         command,
                         cwd=self.engine_root,
                         check=False,
-                        env=self.environment,
+                        env=environment or self.environment,
                         stdout=log,
                         stderr=subprocess.STDOUT,
                         timeout=timeout_seconds,
@@ -583,13 +736,21 @@ def prepare_consumer_source(engine_root: Path, destination: Path) -> Path:
     return destination
 
 
-def add_source_consumer(
+def add_public_consumer(
     runner: ValidationRunner,
     primary_build_directory: Path,
     consumer_build_directory: Path,
+    consumer_engine_root: Path,
     configuration: str,
     parallel: int,
+    name_prefix: str,
+    monolithic: bool,
+    environment: dict[str, str] | None = None,
 ) -> None:
+    monolithic_option = "OFF"
+    if monolithic:
+        monolithic_option = "ON"
+
     consumer_source = prepare_consumer_source(
         runner.engine_root,
         consumer_build_directory.with_name(f"{consumer_build_directory.name}-project"),
@@ -599,13 +760,13 @@ def add_source_consumer(
         c_compiler = read_cmake_cache_value(primary_build_directory, "CMAKE_C_COMPILER")
         cxx_compiler = read_cmake_cache_value(primary_build_directory, "CMAKE_CXX_COMPILER")
     except ValueError as exception:
-        runner.skip("configure-source-consumer", str(exception))
-        runner.skip("build-source-consumer", "source consumer was not configured")
-        runner.skip("run-source-consumer", "source consumer was not built")
+        runner.skip(f"configure-{name_prefix}-consumer", str(exception))
+        runner.skip(f"build-{name_prefix}-consumer", f"{name_prefix} consumer was not configured")
+        runner.skip(f"run-{name_prefix}-consumer", f"{name_prefix} consumer was not built")
         return
 
     configured = runner.run_command(
-        "configure-source-consumer",
+        f"configure-{name_prefix}-consumer",
         (
             "cmake",
             "-S",
@@ -614,21 +775,22 @@ def add_source_consumer(
             str(consumer_build_directory),
             "-G",
             generator,
-            f"-DO3DE_ENGINE_ROOT={runner.engine_root.as_posix()}",
+            f"-DO3DE_ENGINE_ROOT={consumer_engine_root.as_posix()}",
             f"-DCMAKE_C_COMPILER={Path(c_compiler).as_posix()}",
             f"-DCMAKE_CXX_COMPILER={Path(cxx_compiler).as_posix()}",
-            "-DLY_MONOLITHIC_GAME=OFF",
+            f"-DLY_MONOLITHIC_GAME={monolithic_option}",
             "-DLY_UNITY_BUILD=ON",
         ),
         3_600,
+        environment,
     )
     if not configured:
-        runner.skip("build-source-consumer", "source consumer configuration failed")
-        runner.skip("run-source-consumer", "source consumer configuration failed")
+        runner.skip(f"build-{name_prefix}-consumer", f"{name_prefix} consumer configuration failed")
+        runner.skip(f"run-{name_prefix}-consumer", f"{name_prefix} consumer configuration failed")
         return
 
     built = runner.run_command(
-        "build-source-consumer",
+        f"build-{name_prefix}-consumer",
         (
             "cmake",
             "--build",
@@ -641,49 +803,204 @@ def add_source_consumer(
             str(parallel),
         ),
         14_400,
+        environment,
     )
     if not built:
-        runner.skip("run-source-consumer", "source consumer build failed")
+        runner.skip(f"run-{name_prefix}-consumer", f"{name_prefix} consumer build failed")
         return
 
     executable_name = "JoltInstalledConsumer.exe"
     if platform.system() != "Windows":
         executable_name = "JoltInstalledConsumer"
     runner.run_command(
-        "run-source-consumer",
+        f"run-{name_prefix}-consumer",
         (str(consumer_build_directory / "bin" / configuration.lower() / executable_name),),
         120,
+        environment,
     )
 
 
-def windows_full_matrix() -> tuple[MatrixVariant, ...]:
+def add_source_consumer(
+    runner: ValidationRunner,
+    primary_build_directory: Path,
+    consumer_build_directory: Path,
+    configuration: str,
+    parallel: int,
+) -> None:
+    add_public_consumer(
+        runner,
+        primary_build_directory,
+        consumer_build_directory,
+        runner.engine_root,
+        configuration,
+        parallel,
+        "source",
+        False,
+    )
+
+
+def add_installed_consumer(
+    runner: ValidationRunner,
+    primary_build_directory: Path,
+    install_root: Path,
+    consumer_build_directory: Path,
+    configuration: str,
+    parallel: int,
+    monolithic: bool,
+    environment: dict[str, str] | None = None,
+) -> None:
+    permutation = "modular"
+    binary_component = f"DEFAULT_{configuration.upper()}"
+    if monolithic:
+        permutation = "monolithic"
+        binary_component = f"MONOLITHIC_{configuration.upper()}"
+
+    built = runner.run_command(
+        f"build-installed-{permutation}-engine",
+        (
+            "cmake",
+            "--build",
+            str(primary_build_directory),
+            "--config",
+            configuration,
+            "--parallel",
+            str(parallel),
+        ),
+        28_800,
+        environment,
+    )
+    if not built:
+        runner.skip(f"install-{permutation}-core", f"{permutation} engine build failed")
+        runner.skip(f"install-{permutation}-binaries", f"{permutation} engine build failed")
+        runner.skip(f"audit-installed-{permutation}-boundary", f"{permutation} engine build failed")
+        runner.skip(f"configure-installed-{permutation}-consumer", f"{permutation} engine build failed")
+        runner.skip(f"build-installed-{permutation}-consumer", f"{permutation} engine build failed")
+        runner.skip(f"run-installed-{permutation}-consumer", f"{permutation} engine build failed")
+        return
+
+    core_installed = runner.run_command(
+        f"install-{permutation}-core",
+        (
+            "cmake",
+            "--install",
+            str(primary_build_directory),
+            "--config",
+            configuration,
+            "--component",
+            "CORE",
+            "--prefix",
+            str(install_root.resolve()),
+        ),
+        7_200,
+        environment,
+    )
+    binaries_installed = runner.run_command(
+        f"install-{permutation}-binaries",
+        (
+            "cmake",
+            "--install",
+            str(primary_build_directory),
+            "--config",
+            configuration,
+            "--component",
+            binary_component,
+            "--prefix",
+            str(install_root.resolve()),
+        ),
+        7_200,
+        environment,
+    )
+    if runner.dry_run and not install_root.is_dir():
+        runner.skip(f"audit-installed-{permutation}-boundary", "dry run")
+        runner.skip(f"configure-installed-{permutation}-consumer", "dry run")
+        runner.skip(f"build-installed-{permutation}-consumer", "dry run")
+        runner.skip(f"run-installed-{permutation}-consumer", "dry run")
+        return
+
+    if not core_installed or not binaries_installed:
+        runner.skip(f"audit-installed-{permutation}-boundary", f"{permutation} install failed")
+        runner.skip(f"configure-installed-{permutation}-consumer", f"{permutation} install failed")
+        runner.skip(f"build-installed-{permutation}-consumer", f"{permutation} install failed")
+        runner.skip(f"run-installed-{permutation}-consumer", f"{permutation} install failed")
+        return
+
+    boundary_valid = runner.run_check(
+        f"audit-installed-{permutation}-boundary",
+        lambda engine_root: validate_installed_boundary(
+            engine_root,
+            install_root,
+            configuration,
+            monolithic,
+        ),
+    )
+    if not boundary_valid:
+        runner.skip(
+            f"configure-installed-{permutation}-consumer",
+            f"installed {permutation} boundary audit failed",
+        )
+        runner.skip(
+            f"build-installed-{permutation}-consumer",
+            f"installed {permutation} boundary audit failed",
+        )
+        runner.skip(
+            f"run-installed-{permutation}-consumer",
+            f"installed {permutation} boundary audit failed",
+        )
+        return
+
+    add_public_consumer(
+        runner,
+        primary_build_directory,
+        consumer_build_directory,
+        install_root.resolve(),
+        configuration,
+        parallel,
+        f"installed-{permutation}",
+        monolithic,
+        environment,
+    )
+
+
+def windows_full_matrix(
+    clang_root: Path = Path("D:/LLVM/22.1.8"),
+) -> tuple[MatrixVariant, ...]:
     common = ("LY_PROJECTS=AutomatedTesting",)
+    clang_compiler = (clang_root / "bin" / "clang-cl.exe").as_posix()
+    clang_definitions = (
+        f"CMAKE_C_COMPILER={clang_compiler}",
+        f"CMAKE_CXX_COMPILER={clang_compiler}",
+    )
     return (
         MatrixVariant(
             name="clang-unity-modular",
-            preset="windows-ninja-clang-cl",
-            definitions=common + ("LY_UNITY_BUILD=ON", "LY_MONOLITHIC_GAME=OFF"),
+            preset="windows-ninja",
+            definitions=common
+            + clang_definitions
+            + ("LY_UNITY_BUILD=ON", "LY_MONOLITHIC_GAME=OFF"),
             configurations=("Debug", "Profile", "Release"),
             targets=("Jolt.Tests", "Jolt.Module", "Jolt.Editor"),
         ),
         MatrixVariant(
             name="clang-no-unity",
-            preset="windows-ninja-clang-cl",
-            definitions=common + ("LY_UNITY_BUILD=OFF", "LY_MONOLITHIC_GAME=OFF"),
+            preset="windows-ninja",
+            definitions=common
+            + clang_definitions
+            + ("LY_UNITY_BUILD=OFF", "LY_MONOLITHIC_GAME=OFF"),
             configurations=("Profile",),
             targets=("Jolt.Tests", "Jolt.Module", "Jolt.Editor"),
         ),
         MatrixVariant(
             name="clang-double",
-            preset="windows-ninja-clang-cl",
-            definitions=common + ("LY_JOLT_DOUBLE_PRECISION=ON",),
+            preset="windows-ninja",
+            definitions=common + clang_definitions + ("LY_JOLT_DOUBLE_PRECISION=ON",),
             configurations=("Profile",),
             targets=("Jolt.Tests",),
         ),
         MatrixVariant(
             name="clang-diagnostics",
-            preset="windows-ninja-clang-cl",
+            preset="windows-ninja",
             definitions=common
+            + clang_definitions
             + (
                 "LY_JOLT_ENABLE_BROADPHASE_STATISTICS=ON",
                 "LY_JOLT_ENABLE_DEBUG_RENDERING=OFF",
@@ -696,15 +1013,15 @@ def windows_full_matrix() -> tuple[MatrixVariant, ...]:
         ),
         MatrixVariant(
             name="clang-asan",
-            preset="windows-ninja-clang-cl",
-            definitions=common + ("LY_BUILD_WITH_ADDRESS_SANITIZER=ON",),
+            preset="windows-ninja",
+            definitions=common + clang_definitions + ("LY_BUILD_WITH_ADDRESS_SANITIZER=ON",),
             configurations=("Profile",),
             targets=("Jolt.Tests",),
         ),
         MatrixVariant(
             name="clang-monolithic",
-            preset="windows-ninja-clang-cl",
-            definitions=common + ("LY_MONOLITHIC_GAME=ON",),
+            preset="windows-ninja",
+            definitions=common + clang_definitions + ("LY_MONOLITHIC_GAME=ON",),
             configurations=("Release",),
             targets=("Jolt.API", "Jolt.Module"),
             run_tests=False,
@@ -715,6 +1032,14 @@ def windows_full_matrix() -> tuple[MatrixVariant, ...]:
             definitions=common + ("LY_UNITY_BUILD=ON", "LY_MONOLITHIC_GAME=OFF"),
             configurations=("Debug", "Profile", "Release"),
             targets=("Jolt.Tests", "Jolt.Module", "Jolt.Editor"),
+        ),
+        MatrixVariant(
+            name="msvc-monolithic",
+            preset="windows-ninja",
+            definitions=common + ("LY_UNITY_BUILD=ON", "LY_MONOLITHIC_GAME=ON"),
+            configurations=("Release",),
+            targets=("Jolt.API", "Jolt.Module"),
+            run_tests=False,
         ),
     )
 
@@ -752,13 +1077,55 @@ def add_full_matrix(
     runner: ValidationRunner,
     matrix_root: Path,
     parallel: int,
-) -> None:
+    clang_root: Path,
+) -> dict[str, MatrixOutcome]:
     variants = unix_full_matrix()
+    msvc_environment: dict[str, str] | None = None
+    msvc_error = ""
     if platform.system() == "Windows":
-        variants = windows_full_matrix()
+        variants = windows_full_matrix(clang_root)
+        clang_compiler = clang_root / "bin" / "clang-cl.exe"
+        runner.run_command(
+            "clang-toolchain-version",
+            (str(clang_compiler), "--version"),
+            60,
+        )
+        try:
+            msvc_environment = load_msvc_environment(runner.environment)
+        except ValueError as exception:
+            msvc_error = str(exception)
 
+        def validate_msvc_environment(_: Path) -> str:
+            if msvc_error:
+                raise ValueError(msvc_error)
+            if not msvc_environment:
+                raise ValueError("Visual Studio developer environment is unavailable.")
+            compiler = shutil.which("cl.exe", path=msvc_environment.get("PATH"))
+            return f"Loaded the Visual Studio x64 developer environment from {compiler}."
+
+        runner.run_check("msvc-environment", validate_msvc_environment)
+
+    outcomes: dict[str, MatrixOutcome] = {}
     for variant in variants:
         build_directory = matrix_root / variant.name
+        command_environment: dict[str, str] | None = None
+        if variant.name.startswith("msvc-"):
+            if not msvc_environment:
+                runner.skip(f"configure-{variant.name}", msvc_error)
+                for configuration in variant.configurations:
+                    runner.skip(
+                        f"build-{variant.name}-{configuration.lower()}",
+                        "MSVC developer environment is unavailable",
+                    )
+                    if variant.run_tests:
+                        runner.skip(
+                            f"test-{variant.name}-{configuration.lower()}",
+                            "MSVC developer environment is unavailable",
+                        )
+                outcomes[variant.name] = MatrixOutcome(build_directory, False)
+                continue
+            command_environment = msvc_environment
+
         configure_command = [
             "cmake",
             "--preset",
@@ -770,7 +1137,17 @@ def add_full_matrix(
         ]
         for definition in variant.definitions:
             configure_command.append(f"-D{definition}")
-        configured = runner.run_command(f"configure-{variant.name}", configure_command, 3_600)
+        configured = runner.run_command(
+            f"configure-{variant.name}",
+            configure_command,
+            3_600,
+            command_environment,
+        )
+        outcomes[variant.name] = MatrixOutcome(
+            build_directory,
+            configured,
+            command_environment,
+        )
 
         for configuration in variant.configurations:
             build_name = f"build-{variant.name}-{configuration.lower()}"
@@ -795,6 +1172,7 @@ def add_full_matrix(
                     str(parallel),
                 ),
                 14_400,
+                command_environment,
             )
             if variant.run_tests:
                 if not built:
@@ -813,7 +1191,10 @@ def add_full_matrix(
                         "--output-on-failure",
                     ),
                     1_800,
+                    command_environment,
                 )
+
+    return outcomes
 
 
 def write_reports(
@@ -880,6 +1261,7 @@ def parse_arguments(arguments: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--configuration", default="Profile", choices=("Debug", "Profile", "Release"))
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--matrix-root", type=Path)
+    parser.add_argument("--clang-root", type=Path, default=Path("D:/LLVM/22.1.8"))
     parser.add_argument("--parallel", type=int, default=os.cpu_count() or 1)
     parser.add_argument("--static-only", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
@@ -939,7 +1321,48 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 max(1, options.parallel),
             )
         if options.mode == "full":
-            add_full_matrix(runner, matrix_root, max(1, options.parallel))
+            matrix_outcomes = add_full_matrix(
+                runner,
+                matrix_root,
+                max(1, options.parallel),
+                options.clang_root.resolve(),
+            )
+            if platform.system() == "Windows":
+                modular_outcome = matrix_outcomes["msvc-unity-modular"]
+                if modular_outcome.configured:
+                    add_installed_consumer(
+                        runner,
+                        modular_outcome.build_directory,
+                        output_directory / "installed-msvc-modular",
+                        output_directory / "consumer-installed-msvc-modular",
+                        "Release",
+                        max(1, options.parallel),
+                        False,
+                        modular_outcome.environment,
+                    )
+                else:
+                    runner.skip(
+                        "installed-msvc-modular-qualification",
+                        "MSVC modular matrix configuration failed",
+                    )
+
+                monolithic_outcome = matrix_outcomes["msvc-monolithic"]
+                if monolithic_outcome.configured:
+                    add_installed_consumer(
+                        runner,
+                        monolithic_outcome.build_directory,
+                        output_directory / "installed-msvc-monolithic",
+                        output_directory / "consumer-installed-msvc-monolithic",
+                        "Release",
+                        max(1, options.parallel),
+                        True,
+                        monolithic_outcome.environment,
+                    )
+                else:
+                    runner.skip(
+                        "installed-msvc-monolithic-qualification",
+                        "MSVC monolithic matrix configuration failed",
+                    )
 
     final_git_state = capture_git_state(engine_root)
     if initial_git_state["combined_sha256"] != final_git_state["combined_sha256"]:
