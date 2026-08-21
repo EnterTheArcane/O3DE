@@ -22849,8 +22849,8 @@ namespace Jolt
         }
 
         const JPH::Quat rotation = ToNativeRotation(request.m_transform.GetRotation());
-        const JPH::Vec3 centerOfMassPosition =
-            ToNativeVector(request.m_transform.GetTranslation())
+        const JPH::RVec3 centerOfMassPosition =
+            JPH::RVec3(ToNativeVector(request.m_transform.GetTranslation()))
             + rotation * (scale * shapeSlot->m_shape->GetCenterOfMass());
         const JPH::Vec3 boundsCenter = ToNativeVector(request.m_boundsCenter);
         const JPH::Vec3 boundsHalfExtents = ToNativeVector(request.m_boundsHalfExtents);

@@ -44,21 +44,21 @@ namespace Jolt
         }
 
         [[nodiscard]]
-        JPH::Vec3 ToRagdollNativeVector(
-            const WorldPosition& value)
-        {
-            return {
-                static_cast<float>(value.m_x),
-                static_cast<float>(value.m_y),
-                static_cast<float>(value.m_z),
-            };
-        }
-
-        [[nodiscard]]
         AZ::Vector3 FromRagdollNativeVector(
             const JPH::Vec3Arg value)
         {
             return {value.GetX(), value.GetY(), value.GetZ()};
+        }
+
+        [[nodiscard]]
+        JPH::RVec3 ToRagdollNativePosition(
+            const WorldPosition& position)
+        {
+            return {
+                static_cast<JPH::Real>(position.m_x),
+                static_cast<JPH::Real>(position.m_y),
+                static_cast<JPH::Real>(position.m_z),
+            };
         }
 
         [[nodiscard]]
@@ -314,8 +314,8 @@ namespace Jolt
 
                             JPH::Ref<JPH::ConeConstraintSettings> native = new JPH::ConeConstraintSettings();
                             native->mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
-                            native->mPoint1 = ToRagdollNativeVector(value.m_firstPoint);
-                            native->mPoint2 = ToRagdollNativeVector(value.m_secondPoint);
+                            native->mPoint1 = ToRagdollNativePosition(value.m_firstPoint);
+                            native->mPoint2 = ToRagdollNativePosition(value.m_secondPoint);
                             native->mTwistAxis1 = ToRagdollNativeVector(value.m_firstTwistAxis.GetNormalized());
                             native->mTwistAxis2 = ToRagdollNativeVector(value.m_secondTwistAxis.GetNormalized());
                             native->mHalfConeAngle = value.m_halfConeAngle;
@@ -343,8 +343,8 @@ namespace Jolt
                             JPH::Ref<JPH::DistanceConstraintSettings> native =
                                 new JPH::DistanceConstraintSettings();
                             native->mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
-                            native->mPoint1 = ToRagdollNativeVector(value.m_firstPoint);
-                            native->mPoint2 = ToRagdollNativeVector(value.m_secondPoint);
+                            native->mPoint1 = ToRagdollNativePosition(value.m_firstPoint);
+                            native->mPoint2 = ToRagdollNativePosition(value.m_secondPoint);
                             native->mMinDistance = value.m_minimumDistance;
                             native->mMaxDistance = value.m_maximumDistance;
                             native->mLimitsSpringSettings = ToRagdollNativeSpring(value.m_limitSpring);
@@ -364,8 +364,8 @@ namespace Jolt
                             JPH::Ref<JPH::FixedConstraintSettings> native = new JPH::FixedConstraintSettings();
                             native->mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
                             native->mAutoDetectPoint = value.m_autoDetectPoint;
-                            native->mPoint1 = ToRagdollNativeVector(value.m_firstPoint);
-                            native->mPoint2 = ToRagdollNativeVector(value.m_secondPoint);
+                            native->mPoint1 = ToRagdollNativePosition(value.m_firstPoint);
+                            native->mPoint2 = ToRagdollNativePosition(value.m_secondPoint);
                             native->mAxisX1 = ToRagdollNativeVector(value.m_firstAxisX.GetNormalized());
                             native->mAxisY1 = ToRagdollNativeVector(value.m_firstAxisY.GetNormalized());
                             native->mAxisX2 = ToRagdollNativeVector(value.m_secondAxisX.GetNormalized());
@@ -395,8 +395,8 @@ namespace Jolt
 
                             JPH::Ref<JPH::HingeConstraintSettings> native = new JPH::HingeConstraintSettings();
                             native->mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
-                            native->mPoint1 = ToRagdollNativeVector(value.m_firstPoint);
-                            native->mPoint2 = ToRagdollNativeVector(value.m_secondPoint);
+                            native->mPoint1 = ToRagdollNativePosition(value.m_firstPoint);
+                            native->mPoint2 = ToRagdollNativePosition(value.m_secondPoint);
                             native->mHingeAxis1 = ToRagdollNativeVector(value.m_firstHingeAxis.GetNormalized());
                             native->mNormalAxis1 = ToRagdollNativeVector(value.m_firstNormalAxis.GetNormalized());
                             native->mHingeAxis2 = ToRagdollNativeVector(value.m_secondHingeAxis.GetNormalized());
@@ -419,8 +419,8 @@ namespace Jolt
 
                             JPH::Ref<JPH::PointConstraintSettings> native = new JPH::PointConstraintSettings();
                             native->mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
-                            native->mPoint1 = ToRagdollNativeVector(value.m_firstPoint);
-                            native->mPoint2 = ToRagdollNativeVector(value.m_secondPoint);
+                            native->mPoint1 = ToRagdollNativePosition(value.m_firstPoint);
+                            native->mPoint2 = ToRagdollNativePosition(value.m_secondPoint);
                             result = native;
                         }
                         else if constexpr (AZStd::is_same_v<Geometry, SliderConstraintConfiguration>)
@@ -445,8 +445,8 @@ namespace Jolt
                             JPH::Ref<JPH::SliderConstraintSettings> native = new JPH::SliderConstraintSettings();
                             native->mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
                             native->mAutoDetectPoint = value.m_autoDetectPoint;
-                            native->mPoint1 = ToRagdollNativeVector(value.m_firstPoint);
-                            native->mPoint2 = ToRagdollNativeVector(value.m_secondPoint);
+                            native->mPoint1 = ToRagdollNativePosition(value.m_firstPoint);
+                            native->mPoint2 = ToRagdollNativePosition(value.m_secondPoint);
                             native->mSliderAxis1 = ToRagdollNativeVector(value.m_firstSliderAxis.GetNormalized());
                             native->mNormalAxis1 = ToRagdollNativeVector(value.m_firstNormalAxis.GetNormalized());
                             native->mSliderAxis2 = ToRagdollNativeVector(value.m_secondSliderAxis.GetNormalized());
@@ -488,8 +488,8 @@ namespace Jolt
                             JPH::Ref<JPH::SwingTwistConstraintSettings> native =
                                 new JPH::SwingTwistConstraintSettings();
                             native->mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
-                            native->mPosition1 = ToRagdollNativeVector(value.m_firstPoint);
-                            native->mPosition2 = ToRagdollNativeVector(value.m_secondPoint);
+                            native->mPosition1 = ToRagdollNativePosition(value.m_firstPoint);
+                            native->mPosition2 = ToRagdollNativePosition(value.m_secondPoint);
                             native->mTwistAxis1 = ToRagdollNativeVector(value.m_firstTwistAxis.GetNormalized());
                             native->mPlaneAxis1 = ToRagdollNativeVector(value.m_firstPlaneAxis.GetNormalized());
                             native->mTwistAxis2 = ToRagdollNativeVector(value.m_secondTwistAxis.GetNormalized());

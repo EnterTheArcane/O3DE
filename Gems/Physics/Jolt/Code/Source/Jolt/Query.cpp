@@ -24,7 +24,11 @@ namespace Jolt
 {
     static_assert(sizeof(JPH::TransformedShape) <= 96);
     static_assert(alignof(JPH::TransformedShape) <= alignof(TransformedShape));
+#ifdef JPH_DOUBLE_PRECISION
+    static_assert(sizeof(TransformedShape) <= 192);
+#else
     static_assert(sizeof(TransformedShape) <= 176);
+#endif
 
     TransformedShape::TransformedShape()
     {

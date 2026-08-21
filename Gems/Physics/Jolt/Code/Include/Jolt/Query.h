@@ -656,7 +656,11 @@ namespace Jolt
 
         static constexpr size_t NativeStorageSize = 96;
 
+#if JOLT_DOUBLE_PRECISION
+        alignas(32) AZ::u8 m_nativeStorage[NativeStorageSize]{};
+#else
         alignas(16) AZ::u8 m_nativeStorage[NativeStorageSize]{};
+#endif
         WorldPosition m_worldOrigin;
 
         WorldHandle m_worldHandle;

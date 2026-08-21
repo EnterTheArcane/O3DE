@@ -12,6 +12,8 @@ ly_add_target(
         jolt_api_files.cmake
         jolt_private_files.cmake
     COMPILE_DEFINITIONS
+        PUBLIC
+            JOLT_DOUBLE_PRECISION=$<BOOL:${LY_JOLT_DOUBLE_PRECISION}>
         PRIVATE
             JOLT_API_EXPORTS
     INCLUDE_DIRECTORIES
