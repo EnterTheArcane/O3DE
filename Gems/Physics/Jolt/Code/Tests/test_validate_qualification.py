@@ -1,0 +1,262 @@
+"""Tests for the Jolt qualification entry point."""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import sys
+import tempfile
+import unittest
+import xml.etree.ElementTree as xml_tree
+from pathlib import Path
+
+
+MODULE_PATH = Path(__file__).resolve().parents[2] / "validate.py"
+SPECIFICATION = importlib.util.spec_from_file_location("jolt_qualification", MODULE_PATH)
+assert SPECIFICATION and SPECIFICATION.loader
+jolt_qualification = importlib.util.module_from_spec(SPECIFICATION)
+sys.modules[SPECIFICATION.name] = jolt_qualification
+SPECIFICATION.loader.exec_module(jolt_qualification)
+
+
+def write_file(root: Path, relative_path: str, contents: str) -> Path:
+    path = root / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(contents, encoding="utf-8")
+    return path
+
+
+class QualificationValidationTests(unittest.TestCase):
+    def test_runner_redirects_python_bytecode_beneath_its_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            output_directory = root / "build" / "qualification"
+            output_directory.mkdir(parents=True)
+            runner = jolt_qualification.ValidationRunner(root, output_directory, dry_run=True)
+
+            self.assertEqual(
+                runner.environment["PYTHONPYCACHEPREFIX"],
+                str(output_directory / "python-cache"),
+            )
+
+    def test_output_directory_must_remain_under_build(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            accepted = jolt_qualification.ensure_output_is_under_build(
+                engine_root,
+                engine_root / "build" / "qualification",
+            )
+            self.assertEqual(accepted, (engine_root / "build" / "qualification").resolve())
+
+            with self.assertRaisesRegex(ValueError, "beneath"):
+                jolt_qualification.ensure_output_is_under_build(
+                    engine_root,
+                    engine_root / "qualification",
+                )
+
+    def test_feature_ledger_rejects_missing_and_empty_exposed_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            ledger_path = write_file(
+                engine_root,
+                "Gems/Physics/Jolt/FEATURE_COVERAGE.md",
+                """
+| Jolt 5.6 subsystem | Classification | AZ-facing boundary or rationale | C++ and authoring proof | Scenario and performance proof |
+|---|---|---|---|---|
+| Bodies | Publicly exposed | Bodies.h | BodyTests | Jolt_Bodies |
+| Missing feature | Missing | Required | Required | Required |
+| Empty proof | Publicly exposed | Bodies.h | | Jolt_Bodies |
+""",
+            )
+
+            with self.assertRaisesRegex(ValueError, "classified as Missing"):
+                jolt_qualification.validate_feature_ledger(engine_root)
+
+            ledger_path.write_text(
+                """
+| Jolt 5.6 subsystem | Classification | AZ-facing boundary or rationale | C++ and authoring proof | Scenario and performance proof |
+|---|---|---|---|---|
+| Bodies | Publicly exposed | Bodies.h | BodyTests | Jolt_Bodies |
+""",
+                encoding="utf-8",
+            )
+            result = jolt_qualification.validate_feature_ledger(engine_root)
+            self.assertIn("1 feature rows", result)
+
+    def test_public_header_check_rejects_native_tokens_and_missing_probes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            header = write_file(
+                engine_root,
+                "Gems/Physics/Jolt/Code/Include/Jolt/Example.h",
+                "#pragma once\n",
+            )
+            write_file(
+                engine_root,
+                "Gems/Physics/Jolt/Code/Tests/Headers/Example.cpp",
+                "#include <Jolt/Example.h>\n",
+            )
+            self.assertIn("1 public headers", jolt_qualification.validate_public_headers(engine_root))
+
+            header.write_text("namespace JPH {}\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "native JPH token"):
+                jolt_qualification.validate_public_headers(engine_root)
+
+    def test_source_manifest_check_rejects_missing_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            manifest = write_file(
+                engine_root,
+                "Gems/Physics/Jolt/Code/jolt_test_files.cmake",
+                "set(FILES\n    Tests/Example.cpp\n)\n",
+            )
+            write_file(
+                engine_root,
+                "Gems/Physics/Jolt/Code/Tests/Example.cpp",
+                "int example;\n",
+            )
+            self.assertIn("1 entries", jolt_qualification.validate_source_manifests(engine_root))
+
+            manifest.write_text("set(FILES\n    Tests/Missing.cpp\n)\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "references missing"):
+                jolt_qualification.validate_source_manifests(engine_root)
+
+    def test_scenario_check_requires_registration_and_checked_in_manifests(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            suite_lines = []
+            for scenario in sorted(jolt_qualification.REQUIRED_SCENARIOS):
+                suite_lines.append(f"from .tests import {scenario}")
+                write_file(
+                    engine_root,
+                    f"AutomatedTesting/Gem/PythonTests/Physics/Jolt/tests/{scenario}.py",
+                    "Report.start_test(example)\n",
+                )
+            write_file(
+                engine_root,
+                "AutomatedTesting/Gem/PythonTests/Physics/Jolt/TestSuite_Main.py",
+                "\n".join(suite_lines),
+            )
+            write_file(
+                engine_root,
+                "AutomatedTesting/Gem/PythonTests/Physics/Jolt/TestSuite_Benchmark.py",
+                "",
+            )
+
+            gallery_entities = {
+                str(index): {"Name": f"Jolt Gallery {index}"}
+                for index in range(51)
+            }
+            write_file(
+                engine_root,
+                "AutomatedTesting/Levels/Physics/Jolt/FeatureGallery/FeatureGallery.prefab",
+                json.dumps({"Entities": gallery_entities}),
+            )
+            stress_instances = {str(index): {} for index in range(64)}
+            write_file(
+                engine_root,
+                "AutomatedTesting/Levels/Physics/Jolt/Stress/Stress.prefab",
+                json.dumps({"Instances": stress_instances}),
+            )
+
+            result = jolt_qualification.validate_scenario_registration(engine_root)
+            self.assertIn(f"{len(jolt_qualification.REQUIRED_SCENARIOS)} registered", result)
+
+            missing_scenario = sorted(jolt_qualification.REQUIRED_SCENARIOS)[0]
+            suite_path = (
+                engine_root
+                / "AutomatedTesting"
+                / "Gem"
+                / "PythonTests"
+                / "Physics"
+                / "Jolt"
+                / "TestSuite_Main.py"
+            )
+            suite_path.write_text(
+                "\n".join(line for line in suite_lines if missing_scenario not in line),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "unregistered executable scenarios"):
+                jolt_qualification.validate_scenario_registration(engine_root)
+
+    def test_private_boundary_ignores_documentation_but_rejects_published_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            native_path = write_file(
+                engine_root,
+                "Gems/Physics/Jolt/3rdParty/JoltNative.cmake",
+                """
+# Do not publish 3rdParty::Jolt or Atom_RHI.
+ly_install(FILES
+    ${jolt_source_dir}/LICENSE
+    DESTINATION include/Jolt
+    COMPONENT CORE
+)
+""",
+            )
+            write_file(
+                engine_root,
+                "Gems/Physics/Jolt/Code/CMakeLists.txt",
+                "BUILD_DEPENDENCIES\n    PRIVATE\n        Jolt\n",
+            )
+            result = jolt_qualification.validate_private_native_boundary(engine_root)
+            self.assertIn("private native target", result)
+
+            native_path.write_text(
+                native_path.read_text(encoding="utf-8") + "add_library(3rdParty::Jolt ALIAS Jolt)\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "published as 3rdParty::Jolt"):
+                jolt_qualification.validate_private_native_boundary(engine_root)
+
+    def test_reports_include_json_junit_and_git_epochs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output_directory = Path(temporary_directory)
+            git_state = {"head": "abc", "combined_sha256": "def"}
+            results = [
+                jolt_qualification.ValidationResult(
+                    name="pass",
+                    status="passed",
+                    duration_seconds=1.25,
+                    log_path="pass.log",
+                    message="ok",
+                ),
+                jolt_qualification.ValidationResult(
+                    name="fail",
+                    status="failed",
+                    duration_seconds=0.5,
+                    log_path="fail.log",
+                    message="bad",
+                ),
+            ]
+            jolt_qualification.write_reports(
+                output_directory,
+                "quick",
+                git_state,
+                git_state,
+                results,
+            )
+
+            summary = json.loads((output_directory / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["initial_git_state"]["head"], "abc")
+            self.assertEqual(len(summary["results"]), 2)
+            test_suite = xml_tree.parse(output_directory / "summary.junit.xml").getroot()
+            self.assertEqual(test_suite.attrib["tests"], "2")
+            self.assertEqual(test_suite.attrib["failures"], "1")
+
+    def test_windows_matrix_covers_required_build_axes(self) -> None:
+        variants = {variant.name: variant for variant in jolt_qualification.windows_full_matrix()}
+        self.assertIn("clang-no-unity", variants)
+        self.assertIn("clang-double", variants)
+        self.assertIn("clang-diagnostics", variants)
+        self.assertIn("clang-asan", variants)
+        self.assertIn("clang-monolithic", variants)
+        self.assertIn("msvc-unity-modular", variants)
+        self.assertEqual(
+            variants["clang-unity-modular"].configurations,
+            ("Debug", "Profile", "Release"),
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
