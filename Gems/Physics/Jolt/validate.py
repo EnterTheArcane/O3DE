@@ -10,6 +10,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -310,6 +311,60 @@ def validate_private_native_boundary(engine_root: Path) -> str:
     return "Validated private native target, license-only install, and CPU-only dependency boundary."
 
 
+def validate_public_consumer(engine_root: Path) -> str:
+    consumer_root = (
+        engine_root
+        / "Gems"
+        / "Physics"
+        / "Jolt"
+        / "Code"
+        / "Tests"
+        / "InstalledConsumer"
+    )
+    expected_files = {
+        "CMakeLists.txt",
+        "jolt_installed_consumer_files.cmake",
+        "main.cpp",
+        "project.json",
+    }
+    actual_files = {
+        path.relative_to(consumer_root).as_posix()
+        for path in consumer_root.rglob("*")
+        if path.is_file()
+    }
+    errors: list[str] = []
+    if actual_files != expected_files:
+        missing = sorted(expected_files - actual_files)
+        extra = sorted(actual_files - expected_files)
+        if missing:
+            errors.append(f"public consumer is missing: {', '.join(missing)}")
+        if extra:
+            errors.append(f"public consumer contains unexpected files: {', '.join(extra)}")
+
+    source_text = "\n".join(
+        (consumer_root / relative_path).read_text(encoding="utf-8")
+        for relative_path in sorted(expected_files & actual_files)
+    )
+    forbidden_terms = ("3rdParty::Jolt", "JPH::", "JoltNative", "<Jolt/Jolt.h>", "_deps/joltphysics")
+    for term in forbidden_terms:
+        if term in source_text:
+            errors.append(f"public consumer contains private native term {term!r}")
+
+    cmake_text = (consumer_root / "CMakeLists.txt").read_text(encoding="utf-8")
+    if "Gem::Jolt.API" not in cmake_text:
+        errors.append("public consumer does not link Gem::Jolt.API")
+    if "O3DE_ENGINE_ROOT" not in cmake_text:
+        errors.append("public consumer cannot select a source or installed engine")
+
+    project = json.loads((consumer_root / "project.json").read_text(encoding="utf-8"))
+    if project.get("gem_names") != ["Jolt"]:
+        errors.append("public consumer must enable only the Jolt Gem")
+
+    if errors:
+        raise ValueError("; ".join(errors))
+    return "Validated the public-only source and installed-engine consumer."
+
+
 class ValidationRunner:
     def __init__(
         self,
@@ -351,7 +406,7 @@ class ValidationRunner:
         name: str,
         command: Sequence[str],
         timeout_seconds: int,
-    ) -> None:
+    ) -> bool:
         log_path = self.output_directory / f"{len(self.results):03d}-{name}.log"
         start = time.monotonic()
         status = "passed"
@@ -391,6 +446,21 @@ class ValidationRunner:
             )
         )
         print(f"[{status.upper()}] {name} {message}", flush=True)
+        return status != "failed"
+
+    def skip(self, name: str, message: str) -> None:
+        log_path = self.output_directory / f"{len(self.results):03d}-{name}.log"
+        log_path.write_text(message + "\n", encoding="utf-8")
+        self.results.append(
+            ValidationResult(
+                name=name,
+                status="skipped",
+                duration_seconds=0.0,
+                log_path=str(log_path.relative_to(self.output_directory)),
+                message=message,
+            )
+        )
+        print(f"[SKIPPED] {name}: {message}", flush=True)
 
 
 def add_static_checks(runner: ValidationRunner) -> None:
@@ -399,6 +469,7 @@ def add_static_checks(runner: ValidationRunner) -> None:
     runner.run_check("source-manifests", validate_source_manifests)
     runner.run_check("scenario-registration", validate_scenario_registration)
     runner.run_check("private-native-boundary", validate_private_native_boundary)
+    runner.run_check("public-consumer", validate_public_consumer)
 
 
 def add_python_tests(runner: ValidationRunner) -> None:
@@ -428,7 +499,7 @@ def add_primary_build_and_tests(
     targets = ["Jolt.Tests", "Jolt.Module", "Jolt.Editor"]
     if review:
         targets.extend(("AssetProcessor", "Editor", "AutomatedTesting.Assets"))
-    runner.run_command(
+    built = runner.run_command(
         "primary-build",
         (
             "cmake",
@@ -443,6 +514,11 @@ def add_primary_build_and_tests(
         ),
         14_400,
     )
+    if not built:
+        runner.skip("jolt-cpp-tests", "primary build failed")
+        if review:
+            runner.skip("jolt-automated-testing", "primary build failed")
+        return
     runner.run_command(
         "jolt-cpp-tests",
         (
@@ -472,6 +548,112 @@ def add_primary_build_and_tests(
             ),
             7_200,
         )
+
+
+def read_cmake_cache_value(build_directory: Path, name: str) -> str:
+    cache_path = build_directory / "CMakeCache.txt"
+    if not cache_path.is_file():
+        raise ValueError(f"CMake cache does not exist: {cache_path}")
+    pattern = re.compile(rf"^{re.escape(name)}(?::[^=]+)?=(.*)$")
+    for line in cache_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        match = pattern.match(line)
+        if match:
+            return match.group(1)
+    raise ValueError(f"CMake cache does not define {name}: {cache_path}")
+
+
+def prepare_consumer_source(engine_root: Path, destination: Path) -> Path:
+    source = (
+        engine_root
+        / "Gems"
+        / "Physics"
+        / "Jolt"
+        / "Code"
+        / "Tests"
+        / "InstalledConsumer"
+    )
+    destination.mkdir(parents=True, exist_ok=True)
+    for relative_path in (
+        "CMakeLists.txt",
+        "jolt_installed_consumer_files.cmake",
+        "main.cpp",
+        "project.json",
+    ):
+        shutil.copy2(source / relative_path, destination / relative_path)
+    return destination
+
+
+def add_source_consumer(
+    runner: ValidationRunner,
+    primary_build_directory: Path,
+    consumer_build_directory: Path,
+    configuration: str,
+    parallel: int,
+) -> None:
+    consumer_source = prepare_consumer_source(
+        runner.engine_root,
+        consumer_build_directory.with_name(f"{consumer_build_directory.name}-project"),
+    )
+    try:
+        generator = read_cmake_cache_value(primary_build_directory, "CMAKE_GENERATOR")
+        c_compiler = read_cmake_cache_value(primary_build_directory, "CMAKE_C_COMPILER")
+        cxx_compiler = read_cmake_cache_value(primary_build_directory, "CMAKE_CXX_COMPILER")
+    except ValueError as exception:
+        runner.skip("configure-source-consumer", str(exception))
+        runner.skip("build-source-consumer", "source consumer was not configured")
+        runner.skip("run-source-consumer", "source consumer was not built")
+        return
+
+    configured = runner.run_command(
+        "configure-source-consumer",
+        (
+            "cmake",
+            "-S",
+            str(consumer_source),
+            "-B",
+            str(consumer_build_directory),
+            "-G",
+            generator,
+            f"-DO3DE_ENGINE_ROOT={runner.engine_root.as_posix()}",
+            f"-DCMAKE_C_COMPILER={Path(c_compiler).as_posix()}",
+            f"-DCMAKE_CXX_COMPILER={Path(cxx_compiler).as_posix()}",
+            "-DLY_MONOLITHIC_GAME=OFF",
+            "-DLY_UNITY_BUILD=ON",
+        ),
+        3_600,
+    )
+    if not configured:
+        runner.skip("build-source-consumer", "source consumer configuration failed")
+        runner.skip("run-source-consumer", "source consumer configuration failed")
+        return
+
+    built = runner.run_command(
+        "build-source-consumer",
+        (
+            "cmake",
+            "--build",
+            str(consumer_build_directory),
+            "--config",
+            configuration,
+            "--target",
+            "JoltInstalledConsumer",
+            "--parallel",
+            str(parallel),
+        ),
+        14_400,
+    )
+    if not built:
+        runner.skip("run-source-consumer", "source consumer build failed")
+        return
+
+    executable_name = "JoltInstalledConsumer.exe"
+    if platform.system() != "Windows":
+        executable_name = "JoltInstalledConsumer"
+    runner.run_command(
+        "run-source-consumer",
+        (str(consumer_build_directory / "bin" / configuration.lower() / executable_name),),
+        120,
+    )
 
 
 def windows_full_matrix() -> tuple[MatrixVariant, ...]:
@@ -588,11 +770,19 @@ def add_full_matrix(
         ]
         for definition in variant.definitions:
             configure_command.append(f"-D{definition}")
-        runner.run_command(f"configure-{variant.name}", configure_command, 3_600)
+        configured = runner.run_command(f"configure-{variant.name}", configure_command, 3_600)
 
         for configuration in variant.configurations:
-            runner.run_command(
-                f"build-{variant.name}-{configuration.lower()}",
+            build_name = f"build-{variant.name}-{configuration.lower()}"
+            test_name = f"test-{variant.name}-{configuration.lower()}"
+            if not configured:
+                runner.skip(build_name, f"{variant.name} configuration failed")
+                if variant.run_tests:
+                    runner.skip(test_name, f"{variant.name} configuration failed")
+                continue
+
+            built = runner.run_command(
+                build_name,
                 (
                     "cmake",
                     "--build",
@@ -607,8 +797,11 @@ def add_full_matrix(
                 14_400,
             )
             if variant.run_tests:
+                if not built:
+                    runner.skip(test_name, f"{variant.name} {configuration} build failed")
+                    continue
                 runner.run_command(
-                    f"test-{variant.name}-{configuration.lower()}",
+                    test_name,
                     (
                         "ctest",
                         "--test-dir",
@@ -737,6 +930,14 @@ def main(arguments: Sequence[str] | None = None) -> int:
             max(1, options.parallel),
             review,
         )
+        if review:
+            add_source_consumer(
+                runner,
+                build_directory,
+                matrix_root / "consumer-source",
+                options.configuration,
+                max(1, options.parallel),
+            )
         if options.mode == "full":
             add_full_matrix(runner, matrix_root, max(1, options.parallel))
 

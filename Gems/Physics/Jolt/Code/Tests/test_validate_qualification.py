@@ -209,6 +209,84 @@ ly_install(FILES
             with self.assertRaisesRegex(ValueError, "published as 3rdParty::Jolt"):
                 jolt_qualification.validate_private_native_boundary(engine_root)
 
+    def test_public_consumer_rejects_native_dependencies(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            consumer_root = (
+                engine_root
+                / "Gems"
+                / "Physics"
+                / "Jolt"
+                / "Code"
+                / "Tests"
+                / "InstalledConsumer"
+            )
+            write_file(
+                consumer_root,
+                "CMakeLists.txt",
+                "set(O3DE_ENGINE_ROOT example)\ntarget_link_libraries(example Gem::Jolt.API)\n",
+            )
+            write_file(consumer_root, "jolt_installed_consumer_files.cmake", "set(FILES main.cpp)\n")
+            source_path = write_file(consumer_root, "main.cpp", "#include <Jolt/System.h>\n")
+            write_file(
+                consumer_root,
+                "project.json",
+                json.dumps({"gem_names": ["Jolt"]}),
+            )
+
+            self.assertIn("public-only", jolt_qualification.validate_public_consumer(engine_root))
+
+            source_path.write_text("JPH::PhysicsSystem* system;\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "private native term"):
+                jolt_qualification.validate_public_consumer(engine_root)
+
+    def test_cmake_cache_reader_requires_the_requested_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            build_directory = Path(temporary_directory)
+            write_file(
+                build_directory,
+                "CMakeCache.txt",
+                "CMAKE_GENERATOR:INTERNAL=Ninja Multi-Config\n",
+            )
+
+            self.assertEqual(
+                jolt_qualification.read_cmake_cache_value(build_directory, "CMAKE_GENERATOR"),
+                "Ninja Multi-Config",
+            )
+            with self.assertRaisesRegex(ValueError, "does not define"):
+                jolt_qualification.read_cmake_cache_value(build_directory, "CMAKE_CXX_COMPILER")
+
+    def test_consumer_source_is_copied_to_generated_storage(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            source = (
+                engine_root
+                / "Gems"
+                / "Physics"
+                / "Jolt"
+                / "Code"
+                / "Tests"
+                / "InstalledConsumer"
+            )
+            expected_files = (
+                "CMakeLists.txt",
+                "jolt_installed_consumer_files.cmake",
+                "main.cpp",
+                "project.json",
+            )
+            for relative_path in expected_files:
+                write_file(source, relative_path, relative_path)
+            write_file(source, "user/generated.setreg", "generated")
+
+            destination = engine_root / "build" / "consumer-project"
+            result = jolt_qualification.prepare_consumer_source(engine_root, destination)
+
+            self.assertEqual(result, destination)
+            self.assertEqual(
+                {path.name for path in destination.iterdir()},
+                set(expected_files),
+            )
+
     def test_reports_include_json_junit_and_git_epochs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             output_directory = Path(temporary_directory)
