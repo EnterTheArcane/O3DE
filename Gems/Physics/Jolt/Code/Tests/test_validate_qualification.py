@@ -28,6 +28,15 @@ def write_file(root: Path, relative_path: str, contents: str) -> Path:
 
 
 class QualificationValidationTests(unittest.TestCase):
+    def test_clang_address_sanitizer_environment_disables_only_odr_detection(self) -> None:
+        base_environment = {"EXAMPLE": "preserved"}
+
+        environment = jolt_qualification.get_clang_address_sanitizer_environment(base_environment)
+
+        self.assertEqual(environment["ASAN_OPTIONS"], "detect_odr_violation=0")
+        self.assertEqual(environment["EXAMPLE"], "preserved")
+        self.assertNotIn("ASAN_OPTIONS", base_environment)
+
     def test_automated_testing_uses_the_requested_stress_duration(self) -> None:
         base_environment = {"EXAMPLE": "preserved"}
 
@@ -612,6 +621,11 @@ ly_create_alias(
             variants["clang-unity-modular"].configurations,
             ("Debug", "Profile", "Release"),
         )
+        self.assertIn(
+            "CMAKE_TRY_COMPILE_CONFIGURATION=Release",
+            variants["clang-asan"].definitions,
+        )
+        self.assertEqual(variants["clang-asan"].configurations, ("Profile",))
 
 
 if __name__ == "__main__":

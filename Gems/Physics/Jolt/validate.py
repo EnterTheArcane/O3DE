@@ -695,6 +695,16 @@ def get_automated_testing_environment(
     return automated_testing_environment
 
 
+def get_clang_address_sanitizer_environment(
+    base_environment: dict[str, str],
+) -> dict[str, str]:
+    address_sanitizer_environment = base_environment.copy()
+    # clang-cl 22 reports false ODR violations for folded Windows string literals.
+    # ODR indicators do not link with the engine's COMDAT model, so disable only that detector.
+    address_sanitizer_environment["ASAN_OPTIONS"] = "detect_odr_violation=0"
+    return address_sanitizer_environment
+
+
 def add_primary_build_and_tests(
     runner: ValidationRunner,
     build_directory: Path,
@@ -1143,7 +1153,12 @@ def windows_full_matrix(
         MatrixVariant(
             name="clang-asan",
             preset="windows-ninja",
-            definitions=common + clang_definitions + ("LY_BUILD_WITH_ADDRESS_SANITIZER=ON",),
+            definitions=common
+            + clang_definitions
+            + (
+                "CMAKE_TRY_COMPILE_CONFIGURATION=Release",
+                "LY_BUILD_WITH_ADDRESS_SANITIZER=ON",
+            ),
             configurations=("Profile",),
             targets=("Jolt.Tests",),
         ),
@@ -1245,7 +1260,9 @@ def add_full_matrix(
     for variant in variants:
         build_directory = matrix_root / variant.name
         command_environment: dict[str, str] | None = None
-        if variant.name.startswith("msvc-"):
+        if variant.name == "clang-asan":
+            command_environment = get_clang_address_sanitizer_environment(runner.environment)
+        elif variant.name.startswith("msvc-"):
             if not msvc_environment:
                 runner.skip(f"configure-{variant.name}", msvc_error)
                 for configuration in variant.configurations:
