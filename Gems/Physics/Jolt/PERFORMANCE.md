@@ -51,12 +51,17 @@ assembly inspection remain valid, but this capture is not labelled Windows perfo
 
 ## Phase 7 Windows closeout
 
-The 2026-08-21 full Windows validator passed all 68 steps at revision `e09033928067426391565bb47040eb71b83e476d`.
+The final 2026-08-22 full Windows validator passed all 68 steps at revision `e23d77fe489207206e95f6c8153287a6296b8356`.
 It covered the complete 251-test Jolt suite, 21 registered AutomatedTesting scenarios, Clang 22.1.8 and MSVC Debug/Profile/Release,
 unity and non-unity builds, double precision, native diagnostics, clang-cl ASan, modular and monolithic targets, and source-tree plus
 installed modular/monolithic public-only consumers. The retained JSON/JUnit summaries are under
-`build/jolt-qualification/20260821-full-r3`. This is Windows functional and packaging qualification; performance has the explicit
-exceptions below.
+`build/jolt-qualification/20260822-full-final-r2`. This is Windows functional and packaging qualification; performance has the
+explicit exceptions below.
+
+MSVC Profile is the broad Editor, Asset Processor, asset, and AutomatedTesting application build in that run. All Jolt-specific
+clang-cl configurations pass, but a whole-engine clang-cl application build is unavailable because LLVM 22.1.8 rejects Assimp 6.0.4's
+upstream Windows `VERSIONINFO` copyright byte. A bounded LLVM 22.1.8 resource-compiler probe reproduces the same failure independently
+of Jolt. No Assimp or engine source is patched for this provider qualification.
 
 The final MSVC Release matched-provider capture uses 30 fresh processes per throughput workload and 30 retained 4,096-frame windows per
 tail workload. It is bound to revision `0372f05d889b895661fd40ab293aca2a1a573e3b`, `Jolt.Tests.Gem.dll`, `Jolt.API.dll`, the runner,
