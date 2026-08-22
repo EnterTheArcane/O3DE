@@ -47,7 +47,7 @@ set(FILES
     Source/Jolt/HairComponent.cpp
     Source/Jolt/HairComponent.h
     Source/Jolt/HairComponentConfiguration.cpp
-    Source/Jolt/Internal/HandleEncoding.h
+    Source/Jolt/HandleEncoding.h
     Source/Jolt/JobSystem.cpp
     Source/Jolt/JobSystem.h
     Source/Jolt/LayoutChecks.cpp

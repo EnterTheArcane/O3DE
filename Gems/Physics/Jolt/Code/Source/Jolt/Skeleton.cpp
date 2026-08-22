@@ -9,7 +9,7 @@
 
 #include <Jolt/BehaviorReflection.h>
 #include <Jolt/FloatEnvironment.h>
-#include <Jolt/Internal/HandleEncoding.h>
+#include <Jolt/HandleEncoding.h>
 #include <Jolt/Reflection.h>
 
 #include <AzCore/Math/MathUtils.h>

@@ -10,7 +10,7 @@
 #include <Jolt/Capabilities.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/MaterialInternal.h>
-#include <Jolt/Internal/HandleEncoding.h>
+#include <Jolt/HandleEncoding.h>
 #include <Jolt/System.h>
 
 #include <AzCore/Jobs/JobContext.h>

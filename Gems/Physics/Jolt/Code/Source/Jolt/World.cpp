@@ -10,7 +10,7 @@
 #include <Jolt/CpuComputeQueue.h>
 #include <Jolt/CustomConstraintInternal.h>
 #include <Jolt/DebugRenderer.h>
-#include <Jolt/Internal/HandleEncoding.h>
+#include <Jolt/HandleEncoding.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/NativeShapeFactory.h>
 #include <Jolt/Profiler.h>

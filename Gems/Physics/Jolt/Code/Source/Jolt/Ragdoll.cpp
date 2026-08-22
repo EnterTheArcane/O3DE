@@ -7,7 +7,7 @@
 
 #include <Jolt/World.h>
 
-#include <Jolt/Internal/HandleEncoding.h>
+#include <Jolt/HandleEncoding.h>
 #include <Jolt/Profiler.h>
 #include <Jolt/SystemInternal.h>
 

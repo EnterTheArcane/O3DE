@@ -9,7 +9,7 @@
 
 #include <Jolt/FloatEnvironment.h>
 #include <Jolt/HairInternal.h>
-#include <Jolt/Internal/HandleEncoding.h>
+#include <Jolt/HandleEncoding.h>
 #include <Jolt/JobSystem.h>
 #include <Jolt/Capabilities.h>
 #include <Jolt/EventInternal.h>

@@ -18,7 +18,7 @@
 #include <Jolt/OperationInternal.h>
 #include <Jolt/Profiler.h>
 
-#include <Jolt/Internal/HandleEncoding.h>
+#include <Jolt/HandleEncoding.h>
 #include <Jolt/World.h>
 
 #include <AzCore/Debug/Trace.h>
