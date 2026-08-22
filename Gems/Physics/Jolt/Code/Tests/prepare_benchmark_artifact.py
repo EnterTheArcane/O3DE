@@ -173,6 +173,7 @@ def main() -> int:
     parser.add_argument("--minimum-time", type=float, required=True)
     parser.add_argument("--repetitions", type=int, default=30)
     parser.add_argument("--additional-raw-report", action="append", type=Path, default=[])
+    parser.add_argument("--runtime-dependency", action="append", type=Path, default=[])
     parser.add_argument("--reindex-repetitions", action="store_true")
     parser.add_argument("--warmup-report", action="append", type=Path, default=[])
     arguments = parser.parse_args()
@@ -183,17 +184,29 @@ def main() -> int:
     output_report = arguments.output_report.resolve()
     binary = arguments.binary.resolve()
     runner = arguments.runner.resolve()
+    runtime_dependencies = sorted(
+        (dependency.resolve() for dependency in arguments.runtime_dependency),
+        key=lambda dependency: str(dependency).lower(),
+    )
     source_root = arguments.source_root.resolve()
     if (
         not all(raw_report.is_file() for raw_report in raw_reports)
         or not all(warmup_report.is_file() for warmup_report in warmup_reports)
         or not binary.is_file()
         or not runner.is_file()
+        or not all(dependency.is_file() for dependency in runtime_dependencies)
         or not source_root.is_dir()
     ):
-        print("The raw report, measured binary, runner, or source root does not exist.", file=sys.stderr)
+        print(
+            "The raw report, measured binary, runtime dependency, runner, or source root does not exist.",
+            file=sys.stderr,
+        )
         return 1
-    newest_binary_mtime_ns = max(binary.stat().st_mtime_ns, runner.stat().st_mtime_ns)
+    measured_binaries = [binary, *runtime_dependencies]
+    newest_binary_mtime_ns = max(
+        runner.stat().st_mtime_ns,
+        *(measured_binary.stat().st_mtime_ns for measured_binary in measured_binaries),
+    )
     if any(report.stat().st_mtime_ns < newest_binary_mtime_ns for report in raw_reports + warmup_reports):
         print("The benchmark report predates its measured binary or runner.", file=sys.stderr)
         return 1
@@ -224,8 +237,8 @@ def main() -> int:
 
     source_revision = run_git(source_root, "rev-parse", "HEAD").decode("utf-8").strip()
     source_state, source_epoch_ns = get_source_state(source_root)
-    if binary.stat().st_mtime_ns < source_epoch_ns:
-        print("The measured binary predates the current source state.", file=sys.stderr)
+    if any(measured_binary.stat().st_mtime_ns < source_epoch_ns for measured_binary in measured_binaries):
+        print("A measured binary predates the current source state.", file=sys.stderr)
         return 1
     report["qualification"] = {
         "benchmark_filter": arguments.benchmark_filter,
@@ -243,6 +256,14 @@ def main() -> int:
         "raw_report_sha256": [sha256_file(raw_report) for raw_report in raw_reports],
         "reindexed_repetitions": arguments.reindex_repetitions,
         "repetitions": arguments.repetitions,
+        "runtime_dependencies": [
+            {
+                "mtime_ns": dependency.stat().st_mtime_ns,
+                "path": str(dependency),
+                "sha256": sha256_file(dependency),
+            }
+            for dependency in runtime_dependencies
+        ],
         "runner_path": str(runner),
         "runner_sha256": sha256_file(runner),
         "runner_mtime_ns": runner.stat().st_mtime_ns,

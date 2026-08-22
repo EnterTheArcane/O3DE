@@ -318,6 +318,23 @@ def load_report(path: Path) -> dict:
         return json.load(report_file)
 
 
+def validate_runtime_dependencies(metadata: dict, provider: str) -> None:
+    runtime_dependencies = metadata.get("runtime_dependencies")
+    if not isinstance(runtime_dependencies, list):
+        raise ValueError(f"{provider} benchmark report is missing runtime dependency fingerprints.")
+    if provider in ("Jolt", "Box3D") and not runtime_dependencies:
+        raise ValueError(f"{provider} benchmark report has no runtime dependency fingerprint.")
+    for dependency in runtime_dependencies:
+        if (
+            not isinstance(dependency, dict)
+            or not dependency.get("path")
+            or not dependency.get("sha256")
+            or not isinstance(dependency.get("mtime_ns"), int)
+            or dependency["mtime_ns"] <= 0
+        ):
+            raise ValueError(f"{provider} benchmark report has an invalid runtime dependency fingerprint.")
+
+
 def validate_context(reports: dict[str, dict]) -> None:
     reference = reports["Jolt"].get("context", {})
     if reference.get("library_build_type") != "release":
@@ -367,6 +384,7 @@ def validate_context(reports: dict[str, dict]) -> None:
         for field in required_metadata:
             if not metadata.get(field):
                 raise ValueError(f"{provider} benchmark report is missing qualification field {field}.")
+        validate_runtime_dependencies(metadata, provider)
         if metadata["build_configuration"].lower() != "release":
             raise ValueError(f"{provider} qualification metadata is not for a Release build.")
         if metadata["workload_signature"] != workload_signature():

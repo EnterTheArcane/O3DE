@@ -72,6 +72,10 @@ def validate_report(
         errors.append("The benchmark qualification metadata does not identify Jolt.")
     if qualification.get("repetitions") != repetitions or qualification.get("raw_samples") is not True:
         errors.append("The benchmark qualification metadata does not describe the required raw repetitions.")
+    try:
+        compare_provider_benchmarks.validate_runtime_dependencies(qualification, "Jolt")
+    except ValueError as error:
+        errors.append(str(error))
 
     try:
         capability_samples, capability_results = load_raw_samples(report, CAPABILITY_BENCHMARK, repetitions)

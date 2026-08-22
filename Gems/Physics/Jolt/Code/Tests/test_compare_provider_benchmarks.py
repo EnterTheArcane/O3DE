@@ -14,6 +14,15 @@ import compare_provider_benchmarks
 
 def make_report(provider: str, time_microseconds: float) -> dict:
     benchmarks = []
+    runtime_dependencies = []
+    if provider != "PhysX":
+        runtime_dependencies.append(
+            {
+                "mtime_ns": 1,
+                "path": f"{provider}.API.dll",
+                "sha256": f"{provider.lower()}-runtime-hash",
+            }
+        )
     workloads = (
         compare_provider_benchmarks.WORKLOADS
         + compare_provider_benchmarks.TAIL_WORKLOADS
@@ -69,6 +78,7 @@ def make_report(provider: str, time_microseconds: float) -> dict:
             "provider": provider,
             "raw_samples": True,
             "repetitions": 30,
+            "runtime_dependencies": runtime_dependencies,
             "runner_sha256": "runner-hash",
             "source_revision": "source-revision",
             "source_state_sha256": "source-state-hash",
@@ -250,6 +260,15 @@ class CompareProviderBenchmarksTests(unittest.TestCase):
             "PhysX": make_report("PhysX", 100.0),
         }
         reports["Box3D"]["qualification"]["runner_sha256"] = "different-runner"
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_missing_runtime_dependency_fingerprint(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["Jolt"]["qualification"]["runtime_dependencies"] = []
         self.assertEqual(run_comparison(reports), 1)
 
 

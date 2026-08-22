@@ -2079,12 +2079,13 @@ namespace Jolt::Benchmarks
                 const bool raySucceeded = worldQueries->RaycastClosest(request, hit);
                 successfulRayCount += raySucceeded;
                 benchmark::DoNotOptimize(raySucceeded);
-                benchmark::DoNotOptimize(hit);
             }
         }
 
         const AZ::u64 expectedRayCount = aznumeric_cast<AZ::u64>(state.iterations()) * rayCount;
-        const bool qualityValid = successfulRayCount == expectedRayCount;
+        const bool qualityValid = successfulRayCount == expectedRayCount
+            && hit.m_bodyHandle
+            && hit.m_shapeHandle;
         state.counters["Obstacles"] = obstacleCount;
         jobContext.AddCounters(state);
         state.counters["QualityValid"] = 0;

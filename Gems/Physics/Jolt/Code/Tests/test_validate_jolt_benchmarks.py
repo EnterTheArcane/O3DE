@@ -51,7 +51,18 @@ def make_report() -> dict:
                 benchmarks.append(result)
     return {
         "context": {"library_build_type": "release"},
-        "qualification": {"provider": "Jolt", "raw_samples": True, "repetitions": 30},
+        "qualification": {
+            "provider": "Jolt",
+            "raw_samples": True,
+            "repetitions": 30,
+            "runtime_dependencies": [
+                {
+                    "mtime_ns": 1,
+                    "path": "Jolt.API.dll",
+                    "sha256": "jolt-api-hash",
+                }
+            ],
+        },
         "benchmarks": benchmarks,
     }
 
@@ -98,6 +109,12 @@ class ValidateJoltBenchmarksTests(unittest.TestCase):
         rollback_result["NativeAllocatedGrowthBytes"] = 64
         errors = validate_jolt_benchmarks.validate_report(report, 30, 3.0, 0.02, 0.05)
         self.assertTrue(any("NativeAllocatedGrowthBytes" in error for error in errors))
+
+    def test_rejects_missing_runtime_dependency_fingerprint(self):
+        report = make_report()
+        report["qualification"]["runtime_dependencies"] = []
+        errors = validate_jolt_benchmarks.validate_report(report, 30, 3.0, 0.02, 0.05)
+        self.assertTrue(any("runtime dependency fingerprint" in error for error in errors))
 
 
 if __name__ == "__main__":

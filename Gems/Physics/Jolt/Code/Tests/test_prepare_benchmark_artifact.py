@@ -53,6 +53,7 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
         output_report: Path,
         additional_raw_reports: tuple[Path, ...] = (),
         warmup_reports: tuple[Path, ...] = (),
+        runtime_dependencies: tuple[Path, ...] = (),
         reindex_repetitions: bool = False,
         repetitions: int = 30,
         use_response_file: bool = False,
@@ -85,6 +86,8 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
             arguments.extend(("--additional-raw-report", str(additional_raw_report)))
         for warmup_report in warmup_reports:
             arguments.extend(("--warmup-report", str(warmup_report)))
+        for runtime_dependency in runtime_dependencies:
+            arguments.extend(("--runtime-dependency", str(runtime_dependency)))
         if reindex_repetitions:
             arguments.append("--reindex-repetitions")
         if use_response_file:
@@ -100,17 +103,40 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
             source, binary, runner, raw_report, output_report = self.create_repository(root)
             untracked = root / "new_source.cpp"
             untracked.write_text("int new_source = 2;\n", encoding="utf-8")
+            runtime_dependency = root / "Jolt.API.dll"
+            runtime_dependency.write_bytes(b"jolt-runtime")
             newest_source_time = max(source.stat().st_mtime_ns, untracked.stat().st_mtime_ns)
             output_time = newest_source_time + 1_000_000_000
             os.utime(binary, ns=(output_time, output_time))
+            os.utime(runtime_dependency, ns=(output_time, output_time))
             os.utime(runner, ns=(output_time, output_time))
             os.utime(raw_report, ns=(output_time + 1, output_time + 1))
 
-            self.assertEqual(self.run_prepare(root, binary, runner, raw_report, output_report), 0)
+            self.assertEqual(
+                self.run_prepare(
+                    root,
+                    binary,
+                    runner,
+                    raw_report,
+                    output_report,
+                    runtime_dependencies=(runtime_dependency,),
+                ),
+                0,
+            )
             report = json.loads(output_report.read_text(encoding="utf-8"))
             qualification = report["qualification"]
             self.assertEqual(qualification["binary_sha256"], prepare_benchmark_artifact.sha256_file(binary))
             self.assertEqual(qualification["runner_sha256"], prepare_benchmark_artifact.sha256_file(runner))
+            self.assertEqual(
+                qualification["runtime_dependencies"],
+                [
+                    {
+                        "mtime_ns": runtime_dependency.stat().st_mtime_ns,
+                        "path": str(runtime_dependency.resolve()),
+                        "sha256": prepare_benchmark_artifact.sha256_file(runtime_dependency),
+                    }
+                ],
+            )
             self.assertEqual(
                 qualification["raw_report_sha256"],
                 [prepare_benchmark_artifact.sha256_file(raw_report)],
@@ -151,6 +177,32 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
             os.utime(raw_report, ns=(newer_source_time + 1, newer_source_time + 1))
 
             self.assertEqual(self.run_prepare(root, binary, runner, raw_report, output_report), 1)
+            self.assertFalse(output_report.exists())
+
+    def test_rejects_runtime_dependency_older_than_dirty_source(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source, binary, runner, raw_report, output_report = self.create_repository(root)
+            runtime_dependency = root / "Jolt.API.dll"
+            runtime_dependency.write_bytes(b"stale-jolt-runtime")
+            stale_time = runtime_dependency.stat().st_mtime_ns
+            source_time = stale_time + 1_000_000_000
+            source.write_text("int benchmark_source = 2;\n", encoding="utf-8")
+            os.utime(source, ns=(source_time, source_time))
+            os.utime(binary, ns=(source_time + 1, source_time + 1))
+            os.utime(raw_report, ns=(source_time + 2, source_time + 2))
+
+            self.assertEqual(
+                self.run_prepare(
+                    root,
+                    binary,
+                    runner,
+                    raw_report,
+                    output_report,
+                    runtime_dependencies=(runtime_dependency,),
+                ),
+                1,
+            )
             self.assertFalse(output_report.exists())
 
     def test_merges_disjoint_reports_from_the_same_context(self):
