@@ -131,6 +131,12 @@ diagnostic samples are under
 `build/jolt-qualification/20260822-msvc-query-decomposition/Diagnostics` and are not substituted for the qualified matched-provider
 artifact.
 
+The compared provider contracts are close but not identical. The PhysX path takes `PHYSX_SCENE_READ_LOCK`, invokes `PxScene::raycast`,
+and constructs a complete `SceneQueryHit`; it does not save and restore the caller's floating-point environment or impose Jolt's
+canonical equal-fraction tie ordering. Jolt performs both additional guarantees on every scalar query. The 14.252 ns Jolt query-lock
+scope is close to the measured 14.6-15.5 ns per-ray provider difference, but the source and decomposition do not prove that one scope
+causes the entire gap. The raw scalar ratio therefore remains visible instead of being normalized or reclassified after measurement.
+
 The query-only artifacts are under `build/jolt-qualification/20260822-msvc-query-closeout/BenchmarkResults`. They pass source/binary
 freshness, workload, result, topology, and 5% CV validation. The full comparator intentionally also reports the absent step, lifecycle,
 and frame-tail rows because this focused recapture does not replace the complete 2026-08-21 artifact.
