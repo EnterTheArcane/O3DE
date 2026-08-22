@@ -36,18 +36,19 @@ Reservation assignment to system policy. The current host reports 32 CPU Sets wi
 `AllocatedToTargetProcess`. Consequently, kernel interrupts, deferred procedure calls, and unrelated privileged work can still preempt a
 benchmark on its selected processor. [CPU Sets](https://learn.microsoft.com/en-us/windows/win32/procthread/cpu-sets)
 
-This limitation is reproduced rather than inferred. An otherwise unchanged benchmark-only experiment elevated the timed caller and job
+The scheduler limitation was reproduced rather than inferred. An otherwise unchanged benchmark-only experiment elevated the timed caller and job
 workers from `HIGH_PRIORITY_CLASS` with normal thread priority to `THREAD_PRIORITY_HIGHEST`. Every measured provider artifact confirmed
 that the elevation took effect. Across 30 fresh processes and 122,880 retained frames per provider, the 1,024-body, one-worker p95-window
 CV remained 9.23% for Box3D and 12.85% for PhysX. The policy was rejected because it did not remove the interruptions and base-priority-15
 CPU-bound threads can interfere with normal system operation. No production or benchmark scheduling code retains the experiment.
 [Scheduling Priorities](https://learn.microsoft.com/en-us/windows/win32/procthread/scheduling-priorities)
 
-The strict 5% CV gate therefore remains unavailable on this interactive desktop until a clean benchmark host or externally provisioned
-Core Reservation is used. The gate is not weakened, and no sample is trimmed, replaced, or retried. Windows Performance Recorder could
-not capture the required CPU profile in this session because the host rejected the request with `0xc5585011`; the missing privileged
-trace remains an environmental diagnostic gate rather than evidence of success. Functional validation, raw performance comparisons, and
-assembly inspection remain valid, but this capture is not labelled Windows performance qualification.
+That rejected capture is not qualification evidence. The final matched-provider runs isolate every workload in 30 fresh processes on
+the measured quiet physical lanes and pass the 5% CV gate without trimming, replacing, or retrying samples. A later isolated recapture
+also closes the four initially noisy capability and rollback series. Ordinary affinity still cannot prove the absence of privileged
+preemption, so the exact lane policy and raw samples remain part of every artifact. Windows Performance Recorder could not capture an
+additional CPU profile because the host rejected the request with `0xc5585011`; that trace remains an unavailable diagnostic, not a
+substitute for or contradiction of the passing statistical evidence.
 
 ## Phase 7 Windows closeout
 
