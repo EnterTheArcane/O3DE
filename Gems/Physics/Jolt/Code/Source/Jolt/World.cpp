@@ -3644,6 +3644,15 @@ namespace Jolt
         const IQueryFilter* m_callback = nullptr;
     };
 
+    struct ClosestBoxRaycastHit final
+    {
+        JPH::Vec3 m_normal;
+        BodyHandle m_bodyHandle;
+        MaterialHandle m_materialHandle;
+        ShapeHandle m_shapeHandle;
+        bool m_valid = false;
+    };
+
     class World::ClosestRaycastCollector final
         : public JPH::RayCastBodyCollector
     {
@@ -3653,6 +3662,7 @@ namespace Jolt
             const JPH::RRayCast& ray,
             JPH::RayCastResult& hit,
             const JPH::Body*& hitBody,
+            ClosestBoxRaycastHit& boxHit,
             const bool lockBodies)
             : m_world(world)
             , m_ray(ray)
@@ -3660,6 +3670,7 @@ namespace Jolt
             , m_inverseDirection(m_localRay.mDirection)
             , m_hit(hit)
             , m_hitBody(hitBody)
+            , m_boxHit(boxHit)
             , m_lockBodies(lockBodies)
         {
             ResetEarlyOutFraction(hit.mFraction);
@@ -3696,6 +3707,7 @@ namespace Jolt
             if (shape->GetSubType() == JPH::EShapeSubType::Box
                 && (rotation == identity || rotation == -identity))
             {
+                const auto* box = static_cast<const JPH::BoxShape*>(shape);
                 const JPH::AABox& bounds = body.GetWorldSpaceBounds();
                 const float fraction = AZStd::max(
                     JPH::RayAABox(
@@ -3709,11 +3721,24 @@ namespace Jolt
                 candidateHit.mFraction = fraction;
                 if (IsCanonicalCastHitLess(candidateHit, m_hit))
                 {
-                    m_hit = candidateHit;
-                    if (!m_lockBodies)
+                    const BodyHandle bodyHandle = Internal::HandleAccess::FromValue<BodyHandle>(body.GetUserData());
+                    const BodySlot* bodySlot = m_world.FindBody(bodyHandle);
+                    if (!bodySlot || bodySlot->m_bodyId != candidateHit.mBodyID)
                     {
-                        m_hitBody = &body;
+                        return;
                     }
+
+                    const JPH::RVec3 nativePosition = m_ray.GetPointOnRay(fraction);
+                    m_boxHit = {
+                        .m_normal = box->GetSurfaceNormal(
+                            candidateHit.mSubShapeID2,
+                            JPH::Vec3(nativePosition - body.GetPosition())),
+                        .m_bodyHandle = bodyHandle,
+                        .m_materialHandle = m_world.m_system.FindMaterialHandle(box->GetMaterial()),
+                        .m_shapeHandle = bodySlot->m_shapeHandle,
+                        .m_valid = true,
+                    };
+                    m_hit = candidateHit;
                     ResetEarlyOutFraction(GetInclusiveRayFraction(m_hit.mFraction));
                 }
                 return;
@@ -3731,6 +3756,7 @@ namespace Jolt
             if (collector.HadHit()
                 && IsCanonicalCastHitLess(collector.m_hit, m_hit))
             {
+                m_boxHit.m_valid = false;
                 m_hit = collector.m_hit;
                 if (!m_lockBodies)
                 {
@@ -3746,6 +3772,7 @@ namespace Jolt
         JPH::RayInvDirection m_inverseDirection;
         JPH::RayCastResult& m_hit;
         const JPH::Body*& m_hitBody;
+        ClosestBoxRaycastHit& m_boxHit;
         bool m_lockBodies = false;
     };
 
@@ -24079,11 +24106,13 @@ namespace Jolt
         const bool simulationInProgress = m_simulationInProgress.load(AZStd::memory_order_acquire);
         JPH::RayCastResult nativeHit;
         const JPH::Body* hitBody = nullptr;
+        ClosestBoxRaycastHit boxHit;
         ClosestRaycastCollector collector(
             *this,
             ray,
             nativeHit,
             hitBody,
+            boxHit,
             simulationInProgress);
         const JPH::BroadPhase& broadPhase = static_cast<const JPH::BroadPhase&>(m_physicsSystem.GetBroadPhaseQuery());
 
@@ -24126,6 +24155,20 @@ namespace Jolt
         if (nativeHit.mFraction > 1.0f)
         {
             return false;
+        }
+
+        if (boxHit.m_valid)
+        {
+            hit = {
+                .m_position = FromNativePosition(ray.GetPointOnRay(nativeHit.mFraction), m_configuration.m_origin),
+                .m_normal = FromNativeVector(boxHit.m_normal),
+                .m_bodyHandle = boxHit.m_bodyHandle,
+                .m_materialHandle = boxHit.m_materialHandle,
+                .m_shapeHandle = boxHit.m_shapeHandle,
+                .m_subShapeId = SubShapeId(nativeHit.mSubShapeID2.GetValue()),
+                .m_fraction = nativeHit.mFraction,
+            };
+            return true;
         }
 
         if (simulationInProgress)
