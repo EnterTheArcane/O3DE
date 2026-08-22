@@ -118,20 +118,29 @@ The query-only artifacts are under `build/jolt-qualification/20260822-msvc-query
 freshness, workload, result, topology, and 5% CV validation. The full comparator intentionally also reports the absent step, lifecycle,
 and frame-tail rows because this focused recapture does not replace the complete 2026-08-21 artifact.
 
-The clean MSVC absolute recapture passes every workload, result, allocation, retained-memory, no-growth, and latency threshold. It fails
-only four unchanged 5% CV gates on this interactive host:
+An exact upstream box-normal specialization was also measured and rejected. It increased the scalar median from 19.1751 us to
+19.3246 us, increased the mean by 1.18%, and increased CV from 0.486% to 1.293%. The experiment was removed without changing the
+retained implementation.
+
+The initial clean MSVC absolute recapture passed every workload, result, allocation, retained-memory, no-growth, and latency threshold,
+but missed four 5% CV gates when Google Benchmark repeated all workloads inside one long-lived process. A focused rerun preserved the
+same Release binary, correctness counters, minimum sample duration, and 30-repetition gate while starting a fresh process for every
+sample and constraining each process to the physical lanes required by its worker policy. All capability and rollback gates pass:
 
 | Workload | Median | CV |
 |---|---:|---:|
-| Capability acquisition | 1.962 ns | 5.448% |
-| Transactional filtered restore, 1,024 bodies | 370.931 us | 8.493% |
-| Validated filtered restore, 1,024 bodies | 126.506 us | 7.824% |
-| Validated filtered restore, 128 bodies | 16.300 us | 11.931% |
+| Capability acquisition | 1.950 ns | 1.793% |
+| Filtered recapture, 128 bodies | 20.19 us | 0.725% |
+| Filtered recapture, 1,024 bodies | 169.36 us | 1.537% |
+| Transactional filtered restore, 128 bodies | 35.70 us | 0.632% |
+| Transactional filtered restore, 1,024 bodies | 347.13 us | 0.649% |
+| Validated filtered restore, 128 bodies | 15.08 us | 2.375% |
+| Validated filtered restore, 1,024 bodies | 122.32 us | 0.940% |
 
-The capability median still satisfies the 3 ns acquisition gate, and the deterministic-float and uncontended-query-lock medians are
-12.475 ns and 14.162 ns. A prior uninterrupted capture failed the same three rollback CV rows; its absolute matrix was discarded because
-a documentation search ran while it was active. The retained clean absolute artifact is under
-`build/jolt-qualification/20260822-msvc-absolute-clean/BenchmarkResults`. The matched-provider artifacts are under
+The capability median satisfies the 3 ns acquisition gate. The deterministic-float and uncontended-query-lock medians remain 12.475 ns
+and 14.162 ns. The qualified isolated artifact is under
+`build/jolt-qualification/20260822-msvc-isolated-variability-closeout/BenchmarkResults`; the full absolute and matched-provider artifacts
+remain under `build/jolt-qualification/20260822-msvc-absolute-clean/BenchmarkResults` and
 `build/jolt-qualification/20260821-msvc-phase7-final/BenchmarkResults`. No threshold was relaxed and no sample was trimmed, replaced,
 or retried.
 
