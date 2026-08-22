@@ -3123,7 +3123,7 @@ namespace Jolt
 
         BodyState initialState;
         ASSERT_TRUE(system.GetBodyState(worldHandle, bodyHandle, initialState));
-#if defined(JPH_TRACK_SIMULATION_STATS)
+#ifdef JPH_TRACK_SIMULATION_STATS
         BodySimulationStatistics statistics;
         EXPECT_TRUE(system.GetBodySimulationStatistics(worldHandle, bodyHandle, statistics));
 #else
@@ -3170,7 +3170,7 @@ namespace Jolt
         BodyState simulatedState;
         ASSERT_TRUE(system.GetBodyState(worldHandle, bodyHandle, simulatedState));
         EXPECT_LT(simulatedState.m_transform.m_position.m_z, initialState.m_transform.m_position.m_z);
-#if defined(JPH_TRACK_SIMULATION_STATS)
+#ifdef JPH_TRACK_SIMULATION_STATS
         ASSERT_TRUE(system.GetBodySimulationStatistics(worldHandle, bodyHandle, statistics));
         EXPECT_EQ(statistics.m_collisionStepCount, 1);
         EXPECT_GT(statistics.m_broadPhaseTicks + statistics.m_narrowPhaseTicks, 0);

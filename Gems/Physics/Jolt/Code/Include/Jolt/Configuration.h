@@ -9,7 +9,7 @@
 
 #include <AzCore/PlatformDef.h>
 
-#if defined(AZ_MONOLITHIC_BUILD)
+#ifdef AZ_MONOLITHIC_BUILD
     #define JOLT_API
 #elif defined(JOLT_API_EXPORTS)
     #define JOLT_API AZ_DLL_EXPORT

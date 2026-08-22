@@ -206,27 +206,27 @@ namespace Jolt
 #else
         EXPECT_EQ(runtimeInfo.m_simdLevel, SimdLevel::Scalar);
 #endif
-#if defined(JPH_EXTERNAL_PROFILE)
+#ifdef JPH_EXTERNAL_PROFILE
         EXPECT_TRUE(runtimeInfo.m_detailedProfiling);
 #else
         EXPECT_FALSE(runtimeInfo.m_detailedProfiling);
 #endif
-#if defined(JPH_DEBUG_RENDERER)
+#ifdef JPH_DEBUG_RENDERER
         EXPECT_TRUE(runtimeInfo.m_debugRendering);
 #else
         EXPECT_FALSE(runtimeInfo.m_debugRendering);
 #endif
-#if defined(JPH_TRACK_BROADPHASE_STATS)
+#ifdef JPH_TRACK_BROADPHASE_STATS
         EXPECT_TRUE(runtimeInfo.m_broadPhaseStatistics);
 #else
         EXPECT_FALSE(runtimeInfo.m_broadPhaseStatistics);
 #endif
-#if defined(JPH_TRACK_NARROWPHASE_STATS)
+#ifdef JPH_TRACK_NARROWPHASE_STATS
         EXPECT_TRUE(runtimeInfo.m_narrowPhaseStatistics);
 #else
         EXPECT_FALSE(runtimeInfo.m_narrowPhaseStatistics);
 #endif
-#if defined(JPH_TRACK_SIMULATION_STATS)
+#ifdef JPH_TRACK_SIMULATION_STATS
         EXPECT_TRUE(runtimeInfo.m_simulationStatistics);
 #else
         EXPECT_FALSE(runtimeInfo.m_simulationStatistics);

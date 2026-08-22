@@ -82,7 +82,7 @@ namespace Jolt
         [[nodiscard]]
         AZ::u64 ReadFloatControl()
         {
-#if defined(__clang__)
+#ifdef __clang__
             return __arm_rsr64("fpcr");
 #elif defined(_M_ARM64) || defined(_M_ARM64EC)
             return static_cast<AZ::u64>(_ReadStatusReg(ARM64_FPCR));
@@ -96,7 +96,7 @@ namespace Jolt
         [[nodiscard]]
         AZ::u64 ReadFloatStatus()
         {
-#if defined(__clang__)
+#ifdef __clang__
             return __arm_rsr64("fpsr");
 #elif defined(_M_ARM64) || defined(_M_ARM64EC)
             return static_cast<AZ::u64>(_ReadStatusReg(ARM64_FPSR));
@@ -110,7 +110,7 @@ namespace Jolt
         void WriteFloatControl(
             AZ::u64 control)
         {
-#if defined(__clang__)
+#ifdef __clang__
             __arm_wsr64("fpcr", control);
 #elif defined(_M_ARM64) || defined(_M_ARM64EC)
             _WriteStatusReg(ARM64_FPCR, static_cast<__int64>(control));
@@ -122,7 +122,7 @@ namespace Jolt
         void WriteFloatStatus(
             const AZ::u64 status)
         {
-#if defined(__clang__)
+#ifdef __clang__
             __arm_wsr64("fpsr", status);
 #elif defined(_M_ARM64) || defined(_M_ARM64EC)
             _WriteStatusReg(ARM64_FPSR, static_cast<__int64>(status));

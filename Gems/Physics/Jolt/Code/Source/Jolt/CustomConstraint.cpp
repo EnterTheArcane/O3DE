@@ -17,7 +17,7 @@
 #include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Body/MotionProperties.h>
 #include <Jolt/Physics/StateRecorder.h>
-#if defined(JPH_DEBUG_RENDERER)
+#ifdef JPH_DEBUG_RENDERER
 #include <Jolt/Renderer/DebugRenderer.h>
 #endif
 
@@ -211,7 +211,7 @@ namespace Jolt
         return appliedImpulse;
     }
 
-#if defined(JPH_DEBUG_RENDERER)
+#ifdef JPH_DEBUG_RENDERER
     void CustomConstraint::DrawConstraint(
         JPH::DebugRenderer* renderer) const
     {

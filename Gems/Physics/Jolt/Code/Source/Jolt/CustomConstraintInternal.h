@@ -54,7 +54,7 @@ namespace Jolt
             float deltaTime,
             float baumgarte) override;
 
-#if defined(JPH_DEBUG_RENDERER)
+#ifdef JPH_DEBUG_RENDERER
         void DrawConstraint(JPH::DebugRenderer* renderer) const override;
 #endif
 

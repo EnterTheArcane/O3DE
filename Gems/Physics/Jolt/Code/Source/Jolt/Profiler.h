@@ -7,7 +7,7 @@
 
 #pragma once
 
-#if !defined(AZ_RELEASE_BUILD)
+#ifndef AZ_RELEASE_BUILD
 #include <AzCore/Debug/Profiler.h>
 #define JOLT_PROFILE_SCOPE(Budget, Name) AZ_PROFILE_SCOPE(Budget, Name)
 #else

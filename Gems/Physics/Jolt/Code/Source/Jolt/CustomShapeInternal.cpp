@@ -23,7 +23,7 @@
 #include <Jolt/Physics/Collision/TransformedShape.h>
 #include <Jolt/Core/StreamIn.h>
 #include <Jolt/Core/StreamOut.h>
-#if defined(JPH_DEBUG_RENDERER)
+#ifdef JPH_DEBUG_RENDERER
 #include <Jolt/Renderer/DebugRenderer.h>
 #endif
 
@@ -315,7 +315,7 @@ namespace Jolt
                 float& totalVolume,
                 float& submergedVolume,
                 JPH::Vec3& centerOfBuoyancy
-#if defined(JPH_DEBUG_RENDERER)
+#ifdef JPH_DEBUG_RENDERER
                 , JPH::RVec3Arg baseOffset
 #endif
                 ) const override
@@ -329,14 +329,14 @@ namespace Jolt
                         totalVolume,
                         submergedVolume,
                         centerOfBuoyancy
-#if defined(JPH_DEBUG_RENDERER)
+#ifdef JPH_DEBUG_RENDERER
                         , baseOffset
 #endif
                     );
                 }
             }
 
-#if defined(JPH_DEBUG_RENDERER)
+#ifdef JPH_DEBUG_RENDERER
             void Draw(
                 JPH::DebugRenderer* renderer,
                 JPH::RMat44Arg centerOfMassTransform,
