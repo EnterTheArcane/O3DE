@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Architecture.h>
 #include <Jolt/Configuration.h>
 
 #include <AzCore/base.h>
@@ -41,16 +42,17 @@ namespace Jolt
         void Leave();
 
     private:
-        std::fenv_t m_previousEnvironment{};
-#if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__) \
-    || defined(_M_ARM64) || defined(_M_ARM64EC) || defined(__aarch64__)
-        AZ::u64 m_previousControl = 0;
+        std::fenv_t m_previousEnvironment;
+#if JOLT_ARCH_FAMILY_X86
+        AZ::u32 m_previousControl;
+#elif JOLT_ARCH_ARM64
+        AZ::u64 m_previousControl;
 #endif
-#if defined(_M_ARM64) || defined(_M_ARM64EC) || defined(__aarch64__)
-        AZ::u64 m_previousStatus = 0;
+#if JOLT_ARCH_ARM64
+        AZ::u64 m_previousStatus;
 #endif
 
-        bool m_environmentCaptured = false;
+        bool m_environmentCaptured;
         bool m_active = false;
     };
 

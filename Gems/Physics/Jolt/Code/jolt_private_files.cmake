@@ -7,6 +7,7 @@
 
 set(FILES
     Source/Jolt/Allocator.h
+    Source/Jolt/Architecture.h
     Source/Jolt/AssetProduct.cpp
     Source/Jolt/AssetProduct.h
     Source/Jolt/AssetBuilderSystem.h

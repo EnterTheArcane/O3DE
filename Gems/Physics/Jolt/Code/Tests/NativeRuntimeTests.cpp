@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  */
 
+#include <Jolt/Architecture.h>
 #include <Jolt/FloatEnvironment.h>
 #include <Jolt/JobSystem.h>
 #include <Jolt/NativeRuntime.h>
@@ -176,7 +177,7 @@ namespace Jolt
 #if defined(JPH_CPU_WASM) && defined(JPH_USE_SSE)
         EXPECT_EQ(runtimeInfo.m_simdLevel, SimdLevel::WasmSimd);
         EXPECT_NE(runtimeInfo.m_configuration.find("WASM"), AZStd::string_view::npos);
-#elif defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
+#elif JOLT_ARCH_FAMILY_X86
         EXPECT_EQ(runtimeInfo.m_simdLevel, SimdLevel::Sse41);
         EXPECT_NE(runtimeInfo.m_configuration.find("SSE4.1"), AZStd::string_view::npos);
 #elif defined(JPH_USE_AVX512)

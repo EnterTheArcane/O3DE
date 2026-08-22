@@ -9,24 +9,24 @@
 
 #include <AzCore/std/chrono/chrono.h>
 
-#if defined(_M_IX86) || defined(_M_X64)
+#if JOLT_ARCH_FAMILY_X86 && JOLT_ABI_MICROSOFT
 #include <intrin.h>
 #define JOLT_HAS_X86_FLOAT_CONTROL 1
 #define JOLT_HAS_ARM64_FLOAT_CONTROL 0
-#elif defined(__i386__) || defined(__x86_64__)
+#elif JOLT_ARCH_FAMILY_X86
 #include <xmmintrin.h>
 #define JOLT_HAS_X86_FLOAT_CONTROL 1
 #define JOLT_HAS_ARM64_FLOAT_CONTROL 0
-#elif (defined(_M_ARM64) || defined(_M_ARM64EC) || defined(__aarch64__)) && defined(__clang__)
+#elif JOLT_ARCH_ARM64 && defined(AZ_COMPILER_CLANG)
 #include <arm_acle.h>
 #define JOLT_HAS_X86_FLOAT_CONTROL 0
 #define JOLT_HAS_ARM64_FLOAT_CONTROL 1
-#elif defined(_M_ARM64) || defined(_M_ARM64EC)
+#elif JOLT_ARCH_ARM64 && JOLT_ABI_MICROSOFT
 #include <arm64intr.h>
 #include <intrin.h>
 #define JOLT_HAS_X86_FLOAT_CONTROL 0
 #define JOLT_HAS_ARM64_FLOAT_CONTROL 1
-#elif defined(__aarch64__)
+#elif JOLT_ARCH_ARM64
 #define JOLT_HAS_X86_FLOAT_CONTROL 0
 #define JOLT_HAS_ARM64_FLOAT_CONTROL 1
 #else
@@ -45,7 +45,7 @@ namespace Jolt
         constexpr AZ::u64 FloatControlModeMask = 0xffc0;
         constexpr AZ::u64 FloatStatusMask = 0x3f;
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(AZ_COMPILER_CLANG) || defined(AZ_COMPILER_GCC)
         [[nodiscard]]
         AZ::u16 ReadX87Status()
         {
@@ -82,9 +82,9 @@ namespace Jolt
         [[nodiscard]]
         AZ::u64 ReadFloatControl()
         {
-#ifdef __clang__
+#ifdef AZ_COMPILER_CLANG
             return __arm_rsr64("fpcr");
-#elif defined(_M_ARM64) || defined(_M_ARM64EC)
+#elif JOLT_ABI_MICROSOFT
             return static_cast<AZ::u64>(_ReadStatusReg(ARM64_FPCR));
 #else
             AZ::u64 control = 0;
@@ -96,9 +96,9 @@ namespace Jolt
         [[nodiscard]]
         AZ::u64 ReadFloatStatus()
         {
-#ifdef __clang__
+#ifdef AZ_COMPILER_CLANG
             return __arm_rsr64("fpsr");
-#elif defined(_M_ARM64) || defined(_M_ARM64EC)
+#elif JOLT_ABI_MICROSOFT
             return static_cast<AZ::u64>(_ReadStatusReg(ARM64_FPSR));
 #else
             AZ::u64 status = 0;
@@ -110,9 +110,9 @@ namespace Jolt
         void WriteFloatControl(
             AZ::u64 control)
         {
-#ifdef __clang__
+#ifdef AZ_COMPILER_CLANG
             __arm_wsr64("fpcr", control);
-#elif defined(_M_ARM64) || defined(_M_ARM64EC)
+#elif JOLT_ABI_MICROSOFT
             _WriteStatusReg(ARM64_FPCR, static_cast<__int64>(control));
 #else
             __asm__ volatile("msr fpcr, %0" : : "r"(control));
@@ -122,9 +122,9 @@ namespace Jolt
         void WriteFloatStatus(
             const AZ::u64 status)
         {
-#ifdef __clang__
+#ifdef AZ_COMPILER_CLANG
             __arm_wsr64("fpsr", status);
-#elif defined(_M_ARM64) || defined(_M_ARM64EC)
+#elif JOLT_ABI_MICROSOFT
             _WriteStatusReg(ARM64_FPSR, static_cast<__int64>(status));
 #else
             __asm__ volatile("msr fpsr, %0" : : "r"(status));
@@ -137,16 +137,16 @@ namespace Jolt
     {
 #if JOLT_HAS_NATIVE_FLOAT_CONTROL
         const AZ::u64 currentControl = ReadFloatControl();
+        m_previousControl = static_cast<decltype(m_previousControl)>(currentControl);
+        m_environmentCaptured = false;
 #if JOLT_HAS_ARM64_FLOAT_CONTROL
         m_previousStatus = ReadFloatStatus();
 #endif
         bool controlIsCanonical = false;
-#if defined(_M_X64) || defined(__x86_64__)
-        controlIsCanonical =
-            (currentControl & FloatControlModeMask) == DefaultFloatControl;
-#ifdef __x86_64__
-        controlIsCanonical = controlIsCanonical
-            && (ReadX87Status() & FloatStatusMask) == 0;
+#if JOLT_ARCH_X64
+        controlIsCanonical = (currentControl & FloatControlModeMask) == DefaultFloatControl;
+#if defined(AZ_COMPILER_CLANG) || defined(AZ_COMPILER_GCC)
+        controlIsCanonical = controlIsCanonical && (ReadX87Status() & FloatStatusMask) == 0;
 #endif
 #elif JOLT_HAS_ARM64_FLOAT_CONTROL
         controlIsCanonical = std::fegetround() == FE_TONEAREST
@@ -154,8 +154,7 @@ namespace Jolt
 #endif
         if (controlIsCanonical)
         {
-            m_previousControl = currentControl;
-#if defined(_M_X64) || defined(__x86_64__)
+#if JOLT_ARCH_X64
             if ((currentControl & FloatStatusMask) != 0)
             {
                 WriteFloatControl(DefaultFloatControl);
@@ -170,8 +169,6 @@ namespace Jolt
             m_active = true;
             return;
         }
-
-        m_previousControl = currentControl;
 #endif
         m_environmentCaptured = std::fegetenv(&m_previousEnvironment) == 0;
         std::fesetenv(FE_DFL_ENV);
@@ -197,13 +194,16 @@ namespace Jolt
             std::fesetenv(&m_previousEnvironment);
         }
 #if JOLT_HAS_NATIVE_FLOAT_CONTROL
+#if JOLT_HAS_X86_FLOAT_CONTROL
+        WriteFloatControl(m_previousControl);
+#else
         if (ReadFloatControl() != m_previousControl)
         {
             WriteFloatControl(m_previousControl);
         }
-#if defined(__i386__) || defined(__x86_64__)
-        if (!m_environmentCaptured
-            && (ReadX87Status() & FloatStatusMask) != 0)
+#endif
+#if JOLT_ARCH_FAMILY_X86 && (defined(AZ_COMPILER_CLANG) || defined(AZ_COMPILER_GCC))
+        if (!m_environmentCaptured && (ReadX87Status() & FloatStatusMask) != 0)
         {
             ClearX87Status();
         }

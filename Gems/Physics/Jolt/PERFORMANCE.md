@@ -315,6 +315,21 @@ from 28.82 us before this optimization sequence to 16.04 us in the final matched
 environment and exact caller restoration. Query and job tests independently poison worker-thread state so the guarantee is not limited to
 the calling thread.
 
+A 2026-08-22 follow-up reduced the Windows x64 scope from 24 bytes to 16 bytes and replaced the exit-path MXCSR read, comparison, and
+conditional write with one unconditional restoration of the saved MXCSR. This preserves the exact caller state and removes a branch from
+the common path. The isolated A/B probe measures the unconditional design at 6.91 ns under clang-cl 22 and 6.56 ns under MSVC, compared
+with 9.43 ns and 11.24 ns respectively for the original representation and conditional restore in the same runs. Production Release
+measurements over 30 repetitions are:
+
+| Compiler | Deterministic scope | Scope CV | Query lock and scope | Lock CV |
+|---|---:|---:|---:|---:|
+| clang-cl 22.1.8, non-unity | 13.4 ns | 0.39% | 17.2 ns | 0.29% |
+| MSVC 14.51, unity | 8.40 ns | 0.66% | 11.8 ns | 0.97% |
+
+The corresponding MSVC 128-ray scalar grid measures 18.9 us with 0.41% CV. Optimized assembly confirms the exit path now loads the saved
+32-bit control value and issues one `ldmxcsr`; the former `stmxcsr`, compare, and conditional branch are absent. ARM64 retains its
+compare-before-write policy pending measurement on Apple or Windows ARM64 hardware.
+
 ## Cooked soft-body loading
 
 The scene pipeline now stores optimized native soft-body definitions instead of rebuilding face constraints, rest constants, skin normals,

@@ -8,6 +8,7 @@
 #include <Jolt/NativeRuntime.h>
 
 #include <Jolt/Allocator.h>
+#include <Jolt/Architecture.h>
 #include <Jolt/CustomConvexShape.h>
 #include <Jolt/CustomShapeInternal.h>
 #include <Jolt/DebugRenderer.h>
@@ -32,14 +33,13 @@
 #include <cstdarg>
 #include <cstring>
 
-#if defined(_M_IX86) || defined(_M_X64)
+#if JOLT_ARCH_FAMILY_X86 && JOLT_ABI_MICROSOFT
 #include <intrin.h>
-#elif defined(__i386__) || defined(__x86_64__)
+#elif JOLT_ARCH_FAMILY_X86
 #include <cpuid.h>
 #endif
 
-#if (defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)) \
-    && !defined(JPH_USE_SSE4_1)
+#if JOLT_ARCH_FAMILY_X86 && !defined(JPH_USE_SSE4_1)
 #error "The Jolt provider requires SSE4.1 on x86."
 #endif
 
@@ -76,7 +76,7 @@ namespace Jolt
         [[nodiscard]]
         bool SupportsRequiredInstructionSet()
         {
-#if defined(_M_IX86) || defined(_M_X64)
+#if JOLT_ARCH_FAMILY_X86 && JOLT_ABI_MICROSOFT
             int registers[4]{};
             __cpuid(registers, 0);
             if (registers[0] < 1)
@@ -86,7 +86,7 @@ namespace Jolt
 
             __cpuidex(registers, 1, 0);
             return (registers[2] & (1 << 19)) != 0;
-#elif defined(__i386__) || defined(__x86_64__)
+#elif JOLT_ARCH_FAMILY_X86
             unsigned int eax = 0;
             unsigned int ebx = 0;
             unsigned int ecx = 0;
