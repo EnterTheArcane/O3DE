@@ -110,9 +110,25 @@ reconstruction. All three providers were rebuilt from a clean tree before 30 fre
 The scalar Jolt median improved 10.3% from the preceding 21.40 us capture, and both batch workloads remain faster than PhysX. The
 scalar comparison still fails the unchanged gate: its median ratio is 1.108, repetition-p95 ratio is 1.110, and bootstrap upper ratio is
 1.111. Each scalar repetition makes 128 independently guarded API calls; the measured canonical deterministic-float scope alone costs
-12.475 ns per call, or 1.597 us across the workload. The batch operation applies that state and lock discipline once. This accounts for
-most of the remaining scalar difference, but is not treated as proof that the entire difference comes from the guard. The guarantee is
+12.475 ns per call, or 1.597 us across the workload. The batch operation applies that state and lock discipline once. The guarantee is
 retained and callers with query collections should use the batch API.
+
+A final 30-process MSVC decomposition on the retained implementation separates that cost from the native query and result path:
+
+| Diagnostic workload | Median | CV |
+|---|---:|---:|
+| Deterministic floating-point scope | 12.561 ns | 0.243% |
+| Uncontended query lock with floating-point scope | 14.252 ns | 0.203% |
+| 128 empty-world closest raycasts | 3.193 us | 6.375% |
+| 128 broadphase-only closest raycasts | 17.430 us | 2.593% |
+| 128 full closest raycasts | 19.301 us | 0.784% |
+
+The empty-world CV contains one retained 4.333 us process sample; its median remains stable. The guarded broadphase-only result is close
+to the 17.32 us PhysX full-query median, while Jolt's narrowphase and AZ-facing hit construction add 1.871 us across 128 successful box
+hits. This establishes that the remaining scalar gap is not safely removable by weakening the deterministic guard or read lock. The
+diagnostic samples are under
+`build/jolt-qualification/20260822-msvc-query-decomposition/Diagnostics` and are not substituted for the qualified matched-provider
+artifact.
 
 The query-only artifacts are under `build/jolt-qualification/20260822-msvc-query-closeout/BenchmarkResults`. They pass source/binary
 freshness, workload, result, topology, and 5% CV validation. The full comparator intentionally also reports the absent step, lifecycle,
@@ -121,6 +137,10 @@ and frame-tail rows because this focused recapture does not replace the complete
 An exact upstream box-normal specialization was also measured and rejected. It increased the scalar median from 19.1751 us to
 19.3246 us, increased the mean by 1.18%, and increased CV from 0.486% to 1.293%. The experiment was removed without changing the
 retained implementation.
+
+Two exact axis-aligned box-intersection specializations were also rejected. The first dynamic-index implementation measured 22.125 us;
+the forced-inline direct-component variant measured 21.719 us. Both were materially slower than the retained 19.301 us path and were
+removed completely. The retained generic SIMD slab test therefore remains the smallest and fastest validated implementation on MSVC.
 
 The initial clean MSVC absolute recapture passed every workload, result, allocation, retained-memory, no-growth, and latency threshold,
 but missed four 5% CV gates when Google Benchmark repeated all workloads inside one long-lived process. A focused rerun preserved the
