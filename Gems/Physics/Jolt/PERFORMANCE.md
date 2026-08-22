@@ -79,16 +79,39 @@ pass. The only comparator failure is the scalar closest-raycast throughput again
 | Sphere overlap, 25 stable hits | 0.80 us | 0.85 us | 0.91 us | 0.937 | 0.882 |
 
 The scalar-raycast median ratio is 1.232, its repetition-p95 ratio is 1.227, and its bootstrap upper ratio is 1.238, exceeding the
-unchanged 1.00, 1.10, and 1.05 gates. The equivalent Clang 22.1.8 exact-source recapture passes: Jolt is 18.4764 us with 2.001% CV,
+unchanged 1.00, 1.10, and 1.05 gates. The corresponding pre-refinement Clang 22.1.8 exact-source recapture passes: Jolt is 18.4764 us
+with 2.001% CV,
 Box3D is 19.5412 us, and PhysX is 18.6076 us. Jolt's Clang median ratio is 0.9930 against PhysX, its repetition-p95 ratio is 1.0234,
-and its bootstrap upper ratio is 0.9966. The remaining scalar gap is therefore MSVC-specific rather than an API-correctness or
+and its bootstrap upper ratio is 0.9966. That scalar gap is therefore MSVC-specific rather than an API-correctness or
 workload-mismatch result.
 
 Comparable non-LTCG objects show the public `World::RaycastClosest` at a 184-byte frame, 233 instructions, 10 calls, and 17 conditional
 branches under MSVC, versus a 120-byte frame, 152 instructions, 10 calls, and 12 conditional branches under clang-cl. MSVC inlines
 validation into the public operation; clang-cl emits a smaller public wrapper and tail-transfers through the default wrapper. A measured
 forced-inline experiment did not improve either compiler and was reverted. Removing deterministic floating-point state, read locking,
-or input/output validation would weaken required behavior, so no speculative source change is retained.
+or input/output validation would weaken required behavior.
+
+A subsequent 2026-08-22 MSVC Release recapture measures the retained box fast-path refinement. The collector now preserves the winning
+box hit's validated handles, material, and surface normal while the body is already available, avoiding a second body lookup and output
+reconstruction. All three providers were rebuilt from a clean tree before 30 fresh-process repetitions of each affected query workload:
+
+| Workload | Jolt | Box3D | PhysX | Jolt/Box3D | Jolt/PhysX |
+|---|---:|---:|---:|---:|---:|
+| 128 closest raycasts, scalar | 19.19 us | 17.24 us | 17.32 us | 1.113 | 1.108 |
+| 128 closest raycasts, batch | 16.60 us | 17.53 us | 22.43 us | 0.947 | 0.740 |
+| 1,024 closest raycasts, batch | 42.58 us | 46.87 us | 196.48 us | 0.908 | 0.217 |
+| Sphere overlap, 25 stable hits | 0.77 us | 0.82 us | 0.90 us | 0.933 | 0.848 |
+
+The scalar Jolt median improved 10.3% from the preceding 21.40 us capture, and both batch workloads remain faster than PhysX. The
+scalar comparison still fails the unchanged gate: its median ratio is 1.108, repetition-p95 ratio is 1.110, and bootstrap upper ratio is
+1.111. Each scalar repetition makes 128 independently guarded API calls; the measured canonical deterministic-float scope alone costs
+12.475 ns per call, or 1.597 us across the workload. The batch operation applies that state and lock discipline once. This accounts for
+most of the remaining scalar difference, but is not treated as proof that the entire difference comes from the guard. The guarantee is
+retained and callers with query collections should use the batch API.
+
+The query-only artifacts are under `build/jolt-qualification/20260822-msvc-query-closeout/BenchmarkResults`. They pass source/binary
+freshness, workload, result, topology, and 5% CV validation. The full comparator intentionally also reports the absent step, lifecycle,
+and frame-tail rows because this focused recapture does not replace the complete 2026-08-21 artifact.
 
 The clean MSVC absolute recapture passes every workload, result, allocation, retained-memory, no-growth, and latency threshold. It fails
 only four unchanged 5% CV gates on this interactive host:
