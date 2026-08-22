@@ -25,8 +25,9 @@ utility and interrupt-rate sample on the Ryzen 9 7950X selected logical CPU 24 f
 captures; and 17, 19, 20, 23, 24, 26, 29, and 30 for eight-worker captures. Affinity is established before child-process creation so the
 benchmark caller and every job worker inherit the intended topology. Each matched workload runs in its own fresh process so unrelated
 allocator, cache, and power-state history cannot contaminate a later workload. Qualification records the policy, compiler,
-configuration, source revision and complete dirty-source hash, runner and provider binary hashes, workload signature, repetition count,
-and minimum time. A report older than the runner, provider binary, or current source state is rejected.
+configuration, source revision and complete dirty-source hash, runner, provider binary, runtime dependency hashes, workload signature,
+repetition count, and minimum time. A report older than the runner, provider binary, runtime dependency, or current source state is
+rejected.
 
 ### Windows desktop scheduling gate
 
@@ -47,6 +48,64 @@ Core Reservation is used. The gate is not weakened, and no sample is trimmed, re
 not capture the required CPU profile in this session because the host rejected the request with `0xc5585011`; the missing privileged
 trace remains an environmental diagnostic gate rather than evidence of success. Functional validation, raw performance comparisons, and
 assembly inspection remain valid, but this capture is not labelled Windows performance qualification.
+
+## Phase 7 Windows closeout
+
+The 2026-08-21 full Windows validator passed all 68 steps at revision `e09033928067426391565bb47040eb71b83e476d`.
+It covered the complete 251-test Jolt suite, 21 registered AutomatedTesting scenarios, Clang 22.1.8 and MSVC Debug/Profile/Release,
+unity and non-unity builds, double precision, native diagnostics, clang-cl ASan, modular and monolithic targets, and source-tree plus
+installed modular/monolithic public-only consumers. The retained JSON/JUnit summaries are under
+`build/jolt-qualification/20260821-full-r3`. This is Windows functional and packaging qualification; performance has the explicit
+exceptions below.
+
+The final MSVC Release matched-provider capture uses 30 fresh processes per throughput workload and 30 retained 4,096-frame windows per
+tail workload. It is bound to revision `0372f05d889b895661fd40ab293aca2a1a573e3b`, `Jolt.Tests.Gem.dll`, `Jolt.API.dll`, the runner,
+Box3D's corresponding module and runtime DLL, and the PhysX module. All workload, result, topology, 5% CV, and pooled-frame-tail checks
+pass. The only comparator failure is the scalar closest-raycast throughput against PhysX:
+
+| Workload | Jolt | Box3D | PhysX | Jolt/Box3D | Jolt/PhysX |
+|---|---:|---:|---:|---:|---:|
+| Step 128 bodies, 1 worker | 41.24 us | 104.63 us | 106.41 us | 0.394 | 0.388 |
+| Step 128 bodies, 4 workers | 42.78 us | 74.90 us | 111.02 us | 0.571 | 0.385 |
+| Step 128 bodies, 8 workers | 46.09 us | 90.70 us | 146.24 us | 0.508 | 0.315 |
+| Step 1,024 bodies, 1 worker | 330.92 us | 845.77 us | 844.03 us | 0.391 | 0.392 |
+| Step 1,024 bodies, 4 workers | 194.98 us | 300.17 us | 475.80 us | 0.650 | 0.410 |
+| Step 1,024 bodies, 8 workers | 156.97 us | 205.04 us | 407.02 us | 0.766 | 0.386 |
+| Create and destroy 128 bodies | 68.52 us | 75.10 us | 4,424.28 us | 0.912 | 0.015 |
+| Create and destroy 1,024 bodies | 547.17 us | 764.74 us | 35,445.02 us | 0.715 | 0.015 |
+| 128 closest raycasts, scalar | 21.40 us | 17.36 us | 17.36 us | 1.233 | 1.232 |
+| 128 closest raycasts, batch | 19.29 us | 17.56 us | 22.41 us | 1.098 | 0.861 |
+| 1,024 closest raycasts, batch | 46.13 us | 47.27 us | 197.04 us | 0.976 | 0.234 |
+| Sphere overlap, 25 stable hits | 0.80 us | 0.85 us | 0.91 us | 0.937 | 0.882 |
+
+The scalar-raycast median ratio is 1.232, its repetition-p95 ratio is 1.227, and its bootstrap upper ratio is 1.238, exceeding the
+unchanged 1.00, 1.10, and 1.05 gates. The equivalent Clang 22.1.8 exact-source recapture passes: Jolt is 18.4764 us with 2.001% CV,
+Box3D is 19.5412 us, and PhysX is 18.6076 us. Jolt's Clang median ratio is 0.9930 against PhysX, its repetition-p95 ratio is 1.0234,
+and its bootstrap upper ratio is 0.9966. The remaining scalar gap is therefore MSVC-specific rather than an API-correctness or
+workload-mismatch result.
+
+Comparable non-LTCG objects show the public `World::RaycastClosest` at a 184-byte frame, 233 instructions, 10 calls, and 17 conditional
+branches under MSVC, versus a 120-byte frame, 152 instructions, 10 calls, and 12 conditional branches under clang-cl. MSVC inlines
+validation into the public operation; clang-cl emits a smaller public wrapper and tail-transfers through the default wrapper. A measured
+forced-inline experiment did not improve either compiler and was reverted. Removing deterministic floating-point state, read locking,
+or input/output validation would weaken required behavior, so no speculative source change is retained.
+
+The clean MSVC absolute recapture passes every workload, result, allocation, retained-memory, no-growth, and latency threshold. It fails
+only four unchanged 5% CV gates on this interactive host:
+
+| Workload | Median | CV |
+|---|---:|---:|
+| Capability acquisition | 1.962 ns | 5.448% |
+| Transactional filtered restore, 1,024 bodies | 370.931 us | 8.493% |
+| Validated filtered restore, 1,024 bodies | 126.506 us | 7.824% |
+| Validated filtered restore, 128 bodies | 16.300 us | 11.931% |
+
+The capability median still satisfies the 3 ns acquisition gate, and the deterministic-float and uncontended-query-lock medians are
+12.475 ns and 14.162 ns. A prior uninterrupted capture failed the same three rollback CV rows; its absolute matrix was discarded because
+a documentation search ran while it was active. The retained clean absolute artifact is under
+`build/jolt-qualification/20260822-msvc-absolute-clean/BenchmarkResults`. The matched-provider artifacts are under
+`build/jolt-qualification/20260821-msvc-phase7-final/BenchmarkResults`. No threshold was relaxed and no sample was trimmed, replaced,
+or retried.
 
 ## Historical Phase 5 Windows baseline
 
@@ -135,8 +194,10 @@ The retained final reports are:
 - `build/windows_jolt_phase5_msvc_v2/BenchmarkResults/WSL/Jolt.WSL.Clang.Phase5.FloatAndLock.PinnedAffinity8.Raw30.json`
 
 Each report has a corresponding qualified artifact with the final binary hash and dirty-source fingerprint. The MSVC module uses LTCG,
-so `llvm-objdump` cannot inspect its intermediate whole-program IR as a normal COFF object. The retained Clang 22 reports remain the
-instruction-level evidence; adding an MSVC linker/PDB disassembly route is a diagnostic Phase 6 task rather than an opcode gate.
+so `llvm-objdump` cannot inspect its intermediate whole-program IR as a normal COFF object. A retained non-LTCG scratch compile now
+provides comparable MSVC and clang-cl object disassembly for selected query functions without claiming whole-program code generation.
+The reports are `build/jolt-qualification/msvc-raycast-assembly/report.md` and
+`build/jolt-qualification/clang-raycast-assembly/report.md`.
 
 ## Automatic multi-world scaling
 
@@ -330,14 +391,15 @@ fast but invalid workload cannot pass.
 
 ## Benchmark artifact integrity
 
-`prepare_benchmark_artifact.py` refuses a non-Release report, a report older than its provider binary or runner, a provider binary older
-than the current source state, or a missing input. It can merge disjoint captures and explicitly reindex repeated fresh-process batches
-only when their benchmark contexts match, with the same 1% frequency tolerance used by provider comparison. Local repetition indices
-must be contiguous and the merged result must contain exactly 30 repetitions. Batch-local aggregate rows are discarded because they do
-not describe the pooled sample; the comparator recomputes every statistic from the retained raw iterations. Every original capture
-context remains in the merged artifact. It hashes every raw report, the runner, provider binary, workload definition, tracked diff, and
-every untracked non-ignored source file. The artifact also records the revision, compiler/configuration, affinity policy, filter,
-minimum time, repetition count, reindexing policy, and raw-sample policy. The comparator rejects stale signatures, differing
+`prepare_benchmark_artifact.py` refuses a non-Release report, a report older than its provider binary, runtime dependencies, or runner,
+a provider binary or runtime dependency older than the current source state, or a missing input. It can merge disjoint captures and
+explicitly reindex repeated fresh-process batches only when their benchmark contexts match, with the same 1% frequency tolerance used by
+provider comparison. Local repetition indices must be contiguous and the merged result must contain exactly 30 repetitions. Batch-local
+aggregate rows are discarded because they do not describe the pooled sample; the comparator recomputes every statistic from the retained
+raw iterations. Every original capture context remains in the merged artifact. It hashes every raw report, the runner, provider binary,
+runtime dependency, workload definition, tracked diff, and every untracked non-ignored source file. The artifact also records the
+revision, compiler/configuration, affinity policy, filter, minimum time, repetition count, reindexing policy, and raw-sample policy. The
+comparator rejects stale or absent runtime dependency metadata, stale signatures, differing
 runner/source/configuration/affinity metadata, duplicate or missing repetitions, mismatched worker and affinity counts, invalid topology
 and quality counters, non-finite samples, missing raw frames, and the median, bootstrap, repetition-p95, pooled-frame-tail, and CV gates.
 
@@ -384,11 +446,9 @@ common rollback overloads are 12-instruction, zero-frame tail transfers into `Ru
 has a 104-byte frame and two direct calls. `Internal::WaitForOperation` has a 56-byte frame and three calls, including the intentional
 worker-aware wait/assistance path. These counts are diagnostic compiler-output evidence, not brittle opcode gates.
 
-The default scalar raycast path checks for an active debug capture before entering the cold capture helper. On the same Clang 22.1.8
-Release binary and fixed CPU 24 affinity, 30 fresh-process repetitions improved from an 18.2504 microsecond median to 18.0405 microseconds
-(1.15%) with 3.41% CV. All samples were retained, including the 21.3829 microsecond maximum. A subsequent exact-source comparison after
-relinking every module measured Jolt at 18.1018 microseconds with 0.79% CV and PhysX at 18.4084 microseconds with 3.80% CV across 30 fresh
-processes each. Jolt's median ratio was 0.9833, satisfying the scalar-query performance gate without trimming or retrying a sample.
+The default scalar raycast path checks for an active debug capture before entering the cold capture helper. Clang 22.1.8 passes the
+current exact-source scalar-query gate, while MSVC retains the compiler-specific gap documented in the Phase 7 Windows closeout. The
+separate compiler artifacts and comparable object disassembly supersede the older single-compiler optimization checkpoint.
 
 ## Allocator alignment validation
 
@@ -595,7 +655,8 @@ python Gems/Physics/Jolt/Code/Tests/prepare_benchmark_artifact.py `
     --benchmark-filter $filter `
     --minimum-time 0.5 `
     --repetitions 30 `
-    --reindex-repetitions
+    --reindex-repetitions `
+    --runtime-dependency "$binaryDirectory/Jolt.API.dll"
 
 $filter = "Jolt/$absoluteSuffix"
 python Gems/Physics/Jolt/Code/Tests/prepare_benchmark_artifact.py `
@@ -611,7 +672,8 @@ python Gems/Physics/Jolt/Code/Tests/prepare_benchmark_artifact.py `
     --cpu-affinity-policy $affinityPolicy `
     --benchmark-filter $filter `
     --minimum-time 0.2 `
-    --repetitions 30
+    --repetitions 30 `
+    --runtime-dependency "$binaryDirectory/Jolt.API.dll"
 
 $box3dTests = Resolve-Path "$binaryDirectory/Box3D.Tests.Gem.dll"
 $filter = "Box3D/$matchedSuffix"
@@ -634,7 +696,8 @@ python Gems/Physics/Jolt/Code/Tests/prepare_benchmark_artifact.py `
     --benchmark-filter $filter `
     --minimum-time 0.5 `
     --repetitions 30 `
-    --reindex-repetitions
+    --reindex-repetitions `
+    --runtime-dependency "$binaryDirectory/Box3D.API.dll"
 
 $physxTests = Resolve-Path "$binaryDirectory/PhysX5.Tests.Gem.dll"
 $filter = "PhysX/$matchedSuffix"
