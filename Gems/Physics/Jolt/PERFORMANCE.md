@@ -1,5 +1,16 @@
 # Jolt performance qualification
 
+## Current status
+
+The third deep audit re-opened performance qualification at revision `42dbab82f32f945b293e7c019c5a07282eb3df24`. The captures below
+remain historical optimization and regression evidence; they do not establish current shipping readiness. In particular,
+`validate.py full` does not yet schedule the native and AutomatedTesting performance suites, retained operation/event memory and
+recurring AZ allocation domains are not fully accounted, contact-event contention is not measured by the gated workloads, and the
+audit-local eight-worker step series exceeded the 5% coefficient-of-variation gate.
+
+Current closure requirements and evidence ownership are tracked in `QUALIFICATION.md`. No historical artifact may be relabelled as a
+current result after a runtime, API, workload, compiler, or runner change.
+
 Release microbenchmarks are the timing authority. Profile captures attribute time through the engine and native profiling scopes. A
 matched result is accepted only after the comparator verifies workload identity, worker count, notification policy, sleep and continuous
 collision policy, query cardinality, simulation quality, repetition count, and stability.
@@ -50,7 +61,7 @@ preemption, so the exact lane policy and raw samples remain part of every artifa
 additional CPU profile because the host rejected the request with `0xc5585011`; that trace remains an unavailable diagnostic, not a
 substitute for or contradiction of the passing statistical evidence.
 
-## Phase 7 Windows closeout
+## Historical Phase 7 Windows closeout
 
 The final 2026-08-22 full Windows validator passed all 68 steps at revision `e23d77fe489207206e95f6c8153287a6296b8356`.
 It covered the complete 251-test Jolt suite, 21 registered AutomatedTesting scenarios, Clang 22.1.8 and MSVC Debug/Profile/Release,
