@@ -278,13 +278,14 @@ namespace AZ
 
 #if (AZCORE_SYSTEM_ALLOCATOR == AZCORE_SYSTEM_ALLOCATOR_MALLOC)
     #if defined(AZCORE_ADDRESS_SANITIZER_ENABLED)
-        AllocateAddress address(SystemAllocatorPrivate::Allocate(byteSize, alignment), byteSize);
+        AllocateAddress address(SystemAllocatorPrivate::Allocate(byteSize, alignment), 0);
     #else
-        AllocateAddress address(AZ_OS_MALLOC(byteSize, alignment), byteSize);
+        AllocateAddress address(AZ_OS_MALLOC(byteSize, alignment), 0);
     #endif
         if (address)
         {
-            SystemAllocatorPrivate::g_AllocatedBytes += SystemAllocatorPrivate::GetAllocatedSize(address.m_value, alignment);
+            address.m_size = SystemAllocatorPrivate::GetAllocatedSize(address.m_value, alignment);
+            SystemAllocatorPrivate::g_AllocatedBytes += address.m_size;
         }
 #else
         byteSize = MemorySizeAdjustedUp(byteSize);
@@ -364,15 +365,15 @@ namespace AZ
                 previousAllocatedSize = SystemAllocatorPrivate::GetAllocatedSize(ptr, newAlignment);
             }
         #if defined(AZCORE_ADDRESS_SANITIZER_ENABLED)
-            AllocateAddress newAddress(SystemAllocatorPrivate::Reallocate(ptr, newSize, newAlignment), newSize);
+            AllocateAddress newAddress(SystemAllocatorPrivate::Reallocate(ptr, newSize, newAlignment), 0);
         #else
-            AllocateAddress newAddress(AZ_OS_REALLOC(ptr, newSize, newAlignment), newSize);
+            AllocateAddress newAddress(AZ_OS_REALLOC(ptr, newSize, newAlignment), 0);
         #endif
             if (newAddress)
             {
+                newAddress.m_size = SystemAllocatorPrivate::GetAllocatedSize(newAddress.m_value, newAlignment);
                 SystemAllocatorPrivate::RemoveAllocatedBytes(previousAllocatedSize);
-                SystemAllocatorPrivate::g_AllocatedBytes +=
-                    SystemAllocatorPrivate::GetAllocatedSize(newAddress.m_value, newAlignment);
+                SystemAllocatorPrivate::g_AllocatedBytes += newAddress.m_size;
             }
             else if (ptr && newSize == 0)
             {

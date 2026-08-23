@@ -12,6 +12,9 @@
 o3de_pal_dir(pal_dir ${CMAKE_CURRENT_LIST_DIR}/Platform/${PAL_PLATFORM_NAME} ${O3DE_ENGINE_RESTRICTED_PATH} ${LY_ROOT_FOLDER})
 set(common_dir ${CMAKE_CURRENT_LIST_DIR}/Platform/Common)
 
+set(AZCORE_USE_MALLOC_SYSTEM_ALLOCATOR FALSE CACHE BOOL
+    "Use the malloc-backed SystemAllocator for memory instrumentation and allocator validation.")
+
 if(PAL_TRAIT_PROF_PIX_SUPPORTED)
     set(LY_PIX_ENABLED OFF CACHE BOOL "Enables PIX profiler integration.")
     if(LY_PIX_ENABLED)
@@ -115,11 +118,13 @@ ly_add_source_properties(
     VALUES ${O3DE_STACK_CAPTURE_DEPTH_DEFINE}
 )
 
-if(LY_BUILD_WITH_ADDRESS_SANITIZER)
-    # Default to use Malloc schema so ASan works well
+if(AZCORE_USE_MALLOC_SYSTEM_ALLOCATOR OR LY_BUILD_WITH_ADDRESS_SANITIZER)
+    # The malloc schema lets external memory instrumentation observe SystemAllocator allocations.
     set(AZCORE_ADDRESS_SANITIZER_COMPILE_DEFINITIONS AZCORE_SYSTEM_ALLOCATOR=AZCORE_SYSTEM_ALLOCATOR_MALLOC)
-    if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        list(APPEND AZCORE_ADDRESS_SANITIZER_COMPILE_DEFINITIONS $<$<CONFIG:Profile>:AZCORE_ADDRESS_SANITIZER_ENABLED>)
+    if(LY_BUILD_WITH_ADDRESS_SANITIZER AND WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        list(APPEND AZCORE_ADDRESS_SANITIZER_COMPILE_DEFINITIONS
+            $<$<CONFIG:Profile>:AZCORE_ADDRESS_SANITIZER_ENABLED>
+        )
     endif()
 
     ly_add_source_properties(

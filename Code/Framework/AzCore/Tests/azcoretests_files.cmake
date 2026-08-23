@@ -166,6 +166,7 @@ set(FILES
     Math/VectorNPerformanceTests.cpp
     Math/PackedVectorTest.cpp
     Memory/AllocatorBenchmarks.cpp
+    Memory/ChildAllocator.cpp
     Memory/HphaAllocator.cpp
     Memory/HphaAllocatorErrorDetection.cpp
     Memory/LeakDetection.cpp

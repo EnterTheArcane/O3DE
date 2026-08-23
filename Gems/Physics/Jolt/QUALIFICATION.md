@@ -40,7 +40,7 @@ the row's complete contract.
 | `J3-AUD-017` | Physical characters expose state-preserving add/remove simulation operations. | 5 | **Open** — identity, state, snapshot, event, and 1/4/8-worker replay tests required. |
 | `J3-AUD-018` | One Path resource owns geometry and transform; active updates commit transactionally at a safe boundary. | 5 | **Open** — translation/rotation frame update, scale rebuild, state preservation, and failure rollback tests required. |
 | `J3-AUD-019` | Custom-shape source dependencies participate in analysis invalidation and deterministic job/product fingerprints. | 5 | **Open** — real dependency edit/delete/recovery and recook tests required. |
-| `J3-AUD-020` | Every claimed clang-cl ASan configuration is instrumented and deployed correctly or rejected during configure. | 1 | **Open** — Debug/Profile flags, runtime deployment, detection sentinel, and normal Jolt suite required. |
+| `J3-AUD-020` | Every claimed clang-cl ASan configuration is instrumented and deployed correctly or rejected during configure. | 1 | **Closed** — clang-cl 22.1.8 permits only Profile ASan trees because the Windows ASan runtime rejects the debug CRT; a fresh Ninja build proved compile instrumentation, dynamic runtime/thunk linkage, runtime deployment, the full Jolt and AzCore suites, and a symbolized heap-use-after-free sentinel. |
 | `J3-AUD-021` | Operation creation and completion reclamation are bounded and never wait for unrelated work. | 6 | **Open** — complexity, cancellation, concurrent creator, shutdown, and worker-saturation tests/benchmarks required. |
 | `J3-AUD-022` | Event and operation caches have count/byte ceilings and accurately report live, cached, outstanding, retained, and high-water memory. | 6 | **Open** — burst/release/reuse/oversize/teardown statistics and allocator evidence required. |
 | `J3-AUD-023` | Steady-state allocation claims cover native, wrapper, AZ job, and closure domains. | 6 | **Open** — warm 1/4/8-worker stepping, automatic worlds, queries, and CPU Hair allocation evidence required. |
@@ -55,7 +55,7 @@ the row's complete contract.
 | `C-AUD-004` | Active paths have one authoritative transform and cannot snapshot inconsistent geometry and frames. | 5 | **Open** — activation skew and live-update tests required. |
 | `C-AUD-005` | Gameplay scripts cannot own world lifecycle, explicit stepping, or restore. | 4 | **Open** — reflection audit and attempted Common-scope invocation rejection required. |
 | `C-AUD-006` | Creating an async operation never joins or waits for unrelated queued/running work. | 6 | **Open** — blocked-worker latency and lock-context watchdog tests required. |
-| `C-AUD-007` | Parent/child allocator byte accounting uses the same size on allocation and deallocation in every malloc/ASan-header mode. | 1 | **Open** — `ChildAllocatorSchema` and `NativeAllocator` round-trip tests required. |
+| `C-AUD-007` | Parent/child allocator byte accounting uses the same size on allocation and deallocation in every malloc/ASan-header mode. | 1 | **Closed** — `SystemAllocator` now reports and accounts the exact size returned by deallocation. `ChildAllocatorSchema` and Jolt `NativeAllocator` round trips pass with the Profile ASan header and with `AZCORE_USE_MALLOC_SYSTEM_ALLOCATOR=ON` without that header. |
 
 ## Qualification platforms
 

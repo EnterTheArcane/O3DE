@@ -6,6 +6,7 @@
 #
 
 set(FILES
+    Tests/AllocatorTests.cpp
     Tests/Benchmarks.cpp
     Tests/ComponentTests.cpp
     Tests/ConfigurationSerializerTests.cpp

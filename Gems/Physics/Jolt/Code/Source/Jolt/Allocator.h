@@ -8,6 +8,7 @@
 #pragma once
 
 #include <AzCore/Memory/ChildAllocatorSchema.h>
+#include <AzCore/Memory/SystemAllocator.h>
 
 namespace Jolt
 {

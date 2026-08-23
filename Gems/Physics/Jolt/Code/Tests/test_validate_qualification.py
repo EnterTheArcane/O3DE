@@ -329,6 +329,64 @@ extern "C" unsigned long long JoltNativeBuildFingerprint();
             with self.assertRaisesRegex(ValueError, "published as 3rdParty::Jolt"):
                 jolt_qualification.validate_private_native_boundary(engine_root)
 
+    def test_clang_address_sanitizer_configuration_requires_profile_instrumentation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            clang_configuration = write_file(
+                engine_root,
+                "cmake/Platform/Common/MSVC/Configurations_clang.cmake",
+                """
+if(LY_BUILD_WITH_ADDRESS_SANITIZER)
+    get_property(multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    set(CMAKE_CONFIGURATION_TYPES profile CACHE STRING "Supported build configurations" FORCE)
+    if(NOT O3DE_CLANG_ASAN_BUILD_TYPE STREQUAL "profile")
+    endif()
+    set(target ${CMAKE_CXX_COMPILER_TARGET})
+    set(target ${CMAKE_VS_PLATFORM_NAME})
+    set(target ${CMAKE_SYSTEM_PROCESSOR})
+    file(COPY runtime DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_PROFILE})
+    ly_append_configurations_options(
+        COMPILATION_PROFILE
+            -fsanitize=address
+            /Oy-
+        LINK_NON_STATIC_PROFILE
+            "${O3DE_CLANG_ASAN_DYNAMIC_LIBRARY}"
+            /include:__asan_seh_interceptor
+            "/wholearchive:${O3DE_CLANG_ASAN_THUNK_LIBRARY}"
+    )
+endif()
+""",
+            )
+            write_file(
+                engine_root,
+                "Code/Framework/AzCore/CMakeLists.txt",
+                "AZCORE_USE_MALLOC_SYSTEM_ALLOCATOR\n"
+                "$<$<CONFIG:Profile>:AZCORE_ADDRESS_SANITIZER_ENABLED>\n",
+            )
+            write_file(
+                engine_root,
+                "Code/Framework/AzCore/AzCore/Memory/SystemAllocator.cpp",
+                """
+address.m_size = SystemAllocatorPrivate::GetAllocatedSize(address.m_value, alignment);
+newAddress.m_size = SystemAllocatorPrivate::GetAllocatedSize(newAddress.m_value, newAlignment);
+""",
+            )
+
+            self.assertIn(
+                "Profile-only clang-cl ASan deployment",
+                jolt_qualification.validate_clang_address_sanitizer_configuration(engine_root),
+            )
+
+            clang_configuration.write_text(
+                clang_configuration.read_text(encoding="utf-8").replace(
+                    "COMPILATION_PROFILE\n            -fsanitize=address\n            /Oy-\n",
+                    "",
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "Profile compilation is not instrumented"):
+                jolt_qualification.validate_clang_address_sanitizer_configuration(engine_root)
+
     def test_public_consumer_rejects_native_dependencies(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             engine_root = Path(temporary_directory)
@@ -632,6 +690,7 @@ ly_create_alias(
         self.assertIn("clang-double", variants)
         self.assertIn("clang-diagnostics", variants)
         self.assertIn("clang-asan", variants)
+        self.assertIn("clang-malloc-accounting", variants)
         self.assertIn("clang-monolithic", variants)
         self.assertIn("msvc-unity-modular", variants)
         self.assertIn("msvc-no-unity", variants)
@@ -650,6 +709,12 @@ ly_create_alias(
             variants["clang-asan"].definitions,
         )
         self.assertEqual(variants["clang-asan"].configurations, ("Profile",))
+        self.assertIn("AzCore.Tests", variants["clang-asan"].targets)
+        self.assertEqual(variants["clang-malloc-accounting"].configurations, ("Release",))
+        self.assertIn(
+            "AZCORE_USE_MALLOC_SYSTEM_ALLOCATOR=ON",
+            variants["clang-malloc-accounting"].definitions,
+        )
 
 
 if __name__ == "__main__":

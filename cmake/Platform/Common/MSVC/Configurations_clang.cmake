@@ -109,6 +109,19 @@ ly_append_configurations_options(
 )
 
 if(LY_BUILD_WITH_ADDRESS_SANITIZER)
+    # clang-cl's AddressSanitizer runtime does not support the MSVC debug CRT.
+    # Keep sanitizer trees unambiguous instead of generating configurations that
+    # silently omit instrumentation or cannot link.
+    get_property(O3DE_CLANG_ASAN_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    if(O3DE_CLANG_ASAN_MULTI_CONFIG)
+        set(CMAKE_CONFIGURATION_TYPES profile CACHE STRING "Supported build configurations" FORCE)
+    else()
+        string(TOLOWER "${CMAKE_BUILD_TYPE}" O3DE_CLANG_ASAN_BUILD_TYPE)
+        if(NOT O3DE_CLANG_ASAN_BUILD_TYPE STREQUAL "profile")
+            message(FATAL_ERROR "clang-cl AddressSanitizer supports only the Profile configuration")
+        endif()
+    endif()
+
     execute_process(
         COMMAND "${CMAKE_CXX_COMPILER}" -print-resource-dir
         OUTPUT_VARIABLE O3DE_CLANG_RESOURCE_DIRECTORY
@@ -119,12 +132,21 @@ if(LY_BUILD_WITH_ADDRESS_SANITIZER)
         message(FATAL_ERROR "Unable to locate the clang runtime directory")
     endif()
 
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|x86_64)$")
+    set(O3DE_CLANG_ASAN_TARGET_ARCHITECTURE "${CMAKE_CXX_COMPILER_TARGET}")
+    if(NOT O3DE_CLANG_ASAN_TARGET_ARCHITECTURE)
+        set(O3DE_CLANG_ASAN_TARGET_ARCHITECTURE "${CMAKE_VS_PLATFORM_NAME}")
+    endif()
+    if(NOT O3DE_CLANG_ASAN_TARGET_ARCHITECTURE)
+        set(O3DE_CLANG_ASAN_TARGET_ARCHITECTURE "${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+    string(TOLOWER "${O3DE_CLANG_ASAN_TARGET_ARCHITECTURE}" O3DE_CLANG_ASAN_TARGET_ARCHITECTURE)
+
+    if(O3DE_CLANG_ASAN_TARGET_ARCHITECTURE MATCHES "^(amd64|x64|x86_64)(-|$)")
         set(O3DE_CLANG_RUNTIME_ARCHITECTURE x86_64)
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|aarch64)$")
+    elseif(O3DE_CLANG_ASAN_TARGET_ARCHITECTURE MATCHES "^(arm64|arm64ec|aarch64)(-|$)")
         set(O3DE_CLANG_RUNTIME_ARCHITECTURE aarch64)
     else()
-        message(FATAL_ERROR "AddressSanitizer is unsupported for ${CMAKE_SYSTEM_PROCESSOR}")
+        message(FATAL_ERROR "AddressSanitizer is unsupported for ${O3DE_CLANG_ASAN_TARGET_ARCHITECTURE}")
     endif()
 
     set(
@@ -166,7 +188,7 @@ if(LY_BUILD_WITH_ADDRESS_SANITIZER)
     ly_append_configurations_options(
         COMPILATION_PROFILE
             -fsanitize=address
-            -fno-omit-frame-pointer
+            /Oy-
 
         LINK_NON_STATIC_PROFILE
             "${O3DE_CLANG_ASAN_DYNAMIC_LIBRARY}"

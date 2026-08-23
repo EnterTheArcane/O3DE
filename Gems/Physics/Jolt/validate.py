@@ -414,6 +414,62 @@ def validate_private_native_boundary(engine_root: Path) -> str:
     return "Validated private native identity, target, license-only install, and CPU-only dependency boundary."
 
 
+def validate_clang_address_sanitizer_configuration(engine_root: Path) -> str:
+    clang_configuration_path = (
+        engine_root / "cmake" / "Platform" / "Common" / "MSVC" / "Configurations_clang.cmake"
+    )
+    azcore_cmake_path = engine_root / "Code" / "Framework" / "AzCore" / "CMakeLists.txt"
+    system_allocator_path = (
+        engine_root / "Code" / "Framework" / "AzCore" / "AzCore" / "Memory" / "SystemAllocator.cpp"
+    )
+    clang_configuration = clang_configuration_path.read_text(encoding="utf-8")
+    azcore_cmake = azcore_cmake_path.read_text(encoding="utf-8")
+    system_allocator = system_allocator_path.read_text(encoding="utf-8")
+    asan_block = clang_configuration.split("if(LY_BUILD_WITH_ADDRESS_SANITIZER)", maxsplit=1)[-1]
+    errors: list[str] = []
+
+    if "GENERATOR_IS_MULTI_CONFIG" not in asan_block:
+        errors.append("clang-cl ASan configuration policy does not inspect the actual generator kind")
+    if "set(CMAKE_CONFIGURATION_TYPES profile" not in asan_block:
+        errors.append("multi-configuration clang-cl ASan builds are not restricted to Profile")
+    if "O3DE_CLANG_ASAN_BUILD_TYPE STREQUAL \"profile\"" not in asan_block:
+        errors.append("single-configuration clang-cl ASan builds do not reject unsupported configurations")
+    if not re.search(r"COMPILATION_PROFILE\s+-fsanitize=address\s+/Oy-", asan_block):
+        errors.append("clang-cl Profile compilation is not instrumented")
+    if not re.search(
+        r"LINK_NON_STATIC_PROFILE\s+"
+        r'"\$\{O3DE_CLANG_ASAN_DYNAMIC_LIBRARY\}"\s+'
+        r"/include:__asan_seh_interceptor\s+"
+        r'"/wholearchive:\$\{O3DE_CLANG_ASAN_THUNK_LIBRARY\}"',
+        asan_block,
+    ):
+        errors.append("clang-cl Profile does not link the ASan runtime and thunk")
+    if "CMAKE_RUNTIME_OUTPUT_DIRECTORY_PROFILE" not in asan_block:
+        errors.append("clang-cl Profile does not receive the ASan runtime DLL")
+
+    for architecture_input in (
+        "CMAKE_CXX_COMPILER_TARGET",
+        "CMAKE_VS_PLATFORM_NAME",
+        "CMAKE_SYSTEM_PROCESSOR",
+    ):
+        if architecture_input not in asan_block:
+            errors.append(f"clang-cl ASan runtime selection ignores {architecture_input}")
+
+    sanitizer_definition = "$<$<CONFIG:Profile>:AZCORE_ADDRESS_SANITIZER_ENABLED>"
+    if "AZCORE_USE_MALLOC_SYSTEM_ALLOCATOR" not in azcore_cmake:
+        errors.append("AzCore cannot validate the malloc allocator without ASan's custom header")
+    if sanitizer_definition not in azcore_cmake:
+        errors.append("AzCore's custom ASan allocation header is not enabled for Profile")
+    if "address.m_size = SystemAllocatorPrivate::GetAllocatedSize" not in system_allocator:
+        errors.append("SystemAllocator allocation results do not report the accounted byte size")
+    if "newAddress.m_size = SystemAllocatorPrivate::GetAllocatedSize" not in system_allocator:
+        errors.append("SystemAllocator reallocation results do not report the accounted byte size")
+
+    if errors:
+        raise ValueError("; ".join(errors))
+    return "Validated Profile-only clang-cl ASan deployment and symmetrical malloc accounting policy."
+
+
 def validate_public_consumer(engine_root: Path) -> str:
     consumer_root = (
         engine_root
@@ -694,6 +750,7 @@ def add_static_checks(runner: ValidationRunner) -> None:
     runner.run_check("source-manifests", validate_source_manifests)
     runner.run_check("scenario-registration", validate_scenario_registration)
     runner.run_check("private-native-boundary", validate_private_native_boundary)
+    runner.run_check("clang-address-sanitizer-configuration", validate_clang_address_sanitizer_configuration)
     runner.run_check("public-consumer", validate_public_consumer)
 
 
@@ -1195,7 +1252,16 @@ def windows_full_matrix(
                 "LY_BUILD_WITH_ADDRESS_SANITIZER=ON",
             ),
             configurations=("Profile",),
-            targets=("Jolt.Tests",),
+            targets=("AzCore.Tests", "Jolt.Tests"),
+        ),
+        MatrixVariant(
+            name="clang-malloc-accounting",
+            preset="windows-ninja",
+            definitions=common
+            + clang_definitions
+            + ("AZCORE_USE_MALLOC_SYSTEM_ALLOCATOR=ON",),
+            configurations=("Release",),
+            targets=("AzCore.Tests", "Jolt.Tests"),
         ),
         MatrixVariant(
             name="clang-monolithic",
@@ -1366,6 +1432,31 @@ def add_full_matrix(
                 if not built:
                     runner.skip(test_name, f"{variant.name} {configuration} build failed")
                     continue
+                if variant.name == "clang-malloc-accounting":
+                    test_runner = build_directory / "bin" / configuration.lower() / "AzTestRunner.exe"
+                    runner.run_command(
+                        test_name,
+                        (
+                            str(test_runner),
+                            str(build_directory / "bin" / configuration.lower() / "Jolt.Tests.Gem.dll"),
+                            "AzRunUnitTests",
+                            "--gtest_filter=AllocatorTests.*",
+                        ),
+                        1_800,
+                        command_environment,
+                    )
+                    runner.run_command(
+                        f"test-{variant.name}-{configuration.lower()}-azcore",
+                        (
+                            str(test_runner),
+                            str(build_directory / "bin" / configuration.lower() / "AzCore.Tests.dll"),
+                            "AzRunUnitTests",
+                            "--gtest_filter=ChildAllocatorTests.*",
+                        ),
+                        1_800,
+                        command_environment,
+                    )
+                    continue
                 runner.run_command(
                     test_name,
                     (
@@ -1381,6 +1472,22 @@ def add_full_matrix(
                     1_800,
                     command_environment,
                 )
+                if variant.name == "clang-asan":
+                    runner.run_command(
+                        f"test-{variant.name}-{configuration.lower()}-azcore",
+                        (
+                            "ctest",
+                            "--test-dir",
+                            str(build_directory),
+                            "-C",
+                            configuration,
+                            "-R",
+                            r"AZ::AzCore\.Tests\.main::TEST_RUN",
+                            "--output-on-failure",
+                        ),
+                        1_800,
+                        command_environment,
+                    )
 
     return outcomes
 
