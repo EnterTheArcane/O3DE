@@ -26,16 +26,9 @@ ly_add_target(
             AZ::AzCore
 )
 target_link_libraries(${gem_name}.API PRIVATE Jolt)
-set_property(TARGET ${gem_name}.API PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    target_link_options(${gem_name}.API INTERFACE
-        "$<$<CONFIG:Release>:${CMAKE_CXX_LINK_OPTIONS_IPO}>"
-    )
-else()
-    target_link_options(${gem_name}.API INTERFACE
-        "$<$<CONFIG:Release>:${CMAKE_CXX_COMPILE_OPTIONS_IPO}>"
-        "$<$<CONFIG:Release>:${CMAKE_CXX_LINK_OPTIONS_IPO}>"
-    )
+jolt_apply_native_abi(${gem_name}.API)
+if(JOLT_NATIVE_IPO_ENABLED)
+    set_property(TARGET ${gem_name}.API PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 endif()
 if(MSVC)
     target_compile_options(${gem_name}.API PRIVATE /GR-)
@@ -202,6 +195,7 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
         ${gem_name}.Tests PRIVATE
         $<TARGET_PROPERTY:Jolt,INTERFACE_COMPILE_DEFINITIONS>
     )
+    jolt_apply_native_abi(${gem_name}.Tests)
 
     if(NOT LY_MONOLITHIC_GAME)
         target_compile_definitions(

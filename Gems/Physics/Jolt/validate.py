@@ -381,6 +381,28 @@ def validate_private_native_boundary(engine_root: Path) -> str:
         errors.append("the configured native fingerprint is not compiled into the native object library")
     if "JOLT_NATIVE_BUILD_FINGERPRINT" not in native_cmake:
         errors.append("the private native build fingerprint is not configured")
+    architecture_inputs = (
+        "CMAKE_OSX_ARCHITECTURES",
+        "CMAKE_VS_PLATFORM_NAME",
+        "CMAKE_CXX_COMPILER_TARGET",
+        "CMAKE_SYSTEM_PROCESSOR",
+    )
+    if any(architecture_input not in native_cmake for architecture_input in architecture_inputs):
+        errors.append("native ISA selection is not derived from target architectures")
+    if "check_ipo_supported" not in native_code:
+        errors.append("private native IPO is not support-checked")
+    if "if(LY_MONOLITHIC_GAME)" not in native_code:
+        errors.append("private IPO is not disabled when no final link is owned")
+    if "WIN32 AND JOLT_NATIVE_TARGET_HAS_ARM" not in native_code:
+        errors.append("private IPO does not retain the upstream Windows ARM exclusion")
+    if re.search(r"target_link_options\([^)]*\.API\s+INTERFACE", target_code, re.DOTALL):
+        errors.append("the public API target leaks private IPO link options")
+    if native_identity.is_file():
+        native_identity_code = native_identity.read_text(encoding="utf-8")
+        if "The private Jolt x86 objects require SSE4.1" not in native_identity_code:
+            errors.append("the native object library does not compile its own ISA guard")
+        if "The private Jolt ARM objects cannot use x86" not in native_identity_code:
+            errors.append("the native object library does not guard ARM objects from x86 features")
 
     gpu_terms = ("Atom_RHI", "Atom_RPI", "JPH_USE_DX12 ON", "JPH_USE_MTL ON", "JPH_USE_VK ON")
     for term in gpu_terms:

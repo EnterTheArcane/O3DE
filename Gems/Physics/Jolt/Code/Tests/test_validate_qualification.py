@@ -284,9 +284,18 @@ class QualificationValidationTests(unittest.TestCase):
                 """
 # Do not publish 3rdParty::Jolt or Atom_RHI.
 set(jolt_native_content_name JoltProviderNative_5_6_0)
+set(jolt_native_target_architectures ${CMAKE_OSX_ARCHITECTURES})
+set(jolt_native_target_architectures ${CMAKE_VS_PLATFORM_NAME})
+set(jolt_native_target_architectures ${CMAKE_CXX_COMPILER_TARGET})
+set(jolt_native_target_architectures ${CMAKE_SYSTEM_PROCESSOR})
 message(FATAL_ERROR "The Jolt Gem found a foreign target named Jolt")
 message(FATAL_ERROR "The Jolt Gem found a foreign FetchContent declaration")
 message(FATAL_ERROR "A source override cannot override the private native source")
+check_ipo_supported(RESULT ipo_supported)
+if(LY_MONOLITHIC_GAME)
+endif()
+if(WIN32 AND JOLT_NATIVE_TARGET_HAS_ARM)
+endif()
 target_sources(Jolt PRIVATE JoltNativeBuildIdentity.cpp)
 target_compile_definitions(Jolt PRIVATE JOLT_NATIVE_BUILD_FINGERPRINT=1)
 ly_install(FILES
@@ -299,7 +308,11 @@ ly_install(FILES
             write_file(
                 engine_root,
                 "Gems/Physics/Jolt/3rdParty/JoltNativeBuildIdentity.cpp",
-                "extern \"C\" unsigned long long JoltNativeBuildFingerprint();\n",
+                """
+#error "The private Jolt x86 objects require SSE4.1"
+#error "The private Jolt ARM objects cannot use x86 features"
+extern "C" unsigned long long JoltNativeBuildFingerprint();
+""",
             )
             write_file(
                 engine_root,
