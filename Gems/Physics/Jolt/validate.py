@@ -352,6 +352,7 @@ def validate_scenario_registration(engine_root: Path) -> str:
 def validate_private_native_boundary(engine_root: Path) -> str:
     gem_root = engine_root / "Gems" / "Physics" / "Jolt"
     native_cmake = (gem_root / "3rdParty" / "JoltNative.cmake").read_text(encoding="utf-8")
+    native_identity = gem_root / "3rdParty" / "JoltNativeBuildIdentity.cpp"
     code_cmake = (gem_root / "Code" / "CMakeLists.txt").read_text(encoding="utf-8")
     native_code = "\n".join(line for line in native_cmake.splitlines() if not line.lstrip().startswith("#"))
     target_code = "\n".join(line for line in code_cmake.splitlines() if not line.lstrip().startswith("#"))
@@ -368,6 +369,18 @@ def validate_private_native_boundary(engine_root: Path) -> str:
         errors.append("JoltNative.cmake must contain exactly one license-only install declaration")
     if "${jolt_source_dir}/LICENSE" not in native_cmake:
         errors.append("the private dependency license is not installed")
+    if not re.search(r"set\(jolt_native_content_name\s+\S+_5_6_0\)", native_code):
+        errors.append("the private dependency does not use a versioned provider-owned FetchContent identity")
+    if "foreign target named Jolt" not in native_cmake:
+        errors.append("a foreign target named Jolt is not rejected")
+    if "foreign FetchContent declaration" not in native_cmake:
+        errors.append("a foreign versioned FetchContent declaration is not rejected")
+    if "cannot override the private" not in native_cmake:
+        errors.append("a private native source override is not rejected")
+    if not native_identity.is_file() or "JoltNativeBuildIdentity.cpp" not in native_cmake:
+        errors.append("the configured native fingerprint is not compiled into the native object library")
+    if "JOLT_NATIVE_BUILD_FINGERPRINT" not in native_cmake:
+        errors.append("the private native build fingerprint is not configured")
 
     gpu_terms = ("Atom_RHI", "Atom_RPI", "JPH_USE_DX12 ON", "JPH_USE_MTL ON", "JPH_USE_VK ON")
     for term in gpu_terms:
@@ -376,7 +389,7 @@ def validate_private_native_boundary(engine_root: Path) -> str:
 
     if errors:
         raise ValueError("; ".join(errors))
-    return "Validated private native target, license-only install, and CPU-only dependency boundary."
+    return "Validated private native identity, target, license-only install, and CPU-only dependency boundary."
 
 
 def validate_public_consumer(engine_root: Path) -> str:

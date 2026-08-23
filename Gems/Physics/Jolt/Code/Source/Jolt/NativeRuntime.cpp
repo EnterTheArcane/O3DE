@@ -31,6 +31,7 @@
 #include <Jolt/RegisterTypes.h>
 
 #include <cstdarg>
+#include <cstdint>
 #include <cstring>
 
 #if JOLT_ARCH_FAMILY_X86 && JOLT_ABI_MICROSOFT
@@ -56,6 +57,8 @@
 
 namespace Jolt
 {
+    extern "C" std::uint64_t O3DEJoltNativeBuildFingerprint();
+
     namespace
     {
         constexpr size_t TraceBufferSize = 4'096;
@@ -322,7 +325,7 @@ namespace Jolt
             const char* configuration = JPH::GetConfigurationString();
             const AZ::HashValue64 configurationHash = AZ::TypeHash64(reinterpret_cast<const AZ::u8*>(configuration), std::strlen(configuration));
             AZ::HashValue64 buildHash = AZ::TypeHash64(version, configurationHash);
-            buildHash = AZ::TypeHash64(JOLT_NATIVE_PATCH_FINGERPRINT, buildHash);
+            buildHash = AZ::TypeHash64(O3DEJoltNativeBuildFingerprint(), buildHash);
             return static_cast<AZ::u64>(buildHash);
         }();
         return fingerprint;

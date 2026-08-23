@@ -43,18 +43,6 @@ else()
     target_compile_options(${gem_name}.API PRIVATE -fno-rtti)
 endif()
 
-set_property(
-    DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_LIST_DIR}/../3rdParty/jolt-5.6.0-o3de.patch")
-file(
-    SHA256
-    "${CMAKE_CURRENT_LIST_DIR}/../3rdParty/jolt-5.6.0-o3de.patch"
-    jolt_patch_hash)
-string(SUBSTRING "${jolt_patch_hash}" 0 16 jolt_patch_fingerprint)
-target_compile_definitions(${gem_name}.API PRIVATE
-    JOLT_NATIVE_PATCH_FINGERPRINT=0x${jolt_patch_fingerprint}ULL
-)
-
 ly_add_target(
     NAME ${gem_name}.Module ${PAL_TRAIT_MONOLITHIC_DRIVEN_MODULE_TYPE}
     NAMESPACE Gem

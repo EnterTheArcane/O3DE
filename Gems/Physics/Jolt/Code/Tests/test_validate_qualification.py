@@ -283,6 +283,12 @@ class QualificationValidationTests(unittest.TestCase):
                 "Gems/Physics/Jolt/3rdParty/JoltNative.cmake",
                 """
 # Do not publish 3rdParty::Jolt or Atom_RHI.
+set(jolt_native_content_name JoltProviderNative_5_6_0)
+message(FATAL_ERROR "The Jolt Gem found a foreign target named Jolt")
+message(FATAL_ERROR "The Jolt Gem found a foreign FetchContent declaration")
+message(FATAL_ERROR "A source override cannot override the private native source")
+target_sources(Jolt PRIVATE JoltNativeBuildIdentity.cpp)
+target_compile_definitions(Jolt PRIVATE JOLT_NATIVE_BUILD_FINGERPRINT=1)
 ly_install(FILES
     ${jolt_source_dir}/LICENSE
     DESTINATION include/Jolt
@@ -292,11 +298,16 @@ ly_install(FILES
             )
             write_file(
                 engine_root,
+                "Gems/Physics/Jolt/3rdParty/JoltNativeBuildIdentity.cpp",
+                "extern \"C\" unsigned long long JoltNativeBuildFingerprint();\n",
+            )
+            write_file(
+                engine_root,
                 "Gems/Physics/Jolt/Code/CMakeLists.txt",
                 "BUILD_DEPENDENCIES\n    PRIVATE\n        Jolt\n",
             )
             result = jolt_qualification.validate_private_native_boundary(engine_root)
-            self.assertIn("private native target", result)
+            self.assertIn("private native identity", result)
 
             native_path.write_text(
                 native_path.read_text(encoding="utf-8") + "add_library(3rdParty::Jolt ALIAS Jolt)\n",
