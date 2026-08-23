@@ -10,7 +10,6 @@
 #include <Jolt/Configuration.h>
 #include <Jolt/Query.h>
 #include <Jolt/Ragdoll.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -19,6 +18,8 @@ namespace Jolt
     class JOLT_API Ragdolls
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static Ragdolls* Get();
 
@@ -165,7 +166,5 @@ namespace Jolt
 
         Ragdolls() = default;
         ~Ragdolls() = default;
-
-        static AZStd::atomic<Ragdolls*> s_instance;
     };
 } // namespace Jolt

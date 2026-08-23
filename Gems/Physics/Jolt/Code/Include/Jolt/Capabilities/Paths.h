@@ -9,7 +9,6 @@
 
 #include <Jolt/Configuration.h>
 #include <Jolt/Path.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -18,6 +17,8 @@ namespace Jolt
     class JOLT_API Paths
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static Paths* Get();
 
@@ -58,7 +59,5 @@ namespace Jolt
 
         Paths() = default;
         ~Paths() = default;
-
-        static AZStd::atomic<Paths*> s_instance;
     };
 } // namespace Jolt

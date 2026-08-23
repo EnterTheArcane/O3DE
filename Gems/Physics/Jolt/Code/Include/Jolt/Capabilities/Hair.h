@@ -9,7 +9,6 @@
 
 #include <Jolt/Configuration.h>
 #include <Jolt/Hair.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -18,6 +17,8 @@ namespace Jolt
     class JOLT_API Hair
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static Hair* Get();
 
@@ -132,7 +133,5 @@ namespace Jolt
 
         Hair() = default;
         ~Hair() = default;
-
-        static AZStd::atomic<Hair*> s_instance;
     };
 } // namespace Jolt

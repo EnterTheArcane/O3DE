@@ -11,7 +11,6 @@
 #include <Jolt/Operation.h>
 #include <Jolt/Query.h>
 #include <Jolt/Scene.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -22,6 +21,8 @@ namespace Jolt
     class JOLT_API Scenes
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static Scenes* Get();
 
@@ -88,7 +89,5 @@ namespace Jolt
 
         Scenes() = default;
         ~Scenes() = default;
-
-        static AZStd::atomic<Scenes*> s_instance;
     };
 } // namespace Jolt

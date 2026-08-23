@@ -10,7 +10,6 @@
 #include <Jolt/Configuration.h>
 #include <Jolt/Query.h>
 #include <Jolt/Skeleton.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -21,6 +20,8 @@ namespace Jolt
     class JOLT_API Skeletons
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static Skeletons* Get();
 
@@ -225,7 +226,5 @@ namespace Jolt
 
         Skeletons() = default;
         ~Skeletons() = default;
-
-        static AZStd::atomic<Skeletons*> s_instance;
     };
 } // namespace Jolt

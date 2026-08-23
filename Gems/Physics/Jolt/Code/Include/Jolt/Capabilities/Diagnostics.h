@@ -10,7 +10,6 @@
 #include <Jolt/Configuration.h>
 #include <Jolt/DebugDraw.h>
 #include <Jolt/Diagnostics.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -19,6 +18,8 @@ namespace Jolt
     class JOLT_API Diagnostics
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static Diagnostics* Get();
 
@@ -72,7 +73,5 @@ namespace Jolt
 
         Diagnostics() = default;
         ~Diagnostics() = default;
-
-        static AZStd::atomic<Diagnostics*> s_instance;
     };
 } // namespace Jolt

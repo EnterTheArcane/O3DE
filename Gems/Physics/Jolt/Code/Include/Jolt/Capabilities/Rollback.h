@@ -11,7 +11,6 @@
 #include <Jolt/Diagnostics.h>
 #include <Jolt/Operation.h>
 #include <Jolt/Rollback.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -20,6 +19,8 @@ namespace Jolt
     class JOLT_API Rollback
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static Rollback* Get();
 
@@ -129,7 +130,5 @@ namespace Jolt
 
         Rollback() = default;
         ~Rollback() = default;
-
-        static AZStd::atomic<Rollback*> s_instance;
     };
 } // namespace Jolt

@@ -7,8 +7,16 @@
 
 #include <Jolt/SystemInternal.h>
 
+#include <AzCore/Debug/Trace.h>
+#include <AzCore/std/parallel/atomic.h>
+
 namespace Jolt
 {
+    namespace
+    {
+        AZStd::atomic<Runtime*> s_runtime = nullptr;
+    } // namespace
+
     template<class Capability>
     RuntimeImplementation& GetRuntimeImplementation(Capability& capability)
     {
@@ -21,11 +29,48 @@ namespace Jolt
         return static_cast<const RuntimeImplementation&>(static_cast<const Runtime&>(capability));
     }
 
-    AZStd::atomic<RuntimeConfiguration*> RuntimeConfiguration::s_instance;
+    template<class Capability>
+    Capability* GetCapability()
+    {
+        if (Runtime* runtime = s_runtime.load(AZStd::memory_order_acquire))
+        {
+            return static_cast<Capability*>(runtime);
+        }
+
+        return nullptr;
+    }
+
+    Runtime* GetRuntime()
+    {
+        return s_runtime.load(AZStd::memory_order_acquire);
+    }
+
+    bool Runtime::PublishCapabilities()
+    {
+        Runtime* expectedRuntime = nullptr;
+        return s_runtime.compare_exchange_strong(
+            expectedRuntime,
+            this,
+            AZStd::memory_order_acq_rel,
+            AZStd::memory_order_acquire);
+    }
+
+    void Runtime::UnpublishCapabilities()
+    {
+        Runtime* expectedRuntime = this;
+        if (!s_runtime.compare_exchange_strong(
+                expectedRuntime,
+                nullptr,
+                AZStd::memory_order_release,
+                AZStd::memory_order_relaxed))
+        {
+            AZ_Error("Jolt", false, "The active Jolt Runtime changed before capability revocation.");
+        }
+    }
 
     RuntimeConfiguration* RuntimeConfiguration::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<RuntimeConfiguration>();
     }
 
     const SystemConfiguration& RuntimeConfiguration::GetConfiguration() const
@@ -38,11 +83,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).GetRuntimeInfo();
     }
 
-    AZStd::atomic<Extensions*> Extensions::s_instance;
-
     Extensions* Extensions::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Extensions>();
     }
 
     ExtensionRegistrationResult Extensions::RegisterExtension(
@@ -149,11 +192,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).GetExtensionInformation(extensionHandle, information);
     }
 
-    AZStd::atomic<Materials*> Materials::s_instance;
-
     Materials* Materials::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Materials>();
     }
 
     MaterialHandle Materials::CreateMaterial(const MaterialConfiguration& configuration)
@@ -171,11 +212,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).IsValid(materialHandle);
     }
 
-    AZStd::atomic<CollisionFilters*> CollisionFilters::s_instance;
-
     CollisionFilters* CollisionFilters::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<CollisionFilters>();
     }
 
     GroupFilterHandle CollisionFilters::CreateGroupFilter(
@@ -223,11 +262,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).SetSubGroupCollisionEnabled(filterHandle, firstSubGroup, secondSubGroup, enabled);
     }
 
-    AZStd::atomic<Cooking*> Cooking::s_instance;
-
     Cooking* Cooking::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Cooking>();
     }
 
     CookedShapeHandle Cooking::CookShape(const ShapeConfiguration& configuration)
@@ -409,11 +446,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).Raycast(cookedShapeHandle, start, direction, distance, hit);
     }
 
-    AZStd::atomic<Paths*> Paths::s_instance;
-
     Paths* Paths::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Paths>();
     }
 
     PathHandle Paths::CreatePath(const HermitePathConfiguration& configuration)
@@ -467,11 +502,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).FindClosestPathPoint(pathHandle, position, fractionHint, sample);
     }
 
-    AZStd::atomic<Skeletons*> Skeletons::s_instance;
-
     Skeletons* Skeletons::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Skeletons>();
     }
 
     SkeletonDefinitionHandle Skeletons::CreateSkeletonDefinition(const SkeletonDefinitionConfiguration& configuration)
@@ -762,11 +795,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).MapSkeletonPoseReverse(mapperHandle, targetModelTransforms, sourceModelTransforms);
     }
 
-    AZStd::atomic<Scenes*> Scenes::s_instance;
-
     Scenes* Scenes::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Scenes>();
     }
 
     SceneDefinitionHandle Scenes::CreateSceneDefinition(const SceneConfiguration& configuration)
@@ -855,11 +886,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).GetSceneConstraints(worldHandle, instanceHandle, constraintHandles);
     }
 
-    AZStd::atomic<Worlds*> Worlds::s_instance;
-
     Worlds* Worlds::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Worlds>();
     }
 
     WorldHandle Worlds::CreateWorld(const WorldConfiguration& configuration)
@@ -929,11 +958,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).UpdateWorldRuntimeConfiguration(worldHandle, configuration);
     }
 
-    AZStd::atomic<WorldSimulation*> WorldSimulation::s_instance;
-
     WorldSimulation* WorldSimulation::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<WorldSimulation>();
     }
 
     bool WorldSimulation::StepWorld(
@@ -1030,11 +1057,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).RemoveStepListener(worldHandle, extensionHandle);
     }
 
-    AZStd::atomic<WorldQueries*> WorldQueries::s_instance;
-
     WorldQueries* WorldQueries::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<WorldQueries>();
     }
 
     bool WorldQueries::RaycastShapeClosest(
@@ -1417,11 +1442,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).WereBodiesInContact(worldHandle, firstBodyHandle, secondBodyHandle);
     }
 
-    AZStd::atomic<Shapes*> Shapes::s_instance;
-
     Shapes* Shapes::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Shapes>();
     }
 
     ShapeHandle Shapes::CreateShape(
@@ -1822,11 +1845,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).GetCompoundChildIndex(worldHandle, compoundShapeHandle, subShapeId, childIndex);
     }
 
-    AZStd::atomic<Bodies*> Bodies::s_instance;
-
     Bodies* Bodies::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Bodies>();
     }
 
     BodyHandle Bodies::CreateBody(
@@ -2799,11 +2820,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).SetBodyCollisionGroup(worldHandle, bodyHandle, collisionGroup, activate);
     }
 
-    AZStd::atomic<Constraints*> Constraints::s_instance;
-
     Constraints* Constraints::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Constraints>();
     }
 
     ConstraintHandle Constraints::CreateConstraint(
@@ -2988,11 +3007,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).UpdateConeLimit(worldHandle, constraintHandle, halfConeAngle);
     }
 
-    AZStd::atomic<Characters*> Characters::s_instance;
-
     Characters* Characters::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Characters>();
     }
 
     VirtualCharacterHandle Characters::CreateVirtualCharacter(
@@ -3327,11 +3344,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).AddCharacterImpulse(worldHandle, characterHandle, impulse);
     }
 
-    AZStd::atomic<Vehicles*> Vehicles::s_instance;
-
     Vehicles* Vehicles::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Vehicles>();
     }
 
     bool Vehicles::ApplyVehicleEngineDamping(
@@ -3657,11 +3672,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).UpdateVehicleTrackConfiguration(worldHandle, vehicleHandle, trackIndex, configuration);
     }
 
-    AZStd::atomic<Ragdolls*> Ragdolls::s_instance;
-
     Ragdolls* Ragdolls::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Ragdolls>();
     }
 
     RagdollHandle Ragdolls::CreateRagdoll(
@@ -3832,11 +3845,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).AddRagdollImpulse(worldHandle, ragdollHandle, impulse);
     }
 
-    AZStd::atomic<SoftBodies*> SoftBodies::s_instance;
-
     SoftBodies* SoftBodies::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<SoftBodies>();
     }
 
     SoftBodyDefinitionHandle SoftBodies::CreateSoftBodyDefinition(
@@ -4144,11 +4155,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).SetSoftBodyVertexVelocities(worldHandle, bodyHandle, startVertexIndex, velocities);
     }
 
-    AZStd::atomic<Hair*> Hair::s_instance;
-
     Hair* Hair::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Hair>();
     }
 
     HairDefinitionHandle Hair::CreateHairDefinition(const HairDefinitionConfiguration& configuration)
@@ -4303,11 +4312,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).GetHairGridCellStates(worldHandle, hairHandle, states);
     }
 
-    AZStd::atomic<Rollback*> Rollback::s_instance;
-
     Rollback* Rollback::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Rollback>();
     }
 
     StateSnapshotHandle Rollback::CaptureBodyState(
@@ -4456,11 +4463,9 @@ namespace Jolt
         return GetRuntimeImplementation(*this).GetWorldStateDigest(worldHandle, digest);
     }
 
-    AZStd::atomic<Diagnostics*> Diagnostics::s_instance;
-
     Diagnostics* Diagnostics::Get()
     {
-        return s_instance.load(AZStd::memory_order_acquire);
+        return GetCapability<Diagnostics>();
     }
 
     bool Diagnostics::GetWorldStatistics(

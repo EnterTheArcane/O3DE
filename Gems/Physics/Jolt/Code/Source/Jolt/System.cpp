@@ -30,7 +30,6 @@
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/fixed_vector.h>
-#include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/limits.h>
 #include <AzCore/std/utility/move.h>
@@ -660,71 +659,6 @@ namespace Jolt
         {
             UnpublishCapabilities();
         }
-    }
-
-    bool Runtime::PublishCapabilities()
-    {
-        RuntimeConfiguration* expectedRuntimeConfiguration = nullptr;
-        if (!RuntimeConfiguration::s_instance.compare_exchange_strong(
-                expectedRuntimeConfiguration,
-                static_cast<RuntimeConfiguration*>(this),
-                AZStd::memory_order_acq_rel,
-                AZStd::memory_order_acquire))
-        {
-            return false;
-        }
-
-        Extensions::s_instance.store(static_cast<Extensions*>(this), AZStd::memory_order_release);
-        Materials::s_instance.store(static_cast<Materials*>(this), AZStd::memory_order_release);
-        CollisionFilters::s_instance.store(static_cast<CollisionFilters*>(this), AZStd::memory_order_release);
-        Cooking::s_instance.store(static_cast<Cooking*>(this), AZStd::memory_order_release);
-        Paths::s_instance.store(static_cast<Paths*>(this), AZStd::memory_order_release);
-        Skeletons::s_instance.store(static_cast<Skeletons*>(this), AZStd::memory_order_release);
-        Scenes::s_instance.store(static_cast<Scenes*>(this), AZStd::memory_order_release);
-        Worlds::s_instance.store(static_cast<Worlds*>(this), AZStd::memory_order_release);
-        WorldSimulation::s_instance.store(static_cast<WorldSimulation*>(this), AZStd::memory_order_release);
-        WorldQueries::s_instance.store(static_cast<WorldQueries*>(this), AZStd::memory_order_release);
-        Shapes::s_instance.store(static_cast<Shapes*>(this), AZStd::memory_order_release);
-        Bodies::s_instance.store(static_cast<Bodies*>(this), AZStd::memory_order_release);
-        Constraints::s_instance.store(static_cast<Constraints*>(this), AZStd::memory_order_release);
-        Characters::s_instance.store(static_cast<Characters*>(this), AZStd::memory_order_release);
-        Vehicles::s_instance.store(static_cast<Vehicles*>(this), AZStd::memory_order_release);
-        Ragdolls::s_instance.store(static_cast<Ragdolls*>(this), AZStd::memory_order_release);
-        SoftBodies::s_instance.store(static_cast<SoftBodies*>(this), AZStd::memory_order_release);
-        Hair::s_instance.store(static_cast<Hair*>(this), AZStd::memory_order_release);
-        Rollback::s_instance.store(static_cast<Rollback*>(this), AZStd::memory_order_release);
-        Diagnostics::s_instance.store(static_cast<Diagnostics*>(this), AZStd::memory_order_release);
-        return true;
-    }
-
-    void Runtime::UnpublishCapabilities()
-    {
-        RuntimeConfiguration::s_instance.store(nullptr, AZStd::memory_order_release);
-        Extensions::s_instance.store(nullptr, AZStd::memory_order_release);
-        Materials::s_instance.store(nullptr, AZStd::memory_order_release);
-        CollisionFilters::s_instance.store(nullptr, AZStd::memory_order_release);
-        Cooking::s_instance.store(nullptr, AZStd::memory_order_release);
-        Paths::s_instance.store(nullptr, AZStd::memory_order_release);
-        Skeletons::s_instance.store(nullptr, AZStd::memory_order_release);
-        Scenes::s_instance.store(nullptr, AZStd::memory_order_release);
-        Worlds::s_instance.store(nullptr, AZStd::memory_order_release);
-        WorldSimulation::s_instance.store(nullptr, AZStd::memory_order_release);
-        WorldQueries::s_instance.store(nullptr, AZStd::memory_order_release);
-        Shapes::s_instance.store(nullptr, AZStd::memory_order_release);
-        Bodies::s_instance.store(nullptr, AZStd::memory_order_release);
-        Constraints::s_instance.store(nullptr, AZStd::memory_order_release);
-        Characters::s_instance.store(nullptr, AZStd::memory_order_release);
-        Vehicles::s_instance.store(nullptr, AZStd::memory_order_release);
-        Ragdolls::s_instance.store(nullptr, AZStd::memory_order_release);
-        SoftBodies::s_instance.store(nullptr, AZStd::memory_order_release);
-        Hair::s_instance.store(nullptr, AZStd::memory_order_release);
-        Rollback::s_instance.store(nullptr, AZStd::memory_order_release);
-        Diagnostics::s_instance.store(nullptr, AZStd::memory_order_release);
-    }
-
-    Runtime* GetRuntime()
-    {
-        return static_cast<Runtime*>(RuntimeConfiguration::Get());
     }
 
     System::System(

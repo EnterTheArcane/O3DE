@@ -21,7 +21,7 @@ the row's complete contract.
 
 | Finding | Shipping contract | Stage | State and required evidence |
 |---|---|---:|---|
-| `J3-AUD-001` | One Runtime root is published only after complete activation and revoked once before draining; borrowed capabilities require quiescent teardown. | 2 | **Open** — replacement, concurrent acquisition, failed activation, teardown, assembly, and acquisition-latency proof required. |
+| `J3-AUD-001` | One Runtime root is published only after complete activation and revoked once before draining; borrowed capabilities require quiescent teardown. | 2 | **Implemented** — the single private root, complete lifetime tests, modular export check, clang-cl assembly, and focused latency gate pass. MSVC and monolithic/IPO repetitions remain final qualification gates. |
 | `J3-AUD-002` | Handles cannot alias across Runtime replacement, simultaneous isolated Runtimes, slot reuse, or generation exhaustion. | 2 | **Open** — module-lifetime per-kind generation-domain tests required. |
 | `J3-AUD-003` | Every mutable rollback participant has one owning world and cannot enter concurrent world transactions. | 3 | **Open** — ownership, concurrent restore rejection, and complete cache-restoration proof required. |
 | `J3-AUD-004` | Entity resource teardown prepares without mutation, commits once, and never abandons a live native resource. | 3 | **Open** — rigid, static, character, path, constraint, and vehicle component/direct-capability tests required. |
@@ -56,6 +56,19 @@ the row's complete contract.
 | `C-AUD-005` | Gameplay scripts cannot own world lifecycle, explicit stepping, or restore. | 4 | **Open** — reflection audit and attempted Common-scope invocation rejection required. |
 | `C-AUD-006` | Creating an async operation never joins or waits for unrelated queued/running work. | 6 | **Open** — blocked-worker latency and lock-context watchdog tests required. |
 | `C-AUD-007` | Parent/child allocator byte accounting uses the same size on allocation and deallocation in every malloc/ASan-header mode. | 1 | **Closed** — `SystemAllocator` now reports and accounts the exact size returned by deallocation. `ChildAllocatorSchema` and Jolt `NativeAllocator` round trips pass with the Profile ASan header and with `AZCORE_USE_MALLOC_SYSTEM_ALLOCATOR=ON` without that header. |
+
+## Stage 2 evidence
+
+`J3-AUD-001` uses one file-local atomic Runtime root owned by `Jolt.API`; none of the 21 public capability classes owns storage.
+The five focused `NativeRuntimeTests` cover exact adjusted capability addresses, stable concurrent readers, sequential replacement, failed
+activation, isolation and duplicate-owner rejection, ordinary teardown, and revocation before a blocked provider operation can drain.
+The clang-cl 22.1.8 modular Release suite passes all 254 tests, and the quick validator passes all 80 public-header probes and every
+static validation step. The rebuilt DLL exports no capability or Runtime-root data symbol.
+
+Optimized `RuntimeConfiguration::Get()` and `Vehicles::Get()` each have a zero-byte stack frame, three instructions, and no call,
+branch, conversion, or copy candidate. The final affinity-pinned 30-repetition no-IPO checkpoint measures capability acquisition at a
+1.01 ns median with 1.99% CV, below the 3 ns and 5% variability gates. Raw benchmark, disassembly, validator, and test evidence is
+retained beneath `build/jolt-production-readiness/stage2/` and is intentionally not committed.
 
 ## Qualification platforms
 

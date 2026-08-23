@@ -6,6 +6,7 @@
  */
 
 #include <Jolt/Architecture.h>
+#include <Jolt/CustomShape.h>
 #include <Jolt/FloatEnvironment.h>
 #include <Jolt/JobSystem.h>
 #include <Jolt/NativeRuntime.h>
@@ -20,9 +21,12 @@
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/limits.h>
+#include <AzCore/std/parallel/atomic.h>
+#include <AzCore/std/parallel/thread.h>
 #include <AzTest/AzTest.h>
 
 #include <cfenv>
+#include <chrono>
 
 #if defined(JOLT_TESTS_DEFINE_NATIVE_ASSERT_HANDLER) && defined(JPH_ENABLE_ASSERTS)
 namespace JPH
@@ -71,29 +75,129 @@ namespace JPH
 
 namespace Jolt
 {
+    namespace
+    {
+        inline constexpr AZ::TypeId BlockingCustomConvexShapeProviderTypeId{"{E8755B7C-FE3E-4788-9B05-438E9EA2938C}"};
+
+        template<class Predicate>
+        [[nodiscard]]
+        bool WaitForRuntimeCondition(
+            Predicate&& predicate,
+            const std::chrono::milliseconds timeout = std::chrono::seconds(5))
+        {
+            const std::chrono::steady_clock::time_point deadline =
+                std::chrono::steady_clock::now() + timeout;
+            while (!predicate())
+            {
+                if (std::chrono::steady_clock::now() >= deadline)
+                {
+                    return false;
+                }
+
+                AZStd::this_thread::yield();
+            }
+
+            return true;
+        }
+
+        class BlockingCustomConvexShapeProvider final
+            : public ICustomConvexShapeProvider
+        {
+        public:
+            [[nodiscard]]
+            AZ::TypeId GetId() const override
+            {
+                return BlockingCustomConvexShapeProviderTypeId;
+            }
+
+            [[nodiscard]]
+            AZ::u64 GetVersion() const override
+            {
+                return 1;
+            }
+
+            [[nodiscard]]
+            bool Cook(
+                [[maybe_unused]] const AZStd::span<const AZ::u8> input,
+                CustomConvexShapeData& output) const override
+            {
+                m_entered.store(true, AZStd::memory_order_release);
+                while (!m_release.load(AZStd::memory_order_acquire))
+                {
+                    AZStd::this_thread::yield();
+                }
+
+                output.m_points = {
+                    {-1.0f, -1.0f, -1.0f},
+                    {1.0f, -1.0f, -1.0f},
+                    {-1.0f, 1.0f, -1.0f},
+                    {1.0f, 1.0f, -1.0f},
+                    {-1.0f, -1.0f, 1.0f},
+                    {1.0f, -1.0f, 1.0f},
+                    {-1.0f, 1.0f, 1.0f},
+                    {1.0f, 1.0f, 1.0f},
+                };
+                return true;
+            }
+
+            mutable AZStd::atomic_bool m_entered = false;
+            mutable AZStd::atomic_bool m_release = false;
+        };
+
+        bool CapabilitiesMatch(Runtime* expectedRuntime)
+        {
+            return RuntimeConfiguration::Get() == static_cast<RuntimeConfiguration*>(expectedRuntime)
+                && Extensions::Get() == static_cast<Extensions*>(expectedRuntime)
+                && Materials::Get() == static_cast<Materials*>(expectedRuntime)
+                && CollisionFilters::Get() == static_cast<CollisionFilters*>(expectedRuntime)
+                && Cooking::Get() == static_cast<Cooking*>(expectedRuntime)
+                && Paths::Get() == static_cast<Paths*>(expectedRuntime)
+                && Skeletons::Get() == static_cast<Skeletons*>(expectedRuntime)
+                && Scenes::Get() == static_cast<Scenes*>(expectedRuntime)
+                && Worlds::Get() == static_cast<Worlds*>(expectedRuntime)
+                && WorldSimulation::Get() == static_cast<WorldSimulation*>(expectedRuntime)
+                && WorldQueries::Get() == static_cast<WorldQueries*>(expectedRuntime)
+                && Shapes::Get() == static_cast<Shapes*>(expectedRuntime)
+                && Bodies::Get() == static_cast<Bodies*>(expectedRuntime)
+                && Constraints::Get() == static_cast<Constraints*>(expectedRuntime)
+                && Characters::Get() == static_cast<Characters*>(expectedRuntime)
+                && Vehicles::Get() == static_cast<Vehicles*>(expectedRuntime)
+                && Ragdolls::Get() == static_cast<Ragdolls*>(expectedRuntime)
+                && SoftBodies::Get() == static_cast<SoftBodies*>(expectedRuntime)
+                && Hair::Get() == static_cast<Hair*>(expectedRuntime)
+                && Rollback::Get() == static_cast<Rollback*>(expectedRuntime)
+                && Diagnostics::Get() == static_cast<Diagnostics*>(expectedRuntime);
+        }
+
+        void ExpectPublishedCapabilities(Runtime* expectedRuntime)
+        {
+            EXPECT_EQ(RuntimeConfiguration::Get(), static_cast<RuntimeConfiguration*>(expectedRuntime));
+            EXPECT_EQ(Extensions::Get(), static_cast<Extensions*>(expectedRuntime));
+            EXPECT_EQ(Materials::Get(), static_cast<Materials*>(expectedRuntime));
+            EXPECT_EQ(CollisionFilters::Get(), static_cast<CollisionFilters*>(expectedRuntime));
+            EXPECT_EQ(Cooking::Get(), static_cast<Cooking*>(expectedRuntime));
+            EXPECT_EQ(Paths::Get(), static_cast<Paths*>(expectedRuntime));
+            EXPECT_EQ(Skeletons::Get(), static_cast<Skeletons*>(expectedRuntime));
+            EXPECT_EQ(Scenes::Get(), static_cast<Scenes*>(expectedRuntime));
+            EXPECT_EQ(Worlds::Get(), static_cast<Worlds*>(expectedRuntime));
+            EXPECT_EQ(WorldSimulation::Get(), static_cast<WorldSimulation*>(expectedRuntime));
+            EXPECT_EQ(WorldQueries::Get(), static_cast<WorldQueries*>(expectedRuntime));
+            EXPECT_EQ(Shapes::Get(), static_cast<Shapes*>(expectedRuntime));
+            EXPECT_EQ(Bodies::Get(), static_cast<Bodies*>(expectedRuntime));
+            EXPECT_EQ(Constraints::Get(), static_cast<Constraints*>(expectedRuntime));
+            EXPECT_EQ(Characters::Get(), static_cast<Characters*>(expectedRuntime));
+            EXPECT_EQ(Vehicles::Get(), static_cast<Vehicles*>(expectedRuntime));
+            EXPECT_EQ(Ragdolls::Get(), static_cast<Ragdolls*>(expectedRuntime));
+            EXPECT_EQ(SoftBodies::Get(), static_cast<SoftBodies*>(expectedRuntime));
+            EXPECT_EQ(Hair::Get(), static_cast<Hair*>(expectedRuntime));
+            EXPECT_EQ(Rollback::Get(), static_cast<Rollback*>(expectedRuntime));
+            EXPECT_EQ(Diagnostics::Get(), static_cast<Diagnostics*>(expectedRuntime));
+        }
+    } // namespace
+
     TEST(NativeRuntimeTests, PublishesCapabilitiesOnlyForTheActiveGlobalRuntime)
     {
-        EXPECT_FALSE(RuntimeConfiguration::Get());
-        EXPECT_FALSE(Extensions::Get());
-        EXPECT_FALSE(Materials::Get());
-        EXPECT_FALSE(CollisionFilters::Get());
-        EXPECT_FALSE(Cooking::Get());
-        EXPECT_FALSE(Paths::Get());
-        EXPECT_FALSE(Skeletons::Get());
-        EXPECT_FALSE(Scenes::Get());
-        EXPECT_FALSE(Worlds::Get());
-        EXPECT_FALSE(WorldSimulation::Get());
-        EXPECT_FALSE(WorldQueries::Get());
-        EXPECT_FALSE(Shapes::Get());
-        EXPECT_FALSE(Bodies::Get());
-        EXPECT_FALSE(Constraints::Get());
-        EXPECT_FALSE(Characters::Get());
-        EXPECT_FALSE(Vehicles::Get());
-        EXPECT_FALSE(Ragdolls::Get());
-        EXPECT_FALSE(SoftBodies::Get());
-        EXPECT_FALSE(Hair::Get());
-        EXPECT_FALSE(Rollback::Get());
-        EXPECT_FALSE(Diagnostics::Get());
+        ExpectPublishedCapabilities(nullptr);
 
         {
             SystemConfiguration configuration;
@@ -101,63 +205,89 @@ namespace Jolt
             System system(AZStd::move(configuration));
             ASSERT_TRUE(system);
 
-            EXPECT_TRUE(RuntimeConfiguration::Get());
-            EXPECT_TRUE(Extensions::Get());
-            EXPECT_TRUE(Materials::Get());
-            EXPECT_TRUE(CollisionFilters::Get());
-            EXPECT_TRUE(Cooking::Get());
-            EXPECT_TRUE(Paths::Get());
-            EXPECT_TRUE(Skeletons::Get());
-            EXPECT_TRUE(Scenes::Get());
-            EXPECT_TRUE(Worlds::Get());
-            EXPECT_TRUE(WorldSimulation::Get());
-            EXPECT_TRUE(WorldQueries::Get());
-            EXPECT_TRUE(Shapes::Get());
-            EXPECT_TRUE(Bodies::Get());
-            EXPECT_TRUE(Constraints::Get());
-            EXPECT_TRUE(Characters::Get());
-            EXPECT_TRUE(Vehicles::Get());
-            EXPECT_TRUE(Ragdolls::Get());
-            EXPECT_TRUE(SoftBodies::Get());
-            EXPECT_TRUE(Hair::Get());
-            EXPECT_TRUE(Rollback::Get());
-            EXPECT_TRUE(Diagnostics::Get());
+            Runtime* publishedRuntime = static_cast<Runtime*>(RuntimeConfiguration::Get());
+            ASSERT_TRUE(publishedRuntime);
+            ExpectPublishedCapabilities(publishedRuntime);
 
             Runtime isolated(
                 SystemConfiguration{},
                 nullptr,
                 SystemRegistration::Isolated);
             ASSERT_TRUE(isolated);
+            ExpectPublishedCapabilities(publishedRuntime);
 
-            RuntimeConfiguration* publishedRuntime = RuntimeConfiguration::Get();
             AZ_TEST_START_TRACE_SUPPRESSION;
             System secondSystem(SystemConfiguration{});
             AZ_TEST_STOP_TRACE_SUPPRESSION(1);
             EXPECT_FALSE(secondSystem);
-            EXPECT_EQ(RuntimeConfiguration::Get(), publishedRuntime);
+            ExpectPublishedCapabilities(publishedRuntime);
         }
 
-        EXPECT_FALSE(RuntimeConfiguration::Get());
-        EXPECT_FALSE(Extensions::Get());
-        EXPECT_FALSE(Materials::Get());
-        EXPECT_FALSE(CollisionFilters::Get());
-        EXPECT_FALSE(Cooking::Get());
-        EXPECT_FALSE(Paths::Get());
-        EXPECT_FALSE(Skeletons::Get());
-        EXPECT_FALSE(Scenes::Get());
-        EXPECT_FALSE(Worlds::Get());
-        EXPECT_FALSE(WorldSimulation::Get());
-        EXPECT_FALSE(WorldQueries::Get());
-        EXPECT_FALSE(Shapes::Get());
-        EXPECT_FALSE(Bodies::Get());
-        EXPECT_FALSE(Constraints::Get());
-        EXPECT_FALSE(Characters::Get());
-        EXPECT_FALSE(Vehicles::Get());
-        EXPECT_FALSE(Ragdolls::Get());
-        EXPECT_FALSE(SoftBodies::Get());
-        EXPECT_FALSE(Hair::Get());
-        EXPECT_FALSE(Rollback::Get());
-        EXPECT_FALSE(Diagnostics::Get());
+        ExpectPublishedCapabilities(nullptr);
+    }
+
+    TEST(NativeRuntimeTests, CapabilityReadersObserveOneStableRuntimeRoot)
+    {
+        SystemConfiguration configuration;
+        configuration.m_createDefaultWorld = false;
+        System system(AZStd::move(configuration));
+        ASSERT_TRUE(system);
+
+        Runtime* publishedRuntime = static_cast<Runtime*>(RuntimeConfiguration::Get());
+        ASSERT_TRUE(publishedRuntime);
+
+        constexpr size_t ReaderCount = 8;
+        constexpr size_t IterationCount = 10'000;
+        AZStd::atomic_bool mismatch = false;
+        AZStd::array<AZStd::thread, ReaderCount> readers;
+        for (AZStd::thread& reader : readers)
+        {
+            reader = AZStd::thread(
+                [publishedRuntime, &mismatch]()
+                {
+                    for (size_t iteration = 0; iteration < IterationCount; ++iteration)
+                    {
+                        RuntimeConfiguration* runtimeConfiguration = RuntimeConfiguration::Get();
+                        if (!CapabilitiesMatch(publishedRuntime)
+                            || !runtimeConfiguration
+                            || runtimeConfiguration->GetConfiguration().m_createDefaultWorld)
+                        {
+                            mismatch.store(true, AZStd::memory_order_relaxed);
+                            return;
+                        }
+                    }
+                });
+        }
+
+        for (AZStd::thread& reader : readers)
+        {
+            reader.join();
+        }
+
+        EXPECT_FALSE(mismatch.load(AZStd::memory_order_relaxed));
+        ExpectPublishedCapabilities(publishedRuntime);
+    }
+
+    TEST(NativeRuntimeTests, SequentialSystemsReplaceThePublishedRuntimeRoot)
+    {
+        ExpectPublishedCapabilities(nullptr);
+
+        constexpr size_t ReplacementCount = 4;
+        for (size_t replacement = 0; replacement < ReplacementCount; ++replacement)
+        {
+            {
+                SystemConfiguration configuration;
+                configuration.m_createDefaultWorld = false;
+                System system(AZStd::move(configuration));
+                ASSERT_TRUE(system);
+
+                Runtime* publishedRuntime = static_cast<Runtime*>(RuntimeConfiguration::Get());
+                ASSERT_TRUE(publishedRuntime);
+                ExpectPublishedCapabilities(publishedRuntime);
+            }
+
+            ExpectPublishedCapabilities(nullptr);
+        }
     }
 
     TEST(NativeRuntimeTests, ReportsPinnedDeterministicConfiguration)
@@ -244,11 +374,7 @@ namespace Jolt
         AZ_TEST_STOP_TRACE_SUPPRESSION(2);
 
         EXPECT_FALSE(system);
-        EXPECT_FALSE(RuntimeConfiguration::Get());
-        EXPECT_FALSE(Worlds::Get());
-        EXPECT_FALSE(WorldSimulation::Get());
-        EXPECT_FALSE(WorldQueries::Get());
-        EXPECT_FALSE(Bodies::Get());
+        ExpectPublishedCapabilities(nullptr);
     }
 
     TEST(NativeRuntimeTests, SupportsOverlappingOwners)
@@ -366,6 +492,69 @@ namespace Jolt
 
             EXPECT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
         }
+    }
+
+    TEST(NativeRuntimeTests, RevokesCapabilityRootBeforeDrainingProviderOperations)
+    {
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(4);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        BlockingCustomConvexShapeProvider provider;
+        Operation<CookedShapeHandle> operation;
+        AZStd::atomic_bool revokedBeforeDrain = false;
+        AZStd::thread observer;
+        {
+            SystemConfiguration configuration;
+            configuration.m_createDefaultWorld = false;
+            System system(AZStd::move(configuration), &jobContext);
+            ASSERT_TRUE(system);
+
+            Extensions* extensions = Extensions::Get();
+            Cooking* cooking = Cooking::Get();
+            ASSERT_TRUE(extensions);
+            ASSERT_TRUE(cooking);
+            ASSERT_TRUE(extensions->RegisterExtension(&provider, {}));
+
+            ShapeConfiguration shapeConfiguration;
+            shapeConfiguration.m_geometry = CustomConvexShapeConfiguration{
+                .m_data = {1},
+                .m_providerId = provider.GetId(),
+            };
+            operation = cooking->CookShapeAsync(shapeConfiguration);
+            ASSERT_TRUE(operation);
+
+            const bool providerEntered = WaitForRuntimeCondition(
+                [&provider]
+                {
+                    return provider.m_entered.load(AZStd::memory_order_acquire);
+                });
+            if (!providerEntered)
+            {
+                provider.m_release.store(true, AZStd::memory_order_release);
+            }
+            ASSERT_TRUE(providerEntered);
+
+            observer = AZStd::thread(
+                [&provider, &revokedBeforeDrain]
+                {
+                    // Observe only publication state; never dereference a borrowed capability during teardown.
+                    const bool observedRevocation = WaitForRuntimeCondition(
+                        []
+                        {
+                            return !RuntimeConfiguration::Get();
+                        });
+                    revokedBeforeDrain.store(observedRevocation, AZStd::memory_order_release);
+                    provider.m_release.store(true, AZStd::memory_order_release);
+                });
+        }
+
+        observer.join();
+        EXPECT_TRUE(revokedBeforeDrain.load(AZStd::memory_order_acquire));
+        EXPECT_EQ(operation.GetStatus(), OperationStatus::Succeeded);
+        ExpectPublishedCapabilities(nullptr);
+        operation.Reset();
     }
 
     TEST(NativeRuntimeTests, JobSystemCountsTheCallingThreadAsAvailableConcurrency)

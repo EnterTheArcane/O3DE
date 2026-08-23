@@ -13,7 +13,6 @@
 #include <Jolt/Diagnostics.h>
 #include <Jolt/Query.h>
 #include <Jolt/Shape.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -22,6 +21,8 @@ namespace Jolt
     class JOLT_API Bodies
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static Bodies* Get();
 
@@ -605,7 +606,5 @@ namespace Jolt
 
         Bodies() = default;
         ~Bodies() = default;
-
-        static AZStd::atomic<Bodies*> s_instance;
     };
 } // namespace Jolt

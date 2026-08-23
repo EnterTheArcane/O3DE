@@ -22,7 +22,6 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/base.h>
 #include <AzCore/std/containers/span.h>
-#include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/containers/variant.h>
 #include <AzCore/std/containers/vector.h>
 
@@ -127,6 +126,8 @@ namespace Jolt
     class JOLT_API Cooking
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static Cooking* Get();
 
@@ -270,7 +271,5 @@ namespace Jolt
 
         Cooking() = default;
         ~Cooking() = default;
-
-        static AZStd::atomic<Cooking*> s_instance;
     };
 } // namespace Jolt

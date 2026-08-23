@@ -10,7 +10,6 @@
 #include <Jolt/Configuration.h>
 #include <Jolt/SystemConfiguration.h>
 #include <Jolt/WorldTypes.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -20,6 +19,8 @@ namespace Jolt
     class JOLT_API Worlds
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static Worlds* Get();
 
@@ -69,7 +70,5 @@ namespace Jolt
 
         Worlds() = default;
         ~Worlds() = default;
-
-        static AZStd::atomic<Worlds*> s_instance;
     };
 } // namespace Jolt

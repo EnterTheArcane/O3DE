@@ -10,7 +10,6 @@
 #include <Jolt/Configuration.h>
 #include <Jolt/Extension.h>
 #include <Jolt/Vehicle.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -19,6 +18,8 @@ namespace Jolt
     class JOLT_API Vehicles
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static Vehicles* Get();
 
@@ -253,7 +254,5 @@ namespace Jolt
 
         Vehicles() = default;
         ~Vehicles() = default;
-
-        static AZStd::atomic<Vehicles*> s_instance;
     };
 } // namespace Jolt

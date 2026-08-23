@@ -9,7 +9,6 @@
 
 #include <Jolt/Configuration.h>
 #include <Jolt/SystemConfiguration.h>
-#include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/string/string_view.h>
 
 namespace Jolt
@@ -83,6 +82,8 @@ namespace Jolt
     class JOLT_API RuntimeConfiguration
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static RuntimeConfiguration* Get();
 
@@ -97,7 +98,5 @@ namespace Jolt
 
         RuntimeConfiguration() = default;
         ~RuntimeConfiguration() = default;
-
-        static AZStd::atomic<RuntimeConfiguration*> s_instance;
     };
 } // namespace Jolt

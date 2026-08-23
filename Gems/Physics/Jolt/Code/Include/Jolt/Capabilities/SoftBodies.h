@@ -12,7 +12,6 @@
 #include <Jolt/Query.h>
 #include <Jolt/SoftBody.h>
 #include <AzCore/Math/Aabb.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -21,6 +20,8 @@ namespace Jolt
     class JOLT_API SoftBodies
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static SoftBodies* Get();
 
@@ -216,7 +217,5 @@ namespace Jolt
 
         SoftBodies() = default;
         ~SoftBodies() = default;
-
-        static AZStd::atomic<SoftBodies*> s_instance;
     };
 } // namespace Jolt

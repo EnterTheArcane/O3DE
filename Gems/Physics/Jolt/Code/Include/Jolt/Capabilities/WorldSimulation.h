@@ -16,7 +16,6 @@
 #include <Jolt/Simulation.h>
 #include <Jolt/SoftBody.h>
 #include <AzCore/std/containers/array.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -50,6 +49,8 @@ namespace Jolt
     class JOLT_API WorldSimulation
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static WorldSimulation* Get();
 
@@ -113,7 +114,5 @@ namespace Jolt
 
         WorldSimulation() = default;
         ~WorldSimulation() = default;
-
-        static AZStd::atomic<WorldSimulation*> s_instance;
     };
 } // namespace Jolt

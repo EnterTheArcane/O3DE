@@ -12,7 +12,6 @@
 #include <Jolt/Query.h>
 #include <Jolt/WorldTypes.h>
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -54,6 +53,8 @@ namespace Jolt
     class JOLT_API WorldQueries
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static WorldQueries* Get();
 
@@ -354,7 +355,5 @@ namespace Jolt
 
         WorldQueries() = default;
         ~WorldQueries() = default;
-
-        static AZStd::atomic<WorldQueries*> s_instance;
     };
 } // namespace Jolt

@@ -10,7 +10,6 @@
 #include <Jolt/Configuration.h>
 #include <Jolt/Handle.h>
 #include <Jolt/Material.h>
-#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt
 {
@@ -19,6 +18,8 @@ namespace Jolt
     class JOLT_API Materials
     {
     public:
+        //! Returns the active capability, or nullptr if no global System is active.
+        //! The pointer is non-owning and must not be acquired or used while System destruction can occur.
         [[nodiscard]]
         static Materials* Get();
 
@@ -35,7 +36,5 @@ namespace Jolt
 
         Materials() = default;
         ~Materials() = default;
-
-        static AZStd::atomic<Materials*> s_instance;
     };
 } // namespace Jolt

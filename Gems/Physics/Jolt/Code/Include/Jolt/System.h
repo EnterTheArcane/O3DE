@@ -27,6 +27,8 @@ namespace Jolt
         System(
             SystemConfiguration configuration,
             AZ::JobContext* jobContext = nullptr);
+
+        //! Capability pointers are non-owning. All callers must be quiescent before the System is destroyed.
         ~System();
 
         AZ_DISABLE_COPY_MOVE(System);
