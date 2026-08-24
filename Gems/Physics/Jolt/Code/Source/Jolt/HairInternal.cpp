@@ -10,10 +10,137 @@
 #include <AzCore/std/limits.h>
 #include <AzCore/Casting/numeric_cast.h>
 
+#include <cmath>
 #include <cstring>
+#include <type_traits>
 
 namespace Jolt
 {
+    namespace
+    {
+        [[nodiscard]]
+        bool HasBufferLayout(
+            const NativeHair::BufferState& state,
+            const AZ::u64 elementCount,
+            const size_t stride)
+        {
+            return state.m_present
+                && state.m_elementCount == elementCount
+                && state.m_stride == stride
+                && stride > 0
+                && elementCount <= AZStd::numeric_limits<size_t>::max() / stride
+                && state.m_data.size() == elementCount * stride;
+        }
+
+        [[nodiscard]]
+        bool IsBufferCanonicalEmpty(const NativeHair::BufferState& state)
+        {
+            return !state.m_present
+                && state.m_data.empty()
+                && state.m_elementCount == 0
+                && state.m_stride == 0;
+        }
+
+        [[nodiscard]]
+        bool IsFinite(const JPH::Float3& value)
+        {
+            return std::isfinite(value.x)
+                && std::isfinite(value.y)
+                && std::isfinite(value.z);
+        }
+
+        [[nodiscard]]
+        bool IsFinite(const JPH::Float4& value)
+        {
+            return std::isfinite(value.x)
+                && std::isfinite(value.y)
+                && std::isfinite(value.z)
+                && std::isfinite(value.w);
+        }
+
+        [[nodiscard]]
+        bool IsFinite(const JPH_HairGlobalPoseTransform& value)
+        {
+            return IsFinite(value.mPosition)
+                && IsFinite(value.mRotation);
+        }
+
+        [[nodiscard]]
+        bool IsFinite(const JPH_HairPosition& value)
+        {
+            return IsFinite(value.mPosition)
+                && IsFinite(value.mRotation);
+        }
+
+        [[nodiscard]]
+        bool IsFinite(const JPH_HairVelocity& value)
+        {
+            return IsFinite(value.mVelocity)
+                && IsFinite(value.mAngularVelocity);
+        }
+
+        [[nodiscard]]
+        bool IsNormalized(const JPH::Float4& rotation)
+        {
+            return JPH::Quat(rotation.x, rotation.y, rotation.z, rotation.w).IsNormalized();
+        }
+
+        [[nodiscard]]
+        bool IsZero(const JPH::Float4& rotation)
+        {
+            return rotation.x == 0.0f
+                && rotation.y == 0.0f
+                && rotation.z == 0.0f
+                && rotation.w == 0.0f;
+        }
+
+        template<class Element>
+        [[nodiscard]]
+        bool HasFiniteBufferElements(const NativeHair::BufferState& state)
+        {
+            static_assert(std::is_trivially_copyable_v<Element>);
+            if (state.m_data.size() % sizeof(Element) != 0)
+            {
+                return false;
+            }
+            for (size_t offset = 0; offset < state.m_data.size(); offset += sizeof(Element))
+            {
+                Element element;
+                std::memcpy(&element, state.m_data.data() + offset, sizeof(element));
+                if (!IsFinite(element))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        template<class Element>
+        [[nodiscard]]
+        bool HasCompatibleRotations(
+            const NativeHair::BufferState& state,
+            const bool allowZero)
+        {
+            static_assert(std::is_trivially_copyable_v<Element>);
+            if (state.m_data.size() % sizeof(Element) != 0)
+            {
+                return false;
+            }
+            for (size_t offset = 0; offset < state.m_data.size(); offset += sizeof(Element))
+            {
+                Element element;
+                std::memcpy(&element, state.m_data.data() + offset, sizeof(element));
+                if (!IsNormalized(element.mRotation)
+                    && (!allowZero || !IsZero(element.mRotation)))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+    } // namespace
+
     const JPH::Mat44& NativeHair::GetScalpToHeadTransform() const
     {
         return mScalpToHead;
@@ -36,6 +163,127 @@ namespace Jolt
             && CaptureBuffer(mTargetPositionsCB, state.m_targetPositions)
             && CaptureBuffer(mVelocitiesCB, state.m_velocities)
             && CaptureBuffer(mVelocityAndDensityCB, state.m_velocityAndDensity);
+    }
+
+    bool NativeHair::IsStateLayoutCompatible(const State& state) const
+    {
+        const JPH::HairSettings* settings = GetHairSettings();
+        const AZ::u64 simulationStrandCount = settings->mSimStrands.size();
+        const AZ::u64 paddedVertexCount = settings->GetNumVerticesPadded();
+        const bool hasScalp = !settings->mScalpInverseBindPose.empty()
+            && !settings->mScalpVertices.empty();
+        if (!HasBufferLayout(
+                state.m_globalPoseTransforms,
+                simulationStrandCount,
+                sizeof(JPH_HairGlobalPoseTransform))
+            || !HasBufferLayout(state.m_positions, paddedVertexCount, sizeof(JPH_HairPosition))
+            || !HasBufferLayout(state.m_previousPositions, paddedVertexCount, sizeof(JPH_HairPosition))
+            || !HasBufferLayout(
+                state.m_renderPositions,
+                settings->mRenderVertices.size(),
+                sizeof(JPH::Float3))
+            || !HasBufferLayout(state.m_velocities, paddedVertexCount, sizeof(JPH_HairVelocity))
+            || !HasBufferLayout(
+                state.m_velocityAndDensity,
+                settings->mNeutralDensity.size(),
+                sizeof(JPH::Float4))
+            || state.m_scalpVertices.m_present != hasScalp)
+        {
+            return false;
+        }
+        if (hasScalp
+            && !HasBufferLayout(
+                state.m_scalpVertices,
+                settings->mScalpVertices.size(),
+                sizeof(JPH::Float3)))
+        {
+            return false;
+        }
+        if (!hasScalp && !IsBufferCanonicalEmpty(state.m_scalpVertices))
+        {
+            return false;
+        }
+
+        if (state.m_targetPositions.m_present != state.m_targetGlobalPoseTransforms.m_present)
+        {
+            return false;
+        }
+        if (!state.m_targetPositions.m_present)
+        {
+            return IsBufferCanonicalEmpty(state.m_targetPositions)
+                && IsBufferCanonicalEmpty(state.m_targetGlobalPoseTransforms);
+        }
+        return hasScalp
+            && HasBufferLayout(
+                state.m_targetPositions,
+                simulationStrandCount,
+                sizeof(JPH_HairPosition))
+            && HasBufferLayout(
+                state.m_targetGlobalPoseTransforms,
+                simulationStrandCount,
+                sizeof(JPH_HairGlobalPoseTransform));
+    }
+
+    bool NativeHair::IsImportedStatePayloadCompatible(
+        const State& state,
+        const bool initialized) const
+    {
+        if (!IsStateLayoutCompatible(state)
+            || !IsStatePayloadFinite(state)
+            || (!initialized && state.m_targetPositions.m_present))
+        {
+            return false;
+        }
+
+        const bool allowZero = !initialized;
+        if (!HasCompatibleRotations<JPH_HairGlobalPoseTransform>(
+                state.m_globalPoseTransforms,
+                allowZero)
+            || !HasCompatibleRotations<JPH_HairPosition>(state.m_positions, allowZero)
+            || !HasCompatibleRotations<JPH_HairPosition>(state.m_previousPositions, true))
+        {
+            return false;
+        }
+
+        if (!state.m_targetPositions.m_present)
+        {
+            return true;
+        }
+        return HasCompatibleRotations<JPH_HairPosition>(state.m_targetPositions, false)
+            && HasCompatibleRotations<JPH_HairGlobalPoseTransform>(
+                state.m_targetGlobalPoseTransforms,
+                false);
+    }
+
+    bool NativeHair::IsStateCanonicalEmpty(const State& state)
+    {
+        return state.m_previousPosition == JPH::RVec3::sZero()
+            && state.m_position == JPH::RVec3::sZero()
+            && state.m_previousRotation == JPH::Quat::sIdentity()
+            && state.m_rotation == JPH::Quat::sIdentity()
+            && IsBufferCanonicalEmpty(state.m_globalPoseTransforms)
+            && IsBufferCanonicalEmpty(state.m_positions)
+            && IsBufferCanonicalEmpty(state.m_previousPositions)
+            && IsBufferCanonicalEmpty(state.m_renderPositions)
+            && IsBufferCanonicalEmpty(state.m_scalpVertices)
+            && IsBufferCanonicalEmpty(state.m_targetGlobalPoseTransforms)
+            && IsBufferCanonicalEmpty(state.m_targetPositions)
+            && IsBufferCanonicalEmpty(state.m_velocities)
+            && IsBufferCanonicalEmpty(state.m_velocityAndDensity)
+            && state.m_teleported;
+    }
+
+    bool NativeHair::IsStatePayloadFinite(const State& state)
+    {
+        return HasFiniteBufferElements<JPH_HairGlobalPoseTransform>(state.m_globalPoseTransforms)
+            && HasFiniteBufferElements<JPH_HairPosition>(state.m_positions)
+            && HasFiniteBufferElements<JPH_HairPosition>(state.m_previousPositions)
+            && HasFiniteBufferElements<JPH::Float3>(state.m_renderPositions)
+            && HasFiniteBufferElements<JPH::Float3>(state.m_scalpVertices)
+            && HasFiniteBufferElements<JPH_HairGlobalPoseTransform>(state.m_targetGlobalPoseTransforms)
+            && HasFiniteBufferElements<JPH_HairPosition>(state.m_targetPositions)
+            && HasFiniteBufferElements<JPH_HairVelocity>(state.m_velocities)
+            && HasFiniteBufferElements<JPH::Float4>(state.m_velocityAndDensity);
     }
 
     bool NativeHair::RestoreState(

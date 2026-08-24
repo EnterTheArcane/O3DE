@@ -9,7 +9,7 @@
 
 #include <Jolt/FloatEnvironment.h>
 #include <Jolt/HairInternal.h>
-#include <Jolt/HandleEncoding.h>
+#include <Jolt/HandleSlotReservation.h>
 #include <Jolt/JobSystem.h>
 #include <Jolt/Capabilities.h>
 #include <Jolt/EventInternal.h>
@@ -144,7 +144,6 @@ namespace Jolt
     public:
         World(
             RuntimeImplementation& system,
-            Internal::WorldMemberGenerationSources& generationSources,
             WorldHandle handle,
             AZ::u32 worldIndex,
             WorldConfiguration configuration,
@@ -2252,7 +2251,7 @@ namespace Jolt
             AZStd::vector<ShapeHandle> m_childHandles;
             CookedShapeHandle m_cookedShapeHandle;
             AZ::u64 m_configurationRevision = 1;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_bodyCount = 0;
             AZ::u32 m_parentCount = 0;
             AZ::u32 m_ragdollDefinitionCount = 0;
@@ -2286,7 +2285,7 @@ namespace Jolt
             MotionType m_motionType = MotionType::None;
             bool m_softBodySkinPoseInitialized = true;
             bool m_softBodySkinConstraintsEnabled = false;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_constraintCount = 0;
             AZ::u32 m_moveEventIndex = AZStd::numeric_limits<AZ::u32>::max();
             SceneInstanceHandle m_sceneInstanceHandle;
@@ -2307,7 +2306,7 @@ namespace Jolt
             AZ::u64 m_configurationRevision = 1;
             PathRotationConstraint m_pathRotationConstraint = PathRotationConstraint::None;
             bool m_isInSimulation = false;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_parentCount = 0;
             RagdollHandle m_ragdollHandle;
             SceneInstanceHandle m_sceneInstanceHandle;
@@ -2319,7 +2318,7 @@ namespace Jolt
             AZStd::vector<BodyHandle> m_bodyHandles;
             AZStd::vector<ConstraintHandle> m_constraintHandles;
             SceneDefinitionHandle m_definitionHandle;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_rigidBodyCount = 0;
             AZ::u32 m_softBodyCount = 0;
         };
@@ -2330,7 +2329,7 @@ namespace Jolt
             SkeletonDefinitionHandle m_skeletonHandle;
             AZStd::vector<ShapeHandle> m_shapeHandles;
             AZStd::vector<AZ::Transform> m_neutralModelTransforms;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_ragdollCount = 0;
             bool m_supportsMotorDrive = false;
         };
@@ -2355,7 +2354,7 @@ namespace Jolt
             AZ::EntityId m_entityId;
             AZ::Name m_name;
             AZ::u32 m_collisionGroupId = 0;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
 
             bool m_isInSimulation = false;
         };
@@ -2372,7 +2371,8 @@ namespace Jolt
             AZStd::unique_ptr<HairAutoUpdateState> m_autoUpdateState;
             WorldTransform m_worldTransform;
             HairDefinitionHandle m_definitionHandle;
-            AZ::u32 m_generation = 1;
+            ObjectLayer m_objectLayer = ObjectLayer::Invalid;
+            AZ::u32 m_generation = 0;
             bool m_initialized = false;
             bool m_teleported = true;
         };
@@ -2406,7 +2406,7 @@ namespace Jolt
             AZ::u64 m_userData = 0;
             ObjectLayer m_objectLayer = ObjectLayer::Invalid;
             AZ::u32 m_contactTrackingDepth = 0;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
         };
 
         struct CharacterSlot final
@@ -2419,7 +2419,7 @@ namespace Jolt
             AZ::u64 m_userData = 0;
             AZ::u64 m_configurationRevision = 1;
             float m_maximumSeparationDistance = 0.05f;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
         };
 
         struct VehicleBindings final
@@ -2444,7 +2444,7 @@ namespace Jolt
             float m_gravityFactorBeforeOverride = 1.0f;
 
             VehicleKind m_kind = VehicleKind::None;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
 
             bool m_hasGravityFactorBeforeOverride = false;
         };
@@ -2483,6 +2483,8 @@ namespace Jolt
         {
             BodyHandle m_bodyHandle;
             CharacterHandle m_characterHandle;
+            VirtualCharacterHandle m_virtualCharacterHandle;
+            VehicleHandle m_vehicleHandle;
             GroupFilterHandle m_groupFilterHandle;
             ShapeHandle m_shapeHandle;
             SoftBodyDefinitionHandle m_softBodyDefinitionHandle;
@@ -2507,9 +2509,12 @@ namespace Jolt
 
         struct FilteredConstraintTopologyState final
         {
+            BodyHandle m_firstBodyHandle;
+            BodyHandle m_secondBodyHandle;
             AZ::u64 m_configurationRevision = 0;
             AZ::u32 m_generation = 0;
             AZ::u32 m_slotIndex = 0;
+            bool m_isInSimulation = false;
             bool m_isVehicle = false;
 
             friend constexpr bool operator==(
@@ -2588,6 +2593,7 @@ namespace Jolt
             AZ::u32 m_filteredBodyStateCount = 0;
             AZ::u32 m_filteredConstraintStateCount = 0;
 
+            AZStd::vector<AZ::u32> m_detachedBodyStateIndices;
             AZStd::vector<AZ::u32> m_characterStateIndices;
             AZStd::vector<AZ::u32> m_virtualCharacterStateIndices;
 
@@ -2596,7 +2602,8 @@ namespace Jolt
             AZ::u64 m_configurationRevision = 0;
             AZ::u64 m_eventSequence = 0;
             AZ::u64 m_globalConfigurationRevision = 0;
-            AZ::u32 m_generation = 1;
+            AZ::u64 m_nativeConstraintTopologyEpoch = 0;
+            AZ::u32 m_generation = 0;
         };
 
         struct ContactPairHasher final
@@ -2661,45 +2668,40 @@ namespace Jolt
         HandleType ReserveWorldMemberSlot(
             AZStd::vector<SlotType>& slots,
             AZStd::vector<AZ::u32>& freeSlots,
-            AZ::u32& slotIndex)
+            AZ::u32& slotIndex,
+            Internal::HandleSlotReservation& reservation)
         {
-            bool appendedSlot = false;
-            if (!freeSlots.empty())
+            reservation = Internal::ReserveHandleSlot<HandleType>(
+                slots,
+                freeSlots,
+                Internal::MaximumWorldMemberIndex);
+            if (!reservation)
             {
-                slotIndex = freeSlots.back();
-                freeSlots.pop_back();
-            }
-            else
-            {
-                if (slots.size() > Internal::MaximumWorldMemberIndex)
-                {
-                    return {};
-                }
-
-                slotIndex = aznumeric_cast<AZ::u32>(slots.size());
-                slots.emplace_back();
-                appendedSlot = true;
-            }
-
-            SlotType& slot = slots[slotIndex];
-            if (!m_generationSources.Acquire<HandleType>(slot.m_generation))
-            {
-                if (appendedSlot)
-                {
-                    slots.pop_back();
-                }
-                else
-                {
-                    freeSlots.push_back(slotIndex);
-                }
                 return {};
             }
 
-            return Internal::MakeWorldMemberHandle<HandleType>(m_worldIndex, slotIndex, slot.m_generation);
+            slotIndex = reservation.m_index;
+            return Internal::MakeWorldMemberHandle<HandleType>(
+                m_worldIndex,
+                slotIndex,
+                slots[slotIndex].m_generation);
+        }
+
+        template<typename HandleType, typename SlotType>
+        [[nodiscard]]
+        HandleType ReserveWorldMemberSlot(
+            AZStd::vector<SlotType>& slots,
+            AZStd::vector<AZ::u32>& freeSlots,
+            AZ::u32& slotIndex)
+        {
+            Internal::HandleSlotReservation reservation;
+            return ReserveWorldMemberSlot<HandleType>(slots, freeSlots, slotIndex, reservation);
         }
 
         [[nodiscard]]
-        BodyHandle ReserveBodySlot(AZ::u32& bodyIndex);
+        BodyHandle ReserveBodySlot(
+            AZ::u32& bodyIndex,
+            Internal::HandleSlotReservation& reservation);
 
         void ReleaseBodySlot(
             BodyHandle bodyHandle,
@@ -2750,7 +2752,11 @@ namespace Jolt
             AZStd::span<const BodyHandle> bodyHandles);
 
         [[nodiscard]]
-        bool ReserveStateSnapshotSlot(AZ::u32& snapshotIndex);
+        bool ReserveStateSnapshotSlot(
+            AZ::u32& snapshotIndex,
+            Internal::HandleSlotReservation& reservation);
+
+        void RollbackStateSnapshotSlot(const Internal::HandleSlotReservation& reservation);
 
         void ReleaseStateSnapshotSlot(AZ::u32 snapshotIndex);
 
@@ -2776,6 +2782,9 @@ namespace Jolt
 
         [[nodiscard]]
         bool ValidateSnapshotTopologyUnlocked(const StateSnapshotSlot& snapshot);
+
+        [[nodiscard]]
+        bool ValidateImportedHairStateUnlocked(const StateSnapshotSlot& snapshot) const;
 
         [[nodiscard]]
         bool CaptureRollbackParticipantState(
@@ -2815,7 +2824,7 @@ namespace Jolt
         bool ValidateStatePartsUnlocked(
             AZStd::span<const StateSnapshotSlot* const> snapshots);
 
-        void WriteStateSnapshot(
+        bool WriteStateSnapshot(
             Internal::StateArchiveWriter& writer,
             const StateSnapshotSlot& snapshot) const;
 
@@ -2823,6 +2832,14 @@ namespace Jolt
         bool ReadStateSnapshot(
             Internal::StateArchiveReader& reader,
             StateSnapshotSlot& snapshot);
+
+        [[nodiscard]]
+        bool CalculateStateSnapshotCompatibilityFingerprint(
+            const StateSnapshotSlot& snapshot,
+            AZ::u64& fingerprint) const;
+
+        [[nodiscard]]
+        bool BindImportedStateSnapshotToCurrent(StateSnapshotSlot& snapshot) const;
 
         [[nodiscard]]
         const RagdollDefinitionSlot* FindRagdollDefinition(
@@ -2851,6 +2868,8 @@ namespace Jolt
 
         [[nodiscard]]
         bool AdvanceConfigurationRevision();
+
+        void AdvanceNativeConstraintTopologyEpoch();
 
         [[nodiscard]]
         bool AdvanceGlobalConfigurationRevision();
@@ -3252,7 +3271,6 @@ namespace Jolt
         AZStd::atomic_bool m_stateIndeterminate{false};
 
         RuntimeImplementation& m_system;
-        Internal::WorldMemberGenerationSources& m_generationSources;
         WorldConfiguration m_configuration;
         AZ::JobContext* m_jobContext = nullptr;
         WorldHandle m_handle;
@@ -3317,6 +3335,7 @@ namespace Jolt
         AZStd::vector<StateSnapshotSlot> m_stateSnapshotSlots;
         AZStd::vector<AZ::u32> m_freeStateSnapshotSlots;
         StateSnapshotSlot m_stateSnapshotScratch;
+        AZStd::vector<Internal::HandleSlotReservation> m_snapshotReservationScratch;
 
         AZStd::vector<AZ::u8> m_currentHairStateScratch;
         AZStd::vector<AZ::u8> m_snapshotHairStateScratch;
@@ -3349,6 +3368,7 @@ namespace Jolt
         double m_accumulatedTime = 0.0;
         AZ::u64 m_configurationRevision = 1;
         AZ::u64 m_globalConfigurationRevision = 1;
+        AZ::u64 m_nativeConstraintTopologyEpoch = 1;
         AZ::u64 m_lastUpdateNanoseconds = 0;
         JobSystem::UpdateStatistics m_lastUpdateJobStatistics;
         SimulationError m_lastUpdateErrors = SimulationError::None;

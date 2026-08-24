@@ -7,10 +7,12 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/Handle.h>
 
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/limits.h>
+#include <AzCore/std/parallel/atomic.h>
 
 namespace Jolt::Internal
 {
@@ -20,142 +22,255 @@ namespace Jolt::Internal
     inline constexpr AZ::u64 HandlePayloadMask = AZStd::numeric_limits<AZ::u32>::max();
     inline constexpr AZ::u32 MaximumWorldMemberIndex = static_cast<AZ::u32>(HandlePayloadMask >> WorldIndexBits) - 1;
 
-    enum class WorldMemberKind : AZ::u8
+    enum class HandleKind : AZ::u8
     {
+        None = 0,
         Body,
         Character,
         Constraint,
+        CookedShape,
+        Extension,
+        GroupFilter,
         Hair,
+        HairDefinition,
+        Material,
+        Path,
         Ragdoll,
         RagdollDefinition,
+        SceneDefinition,
         SceneInstance,
         Shape,
+        SkeletalAnimation,
+        SkeletonDefinition,
+        SkeletonMapper,
+        SkeletonPose,
         StateSnapshot,
+        SoftBodyDefinition,
         Vehicle,
         VirtualCharacter,
+        World,
         Count,
     };
 
+    inline constexpr size_t HandleKindCount = static_cast<size_t>(HandleKind::Count) - 1;
+
     template<typename HandleType>
-    struct WorldMemberKindTraits;
+    struct HandleKindTraits;
 
     template<>
-    struct WorldMemberKindTraits<BodyHandle> final
+    struct HandleKindTraits<BodyHandle> final
     {
-        static constexpr WorldMemberKind Kind = WorldMemberKind::Body;
+        static constexpr HandleKind Kind = HandleKind::Body;
     };
 
     template<>
-    struct WorldMemberKindTraits<CharacterHandle> final
+    struct HandleKindTraits<CharacterHandle> final
     {
-        static constexpr WorldMemberKind Kind = WorldMemberKind::Character;
+        static constexpr HandleKind Kind = HandleKind::Character;
     };
 
     template<>
-    struct WorldMemberKindTraits<ConstraintHandle> final
+    struct HandleKindTraits<ConstraintHandle> final
     {
-        static constexpr WorldMemberKind Kind = WorldMemberKind::Constraint;
+        static constexpr HandleKind Kind = HandleKind::Constraint;
     };
 
     template<>
-    struct WorldMemberKindTraits<HairHandle> final
+    struct HandleKindTraits<CookedShapeHandle> final
     {
-        static constexpr WorldMemberKind Kind = WorldMemberKind::Hair;
+        static constexpr HandleKind Kind = HandleKind::CookedShape;
     };
 
     template<>
-    struct WorldMemberKindTraits<RagdollHandle> final
+    struct HandleKindTraits<ExtensionHandle> final
     {
-        static constexpr WorldMemberKind Kind = WorldMemberKind::Ragdoll;
+        static constexpr HandleKind Kind = HandleKind::Extension;
     };
 
     template<>
-    struct WorldMemberKindTraits<RagdollDefinitionHandle> final
+    struct HandleKindTraits<GroupFilterHandle> final
     {
-        static constexpr WorldMemberKind Kind = WorldMemberKind::RagdollDefinition;
+        static constexpr HandleKind Kind = HandleKind::GroupFilter;
     };
 
     template<>
-    struct WorldMemberKindTraits<SceneInstanceHandle> final
+    struct HandleKindTraits<HairHandle> final
     {
-        static constexpr WorldMemberKind Kind = WorldMemberKind::SceneInstance;
+        static constexpr HandleKind Kind = HandleKind::Hair;
     };
 
     template<>
-    struct WorldMemberKindTraits<ShapeHandle> final
+    struct HandleKindTraits<HairDefinitionHandle> final
     {
-        static constexpr WorldMemberKind Kind = WorldMemberKind::Shape;
+        static constexpr HandleKind Kind = HandleKind::HairDefinition;
     };
 
     template<>
-    struct WorldMemberKindTraits<StateSnapshotHandle> final
+    struct HandleKindTraits<MaterialHandle> final
     {
-        static constexpr WorldMemberKind Kind = WorldMemberKind::StateSnapshot;
+        static constexpr HandleKind Kind = HandleKind::Material;
     };
 
     template<>
-    struct WorldMemberKindTraits<VehicleHandle> final
+    struct HandleKindTraits<PathHandle> final
     {
-        static constexpr WorldMemberKind Kind = WorldMemberKind::Vehicle;
+        static constexpr HandleKind Kind = HandleKind::Path;
     };
 
     template<>
-    struct WorldMemberKindTraits<VirtualCharacterHandle> final
+    struct HandleKindTraits<RagdollHandle> final
     {
-        static constexpr WorldMemberKind Kind = WorldMemberKind::VirtualCharacter;
+        static constexpr HandleKind Kind = HandleKind::Ragdoll;
     };
 
-    class WorldMemberGenerationSources final
+    template<>
+    struct HandleKindTraits<RagdollDefinitionHandle> final
+    {
+        static constexpr HandleKind Kind = HandleKind::RagdollDefinition;
+    };
+
+    template<>
+    struct HandleKindTraits<SceneDefinitionHandle> final
+    {
+        static constexpr HandleKind Kind = HandleKind::SceneDefinition;
+    };
+
+    template<>
+    struct HandleKindTraits<SceneInstanceHandle> final
+    {
+        static constexpr HandleKind Kind = HandleKind::SceneInstance;
+    };
+
+    template<>
+    struct HandleKindTraits<ShapeHandle> final
+    {
+        static constexpr HandleKind Kind = HandleKind::Shape;
+    };
+
+    template<>
+    struct HandleKindTraits<SkeletalAnimationHandle> final
+    {
+        static constexpr HandleKind Kind = HandleKind::SkeletalAnimation;
+    };
+
+    template<>
+    struct HandleKindTraits<SkeletonDefinitionHandle> final
+    {
+        static constexpr HandleKind Kind = HandleKind::SkeletonDefinition;
+    };
+
+    template<>
+    struct HandleKindTraits<SkeletonMapperHandle> final
+    {
+        static constexpr HandleKind Kind = HandleKind::SkeletonMapper;
+    };
+
+    template<>
+    struct HandleKindTraits<SkeletonPoseHandle> final
+    {
+        static constexpr HandleKind Kind = HandleKind::SkeletonPose;
+    };
+
+    template<>
+    struct HandleKindTraits<StateSnapshotHandle> final
+    {
+        static constexpr HandleKind Kind = HandleKind::StateSnapshot;
+    };
+
+    template<>
+    struct HandleKindTraits<SoftBodyDefinitionHandle> final
+    {
+        static constexpr HandleKind Kind = HandleKind::SoftBodyDefinition;
+    };
+
+    template<>
+    struct HandleKindTraits<VehicleHandle> final
+    {
+        static constexpr HandleKind Kind = HandleKind::Vehicle;
+    };
+
+    template<>
+    struct HandleKindTraits<VirtualCharacterHandle> final
+    {
+        static constexpr HandleKind Kind = HandleKind::VirtualCharacter;
+    };
+
+    template<>
+    struct HandleKindTraits<WorldHandle> final
+    {
+        static constexpr HandleKind Kind = HandleKind::World;
+    };
+
+    class AtomicGenerationSource final
     {
     public:
-        explicit WorldMemberGenerationSources(
-            const AZ::u32 firstGeneration = 1)
+        explicit AtomicGenerationSource(const AZ::u32 firstGeneration = 1) noexcept
+            : m_nextGeneration(firstGeneration)
         {
-            m_nextGenerations.fill(firstGeneration);
         }
 
-        template<typename HandleType>
-        [[nodiscard]]
-        bool Acquire(AZ::u32& generation) noexcept
-        {
-            constexpr size_t kindIndex = static_cast<size_t>(WorldMemberKindTraits<HandleType>::Kind);
-            AZ::u32& nextGeneration = m_nextGenerations[kindIndex];
-            if (nextGeneration == 0)
-            {
-                return false;
-            }
+        AZ_DISABLE_COPY_MOVE(AtomicGenerationSource);
 
-            generation = nextGeneration;
-            if (nextGeneration == AZStd::numeric_limits<AZ::u32>::max())
+        [[nodiscard]]
+        AZ::u32 Acquire() noexcept
+        {
+            AZ::u32 generation = m_nextGeneration.load(AZStd::memory_order_relaxed);
+            while (generation != 0)
             {
-                nextGeneration = 0;
+                AZ::u32 nextGeneration = 0;
+                if (generation != AZStd::numeric_limits<AZ::u32>::max())
+                {
+                    nextGeneration = generation + 1;
+                }
+                if (m_nextGeneration.compare_exchange_weak(
+                    generation,
+                    nextGeneration,
+                    AZStd::memory_order_relaxed,
+                    AZStd::memory_order_relaxed))
+                {
+                    return generation;
+                }
             }
-            else
-            {
-                ++nextGeneration;
-            }
-            return true;
+            return 0;
         }
 
     private:
-        AZStd::array<AZ::u32, static_cast<size_t>(WorldMemberKind::Count)> m_nextGenerations;
+        AZStd::atomic<AZ::u32> m_nextGeneration;
     };
+
+    using AtomicGenerationSources = AZStd::array<AtomicGenerationSource, HandleKindCount>;
+
+    [[nodiscard]]
+    JOLT_API AZ::u32 AcquireHandleGeneration(HandleKind handleKind) noexcept;
+
+    template<typename HandleType>
+    [[nodiscard]]
+    AZ::u32 AcquireHandleGeneration() noexcept
+    {
+        return AcquireHandleGeneration(HandleKindTraits<HandleType>::Kind);
+    }
+
+    template<typename HandleType>
+    [[nodiscard]]
+    AZ::u32 AcquireHandleGeneration(AtomicGenerationSources& generationSources) noexcept
+    {
+        constexpr size_t kindIndex = static_cast<size_t>(HandleKindTraits<HandleType>::Kind) - 1;
+        return generationSources[kindIndex].Acquire();
+    }
 
     class HandleAccess final
     {
     public:
         template<typename HandleType>
         [[nodiscard]]
-        static constexpr HandleType FromValue(
-            typename HandleType::ValueType value) noexcept
+        static constexpr HandleType FromValue(typename HandleType::ValueType value) noexcept
         {
             return HandleType(value);
         }
 
         template<typename HandleType>
         [[nodiscard]]
-        static constexpr typename HandleType::ValueType ToValue(
-            HandleType handle) noexcept
+        static constexpr typename HandleType::ValueType ToValue(HandleType handle) noexcept
         {
             return handle.m_value;
         }
@@ -289,16 +404,4 @@ namespace Jolt::Internal
         return true;
     }
 
-    [[nodiscard]]
-    constexpr bool AdvanceGeneration(
-        AZ::u32& generation) noexcept
-    {
-        if (generation == AZStd::numeric_limits<AZ::u32>::max())
-        {
-            return false;
-        }
-
-        ++generation;
-        return true;
-    }
 } // namespace Jolt::Internal

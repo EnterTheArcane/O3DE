@@ -556,23 +556,17 @@ namespace Jolt
         AZStd::vector<SkeletonJoint> joints)
     {
         AZStd::lock_guard lock(m_skeletonMutex);
-        AZ::u32 skeletonIndex = 0;
-        if (!m_freeSkeletonDefinitionSlots.empty())
+        Internal::HandleSlotReservation reservation;
+        const SkeletonDefinitionHandle skeletonHandle = ReserveResourceSlot<SkeletonDefinitionHandle>(
+            m_skeletonDefinitionSlots,
+            m_freeSkeletonDefinitionSlots,
+            reservation);
+        if (!skeletonHandle)
         {
-            skeletonIndex = m_freeSkeletonDefinitionSlots.back();
-            m_freeSkeletonDefinitionSlots.pop_back();
-        }
-        else
-        {
-            if (m_skeletonDefinitionSlots.size() >= Internal::HandlePayloadMask)
-            {
-                return {};
-            }
-            skeletonIndex = aznumeric_cast<AZ::u32>(m_skeletonDefinitionSlots.size());
-            m_skeletonDefinitionSlots.emplace_back();
+            return {};
         }
 
-        SkeletonDefinitionSlot& slot = m_skeletonDefinitionSlots[skeletonIndex];
+        SkeletonDefinitionSlot& slot = m_skeletonDefinitionSlots[reservation.m_index];
         slot.m_skeleton = AZStd::move(skeleton);
         slot.m_joints = AZStd::move(joints);
         slot.m_jointIndices.clear();
@@ -581,7 +575,7 @@ namespace Jolt
         {
             slot.m_jointIndices.emplace(slot.m_joints[jointIndex].m_name, aznumeric_cast<AZ::u32>(jointIndex));
         }
-        return Internal::MakeResourceHandle<SkeletonDefinitionHandle>(skeletonIndex, slot.m_generation);
+        return skeletonHandle;
     }
 
     bool RuntimeImplementation::DestroySkeletonDefinition(
@@ -605,10 +599,10 @@ namespace Jolt
         slot->m_skeleton = nullptr;
         slot->m_jointIndices.clear();
         slot->m_joints.clear();
-        if (Internal::AdvanceGeneration(slot->m_generation))
-        {
-            m_freeSkeletonDefinitionSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(
+            m_skeletonDefinitionSlots,
+            m_freeSkeletonDefinitionSlots,
+            parts.m_index);
         return true;
     }
 
@@ -684,26 +678,20 @@ namespace Jolt
         AZStd::vector<AZ::Name> jointNames)
     {
         AZStd::lock_guard lock(m_skeletonMutex);
-        AZ::u32 animationIndex = 0;
-        if (!m_freeSkeletalAnimationSlots.empty())
+        Internal::HandleSlotReservation reservation;
+        const SkeletalAnimationHandle animationHandle = ReserveResourceSlot<SkeletalAnimationHandle>(
+            m_skeletalAnimationSlots,
+            m_freeSkeletalAnimationSlots,
+            reservation);
+        if (!animationHandle)
         {
-            animationIndex = m_freeSkeletalAnimationSlots.back();
-            m_freeSkeletalAnimationSlots.pop_back();
-        }
-        else
-        {
-            if (m_skeletalAnimationSlots.size() >= Internal::HandlePayloadMask)
-            {
-                return {};
-            }
-            animationIndex = aznumeric_cast<AZ::u32>(m_skeletalAnimationSlots.size());
-            m_skeletalAnimationSlots.emplace_back();
+            return {};
         }
 
-        SkeletalAnimationSlot& slot = m_skeletalAnimationSlots[animationIndex];
+        SkeletalAnimationSlot& slot = m_skeletalAnimationSlots[reservation.m_index];
         slot.m_animation = AZStd::move(animation);
         slot.m_jointNames = AZStd::move(jointNames);
-        return Internal::MakeResourceHandle<SkeletalAnimationHandle>(animationIndex, slot.m_generation);
+        return animationHandle;
     }
 
     bool RuntimeImplementation::UpdateSkeletalAnimation(
@@ -752,10 +740,10 @@ namespace Jolt
         }
         slot->m_animation = nullptr;
         slot->m_jointNames.clear();
-        if (Internal::AdvanceGeneration(slot->m_generation))
-        {
-            m_freeSkeletalAnimationSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(
+            m_skeletalAnimationSlots,
+            m_freeSkeletalAnimationSlots,
+            parts.m_index);
         return true;
     }
 
@@ -800,19 +788,19 @@ namespace Jolt
             SkeletalAnimationSlot& animationSlot = m_skeletalAnimationSlots[parts.m_index];
             animationSlot.m_animation = nullptr;
             animationSlot.m_jointNames.clear();
-            if (Internal::AdvanceGeneration(animationSlot.m_generation))
-            {
-                m_freeSkeletalAnimationSlots.push_back(parts.m_index);
-            }
+            Internal::ReleaseHandleSlot(
+                m_skeletalAnimationSlots,
+                m_freeSkeletalAnimationSlots,
+                parts.m_index);
         }
 
         skeletonSlot->m_skeleton = nullptr;
         skeletonSlot->m_jointIndices.clear();
         skeletonSlot->m_joints.clear();
-        if (Internal::AdvanceGeneration(skeletonSlot->m_generation))
-        {
-            m_freeSkeletonDefinitionSlots.push_back(skeletonParts.m_index);
-        }
+        Internal::ReleaseHandleSlot(
+            m_skeletonDefinitionSlots,
+            m_freeSkeletonDefinitionSlots,
+            skeletonParts.m_index);
         return true;
     }
 
@@ -949,30 +937,24 @@ namespace Jolt
             return {};
         }
 
-        AZ::u32 poseIndex = 0;
-        if (!m_freeSkeletonPoseSlots.empty())
+        Internal::HandleSlotReservation reservation;
+        const SkeletonPoseHandle poseHandle = ReserveResourceSlot<SkeletonPoseHandle>(
+            m_skeletonPoseSlots,
+            m_freeSkeletonPoseSlots,
+            reservation);
+        if (!poseHandle)
         {
-            poseIndex = m_freeSkeletonPoseSlots.back();
-            m_freeSkeletonPoseSlots.pop_back();
-        }
-        else
-        {
-            if (m_skeletonPoseSlots.size() >= Internal::HandlePayloadMask)
-            {
-                return {};
-            }
-            poseIndex = aznumeric_cast<AZ::u32>(m_skeletonPoseSlots.size());
-            m_skeletonPoseSlots.emplace_back();
+            return {};
         }
 
-        SkeletonPoseSlot& slot = m_skeletonPoseSlots[poseIndex];
+        SkeletonPoseSlot& slot = m_skeletonPoseSlots[reservation.m_index];
         slot.m_scratch = AZStd::make_shared<SkeletonPoseScratch>();
         slot.m_scratch->m_pose.SetSkeleton(skeletonSlot->m_skeleton);
         slot.m_scratch->m_pose.CalculateJointMatrices();
         slot.m_scratch->m_localTransforms.resize(skeletonSlot->m_joints.size());
         slot.m_skeletonHandle = skeletonHandle;
         ++skeletonSlot->m_poseCount;
-        return Internal::MakeResourceHandle<SkeletonPoseHandle>(poseIndex, slot.m_generation);
+        return poseHandle;
     }
 
     bool RuntimeImplementation::DestroySkeletonPose(
@@ -998,10 +980,10 @@ namespace Jolt
         }
         slot->m_scratch.reset();
         slot->m_skeletonHandle = SkeletonDefinitionHandle::Invalid;
-        if (Internal::AdvanceGeneration(slot->m_generation))
-        {
-            m_freeSkeletonPoseSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(
+            m_skeletonPoseSlots,
+            m_freeSkeletonPoseSlots,
+            parts.m_index);
         return true;
     }
 
@@ -1440,23 +1422,17 @@ namespace Jolt
                 targetNeutralPose.data());
         }
 
-        AZ::u32 mapperIndex = 0;
-        if (!m_freeSkeletonMapperSlots.empty())
+        Internal::HandleSlotReservation reservation;
+        const SkeletonMapperHandle mapperHandle = ReserveResourceSlot<SkeletonMapperHandle>(
+            m_skeletonMapperSlots,
+            m_freeSkeletonMapperSlots,
+            reservation);
+        if (!mapperHandle)
         {
-            mapperIndex = m_freeSkeletonMapperSlots.back();
-            m_freeSkeletonMapperSlots.pop_back();
-        }
-        else
-        {
-            if (m_skeletonMapperSlots.size() >= Internal::HandlePayloadMask)
-            {
-                return {};
-            }
-            mapperIndex = aznumeric_cast<AZ::u32>(m_skeletonMapperSlots.size());
-            m_skeletonMapperSlots.emplace_back();
+            return {};
         }
 
-        SkeletonMapperSlot& slot = m_skeletonMapperSlots[mapperIndex];
+        SkeletonMapperSlot& slot = m_skeletonMapperSlots[reservation.m_index];
         slot.m_mapper = mapper;
         slot.m_sourceSkeletonHandle = configuration.m_sourceSkeletonHandle;
         slot.m_targetSkeletonHandle = configuration.m_targetSkeletonHandle;
@@ -1468,7 +1444,7 @@ namespace Jolt
         slot.m_scratch->m_targetModelTransforms.resize(slot.m_targetJointCount);
         ++sourceSlot->m_mapperCount;
         ++targetSlot->m_mapperCount;
-        return Internal::MakeResourceHandle<SkeletonMapperHandle>(mapperIndex, slot.m_generation);
+        return mapperHandle;
     }
 
     bool RuntimeImplementation::DestroySkeletonMapper(
@@ -1496,10 +1472,10 @@ namespace Jolt
         slot.m_targetSkeletonHandle = {};
         slot.m_sourceJointCount = 0;
         slot.m_targetJointCount = 0;
-        if (Internal::AdvanceGeneration(slot.m_generation))
-        {
-            m_freeSkeletonMapperSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(
+            m_skeletonMapperSlots,
+            m_freeSkeletonMapperSlots,
+            parts.m_index);
         return true;
     }
 

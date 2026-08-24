@@ -10,6 +10,20 @@ diff --git a/Build/CMakeLists.txt b/Build/CMakeLists.txt
  
  	# Enable warnings
  	if (ENABLE_ALL_WARNINGS)
+diff --git a/Jolt/Compute/CPU/ComputeBufferCPU.cpp b/Jolt/Compute/CPU/ComputeBufferCPU.cpp
+--- a/Jolt/Compute/CPU/ComputeBufferCPU.cpp
++++ b/Jolt/Compute/CPU/ComputeBufferCPU.cpp
+@@ -15,8 +15,10 @@ ComputeBufferCPU::ComputeBufferCPU(EType inType, uint64 inSize, uint inStride, co
+ {
+ 	size_t buffer_size = size_t(mSize) * mStride;
+ 	mData = Allocate(buffer_size);
+ 	if (inData != nullptr)
+ 		memcpy(mData, inData, buffer_size);
++	else if (buffer_size > 0)
++		memset(mData, 0, buffer_size);
+ }
+ 
+ ComputeBufferCPU::~ComputeBufferCPU()
 diff --git a/Jolt/Geometry/RayAABox.h b/Jolt/Geometry/RayAABox.h
 index 90a08f6..12215a6 100644
 --- a/Jolt/Geometry/RayAABox.h
@@ -665,7 +679,28 @@ index 75135d9..8fb5cfa 100644
  		}
  	}
  
-@@ -740,16 +752,16 @@ void HairSettings::InitCompute(ComputeSystem *inComputeSystem)
+@@ -681,15 +693,16 @@ bool HairSettings::InitCompute(ComputeSystem *inComputeSystem)
+ 	// Rearrange vertices so that the first vertices of all strands are grouped together, then the second vertices, etc.
+ 	uint num_vertices = uint(mMaxVerticesPerStrand * mSimStrands.size());
++	const uint32 identity_rotation = Vec4(0, 0, 0, 1).CompressUnitVector();
+ 	Array<Float3> vertices_position;
+-	vertices_position.resize(num_vertices);
++	vertices_position.resize(num_vertices, Float3(0, 0, 0));
+ 	Array<uint32> vertices_bishop;
+-	vertices_bishop.resize(num_vertices);
++	vertices_bishop.resize(num_vertices, identity_rotation);
+ 	Array<uint32> vertices_omega0;
+-	vertices_omega0.resize(num_vertices);
++	vertices_omega0.resize(num_vertices, identity_rotation);
+ 	Array<uint32> vertices_fixed;
+ 	vertices_fixed.resize((num_vertices + 31) / 32, 0);
+ 	Array<float> vertices_length;
+-	vertices_length.resize(num_vertices);
++	vertices_length.resize(num_vertices, 0.0f);
+ 	Array<uint32> vertices_strand_fraction;
+ 	vertices_strand_fraction.resize((num_vertices + 3) / 4, 0);
+ 	for (size_t s = 0, ns = mSimStrands.size(); s < ns; ++s)
+@@ -740,16 +753,16 @@ bool HairSettings::InitCompute(ComputeSystem *inComputeSystem)
  			}
  		}
  
@@ -896,3 +931,106 @@ diff --git a/Jolt/Jolt.cmake b/Jolt/Jolt.cmake
  	set(CMAKE_CXX_VISIBILITY_PRESET hidden)
  
  	set(JPH_LIB_TYPE SHARED)
+diff --git a/Jolt/Physics/Constraints/PathConstraint.cpp b/Jolt/Physics/Constraints/PathConstraint.cpp
+--- a/Jolt/Physics/Constraints/PathConstraint.cpp
++++ b/Jolt/Physics/Constraints/PathConstraint.cpp
+@@ -430,6 +430,8 @@ void PathConstraint::SaveState(StateRecorder &inStream) const
+ 	inStream.Write(mPositionMotorState);
+ 	inStream.Write(mTargetVelocity);
+ 	inStream.Write(mTargetPathFraction);
++	if (mRotationConstraintType == EPathRotationConstraintType::FullyConstrained)
++		inStream.Write(mInvInitialOrientation);
+ 	inStream.Write(mPathFraction);
+ }
+ 
+@@ -448,6 +450,8 @@ void PathConstraint::RestoreState(StateRecorder &inStream)
+ 	inStream.Read(mPositionMotorState);
+ 	inStream.Read(mTargetVelocity);
+ 	inStream.Read(mTargetPathFraction);
++	if (mRotationConstraintType == EPathRotationConstraintType::FullyConstrained)
++		inStream.Read(mInvInitialOrientation);
+ 	inStream.Read(mPathFraction);
+ }
+ 
+diff --git a/Jolt/Physics/SoftBody/SoftBodyMotionProperties.cpp b/Jolt/Physics/SoftBody/SoftBodyMotionProperties.cpp
+--- a/Jolt/Physics/SoftBody/SoftBodyMotionProperties.cpp
++++ b/Jolt/Physics/SoftBody/SoftBodyMotionProperties.cpp
+@@ -1465,6 +1465,7 @@ void SoftBodyMotionProperties::SaveState(StateRecorder &inStream) const
+ 		inStream.Write(s.mPosition);
+ 		inStream.Write(s.mNormal);
+ 	}
++	inStream.Write(mSkinStatePreviousPositionValid);
+ 
+ 	inStream.Write(mLocalBounds.mMin);
+ 	inStream.Write(mLocalBounds.mMax);
+@@ -1494,6 +1495,7 @@ void SoftBodyMotionProperties::RestoreState(StateRecorder &inStream)
+ 		inStream.Read(s.mPosition);
+ 		inStream.Read(s.mNormal);
+ 	}
++	inStream.Read(mSkinStatePreviousPositionValid);
+ 
+ 	inStream.Read(mLocalBounds.mMin);
+ 	inStream.Read(mLocalBounds.mMax);
+diff --git a/Jolt/Physics/Vehicle/MotorcycleController.cpp b/Jolt/Physics/Vehicle/MotorcycleController.cpp
+--- a/Jolt/Physics/Vehicle/MotorcycleController.cpp
++++ b/Jolt/Physics/Vehicle/MotorcycleController.cpp
+@@ -265,6 +265,7 @@ void MotorcycleController::SaveState(StateRecorder &inStream) const
+ 	WheeledVehicleController::SaveState(inStream);
+ 
+ 	inStream.Write(mTargetLean);
++	inStream.Write(mLeanSpringIntegratedDeltaAngle);
+ }
+ 
+ void MotorcycleController::RestoreState(StateRecorder &inStream)
+@@ -272,6 +273,7 @@ void MotorcycleController::RestoreState(StateRecorder &inStream)
+ 	WheeledVehicleController::RestoreState(inStream);
+ 
+ 	inStream.Read(mTargetLean);
++	inStream.Read(mLeanSpringIntegratedDeltaAngle);
+ }
+ 
+ #ifdef JPH_DEBUG_RENDERER
+@@ -296,7 +298,7 @@ Ref<VehicleControllerSettings> MotorcycleController::GetSettings() const
+ 	ToSettings(*settings);
+ 	settings->mMaxLeanAngle = mMaxLeanAngle;
+ 	settings->mLeanSpringConstant = mLeanSpringConstant;
+-	settings->mLeanSpringDamping = settings->mLeanSpringDamping;
++	settings->mLeanSpringDamping = mLeanSpringDamping;
+ 	settings->mLeanSpringIntegrationCoefficient = mLeanSpringIntegrationCoefficient;
+ 	settings->mLeanSpringIntegrationCoefficientDecay = mLeanSpringIntegrationCoefficientDecay;
+ 	settings->mLeanSmoothingFactor = mLeanSmoothingFactor;
+diff --git a/Jolt/Physics/Vehicle/VehicleConstraint.cpp b/Jolt/Physics/Vehicle/VehicleConstraint.cpp
+--- a/Jolt/Physics/Vehicle/VehicleConstraint.cpp
++++ b/Jolt/Physics/Vehicle/VehicleConstraint.cpp
+@@ -648,12 +648,15 @@ void VehicleConstraint::SaveState(StateRecorder &inStream) const
+ 	Constraint::SaveState(inStream);
+ 
+ 	mController->SaveState(inStream);
++	inStream.Write(mWorldUp);
+ 
+ 	for (const Wheel *w : mWheels)
+ 	{
+ 		inStream.Write(w->mAngularVelocity);
+ 		inStream.Write(w->mAngle);
++		inStream.Write(w->mSteerAngle);
+ 		inStream.Write(w->mContactBodyID); // Used by MotorcycleController::PreCollide
++		inStream.Write(w->mContactSubShapeID); // Used by VehicleCollisionTester::PredictContactProperties
+ 		inStream.Write(w->mContactPosition); // Used by VehicleCollisionTester::PredictContactProperties
+ 		inStream.Write(w->mContactNormal); // Used by MotorcycleController::PreCollide
+ 		inStream.Write(w->mContactLateral); // Used by MotorcycleController::PreCollide
+@@ -675,12 +678,15 @@ void VehicleConstraint::RestoreState(StateRecorder &inStream)
+ 	Constraint::RestoreState(inStream);
+ 
+ 	mController->RestoreState(inStream);
++	inStream.Read(mWorldUp);
+ 
+ 	for (Wheel *w : mWheels)
+ 	{
+ 		inStream.Read(w->mAngularVelocity);
+ 		inStream.Read(w->mAngle);
++		inStream.Read(w->mSteerAngle);
+ 		inStream.Read(w->mContactBodyID);
++		inStream.Read(w->mContactSubShapeID);
+ 		inStream.Read(w->mContactPosition);
+ 		inStream.Read(w->mContactNormal);
+ 		inStream.Read(w->mContactLateral);

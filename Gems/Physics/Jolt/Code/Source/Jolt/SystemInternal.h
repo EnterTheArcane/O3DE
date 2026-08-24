@@ -10,7 +10,7 @@
 #include <Jolt/Capabilities.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/MaterialInternal.h>
-#include <Jolt/HandleEncoding.h>
+#include <Jolt/HandleSlotReservation.h>
 #include <Jolt/System.h>
 
 #include <AzCore/Jobs/JobContext.h>
@@ -3118,7 +3118,7 @@ namespace Jolt
         struct MaterialSlot final
         {
             JPH::RefConst<NativeMaterial> m_material;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_referenceCount = 0;
         };
 
@@ -3129,7 +3129,7 @@ namespace Jolt
             AZ::TypeId m_id = AZ::TypeId::CreateNull();
             AZ::u64 m_version = 0;
             AZ::u32 m_dependentCount = 0;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             ExtensionKind m_kind = ExtensionKind::None;
         };
 
@@ -3141,7 +3141,7 @@ namespace Jolt
             AZStd::vector<CustomShapeDependency> m_customDependencies;
             AZ::TypeId m_customProviderId = AZ::TypeId::CreateNull();
             ExtensionHandle m_customProviderExtension;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_referenceCount = 0;
             AZ::u32 m_parentCount = 0;
         };
@@ -3151,7 +3151,7 @@ namespace Jolt
             JPH::Ref<JPH::GroupFilter> m_filter;
             AZ::u64 m_stateHash = 0;
             ExtensionHandle m_extensionHandle;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_referenceCount = 0;
             AZ::u32 m_subGroupCount = 0;
             bool m_isCustom = false;
@@ -3160,7 +3160,7 @@ namespace Jolt
         struct WorldSlot final
         {
             AZStd::unique_ptr<World> m_world;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
         };
 
         struct PathSlot final
@@ -3170,7 +3170,7 @@ namespace Jolt
             ExtensionHandle m_customProviderExtension;
             AZ::u64 m_customProviderVersion = 0;
             AZ::u64 m_sourceHash = 0;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_constraintCount = 0;
         };
 
@@ -3178,14 +3178,14 @@ namespace Jolt
         {
             JPH::RefConst<JPH::SoftBodySharedSettings> m_settings;
             AZStd::vector<MaterialHandle> m_materialHandles;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_bodyCount = 0;
         };
 
         struct HairDefinitionSlot final
         {
             JPH::RefConst<JPH::HairSettings> m_settings;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_instanceCount = 0;
             float m_maximumHairToScalpDistanceSquared = 0.0f;
         };
@@ -3210,7 +3210,7 @@ namespace Jolt
             AZStd::vector<PathHandle> m_ownedPathHandles;
             AZStd::vector<SoftBodyDefinitionHandle> m_ownedSoftBodyDefinitionHandles;
 
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_instanceCount = 0;
         };
 
@@ -3219,7 +3219,7 @@ namespace Jolt
             JPH::Ref<JPH::Skeleton> m_skeleton;
             AZStd::unordered_map<AZ::Name, AZ::u32> m_jointIndices;
             AZStd::vector<SkeletonJoint> m_joints;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_mapperCount = 0;
             AZ::u32 m_poseCount = 0;
             AZ::u32 m_ragdollDefinitionCount = 0;
@@ -3230,7 +3230,7 @@ namespace Jolt
             JPH::Ref<JPH::SkeletalAnimation> m_animation;
             AZStd::vector<AZ::Name> m_jointNames;
             AZ::u64 m_revision = 1;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
         };
 
         struct SkeletonPoseScratch final
@@ -3247,7 +3247,7 @@ namespace Jolt
         {
             AZStd::shared_ptr<SkeletonPoseScratch> m_scratch;
             SkeletonDefinitionHandle m_skeletonHandle;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
         };
 
         struct SkeletonMapperScratch final
@@ -3264,10 +3264,40 @@ namespace Jolt
             AZStd::shared_ptr<SkeletonMapperScratch> m_scratch;
             SkeletonDefinitionHandle m_sourceSkeletonHandle;
             SkeletonDefinitionHandle m_targetSkeletonHandle;
-            AZ::u32 m_generation = 1;
+            AZ::u32 m_generation = 0;
             AZ::u32 m_sourceJointCount = 0;
             AZ::u32 m_targetJointCount = 0;
         };
+
+        template<typename HandleType, typename SlotType>
+        [[nodiscard]]
+        HandleType ReserveResourceSlot(
+            AZStd::vector<SlotType>& slots,
+            AZStd::vector<AZ::u32>& freeSlots,
+            Internal::HandleSlotReservation& reservation)
+        {
+            reservation = Internal::ReserveHandleSlot<HandleType>(
+                slots,
+                freeSlots,
+                AZStd::numeric_limits<AZ::u32>::max() - 1);
+            if (!reservation)
+            {
+                return {};
+            }
+
+            const AZ::u32 generation = slots[reservation.m_index].m_generation;
+            return Internal::MakeResourceHandle<HandleType>(reservation.m_index, generation);
+        }
+
+        template<typename HandleType, typename SlotType>
+        [[nodiscard]]
+        HandleType ReserveResourceSlot(
+            AZStd::vector<SlotType>& slots,
+            AZStd::vector<AZ::u32>& freeSlots)
+        {
+            Internal::HandleSlotReservation reservation;
+            return ReserveResourceSlot<HandleType>(slots, freeSlots, reservation);
+        }
 
         [[nodiscard]]
         World* FindWorldUnlocked(WorldHandle worldHandle);
@@ -3577,7 +3607,6 @@ namespace Jolt
         mutable AZStd::shared_mutex m_worldMutex;
         AZStd::vector<WorldSlot> m_worldSlots;
         AZStd::vector<AZ::u32> m_freeWorldSlots;
-        AZStd::array<Internal::WorldMemberGenerationSources, Internal::MaximumWorldCount> m_worldMemberGenerationSources;
         WorldHandle m_defaultWorldHandle;
 
         bool m_initialized = false;

@@ -35,10 +35,10 @@ namespace Jolt
 
         struct State final
         {
-            JPH::RVec3 m_previousPosition;
-            JPH::RVec3 m_position;
-            JPH::Quat m_previousRotation;
-            JPH::Quat m_rotation;
+            JPH::RVec3 m_previousPosition = JPH::RVec3::sZero();
+            JPH::RVec3 m_position = JPH::RVec3::sZero();
+            JPH::Quat m_previousRotation = JPH::Quat::sIdentity();
+            JPH::Quat m_rotation = JPH::Quat::sIdentity();
 
             BufferState m_globalPoseTransforms;
             BufferState m_positions;
@@ -55,6 +55,20 @@ namespace Jolt
 
         [[nodiscard]]
         bool CaptureState(State& state) const;
+
+        [[nodiscard]]
+        bool IsStateLayoutCompatible(const State& state) const;
+
+        [[nodiscard]]
+        bool IsImportedStatePayloadCompatible(
+            const State& state,
+            bool initialized) const;
+
+        [[nodiscard]]
+        static bool IsStateCanonicalEmpty(const State& state);
+
+        [[nodiscard]]
+        static bool IsStatePayloadFinite(const State& state);
 
         [[nodiscard]]
         bool RestoreState(

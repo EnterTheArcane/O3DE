@@ -32,6 +32,7 @@
 #include <AzCore/std/sort.h>
 #include <AzCore/std/typetraits/is_same.h>
 #include <AzCore/std/typetraits/remove_cvref.h>
+#include <AzCore/std/typetraits/remove_reference.h>
 #include <AzCore/std/utility/move.h>
 #include <AzCore/Utils/TypeHash.h>
 #include <AzCore/std/containers/variant.h>
@@ -39,6 +40,7 @@
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Core/JobSystemSingleThreaded.h>
+#include <Jolt/Core/StreamOut.h>
 #include <Jolt/Core/UnorderedSet.h>
 #include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
@@ -46,6 +48,7 @@
 #include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Body/BodyLockMulti.h>
 #include <Jolt/Physics/Body/BodyManager.h>
+#include <Jolt/Physics/Body/MotionProperties.h>
 #include <Jolt/Physics/Collision/AABoxCast.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhase.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseQuery.h>
@@ -114,8 +117,157 @@ namespace Jolt
     {
         constexpr AZ::u32 MaximumBarrierJobCount = 2'048;
         constexpr AZ::u32 StateArchiveMagic = 0x4A535341;
-        constexpr AZ::u32 StateArchiveFormatVersion = 5;
+        constexpr AZ::u32 StateArchiveFormatVersion = 7;
         constexpr AZ::u32 VehicleTrackCount = static_cast<AZ::u32>(JPH::ETrackSide::Num);
+
+        enum class CompatibilityDomain : AZ::u32
+        {
+            Archive = 0x41524348,
+            World = 0x574F524C,
+            Material = 0x4D41544C,
+            GroupFilter = 0x4752464C,
+            Path = 0x50415448,
+            Shape = 0x53485045,
+            SoftBodyDefinition = 0x534F4654,
+            HairDefinition = 0x48414952,
+            Body = 0x424F4459,
+            Constraint = 0x434F4E53,
+            Vehicle = 0x56454849,
+            Character = 0x43484152,
+            VirtualCharacter = 0x56434852,
+            HairInstance = 0x48494E53,
+            Participant = 0x50415254,
+            NativeStream = 0x4E415456,
+        };
+
+        class CompatibilityHashBuilder final
+        {
+        public:
+            CompatibilityHashBuilder()
+            {
+                constexpr char Seed[] = "O3DE.Jolt.StateArchive.v7";
+                m_hash = AZ::TypeHash64(
+                    reinterpret_cast<const AZ::u8*>(Seed),
+                    sizeof(Seed) - 1);
+            }
+
+            void AddDomain(const CompatibilityDomain domain)
+            {
+                AddScalar(static_cast<AZ::u32>(domain));
+            }
+
+            template<class Type>
+            void AddScalar(const Type value)
+            {
+                static_assert(std::is_arithmetic_v<Type> || std::is_enum_v<Type>);
+                m_hash = AZ::TypeHash64(
+                    reinterpret_cast<const AZ::u8*>(&value),
+                    sizeof(value),
+                    m_hash);
+            }
+
+            void AddBytes(
+                const void* data,
+                const size_t byteCount)
+            {
+                AddScalar(aznumeric_cast<AZ::u64>(byteCount));
+                if (byteCount > 0)
+                {
+                    m_hash = AZ::TypeHash64(
+                        reinterpret_cast<const AZ::u8*>(data),
+                        byteCount,
+                        m_hash);
+                }
+            }
+
+            void AddTypeId(const AZ::TypeId& typeId)
+            {
+                AddBytes(typeId.begin(), typeId.size());
+            }
+
+            void AddString(const AZStd::string_view value)
+            {
+                AddBytes(value.data(), value.size());
+            }
+
+            void AddVector(const JPH::Vec3Arg value)
+            {
+                AddScalar(value.GetX());
+                AddScalar(value.GetY());
+                AddScalar(value.GetZ());
+            }
+
+            void AddVector(const AZ::Vector3& value)
+            {
+                AddScalar(value.GetX());
+                AddScalar(value.GetY());
+                AddScalar(value.GetZ());
+            }
+
+            void AddQuaternion(const JPH::QuatArg value)
+            {
+                AddScalar(value.GetX());
+                AddScalar(value.GetY());
+                AddScalar(value.GetZ());
+                AddScalar(value.GetW());
+            }
+
+            void AddMatrix(const JPH::Mat44Arg value)
+            {
+                for (AZ::u32 column = 0; column < 4; ++column)
+                {
+                    const JPH::Vec4 vector = value.GetColumn4(column);
+                    AddScalar(vector.GetX());
+                    AddScalar(vector.GetY());
+                    AddScalar(vector.GetZ());
+                    AddScalar(vector.GetW());
+                }
+            }
+
+            [[nodiscard]]
+            AZ::u64 GetHash() const
+            {
+                return static_cast<AZ::u64>(m_hash);
+            }
+
+        private:
+            AZ::HashValue64 m_hash{0};
+        };
+
+        class CompatibilityHashStream final
+            : public JPH::StreamOut
+        {
+        public:
+            explicit CompatibilityHashStream(CompatibilityHashBuilder& builder)
+                : m_builder(builder)
+            {
+                m_builder.AddDomain(CompatibilityDomain::NativeStream);
+            }
+
+            void WriteBytes(
+                const void* data,
+                const size_t byteCount) override
+            {
+                m_builder.AddBytes(data, byteCount);
+                m_byteCount += byteCount;
+            }
+
+            [[nodiscard]]
+            bool IsFailed() const override
+            {
+                return false;
+            }
+
+            [[nodiscard]]
+            size_t GetByteCount() const
+            {
+                return m_byteCount;
+            }
+
+        private:
+            CompatibilityHashBuilder& m_builder;
+            size_t m_byteCount = 0;
+        };
 
         [[nodiscard]]
         AZ::u64 GetSteadyNanoseconds()
@@ -296,47 +448,104 @@ namespace Jolt
         };
 
         template<typename HandleType>
-        void WriteHandle(
+        bool WriteWorldMemberLogicalReference(
             Internal::StateArchiveWriter& writer,
-            const HandleType handle)
+            const HandleType handle,
+            const AZ::u32 expectedWorldIndex)
         {
-            writer.Write(Internal::HandleAccess::ToValue(handle));
-        }
-
-        template<typename HandleType>
-        bool ReadHandle(
-            Internal::StateArchiveReader& reader,
-            HandleType& handle)
-        {
-            AZ::u64 value = 0;
-            if (!reader.Read(value))
+            AZ::u32 logicalReference = 0;
+            if (handle)
             {
-                return false;
+                Internal::WorldMemberHandleParts parts;
+                if (!Internal::DecodeWorldMemberHandle(handle, parts)
+                    || parts.m_worldIndex != expectedWorldIndex
+                    || parts.m_index == AZStd::numeric_limits<AZ::u32>::max())
+                {
+                    return false;
+                }
+                logicalReference = parts.m_index + 1;
             }
-            handle = Internal::HandleAccess::FromValue<HandleType>(value);
+            writer.Write(logicalReference);
             return true;
         }
 
         template<typename HandleType>
-        bool RebindWorldMemberHandle(
-            const AZ::u32 worldIndex,
-            HandleType& handle)
+        bool WriteResourceLogicalReference(
+            Internal::StateArchiveWriter& writer,
+            const HandleType handle)
         {
-            if (!handle)
+            AZ::u32 logicalReference = 0;
+            if (handle)
             {
-                return true;
+                Internal::ResourceHandleParts parts;
+                if (!Internal::DecodeResourceHandle(handle, parts)
+                    || parts.m_index == AZStd::numeric_limits<AZ::u32>::max())
+                {
+                    return false;
+                }
+                logicalReference = parts.m_index + 1;
             }
+            writer.Write(logicalReference);
+            return true;
+        }
 
-            Internal::WorldMemberHandleParts parts;
-            if (!Internal::DecodeWorldMemberHandle(handle, parts))
+        bool WriteLogicalSlotReference(
+            Internal::StateArchiveWriter& writer,
+            const AZ::u32 slotIndex)
+        {
+            if (slotIndex == AZStd::numeric_limits<AZ::u32>::max())
             {
                 return false;
             }
-            handle = Internal::MakeWorldMemberHandle<HandleType>(
-                worldIndex,
-                parts.m_index,
-                parts.m_generation);
-            return handle.IsValid();
+            writer.Write(slotIndex + 1);
+            return true;
+        }
+
+        bool ReadLogicalReference(
+            Internal::StateArchiveReader& reader,
+            AZ::u32& logicalReference)
+        {
+            return reader.Read(logicalReference);
+        }
+
+        void WriteOccupancy(
+            Internal::StateArchiveWriter& writer,
+            const AZStd::span<const AZ::u32> generations,
+            const bool writeFullTopology)
+        {
+            if (!writeFullTopology)
+            {
+                writer.WriteSize(0);
+                return;
+            }
+
+            writer.WriteSize(generations.size());
+            for (const AZ::u32 generation : generations)
+            {
+                const AZ::u8 occupied = generation != 0;
+                writer.Write(occupied);
+            }
+        }
+
+        bool ReadOccupancy(
+            Internal::StateArchiveReader& reader,
+            AZStd::vector<AZ::u8>& occupancy)
+        {
+            size_t count = 0;
+            if (!reader.ReadSize(count)
+                || count > reader.RemainingByteCount())
+            {
+                return false;
+            }
+            occupancy.resize(count);
+            for (AZ::u8& occupied : occupancy)
+            {
+                if (!reader.Read(occupied) || occupied > 1)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         bool ReadObjectCount(
@@ -380,6 +589,24 @@ namespace Jolt
             {
                 return false;
             }
+
+            const float rotationLengthSq = rotationX * rotationX
+                + rotationY * rotationY
+                + rotationZ * rotationZ
+                + rotationW * rotationW;
+            if (!std::isfinite(transform.m_position.m_x)
+                || !std::isfinite(transform.m_position.m_y)
+                || !std::isfinite(transform.m_position.m_z)
+                || !AZ::IsFiniteFloat(rotationX)
+                || !AZ::IsFiniteFloat(rotationY)
+                || !AZ::IsFiniteFloat(rotationZ)
+                || !AZ::IsFiniteFloat(rotationW)
+                || !AZ::IsFiniteFloat(rotationLengthSq)
+                || rotationLengthSq <= 0.0f)
+            {
+                return false;
+            }
+
             transform.m_rotation = AZ::Quaternion(
                 rotationX,
                 rotationY,
@@ -502,14 +729,51 @@ namespace Jolt
                 return false;
             }
 
-            state.m_previousPosition = JPH::RVec3(previousPositionX, previousPositionY, previousPositionZ);
-            state.m_position = JPH::RVec3(positionX, positionY, positionZ);
-            state.m_previousRotation = JPH::Quat(
+            const float previousRotationLengthSq = previousRotationX * previousRotationX
+                + previousRotationY * previousRotationY
+                + previousRotationZ * previousRotationZ
+                + previousRotationW * previousRotationW;
+            const float rotationLengthSq = rotationX * rotationX
+                + rotationY * rotationY
+                + rotationZ * rotationZ
+                + rotationW * rotationW;
+            if (!std::isfinite(previousPositionX)
+                || !std::isfinite(previousPositionY)
+                || !std::isfinite(previousPositionZ)
+                || !std::isfinite(positionX)
+                || !std::isfinite(positionY)
+                || !std::isfinite(positionZ)
+                || !AZ::IsFiniteFloat(previousRotationX)
+                || !AZ::IsFiniteFloat(previousRotationY)
+                || !AZ::IsFiniteFloat(previousRotationZ)
+                || !AZ::IsFiniteFloat(previousRotationW)
+                || !AZ::IsFiniteFloat(previousRotationLengthSq)
+                || previousRotationLengthSq <= 0.0f
+                || !AZ::IsFiniteFloat(rotationX)
+                || !AZ::IsFiniteFloat(rotationY)
+                || !AZ::IsFiniteFloat(rotationZ)
+                || !AZ::IsFiniteFloat(rotationW)
+                || !AZ::IsFiniteFloat(rotationLengthSq)
+                || rotationLengthSq <= 0.0f)
+            {
+                return false;
+            }
+
+            const JPH::Quat previousRotation(
                 previousRotationX,
                 previousRotationY,
                 previousRotationZ,
                 previousRotationW);
-            state.m_rotation = JPH::Quat(rotationX, rotationY, rotationZ, rotationW);
+            const JPH::Quat rotation(rotationX, rotationY, rotationZ, rotationW);
+            if (!previousRotation.IsNormalized() || !rotation.IsNormalized())
+            {
+                return false;
+            }
+
+            state.m_previousPosition = JPH::RVec3(previousPositionX, previousPositionY, previousPositionZ);
+            state.m_position = JPH::RVec3(positionX, positionY, positionZ);
+            state.m_previousRotation = previousRotation;
+            state.m_rotation = rotation;
             state.m_teleported = teleported != 0;
             return true;
         }
@@ -2077,9 +2341,11 @@ namespace Jolt
         bool IsFinite(
             const WorldTransform& transform)
         {
+            const float rotationLengthSq = transform.m_rotation.GetLengthSq();
             return IsFinite(transform.m_position)
                 && transform.m_rotation.IsFinite()
-                && transform.m_rotation.GetLengthSq() > 0.0f;
+                && AZ::IsFiniteFloat(rotationLengthSq)
+                && rotationLengthSq > 0.0f;
         }
 
         [[nodiscard]]
@@ -5422,13 +5688,11 @@ namespace Jolt
 
     World::World(
         RuntimeImplementation& system,
-        Internal::WorldMemberGenerationSources& generationSources,
         const WorldHandle handle,
         const AZ::u32 worldIndex,
         WorldConfiguration configuration,
         AZ::JobContext* jobContext)
         : m_system(system)
-        , m_generationSources(generationSources)
         , m_configuration(AZStd::move(configuration))
         , m_jobContext(jobContext)
         , m_handle(handle)
@@ -5601,6 +5865,7 @@ namespace Jolt
             {
                 m_physicsSystem.RemoveStepListener(slot.m_constraint);
                 m_physicsSystem.RemoveConstraint(slot.m_constraint);
+                AdvanceNativeConstraintTopologyEpoch();
                 slot.m_constraint = nullptr;
                 slot.m_collisionTester = nullptr;
             }
@@ -5624,6 +5889,7 @@ namespace Jolt
                 if (slot.m_isInSimulation)
                 {
                     m_physicsSystem.RemoveConstraint(slot.m_constraint);
+                    AdvanceNativeConstraintTopologyEpoch();
                 }
                 slot.m_constraint = nullptr;
                 slot.m_isInSimulation = false;
@@ -6381,11 +6647,7 @@ namespace Jolt
             AZ_Assert(childSlot && childSlot->m_parentCount > 0, "Shape dependency ownership is inconsistent.");
             --childSlot->m_parentCount;
         }
-        slot->m_bodyCount = 0;
-        if (Internal::AdvanceGeneration(slot->m_generation))
-        {
-            m_freeShapeSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(m_shapeSlots, m_freeShapeSlots, parts.m_index);
 
         leaseLock.unlock();
 
@@ -7911,7 +8173,8 @@ namespace Jolt
         }
 
         AZ::u32 bodyIndex = 0;
-        const BodyHandle bodyHandle = ReserveBodySlot(bodyIndex);
+        Internal::HandleSlotReservation bodyReservation;
+        const BodyHandle bodyHandle = ReserveBodySlot(bodyIndex, bodyReservation);
         if (!bodyHandle)
         {
             m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
@@ -7986,8 +8249,8 @@ namespace Jolt
         }
         if (bodyId.IsInvalid())
         {
-            m_freeBodySlots.push_back(bodyIndex);
             m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            Internal::RollbackHandleSlot(m_bodySlots, m_freeBodySlots, bodyReservation);
             return {};
         }
 
@@ -8074,7 +8337,8 @@ namespace Jolt
         }
 
         AZ::u32 bodyIndex = 0;
-        const BodyHandle bodyHandle = ReserveBodySlot(bodyIndex);
+        Internal::HandleSlotReservation bodyReservation;
+        const BodyHandle bodyHandle = ReserveBodySlot(bodyIndex, bodyReservation);
         if (!bodyHandle)
         {
             m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
@@ -8135,9 +8399,9 @@ namespace Jolt
         }
         if (bodyId.IsInvalid())
         {
-            m_freeBodySlots.push_back(bodyIndex);
             m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
             m_system.ReleaseSoftBodyDefinition(configuration.m_definitionHandle);
+            Internal::RollbackHandleSlot(m_bodySlots, m_freeBodySlots, bodyReservation);
             return {};
         }
 
@@ -8150,9 +8414,9 @@ namespace Jolt
                     bodyInterface.RemoveBody(bodyId);
                 }
                 bodyInterface.DestroyBody(bodyId);
-                m_freeBodySlots.push_back(bodyIndex);
                 m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
                 m_system.ReleaseSoftBodyDefinition(configuration.m_definitionHandle);
+                Internal::RollbackHandleSlot(m_bodySlots, m_freeBodySlots, bodyReservation);
                 return {};
             }
 
@@ -8354,9 +8618,14 @@ namespace Jolt
     }
 
     BodyHandle World::ReserveBodySlot(
-        AZ::u32& bodyIndex)
+        AZ::u32& bodyIndex,
+        Internal::HandleSlotReservation& reservation)
     {
-        const BodyHandle bodyHandle = ReserveWorldMemberSlot<BodyHandle>(m_bodySlots, m_freeBodySlots, bodyIndex);
+        const BodyHandle bodyHandle = ReserveWorldMemberSlot<BodyHandle>(
+            m_bodySlots,
+            m_freeBodySlots,
+            bodyIndex,
+            reservation);
         if (!bodyHandle)
         {
             return {};
@@ -8389,26 +8658,7 @@ namespace Jolt
             m_system.ReleaseSoftBodyDefinition(slot.m_softBodyDefinitionHandle);
         }
 
-        slot.m_bodyId = JPH::BodyID();
-        slot.m_groupFilterHandle = {};
-        slot.m_shapeHandle = {};
-        slot.m_softBodyDefinitionHandle = {};
-        slot.m_characterHandle = {};
-        slot.m_virtualCharacterHandle = {};
-        slot.m_vehicleHandle = {};
-        slot.m_ragdollHandle = {};
-        slot.m_sceneInstanceHandle = {};
-        slot.m_entityId = AZ::EntityId();
-        slot.m_name = AZ::Name();
-        slot.m_kind = BodyKind::None;
-        slot.m_motionType = MotionType::None;
-        slot.m_moveEventIndex = AZStd::numeric_limits<AZ::u32>::max();
-        slot.m_softBodySkinPoseInitialized = true;
-        slot.m_softBodySkinConstraintsEnabled = false;
-        if (Internal::AdvanceGeneration(slot.m_generation))
-        {
-            m_freeBodySlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(m_bodySlots, m_freeBodySlots, parts.m_index);
     }
 
     bool World::DestroyBody(
@@ -8600,8 +8850,13 @@ namespace Jolt
         }
 
         AZ::u32 constraintIndex = 0;
+        Internal::HandleSlotReservation constraintReservation;
         const ConstraintHandle constraintHandle =
-            ReserveWorldMemberSlot<ConstraintHandle>(m_constraintSlots, m_freeConstraintSlots, constraintIndex);
+            ReserveWorldMemberSlot<ConstraintHandle>(
+                m_constraintSlots,
+                m_freeConstraintSlots,
+                constraintIndex,
+                constraintReservation);
         if (!constraintHandle)
         {
             return {};
@@ -9443,7 +9698,7 @@ namespace Jolt
             {
                 m_system.ReleaseCustomConstraintProvider(customProviderExtension);
             }
-            m_freeConstraintSlots.push_back(constraintIndex);
+            Internal::RollbackHandleSlot(m_constraintSlots, m_freeConstraintSlots, constraintReservation);
             return {};
         }
 
@@ -9508,6 +9763,7 @@ namespace Jolt
         if (configuration.m_startInSimulation)
         {
             m_physicsSystem.AddConstraint(nativeConstraint);
+            AdvanceNativeConstraintTopologyEpoch();
         }
         slot.m_constraint = nativeConstraint;
         slot.m_firstBodyHandle = configuration.m_firstBodyHandle;
@@ -9552,6 +9808,7 @@ namespace Jolt
         }
 
         m_physicsSystem.AddConstraint(slot->m_constraint);
+        AdvanceNativeConstraintTopologyEpoch();
         slot->m_isInSimulation = true;
         return true;
     }
@@ -9611,6 +9868,7 @@ namespace Jolt
         m_physicsSystem.AddConstraints(
             m_constraintScratch.data(),
             aznumeric_cast<int>(m_constraintScratch.size()));
+        AdvanceNativeConstraintTopologyEpoch();
         for (const ConstraintHandle constraintHandle : constraintHandles)
         {
             ConstraintSlot* slot = FindConstraint(constraintHandle);
@@ -9637,6 +9895,7 @@ namespace Jolt
         }
 
         m_physicsSystem.RemoveConstraint(slot->m_constraint);
+        AdvanceNativeConstraintTopologyEpoch();
         slot->m_isInSimulation = false;
         return true;
     }
@@ -9696,6 +9955,7 @@ namespace Jolt
         m_physicsSystem.RemoveConstraints(
             m_constraintScratch.data(),
             aznumeric_cast<int>(m_constraintScratch.size()));
+        AdvanceNativeConstraintTopologyEpoch();
         for (const ConstraintHandle constraintHandle : constraintHandles)
         {
             ConstraintSlot* slot = FindConstraint(constraintHandle);
@@ -9723,6 +9983,7 @@ namespace Jolt
         if (slot->m_isInSimulation)
         {
             m_physicsSystem.RemoveConstraint(slot->m_constraint);
+            AdvanceNativeConstraintTopologyEpoch();
         }
         ReleaseConstraintReferences(*slot);
         ReleaseConstraintSlot(constraintHandle, *slot);
@@ -9842,6 +10103,7 @@ namespace Jolt
             m_physicsSystem.RemoveConstraints(
                 m_constraintScratch.data(),
                 aznumeric_cast<int>(m_constraintScratch.size()));
+            AdvanceNativeConstraintTopologyEpoch();
         }
 
         for (const ConstraintHandle constraintHandle : constraintHandles)
@@ -9899,24 +10161,7 @@ namespace Jolt
         [[maybe_unused]] const bool decoded = Internal::DecodeWorldMemberHandle(constraintHandle, parts);
         AZ_Assert(decoded, "A validated constraint handle must decode.");
 
-        slot.m_constraint = nullptr;
-        slot.m_firstBodyHandle = {};
-        slot.m_secondBodyHandle = {};
-        slot.m_dependencyHandles = {};
-        slot.m_pathHandle = {};
-        slot.m_customProviderId = AZ::TypeId::CreateNull();
-        slot.m_customProviderExtension = ExtensionHandle::Invalid;
-        slot.m_pathRotationConstraint = PathRotationConstraint::None;
-        slot.m_entityId = AZ::EntityId();
-        slot.m_name = AZ::Name();
-        slot.m_parentCount = 0;
-        slot.m_ragdollHandle = {};
-        slot.m_sceneInstanceHandle = {};
-        slot.m_isInSimulation = false;
-        if (Internal::AdvanceGeneration(slot.m_generation))
-        {
-            m_freeConstraintSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(m_constraintSlots, m_freeConstraintSlots, parts.m_index);
     }
 
     bool World::IsConstraintInSimulation(
@@ -12284,10 +12529,12 @@ namespace Jolt
         }
 
         AZ::u32 characterIndex = 0;
+        Internal::HandleSlotReservation characterReservation;
         const VirtualCharacterHandle characterHandle = ReserveWorldMemberSlot<VirtualCharacterHandle>(
             m_virtualCharacterSlots,
             m_freeVirtualCharacterSlots,
-            characterIndex);
+            characterIndex,
+            characterReservation);
         if (!characterHandle)
         {
             return {};
@@ -12295,12 +12542,16 @@ namespace Jolt
 
         AZ::u32 innerBodyIndex = 0;
         BodyHandle innerBodyHandle;
+        Internal::HandleSlotReservation innerBodyReservation;
         if (innerBodyShapeSlot)
         {
-            innerBodyHandle = ReserveBodySlot(innerBodyIndex);
+            innerBodyHandle = ReserveBodySlot(innerBodyIndex, innerBodyReservation);
             if (!innerBodyHandle)
             {
-                m_freeVirtualCharacterSlots.push_back(characterIndex);
+                Internal::RollbackHandleSlot(
+                    m_virtualCharacterSlots,
+                    m_freeVirtualCharacterSlots,
+                    characterReservation);
                 return {};
             }
         }
@@ -12349,8 +12600,11 @@ namespace Jolt
         if (innerBodyShapeSlot && innerBodyId.IsInvalid())
         {
             character = nullptr;
-            m_freeBodySlots.push_back(innerBodyIndex);
-            m_freeVirtualCharacterSlots.push_back(characterIndex);
+            Internal::RollbackHandleSlot(m_bodySlots, m_freeBodySlots, innerBodyReservation);
+            Internal::RollbackHandleSlot(
+                m_virtualCharacterSlots,
+                m_freeVirtualCharacterSlots,
+                characterReservation);
             return {};
         }
 
@@ -12405,14 +12659,12 @@ namespace Jolt
         }
 
         BodySlot* innerBodySlot = nullptr;
-        Internal::WorldMemberHandleParts innerBodyParts;
         if (slot->m_innerBodyHandle)
         {
             innerBodySlot = FindBody(slot->m_innerBodyHandle);
             if (!innerBodySlot
                 || innerBodySlot->m_virtualCharacterHandle != characterHandle
-                || innerBodySlot->m_constraintCount > 0
-                || !Internal::DecodeWorldMemberHandle(slot->m_innerBodyHandle, innerBodyParts))
+                || innerBodySlot->m_constraintCount > 0)
             {
                 return false;
             }
@@ -12440,51 +12692,17 @@ namespace Jolt
         }
         if (innerBodySlot)
         {
-            ShapeSlot* innerBodyShapeSlot = FindShape(innerBodySlot->m_shapeHandle);
-            AZ_Assert(
-                innerBodyShapeSlot && innerBodyShapeSlot->m_bodyCount > 0,
-                "Virtual character inner-body shape ownership is invalid.");
-            if (innerBodyShapeSlot && innerBodyShapeSlot->m_bodyCount > 0)
-            {
-                --innerBodyShapeSlot->m_bodyCount;
-            }
-
-            innerBodySlot->m_bodyId = JPH::BodyID();
-            innerBodySlot->m_groupFilterHandle = {};
-            innerBodySlot->m_shapeHandle = {};
-            innerBodySlot->m_softBodyDefinitionHandle = {};
-            innerBodySlot->m_characterHandle = {};
-            innerBodySlot->m_virtualCharacterHandle = {};
-            innerBodySlot->m_vehicleHandle = {};
-            innerBodySlot->m_ragdollHandle = {};
-            innerBodySlot->m_sceneInstanceHandle = {};
-            innerBodySlot->m_entityId = AZ::EntityId();
-            innerBodySlot->m_name = AZ::Name();
-            innerBodySlot->m_kind = BodyKind::None;
-            innerBodySlot->m_motionType = MotionType::None;
-            innerBodySlot->m_moveEventIndex = AZStd::numeric_limits<AZ::u32>::max();
-            innerBodySlot->m_softBodySkinPoseInitialized = true;
-            innerBodySlot->m_softBodySkinConstraintsEnabled = false;
-            if (Internal::AdvanceGeneration(innerBodySlot->m_generation))
-            {
-                m_freeBodySlots.push_back(innerBodyParts.m_index);
-            }
+            ReleaseBodySlot(slot->m_innerBodyHandle, *innerBodySlot);
         }
         if (ShapeSlot* shapeSlot = FindShape(slot->m_shapeHandle))
         {
             AZ_Assert(shapeSlot->m_parentCount > 0, "Virtual character shape ownership underflow.");
             --shapeSlot->m_parentCount;
         }
-        slot->m_innerBodyHandle = {};
-        slot->m_shapeHandle = {};
-        slot->m_entityId = AZ::EntityId();
-        slot->m_name = AZ::Name();
-        slot->m_objectLayer = {};
-        slot->m_contactTrackingDepth = 0;
-        if (Internal::AdvanceGeneration(slot->m_generation))
-        {
-            m_freeVirtualCharacterSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(
+            m_virtualCharacterSlots,
+            m_freeVirtualCharacterSlots,
+            parts.m_index);
         return true;
     }
 
@@ -13408,8 +13626,13 @@ namespace Jolt
         }
 
         AZ::u32 characterIndex = 0;
+        Internal::HandleSlotReservation characterReservation;
         const CharacterHandle characterHandle =
-            ReserveWorldMemberSlot<CharacterHandle>(m_characterSlots, m_freeCharacterSlots, characterIndex);
+            ReserveWorldMemberSlot<CharacterHandle>(
+                m_characterSlots,
+                m_freeCharacterSlots,
+                characterIndex,
+                characterReservation);
         if (!characterHandle)
         {
             m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
@@ -13418,11 +13641,12 @@ namespace Jolt
 
         CharacterSlot& characterSlot = m_characterSlots[characterIndex];
         AZ::u32 bodyIndex = 0;
-        const BodyHandle bodyHandle = ReserveBodySlot(bodyIndex);
+        Internal::HandleSlotReservation bodyReservation;
+        const BodyHandle bodyHandle = ReserveBodySlot(bodyIndex, bodyReservation);
         if (!bodyHandle)
         {
-            m_freeCharacterSlots.push_back(characterIndex);
             m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            Internal::RollbackHandleSlot(m_characterSlots, m_freeCharacterSlots, characterReservation);
             return {};
         }
 
@@ -13448,9 +13672,9 @@ namespace Jolt
             &m_physicsSystem);
         if (character->GetBodyID().IsInvalid())
         {
-            m_freeBodySlots.push_back(bodyIndex);
-            m_freeCharacterSlots.push_back(characterIndex);
             m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            Internal::RollbackHandleSlot(m_bodySlots, m_freeBodySlots, bodyReservation);
+            Internal::RollbackHandleSlot(m_characterSlots, m_freeCharacterSlots, characterReservation);
             return {};
         }
 
@@ -13509,9 +13733,7 @@ namespace Jolt
         }
 
         Internal::WorldMemberHandleParts characterParts;
-        Internal::WorldMemberHandleParts bodyParts;
-        if (!Internal::DecodeWorldMemberHandle(characterHandle, characterParts)
-            || !Internal::DecodeWorldMemberHandle(characterSlot->m_bodyHandle, bodyParts))
+        if (!Internal::DecodeWorldMemberHandle(characterHandle, characterParts))
         {
             return false;
         }
@@ -13522,39 +13744,8 @@ namespace Jolt
         characterSlot->m_character->RemoveFromPhysicsSystem();
         MaintainBroadPhaseAfterBodyRemovals(1);
         characterSlot->m_character = nullptr;
-        m_system.ReleaseGroupFilter(bodySlot->m_groupFilterHandle);
-        ShapeSlot* shapeSlot = FindShape(characterSlot->m_shapeHandle);
-        AZ_Assert(shapeSlot && shapeSlot->m_bodyCount > 0, "Character shape ownership is invalid.");
-        if (shapeSlot && shapeSlot->m_bodyCount > 0)
-        {
-            --shapeSlot->m_bodyCount;
-        }
-
-        bodySlot->m_bodyId = JPH::BodyID();
-        bodySlot->m_groupFilterHandle = {};
-        bodySlot->m_shapeHandle = {};
-        bodySlot->m_softBodyDefinitionHandle = {};
-        bodySlot->m_characterHandle = {};
-        bodySlot->m_virtualCharacterHandle = {};
-        bodySlot->m_entityId = AZ::EntityId();
-        bodySlot->m_name = AZ::Name();
-        bodySlot->m_kind = BodyKind::None;
-        bodySlot->m_motionType = MotionType::None;
-        bodySlot->m_softBodySkinPoseInitialized = true;
-        bodySlot->m_softBodySkinConstraintsEnabled = false;
-        if (Internal::AdvanceGeneration(bodySlot->m_generation))
-        {
-            m_freeBodySlots.push_back(bodyParts.m_index);
-        }
-
-        characterSlot->m_bodyHandle = {};
-        characterSlot->m_shapeHandle = {};
-        characterSlot->m_entityId = AZ::EntityId();
-        characterSlot->m_name = AZ::Name();
-        if (Internal::AdvanceGeneration(characterSlot->m_generation))
-        {
-            m_freeCharacterSlots.push_back(characterParts.m_index);
-        }
+        ReleaseBodySlot(characterSlot->m_bodyHandle, *bodySlot);
+        Internal::ReleaseHandleSlot(m_characterSlots, m_freeCharacterSlots, characterParts.m_index);
         return true;
     }
 
@@ -14134,8 +14325,13 @@ namespace Jolt
         }
 
         AZ::u32 vehicleIndex = 0;
+        Internal::HandleSlotReservation vehicleReservation;
         const VehicleHandle vehicleHandle =
-            ReserveWorldMemberSlot<VehicleHandle>(m_vehicleSlots, m_freeVehicleSlots, vehicleIndex);
+            ReserveWorldMemberSlot<VehicleHandle>(
+                m_vehicleSlots,
+                m_freeVehicleSlots,
+                vehicleIndex,
+                vehicleReservation);
         if (!vehicleHandle)
         {
             return {};
@@ -14270,7 +14466,7 @@ namespace Jolt
             JPH::BodyLockWrite bodyLock(m_physicsSystem.GetBodyLockInterface(), bodySlot->m_bodyId);
             if (!bodyLock.Succeeded())
             {
-                m_freeVehicleSlots.push_back(vehicleIndex);
+                Internal::RollbackHandleSlot(m_vehicleSlots, m_freeVehicleSlots, vehicleReservation);
                 return {};
             }
             constraint = new JPH::VehicleConstraint(bodyLock.GetBody(), settings);
@@ -14304,6 +14500,7 @@ namespace Jolt
             constraint->OverrideGravity(ToNativeVector(configuration.m_gravityOverride));
         }
         m_physicsSystem.AddConstraint(constraint);
+        AdvanceNativeConstraintTopologyEpoch();
         m_physicsSystem.AddStepListener(constraint);
 
         slot.m_constraint = constraint;
@@ -14511,8 +14708,13 @@ namespace Jolt
         }
 
         AZ::u32 vehicleIndex = 0;
+        Internal::HandleSlotReservation vehicleReservation;
         const VehicleHandle vehicleHandle =
-            ReserveWorldMemberSlot<VehicleHandle>(m_vehicleSlots, m_freeVehicleSlots, vehicleIndex);
+            ReserveWorldMemberSlot<VehicleHandle>(
+                m_vehicleSlots,
+                m_freeVehicleSlots,
+                vehicleIndex,
+                vehicleReservation);
         if (!vehicleHandle)
         {
             return {};
@@ -14608,7 +14810,7 @@ namespace Jolt
             JPH::BodyLockWrite bodyLock(m_physicsSystem.GetBodyLockInterface(), bodySlot->m_bodyId);
             if (!bodyLock.Succeeded())
             {
-                m_freeVehicleSlots.push_back(vehicleIndex);
+                Internal::RollbackHandleSlot(m_vehicleSlots, m_freeVehicleSlots, vehicleReservation);
                 return {};
             }
             constraint = new JPH::VehicleConstraint(bodyLock.GetBody(), settings);
@@ -14636,6 +14838,7 @@ namespace Jolt
             constraint->OverrideGravity(ToNativeVector(configuration.m_gravityOverride));
         }
         m_physicsSystem.AddConstraint(constraint);
+        AdvanceNativeConstraintTopologyEpoch();
         m_physicsSystem.AddStepListener(constraint);
 
         slot.m_constraint = constraint;
@@ -14666,6 +14869,7 @@ namespace Jolt
         }
         m_physicsSystem.RemoveStepListener(slot->m_constraint);
         m_physicsSystem.RemoveConstraint(slot->m_constraint);
+        AdvanceNativeConstraintTopologyEpoch();
         BodySlot* bodySlot = FindBody(slot->m_bodyHandle);
         AZ_Assert(bodySlot && bodySlot->m_constraintCount > 0, "Vehicle body ownership is invalid.");
         if (bodySlot && slot->m_constraint->IsGravityOverridden())
@@ -14683,8 +14887,6 @@ namespace Jolt
             --bodySlot->m_constraintCount;
             bodySlot->m_vehicleHandle = {};
         }
-        slot->m_constraint = nullptr;
-        slot->m_collisionTester = nullptr;
         if (slot->m_bindings)
         {
             if (slot->m_bindings->m_callbacks.m_handle)
@@ -14696,17 +14898,7 @@ namespace Jolt
                 m_system.ReleaseExtension(slot->m_bindings->m_collisionFilter.m_handle);
             }
         }
-        slot->m_bindings.reset();
-        slot->m_bodyHandle = {};
-        slot->m_collisionConfiguration = {};
-        slot->m_motorcycleMaximumLeanAngle = 0.0f;
-        slot->m_gravityFactorBeforeOverride = 1.0f;
-        slot->m_kind = VehicleKind::None;
-        slot->m_hasGravityFactorBeforeOverride = false;
-        if (Internal::AdvanceGeneration(slot->m_generation))
-        {
-            m_freeVehicleSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(m_vehicleSlots, m_freeVehicleSlots, parts.m_index);
         return true;
     }
 
@@ -16085,13 +16277,21 @@ namespace Jolt
     }
 
     bool World::ReserveStateSnapshotSlot(
-        AZ::u32& snapshotIndex)
+        AZ::u32& snapshotIndex,
+        Internal::HandleSlotReservation& reservation)
     {
         const StateSnapshotHandle snapshotHandle = ReserveWorldMemberSlot<StateSnapshotHandle>(
             m_stateSnapshotSlots,
             m_freeStateSnapshotSlots,
-            snapshotIndex);
+            snapshotIndex,
+            reservation);
         return static_cast<bool>(snapshotHandle);
+    }
+
+    void World::RollbackStateSnapshotSlot(
+        const Internal::HandleSlotReservation& reservation)
+    {
+        Internal::RollbackHandleSlot(m_stateSnapshotSlots, m_freeStateSnapshotSlots, reservation);
     }
 
     StateSnapshotHandle World::CaptureState(
@@ -16106,7 +16306,8 @@ namespace Jolt
             m_performanceStatistics.m_snapshotFailureCount);
         AZStd::lock_guard lock(m_mutex);
         AZ::u32 snapshotIndex = 0;
-        if (!ReserveStateSnapshotSlot(snapshotIndex))
+        Internal::HandleSlotReservation reservation;
+        if (!ReserveStateSnapshotSlot(snapshotIndex, reservation))
         {
             return {};
         }
@@ -16114,7 +16315,7 @@ namespace Jolt
         StateSnapshotSlot& snapshot = m_stateSnapshotSlots[snapshotIndex];
         if (!CaptureStateUnlocked(snapshot, configuration, bodyHandles))
         {
-            ReleaseStateSnapshotSlot(snapshotIndex);
+            RollbackStateSnapshotSlot(reservation);
             return {};
         }
         const StateSnapshotHandle snapshotHandle = Internal::MakeWorldMemberHandle<StateSnapshotHandle>(
@@ -16251,21 +16452,20 @@ namespace Jolt
         }
 
         const AZ::u64 partitionBatchId = m_nextSnapshotPartitionBatchId;
-        ++m_nextSnapshotPartitionBatchId;
-        if (m_nextSnapshotPartitionBatchId == 0)
-        {
-            ++m_nextSnapshotPartitionBatchId;
-        }
 
+        m_snapshotReservationScratch.clear();
+        m_snapshotReservationScratch.reserve(snapshotHandles.size());
         size_t bodyOffset = 0;
         size_t capturedPartCount = 0;
         for (size_t partitionIndex = 0; partitionIndex < partitionBodyCounts.size(); ++partitionIndex)
         {
             AZ::u32 snapshotIndex = 0;
-            if (!ReserveStateSnapshotSlot(snapshotIndex))
+            Internal::HandleSlotReservation reservation;
+            if (!ReserveStateSnapshotSlot(snapshotIndex, reservation))
             {
                 break;
             }
+            m_snapshotReservationScratch.push_back(reservation);
 
             StateSnapshotSlot& snapshot = m_stateSnapshotSlots[snapshotIndex];
             const size_t partitionBodyCount = partitionBodyCounts[partitionIndex];
@@ -16274,7 +16474,6 @@ namespace Jolt
                     configuration,
                     bodyHandles.subspan(bodyOffset, partitionBodyCount)))
             {
-                ReleaseStateSnapshotSlot(snapshotIndex);
                 break;
             }
 
@@ -16289,26 +16488,31 @@ namespace Jolt
 
         if (capturedPartCount == snapshotHandles.size())
         {
+            ++m_nextSnapshotPartitionBatchId;
+            if (m_nextSnapshotPartitionBatchId == 0)
+            {
+                ++m_nextSnapshotPartitionBatchId;
+            }
             statisticsScope.Succeed();
             return true;
         }
 
-        for (size_t partitionIndex = 0; partitionIndex < capturedPartCount; ++partitionIndex)
+        for (size_t reservationIndex = m_snapshotReservationScratch.size(); reservationIndex > 0; --reservationIndex)
         {
-            Internal::WorldMemberHandleParts parts;
-            if (Internal::DecodeWorldMemberHandle(snapshotHandles[partitionIndex], parts))
-            {
-                ReleaseStateSnapshotSlot(parts.m_index);
-            }
-            snapshotHandles[partitionIndex] = StateSnapshotHandle::Invalid;
+            RollbackStateSnapshotSlot(m_snapshotReservationScratch[reservationIndex - 1]);
+        }
+        for (StateSnapshotHandle& snapshotHandle : snapshotHandles)
+        {
+            snapshotHandle = StateSnapshotHandle::Invalid;
         }
         return false;
     }
 
-    void World::WriteStateSnapshot(
+    bool World::WriteStateSnapshot(
         Internal::StateArchiveWriter& writer,
         const StateSnapshotSlot& snapshot) const
     {
+        bool succeeded = true;
         const auto writeParticipantState =
             [&writer](const RollbackParticipantState& state)
             {
@@ -16319,12 +16523,107 @@ namespace Jolt
             };
 
         writer.WriteVector(snapshot.m_data);
-        writer.WriteVector(snapshot.m_bodyGenerations);
-        writer.WriteVector(snapshot.m_characterGenerations);
-        writer.WriteVector(snapshot.m_constraintGenerations);
-        writer.WriteVector(snapshot.m_vehicleGenerations);
-        writer.WriteVector(snapshot.m_virtualCharacterGenerations);
-        writer.WriteVector(snapshot.m_hairGenerations);
+        const bool writeFullTopology = !snapshot.m_configuration.m_filterBodies;
+        WriteOccupancy(writer, snapshot.m_bodyGenerations, writeFullTopology);
+        WriteOccupancy(writer, snapshot.m_characterGenerations, writeFullTopology);
+        WriteOccupancy(writer, snapshot.m_constraintGenerations, writeFullTopology);
+        WriteOccupancy(writer, snapshot.m_vehicleGenerations, writeFullTopology);
+        WriteOccupancy(writer, snapshot.m_virtualCharacterGenerations, writeFullTopology);
+        WriteOccupancy(writer, snapshot.m_hairGenerations, writeFullTopology);
+
+        size_t virtualCharacterTopologyCount = 0;
+        if (writeFullTopology)
+        {
+            for (const VirtualCharacterSlot& slot : m_virtualCharacterSlots)
+            {
+                if (slot.m_character)
+                {
+                    ++virtualCharacterTopologyCount;
+                }
+            }
+        }
+        writer.WriteSize(virtualCharacterTopologyCount);
+        if (writeFullTopology)
+        {
+            for (AZ::u32 slotIndex = 0; slotIndex < m_virtualCharacterSlots.size(); ++slotIndex)
+            {
+                const VirtualCharacterSlot& slot = m_virtualCharacterSlots[slotIndex];
+                if (!slot.m_character)
+                {
+                    continue;
+                }
+                succeeded = WriteLogicalSlotReference(writer, slotIndex)
+                    && WriteWorldMemberLogicalReference(writer, slot.m_shapeHandle, m_worldIndex)
+                    && WriteWorldMemberLogicalReference(writer, slot.m_innerBodyHandle, m_worldIndex)
+                    && succeeded;
+            }
+        }
+
+        size_t hairTopologyCount = 0;
+        if (writeFullTopology)
+        {
+            for (const HairSlot& slot : m_hairSlots)
+            {
+                if (slot.m_hair)
+                {
+                    ++hairTopologyCount;
+                }
+            }
+        }
+        writer.WriteSize(hairTopologyCount);
+        if (writeFullTopology)
+        {
+            for (AZ::u32 slotIndex = 0; slotIndex < m_hairSlots.size(); ++slotIndex)
+            {
+                const HairSlot& slot = m_hairSlots[slotIndex];
+                if (!slot.m_hair)
+                {
+                    continue;
+                }
+                succeeded = WriteLogicalSlotReference(writer, slotIndex)
+                    && WriteResourceLogicalReference(writer, slot.m_definitionHandle)
+                    && succeeded;
+                AZ::u32 simulationVertexCount = 0;
+                AZ::u32 simulationStrandCount = 0;
+                AZ::u32 renderVertexCount = 0;
+                AZ::u32 renderStrandCount = 0;
+                AZ::u32 scalpVertexCount = 0;
+                AZ::u32 scalpJointCount = 0;
+                Internal::ResourceHandleParts definitionParts;
+                {
+                    AZStd::shared_lock definitionLock(m_system.m_hairDefinitionMutex);
+                    if (!Internal::DecodeResourceHandle(slot.m_definitionHandle, definitionParts)
+                        || definitionParts.m_index >= m_system.m_hairDefinitionSlots.size())
+                    {
+                        succeeded = false;
+                    }
+                    else
+                    {
+                        const auto& definitionSlot = m_system.m_hairDefinitionSlots[definitionParts.m_index];
+                        if (!definitionSlot.m_settings
+                            || definitionSlot.m_generation != definitionParts.m_generation)
+                        {
+                            succeeded = false;
+                        }
+                        else
+                        {
+                            simulationVertexCount = aznumeric_cast<AZ::u32>(definitionSlot.m_settings->mSimVertices.size());
+                            simulationStrandCount = aznumeric_cast<AZ::u32>(definitionSlot.m_settings->mSimStrands.size());
+                            renderVertexCount = aznumeric_cast<AZ::u32>(definitionSlot.m_settings->mRenderVertices.size());
+                            renderStrandCount = aznumeric_cast<AZ::u32>(definitionSlot.m_settings->mRenderStrands.size());
+                            scalpVertexCount = aznumeric_cast<AZ::u32>(definitionSlot.m_settings->mScalpVertices.size());
+                            scalpJointCount = aznumeric_cast<AZ::u32>(definitionSlot.m_settings->mScalpInverseBindPose.size());
+                        }
+                    }
+                }
+                writer.Write(simulationVertexCount);
+                writer.Write(simulationStrandCount);
+                writer.Write(renderVertexCount);
+                writer.Write(renderStrandCount);
+                writer.Write(scalpVertexCount);
+                writer.Write(scalpJointCount);
+            }
+        }
 
         writer.WriteSize(snapshot.m_hairStates.size());
         for (const NativeHair::State& state : snapshot.m_hairStates)
@@ -16343,7 +16642,8 @@ namespace Jolt
         writer.WriteSize(snapshot.m_groupFilterStates.size());
         for (const GroupFilterState& state : snapshot.m_groupFilterStates)
         {
-            WriteHandle(writer, state.m_filterHandle);
+            succeeded = WriteResourceLogicalReference(writer, state.m_filterHandle)
+                && succeeded;
             writer.Write(state.m_filterStateHash);
             writeParticipantState(state.m_participantState);
         }
@@ -16369,52 +16669,272 @@ namespace Jolt
         }
         writer.WriteVector(snapshot.m_filteredBodyIds);
 
-        writer.WriteSize(snapshot.m_filteredBodyTopologyStates.size());
-        for (const FilteredBodyTopologyState& state : snapshot.m_filteredBodyTopologyStates)
+        size_t bodyTopologyCount = snapshot.m_filteredBodyTopologyStates.size();
+        if (writeFullTopology)
         {
-            WriteHandle(writer, state.m_bodyHandle);
-            WriteHandle(writer, state.m_characterHandle);
-            WriteHandle(writer, state.m_groupFilterHandle);
-            WriteHandle(writer, state.m_shapeHandle);
-            WriteHandle(writer, state.m_softBodyDefinitionHandle);
-            writer.Write(state.m_bodyConfigurationRevision);
-            writer.Write(state.m_characterConfigurationRevision);
-            writer.Write(state.m_shapeConfigurationRevision);
-            writer.Write(state.m_collisionGroupId);
-            writer.Write(state.m_collisionSubGroupId);
-            writer.Write(state.m_nativeBodyId);
-            writer.Write(state.m_objectLayer);
-            writer.Write(static_cast<AZ::u8>(state.m_kind));
-            writer.Write(static_cast<AZ::u8>(state.m_motionType));
-            writer.Write(static_cast<AZ::u8>(state.m_isInSimulation));
+            bodyTopologyCount = 0;
+            for (const BodySlot& slot : m_bodySlots)
+            {
+                if (!slot.m_bodyId.IsInvalid())
+                {
+                    ++bodyTopologyCount;
+                }
+            }
+        }
+        writer.WriteSize(bodyTopologyCount);
+        const auto writeBodyTopologyState =
+            [this, &writer, &succeeded](const FilteredBodyTopologyState& state)
+            {
+                succeeded = WriteWorldMemberLogicalReference(writer, state.m_bodyHandle, m_worldIndex)
+                    && WriteWorldMemberLogicalReference(writer, state.m_characterHandle, m_worldIndex)
+                    && WriteWorldMemberLogicalReference(writer, state.m_virtualCharacterHandle, m_worldIndex)
+                    && WriteWorldMemberLogicalReference(writer, state.m_vehicleHandle, m_worldIndex)
+                    && WriteResourceLogicalReference(writer, state.m_groupFilterHandle)
+                    && WriteWorldMemberLogicalReference(writer, state.m_shapeHandle, m_worldIndex)
+                    && WriteResourceLogicalReference(writer, state.m_softBodyDefinitionHandle)
+                    && succeeded;
+                writer.Write(state.m_collisionGroupId);
+                writer.Write(state.m_collisionSubGroupId);
+                writer.Write(state.m_nativeBodyId);
+                writer.Write(state.m_objectLayer);
+                writer.Write(static_cast<AZ::u8>(state.m_kind));
+                writer.Write(static_cast<AZ::u8>(state.m_motionType));
+                writer.Write(static_cast<AZ::u8>(state.m_isInSimulation));
+                AZ::u32 softVertexCount = 0;
+                AZ::u32 softRodCount = 0;
+                if (state.m_softBodyDefinitionHandle)
+                {
+                    Internal::ResourceHandleParts definitionParts;
+                    AZStd::shared_lock definitionLock(m_system.m_softBodyDefinitionMutex);
+                    if (!Internal::DecodeResourceHandle(state.m_softBodyDefinitionHandle, definitionParts)
+                        || definitionParts.m_index >= m_system.m_softBodyDefinitionSlots.size())
+                    {
+                        succeeded = false;
+                    }
+                    else
+                    {
+                        const auto& definitionSlot = m_system.m_softBodyDefinitionSlots[definitionParts.m_index];
+                        if (!definitionSlot.m_settings
+                            || definitionSlot.m_generation != definitionParts.m_generation)
+                        {
+                            succeeded = false;
+                        }
+                        else
+                        {
+                            softVertexCount = aznumeric_cast<AZ::u32>(definitionSlot.m_settings->mVertices.size());
+                            softRodCount = aznumeric_cast<AZ::u32>(
+                                definitionSlot.m_settings->mRodStretchShearConstraints.size());
+                        }
+                    }
+                }
+                writer.Write(softVertexCount);
+                writer.Write(softRodCount);
+            };
+        if (writeFullTopology)
+        {
+            for (AZ::u32 slotIndex = 0; slotIndex < m_bodySlots.size(); ++slotIndex)
+            {
+                const BodySlot& slot = m_bodySlots[slotIndex];
+                if (slot.m_bodyId.IsInvalid())
+                {
+                    continue;
+                }
+
+                FilteredBodyTopologyState state;
+                const BodyHandle bodyHandle = Internal::MakeWorldMemberHandle<BodyHandle>(
+                    m_worldIndex,
+                    slotIndex,
+                    slot.m_generation);
+                if (!GetFilteredBodyTopologyState(bodyHandle, state))
+                {
+                    succeeded = false;
+                    continue;
+                }
+                writeBodyTopologyState(state);
+            }
+        }
+        else
+        {
+            for (const FilteredBodyTopologyState& state : snapshot.m_filteredBodyTopologyStates)
+            {
+                writeBodyTopologyState(state);
+            }
         }
 
-        writer.WriteSize(snapshot.m_filteredConstraintTopologyStates.size());
-        for (const FilteredConstraintTopologyState& state : snapshot.m_filteredConstraintTopologyStates)
+        const JPH::Constraints nativeConstraints = m_physicsSystem.GetConstraints();
+        const auto findNativeConstraintReference =
+            [&nativeConstraints](const JPH::Constraint* constraint)
+            {
+                AZ::u32 nativeReference = 0;
+                for (AZ::u32 nativeIndex = 0; nativeIndex < nativeConstraints.size(); ++nativeIndex)
+                {
+                    if (nativeConstraints[nativeIndex].GetPtr() == constraint)
+                    {
+                        nativeReference = nativeIndex + 1;
+                        break;
+                    }
+                }
+                return nativeReference;
+            };
+        size_t constraintTopologyCount = snapshot.m_filteredConstraintTopologyStates.size();
+        if (writeFullTopology)
         {
-            writer.Write(state.m_configurationRevision);
-            writer.Write(state.m_generation);
-            writer.Write(state.m_slotIndex);
-            writer.Write(static_cast<AZ::u8>(state.m_isVehicle));
+            constraintTopologyCount = 0;
+            for (const ConstraintSlot& slot : m_constraintSlots)
+            {
+                if (slot.m_constraint)
+                {
+                    ++constraintTopologyCount;
+                }
+            }
+            for (const VehicleSlot& slot : m_vehicleSlots)
+            {
+                if (slot.m_constraint)
+                {
+                    ++constraintTopologyCount;
+                }
+            }
+        }
+        writer.WriteSize(constraintTopologyCount);
+        const auto writeConstraintTopologyState =
+            [this, &writer, &succeeded, &findNativeConstraintReference](
+                const FilteredConstraintTopologyState& state,
+                const JPH::Constraint* constraint)
+            {
+                const AZ::u32 nativeReference = findNativeConstraintReference(constraint);
+                if (state.m_isInSimulation != (nativeReference != 0))
+                {
+                    succeeded = false;
+                }
+                succeeded = WriteWorldMemberLogicalReference(writer, state.m_firstBodyHandle, m_worldIndex)
+                    && WriteWorldMemberLogicalReference(writer, state.m_secondBodyHandle, m_worldIndex)
+                    && WriteLogicalSlotReference(writer, state.m_slotIndex)
+                    && succeeded;
+                writer.Write(nativeReference);
+                writer.Write(static_cast<AZ::u8>(state.m_isInSimulation));
+                writer.Write(static_cast<AZ::u8>(state.m_isVehicle));
+                writer.Write(static_cast<AZ::u8>(constraint->GetSubType()));
+                AZ::u8 vehicleKind = 0;
+                AZ::u32 wheelCount = 0;
+                AZ::u32 trackCount = 0;
+                AZ::TypeId customProviderId = AZ::TypeId::CreateNull();
+                AZ::u64 customProviderVersion = 0;
+                AZ::u64 customStateByteCount = 0;
+                AZ::u32 customMaximumRowCount = 0;
+                if (state.m_isVehicle && state.m_slotIndex < m_vehicleSlots.size())
+                {
+                    const VehicleSlot& vehicleSlot = m_vehicleSlots[state.m_slotIndex];
+                    vehicleKind = static_cast<AZ::u8>(vehicleSlot.m_kind);
+                    wheelCount = aznumeric_cast<AZ::u32>(vehicleSlot.m_constraint->GetWheels().size());
+                    if (vehicleSlot.m_kind == VehicleKind::Tracked)
+                    {
+                        trackCount = aznumeric_cast<AZ::u32>(JPH::ETrackSide::Num);
+                    }
+                }
+                else if (constraint->GetSubType() == JPH::EConstraintSubType::User1)
+                {
+                    const auto* customConstraint = static_cast<const CustomConstraint*>(constraint);
+                    customProviderId = customConstraint->GetProviderId();
+                    customProviderVersion = customConstraint->GetProviderVersion();
+                    customStateByteCount = customConstraint->GetState().size();
+                    customMaximumRowCount = customConstraint->GetMaximumRowCount();
+                }
+                writer.Write(vehicleKind);
+                writer.Write(wheelCount);
+                writer.Write(trackCount);
+                writer.Write(customProviderId);
+                writer.Write(customProviderVersion);
+                writer.Write(customStateByteCount);
+                writer.Write(customMaximumRowCount);
+            };
+        if (writeFullTopology)
+        {
+            for (AZ::u32 slotIndex = 0; slotIndex < m_constraintSlots.size(); ++slotIndex)
+            {
+                const ConstraintSlot& slot = m_constraintSlots[slotIndex];
+                if (!slot.m_constraint)
+                {
+                    continue;
+                }
+                const FilteredConstraintTopologyState state{
+                    .m_firstBodyHandle = slot.m_firstBodyHandle,
+                    .m_secondBodyHandle = slot.m_secondBodyHandle,
+                    .m_configurationRevision = slot.m_configurationRevision,
+                    .m_generation = slot.m_generation,
+                    .m_slotIndex = slotIndex,
+                    .m_isInSimulation = slot.m_isInSimulation,
+                };
+                writeConstraintTopologyState(state, slot.m_constraint.GetPtr());
+            }
+            for (AZ::u32 slotIndex = 0; slotIndex < m_vehicleSlots.size(); ++slotIndex)
+            {
+                const VehicleSlot& slot = m_vehicleSlots[slotIndex];
+                if (!slot.m_constraint)
+                {
+                    continue;
+                }
+                FilteredConstraintTopologyState state{
+                    .m_firstBodyHandle = slot.m_bodyHandle,
+                    .m_configurationRevision = slot.m_configurationRevision,
+                    .m_generation = slot.m_generation,
+                    .m_slotIndex = slotIndex,
+                    .m_isVehicle = true,
+                };
+                state.m_isInSimulation = findNativeConstraintReference(slot.m_constraint.GetPtr()) != 0;
+                writeConstraintTopologyState(state, slot.m_constraint.GetPtr());
+            }
+        }
+        else
+        {
+            for (const FilteredConstraintTopologyState& state : snapshot.m_filteredConstraintTopologyStates)
+            {
+                const JPH::Constraint* constraint = nullptr;
+                if (state.m_isVehicle)
+                {
+                    if (state.m_slotIndex < m_vehicleSlots.size())
+                    {
+                        constraint = m_vehicleSlots[state.m_slotIndex].m_constraint.GetPtr();
+                    }
+                }
+                else if (state.m_slotIndex < m_constraintSlots.size())
+                {
+                    constraint = m_constraintSlots[state.m_slotIndex].m_constraint.GetPtr();
+                }
+                if (!constraint)
+                {
+                    succeeded = false;
+                    continue;
+                }
+                writeConstraintTopologyState(state, constraint);
+            }
         }
 
         writer.WriteSize(snapshot.m_contactCacheStates.size());
         for (const ContactCacheState& state : snapshot.m_contactCacheStates)
         {
-            writer.Write(state.m_firstBodyConfigurationRevision);
-            writer.Write(state.m_firstShapeConfigurationRevision);
-            writer.Write(state.m_secondBodyConfigurationRevision);
-            writer.Write(state.m_secondShapeConfigurationRevision);
             writer.Write(state.m_firstBodyId);
             writer.Write(state.m_firstSubShapeId);
             writer.Write(state.m_secondBodyId);
             writer.Write(state.m_secondSubShapeId);
-            WriteHandle(writer, state.m_event.m_firstBodyHandle);
-            WriteHandle(writer, state.m_event.m_secondBodyHandle);
-            WriteHandle(writer, state.m_event.m_firstShapeHandle);
-            WriteHandle(writer, state.m_event.m_secondShapeHandle);
-            WriteHandle(writer, state.m_event.m_firstMaterialHandle);
-            WriteHandle(writer, state.m_event.m_secondMaterialHandle);
+            succeeded = WriteWorldMemberLogicalReference(
+                    writer,
+                    state.m_event.m_firstBodyHandle,
+                    m_worldIndex)
+                && WriteWorldMemberLogicalReference(
+                    writer,
+                    state.m_event.m_secondBodyHandle,
+                    m_worldIndex)
+                && WriteWorldMemberLogicalReference(
+                    writer,
+                    state.m_event.m_firstShapeHandle,
+                    m_worldIndex)
+                && WriteWorldMemberLogicalReference(
+                    writer,
+                    state.m_event.m_secondShapeHandle,
+                    m_worldIndex)
+                && WriteResourceLogicalReference(writer, state.m_event.m_firstMaterialHandle)
+                && WriteResourceLogicalReference(writer, state.m_event.m_secondMaterialHandle)
+                && succeeded;
             writer.Write(state.m_event.m_firstSubShapeId.GetValue());
             writer.Write(state.m_event.m_secondSubShapeId.GetValue());
             writer.Write(state.m_event.m_normal.GetX());
@@ -16429,13 +16949,13 @@ namespace Jolt
         writeParticipantState(snapshot.m_simulationShapeFilterState);
         writeParticipantState(snapshot.m_softBodyContactCallbackState);
         writer.Write(snapshot.m_filteredConstraintStateCount);
+        writer.WriteVector(snapshot.m_detachedBodyStateIndices);
         writer.WriteVector(snapshot.m_characterStateIndices);
         writer.WriteVector(snapshot.m_virtualCharacterStateIndices);
         writer.Write(static_cast<AZ::u8>(snapshot.m_configuration.m_flags));
         writer.Write(static_cast<AZ::u8>(snapshot.m_configuration.m_filterBodies));
-        writer.Write(snapshot.m_configurationRevision);
         writer.Write(snapshot.m_eventSequence);
-        writer.Write(snapshot.m_globalConfigurationRevision);
+        return succeeded && writer.IsValid();
     }
 
     bool World::ReadStateSnapshot(
@@ -16464,16 +16984,197 @@ namespace Jolt
                     && state.m_data.front() == 1;
             };
 
+        const auto resolveWorldMember =
+            [this](
+                const AZ::u32 logicalReference,
+                const auto& slots,
+                const auto& isOccupied,
+                auto& handle)
+            {
+                using HandleType = AZStd::remove_reference_t<decltype(handle)>;
+                handle = {};
+                if (logicalReference == 0)
+                {
+                    return true;
+                }
+
+                const AZ::u32 slotIndex = logicalReference - 1;
+                if (slotIndex >= slots.size()
+                    || !isOccupied(slots[slotIndex]))
+                {
+                    return false;
+                }
+                handle = Internal::MakeWorldMemberHandle<HandleType>(
+                    m_worldIndex,
+                    slotIndex,
+                    slots[slotIndex].m_generation);
+                return handle.IsValid();
+            };
+        const auto resolveResource =
+            [](
+                const AZ::u32 logicalReference,
+                auto& mutex,
+                const auto& slots,
+                const auto& isOccupied,
+                auto& handle)
+            {
+                using HandleType = AZStd::remove_reference_t<decltype(handle)>;
+                handle = {};
+                if (logicalReference == 0)
+                {
+                    return true;
+                }
+
+                AZStd::shared_lock lock(mutex);
+                const AZ::u32 slotIndex = logicalReference - 1;
+                if (slotIndex >= slots.size()
+                    || !isOccupied(slots[slotIndex]))
+                {
+                    return false;
+                }
+                handle = Internal::MakeResourceHandle<HandleType>(
+                    slotIndex,
+                    slots[slotIndex].m_generation);
+                return handle.IsValid();
+            };
+
+        AZStd::vector<AZ::u8> bodyOccupancy;
+        AZStd::vector<AZ::u8> characterOccupancy;
+        AZStd::vector<AZ::u8> constraintOccupancy;
+        AZStd::vector<AZ::u8> vehicleOccupancy;
+        AZStd::vector<AZ::u8> virtualCharacterOccupancy;
+        AZStd::vector<AZ::u8> hairOccupancy;
+
         if (!reader.ReadVector(snapshot.m_data)
             || snapshot.m_data.empty()
-            || !reader.ReadVector(snapshot.m_bodyGenerations)
-            || !reader.ReadVector(snapshot.m_characterGenerations)
-            || !reader.ReadVector(snapshot.m_constraintGenerations)
-            || !reader.ReadVector(snapshot.m_vehicleGenerations)
-            || !reader.ReadVector(snapshot.m_virtualCharacterGenerations)
-            || !reader.ReadVector(snapshot.m_hairGenerations))
+            || !ReadOccupancy(reader, bodyOccupancy)
+            || !ReadOccupancy(reader, characterOccupancy)
+            || !ReadOccupancy(reader, constraintOccupancy)
+            || !ReadOccupancy(reader, vehicleOccupancy)
+            || !ReadOccupancy(reader, virtualCharacterOccupancy)
+            || !ReadOccupancy(reader, hairOccupancy))
         {
             return false;
+        }
+
+        size_t virtualCharacterTopologyCount = 0;
+        if (!ReadObjectCount(
+                reader,
+                virtualCharacterTopologyCount,
+                sizeof(AZ::u32) * 3))
+        {
+            return false;
+        }
+        AZ::u32 previousVirtualCharacterReference = 0;
+        for (size_t topologyIndex = 0; topologyIndex < virtualCharacterTopologyCount; ++topologyIndex)
+        {
+            AZ::u32 characterReference = 0;
+            AZ::u32 shapeReference = 0;
+            AZ::u32 innerBodyReference = 0;
+            VirtualCharacterHandle characterHandle;
+            ShapeHandle shapeHandle;
+            BodyHandle innerBodyHandle;
+            if (!ReadLogicalReference(reader, characterReference)
+                || !ReadLogicalReference(reader, shapeReference)
+                || !ReadLogicalReference(reader, innerBodyReference)
+                || characterReference == 0
+                || characterReference <= previousVirtualCharacterReference
+                || !resolveWorldMember(
+                    characterReference,
+                    m_virtualCharacterSlots,
+                    [](const VirtualCharacterSlot& slot) { return static_cast<bool>(slot.m_character); },
+                    characterHandle)
+                || !resolveWorldMember(
+                    shapeReference,
+                    m_shapeSlots,
+                    [](const ShapeSlot& slot) { return static_cast<bool>(slot.m_shape); },
+                    shapeHandle)
+                || !resolveWorldMember(
+                    innerBodyReference,
+                    m_bodySlots,
+                    [](const BodySlot& slot) { return !slot.m_bodyId.IsInvalid(); },
+                    innerBodyHandle))
+            {
+                return false;
+            }
+            previousVirtualCharacterReference = characterReference;
+            const VirtualCharacterSlot& slot = m_virtualCharacterSlots[characterReference - 1];
+            if (slot.m_shapeHandle != shapeHandle
+                || slot.m_innerBodyHandle != innerBodyHandle)
+            {
+                return false;
+            }
+        }
+
+        size_t hairTopologyCount = 0;
+        if (!ReadObjectCount(
+                reader,
+                hairTopologyCount,
+                sizeof(AZ::u32) * 8))
+        {
+            return false;
+        }
+        AZ::u32 previousHairReference = 0;
+        for (size_t topologyIndex = 0; topologyIndex < hairTopologyCount; ++topologyIndex)
+        {
+            AZ::u32 hairReference = 0;
+            AZ::u32 definitionReference = 0;
+            AZ::u32 simulationVertexCount = 0;
+            AZ::u32 simulationStrandCount = 0;
+            AZ::u32 renderVertexCount = 0;
+            AZ::u32 renderStrandCount = 0;
+            AZ::u32 scalpVertexCount = 0;
+            AZ::u32 scalpJointCount = 0;
+            HairHandle hairHandle;
+            HairDefinitionHandle definitionHandle;
+            if (!ReadLogicalReference(reader, hairReference)
+                || !ReadLogicalReference(reader, definitionReference)
+                || !reader.Read(simulationVertexCount)
+                || !reader.Read(simulationStrandCount)
+                || !reader.Read(renderVertexCount)
+                || !reader.Read(renderStrandCount)
+                || !reader.Read(scalpVertexCount)
+                || !reader.Read(scalpJointCount)
+                || hairReference == 0
+                || hairReference <= previousHairReference
+                || !resolveWorldMember(
+                    hairReference,
+                    m_hairSlots,
+                    [](const HairSlot& slot) { return static_cast<bool>(slot.m_hair); },
+                    hairHandle)
+                || !resolveResource(
+                    definitionReference,
+                    m_system.m_hairDefinitionMutex,
+                    m_system.m_hairDefinitionSlots,
+                    [](const auto& slot) { return static_cast<bool>(slot.m_settings); },
+                    definitionHandle))
+            {
+                return false;
+            }
+            previousHairReference = hairReference;
+            if (m_hairSlots[hairReference - 1].m_definitionHandle != definitionHandle)
+            {
+                return false;
+            }
+            Internal::ResourceHandleParts definitionParts;
+            AZStd::shared_lock definitionLock(m_system.m_hairDefinitionMutex);
+            if (!Internal::DecodeResourceHandle(definitionHandle, definitionParts)
+                || definitionParts.m_index >= m_system.m_hairDefinitionSlots.size())
+            {
+                return false;
+            }
+            const auto& definitionSlot = m_system.m_hairDefinitionSlots[definitionParts.m_index];
+            if (!definitionSlot.m_settings
+                || definitionSlot.m_generation != definitionParts.m_generation
+                || simulationVertexCount != definitionSlot.m_settings->mSimVertices.size()
+                || simulationStrandCount != definitionSlot.m_settings->mSimStrands.size()
+                || renderVertexCount != definitionSlot.m_settings->mRenderVertices.size()
+                || renderStrandCount != definitionSlot.m_settings->mRenderStrands.size()
+                || scalpVertexCount != definitionSlot.m_settings->mScalpVertices.size()
+                || scalpJointCount != definitionSlot.m_settings->mScalpInverseBindPose.size())
+            {
+                return false;
+            }
         }
 
         size_t stateCount = 0;
@@ -16508,6 +17209,20 @@ namespace Jolt
         {
             return false;
         }
+        for (const AZ::u8 initialized : snapshot.m_hairInitialized)
+        {
+            if (initialized > 1)
+            {
+                return false;
+            }
+        }
+        for (const AZ::u8 teleported : snapshot.m_hairTeleported)
+        {
+            if (teleported > 1)
+            {
+                return false;
+            }
+        }
 
         size_t groupFilterCount = 0;
         if (!ReadObjectCount(reader, groupFilterCount, sizeof(AZ::u64) * 2))
@@ -16517,7 +17232,15 @@ namespace Jolt
         snapshot.m_groupFilterStates.resize(groupFilterCount);
         for (GroupFilterState& state : snapshot.m_groupFilterStates)
         {
-            if (!ReadHandle(reader, state.m_filterHandle)
+            AZ::u32 filterReference = 0;
+            if (!ReadLogicalReference(reader, filterReference)
+                || !resolveResource(
+                    filterReference,
+                    m_system.m_groupFilterMutex,
+                    m_system.m_groupFilterSlots,
+                    [](const auto& slot) { return static_cast<bool>(slot.m_filter); },
+                    state.m_filterHandle)
+                || !state.m_filterHandle
                 || !reader.Read(state.m_filterStateHash)
                 || !readParticipantState(state.m_participantState))
             {
@@ -16572,25 +17295,34 @@ namespace Jolt
         }
 
         size_t bodyTopologyCount = 0;
-        if (!ReadObjectCount(reader, bodyTopologyCount, 71))
+        if (!ReadObjectCount(reader, bodyTopologyCount, 55))
         {
             return false;
         }
         snapshot.m_filteredBodyTopologyStates.resize(bodyTopologyCount);
         snapshot.m_filteredBodyStateCount = 0;
+        AZ::u32 previousBodyReference = 0;
         for (FilteredBodyTopologyState& state : snapshot.m_filteredBodyTopologyStates)
         {
+            AZ::u32 bodyReference = 0;
+            AZ::u32 characterReference = 0;
+            AZ::u32 virtualCharacterReference = 0;
+            AZ::u32 vehicleReference = 0;
+            AZ::u32 groupFilterReference = 0;
+            AZ::u32 shapeReference = 0;
+            AZ::u32 softBodyDefinitionReference = 0;
             AZ::u8 bodyKind = 0;
             AZ::u8 motionType = 0;
             AZ::u8 isInSimulation = 0;
-            if (!ReadHandle(reader, state.m_bodyHandle)
-                || !ReadHandle(reader, state.m_characterHandle)
-                || !ReadHandle(reader, state.m_groupFilterHandle)
-                || !ReadHandle(reader, state.m_shapeHandle)
-                || !ReadHandle(reader, state.m_softBodyDefinitionHandle)
-                || !reader.Read(state.m_bodyConfigurationRevision)
-                || !reader.Read(state.m_characterConfigurationRevision)
-                || !reader.Read(state.m_shapeConfigurationRevision)
+            AZ::u32 softVertexCount = 0;
+            AZ::u32 softRodCount = 0;
+            if (!ReadLogicalReference(reader, bodyReference)
+                || !ReadLogicalReference(reader, characterReference)
+                || !ReadLogicalReference(reader, virtualCharacterReference)
+                || !ReadLogicalReference(reader, vehicleReference)
+                || !ReadLogicalReference(reader, groupFilterReference)
+                || !ReadLogicalReference(reader, shapeReference)
+                || !ReadLogicalReference(reader, softBodyDefinitionReference)
                 || !reader.Read(state.m_collisionGroupId)
                 || !reader.Read(state.m_collisionSubGroupId)
                 || !reader.Read(state.m_nativeBodyId)
@@ -16598,18 +17330,99 @@ namespace Jolt
                 || !reader.Read(bodyKind)
                 || !reader.Read(motionType)
                 || !reader.Read(isInSimulation)
+                || !reader.Read(softVertexCount)
+                || !reader.Read(softRodCount)
                 || bodyKind > static_cast<AZ::u8>(BodyKind::Soft)
                 || motionType > static_cast<AZ::u8>(MotionType::Static)
                 || isInSimulation > 1
-                || !RebindWorldMemberHandle(m_worldIndex, state.m_bodyHandle)
-                || !RebindWorldMemberHandle(m_worldIndex, state.m_characterHandle)
-                || !RebindWorldMemberHandle(m_worldIndex, state.m_shapeHandle))
+                || bodyReference == 0
+                || bodyReference <= previousBodyReference
+                || !resolveWorldMember(
+                    bodyReference,
+                    m_bodySlots,
+                    [](const BodySlot& slot) { return !slot.m_bodyId.IsInvalid(); },
+                    state.m_bodyHandle)
+                || !resolveWorldMember(
+                    characterReference,
+                    m_characterSlots,
+                    [](const CharacterSlot& slot) { return static_cast<bool>(slot.m_character); },
+                    state.m_characterHandle)
+                || !resolveWorldMember(
+                    virtualCharacterReference,
+                    m_virtualCharacterSlots,
+                    [](const VirtualCharacterSlot& slot) { return static_cast<bool>(slot.m_character); },
+                    state.m_virtualCharacterHandle)
+                || !resolveWorldMember(
+                    vehicleReference,
+                    m_vehicleSlots,
+                    [](const VehicleSlot& slot) { return static_cast<bool>(slot.m_constraint); },
+                    state.m_vehicleHandle)
+                || !resolveResource(
+                    groupFilterReference,
+                    m_system.m_groupFilterMutex,
+                    m_system.m_groupFilterSlots,
+                    [](const auto& slot) { return static_cast<bool>(slot.m_filter); },
+                    state.m_groupFilterHandle)
+                || !resolveWorldMember(
+                    shapeReference,
+                    m_shapeSlots,
+                    [](const ShapeSlot& slot) { return static_cast<bool>(slot.m_shape); },
+                    state.m_shapeHandle)
+                || !resolveResource(
+                    softBodyDefinitionReference,
+                    m_system.m_softBodyDefinitionMutex,
+                    m_system.m_softBodyDefinitionSlots,
+                    [](const auto& slot) { return static_cast<bool>(slot.m_settings); },
+                    state.m_softBodyDefinitionHandle)
+                || !state.m_bodyHandle)
             {
                 return false;
             }
+            previousBodyReference = bodyReference;
             state.m_kind = static_cast<BodyKind>(bodyKind);
             state.m_motionType = static_cast<MotionType>(motionType);
             state.m_isInSimulation = isInSimulation != 0;
+            if (state.m_kind == BodyKind::None
+                || (state.m_kind == BodyKind::Rigid
+                    && (!state.m_shapeHandle
+                        || state.m_softBodyDefinitionHandle
+                        || softVertexCount != 0
+                        || softRodCount != 0))
+                || (state.m_kind == BodyKind::Soft
+                    && (state.m_shapeHandle || !state.m_softBodyDefinitionHandle)))
+            {
+                return false;
+            }
+            if (state.m_kind == BodyKind::Soft)
+            {
+                Internal::ResourceHandleParts definitionParts;
+                AZStd::shared_lock definitionLock(m_system.m_softBodyDefinitionMutex);
+                if (!Internal::DecodeResourceHandle(state.m_softBodyDefinitionHandle, definitionParts)
+                    || definitionParts.m_index >= m_system.m_softBodyDefinitionSlots.size())
+                {
+                    return false;
+                }
+                const auto& definitionSlot = m_system.m_softBodyDefinitionSlots[definitionParts.m_index];
+                if (!definitionSlot.m_settings
+                    || definitionSlot.m_generation != definitionParts.m_generation
+                    || softVertexCount != definitionSlot.m_settings->mVertices.size()
+                    || softRodCount != definitionSlot.m_settings->mRodStretchShearConstraints.size())
+                {
+                    return false;
+                }
+            }
+            FilteredBodyTopologyState currentState;
+            if (!GetFilteredBodyTopologyState(state.m_bodyHandle, currentState))
+            {
+                return false;
+            }
+            state.m_bodyConfigurationRevision = currentState.m_bodyConfigurationRevision;
+            state.m_characterConfigurationRevision = currentState.m_characterConfigurationRevision;
+            state.m_shapeConfigurationRevision = currentState.m_shapeConfigurationRevision;
+            if (currentState != state)
+            {
+                return false;
+            }
             if (state.m_isInSimulation)
             {
                 ++snapshot.m_filteredBodyStateCount;
@@ -16620,25 +17433,88 @@ namespace Jolt
         if (!ReadObjectCount(
                 reader,
                 constraintTopologyCount,
-                sizeof(AZ::u64) + sizeof(AZ::u32) * 2 + sizeof(AZ::u8)))
+                sizeof(AZ::u32) * 7
+                    + sizeof(AZ::u64) * 2
+                    + sizeof(AZ::TypeId)
+                    + sizeof(AZ::u8) * 4))
         {
             return false;
         }
         snapshot.m_filteredConstraintTopologyStates.resize(constraintTopologyCount);
         snapshot.m_filteredConstraintAddresses.clear();
         snapshot.m_filteredConstraintAddresses.reserve(constraintTopologyCount);
+        const JPH::Constraints nativeConstraints = m_physicsSystem.GetConstraints();
+        AZStd::vector<AZ::u8> nativeConstraintReferencesSeen(nativeConstraints.size(), 0);
+        size_t inSimulationConstraintTopologyCount = 0;
+        bool hasPreviousConstraintTopology = false;
+        bool previousConstraintWasVehicle = false;
+        AZ::u32 previousConstraintReference = 0;
         for (FilteredConstraintTopologyState& state : snapshot.m_filteredConstraintTopologyStates)
         {
+            AZ::u32 firstBodyReference = 0;
+            AZ::u32 secondBodyReference = 0;
+            AZ::u32 constraintReference = 0;
+            AZ::u32 nativeReference = 0;
+            AZ::u8 isInSimulation = 0;
             AZ::u8 isVehicle = 0;
-            if (!reader.Read(state.m_configurationRevision)
-                || !reader.Read(state.m_generation)
-                || !reader.Read(state.m_slotIndex)
+            AZ::u8 constraintSubType = 0;
+            AZ::u8 vehicleKind = 0;
+            AZ::u32 wheelCount = 0;
+            AZ::u32 trackCount = 0;
+            AZ::TypeId customProviderId = AZ::TypeId::CreateNull();
+            AZ::u64 customProviderVersion = 0;
+            AZ::u64 customStateByteCount = 0;
+            AZ::u32 customMaximumRowCount = 0;
+            if (!ReadLogicalReference(reader, firstBodyReference)
+                || !ReadLogicalReference(reader, secondBodyReference)
+                || !ReadLogicalReference(reader, constraintReference)
+                || !ReadLogicalReference(reader, nativeReference)
+                || !reader.Read(isInSimulation)
                 || !reader.Read(isVehicle)
+                || !reader.Read(constraintSubType)
+                || !reader.Read(vehicleKind)
+                || !reader.Read(wheelCount)
+                || !reader.Read(trackCount)
+                || !reader.Read(customProviderId)
+                || !reader.Read(customProviderVersion)
+                || !reader.Read(customStateByteCount)
+                || !reader.Read(customMaximumRowCount)
+                || isInSimulation > 1
                 || isVehicle > 1)
             {
                 return false;
             }
+            if (constraintReference == 0)
+            {
+                return false;
+            }
             state.m_isVehicle = isVehicle != 0;
+            state.m_isInSimulation = isInSimulation != 0;
+            state.m_slotIndex = constraintReference - 1;
+            if (hasPreviousConstraintTopology
+                && (state.m_isVehicle < previousConstraintWasVehicle
+                    || (state.m_isVehicle == previousConstraintWasVehicle
+                        && constraintReference <= previousConstraintReference)))
+            {
+                return false;
+            }
+            hasPreviousConstraintTopology = true;
+            previousConstraintWasVehicle = state.m_isVehicle;
+            previousConstraintReference = constraintReference;
+
+            if (!resolveWorldMember(
+                    firstBodyReference,
+                    m_bodySlots,
+                    [](const BodySlot& slot) { return !slot.m_bodyId.IsInvalid(); },
+                    state.m_firstBodyHandle)
+                || !resolveWorldMember(
+                    secondBodyReference,
+                    m_bodySlots,
+                    [](const BodySlot& slot) { return !slot.m_bodyId.IsInvalid(); },
+                    state.m_secondBodyHandle))
+            {
+                return false;
+            }
 
             const JPH::Constraint* constraint = nullptr;
             if (state.m_isVehicle)
@@ -16647,7 +17523,30 @@ namespace Jolt
                 {
                     return false;
                 }
-                constraint = m_vehicleSlots[state.m_slotIndex].m_constraint.GetPtr();
+                const VehicleSlot& slot = m_vehicleSlots[state.m_slotIndex];
+                if (!slot.m_constraint)
+                {
+                    return false;
+                }
+                constraint = slot.m_constraint.GetPtr();
+                state.m_generation = slot.m_generation;
+                state.m_configurationRevision = slot.m_configurationRevision;
+                if (slot.m_bodyHandle != state.m_firstBodyHandle
+                    || state.m_secondBodyHandle
+                    || vehicleKind != static_cast<AZ::u8>(slot.m_kind)
+                    || wheelCount != slot.m_constraint->GetWheels().size())
+                {
+                    return false;
+                }
+                AZ::u32 currentTrackCount = 0;
+                if (slot.m_kind == VehicleKind::Tracked)
+                {
+                    currentTrackCount = aznumeric_cast<AZ::u32>(JPH::ETrackSide::Num);
+                }
+                if (trackCount != currentTrackCount)
+                {
+                    return false;
+                }
             }
             else
             {
@@ -16655,9 +17554,73 @@ namespace Jolt
                 {
                     return false;
                 }
-                constraint = m_constraintSlots[state.m_slotIndex].m_constraint.GetPtr();
+                const ConstraintSlot& slot = m_constraintSlots[state.m_slotIndex];
+                constraint = slot.m_constraint.GetPtr();
+                state.m_generation = slot.m_generation;
+                state.m_configurationRevision = slot.m_configurationRevision;
+                if (slot.m_firstBodyHandle != state.m_firstBodyHandle
+                    || slot.m_secondBodyHandle != state.m_secondBodyHandle
+                    || slot.m_isInSimulation != state.m_isInSimulation)
+                {
+                    return false;
+                }
             }
             if (!constraint)
+            {
+                return false;
+            }
+            if (constraintSubType != static_cast<AZ::u8>(constraint->GetSubType())
+                || (!state.m_isVehicle
+                    && (vehicleKind != 0 || wheelCount != 0 || trackCount != 0)))
+            {
+                return false;
+            }
+            if (constraint->GetSubType() == JPH::EConstraintSubType::User1)
+            {
+                const auto* customConstraint = static_cast<const CustomConstraint*>(constraint);
+                if (customProviderId != customConstraint->GetProviderId()
+                    || customProviderVersion != customConstraint->GetProviderVersion()
+                    || customStateByteCount != customConstraint->GetState().size()
+                    || customMaximumRowCount != customConstraint->GetMaximumRowCount())
+                {
+                    return false;
+                }
+            }
+            else if (!customProviderId.IsNull()
+                || customProviderVersion != 0
+                || customStateByteCount != 0
+                || customMaximumRowCount != 0)
+            {
+                return false;
+            }
+
+            AZ::u32 currentNativeReference = 0;
+            for (AZ::u32 nativeIndex = 0; nativeIndex < nativeConstraints.size(); ++nativeIndex)
+            {
+                if (nativeConstraints[nativeIndex].GetPtr() == constraint)
+                {
+                    currentNativeReference = nativeIndex + 1;
+                    break;
+                }
+            }
+            if (currentNativeReference != nativeReference
+                || state.m_isInSimulation != (currentNativeReference != 0))
+            {
+                return false;
+            }
+            if (state.m_isInSimulation)
+            {
+                if (nativeReference == 0
+                    || nativeReference > nativeConstraints.size()
+                    || nativeConstraints[nativeReference - 1].GetPtr() != constraint
+                    || nativeConstraintReferencesSeen[nativeReference - 1] != 0)
+                {
+                    return false;
+                }
+                nativeConstraintReferencesSeen[nativeReference - 1] = 1;
+                ++inSimulationConstraintTopologyCount;
+            }
+            else if (nativeReference != 0)
             {
                 return false;
             }
@@ -16669,8 +17632,8 @@ namespace Jolt
             snapshot.m_filteredConstraintAddresses.end());
 
         size_t contactCacheStateCount = 0;
-        constexpr size_t contactCacheStateByteCount = sizeof(AZ::u64) * 10
-            + sizeof(AZ::u32) * 4
+        constexpr size_t contactCacheStateByteCount = sizeof(AZ::u32) * 4
+            + sizeof(AZ::u32) * 6
             + sizeof(AZ::u32) * 2
             + sizeof(float) * 4
             + sizeof(AZ::u8);
@@ -16684,26 +17647,28 @@ namespace Jolt
         snapshot.m_contactCacheStates.resize(contactCacheStateCount);
         for (ContactCacheState& state : snapshot.m_contactCacheStates)
         {
+            AZ::u32 firstBodyReference = 0;
+            AZ::u32 secondBodyReference = 0;
+            AZ::u32 firstShapeReference = 0;
+            AZ::u32 secondShapeReference = 0;
+            AZ::u32 firstMaterialReference = 0;
+            AZ::u32 secondMaterialReference = 0;
             AZ::u32 firstSubShapeId = 0;
             AZ::u32 secondSubShapeId = 0;
             float normalX = 0.0f;
             float normalY = 0.0f;
             float normalZ = 0.0f;
             AZ::u8 phase = 0;
-            if (!reader.Read(state.m_firstBodyConfigurationRevision)
-                || !reader.Read(state.m_firstShapeConfigurationRevision)
-                || !reader.Read(state.m_secondBodyConfigurationRevision)
-                || !reader.Read(state.m_secondShapeConfigurationRevision)
-                || !reader.Read(state.m_firstBodyId)
+            if (!reader.Read(state.m_firstBodyId)
                 || !reader.Read(state.m_firstSubShapeId)
                 || !reader.Read(state.m_secondBodyId)
                 || !reader.Read(state.m_secondSubShapeId)
-                || !ReadHandle(reader, state.m_event.m_firstBodyHandle)
-                || !ReadHandle(reader, state.m_event.m_secondBodyHandle)
-                || !ReadHandle(reader, state.m_event.m_firstShapeHandle)
-                || !ReadHandle(reader, state.m_event.m_secondShapeHandle)
-                || !ReadHandle(reader, state.m_event.m_firstMaterialHandle)
-                || !ReadHandle(reader, state.m_event.m_secondMaterialHandle)
+                || !ReadLogicalReference(reader, firstBodyReference)
+                || !ReadLogicalReference(reader, secondBodyReference)
+                || !ReadLogicalReference(reader, firstShapeReference)
+                || !ReadLogicalReference(reader, secondShapeReference)
+                || !ReadLogicalReference(reader, firstMaterialReference)
+                || !ReadLogicalReference(reader, secondMaterialReference)
                 || !reader.Read(firstSubShapeId)
                 || !reader.Read(secondSubShapeId)
                 || !reader.Read(normalX)
@@ -16711,14 +17676,6 @@ namespace Jolt
                 || !reader.Read(normalZ)
                 || !reader.Read(state.m_event.m_penetrationDepth)
                 || !reader.Read(phase)
-                || !state.m_event.m_firstBodyHandle
-                || !state.m_event.m_secondBodyHandle
-                || !state.m_event.m_firstShapeHandle
-                || !state.m_event.m_secondShapeHandle
-                || !RebindWorldMemberHandle(m_worldIndex, state.m_event.m_firstBodyHandle)
-                || !RebindWorldMemberHandle(m_worldIndex, state.m_event.m_secondBodyHandle)
-                || !RebindWorldMemberHandle(m_worldIndex, state.m_event.m_firstShapeHandle)
-                || !RebindWorldMemberHandle(m_worldIndex, state.m_event.m_secondShapeHandle)
                 || firstSubShapeId != state.m_firstSubShapeId
                 || secondSubShapeId != state.m_secondSubShapeId
                 || (phase != static_cast<AZ::u8>(EventPhase::Begin)
@@ -16726,7 +17683,43 @@ namespace Jolt
                 || !AZ::IsFiniteFloat(normalX)
                 || !AZ::IsFiniteFloat(normalY)
                 || !AZ::IsFiniteFloat(normalZ)
-                || !AZ::IsFiniteFloat(state.m_event.m_penetrationDepth))
+                || !AZ::IsFiniteFloat(state.m_event.m_penetrationDepth)
+                || !resolveWorldMember(
+                    firstBodyReference,
+                    m_bodySlots,
+                    [](const BodySlot& slot) { return !slot.m_bodyId.IsInvalid(); },
+                    state.m_event.m_firstBodyHandle)
+                || !resolveWorldMember(
+                    secondBodyReference,
+                    m_bodySlots,
+                    [](const BodySlot& slot) { return !slot.m_bodyId.IsInvalid(); },
+                    state.m_event.m_secondBodyHandle)
+                || !resolveWorldMember(
+                    firstShapeReference,
+                    m_shapeSlots,
+                    [](const ShapeSlot& slot) { return static_cast<bool>(slot.m_shape); },
+                    state.m_event.m_firstShapeHandle)
+                || !resolveWorldMember(
+                    secondShapeReference,
+                    m_shapeSlots,
+                    [](const ShapeSlot& slot) { return static_cast<bool>(slot.m_shape); },
+                    state.m_event.m_secondShapeHandle)
+                || !resolveResource(
+                    firstMaterialReference,
+                    m_system.m_materialMutex,
+                    m_system.m_materialSlots,
+                    [](const auto& slot) { return static_cast<bool>(slot.m_material); },
+                    state.m_event.m_firstMaterialHandle)
+                || !resolveResource(
+                    secondMaterialReference,
+                    m_system.m_materialMutex,
+                    m_system.m_materialSlots,
+                    [](const auto& slot) { return static_cast<bool>(slot.m_material); },
+                    state.m_event.m_secondMaterialHandle)
+                || !state.m_event.m_firstBodyHandle
+                || !state.m_event.m_secondBodyHandle
+                || !state.m_event.m_firstShapeHandle
+                || !state.m_event.m_secondShapeHandle)
             {
                 return false;
             }
@@ -16740,6 +17733,13 @@ namespace Jolt
             const BodySlot* secondBody = FindBody(state.m_event.m_secondBodyHandle);
             const ShapeSlot* firstShape = FindShape(state.m_event.m_firstShapeHandle);
             const ShapeSlot* secondShape = FindShape(state.m_event.m_secondShapeHandle);
+            if (firstBody && secondBody && firstShape && secondShape)
+            {
+                state.m_firstBodyConfigurationRevision = firstBody->m_configurationRevision;
+                state.m_firstShapeConfigurationRevision = firstShape->m_configurationRevision;
+                state.m_secondBodyConfigurationRevision = secondBody->m_configurationRevision;
+                state.m_secondShapeConfigurationRevision = secondShape->m_configurationRevision;
+            }
             if (!firstBody
                 || !secondBody
                 || !firstShape
@@ -16800,13 +17800,12 @@ namespace Jolt
             || !readParticipantState(snapshot.m_simulationShapeFilterState)
             || !readParticipantState(snapshot.m_softBodyContactCallbackState)
             || !reader.Read(snapshot.m_filteredConstraintStateCount)
+            || !reader.ReadVector(snapshot.m_detachedBodyStateIndices)
             || !reader.ReadVector(snapshot.m_characterStateIndices)
             || !reader.ReadVector(snapshot.m_virtualCharacterStateIndices)
             || !reader.Read(flags)
             || !reader.Read(filterBodies)
-            || !reader.Read(snapshot.m_configurationRevision)
             || !reader.Read(snapshot.m_eventSequence)
-            || !reader.Read(snapshot.m_globalConfigurationRevision)
             || flags == 0
             || (flags & ~static_cast<AZ::u8>(StateSnapshotFlags::All)) != 0
             || filterBodies > 1)
@@ -16817,6 +17816,148 @@ namespace Jolt
         snapshot.m_configuration.m_restoreSafety = RestoreSafety::Transactional;
         snapshot.m_configuration.m_filterBodies = filterBodies != 0;
         snapshot.m_partitionBatchId = 0;
+        snapshot.m_configurationRevision = m_configurationRevision;
+        snapshot.m_globalConfigurationRevision = m_globalConfigurationRevision;
+
+        const auto bindOccupancy =
+            [](
+                const AZStd::span<const AZ::u8> archivedOccupancy,
+                const auto& slots,
+                const auto& isOccupied,
+                AZStd::vector<AZ::u32>& generations,
+                const bool requireFullTopology)
+            {
+                if ((requireFullTopology && archivedOccupancy.size() != slots.size())
+                    || (!requireFullTopology && !archivedOccupancy.empty()))
+                {
+                    return false;
+                }
+
+                generations.resize(slots.size());
+                for (size_t slotIndex = 0; slotIndex < slots.size(); ++slotIndex)
+                {
+                    const bool occupied = isOccupied(slots[slotIndex]);
+                    generations[slotIndex] = 0;
+                    if (occupied)
+                    {
+                        generations[slotIndex] = slots[slotIndex].m_generation;
+                    }
+                    if (requireFullTopology
+                        && archivedOccupancy[slotIndex] != static_cast<AZ::u8>(occupied))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            };
+        const bool requireFullTopology = !snapshot.m_configuration.m_filterBodies;
+        if (!bindOccupancy(
+                bodyOccupancy,
+                m_bodySlots,
+                [](const BodySlot& slot) { return !slot.m_bodyId.IsInvalid(); },
+                snapshot.m_bodyGenerations,
+                requireFullTopology)
+            || !bindOccupancy(
+                characterOccupancy,
+                m_characterSlots,
+                [](const CharacterSlot& slot) { return static_cast<bool>(slot.m_character); },
+                snapshot.m_characterGenerations,
+                requireFullTopology)
+            || !bindOccupancy(
+                constraintOccupancy,
+                m_constraintSlots,
+                [](const ConstraintSlot& slot) { return static_cast<bool>(slot.m_constraint); },
+                snapshot.m_constraintGenerations,
+                requireFullTopology)
+            || !bindOccupancy(
+                vehicleOccupancy,
+                m_vehicleSlots,
+                [](const VehicleSlot& slot) { return static_cast<bool>(slot.m_constraint); },
+                snapshot.m_vehicleGenerations,
+                requireFullTopology)
+            || !bindOccupancy(
+                virtualCharacterOccupancy,
+                m_virtualCharacterSlots,
+                [](const VirtualCharacterSlot& slot) { return static_cast<bool>(slot.m_character); },
+                snapshot.m_virtualCharacterGenerations,
+                requireFullTopology)
+            || !bindOccupancy(
+                hairOccupancy,
+                m_hairSlots,
+                [](const HairSlot& slot) { return static_cast<bool>(slot.m_hair); },
+                snapshot.m_hairGenerations,
+                requireFullTopology))
+        {
+            return false;
+        }
+
+        size_t occupiedBodyCount = 0;
+        for (const BodySlot& slot : m_bodySlots)
+        {
+            if (!slot.m_bodyId.IsInvalid())
+            {
+                ++occupiedBodyCount;
+            }
+        }
+        size_t occupiedConstraintCount = 0;
+        for (const ConstraintSlot& slot : m_constraintSlots)
+        {
+            if (slot.m_constraint)
+            {
+                ++occupiedConstraintCount;
+            }
+        }
+        for (const VehicleSlot& slot : m_vehicleSlots)
+        {
+            if (slot.m_constraint)
+            {
+                ++occupiedConstraintCount;
+            }
+        }
+        size_t occupiedVirtualCharacterCount = 0;
+        for (const VirtualCharacterSlot& slot : m_virtualCharacterSlots)
+        {
+            if (slot.m_character)
+            {
+                ++occupiedVirtualCharacterCount;
+            }
+        }
+        size_t occupiedHairCount = 0;
+        for (const HairSlot& slot : m_hairSlots)
+        {
+            if (slot.m_hair)
+            {
+                ++occupiedHairCount;
+            }
+        }
+
+        if (requireFullTopology)
+        {
+            if (!snapshot.m_filteredBodyIds.empty()
+                || bodyTopologyCount != occupiedBodyCount
+                || constraintTopologyCount != occupiedConstraintCount
+                || virtualCharacterTopologyCount != occupiedVirtualCharacterCount
+                || hairTopologyCount != occupiedHairCount
+                || inSimulationConstraintTopologyCount != nativeConstraints.size()
+                || AZStd::find(
+                    nativeConstraintReferencesSeen.begin(),
+                    nativeConstraintReferencesSeen.end(),
+                    AZ::u8{0}) != nativeConstraintReferencesSeen.end())
+            {
+                return false;
+            }
+            snapshot.m_filteredBodyTopologyStates.clear();
+            snapshot.m_filteredConstraintTopologyStates.clear();
+            snapshot.m_filteredConstraintAddresses.clear();
+            snapshot.m_filteredBodyStateCount = 0;
+        }
+        else if (bodyTopologyCount != snapshot.m_filteredBodyIds.size()
+            || virtualCharacterTopologyCount != 0
+            || hairTopologyCount != 0
+            || inSimulationConstraintTopologyCount != snapshot.m_filteredConstraintStateCount)
+        {
+            return false;
+        }
 
         if (!HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Contacts)
             && !snapshot.m_contactCacheStates.empty())
@@ -16836,6 +17977,1127 @@ namespace Jolt
                     return false;
                 }
             }
+        }
+        return true;
+    }
+
+    bool World::CalculateStateSnapshotCompatibilityFingerprint(
+        const StateSnapshotSlot& snapshot,
+        AZ::u64& fingerprint) const
+    {
+        CompatibilityHashBuilder builder;
+        builder.AddDomain(CompatibilityDomain::Archive);
+        builder.AddScalar(static_cast<AZ::u8>(snapshot.m_configuration.m_flags));
+        builder.AddScalar(snapshot.m_configuration.m_filterBodies);
+
+        const auto addWorldMemberReference =
+            [this, &builder](const auto handle)
+            {
+                AZ::u32 logicalReference = 0;
+                if (handle)
+                {
+                    Internal::WorldMemberHandleParts parts;
+                    if (!Internal::DecodeWorldMemberHandle(handle, parts)
+                        || parts.m_worldIndex != m_worldIndex
+                        || parts.m_index == AZStd::numeric_limits<AZ::u32>::max())
+                    {
+                        return false;
+                    }
+                    logicalReference = parts.m_index + 1;
+                }
+                builder.AddScalar(logicalReference);
+                return true;
+            };
+        const auto addResourceReference =
+            [&builder](const auto handle)
+            {
+                AZ::u32 logicalReference = 0;
+                if (handle)
+                {
+                    Internal::ResourceHandleParts parts;
+                    if (!Internal::DecodeResourceHandle(handle, parts)
+                        || parts.m_index == AZStd::numeric_limits<AZ::u32>::max())
+                    {
+                        return false;
+                    }
+                    logicalReference = parts.m_index + 1;
+                }
+                builder.AddScalar(logicalReference);
+                return true;
+            };
+        const auto wasHashed =
+            [](AZStd::vector<AZ::u32>& indices, const AZ::u32 index)
+            {
+                if (AZStd::find(indices.begin(), indices.end(), index) != indices.end())
+                {
+                    return true;
+                }
+                indices.push_back(index);
+                return false;
+            };
+
+        builder.AddDomain(CompatibilityDomain::World);
+        builder.AddScalar(GetSoftBodyTriangleThickness());
+        builder.AddScalar(m_configuration.m_origin.m_x);
+        builder.AddScalar(m_configuration.m_origin.m_y);
+        builder.AddScalar(m_configuration.m_origin.m_z);
+        builder.AddVector(m_configuration.m_gravity);
+        builder.AddScalar(m_configuration.m_capacity.m_maxBodies);
+        builder.AddScalar(m_configuration.m_capacity.m_bodyMutexCount);
+        builder.AddScalar(m_configuration.m_capacity.m_maxBodyPairs);
+        builder.AddScalar(m_configuration.m_capacity.m_maxContactConstraints);
+        builder.AddScalar(m_configuration.m_capacity.m_maxJobs);
+        builder.AddScalar(m_configuration.m_capacity.m_maxBarriers);
+        builder.AddScalar(m_configuration.m_capacity.m_tempAllocatorBytes);
+        const SimulationConfiguration& simulation = m_configuration.m_simulation;
+        builder.AddScalar(simulation.m_baumgarte);
+        builder.AddScalar(simulation.m_bodyPairCacheMaximumDeltaPosition);
+        builder.AddScalar(simulation.m_bodyPairCacheMaximumDeltaRotation);
+        builder.AddScalar(simulation.m_contactNormalMaximumDeltaRotation);
+        builder.AddScalar(simulation.m_contactPointPreserveLambdaMaximumDistance);
+        builder.AddScalar(simulation.m_internalEdgeRemovalVertexTolerance);
+        builder.AddScalar(simulation.m_linearCastMaximumPenetration);
+        builder.AddScalar(simulation.m_linearCastThreshold);
+        builder.AddScalar(simulation.m_manifoldTolerance);
+        builder.AddScalar(simulation.m_maximumPenetrationDistance);
+        builder.AddScalar(simulation.m_minimumVelocityForRestitution);
+        builder.AddScalar(simulation.m_penetrationSlop);
+        builder.AddScalar(simulation.m_pointVelocitySleepThreshold);
+        builder.AddScalar(simulation.m_speculativeContactDistance);
+        builder.AddScalar(simulation.m_timeBeforeSleep);
+        builder.AddScalar(simulation.m_maximumInFlightBodyPairs);
+        builder.AddScalar(simulation.m_positionStepCount);
+        builder.AddScalar(simulation.m_stepListenerBatchSize);
+        builder.AddScalar(simulation.m_stepListenerBatchesPerJob);
+        builder.AddScalar(simulation.m_velocityStepCount);
+        builder.AddScalar(simulation.m_allowSleeping);
+        builder.AddScalar(simulation.m_checkActiveEdges);
+        builder.AddScalar(simulation.m_constraintWarmStart);
+        builder.AddScalar(simulation.m_useBodyPairContactCache);
+        builder.AddScalar(simulation.m_useLargeIslandSplitter);
+        builder.AddScalar(simulation.m_useManifoldReduction);
+        builder.AddScalar(m_configuration.m_frictionCombineMode);
+        builder.AddScalar(m_configuration.m_restitutionCombineMode);
+        builder.AddScalar(m_configuration.m_fixedTimeStep);
+        builder.AddScalar(m_configuration.m_collisionStepCount);
+        builder.AddScalar(m_configuration.m_maximumCatchUpSteps);
+        // Scheduling, publication controls, enabled state, and presentation names do not affect
+        // the native decoder or the physics configuration restored by a snapshot.
+        builder.AddScalar(aznumeric_cast<AZ::u32>(m_configuration.m_broadPhaseLayers.size()));
+        builder.AddScalar(aznumeric_cast<AZ::u32>(m_configuration.m_objectLayers.size()));
+        for (const ObjectLayerConfiguration& layer : m_configuration.m_objectLayers)
+        {
+            builder.AddScalar(layer.m_broadPhaseLayer.GetValue());
+            builder.AddScalar(aznumeric_cast<AZ::u32>(layer.m_collidesWith.size()));
+            for (const ObjectLayer collisionLayer : layer.m_collidesWith)
+            {
+                builder.AddScalar(collisionLayer.GetValue());
+            }
+        }
+
+        AZStd::vector<AZ::u32> hashedMaterials;
+        AZStd::vector<AZ::u32> hashedGroupFilters;
+        AZStd::vector<AZ::u32> hashedPaths;
+        AZStd::vector<AZ::u32> hashedShapes;
+        AZStd::vector<AZ::u32> hashedSoftBodyDefinitions;
+        AZStd::vector<AZ::u32> hashedHairDefinitions;
+
+        const auto hashMaterial =
+            [this, &builder, &hashedMaterials, &wasHashed](const MaterialHandle handle)
+            {
+                if (!handle)
+                {
+                    return true;
+                }
+                Internal::ResourceHandleParts parts;
+                AZStd::shared_lock lock(m_system.m_materialMutex);
+                if (!Internal::DecodeResourceHandle(handle, parts)
+                    || parts.m_index >= m_system.m_materialSlots.size())
+                {
+                    return false;
+                }
+                const auto& slot = m_system.m_materialSlots[parts.m_index];
+                if (!slot.m_material || slot.m_generation != parts.m_generation)
+                {
+                    return false;
+                }
+                if (wasHashed(hashedMaterials, parts.m_index))
+                {
+                    return true;
+                }
+                builder.AddDomain(CompatibilityDomain::Material);
+                builder.AddScalar(parts.m_index + 1);
+                return true;
+            };
+
+        const auto hashParticipant =
+            [&builder](const IRollbackParticipant* participant)
+            {
+                builder.AddDomain(CompatibilityDomain::Participant);
+                if (!participant)
+                {
+                    builder.AddTypeId(AZ::TypeId::CreateNull());
+                    builder.AddScalar(AZ::u32{0});
+                    builder.AddScalar(AZ::u64{0});
+                    return true;
+                }
+                const AZ::TypeId typeId = participant->GetStateTypeId();
+                if (typeId.IsNull())
+                {
+                    return false;
+                }
+                builder.AddTypeId(typeId);
+                builder.AddScalar(participant->GetStateVersion());
+                builder.AddScalar(aznumeric_cast<AZ::u64>(participant->GetStateByteCount()));
+                return true;
+            };
+
+        const auto hashGroupFilter =
+            [this, &builder, &hashedGroupFilters, &wasHashed](const GroupFilterHandle handle)
+            {
+                if (!handle)
+                {
+                    return true;
+                }
+                Internal::ResourceHandleParts parts;
+                AZ::u64 stateHash = 0;
+                AZ::u32 subGroupCount = 0;
+                bool custom = false;
+                ExtensionHandle extensionHandle;
+                {
+                    AZStd::shared_lock lock(m_system.m_groupFilterMutex);
+                    if (!Internal::DecodeResourceHandle(handle, parts)
+                        || parts.m_index >= m_system.m_groupFilterSlots.size())
+                    {
+                        return false;
+                    }
+                    const auto& slot = m_system.m_groupFilterSlots[parts.m_index];
+                    if (!slot.m_filter || slot.m_generation != parts.m_generation)
+                    {
+                        return false;
+                    }
+                    if (wasHashed(hashedGroupFilters, parts.m_index))
+                    {
+                        return true;
+                    }
+                    stateHash = slot.m_stateHash;
+                    subGroupCount = slot.m_subGroupCount;
+                    custom = slot.m_isCustom;
+                    extensionHandle = slot.m_extensionHandle;
+                }
+                builder.AddDomain(CompatibilityDomain::GroupFilter);
+                builder.AddScalar(parts.m_index + 1);
+                builder.AddScalar(subGroupCount);
+                builder.AddScalar(custom);
+                AZ::TypeId stateTypeId = AZ::TypeId::CreateNull();
+                AZ::u32 stateVersion = 0;
+                AZ::u64 stateByteCount = 0;
+                if (custom)
+                {
+                    AZStd::vector<AZ::u8> state;
+                    AZ::u64 participantStateHash = 0;
+                    if (!m_system.CaptureGroupFilterParticipantState(
+                            handle,
+                            state,
+                            stateTypeId,
+                            participantStateHash,
+                            stateVersion)
+                        || state.empty())
+                    {
+                        return false;
+                    }
+                    stateByteCount = state.size() - 1;
+                }
+                else
+                {
+                    builder.AddScalar(stateHash);
+                }
+                builder.AddTypeId(stateTypeId);
+                builder.AddScalar(stateVersion);
+                builder.AddScalar(stateByteCount);
+                if (extensionHandle)
+                {
+                    ExtensionInformation information;
+                    if (!m_system.GetExtensionInformation(extensionHandle, information))
+                    {
+                        return false;
+                    }
+                    builder.AddTypeId(information.m_id);
+                    builder.AddScalar(information.m_version);
+                }
+                else
+                {
+                    builder.AddTypeId(AZ::TypeId::CreateNull());
+                    builder.AddScalar(AZ::u64{0});
+                }
+                return true;
+            };
+
+        const auto hashPath =
+            [this, &builder, &hashedPaths, &wasHashed](const PathHandle handle)
+            {
+                if (!handle)
+                {
+                    return true;
+                }
+                Internal::ResourceHandleParts parts;
+                AZ::TypeId providerId = AZ::TypeId::CreateNull();
+                AZ::u64 providerVersion = 0;
+                AZ::u64 sourceHash = 0;
+                bool looping = false;
+                {
+                    AZStd::shared_lock lock(m_system.m_pathMutex);
+                    if (!Internal::DecodeResourceHandle(handle, parts)
+                        || parts.m_index >= m_system.m_pathSlots.size())
+                    {
+                        return false;
+                    }
+                    const auto& slot = m_system.m_pathSlots[parts.m_index];
+                    if (!slot.m_path || slot.m_generation != parts.m_generation)
+                    {
+                        return false;
+                    }
+                    if (wasHashed(hashedPaths, parts.m_index))
+                    {
+                        return true;
+                    }
+                    providerId = slot.m_customProviderId;
+                    providerVersion = slot.m_customProviderVersion;
+                    sourceHash = slot.m_sourceHash;
+                    looping = slot.m_path->IsLooping();
+                }
+                builder.AddDomain(CompatibilityDomain::Path);
+                builder.AddScalar(parts.m_index + 1);
+                builder.AddTypeId(providerId);
+                builder.AddScalar(providerVersion);
+                builder.AddScalar(sourceHash);
+                builder.AddScalar(looping);
+                return true;
+            };
+
+        const auto hashSoftBodyDefinition =
+            [this,
+                &builder,
+                &hashedSoftBodyDefinitions,
+                &wasHashed,
+                &hashMaterial,
+                &addResourceReference](
+                const SoftBodyDefinitionHandle handle)
+            {
+                if (!handle)
+                {
+                    return true;
+                }
+                Internal::ResourceHandleParts parts;
+                AZStd::shared_lock lock(m_system.m_softBodyDefinitionMutex);
+                if (!Internal::DecodeResourceHandle(handle, parts)
+                    || parts.m_index >= m_system.m_softBodyDefinitionSlots.size())
+                {
+                    return false;
+                }
+                const auto& slot = m_system.m_softBodyDefinitionSlots[parts.m_index];
+                if (!slot.m_settings || slot.m_generation != parts.m_generation)
+                {
+                    return false;
+                }
+                if (wasHashed(hashedSoftBodyDefinitions, parts.m_index))
+                {
+                    return true;
+                }
+                builder.AddDomain(CompatibilityDomain::SoftBodyDefinition);
+                builder.AddScalar(parts.m_index + 1);
+                builder.AddScalar(aznumeric_cast<AZ::u32>(slot.m_settings->mVertices.size()));
+                builder.AddScalar(aznumeric_cast<AZ::u32>(slot.m_settings->mRodStretchShearConstraints.size()));
+                CompatibilityHashStream stream(builder);
+                slot.m_settings->SaveBinaryState(stream);
+                builder.AddScalar(aznumeric_cast<AZ::u64>(stream.GetByteCount()));
+                builder.AddScalar(aznumeric_cast<AZ::u32>(slot.m_materialHandles.size()));
+                for (const MaterialHandle materialHandle : slot.m_materialHandles)
+                {
+                    if (!addResourceReference(materialHandle)
+                        || !hashMaterial(materialHandle))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            };
+
+        const auto hashHairDefinition =
+            [this, &builder, &hashedHairDefinitions, &wasHashed](const HairDefinitionHandle handle)
+            {
+                if (!handle)
+                {
+                    return true;
+                }
+                Internal::ResourceHandleParts parts;
+                AZStd::shared_lock lock(m_system.m_hairDefinitionMutex);
+                if (!Internal::DecodeResourceHandle(handle, parts)
+                    || parts.m_index >= m_system.m_hairDefinitionSlots.size())
+                {
+                    return false;
+                }
+                const auto& slot = m_system.m_hairDefinitionSlots[parts.m_index];
+                if (!slot.m_settings || slot.m_generation != parts.m_generation)
+                {
+                    return false;
+                }
+                if (wasHashed(hashedHairDefinitions, parts.m_index))
+                {
+                    return true;
+                }
+                builder.AddDomain(CompatibilityDomain::HairDefinition);
+                builder.AddScalar(parts.m_index + 1);
+                builder.AddScalar(aznumeric_cast<AZ::u32>(slot.m_settings->mSimVertices.size()));
+                builder.AddScalar(aznumeric_cast<AZ::u32>(slot.m_settings->mSimStrands.size()));
+                builder.AddScalar(aznumeric_cast<AZ::u32>(slot.m_settings->mRenderVertices.size()));
+                builder.AddScalar(aznumeric_cast<AZ::u32>(slot.m_settings->mScalpVertices.size()));
+                CompatibilityHashStream stream(builder);
+                slot.m_settings->SaveBinaryState(stream);
+                builder.AddScalar(aznumeric_cast<AZ::u64>(stream.GetByteCount()));
+                return true;
+            };
+
+        const auto hashShape =
+            [this,
+                &builder,
+                &hashedShapes,
+                &wasHashed,
+                &hashMaterial,
+                &addResourceReference,
+                &addWorldMemberReference](auto&& self, const ShapeHandle handle) -> bool
+            {
+                if (!handle)
+                {
+                    return true;
+                }
+                Internal::WorldMemberHandleParts parts;
+                if (!Internal::DecodeWorldMemberHandle(handle, parts)
+                    || parts.m_worldIndex != m_worldIndex
+                    || parts.m_index >= m_shapeSlots.size())
+                {
+                    return false;
+                }
+                const ShapeSlot& slot = m_shapeSlots[parts.m_index];
+                if (!slot.m_shape || slot.m_generation != parts.m_generation)
+                {
+                    return false;
+                }
+                if (wasHashed(hashedShapes, parts.m_index))
+                {
+                    return true;
+                }
+                builder.AddDomain(CompatibilityDomain::Shape);
+                builder.AddScalar(parts.m_index + 1);
+                builder.AddScalar(static_cast<AZ::u8>(slot.m_shape->GetSubType()));
+                CompatibilityHashStream stream(builder);
+                slot.m_shape->SaveBinaryState(stream);
+                builder.AddScalar(aznumeric_cast<AZ::u64>(stream.GetByteCount()));
+                builder.AddScalar(aznumeric_cast<AZ::u32>(slot.m_materialHandles.size()));
+                for (const MaterialHandle materialHandle : slot.m_materialHandles)
+                {
+                    if (!addResourceReference(materialHandle)
+                        || !hashMaterial(materialHandle))
+                    {
+                        return false;
+                    }
+                }
+                builder.AddScalar(aznumeric_cast<AZ::u32>(slot.m_childHandles.size()));
+                for (const ShapeHandle childHandle : slot.m_childHandles)
+                {
+                    if (!addWorldMemberReference(childHandle)
+                        || !self(self, childHandle))
+                    {
+                        return false;
+                    }
+                }
+                if (!addResourceReference(slot.m_cookedShapeHandle))
+                {
+                    return false;
+                }
+                if (slot.m_cookedShapeHandle)
+                {
+                    Internal::ResourceHandleParts cookedParts;
+                    AZ::TypeId providerId = AZ::TypeId::CreateNull();
+                    ExtensionHandle providerExtension;
+                    AZStd::vector<CustomShapeDependency> dependencies;
+                    {
+                        AZStd::shared_lock lock(m_system.m_cookedShapeMutex);
+                        if (!Internal::DecodeResourceHandle(slot.m_cookedShapeHandle, cookedParts)
+                            || cookedParts.m_index >= m_system.m_cookedShapeSlots.size())
+                        {
+                            return false;
+                        }
+                        const auto& cookedSlot = m_system.m_cookedShapeSlots[cookedParts.m_index];
+                        if (!cookedSlot.m_shape || cookedSlot.m_generation != cookedParts.m_generation)
+                        {
+                            return false;
+                        }
+                        providerId = cookedSlot.m_customProviderId;
+                        providerExtension = cookedSlot.m_customProviderExtension;
+                        dependencies = cookedSlot.m_customDependencies;
+                    }
+                    builder.AddTypeId(providerId);
+                    AZ::u64 providerVersion = 0;
+                    if (providerExtension)
+                    {
+                        ExtensionInformation information;
+                        if (!m_system.GetExtensionInformation(providerExtension, information)
+                            || information.m_id != providerId)
+                        {
+                            return false;
+                        }
+                        providerVersion = information.m_version;
+                    }
+                    builder.AddScalar(providerVersion);
+                    builder.AddScalar(aznumeric_cast<AZ::u32>(dependencies.size()));
+                    for (const CustomShapeDependency& dependency : dependencies)
+                    {
+                        builder.AddString(dependency.m_path);
+                        builder.AddScalar(dependency.m_contentHash);
+                    }
+                }
+                return true;
+            };
+
+        const auto hashCharacter =
+            [this, &builder, &hashShape, &addWorldMemberReference](const AZ::u32 slotIndex)
+            {
+                if (slotIndex >= m_characterSlots.size())
+                {
+                    return false;
+                }
+                const CharacterSlot& slot = m_characterSlots[slotIndex];
+                if (!slot.m_character)
+                {
+                    return false;
+                }
+                const JPH::CharacterSettings settings = slot.m_character->GetCharacterSettings();
+                builder.AddDomain(CompatibilityDomain::Character);
+                builder.AddScalar(slotIndex + 1);
+                if (!addWorldMemberReference(slot.m_bodyHandle)
+                    || !addWorldMemberReference(slot.m_shapeHandle)
+                    || !hashShape(hashShape, slot.m_shapeHandle))
+                {
+                    return false;
+                }
+                builder.AddScalar(slot.m_userData);
+                builder.AddScalar(slot.m_maximumSeparationDistance);
+                builder.AddVector(settings.mUp);
+                builder.AddVector(settings.mSupportingVolume.GetNormal());
+                builder.AddScalar(settings.mSupportingVolume.GetConstant());
+                builder.AddScalar(settings.mMaxSlopeAngle);
+                builder.AddScalar(settings.mEnhancedInternalEdgeRemoval);
+                builder.AddScalar(settings.mLayer);
+                builder.AddScalar(settings.mMass);
+                builder.AddScalar(settings.mFriction);
+                builder.AddScalar(settings.mGravityFactor);
+                builder.AddScalar(settings.mAllowedDOFs);
+                return true;
+            };
+
+        const auto hashVirtualCharacter =
+            [this,
+                &builder,
+                &hashShape,
+                &hashParticipant,
+                &addWorldMemberReference](const AZ::u32 slotIndex)
+            {
+                if (slotIndex >= m_virtualCharacterSlots.size())
+                {
+                    return false;
+                }
+                const VirtualCharacterSlot& slot = m_virtualCharacterSlots[slotIndex];
+                if (!slot.m_character)
+                {
+                    return false;
+                }
+                const JPH::CharacterVirtualSettings settings = slot.m_character->GetCharacterVirtualSettings();
+                builder.AddDomain(CompatibilityDomain::VirtualCharacter);
+                builder.AddScalar(slotIndex + 1);
+                if (!addWorldMemberReference(slot.m_shapeHandle)
+                    || !addWorldMemberReference(slot.m_innerBodyHandle)
+                    || !hashShape(hashShape, slot.m_shapeHandle))
+                {
+                    return false;
+                }
+                builder.AddScalar(slot.m_userData);
+                builder.AddScalar(slot.m_objectLayer.GetValue());
+                builder.AddScalar(settings.mID.GetValue());
+                builder.AddVector(settings.mUp);
+                builder.AddVector(settings.mSupportingVolume.GetNormal());
+                builder.AddScalar(settings.mSupportingVolume.GetConstant());
+                builder.AddScalar(settings.mMaxSlopeAngle);
+                builder.AddScalar(settings.mEnhancedInternalEdgeRemoval);
+                builder.AddScalar(settings.mMass);
+                builder.AddScalar(settings.mMaxStrength);
+                builder.AddVector(settings.mShapeOffset);
+                builder.AddScalar(settings.mBackFaceMode);
+                builder.AddScalar(settings.mPredictiveContactDistance);
+                builder.AddScalar(settings.mMaxCollisionIterations);
+                builder.AddScalar(settings.mMaxConstraintIterations);
+                builder.AddScalar(settings.mMinTimeRemaining);
+                builder.AddScalar(settings.mCollisionTolerance);
+                builder.AddScalar(settings.mCharacterPadding);
+                builder.AddScalar(settings.mMaxNumHits);
+                builder.AddScalar(settings.mHitReductionCosMaxAngle);
+                builder.AddScalar(settings.mPenetrationRecoverySpeed);
+                builder.AddScalar(settings.mInnerBodyIDOverride.GetIndexAndSequenceNumber());
+                builder.AddScalar(settings.mInnerBodyLayer);
+                builder.AddScalar(static_cast<bool>(slot.m_autoUpdateConfiguration));
+                if (slot.m_autoUpdateConfiguration)
+                {
+                    const VirtualCharacterUpdateConfiguration& update = *slot.m_autoUpdateConfiguration;
+                    builder.AddVector(update.m_gravity);
+                    builder.AddVector(update.m_stickToFloorStepDown);
+                    builder.AddVector(update.m_walkStairsStepDownExtra);
+                    builder.AddVector(update.m_walkStairsStepUp);
+                    builder.AddScalar(update.m_walkStairsCosAngleForwardContact);
+                    builder.AddScalar(update.m_walkStairsMinimumStepForward);
+                    builder.AddScalar(update.m_walkStairsStepForwardTest);
+                    builder.AddScalar(update.m_extended);
+                }
+                return hashParticipant(slot.m_contactCallbacks.m_extension);
+            };
+
+        const auto hashBody =
+            [this,
+                &builder,
+                &hashShape,
+                &hashSoftBodyDefinition,
+                &hashGroupFilter,
+                &addResourceReference,
+                &addWorldMemberReference](const AZ::u32 slotIndex)
+            {
+                if (slotIndex >= m_bodySlots.size())
+                {
+                    return false;
+                }
+                const BodySlot& slot = m_bodySlots[slotIndex];
+                if (slot.m_bodyId.IsInvalid())
+                {
+                    return false;
+                }
+                JPH::BodyLockRead bodyLock(m_physicsSystem.GetBodyLockInterface(), slot.m_bodyId);
+                if (!bodyLock.Succeeded())
+                {
+                    return false;
+                }
+                const JPH::Body& body = bodyLock.GetBody();
+                builder.AddDomain(CompatibilityDomain::Body);
+                builder.AddScalar(slotIndex + 1);
+                builder.AddScalar(slot.m_bodyId.GetIndexAndSequenceNumber());
+                builder.AddScalar(slot.m_kind);
+                builder.AddScalar(slot.m_motionType);
+                builder.AddScalar(body.IsInBroadPhase());
+                if (!addWorldMemberReference(slot.m_shapeHandle)
+                    || !addResourceReference(slot.m_softBodyDefinitionHandle)
+                    || !addResourceReference(slot.m_groupFilterHandle)
+                    || !addWorldMemberReference(slot.m_characterHandle)
+                    || !addWorldMemberReference(slot.m_virtualCharacterHandle)
+                    || !addWorldMemberReference(slot.m_vehicleHandle)
+                    || !hashShape(hashShape, slot.m_shapeHandle)
+                    || !hashSoftBodyDefinition(slot.m_softBodyDefinitionHandle)
+                    || !hashGroupFilter(slot.m_groupFilterHandle))
+                {
+                    return false;
+                }
+                builder.AddScalar(slot.m_userData);
+                builder.AddScalar(body.GetObjectLayer());
+                builder.AddScalar(body.GetCollisionGroup().GetGroupID());
+                builder.AddScalar(body.GetCollisionGroup().GetSubGroupID());
+                builder.AddScalar(body.GetFriction());
+                builder.AddScalar(body.GetRestitution());
+                if (slot.m_kind == BodyKind::Soft)
+                {
+                    const JPH::SoftBodyCreationSettings settings = body.GetSoftBodyCreationSettings();
+                    const auto* motionProperties = static_cast<const JPH::SoftBodyMotionProperties*>(
+                        body.GetMotionProperties());
+                    const auto& vertices = motionProperties->GetVertices();
+                    builder.AddScalar(settings.mNumIterations);
+                    builder.AddScalar(settings.mLinearDamping);
+                    builder.AddScalar(settings.mMaxLinearVelocity);
+                    builder.AddScalar(settings.mPressure);
+                    builder.AddScalar(settings.mGravityFactor);
+                    builder.AddScalar(settings.mVertexRadius);
+                    builder.AddScalar(settings.mUpdatePosition);
+                    builder.AddScalar(settings.mFacesDoubleSided);
+                    builder.AddScalar(slot.m_softBodySkinConstraintsEnabled);
+                    builder.AddScalar(motionProperties->GetSkinnedMaxDistanceMultiplier());
+                    builder.AddScalar(motionProperties->GetInverseMassUnchecked());
+                    builder.AddVector(motionProperties->GetInverseInertiaDiagonal());
+                    builder.AddQuaternion(motionProperties->GetInertiaRotation());
+                    builder.AddScalar(aznumeric_cast<AZ::u64>(vertices.size()));
+                    for (const JPH::SoftBodyMotionProperties::Vertex& vertex : vertices)
+                    {
+                        builder.AddScalar(vertex.mInvMass);
+                    }
+                    return true;
+                }
+                const JPH::BodyCreationSettings settings = body.GetBodyCreationSettings();
+                builder.AddScalar(settings.mAllowedDOFs);
+                builder.AddScalar(settings.mAllowDynamicOrKinematic);
+                builder.AddScalar(settings.mIsSensor);
+                builder.AddScalar(settings.mCollideKinematicVsNonDynamic);
+                builder.AddScalar(settings.mUseManifoldReduction);
+                builder.AddScalar(settings.mApplyGyroscopicForce);
+                builder.AddScalar(settings.mMotionQuality);
+                builder.AddScalar(settings.mEnhancedInternalEdgeRemoval);
+                builder.AddScalar(settings.mLinearDamping);
+                builder.AddScalar(settings.mAngularDamping);
+                builder.AddScalar(settings.mMaxLinearVelocity);
+                builder.AddScalar(settings.mMaxAngularVelocity);
+                builder.AddScalar(settings.mGravityFactor);
+                builder.AddScalar(settings.mNumVelocityStepsOverride);
+                builder.AddScalar(settings.mNumPositionStepsOverride);
+                const JPH::MassProperties massProperties = settings.GetMassProperties();
+                builder.AddScalar(massProperties.mMass);
+                builder.AddMatrix(massProperties.mInertia);
+                return true;
+            };
+
+        const auto hashConstraint =
+            [this,
+                &builder,
+                &hashPath,
+                &addWorldMemberReference,
+                &addResourceReference](const AZ::u32 slotIndex)
+            {
+                if (slotIndex >= m_constraintSlots.size())
+                {
+                    return false;
+                }
+                const ConstraintSlot& slot = m_constraintSlots[slotIndex];
+                if (!slot.m_constraint)
+                {
+                    return false;
+                }
+                builder.AddDomain(CompatibilityDomain::Constraint);
+                builder.AddScalar(slotIndex + 1);
+                builder.AddScalar(slot.m_userData);
+                builder.AddScalar(static_cast<AZ::u8>(slot.m_constraint->GetSubType()));
+                if (!addWorldMemberReference(slot.m_firstBodyHandle)
+                    || !addWorldMemberReference(slot.m_secondBodyHandle)
+                    || !addWorldMemberReference(slot.m_dependencyHandles[0])
+                    || !addWorldMemberReference(slot.m_dependencyHandles[1])
+                    || !addResourceReference(slot.m_pathHandle)
+                    || !hashPath(slot.m_pathHandle))
+                {
+                    return false;
+                }
+                builder.AddScalar(slot.m_isInSimulation);
+                builder.AddScalar(slot.m_constraint->GetConstraintPriority());
+                builder.AddScalar(slot.m_constraint->GetNumPositionStepsOverride());
+                builder.AddScalar(slot.m_constraint->GetNumVelocityStepsOverride());
+                if (slot.m_constraint->GetSubType() == JPH::EConstraintSubType::User1)
+                {
+                    const auto* constraint = static_cast<const CustomConstraint*>(slot.m_constraint.GetPtr());
+                    builder.AddTypeId(constraint->GetProviderId());
+                    builder.AddScalar(constraint->GetProviderVersion());
+                    builder.AddBytes(constraint->GetData().data(), constraint->GetData().size());
+                    builder.AddScalar(constraint->GetMaximumRowCount());
+                    builder.AddScalar(aznumeric_cast<AZ::u64>(constraint->GetState().size()));
+                    builder.AddMatrix(constraint->GetConstraintToBody1Matrix());
+                    builder.AddMatrix(constraint->GetConstraintToBody2Matrix());
+                    return true;
+                }
+                if (slot.m_constraint->GetSubType() == JPH::EConstraintSubType::Path)
+                {
+                    const auto* constraint = static_cast<const JPH::PathConstraint*>(slot.m_constraint.GetPtr());
+                    builder.AddMatrix(constraint->GetConstraintToBody1Matrix());
+                    builder.AddMatrix(constraint->GetConstraintToBody2Matrix());
+                    builder.AddScalar(slot.m_pathRotationConstraint);
+                    return true;
+                }
+                // Jolt 5.6 does not copy live limit springs into SixDOFConstraintSettings.
+                if (slot.m_constraint->GetSubType() == JPH::EConstraintSubType::SixDOF)
+                {
+                    const auto* constraint = static_cast<const JPH::SixDOFConstraint*>(slot.m_constraint.GetPtr());
+                    constexpr AZ::u32 TranslationAxisCount =
+                        static_cast<AZ::u32>(JPH::SixDOFConstraint::EAxis::NumTranslation);
+                    for (AZ::u32 axisIndex = 0; axisIndex < TranslationAxisCount; ++axisIndex)
+                    {
+                        const JPH::SpringSettings& spring = constraint->GetLimitsSpringSettings(
+                            static_cast<JPH::SixDOFConstraint::EAxis>(axisIndex));
+                        builder.AddScalar(spring.mMode);
+                        builder.AddScalar(spring.mFrequency);
+                        builder.AddScalar(spring.mDamping);
+                    }
+                }
+                JPH::Ref<JPH::ConstraintSettings> settings = slot.m_constraint->GetConstraintSettings();
+                if (!settings)
+                {
+                    return false;
+                }
+                settings->mEnabled = false;
+                settings->mDrawConstraintSize = 0.0f;
+                CompatibilityHashStream stream(builder);
+                settings->SaveBinaryState(stream);
+                builder.AddScalar(aznumeric_cast<AZ::u64>(stream.GetByteCount()));
+                return true;
+            };
+
+        const auto hashVehicle =
+            [this,
+                &builder,
+                &hashParticipant,
+                &addWorldMemberReference](const AZ::u32 slotIndex)
+            {
+                if (slotIndex >= m_vehicleSlots.size())
+                {
+                    return false;
+                }
+                const VehicleSlot& slot = m_vehicleSlots[slotIndex];
+                if (!slot.m_constraint)
+                {
+                    return false;
+                }
+                builder.AddDomain(CompatibilityDomain::Vehicle);
+                builder.AddScalar(slotIndex + 1);
+                builder.AddScalar(slot.m_kind);
+                if (!addWorldMemberReference(slot.m_bodyHandle))
+                {
+                    return false;
+                }
+                builder.AddScalar(aznumeric_cast<AZ::u32>(slot.m_constraint->GetWheels().size()));
+                builder.AddVector(slot.m_collisionConfiguration.m_up);
+                builder.AddScalar(slot.m_collisionConfiguration.m_cylinderConvexRadiusFraction);
+                builder.AddScalar(slot.m_collisionConfiguration.m_maximumSlopeAngle);
+                builder.AddScalar(slot.m_collisionConfiguration.m_sphereRadius);
+                builder.AddScalar(slot.m_collisionConfiguration.m_collisionLayer.GetValue());
+                builder.AddScalar(slot.m_collisionConfiguration.m_mode);
+                builder.AddScalar(slot.m_motorcycleMaximumLeanAngle);
+                builder.AddScalar(slot.m_constraint->GetNumStepsBetweenCollisionTestActive());
+                builder.AddScalar(slot.m_constraint->GetNumStepsBetweenCollisionTestInactive());
+                const bool isGravityOverridden = slot.m_constraint->IsGravityOverridden();
+                builder.AddScalar(isGravityOverridden);
+                if (isGravityOverridden)
+                {
+                    builder.AddVector(slot.m_constraint->GetGravityOverride());
+                }
+                builder.AddScalar(slot.m_hasGravityFactorBeforeOverride);
+                if (slot.m_hasGravityFactorBeforeOverride)
+                {
+                    builder.AddScalar(slot.m_gravityFactorBeforeOverride);
+                }
+                const JPH::VehicleEngine& engine = GetVehicleEngine(
+                    *slot.m_constraint,
+                    slot.m_kind);
+                builder.AddScalar(engine.mAngularDamping);
+                builder.AddScalar(engine.mInertia);
+                if (slot.m_kind == VehicleKind::Motorcycle)
+                {
+                    const auto* controller = static_cast<const JPH::MotorcycleController*>(
+                        slot.m_constraint->GetController());
+                    builder.AddScalar(controller->IsLeanControllerEnabled());
+                    builder.AddScalar(controller->IsLeanSteeringLimitEnabled());
+                }
+                JPH::Ref<JPH::ConstraintSettings> settings = slot.m_constraint->GetConstraintSettings();
+                if (!settings)
+                {
+                    return false;
+                }
+                settings->mEnabled = false;
+                settings->mDrawConstraintSize = 0.0f;
+                CompatibilityHashStream stream(builder);
+                settings->SaveBinaryState(stream);
+                builder.AddScalar(aznumeric_cast<AZ::u64>(stream.GetByteCount()));
+                IVehicleCallbacks* callbacks = nullptr;
+                const IVehicleCollisionFilter* collisionFilter = nullptr;
+                if (slot.m_bindings)
+                {
+                    callbacks = slot.m_bindings->m_callbacks.m_extension;
+                    collisionFilter = slot.m_bindings->m_collisionFilter.m_extension;
+                }
+                return hashParticipant(callbacks)
+                    && hashParticipant(collisionFilter);
+            };
+
+        AZStd::vector<AZ::u8> hashedCharacters(m_characterSlots.size(), 0);
+        AZStd::vector<AZ::u8> hashedVirtualCharacters(m_virtualCharacterSlots.size(), 0);
+        AZStd::vector<AZ::u8> hashedVehicles(m_vehicleSlots.size(), 0);
+        const auto processBody =
+            [this,
+                &hashBody,
+                &hashCharacter,
+                &hashVirtualCharacter,
+                &hashVehicle,
+                &hashedCharacters,
+                &hashedVirtualCharacters,
+                &hashedVehicles](const AZ::u32 bodySlotIndex)
+            {
+                if (!hashBody(bodySlotIndex))
+                {
+                    return false;
+                }
+                const BodySlot& bodySlot = m_bodySlots[bodySlotIndex];
+                Internal::WorldMemberHandleParts parts;
+                if (bodySlot.m_characterHandle)
+                {
+                    if (!Internal::DecodeWorldMemberHandle(bodySlot.m_characterHandle, parts)
+                        || parts.m_index >= hashedCharacters.size())
+                    {
+                        return false;
+                    }
+                    if (hashedCharacters[parts.m_index] == 0)
+                    {
+                        hashedCharacters[parts.m_index] = 1;
+                        if (!hashCharacter(parts.m_index))
+                        {
+                            return false;
+                        }
+                    }
+                }
+                if (bodySlot.m_virtualCharacterHandle)
+                {
+                    if (!Internal::DecodeWorldMemberHandle(bodySlot.m_virtualCharacterHandle, parts)
+                        || parts.m_index >= hashedVirtualCharacters.size())
+                    {
+                        return false;
+                    }
+                    if (hashedVirtualCharacters[parts.m_index] == 0)
+                    {
+                        hashedVirtualCharacters[parts.m_index] = 1;
+                        if (!hashVirtualCharacter(parts.m_index))
+                        {
+                            return false;
+                        }
+                    }
+                }
+                if (bodySlot.m_vehicleHandle)
+                {
+                    if (!Internal::DecodeWorldMemberHandle(bodySlot.m_vehicleHandle, parts)
+                        || parts.m_index >= hashedVehicles.size())
+                    {
+                        return false;
+                    }
+                    if (hashedVehicles[parts.m_index] == 0)
+                    {
+                        hashedVehicles[parts.m_index] = 1;
+                        if (!hashVehicle(parts.m_index))
+                        {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            };
+
+        if (snapshot.m_configuration.m_filterBodies)
+        {
+            for (const FilteredBodyTopologyState& state : snapshot.m_filteredBodyTopologyStates)
+            {
+                Internal::WorldMemberHandleParts parts;
+                if (!Internal::DecodeWorldMemberHandle(state.m_bodyHandle, parts)
+                    || !processBody(parts.m_index))
+                {
+                    return false;
+                }
+            }
+        }
+        else
+        {
+            for (AZ::u32 slotIndex = 0; slotIndex < m_bodySlots.size(); ++slotIndex)
+            {
+                if (!m_bodySlots[slotIndex].m_bodyId.IsInvalid()
+                    && !processBody(slotIndex))
+                {
+                    return false;
+                }
+            }
+            for (AZ::u32 slotIndex = 0; slotIndex < m_virtualCharacterSlots.size(); ++slotIndex)
+            {
+                if (m_virtualCharacterSlots[slotIndex].m_character
+                    && hashedVirtualCharacters[slotIndex] == 0)
+                {
+                    hashedVirtualCharacters[slotIndex] = 1;
+                    if (!hashVirtualCharacter(slotIndex))
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        if (HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Constraints))
+        {
+            if (snapshot.m_configuration.m_filterBodies)
+            {
+                for (const FilteredConstraintTopologyState& state : snapshot.m_filteredConstraintTopologyStates)
+                {
+                    if (state.m_isVehicle)
+                    {
+                        if (state.m_slotIndex >= hashedVehicles.size())
+                        {
+                            return false;
+                        }
+                        if (hashedVehicles[state.m_slotIndex] == 0)
+                        {
+                            hashedVehicles[state.m_slotIndex] = 1;
+                            if (!hashVehicle(state.m_slotIndex))
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                    else if (!hashConstraint(state.m_slotIndex))
+                    {
+                        return false;
+                    }
+                }
+            }
+            else
+            {
+                for (AZ::u32 slotIndex = 0; slotIndex < m_constraintSlots.size(); ++slotIndex)
+                {
+                    if (m_constraintSlots[slotIndex].m_constraint
+                        && !hashConstraint(slotIndex))
+                    {
+                        return false;
+                    }
+                }
+                for (AZ::u32 slotIndex = 0; slotIndex < m_vehicleSlots.size(); ++slotIndex)
+                {
+                    if (m_vehicleSlots[slotIndex].m_constraint
+                        && hashedVehicles[slotIndex] == 0)
+                    {
+                        hashedVehicles[slotIndex] = 1;
+                        if (!hashVehicle(slotIndex))
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Hair))
+        {
+            for (AZ::u32 slotIndex = 0; slotIndex < m_hairSlots.size(); ++slotIndex)
+            {
+                const HairSlot& slot = m_hairSlots[slotIndex];
+                if (!slot.m_hair)
+                {
+                    continue;
+                }
+                builder.AddDomain(CompatibilityDomain::HairInstance);
+                builder.AddScalar(slotIndex + 1);
+                if (!addResourceReference(slot.m_definitionHandle)
+                    || !hashHairDefinition(slot.m_definitionHandle))
+                {
+                    return false;
+                }
+                builder.AddScalar(slot.m_objectLayer.GetValue());
+                builder.AddMatrix(slot.m_hair->GetScalpToHeadTransform());
+                builder.AddScalar(static_cast<bool>(slot.m_autoUpdateState));
+                if (slot.m_autoUpdateState)
+                {
+                    builder.AddMatrix(ToNativeTransform(slot.m_autoUpdateState->m_jointToHair));
+                    builder.AddScalar(aznumeric_cast<AZ::u32>(slot.m_autoUpdateState->m_jointModelTransforms.size()));
+                    for (const AZ::Transform& transform : slot.m_autoUpdateState->m_jointModelTransforms)
+                    {
+                        builder.AddMatrix(ToNativeTransform(transform));
+                    }
+                }
+            }
+        }
+
+        for (const ContactCacheState& state : snapshot.m_contactCacheStates)
+        {
+            if (!addResourceReference(state.m_event.m_firstMaterialHandle)
+                || !hashMaterial(state.m_event.m_firstMaterialHandle)
+                || !addResourceReference(state.m_event.m_secondMaterialHandle)
+                || !hashMaterial(state.m_event.m_secondMaterialHandle))
+            {
+                return false;
+            }
+        }
+
+        if (HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Global))
+        {
+            if (!hashParticipant(m_bodyPairCollider.m_extension)
+                || !hashParticipant(m_contactCallbacks.m_extension)
+                || !hashParticipant(m_simulationShapeFilter.m_extension)
+                || !hashParticipant(m_softBodyContactCallbacks.m_extension))
+            {
+                return false;
+            }
+            builder.AddScalar(aznumeric_cast<AZ::u32>(m_stepListeners.size()));
+            for (const ExtensionBinding<IStepListener>& listener : m_stepListeners)
+            {
+                if (!hashParticipant(listener.m_extension))
+                {
+                    return false;
+                }
+            }
+        }
+
+        fingerprint = builder.GetHash();
+        return true;
+    }
+
+    bool World::BindImportedStateSnapshotToCurrent(StateSnapshotSlot& snapshot) const
+    {
+        snapshot.m_configurationRevision = m_configurationRevision;
+        snapshot.m_globalConfigurationRevision = m_globalConfigurationRevision;
+        snapshot.m_nativeConstraintTopologyEpoch = 0;
+        if (HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Constraints))
+        {
+            if (m_nativeConstraintTopologyEpoch == 0)
+            {
+                return false;
+            }
+            snapshot.m_nativeConstraintTopologyEpoch = m_nativeConstraintTopologyEpoch;
+        }
+
+        for (FilteredBodyTopologyState& state : snapshot.m_filteredBodyTopologyStates)
+        {
+            FilteredBodyTopologyState currentState;
+            if (!GetFilteredBodyTopologyState(state.m_bodyHandle, currentState))
+            {
+                return false;
+            }
+            state.m_bodyConfigurationRevision = currentState.m_bodyConfigurationRevision;
+            state.m_characterConfigurationRevision = currentState.m_characterConfigurationRevision;
+            state.m_shapeConfigurationRevision = currentState.m_shapeConfigurationRevision;
+        }
+        for (FilteredConstraintTopologyState& state : snapshot.m_filteredConstraintTopologyStates)
+        {
+            if (state.m_isVehicle)
+            {
+                if (state.m_slotIndex >= m_vehicleSlots.size()
+                    || !m_vehicleSlots[state.m_slotIndex].m_constraint)
+                {
+                    return false;
+                }
+                state.m_configurationRevision = m_vehicleSlots[state.m_slotIndex].m_configurationRevision;
+                state.m_generation = m_vehicleSlots[state.m_slotIndex].m_generation;
+            }
+            else
+            {
+                if (state.m_slotIndex >= m_constraintSlots.size()
+                    || !m_constraintSlots[state.m_slotIndex].m_constraint)
+                {
+                    return false;
+                }
+                state.m_configurationRevision = m_constraintSlots[state.m_slotIndex].m_configurationRevision;
+                state.m_generation = m_constraintSlots[state.m_slotIndex].m_generation;
+            }
+        }
+        for (ContactCacheState& state : snapshot.m_contactCacheStates)
+        {
+            const BodySlot* firstBody = FindBody(state.m_event.m_firstBodyHandle);
+            const BodySlot* secondBody = FindBody(state.m_event.m_secondBodyHandle);
+            const ShapeSlot* firstShape = FindShape(state.m_event.m_firstShapeHandle);
+            const ShapeSlot* secondShape = FindShape(state.m_event.m_secondShapeHandle);
+            if (!firstBody || !secondBody || !firstShape || !secondShape)
+            {
+                return false;
+            }
+            state.m_firstBodyConfigurationRevision = firstBody->m_configurationRevision;
+            state.m_firstShapeConfigurationRevision = firstShape->m_configurationRevision;
+            state.m_secondBodyConfigurationRevision = secondBody->m_configurationRevision;
+            state.m_secondShapeConfigurationRevision = secondShape->m_configurationRevision;
         }
         return true;
     }
@@ -16881,7 +19143,18 @@ namespace Jolt
         writer.Write(static_cast<AZ::u8>(multipart));
         for (const StateSnapshotSlot* snapshot : snapshots)
         {
-            WriteStateSnapshot(writer, *snapshot);
+            AZ::u64 compatibilityFingerprint = 0;
+            if (!CalculateStateSnapshotCompatibilityFingerprint(*snapshot, compatibilityFingerprint))
+            {
+                archive = {};
+                return false;
+            }
+            writer.Write(compatibilityFingerprint);
+            if (!WriteStateSnapshot(writer, *snapshot))
+            {
+                archive = {};
+                return false;
+            }
         }
         if (!writer.IsValid())
         {
@@ -16945,8 +19218,20 @@ namespace Jolt
         importedSnapshotPointers.reserve(snapshotCount);
         for (StateSnapshotSlot& snapshot : importedSnapshots)
         {
-            if (!ReadStateSnapshot(reader, snapshot)
-                || !ValidateSnapshotTopologyUnlocked(snapshot))
+            AZ::u64 archivedCompatibilityFingerprint = 0;
+            if (!reader.Read(archivedCompatibilityFingerprint)
+                || !ReadStateSnapshot(reader, snapshot))
+            {
+                return false;
+            }
+            AZ::u64 currentCompatibilityFingerprint = 0;
+            if (!CalculateStateSnapshotCompatibilityFingerprint(
+                    snapshot,
+                    currentCompatibilityFingerprint)
+                || currentCompatibilityFingerprint != archivedCompatibilityFingerprint
+                || !BindImportedStateSnapshotToCurrent(snapshot)
+                || !ValidateSnapshotTopologyUnlocked(snapshot)
+                || !ValidateImportedHairStateUnlocked(snapshot))
             {
                 return false;
             }
@@ -16971,20 +19256,21 @@ namespace Jolt
             }
         }
 
-        AZStd::vector<AZ::u32> reservedSlotIndices;
-        reservedSlotIndices.reserve(snapshotCount);
+        AZStd::vector<Internal::HandleSlotReservation> reservations;
+        reservations.reserve(snapshotCount);
         for (AZ::u32 snapshotIndex = 0; snapshotIndex < snapshotCount; ++snapshotIndex)
         {
             AZ::u32 slotIndex = 0;
-            if (!ReserveStateSnapshotSlot(slotIndex))
+            Internal::HandleSlotReservation reservation;
+            if (!ReserveStateSnapshotSlot(slotIndex, reservation))
             {
-                for (const AZ::u32 reservedSlotIndex : reservedSlotIndices)
+                for (size_t reservationIndex = reservations.size(); reservationIndex > 0; --reservationIndex)
                 {
-                    ReleaseStateSnapshotSlot(reservedSlotIndex);
+                    RollbackStateSnapshotSlot(reservations[reservationIndex - 1]);
                 }
                 return false;
             }
-            reservedSlotIndices.push_back(slotIndex);
+            reservations.push_back(reservation);
         }
 
         if (multipart != 0)
@@ -16998,13 +19284,14 @@ namespace Jolt
 
         for (AZ::u32 snapshotIndex = 0; snapshotIndex < snapshotCount; ++snapshotIndex)
         {
-            StateSnapshotSlot& destination = m_stateSnapshotSlots[reservedSlotIndices[snapshotIndex]];
+            const AZ::u32 slotIndex = reservations[snapshotIndex].m_index;
+            StateSnapshotSlot& destination = m_stateSnapshotSlots[slotIndex];
             const AZ::u32 generation = destination.m_generation;
             destination = AZStd::move(importedSnapshots[snapshotIndex]);
             destination.m_generation = generation;
             snapshotHandles[snapshotIndex] = Internal::MakeWorldMemberHandle<StateSnapshotHandle>(
                 m_worldIndex,
-                reservedSlotIndices[snapshotIndex],
+                slotIndex,
                 generation);
         }
         return true;
@@ -17061,11 +19348,11 @@ namespace Jolt
         {
             return true;
         }
-        return participant->GetStateTypeId() == state.m_typeId
-            && participant->GetStateVersion() == state.m_version
-            && (state.m_data.size() > 1
-                || participant->GetStateByteCount() > 0
-                || participant->GetStateHash() == state.m_stateHash);
+        const size_t stateByteCount = participant->GetStateByteCount();
+        return stateByteCount < Internal::MaximumStateArchiveSize
+            && state.m_data.size() == stateByteCount + 1
+            && participant->GetStateTypeId() == state.m_typeId
+            && participant->GetStateVersion() == state.m_version;
     }
 
     bool World::PrepareRollbackParticipantRestore(
@@ -17255,6 +19542,8 @@ namespace Jolt
             if (captured.m_filterHandle != current.m_filterHandle
                 || captured.m_participantState.m_data.empty()
                     != current.m_participantState.m_data.empty()
+                || captured.m_participantState.m_data.size()
+                    != current.m_participantState.m_data.size()
                 || captured.m_participantState.m_typeId
                     != current.m_participantState.m_typeId
                 || captured.m_participantState.m_version
@@ -17319,13 +19608,22 @@ namespace Jolt
         const StateSnapshotConfiguration& configuration,
         const AZStd::span<const BodyHandle> bodyHandles)
     {
+        const bool capturesConstraintState = HasStateFlag(
+            configuration.m_flags,
+            StateSnapshotFlags::Constraints);
         snapshot.m_partitionBatchId = 0;
+        snapshot.m_nativeConstraintTopologyEpoch = 0;
         if (configuration.m_flags == StateSnapshotFlags::None
             || configuration.m_restoreSafety == RestoreSafety::None
-            || (!configuration.m_filterBodies && !bodyHandles.empty()))
+            || (!configuration.m_filterBodies && !bodyHandles.empty())
+            || (capturesConstraintState && m_nativeConstraintTopologyEpoch == 0))
         {
             snapshot.m_data.clear();
             return false;
+        }
+        if (capturesConstraintState)
+        {
+            snapshot.m_nativeConstraintTopologyEpoch = m_nativeConstraintTopologyEpoch;
         }
 
         if (configuration.m_filterBodies
@@ -17386,7 +19684,16 @@ namespace Jolt
                 snapshot.m_filteredBodyTopologyStates.end(),
                 [](const FilteredBodyTopologyState& first, const FilteredBodyTopologyState& second)
                 {
-                    return first.m_bodyHandle < second.m_bodyHandle;
+                    Internal::WorldMemberHandleParts firstParts;
+                    Internal::WorldMemberHandleParts secondParts;
+                    const bool firstDecoded = Internal::DecodeWorldMemberHandle(
+                        first.m_bodyHandle,
+                        firstParts);
+                    const bool secondDecoded = Internal::DecodeWorldMemberHandle(
+                        second.m_bodyHandle,
+                        secondParts);
+                    AZ_Assert(firstDecoded && secondDecoded, "Captured body handles must decode.");
+                    return firstParts.m_index < secondParts.m_index;
                 });
             snapshot.m_filteredBodyTopologyStates.erase(
                 AZStd::unique(
@@ -17394,7 +19701,16 @@ namespace Jolt
                     snapshot.m_filteredBodyTopologyStates.end(),
                     [](const FilteredBodyTopologyState& first, const FilteredBodyTopologyState& second)
                     {
-                        return first.m_bodyHandle == second.m_bodyHandle;
+                        Internal::WorldMemberHandleParts firstParts;
+                        Internal::WorldMemberHandleParts secondParts;
+                        const bool firstDecoded = Internal::DecodeWorldMemberHandle(
+                            first.m_bodyHandle,
+                            firstParts);
+                        const bool secondDecoded = Internal::DecodeWorldMemberHandle(
+                            second.m_bodyHandle,
+                            secondParts);
+                        AZ_Assert(firstDecoded && secondDecoded, "Captured body handles must decode.");
+                        return firstParts.m_index == secondParts.m_index;
                     }),
                 snapshot.m_filteredBodyTopologyStates.end());
 
@@ -17452,9 +19768,12 @@ namespace Jolt
                         snapshot.m_filteredConstraintAddresses.push_back(
                             reinterpret_cast<AZ::u64>(slot.m_constraint.GetPtr()));
                         snapshot.m_filteredConstraintTopologyStates.push_back({
+                            .m_firstBodyHandle = slot.m_firstBodyHandle,
+                            .m_secondBodyHandle = slot.m_secondBodyHandle,
                             .m_configurationRevision = slot.m_configurationRevision,
                             .m_generation = slot.m_generation,
                             .m_slotIndex = slotIndex,
+                            .m_isInSimulation = slot.m_isInSimulation,
                         });
                         if (slot.m_isInSimulation)
                         {
@@ -17471,9 +19790,11 @@ namespace Jolt
                         snapshot.m_filteredConstraintAddresses.push_back(
                             reinterpret_cast<AZ::u64>(slot.m_constraint.GetPtr()));
                         snapshot.m_filteredConstraintTopologyStates.push_back({
+                            .m_firstBodyHandle = slot.m_bodyHandle,
                             .m_configurationRevision = slot.m_configurationRevision,
                             .m_generation = slot.m_generation,
                             .m_slotIndex = slotIndex,
+                            .m_isInSimulation = true,
                             .m_isVehicle = true,
                         });
                         ++snapshot.m_filteredConstraintStateCount;
@@ -17721,6 +20042,38 @@ namespace Jolt
 
         NativeStateRecorder recorder(snapshot.m_data);
         m_physicsSystem.SaveState(recorder, ToNativeStateFlags(configuration.m_flags), nativeFilter);
+        snapshot.m_detachedBodyStateIndices.clear();
+        if (HasStateFlag(configuration.m_flags, StateSnapshotFlags::Bodies))
+        {
+            snapshot.m_detachedBodyStateIndices.reserve(m_bodySlots.size());
+            for (AZ::u32 bodyIndex = 0; bodyIndex < m_bodySlots.size(); ++bodyIndex)
+            {
+                const BodySlot& slot = m_bodySlots[bodyIndex];
+                if (slot.m_bodyId.IsInvalid()
+                    || (configuration.m_filterBodies
+                        && !AZStd::binary_search(
+                            snapshot.m_filteredBodyIds.begin(),
+                            snapshot.m_filteredBodyIds.end(),
+                            slot.m_bodyId.GetIndexAndSequenceNumber())))
+                {
+                    continue;
+                }
+
+                JPH::BodyLockRead bodyLock(m_physicsSystem.GetBodyLockInterface(), slot.m_bodyId);
+                if (!bodyLock.Succeeded())
+                {
+                    snapshot.m_data.clear();
+                    snapshot.m_detachedBodyStateIndices.clear();
+                    return false;
+                }
+                const JPH::Body& body = bodyLock.GetBody();
+                if (!body.IsInBroadPhase())
+                {
+                    snapshot.m_detachedBodyStateIndices.push_back(bodyIndex);
+                    body.SaveState(recorder);
+                }
+            }
+        }
         snapshot.m_characterStateIndices.clear();
         if (HasStateFlag(configuration.m_flags, StateSnapshotFlags::Bodies))
         {
@@ -17810,11 +20163,17 @@ namespace Jolt
             for (size_t hairIndex = 0; hairIndex < m_hairSlots.size(); ++hairIndex)
             {
                 const HairSlot& slot = m_hairSlots[hairIndex];
-                if (slot.m_hair
-                    && !slot.m_hair->CaptureState(snapshot.m_hairStates[hairIndex]))
+                if (slot.m_hair)
                 {
-                    snapshot.m_data.clear();
-                    return false;
+                    if (!slot.m_hair->CaptureState(snapshot.m_hairStates[hairIndex]))
+                    {
+                        snapshot.m_data.clear();
+                        return false;
+                    }
+                }
+                else
+                {
+                    snapshot.m_hairStates[hairIndex] = {};
                 }
                 snapshot.m_hairWorldTransforms[hairIndex] = slot.m_worldTransform;
                 snapshot.m_hairInitialized[hairIndex] = slot.m_initialized;
@@ -17913,6 +20272,7 @@ namespace Jolt
         snapshot.m_characterGenerations.clear();
         snapshot.m_characterStateIndices.clear();
         snapshot.m_constraintGenerations.clear();
+        snapshot.m_detachedBodyStateIndices.clear();
         snapshot.m_filteredBodyIds.clear();
         snapshot.m_filteredBodyTopologyStates.clear();
         snapshot.m_filteredConstraintAddresses.clear();
@@ -17936,14 +20296,14 @@ namespace Jolt
         snapshot.m_configuration = {};
         snapshot.m_partitionBatchId = 0;
         snapshot.m_configurationRevision = 0;
+        snapshot.m_eventSequence = 0;
         snapshot.m_globalConfigurationRevision = 0;
+        snapshot.m_nativeConstraintTopologyEpoch = 0;
         snapshot.m_vehicleGenerations.clear();
         snapshot.m_virtualCharacterGenerations.clear();
         snapshot.m_virtualCharacterStateIndices.clear();
-        if (Internal::AdvanceGeneration(snapshot.m_generation))
-        {
-            m_freeStateSnapshotSlots.push_back(snapshotIndex);
-        }
+        snapshot.m_generation = 0;
+        m_freeStateSnapshotSlots.push_back(snapshotIndex);
     }
 
     bool World::DestroyStateSnapshot(
@@ -18003,6 +20363,8 @@ namespace Jolt
         state = {
             .m_bodyHandle = bodyHandle,
             .m_characterHandle = slot->m_characterHandle,
+            .m_virtualCharacterHandle = slot->m_virtualCharacterHandle,
+            .m_vehicleHandle = slot->m_vehicleHandle,
             .m_groupFilterHandle = slot->m_groupFilterHandle,
             .m_shapeHandle = slot->m_shapeHandle,
             .m_softBodyDefinitionHandle = slot->m_softBodyDefinitionHandle,
@@ -18024,7 +20386,16 @@ namespace Jolt
         const StateSnapshotSlot& snapshot)
     {
         const bool hasGlobalState = HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Global);
-        if ((hasGlobalState
+        const bool hasConstraintState = HasStateFlag(
+            snapshot.m_configuration.m_flags,
+            StateSnapshotFlags::Constraints);
+        const bool hasBodyState = HasStateFlag(
+            snapshot.m_configuration.m_flags,
+            StateSnapshotFlags::Bodies);
+        if ((hasConstraintState
+                && (m_nativeConstraintTopologyEpoch == 0
+                    || snapshot.m_nativeConstraintTopologyEpoch != m_nativeConstraintTopologyEpoch))
+            || (hasGlobalState
                 && snapshot.m_globalConfigurationRevision != m_globalConfigurationRevision)
             || (!snapshot.m_configuration.m_filterBodies
                 && snapshot.m_configurationRevision != m_configurationRevision))
@@ -18068,8 +20439,20 @@ namespace Jolt
             }
         }
 
-        if (hasGlobalState
-            && (!IsRollbackParticipantCompatible(m_bodyPairCollider.m_extension, snapshot.m_bodyPairColliderState)
+        if (!hasGlobalState)
+        {
+            if (!IsRollbackParticipantCompatible(nullptr, snapshot.m_bodyPairColliderState)
+                || !IsRollbackParticipantCompatible(nullptr, snapshot.m_contactCallbackState)
+                || !IsRollbackParticipantCompatible(nullptr, snapshot.m_simulationShapeFilterState)
+                || !IsRollbackParticipantCompatible(nullptr, snapshot.m_softBodyContactCallbackState)
+                || !snapshot.m_stepListenerStates.empty())
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if (!IsRollbackParticipantCompatible(m_bodyPairCollider.m_extension, snapshot.m_bodyPairColliderState)
                 || !IsRollbackParticipantCompatible(m_contactCallbacks.m_extension, snapshot.m_contactCallbackState)
                 || !IsRollbackParticipantCompatible(
                     m_simulationShapeFilter.m_extension,
@@ -18077,51 +20460,242 @@ namespace Jolt
                 || !IsRollbackParticipantCompatible(
                     m_softBodyContactCallbacks.m_extension,
                     snapshot.m_softBodyContactCallbackState)
-                || snapshot.m_stepListenerStates.size() != m_stepListeners.size()))
+                || snapshot.m_stepListenerStates.size() != m_stepListeners.size())
+            {
+                return false;
+            }
+            for (size_t listenerIndex = 0; listenerIndex < m_stepListeners.size(); ++listenerIndex)
+            {
+                if (!IsRollbackParticipantCompatible(
+                        m_stepListeners[listenerIndex].m_extension,
+                        snapshot.m_stepListenerStates[listenerIndex]))
+                {
+                    return false;
+                }
+            }
+        }
+        size_t vehicleCallbackStatePosition = 0;
+        if (hasGlobalState && hasConstraintState)
+        {
+            for (AZ::u32 vehicleIndex = 0; vehicleIndex < m_vehicleSlots.size(); ++vehicleIndex)
+            {
+                const VehicleSlot& slot = m_vehicleSlots[vehicleIndex];
+                bool includesVehicle = slot.m_constraint;
+                if (includesVehicle && snapshot.m_configuration.m_filterBodies)
+                {
+                    includesVehicle = AZStd::binary_search(
+                        snapshot.m_filteredConstraintAddresses.begin(),
+                        snapshot.m_filteredConstraintAddresses.end(),
+                        reinterpret_cast<AZ::u64>(slot.m_constraint.GetPtr()));
+                }
+                if (!includesVehicle)
+                {
+                    continue;
+                }
+                if (vehicleCallbackStatePosition >= snapshot.m_vehicleCallbackStates.size())
+                {
+                    return false;
+                }
+
+                const IndexedCallbackState& state =
+                    snapshot.m_vehicleCallbackStates[vehicleCallbackStatePosition];
+                if (state.m_slotIndex != vehicleIndex)
+                {
+                    return false;
+                }
+                IVehicleCallbacks* callbacks = nullptr;
+                const IVehicleCollisionFilter* collisionFilter = nullptr;
+                if (slot.m_bindings)
+                {
+                    callbacks = slot.m_bindings->m_callbacks.m_extension;
+                    collisionFilter = slot.m_bindings->m_collisionFilter.m_extension;
+                }
+                if (!IsRollbackParticipantCompatible(callbacks, state.m_primaryState)
+                    || !IsRollbackParticipantCompatible(collisionFilter, state.m_secondaryState))
+                {
+                    return false;
+                }
+                ++vehicleCallbackStatePosition;
+            }
+        }
+        if (vehicleCallbackStatePosition != snapshot.m_vehicleCallbackStates.size())
         {
             return false;
         }
-        for (size_t listenerIndex = 0; listenerIndex < snapshot.m_stepListenerStates.size(); ++listenerIndex)
+
+        size_t virtualCharacterCallbackStatePosition = 0;
+        if (hasGlobalState && hasBodyState && !snapshot.m_configuration.m_filterBodies)
         {
-            if (!IsRollbackParticipantCompatible(
-                    m_stepListeners[listenerIndex].m_extension,
-                    snapshot.m_stepListenerStates[listenerIndex]))
+            for (AZ::u32 characterIndex = 0; characterIndex < m_virtualCharacterSlots.size(); ++characterIndex)
+            {
+                const VirtualCharacterSlot& slot = m_virtualCharacterSlots[characterIndex];
+                if (!slot.m_character)
+                {
+                    continue;
+                }
+                if (virtualCharacterCallbackStatePosition >= snapshot.m_virtualCharacterCallbackStates.size())
+                {
+                    return false;
+                }
+
+                const IndexedCallbackState& state =
+                    snapshot.m_virtualCharacterCallbackStates[virtualCharacterCallbackStatePosition];
+                if (state.m_slotIndex != characterIndex
+                    || !IsRollbackParticipantCompatible(
+                        slot.m_contactCallbacks.m_extension,
+                        state.m_primaryState)
+                    || !IsRollbackParticipantCompatible(nullptr, state.m_secondaryState))
+                {
+                    return false;
+                }
+                ++virtualCharacterCallbackStatePosition;
+            }
+        }
+        if (virtualCharacterCallbackStatePosition != snapshot.m_virtualCharacterCallbackStates.size())
+        {
+            return false;
+        }
+
+        size_t characterStatePosition = 0;
+        size_t detachedBodyStatePosition = 0;
+        for (AZ::u32 bodyIndex = 0; bodyIndex < m_bodySlots.size(); ++bodyIndex)
+        {
+            const BodySlot& slot = m_bodySlots[bodyIndex];
+            if (slot.m_bodyId.IsInvalid())
+            {
+                continue;
+            }
+
+            JPH::BodyLockRead bodyLock(m_physicsSystem.GetBodyLockInterface(), slot.m_bodyId);
+            if (!bodyLock.Succeeded())
+            {
+                return false;
+            }
+            const bool includesDetachedState = hasBodyState
+                && !bodyLock.GetBody().IsInBroadPhase()
+                && (!snapshot.m_configuration.m_filterBodies
+                    || AZStd::binary_search(
+                        snapshot.m_filteredBodyIds.begin(),
+                        snapshot.m_filteredBodyIds.end(),
+                        slot.m_bodyId.GetIndexAndSequenceNumber()));
+            if (includesDetachedState)
+            {
+                if (detachedBodyStatePosition >= snapshot.m_detachedBodyStateIndices.size()
+                    || snapshot.m_detachedBodyStateIndices[detachedBodyStatePosition] != bodyIndex)
+                {
+                    return false;
+                }
+                ++detachedBodyStatePosition;
+            }
+        }
+        if (detachedBodyStatePosition != snapshot.m_detachedBodyStateIndices.size())
+        {
+            return false;
+        }
+
+        for (AZ::u32 characterIndex = 0; characterIndex < m_characterSlots.size(); ++characterIndex)
+        {
+            const CharacterSlot& slot = m_characterSlots[characterIndex];
+            bool includesCharacter = hasBodyState && slot.m_character;
+            if (includesCharacter && snapshot.m_configuration.m_filterBodies)
+            {
+                const BodySlot* bodySlot = FindBody(slot.m_bodyHandle);
+                includesCharacter = bodySlot
+                    && AZStd::binary_search(
+                        snapshot.m_filteredBodyIds.begin(),
+                        snapshot.m_filteredBodyIds.end(),
+                        bodySlot->m_bodyId.GetIndexAndSequenceNumber());
+            }
+            if (includesCharacter)
+            {
+                if (characterStatePosition >= snapshot.m_characterStateIndices.size()
+                    || snapshot.m_characterStateIndices[characterStatePosition] != characterIndex)
+                {
+                    return false;
+                }
+                ++characterStatePosition;
+            }
+        }
+        if (characterStatePosition != snapshot.m_characterStateIndices.size())
+        {
+            return false;
+        }
+
+        size_t virtualCharacterStatePosition = 0;
+        const bool includesVirtualCharacters = hasBodyState
+            && !snapshot.m_configuration.m_filterBodies;
+        for (AZ::u32 characterIndex = 0; characterIndex < m_virtualCharacterSlots.size(); ++characterIndex)
+        {
+            if (includesVirtualCharacters
+                && m_virtualCharacterSlots[characterIndex].m_character)
+            {
+                if (virtualCharacterStatePosition >= snapshot.m_virtualCharacterStateIndices.size()
+                    || snapshot.m_virtualCharacterStateIndices[virtualCharacterStatePosition] != characterIndex)
+                {
+                    return false;
+                }
+                ++virtualCharacterStatePosition;
+            }
+        }
+        if (virtualCharacterStatePosition != snapshot.m_virtualCharacterStateIndices.size())
+        {
+            return false;
+        }
+
+        const bool hasHairState = HasStateFlag(
+            snapshot.m_configuration.m_flags,
+            StateSnapshotFlags::Hair);
+        if (hasHairState)
+        {
+            if (snapshot.m_hairStates.size() != m_hairSlots.size()
+                || snapshot.m_hairWorldTransforms.size() != m_hairSlots.size()
+                || snapshot.m_hairInitialized.size() != m_hairSlots.size()
+                || snapshot.m_hairTeleported.size() != m_hairSlots.size())
             {
                 return false;
             }
         }
-        for (const IndexedCallbackState& state : snapshot.m_vehicleCallbackStates)
+        else if (!snapshot.m_hairStates.empty()
+            || !snapshot.m_hairWorldTransforms.empty()
+            || !snapshot.m_hairInitialized.empty()
+            || !snapshot.m_hairTeleported.empty())
         {
-            if (state.m_slotIndex >= m_vehicleSlots.size())
-            {
-                return false;
-            }
-
-            const VehicleSlot& slot = m_vehicleSlots[state.m_slotIndex];
-            IVehicleCallbacks* callbacks = nullptr;
-            const IVehicleCollisionFilter* collisionFilter = nullptr;
-            if (slot.m_bindings)
-            {
-                callbacks = slot.m_bindings->m_callbacks.m_extension;
-                collisionFilter = slot.m_bindings->m_collisionFilter.m_extension;
-            }
-            if (!IsRollbackParticipantCompatible(callbacks, state.m_primaryState)
-                || !IsRollbackParticipantCompatible(collisionFilter, state.m_secondaryState))
-            {
-                return false;
-            }
+            return false;
         }
-        for (const IndexedCallbackState& state : snapshot.m_virtualCharacterCallbackStates)
-        {
-            if (state.m_slotIndex >= m_virtualCharacterSlots.size())
-            {
-                return false;
-            }
 
-            const VirtualCharacterSlot& slot = m_virtualCharacterSlots[state.m_slotIndex];
-            if (!IsRollbackParticipantCompatible(slot.m_contactCallbacks.m_extension, state.m_primaryState))
+        if (hasHairState)
+        {
+            const WorldTransform emptyHairTransform;
+            for (size_t hairIndex = 0; hairIndex < m_hairSlots.size(); ++hairIndex)
             {
-                return false;
+                const HairSlot& slot = m_hairSlots[hairIndex];
+                const NativeHair::State& state = snapshot.m_hairStates[hairIndex];
+                const WorldTransform& worldTransform = snapshot.m_hairWorldTransforms[hairIndex];
+                if (!slot.m_hair)
+                {
+                    if (!NativeHair::IsStateCanonicalEmpty(state)
+                        || worldTransform.m_position != emptyHairTransform.m_position
+                        || worldTransform.m_rotation != emptyHairTransform.m_rotation
+                        || snapshot.m_hairInitialized[hairIndex] != 0
+                        || snapshot.m_hairTeleported[hairIndex] != 1)
+                    {
+                        return false;
+                    }
+                    continue;
+                }
+
+                if (!slot.m_hair->IsStateLayoutCompatible(state)
+                    || !IsFinite(worldTransform)
+                    || state.m_position != ToNativePosition(worldTransform.m_position, m_configuration.m_origin)
+                    || state.m_rotation != ToNativeRotation(worldTransform.m_rotation)
+                    || snapshot.m_hairInitialized[hairIndex] > 1
+                    || snapshot.m_hairTeleported[hairIndex] > 1
+                    || state.m_teleported != (snapshot.m_hairTeleported[hairIndex] != 0)
+                    || (snapshot.m_hairInitialized[hairIndex] == 0
+                        && snapshot.m_hairTeleported[hairIndex] == 0))
+                {
+                    return false;
+                }
             }
         }
 
@@ -18129,7 +20703,13 @@ namespace Jolt
         {
             const bool validateGroupFilters = hasGlobalState
                 || HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Contacts);
-            if (snapshot.m_filteredBodyTopologyStates.size() != snapshot.m_filteredBodyIds.size())
+            if (snapshot.m_filteredBodyTopologyStates.size() != snapshot.m_filteredBodyIds.size()
+                || !AZStd::is_sorted(
+                    snapshot.m_filteredBodyIds.begin(),
+                    snapshot.m_filteredBodyIds.end())
+                || AZStd::adjacent_find(
+                    snapshot.m_filteredBodyIds.begin(),
+                    snapshot.m_filteredBodyIds.end()) != snapshot.m_filteredBodyIds.end())
             {
                 return false;
             }
@@ -18138,19 +20718,11 @@ namespace Jolt
             {
                 FilteredBodyTopologyState currentState;
                 if (!GetFilteredBodyTopologyState(capturedState.m_bodyHandle, currentState)
-                    || currentState != capturedState)
-                {
-                    return false;
-                }
-            }
-
-            for (const AZ::u32 characterIndex : snapshot.m_characterStateIndices)
-            {
-                if (characterIndex >= m_characterSlots.size()
-                    || characterIndex >= snapshot.m_characterGenerations.size()
-                    || !m_characterSlots[characterIndex].m_character
-                    || m_characterSlots[characterIndex].m_generation
-                        != snapshot.m_characterGenerations[characterIndex])
+                    || currentState != capturedState
+                    || !AZStd::binary_search(
+                        snapshot.m_filteredBodyIds.begin(),
+                        snapshot.m_filteredBodyIds.end(),
+                        capturedState.m_nativeBodyId))
                 {
                     return false;
                 }
@@ -18225,9 +20797,12 @@ namespace Jolt
                     const AZ::u64 address = reinterpret_cast<AZ::u64>(slot.m_constraint.GetPtr());
                     m_snapshotConstraintAddressScratch.push_back(address);
                     m_snapshotConstraintTopologyScratch.push_back({
+                        .m_firstBodyHandle = slot.m_firstBodyHandle,
+                        .m_secondBodyHandle = slot.m_secondBodyHandle,
                         .m_configurationRevision = slot.m_configurationRevision,
                         .m_generation = slot.m_generation,
                         .m_slotIndex = slotIndex,
+                        .m_isInSimulation = slot.m_isInSimulation,
                     });
                 }
             }
@@ -18240,9 +20815,11 @@ namespace Jolt
                     const AZ::u64 address = reinterpret_cast<AZ::u64>(slot.m_constraint.GetPtr());
                     m_snapshotConstraintAddressScratch.push_back(address);
                     m_snapshotConstraintTopologyScratch.push_back({
+                        .m_firstBodyHandle = slot.m_bodyHandle,
                         .m_configurationRevision = slot.m_configurationRevision,
                         .m_generation = slot.m_generation,
                         .m_slotIndex = slotIndex,
+                        .m_isInSimulation = true,
                         .m_isVehicle = true,
                     });
                 }
@@ -18300,15 +20877,6 @@ namespace Jolt
         {
             return false;
         }
-        if (HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Hair)
-            && (snapshot.m_hairStates.size() != m_hairSlots.size()
-                || snapshot.m_hairWorldTransforms.size() != m_hairSlots.size()
-                || snapshot.m_hairInitialized.size() != m_hairSlots.size()
-                || snapshot.m_hairTeleported.size() != m_hairSlots.size()))
-        {
-            return false;
-        }
-
         for (size_t slotIndex = 0; slotIndex < m_bodySlots.size(); ++slotIndex)
         {
             AZ::u32 generation = 0;
@@ -18394,6 +20962,32 @@ namespace Jolt
                 snapshot.m_groupFilterStates,
                 m_groupFilterScratch);
         return filtersCompatible;
+    }
+
+    bool World::ValidateImportedHairStateUnlocked(const StateSnapshotSlot& snapshot) const
+    {
+        if (!HasStateFlag(snapshot.m_configuration.m_flags, StateSnapshotFlags::Hair))
+        {
+            return true;
+        }
+        if (snapshot.m_hairStates.size() != m_hairSlots.size()
+            || snapshot.m_hairInitialized.size() != m_hairSlots.size())
+        {
+            return false;
+        }
+
+        for (size_t hairIndex = 0; hairIndex < m_hairSlots.size(); ++hairIndex)
+        {
+            const HairSlot& slot = m_hairSlots[hairIndex];
+            if (slot.m_hair
+                && !slot.m_hair->IsImportedStatePayloadCompatible(
+                    snapshot.m_hairStates[hairIndex],
+                    snapshot.m_hairInitialized[hairIndex] != 0))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     StateRestoreResult World::RestoreState(
@@ -18796,6 +21390,21 @@ namespace Jolt
         {
             return {.m_status = StateRestoreStatus::StateIndeterminate};
         }
+        for (const AZ::u32 bodyIndex : snapshot.m_detachedBodyStateIndices)
+        {
+            if (bodyIndex >= m_bodySlots.size())
+            {
+                return {.m_status = StateRestoreStatus::StateIndeterminate};
+            }
+            BodySlot& slot = m_bodySlots[bodyIndex];
+            JPH::BodyLockWrite bodyLock(m_physicsSystem.GetBodyLockInterface(), slot.m_bodyId);
+            if (!bodyLock.Succeeded()
+                || bodyLock.GetBody().IsInBroadPhase())
+            {
+                return {.m_status = StateRestoreStatus::StateIndeterminate};
+            }
+            bodyLock.GetBody().RestoreState(recorder);
+        }
         for (const AZ::u32 characterIndex : snapshot.m_characterStateIndices)
         {
             CharacterSlot& slot = m_characterSlots[characterIndex];
@@ -19118,6 +21727,43 @@ namespace Jolt
                 return true;
             };
         m_physicsSystem.SaveState(recorder);
+        AZ::u32 detachedBodyStateCount = 0;
+        for (const BodySlot& slot : m_bodySlots)
+        {
+            if (slot.m_bodyId.IsInvalid())
+            {
+                continue;
+            }
+            JPH::BodyLockRead bodyLock(m_physicsSystem.GetBodyLockInterface(), slot.m_bodyId);
+            if (!bodyLock.Succeeded())
+            {
+                return false;
+            }
+            if (!bodyLock.GetBody().IsInBroadPhase())
+            {
+                ++detachedBodyStateCount;
+            }
+        }
+        recorder.WriteBytes(&detachedBodyStateCount, sizeof(detachedBodyStateCount));
+        for (AZ::u32 bodyIndex = 0; bodyIndex < m_bodySlots.size(); ++bodyIndex)
+        {
+            const BodySlot& slot = m_bodySlots[bodyIndex];
+            if (slot.m_bodyId.IsInvalid())
+            {
+                continue;
+            }
+            JPH::BodyLockRead bodyLock(m_physicsSystem.GetBodyLockInterface(), slot.m_bodyId);
+            if (!bodyLock.Succeeded())
+            {
+                return false;
+            }
+            const JPH::Body& body = bodyLock.GetBody();
+            if (!body.IsInBroadPhase())
+            {
+                recorder.WriteBytes(&bodyIndex, sizeof(bodyIndex));
+                body.SaveState(recorder);
+            }
+        }
         for (const CharacterSlot& slot : m_characterSlots)
         {
             if (slot.m_character)
@@ -19154,7 +21800,6 @@ namespace Jolt
             }
         }
         recorder.WriteBytes(&m_accumulatedTime, sizeof(m_accumulatedTime));
-        recorder.WriteBytes(&m_configurationRevision, sizeof(m_configurationRevision));
         recorder.WriteBytes(&m_eventSequence, sizeof(m_eventSequence));
 
         if (!writeParticipantState(m_bodyPairCollider.m_extension)
@@ -19207,11 +21852,16 @@ namespace Jolt
         recorder.WriteBytes(&hairSlotCount, sizeof(hairSlotCount));
         for (const HairSlot& slot : m_hairSlots)
         {
-            recorder.WriteBytes(&slot.m_generation, sizeof(slot.m_generation));
             const AZ::u8 occupied = static_cast<bool>(slot.m_hair);
             recorder.WriteBytes(&occupied, sizeof(occupied));
             if (slot.m_hair)
             {
+                Internal::ResourceHandleParts definitionParts;
+                if (!Internal::DecodeResourceHandle(slot.m_definitionHandle, definitionParts))
+                {
+                    return false;
+                }
+                recorder.WriteBytes(&definitionParts.m_index, sizeof(definitionParts.m_index));
                 if (!m_system.m_hairRuntime)
                 {
                     return false;
@@ -19223,7 +21873,12 @@ namespace Jolt
                     return false;
                 }
                 AZStd::vector<AZ::u8> hairData;
-                NativeHair::SerializeState(hairState, hairData);
+                Internal::StateArchiveWriter hairWriter(hairData);
+                WriteHairState(hairWriter, hairState);
+                if (!hairWriter.IsValid())
+                {
+                    return false;
+                }
                 const AZ::u64 hairByteCount = hairData.size();
                 recorder.WriteBytes(&hairByteCount, sizeof(hairByteCount));
                 recorder.WriteBytes(hairData.data(), hairData.size());
@@ -19249,7 +21904,12 @@ namespace Jolt
         recorder.WriteBytes(&groupFilterCount, sizeof(groupFilterCount));
         for (const GroupFilterState& state : groupFilterStates)
         {
-            recorder.WriteBytes(&state.m_filterHandle, sizeof(state.m_filterHandle));
+            Internal::ResourceHandleParts filterParts;
+            if (!Internal::DecodeResourceHandle(state.m_filterHandle, filterParts))
+            {
+                return false;
+            }
+            recorder.WriteBytes(&filterParts.m_index, sizeof(filterParts.m_index));
             recorder.WriteBytes(&state.m_filterStateHash, sizeof(state.m_filterStateHash));
             const AZ::u64 byteCount = state.m_participantState.m_data.size();
             recorder.WriteBytes(
@@ -19311,7 +21971,16 @@ namespace Jolt
             states.end(),
             [](const GroupFilterState& left, const GroupFilterState& right)
             {
-                return left.m_filterHandle < right.m_filterHandle;
+                Internal::ResourceHandleParts leftParts;
+                Internal::ResourceHandleParts rightParts;
+                const bool leftDecoded = Internal::DecodeResourceHandle(
+                    left.m_filterHandle,
+                    leftParts);
+                const bool rightDecoded = Internal::DecodeResourceHandle(
+                    right.m_filterHandle,
+                    rightParts);
+                AZ_Assert(leftDecoded && rightDecoded, "Live group filter handles must decode.");
+                return leftParts.m_index < rightParts.m_index;
             });
         states.erase(
             AZStd::unique(
@@ -19319,7 +21988,16 @@ namespace Jolt
                 states.end(),
                 [](const GroupFilterState& left, const GroupFilterState& right)
                 {
-                    return left.m_filterHandle == right.m_filterHandle;
+                    Internal::ResourceHandleParts leftParts;
+                    Internal::ResourceHandleParts rightParts;
+                    const bool leftDecoded = Internal::DecodeResourceHandle(
+                        left.m_filterHandle,
+                        leftParts);
+                    const bool rightDecoded = Internal::DecodeResourceHandle(
+                        right.m_filterHandle,
+                        rightParts);
+                    AZ_Assert(leftDecoded && rightDecoded, "Live group filter handles must decode.");
+                    return leftParts.m_index == rightParts.m_index;
                 }),
             states.end());
         for (GroupFilterState& state : states)
@@ -19347,6 +22025,21 @@ namespace Jolt
 
         ++m_configurationRevision;
         return true;
+    }
+
+    void World::AdvanceNativeConstraintTopologyEpoch()
+    {
+        if (m_nativeConstraintTopologyEpoch == 0)
+        {
+            return;
+        }
+        if (m_nativeConstraintTopologyEpoch == AZStd::numeric_limits<AZ::u64>::max())
+        {
+            m_nativeConstraintTopologyEpoch = 0;
+            return;
+        }
+
+        ++m_nativeConstraintTopologyEpoch;
     }
 
     bool World::AdvanceGlobalConfigurationRevision()
@@ -19903,6 +22596,7 @@ namespace Jolt
                 stateSnapshotBytes += GetVectorCapacityBytes(slot.m_filteredConstraintAddresses);
                 stateSnapshotBytes += GetVectorCapacityBytes(slot.m_filteredConstraintTopologyStates);
                 stateSnapshotBytes += GetVectorCapacityBytes(slot.m_contactCacheStates);
+                stateSnapshotBytes += GetVectorCapacityBytes(slot.m_detachedBodyStateIndices);
                 stateSnapshotBytes += GetVectorCapacityBytes(slot.m_characterStateIndices);
                 stateSnapshotBytes += GetVectorCapacityBytes(slot.m_virtualCharacterStateIndices);
                 stateSnapshotBytes += getNestedSnapshotBytes(slot);
@@ -19947,6 +22641,7 @@ namespace Jolt
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_filteredConstraintAddresses);
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_filteredConstraintTopologyStates);
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_contactCacheStates);
+            workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_detachedBodyStateIndices);
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_characterStateIndices);
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_virtualCharacterStateIndices);
             workspaceBytes += getNestedSnapshotBytes(m_stateSnapshotScratch);
@@ -26292,6 +28987,7 @@ namespace Jolt
         slot.m_hair = AZStd::move(hair);
         slot.m_worldTransform = configuration.m_worldTransform;
         slot.m_definitionHandle = configuration.m_definitionHandle;
+        slot.m_objectLayer = configuration.m_objectLayer;
         slot.m_initialized = false;
         slot.m_teleported = true;
         return hairHandle;
@@ -26308,16 +29004,8 @@ namespace Jolt
             return false;
         }
 
-        slot->m_hair.reset();
-        slot->m_autoUpdateState.reset();
         m_system.ReleaseHairDefinition(slot->m_definitionHandle);
-        slot->m_definitionHandle = {};
-        slot->m_initialized = false;
-        slot->m_teleported = true;
-        if (Internal::AdvanceGeneration(slot->m_generation))
-        {
-            m_freeHairSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(m_hairSlots, m_freeHairSlots, parts.m_index);
         return true;
     }
 

@@ -321,32 +321,26 @@ namespace Jolt
         AZStd::shared_ptr<const SceneConfiguration> storedConfiguration =
             AZStd::make_shared<SceneConfiguration>(configuration);
         AZStd::unique_lock lock(m_sceneDefinitionMutex);
-        AZ::u32 definitionIndex = 0;
-        if (!m_freeSceneDefinitionSlots.empty())
+        Internal::HandleSlotReservation reservation;
+        const SceneDefinitionHandle definitionHandle = ReserveResourceSlot<SceneDefinitionHandle>(
+            m_sceneDefinitionSlots,
+            m_freeSceneDefinitionSlots,
+            reservation);
+        if (!definitionHandle)
         {
-            definitionIndex = m_freeSceneDefinitionSlots.back();
-            m_freeSceneDefinitionSlots.pop_back();
-        }
-        else
-        {
-            if (m_sceneDefinitionSlots.size() >= Internal::HandlePayloadMask)
-            {
-                lock.unlock();
-                releaseDependencies();
-                return {};
-            }
-            definitionIndex = aznumeric_cast<AZ::u32>(m_sceneDefinitionSlots.size());
-            m_sceneDefinitionSlots.emplace_back();
+            lock.unlock();
+            releaseDependencies();
+            return {};
         }
 
-        SceneDefinitionSlot& slot = m_sceneDefinitionSlots[definitionIndex];
+        SceneDefinitionSlot& slot = m_sceneDefinitionSlots[reservation.m_index];
         slot.m_configuration = AZStd::move(storedConfiguration);
         slot.m_cookedShapeHandles = AZStd::move(cookedShapeHandles);
         slot.m_groupFilterHandles = AZStd::move(groupFilterHandles);
         slot.m_pathHandles = AZStd::move(pathHandles);
         slot.m_softBodyDefinitionHandles = AZStd::move(softBodyDefinitionHandles);
         slot.m_instanceCount = 0;
-        return Internal::MakeResourceHandle<SceneDefinitionHandle>(definitionIndex, slot.m_generation);
+        return definitionHandle;
     }
 
     bool RuntimeImplementation::DestroySceneDefinition(
@@ -362,9 +356,9 @@ namespace Jolt
         AZStd::vector<GroupFilterHandle> ownedGroupFilterHandles;
         AZStd::vector<PathHandle> ownedPathHandles;
         AZStd::vector<SoftBodyDefinitionHandle> ownedSoftBodyDefinitionHandles;
+        Internal::ResourceHandleParts parts;
         {
             AZStd::lock_guard lock(m_sceneDefinitionMutex);
-            Internal::ResourceHandleParts parts;
             if (!Internal::DecodeResourceHandle(definitionHandle, parts)
                 || parts.m_index >= m_sceneDefinitionSlots.size())
             {
@@ -389,10 +383,6 @@ namespace Jolt
             ownedGroupFilterHandles = AZStd::move(slot.m_ownedGroupFilterHandles);
             ownedPathHandles = AZStd::move(slot.m_ownedPathHandles);
             ownedSoftBodyDefinitionHandles = AZStd::move(slot.m_ownedSoftBodyDefinitionHandles);
-            if (Internal::AdvanceGeneration(slot.m_generation))
-            {
-                m_freeSceneDefinitionSlots.push_back(parts.m_index);
-            }
         }
 
         for (const PathHandle pathHandle : pathHandles)
@@ -436,6 +426,14 @@ namespace Jolt
         {
             [[maybe_unused]] const bool destroyed = DestroyMaterial(material);
             AZ_Assert(destroyed, "Owned material destruction failed.");
+        }
+
+        {
+            AZStd::lock_guard lock(m_sceneDefinitionMutex);
+            Internal::ReleaseHandleSlot(
+                m_sceneDefinitionSlots,
+                m_freeSceneDefinitionSlots,
+                parts.m_index);
         }
         return true;
     }
@@ -644,10 +642,12 @@ namespace Jolt
     {
         AZStd::lock_guard lock(m_mutex);
         AZ::u32 instanceIndex = 0;
+        Internal::HandleSlotReservation instanceReservation;
         const SceneInstanceHandle instanceHandle = ReserveWorldMemberSlot<SceneInstanceHandle>(
             m_sceneInstanceSlots,
             m_freeSceneInstanceSlots,
-            instanceIndex);
+            instanceIndex,
+            instanceReservation);
         if (!instanceHandle)
         {
             return {};
@@ -682,7 +682,10 @@ namespace Jolt
                 [[maybe_unused]] const bool destroyed = DestroyShape(*iterator);
                 AZ_Assert(destroyed, "Scene shape rollback failed.");
             }
-            m_freeSceneInstanceSlots.push_back(instanceIndex);
+            Internal::RollbackHandleSlot(
+                m_sceneInstanceSlots,
+                m_freeSceneInstanceSlots,
+                instanceReservation);
         };
 
         for (const SceneBodyConfiguration& body : configuration.m_bodies)
@@ -851,16 +854,7 @@ namespace Jolt
             return false;
         }
         const SceneDefinitionHandle definitionHandle = slot->m_definitionHandle;
-        slot->m_shapeHandles.clear();
-        slot->m_bodyHandles.clear();
-        slot->m_constraintHandles.clear();
-        slot->m_definitionHandle = {};
-        slot->m_rigidBodyCount = 0;
-        slot->m_softBodyCount = 0;
-        if (Internal::AdvanceGeneration(slot->m_generation))
-        {
-            m_freeSceneInstanceSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(m_sceneInstanceSlots, m_freeSceneInstanceSlots, parts.m_index);
         m_system.ReleaseSceneDefinition(definitionHandle);
         return true;
     }

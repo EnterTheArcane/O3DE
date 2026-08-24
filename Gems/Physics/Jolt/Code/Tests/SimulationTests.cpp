@@ -9,6 +9,8 @@
 #include <Jolt/SceneAsset.h>
 #include <Jolt/SystemInternal.h>
 
+#include <SnapshotArchiveTestUtils.h>
+
 #include <AzTest/AzTest.h>
 #include <AzTest/Utils.h>
 
@@ -37,6 +39,7 @@
 #include <cfenv>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstring>
 
 namespace Jolt
@@ -660,9 +663,9 @@ namespace Jolt
             AZ::u32 GetMaximumRowCount(
                 const AZStd::span<const AZ::u8> data) const override
             {
-                if (data.size() == 1 && data.front() == 1)
+                if (data.size() == 1)
                 {
-                    return 1;
+                    return data.front();
                 }
 
                 return 0;
@@ -670,22 +673,26 @@ namespace Jolt
 
             [[nodiscard]]
             AZ::u32 GetStateByteCount(
-                [[maybe_unused]] const AZStd::span<const AZ::u8> data) const override
+                const AZStd::span<const AZ::u8> data) const override
             {
-                return 1;
+                if (data.size() == 1)
+                {
+                    return data.front();
+                }
+                return 0;
             }
 
             [[nodiscard]]
             bool InitializeState(
-                [[maybe_unused]] const AZStd::span<const AZ::u8> data,
+                const AZStd::span<const AZ::u8> data,
                 const AZStd::span<AZ::u8> state) const override
             {
-                if (state.size() != 1)
+                if (data.size() != 1 || state.size() != data.front())
                 {
                     return false;
                 }
 
-                state.front() = 0;
+                AZStd::fill(state.begin(), state.end(), AZ::u8{0});
                 return true;
             }
 
@@ -718,7 +725,7 @@ namespace Jolt
                 const AZStd::span<CustomConstraintRow> rows) const override
             {
                 ++m_velocityCallCount;
-                if (rows.empty() || state.size() != 1)
+                if (rows.empty() || state.empty())
                 {
                     return 0;
                 }
@@ -1700,7 +1707,7 @@ namespace Jolt
             [[nodiscard]]
             size_t GetStateByteCount() const override
             {
-                return sizeof(m_state);
+                return m_stateByteCount;
             }
 
             bool CaptureState(const AZStd::span<AZ::u8> state) const override
@@ -1744,6 +1751,7 @@ namespace Jolt
             mutable AZ::u32 m_commitCount = 0;
             mutable AZ::u32 m_prepareCount = 0;
             mutable AZ::u32 m_remainingRestoreFailureCount = 0;
+            size_t m_stateByteCount = sizeof(m_state);
             AZ::TypeId m_typeId = StatefulStepListenerStateTypeId;
             AZ::u32 m_version = 0;
             bool m_corruptCommitState = false;
@@ -3035,7 +3043,9 @@ namespace Jolt
         DestroySphereOnFloor(system, firstScene);
         ASSERT_TRUE(system.DestroyWorld(firstWorldHandle));
 
-        const WorldHandle secondWorldHandle = system.CreateWorld(WorldConfiguration{});
+        WorldConfiguration secondWorldConfiguration;
+        secondWorldConfiguration.m_workerCount = 1;
+        const WorldHandle secondWorldHandle = system.CreateWorld(secondWorldConfiguration);
         ASSERT_TRUE(secondWorldHandle);
         const SphereOnFloor secondScene = CreateSphereOnFloor(system, secondWorldHandle);
         ASSERT_TRUE(secondScene.m_floorShapeHandle);
@@ -3199,6 +3209,139 @@ namespace Jolt
 
         EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotsRestoreDetachedRigidBodyState)
+    {
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
+        Runtime system(systemConfiguration, nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.5f};
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+        ASSERT_TRUE(shapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = shapeHandle;
+        bodyConfiguration.m_transform.m_position = {.m_x = 1.0, .m_y = 2.0, .m_z = 3.0};
+        bodyConfiguration.m_linearVelocity = AZ::Vector3(4.0f, 5.0f, 6.0f);
+        bodyConfiguration.m_angularVelocity = AZ::Vector3(0.25f, 0.5f, 0.75f);
+        bodyConfiguration.m_startInSimulation = false;
+        const BodyHandle bodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+        ASSERT_TRUE(bodyHandle);
+        ASSERT_FALSE(system.IsBodyInSimulation(worldHandle, bodyHandle));
+
+        BodyState capturedState;
+        ASSERT_TRUE(system.GetBodyState(worldHandle, bodyHandle, capturedState));
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(snapshotHandle);
+
+        WorldTransform changedTransform;
+        changedTransform.m_position = {.m_x = -3.0, .m_y = -2.0, .m_z = -1.0};
+        ASSERT_TRUE(system.SetBodyTransformAndVelocities(
+            worldHandle,
+            bodyHandle,
+            changedTransform,
+            AZ::Vector3::CreateAxisX(-8.0f),
+            AZ::Vector3::CreateAxisZ(2.0f)));
+        ASSERT_TRUE(system.RestoreWorldState(worldHandle, snapshotHandle));
+
+        BodyState restoredState;
+        ASSERT_TRUE(system.GetBodyState(worldHandle, bodyHandle, restoredState));
+        EXPECT_FALSE(restoredState.m_isInSimulation);
+        EXPECT_EQ(restoredState.m_transform.m_position, capturedState.m_transform.m_position);
+        EXPECT_EQ(restoredState.m_transform.m_rotation, capturedState.m_transform.m_rotation);
+        EXPECT_EQ(restoredState.m_linearVelocity, capturedState.m_linearVelocity);
+        EXPECT_EQ(restoredState.m_angularVelocity, capturedState.m_angularVelocity);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
+        EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRestoreDetachedBodiesAcrossWorlds)
+    {
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
+        Runtime system(systemConfiguration, nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle sourceWorldHandle = system.GetDefaultWorldHandle();
+        const WorldHandle targetWorldHandle = system.CreateWorld(systemConfiguration.m_defaultWorld);
+        ASSERT_TRUE(targetWorldHandle);
+
+        const auto createDetachedBody =
+            [&system](
+                const WorldHandle worldHandle,
+                ShapeHandle& shapeHandle)
+            {
+                ShapeConfiguration shapeConfiguration;
+                shapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.5f};
+                shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+                if (!shapeHandle)
+                {
+                    return BodyHandle::Invalid;
+                }
+
+                BodyConfiguration bodyConfiguration;
+                bodyConfiguration.m_shapeHandle = shapeHandle;
+                bodyConfiguration.m_transform.m_position = {.m_x = 7.0, .m_y = 8.0, .m_z = 9.0};
+                bodyConfiguration.m_linearVelocity = AZ::Vector3(1.0f, 2.0f, 3.0f);
+                bodyConfiguration.m_angularVelocity = AZ::Vector3(0.5f, 0.25f, 0.125f);
+                bodyConfiguration.m_startInSimulation = false;
+                return system.CreateBody(worldHandle, bodyConfiguration);
+            };
+
+        ShapeHandle sourceShapeHandle;
+        ShapeHandle targetShapeHandle;
+        const BodyHandle sourceBodyHandle = createDetachedBody(sourceWorldHandle, sourceShapeHandle);
+        const BodyHandle targetBodyHandle = createDetachedBody(targetWorldHandle, targetShapeHandle);
+        ASSERT_TRUE(sourceBodyHandle);
+        ASSERT_TRUE(targetBodyHandle);
+
+        const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(sourceWorldHandle);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            sourceWorldHandle,
+            AZStd::array{sourceSnapshotHandle},
+            archive));
+
+        WorldTransform changedTransform;
+        changedTransform.m_position = {.m_x = -9.0, .m_y = -8.0, .m_z = -7.0};
+        ASSERT_TRUE(system.SetBodyTransformAndVelocities(
+            targetWorldHandle,
+            targetBodyHandle,
+            changedTransform,
+            AZ::Vector3::CreateAxisY(-6.0f),
+            AZ::Vector3::CreateAxisX(4.0f)));
+        AZStd::array<StateSnapshotHandle, 1> targetSnapshotHandles;
+        ASSERT_TRUE(system.ImportWorldStateArchive(
+            targetWorldHandle,
+            archive,
+            targetSnapshotHandles));
+        ASSERT_TRUE(system.RestoreWorldState(targetWorldHandle, targetSnapshotHandles.front()));
+
+        BodyState sourceState;
+        BodyState targetState;
+        ASSERT_TRUE(system.GetBodyState(sourceWorldHandle, sourceBodyHandle, sourceState));
+        ASSERT_TRUE(system.GetBodyState(targetWorldHandle, targetBodyHandle, targetState));
+        EXPECT_FALSE(targetState.m_isInSimulation);
+        EXPECT_EQ(targetState.m_transform.m_position, sourceState.m_transform.m_position);
+        EXPECT_EQ(targetState.m_transform.m_rotation, sourceState.m_transform.m_rotation);
+        EXPECT_EQ(targetState.m_linearVelocity, sourceState.m_linearVelocity);
+        EXPECT_EQ(targetState.m_angularVelocity, sourceState.m_angularVelocity);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(targetWorldHandle, targetSnapshotHandles.front()));
+        EXPECT_TRUE(system.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetShapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(sourceWorldHandle, sourceShapeHandle));
     }
 
     TEST(SimulationTests, ExplicitBodyIdsPreserveRigidAndSoftSimulationIdentity)
@@ -4512,9 +4655,13 @@ namespace Jolt
         definitionConfiguration.m_vertices = {
             {.m_position = AZ::Vector3::CreateAxisZ(), .m_inverseMass = 0.0f},
             {.m_position = AZ::Vector3::CreateZero()},
+            {.m_position = AZ::Vector3::CreateAxisZ(), .m_inverseMass = 0.0f},
+            {.m_position = AZ::Vector3::CreateZero()},
+            {.m_position = -AZ::Vector3::CreateAxisZ()},
         };
         definitionConfiguration.m_strands = {
             {.m_beginVertex = 0, .m_endVertex = 2, .m_materialIndex = 0},
+            {.m_beginVertex = 2, .m_endVertex = 5, .m_materialIndex = 0},
         };
         definitionConfiguration.m_materials.resize(1);
         const HairDefinitionHandle definitionHandle = system.CreateHairDefinition(definitionConfiguration);
@@ -5065,6 +5212,11 @@ namespace Jolt
         ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, enabledDigest));
         const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
         ASSERT_TRUE(snapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            worldHandle,
+            AZStd::array{snapshotHandle},
+            archive));
 
         ASSERT_TRUE(system.DeactivateBody(worldHandle, dynamicBodyHandle));
         ASSERT_TRUE(system.GetBodyState(worldHandle, dynamicBodyHandle, state));
@@ -5183,6 +5335,11 @@ namespace Jolt
         ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, enabledDigest));
         const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
         ASSERT_TRUE(snapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            worldHandle,
+            AZStd::array{snapshotHandle},
+            archive));
 
         ASSERT_TRUE(system.DeactivateBody(worldHandle, dynamicBodyHandle));
         filter.m_collisionEnabled = false;
@@ -5194,7 +5351,12 @@ namespace Jolt
         WorldStateDigest disabledDigest;
         ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, disabledDigest));
         EXPECT_NE(disabledDigest, enabledDigest);
-        EXPECT_TRUE(system.RestoreWorldState(worldHandle, snapshotHandle));
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        ASSERT_TRUE(system.ImportWorldStateArchive(
+            worldHandle,
+            archive,
+            importedHandles));
+        EXPECT_TRUE(system.RestoreWorldState(worldHandle, importedHandles.front()));
         EXPECT_TRUE(filter.m_collisionEnabled);
         EXPECT_EQ(filter.m_stateHash, 2);
         EXPECT_TRUE(system.WereBodiesInContact(
@@ -5214,6 +5376,7 @@ namespace Jolt
         }
         EXPECT_FALSE(foundEnd);
 
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, importedHandles.front()));
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, dynamicBodyHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, staticBodyHandle));
@@ -6943,6 +7106,11 @@ namespace Jolt
 
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
         expectFiniteVertices();
+        AZStd::array<SoftBodyVertex, 3> unskinnedReferenceVertices;
+        ASSERT_TRUE(system.GetSoftBodyVertices(
+            worldHandle,
+            bodyHandle,
+            unskinnedReferenceVertices).IsComplete());
 
         const AZStd::array pose = {AZ::Transform::CreateIdentity()};
         ASSERT_TRUE(system.SkinSoftBody(worldHandle, bodyHandle, pose, true));
@@ -6967,6 +7135,16 @@ namespace Jolt
         EXPECT_TRUE(runtimeConfiguration.m_enableSkinConstraints);
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
         expectFiniteVertices();
+        AZStd::array<SoftBodyVertex, 3> restoredUnskinnedVertices;
+        ASSERT_TRUE(system.GetSoftBodyVertices(
+            worldHandle,
+            bodyHandle,
+            restoredUnskinnedVertices).IsComplete());
+        for (size_t vertexIndex = 0; vertexIndex < unskinnedReferenceVertices.size(); ++vertexIndex)
+        {
+            EXPECT_EQ(restoredUnskinnedVertices[vertexIndex].m_position, unskinnedReferenceVertices[vertexIndex].m_position);
+            EXPECT_EQ(restoredUnskinnedVertices[vertexIndex].m_velocity, unskinnedReferenceVertices[vertexIndex].m_velocity);
+        }
 
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, bodySnapshotHandle));
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, worldSnapshotHandle));
@@ -7052,6 +7230,99 @@ namespace Jolt
         WorldStateDigest secondTargetDigest;
         ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, secondTargetDigest));
         EXPECT_EQ(secondTargetDigest, firstTargetDigest);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
+        EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
+        EXPECT_TRUE(system.DestroySoftBodyDefinition(definitionHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotsRestoreSoftBodySkinInterpolationState)
+    {
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
+        Runtime system(systemConfiguration, nullptr);
+        ASSERT_TRUE(system);
+
+        SoftBodyDefinitionConfiguration definitionConfiguration;
+        definitionConfiguration.m_vertices = {
+            {.m_position = AZ::Vector3::CreateZero()},
+            {.m_position = AZ::Vector3::CreateAxisX()},
+            {.m_position = AZ::Vector3::CreateAxisY()},
+        };
+        definitionConfiguration.m_faces = {
+            {.m_firstVertex = 0, .m_secondVertex = 1, .m_thirdVertex = 2},
+        };
+        definitionConfiguration.m_inverseBinds = {
+            {.m_transform = AZ::Transform::CreateIdentity(), .m_jointIndex = 0},
+        };
+        for (AZ::u32 vertexIndex = 0; vertexIndex < definitionConfiguration.m_vertices.size(); ++vertexIndex)
+        {
+            SoftBodySkinConstraint constraint;
+            constraint.m_weights[0] = {.m_inverseBindIndex = 0, .m_weight = 1.0f};
+            constraint.m_vertex = vertexIndex;
+            constraint.m_maximumDistance = 0.1f;
+            definitionConfiguration.m_skinConstraints.push_back(constraint);
+        }
+
+        const SoftBodyDefinitionHandle definitionHandle =
+            system.CreateSoftBodyDefinition(definitionConfiguration);
+        ASSERT_TRUE(definitionHandle);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        SoftBodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_definitionHandle = definitionHandle;
+        bodyConfiguration.m_allowSleeping = false;
+        bodyConfiguration.m_iterationCount = 5;
+        bodyConfiguration.m_manualUpdate = true;
+        bodyConfiguration.m_updatePosition = false;
+        const BodyHandle bodyHandle = system.CreateSoftBody(worldHandle, bodyConfiguration);
+        ASSERT_TRUE(bodyHandle);
+
+        const AZStd::array initialPose = {AZ::Transform::CreateIdentity()};
+        ASSERT_TRUE(system.SkinSoftBody(worldHandle, bodyHandle, initialPose, true));
+        ASSERT_TRUE(system.UpdateSoftBodyManually(worldHandle, bodyHandle, 1.0f / 60.0f));
+
+        AZ::Transform targetTransform = AZ::Transform::CreateIdentity();
+        targetTransform.SetTranslation(AZ::Vector3::CreateAxisX(2.0f));
+        const AZStd::array targetPose = {targetTransform};
+        ASSERT_TRUE(system.SkinSoftBody(worldHandle, bodyHandle, targetPose, false));
+
+        AZStd::array<SoftBodyVertex, 3> verticesBeforeUpdate;
+        ASSERT_TRUE(system.GetSoftBodyVertices(
+            worldHandle,
+            bodyHandle,
+            verticesBeforeUpdate).IsComplete());
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(snapshotHandle);
+
+        ASSERT_TRUE(system.UpdateSoftBodyManually(worldHandle, bodyHandle, 1.0f / 60.0f));
+        AZStd::array<SoftBodyVertex, 3> referenceVertices;
+        ASSERT_TRUE(system.GetSoftBodyVertices(
+            worldHandle,
+            bodyHandle,
+            referenceVertices).IsComplete());
+        bool referenceMoved = false;
+        for (size_t vertexIndex = 0; vertexIndex < referenceVertices.size(); ++vertexIndex)
+        {
+            if (referenceVertices[vertexIndex].m_position != verticesBeforeUpdate[vertexIndex].m_position)
+            {
+                referenceMoved = true;
+            }
+        }
+        ASSERT_TRUE(referenceMoved);
+
+        ASSERT_TRUE(system.RestoreWorldState(worldHandle, snapshotHandle));
+        ASSERT_TRUE(system.UpdateSoftBodyManually(worldHandle, bodyHandle, 1.0f / 60.0f));
+        AZStd::array<SoftBodyVertex, 3> replayVertices;
+        ASSERT_TRUE(system.GetSoftBodyVertices(
+            worldHandle,
+            bodyHandle,
+            replayVertices).IsComplete());
+        for (size_t vertexIndex = 0; vertexIndex < referenceVertices.size(); ++vertexIndex)
+        {
+            EXPECT_EQ(replayVertices[vertexIndex].m_position, referenceVertices[vertexIndex].m_position);
+            EXPECT_EQ(replayVertices[vertexIndex].m_velocity, referenceVertices[vertexIndex].m_velocity);
+        }
 
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
@@ -9850,6 +10121,31 @@ namespace Jolt
         EXPECT_FLOAT_EQ(initialWheels[0].m_rotationAngle, AZ::Constants::QuarterPi);
         EXPECT_FLOAT_EQ(initialWheels[0].m_steerAngle, 0.125f);
 
+        const StateSnapshotHandle wheelMotionSnapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(wheelMotionSnapshotHandle);
+        const WheelMotion changedWheelMotion = {
+            .m_angularVelocity = 7.0f,
+            .m_rotationAngle = AZ::Constants::HalfPi,
+            .m_steerAngle = -0.25f,
+        };
+        ASSERT_TRUE(system.SetWheelMotion(
+            worldHandle,
+            vehicleHandle,
+            0,
+            changedWheelMotion));
+        ASSERT_TRUE(system.RestoreWorldState(worldHandle, wheelMotionSnapshotHandle));
+        AZStd::array<WheelState, 4> restoredWheelMotionStates;
+        WheeledVehicleState restoredWheelMotionState;
+        ASSERT_TRUE(system.GetWheeledVehicleState(
+            worldHandle,
+            vehicleHandle,
+            restoredWheelMotionState,
+            restoredWheelMotionStates).IsComplete());
+        EXPECT_FLOAT_EQ(restoredWheelMotionStates[0].m_angularVelocity, 3.0f);
+        EXPECT_FLOAT_EQ(restoredWheelMotionStates[0].m_rotationAngle, AZ::Constants::QuarterPi);
+        EXPECT_FLOAT_EQ(restoredWheelMotionStates[0].m_steerAngle, 0.125f);
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, wheelMotionSnapshotHandle));
+
         EXPECT_TRUE(system.SetWheeledVehicleInput(
             worldHandle,
             vehicleHandle,
@@ -10150,12 +10446,31 @@ namespace Jolt
         EXPECT_FALSE(archive.m_binaryState.empty());
         EXPECT_NE(archive.m_buildFingerprint, 0);
         EXPECT_NE(archive.m_contentHash, 0);
-        EXPECT_EQ(archive.m_formatVersion, 5);
+        EXPECT_EQ(archive.m_formatVersion, 7);
         EXPECT_EQ(archive.m_snapshotCount, 1);
 
         const WorldHandle secondWorldHandle = system.CreateWorld(WorldConfiguration{});
         ASSERT_TRUE(secondWorldHandle);
         SphereOnFloor secondScene = CreateSphereOnFloor(system, secondWorldHandle);
+        Internal::WorldMemberHandleParts sourceBodyParts;
+        Internal::WorldMemberHandleParts targetBodyParts;
+        ASSERT_TRUE(Internal::DecodeWorldMemberHandle(
+            scene.m_sphereBodyHandle,
+            sourceBodyParts));
+        ASSERT_TRUE(Internal::DecodeWorldMemberHandle(
+            secondScene.m_sphereBodyHandle,
+            targetBodyParts));
+        EXPECT_EQ(sourceBodyParts.m_index, targetBodyParts.m_index);
+        EXPECT_NE(sourceBodyParts.m_worldIndex, targetBodyParts.m_worldIndex);
+        EXPECT_NE(sourceBodyParts.m_generation, targetBodyParts.m_generation);
+        ASSERT_TRUE(system.SetBodyFriction(
+            secondWorldHandle,
+            secondScene.m_sphereBodyHandle,
+            0.75f));
+        ASSERT_TRUE(system.SetBodyFriction(
+            secondWorldHandle,
+            secondScene.m_sphereBodyHandle,
+            0.2f));
         AZStd::array<StateSnapshotHandle, 1> crossWorldHandles;
         ASSERT_TRUE(system.ImportWorldStateArchive(
             secondWorldHandle,
@@ -10165,6 +10480,27 @@ namespace Jolt
         WorldStateDigest crossWorldDigest;
         ASSERT_TRUE(system.GetWorldStateDigest(secondWorldHandle, crossWorldDigest));
         EXPECT_EQ(crossWorldDigest, capturedDigest);
+
+        const BodyHandle staleTargetBodyHandle = secondScene.m_sphereBodyHandle;
+        EXPECT_TRUE(system.DestroyBody(secondWorldHandle, staleTargetBodyHandle));
+        BodyConfiguration replacementBodyConfiguration;
+        replacementBodyConfiguration.m_shapeHandle = secondScene.m_sphereShapeHandle;
+        replacementBodyConfiguration.m_transform.m_position.m_z = 2.0;
+        secondScene.m_sphereBodyHandle = system.CreateBody(
+            secondWorldHandle,
+            replacementBodyConfiguration);
+        ASSERT_TRUE(secondScene.m_sphereBodyHandle);
+        Internal::WorldMemberHandleParts staleTargetBodyParts;
+        Internal::WorldMemberHandleParts replacementBodyParts;
+        ASSERT_TRUE(Internal::DecodeWorldMemberHandle(
+            staleTargetBodyHandle,
+            staleTargetBodyParts));
+        ASSERT_TRUE(Internal::DecodeWorldMemberHandle(
+            secondScene.m_sphereBodyHandle,
+            replacementBodyParts));
+        EXPECT_EQ(staleTargetBodyParts.m_index, replacementBodyParts.m_index);
+        EXPECT_NE(staleTargetBodyParts.m_generation, replacementBodyParts.m_generation);
+        EXPECT_FALSE(system.RestoreWorldState(secondWorldHandle, crossWorldHandles.front()));
         EXPECT_TRUE(system.DestroyStateSnapshot(secondWorldHandle, crossWorldHandles.front()));
         DestroySphereOnFloor(system, secondScene);
         EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
@@ -10178,6 +10514,10 @@ namespace Jolt
         WorldStateDigest advancedDigest;
         ASSERT_TRUE(system.GetWorldStateDigest(scene.m_worldHandle, advancedDigest));
         ASSERT_NE(advancedDigest, capturedDigest);
+        WorldStatistics statisticsBeforeRejectedImports;
+        ASSERT_TRUE(system.GetWorldStatistics(
+            scene.m_worldHandle,
+            statisticsBeforeRejectedImports));
 
         StateSnapshotArchive corruptedArchive = archive;
         corruptedArchive.m_binaryState.back() ^= 0x80;
@@ -10209,6 +10549,13 @@ namespace Jolt
         WorldStateDigest digestAfterRejectedImport;
         ASSERT_TRUE(system.GetWorldStateDigest(scene.m_worldHandle, digestAfterRejectedImport));
         EXPECT_EQ(digestAfterRejectedImport, advancedDigest);
+        WorldStatistics statisticsAfterRejectedImports;
+        ASSERT_TRUE(system.GetWorldStatistics(
+            scene.m_worldHandle,
+            statisticsAfterRejectedImports));
+        EXPECT_EQ(
+            statisticsAfterRejectedImports.m_stateSnapshotCount,
+            statisticsBeforeRejectedImports.m_stateSnapshotCount);
 
         ASSERT_TRUE(system.ImportWorldStateArchive(
             scene.m_worldHandle,
@@ -10256,7 +10603,9 @@ namespace Jolt
         constexpr size_t archiveHeaderByteCount = sizeof(AZ::u32) * 3
             + sizeof(AZ::u64)
             + sizeof(AZ::u8);
-        constexpr size_t nativeStateOffset = archiveHeaderByteCount + sizeof(AZ::u32);
+        constexpr size_t nativeStateOffset = archiveHeaderByteCount
+            + sizeof(AZ::u64)
+            + sizeof(AZ::u32);
         ASSERT_GT(archive.m_binaryState.size(), nativeStateOffset);
         archive.m_binaryState[nativeStateOffset] = 0;
         archive.m_contentHash = static_cast<AZ::u64>(AZ::TypeHash64(archive.m_binaryState));
@@ -10276,6 +10625,2073 @@ namespace Jolt
 
         EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, importedHandles.front()));
         DestroySphereOnFloor(system, scene);
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesPermitDifferentWorkerCounts)
+    {
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(4);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        Runtime system(CreateSerialSystemConfiguration(), &jobContext);
+        ASSERT_TRUE(system);
+
+        SphereOnFloor sourceScene = CreateSphereOnFloor(system);
+        ASSERT_TRUE(system.StepWorld(sourceScene.m_worldHandle, 1.0f / 60.0f));
+        WorldStateDigest sourceDigest;
+        ASSERT_TRUE(system.GetWorldStateDigest(sourceScene.m_worldHandle, sourceDigest));
+
+        const StateSnapshotHandle sourceSnapshotHandle =
+            system.CaptureWorldState(sourceScene.m_worldHandle);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            sourceScene.m_worldHandle,
+            AZStd::array{sourceSnapshotHandle},
+            archive));
+
+        WorldConfiguration targetWorldConfiguration;
+        targetWorldConfiguration.m_workerCount = 4;
+        const WorldHandle targetWorldHandle = system.CreateWorld(targetWorldConfiguration);
+        ASSERT_TRUE(targetWorldHandle);
+        SphereOnFloor targetScene = CreateSphereOnFloor(system, targetWorldHandle);
+
+        WorldRuntimeConfiguration sourceRuntimeConfiguration;
+        WorldRuntimeConfiguration targetRuntimeConfiguration;
+        ASSERT_TRUE(system.GetWorldRuntimeConfiguration(
+            sourceScene.m_worldHandle,
+            sourceRuntimeConfiguration));
+        ASSERT_TRUE(system.GetWorldRuntimeConfiguration(
+            targetWorldHandle,
+            targetRuntimeConfiguration));
+        ASSERT_EQ(sourceRuntimeConfiguration.m_workerCount, 1);
+        ASSERT_EQ(targetRuntimeConfiguration.m_workerCount, 4);
+
+        WorldStatistics sourceStatistics;
+        WorldStatistics targetStatistics;
+        ASSERT_TRUE(system.GetWorldStatistics(sourceScene.m_worldHandle, sourceStatistics));
+        ASSERT_TRUE(system.GetWorldStatistics(targetWorldHandle, targetStatistics));
+        ASSERT_EQ(sourceStatistics.m_effectiveWorkerCount, 1);
+        ASSERT_EQ(targetStatistics.m_effectiveWorkerCount, 4);
+
+        AZStd::array<StateSnapshotHandle, 1> importedSnapshotHandles;
+        ASSERT_TRUE(system.ImportWorldStateArchive(
+            targetWorldHandle,
+            archive,
+            importedSnapshotHandles));
+        ASSERT_TRUE(system.RestoreWorldState(
+            targetWorldHandle,
+            importedSnapshotHandles.front()));
+
+        WorldStateDigest targetDigest;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, targetDigest));
+        EXPECT_EQ(targetDigest, sourceDigest);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(
+            targetWorldHandle,
+            importedSnapshotHandles.front()));
+        EXPECT_TRUE(system.DestroyStateSnapshot(
+            sourceScene.m_worldHandle,
+            sourceSnapshotHandle));
+        DestroySphereOnFloor(system, targetScene);
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+        DestroySphereOnFloor(system, sourceScene);
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRejectConstraintUserDataMismatchesAtomically)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle sourceWorldHandle = system.GetDefaultWorldHandle();
+        const WorldHandle targetWorldHandle = system.CreateWorld(WorldConfiguration{});
+        ASSERT_TRUE(targetWorldHandle);
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle sourceShapeHandle = system.CreateShape(sourceWorldHandle, shapeConfiguration);
+        const ShapeHandle targetShapeHandle = system.CreateShape(targetWorldHandle, shapeConfiguration);
+        ASSERT_TRUE(sourceShapeHandle);
+        ASSERT_TRUE(targetShapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = sourceShapeHandle;
+        const BodyHandle sourceFirstBodyHandle = system.CreateBody(sourceWorldHandle, bodyConfiguration);
+        bodyConfiguration.m_transform.m_position.m_z = 2.0;
+        const BodyHandle sourceSecondBodyHandle = system.CreateBody(sourceWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(sourceFirstBodyHandle);
+        ASSERT_TRUE(sourceSecondBodyHandle);
+
+        bodyConfiguration.m_shapeHandle = targetShapeHandle;
+        bodyConfiguration.m_transform = {};
+        const BodyHandle targetFirstBodyHandle = system.CreateBody(targetWorldHandle, bodyConfiguration);
+        bodyConfiguration.m_transform.m_position.m_z = 2.0;
+        const BodyHandle targetSecondBodyHandle = system.CreateBody(targetWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(targetFirstBodyHandle);
+        ASSERT_TRUE(targetSecondBodyHandle);
+
+        ConstraintConfiguration sourceConstraintConfiguration;
+        sourceConstraintConfiguration.m_firstBodyHandle = sourceFirstBodyHandle;
+        sourceConstraintConfiguration.m_secondBodyHandle = sourceSecondBodyHandle;
+        sourceConstraintConfiguration.m_geometry = PointConstraintConfiguration{};
+        sourceConstraintConfiguration.m_userData = 41;
+        const ConstraintHandle sourceConstraintHandle = system.CreateConstraint(
+            sourceWorldHandle,
+            sourceConstraintConfiguration);
+        ASSERT_TRUE(sourceConstraintHandle);
+
+        ConstraintConfiguration targetConstraintConfiguration;
+        targetConstraintConfiguration.m_firstBodyHandle = targetFirstBodyHandle;
+        targetConstraintConfiguration.m_secondBodyHandle = targetSecondBodyHandle;
+        targetConstraintConfiguration.m_geometry = PointConstraintConfiguration{};
+        targetConstraintConfiguration.m_userData = 42;
+        const ConstraintHandle targetConstraintHandle = system.CreateConstraint(
+            targetWorldHandle,
+            targetConstraintConfiguration);
+        ASSERT_TRUE(targetConstraintHandle);
+
+        const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(sourceWorldHandle);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            sourceWorldHandle,
+            AZStd::array{sourceSnapshotHandle},
+            archive));
+
+        WorldStateDigest digestBeforeImport;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, digestBeforeImport));
+        WorldStatistics statisticsBeforeImport;
+        ASSERT_TRUE(system.GetWorldStatistics(targetWorldHandle, statisticsBeforeImport));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        EXPECT_FALSE(system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
+        EXPECT_FALSE(importedHandles.front());
+
+        WorldStateDigest digestAfterImport;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, digestAfterImport));
+        EXPECT_EQ(digestAfterImport, digestBeforeImport);
+        WorldStatistics statisticsAfterImport;
+        ASSERT_TRUE(system.GetWorldStatistics(targetWorldHandle, statisticsAfterImport));
+        EXPECT_EQ(
+            statisticsAfterImport.m_stateSnapshotCount,
+            statisticsBeforeImport.m_stateSnapshotCount);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+        EXPECT_TRUE(system.DestroyConstraint(targetWorldHandle, targetConstraintHandle));
+        EXPECT_TRUE(system.DestroyConstraint(sourceWorldHandle, sourceConstraintHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetSecondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetFirstBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceSecondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceFirstBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(sourceWorldHandle, sourceShapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRejectShapeSchemaAndConfigurationMismatches)
+    {
+        const AZStd::array targetGeometries = {
+            ShapeGeometry{BoxShapeConfiguration{}},
+            ShapeGeometry{SphereShapeConfiguration{.m_radius = 0.75f}},
+        };
+        for (const ShapeGeometry& targetGeometry : targetGeometries)
+        {
+            Runtime system(CreateSerialSystemConfiguration(), nullptr);
+            ASSERT_TRUE(system);
+
+            const WorldHandle sourceWorldHandle = system.GetDefaultWorldHandle();
+            WorldConfiguration targetWorldConfiguration;
+            const WorldHandle targetWorldHandle = system.CreateWorld(targetWorldConfiguration);
+            ASSERT_TRUE(targetWorldHandle);
+
+            ShapeConfiguration sourceShapeConfiguration;
+            sourceShapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.5f};
+            const ShapeHandle sourceShapeHandle = system.CreateShape(
+                sourceWorldHandle,
+                sourceShapeConfiguration);
+            ASSERT_TRUE(sourceShapeHandle);
+            ShapeConfiguration targetShapeConfiguration;
+            targetShapeConfiguration.m_geometry = targetGeometry;
+            const ShapeHandle targetShapeHandle = system.CreateShape(
+                targetWorldHandle,
+                targetShapeConfiguration);
+            ASSERT_TRUE(targetShapeHandle);
+
+            BodyConfiguration bodyConfiguration;
+            bodyConfiguration.m_shapeHandle = sourceShapeHandle;
+            const BodyHandle sourceBodyHandle = system.CreateBody(
+                sourceWorldHandle,
+                bodyConfiguration);
+            ASSERT_TRUE(sourceBodyHandle);
+            bodyConfiguration.m_shapeHandle = targetShapeHandle;
+            const BodyHandle targetBodyHandle = system.CreateBody(
+                targetWorldHandle,
+                bodyConfiguration);
+            ASSERT_TRUE(targetBodyHandle);
+
+            const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(sourceWorldHandle);
+            ASSERT_TRUE(sourceSnapshotHandle);
+            StateSnapshotArchive archive;
+            ASSERT_TRUE(system.ExportWorldStateArchive(
+                sourceWorldHandle,
+                AZStd::array{sourceSnapshotHandle},
+                archive));
+            WorldStateDigest digestBeforeImport;
+            WorldStateDigest digestAfterImport;
+            ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, digestBeforeImport));
+            WorldStatistics statisticsBeforeImport;
+            ASSERT_TRUE(system.GetWorldStatistics(targetWorldHandle, statisticsBeforeImport));
+
+            AZStd::array<StateSnapshotHandle, 1> importedHandles;
+            EXPECT_FALSE(system.ImportWorldStateArchive(
+                targetWorldHandle,
+                archive,
+                importedHandles));
+            EXPECT_FALSE(importedHandles.front());
+            ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, digestAfterImport));
+            EXPECT_EQ(digestAfterImport, digestBeforeImport);
+            WorldStatistics statisticsAfterImport;
+            ASSERT_TRUE(system.GetWorldStatistics(targetWorldHandle, statisticsAfterImport));
+            EXPECT_EQ(
+                statisticsAfterImport.m_stateSnapshotCount,
+                statisticsBeforeImport.m_stateSnapshotCount);
+
+            EXPECT_TRUE(system.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+            EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetBodyHandle));
+            EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceBodyHandle));
+            EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetShapeHandle));
+            EXPECT_TRUE(system.DestroyShape(sourceWorldHandle, sourceShapeHandle));
+            EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+        }
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRejectRigidAndSoftDecoderMismatches)
+    {
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        SoftBodyDefinitionConfiguration definitionConfiguration;
+        definitionConfiguration.m_vertices = {
+            {.m_position = AZ::Vector3(-0.5f, 0.0f, 0.0f)},
+            {.m_position = AZ::Vector3(0.5f, 0.0f, 0.0f)},
+            {.m_position = AZ::Vector3(0.0f, 1.0f, 0.0f)},
+        };
+        definitionConfiguration.m_faces = {
+            {.m_firstVertex = 0, .m_secondVertex = 1, .m_thirdVertex = 2},
+        };
+        definitionConfiguration.m_edgeConstraints = {
+            {.m_firstVertex = 0, .m_secondVertex = 1},
+            {.m_firstVertex = 1, .m_secondVertex = 2},
+            {.m_firstVertex = 2, .m_secondVertex = 0},
+        };
+
+        StateSnapshotArchive archive;
+        {
+            Runtime sourceSystem(CreateSerialSystemConfiguration(), nullptr);
+            ASSERT_TRUE(sourceSystem);
+            const WorldHandle worldHandle = sourceSystem.GetDefaultWorldHandle();
+            const ShapeHandle shapeHandle = sourceSystem.CreateShape(worldHandle, shapeConfiguration);
+            const SoftBodyDefinitionHandle definitionHandle =
+                sourceSystem.CreateSoftBodyDefinition(definitionConfiguration);
+            ASSERT_TRUE(shapeHandle);
+            ASSERT_TRUE(definitionHandle);
+            SoftBodyConfiguration bodyConfiguration;
+            bodyConfiguration.m_definitionHandle = definitionHandle;
+            bodyConfiguration.m_manualUpdate = true;
+            const BodyHandle bodyHandle = sourceSystem.CreateSoftBody(worldHandle, bodyConfiguration);
+            ASSERT_TRUE(bodyHandle);
+            const StateSnapshotHandle snapshotHandle = sourceSystem.CaptureWorldState(worldHandle);
+            ASSERT_TRUE(snapshotHandle);
+            ASSERT_TRUE(sourceSystem.ExportWorldStateArchive(
+                worldHandle,
+                AZStd::array{snapshotHandle},
+                archive));
+            EXPECT_TRUE(sourceSystem.DestroyStateSnapshot(worldHandle, snapshotHandle));
+            EXPECT_TRUE(sourceSystem.DestroyBody(worldHandle, bodyHandle));
+            EXPECT_TRUE(sourceSystem.DestroySoftBodyDefinition(definitionHandle));
+            EXPECT_TRUE(sourceSystem.DestroyShape(worldHandle, shapeHandle));
+        }
+
+        Runtime targetSystem(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(targetSystem);
+        const WorldHandle worldHandle = targetSystem.GetDefaultWorldHandle();
+        const ShapeHandle shapeHandle = targetSystem.CreateShape(worldHandle, shapeConfiguration);
+        const SoftBodyDefinitionHandle definitionHandle =
+            targetSystem.CreateSoftBodyDefinition(definitionConfiguration);
+        ASSERT_TRUE(shapeHandle);
+        ASSERT_TRUE(definitionHandle);
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = shapeHandle;
+        const BodyHandle bodyHandle = targetSystem.CreateBody(worldHandle, bodyConfiguration);
+        ASSERT_TRUE(bodyHandle);
+        WorldStateDigest digestBeforeImport;
+        ASSERT_TRUE(targetSystem.GetWorldStateDigest(worldHandle, digestBeforeImport));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        EXPECT_FALSE(targetSystem.ImportWorldStateArchive(worldHandle, archive, importedHandles));
+        EXPECT_FALSE(importedHandles.front());
+        WorldStateDigest digestAfterImport;
+        ASSERT_TRUE(targetSystem.GetWorldStateDigest(worldHandle, digestAfterImport));
+        EXPECT_EQ(digestAfterImport, digestBeforeImport);
+
+        EXPECT_TRUE(targetSystem.DestroyBody(worldHandle, bodyHandle));
+        EXPECT_TRUE(targetSystem.DestroySoftBodyDefinition(definitionHandle));
+        EXPECT_TRUE(targetSystem.DestroyShape(worldHandle, shapeHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRejectConstraintDecoderTypeMismatches)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle sourceWorldHandle = system.GetDefaultWorldHandle();
+        WorldConfiguration targetWorldConfiguration;
+        const WorldHandle targetWorldHandle = system.CreateWorld(targetWorldConfiguration);
+        ASSERT_TRUE(targetWorldHandle);
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle sourceShapeHandle = system.CreateShape(sourceWorldHandle, shapeConfiguration);
+        const ShapeHandle targetShapeHandle = system.CreateShape(targetWorldHandle, shapeConfiguration);
+        ASSERT_TRUE(sourceShapeHandle);
+        ASSERT_TRUE(targetShapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = sourceShapeHandle;
+        const BodyHandle sourceFirstBodyHandle = system.CreateBody(sourceWorldHandle, bodyConfiguration);
+        bodyConfiguration.m_transform.m_position.m_z = 2.0;
+        const BodyHandle sourceSecondBodyHandle = system.CreateBody(sourceWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(sourceFirstBodyHandle);
+        ASSERT_TRUE(sourceSecondBodyHandle);
+        bodyConfiguration.m_shapeHandle = targetShapeHandle;
+        bodyConfiguration.m_transform = {};
+        const BodyHandle targetFirstBodyHandle = system.CreateBody(targetWorldHandle, bodyConfiguration);
+        bodyConfiguration.m_transform.m_position.m_z = 2.0;
+        const BodyHandle targetSecondBodyHandle = system.CreateBody(targetWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(targetFirstBodyHandle);
+        ASSERT_TRUE(targetSecondBodyHandle);
+
+        ConstraintConfiguration sourceConstraintConfiguration;
+        sourceConstraintConfiguration.m_firstBodyHandle = sourceFirstBodyHandle;
+        sourceConstraintConfiguration.m_secondBodyHandle = sourceSecondBodyHandle;
+        sourceConstraintConfiguration.m_geometry = FixedConstraintConfiguration{
+            .m_space = ConstraintSpace::World,
+            .m_autoDetectPoint = true,
+        };
+        const ConstraintHandle sourceConstraintHandle = system.CreateConstraint(sourceWorldHandle, sourceConstraintConfiguration);
+        ASSERT_TRUE(sourceConstraintHandle);
+        ConstraintConfiguration targetConstraintConfiguration;
+        targetConstraintConfiguration.m_firstBodyHandle = targetFirstBodyHandle;
+        targetConstraintConfiguration.m_secondBodyHandle = targetSecondBodyHandle;
+        targetConstraintConfiguration.m_geometry = PointConstraintConfiguration{};
+        const ConstraintHandle targetConstraintHandle = system.CreateConstraint(targetWorldHandle, targetConstraintConfiguration);
+        ASSERT_TRUE(targetConstraintHandle);
+
+        const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(sourceWorldHandle);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            sourceWorldHandle,
+            AZStd::array{sourceSnapshotHandle},
+            archive));
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        EXPECT_FALSE(system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
+        EXPECT_FALSE(importedHandles.front());
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+        EXPECT_TRUE(system.DestroyConstraint(targetWorldHandle, targetConstraintHandle));
+        EXPECT_TRUE(system.DestroyConstraint(sourceWorldHandle, sourceConstraintHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetSecondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetFirstBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceSecondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceFirstBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(sourceWorldHandle, sourceShapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRejectSixDofLimitSpringMismatchesAtomically)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle sourceWorldHandle = system.GetDefaultWorldHandle();
+        const WorldHandle targetWorldHandle = system.CreateWorld(WorldConfiguration{});
+        ASSERT_TRUE(targetWorldHandle);
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle sourceShapeHandle = system.CreateShape(sourceWorldHandle, shapeConfiguration);
+        const ShapeHandle targetShapeHandle = system.CreateShape(targetWorldHandle, shapeConfiguration);
+        ASSERT_TRUE(sourceShapeHandle);
+        ASSERT_TRUE(targetShapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = sourceShapeHandle;
+        const BodyHandle sourceFirstBodyHandle = system.CreateBody(sourceWorldHandle, bodyConfiguration);
+        bodyConfiguration.m_transform.m_position.m_z = 2.0;
+        const BodyHandle sourceSecondBodyHandle = system.CreateBody(sourceWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(sourceFirstBodyHandle);
+        ASSERT_TRUE(sourceSecondBodyHandle);
+
+        bodyConfiguration.m_shapeHandle = targetShapeHandle;
+        bodyConfiguration.m_transform = {};
+        const BodyHandle targetFirstBodyHandle = system.CreateBody(targetWorldHandle, bodyConfiguration);
+        bodyConfiguration.m_transform.m_position.m_z = 2.0;
+        const BodyHandle targetSecondBodyHandle = system.CreateBody(targetWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(targetFirstBodyHandle);
+        ASSERT_TRUE(targetSecondBodyHandle);
+
+        SixDofConstraintConfiguration sourceGeometry;
+        sourceGeometry.m_translationX.m_mode = SixDofAxisMode::Limited;
+        sourceGeometry.m_translationX.m_minimumLimit = -1.0f;
+        sourceGeometry.m_translationX.m_maximumLimit = 1.0f;
+        sourceGeometry.m_translationX.m_limitSpring.m_frequencyOrStiffness = 2.0f;
+        sourceGeometry.m_translationX.m_limitSpring.m_damping = 0.5f;
+        ConstraintConfiguration sourceConstraintConfiguration;
+        sourceConstraintConfiguration.m_firstBodyHandle = sourceFirstBodyHandle;
+        sourceConstraintConfiguration.m_secondBodyHandle = sourceSecondBodyHandle;
+        sourceConstraintConfiguration.m_geometry = sourceGeometry;
+        const ConstraintHandle sourceConstraintHandle = system.CreateConstraint(
+            sourceWorldHandle,
+            sourceConstraintConfiguration);
+        ASSERT_TRUE(sourceConstraintHandle);
+
+        SixDofConstraintConfiguration targetGeometry = sourceGeometry;
+        targetGeometry.m_translationX.m_limitSpring.m_damping = 0.75f;
+        ConstraintConfiguration targetConstraintConfiguration;
+        targetConstraintConfiguration.m_firstBodyHandle = targetFirstBodyHandle;
+        targetConstraintConfiguration.m_secondBodyHandle = targetSecondBodyHandle;
+        targetConstraintConfiguration.m_geometry = targetGeometry;
+        const ConstraintHandle targetConstraintHandle = system.CreateConstraint(
+            targetWorldHandle,
+            targetConstraintConfiguration);
+        ASSERT_TRUE(targetConstraintHandle);
+
+        const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(sourceWorldHandle);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(sourceWorldHandle, AZStd::array{sourceSnapshotHandle}, archive));
+
+        WorldStateDigest digestBeforeImport;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, digestBeforeImport));
+        WorldStatistics statisticsBeforeImport;
+        ASSERT_TRUE(system.GetWorldStatistics(targetWorldHandle, statisticsBeforeImport));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        EXPECT_FALSE(system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
+        EXPECT_FALSE(importedHandles.front());
+
+        WorldStateDigest digestAfterImport;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, digestAfterImport));
+        EXPECT_EQ(digestAfterImport, digestBeforeImport);
+        WorldStatistics statisticsAfterImport;
+        ASSERT_TRUE(system.GetWorldStatistics(targetWorldHandle, statisticsAfterImport));
+        EXPECT_EQ(statisticsAfterImport.m_stateSnapshotCount, statisticsBeforeImport.m_stateSnapshotCount);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+        EXPECT_TRUE(system.DestroyConstraint(targetWorldHandle, targetConstraintHandle));
+        EXPECT_TRUE(system.DestroyConstraint(sourceWorldHandle, sourceConstraintHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetSecondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetFirstBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceSecondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceFirstBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(sourceWorldHandle, sourceShapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRejectPathConstraintBodyFrameMismatchesAtomically)
+    {
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        Runtime system(systemConfiguration, nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle sourceWorldHandle = system.GetDefaultWorldHandle();
+        const WorldHandle targetWorldHandle = system.CreateWorld(systemConfiguration.m_defaultWorld);
+        ASSERT_TRUE(targetWorldHandle);
+
+        HermitePathConfiguration pathConfiguration;
+        pathConfiguration.m_points = {
+            {.m_position = AZ::Vector3::CreateZero()},
+            {.m_position = AZ::Vector3::CreateAxisX(4.0f)},
+        };
+        const PathHandle pathHandle = system.CreatePath(pathConfiguration);
+        ASSERT_TRUE(pathHandle);
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.25f};
+        const ShapeHandle sourceShapeHandle = system.CreateShape(sourceWorldHandle, shapeConfiguration);
+        const ShapeHandle targetShapeHandle = system.CreateShape(targetWorldHandle, shapeConfiguration);
+        ASSERT_TRUE(sourceShapeHandle);
+        ASSERT_TRUE(targetShapeHandle);
+
+        BodyConfiguration sourceFirstBodyConfiguration;
+        sourceFirstBodyConfiguration.m_shapeHandle = sourceShapeHandle;
+        sourceFirstBodyConfiguration.m_motionType = MotionType::Static;
+        const BodyHandle sourceFirstBodyHandle = system.CreateBody(sourceWorldHandle, sourceFirstBodyConfiguration);
+        BodyConfiguration sourceSecondBodyConfiguration;
+        sourceSecondBodyConfiguration.m_shapeHandle = sourceShapeHandle;
+        sourceSecondBodyConfiguration.m_transform.m_position.m_x = 1.0;
+        const BodyHandle sourceSecondBodyHandle = system.CreateBody(sourceWorldHandle, sourceSecondBodyConfiguration);
+        ASSERT_TRUE(sourceFirstBodyHandle);
+        ASSERT_TRUE(sourceSecondBodyHandle);
+
+        BodyConfiguration targetFirstBodyConfiguration = sourceFirstBodyConfiguration;
+        targetFirstBodyConfiguration.m_shapeHandle = targetShapeHandle;
+        const BodyHandle targetFirstBodyHandle = system.CreateBody(targetWorldHandle, targetFirstBodyConfiguration);
+        BodyConfiguration targetSecondBodyConfiguration = sourceSecondBodyConfiguration;
+        targetSecondBodyConfiguration.m_shapeHandle = targetShapeHandle;
+        targetSecondBodyConfiguration.m_transform.m_position.m_x = 2.0;
+        const BodyHandle targetSecondBodyHandle = system.CreateBody(targetWorldHandle, targetSecondBodyConfiguration);
+        ASSERT_TRUE(targetFirstBodyHandle);
+        ASSERT_TRUE(targetSecondBodyHandle);
+
+        ConstraintConfiguration sourceConstraintConfiguration;
+        sourceConstraintConfiguration.m_firstBodyHandle = sourceFirstBodyHandle;
+        sourceConstraintConfiguration.m_secondBodyHandle = sourceSecondBodyHandle;
+        sourceConstraintConfiguration.m_geometry = PathConstraintConfiguration{.m_pathHandle = pathHandle};
+        const ConstraintHandle sourceConstraintHandle = system.CreateConstraint(sourceWorldHandle, sourceConstraintConfiguration);
+        ASSERT_TRUE(sourceConstraintHandle);
+
+        ConstraintConfiguration targetConstraintConfiguration = sourceConstraintConfiguration;
+        targetConstraintConfiguration.m_firstBodyHandle = targetFirstBodyHandle;
+        targetConstraintConfiguration.m_secondBodyHandle = targetSecondBodyHandle;
+        const ConstraintHandle targetConstraintHandle = system.CreateConstraint(targetWorldHandle, targetConstraintConfiguration);
+        ASSERT_TRUE(targetConstraintHandle);
+
+        const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(sourceWorldHandle);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(sourceWorldHandle, AZStd::array{sourceSnapshotHandle}, archive));
+
+        WorldStateDigest digestBeforeImport;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, digestBeforeImport));
+        WorldStatistics statisticsBeforeImport;
+        ASSERT_TRUE(system.GetWorldStatistics(targetWorldHandle, statisticsBeforeImport));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        EXPECT_FALSE(system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
+        EXPECT_FALSE(importedHandles.front());
+
+        WorldStateDigest digestAfterImport;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, digestAfterImport));
+        EXPECT_EQ(digestAfterImport, digestBeforeImport);
+        WorldStatistics statisticsAfterImport;
+        ASSERT_TRUE(system.GetWorldStatistics(targetWorldHandle, statisticsAfterImport));
+        EXPECT_EQ(statisticsAfterImport.m_stateSnapshotCount, statisticsBeforeImport.m_stateSnapshotCount);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+        EXPECT_TRUE(system.DestroyConstraint(targetWorldHandle, targetConstraintHandle));
+        EXPECT_TRUE(system.DestroyConstraint(sourceWorldHandle, sourceConstraintHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetSecondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetFirstBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceSecondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceFirstBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(sourceWorldHandle, sourceShapeHandle));
+        EXPECT_TRUE(system.DestroyPath(pathHandle));
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRestoreFullyConstrainedPathInitialOrientation)
+    {
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
+        Runtime system(systemConfiguration, nullptr);
+        ASSERT_TRUE(system);
+
+        HermitePathConfiguration pathConfiguration;
+        pathConfiguration.m_points = {
+            {
+                .m_normal = AZ::Vector3::CreateAxisZ(),
+                .m_position = AZ::Vector3::CreateZero(),
+                .m_tangent = AZ::Vector3::CreateAxisX(),
+            },
+            {
+                .m_normal = AZ::Vector3::CreateAxisZ(),
+                .m_position = AZ::Vector3::CreateAxisX(10.0f),
+                .m_tangent = -AZ::Vector3::CreateAxisX(),
+            },
+        };
+        const PathHandle pathHandle = system.CreatePath(pathConfiguration);
+        ASSERT_TRUE(pathHandle);
+
+        const WorldHandle sourceWorldHandle = system.GetDefaultWorldHandle();
+        WorldConfiguration targetWorldConfiguration;
+        targetWorldConfiguration.m_gravity = AZ::Vector3::CreateZero();
+        targetWorldConfiguration.m_workerCount = 1;
+        const WorldHandle targetWorldHandle = system.CreateWorld(targetWorldConfiguration);
+        ASSERT_TRUE(targetWorldHandle);
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle sourceShapeHandle = system.CreateShape(sourceWorldHandle, shapeConfiguration);
+        const ShapeHandle targetShapeHandle = system.CreateShape(targetWorldHandle, shapeConfiguration);
+        ASSERT_TRUE(sourceShapeHandle);
+        ASSERT_TRUE(targetShapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = sourceShapeHandle;
+        bodyConfiguration.m_motionType = MotionType::Static;
+        bodyConfiguration.m_isSensor = true;
+        const BodyHandle sourceFirstBodyHandle = system.CreateBody(sourceWorldHandle, bodyConfiguration);
+        bodyConfiguration.m_motionType = MotionType::Dynamic;
+        bodyConfiguration.m_isSensor = false;
+        const BodyHandle sourceSecondBodyHandle = system.CreateBody(sourceWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(sourceFirstBodyHandle);
+        ASSERT_TRUE(sourceSecondBodyHandle);
+
+        bodyConfiguration.m_shapeHandle = targetShapeHandle;
+        bodyConfiguration.m_motionType = MotionType::Static;
+        bodyConfiguration.m_isSensor = true;
+        const BodyHandle targetFirstBodyHandle = system.CreateBody(targetWorldHandle, bodyConfiguration);
+        bodyConfiguration.m_motionType = MotionType::Dynamic;
+        bodyConfiguration.m_isSensor = false;
+        bodyConfiguration.m_transform.m_position.m_x = 10.0;
+        bodyConfiguration.m_transform.m_rotation = AZ::Quaternion(0.0f, 0.0f, 1.0f, 0.0f);
+        const BodyHandle targetSecondBodyHandle = system.CreateBody(targetWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(targetFirstBodyHandle);
+        ASSERT_TRUE(targetSecondBodyHandle);
+
+        PathConstraintConfiguration sourcePathConfiguration;
+        sourcePathConfiguration.m_pathHandle = pathHandle;
+        sourcePathConfiguration.m_rotationConstraint = PathRotationConstraint::FullyConstrained;
+        ConstraintConfiguration sourceConstraintConfiguration;
+        sourceConstraintConfiguration.m_firstBodyHandle = sourceFirstBodyHandle;
+        sourceConstraintConfiguration.m_secondBodyHandle = sourceSecondBodyHandle;
+        sourceConstraintConfiguration.m_geometry = sourcePathConfiguration;
+        const ConstraintHandle sourceConstraintHandle = system.CreateConstraint(
+            sourceWorldHandle,
+            sourceConstraintConfiguration);
+        ASSERT_TRUE(sourceConstraintHandle);
+
+        PathConstraintConfiguration targetPathConfiguration = sourcePathConfiguration;
+        targetPathConfiguration.m_pathFraction = 1.0f;
+        ConstraintConfiguration targetConstraintConfiguration;
+        targetConstraintConfiguration.m_firstBodyHandle = targetFirstBodyHandle;
+        targetConstraintConfiguration.m_secondBodyHandle = targetSecondBodyHandle;
+        targetConstraintConfiguration.m_geometry = targetPathConfiguration;
+        const ConstraintHandle targetConstraintHandle = system.CreateConstraint(
+            targetWorldHandle,
+            targetConstraintConfiguration);
+        ASSERT_TRUE(targetConstraintHandle);
+
+        const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(sourceWorldHandle);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            sourceWorldHandle,
+            AZStd::array{sourceSnapshotHandle},
+            archive));
+
+        ASSERT_TRUE(system.StepWorld(sourceWorldHandle, 1.0f / 60.0f));
+        WorldStateDigest sourceDigest;
+        ASSERT_TRUE(system.GetWorldStateDigest(sourceWorldHandle, sourceDigest));
+        BodyState sourceBodyState;
+        ASSERT_TRUE(system.GetBodyState(sourceWorldHandle, sourceSecondBodyHandle, sourceBodyState));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        ASSERT_TRUE(system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
+        ASSERT_TRUE(importedHandles.front());
+        ASSERT_TRUE(system.RestoreWorldState(targetWorldHandle, importedHandles.front()));
+        ASSERT_TRUE(system.StepWorld(targetWorldHandle, 1.0f / 60.0f));
+
+        WorldStateDigest targetDigest;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, targetDigest));
+        EXPECT_EQ(targetDigest, sourceDigest);
+        BodyState targetBodyState;
+        ASSERT_TRUE(system.GetBodyState(targetWorldHandle, targetSecondBodyHandle, targetBodyState));
+        EXPECT_TRUE(targetBodyState.m_transform.m_rotation.IsClose(
+            sourceBodyState.m_transform.m_rotation));
+        EXPECT_TRUE(targetBodyState.m_angularVelocity.IsClose(sourceBodyState.m_angularVelocity));
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(targetWorldHandle, importedHandles.front()));
+        EXPECT_TRUE(system.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+        EXPECT_TRUE(system.DestroyConstraint(targetWorldHandle, targetConstraintHandle));
+        EXPECT_TRUE(system.DestroyConstraint(sourceWorldHandle, sourceConstraintHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetSecondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetFirstBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceSecondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceFirstBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(sourceWorldHandle, sourceShapeHandle));
+        EXPECT_TRUE(system.DestroyPath(pathHandle));
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRejectSoftBodyTriangleThicknessMismatchesAtomically)
+    {
+        StateSnapshotArchive archive;
+        {
+            SystemConfiguration sourceConfiguration = CreateSerialSystemConfiguration();
+            sourceConfiguration.m_softBodyTriangleThickness = 0.05f;
+            Runtime sourceSystem(sourceConfiguration, nullptr);
+            ASSERT_TRUE(sourceSystem);
+
+            const WorldHandle sourceWorldHandle = sourceSystem.GetDefaultWorldHandle();
+            const StateSnapshotHandle sourceSnapshotHandle = sourceSystem.CaptureWorldState(sourceWorldHandle);
+            ASSERT_TRUE(sourceSnapshotHandle);
+            ASSERT_TRUE(sourceSystem.ExportWorldStateArchive(sourceWorldHandle, AZStd::array{sourceSnapshotHandle}, archive));
+            EXPECT_TRUE(sourceSystem.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+        }
+
+        SystemConfiguration targetConfiguration = CreateSerialSystemConfiguration();
+        targetConfiguration.m_softBodyTriangleThickness = 0.2f;
+        Runtime targetSystem(targetConfiguration, nullptr);
+        ASSERT_TRUE(targetSystem);
+
+        const WorldHandle targetWorldHandle = targetSystem.GetDefaultWorldHandle();
+        WorldStateDigest digestBeforeImport;
+        ASSERT_TRUE(targetSystem.GetWorldStateDigest(targetWorldHandle, digestBeforeImport));
+        WorldStatistics statisticsBeforeImport;
+        ASSERT_TRUE(targetSystem.GetWorldStatistics(targetWorldHandle, statisticsBeforeImport));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        EXPECT_FALSE(targetSystem.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
+        EXPECT_FALSE(importedHandles.front());
+
+        WorldStateDigest digestAfterImport;
+        ASSERT_TRUE(targetSystem.GetWorldStateDigest(targetWorldHandle, digestAfterImport));
+        EXPECT_EQ(digestAfterImport, digestBeforeImport);
+        WorldStatistics statisticsAfterImport;
+        ASSERT_TRUE(targetSystem.GetWorldStatistics(targetWorldHandle, statisticsAfterImport));
+        EXPECT_EQ(statisticsAfterImport.m_stateSnapshotCount, statisticsBeforeImport.m_stateSnapshotCount);
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRejectLiveSoftBodyMassPropertyMismatchesAtomically)
+    {
+        SoftBodyDefinitionConfiguration definitionConfiguration;
+        definitionConfiguration.m_vertices = {
+            {.m_position = AZ::Vector3(-0.5f, 0.0f, 0.0f)},
+            {.m_position = AZ::Vector3(0.5f, 0.0f, 0.0f)},
+            {.m_position = AZ::Vector3(0.0f, 1.0f, 0.0f)},
+        };
+        definitionConfiguration.m_faces = {
+            {.m_firstVertex = 0, .m_secondVertex = 1, .m_thirdVertex = 2},
+        };
+
+        StateSnapshotArchive archive;
+        {
+            Runtime sourceSystem(CreateSerialSystemConfiguration(), nullptr);
+            ASSERT_TRUE(sourceSystem);
+
+            const WorldHandle sourceWorldHandle = sourceSystem.GetDefaultWorldHandle();
+            const SoftBodyDefinitionHandle sourceDefinitionHandle =
+                sourceSystem.CreateSoftBodyDefinition(definitionConfiguration);
+            ASSERT_TRUE(sourceDefinitionHandle);
+            SoftBodyConfiguration sourceBodyConfiguration;
+            sourceBodyConfiguration.m_definitionHandle = sourceDefinitionHandle;
+            sourceBodyConfiguration.m_manualUpdate = true;
+            const BodyHandle sourceBodyHandle = sourceSystem.CreateSoftBody(sourceWorldHandle, sourceBodyConfiguration);
+            ASSERT_TRUE(sourceBodyHandle);
+            ASSERT_TRUE(sourceSystem.SetSoftBodyVertexInverseMass(sourceWorldHandle, sourceBodyHandle, 0, 0.25f));
+            ASSERT_TRUE(sourceSystem.RecalculateSoftBodyMassProperties(sourceWorldHandle, sourceBodyHandle, false));
+
+            const StateSnapshotHandle sourceSnapshotHandle = sourceSystem.CaptureWorldState(sourceWorldHandle);
+            ASSERT_TRUE(sourceSnapshotHandle);
+            ASSERT_TRUE(sourceSystem.ExportWorldStateArchive(sourceWorldHandle, AZStd::array{sourceSnapshotHandle}, archive));
+            EXPECT_TRUE(sourceSystem.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+            EXPECT_TRUE(sourceSystem.DestroyBody(sourceWorldHandle, sourceBodyHandle));
+            EXPECT_TRUE(sourceSystem.DestroySoftBodyDefinition(sourceDefinitionHandle));
+        }
+
+        Runtime targetSystem(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(targetSystem);
+
+        const WorldHandle targetWorldHandle = targetSystem.GetDefaultWorldHandle();
+        const SoftBodyDefinitionHandle targetDefinitionHandle =
+            targetSystem.CreateSoftBodyDefinition(definitionConfiguration);
+        ASSERT_TRUE(targetDefinitionHandle);
+        SoftBodyConfiguration targetBodyConfiguration;
+        targetBodyConfiguration.m_definitionHandle = targetDefinitionHandle;
+        targetBodyConfiguration.m_manualUpdate = true;
+        const BodyHandle targetBodyHandle = targetSystem.CreateSoftBody(targetWorldHandle, targetBodyConfiguration);
+        ASSERT_TRUE(targetBodyHandle);
+        ASSERT_TRUE(targetSystem.SetSoftBodyVertexInverseMass(targetWorldHandle, targetBodyHandle, 0, 0.5f));
+        ASSERT_TRUE(targetSystem.RecalculateSoftBodyMassProperties(targetWorldHandle, targetBodyHandle, false));
+
+        WorldStateDigest digestBeforeImport;
+        ASSERT_TRUE(targetSystem.GetWorldStateDigest(targetWorldHandle, digestBeforeImport));
+        WorldStatistics statisticsBeforeImport;
+        ASSERT_TRUE(targetSystem.GetWorldStatistics(targetWorldHandle, statisticsBeforeImport));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        EXPECT_FALSE(targetSystem.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
+        EXPECT_FALSE(importedHandles.front());
+
+        WorldStateDigest digestAfterImport;
+        ASSERT_TRUE(targetSystem.GetWorldStateDigest(targetWorldHandle, digestAfterImport));
+        EXPECT_EQ(digestAfterImport, digestBeforeImport);
+        WorldStatistics statisticsAfterImport;
+        ASSERT_TRUE(targetSystem.GetWorldStatistics(targetWorldHandle, statisticsAfterImport));
+        EXPECT_EQ(statisticsAfterImport.m_stateSnapshotCount, statisticsBeforeImport.m_stateSnapshotCount);
+
+        EXPECT_TRUE(targetSystem.DestroyBody(targetWorldHandle, targetBodyHandle));
+        EXPECT_TRUE(targetSystem.DestroySoftBodyDefinition(targetDefinitionHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRejectVehicleTopologyMismatchesAtomically)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle sourceWorldHandle = system.GetDefaultWorldHandle();
+        WorldConfiguration targetWorldConfiguration;
+        targetWorldConfiguration.m_workerCount = 1;
+        const WorldHandle targetWorldHandle = system.CreateWorld(targetWorldConfiguration);
+        ASSERT_TRUE(targetWorldHandle);
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_density = 250.0f;
+        shapeConfiguration.m_geometry = BoxShapeConfiguration{
+            .m_dimensions = AZ::Vector3(1.8f, 4.0f, 0.6f),
+        };
+        const ShapeHandle sourceShapeHandle = system.CreateShape(sourceWorldHandle, shapeConfiguration);
+        const ShapeHandle targetShapeHandle = system.CreateShape(targetWorldHandle, shapeConfiguration);
+        ASSERT_TRUE(sourceShapeHandle);
+        ASSERT_TRUE(targetShapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = sourceShapeHandle;
+        const BodyHandle sourceBodyHandle = system.CreateBody(sourceWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(sourceBodyHandle);
+        bodyConfiguration.m_shapeHandle = targetShapeHandle;
+        const BodyHandle targetBodyHandle = system.CreateBody(targetWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(targetBodyHandle);
+
+        WheeledVehicleConfiguration sourceVehicleConfiguration;
+        sourceVehicleConfiguration.m_bodyHandle = sourceBodyHandle;
+        sourceVehicleConfiguration.m_wheels = {
+            {.m_position = AZ::Vector3(-0.8f, 1.4f, -0.25f)},
+            {.m_position = AZ::Vector3(0.8f, 1.4f, -0.25f)},
+        };
+        sourceVehicleConfiguration.m_differentials = {
+            {.m_leftWheel = 0, .m_rightWheel = 1},
+        };
+        const VehicleHandle sourceVehicleHandle = system.CreateWheeledVehicle(
+            sourceWorldHandle,
+            sourceVehicleConfiguration);
+        ASSERT_TRUE(sourceVehicleHandle);
+
+        WheeledVehicleConfiguration targetVehicleConfiguration = sourceVehicleConfiguration;
+        targetVehicleConfiguration.m_bodyHandle = targetBodyHandle;
+        targetVehicleConfiguration.m_wheels.push_back(
+            {.m_position = AZ::Vector3(0.0f, -1.4f, -0.25f)});
+        const VehicleHandle targetVehicleHandle = system.CreateWheeledVehicle(
+            targetWorldHandle,
+            targetVehicleConfiguration);
+        ASSERT_TRUE(targetVehicleHandle);
+
+        const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(sourceWorldHandle);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            sourceWorldHandle,
+            AZStd::array{sourceSnapshotHandle},
+            archive));
+
+        WorldStateDigest digestBeforeImport;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, digestBeforeImport));
+        WorldStatistics statisticsBeforeImport;
+        ASSERT_TRUE(system.GetWorldStatistics(targetWorldHandle, statisticsBeforeImport));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        EXPECT_FALSE(system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
+        EXPECT_FALSE(importedHandles.front());
+
+        WorldStateDigest digestAfterImport;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, digestAfterImport));
+        EXPECT_EQ(digestAfterImport, digestBeforeImport);
+        WorldStatistics statisticsAfterImport;
+        ASSERT_TRUE(system.GetWorldStatistics(targetWorldHandle, statisticsAfterImport));
+        EXPECT_EQ(
+            statisticsAfterImport.m_stateSnapshotCount,
+            statisticsBeforeImport.m_stateSnapshotCount);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+        EXPECT_TRUE(system.DestroyVehicle(targetWorldHandle, targetVehicleHandle));
+        EXPECT_TRUE(system.DestroyVehicle(sourceWorldHandle, sourceVehicleHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(sourceWorldHandle, sourceShapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotsRestoreWheelContactSubShapeIdentity)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        ShapeConfiguration floorChildConfiguration;
+        floorChildConfiguration.m_geometry = BoxShapeConfiguration{
+            .m_dimensions = AZ::Vector3(2.0f, 2.0f, 0.5f),
+        };
+        const ShapeHandle floorChildHandle = system.CreateShape(worldHandle, floorChildConfiguration);
+        ASSERT_TRUE(floorChildHandle);
+
+        CompoundShapeConfiguration floorCompoundConfiguration;
+        floorCompoundConfiguration.m_children = {
+            {
+                .m_position = -AZ::Vector3::CreateAxisX(3.0f),
+                .m_shapeHandle = floorChildHandle,
+            },
+            {
+                .m_position = AZ::Vector3::CreateAxisX(3.0f),
+                .m_shapeHandle = floorChildHandle,
+            },
+        };
+        const ShapeHandle floorCompoundHandle = system.CreateShape(
+            worldHandle,
+            floorCompoundConfiguration);
+        ASSERT_TRUE(floorCompoundHandle);
+
+        BodyConfiguration floorBodyConfiguration;
+        floorBodyConfiguration.m_shapeHandle = floorCompoundHandle;
+        floorBodyConfiguration.m_transform.m_position.m_z = -0.25;
+        floorBodyConfiguration.m_motionType = MotionType::Static;
+        floorBodyConfiguration.m_objectLayer = DefaultLayers::NonMoving;
+        const BodyHandle floorBodyHandle = system.CreateBody(worldHandle, floorBodyConfiguration);
+        ASSERT_TRUE(floorBodyHandle);
+
+        ShapeConfiguration chassisShapeConfiguration;
+        chassisShapeConfiguration.m_density = 250.0f;
+        chassisShapeConfiguration.m_geometry = BoxShapeConfiguration{
+            .m_dimensions = AZ::Vector3(0.75f, 1.5f, 0.5f),
+        };
+        const ShapeHandle chassisShapeHandle = system.CreateShape(worldHandle, chassisShapeConfiguration);
+        ASSERT_TRUE(chassisShapeHandle);
+
+        BodyConfiguration chassisBodyConfiguration;
+        chassisBodyConfiguration.m_shapeHandle = chassisShapeHandle;
+        chassisBodyConfiguration.m_transform.m_position = {.m_x = -3.0, .m_z = 0.8};
+        const BodyHandle chassisBodyHandle = system.CreateBody(worldHandle, chassisBodyConfiguration);
+        ASSERT_TRUE(chassisBodyHandle);
+
+        WheeledVehicleConfiguration vehicleConfiguration;
+        vehicleConfiguration.m_bodyHandle = chassisBodyHandle;
+        vehicleConfiguration.m_wheels = {
+            {.m_position = AZ::Vector3(0.0f, 0.5f, -0.25f)},
+            {.m_position = AZ::Vector3(0.0f, -0.5f, -0.25f)},
+        };
+        vehicleConfiguration.m_differentials = {
+            {.m_leftWheel = 0, .m_rightWheel = 1},
+        };
+        const VehicleHandle vehicleHandle = system.CreateWheeledVehicle(
+            worldHandle,
+            vehicleConfiguration);
+        ASSERT_TRUE(vehicleHandle);
+
+        for (AZ::u32 step = 0; step < 30; ++step)
+        {
+            ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        }
+        AZStd::array<WheelState, 2> firstContactWheels;
+        WheeledVehicleState vehicleState;
+        ASSERT_TRUE(system.GetWheeledVehicleState(
+            worldHandle,
+            vehicleHandle,
+            vehicleState,
+            firstContactWheels).IsComplete());
+        ASSERT_TRUE(firstContactWheels[0].m_hasContact);
+        ASSERT_EQ(firstContactWheels[0].m_contactBodyHandle, floorBodyHandle);
+        const SubShapeId firstContactSubShapeId = firstContactWheels[0].m_contactSubShapeId;
+
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(snapshotHandle);
+
+        ASSERT_TRUE(system.SetBodyPosition(
+            worldHandle,
+            chassisBodyHandle,
+            {.m_x = 3.0, .m_z = 0.8},
+            true));
+        ASSERT_TRUE(system.SetBodyLinearVelocity(
+            worldHandle,
+            chassisBodyHandle,
+            AZ::Vector3::CreateZero()));
+        for (AZ::u32 step = 0; step < 30; ++step)
+        {
+            ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        }
+        AZStd::array<WheelState, 2> secondContactWheels;
+        ASSERT_TRUE(system.GetWheeledVehicleState(
+            worldHandle,
+            vehicleHandle,
+            vehicleState,
+            secondContactWheels).IsComplete());
+        ASSERT_TRUE(secondContactWheels[0].m_hasContact);
+        ASSERT_EQ(secondContactWheels[0].m_contactBodyHandle, floorBodyHandle);
+        ASSERT_NE(secondContactWheels[0].m_contactSubShapeId, firstContactSubShapeId);
+
+        ASSERT_TRUE(system.RestoreWorldState(worldHandle, snapshotHandle));
+        AZStd::array<WheelState, 2> restoredContactWheels;
+        ASSERT_TRUE(system.GetWheeledVehicleState(
+            worldHandle,
+            vehicleHandle,
+            vehicleState,
+            restoredContactWheels).IsComplete());
+        EXPECT_TRUE(restoredContactWheels[0].m_hasContact);
+        EXPECT_EQ(restoredContactWheels[0].m_contactBodyHandle, floorBodyHandle);
+        EXPECT_EQ(restoredContactWheels[0].m_contactSubShapeId, firstContactSubShapeId);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
+        EXPECT_TRUE(system.DestroyVehicle(worldHandle, vehicleHandle));
+        EXPECT_TRUE(system.DestroyBody(worldHandle, chassisBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, chassisShapeHandle));
+        EXPECT_TRUE(system.DestroyBody(worldHandle, floorBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, floorCompoundHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, floorChildHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRestoreVehicleWorldUpAfterGravityHistory)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle sourceWorldHandle = system.GetDefaultWorldHandle();
+        WorldConfiguration targetWorldConfiguration;
+        targetWorldConfiguration.m_gravity = -AZ::Vector3::CreateAxisY(9.81f);
+        targetWorldConfiguration.m_workerCount = 1;
+        const WorldHandle targetWorldHandle = system.CreateWorld(targetWorldConfiguration);
+        ASSERT_TRUE(targetWorldHandle);
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_density = 250.0f;
+        shapeConfiguration.m_geometry = BoxShapeConfiguration{
+            .m_dimensions = AZ::Vector3(1.0f, 2.0f, 0.5f),
+        };
+        const ShapeHandle sourceShapeHandle = system.CreateShape(sourceWorldHandle, shapeConfiguration);
+        const ShapeHandle targetShapeHandle = system.CreateShape(targetWorldHandle, shapeConfiguration);
+        ASSERT_TRUE(sourceShapeHandle);
+        ASSERT_TRUE(targetShapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = sourceShapeHandle;
+        const BodyHandle sourceBodyHandle = system.CreateBody(sourceWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(sourceBodyHandle);
+        bodyConfiguration.m_shapeHandle = targetShapeHandle;
+        const BodyHandle targetBodyHandle = system.CreateBody(targetWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(targetBodyHandle);
+
+        WheeledVehicleConfiguration sourceVehicleConfiguration;
+        sourceVehicleConfiguration.m_bodyHandle = sourceBodyHandle;
+        sourceVehicleConfiguration.m_maximumPitchRollAngle = 0.1f;
+        sourceVehicleConfiguration.m_wheels = {
+            {.m_position = AZ::Vector3(0.0f, 0.75f, -0.25f)},
+            {.m_position = AZ::Vector3(0.0f, -0.75f, -0.25f)},
+        };
+        sourceVehicleConfiguration.m_differentials = {
+            {.m_leftWheel = 0, .m_rightWheel = 1},
+        };
+        const VehicleHandle sourceVehicleHandle = system.CreateWheeledVehicle(
+            sourceWorldHandle,
+            sourceVehicleConfiguration);
+        ASSERT_TRUE(sourceVehicleHandle);
+
+        WheeledVehicleConfiguration targetVehicleConfiguration = sourceVehicleConfiguration;
+        targetVehicleConfiguration.m_bodyHandle = targetBodyHandle;
+        const VehicleHandle targetVehicleHandle = system.CreateWheeledVehicle(
+            targetWorldHandle,
+            targetVehicleConfiguration);
+        ASSERT_TRUE(targetVehicleHandle);
+
+        ASSERT_TRUE(system.StepWorld(sourceWorldHandle, 1.0f / 60.0f));
+        ASSERT_TRUE(system.StepWorld(targetWorldHandle, 1.0f / 60.0f));
+        ASSERT_TRUE(system.SetWorldGravity(sourceWorldHandle, AZ::Vector3::CreateZero()));
+        ASSERT_TRUE(system.SetWorldGravity(targetWorldHandle, AZ::Vector3::CreateZero()));
+
+        const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(sourceWorldHandle);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            sourceWorldHandle,
+            AZStd::array{sourceSnapshotHandle},
+            archive));
+
+        ASSERT_TRUE(system.StepWorld(sourceWorldHandle, 1.0f / 60.0f));
+        WorldStateDigest sourceDigest;
+        ASSERT_TRUE(system.GetWorldStateDigest(sourceWorldHandle, sourceDigest));
+        BodyState sourceBodyState;
+        ASSERT_TRUE(system.GetBodyState(sourceWorldHandle, sourceBodyHandle, sourceBodyState));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        ASSERT_TRUE(system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
+        ASSERT_TRUE(importedHandles.front());
+        ASSERT_TRUE(system.RestoreWorldState(targetWorldHandle, importedHandles.front()));
+        ASSERT_TRUE(system.StepWorld(targetWorldHandle, 1.0f / 60.0f));
+
+        WorldStateDigest targetDigest;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, targetDigest));
+        EXPECT_EQ(targetDigest, sourceDigest);
+        BodyState targetBodyState;
+        ASSERT_TRUE(system.GetBodyState(targetWorldHandle, targetBodyHandle, targetBodyState));
+        EXPECT_TRUE(targetBodyState.m_transform.m_rotation.IsClose(
+            sourceBodyState.m_transform.m_rotation));
+        EXPECT_TRUE(targetBodyState.m_angularVelocity.IsClose(sourceBodyState.m_angularVelocity));
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(targetWorldHandle, importedHandles.front()));
+        EXPECT_TRUE(system.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+        EXPECT_TRUE(system.DestroyVehicle(targetWorldHandle, targetVehicleHandle));
+        EXPECT_TRUE(system.DestroyVehicle(sourceWorldHandle, sourceVehicleHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(sourceWorldHandle, sourceShapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRestoreMotorcycleLeanIntegral)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle sourceWorldHandle = system.GetDefaultWorldHandle();
+        WorldConfiguration targetWorldConfiguration;
+        targetWorldConfiguration.m_workerCount = 1;
+        const WorldHandle targetWorldHandle = system.CreateWorld(targetWorldConfiguration);
+        ASSERT_TRUE(targetWorldHandle);
+
+        struct MotorcycleScene final
+        {
+            ShapeHandle m_floorShapeHandle;
+            BodyHandle m_floorBodyHandle;
+            ShapeHandle m_chassisShapeHandle;
+            BodyHandle m_chassisBodyHandle;
+            VehicleHandle m_vehicleHandle;
+        };
+        const auto createScene = [&system](const WorldHandle worldHandle)
+        {
+            MotorcycleScene scene;
+            ShapeConfiguration floorShapeConfiguration;
+            floorShapeConfiguration.m_geometry = BoxShapeConfiguration{
+                .m_dimensions = AZ::Vector3(20.0f, 20.0f, 1.0f),
+            };
+            scene.m_floorShapeHandle = system.CreateShape(worldHandle, floorShapeConfiguration);
+            BodyConfiguration floorBodyConfiguration;
+            floorBodyConfiguration.m_shapeHandle = scene.m_floorShapeHandle;
+            floorBodyConfiguration.m_transform.m_position.m_z = -0.5;
+            floorBodyConfiguration.m_motionType = MotionType::Static;
+            floorBodyConfiguration.m_objectLayer = DefaultLayers::NonMoving;
+            scene.m_floorBodyHandle = system.CreateBody(worldHandle, floorBodyConfiguration);
+
+            ShapeConfiguration chassisShapeConfiguration;
+            chassisShapeConfiguration.m_density = 250.0f;
+            chassisShapeConfiguration.m_geometry = BoxShapeConfiguration{
+                .m_dimensions = AZ::Vector3(0.5f, 1.5f, 0.5f),
+            };
+            scene.m_chassisShapeHandle = system.CreateShape(worldHandle, chassisShapeConfiguration);
+            BodyConfiguration chassisBodyConfiguration;
+            chassisBodyConfiguration.m_shapeHandle = scene.m_chassisShapeHandle;
+            chassisBodyConfiguration.m_transform.m_position.m_z = 0.8;
+            scene.m_chassisBodyHandle = system.CreateBody(worldHandle, chassisBodyConfiguration);
+
+            MotorcycleConfiguration motorcycleConfiguration;
+            motorcycleConfiguration.m_wheeled.m_bodyHandle = scene.m_chassisBodyHandle;
+            motorcycleConfiguration.m_wheeled.m_wheels = {
+                {.m_position = AZ::Vector3(0.0f, 0.55f, -0.25f)},
+                {.m_position = AZ::Vector3(0.0f, -0.55f, -0.25f), .m_maximumSteerAngle = 0.0f},
+            };
+            motorcycleConfiguration.m_wheeled.m_differentials = {
+                {.m_leftWheel = 0, .m_rightWheel = 1},
+            };
+            motorcycleConfiguration.m_controller.m_springConstant = 0.0f;
+            motorcycleConfiguration.m_controller.m_springDamping = 0.0f;
+            motorcycleConfiguration.m_controller.m_springIntegrationCoefficient = 2'000.0f;
+            motorcycleConfiguration.m_controller.m_springIntegrationCoefficientDecay = 0.0f;
+            scene.m_vehicleHandle = system.CreateMotorcycle(worldHandle, motorcycleConfiguration);
+            return scene;
+        };
+
+        const MotorcycleScene sourceScene = createScene(sourceWorldHandle);
+        const MotorcycleScene targetScene = createScene(targetWorldHandle);
+        ASSERT_TRUE(sourceScene.m_floorShapeHandle);
+        ASSERT_TRUE(sourceScene.m_floorBodyHandle);
+        ASSERT_TRUE(sourceScene.m_chassisShapeHandle);
+        ASSERT_TRUE(sourceScene.m_chassisBodyHandle);
+        ASSERT_TRUE(sourceScene.m_vehicleHandle);
+        ASSERT_TRUE(targetScene.m_floorShapeHandle);
+        ASSERT_TRUE(targetScene.m_floorBodyHandle);
+        ASSERT_TRUE(targetScene.m_chassisShapeHandle);
+        ASSERT_TRUE(targetScene.m_chassisBodyHandle);
+        ASSERT_TRUE(targetScene.m_vehicleHandle);
+
+        for (AZ::u32 step = 0; step < 120; ++step)
+        {
+            ASSERT_TRUE(system.StepWorld(sourceWorldHandle, 1.0f / 60.0f));
+            ASSERT_TRUE(system.StepWorld(targetWorldHandle, 1.0f / 60.0f));
+        }
+
+        ASSERT_TRUE(system.SetBodyRotation(
+            sourceWorldHandle,
+            sourceScene.m_chassisBodyHandle,
+            AZ::Quaternion::CreateRotationY(0.15f),
+            true));
+        ASSERT_TRUE(system.SetBodyRotation(
+            targetWorldHandle,
+            targetScene.m_chassisBodyHandle,
+            AZ::Quaternion::CreateRotationY(-0.15f),
+            true));
+        ASSERT_TRUE(system.SetBodyAngularVelocity(
+            sourceWorldHandle,
+            sourceScene.m_chassisBodyHandle,
+            AZ::Vector3::CreateZero()));
+        ASSERT_TRUE(system.SetBodyAngularVelocity(
+            targetWorldHandle,
+            targetScene.m_chassisBodyHandle,
+            AZ::Vector3::CreateZero()));
+        ASSERT_TRUE(system.StepWorld(sourceWorldHandle, 1.0f / 60.0f));
+        ASSERT_TRUE(system.StepWorld(targetWorldHandle, 1.0f / 60.0f));
+
+        AZStd::array<WheelState, 2> sourceWheels;
+        AZStd::array<WheelState, 2> targetWheels;
+        MotorcycleState motorcycleState;
+        ASSERT_TRUE(system.GetMotorcycleState(
+            sourceWorldHandle,
+            sourceScene.m_vehicleHandle,
+            motorcycleState,
+            sourceWheels).IsComplete());
+        ASSERT_TRUE(system.GetMotorcycleState(
+            targetWorldHandle,
+            targetScene.m_vehicleHandle,
+            motorcycleState,
+            targetWheels).IsComplete());
+        ASSERT_TRUE(AZStd::all_of(
+            sourceWheels.begin(),
+            sourceWheels.end(),
+            [](const WheelState& wheel)
+            {
+                return wheel.m_hasContact;
+            }));
+        ASSERT_TRUE(AZStd::all_of(
+            targetWheels.begin(),
+            targetWheels.end(),
+            [](const WheelState& wheel)
+            {
+                return wheel.m_hasContact;
+            }));
+
+        const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(sourceWorldHandle);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            sourceWorldHandle,
+            AZStd::array{sourceSnapshotHandle},
+            archive));
+
+        for (AZ::u32 step = 0; step < 4; ++step)
+        {
+            ASSERT_TRUE(system.StepWorld(sourceWorldHandle, 1.0f / 60.0f));
+        }
+        WorldStateDigest sourceDigest;
+        ASSERT_TRUE(system.GetWorldStateDigest(sourceWorldHandle, sourceDigest));
+        BodyState sourceBodyState;
+        ASSERT_TRUE(system.GetBodyState(
+            sourceWorldHandle,
+            sourceScene.m_chassisBodyHandle,
+            sourceBodyState));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        ASSERT_TRUE(system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
+        ASSERT_TRUE(importedHandles.front());
+        ASSERT_TRUE(system.RestoreWorldState(targetWorldHandle, importedHandles.front()));
+        for (AZ::u32 step = 0; step < 4; ++step)
+        {
+            ASSERT_TRUE(system.StepWorld(targetWorldHandle, 1.0f / 60.0f));
+        }
+
+        WorldStateDigest targetDigest;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, targetDigest));
+        EXPECT_EQ(targetDigest, sourceDigest);
+        BodyState targetBodyState;
+        ASSERT_TRUE(system.GetBodyState(
+            targetWorldHandle,
+            targetScene.m_chassisBodyHandle,
+            targetBodyState));
+        EXPECT_TRUE(targetBodyState.m_transform.m_rotation.IsClose(
+            sourceBodyState.m_transform.m_rotation));
+        EXPECT_TRUE(targetBodyState.m_angularVelocity.IsClose(sourceBodyState.m_angularVelocity));
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(targetWorldHandle, importedHandles.front()));
+        EXPECT_TRUE(system.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+        EXPECT_TRUE(system.DestroyVehicle(targetWorldHandle, targetScene.m_vehicleHandle));
+        EXPECT_TRUE(system.DestroyVehicle(sourceWorldHandle, sourceScene.m_vehicleHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetScene.m_chassisBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceScene.m_chassisBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetScene.m_chassisShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(sourceWorldHandle, sourceScene.m_chassisShapeHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetScene.m_floorBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceScene.m_floorBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetScene.m_floorShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(sourceWorldHandle, sourceScene.m_floorShapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRejectVehicleConfigurationMismatchesAtomically)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle sourceWorldHandle = system.GetDefaultWorldHandle();
+        const WorldHandle targetWorldHandle = system.CreateWorld(WorldConfiguration{});
+        ASSERT_TRUE(targetWorldHandle);
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_density = 250.0f;
+        shapeConfiguration.m_geometry = BoxShapeConfiguration{
+            .m_dimensions = AZ::Vector3(1.0f, 2.0f, 0.5f),
+        };
+        const ShapeHandle sourceShapeHandle = system.CreateShape(sourceWorldHandle, shapeConfiguration);
+        const ShapeHandle targetShapeHandle = system.CreateShape(targetWorldHandle, shapeConfiguration);
+        ASSERT_TRUE(sourceShapeHandle);
+        ASSERT_TRUE(targetShapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = sourceShapeHandle;
+        const BodyHandle sourceBodyHandle = system.CreateBody(sourceWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(sourceBodyHandle);
+        bodyConfiguration.m_shapeHandle = targetShapeHandle;
+        const BodyHandle targetBodyHandle = system.CreateBody(targetWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(targetBodyHandle);
+
+        MotorcycleConfiguration sourceConfiguration;
+        sourceConfiguration.m_wheeled.m_bodyHandle = sourceBodyHandle;
+        sourceConfiguration.m_wheeled.m_wheels = {
+            {.m_position = AZ::Vector3(0.0f, 0.75f, -0.25f)},
+            {.m_position = AZ::Vector3(0.0f, -0.75f, -0.25f), .m_maximumSteerAngle = 0.0f},
+        };
+        sourceConfiguration.m_wheeled.m_differentials = {
+            {.m_leftWheel = 0, .m_rightWheel = 1},
+        };
+        const VehicleHandle sourceVehicleHandle = system.CreateMotorcycle(
+            sourceWorldHandle,
+            sourceConfiguration);
+        ASSERT_TRUE(sourceVehicleHandle);
+
+        MotorcycleConfiguration targetConfiguration = sourceConfiguration;
+        targetConfiguration.m_wheeled.m_bodyHandle = targetBodyHandle;
+        const VehicleHandle targetVehicleHandle = system.CreateMotorcycle(
+            targetWorldHandle,
+            targetConfiguration);
+        ASSERT_TRUE(targetVehicleHandle);
+
+        const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(sourceWorldHandle);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            sourceWorldHandle,
+            AZStd::array{sourceSnapshotHandle},
+            archive));
+
+        const auto expectRejectedWithoutMutation = [&]()
+        {
+            WorldStateDigest digestBeforeImport;
+            if (!system.GetWorldStateDigest(targetWorldHandle, digestBeforeImport))
+            {
+                return false;
+            }
+            WorldStatistics statisticsBeforeImport;
+            if (!system.GetWorldStatistics(targetWorldHandle, statisticsBeforeImport))
+            {
+                return false;
+            }
+
+            AZStd::array<StateSnapshotHandle, 1> importedHandles;
+            if (system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles)
+                || importedHandles.front())
+            {
+                return false;
+            }
+
+            WorldStateDigest digestAfterImport;
+            if (!system.GetWorldStateDigest(targetWorldHandle, digestAfterImport))
+            {
+                return false;
+            }
+            WorldStatistics statisticsAfterImport;
+            return system.GetWorldStatistics(targetWorldHandle, statisticsAfterImport)
+                && digestAfterImport == digestBeforeImport
+                && statisticsAfterImport.m_stateSnapshotCount == statisticsBeforeImport.m_stateSnapshotCount;
+        };
+
+        VehicleEngineConfiguration engineConfiguration;
+        ASSERT_TRUE(system.GetVehicleEngineConfiguration(
+            targetWorldHandle,
+            targetVehicleHandle,
+            engineConfiguration));
+        const VehicleEngineConfiguration baselineEngineConfiguration = engineConfiguration;
+
+        engineConfiguration.m_inertia += 0.25f;
+        ASSERT_TRUE(system.UpdateVehicleEngineConfiguration(
+            targetWorldHandle,
+            targetVehicleHandle,
+            engineConfiguration));
+        ASSERT_TRUE(expectRejectedWithoutMutation());
+        ASSERT_TRUE(system.UpdateVehicleEngineConfiguration(
+            targetWorldHandle,
+            targetVehicleHandle,
+            baselineEngineConfiguration));
+
+        engineConfiguration = baselineEngineConfiguration;
+        engineConfiguration.m_angularDamping += 0.1f;
+        ASSERT_TRUE(system.UpdateVehicleEngineConfiguration(
+            targetWorldHandle,
+            targetVehicleHandle,
+            engineConfiguration));
+        ASSERT_TRUE(expectRejectedWithoutMutation());
+        ASSERT_TRUE(system.UpdateVehicleEngineConfiguration(
+            targetWorldHandle,
+            targetVehicleHandle,
+            baselineEngineConfiguration));
+
+        MotorcycleControllerUpdateConfiguration controllerConfiguration;
+        controllerConfiguration.m_enableLeanController = false;
+        ASSERT_TRUE(system.UpdateMotorcycleController(
+            targetWorldHandle,
+            targetVehicleHandle,
+            controllerConfiguration));
+        ASSERT_TRUE(expectRejectedWithoutMutation());
+
+        controllerConfiguration = {};
+        ASSERT_TRUE(system.UpdateMotorcycleController(
+            targetWorldHandle,
+            targetVehicleHandle,
+            controllerConfiguration));
+        controllerConfiguration.m_enableLeanSteeringLimit = false;
+        ASSERT_TRUE(system.UpdateMotorcycleController(
+            targetWorldHandle,
+            targetVehicleHandle,
+            controllerConfiguration));
+        ASSERT_TRUE(expectRejectedWithoutMutation());
+
+        controllerConfiguration = {};
+        ASSERT_TRUE(system.UpdateMotorcycleController(
+            targetWorldHandle,
+            targetVehicleHandle,
+            controllerConfiguration));
+        controllerConfiguration.m_springDamping += 100.0f;
+        ASSERT_TRUE(system.UpdateMotorcycleController(
+            targetWorldHandle,
+            targetVehicleHandle,
+            controllerConfiguration));
+        ASSERT_TRUE(expectRejectedWithoutMutation());
+
+        controllerConfiguration = {};
+        ASSERT_TRUE(system.UpdateMotorcycleController(
+            targetWorldHandle,
+            targetVehicleHandle,
+            controllerConfiguration));
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        ASSERT_TRUE(system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
+        ASSERT_TRUE(importedHandles.front());
+        EXPECT_TRUE(system.DestroyStateSnapshot(targetWorldHandle, importedHandles.front()));
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+        EXPECT_TRUE(system.DestroyVehicle(targetWorldHandle, targetVehicleHandle));
+        EXPECT_TRUE(system.DestroyVehicle(sourceWorldHandle, sourceVehicleHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(sourceWorldHandle, sourceShapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRejectCustomConstraintSchemaMismatchesAtomically)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        TestCustomConstraintProvider provider;
+        ScopedExtensionRegistration registration(system, &provider);
+        ASSERT_TRUE(registration.GetHandle());
+
+        const WorldHandle sourceWorldHandle = system.GetDefaultWorldHandle();
+        const WorldHandle targetWorldHandle = system.CreateWorld(WorldConfiguration{});
+        ASSERT_TRUE(targetWorldHandle);
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle sourceShapeHandle = system.CreateShape(sourceWorldHandle, shapeConfiguration);
+        const ShapeHandle targetShapeHandle = system.CreateShape(targetWorldHandle, shapeConfiguration);
+        ASSERT_TRUE(sourceShapeHandle);
+        ASSERT_TRUE(targetShapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = sourceShapeHandle;
+        const BodyHandle sourceFirstBodyHandle = system.CreateBody(sourceWorldHandle, bodyConfiguration);
+        bodyConfiguration.m_transform.m_position.m_z = 2.0;
+        const BodyHandle sourceSecondBodyHandle = system.CreateBody(sourceWorldHandle, bodyConfiguration);
+        bodyConfiguration.m_shapeHandle = targetShapeHandle;
+        bodyConfiguration.m_transform = {};
+        const BodyHandle targetFirstBodyHandle = system.CreateBody(targetWorldHandle, bodyConfiguration);
+        bodyConfiguration.m_transform.m_position.m_z = 2.0;
+        const BodyHandle targetSecondBodyHandle = system.CreateBody(targetWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(sourceFirstBodyHandle);
+        ASSERT_TRUE(sourceSecondBodyHandle);
+        ASSERT_TRUE(targetFirstBodyHandle);
+        ASSERT_TRUE(targetSecondBodyHandle);
+
+        ConstraintConfiguration constraintConfiguration;
+        constraintConfiguration.m_firstBodyHandle = sourceFirstBodyHandle;
+        constraintConfiguration.m_secondBodyHandle = sourceSecondBodyHandle;
+        constraintConfiguration.m_geometry = CustomConstraintConfiguration{
+            .m_data = {1},
+            .m_providerId = provider.GetId(),
+        };
+        const ConstraintHandle sourceConstraintHandle = system.CreateConstraint(
+            sourceWorldHandle,
+            constraintConfiguration);
+        ASSERT_TRUE(sourceConstraintHandle);
+        constraintConfiguration.m_firstBodyHandle = targetFirstBodyHandle;
+        constraintConfiguration.m_secondBodyHandle = targetSecondBodyHandle;
+        AZStd::get<CustomConstraintConfiguration>(constraintConfiguration.m_geometry).m_data = {2};
+        const ConstraintHandle targetConstraintHandle = system.CreateConstraint(
+            targetWorldHandle,
+            constraintConfiguration);
+        ASSERT_TRUE(targetConstraintHandle);
+
+        const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(sourceWorldHandle);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            sourceWorldHandle,
+            AZStd::array{sourceSnapshotHandle},
+            archive));
+        WorldStateDigest digestBeforeImport;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, digestBeforeImport));
+        WorldStatistics statisticsBeforeImport;
+        ASSERT_TRUE(system.GetWorldStatistics(targetWorldHandle, statisticsBeforeImport));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        EXPECT_FALSE(system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
+        EXPECT_FALSE(importedHandles.front());
+        WorldStateDigest digestAfterImport;
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, digestAfterImport));
+        EXPECT_EQ(digestAfterImport, digestBeforeImport);
+        WorldStatistics statisticsAfterImport;
+        ASSERT_TRUE(system.GetWorldStatistics(targetWorldHandle, statisticsAfterImport));
+        EXPECT_EQ(
+            statisticsAfterImport.m_stateSnapshotCount,
+            statisticsBeforeImport.m_stateSnapshotCount);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(sourceWorldHandle, sourceSnapshotHandle));
+        EXPECT_TRUE(system.DestroyConstraint(targetWorldHandle, targetConstraintHandle));
+        EXPECT_TRUE(system.DestroyConstraint(sourceWorldHandle, sourceConstraintHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetSecondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetFirstBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceSecondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(sourceWorldHandle, sourceFirstBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(sourceWorldHandle, sourceShapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRejectHairDefinitionMismatches)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        HairDefinitionConfiguration definitionConfiguration;
+        definitionConfiguration.m_vertices = {
+            {.m_position = AZ::Vector3::CreateAxisZ(), .m_inverseMass = 0.0f},
+            {.m_position = AZ::Vector3::CreateZero()},
+            {.m_position = AZ::Vector3(1.0f, 0.0f, 2.0f), .m_inverseMass = 0.0f},
+            {.m_position = AZ::Vector3(1.0f, 0.0f, 1.0f)},
+            {.m_position = AZ::Vector3::CreateAxisX()},
+        };
+        definitionConfiguration.m_strands = {
+            {.m_beginVertex = 0, .m_endVertex = 2, .m_materialIndex = 0},
+            {.m_beginVertex = 2, .m_endVertex = 5, .m_materialIndex = 0},
+        };
+        definitionConfiguration.m_materials.resize(1);
+        const HairDefinitionHandle sourceDefinitionHandle = system.CreateHairDefinition(
+            definitionConfiguration);
+        ASSERT_TRUE(sourceDefinitionHandle);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        HairConfiguration hairConfiguration;
+        hairConfiguration.m_definitionHandle = sourceDefinitionHandle;
+        hairConfiguration.m_objectLayer = DefaultLayers::Moving;
+        const HairHandle sourceHairHandle = system.CreateHair(worldHandle, hairConfiguration);
+        ASSERT_TRUE(sourceHairHandle);
+
+        const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            worldHandle,
+            AZStd::array{sourceSnapshotHandle},
+            archive));
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, sourceSnapshotHandle));
+        EXPECT_TRUE(system.DestroyHair(worldHandle, sourceHairHandle));
+        EXPECT_TRUE(system.DestroyHairDefinition(sourceDefinitionHandle));
+
+        HairDefinitionConfiguration mismatchedDefinitionConfiguration = definitionConfiguration;
+        mismatchedDefinitionConfiguration.m_vertices[1].m_position.SetX(0.25f);
+        const HairDefinitionHandle targetDefinitionHandle = system.CreateHairDefinition(
+            mismatchedDefinitionConfiguration);
+        ASSERT_TRUE(targetDefinitionHandle);
+        hairConfiguration.m_definitionHandle = targetDefinitionHandle;
+        const HairHandle targetHairHandle = system.CreateHair(worldHandle, hairConfiguration);
+        ASSERT_TRUE(targetHairHandle);
+        WorldStateDigest digestBeforeImport;
+        ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, digestBeforeImport));
+        WorldStatistics statisticsBeforeImport;
+        ASSERT_TRUE(system.GetWorldStatistics(worldHandle, statisticsBeforeImport));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        EXPECT_FALSE(system.ImportWorldStateArchive(worldHandle, archive, importedHandles));
+        EXPECT_FALSE(importedHandles.front());
+        WorldStateDigest digestAfterImport;
+        ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, digestAfterImport));
+        EXPECT_EQ(digestAfterImport, digestBeforeImport);
+        WorldStatistics statisticsAfterImport;
+        ASSERT_TRUE(system.GetWorldStatistics(worldHandle, statisticsAfterImport));
+        EXPECT_EQ(
+            statisticsAfterImport.m_stateSnapshotCount,
+            statisticsBeforeImport.m_stateSnapshotCount);
+
+        EXPECT_TRUE(system.DestroyHair(worldHandle, targetHairHandle));
+        EXPECT_TRUE(system.DestroyHairDefinition(targetDefinitionHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRejectMalformedHairStateAtomically)
+    {
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_origin = {
+            .m_x = 1'000.0,
+            .m_y = -2'000.0,
+            .m_z = 3'000.0,
+        };
+        Runtime system(systemConfiguration, nullptr);
+        ASSERT_TRUE(system);
+
+        HairDefinitionConfiguration definitionConfiguration;
+        definitionConfiguration.m_vertices = {
+            {.m_position = AZ::Vector3(0.0f, 0.0f, 2.0f), .m_inverseMass = 0.0f},
+            {.m_position = AZ::Vector3(0.0f, 0.0f, 1.0f)},
+            {.m_position = AZ::Vector3(1.0f, 0.0f, 3.0f), .m_inverseMass = 0.0f},
+            {.m_position = AZ::Vector3(1.0f, 0.0f, 2.0f)},
+            {.m_position = AZ::Vector3(1.0f, 0.0f, 1.0f)},
+        };
+        definitionConfiguration.m_strands = {
+            {.m_beginVertex = 0, .m_endVertex = 2, .m_materialIndex = 0},
+            {.m_beginVertex = 2, .m_endVertex = 5, .m_materialIndex = 0},
+        };
+        definitionConfiguration.m_materials.resize(1);
+        definitionConfiguration.m_materials[0].m_simulationStrandFraction = 1.0f;
+        definitionConfiguration.m_gridSizeX = 2;
+        definitionConfiguration.m_gridSizeY = 2;
+        definitionConfiguration.m_gridSizeZ = 2;
+        const HairDefinitionHandle definitionHandle = system.CreateHairDefinition(
+            definitionConfiguration);
+        ASSERT_TRUE(definitionHandle);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        HairConfiguration hairConfiguration;
+        hairConfiguration.m_definitionHandle = definitionHandle;
+        hairConfiguration.m_objectLayer = DefaultLayers::Moving;
+        hairConfiguration.m_worldTransform.m_position = {
+            .m_x = 1'001.0,
+            .m_y = -1'998.0,
+            .m_z = 3'003.0,
+        };
+        hairConfiguration.m_worldTransform.m_rotation = AZ::Quaternion(0.0f, 0.0f, 0.0f, 2.0f);
+        const HairHandle hairHandle = system.CreateHair(worldHandle, hairConfiguration);
+        ASSERT_TRUE(hairHandle);
+        ASSERT_TRUE(system.UpdateHair(worldHandle, hairHandle, 0.0f, AZ::Transform::CreateIdentity(), {}));
+
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(snapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            worldHandle,
+            AZStd::array{snapshotHandle},
+            archive));
+
+        ::Jolt::Test::SnapshotArchiveHairOffsets offsets;
+        ::Jolt::Test::StateArchiveV7Cursor cursor(archive.m_binaryState);
+        ASSERT_TRUE(cursor.LocateSingleHairState(offsets));
+        ASSERT_EQ(offsets.m_positionsElementCount, 6);
+        ASSERT_EQ(offsets.m_positionsDataByteCount, 6 * sizeof(JPH_HairPosition));
+
+        AZStd::array<StateSnapshotHandle, 1> validImportedHandles;
+        ASSERT_TRUE(system.ImportWorldStateArchive(worldHandle, archive, validImportedHandles));
+        ASSERT_TRUE(validImportedHandles.front());
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, validImportedHandles.front()));
+
+        WorldStateDigest digestBeforeImports;
+        ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, digestBeforeImports));
+        WorldStatistics statisticsBeforeImports;
+        ASSERT_TRUE(system.GetWorldStatistics(worldHandle, statisticsBeforeImports));
+        const auto expectRejectedWithoutMutation =
+            [&](const char* label, StateSnapshotArchive& malformedArchive)
+            {
+                SCOPED_TRACE(label);
+                ::Jolt::Test::RefreshArchiveContentHash(malformedArchive);
+                AZStd::array<StateSnapshotHandle, 1> importedHandles;
+                EXPECT_FALSE(system.ImportWorldStateArchive(
+                    worldHandle,
+                    malformedArchive,
+                    importedHandles));
+                EXPECT_FALSE(importedHandles.front());
+                if (importedHandles.front())
+                {
+                    EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, importedHandles.front()));
+                }
+
+                WorldStateDigest digestAfterImport;
+                EXPECT_TRUE(system.GetWorldStateDigest(worldHandle, digestAfterImport));
+                EXPECT_EQ(digestAfterImport, digestBeforeImports);
+                WorldStatistics statisticsAfterImport;
+                EXPECT_TRUE(system.GetWorldStatistics(worldHandle, statisticsAfterImport));
+                EXPECT_EQ(
+                    statisticsAfterImport.m_stateSnapshotCount,
+                    statisticsBeforeImports.m_stateSnapshotCount);
+            };
+
+        StateSnapshotArchive nonFiniteArchive = archive;
+        const float notFinite = AZStd::numeric_limits<float>::quiet_NaN();
+        ASSERT_TRUE(::Jolt::Test::WriteArchiveValue(
+            nonFiniteArchive,
+            offsets.m_positionsDataOffset
+                + offsetof(JPH_HairPosition, mPosition)
+                + offsetof(JPH::Float3, x),
+            notFinite));
+        expectRejectedWithoutMutation("non-finite position", nonFiniteArchive);
+
+        StateSnapshotArchive nonUnitRotationArchive = archive;
+        const JPH::Float4 nonUnitRotation(0.0f, 0.0f, 0.0f, 2.0f);
+        constexpr size_t activePositionIndex = 5;
+        ASSERT_TRUE(::Jolt::Test::WriteArchiveValue(
+            nonUnitRotationArchive,
+            offsets.m_positionsDataOffset
+                + activePositionIndex * sizeof(JPH_HairPosition)
+                + offsetof(JPH_HairPosition, mRotation),
+            nonUnitRotation));
+        expectRejectedWithoutMutation("non-unit active rotation", nonUnitRotationArchive);
+
+        StateSnapshotArchive nonUnitPaddedRotationArchive = archive;
+        constexpr size_t paddedPositionIndex = 4;
+        ASSERT_TRUE(::Jolt::Test::WriteArchiveValue(
+            nonUnitPaddedRotationArchive,
+            offsets.m_positionsDataOffset
+                + paddedPositionIndex * sizeof(JPH_HairPosition)
+                + offsetof(JPH_HairPosition, mRotation),
+            nonUnitRotation));
+        expectRejectedWithoutMutation("non-unit padded rotation", nonUnitPaddedRotationArchive);
+
+        StateSnapshotArchive divergentNativeTransformArchive = archive;
+        const JPH::Real divergentNativePosition = JPH::Real(-37.0);
+        ASSERT_TRUE(::Jolt::Test::WriteArchiveValue(
+            divergentNativeTransformArchive,
+            offsets.m_nativePositionOffset,
+            divergentNativePosition));
+        expectRejectedWithoutMutation("divergent native transform", divergentNativeTransformArchive);
+
+        StateSnapshotArchive divergentWorldTransformArchive = archive;
+        constexpr double divergentWorldPosition = 1.0;
+        ASSERT_TRUE(::Jolt::Test::WriteArchiveValue(
+            divergentWorldTransformArchive,
+            offsets.m_worldPositionOffset,
+            divergentWorldPosition));
+        expectRejectedWithoutMutation("divergent world transform", divergentWorldTransformArchive);
+
+        StateSnapshotArchive incompatibleLayoutArchive = archive;
+        const AZ::u64 incompatibleElementCount = offsets.m_positionsDataByteCount;
+        constexpr AZ::u32 incompatibleStride = 1;
+        ASSERT_TRUE(::Jolt::Test::WriteArchiveValue(
+            incompatibleLayoutArchive,
+            offsets.m_positionsElementCountOffset,
+            incompatibleElementCount));
+        ASSERT_TRUE(::Jolt::Test::WriteArchiveValue(
+            incompatibleLayoutArchive,
+            offsets.m_positionsStrideOffset,
+            incompatibleStride));
+        expectRejectedWithoutMutation("incompatible buffer layout", incompatibleLayoutArchive);
+
+        StateSnapshotArchive invalidInitializedArchive = archive;
+        constexpr AZ::u8 invalidBoolean = 2;
+        ASSERT_TRUE(::Jolt::Test::WriteArchiveValue(
+            invalidInitializedArchive,
+            offsets.m_initializedOffset,
+            invalidBoolean));
+        expectRejectedWithoutMutation("invalid initialized state", invalidInitializedArchive);
+
+        StateSnapshotArchive invalidTeleportedArchive = archive;
+        ASSERT_TRUE(::Jolt::Test::WriteArchiveValue(
+            invalidTeleportedArchive,
+            offsets.m_teleportedOffset,
+            invalidBoolean));
+        expectRejectedWithoutMutation("invalid teleported state", invalidTeleportedArchive);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
+        EXPECT_TRUE(system.DestroyHair(worldHandle, hairHandle));
+        EXPECT_TRUE(system.DestroyHairDefinition(definitionHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRoundTripSparseHairSlots)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        HairDefinitionConfiguration definitionConfiguration;
+        definitionConfiguration.m_vertices = {
+            {.m_position = AZ::Vector3::CreateAxisZ(), .m_inverseMass = 0.0f},
+            {.m_position = AZ::Vector3::CreateZero()},
+        };
+        definitionConfiguration.m_strands = {
+            {.m_beginVertex = 0, .m_endVertex = 2, .m_materialIndex = 0},
+        };
+        definitionConfiguration.m_materials.resize(1);
+        const HairDefinitionHandle definitionHandle = system.CreateHairDefinition(
+            definitionConfiguration);
+        ASSERT_TRUE(definitionHandle);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        HairConfiguration hairConfiguration;
+        hairConfiguration.m_definitionHandle = definitionHandle;
+        hairConfiguration.m_objectLayer = DefaultLayers::Moving;
+        const HairHandle firstHairHandle = system.CreateHair(worldHandle, hairConfiguration);
+        const HairHandle secondHairHandle = system.CreateHair(worldHandle, hairConfiguration);
+        ASSERT_TRUE(firstHairHandle);
+        ASSERT_TRUE(secondHairHandle);
+        ASSERT_TRUE(system.DestroyHair(worldHandle, firstHairHandle));
+
+        WorldStateDigest capturedDigest;
+        ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, capturedDigest));
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(snapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            worldHandle,
+            AZStd::array{snapshotHandle},
+            archive));
+
+        WorldTransform movedTransform;
+        movedTransform.m_position.m_x = 2.0;
+        ASSERT_TRUE(system.SetHairTransform(
+            worldHandle,
+            secondHairHandle,
+            movedTransform,
+            false));
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        ASSERT_TRUE(system.ImportWorldStateArchive(worldHandle, archive, importedHandles));
+        ASSERT_TRUE(system.RestoreWorldState(worldHandle, importedHandles.front()));
+        WorldStateDigest restoredDigest;
+        ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, restoredDigest));
+        EXPECT_EQ(restoredDigest, capturedDigest);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, importedHandles.front()));
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
+        EXPECT_TRUE(system.DestroyHair(worldHandle, secondHairHandle));
+        EXPECT_TRUE(system.DestroyHairDefinition(definitionHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRemapHairIdentityAndDigestAcrossWorlds)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        HairDefinitionConfiguration definitionConfiguration;
+        definitionConfiguration.m_vertices = {
+            {.m_position = AZ::Vector3::CreateAxisZ(), .m_inverseMass = 0.0f},
+            {.m_position = AZ::Vector3::CreateZero()},
+        };
+        definitionConfiguration.m_strands = {
+            {.m_beginVertex = 0, .m_endVertex = 2, .m_materialIndex = 0},
+        };
+        definitionConfiguration.m_materials.resize(1);
+        const HairDefinitionHandle definitionHandle = system.CreateHairDefinition(
+            definitionConfiguration);
+        ASSERT_TRUE(definitionHandle);
+
+        const WorldHandle sourceWorldHandle = system.GetDefaultWorldHandle();
+        WorldConfiguration targetWorldConfiguration;
+        const WorldHandle targetWorldHandle = system.CreateWorld(targetWorldConfiguration);
+        ASSERT_TRUE(targetWorldHandle);
+        HairConfiguration hairConfiguration;
+        hairConfiguration.m_definitionHandle = definitionHandle;
+        hairConfiguration.m_objectLayer = DefaultLayers::Moving;
+        const HairHandle sourceHairHandle = system.CreateHair(
+            sourceWorldHandle,
+            hairConfiguration);
+        ASSERT_TRUE(sourceHairHandle);
+        const HairHandle targetHairHandle = system.CreateHair(
+            targetWorldHandle,
+            hairConfiguration);
+        ASSERT_TRUE(targetHairHandle);
+
+        Internal::WorldMemberHandleParts sourceHairParts;
+        Internal::WorldMemberHandleParts targetHairParts;
+        ASSERT_TRUE(Internal::DecodeWorldMemberHandle(sourceHairHandle, sourceHairParts));
+        ASSERT_TRUE(Internal::DecodeWorldMemberHandle(targetHairHandle, targetHairParts));
+        EXPECT_EQ(sourceHairParts.m_index, targetHairParts.m_index);
+        EXPECT_NE(sourceHairParts.m_generation, targetHairParts.m_generation);
+
+        WorldStateDigest sourceDigest;
+        WorldStateDigest targetDigest;
+        ASSERT_TRUE(system.GetWorldStateDigest(sourceWorldHandle, sourceDigest));
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, targetDigest));
+        EXPECT_EQ(targetDigest, sourceDigest);
+
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(sourceWorldHandle);
+        ASSERT_TRUE(snapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            sourceWorldHandle,
+            AZStd::array{snapshotHandle},
+            archive));
+
+        WorldTransform movedTransform;
+        movedTransform.m_position.m_x = 2.0;
+        ASSERT_TRUE(system.SetHairTransform(
+            targetWorldHandle,
+            targetHairHandle,
+            movedTransform,
+            false));
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, targetDigest));
+        EXPECT_NE(targetDigest, sourceDigest);
+
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        ASSERT_TRUE(system.ImportWorldStateArchive(
+            targetWorldHandle,
+            archive,
+            importedHandles));
+        ASSERT_TRUE(system.RestoreWorldState(targetWorldHandle, importedHandles.front()));
+        ASSERT_TRUE(system.GetWorldStateDigest(targetWorldHandle, targetDigest));
+        EXPECT_EQ(targetDigest, sourceDigest);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(targetWorldHandle, importedHandles.front()));
+        EXPECT_TRUE(system.DestroyStateSnapshot(sourceWorldHandle, snapshotHandle));
+        EXPECT_TRUE(system.DestroyHair(targetWorldHandle, targetHairHandle));
+        EXPECT_TRUE(system.DestroyHair(sourceWorldHandle, sourceHairHandle));
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+        EXPECT_TRUE(system.DestroyHairDefinition(definitionHandle));
+    }
+
+    TEST(SimulationTests, WorldSnapshotArchivesRemapSoftBodyDefinitionsAcrossRuntimes)
+    {
+        SoftBodyDefinitionConfiguration definitionConfiguration;
+        definitionConfiguration.m_vertices = {
+            {.m_position = AZ::Vector3(-0.5f, 0.0f, 0.0f)},
+            {.m_position = AZ::Vector3(0.5f, 0.0f, 0.0f)},
+            {.m_position = AZ::Vector3(0.0f, 1.0f, 0.0f)},
+        };
+        definitionConfiguration.m_faces = {
+            {.m_firstVertex = 0, .m_secondVertex = 1, .m_thirdVertex = 2},
+        };
+        definitionConfiguration.m_edgeConstraints = {
+            {.m_firstVertex = 0, .m_secondVertex = 1},
+            {.m_firstVertex = 1, .m_secondVertex = 2},
+            {.m_firstVertex = 2, .m_secondVertex = 0},
+        };
+        SoftBodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_manualUpdate = true;
+        bodyConfiguration.m_transform.m_position.m_z = 2.0;
+
+        StateSnapshotArchive archive;
+        WorldStateDigest sourceDigest;
+        Internal::WorldMemberHandleParts sourceBodyParts;
+        Internal::ResourceHandleParts sourceDefinitionParts;
+        {
+            Runtime sourceSystem(CreateSerialSystemConfiguration(), nullptr);
+            ASSERT_TRUE(sourceSystem);
+            const WorldHandle worldHandle = sourceSystem.GetDefaultWorldHandle();
+            const SoftBodyDefinitionHandle definitionHandle =
+                sourceSystem.CreateSoftBodyDefinition(definitionConfiguration);
+            ASSERT_TRUE(definitionHandle);
+            ASSERT_TRUE(Internal::DecodeResourceHandle(
+                definitionHandle,
+                sourceDefinitionParts));
+            bodyConfiguration.m_definitionHandle = definitionHandle;
+            const BodyHandle bodyHandle = sourceSystem.CreateSoftBody(
+                worldHandle,
+                bodyConfiguration);
+            ASSERT_TRUE(bodyHandle);
+            ASSERT_TRUE(Internal::DecodeWorldMemberHandle(bodyHandle, sourceBodyParts));
+            ASSERT_TRUE(sourceSystem.GetWorldStateDigest(worldHandle, sourceDigest));
+
+            const StateSnapshotHandle snapshotHandle = sourceSystem.CaptureWorldState(worldHandle);
+            ASSERT_TRUE(snapshotHandle);
+            ASSERT_TRUE(sourceSystem.ExportWorldStateArchive(
+                worldHandle,
+                AZStd::array{snapshotHandle},
+                archive));
+            EXPECT_TRUE(sourceSystem.DestroyStateSnapshot(worldHandle, snapshotHandle));
+            EXPECT_TRUE(sourceSystem.DestroyBody(worldHandle, bodyHandle));
+            EXPECT_TRUE(sourceSystem.DestroySoftBodyDefinition(definitionHandle));
+        }
+
+        {
+            Runtime mismatchedSystem(CreateSerialSystemConfiguration(), nullptr);
+            ASSERT_TRUE(mismatchedSystem);
+            const WorldHandle mismatchedWorldHandle = mismatchedSystem.GetDefaultWorldHandle();
+            SoftBodyDefinitionConfiguration mismatchedDefinitionConfiguration = definitionConfiguration;
+            mismatchedDefinitionConfiguration.m_vertices[1].m_position.SetX(0.75f);
+            const SoftBodyDefinitionHandle mismatchedDefinitionHandle =
+                mismatchedSystem.CreateSoftBodyDefinition(mismatchedDefinitionConfiguration);
+            ASSERT_TRUE(mismatchedDefinitionHandle);
+            bodyConfiguration.m_definitionHandle = mismatchedDefinitionHandle;
+            const BodyHandle mismatchedBodyHandle = mismatchedSystem.CreateSoftBody(
+                mismatchedWorldHandle,
+                bodyConfiguration);
+            ASSERT_TRUE(mismatchedBodyHandle);
+            AZStd::array<StateSnapshotHandle, 1> rejectedHandles;
+            EXPECT_FALSE(mismatchedSystem.ImportWorldStateArchive(
+                mismatchedWorldHandle,
+                archive,
+                rejectedHandles));
+            EXPECT_FALSE(rejectedHandles.front());
+            EXPECT_TRUE(mismatchedSystem.DestroyBody(mismatchedWorldHandle, mismatchedBodyHandle));
+            EXPECT_TRUE(mismatchedSystem.DestroySoftBodyDefinition(mismatchedDefinitionHandle));
+        }
+
+        Runtime targetSystem(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(targetSystem);
+        const WorldHandle targetWorldHandle = targetSystem.GetDefaultWorldHandle();
+
+        const SoftBodyDefinitionHandle targetDefinitionHandle =
+            targetSystem.CreateSoftBodyDefinition(definitionConfiguration);
+        ASSERT_TRUE(targetDefinitionHandle);
+        Internal::ResourceHandleParts targetDefinitionParts;
+        ASSERT_TRUE(Internal::DecodeResourceHandle(
+            targetDefinitionHandle,
+            targetDefinitionParts));
+        EXPECT_EQ(sourceDefinitionParts.m_index, targetDefinitionParts.m_index);
+        EXPECT_NE(sourceDefinitionParts.m_generation, targetDefinitionParts.m_generation);
+        bodyConfiguration.m_definitionHandle = targetDefinitionHandle;
+        const BodyHandle targetBodyHandle = targetSystem.CreateSoftBody(
+            targetWorldHandle,
+            bodyConfiguration);
+        ASSERT_TRUE(targetBodyHandle);
+        Internal::WorldMemberHandleParts targetBodyParts;
+        ASSERT_TRUE(Internal::DecodeWorldMemberHandle(targetBodyHandle, targetBodyParts));
+        EXPECT_EQ(sourceBodyParts.m_index, targetBodyParts.m_index);
+        EXPECT_NE(sourceBodyParts.m_generation, targetBodyParts.m_generation);
+
+        ASSERT_TRUE(targetSystem.SetBodyPosition(
+            targetWorldHandle,
+            targetBodyHandle,
+            {.m_x = 4.0, .m_z = 2.0},
+            true));
+        AZStd::array<StateSnapshotHandle, 1> importedHandles;
+        ASSERT_TRUE(targetSystem.ImportWorldStateArchive(
+            targetWorldHandle,
+            archive,
+            importedHandles));
+        ASSERT_TRUE(targetSystem.RestoreWorldState(
+            targetWorldHandle,
+            importedHandles.front()));
+        WorldStateDigest targetDigest;
+        ASSERT_TRUE(targetSystem.GetWorldStateDigest(targetWorldHandle, targetDigest));
+        EXPECT_EQ(targetDigest, sourceDigest);
+
+        EXPECT_TRUE(targetSystem.DestroyStateSnapshot(
+            targetWorldHandle,
+            importedHandles.front()));
+        EXPECT_TRUE(targetSystem.DestroyBody(targetWorldHandle, targetBodyHandle));
+        EXPECT_TRUE(targetSystem.DestroySoftBodyDefinition(targetDefinitionHandle));
     }
 
     TEST(SimulationTests, MultipartWorldSnapshotArchivesPreserveBatchIdentity)
@@ -10324,28 +12740,75 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandles[1]));
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandles[0]));
 
-        WorldTransform movedTransform;
-        movedTransform.m_position = {.m_x = 20.0};
-        ASSERT_TRUE(system.SetBodyTransform(worldHandle, firstBodyHandle, movedTransform, true));
-        movedTransform.m_position = {.m_x = -20.0};
-        ASSERT_TRUE(system.SetBodyTransform(worldHandle, secondBodyHandle, movedTransform, true));
+        WorldConfiguration targetWorldConfiguration;
+        targetWorldConfiguration.m_gravity = AZ::Vector3::CreateZero();
+        const WorldHandle targetWorldHandle = system.CreateWorld(targetWorldConfiguration);
+        ASSERT_TRUE(targetWorldHandle);
+        const ShapeHandle targetShapeHandle = system.CreateShape(
+            targetWorldHandle,
+            shapeConfiguration);
+        ASSERT_TRUE(targetShapeHandle);
+        bodyConfiguration.m_shapeHandle = targetShapeHandle;
+        bodyConfiguration.m_transform.m_position = {.m_x = 20.0};
+        const BodyHandle targetFirstBodyHandle = system.CreateBody(
+            targetWorldHandle,
+            bodyConfiguration);
+        ASSERT_TRUE(targetFirstBodyHandle);
+        bodyConfiguration.m_transform.m_position = {.m_x = -20.0};
+        const BodyHandle targetSecondBodyHandle = system.CreateBody(
+            targetWorldHandle,
+            bodyConfiguration);
+        ASSERT_TRUE(targetSecondBodyHandle);
+
+        Internal::WorldMemberHandleParts sourceBodyParts;
+        Internal::WorldMemberHandleParts targetBodyParts;
+        ASSERT_TRUE(Internal::DecodeWorldMemberHandle(firstBodyHandle, sourceBodyParts));
+        ASSERT_TRUE(Internal::DecodeWorldMemberHandle(targetFirstBodyHandle, targetBodyParts));
+        EXPECT_EQ(sourceBodyParts.m_index, targetBodyParts.m_index);
+        EXPECT_NE(sourceBodyParts.m_generation, targetBodyParts.m_generation);
 
         AZStd::array<StateSnapshotHandle, 2> importedHandles;
-        ASSERT_TRUE(system.ImportWorldStateArchive(worldHandle, archive, importedHandles));
+        ASSERT_TRUE(system.SetBodyFriction(
+            targetWorldHandle,
+            targetSecondBodyHandle,
+            0.75f));
+        WorldStatistics statisticsBeforeRejectedImport;
+        ASSERT_TRUE(system.GetWorldStatistics(
+            targetWorldHandle,
+            statisticsBeforeRejectedImport));
+        EXPECT_FALSE(system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
+        EXPECT_FALSE(importedHandles[0]);
+        EXPECT_FALSE(importedHandles[1]);
+        WorldStatistics statisticsAfterRejectedImport;
+        ASSERT_TRUE(system.GetWorldStatistics(
+            targetWorldHandle,
+            statisticsAfterRejectedImport));
+        EXPECT_EQ(
+            statisticsAfterRejectedImport.m_stateSnapshotCount,
+            statisticsBeforeRejectedImport.m_stateSnapshotCount);
+        ASSERT_TRUE(system.SetBodyFriction(
+            targetWorldHandle,
+            targetSecondBodyHandle,
+            0.2f));
+        ASSERT_TRUE(system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
         EXPECT_FALSE(system.RestoreWorldStateParts(
-            worldHandle,
+            targetWorldHandle,
             AZStd::array{importedHandles[0], importedHandles[0]}));
-        ASSERT_TRUE(system.RestoreWorldStateParts(worldHandle, importedHandles));
+        ASSERT_TRUE(system.RestoreWorldStateParts(targetWorldHandle, importedHandles));
 
         BodyState firstState;
         BodyState secondState;
-        ASSERT_TRUE(system.GetBodyState(worldHandle, firstBodyHandle, firstState));
-        ASSERT_TRUE(system.GetBodyState(worldHandle, secondBodyHandle, secondState));
+        ASSERT_TRUE(system.GetBodyState(targetWorldHandle, targetFirstBodyHandle, firstState));
+        ASSERT_TRUE(system.GetBodyState(targetWorldHandle, targetSecondBodyHandle, secondState));
         EXPECT_DOUBLE_EQ(firstState.m_transform.m_position.m_x, -4.0);
         EXPECT_DOUBLE_EQ(secondState.m_transform.m_position.m_x, 4.0);
 
-        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, importedHandles[1]));
-        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, importedHandles[0]));
+        EXPECT_TRUE(system.DestroyStateSnapshot(targetWorldHandle, importedHandles[1]));
+        EXPECT_TRUE(system.DestroyStateSnapshot(targetWorldHandle, importedHandles[0]));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetSecondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(targetWorldHandle, targetFirstBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(targetWorldHandle, targetShapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, secondBodyHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, firstBodyHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
@@ -10614,6 +13077,40 @@ namespace Jolt
         }
     }
 
+    TEST(SimulationTests, WorldSnapshotsRejectRollbackParticipantByteCountChanges)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        StatefulStepListener listener;
+        listener.m_state = 11;
+        ScopedExtensionRegistration registration(system, &listener);
+        ASSERT_TRUE(system.AddStepListener(worldHandle, registration.GetHandle()));
+
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(snapshotHandle);
+        listener.m_state = 22;
+        --listener.m_stateByteCount;
+
+        const StateRestoreResult rejectedRestore = system.RestoreWorldState(
+            worldHandle,
+            snapshotHandle);
+        EXPECT_EQ(rejectedRestore.m_status, StateRestoreStatus::Rejected);
+        EXPECT_EQ(listener.m_state, 22);
+        EXPECT_EQ(listener.m_prepareCount, 0);
+        EXPECT_EQ(listener.m_commitCount, 0);
+
+        listener.m_stateByteCount = sizeof(listener.m_state);
+        ASSERT_TRUE(system.RestoreWorldState(worldHandle, snapshotHandle));
+        EXPECT_EQ(listener.m_state, 11);
+        EXPECT_EQ(listener.m_prepareCount, 1);
+        EXPECT_EQ(listener.m_commitCount, 1);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
+        EXPECT_TRUE(system.RemoveStepListener(worldHandle, registration.GetHandle()));
+    }
+
     TEST(SimulationTests, FilteredSnapshotsRestoreIndependentWorldPartitions)
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
@@ -10873,6 +13370,205 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
     }
 
+    TEST(SimulationTests, FilteredConstraintSnapshotsRejectNativeTopologyChanges)
+    {
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
+        Runtime system(systemConfiguration, nullptr);
+        ASSERT_TRUE(system);
+
+        struct ConstraintTopologyScene final
+        {
+            WorldHandle m_worldHandle;
+            ShapeHandle m_shapeHandle;
+            BodyHandle m_firstSelectedBodyHandle;
+            BodyHandle m_secondSelectedBodyHandle;
+            BodyHandle m_firstUnrelatedBodyHandle;
+            BodyHandle m_secondUnrelatedBodyHandle;
+            ConstraintHandle m_unrelatedConstraintHandle;
+            ConstraintHandle m_selectedConstraintHandle;
+            ConstraintHandle m_replacementConstraintHandle;
+        };
+        const auto createScene = [&system](const WorldHandle worldHandle)
+        {
+            ConstraintTopologyScene scene;
+            scene.m_worldHandle = worldHandle;
+
+            ShapeConfiguration shapeConfiguration;
+            shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+            scene.m_shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+
+            BodyConfiguration bodyConfiguration;
+            bodyConfiguration.m_shapeHandle = scene.m_shapeHandle;
+            bodyConfiguration.m_transform.m_position = {.m_x = -10.0};
+            scene.m_firstSelectedBodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+            bodyConfiguration.m_transform.m_position = {.m_x = -8.0};
+            scene.m_secondSelectedBodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+            bodyConfiguration.m_transform.m_position = {.m_x = 8.0};
+            scene.m_firstUnrelatedBodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+            bodyConfiguration.m_transform.m_position = {.m_x = 10.0};
+            scene.m_secondUnrelatedBodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+
+            FixedConstraintConfiguration fixedConfiguration;
+            fixedConfiguration.m_space = ConstraintSpace::World;
+            fixedConfiguration.m_autoDetectPoint = true;
+            ConstraintConfiguration constraintConfiguration;
+            constraintConfiguration.m_firstBodyHandle = scene.m_firstUnrelatedBodyHandle;
+            constraintConfiguration.m_secondBodyHandle = scene.m_secondUnrelatedBodyHandle;
+            constraintConfiguration.m_geometry = fixedConfiguration;
+            scene.m_unrelatedConstraintHandle = system.CreateConstraint(
+                worldHandle,
+                constraintConfiguration);
+            constraintConfiguration.m_firstBodyHandle = scene.m_firstSelectedBodyHandle;
+            constraintConfiguration.m_secondBodyHandle = scene.m_secondSelectedBodyHandle;
+            scene.m_selectedConstraintHandle = system.CreateConstraint(
+                worldHandle,
+                constraintConfiguration);
+            return scene;
+        };
+        const auto isSceneValid = [](const ConstraintTopologyScene& scene)
+        {
+            return scene.m_worldHandle
+                && scene.m_shapeHandle
+                && scene.m_firstSelectedBodyHandle
+                && scene.m_secondSelectedBodyHandle
+                && scene.m_firstUnrelatedBodyHandle
+                && scene.m_secondUnrelatedBodyHandle
+                && scene.m_unrelatedConstraintHandle
+                && scene.m_selectedConstraintHandle;
+        };
+        const auto changeNativeTopology = [&system](ConstraintTopologyScene& scene)
+        {
+            if (!system.RemoveConstraintFromSimulation(
+                    scene.m_worldHandle,
+                    scene.m_unrelatedConstraintHandle))
+            {
+                return false;
+            }
+
+            FixedConstraintConfiguration fixedConfiguration;
+            fixedConfiguration.m_space = ConstraintSpace::World;
+            fixedConfiguration.m_autoDetectPoint = true;
+            ConstraintConfiguration replacementConfiguration;
+            replacementConfiguration.m_firstBodyHandle = scene.m_firstUnrelatedBodyHandle;
+            replacementConfiguration.m_secondBodyHandle = scene.m_secondUnrelatedBodyHandle;
+            replacementConfiguration.m_geometry = fixedConfiguration;
+            scene.m_replacementConstraintHandle = system.CreateConstraint(
+                scene.m_worldHandle,
+                replacementConfiguration);
+            return static_cast<bool>(scene.m_replacementConstraintHandle);
+        };
+        const auto isSnapshotRejectedWithoutMutation =
+            [&system](
+                const ConstraintTopologyScene& scene,
+                const StateSnapshotHandle snapshotHandle)
+            {
+                StateSnapshotArchive rejectedArchive;
+                if (system.ExportWorldStateArchive(
+                        scene.m_worldHandle,
+                        AZStd::array{snapshotHandle},
+                        rejectedArchive)
+                    || !rejectedArchive.m_binaryState.empty())
+                {
+                    return false;
+                }
+
+                const WorldPosition movedPosition = {
+                    .m_x = -12.0,
+                    .m_z = 4.0,
+                };
+                if (!system.SetBodyPosition(
+                        scene.m_worldHandle,
+                        scene.m_firstSelectedBodyHandle,
+                        movedPosition,
+                        true)
+                    || system.RestoreWorldState(scene.m_worldHandle, snapshotHandle))
+                {
+                    return false;
+                }
+
+                BodyState stateAfterRejectedRestore;
+                return system.GetBodyState(
+                        scene.m_worldHandle,
+                        scene.m_firstSelectedBodyHandle,
+                        stateAfterRejectedRestore)
+                    && stateAfterRejectedRestore.m_transform.m_position == movedPosition;
+            };
+        const auto destroyScene = [&system](const ConstraintTopologyScene& scene)
+        {
+            EXPECT_TRUE(system.DestroyConstraint(
+                scene.m_worldHandle,
+                scene.m_replacementConstraintHandle));
+            EXPECT_TRUE(system.DestroyConstraint(
+                scene.m_worldHandle,
+                scene.m_selectedConstraintHandle));
+            EXPECT_TRUE(system.DestroyConstraint(
+                scene.m_worldHandle,
+                scene.m_unrelatedConstraintHandle));
+            EXPECT_TRUE(system.DestroyBody(
+                scene.m_worldHandle,
+                scene.m_secondUnrelatedBodyHandle));
+            EXPECT_TRUE(system.DestroyBody(
+                scene.m_worldHandle,
+                scene.m_firstUnrelatedBodyHandle));
+            EXPECT_TRUE(system.DestroyBody(
+                scene.m_worldHandle,
+                scene.m_secondSelectedBodyHandle));
+            EXPECT_TRUE(system.DestroyBody(
+                scene.m_worldHandle,
+                scene.m_firstSelectedBodyHandle));
+            EXPECT_TRUE(system.DestroyShape(scene.m_worldHandle, scene.m_shapeHandle));
+        };
+
+        ConstraintTopologyScene sourceScene = createScene(system.GetDefaultWorldHandle());
+        ASSERT_TRUE(isSceneValid(sourceScene));
+        const AZStd::array sourcePartitionBodies = {
+            sourceScene.m_firstSelectedBodyHandle,
+            sourceScene.m_secondSelectedBodyHandle,
+        };
+        const StateSnapshotConfiguration snapshotConfiguration = {
+            .m_flags = StateSnapshotFlags::Bodies | StateSnapshotFlags::Constraints,
+            .m_filterBodies = true,
+        };
+        const StateSnapshotHandle sourceSnapshotHandle = system.CaptureWorldState(
+            sourceScene.m_worldHandle,
+            snapshotConfiguration,
+            sourcePartitionBodies);
+        ASSERT_TRUE(sourceSnapshotHandle);
+        StateSnapshotArchive archive;
+        ASSERT_TRUE(system.ExportWorldStateArchive(
+            sourceScene.m_worldHandle,
+            AZStd::array{sourceSnapshotHandle},
+            archive));
+
+        WorldConfiguration targetWorldConfiguration;
+        targetWorldConfiguration.m_gravity = AZ::Vector3::CreateZero();
+        const WorldHandle targetWorldHandle = system.CreateWorld(targetWorldConfiguration);
+        ASSERT_TRUE(targetWorldHandle);
+        ConstraintTopologyScene targetScene = createScene(targetWorldHandle);
+        ASSERT_TRUE(isSceneValid(targetScene));
+        AZStd::array<StateSnapshotHandle, 1> importedSnapshotHandles;
+        ASSERT_TRUE(system.ImportWorldStateArchive(
+            targetWorldHandle,
+            archive,
+            importedSnapshotHandles));
+
+        ASSERT_TRUE(changeNativeTopology(sourceScene));
+        EXPECT_TRUE(isSnapshotRejectedWithoutMutation(sourceScene, sourceSnapshotHandle));
+        ASSERT_TRUE(changeNativeTopology(targetScene));
+        EXPECT_TRUE(isSnapshotRejectedWithoutMutation(targetScene, importedSnapshotHandles.front()));
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(
+            targetWorldHandle,
+            importedSnapshotHandles.front()));
+        EXPECT_TRUE(system.DestroyStateSnapshot(
+            sourceScene.m_worldHandle,
+            sourceSnapshotHandle));
+        destroyScene(targetScene);
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
+        destroyScene(sourceScene);
+    }
+
     TEST(SimulationTests, FilteredSnapshotsRestoreDisjointContactPartitions)
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
@@ -11062,50 +13758,78 @@ namespace Jolt
             scene.m_worldHandle,
             AZStd::array{snapshotHandle},
             archive));
-        EXPECT_EQ(archive.m_formatVersion, 5);
+        EXPECT_EQ(archive.m_formatVersion, 7);
 
+        WorldConfiguration targetWorldConfiguration;
+        targetWorldConfiguration.m_collectContactEvents = true;
+        const WorldHandle targetWorldHandle = system.CreateWorld(targetWorldConfiguration);
+        ASSERT_TRUE(targetWorldHandle);
+        SphereOnFloor targetScene = CreateSphereOnFloor(system, targetWorldHandle);
         ASSERT_TRUE(system.SetBodyPosition(
-            scene.m_worldHandle,
-            scene.m_sphereBodyHandle,
-            {.m_z = 5.0},
+            targetWorldHandle,
+            targetScene.m_sphereBodyHandle,
+            {.m_z = 0.45},
             true));
-        ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
-        ASSERT_FALSE(system.WereBodiesInContact(
-            scene.m_worldHandle,
-            scene.m_floorBodyHandle,
-            scene.m_sphereBodyHandle));
+        ASSERT_TRUE(system.StepWorld(targetWorldHandle, 1.0f / 60.0f));
+        ASSERT_TRUE(system.WereBodiesInContact(
+            targetWorldHandle,
+            targetScene.m_floorBodyHandle,
+            targetScene.m_sphereBodyHandle));
+
+        Internal::WorldMemberHandleParts sourceBodyParts;
+        Internal::WorldMemberHandleParts targetBodyParts;
+        ASSERT_TRUE(Internal::DecodeWorldMemberHandle(
+            scene.m_sphereBodyHandle,
+            sourceBodyParts));
+        ASSERT_TRUE(Internal::DecodeWorldMemberHandle(
+            targetScene.m_sphereBodyHandle,
+            targetBodyParts));
+        EXPECT_EQ(sourceBodyParts.m_index, targetBodyParts.m_index);
+        EXPECT_NE(sourceBodyParts.m_generation, targetBodyParts.m_generation);
 
         EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, snapshotHandle));
         AZStd::array<StateSnapshotHandle, 1> importedHandles;
-        ASSERT_TRUE(system.ImportWorldStateArchive(scene.m_worldHandle, archive, importedHandles));
-        ASSERT_TRUE(system.RestoreWorldState(scene.m_worldHandle, importedHandles.front()));
-        ASSERT_TRUE(system.WereBodiesInContact(
-            scene.m_worldHandle,
-            scene.m_floorBodyHandle,
-            scene.m_sphereBodyHandle));
-
+        ASSERT_TRUE(system.ImportWorldStateArchive(targetWorldHandle, archive, importedHandles));
         ASSERT_TRUE(system.SetBodyPosition(
-            scene.m_worldHandle,
-            scene.m_sphereBodyHandle,
+            targetWorldHandle,
+            targetScene.m_sphereBodyHandle,
             {.m_z = 5.0},
             true));
-        ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+        ASSERT_TRUE(system.StepWorld(targetWorldHandle, 1.0f / 60.0f));
+        ASSERT_FALSE(system.WereBodiesInContact(
+            targetWorldHandle,
+            targetScene.m_floorBodyHandle,
+            targetScene.m_sphereBodyHandle));
+        ASSERT_TRUE(system.RestoreWorldState(targetWorldHandle, importedHandles.front()));
+        ASSERT_TRUE(system.WereBodiesInContact(
+            targetWorldHandle,
+            targetScene.m_floorBodyHandle,
+            targetScene.m_sphereBodyHandle));
+
+        ASSERT_TRUE(system.SetBodyPosition(
+            targetWorldHandle,
+            targetScene.m_sphereBodyHandle,
+            {.m_z = 5.0},
+            true));
+        ASSERT_TRUE(system.StepWorld(targetWorldHandle, 1.0f / 60.0f));
         AZ::u32 removalEventCount = 0;
-        const EventBatch removalEvents = system.GetEvents(scene.m_worldHandle);
+        const EventBatch removalEvents = system.GetEvents(targetWorldHandle);
         for (const ContactEvent& event : removalEvents.GetContacts())
         {
             if (event.m_phase == EventPhase::End
-                && ((event.m_firstBodyHandle == scene.m_floorBodyHandle
-                        && event.m_secondBodyHandle == scene.m_sphereBodyHandle)
-                    || (event.m_firstBodyHandle == scene.m_sphereBodyHandle
-                        && event.m_secondBodyHandle == scene.m_floorBodyHandle)))
+                && ((event.m_firstBodyHandle == targetScene.m_floorBodyHandle
+                        && event.m_secondBodyHandle == targetScene.m_sphereBodyHandle)
+                    || (event.m_firstBodyHandle == targetScene.m_sphereBodyHandle
+                        && event.m_secondBodyHandle == targetScene.m_floorBodyHandle)))
             {
                 ++removalEventCount;
             }
         }
         EXPECT_EQ(removalEventCount, 1);
 
-        EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, importedHandles.front()));
+        EXPECT_TRUE(system.DestroyStateSnapshot(targetWorldHandle, importedHandles.front()));
+        DestroySphereOnFloor(system, targetScene);
+        EXPECT_TRUE(system.DestroyWorld(targetWorldHandle));
         DestroySphereOnFloor(system, scene);
     }
 

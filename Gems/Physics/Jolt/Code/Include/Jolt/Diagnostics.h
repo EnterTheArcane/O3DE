@@ -216,6 +216,8 @@ namespace Jolt
     };
 
     //! Same-build portable storage for one snapshot or a complete multipart snapshot batch.
+    //! Import requires matching logical topology and effective simulation configuration.
+    //! The content hash detects accidental corruption and is not authentication for untrusted input.
     struct StateSnapshotArchive final
     {
         AZ_TYPE_INFO(StateSnapshotArchive, StateSnapshotArchiveTypeId);

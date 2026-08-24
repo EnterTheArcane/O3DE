@@ -12,6 +12,7 @@ set(FILES
     Tests/ConfigurationSerializerTests.cpp
     Tests/CrossModuleProviderTests.cpp
     Tests/DebugRendererTests.cpp
+    Tests/HandleIdentityIntegrationTests.cpp
     Tests/HandleTests.cpp
     Tests/Headers/BodyConfiguration.cpp
     Tests/Headers/BodyCollision.cpp
@@ -96,6 +97,7 @@ set(FILES
     Tests/NativeRuntimeTests.cpp
     Tests/ProviderModuleApi.h
     Tests/SimulationTests.cpp
+    Tests/SnapshotArchiveTestUtils.h
     Tests/TestsMain.cpp
 )
 

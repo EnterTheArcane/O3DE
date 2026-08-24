@@ -7,7 +7,9 @@
 
 #include <Jolt/Architecture.h>
 #include <Jolt/CustomShape.h>
+#include <Jolt/Diagnostics.h>
 #include <Jolt/FloatEnvironment.h>
+#include <Jolt/Hair.h>
 #include <Jolt/JobSystem.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/SystemInternal.h>
@@ -385,6 +387,58 @@ namespace Jolt
         EXPECT_TRUE(first);
         EXPECT_TRUE(second);
         EXPECT_EQ(first.GetRuntimeInfo().m_configuration, second.GetRuntimeInfo().m_configuration);
+    }
+
+    TEST(NativeRuntimeTests, FreshCpuHairStateDigestsMatchAcrossIsolatedRuntimes)
+    {
+        Runtime firstSystem(SystemConfiguration{}, nullptr, SystemRegistration::Isolated);
+        Runtime secondSystem(SystemConfiguration{}, nullptr, SystemRegistration::Isolated);
+        ASSERT_TRUE(firstSystem);
+        ASSERT_TRUE(secondSystem);
+
+        HairDefinitionConfiguration definitionConfiguration;
+        definitionConfiguration.m_vertices = {
+            {.m_position = AZ::Vector3::CreateAxisZ(), .m_inverseMass = 0.0f},
+            {.m_position = AZ::Vector3::CreateZero()},
+        };
+        definitionConfiguration.m_strands = {
+            {.m_beginVertex = 0, .m_endVertex = 2, .m_materialIndex = 0},
+        };
+        definitionConfiguration.m_materials.resize(1);
+        definitionConfiguration.m_gridSizeX = 2;
+        definitionConfiguration.m_gridSizeY = 2;
+        definitionConfiguration.m_gridSizeZ = 2;
+
+        const HairDefinitionHandle firstDefinitionHandle =
+            firstSystem.CreateHairDefinition(definitionConfiguration);
+        const HairDefinitionHandle secondDefinitionHandle =
+            secondSystem.CreateHairDefinition(definitionConfiguration);
+        ASSERT_TRUE(firstDefinitionHandle);
+        ASSERT_TRUE(secondDefinitionHandle);
+
+        HairConfiguration firstConfiguration;
+        firstConfiguration.m_definitionHandle = firstDefinitionHandle;
+        firstConfiguration.m_objectLayer = DefaultLayers::Moving;
+        const WorldHandle firstWorldHandle = firstSystem.GetDefaultWorldHandle();
+        const HairHandle firstHairHandle = firstSystem.CreateHair(firstWorldHandle, firstConfiguration);
+        ASSERT_TRUE(firstHairHandle);
+
+        HairConfiguration secondConfiguration = firstConfiguration;
+        secondConfiguration.m_definitionHandle = secondDefinitionHandle;
+        const WorldHandle secondWorldHandle = secondSystem.GetDefaultWorldHandle();
+        const HairHandle secondHairHandle = secondSystem.CreateHair(secondWorldHandle, secondConfiguration);
+        ASSERT_TRUE(secondHairHandle);
+
+        WorldStateDigest firstDigest;
+        WorldStateDigest secondDigest;
+        ASSERT_TRUE(firstSystem.GetWorldStateDigest(firstWorldHandle, firstDigest));
+        ASSERT_TRUE(secondSystem.GetWorldStateDigest(secondWorldHandle, secondDigest));
+        EXPECT_EQ(secondDigest, firstDigest);
+
+        EXPECT_TRUE(secondSystem.DestroyHair(secondWorldHandle, secondHairHandle));
+        EXPECT_TRUE(firstSystem.DestroyHair(firstWorldHandle, firstHairHandle));
+        EXPECT_TRUE(secondSystem.DestroyHairDefinition(secondDefinitionHandle));
+        EXPECT_TRUE(firstSystem.DestroyHairDefinition(firstDefinitionHandle));
     }
 
     TEST(NativeRuntimeTests, DeterministicFloatScopeRestoresExceptionFlags)

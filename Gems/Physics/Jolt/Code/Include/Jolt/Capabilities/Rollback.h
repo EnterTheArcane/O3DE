@@ -79,6 +79,7 @@ namespace Jolt
             AZStd::span<StateSnapshotHandle> snapshotHandles);
 
         //! Exports one snapshot or a complete multipart batch for a matching native build.
+        //! Import additionally requires matching logical topology and effective simulation configuration.
         bool ExportWorldStateArchive(
             WorldHandle worldHandle,
             AZStd::span<const StateSnapshotHandle> snapshotHandles,

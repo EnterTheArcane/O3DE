@@ -965,22 +965,15 @@ namespace Jolt
             }
         }
 
-        AZ::u32 extensionIndex = 0;
-        if (!m_freeExtensionSlots.empty())
+        Internal::HandleSlotReservation reservation;
+        const ExtensionHandle extensionHandle =
+            ReserveResourceSlot<ExtensionHandle>(m_extensionSlots, m_freeExtensionSlots, reservation);
+        if (!extensionHandle)
         {
-            extensionIndex = m_freeExtensionSlots.back();
-            m_freeExtensionSlots.pop_back();
-        }
-        else
-        {
-            if (m_extensionSlots.size() >= Internal::HandlePayloadMask)
-            {
-                return {.m_status = ExtensionRegistrationStatus::CapacityExhausted};
-            }
-            extensionIndex = aznumeric_cast<AZ::u32>(m_extensionSlots.size());
-            m_extensionSlots.emplace_back();
+            return {.m_status = ExtensionRegistrationStatus::CapacityExhausted};
         }
 
+        const AZ::u32 extensionIndex = reservation.m_index;
         ExtensionSlot& slot = m_extensionSlots[extensionIndex];
         slot.m_hostLease = AZStd::move(hostLease);
         slot.m_extension = extension;
@@ -989,7 +982,7 @@ namespace Jolt
         slot.m_dependentCount = 0;
         slot.m_kind = kind;
         return {
-            .m_handle = Internal::MakeResourceHandle<ExtensionHandle>(extensionIndex, slot.m_generation),
+            .m_handle = extensionHandle,
             .m_status = ExtensionRegistrationStatus::Success,
         };
     }
@@ -1018,14 +1011,7 @@ namespace Jolt
             }
 
             releasedHost = AZStd::move(slot.m_hostLease);
-            slot.m_extension = nullptr;
-            slot.m_id = AZ::TypeId::CreateNull();
-            slot.m_version = 0;
-            slot.m_kind = ExtensionKind::None;
-            if (Internal::AdvanceGeneration(slot.m_generation))
-            {
-                m_freeExtensionSlots.push_back(parts.m_index);
-            }
+            Internal::ReleaseHandleSlot(m_extensionSlots, m_freeExtensionSlots, parts.m_index);
         }
         return ExtensionRegistrationStatus::Success;
     }
@@ -1268,25 +1254,16 @@ namespace Jolt
         }
 
         AZStd::lock_guard lock(m_materialMutex);
-        AZ::u32 materialIndex = 0;
-        if (!m_freeMaterialSlots.empty())
+        Internal::HandleSlotReservation reservation;
+        const MaterialHandle materialHandle =
+            ReserveResourceSlot<MaterialHandle>(m_materialSlots, m_freeMaterialSlots, reservation);
+        if (!materialHandle)
         {
-            materialIndex = m_freeMaterialSlots.back();
-            m_freeMaterialSlots.pop_back();
-        }
-        else
-        {
-            if (m_materialSlots.size() >= Internal::HandlePayloadMask)
-            {
-                return {};
-            }
-            materialIndex = static_cast<AZ::u32>(m_materialSlots.size());
-            m_materialSlots.emplace_back();
+            return {};
         }
 
+        const AZ::u32 materialIndex = reservation.m_index;
         MaterialSlot& slot = m_materialSlots[materialIndex];
-        const MaterialHandle materialHandle =
-            Internal::MakeResourceHandle<MaterialHandle>(materialIndex, slot.m_generation);
         slot.m_material = new NativeMaterial(materialHandle, configuration);
         return materialHandle;
     }
@@ -1309,10 +1286,7 @@ namespace Jolt
         }
 
         slot.m_material = nullptr;
-        if (Internal::AdvanceGeneration(slot.m_generation))
-        {
-            m_freeMaterialSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(m_materialSlots, m_freeMaterialSlots, parts.m_index);
         return true;
     }
 
@@ -2387,10 +2361,7 @@ namespace Jolt
                 }
             }
             slot.m_childHandles.clear();
-            if (Internal::AdvanceGeneration(slot.m_generation))
-            {
-                m_freeCookedShapeSlots.push_back(parts.m_index);
-            }
+            Internal::ReleaseHandleSlot(m_cookedShapeSlots, m_freeCookedShapeSlots, parts.m_index);
         }
 
         ReleaseMaterials(materialHandles);
@@ -2904,29 +2875,22 @@ namespace Jolt
         const ExtensionHandle extensionHandle)
     {
         AZStd::lock_guard lock(m_groupFilterMutex);
-        AZ::u32 filterIndex = 0;
-        if (!m_freeGroupFilterSlots.empty())
+        Internal::HandleSlotReservation reservation;
+        const GroupFilterHandle filterHandle =
+            ReserveResourceSlot<GroupFilterHandle>(m_groupFilterSlots, m_freeGroupFilterSlots, reservation);
+        if (!filterHandle)
         {
-            filterIndex = m_freeGroupFilterSlots.back();
-            m_freeGroupFilterSlots.pop_back();
-        }
-        else
-        {
-            if (m_groupFilterSlots.size() >= Internal::HandlePayloadMask)
-            {
-                return {};
-            }
-            filterIndex = static_cast<AZ::u32>(m_groupFilterSlots.size());
-            m_groupFilterSlots.emplace_back();
+            return {};
         }
 
+        const AZ::u32 filterIndex = reservation.m_index;
         GroupFilterSlot& slot = m_groupFilterSlots[filterIndex];
         slot.m_filter = AZStd::move(filter);
         slot.m_stateHash = stateHash;
         slot.m_subGroupCount = subGroupCount;
         slot.m_isCustom = isCustom;
         slot.m_extensionHandle = extensionHandle;
-        return Internal::MakeResourceHandle<GroupFilterHandle>(filterIndex, slot.m_generation);
+        return filterHandle;
     }
 
     bool RuntimeImplementation::DestroyGroupFilter(
@@ -2950,14 +2914,7 @@ namespace Jolt
 
             extensionHandle = slot.m_extensionHandle;
             slot.m_filter = nullptr;
-            slot.m_stateHash = 0;
-            slot.m_subGroupCount = 0;
-            slot.m_isCustom = false;
-            slot.m_extensionHandle = ExtensionHandle::Invalid;
-            if (Internal::AdvanceGeneration(slot.m_generation))
-            {
-                m_freeGroupFilterSlots.push_back(parts.m_index);
-            }
+            Internal::ReleaseHandleSlot(m_groupFilterSlots, m_freeGroupFilterSlots, parts.m_index);
         }
 
         if (extensionHandle)
@@ -3165,29 +3122,21 @@ namespace Jolt
         }
 
         AZStd::lock_guard lock(m_pathMutex);
-        AZ::u32 pathIndex = 0;
-        if (!m_freePathSlots.empty())
+        Internal::HandleSlotReservation reservation;
+        const PathHandle pathHandle = ReserveResourceSlot<PathHandle>(m_pathSlots, m_freePathSlots, reservation);
+        if (!pathHandle)
         {
-            pathIndex = m_freePathSlots.back();
-            m_freePathSlots.pop_back();
-        }
-        else
-        {
-            if (m_pathSlots.size() >= Internal::HandlePayloadMask)
-            {
-                return {};
-            }
-            pathIndex = static_cast<AZ::u32>(m_pathSlots.size());
-            m_pathSlots.emplace_back();
+            return {};
         }
 
+        const AZ::u32 pathIndex = reservation.m_index;
         PathSlot& slot = m_pathSlots[pathIndex];
         slot.m_path = AZStd::move(path);
         slot.m_customProviderId = customProviderId;
         slot.m_customProviderExtension = customProviderExtension;
         slot.m_customProviderVersion = customProviderVersion;
         slot.m_sourceHash = sourceHash;
-        return Internal::MakeResourceHandle<PathHandle>(pathIndex, slot.m_generation);
+        return pathHandle;
     }
 
     bool RuntimeImplementation::DestroyPath(
@@ -3211,14 +3160,7 @@ namespace Jolt
 
             slot.m_path = nullptr;
             customProviderExtension = slot.m_customProviderExtension;
-            slot.m_customProviderId = AZ::TypeId::CreateNull();
-            slot.m_customProviderExtension = ExtensionHandle::Invalid;
-            slot.m_customProviderVersion = 0;
-            slot.m_sourceHash = 0;
-            if (Internal::AdvanceGeneration(slot.m_generation))
-            {
-                m_freePathSlots.push_back(parts.m_index);
-            }
+            Internal::ReleaseHandleSlot(m_pathSlots, m_freePathSlots, parts.m_index);
         }
 
         if (customProviderExtension)
@@ -3923,11 +3865,7 @@ namespace Jolt
 
         slot.m_settings = nullptr;
         ReleaseMaterials(slot.m_materialHandles);
-        slot.m_materialHandles.clear();
-        if (Internal::AdvanceGeneration(slot.m_generation))
-        {
-            m_freeSoftBodyDefinitionSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(m_softBodyDefinitionSlots, m_freeSoftBodyDefinitionSlots, parts.m_index);
         return true;
     }
 
@@ -4527,26 +4465,19 @@ namespace Jolt
             return {};
         }
 
-        AZ::u32 definitionIndex = 0;
-        if (!m_freeHairDefinitionSlots.empty())
+        Internal::HandleSlotReservation reservation;
+        const HairDefinitionHandle definitionHandle =
+            ReserveResourceSlot<HairDefinitionHandle>(m_hairDefinitionSlots, m_freeHairDefinitionSlots, reservation);
+        if (!definitionHandle)
         {
-            definitionIndex = m_freeHairDefinitionSlots.back();
-            m_freeHairDefinitionSlots.pop_back();
-        }
-        else
-        {
-            if (m_hairDefinitionSlots.size() >= Internal::HandlePayloadMask)
-            {
-                return {};
-            }
-            definitionIndex = aznumeric_cast<AZ::u32>(m_hairDefinitionSlots.size());
-            m_hairDefinitionSlots.emplace_back();
+            return {};
         }
 
+        const AZ::u32 definitionIndex = reservation.m_index;
         HairDefinitionSlot& slot = m_hairDefinitionSlots[definitionIndex];
         slot.m_settings = settings;
         slot.m_maximumHairToScalpDistanceSquared = maximumHairToScalpDistanceSquared;
-        return Internal::MakeResourceHandle<HairDefinitionHandle>(definitionIndex, slot.m_generation);
+        return definitionHandle;
     }
 
     bool RuntimeImplementation::DestroyHairDefinition(
@@ -4567,11 +4498,7 @@ namespace Jolt
         }
 
         slot.m_settings = nullptr;
-        slot.m_maximumHairToScalpDistanceSquared = 0.0f;
-        if (Internal::AdvanceGeneration(slot.m_generation))
-        {
-            m_freeHairDefinitionSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(m_hairDefinitionSlots, m_freeHairDefinitionSlots, parts.m_index);
         return true;
     }
 
@@ -4709,29 +4636,18 @@ namespace Jolt
     {
         const DeterministicFloatScope floatScope;
         AZStd::lock_guard lock(m_worldMutex);
-        AZ::u32 worldIndex = 0;
-        bool appendedSlot = false;
-        if (!m_freeWorldSlots.empty())
+        const Internal::HandleSlotReservation reservation =
+            Internal::ReserveHandleSlot<WorldHandle>(m_worldSlots, m_freeWorldSlots, Internal::MaximumWorldCount - 1);
+        if (!reservation)
         {
-            worldIndex = m_freeWorldSlots.back();
-            m_freeWorldSlots.pop_back();
-        }
-        else
-        {
-            if (m_worldSlots.size() >= Internal::MaximumWorldCount)
-            {
-                return {};
-            }
-            worldIndex = static_cast<AZ::u32>(m_worldSlots.size());
-            m_worldSlots.emplace_back();
-            appendedSlot = true;
+            return {};
         }
 
+        const AZ::u32 worldIndex = reservation.m_index;
         WorldSlot& slot = m_worldSlots[worldIndex];
         const WorldHandle worldHandle = Internal::MakeWorldHandle(worldIndex, slot.m_generation);
         slot.m_world = AZStd::make_unique<World>(
             *this,
-            m_worldMemberGenerationSources[worldIndex],
             worldHandle,
             worldIndex,
             configuration,
@@ -4739,14 +4655,7 @@ namespace Jolt
         if (!*slot.m_world)
         {
             slot.m_world.reset();
-            if (appendedSlot)
-            {
-                m_worldSlots.pop_back();
-            }
-            else
-            {
-                m_freeWorldSlots.push_back(worldIndex);
-            }
+            Internal::RollbackHandleSlot(m_worldSlots, m_freeWorldSlots, reservation);
             return {};
         }
 
@@ -4783,10 +4692,7 @@ namespace Jolt
             [[maybe_unused]] const AZ::u32 previousCaptureWorldCount = m_debugCaptureWorldCount.fetch_sub(1);
             AZ_Assert(previousCaptureWorldCount > 0, "The Jolt debug-capture world count underflowed.");
         }
-        if (Internal::AdvanceGeneration(slot.m_generation))
-        {
-            m_freeWorldSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(m_worldSlots, m_freeWorldSlots, parts.m_index);
         if (m_defaultWorldHandle == worldHandle)
         {
             m_defaultWorldHandle = {};
@@ -10554,22 +10460,15 @@ namespace Jolt
             }
         }
 
-        AZ::u32 cookedShapeIndex = 0;
-        if (!m_freeCookedShapeSlots.empty())
+        Internal::HandleSlotReservation reservation;
+        const CookedShapeHandle cookedShapeHandle =
+            ReserveResourceSlot<CookedShapeHandle>(m_cookedShapeSlots, m_freeCookedShapeSlots, reservation);
+        if (!cookedShapeHandle)
         {
-            cookedShapeIndex = m_freeCookedShapeSlots.back();
-            m_freeCookedShapeSlots.pop_back();
-        }
-        else
-        {
-            if (m_cookedShapeSlots.size() >= Internal::HandlePayloadMask)
-            {
-                return {};
-            }
-            cookedShapeIndex = static_cast<AZ::u32>(m_cookedShapeSlots.size());
-            m_cookedShapeSlots.emplace_back();
+            return {};
         }
 
+        const AZ::u32 cookedShapeIndex = reservation.m_index;
         CookedShapeSlot& slot = m_cookedShapeSlots[cookedShapeIndex];
         slot.m_shape = shape;
         slot.m_materialHandles = AZStd::move(materialHandles);
@@ -10581,7 +10480,7 @@ namespace Jolt
         {
             ++FindCookedShapeUnlocked(childHandle)->m_parentCount;
         }
-        return Internal::MakeResourceHandle<CookedShapeHandle>(cookedShapeIndex, slot.m_generation);
+        return cookedShapeHandle;
     }
 
     void RuntimeImplementation::ReleaseCookedShape(
@@ -10772,7 +10671,13 @@ namespace Jolt
 
         const auto* filter = static_cast<const GroupFilterAdapter*>(slot->m_filter.GetPtr());
         const IGroupFilter* callbacks = filter->GetCallbacks();
-        if (!callbacks
+        if (!callbacks)
+        {
+            return false;
+        }
+        const size_t stateByteCount = callbacks->GetStateByteCount();
+        if (stateByteCount >= MaximumNativeArchiveSize
+            || state.size() != stateByteCount + 1
             || callbacks->GetStateTypeId() != typeId
             || callbacks->GetStateVersion() != version
             || state.front() != 1
@@ -10915,27 +10820,21 @@ namespace Jolt
         AZStd::vector<MaterialHandle> materialHandles)
     {
         AZStd::lock_guard lock(m_softBodyDefinitionMutex);
-        AZ::u32 definitionIndex = 0;
-        if (!m_freeSoftBodyDefinitionSlots.empty())
+        Internal::HandleSlotReservation reservation;
+        const SoftBodyDefinitionHandle definitionHandle =
+            ReserveResourceSlot<SoftBodyDefinitionHandle>(
+                m_softBodyDefinitionSlots, m_freeSoftBodyDefinitionSlots, reservation);
+        if (!definitionHandle)
         {
-            definitionIndex = m_freeSoftBodyDefinitionSlots.back();
-            m_freeSoftBodyDefinitionSlots.pop_back();
-        }
-        else
-        {
-            if (m_softBodyDefinitionSlots.size() >= Internal::HandlePayloadMask)
-            {
-                ReleaseMaterials(materialHandles);
-                return {};
-            }
-            definitionIndex = static_cast<AZ::u32>(m_softBodyDefinitionSlots.size());
-            m_softBodyDefinitionSlots.emplace_back();
+            ReleaseMaterials(materialHandles);
+            return {};
         }
 
+        const AZ::u32 definitionIndex = reservation.m_index;
         SoftBodyDefinitionSlot& slot = m_softBodyDefinitionSlots[definitionIndex];
         slot.m_settings = AZStd::move(settings);
         slot.m_materialHandles = AZStd::move(materialHandles);
-        return Internal::MakeResourceHandle<SoftBodyDefinitionHandle>(definitionIndex, slot.m_generation);
+        return definitionHandle;
     }
 
     bool RuntimeImplementation::AcquireSoftBodyDefinition(

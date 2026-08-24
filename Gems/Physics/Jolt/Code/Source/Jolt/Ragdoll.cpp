@@ -702,15 +702,10 @@ namespace Jolt
             }
         }
         m_system.ReleaseSkeletonDefinition(slot->m_skeletonHandle);
-        slot->m_settings = nullptr;
-        slot->m_skeletonHandle = {};
-        slot->m_shapeHandles.clear();
-        slot->m_neutralModelTransforms.clear();
-        slot->m_supportsMotorDrive = false;
-        if (Internal::AdvanceGeneration(slot->m_generation))
-        {
-            m_freeRagdollDefinitionSlots.push_back(parts.m_index);
-        }
+        Internal::ReleaseHandleSlot(
+            m_ragdollDefinitionSlots,
+            m_freeRagdollDefinitionSlots,
+            parts.m_index);
         return true;
     }
 
@@ -782,8 +777,13 @@ namespace Jolt
         }
 
         AZ::u32 ragdollIndex = 0;
+        Internal::HandleSlotReservation ragdollReservation;
         const RagdollHandle ragdollHandle =
-            ReserveWorldMemberSlot<RagdollHandle>(m_ragdollSlots, m_freeRagdollSlots, ragdollIndex);
+            ReserveWorldMemberSlot<RagdollHandle>(
+                m_ragdollSlots,
+                m_freeRagdollSlots,
+                ragdollIndex,
+                ragdollReservation);
         if (!ragdollHandle)
         {
             return {};
@@ -791,28 +791,29 @@ namespace Jolt
         RagdollSlot& slot = m_ragdollSlots[ragdollIndex];
 
         AZ::u32 collisionGroupId = configuration.m_collisionGroupId;
+        AZ::u32 nextRagdollGroupId = m_nextRagdollGroupId;
         if (collisionGroupId == 0)
         {
-            while (m_ragdollHandlesByGroupId.contains(m_nextRagdollGroupId))
+            while (m_ragdollHandlesByGroupId.contains(nextRagdollGroupId))
             {
-                if (m_nextRagdollGroupId == AZStd::numeric_limits<AZ::u32>::max())
+                if (nextRagdollGroupId == AZStd::numeric_limits<AZ::u32>::max())
                 {
-                    m_freeRagdollSlots.push_back(ragdollIndex);
+                    Internal::RollbackHandleSlot(m_ragdollSlots, m_freeRagdollSlots, ragdollReservation);
                     return {};
                 }
-                ++m_nextRagdollGroupId;
+                ++nextRagdollGroupId;
             }
-            collisionGroupId = m_nextRagdollGroupId;
-            if (m_nextRagdollGroupId == AZStd::numeric_limits<AZ::u32>::max())
+            collisionGroupId = nextRagdollGroupId;
+            if (nextRagdollGroupId == AZStd::numeric_limits<AZ::u32>::max())
             {
-                m_freeRagdollSlots.push_back(ragdollIndex);
+                Internal::RollbackHandleSlot(m_ragdollSlots, m_freeRagdollSlots, ragdollReservation);
                 return {};
             }
-            ++m_nextRagdollGroupId;
+            ++nextRagdollGroupId;
         }
         else if (m_ragdollHandlesByGroupId.contains(collisionGroupId))
         {
-            m_freeRagdollSlots.push_back(ragdollIndex);
+            Internal::RollbackHandleSlot(m_ragdollSlots, m_freeRagdollSlots, ragdollReservation);
             return {};
         }
         JPH::Ref<JPH::Ragdoll> ragdoll = definition->m_settings->CreateRagdoll(
@@ -821,7 +822,7 @@ namespace Jolt
             &m_physicsSystem);
         if (!ragdoll)
         {
-            m_freeRagdollSlots.push_back(ragdollIndex);
+            Internal::RollbackHandleSlot(m_ragdollSlots, m_freeRagdollSlots, ragdollReservation);
             return {};
         }
 
@@ -829,56 +830,64 @@ namespace Jolt
         slot.m_bodyHandles.reserve(ragdoll->GetBodyCount());
         slot.m_constraintHandles.clear();
         slot.m_constraintHandles.reserve(ragdoll->GetConstraintCount());
-        AZStd::vector<AZ::u32> bodyIndices;
-        AZStd::vector<AZ::u32> constraintIndices;
-        bodyIndices.reserve(ragdoll->GetBodyCount());
-        constraintIndices.reserve(ragdoll->GetConstraintCount());
+        AZStd::vector<Internal::HandleSlotReservation> bodyReservations;
+        AZStd::vector<Internal::HandleSlotReservation> constraintReservations;
+        bodyReservations.reserve(ragdoll->GetBodyCount());
+        constraintReservations.reserve(ragdoll->GetConstraintCount());
+        const auto rollbackReservations = [&]()
+        {
+            ragdoll = nullptr;
+            for (size_t reservationIndex = constraintReservations.size(); reservationIndex > 0; --reservationIndex)
+            {
+                Internal::RollbackHandleSlot(
+                    m_constraintSlots,
+                    m_freeConstraintSlots,
+                    constraintReservations[reservationIndex - 1]);
+            }
+            for (size_t reservationIndex = bodyReservations.size(); reservationIndex > 0; --reservationIndex)
+            {
+                Internal::RollbackHandleSlot(
+                    m_bodySlots,
+                    m_freeBodySlots,
+                    bodyReservations[reservationIndex - 1]);
+            }
+            Internal::RollbackHandleSlot(m_ragdollSlots, m_freeRagdollSlots, ragdollReservation);
+        };
         for (size_t bodyOffset = 0; bodyOffset < ragdoll->GetBodyCount(); ++bodyOffset)
         {
             AZ::u32 bodyIndex = 0;
-            const BodyHandle bodyHandle = ReserveWorldMemberSlot<BodyHandle>(m_bodySlots, m_freeBodySlots, bodyIndex);
+            Internal::HandleSlotReservation bodyReservation;
+            const BodyHandle bodyHandle = ReserveBodySlot(bodyIndex, bodyReservation);
             if (!bodyHandle)
             {
-                ragdoll = nullptr;
-                for (const AZ::u32 reservedIndex : bodyIndices)
-                {
-                    m_freeBodySlots.push_back(reservedIndex);
-                }
-                m_freeRagdollSlots.push_back(ragdollIndex);
+                rollbackReservations();
                 return {};
             }
-            bodyIndices.push_back(bodyIndex);
+            bodyReservations.push_back(bodyReservation);
             slot.m_bodyHandles.push_back(bodyHandle);
         }
         for (size_t constraintOffset = 0; constraintOffset < ragdoll->GetConstraintCount(); ++constraintOffset)
         {
             AZ::u32 constraintIndex = 0;
+            Internal::HandleSlotReservation constraintReservation;
             const ConstraintHandle constraintHandle = ReserveWorldMemberSlot<ConstraintHandle>(
                 m_constraintSlots,
                 m_freeConstraintSlots,
-                constraintIndex);
+                constraintIndex,
+                constraintReservation);
             if (!constraintHandle)
             {
-                ragdoll = nullptr;
-                for (const AZ::u32 reservedIndex : bodyIndices)
-                {
-                    m_freeBodySlots.push_back(reservedIndex);
-                }
-                for (const AZ::u32 reservedIndex : constraintIndices)
-                {
-                    m_freeConstraintSlots.push_back(reservedIndex);
-                }
-                m_freeRagdollSlots.push_back(ragdollIndex);
+                rollbackReservations();
                 return {};
             }
-            constraintIndices.push_back(constraintIndex);
+            constraintReservations.push_back(constraintReservation);
             slot.m_constraintHandles.push_back(constraintHandle);
         }
 
         JPH::BodyInterface& bodyInterface = m_physicsSystem.GetBodyInterface();
         for (size_t bodyOffset = 0; bodyOffset < ragdoll->GetBodyCount(); ++bodyOffset)
         {
-            BodySlot& bodySlot = m_bodySlots[bodyIndices[bodyOffset]];
+            BodySlot& bodySlot = m_bodySlots[bodyReservations[bodyOffset].m_index];
             const BodyHandle bodyHandle = slot.m_bodyHandles[bodyOffset];
             bodySlot.m_bodyId = ragdoll->GetBodyID(aznumeric_cast<int>(bodyOffset));
             bodySlot.m_groupFilterHandle = {};
@@ -902,7 +911,7 @@ namespace Jolt
 
         for (size_t constraintOffset = 0; constraintOffset < ragdoll->GetConstraintCount(); ++constraintOffset)
         {
-            ConstraintSlot& constraintSlot = m_constraintSlots[constraintIndices[constraintOffset]];
+            ConstraintSlot& constraintSlot = m_constraintSlots[constraintReservations[constraintOffset].m_index];
             const ConstraintHandle constraintHandle = slot.m_constraintHandles[constraintOffset];
             JPH::TwoBodyConstraint* nativeConstraint = ragdoll->GetConstraint(aznumeric_cast<int>(constraintOffset));
             const JPH::RagdollSettings::BodyIdxPair bodyIndicesPair =
@@ -940,6 +949,10 @@ namespace Jolt
             activation = JPH::EActivation::Activate;
         }
         ragdoll->AddToPhysicsSystem(activation);
+        if (!slot.m_constraintHandles.empty())
+        {
+            AdvanceNativeConstraintTopologyEpoch();
+        }
         for (const ConstraintHandle constraintHandle : slot.m_constraintHandles)
         {
             FindConstraint(constraintHandle)->m_isInSimulation = true;
@@ -951,6 +964,10 @@ namespace Jolt
         slot.m_name = configuration.m_name;
         slot.m_collisionGroupId = collisionGroupId;
         slot.m_isInSimulation = true;
+        if (configuration.m_collisionGroupId == 0)
+        {
+            m_nextRagdollGroupId = nextRagdollGroupId;
+        }
         m_ragdollHandlesByGroupId.emplace(collisionGroupId, ragdollHandle);
         ++definition->m_ragdollCount;
         return ragdollHandle;
@@ -977,6 +994,10 @@ namespace Jolt
             activation = JPH::EActivation::Activate;
         }
         slot->m_ragdoll->AddToPhysicsSystem(activation);
+        if (!slot->m_constraintHandles.empty())
+        {
+            AdvanceNativeConstraintTopologyEpoch();
+        }
         for (const ConstraintHandle constraintHandle : slot->m_constraintHandles)
         {
             FindConstraint(constraintHandle)->m_isInSimulation = true;
@@ -1011,6 +1032,10 @@ namespace Jolt
         }
 
         slot->m_ragdoll->RemoveFromPhysicsSystem();
+        if (!slot->m_constraintHandles.empty())
+        {
+            AdvanceNativeConstraintTopologyEpoch();
+        }
         for (size_t bodyIndex = 0; bodyIndex < slot->m_bodyHandles.size(); ++bodyIndex)
         {
             const RagdollSlot::RemovedBodyMotionState& motionState = slot->m_removedBodyMotionStates[bodyIndex];
@@ -1093,6 +1118,10 @@ namespace Jolt
         if (slot->m_isInSimulation)
         {
             slot->m_ragdoll->RemoveFromPhysicsSystem();
+            if (!slot->m_constraintHandles.empty())
+            {
+                AdvanceNativeConstraintTopologyEpoch();
+            }
             MaintainBroadPhaseAfterBodyRemovals(aznumeric_cast<AZ::u32>(slot->m_bodyHandles.size()));
         }
         for (const ConstraintHandle constraintHandle : slot->m_constraintHandles)
@@ -1113,46 +1142,19 @@ namespace Jolt
             {
                 --secondBody->m_constraintCount;
             }
-            constraintSlot->m_constraint = nullptr;
-            constraintSlot->m_firstBodyHandle = {};
-            constraintSlot->m_secondBodyHandle = {};
-            constraintSlot->m_ragdollHandle = {};
-            constraintSlot->m_entityId = AZ::EntityId();
-            constraintSlot->m_name = AZ::Name();
-            constraintSlot->m_isInSimulation = false;
-            if (Internal::AdvanceGeneration(constraintSlot->m_generation))
-            {
-                m_freeConstraintSlots.push_back(parts.m_index);
-            }
+            Internal::ReleaseHandleSlot(m_constraintSlots, m_freeConstraintSlots, parts.m_index);
         }
         for (const BodyHandle bodyHandle : slot->m_bodyHandles)
         {
-            Internal::WorldMemberHandleParts parts;
             BodySlot* bodySlot = FindBody(bodyHandle);
-            if (!bodySlot || !Internal::DecodeWorldMemberHandle(bodyHandle, parts))
+            if (!bodySlot)
             {
                 continue;
             }
             [[maybe_unused]] const bool moveEventsDisabled =
                 SetBodyMoveEventsEnabled(bodyHandle, false);
             AZ_Assert(moveEventsDisabled, "A ragdoll body move subscription must be removable during destruction.");
-            ShapeSlot* shapeSlot = FindShape(bodySlot->m_shapeHandle);
-            if (shapeSlot && shapeSlot->m_bodyCount > 0)
-            {
-                --shapeSlot->m_bodyCount;
-            }
-            bodySlot->m_bodyId = JPH::BodyID();
-            bodySlot->m_shapeHandle = {};
-            bodySlot->m_ragdollHandle = {};
-            bodySlot->m_entityId = AZ::EntityId();
-            bodySlot->m_name = AZ::Name();
-            bodySlot->m_kind = BodyKind::None;
-            bodySlot->m_motionType = MotionType::None;
-            bodySlot->m_constraintCount = 0;
-            if (Internal::AdvanceGeneration(bodySlot->m_generation))
-            {
-                m_freeBodySlots.push_back(parts.m_index);
-            }
+            ReleaseBodySlot(bodyHandle, *bodySlot);
         }
 
         RagdollDefinitionSlot* definition = FindRagdollDefinition(slot->m_definitionHandle);
@@ -1162,21 +1164,7 @@ namespace Jolt
             --definition->m_ragdollCount;
         }
         m_ragdollHandlesByGroupId.erase(slot->m_collisionGroupId);
-        slot->m_ragdoll = nullptr;
-        slot->m_bodyHandles.clear();
-        slot->m_constraintHandles.clear();
-        slot->m_removedBodyMotionStates.clear();
-        slot->m_pose = {};
-        slot->m_previousPose = {};
-        slot->m_definitionHandle = {};
-        slot->m_entityId = AZ::EntityId();
-        slot->m_name = AZ::Name();
-        slot->m_collisionGroupId = 0;
-        slot->m_isInSimulation = false;
-        if (Internal::AdvanceGeneration(slot->m_generation))
-        {
-            m_freeRagdollSlots.push_back(ragdollParts.m_index);
-        }
+        Internal::ReleaseHandleSlot(m_ragdollSlots, m_freeRagdollSlots, ragdollParts.m_index);
         return true;
     }
 
