@@ -13,6 +13,8 @@
 #include <AzCore/Serialization/DataOverlayProviderMsgs.h>
 #include <AzCore/Serialization/DynamicSerializableField.h>
 #include <AzCore/Serialization/Locale.h>
+#include <AzCore/Serialization/Internal/ObjectStreamAttributes.h>
+#include <AzCore/Serialization/Internal/TextConversion.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Debug/Profiler.h>
@@ -168,6 +170,7 @@ namespace AZ
                 bool& m_errorResult;
                 SerializeContext::IDataContainer* m_classContainer{};
                 size_t& m_currentContainerElementIndex;
+                bool m_isNewContainerElement = false;
             };
             /// Retrieves storage address for data element of being loaded
             /// @param dataAddress output parameter that is populated with the address to store the value of the data type
@@ -770,6 +773,7 @@ namespace AZ
 
                 void* dataAddress = storageElement.m_dataAddress;
                 void* reserveAddress = storageElement.m_reserveAddress; // Stores the dataAddress from IDataContainer::ReserveElement
+                bool elementResult = true;
 
 
 #if defined(AZ_ENABLE_TRACING)
@@ -831,39 +835,63 @@ namespace AZ
                             classData->m_name, element.m_name ? element.m_name : "NULL", element.m_nameCrc.GetValue(),
                             GetStreamFilename());
 
-                        result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
+                        if (classData->FindAttribute(ObjectStreamInternal::RejectInvalidSerializerData))
+                        {
+                            elementResult = false;
+                        }
+                        else
+                        {
+                            result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);
+                        }
                         m_errorLogger.ReportError(error.c_str());
                     }
                 }
 
-                // If it is a container, clear it before loading the child
-                // nodes, otherwise we end up with more elements than the ones
-                // we should have
-                if (classData->m_container && dataAddress)
+                if (elementResult)
                 {
-                    classData->m_container->ClearElements(dataAddress, m_sc);
+                    // If it is a container, clear it before loading the child
+                    // nodes, otherwise we end up with more elements than the ones
+                    // we should have
+                    if (classData->m_container && dataAddress)
+                    {
+                        classData->m_container->ClearElements(dataAddress, m_sc);
+                    }
+
+                    // Read child nodes
+                    elementResult = LoadClass(stream, *convertedNode, classData, dataAddress, flags);
+                }
+                else if (!isConvertedData)
+                {
+                    // A failed leaf still needs its branch consumed before its parent can continue.
+                    SkipElement();
                 }
 
-                // Read child nodes
-                result = LoadClass(stream, *convertedNode, classData, dataAddress, flags) && result;
-
-                if (classContainer)
+                if (elementResult)
                 {
-                    classContainer->StoreElement(parentClassPtr, reserveAddress);
-                }
-                else if (!parentClassPtr)
-                {
-                    if (m_readyCB)
+                    if (classContainer)
+                    {
+                        classContainer->StoreElement(parentClassPtr, reserveAddress);
+                    }
+                    else if (!parentClassPtr && m_readyCB)
                     {
                         m_readyCB(dataAddress, element.m_id, m_sc);
                     }
+                }
+                else if (storageElement.m_isNewContainerElement)
+                {
+                    classContainer->FreeReservedElement(parentClassPtr, reserveAddress, nullptr);
                 }
 
                 if (classData->m_eventHandler)
                 {
                     classData->m_eventHandler->OnWriteEnd(dataAddress);
-                    classData->m_eventHandler->OnLoadedFromObjectStream(dataAddress);
+                    if (elementResult)
+                    {
+                        classData->m_eventHandler->OnLoadedFromObjectStream(dataAddress);
+                    }
                 }
+
+                result = elementResult && result;
 
 #if defined(AZ_ENABLE_TRACING)
                 m_errorLogger.Pop();
@@ -910,6 +938,10 @@ namespace AZ
                     else if (parentClassPtr)
                     {
                         storageElement.m_reserveAddress = storageElement.m_classContainer->ReserveElement(parentClassPtr, classElement);
+                        if (storageElement.m_reserveAddress)
+                        {
+                            storageElement.m_isNewContainerElement = true;
+                        }
                     }
 
                     if (storageElement.m_reserveAddress == nullptr)
@@ -1167,6 +1199,7 @@ namespace AZ
             else if (GetType() == ST_JSON)
             {
                 const char* values = nullptr;
+                bool valueContainsEmbeddedNull = false;
                 // The current node is the last node read, so
                 // first advance to next node
                 rapidjson::Value* currentElement = nullptr;
@@ -1246,6 +1279,7 @@ namespace AZ
                 if (valueIt != currentElement->MemberEnd())
                 {
                     values = valueIt->value.GetString();
+                    valueContainsEmbeddedNull = memchr(values, '\0', valueIt->value.GetStringLength()) != nullptr;
                 }
 
                 // find the registered class data
@@ -1270,7 +1304,15 @@ namespace AZ
                 {
                     if (cd && !cd->IsDeprecated() && cd->m_serializer)
                     {
-                        element.m_dataSize = cd->m_serializer->TextToData(values, element.m_version, *element.m_stream);
+                        if (valueContainsEmbeddedNull
+                            && cd->FindAttribute(ObjectStreamInternal::RejectInvalidSerializerData))
+                        {
+                            element.m_dataSize = 0;
+                        }
+                        else
+                        {
+                            element.m_dataSize = cd->m_serializer->TextToData(values, element.m_version, *element.m_stream);
+                        }
                         element.m_dataType = SerializeContext::DataElement::DT_BINARY;
                     }
                     else
@@ -1749,9 +1791,25 @@ namespace AZ
                     auto currentsize = static_cast<size_t>(m_inStream.GetCurPos());
                     IO::MemoryStream memStream = IO::MemoryStream(m_inStream.GetData()->data(), 0, currentsize);
                     m_outStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                    classData->m_serializer->DataToText(memStream, m_outStream, false);
+                    const size_t convertedSize = classData->m_serializer->DataToText(memStream, m_outStream, false);
+                    if (convertedSize == Internal::TextConversionFailure)
+                    {
+                        m_errorLogger.ReportError("Serializer could not represent a value in XML ObjectStream text.");
+                        return false;
+                    }
 
                     char* rawText = static_cast<char*>(m_outStream.GetData()->data());
+                    AZStd::string_view xmlText;
+                    if (m_outStream.GetCurPos() > 0)
+                    {
+                        xmlText = AZStd::string_view{rawText, static_cast<size_t>(m_outStream.GetCurPos())};
+                    }
+                    if (classData->FindAttribute(ObjectStreamInternal::RejectInvalidSerializerData)
+                        && !Internal::IsValidXmlText(xmlText))
+                    {
+                        m_errorLogger.ReportError("Serializer produced text outside the XML 1.0 character domain.");
+                        return false;
+                    }
                     char* xmlString = m_xmlDoc->allocate_string(nullptr, static_cast<size_t>(m_outStream.GetCurPos() + 1));
                     AZStd::copy(rawText, rawText + m_outStream.GetCurPos(), xmlString);
                     xmlString[m_outStream.GetCurPos()] = 0;
@@ -1799,7 +1857,12 @@ namespace AZ
                     auto currentsize = static_cast<size_t>(m_inStream.GetCurPos());
                     IO::MemoryStream memStream = IO::MemoryStream(m_inStream.GetData()->data(), 0, currentsize);
                     m_outStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                    classData->m_serializer->DataToText(memStream, m_outStream, false);
+                    const size_t convertedSize = classData->m_serializer->DataToText(memStream, m_outStream, false);
+                    if (convertedSize == Internal::TextConversionFailure)
+                    {
+                        m_errorLogger.ReportError("Serializer could not represent a value in JSON ObjectStream text.");
+                        return false;
+                    }
 
                     char* rawText = static_cast<char*>(m_outStream.GetData()->data());
                     classObject.AddMember("value", rapidjson::Value(rawText ? rawText : "", static_cast<rapidjson::SizeType>(m_outStream.GetCurPos()), m_jsonDoc->GetAllocator()), m_jsonDoc->GetAllocator());
@@ -2266,4 +2329,3 @@ namespace AZ
     }
 
 } // namespace AZ
-
