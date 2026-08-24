@@ -34,14 +34,18 @@ ly_add_3rdparty_target(
         PRIVATE
             SQLITE_THREADSAFE=1
             SQLITE_ENABLE_BYTECODE_VTAB
+            SQLITE_ENABLE_CARRAY
             SQLITE_ENABLE_COLUMN_METADATA
             SQLITE_ENABLE_DBPAGE_VTAB
             SQLITE_ENABLE_DBSTAT_VTAB
             SQLITE_ENABLE_FTS3
+            SQLITE_ENABLE_FTS3_PARENTHESIS
+            SQLITE_ENABLE_FTS5
             SQLITE_ENABLE_GEOPOLY
             SQLITE_ENABLE_MATH_FUNCTIONS
             SQLITE_ENABLE_RTREE
             SQLITE_ENABLE_STMTVTAB
+            SQLITE_ENABLE_UNLOCK_NOTIFY
             ${sqlite_feature_definitions}
     BUILD_DEPENDENCIES
         PUBLIC
