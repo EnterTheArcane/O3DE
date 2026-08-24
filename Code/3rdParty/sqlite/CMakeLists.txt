@@ -6,6 +6,7 @@
 #
 
 set(sqlite_feature_definitions)
+set(sqlite_thread_libraries)
 
 include(CheckSymbolExists)
 check_symbol_exists(fdatasync "unistd.h" SQLITE_HAVE_FDATASYNC)
@@ -21,6 +22,9 @@ foreach(sqlite_feature FDATASYNC GMTIME_R LOCALTIME_R POSIX_FALLOCATE STRERROR_R
 endforeach()
 
 find_package(Threads REQUIRED)
+if(CMAKE_THREAD_LIBS_INIT)
+    list(APPEND sqlite_thread_libraries ${CMAKE_THREAD_LIBS_INIT})
+endif()
 
 ly_add_3rdparty_target(
     NAME sqlite STATIC
@@ -41,7 +45,7 @@ ly_add_3rdparty_target(
             ${sqlite_feature_definitions}
     BUILD_DEPENDENCIES
         PUBLIC
-            Threads::Threads
+            ${sqlite_thread_libraries}
             ${CMAKE_DL_LIBS}
             $<$<BOOL:${O3DE_HAVE_LIBM}>:m>
     TARGET_PROPERTIES

@@ -365,6 +365,7 @@ endfunction()
 #! ly_add_3rdparty_target: Adds a locally-built 3rdParty target using O3DE conventions
 #
 # This wrapper supplies the 3rdParty namespace, disables unity builds and compiler warnings,
+# treats the target's include directories as system includes,
 # and installs the package's required provenance files.
 # It otherwise forwards arguments to ly_add_target unchanged.
 # FILES_CMAKE defaults to files.cmake when it is not specified.
@@ -400,6 +401,8 @@ macro(ly_add_3rdparty_target)
             NO_UNITY
             ${default_arguments}
         )
+
+        set_target_properties(${arg_NAME} PROPERTIES SYSTEM TRUE)
 
         ly_get_engine_relative_source_dir("${CMAKE_CURRENT_SOURCE_DIR}" install_destination)
         ly_install_files(
