@@ -369,8 +369,20 @@ def validate_private_native_boundary(engine_root: Path) -> str:
         errors.append("JoltNative.cmake must contain exactly one license-only install declaration")
     if "${jolt_source_dir}/LICENSE" not in native_cmake:
         errors.append("the private dependency license is not installed")
-    if not re.search(r"set\(jolt_native_content_name\s+\S+_5_6_0\)", native_code):
+    if not re.search(r"set\(jolt_native_content_base_name\s+\S+_5_6_0\)", native_code):
         errors.append("the private dependency does not use a versioned provider-owned FetchContent identity")
+    if not re.search(
+        r'set\(jolt_native_content_name\s+"?\$\{jolt_native_content_base_name\}_'
+        r'\$\{jolt_native_patch_identity\}"?\)',
+        native_code,
+    ):
+        errors.append("the private dependency identity does not include the native patch fingerprint")
+    if not re.search(
+        r'string\(SUBSTRING\s+"?\$\{jolt_native_patch_hash\}"?\s+0\s+16\s+'
+        r'jolt_native_patch_identity\)',
+        native_code,
+    ):
+        errors.append("the private dependency does not derive a bounded patch identity")
     if "foreign target named Jolt" not in native_cmake:
         errors.append("a foreign target named Jolt is not rejected")
     if "foreign FetchContent declaration" not in native_cmake:

@@ -17,7 +17,11 @@
 # ly_parse_third_party_dependencies, so no find_package() is ever issued for it and
 # no find module has to be shipped to installed engines.
 
-set(jolt_native_content_name O3DEJoltPhysics_5_6_0)
+set(jolt_native_patch_file "${CMAKE_CURRENT_LIST_DIR}/jolt-5.6.0-o3de.patch")
+file(SHA256 "${jolt_native_patch_file}" jolt_native_patch_hash)
+string(SUBSTRING "${jolt_native_patch_hash}" 0 16 jolt_native_patch_identity)
+set(jolt_native_content_base_name O3DEJoltPhysics_5_6_0)
+set(jolt_native_content_name "${jolt_native_content_base_name}_${jolt_native_patch_identity}")
 set(jolt_native_owner "Gem::Jolt@5.6.0")
 
 get_property(jolt_native_registered_owner GLOBAL PROPERTY O3DE_JOLT_NATIVE_OWNER)
@@ -41,25 +45,29 @@ if(jolt_native_registered_owner)
     )
 endif()
 
-string(TOLOWER "${jolt_native_content_name}" jolt_native_content_name_lower)
-get_property(
-    jolt_native_content_declared
-    GLOBAL PROPERTY "_FetchContent_${jolt_native_content_name_lower}_savedDetails"
-    DEFINED)
-if(jolt_native_content_declared)
-    message(FATAL_ERROR
-        "The Jolt Gem found a foreign FetchContent declaration for ${jolt_native_content_name}. "
-        "The versioned native dependency identity is provider-owned."
-    )
-endif()
+foreach(jolt_native_reserved_content_name IN ITEMS
+    "${jolt_native_content_base_name}"
+    "${jolt_native_content_name}")
+    string(TOLOWER "${jolt_native_reserved_content_name}" jolt_native_reserved_content_name_lower)
+    get_property(
+        jolt_native_content_declared
+        GLOBAL PROPERTY "_FetchContent_${jolt_native_reserved_content_name_lower}_savedDetails"
+        DEFINED)
+    if(jolt_native_content_declared)
+        message(FATAL_ERROR
+            "The Jolt Gem found a foreign FetchContent declaration for ${jolt_native_reserved_content_name}. "
+            "The versioned native dependency identity is provider-owned."
+        )
+    endif()
 
-string(TOUPPER "${jolt_native_content_name}" jolt_native_content_name_upper)
-if(FETCHCONTENT_SOURCE_DIR_${jolt_native_content_name_upper})
-    message(FATAL_ERROR
-        "FETCHCONTENT_SOURCE_DIR_${jolt_native_content_name_upper} cannot override the private "
-        "patched Jolt source. Use the pinned provider-owned dependency."
-    )
-endif()
+    string(TOUPPER "${jolt_native_reserved_content_name}" jolt_native_reserved_content_name_upper)
+    if(FETCHCONTENT_SOURCE_DIR_${jolt_native_reserved_content_name_upper})
+        message(FATAL_ERROR
+            "FETCHCONTENT_SOURCE_DIR_${jolt_native_reserved_content_name_upper} cannot override the private "
+            "patched Jolt source. Use the pinned provider-owned dependency."
+        )
+    endif()
+endforeach()
 
 option(LY_JOLT_DOUBLE_PRECISION "Build Jolt with double-precision world positions" OFF)
 option(LY_JOLT_ENABLE_DEBUG_RENDERING "Build the native diagnostic renderer" ON)
@@ -88,7 +96,7 @@ block()
         URL_HASH "6e069ee0172478cc78182047aac87e5310ba14a67a53348ae14cc37801fd3f8e"
         GIT "https://github.com/jrouwe/JoltPhysics.git"
         GIT_HASH "e77f175595e64cb44218cc9d9d56fc365ad0e36a"
-        PATCH_FILES "${CMAKE_CURRENT_LIST_DIR}/jolt-5.6.0-o3de.patch"
+        PATCH_FILES "${jolt_native_patch_file}"
         SOURCE_SUBDIR Build
         EXCLUDE_FROM_ALL
     )
@@ -303,8 +311,7 @@ FetchContent_GetProperties(${jolt_native_content_name} SOURCE_DIR jolt_source_di
 
 set_property(
     DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_LIST_DIR}/jolt-5.6.0-o3de.patch")
-file(SHA256 "${CMAKE_CURRENT_LIST_DIR}/jolt-5.6.0-o3de.patch" jolt_native_patch_hash)
+    "${jolt_native_patch_file}")
 string(CONCAT jolt_native_build_identity
     "content=${jolt_native_content_name};"
     "version=5.6.0;"

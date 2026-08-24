@@ -283,7 +283,11 @@ class QualificationValidationTests(unittest.TestCase):
                 "Gems/Physics/Jolt/3rdParty/JoltNative.cmake",
                 """
 # Do not publish 3rdParty::Jolt or Atom_RHI.
-set(jolt_native_content_name JoltProviderNative_5_6_0)
+set(jolt_native_patch_file jolt.patch)
+file(SHA256 ${jolt_native_patch_file} jolt_native_patch_hash)
+string(SUBSTRING ${jolt_native_patch_hash} 0 16 jolt_native_patch_identity)
+set(jolt_native_content_base_name JoltProviderNative_5_6_0)
+set(jolt_native_content_name "${jolt_native_content_base_name}_${jolt_native_patch_identity}")
 set(jolt_native_target_architectures ${CMAKE_OSX_ARCHITECTURES})
 set(jolt_native_target_architectures ${CMAKE_VS_PLATFORM_NAME})
 set(jolt_native_target_architectures ${CMAKE_CXX_COMPILER_TARGET})
