@@ -9676,6 +9676,80 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyShape(worldHandle, floorShapeHandle));
     }
 
+    TEST(SimulationTests, VehiclesRejectUnaddedChassisWithoutMutatingWorld)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = BoxShapeConfiguration{
+            .m_dimensions = AZ::Vector3(1.8f, 4.0f, 0.6f),
+        };
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+        ASSERT_TRUE(shapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = shapeHandle;
+        bodyConfiguration.m_startInSimulation = false;
+        const BodyHandle bodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+        ASSERT_TRUE(bodyHandle);
+        EXPECT_FALSE(system.IsBodyInSimulation(worldHandle, bodyHandle));
+
+        WheeledVehicleConfiguration wheeledConfiguration;
+        wheeledConfiguration.m_bodyHandle = bodyHandle;
+        wheeledConfiguration.m_wheels = {
+            {.m_position = AZ::Vector3(0.0f, 1.0f, -0.25f)},
+            {.m_position = AZ::Vector3(0.0f, -1.0f, -0.25f)},
+        };
+        wheeledConfiguration.m_differentials = {
+            {.m_leftWheel = 0, .m_rightWheel = 1},
+        };
+
+        MotorcycleConfiguration motorcycleConfiguration;
+        motorcycleConfiguration.m_wheeled = wheeledConfiguration;
+
+        TrackedVehicleConfiguration trackedConfiguration;
+        trackedConfiguration.m_bodyHandle = bodyHandle;
+        trackedConfiguration.m_wheels = {
+            {.m_common = {.m_position = AZ::Vector3(-0.8f, 1.0f, -0.25f)}},
+            {.m_common = {.m_position = AZ::Vector3(-0.8f, -1.0f, -0.25f)}},
+            {.m_common = {.m_position = AZ::Vector3(0.8f, 1.0f, -0.25f)}},
+            {.m_common = {.m_position = AZ::Vector3(0.8f, -1.0f, -0.25f)}},
+        };
+        trackedConfiguration.m_tracks[0].m_wheels = {0, 1};
+        trackedConfiguration.m_tracks[0].m_drivenWheel = 0;
+        trackedConfiguration.m_tracks[1].m_wheels = {2, 3};
+        trackedConfiguration.m_tracks[1].m_drivenWheel = 2;
+
+        WorldStatistics statisticsBefore;
+        WorldStateDigest digestBefore;
+        ASSERT_TRUE(system.GetWorldStatistics(worldHandle, statisticsBefore));
+        ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, digestBefore));
+
+        EXPECT_FALSE(system.CreateWheeledVehicle(worldHandle, wheeledConfiguration));
+        EXPECT_FALSE(system.CreateMotorcycle(worldHandle, motorcycleConfiguration));
+        EXPECT_FALSE(system.CreateTrackedVehicle(worldHandle, trackedConfiguration));
+
+        WorldStatistics statisticsAfter;
+        WorldStateDigest digestAfter;
+        ASSERT_TRUE(system.GetWorldStatistics(worldHandle, statisticsAfter));
+        ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, digestAfter));
+        EXPECT_EQ(digestAfter, digestBefore);
+        EXPECT_EQ(statisticsAfter.m_bodyCount, statisticsBefore.m_bodyCount);
+        EXPECT_EQ(statisticsAfter.m_constraintCount, statisticsBefore.m_constraintCount);
+        EXPECT_EQ(statisticsAfter.m_vehicleCount, statisticsBefore.m_vehicleCount);
+        EXPECT_TRUE(system.IsValid(worldHandle, bodyHandle));
+        EXPECT_FALSE(system.IsBodyInSimulation(worldHandle, bodyHandle));
+
+        EXPECT_TRUE(system.AddBodyToSimulation(worldHandle, bodyHandle, true));
+        EXPECT_TRUE(system.IsBodyInSimulation(worldHandle, bodyHandle));
+        EXPECT_TRUE(system.RemoveBodyFromSimulation(worldHandle, bodyHandle));
+        EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+    }
+
     TEST(SimulationTests, VehiclesOwnTheirChassisConstraintAndExposeBoundedState)
     {
         Runtime system(CreateSerialSystemConfiguration(), nullptr);

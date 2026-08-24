@@ -14165,6 +14165,7 @@ namespace Jolt
         if (!bodySlot
             || bodySlot->m_kind != BodyKind::Rigid
             || bodySlot->m_motionType != MotionType::Dynamic
+            || !m_physicsSystem.GetBodyInterface().IsAdded(bodySlot->m_bodyId)
             || bodySlot->m_vehicleHandle
             || configuration.m_wheels.empty()
             || configuration.m_wheels.size() > AZStd::numeric_limits<JPH::uint>::max()
@@ -14536,6 +14537,7 @@ namespace Jolt
         if (!bodySlot
             || bodySlot->m_kind != BodyKind::Rigid
             || bodySlot->m_motionType != MotionType::Dynamic
+            || !m_physicsSystem.GetBodyInterface().IsAdded(bodySlot->m_bodyId)
             || bodySlot->m_vehicleHandle
             || configuration.m_wheels.empty()
             || configuration.m_wheels.size() > AZStd::numeric_limits<JPH::uint>::max()
