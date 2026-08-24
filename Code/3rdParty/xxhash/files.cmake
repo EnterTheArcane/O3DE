@@ -5,7 +5,10 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 #
 
-add_subdirectory(antlr4)
-add_subdirectory(cli11)
-add_subdirectory(jsoncpp)
-add_subdirectory(xxhash)
+set(FILES
+    Include/xxhash.h
+    Include/xxhash/xxhash.h
+    Source/xxhash.c
+    LICENSE
+    PackageInfo.json
+)

@@ -69,5 +69,10 @@ if(PAL_TRAIT_BUILD_TESTS_SUPPORTED)
         TARGET AZ::AzNetworking.Tests
         TEST_SUITE sandbox
     )
+
+    ly_add_googlebenchmark(
+        NAME AZ::AzNetworking.Benchmarks
+        TARGET AZ::AzNetworking.Tests
+    )
     
 endif()

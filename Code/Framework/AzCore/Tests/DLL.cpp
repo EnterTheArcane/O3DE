@@ -12,6 +12,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Module/Environment.h>
 #include <AzCore/Name/NameDictionary.h>
+#include <AzCore/Symbol/Symbol.h>
 #include <AzCore/UnitTest/TestTypes.h>
 #include <Tests/DLLTestVirtualClass.h>
 
@@ -202,6 +203,28 @@ namespace UnitTest
 
         bool isUnloaded = handle->Unload();
         EXPECT_FALSE(isUnloaded);
+    }
+
+    TEST_F(DLL, SymbolIdentityAndValueSurviveModuleUnload)
+    {
+        constexpr AZStd::string_view Value{"CrossModuleSymbol"};
+        LoadModule();
+        using GetSymbolValue = const char*(*)();
+        GetSymbolValue getSymbolValue = m_handle->GetFunction<GetSymbolValue>("GetCrossModuleSymbolValue");
+        ASSERT_TRUE(getSymbolValue);
+        const char* moduleValue = getSymbolValue();
+        UnloadModule();
+
+        const AZ::Symbol symbolAfterUnload{Value};
+        EXPECT_EQ(symbolAfterUnload.GetCStr(), moduleValue);
+        EXPECT_EQ(symbolAfterUnload.GetStringView(), Value);
+        EXPECT_STREQ(symbolAfterUnload.GetCStr(), Value.data());
+
+        LoadModule();
+        getSymbolValue = m_handle->GetFunction<GetSymbolValue>("GetCrossModuleSymbolValue");
+        ASSERT_TRUE(getSymbolValue);
+        EXPECT_EQ(getSymbolValue(), moduleValue);
+        UnloadModule();
     }
 
     TEST_F(DLL, LoadModuleTwice)
