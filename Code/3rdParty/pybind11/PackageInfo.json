@@ -1,6 +1,12 @@
 {
     "PackageName": "pybind11",
+    "Version": "2.10.0",
     "URL": "https://github.com/pybind/pybind11",
     "License": "BSD-3-Clause",
-    "LicenseFile": "LICENSE.txt"
+    "LicenseFile": "LICENSE.txt",
+    "Source": {
+        "URL": "https://github.com/pybind/pybind11/releases/tag/v2.10.0",
+        "Archive": "pybind11-2.10.0-rev1-multiplatform.tar.xz",
+        "SHA256": "6690acc531d4b8cd453c19b448e2fb8066b2362cbdd2af1ad5df6e0019e6c6c4"
+    }
 }

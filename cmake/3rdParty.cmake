@@ -366,11 +366,11 @@ endfunction()
 #
 # This wrapper supplies the 3rdParty namespace, disables unity builds and compiler warnings,
 # treats the target's include directories as system includes,
-# and installs the package's required provenance files.
+# and installs the package's required attribution files.
 # It otherwise forwards arguments to ly_add_target unchanged.
 # FILES_CMAKE defaults to files.cmake when it is not specified.
 #
-# Each package directory must contain LICENSE.txt, PackageInfo.json and README.md.
+# Each package directory must contain LICENSE.txt and PackageInfo.json.
 macro(ly_add_3rdparty_target)
     o3de_disable_warnings()
 
@@ -382,11 +382,11 @@ macro(ly_add_3rdparty_target)
             message(FATAL_ERROR "ly_add_3rdparty_target requires NAME")
         endif()
 
-        set(provenance_files LICENSE.txt PackageInfo.json README.md)
-        foreach(provenance_file IN LISTS provenance_files)
-            set(provenance_path "${CMAKE_CURRENT_SOURCE_DIR}/${provenance_file}")
-            if(NOT EXISTS "${provenance_path}" OR IS_DIRECTORY "${provenance_path}")
-                message(FATAL_ERROR "ly_add_3rdparty_target(${arg_NAME}) requires provenance file ${provenance_path}")
+        set(attribution_files LICENSE.txt PackageInfo.json)
+        foreach(attribution_file IN LISTS attribution_files)
+            set(attribution_path "${CMAKE_CURRENT_SOURCE_DIR}/${attribution_file}")
+            if(NOT EXISTS "${attribution_path}" OR IS_DIRECTORY "${attribution_path}")
+                message(FATAL_ERROR "ly_add_3rdparty_target(${arg_NAME}) requires attribution file ${attribution_path}")
             endif()
         endforeach()
 
@@ -406,7 +406,7 @@ macro(ly_add_3rdparty_target)
 
         ly_get_engine_relative_source_dir("${CMAKE_CURRENT_SOURCE_DIR}" install_destination)
         ly_install_files(
-            FILES ${provenance_files}
+            FILES ${attribution_files}
             DESTINATION "${install_destination}"
         )
     endblock()
