@@ -19,6 +19,8 @@ set(FILES
     Serialization/HashSerializerTests.cpp
     Serialization/NetworkInputOutputSerializerTests.cpp
     Serialization/StringifySerializerTests.cpp
+    Serialization/SymbolSerializerBenchmarks.cpp
+    Serialization/SymbolSerializerTests.cpp
     Serialization/TrackChangedSerializerTests.cpp
     Serialization/TypeValidatingSerializerTests.cpp
     TcpTransport/TcpTransportTests.cpp

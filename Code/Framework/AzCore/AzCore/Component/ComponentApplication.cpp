@@ -63,6 +63,7 @@
 #include <AzCore/Math/VertexContainer.h>
 
 #include <AzCore/Name/NameDictionary.h>
+#include <AzCore/Symbol/Symbol.h>
 
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 #include <AzCore/Utils/Utils.h>
@@ -1795,6 +1796,7 @@ namespace AZ
         PolygonPrismReflect(context);
         // reflect name dictionary.
         Name::Reflect(context);
+        Symbol::Reflect(context);
         // reflect path
         IO::PathReflect(context);
         // reflect the SettingsRegistryInterface and SettingsRegistryImpl

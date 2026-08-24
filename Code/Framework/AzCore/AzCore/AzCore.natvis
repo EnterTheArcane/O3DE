@@ -1064,4 +1064,14 @@
         </Expand>
     </Type>
 
+    <Type Name="AZ::Symbol">
+        <DisplayString Condition="m_entry == nullptr">&lt;empty&gt;</DisplayString>
+        <DisplayString Condition="m_entry != nullptr">{(const char*)(m_entry + 1),[m_entry-&gt;m_size]s8}</DisplayString>
+        <StringView Condition="m_entry != nullptr">(const char*)(m_entry + 1),[m_entry-&gt;m_size]s8</StringView>
+        <Expand>
+            <Item Name="entry">m_entry</Item>
+            <Item Name="length" Condition="m_entry != nullptr">m_entry-&gt;m_size</Item>
+            <Item Name="value" Condition="m_entry != nullptr">(const char*)(m_entry + 1),[m_entry-&gt;m_size]s8</Item>
+        </Expand>
+    </Type>
 </AutoVisualizer>

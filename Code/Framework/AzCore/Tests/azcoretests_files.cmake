@@ -267,6 +267,12 @@ set(FILES
     Streamer/StreamStackEntryTests.cpp
     StreamerTests.cpp
     StringFunc.cpp
+    Symbol/SymbolBenchmarks.cpp
+    Symbol/SymbolGroupTests.cpp
+    Symbol/SymbolJsonSerializerTests.cpp
+    Symbol/SymbolTests.cpp
+    Symbol/SymbolTestSupport.cpp
+    Symbol/SymbolTestSupport.h
     SystemFileTest.cpp
     SystemFileStreamTest.cpp
     TaskTests.cpp
@@ -274,6 +280,7 @@ set(FILES
     Time/TimeTests.cpp
     Utils/ScopedValueTests.cpp
     UUIDTests.cpp
+    Utils/NoDestructorTests.cpp
     XML.cpp
 )
 

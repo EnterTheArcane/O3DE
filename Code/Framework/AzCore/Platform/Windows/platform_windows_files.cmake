@@ -27,7 +27,6 @@ set(FILES
     AzCore/std/parallel/config_Platform.h
     AzCore/std/string/fixed_string_Platform.inl
     ../Common/MSVC/AzCore/std/string/fixed_string_MSVC.inl
-    ../Common/VisualStudio/AzCore/Natvis/azcore.natvis
     ../Common/VisualStudio/AzCore/Natvis/azcore.natstepfilter
     ../Common/VisualStudio/AzCore/Natvis/azcore.natjmc
     ../Common/VisualStudio/AzCore/Natvis/rapidjson.natvis

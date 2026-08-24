@@ -81,6 +81,7 @@ ly_add_target(
         PRIVATE
             ${AZ_CORE_PIX_BUILD_DEPENDENCIES}
             3rdParty::mimalloc
+            3rdParty::xxhash
         PUBLIC
             3rdParty::Lua
             3rdParty::RapidJSON
@@ -88,6 +89,13 @@ ly_add_target(
             3rdParty::ZLIB
             3rdParty::zstd
             3rdParty::cityhash
+)
+
+ly_install_files(
+    FILES
+        AzCore/AzCore.natvis
+    DESTINATION
+        Code/Framework/AzCore/AzCore
 )
 
 ly_add_source_properties(
@@ -196,6 +204,7 @@ if(PAL_TRAIT_TEST_GOOGLE_TEST_SUPPORTED)
                     AZ::AzCoreTestCommon
                     AZ::AzTestShared
                     AZ::AzTest
+                    3rdParty::xxhash
             RUNTIME_DEPENDENCIES
                 AZ::AzCoreTestDLL
         )

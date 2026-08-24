@@ -61,6 +61,7 @@ set(FILES
     Serialization/NetworkOutputSerializer.cpp
     Serialization/NetworkOutputSerializer.h
     Serialization/NetworkOutputSerializer.inl
+    Serialization/SymbolSerializer.cpp
     Serialization/StringifySerializer.cpp
     Serialization/StringifySerializer.h
     Serialization/TrackChangedSerializer.h
