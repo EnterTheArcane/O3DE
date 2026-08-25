@@ -8,6 +8,7 @@
 #include <Jolt/RagdollComponentConfiguration.h>
 
 #include <Jolt/ConstraintComponentConfiguration.h>
+#include <Jolt/Ragdoll.h>
 #include <Jolt/Reflection.h>
 
 #include <AzCore/Name/Name.h>
@@ -35,7 +36,8 @@ namespace Jolt
         HingeConstraintConfiguration hinge;
         hinge.m_firstPoint.m_z = 0.25;
         hinge.m_secondPoint.m_z = -0.25;
-        configuration.m_parts[1].m_toParent = hinge;
+        configuration.m_parts[1].m_parentConstraint.m_geometry = hinge;
+        configuration.m_parts[1].m_hasParentConstraint = true;
         return configuration;
     }
 
@@ -54,18 +56,59 @@ namespace Jolt
             }
 
             serializeContext
+                ->Class<RagdollConstraintConfiguration>()
+                ->Field("Geometry", &RagdollConstraintConfiguration::m_geometry)
+                ->Field("Id", &RagdollConstraintConfiguration::m_id)
+                ->Field("FirstLinkedConstraintId", &RagdollConstraintConfiguration::m_firstLinkedConstraintId)
+                ->Field("SecondLinkedConstraintId", &RagdollConstraintConfiguration::m_secondLinkedConstraintId);
+
+            serializeContext
                 ->Class<AdditionalRagdollConstraint>()
-                ->Field("Geometry", &AdditionalRagdollConstraint::m_geometry)
+                ->Field("Constraint", &AdditionalRagdollConstraint::m_constraint)
                 ->Field("FirstPartIndex", &AdditionalRagdollConstraint::m_firstPartIndex)
                 ->Field("SecondPartIndex", &AdditionalRagdollConstraint::m_secondPartIndex);
+
+            serializeContext
+                ->Class<RagdollGearConstraintConfiguration>()
+                ->Field("FirstHingeAxis", &RagdollGearConstraintConfiguration::m_firstHingeAxis)
+                ->Field("SecondHingeAxis", &RagdollGearConstraintConfiguration::m_secondHingeAxis)
+                ->Field("Ratio", &RagdollGearConstraintConfiguration::m_ratio)
+                ->Field("Space", &RagdollGearConstraintConfiguration::m_space);
+
+            serializeContext
+                ->Class<RagdollRackAndPinionConstraintConfiguration>()
+                ->Field("HingeAxis", &RagdollRackAndPinionConstraintConfiguration::m_hingeAxis)
+                ->Field("SliderAxis", &RagdollRackAndPinionConstraintConfiguration::m_sliderAxis)
+                ->Field("Ratio", &RagdollRackAndPinionConstraintConfiguration::m_ratio)
+                ->Field("Space", &RagdollRackAndPinionConstraintConfiguration::m_space);
+
+            serializeContext->RegisterGenericType<RagdollConstraintComponentGeometry>();
+
+            serializeContext
+                ->Class<RagdollConstraintComponentConfiguration>()
+                ->Field("Geometry", &RagdollConstraintComponentConfiguration::m_geometry)
+                ->Field("Id", &RagdollConstraintComponentConfiguration::m_id)
+                ->Field(
+                    "FirstLinkedConstraintId",
+                    &RagdollConstraintComponentConfiguration::m_firstLinkedConstraintId)
+                ->Field(
+                    "SecondLinkedConstraintId",
+                    &RagdollConstraintComponentConfiguration::m_secondLinkedConstraintId);
+
+            serializeContext
+                ->Class<AdditionalRagdollConstraintComponentConfiguration>()
+                ->Field("Constraint", &AdditionalRagdollConstraintComponentConfiguration::m_constraint)
+                ->Field("FirstPartIndex", &AdditionalRagdollConstraintComponentConfiguration::m_firstPartIndex)
+                ->Field("SecondPartIndex", &AdditionalRagdollConstraintComponentConfiguration::m_secondPartIndex);
 
             serializeContext
                 ->Class<RagdollPartComponentConfiguration>()
                 ->Field("Shapes", &RagdollPartComponentConfiguration::m_shapes)
                 ->Field("Body", &RagdollPartComponentConfiguration::m_body)
                 ->Field("ModelTransform", &RagdollPartComponentConfiguration::m_modelTransform)
-                ->Field("ToParent", &RagdollPartComponentConfiguration::m_toParent)
-                ->Field("MotionType", &RagdollPartComponentConfiguration::m_motionType);
+                ->Field("ParentConstraint", &RagdollPartComponentConfiguration::m_parentConstraint)
+                ->Field("MotionType", &RagdollPartComponentConfiguration::m_motionType)
+                ->Field("HasParentConstraint", &RagdollPartComponentConfiguration::m_hasParentConstraint);
 
             serializeContext
                 ->Class<RagdollComponentConfiguration>()
@@ -86,22 +129,47 @@ namespace Jolt
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
                 editContext
-                    ->Class<AdditionalRagdollConstraint>(
-                        "Additional constraint",
-                        "A constraint between two non-parental parts.")
+                    ->Class<RagdollConstraintComponentConfiguration>(
+                        "Constraint",
+                        "Ragdoll constraint geometry, stable identity, and optional local links.")
                     ->DataElement(
                         AZ::Edit::UIHandlers::Default,
-                        &AdditionalRagdollConstraint::m_geometry,
+                        &RagdollConstraintComponentConfiguration::m_geometry,
                         "Geometry",
                         "")
                     ->DataElement(
                         AZ::Edit::UIHandlers::Default,
-                        &AdditionalRagdollConstraint::m_firstPartIndex,
+                        &RagdollConstraintComponentConfiguration::m_id,
+                        "ID",
+                        "Stable identity within this ragdoll definition.")
+                    ->DataElement(
+                        AZ::Edit::UIHandlers::Default,
+                        &RagdollConstraintComponentConfiguration::m_firstLinkedConstraintId,
+                        "First linked constraint ID",
+                        "First ragdoll-local dependency for gear or rack-and-pinion constraints.")
+                    ->DataElement(
+                        AZ::Edit::UIHandlers::Default,
+                        &RagdollConstraintComponentConfiguration::m_secondLinkedConstraintId,
+                        "Second linked constraint ID",
+                        "Second ragdoll-local dependency for gear or rack-and-pinion constraints.");
+
+                editContext
+                    ->Class<AdditionalRagdollConstraintComponentConfiguration>(
+                        "Additional constraint",
+                        "A constraint between two non-parental parts.")
+                    ->DataElement(
+                        AZ::Edit::UIHandlers::Default,
+                        &AdditionalRagdollConstraintComponentConfiguration::m_constraint,
+                        "Constraint",
+                        "")
+                    ->DataElement(
+                        AZ::Edit::UIHandlers::Default,
+                        &AdditionalRagdollConstraintComponentConfiguration::m_firstPartIndex,
                         "First part index",
                         "")
                     ->DataElement(
                         AZ::Edit::UIHandlers::Default,
-                        &AdditionalRagdollConstraint::m_secondPartIndex,
+                        &AdditionalRagdollConstraintComponentConfiguration::m_secondPartIndex,
                         "Second part index",
                         "");
 
@@ -120,14 +188,19 @@ namespace Jolt
                         "Neutral model-space transform relative to the ragdoll root.")
                     ->DataElement(
                         AZ::Edit::UIHandlers::Default,
-                        &RagdollPartComponentConfiguration::m_toParent,
-                        "To parent",
+                        &RagdollPartComponentConfiguration::m_parentConstraint,
+                        "Parent constraint",
                         "")
                     ->DataElement(
                         AZ::Edit::UIHandlers::Default,
                         &RagdollPartComponentConfiguration::m_motionType,
                         "Motion type",
-                        "");
+                        "")
+                    ->DataElement(
+                        AZ::Edit::UIHandlers::Default,
+                        &RagdollPartComponentConfiguration::m_hasParentConstraint,
+                        "Has parent constraint",
+                        "Root parts must disable this; every other part must enable it.");
 
                 editContext
                     ->Class<RagdollComponentConfiguration>("Ragdoll", "Skeleton, parts, constraints, and creation policy.")

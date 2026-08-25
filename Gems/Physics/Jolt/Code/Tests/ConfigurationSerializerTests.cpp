@@ -168,6 +168,7 @@ namespace Jolt
         SystemComponent::Reflect(serializeContext.get());
         ColliderComponent::Reflect(serializeContext.get());
         ConstraintComponent::Reflect(serializeContext.get());
+        RagdollComponent::Reflect(serializeContext.get());
         SoftBodyComponent::Reflect(serializeContext.get());
 
         auto jsonContext = AZStd::make_unique<AZ::JsonRegistrationContext>();
@@ -195,6 +196,131 @@ namespace Jolt
         ExpectTaggedJsonRoundTrip(
             "ConstraintGeometry",
             ConstraintGeometry{SwingTwistConstraintConfiguration{}},
+            *serializeContext,
+            *jsonContext);
+
+        ExpectTaggedJsonRoundTrip(
+            "RagdollConeConstraint",
+            RagdollConstraintComponentGeometry{ConeConstraintConfiguration{
+                .m_halfConeAngle = 0.25f,
+            }},
+            *serializeContext,
+            *jsonContext);
+
+        ExpectTaggedJsonRoundTrip(
+            "RagdollCustomConstraint",
+            RagdollConstraintComponentGeometry{CustomConstraintConfiguration{
+                .m_data = {1, 2, 3},
+                .m_providerId = CustomConstraintConfigurationTypeId,
+            }},
+            *serializeContext,
+            *jsonContext);
+
+        ExpectTaggedJsonRoundTrip(
+            "RagdollDistanceConstraint",
+            RagdollConstraintComponentGeometry{DistanceConstraintConfiguration{
+                .m_maximumDistance = 2.5f,
+                .m_minimumDistance = 0.5f,
+            }},
+            *serializeContext,
+            *jsonContext);
+
+        ExpectTaggedJsonRoundTrip(
+            "RagdollFixedConstraint",
+            RagdollConstraintComponentGeometry{FixedConstraintConfiguration{
+                .m_autoDetectPoint = false,
+            }},
+            *serializeContext,
+            *jsonContext);
+
+        ExpectTaggedJsonRoundTrip(
+            "RagdollGearConstraint",
+            RagdollConstraintComponentGeometry{RagdollGearConstraintConfiguration{
+                .m_firstHingeAxis = AZ::Vector3::CreateAxisY(),
+                .m_secondHingeAxis = AZ::Vector3::CreateAxisZ(),
+                .m_ratio = 2.0f,
+            }},
+            *serializeContext,
+            *jsonContext);
+
+        ExpectTaggedJsonRoundTrip(
+            "RagdollHingeConstraint",
+            RagdollConstraintComponentGeometry{HingeConstraintConfiguration{
+                .m_maximumLimit = 0.75f,
+                .m_minimumLimit = -0.5f,
+            }},
+            *serializeContext,
+            *jsonContext);
+
+        ExpectTaggedJsonRoundTrip(
+            "RagdollPathConstraint",
+            RagdollConstraintComponentGeometry{PathConstraintComponentConfiguration{
+                .m_pathEntityId = AZ::EntityId(0x1234),
+                .m_pathPosition = AZ::Vector3(1.0f, 2.0f, 3.0f),
+                .m_targetVelocity = 4.0f,
+            }},
+            *serializeContext,
+            *jsonContext);
+
+        ExpectTaggedJsonRoundTrip(
+            "RagdollPointConstraint",
+            RagdollConstraintComponentGeometry{PointConstraintConfiguration{
+                .m_firstPoint = {.m_x = 1.0},
+                .m_secondPoint = {.m_y = 2.0},
+            }},
+            *serializeContext,
+            *jsonContext);
+
+        ExpectTaggedJsonRoundTrip(
+            "RagdollPulleyConstraint",
+            RagdollConstraintComponentGeometry{PulleyConstraintConfiguration{
+                .m_maximumLength = 5.0f,
+                .m_minimumLength = 1.0f,
+                .m_ratio = 1.5f,
+            }},
+            *serializeContext,
+            *jsonContext);
+
+        ExpectTaggedJsonRoundTrip(
+            "RagdollRackAndPinionConstraint",
+            RagdollConstraintComponentGeometry{RagdollRackAndPinionConstraintConfiguration{
+                .m_hingeAxis = AZ::Vector3::CreateAxisY(),
+                .m_sliderAxis = AZ::Vector3::CreateAxisZ(),
+                .m_ratio = 3.0f,
+            }},
+            *serializeContext,
+            *jsonContext);
+
+        ExpectTaggedJsonRoundTrip(
+            "RagdollSixDofConstraint",
+            RagdollConstraintComponentGeometry{SixDofConstraintConfiguration{
+                .m_translationX = {
+                    .m_maximumLimit = 1.0f,
+                    .m_minimumLimit = -1.0f,
+                    .m_mode = SixDofAxisMode::Limited,
+                },
+            }},
+            *serializeContext,
+            *jsonContext);
+
+        ExpectTaggedJsonRoundTrip(
+            "RagdollSliderConstraint",
+            RagdollConstraintComponentGeometry{SliderConstraintConfiguration{
+                .m_maximumLimit = 1.5f,
+                .m_minimumLimit = -1.5f,
+                .m_targetPosition = 0.25f,
+            }},
+            *serializeContext,
+            *jsonContext);
+
+        ExpectTaggedJsonRoundTrip(
+            "RagdollSwingTwistConstraint",
+            RagdollConstraintComponentGeometry{SwingTwistConstraintConfiguration{
+                .m_normalHalfConeAngle = 0.25f,
+                .m_planeHalfConeAngle = 0.5f,
+                .m_twistMaximumAngle = 0.75f,
+                .m_twistMinimumAngle = -0.75f,
+            }},
             *serializeContext,
             *jsonContext);
 
@@ -279,6 +405,7 @@ namespace Jolt
 
         serializeContext->EnableRemoveReflection();
         SoftBodyComponent::Reflect(serializeContext.get());
+        RagdollComponent::Reflect(serializeContext.get());
         ConstraintComponent::Reflect(serializeContext.get());
         ColliderComponent::Reflect(serializeContext.get());
         SystemComponent::Reflect(serializeContext.get());
@@ -427,6 +554,17 @@ namespace Jolt
 
         RagdollComponentConfiguration ragdollConfiguration =
             RagdollComponentConfiguration::CreateDefault();
+        const AZ::Uuid parentConstraintId{"{03000000-0000-4000-8000-000000000001}"};
+        const AZ::Uuid linkedConstraintId{"{03000000-0000-4000-8000-000000000002}"};
+        const AZ::Uuid additionalConstraintId{"{03000000-0000-4000-8000-000000000003}"};
+        ragdollConfiguration.m_parts[1].m_parentConstraint.m_id = parentConstraintId;
+        AdditionalRagdollConstraintComponentConfiguration additionalConstraint;
+        additionalConstraint.m_constraint.m_geometry = RagdollGearConstraintConfiguration{};
+        additionalConstraint.m_constraint.m_id = additionalConstraintId;
+        additionalConstraint.m_constraint.m_firstLinkedConstraintId = parentConstraintId;
+        additionalConstraint.m_constraint.m_secondLinkedConstraintId = linkedConstraintId;
+        additionalConstraint.m_secondPartIndex = 1;
+        ragdollConfiguration.m_additionalConstraints.push_back(additionalConstraint);
         ragdollConfiguration.m_baseConstraintPriority = 5;
         ragdollConfiguration.m_minimumCollisionSeparation = 0.125f;
         ExpectTaggedJsonRoundTrip(
@@ -436,6 +574,23 @@ namespace Jolt
             *jsonContext,
             [](const RagdollComponentConfiguration& restored)
             {
+                ASSERT_EQ(restored.m_parts.size(), 2);
+                EXPECT_TRUE(restored.m_parts[1].m_hasParentConstraint);
+                EXPECT_EQ(
+                    restored.m_parts[1].m_parentConstraint.m_id,
+                    AZ::Uuid("{03000000-0000-4000-8000-000000000001}"));
+                ASSERT_EQ(restored.m_additionalConstraints.size(), 1);
+                EXPECT_EQ(
+                    restored.m_additionalConstraints[0].m_constraint.m_id,
+                    AZ::Uuid("{03000000-0000-4000-8000-000000000003}"));
+                EXPECT_EQ(
+                    restored.m_additionalConstraints[0].m_constraint.m_firstLinkedConstraintId,
+                    AZ::Uuid("{03000000-0000-4000-8000-000000000001}"));
+                EXPECT_EQ(
+                    restored.m_additionalConstraints[0].m_constraint.m_secondLinkedConstraintId,
+                    AZ::Uuid("{03000000-0000-4000-8000-000000000002}"));
+                EXPECT_TRUE(AZStd::holds_alternative<RagdollGearConstraintConfiguration>(
+                    restored.m_additionalConstraints[0].m_constraint.m_geometry));
                 EXPECT_EQ(restored.m_baseConstraintPriority, 5);
                 EXPECT_FLOAT_EQ(restored.m_minimumCollisionSeparation, 0.125f);
             });

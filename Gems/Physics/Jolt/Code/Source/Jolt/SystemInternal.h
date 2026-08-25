@@ -1345,6 +1345,11 @@ namespace Jolt
             RagdollDefinitionHandle definitionHandle,
             AZStd::span<RagdollConstraintBodyPair> bodyPairs) const;
 
+        QueryResult GetRagdollConstraintIdentities(
+            WorldHandle worldHandle,
+            RagdollDefinitionHandle definitionHandle,
+            AZStd::span<AZ::Uuid> constraintIds) const;
+
         [[nodiscard]]
         RagdollHandle CreateRagdoll(
             WorldHandle worldHandle,
@@ -1420,12 +1425,12 @@ namespace Jolt
             AZStd::span<const AZ::Transform> modelTransforms,
             float deltaTime);
 
-        bool DriveRagdollMotors(
+        RagdollDriveResult DriveRagdollMotors(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
             AZStd::span<const AZ::Transform> modelTransforms);
 
-        bool DriveRagdollMotors(
+        RagdollDriveResult DriveRagdollMotors(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
             AZStd::span<const AZ::Transform> previousModelTransforms,
@@ -4004,6 +4009,7 @@ namespace Jolt
         using RuntimeImplementation::DestroyRagdollDefinition;
         using RuntimeImplementation::GetRagdollBodyConstraintIndices;
         using RuntimeImplementation::GetRagdollConstraintBodyPairs;
+        using RuntimeImplementation::GetRagdollConstraintIdentities;
         using RuntimeImplementation::UpdateDistanceLimits;
         using RuntimeImplementation::UpdateHingeLimits;
         using RuntimeImplementation::UpdateHingeMotor;

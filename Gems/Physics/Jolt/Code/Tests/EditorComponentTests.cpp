@@ -548,6 +548,57 @@ namespace Jolt::Editor
             ragdollConfiguration.m_baseConstraintPriority = 5;
             ragdollConfiguration.m_minimumCollisionSeparation = 0.125f;
             ragdollConfiguration.m_stabilize = false;
+            const auto appendRagdollConstraint = [&ragdollConfiguration](RagdollConstraintComponentGeometry geometry)
+            {
+                AdditionalRagdollConstraintComponentConfiguration constraint;
+                constraint.m_constraint.m_geometry = AZStd::move(geometry);
+                constraint.m_firstPartIndex = 0;
+                constraint.m_secondPartIndex = 1;
+                ragdollConfiguration.m_additionalConstraints.push_back(AZStd::move(constraint));
+            };
+            appendRagdollConstraint(ConeConstraintConfiguration{.m_halfConeAngle = 0.25f});
+            appendRagdollConstraint(CustomConstraintConfiguration{
+                .m_data = {1, 2, 3},
+                .m_providerId = CustomConstraintConfigurationTypeId,
+            });
+            appendRagdollConstraint(DistanceConstraintConfiguration{
+                .m_maximumDistance = 2.0f,
+                .m_minimumDistance = 0.5f,
+            });
+            appendRagdollConstraint(FixedConstraintConfiguration{.m_autoDetectPoint = false});
+            appendRagdollConstraint(RagdollGearConstraintConfiguration{.m_ratio = 2.0f});
+            appendRagdollConstraint(HingeConstraintConfiguration{
+                .m_maximumLimit = 0.75f,
+                .m_minimumLimit = -0.5f,
+            });
+            appendRagdollConstraint(PathConstraintComponentConfiguration{
+                .m_pathEntityId = AZ::EntityId(0x1234),
+                .m_pathPosition = AZ::Vector3::CreateAxisX(),
+            });
+            appendRagdollConstraint(PointConstraintConfiguration{
+                .m_firstPoint = {.m_x = 1.0},
+                .m_secondPoint = {.m_y = 2.0},
+            });
+            appendRagdollConstraint(PulleyConstraintConfiguration{
+                .m_maximumLength = 5.0f,
+                .m_minimumLength = 1.0f,
+            });
+            appendRagdollConstraint(RagdollRackAndPinionConstraintConfiguration{.m_ratio = 3.0f});
+            appendRagdollConstraint(SixDofConstraintConfiguration{
+                .m_translationX = {
+                    .m_maximumLimit = 1.0f,
+                    .m_minimumLimit = -1.0f,
+                    .m_mode = SixDofAxisMode::Limited,
+                },
+            });
+            appendRagdollConstraint(SliderConstraintConfiguration{
+                .m_maximumLimit = 1.5f,
+                .m_minimumLimit = -1.5f,
+            });
+            appendRagdollConstraint(SwingTwistConstraintConfiguration{
+                .m_normalHalfConeAngle = 0.25f,
+                .m_planeHalfConeAngle = 0.5f,
+            });
             RagdollComponent ragdoll(AZStd::move(ragdollConfiguration));
             ExpectBinaryRoundTrip(ragdoll, serializeContext);
 

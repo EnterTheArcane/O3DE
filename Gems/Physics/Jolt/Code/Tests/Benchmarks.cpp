@@ -614,7 +614,10 @@ namespace Jolt::Benchmarks
                     HingeConstraintConfiguration hinge;
                     hinge.m_firstPoint.m_z = 0.25;
                     hinge.m_secondPoint.m_z = -0.25;
-                    part.m_toParent = hinge;
+                    part.m_parentConstraint.m_geometry = hinge;
+                    part.m_parentConstraint.m_id =
+                        AZ::Uuid::CreateName(AZStd::string::format("benchmark_ragdoll_constraint_%u", partIndex));
+                    part.m_hasParentConstraint = true;
                 }
             }
             scenario.m_definitionHandle = system.CreateRagdollDefinition(

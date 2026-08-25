@@ -6904,6 +6904,21 @@ namespace Jolt
         return {};
     }
 
+    QueryResult RuntimeImplementation::GetRagdollConstraintIdentities(
+        const WorldHandle worldHandle,
+        const RagdollDefinitionHandle definitionHandle,
+        const AZStd::span<AZ::Uuid> constraintIds) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        if (world)
+        {
+            return world->GetRagdollConstraintIdentities(definitionHandle, constraintIds);
+        }
+
+        return {};
+    }
+
     RagdollHandle RuntimeImplementation::CreateRagdoll(
         const WorldHandle worldHandle,
         const RagdollConfiguration& configuration)
@@ -7067,17 +7082,22 @@ namespace Jolt
                 deltaTime);
     }
 
-    bool RuntimeImplementation::DriveRagdollMotors(
+    RagdollDriveResult RuntimeImplementation::DriveRagdollMotors(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const AZStd::span<const AZ::Transform> modelTransforms)
     {
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world && world->DriveRagdollMotors(ragdollHandle, modelTransforms);
+        if (!world)
+        {
+            return RagdollDriveResult::InvalidHandle;
+        }
+
+        return world->DriveRagdollMotors(ragdollHandle, modelTransforms);
     }
 
-    bool RuntimeImplementation::DriveRagdollMotors(
+    RagdollDriveResult RuntimeImplementation::DriveRagdollMotors(
         const WorldHandle worldHandle,
         const RagdollHandle ragdollHandle,
         const AZStd::span<const AZ::Transform> previousModelTransforms,
@@ -7086,12 +7106,16 @@ namespace Jolt
     {
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world
-            && world->DriveRagdollMotors(
-                ragdollHandle,
-                previousModelTransforms,
-                modelTransforms,
-                deltaTime);
+        if (!world)
+        {
+            return RagdollDriveResult::InvalidHandle;
+        }
+
+        return world->DriveRagdollMotors(
+            ragdollHandle,
+            previousModelTransforms,
+            modelTransforms,
+            deltaTime);
     }
 
     bool RuntimeImplementation::ResetRagdollWarmStart(

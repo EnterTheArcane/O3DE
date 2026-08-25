@@ -16,28 +16,49 @@
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Aabb.h>
 #include <AzCore/Math/Transform.h>
+#include <AzCore/Math/Uuid.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Name/Name.h>
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/base.h>
 #include <AzCore/std/containers/vector.h>
-#include <AzCore/std/optional.h>
 
 namespace Jolt
 {
+    enum class RagdollDriveResult : AZ::u8
+    {
+        None = 0,
+        InvalidDeltaTime,
+        InvalidHandle,
+        InvalidPose,
+        Success,
+        UnsupportedConstraint,
+    };
+
+    struct RagdollConstraintConfiguration final
+    {
+        AZ_TYPE_INFO(RagdollConstraintConfiguration, RagdollConstraintConfigurationTypeId);
+
+        ConstraintGeometry m_geometry;
+        AZ::Uuid m_id = AZ::Uuid::CreateNull();
+        AZ::Uuid m_firstLinkedConstraintId = AZ::Uuid::CreateNull();
+        AZ::Uuid m_secondLinkedConstraintId = AZ::Uuid::CreateNull();
+    };
+
     struct RagdollPartConfiguration final
     {
         AZ_TYPE_INFO(RagdollPartConfiguration, RagdollPartConfigurationTypeId);
 
         BodyConfiguration m_body;
-        AZStd::optional<ConstraintGeometry> m_toParent;
+        RagdollConstraintConfiguration m_parentConstraint;
+        bool m_hasParentConstraint = false;
     };
 
     struct AdditionalRagdollConstraint final
     {
         AZ_TYPE_INFO(AdditionalRagdollConstraint, AdditionalRagdollConstraintTypeId);
 
-        ConstraintGeometry m_geometry;
+        RagdollConstraintConfiguration m_constraint;
         AZ::u32 m_firstPartIndex = 0;
         AZ::u32 m_secondPartIndex = 0;
     };
@@ -95,3 +116,5 @@ namespace Jolt
         AZ::s32 m_secondBodyIndex = -1;
     };
 } // namespace Jolt
+
+AZ_TYPE_INFO_SPECIALIZE(Jolt::RagdollDriveResult, Jolt::RagdollDriveResultTypeId);

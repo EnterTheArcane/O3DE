@@ -283,6 +283,11 @@ namespace Jolt
             return LoadVariant<PrimitiveShapeGeometry>(outputValue, inputValue, context);
         }
 
+        if (outputValueTypeId == azrtti_typeid<RagdollConstraintComponentGeometry>())
+        {
+            return LoadVariant<RagdollConstraintComponentGeometry>(outputValue, inputValue, context);
+        }
+
         if (outputValueTypeId == azrtti_typeid<SceneAssetBody>())
         {
             return LoadVariant<SceneAssetBody>(outputValue, inputValue, context);
@@ -361,6 +366,11 @@ namespace Jolt
             return StoreVariant<PrimitiveShapeGeometry>(outputValue, inputValue, defaultValue, context);
         }
 
+        if (valueTypeId == azrtti_typeid<RagdollConstraintComponentGeometry>())
+        {
+            return StoreVariant<RagdollConstraintComponentGeometry>(outputValue, inputValue, defaultValue, context);
+        }
+
         if (valueTypeId == azrtti_typeid<SceneAssetBody>())
         {
             return StoreVariant<SceneAssetBody>(outputValue, inputValue, defaultValue, context);
@@ -408,6 +418,7 @@ namespace Jolt
                 ->HandlesType<DecoratedShapeGeometry>()
                 ->HandlesType<OptionalConstraintGeometry>()
                 ->HandlesType<PrimitiveShapeGeometry>()
+                ->HandlesType<RagdollConstraintComponentGeometry>()
                 ->HandlesType<SceneAssetBody>()
                 ->HandlesType<SceneBodyConfiguration>()
                 ->HandlesType<SceneSourceShape>()

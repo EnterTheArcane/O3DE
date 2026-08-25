@@ -8,10 +8,12 @@
 #include <Jolt/RagdollComponent.h>
 
 #include <Jolt/ComponentUtilities.h>
+#include <Jolt/PathBus.h>
 #include <Jolt/ShapeOwner.h>
 #include <Jolt/SystemInternal.h>
 
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Component/TransformBus.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/Name/Name.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -62,6 +64,45 @@ namespace Jolt
                             configuration.m_minimumDistance *= scale;
                             configuration.m_maximumDistance *= scale;
                         }
+                    }
+                    else if constexpr (AZStd::is_same_v<Configuration, CustomConstraintConfiguration>)
+                    {
+                        ScalePosition(configuration.m_firstFrame.m_position, scale);
+                        ScalePosition(configuration.m_secondFrame.m_position, scale);
+                    }
+                    else if constexpr (AZStd::is_same_v<Configuration, PathConstraintConfiguration>)
+                    {
+                        configuration.m_pathPosition *= scale;
+                        configuration.m_targetVelocity *= scale;
+                    }
+                    else if constexpr (AZStd::is_same_v<Configuration, PulleyConstraintConfiguration>)
+                    {
+                        ScalePosition(configuration.m_firstBodyPoint, scale);
+                        ScalePosition(configuration.m_firstFixedPoint, scale);
+                        ScalePosition(configuration.m_secondBodyPoint, scale);
+                        ScalePosition(configuration.m_secondFixedPoint, scale);
+                        configuration.m_minimumLength *= scale;
+                        if (configuration.m_maximumLength >= 0.0f)
+                        {
+                            configuration.m_maximumLength *= scale;
+                        }
+                    }
+                    else if constexpr (AZStd::is_same_v<Configuration, SixDofConstraintConfiguration>)
+                    {
+                        ScalePosition(configuration.m_firstPoint, scale);
+                        ScalePosition(configuration.m_secondPoint, scale);
+                        SixDofAxisConfiguration* translationAxes[] = {
+                            &configuration.m_translationX,
+                            &configuration.m_translationY,
+                            &configuration.m_translationZ,
+                        };
+                        for (SixDofAxisConfiguration* axis : translationAxes)
+                        {
+                            axis->m_maximumLimit *= scale;
+                            axis->m_minimumLimit *= scale;
+                        }
+                        configuration.m_targetPosition *= scale;
+                        configuration.m_targetVelocity *= scale;
                     }
                     else if constexpr (AZStd::is_same_v<Configuration, SliderConstraintConfiguration>)
                     {
@@ -339,10 +380,108 @@ namespace Jolt
         definition.m_disableSelfCollisions = m_configuration->m_disableSelfCollisions;
         definition.m_stabilize = m_configuration->m_stabilize;
         definition.m_parts.reserve(m_configuration->m_parts.size());
+        definition.m_additionalConstraints.reserve(m_configuration->m_additionalConstraints.size());
         m_resources->m_partShapes.resize(m_configuration->m_parts.size());
 
         const AZ::Quaternion entityRotation = m_entityTransform.GetRotation();
         const AZ::Transform entityRotationTransform = AZ::Transform::CreateFromQuaternion(entityRotation);
+        AZStd::vector<AZ::Transform> neutralModelTransforms;
+        neutralModelTransforms.reserve(m_configuration->m_parts.size());
+        for (const RagdollPartComponentConfiguration& source : m_configuration->m_parts)
+        {
+            AZ::Transform modelTransform = source.m_modelTransform;
+            modelTransform.SetUniformScale(1.0f);
+            modelTransform.SetTranslation(source.m_modelTransform.GetTranslation() * uniformScale);
+            neutralModelTransforms.push_back(entityRotationTransform * modelTransform);
+        }
+
+        const auto resolveConstraint = [&, this](
+            const RagdollConstraintComponentConfiguration& source,
+            const size_t firstPartIndex,
+            RagdollConstraintConfiguration& resolved)
+        {
+            if (firstPartIndex >= neutralModelTransforms.size())
+            {
+                return false;
+            }
+
+            resolved.m_id = source.m_id;
+            resolved.m_firstLinkedConstraintId = source.m_firstLinkedConstraintId;
+            resolved.m_secondLinkedConstraintId = source.m_secondLinkedConstraintId;
+            bool success = true;
+            AZStd::visit(
+                [&](const auto& configuration)
+                {
+                    using Configuration = AZStd::remove_cvref_t<decltype(configuration)>;
+                    if constexpr (AZStd::is_same_v<Configuration, RagdollGearConstraintConfiguration>)
+                    {
+                        resolved.m_geometry = GearConstraintConfiguration{
+                            .m_firstHingeAxis = configuration.m_firstHingeAxis,
+                            .m_secondHingeAxis = configuration.m_secondHingeAxis,
+                            .m_ratio = configuration.m_ratio,
+                            .m_space = configuration.m_space,
+                        };
+                    }
+                    else if constexpr (AZStd::is_same_v<Configuration, PathConstraintComponentConfiguration>)
+                    {
+                        PathHandle pathHandle;
+                        PathRequestBus::EventResult(
+                            pathHandle,
+                            configuration.m_pathEntityId,
+                            &IPathRequests::GetPathHandle);
+                        if (!pathHandle)
+                        {
+                            success = false;
+                            return;
+                        }
+
+                        AZ::Transform pathEntityWorldTransform = AZ::Transform::CreateIdentity();
+                        AZ::TransformBus::EventResult(
+                            pathEntityWorldTransform,
+                            configuration.m_pathEntityId,
+                            &AZ::TransformInterface::GetWorldTM);
+                        AZ::Transform firstBodyWorldTransform = neutralModelTransforms[firstPartIndex];
+                        firstBodyWorldTransform.SetTranslation(
+                            firstBodyWorldTransform.GetTranslation() + m_entityTransform.GetTranslation());
+                        const AZ::Transform pathFrame =
+                            configuration.ResolvePathFrame(pathEntityWorldTransform, firstBodyWorldTransform);
+                        if (!pathFrame.IsFinite())
+                        {
+                            success = false;
+                            return;
+                        }
+
+                        resolved.m_geometry = PathConstraintConfiguration{
+                            .m_pathHandle = pathHandle,
+                            .m_pathPosition = pathFrame.GetTranslation(),
+                            .m_pathRotation = pathFrame.GetRotation(),
+                            .m_positionMotor = configuration.m_positionMotor,
+                            .m_maximumFrictionForce = configuration.m_maximumFrictionForce,
+                            .m_pathFraction = configuration.m_pathFraction,
+                            .m_targetPathFraction = configuration.m_targetPathFraction,
+                            .m_targetVelocity = configuration.m_targetVelocity,
+                            .m_rotationConstraint = configuration.m_rotationConstraint,
+                        };
+                    }
+                    else if constexpr (AZStd::is_same_v<Configuration, RagdollRackAndPinionConstraintConfiguration>)
+                    {
+                        resolved.m_geometry = RackAndPinionConstraintConfiguration{
+                            .m_hingeAxis = configuration.m_hingeAxis,
+                            .m_sliderAxis = configuration.m_sliderAxis,
+                            .m_ratio = configuration.m_ratio,
+                            .m_space = configuration.m_space,
+                        };
+                    }
+                    else
+                    {
+                        resolved.m_geometry = configuration;
+                        ScaleConstraint(resolved.m_geometry, uniformScale);
+                    }
+                },
+                source.m_geometry);
+            return success;
+        };
+
         for (size_t partIndex = 0; partIndex < m_configuration->m_parts.size(); ++partIndex)
         {
             const RagdollPartComponentConfiguration& source = m_configuration->m_parts[partIndex];
@@ -364,24 +503,46 @@ namespace Jolt
                 return false;
             }
 
-            AZ::Transform modelTransform = source.m_modelTransform;
-            modelTransform.SetUniformScale(1.0f);
-            modelTransform.SetTranslation(source.m_modelTransform.GetTranslation() * uniformScale);
-            modelTransform = entityRotationTransform * modelTransform;
-
             RagdollPartConfiguration part;
-            part.m_body = CreateBodyConfiguration(source, shapeSet.m_rootShapeHandle, modelTransform);
-            if (source.m_toParent)
+            part.m_body = CreateBodyConfiguration(source, shapeSet.m_rootShapeHandle, neutralModelTransforms[partIndex]);
+            if (source.m_hasParentConstraint)
             {
-                part.m_toParent = *source.m_toParent;
-                ScaleConstraint(*part.m_toParent, uniformScale);
+                const AZ::s32 parentIndex = m_configuration->m_skeleton.m_joints[partIndex].m_parentIndex;
+                if (parentIndex < 0
+                    || !resolveConstraint(
+                        source.m_parentConstraint,
+                        static_cast<size_t>(parentIndex),
+                        part.m_parentConstraint))
+                {
+                    AZ_Warning(
+                        "Jolt",
+                        false,
+                        "Ragdoll component '%s' could not resolve the parent constraint for part %zu.",
+                        GetEntity()->GetName().c_str(),
+                        partIndex);
+                    ReleaseResources();
+                    return false;
+                }
+                part.m_hasParentConstraint = true;
             }
             definition.m_parts.push_back(AZStd::move(part));
         }
-        definition.m_additionalConstraints = m_configuration->m_additionalConstraints;
-        for (AdditionalRagdollConstraint& constraint : definition.m_additionalConstraints)
+        for (const AdditionalRagdollConstraintComponentConfiguration& source : m_configuration->m_additionalConstraints)
         {
-            ScaleConstraint(constraint.m_geometry, uniformScale);
+            AdditionalRagdollConstraint constraint;
+            constraint.m_firstPartIndex = source.m_firstPartIndex;
+            constraint.m_secondPartIndex = source.m_secondPartIndex;
+            if (!resolveConstraint(source.m_constraint, source.m_firstPartIndex, constraint.m_constraint))
+            {
+                AZ_Warning(
+                    "Jolt",
+                    false,
+                    "Ragdoll component '%s' could not resolve an additional constraint.",
+                    GetEntity()->GetName().c_str());
+                ReleaseResources();
+                return false;
+            }
+            definition.m_additionalConstraints.push_back(AZStd::move(constraint));
         }
 
         m_resources->m_definitionHandle = m_system->CreateRagdollDefinition(m_worldHandle, definition);
@@ -579,8 +740,14 @@ namespace Jolt
     bool RagdollComponent::DriveMotors(
         const AZStd::span<const AZ::Transform> modelTransforms)
     {
-        return m_system
-            && m_system->DriveRagdollMotors(m_worldHandle, m_ragdollHandle, modelTransforms);
+        if (!m_system)
+        {
+            return false;
+        }
+
+        const RagdollDriveResult result =
+            m_system->DriveRagdollMotors(m_worldHandle, m_ragdollHandle, modelTransforms);
+        return result == RagdollDriveResult::Success;
     }
 
     bool RagdollComponent::DriveMotorsFromTransforms(
@@ -594,13 +761,18 @@ namespace Jolt
         const AZStd::span<const AZ::Transform> modelTransforms,
         const float deltaTime)
     {
-        return m_system
-            && m_system->DriveRagdollMotors(
-                m_worldHandle,
-                m_ragdollHandle,
-                previousModelTransforms,
-                modelTransforms,
-                deltaTime);
+        if (!m_system)
+        {
+            return false;
+        }
+
+        const RagdollDriveResult result = m_system->DriveRagdollMotors(
+            m_worldHandle,
+            m_ragdollHandle,
+            previousModelTransforms,
+            modelTransforms,
+            deltaTime);
+        return result == RagdollDriveResult::Success;
     }
 
     bool RagdollComponent::DriveMotorsWithVelocityFromTransforms(

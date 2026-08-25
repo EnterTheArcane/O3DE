@@ -6,10 +6,12 @@
  */
 
 #include <Jolt/AssetProduct.h>
+#include <Jolt/Capabilities/Extensions.h>
 #include <Jolt/CharacterControllerComponent.h>
 #include <Jolt/ColliderComponent.h>
 #include <Jolt/ComponentDependencyManager.h>
 #include <Jolt/ConstraintComponent.h>
+#include <Jolt/CustomConstraint.h>
 #include <Jolt/HairComponent.h>
 #include <Jolt/PathComponent.h>
 #include <Jolt/RagdollComponent.h>
@@ -60,6 +62,60 @@ namespace Jolt
     {
         inline constexpr AZ::TypeId ComponentVehicleStateTypeId{"{A2000001-0201-4201-8201-000000000001}"};
         inline constexpr AZ::TypeId ComponentVehicleFilterStateTypeId{"{A2000002-0202-4202-8202-000000000002}"};
+
+        class ComponentCustomConstraintProvider final
+            : public ICustomConstraintProvider
+        {
+        public:
+            AZ_RTTI(
+                ComponentCustomConstraintProvider,
+                "{B4FF807F-2AF1-40FD-841B-9B63030A679F}",
+                ICustomConstraintProvider);
+
+            [[nodiscard]]
+            AZ::TypeId GetId() const override
+            {
+                return azrtti_typeid<ComponentCustomConstraintProvider>();
+            }
+
+            [[nodiscard]]
+            AZ::u64 GetVersion() const override
+            {
+                return 1;
+            }
+
+            [[nodiscard]]
+            AZ::u32 GetMaximumRowCount(
+                const AZStd::span<const AZ::u8> data) const override
+            {
+                if (data.size() == 1 && data.front() == 1)
+                {
+                    return 1;
+                }
+
+                return 0;
+            }
+
+            [[nodiscard]]
+            AZ::u32 PreparePositionRows(
+                [[maybe_unused]] const CustomConstraintContext& context,
+                [[maybe_unused]] const AZStd::span<const AZ::u8> data,
+                [[maybe_unused]] const AZStd::span<AZ::u8> state,
+                [[maybe_unused]] const AZStd::span<CustomConstraintRow> rows) const override
+            {
+                return 0;
+            }
+
+            [[nodiscard]]
+            AZ::u32 PrepareVelocityRows(
+                [[maybe_unused]] const CustomConstraintContext& context,
+                [[maybe_unused]] const AZStd::span<const AZ::u8> data,
+                [[maybe_unused]] const AZStd::span<AZ::u8> state,
+                [[maybe_unused]] const AZStd::span<CustomConstraintRow> rows) const override
+            {
+                return 0;
+            }
+        };
 
         class ComponentNameDictionaryScope final
         {
@@ -4162,6 +4218,225 @@ namespace Jolt
             &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
             transformDescriptor);
         ragdollDescriptor->ReleaseDescriptor();
+        transformDescriptor->ReleaseDescriptor();
+    }
+
+    TEST(ComponentTests, RagdollAuthoringConstructsEveryConstraintAlternative)
+    {
+        ComponentNameDictionaryScope nameDictionary;
+        AZ::ComponentDescriptor* transformDescriptor = AzFramework::TransformComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* pathDescriptor = PathComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* ragdollDescriptor = RagdollComponent::CreateDescriptor();
+        AZ::ComponentApplicationBus::Broadcast(
+            &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
+            transformDescriptor);
+        AZ::ComponentApplicationBus::Broadcast(
+            &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
+            pathDescriptor);
+        AZ::ComponentApplicationBus::Broadcast(
+            &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
+            ragdollDescriptor);
+
+        ComponentCustomConstraintProvider customProvider;
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+        Extensions* extensions = Extensions::Get();
+        ASSERT_TRUE(extensions);
+        const ExtensionRegistrationResult customRegistration =
+            extensions->RegisterExtension(&customProvider, ExtensionHostLease{});
+        ASSERT_TRUE(customRegistration);
+
+        HermitePathConfiguration pathConfiguration;
+        pathConfiguration.m_points = {
+            {.m_position = AZ::Vector3::CreateZero()},
+            {.m_position = AZ::Vector3::CreateAxisX(4.0f)},
+        };
+        AZ::Entity pathEntity("Ragdoll path");
+        pathEntity.CreateComponent<AzFramework::TransformComponent>();
+        PathComponent* path = pathEntity.CreateComponent<PathComponent>(pathConfiguration);
+        ASSERT_TRUE(path);
+        pathEntity.Init();
+        AZ::Transform pathTransform = AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisX(10.0f));
+        pathTransform.SetUniformScale(2.0f);
+        AZ::TransformBus::Event(pathEntity.GetId(), &AZ::TransformInterface::SetWorldTM, pathTransform);
+        pathEntity.Activate();
+        const PathHandle pathHandle = path->GetPathHandle();
+        ASSERT_TRUE(pathHandle);
+
+        RagdollComponentConfiguration configuration = RagdollComponentConfiguration::CreateDefault();
+        configuration.m_disableSelfCollisions = false;
+        configuration.m_stabilize = false;
+        const AZ::Uuid parentHingeId = AZ::Uuid::CreateName("RagdollAuthoring.ParentHinge");
+        const AZ::Uuid secondHingeId = AZ::Uuid::CreateName("RagdollAuthoring.SecondHinge");
+        const AZ::Uuid sliderId = AZ::Uuid::CreateName("RagdollAuthoring.Slider");
+        configuration.m_parts[1].m_parentConstraint.m_id = parentHingeId;
+        configuration.m_additionalConstraints.reserve(13);
+
+        const auto appendConstraint = [&configuration](
+            RagdollConstraintComponentGeometry geometry,
+            const AZ::Uuid& id) -> RagdollConstraintComponentConfiguration&
+        {
+            AdditionalRagdollConstraintComponentConfiguration constraint;
+            constraint.m_constraint.m_geometry = AZStd::move(geometry);
+            constraint.m_constraint.m_id = id;
+            constraint.m_firstPartIndex = 0;
+            constraint.m_secondPartIndex = 1;
+            configuration.m_additionalConstraints.push_back(AZStd::move(constraint));
+            return configuration.m_additionalConstraints.back().m_constraint;
+        };
+
+        const WorldPosition firstPoint{.m_z = 0.25};
+        const WorldPosition secondPoint{.m_z = -0.25};
+
+        HingeConstraintConfiguration secondHinge;
+        secondHinge.m_firstPoint = firstPoint;
+        secondHinge.m_secondPoint = secondPoint;
+        appendConstraint(secondHinge, secondHingeId);
+
+        SliderConstraintConfiguration slider;
+        slider.m_firstPoint = firstPoint;
+        slider.m_secondPoint = secondPoint;
+        appendConstraint(slider, sliderId);
+
+        ConeConstraintConfiguration cone;
+        cone.m_firstPoint = firstPoint;
+        cone.m_secondPoint = secondPoint;
+        appendConstraint(cone, AZ::Uuid::CreateName("RagdollAuthoring.Cone"));
+
+        CustomConstraintConfiguration custom;
+        custom.m_data = {1};
+        custom.m_firstFrame.m_position = firstPoint;
+        custom.m_secondFrame.m_position = secondPoint;
+        custom.m_providerId = customProvider.GetId();
+        appendConstraint(custom, AZ::Uuid::CreateName("RagdollAuthoring.Custom"));
+
+        DistanceConstraintConfiguration distance;
+        distance.m_firstPoint = firstPoint;
+        distance.m_secondPoint = secondPoint;
+        appendConstraint(distance, AZ::Uuid::CreateName("RagdollAuthoring.Distance"));
+
+        FixedConstraintConfiguration fixed;
+        fixed.m_firstPoint = firstPoint;
+        fixed.m_secondPoint = secondPoint;
+        fixed.m_autoDetectPoint = false;
+        appendConstraint(fixed, AZ::Uuid::CreateName("RagdollAuthoring.Fixed"));
+
+        RagdollGearConstraintConfiguration gear;
+        RagdollConstraintComponentConfiguration& gearRecord =
+            appendConstraint(gear, AZ::Uuid::CreateName("RagdollAuthoring.Gear"));
+        gearRecord.m_firstLinkedConstraintId = parentHingeId;
+        gearRecord.m_secondLinkedConstraintId = secondHingeId;
+
+        PathConstraintComponentConfiguration pathConstraint;
+        pathConstraint.m_pathEntityId = pathEntity.GetId();
+        pathConstraint.m_pathPosition = AZ::Vector3::CreateAxisX();
+        pathConstraint.m_targetVelocity = 4.0f;
+        appendConstraint(pathConstraint, AZ::Uuid::CreateName("RagdollAuthoring.Path"));
+
+        PointConstraintConfiguration point;
+        point.m_firstPoint = firstPoint;
+        point.m_secondPoint = secondPoint;
+        appendConstraint(point, AZ::Uuid::CreateName("RagdollAuthoring.Point"));
+
+        PulleyConstraintConfiguration pulley;
+        pulley.m_firstBodyPoint = firstPoint;
+        pulley.m_firstFixedPoint = firstPoint;
+        pulley.m_secondBodyPoint = secondPoint;
+        pulley.m_secondFixedPoint = firstPoint;
+        appendConstraint(pulley, AZ::Uuid::CreateName("RagdollAuthoring.Pulley"));
+
+        RagdollRackAndPinionConstraintConfiguration rackAndPinion;
+        RagdollConstraintComponentConfiguration& rackAndPinionRecord =
+            appendConstraint(rackAndPinion, AZ::Uuid::CreateName("RagdollAuthoring.RackAndPinion"));
+        rackAndPinionRecord.m_firstLinkedConstraintId = parentHingeId;
+        rackAndPinionRecord.m_secondLinkedConstraintId = sliderId;
+
+        SixDofConstraintConfiguration sixDof;
+        sixDof.m_firstPoint = firstPoint;
+        sixDof.m_secondPoint = secondPoint;
+        appendConstraint(sixDof, AZ::Uuid::CreateName("RagdollAuthoring.SixDof"));
+
+        SwingTwistConstraintConfiguration swingTwist;
+        swingTwist.m_firstPoint = firstPoint;
+        swingTwist.m_secondPoint = secondPoint;
+        appendConstraint(swingTwist, AZ::Uuid::CreateName("RagdollAuthoring.SwingTwist"));
+
+        AZ::Entity ragdollEntity("Authored ragdoll");
+        ragdollEntity.CreateComponent<AzFramework::TransformComponent>();
+        RagdollComponent* ragdoll = ragdollEntity.CreateComponent<RagdollComponent>(AZStd::move(configuration));
+        ASSERT_TRUE(ragdoll);
+        ragdollEntity.Init();
+        AZ::Transform ragdollTransform = AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisX(3.0f));
+        ragdollTransform.SetUniformScale(2.0f);
+        AZ::TransformBus::Event(ragdollEntity.GetId(), &AZ::TransformInterface::SetWorldTM, ragdollTransform);
+        ragdollEntity.Activate();
+
+        const RagdollState ragdollState = ragdoll->GetState();
+        ASSERT_TRUE(ragdollState.m_definitionHandle);
+        EXPECT_EQ(ragdollState.m_constraintCount, 14);
+        const AZStd::vector<ConstraintHandle> constraintHandles = ragdoll->CopyConstraints();
+        ASSERT_EQ(constraintHandles.size(), 14);
+
+        AZStd::array<AZ::u32, 14> constraintKindCounts{};
+        ConstraintHandle pathConstraintHandle;
+        for (const ConstraintHandle constraintHandle : constraintHandles)
+        {
+            ConstraintState constraintState;
+            ASSERT_TRUE(system.GetConstraintState(ragdoll->GetWorldHandle(), constraintHandle, constraintState));
+            const size_t kindIndex = static_cast<size_t>(constraintState.m_kind);
+            ASSERT_LT(kindIndex, constraintKindCounts.size());
+            ++constraintKindCounts[kindIndex];
+            if (constraintState.m_kind == ConstraintKind::Path)
+            {
+                pathConstraintHandle = constraintHandle;
+            }
+        }
+        EXPECT_EQ(constraintKindCounts[static_cast<size_t>(ConstraintKind::Hinge)], 2);
+        const AZStd::array uniqueKinds = {
+            ConstraintKind::Cone,
+            ConstraintKind::Custom,
+            ConstraintKind::Distance,
+            ConstraintKind::Fixed,
+            ConstraintKind::Gear,
+            ConstraintKind::Path,
+            ConstraintKind::Point,
+            ConstraintKind::Pulley,
+            ConstraintKind::RackAndPinion,
+            ConstraintKind::SixDof,
+            ConstraintKind::Slider,
+            ConstraintKind::SwingTwist,
+        };
+        for (const ConstraintKind kind : uniqueKinds)
+        {
+            EXPECT_EQ(constraintKindCounts[static_cast<size_t>(kind)], 1);
+        }
+
+        ASSERT_TRUE(pathConstraintHandle);
+        ConstraintConfiguration resolvedPathConstraint;
+        ASSERT_TRUE(system.GetConstraintConfiguration(ragdoll->GetWorldHandle(), pathConstraintHandle, resolvedPathConstraint));
+        const auto* resolvedPath = AZStd::get_if<PathConstraintConfiguration>(&resolvedPathConstraint.m_geometry);
+        ASSERT_TRUE(resolvedPath);
+        EXPECT_EQ(resolvedPath->m_pathHandle, pathHandle);
+        EXPECT_TRUE(resolvedPath->m_pathPosition.IsClose(AZ::Vector3::CreateAxisX(9.0f)));
+        EXPECT_FLOAT_EQ(resolvedPath->m_targetVelocity, 4.0f);
+
+        ragdollEntity.Deactivate();
+        pathEntity.Deactivate();
+        EXPECT_EQ(
+            extensions->UnregisterExtension(customRegistration.m_handle),
+            ExtensionRegistrationStatus::Success);
+
+        AZ::ComponentApplicationBus::Broadcast(
+            &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
+            ragdollDescriptor);
+        AZ::ComponentApplicationBus::Broadcast(
+            &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
+            pathDescriptor);
+        AZ::ComponentApplicationBus::Broadcast(
+            &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
+            transformDescriptor);
+        ragdollDescriptor->ReleaseDescriptor();
+        pathDescriptor->ReleaseDescriptor();
         transformDescriptor->ReleaseDescriptor();
     }
 

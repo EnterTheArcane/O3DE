@@ -1967,6 +1967,14 @@ namespace Jolt
         return GetRuntimeImplementation(*this).GetRagdollConstraintBodyPairs(worldHandle, definitionHandle, bodyPairs);
     }
 
+    QueryResult Ragdolls::GetRagdollConstraintIdentities(
+        WorldHandle worldHandle,
+        RagdollDefinitionHandle definitionHandle,
+        AZStd::span<AZ::Uuid> constraintIds) const
+    {
+        return GetRuntimeImplementation(*this).GetRagdollConstraintIdentities(worldHandle, definitionHandle, constraintIds);
+    }
+
     bool Constraints::UpdateDistanceLimits(
         WorldHandle worldHandle,
         ConstraintHandle constraintHandle,
@@ -3787,7 +3795,7 @@ namespace Jolt
         return GetRuntimeImplementation(*this).DriveRagdollKinematically(worldHandle, ragdollHandle, rootPosition, modelTransforms, deltaTime);
     }
 
-    bool Ragdolls::DriveRagdollMotors(
+    RagdollDriveResult Ragdolls::DriveRagdollMotors(
         WorldHandle worldHandle,
         RagdollHandle ragdollHandle,
         AZStd::span<const AZ::Transform> modelTransforms)
@@ -3795,7 +3803,7 @@ namespace Jolt
         return GetRuntimeImplementation(*this).DriveRagdollMotors(worldHandle, ragdollHandle, modelTransforms);
     }
 
-    bool Ragdolls::DriveRagdollMotors(
+    RagdollDriveResult Ragdolls::DriveRagdollMotors(
         WorldHandle worldHandle,
         RagdollHandle ragdollHandle,
         AZStd::span<const AZ::Transform> previousModelTransforms,

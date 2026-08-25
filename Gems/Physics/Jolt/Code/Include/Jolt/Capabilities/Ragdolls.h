@@ -11,6 +11,8 @@
 #include <Jolt/Query.h>
 #include <Jolt/Ragdoll.h>
 
+#include <AzCore/Math/Uuid.h>
+
 namespace Jolt
 {
     class Runtime;
@@ -48,6 +50,12 @@ namespace Jolt
             WorldHandle worldHandle,
             RagdollDefinitionHandle definitionHandle,
             AZStd::span<RagdollConstraintBodyPair> bodyPairs) const;
+
+        [[nodiscard]]
+        QueryResult GetRagdollConstraintIdentities(
+            WorldHandle worldHandle,
+            RagdollDefinitionHandle definitionHandle,
+            AZStd::span<AZ::Uuid> constraintIds) const;
 
         [[nodiscard]]
         RagdollHandle CreateRagdoll(
@@ -124,12 +132,14 @@ namespace Jolt
             AZStd::span<const AZ::Transform> modelTransforms,
             float deltaTime);
 
-        bool DriveRagdollMotors(
+        [[nodiscard]]
+        RagdollDriveResult DriveRagdollMotors(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
             AZStd::span<const AZ::Transform> modelTransforms);
 
-        bool DriveRagdollMotors(
+        [[nodiscard]]
+        RagdollDriveResult DriveRagdollMotors(
             WorldHandle worldHandle,
             RagdollHandle ragdollHandle,
             AZStd::span<const AZ::Transform> previousModelTransforms,

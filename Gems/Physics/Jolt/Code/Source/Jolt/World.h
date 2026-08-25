@@ -503,6 +503,10 @@ namespace Jolt
             RagdollDefinitionHandle definitionHandle,
             AZStd::span<RagdollConstraintBodyPair> bodyPairs) const;
 
+        QueryResult GetRagdollConstraintIdentities(
+            RagdollDefinitionHandle definitionHandle,
+            AZStd::span<AZ::Uuid> constraintIds) const;
+
         [[nodiscard]]
         RagdollHandle CreateRagdoll(const RagdollConfiguration& configuration);
 
@@ -558,11 +562,11 @@ namespace Jolt
             AZStd::span<const AZ::Transform> modelTransforms,
             float deltaTime);
 
-        bool DriveRagdollMotors(
+        RagdollDriveResult DriveRagdollMotors(
             RagdollHandle ragdollHandle,
             AZStd::span<const AZ::Transform> modelTransforms);
 
-        bool DriveRagdollMotors(
+        RagdollDriveResult DriveRagdollMotors(
             RagdollHandle ragdollHandle,
             AZStd::span<const AZ::Transform> previousModelTransforms,
             AZStd::span<const AZ::Transform> modelTransforms,
@@ -2390,10 +2394,23 @@ namespace Jolt
 
         struct RagdollDefinitionSlot final
         {
+            struct ConstraintMetadata final
+            {
+                ConstraintGeometry m_geometry;
+                AZ::Uuid m_id = AZ::Uuid::CreateNull();
+                AZ::Uuid m_firstLinkedConstraintId = AZ::Uuid::CreateNull();
+                AZ::Uuid m_secondLinkedConstraintId = AZ::Uuid::CreateNull();
+                AZ::TypeId m_customProviderId = AZ::TypeId::CreateNull();
+                ConstraintKind m_kind = ConstraintKind::None;
+            };
+
             JPH::Ref<JPH::RagdollSettings> m_settings;
             SkeletonDefinitionHandle m_skeletonHandle;
             AZStd::vector<ShapeHandle> m_shapeHandles;
             AZStd::vector<AZ::Transform> m_neutralModelTransforms;
+            AZStd::vector<ConstraintMetadata> m_constraints;
+            AZStd::vector<PathHandle> m_pathHandles;
+            AZStd::vector<ExtensionHandle> m_customProviderExtensions;
             AZ::u32 m_generation = 0;
             AZ::u32 m_ragdollCount = 0;
             bool m_supportsMotorDrive = false;

@@ -75,6 +75,47 @@ namespace Jolt
         }
     } // namespace
 
+    CustomConstraintSettings::CustomConstraintSettings(
+        ICustomConstraintProvider& provider,
+        const AZ::TypeId providerId,
+        const AZ::u64 providerVersion,
+        AZStd::vector<AZ::u8> data,
+        AZStd::vector<AZ::u8> initialState,
+        const WorldPosition& origin,
+        JPH::Mat44Arg firstFrame,
+        JPH::Mat44Arg secondFrame,
+        const AZ::u32 maximumRowCount)
+        : m_provider(&provider)
+        , m_data(AZStd::move(data))
+        , m_initialState(AZStd::move(initialState))
+        , m_origin(origin)
+        , m_firstFrame(firstFrame)
+        , m_secondFrame(secondFrame)
+        , m_providerId(providerId)
+        , m_providerVersion(providerVersion)
+        , m_maximumRowCount(maximumRowCount)
+    {
+    }
+
+    JPH::TwoBodyConstraint* CustomConstraintSettings::Create(
+        JPH::Body& firstBody,
+        JPH::Body& secondBody) const
+    {
+        return new CustomConstraint(
+            firstBody,
+            secondBody,
+            *this,
+            *m_provider,
+            m_providerId,
+            m_providerVersion,
+            m_data,
+            m_initialState,
+            m_origin,
+            m_firstFrame,
+            m_secondFrame,
+            m_maximumRowCount);
+    }
+
     CustomConstraint::CustomConstraint(
         JPH::Body& firstBody,
         JPH::Body& secondBody,

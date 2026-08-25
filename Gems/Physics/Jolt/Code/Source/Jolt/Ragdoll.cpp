@@ -7,12 +7,15 @@
 
 #include <Jolt/World.h>
 
+#include <Jolt/CustomConstraintInternal.h>
 #include <Jolt/HandleEncoding.h>
 #include <Jolt/Profiler.h>
 #include <Jolt/SystemInternal.h>
 
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/typetraits/is_same.h>
 #include <AzCore/std/typetraits/remove_cvref.h>
@@ -24,8 +27,13 @@
 #include <Jolt/Physics/Constraints/FixedConstraint.h>
 #include <Jolt/Physics/Constraints/ConeConstraint.h>
 #include <Jolt/Physics/Constraints/DistanceConstraint.h>
+#include <Jolt/Physics/Constraints/GearConstraint.h>
 #include <Jolt/Physics/Constraints/HingeConstraint.h>
+#include <Jolt/Physics/Constraints/PathConstraint.h>
 #include <Jolt/Physics/Constraints/PointConstraint.h>
+#include <Jolt/Physics/Constraints/PulleyConstraint.h>
+#include <Jolt/Physics/Constraints/RackAndPinionConstraint.h>
+#include <Jolt/Physics/Constraints/SixDOFConstraint.h>
 #include <Jolt/Physics/Constraints/SliderConstraint.h>
 #include <Jolt/Physics/Constraints/SwingTwistConstraint.h>
 #include <Jolt/Physics/Ragdoll/Ragdoll.h>
@@ -246,6 +254,39 @@ namespace Jolt
         }
 
         [[nodiscard]]
+        JPH::EMotorState ToRagdollNativeMotorState(
+            const MotorState state)
+        {
+            switch (state)
+            {
+            case MotorState::Position:
+                return JPH::EMotorState::Position;
+            case MotorState::PositionAndVelocity:
+                return JPH::EMotorState::PositionAndVelocity;
+            case MotorState::Velocity:
+                return JPH::EMotorState::Velocity;
+            case MotorState::Off:
+            case MotorState::None:
+                break;
+            }
+
+            return JPH::EMotorState::Off;
+        }
+
+        [[nodiscard]]
+        JPH::Mat44 ToRagdollNativeFrame(
+            const WorldTransform& frame)
+        {
+            return JPH::Mat44::sRotationTranslation(
+                ToRagdollNativeRotation(frame.m_rotation),
+                {
+                    static_cast<float>(frame.m_position.m_x),
+                    static_cast<float>(frame.m_position.m_y),
+                    static_cast<float>(frame.m_position.m_z),
+                });
+        }
+
+        [[nodiscard]]
         bool IsFiniteRagdollPosition(
             const WorldPosition& position)
         {
@@ -285,13 +326,41 @@ namespace Jolt
         AZStd::vector<AZ::Transform> neutralTransforms;
         shapeHandles.reserve(configuration.m_parts.size());
         neutralTransforms.reserve(configuration.m_parts.size());
+        AZStd::vector<RagdollDefinitionSlot::ConstraintMetadata> constraintMetadata;
+        constraintMetadata.reserve(configuration.m_parts.size() + configuration.m_additionalConstraints.size());
+        AZStd::vector<PathHandle> pathHandles;
+        AZStd::vector<ExtensionHandle> customProviderExtensions;
+        AZStd::unordered_set<AZ::Uuid> constraintIds;
         bool supportsMotorDrive = true;
         bool valid = true;
 
-        const auto makeConstraintSettings =
-            [&](const ConstraintGeometry& geometry) -> JPH::Ref<JPH::TwoBodyConstraintSettings>
+        const auto releaseConstraintDependencies = [&]()
+        {
+            for (const PathHandle pathHandle : pathHandles)
             {
+                m_system.ReleasePath(pathHandle);
+            }
+            for (const ExtensionHandle extensionHandle : customProviderExtensions)
+            {
+                m_system.ReleaseCustomConstraintProvider(extensionHandle);
+            }
+        };
+
+        const auto makeConstraintSettings =
+            [&](const RagdollConstraintConfiguration& configuration)
+                -> JPH::Ref<JPH::TwoBodyConstraintSettings>
+            {
+                if (configuration.m_id.IsNull() || !constraintIds.insert(configuration.m_id).second)
+                {
+                    return nullptr;
+                }
+
                 JPH::Ref<JPH::TwoBodyConstraintSettings> result;
+                RagdollDefinitionSlot::ConstraintMetadata metadata;
+                metadata.m_geometry = configuration.m_geometry;
+                metadata.m_id = configuration.m_id;
+                metadata.m_firstLinkedConstraintId = configuration.m_firstLinkedConstraintId;
+                metadata.m_secondLinkedConstraintId = configuration.m_secondLinkedConstraintId;
                 AZStd::visit(
                     [&](const auto& value)
                     {
@@ -319,6 +388,59 @@ namespace Jolt
                             native->mTwistAxis1 = ToRagdollNativeVector(value.m_firstTwistAxis.GetNormalized());
                             native->mTwistAxis2 = ToRagdollNativeVector(value.m_secondTwistAxis.GetNormalized());
                             native->mHalfConeAngle = value.m_halfConeAngle;
+                            metadata.m_kind = ConstraintKind::Cone;
+                            result = native;
+                        }
+                        else if constexpr (AZStd::is_same_v<Geometry, CustomConstraintConfiguration>)
+                        {
+                            if (value.m_providerId.IsNull()
+                                || value.m_space != ConstraintSpace::LocalToCenterOfMass
+                                || !IsFiniteRagdollPosition(value.m_firstFrame.m_position)
+                                || !value.m_firstFrame.m_rotation.IsFinite()
+                                || value.m_firstFrame.m_rotation.IsZero()
+                                || !IsFiniteRagdollPosition(value.m_secondFrame.m_position)
+                                || !value.m_secondFrame.m_rotation.IsFinite()
+                                || value.m_secondFrame.m_rotation.IsZero())
+                            {
+                                return;
+                            }
+
+                            AZ::u32 maximumRowCount = 0;
+                            AZ::u32 stateByteCount = 0;
+                            AZ::u64 providerVersion = 0;
+                            ExtensionHandle extensionHandle;
+                            ICustomConstraintProvider* provider = m_system.AcquireCustomConstraintProvider(
+                                value.m_providerId,
+                                value.m_data,
+                                maximumRowCount,
+                                stateByteCount,
+                                providerVersion,
+                                extensionHandle);
+                            if (!provider)
+                            {
+                                return;
+                            }
+
+                            AZStd::vector<AZ::u8> initialState(stateByteCount);
+                            if (!provider->InitializeState(value.m_data, initialState))
+                            {
+                                m_system.ReleaseCustomConstraintProvider(extensionHandle);
+                                return;
+                            }
+
+                            JPH::Ref<CustomConstraintSettings> native = new CustomConstraintSettings(
+                                *provider,
+                                value.m_providerId,
+                                providerVersion,
+                                value.m_data,
+                                AZStd::move(initialState),
+                                m_configuration.m_origin,
+                                ToRagdollNativeFrame(value.m_firstFrame),
+                                ToRagdollNativeFrame(value.m_secondFrame),
+                                maximumRowCount);
+                            customProviderExtensions.push_back(extensionHandle);
+                            metadata.m_customProviderId = value.m_providerId;
+                            metadata.m_kind = ConstraintKind::Custom;
                             result = native;
                         }
                         else if constexpr (AZStd::is_same_v<Geometry, DistanceConstraintConfiguration>)
@@ -348,6 +470,7 @@ namespace Jolt
                             native->mMinDistance = value.m_minimumDistance;
                             native->mMaxDistance = value.m_maximumDistance;
                             native->mLimitsSpringSettings = ToRagdollNativeSpring(value.m_limitSpring);
+                            metadata.m_kind = ConstraintKind::Distance;
                             result = native;
                         }
                         else if constexpr (AZStd::is_same_v<Geometry, FixedConstraintConfiguration>)
@@ -370,6 +493,30 @@ namespace Jolt
                             native->mAxisY1 = ToRagdollNativeVector(value.m_firstAxisY.GetNormalized());
                             native->mAxisX2 = ToRagdollNativeVector(value.m_secondAxisX.GetNormalized());
                             native->mAxisY2 = ToRagdollNativeVector(value.m_secondAxisY.GetNormalized());
+                            metadata.m_kind = ConstraintKind::Fixed;
+                            result = native;
+                        }
+                        else if constexpr (AZStd::is_same_v<Geometry, GearConstraintConfiguration>)
+                        {
+                            if (value.m_space != ConstraintSpace::LocalToCenterOfMass
+                                || value.m_firstHingeConstraintHandle
+                                || value.m_secondHingeConstraintHandle
+                                || !value.m_firstHingeAxis.IsFinite()
+                                || value.m_firstHingeAxis.IsZero()
+                                || !value.m_secondHingeAxis.IsFinite()
+                                || value.m_secondHingeAxis.IsZero()
+                                || !AZ::IsFiniteFloat(value.m_ratio)
+                                || value.m_ratio == 0.0f)
+                            {
+                                return;
+                            }
+
+                            JPH::Ref<JPH::GearConstraintSettings> native = new JPH::GearConstraintSettings();
+                            native->mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
+                            native->mHingeAxis1 = ToRagdollNativeVector(value.m_firstHingeAxis.GetNormalized());
+                            native->mHingeAxis2 = ToRagdollNativeVector(value.m_secondHingeAxis.GetNormalized());
+                            native->mRatio = value.m_ratio;
+                            metadata.m_kind = ConstraintKind::Gear;
                             result = native;
                         }
                         else if constexpr (AZStd::is_same_v<Geometry, HingeConstraintConfiguration>)
@@ -406,6 +553,74 @@ namespace Jolt
                             native->mLimitsSpringSettings = ToRagdollNativeSpring(value.m_limitSpring);
                             native->mMaxFrictionTorque = value.m_maximumFrictionTorque;
                             native->mMotorSettings = ToRagdollNativeMotor(value.m_motor);
+                            metadata.m_kind = ConstraintKind::Hinge;
+                            result = native;
+                        }
+                        else if constexpr (AZStd::is_same_v<Geometry, PathConstraintConfiguration>)
+                        {
+                            const float rotationLengthSq = value.m_pathRotation.GetLengthSq();
+                            if (!value.m_pathHandle
+                                || !value.m_pathPosition.IsFinite()
+                                || !value.m_pathRotation.IsFinite()
+                                || !AZ::IsFiniteFloat(rotationLengthSq)
+                                || rotationLengthSq <= 0.0f
+                                || !IsValidRagdollMotor(value.m_positionMotor)
+                                || !AZ::IsFiniteFloat(value.m_maximumFrictionForce)
+                                || value.m_maximumFrictionForce < 0.0f
+                                || !AZ::IsFiniteFloat(value.m_pathFraction)
+                                || value.m_pathFraction < 0.0f
+                                || !AZ::IsFiniteFloat(value.m_targetPathFraction)
+                                || value.m_targetPathFraction < 0.0f
+                                || !AZ::IsFiniteFloat(value.m_targetVelocity)
+                                || value.m_rotationConstraint == PathRotationConstraint::None)
+                            {
+                                return;
+                            }
+
+                            JPH::RefConst<JPH::PathConstraintPath> path;
+                            if (!m_system.AcquirePath(value.m_pathHandle, path)
+                                || value.m_pathFraction > path->GetPathMaxFraction()
+                                || (!path->IsLooping() && value.m_targetPathFraction > path->GetPathMaxFraction()))
+                            {
+                                if (path)
+                                {
+                                    m_system.ReleasePath(value.m_pathHandle);
+                                }
+                                return;
+                            }
+
+                            JPH::Ref<JPH::PathConstraintSettings> native = new JPH::PathConstraintSettings();
+                            native->mPath = path;
+                            native->mPathPosition = ToRagdollNativeVector(value.m_pathPosition);
+                            native->mPathRotation = ToRagdollNativeRotation(value.m_pathRotation);
+                            native->mPathFraction = value.m_pathFraction;
+                            native->mMaxFrictionForce = value.m_maximumFrictionForce;
+                            native->mPositionMotorSettings = ToRagdollNativeMotor(value.m_positionMotor);
+                            switch (value.m_rotationConstraint)
+                            {
+                            case PathRotationConstraint::ConstrainAroundBinormal:
+                                native->mRotationConstraintType = JPH::EPathRotationConstraintType::ConstrainAroundBinormal;
+                                break;
+                            case PathRotationConstraint::ConstrainAroundNormal:
+                                native->mRotationConstraintType = JPH::EPathRotationConstraintType::ConstrainAroundNormal;
+                                break;
+                            case PathRotationConstraint::ConstrainAroundTangent:
+                                native->mRotationConstraintType = JPH::EPathRotationConstraintType::ConstrainAroundTangent;
+                                break;
+                            case PathRotationConstraint::ConstrainToPath:
+                                native->mRotationConstraintType = JPH::EPathRotationConstraintType::ConstrainToPath;
+                                break;
+                            case PathRotationConstraint::Free:
+                                native->mRotationConstraintType = JPH::EPathRotationConstraintType::Free;
+                                break;
+                            case PathRotationConstraint::FullyConstrained:
+                                native->mRotationConstraintType = JPH::EPathRotationConstraintType::FullyConstrained;
+                                break;
+                            case PathRotationConstraint::None:
+                                break;
+                            }
+                            pathHandles.push_back(value.m_pathHandle);
+                            metadata.m_kind = ConstraintKind::Path;
                             result = native;
                         }
                         else if constexpr (AZStd::is_same_v<Geometry, PointConstraintConfiguration>)
@@ -421,6 +636,161 @@ namespace Jolt
                             native->mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
                             native->mPoint1 = ToRagdollNativePosition(value.m_firstPoint);
                             native->mPoint2 = ToRagdollNativePosition(value.m_secondPoint);
+                            metadata.m_kind = ConstraintKind::Point;
+                            result = native;
+                        }
+                        else if constexpr (AZStd::is_same_v<Geometry, PulleyConstraintConfiguration>)
+                        {
+                            const bool usesAutomaticMaximumLength = value.m_maximumLength < 0.0f;
+                            if (value.m_space != ConstraintSpace::LocalToCenterOfMass
+                                || !IsFiniteRagdollPosition(value.m_firstBodyPoint)
+                                || !IsFiniteRagdollPosition(value.m_firstFixedPoint)
+                                || !IsFiniteRagdollPosition(value.m_secondBodyPoint)
+                                || !IsFiniteRagdollPosition(value.m_secondFixedPoint)
+                                || !AZ::IsFiniteFloat(value.m_minimumLength)
+                                || value.m_minimumLength < 0.0f
+                                || !AZ::IsFiniteFloat(value.m_maximumLength)
+                                || (!usesAutomaticMaximumLength && value.m_maximumLength < value.m_minimumLength)
+                                || !AZ::IsFiniteFloat(value.m_ratio)
+                                || value.m_ratio <= 0.0f)
+                            {
+                                return;
+                            }
+
+                            JPH::Ref<JPH::PulleyConstraintSettings> native = new JPH::PulleyConstraintSettings();
+                            native->mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
+                            native->mBodyPoint1 = ToRagdollNativePosition(value.m_firstBodyPoint);
+                            native->mBodyPoint2 = ToRagdollNativePosition(value.m_secondBodyPoint);
+                            native->mFixedPoint1 = ToRagdollNativePosition(
+                                value.m_firstFixedPoint,
+                                m_configuration.m_origin);
+                            native->mFixedPoint2 = ToRagdollNativePosition(
+                                value.m_secondFixedPoint,
+                                m_configuration.m_origin);
+                            native->mMinLength = value.m_minimumLength;
+                            native->mMaxLength = value.m_maximumLength;
+                            native->mRatio = value.m_ratio;
+                            metadata.m_kind = ConstraintKind::Pulley;
+                            result = native;
+                        }
+                        else if constexpr (AZStd::is_same_v<Geometry, RackAndPinionConstraintConfiguration>)
+                        {
+                            if (value.m_space != ConstraintSpace::LocalToCenterOfMass
+                                || value.m_pinionConstraintHandle
+                                || value.m_rackConstraintHandle
+                                || !value.m_hingeAxis.IsFinite()
+                                || value.m_hingeAxis.IsZero()
+                                || !value.m_sliderAxis.IsFinite()
+                                || value.m_sliderAxis.IsZero()
+                                || !AZ::IsFiniteFloat(value.m_ratio)
+                                || value.m_ratio == 0.0f)
+                            {
+                                return;
+                            }
+
+                            JPH::Ref<JPH::RackAndPinionConstraintSettings> native =
+                                new JPH::RackAndPinionConstraintSettings();
+                            native->mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
+                            native->mHingeAxis = ToRagdollNativeVector(value.m_hingeAxis.GetNormalized());
+                            native->mSliderAxis = ToRagdollNativeVector(value.m_sliderAxis.GetNormalized());
+                            native->mRatio = value.m_ratio;
+                            metadata.m_kind = ConstraintKind::RackAndPinion;
+                            result = native;
+                        }
+                        else if constexpr (AZStd::is_same_v<Geometry, SixDofConstraintConfiguration>)
+                        {
+                            if (value.m_space != ConstraintSpace::LocalToCenterOfMass
+                                || value.m_swingType == SwingType::None
+                                || !IsFiniteRagdollPosition(value.m_firstPoint)
+                                || !IsFiniteRagdollPosition(value.m_secondPoint)
+                                || !AreValidRagdollFrameAxes(value.m_firstAxisX, value.m_firstAxisY)
+                                || !AreValidRagdollFrameAxes(value.m_secondAxisX, value.m_secondAxisY)
+                                || !value.m_targetAngularVelocity.IsFinite()
+                                || !value.m_targetPosition.IsFinite()
+                                || !value.m_targetOrientation.IsFinite()
+                                || value.m_targetOrientation.IsZero()
+                                || !value.m_targetVelocity.IsFinite())
+                            {
+                                return;
+                            }
+
+                            const SixDofAxisConfiguration* axisConfigurations[] = {
+                                &value.m_translationX,
+                                &value.m_translationY,
+                                &value.m_translationZ,
+                                &value.m_rotationX,
+                                &value.m_rotationY,
+                                &value.m_rotationZ,
+                            };
+                            JPH::Ref<JPH::SixDOFConstraintSettings> native = new JPH::SixDOFConstraintSettings();
+                            for (size_t axisIndex = 0; axisIndex < AZ_ARRAY_SIZE(axisConfigurations); ++axisIndex)
+                            {
+                                const SixDofAxisConfiguration& axis = *axisConfigurations[axisIndex];
+                                const auto nativeAxis = static_cast<JPH::SixDOFConstraintSettings::EAxis>(axisIndex);
+                                if (axis.m_mode == SixDofAxisMode::None
+                                    || !IsValidRagdollSpring(axis.m_limitSpring)
+                                    || !IsValidRagdollMotor(axis.m_motor)
+                                    || !AZ::IsFiniteFloat(axis.m_maximumFriction)
+                                    || axis.m_maximumFriction < 0.0f)
+                                {
+                                    return;
+                                }
+
+                                if (axis.m_mode == SixDofAxisMode::Fixed)
+                                {
+                                    native->MakeFixedAxis(nativeAxis);
+                                }
+                                else if (axis.m_mode == SixDofAxisMode::Free)
+                                {
+                                    native->MakeFreeAxis(nativeAxis);
+                                }
+                                else
+                                {
+                                    if (!AZ::IsFiniteFloat(axis.m_minimumLimit)
+                                        || !AZ::IsFiniteFloat(axis.m_maximumLimit)
+                                        || axis.m_minimumLimit > axis.m_maximumLimit)
+                                    {
+                                        return;
+                                    }
+                                    if (axisIndex >= JPH::SixDOFConstraintSettings::EAxis::NumTranslation
+                                        && (axis.m_minimumLimit < -AZ::Constants::Pi
+                                            || axis.m_maximumLimit > AZ::Constants::Pi))
+                                    {
+                                        return;
+                                    }
+                                    if (value.m_swingType == SwingType::Cone
+                                        && axisIndex > JPH::SixDOFConstraintSettings::EAxis::RotationX
+                                        && !AZ::IsClose(-axis.m_minimumLimit, axis.m_maximumLimit, 1.0e-4f))
+                                    {
+                                        return;
+                                    }
+                                    native->SetLimitedAxis(nativeAxis, axis.m_minimumLimit, axis.m_maximumLimit);
+                                }
+                                native->mMaxFriction[axisIndex] = axis.m_maximumFriction;
+                                native->mMotorSettings[axisIndex] = ToRagdollNativeMotor(axis.m_motor);
+                                if (axisIndex < JPH::SixDOFConstraintSettings::EAxis::NumTranslation)
+                                {
+                                    native->mLimitsSpringSettings[axisIndex] =
+                                        ToRagdollNativeSpring(axis.m_limitSpring);
+                                }
+                            }
+
+                            native->mSpace = JPH::EConstraintSpace::LocalToBodyCOM;
+                            native->mPosition1 = ToRagdollNativePosition(value.m_firstPoint);
+                            native->mPosition2 = ToRagdollNativePosition(value.m_secondPoint);
+                            native->mAxisX1 = ToRagdollNativeVector(value.m_firstAxisX.GetNormalized());
+                            native->mAxisY1 = ToRagdollNativeVector(value.m_firstAxisY.GetNormalized());
+                            native->mAxisX2 = ToRagdollNativeVector(value.m_secondAxisX.GetNormalized());
+                            native->mAxisY2 = ToRagdollNativeVector(value.m_secondAxisY.GetNormalized());
+                            if (value.m_swingType == SwingType::Pyramid)
+                            {
+                                native->mSwingType = JPH::ESwingType::Pyramid;
+                            }
+                            else
+                            {
+                                native->mSwingType = JPH::ESwingType::Cone;
+                            }
+                            metadata.m_kind = ConstraintKind::SixDof;
                             result = native;
                         }
                         else if constexpr (AZStd::is_same_v<Geometry, SliderConstraintConfiguration>)
@@ -456,6 +826,7 @@ namespace Jolt
                             native->mLimitsSpringSettings = ToRagdollNativeSpring(value.m_limitSpring);
                             native->mMaxFrictionForce = value.m_maximumFrictionForce;
                             native->mMotorSettings = ToRagdollNativeMotor(value.m_motor);
+                            metadata.m_kind = ConstraintKind::Slider;
                             result = native;
                         }
                         else if constexpr (AZStd::is_same_v<Geometry, SwingTwistConstraintConfiguration>)
@@ -505,10 +876,28 @@ namespace Jolt
                             native->mMaxFrictionTorque = value.m_maximumFrictionTorque;
                             native->mSwingMotorSettings = ToRagdollNativeMotor(value.m_swingMotor);
                             native->mTwistMotorSettings = ToRagdollNativeMotor(value.m_twistMotor);
+                            metadata.m_kind = ConstraintKind::SwingTwist;
                             result = native;
                         }
                     },
-                    geometry);
+                    configuration.m_geometry);
+                if (!result)
+                {
+                    constraintIds.erase(configuration.m_id);
+                    return nullptr;
+                }
+
+                const bool linkedConstraint = metadata.m_kind == ConstraintKind::Gear
+                    || metadata.m_kind == ConstraintKind::RackAndPinion;
+                const bool hasFirstLink = !metadata.m_firstLinkedConstraintId.IsNull();
+                const bool hasSecondLink = !metadata.m_secondLinkedConstraintId.IsNull();
+                if ((linkedConstraint && (!hasFirstLink || !hasSecondLink))
+                    || (!linkedConstraint && (hasFirstLink || hasSecondLink)))
+                {
+                    constraintIds.erase(configuration.m_id);
+                    return nullptr;
+                }
+                constraintMetadata.push_back(AZStd::move(metadata));
                 return result;
             };
 
@@ -535,8 +924,8 @@ namespace Jolt
                 || !source.m_body.m_transform.m_rotation.IsFinite()
                 || source.m_body.m_transform.m_rotation.IsZero()
                 || !IsValidRagdollPoseTransform(neutralTransform)
-                || (isRoot && source.m_toParent.has_value())
-                || (!isRoot && !source.m_toParent.has_value()))
+                || (isRoot && source.m_hasParentConstraint)
+                || (!isRoot && !source.m_hasParentConstraint))
             {
                 valid = false;
                 break;
@@ -583,16 +972,16 @@ namespace Jolt
                 part.mMassPropertiesOverride.mInertia =
                     ToRagdollNativeInertia(source.m_body.m_massProperties.m_inertia);
             }
-            if (source.m_toParent.has_value())
+            if (source.m_hasParentConstraint)
             {
-                part.mToParent = makeConstraintSettings(source.m_toParent.value());
+                part.mToParent = makeConstraintSettings(source.m_parentConstraint);
                 if (!part.mToParent)
                 {
                     valid = false;
                     break;
                 }
-                if (!AZStd::holds_alternative<HingeConstraintConfiguration>(source.m_toParent.value())
-                    && !AZStd::holds_alternative<SwingTwistConstraintConfiguration>(source.m_toParent.value()))
+                if (!AZStd::holds_alternative<HingeConstraintConfiguration>(source.m_parentConstraint.m_geometry)
+                    && !AZStd::holds_alternative<SwingTwistConstraintConfiguration>(source.m_parentConstraint.m_geometry))
                 {
                     supportsMotorDrive = false;
                 }
@@ -606,7 +995,7 @@ namespace Jolt
             settings->mAdditionalConstraints.reserve(configuration.m_additionalConstraints.size());
             for (const AdditionalRagdollConstraint& source : configuration.m_additionalConstraints)
             {
-                JPH::Ref<JPH::TwoBodyConstraintSettings> constraint = makeConstraintSettings(source.m_geometry);
+                JPH::Ref<JPH::TwoBodyConstraintSettings> constraint = makeConstraintSettings(source.m_constraint);
                 if (!constraint
                     || source.m_firstPartIndex >= configuration.m_parts.size()
                     || source.m_secondPartIndex >= configuration.m_parts.size()
@@ -623,6 +1012,51 @@ namespace Jolt
         }
         if (!valid)
         {
+            releaseConstraintDependencies();
+            m_system.ReleaseSkeletonDefinition(configuration.m_skeletonHandle);
+            return {};
+        }
+
+        AZStd::unordered_map<AZ::Uuid, size_t> constraintIndicesById;
+        constraintIndicesById.reserve(constraintMetadata.size());
+        for (size_t constraintIndex = 0; constraintIndex < constraintMetadata.size(); ++constraintIndex)
+        {
+            constraintIndicesById.emplace(constraintMetadata[constraintIndex].m_id, constraintIndex);
+        }
+        for (const RagdollDefinitionSlot::ConstraintMetadata& metadata : constraintMetadata)
+        {
+            if (metadata.m_kind != ConstraintKind::Gear
+                && metadata.m_kind != ConstraintKind::RackAndPinion)
+            {
+                continue;
+            }
+
+            const auto firstDependency = constraintIndicesById.find(metadata.m_firstLinkedConstraintId);
+            const auto secondDependency = constraintIndicesById.find(metadata.m_secondLinkedConstraintId);
+            if (firstDependency == constraintIndicesById.end()
+                || secondDependency == constraintIndicesById.end()
+                || firstDependency->second == secondDependency->second
+                || constraintMetadata[firstDependency->second].m_id == metadata.m_id
+                || constraintMetadata[secondDependency->second].m_id == metadata.m_id)
+            {
+                valid = false;
+                break;
+            }
+
+            const ConstraintKind firstKind = constraintMetadata[firstDependency->second].m_kind;
+            const ConstraintKind secondKind = constraintMetadata[secondDependency->second].m_kind;
+            if ((metadata.m_kind == ConstraintKind::Gear
+                    && (firstKind != ConstraintKind::Hinge || secondKind != ConstraintKind::Hinge))
+                || (metadata.m_kind == ConstraintKind::RackAndPinion
+                    && (firstKind != ConstraintKind::Hinge || secondKind != ConstraintKind::Slider)))
+            {
+                valid = false;
+                break;
+            }
+        }
+        if (!valid)
+        {
+            releaseConstraintDependencies();
             m_system.ReleaseSkeletonDefinition(configuration.m_skeletonHandle);
             return {};
         }
@@ -647,6 +1081,7 @@ namespace Jolt
         }
         if (configuration.m_stabilize && !settings->Stabilize())
         {
+            releaseConstraintDependencies();
             m_system.ReleaseSkeletonDefinition(configuration.m_skeletonHandle);
             return {};
         }
@@ -658,6 +1093,7 @@ namespace Jolt
             definitionIndex);
         if (!definitionHandle)
         {
+            releaseConstraintDependencies();
             m_system.ReleaseSkeletonDefinition(configuration.m_skeletonHandle);
             return {};
         }
@@ -667,6 +1103,9 @@ namespace Jolt
         slot.m_skeletonHandle = configuration.m_skeletonHandle;
         slot.m_shapeHandles = AZStd::move(shapeHandles);
         slot.m_neutralModelTransforms = AZStd::move(neutralTransforms);
+        slot.m_constraints = AZStd::move(constraintMetadata);
+        slot.m_pathHandles = AZStd::move(pathHandles);
+        slot.m_customProviderExtensions = AZStd::move(customProviderExtensions);
         slot.m_supportsMotorDrive = supportsMotorDrive;
         for (const ShapeHandle shapeHandle : slot.m_shapeHandles)
         {
@@ -700,6 +1139,15 @@ namespace Jolt
             {
                 --shapeSlot->m_ragdollDefinitionCount;
             }
+        }
+        slot->m_settings = nullptr;
+        for (const PathHandle pathHandle : slot->m_pathHandles)
+        {
+            m_system.ReleasePath(pathHandle);
+        }
+        for (const ExtensionHandle extensionHandle : slot->m_customProviderExtensions)
+        {
+            m_system.ReleaseCustomConstraintProvider(extensionHandle);
         }
         m_system.ReleaseSkeletonDefinition(slot->m_skeletonHandle);
         Internal::ReleaseHandleSlot(
@@ -766,6 +1214,28 @@ namespace Jolt
         };
     }
 
+    QueryResult World::GetRagdollConstraintIdentities(
+        const RagdollDefinitionHandle definitionHandle,
+        const AZStd::span<AZ::Uuid> constraintIds) const
+    {
+        AZStd::lock_guard lock(m_mutex);
+        const RagdollDefinitionSlot* slot = FindRagdollDefinition(definitionHandle);
+        if (!slot)
+        {
+            return {};
+        }
+
+        const size_t copyCount = AZStd::min(constraintIds.size(), slot->m_constraints.size());
+        for (size_t constraintIndex = 0; constraintIndex < copyCount; ++constraintIndex)
+        {
+            constraintIds[constraintIndex] = slot->m_constraints[constraintIndex].m_id;
+        }
+        return {
+            .m_hitCount = aznumeric_cast<AZ::u32>(copyCount),
+            .m_requiredHitCount = aznumeric_cast<AZ::u32>(slot->m_constraints.size()),
+        };
+    }
+
     RagdollHandle World::CreateRagdoll(
         const RagdollConfiguration& configuration)
     {
@@ -825,6 +1295,134 @@ namespace Jolt
             Internal::RollbackHandleSlot(m_ragdollSlots, m_freeRagdollSlots, ragdollReservation);
             return {};
         }
+        if (ragdoll->GetConstraintCount() != definition->m_constraints.size())
+        {
+            ragdoll = nullptr;
+            Internal::RollbackHandleSlot(m_ragdollSlots, m_freeRagdollSlots, ragdollReservation);
+            return {};
+        }
+
+        AZStd::unordered_map<AZ::Uuid, size_t> constraintOffsetsById;
+        constraintOffsetsById.reserve(definition->m_constraints.size());
+        for (size_t constraintOffset = 0; constraintOffset < definition->m_constraints.size(); ++constraintOffset)
+        {
+            constraintOffsetsById.emplace(definition->m_constraints[constraintOffset].m_id, constraintOffset);
+        }
+        for (size_t constraintOffset = 0; constraintOffset < definition->m_constraints.size(); ++constraintOffset)
+        {
+            const RagdollDefinitionSlot::ConstraintMetadata& metadata = definition->m_constraints[constraintOffset];
+            JPH::TwoBodyConstraint* nativeConstraint = ragdoll->GetConstraint(aznumeric_cast<int>(constraintOffset));
+            if (!nativeConstraint)
+            {
+                ragdoll = nullptr;
+                Internal::RollbackHandleSlot(m_ragdollSlots, m_freeRagdollSlots, ragdollReservation);
+                return {};
+            }
+
+            if (metadata.m_kind == ConstraintKind::Gear)
+            {
+                const size_t firstOffset = constraintOffsetsById.find(metadata.m_firstLinkedConstraintId)->second;
+                const size_t secondOffset = constraintOffsetsById.find(metadata.m_secondLinkedConstraintId)->second;
+                static_cast<JPH::GearConstraint*>(nativeConstraint)->SetConstraints(
+                    ragdoll->GetConstraint(aznumeric_cast<int>(firstOffset)),
+                    ragdoll->GetConstraint(aznumeric_cast<int>(secondOffset)));
+            }
+            else if (metadata.m_kind == ConstraintKind::RackAndPinion)
+            {
+                const size_t firstOffset = constraintOffsetsById.find(metadata.m_firstLinkedConstraintId)->second;
+                const size_t secondOffset = constraintOffsetsById.find(metadata.m_secondLinkedConstraintId)->second;
+                static_cast<JPH::RackAndPinionConstraint*>(nativeConstraint)->SetConstraints(
+                    ragdoll->GetConstraint(aznumeric_cast<int>(firstOffset)),
+                    ragdoll->GetConstraint(aznumeric_cast<int>(secondOffset)));
+            }
+
+            AZStd::visit(
+                [&](const auto& geometry)
+                {
+                    using Geometry = AZStd::remove_cvref_t<decltype(geometry)>;
+                    if constexpr (AZStd::is_same_v<Geometry, HingeConstraintConfiguration>)
+                    {
+                        auto* constraint = static_cast<JPH::HingeConstraint*>(nativeConstraint);
+                        constraint->SetMotorState(ToRagdollNativeMotorState(geometry.m_motor.m_state));
+                        constraint->SetTargetAngle(geometry.m_targetAngle);
+                        constraint->SetTargetAngularVelocity(geometry.m_targetAngularVelocity);
+                    }
+                    else if constexpr (AZStd::is_same_v<Geometry, PathConstraintConfiguration>)
+                    {
+                        auto* constraint = static_cast<JPH::PathConstraint*>(nativeConstraint);
+                        constraint->SetPositionMotorState(ToRagdollNativeMotorState(geometry.m_positionMotor.m_state));
+                        constraint->SetTargetPathFraction(geometry.m_targetPathFraction);
+                        constraint->SetTargetVelocity(geometry.m_targetVelocity);
+                    }
+                    else if constexpr (AZStd::is_same_v<Geometry, SixDofConstraintConfiguration>)
+                    {
+                        auto* constraint = static_cast<JPH::SixDOFConstraint*>(nativeConstraint);
+                        const SixDofAxisConfiguration* axisConfigurations[] = {
+                            &geometry.m_translationX,
+                            &geometry.m_translationY,
+                            &geometry.m_translationZ,
+                            &geometry.m_rotationX,
+                            &geometry.m_rotationY,
+                            &geometry.m_rotationZ,
+                        };
+                        for (size_t axisIndex = 0; axisIndex < AZ_ARRAY_SIZE(axisConfigurations); ++axisIndex)
+                        {
+                            constraint->SetMotorState(
+                                static_cast<JPH::SixDOFConstraint::EAxis>(axisIndex),
+                                ToRagdollNativeMotorState(axisConfigurations[axisIndex]->m_motor.m_state));
+                        }
+                        constraint->SetTargetAngularVelocityCS(
+                            ToRagdollNativeVector(geometry.m_targetAngularVelocity));
+                        constraint->SetTargetOrientationCS(ToRagdollNativeRotation(geometry.m_targetOrientation));
+                        constraint->SetTargetPositionCS(ToRagdollNativeVector(geometry.m_targetPosition));
+                        constraint->SetTargetVelocityCS(ToRagdollNativeVector(geometry.m_targetVelocity));
+                    }
+                    else if constexpr (AZStd::is_same_v<Geometry, SliderConstraintConfiguration>)
+                    {
+                        auto* constraint = static_cast<JPH::SliderConstraint*>(nativeConstraint);
+                        constraint->SetMotorState(ToRagdollNativeMotorState(geometry.m_motor.m_state));
+                        constraint->SetTargetPosition(geometry.m_targetPosition);
+                        constraint->SetTargetVelocity(geometry.m_targetVelocity);
+                    }
+                    else if constexpr (AZStd::is_same_v<Geometry, SwingTwistConstraintConfiguration>)
+                    {
+                        auto* constraint = static_cast<JPH::SwingTwistConstraint*>(nativeConstraint);
+                        constraint->SetSwingMotorState(ToRagdollNativeMotorState(geometry.m_swingMotor.m_state));
+                        constraint->SetTwistMotorState(ToRagdollNativeMotorState(geometry.m_twistMotor.m_state));
+                        constraint->SetTargetAngularVelocityCS(
+                            ToRagdollNativeVector(geometry.m_targetAngularVelocity));
+                        constraint->SetTargetOrientationCS(ToRagdollNativeRotation(geometry.m_targetOrientation));
+                    }
+                },
+                metadata.m_geometry);
+        }
+
+        AZStd::vector<PathHandle> instancePathHandles(definition->m_constraints.size());
+        for (size_t constraintOffset = 0; constraintOffset < definition->m_constraints.size(); ++constraintOffset)
+        {
+            const auto* path = AZStd::get_if<PathConstraintConfiguration>(
+                &definition->m_constraints[constraintOffset].m_geometry);
+            if (!path)
+            {
+                continue;
+            }
+
+            JPH::RefConst<JPH::PathConstraintPath> retainedPath;
+            if (!m_system.AcquirePath(path->m_pathHandle, retainedPath))
+            {
+                for (const PathHandle acquiredPathHandle : instancePathHandles)
+                {
+                    if (acquiredPathHandle)
+                    {
+                        m_system.ReleasePath(acquiredPathHandle);
+                    }
+                }
+                ragdoll = nullptr;
+                Internal::RollbackHandleSlot(m_ragdollSlots, m_freeRagdollSlots, ragdollReservation);
+                return {};
+            }
+            instancePathHandles[constraintOffset] = path->m_pathHandle;
+        }
 
         slot.m_bodyHandles.clear();
         slot.m_bodyHandles.reserve(ragdoll->GetBodyCount());
@@ -837,6 +1435,14 @@ namespace Jolt
         const auto rollbackReservations = [&]()
         {
             ragdoll = nullptr;
+            for (const PathHandle pathHandle : instancePathHandles)
+            {
+                if (pathHandle)
+                {
+                    m_system.ReleasePath(pathHandle);
+                }
+            }
+            instancePathHandles.clear();
             for (size_t reservationIndex = constraintReservations.size(); reservationIndex > 0; --reservationIndex)
             {
                 Internal::RollbackHandleSlot(
@@ -920,16 +1526,50 @@ namespace Jolt
             constraintSlot.m_firstBodyHandle = slot.m_bodyHandles[bodyIndicesPair.first];
             constraintSlot.m_secondBodyHandle = slot.m_bodyHandles[bodyIndicesPair.second];
             constraintSlot.m_dependencyHandles = {};
-            constraintSlot.m_pathHandle = {};
+            constraintSlot.m_pathHandle = instancePathHandles[constraintOffset];
+            constraintSlot.m_customProviderId = definition->m_constraints[constraintOffset].m_customProviderId;
+            constraintSlot.m_customProviderExtension = ExtensionHandle::Invalid;
             constraintSlot.m_entityId = configuration.m_entityId;
             constraintSlot.m_name = configuration.m_name;
+            constraintSlot.m_userData = 0;
+            constraintSlot.m_configurationRevision = 1;
             constraintSlot.m_pathRotationConstraint = PathRotationConstraint::None;
+            if (const auto* path = AZStd::get_if<PathConstraintConfiguration>(
+                    &definition->m_constraints[constraintOffset].m_geometry))
+            {
+                constraintSlot.m_pathRotationConstraint = path->m_rotationConstraint;
+            }
             constraintSlot.m_parentCount = 0;
             constraintSlot.m_ragdollHandle = ragdollHandle;
+            constraintSlot.m_sceneInstanceHandle = {};
+            constraintSlot.m_isDestroying = false;
             nativeConstraint->SetUserData(Internal::HandleAccess::ToValue(constraintHandle));
             ++FindBody(constraintSlot.m_firstBodyHandle)->m_constraintCount;
             ++FindBody(constraintSlot.m_secondBodyHandle)->m_constraintCount;
         }
+        for (size_t constraintOffset = 0; constraintOffset < definition->m_constraints.size(); ++constraintOffset)
+        {
+            const RagdollDefinitionSlot::ConstraintMetadata& metadata = definition->m_constraints[constraintOffset];
+            if (metadata.m_kind != ConstraintKind::Gear
+                && metadata.m_kind != ConstraintKind::RackAndPinion)
+            {
+                continue;
+            }
+
+            ConstraintSlot& constraintSlot =
+                m_constraintSlots[constraintReservations[constraintOffset].m_index];
+            const size_t firstDependencyOffset =
+                constraintOffsetsById.find(metadata.m_firstLinkedConstraintId)->second;
+            const size_t secondDependencyOffset =
+                constraintOffsetsById.find(metadata.m_secondLinkedConstraintId)->second;
+            constraintSlot.m_dependencyHandles = {
+                slot.m_constraintHandles[firstDependencyOffset],
+                slot.m_constraintHandles[secondDependencyOffset],
+            };
+            ++FindConstraint(constraintSlot.m_dependencyHandles[0])->m_parentCount;
+            ++FindConstraint(constraintSlot.m_dependencyHandles[1])->m_parentCount;
+        }
+        instancePathHandles.clear();
 
         slot.m_pose.SetSkeleton(definition->m_settings->GetSkeleton());
         slot.m_previousPose.SetSkeleton(definition->m_settings->GetSkeleton());
@@ -1126,21 +1766,19 @@ namespace Jolt
         }
         for (const ConstraintHandle constraintHandle : slot->m_constraintHandles)
         {
-            Internal::WorldMemberHandleParts parts;
             ConstraintSlot* constraintSlot = FindConstraint(constraintHandle);
-            if (!constraintSlot || !Internal::DecodeWorldMemberHandle(constraintHandle, parts))
+            if (!constraintSlot)
             {
                 continue;
             }
-            BodySlot* firstBody = FindBody(constraintSlot->m_firstBodyHandle);
-            BodySlot* secondBody = FindBody(constraintSlot->m_secondBodyHandle);
-            if (firstBody && firstBody->m_constraintCount > 0)
+            ReleaseConstraintReferences(*constraintSlot);
+        }
+        for (const ConstraintHandle constraintHandle : slot->m_constraintHandles)
+        {
+            Internal::WorldMemberHandleParts parts;
+            if (!Internal::DecodeWorldMemberHandle(constraintHandle, parts))
             {
-                --firstBody->m_constraintCount;
-            }
-            if (secondBody && secondBody->m_constraintCount > 0)
-            {
-                --secondBody->m_constraintCount;
+                continue;
             }
             Internal::ReleaseHandleSlot(m_constraintSlots, m_freeConstraintSlots, parts.m_index);
         }
@@ -1411,7 +2049,7 @@ namespace Jolt
         return true;
     }
 
-    bool World::DriveRagdollMotors(
+    RagdollDriveResult World::DriveRagdollMotors(
         const RagdollHandle ragdollHandle,
         const AZStd::span<const AZ::Transform> modelTransforms)
     {
@@ -1422,28 +2060,36 @@ namespace Jolt
         {
             definition = FindRagdollDefinition(slot->m_definitionHandle);
         }
-        if (!slot
-            || !definition
-            || !definition->m_supportsMotorDrive
-            || modelTransforms.size() != slot->m_bodyHandles.size())
+        if (!slot || !definition)
         {
-            return false;
+            return RagdollDriveResult::InvalidHandle;
+        }
+        if (!definition->m_supportsMotorDrive)
+        {
+            return RagdollDriveResult::UnsupportedConstraint;
+        }
+        if (modelTransforms.size() != slot->m_bodyHandles.size())
+        {
+            return RagdollDriveResult::InvalidPose;
+        }
+        for (const AZ::Transform& modelTransform : modelTransforms)
+        {
+            if (!IsValidRagdollPoseTransform(modelTransform))
+            {
+                return RagdollDriveResult::InvalidPose;
+            }
         }
         for (size_t jointIndex = 0; jointIndex < modelTransforms.size(); ++jointIndex)
         {
-            if (!IsValidRagdollPoseTransform(modelTransforms[jointIndex]))
-            {
-                return false;
-            }
             slot->m_pose.GetJointMatrices()[jointIndex] =
                 ToRagdollNativeTransform(modelTransforms[jointIndex]);
         }
         slot->m_pose.CalculateJointStates();
         slot->m_ragdoll->DriveToPoseUsingMotors(slot->m_pose);
-        return true;
+        return RagdollDriveResult::Success;
     }
 
-    bool World::DriveRagdollMotors(
+    RagdollDriveResult World::DriveRagdollMotors(
         const RagdollHandle ragdollHandle,
         const AZStd::span<const AZ::Transform> previousModelTransforms,
         const AZStd::span<const AZ::Transform> modelTransforms,
@@ -1456,23 +2102,33 @@ namespace Jolt
         {
             definition = FindRagdollDefinition(slot->m_definitionHandle);
         }
-        if (!slot
-            || !definition
-            || !definition->m_supportsMotorDrive
-            || !AZ::IsFiniteFloat(deltaTime)
-            || deltaTime <= 0.0f
-            || previousModelTransforms.size() != slot->m_bodyHandles.size()
+        if (!slot || !definition)
+        {
+            return RagdollDriveResult::InvalidHandle;
+        }
+        if (!definition->m_supportsMotorDrive)
+        {
+            return RagdollDriveResult::UnsupportedConstraint;
+        }
+        if (!AZ::IsFiniteFloat(deltaTime) || deltaTime <= 0.0f)
+        {
+            return RagdollDriveResult::InvalidDeltaTime;
+        }
+        if (previousModelTransforms.size() != slot->m_bodyHandles.size()
             || modelTransforms.size() != slot->m_bodyHandles.size())
         {
-            return false;
+            return RagdollDriveResult::InvalidPose;
         }
         for (size_t jointIndex = 0; jointIndex < modelTransforms.size(); ++jointIndex)
         {
             if (!IsValidRagdollPoseTransform(previousModelTransforms[jointIndex])
                 || !IsValidRagdollPoseTransform(modelTransforms[jointIndex]))
             {
-                return false;
+                return RagdollDriveResult::InvalidPose;
             }
+        }
+        for (size_t jointIndex = 0; jointIndex < modelTransforms.size(); ++jointIndex)
+        {
             slot->m_previousPose.GetJointMatrices()[jointIndex] =
                 ToRagdollNativeTransform(previousModelTransforms[jointIndex]);
             slot->m_pose.GetJointMatrices()[jointIndex] =
@@ -1484,7 +2140,7 @@ namespace Jolt
             slot->m_previousPose,
             slot->m_pose,
             deltaTime);
-        return true;
+        return RagdollDriveResult::Success;
     }
 
     bool World::ResetRagdollWarmStart(

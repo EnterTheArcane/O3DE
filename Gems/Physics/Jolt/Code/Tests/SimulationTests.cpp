@@ -2655,7 +2655,10 @@ namespace Jolt
             HingeConstraintConfiguration hinge;
             hinge.m_firstPoint.m_z = 0.5;
             hinge.m_secondPoint.m_z = -0.5;
-            definitionConfiguration.m_parts[1].m_toParent = hinge;
+            definitionConfiguration.m_parts[1].m_parentConstraint.m_geometry = hinge;
+            definitionConfiguration.m_parts[1].m_parentConstraint.m_id =
+                AZ::Uuid{"{02000000-0000-4000-8000-000000000007}"};
+            definitionConfiguration.m_parts[1].m_hasParentConstraint = true;
             const RagdollDefinitionHandle definitionHandle =
                 system.CreateRagdollDefinition(worldHandle, definitionConfiguration);
             if (!definitionHandle)
@@ -6693,7 +6696,10 @@ namespace Jolt
         HingeConstraintConfiguration hinge;
         hinge.m_firstPoint.m_z = 0.5;
         hinge.m_secondPoint.m_z = -0.5;
-        definitionConfiguration.m_parts[1].m_toParent = hinge;
+        definitionConfiguration.m_parts[1].m_parentConstraint.m_geometry = hinge;
+        definitionConfiguration.m_parts[1].m_parentConstraint.m_id =
+            AZ::Uuid{"{02000000-0000-4000-8000-000000000006}"};
+        definitionConfiguration.m_parts[1].m_hasParentConstraint = true;
 
         const RagdollDefinitionHandle definitionHandle =
             system.CreateRagdollDefinition(worldHandle, definitionConfiguration);
@@ -6716,6 +6722,14 @@ namespace Jolt
         EXPECT_TRUE(constraintBodyResult.IsComplete());
         EXPECT_EQ(constraintBodyPairs[0].m_firstBodyIndex, 0);
         EXPECT_EQ(constraintBodyPairs[0].m_secondBodyIndex, 1);
+
+        AZStd::array<AZ::Uuid, 1> constraintIds;
+        const QueryResult constraintIdResult = system.GetRagdollConstraintIdentities(
+            worldHandle,
+            definitionHandle,
+            constraintIds);
+        EXPECT_TRUE(constraintIdResult.IsComplete());
+        EXPECT_EQ(constraintIds[0], definitionConfiguration.m_parts[1].m_parentConstraint.m_id);
         EXPECT_FALSE(system.DestroySkeletonDefinition(skeletonHandle));
         EXPECT_FALSE(system.DestroyShape(worldHandle, shapeHandle));
 
@@ -6781,13 +6795,32 @@ namespace Jolt
             rootPosition,
             pose,
             1.0f / 60.0f));
-        EXPECT_TRUE(system.DriveRagdollMotors(worldHandle, ragdollHandle, pose));
-        EXPECT_TRUE(system.DriveRagdollMotors(
-            worldHandle,
-            ragdollHandle,
-            pose,
-            pose,
-            1.0f / 60.0f));
+        EXPECT_EQ(
+            system.DriveRagdollMotors(worldHandle, ragdollHandle, pose),
+            RagdollDriveResult::Success);
+        EXPECT_EQ(
+            system.DriveRagdollMotors(worldHandle, ragdollHandle, pose, pose, 1.0f / 60.0f),
+            RagdollDriveResult::Success);
+        EXPECT_EQ(
+            system.DriveRagdollMotors(worldHandle, RagdollHandle::Invalid, pose),
+            RagdollDriveResult::InvalidHandle);
+        EXPECT_EQ(
+            system.DriveRagdollMotors(worldHandle, ragdollHandle, AZStd::span<const AZ::Transform>(pose).first(1)),
+            RagdollDriveResult::InvalidPose);
+        EXPECT_EQ(
+            system.DriveRagdollMotors(worldHandle, ragdollHandle, pose, pose, 0.0f),
+            RagdollDriveResult::InvalidDeltaTime);
+        AZStd::array<AZ::Transform, 2> invalidPose = pose;
+        invalidPose[1].SetTranslation(AZ::Vector3(
+            AZStd::numeric_limits<float>::quiet_NaN(),
+            0.0f,
+            1.5f));
+        EXPECT_EQ(
+            system.DriveRagdollMotors(worldHandle, ragdollHandle, invalidPose),
+            RagdollDriveResult::InvalidPose);
+        EXPECT_EQ(
+            system.DriveRagdollMotors(worldHandle, ragdollHandle, pose),
+            RagdollDriveResult::Success);
         EXPECT_TRUE(system.SetRagdollVelocity(
             worldHandle,
             ragdollHandle,
@@ -6876,6 +6909,393 @@ namespace Jolt
         EXPECT_FALSE(system.IsValid(worldHandle, bodyHandles[0]));
         EXPECT_FALSE(system.IsValid(worldHandle, constraintHandles[0]));
         EXPECT_TRUE(system.DestroyRagdollDefinition(worldHandle, definitionHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+        EXPECT_TRUE(system.DestroySkeletonDefinition(skeletonHandle));
+    }
+
+    TEST(SimulationTests, RagdollsSupportEveryConstraintKindAndRetainDefinitionDependencies)
+    {
+        NameDictionaryScope nameDictionaryScope;
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
+        Runtime system(systemConfiguration, nullptr);
+        ASSERT_TRUE(system);
+
+        TestCustomConstraintProvider customProvider;
+        ScopedExtensionRegistration customProviderRegistration(system, &customProvider);
+
+        SkeletonDefinitionConfiguration skeletonConfiguration;
+        skeletonConfiguration.m_joints = {
+            {.m_name = AZ::Name("root"), .m_parentIndex = -1},
+            {.m_name = AZ::Name("child"), .m_parentIndex = 0},
+        };
+        const SkeletonDefinitionHandle skeletonHandle =
+            system.CreateSkeletonDefinition(skeletonConfiguration);
+        ASSERT_TRUE(skeletonHandle);
+
+        HermitePathConfiguration pathConfiguration;
+        pathConfiguration.m_points = {
+            {.m_position = AZ::Vector3::CreateZero()},
+            {.m_position = AZ::Vector3::CreateAxisX(2.0f)},
+        };
+        const PathHandle pathHandle = system.CreatePath(pathConfiguration);
+        ASSERT_TRUE(pathHandle);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.25f};
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+        ASSERT_TRUE(shapeHandle);
+
+        const AZ::Uuid parentHingeId{"{01000000-0000-4000-8000-000000000001}"};
+        const AZ::Uuid coneId{"{01000000-0000-4000-8000-000000000002}"};
+        const AZ::Uuid customId{"{01000000-0000-4000-8000-000000000003}"};
+        const AZ::Uuid distanceId{"{01000000-0000-4000-8000-000000000004}"};
+        const AZ::Uuid fixedId{"{01000000-0000-4000-8000-000000000005}"};
+        const AZ::Uuid secondHingeId{"{01000000-0000-4000-8000-000000000006}"};
+        const AZ::Uuid pathId{"{01000000-0000-4000-8000-000000000007}"};
+        const AZ::Uuid pointId{"{01000000-0000-4000-8000-000000000008}"};
+        const AZ::Uuid pulleyId{"{01000000-0000-4000-8000-000000000009}"};
+        const AZ::Uuid sixDofId{"{01000000-0000-4000-8000-00000000000A}"};
+        const AZ::Uuid sliderId{"{01000000-0000-4000-8000-00000000000B}"};
+        const AZ::Uuid swingTwistId{"{01000000-0000-4000-8000-00000000000C}"};
+        const AZ::Uuid gearId{"{01000000-0000-4000-8000-00000000000D}"};
+        const AZ::Uuid rackAndPinionId{"{01000000-0000-4000-8000-00000000000E}"};
+
+        const WorldPosition firstPoint{.m_z = 0.5};
+        const WorldPosition secondPoint{.m_z = -0.5};
+
+        RagdollDefinitionConfiguration definitionConfiguration;
+        definitionConfiguration.m_skeletonHandle = skeletonHandle;
+        definitionConfiguration.m_disableSelfCollisions = false;
+        definitionConfiguration.m_stabilize = false;
+        definitionConfiguration.m_parts.resize(2);
+        definitionConfiguration.m_parts[0].m_body.m_shapeHandle = shapeHandle;
+        definitionConfiguration.m_parts[1].m_body.m_shapeHandle = shapeHandle;
+        definitionConfiguration.m_parts[1].m_body.m_transform.m_position.m_z = 1.0;
+        HingeConstraintConfiguration parentHinge;
+        parentHinge.m_firstPoint = firstPoint;
+        parentHinge.m_secondPoint = secondPoint;
+        definitionConfiguration.m_parts[1].m_parentConstraint.m_geometry = parentHinge;
+        definitionConfiguration.m_parts[1].m_parentConstraint.m_id = parentHingeId;
+        definitionConfiguration.m_parts[1].m_hasParentConstraint = true;
+        definitionConfiguration.m_additionalConstraints.reserve(13);
+
+        const auto appendConstraint = [&definitionConfiguration](
+            ConstraintGeometry geometry,
+            const AZ::Uuid& id) -> RagdollConstraintConfiguration&
+        {
+            AdditionalRagdollConstraint constraint;
+            constraint.m_constraint.m_geometry = AZStd::move(geometry);
+            constraint.m_constraint.m_id = id;
+            constraint.m_firstPartIndex = 0;
+            constraint.m_secondPartIndex = 1;
+            definitionConfiguration.m_additionalConstraints.push_back(AZStd::move(constraint));
+            return definitionConfiguration.m_additionalConstraints.back().m_constraint;
+        };
+
+        ConeConstraintConfiguration cone;
+        cone.m_firstPoint = firstPoint;
+        cone.m_secondPoint = secondPoint;
+        appendConstraint(cone, coneId);
+
+        CustomConstraintConfiguration custom;
+        custom.m_data = {1};
+        custom.m_firstFrame.m_position = firstPoint;
+        custom.m_secondFrame.m_position = secondPoint;
+        custom.m_providerId = customProvider.GetId();
+        appendConstraint(custom, customId);
+
+        DistanceConstraintConfiguration distance;
+        distance.m_firstPoint = firstPoint;
+        distance.m_secondPoint = secondPoint;
+        appendConstraint(distance, distanceId);
+
+        FixedConstraintConfiguration fixed;
+        fixed.m_firstPoint = firstPoint;
+        fixed.m_secondPoint = secondPoint;
+        fixed.m_autoDetectPoint = false;
+        appendConstraint(fixed, fixedId);
+
+        HingeConstraintConfiguration secondHinge = parentHinge;
+        appendConstraint(secondHinge, secondHingeId);
+
+        PathConstraintConfiguration path;
+        path.m_pathHandle = pathHandle;
+        path.m_pathPosition = AZ::Vector3::CreateAxisZ();
+        appendConstraint(path, pathId);
+
+        PointConstraintConfiguration point;
+        point.m_firstPoint = firstPoint;
+        point.m_secondPoint = secondPoint;
+        appendConstraint(point, pointId);
+
+        PulleyConstraintConfiguration pulley;
+        pulley.m_firstBodyPoint = firstPoint;
+        pulley.m_firstFixedPoint = firstPoint;
+        pulley.m_secondBodyPoint = secondPoint;
+        pulley.m_secondFixedPoint = firstPoint;
+        appendConstraint(pulley, pulleyId);
+
+        SixDofConstraintConfiguration sixDof;
+        sixDof.m_firstPoint = firstPoint;
+        sixDof.m_secondPoint = secondPoint;
+        appendConstraint(sixDof, sixDofId);
+
+        SliderConstraintConfiguration slider;
+        slider.m_firstPoint = firstPoint;
+        slider.m_secondPoint = secondPoint;
+        appendConstraint(slider, sliderId);
+
+        SwingTwistConstraintConfiguration swingTwist;
+        swingTwist.m_firstPoint = firstPoint;
+        swingTwist.m_secondPoint = secondPoint;
+        appendConstraint(swingTwist, swingTwistId);
+
+        GearConstraintConfiguration gear;
+        RagdollConstraintConfiguration& gearRecord = appendConstraint(gear, gearId);
+        gearRecord.m_firstLinkedConstraintId = parentHingeId;
+        gearRecord.m_secondLinkedConstraintId = secondHingeId;
+
+        RackAndPinionConstraintConfiguration rackAndPinion;
+        RagdollConstraintConfiguration& rackAndPinionRecord = appendConstraint(rackAndPinion, rackAndPinionId);
+        rackAndPinionRecord.m_firstLinkedConstraintId = parentHingeId;
+        rackAndPinionRecord.m_secondLinkedConstraintId = sliderId;
+
+        const AZStd::array expectedConstraintIds = {
+            parentHingeId,
+            coneId,
+            customId,
+            distanceId,
+            fixedId,
+            secondHingeId,
+            pathId,
+            pointId,
+            pulleyId,
+            sixDofId,
+            sliderId,
+            swingTwistId,
+            gearId,
+            rackAndPinionId,
+        };
+        const AZStd::array expectedConstraintKinds = {
+            ConstraintKind::Hinge,
+            ConstraintKind::Cone,
+            ConstraintKind::Custom,
+            ConstraintKind::Distance,
+            ConstraintKind::Fixed,
+            ConstraintKind::Hinge,
+            ConstraintKind::Path,
+            ConstraintKind::Point,
+            ConstraintKind::Pulley,
+            ConstraintKind::SixDof,
+            ConstraintKind::Slider,
+            ConstraintKind::SwingTwist,
+            ConstraintKind::Gear,
+            ConstraintKind::RackAndPinion,
+        };
+
+        const RagdollDefinitionHandle definitionHandle =
+            system.CreateRagdollDefinition(worldHandle, definitionConfiguration);
+        ASSERT_TRUE(definitionHandle);
+        EXPECT_FALSE(system.DestroyPath(pathHandle));
+        EXPECT_EQ(customProviderRegistration.Unregister(), ExtensionRegistrationStatus::InUse);
+
+        AZStd::array<AZ::Uuid, expectedConstraintIds.size()> restoredConstraintIds;
+        const QueryResult identityResult = system.GetRagdollConstraintIdentities(
+            worldHandle,
+            definitionHandle,
+            restoredConstraintIds);
+        ASSERT_TRUE(identityResult.IsComplete());
+        EXPECT_EQ(restoredConstraintIds, expectedConstraintIds);
+
+        RagdollConfiguration ragdollConfiguration;
+        ragdollConfiguration.m_definitionHandle = definitionHandle;
+        ragdollConfiguration.m_rootPosition.m_z = 2.0;
+        const RagdollHandle ragdollHandle = system.CreateRagdoll(worldHandle, ragdollConfiguration);
+        ASSERT_TRUE(ragdollHandle);
+
+        AZStd::array<ConstraintHandle, expectedConstraintKinds.size()> constraintHandles;
+        const QueryResult constraintResult = system.GetRagdollConstraints(
+            worldHandle,
+            ragdollHandle,
+            constraintHandles);
+        ASSERT_TRUE(constraintResult.IsComplete());
+        for (size_t constraintIndex = 0; constraintIndex < constraintHandles.size(); ++constraintIndex)
+        {
+            ConstraintState state;
+            ASSERT_TRUE(system.GetConstraintState(worldHandle, constraintHandles[constraintIndex], state));
+            EXPECT_EQ(state.m_kind, expectedConstraintKinds[constraintIndex]);
+            EXPECT_TRUE(state.m_isInSimulation);
+        }
+
+        ConstraintConfiguration restoredGearConfiguration;
+        ASSERT_TRUE(system.GetConstraintConfiguration(
+            worldHandle,
+            constraintHandles[12],
+            restoredGearConfiguration));
+        const auto* restoredGear = AZStd::get_if<GearConstraintConfiguration>(&restoredGearConfiguration.m_geometry);
+        ASSERT_TRUE(restoredGear);
+        EXPECT_EQ(restoredGear->m_firstHingeConstraintHandle, constraintHandles[0]);
+        EXPECT_EQ(restoredGear->m_secondHingeConstraintHandle, constraintHandles[5]);
+
+        ConstraintConfiguration restoredRackConfiguration;
+        ASSERT_TRUE(system.GetConstraintConfiguration(
+            worldHandle,
+            constraintHandles[13],
+            restoredRackConfiguration));
+        const auto* restoredRack = AZStd::get_if<RackAndPinionConstraintConfiguration>(
+            &restoredRackConfiguration.m_geometry);
+        ASSERT_TRUE(restoredRack);
+        EXPECT_EQ(restoredRack->m_pinionConstraintHandle, constraintHandles[0]);
+        EXPECT_EQ(restoredRack->m_rackConstraintHandle, constraintHandles[10]);
+
+        CustomConstraintInfo customInfo;
+        ASSERT_TRUE(system.GetCustomConstraintInfo(worldHandle, constraintHandles[2], customInfo));
+        EXPECT_EQ(customInfo.m_providerId, customProvider.GetId());
+        EXPECT_EQ(customInfo.m_providerVersion, customProvider.GetVersion());
+
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        EXPECT_GT(customProvider.m_positionCallCount.load(), 0);
+        EXPECT_GT(customProvider.m_velocityCallCount.load(), 0);
+
+        WorldStateDigest snapshotDigest;
+        ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, snapshotDigest));
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(snapshotHandle);
+        AZStd::array<BodyHandle, 2> bodyHandles;
+        ASSERT_TRUE(system.GetRagdollBodies(worldHandle, ragdollHandle, bodyHandles).IsComplete());
+        ASSERT_TRUE(system.AddImpulse(worldHandle, bodyHandles[1], AZ::Vector3::CreateAxisY()));
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        ASSERT_TRUE(system.RestoreWorldState(worldHandle, snapshotHandle));
+        WorldStateDigest restoredDigest;
+        ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, restoredDigest));
+        EXPECT_EQ(restoredDigest, snapshotDigest);
+
+        EXPECT_TRUE(system.RemoveRagdollFromSimulation(worldHandle, ragdollHandle));
+        EXPECT_TRUE(system.AddRagdollToSimulation(worldHandle, ragdollHandle, true));
+        EXPECT_FALSE(system.DestroyConstraint(worldHandle, constraintHandles[0]));
+        EXPECT_FALSE(system.DestroyRagdollDefinition(worldHandle, definitionHandle));
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
+        EXPECT_TRUE(system.DestroyRagdoll(worldHandle, ragdollHandle));
+        EXPECT_TRUE(system.DestroyRagdollDefinition(worldHandle, definitionHandle));
+        EXPECT_TRUE(system.DestroyPath(pathHandle));
+        EXPECT_EQ(customProviderRegistration.Unregister(), ExtensionRegistrationStatus::Success);
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+        EXPECT_TRUE(system.DestroySkeletonDefinition(skeletonHandle));
+    }
+
+    TEST(SimulationTests, RagdollDefinitionsRejectInvalidLinksAndUnsupportedMotorDriveExplicitly)
+    {
+        NameDictionaryScope nameDictionaryScope;
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
+        Runtime system(systemConfiguration, nullptr);
+        ASSERT_TRUE(system);
+
+        SkeletonDefinitionConfiguration skeletonConfiguration;
+        skeletonConfiguration.m_joints = {
+            {.m_name = AZ::Name("root"), .m_parentIndex = -1},
+            {.m_name = AZ::Name("child"), .m_parentIndex = 0},
+        };
+        const SkeletonDefinitionHandle skeletonHandle =
+            system.CreateSkeletonDefinition(skeletonConfiguration);
+        ASSERT_TRUE(skeletonHandle);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.25f};
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+        ASSERT_TRUE(shapeHandle);
+
+        const auto createBaseDefinition = [skeletonHandle, shapeHandle]()
+        {
+            RagdollDefinitionConfiguration configuration;
+            configuration.m_skeletonHandle = skeletonHandle;
+            configuration.m_stabilize = false;
+            configuration.m_parts.resize(2);
+            configuration.m_parts[0].m_body.m_shapeHandle = shapeHandle;
+            configuration.m_parts[1].m_body.m_shapeHandle = shapeHandle;
+            configuration.m_parts[1].m_body.m_transform.m_position.m_z = 1.0;
+            configuration.m_parts[1].m_hasParentConstraint = true;
+            return configuration;
+        };
+
+        const AZ::Uuid parentId{"{02000000-0000-4000-8000-000000000001}"};
+        RagdollDefinitionConfiguration missingIdentityDefinition = createBaseDefinition();
+        missingIdentityDefinition.m_parts[1].m_parentConstraint.m_geometry = HingeConstraintConfiguration{};
+        EXPECT_FALSE(system.CreateRagdollDefinition(worldHandle, missingIdentityDefinition));
+
+        RagdollDefinitionConfiguration unsupportedDriveDefinition = createBaseDefinition();
+        ConeConstraintConfiguration cone;
+        cone.m_firstPoint.m_z = 0.5;
+        cone.m_secondPoint.m_z = -0.5;
+        unsupportedDriveDefinition.m_parts[1].m_parentConstraint.m_geometry = cone;
+        unsupportedDriveDefinition.m_parts[1].m_parentConstraint.m_id = parentId;
+        const RagdollDefinitionHandle unsupportedDriveDefinitionHandle =
+            system.CreateRagdollDefinition(worldHandle, unsupportedDriveDefinition);
+        ASSERT_TRUE(unsupportedDriveDefinitionHandle);
+
+        RagdollConfiguration ragdollConfiguration;
+        ragdollConfiguration.m_definitionHandle = unsupportedDriveDefinitionHandle;
+        const RagdollHandle ragdollHandle = system.CreateRagdoll(worldHandle, ragdollConfiguration);
+        ASSERT_TRUE(ragdollHandle);
+        AZStd::array pose = {
+            AZ::Transform::CreateIdentity(),
+            AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisZ()),
+        };
+        EXPECT_EQ(
+            system.DriveRagdollMotors(worldHandle, ragdollHandle, pose),
+            RagdollDriveResult::UnsupportedConstraint);
+        EXPECT_TRUE(system.DestroyRagdoll(worldHandle, ragdollHandle));
+        EXPECT_TRUE(system.DestroyRagdollDefinition(worldHandle, unsupportedDriveDefinitionHandle));
+
+        RagdollDefinitionConfiguration duplicateIdentityDefinition = createBaseDefinition();
+        duplicateIdentityDefinition.m_parts[1].m_parentConstraint.m_geometry = HingeConstraintConfiguration{};
+        duplicateIdentityDefinition.m_parts[1].m_parentConstraint.m_id = parentId;
+        AdditionalRagdollConstraint duplicateIdentity;
+        duplicateIdentity.m_constraint.m_geometry = PointConstraintConfiguration{};
+        duplicateIdentity.m_constraint.m_id = parentId;
+        duplicateIdentity.m_secondPartIndex = 1;
+        duplicateIdentityDefinition.m_additionalConstraints.push_back(duplicateIdentity);
+        EXPECT_FALSE(system.CreateRagdollDefinition(worldHandle, duplicateIdentityDefinition));
+
+        RagdollDefinitionConfiguration missingLinkDefinition = createBaseDefinition();
+        missingLinkDefinition.m_parts[1].m_parentConstraint.m_geometry = HingeConstraintConfiguration{};
+        missingLinkDefinition.m_parts[1].m_parentConstraint.m_id = parentId;
+        AdditionalRagdollConstraint missingLink;
+        missingLink.m_constraint.m_geometry = GearConstraintConfiguration{};
+        missingLink.m_constraint.m_id = AZ::Uuid{"{02000000-0000-4000-8000-000000000002}"};
+        missingLink.m_constraint.m_firstLinkedConstraintId = parentId;
+        missingLink.m_constraint.m_secondLinkedConstraintId =
+            AZ::Uuid{"{02000000-0000-4000-8000-000000000003}"};
+        missingLink.m_secondPartIndex = 1;
+        missingLinkDefinition.m_additionalConstraints.push_back(missingLink);
+        EXPECT_FALSE(system.CreateRagdollDefinition(worldHandle, missingLinkDefinition));
+
+        RagdollDefinitionConfiguration missingProviderDefinition = createBaseDefinition();
+        missingProviderDefinition.m_parts[1].m_parentConstraint.m_geometry = HingeConstraintConfiguration{};
+        missingProviderDefinition.m_parts[1].m_parentConstraint.m_id = parentId;
+        AdditionalRagdollConstraint missingProvider;
+        CustomConstraintConfiguration custom;
+        custom.m_data = {1};
+        custom.m_providerId = azrtti_typeid<TestCustomConstraintProvider>();
+        missingProvider.m_constraint.m_geometry = custom;
+        missingProvider.m_constraint.m_id = AZ::Uuid{"{02000000-0000-4000-8000-000000000004}"};
+        missingProvider.m_secondPartIndex = 1;
+        missingProviderDefinition.m_additionalConstraints.push_back(missingProvider);
+        EXPECT_FALSE(system.CreateRagdollDefinition(worldHandle, missingProviderDefinition));
+
+        RagdollDefinitionConfiguration missingPathDefinition = createBaseDefinition();
+        missingPathDefinition.m_parts[1].m_parentConstraint.m_geometry = HingeConstraintConfiguration{};
+        missingPathDefinition.m_parts[1].m_parentConstraint.m_id = parentId;
+        AdditionalRagdollConstraint missingPath;
+        missingPath.m_constraint.m_geometry = PathConstraintConfiguration{};
+        missingPath.m_constraint.m_id = AZ::Uuid{"{02000000-0000-4000-8000-000000000005}"};
+        missingPath.m_secondPartIndex = 1;
+        missingPathDefinition.m_additionalConstraints.push_back(missingPath);
+        EXPECT_FALSE(system.CreateRagdollDefinition(worldHandle, missingPathDefinition));
+
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
         EXPECT_TRUE(system.DestroySkeletonDefinition(skeletonHandle));
     }

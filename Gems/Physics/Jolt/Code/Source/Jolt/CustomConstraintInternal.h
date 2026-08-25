@@ -16,6 +16,41 @@
 
 namespace Jolt
 {
+    class CustomConstraintSettings final
+        : public JPH::TwoBodyConstraintSettings
+    {
+    public:
+        JPH_OVERRIDE_NEW_DELETE
+
+        CustomConstraintSettings(
+            ICustomConstraintProvider& provider,
+            AZ::TypeId providerId,
+            AZ::u64 providerVersion,
+            AZStd::vector<AZ::u8> data,
+            AZStd::vector<AZ::u8> initialState,
+            const WorldPosition& origin,
+            JPH::Mat44Arg firstFrame,
+            JPH::Mat44Arg secondFrame,
+            AZ::u32 maximumRowCount);
+
+        JPH::TwoBodyConstraint* Create(
+            JPH::Body& firstBody,
+            JPH::Body& secondBody) const override;
+
+    private:
+        ICustomConstraintProvider* m_provider = nullptr;
+
+        AZStd::vector<AZ::u8> m_data;
+        AZStd::vector<AZ::u8> m_initialState;
+
+        WorldPosition m_origin;
+        JPH::Mat44 m_firstFrame;
+        JPH::Mat44 m_secondFrame;
+        AZ::TypeId m_providerId = AZ::TypeId::CreateNull();
+        AZ::u64 m_providerVersion = 0;
+        AZ::u32 m_maximumRowCount = 0;
+    };
+
     class CustomConstraint final
         : public JPH::TwoBodyConstraint
     {
