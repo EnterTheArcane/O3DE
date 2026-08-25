@@ -1284,6 +1284,13 @@ namespace AZ
                     "BusConnect() should already have handled this case.");
 
                 HandlerHolder& holder = FindOrCreateHandlerHolder(id);
+                EBUS_ASSERT(!holder.m_interface, "Bus already has a handler connected to this id!");
+                if (holder.m_interface)
+                {
+                    handler = nullptr;
+                    return;
+                }
+
                 holder.m_handler = &handler;
                 holder.m_interface = handler.m_interface;
                 handler.m_holder = &holder;
@@ -1611,6 +1618,12 @@ namespace AZ
             void Connect(HandlerNode& handler, const IdType&)
             {
                 AZ_Assert(!m_handler, "Bus already connected to!");
+                if (m_handler)
+                {
+                    handler = nullptr;
+                    return;
+                }
+
                 m_handler = handler;
             }
 

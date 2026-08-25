@@ -3977,6 +3977,42 @@ namespace UnitTest
         EXPECT_FALSE(SingleHandlerPerIdTestRequestBus::HasHandlers(7));
     }
 
+    TEST_F(EBus, ConnectingSecondSingleHandlerToSameIdIsRejected)
+    {
+        Handler<ManyToOne> firstHandler(4, true);
+        Handler<ManyToOne> secondHandler(4, false);
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        secondHandler.Connect();
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+
+        EXPECT_TRUE(firstHandler.BusIsConnected());
+        EXPECT_FALSE(secondHandler.BusIsConnected());
+        EXPECT_EQ(ManyToOne::GetTotalNumOfEventHandlers(), 1);
+
+        int result = 0;
+        ManyToOne::EventResult(result, 4, &ManyToOne::Events::OnEvent);
+        EXPECT_EQ(result, 1);
+    }
+
+    TEST_F(EBus, ConnectingSecondSingleAddressHandlerIsRejected)
+    {
+        Handler<OneToOne> firstHandler(0, true);
+        Handler<OneToOne> secondHandler(0, false);
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        secondHandler.Connect();
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+
+        EXPECT_TRUE(firstHandler.BusIsConnected());
+        EXPECT_FALSE(secondHandler.BusIsConnected());
+        EXPECT_EQ(OneToOne::GetTotalNumOfEventHandlers(), 1);
+
+        int result = 0;
+        OneToOne::BroadcastResult(result, &OneToOne::Events::OnEvent);
+        EXPECT_EQ(result, 2);
+    }
+
     TEST_F(EBus, HasHandlersAddressPtr)
     {
         // note: arbitrary numbers selected
