@@ -18,6 +18,8 @@ namespace Jolt
         : public AZ::ComponentBus
     {
     public:
+        static constexpr AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+
         virtual bool EnableSimulation() = 0;
 
         virtual bool DisableSimulation() = 0;
@@ -58,6 +60,8 @@ namespace Jolt
         : public AZ::ComponentBus
     {
     public:
+        static constexpr AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+
         virtual void OnConstraintCreated(
             [[maybe_unused]] WorldHandle worldHandle,
             [[maybe_unused]] ConstraintHandle constraintHandle)

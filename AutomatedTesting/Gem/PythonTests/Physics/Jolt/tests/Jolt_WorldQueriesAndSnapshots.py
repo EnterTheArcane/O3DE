@@ -12,6 +12,7 @@ class Tests:
     level_opened = ("Opened the Jolt query level", "Failed to open the Jolt query level")
     components_created = ("Created the Jolt query scene", "Failed to create the Jolt query scene")
     enter_game_mode = ("Entered game mode", "Failed to enter game mode")
+    world_lifecycle = ("Created, configured, and destroyed an auxiliary world", "Auxiliary world lifecycle failed")
     world_events = ("Received world movement and contact events", "World events were incomplete")
     raycasts = ("Completed scalar and batched raycasts", "A raycast query failed")
     overlaps = ("Completed point and shape overlaps", "An overlap query failed")
@@ -22,6 +23,7 @@ class Tests:
     debug_capture = ("Captured native simulation diagnostics", "Simulation diagnostics were not captured")
     snapshot_restored = ("Restored and validated a world snapshot", "World snapshot validation failed")
     snapshot_archive = ("Exported and imported a world snapshot archive", "World snapshot archive failed")
+    snapshot_recaptured = ("Recaptured a configured world snapshot", "Configured snapshot recapture failed")
     multipart_snapshot = ("Restored a multipart world snapshot", "Multipart world snapshot restore failed")
     rollback_replay = ("Replayed a deterministic multi-frame rollback", "Multi-frame rollback diverged")
     exit_game_mode = ("Exited game mode", "Failed to exit game mode")
@@ -85,11 +87,51 @@ def Jolt_WorldQueriesAndSnapshots():
     while not general.is_in_game_mode() and time.monotonic() < enter_deadline:
         general.idle_wait(0.01)
     Report.critical_result(Tests.enter_game_mode, general.is_in_game_mode())
+    floor_id = general.find_game_entity("Jolt Query Floor")
     query_body_id = general.find_game_entity("Jolt Query Body")
     second_query_body_id = general.find_game_entity("Jolt Query Second Body")
+    floor_body_handle = jolt.JoltStaticRigidBodyRequestBus(bus.Event, "GetBodyHandle", floor_id)
     world_handle = jolt.JoltRigidBodyRequestBus(bus.Event, "GetWorldHandle", query_body_id)
     body_handle = jolt.JoltRigidBodyRequestBus(bus.Event, "GetBodyHandle", query_body_id)
     shape_handle = jolt.JoltColliderRequestBus(bus.Event, "GetRootShapeHandle", query_body_id)
+
+    default_world_handle = jolt.JoltWorldRequestBus(bus.Broadcast, "GetDefaultWorldHandle")
+    default_world_valid = jolt.JoltWorldRequestBus(bus.Broadcast, "IsWorldValid", default_world_handle)
+    auxiliary_configuration = jolt.JoltWorldConfiguration()
+    auxiliary_configuration.autoSimulate = False
+    auxiliary_configuration.workerCount = 1
+    auxiliary_world_handle = jolt.JoltWorldRequestBus(bus.Broadcast, "CreateWorld", auxiliary_configuration)
+    auxiliary_world_valid = jolt.JoltWorldRequestBus(bus.Broadcast, "IsWorldValid", auxiliary_world_handle)
+    auxiliary_gravity = math.Vector3(1.0, -2.0, -3.0)
+    auxiliary_gravity_set = jolt.JoltWorldRequestBus(bus.Broadcast, "SetGravity", auxiliary_world_handle, auxiliary_gravity)
+    configured_gravity = jolt.JoltWorldRequestBus(bus.Broadcast, "GetGravity", auxiliary_world_handle)
+    simulation_configuration = jolt.JoltWorldRequestBus(bus.Broadcast, "GetSimulationConfiguration", auxiliary_world_handle)
+    expected_velocity_step_count = simulation_configuration.velocityStepCount + 1
+    simulation_configuration.velocityStepCount = expected_velocity_step_count
+    simulation_configuration_updated = jolt.JoltWorldRequestBus(
+        bus.Broadcast,
+        "UpdateSimulationConfiguration",
+        auxiliary_world_handle,
+        simulation_configuration,
+    )
+    configured_simulation = jolt.JoltWorldRequestBus(bus.Broadcast, "GetSimulationConfiguration", auxiliary_world_handle)
+    auxiliary_world_destroyed = jolt.JoltWorldRequestBus(bus.Broadcast, "DestroyWorld", auxiliary_world_handle)
+    auxiliary_world_invalid = not jolt.JoltWorldRequestBus(bus.Broadcast, "IsWorldValid", auxiliary_world_handle)
+    Report.result(
+        Tests.world_lifecycle,
+        bool(
+            default_world_handle.IsValid()
+            and default_world_valid
+            and auxiliary_world_handle.IsValid()
+            and auxiliary_world_valid
+            and auxiliary_gravity_set
+            and configured_gravity.IsClose(auxiliary_gravity)
+            and simulation_configuration_updated
+            and configured_simulation.velocityStepCount == expected_velocity_step_count
+            and auxiliary_world_destroyed
+            and auxiliary_world_invalid
+        ),
+    )
 
     received_events = {
         "contact": False,
@@ -106,13 +148,13 @@ def Jolt_WorldQueriesAndSnapshots():
     world_handler.connect(world_handle)
     world_handler.add_callback("OnContact", on_contact)
     world_handler.add_callback("OnBodyMoved", on_body_moved)
-    runtime_configuration = jolt.JoltWorldQueryRequestBus(
+    runtime_configuration = jolt.JoltWorldRequestBus(
         bus.Broadcast,
         "GetRuntimeConfiguration",
         world_handle,
     )
     runtime_configuration.collectContactEvents = True
-    events_enabled = jolt.JoltWorldQueryRequestBus(
+    events_enabled = jolt.JoltWorldRequestBus(
         bus.Broadcast,
         "UpdateRuntimeConfiguration",
         world_handle,
@@ -123,7 +165,14 @@ def Jolt_WorldQueriesAndSnapshots():
     while events_enabled and not events_received and time.monotonic() < event_deadline:
         general.idle_wait(0.01)
         events_received = received_events["contact"] and received_events["movement"]
-    Report.result(Tests.world_events, bool(events_received))
+    bodies_were_in_contact = jolt.JoltWorldQueryRequestBus(
+        bus.Broadcast,
+        "WereBodiesInContact",
+        world_handle,
+        floor_body_handle,
+        body_handle,
+    )
+    Report.result(Tests.world_events, bool(events_received and bodies_were_in_contact))
 
     frozen = jolt.JoltRigidBodyRequestBus(bus.Event, "SetGravityFactor", query_body_id, 0.0)
     frozen = frozen and jolt.JoltRigidBodyRequestBus(
@@ -179,6 +228,7 @@ def Jolt_WorldQueriesAndSnapshots():
         raycast,
         16,
     )
+    per_body_raycasts = jolt.JoltWorldQueryRequestBus(bus.Broadcast, "RaycastClosestPerBody", world_handle, raycast, 16)
     raycast_batch = jolt.JoltRaycastRequestCollection()
     batch_populated = raycast_batch.AddRequest(raycast) and raycast_batch.AddRequest(raycast)
     batch_results = jolt.JoltWorldQueryRequestBus(
@@ -194,6 +244,7 @@ def Jolt_WorldQueriesAndSnapshots():
             and closest_raycast.found
             and any_raycast
             and all_raycasts.GetHitCount() >= 2
+            and per_body_raycasts.GetHitCount() >= 2
             and batch_populated
             and batch_results.GetResultCount() == 2
             and batch_results.GetResult(0).found
@@ -274,6 +325,7 @@ def Jolt_WorldQueriesAndSnapshots():
         shape_cast,
         16,
     )
+    per_body_shape_casts = jolt.JoltWorldQueryRequestBus(bus.Broadcast, "CastShapeClosestPerBody", world_handle, shape_cast, 16)
 
     broad_sphere = jolt.BroadPhaseSphere()
     broad_sphere.center = create_world_position(jolt, 0.0, 0.0, 3.0)
@@ -317,6 +369,7 @@ def Jolt_WorldQueriesAndSnapshots():
         bool(
             closest_shape_cast.found
             and all_shape_casts.GetHitCount() > 0
+            and per_body_shape_casts.GetHitCount() > 0
             and broad_found
             and broad_hits.GetHitCount() > 0
             and closest_broad_cast.found
@@ -427,6 +480,8 @@ def Jolt_WorldQueriesAndSnapshots():
     )
 
     body_state = jolt.JoltRigidBodyRequestBus(bus.Event, "GetState", query_body_id)
+    body_id = jolt.JoltBodyId(0, 0)
+    body_id_read = jolt.JoltWorldQueryRequestBus(bus.Broadcast, "GetBodyId", world_handle, body_handle, body_id)
     bodies = jolt.JoltWorldQueryRequestBus(
         bus.Broadcast,
         "GetBodies",
@@ -436,7 +491,7 @@ def Jolt_WorldQueriesAndSnapshots():
         16,
     )
     statistics = jolt.WorldStatistics()
-    statistics_read = jolt.JoltWorldQueryRequestBus(
+    statistics_read = jolt.JoltWorldDiagnosticsRequestBus(
         bus.Broadcast,
         "GetWorldStatistics",
         world_handle,
@@ -447,6 +502,8 @@ def Jolt_WorldQueriesAndSnapshots():
         bool(
             bodies.GetBodyCount() >= 2
             and not bodies.HasOverflow()
+            and body_id_read
+            and body_id.IsValid()
             and statistics_read
             and statistics.bodyCount >= 2
             and statistics.shapeCount >= 2
@@ -455,7 +512,7 @@ def Jolt_WorldQueriesAndSnapshots():
 
     debug_configuration = jolt.DebugCaptureConfiguration()
     debug_configuration.flags = jolt.DebugCaptureFlags_SubmergedVolumes
-    debug_configured = jolt.JoltWorldQueryRequestBus(
+    debug_configured = jolt.JoltWorldDiagnosticsRequestBus(
         bus.Broadcast,
         "ConfigureDebugCapture",
         world_handle,
@@ -475,14 +532,14 @@ def Jolt_WorldQueriesAndSnapshots():
         buoyancy_configuration,
     )
     debug_statistics = jolt.DebugCaptureStatistics()
-    debug_statistics_read = jolt.JoltWorldQueryRequestBus(
+    debug_statistics_read = jolt.JoltWorldDiagnosticsRequestBus(
         bus.Broadcast,
         "GetDebugCaptureStatistics",
         world_handle,
         debug_statistics,
     )
     debug_configuration.flags = jolt.DebugCaptureFlags_None
-    debug_disabled = jolt.JoltWorldQueryRequestBus(
+    debug_disabled = jolt.JoltWorldDiagnosticsRequestBus(
         bus.Broadcast,
         "ConfigureDebugCapture",
         world_handle,
@@ -505,13 +562,13 @@ def Jolt_WorldQueriesAndSnapshots():
         ),
     )
 
-    snapshot = jolt.JoltWorldQueryRequestBus(
+    snapshot = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "CaptureWorldState",
         world_handle,
     )
     snapshot_archive = jolt.StateSnapshotArchive()
-    snapshot_exported = jolt.JoltWorldQueryRequestBus(
+    snapshot_exported = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "ExportWorldStateArchive",
         world_handle,
@@ -519,7 +576,7 @@ def Jolt_WorldQueriesAndSnapshots():
         snapshot_archive,
     )
     digest_before = jolt.WorldStateDigest()
-    digest_before_read = jolt.JoltWorldQueryRequestBus(
+    digest_before_read = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "GetWorldStateDigest",
         world_handle,
@@ -533,20 +590,20 @@ def Jolt_WorldQueriesAndSnapshots():
         True,
     )
     digest_after_move = jolt.WorldStateDigest()
-    digest_after_move_read = jolt.JoltWorldQueryRequestBus(
+    digest_after_move_read = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "GetWorldStateDigest",
         world_handle,
         digest_after_move,
     )
-    restored = jolt.JoltWorldQueryRequestBus(
+    restored = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "RestoreWorldState",
         world_handle,
         snapshot,
     )
     validation = jolt.StateValidationResult()
-    validated = jolt.JoltWorldQueryRequestBus(
+    validated = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "ValidateWorldState",
         world_handle,
@@ -554,13 +611,13 @@ def Jolt_WorldQueriesAndSnapshots():
         validation,
     )
     digest_after_restore = jolt.WorldStateDigest()
-    digest_after_restore_read = jolt.JoltWorldQueryRequestBus(
+    digest_after_restore_read = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "GetWorldStateDigest",
         world_handle,
         digest_after_restore,
     )
-    snapshot_destroyed = jolt.JoltWorldQueryRequestBus(
+    snapshot_destroyed = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "DestroyStateSnapshot",
         world_handle,
@@ -590,26 +647,26 @@ def Jolt_WorldQueriesAndSnapshots():
         create_world_position(jolt, 0.0, 0.0, 8.0),
         True,
     )
-    imported_snapshots = jolt.JoltWorldQueryRequestBus(
+    imported_snapshots = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "ImportWorldStateArchive",
         world_handle,
         snapshot_archive,
     )
-    archive_restored = len(imported_snapshots) == 1 and jolt.JoltWorldQueryRequestBus(
+    archive_restored = len(imported_snapshots) == 1 and jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "RestoreWorldState",
         world_handle,
         imported_snapshots[0],
     )
     digest_after_archive = jolt.WorldStateDigest()
-    archive_digest_read = jolt.JoltWorldQueryRequestBus(
+    archive_digest_read = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "GetWorldStateDigest",
         world_handle,
         digest_after_archive,
     )
-    archive_snapshot_destroyed = len(imported_snapshots) == 1 and jolt.JoltWorldQueryRequestBus(
+    archive_snapshot_destroyed = len(imported_snapshots) == 1 and jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "DestroyStateSnapshot",
         world_handle,
@@ -629,13 +686,72 @@ def Jolt_WorldQueriesAndSnapshots():
         ),
     )
 
+    recapture_configuration = jolt.StateSnapshotConfiguration()
+    recapture_configuration.flags = jolt.StateSnapshotFlags_Bodies
+    recapture_configuration.restoreSafety = jolt.RestoreSafety_Validated
+    recapture_configuration.filterBodies = True
+    recapture_snapshot = jolt.JoltWorldRollbackRequestBus(
+        bus.Broadcast,
+        "CaptureWorldStateConfigured",
+        world_handle,
+        recapture_configuration,
+        [body_handle],
+    )
+    moved_before_recapture = jolt.JoltRigidBodyRequestBus(
+        bus.Event,
+        "SetPosition",
+        query_body_id,
+        create_world_position(jolt, 0.0, 0.0, 4.0),
+        True,
+    )
+    recaptured = jolt.JoltWorldRollbackRequestBus(bus.Broadcast, "RecaptureWorldState", world_handle, recapture_snapshot)
+    moved_before_configured_recapture = jolt.JoltRigidBodyRequestBus(
+        bus.Event,
+        "SetPosition",
+        query_body_id,
+        create_world_position(jolt, 0.0, 0.0, 3.0),
+        True,
+    )
+    recaptured_configured = jolt.JoltWorldRollbackRequestBus(
+        bus.Broadcast,
+        "RecaptureWorldStateConfigured",
+        world_handle,
+        recapture_snapshot,
+        recapture_configuration,
+        [body_handle],
+    )
+    moved_after_recapture = jolt.JoltRigidBodyRequestBus(
+        bus.Event,
+        "SetPosition",
+        query_body_id,
+        create_world_position(jolt, 0.0, 0.0, 9.0),
+        True,
+    )
+    recaptured_snapshot_restored = jolt.JoltWorldRollbackRequestBus(bus.Broadcast, "RestoreWorldState", world_handle, recapture_snapshot)
+    recaptured_state = jolt.JoltRigidBodyRequestBus(bus.Event, "GetState", query_body_id)
+    recapture_snapshot_destroyed = jolt.JoltWorldRollbackRequestBus(bus.Broadcast, "DestroyStateSnapshot", world_handle, recapture_snapshot)
+    Report.result(
+        Tests.snapshot_recaptured,
+        bool(
+            recapture_snapshot.IsValid()
+            and moved_before_recapture
+            and recaptured
+            and moved_before_configured_recapture
+            and recaptured_configured
+            and moved_after_recapture
+            and is_restore_complete(jolt, recaptured_snapshot_restored)
+            and abs(recaptured_state.transform.position.z - 3.0) < 0.01
+            and recapture_snapshot_destroyed
+        ),
+    )
+
     multipart_configuration = jolt.StateSnapshotConfiguration()
     multipart_configuration.flags = jolt.StateSnapshotFlags_Bodies
     multipart_configuration.restoreSafety = jolt.RestoreSafety_Validated
     multipart_configuration.filterBodies = True
     multipart_bodies = [bodies.GetBody(index) for index in range(bodies.GetBodyCount())]
     partition_body_counts = [1 for _ in multipart_bodies]
-    multipart_snapshots = jolt.JoltWorldQueryRequestBus(
+    multipart_snapshots = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "CaptureWorldStateParts",
         world_handle,
@@ -650,7 +766,7 @@ def Jolt_WorldQueriesAndSnapshots():
         create_world_position(jolt, 0.0, 0.0, 6.0),
         True,
     )
-    multipart_restored = jolt.JoltWorldQueryRequestBus(
+    multipart_restored = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "RestoreWorldStateParts",
         world_handle,
@@ -661,7 +777,7 @@ def Jolt_WorldQueriesAndSnapshots():
     multipart_snapshots_destroyed = multipart_snapshots_valid
     for multipart_snapshot in multipart_snapshots:
         multipart_snapshots_valid = multipart_snapshots_valid and multipart_snapshot.IsValid()
-        multipart_snapshots_destroyed = multipart_snapshots_destroyed and jolt.JoltWorldQueryRequestBus(
+        multipart_snapshots_destroyed = multipart_snapshots_destroyed and jolt.JoltWorldRollbackRequestBus(
             bus.Broadcast,
             "DestroyStateSnapshot",
             world_handle,
@@ -679,13 +795,13 @@ def Jolt_WorldQueriesAndSnapshots():
         ),
     )
 
-    rollback_configuration = jolt.JoltWorldQueryRequestBus(
+    rollback_configuration = jolt.JoltWorldRequestBus(
         bus.Broadcast,
         "GetRuntimeConfiguration",
         world_handle,
     )
     rollback_configuration.autoSimulate = False
-    manual_stepping_enabled = jolt.JoltWorldQueryRequestBus(
+    manual_stepping_enabled = jolt.JoltWorldRequestBus(
         bus.Broadcast,
         "UpdateRuntimeConfiguration",
         world_handle,
@@ -698,7 +814,7 @@ def Jolt_WorldQueriesAndSnapshots():
         math.Vector3(0.75, 0.0, 0.25),
         math.Vector3(0.0, 0.5, 0.0),
     )
-    rollback_snapshot = jolt.JoltWorldQueryRequestBus(
+    rollback_snapshot = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "CaptureWorldState",
         world_handle,
@@ -708,14 +824,14 @@ def Jolt_WorldQueriesAndSnapshots():
         sequence = []
         steps_succeeded = True
         for _ in range(8):
-            step_result = jolt.JoltWorldQueryRequestBus(
+            step_result = jolt.JoltWorldSimulationRequestBus(
                 bus.Broadcast,
                 "StepWorld",
                 world_handle,
                 1.0 / 60.0,
             )
             digest = jolt.WorldStateDigest()
-            digest_read = jolt.JoltWorldQueryRequestBus(
+            digest_read = jolt.JoltWorldRollbackRequestBus(
                 bus.Broadcast,
                 "GetWorldStateDigest",
                 world_handle,
@@ -726,21 +842,21 @@ def Jolt_WorldQueriesAndSnapshots():
         return steps_succeeded, sequence
 
     first_steps_succeeded, first_digest_sequence = simulate_digest_sequence()
-    rollback_restored = jolt.JoltWorldQueryRequestBus(
+    rollback_restored = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "RestoreWorldState",
         world_handle,
         rollback_snapshot,
     )
     second_steps_succeeded, second_digest_sequence = simulate_digest_sequence()
-    rollback_snapshot_destroyed = jolt.JoltWorldQueryRequestBus(
+    rollback_snapshot_destroyed = jolt.JoltWorldRollbackRequestBus(
         bus.Broadcast,
         "DestroyStateSnapshot",
         world_handle,
         rollback_snapshot,
     )
     rollback_configuration.autoSimulate = True
-    automatic_stepping_restored = jolt.JoltWorldQueryRequestBus(
+    automatic_stepping_restored = jolt.JoltWorldRequestBus(
         bus.Broadcast,
         "UpdateRuntimeConfiguration",
         world_handle,

@@ -546,13 +546,13 @@ def Jolt_AdvancedComponents():
     )
 
     soft_body_world_handle = jolt.JoltSoftBodyRequestBus(bus.Event, "GetWorldHandle", soft_body_id)
-    soft_body_world_configuration = jolt.JoltWorldQueryRequestBus(
+    soft_body_world_configuration = jolt.JoltWorldRequestBus(
         bus.Broadcast,
         "GetRuntimeConfiguration",
         soft_body_world_handle,
     )
     soft_body_world_configuration.autoSimulate = False
-    manual_soft_body_stepping_enabled = jolt.JoltWorldQueryRequestBus(
+    manual_soft_body_stepping_enabled = jolt.JoltWorldRequestBus(
         bus.Broadcast,
         "UpdateRuntimeConfiguration",
         soft_body_world_handle,
@@ -582,7 +582,7 @@ def Jolt_AdvancedComponents():
         )
     soft_body_steps_succeeded = True
     for _ in range(60):
-        step_result = jolt.JoltWorldQueryRequestBus(
+        step_result = jolt.JoltWorldSimulationRequestBus(
             bus.Broadcast,
             "StepWorld",
             soft_body_world_handle,
@@ -591,7 +591,7 @@ def Jolt_AdvancedComponents():
         soft_body_steps_succeeded = soft_body_steps_succeeded and step_result.stepCount == 1
     contacted_vertices = jolt.JoltSoftBodyRequestBus(bus.Event, "CopyVertices", soft_body_id)
     soft_body_world_configuration.autoSimulate = True
-    automatic_soft_body_stepping_restored = jolt.JoltWorldQueryRequestBus(
+    automatic_soft_body_stepping_restored = jolt.JoltWorldRequestBus(
         bus.Broadcast,
         "UpdateRuntimeConfiguration",
         soft_body_world_handle,

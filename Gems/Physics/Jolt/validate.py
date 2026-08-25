@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import dataclasses
 import datetime
 import hashlib
@@ -36,6 +37,13 @@ REQUIRED_SCENARIOS = {
     "Jolt_SoftBodies",
     "Jolt_StressAndSoak",
     "Jolt_Vehicles",
+}
+WORLD_SCRIPT_BUS_SOURCES = {
+    "JoltWorldRequestBus": "WorldBus.cpp",
+    "JoltWorldDiagnosticsRequestBus": "WorldDiagnosticsBus.cpp",
+    "JoltWorldQueryRequestBus": "WorldQueryBus.cpp",
+    "JoltWorldRollbackRequestBus": "WorldRollbackBus.cpp",
+    "JoltWorldSimulationRequestBus": "WorldSimulationBus.cpp",
 }
 
 
@@ -349,6 +357,95 @@ def validate_scenario_registration(engine_root: Path) -> str:
     return f"Validated {len(registered)} registered scenarios, gallery, and stress manifests."
 
 
+def validate_world_bus_script_parity(engine_root: Path) -> str:
+    source_root = engine_root / "Gems" / "Physics" / "Jolt" / "Code" / "Source" / "Jolt"
+    script_root = engine_root / "AutomatedTesting" / "Gem" / "PythonTests" / "Physics" / "Jolt" / "tests"
+    reflected_events: dict[str, set[str]] = {}
+    errors: list[str] = []
+
+    for bus_name, source_name in WORLD_SCRIPT_BUS_SOURCES.items():
+        source_path = source_root / source_name
+        if not source_path.is_file():
+            errors.append(f"missing reflection source {source_path.relative_to(engine_root)}")
+            continue
+
+        source_text = source_path.read_text(encoding="utf-8")
+        block_pattern = re.compile(
+            rf'behaviorContext->EBus<[^>]+>\("{re.escape(bus_name)}"\)(.*?);',
+            re.DOTALL,
+        )
+        blocks = block_pattern.findall(source_text)
+        if len(blocks) != 1:
+            errors.append(f"{bus_name} has {len(blocks)} reflection blocks instead of 1")
+            continue
+
+        events = re.findall(r'->Event\("([A-Za-z0-9_]+)"', blocks[0])
+        if not events:
+            errors.append(f"{bus_name} reflects no events")
+            continue
+        if len(events) != len(set(events)):
+            errors.append(f"{bus_name} reflects duplicate events")
+        reflected_events[bus_name] = set(events)
+
+    script_paths = sorted(script_root.glob("Jolt_*.py"))
+    if not script_paths:
+        errors.append("no Jolt AutomatedTesting scripts were found")
+
+    called_events = {bus_name: set() for bus_name in WORLD_SCRIPT_BUS_SOURCES}
+    for script_path in script_paths:
+        script_text = script_path.read_text(encoding="utf-8")
+        try:
+            script_tree = ast.parse(script_text, filename=str(script_path))
+        except SyntaxError as error:
+            errors.append(f"{script_path.relative_to(engine_root)} could not be parsed: {error.msg}")
+            continue
+
+        for node in ast.walk(script_tree):
+            if (
+                not isinstance(node, ast.Call)
+                or not isinstance(node.func, ast.Attribute)
+                or not isinstance(node.func.value, ast.Name)
+                or node.func.value.id != "jolt"
+                or not node.func.attr.startswith("JoltWorld")
+                or not node.func.attr.endswith("RequestBus")
+            ):
+                continue
+
+            bus_name = node.func.attr
+            if bus_name not in called_events:
+                errors.append(
+                    f"{script_path.relative_to(engine_root)} calls unexpected world bus {bus_name}"
+                )
+                continue
+
+            is_broadcast = (
+                len(node.args) >= 2
+                and isinstance(node.args[0], ast.Attribute)
+                and isinstance(node.args[0].value, ast.Name)
+                and node.args[0].value.id == "bus"
+                and node.args[0].attr == "Broadcast"
+            )
+            if not is_broadcast or not isinstance(node.args[1], ast.Constant) or not isinstance(node.args[1].value, str):
+                errors.append(
+                    f"{script_path.relative_to(engine_root)} has a malformed {bus_name} call on line {node.lineno}"
+                )
+                continue
+            called_events[bus_name].add(node.args[1].value)
+
+    for bus_name, events in reflected_events.items():
+        missing_calls = sorted(events - called_events[bus_name])
+        stale_calls = sorted(called_events[bus_name] - events)
+        if missing_calls:
+            errors.append(f"{bus_name} has untested reflected events: {', '.join(missing_calls)}")
+        if stale_calls:
+            errors.append(f"{bus_name} has unreflected script calls: {', '.join(stale_calls)}")
+
+    if errors:
+        raise ValueError("; ".join(errors))
+    event_count = sum(len(events) for events in reflected_events.values())
+    return f"Validated {len(reflected_events)} world buses and {event_count} reflected script operations."
+
+
 def validate_private_native_boundary(engine_root: Path) -> str:
     gem_root = engine_root / "Gems" / "Physics" / "Jolt"
     native_cmake = (gem_root / "3rdParty" / "JoltNative.cmake").read_text(encoding="utf-8")
@@ -526,7 +623,11 @@ def validate_public_consumer(engine_root: Path) -> str:
         "Jolt::ReflectDiagnostics",
         "Jolt::ReflectEvents",
         "Jolt::ReflectQueries",
+        "Jolt::ReflectWorlds",
+        "Jolt::ReflectWorldDiagnostics",
         "Jolt::ReflectWorldQueries",
+        "Jolt::ReflectWorldRollback",
+        "Jolt::ReflectWorldSimulation",
         "emptyEventBatch.GetId",
         "GetQueryFace",
         "GetTargetFace",
@@ -775,6 +876,7 @@ def add_static_checks(runner: ValidationRunner) -> None:
     runner.run_check("public-headers", validate_public_headers)
     runner.run_check("source-manifests", validate_source_manifests)
     runner.run_check("scenario-registration", validate_scenario_registration)
+    runner.run_check("world-bus-script-parity", validate_world_bus_script_parity)
     runner.run_check("private-native-boundary", validate_private_native_boundary)
     runner.run_check("clang-address-sanitizer-configuration", validate_clang_address_sanitizer_configuration)
     runner.run_check("public-consumer", validate_public_consumer)
@@ -1528,7 +1630,7 @@ def write_reports(
     results = list(results)
     metadata = {
         "mode": mode,
-        "generated_at_utc": datetime.datetime.now(datetime.UTC).isoformat(),
+        "generated_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "host": {
             "machine": platform.machine(),
             "platform": platform.platform(),
@@ -1598,7 +1700,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
         engine_root = find_engine_root(Path(__file__).resolve())
     engine_root = engine_root.resolve()
 
-    timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     output_directory = options.output_dir
     if output_directory is None:
         output_directory = engine_root / "build" / "jolt-qualification" / f"{timestamp}-{options.mode}"

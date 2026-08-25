@@ -423,7 +423,11 @@ namespace Jolt
         CookedShapeArchive::Reflect(context);
         SoftBodyDefinitionArchive::Reflect(context);
         ReflectQueries(context);
+        ReflectWorlds(context);
+        ReflectWorldSimulation(context);
         ReflectWorldQueries(context);
+        ReflectWorldRollback(context);
+        ReflectWorldDiagnostics(context);
     }
 
     void SystemComponent::GetProvidedServices(
@@ -453,7 +457,11 @@ namespace Jolt
 
         AZ::TickBus::Handler::BusConnect();
         SkeletonRequestBus::Handler::BusConnect();
+        WorldRequestBus::Handler::BusConnect();
+        WorldSimulationRequestBus::Handler::BusConnect();
         WorldQueryRequestBus::Handler::BusConnect();
+        WorldRollbackRequestBus::Handler::BusConnect();
+        WorldDiagnosticsRequestBus::Handler::BusConnect();
         if (AZ::Data::AssetManager::IsReady())
         {
             m_sceneAssetHandler = AZStd::make_unique<SceneAssetHandler>();
@@ -472,7 +480,11 @@ namespace Jolt
 
     void SystemComponent::Deactivate()
     {
+        WorldDiagnosticsRequestBus::Handler::BusDisconnect();
+        WorldRollbackRequestBus::Handler::BusDisconnect();
         WorldQueryRequestBus::Handler::BusDisconnect();
+        WorldSimulationRequestBus::Handler::BusDisconnect();
+        WorldRequestBus::Handler::BusDisconnect();
         SkeletonRequestBus::Handler::BusDisconnect();
         AZ::TickBus::Handler::BusDisconnect();
         m_skeletonAssetHandler.reset();

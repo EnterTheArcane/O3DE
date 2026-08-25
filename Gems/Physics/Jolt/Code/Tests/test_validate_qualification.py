@@ -132,6 +132,15 @@ class QualificationValidationTests(unittest.TestCase):
                     engine_root / "qualification",
                 )
 
+    def test_reports_use_a_python_310_compatible_utc_timestamp(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output_directory = Path(temporary_directory)
+
+            jolt_qualification.write_reports(output_directory, "quick", {}, {}, [])
+
+            summary = json.loads((output_directory / "summary.json").read_text(encoding="utf-8"))
+            self.assertTrue(summary["generated_at_utc"].endswith("+00:00"))
+
     def test_source_consumer_cache_is_isolated_by_primary_build(self) -> None:
         matrix_root = Path("build/matrix")
 
@@ -275,6 +284,44 @@ class QualificationValidationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "unregistered executable scenarios"):
                 jolt_qualification.validate_scenario_registration(engine_root)
 
+    def test_world_bus_script_parity_rejects_missing_and_stale_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            script_lines = ["import azlmbr.bus as bus", "import azlmbr.jolt as jolt"]
+            for bus_index, (bus_name, source_name) in enumerate(
+                jolt_qualification.WORLD_SCRIPT_BUS_SOURCES.items()
+            ):
+                event_name = f"Event{bus_index}"
+                write_file(
+                    engine_root,
+                    f"Gems/Physics/Jolt/Code/Source/Jolt/{source_name}",
+                    f'behaviorContext->EBus<Example>("{bus_name}")\n'
+                    f'    ->Event("{event_name}", &Example::{event_name});\n',
+                )
+                script_lines.append(f'jolt.{bus_name}(bus.Broadcast, "{event_name}")')
+
+            script_path = write_file(
+                engine_root,
+                "AutomatedTesting/Gem/PythonTests/Physics/Jolt/tests/Jolt_Worlds.py",
+                "\n".join(script_lines),
+            )
+            result = jolt_qualification.validate_world_bus_script_parity(engine_root)
+            self.assertIn("5 world buses", result)
+
+            script_path.write_text(
+                "\n".join(script_lines[:-1] + [f"# {script_lines[-1]}"]),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "untested reflected events"):
+                jolt_qualification.validate_world_bus_script_parity(engine_root)
+
+            script_path.write_text(
+                "\n".join(script_lines + ['jolt.JoltWorldRequestBus(bus.Broadcast, "Stale")']),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "unreflected script calls"):
+                jolt_qualification.validate_world_bus_script_parity(engine_root)
+
     def test_private_boundary_ignores_documentation_but_rejects_published_target(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             engine_root = Path(temporary_directory)
@@ -417,7 +464,11 @@ Jolt::ReflectDebugDraw(nullptr);
 Jolt::ReflectDiagnostics(nullptr);
 Jolt::ReflectEvents(nullptr);
 Jolt::ReflectQueries(nullptr);
+Jolt::ReflectWorlds(nullptr);
+Jolt::ReflectWorldDiagnostics(nullptr);
 Jolt::ReflectWorldQueries(nullptr);
+Jolt::ReflectWorldRollback(nullptr);
+Jolt::ReflectWorldSimulation(nullptr);
 emptyEventBatch.GetId();
 faceBuffers.GetQueryFace(0);
 faceBuffers.GetTargetFace(0);

@@ -111,7 +111,7 @@ def Jolt_StressAndSoak():
                 )
                 configuration = recorder.capture(
                     f"{worker_count}-worker stress world configuration",
-                    lambda: jolt.JoltWorldQueryRequestBus(
+                    lambda: jolt.JoltWorldRequestBus(
                         bus.Broadcast,
                         "GetRuntimeConfiguration",
                         world_handle,
@@ -128,7 +128,7 @@ def Jolt_StressAndSoak():
                 configuration.workerCount = worker_count
                 recorder.capture(
                     f"configure {worker_count} workers",
-                    lambda: jolt.JoltWorldQueryRequestBus(
+                    lambda: jolt.JoltWorldRequestBus(
                         bus.Broadcast,
                         "UpdateRuntimeConfiguration",
                         world_handle,
@@ -138,7 +138,7 @@ def Jolt_StressAndSoak():
 
                 recorder.capture(
                     f"{worker_count}-worker stress performance statistics enabled",
-                    lambda: jolt.JoltWorldQueryRequestBus(
+                    lambda: jolt.JoltWorldDiagnosticsRequestBus(
                         bus.Broadcast,
                         "ConfigurePerformanceStatistics",
                         world_handle,
@@ -222,7 +222,7 @@ def Jolt_StressAndSoak():
                 )
                 recorder.capture(
                     f"{worker_count}-worker initialization step",
-                    lambda: jolt.JoltWorldQueryRequestBus(
+                    lambda: jolt.JoltWorldSimulationRequestBus(
                         bus.Broadcast,
                         "StepWorld",
                         world_handle,
@@ -255,7 +255,7 @@ def Jolt_StressAndSoak():
 
                 initial_snapshot = recorder.capture(
                     f"{worker_count}-worker stress initial snapshot",
-                    lambda: jolt.JoltWorldQueryRequestBus(
+                    lambda: jolt.JoltWorldRollbackRequestBus(
                         bus.Broadcast,
                         "CaptureWorldState",
                         world_handle,
@@ -269,7 +269,7 @@ def Jolt_StressAndSoak():
                 initial_digest = jolt.WorldStateDigest()
                 recorder.check(
                     f"{worker_count}-worker initial digest captured",
-                    jolt.JoltWorldQueryRequestBus(
+                    jolt.JoltWorldRollbackRequestBus(
                         bus.Broadcast,
                         "GetWorldStateDigest",
                         world_handle,
@@ -402,7 +402,7 @@ def Jolt_StressAndSoak():
                         ):
                             worker_errors.append(f"virtual-character-refresh:{tick}")
 
-                    result = jolt.JoltWorldQueryRequestBus(
+                    result = jolt.JoltWorldSimulationRequestBus(
                         bus.Broadcast,
                         "StepWorld",
                         world_handle,
@@ -413,7 +413,7 @@ def Jolt_StressAndSoak():
 
                     if tick % 60 == 0 or tick + 1 == tick_count:
                         statistics = jolt.WorldStatistics()
-                        if jolt.JoltWorldQueryRequestBus(
+                        if jolt.JoltWorldDiagnosticsRequestBus(
                             bus.Broadcast,
                             "GetWorldStatistics",
                             world_handle,
@@ -439,7 +439,7 @@ def Jolt_StressAndSoak():
                                 worker_errors.append(f"statistics:{tick}:{statistics.lastUpdateErrors}")
 
                     if tick > 0 and tick % 300 == 0:
-                        checkpoint = jolt.JoltWorldQueryRequestBus(
+                        checkpoint = jolt.JoltWorldRollbackRequestBus(
                             bus.Broadcast,
                             "CaptureWorldState",
                             world_handle,
@@ -449,7 +449,7 @@ def Jolt_StressAndSoak():
                             worker_snapshot_count += 1
                             if len(snapshots) > 9:
                                 expired_checkpoint = snapshots.pop(1)
-                                if not jolt.JoltWorldQueryRequestBus(
+                                if not jolt.JoltWorldRollbackRequestBus(
                                     bus.Broadcast,
                                     "DestroyStateSnapshot",
                                     world_handle,
@@ -457,7 +457,7 @@ def Jolt_StressAndSoak():
                                 ):
                                     worker_errors.append(f"snapshot-destroy:{tick}")
 
-                rollback_snapshot = jolt.JoltWorldQueryRequestBus(
+                rollback_snapshot = jolt.JoltWorldRollbackRequestBus(
                     bus.Broadcast,
                     "CaptureWorldState",
                     world_handle,
@@ -466,13 +466,13 @@ def Jolt_StressAndSoak():
                     snapshots.append(rollback_snapshot)
                     worker_snapshot_count += 1
                     rollback_digest = jolt.WorldStateDigest()
-                    rollback_digest_read = jolt.JoltWorldQueryRequestBus(
+                    rollback_digest_read = jolt.JoltWorldRollbackRequestBus(
                         bus.Broadcast,
                         "GetWorldStateDigest",
                         world_handle,
                         rollback_digest,
                     )
-                    rollback_step = jolt.JoltWorldQueryRequestBus(
+                    rollback_step = jolt.JoltWorldSimulationRequestBus(
                         bus.Broadcast,
                         "StepWorld",
                         world_handle,
@@ -484,7 +484,7 @@ def Jolt_StressAndSoak():
                     )
                     recorder.capture(
                         f"{worker_count}-worker restore checkpoint",
-                        lambda: jolt.JoltWorldQueryRequestBus(
+                        lambda: jolt.JoltWorldRollbackRequestBus(
                             bus.Broadcast,
                             "RestoreWorldState",
                             world_handle,
@@ -493,7 +493,7 @@ def Jolt_StressAndSoak():
                         lambda result: is_restore_complete(jolt, result),
                     )
                     restored_digest = jolt.WorldStateDigest()
-                    restored_digest_read = jolt.JoltWorldQueryRequestBus(
+                    restored_digest_read = jolt.JoltWorldRollbackRequestBus(
                         bus.Broadcast,
                         "GetWorldStateDigest",
                         world_handle,
@@ -523,7 +523,7 @@ def Jolt_StressAndSoak():
                     if churn_tick % 120 == 0:
                         jolt.JoltRigidBodyRequestBus(bus.Event, "ActivateBody", churn_entity)
 
-                    result = jolt.JoltWorldQueryRequestBus(
+                    result = jolt.JoltWorldSimulationRequestBus(
                         bus.Broadcast,
                         "StepWorld",
                         world_handle,
@@ -533,7 +533,7 @@ def Jolt_StressAndSoak():
                         worker_errors.append(f"churn-step:{churn_tick}:{result.errors}")
 
                 digest = jolt.WorldStateDigest()
-                digest_read = jolt.JoltWorldQueryRequestBus(
+                digest_read = jolt.JoltWorldRollbackRequestBus(
                     bus.Broadcast,
                     "GetWorldStateDigest",
                     world_handle,
@@ -597,7 +597,7 @@ def Jolt_StressAndSoak():
                 performance_statistics = jolt.WorldPerformanceStatistics()
                 recorder.capture(
                     f"{worker_count}-worker stress performance statistics snapshot",
-                    lambda: jolt.JoltWorldQueryRequestBus(
+                    lambda: jolt.JoltWorldDiagnosticsRequestBus(
                         bus.Broadcast,
                         "GetPerformanceStatistics",
                         world_handle,
@@ -664,7 +664,7 @@ def Jolt_StressAndSoak():
                 if entered_game_mode:
                     for snapshot in reversed(snapshots):
                         if world_handle is not None and snapshot.IsValid():
-                            jolt.JoltWorldQueryRequestBus(
+                            jolt.JoltWorldRollbackRequestBus(
                                 bus.Broadcast,
                                 "DestroyStateSnapshot",
                                 world_handle,

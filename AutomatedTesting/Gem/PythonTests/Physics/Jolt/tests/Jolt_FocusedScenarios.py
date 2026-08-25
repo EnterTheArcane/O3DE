@@ -264,7 +264,7 @@ def run_events_and_filters():
 
         configuration = recorder.capture(
             "world configuration read",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldRequestBus(
                 bus.Broadcast,
                 "GetRuntimeConfiguration",
                 world_handle,
@@ -275,7 +275,7 @@ def run_events_and_filters():
             configuration.collectContactEvents = True
             recorder.capture(
                 "contact event collection enabled",
-                lambda: jolt.JoltWorldQueryRequestBus(
+                lambda: jolt.JoltWorldRequestBus(
                     bus.Broadcast,
                     "UpdateRuntimeConfiguration",
                     world_handle,
@@ -783,7 +783,7 @@ def run_rollback_and_determinism():
         )
         configuration = recorder.capture(
             "rollback world configuration",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldRequestBus(
                 bus.Broadcast,
                 "GetRuntimeConfiguration",
                 world_handle,
@@ -796,7 +796,7 @@ def run_rollback_and_determinism():
         configuration.autoSimulate = False
         recorder.capture(
             "manual deterministic stepping enabled",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldRequestBus(
                 bus.Broadcast,
                 "UpdateRuntimeConfiguration",
                 world_handle,
@@ -815,7 +815,7 @@ def run_rollback_and_determinism():
         )
         snapshot = recorder.capture(
             "rollback snapshot captured",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldRollbackRequestBus(
                 bus.Broadcast,
                 "CaptureWorldState",
                 world_handle,
@@ -826,7 +826,7 @@ def run_rollback_and_determinism():
         def simulate_digests():
             digests = []
             for _ in range(16):
-                step_result = jolt.JoltWorldQueryRequestBus(
+                step_result = jolt.JoltWorldSimulationRequestBus(
                     bus.Broadcast,
                     "StepWorld",
                     world_handle,
@@ -835,7 +835,7 @@ def run_rollback_and_determinism():
                 if step_result.stepCount != 1:
                     return []
                 digest = jolt.WorldStateDigest()
-                if not jolt.JoltWorldQueryRequestBus(
+                if not jolt.JoltWorldRollbackRequestBus(
                     bus.Broadcast,
                     "GetWorldStateDigest",
                     world_handle,
@@ -853,7 +853,7 @@ def run_rollback_and_determinism():
         )
         recorder.capture(
             "rollback snapshot restored",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldRollbackRequestBus(
                 bus.Broadcast,
                 "RestoreWorldState",
                 world_handle,
@@ -870,7 +870,7 @@ def run_rollback_and_determinism():
         recorder.check("rollback replay digest equality", first_digests == second_digests)
         recorder.capture(
             "rollback snapshot destroyed",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldRollbackRequestBus(
                 bus.Broadcast,
                 "DestroyStateSnapshot",
                 world_handle,
@@ -879,7 +879,7 @@ def run_rollback_and_determinism():
         )
         recorder.capture(
             "destroyed snapshot became stale",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldRollbackRequestBus(
                 bus.Broadcast,
                 "IsStateSnapshotValid",
                 world_handle,
@@ -890,7 +890,7 @@ def run_rollback_and_determinism():
         )
         recorder.capture(
             "stale snapshot restore rejected",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldRollbackRequestBus(
                 bus.Broadcast,
                 "RestoreWorldState",
                 world_handle,
@@ -921,7 +921,7 @@ def run_diagnostics():
         invalid_world = jolt.JoltWorldHandle()
         recorder.capture(
             "invalid world handle rejected",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldRequestBus(
                 bus.Broadcast,
                 "IsWorldValid",
                 invalid_world,
@@ -932,7 +932,7 @@ def run_diagnostics():
         statistics = jolt.WorldStatistics()
         recorder.capture(
             "world statistics",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldDiagnosticsRequestBus(
                 bus.Broadcast,
                 "GetWorldStatistics",
                 world_handle,
@@ -943,7 +943,7 @@ def run_diagnostics():
 
         recorder.capture(
             "performance statistics enabled",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldDiagnosticsRequestBus(
                 bus.Broadcast,
                 "ConfigurePerformanceStatistics",
                 world_handle,
@@ -966,7 +966,7 @@ def run_diagnostics():
         performance_statistics = jolt.WorldPerformanceStatistics()
         recorder.capture(
             "performance statistics snapshot",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldDiagnosticsRequestBus(
                 bus.Broadcast,
                 "GetPerformanceStatistics",
                 world_handle,
@@ -986,7 +986,7 @@ def run_diagnostics():
         debug_configuration.flags = jolt.DebugCaptureFlags_SubmergedVolumes
         recorder.capture(
             "debug capture enabled",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldDiagnosticsRequestBus(
                 bus.Broadcast,
                 "ConfigureDebugCapture",
                 world_handle,
@@ -1018,7 +1018,7 @@ def run_diagnostics():
         debug_statistics = jolt.DebugCaptureStatistics()
         recorder.capture(
             "debug capture statistics",
-            lambda: jolt.JoltWorldQueryRequestBus(
+            lambda: jolt.JoltWorldDiagnosticsRequestBus(
                 bus.Broadcast,
                 "GetDebugCaptureStatistics",
                 world_handle,
@@ -1035,7 +1035,7 @@ def run_diagnostics():
 
         runtime_info = recorder.capture(
             "diagnostic runtime information",
-            lambda: jolt.JoltWorldQueryRequestBus(bus.Broadcast, "GetRuntimeInfo"),
+            lambda: jolt.JoltWorldRequestBus(bus.Broadcast, "GetRuntimeInfo"),
             lambda value: value is not None,
         )
         recorder.check(

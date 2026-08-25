@@ -34,8 +34,8 @@ the row's complete contract.
 | `J3-AUD-011` | Jolt does not require unrelated installed-Python metadata or non-hermetic package provisioning. | 1 | **Implemented** — the branch-local Python install and launcher-discovery workarounds are removed, and the public source consumer passes. Fresh offline installed-consumer proof remains a final gate. |
 | `J3-AUD-012` | Public retained-shape ABI is precision-independent and meets the selected representation's allocation and query-cost gates. | 4 | **Implemented** — the public lease is pointer-sized in every precision mode; its bounded private pool passes steady-state allocation, lifetime, clang-cl Release code-generation, and 30-process retained-query gates. Double-precision, MSVC, and installed modular/monolithic builds remain final qualification gates. |
 | `J3-AUD-013` | Contact points are addressable only through the immutable batch that produced their event. | 4 | **Implemented** — module-lifetime 64-bit identities bind contacts to their producing batch, never wrap, and reject live foreign or recycled storage before point-range access. Copy/move, Runtime shutdown, overflow, serialization, reflection, and modular export tests pass. Final MSVC and installed-consumer qualification remain. |
-| `J3-AUD-014` | Entity request buses have one owner and deterministic result routing. | 4 | **Open** — `Single` policy audit and duplicate-handler rejection tests required. |
-| `J3-AUD-015` | World lifecycle, simulation, queries, rollback, and diagnostics use separate ownership/scoping boundaries. | 4 | **Open** — aggregate removal, bus-policy, BehaviorContext scope, and script-call parity proof required. |
+| `J3-AUD-014` | Entity request buses have one owner and deterministic result routing. | 4 | **Implemented** — every entity request interface declares `Single` locally, every notification interface declares `Multiple`, and the shared EBus container rejects a duplicate single handler instead of silently replacing the owner. Focused dispatch, fanout, and clang-cl Release application tests pass; final MSVC and install gates remain. |
+| `J3-AUD-015` | World lifecycle, simulation, queries, rollback, and diagnostics use separate ownership/scoping boundaries. | 4 | **Implemented** — five singular buses separate lifecycle/configuration, simulation, queries, rollback, and diagnostics. Reflection scopes destructive/control operations as Automation and read/query diagnostics as Common. A static parity gate accounts for all 59 reflected script operations, and the focused null-renderer scenario passes. The complete application matrix remains. |
 | `J3-AUD-016` | Ragdoll definitions construct every advertised constraint type and reject unsupported drive mappings before mutation. | 5 | **Open** — all 13 types, linked local identities, providers/paths, archives, snapshots, editor, and pose-drive tests required. |
 | `J3-AUD-017` | Physical characters expose state-preserving add/remove simulation operations. | 5 | **Open** — identity, state, snapshot, event, and 1/4/8-worker replay tests required. |
 | `J3-AUD-018` | One Path resource owns geometry and transform; active updates commit transactionally at a safe boundary. | 5 | **Open** — translation/rotation frame update, scale rebuild, state preservation, and failure rollback tests required. |
@@ -53,7 +53,7 @@ the row's complete contract.
 | `C-AUD-002` | Static-body component teardown retains ownership after a failed destroy. | 3 | **Implemented** — an ordinary disable is atomic under a dependency veto, while mandatory entity teardown discovers the same vetoed dependency closure and completes it without abandoning the body. Final MSVC qualification remains. |
 | `C-AUD-003` | Path component teardown retains ownership after a failed destroy. | 3 | **Implemented** — mandatory path teardown ignores a client veto only after complete discovery, reserves the dependent native constraint closure, and commits the path after its constraints. Final MSVC qualification remains. |
 | `C-AUD-004` | Active paths have one authoritative transform and cannot snapshot inconsistent geometry and frames. | 5 | **Open** — activation skew and live-update tests required. |
-| `C-AUD-005` | Gameplay scripts cannot own world lifecycle, explicit stepping, or restore. | 4 | **Open** — reflection audit and attempted Common-scope invocation rejection required. |
+| `C-AUD-005` | Gameplay scripts cannot own world lifecycle, explicit stepping, or restore. | 4 | **Implemented** — lifecycle/configuration, explicit stepping, and rollback buses carry Automation scope while query and diagnostics buses alone carry Common scope. Reflection tests assert each boundary, retained-shape operations remain C++-only, script parity rejects stale or misplaced calls, and the focused clang-cl Release scenario passes. |
 | `C-AUD-006` | Creating an async operation never joins or waits for unrelated queued/running work. | 6 | **Open** — blocked-worker latency and lock-context watchdog tests required. |
 | `C-AUD-007` | Parent/child allocator byte accounting uses the same size on allocation and deallocation in every malloc/ASan-header mode. | 1 | **Closed** — `SystemAllocator` now reports and accounts the exact size returned by deallocation. `ChildAllocatorSchema` and Jolt `NativeAllocator` round trips pass with the Profile ASan header and with `AZCORE_USE_MALLOC_SYSTEM_ALLOCATOR=ON` without that header. |
 
@@ -179,6 +179,26 @@ the read-only `batchId` property, the public consumer calls `EventBatch::GetId`,
 export inspection, and disassembly remain beneath `build/jolt-production-readiness/stage4/` and are intentionally not committed. The
 validated `Jolt.API.dll` SHA-256 is `13CAEEA8C32D00AC258937C516C4D1B8F635ADF376089361F4BD72242859A535`; the test DLL SHA-256 is
 `CCF268488E044148F70B102EEF95FE301D5212AAA8EE1D7204C3D9A34C8006CA`.
+
+## Stage 4 EBus ownership and script-boundary evidence
+
+Every entity request interface inherits `AZ::ComponentBus` directly and declares `HandlerPolicy::Single`; every entity notification
+interface declares `HandlerPolicy::Multiple`. Vehicle requests use the same ownership contract on an entity-addressed `AZ::EBusTraits`
+bus. The shared single-handler container now rejects a second connection without replacing the original handler, so release builds retain
+the same deterministic owner as assertion-enabled builds. Focused AzCore tests cover single- and multi-address containers, while
+`ComponentTests.EntityRequestBusesRejectDuplicateOwnersAndNotificationsFanOut` proves Jolt request routing and notification fanout.
+
+The former aggregate world request bus is split into lifecycle/configuration, simulation, queries, rollback, and diagnostics buses. All
+five are singularly addressed and singularly handled. Lifecycle/configuration, explicit stepping, and rollback are Automation-only;
+queries and diagnostics remain Common. `ComponentTests.BehaviorReflectionExposesEveryRuntimeComponentBus` verifies the exact event and
+scope inventory, and retained transformed-shape operations remain absent from BehaviorContext.
+
+The qualification validator parses the five reflection chains and every checked-in Jolt AutomatedTesting script. It currently accounts
+for all 59 reflected operations and fails for either a reflected operation without a script call or a script call without reflection.
+`Jolt_WorldQueriesAndSnapshots` exercises auxiliary-world creation/configuration/destruction, per-body queries, contact history, and
+configured snapshot recapture rather than using placeholder calls. The clang-cl 22.1.8 Release non-unity suite passes 316 tests with
+zero failures and one intentional disable. The focused null-renderer scenario passes in 14.5 seconds after preserving Asset Processor's
+machine-consumed control and listening port announcements in Release. The final complete scenario, MSVC, and install matrices remain.
 
 ## Qualification platforms
 

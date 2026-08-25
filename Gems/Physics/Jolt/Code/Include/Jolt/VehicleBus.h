@@ -19,19 +19,14 @@
 
 namespace Jolt
 {
-    class VehicleRequestBusTraits
+    class IVehicleRequests
         : public AZ::EBusTraits
     {
     public:
         static constexpr AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         static constexpr AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         using BusIdType = AZ::EntityId;
-    };
 
-    class IVehicleRequests
-        : public VehicleRequestBusTraits
-    {
-    public:
         virtual bool ApplyEngineDamping(float deltaTime) = 0;
 
         virtual bool ApplyEngineTorque(

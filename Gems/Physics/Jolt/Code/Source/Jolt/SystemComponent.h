@@ -11,7 +11,11 @@
 #include <Jolt/SystemConfiguration.h>
 #include <Jolt/SkeletonBus.h>
 #include <Jolt/TypeIds.h>
+#include <Jolt/WorldBus.h>
+#include <Jolt/WorldDiagnosticsBus.h>
 #include <Jolt/WorldQueryBus.h>
+#include <Jolt/WorldRollbackBus.h>
+#include <Jolt/WorldSimulationBus.h>
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TickBus.h>
@@ -30,7 +34,11 @@ namespace Jolt
         : public AZ::Component
         , private AZ::TickBus::Handler
         , private SkeletonRequestBus::Handler
+        , private WorldRequestBus::Handler
+        , private WorldSimulationRequestBus::Handler
         , private WorldQueryRequestBus::Handler
+        , private WorldRollbackRequestBus::Handler
+        , private WorldDiagnosticsRequestBus::Handler
     {
     public:
         AZ_COMPONENT(SystemComponent, SystemComponentTypeId);

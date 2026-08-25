@@ -22,6 +22,8 @@ namespace Jolt
         : public AZ::ComponentBus
     {
     public:
+        static constexpr AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+
         [[nodiscard]]
         virtual bool IsReady() const = 0;
 
@@ -44,6 +46,8 @@ namespace Jolt
         : public AZ::ComponentBus
     {
     public:
+        static constexpr AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+
         virtual void OnSkeletonReady(SkeletonDefinitionHandle skeletonHandle) = 0;
 
         virtual void OnSkeletonReloading(SkeletonDefinitionHandle skeletonHandle) = 0;

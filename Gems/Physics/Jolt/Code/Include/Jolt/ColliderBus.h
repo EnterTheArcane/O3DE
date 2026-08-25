@@ -188,6 +188,8 @@ namespace Jolt
         : public AZ::ComponentBus
     {
     public:
+        static constexpr AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+
         [[nodiscard]]
         virtual AZStd::span<const ColliderShapeConfiguration> GetShapeConfigurations() const = 0;
 

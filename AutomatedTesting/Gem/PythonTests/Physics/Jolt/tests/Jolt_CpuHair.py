@@ -48,7 +48,7 @@ def Jolt_CpuHair():
     Report.critical_result(Tests.enter_game_mode, general.is_in_game_mode())
 
     hair_entity_id = general.find_game_entity("Jolt CPU Hair")
-    runtime_info = jolt.JoltWorldQueryRequestBus(bus.Broadcast, "GetRuntimeInfo")
+    runtime_info = jolt.JoltWorldRequestBus(bus.Broadcast, "GetRuntimeInfo")
     Report.info(
         "CPU Hair runtime: "
         f"determinism={runtime_info.hairDeterminism}, "

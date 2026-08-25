@@ -19,6 +19,8 @@ namespace Jolt
         : public AZ::ComponentBus
     {
     public:
+        static constexpr AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+
         [[nodiscard]]
         virtual AZStd::vector<BodyHandle> CopyBodies() const = 0;
 
@@ -41,6 +43,8 @@ namespace Jolt
         : public AZ::ComponentBus
     {
     public:
+        static constexpr AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+
         virtual void OnSceneReady(SceneInstanceHandle instanceHandle) = 0;
 
         virtual void OnSceneReloading(SceneInstanceHandle instanceHandle) = 0;

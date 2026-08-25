@@ -16,7 +16,11 @@
 #include <Jolt/Query.h>
 #include <Jolt/ShapeConfiguration.h>
 #include <Jolt/System.h>
+#include <Jolt/WorldBus.h>
+#include <Jolt/WorldDiagnosticsBus.h>
 #include <Jolt/WorldQueryBus.h>
+#include <Jolt/WorldRollbackBus.h>
+#include <Jolt/WorldSimulationBus.h>
 
 #include <AzCore/Memory/SystemAllocator.h>
 
@@ -28,7 +32,11 @@ namespace
         Jolt::ReflectDiagnostics(nullptr);
         Jolt::ReflectEvents(nullptr);
         Jolt::ReflectQueries(nullptr);
+        Jolt::ReflectWorlds(nullptr);
+        Jolt::ReflectWorldDiagnostics(nullptr);
         Jolt::ReflectWorldQueries(nullptr);
+        Jolt::ReflectWorldRollback(nullptr);
+        Jolt::ReflectWorldSimulation(nullptr);
 
         const Jolt::ShapeQueryFaceBuffers faceBuffers;
         if (!faceBuffers.GetQueryFace(0).empty() || !faceBuffers.GetTargetFace(0).empty())

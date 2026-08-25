@@ -84,6 +84,10 @@ set(FILES
     Include/Jolt/VehicleBus.h
     Include/Jolt/VehicleComponentConfiguration.h
     Include/Jolt/VirtualCharacterBus.h
-    Include/Jolt/WorldTypes.h
+    Include/Jolt/WorldBus.h
+    Include/Jolt/WorldDiagnosticsBus.h
     Include/Jolt/WorldQueryBus.h
+    Include/Jolt/WorldRollbackBus.h
+    Include/Jolt/WorldSimulationBus.h
+    Include/Jolt/WorldTypes.h
 )

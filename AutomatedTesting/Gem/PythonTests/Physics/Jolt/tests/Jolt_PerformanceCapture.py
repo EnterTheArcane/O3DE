@@ -137,7 +137,7 @@ def Jolt_PerformanceCapture():
                 for body_id in game_body_ids
             )
         )
-        statistics_read = jolt.JoltWorldQueryRequestBus(
+        statistics_read = jolt.JoltWorldDiagnosticsRequestBus(
             bus.Broadcast,
             "GetWorldStatistics",
             world_handle,

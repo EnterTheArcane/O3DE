@@ -7,8 +7,6 @@
 
 #include <Jolt/WorldQueryBus.h>
 
-#include <Jolt/Capabilities.h>
-
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -755,36 +753,6 @@ namespace Jolt
         behaviorContext->EBus<WorldQueryRequestBus>("JoltWorldQueryRequestBus")
             ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
             ->Attribute(AZ::Script::Attributes::Module, "jolt")
-            ->Event("CreateWorld", &IWorldQueryRequests::CreateWorld)
-            ->Event("DestroyWorld", &IWorldQueryRequests::DestroyWorld)
-            ->Event("GetDefaultWorldHandle", &IWorldQueryRequests::GetDefaultWorldHandle)
-            ->Event("GetRuntimeInfo", &IWorldQueryRequests::GetRuntimeInfo)
-            ->Event("IsWorldValid", &IWorldQueryRequests::IsWorldValid)
-            ->Event("StepWorld", &IWorldQueryRequests::StepWorld)
-            ->Event("GetGravity", &IWorldQueryRequests::GetGravity)
-            ->Event("SetGravity", &IWorldQueryRequests::SetGravity)
-            ->Event("GetSimulationConfiguration", &IWorldQueryRequests::GetSimulationConfiguration)
-            ->Event("UpdateSimulationConfiguration", &IWorldQueryRequests::UpdateSimulationConfiguration)
-            ->Event("GetRuntimeConfiguration", &IWorldQueryRequests::GetRuntimeConfiguration)
-            ->Event("UpdateRuntimeConfiguration", &IWorldQueryRequests::UpdateRuntimeConfiguration)
-            ->Event("CaptureWorldState", &IWorldQueryRequests::CaptureWorldState)
-            ->Event("CaptureWorldStateConfigured", &IWorldQueryRequests::CaptureWorldStateConfigured)
-            ->Event("CaptureWorldStateParts", &IWorldQueryRequests::CaptureWorldStateParts)
-            ->Event("ExportWorldStateArchive", &IWorldQueryRequests::ExportWorldStateArchive)
-            ->Event("ImportWorldStateArchive", &IWorldQueryRequests::ImportWorldStateArchive)
-            ->Event("RecaptureWorldState", &IWorldQueryRequests::RecaptureWorldState)
-            ->Event("RecaptureWorldStateConfigured", &IWorldQueryRequests::RecaptureWorldStateConfigured)
-            ->Event("DestroyStateSnapshot", &IWorldQueryRequests::DestroyStateSnapshot)
-            ->Event("IsStateSnapshotValid", &IWorldQueryRequests::IsStateSnapshotValid)
-            ->Event("RestoreWorldState", &IWorldQueryRequests::RestoreWorldState)
-            ->Event("RestoreWorldStateParts", &IWorldQueryRequests::RestoreWorldStateParts)
-            ->Event("ValidateWorldState", &IWorldQueryRequests::ValidateWorldState)
-            ->Event("GetWorldStateDigest", &IWorldQueryRequests::GetWorldStateDigest)
-            ->Event("GetWorldStatistics", &IWorldQueryRequests::GetWorldStatistics)
-            ->Event("ConfigurePerformanceStatistics", &IWorldQueryRequests::ConfigurePerformanceStatistics)
-            ->Event("GetPerformanceStatistics", &IWorldQueryRequests::GetPerformanceStatistics)
-            ->Event("ConfigureDebugCapture", &IWorldQueryRequests::ConfigureDebugCapture)
-            ->Event("GetDebugCaptureStatistics", &IWorldQueryRequests::GetDebugCaptureStatistics)
             ->Event("GetBodies", &IWorldQueryRequests::GetBodies)
             ->Event("GetBodyId", &IWorldQueryRequests::GetBodyId)
             ->Event("RaycastShapeClosest", &IWorldQueryRequests::RaycastShapeClosest)

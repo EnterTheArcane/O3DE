@@ -64,6 +64,8 @@ configuration wins over legacy language-version examples.
   inheritable. Use `AZ_DISABLE_COPY`, `AZ_DISABLE_MOVE`, or `AZ_DISABLE_COPY_MOVE` rather than spelling deleted special members individually.
 - Keep implementations out of public headers except templates and trivial accessors. Public headers are IWYU-clean and compile standalone;
   never depend on unity-build leakage or manually forward-declare standard/AZStd aliases.
+- Have each EBus interface inherit `AZ::ComponentBus` or `AZ::EBusTraits` directly and declare its handler/address policy locally. Do not
+  hide a bus contract behind an intermediate traits superclass merely to deduplicate constants.
 - Use `AZStd` containers publicly. Lay out members for size, alignment, and locality; keep fields used together together. Put methods before
   data in each access section and separate data into semantic groups.
 - Do not use public/reflected bit-fields. Consider private packed flags only after measuring size, cache behavior, and generated code.

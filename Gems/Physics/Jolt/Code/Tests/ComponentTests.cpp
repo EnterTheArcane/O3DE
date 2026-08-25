@@ -27,7 +27,11 @@
 #include <Jolt/SystemInternal.h>
 #include <Jolt/VehicleComponents.h>
 #include <Jolt/VirtualCharacterControllerComponent.h>
+#include <Jolt/WorldBus.h>
+#include <Jolt/WorldDiagnosticsBus.h>
 #include <Jolt/WorldQueryBus.h>
+#include <Jolt/WorldRollbackBus.h>
+#include <Jolt/WorldSimulationBus.h>
 
 #include <AzTest/AzTest.h>
 
@@ -39,6 +43,7 @@
 #include <AzCore/Math/MathReflection.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Name/NameDictionary.h>
+#include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Script/ScriptContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -615,6 +620,73 @@ namespace Jolt
             bool m_pathPreparationSucceeds = true;
         };
 
+        class BusPolicyPathRequests final
+            : public PathRequestBus::Handler
+        {
+        public:
+            explicit BusPolicyPathRequests(const float sampleFraction)
+                : m_sampleFraction(sampleFraction)
+            {
+            }
+
+            [[nodiscard]]
+            PathHandle GetPathHandle() const override
+            {
+                return {};
+            }
+
+            [[nodiscard]]
+            const HermitePathConfiguration& GetConfiguration() const override
+            {
+                return m_configuration;
+            }
+
+            [[nodiscard]]
+            AZStd::vector<HermitePathPoint> CopyPoints() const override
+            {
+                return {};
+            }
+
+            [[nodiscard]]
+            PathState GetState() const override
+            {
+                return {};
+            }
+
+            [[nodiscard]]
+            PathSample Sample([[maybe_unused]] float fraction) const override
+            {
+                PathSample sample;
+                sample.m_fraction = m_sampleFraction;
+                sample.m_valid = true;
+                return sample;
+            }
+
+            [[nodiscard]]
+            PathSample FindClosestPoint(
+                [[maybe_unused]] const AZ::Vector3& position,
+                [[maybe_unused]] float fractionHint) const override
+            {
+                return Sample(0.0f);
+            }
+
+        private:
+            HermitePathConfiguration m_configuration;
+            float m_sampleFraction = 0.0f;
+        };
+
+        class BusPolicyPathNotifications final
+            : public PathNotificationBus::Handler
+        {
+        public:
+            void OnPathDestroyed([[maybe_unused]] PathHandle pathHandle) override
+            {
+                ++m_destroyedCount;
+            }
+
+            AZ::u32 m_destroyedCount = 0;
+        };
+
         SystemConfiguration CreateComponentSystemConfiguration()
         {
             SystemConfiguration configuration;
@@ -624,6 +696,34 @@ namespace Jolt
             return configuration;
         }
     } // namespace
+
+    TEST(ComponentTests, EntityRequestBusesRejectDuplicateOwnersAndNotificationsFanOut)
+    {
+        const AZ::EntityId entityId(42);
+        BusPolicyPathRequests firstRequests(1.0f);
+        BusPolicyPathRequests secondRequests(2.0f);
+        firstRequests.BusConnect(entityId);
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        secondRequests.BusConnect(entityId);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+
+        EXPECT_TRUE(firstRequests.BusIsConnected());
+        EXPECT_FALSE(secondRequests.BusIsConnected());
+
+        PathSample sample;
+        PathRequestBus::EventResult(sample, entityId, &IPathRequests::Sample, 0.5f);
+        EXPECT_TRUE(sample);
+        EXPECT_FLOAT_EQ(sample.m_fraction, 1.0f);
+
+        BusPolicyPathNotifications firstNotifications;
+        BusPolicyPathNotifications secondNotifications;
+        firstNotifications.BusConnect(entityId);
+        secondNotifications.BusConnect(entityId);
+        PathNotificationBus::Event(entityId, &IPathNotifications::OnPathDestroyed, PathHandle::Invalid);
+        EXPECT_EQ(firstNotifications.m_destroyedCount, 1);
+        EXPECT_EQ(secondNotifications.m_destroyedCount, 1);
+    }
 
     TEST(ComponentTests, HandleReflectionRegistersEveryScriptVisibleHandleForSerialization)
     {
@@ -1542,7 +1642,11 @@ namespace Jolt
         EXPECT_TRUE(behaviorContext.m_ebuses.contains("JoltSceneRequestBus"));
         EXPECT_TRUE(behaviorContext.m_ebuses.contains("JoltSceneNotificationBus"));
         EXPECT_TRUE(behaviorContext.m_ebuses.contains("JoltWorldNotificationBus"));
+        EXPECT_TRUE(behaviorContext.m_ebuses.contains("JoltWorldRequestBus"));
+        EXPECT_TRUE(behaviorContext.m_ebuses.contains("JoltWorldSimulationRequestBus"));
         EXPECT_TRUE(behaviorContext.m_ebuses.contains("JoltWorldQueryRequestBus"));
+        EXPECT_TRUE(behaviorContext.m_ebuses.contains("JoltWorldRollbackRequestBus"));
+        EXPECT_TRUE(behaviorContext.m_ebuses.contains("JoltWorldDiagnosticsRequestBus"));
 
         EXPECT_TRUE(behaviorContext.m_properties.contains("ActivationState_Active"));
         EXPECT_TRUE(behaviorContext.m_properties.contains("ActiveEdgeMode_CollideWithAll"));
@@ -2154,58 +2258,97 @@ namespace Jolt
         EXPECT_TRUE(virtualCharacterRequestBus->m_events.contains("UpdateRuntimeConfiguration"));
         EXPECT_TRUE(virtualCharacterRequestBus->m_events.contains("WalkStairs"));
 
-        const AZ::BehaviorEBus* worldQueryRequestBus =
-            behaviorContext.m_ebuses.at("JoltWorldQueryRequestBus");
+        const AZ::BehaviorEBus* worldRequestBus = behaviorContext.m_ebuses.at("JoltWorldRequestBus");
+        EXPECT_TRUE(worldRequestBus->m_events.contains("CreateWorld"));
+        EXPECT_TRUE(worldRequestBus->m_events.contains("DestroyWorld"));
+        EXPECT_TRUE(worldRequestBus->m_events.contains("GetDefaultWorldHandle"));
+        EXPECT_TRUE(worldRequestBus->m_events.contains("GetGravity"));
+        EXPECT_TRUE(worldRequestBus->m_events.contains("GetRuntimeConfiguration"));
+        EXPECT_TRUE(worldRequestBus->m_events.contains("GetRuntimeInfo"));
+        EXPECT_TRUE(worldRequestBus->m_events.contains("GetSimulationConfiguration"));
+        EXPECT_TRUE(worldRequestBus->m_events.contains("IsWorldValid"));
+        EXPECT_TRUE(worldRequestBus->m_events.contains("SetGravity"));
+        EXPECT_TRUE(worldRequestBus->m_events.contains("UpdateRuntimeConfiguration"));
+        EXPECT_TRUE(worldRequestBus->m_events.contains("UpdateSimulationConfiguration"));
+        EXPECT_FALSE(worldRequestBus->m_events.contains("StepWorld"));
+
+        const AZ::BehaviorEBus* worldSimulationRequestBus =
+            behaviorContext.m_ebuses.at("JoltWorldSimulationRequestBus");
+        EXPECT_EQ(worldSimulationRequestBus->m_events.size(), 1);
+        EXPECT_TRUE(worldSimulationRequestBus->m_events.contains("StepWorld"));
+
+        const AZ::BehaviorEBus* worldQueryRequestBus = behaviorContext.m_ebuses.at("JoltWorldQueryRequestBus");
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("CollideShape"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("CaptureWorldState"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("CaptureWorldStateConfigured"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("CaptureWorldStateParts"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("CollectShapeTriangles"));
-        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("CollectTransformedShapeChildren"));
-        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("CollectTransformedShapeTriangles"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("CollideShapePoint"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("CollideShapePointAny"));
-        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("CollideTransformedShapePoint"));
-        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("CollideTransformedShapePointAny"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("ConfigureDebugCapture"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("ConfigurePerformanceStatistics"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("CreateWorld"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("DestroyStateSnapshot"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("DestroyWorld"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("ExportWorldStateArchive"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetBodies"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetBodyId"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetDebugCaptureStatistics"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetGravity"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetPerformanceStatistics"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetRuntimeInfo"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetRuntimeConfiguration"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetSimulationConfiguration"));
-        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("GetTransformedShapeSupportingFace"));
-        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("GetTransformedShapeSurfaceNormal"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetWorldStateDigest"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("GetWorldStatistics"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("IsStateSnapshotValid"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("IsWorldValid"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("ImportWorldStateArchive"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("OverlapShape"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("CastShapeClosestPerBody"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("RaycastClosestBatch"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("RaycastClosestPerBody"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("RaycastShapeAll"));
         EXPECT_TRUE(worldQueryRequestBus->m_events.contains("RaycastShapeClosest"));
+        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("CollectShapesInBounds"));
+        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("CollectTransformedShapeChildren"));
+        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("CollectTransformedShapeTriangles"));
+        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("CollideTransformedShapePoint"));
+        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("CollideTransformedShapePointAny"));
         EXPECT_FALSE(worldQueryRequestBus->m_events.contains("RaycastTransformedShapeAll"));
         EXPECT_FALSE(worldQueryRequestBus->m_events.contains("RaycastTransformedShapeClosest"));
-        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("CollectShapesInBounds"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("RecaptureWorldState"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("RecaptureWorldStateConfigured"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("RestoreWorldState"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("RestoreWorldStateParts"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("SetGravity"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("StepWorld"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("UpdateSimulationConfiguration"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("UpdateRuntimeConfiguration"));
-        EXPECT_TRUE(worldQueryRequestBus->m_events.contains("ValidateWorldState"));
+        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("GetTransformedShapeSupportingFace"));
+        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("GetTransformedShapeSurfaceNormal"));
+        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("CreateWorld"));
+        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("StepWorld"));
+        EXPECT_FALSE(worldQueryRequestBus->m_events.contains("RestoreWorldState"));
+
+        const AZ::BehaviorEBus* worldRollbackRequestBus =
+            behaviorContext.m_ebuses.at("JoltWorldRollbackRequestBus");
+        EXPECT_TRUE(worldRollbackRequestBus->m_events.contains("CaptureWorldState"));
+        EXPECT_TRUE(worldRollbackRequestBus->m_events.contains("CaptureWorldStateConfigured"));
+        EXPECT_TRUE(worldRollbackRequestBus->m_events.contains("CaptureWorldStateParts"));
+        EXPECT_TRUE(worldRollbackRequestBus->m_events.contains("DestroyStateSnapshot"));
+        EXPECT_TRUE(worldRollbackRequestBus->m_events.contains("ExportWorldStateArchive"));
+        EXPECT_TRUE(worldRollbackRequestBus->m_events.contains("GetWorldStateDigest"));
+        EXPECT_TRUE(worldRollbackRequestBus->m_events.contains("ImportWorldStateArchive"));
+        EXPECT_TRUE(worldRollbackRequestBus->m_events.contains("IsStateSnapshotValid"));
+        EXPECT_TRUE(worldRollbackRequestBus->m_events.contains("RecaptureWorldState"));
+        EXPECT_TRUE(worldRollbackRequestBus->m_events.contains("RecaptureWorldStateConfigured"));
+        EXPECT_TRUE(worldRollbackRequestBus->m_events.contains("RestoreWorldState"));
+        EXPECT_TRUE(worldRollbackRequestBus->m_events.contains("RestoreWorldStateParts"));
+        EXPECT_TRUE(worldRollbackRequestBus->m_events.contains("ValidateWorldState"));
+
+        const AZ::BehaviorEBus* worldDiagnosticsRequestBus =
+            behaviorContext.m_ebuses.at("JoltWorldDiagnosticsRequestBus");
+        EXPECT_TRUE(worldDiagnosticsRequestBus->m_events.contains("ConfigureDebugCapture"));
+        EXPECT_TRUE(worldDiagnosticsRequestBus->m_events.contains("ConfigurePerformanceStatistics"));
+        EXPECT_TRUE(worldDiagnosticsRequestBus->m_events.contains("GetDebugCaptureStatistics"));
+        EXPECT_TRUE(worldDiagnosticsRequestBus->m_events.contains("GetPerformanceStatistics"));
+        EXPECT_TRUE(worldDiagnosticsRequestBus->m_events.contains("GetWorldStatistics"));
+
+        const auto getBusScope = [](const AZ::BehaviorEBus& behaviorBus)
+        {
+            AZ::Script::Attributes::ScopeFlags scope = AZ::Script::Attributes::ScopeFlags::Launcher;
+            AZ::Attribute* attribute = AZ::FindAttribute(AZ::Script::Attributes::Scope, behaviorBus.m_attributes);
+            if (!attribute)
+            {
+                ADD_FAILURE() << "The reflected bus is missing its script scope.";
+                return scope;
+            }
+
+            AZ::AttributeReader reader(nullptr, attribute);
+            if (!reader.Read<AZ::Script::Attributes::ScopeFlags>(scope))
+            {
+                ADD_FAILURE() << "The reflected bus script scope could not be read.";
+            }
+            return scope;
+        };
+        EXPECT_EQ(getBusScope(*worldRequestBus), AZ::Script::Attributes::ScopeFlags::Automation);
+        EXPECT_EQ(getBusScope(*worldSimulationRequestBus), AZ::Script::Attributes::ScopeFlags::Automation);
+        EXPECT_EQ(getBusScope(*worldQueryRequestBus), AZ::Script::Attributes::ScopeFlags::Common);
+        EXPECT_EQ(getBusScope(*worldRollbackRequestBus), AZ::Script::Attributes::ScopeFlags::Automation);
+        EXPECT_EQ(getBusScope(*worldDiagnosticsRequestBus), AZ::Script::Attributes::ScopeFlags::Common);
 
         const AZ::BehaviorEBus* softBodyRequestBus =
             behaviorContext.m_ebuses.at("JoltSoftBodyRequestBus");
@@ -2746,9 +2889,9 @@ namespace Jolt
         }
 
         WorldHandle worldHandle;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRequestBus::BroadcastResult(
             worldHandle,
-            &IWorldQueryRequests::GetDefaultWorldHandle);
+            &IWorldRequests::GetDefaultWorldHandle);
         EXPECT_TRUE(worldHandle);
 
         ShapeConfiguration shapeConfiguration;
@@ -2794,9 +2937,9 @@ namespace Jolt
 
         WorldStatistics statistics;
         bool foundStatistics = false;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldDiagnosticsRequestBus::BroadcastResult(
             foundStatistics,
-            &IWorldQueryRequests::GetWorldStatistics,
+            &IWorldDiagnosticsRequests::GetWorldStatistics,
             worldHandle,
             statistics);
         EXPECT_TRUE(foundStatistics);
@@ -2805,18 +2948,18 @@ namespace Jolt
 
         WorldStateDigest digest;
         bool foundDigest = false;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRollbackRequestBus::BroadcastResult(
             foundDigest,
-            &IWorldQueryRequests::GetWorldStateDigest,
+            &IWorldRollbackRequests::GetWorldStateDigest,
             worldHandle,
             digest);
         EXPECT_TRUE(foundDigest);
         EXPECT_GT(digest.m_stateByteCount, 0);
 
         StateSnapshotHandle snapshotHandle;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRollbackRequestBus::BroadcastResult(
             snapshotHandle,
-            &IWorldQueryRequests::CaptureWorldState,
+            &IWorldRollbackRequests::CaptureWorldState,
             worldHandle);
         ASSERT_TRUE(snapshotHandle);
 
@@ -2824,9 +2967,9 @@ namespace Jolt
         EXPECT_EQ(statistics.m_stateSnapshotCount, 1);
 
         bool snapshotIsValid = false;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRollbackRequestBus::BroadcastResult(
             snapshotIsValid,
-            &IWorldQueryRequests::IsStateSnapshotValid,
+            &IWorldRollbackRequests::IsStateSnapshotValid,
             worldHandle,
             snapshotHandle);
         EXPECT_TRUE(snapshotIsValid);
@@ -2841,9 +2984,9 @@ namespace Jolt
 
         StateValidationResult validationResult;
         bool validated = false;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRollbackRequestBus::BroadcastResult(
             validated,
-            &IWorldQueryRequests::ValidateWorldState,
+            &IWorldRollbackRequests::ValidateWorldState,
             worldHandle,
             snapshotHandle,
             validationResult);
@@ -2854,9 +2997,9 @@ namespace Jolt
         ASSERT_TRUE(bodiesCapability->GetBodyState(worldHandle, firstBodyHandle, bodyStateAfterValidation));
         EXPECT_DOUBLE_EQ(bodyStateAfterValidation.m_transform.m_position.m_z, 5.0);
 
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRollbackRequestBus::BroadcastResult(
             validated,
-            &IWorldQueryRequests::ValidateWorldState,
+            &IWorldRollbackRequests::ValidateWorldState,
             worldHandle,
             snapshotHandle,
             validationResult);
@@ -2864,9 +3007,9 @@ namespace Jolt
         EXPECT_FALSE(validationResult.m_matches);
 
         StateRestoreResult restored;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRollbackRequestBus::BroadcastResult(
             restored,
-            &IWorldQueryRequests::RestoreWorldState,
+            &IWorldRollbackRequests::RestoreWorldState,
             worldHandle,
             snapshotHandle);
         EXPECT_TRUE(restored);
@@ -2876,9 +3019,9 @@ namespace Jolt
         EXPECT_DOUBLE_EQ(restoredBodyState.m_transform.m_position.m_z, 0.0);
 
         bool recaptured = false;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRollbackRequestBus::BroadcastResult(
             recaptured,
-            &IWorldQueryRequests::RecaptureWorldState,
+            &IWorldRollbackRequests::RecaptureWorldState,
             worldHandle,
             snapshotHandle);
         EXPECT_TRUE(recaptured);
@@ -2889,9 +3032,9 @@ namespace Jolt
             firstBodyHandle,
             movedTransform,
             false));
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRollbackRequestBus::BroadcastResult(
             restored,
-            &IWorldQueryRequests::RestoreWorldState,
+            &IWorldRollbackRequests::RestoreWorldState,
             worldHandle,
             snapshotHandle);
         EXPECT_TRUE(restored);
@@ -2904,18 +3047,18 @@ namespace Jolt
         filteredConfiguration.m_filterBodies = true;
         const AZStd::vector<BodyHandle> filteredBodies = {firstBodyHandle};
         StateSnapshotHandle filteredSnapshotHandle;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRollbackRequestBus::BroadcastResult(
             filteredSnapshotHandle,
-            &IWorldQueryRequests::CaptureWorldStateConfigured,
+            &IWorldRollbackRequests::CaptureWorldStateConfigured,
             worldHandle,
             filteredConfiguration,
             filteredBodies);
         ASSERT_TRUE(filteredSnapshotHandle);
 
         bool recapturedFilteredState = false;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRollbackRequestBus::BroadcastResult(
             recapturedFilteredState,
-            &IWorldQueryRequests::RecaptureWorldStateConfigured,
+            &IWorldRollbackRequests::RecaptureWorldStateConfigured,
             worldHandle,
             filteredSnapshotHandle,
             filteredConfiguration,
@@ -2923,16 +3066,16 @@ namespace Jolt
         EXPECT_TRUE(recapturedFilteredState);
 
         bool destroyedSnapshot = false;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRollbackRequestBus::BroadcastResult(
             destroyedSnapshot,
-            &IWorldQueryRequests::DestroyStateSnapshot,
+            &IWorldRollbackRequests::DestroyStateSnapshot,
             worldHandle,
             filteredSnapshotHandle);
         EXPECT_TRUE(destroyedSnapshot);
 
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRollbackRequestBus::BroadcastResult(
             snapshotIsValid,
-            &IWorldQueryRequests::IsStateSnapshotValid,
+            &IWorldRollbackRequests::IsStateSnapshotValid,
             worldHandle,
             filteredSnapshotHandle);
         EXPECT_FALSE(snapshotIsValid);
@@ -3239,17 +3382,17 @@ namespace Jolt
         additionalWorldConfiguration.m_collectActivationEvents = true;
         additionalWorldConfiguration.m_collectContactEvents = true;
         WorldHandle additionalWorldHandle;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRequestBus::BroadcastResult(
             additionalWorldHandle,
-            &IWorldQueryRequests::CreateWorld,
+            &IWorldRequests::CreateWorld,
             additionalWorldConfiguration);
         ASSERT_TRUE(additionalWorldHandle);
         EXPECT_NE(additionalWorldHandle, worldHandle);
 
         bool additionalWorldIsValid = false;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRequestBus::BroadcastResult(
             additionalWorldIsValid,
-            &IWorldQueryRequests::IsWorldValid,
+            &IWorldRequests::IsWorldValid,
             additionalWorldHandle);
         EXPECT_TRUE(additionalWorldIsValid);
 
@@ -3288,9 +3431,9 @@ namespace Jolt
             true));
 
         SimulationResult simulationResult;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldSimulationRequestBus::BroadcastResult(
             simulationResult,
-            &IWorldQueryRequests::StepWorld,
+            &IWorldSimulationRequests::StepWorld,
             additionalWorldHandle,
             1.0f / 60.0f);
         EXPECT_TRUE(simulationResult);
@@ -3322,15 +3465,15 @@ namespace Jolt
         EXPECT_TRUE(bodiesCapability->DestroyBody(additionalWorldHandle, floorBodyHandle));
         EXPECT_TRUE(shapes->DestroyShape(additionalWorldHandle, additionalShapeHandle));
         bool destroyedWorld = false;
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRequestBus::BroadcastResult(
             destroyedWorld,
-            &IWorldQueryRequests::DestroyWorld,
+            &IWorldRequests::DestroyWorld,
             additionalWorldHandle);
         EXPECT_TRUE(destroyedWorld);
 
-        WorldQueryRequestBus::BroadcastResult(
+        WorldRequestBus::BroadcastResult(
             additionalWorldIsValid,
-            &IWorldQueryRequests::IsWorldValid,
+            &IWorldRequests::IsWorldValid,
             additionalWorldHandle);
         EXPECT_FALSE(additionalWorldIsValid);
 

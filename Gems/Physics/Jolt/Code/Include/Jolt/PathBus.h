@@ -19,6 +19,8 @@ namespace Jolt
         : public AZ::ComponentBus
     {
     public:
+        static constexpr AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+
         [[nodiscard]]
         virtual PathHandle GetPathHandle() const = 0;
 
@@ -46,6 +48,8 @@ namespace Jolt
         : public AZ::ComponentBus
     {
     public:
+        static constexpr AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+
         virtual void OnPathCreated([[maybe_unused]] PathHandle pathHandle)
         {
         }

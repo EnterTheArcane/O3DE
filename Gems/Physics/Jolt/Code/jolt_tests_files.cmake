@@ -92,8 +92,12 @@ set(FILES
     Tests/Headers/VehicleBus.cpp
     Tests/Headers/VehicleComponentConfiguration.cpp
     Tests/Headers/VirtualCharacterBus.cpp
+    Tests/Headers/WorldBus.cpp
+    Tests/Headers/WorldDiagnosticsBus.cpp
     Tests/Headers/WorldTypes.cpp
     Tests/Headers/WorldQueryBus.cpp
+    Tests/Headers/WorldRollbackBus.cpp
+    Tests/Headers/WorldSimulationBus.cpp
     Tests/NativeRuntimeTests.cpp
     Tests/ProviderModuleApi.h
     Tests/SimulationTests.cpp
@@ -180,6 +184,10 @@ set(SKIP_UNITY_BUILD_INCLUSION_FILES
     Tests/Headers/VehicleBus.cpp
     Tests/Headers/VehicleComponentConfiguration.cpp
     Tests/Headers/VirtualCharacterBus.cpp
+    Tests/Headers/WorldBus.cpp
+    Tests/Headers/WorldDiagnosticsBus.cpp
     Tests/Headers/WorldTypes.cpp
     Tests/Headers/WorldQueryBus.cpp
+    Tests/Headers/WorldRollbackBus.cpp
+    Tests/Headers/WorldSimulationBus.cpp
 )

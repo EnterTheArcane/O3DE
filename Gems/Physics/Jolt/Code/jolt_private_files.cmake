@@ -12,6 +12,7 @@ set(FILES
     Source/Jolt/AssetProduct.h
     Source/Jolt/AssetBuilderSystem.h
     Source/Jolt/BehaviorReflection.h
+    Source/Jolt/BusChecks.cpp
     Source/Jolt/Capabilities.cpp
     Source/Jolt/CharacterConfiguration.cpp
     Source/Jolt/CharacterControllerComponent.cpp
@@ -103,8 +104,12 @@ set(FILES
     Source/Jolt/VirtualCharacterControllerComponent.h
     Source/Jolt/World.cpp
     Source/Jolt/World.h
-    Source/Jolt/WorldTypes.cpp
+    Source/Jolt/WorldBus.cpp
+    Source/Jolt/WorldDiagnosticsBus.cpp
     Source/Jolt/WorldQueryBus.cpp
+    Source/Jolt/WorldRollbackBus.cpp
+    Source/Jolt/WorldSimulationBus.cpp
+    Source/Jolt/WorldTypes.cpp
     Source/Jolt/BodyConfiguration.cpp
     Source/Jolt/Shape.cpp
     Source/Jolt/ShapeConfiguration.cpp
