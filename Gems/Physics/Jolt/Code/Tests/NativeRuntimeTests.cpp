@@ -623,12 +623,18 @@ namespace Jolt
 
         JobSystem parallelJobSystem(1'024, 8, 64, &jobContext);
         EXPECT_EQ(parallelJobSystem.GetMaxConcurrency(), 3);
+        EXPECT_EQ(parallelJobSystem.GetTaskCapacity(), 2);
+        EXPECT_GT(parallelJobSystem.GetRetainedBytes(), 0);
 
         JobSystem cappedJobSystem(1'024, 8, 2, &jobContext);
         EXPECT_EQ(cappedJobSystem.GetMaxConcurrency(), 2);
+        EXPECT_EQ(cappedJobSystem.GetTaskCapacity(), 1);
+        EXPECT_GT(cappedJobSystem.GetRetainedBytes(), 0);
 
         JobSystem serialJobSystem(1'024, 8, 64, nullptr);
         EXPECT_EQ(serialJobSystem.GetMaxConcurrency(), 1);
+        EXPECT_EQ(serialJobSystem.GetTaskCapacity(), 0);
+        EXPECT_GT(serialJobSystem.GetRetainedBytes(), 0);
     }
 
     TEST(NativeRuntimeTests, AxisAlignedRayAabbPathMatchesGeneralSlabTest)

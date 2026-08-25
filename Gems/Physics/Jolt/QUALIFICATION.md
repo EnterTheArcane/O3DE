@@ -42,8 +42,8 @@ the row's complete contract.
 | `J3-AUD-019` | Custom-shape source dependencies participate in analysis invalidation and deterministic job/product fingerprints. | 5 | **Implemented** — scene sources declare canonical asset-database-relative dependency paths. `CreateJobs` publishes their exact absolute source dependencies and fingerprints current contents plus captured provider identity/version; `ProcessJob` independently reanalyzes and rejects missing files or provider output that disagrees with the declared path/hash set. Runtime cooking canonicalizes ordering and duplicates, while compiled scene data drops authoring-only path storage. `EditorAssetBuilderTests.TracksCustomShapeDependencyEditsDeletionAndRecovery` proves dependency-only fingerprint changes, stale-provider rejection, deletion tracking, successful recovery, provider-version invalidation, and recooking without changing the parent source. Invalid provider/path/hash contracts fail transactionally. Final Asset Processor application and MSVC qualification remain. |
 | `J3-AUD-020` | Every claimed clang-cl ASan configuration is instrumented and deployed correctly or rejected during configure. | 1 | **Closed** — clang-cl 22.1.8 permits only Profile ASan trees because the Windows ASan runtime rejects the debug CRT; a fresh Ninja build proved compile instrumentation, dynamic runtime/thunk linkage, runtime deployment, the full Jolt and AzCore suites, and a symbolized heap-use-after-free sentinel. |
 | `J3-AUD-021` | Operation creation and completion reclamation are bounded and never wait for unrelated work. | 6 | **Implemented** — creation performs one free-list lookup and never scans, joins, or waits for active work. Terminal detached operations nominate themselves for completion-driven maintenance, and intrusive links remove active and reap entries in constant time. Profile creation of 2,048 operations with all work blocked improved from a 5,011 us median to 147 us; optimized Release measures 122 us. Concurrent creation, detached cancellation/completion, shutdown, and saturated-worker watchdog tests pass. Cache byte/count ceilings and complete memory telemetry remain `J3-AUD-022`. Final MSVC and application qualification remain. |
-| `J3-AUD-022` | Event and operation caches have count/byte ceilings and accurately report live, cached, outstanding, retained, and high-water memory. | 6 | **Open** — burst/release/reuse/oversize/teardown statistics and allocator evidence required. |
-| `J3-AUD-023` | Steady-state allocation claims cover native, wrapper, AZ job, and closure domains. | 6 | **Open** — warm 1/4/8-worker stepping, automatic worlds, queries, and CPU Hair allocation evidence required. |
+| `J3-AUD-022` | Event and operation caches have count/byte ceilings and accurately report live, cached, outstanding, retained, and high-water memory. | 6 | **Implemented** — event batches retain at most four records, 8 MiB total, and 4 MiB per record. Operations retain at most 64 records and 1 MiB per type, with a 512 KiB record ceiling. Reflected telemetry partitions live storage into cached and outstanding count/bytes and reports resettable high-water values. Focused 1,024-record and 100,000-result burst/release/reuse/oversize/shutdown tests pass. Final Release, MSVC, application, and stress qualification remain. |
+| `J3-AUD-023` | Steady-state allocation claims cover native, wrapper, AZ job, and closure domains. | 6 | **Implemented** — provider job tasks use fixed owner-allocated slots with a bounded retirement-handoff generation; automatic multiworld jobs use bounded stack storage; CPU Hair retains at most 16 generated wrappers and their buffer leases. Warmed parallel stepping, automatic worlds, batch queries, and Hair report zero `SystemAllocator` or `ThreadPoolAllocator` allocations; Hair also reports zero native allocations and stable wrapper creation/retained bytes. Final Release 1/4/8-worker and application evidence remain. |
 | `J3-AUD-024` | Contact publication meets the declared contention gate without weakening deterministic order or event completeness. | 6 | **Open** — wait/hold/growth instrumentation and contact-density W1/W4/W8 evidence required before changing the mutex design. |
 | `J3-AUD-025` | `validate.py review/full` schedules, validates, and retains both native and AutomatedTesting performance artifacts. | 7 | **Open** — dry-run scheduling and fresh real-run artifact proof required. |
 | `J3-AUD-026` | Every scenario has meaningful minimum assertions and a parsed, verified, retained result envelope. | 7 | **Open** — corrected saved/filter/reflection/gallery/stress tests and zero-check failure sentinel required. |
@@ -279,6 +279,29 @@ wait while retaining and waiting on a second. Existing ownership, running-token 
 subprocess tests cover the remaining completion and shutdown paths. The complete Profile and Release non-unity suites each pass 326
 tests with zero failures and one intentional disable. Raw JSON and XML evidence remains beneath
 `build/jolt-production-readiness/stage6/operation-pool/` and is intentionally not committed.
+
+## Stage 6 bounded storage and adapter-allocation evidence
+
+Event-batch storage has independent per-record, total-byte, and record-count ceilings. Operation caches apply the same policy per result
+type so one large query cannot permanently raise the steady-state footprint. Oversized and excess records are deleted on release rather
+than shrunk on every reuse. `PoolStatistics` reports the complete live allocation set, partitions it into cached and caller-held storage,
+and retains count and byte high-water values across reset intervals. Runtime-wide operation storage is labelled as such because reading or
+resetting it through any world observes the same pool.
+
+Jolt background tasks now use fixed Runtime-owned storage instead of allocating one self-deleting AZ job for every scheduling wave. Two
+bounded slot generations cover the interval between a task relinquishing scheduling capacity and the AZ job delete hook returning its
+storage. Automatic multiworld stepping constructs only the required caller-owned jobs in a bounded `fixed_vector`. CPU Hair retains its
+generated shader wrappers, exact binding-buffer leases, and binding signatures across updates, with a maximum of 16 cached shaders; a
+larger future shader set remains correct but uses transient wrappers beyond that ceiling.
+
+`EventBatchPoolBoundsCachedStorageAndReportsCompleteMemory` and
+`OperationPoolBoundsPerTypeCachesAndEvictsOversizeResults` exercise 1,024 simultaneous records, a 100,000-point event batch, a
+100,000-result asynchronous query, reuse, reset, oversize eviction, shutdown, and immutable outstanding lifetime. Warmed parallel world
+stepping, automatic multiworld stepping, caller-buffer batch queries, and CPU Hair updates report zero `SystemAllocator` or
+`ThreadPoolAllocator` allocation calls. Hair additionally reports zero native allocation/reallocation calls, stable generated-wrapper
+creation count, and stable retained bytes.
+The task-handoff correction was stressed by ten consecutive executions of the complete 328-test clang-cl Profile non-unity suite with
+zero failures. Final Release, MSVC, 1/4/8-worker application, and soak evidence remain qualification gates.
 
 ## Qualification platforms
 

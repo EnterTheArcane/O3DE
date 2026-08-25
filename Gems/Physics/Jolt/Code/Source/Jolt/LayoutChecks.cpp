@@ -12,6 +12,7 @@
 #include <Jolt/Constraint.h>
 #include <Jolt/Cooking.h>
 #include <Jolt/DebugDraw.h>
+#include <Jolt/Diagnostics.h>
 #include <Jolt/Event.h>
 #include <Jolt/FloatEnvironment.h>
 #include <Jolt/Handle.h>
@@ -100,6 +101,7 @@ static_assert(sizeof(Jolt::FloatEnvironment) == 16);
 static_assert(sizeof(Jolt::Operation<Jolt::SimulationResult>) == sizeof(void*));
 static_assert(std::is_move_constructible_v<Jolt::Operation<Jolt::SimulationResult>>);
 static_assert(!std::is_copy_constructible_v<Jolt::Operation<Jolt::SimulationResult>>);
+static_assert(sizeof(Jolt::PoolStatistics) == 48);
 static_assert(sizeof(Jolt::WorldEventBatch) == sizeof(AZ::u64) * 2);
 static_assert(sizeof(Jolt::BodyConfiguration) == 304);
 static_assert(sizeof(Jolt::BodyState) == 176);

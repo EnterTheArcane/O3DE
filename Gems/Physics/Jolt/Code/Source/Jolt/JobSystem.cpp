@@ -16,6 +16,9 @@
 #include <AzCore/Jobs/JobManager.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/chrono/chrono.h>
+#include <AzCore/std/createdestroy.h>
+
+#include <cstddef>
 
 namespace Jolt
 {
@@ -58,6 +61,14 @@ namespace Jolt
         : AZ::Job(true, jobContext)
         , m_jobSystem(jobSystem)
     {
+    }
+
+    void JobSystem::Task::operator delete(
+        void* pointer) noexcept
+    {
+        static_assert(offsetof(TaskSlot, m_storage) == 0);
+        auto* slot = reinterpret_cast<TaskSlot*>(pointer);
+        slot->m_jobSystem->RecycleTaskSlot(slot);
     }
 
     void JobSystem::Task::Process()
@@ -140,12 +151,27 @@ namespace Jolt
             m_workerCount = AZStd::min(
                 AZStd::max(workerCount, AZ::u32{1}),
                 availableWorkerCount);
+            const AZ::u32 maximumBackgroundTaskCount = m_workerCount - 1;
+            // AZ::Job invokes the delete hook after Process returns, so retain one replacement slot per retiring task.
+            m_taskSlots.resize(maximumBackgroundTaskCount * 2);
+            for (TaskSlot& slot : m_taskSlots)
+            {
+                slot.m_jobSystem = this;
+                slot.m_next = m_freeTaskSlots;
+                m_freeTaskSlots = &slot;
+            }
         }
     }
 
     JobSystem::~JobSystem()
     {
         AZ_Assert(IsIdle(), "Jolt work remains active during job-system destruction.");
+        [[maybe_unused]] size_t freeTaskCount = 0;
+        for (TaskSlot* slot = m_freeTaskSlots; slot; slot = slot->m_next)
+        {
+            ++freeTaskCount;
+        }
+        AZ_Assert(freeTaskCount == m_taskSlots.size(), "The Jolt job system retained task slots during destruction.");
     }
 
     void JobSystem::BeginUpdate(
@@ -170,6 +196,17 @@ namespace Jolt
     int JobSystem::GetMaxConcurrency() const
     {
         return static_cast<int>(m_workerCount);
+    }
+
+    AZ::u64 JobSystem::GetRetainedBytes() const
+    {
+        return m_queuedJobs.capacity() * sizeof(ProviderJob*)
+            + m_taskSlots.capacity() * sizeof(TaskSlot);
+    }
+
+    AZ::u32 JobSystem::GetTaskCapacity() const
+    {
+        return m_workerCount - 1;
     }
 
     bool JobSystem::IsIdle()
@@ -278,7 +315,7 @@ namespace Jolt
         AZ_Assert(taskCount == 0 || m_taskCompletion, "Parallel Jolt tasks require a job completion context.");
         for (AZ::u32 taskIndex = 0; taskIndex < taskCount; ++taskIndex)
         {
-            Task* task = aznew Task(*this, m_jobContext);
+            Task* task = CreateTask();
             task->SetDependent(&*m_taskCompletion);
             task->Start();
         }
@@ -288,5 +325,29 @@ namespace Jolt
         Job* job)
     {
         m_jobs.DestructObject(static_cast<ProviderJob*>(job));
+    }
+
+    JobSystem::Task* JobSystem::CreateTask()
+    {
+        TaskSlot* slot = nullptr;
+        {
+            AZStd::lock_guard lock(m_taskMutex);
+            AZ_Assert(m_freeTaskSlots, "The Jolt background-task pool is exhausted.");
+            slot = m_freeTaskSlots;
+            m_freeTaskSlots = slot->m_next;
+            slot->m_next = nullptr;
+        }
+        return AZStd::construct_at(
+            reinterpret_cast<Task*>(slot->m_storage),
+            *this,
+            m_jobContext);
+    }
+
+    void JobSystem::RecycleTaskSlot(
+        TaskSlot* slot)
+    {
+        AZStd::lock_guard lock(m_taskMutex);
+        slot->m_next = m_freeTaskSlots;
+        m_freeTaskSlots = slot;
     }
 } // namespace Jolt

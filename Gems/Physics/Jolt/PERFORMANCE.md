@@ -459,15 +459,34 @@ snapshot clears interval counters and high-water marks without releasing retaine
 world begins a new process-wide memory interval for every world that has memory statistics enabled.
 
 The resource report covers bodies, shapes, constraints, characters, vehicles, ragdolls, soft bodies, CPU Hair, scenes, and unified state
-snapshots. Wrapper-retained bytes also include query workspaces, snapshot scratch, contact provenance, event queues, lookup structures, CPU Hair
-joint storage, step listeners, and bounded debug capture. Vector capacities are exact; unordered-map nodes are a documented structural
-estimate because the standard container does not expose allocator-retained bytes. Native current/peak bytes,
+snapshots. Per-world wrapper-retained bytes also include query workspaces, snapshot scratch, contact provenance, bounded event-batch
+pools, lookup structures, CPU Hair joint and generated-wrapper storage, job-task slots, step listeners, and bounded debug capture. Event
+and runtime-wide operation telemetry separately partition live storage into cached and outstanding count/bytes and report resettable
+high-water values. Runtime operation bytes are not repeated in each world's wrapper-retained total. Vector capacities are exact;
+unordered-map nodes are a documented structural estimate because the standard container does not expose allocator-retained bytes. Native current/peak bytes,
 allocation/free/reallocation counts, and temporary allocator current/capacity/peak bytes remain separate so wrapper and native ownership
 are not conflated.
 
 `SimulationTests.PerformanceStatisticsAreOptInResettableAndAllocationFreeToRead` verifies opt-in/reset behavior and repeated caller-buffer
 reads. `SimulationTests.SnapshotRecaptureReusesRetainedStorage` proves stable wrapper capacity after warmup. The lifecycle and rollback
 benchmarks publish native traffic, temporary peaks, snapshot bytes, and wrapper-retained bytes as counters on every result.
+
+## Bounded pools and steady-state adapter allocations
+
+Event batches retain at most four records, 8 MiB total, and 4 MiB in any one cached record. Each asynchronous operation result type retains
+at most 64 records and 1 MiB, and no cached record may exceed 512 KiB. Records above either limit are released instead of being shrunk and
+retained. The limits bound reuse without adding work to successful acquisition or changing caller-held immutable lifetimes.
+
+Provider background tasks use two fixed slot generations for each available background worker. The second generation covers the short
+handoff between `Process` releasing scheduling capacity and the AZ job delete hook recycling its storage; it does not increase native
+simulation concurrency. Automatic multiworld stepping uses bounded caller-owned job objects. CPU Hair caches at most 16 generated shader
+wrappers and retains exact buffer references until dispatch completes.
+
+Focused Profile tests enable `AllocationRecords::RECORD_STACK_NEVER` only around warmed workloads, then compare the cumulative
+`SystemAllocator` and `ThreadPoolAllocator` allocation counts. Parallel stepping, automatic multiworld stepping, caller-buffer raycast
+batches, and CPU Hair each report zero allocations during their measured intervals. Hair also reports zero native allocations or
+reallocations, no additional generated-wrapper creation, and no retained-byte growth. These are focused implementation gates; final
+Release 1/4/8-worker process measurements remain required before the broader qualification claim closes.
 
 ## Retained transformed-shape representation
 

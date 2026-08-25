@@ -239,12 +239,15 @@ namespace Jolt
         AZ::u64 m_tempAllocatorCapacityBytes = 0;
         AZ::u64 m_tempAllocatorUsageBytes = 0;
         AZ::u64 m_lastUpdateNanoseconds = 0;
+        AZ::u64 m_hairShaderWrapperCreationCount = 0;
         SimulationError m_lastUpdateErrors = SimulationError::None;
         AZ::u32 m_lastUpdateJobCount = 0;
         AZ::u32 m_lastUpdateMaximumTaskCount = 0;
         AZ::u32 m_lastUpdateTaskCount = 0;
+        AZ::u32 m_jobTaskCapacity = 0;
         AZ::u32 m_requestedWorkerCount = 0;
         AZ::u32 m_effectiveWorkerCount = 0;
+        AZ::u32 m_hairShaderWrapperCount = 0;
         AZ::u32 m_hairWorkerCount = 0;
 
         AZ::u32 m_activeDynamicBodyCount = 0;
@@ -289,6 +292,23 @@ namespace Jolt
 
     AZ_DEFINE_ENUM_BITWISE_OPERATORS(PerformanceStatisticsFlags)
 
+    //! Current retained storage and lifetime high water for a reusable provider pool.
+    //! Cached and outstanding storage partition the live totals.
+    struct PoolStatistics final
+    {
+        AZ_TYPE_INFO(PoolStatistics, PoolStatisticsTypeId);
+
+        AZ::u64 m_liveBytes = 0;
+        AZ::u64 m_cachedBytes = 0;
+        AZ::u64 m_outstandingBytes = 0;
+        AZ::u64 m_highWaterBytes = 0;
+
+        AZ::u32 m_liveCount = 0;
+        AZ::u32 m_cachedCount = 0;
+        AZ::u32 m_outstandingCount = 0;
+        AZ::u32 m_highWaterCount = 0;
+    };
+
     //! Current and high-water information for one world-owned resource category.
     //! Retained bytes describe provider-owned capacity and exclude memory owned by the native allocator.
     struct ResourceStatistics final
@@ -320,11 +340,14 @@ namespace Jolt
         AZ::u64 m_tempAllocatorCapacityBytes = 0;
         AZ::u64 m_tempAllocatorCurrentBytes = 0;
         AZ::u64 m_tempAllocatorPeakBytes = 0;
+
+        //! Storage retained by this world. Runtime-wide pools are reported separately and are not included.
         AZ::u64 m_wrapperRetainedBytes = 0;
 
         ResourceStatistics m_bodies;
         ResourceStatistics m_characters;
         ResourceStatistics m_constraints;
+        PoolStatistics m_eventBatches;
         ResourceStatistics m_hair;
         ResourceStatistics m_ragdolls;
         ResourceStatistics m_scenes;
@@ -333,6 +356,9 @@ namespace Jolt
         ResourceStatistics m_stateSnapshots;
         ResourceStatistics m_vehicles;
         ResourceStatistics m_virtualCharacters;
+
+        //! Runtime-wide operation storage. Resetting from any world resets its high-water interval for the Runtime.
+        PoolStatistics m_operations;
 
         AZ::u64 m_broadPhaseOptimizeCount = 0;
         AZ::u64 m_broadPhaseOptimizeNanoseconds = 0;

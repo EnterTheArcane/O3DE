@@ -18,6 +18,8 @@
 #include <Jolt/Core/FixedSizeFreeList.h>
 #include <Jolt/Core/JobSystemWithBarrier.h>
 
+#include <cstddef>
+
 namespace AZ
 {
     class JobContext;
@@ -55,6 +57,12 @@ namespace Jolt
         UpdateStatistics EndUpdate();
 
         int GetMaxConcurrency() const override;
+
+        [[nodiscard]]
+        AZ::u64 GetRetainedBytes() const;
+
+        [[nodiscard]]
+        AZ::u32 GetTaskCapacity() const;
 
         [[nodiscard]]
         bool IsIdle();
@@ -101,11 +109,11 @@ namespace Jolt
             : public AZ::Job
         {
         public:
-            AZ_CLASS_ALLOCATOR(Task, AZ::ThreadPoolAllocator);
-
             Task(
                 JobSystem& jobSystem,
                 AZ::JobContext* jobContext);
+
+            static void operator delete(void* pointer) noexcept;
 
         protected:
             void Process() override;
@@ -114,13 +122,27 @@ namespace Jolt
             JobSystem& m_jobSystem;
         };
 
+        struct TaskSlot final
+        {
+            alignas(Task) std::byte m_storage[sizeof(Task)];
+            JobSystem* m_jobSystem = nullptr;
+            TaskSlot* m_next = nullptr;
+        };
+
         using AvailableJobs = JPH::FixedSizeFreeList<ProviderJob>;
+
+        [[nodiscard]]
+        Task* CreateTask();
+
+        void RecycleTaskSlot(TaskSlot* slot);
 
         AvailableJobs m_jobs;
         AZStd::vector<ProviderJob*> m_queuedJobs;
+        AZStd::vector<TaskSlot> m_taskSlots;
         AZ::JobContext* m_jobContext = nullptr;
         AZStd::optional<AZ::JobEmpty> m_taskCompletion;
         AZStd::mutex m_taskMutex;
+        TaskSlot* m_freeTaskSlots = nullptr;
         size_t m_queueReadIndex = 0;
         size_t m_queueWriteIndex = 0;
         size_t m_queuedJobCount = 0;

@@ -23168,10 +23168,16 @@ namespace Jolt
             .m_softBodyCount = bodyStats.mNumSoftBodies,
             .m_staticBodyCount = bodyStats.mNumBodiesStatic,
         };
+        if (m_jobSystem->GetMaxConcurrency() > 1)
+        {
+            statistics.m_jobTaskCapacity = static_cast<const JobSystem*>(m_jobSystem.get())->GetTaskCapacity();
+        }
         if (m_hairComputeQueue)
         {
-            statistics.m_hairWorkerCount =
-                static_cast<const CpuComputeQueue*>(m_hairComputeQueue.GetPtr())->GetWorkerCount();
+            const auto* computeQueue = static_cast<const CpuComputeQueue*>(m_hairComputeQueue.GetPtr());
+            statistics.m_hairShaderWrapperCount = computeQueue->GetCachedWrapperCount();
+            statistics.m_hairShaderWrapperCreationCount = computeQueue->GetWrapperCreationCount();
+            statistics.m_hairWorkerCount = computeQueue->GetWorkerCount();
         }
 
         const NativeShapeStatistics shapeStatistics = GatherNativeShapeStatistics();
@@ -23301,6 +23307,14 @@ namespace Jolt
 #ifndef JPH_TRACK_NARROWPHASE_STATS
         statistics.m_availableFlags &= ~PerformanceStatisticsFlags::NarrowPhase;
 #endif
+
+        const PerformanceStatisticsFlags retainedStorageFlags = PerformanceStatisticsFlags::Memory
+            | PerformanceStatisticsFlags::Resources;
+        if ((flags & retainedStorageFlags) != PerformanceStatisticsFlags::None)
+        {
+            AZStd::lock_guard eventLock(m_eventMutex);
+            statistics.m_eventBatches = m_eventBatchPool->GetStatistics(reset);
+        }
 
         if ((flags & PerformanceStatisticsFlags::Memory) != PerformanceStatisticsFlags::None)
         {
@@ -23490,6 +23504,10 @@ namespace Jolt
                     hairBytes += GetVectorCapacityBytes(slot.m_autoUpdateState->m_jointModelTransforms);
                 }
             }
+            if (m_hairComputeQueue)
+            {
+                hairBytes += static_cast<const CpuComputeQueue*>(m_hairComputeQueue.GetPtr())->GetRetainedBytes();
+            }
             configureResource(
                 statistics.m_hair,
                 hairCount,
@@ -23641,6 +23659,10 @@ namespace Jolt
             workspaceBytes += GetVectorCapacityBytes(m_groupFilterScratch);
             workspaceBytes += GetVectorCapacityBytes(m_stepListeners);
             workspaceBytes += GetMapRetainedBytes(m_contactCacheRestoreScratch);
+            if (m_jobSystem->GetMaxConcurrency() > 1)
+            {
+                workspaceBytes += static_cast<const JobSystem*>(m_jobSystem.get())->GetRetainedBytes();
+            }
 
             AZ::u64 eventBytes = 0;
             {
@@ -23651,15 +23673,8 @@ namespace Jolt
                 eventBytes += GetVectorCapacityBytes(m_pendingActivationEvents);
                 eventBytes += GetVectorCapacityBytes(m_pendingBodyMoveEvents);
                 eventBytes += GetVectorCapacityBytes(m_pendingVirtualCharacterMoveEvents);
-                if (const EventBatchStorage* storage = m_publishedEvents.m_storage)
-                {
-                    eventBytes += GetVectorCapacityBytes(storage->m_contacts);
-                    eventBytes += GetVectorCapacityBytes(storage->m_contactPoints);
-                    eventBytes += GetVectorCapacityBytes(storage->m_activations);
-                    eventBytes += GetVectorCapacityBytes(storage->m_bodyMoves);
-                    eventBytes += GetVectorCapacityBytes(storage->m_virtualCharacterMoves);
-                }
             }
+            eventBytes += statistics.m_eventBatches.m_liveBytes;
 
             const AZ::u64 lookupBytes = GetMapRetainedBytes(m_ragdollHandlesByGroupId)
                 + GetMapRetainedBytes(m_virtualCharacterHandlesById);
@@ -32032,27 +32047,30 @@ namespace Jolt
                 AZStd::memory_order_relaxed);
         }
 
-        EventBatchStorage& storage = *eventBatch.m_storage;
-        for (ContactEvent& event : m_pendingContactEvents)
+        AZ::u64 nextEventSequence = m_eventSequence + 1;
+        if (nextEventSequence == 0)
         {
-            event.m_batchId = storage.m_id;
+            ++nextEventSequence;
         }
-        storage.m_contacts.swap(m_pendingContactEvents);
-        storage.m_contactPoints.swap(m_pendingContactPoints);
-        storage.m_activations.swap(m_pendingActivationEvents);
-        storage.m_bodyMoves.swap(m_pendingBodyMoveEvents);
-        storage.m_virtualCharacterMoves.swap(m_pendingVirtualCharacterMoveEvents);
+        const bool published = m_eventBatchPool->Publish(
+            eventBatch,
+            nextEventSequence,
+            m_pendingContactEvents,
+            m_pendingContactPoints,
+            m_pendingActivationEvents,
+            m_pendingBodyMoveEvents,
+            m_pendingVirtualCharacterMoveEvents);
+        AZ_Assert(published, "A Jolt event batch must belong to its world pool.");
+        if (!published)
+        {
+            return;
+        }
+        m_eventSequence = nextEventSequence;
         m_pendingContactEvents.clear();
         m_pendingContactPoints.clear();
         m_pendingActivationEvents.clear();
         m_pendingBodyMoveEvents.clear();
         m_pendingVirtualCharacterMoveEvents.clear();
-        ++m_eventSequence;
-        if (m_eventSequence == 0)
-        {
-            ++m_eventSequence;
-        }
-        storage.m_sequence = m_eventSequence;
         previousBatch = AZStd::move(m_publishedEvents);
         m_publishedEvents = AZStd::move(eventBatch);
     }

@@ -7,6 +7,7 @@
 
 #include <Jolt/AssetProduct.h>
 #include <Jolt/EventInternal.h>
+#include <Jolt/OperationInternal.h>
 #include <Jolt/SceneAsset.h>
 #include <Jolt/SystemInternal.h>
 
@@ -24,6 +25,8 @@
 #include <AzCore/Jobs/JobManager.h>
 #include <AzCore/Jobs/JobManagerDesc.h>
 #include <AzCore/Interface/Interface.h>
+#include <AzCore/Memory/AllocationRecords.h>
+#include <AzCore/Memory/PoolAllocator.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Name/NameDictionary.h>
 #include <AzCore/PlatformDef.h>
@@ -143,6 +146,43 @@ namespace Jolt
                 const NativeMemoryStatistics statistics = GetNativeMemoryStatistics(false);
                 return statistics.m_allocationCount + statistics.m_reallocationCount;
             }
+        };
+
+        class AllocationCounterScope final
+        {
+        public:
+            explicit AllocationCounterScope(
+                AZ::Debug::AllocationRecords& records)
+                : m_records(records)
+                , m_previousMode(records.GetMode())
+            {
+                if (m_previousMode == AZ::Debug::AllocationRecords::Mode::RECORD_NO_RECORDS)
+                {
+                    m_records.SetMode(AZ::Debug::AllocationRecords::Mode::RECORD_STACK_NEVER);
+                }
+                m_initialAllocationCount = m_records.RequestedAllocs();
+            }
+
+            ~AllocationCounterScope()
+            {
+                if (m_previousMode == AZ::Debug::AllocationRecords::Mode::RECORD_NO_RECORDS)
+                {
+                    m_records.SetMode(m_previousMode);
+                }
+            }
+
+            AZ_DISABLE_COPY_MOVE(AllocationCounterScope);
+
+            [[nodiscard]]
+            size_t GetAllocationCount() const
+            {
+                return m_records.RequestedAllocs() - m_initialAllocationCount;
+            }
+
+        private:
+            AZ::Debug::AllocationRecords& m_records;
+            AZ::Debug::AllocationRecords::Mode m_previousMode;
+            size_t m_initialAllocationCount = 0;
         };
 
         struct SphereOnFloor final
@@ -3218,6 +3258,13 @@ namespace Jolt
         EXPECT_GT(statistics.m_intervalNanoseconds, 0);
         EXPECT_EQ(statistics.m_bodies.m_count, 2);
         EXPECT_GE(statistics.m_bodies.m_highWaterCount, statistics.m_bodies.m_count);
+        EXPECT_EQ(statistics.m_eventBatches.m_liveCount, 2);
+        EXPECT_EQ(statistics.m_eventBatches.m_outstandingCount, 1);
+        EXPECT_EQ(statistics.m_eventBatches.m_cachedCount, 1);
+        EXPECT_EQ(
+            statistics.m_eventBatches.m_liveBytes,
+            statistics.m_eventBatches.m_outstandingBytes + statistics.m_eventBatches.m_cachedBytes);
+        EXPECT_EQ(statistics.m_operations.m_liveCount, 0);
         EXPECT_EQ(statistics.m_shapes.m_count, 2);
         EXPECT_GT(statistics.m_wrapperRetainedBytes, 0);
         EXPECT_GT(statistics.m_lockCount, 0);
@@ -3249,6 +3296,164 @@ namespace Jolt
             scene.m_worldHandle,
             PerformanceStatisticsFlags::None));
         DestroySphereOnFloor(system, scene);
+    }
+
+    TEST(SimulationTests, EventBatchPoolBoundsCachedStorageAndReportsCompleteMemory)
+    {
+        EventBatchPool* pool = EventBatchPool::Create();
+        ASSERT_NE(pool, nullptr);
+
+        constexpr size_t batchCount = 1'024;
+        AZStd::array<EventBatch, batchCount> batches;
+        for (EventBatch& batch : batches)
+        {
+            batch = pool->Acquire();
+            ASSERT_TRUE(batch);
+        }
+
+        PoolStatistics statistics = pool->GetStatistics(false);
+        EXPECT_EQ(statistics.m_liveCount, batchCount);
+        EXPECT_EQ(statistics.m_outstandingCount, batchCount);
+        EXPECT_EQ(statistics.m_cachedCount, 0);
+        EXPECT_EQ(statistics.m_liveBytes, statistics.m_outstandingBytes);
+        EXPECT_EQ(statistics.m_highWaterCount, batchCount);
+        EXPECT_GE(statistics.m_highWaterBytes, statistics.m_liveBytes);
+
+        for (EventBatch& batch : batches)
+        {
+            batch = {};
+        }
+
+        statistics = pool->GetStatistics(true);
+        EXPECT_EQ(statistics.m_liveCount, MaximumCachedEventBatchCount);
+        EXPECT_EQ(statistics.m_cachedCount, MaximumCachedEventBatchCount);
+        EXPECT_EQ(statistics.m_outstandingCount, 0);
+        EXPECT_EQ(statistics.m_liveBytes, statistics.m_cachedBytes);
+        EXPECT_LE(statistics.m_cachedBytes, MaximumCachedEventBatchBytes);
+        EXPECT_EQ(statistics.m_highWaterCount, batchCount);
+
+        const PoolStatistics resetStatistics = pool->GetStatistics(false);
+        EXPECT_EQ(resetStatistics.m_highWaterCount, resetStatistics.m_liveCount);
+        EXPECT_EQ(resetStatistics.m_highWaterBytes, resetStatistics.m_liveBytes);
+
+        EventBatch oversizeBatch = pool->Acquire();
+        ASSERT_TRUE(oversizeBatch);
+        AZStd::vector<ContactEvent> contacts;
+        AZStd::vector<ContactPoint> contactPoints(100'000);
+        AZStd::vector<ActivationEvent> activations;
+        AZStd::vector<BodyMoveEvent> bodyMoves;
+        AZStd::vector<VirtualCharacterMoveEvent> virtualCharacterMoves;
+        ASSERT_TRUE(pool->Publish(
+            oversizeBatch,
+            7,
+            contacts,
+            contactPoints,
+            activations,
+            bodyMoves,
+            virtualCharacterMoves));
+        statistics = pool->GetStatistics(false);
+        EXPECT_EQ(statistics.m_outstandingCount, 1);
+        EXPECT_GT(statistics.m_outstandingBytes, MaximumCachedEventBatchStorageBytes);
+        oversizeBatch = {};
+
+        statistics = pool->GetStatistics(true);
+        EXPECT_EQ(statistics.m_liveCount, MaximumCachedEventBatchCount - 1);
+        EXPECT_EQ(statistics.m_cachedCount, MaximumCachedEventBatchCount - 1);
+        EXPECT_EQ(statistics.m_outstandingCount, 0);
+
+        for (size_t batchIndex = 0; batchIndex < MaximumCachedEventBatchCount; ++batchIndex)
+        {
+            batches[batchIndex] = pool->Acquire();
+            ASSERT_TRUE(batches[batchIndex]);
+        }
+        statistics = pool->GetStatistics(false);
+        EXPECT_EQ(statistics.m_liveCount, MaximumCachedEventBatchCount);
+        EXPECT_EQ(statistics.m_outstandingCount, MaximumCachedEventBatchCount);
+        EXPECT_EQ(statistics.m_cachedCount, 0);
+
+        pool->Shutdown();
+        statistics = pool->GetStatistics(false);
+        EXPECT_EQ(statistics.m_liveCount, MaximumCachedEventBatchCount);
+        EXPECT_EQ(statistics.m_outstandingCount, MaximumCachedEventBatchCount);
+        for (EventBatch& batch : batches)
+        {
+            batch = {};
+        }
+    }
+
+    TEST(SimulationTests, OperationPoolBoundsPerTypeCachesAndEvictsOversizeResults)
+    {
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(4);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        Runtime system(CreateSerialSystemConfiguration(), &jobContext);
+        ASSERT_TRUE(system);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        ASSERT_TRUE(system.ConfigurePerformanceStatistics(
+            worldHandle,
+            PerformanceStatisticsFlags::Memory | PerformanceStatisticsFlags::Resources));
+
+        constexpr size_t operationCount = 1'024;
+        AZStd::array<Operation<SimulationResult>, operationCount> operations;
+        for (Operation<SimulationResult>& operation : operations)
+        {
+            operation = system.StepWorldAsync(worldHandle, 1.0f / 60.0f);
+            ASSERT_TRUE(operation);
+        }
+        for (Operation<SimulationResult>& operation : operations)
+        {
+            ASSERT_EQ(operation.Wait(), OperationStatus::Succeeded);
+        }
+
+        WorldPerformanceStatistics statistics;
+        ASSERT_TRUE(system.GetPerformanceStatistics(worldHandle, statistics, false));
+        EXPECT_EQ(statistics.m_operations.m_liveCount, operationCount);
+        EXPECT_EQ(statistics.m_operations.m_outstandingCount, operationCount);
+        EXPECT_EQ(statistics.m_operations.m_cachedCount, 0);
+        EXPECT_EQ(statistics.m_operations.m_liveBytes, statistics.m_operations.m_outstandingBytes);
+        EXPECT_EQ(statistics.m_operations.m_highWaterCount, operationCount);
+        EXPECT_GE(statistics.m_operations.m_highWaterBytes, statistics.m_operations.m_liveBytes);
+
+        for (Operation<SimulationResult>& operation : operations)
+        {
+            operation.Reset();
+        }
+        ASSERT_TRUE(system.GetPerformanceStatistics(worldHandle, statistics, true));
+        EXPECT_EQ(statistics.m_operations.m_liveCount, Internal::MaximumCachedOperationCountPerType);
+        EXPECT_EQ(statistics.m_operations.m_cachedCount, Internal::MaximumCachedOperationCountPerType);
+        EXPECT_EQ(statistics.m_operations.m_outstandingCount, 0);
+        EXPECT_EQ(statistics.m_operations.m_liveBytes, statistics.m_operations.m_cachedBytes);
+        EXPECT_LE(statistics.m_operations.m_cachedBytes, Internal::MaximumCachedOperationBytesPerType);
+        EXPECT_EQ(statistics.m_operations.m_highWaterCount, operationCount);
+        EXPECT_GE(statistics.m_operations.m_highWaterBytes, statistics.m_operations.m_liveBytes);
+        const AZ::u32 cachedOperationCount = statistics.m_operations.m_cachedCount;
+
+        constexpr size_t requestCount = 100'000;
+        AZStd::vector<RaycastRequest> requests(requestCount);
+        for (RaycastRequest& request : requests)
+        {
+            request.m_start = {.m_z = 5.0};
+            request.m_displacement = -10.0f * AZ::Vector3::CreateAxisZ();
+        }
+        Operation<RaycastBatchOperationResult> raycastOperation = system.RaycastClosestBatchAsync(
+            worldHandle,
+            requests);
+        ASSERT_TRUE(raycastOperation);
+        ASSERT_EQ(raycastOperation.Wait(), OperationStatus::Succeeded);
+        ASSERT_NE(raycastOperation.GetResult(), nullptr);
+        EXPECT_EQ(raycastOperation.GetResult()->GetResults().size(), requestCount);
+
+        ASSERT_TRUE(system.GetPerformanceStatistics(worldHandle, statistics, false));
+        EXPECT_EQ(statistics.m_operations.m_outstandingCount, 1);
+        EXPECT_GT(statistics.m_operations.m_outstandingBytes, Internal::MaximumCachedOperationRecordBytes);
+        raycastOperation.Reset();
+
+        ASSERT_TRUE(system.GetPerformanceStatistics(worldHandle, statistics, false));
+        EXPECT_EQ(statistics.m_operations.m_liveCount, cachedOperationCount);
+        EXPECT_EQ(statistics.m_operations.m_cachedCount, cachedOperationCount);
+        EXPECT_EQ(statistics.m_operations.m_outstandingCount, 0);
     }
 
     TEST(SimulationTests, SnapshotRecaptureReusesRetainedStorage)
@@ -3358,8 +3563,31 @@ namespace Jolt
         EXPECT_GT(statistics.m_lastUpdateJobCount, 0);
         EXPECT_GT(statistics.m_lastUpdateTaskCount, 0);
         EXPECT_GT(statistics.m_lastUpdateMaximumTaskCount, 0);
+        EXPECT_EQ(statistics.m_jobTaskCapacity, 3);
         EXPECT_LE(statistics.m_lastUpdateMaximumTaskCount, 3);
         EXPECT_LE(statistics.m_lastUpdateMaximumTaskCount, statistics.m_lastUpdateTaskCount);
+
+        for (AZ::u32 warmupStep = 0; warmupStep < 180; ++warmupStep)
+        {
+            ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+        }
+
+        auto& allocator = AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
+        AZ::Debug::AllocationRecords* allocationRecords = allocator.GetRecords();
+        ASSERT_NE(allocationRecords, nullptr);
+        auto& threadPoolAllocator = AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Get();
+        AZ::Debug::AllocationRecords* threadPoolAllocationRecords = threadPoolAllocator.GetRecords();
+        ASSERT_NE(threadPoolAllocationRecords, nullptr);
+        {
+            AllocationCounterScope allocationCounter(*allocationRecords);
+            AllocationCounterScope threadPoolAllocationCounter(*threadPoolAllocationRecords);
+            for (AZ::u32 measuredStep = 0; measuredStep < 32; ++measuredStep)
+            {
+                ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+            }
+            EXPECT_EQ(allocationCounter.GetAllocationCount(), 0);
+            EXPECT_EQ(threadPoolAllocationCounter.GetAllocationCount(), 0);
+        }
 
         DestroySphereOnFloor(system, scene);
     }
@@ -3419,6 +3647,36 @@ namespace Jolt
         EXPECT_TRUE(eventBatches[1].m_events);
         EXPECT_NE(eventBatches[0].m_events.GetSequence(), 0);
         EXPECT_NE(eventBatches[1].m_events.GetSequence(), 0);
+
+        for (AZ::u32 warmupStep = 0; warmupStep < 16; ++warmupStep)
+        {
+            result = system.StepAutoSimulatedWorldsDetailed(
+                1.0f / 60.0f,
+                eventBatches,
+                eventBatchCount);
+            ASSERT_TRUE(result);
+        }
+        auto& allocator = AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
+        AZ::Debug::AllocationRecords* allocationRecords = allocator.GetRecords();
+        ASSERT_NE(allocationRecords, nullptr);
+        auto& threadPoolAllocator = AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Get();
+        AZ::Debug::AllocationRecords* threadPoolAllocationRecords = threadPoolAllocator.GetRecords();
+        ASSERT_NE(threadPoolAllocationRecords, nullptr);
+        {
+            AllocationCounterScope allocationCounter(*allocationRecords);
+            AllocationCounterScope threadPoolAllocationCounter(*threadPoolAllocationRecords);
+            for (AZ::u32 measuredStep = 0; measuredStep < 32; ++measuredStep)
+            {
+                result = system.StepAutoSimulatedWorldsDetailed(
+                    1.0f / 60.0f,
+                    eventBatches,
+                    eventBatchCount);
+                ASSERT_TRUE(result);
+            }
+            EXPECT_EQ(allocationCounter.GetAllocationCount(), 0);
+            EXPECT_EQ(threadPoolAllocationCounter.GetAllocationCount(), 0);
+        }
+
         EXPECT_TRUE(system.RemoveStepListener(firstWorldHandle, firstRegistration.GetHandle()));
         EXPECT_TRUE(system.RemoveStepListener(secondWorldHandle, secondRegistration.GetHandle()));
         EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
@@ -5095,6 +5353,15 @@ namespace Jolt
                 scheduledParallelJob = scheduledParallelJob
                     || statistics.m_lastUpdateJobCount > 0;
             }
+
+            WorldStatistics statistics;
+            ASSERT_TRUE(system.GetWorldStatistics(scene.m_worldHandle, statistics));
+            AZ::u32 expectedTaskCapacity = 0;
+            if (workerCounts[workerIndex] > 1)
+            {
+                expectedTaskCapacity = workerCounts[workerIndex] - 1;
+            }
+            EXPECT_EQ(statistics.m_jobTaskCapacity, expectedTaskCapacity);
 
             ASSERT_TRUE(system.GetWorldStateDigest(scene.m_worldHandle, digests[workerIndex]));
             if (workerCounts[workerIndex] == 1)
@@ -9467,6 +9734,9 @@ namespace Jolt
         EXPECT_TRUE(skinnedScalpVertices[2].IsClose(AZ::Vector3(2.0f, 1.0f, 1.0f)));
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        ASSERT_TRUE(system.ConfigurePerformanceStatistics(
+            worldHandle,
+            PerformanceStatisticsFlags::Memory));
 
         ShapeConfiguration primitiveShapeConfiguration;
         primitiveShapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.5f};
@@ -9542,6 +9812,69 @@ namespace Jolt
             1.0f / 60.0f,
             AZ::Transform::CreateIdentity(),
             jointModelTransforms));
+
+        for (AZ::u32 updateIndex = 0; updateIndex < 8; ++updateIndex)
+        {
+            ASSERT_TRUE(system.UpdateHair(
+                worldHandle,
+                hairHandle,
+                1.0f / 60.0f,
+                AZ::Transform::CreateIdentity(),
+                jointModelTransforms));
+        }
+        WorldStatistics warmedHairStatistics;
+        ASSERT_TRUE(system.GetWorldStatistics(worldHandle, warmedHairStatistics));
+        WorldPerformanceStatistics warmedHairPerformanceStatistics;
+        ASSERT_TRUE(system.GetPerformanceStatistics(
+            worldHandle,
+            warmedHairPerformanceStatistics,
+            false));
+        ASSERT_GT(warmedHairStatistics.m_hairShaderWrapperCount, 0);
+        ASSERT_EQ(
+            warmedHairStatistics.m_hairShaderWrapperCreationCount,
+            warmedHairStatistics.m_hairShaderWrapperCount);
+        auto& allocator = AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
+        AZ::Debug::AllocationRecords* allocationRecords = allocator.GetRecords();
+        ASSERT_NE(allocationRecords, nullptr);
+        auto& threadPoolAllocator = AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Get();
+        AZ::Debug::AllocationRecords* threadPoolAllocationRecords = threadPoolAllocator.GetRecords();
+        ASSERT_NE(threadPoolAllocationRecords, nullptr);
+        const size_t allocatedBytesBeforeReuse = allocator.NumAllocatedBytes();
+        {
+            NativeAllocationCounterScope nativeAllocationCounter;
+            AllocationCounterScope systemAllocationCounter(*allocationRecords);
+            AllocationCounterScope threadPoolAllocationCounter(*threadPoolAllocationRecords);
+            for (AZ::u32 updateIndex = 0; updateIndex < 8; ++updateIndex)
+            {
+                ASSERT_TRUE(system.UpdateHair(
+                    worldHandle,
+                    hairHandle,
+                    1.0f / 60.0f,
+                    AZ::Transform::CreateIdentity(),
+                    jointModelTransforms));
+            }
+            EXPECT_EQ(nativeAllocationCounter.GetAllocationCount(), 0);
+            EXPECT_EQ(systemAllocationCounter.GetAllocationCount(), 0);
+            EXPECT_EQ(threadPoolAllocationCounter.GetAllocationCount(), 0);
+        }
+        EXPECT_EQ(allocator.NumAllocatedBytes(), allocatedBytesBeforeReuse);
+        WorldStatistics reusedHairStatistics;
+        ASSERT_TRUE(system.GetWorldStatistics(worldHandle, reusedHairStatistics));
+        WorldPerformanceStatistics reusedHairPerformanceStatistics;
+        ASSERT_TRUE(system.GetPerformanceStatistics(
+            worldHandle,
+            reusedHairPerformanceStatistics,
+            false));
+        EXPECT_EQ(
+            reusedHairPerformanceStatistics.m_wrapperRetainedBytes,
+            warmedHairPerformanceStatistics.m_wrapperRetainedBytes);
+        EXPECT_EQ(
+            reusedHairStatistics.m_hairShaderWrapperCount,
+            warmedHairStatistics.m_hairShaderWrapperCount);
+        EXPECT_EQ(
+            reusedHairStatistics.m_hairShaderWrapperCreationCount,
+            warmedHairStatistics.m_hairShaderWrapperCreationCount);
+
         EXPECT_FALSE(system.EnableHairAutoUpdate(
             worldHandle,
             hairHandle,
@@ -19020,6 +19353,31 @@ namespace Jolt
             const BufferResult result = system.RaycastClosestBatch(worldHandle, requests, results);
             EXPECT_EQ(result.m_count, requestCount);
             EXPECT_TRUE(result.IsComplete());
+
+            for (AZ::u32 warmupQuery = 0; warmupQuery < 16; ++warmupQuery)
+            {
+                const BufferResult warmupResult = system.RaycastClosestBatch(worldHandle, requests, results);
+                ASSERT_EQ(warmupResult.m_count, requestCount);
+                ASSERT_TRUE(warmupResult.IsComplete());
+            }
+            auto& allocator = AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
+            AZ::Debug::AllocationRecords* allocationRecords = allocator.GetRecords();
+            ASSERT_NE(allocationRecords, nullptr);
+            auto& threadPoolAllocator = AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Get();
+            AZ::Debug::AllocationRecords* threadPoolAllocationRecords = threadPoolAllocator.GetRecords();
+            ASSERT_NE(threadPoolAllocationRecords, nullptr);
+            {
+                AllocationCounterScope allocationCounter(*allocationRecords);
+                AllocationCounterScope threadPoolAllocationCounter(*threadPoolAllocationRecords);
+                for (AZ::u32 queryIndex = 0; queryIndex < 32; ++queryIndex)
+                {
+                    const BufferResult reuseResult = system.RaycastClosestBatch(worldHandle, requests, results);
+                    EXPECT_EQ(reuseResult.m_count, requestCount);
+                    EXPECT_TRUE(reuseResult.IsComplete());
+                }
+                EXPECT_EQ(allocationCounter.GetAllocationCount(), 0);
+                EXPECT_EQ(threadPoolAllocationCounter.GetAllocationCount(), 0);
+            }
 
             EXPECT_TRUE(system.DestroyBody(worldHandle, bodyHandle));
             EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));

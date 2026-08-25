@@ -15,7 +15,6 @@
 #include <Jolt/Jolt.h>
 #include <Jolt/Compute/ComputeQueue.h>
 #include <Jolt/Core/Reference.h>
-#include <Jolt/Core/UnorderedSet.h>
 
 namespace AZ
 {
@@ -25,6 +24,7 @@ namespace AZ
 namespace JPH
 {
     class ComputeBuffer;
+    class ComputeBufferCPU;
     class ComputeShaderCPU;
     class ShaderWrapper;
 } // namespace JPH
@@ -44,7 +44,16 @@ namespace Jolt
         AZ_DISABLE_COPY_MOVE(CpuComputeQueue);
 
         [[nodiscard]]
+        AZ::u32 GetCachedWrapperCount() const;
+
+        [[nodiscard]]
+        AZ::u64 GetRetainedBytes() const;
+
+        [[nodiscard]]
         AZ::u32 GetWorkerCount() const;
+
+        [[nodiscard]]
+        AZ::u64 GetWrapperCreationCount() const;
 
         [[nodiscard]]
         bool IsIdle() const;
@@ -80,6 +89,25 @@ namespace Jolt
     private:
         class DispatchJob;
 
+        struct Binding final
+        {
+            const char* m_name = nullptr;
+            void* m_data = nullptr;
+            JPH::uint64 m_size = 0;
+            JPH::RefConst<JPH::ComputeBuffer> m_buffer;
+        };
+
+        struct WrapperCacheEntry final
+        {
+            JPH::RefConst<JPH::ComputeShaderCPU> m_shader;
+            JPH::ShaderWrapper* m_wrapper = nullptr;
+            AZStd::vector<JPH::uint64> m_bindingHashes;
+        };
+
+        void BindBuffer(
+            const char* name,
+            const JPH::ComputeBufferCPU& buffer);
+
         static void ProcessRange(
             JPH::ShaderWrapper& wrapper,
             size_t threadCountX,
@@ -92,7 +120,10 @@ namespace Jolt
         AZ::u32 m_workerCount = 1;
         JPH::RefConst<JPH::ComputeShaderCPU> m_shader;
         JPH::ShaderWrapper* m_wrapper = nullptr;
-        JPH::UnorderedSet<JPH::RefConst<JPH::ComputeBuffer>> m_usedBuffers;
+        WrapperCacheEntry* m_wrapperCacheEntry = nullptr;
+        AZStd::vector<Binding> m_bindings;
+        AZStd::vector<WrapperCacheEntry> m_wrapperCache;
         AZStd::vector<AZStd::unique_ptr<DispatchJob>> m_dispatchJobs;
+        AZ::u64 m_wrapperCreationCount = 0;
     };
 } // namespace Jolt

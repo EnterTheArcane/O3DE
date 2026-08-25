@@ -24,6 +24,35 @@ diff --git a/Jolt/Compute/CPU/ComputeBufferCPU.cpp b/Jolt/Compute/CPU/ComputeBuf
  }
  
  ComputeBufferCPU::~ComputeBufferCPU()
+diff --git a/Jolt/Compute/CPU/ShaderWrapper.h b/Jolt/Compute/CPU/ShaderWrapper.h
+--- a/Jolt/Compute/CPU/ShaderWrapper.h
++++ b/Jolt/Compute/CPU/ShaderWrapper.h
+@@ -17,6 +17,9 @@ public:
+ 	/// Destructor
+ 	virtual				~ShaderWrapper() = default;
+ 
++	/// Concrete generated-wrapper size for allocation accounting
++	virtual uint64		GetSize() const = 0;
++
+ 	/// Bind buffer to shader
+ 	virtual void		Bind(const char *inName, void *inData, uint64 inSize) = 0;
+ 
+diff --git a/Jolt/Compute/CPU/WrapShaderEnd.h b/Jolt/Compute/CPU/WrapShaderEnd.h
+--- a/Jolt/Compute/CPU/WrapShaderEnd.h
++++ b/Jolt/Compute/CPU/WrapShaderEnd.h
+@@ -12,6 +12,12 @@
+ 		}
+ 	}
+ 
++	/// Concrete generated-wrapper size for allocation accounting
++	virtual uint64		GetSize() const override
++	{
++		return sizeof(JPH_SHADER_CLASS_NAME(JPH_SHADER_NAME));
++	}
++
+ 	/// Factory function to create a shader wrapper for this shader
+ 	static ShaderWrapper *	sCreate()
+ 	{
 diff --git a/Jolt/Geometry/RayAABox.h b/Jolt/Geometry/RayAABox.h
 index 90a08f6..12215a6 100644
 --- a/Jolt/Geometry/RayAABox.h

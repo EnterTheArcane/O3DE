@@ -46,6 +46,12 @@ namespace Jolt
             m_results.clear();
         }
 
+        [[nodiscard]]
+        AZ::u64 GetRetainedBytes() const
+        {
+            return m_results.capacity() * sizeof(ClosestRaycastResult);
+        }
+
         BufferResult m_bufferResult;
         AZStd::vector<ClosestRaycastResult> m_results;
     };

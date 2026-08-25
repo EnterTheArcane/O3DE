@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Diagnostics.h>
 #include <Jolt/Event.h>
 
 #include <AzCore/Memory/SystemAllocator.h>
@@ -17,6 +18,10 @@
 
 namespace Jolt
 {
+    inline constexpr AZ::u32 MaximumCachedEventBatchCount = 4;
+    inline constexpr AZ::u64 MaximumCachedEventBatchBytes = 8 * 1024 * 1024;
+    inline constexpr AZ::u64 MaximumCachedEventBatchStorageBytes = 4 * 1024 * 1024;
+
     class EventBatchIdentitySource final
     {
     public:
@@ -55,7 +60,7 @@ namespace Jolt
         AZStd::atomic<AZ::u64> m_nextIdentity;
     };
 
-    class EventBatchPool final
+    class JOLT_API EventBatchPool final
     {
     public:
         AZ_CLASS_ALLOCATOR(EventBatchPool, AZ::SystemAllocator);
@@ -66,7 +71,21 @@ namespace Jolt
         [[nodiscard]]
         EventBatch Acquire();
 
+        [[nodiscard]]
+        PoolStatistics GetStatistics(bool reset);
+
+        bool Publish(
+            EventBatch& batch,
+            AZ::u64 sequence,
+            AZStd::vector<ContactEvent>& contacts,
+            AZStd::vector<ContactPoint>& contactPoints,
+            AZStd::vector<ActivationEvent>& activations,
+            AZStd::vector<BodyMoveEvent>& bodyMoves,
+            AZStd::vector<VirtualCharacterMoveEvent>& virtualCharacterMoves);
+
         void Shutdown();
+
+        void UpdateRetainedBytes(EventBatchStorage* storage);
 
         static void AddReference(EventBatchStorage* storage);
 
@@ -88,10 +107,18 @@ namespace Jolt
 
         void Recycle(EventBatchStorage* storage);
 
+        void UpdateHighWater();
+
         EventBatchIdentitySource& m_identitySource;
         AZStd::mutex m_mutex;
         EventBatchStorage* m_freeStorage = nullptr;
         AZStd::atomic<AZ::u32> m_referenceCount{1};
+        AZ::u64 m_liveBytes = 0;
+        AZ::u64 m_cachedBytes = 0;
+        AZ::u64 m_highWaterBytes = 0;
+        AZ::u32 m_liveCount = 0;
+        AZ::u32 m_cachedCount = 0;
+        AZ::u32 m_highWaterCount = 0;
         bool m_acceptingStorage = true;
     };
 
@@ -106,9 +133,13 @@ namespace Jolt
 
         void Clear();
 
+        [[nodiscard]]
+        AZ::u64 CalculateRetainedBytes() const;
+
         EventBatchPool& m_pool;
         AZStd::atomic<AZ::u32> m_referenceCount{0};
         EventBatchStorage* m_nextFree = nullptr;
+        AZ::u64 m_retainedBytes = 0;
 
         AZStd::vector<ContactEvent> m_contacts;
         AZStd::vector<ContactPoint> m_contactPoints;

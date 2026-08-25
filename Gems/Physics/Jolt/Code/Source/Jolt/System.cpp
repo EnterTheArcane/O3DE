@@ -26,15 +26,14 @@
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/Jobs/JobEmpty.h>
-#include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/Utils/TypeHash.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/fixed_vector.h>
 #include <AzCore/std/iterator/move_iterator.h>
-#include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/limits.h>
+#include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/utility/move.h>
 
 #include <Jolt/Core/StreamIn.h>
@@ -112,6 +111,67 @@ namespace Jolt
         constexpr AZ::u32 SkeletonDefinitionArchiveFormatVersion = 1;
         constexpr AZ::u32 SoftBodyDefinitionArchiveFormatVersion = 1;
         constexpr size_t MaximumNativeArchiveSize = size_t{1} << 30;
+
+        class AutoSimulationJob final
+            : public AZ::Job
+        {
+        public:
+            AutoSimulationJob(
+                World& world,
+                SimulationResult& result,
+                const float elapsedTime,
+                AZ::JobContext* jobContext)
+                : AZ::Job(false, jobContext)
+                , m_world(world)
+                , m_result(result)
+                , m_elapsedTime(elapsedTime)
+            {
+            }
+
+        private:
+            void Process() override
+            {
+                m_result = m_world.StepAutomaticallyDetailed(m_elapsedTime, nullptr);
+            }
+
+            World& m_world;
+            SimulationResult& m_result;
+            float m_elapsedTime = 0.0f;
+        };
+
+        [[nodiscard]]
+        AZ::u64 GetShapeConfigurationRetainedBytes(
+            const ShapeConfiguration& configuration)
+        {
+            AZ::u64 retainedBytes = configuration.m_materials.capacity() * sizeof(MaterialHandle);
+            retainedBytes += AZStd::visit(
+                [](const auto& geometry) -> AZ::u64
+                {
+                    using Geometry = AZStd::remove_cvref_t<decltype(geometry)>;
+                    if constexpr (AZStd::is_same_v<Geometry, ConvexHullShapeConfiguration>)
+                    {
+                        return geometry.m_points.capacity() * sizeof(AZ::Vector3);
+                    }
+                    else if constexpr (AZStd::is_same_v<Geometry, CustomConvexShapeConfiguration>
+                        || AZStd::is_same_v<Geometry, CustomShapeConfiguration>)
+                    {
+                        return geometry.m_data.capacity() * sizeof(AZ::u8);
+                    }
+                    else if constexpr (AZStd::is_same_v<Geometry, HeightfieldShapeConfiguration>)
+                    {
+                        return geometry.m_heights.capacity() * sizeof(float)
+                            + geometry.m_materialIndices.capacity() * sizeof(AZ::u8);
+                    }
+                    else if constexpr (AZStd::is_same_v<Geometry, MeshShapeConfiguration>)
+                    {
+                        return geometry.m_vertices.capacity() * sizeof(AZ::Vector3)
+                            + geometry.m_triangles.capacity() * sizeof(MeshTriangle);
+                    }
+                    return 0;
+                },
+                configuration.m_geometry);
+            return retainedBytes;
+        }
 
         [[nodiscard]]
         bool CopyDestructionPlanForWorld(
@@ -2054,6 +2114,12 @@ namespace Jolt
 
         struct Work final
         {
+            [[nodiscard]]
+            AZ::u64 GetRetainedBytes() const
+            {
+                return GetShapeConfigurationRetainedBytes(m_configuration);
+            }
+
             RuntimeImplementation* m_runtime = nullptr;
             ShapeConfiguration m_configuration;
         };
@@ -2080,6 +2146,12 @@ namespace Jolt
 
         struct Work final
         {
+            [[nodiscard]]
+            AZ::u64 GetRetainedBytes() const
+            {
+                return m_configuration.m_children.capacity() * sizeof(CookedCompoundChildConfiguration);
+            }
+
             RuntimeImplementation* m_runtime = nullptr;
             CookedCompoundShapeConfiguration m_configuration;
         };
@@ -5947,26 +6019,17 @@ namespace Jolt
         if (canStepConcurrently)
         {
             AZ::JobEmpty completion(false, m_jobContext);
-            AZStd::fixed_vector<AZ::Job*, Internal::MaximumWorldCount - 1> jobs;
+            AZStd::fixed_vector<AutoSimulationJob, Internal::MaximumWorldCount - 1> jobs;
             for (size_t worldIndex = 1; worldIndex < worlds.size(); ++worldIndex)
             {
-                AZ::Job* job = AZ::CreateJobFunction(
-                    [&worlds, worldIndex, elapsedTime]
-                    {
-                        AutoSimulationEntry& entry = worlds[worldIndex];
-                        entry.m_result = entry.m_world->StepAutomaticallyDetailed(
-                            elapsedTime,
-                            nullptr);
-                    },
-                    true,
+                AutoSimulationEntry& entry = worlds[worldIndex];
+                AutoSimulationJob& job = jobs.emplace_back(
+                    *entry.m_world,
+                    entry.m_result,
+                    elapsedTime,
                     m_jobContext);
-                job->SetDependent(&completion);
-                jobs.push_back(job);
-            }
-
-            for (AZ::Job* job : jobs)
-            {
-                job->Start();
+                job.SetDependent(&completion);
+                job.Start();
             }
             worlds.front().m_result = worlds.front().m_world->StepAutomaticallyDetailed(
                 elapsedTime,
@@ -9792,7 +9855,19 @@ namespace Jolt
     {
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
-        return world && world->GetPerformanceStatistics(statistics, reset);
+        if (!world || !world->GetPerformanceStatistics(statistics, reset))
+        {
+            return false;
+        }
+
+        const PerformanceStatisticsFlags retainedStorageFlags = PerformanceStatisticsFlags::Memory
+            | PerformanceStatisticsFlags::Resources;
+        if (m_operationPool
+            && (statistics.m_enabledFlags & retainedStorageFlags) != PerformanceStatisticsFlags::None)
+        {
+            statistics.m_operations = m_operationPool->GetStatistics(reset);
+        }
+        return true;
     }
 
     DiagnosticStatisticsResult RuntimeImplementation::GetBroadPhaseStatistics(
@@ -11267,6 +11342,12 @@ namespace Jolt
 
         struct Work final
         {
+            [[nodiscard]]
+            AZ::u64 GetRetainedBytes() const
+            {
+                return m_requests.capacity() * sizeof(RaycastRequest);
+            }
+
             const RuntimeImplementation* m_runtime = nullptr;
             WorldHandle m_worldHandle;
             AZStd::vector<RaycastRequest> m_requests;

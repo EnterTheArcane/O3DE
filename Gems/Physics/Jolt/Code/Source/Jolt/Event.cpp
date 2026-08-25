@@ -148,6 +148,10 @@ namespace Jolt
     {
         AZ_Assert(!m_acceptingStorage, "The event-batch pool must be shut down before destruction.");
         AZ_Assert(!m_freeStorage, "The event-batch pool retained storage during destruction.");
+        AZ_Assert(m_liveBytes == 0, "The event-batch pool retained bytes during destruction.");
+        AZ_Assert(m_liveCount == 0, "The event-batch pool retained live storage during destruction.");
+        AZ_Assert(m_cachedBytes == 0, "The event-batch pool retained cached bytes during destruction.");
+        AZ_Assert(m_cachedCount == 0, "The event-batch pool retained cached storage during destruction.");
     }
 
     EventBatch EventBatchPool::Acquire()
@@ -172,10 +176,16 @@ namespace Jolt
                 storage = m_freeStorage;
                 m_freeStorage = storage->m_nextFree;
                 storage->m_nextFree = nullptr;
+                m_cachedBytes -= storage->m_retainedBytes;
+                --m_cachedCount;
             }
             else
             {
                 storage = aznew EventBatchStorage(*this);
+                storage->m_retainedBytes = storage->CalculateRetainedBytes();
+                m_liveBytes += storage->m_retainedBytes;
+                ++m_liveCount;
+                UpdateHighWater();
                 AddPoolReference();
             }
         }
@@ -184,6 +194,57 @@ namespace Jolt
         storage->m_id = identity;
         storage->m_referenceCount.store(1, AZStd::memory_order_release);
         return EventBatch(storage);
+    }
+
+    PoolStatistics EventBatchPool::GetStatistics(
+        const bool reset)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        PoolStatistics statistics{
+            .m_liveBytes = m_liveBytes,
+            .m_cachedBytes = m_cachedBytes,
+            .m_outstandingBytes = m_liveBytes - m_cachedBytes,
+            .m_highWaterBytes = m_highWaterBytes,
+            .m_liveCount = m_liveCount,
+            .m_cachedCount = m_cachedCount,
+            .m_outstandingCount = m_liveCount - m_cachedCount,
+            .m_highWaterCount = m_highWaterCount,
+        };
+        if (reset)
+        {
+            m_highWaterBytes = m_liveBytes;
+            m_highWaterCount = m_liveCount;
+        }
+        return statistics;
+    }
+
+    bool EventBatchPool::Publish(
+        EventBatch& batch,
+        const AZ::u64 sequence,
+        AZStd::vector<ContactEvent>& contacts,
+        AZStd::vector<ContactPoint>& contactPoints,
+        AZStd::vector<ActivationEvent>& activations,
+        AZStd::vector<BodyMoveEvent>& bodyMoves,
+        AZStd::vector<VirtualCharacterMoveEvent>& virtualCharacterMoves)
+    {
+        EventBatchStorage* storage = batch.m_storage;
+        if (!storage || &storage->m_pool != this)
+        {
+            return false;
+        }
+
+        for (ContactEvent& event : contacts)
+        {
+            event.m_batchId = storage->m_id;
+        }
+        storage->m_contacts.swap(contacts);
+        storage->m_contactPoints.swap(contactPoints);
+        storage->m_activations.swap(activations);
+        storage->m_bodyMoves.swap(bodyMoves);
+        storage->m_virtualCharacterMoves.swap(virtualCharacterMoves);
+        storage->m_sequence = sequence;
+        UpdateRetainedBytes(storage);
+        return true;
     }
 
     void EventBatchPool::Shutdown()
@@ -199,6 +260,13 @@ namespace Jolt
             m_acceptingStorage = false;
             freeStorage = m_freeStorage;
             m_freeStorage = nullptr;
+            for (EventBatchStorage* storage = freeStorage; storage; storage = storage->m_nextFree)
+            {
+                m_liveBytes -= storage->m_retainedBytes;
+                m_cachedBytes -= storage->m_retainedBytes;
+                --m_liveCount;
+                --m_cachedCount;
+            }
         }
 
         while (freeStorage)
@@ -240,20 +308,67 @@ namespace Jolt
         }
     }
 
+    void EventBatchPool::UpdateRetainedBytes(
+        EventBatchStorage* storage)
+    {
+        if (!storage)
+        {
+            return;
+        }
+
+        const AZ::u64 retainedBytes = storage->CalculateRetainedBytes();
+        AZStd::lock_guard lock(m_mutex);
+        if (retainedBytes >= storage->m_retainedBytes)
+        {
+            m_liveBytes += retainedBytes - storage->m_retainedBytes;
+        }
+        else
+        {
+            m_liveBytes -= storage->m_retainedBytes - retainedBytes;
+        }
+        storage->m_retainedBytes = retainedBytes;
+        UpdateHighWater();
+    }
+
     void EventBatchPool::Recycle(EventBatchStorage* storage)
     {
+        bool deleteStorage = false;
         {
             AZStd::lock_guard lock(m_mutex);
-            if (m_acceptingStorage)
+            if (m_acceptingStorage
+                && m_cachedCount < MaximumCachedEventBatchCount
+                && storage->m_retainedBytes <= MaximumCachedEventBatchStorageBytes
+                && storage->m_retainedBytes <= MaximumCachedEventBatchBytes - m_cachedBytes)
             {
                 storage->m_nextFree = m_freeStorage;
                 m_freeStorage = storage;
+                m_cachedBytes += storage->m_retainedBytes;
+                ++m_cachedCount;
                 return;
             }
+
+            m_liveBytes -= storage->m_retainedBytes;
+            --m_liveCount;
+            deleteStorage = true;
         }
 
-        delete storage;
-        ReleasePoolReference();
+        if (deleteStorage)
+        {
+            delete storage;
+            ReleasePoolReference();
+        }
+    }
+
+    void EventBatchPool::UpdateHighWater()
+    {
+        if (m_liveBytes > m_highWaterBytes)
+        {
+            m_highWaterBytes = m_liveBytes;
+        }
+        if (m_liveCount > m_highWaterCount)
+        {
+            m_highWaterCount = m_liveCount;
+        }
     }
 
     void EventBatchStorage::Clear()
@@ -265,6 +380,16 @@ namespace Jolt
         m_virtualCharacterMoves.clear();
         m_id = 0;
         m_sequence = 0;
+    }
+
+    AZ::u64 EventBatchStorage::CalculateRetainedBytes() const
+    {
+        return sizeof(EventBatchStorage)
+            + m_contacts.capacity() * sizeof(ContactEvent)
+            + m_contactPoints.capacity() * sizeof(ContactPoint)
+            + m_activations.capacity() * sizeof(ActivationEvent)
+            + m_bodyMoves.capacity() * sizeof(BodyMoveEvent)
+            + m_virtualCharacterMoves.capacity() * sizeof(VirtualCharacterMoveEvent);
     }
 
     void ReflectEvents(

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Diagnostics.h>
 #include <Jolt/Operation.h>
 
 #include <AzCore/Jobs/Job.h>
@@ -25,6 +26,10 @@ namespace AZ
 
 namespace Jolt::Internal
 {
+    inline constexpr AZ::u32 MaximumCachedOperationCountPerType = 64;
+    inline constexpr AZ::u64 MaximumCachedOperationBytesPerType = 1024 * 1024;
+    inline constexpr AZ::u64 MaximumCachedOperationRecordBytes = 512 * 1024;
+
     class OperationPool;
 
     class OperationRecord
@@ -55,6 +60,9 @@ namespace Jolt::Internal
         [[nodiscard]]
         OperationStatus GetStatus() const;
 
+        [[nodiscard]]
+        AZ::u64 GetRetainedBytes() const;
+
         void Join();
 
         void Prepare(bool runAsynchronously);
@@ -67,9 +75,14 @@ namespace Jolt::Internal
         void Start(bool runAsynchronously);
 
     protected:
+        [[nodiscard]]
+        virtual AZ::u64 CalculateRetainedBytes() const = 0;
+
         virtual void ClearForReuse() = 0;
 
         virtual bool ExecuteWork() = 0;
+
+        void RefreshRetainedBytes();
 
         void SetResultAddress(const void* result);
 
@@ -104,6 +117,7 @@ namespace Jolt::Internal
         AZStd::atomic_bool m_joinStarted{false};
         AZStd::atomic_bool m_joinComplete{false};
         AZStd::atomic_bool m_taskReferenceActive{false};
+        AZStd::atomic<AZ::u64> m_retainedBytes{0};
         const void* m_result = nullptr;
 
         OperationRecord* m_nextActive = nullptr;
@@ -145,6 +159,7 @@ namespace Jolt::Internal
                 m_result = {};
             }
             m_executor = executor;
+            RefreshRetainedBytes();
             Prepare(runAsynchronously);
         }
 
@@ -155,6 +170,20 @@ namespace Jolt::Internal
         }
 
     protected:
+        AZ::u64 CalculateRetainedBytes() const override
+        {
+            AZ::u64 retainedBytes = sizeof(TypedOperationRecord);
+            if constexpr (requires { m_work.GetRetainedBytes(); })
+            {
+                retainedBytes += m_work.GetRetainedBytes();
+            }
+            if constexpr (requires { m_result.GetRetainedBytes(); })
+            {
+                retainedBytes += m_result.GetRetainedBytes();
+            }
+            return retainedBytes;
+        }
+
         void ClearForReuse() override
         {
             m_work = {};
@@ -167,12 +196,19 @@ namespace Jolt::Internal
                 m_result = {};
             }
             m_executor = nullptr;
+            RefreshRetainedBytes();
         }
 
         bool ExecuteWork() override
         {
             SetResultAddress(&m_result);
-            return m_executor && m_executor(m_work, m_result);
+            bool succeeded = false;
+            if (m_executor)
+            {
+                succeeded = m_executor(m_work, m_result);
+            }
+            RefreshRetainedBytes();
+            return succeeded;
         }
 
     private:
@@ -208,6 +244,7 @@ namespace Jolt::Internal
             {
                 record = aznew Record(*this, m_jobContext);
                 AddPoolReference();
+                RegisterRecord(record);
             }
 
             const bool runAsynchronously = m_jobContext;
@@ -218,6 +255,9 @@ namespace Jolt::Internal
         }
 
         void Drain();
+
+        [[nodiscard]]
+        PoolStatistics GetStatistics(bool reset);
 
         void ReapCompleted();
 
@@ -230,6 +270,8 @@ namespace Jolt::Internal
         {
             const void* m_typeKey = nullptr;
             OperationRecord* m_record = nullptr;
+            AZ::u64 m_cachedBytes = 0;
+            AZ::u32 m_cachedCount = 0;
         };
 
         explicit OperationPool(AZ::JobContext* jobContext);
@@ -250,9 +292,17 @@ namespace Jolt::Internal
 
         void RecycleRecord(OperationRecord* record);
 
+        void RegisterRecord(OperationRecord* record);
+
         void RemoveActiveRecord(OperationRecord* record);
 
         void RemoveReapCandidate(OperationRecord* record);
+
+        void UnregisterRecord(OperationRecord* record);
+
+        void UpdateHighWater();
+
+        void UpdateRecordRetainedBytes(OperationRecord* record);
 
         friend class OperationRecord;
 
@@ -262,6 +312,12 @@ namespace Jolt::Internal
         OperationRecord* m_activeRecords = nullptr;
         OperationRecord* m_reapCandidates = nullptr;
         AZStd::atomic<AZ::u32> m_referenceCount{1};
+        AZStd::atomic<AZ::u64> m_liveBytes{0};
+        AZStd::atomic<AZ::u64> m_highWaterBytes{0};
+        AZStd::atomic<AZ::u32> m_liveCount{0};
+        AZStd::atomic<AZ::u32> m_highWaterCount{0};
+        AZ::u64 m_cachedBytes = 0;
+        AZ::u32 m_cachedCount = 0;
         bool m_acceptingOperations = true;
     };
 } // namespace Jolt::Internal

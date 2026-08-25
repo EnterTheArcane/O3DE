@@ -11,6 +11,7 @@
 #include <Jolt/Profiler.h>
 
 #include <AzCore/Debug/Trace.h>
+#include <AzCore/std/algorithm.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/thread.h>
 
@@ -84,6 +85,11 @@ namespace Jolt::Internal
     OperationStatus OperationRecord::GetStatus() const
     {
         return m_status.load(AZStd::memory_order_acquire);
+    }
+
+    AZ::u64 OperationRecord::GetRetainedBytes() const
+    {
+        return m_retainedBytes.load(AZStd::memory_order_acquire);
     }
 
     void OperationRecord::Join()
@@ -217,6 +223,11 @@ namespace Jolt::Internal
         }
     }
 
+    void OperationRecord::RefreshRetainedBytes()
+    {
+        m_pool.UpdateRecordRetainedBytes(this);
+    }
+
     OperationPool* OperationPool::Create(
         AZ::JobContext* jobContext)
     {
@@ -235,6 +246,10 @@ namespace Jolt::Internal
         AZ_Assert(!m_activeRecords, "The operation pool retained active operations during destruction.");
         AZ_Assert(!m_reapCandidates, "The operation pool retained completed reap candidates during destruction.");
         AZ_Assert(m_freeLists.empty(), "The operation pool retained reusable operations during destruction.");
+        AZ_Assert(m_liveBytes.load(AZStd::memory_order_relaxed) == 0, "The operation pool retained bytes during destruction.");
+        AZ_Assert(m_liveCount.load(AZStd::memory_order_relaxed) == 0, "The operation pool retained records during destruction.");
+        AZ_Assert(m_cachedBytes == 0, "The operation pool retained cached bytes during destruction.");
+        AZ_Assert(m_cachedCount == 0, "The operation pool retained cached records during destruction.");
     }
 
     void OperationPool::Drain()
@@ -266,6 +281,31 @@ namespace Jolt::Internal
         }
     }
 
+    PoolStatistics OperationPool::GetStatistics(
+        const bool reset)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        const AZ::u64 liveBytes = m_liveBytes.load(AZStd::memory_order_acquire);
+        const AZ::u32 liveCount = m_liveCount.load(AZStd::memory_order_acquire);
+        PoolStatistics statistics{
+            .m_liveBytes = liveBytes,
+            .m_cachedBytes = m_cachedBytes,
+            .m_outstandingBytes = liveBytes - m_cachedBytes,
+            .m_highWaterBytes = AZStd::max(liveBytes, m_highWaterBytes.load(AZStd::memory_order_acquire)),
+            .m_liveCount = liveCount,
+            .m_cachedCount = m_cachedCount,
+            .m_outstandingCount = liveCount - m_cachedCount,
+            .m_highWaterCount = AZStd::max(liveCount, m_highWaterCount.load(AZStd::memory_order_acquire)),
+        };
+        if (reset)
+        {
+            m_highWaterBytes.store(liveBytes, AZStd::memory_order_release);
+            m_highWaterCount.store(liveCount, AZStd::memory_order_release);
+            UpdateHighWater();
+        }
+        return statistics;
+    }
+
     void OperationPool::Shutdown()
     {
         OperationRecord* freeRecords = nullptr;
@@ -285,7 +325,14 @@ namespace Jolt::Internal
                     freeList.m_record = record->m_nextFree;
                     record->m_nextFree = freeRecords;
                     freeRecords = record;
+                    freeList.m_cachedBytes -= record->GetRetainedBytes();
+                    --freeList.m_cachedCount;
+                    m_cachedBytes -= record->GetRetainedBytes();
+                    --m_cachedCount;
+                    UnregisterRecord(record);
                 }
+                AZ_Assert(freeList.m_cachedBytes == 0, "A Jolt operation free list retained bytes during shutdown.");
+                AZ_Assert(freeList.m_cachedCount == 0, "A Jolt operation free list retained records during shutdown.");
             }
             m_freeLists.clear();
         }
@@ -330,6 +377,10 @@ namespace Jolt::Internal
                 {
                     freeList.m_record = record->m_nextFree;
                     record->m_nextFree = nullptr;
+                    freeList.m_cachedBytes -= record->GetRetainedBytes();
+                    --freeList.m_cachedCount;
+                    m_cachedBytes -= record->GetRetainedBytes();
+                    --m_cachedCount;
                 }
                 return record;
             }
@@ -421,17 +472,31 @@ namespace Jolt::Internal
 
             if (m_acceptingOperations)
             {
+                [[maybe_unused]] bool foundFreeList = false;
                 for (FreeList& freeList : m_freeLists)
                 {
                     if (freeList.m_typeKey == record->m_typeKey)
                     {
-                        record->m_nextFree = freeList.m_record;
-                        freeList.m_record = record;
-                        return;
+                        foundFreeList = true;
+                        const AZ::u64 retainedBytes = record->GetRetainedBytes();
+                        if (freeList.m_cachedCount < MaximumCachedOperationCountPerType
+                            && retainedBytes <= MaximumCachedOperationRecordBytes
+                            && retainedBytes <= MaximumCachedOperationBytesPerType - freeList.m_cachedBytes)
+                        {
+                            record->m_nextFree = freeList.m_record;
+                            freeList.m_record = record;
+                            freeList.m_cachedBytes += retainedBytes;
+                            ++freeList.m_cachedCount;
+                            m_cachedBytes += retainedBytes;
+                            ++m_cachedCount;
+                            return;
+                        }
+                        break;
                     }
                 }
-                AZ_Assert(false, "The Jolt operation free list is missing its record type.");
+                AZ_Assert(foundFreeList, "The Jolt operation free list is missing its record type.");
             }
+            UnregisterRecord(record);
             deleteRecord = true;
         }
 
@@ -440,6 +505,16 @@ namespace Jolt::Internal
             delete record;
             ReleasePoolReference();
         }
+    }
+
+    void OperationPool::RegisterRecord(
+        OperationRecord* record)
+    {
+        const AZ::u64 retainedBytes = record->CalculateRetainedBytes();
+        record->m_retainedBytes.store(retainedBytes, AZStd::memory_order_release);
+        m_liveBytes.fetch_add(retainedBytes, AZStd::memory_order_acq_rel);
+        m_liveCount.fetch_add(1, AZStd::memory_order_acq_rel);
+        UpdateHighWater();
     }
 
     void OperationPool::RemoveActiveRecord(
@@ -474,6 +549,53 @@ namespace Jolt::Internal
         }
         record->m_nextReap = nullptr;
         record->m_previousReapLink = nullptr;
+    }
+
+    void OperationPool::UnregisterRecord(
+        OperationRecord* record)
+    {
+        const AZ::u64 retainedBytes = record->m_retainedBytes.exchange(0, AZStd::memory_order_acq_rel);
+        m_liveBytes.fetch_sub(retainedBytes, AZStd::memory_order_acq_rel);
+        m_liveCount.fetch_sub(1, AZStd::memory_order_acq_rel);
+    }
+
+    void OperationPool::UpdateHighWater()
+    {
+        const AZ::u64 liveBytes = m_liveBytes.load(AZStd::memory_order_acquire);
+        AZ::u64 highWaterBytes = m_highWaterBytes.load(AZStd::memory_order_relaxed);
+        while (liveBytes > highWaterBytes
+            && !m_highWaterBytes.compare_exchange_weak(
+                highWaterBytes,
+                liveBytes,
+                AZStd::memory_order_release,
+                AZStd::memory_order_relaxed))
+        {
+        }
+
+        const AZ::u32 liveCount = m_liveCount.load(AZStd::memory_order_acquire);
+        AZ::u32 highWaterCount = m_highWaterCount.load(AZStd::memory_order_relaxed);
+        while (liveCount > highWaterCount
+            && !m_highWaterCount.compare_exchange_weak(
+                highWaterCount,
+                liveCount,
+                AZStd::memory_order_release,
+                AZStd::memory_order_relaxed))
+        {
+        }
+    }
+
+    void OperationPool::UpdateRecordRetainedBytes(
+        OperationRecord* record)
+    {
+        const AZ::u64 retainedBytes = record->CalculateRetainedBytes();
+        const AZ::u64 previousBytes = record->m_retainedBytes.exchange(retainedBytes, AZStd::memory_order_acq_rel);
+        if (retainedBytes >= previousBytes)
+        {
+            m_liveBytes.fetch_add(retainedBytes - previousBytes, AZStd::memory_order_acq_rel);
+            UpdateHighWater();
+            return;
+        }
+        m_liveBytes.fetch_sub(previousBytes - retainedBytes, AZStd::memory_order_acq_rel);
     }
 
     bool CancelOperation(

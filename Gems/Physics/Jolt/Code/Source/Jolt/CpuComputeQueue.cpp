@@ -15,6 +15,7 @@
 #include <AzCore/Jobs/JobEmpty.h>
 #include <AzCore/std/algorithm.h>
 
+#include <Jolt/Core/HashCombine.h>
 #include <Jolt/Compute/CPU/ComputeBufferCPU.h>
 #include <Jolt/Compute/CPU/ComputeShaderCPU.h>
 #include <Jolt/Compute/CPU/HLSLToCPP.h>
@@ -25,6 +26,8 @@ namespace Jolt
     namespace
     {
         constexpr size_t MinimumThreadsPerJob = 64;
+        constexpr size_t ExpectedBindingCount = 16;
+        constexpr size_t MaximumCachedShaderWrapperCount = 16;
     } // namespace
 
     class CpuComputeQueue::DispatchJob final
@@ -91,16 +94,47 @@ namespace Jolt
                 availableWorkerCount);
             m_dispatchJobs.reserve(m_workerCount - 1);
         }
+        m_bindings.reserve(ExpectedBindingCount);
+        m_wrapperCache.reserve(MaximumCachedShaderWrapperCount);
     }
 
     CpuComputeQueue::~CpuComputeQueue()
     {
         AZ_Assert(IsIdle(), "A Jolt CPU compute dispatch was left incomplete.");
+        for (WrapperCacheEntry& entry : m_wrapperCache)
+        {
+            delete entry.m_wrapper;
+        }
+    }
+
+    AZ::u32 CpuComputeQueue::GetCachedWrapperCount() const
+    {
+        return aznumeric_cast<AZ::u32>(m_wrapperCache.size());
+    }
+
+    AZ::u64 CpuComputeQueue::GetRetainedBytes() const
+    {
+        AZ::u64 retainedBytes = sizeof(CpuComputeQueue)
+            + m_bindings.capacity() * sizeof(Binding)
+            + m_wrapperCache.capacity() * sizeof(WrapperCacheEntry)
+            + m_dispatchJobs.capacity() * sizeof(AZStd::unique_ptr<DispatchJob>);
+        for (const WrapperCacheEntry& entry : m_wrapperCache)
+        {
+            retainedBytes += entry.m_wrapper->GetSize();
+            retainedBytes += entry.m_bindingHashes.capacity() * sizeof(JPH::uint64);
+        }
+        retainedBytes += m_dispatchJobs.size() * sizeof(DispatchJob);
+        return retainedBytes;
     }
 
     AZ::u32 CpuComputeQueue::GetWorkerCount() const
     {
         return m_workerCount;
+    }
+
+    AZ::u64 CpuComputeQueue::GetWrapperCreationCount() const
+    {
+        return m_wrapperCreationCount;
     }
 
     bool CpuComputeQueue::IsIdle() const
@@ -113,7 +147,27 @@ namespace Jolt
     {
         AZ_Assert(!m_shader && !m_wrapper, "A Jolt CPU compute shader is already active.");
         m_shader = static_cast<const JPH::ComputeShaderCPU*>(shader);
+        m_wrapperCacheEntry = nullptr;
+        for (WrapperCacheEntry& entry : m_wrapperCache)
+        {
+            if (entry.m_shader.GetPtr() == m_shader.GetPtr())
+            {
+                m_wrapper = entry.m_wrapper;
+                m_wrapperCacheEntry = &entry;
+                return;
+            }
+        }
+
         m_wrapper = m_shader->CreateWrapper();
+        ++m_wrapperCreationCount;
+        if (m_wrapperCache.size() < MaximumCachedShaderWrapperCount)
+        {
+            m_wrapperCache.push_back({
+                .m_shader = m_shader,
+                .m_wrapper = m_wrapper,
+            });
+            m_wrapperCacheEntry = &m_wrapperCache.back();
+        }
     }
 
     void CpuComputeQueue::SetConstantBuffer(
@@ -129,11 +183,7 @@ namespace Jolt
             buffer->GetType() == JPH::ComputeBuffer::EType::ConstantBuffer,
             "A Jolt CPU compute constant binding received an incompatible buffer.");
         const auto* cpuBuffer = static_cast<const JPH::ComputeBufferCPU*>(buffer);
-        m_wrapper->Bind(
-            name,
-            cpuBuffer->GetData(),
-            cpuBuffer->GetSize() * cpuBuffer->GetStride());
-        m_usedBuffers.insert(cpuBuffer);
+        BindBuffer(name, *cpuBuffer);
     }
 
     void CpuComputeQueue::SetBuffer(
@@ -151,11 +201,7 @@ namespace Jolt
                 || buffer->GetType() == JPH::ComputeBuffer::EType::RWBuffer,
             "A Jolt CPU compute binding received an incompatible buffer.");
         const auto* cpuBuffer = static_cast<const JPH::ComputeBufferCPU*>(buffer);
-        m_wrapper->Bind(
-            name,
-            cpuBuffer->GetData(),
-            cpuBuffer->GetSize() * cpuBuffer->GetStride());
-        m_usedBuffers.insert(cpuBuffer);
+        BindBuffer(name, *cpuBuffer);
     }
 
     void CpuComputeQueue::SetRWBuffer(
@@ -172,11 +218,7 @@ namespace Jolt
             buffer->GetType() == JPH::ComputeBuffer::EType::RWBuffer,
             "A Jolt CPU compute read-write binding received an incompatible buffer.");
         const auto* cpuBuffer = static_cast<const JPH::ComputeBufferCPU*>(buffer);
-        m_wrapper->Bind(
-            name,
-            cpuBuffer->GetData(),
-            cpuBuffer->GetSize() * cpuBuffer->GetStride());
-        m_usedBuffers.insert(cpuBuffer);
+        BindBuffer(name, *cpuBuffer);
     }
 
     void CpuComputeQueue::ScheduleReadback(
@@ -191,6 +233,45 @@ namespace Jolt
         const JPH::uint threadGroupCountZ)
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::CpuComputeQueue::Dispatch");
+        if (m_wrapperCacheEntry)
+        {
+            bool bindingSignatureMatches = m_wrapperCacheEntry->m_bindingHashes.size() == m_bindings.size();
+            if (bindingSignatureMatches)
+            {
+                for (size_t bindingIndex = 0; bindingIndex < m_bindings.size(); ++bindingIndex)
+                {
+                    if (m_wrapperCacheEntry->m_bindingHashes[bindingIndex] != JPH::HashString(m_bindings[bindingIndex].m_name))
+                    {
+                        bindingSignatureMatches = false;
+                        break;
+                    }
+                }
+            }
+
+            if (m_wrapperCacheEntry->m_bindingHashes.empty())
+            {
+                m_wrapperCacheEntry->m_bindingHashes.reserve(m_bindings.size());
+                for (const Binding& binding : m_bindings)
+                {
+                    m_wrapperCacheEntry->m_bindingHashes.push_back(JPH::HashString(binding.m_name));
+                }
+            }
+            else if (!bindingSignatureMatches)
+            {
+                delete m_wrapperCacheEntry->m_wrapper;
+                m_wrapperCacheEntry->m_wrapper = m_shader->CreateWrapper();
+                ++m_wrapperCreationCount;
+                m_wrapper = m_wrapperCacheEntry->m_wrapper;
+                m_wrapperCacheEntry->m_bindingHashes.clear();
+                m_wrapperCacheEntry->m_bindingHashes.reserve(m_bindings.size());
+                for (const Binding& binding : m_bindings)
+                {
+                    m_wrapper->Bind(binding.m_name, binding.m_data, binding.m_size);
+                    m_wrapperCacheEntry->m_bindingHashes.push_back(JPH::HashString(binding.m_name));
+                }
+            }
+        }
+
         const size_t threadCountX = static_cast<size_t>(threadGroupCountX) * m_shader->GetGroupSizeX();
         const size_t threadCountY = static_cast<size_t>(threadGroupCountY) * m_shader->GetGroupSizeY();
         const size_t threadCountZ = static_cast<size_t>(threadGroupCountZ) * m_shader->GetGroupSizeZ();
@@ -266,9 +347,13 @@ namespace Jolt
             completion.StartAndWaitForCompletion();
         }
 
-        delete m_wrapper;
+        if (!m_wrapperCacheEntry)
+        {
+            delete m_wrapper;
+        }
         m_wrapper = nullptr;
-        m_usedBuffers.clear();
+        m_wrapperCacheEntry = nullptr;
+        m_bindings.clear();
         m_shader = nullptr;
     }
 
@@ -278,6 +363,21 @@ namespace Jolt
 
     void CpuComputeQueue::Wait()
     {
+    }
+
+    void CpuComputeQueue::BindBuffer(
+        const char* name,
+        const JPH::ComputeBufferCPU& buffer)
+    {
+        void* data = buffer.GetData();
+        const JPH::uint64 size = buffer.GetSize() * buffer.GetStride();
+        m_wrapper->Bind(name, data, size);
+        m_bindings.push_back({
+            .m_name = name,
+            .m_data = data,
+            .m_size = size,
+            .m_buffer = &buffer,
+        });
     }
 
     void CpuComputeQueue::ProcessRange(

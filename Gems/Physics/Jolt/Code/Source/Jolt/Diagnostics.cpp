@@ -102,12 +102,15 @@ namespace Jolt
                 ->Field("TempAllocatorCapacityBytes", &WorldStatistics::m_tempAllocatorCapacityBytes)
                 ->Field("TempAllocatorUsageBytes", &WorldStatistics::m_tempAllocatorUsageBytes)
                 ->Field("LastUpdateNanoseconds", &WorldStatistics::m_lastUpdateNanoseconds)
+                ->Field("HairShaderWrapperCreationCount", &WorldStatistics::m_hairShaderWrapperCreationCount)
                 ->Field("LastUpdateErrors", &WorldStatistics::m_lastUpdateErrors)
                 ->Field("LastUpdateJobCount", &WorldStatistics::m_lastUpdateJobCount)
                 ->Field("LastUpdateMaximumTaskCount", &WorldStatistics::m_lastUpdateMaximumTaskCount)
                 ->Field("LastUpdateTaskCount", &WorldStatistics::m_lastUpdateTaskCount)
+                ->Field("JobTaskCapacity", &WorldStatistics::m_jobTaskCapacity)
                 ->Field("RequestedWorkerCount", &WorldStatistics::m_requestedWorkerCount)
                 ->Field("EffectiveWorkerCount", &WorldStatistics::m_effectiveWorkerCount)
+                ->Field("HairShaderWrapperCount", &WorldStatistics::m_hairShaderWrapperCount)
                 ->Field("HairWorkerCount", &WorldStatistics::m_hairWorkerCount)
                 ->Field("ActiveDynamicBodyCount", &WorldStatistics::m_activeDynamicBodyCount)
                 ->Field("ActiveKinematicBodyCount", &WorldStatistics::m_activeKinematicBodyCount)
@@ -128,6 +131,17 @@ namespace Jolt
                 ->Field("StateSnapshotCount", &WorldStatistics::m_stateSnapshotCount)
                 ->Field("VehicleCount", &WorldStatistics::m_vehicleCount)
                 ->Field("VirtualCharacterCount", &WorldStatistics::m_virtualCharacterCount);
+
+            serializeContext
+                ->Class<PoolStatistics>()
+                ->Field("LiveBytes", &PoolStatistics::m_liveBytes)
+                ->Field("CachedBytes", &PoolStatistics::m_cachedBytes)
+                ->Field("OutstandingBytes", &PoolStatistics::m_outstandingBytes)
+                ->Field("HighWaterBytes", &PoolStatistics::m_highWaterBytes)
+                ->Field("LiveCount", &PoolStatistics::m_liveCount)
+                ->Field("CachedCount", &PoolStatistics::m_cachedCount)
+                ->Field("OutstandingCount", &PoolStatistics::m_outstandingCount)
+                ->Field("HighWaterCount", &PoolStatistics::m_highWaterCount);
 
             serializeContext
                 ->Class<ResourceStatistics>()
@@ -153,6 +167,7 @@ namespace Jolt
                 ->Field("Bodies", &WorldPerformanceStatistics::m_bodies)
                 ->Field("Characters", &WorldPerformanceStatistics::m_characters)
                 ->Field("Constraints", &WorldPerformanceStatistics::m_constraints)
+                ->Field("EventBatches", &WorldPerformanceStatistics::m_eventBatches)
                 ->Field("Hair", &WorldPerformanceStatistics::m_hair)
                 ->Field("Ragdolls", &WorldPerformanceStatistics::m_ragdolls)
                 ->Field("Scenes", &WorldPerformanceStatistics::m_scenes)
@@ -161,6 +176,7 @@ namespace Jolt
                 ->Field("StateSnapshots", &WorldPerformanceStatistics::m_stateSnapshots)
                 ->Field("Vehicles", &WorldPerformanceStatistics::m_vehicles)
                 ->Field("VirtualCharacters", &WorldPerformanceStatistics::m_virtualCharacters)
+                ->Field("Operations", &WorldPerformanceStatistics::m_operations)
                 ->Field("BroadPhaseOptimizeCount", &WorldPerformanceStatistics::m_broadPhaseOptimizeCount)
                 ->Field("BroadPhaseOptimizeNanoseconds", &WorldPerformanceStatistics::m_broadPhaseOptimizeNanoseconds)
                 ->Field("OriginShiftCount", &WorldPerformanceStatistics::m_originShiftCount)
@@ -540,6 +556,10 @@ namespace Jolt
                     BehaviorValueGetter(&WorldStatistics::m_lastUpdateNanoseconds),
                     nullptr)
                 ->Property(
+                    "hairShaderWrapperCreationCount",
+                    BehaviorValueGetter(&WorldStatistics::m_hairShaderWrapperCreationCount),
+                    nullptr)
+                ->Property(
                     "lastUpdateErrors",
                     BehaviorValueGetter(&WorldStatistics::m_lastUpdateErrors),
                     nullptr)
@@ -556,12 +576,20 @@ namespace Jolt
                     BehaviorValueGetter(&WorldStatistics::m_lastUpdateTaskCount),
                     nullptr)
                 ->Property(
+                    "jobTaskCapacity",
+                    BehaviorValueGetter(&WorldStatistics::m_jobTaskCapacity),
+                    nullptr)
+                ->Property(
                     "requestedWorkerCount",
                     BehaviorValueGetter(&WorldStatistics::m_requestedWorkerCount),
                     nullptr)
                 ->Property(
                     "effectiveWorkerCount",
                     BehaviorValueGetter(&WorldStatistics::m_effectiveWorkerCount),
+                    nullptr)
+                ->Property(
+                    "hairShaderWrapperCount",
+                    BehaviorValueGetter(&WorldStatistics::m_hairShaderWrapperCount),
                     nullptr)
                 ->Property(
                     "hairWorkerCount",
@@ -629,6 +657,27 @@ namespace Jolt
                     BehaviorValueGetter(&WorldStatistics::m_virtualCharacterCount),
                     nullptr);
 
+            behaviorContext->Class<PoolStatistics>("PoolStatistics")
+                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
+                ->Attribute(AZ::Script::Attributes::Module, "jolt")
+                ->Constructor<>()
+                ->Property("liveBytes", JOLT_BEHAVIOR_READONLY_PROPERTY(&PoolStatistics::m_liveBytes))
+                ->Property("cachedBytes", JOLT_BEHAVIOR_READONLY_PROPERTY(&PoolStatistics::m_cachedBytes))
+                ->Property(
+                    "outstandingBytes",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&PoolStatistics::m_outstandingBytes))
+                ->Property(
+                    "highWaterBytes",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&PoolStatistics::m_highWaterBytes))
+                ->Property("liveCount", JOLT_BEHAVIOR_READONLY_PROPERTY(&PoolStatistics::m_liveCount))
+                ->Property("cachedCount", JOLT_BEHAVIOR_READONLY_PROPERTY(&PoolStatistics::m_cachedCount))
+                ->Property(
+                    "outstandingCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&PoolStatistics::m_outstandingCount))
+                ->Property(
+                    "highWaterCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&PoolStatistics::m_highWaterCount));
+
             behaviorContext->Class<ResourceStatistics>("ResourceStatistics")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "jolt")
@@ -685,6 +734,9 @@ namespace Jolt
                 ->Property("bodies", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_bodies))
                 ->Property("characters", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_characters))
                 ->Property("constraints", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_constraints))
+                ->Property(
+                    "eventBatches",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_eventBatches))
                 ->Property("hair", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_hair))
                 ->Property("ragdolls", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_ragdolls))
                 ->Property("scenes", JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_scenes))
@@ -697,6 +749,9 @@ namespace Jolt
                 ->Property(
                     "virtualCharacters",
                     JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_virtualCharacters))
+                ->Property(
+                    "operations",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_operations))
                 ->Property(
                     "broadPhaseOptimizeCount",
                     JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_broadPhaseOptimizeCount))

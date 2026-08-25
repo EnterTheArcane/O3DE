@@ -2199,6 +2199,9 @@ namespace Jolt
 
         const AZ::BehaviorClass* worldStatistics = behaviorContext.m_classes.at("WorldStatistics");
         EXPECT_TRUE(worldStatistics->m_properties.contains("hairCount"));
+        EXPECT_TRUE(worldStatistics->m_properties.contains("hairShaderWrapperCount"));
+        EXPECT_TRUE(worldStatistics->m_properties.contains("hairShaderWrapperCreationCount"));
+        EXPECT_TRUE(worldStatistics->m_properties.contains("jobTaskCapacity"));
         EXPECT_TRUE(worldStatistics->m_properties.contains("lastUpdateJobCount"));
         EXPECT_TRUE(worldStatistics->m_properties.contains("lastUpdateMaximumTaskCount"));
         EXPECT_TRUE(worldStatistics->m_properties.contains("lastUpdateTaskCount"));
