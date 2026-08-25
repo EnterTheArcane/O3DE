@@ -3538,7 +3538,7 @@ namespace Jolt
             }
         }
 
-        AZ::u32 pathReferenceCount = 0;
+        [[maybe_unused]] AZ::u32 pathReferenceCount = 0;
         {
             AZStd::lock_guard pathLock(m_pathMutex);
             const PathSlot* slot = FindPathUnlocked(pathHandle);
@@ -3549,7 +3549,7 @@ namespace Jolt
             pathReferenceCount = slot->m_constraintCount;
         }
 
-        AZ::u32 destroyedPathReferenceCount = 0;
+        [[maybe_unused]] AZ::u32 destroyedPathReferenceCount = 0;
         for (size_t worldIndex = 0; worldIndex < m_worldSlots.size(); ++worldIndex)
         {
             WorldSlot& worldSlot = m_worldSlots[worldIndex];

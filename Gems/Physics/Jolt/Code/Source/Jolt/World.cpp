@@ -20331,10 +20331,10 @@ namespace Jolt
                 {
                     Internal::WorldMemberHandleParts firstParts;
                     Internal::WorldMemberHandleParts secondParts;
-                    const bool firstDecoded = Internal::DecodeWorldMemberHandle(
+                    [[maybe_unused]] const bool firstDecoded = Internal::DecodeWorldMemberHandle(
                         first.m_bodyHandle,
                         firstParts);
-                    const bool secondDecoded = Internal::DecodeWorldMemberHandle(
+                    [[maybe_unused]] const bool secondDecoded = Internal::DecodeWorldMemberHandle(
                         second.m_bodyHandle,
                         secondParts);
                     AZ_Assert(firstDecoded && secondDecoded, "Captured body handles must decode.");
@@ -20348,10 +20348,10 @@ namespace Jolt
                     {
                         Internal::WorldMemberHandleParts firstParts;
                         Internal::WorldMemberHandleParts secondParts;
-                        const bool firstDecoded = Internal::DecodeWorldMemberHandle(
+                        [[maybe_unused]] const bool firstDecoded = Internal::DecodeWorldMemberHandle(
                             first.m_bodyHandle,
                             firstParts);
-                        const bool secondDecoded = Internal::DecodeWorldMemberHandle(
+                        [[maybe_unused]] const bool secondDecoded = Internal::DecodeWorldMemberHandle(
                             second.m_bodyHandle,
                             secondParts);
                         AZ_Assert(firstDecoded && secondDecoded, "Captured body handles must decode.");
@@ -22618,10 +22618,10 @@ namespace Jolt
             {
                 Internal::ResourceHandleParts leftParts;
                 Internal::ResourceHandleParts rightParts;
-                const bool leftDecoded = Internal::DecodeResourceHandle(
+                [[maybe_unused]] const bool leftDecoded = Internal::DecodeResourceHandle(
                     left.m_filterHandle,
                     leftParts);
-                const bool rightDecoded = Internal::DecodeResourceHandle(
+                [[maybe_unused]] const bool rightDecoded = Internal::DecodeResourceHandle(
                     right.m_filterHandle,
                     rightParts);
                 AZ_Assert(leftDecoded && rightDecoded, "Live group filter handles must decode.");
@@ -22635,10 +22635,10 @@ namespace Jolt
                 {
                     Internal::ResourceHandleParts leftParts;
                     Internal::ResourceHandleParts rightParts;
-                    const bool leftDecoded = Internal::DecodeResourceHandle(
+                    [[maybe_unused]] const bool leftDecoded = Internal::DecodeResourceHandle(
                         left.m_filterHandle,
                         leftParts);
-                    const bool rightDecoded = Internal::DecodeResourceHandle(
+                    [[maybe_unused]] const bool rightDecoded = Internal::DecodeResourceHandle(
                         right.m_filterHandle,
                         rightParts);
                     AZ_Assert(leftDecoded && rightDecoded, "Live group filter handles must decode.");
