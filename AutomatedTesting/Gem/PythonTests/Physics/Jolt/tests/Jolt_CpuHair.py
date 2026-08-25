@@ -7,6 +7,11 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 Verifies the deterministic CPU-only Hair component and scripting contract.
 """
 
+try:
+    from .Jolt_ScenarioRecorder import record_scenario
+except ImportError:
+    from Jolt_ScenarioRecorder import record_scenario
+
 
 class Tests:
     level_opened = ("Opened the CPU Hair test level", "Failed to open the CPU Hair test level")
@@ -18,7 +23,8 @@ class Tests:
     exit_game_mode = ("Exited game mode", "Failed to exit game mode")
 
 
-def Jolt_CpuHair():
+@record_scenario("Jolt_CpuHair")
+def Jolt_CpuHair(recorder):
     import time
 
     import azlmbr.bus as bus
@@ -33,19 +39,19 @@ def Jolt_CpuHair():
 
     helper.init_idle()
     helper.open_level("", "Base")
-    Report.result(Tests.level_opened, general.get_current_level_name() == "Base")
+    recorder.result(Tests.level_opened, general.get_current_level_name() == "Base")
 
     editor_entity = EditorEntity.create_editor_entity("Jolt CPU Hair")
     editor_entity.add_component("Jolt Hair")
     PrefabWaiter.wait_for_propagation()
-    Report.result(Tests.component_created, editor_entity.has_component("Jolt Hair"))
+    recorder.result(Tests.component_created, editor_entity.has_component("Jolt Hair"))
 
     Report.info("Entering game mode")
     general.enter_game_mode()
     enter_deadline = time.monotonic() + 3.0
     while not general.is_in_game_mode() and time.monotonic() < enter_deadline:
         general.idle_wait(0.01)
-    Report.critical_result(Tests.enter_game_mode, general.is_in_game_mode())
+    recorder.result(Tests.enter_game_mode, general.is_in_game_mode())
 
     hair_entity_id = general.find_game_entity("Jolt CPU Hair")
     runtime_info = jolt.JoltWorldRequestBus(bus.Broadcast, "GetRuntimeInfo")
@@ -54,7 +60,7 @@ def Jolt_CpuHair():
         f"determinism={runtime_info.hairDeterminism}, "
         f"expected={jolt.DeterminismCertification_SameBinary}"
     )
-    Report.result(
+    recorder.result(
         Tests.runtime_contract,
         runtime_info.hairDeterminism == jolt.DeterminismCertification_SameBinary,
     )
@@ -100,12 +106,12 @@ def Jolt_CpuHair():
         f"{len(scalp_positions)}/{len(grid_cells)}/{len(neutral_density)}, "
         f"updated={transform_updated}"
     )
-    Report.result(Tests.hair_operational, hair_operational)
+    recorder.result(Tests.hair_operational, hair_operational)
 
     disabled = jolt.JoltHairRequestBus(bus.Event, "DisableSimulation", hair_entity_id)
     enabled = jolt.JoltHairRequestBus(bus.Event, "EnableSimulation", hair_entity_id)
     recreated_handle = jolt.JoltHairRequestBus(bus.Event, "GetHairHandle", hair_entity_id)
-    Report.result(
+    recorder.result(
         Tests.lifecycle_operational,
         disabled and enabled and recreated_handle.IsValid(),
     )
@@ -115,7 +121,7 @@ def Jolt_CpuHair():
     exit_deadline = time.monotonic() + 3.0
     while general.is_in_game_mode() and time.monotonic() < exit_deadline:
         general.idle_wait(0.01)
-    Report.critical_result(Tests.exit_game_mode, not general.is_in_game_mode())
+    recorder.result(Tests.exit_game_mode, not general.is_in_game_mode())
 
 
 if __name__ == "__main__":

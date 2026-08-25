@@ -233,6 +233,7 @@ def run_events_and_filters():
 
         import azlmbr.bus as bus
         import azlmbr.jolt as jolt
+        import azlmbr.math as math
 
         body_id = wait_for_runtime_entity("Jolt Events Body")
         recorder.check(
@@ -282,6 +283,46 @@ def run_events_and_filters():
                     configuration,
                 ),
             )
+
+        allowed_filter = jolt.JoltQueryFilter()
+        allowed_filter.collisionLayer = jolt.JoltObjectLayer(2)
+        allowed_raycast = jolt.JoltRaycastRequest()
+        allowed_raycast.start = create_world_position(jolt, 3.0, 0.0, 2.0)
+        allowed_raycast.displacement = math.Vector3(0.0, 0.0, -8.0)
+        allowed_raycast.filter = allowed_filter
+        allowed_hit = recorder.capture(
+            "moving query layer includes non-moving geometry",
+            lambda: jolt.JoltWorldQueryRequestBus(
+                bus.Broadcast,
+                "RaycastClosest",
+                world_handle,
+                allowed_raycast,
+            ),
+            lambda result: result.found
+            and result.hit.bodyHandle.IsValid()
+            and result.hit.shapeHandle.IsValid(),
+        )
+
+        denied_filter = jolt.JoltQueryFilter()
+        denied_filter.collisionLayer = jolt.JoltObjectLayer(1)
+        denied_raycast = jolt.JoltRaycastRequest()
+        denied_raycast.start = allowed_raycast.start
+        denied_raycast.displacement = allowed_raycast.displacement
+        denied_raycast.filter = denied_filter
+        denied_hit = recorder.capture(
+            "non-moving query layer rejects non-moving geometry",
+            lambda: jolt.JoltWorldQueryRequestBus(
+                bus.Broadcast,
+                "RaycastClosest",
+                world_handle,
+                denied_raycast,
+            ),
+            lambda result: not result.found,
+        )
+        recorder.check(
+            "allowed and denied filters produced distinct results",
+            allowed_hit.found and not denied_hit.found,
+        )
 
         deadline = time.monotonic() + 5.0
         import azlmbr.legacy.general as general

@@ -7,6 +7,11 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 Verifies that advanced Jolt editor components create usable authored runtime resources.
 """
 
+try:
+    from .Jolt_ScenarioRecorder import record_scenario
+except ImportError:
+    from Jolt_ScenarioRecorder import record_scenario
+
 
 class Tests:
     level_opened = ("Opened the Jolt advanced feature level", "Failed to open the Jolt advanced feature level")
@@ -29,7 +34,8 @@ class Tests:
     exit_game_mode = ("Exited game mode", "Failed to exit game mode")
 
 
-def Jolt_AdvancedComponents():
+@record_scenario("Jolt_AdvancedComponents")
+def Jolt_AdvancedComponents(recorder):
     import time
 
     import azlmbr.bus as bus
@@ -46,7 +52,7 @@ def Jolt_AdvancedComponents():
 
     helper.init_idle()
     helper.open_level("", "Base")
-    Report.result(Tests.level_opened, general.get_current_level_name() == "Base")
+    recorder.result(Tests.level_opened, general.get_current_level_name() == "Base")
 
     component_names = (
         "Jolt Hair",
@@ -139,7 +145,7 @@ def Jolt_AdvancedComponents():
     )
     PrefabWaiter.wait_for_propagation()
 
-    Report.result(
+    recorder.result(
         Tests.components_created,
         all(
             entity.has_component(component_name)
@@ -153,7 +159,7 @@ def Jolt_AdvancedComponents():
     enter_deadline = time.monotonic() + 3.0
     while not general.is_in_game_mode() and time.monotonic() < enter_deadline:
         general.idle_wait(0.01)
-    Report.critical_result(Tests.enter_game_mode, general.is_in_game_mode())
+    recorder.result(Tests.enter_game_mode, general.is_in_game_mode())
     hair_id = general.find_game_entity("Jolt Hair")
     ragdoll_id = general.find_game_entity("Jolt Ragdoll")
     soft_body_id = general.find_game_entity("Jolt Soft Body")
@@ -214,7 +220,7 @@ def Jolt_AdvancedComponents():
         f"softBody={soft_body_enabled}, path={path_handle.IsValid()}, "
         f"skeleton={skeleton_ready}, scene={scene_ready}"
     )
-    Report.result(Tests.resources_created, resources_created)
+    recorder.result(Tests.resources_created, resources_created)
 
     skeleton_handle = jolt.JoltSkeletonComponentRequestBus(
         bus.Event,
@@ -235,7 +241,7 @@ def Jolt_AdvancedComponents():
             asset_animation_names[0],
         )
         asset_animation_valid = asset_animation_handle.IsValid()
-    Report.result(
+    recorder.result(
         Tests.skeleton_asset_operational,
         skeleton_handle.IsValid()
         and asset_animation_valid
@@ -254,7 +260,7 @@ def Jolt_AdvancedComponents():
     )
     scene_bodies = jolt.JoltSceneRequestBus(bus.Event, "CopyBodies", scene_id)
     scene_constraints = jolt.JoltSceneRequestBus(bus.Event, "CopyConstraints", scene_id)
-    Report.result(
+    recorder.result(
         Tests.scene_asset_operational,
         scene_definition_handle.IsValid()
         and scene_instance_handle.IsValid()
@@ -301,7 +307,7 @@ def Jolt_AdvancedComponents():
         f"{len(hair_scalp_positions)}/{len(hair_grid_cells)}/{len(hair_neutral_density)}, "
         f"updated={hair_updated}"
     )
-    Report.result(
+    recorder.result(
         Tests.hair_operational,
         hair_operational,
     )
@@ -350,7 +356,7 @@ def Jolt_AdvancedComponents():
         f"constraints={ragdoll_state.constraintCount}, "
         f"updated={ragdoll_updated}"
     )
-    Report.result(
+    recorder.result(
         Tests.ragdoll_operational,
         ragdoll_handle.IsValid()
         and ragdoll_state.bodyCount == 2
@@ -471,7 +477,7 @@ def Jolt_AdvancedComponents():
         "DestroySkeletonDefinition",
         target_skeleton_handle,
     )
-    Report.result(
+    recorder.result(
         Tests.skeleton_workflow,
         bool(
             source_skeleton_handle.IsValid()
@@ -530,7 +536,7 @@ def Jolt_AdvancedComponents():
         f"skinConstraints={soft_body_definition.skinConstraintCount}/{len(soft_body_skin_constraints)}, "
         f"updated={soft_body_updated}"
     )
-    Report.result(
+    recorder.result(
         Tests.soft_body_operational,
         soft_body_handle.IsValid()
         and soft_body_definition_handle.IsValid()
@@ -597,7 +603,7 @@ def Jolt_AdvancedComponents():
         soft_body_world_handle,
         soft_body_world_configuration,
     )
-    Report.result(
+    recorder.result(
         Tests.soft_body_contact,
         bool(
             manual_soft_body_stepping_enabled
@@ -640,7 +646,7 @@ def Jolt_AdvancedComponents():
         f"bindVertices={len(vertices_at_bind_pose)}, targetVertices={len(vertices_at_target_pose)}, "
         f"moved={vertices_moved_with_pose}"
     )
-    Report.result(
+    recorder.result(
         Tests.soft_body_skinning,
         bind_pose_applied and target_pose_applied and vertices_moved_with_pose,
     )
@@ -661,7 +667,7 @@ def Jolt_AdvancedComponents():
         f"handle={path_handle.IsValid()}, maximumFraction={path_state.maximumFraction}, "
         f"sample={path_sample.valid}, closest={closest_sample.valid}"
     )
-    Report.result(
+    recorder.result(
         Tests.path_operational,
         path_handle.IsValid()
         and len(path_points) == 2
@@ -682,7 +688,7 @@ def Jolt_AdvancedComponents():
         f"ragdoll={ragdoll_disabled}/{ragdoll_enabled}, "
         f"softBody={soft_body_disabled}/{soft_body_enabled}"
     )
-    Report.result(
+    recorder.result(
         Tests.lifecycle_operational,
         hair_disabled
         and ragdoll_disabled
@@ -697,7 +703,7 @@ def Jolt_AdvancedComponents():
     exit_deadline = time.monotonic() + 3.0
     while general.is_in_game_mode() and time.monotonic() < exit_deadline:
         general.idle_wait(0.01)
-    Report.critical_result(Tests.exit_game_mode, not general.is_in_game_mode())
+    recorder.result(Tests.exit_game_mode, not general.is_in_game_mode())
 
 
 if __name__ == "__main__":

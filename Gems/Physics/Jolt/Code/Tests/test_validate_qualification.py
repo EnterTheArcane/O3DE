@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import sys
 import tempfile
@@ -47,10 +48,12 @@ class QualificationValidationTests(unittest.TestCase):
         full_environment = jolt_qualification.get_automated_testing_environment(
             base_environment,
             "full",
+            Path("scenario-results"),
         )
 
         self.assertEqual(review_environment["JOLT_STRESS_MODE"], "review")
         self.assertEqual(full_environment["JOLT_STRESS_MODE"], "full")
+        self.assertEqual(full_environment["JOLT_SCENARIO_RESULT_DIRECTORY"], "scenario-results")
         self.assertEqual(review_environment["EXAMPLE"], "preserved")
         self.assertNotIn("JOLT_STRESS_MODE", base_environment)
 
@@ -245,7 +248,17 @@ class QualificationValidationTests(unittest.TestCase):
             write_file(
                 engine_root,
                 "AutomatedTesting/Gem/PythonTests/Physics/Jolt/TestSuite_Benchmark.py",
-                "",
+                "from .tests import Jolt_PerformanceCapture",
+            )
+            write_file(
+                engine_root,
+                "AutomatedTesting/Gem/PythonTests/Physics/Jolt/tests/Jolt_PerformanceCapture.py",
+                "Report.start_test(example)\n",
+            )
+            write_file(
+                engine_root,
+                "AutomatedTesting/Gem/PythonTests/Physics/Jolt/tests/Jolt_ScenarioRecorder.py",
+                f"SCENARIO_MINIMUM_CHECK_COUNTS = {dict.fromkeys(sorted(jolt_qualification.REQUIRED_SCENARIOS), 1)!r}\n",
             )
 
             gallery_entities = {
@@ -265,7 +278,7 @@ class QualificationValidationTests(unittest.TestCase):
             )
 
             result = jolt_qualification.validate_scenario_registration(engine_root)
-            self.assertIn(f"{len(jolt_qualification.REQUIRED_SCENARIOS)} registered", result)
+            self.assertIn(f"{len(jolt_qualification.REQUIRED_SCENARIOS) + 1} registered", result)
 
             missing_scenario = sorted(jolt_qualification.REQUIRED_SCENARIOS)[0]
             suite_path = (
@@ -283,6 +296,56 @@ class QualificationValidationTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(ValueError, "unregistered executable scenarios"):
                 jolt_qualification.validate_scenario_registration(engine_root)
+
+    def test_scenario_results_require_complete_verified_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            result_directory = engine_root / "results"
+            result_directory.mkdir()
+            write_file(
+                engine_root,
+                "AutomatedTesting/Gem/PythonTests/Physics/Jolt/tests/Jolt_ScenarioRecorder.py",
+                'SCENARIO_MINIMUM_CHECK_COUNTS = {"Jolt_Example": 1}\n',
+            )
+            result = {
+                "schemaVersion": 1,
+                "scenario": "Jolt_Example",
+                "passed": True,
+                "minimumCheckCount": 1,
+                "checkCount": 1,
+                "failedCheckCount": 0,
+                "contractErrors": [],
+                "checks": [
+                    {
+                        "name": "meaningful result",
+                        "passed": True,
+                        "details": "",
+                        "exception": "",
+                    }
+                ],
+            }
+            encoded_result = json.dumps(result, separators=(",", ":"), sort_keys=True)
+            encoded_bytes = encoded_result.encode("utf-8")
+            document = {
+                "envelope": {
+                    "schemaVersion": 1,
+                    "scenario": "Jolt_Example",
+                    "byteCount": len(encoded_bytes),
+                    "chunkCount": 1,
+                    "sha256": hashlib.sha256(encoded_bytes).hexdigest(),
+                },
+                "result": result,
+            }
+            result_path = result_directory / "Jolt_Example.json"
+            result_path.write_text(json.dumps(document), encoding="utf-8")
+
+            message = jolt_qualification.validate_scenario_results(engine_root, result_directory)
+            self.assertIn("1 retained scenario result", message)
+
+            document["result"]["checks"][0]["passed"] = False
+            result_path.write_text(json.dumps(document), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "did not pass every required unique check"):
+                jolt_qualification.validate_scenario_results(engine_root, result_directory)
 
     def test_world_bus_script_parity_rejects_missing_and_stale_calls(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

@@ -7,6 +7,11 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 Verifies that Jolt simulates and remains scriptable while the Box3D and PhysX Gems are loaded.
 """
 
+try:
+    from .Jolt_ScenarioRecorder import record_scenario
+except ImportError:
+    from Jolt_ScenarioRecorder import record_scenario
+
 
 class Tests:
     level_opened = ("Opened the Jolt component level", "Failed to open the Jolt component level")
@@ -21,7 +26,8 @@ class Tests:
     exit_game_mode = ("Exited game mode", "Failed to exit game mode")
 
 
-def Jolt_ComponentSmoke():
+@record_scenario("Jolt_ComponentSmoke")
+def Jolt_ComponentSmoke(recorder):
     import time
 
     import azlmbr.bus as bus
@@ -36,7 +42,7 @@ def Jolt_ComponentSmoke():
 
     helper.init_idle()
     helper.open_level("", "Base")
-    Report.result(Tests.level_opened, general.get_current_level_name() == "Base")
+    recorder.result(Tests.level_opened, general.get_current_level_name() == "Base")
 
     floor = EditorEntity.create_editor_entity("Jolt Floor")
     floor.add_component("Jolt Collider")
@@ -59,7 +65,7 @@ def Jolt_ComponentSmoke():
     physx_body.add_component("PhysX Static Rigid Body")
     components.TransformBus(bus.Event, "SetWorldTranslation", physx_body.id, math.Vector3(40.0, 0.0, 0.0))
 
-    Report.result(
+    recorder.result(
         Tests.components_created,
         floor.has_component("Jolt Static Rigid Body")
         and falling_body.has_component("Jolt Rigid Body")
@@ -72,7 +78,7 @@ def Jolt_ComponentSmoke():
     enter_deadline = time.monotonic() + 3.0
     while not general.is_in_game_mode() and time.monotonic() < enter_deadline:
         general.idle_wait(0.01)
-    Report.critical_result(Tests.enter_game_mode, general.is_in_game_mode())
+    recorder.result(Tests.enter_game_mode, general.is_in_game_mode())
     falling_body_id = general.find_game_entity("Jolt Falling Body")
     movement_received = {"value": False}
 
@@ -107,6 +113,48 @@ def Jolt_ComponentSmoke():
         math.Vector3(0.0, 0.0, 0.0),
         math.Vector3(0.0, 0.0, 0.0),
     )
+    velocities_added = jolt.JoltRigidBodyRequestBus(
+        bus.Event,
+        "AddVelocities",
+        falling_body_id,
+        math.Vector3(0.5, 0.0, 0.0),
+        math.Vector3(0.0, 0.25, 0.0),
+    )
+    added_linear_velocity = jolt.JoltRigidBodyRequestBus(
+        bus.Event,
+        "GetLinearVelocity",
+        falling_body_id,
+    )
+    added_angular_velocity = jolt.JoltRigidBodyRequestBus(
+        bus.Event,
+        "GetAngularVelocity",
+        falling_body_id,
+    )
+    recorder.check(
+        "combined velocity addition executed through BehaviorContext",
+        velocities_added
+        and added_linear_velocity.IsClose(math.Vector3(0.5, 0.0, 0.0))
+        and added_angular_velocity.IsClose(math.Vector3(0.0, 0.25, 0.0)),
+    )
+    velocities_reset = velocities_reset and jolt.JoltRigidBodyRequestBus(
+        bus.Event,
+        "SetVelocities",
+        falling_body_id,
+        math.Vector3(0.0, 0.0, 0.0),
+        math.Vector3(0.0, 0.0, 0.0),
+    )
+    kinematic_target = jolt.WorldTransform()
+    kinematic_target.position = reset_position
+    recorder.check(
+        "kinematic move rejects a dynamic body through BehaviorContext",
+        not jolt.JoltRigidBodyRequestBus(
+            bus.Event,
+            "MoveKinematically",
+            falling_body_id,
+            kinematic_target,
+            1.0,
+        ),
+    )
     general.idle_wait(0.05)
 
     simulation_enabled = jolt.JoltRigidBodyRequestBus(
@@ -114,7 +162,7 @@ def Jolt_ComponentSmoke():
         "IsSimulationEnabled",
         falling_body_id,
     )
-    Report.result(Tests.simulation_enabled, simulation_enabled)
+    recorder.result(Tests.simulation_enabled, simulation_enabled)
 
     generic_simulation_enabled = jolt.JoltBodyRequestBus(
         bus.Event,
@@ -153,7 +201,7 @@ def Jolt_ComponentSmoke():
         f"world={generic_world_handle.IsValid()}, body={generic_body_handle.IsValid()}, "
         f"height={generic_center_of_mass.position.z}"
     )
-    Report.result(
+    recorder.result(
         Tests.generic_body_access,
         generic_simulation_enabled
         and gravity_frozen
@@ -169,7 +217,7 @@ def Jolt_ComponentSmoke():
     world_handle = jolt.JoltRigidBodyRequestBus(bus.Event, "GetWorldHandle", falling_body_id)
     body_handle = jolt.JoltRigidBodyRequestBus(bus.Event, "GetBodyHandle", falling_body_id)
     shape_handle = jolt.JoltColliderRequestBus(bus.Event, "GetRootShapeHandle", falling_body_id)
-    Report.result(
+    recorder.result(
         Tests.handles_valid,
         world_handle.IsValid() and body_handle.IsValid() and shape_handle.IsValid(),
     )
@@ -187,7 +235,7 @@ def Jolt_ComponentSmoke():
         world_handle,
         raycast,
     )
-    Report.result(
+    recorder.result(
         Tests.raycast_found_body,
         raycast_result.found and raycast_result.hit.bodyHandle.IsValid(),
     )
@@ -204,8 +252,8 @@ def Jolt_ComponentSmoke():
     while not body_fell and time.monotonic() < fall_deadline:
         general.idle_wait(0.01)
         body_fell = components.TransformBus(bus.Event, "GetWorldZ", falling_body_id) < 2.5
-    Report.result(Tests.body_fell, gravity_enabled and body_fell)
-    Report.result(Tests.body_moved, movement_received["value"])
+    recorder.result(Tests.body_fell, gravity_enabled and body_fell)
+    recorder.result(Tests.body_moved, movement_received["value"])
     Report.info(
         "Component smoke result: "
         f"moved={movement_received['value']}, raycast={raycast_result.found}"
@@ -217,7 +265,7 @@ def Jolt_ComponentSmoke():
     exit_deadline = time.monotonic() + 3.0
     while general.is_in_game_mode() and time.monotonic() < exit_deadline:
         general.idle_wait(0.01)
-    Report.critical_result(Tests.exit_game_mode, not general.is_in_game_mode())
+    recorder.result(Tests.exit_game_mode, not general.is_in_game_mode())
 
 
 if __name__ == "__main__":

@@ -23,21 +23,28 @@ from typing import Callable, Iterable, Sequence
 PUBLIC_CLASSIFICATION = "Publicly exposed"
 INVENTORY_HEADER = "Jolt 5.6 subsystem"
 REQUIRED_SCENARIOS = {
+    "Jolt_AdvancedComponents",
     "Jolt_Characters",
+    "Jolt_ComponentSmoke",
     "Jolt_Constraints",
+    "Jolt_CpuHair",
     "Jolt_Diagnostics",
     "Jolt_EventsAndFilters",
+    "Jolt_FeatureComponents",
     "Jolt_Hair",
     "Jolt_Queries",
     "Jolt_RagdollsAndSkeletons",
     "Jolt_RollbackAndDeterminism",
+    "Jolt_SavedComponents",
     "Jolt_SavedFeatureGallery",
     "Jolt_ScenesAndAssets",
     "Jolt_ShapesAndCooking",
     "Jolt_SoftBodies",
     "Jolt_StressAndSoak",
     "Jolt_Vehicles",
+    "Jolt_WorldQueriesAndSnapshots",
 }
+BENCHMARK_SCENARIOS = {"Jolt_PerformanceCapture"}
 WORLD_SCRIPT_BUS_SOURCES = {
     "JoltWorldRequestBus": "WorldBus.cpp",
     "JoltWorldDiagnosticsRequestBus": "WorldDiagnosticsBus.cpp",
@@ -320,7 +327,9 @@ def validate_scenario_registration(engine_root: Path) -> str:
     test_root = suite_root / "tests"
     suite_text = (suite_root / "TestSuite_Main.py").read_text(encoding="utf-8")
     benchmark_text = (suite_root / "TestSuite_Benchmark.py").read_text(encoding="utf-8")
-    registered = set(re.findall(r"from \.tests import (Jolt_[A-Za-z0-9_]+)", suite_text + benchmark_text))
+    registered_main = set(re.findall(r"from \.tests import (Jolt_[A-Za-z0-9_]+)", suite_text))
+    registered_benchmarks = set(re.findall(r"from \.tests import (Jolt_[A-Za-z0-9_]+)", benchmark_text))
+    registered = registered_main | registered_benchmarks
     executable = {
         path.stem
         for path in test_root.glob("Jolt_*.py")
@@ -337,6 +346,19 @@ def validate_scenario_registration(engine_root: Path) -> str:
         errors.append(f"registered non-executable scenarios: {', '.join(stale_registration)}")
     if missing_required:
         errors.append(f"missing required scenarios: {', '.join(missing_required)}")
+    if registered_main != REQUIRED_SCENARIOS:
+        errors.append("the main suite and authoritative scenario policy do not match")
+    if registered_benchmarks != BENCHMARK_SCENARIOS:
+        errors.append("the benchmark suite and authoritative benchmark policy do not match")
+
+    minimum_check_counts = read_scenario_minimum_check_counts(engine_root)
+    if set(minimum_check_counts) != REQUIRED_SCENARIOS:
+        errors.append("the scenario minimum-check policy and main suite do not match")
+    invalid_minimums = sorted(
+        scenario for scenario, minimum in minimum_check_counts.items() if minimum <= 0
+    )
+    if invalid_minimums:
+        errors.append(f"scenarios have invalid minimum check counts: {', '.join(invalid_minimums)}")
 
     gallery_path = engine_root / "AutomatedTesting" / "Levels" / "Physics" / "Jolt" / "FeatureGallery"
     stress_path = engine_root / "AutomatedTesting" / "Levels" / "Physics" / "Jolt" / "Stress"
@@ -355,6 +377,114 @@ def validate_scenario_registration(engine_root: Path) -> str:
     if errors:
         raise ValueError("; ".join(errors))
     return f"Validated {len(registered)} registered scenarios, gallery, and stress manifests."
+
+
+def read_scenario_minimum_check_counts(engine_root: Path) -> dict[str, int]:
+    recorder_path = (
+        engine_root
+        / "AutomatedTesting"
+        / "Gem"
+        / "PythonTests"
+        / "Physics"
+        / "Jolt"
+        / "tests"
+        / "Jolt_ScenarioRecorder.py"
+    )
+    tree = ast.parse(recorder_path.read_text(encoding="utf-8"), filename=str(recorder_path))
+    for statement in tree.body:
+        if not isinstance(statement, ast.Assign):
+            continue
+        if not any(
+            isinstance(target, ast.Name) and target.id == "SCENARIO_MINIMUM_CHECK_COUNTS"
+            for target in statement.targets
+        ):
+            continue
+
+        values = ast.literal_eval(statement.value)
+        if not isinstance(values, dict):
+            break
+        if not all(isinstance(name, str) and isinstance(count, int) for name, count in values.items()):
+            break
+        return values
+
+    raise ValueError(f"{recorder_path} does not define a literal SCENARIO_MINIMUM_CHECK_COUNTS mapping")
+
+
+def validate_scenario_results(
+    engine_root: Path,
+    result_directory: Path,
+) -> str:
+    minimum_check_counts = read_scenario_minimum_check_counts(engine_root)
+    if not result_directory.is_dir():
+        raise ValueError(f"scenario result directory does not exist: {result_directory}")
+
+    result_paths = sorted(result_directory.iterdir())
+    expected_names = {f"{scenario}.json" for scenario in minimum_check_counts}
+    observed_names = {path.name for path in result_paths}
+    errors: list[str] = []
+    missing = sorted(expected_names - observed_names)
+    unexpected = sorted(observed_names - expected_names)
+    if missing:
+        errors.append(f"missing scenario results: {', '.join(missing)}")
+    if unexpected:
+        errors.append(f"unexpected scenario results: {', '.join(unexpected)}")
+
+    for result_path in result_paths:
+        if result_path.name not in expected_names or not result_path.is_file():
+            continue
+
+        try:
+            document = json.loads(result_path.read_text(encoding="utf-8"))
+            envelope = document["envelope"]
+            result = document["result"]
+        except (KeyError, TypeError, json.JSONDecodeError) as exception:
+            errors.append(f"{result_path.name} is not a valid scenario result: {exception}")
+            continue
+
+        scenario = result_path.stem
+        checks = result.get("checks")
+        if not isinstance(checks, list):
+            errors.append(f"{result_path.name} has no check list")
+            continue
+
+        check_names = [check.get("name") for check in checks if isinstance(check, dict)]
+        check_results = [check.get("passed") for check in checks if isinstance(check, dict)]
+        minimum = minimum_check_counts[scenario]
+        expected_passed = (
+            len(checks) >= minimum
+            and len(check_names) == len(checks)
+            and len(set(check_names)) == len(check_names)
+            and all(passed is True for passed in check_results)
+        )
+        encoded_result = json.dumps(result, separators=(",", ":"), sort_keys=True)
+        encoded_bytes = encoded_result.encode("utf-8")
+        expected_sha256 = hashlib.sha256(encoded_bytes).hexdigest()
+        expected_chunk_count = max(1, (len(encoded_result) + 999) // 1000)
+
+        if result.get("schemaVersion") != 1 or envelope.get("schemaVersion") != 1:
+            errors.append(f"{result_path.name} has an unsupported schema")
+        if result.get("scenario") != scenario or envelope.get("scenario") != scenario:
+            errors.append(f"{result_path.name} has inconsistent scenario identity")
+        if result.get("minimumCheckCount") != minimum:
+            errors.append(f"{result_path.name} has the wrong minimum check count")
+        if result.get("checkCount") != len(checks):
+            errors.append(f"{result_path.name} has an inconsistent check count")
+        if result.get("failedCheckCount") != sum(passed is not True for passed in check_results):
+            errors.append(f"{result_path.name} has an inconsistent failed-check count")
+        if result.get("contractErrors") != []:
+            errors.append(f"{result_path.name} violated its evidence contract")
+        if result.get("passed") is not expected_passed or not expected_passed:
+            errors.append(f"{result_path.name} did not pass every required unique check")
+        if envelope.get("byteCount") != len(encoded_bytes):
+            errors.append(f"{result_path.name} has an inconsistent byte count")
+        if envelope.get("chunkCount") != expected_chunk_count:
+            errors.append(f"{result_path.name} has an inconsistent chunk count")
+        if envelope.get("sha256") != expected_sha256:
+            errors.append(f"{result_path.name} failed SHA-256 verification")
+
+    if errors:
+        raise ValueError("; ".join(errors))
+    return f"Validated {len(result_paths)} retained scenario result envelopes."
 
 
 def validate_world_bus_script_parity(engine_root: Path) -> str:
@@ -783,6 +913,11 @@ class ValidationRunner:
         self.dry_run = dry_run
         self.environment = os.environ.copy()
         self.environment["PYTHONPYCACHEPREFIX"] = str(output_directory / "python-cache")
+        temporary_directory = output_directory / "temporary"
+        temporary_directory.mkdir(parents=True, exist_ok=True)
+        self.environment["TEMP"] = str(temporary_directory)
+        self.environment["TMP"] = str(temporary_directory)
+        self.environment["TMPDIR"] = str(temporary_directory)
         self.results: list[ValidationResult] = []
 
     def run_check(self, name: str, check: Callable[[Path], str]) -> bool:
@@ -902,6 +1037,7 @@ def add_python_tests(runner: ValidationRunner) -> None:
 def get_automated_testing_environment(
     base_environment: dict[str, str],
     qualification_mode: str,
+    scenario_result_directory: Path | None = None,
 ) -> dict[str, str]:
     if qualification_mode not in ("review", "full"):
         raise ValueError(f"AutomatedTesting is not part of {qualification_mode!r} qualification")
@@ -912,6 +1048,8 @@ def get_automated_testing_environment(
 
     automated_testing_environment = base_environment.copy()
     automated_testing_environment["JOLT_STRESS_MODE"] = stress_mode
+    if scenario_result_directory:
+        automated_testing_environment["JOLT_SCENARIO_RESULT_DIRECTORY"] = str(scenario_result_directory)
     return automated_testing_environment
 
 
@@ -974,9 +1112,14 @@ def add_primary_build_and_tests(
         environment,
     )
     if review:
+        scenario_result_directory = runner.output_directory / "scenario-results-main"
+        if scenario_result_directory.exists():
+            shutil.rmtree(scenario_result_directory)
+        scenario_result_directory.mkdir(parents=True)
         automated_testing_environment = get_automated_testing_environment(
             environment or runner.environment,
             qualification_mode,
+            scenario_result_directory,
         )
         runner.run_command(
             "jolt-automated-testing",
@@ -993,6 +1136,13 @@ def add_primary_build_and_tests(
             7_200,
             automated_testing_environment,
         )
+        if runner.dry_run:
+            runner.skip("jolt-scenario-results", "dry run")
+        else:
+            runner.run_check(
+                "jolt-scenario-results",
+                lambda engine_root: validate_scenario_results(engine_root, scenario_result_directory),
+            )
 
 
 def read_cmake_cache_value(build_directory: Path, name: str) -> str:

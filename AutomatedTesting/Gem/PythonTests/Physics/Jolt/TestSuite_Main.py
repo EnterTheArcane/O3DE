@@ -13,6 +13,8 @@ import pytest
 
 from ly_test_tools.o3de.editor_test import EditorSingleTest, EditorTestSuite
 
+from .tests.Jolt_ScenarioRecorder import SCENARIO_MINIMUM_CHECK_COUNTS
+
 
 @pytest.mark.SUITE_main
 @pytest.mark.parametrize("launcher_platform", ["windows_editor"])
@@ -101,6 +103,8 @@ def _validate_test_module_registration():
     if unregistered_modules:
         names = ", ".join(sorted(unregistered_modules))
         raise RuntimeError(f"Executable Jolt test modules are not registered: {names}")
+    if registered_modules != set(SCENARIO_MINIMUM_CHECK_COUNTS):
+        raise RuntimeError("Registered Jolt scenarios do not match the minimum-check policy")
 
 
 def _validate_feature_gallery_manifest():

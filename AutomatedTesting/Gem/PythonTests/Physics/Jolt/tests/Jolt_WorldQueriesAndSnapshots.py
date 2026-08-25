@@ -7,6 +7,11 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 Exercises Jolt world notifications, query families, diagnostics, and deterministic state snapshots.
 """
 
+try:
+    from .Jolt_ScenarioRecorder import record_scenario
+except ImportError:
+    from Jolt_ScenarioRecorder import record_scenario
+
 
 class Tests:
     level_opened = ("Opened the Jolt query level", "Failed to open the Jolt query level")
@@ -41,7 +46,8 @@ def is_restore_complete(jolt, result):
     return getattr(result, "status", None) == jolt.StateRestoreStatus_Complete
 
 
-def Jolt_WorldQueriesAndSnapshots():
+@record_scenario("Jolt_WorldQueriesAndSnapshots")
+def Jolt_WorldQueriesAndSnapshots(recorder):
     import time
 
     import azlmbr.bus as bus
@@ -56,7 +62,7 @@ def Jolt_WorldQueriesAndSnapshots():
 
     helper.init_idle()
     helper.open_level("", "Base")
-    Report.result(Tests.level_opened, general.get_current_level_name() == "Base")
+    recorder.result(Tests.level_opened, general.get_current_level_name() == "Base")
 
     floor = EditorEntity.create_editor_entity("Jolt Query Floor")
     floor.add_component("Jolt Collider")
@@ -74,7 +80,7 @@ def Jolt_WorldQueriesAndSnapshots():
     second_query_body.add_component("Jolt Rigid Body")
     components.TransformBus(bus.Event, "SetWorldTranslation", second_query_body.id, math.Vector3(0.0, 0.0, 6.0))
 
-    Report.result(
+    recorder.result(
         Tests.components_created,
         floor.has_component("Jolt Static Rigid Body")
         and query_body.has_component("Jolt Rigid Body")
@@ -86,7 +92,7 @@ def Jolt_WorldQueriesAndSnapshots():
     enter_deadline = time.monotonic() + 3.0
     while not general.is_in_game_mode() and time.monotonic() < enter_deadline:
         general.idle_wait(0.01)
-    Report.critical_result(Tests.enter_game_mode, general.is_in_game_mode())
+    recorder.result(Tests.enter_game_mode, general.is_in_game_mode())
     floor_id = general.find_game_entity("Jolt Query Floor")
     query_body_id = general.find_game_entity("Jolt Query Body")
     second_query_body_id = general.find_game_entity("Jolt Query Second Body")
@@ -117,7 +123,7 @@ def Jolt_WorldQueriesAndSnapshots():
     configured_simulation = jolt.JoltWorldRequestBus(bus.Broadcast, "GetSimulationConfiguration", auxiliary_world_handle)
     auxiliary_world_destroyed = jolt.JoltWorldRequestBus(bus.Broadcast, "DestroyWorld", auxiliary_world_handle)
     auxiliary_world_invalid = not jolt.JoltWorldRequestBus(bus.Broadcast, "IsWorldValid", auxiliary_world_handle)
-    Report.result(
+    recorder.result(
         Tests.world_lifecycle,
         bool(
             default_world_handle.IsValid()
@@ -172,7 +178,7 @@ def Jolt_WorldQueriesAndSnapshots():
         floor_body_handle,
         body_handle,
     )
-    Report.result(Tests.world_events, bool(events_received and bodies_were_in_contact))
+    recorder.result(Tests.world_events, bool(events_received and bodies_were_in_contact))
 
     frozen = jolt.JoltRigidBodyRequestBus(bus.Event, "SetGravityFactor", query_body_id, 0.0)
     frozen = frozen and jolt.JoltRigidBodyRequestBus(
@@ -237,7 +243,7 @@ def Jolt_WorldQueriesAndSnapshots():
         world_handle,
         raycast_batch,
     )
-    Report.result(
+    recorder.result(
         Tests.raycasts,
         bool(
             frozen
@@ -293,7 +299,7 @@ def Jolt_WorldQueriesAndSnapshots():
         world_handle,
         shape_overlap,
     )
-    Report.result(
+    recorder.result(
         Tests.overlaps,
         bool(
             body_handle.IsValid()
@@ -364,7 +370,7 @@ def Jolt_WorldQueriesAndSnapshots():
         broad_cast,
         16,
     )
-    Report.result(
+    recorder.result(
         Tests.broad_phase,
         bool(
             closest_shape_cast.found
@@ -413,7 +419,7 @@ def Jolt_WorldQueriesAndSnapshots():
         f"faceVertices={supporting_face.GetVertexCount()}, "
         f"triangles={triangles.GetTriangleCount()}"
     )
-    Report.result(
+    recorder.result(
         Tests.geometry_queries,
         bool(
             supporting_face.GetVertexCount() > 0
@@ -468,7 +474,7 @@ def Jolt_WorldQueriesAndSnapshots():
         32,
     )
 
-    Report.result(
+    recorder.result(
         Tests.shape_details,
         bool(
             closest_shape_raycast.found
@@ -497,7 +503,7 @@ def Jolt_WorldQueriesAndSnapshots():
         world_handle,
         statistics,
     )
-    Report.result(
+    recorder.result(
         Tests.diagnostics,
         bool(
             bodies.GetBodyCount() >= 2
@@ -545,7 +551,7 @@ def Jolt_WorldQueriesAndSnapshots():
         world_handle,
         debug_configuration,
     )
-    Report.result(
+    recorder.result(
         Tests.debug_capture,
         bool(
             debug_configured
@@ -623,7 +629,7 @@ def Jolt_WorldQueriesAndSnapshots():
         world_handle,
         snapshot,
     )
-    Report.result(
+    recorder.result(
         Tests.snapshot_restored,
         bool(
             snapshot.IsValid()
@@ -672,7 +678,7 @@ def Jolt_WorldQueriesAndSnapshots():
         world_handle,
         imported_snapshots[0],
     )
-    Report.result(
+    recorder.result(
         Tests.snapshot_archive,
         bool(
             snapshot_exported
@@ -730,7 +736,7 @@ def Jolt_WorldQueriesAndSnapshots():
     recaptured_snapshot_restored = jolt.JoltWorldRollbackRequestBus(bus.Broadcast, "RestoreWorldState", world_handle, recapture_snapshot)
     recaptured_state = jolt.JoltRigidBodyRequestBus(bus.Event, "GetState", query_body_id)
     recapture_snapshot_destroyed = jolt.JoltWorldRollbackRequestBus(bus.Broadcast, "DestroyStateSnapshot", world_handle, recapture_snapshot)
-    Report.result(
+    recorder.result(
         Tests.snapshot_recaptured,
         bool(
             recapture_snapshot.IsValid()
@@ -783,7 +789,7 @@ def Jolt_WorldQueriesAndSnapshots():
             world_handle,
             multipart_snapshot,
         )
-    Report.result(
+    recorder.result(
         Tests.multipart_snapshot,
         bool(
             multipart_bodies
@@ -862,7 +868,7 @@ def Jolt_WorldQueriesAndSnapshots():
         world_handle,
         rollback_configuration,
     )
-    Report.result(
+    recorder.result(
         Tests.rollback_replay,
         bool(
             manual_stepping_enabled
@@ -883,7 +889,7 @@ def Jolt_WorldQueriesAndSnapshots():
     exit_deadline = time.monotonic() + 3.0
     while general.is_in_game_mode() and time.monotonic() < exit_deadline:
         general.idle_wait(0.01)
-    Report.critical_result(Tests.exit_game_mode, not general.is_in_game_mode())
+    recorder.result(Tests.exit_game_mode, not general.is_in_game_mode())
 
 
 if __name__ == "__main__":

@@ -7,6 +7,11 @@ SPDX-License-Identifier: Apache-2.0 OR MIT
 Exercises the complete Jolt editor component surface and core runtime query and mutation buses.
 """
 
+try:
+    from .Jolt_ScenarioRecorder import record_scenario
+except ImportError:
+    from Jolt_ScenarioRecorder import record_scenario
+
 
 class Tests:
     level_opened = ("Opened the Jolt feature level", "Failed to open the Jolt feature level")
@@ -20,7 +25,8 @@ class Tests:
     exit_game_mode = ("Exited game mode", "Failed to exit game mode")
 
 
-def Jolt_FeatureComponents():
+@record_scenario("Jolt_FeatureComponents")
+def Jolt_FeatureComponents(recorder):
     import time
 
     import azlmbr.bus as bus
@@ -36,7 +42,7 @@ def Jolt_FeatureComponents():
 
     helper.init_idle()
     helper.open_level("", "Base")
-    Report.result(Tests.level_opened, general.get_current_level_name() == "Base")
+    recorder.result(Tests.level_opened, general.get_current_level_name() == "Base")
 
     with Tracer() as serialization_tracer:
         rigid_body = EditorEntity.create_editor_entity("Jolt Feature Rigid Body")
@@ -89,7 +95,7 @@ def Jolt_FeatureComponents():
             entity.add_component(component_name)
             vehicle_entities.append((component_name, entity))
 
-        Report.result(
+        recorder.result(
             Tests.components_created,
             rigid_body.has_component("Jolt Rigid Body")
             and static_body.has_component("Jolt Static Rigid Body")
@@ -109,7 +115,7 @@ def Jolt_FeatureComponents():
         for entry in serialization_tracer.warnings
         if "Jolt" in entry.message or "AZStd::variant" in entry.message
     ]
-    Report.result(
+    recorder.result(
         Tests.components_serialized,
         not reflection_errors and not serialization_warnings,
     )
@@ -119,7 +125,7 @@ def Jolt_FeatureComponents():
     enter_deadline = time.monotonic() + 3.0
     while not general.is_in_game_mode() and time.monotonic() < enter_deadline:
         general.idle_wait(0.01)
-    Report.critical_result(Tests.enter_game_mode, general.is_in_game_mode())
+    recorder.result(Tests.enter_game_mode, general.is_in_game_mode())
     general.idle_wait(0.05)
     rigid_body_id = general.find_game_entity("Jolt Feature Rigid Body")
     static_body_id = general.find_game_entity("Jolt Feature Static Body")
@@ -145,7 +151,7 @@ def Jolt_FeatureComponents():
         "IsSimulationEnabled",
         virtual_character_id,
     )
-    Report.result(
+    recorder.result(
         Tests.core_components_enabled,
         rigid_enabled and static_enabled and character_enabled and virtual_character_enabled,
     )
@@ -251,7 +257,7 @@ def Jolt_FeatureComponents():
     while not virtual_moved["value"] and time.monotonic() < virtual_move_deadline:
         general.idle_wait(0.01)
     virtual_move_received = virtual_moved["value"]
-    Report.result(
+    recorder.result(
         Tests.characters_operational,
         character_state.shapeHandle.IsValid()
         and character_updated
@@ -438,7 +444,7 @@ def Jolt_FeatureComponents():
         f"tracked=({tracked_enabled}, {tracked_state.bodyHandle.IsValid()}, {tracked_state.wheelCount}, "
         f"{tracked_input_set}, {track_velocity_set}, {track_updated})"
     )
-    Report.result(
+    recorder.result(
         Tests.vehicles_operational,
         wheeled_enabled
         and wheeled_state.bodyHandle.IsValid()
@@ -479,7 +485,7 @@ def Jolt_FeatureComponents():
         math.Vector3(0.0, 0.0, 1.0),
     )
     state = jolt.JoltRigidBodyRequestBus(bus.Event, "GetState", rigid_body_id)
-    Report.result(
+    recorder.result(
         Tests.body_mutated,
         body_mutated and state.shapeHandle.IsValid() and state.isActive,
     )
@@ -489,7 +495,7 @@ def Jolt_FeatureComponents():
     exit_deadline = time.monotonic() + 3.0
     while general.is_in_game_mode() and time.monotonic() < exit_deadline:
         general.idle_wait(0.01)
-    Report.critical_result(Tests.exit_game_mode, not general.is_in_game_mode())
+    recorder.result(Tests.exit_game_mode, not general.is_in_game_mode())
 
 
 if __name__ == "__main__":
