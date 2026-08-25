@@ -113,6 +113,12 @@ namespace Jolt
             ExtensionHandle extensionHandle,
             ExtensionInformation& information) const;
 
+        [[nodiscard]]
+        bool FindExtensionInformation(
+            ExtensionKind extensionKind,
+            const AZ::TypeId& extensionId,
+            ExtensionInformation& information) const;
+
     private:
         friend class Runtime;
 

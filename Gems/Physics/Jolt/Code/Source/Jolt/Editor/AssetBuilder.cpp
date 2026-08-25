@@ -10,6 +10,7 @@
 #include <Jolt/AssetBuilderSystem.h>
 #include <Jolt/AssetProduct.h>
 #include <Jolt/Capabilities.h>
+#include <Jolt/Editor/SourceDependencyAnalyzer.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/SceneAsset.h>
 #include <Jolt/SkeletonAsset.h>
@@ -202,9 +203,9 @@ namespace Jolt::Editor
             "*.jolt.json",
             AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
         descriptor.m_busId = azrtti_typeid<AssetBuilder>();
-        descriptor.m_version = 8;
+        descriptor.m_version = 9;
         descriptor.m_analysisFingerprint = AZStd::string::format(
-            "JoltAssets:Portable2:%016llx",
+            "JoltAssets:Portable3:%016llx",
             static_cast<unsigned long long>(GetNativeBuildFingerprint()));
         descriptor.m_createJobFunction =
             [this](const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response)
@@ -260,14 +261,68 @@ namespace Jolt::Editor
         }
 
         const SourceDocumentType& sourceType = *sourceTypeResult.GetValue();
+        SceneSourceAnalysis sceneAnalysis;
+        if (sourceType.m_kind == SourceDocumentKind::Scene)
+        {
+            SceneSourceData sourceData;
+            const AZ::Outcome<void, AZStd::string> loadResult =
+                AZ::JsonSerializationUtils::LoadObjectFromFile(sourceData, fullPath);
+            if (!loadResult.IsSuccess())
+            {
+                AZ_Error(
+                    "Jolt",
+                    false,
+                    "Failed to load scene source '%s' during analysis: %s",
+                    fullPath.c_str(),
+                    loadResult.GetError().c_str());
+                response.m_result = AssetBuilderSDK::CreateJobsResultCode::Failed;
+                return;
+            }
+
+            AZ::Outcome<SceneSourceAnalysis, AZStd::string> analysisResult =
+                AnalyzeSceneSource(sourceData, request.m_watchFolder);
+            if (!analysisResult.IsSuccess())
+            {
+                AZ_Error(
+                    "Jolt",
+                    false,
+                    "Failed to analyze scene source '%s': %s",
+                    fullPath.c_str(),
+                    analysisResult.GetError().c_str());
+                response.m_result = AssetBuilderSDK::CreateJobsResultCode::Failed;
+                return;
+            }
+            sceneAnalysis = analysisResult.TakeValue();
+        }
+
+        AZStd::vector<AssetBuilderSDK::JobDescriptor> jobOutputs;
+        jobOutputs.reserve(request.m_enabledPlatforms.size());
         for (const AssetBuilderSDK::PlatformInfo& platform : request.m_enabledPlatforms)
         {
             AssetBuilderSDK::JobDescriptor descriptor;
             descriptor.m_jobKey = sourceType.m_jobKey;
             descriptor.m_critical = true;
             descriptor.SetPlatformIdentifier(platform.m_identifier.c_str());
-            response.m_createJobOutputs.push_back(AZStd::move(descriptor));
+            if (sourceType.m_kind == SourceDocumentKind::Scene)
+            {
+                descriptor.m_additionalFingerprintInfo = AZStd::string::format(
+                    "JoltSceneSources:%016llx",
+                    static_cast<unsigned long long>(sceneAnalysis.m_fingerprint));
+            }
+            jobOutputs.push_back(AZStd::move(descriptor));
         }
+
+        AZStd::vector<AssetBuilderSDK::SourceFileDependency> sourceDependencies;
+        sourceDependencies.reserve(sceneAnalysis.m_dependencies.size());
+        for (const AnalyzedSourceDependency& dependency : sceneAnalysis.m_dependencies)
+        {
+            sourceDependencies.emplace_back(
+                dependency.m_absolutePath,
+                AZ::Uuid::CreateNull());
+        }
+
+        response.m_sourceFileDependencyList = AZStd::move(sourceDependencies);
+        response.m_createJobOutputs = AZStd::move(jobOutputs);
         response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
     }
 
@@ -329,6 +384,35 @@ namespace Jolt::Editor
             }
 
             SceneAsset sceneAsset;
+            AZ::Outcome<SceneSourceAnalysis, AZStd::string> analysisResult =
+                AnalyzeSceneSource(sourceData, request.m_watchFolder);
+            if (!analysisResult.IsSuccess())
+            {
+                AZ_Error(
+                    "Jolt",
+                    false,
+                    "Failed to analyze scene source '%s': %s",
+                    request.m_fullPath.c_str(),
+                    analysisResult.GetError().c_str());
+                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                return;
+            }
+            SceneSourceAnalysis analysis = analysisResult.TakeValue();
+            for (const AnalyzedSourceDependency& dependency : analysis.m_dependencies)
+            {
+                if (!dependency.m_exists)
+                {
+                    AZ_Error(
+                        "Jolt",
+                        false,
+                        "Cannot compile scene source '%s' because custom-shape dependency '%s' is unavailable.",
+                        request.m_fullPath.c_str(),
+                        dependency.m_relativePath.c_str());
+                    response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                    return;
+                }
+            }
+
             if (!scenes->BuildSceneAsset(sourceData, sceneAsset.m_data))
             {
                 AZ_Error("Jolt", false, "Failed to compile scene source '%s'.", request.m_fullPath.c_str());
@@ -336,13 +420,24 @@ namespace Jolt::Editor
                 return;
             }
 
-            AZStd::vector<CustomShapeDependency> sourceDependencies;
-            for (const SceneAssetShape& shape : sceneAsset.m_data.m_shapes)
+            AZStd::string dependencyError;
+            if (!ValidateSceneAssetDependencies(analysis, sceneAsset.m_data, dependencyError))
             {
-                sourceDependencies.insert(
-                    sourceDependencies.end(),
-                    shape.m_dependencies.begin(),
-                    shape.m_dependencies.end());
+                AZ_Error(
+                    "Jolt",
+                    false,
+                    "Failed to validate custom-shape dependencies for '%s': %s",
+                    request.m_fullPath.c_str(),
+                    dependencyError.c_str());
+                response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+                return;
+            }
+
+            AZStd::vector<CustomShapeDependency> sourceDependencies;
+            sourceDependencies.reserve(analysis.m_dependencies.size());
+            for (const AnalyzedSourceDependency& dependency : analysis.m_dependencies)
+            {
+                sourceDependencies.push_back({dependency.m_relativePath, dependency.m_contentHash});
             }
 
             if (request.m_platformInfo.m_identifier != GetNativeAssetPlatform())

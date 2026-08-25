@@ -6,8 +6,10 @@
  */
 
 #include <Jolt/Editor/AssetBuilder.h>
+#include <Jolt/Editor/SourceDependencyAnalyzer.h>
 #include <Jolt/AssetProduct.h>
 #include <Jolt/Capabilities.h>
+#include <Jolt/CustomShapeDependencyUtils.h>
 #include <Jolt/NativeRuntime.h>
 #include <Jolt/SceneAsset.h>
 #include <Jolt/SkeletonAsset.h>
@@ -218,7 +220,7 @@ namespace Jolt::Editor
             [[nodiscard]]
             AZ::u64 GetVersion() const override
             {
-                return 1;
+                return m_version;
             }
 
             [[nodiscard]]
@@ -243,11 +245,17 @@ namespace Jolt::Editor
                     {-1.0f, 1.0f, 1.0f},
                     {1.0f, 1.0f, 1.0f},
                 };
-                output.m_dependencies = {{"Objects/Jolt/BuilderCustomShape.source", 0x0123456789abcdef}};
+                output.m_dependencies = {
+                    {"Objects/Jolt/./BuilderCustomShape.source", m_dependencyContentHash},
+                    {"Objects/Jolt/BuilderCustomShape.source", m_dependencyContentHash},
+                };
                 output.m_geometryKind = CustomShapeGeometryKind::Convex;
                 output.m_runtimeData.assign(input.begin(), input.end());
                 return true;
             }
+
+            AZ::u64 m_dependencyContentHash = 0x0123456789abcdef;
+            AZ::u64 m_version = 1;
 
         private:
             inline static constexpr AZStd::array<AZ::u8, 2> m_expectedInput = {4, 2};
@@ -270,8 +278,8 @@ namespace Jolt::Editor
             static_cast<unsigned long long>(GetNativeBuildFingerprint()));
         EXPECT_EQ(
             registrationCapture.m_descriptors[0].m_analysisFingerprint,
-            AZStd::string::format("JoltAssets:Portable2:%s", fingerprint.c_str()));
-        EXPECT_EQ(registrationCapture.m_descriptors[0].m_version, 8);
+            AZStd::string::format("JoltAssets:Portable3:%s", fingerprint.c_str()));
+        EXPECT_EQ(registrationCapture.m_descriptors[0].m_version, 9);
         EXPECT_EQ(
             registrationCapture.m_descriptors[0].m_flags,
             AssetBuilderSDK::AssetBuilderDesc::BF_None);
@@ -281,7 +289,16 @@ namespace Jolt::Editor
 
     TEST(EditorAssetBuilderTests, CreatesOneCriticalJobPerPlatformAndHonorsShutdown)
     {
+        NameDictionaryScope nameDictionaryScope;
         FileIoScope fileIoScope;
+        SerializeContextScope serializeContextScope;
+        JsonRegistrationScope jsonRegistrationScope;
+        ::testing::NiceMock<UnitTest::MockComponentApplication> application;
+        ON_CALL(application, GetSerializeContext())
+            .WillByDefault(::testing::Return(serializeContextScope.Get()));
+        ON_CALL(application, GetJsonRegistrationContext())
+            .WillByDefault(::testing::Return(jsonRegistrationScope.Get()));
+
         AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
         const AZStd::optional<AZ::IO::FixedMaxPath> scenePath = AZ::Test::CreateTestFile(
             temporaryDirectory,
@@ -323,6 +340,265 @@ namespace Jolt::Editor
         builder.CreateJobs(request, shutdownResponse);
         EXPECT_EQ(shutdownResponse.m_result, AssetBuilderSDK::CreateJobsResultCode::ShuttingDown);
         EXPECT_TRUE(shutdownResponse.m_createJobOutputs.empty());
+    }
+
+    TEST(EditorAssetBuilderTests, TracksCustomShapeDependencyEditsDeletionAndRecovery)
+    {
+        NameDictionaryScope nameDictionaryScope;
+        FileIoScope fileIoScope;
+        SerializeContextScope serializeContextScope;
+        JsonRegistrationScope jsonRegistrationScope;
+        ::testing::NiceMock<UnitTest::MockComponentApplication> application;
+        ON_CALL(application, GetSerializeContext())
+            .WillByDefault(::testing::Return(serializeContextScope.Get()));
+        ON_CALL(application, GetJsonRegistrationContext())
+            .WillByDefault(::testing::Return(jsonRegistrationScope.Get()));
+
+        SystemComponentScope systemComponentScope;
+        BuilderCustomShapeProvider customShapeProvider;
+        Extensions* extensions = Extensions::Get();
+        ASSERT_TRUE(extensions);
+        ExtensionRegistrationResult providerRegistration = extensions->RegisterExtension(&customShapeProvider, {});
+        ASSERT_TRUE(providerRegistration);
+        ExtensionInformation providerInformation;
+        ASSERT_TRUE(extensions->FindExtensionInformation(
+            ExtensionKind::CustomShapeProvider,
+            customShapeProvider.GetId(),
+            providerInformation));
+        EXPECT_EQ(providerInformation.m_version, customShapeProvider.GetVersion());
+
+        SceneSourceData sourceData;
+        sourceData.m_shapes.push_back(SceneSourceShapeData{
+            .m_geometry = CustomShapeConfiguration{
+                .m_data = {4, 2},
+                .m_providerId = customShapeProvider.GetId(),
+            },
+            .m_sourceDependencies = {
+                "Objects/Jolt/./BuilderCustomShape.source",
+                "Objects/Jolt/BuilderCustomShape.source",
+            },
+        });
+
+        AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
+        constexpr AZStd::string_view SourceRelativePath = "source/dependency_scene.jolt.json";
+        constexpr AZStd::string_view DependencyRelativePath = "Objects/Jolt/BuilderCustomShape.source";
+        const AZStd::optional<AZ::IO::FixedMaxPath> sourcePath = AZ::Test::CreateTestFile(
+            temporaryDirectory,
+            SourceRelativePath,
+            "{}");
+        ASSERT_TRUE(sourcePath);
+
+        AZStd::string serializationIssues;
+        AZ::JsonSerializerSettings serializationSettings;
+        serializationSettings.m_serializeContext = serializeContextScope.Get();
+        serializationSettings.m_registrationContext = jsonRegistrationScope.Get();
+        serializationSettings.m_reporting =
+            [&serializationIssues](
+                const AZStd::string_view message,
+                const AZ::JsonSerializationResult::ResultCode result,
+                const AZStd::string_view path)
+            {
+                if (result.GetOutcome() >= AZ::JsonSerializationResult::Outcomes::Unsupported)
+                {
+                    serializationIssues += AZStd::string::format(
+                        "%.*s: %.*s\n",
+                        AZ_STRING_ARG(path),
+                        AZ_STRING_ARG(message));
+                }
+                return result;
+            };
+        const AZ::Outcome<void, AZStd::string> saveResult = AZ::JsonSerializationUtils::SaveObjectToFile(
+            &sourceData,
+            sourcePath->String(),
+            static_cast<const SceneSourceData*>(nullptr),
+            &serializationSettings);
+        ASSERT_TRUE(saveResult.IsSuccess()) << serializationIssues.c_str() << saveResult.GetError().c_str();
+
+        SceneSourceData loadedSourceData;
+        const AZ::Outcome<void, AZStd::string> sourceLoadResult =
+            AZ::JsonSerializationUtils::LoadObjectFromFile(loadedSourceData, sourcePath->String());
+        ASSERT_TRUE(sourceLoadResult.IsSuccess()) << sourceLoadResult.GetError().c_str();
+        ASSERT_EQ(loadedSourceData.m_shapes.size(), 1);
+        const auto* loadedSourceShape = AZStd::get_if<SceneSourceShapeData>(&loadedSourceData.m_shapes[0]);
+        ASSERT_TRUE(loadedSourceShape);
+        EXPECT_EQ(
+            loadedSourceShape->m_sourceDependencies,
+            AZStd::vector<AZStd::string>({
+                "Objects/Jolt/./BuilderCustomShape.source",
+                "Objects/Jolt/BuilderCustomShape.source",
+            }));
+
+        AssetBuilder builder;
+        AssetBuilderSDK::CreateJobsRequest createRequest;
+        createRequest.m_watchFolder = temporaryDirectory.GetDirectory();
+        createRequest.m_sourceFile = SourceRelativePath;
+        createRequest.m_enabledPlatforms.emplace_back("pc", AZStd::unordered_set<AZStd::string>{});
+
+        const auto analyze = [&builder, &createRequest]()
+        {
+            AssetBuilderSDK::CreateJobsResponse response;
+            builder.CreateJobs(createRequest, response);
+            return response;
+        };
+        const auto process =
+            [&builder, &createRequest, &sourcePath, &temporaryDirectory](const AssetBuilderSDK::CreateJobsResponse& createResponse)
+            {
+                AssetBuilderSDK::ProcessJobRequest request;
+                request.m_fullPath = sourcePath->String();
+                request.m_sourceFile = createRequest.m_sourceFile;
+                request.m_watchFolder = createRequest.m_watchFolder;
+                request.m_tempDirPath = temporaryDirectory.GetDirectory();
+                request.m_platformInfo.m_identifier = "pc";
+                request.m_jobDescription = createResponse.m_createJobOutputs.front();
+                request.m_sourceFileDependencyList = createResponse.m_sourceFileDependencyList;
+
+                AssetBuilderSDK::ProcessJobResponse response;
+                builder.ProcessJob(request, response);
+                return response;
+            };
+
+        AZStd::optional<AZ::IO::FixedMaxPath> dependencyPath = AZ::Test::CreateTestFile(
+            temporaryDirectory,
+            DependencyRelativePath,
+            "dependency revision one");
+        ASSERT_TRUE(dependencyPath);
+        customShapeProvider.m_dependencyContentHash = AssetBuilderSDK::GetFileHash(dependencyPath->c_str());
+        ASSERT_NE(customShapeProvider.m_dependencyContentHash, 0);
+
+        const AssetBuilderSDK::CreateJobsResponse firstAnalysis = analyze();
+        ASSERT_EQ(firstAnalysis.m_result, AssetBuilderSDK::CreateJobsResultCode::Success);
+        ASSERT_EQ(firstAnalysis.m_createJobOutputs.size(), 1);
+        ASSERT_EQ(firstAnalysis.m_sourceFileDependencyList.size(), 1);
+        EXPECT_EQ(
+            AZ::IO::Path(firstAnalysis.m_sourceFileDependencyList[0].m_sourceFileDependencyPath).LexicallyNormal(),
+            AZ::IO::Path(*dependencyPath).LexicallyNormal());
+        const AZStd::string firstFingerprint = firstAnalysis.m_createJobOutputs[0].m_additionalFingerprintInfo;
+        EXPECT_FALSE(firstFingerprint.empty());
+        const AssetBuilderSDK::ProcessJobResponse firstProcess = process(firstAnalysis);
+        EXPECT_EQ(firstProcess.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
+        EXPECT_EQ(firstProcess.m_outputProducts.size(), 1);
+
+        dependencyPath = AZ::Test::CreateTestFile(
+            temporaryDirectory,
+            DependencyRelativePath,
+            "dependency revision two is different");
+        ASSERT_TRUE(dependencyPath);
+        const AssetBuilderSDK::CreateJobsResponse editedAnalysis = analyze();
+        ASSERT_EQ(editedAnalysis.m_result, AssetBuilderSDK::CreateJobsResultCode::Success);
+        ASSERT_EQ(editedAnalysis.m_createJobOutputs.size(), 1);
+        EXPECT_NE(editedAnalysis.m_createJobOutputs[0].m_additionalFingerprintInfo, firstFingerprint);
+
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        const AssetBuilderSDK::ProcessJobResponse staleProviderProcess = process(editedAnalysis);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(staleProviderProcess.m_resultCode, AssetBuilderSDK::ProcessJobResult_Failed);
+        EXPECT_TRUE(staleProviderProcess.m_outputProducts.empty());
+
+        customShapeProvider.m_dependencyContentHash = AssetBuilderSDK::GetFileHash(dependencyPath->c_str());
+        ASSERT_NE(customShapeProvider.m_dependencyContentHash, 0);
+        const AssetBuilderSDK::ProcessJobResponse editedProcess = process(editedAnalysis);
+        EXPECT_EQ(editedProcess.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
+        EXPECT_EQ(editedProcess.m_outputProducts.size(), 1);
+
+        ASSERT_TRUE(AZ::IO::SystemFile::Delete(dependencyPath->c_str()));
+        const AssetBuilderSDK::CreateJobsResponse missingAnalysis = analyze();
+        ASSERT_EQ(missingAnalysis.m_result, AssetBuilderSDK::CreateJobsResultCode::Success);
+        ASSERT_EQ(missingAnalysis.m_createJobOutputs.size(), 1);
+        ASSERT_EQ(missingAnalysis.m_sourceFileDependencyList.size(), 1);
+        EXPECT_NE(
+            missingAnalysis.m_createJobOutputs[0].m_additionalFingerprintInfo,
+            editedAnalysis.m_createJobOutputs[0].m_additionalFingerprintInfo);
+        AZ_TEST_START_TRACE_SUPPRESSION;
+        const AssetBuilderSDK::ProcessJobResponse missingProcess = process(missingAnalysis);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+        EXPECT_EQ(missingProcess.m_resultCode, AssetBuilderSDK::ProcessJobResult_Failed);
+        EXPECT_TRUE(missingProcess.m_outputProducts.empty());
+
+        dependencyPath = AZ::Test::CreateTestFile(
+            temporaryDirectory,
+            DependencyRelativePath,
+            "dependency revision three restores the source");
+        ASSERT_TRUE(dependencyPath);
+        customShapeProvider.m_dependencyContentHash = AssetBuilderSDK::GetFileHash(dependencyPath->c_str());
+        ASSERT_NE(customShapeProvider.m_dependencyContentHash, 0);
+        const AssetBuilderSDK::CreateJobsResponse recoveredAnalysis = analyze();
+        ASSERT_EQ(recoveredAnalysis.m_result, AssetBuilderSDK::CreateJobsResultCode::Success);
+        ASSERT_EQ(recoveredAnalysis.m_createJobOutputs.size(), 1);
+        EXPECT_NE(
+            recoveredAnalysis.m_createJobOutputs[0].m_additionalFingerprintInfo,
+            missingAnalysis.m_createJobOutputs[0].m_additionalFingerprintInfo);
+        const AssetBuilderSDK::ProcessJobResponse recoveredProcess = process(recoveredAnalysis);
+        EXPECT_EQ(recoveredProcess.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
+        EXPECT_EQ(recoveredProcess.m_outputProducts.size(), 1);
+
+        EXPECT_EQ(extensions->UnregisterExtension(providerRegistration.m_handle), ExtensionRegistrationStatus::Success);
+        customShapeProvider.m_version = 2;
+        providerRegistration = extensions->RegisterExtension(&customShapeProvider, {});
+        ASSERT_TRUE(providerRegistration);
+        const AssetBuilderSDK::CreateJobsResponse versionedAnalysis = analyze();
+        ASSERT_EQ(versionedAnalysis.m_result, AssetBuilderSDK::CreateJobsResultCode::Success);
+        ASSERT_EQ(versionedAnalysis.m_createJobOutputs.size(), 1);
+        EXPECT_NE(
+            versionedAnalysis.m_createJobOutputs[0].m_additionalFingerprintInfo,
+            recoveredAnalysis.m_createJobOutputs[0].m_additionalFingerprintInfo);
+        const AssetBuilderSDK::ProcessJobResponse versionedProcess = process(versionedAnalysis);
+        EXPECT_EQ(versionedProcess.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
+        EXPECT_EQ(versionedProcess.m_outputProducts.size(), 1);
+        EXPECT_EQ(extensions->UnregisterExtension(providerRegistration.m_handle), ExtensionRegistrationStatus::Success);
+    }
+
+    TEST(EditorAssetBuilderTests, RejectsInvalidCustomShapeSourceDependencyContracts)
+    {
+        NameDictionaryScope nameDictionaryScope;
+        FileIoScope fileIoScope;
+        SystemComponentScope systemComponentScope;
+        AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
+
+        AZStd::vector<CustomShapeDependency> conflictingDependencies = {
+            {"Objects/Jolt/./Conflict.source", 1},
+            {"Objects/Jolt/Conflict.source", 2},
+        };
+        AZStd::string dependencyError;
+        EXPECT_FALSE(CanonicalizeCustomShapeDependencies(conflictingDependencies, dependencyError));
+        EXPECT_FALSE(dependencyError.empty());
+
+        SceneSourceData sourceData;
+        sourceData.m_shapes.push_back(SceneSourceShapeData{
+            .m_geometry = BoxShapeConfiguration{},
+            .m_sourceDependencies = {"Objects/Jolt/Invalid.source"},
+        });
+        EXPECT_FALSE(AnalyzeSceneSource(sourceData, temporaryDirectory.GetDirectory()).IsSuccess());
+
+        sourceData.m_shapes[0] = SceneSourceShapeData{
+            .m_geometry = CustomConvexShapeConfiguration{
+                .m_providerId = AZ::TypeId::CreateRandom(),
+            },
+            .m_sourceDependencies = {"Objects/Jolt/Invalid.source"},
+        };
+        EXPECT_FALSE(AnalyzeSceneSource(sourceData, temporaryDirectory.GetDirectory()).IsSuccess());
+
+        BuilderCustomShapeProvider customShapeProvider;
+        Extensions* extensions = Extensions::Get();
+        ASSERT_TRUE(extensions);
+        const ExtensionRegistrationResult providerRegistration = extensions->RegisterExtension(&customShapeProvider, {});
+        ASSERT_TRUE(providerRegistration);
+
+        sourceData.m_shapes[0] = SceneSourceShapeData{
+            .m_geometry = CustomShapeConfiguration{
+                .m_providerId = customShapeProvider.GetId(),
+            },
+            .m_sourceDependencies = {"../Invalid.source"},
+        };
+        EXPECT_FALSE(AnalyzeSceneSource(sourceData, temporaryDirectory.GetDirectory()).IsSuccess());
+
+        sourceData.m_shapes[0] = SceneSourceShapeData{
+            .m_geometry = CustomShapeConfiguration{
+                .m_providerId = AZ::TypeId::CreateRandom(),
+            },
+        };
+        EXPECT_FALSE(AnalyzeSceneSource(sourceData, temporaryDirectory.GetDirectory()).IsSuccess());
+
+        EXPECT_EQ(extensions->UnregisterExtension(providerRegistration.m_handle), ExtensionRegistrationStatus::Success);
     }
 
     TEST(EditorAssetBuilderTests, RejectsUnsupportedDocumentClassesWithoutPublishingProducts)
@@ -487,6 +763,7 @@ namespace Jolt::Editor
                 .m_data = {4, 2},
                 .m_providerId = customShapeProvider.GetId(),
             },
+            .m_sourceDependencies = {"Objects/Jolt/BuilderCustomShape.source"},
         });
         sourceData.m_bodies.emplace_back(SceneAssetRigidBody{
             .m_name = AZ::Name("Floor"),
@@ -550,6 +827,13 @@ namespace Jolt::Editor
         });
 
         AZ::Test::ScopedAutoTempDirectory temporaryDirectory;
+        const AZStd::optional<AZ::IO::FixedMaxPath> dependencyPath = AZ::Test::CreateTestFile(
+            temporaryDirectory,
+            "Objects/Jolt/BuilderCustomShape.source",
+            "builder custom shape dependency");
+        ASSERT_TRUE(dependencyPath);
+        customShapeProvider.m_dependencyContentHash = AssetBuilderSDK::GetFileHash(dependencyPath->c_str());
+        ASSERT_NE(customShapeProvider.m_dependencyContentHash, 0);
         const AZStd::optional<AZ::IO::FixedMaxPath> sourcePath = AZ::Test::CreateTestFile(
             temporaryDirectory,
             "source/test_scene.jolt.json",
@@ -584,7 +868,8 @@ namespace Jolt::Editor
         AssetBuilder builder;
         AssetBuilderSDK::ProcessJobRequest request;
         request.m_fullPath = sourcePath->String();
-        request.m_sourceFile = "test_scene.jolt.json";
+        request.m_sourceFile = "source/test_scene.jolt.json";
+        request.m_watchFolder = temporaryDirectory.GetDirectory();
         request.m_tempDirPath = temporaryDirectory.GetDirectory();
         request.m_platformInfo.m_identifier = "pc";
         AssetBuilderSDK::ProcessJobResponse response;
@@ -668,6 +953,7 @@ namespace Jolt::Editor
         ASSERT_TRUE(customShapeConfiguration);
         EXPECT_EQ(customShapeConfiguration->m_data, AZStd::vector<AZ::u8>({4, 2}));
         EXPECT_EQ(customShapeConfiguration->m_providerId, customShapeProvider.GetId());
+        EXPECT_TRUE(customShapeSource->m_sourceDependencies.empty());
         EXPECT_EQ(loadedAsset.m_data.m_shapes[0].m_providerId, customShapeProvider.GetId());
         EXPECT_EQ(loadedAsset.m_data.m_shapes[0].m_providerVersion, customShapeProvider.GetVersion());
         EXPECT_FALSE(loadedAsset.m_data.m_shapes[0].m_archive.m_binaryState.empty());

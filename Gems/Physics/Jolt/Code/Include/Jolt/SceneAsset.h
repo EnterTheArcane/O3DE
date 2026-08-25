@@ -42,6 +42,8 @@ namespace Jolt
 
         ShapeGeometry m_geometry;
         AZStd::vector<AZ::u32> m_materialIndices;
+        //! Custom-shape source files tracked by the asset builder and removed from compiled scene data.
+        AZStd::vector<AZStd::string> m_sourceDependencies;
         AZ::u64 m_userData = 0;
         float m_density = 1'000.0f;
     };

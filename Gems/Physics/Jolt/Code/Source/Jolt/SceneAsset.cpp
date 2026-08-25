@@ -359,6 +359,7 @@ namespace Jolt
                 ->Class<SceneSourceShapeData>()
                 ->Field("Geometry", &SceneSourceShapeData::m_geometry)
                 ->Field("MaterialIndices", &SceneSourceShapeData::m_materialIndices)
+                ->Field("SourceDependencies", &SceneSourceShapeData::m_sourceDependencies)
                 ->Field("UserData", &SceneSourceShapeData::m_userData)
                 ->Field("Density", &SceneSourceShapeData::m_density);
 
@@ -594,6 +595,10 @@ namespace Jolt
             shapeIndices.emplace(shapeHandle, shapeIndex);
             SceneAssetShape compiledShape;
             compiledShape.m_source = sourceData.m_shapes[shapeIndex];
+            if (auto* sourceShape = AZStd::get_if<SceneSourceShapeData>(&compiledShape.m_source))
+            {
+                sourceShape->m_sourceDependencies = AZStd::vector<AZStd::string>();
+            }
             AZStd::vector<MaterialHandle> shapeMaterials;
             AZStd::vector<CookedShapeHandle> childShapes;
             if (!ExportShape(shapeHandle, compiledShape.m_archive, shapeMaterials, childShapes))

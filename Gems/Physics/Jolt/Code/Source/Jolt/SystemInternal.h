@@ -160,6 +160,12 @@ namespace Jolt
             ExtensionInformation& information) const;
 
         [[nodiscard]]
+        bool FindExtensionInformation(
+            ExtensionKind extensionKind,
+            const AZ::TypeId& extensionId,
+            ExtensionInformation& information) const;
+
+        [[nodiscard]]
         bool RetainExtension(
             ExtensionHandle extensionHandle,
             ExtensionKind kind);
@@ -3850,6 +3856,7 @@ namespace Jolt
         using RuntimeImplementation::RegisterExtension;
         using RuntimeImplementation::UnregisterExtension;
         using RuntimeImplementation::GetExtensionInformation;
+        using RuntimeImplementation::FindExtensionInformation;
 
         using RuntimeImplementation::CreateMaterial;
         using RuntimeImplementation::DestroyMaterial;

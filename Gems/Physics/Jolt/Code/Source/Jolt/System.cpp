@@ -10,6 +10,7 @@
 #include <Jolt/AssetBuilderSystem.h>
 #include <Jolt/ComponentDependencyManager.h>
 #include <Jolt/CustomConvexShape.h>
+#include <Jolt/CustomShapeDependencyUtils.h>
 #include <Jolt/CustomShapeInternal.h>
 #include <Jolt/DebugRenderer.h>
 #include <Jolt/FloatEnvironment.h>
@@ -1276,6 +1277,38 @@ namespace Jolt
         return true;
     }
 
+    bool RuntimeImplementation::FindExtensionInformation(
+        const ExtensionKind extensionKind,
+        const AZ::TypeId& extensionId,
+        ExtensionInformation& information) const
+    {
+        information = {};
+        if (extensionKind == ExtensionKind::None || extensionId.IsNull())
+        {
+            return false;
+        }
+
+        AZStd::lock_guard lock(m_extensionMutex);
+        for (const ExtensionSlot& slot : m_extensionSlots)
+        {
+            if (slot.m_extension
+                && slot.m_kind == extensionKind
+                && slot.m_id == extensionId)
+            {
+                information = {
+                    .m_id = slot.m_id,
+                    .m_version = slot.m_version,
+                    .m_dependentCount = slot.m_dependentCount,
+                    .m_kind = slot.m_kind,
+                    .m_hasHostLease = static_cast<bool>(slot.m_hostLease),
+                };
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void* RuntimeImplementation::AcquireExtension(
         const ExtensionHandle extensionHandle,
         const ExtensionKind kind)
@@ -1656,6 +1689,7 @@ namespace Jolt
             else
             {
                 CustomShapeData data;
+                AZStd::string dependencyError;
                 if (!provider->Cook(customConfiguration->m_data, data))
                 {
                     nativeResult.m_error = "The custom-shape provider rejected its input data.";
@@ -1675,15 +1709,9 @@ namespace Jolt
                     ReleaseCustomShapeProvider(customProviderExtension);
                     customProviderExtension = ExtensionHandle::Invalid;
                 }
-                else if (AZStd::any_of(
-                    data.m_dependencies.begin(),
-                    data.m_dependencies.end(),
-                    [](const CustomShapeDependency& dependency)
-                    {
-                        return dependency.m_path.empty() || dependency.m_contentHash == 0;
-                    }))
+                else if (!CanonicalizeCustomShapeDependencies(data.m_dependencies, dependencyError))
                 {
-                    nativeResult.m_error = "Custom-shape dependencies require a path and content hash.";
+                    nativeResult.m_error = AZStd::move(dependencyError);
                     ReleaseCustomShapeProvider(customProviderExtension);
                     customProviderExtension = ExtensionHandle::Invalid;
                 }

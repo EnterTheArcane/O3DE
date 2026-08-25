@@ -192,6 +192,14 @@ namespace Jolt
         return GetRuntimeImplementation(*this).GetExtensionInformation(extensionHandle, information);
     }
 
+    bool Extensions::FindExtensionInformation(
+        const ExtensionKind extensionKind,
+        const AZ::TypeId& extensionId,
+        ExtensionInformation& information) const
+    {
+        return GetRuntimeImplementation(*this).FindExtensionInformation(extensionKind, extensionId, information);
+    }
+
     Materials* Materials::Get()
     {
         return GetCapability<Materials>();

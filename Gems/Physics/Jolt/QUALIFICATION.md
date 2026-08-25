@@ -39,7 +39,7 @@ the row's complete contract.
 | `J3-AUD-016` | Ragdoll definitions construct every advertised constraint type and reject unsupported drive mappings before mutation. | 5 | **Implemented** — all 13 native constraint alternatives construct through direct Runtime and authored component paths. Stable local UUIDs replace world handles for linked gear and rack-and-pinion constraints; custom providers and paths remain retained; invalid identities, links, providers, paths, poses, and drive combinations fail before mutation. JSON, binary/editor configuration, snapshot restore, dependency lifetime, simulation membership, and exact worker-digest tests pass in the 318-test clang-cl Release non-unity suite. Final MSVC and application qualification remain. |
 | `J3-AUD-017` | Physical characters expose state-preserving add/remove simulation operations. | 5 | **Implemented** — character-specific add, remove, and membership queries preserve the character handle, backing body handle, transform, linear/angular velocity, move-event subscription, and detached snapshot behavior. Component disable/re-enable preserves resources without destruction notifications, the focused scenario checks the membership transition, and exact full-state digests match at effective 1/4/8 workers. The 322-test clang-cl Release non-unity suite and fresh source consumer pass; installed-engine, MSVC, and application qualification remain. |
 | `J3-AUD-018` | One Path resource owns geometry and transform; active updates commit transactionally at a safe boundary. | 5 | **Implemented** — each Path retains canonical local geometry and one authoritative `AZ::Transform`. Queued updates coalesce before a safe-boundary transaction across every world; translation/rotation updates dependent frames, uniform-scale changes rebuild native geometry, and failed preparation leaves the previous state active. Direct, scene, ragdoll, custom-provider, component, snapshot, modular-consumer, and exact 1/4/8-worker tests pass. Final MSVC and application qualification remain. |
-| `J3-AUD-019` | Custom-shape source dependencies participate in analysis invalidation and deterministic job/product fingerprints. | 5 | **Open** — real dependency edit/delete/recovery and recook tests required. |
+| `J3-AUD-019` | Custom-shape source dependencies participate in analysis invalidation and deterministic job/product fingerprints. | 5 | **Implemented** — scene sources declare canonical asset-database-relative dependency paths. `CreateJobs` publishes their exact absolute source dependencies and fingerprints current contents plus captured provider identity/version; `ProcessJob` independently reanalyzes and rejects missing files or provider output that disagrees with the declared path/hash set. Runtime cooking canonicalizes ordering and duplicates, while compiled scene data drops authoring-only path storage. `EditorAssetBuilderTests.TracksCustomShapeDependencyEditsDeletionAndRecovery` proves dependency-only fingerprint changes, stale-provider rejection, deletion tracking, successful recovery, provider-version invalidation, and recooking without changing the parent source. Invalid provider/path/hash contracts fail transactionally. Final Asset Processor application and MSVC qualification remain. |
 | `J3-AUD-020` | Every claimed clang-cl ASan configuration is instrumented and deployed correctly or rejected during configure. | 1 | **Closed** — clang-cl 22.1.8 permits only Profile ASan trees because the Windows ASan runtime rejects the debug CRT; a fresh Ninja build proved compile instrumentation, dynamic runtime/thunk linkage, runtime deployment, the full Jolt and AzCore suites, and a symbolized heap-use-after-free sentinel. |
 | `J3-AUD-021` | Operation creation and completion reclamation are bounded and never wait for unrelated work. | 6 | **Open** — complexity, cancellation, concurrent creator, shutdown, and worker-saturation tests/benchmarks required. |
 | `J3-AUD-022` | Event and operation caches have count/byte ceilings and accurately report live, cached, outstanding, retained, and high-water memory. | 6 | **Open** — burst/release/reuse/oversize/teardown statistics and allocator evidence required. |
@@ -243,6 +243,22 @@ PathConstraint archives depend on worker scheduling without changing simulation 
 retain reusable capacity instead of allocating fresh vectors for each steady transform update. The clang-cl 22.1.8 Release non-unity
 suite passes 323 tests, the public-only modular consumer creates and updates a transformed Path successfully, and the quick validator
 passes. Final allocator measurement, MSVC, installed-engine, and application qualification remain.
+
+## Stage 5 custom-shape source-dependency evidence
+
+Scene sources declare asset-database-relative files used by general custom-shape providers. `CreateJobs` resolves, hashes, deduplicates,
+and publishes those files before creating any job descriptors. Its additional fingerprint includes each canonical path, current content,
+existence state, provider identity, and provider version. `ProcessJob` performs an independent analysis and accepts the product only when
+the provider reports the same canonical path/hash set in both portable and native archive metadata. Missing files, stale hashes, invalid
+paths, unavailable providers, and conflicting provider output fail without publishing a product. Compiled scene source records release
+the authoring-only dependency list after analysis.
+
+`EditorAssetBuilderTests.TracksCustomShapeDependencyEditsDeletionAndRecovery` proves dependency-only edits, stale-provider rejection,
+deletion tracking, recovery, provider-version invalidation, serialization, and recooking. The invalid-contract test covers conflicting
+hashes, traversal, unsupported shape families, and unavailable providers. The clang-cl 22.1.8 Profile non-unity consolidated suite
+discovers 326 tests, with zero failures and one intentional disable. The public modular consumer links and executes the new extension lookup,
+and the quick validator passes all ledger, isolated-header, manifest, scenario, reflection, native-boundary, sanitizer-policy, consumer,
+and Python checks. Final Asset Processor application and MSVC qualification remain.
 
 ## Qualification platforms
 

@@ -54,6 +54,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(CustomShapeDependency, CustomShapeDependencyTypeId);
 
+        //! Asset-database-relative source path. Cooking canonicalizes separators, ordering, and duplicate entries.
         AZStd::string m_path;
         AZ::u64 m_contentHash = 0;
     };

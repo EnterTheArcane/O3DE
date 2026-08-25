@@ -8,6 +8,8 @@
 set(FILES
     Source/Jolt/Editor/AssetBuilder.cpp
     Source/Jolt/Editor/AssetBuilder.h
+    Source/Jolt/Editor/SourceDependencyAnalyzer.cpp
+    Source/Jolt/Editor/SourceDependencyAnalyzer.h
     Source/Jolt/Editor/SkeletonComponent.cpp
     Source/Jolt/Editor/SkeletonComponent.h
     Source/Jolt/Editor/CharacterDebug.cpp

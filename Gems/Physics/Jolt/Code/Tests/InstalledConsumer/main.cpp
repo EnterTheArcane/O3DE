@@ -8,6 +8,7 @@
 #include <Jolt/BodyConfiguration.h>
 #include <Jolt/Capabilities/Bodies.h>
 #include <Jolt/Capabilities/Characters.h>
+#include <Jolt/Capabilities/Extensions.h>
 #include <Jolt/Capabilities/Paths.h>
 #include <Jolt/Capabilities/Shapes.h>
 #include <Jolt/Capabilities/WorldSimulation.h>
@@ -78,9 +79,15 @@ namespace
         Jolt::Shapes* shapes = Jolt::Shapes::Get();
         Jolt::Bodies* bodies = Jolt::Bodies::Get();
         Jolt::Characters* characters = Jolt::Characters::Get();
+        Jolt::Extensions* extensions = Jolt::Extensions::Get();
         Jolt::Paths* paths = Jolt::Paths::Get();
         Jolt::WorldSimulation* simulation = Jolt::WorldSimulation::Get();
-        if (!worlds || !shapes || !bodies || !characters || !paths || !simulation)
+        if (!worlds || !shapes || !bodies || !characters || !extensions || !paths || !simulation)
+        {
+            return 3;
+        }
+        Jolt::ExtensionInformation extensionInformation;
+        if (extensions->FindExtensionInformation(Jolt::ExtensionKind::CustomShapeProvider, AZ::TypeId::CreateNull(), extensionInformation))
         {
             return 3;
         }

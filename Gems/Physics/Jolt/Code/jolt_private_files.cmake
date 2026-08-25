@@ -34,6 +34,7 @@ set(FILES
     Source/Jolt/CustomConstraintInternal.h
     Source/Jolt/CustomConvexShape.cpp
     Source/Jolt/CustomConvexShape.h
+    Source/Jolt/CustomShapeDependencyUtils.h
     Source/Jolt/CustomShapeInternal.cpp
     Source/Jolt/CustomShapeInternal.h
     Source/Jolt/DebugRenderer.cpp
