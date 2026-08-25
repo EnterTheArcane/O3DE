@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import importlib.util
 import hashlib
+import importlib.util
 import json
 import sys
 import tempfile
@@ -49,11 +49,13 @@ class QualificationValidationTests(unittest.TestCase):
             base_environment,
             "full",
             Path("scenario-results"),
+            Path("benchmark-results"),
         )
 
         self.assertEqual(review_environment["JOLT_STRESS_MODE"], "review")
         self.assertEqual(full_environment["JOLT_STRESS_MODE"], "full")
         self.assertEqual(full_environment["JOLT_SCENARIO_RESULT_DIRECTORY"], "scenario-results")
+        self.assertEqual(full_environment["JOLT_BENCHMARK_RESULT_DIRECTORY"], "benchmark-results")
         self.assertEqual(review_environment["EXAMPLE"], "preserved")
         self.assertNotIn("JOLT_STRESS_MODE", base_environment)
 
@@ -119,6 +121,34 @@ class QualificationValidationTests(unittest.TestCase):
                 runner.environment["PYTHONPYCACHEPREFIX"],
                 str(output_directory / "python-cache"),
             )
+
+    def test_full_qualification_schedules_native_and_application_benchmarks(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            output_directory = engine_root / "build" / "qualification"
+            output_directory.mkdir(parents=True)
+            build_directory = engine_root / "build" / "primary"
+            runner = jolt_qualification.ValidationRunner(engine_root, output_directory, dry_run=True)
+
+            jolt_qualification.add_performance_qualification(
+                runner,
+                build_directory,
+                16,
+                "full",
+            )
+
+            commands = {result.name: result.command for result in runner.results if result.command}
+            build_command = commands["build-release-performance-targets"]
+            self.assertIn("Jolt.Tests", build_command)
+            self.assertIn("Box3D.Tests", build_command)
+            self.assertIn("PhysX5.Tests", build_command)
+            self.assertIn("Release", build_command)
+            benchmark_command = commands["native-benchmark-qualification"]
+            self.assertIn("run_benchmark_qualification.py", " ".join(benchmark_command))
+            self.assertIn("full", benchmark_command)
+            if jolt_qualification.platform.system() == "Windows":
+                self.assertIn("application-benchmark", commands)
+                self.assertIn("Release", commands["application-benchmark"])
 
     def test_output_directory_must_remain_under_build(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -258,7 +288,12 @@ class QualificationValidationTests(unittest.TestCase):
             write_file(
                 engine_root,
                 "AutomatedTesting/Gem/PythonTests/Physics/Jolt/tests/Jolt_ScenarioRecorder.py",
-                f"SCENARIO_MINIMUM_CHECK_COUNTS = {dict.fromkeys(sorted(jolt_qualification.REQUIRED_SCENARIOS), 1)!r}\n",
+                (
+                    f"SCENARIO_MINIMUM_CHECK_COUNTS = "
+                    f"{dict.fromkeys(sorted(jolt_qualification.REQUIRED_SCENARIOS), 1)!r}\n"
+                    f"BENCHMARK_MINIMUM_CHECK_COUNTS = "
+                    f"{dict.fromkeys(sorted(jolt_qualification.BENCHMARK_SCENARIOS), 1)!r}\n"
+                ),
             )
 
             gallery_entities = {
@@ -346,6 +381,45 @@ class QualificationValidationTests(unittest.TestCase):
             result_path.write_text(json.dumps(document), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "did not pass every required unique check"):
                 jolt_qualification.validate_scenario_results(engine_root, result_directory)
+
+    def test_application_benchmark_requires_metadata_and_thirty_positive_updates(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            result_directory = Path(temporary_directory)
+            benchmark_directory = result_directory / "Jolt_FallingBodies"
+            benchmark_directory.mkdir()
+            (benchmark_directory / "benchmark_metadata.json").write_text(
+                json.dumps({"benchmark": "Jolt_FallingBodies"}),
+                encoding="utf-8",
+            )
+            for frame in range(1, 31):
+                (benchmark_directory / f"physics_update{frame}_time.json").write_text(
+                    json.dumps(
+                        {
+                            "schemaVersion": 1,
+                            "workload": "Jolt_FallingBodies",
+                            "sampleIndex": frame,
+                            "updateTimeNanoseconds": frame,
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+
+            message = jolt_qualification.validate_application_benchmark_results(result_directory)
+            self.assertIn("30 positive physics-update samples", message)
+
+            (benchmark_directory / "physics_update30_time.json").write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "workload": "Jolt_FallingBodies",
+                        "sampleIndex": 30,
+                        "updateTimeNanoseconds": 0,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "invalid physics-update time"):
+                jolt_qualification.validate_application_benchmark_results(result_directory)
 
     def test_world_bus_script_parity_rejects_missing_and_stale_calls(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

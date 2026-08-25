@@ -359,6 +359,16 @@ def validate_scenario_registration(engine_root: Path) -> str:
     )
     if invalid_minimums:
         errors.append(f"scenarios have invalid minimum check counts: {', '.join(invalid_minimums)}")
+    benchmark_minimum_check_counts = read_benchmark_minimum_check_counts(engine_root)
+    if set(benchmark_minimum_check_counts) != BENCHMARK_SCENARIOS:
+        errors.append("the benchmark minimum-check policy and benchmark suite do not match")
+    invalid_benchmark_minimums = sorted(
+        scenario for scenario, minimum in benchmark_minimum_check_counts.items() if minimum <= 0
+    )
+    if invalid_benchmark_minimums:
+        errors.append(
+            f"benchmark scenarios have invalid minimum check counts: {', '.join(invalid_benchmark_minimums)}"
+        )
 
     gallery_path = engine_root / "AutomatedTesting" / "Levels" / "Physics" / "Jolt" / "FeatureGallery"
     stress_path = engine_root / "AutomatedTesting" / "Levels" / "Physics" / "Jolt" / "Stress"
@@ -379,7 +389,10 @@ def validate_scenario_registration(engine_root: Path) -> str:
     return f"Validated {len(registered)} registered scenarios, gallery, and stress manifests."
 
 
-def read_scenario_minimum_check_counts(engine_root: Path) -> dict[str, int]:
+def read_minimum_check_counts(
+    engine_root: Path,
+    variable_name: str,
+) -> dict[str, int]:
     recorder_path = (
         engine_root
         / "AutomatedTesting"
@@ -395,7 +408,7 @@ def read_scenario_minimum_check_counts(engine_root: Path) -> dict[str, int]:
         if not isinstance(statement, ast.Assign):
             continue
         if not any(
-            isinstance(target, ast.Name) and target.id == "SCENARIO_MINIMUM_CHECK_COUNTS"
+            isinstance(target, ast.Name) and target.id == variable_name
             for target in statement.targets
         ):
             continue
@@ -407,14 +420,24 @@ def read_scenario_minimum_check_counts(engine_root: Path) -> dict[str, int]:
             break
         return values
 
-    raise ValueError(f"{recorder_path} does not define a literal SCENARIO_MINIMUM_CHECK_COUNTS mapping")
+    raise ValueError(f"{recorder_path} does not define a literal {variable_name} mapping")
+
+
+def read_scenario_minimum_check_counts(engine_root: Path) -> dict[str, int]:
+    return read_minimum_check_counts(engine_root, "SCENARIO_MINIMUM_CHECK_COUNTS")
+
+
+def read_benchmark_minimum_check_counts(engine_root: Path) -> dict[str, int]:
+    return read_minimum_check_counts(engine_root, "BENCHMARK_MINIMUM_CHECK_COUNTS")
 
 
 def validate_scenario_results(
     engine_root: Path,
     result_directory: Path,
+    minimum_check_counts: dict[str, int] | None = None,
 ) -> str:
-    minimum_check_counts = read_scenario_minimum_check_counts(engine_root)
+    if minimum_check_counts is None:
+        minimum_check_counts = read_scenario_minimum_check_counts(engine_root)
     if not result_directory.is_dir():
         raise ValueError(f"scenario result directory does not exist: {result_directory}")
 
@@ -485,6 +508,47 @@ def validate_scenario_results(
     if errors:
         raise ValueError("; ".join(errors))
     return f"Validated {len(result_paths)} retained scenario result envelopes."
+
+
+def validate_application_benchmark_results(result_directory: Path) -> str:
+    benchmark_directory = result_directory / "Jolt_FallingBodies"
+    if not benchmark_directory.is_dir():
+        raise ValueError(f"application benchmark result directory does not exist: {benchmark_directory}")
+
+    metadata_path = benchmark_directory / "benchmark_metadata.json"
+    update_paths = [
+        benchmark_directory / f"physics_update{sample}_time.json"
+        for sample in range(1, 31)
+    ]
+    missing = [path.name for path in (metadata_path, *update_paths) if not path.is_file()]
+    if missing:
+        raise ValueError(f"application benchmark is missing artifacts: {', '.join(missing)}")
+
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exception:
+        raise ValueError(f"application benchmark metadata is invalid: {exception}") from exception
+    if not isinstance(metadata, dict) or not metadata:
+        raise ValueError("application benchmark metadata is empty")
+
+    observed_indices = set()
+    for update_path in update_paths:
+        try:
+            update = json.loads(update_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exception:
+            raise ValueError(f"{update_path.name} is not valid JSON: {exception}") from exception
+        if update.get("schemaVersion") != 1 or update.get("workload") != "Jolt_FallingBodies":
+            raise ValueError(f"{update_path.name} contains invalid workload metadata")
+        sample_index = update.get("sampleIndex")
+        update_time = update.get("updateTimeNanoseconds")
+        if not isinstance(sample_index, int) or sample_index in observed_indices:
+            raise ValueError(f"{update_path.name} contains a missing or duplicate sample index")
+        if not isinstance(update_time, int) or update_time <= 0:
+            raise ValueError(f"{update_path.name} contains an invalid physics-update time")
+        observed_indices.add(sample_index)
+    if observed_indices != set(range(1, 31)):
+        raise ValueError("The application benchmark does not contain the complete sample sequence")
+    return f"Validated benchmark metadata and {len(update_paths)} positive physics-update samples."
 
 
 def validate_world_bus_script_parity(engine_root: Path) -> str:
@@ -1038,6 +1102,7 @@ def get_automated_testing_environment(
     base_environment: dict[str, str],
     qualification_mode: str,
     scenario_result_directory: Path | None = None,
+    benchmark_result_directory: Path | None = None,
 ) -> dict[str, str]:
     if qualification_mode not in ("review", "full"):
         raise ValueError(f"AutomatedTesting is not part of {qualification_mode!r} qualification")
@@ -1050,6 +1115,8 @@ def get_automated_testing_environment(
     automated_testing_environment["JOLT_STRESS_MODE"] = stress_mode
     if scenario_result_directory:
         automated_testing_environment["JOLT_SCENARIO_RESULT_DIRECTORY"] = str(scenario_result_directory)
+    if benchmark_result_directory:
+        automated_testing_environment["JOLT_BENCHMARK_RESULT_DIRECTORY"] = str(benchmark_result_directory)
     return automated_testing_environment
 
 
@@ -1169,6 +1236,167 @@ def load_build_environment(
         return None
 
     return load_msvc_environment(base_environment)
+
+
+def get_compiler_metadata(
+    build_directory: Path,
+    environment: dict[str, str] | None = None,
+) -> tuple[str, str]:
+    compiler = Path(read_cmake_cache_value(build_directory, "CMAKE_CXX_COMPILER"))
+    compiler_name = compiler.name.lower()
+    compiler_id = "Unknown"
+    command = (str(compiler), "--version")
+    version_pattern = r"version\s+([^\s]+)"
+    if compiler_name == "cl.exe":
+        compiler_id = "MSVC"
+        command = (str(compiler),)
+        version_pattern = r"Version\s+([0-9.]+)"
+    elif compiler_name in ("clang", "clang++", "clang-cl", "clang-cl.exe"):
+        compiler_id = "Clang"
+    elif compiler_name in ("g++", "gcc"):
+        compiler_id = "GNU"
+
+    completed = subprocess.run(
+        command,
+        check=False,
+        capture_output=True,
+        env=environment,
+        text=True,
+        timeout=60,
+    )
+    compiler_output = completed.stdout + completed.stderr
+    match = re.search(version_pattern, compiler_output, re.IGNORECASE)
+    if not match:
+        raise ValueError(f"Could not identify the compiler version from {compiler}: {compiler_output.strip()}")
+    return compiler_id, match.group(1)
+
+
+def add_performance_qualification(
+    runner: ValidationRunner,
+    build_directory: Path,
+    parallel: int,
+    qualification_mode: str,
+    environment: dict[str, str] | None = None,
+) -> None:
+    targets = ["Jolt.Tests", "Editor", "AutomatedTesting.Assets"]
+    if qualification_mode == "full":
+        targets.extend(("Box3D.Tests", "PhysX5.Tests"))
+    built = runner.run_command(
+        "build-release-performance-targets",
+        (
+            "cmake",
+            "--build",
+            str(build_directory),
+            "--config",
+            "Release",
+            "--target",
+            *targets,
+            "--parallel",
+            str(parallel),
+        ),
+        28_800,
+        environment,
+    )
+    if not built:
+        runner.skip("native-benchmark-qualification", "Release performance targets failed to build")
+        if platform.system() == "Windows":
+            runner.skip("application-benchmark", "Release performance targets failed to build")
+            runner.skip("application-benchmark-scenario-result", "application benchmark did not run")
+            runner.skip("application-benchmark-artifacts", "application benchmark did not run")
+        return
+
+    compiler_metadata = None
+    if runner.dry_run:
+        compiler_metadata = ("Unknown", "dry-run")
+        runner.skip("performance-compiler-metadata", "dry run")
+    else:
+        def read_compiler_metadata(_: Path) -> str:
+            nonlocal compiler_metadata
+            compiler_metadata = get_compiler_metadata(build_directory, environment)
+            return f"Qualified {compiler_metadata[0]} {compiler_metadata[1]} Release benchmark binaries."
+
+        runner.run_check("performance-compiler-metadata", read_compiler_metadata)
+    if not compiler_metadata:
+        runner.skip("native-benchmark-qualification", "compiler metadata is unavailable")
+        return
+
+    binary_directory = build_directory / "bin" / "release"
+    native_result_directory = runner.output_directory / "native-benchmarks"
+    runner.run_command(
+        "native-benchmark-qualification",
+        (
+            sys.executable,
+            str(
+                runner.engine_root
+                / "Gems"
+                / "Physics"
+                / "Jolt"
+                / "Code"
+                / "Tests"
+                / "run_benchmark_qualification.py"
+            ),
+            qualification_mode,
+            "--engine-root",
+            str(runner.engine_root),
+            "--binary-directory",
+            str(binary_directory),
+            "--output-directory",
+            str(native_result_directory),
+            "--compiler-id",
+            compiler_metadata[0],
+            "--compiler-version",
+            compiler_metadata[1],
+        ),
+        172_800,
+        environment,
+    )
+
+    if platform.system() != "Windows":
+        runner.skip("application-benchmark", "the application benchmark currently requires Windows DX12")
+        return
+
+    benchmark_scenario_directory = runner.output_directory / "scenario-results-benchmark"
+    benchmark_artifact_directory = runner.output_directory / "application-benchmark"
+    benchmark_scenario_directory.mkdir(parents=True, exist_ok=True)
+    benchmark_artifact_directory.mkdir(parents=True, exist_ok=True)
+    benchmark_environment = get_automated_testing_environment(
+        environment or runner.environment,
+        qualification_mode,
+        benchmark_scenario_directory,
+        benchmark_artifact_directory,
+    )
+    runner.run_command(
+        "application-benchmark",
+        (
+            "ctest",
+            "--test-dir",
+            str(build_directory),
+            "-C",
+            "Release",
+            "-R",
+            r"AutomatedTesting::JoltTests_Benchmark\.benchmark::TEST_RUN",
+            "--output-on-failure",
+        ),
+        1_200,
+        benchmark_environment,
+    )
+    if runner.dry_run:
+        runner.skip("application-benchmark-scenario-result", "dry run")
+        runner.skip("application-benchmark-artifacts", "dry run")
+        return
+
+    runner.run_check(
+        "application-benchmark-scenario-result",
+        lambda engine_root: validate_scenario_results(
+            engine_root,
+            benchmark_scenario_directory,
+            read_benchmark_minimum_check_counts(engine_root),
+        ),
+    )
+    runner.run_check(
+        "application-benchmark-artifacts",
+        lambda _: validate_application_benchmark_results(benchmark_artifact_directory),
+    )
 
 
 def prepare_consumer_source(engine_root: Path, destination: Path) -> Path:
@@ -1888,6 +2116,13 @@ def main(arguments: Sequence[str] | None = None) -> int:
             primary_environment,
         )
         if review:
+            add_performance_qualification(
+                runner,
+                build_directory,
+                max(1, options.parallel),
+                options.mode,
+                primary_environment,
+            )
             add_source_consumer(
                 runner,
                 build_directory,

@@ -4,24 +4,37 @@ For complete copyright and license terms please see the LICENSE at the root of t
 
 SPDX-License-Identifier: Apache-2.0 OR MIT
 
-Captures engine profiler metadata and CPU frame data for an authored Jolt workload.
+Captures engine profiler metadata and physics-update timings for an authored Jolt workload.
 """
+
+import math as python_math
+import os
+import statistics
+from pathlib import Path
+
+try:
+    from .Jolt_ScenarioRecorder import record_scenario
+    from .Jolt_ScenarioUtilities import enter_game_mode
+    from .Jolt_ScenarioUtilities import exit_game_mode
+except ImportError:
+    from Jolt_ScenarioRecorder import record_scenario
+    from Jolt_ScenarioUtilities import enter_game_mode
+    from Jolt_ScenarioUtilities import exit_game_mode
 
 
 class Tests:
     level_opened = ("Opened the Jolt performance level", "Failed to open the Jolt performance level")
     scene_created = ("Created the Jolt performance scene", "Failed to create the Jolt performance scene")
-    enter_game_mode = ("Entered game mode", "Failed to enter game mode")
     scene_topology = ("Validated the Jolt performance scene", "The Jolt performance scene was malformed")
     scene_warmed = ("Warmed the Jolt performance scene", "Failed to warm the Jolt performance scene")
     metadata_captured = ("Captured Jolt benchmark metadata", "Failed to capture Jolt benchmark metadata")
     simulation_healthy = ("Completed without Jolt capacity errors", "Jolt reported simulation capacity errors")
     workload_active = ("Kept the Jolt workload active", "The Jolt workload became idle")
-    frames_captured = ("Captured Jolt CPU frame data", "Failed to capture Jolt CPU frame data")
-    exit_game_mode = ("Exited game mode", "Failed to exit game mode")
+    updates_captured = ("Captured Jolt physics-update data", "Failed to capture Jolt physics-update data")
 
 
-def Jolt_PerformanceCapture():
+@record_scenario("Jolt_PerformanceCapture")
+def Jolt_PerformanceCapture(recorder):
     import json
 
     import azlmbr.bus as bus
@@ -33,12 +46,11 @@ def Jolt_PerformanceCapture():
 
     from Atom.atom_utils.benchmark_utils import BenchmarkHelper
     from editor_python_test_tools.editor_entity_utils import EditorEntity
-    from editor_python_test_tools.utils import Report
     from editor_python_test_tools.utils import TestHelper as helper
 
     helper.init_idle()
     helper.open_level("", "Base")
-    Report.result(Tests.level_opened, general.get_current_level_name() == "Base")
+    recorder.result(Tests.level_opened, general.get_current_level_name() == "Base")
     general.set_cvar_integer("vsync_interval", 0)
     general.set_cvar_integer("sys_MaxFPS", -1)
 
@@ -69,7 +81,7 @@ def Jolt_PerformanceCapture():
         bodies.append(body)
         body_names.append(body_name)
 
-    Report.result(
+    recorder.result(
         Tests.scene_created,
         ground.has_component("Jolt Static Rigid Body")
         and len(bodies) == body_count
@@ -83,80 +95,121 @@ def Jolt_PerformanceCapture():
         and abs(last_body_z - 3.61) < 1.0e-3
     )
 
-    helper.enter_game_mode(Tests.enter_game_mode)
-    game_body_ids = [general.find_game_entity(body_name) for body_name in body_names]
-    Report.result(
-        Tests.scene_topology,
-        scene_positions_valid and all(body_id.IsValid() for body_id in game_body_ids),
-    )
+    recorder.result(Tests.scene_topology, scene_positions_valid)
 
-    world_handle = jolt.JoltRigidBodyRequestBus(bus.Event, "GetWorldHandle", game_body_ids[0])
-    warmed = helper.wait_for_condition(
-        lambda: all(
-            jolt.JoltRigidBodyRequestBus(bus.Event, "IsSimulationEnabled", body_id)
-            for body_id in game_body_ids
-        ),
-        20.0,
-    )
-    if warmed:
-        general.idle_wait_frames(120)
-    Report.result(Tests.scene_warmed, warmed)
+    entered_game_mode = enter_game_mode(recorder, 20.0)
+    try:
+        if not entered_game_mode:
+            return
 
-    benchmark = BenchmarkHelper("Jolt_FallingBodies")
-    Report.result(Tests.metadata_captured, benchmark.capture_benchmark_metadata())
-    captured_frames = []
-    active_body_counts = []
-    simulation_errors = []
-    statistics = jolt.WorldStatistics()
-    for frame in range(1, 31):
-        for body_index, body_id in enumerate(game_body_ids):
-            x_velocity = -0.5
-            if body_index & 1:
-                x_velocity = 0.5
-            y_velocity = -0.25
-            if body_index & 2:
-                y_velocity = 0.25
-            velocity = math.Vector3(x_velocity, y_velocity, 0.2)
-            jolt.JoltRigidBodyRequestBus(
-                bus.Event,
-                "SetVelocities",
-                body_id,
-                velocity,
-                math.Vector3(0.0, 0.0, 0.1),
-            )
-            jolt.JoltRigidBodyRequestBus(bus.Event, "ActivateBody", body_id)
+        game_body_ids = [general.find_game_entity(body_name) for body_name in body_names]
+        recorder.check(
+            "resolved every benchmark runtime body",
+            len(game_body_ids) == body_count and all(body_id.IsValid() for body_id in game_body_ids),
+        )
+        if not game_body_ids or not all(body_id.IsValid() for body_id in game_body_ids):
+            return
 
-        capture_succeeded = benchmark.capture_cpu_frame_time(frame)
-        output_path = azlmbr.paths.resolve_path(f"{benchmark.output_path}/cpu_frame{frame}_time.json")
-        with open(output_path, encoding="utf-8") as frame_file:
-            frame_time = json.load(frame_file)["ClassData"]["frameTime"]
-        captured_frames.append(capture_succeeded and frame_time > 0.0)
-        active_body_counts.append(
-            sum(
-                jolt.JoltRigidBodyRequestBus(bus.Event, "GetState", body_id).isActive
+        world_handle = jolt.JoltRigidBodyRequestBus(bus.Event, "GetWorldHandle", game_body_ids[0])
+        warmed = helper.wait_for_condition(
+            lambda: all(
+                jolt.JoltRigidBodyRequestBus(bus.Event, "IsSimulationEnabled", body_id)
                 for body_id in game_body_ids
-            )
+            ),
+            20.0,
         )
-        statistics_read = jolt.JoltWorldDiagnosticsRequestBus(
-            bus.Broadcast,
-            "GetWorldStatistics",
-            world_handle,
-            statistics,
-        )
-        if statistics_read:
-            simulation_errors.append(statistics.lastUpdateErrors)
-        else:
-            simulation_errors.append(None)
+        if warmed:
+            general.idle_wait_frames(120)
+        recorder.result(Tests.scene_warmed, warmed)
 
-    general.log(f"Jolt active body samples: {active_body_counts}")
-    general.log(f"Jolt simulation error samples: {simulation_errors}")
-    Report.result(Tests.workload_active, min(active_body_counts) >= int(body_count * 0.95))
-    Report.result(
-        Tests.simulation_healthy,
-        all(error is not None and not error for error in simulation_errors),
-    )
-    Report.result(Tests.frames_captured, all(captured_frames))
-    helper.exit_game_mode(Tests.exit_game_mode)
+        benchmark = BenchmarkHelper("Jolt_FallingBodies")
+        benchmark_result_directory = os.environ.get("JOLT_BENCHMARK_RESULT_DIRECTORY")
+        if benchmark_result_directory:
+            benchmark_output_directory = Path(benchmark_result_directory) / benchmark.benchmark_name
+            benchmark_output_directory.mkdir(parents=True, exist_ok=True)
+            benchmark.output_path = benchmark_output_directory.as_posix()
+        recorder.result(Tests.metadata_captured, benchmark.capture_benchmark_metadata())
+
+        update_times = []
+        active_body_counts = []
+        simulation_errors = []
+        statistics_snapshot = jolt.WorldStatistics()
+        for frame in range(1, 31):
+            for body_index, body_id in enumerate(game_body_ids):
+                x_velocity = -0.5
+                if body_index & 1:
+                    x_velocity = 0.5
+                y_velocity = -0.25
+                if body_index & 2:
+                    y_velocity = 0.25
+                velocity = math.Vector3(x_velocity, y_velocity, 0.2)
+                jolt.JoltRigidBodyRequestBus(
+                    bus.Event,
+                    "SetVelocities",
+                    body_id,
+                    velocity,
+                    math.Vector3(0.0, 0.0, 0.1),
+                )
+                jolt.JoltRigidBodyRequestBus(bus.Event, "ActivateBody", body_id)
+
+            general.idle_wait_frames(1)
+            statistics_read = jolt.JoltWorldDiagnosticsRequestBus(
+                bus.Broadcast,
+                "GetWorldStatistics",
+                world_handle,
+                statistics_snapshot,
+            )
+            if statistics_read:
+                update_time = int(statistics_snapshot.lastUpdateNanoseconds)
+                update_times.append(update_time)
+                active_body_counts.append(statistics_snapshot.activeDynamicBodyCount)
+                simulation_errors.append(statistics_snapshot.lastUpdateErrors)
+                output_path = azlmbr.paths.resolve_path(
+                    f"{benchmark.output_path}/physics_update{frame}_time.json"
+                )
+                with open(output_path, "w", encoding="utf-8") as update_file:
+                    json.dump(
+                        {
+                            "schemaVersion": 1,
+                            "workload": benchmark.benchmark_name,
+                            "sampleIndex": frame,
+                            "updateTimeNanoseconds": update_time,
+                        },
+                        update_file,
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    )
+            else:
+                update_times.append(0)
+                active_body_counts.append(0)
+                simulation_errors.append(None)
+
+        general.log(f"Jolt active body samples: {active_body_counts}")
+        general.log(f"Jolt simulation error samples: {simulation_errors}")
+        recorder.result(Tests.workload_active, min(active_body_counts) >= int(body_count * 0.95))
+        recorder.result(
+            Tests.simulation_healthy,
+            all(error is not None and not error for error in simulation_errors),
+        )
+        valid_update_times = all(update_time > 0 for update_time in update_times)
+        update_details = {"count": len(update_times)}
+        if valid_update_times:
+            sorted_update_times = sorted(update_times)
+            percentile_index = python_math.ceil(0.95 * len(sorted_update_times)) - 1
+            update_details.update(
+                {
+                    "medianNanoseconds": statistics.median(update_times),
+                    "p95Nanoseconds": sorted_update_times[percentile_index],
+                }
+            )
+        recorder.result(
+            Tests.updates_captured,
+            len(update_times) == 30 and valid_update_times,
+            update_details,
+        )
+    finally:
+        if entered_game_mode:
+            exit_game_mode(recorder, 20.0)
 
 
 if __name__ == "__main__":

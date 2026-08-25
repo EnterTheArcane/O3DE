@@ -45,6 +45,13 @@ class ScenarioRecorderTests(unittest.TestCase):
         self.assertFalse(recorder.passed)
         self.assertIn("duplicate check names", recorder._build_payload()["contractErrors"][0])
 
+    def test_benchmark_scenarios_have_an_independent_evidence_policy(self) -> None:
+        recorder = jolt_scenario_recorder.ScenarioRecorder("Jolt_PerformanceCapture")
+        for check_index in range(10):
+            recorder.check(f"benchmark check {check_index}", True)
+
+        self.assertTrue(recorder.passed)
+
     def test_chunked_result_reassembles_to_the_verified_payload(self) -> None:
         recorder = jolt_scenario_recorder.ScenarioRecorder("Jolt_CpuHair")
         for check_index in range(5):

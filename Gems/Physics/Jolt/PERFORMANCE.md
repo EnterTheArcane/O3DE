@@ -4,9 +4,9 @@
 
 The third deep audit re-opened performance qualification at revision `42dbab82f32f945b293e7c019c5a07282eb3df24`. The captures below
 remain historical optimization and regression evidence; they do not establish current shipping readiness. In particular,
-`validate.py full` does not yet schedule the native and AutomatedTesting performance suites, final Release allocation qualification
-remains, and the audit-local eight-worker step series exceeded the 5%
-coefficient-of-variation gate.
+`validate.py review/full` now schedules both native and AutomatedTesting performance suites, but the final 30-process Release allocation
+and matched-provider qualification remains. The audit-local eight-worker step series exceeded the 5% coefficient-of-variation gate and
+cannot be reused as current evidence.
 
 Current closure requirements and evidence ownership are tracked in `QUALIFICATION.md`. No historical artifact may be relabelled as a
 current result after a runtime, API, workload, compiler, or runner change.
@@ -441,13 +441,20 @@ by the native world and released with it. Final 30-repetition timing remains the
 
 ## Authored Profile capture
 
-`AutomatedTesting::JoltTests_Benchmark` creates an 8 by 8 by 4 stack, waits for 120 simulation ticks, keeps every body active, and captures
-30 CPU frame samples through the engine profiling capture bus. The current Windows Profile run kept all 256 bodies active, reported no
-physics update errors, and measured 3.8841 ms median whole-Editor frame time. The minimum, mean, and maximum were 2.3750 ms, 3.7406 ms, and
-5.6622 ms. Rendering and Editor overhead are deliberately included, so this capture is diagnostic rather than the provider timing gate.
+`AutomatedTesting::JoltTests_Benchmark` creates an 8 by 8 by 4 stack, waits for 120 simulation ticks, and keeps every body active. Release
+qualification retains 30 direct `WorldStatistics::m_lastUpdateNanoseconds` samples rather than treating a generic Editor-frame counter as
+provider time. The current clang-cl Release smoke kept all 256 bodies active, reported no physics update errors, and measured a 0.841 ms
+median Jolt update. The minimum, mean, p95, and maximum were 0.748 ms, 0.828 ms, 0.920 ms, and 0.941 ms. This application scenario proves
+the authored ECS workload and raw-result path; process-isolated native benchmarks remain the provider timing gate.
 
-The capture must run in Profile. Release intentionally excludes `StatisticalProfilerProxySystemComponent`, so the engine capture API writes
-zero CPU frame times in that configuration. The test rejects those zeroes instead of reporting unsupported measurements as evidence.
+An earlier Profile-only diagnostic captured whole-Editor CPU frame time through Atom. Release intentionally excludes
+`StatisticalProfilerProxySystemComponent`, so that API writes zero CPU frame times in this configuration. Qualification no longer presents
+those zeroes as Jolt evidence or requires an Atom change to obtain provider timing.
+
+`run_benchmark_qualification.py` is the native capture authority used by `validate.py`. It runs each workload in a fresh process, rejects
+successful processes whose filters matched no benchmark, retains warmup and raw reports, merges only compatible contexts, fingerprints the
+source and binaries, and applies the matched-provider and Jolt-only gates. Review mode executes a three-repetition step/query/tail smoke;
+full mode executes all matched and tail workloads for Jolt, Box3D, and PhysX plus the Jolt capability/query/rollback set for 30 repetitions.
 
 ## Opt-in telemetry
 

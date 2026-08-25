@@ -39,6 +39,10 @@ SCENARIO_MINIMUM_CHECK_COUNTS = {
     "Jolt_WorldQueriesAndSnapshots": 16,
 }
 
+BENCHMARK_MINIMUM_CHECK_COUNTS = {
+    "Jolt_PerformanceCapture": 10,
+}
+
 
 class ScenarioRecorder:
     schema_version = 1
@@ -48,7 +52,10 @@ class ScenarioRecorder:
     def __init__(self, scenario_name):
         self._scenario_name = scenario_name
         self._checks = []
-        self._minimum_check_count = SCENARIO_MINIMUM_CHECK_COUNTS[scenario_name]
+        if scenario_name in SCENARIO_MINIMUM_CHECK_COUNTS:
+            self._minimum_check_count = SCENARIO_MINIMUM_CHECK_COUNTS[scenario_name]
+        else:
+            self._minimum_check_count = BENCHMARK_MINIMUM_CHECK_COUNTS[scenario_name]
 
     @property
     def passed(self):
