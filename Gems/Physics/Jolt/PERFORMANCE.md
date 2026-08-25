@@ -610,9 +610,12 @@ entire repetition and produced a 5.10% raycast CV; the same 30 fresh-process rep
 retain every raw frame instead of relying on a longer aggregate interval. A 4,096-frame window reduced the measured PhysX four-worker tail
 CV from 9.03% at 1,024 frames to 1.40% without trimming a sample.
 
-The Windows recipe uses logical processors selected from a 10-second processor-utility and interrupt-rate sample, with one sibling per
-physical core. Re-measure quiet physical lanes on different hardware and record the exact selection in the affinity policy. Qualification
-uses response files for the hundreds of fresh-process report paths so Windows command-line length does not limit complete captures.
+The qualification runner uses nested compact physical-core sets so the 1-, 4-, and 8-worker results differ only by adding cores. On
+Windows, the cores are ordered by the operating system's efficiency class and then processor number, so selection prefers the compact
+high-performance end of a hybrid topology. A 30-process Ryzen 9 7950X probe reduced every previously noisy series below the 5% CV gate;
+the affected four-worker medians improved by 41% to 56% compared with cores spread across both CCDs. The exact selection is recorded in
+every artifact. Qualification uses response files for the hundreds of fresh-process report paths so Windows command-line length does not
+limit complete captures.
 Do not poll the benchmark process or run other local commands while a timed capture is active. Session polling reproduced a 6.43% Jolt
 batch-raycast CV and 9.01% PhysX tail-window CV; complete unpolled 30-process recaptures measured 1.46% and 0.84%, respectively, without
 replacing or trimming individual samples.

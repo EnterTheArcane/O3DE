@@ -41,19 +41,19 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
         self.assertTrue(workloads[1].suffix.startswith("Query/"))
         self.assertTrue(workloads[2].suffix.startswith("Tail/"))
 
-    def test_processor_selection_spreads_across_physical_cores(self) -> None:
+    def test_processor_selection_uses_nested_compact_physical_cores(self) -> None:
         processors = tuple(range(16))
 
-        self.assertEqual(run_benchmark_qualification.select_spread_processors(processors, 1), (0,))
-        self.assertEqual(run_benchmark_qualification.select_spread_processors(processors, 4), (0, 4, 8, 12))
+        self.assertEqual(run_benchmark_qualification.select_compact_processors(processors, 1), (15,))
+        self.assertEqual(run_benchmark_qualification.select_compact_processors(processors, 4), (12, 13, 14, 15))
         self.assertEqual(
-            run_benchmark_qualification.select_spread_processors(processors, 8),
-            (0, 2, 4, 6, 8, 10, 12, 14),
+            run_benchmark_qualification.select_compact_processors(processors, 8),
+            (8, 9, 10, 11, 12, 13, 14, 15),
         )
 
     def test_processor_selection_rejects_clamped_worker_evidence(self) -> None:
         with self.assertRaisesRegex(ValueError, "Only 4 physical processors"):
-            run_benchmark_qualification.select_spread_processors((0, 2, 4, 6), 8)
+            run_benchmark_qualification.select_compact_processors((0, 2, 4, 6), 8)
 
     def test_smoke_report_requires_every_process_repetition(self) -> None:
         report = {

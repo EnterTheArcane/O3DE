@@ -82,16 +82,13 @@ def describe_workload_filter(provider: str, workloads: Sequence[Workload]) -> st
     return f"{provider}/({'|'.join(workload.suffix for workload in workloads)})"
 
 
-def select_spread_processors(processors: Sequence[int], count: int) -> tuple[int, ...]:
+def select_compact_processors(processors: Sequence[int], count: int) -> tuple[int, ...]:
     if count <= 0:
         raise ValueError("The requested processor count must be positive.")
     if len(processors) < count:
         raise ValueError(f"Only {len(processors)} physical processors are available; {count} are required.")
 
-    selected = tuple(processors[index * len(processors) // count] for index in range(count))
-    if len(set(selected)) != count:
-        raise ValueError("The physical processor selection contains duplicates.")
-    return selected
+    return tuple(processors[-count:])
 
 
 def _windows_physical_processors() -> tuple[int, ...]:
@@ -134,6 +131,7 @@ def _windows_physical_processors() -> tuple[int, ...]:
         if record_size < 40 or offset + record_size > required_size.value:
             raise ValueError("Windows returned a malformed processor topology record.")
         if relationship == relation_processor_core:
+            efficiency_class = buffer.raw[offset + 9]
             group_count = ctypes.c_uint16.from_buffer_copy(buffer.raw, offset + 30).value
             for group_index in range(group_count):
                 group_offset = offset + 32 + group_index * 16
@@ -146,12 +144,14 @@ def _windows_physical_processors() -> tuple[int, ...]:
                     continue
                 available_mask = group_mask & process_mask.value
                 if available_mask:
-                    processors.append((available_mask & -available_mask).bit_length() - 1)
+                    processor = (available_mask & -available_mask).bit_length() - 1
+                    processors.append((efficiency_class, processor))
         offset += record_size
 
     if not processors:
         raise ValueError("No physical processors are available in Windows processor group zero.")
-    return tuple(processors)
+    processors.sort()
+    return tuple(processor for _, processor in processors)
 
 
 def _posix_physical_processors() -> tuple[int, ...]:
@@ -180,7 +180,7 @@ def physical_processors() -> tuple[int, ...]:
 def build_affinity_policy() -> dict[int, tuple[int, ...]]:
     available_processors = physical_processors()
     return {
-        worker_count: select_spread_processors(available_processors, worker_count)
+        worker_count: select_compact_processors(available_processors, worker_count)
         for worker_count in (1, 4, 8)
     }
 
@@ -193,7 +193,7 @@ def describe_affinity_policy(policy: dict[int, tuple[int, ...]]) -> str:
     priority_policy = "default priority"
     if platform.system() == "Windows":
         priority_policy = "high priority"
-    return "automatic physical-core lanes: " + "; ".join(selections) + f"; inherited affinity; {priority_policy}"
+    return "automatic compact high-performance physical-core lanes: " + "; ".join(selections) + f"; inherited affinity; {priority_policy}"
 
 
 @contextmanager
