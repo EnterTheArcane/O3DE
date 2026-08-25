@@ -50,7 +50,7 @@ bool GUIApplicationServer::startListening(unsigned short port)
             return false;
         }
         m_serverListeningPort = serverPort();
-        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Listening Port: %d\n", m_serverListeningPort);
+        AZ_Printf(AssetProcessor::ConsoleChannel, "Listening Port: %d\n", m_serverListeningPort);
         ApplicationServerBus::Handler::BusConnect();
         AZ_TracePrintf(AssetProcessor::DebugChannel, "Asset Processor server listening on port %d\n", m_serverListeningPort);
     }

@@ -45,7 +45,7 @@ bool ControlRequestHandler::StartListening(unsigned short port)
             return false;
         }
         port = m_tcpServer->serverPort();
-        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Control Port: %d\n", port);
+        AZ_Printf(AssetProcessor::ConsoleChannel, "Control Port: %d\n", port);
         connect(m_tcpServer, &QTcpServer::newConnection, this, &ControlRequestHandler::GotConnection);
         AZ_TracePrintf(AssetProcessor::DebugChannel, "Asset Processor Control Request Handler listening on port %d\n", port);
     }
