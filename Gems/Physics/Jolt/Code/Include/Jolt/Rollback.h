@@ -16,7 +16,7 @@
 namespace Jolt
 {
     //! Owns deterministic behavior state used by a simulation callback.
-    //! Capture and restore run under the world lock and never concurrently with the callback.
+    //! Mutable state capture and restore run under the owning world lock and never concurrently with that world's callback.
     class IRollbackParticipant
     {
     public:
@@ -36,6 +36,10 @@ namespace Jolt
         [[nodiscard]]
         virtual AZ::u64 GetStateHash() const = 0;
 
+        //! A zero byte count declares that this participant has no mutable behavior state and may be
+        //! invoked concurrently by independent worlds. Such participants must be thread-safe and deterministic.
+        //! A nonzero byte count binds the registration to one world at a time. The count must remain
+        //! constant from registration through unregistration.
         [[nodiscard]]
         virtual size_t GetStateByteCount() const
         {

@@ -23,7 +23,7 @@ the row's complete contract.
 |---|---|---:|---|
 | `J3-AUD-001` | One Runtime root is published only after complete activation and revoked once before draining; borrowed capabilities require quiescent teardown. | 2 | **Implemented** — the single private root, complete lifetime tests, modular export check, clang-cl assembly, and focused latency gate pass. MSVC and monolithic/IPO repetitions remain final qualification gates. |
 | `J3-AUD-002` | Handles cannot alias across Runtime replacement, simultaneous isolated Runtimes, slot reuse, or generation exhaustion. | 2 | **Implemented** — module-lifetime per-kind generation domains, exhaustion rejection, and integration tests cover every handle family across simultaneous and sequential Runtimes, slot reuse, retained results, events, and asynchronous results. Final MSVC and packaging qualification remain. |
-| `J3-AUD-003` | Every mutable rollback participant has one owning world and cannot enter concurrent world transactions. | 3 | **Open** — ownership, concurrent restore rejection, and complete cache-restoration proof required. |
+| `J3-AUD-003` | Every mutable rollback participant has one owning world and cannot enter concurrent world transactions. | 3 | **Implemented** — nonzero-state callback and group-filter registrations are reference-counted within one owning world; a second-world bind fails before mutation. Zero-state registrations declare deterministic, thread-safe sharing. Focused tests cover rejection without digest/count changes, same-world reuse, transfer after release, concurrent stateless use, and unregistration barriers. Final MSVC, unload/reload, and stress qualification remain. |
 | `J3-AUD-004` | Entity resource teardown prepares without mutation, commits once, and never abandons a live native resource. | 3 | **Open** — rigid, static, character, path, constraint, and vehicle component/direct-capability tests required. |
 | `J3-AUD-005` | Vehicle creation on an unadded chassis fails without changing counts, revisions, or ownership. | 3 | **Implemented** — wheeled, motorcycle, and tracked construction reject an unadded chassis before native or wrapper mutation. The focused test preserves the world digest and resource counts, then proves the chassis can still be added, removed, and destroyed normally. Final MSVC qualification remains. |
 | `J3-AUD-006` | Automatic simulation runs at physics tick order and publishes transforms before attachment and pre-render consumers. | 4 | **Open** — tick-order and same-frame transform visibility tests required. |
@@ -49,7 +49,7 @@ the row's complete contract.
 | `J3-AUD-026` | Every scenario has meaningful minimum assertions and a parsed, verified, retained result envelope. | 7 | **Open** — corrected saved/filter/reflection/gallery/stress tests and zero-check failure sentinel required. |
 | `J3-AUD-027` | Requested and effective 1/4/8-worker runs compare complete world/subsystem digests and semantic outputs. | 7 | **Open** — rigid, constraint, character, vehicle, ragdoll, soft-body, custom-provider, CPU-Hair, rollback, and event proof required. |
 | `J3-AUD-028` | Performance qualification is current, broad, statistically valid, and never trades away accuracy or deterministic contracts. | 7 | **Open** — 30-process matched/absolute/tail, allocation, pool, ECS, contention, and compiler evidence required. |
-| `C-AUD-001` | Restoring a group filter refreshes every affected world's contact cache after commit. | 3 | **Open** — cross-world restore and next-step contact/event proof required. |
+| `C-AUD-001` | Restoring a group filter refreshes every affected world's contact cache after commit. | 3 | **Implemented** — successful custom-filter restore invalidates affected contact caches and activates non-static bodies while the world is already locked. Mutable filters can belong to only one world, and a global-only snapshot test proves restored callbacks re-enable its body and publish a new contact on the next step. Final MSVC qualification remains. |
 | `C-AUD-002` | Static-body component teardown retains ownership after a failed destroy. | 3 | **Open** — direct dependency-veto and later successful cleanup proof required. |
 | `C-AUD-003` | Path component teardown retains ownership after a failed destroy. | 3 | **Open** — direct dependency-veto and later successful cleanup proof required. |
 | `C-AUD-004` | Active paths have one authoritative transform and cannot snapshot inconsistent geometry and frames. | 5 | **Open** — activation skew and live-update tests required. |
@@ -69,6 +69,23 @@ Optimized `RuntimeConfiguration::Get()` and `Vehicles::Get()` each have a zero-b
 branch, conversion, or copy candidate. The final affinity-pinned 30-repetition no-IPO checkpoint measures capability acquisition at a
 1.01 ns median with 1.99% CV, below the 3 ns and 5% variability gates. Raw benchmark, disassembly, validator, and test evidence is
 retained beneath `build/jolt-production-readiness/stage2/` and is intentionally not committed.
+
+## Stage 3 rollback ownership evidence
+
+Mutable rollback state is owned per extension registration. Binding a registration whose `GetStateByteCount()` is nonzero claims one
+world at a cold configuration boundary; additional resources in that world share a checked reference count. A different world is
+rejected before revisions, resource counts, or native state change. A zero byte count is the explicit stateless contract and permits
+deterministic, thread-safe concurrent use. Native callback invocation still uses the retained direct pointer without a registry lookup
+or ownership lock.
+
+The clang-cl 22.1.8 Debug non-unity suite passes 300 tests with zero failures and one intentionally disabled test. The focused evidence
+is `MutableRollbackParticipantRejectsASecondWorldWithoutMutation`,
+`MutableGlobalCallbackTransfersOnlyAfterItsOwningWorldReleasesIt`,
+`StatelessRollbackParticipantCanServeConcurrentWorlds`, `MutableGroupFilterRejectsASecondWorldUntilReleased`, and
+`StatelessGroupFilterCanServeMultipleWorlds`. `GlobalGroupFilterRestoreRefreshesAffectedBodies` captures only global callback state,
+then proves restore refreshes native contact state and produces the expected begin event. Group-filter mutation releases its filter lock
+before visiting worlds, and restore uses the already-held world lock instead of reacquiring it. Transient test and validator evidence is
+retained beneath `build/jolt-production-readiness/stage3/`.
 
 ## Qualification platforms
 

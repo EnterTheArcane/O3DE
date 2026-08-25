@@ -59,6 +59,8 @@ namespace Jolt
         inline constexpr AZ::TypeId MutatingStepListenerStateTypeId{"{A100000C-010C-410C-810C-00000000000C}"};
         inline constexpr AZ::TypeId RecordingBodyPairColliderStateTypeId{"{A100000D-010D-410D-810D-00000000000D}"};
         inline constexpr AZ::TypeId InvalidBodyPairColliderStateTypeId{"{A100000E-010E-410E-810E-00000000000E}"};
+        inline constexpr AZ::TypeId StatelessStepListenerStateTypeId{"{A100000F-010F-410F-810F-00000000000F}"};
+        inline constexpr AZ::TypeId StatelessGroupFilterStateTypeId{"{A1000010-0110-4110-8110-000000000010}"};
 
         template<class Interface>
         class ScopedExtensionRegistration final
@@ -208,6 +210,32 @@ namespace Jolt
 
             mutable AZ::u64 m_stateHash = 1;
             mutable bool m_collisionEnabled = false;
+        };
+
+        class StatelessGroupFilter final
+            : public IGroupFilter
+        {
+        public:
+            [[nodiscard]]
+            AZ::TypeId GetStateTypeId() const override
+            {
+                return StatelessGroupFilterStateTypeId;
+            }
+
+            [[nodiscard]]
+            bool CanCollide(
+                const CollisionGroup firstGroup,
+                const CollisionGroup secondGroup) const override
+            {
+                return firstGroup.m_groupId == secondGroup.m_groupId
+                    && firstGroup.m_subGroupId != secondGroup.m_subGroupId;
+            }
+
+            [[nodiscard]]
+            AZ::u64 GetStateHash() const override
+            {
+                return 0;
+            }
         };
 
         class TestCustomConvexShapeProvider final
@@ -1755,6 +1783,29 @@ namespace Jolt
             AZ::TypeId m_typeId = StatefulStepListenerStateTypeId;
             AZ::u32 m_version = 0;
             bool m_corruptCommitState = false;
+        };
+
+        class StatelessStepListener final
+            : public IStepListener
+        {
+        public:
+            [[nodiscard]]
+            AZ::TypeId GetStateTypeId() const override
+            {
+                return StatelessStepListenerStateTypeId;
+            }
+
+            [[nodiscard]]
+            AZ::u64 GetStateHash() const override
+            {
+                return 0;
+            }
+
+            void OnStep(
+                [[maybe_unused]] const StepInformation& information,
+                [[maybe_unused]] IStepContext& context) override
+            {
+            }
         };
 
         class MutatingStepListener final
@@ -5377,6 +5428,89 @@ namespace Jolt
         EXPECT_FALSE(foundEnd);
 
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, importedHandles.front()));
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
+        EXPECT_TRUE(system.DestroyBody(worldHandle, dynamicBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(worldHandle, staticBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+        EXPECT_TRUE(system.DestroyGroupFilter(filterHandle));
+    }
+
+    TEST(SimulationTests, GlobalGroupFilterRestoreRefreshesAffectedBodies)
+    {
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
+        systemConfiguration.m_defaultWorld.m_collectContactEvents = true;
+        Runtime system(systemConfiguration, nullptr);
+        ASSERT_TRUE(system);
+
+        TestGroupFilter filter;
+        filter.m_collisionEnabled = true;
+        filter.m_stateHash = 2;
+        ScopedExtensionRegistration registration(system, &filter);
+        const GroupFilterHandle filterHandle = system.CreateGroupFilter(2, registration.GetHandle());
+        ASSERT_TRUE(filterHandle);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+        ASSERT_TRUE(shapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_collisionGroup = {
+            .m_filterHandle = filterHandle,
+            .m_groupId = CollisionGroupId{7},
+            .m_subGroupId = CollisionSubGroupId{0},
+        };
+        bodyConfiguration.m_motionType = MotionType::Static;
+        bodyConfiguration.m_objectLayer = DefaultLayers::NonMoving;
+        bodyConfiguration.m_shapeHandle = shapeHandle;
+        const BodyHandle staticBodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+        ASSERT_TRUE(staticBodyHandle);
+
+        bodyConfiguration.m_collisionGroup.m_subGroupId = CollisionSubGroupId{1};
+        bodyConfiguration.m_motionType = MotionType::Dynamic;
+        bodyConfiguration.m_objectLayer = DefaultLayers::Moving;
+        const BodyHandle dynamicBodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+        ASSERT_TRUE(dynamicBodyHandle);
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        EXPECT_TRUE(system.WereBodiesInContact(worldHandle, staticBodyHandle, dynamicBodyHandle));
+
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(
+            worldHandle,
+            {.m_flags = StateSnapshotFlags::Global},
+            {});
+        ASSERT_TRUE(snapshotHandle);
+
+        filter.m_collisionEnabled = false;
+        filter.m_stateHash = 3;
+        ASSERT_TRUE(system.NotifyGroupFilterChanged(filterHandle));
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        EXPECT_FALSE(system.WereBodiesInContact(worldHandle, staticBodyHandle, dynamicBodyHandle));
+        ASSERT_TRUE(system.DeactivateBody(worldHandle, dynamicBodyHandle));
+
+        BodyState state;
+        ASSERT_TRUE(system.GetBodyState(worldHandle, dynamicBodyHandle, state));
+        ASSERT_FALSE(state.m_isActive);
+        ASSERT_TRUE(system.RestoreWorldState(worldHandle, snapshotHandle));
+        EXPECT_TRUE(filter.m_collisionEnabled);
+        EXPECT_EQ(filter.m_stateHash, 2);
+        ASSERT_TRUE(system.GetBodyState(worldHandle, dynamicBodyHandle, state));
+        EXPECT_TRUE(state.m_isActive);
+
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        EXPECT_TRUE(system.WereBodiesInContact(worldHandle, staticBodyHandle, dynamicBodyHandle));
+        bool foundBegin = false;
+        const EventBatch events = system.GetEvents(worldHandle);
+        for (const ContactEvent& contact : events.GetContacts())
+        {
+            if (contact.m_phase == EventPhase::Begin)
+            {
+                foundBegin = true;
+            }
+        }
+        EXPECT_TRUE(foundBegin);
+
         EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, dynamicBodyHandle));
         EXPECT_TRUE(system.DestroyBody(worldHandle, staticBodyHandle));
@@ -12986,6 +13120,226 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyStateSnapshot(scene.m_worldHandle, snapshotHandle));
         EXPECT_TRUE(system.SetSimulationShapeFilter(scene.m_worldHandle, ExtensionHandle::Invalid));
         DestroySphereOnFloor(system, scene);
+    }
+
+    TEST(SimulationTests, MutableRollbackParticipantRejectsASecondWorldWithoutMutation)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle firstWorldHandle = system.CreateWorld(WorldConfiguration{});
+        const WorldHandle secondWorldHandle = system.CreateWorld(WorldConfiguration{});
+        ASSERT_TRUE(firstWorldHandle);
+        ASSERT_TRUE(secondWorldHandle);
+
+        StatefulStepListener listener;
+        ScopedExtensionRegistration registration(system, &listener);
+        ASSERT_TRUE(system.AddStepListener(firstWorldHandle, registration.GetHandle()));
+
+        ExtensionInformation information;
+        ASSERT_TRUE(system.GetExtensionInformation(registration.GetHandle(), information));
+        EXPECT_EQ(information.m_dependentCount, 1);
+
+        WorldStateDigest digestBeforeRejectedBind;
+        ASSERT_TRUE(system.GetWorldStateDigest(secondWorldHandle, digestBeforeRejectedBind));
+        EXPECT_FALSE(system.AddStepListener(secondWorldHandle, registration.GetHandle()));
+        WorldStateDigest digestAfterRejectedBind;
+        ASSERT_TRUE(system.GetWorldStateDigest(secondWorldHandle, digestAfterRejectedBind));
+        EXPECT_EQ(digestAfterRejectedBind, digestBeforeRejectedBind);
+        ASSERT_TRUE(system.GetExtensionInformation(registration.GetHandle(), information));
+        EXPECT_EQ(information.m_dependentCount, 1);
+
+        ASSERT_TRUE(system.DestroyWorld(firstWorldHandle));
+        ASSERT_TRUE(system.GetExtensionInformation(registration.GetHandle(), information));
+        EXPECT_EQ(information.m_dependentCount, 0);
+        EXPECT_TRUE(system.AddStepListener(secondWorldHandle, registration.GetHandle()));
+        EXPECT_TRUE(system.RemoveStepListener(secondWorldHandle, registration.GetHandle()));
+        EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
+    }
+
+    TEST(SimulationTests, MutableGlobalCallbackTransfersOnlyAfterItsOwningWorldReleasesIt)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle firstWorldHandle = system.CreateWorld(WorldConfiguration{});
+        const WorldHandle secondWorldHandle = system.CreateWorld(WorldConfiguration{});
+        ASSERT_TRUE(firstWorldHandle);
+        ASSERT_TRUE(secondWorldHandle);
+
+        RecordingSimulationShapeFilter filter;
+        ScopedExtensionRegistration registration(system, &filter);
+        ASSERT_TRUE(system.SetSimulationShapeFilter(firstWorldHandle, registration.GetHandle()));
+
+        WorldStateDigest digestBeforeRejectedBind;
+        ASSERT_TRUE(system.GetWorldStateDigest(secondWorldHandle, digestBeforeRejectedBind));
+        EXPECT_FALSE(system.SetSimulationShapeFilter(secondWorldHandle, registration.GetHandle()));
+        WorldStateDigest digestAfterRejectedBind;
+        ASSERT_TRUE(system.GetWorldStateDigest(secondWorldHandle, digestAfterRejectedBind));
+        EXPECT_EQ(digestAfterRejectedBind, digestBeforeRejectedBind);
+
+        EXPECT_TRUE(system.SetSimulationShapeFilter(firstWorldHandle, ExtensionHandle::Invalid));
+        EXPECT_TRUE(system.SetSimulationShapeFilter(secondWorldHandle, registration.GetHandle()));
+        EXPECT_TRUE(system.SetSimulationShapeFilter(secondWorldHandle, ExtensionHandle::Invalid));
+        EXPECT_TRUE(system.DestroyWorld(firstWorldHandle));
+        EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
+    }
+
+    TEST(SimulationTests, StatelessRollbackParticipantCanServeConcurrentWorlds)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle firstWorldHandle = system.CreateWorld(WorldConfiguration{});
+        const WorldHandle secondWorldHandle = system.CreateWorld(WorldConfiguration{});
+        ASSERT_TRUE(firstWorldHandle);
+        ASSERT_TRUE(secondWorldHandle);
+
+        StatelessStepListener listener;
+        ScopedExtensionRegistration registration(system, &listener);
+        ASSERT_TRUE(system.AddStepListener(firstWorldHandle, registration.GetHandle()));
+        ASSERT_TRUE(system.AddStepListener(secondWorldHandle, registration.GetHandle()));
+
+        ExtensionInformation information;
+        ASSERT_TRUE(system.GetExtensionInformation(registration.GetHandle(), information));
+        EXPECT_EQ(information.m_dependentCount, 2);
+
+        AZStd::atomic_bool firstStepSucceeded{false};
+        AZStd::atomic_bool secondStepSucceeded{false};
+        AZStd::thread firstThread(
+            [&system, firstWorldHandle, &firstStepSucceeded]
+            {
+                firstStepSucceeded.store(system.StepWorld(firstWorldHandle, 1.0f / 60.0f), AZStd::memory_order_release);
+            });
+        AZStd::thread secondThread(
+            [&system, secondWorldHandle, &secondStepSucceeded]
+            {
+                secondStepSucceeded.store(system.StepWorld(secondWorldHandle, 1.0f / 60.0f), AZStd::memory_order_release);
+            });
+        firstThread.join();
+        secondThread.join();
+        EXPECT_TRUE(firstStepSucceeded.load(AZStd::memory_order_acquire));
+        EXPECT_TRUE(secondStepSucceeded.load(AZStd::memory_order_acquire));
+
+        EXPECT_TRUE(system.RemoveStepListener(firstWorldHandle, registration.GetHandle()));
+        EXPECT_TRUE(system.RemoveStepListener(secondWorldHandle, registration.GetHandle()));
+        EXPECT_TRUE(system.DestroyWorld(firstWorldHandle));
+        EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
+    }
+
+    TEST(SimulationTests, MutableGroupFilterRejectsASecondWorldUntilReleased)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        TestGroupFilter filter;
+        ScopedExtensionRegistration registration(system, &filter);
+        const GroupFilterHandle filterHandle = system.CreateGroupFilter(2, registration.GetHandle());
+        ASSERT_TRUE(filterHandle);
+
+        const WorldHandle firstWorldHandle = system.CreateWorld(WorldConfiguration{});
+        const WorldHandle secondWorldHandle = system.CreateWorld(WorldConfiguration{});
+        ASSERT_TRUE(firstWorldHandle);
+        ASSERT_TRUE(secondWorldHandle);
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle firstShapeHandle = system.CreateShape(firstWorldHandle, shapeConfiguration);
+        const ShapeHandle secondShapeHandle = system.CreateShape(secondWorldHandle, shapeConfiguration);
+        ASSERT_TRUE(firstShapeHandle);
+        ASSERT_TRUE(secondShapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_collisionGroup = {
+            .m_filterHandle = filterHandle,
+            .m_groupId = CollisionGroupId{1},
+            .m_subGroupId = CollisionSubGroupId{0},
+        };
+        bodyConfiguration.m_motionType = MotionType::Static;
+        bodyConfiguration.m_objectLayer = DefaultLayers::NonMoving;
+        bodyConfiguration.m_shapeHandle = firstShapeHandle;
+        const BodyHandle firstBodyHandle = system.CreateBody(firstWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(firstBodyHandle);
+        bodyConfiguration.m_transform.m_position.m_x = 4.0;
+        const BodyHandle additionalFirstBodyHandle = system.CreateBody(firstWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(additionalFirstBodyHandle);
+
+        WorldStateDigest digestBeforeRejectedBind;
+        WorldStatistics statisticsBeforeRejectedBind;
+        ASSERT_TRUE(system.GetWorldStateDigest(secondWorldHandle, digestBeforeRejectedBind));
+        ASSERT_TRUE(system.GetWorldStatistics(secondWorldHandle, statisticsBeforeRejectedBind));
+        bodyConfiguration.m_shapeHandle = secondShapeHandle;
+        EXPECT_FALSE(system.CreateBody(secondWorldHandle, bodyConfiguration));
+        WorldStateDigest digestAfterRejectedBind;
+        WorldStatistics statisticsAfterRejectedBind;
+        ASSERT_TRUE(system.GetWorldStateDigest(secondWorldHandle, digestAfterRejectedBind));
+        ASSERT_TRUE(system.GetWorldStatistics(secondWorldHandle, statisticsAfterRejectedBind));
+        EXPECT_EQ(digestAfterRejectedBind, digestBeforeRejectedBind);
+        EXPECT_EQ(statisticsAfterRejectedBind.m_bodyCount, statisticsBeforeRejectedBind.m_bodyCount);
+
+        ExtensionInformation information;
+        ASSERT_TRUE(system.GetExtensionInformation(registration.GetHandle(), information));
+        EXPECT_EQ(information.m_dependentCount, 1);
+
+        EXPECT_TRUE(system.DestroyBody(firstWorldHandle, firstBodyHandle));
+        EXPECT_FALSE(system.CreateBody(secondWorldHandle, bodyConfiguration));
+        EXPECT_TRUE(system.DestroyBody(firstWorldHandle, additionalFirstBodyHandle));
+        bodyConfiguration.m_transform.m_position.m_x = 0.0;
+        const BodyHandle secondBodyHandle = system.CreateBody(secondWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(secondBodyHandle);
+
+        EXPECT_TRUE(system.DestroyBody(secondWorldHandle, secondBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(firstWorldHandle, firstShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(secondWorldHandle, secondShapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(firstWorldHandle));
+        EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
+        EXPECT_TRUE(system.DestroyGroupFilter(filterHandle));
+    }
+
+    TEST(SimulationTests, StatelessGroupFilterCanServeMultipleWorlds)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        StatelessGroupFilter filter;
+        ScopedExtensionRegistration registration(system, &filter);
+        const GroupFilterHandle filterHandle = system.CreateGroupFilter(2, registration.GetHandle());
+        ASSERT_TRUE(filterHandle);
+
+        const WorldHandle firstWorldHandle = system.CreateWorld(WorldConfiguration{});
+        const WorldHandle secondWorldHandle = system.CreateWorld(WorldConfiguration{});
+        ASSERT_TRUE(firstWorldHandle);
+        ASSERT_TRUE(secondWorldHandle);
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle firstShapeHandle = system.CreateShape(firstWorldHandle, shapeConfiguration);
+        const ShapeHandle secondShapeHandle = system.CreateShape(secondWorldHandle, shapeConfiguration);
+        ASSERT_TRUE(firstShapeHandle);
+        ASSERT_TRUE(secondShapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_collisionGroup = {
+            .m_filterHandle = filterHandle,
+            .m_groupId = CollisionGroupId{1},
+            .m_subGroupId = CollisionSubGroupId{0},
+        };
+        bodyConfiguration.m_motionType = MotionType::Static;
+        bodyConfiguration.m_objectLayer = DefaultLayers::NonMoving;
+        bodyConfiguration.m_shapeHandle = firstShapeHandle;
+        const BodyHandle firstBodyHandle = system.CreateBody(firstWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(firstBodyHandle);
+        bodyConfiguration.m_shapeHandle = secondShapeHandle;
+        const BodyHandle secondBodyHandle = system.CreateBody(secondWorldHandle, bodyConfiguration);
+        ASSERT_TRUE(secondBodyHandle);
+
+        EXPECT_TRUE(system.DestroyBody(firstWorldHandle, firstBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(secondWorldHandle, secondBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(firstWorldHandle, firstShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(secondWorldHandle, secondShapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(firstWorldHandle));
+        EXPECT_TRUE(system.DestroyWorld(secondWorldHandle));
+        EXPECT_TRUE(system.DestroyGroupFilter(filterHandle));
     }
 
     TEST(SimulationTests, TransactionalRestoreRecoversCallbackStateAfterParticipantFailure)

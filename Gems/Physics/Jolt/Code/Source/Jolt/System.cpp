@@ -705,6 +705,7 @@ namespace Jolt
             extension->GetStateTypeId(),
             extension->GetStateVersion(),
             ExtensionKind::BodyPairCollider,
+            extension->GetStateByteCount() > 0,
             false,
             AZStd::move(hostLease));
     }
@@ -722,6 +723,7 @@ namespace Jolt
             extension->GetStateTypeId(),
             extension->GetStateVersion(),
             ExtensionKind::ContactCallbacks,
+            extension->GetStateByteCount() > 0,
             false,
             AZStd::move(hostLease));
     }
@@ -745,6 +747,7 @@ namespace Jolt
             id,
             version,
             ExtensionKind::CustomConstraintProvider,
+            false,
             true,
             AZStd::move(hostLease));
     }
@@ -768,6 +771,7 @@ namespace Jolt
             id,
             version,
             ExtensionKind::CustomConvexShapeProvider,
+            false,
             true,
             AZStd::move(hostLease));
     }
@@ -791,6 +795,7 @@ namespace Jolt
             id,
             version,
             ExtensionKind::CustomPathProvider,
+            false,
             true,
             AZStd::move(hostLease));
     }
@@ -814,6 +819,7 @@ namespace Jolt
             id,
             version,
             ExtensionKind::CustomShapeProvider,
+            false,
             true,
             AZStd::move(hostLease));
     }
@@ -831,6 +837,7 @@ namespace Jolt
             extension->GetStateTypeId(),
             extension->GetStateVersion(),
             ExtensionKind::GroupFilter,
+            extension->GetStateByteCount() > 0,
             false,
             AZStd::move(hostLease));
     }
@@ -848,6 +855,7 @@ namespace Jolt
             extension->GetStateTypeId(),
             extension->GetStateVersion(),
             ExtensionKind::SimulationShapeFilter,
+            extension->GetStateByteCount() > 0,
             false,
             AZStd::move(hostLease));
     }
@@ -865,6 +873,7 @@ namespace Jolt
             extension->GetStateTypeId(),
             extension->GetStateVersion(),
             ExtensionKind::SoftBodyContactCallbacks,
+            extension->GetStateByteCount() > 0,
             false,
             AZStd::move(hostLease));
     }
@@ -882,6 +891,7 @@ namespace Jolt
             extension->GetStateTypeId(),
             extension->GetStateVersion(),
             ExtensionKind::StepListener,
+            extension->GetStateByteCount() > 0,
             false,
             AZStd::move(hostLease));
     }
@@ -899,6 +909,7 @@ namespace Jolt
             extension->GetStateTypeId(),
             extension->GetStateVersion(),
             ExtensionKind::VehicleCallbacks,
+            extension->GetStateByteCount() > 0,
             false,
             AZStd::move(hostLease));
     }
@@ -916,6 +927,7 @@ namespace Jolt
             extension->GetStateTypeId(),
             extension->GetStateVersion(),
             ExtensionKind::VehicleCollisionFilter,
+            extension->GetStateByteCount() > 0,
             false,
             AZStd::move(hostLease));
     }
@@ -933,6 +945,7 @@ namespace Jolt
             extension->GetStateTypeId(),
             extension->GetStateVersion(),
             ExtensionKind::VirtualCharacterContactCallbacks,
+            extension->GetStateByteCount() > 0,
             false,
             AZStd::move(hostLease));
     }
@@ -942,6 +955,7 @@ namespace Jolt
         const AZ::TypeId id,
         const AZ::u64 version,
         const ExtensionKind kind,
+        const bool hasMutableRollbackState,
         const bool uniqueIdentity,
         ExtensionHostLease hostLease)
     {
@@ -981,6 +995,7 @@ namespace Jolt
         slot.m_version = version;
         slot.m_dependentCount = 0;
         slot.m_kind = kind;
+        slot.m_hasMutableRollbackState = hasMutableRollbackState;
         return {
             .m_handle = extensionHandle,
             .m_status = ExtensionRegistrationStatus::Success,
@@ -1005,7 +1020,7 @@ namespace Jolt
             {
                 return ExtensionRegistrationStatus::NotRegistered;
             }
-            if (slot.m_dependentCount > 0)
+            if (slot.m_dependentCount > 0 || slot.m_rollbackOwnerReferenceCount > 0)
             {
                 return ExtensionRegistrationStatus::InUse;
             }
@@ -1113,6 +1128,87 @@ namespace Jolt
             *registeredVersion = 0;
         }
         return nullptr;
+    }
+
+    bool RuntimeImplementation::ClaimExtensionRollbackOwner(
+        const ExtensionHandle extensionHandle,
+        const WorldHandle worldHandle)
+    {
+        if (!extensionHandle)
+        {
+            return true;
+        }
+
+        AZStd::lock_guard lock(m_extensionMutex);
+        Internal::ResourceHandleParts parts;
+        if (!worldHandle
+            || !Internal::DecodeResourceHandle(extensionHandle, parts)
+            || parts.m_index >= m_extensionSlots.size())
+        {
+            return false;
+        }
+
+        ExtensionSlot& slot = m_extensionSlots[parts.m_index];
+        if (!slot.m_extension || slot.m_generation != parts.m_generation || slot.m_dependentCount == 0)
+        {
+            return false;
+        }
+        if (!slot.m_hasMutableRollbackState)
+        {
+            return true;
+        }
+        if ((slot.m_rollbackOwner && slot.m_rollbackOwner != worldHandle)
+            || slot.m_rollbackOwnerReferenceCount == AZStd::numeric_limits<AZ::u32>::max())
+        {
+            return false;
+        }
+
+        slot.m_rollbackOwner = worldHandle;
+        ++slot.m_rollbackOwnerReferenceCount;
+        return true;
+    }
+
+    void RuntimeImplementation::ReleaseExtensionRollbackOwner(
+        const ExtensionHandle extensionHandle,
+        const WorldHandle worldHandle)
+    {
+        if (!extensionHandle)
+        {
+            return;
+        }
+
+        AZStd::lock_guard lock(m_extensionMutex);
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(extensionHandle, parts)
+            || parts.m_index >= m_extensionSlots.size())
+        {
+            AZ_Assert(false, "Rollback participant ownership is inconsistent.");
+            return;
+        }
+
+        ExtensionSlot& slot = m_extensionSlots[parts.m_index];
+        if (!slot.m_extension || slot.m_generation != parts.m_generation || !slot.m_hasMutableRollbackState)
+        {
+            return;
+        }
+
+        AZ_Assert(
+            worldHandle
+                && slot.m_rollbackOwner == worldHandle
+                && slot.m_rollbackOwnerReferenceCount > 0,
+            "Rollback participant ownership is inconsistent.");
+        if (!worldHandle
+            || slot.m_rollbackOwner != worldHandle
+            || slot.m_rollbackOwnerReferenceCount == 0)
+        {
+            return;
+        }
+
+        --slot.m_rollbackOwnerReferenceCount;
+        if (slot.m_rollbackOwnerReferenceCount == 0)
+        {
+            slot.m_rollbackOwner = WorldHandle::Invalid;
+        }
     }
 
     void RuntimeImplementation::ReleaseExtension(
@@ -2935,22 +3031,24 @@ namespace Jolt
         const GroupFilterHandle filterHandle)
     {
         AZStd::lock_guard worldLock(m_worldMutex);
-        AZStd::lock_guard filterLock(m_groupFilterMutex);
-        GroupFilterSlot* slot = FindGroupFilterUnlocked(filterHandle);
-        if (!slot || !slot->m_isCustom)
         {
-            return false;
-        }
+            AZStd::lock_guard filterLock(m_groupFilterMutex);
+            GroupFilterSlot* slot = FindGroupFilterUnlocked(filterHandle);
+            if (!slot || !slot->m_isCustom)
+            {
+                return false;
+            }
 
-        const auto* filter = static_cast<const GroupFilterAdapter*>(slot->m_filter.GetPtr());
-        IGroupFilter* callbacks = filter->GetCallbacks();
-        if (!callbacks)
-        {
-            return false;
-        }
+            const auto* filter = static_cast<const GroupFilterAdapter*>(slot->m_filter.GetPtr());
+            IGroupFilter* callbacks = filter->GetCallbacks();
+            if (!callbacks)
+            {
+                return false;
+            }
 
-        slot->m_stateHash = MixGroupFilterValue(slot->m_subGroupCount)
-            ^ MixGroupFilterValue(callbacks->GetStateHash());
+            slot->m_stateHash = MixGroupFilterValue(slot->m_subGroupCount)
+                ^ MixGroupFilterValue(callbacks->GetStateHash());
+        }
         RefreshGroupFilterInWorlds(filterHandle);
         return true;
     }
@@ -2982,32 +3080,34 @@ namespace Jolt
         const bool enabled)
     {
         AZStd::lock_guard worldLock(m_worldMutex);
-        AZStd::lock_guard filterLock(m_groupFilterMutex);
-        GroupFilterSlot* slot = FindGroupFilterUnlocked(filterHandle);
-        if (!slot
-            || slot->m_isCustom
-            || !IsValidSubGroupPair(firstSubGroup, secondSubGroup, slot->m_subGroupCount))
         {
-            return false;
-        }
+            AZStd::lock_guard filterLock(m_groupFilterMutex);
+            GroupFilterSlot* slot = FindGroupFilterUnlocked(filterHandle);
+            if (!slot
+                || slot->m_isCustom
+                || !IsValidSubGroupPair(firstSubGroup, secondSubGroup, slot->m_subGroupCount))
+            {
+                return false;
+            }
 
-        auto* filter = static_cast<JPH::GroupFilterTable*>(slot->m_filter.GetPtr());
-        const bool currentValue = filter->IsCollisionEnabled(
-            firstSubGroup.GetValue(),
-            secondSubGroup.GetValue());
-        if (currentValue == enabled)
-        {
-            return true;
+            auto* filter = static_cast<JPH::GroupFilterTable*>(slot->m_filter.GetPtr());
+            const bool currentValue = filter->IsCollisionEnabled(
+                firstSubGroup.GetValue(),
+                secondSubGroup.GetValue());
+            if (currentValue == enabled)
+            {
+                return true;
+            }
+            if (enabled)
+            {
+                filter->EnableCollision(firstSubGroup.GetValue(), secondSubGroup.GetValue());
+            }
+            else
+            {
+                filter->DisableCollision(firstSubGroup.GetValue(), secondSubGroup.GetValue());
+            }
+            slot->m_stateHash ^= GetSubGroupPairHash(firstSubGroup, secondSubGroup);
         }
-        if (enabled)
-        {
-            filter->EnableCollision(firstSubGroup.GetValue(), secondSubGroup.GetValue());
-        }
-        else
-        {
-            filter->DisableCollision(firstSubGroup.GetValue(), secondSubGroup.GetValue());
-        }
-        slot->m_stateHash ^= GetSubGroupPairHash(firstSubGroup, secondSubGroup);
         RefreshGroupFilterInWorlds(filterHandle);
         return true;
     }
@@ -10523,7 +10623,8 @@ namespace Jolt
 
     bool RuntimeImplementation::AcquireCollisionGroup(
         const CollisionGroupConfiguration& configuration,
-        JPH::CollisionGroup& collisionGroup)
+        JPH::CollisionGroup& collisionGroup,
+        const WorldHandle rollbackOwner)
     {
         if (!configuration.m_filterHandle)
         {
@@ -10534,48 +10635,88 @@ namespace Jolt
             return true;
         }
 
-        AZStd::lock_guard lock(m_groupFilterMutex);
-        GroupFilterSlot* slot = FindGroupFilterUnlocked(configuration.m_filterHandle);
-        if (!slot
-            || (configuration.m_groupId
-                && (!configuration.m_subGroupId
-                    || configuration.m_subGroupId.GetValue() >= slot->m_subGroupCount)))
+        ExtensionHandle extensionHandle;
+        {
+            AZStd::lock_guard lock(m_groupFilterMutex);
+            const GroupFilterSlot* slot = FindGroupFilterUnlocked(configuration.m_filterHandle);
+            if (!slot
+                || (configuration.m_groupId
+                    && (!configuration.m_subGroupId
+                        || configuration.m_subGroupId.GetValue() >= slot->m_subGroupCount)))
+            {
+                return false;
+            }
+            extensionHandle = slot->m_extensionHandle;
+        }
+
+        const bool claimedRollbackOwner = rollbackOwner && extensionHandle;
+        if (claimedRollbackOwner && !ClaimExtensionRollbackOwner(extensionHandle, rollbackOwner))
         {
             return false;
         }
 
-        ++slot->m_referenceCount;
-        collisionGroup = JPH::CollisionGroup(
-            slot->m_filter,
-            configuration.m_groupId.GetValue(),
-            configuration.m_subGroupId.GetValue());
-        return true;
+        bool acquiredCollisionGroup = false;
+        {
+            AZStd::lock_guard lock(m_groupFilterMutex);
+            GroupFilterSlot* slot = FindGroupFilterUnlocked(configuration.m_filterHandle);
+            if (slot
+                && slot->m_extensionHandle == extensionHandle
+                && slot->m_referenceCount != AZStd::numeric_limits<AZ::u32>::max()
+                && (!configuration.m_groupId
+                    || (configuration.m_subGroupId
+                        && configuration.m_subGroupId.GetValue() < slot->m_subGroupCount)))
+            {
+                ++slot->m_referenceCount;
+                collisionGroup = JPH::CollisionGroup(
+                    slot->m_filter,
+                    configuration.m_groupId.GetValue(),
+                    configuration.m_subGroupId.GetValue());
+                acquiredCollisionGroup = true;
+            }
+        }
+        if (!acquiredCollisionGroup && claimedRollbackOwner)
+        {
+            ReleaseExtensionRollbackOwner(extensionHandle, rollbackOwner);
+        }
+        return acquiredCollisionGroup;
     }
 
     void RuntimeImplementation::ReleaseGroupFilter(
-        const GroupFilterHandle filterHandle)
+        const GroupFilterHandle filterHandle,
+        const WorldHandle rollbackOwner)
     {
         if (!filterHandle)
         {
             return;
         }
 
-        AZStd::lock_guard lock(m_groupFilterMutex);
-        Internal::ResourceHandleParts parts;
-        const bool decoded = Internal::DecodeResourceHandle(filterHandle, parts);
-        AZ_Assert(decoded && parts.m_index < m_groupFilterSlots.size(), "Group filter ownership is inconsistent.");
-        if (!decoded || parts.m_index >= m_groupFilterSlots.size())
+        ExtensionHandle extensionHandle;
         {
-            return;
+            AZStd::lock_guard lock(m_groupFilterMutex);
+            Internal::ResourceHandleParts parts;
+            const bool decoded = Internal::DecodeResourceHandle(filterHandle, parts);
+            AZ_Assert(decoded && parts.m_index < m_groupFilterSlots.size(), "Group filter ownership is inconsistent.");
+            if (!decoded || parts.m_index >= m_groupFilterSlots.size())
+            {
+                return;
+            }
+
+            GroupFilterSlot& slot = m_groupFilterSlots[parts.m_index];
+            AZ_Assert(
+                slot.m_filter && slot.m_generation == parts.m_generation && slot.m_referenceCount > 0,
+                "Group filter ownership is inconsistent.");
+            if (!slot.m_filter || slot.m_generation != parts.m_generation || slot.m_referenceCount == 0)
+            {
+                return;
+            }
+
+            --slot.m_referenceCount;
+            extensionHandle = slot.m_extensionHandle;
         }
 
-        GroupFilterSlot& slot = m_groupFilterSlots[parts.m_index];
-        AZ_Assert(
-            slot.m_filter && slot.m_generation == parts.m_generation && slot.m_referenceCount > 0,
-            "Group filter ownership is inconsistent.");
-        if (slot.m_filter && slot.m_generation == parts.m_generation && slot.m_referenceCount > 0)
+        if (rollbackOwner && extensionHandle)
         {
-            --slot.m_referenceCount;
+            ReleaseExtensionRollbackOwner(extensionHandle, rollbackOwner);
         }
     }
 

@@ -2807,10 +2807,12 @@ namespace Jolt
         [[nodiscard]]
         bool CommitRollbackParticipantRestore(
             const IRollbackParticipant* participant,
-            const RollbackParticipantState& state) const;
+            const RollbackParticipantState& state);
 
         [[nodiscard]]
-        bool CommitRollbackParticipantRestores(const StateSnapshotSlot& snapshot) const;
+        bool CommitRollbackParticipantRestores(const StateSnapshotSlot& snapshot);
+
+        void NotifyGroupFilterChangedUnlocked(GroupFilterHandle filterHandle);
 
         [[nodiscard]]
         bool AreGroupFilterStatesCompatible(

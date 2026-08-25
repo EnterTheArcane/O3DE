@@ -3128,9 +3128,12 @@ namespace Jolt
             void* m_extension = nullptr;
             AZ::TypeId m_id = AZ::TypeId::CreateNull();
             AZ::u64 m_version = 0;
+            WorldHandle m_rollbackOwner;
             AZ::u32 m_dependentCount = 0;
+            AZ::u32 m_rollbackOwnerReferenceCount = 0;
             AZ::u32 m_generation = 0;
             ExtensionKind m_kind = ExtensionKind::None;
+            bool m_hasMutableRollbackState = false;
         };
 
         struct CookedShapeSlot final
@@ -3324,6 +3327,7 @@ namespace Jolt
             AZ::TypeId id,
             AZ::u64 version,
             ExtensionKind kind,
+            bool hasMutableRollbackState,
             bool uniqueIdentity,
             ExtensionHostLease hostLease);
 
@@ -3339,6 +3343,15 @@ namespace Jolt
             AZ::u64 requiredVersion,
             ExtensionHandle& extensionHandle,
             AZ::u64* registeredVersion = nullptr);
+
+        [[nodiscard]]
+        bool ClaimExtensionRollbackOwner(
+            ExtensionHandle extensionHandle,
+            WorldHandle worldHandle);
+
+        void ReleaseExtensionRollbackOwner(
+            ExtensionHandle extensionHandle,
+            WorldHandle worldHandle);
 
         [[nodiscard]]
         ICustomConstraintProvider* AcquireCustomConstraintProvider(
@@ -3401,9 +3414,12 @@ namespace Jolt
         [[nodiscard]]
         bool AcquireCollisionGroup(
             const CollisionGroupConfiguration& configuration,
-            JPH::CollisionGroup& collisionGroup);
+            JPH::CollisionGroup& collisionGroup,
+            WorldHandle rollbackOwner = WorldHandle::Invalid);
 
-        void ReleaseGroupFilter(GroupFilterHandle filterHandle);
+        void ReleaseGroupFilter(
+            GroupFilterHandle filterHandle,
+            WorldHandle rollbackOwner = WorldHandle::Invalid);
 
         [[nodiscard]]
         bool GetGroupFilterStateHash(

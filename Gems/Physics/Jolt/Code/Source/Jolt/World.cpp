@@ -5797,6 +5797,7 @@ namespace Jolt
         }
         for (const ExtensionBinding<IStepListener>& listener : m_stepListeners)
         {
+            m_system.ReleaseExtensionRollbackOwner(listener.m_handle, m_handle);
             m_system.ReleaseExtension(listener.m_handle);
         }
         m_stepListeners.clear();
@@ -5810,6 +5811,7 @@ namespace Jolt
         {
             if (extensionHandle)
             {
+                m_system.ReleaseExtensionRollbackOwner(extensionHandle, m_handle);
                 m_system.ReleaseExtension(extensionHandle);
             }
         }
@@ -5873,10 +5875,12 @@ namespace Jolt
             {
                 if (slot.m_bindings->m_callbacks.m_handle)
                 {
+                    m_system.ReleaseExtensionRollbackOwner(slot.m_bindings->m_callbacks.m_handle, m_handle);
                     m_system.ReleaseExtension(slot.m_bindings->m_callbacks.m_handle);
                 }
                 if (slot.m_bindings->m_collisionFilter.m_handle)
                 {
+                    m_system.ReleaseExtensionRollbackOwner(slot.m_bindings->m_collisionFilter.m_handle, m_handle);
                     m_system.ReleaseExtension(slot.m_bindings->m_collisionFilter.m_handle);
                 }
                 slot.m_bindings.reset();
@@ -5913,7 +5917,7 @@ namespace Jolt
                 slot.m_character->RemoveFromPhysicsSystem();
                 if (BodySlot* bodySlot = FindBody(slot.m_bodyHandle))
                 {
-                    m_system.ReleaseGroupFilter(bodySlot->m_groupFilterHandle);
+                    m_system.ReleaseGroupFilter(bodySlot->m_groupFilterHandle, m_handle);
                     bodySlot->m_groupFilterHandle = {};
                     bodySlot->m_bodyId = JPH::BodyID();
                 }
@@ -5933,6 +5937,7 @@ namespace Jolt
             }
             if (slot.m_contactCallbacks.m_handle)
             {
+                m_system.ReleaseExtensionRollbackOwner(slot.m_contactCallbacks.m_handle, m_handle);
                 m_system.ReleaseExtension(slot.m_contactCallbacks.m_handle);
                 slot.m_contactCallbacks = {};
             }
@@ -5943,7 +5948,7 @@ namespace Jolt
             {
                 bodyInterface.RemoveBody(slot.m_bodyId);
                 bodyInterface.DestroyBody(slot.m_bodyId);
-                m_system.ReleaseGroupFilter(slot.m_groupFilterHandle);
+                m_system.ReleaseGroupFilter(slot.m_groupFilterHandle, m_handle);
                 slot.m_groupFilterHandle = {};
                 if (slot.m_softBodyDefinitionHandle)
                 {
@@ -8167,7 +8172,7 @@ namespace Jolt
         }
 
         JPH::CollisionGroup collisionGroup;
-        if (!m_system.AcquireCollisionGroup(configuration.m_collisionGroup, collisionGroup))
+        if (!m_system.AcquireCollisionGroup(configuration.m_collisionGroup, collisionGroup, m_handle))
         {
             return {};
         }
@@ -8177,7 +8182,7 @@ namespace Jolt
         const BodyHandle bodyHandle = ReserveBodySlot(bodyIndex, bodyReservation);
         if (!bodyHandle)
         {
-            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle, m_handle);
             return {};
         }
         BodySlot& slot = m_bodySlots[bodyIndex];
@@ -8249,7 +8254,7 @@ namespace Jolt
         }
         if (bodyId.IsInvalid())
         {
-            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle, m_handle);
             Internal::RollbackHandleSlot(m_bodySlots, m_freeBodySlots, bodyReservation);
             return {};
         }
@@ -8330,7 +8335,7 @@ namespace Jolt
         }
 
         JPH::CollisionGroup collisionGroup;
-        if (!m_system.AcquireCollisionGroup(configuration.m_collisionGroup, collisionGroup))
+        if (!m_system.AcquireCollisionGroup(configuration.m_collisionGroup, collisionGroup, m_handle))
         {
             m_system.ReleaseSoftBodyDefinition(configuration.m_definitionHandle);
             return {};
@@ -8341,7 +8346,7 @@ namespace Jolt
         const BodyHandle bodyHandle = ReserveBodySlot(bodyIndex, bodyReservation);
         if (!bodyHandle)
         {
-            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle, m_handle);
             m_system.ReleaseSoftBodyDefinition(configuration.m_definitionHandle);
             return {};
         }
@@ -8399,7 +8404,7 @@ namespace Jolt
         }
         if (bodyId.IsInvalid())
         {
-            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle, m_handle);
             m_system.ReleaseSoftBodyDefinition(configuration.m_definitionHandle);
             Internal::RollbackHandleSlot(m_bodySlots, m_freeBodySlots, bodyReservation);
             return {};
@@ -8414,7 +8419,7 @@ namespace Jolt
                     bodyInterface.RemoveBody(bodyId);
                 }
                 bodyInterface.DestroyBody(bodyId);
-                m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+                m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle, m_handle);
                 m_system.ReleaseSoftBodyDefinition(configuration.m_definitionHandle);
                 Internal::RollbackHandleSlot(m_bodySlots, m_freeBodySlots, bodyReservation);
                 return {};
@@ -8643,7 +8648,7 @@ namespace Jolt
         [[maybe_unused]] const bool decoded = Internal::DecodeWorldMemberHandle(bodyHandle, parts);
         AZ_Assert(decoded, "A validated body handle must decode.");
 
-        m_system.ReleaseGroupFilter(slot.m_groupFilterHandle);
+        m_system.ReleaseGroupFilter(slot.m_groupFilterHandle, m_handle);
         if (slot.m_kind == BodyKind::Rigid)
         {
             ShapeSlot* shapeSlot = FindShape(slot.m_shapeHandle);
@@ -11717,7 +11722,7 @@ namespace Jolt
         }
 
         JPH::CollisionGroup collisionGroup;
-        if (!m_system.AcquireCollisionGroup(configuration.m_collisionGroup, collisionGroup))
+        if (!m_system.AcquireCollisionGroup(configuration.m_collisionGroup, collisionGroup, m_handle))
         {
             return false;
         }
@@ -11725,7 +11730,7 @@ namespace Jolt
         JPH::BodyLockWrite bodyLock(m_physicsSystem.GetBodyLockInterface(), slot->m_bodyId);
         if (!bodyLock.Succeeded())
         {
-            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle, m_handle);
             return false;
         }
 
@@ -11733,7 +11738,7 @@ namespace Jolt
                 && !bodyLock.GetBody().CanBeKinematicOrDynamic())
             || !AdvanceBodyConfigurationRevision(*slot))
         {
-            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle, m_handle);
             return false;
         }
 
@@ -11795,7 +11800,7 @@ namespace Jolt
             }
         }
 
-        m_system.ReleaseGroupFilter(slot->m_groupFilterHandle);
+        m_system.ReleaseGroupFilter(slot->m_groupFilterHandle, m_handle);
         if (slot->m_shapeHandle != configuration.m_shapeHandle)
         {
             ShapeSlot* previousShapeSlot = FindShape(slot->m_shapeHandle);
@@ -12059,7 +12064,7 @@ namespace Jolt
         }
 
         JPH::CollisionGroup collisionGroup;
-        if (!m_system.AcquireCollisionGroup(configuration.m_collisionGroup, collisionGroup))
+        if (!m_system.AcquireCollisionGroup(configuration.m_collisionGroup, collisionGroup, m_handle))
         {
             m_system.ReleaseSoftBodyDefinition(configuration.m_definitionHandle);
             return false;
@@ -12068,14 +12073,14 @@ namespace Jolt
         JPH::BodyLockWrite bodyLock(m_physicsSystem.GetBodyLockInterface(), slot->m_bodyId);
         if (!bodyLock.Succeeded())
         {
-            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle, m_handle);
             m_system.ReleaseSoftBodyDefinition(configuration.m_definitionHandle);
             return false;
         }
 
         if (!AdvanceBodyConfigurationRevision(*slot))
         {
-            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle, m_handle);
             m_system.ReleaseSoftBodyDefinition(configuration.m_definitionHandle);
             return false;
         }
@@ -12112,7 +12117,7 @@ namespace Jolt
         motionProperties->SetEnableSkinConstraints(
             slot->m_softBodySkinConstraintsEnabled && slot->m_softBodySkinPoseInitialized);
         motionProperties->SetSkinnedMaxDistanceMultiplier(configuration.m_skinnedMaximumDistanceMultiplier);
-        m_system.ReleaseGroupFilter(slot->m_groupFilterHandle);
+        m_system.ReleaseGroupFilter(slot->m_groupFilterHandle, m_handle);
         m_system.ReleaseSoftBodyDefinition(slot->m_softBodyDefinitionHandle);
         slot->m_groupFilterHandle = configuration.m_collisionGroup.m_filterHandle;
         slot->m_softBodyDefinitionHandle = configuration.m_definitionHandle;
@@ -12687,6 +12692,7 @@ namespace Jolt
         slot->m_contactProvenance.reset();
         if (slot->m_contactCallbacks.m_handle)
         {
+            m_system.ReleaseExtensionRollbackOwner(slot->m_contactCallbacks.m_handle, m_handle);
             m_system.ReleaseExtension(slot->m_contactCallbacks.m_handle);
             slot->m_contactCallbacks = {};
         }
@@ -13151,10 +13157,16 @@ namespace Jolt
             }
             return true;
         }
+        if (extensionHandle && !m_system.ClaimExtensionRollbackOwner(extensionHandle, m_handle))
+        {
+            m_system.ReleaseExtension(extensionHandle);
+            return false;
+        }
         if (!AdvanceConfigurationRevision())
         {
             if (extensionHandle)
             {
+                m_system.ReleaseExtensionRollbackOwner(extensionHandle, m_handle);
                 m_system.ReleaseExtension(extensionHandle);
             }
             return false;
@@ -13181,6 +13193,7 @@ namespace Jolt
         }
         if (previousExtensionHandle)
         {
+            m_system.ReleaseExtensionRollbackOwner(previousExtensionHandle, m_handle);
             m_system.ReleaseExtension(previousExtensionHandle);
         }
         return true;
@@ -13620,7 +13633,7 @@ namespace Jolt
         }
 
         JPH::CollisionGroup collisionGroup;
-        if (!m_system.AcquireCollisionGroup(configuration.m_collisionGroup, collisionGroup))
+        if (!m_system.AcquireCollisionGroup(configuration.m_collisionGroup, collisionGroup, m_handle))
         {
             return {};
         }
@@ -13635,7 +13648,7 @@ namespace Jolt
                 characterReservation);
         if (!characterHandle)
         {
-            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle, m_handle);
             return {};
         }
 
@@ -13645,7 +13658,7 @@ namespace Jolt
         const BodyHandle bodyHandle = ReserveBodySlot(bodyIndex, bodyReservation);
         if (!bodyHandle)
         {
-            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle, m_handle);
             Internal::RollbackHandleSlot(m_characterSlots, m_freeCharacterSlots, characterReservation);
             return {};
         }
@@ -13672,7 +13685,7 @@ namespace Jolt
             &m_physicsSystem);
         if (character->GetBodyID().IsInvalid())
         {
-            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle);
+            m_system.ReleaseGroupFilter(configuration.m_collisionGroup.m_filterHandle, m_handle);
             Internal::RollbackHandleSlot(m_bodySlots, m_freeBodySlots, bodyReservation);
             Internal::RollbackHandleSlot(m_characterSlots, m_freeCharacterSlots, characterReservation);
             return {};
@@ -14893,10 +14906,12 @@ namespace Jolt
         {
             if (slot->m_bindings->m_callbacks.m_handle)
             {
+                m_system.ReleaseExtensionRollbackOwner(slot->m_bindings->m_callbacks.m_handle, m_handle);
                 m_system.ReleaseExtension(slot->m_bindings->m_callbacks.m_handle);
             }
             if (slot->m_bindings->m_collisionFilter.m_handle)
             {
+                m_system.ReleaseExtensionRollbackOwner(slot->m_bindings->m_collisionFilter.m_handle, m_handle);
                 m_system.ReleaseExtension(slot->m_bindings->m_collisionFilter.m_handle);
             }
         }
@@ -15547,10 +15562,16 @@ namespace Jolt
             }
             return true;
         }
+        if (extensionHandle && !m_system.ClaimExtensionRollbackOwner(extensionHandle, m_handle))
+        {
+            m_system.ReleaseExtension(extensionHandle);
+            return false;
+        }
         if (!AdvanceVehicleConfigurationRevision(*slot))
         {
             if (extensionHandle)
             {
+                m_system.ReleaseExtensionRollbackOwner(extensionHandle, m_handle);
                 m_system.ReleaseExtension(extensionHandle);
             }
             return false;
@@ -15603,6 +15624,7 @@ namespace Jolt
             }
             if (currentExtensionHandle)
             {
+                m_system.ReleaseExtensionRollbackOwner(currentExtensionHandle, m_handle);
                 m_system.ReleaseExtension(currentExtensionHandle);
             }
             return true;
@@ -15755,6 +15777,7 @@ namespace Jolt
         }
         if (currentExtensionHandle)
         {
+            m_system.ReleaseExtensionRollbackOwner(currentExtensionHandle, m_handle);
             m_system.ReleaseExtension(currentExtensionHandle);
         }
         return true;
@@ -15788,10 +15811,16 @@ namespace Jolt
             }
             return true;
         }
+        if (extensionHandle && !m_system.ClaimExtensionRollbackOwner(extensionHandle, m_handle))
+        {
+            m_system.ReleaseExtension(extensionHandle);
+            return false;
+        }
         if (!AdvanceVehicleConfigurationRevision(*slot))
         {
             if (extensionHandle)
             {
+                m_system.ReleaseExtensionRollbackOwner(extensionHandle, m_handle);
                 m_system.ReleaseExtension(extensionHandle);
             }
             return false;
@@ -15838,6 +15867,7 @@ namespace Jolt
         ActivateVehicleBody(*slot);
         if (currentExtensionHandle)
         {
+            m_system.ReleaseExtensionRollbackOwner(currentExtensionHandle, m_handle);
             m_system.ReleaseExtension(currentExtensionHandle);
         }
         return true;
@@ -19450,7 +19480,7 @@ namespace Jolt
 
     bool World::CommitRollbackParticipantRestore(
         const IRollbackParticipant* participant,
-        const RollbackParticipantState& state) const
+        const RollbackParticipantState& state)
     {
         if (!participant)
         {
@@ -19461,7 +19491,7 @@ namespace Jolt
         return participant->GetStateHash() == state.m_stateHash;
     }
 
-    bool World::CommitRollbackParticipantRestores(const StateSnapshotSlot& snapshot) const
+    bool World::CommitRollbackParticipantRestores(const StateSnapshotSlot& snapshot)
     {
         for (const GroupFilterState& state : snapshot.m_groupFilterStates)
         {
@@ -19472,6 +19502,13 @@ namespace Jolt
                     state.m_participantState.m_stateHash))
             {
                 return false;
+            }
+        }
+        for (const GroupFilterState& state : snapshot.m_groupFilterStates)
+        {
+            if (!state.m_participantState.m_data.empty())
+            {
+                NotifyGroupFilterChangedUnlocked(state.m_filterHandle);
             }
         }
 
@@ -23532,6 +23569,12 @@ namespace Jolt
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::NotifyGroupFilterChanged");
 
         AZStd::lock_guard lock(m_mutex);
+        NotifyGroupFilterChangedUnlocked(filterHandle);
+    }
+
+    void World::NotifyGroupFilterChangedUnlocked(
+        const GroupFilterHandle filterHandle)
+    {
         JPH::BodyInterface& bodyInterface = m_physicsSystem.GetBodyInterface();
         m_bodyIdScratch.clear();
         for (const BodySlot& slot : m_bodySlots)
@@ -25388,13 +25431,13 @@ namespace Jolt
         }
 
         JPH::CollisionGroup nativeCollisionGroup;
-        if (!m_system.AcquireCollisionGroup(collisionGroup, nativeCollisionGroup))
+        if (!m_system.AcquireCollisionGroup(collisionGroup, nativeCollisionGroup, m_handle))
         {
             return false;
         }
         if (!AdvanceBodyConfigurationRevision(*bodySlot))
         {
-            m_system.ReleaseGroupFilter(collisionGroup.m_filterHandle);
+            m_system.ReleaseGroupFilter(collisionGroup.m_filterHandle, m_handle);
             return false;
         }
 
@@ -25406,7 +25449,7 @@ namespace Jolt
             bodyInterface.ActivateBody(bodySlot->m_bodyId);
         }
 
-        m_system.ReleaseGroupFilter(bodySlot->m_groupFilterHandle);
+        m_system.ReleaseGroupFilter(bodySlot->m_groupFilterHandle, m_handle);
         bodySlot->m_groupFilterHandle = collisionGroup.m_filterHandle;
         return true;
     }
@@ -28676,10 +28719,16 @@ namespace Jolt
             }
             return true;
         }
+        if (extensionHandle && !m_system.ClaimExtensionRollbackOwner(extensionHandle, m_handle))
+        {
+            m_system.ReleaseExtension(extensionHandle);
+            return false;
+        }
         if (!AdvanceGlobalConfigurationRevision())
         {
             if (extensionHandle)
             {
+                m_system.ReleaseExtensionRollbackOwner(extensionHandle, m_handle);
                 m_system.ReleaseExtension(extensionHandle);
             }
             return false;
@@ -28703,6 +28752,7 @@ namespace Jolt
         InvalidateAllContactCaches();
         if (previousExtensionHandle)
         {
+            m_system.ReleaseExtensionRollbackOwner(previousExtensionHandle, m_handle);
             m_system.ReleaseExtension(previousExtensionHandle);
         }
         return true;
@@ -28721,10 +28771,16 @@ namespace Jolt
             }
             return true;
         }
+        if (extensionHandle && !m_system.ClaimExtensionRollbackOwner(extensionHandle, m_handle))
+        {
+            m_system.ReleaseExtension(extensionHandle);
+            return false;
+        }
         if (!AdvanceGlobalConfigurationRevision())
         {
             if (extensionHandle)
             {
+                m_system.ReleaseExtensionRollbackOwner(extensionHandle, m_handle);
                 m_system.ReleaseExtension(extensionHandle);
             }
             return false;
@@ -28764,6 +28820,7 @@ namespace Jolt
         InvalidateAllContactCaches();
         if (previousExtensionHandle)
         {
+            m_system.ReleaseExtensionRollbackOwner(previousExtensionHandle, m_handle);
             m_system.ReleaseExtension(previousExtensionHandle);
         }
         return true;
@@ -28782,10 +28839,16 @@ namespace Jolt
             }
             return true;
         }
+        if (extensionHandle && !m_system.ClaimExtensionRollbackOwner(extensionHandle, m_handle))
+        {
+            m_system.ReleaseExtension(extensionHandle);
+            return false;
+        }
         if (!AdvanceGlobalConfigurationRevision())
         {
             if (extensionHandle)
             {
+                m_system.ReleaseExtensionRollbackOwner(extensionHandle, m_handle);
                 m_system.ReleaseExtension(extensionHandle);
             }
             return false;
@@ -28807,6 +28870,7 @@ namespace Jolt
         InvalidateAllContactCaches();
         if (previousExtensionHandle)
         {
+            m_system.ReleaseExtensionRollbackOwner(previousExtensionHandle, m_handle);
             m_system.ReleaseExtension(previousExtensionHandle);
         }
         return true;
@@ -28825,10 +28889,16 @@ namespace Jolt
             }
             return true;
         }
+        if (extensionHandle && !m_system.ClaimExtensionRollbackOwner(extensionHandle, m_handle))
+        {
+            m_system.ReleaseExtension(extensionHandle);
+            return false;
+        }
         if (!AdvanceGlobalConfigurationRevision())
         {
             if (extensionHandle)
             {
+                m_system.ReleaseExtensionRollbackOwner(extensionHandle, m_handle);
                 m_system.ReleaseExtension(extensionHandle);
             }
             return false;
@@ -28849,6 +28919,7 @@ namespace Jolt
         }
         if (previousExtensionHandle)
         {
+            m_system.ReleaseExtensionRollbackOwner(previousExtensionHandle, m_handle);
             m_system.ReleaseExtension(previousExtensionHandle);
         }
         return true;
@@ -28877,8 +28948,14 @@ namespace Jolt
             m_system.ReleaseExtension(extensionHandle);
             return false;
         }
+        if (!m_system.ClaimExtensionRollbackOwner(extensionHandle, m_handle))
+        {
+            m_system.ReleaseExtension(extensionHandle);
+            return false;
+        }
         if (!AdvanceGlobalConfigurationRevision())
         {
+            m_system.ReleaseExtensionRollbackOwner(extensionHandle, m_handle);
             m_system.ReleaseExtension(extensionHandle);
             return false;
         }
@@ -28929,6 +29006,7 @@ namespace Jolt
             return false;
         }
 
+        m_system.ReleaseExtensionRollbackOwner(extensionHandle, m_handle);
         m_stepListeners.erase(listenerIterator);
         m_system.ReleaseExtension(extensionHandle);
         m_system.ReleaseExtension(extensionHandle);
