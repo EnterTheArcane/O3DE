@@ -33,6 +33,7 @@
 #include <AzCore/Utils/TypeHash.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/containers/array.h>
+#include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/std/limits.h>
 #include <AzCore/std/parallel/atomic.h>
@@ -2350,6 +2351,127 @@ namespace Jolt
                 return {};
             }
             return digest;
+        }
+
+        struct ContactDeterminismResult final
+        {
+            WorldStateDigest m_worldDigest;
+            AZ::u64 m_eventDigest = 0;
+            AZ::u64 m_contactCount = 0;
+            AZ::u64 m_pointCount = 0;
+            bool m_succeeded = false;
+        };
+
+        [[nodiscard]]
+        ContactDeterminismResult SimulateDeterministicContacts(
+            const AZ::u32 workerCount,
+            AZ::JobContext* jobContext)
+        {
+            SystemConfiguration configuration;
+            configuration.m_defaultWorld.m_collectContactEvents = true;
+            configuration.m_defaultWorld.m_workerCount = workerCount;
+            Runtime system(configuration, jobContext);
+            ContactDeterminismResult result;
+            if (!system)
+            {
+                return result;
+            }
+
+            const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+            ShapeConfiguration floorShapeConfiguration;
+            floorShapeConfiguration.m_geometry = BoxShapeConfiguration{
+                .m_dimensions = AZ::Vector3(20.0f, 20.0f, 1.0f),
+            };
+            const ShapeHandle floorShapeHandle = system.CreateShape(worldHandle, floorShapeConfiguration);
+            BodyConfiguration floorConfiguration;
+            floorConfiguration.m_shapeHandle = floorShapeHandle;
+            floorConfiguration.m_transform.m_position.m_z = -0.5;
+            floorConfiguration.m_motionType = MotionType::Static;
+            const BodyHandle floorBodyHandle = system.CreateBody(worldHandle, floorConfiguration);
+
+            ShapeConfiguration sphereShapeConfiguration;
+            sphereShapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.25f};
+            const ShapeHandle sphereShapeHandle = system.CreateShape(worldHandle, sphereShapeConfiguration);
+            if (!floorShapeHandle || !floorBodyHandle || !sphereShapeHandle)
+            {
+                return result;
+            }
+
+            AZStd::unordered_map<BodyHandle, AZ::u32> bodyIndices;
+            bodyIndices.emplace(floorBodyHandle, 0);
+            constexpr AZ::u32 bodyCount = 128;
+            for (AZ::u32 bodyIndex = 0; bodyIndex < bodyCount; ++bodyIndex)
+            {
+                BodyConfiguration bodyConfiguration;
+                bodyConfiguration.m_shapeHandle = sphereShapeHandle;
+                bodyConfiguration.m_transform.m_position = {
+                    .m_x = static_cast<double>(bodyIndex % 8) * 0.55 - 1.925,
+                    .m_y = static_cast<double>((bodyIndex / 8) % 8) * 0.55 - 1.925,
+                    .m_z = static_cast<double>(bodyIndex / 64) * 0.55 + 0.3,
+                };
+                const BodyHandle bodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+                if (!bodyHandle)
+                {
+                    return result;
+                }
+                bodyIndices.emplace(bodyHandle, bodyIndex + 1);
+            }
+
+            AZ::HashValue64 eventDigest{0};
+            const auto append = [&eventDigest](const auto& value)
+            {
+                eventDigest = AZ::TypeHash64(value, eventDigest);
+            };
+            for (AZ::u32 step = 0; step < 120; ++step)
+            {
+                if (!system.StepWorld(worldHandle, 1.0f / 60.0f))
+                {
+                    return result;
+                }
+
+                const EventBatch events = system.GetEvents(worldHandle);
+                append(step);
+                append(events.GetContacts().size());
+                for (const ContactEvent& event : events.GetContacts())
+                {
+                    const auto firstBody = bodyIndices.find(event.m_firstBodyHandle);
+                    const auto secondBody = bodyIndices.find(event.m_secondBodyHandle);
+                    if (firstBody == bodyIndices.end() || secondBody == bodyIndices.end())
+                    {
+                        return result;
+                    }
+
+                    append(firstBody->second);
+                    append(secondBody->second);
+                    append(event.m_firstSubShapeId.GetValue());
+                    append(event.m_secondSubShapeId.GetValue());
+                    append(event.m_normal.GetX());
+                    append(event.m_normal.GetY());
+                    append(event.m_normal.GetZ());
+                    append(event.m_penetrationDepth);
+                    append(event.m_pointCount);
+                    append(static_cast<AZ::u8>(event.m_phase));
+                    ++result.m_contactCount;
+                    for (const ContactPoint& point : events.GetContactPoints(event))
+                    {
+                        append(point.m_positionOnFirstBody.m_x);
+                        append(point.m_positionOnFirstBody.m_y);
+                        append(point.m_positionOnFirstBody.m_z);
+                        append(point.m_positionOnSecondBody.m_x);
+                        append(point.m_positionOnSecondBody.m_y);
+                        append(point.m_positionOnSecondBody.m_z);
+                        ++result.m_pointCount;
+                    }
+                }
+            }
+
+            WorldStatistics statistics;
+            result.m_eventDigest = static_cast<AZ::u64>(eventDigest);
+            result.m_succeeded = system.GetWorldStatistics(worldHandle, statistics)
+                && statistics.m_requestedWorkerCount == workerCount
+                && statistics.m_effectiveWorkerCount == workerCount
+                && system.GetWorldStateDigest(worldHandle, result.m_worldDigest);
+            return result;
         }
 
         [[nodiscard]]
@@ -5813,7 +5935,14 @@ namespace Jolt
 
     TEST(SimulationTests, WorldRuntimeConfigurationTogglesEventCollection)
     {
-        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(4);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_workerCount = 4;
+        Runtime system(systemConfiguration, &jobContext);
         ASSERT_TRUE(system);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
@@ -15906,6 +16035,30 @@ namespace Jolt
             SimulateDeterministicRagdoll(4, &jobContext);
         EXPECT_EQ(externalSerialRagdollDigest, serialRagdollDigest);
         EXPECT_EQ(externalParallelRagdollDigest, serialRagdollDigest);
+    }
+
+    TEST(SimulationTests, ContactEventStreamIsDeterministicAcrossWorkerCounts)
+    {
+        const ContactDeterminismResult serialResult = SimulateDeterministicContacts(1, nullptr);
+        ASSERT_TRUE(serialResult.m_succeeded);
+        ASSERT_GT(serialResult.m_contactCount, 0);
+        ASSERT_GT(serialResult.m_pointCount, 0);
+
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(8);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        constexpr AZStd::array workerCounts = {AZ::u32{1}, AZ::u32{4}, AZ::u32{8}};
+        for (const AZ::u32 workerCount : workerCounts)
+        {
+            const ContactDeterminismResult result = SimulateDeterministicContacts(workerCount, &jobContext);
+            ASSERT_TRUE(result.m_succeeded) << "worker count " << workerCount;
+            EXPECT_EQ(result.m_worldDigest, serialResult.m_worldDigest) << "worker count " << workerCount;
+            EXPECT_EQ(result.m_eventDigest, serialResult.m_eventDigest) << "worker count " << workerCount;
+            EXPECT_EQ(result.m_contactCount, serialResult.m_contactCount) << "worker count " << workerCount;
+            EXPECT_EQ(result.m_pointCount, serialResult.m_pointCount) << "worker count " << workerCount;
+        }
     }
 
     TEST(SimulationTests, CharacterMembershipTransitionsAreDeterministicAcrossWorkerCounts)

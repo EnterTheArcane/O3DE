@@ -2740,6 +2740,21 @@ namespace Jolt
             size_t operator()(const JPH::SubShapeIDPair& pair) const;
         };
 
+        using ContactCache = AZStd::unordered_map<JPH::SubShapeIDPair, ContactEvent, ContactPairHasher>;
+
+        struct ContactProducerShard final
+        {
+            AZStd::mutex m_mutex;
+            ContactCache m_cache;
+            AZStd::vector<ContactEvent> m_pendingEvents;
+            AZStd::vector<ContactPoint> m_pendingPoints;
+        };
+
+        static constexpr size_t ContactProducerShardCount = 64;
+
+        [[nodiscard]]
+        static size_t GetContactProducerShardIndex(const JPH::SubShapeIDPair& pair);
+
         [[nodiscard]]
         const ShapeSlot* FindShape(ShapeHandle shapeHandle) const;
 
@@ -3524,8 +3539,10 @@ namespace Jolt
         AZStd::vector<GroupFilterState> m_groupFilterScratch;
 
         mutable AZStd::mutex m_eventMutex;
-        AZStd::unordered_map<JPH::SubShapeIDPair, ContactEvent, ContactPairHasher> m_contactCache;
-        AZStd::unordered_map<JPH::SubShapeIDPair, ContactEvent, ContactPairHasher> m_contactCacheRestoreScratch;
+        AZStd::array<ContactProducerShard, ContactProducerShardCount> m_contactProducerShards;
+        AZStd::array<ContactCache, ContactProducerShardCount> m_contactCacheRestoreScratch;
+        bool m_parallelContactProducers = false;
+
         AZStd::vector<ContactEvent> m_pendingContactEvents;
         AZStd::vector<ContactPoint> m_pendingContactPoints;
         AZStd::vector<ActivationEvent> m_pendingActivationEvents;

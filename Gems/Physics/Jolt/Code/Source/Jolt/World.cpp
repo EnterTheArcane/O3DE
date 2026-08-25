@@ -348,23 +348,32 @@ namespace Jolt
         {
         public:
             ContactProducerLock(
-                AZStd::mutex& mutex,
+                AZStd::mutex* mutex,
                 WorldPerformanceAccumulator& statistics,
                 const bool collectStatistics)
                 : m_mutex(mutex)
             {
+                if (!m_mutex)
+                {
+                    if (collectStatistics)
+                    {
+                        m_statistics = &statistics;
+                    }
+                    return;
+                }
+
                 if (!collectStatistics)
                 {
-                    m_mutex.lock();
+                    m_mutex->lock();
                     return;
                 }
 
                 m_statistics = &statistics;
-                if (!m_mutex.try_lock())
+                if (!m_mutex->try_lock())
                 {
                     m_statistics->m_contactProducerContentionCount.fetch_add(1, AZStd::memory_order_relaxed);
                     const AZ::u64 waitStartNanoseconds = GetSteadyNanoseconds();
-                    m_mutex.lock();
+                    m_mutex->lock();
                     const AZ::u64 waitNanoseconds = GetSteadyNanoseconds() - waitStartNanoseconds;
                     m_statistics->m_contactProducerWaitNanoseconds.fetch_add(
                         waitNanoseconds,
@@ -379,14 +388,19 @@ namespace Jolt
 
             ~ContactProducerLock()
             {
+                if (!m_mutex)
+                {
+                    return;
+                }
+
                 if (!m_statistics)
                 {
-                    m_mutex.unlock();
+                    m_mutex->unlock();
                     return;
                 }
 
                 const AZ::u64 holdNanoseconds = GetSteadyNanoseconds() - m_holdStartNanoseconds;
-                m_mutex.unlock();
+                m_mutex->unlock();
                 m_statistics->m_contactProducerHoldNanoseconds.fetch_add(
                     holdNanoseconds,
                     AZStd::memory_order_relaxed);
@@ -408,7 +422,7 @@ namespace Jolt
             }
 
         private:
-            AZStd::mutex& m_mutex;
+            AZStd::mutex* m_mutex = nullptr;
             WorldPerformanceAccumulator* m_statistics = nullptr;
             AZ::u64 m_holdStartNanoseconds = 0;
         };
@@ -5852,6 +5866,7 @@ namespace Jolt
 
         m_tempAllocator = AZStd::make_unique<JPH::TempAllocatorImpl>(m_configuration.m_capacity.m_tempAllocatorBytes);
         m_jobSystem = CreateJobSystem(m_configuration.m_workerCount);
+        m_parallelContactProducers = m_jobSystem->GetMaxConcurrency() > 1;
         m_physicsSystem.Init(
             m_configuration.m_capacity.m_maxBodies,
             m_configuration.m_capacity.m_bodyMutexCount,
@@ -6263,6 +6278,7 @@ namespace Jolt
                 m_hairComputeQueue = AZStd::move(preparedHairComputeQueue);
             }
             m_jobSystem = AZStd::move(preparedJobSystem);
+            m_parallelContactProducers = m_jobSystem->GetMaxConcurrency() > 1;
         }
         if (configuration.m_collectActivationEvents != current.m_collectActivationEvents)
         {
@@ -21016,51 +21032,58 @@ namespace Jolt
         snapshot.m_contactCacheStates.clear();
         if (HasStateFlag(configuration.m_flags, StateSnapshotFlags::Contacts))
         {
-            AZStd::lock_guard eventLock(m_eventMutex);
-            snapshot.m_contactCacheStates.reserve(m_contactCache.size());
-            for (const auto& [pair, event] : m_contactCache)
+            size_t contactCount = 0;
+            for (const ContactProducerShard& shard : m_contactProducerShards)
             {
-                const AZ::u32 firstBodyId = pair.GetBody1ID().GetIndexAndSequenceNumber();
-                const AZ::u32 secondBodyId = pair.GetBody2ID().GetIndexAndSequenceNumber();
-                const AZ::u32 ownerBodyId = AZStd::min(firstBodyId, secondBodyId);
-                if (configuration.m_filterBodies
-                    && !AZStd::binary_search(
-                        snapshot.m_filteredBodyIds.begin(),
-                        snapshot.m_filteredBodyIds.end(),
-                        ownerBodyId))
+                contactCount += shard.m_cache.size();
+            }
+            snapshot.m_contactCacheStates.reserve(contactCount);
+            for (const ContactProducerShard& shard : m_contactProducerShards)
+            {
+                for (const auto& [pair, event] : shard.m_cache)
                 {
-                    continue;
-                }
+                    const AZ::u32 firstBodyId = pair.GetBody1ID().GetIndexAndSequenceNumber();
+                    const AZ::u32 secondBodyId = pair.GetBody2ID().GetIndexAndSequenceNumber();
+                    const AZ::u32 ownerBodyId = AZStd::min(firstBodyId, secondBodyId);
+                    if (configuration.m_filterBodies
+                        && !AZStd::binary_search(
+                            snapshot.m_filteredBodyIds.begin(),
+                            snapshot.m_filteredBodyIds.end(),
+                            ownerBodyId))
+                    {
+                        continue;
+                    }
 
-                const BodySlot* firstBody = FindBody(event.m_firstBodyHandle);
-                const BodySlot* secondBody = FindBody(event.m_secondBodyHandle);
-                const ShapeSlot* firstShape = FindShape(event.m_firstShapeHandle);
-                const ShapeSlot* secondShape = FindShape(event.m_secondShapeHandle);
-                if (!firstBody
-                    || !secondBody
-                    || !firstShape
-                    || !secondShape
-                    || firstBody->m_bodyId.GetIndexAndSequenceNumber() != firstBodyId
-                    || secondBody->m_bodyId.GetIndexAndSequenceNumber() != secondBodyId
-                    || firstBody->m_shapeHandle != event.m_firstShapeHandle
-                    || secondBody->m_shapeHandle != event.m_secondShapeHandle)
-                {
-                    snapshot.m_data.clear();
-                    snapshot.m_contactCacheStates.clear();
-                    return false;
-                }
+                    const BodySlot* firstBody = FindBody(event.m_firstBodyHandle);
+                    const BodySlot* secondBody = FindBody(event.m_secondBodyHandle);
+                    const ShapeSlot* firstShape = FindShape(event.m_firstShapeHandle);
+                    const ShapeSlot* secondShape = FindShape(event.m_secondShapeHandle);
+                    if (!firstBody
+                        || !secondBody
+                        || !firstShape
+                        || !secondShape
+                        || firstBody->m_bodyId.GetIndexAndSequenceNumber() != firstBodyId
+                        || secondBody->m_bodyId.GetIndexAndSequenceNumber() != secondBodyId
+                        || firstBody->m_shapeHandle != event.m_firstShapeHandle
+                        || secondBody->m_shapeHandle != event.m_secondShapeHandle)
+                    {
+                        snapshot.m_data.clear();
+                        snapshot.m_contactCacheStates.clear();
+                        return false;
+                    }
 
-                snapshot.m_contactCacheStates.push_back({
-                    .m_event = event,
-                    .m_firstBodyConfigurationRevision = firstBody->m_configurationRevision,
-                    .m_firstShapeConfigurationRevision = firstShape->m_configurationRevision,
-                    .m_secondBodyConfigurationRevision = secondBody->m_configurationRevision,
-                    .m_secondShapeConfigurationRevision = secondShape->m_configurationRevision,
-                    .m_firstBodyId = firstBodyId,
-                    .m_firstSubShapeId = pair.GetSubShapeID1().GetValue(),
-                    .m_secondBodyId = secondBodyId,
-                    .m_secondSubShapeId = pair.GetSubShapeID2().GetValue(),
-                });
+                    snapshot.m_contactCacheStates.push_back({
+                        .m_event = event,
+                        .m_firstBodyConfigurationRevision = firstBody->m_configurationRevision,
+                        .m_firstShapeConfigurationRevision = firstShape->m_configurationRevision,
+                        .m_secondBodyConfigurationRevision = secondBody->m_configurationRevision,
+                        .m_secondShapeConfigurationRevision = secondShape->m_configurationRevision,
+                        .m_firstBodyId = firstBodyId,
+                        .m_firstSubShapeId = pair.GetSubShapeID1().GetValue(),
+                        .m_secondBodyId = secondBodyId,
+                        .m_secondSubShapeId = pair.GetSubShapeID2().GetValue(),
+                    });
+                }
             }
             AZStd::sort(
                 snapshot.m_contactCacheStates.begin(),
@@ -22569,20 +22592,40 @@ namespace Jolt
     bool World::PrepareContactCacheRestore(
         const AZStd::span<const StateSnapshotSlot* const> snapshots)
     {
-        size_t contactCount = 0;
+        AZStd::array<size_t, ContactProducerShardCount> contactCounts{};
         for (const StateSnapshotSlot* snapshot : snapshots)
         {
-            if (!snapshot
-                || snapshot->m_contactCacheStates.size()
-                    > AZStd::numeric_limits<size_t>::max() - contactCount)
+            if (!snapshot)
             {
                 return false;
             }
-            contactCount += snapshot->m_contactCacheStates.size();
+
+            for (const ContactCacheState& state : snapshot->m_contactCacheStates)
+            {
+                JPH::SubShapeID firstSubShapeId;
+                firstSubShapeId.SetValue(state.m_firstSubShapeId);
+                JPH::SubShapeID secondSubShapeId;
+                secondSubShapeId.SetValue(state.m_secondSubShapeId);
+                const JPH::SubShapeIDPair pair(
+                    JPH::BodyID(state.m_firstBodyId),
+                    firstSubShapeId,
+                    JPH::BodyID(state.m_secondBodyId),
+                    secondSubShapeId);
+                const size_t shardIndex = GetContactProducerShardIndex(pair);
+                if (contactCounts[shardIndex] == AZStd::numeric_limits<size_t>::max())
+                {
+                    return false;
+                }
+                ++contactCounts[shardIndex];
+            }
         }
 
-        m_contactCacheRestoreScratch.clear();
-        m_contactCacheRestoreScratch.reserve(contactCount);
+        for (size_t shardIndex = 0; shardIndex < ContactProducerShardCount; ++shardIndex)
+        {
+            ContactCache& cache = m_contactCacheRestoreScratch[shardIndex];
+            cache.clear();
+            cache.reserve(contactCounts[shardIndex]);
+        }
         for (const StateSnapshotSlot* snapshot : snapshots)
         {
             for (const ContactCacheState& state : snapshot->m_contactCacheStates)
@@ -22596,9 +22639,13 @@ namespace Jolt
                     firstSubShapeId,
                     JPH::BodyID(state.m_secondBodyId),
                     secondSubShapeId);
-                if (!m_contactCacheRestoreScratch.emplace(pair, state.m_event).second)
+                ContactCache& cache = m_contactCacheRestoreScratch[GetContactProducerShardIndex(pair)];
+                if (!cache.emplace(pair, state.m_event).second)
                 {
-                    m_contactCacheRestoreScratch.clear();
+                    for (ContactCache& scratch : m_contactCacheRestoreScratch)
+                    {
+                        scratch.clear();
+                    }
                     return false;
                 }
             }
@@ -22608,9 +22655,11 @@ namespace Jolt
 
     void World::CommitContactCacheRestore()
     {
-        AZStd::lock_guard eventLock(m_eventMutex);
-        m_contactCache.swap(m_contactCacheRestoreScratch);
-        m_contactCacheRestoreScratch.clear();
+        for (size_t shardIndex = 0; shardIndex < ContactProducerShardCount; ++shardIndex)
+        {
+            m_contactProducerShards[shardIndex].m_cache.swap(m_contactCacheRestoreScratch[shardIndex]);
+            m_contactCacheRestoreScratch[shardIndex].clear();
+        }
     }
 
     void World::ClearEventState(
@@ -22625,9 +22674,14 @@ namespace Jolt
         }
 
         AZStd::lock_guard eventLock(m_eventMutex);
-        if (!preserveContactCache)
+        for (ContactProducerShard& shard : m_contactProducerShards)
         {
-            m_contactCache.clear();
+            if (!preserveContactCache)
+            {
+                shard.m_cache.clear();
+            }
+            shard.m_pendingEvents.clear();
+            shard.m_pendingPoints.clear();
         }
         m_pendingContactEvents.clear();
         m_pendingContactPoints.clear();
@@ -23727,7 +23781,10 @@ namespace Jolt
             workspaceBytes += GetVectorCapacityBytes(m_snapshotPartBodyIdScratch);
             workspaceBytes += GetVectorCapacityBytes(m_groupFilterScratch);
             workspaceBytes += GetVectorCapacityBytes(m_stepListeners);
-            workspaceBytes += GetMapRetainedBytes(m_contactCacheRestoreScratch);
+            for (const ContactCache& cache : m_contactCacheRestoreScratch)
+            {
+                workspaceBytes += GetMapRetainedBytes(cache);
+            }
             if (m_jobSystem->GetMaxConcurrency() > 1)
             {
                 workspaceBytes += static_cast<const JobSystem*>(m_jobSystem.get())->GetRetainedBytes();
@@ -23736,7 +23793,12 @@ namespace Jolt
             AZ::u64 eventBytes = 0;
             {
                 AZStd::lock_guard eventLock(m_eventMutex);
-                eventBytes += GetMapRetainedBytes(m_contactCache);
+                for (const ContactProducerShard& shard : m_contactProducerShards)
+                {
+                    eventBytes += GetMapRetainedBytes(shard.m_cache);
+                    eventBytes += GetVectorCapacityBytes(shard.m_pendingEvents);
+                    eventBytes += GetVectorCapacityBytes(shard.m_pendingPoints);
+                }
                 eventBytes += GetVectorCapacityBytes(m_pendingContactEvents);
                 eventBytes += GetVectorCapacityBytes(m_pendingContactPoints);
                 eventBytes += GetVectorCapacityBytes(m_pendingActivationEvents);
@@ -23786,8 +23848,10 @@ namespace Jolt
 
         if ((flags & PerformanceStatisticsFlags::NarrowPhase) != PerformanceStatisticsFlags::None)
         {
-            AZStd::lock_guard eventLock(m_eventMutex);
-            statistics.m_contactManifoldCount = m_contactCache.size();
+            for (const ContactProducerShard& shard : m_contactProducerShards)
+            {
+                statistics.m_contactManifoldCount += shard.m_cache.size();
+            }
             statistics.m_contactEventCount = ReadCounter(
                 m_performanceStatistics.m_contactEventCount,
                 reset);
@@ -29814,8 +29878,12 @@ namespace Jolt
         else
         {
             m_physicsSystem.SetContactListener(nullptr);
-            AZStd::lock_guard eventLock(m_eventMutex);
-            m_contactCache.clear();
+            for (ContactProducerShard& shard : m_contactProducerShards)
+            {
+                shard.m_cache.clear();
+                shard.m_pendingEvents.clear();
+                shard.m_pendingPoints.clear();
+            }
         }
         InvalidateAllContactCaches();
         if (previousExtensionHandle)
@@ -31111,6 +31179,12 @@ namespace Jolt
         return static_cast<size_t>(pair.GetHash());
     }
 
+    size_t World::GetContactProducerShardIndex(const JPH::SubShapeIDPair& pair)
+    {
+        static_assert((ContactProducerShardCount & (ContactProducerShardCount - 1)) == 0);
+        return static_cast<size_t>(pair.GetHash()) & (ContactProducerShardCount - 1);
+    }
+
     void World::OnBodyActivated(
         [[maybe_unused]] const JPH::BodyID& bodyId,
         const JPH::uint64 bodyUserData)
@@ -31690,12 +31764,20 @@ namespace Jolt
     {
         ContactEvent event;
         {
+            ContactProducerShard& shard = m_contactProducerShards[GetContactProducerShardIndex(subShapePair)];
+            AZStd::mutex* producerMutex = nullptr;
+            AZStd::vector<ContactEvent>* pendingEvents = &m_pendingContactEvents;
+            if (m_parallelContactProducers)
+            {
+                producerMutex = &shard.m_mutex;
+                pendingEvents = &shard.m_pendingEvents;
+            }
             ContactProducerLock lock(
-                m_eventMutex,
+                producerMutex,
                 m_performanceStatistics,
                 IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Events));
-            const auto contactIterator = m_contactCache.find(subShapePair);
-            if (contactIterator == m_contactCache.end())
+            const auto contactIterator = shard.m_cache.find(subShapePair);
+            if (contactIterator == shard.m_cache.end())
             {
                 return;
             }
@@ -31706,14 +31788,14 @@ namespace Jolt
             event.m_phase = EventPhase::End;
             if (m_configuration.m_collectContactEvents)
             {
-                const size_t previousCapacity = m_pendingContactEvents.capacity();
-                m_pendingContactEvents.push_back(event);
-                if (m_pendingContactEvents.capacity() > previousCapacity)
+                const size_t previousCapacity = pendingEvents->capacity();
+                pendingEvents->push_back(event);
+                if (pendingEvents->capacity() > previousCapacity)
                 {
                     lock.RecordStorageGrowth(1);
                 }
             }
-            m_contactCache.erase(contactIterator);
+            shard.m_cache.erase(contactIterator);
         }
 
         if (m_contactCallbacks.m_extension)
@@ -31933,13 +32015,23 @@ namespace Jolt
             manifold.mSubShapeID1,
             secondBody.GetID(),
             manifold.mSubShapeID2);
+        ContactProducerShard& shard = m_contactProducerShards[GetContactProducerShardIndex(pair)];
+        AZStd::mutex* producerMutex = nullptr;
+        AZStd::vector<ContactEvent>* pendingEvents = &m_pendingContactEvents;
+        AZStd::vector<ContactPoint>* pendingPoints = &m_pendingContactPoints;
+        if (m_parallelContactProducers)
+        {
+            producerMutex = &shard.m_mutex;
+            pendingEvents = &shard.m_pendingEvents;
+            pendingPoints = &shard.m_pendingPoints;
+        }
         ContactProducerLock lock(
-            m_eventMutex,
+            producerMutex,
             m_performanceStatistics,
             IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Events));
-        if (m_pendingContactPoints.size() > AZStd::numeric_limits<AZ::u32>::max()
+        if (pendingPoints->size() > AZStd::numeric_limits<AZ::u32>::max()
             || manifold.mRelativeContactPointsOn1.size()
-                > AZStd::numeric_limits<AZ::u32>::max() - m_pendingContactPoints.size())
+                > AZStd::numeric_limits<AZ::u32>::max() - pendingPoints->size())
         {
             if (IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Events))
             {
@@ -31948,16 +32040,16 @@ namespace Jolt
             return;
         }
 
-        const size_t previousContactEventCapacity = m_pendingContactEvents.capacity();
-        const size_t previousContactPointCapacity = m_pendingContactPoints.capacity();
-        const size_t previousContactCacheBucketCount = m_contactCache.bucket_count();
+        const size_t previousContactEventCapacity = pendingEvents->capacity();
+        const size_t previousContactPointCapacity = pendingPoints->capacity();
+        const size_t previousContactCacheBucketCount = shard.m_cache.bucket_count();
         if (m_configuration.m_collectContactEvents)
         {
-            event.m_firstPoint = static_cast<AZ::u32>(m_pendingContactPoints.size());
+            event.m_firstPoint = static_cast<AZ::u32>(pendingPoints->size());
             event.m_pointCount = static_cast<AZ::u32>(manifold.mRelativeContactPointsOn1.size());
             for (JPH::uint pointIndex = 0; pointIndex < manifold.mRelativeContactPointsOn1.size(); ++pointIndex)
             {
-                m_pendingContactPoints.push_back({
+                pendingPoints->push_back({
                     .m_positionOnFirstBody = FromNativePosition(
                         manifold.GetWorldSpaceContactPointOn1(pointIndex),
                         m_configuration.m_origin),
@@ -31966,22 +32058,22 @@ namespace Jolt
                         m_configuration.m_origin),
                 });
             }
-            m_pendingContactEvents.push_back(event);
+            pendingEvents->push_back(event);
         }
         event.m_firstPoint = 0;
         event.m_pointCount = 0;
-        m_contactCache.insert_or_assign(pair, event);
+        shard.m_cache.insert_or_assign(pair, event);
 
         AZ::u64 growthCount = 0;
-        if (m_pendingContactEvents.capacity() > previousContactEventCapacity)
+        if (pendingEvents->capacity() > previousContactEventCapacity)
         {
             ++growthCount;
         }
-        if (m_pendingContactPoints.capacity() > previousContactPointCapacity)
+        if (pendingPoints->capacity() > previousContactPointCapacity)
         {
             ++growthCount;
         }
-        if (m_contactCache.bucket_count() > previousContactCacheBucketCount)
+        if (shard.m_cache.bucket_count() > previousContactCacheBucketCount)
         {
             ++growthCount;
         }
@@ -32101,6 +32193,87 @@ namespace Jolt
 
         EventBatch previousBatch;
         AZStd::lock_guard lock(m_eventMutex);
+
+        if (m_parallelContactProducers)
+        {
+            size_t contactEventCount = m_pendingContactEvents.size();
+            size_t contactPointCount = m_pendingContactPoints.size();
+            AZ::u64 droppedContactEventCount = 0;
+            bool contactStorageOverflow = contactPointCount > AZStd::numeric_limits<AZ::u32>::max();
+            for (const ContactProducerShard& shard : m_contactProducerShards)
+            {
+                droppedContactEventCount += aznumeric_cast<AZ::u64>(shard.m_pendingEvents.size());
+                if (shard.m_pendingEvents.size() > AZStd::numeric_limits<size_t>::max() - contactEventCount
+                    || shard.m_pendingPoints.size() > AZStd::numeric_limits<size_t>::max() - contactPointCount)
+                {
+                    contactStorageOverflow = true;
+                    continue;
+                }
+                contactEventCount += shard.m_pendingEvents.size();
+                contactPointCount += shard.m_pendingPoints.size();
+                contactStorageOverflow = contactStorageOverflow
+                    || contactPointCount > AZStd::numeric_limits<AZ::u32>::max();
+            }
+
+            if (contactStorageOverflow)
+            {
+                for (ContactProducerShard& shard : m_contactProducerShards)
+                {
+                    shard.m_pendingEvents.clear();
+                    shard.m_pendingPoints.clear();
+                }
+                if (IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Events))
+                {
+                    m_performanceStatistics.m_droppedEventCount.fetch_add(
+                        droppedContactEventCount,
+                        AZStd::memory_order_relaxed);
+                }
+            }
+            else
+            {
+                const size_t previousContactEventCapacity = m_pendingContactEvents.capacity();
+                const size_t previousContactPointCapacity = m_pendingContactPoints.capacity();
+                m_pendingContactEvents.reserve(contactEventCount);
+                m_pendingContactPoints.reserve(contactPointCount);
+
+                // PhysicsSystem::Update has joined every contact job before publication, so each producer shard is quiescent here.
+                for (ContactProducerShard& shard : m_contactProducerShards)
+                {
+                    const AZ::u32 pointOffset = aznumeric_cast<AZ::u32>(m_pendingContactPoints.size());
+                    m_pendingContactPoints.insert(
+                        m_pendingContactPoints.end(),
+                        shard.m_pendingPoints.begin(),
+                        shard.m_pendingPoints.end());
+                    for (ContactEvent& event : shard.m_pendingEvents)
+                    {
+                        if (event.m_pointCount > 0)
+                        {
+                            event.m_firstPoint += pointOffset;
+                        }
+                        m_pendingContactEvents.push_back(event);
+                    }
+                    shard.m_pendingEvents.clear();
+                    shard.m_pendingPoints.clear();
+                }
+
+                AZ::u64 growthCount = 0;
+                if (m_pendingContactEvents.capacity() > previousContactEventCapacity)
+                {
+                    ++growthCount;
+                }
+                if (m_pendingContactPoints.capacity() > previousContactPointCapacity)
+                {
+                    ++growthCount;
+                }
+                if (growthCount > 0 && IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Events))
+                {
+                    m_performanceStatistics.m_contactStorageGrowthCount.fetch_add(
+                        growthCount,
+                        AZStd::memory_order_relaxed);
+                }
+            }
+        }
+
         AZStd::sort(
             m_pendingContactEvents.begin(),
             m_pendingContactEvents.end(),

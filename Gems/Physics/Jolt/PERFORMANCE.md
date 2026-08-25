@@ -4,8 +4,8 @@
 
 The third deep audit re-opened performance qualification at revision `42dbab82f32f945b293e7c019c5a07282eb3df24`. The captures below
 remain historical optimization and regression evidence; they do not establish current shipping readiness. In particular,
-`validate.py full` does not yet schedule the native and AutomatedTesting performance suites, the measured single-lock contact producer
-fails its contention gate, final Release allocation qualification remains, and the audit-local eight-worker step series exceeded the 5%
+`validate.py full` does not yet schedule the native and AutomatedTesting performance suites, final Release allocation qualification
+remains, and the audit-local eight-worker step series exceeded the 5%
 coefficient-of-variation gate.
 
 Current closure requirements and evidence ownership are tracked in `QUALIFICATION.md`. No historical artifact may be relabelled as a
@@ -511,11 +511,12 @@ Publication performs one relaxed module-wide compare-exchange per batch and one 
 cross-world and cross-Runtime uniqueness without caller-owned storage. Their contact-density and 1/4/8-worker cost is not inferred from
 instruction counts.
 
-## Contact producer contention baseline
+## Contact producer contention
 
 Opt-in contact diagnostics measure only the native contact producer critical sections. They report acquisition/contention counts,
-aggregate and maximum wait/hold times, and storage growth while the producer lock is held. Disabled worlds retain the ordinary mutex path
-without clocks, atomics, or `try_lock` calls.
+aggregate and maximum wait/hold times, and storage growth while a producer shard is held. Parallel worlds retain ordinary shard mutex
+acquisition without clocks, atomics, or `try_lock` calls when statistics are disabled. Effective single-worker worlds write directly to
+the publication buffers and do not acquire a producer mutex.
 
 Thirty fresh clang-cl 22.1.8 Release processes ran 120 dense-contact frames per row with a fixed eight-lane affinity mask and High process
 priority. Every row reports the requested effective worker count, and the contact/event signatures match across 1/4/8 workers. The
@@ -532,8 +533,34 @@ single-lock baseline fails the declared 5% wait gate:
 
 Aggregate wait can exceed 100% because concurrently blocked producers contribute independently. The 128-body W8 row is also 18.1%
 slower than W4, exceeding the 5% scaling gate. The exact binary, source-diff fingerprint, raw JSON, logs, and summary remain under
-`build/jolt-production-readiness/stage6/contact-contention/`. The result requires a deterministic sharded producer design; it does not
-justify dropping contacts, points, ordering, batch provenance, or callback guarantees.
+`build/jolt-production-readiness/stage6/contact-contention/`.
+
+The corrected producer selects one of 64 stable shards from Jolt's ordered body/subshape-pair hash. Each shard owns its contact cache and
+pending events/points. Native update completion makes all shards quiescent before their buffers are merged, point ranges are adjusted,
+and events are sorted by the existing canonical key. Snapshot capture sorts the union of every cache; restore prepares all replacement
+shards before swapping any live cache. No transient worker identifier participates in storage or ordering.
+
+The final unchanged binary passed a separate 30-process capture with the same affinity, priority, workload, and semantic counters:
+
+| Bodies | Workers | Median | Change from single lock | CV | Aggregate producer wait / interval | Median contentions | W8 / W4 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 128 | 1 | 55.178 us | -8.00% | 2.338% | 0.000% | 0 | — |
+| 128 | 4 | 58.008 us | -18.98% | 1.054% | 0.014% | 14 | — |
+| 128 | 8 | 59.461 us | -29.67% | 1.893% | 0.291% | 276 | 1.025 |
+| 1,024 | 1 | 1,116.085 us | -4.66% | 1.691% | 0.000% | 0 | — |
+| 1,024 | 4 | 521.867 us | -16.05% | 0.467% | 0.697% | 3,574 | — |
+| 1,024 | 8 | 381.489 us | -37.65% | 1.065% | 3.986% | 10,240 | 0.731 |
+
+Every row preserves the baseline's exact contact and point counts: 14,720/14,720 for 128 bodies and 151,057/150,334 for 1,024
+bodies. The 5% wait, 5% CV, and W8/W4 scaling gates all pass. `ContactEventStreamIsDeterministicAcrossWorkerCounts` independently hashes
+every normalized event and point across effective 1/4/8-worker worlds and compares the complete final world digest. The raw final capture,
+binary/source fingerprints, and two untrimmed diagnostic reruns remain under
+`build/jolt-production-readiness/stage6/contact-contention/clang-release/`.
+
+Optimized clang-cl code uses a 224-byte fixed stride for each producer shard and a 120-byte stride for each transactional restore map.
+The 64-way design therefore adds 22,016 bytes of fixed private storage per world before containing-object padding. This cost is accepted
+because it keeps callback addresses stable, makes restore commit allocation-free, and improves every measured row by 4.66% to 37.65%.
+Dynamic shard capacity remains included in wrapper retained-memory statistics.
 
 ## Phase 5 absolute workload matrix
 
