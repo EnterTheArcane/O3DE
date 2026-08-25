@@ -119,25 +119,40 @@ namespace Jolt
 
         void Deactivate() override;
 
+        bool DestroySimulation(bool mandatory);
+
         void OnBodyDependencyCreated(
             WorldHandle worldHandle,
             BodyHandle bodyHandle) override;
 
-        bool OnBodyDependencyDestroying(
+        bool PrepareBodyDependencyDestruction(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) override;
+            BodyHandle bodyHandle,
+            ResourceDestructionPlan& plan) override;
 
         void OnConstraintDependencyCreated(
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle) override;
 
-        bool OnConstraintDependencyDestroying(
+        bool PrepareConstraintDependencyDestruction(
             WorldHandle worldHandle,
-            ConstraintHandle constraintHandle) override;
+            ConstraintHandle constraintHandle,
+            ResourceDestructionPlan& plan) override;
 
         void OnPathDependencyCreated(PathHandle pathHandle) override;
 
-        bool OnPathDependencyDestroying(PathHandle pathHandle) override;
+        bool PreparePathDependencyDestruction(
+            PathHandle pathHandle,
+            ResourceDestructionPlan& plan) override;
+
+        [[nodiscard]]
+        bool PrepareSimulationDestruction(ResourceDestructionPlan& plan);
+
+        static void NotifyResourceDestruction(
+            void* context,
+            AZ::EntityId entityId,
+            AZ::ComponentId componentId,
+            ResourceDestructionPhase phase);
 
         RuntimeConfiguration m_configuration;
 

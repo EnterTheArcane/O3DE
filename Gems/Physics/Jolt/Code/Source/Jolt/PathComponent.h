@@ -15,6 +15,8 @@
 
 namespace Jolt
 {
+    enum class ResourceDestructionPhase : AZ::u8;
+
     class RuntimeImplementation;
 
     class JOLT_API PathComponent final
@@ -60,6 +62,14 @@ namespace Jolt
         void Activate() override;
 
         void Deactivate() override;
+
+        bool DestroyPath(bool mandatory);
+
+        static void NotifyResourceDestruction(
+            void* context,
+            AZ::EntityId entityId,
+            AZ::ComponentId componentId,
+            ResourceDestructionPhase phase);
 
         HermitePathConfiguration m_configuration = HermitePathConfiguration::CreateDefault();
 

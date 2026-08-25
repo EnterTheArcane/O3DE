@@ -133,13 +133,25 @@ namespace Jolt
             WorldHandle worldHandle,
             BodyHandle bodyHandle) = 0;
 
+        bool DestroySimulation(bool mandatory);
+
+        [[nodiscard]]
+        virtual AZ::ComponentId GetComponentId() const = 0;
+
         void OnBodyDependencyCreated(
             WorldHandle worldHandle,
             BodyHandle bodyHandle) override;
 
-        bool OnBodyDependencyDestroying(
+        bool PrepareBodyDependencyDestruction(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) override;
+            BodyHandle bodyHandle,
+            ResourceDestructionPlan& plan) override;
+
+        static void NotifyResourceDestruction(
+            void* context,
+            AZ::EntityId entityId,
+            AZ::ComponentId componentId,
+            ResourceDestructionPhase phase);
 
         AZ::EntityId m_entityId;
 
@@ -270,6 +282,8 @@ namespace Jolt
         bool UpdateTransmissionConfiguration(const VehicleTransmissionConfiguration& configuration) override;
 
     private:
+        friend class VehicleComponentBase;
+
         void Activate() override;
 
         void Deactivate() override;
@@ -278,6 +292,12 @@ namespace Jolt
             RuntimeImplementation& system,
             WorldHandle worldHandle,
             BodyHandle bodyHandle) override;
+
+        [[nodiscard]]
+        AZ::ComponentId GetComponentId() const override
+        {
+            return GetId();
+        }
 
         AZStd::unique_ptr<WheeledVehicleComponentConfiguration> m_configuration;
     };
@@ -401,6 +421,8 @@ namespace Jolt
         bool UpdateTransmissionConfiguration(const VehicleTransmissionConfiguration& configuration) override;
 
     private:
+        friend class VehicleComponentBase;
+
         void Activate() override;
 
         void Deactivate() override;
@@ -409,6 +431,12 @@ namespace Jolt
             RuntimeImplementation& system,
             WorldHandle worldHandle,
             BodyHandle bodyHandle) override;
+
+        [[nodiscard]]
+        AZ::ComponentId GetComponentId() const override
+        {
+            return GetId();
+        }
 
         AZStd::unique_ptr<MotorcycleComponentConfiguration> m_configuration;
     };
@@ -540,6 +568,8 @@ namespace Jolt
             const VehicleTrackConfiguration& configuration) override;
 
     private:
+        friend class VehicleComponentBase;
+
         void Activate() override;
 
         void Deactivate() override;
@@ -548,6 +578,12 @@ namespace Jolt
             RuntimeImplementation& system,
             WorldHandle worldHandle,
             BodyHandle bodyHandle) override;
+
+        [[nodiscard]]
+        AZ::ComponentId GetComponentId() const override
+        {
+            return GetId();
+        }
 
         AZStd::unique_ptr<TrackedVehicleComponentConfiguration> m_configuration;
     };

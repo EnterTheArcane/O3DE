@@ -10,6 +10,7 @@
 #include <Jolt/ComponentDependencyManager.h>
 #include <Jolt/SystemInternal.h>
 
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Debug/Trace.h>
@@ -271,29 +272,101 @@ namespace Jolt
 
     void PathComponent::Deactivate()
     {
-        if (m_system && m_pathHandle)
-        {
-            auto* dependencyManager = AZ::Interface<IComponentDependencyManager>::Get();
-            bool prepared = true;
-            if (dependencyManager)
-            {
-                prepared = dependencyManager->PreparePathDestruction(GetEntityId(), m_pathHandle);
-            }
-            if (prepared && m_system->DestroyPath(m_pathHandle))
-            {
-                const PathHandle pathHandle = m_pathHandle;
-                PathNotificationBus::Event(
-                    GetEntityId(),
-                    &IPathNotifications::OnPathDestroying,
-                    pathHandle);
-                m_pathHandle = {};
-                PathNotificationBus::Event(
-                    GetEntityId(),
-                    &IPathNotifications::OnPathDestroyed,
-                    pathHandle);
-            }
-        }
+        [[maybe_unused]] const bool destroyed = DestroyPath(true);
+        AZ_Assert(destroyed, "Mandatory path teardown must retain or release every native resource.");
         PathRequestBus::Handler::BusDisconnect();
         m_system = nullptr;
+    }
+
+    bool PathComponent::DestroyPath(const bool mandatory)
+    {
+        if (!m_system || !m_pathHandle)
+        {
+            return true;
+        }
+
+        RuntimeImplementation* system = m_system;
+        const PathHandle pathHandle = m_pathHandle;
+        auto* dependencyManager = AZ::Interface<IComponentDependencyManager>::Get();
+        ResourceDestructionPlan destructionPlan;
+        const ResourceDestructionObserver observer{
+            .m_context = this,
+            .m_entityId = GetEntityId(),
+            .m_componentId = GetId(),
+            .m_notify = &PathComponent::NotifyResourceDestruction,
+        };
+        if (!destructionPlan.AddObserver(observer))
+        {
+            return false;
+        }
+        const bool prepared = !dependencyManager
+            || dependencyManager->PreparePathDestruction(GetEntityId(), m_pathHandle, destructionPlan);
+        if (!prepared && !mandatory)
+        {
+            return false;
+        }
+        if (!system->ReservePathDestruction(pathHandle, destructionPlan))
+        {
+            if (!mandatory)
+            {
+                return false;
+            }
+            if (system->IsPathDestructionReserved(pathHandle))
+            {
+                return true;
+            }
+
+            system->DeferPathDestruction(
+                pathHandle,
+                AZStd::move(destructionPlan),
+                ResourceDestructionReservation::Pending);
+            return true;
+        }
+
+        destructionPlan.NotifyDestroying();
+        if (!system->DestroyReservedPath(pathHandle, destructionPlan))
+        {
+            system->DeferPathDestruction(
+                pathHandle,
+                AZStd::move(destructionPlan),
+                ResourceDestructionReservation::Complete);
+            return true;
+        }
+
+        destructionPlan.NotifyDestroyed();
+        return true;
+    }
+
+    void PathComponent::NotifyResourceDestruction(
+        void* context,
+        const AZ::EntityId entityId,
+        const AZ::ComponentId componentId,
+        const ResourceDestructionPhase phase)
+    {
+        auto* componentApplication = AZ::Interface<AZ::ComponentApplicationRequests>::Get();
+        AZ::Entity* entity = nullptr;
+        if (componentApplication)
+        {
+            entity = componentApplication->FindEntity(entityId);
+        }
+        PathComponent* component = nullptr;
+        if (entity)
+        {
+            component = azrtti_cast<PathComponent*>(entity->FindComponent(componentId));
+        }
+        if (!component || component != context)
+        {
+            return;
+        }
+
+        const PathHandle pathHandle = component->m_pathHandle;
+        if (phase == ResourceDestructionPhase::Destroying)
+        {
+            PathNotificationBus::Event(entityId, &IPathNotifications::OnPathDestroying, pathHandle);
+            return;
+        }
+
+        component->m_pathHandle = {};
+        PathNotificationBus::Event(entityId, &IPathNotifications::OnPathDestroyed, pathHandle);
     }
 } // namespace Jolt

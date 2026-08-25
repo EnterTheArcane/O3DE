@@ -45,7 +45,10 @@ namespace Jolt
 {
     namespace Internal
     {
+        class DeferredShapeSetStore;
+        class DeferredResourceDestructionStore;
         class OperationPool;
+        struct ShapeSet;
     } // namespace Internal
 
     enum class SystemRegistration : AZ::u8
@@ -55,6 +58,8 @@ namespace Jolt
     };
 
     class ComponentDependencyManager;
+    class ResourceDestructionPlan;
+    enum class ResourceDestructionReservation : AZ::u8;
     class DebugRenderer;
     class World;
 
@@ -330,6 +335,29 @@ namespace Jolt
         PathHandle CreatePath(const CustomPathConfiguration& configuration);
 
         bool DestroyPath(PathHandle pathHandle);
+
+        [[nodiscard]]
+        bool ReservePathDestruction(
+            PathHandle pathHandle,
+            const ResourceDestructionPlan& plan);
+
+        bool DestroyReservedPath(
+            PathHandle pathHandle,
+            const ResourceDestructionPlan& plan);
+
+        void DeferPathDestruction(
+            PathHandle pathHandle,
+            ResourceDestructionPlan&& plan,
+            ResourceDestructionReservation reservation);
+
+        [[nodiscard]]
+        bool IsPathDestructionReserved(PathHandle pathHandle) const;
+
+        void DestroyOrDeferShapeSet(
+            WorldHandle worldHandle,
+            Internal::ShapeSet&& shapeSet);
+
+        void RetryDeferredShapeSetDestruction(WorldHandle worldHandle);
 
         [[nodiscard]]
         bool IsValid(PathHandle pathHandle) const;
@@ -1242,6 +1270,36 @@ namespace Jolt
             WorldHandle worldHandle,
             BodyHandle bodyHandle);
 
+        [[nodiscard]]
+        bool ReserveBodyDestruction(
+            WorldHandle worldHandle,
+            BodyHandle bodyHandle,
+            const ResourceDestructionPlan& plan);
+
+        bool DestroyReservedBody(
+            WorldHandle worldHandle,
+            BodyHandle bodyHandle,
+            const ResourceDestructionPlan& plan);
+
+        void DeferBodyDestruction(
+            WorldHandle worldHandle,
+            BodyHandle bodyHandle,
+            ResourceDestructionPlan&& plan,
+            ResourceDestructionReservation reservation);
+
+        void DeferSoftBodyDestruction(
+            WorldHandle worldHandle,
+            BodyHandle bodyHandle,
+            ResourceDestructionPlan&& plan,
+            ResourceDestructionReservation reservation,
+            SoftBodyDefinitionHandle definitionHandle,
+            AZStd::vector<MaterialHandle>&& materialHandles);
+
+        [[nodiscard]]
+        bool IsBodyDestructionReserved(
+            WorldHandle worldHandle,
+            BodyHandle bodyHandle) const;
+
         bool DestroyBodies(
             WorldHandle worldHandle,
             AZStd::span<const BodyHandle> bodyHandles);
@@ -1427,6 +1485,20 @@ namespace Jolt
         bool DestroyConstraints(
             WorldHandle worldHandle,
             AZStd::span<const ConstraintHandle> constraintHandles);
+
+        [[nodiscard]]
+        bool ReserveConstraintDestruction(const ResourceDestructionPlan& plan);
+
+        bool DestroyReservedConstraints(const ResourceDestructionPlan& plan);
+
+        void DeferConstraintDestruction(
+            ResourceDestructionPlan&& plan,
+            ResourceDestructionReservation reservation);
+
+        [[nodiscard]]
+        bool IsConstraintDestructionReserved(
+            WorldHandle worldHandle,
+            ConstraintHandle constraintHandle) const;
 
         [[nodiscard]]
         bool IsConstraintInSimulation(
@@ -1919,6 +1991,28 @@ namespace Jolt
             CharacterHandle characterHandle);
 
         [[nodiscard]]
+        bool ReserveCharacterDestruction(
+            WorldHandle worldHandle,
+            CharacterHandle characterHandle,
+            const ResourceDestructionPlan& plan);
+
+        bool DestroyReservedCharacter(
+            WorldHandle worldHandle,
+            CharacterHandle characterHandle,
+            const ResourceDestructionPlan& plan);
+
+        void DeferCharacterDestruction(
+            WorldHandle worldHandle,
+            CharacterHandle characterHandle,
+            ResourceDestructionPlan&& plan,
+            ResourceDestructionReservation reservation);
+
+        [[nodiscard]]
+        bool IsCharacterDestructionReserved(
+            WorldHandle worldHandle,
+            CharacterHandle characterHandle) const;
+
+        [[nodiscard]]
         bool IsValid(
             WorldHandle worldHandle,
             CharacterHandle characterHandle) const;
@@ -2016,6 +2110,30 @@ namespace Jolt
         bool DestroyVehicle(
             WorldHandle worldHandle,
             VehicleHandle vehicleHandle);
+
+        bool ReserveVehicleDestruction(
+            WorldHandle worldHandle,
+            VehicleHandle vehicleHandle);
+
+        bool DestroyReservedVehicle(
+            WorldHandle worldHandle,
+            VehicleHandle vehicleHandle);
+
+        void DeferVehicleDestruction(
+            WorldHandle worldHandle,
+            VehicleHandle vehicleHandle,
+            ResourceDestructionPlan&& plan,
+            ResourceDestructionReservation reservation);
+
+        void RetryDeferredResourceDestruction();
+
+        [[nodiscard]]
+        size_t GetDeferredResourceDestructionCount() const;
+
+        [[nodiscard]]
+        bool IsVehicleDestructionReserved(
+            WorldHandle worldHandle,
+            VehicleHandle vehicleHandle) const;
 
         [[nodiscard]]
         bool IsValid(
@@ -3175,6 +3293,7 @@ namespace Jolt
             AZ::u64 m_sourceHash = 0;
             AZ::u32 m_generation = 0;
             AZ::u32 m_constraintCount = 0;
+            bool m_isDestroying = false;
         };
 
         struct SoftBodyDefinitionSlot final
@@ -3480,6 +3599,9 @@ namespace Jolt
         void ReleasePath(PathHandle pathHandle);
 
         [[nodiscard]]
+        PathSlot* FindPathUnlocked(PathHandle pathHandle);
+
+        [[nodiscard]]
         const PathSlot* FindPathUnlocked(PathHandle pathHandle) const;
 
         [[nodiscard]]
@@ -3572,6 +3694,8 @@ namespace Jolt
         DebugRenderer* m_debugRenderer = nullptr;
         AZStd::atomic<AZ::u32> m_debugCaptureWorldCount = 0;
         AZStd::unique_ptr<ComponentDependencyManager> m_dependencyManager;
+        AZStd::unique_ptr<Internal::DeferredShapeSetStore> m_deferredShapeSetStore;
+        AZStd::unique_ptr<Internal::DeferredResourceDestructionStore> m_deferredResourceDestructionStore;
         SystemConfiguration m_configuration;
         AZ::JobContext* m_jobContext = nullptr;
         Internal::OperationPool* m_operationPool = nullptr;

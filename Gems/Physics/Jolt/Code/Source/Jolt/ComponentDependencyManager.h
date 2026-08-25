@@ -11,12 +11,89 @@
 #include <Jolt/ConstraintBus.h>
 #include <Jolt/PathBus.h>
 
+#include <AzCore/Component/Component.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/span.h>
 #include <AzCore/std/containers/vector.h>
 
 namespace Jolt
 {
+    enum class ResourceDestructionPhase : AZ::u8
+    {
+        Destroying,
+        Destroyed,
+    };
+
+    enum class ResourceDestructionReservation : AZ::u8
+    {
+        Pending,
+        Complete,
+        Cleanup,
+    };
+
+    struct ResourceDestructionObserver final
+    {
+        using NotifyFunction = void (*)(
+            void* context,
+            AZ::EntityId entityId,
+            AZ::ComponentId componentId,
+            ResourceDestructionPhase phase);
+
+        void* m_context = nullptr;
+        AZ::EntityId m_entityId;
+        AZ::ComponentId m_componentId = AZ::InvalidComponentId;
+        NotifyFunction m_notify = nullptr;
+    };
+
+    struct ConstraintDestruction final
+    {
+        ResourceDestructionObserver m_observer;
+        WorldHandle m_worldHandle;
+        ConstraintHandle m_constraintHandle;
+    };
+
+    struct VehicleDestruction final
+    {
+        ResourceDestructionObserver m_observer;
+        WorldHandle m_worldHandle;
+        VehicleHandle m_vehicleHandle;
+    };
+
+    class ResourceDestructionPlan final
+    {
+    public:
+        [[nodiscard]]
+        bool AddObserver(ResourceDestructionObserver observer);
+
+        [[nodiscard]]
+        bool AddConstraint(
+            ResourceDestructionObserver observer,
+            WorldHandle worldHandle,
+            ConstraintHandle constraintHandle);
+
+        [[nodiscard]]
+        bool AddVehicle(
+            ResourceDestructionObserver observer,
+            WorldHandle worldHandle,
+            VehicleHandle vehicleHandle);
+
+        [[nodiscard]]
+        AZStd::span<const ConstraintDestruction> GetConstraints() const;
+
+        [[nodiscard]]
+        AZStd::span<const VehicleDestruction> GetVehicles() const;
+
+        void NotifyDestroying() const;
+
+        void NotifyDestroyed() const;
+
+    private:
+        AZStd::vector<ResourceDestructionObserver> m_observers;
+        AZStd::vector<ConstraintDestruction> m_constraints;
+        AZStd::vector<VehicleDestruction> m_vehicles;
+    };
+
     class IBodyDependencyClient
     {
     public:
@@ -28,9 +105,10 @@ namespace Jolt
             WorldHandle worldHandle,
             BodyHandle bodyHandle) = 0;
 
-        virtual bool OnBodyDependencyDestroying(
+        virtual bool PrepareBodyDependencyDestruction(
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) = 0;
+            BodyHandle bodyHandle,
+            ResourceDestructionPlan& plan) = 0;
     };
 
     class IConstraintDependencyClient
@@ -48,13 +126,16 @@ namespace Jolt
             WorldHandle worldHandle,
             ConstraintHandle constraintHandle) = 0;
 
-        virtual bool OnConstraintDependencyDestroying(
+        virtual bool PrepareConstraintDependencyDestruction(
             WorldHandle worldHandle,
-            ConstraintHandle constraintHandle) = 0;
+            ConstraintHandle constraintHandle,
+            ResourceDestructionPlan& plan) = 0;
 
         virtual void OnPathDependencyCreated(PathHandle pathHandle) = 0;
 
-        virtual bool OnPathDependencyDestroying(PathHandle pathHandle) = 0;
+        virtual bool PreparePathDependencyDestruction(
+            PathHandle pathHandle,
+            ResourceDestructionPlan& plan) = 0;
     };
 
     class IComponentDependencyManager
@@ -91,16 +172,19 @@ namespace Jolt
         virtual bool PrepareBodyDestruction(
             AZ::EntityId entityId,
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) = 0;
+            BodyHandle bodyHandle,
+            ResourceDestructionPlan& plan) = 0;
 
         virtual bool PrepareConstraintDestruction(
             AZ::EntityId entityId,
             WorldHandle worldHandle,
-            ConstraintHandle constraintHandle) = 0;
+            ConstraintHandle constraintHandle,
+            ResourceDestructionPlan& plan) = 0;
 
         virtual bool PreparePathDestruction(
             AZ::EntityId entityId,
-            PathHandle pathHandle) = 0;
+            PathHandle pathHandle,
+            ResourceDestructionPlan& plan) = 0;
     };
 
     class JOLT_API ComponentDependencyManager final
@@ -144,16 +228,19 @@ namespace Jolt
         bool PrepareBodyDestruction(
             AZ::EntityId entityId,
             WorldHandle worldHandle,
-            BodyHandle bodyHandle) override;
+            BodyHandle bodyHandle,
+            ResourceDestructionPlan& plan) override;
 
         bool PrepareConstraintDestruction(
             AZ::EntityId entityId,
             WorldHandle worldHandle,
-            ConstraintHandle constraintHandle) override;
+            ConstraintHandle constraintHandle,
+            ResourceDestructionPlan& plan) override;
 
         bool PreparePathDestruction(
             AZ::EntityId entityId,
-            PathHandle pathHandle) override;
+            PathHandle pathHandle,
+            ResourceDestructionPlan& plan) override;
 
     private:
         template<class Client>

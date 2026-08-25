@@ -12,6 +12,7 @@
 #include <Jolt/Reflection.h>
 #include <Jolt/SystemInternal.h>
 
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/Name/Name.h>
@@ -616,29 +617,63 @@ namespace Jolt
 
     bool VehicleComponentBase::DisableSimulation()
     {
-        m_enabled = false;
+        return DestroySimulation(false);
+    }
+
+    bool VehicleComponentBase::DestroySimulation(const bool mandatory)
+    {
         if (!m_vehicleHandle)
         {
+            m_enabled = false;
             return true;
         }
 
+        RuntimeImplementation* system = m_system;
+        const WorldHandle worldHandle = m_worldHandle;
         const VehicleHandle vehicleHandle = m_vehicleHandle;
-        VehicleNotificationBus::Event(
-            m_entityId,
-            &IVehicleNotifications::OnVehicleDestroying,
-            vehicleHandle);
-        if (!m_system->DestroyVehicle(m_worldHandle, vehicleHandle))
+        ResourceDestructionPlan plan;
+        const ResourceDestructionObserver observer{
+            .m_context = this,
+            .m_entityId = m_entityId,
+            .m_componentId = GetComponentId(),
+            .m_notify = &VehicleComponentBase::NotifyResourceDestruction,
+        };
+        if (!plan.AddVehicle(observer, m_worldHandle, m_vehicleHandle))
         {
             return false;
         }
+        if (!system->ReserveVehicleDestruction(worldHandle, vehicleHandle))
+        {
+            if (!mandatory)
+            {
+                return false;
+            }
+            if (system->IsVehicleDestructionReserved(worldHandle, vehicleHandle))
+            {
+                return true;
+            }
 
-        m_vehicleHandle = VehicleHandle::Invalid;
-        m_bodyHandle = BodyHandle::Invalid;
-        m_worldHandle = WorldHandle::Invalid;
-        VehicleNotificationBus::Event(
-            m_entityId,
-            &IVehicleNotifications::OnVehicleDestroyed,
-            vehicleHandle);
+            system->DeferVehicleDestruction(
+                worldHandle,
+                vehicleHandle,
+                AZStd::move(plan),
+                ResourceDestructionReservation::Pending);
+            m_enabled = false;
+            return true;
+        }
+        plan.NotifyDestroying();
+        if (!system->DestroyReservedVehicle(worldHandle, vehicleHandle))
+        {
+            system->DeferVehicleDestruction(
+                worldHandle,
+                vehicleHandle,
+                AZStd::move(plan),
+                ResourceDestructionReservation::Complete);
+            m_enabled = false;
+            return true;
+        }
+        plan.NotifyDestroyed();
+        m_enabled = false;
         return true;
     }
 
@@ -1029,7 +1064,8 @@ namespace Jolt
 
     void VehicleComponentBase::DeactivateVehicle()
     {
-        DisableSimulation();
+        [[maybe_unused]] const bool destroyed = DestroySimulation(true);
+        AZ_Assert(destroyed, "Mandatory vehicle teardown must retain or release every native resource.");
         if (m_dependencyManager)
         {
             m_dependencyManager->UnregisterBody(m_entityId, *this);
@@ -1071,18 +1107,76 @@ namespace Jolt
         }
     }
 
-    bool VehicleComponentBase::OnBodyDependencyDestroying(
+    bool VehicleComponentBase::PrepareBodyDependencyDestruction(
         const WorldHandle worldHandle,
-        const BodyHandle bodyHandle)
+        const BodyHandle bodyHandle,
+        ResourceDestructionPlan& plan)
     {
-        if (worldHandle == m_worldHandle && bodyHandle == m_bodyHandle)
+        if (worldHandle == m_worldHandle && bodyHandle == m_bodyHandle && m_vehicleHandle)
         {
-            const bool enabled = m_enabled;
-            const bool disabled = DisableSimulation();
-            m_enabled = enabled;
-            return disabled;
+            const ResourceDestructionObserver observer{
+                .m_context = this,
+                .m_entityId = m_entityId,
+                .m_componentId = GetComponentId(),
+                .m_notify = &VehicleComponentBase::NotifyResourceDestruction,
+            };
+            return plan.AddVehicle(observer, m_worldHandle, m_vehicleHandle);
         }
         return true;
+    }
+
+    void VehicleComponentBase::NotifyResourceDestruction(
+        void* context,
+        const AZ::EntityId entityId,
+        const AZ::ComponentId componentId,
+        const ResourceDestructionPhase phase)
+    {
+        auto* componentApplication = AZ::Interface<AZ::ComponentApplicationRequests>::Get();
+        AZ::Entity* entity = nullptr;
+        if (componentApplication)
+        {
+            entity = componentApplication->FindEntity(entityId);
+        }
+        AZ::Component* entityComponent = nullptr;
+        if (entity)
+        {
+            entityComponent = entity->FindComponent(componentId);
+        }
+        VehicleComponentBase* component = nullptr;
+        if (auto* wheeledVehicle = azrtti_cast<WheeledVehicleComponent*>(entityComponent))
+        {
+            component = static_cast<VehicleComponentBase*>(wheeledVehicle);
+        }
+        else if (auto* motorcycle = azrtti_cast<MotorcycleComponent*>(entityComponent))
+        {
+            component = static_cast<VehicleComponentBase*>(motorcycle);
+        }
+        else if (auto* trackedVehicle = azrtti_cast<TrackedVehicleComponent*>(entityComponent))
+        {
+            component = static_cast<VehicleComponentBase*>(trackedVehicle);
+        }
+        if (!component || component != context)
+        {
+            return;
+        }
+
+        if (phase == ResourceDestructionPhase::Destroying)
+        {
+            VehicleNotificationBus::Event(
+                entityId,
+                &IVehicleNotifications::OnVehicleDestroying,
+                component->m_vehicleHandle);
+            return;
+        }
+
+        const VehicleHandle vehicleHandle = component->m_vehicleHandle;
+        component->m_vehicleHandle = VehicleHandle::Invalid;
+        component->m_bodyHandle = BodyHandle::Invalid;
+        component->m_worldHandle = WorldHandle::Invalid;
+        VehicleNotificationBus::Event(
+            entityId,
+            &IVehicleNotifications::OnVehicleDestroyed,
+            vehicleHandle);
     }
 
     WheeledVehicleComponent::WheeledVehicleComponent() = default;

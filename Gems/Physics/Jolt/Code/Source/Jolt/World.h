@@ -85,7 +85,9 @@ namespace Jolt
     struct TransformedShapeLeaseState final
     {
         AZStd::mutex m_mutex;
+        RuntimeImplementation* m_system = nullptr;
         World* m_world = nullptr;
+        WorldHandle m_worldHandle;
         size_t m_referenceCount = 1;
     };
 
@@ -456,6 +458,20 @@ namespace Jolt
 
         bool DestroyBody(BodyHandle bodyHandle);
 
+        [[nodiscard]]
+        bool ReserveBodyDestructionWithDependencies(
+            BodyHandle bodyHandle,
+            AZStd::span<const ConstraintHandle> constraintHandles,
+            AZStd::span<const VehicleHandle> vehicleHandles);
+
+        bool DestroyReservedBodyWithDependencies(
+            BodyHandle bodyHandle,
+            AZStd::span<const ConstraintHandle> constraintHandles,
+            AZStd::span<const VehicleHandle> vehicleHandles);
+
+        [[nodiscard]]
+        bool IsBodyDestructionReserved(BodyHandle bodyHandle) const;
+
         bool DestroyBodies(AZStd::span<const BodyHandle> bodyHandles);
 
         [[nodiscard]]
@@ -585,6 +601,34 @@ namespace Jolt
         bool DestroyConstraint(ConstraintHandle constraintHandle);
 
         bool DestroyConstraints(AZStd::span<const ConstraintHandle> constraintHandles);
+
+        [[nodiscard]]
+        bool ReserveConstraintDestructionWithDependencies(AZStd::span<const ConstraintHandle> constraintHandles);
+
+        bool DestroyReservedConstraintsWithDependencies(AZStd::span<const ConstraintHandle> constraintHandles);
+
+        [[nodiscard]]
+        bool IsConstraintDestructionReserved(ConstraintHandle constraintHandle) const;
+
+        [[nodiscard]]
+        bool ValidatePathConstraintDestruction(
+            AZStd::span<const ConstraintHandle> constraintHandles,
+            PathHandle pathHandle,
+            AZ::u32& pathReferenceCount);
+
+        bool DestroyReservedPathConstraints(
+            AZStd::span<const ConstraintHandle> constraintHandles,
+            PathHandle pathHandle,
+            AZ::u32& pathReferenceCount);
+
+        bool ReservePathConstraintsWithDependencies(
+            AZStd::span<const ConstraintHandle> constraintHandles,
+            PathHandle pathHandle,
+            AZ::u32& pathReferenceCount);
+
+        void CancelPathConstraintDestructionReservation(
+            AZStd::span<const ConstraintHandle> constraintHandles,
+            PathHandle pathHandle);
 
         [[nodiscard]]
         bool IsConstraintInSimulation(ConstraintHandle constraintHandle) const;
@@ -1010,6 +1054,20 @@ namespace Jolt
         bool DestroyCharacter(CharacterHandle characterHandle);
 
         [[nodiscard]]
+        bool ReserveCharacterDestructionWithDependencies(
+            CharacterHandle characterHandle,
+            AZStd::span<const ConstraintHandle> constraintHandles,
+            AZStd::span<const VehicleHandle> vehicleHandles);
+
+        bool DestroyReservedCharacterWithDependencies(
+            CharacterHandle characterHandle,
+            AZStd::span<const ConstraintHandle> constraintHandles,
+            AZStd::span<const VehicleHandle> vehicleHandles);
+
+        [[nodiscard]]
+        bool IsCharacterDestructionReserved(CharacterHandle characterHandle) const;
+
+        [[nodiscard]]
         bool IsValid(CharacterHandle characterHandle) const;
 
         [[nodiscard]]
@@ -1084,6 +1142,13 @@ namespace Jolt
         VehicleHandle CreateTrackedVehicle(const TrackedVehicleConfiguration& configuration);
 
         bool DestroyVehicle(VehicleHandle vehicleHandle);
+
+        bool ReserveVehicleDestruction(VehicleHandle vehicleHandle);
+
+        bool DestroyReservedVehicle(VehicleHandle vehicleHandle);
+
+        [[nodiscard]]
+        bool IsVehicleDestructionReserved(VehicleHandle vehicleHandle) const;
 
         [[nodiscard]]
         bool IsValid(VehicleHandle vehicleHandle) const;
@@ -2285,6 +2350,7 @@ namespace Jolt
             MotionType m_motionType = MotionType::None;
             bool m_softBodySkinPoseInitialized = true;
             bool m_softBodySkinConstraintsEnabled = false;
+            bool m_isDestroying = false;
             AZ::u32 m_generation = 0;
             AZ::u32 m_constraintCount = 0;
             AZ::u32 m_moveEventIndex = AZStd::numeric_limits<AZ::u32>::max();
@@ -2306,6 +2372,7 @@ namespace Jolt
             AZ::u64 m_configurationRevision = 1;
             PathRotationConstraint m_pathRotationConstraint = PathRotationConstraint::None;
             bool m_isInSimulation = false;
+            bool m_isDestroying = false;
             AZ::u32 m_generation = 0;
             AZ::u32 m_parentCount = 0;
             RagdollHandle m_ragdollHandle;
@@ -2447,6 +2514,7 @@ namespace Jolt
             AZ::u32 m_generation = 0;
 
             bool m_hasGravityFactorBeforeOverride = false;
+            bool m_isDestroying = false;
         };
 
         struct RollbackParticipantState final
@@ -2708,12 +2776,45 @@ namespace Jolt
             BodySlot& slot);
 
         [[nodiscard]]
+        bool CollectBodyDependenciesUnlocked(
+            const BodySlot& bodySlot,
+            AZStd::span<const ConstraintHandle> constraintHandles,
+            AZStd::span<const VehicleHandle> vehicleHandles,
+            CharacterHandle characterHandle);
+
+        void CommitBodyDestructionUnlocked(
+            BodyHandle bodyHandle,
+            BodySlot& slot);
+
+        [[nodiscard]]
         const ConstraintSlot* FindConstraint(ConstraintHandle constraintHandle) const;
 
         [[nodiscard]]
         ConstraintSlot* FindConstraint(ConstraintHandle constraintHandle);
 
         void ReleaseConstraintReferences(ConstraintSlot& slot);
+
+        [[nodiscard]]
+        bool CollectConstraintDestructionClosureUnlocked(AZStd::vector<ConstraintHandle>& constraintHandles);
+
+        [[nodiscard]]
+        bool CollectPathConstraintDestructionClosureUnlocked(
+            AZStd::span<const ConstraintHandle> constraintHandles,
+            PathHandle pathHandle,
+            AZ::u32& pathReferenceCount);
+
+        [[nodiscard]]
+        bool ValidateConstraintDestructionUnlocked(AZStd::span<const ConstraintHandle> constraintHandles);
+
+        [[nodiscard]]
+        bool ReserveConstraintDestructionUnlocked(AZStd::span<const ConstraintHandle> constraintHandles);
+
+        [[nodiscard]]
+        bool ValidateConstraintDestructionReservationUnlocked(AZStd::span<const ConstraintHandle> constraintHandles) const;
+
+        void CancelConstraintDestructionReservationUnlocked(AZStd::span<const ConstraintHandle> constraintHandles);
+
+        void CommitConstraintDestructionUnlocked(AZStd::span<const ConstraintHandle> constraintHandles);
 
         void ReleaseConstraintSlot(
             ConstraintHandle constraintHandle,
@@ -2736,6 +2837,10 @@ namespace Jolt
 
         [[nodiscard]]
         VehicleSlot* FindVehicle(VehicleHandle vehicleHandle);
+
+        void CommitVehicleDestructionUnlocked(
+            VehicleHandle vehicleHandle,
+            VehicleSlot& slot);
 
         void ActivateVehicleBody(const VehicleSlot& slot);
 
@@ -3305,6 +3410,8 @@ namespace Jolt
 
         AZStd::vector<ConstraintSlot> m_constraintSlots;
         AZStd::vector<AZ::u32> m_freeConstraintSlots;
+        AZStd::vector<AZ::u8> m_constraintDestructionMarks;
+        AZStd::vector<ConstraintHandle> m_constraintHandleScratch;
         JPH::Array<JPH::Constraint*> m_constraintScratch;
 
         AZStd::vector<SceneInstanceSlot> m_sceneInstanceSlots;

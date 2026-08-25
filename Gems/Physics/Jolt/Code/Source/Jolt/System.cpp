@@ -17,6 +17,7 @@
 #include <Jolt/NativeShapeFactory.h>
 #include <Jolt/OperationInternal.h>
 #include <Jolt/Profiler.h>
+#include <Jolt/ShapeOwner.h>
 
 #include <Jolt/HandleEncoding.h>
 #include <Jolt/World.h>
@@ -30,6 +31,7 @@
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/fixed_vector.h>
+#include <AzCore/std/iterator/move_iterator.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/limits.h>
 #include <AzCore/std/utility/move.h>
@@ -57,6 +59,50 @@
 
 namespace Jolt
 {
+    class Internal::DeferredShapeSetStore final
+    {
+    public:
+        struct Record final
+        {
+            WorldHandle m_worldHandle;
+            ShapeSet m_shapeSet;
+        };
+
+        AZStd::mutex m_mutex;
+        AZStd::vector<Record> m_records;
+    };
+
+    class Internal::DeferredResourceDestructionStore final
+    {
+    public:
+        enum class Kind : AZ::u8
+        {
+            None = 0,
+            Body,
+            Character,
+            Constraint,
+            Path,
+            Vehicle,
+        };
+
+        struct Record final
+        {
+            ResourceDestructionPlan m_plan;
+            AZStd::vector<MaterialHandle> m_materialHandles;
+            WorldHandle m_worldHandle;
+            BodyHandle m_bodyHandle;
+            CharacterHandle m_characterHandle;
+            SoftBodyDefinitionHandle m_definitionHandle;
+            PathHandle m_pathHandle;
+            VehicleHandle m_vehicleHandle;
+            Kind m_kind = Kind::None;
+            ResourceDestructionReservation m_reservation = ResourceDestructionReservation::Pending;
+        };
+
+        mutable AZStd::mutex m_mutex;
+        AZStd::vector<Record> m_records;
+    };
+
     namespace
     {
         constexpr AZ::u32 MaximumSubGroupCount = 65'536;
@@ -65,6 +111,93 @@ namespace Jolt
         constexpr AZ::u32 SkeletonDefinitionArchiveFormatVersion = 1;
         constexpr AZ::u32 SoftBodyDefinitionArchiveFormatVersion = 1;
         constexpr size_t MaximumNativeArchiveSize = size_t{1} << 30;
+
+        [[nodiscard]]
+        bool CopyDestructionPlanForWorld(
+            const ResourceDestructionPlan& plan,
+            const WorldHandle worldHandle,
+            AZStd::vector<ConstraintHandle>& constraintHandles,
+            AZStd::vector<VehicleHandle>& vehicleHandles)
+        {
+            constraintHandles.clear();
+            constraintHandles.reserve(plan.GetConstraints().size());
+            for (const ConstraintDestruction& destruction : plan.GetConstraints())
+            {
+                if (destruction.m_worldHandle != worldHandle)
+                {
+                    return false;
+                }
+                constraintHandles.push_back(destruction.m_constraintHandle);
+            }
+
+            vehicleHandles.clear();
+            vehicleHandles.reserve(plan.GetVehicles().size());
+            for (const VehicleDestruction& destruction : plan.GetVehicles())
+            {
+                if (destruction.m_worldHandle != worldHandle)
+                {
+                    return false;
+                }
+                vehicleHandles.push_back(destruction.m_vehicleHandle);
+            }
+            return true;
+        }
+
+        struct WorldConstraintDestructionGroup final
+        {
+            WorldHandle m_worldHandle;
+            AZStd::vector<ConstraintHandle> m_constraintHandles;
+        };
+
+        [[nodiscard]]
+        bool GroupConstraintDestructions(
+            const ResourceDestructionPlan& plan,
+            AZStd::vector<WorldConstraintDestructionGroup>& groups)
+        {
+            if (!plan.GetVehicles().empty())
+            {
+                return false;
+            }
+
+            groups.clear();
+            for (const ConstraintDestruction& destruction : plan.GetConstraints())
+            {
+                auto group = AZStd::find_if(
+                    groups.begin(),
+                    groups.end(),
+                    [worldHandle = destruction.m_worldHandle](const WorldConstraintDestructionGroup& candidate)
+                    {
+                        return candidate.m_worldHandle == worldHandle;
+                    });
+                if (group == groups.end())
+                {
+                    groups.push_back({.m_worldHandle = destruction.m_worldHandle});
+                    group = groups.end();
+                    --group;
+                }
+                group->m_constraintHandles.push_back(destruction.m_constraintHandle);
+            }
+            return true;
+        }
+
+        [[nodiscard]]
+        AZStd::span<const ConstraintHandle> FindConstraintDestructionsForWorld(
+            const AZStd::span<const WorldConstraintDestructionGroup> groups,
+            const WorldHandle worldHandle)
+        {
+            const auto group = AZStd::find_if(
+                groups.begin(),
+                groups.end(),
+                [worldHandle](const WorldConstraintDestructionGroup& candidate)
+                {
+                    return candidate.m_worldHandle == worldHandle;
+                });
+            if (group == groups.end())
+            {
+                return {};
+            }
+            return group->m_constraintHandles;
+        }
 
         [[nodiscard]]
         AZ::u64 CalculateCookedShapeArchiveHash(
@@ -612,6 +745,9 @@ namespace Jolt
         m_operationPool = Internal::OperationPool::Create(m_jobContext);
         m_debugRenderer = GetNativeDebugRenderer();
         m_dependencyManager = AZStd::make_unique<ComponentDependencyManager>();
+        m_deferredShapeSetStore = AZStd::make_unique<Internal::DeferredShapeSetStore>();
+        m_deferredResourceDestructionStore =
+            AZStd::make_unique<Internal::DeferredResourceDestructionStore>();
         if (m_configuration.m_createDefaultWorld)
         {
             m_defaultWorldHandle = CreateWorld(m_configuration.m_defaultWorld);
@@ -631,6 +767,10 @@ namespace Jolt
             m_operationPool->Drain();
             m_operationPool->Shutdown();
             m_operationPool = nullptr;
+        }
+        if (m_deferredResourceDestructionStore)
+        {
+            RetryDeferredResourceDestruction();
         }
     }
 
@@ -3253,7 +3393,10 @@ namespace Jolt
             }
 
             PathSlot& slot = m_pathSlots[parts.m_index];
-            if (!slot.m_path || slot.m_generation != parts.m_generation || slot.m_constraintCount > 0)
+            if (!slot.m_path
+                || slot.m_generation != parts.m_generation
+                || slot.m_constraintCount > 0
+                || slot.m_isDestroying)
             {
                 return false;
             }
@@ -3268,6 +3411,461 @@ namespace Jolt
             ReleaseCustomPathProvider(customProviderExtension);
         }
         return true;
+    }
+
+    bool RuntimeImplementation::ReservePathDestruction(
+        const PathHandle pathHandle,
+        const ResourceDestructionPlan& plan)
+    {
+        AZStd::vector<WorldConstraintDestructionGroup> groups;
+        if (!GroupConstraintDestructions(plan, groups))
+        {
+            return false;
+        }
+
+        AZStd::unique_lock worldLock(m_worldMutex);
+        for (const WorldConstraintDestructionGroup& group : groups)
+        {
+            if (!FindWorldUnlocked(group.m_worldHandle))
+            {
+                return false;
+            }
+        }
+
+        AZ::u32 pathReferenceCount = 0;
+        for (size_t worldIndex = 0; worldIndex < m_worldSlots.size(); ++worldIndex)
+        {
+            WorldSlot& worldSlot = m_worldSlots[worldIndex];
+            if (!worldSlot.m_world)
+            {
+                continue;
+            }
+
+            const WorldHandle worldHandle = Internal::MakeWorldHandle(aznumeric_cast<AZ::u32>(worldIndex), worldSlot.m_generation);
+            const AZStd::span<const ConstraintHandle> constraintHandles = FindConstraintDestructionsForWorld(groups, worldHandle);
+            AZ::u32 worldReferenceCount = 0;
+            if (!worldSlot.m_world->ValidatePathConstraintDestruction(
+                    constraintHandles,
+                    pathHandle,
+                    worldReferenceCount)
+                || worldReferenceCount > AZStd::numeric_limits<AZ::u32>::max() - pathReferenceCount)
+            {
+                return false;
+            }
+            pathReferenceCount += worldReferenceCount;
+        }
+
+        {
+            AZStd::lock_guard pathLock(m_pathMutex);
+            PathSlot* slot = FindPathUnlocked(pathHandle);
+            if (!slot || slot->m_isDestroying || slot->m_constraintCount != pathReferenceCount)
+            {
+                return false;
+            }
+            slot->m_isDestroying = true;
+        }
+
+        AZ::u32 reservedPathReferenceCount = 0;
+        size_t reservedWorldEnd = 0;
+        bool reserved = true;
+        for (size_t worldIndex = 0; worldIndex < m_worldSlots.size(); ++worldIndex)
+        {
+            WorldSlot& worldSlot = m_worldSlots[worldIndex];
+            if (!worldSlot.m_world)
+            {
+                continue;
+            }
+
+            const WorldHandle worldHandle = Internal::MakeWorldHandle(aznumeric_cast<AZ::u32>(worldIndex), worldSlot.m_generation);
+            const AZStd::span<const ConstraintHandle> constraintHandles = FindConstraintDestructionsForWorld(groups, worldHandle);
+            AZ::u32 worldReferenceCount = 0;
+            if (!worldSlot.m_world->ReservePathConstraintsWithDependencies(
+                    constraintHandles,
+                    pathHandle,
+                    worldReferenceCount)
+                || worldReferenceCount > AZStd::numeric_limits<AZ::u32>::max() - reservedPathReferenceCount)
+            {
+                reserved = false;
+                break;
+            }
+            reservedPathReferenceCount += worldReferenceCount;
+            reservedWorldEnd = worldIndex + 1;
+        }
+
+        if (reserved && reservedPathReferenceCount == pathReferenceCount)
+        {
+            return true;
+        }
+
+        for (size_t worldIndex = 0; worldIndex < reservedWorldEnd; ++worldIndex)
+        {
+            WorldSlot& worldSlot = m_worldSlots[worldIndex];
+            if (!worldSlot.m_world)
+            {
+                continue;
+            }
+
+            const WorldHandle worldHandle = Internal::MakeWorldHandle(aznumeric_cast<AZ::u32>(worldIndex), worldSlot.m_generation);
+            const AZStd::span<const ConstraintHandle> constraintHandles = FindConstraintDestructionsForWorld(groups, worldHandle);
+            worldSlot.m_world->CancelPathConstraintDestructionReservation(constraintHandles, pathHandle);
+        }
+        AZStd::lock_guard pathLock(m_pathMutex);
+        PathSlot* slot = FindPathUnlocked(pathHandle);
+        AZ_Assert(slot && slot->m_isDestroying, "A reserved path must remain valid until commit or cancellation.");
+        if (slot)
+        {
+            slot->m_isDestroying = false;
+        }
+        return false;
+    }
+
+    bool RuntimeImplementation::DestroyReservedPath(
+        const PathHandle pathHandle,
+        const ResourceDestructionPlan& plan)
+    {
+        AZStd::vector<WorldConstraintDestructionGroup> groups;
+        if (!GroupConstraintDestructions(plan, groups))
+        {
+            return false;
+        }
+
+        AZStd::unique_lock worldLock(m_worldMutex);
+        for (const WorldConstraintDestructionGroup& group : groups)
+        {
+            if (!FindWorldUnlocked(group.m_worldHandle))
+            {
+                return false;
+            }
+        }
+
+        AZ::u32 pathReferenceCount = 0;
+        {
+            AZStd::lock_guard pathLock(m_pathMutex);
+            const PathSlot* slot = FindPathUnlocked(pathHandle);
+            if (!slot || !slot->m_isDestroying)
+            {
+                return false;
+            }
+            pathReferenceCount = slot->m_constraintCount;
+        }
+
+        AZ::u32 destroyedPathReferenceCount = 0;
+        for (size_t worldIndex = 0; worldIndex < m_worldSlots.size(); ++worldIndex)
+        {
+            WorldSlot& worldSlot = m_worldSlots[worldIndex];
+            if (!worldSlot.m_world)
+            {
+                continue;
+            }
+
+            const WorldHandle worldHandle = Internal::MakeWorldHandle(aznumeric_cast<AZ::u32>(worldIndex), worldSlot.m_generation);
+            const AZStd::span<const ConstraintHandle> constraintHandles = FindConstraintDestructionsForWorld(groups, worldHandle);
+            AZ::u32 worldReferenceCount = 0;
+            [[maybe_unused]] const bool destroyed =
+                worldSlot.m_world->DestroyReservedPathConstraints(constraintHandles, pathHandle, worldReferenceCount);
+            AZ_Assert(destroyed, "A validated path dependency group must remain valid through destruction commit.");
+            if (!destroyed)
+            {
+                return false;
+            }
+            AZ_Assert(
+                worldReferenceCount <= AZStd::numeric_limits<AZ::u32>::max() - destroyedPathReferenceCount,
+                "A committed path reference count must not overflow.");
+            destroyedPathReferenceCount += worldReferenceCount;
+        }
+        AZ_Assert(destroyedPathReferenceCount == pathReferenceCount, "Path dependency validation and commit counts must match.");
+
+        ExtensionHandle customProviderExtension;
+        {
+            AZStd::lock_guard pathLock(m_pathMutex);
+            Internal::ResourceHandleParts parts;
+            PathSlot* slot = FindPathUnlocked(pathHandle);
+            AZ_Assert(
+                slot && slot->m_isDestroying && slot->m_constraintCount == 0,
+                "A path must have no retained constraints after dependency destruction commits.");
+            if (!slot
+                || !slot->m_isDestroying
+                || slot->m_constraintCount != 0
+                || !Internal::DecodeResourceHandle(pathHandle, parts))
+            {
+                return false;
+            }
+
+            slot->m_path = nullptr;
+            customProviderExtension = slot->m_customProviderExtension;
+            Internal::ReleaseHandleSlot(m_pathSlots, m_freePathSlots, parts.m_index);
+        }
+
+        if (customProviderExtension)
+        {
+            ReleaseCustomPathProvider(customProviderExtension);
+        }
+        return true;
+    }
+
+    bool RuntimeImplementation::IsPathDestructionReserved(const PathHandle pathHandle) const
+    {
+        AZStd::shared_lock lock(m_pathMutex);
+        const PathSlot* slot = FindPathUnlocked(pathHandle);
+        return slot && slot->m_isDestroying;
+    }
+
+    void RuntimeImplementation::DestroyOrDeferShapeSet(
+        const WorldHandle worldHandle,
+        Internal::ShapeSet&& shapeSet)
+    {
+        if (Internal::DestroyShapeSet(*this, worldHandle, shapeSet))
+        {
+            return;
+        }
+
+        AZStd::lock_guard lock(m_deferredShapeSetStore->m_mutex);
+        m_deferredShapeSetStore->m_records.push_back({
+            .m_worldHandle = worldHandle,
+            .m_shapeSet = AZStd::move(shapeSet),
+        });
+    }
+
+    void RuntimeImplementation::RetryDeferredShapeSetDestruction(
+        const WorldHandle worldHandle)
+    {
+        AZStd::lock_guard lock(m_deferredShapeSetStore->m_mutex);
+        auto& records = m_deferredShapeSetStore->m_records;
+        for (auto record = records.begin(); record != records.end();)
+        {
+            if (record->m_worldHandle != worldHandle
+                || !Internal::DestroyShapeSet(*this, worldHandle, record->m_shapeSet))
+            {
+                ++record;
+                continue;
+            }
+            record = records.erase(record);
+        }
+    }
+
+    void RuntimeImplementation::DeferPathDestruction(
+        const PathHandle pathHandle,
+        ResourceDestructionPlan&& plan,
+        const ResourceDestructionReservation reservation)
+    {
+        AZStd::lock_guard lock(m_deferredResourceDestructionStore->m_mutex);
+        m_deferredResourceDestructionStore->m_records.push_back({
+            .m_plan = AZStd::move(plan),
+            .m_pathHandle = pathHandle,
+            .m_kind = Internal::DeferredResourceDestructionStore::Kind::Path,
+            .m_reservation = reservation,
+        });
+    }
+
+    void RuntimeImplementation::DeferBodyDestruction(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        ResourceDestructionPlan&& plan,
+        const ResourceDestructionReservation reservation)
+    {
+        AZStd::lock_guard lock(m_deferredResourceDestructionStore->m_mutex);
+        m_deferredResourceDestructionStore->m_records.push_back({
+            .m_plan = AZStd::move(plan),
+            .m_worldHandle = worldHandle,
+            .m_bodyHandle = bodyHandle,
+            .m_kind = Internal::DeferredResourceDestructionStore::Kind::Body,
+            .m_reservation = reservation,
+        });
+    }
+
+    void RuntimeImplementation::DeferSoftBodyDestruction(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        ResourceDestructionPlan&& plan,
+        const ResourceDestructionReservation reservation,
+        const SoftBodyDefinitionHandle definitionHandle,
+        AZStd::vector<MaterialHandle>&& materialHandles)
+    {
+        AZStd::lock_guard lock(m_deferredResourceDestructionStore->m_mutex);
+        m_deferredResourceDestructionStore->m_records.push_back({
+            .m_plan = AZStd::move(plan),
+            .m_materialHandles = AZStd::move(materialHandles),
+            .m_worldHandle = worldHandle,
+            .m_bodyHandle = bodyHandle,
+            .m_definitionHandle = definitionHandle,
+            .m_kind = Internal::DeferredResourceDestructionStore::Kind::Body,
+            .m_reservation = reservation,
+        });
+    }
+
+    void RuntimeImplementation::DeferConstraintDestruction(
+        ResourceDestructionPlan&& plan,
+        const ResourceDestructionReservation reservation)
+    {
+        AZStd::lock_guard lock(m_deferredResourceDestructionStore->m_mutex);
+        m_deferredResourceDestructionStore->m_records.push_back({
+            .m_plan = AZStd::move(plan),
+            .m_kind = Internal::DeferredResourceDestructionStore::Kind::Constraint,
+            .m_reservation = reservation,
+        });
+    }
+
+    void RuntimeImplementation::DeferCharacterDestruction(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        ResourceDestructionPlan&& plan,
+        const ResourceDestructionReservation reservation)
+    {
+        AZStd::lock_guard lock(m_deferredResourceDestructionStore->m_mutex);
+        m_deferredResourceDestructionStore->m_records.push_back({
+            .m_plan = AZStd::move(plan),
+            .m_worldHandle = worldHandle,
+            .m_characterHandle = characterHandle,
+            .m_kind = Internal::DeferredResourceDestructionStore::Kind::Character,
+            .m_reservation = reservation,
+        });
+    }
+
+    void RuntimeImplementation::DeferVehicleDestruction(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle,
+        ResourceDestructionPlan&& plan,
+        const ResourceDestructionReservation reservation)
+    {
+        AZStd::lock_guard lock(m_deferredResourceDestructionStore->m_mutex);
+        m_deferredResourceDestructionStore->m_records.push_back({
+            .m_plan = AZStd::move(plan),
+            .m_worldHandle = worldHandle,
+            .m_vehicleHandle = vehicleHandle,
+            .m_kind = Internal::DeferredResourceDestructionStore::Kind::Vehicle,
+            .m_reservation = reservation,
+        });
+    }
+
+    void RuntimeImplementation::RetryDeferredResourceDestruction()
+    {
+        AZStd::vector<Internal::DeferredResourceDestructionStore::Record> records;
+        {
+            AZStd::lock_guard lock(m_deferredResourceDestructionStore->m_mutex);
+            records.swap(m_deferredResourceDestructionStore->m_records);
+        }
+
+        AZStd::vector<Internal::DeferredResourceDestructionStore::Record> retainedRecords;
+        retainedRecords.reserve(records.size());
+        for (auto& record : records)
+        {
+            if (record.m_reservation != ResourceDestructionReservation::Cleanup)
+            {
+                if (record.m_reservation == ResourceDestructionReservation::Pending)
+                {
+                    bool reserved = false;
+                    switch (record.m_kind)
+                    {
+                    case Internal::DeferredResourceDestructionStore::Kind::Body:
+                        reserved = ReserveBodyDestruction(record.m_worldHandle, record.m_bodyHandle, record.m_plan);
+                        break;
+                    case Internal::DeferredResourceDestructionStore::Kind::Character:
+                        reserved = ReserveCharacterDestruction(
+                            record.m_worldHandle,
+                            record.m_characterHandle,
+                            record.m_plan);
+                        break;
+                    case Internal::DeferredResourceDestructionStore::Kind::Constraint:
+                        reserved = ReserveConstraintDestruction(record.m_plan);
+                        break;
+                    case Internal::DeferredResourceDestructionStore::Kind::Path:
+                        reserved = ReservePathDestruction(record.m_pathHandle, record.m_plan);
+                        break;
+                    case Internal::DeferredResourceDestructionStore::Kind::Vehicle:
+                        reserved = ReserveVehicleDestruction(record.m_worldHandle, record.m_vehicleHandle);
+                        break;
+                    case Internal::DeferredResourceDestructionStore::Kind::None:
+                        break;
+                    }
+
+                    if (!reserved)
+                    {
+                        retainedRecords.push_back(AZStd::move(record));
+                        continue;
+                    }
+
+                    record.m_reservation = ResourceDestructionReservation::Complete;
+                    record.m_plan.NotifyDestroying();
+                }
+
+                bool destroyed = false;
+                switch (record.m_kind)
+                {
+                case Internal::DeferredResourceDestructionStore::Kind::Body:
+                    destroyed = DestroyReservedBody(record.m_worldHandle, record.m_bodyHandle, record.m_plan);
+                    break;
+                case Internal::DeferredResourceDestructionStore::Kind::Character:
+                    destroyed = DestroyReservedCharacter(
+                        record.m_worldHandle,
+                        record.m_characterHandle,
+                        record.m_plan);
+                    break;
+                case Internal::DeferredResourceDestructionStore::Kind::Constraint:
+                    destroyed = DestroyReservedConstraints(record.m_plan);
+                    break;
+                case Internal::DeferredResourceDestructionStore::Kind::Path:
+                    destroyed = DestroyReservedPath(record.m_pathHandle, record.m_plan);
+                    break;
+                case Internal::DeferredResourceDestructionStore::Kind::Vehicle:
+                    destroyed = DestroyReservedVehicle(record.m_worldHandle, record.m_vehicleHandle);
+                    break;
+                case Internal::DeferredResourceDestructionStore::Kind::None:
+                    break;
+                }
+
+                if (!destroyed)
+                {
+                    retainedRecords.push_back(AZStd::move(record));
+                    continue;
+                }
+
+                record.m_plan.NotifyDestroyed();
+                record.m_reservation = ResourceDestructionReservation::Cleanup;
+                if (record.m_worldHandle)
+                {
+                    RetryDeferredShapeSetDestruction(record.m_worldHandle);
+                }
+            }
+
+            if (record.m_definitionHandle)
+            {
+                if (!DestroySoftBodyDefinition(record.m_definitionHandle))
+                {
+                    retainedRecords.push_back(AZStd::move(record));
+                    continue;
+                }
+                record.m_definitionHandle = {};
+            }
+            while (!record.m_materialHandles.empty())
+            {
+                if (!DestroyMaterial(record.m_materialHandles.back()))
+                {
+                    retainedRecords.push_back(AZStd::move(record));
+                    break;
+                }
+                record.m_materialHandles.pop_back();
+            }
+        }
+
+        if (!retainedRecords.empty())
+        {
+            AZStd::lock_guard lock(m_deferredResourceDestructionStore->m_mutex);
+            m_deferredResourceDestructionStore->m_records.insert(
+                m_deferredResourceDestructionStore->m_records.end(),
+                AZStd::make_move_iterator(retainedRecords.begin()),
+                AZStd::make_move_iterator(retainedRecords.end()));
+        }
+    }
+
+    size_t RuntimeImplementation::GetDeferredResourceDestructionCount() const
+    {
+        if (!m_deferredResourceDestructionStore)
+        {
+            return 0;
+        }
+
+        AZStd::lock_guard lock(m_deferredResourceDestructionStore->m_mutex);
+        return m_deferredResourceDestructionStore->m_records.size();
     }
 
     bool RuntimeImplementation::IsValid(
@@ -4885,6 +5483,7 @@ namespace Jolt
         const WorldHandle worldHandle,
         const float fixedTimeStep)
     {
+        RetryDeferredResourceDestruction();
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
         if (!world)
@@ -4984,6 +5583,7 @@ namespace Jolt
         AZStd::span<WorldEventBatch> eventBatches,
         AZ::u32* eventBatchCount)
     {
+        RetryDeferredResourceDestruction();
         struct AutoSimulationEntry final
         {
             World* m_world = nullptr;
@@ -6154,6 +6754,57 @@ namespace Jolt
         return world && world->DestroyBody(bodyHandle);
     }
 
+    bool RuntimeImplementation::ReserveBodyDestruction(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const ResourceDestructionPlan& plan)
+    {
+        AZStd::vector<ConstraintHandle> constraintHandles;
+        AZStd::vector<VehicleHandle> vehicleHandles;
+        if (!CopyDestructionPlanForWorld(plan, worldHandle, constraintHandles, vehicleHandles))
+        {
+            return false;
+        }
+
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->ReserveBodyDestructionWithDependencies(
+                bodyHandle,
+                constraintHandles,
+                vehicleHandles);
+    }
+
+    bool RuntimeImplementation::DestroyReservedBody(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle,
+        const ResourceDestructionPlan& plan)
+    {
+        AZStd::vector<ConstraintHandle> constraintHandles;
+        AZStd::vector<VehicleHandle> vehicleHandles;
+        if (!CopyDestructionPlanForWorld(plan, worldHandle, constraintHandles, vehicleHandles))
+        {
+            return false;
+        }
+
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->DestroyReservedBodyWithDependencies(
+                bodyHandle,
+                constraintHandles,
+                vehicleHandles);
+    }
+
+    bool RuntimeImplementation::IsBodyDestructionReserved(
+        const WorldHandle worldHandle,
+        const BodyHandle bodyHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsBodyDestructionReserved(bodyHandle);
+    }
+
     bool RuntimeImplementation::DestroyBodies(
         const WorldHandle worldHandle,
         const AZStd::span<const BodyHandle> bodyHandles)
@@ -6563,6 +7214,58 @@ namespace Jolt
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
         return world && world->DestroyConstraints(constraintHandles);
+    }
+
+    bool RuntimeImplementation::ReserveConstraintDestruction(
+        const ResourceDestructionPlan& plan)
+    {
+        const AZStd::span<const ConstraintDestruction> destructions = plan.GetConstraints();
+        if (destructions.empty() || !plan.GetVehicles().empty())
+        {
+            return false;
+        }
+
+        const WorldHandle worldHandle = destructions.front().m_worldHandle;
+        AZStd::vector<ConstraintHandle> constraintHandles;
+        AZStd::vector<VehicleHandle> vehicleHandles;
+        if (!CopyDestructionPlanForWorld(plan, worldHandle, constraintHandles, vehicleHandles))
+        {
+            return false;
+        }
+
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ReserveConstraintDestructionWithDependencies(constraintHandles);
+    }
+
+    bool RuntimeImplementation::DestroyReservedConstraints(
+        const ResourceDestructionPlan& plan)
+    {
+        const AZStd::span<const ConstraintDestruction> destructions = plan.GetConstraints();
+        if (destructions.empty() || !plan.GetVehicles().empty())
+        {
+            return false;
+        }
+
+        const WorldHandle worldHandle = destructions.front().m_worldHandle;
+        AZStd::vector<ConstraintHandle> constraintHandles;
+        AZStd::vector<VehicleHandle> vehicleHandles;
+        if (!CopyDestructionPlanForWorld(plan, worldHandle, constraintHandles, vehicleHandles))
+        {
+            return false;
+        }
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyReservedConstraintsWithDependencies(constraintHandles);
+    }
+
+    bool RuntimeImplementation::IsConstraintDestructionReserved(
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsConstraintDestructionReserved(constraintHandle);
     }
 
     bool RuntimeImplementation::IsConstraintInSimulation(
@@ -7657,6 +8360,57 @@ namespace Jolt
         return world && world->DestroyCharacter(characterHandle);
     }
 
+    bool RuntimeImplementation::ReserveCharacterDestruction(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        const ResourceDestructionPlan& plan)
+    {
+        AZStd::vector<ConstraintHandle> constraintHandles;
+        AZStd::vector<VehicleHandle> vehicleHandles;
+        if (!CopyDestructionPlanForWorld(plan, worldHandle, constraintHandles, vehicleHandles))
+        {
+            return false;
+        }
+
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->ReserveCharacterDestructionWithDependencies(
+                characterHandle,
+                constraintHandles,
+                vehicleHandles);
+    }
+
+    bool RuntimeImplementation::DestroyReservedCharacter(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        const ResourceDestructionPlan& plan)
+    {
+        AZStd::vector<ConstraintHandle> constraintHandles;
+        AZStd::vector<VehicleHandle> vehicleHandles;
+        if (!CopyDestructionPlanForWorld(plan, worldHandle, constraintHandles, vehicleHandles))
+        {
+            return false;
+        }
+
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world
+            && world->DestroyReservedCharacterWithDependencies(
+                characterHandle,
+                constraintHandles,
+                vehicleHandles);
+    }
+
+    bool RuntimeImplementation::IsCharacterDestructionReserved(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsCharacterDestructionReserved(characterHandle);
+    }
+
     bool RuntimeImplementation::IsValid(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle) const
@@ -7865,6 +8619,33 @@ namespace Jolt
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
         return world && world->DestroyVehicle(vehicleHandle);
+    }
+
+    bool RuntimeImplementation::ReserveVehicleDestruction(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->ReserveVehicleDestruction(vehicleHandle);
+    }
+
+    bool RuntimeImplementation::DestroyReservedVehicle(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->DestroyReservedVehicle(vehicleHandle);
+    }
+
+    bool RuntimeImplementation::IsVehicleDestructionReserved(
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsVehicleDestructionReserved(vehicleHandle);
     }
 
     bool RuntimeImplementation::IsValid(
@@ -10903,6 +11684,7 @@ namespace Jolt
         Internal::ResourceHandleParts parts;
         const PathSlot* constPathSlot = FindPathUnlocked(pathHandle);
         if (!constPathSlot
+            || constPathSlot->m_isDestroying
             || !Internal::DecodeResourceHandle(pathHandle, parts)
             || constPathSlot->m_constraintCount == AZStd::numeric_limits<AZ::u32>::max())
         {
@@ -10935,6 +11717,24 @@ namespace Jolt
         {
             --slot.m_constraintCount;
         }
+    }
+
+    RuntimeImplementation::PathSlot* RuntimeImplementation::FindPathUnlocked(
+        const PathHandle pathHandle)
+    {
+        Internal::ResourceHandleParts parts;
+        if (!Internal::DecodeResourceHandle(pathHandle, parts)
+            || parts.m_index >= m_pathSlots.size())
+        {
+            return nullptr;
+        }
+
+        PathSlot& slot = m_pathSlots[parts.m_index];
+        if (!slot.m_path || slot.m_generation != parts.m_generation)
+        {
+            return nullptr;
+        }
+        return &slot;
     }
 
     const RuntimeImplementation::PathSlot* RuntimeImplementation::FindPathUnlocked(

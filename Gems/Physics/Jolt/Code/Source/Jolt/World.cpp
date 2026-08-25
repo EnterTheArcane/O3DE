@@ -5698,7 +5698,9 @@ namespace Jolt
         , m_handle(handle)
         , m_worldIndex(worldIndex)
         , m_transformedShapeLeaseState(aznew TransformedShapeLeaseState{
+              .m_system = &system,
               .m_world = this,
+              .m_worldHandle = handle,
           })
     {
         m_performanceStatisticsStartNanoseconds = GetSteadyNanoseconds();
@@ -5771,6 +5773,7 @@ namespace Jolt
         bool destroyLeaseState = false;
         {
             AZStd::lock_guard leaseStateLock(leaseState->m_mutex);
+            leaseState->m_system = nullptr;
             leaseState->m_world = nullptr;
             AZ_Assert(leaseState->m_referenceCount > 0, "The transformed-shape lease state reference count underflowed.");
             --leaseState->m_referenceCount;
@@ -8674,6 +8677,7 @@ namespace Jolt
         AZStd::lock_guard lock(m_mutex);
         BodySlot* slot = FindBody(bodyHandle);
         if (!slot
+            || slot->m_isDestroying
             || slot->m_constraintCount > 0
             || slot->m_characterHandle
             || slot->m_virtualCharacterHandle
@@ -8684,18 +8688,187 @@ namespace Jolt
             return false;
         }
 
+        CommitBodyDestructionUnlocked(bodyHandle, *slot);
+        return true;
+    }
+
+    bool World::ReserveBodyDestructionWithDependencies(
+        const BodyHandle bodyHandle,
+        const AZStd::span<const ConstraintHandle> constraintHandles,
+        const AZStd::span<const VehicleHandle> vehicleHandles)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        BodySlot* slot = FindBody(bodyHandle);
+        if (!slot
+            || slot->m_isDestroying
+            || !CollectBodyDependenciesUnlocked(
+                *slot,
+                constraintHandles,
+                vehicleHandles,
+                CharacterHandle::Invalid)
+            || !ValidateConstraintDestructionUnlocked(m_constraintHandleScratch))
+        {
+            return false;
+        }
+
+        VehicleSlot* vehicleSlot = nullptr;
+        if (slot->m_vehicleHandle)
+        {
+            vehicleSlot = FindVehicle(slot->m_vehicleHandle);
+            if (!vehicleSlot || vehicleSlot->m_isDestroying)
+            {
+                return false;
+            }
+        }
+        if (!ReserveConstraintDestructionUnlocked(m_constraintHandleScratch))
+        {
+            return false;
+        }
+
+        slot->m_isDestroying = true;
+        if (vehicleSlot)
+        {
+            vehicleSlot->m_isDestroying = true;
+        }
+        return true;
+    }
+
+    bool World::DestroyReservedBodyWithDependencies(
+        const BodyHandle bodyHandle,
+        const AZStd::span<const ConstraintHandle> constraintHandles,
+        const AZStd::span<const VehicleHandle> vehicleHandles)
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::DestroyReservedBodyWithDependencies");
+
+        AZStd::lock_guard lock(m_mutex);
+        BodySlot* slot = FindBody(bodyHandle);
+        if (!slot
+            || !slot->m_isDestroying
+            || !CollectBodyDependenciesUnlocked(
+                *slot,
+                constraintHandles,
+                vehicleHandles,
+                CharacterHandle::Invalid)
+            || !ValidateConstraintDestructionUnlocked(m_constraintHandleScratch)
+            || !ValidateConstraintDestructionReservationUnlocked(m_constraintHandleScratch))
+        {
+            return false;
+        }
+
+        VehicleSlot* vehicleSlot = nullptr;
+        if (slot->m_vehicleHandle)
+        {
+            vehicleSlot = FindVehicle(slot->m_vehicleHandle);
+            if (!vehicleSlot || !vehicleSlot->m_isDestroying)
+            {
+                return false;
+            }
+        }
+
+        CommitConstraintDestructionUnlocked(m_constraintHandleScratch);
+        if (vehicleSlot)
+        {
+            const VehicleHandle vehicleHandle = slot->m_vehicleHandle;
+            CommitVehicleDestructionUnlocked(vehicleHandle, *vehicleSlot);
+        }
+
+        slot = FindBody(bodyHandle);
+        AZ_Assert(slot, "A validated body must remain valid through destruction commit.");
+        CommitBodyDestructionUnlocked(bodyHandle, *slot);
+        return true;
+    }
+
+    bool World::IsBodyDestructionReserved(const BodyHandle bodyHandle) const
+    {
+        AZStd::lock_guard lock(m_mutex);
+        const BodySlot* slot = FindBody(bodyHandle);
+        return slot && slot->m_isDestroying;
+    }
+
+    bool World::CollectBodyDependenciesUnlocked(
+        const BodySlot& bodySlot,
+        const AZStd::span<const ConstraintHandle> constraintHandles,
+        const AZStd::span<const VehicleHandle> vehicleHandles,
+        const CharacterHandle characterHandle)
+    {
+        if (bodySlot.m_characterHandle != characterHandle
+            || bodySlot.m_virtualCharacterHandle
+            || bodySlot.m_ragdollHandle
+            || bodySlot.m_sceneInstanceHandle)
+        {
+            return false;
+        }
+
+        if (bodySlot.m_vehicleHandle)
+        {
+            if (!vehicleHandles.empty()
+                && (vehicleHandles.size() != 1 || vehicleHandles.front() != bodySlot.m_vehicleHandle))
+            {
+                return false;
+            }
+
+            const VehicleSlot* vehicleSlot = FindVehicle(bodySlot.m_vehicleHandle);
+            if (!vehicleSlot || FindBody(vehicleSlot->m_bodyHandle) != &bodySlot)
+            {
+                return false;
+            }
+        }
+        else if (!vehicleHandles.empty())
+        {
+            return false;
+        }
+        for (const VehicleHandle vehicleHandle : vehicleHandles)
+        {
+            const VehicleSlot* vehicleSlot = FindVehicle(vehicleHandle);
+            if (!vehicleSlot || FindBody(vehicleSlot->m_bodyHandle) != &bodySlot)
+            {
+                return false;
+            }
+        }
+
+        m_constraintHandleScratch.clear();
+        for (const ConstraintSlot& constraintSlot : m_constraintSlots)
+        {
+            if (!constraintSlot.m_constraint
+                || (FindBody(constraintSlot.m_firstBodyHandle) != &bodySlot
+                    && FindBody(constraintSlot.m_secondBodyHandle) != &bodySlot))
+            {
+                continue;
+            }
+            m_constraintHandleScratch.push_back(
+                Internal::HandleAccess::FromValue<ConstraintHandle>(constraintSlot.m_constraint->GetUserData()));
+        }
+        if (!CollectConstraintDestructionClosureUnlocked(m_constraintHandleScratch))
+        {
+            return false;
+        }
+
+        for (const ConstraintHandle constraintHandle : constraintHandles)
+        {
+            if (AZStd::find(m_constraintHandleScratch.begin(), m_constraintHandleScratch.end(), constraintHandle)
+                == m_constraintHandleScratch.end())
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void World::CommitBodyDestructionUnlocked(
+        const BodyHandle bodyHandle,
+        BodySlot& slot)
+    {
         SetBodyMoveEventsEnabled(bodyHandle, false);
         JPH::BodyInterface& bodyInterface = m_physicsSystem.GetBodyInterface();
         AZ::u32 removedBodyCount = 0;
-        if (bodyInterface.IsAdded(slot->m_bodyId))
+        if (bodyInterface.IsAdded(slot.m_bodyId))
         {
-            bodyInterface.RemoveBody(slot->m_bodyId);
+            bodyInterface.RemoveBody(slot.m_bodyId);
             removedBodyCount = 1;
         }
-        bodyInterface.DestroyBody(slot->m_bodyId);
+        bodyInterface.DestroyBody(slot.m_bodyId);
         MaintainBroadPhaseAfterBodyRemovals(removedBodyCount);
-        ReleaseBodySlot(bodyHandle, *slot);
-        return true;
+        ReleaseBodySlot(bodyHandle, slot);
     }
 
     bool World::DestroyBodies(
@@ -8716,6 +8889,7 @@ namespace Jolt
         {
             const BodySlot* slot = FindBody(bodyHandle);
             if (!slot
+                || slot->m_isDestroying
                 || slot->m_constraintCount > 0
                 || slot->m_characterHandle
                 || slot->m_virtualCharacterHandle
@@ -8849,6 +9023,8 @@ namespace Jolt
         BodySlot* secondBodySlot = FindBody(configuration.m_secondBodyHandle);
         if (!firstBodySlot
             || !secondBodySlot
+            || firstBodySlot->m_isDestroying
+            || secondBodySlot->m_isDestroying
             || configuration.m_firstBodyHandle == configuration.m_secondBodyHandle)
         {
             return {};
@@ -9107,6 +9283,7 @@ namespace Jolt
                     {
                         firstHingeSlot = FindConstraint(geometry.m_firstHingeConstraintHandle);
                         if (!firstHingeSlot
+                            || firstHingeSlot->m_isDestroying
                             || firstHingeSlot->m_constraint->GetSubType() != JPH::EConstraintSubType::Hinge)
                         {
                             return;
@@ -9117,6 +9294,7 @@ namespace Jolt
                     {
                         secondHingeSlot = FindConstraint(geometry.m_secondHingeConstraintHandle);
                         if (!secondHingeSlot
+                            || secondHingeSlot->m_isDestroying
                             || secondHingeSlot->m_constraint->GetSubType() != JPH::EConstraintSubType::Hinge)
                         {
                             return;
@@ -9390,6 +9568,7 @@ namespace Jolt
                     {
                         pinionSlot = FindConstraint(geometry.m_pinionConstraintHandle);
                         if (!pinionSlot
+                            || pinionSlot->m_isDestroying
                             || pinionSlot->m_constraint->GetSubType() != JPH::EConstraintSubType::Hinge)
                         {
                             return;
@@ -9400,6 +9579,7 @@ namespace Jolt
                     {
                         rackSlot = FindConstraint(geometry.m_rackConstraintHandle);
                         if (!rackSlot
+                            || rackSlot->m_isDestroying
                             || rackSlot->m_constraint->GetSubType() != JPH::EConstraintSubType::Slider)
                         {
                             return;
@@ -9978,6 +10158,7 @@ namespace Jolt
         AZStd::lock_guard lock(m_mutex);
         ConstraintSlot* slot = FindConstraint(constraintHandle);
         if (!slot
+            || slot->m_isDestroying
             || slot->m_parentCount > 0
             || slot->m_ragdollHandle
             || slot->m_sceneInstanceHandle)
@@ -10001,6 +10182,209 @@ namespace Jolt
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::DestroyConstraints");
 
         AZStd::lock_guard lock(m_mutex);
+        if (!ValidateConstraintDestructionUnlocked(constraintHandles))
+        {
+            return false;
+        }
+        for (const ConstraintHandle constraintHandle : constraintHandles)
+        {
+            if (FindConstraint(constraintHandle)->m_isDestroying)
+            {
+                return false;
+            }
+        }
+
+        CommitConstraintDestructionUnlocked(constraintHandles);
+        return true;
+    }
+
+    bool World::ReserveConstraintDestructionWithDependencies(
+        const AZStd::span<const ConstraintHandle> constraintHandles)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        m_constraintHandleScratch.assign(constraintHandles.begin(), constraintHandles.end());
+        if (!CollectConstraintDestructionClosureUnlocked(m_constraintHandleScratch)
+            || !ValidateConstraintDestructionUnlocked(m_constraintHandleScratch))
+        {
+            return false;
+        }
+        return ReserveConstraintDestructionUnlocked(m_constraintHandleScratch);
+    }
+
+    bool World::DestroyReservedConstraintsWithDependencies(
+        const AZStd::span<const ConstraintHandle> constraintHandles)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        m_constraintHandleScratch.assign(constraintHandles.begin(), constraintHandles.end());
+        if (!CollectConstraintDestructionClosureUnlocked(m_constraintHandleScratch)
+            || !ValidateConstraintDestructionUnlocked(m_constraintHandleScratch)
+            || !ValidateConstraintDestructionReservationUnlocked(m_constraintHandleScratch))
+        {
+            return false;
+        }
+
+        CommitConstraintDestructionUnlocked(m_constraintHandleScratch);
+        return true;
+    }
+
+    bool World::IsConstraintDestructionReserved(const ConstraintHandle constraintHandle) const
+    {
+        AZStd::lock_guard lock(m_mutex);
+        const ConstraintSlot* slot = FindConstraint(constraintHandle);
+        return slot && slot->m_isDestroying;
+    }
+
+    bool World::ValidatePathConstraintDestruction(
+        const AZStd::span<const ConstraintHandle> constraintHandles,
+        const PathHandle pathHandle,
+        AZ::u32& pathReferenceCount)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        return CollectPathConstraintDestructionClosureUnlocked(constraintHandles, pathHandle, pathReferenceCount)
+            && ValidateConstraintDestructionUnlocked(m_constraintHandleScratch);
+    }
+
+    bool World::ReservePathConstraintsWithDependencies(
+        const AZStd::span<const ConstraintHandle> constraintHandles,
+        const PathHandle pathHandle,
+        AZ::u32& pathReferenceCount)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        if (!CollectPathConstraintDestructionClosureUnlocked(constraintHandles, pathHandle, pathReferenceCount)
+            || !ValidateConstraintDestructionUnlocked(m_constraintHandleScratch))
+        {
+            return false;
+        }
+        return ReserveConstraintDestructionUnlocked(m_constraintHandleScratch);
+    }
+
+    void World::CancelPathConstraintDestructionReservation(
+        const AZStd::span<const ConstraintHandle> constraintHandles,
+        const PathHandle pathHandle)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        AZ::u32 pathReferenceCount = 0;
+        [[maybe_unused]] const bool collected =
+            CollectPathConstraintDestructionClosureUnlocked(constraintHandles, pathHandle, pathReferenceCount);
+        AZ_Assert(collected, "A reserved path dependency closure must remain valid until commit or cancellation.");
+        if (collected)
+        {
+            CancelConstraintDestructionReservationUnlocked(m_constraintHandleScratch);
+        }
+    }
+
+    bool World::DestroyReservedPathConstraints(
+        const AZStd::span<const ConstraintHandle> constraintHandles,
+        const PathHandle pathHandle,
+        AZ::u32& pathReferenceCount)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        if (!CollectPathConstraintDestructionClosureUnlocked(constraintHandles, pathHandle, pathReferenceCount)
+            || !ValidateConstraintDestructionUnlocked(m_constraintHandleScratch)
+            || !ValidateConstraintDestructionReservationUnlocked(m_constraintHandleScratch))
+        {
+            return false;
+        }
+
+        CommitConstraintDestructionUnlocked(m_constraintHandleScratch);
+        return true;
+    }
+
+    bool World::CollectPathConstraintDestructionClosureUnlocked(
+        const AZStd::span<const ConstraintHandle> constraintHandles,
+        const PathHandle pathHandle,
+        AZ::u32& pathReferenceCount)
+    {
+        m_constraintHandleScratch.clear();
+        pathReferenceCount = 0;
+        for (const ConstraintSlot& slot : m_constraintSlots)
+        {
+            if (!slot.m_constraint || slot.m_pathHandle != pathHandle)
+            {
+                continue;
+            }
+            if (pathReferenceCount == AZStd::numeric_limits<AZ::u32>::max())
+            {
+                return false;
+            }
+
+            ++pathReferenceCount;
+            m_constraintHandleScratch.push_back(
+                Internal::HandleAccess::FromValue<ConstraintHandle>(slot.m_constraint->GetUserData()));
+        }
+        if (!CollectConstraintDestructionClosureUnlocked(m_constraintHandleScratch))
+        {
+            return false;
+        }
+        for (const ConstraintHandle constraintHandle : constraintHandles)
+        {
+            if (AZStd::find(m_constraintHandleScratch.begin(), m_constraintHandleScratch.end(), constraintHandle)
+                == m_constraintHandleScratch.end())
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool World::CollectConstraintDestructionClosureUnlocked(
+        AZStd::vector<ConstraintHandle>& constraintHandles)
+    {
+        m_constraintDestructionMarks.assign(m_constraintSlots.size(), 0);
+        for (size_t constraintIndex = 0; constraintIndex < constraintHandles.size(); ++constraintIndex)
+        {
+            Internal::WorldMemberHandleParts parts;
+            if (!FindConstraint(constraintHandles[constraintIndex])
+                || !Internal::DecodeWorldMemberHandle(constraintHandles[constraintIndex], parts)
+                || parts.m_index >= m_constraintDestructionMarks.size()
+                || m_constraintDestructionMarks[parts.m_index])
+            {
+                return false;
+            }
+            m_constraintDestructionMarks[parts.m_index] = 1;
+        }
+
+        bool foundParent = true;
+        while (foundParent)
+        {
+            foundParent = false;
+            for (size_t slotIndex = 0; slotIndex < m_constraintSlots.size(); ++slotIndex)
+            {
+                const ConstraintSlot& slot = m_constraintSlots[slotIndex];
+                if (!slot.m_constraint)
+                {
+                    continue;
+                }
+
+                if (m_constraintDestructionMarks[slotIndex])
+                {
+                    continue;
+                }
+                const ConstraintHandle handle =
+                    Internal::HandleAccess::FromValue<ConstraintHandle>(slot.m_constraint->GetUserData());
+                for (const ConstraintHandle dependencyHandle : slot.m_dependencyHandles)
+                {
+                    Internal::WorldMemberHandleParts dependencyParts;
+                    if (dependencyHandle
+                        && FindConstraint(dependencyHandle)
+                        && Internal::DecodeWorldMemberHandle(dependencyHandle, dependencyParts)
+                        && dependencyParts.m_index < m_constraintDestructionMarks.size()
+                        && m_constraintDestructionMarks[dependencyParts.m_index])
+                    {
+                        constraintHandles.push_back(handle);
+                        m_constraintDestructionMarks[slotIndex] = 1;
+                        foundParent = true;
+                        break;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    bool World::ValidateConstraintDestructionUnlocked(
+        const AZStd::span<const ConstraintHandle> constraintHandles)
+    {
         if (constraintHandles.size()
             > aznumeric_cast<size_t>(AZStd::numeric_limits<int>::max() / 3))
         {
@@ -10052,7 +10436,12 @@ namespace Jolt
             {
                 if (dependencyHandle)
                 {
-                    m_constraintScratch.push_back(FindConstraint(dependencyHandle)->m_constraint.GetPtr());
+                    const ConstraintSlot* dependencySlot = FindConstraint(dependencyHandle);
+                    if (!dependencySlot)
+                    {
+                        return false;
+                    }
+                    m_constraintScratch.push_back(dependencySlot->m_constraint.GetPtr());
                     hasDependencies = true;
                 }
             }
@@ -10094,6 +10483,58 @@ namespace Jolt
             }
         }
 
+        return true;
+    }
+
+    bool World::ReserveConstraintDestructionUnlocked(
+        const AZStd::span<const ConstraintHandle> constraintHandles)
+    {
+        for (const ConstraintHandle constraintHandle : constraintHandles)
+        {
+            const ConstraintSlot* slot = FindConstraint(constraintHandle);
+            if (!slot || slot->m_isDestroying)
+            {
+                return false;
+            }
+        }
+        for (const ConstraintHandle constraintHandle : constraintHandles)
+        {
+            FindConstraint(constraintHandle)->m_isDestroying = true;
+        }
+        return true;
+    }
+
+    bool World::ValidateConstraintDestructionReservationUnlocked(
+        const AZStd::span<const ConstraintHandle> constraintHandles) const
+    {
+        for (const ConstraintHandle constraintHandle : constraintHandles)
+        {
+            const ConstraintSlot* slot = FindConstraint(constraintHandle);
+            if (!slot || !slot->m_isDestroying)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void World::CancelConstraintDestructionReservationUnlocked(
+        const AZStd::span<const ConstraintHandle> constraintHandles)
+    {
+        for (const ConstraintHandle constraintHandle : constraintHandles)
+        {
+            ConstraintSlot* slot = FindConstraint(constraintHandle);
+            AZ_Assert(slot && slot->m_isDestroying, "Only a live reserved constraint may be cancelled.");
+            if (slot)
+            {
+                slot->m_isDestroying = false;
+            }
+        }
+    }
+
+    void World::CommitConstraintDestructionUnlocked(
+        const AZStd::span<const ConstraintHandle> constraintHandles)
+    {
         m_constraintScratch.clear();
         for (const ConstraintHandle constraintHandle : constraintHandles)
         {
@@ -10121,7 +10562,6 @@ namespace Jolt
             AZ_Assert(slot, "A validated constraint handle must remain valid until its slot is released.");
             ReleaseConstraintSlot(constraintHandle, *slot);
         }
-        return true;
     }
 
     void World::ReleaseConstraintReferences(
@@ -13740,7 +14180,9 @@ namespace Jolt
         }
 
         BodySlot* bodySlot = FindBody(characterSlot->m_bodyHandle);
-        if (!bodySlot || bodySlot->m_constraintCount > 0)
+        if (!bodySlot
+            || bodySlot->m_isDestroying
+            || bodySlot->m_constraintCount > 0)
         {
             return false;
         }
@@ -13760,6 +14202,128 @@ namespace Jolt
         ReleaseBodySlot(characterSlot->m_bodyHandle, *bodySlot);
         Internal::ReleaseHandleSlot(m_characterSlots, m_freeCharacterSlots, characterParts.m_index);
         return true;
+    }
+
+    bool World::ReserveCharacterDestructionWithDependencies(
+        const CharacterHandle characterHandle,
+        const AZStd::span<const ConstraintHandle> constraintHandles,
+        const AZStd::span<const VehicleHandle> vehicleHandles)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        const CharacterSlot* characterSlot = FindCharacter(characterHandle);
+        if (!characterSlot)
+        {
+            return false;
+        }
+
+        BodySlot* bodySlot = FindBody(characterSlot->m_bodyHandle);
+        if (!bodySlot
+            || bodySlot->m_isDestroying
+            || !CollectBodyDependenciesUnlocked(
+                *bodySlot,
+                constraintHandles,
+                vehicleHandles,
+                characterHandle)
+            || !ValidateConstraintDestructionUnlocked(m_constraintHandleScratch))
+        {
+            return false;
+        }
+
+        VehicleSlot* vehicleSlot = nullptr;
+        if (bodySlot->m_vehicleHandle)
+        {
+            vehicleSlot = FindVehicle(bodySlot->m_vehicleHandle);
+            if (!vehicleSlot || vehicleSlot->m_isDestroying)
+            {
+                return false;
+            }
+        }
+        if (!ReserveConstraintDestructionUnlocked(m_constraintHandleScratch))
+        {
+            return false;
+        }
+
+        bodySlot->m_isDestroying = true;
+        if (vehicleSlot)
+        {
+            vehicleSlot->m_isDestroying = true;
+        }
+        return true;
+    }
+
+    bool World::DestroyReservedCharacterWithDependencies(
+        const CharacterHandle characterHandle,
+        const AZStd::span<const ConstraintHandle> constraintHandles,
+        const AZStd::span<const VehicleHandle> vehicleHandles)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        CharacterSlot* characterSlot = FindCharacter(characterHandle);
+        if (!characterSlot)
+        {
+            return false;
+        }
+
+        BodySlot* bodySlot = FindBody(characterSlot->m_bodyHandle);
+        if (!bodySlot
+            || !bodySlot->m_isDestroying
+            || !CollectBodyDependenciesUnlocked(
+                *bodySlot,
+                constraintHandles,
+                vehicleHandles,
+                characterHandle)
+            || !ValidateConstraintDestructionUnlocked(m_constraintHandleScratch)
+            || !ValidateConstraintDestructionReservationUnlocked(m_constraintHandleScratch))
+        {
+            return false;
+        }
+
+        Internal::WorldMemberHandleParts characterParts;
+        if (!Internal::DecodeWorldMemberHandle(characterHandle, characterParts))
+        {
+            return false;
+        }
+
+        VehicleSlot* vehicleSlot = nullptr;
+        if (bodySlot->m_vehicleHandle)
+        {
+            vehicleSlot = FindVehicle(bodySlot->m_vehicleHandle);
+            if (!vehicleSlot || !vehicleSlot->m_isDestroying)
+            {
+                return false;
+            }
+        }
+
+        CommitConstraintDestructionUnlocked(m_constraintHandleScratch);
+        if (vehicleSlot)
+        {
+            const VehicleHandle vehicleHandle = bodySlot->m_vehicleHandle;
+            CommitVehicleDestructionUnlocked(vehicleHandle, *vehicleSlot);
+        }
+
+        bodySlot = FindBody(characterSlot->m_bodyHandle);
+        AZ_Assert(bodySlot, "A validated character body must remain valid through destruction commit.");
+        [[maybe_unused]] const bool moveEventsDisabled =
+            SetBodyMoveEventsEnabled(characterSlot->m_bodyHandle, false);
+        AZ_Assert(moveEventsDisabled, "A character body move subscription must be removable during destruction.");
+        characterSlot->m_character->RemoveFromPhysicsSystem();
+        MaintainBroadPhaseAfterBodyRemovals(1);
+        characterSlot->m_character = nullptr;
+        ReleaseBodySlot(characterSlot->m_bodyHandle, *bodySlot);
+        Internal::ReleaseHandleSlot(m_characterSlots, m_freeCharacterSlots, characterParts.m_index);
+        return true;
+    }
+
+    bool World::IsCharacterDestructionReserved(const CharacterHandle characterHandle) const
+    {
+        AZStd::lock_guard lock(m_mutex);
+        const CharacterSlot* characterSlot = FindCharacter(characterHandle);
+        if (!characterSlot)
+        {
+            return false;
+        }
+
+        const BodySlot* bodySlot = FindBody(characterSlot->m_bodyHandle);
+        return bodySlot && bodySlot->m_isDestroying;
     }
 
     JOLT_CAPTURE_COLD bool World::UpdateVirtualCharacterWithDebugCapture(
@@ -14176,6 +14740,7 @@ namespace Jolt
         AZStd::lock_guard lock(m_mutex);
         BodySlot* bodySlot = FindBody(configuration.m_bodyHandle);
         if (!bodySlot
+            || bodySlot->m_isDestroying
             || bodySlot->m_kind != BodyKind::Rigid
             || bodySlot->m_motionType != MotionType::Dynamic
             || !m_physicsSystem.GetBodyInterface().IsAdded(bodySlot->m_bodyId)
@@ -14548,6 +15113,7 @@ namespace Jolt
         AZStd::lock_guard lock(m_mutex);
         BodySlot* bodySlot = FindBody(configuration.m_bodyHandle);
         if (!bodySlot
+            || bodySlot->m_isDestroying
             || bodySlot->m_kind != BodyKind::Rigid
             || bodySlot->m_motionType != MotionType::Dynamic
             || !m_physicsSystem.GetBodyInterface().IsAdded(bodySlot->m_bodyId)
@@ -14872,29 +15438,70 @@ namespace Jolt
     {
         AZStd::lock_guard lock(m_mutex);
         VehicleSlot* slot = FindVehicle(vehicleHandle);
-        if (!slot)
+        if (!slot || slot->m_isDestroying)
         {
             return false;
         }
 
-        Internal::WorldMemberHandleParts parts;
-        if (!Internal::DecodeWorldMemberHandle(vehicleHandle, parts))
+        CommitVehicleDestructionUnlocked(vehicleHandle, *slot);
+        return true;
+    }
+
+    bool World::ReserveVehicleDestruction(
+        const VehicleHandle vehicleHandle)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        VehicleSlot* slot = FindVehicle(vehicleHandle);
+        if (!slot || slot->m_isDestroying)
         {
             return false;
         }
-        m_physicsSystem.RemoveStepListener(slot->m_constraint);
-        m_physicsSystem.RemoveConstraint(slot->m_constraint);
-        AdvanceNativeConstraintTopologyEpoch();
-        BodySlot* bodySlot = FindBody(slot->m_bodyHandle);
-        AZ_Assert(bodySlot && bodySlot->m_constraintCount > 0, "Vehicle body ownership is invalid.");
-        if (bodySlot && slot->m_constraint->IsGravityOverridden())
+
+        slot->m_isDestroying = true;
+        return true;
+    }
+
+    bool World::DestroyReservedVehicle(
+        const VehicleHandle vehicleHandle)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        VehicleSlot* slot = FindVehicle(vehicleHandle);
+        if (!slot || !slot->m_isDestroying)
         {
-            slot->m_constraint->ResetGravityOverride();
-            if (slot->m_hasGravityFactorBeforeOverride)
+            return false;
+        }
+
+        CommitVehicleDestructionUnlocked(vehicleHandle, *slot);
+        return true;
+    }
+
+    bool World::IsVehicleDestructionReserved(const VehicleHandle vehicleHandle) const
+    {
+        AZStd::lock_guard lock(m_mutex);
+        const VehicleSlot* slot = FindVehicle(vehicleHandle);
+        return slot && slot->m_isDestroying;
+    }
+
+    void World::CommitVehicleDestructionUnlocked(
+        const VehicleHandle vehicleHandle,
+        VehicleSlot& slot)
+    {
+        Internal::WorldMemberHandleParts parts;
+        [[maybe_unused]] const bool decoded = Internal::DecodeWorldMemberHandle(vehicleHandle, parts);
+        AZ_Assert(decoded, "A validated vehicle handle must decode during destruction commit.");
+        m_physicsSystem.RemoveStepListener(slot.m_constraint);
+        m_physicsSystem.RemoveConstraint(slot.m_constraint);
+        AdvanceNativeConstraintTopologyEpoch();
+        BodySlot* bodySlot = FindBody(slot.m_bodyHandle);
+        AZ_Assert(bodySlot && bodySlot->m_constraintCount > 0, "Vehicle body ownership is invalid.");
+        if (bodySlot && slot.m_constraint->IsGravityOverridden())
+        {
+            slot.m_constraint->ResetGravityOverride();
+            if (slot.m_hasGravityFactorBeforeOverride)
             {
                 m_physicsSystem.GetBodyInterface().SetGravityFactor(
                     bodySlot->m_bodyId,
-                    slot->m_gravityFactorBeforeOverride);
+                    slot.m_gravityFactorBeforeOverride);
             }
         }
         if (bodySlot && bodySlot->m_constraintCount > 0)
@@ -14902,21 +15509,20 @@ namespace Jolt
             --bodySlot->m_constraintCount;
             bodySlot->m_vehicleHandle = {};
         }
-        if (slot->m_bindings)
+        if (slot.m_bindings)
         {
-            if (slot->m_bindings->m_callbacks.m_handle)
+            if (slot.m_bindings->m_callbacks.m_handle)
             {
-                m_system.ReleaseExtensionRollbackOwner(slot->m_bindings->m_callbacks.m_handle, m_handle);
-                m_system.ReleaseExtension(slot->m_bindings->m_callbacks.m_handle);
+                m_system.ReleaseExtensionRollbackOwner(slot.m_bindings->m_callbacks.m_handle, m_handle);
+                m_system.ReleaseExtension(slot.m_bindings->m_callbacks.m_handle);
             }
-            if (slot->m_bindings->m_collisionFilter.m_handle)
+            if (slot.m_bindings->m_collisionFilter.m_handle)
             {
-                m_system.ReleaseExtensionRollbackOwner(slot->m_bindings->m_collisionFilter.m_handle, m_handle);
-                m_system.ReleaseExtension(slot->m_bindings->m_collisionFilter.m_handle);
+                m_system.ReleaseExtensionRollbackOwner(slot.m_bindings->m_collisionFilter.m_handle, m_handle);
+                m_system.ReleaseExtension(slot.m_bindings->m_collisionFilter.m_handle);
             }
         }
         Internal::ReleaseHandleSlot(m_vehicleSlots, m_freeVehicleSlots, parts.m_index);
-        return true;
     }
 
     bool World::IsValid(
@@ -22659,6 +23265,8 @@ namespace Jolt
             workspaceBytes += GetVectorCapacityBytes(m_softBodySkinTransforms);
             workspaceBytes += GetVectorCapacityBytes(m_hairJointTransforms);
             workspaceBytes += GetVectorCapacityBytes(m_bodyIdScratch);
+            workspaceBytes += GetVectorCapacityBytes(m_constraintDestructionMarks);
+            workspaceBytes += GetVectorCapacityBytes(m_constraintHandleScratch);
             workspaceBytes += GetVectorCapacityBytes(m_constraintScratch);
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_data);
             workspaceBytes += GetVectorCapacityBytes(m_stateSnapshotScratch.m_bodyGenerations);
@@ -31809,6 +32417,8 @@ namespace Jolt
         const ShapeHandle shapeHandle)
     {
         auto* state = static_cast<TransformedShapeLeaseState*>(owner);
+        RuntimeImplementation* system = nullptr;
+        WorldHandle worldHandle;
         bool destroyState = false;
         {
             AZStd::lock_guard stateLock(state->m_mutex);
@@ -31822,6 +32432,8 @@ namespace Jolt
                 if (slot && slot->m_transformedShapeLeaseCount > 0)
                 {
                     --slot->m_transformedShapeLeaseCount;
+                    system = state->m_system;
+                    worldHandle = state->m_worldHandle;
                 }
             }
             AZ_Assert(state->m_referenceCount > 0, "The transformed-shape lease state reference count underflowed.");
@@ -31831,6 +32443,10 @@ namespace Jolt
         if (destroyState)
         {
             delete state;
+        }
+        if (system)
+        {
+            system->RetryDeferredShapeSetDestruction(worldHandle);
         }
     }
 

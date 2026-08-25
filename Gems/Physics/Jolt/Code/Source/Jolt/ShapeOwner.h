@@ -36,7 +36,8 @@ namespace Jolt::Internal
         float uniformScale,
         ShapeSet& shapeSet);
 
-    void DestroyShapeSet(
+    [[nodiscard]]
+    bool DestroyShapeSet(
         RuntimeImplementation& system,
         WorldHandle worldHandle,
         ShapeSet& shapeSet);

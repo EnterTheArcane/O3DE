@@ -42,8 +42,10 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Script/ScriptContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/UnitTest/MockComponentApplication.h>
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzCore/std/containers/array.h>
+#include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/limits.h>
 #include <AzFramework/Components/TransformComponent.h>
 
@@ -104,6 +106,62 @@ namespace Jolt
 
         private:
             bool m_created = false;
+        };
+
+        class ComponentApplicationScope final
+        {
+        public:
+            ComponentApplicationScope()
+            {
+                ON_CALL(m_application, AddEntity)
+                    .WillByDefault(
+                        [this](AZ::Entity* entity)
+                        {
+                            if (!entity)
+                            {
+                                return false;
+                            }
+                            return m_entities.try_emplace(entity->GetId(), entity).second;
+                        });
+                ON_CALL(m_application, FindEntity)
+                    .WillByDefault(
+                        [this](const AZ::EntityId& entityId)
+                        {
+                            const auto entity = m_entities.find(entityId);
+                            if (entity == m_entities.end())
+                            {
+                                return static_cast<AZ::Entity*>(nullptr);
+                            }
+                            return entity->second;
+                        });
+                ON_CALL(m_application, RemoveEntity)
+                    .WillByDefault(
+                        [this](AZ::Entity* entity)
+                        {
+                            if (!entity)
+                            {
+                                return false;
+                            }
+                            const auto registeredEntity = m_entities.find(entity->GetId());
+                            if (registeredEntity == m_entities.end() || registeredEntity->second != entity)
+                            {
+                                return false;
+                            }
+                            m_entities.erase(registeredEntity);
+                            return true;
+                        });
+            }
+
+            ~ComponentApplicationScope()
+            {
+                AZ_Assert(m_entities.empty(), "Every test entity must be removed before its component application scope exits.");
+            }
+
+            AZ_DISABLE_COPY_MOVE(ComponentApplicationScope);
+
+        private:
+            ::testing::NiceMock<UnitTest::MockComponentApplication> m_application;
+            AZStd::unordered_map<AZ::EntityId, AZ::Entity*> m_entities;
         };
 
         class ComponentVehicleCallbacks final
@@ -272,6 +330,158 @@ namespace Jolt
             AZ::u32 m_releasedCount = 0;
         };
 
+        class BodyLifecycleNotifications final
+            : public BodyNotificationBus::Handler
+        {
+        public:
+            void OnBodyDestroying(
+                const WorldHandle worldHandle,
+                const BodyHandle bodyHandle) override
+            {
+                ++m_destroyingCount;
+                m_destroyingHandleWasValid = m_system->IsValid(worldHandle, bodyHandle);
+                BodyState bodyState;
+                m_destroyingStateWasReadable = m_system->GetBodyState(worldHandle, bodyHandle, bodyState);
+                if (m_constraintHandle)
+                {
+                    m_dependencyDestroySucceeded = m_system->DestroyConstraint(worldHandle, m_constraintHandle);
+                }
+                if (m_vehicleHandle)
+                {
+                    m_vehicleDestroySucceeded = m_system->DestroyVehicle(worldHandle, m_vehicleHandle);
+                }
+                if (m_otherBodyHandle)
+                {
+                    ConstraintConfiguration configuration;
+                    configuration.m_firstBodyHandle = bodyHandle;
+                    configuration.m_secondBodyHandle = m_otherBodyHandle;
+                    configuration.m_geometry = PointConstraintConfiguration{};
+                    m_createdConstraintHandle = m_system->CreateConstraint(worldHandle, configuration);
+                }
+                if (m_componentEntity && m_componentToRemove)
+                {
+                    m_componentEntity->Deactivate();
+                    m_componentRemoved = m_componentEntity->RemoveComponent(m_componentToRemove);
+                    if (m_componentRemoved)
+                    {
+                        delete m_componentToRemove;
+                    }
+                    m_componentToRemove = nullptr;
+                }
+            }
+
+            void OnBodyDestroyed(
+                const WorldHandle worldHandle,
+                const BodyHandle bodyHandle) override
+            {
+                ++m_destroyedCount;
+                m_destroyedHandleWasValid = m_system->IsValid(worldHandle, bodyHandle);
+            }
+
+            RuntimeImplementation* m_system = nullptr;
+            AZ::Entity* m_componentEntity = nullptr;
+            AZ::Component* m_componentToRemove = nullptr;
+            BodyHandle m_otherBodyHandle;
+            ConstraintHandle m_constraintHandle;
+            ConstraintHandle m_createdConstraintHandle;
+            VehicleHandle m_vehicleHandle;
+            AZ::u32 m_destroyingCount = 0;
+            AZ::u32 m_destroyedCount = 0;
+            bool m_dependencyDestroySucceeded = false;
+            bool m_componentRemoved = false;
+            bool m_destroyingHandleWasValid = false;
+            bool m_destroyingStateWasReadable = false;
+            bool m_destroyedHandleWasValid = true;
+            bool m_vehicleDestroySucceeded = false;
+        };
+
+        class ConstraintLifecycleNotifications final
+            : public ConstraintNotificationBus::Handler
+        {
+        public:
+            void OnConstraintDestroying(
+                const WorldHandle worldHandle,
+                const ConstraintHandle constraintHandle) override
+            {
+                ++m_destroyingCount;
+                m_destroyingHandleWasValid = m_system->IsValid(worldHandle, constraintHandle);
+                m_parentDestroySucceeded = m_system->DestroyConstraint(worldHandle, m_parentConstraintHandle);
+            }
+
+            void OnConstraintDestroyed(
+                const WorldHandle worldHandle,
+                const ConstraintHandle constraintHandle) override
+            {
+                ++m_destroyedCount;
+                m_destroyedHandleWasValid = m_system->IsValid(worldHandle, constraintHandle);
+            }
+
+            RuntimeImplementation* m_system = nullptr;
+            ConstraintHandle m_parentConstraintHandle;
+            AZ::u32 m_destroyingCount = 0;
+            AZ::u32 m_destroyedCount = 0;
+            bool m_destroyingHandleWasValid = false;
+            bool m_destroyedHandleWasValid = true;
+            bool m_parentDestroySucceeded = false;
+        };
+
+        class PathLifecycleNotifications final
+            : public PathNotificationBus::Handler
+        {
+        public:
+            void OnPathDestroying(
+                const PathHandle pathHandle) override
+            {
+                ++m_destroyingCount;
+                m_destroyingHandleWasValid = m_system->IsValid(pathHandle);
+                m_constraintDestroySucceeded = m_system->DestroyConstraint(m_worldHandle, m_constraintHandle);
+            }
+
+            void OnPathDestroyed(
+                const PathHandle pathHandle) override
+            {
+                ++m_destroyedCount;
+                m_destroyedHandleWasValid = m_system->IsValid(pathHandle);
+            }
+
+            RuntimeImplementation* m_system = nullptr;
+            WorldHandle m_worldHandle;
+            ConstraintHandle m_constraintHandle;
+            AZ::u32 m_destroyingCount = 0;
+            AZ::u32 m_destroyedCount = 0;
+            bool m_constraintDestroySucceeded = false;
+            bool m_destroyingHandleWasValid = false;
+            bool m_destroyedHandleWasValid = true;
+        };
+
+        class VehicleLifecycleNotifications final
+            : public VehicleNotificationBus::Handler
+        {
+        public:
+            void OnVehicleDestroying(
+                const VehicleHandle vehicleHandle) override
+            {
+                ++m_destroyingCount;
+                m_destroyingHandleWasValid = m_system->IsValid(m_worldHandle, vehicleHandle);
+                m_directDestroySucceeded = m_system->DestroyVehicle(m_worldHandle, vehicleHandle);
+            }
+
+            void OnVehicleDestroyed(
+                const VehicleHandle vehicleHandle) override
+            {
+                ++m_destroyedCount;
+                m_destroyedHandleWasValid = m_system->IsValid(m_worldHandle, vehicleHandle);
+            }
+
+            RuntimeImplementation* m_system = nullptr;
+            WorldHandle m_worldHandle;
+            AZ::u32 m_destroyingCount = 0;
+            AZ::u32 m_destroyedCount = 0;
+            bool m_directDestroySucceeded = false;
+            bool m_destroyingHandleWasValid = false;
+            bool m_destroyedHandleWasValid = true;
+        };
+
         class DependencyTestClient final
             : public IBodyDependencyClient
         {
@@ -282,9 +492,10 @@ namespace Jolt
             {
             }
 
-            bool OnBodyDependencyDestroying(
+            bool PrepareBodyDependencyDestruction(
                 [[maybe_unused]] WorldHandle worldHandle,
-                [[maybe_unused]] BodyHandle bodyHandle) override
+                [[maybe_unused]] BodyHandle bodyHandle,
+                [[maybe_unused]] ResourceDestructionPlan& plan) override
             {
                 ++m_destroyingCount;
                 if (m_clientToUnregister)
@@ -299,6 +510,54 @@ namespace Jolt
             AZ::EntityId m_entityId;
             AZ::u32 m_destroyingCount = 0;
             bool m_succeeds = true;
+        };
+
+        class ConstraintDependencyTestClient final
+            : public IConstraintDependencyClient
+        {
+        public:
+            void OnBodyDependencyCreated(
+                [[maybe_unused]] WorldHandle worldHandle,
+                [[maybe_unused]] BodyHandle bodyHandle) override
+            {
+            }
+
+            bool PrepareBodyDependencyDestruction(
+                [[maybe_unused]] WorldHandle worldHandle,
+                [[maybe_unused]] BodyHandle bodyHandle,
+                [[maybe_unused]] ResourceDestructionPlan& plan) override
+            {
+                return true;
+            }
+
+            void OnConstraintDependencyCreated(
+                [[maybe_unused]] WorldHandle worldHandle,
+                [[maybe_unused]] ConstraintHandle constraintHandle) override
+            {
+            }
+
+            bool PrepareConstraintDependencyDestruction(
+                [[maybe_unused]] WorldHandle worldHandle,
+                [[maybe_unused]] ConstraintHandle constraintHandle,
+                [[maybe_unused]] ResourceDestructionPlan& plan) override
+            {
+                return true;
+            }
+
+            void OnPathDependencyCreated([[maybe_unused]] PathHandle pathHandle) override
+            {
+            }
+
+            bool PreparePathDependencyDestruction(
+                [[maybe_unused]] PathHandle pathHandle,
+                [[maybe_unused]] ResourceDestructionPlan& plan) override
+            {
+                ++m_pathPreparationCount;
+                return m_pathPreparationSucceeds;
+            }
+
+            AZ::u32 m_pathPreparationCount = 0;
+            bool m_pathPreparationSucceeds = true;
         };
 
         SystemConfiguration CreateComponentSystemConfiguration()
@@ -374,13 +633,631 @@ namespace Jolt
         manager.RegisterBody(entityId, removedClient);
         manager.RegisterBody(entityId, finalClient);
 
-        EXPECT_FALSE(manager.PrepareBodyDestruction(entityId, WorldHandle::Invalid, BodyHandle::Invalid));
+        ResourceDestructionPlan destructionPlan;
+        EXPECT_FALSE(manager.PrepareBodyDestruction(entityId, WorldHandle::Invalid, BodyHandle::Invalid, destructionPlan));
         EXPECT_EQ(firstClient.m_destroyingCount, 1);
         EXPECT_EQ(removedClient.m_destroyingCount, 0);
         EXPECT_EQ(finalClient.m_destroyingCount, 1);
 
         manager.UnregisterBody(entityId, firstClient);
         manager.UnregisterBody(entityId, finalClient);
+    }
+
+    TEST(ComponentTests, DependencyPreparationVisitsEveryClientAroundAnyVeto)
+    {
+        for (AZ::u64 failureIndex = 0; failureIndex < 3; ++failureIndex)
+        {
+            ComponentDependencyManager manager;
+            const AZ::EntityId entityId(100 + failureIndex);
+            DependencyTestClient firstClient;
+            DependencyTestClient middleClient;
+            DependencyTestClient finalClient;
+            const AZStd::array clients = {
+                &firstClient,
+                &middleClient,
+                &finalClient,
+            };
+            clients[failureIndex]->m_succeeds = false;
+
+            for (DependencyTestClient* client : clients)
+            {
+                manager.RegisterBody(entityId, *client);
+            }
+
+            ResourceDestructionPlan destructionPlan;
+            EXPECT_FALSE(manager.PrepareBodyDestruction(entityId, WorldHandle::Invalid, BodyHandle::Invalid, destructionPlan));
+            for (DependencyTestClient* client : clients)
+            {
+                EXPECT_EQ(client->m_destroyingCount, 1);
+                manager.UnregisterBody(entityId, *client);
+            }
+        }
+    }
+
+    TEST(ComponentTests, BodyDeactivationDestroysDirectDependenciesAndDefersRetainedShapes)
+    {
+        ComponentNameDictionaryScope nameDictionary;
+        ComponentApplicationScope componentApplication;
+        AZ::ComponentDescriptor* transformDescriptor = AzFramework::TransformComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* colliderDescriptor = ColliderComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* rigidBodyDescriptor = RigidBodyComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* staticBodyDescriptor = StaticRigidBodyComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* constraintDescriptor = ConstraintComponent::CreateDescriptor();
+        const AZStd::array descriptors = {
+            transformDescriptor,
+            colliderDescriptor,
+            rigidBodyDescriptor,
+            staticBodyDescriptor,
+            constraintDescriptor,
+        };
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
+                descriptor);
+        }
+
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+        ColliderShapeConfiguration colliderShape;
+        colliderShape.m_shape.m_geometry = SphereShapeConfiguration{};
+        AZ::Entity dynamicEntity("Body with direct dependency");
+        dynamicEntity.CreateComponent<AzFramework::TransformComponent>();
+        ColliderComponent* collider = dynamicEntity.CreateComponent<ColliderComponent>(AZStd::vector{colliderShape});
+        RigidBodyComponent* body = dynamicEntity.CreateComponent<RigidBodyComponent>();
+        ASSERT_TRUE(collider);
+        ASSERT_TRUE(body);
+        dynamicEntity.Init();
+        dynamicEntity.Activate();
+
+        AZ::Entity staticEntity("Direct dependency anchor");
+        staticEntity.CreateComponent<AzFramework::TransformComponent>();
+        staticEntity.CreateComponent<ColliderComponent>(AZStd::vector{colliderShape});
+        StaticRigidBodyComponent* staticBody = staticEntity.CreateComponent<StaticRigidBodyComponent>();
+        ASSERT_TRUE(staticBody);
+        staticEntity.Init();
+        staticEntity.Activate();
+
+        const BodyHandle bodyHandle = body->GetBodyHandle();
+        const BodyHandle staticBodyHandle = staticBody->GetBodyHandle();
+        const ShapeHandle shapeHandle = collider->GetRootShapeHandle();
+        ASSERT_TRUE(bodyHandle);
+        ASSERT_TRUE(staticBodyHandle);
+        ASSERT_TRUE(shapeHandle);
+
+        ConstraintConfiguration constraintConfiguration;
+        constraintConfiguration.m_firstBodyHandle = bodyHandle;
+        constraintConfiguration.m_secondBodyHandle = staticBodyHandle;
+        constraintConfiguration.m_geometry = PointConstraintConfiguration{};
+        const ConstraintHandle constraintHandle = system.CreateConstraint(worldHandle, constraintConfiguration);
+        ASSERT_TRUE(constraintHandle);
+
+        ConstraintComponentConfiguration componentConfiguration;
+        componentConfiguration.m_firstBodyEntityId = dynamicEntity.GetId();
+        componentConfiguration.m_secondBodyEntityId = staticEntity.GetId();
+        componentConfiguration.m_geometry = PointConstraintConfiguration{};
+        AZ::Entity constraintEntity("Removed constraint dependency");
+        ConstraintComponent* constraintComponent =
+            constraintEntity.CreateComponent<ConstraintComponent>(componentConfiguration);
+        ASSERT_TRUE(constraintComponent);
+        constraintEntity.Init();
+        constraintEntity.Activate();
+        const ConstraintHandle componentConstraintHandle = constraintComponent->GetConstraintHandle();
+        ASSERT_TRUE(componentConstraintHandle);
+
+        WheeledVehicleConfiguration vehicleConfiguration;
+        vehicleConfiguration.m_bodyHandle = bodyHandle;
+        vehicleConfiguration.m_wheels = {
+            {.m_position = AZ::Vector3(0.0f, 0.5f, -0.25f)},
+            {.m_position = AZ::Vector3(0.0f, -0.5f, -0.25f)},
+        };
+        vehicleConfiguration.m_differentials = {
+            {.m_leftWheel = 0, .m_rightWheel = 1},
+        };
+        const VehicleHandle vehicleHandle = system.CreateWheeledVehicle(worldHandle, vehicleConfiguration);
+        ASSERT_TRUE(vehicleHandle);
+
+        TransformedShape retainedShape;
+        ASSERT_TRUE(system.RetainShape(worldHandle, shapeHandle, WorldTransform{}, 1.0f, retainedShape));
+
+        BodyLifecycleNotifications notifications;
+        notifications.m_system = &system;
+        notifications.m_otherBodyHandle = staticBodyHandle;
+        notifications.m_constraintHandle = constraintHandle;
+        notifications.m_vehicleHandle = vehicleHandle;
+        notifications.m_componentEntity = &constraintEntity;
+        notifications.m_componentToRemove = constraintComponent;
+        notifications.BusConnect(dynamicEntity.GetId());
+        dynamicEntity.Deactivate();
+
+        EXPECT_EQ(notifications.m_destroyingCount, 1);
+        EXPECT_EQ(notifications.m_destroyedCount, 1);
+        EXPECT_FALSE(notifications.m_dependencyDestroySucceeded);
+        EXPECT_TRUE(notifications.m_componentRemoved);
+        EXPECT_TRUE(notifications.m_destroyingHandleWasValid);
+        EXPECT_TRUE(notifications.m_destroyingStateWasReadable);
+        EXPECT_FALSE(notifications.m_destroyedHandleWasValid);
+        EXPECT_FALSE(notifications.m_vehicleDestroySucceeded);
+        EXPECT_FALSE(notifications.m_createdConstraintHandle);
+        EXPECT_FALSE(system.IsValid(worldHandle, bodyHandle));
+        EXPECT_FALSE(system.IsValid(worldHandle, constraintHandle));
+        EXPECT_FALSE(system.IsValid(worldHandle, componentConstraintHandle));
+        EXPECT_FALSE(system.IsValid(worldHandle, vehicleHandle));
+        EXPECT_TRUE(system.IsValid(worldHandle, staticBodyHandle));
+        EXPECT_TRUE(system.IsValid(worldHandle, shapeHandle));
+
+        retainedShape = {};
+        EXPECT_FALSE(system.IsValid(worldHandle, shapeHandle));
+        notifications.BusDisconnect();
+        staticEntity.Deactivate();
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
+                descriptor);
+            descriptor->ReleaseDescriptor();
+        }
+    }
+
+    TEST(ComponentTests, StaticBodyRequestedDisableIsAtomicAndMandatoryTeardownCannotBeVetoed)
+    {
+        ComponentNameDictionaryScope nameDictionary;
+        ComponentApplicationScope componentApplication;
+        AZ::ComponentDescriptor* transformDescriptor = AzFramework::TransformComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* colliderDescriptor = ColliderComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* staticBodyDescriptor = StaticRigidBodyComponent::CreateDescriptor();
+        const AZStd::array descriptors = {
+            transformDescriptor,
+            colliderDescriptor,
+            staticBodyDescriptor,
+        };
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
+                descriptor);
+        }
+
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+        ColliderShapeConfiguration colliderShape;
+        colliderShape.m_shape.m_geometry = SphereShapeConfiguration{};
+        AZ::Entity entity("Static body with teardown veto");
+        entity.CreateComponent<AzFramework::TransformComponent>();
+        entity.CreateComponent<ColliderComponent>(AZStd::vector{colliderShape});
+        StaticRigidBodyComponent* body = entity.CreateComponent<StaticRigidBodyComponent>();
+        ASSERT_TRUE(body);
+        entity.Init();
+        entity.Activate();
+
+        const BodyHandle bodyHandle = body->GetBodyHandle();
+        ASSERT_TRUE(bodyHandle);
+        auto* dependencyManager = AZ::Interface<IComponentDependencyManager>::Get();
+        ASSERT_TRUE(dependencyManager);
+        DependencyTestClient veto;
+        veto.m_succeeds = false;
+        dependencyManager->RegisterBody(entity.GetId(), veto);
+
+        WorldStateDigest digestBefore;
+        ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, digestBefore));
+        EXPECT_FALSE(body->DisableSimulation());
+        WorldStateDigest digestAfter;
+        ASSERT_TRUE(system.GetWorldStateDigest(worldHandle, digestAfter));
+        EXPECT_EQ(digestAfter, digestBefore);
+        EXPECT_TRUE(system.IsValid(worldHandle, bodyHandle));
+        EXPECT_TRUE(body->IsSimulationEnabled());
+
+        entity.Deactivate();
+        EXPECT_FALSE(system.IsValid(worldHandle, bodyHandle));
+        EXPECT_EQ(veto.m_destroyingCount, 2);
+        dependencyManager->UnregisterBody(entity.GetId(), veto);
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
+                descriptor);
+            descriptor->ReleaseDescriptor();
+        }
+    }
+
+    TEST(ComponentTests, RuntimeOwnsAndRetriesAnExceptionalReservedDestruction)
+    {
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+        ASSERT_TRUE(shapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = shapeHandle;
+        const BodyHandle bodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+        ASSERT_TRUE(bodyHandle);
+
+        ResourceDestructionPlan destructionPlan;
+        ASSERT_TRUE(system.ReserveBodyDestruction(worldHandle, bodyHandle, destructionPlan));
+        system.DeferBodyDestruction(
+            worldHandle,
+            bodyHandle,
+            AZStd::move(destructionPlan),
+            ResourceDestructionReservation::Complete);
+
+        EXPECT_EQ(system.GetDeferredResourceDestructionCount(), 1);
+        EXPECT_TRUE(system.IsValid(worldHandle, bodyHandle));
+        EXPECT_FALSE(system.DestroyBody(worldHandle, bodyHandle));
+
+        system.RetryDeferredResourceDestruction();
+        EXPECT_EQ(system.GetDeferredResourceDestructionCount(), 0);
+        EXPECT_FALSE(system.IsValid(worldHandle, bodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+    }
+
+    TEST(ComponentTests, RuntimeCompletesAPendingDestructionReservation)
+    {
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+        ASSERT_TRUE(shapeHandle);
+
+        BodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_shapeHandle = shapeHandle;
+        const BodyHandle bodyHandle = system.CreateBody(worldHandle, bodyConfiguration);
+        ASSERT_TRUE(bodyHandle);
+
+        system.DeferBodyDestruction(
+            worldHandle,
+            bodyHandle,
+            ResourceDestructionPlan{},
+            ResourceDestructionReservation::Pending);
+
+        EXPECT_EQ(system.GetDeferredResourceDestructionCount(), 1);
+        EXPECT_TRUE(system.IsValid(worldHandle, bodyHandle));
+
+        system.RetryDeferredResourceDestruction();
+        EXPECT_EQ(system.GetDeferredResourceDestructionCount(), 0);
+        EXPECT_FALSE(system.IsValid(worldHandle, bodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+    }
+
+    TEST(ComponentTests, RuntimeRetainsSoftBodyResourcesAcrossDeferredDestruction)
+    {
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+        const MaterialHandle materialHandle = system.CreateMaterial(MaterialConfiguration{});
+        ASSERT_TRUE(materialHandle);
+        SoftBodyDefinitionConfiguration definitionConfiguration;
+        definitionConfiguration.m_vertices = {
+            {.m_position = AZ::Vector3(-1.0f, 0.0f, 0.0f)},
+            {.m_position = AZ::Vector3(1.0f, 0.0f, 0.0f)},
+            {.m_position = AZ::Vector3(0.0f, 1.0f, 0.0f)},
+        };
+        definitionConfiguration.m_faces = {
+            {.m_firstVertex = 0, .m_secondVertex = 1, .m_thirdVertex = 2},
+        };
+        definitionConfiguration.m_materials = {materialHandle};
+        definitionConfiguration.m_edgeConstraints = {
+            {.m_firstVertex = 0, .m_secondVertex = 1},
+            {.m_firstVertex = 1, .m_secondVertex = 2},
+            {.m_firstVertex = 2, .m_secondVertex = 0},
+        };
+        definitionConfiguration.m_createFaceConstraints = false;
+        const SoftBodyDefinitionHandle definitionHandle =
+            system.CreateSoftBodyDefinition(definitionConfiguration);
+        ASSERT_TRUE(definitionHandle);
+
+        SoftBodyConfiguration bodyConfiguration;
+        bodyConfiguration.m_definitionHandle = definitionHandle;
+        const BodyHandle bodyHandle = system.CreateSoftBody(worldHandle, bodyConfiguration);
+        ASSERT_TRUE(bodyHandle);
+
+        system.DeferSoftBodyDestruction(
+            worldHandle,
+            bodyHandle,
+            ResourceDestructionPlan{},
+            ResourceDestructionReservation::Pending,
+            definitionHandle,
+            AZStd::vector{materialHandle});
+
+        EXPECT_EQ(system.GetDeferredResourceDestructionCount(), 1);
+        EXPECT_TRUE(system.IsValid(worldHandle, bodyHandle));
+        EXPECT_TRUE(system.IsValid(definitionHandle));
+        EXPECT_TRUE(system.IsValid(materialHandle));
+
+        system.RetryDeferredResourceDestruction();
+        EXPECT_EQ(system.GetDeferredResourceDestructionCount(), 0);
+        EXPECT_FALSE(system.IsValid(worldHandle, bodyHandle));
+        EXPECT_FALSE(system.IsValid(definitionHandle));
+        EXPECT_FALSE(system.IsValid(materialHandle));
+    }
+
+    TEST(ComponentTests, PathDeactivationDestroysDirectConstraintDependencies)
+    {
+        ComponentNameDictionaryScope nameDictionary;
+        ComponentApplicationScope componentApplication;
+        AZ::ComponentDescriptor* transformDescriptor = AzFramework::TransformComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* pathDescriptor = PathComponent::CreateDescriptor();
+        const AZStd::array descriptors = {transformDescriptor, pathDescriptor};
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
+                descriptor);
+        }
+
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{};
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+        ASSERT_TRUE(shapeHandle);
+        BodyConfiguration firstBodyConfiguration;
+        firstBodyConfiguration.m_shapeHandle = shapeHandle;
+        const BodyHandle firstBodyHandle = system.CreateBody(worldHandle, firstBodyConfiguration);
+        BodyConfiguration secondBodyConfiguration = firstBodyConfiguration;
+        secondBodyConfiguration.m_transform.m_position.m_x = 2.0;
+        const BodyHandle secondBodyHandle = system.CreateBody(worldHandle, secondBodyConfiguration);
+        ASSERT_TRUE(firstBodyHandle);
+        ASSERT_TRUE(secondBodyHandle);
+
+        HermitePathConfiguration pathConfiguration;
+        pathConfiguration.m_points = {
+            {.m_position = AZ::Vector3::CreateZero()},
+            {.m_position = AZ::Vector3::CreateAxisX(4.0f)},
+        };
+        AZ::Entity pathEntity("Path with direct constraint");
+        pathEntity.CreateComponent<AzFramework::TransformComponent>();
+        PathComponent* path = pathEntity.CreateComponent<PathComponent>(pathConfiguration);
+        ASSERT_TRUE(path);
+        pathEntity.Init();
+        pathEntity.Activate();
+        const PathHandle pathHandle = path->GetPathHandle();
+        ASSERT_TRUE(pathHandle);
+
+        ConstraintConfiguration constraintConfiguration;
+        constraintConfiguration.m_firstBodyHandle = firstBodyHandle;
+        constraintConfiguration.m_secondBodyHandle = secondBodyHandle;
+        constraintConfiguration.m_geometry = PathConstraintConfiguration{.m_pathHandle = pathHandle};
+        const ConstraintHandle constraintHandle = system.CreateConstraint(worldHandle, constraintConfiguration);
+        ASSERT_TRUE(constraintHandle);
+
+        PathLifecycleNotifications notifications;
+        notifications.m_system = &system;
+        notifications.m_worldHandle = worldHandle;
+        notifications.m_constraintHandle = constraintHandle;
+        notifications.BusConnect(pathEntity.GetId());
+        auto* dependencyManager = AZ::Interface<IComponentDependencyManager>::Get();
+        ASSERT_TRUE(dependencyManager);
+        ConstraintDependencyTestClient veto;
+        veto.m_pathPreparationSucceeds = false;
+        dependencyManager->RegisterPath(pathEntity.GetId(), veto);
+        pathEntity.Deactivate();
+        EXPECT_EQ(notifications.m_destroyingCount, 1);
+        EXPECT_EQ(notifications.m_destroyedCount, 1);
+        EXPECT_FALSE(notifications.m_constraintDestroySucceeded);
+        EXPECT_TRUE(notifications.m_destroyingHandleWasValid);
+        EXPECT_FALSE(notifications.m_destroyedHandleWasValid);
+        EXPECT_FALSE(system.IsValid(pathHandle));
+        EXPECT_FALSE(system.IsValid(worldHandle, constraintHandle));
+        EXPECT_TRUE(system.IsValid(worldHandle, firstBodyHandle));
+        EXPECT_TRUE(system.IsValid(worldHandle, secondBodyHandle));
+        EXPECT_EQ(veto.m_pathPreparationCount, 1);
+
+        dependencyManager->UnregisterPath(pathEntity.GetId(), veto);
+        EXPECT_TRUE(system.DestroyBody(worldHandle, firstBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(worldHandle, secondBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+        notifications.BusDisconnect();
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
+                descriptor);
+            descriptor->ReleaseDescriptor();
+        }
+    }
+
+    TEST(ComponentTests, CharacterDeactivationDestroysDirectBodyDependencies)
+    {
+        ComponentNameDictionaryScope nameDictionary;
+        ComponentApplicationScope componentApplication;
+        AZ::ComponentDescriptor* transformDescriptor = AzFramework::TransformComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* colliderDescriptor = ColliderComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* characterDescriptor = CharacterControllerComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* staticBodyDescriptor = StaticRigidBodyComponent::CreateDescriptor();
+        const AZStd::array descriptors = {
+            transformDescriptor,
+            colliderDescriptor,
+            characterDescriptor,
+            staticBodyDescriptor,
+        };
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
+                descriptor);
+        }
+
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+        ColliderShapeConfiguration colliderShape;
+        colliderShape.m_shape.m_geometry = SphereShapeConfiguration{};
+        AZ::Entity characterEntity("Character with direct dependency");
+        characterEntity.CreateComponent<AzFramework::TransformComponent>();
+        ColliderComponent* characterCollider =
+            characterEntity.CreateComponent<ColliderComponent>(AZStd::vector{colliderShape});
+        CharacterControllerComponent* character =
+            characterEntity.CreateComponent<CharacterControllerComponent>();
+        ASSERT_TRUE(characterCollider);
+        ASSERT_TRUE(character);
+        characterEntity.Init();
+        characterEntity.Activate();
+
+        AZ::Entity staticEntity("Character dependency anchor");
+        staticEntity.CreateComponent<AzFramework::TransformComponent>();
+        staticEntity.CreateComponent<ColliderComponent>(AZStd::vector{colliderShape});
+        StaticRigidBodyComponent* staticBody = staticEntity.CreateComponent<StaticRigidBodyComponent>();
+        ASSERT_TRUE(staticBody);
+        staticEntity.Init();
+        staticEntity.Activate();
+
+        const CharacterHandle characterHandle = character->GetCharacterHandle();
+        const CharacterState characterState = character->GetState();
+        const BodyHandle bodyHandle = characterState.m_bodyHandle;
+        const BodyHandle staticBodyHandle = staticBody->GetBodyHandle();
+        ASSERT_TRUE(characterHandle);
+        ASSERT_TRUE(bodyHandle);
+        ASSERT_TRUE(staticBodyHandle);
+
+        ConstraintConfiguration constraintConfiguration;
+        constraintConfiguration.m_firstBodyHandle = bodyHandle;
+        constraintConfiguration.m_secondBodyHandle = staticBodyHandle;
+        constraintConfiguration.m_geometry = PointConstraintConfiguration{};
+        const ConstraintHandle constraintHandle = system.CreateConstraint(worldHandle, constraintConfiguration);
+        ASSERT_TRUE(constraintHandle);
+
+        BodyLifecycleNotifications notifications;
+        notifications.m_system = &system;
+        notifications.m_otherBodyHandle = staticBodyHandle;
+        notifications.m_constraintHandle = constraintHandle;
+        notifications.BusConnect(characterEntity.GetId());
+        characterEntity.Deactivate();
+
+        EXPECT_EQ(notifications.m_destroyingCount, 1);
+        EXPECT_EQ(notifications.m_destroyedCount, 1);
+        EXPECT_FALSE(notifications.m_dependencyDestroySucceeded);
+        EXPECT_TRUE(notifications.m_destroyingHandleWasValid);
+        EXPECT_TRUE(notifications.m_destroyingStateWasReadable);
+        EXPECT_FALSE(notifications.m_destroyedHandleWasValid);
+        EXPECT_FALSE(notifications.m_createdConstraintHandle);
+        EXPECT_FALSE(system.IsValid(worldHandle, characterHandle));
+        EXPECT_FALSE(system.IsValid(worldHandle, bodyHandle));
+        EXPECT_FALSE(system.IsValid(worldHandle, constraintHandle));
+        EXPECT_TRUE(system.IsValid(worldHandle, staticBodyHandle));
+
+        notifications.BusDisconnect();
+        staticEntity.Deactivate();
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
+                descriptor);
+            descriptor->ReleaseDescriptor();
+        }
+    }
+
+    TEST(ComponentTests, ConstraintDeactivationDestroysDirectParentConstraints)
+    {
+        ComponentNameDictionaryScope nameDictionary;
+        ComponentApplicationScope componentApplication;
+        AZ::ComponentDescriptor* transformDescriptor = AzFramework::TransformComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* colliderDescriptor = ColliderComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* rigidBodyDescriptor = RigidBodyComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* staticBodyDescriptor = StaticRigidBodyComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* constraintDescriptor = ConstraintComponent::CreateDescriptor();
+        const AZStd::array descriptors = {
+            transformDescriptor,
+            colliderDescriptor,
+            rigidBodyDescriptor,
+            staticBodyDescriptor,
+            constraintDescriptor,
+        };
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
+                descriptor);
+        }
+
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+        ColliderShapeConfiguration colliderShape;
+        colliderShape.m_shape.m_geometry = SphereShapeConfiguration{};
+        AZ::Entity firstBodyEntity("First constraint body");
+        firstBodyEntity.CreateComponent<AzFramework::TransformComponent>();
+        firstBodyEntity.CreateComponent<ColliderComponent>(AZStd::vector{colliderShape});
+        StaticRigidBodyComponent* firstBody = firstBodyEntity.CreateComponent<StaticRigidBodyComponent>();
+        ASSERT_TRUE(firstBody);
+        firstBodyEntity.Init();
+        firstBodyEntity.Activate();
+
+        AZ::Entity secondBodyEntity("Second constraint body");
+        secondBodyEntity.CreateComponent<AzFramework::TransformComponent>();
+        secondBodyEntity.CreateComponent<ColliderComponent>(AZStd::vector{colliderShape});
+        RigidBodyComponent* secondBody = secondBodyEntity.CreateComponent<RigidBodyComponent>();
+        ASSERT_TRUE(secondBody);
+        secondBodyEntity.Init();
+        secondBodyEntity.Activate();
+
+        ConstraintComponentConfiguration componentConfiguration;
+        componentConfiguration.m_firstBodyEntityId = firstBodyEntity.GetId();
+        componentConfiguration.m_secondBodyEntityId = secondBodyEntity.GetId();
+        componentConfiguration.m_geometry = HingeConstraintConfiguration{};
+        AZ::Entity constraintEntity("Constraint with direct parent");
+        ConstraintComponent* constraint = constraintEntity.CreateComponent<ConstraintComponent>(componentConfiguration);
+        ASSERT_TRUE(constraint);
+        constraintEntity.Init();
+        constraintEntity.Activate();
+        const ConstraintHandle componentConstraintHandle = constraint->GetConstraintHandle();
+        ASSERT_TRUE(componentConstraintHandle);
+
+        ConstraintConfiguration directConfiguration;
+        directConfiguration.m_firstBodyHandle = firstBody->GetBodyHandle();
+        directConfiguration.m_secondBodyHandle = secondBody->GetBodyHandle();
+        directConfiguration.m_geometry = HingeConstraintConfiguration{};
+        const ConstraintHandle directHingeHandle = system.CreateConstraint(worldHandle, directConfiguration);
+        ASSERT_TRUE(directHingeHandle);
+
+        directConfiguration.m_geometry = GearConstraintConfiguration{
+            .m_firstHingeConstraintHandle = componentConstraintHandle,
+            .m_secondHingeConstraintHandle = directHingeHandle,
+        };
+        const ConstraintHandle directGearHandle = system.CreateConstraint(worldHandle, directConfiguration);
+        ASSERT_TRUE(directGearHandle);
+
+        ConstraintLifecycleNotifications notifications;
+        notifications.m_system = &system;
+        notifications.m_parentConstraintHandle = directGearHandle;
+        notifications.BusConnect(constraintEntity.GetId());
+        constraintEntity.Deactivate();
+        EXPECT_EQ(notifications.m_destroyingCount, 1);
+        EXPECT_EQ(notifications.m_destroyedCount, 1);
+        EXPECT_FALSE(notifications.m_parentDestroySucceeded);
+        EXPECT_TRUE(notifications.m_destroyingHandleWasValid);
+        EXPECT_FALSE(notifications.m_destroyedHandleWasValid);
+        EXPECT_FALSE(system.IsValid(worldHandle, componentConstraintHandle));
+        EXPECT_FALSE(system.IsValid(worldHandle, directGearHandle));
+        EXPECT_TRUE(system.IsValid(worldHandle, directHingeHandle));
+        EXPECT_FALSE(constraint->IsSimulationEnabled());
+
+        notifications.BusDisconnect();
+        EXPECT_TRUE(system.DestroyConstraint(worldHandle, directHingeHandle));
+        firstBodyEntity.Deactivate();
+        secondBodyEntity.Deactivate();
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
+                descriptor);
+            descriptor->ReleaseDescriptor();
+        }
     }
 
     TEST(ComponentTests, CharacterRuntimeAndCollisionTypesReflectForSerialization)
@@ -3023,6 +3900,7 @@ namespace Jolt
     TEST(ComponentTests, SoftBodyOwnsDefinitionMaterialsAndRespondsToUniformScale)
     {
         ComponentNameDictionaryScope nameDictionary;
+        ComponentApplicationScope componentApplication;
         AZ::ComponentDescriptor* transformDescriptor = AzFramework::TransformComponent::CreateDescriptor();
         AZ::ComponentDescriptor* softBodyDescriptor = SoftBodyComponent::CreateDescriptor();
         AZ::ComponentApplicationBus::Broadcast(
@@ -3155,7 +4033,6 @@ namespace Jolt
         entity.Deactivate();
         EXPECT_FALSE(system.IsValid(worldHandle, scaledBodyHandle));
         EXPECT_FALSE(system.IsValid(scaledDefinitionHandle));
-
         AZ::ComponentApplicationBus::Broadcast(
             &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
             softBodyDescriptor);
@@ -3240,6 +4117,7 @@ namespace Jolt
     TEST(ComponentTests, WheeledVehicleTracksChassisLifecycleWithoutPolling)
     {
         ComponentNameDictionaryScope nameDictionary;
+        ComponentApplicationScope componentApplication;
         AZ::ComponentDescriptor* transformDescriptor = AzFramework::TransformComponent::CreateDescriptor();
         AZ::ComponentDescriptor* colliderDescriptor = ColliderComponent::CreateDescriptor();
         AZ::ComponentDescriptor* bodyDescriptor = RigidBodyComponent::CreateDescriptor();
@@ -3368,7 +4246,16 @@ namespace Jolt
         EXPECT_FLOAT_EQ(powertrainState.m_clutchFriction, 0.5f);
         EXPECT_FLOAT_EQ(powertrainState.m_engineRpm, 2'000.0f);
 
+        VehicleLifecycleNotifications notifications;
+        notifications.m_system = &system;
+        notifications.m_worldHandle = worldHandle;
+        notifications.BusConnect(entity.GetId());
         ASSERT_TRUE(body->DisableSimulation());
+        EXPECT_EQ(notifications.m_destroyingCount, 1);
+        EXPECT_EQ(notifications.m_destroyedCount, 1);
+        EXPECT_FALSE(notifications.m_directDestroySucceeded);
+        EXPECT_TRUE(notifications.m_destroyingHandleWasValid);
+        EXPECT_FALSE(notifications.m_destroyedHandleWasValid);
         EXPECT_FALSE(system.IsValid(worldHandle, firstVehicleHandle));
         EXPECT_FALSE(vehicle->IsSimulationEnabled());
         EXPECT_EQ(
@@ -3377,6 +4264,7 @@ namespace Jolt
         EXPECT_EQ(
             system.UnregisterExtension(filterRegistration.m_handle),
             ExtensionRegistrationStatus::InUse);
+        notifications.BusDisconnect();
 
         ASSERT_TRUE(body->EnableSimulation());
         const VehicleHandle secondVehicleHandle = vehicle->GetVehicleHandle();
@@ -3408,7 +4296,6 @@ namespace Jolt
 
         entity.Deactivate();
         EXPECT_FALSE(system.IsValid(worldHandle, secondVehicleHandle));
-
         AZ::ComponentApplicationBus::Broadcast(
             &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
             vehicleDescriptor);
@@ -3527,6 +4414,7 @@ namespace Jolt
     TEST(ComponentTests, ConstraintTracksBodyLifecycleWithoutPolling)
     {
         ComponentNameDictionaryScope nameDictionary;
+        ComponentApplicationScope componentApplication;
         AZ::ComponentDescriptor* transformDescriptor = AzFramework::TransformComponent::CreateDescriptor();
         AZ::ComponentDescriptor* colliderDescriptor = ColliderComponent::CreateDescriptor();
         AZ::ComponentDescriptor* bodyDescriptor = RigidBodyComponent::CreateDescriptor();
@@ -3653,7 +4541,6 @@ namespace Jolt
         pathEntity.Deactivate();
         firstBodyEntity.Deactivate();
         secondBodyEntity.Deactivate();
-
         AZ::ComponentApplicationBus::Broadcast(
             &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
             constraintDescriptor);

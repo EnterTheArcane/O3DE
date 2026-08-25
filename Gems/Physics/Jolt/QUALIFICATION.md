@@ -24,7 +24,7 @@ the row's complete contract.
 | `J3-AUD-001` | One Runtime root is published only after complete activation and revoked once before draining; borrowed capabilities require quiescent teardown. | 2 | **Implemented** — the single private root, complete lifetime tests, modular export check, clang-cl assembly, and focused latency gate pass. MSVC and monolithic/IPO repetitions remain final qualification gates. |
 | `J3-AUD-002` | Handles cannot alias across Runtime replacement, simultaneous isolated Runtimes, slot reuse, or generation exhaustion. | 2 | **Implemented** — module-lifetime per-kind generation domains, exhaustion rejection, and integration tests cover every handle family across simultaneous and sequential Runtimes, slot reuse, retained results, events, and asynchronous results. Final MSVC and packaging qualification remain. |
 | `J3-AUD-003` | Every mutable rollback participant has one owning world and cannot enter concurrent world transactions. | 3 | **Implemented** — nonzero-state callback and group-filter registrations are reference-counted within one owning world; a second-world bind fails before mutation. Zero-state registrations declare deterministic, thread-safe sharing. Focused tests cover rejection without digest/count changes, same-world reuse, transfer after release, concurrent stateless use, and unregistration barriers. Final MSVC, unload/reload, and stress qualification remain. |
-| `J3-AUD-004` | Entity resource teardown prepares without mutation, commits once, and never abandons a live native resource. | 3 | **Open** — rigid, static, character, path, constraint, and vehicle component/direct-capability tests required. |
+| `J3-AUD-004` | Entity resource teardown prepares without mutation, commits once, and never abandons a live native resource. | 3 | **Implemented** — component clients only discover dependencies during preparation; Runtime reservations cover complete direct and component-owned closures before mutation. Rigid, static, character, path, constraint, vehicle, retained-shape, soft-body ownership, veto, callback-reentrancy, and pending/committed retry tests pass. Final MSVC and lifecycle stress qualification remain. |
 | `J3-AUD-005` | Vehicle creation on an unadded chassis fails without changing counts, revisions, or ownership. | 3 | **Implemented** — wheeled, motorcycle, and tracked construction reject an unadded chassis before native or wrapper mutation. The focused test preserves the world digest and resource counts, then proves the chassis can still be added, removed, and destroyed normally. Final MSVC qualification remains. |
 | `J3-AUD-006` | Automatic simulation runs at physics tick order and publishes transforms before attachment and pre-render consumers. | 4 | **Open** — tick-order and same-frame transform visibility tests required. |
 | `J3-AUD-007` | Native acquisition is provider-owned, versioned, fingerprinted from actual objects/options, and rejects foreign targets or populations. | 1 | **Open** — clean/cached fetch, foreign-target, patch, fingerprint, license, source/install, and offline tests required. |
@@ -50,8 +50,8 @@ the row's complete contract.
 | `J3-AUD-027` | Requested and effective 1/4/8-worker runs compare complete world/subsystem digests and semantic outputs. | 7 | **Open** — rigid, constraint, character, vehicle, ragdoll, soft-body, custom-provider, CPU-Hair, rollback, and event proof required. |
 | `J3-AUD-028` | Performance qualification is current, broad, statistically valid, and never trades away accuracy or deterministic contracts. | 7 | **Open** — 30-process matched/absolute/tail, allocation, pool, ECS, contention, and compiler evidence required. |
 | `C-AUD-001` | Restoring a group filter refreshes every affected world's contact cache after commit. | 3 | **Implemented** — successful custom-filter restore invalidates affected contact caches and activates non-static bodies while the world is already locked. Mutable filters can belong to only one world, and a global-only snapshot test proves restored callbacks re-enable its body and publish a new contact on the next step. Final MSVC qualification remains. |
-| `C-AUD-002` | Static-body component teardown retains ownership after a failed destroy. | 3 | **Open** — direct dependency-veto and later successful cleanup proof required. |
-| `C-AUD-003` | Path component teardown retains ownership after a failed destroy. | 3 | **Open** — direct dependency-veto and later successful cleanup proof required. |
+| `C-AUD-002` | Static-body component teardown retains ownership after a failed destroy. | 3 | **Implemented** — an ordinary disable is atomic under a dependency veto, while mandatory entity teardown discovers the same vetoed dependency closure and completes it without abandoning the body. Final MSVC qualification remains. |
+| `C-AUD-003` | Path component teardown retains ownership after a failed destroy. | 3 | **Implemented** — mandatory path teardown ignores a client veto only after complete discovery, reserves the dependent native constraint closure, and commits the path after its constraints. Final MSVC qualification remains. |
 | `C-AUD-004` | Active paths have one authoritative transform and cannot snapshot inconsistent geometry and frames. | 5 | **Open** — activation skew and live-update tests required. |
 | `C-AUD-005` | Gameplay scripts cannot own world lifecycle, explicit stepping, or restore. | 4 | **Open** — reflection audit and attempted Common-scope invocation rejection required. |
 | `C-AUD-006` | Creating an async operation never joins or waits for unrelated queued/running work. | 6 | **Open** — blocked-worker latency and lock-context watchdog tests required. |
@@ -86,6 +86,33 @@ is `MutableRollbackParticipantRejectsASecondWorldWithoutMutation`,
 then proves restore refreshes native contact state and produces the expected begin event. Group-filter mutation releases its filter lock
 before visiting worlds, and restore uses the already-held world lock instead of reacquiring it. Transient test and validator evidence is
 retained beneath `build/jolt-production-readiness/stage3/`.
+
+## Stage 3 transactional teardown evidence
+
+Component preparation is non-mutating and visits every registered client even when the first or middle client rejects an ordinary
+request. Runtime preflight augments those component observations with the complete native body, constraint, vehicle, character, and
+path dependency closure. Only a successful reservation marks resources as destroying. `Destroying` is published while the handle is
+valid, the reserved native commit runs exactly once, and `Destroyed` is published after invalidation; all notifications execute outside
+world and registry locks. Observer callbacks resolve the recorded entity and component identity before dereferencing their context, so
+component removal during a notification cannot leave a dangling callback.
+
+Mandatory teardown transfers exceptional pending or committed work to the Runtime. The deferred record owns its plan, retries the
+reservation or commit at a safe boundary, and retains soft-body definition/material ownership until cleanup succeeds. Collider and
+ragdoll shape sets likewise move to Runtime-owned retry storage when immutable leases temporarily retain them. A successful deferred
+body or character commit immediately retries those shape sets, preventing released body references from leaving wrapper-owned shapes
+stranded.
+
+The clang-cl 22.1.8 Debug non-unity consolidated suite passes all 308 tests. The 34 focused `ComponentTests` include
+`DependencyPreparationVisitsEveryClientAroundAnyVeto`,
+`BodyDeactivationDestroysDirectDependenciesAndDefersRetainedShapes`,
+`StaticBodyRequestedDisableIsAtomicAndMandatoryTeardownCannotBeVetoed`,
+`RuntimeOwnsAndRetriesAnExceptionalReservedDestruction`,
+`RuntimeCompletesAPendingDestructionReservation`,
+`RuntimeRetainsSoftBodyResourcesAcrossDeferredDestruction`,
+`PathDeactivationDestroysDirectConstraintDependencies`,
+`CharacterDeactivationDestroysDirectBodyDependencies`, and
+`ConstraintDeactivationDestroysDirectParentConstraints`. Body, path, constraint, and vehicle notification handlers attempt reentrant
+destruction, proving the reservation rejects conflicting mutation without blocking or deadlocking.
 
 ## Qualification platforms
 

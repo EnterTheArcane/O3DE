@@ -809,7 +809,7 @@ namespace Jolt
         }
         for (auto iterator = m_resources->m_partShapes.rbegin(); iterator != m_resources->m_partShapes.rend(); ++iterator)
         {
-            Internal::DestroyShapeSet(*m_system, m_worldHandle, *iterator);
+            m_system->DestroyOrDeferShapeSet(m_worldHandle, AZStd::move(*iterator));
         }
         if (m_resources->m_skeletonHandle)
         {

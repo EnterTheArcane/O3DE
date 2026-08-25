@@ -13,6 +13,18 @@
 
 namespace Jolt::Internal
 {
+    namespace
+    {
+        void DestroyIncompleteShapeSet(
+            RuntimeImplementation& system,
+            const WorldHandle worldHandle,
+            ShapeSet& shapeSet)
+        {
+            [[maybe_unused]] const bool destroyed = DestroyShapeSet(system, worldHandle, shapeSet);
+            AZ_Assert(destroyed, "An unpublished shape set must not retain external references.");
+        }
+    } // namespace
+
     bool CreateShapeSet(
         RuntimeImplementation& system,
         const WorldHandle worldHandle,
@@ -32,7 +44,7 @@ namespace Jolt::Internal
         {
             if (!configuration.m_localTransform.IsFinite())
             {
-                DestroyShapeSet(system, worldHandle, shapeSet);
+                DestroyIncompleteShapeSet(system, worldHandle, shapeSet);
                 return false;
             }
 
@@ -42,7 +54,7 @@ namespace Jolt::Internal
                 const MaterialHandle materialHandle = system.CreateMaterial(materialConfiguration);
                 if (!materialHandle)
                 {
-                    DestroyShapeSet(system, worldHandle, shapeSet);
+                    DestroyIncompleteShapeSet(system, worldHandle, shapeSet);
                     return false;
                 }
                 shapeSet.m_ownedMaterials.push_back(materialHandle);
@@ -52,7 +64,7 @@ namespace Jolt::Internal
             ShapeHandle shapeHandle = system.CreateShape(worldHandle, runtimeConfiguration);
             if (!shapeHandle)
             {
-                DestroyShapeSet(system, worldHandle, shapeSet);
+                DestroyIncompleteShapeSet(system, worldHandle, shapeSet);
                 return false;
             }
             shapeSet.m_ownedShapes.push_back(shapeHandle);
@@ -60,7 +72,7 @@ namespace Jolt::Internal
             const float shapeScale = uniformScale * configuration.m_localTransform.GetUniformScale();
             if (!AZ::IsFiniteFloat(shapeScale) || shapeScale <= 0.0f)
             {
-                DestroyShapeSet(system, worldHandle, shapeSet);
+                DestroyIncompleteShapeSet(system, worldHandle, shapeSet);
                 return false;
             }
             if (!AZ::IsClose(shapeScale, 1.0f, AZ::Constants::Tolerance))
@@ -74,7 +86,7 @@ namespace Jolt::Internal
                 shapeHandle = system.CreateShape(worldHandle, scaledConfiguration);
                 if (!shapeHandle)
                 {
-                    DestroyShapeSet(system, worldHandle, shapeSet);
+                    DestroyIncompleteShapeSet(system, worldHandle, shapeSet);
                     return false;
                 }
                 shapeSet.m_ownedShapes.push_back(shapeHandle);
@@ -97,7 +109,7 @@ namespace Jolt::Internal
                     shapeHandle = system.CreateShape(worldHandle, transformedConfiguration);
                     if (!shapeHandle)
                     {
-                        DestroyShapeSet(system, worldHandle, shapeSet);
+                        DestroyIncompleteShapeSet(system, worldHandle, shapeSet);
                         return false;
                     }
                     shapeSet.m_ownedShapes.push_back(shapeHandle);
@@ -127,7 +139,7 @@ namespace Jolt::Internal
         const ShapeHandle compoundHandle = system.CreateShape(worldHandle, compoundConfiguration);
         if (!compoundHandle)
         {
-            DestroyShapeSet(system, worldHandle, shapeSet);
+            DestroyIncompleteShapeSet(system, worldHandle, shapeSet);
             return false;
         }
         shapeSet.m_ownedShapes.push_back(compoundHandle);
@@ -135,22 +147,30 @@ namespace Jolt::Internal
         return true;
     }
 
-    void DestroyShapeSet(
+    bool DestroyShapeSet(
         RuntimeImplementation& system,
         const WorldHandle worldHandle,
         ShapeSet& shapeSet)
     {
-        for (
-            auto shapeIterator = shapeSet.m_ownedShapes.rbegin();
-            shapeIterator != shapeSet.m_ownedShapes.rend();
-            ++shapeIterator)
+        while (!shapeSet.m_ownedShapes.empty())
         {
-            [[maybe_unused]] const bool destroyed = system.DestroyShape(worldHandle, *shapeIterator);
+            if (!system.DestroyShape(worldHandle, shapeSet.m_ownedShapes.back()))
+            {
+                return false;
+            }
+            shapeSet.m_ownedShapes.pop_back();
         }
-        for (const MaterialHandle materialHandle : shapeSet.m_ownedMaterials)
+        shapeSet.m_shapeHandles.clear();
+        shapeSet.m_rootShapeHandle = ShapeHandle::Invalid;
+
+        while (!shapeSet.m_ownedMaterials.empty())
         {
-            [[maybe_unused]] const bool destroyed = system.DestroyMaterial(materialHandle);
+            if (!system.DestroyMaterial(shapeSet.m_ownedMaterials.back()))
+            {
+                return false;
+            }
+            shapeSet.m_ownedMaterials.pop_back();
         }
-        shapeSet = {};
+        return true;
     }
 } // namespace Jolt::Internal

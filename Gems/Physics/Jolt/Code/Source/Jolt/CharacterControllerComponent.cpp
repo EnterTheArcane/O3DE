@@ -9,10 +9,12 @@
 
 #include <Jolt/BehaviorReflection.h>
 #include <Jolt/ColliderComponent.h>
+#include <Jolt/ComponentDependencyManager.h>
 #include <Jolt/ComponentUtilities.h>
 #include <Jolt/Reflection.h>
 #include <Jolt/SystemInternal.h>
 
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/Name/Name.h>
@@ -281,30 +283,119 @@ namespace Jolt
 
     bool CharacterControllerComponent::DisableSimulation()
     {
+        return DestroySimulation(false);
+    }
+
+    bool CharacterControllerComponent::DestroySimulation(const bool mandatory)
+    {
         if (!m_characterHandle)
         {
             return true;
         }
-        BodyNotificationBus::Event(
-            GetEntityId(),
-            &IBodyNotifications::OnBodyDestroying,
-            m_worldHandle,
-            m_bodyHandle);
-        if (!m_system->DestroyCharacter(m_worldHandle, m_characterHandle))
+
+        RuntimeImplementation* system = m_system;
+        const WorldHandle worldHandle = m_worldHandle;
+        const CharacterHandle characterHandle = m_characterHandle;
+        ResourceDestructionPlan plan;
+        const ResourceDestructionObserver observer{
+            .m_context = this,
+            .m_entityId = GetEntityId(),
+            .m_componentId = GetId(),
+            .m_notify = &CharacterControllerComponent::NotifyResourceDestruction,
+        };
+        if (!plan.AddObserver(observer))
         {
             return false;
         }
+        auto* dependencyManager = AZ::Interface<IComponentDependencyManager>::Get();
+        const bool prepared = !dependencyManager
+            || dependencyManager->PrepareBodyDestruction(
+                GetEntityId(),
+                m_worldHandle,
+                m_bodyHandle,
+                plan);
+        if (!prepared && !mandatory)
+        {
+            return false;
+        }
+        if (!system->ReserveCharacterDestruction(worldHandle, characterHandle, plan))
+        {
+            if (!mandatory)
+            {
+                return false;
+            }
+            if (system->IsCharacterDestructionReserved(worldHandle, characterHandle))
+            {
+                return true;
+            }
 
-        const BodyHandle bodyHandle = m_bodyHandle;
-        m_characterHandle = {};
-        m_bodyHandle = {};
-        m_collider->DestroyShapes();
-        BodyNotificationBus::Event(
-            GetEntityId(),
-            &IBodyNotifications::OnBodyDestroyed,
-            m_worldHandle,
-            bodyHandle);
+            system->DeferCharacterDestruction(
+                worldHandle,
+                characterHandle,
+                AZStd::move(plan),
+                ResourceDestructionReservation::Pending);
+            return true;
+        }
+
+        plan.NotifyDestroying();
+        if (!system->DestroyReservedCharacter(worldHandle, characterHandle, plan))
+        {
+            system->DeferCharacterDestruction(
+                worldHandle,
+                characterHandle,
+                AZStd::move(plan),
+                ResourceDestructionReservation::Complete);
+            return true;
+        }
+        plan.NotifyDestroyed();
         return true;
+    }
+
+    void CharacterControllerComponent::NotifyResourceDestruction(
+        void* context,
+        const AZ::EntityId entityId,
+        const AZ::ComponentId componentId,
+        const ResourceDestructionPhase phase)
+    {
+        auto* componentApplication = AZ::Interface<AZ::ComponentApplicationRequests>::Get();
+        AZ::Entity* entity = nullptr;
+        if (componentApplication)
+        {
+            entity = componentApplication->FindEntity(entityId);
+        }
+        CharacterControllerComponent* component = nullptr;
+        if (entity)
+        {
+            component = azrtti_cast<CharacterControllerComponent*>(entity->FindComponent(componentId));
+        }
+        if (!component || component != context)
+        {
+            return;
+        }
+
+        const WorldHandle worldHandle = component->m_worldHandle;
+        const BodyHandle bodyHandle = component->m_bodyHandle;
+        if (phase == ResourceDestructionPhase::Destroying)
+        {
+            BodyNotificationBus::Event(
+                entityId,
+                &IBodyNotifications::OnBodyDestroying,
+                worldHandle,
+                bodyHandle);
+            return;
+        }
+
+        component->m_characterHandle = {};
+        component->m_bodyHandle = {};
+        if (auto* collider = entity->FindComponent<ColliderComponent>())
+        {
+            collider->DestroyShapes();
+        }
+        BodyNotificationBus::Event(
+            entityId,
+            &IBodyNotifications::OnBodyDestroyed,
+            worldHandle,
+            bodyHandle);
     }
 
     bool CharacterControllerComponent::IsSimulationEnabled() const
@@ -484,7 +575,8 @@ namespace Jolt
 
     void CharacterControllerComponent::Deactivate()
     {
-        [[maybe_unused]] const bool disabled = DisableSimulation();
+        [[maybe_unused]] const bool destroyed = DestroySimulation(true);
+        AZ_Assert(destroyed, "Mandatory character teardown must retain or release every native resource.");
         AZ::TransformNotificationBus::Handler::BusDisconnect();
         BodyNotificationBus::Handler::BusDisconnect();
         BodyRequestBus::Handler::BusDisconnect();

@@ -104,7 +104,6 @@ namespace Jolt
                 if (client && !visitor(*client))
                 {
                     succeeded = false;
-                    break;
                 }
             }
 
@@ -132,6 +131,146 @@ namespace Jolt
             return succeeded;
         }
     } // namespace
+
+    bool ResourceDestructionPlan::AddObserver(const ResourceDestructionObserver observer)
+    {
+        if (!observer.m_context
+            || !observer.m_entityId.IsValid()
+            || observer.m_componentId == AZ::InvalidComponentId
+            || !observer.m_notify)
+        {
+            return false;
+        }
+
+        const auto existing = AZStd::find_if(
+            m_observers.begin(),
+            m_observers.end(),
+            [observer](const ResourceDestructionObserver& candidate)
+            {
+                return candidate.m_context == observer.m_context
+                    && candidate.m_entityId == observer.m_entityId
+                    && candidate.m_componentId == observer.m_componentId;
+            });
+        if (existing != m_observers.end())
+        {
+            return existing->m_notify == observer.m_notify;
+        }
+
+        m_observers.push_back(observer);
+        return true;
+    }
+
+    bool ResourceDestructionPlan::AddConstraint(
+        const ResourceDestructionObserver observer,
+        const WorldHandle worldHandle,
+        const ConstraintHandle constraintHandle)
+    {
+        if (!worldHandle || !constraintHandle)
+        {
+            return false;
+        }
+
+        const auto existing = AZStd::find_if(
+            m_constraints.begin(),
+            m_constraints.end(),
+            [worldHandle, constraintHandle](const ConstraintDestruction& destruction)
+            {
+                return destruction.m_worldHandle == worldHandle
+                    && destruction.m_constraintHandle == constraintHandle;
+            });
+        if (existing != m_constraints.end())
+        {
+            return existing->m_observer.m_context == observer.m_context
+                && existing->m_observer.m_entityId == observer.m_entityId
+                && existing->m_observer.m_componentId == observer.m_componentId
+                && existing->m_observer.m_notify == observer.m_notify
+                && AddObserver(observer);
+        }
+        if (!AddObserver(observer))
+        {
+            return false;
+        }
+
+        m_constraints.push_back({
+            .m_observer = observer,
+            .m_worldHandle = worldHandle,
+            .m_constraintHandle = constraintHandle,
+        });
+        return true;
+    }
+
+    bool ResourceDestructionPlan::AddVehicle(
+        const ResourceDestructionObserver observer,
+        const WorldHandle worldHandle,
+        const VehicleHandle vehicleHandle)
+    {
+        if (!worldHandle || !vehicleHandle)
+        {
+            return false;
+        }
+
+        const auto existing = AZStd::find_if(
+            m_vehicles.begin(),
+            m_vehicles.end(),
+            [worldHandle, vehicleHandle](const VehicleDestruction& destruction)
+            {
+                return destruction.m_worldHandle == worldHandle
+                    && destruction.m_vehicleHandle == vehicleHandle;
+            });
+        if (existing != m_vehicles.end())
+        {
+            return existing->m_observer.m_context == observer.m_context
+                && existing->m_observer.m_entityId == observer.m_entityId
+                && existing->m_observer.m_componentId == observer.m_componentId
+                && existing->m_observer.m_notify == observer.m_notify
+                && AddObserver(observer);
+        }
+        if (!AddObserver(observer))
+        {
+            return false;
+        }
+
+        m_vehicles.push_back({
+            .m_observer = observer,
+            .m_worldHandle = worldHandle,
+            .m_vehicleHandle = vehicleHandle,
+        });
+        return true;
+    }
+
+    AZStd::span<const ConstraintDestruction> ResourceDestructionPlan::GetConstraints() const
+    {
+        return m_constraints;
+    }
+
+    AZStd::span<const VehicleDestruction> ResourceDestructionPlan::GetVehicles() const
+    {
+        return m_vehicles;
+    }
+
+    void ResourceDestructionPlan::NotifyDestroying() const
+    {
+        for (const ResourceDestructionObserver& observer : m_observers)
+        {
+            observer.m_notify(
+                observer.m_context,
+                observer.m_entityId,
+                observer.m_componentId,
+                ResourceDestructionPhase::Destroying);
+        }
+    }
+
+    void ResourceDestructionPlan::NotifyDestroyed() const
+    {
+        for (const ResourceDestructionObserver& observer : m_observers)
+        {
+            observer.m_notify(
+                observer.m_context,
+                observer.m_entityId,
+                observer.m_componentId,
+                ResourceDestructionPhase::Destroyed);
+        }
+    }
 
     ComponentDependencyManager::ComponentDependencyManager()
     {
@@ -233,14 +372,15 @@ namespace Jolt
     bool ComponentDependencyManager::PrepareBodyDestruction(
         const AZ::EntityId entityId,
         const WorldHandle worldHandle,
-        const BodyHandle bodyHandle)
+        const BodyHandle bodyHandle,
+        ResourceDestructionPlan& plan)
     {
         return VisitClients(
             m_bodyClients,
             entityId,
             [&](IBodyDependencyClient& client)
             {
-                return client.OnBodyDependencyDestroying(worldHandle, bodyHandle);
+                return client.PrepareBodyDependencyDestruction(worldHandle, bodyHandle, plan);
             },
             [&](const AZ::EntityId id)
             {
@@ -251,14 +391,15 @@ namespace Jolt
     bool ComponentDependencyManager::PrepareConstraintDestruction(
         const AZ::EntityId entityId,
         const WorldHandle worldHandle,
-        const ConstraintHandle constraintHandle)
+        const ConstraintHandle constraintHandle,
+        ResourceDestructionPlan& plan)
     {
         return VisitClients(
             m_constraintClients,
             entityId,
             [&](IConstraintDependencyClient& client)
             {
-                return client.OnConstraintDependencyDestroying(worldHandle, constraintHandle);
+                return client.PrepareConstraintDependencyDestruction(worldHandle, constraintHandle, plan);
             },
             [&](const AZ::EntityId id)
             {
@@ -268,14 +409,15 @@ namespace Jolt
 
     bool ComponentDependencyManager::PreparePathDestruction(
         const AZ::EntityId entityId,
-        const PathHandle pathHandle)
+        const PathHandle pathHandle,
+        ResourceDestructionPlan& plan)
     {
         return VisitClients(
             m_pathClients,
             entityId,
             [&](IConstraintDependencyClient& client)
             {
-                return client.OnPathDependencyDestroying(pathHandle);
+                return client.PreparePathDependencyDestruction(pathHandle, plan);
             },
             [&](const AZ::EntityId id)
             {

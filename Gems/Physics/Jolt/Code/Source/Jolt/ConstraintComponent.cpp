@@ -11,6 +11,7 @@
 #include <Jolt/Reflection.h>
 #include <Jolt/SystemInternal.h>
 
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Interface/Interface.h>
@@ -524,37 +525,51 @@ namespace Jolt
 
     bool ConstraintComponent::DisableSimulation()
     {
+        return DestroySimulation(false);
+    }
+
+    bool ConstraintComponent::DestroySimulation(const bool mandatory)
+    {
         if (!m_constraintHandle)
         {
             return true;
         }
 
+        RuntimeImplementation* system = m_system;
+        const WorldHandle worldHandle = m_worldHandle;
         const ConstraintHandle constraintHandle = m_constraintHandle;
-        if (m_dependencyManager
-            && !m_dependencyManager->PrepareConstraintDestruction(GetEntityId(), m_worldHandle, constraintHandle))
+        ResourceDestructionPlan plan;
+        const bool prepared = PrepareSimulationDestruction(plan);
+        if (!prepared && !mandatory)
         {
             return false;
         }
-        if (!m_system->DestroyConstraint(m_worldHandle, constraintHandle))
+        if (!system->ReserveConstraintDestruction(plan))
         {
-            return false;
+            if (!mandatory)
+            {
+                return false;
+            }
+            if (system->IsConstraintDestructionReserved(worldHandle, constraintHandle))
+            {
+                return true;
+            }
+
+            system->DeferConstraintDestruction(
+                AZStd::move(plan),
+                ResourceDestructionReservation::Pending);
+            return true;
         }
-        ConstraintNotificationBus::Event(
-            GetEntityId(),
-            &IConstraintNotifications::OnConstraintDestroying,
-            m_worldHandle,
-            constraintHandle);
-        m_constraintHandle = {};
-        m_firstBodyHandle = {};
-        m_secondBodyHandle = {};
-        m_firstDependencyHandle = {};
-        m_secondDependencyHandle = {};
-        m_pathHandle = {};
-        ConstraintNotificationBus::Event(
-            GetEntityId(),
-            &IConstraintNotifications::OnConstraintDestroyed,
-            m_worldHandle,
-            constraintHandle);
+
+        plan.NotifyDestroying();
+        if (!system->DestroyReservedConstraints(plan))
+        {
+            system->DeferConstraintDestruction(
+                AZStd::move(plan),
+                ResourceDestructionReservation::Complete);
+            return true;
+        }
+        plan.NotifyDestroyed();
         return true;
     }
 
@@ -685,7 +700,8 @@ namespace Jolt
 
     void ConstraintComponent::Deactivate()
     {
-        [[maybe_unused]] const bool disabled = DisableSimulation();
+        [[maybe_unused]] const bool destroyed = DestroySimulation(true);
+        AZ_Assert(destroyed, "Mandatory constraint teardown must retain or release every native resource.");
         if (m_dependencyManager)
         {
             m_dependencyManager->UnregisterBody(m_configuration.m_firstBodyEntityId, *this);
@@ -711,14 +727,15 @@ namespace Jolt
         [[maybe_unused]] const bool enabled = EnableSimulation();
     }
 
-    bool ConstraintComponent::OnBodyDependencyDestroying(
+    bool ConstraintComponent::PrepareBodyDependencyDestruction(
         const WorldHandle worldHandle,
-        const BodyHandle bodyHandle)
+        const BodyHandle bodyHandle,
+        ResourceDestructionPlan& plan)
     {
         if (worldHandle == m_worldHandle
             && (bodyHandle == m_firstBodyHandle || bodyHandle == m_secondBodyHandle))
         {
-            return DisableSimulation();
+            return PrepareSimulationDestruction(plan);
         }
         return true;
     }
@@ -730,14 +747,15 @@ namespace Jolt
         [[maybe_unused]] const bool enabled = EnableSimulation();
     }
 
-    bool ConstraintComponent::OnConstraintDependencyDestroying(
+    bool ConstraintComponent::PrepareConstraintDependencyDestruction(
         const WorldHandle worldHandle,
-        const ConstraintHandle constraintHandle)
+        const ConstraintHandle constraintHandle,
+        ResourceDestructionPlan& plan)
     {
         if (worldHandle == m_worldHandle
             && (constraintHandle == m_firstDependencyHandle || constraintHandle == m_secondDependencyHandle))
         {
-            return DisableSimulation();
+            return PrepareSimulationDestruction(plan);
         }
         return true;
     }
@@ -748,13 +766,84 @@ namespace Jolt
         [[maybe_unused]] const bool enabled = EnableSimulation();
     }
 
-    bool ConstraintComponent::OnPathDependencyDestroying(
-        const PathHandle pathHandle)
+    bool ConstraintComponent::PreparePathDependencyDestruction(
+        const PathHandle pathHandle,
+        ResourceDestructionPlan& plan)
     {
         if (pathHandle == m_pathHandle)
         {
-            return DisableSimulation();
+            return PrepareSimulationDestruction(plan);
         }
         return true;
+    }
+
+    bool ConstraintComponent::PrepareSimulationDestruction(ResourceDestructionPlan& plan)
+    {
+        if (!m_constraintHandle)
+        {
+            return true;
+        }
+        const ResourceDestructionObserver observer{
+            .m_context = this,
+            .m_entityId = GetEntityId(),
+            .m_componentId = GetId(),
+            .m_notify = &ConstraintComponent::NotifyResourceDestruction,
+        };
+        if (!plan.AddConstraint(observer, m_worldHandle, m_constraintHandle))
+        {
+            return false;
+        }
+        return !m_dependencyManager
+            || m_dependencyManager->PrepareConstraintDestruction(
+                GetEntityId(),
+                m_worldHandle,
+                m_constraintHandle,
+                plan);
+    }
+
+    void ConstraintComponent::NotifyResourceDestruction(
+        void* context,
+        const AZ::EntityId entityId,
+        const AZ::ComponentId componentId,
+        const ResourceDestructionPhase phase)
+    {
+        auto* componentApplication = AZ::Interface<AZ::ComponentApplicationRequests>::Get();
+        AZ::Entity* entity = nullptr;
+        if (componentApplication)
+        {
+            entity = componentApplication->FindEntity(entityId);
+        }
+        ConstraintComponent* component = nullptr;
+        if (entity)
+        {
+            component = azrtti_cast<ConstraintComponent*>(entity->FindComponent(componentId));
+        }
+        if (!component || component != context)
+        {
+            return;
+        }
+
+        if (phase == ResourceDestructionPhase::Destroying)
+        {
+            ConstraintNotificationBus::Event(
+                component->GetEntityId(),
+                &IConstraintNotifications::OnConstraintDestroying,
+                component->m_worldHandle,
+                component->m_constraintHandle);
+            return;
+        }
+
+        const ConstraintHandle constraintHandle = component->m_constraintHandle;
+        component->m_constraintHandle = {};
+        component->m_firstBodyHandle = {};
+        component->m_secondBodyHandle = {};
+        component->m_firstDependencyHandle = {};
+        component->m_secondDependencyHandle = {};
+        component->m_pathHandle = {};
+        ConstraintNotificationBus::Event(
+            component->GetEntityId(),
+            &IConstraintNotifications::OnConstraintDestroyed,
+            component->m_worldHandle,
+            constraintHandle);
     }
 } // namespace Jolt

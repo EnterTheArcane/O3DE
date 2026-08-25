@@ -1225,14 +1225,15 @@ namespace Jolt
             true,
             true))
         {
-            Internal::DestroyShapeSet(*m_system, m_worldHandle, replacement);
+            [[maybe_unused]] const bool destroyed = Internal::DestroyShapeSet(*m_system, m_worldHandle, replacement);
+            AZ_Assert(destroyed, "An unpublished replacement shape set must be destructible.");
             return false;
         }
 
         Internal::ShapeSet previous = AZStd::move(m_shapeSet);
         m_shapeSet = AZStd::move(replacement);
         m_uniformScale = uniformScale;
-        Internal::DestroyShapeSet(*m_system, m_worldHandle, previous);
+        m_system->DestroyOrDeferShapeSet(m_worldHandle, AZStd::move(previous));
         return true;
     }
 
@@ -1266,14 +1267,15 @@ namespace Jolt
             replacement.m_rootShapeHandle,
             maximumPenetrationDepth))
         {
-            Internal::DestroyShapeSet(*m_system, m_worldHandle, replacement);
+            [[maybe_unused]] const bool destroyed = Internal::DestroyShapeSet(*m_system, m_worldHandle, replacement);
+            AZ_Assert(destroyed, "An unpublished replacement shape set must be destructible.");
             return false;
         }
 
         Internal::ShapeSet previous = AZStd::move(m_shapeSet);
         m_shapeSet = AZStd::move(replacement);
         m_uniformScale = uniformScale;
-        Internal::DestroyShapeSet(*m_system, m_worldHandle, previous);
+        m_system->DestroyOrDeferShapeSet(m_worldHandle, AZStd::move(previous));
         return true;
     }
 
@@ -1308,7 +1310,8 @@ namespace Jolt
             replacement.m_rootShapeHandle,
             maximumPenetrationDepth))
         {
-            Internal::DestroyShapeSet(*m_system, m_worldHandle, replacement);
+            [[maybe_unused]] const bool destroyed = Internal::DestroyShapeSet(*m_system, m_worldHandle, replacement);
+            AZ_Assert(destroyed, "An unpublished replacement shape set must be destructible.");
             return false;
         }
         if (updateInnerBody
@@ -1323,14 +1326,15 @@ namespace Jolt
                 m_shapeSet.m_rootShapeHandle,
                 maximumPenetrationDepth);
             AZ_Assert(restored, "Failed to restore the virtual-character shape after an inner-body update failure.");
-            Internal::DestroyShapeSet(*m_system, m_worldHandle, replacement);
+            [[maybe_unused]] const bool destroyed = Internal::DestroyShapeSet(*m_system, m_worldHandle, replacement);
+            AZ_Assert(destroyed, "An unpublished replacement shape set must be destructible.");
             return false;
         }
 
         Internal::ShapeSet previous = AZStd::move(m_shapeSet);
         m_shapeSet = AZStd::move(replacement);
         m_uniformScale = uniformScale;
-        Internal::DestroyShapeSet(*m_system, m_worldHandle, previous);
+        m_system->DestroyOrDeferShapeSet(m_worldHandle, AZStd::move(previous));
         return true;
     }
 
@@ -1341,7 +1345,7 @@ namespace Jolt
             return;
         }
 
-        Internal::DestroyShapeSet(*m_system, m_worldHandle, m_shapeSet);
+        m_system->DestroyOrDeferShapeSet(m_worldHandle, AZStd::move(m_shapeSet));
         m_system = nullptr;
         m_worldHandle = {};
         m_uniformScale = 1.0f;

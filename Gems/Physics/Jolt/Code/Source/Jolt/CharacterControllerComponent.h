@@ -18,6 +18,8 @@
 
 namespace Jolt
 {
+    enum class ResourceDestructionPhase : AZ::u8;
+
     class ColliderComponent;
     class RuntimeImplementation;
 
@@ -92,6 +94,14 @@ namespace Jolt
         void Activate() override;
 
         void Deactivate() override;
+
+        bool DestroySimulation(bool mandatory);
+
+        static void NotifyResourceDestruction(
+            void* context,
+            AZ::EntityId entityId,
+            AZ::ComponentId componentId,
+            ResourceDestructionPhase phase);
 
         void OnBodyMoved(const BodyMoveEvent& event) override;
 

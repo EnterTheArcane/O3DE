@@ -12,6 +12,7 @@
 #include <Jolt/ComponentUtilities.h>
 #include <Jolt/SystemInternal.h>
 
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Interface/Interface.h>
 #include <AzCore/Name/Name.h>
@@ -143,35 +144,117 @@ namespace Jolt
 
     bool StaticRigidBodyComponent::DisableSimulation()
     {
+        return DestroySimulation(false);
+    }
+
+    bool StaticRigidBodyComponent::DestroySimulation(const bool mandatory)
+    {
         if (!m_bodyHandle)
         {
             return true;
         }
+        RuntimeImplementation* system = m_system;
+        const WorldHandle worldHandle = m_worldHandle;
         const BodyHandle bodyHandle = m_bodyHandle;
-        auto* dependencyManager = AZ::Interface<IComponentDependencyManager>::Get();
-        if (dependencyManager
-            && !dependencyManager->PrepareBodyDestruction(GetEntityId(), m_worldHandle, bodyHandle))
+        ResourceDestructionPlan plan;
+        const ResourceDestructionObserver observer{
+            .m_context = this,
+            .m_entityId = GetEntityId(),
+            .m_componentId = GetId(),
+            .m_notify = &StaticRigidBodyComponent::NotifyResourceDestruction,
+        };
+        if (!plan.AddObserver(observer))
         {
             return false;
         }
-        if (!m_system->DestroyBody(m_worldHandle, bodyHandle))
+        auto* dependencyManager = AZ::Interface<IComponentDependencyManager>::Get();
+        const bool prepared = !dependencyManager
+            || dependencyManager->PrepareBodyDestruction(
+                GetEntityId(),
+                m_worldHandle,
+                bodyHandle,
+                plan);
+        if (!prepared && !mandatory)
         {
             return false;
+        }
+        if (!system->ReserveBodyDestruction(worldHandle, bodyHandle, plan))
+        {
+            if (!mandatory)
+            {
+                return false;
+            }
+            if (system->IsBodyDestructionReserved(worldHandle, bodyHandle))
+            {
+                return true;
+            }
+
+            system->DeferBodyDestruction(
+                worldHandle,
+                bodyHandle,
+                AZStd::move(plan),
+                ResourceDestructionReservation::Pending);
+            return true;
         }
 
-        BodyNotificationBus::Event(
-            GetEntityId(),
-            &IBodyNotifications::OnBodyDestroying,
-            m_worldHandle,
-            bodyHandle);
-        m_bodyHandle = {};
-        m_collider->DestroyShapes();
-        BodyNotificationBus::Event(
-            GetEntityId(),
-            &IBodyNotifications::OnBodyDestroyed,
-            m_worldHandle,
-            bodyHandle);
+        plan.NotifyDestroying();
+        if (!system->DestroyReservedBody(worldHandle, bodyHandle, plan))
+        {
+            system->DeferBodyDestruction(
+                worldHandle,
+                bodyHandle,
+                AZStd::move(plan),
+                ResourceDestructionReservation::Complete);
+            return true;
+        }
+        plan.NotifyDestroyed();
         return true;
+    }
+
+    void StaticRigidBodyComponent::NotifyResourceDestruction(
+        void* context,
+        const AZ::EntityId entityId,
+        const AZ::ComponentId componentId,
+        const ResourceDestructionPhase phase)
+    {
+        auto* componentApplication = AZ::Interface<AZ::ComponentApplicationRequests>::Get();
+        AZ::Entity* entity = nullptr;
+        if (componentApplication)
+        {
+            entity = componentApplication->FindEntity(entityId);
+        }
+        StaticRigidBodyComponent* component = nullptr;
+        if (entity)
+        {
+            component = azrtti_cast<StaticRigidBodyComponent*>(entity->FindComponent(componentId));
+        }
+        if (!component || component != context)
+        {
+            return;
+        }
+
+        const WorldHandle worldHandle = component->m_worldHandle;
+        const BodyHandle bodyHandle = component->m_bodyHandle;
+        if (phase == ResourceDestructionPhase::Destroying)
+        {
+            BodyNotificationBus::Event(
+                entityId,
+                &IBodyNotifications::OnBodyDestroying,
+                worldHandle,
+                bodyHandle);
+            return;
+        }
+
+        component->m_bodyHandle = {};
+        if (auto* collider = entity->FindComponent<ColliderComponent>())
+        {
+            collider->DestroyShapes();
+        }
+        BodyNotificationBus::Event(
+            entityId,
+            &IBodyNotifications::OnBodyDestroyed,
+            worldHandle,
+            bodyHandle);
     }
 
     bool StaticRigidBodyComponent::IsSimulationEnabled() const
@@ -246,7 +329,8 @@ namespace Jolt
 
     void StaticRigidBodyComponent::Deactivate()
     {
-        [[maybe_unused]] const bool disabled = DisableSimulation();
+        [[maybe_unused]] const bool destroyed = DestroySimulation(true);
+        AZ_Assert(destroyed, "Mandatory static-body teardown must retain or release every native resource.");
         AZ::TransformNotificationBus::Handler::BusDisconnect();
         BodyRequestBus::Handler::BusDisconnect();
         StaticRigidBodyRequestBus::Handler::BusDisconnect();
