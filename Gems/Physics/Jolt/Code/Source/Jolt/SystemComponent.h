@@ -53,6 +53,8 @@ namespace Jolt
             float deltaTime,
             AZ::ScriptTimePoint time) override;
 
+        int GetTickOrder() override;
+
         void DispatchWorldEvents(
             WorldHandle worldHandle,
             const EventBatch& events);

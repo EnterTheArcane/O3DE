@@ -164,6 +164,61 @@ namespace Jolt
             AZStd::unordered_map<AZ::EntityId, AZ::Entity*> m_entities;
         };
 
+        class TransformTickObserver final
+            : private AZ::TickBus::Handler
+        {
+        public:
+            TransformTickObserver(
+                const AZ::EntityId entityId,
+                const int tickOrder)
+                : m_entityId(entityId)
+                , m_tickOrder(tickOrder)
+            {
+                AZ::TickBus::Handler::BusConnect();
+            }
+
+            ~TransformTickObserver() override
+            {
+                AZ::TickBus::Handler::BusDisconnect();
+            }
+
+            AZ_DISABLE_COPY_MOVE(TransformTickObserver);
+
+            [[nodiscard]]
+            const AZ::Transform& GetObservedTransform() const
+            {
+                return m_observedTransform;
+            }
+
+            [[nodiscard]]
+            AZ::u32 GetTickCount() const
+            {
+                return m_tickCount;
+            }
+
+        private:
+            void OnTick(
+                [[maybe_unused]] float deltaTime,
+                [[maybe_unused]] AZ::ScriptTimePoint time) override
+            {
+                AZ::TransformBus::EventResult(
+                    m_observedTransform,
+                    m_entityId,
+                    &AZ::TransformInterface::GetWorldTM);
+                ++m_tickCount;
+            }
+
+            int GetTickOrder() override
+            {
+                return m_tickOrder;
+            }
+
+            AZ::Transform m_observedTransform = AZ::Transform::CreateIdentity();
+            AZ::EntityId m_entityId;
+            int m_tickOrder = AZ::ComponentTickBus::TICK_DEFAULT;
+            AZ::u32 m_tickCount = 0;
+        };
+
         class ComponentVehicleCallbacks final
             : public IVehicleCallbacks
         {
@@ -2602,6 +2657,74 @@ namespace Jolt
         bodyDescriptor->ReleaseDescriptor();
         colliderDescriptor->ReleaseDescriptor();
         transformDescriptor->ReleaseDescriptor();
+    }
+
+    TEST(ComponentTests, SystemTickPublishesTransformsBeforeAttachmentAndPreRender)
+    {
+        ComponentNameDictionaryScope nameDictionary;
+        ComponentApplicationScope componentApplication;
+        AZ::ComponentDescriptor* transformDescriptor = AzFramework::TransformComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* colliderDescriptor = ColliderComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* bodyDescriptor = RigidBodyComponent::CreateDescriptor();
+        const AZStd::array descriptors = {
+            transformDescriptor,
+            colliderDescriptor,
+            bodyDescriptor,
+        };
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
+                descriptor);
+        }
+
+        SystemComponent systemComponent;
+        systemComponent.Activate();
+        ASSERT_TRUE(Bodies::Get());
+
+        ColliderShapeConfiguration colliderShape;
+        colliderShape.m_shape.m_geometry = SphereShapeConfiguration{};
+        AZ::Entity entity("Physics tick order body");
+        entity.CreateComponent<AzFramework::TransformComponent>();
+        entity.CreateComponent<ColliderComponent>(AZStd::vector{colliderShape});
+        RigidBodyComponent* body = entity.CreateComponent<RigidBodyComponent>();
+        ASSERT_TRUE(body);
+        entity.Init();
+        entity.Activate();
+        ASSERT_TRUE(body->SetGravityFactor(0.0f));
+        ASSERT_TRUE(body->SetLinearVelocity(AZ::Vector3::CreateAxisX(6.0f)));
+
+        TransformTickObserver beforePhysics(
+            entity.GetId(),
+            AZ::ComponentTickBus::TICK_PHYSICS_SYSTEM - 1);
+        TransformTickObserver attachment(
+            entity.GetId(),
+            AZ::TICK_ATTACHMENT);
+        TransformTickObserver preRender(
+            entity.GetId(),
+            AZ::TICK_PRE_RENDER);
+
+        AZ::TickBus::Broadcast(
+            &AZ::TickEvents::OnTick,
+            1.0f / 60.0f,
+            AZ::ScriptTimePoint{});
+
+        EXPECT_EQ(beforePhysics.GetTickCount(), 1);
+        EXPECT_EQ(attachment.GetTickCount(), 1);
+        EXPECT_EQ(preRender.GetTickCount(), 1);
+        EXPECT_NEAR(beforePhysics.GetObservedTransform().GetTranslation().GetX(), 0.0f, 1.0e-6f);
+        EXPECT_GT(attachment.GetObservedTransform().GetTranslation().GetX(), 0.0f);
+        EXPECT_TRUE(preRender.GetObservedTransform().IsClose(attachment.GetObservedTransform()));
+
+        entity.Deactivate();
+        systemComponent.Deactivate();
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
+                descriptor);
+            descriptor->ReleaseDescriptor();
+        }
     }
 
     TEST(ComponentTests, WorldQueryBusUsesBoundedCollectionsAndReportsOverflow)

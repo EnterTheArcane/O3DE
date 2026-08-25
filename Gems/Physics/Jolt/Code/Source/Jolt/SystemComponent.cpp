@@ -503,6 +503,11 @@ namespace Jolt
         }
     }
 
+    int SystemComponent::GetTickOrder()
+    {
+        return AZ::ComponentTickBus::TICK_PHYSICS_SYSTEM;
+    }
+
     void SystemComponent::DispatchWorldEvents(
         const WorldHandle worldHandle,
         const EventBatch& events)

@@ -26,7 +26,7 @@ the row's complete contract.
 | `J3-AUD-003` | Every mutable rollback participant has one owning world and cannot enter concurrent world transactions. | 3 | **Implemented** — nonzero-state callback and group-filter registrations are reference-counted within one owning world; a second-world bind fails before mutation. Zero-state registrations declare deterministic, thread-safe sharing. Focused tests cover rejection without digest/count changes, same-world reuse, transfer after release, concurrent stateless use, and unregistration barriers. Final MSVC, unload/reload, and stress qualification remain. |
 | `J3-AUD-004` | Entity resource teardown prepares without mutation, commits once, and never abandons a live native resource. | 3 | **Implemented** — component clients only discover dependencies during preparation; Runtime reservations cover complete direct and component-owned closures before mutation. Rigid, static, character, path, constraint, vehicle, retained-shape, soft-body ownership, veto, callback-reentrancy, and pending/committed retry tests pass. Final MSVC and lifecycle stress qualification remain. |
 | `J3-AUD-005` | Vehicle creation on an unadded chassis fails without changing counts, revisions, or ownership. | 3 | **Implemented** — wheeled, motorcycle, and tracked construction reject an unadded chassis before native or wrapper mutation. The focused test preserves the world digest and resource counts, then proves the chassis can still be added, removed, and destroyed normally. Final MSVC qualification remains. |
-| `J3-AUD-006` | Automatic simulation runs at physics tick order and publishes transforms before attachment and pre-render consumers. | 4 | **Open** — tick-order and same-frame transform visibility tests required. |
+| `J3-AUD-006` | Automatic simulation runs at physics tick order and publishes transforms before attachment and pre-render consumers. | 4 | **Implemented** — the provider runs at `TICK_PHYSICS_SYSTEM`; a moving-body integration test observes the old transform immediately before physics and the updated transform at both attachment and pre-render orders in the same tick. Final MSVC qualification remains. |
 | `J3-AUD-007` | Native acquisition is provider-owned, versioned, fingerprinted from actual objects/options, and rejects foreign targets or populations. | 1 | **Open** — clean/cached fetch, foreign-target, patch, fingerprint, license, source/install, and offline tests required. |
 | `J3-AUD-008` | Every installed public out-of-line callable is exported or private, with no native leakage. | 4 | **Open** — installed modular consumer must call every public symbol. |
 | `J3-AUD-009` | ISA flags follow each target architecture, retain upstream exclusions, enforce SSE4.1 on x86, and disable AVX2/FMA. | 1 | **Implemented** — MSVC and clang-cl x64 native-object commands prove the exact SSE4.1 floor; Xcode slice generation and Apple execution remain external gates. |
@@ -113,6 +113,14 @@ The clang-cl 22.1.8 Debug non-unity consolidated suite passes all 308 tests. The
 `CharacterDeactivationDestroysDirectBodyDependencies`, and
 `ConstraintDeactivationDestroysDirectParentConstraints`. Body, path, constraint, and vehicle notification handlers attempt reentrant
 destruction, proving the reservation rejects conflicting mutation without blocking or deadlocking.
+
+## Stage 4 physics tick-order evidence
+
+`SystemComponent` now reports `AZ::ComponentTickBus::TICK_PHYSICS_SYSTEM`, matching the engine's dedicated provider position instead of
+the generic default. `ComponentTests.SystemTickPublishesTransformsBeforeAttachmentAndPreRender` drives a real dynamic body through
+`AZ::TickBus` and captures its entity transform at the immediately preceding, attachment, and pre-render tick orders. The pre-physics
+observer sees the original transform; attachment and pre-render observers see the same newly simulated transform. The focused test and
+the complete clang-cl 22.1.8 Debug non-unity suite pass.
 
 ## Qualification platforms
 
