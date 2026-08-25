@@ -2098,12 +2098,10 @@ namespace Jolt
 
     private:
         friend void Internal::AcquireTransformedShapeLease(
-            void* owner,
-            ShapeHandle shapeHandle);
+            void* record);
 
         friend void Internal::ReleaseTransformedShapeLease(
-            void* owner,
-            ShapeHandle shapeHandle);
+            void* record);
 
         struct VehicleSlot;
 
@@ -3038,8 +3036,11 @@ namespace Jolt
             RaycastHit& hit) const;
 
         [[nodiscard]]
-        const JPH::TransformedShape* GetNativeTransformedShape(
+        const Internal::TransformedShapeLeaseRecord* GetTransformedShapeRecord(
             const TransformedShape& shape) const;
+
+        static void ReleaseFinalTransformedShapeLease(
+            Internal::TransformedShapeLeaseRecord* record);
 
         [[nodiscard]]
         bool InitializeTransformedShape(
@@ -3394,6 +3395,8 @@ namespace Jolt
         mutable AZStd::vector<AZStd::unique_ptr<RaycastBatchWorkspace>> m_raycastBatchWorkspaces;
         mutable AZStd::mutex m_transformedShapeLeaseMutex;
         TransformedShapeLeaseState* m_transformedShapeLeaseState = nullptr;
+        mutable Internal::TransformedShapeLeaseRecord* m_transformedShapeLeaseRecordCache = nullptr;
+        mutable size_t m_transformedShapeLeaseRecordCacheSize = 0;
         JPH::Array<JPH::Mat44> m_softBodySkinTransforms;
         JPH::Array<JPH::Mat44> m_hairJointTransforms;
 

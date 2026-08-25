@@ -7,15 +7,35 @@
 
 #pragma once
 
-#include <Jolt/Handle.h>
+#include <Jolt/Query.h>
+
+#include <AzCore/std/parallel/atomic.h>
+
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Collision/TransformedShape.h>
 
 namespace Jolt::Internal
 {
+    struct TransformedShapeLeaseRecord final
+    {
+        JPH::TransformedShape m_nativeShape;
+        WorldPosition m_worldOrigin;
+
+        WorldHandle m_worldHandle;
+        BodyHandle m_bodyHandle;
+        MaterialHandle m_materialHandle;
+        ShapeHandle m_shapeHandle;
+
+        AZ::u64 m_userData = 0;
+        ShapeKind m_shapeKind = ShapeKind::None;
+        void* m_owner = nullptr;
+        AZStd::atomic_uint64_t m_referenceCount{1};
+        TransformedShapeLeaseRecord* m_nextFree = nullptr;
+    };
+
     void AcquireTransformedShapeLease(
-        void* owner,
-        ShapeHandle shapeHandle);
+        void* record);
 
     void ReleaseTransformedShapeLease(
-        void* owner,
-        ShapeHandle shapeHandle);
+        void* record);
 } // namespace Jolt::Internal

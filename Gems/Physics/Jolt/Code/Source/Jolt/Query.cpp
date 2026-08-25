@@ -22,66 +22,39 @@
 
 namespace Jolt
 {
-    static_assert(sizeof(JPH::TransformedShape) <= 96);
-    static_assert(alignof(JPH::TransformedShape) <= alignof(TransformedShape));
-#ifdef JPH_DOUBLE_PRECISION
-    static_assert(sizeof(TransformedShape) <= 192);
-#else
-    static_assert(sizeof(TransformedShape) <= 176);
-#endif
+    namespace
+    {
+        [[nodiscard]]
+        const Internal::TransformedShapeLeaseRecord* GetLeaseRecord(const void* record)
+        {
+            return static_cast<const Internal::TransformedShapeLeaseRecord*>(record);
+        }
+    } // namespace
 
     TransformedShape::TransformedShape()
     {
-        AZStd::construct_at(reinterpret_cast<JPH::TransformedShape*>(m_nativeStorage));
     }
 
     TransformedShape::TransformedShape(const TransformedShape& other)
-        : m_worldOrigin(other.m_worldOrigin)
-        , m_worldHandle(other.m_worldHandle)
-        , m_bodyHandle(other.m_bodyHandle)
-        , m_materialHandle(other.m_materialHandle)
-        , m_shapeHandle(other.m_shapeHandle)
-        , m_userData(other.m_userData)
-        , m_shapeKind(other.m_shapeKind)
-        , m_leaseOwner(other.m_leaseOwner)
+        : m_record(other.m_record)
     {
-        if (m_leaseOwner)
+        if (m_record)
         {
-            Internal::AcquireTransformedShapeLease(m_leaseOwner, m_shapeHandle);
+            Internal::AcquireTransformedShapeLease(m_record);
         }
-        AZStd::construct_at(
-            reinterpret_cast<JPH::TransformedShape*>(m_nativeStorage),
-            *reinterpret_cast<const JPH::TransformedShape*>(other.m_nativeStorage));
     }
 
     TransformedShape::TransformedShape(TransformedShape&& other) noexcept
-        : m_worldOrigin(other.m_worldOrigin)
-        , m_worldHandle(other.m_worldHandle)
-        , m_bodyHandle(other.m_bodyHandle)
-        , m_materialHandle(other.m_materialHandle)
-        , m_shapeHandle(other.m_shapeHandle)
-        , m_userData(other.m_userData)
-        , m_shapeKind(other.m_shapeKind)
-        , m_leaseOwner(other.m_leaseOwner)
+        : m_record(other.m_record)
     {
-        AZStd::construct_at(
-            reinterpret_cast<JPH::TransformedShape*>(m_nativeStorage),
-            AZStd::move(*reinterpret_cast<JPH::TransformedShape*>(other.m_nativeStorage)));
-        other.m_worldHandle = WorldHandle::Invalid;
-        other.m_bodyHandle = BodyHandle::Invalid;
-        other.m_materialHandle = MaterialHandle::Invalid;
-        other.m_shapeHandle = ShapeHandle::Invalid;
-        other.m_userData = 0;
-        other.m_shapeKind = ShapeKind::None;
-        other.m_leaseOwner = nullptr;
+        other.m_record = nullptr;
     }
 
     TransformedShape::~TransformedShape()
     {
-        AZStd::destroy_at(reinterpret_cast<JPH::TransformedShape*>(m_nativeStorage));
-        if (m_leaseOwner)
+        if (m_record)
         {
-            Internal::ReleaseTransformedShapeLease(m_leaseOwner, m_shapeHandle);
+            Internal::ReleaseTransformedShapeLease(m_record);
         }
     }
 
@@ -89,24 +62,15 @@ namespace Jolt
     {
         if (this != &other)
         {
-            if (other.m_leaseOwner)
+            if (other.m_record)
             {
-                Internal::AcquireTransformedShapeLease(other.m_leaseOwner, other.m_shapeHandle);
+                Internal::AcquireTransformedShapeLease(other.m_record);
             }
-            *reinterpret_cast<JPH::TransformedShape*>(m_nativeStorage) =
-                *reinterpret_cast<const JPH::TransformedShape*>(other.m_nativeStorage);
-            if (m_leaseOwner)
+            if (m_record)
             {
-                Internal::ReleaseTransformedShapeLease(m_leaseOwner, m_shapeHandle);
+                Internal::ReleaseTransformedShapeLease(m_record);
             }
-            m_worldOrigin = other.m_worldOrigin;
-            m_worldHandle = other.m_worldHandle;
-            m_bodyHandle = other.m_bodyHandle;
-            m_materialHandle = other.m_materialHandle;
-            m_shapeHandle = other.m_shapeHandle;
-            m_userData = other.m_userData;
-            m_shapeKind = other.m_shapeKind;
-            m_leaseOwner = other.m_leaseOwner;
+            m_record = other.m_record;
         }
         return *this;
     }
@@ -115,52 +79,48 @@ namespace Jolt
     {
         if (this != &other)
         {
-            *reinterpret_cast<JPH::TransformedShape*>(m_nativeStorage) =
-                AZStd::move(*reinterpret_cast<JPH::TransformedShape*>(other.m_nativeStorage));
-            if (m_leaseOwner)
+            if (m_record)
             {
-                Internal::ReleaseTransformedShapeLease(m_leaseOwner, m_shapeHandle);
+                Internal::ReleaseTransformedShapeLease(m_record);
             }
-            m_worldOrigin = other.m_worldOrigin;
-            m_worldHandle = other.m_worldHandle;
-            m_bodyHandle = other.m_bodyHandle;
-            m_materialHandle = other.m_materialHandle;
-            m_shapeHandle = other.m_shapeHandle;
-            m_userData = other.m_userData;
-            m_shapeKind = other.m_shapeKind;
-            m_leaseOwner = other.m_leaseOwner;
-            other.m_worldHandle = WorldHandle::Invalid;
-            other.m_bodyHandle = BodyHandle::Invalid;
-            other.m_materialHandle = MaterialHandle::Invalid;
-            other.m_shapeHandle = ShapeHandle::Invalid;
-            other.m_userData = 0;
-            other.m_shapeKind = ShapeKind::None;
-            other.m_leaseOwner = nullptr;
+            m_record = other.m_record;
+            other.m_record = nullptr;
         }
         return *this;
     }
 
     TransformedShape::operator bool() const
     {
-        return static_cast<bool>(
-            reinterpret_cast<const JPH::TransformedShape*>(m_nativeStorage)->mShape);
+        const Internal::TransformedShapeLeaseRecord* record = GetLeaseRecord(m_record);
+        return record && record->m_nativeShape.mShape;
     }
 
     BodyHandle TransformedShape::GetBodyHandle() const
     {
-        return m_bodyHandle;
+        const Internal::TransformedShapeLeaseRecord* record = GetLeaseRecord(m_record);
+        if (record)
+        {
+            return record->m_bodyHandle;
+        }
+
+        return BodyHandle::Invalid;
     }
 
     BroadPhaseAabb TransformedShape::GetBounds() const
     {
-        const JPH::AABox bounds =
-            reinterpret_cast<const JPH::TransformedShape*>(m_nativeStorage)->GetWorldSpaceBounds();
+        const Internal::TransformedShapeLeaseRecord* record = GetLeaseRecord(m_record);
+        if (!record || !record->m_nativeShape.mShape)
+        {
+            return {};
+        }
+
+        const JPH::AABox bounds = record->m_nativeShape.GetWorldSpaceBounds();
         const JPH::Vec3 center = bounds.GetCenter();
         return {
             .m_center = {
-                .m_x = static_cast<double>(center.GetX()) + m_worldOrigin.m_x,
-                .m_y = static_cast<double>(center.GetY()) + m_worldOrigin.m_y,
-                .m_z = static_cast<double>(center.GetZ()) + m_worldOrigin.m_z,
+                .m_x = static_cast<double>(center.GetX()) + record->m_worldOrigin.m_x,
+                .m_y = static_cast<double>(center.GetY()) + record->m_worldOrigin.m_y,
+                .m_z = static_cast<double>(center.GetZ()) + record->m_worldOrigin.m_z,
             },
             .m_halfExtents = {
                 bounds.GetExtent().GetX(),
@@ -172,44 +132,76 @@ namespace Jolt
 
     MaterialHandle TransformedShape::GetMaterialHandle() const
     {
-        return m_materialHandle;
+        const Internal::TransformedShapeLeaseRecord* record = GetLeaseRecord(m_record);
+        if (record)
+        {
+            return record->m_materialHandle;
+        }
+
+        return MaterialHandle::Invalid;
     }
 
     AZ::Vector3 TransformedShape::GetScale() const
     {
-        const JPH::Vec3 scale =
-            reinterpret_cast<const JPH::TransformedShape*>(m_nativeStorage)->GetShapeScale();
+        const Internal::TransformedShapeLeaseRecord* record = GetLeaseRecord(m_record);
+        if (!record || !record->m_nativeShape.mShape)
+        {
+            return AZ::Vector3::CreateZero();
+        }
+
+        const JPH::Vec3 scale = record->m_nativeShape.GetShapeScale();
         return {scale.GetX(), scale.GetY(), scale.GetZ()};
     }
 
     ShapeHandle TransformedShape::GetShapeHandle() const
     {
-        return m_shapeHandle;
+        const Internal::TransformedShapeLeaseRecord* record = GetLeaseRecord(m_record);
+        if (record)
+        {
+            return record->m_shapeHandle;
+        }
+
+        return ShapeHandle::Invalid;
     }
 
     ShapeKind TransformedShape::GetShapeKind() const
     {
-        return m_shapeKind;
+        const Internal::TransformedShapeLeaseRecord* record = GetLeaseRecord(m_record);
+        if (record)
+        {
+            return record->m_shapeKind;
+        }
+
+        return ShapeKind::None;
     }
 
     SubShapeId TransformedShape::GetSubShapeId() const
     {
-        const JPH::SubShapeID subShapeId =
-            reinterpret_cast<const JPH::TransformedShape*>(m_nativeStorage)->mSubShapeIDCreator.GetID();
+        const Internal::TransformedShapeLeaseRecord* record = GetLeaseRecord(m_record);
+        if (!record || !record->m_nativeShape.mShape)
+        {
+            return {};
+        }
+
+        const JPH::SubShapeID subShapeId = record->m_nativeShape.mSubShapeIDCreator.GetID();
         return SubShapeId(subShapeId.GetValue());
     }
 
     WorldTransform TransformedShape::GetTransform() const
     {
-        const auto* nativeShape =
-            reinterpret_cast<const JPH::TransformedShape*>(m_nativeStorage);
-        const JPH::RVec3 translation = nativeShape->GetWorldTransform().GetTranslation();
-        const JPH::Quat rotation = nativeShape->mShapeRotation;
+        const Internal::TransformedShapeLeaseRecord* record = GetLeaseRecord(m_record);
+        if (!record || !record->m_nativeShape.mShape)
+        {
+            return {};
+        }
+
+        const JPH::RVec3 translation = record->m_nativeShape.GetWorldTransform().GetTranslation();
+        const JPH::Quat rotation = record->m_nativeShape.mShapeRotation;
         return {
             .m_position = {
-                .m_x = translation.GetX() + m_worldOrigin.m_x,
-                .m_y = translation.GetY() + m_worldOrigin.m_y,
-                .m_z = translation.GetZ() + m_worldOrigin.m_z,
+                .m_x = translation.GetX() + record->m_worldOrigin.m_x,
+                .m_y = translation.GetY() + record->m_worldOrigin.m_y,
+                .m_z = translation.GetZ() + record->m_worldOrigin.m_z,
             },
             .m_rotation = AZ::Quaternion(
                 rotation.GetX(),
@@ -221,12 +213,24 @@ namespace Jolt
 
     AZ::u64 TransformedShape::GetUserData() const
     {
-        return m_userData;
+        const Internal::TransformedShapeLeaseRecord* record = GetLeaseRecord(m_record);
+        if (record)
+        {
+            return record->m_userData;
+        }
+
+        return 0;
     }
 
     WorldHandle TransformedShape::GetWorldHandle() const
     {
-        return m_worldHandle;
+        const Internal::TransformedShapeLeaseRecord* record = GetLeaseRecord(m_record);
+        if (record)
+        {
+            return record->m_worldHandle;
+        }
+
+        return WorldHandle::Invalid;
     }
 
     AZStd::span<WorldPosition> ShapeQueryFaceBuffers::GetQueryFace(

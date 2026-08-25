@@ -23,6 +23,7 @@
 #include <AzCore/Jobs/JobManager.h>
 #include <AzCore/Jobs/JobManagerDesc.h>
 #include <AzCore/Interface/Interface.h>
+#include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Name/NameDictionary.h>
 #include <AzCore/PlatformDef.h>
 #include <AzCore/Utils/TypeHash.h>
@@ -15736,6 +15737,57 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyShape(worldHandle, scaledShapeHandle));
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
         EXPECT_TRUE(system.DestroyMaterial(materialHandle));
+    }
+
+    TEST(SimulationTests, TransformedShapeLeaseCacheAvoidsSteadyStateSystemAllocations)
+    {
+        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        ShapeConfiguration configuration;
+        configuration.m_geometry = BoxShapeConfiguration{};
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, configuration);
+        ASSERT_TRUE(shapeHandle);
+
+        constexpr size_t LeaseCount = 16;
+        AZStd::array<TransformedShape, LeaseCount> leases;
+        for (TransformedShape& lease : leases)
+        {
+            ASSERT_TRUE(system.RetainShape(worldHandle, shapeHandle, {}, 1.0f, lease));
+        }
+        for (TransformedShape& lease : leases)
+        {
+            lease = {};
+        }
+
+        auto& allocator = AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
+        const size_t allocatedBytesBeforeReuse = allocator.NumAllocatedBytes();
+        bool allLeasesCreated = true;
+        for (size_t batchIndex = 0; batchIndex < 32; ++batchIndex)
+        {
+            for (TransformedShape& lease : leases)
+            {
+                if (!system.RetainShape(worldHandle, shapeHandle, {}, 1.0f, lease))
+                {
+                    allLeasesCreated = false;
+                    break;
+                }
+            }
+            for (TransformedShape& lease : leases)
+            {
+                lease = {};
+            }
+            if (!allLeasesCreated)
+            {
+                break;
+            }
+        }
+        const size_t allocatedBytesAfterReuse = allocator.NumAllocatedBytes();
+
+        EXPECT_TRUE(allLeasesCreated);
+        EXPECT_EQ(allocatedBytesAfterReuse, allocatedBytesBeforeReuse);
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
     }
 
     TEST(SimulationTests, DiagnosticDrawingBatchesGeometryFiltersBodiesAndRestoresWorldCoordinates)

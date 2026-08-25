@@ -32,7 +32,7 @@ the row's complete contract.
 | `J3-AUD-009` | ISA flags follow each target architecture, retain upstream exclusions, enforce SSE4.1 on x86, and disable AVX2/FMA. | 1 | **Implemented** — MSVC and clang-cl x64 native-object commands prove the exact SSE4.1 floor; Xcode slice generation and Apple execution remain external gates. |
 | `J3-AUD-010` | IPO is support-checked, private to its owner, preserves platform guards, and is identical across source/install delivery. | 1 | **Implemented** — clang-cl modular IPO on/off and monolithic-off builds pass; MSVC modular `/GL` and `/LTCG` pass. Fresh installed-delivery and external-platform equality remain final gates. |
 | `J3-AUD-011` | Jolt does not require unrelated installed-Python metadata or non-hermetic package provisioning. | 1 | **Implemented** — the branch-local Python install and launcher-discovery workarounds are removed, and the public source consumer passes. Fresh offline installed-consumer proof remains a final gate. |
-| `J3-AUD-012` | Public retained-shape ABI is precision-independent and meets the selected representation's allocation and query-cost gates. | 4 | **Open** — 32/64-bit precision layout, modular ABI, allocation, and 30-process query comparison required. |
+| `J3-AUD-012` | Public retained-shape ABI is precision-independent and meets the selected representation's allocation and query-cost gates. | 4 | **Implemented** — the public lease is pointer-sized in every precision mode; its bounded private pool passes steady-state allocation, lifetime, clang-cl Release code-generation, and 30-process retained-query gates. Double-precision, MSVC, and installed modular/monolithic builds remain final qualification gates. |
 | `J3-AUD-013` | Contact points are addressable only through the immutable batch that produced their event. | 4 | **Open** — 64-bit batch provenance, cross-batch rejection, reuse, overflow, serialization, and stale-event tests required. |
 | `J3-AUD-014` | Entity request buses have one owner and deterministic result routing. | 4 | **Open** — `Single` policy audit and duplicate-handler rejection tests required. |
 | `J3-AUD-015` | World lifecycle, simulation, queries, rollback, and diagnostics use separate ownership/scoping boundaries. | 4 | **Open** — aggregate removal, bus-policy, BehaviorContext scope, and script-call parity proof required. |
@@ -130,6 +130,33 @@ their own export definition directly, and the modular import library contains al
 every function without native headers or types, links against the clang-cl 22.1.8 Release modular provider, runs a simulation, and
 exits successfully. Static validation fails if any of those calls is removed. Fresh installed modular/monolithic consumers and the
 MSVC matrix remain final qualification gates.
+
+## Stage 4 retained-shape ABI evidence
+
+`TransformedShape` now contains one opaque record pointer, so its public size and alignment equal those of a pointer without depending on
+native precision, alignment, or layout. Native state and retained metadata live in a private 160-byte single-precision record; the
+double-precision build asserts a maximum of 192 bytes and remains part of the final build matrix. Each World retains at most 64 released
+records in an intrusive free list. The free-list link consumes existing tail padding, and an unused World does not allocate pool storage.
+
+Copying a lease performs one relaxed atomic increment. Releasing a non-final copy performs one acquire-release atomic decrement and a
+conditional branch. Final release decrements shape ownership exactly once, clears the native reference, returns the record to the bounded
+cache or deletes it, releases the teardown-safe lease state, and retries deferred shape destruction. The focused allocation test warms 16
+simultaneous leases, then completes 32 additional 16-lease batches without changing `SystemAllocator::NumAllocatedBytes()`.
+
+The complete clang-cl 22.1.8 Debug and Release non-unity suites each pass all 310 tests. The Release test DLL was measured in 30 isolated
+processes with a 0.2-second minimum per query operation:
+
+| Retained pair query | Inline median | Pooled median | Median change | Pooled CV |
+|---|---:|---:|---:|---:|
+| Collision | 148.26 ns | 148.89 ns | +0.42% | 3.61% |
+| Cast | 142.10 ns | 139.26 ns | -2.00% | 1.10% |
+
+Both workloads satisfy the selected representation's maximum 1% median regression and 5% variability gates. Optimized object-code
+inspection reports zero stack bytes and no calls for acquisition, non-final release, and record validation. Acquisition is four
+instructions; release is five instructions with one conditional branch; validation is 16 instructions with three validation branches.
+The final `Jolt.API.dll` SHA-256 is `DE798610C4D6EDB6B0F809B6036777A39551E0711EA4A4C540BC12E33F77FA49`; the measured
+`Jolt.Tests.Gem.dll` SHA-256 is `577770F670B2338C5C7710F64C04489B472AE3E8D76CFB52C661084E307C0C01`. Raw reports and
+disassembly remain beneath `build/jolt-production-readiness/stage4/` and are intentionally not committed.
 
 ## Qualification platforms
 

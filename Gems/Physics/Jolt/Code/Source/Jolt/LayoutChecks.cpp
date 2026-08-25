@@ -18,6 +18,7 @@
 #include <Jolt/Material.h>
 #include <Jolt/Operation.h>
 #include <Jolt/Path.h>
+#include <Jolt/Query.h>
 #include <Jolt/Ragdoll.h>
 #include <Jolt/Skeleton.h>
 #include <Jolt/ShapeConfiguration.h>
@@ -29,6 +30,7 @@
 #include <Jolt/RagdollComponent.h>
 #include <Jolt/SoftBodyComponent.h>
 #include <Jolt/SystemInternal.h>
+#include <Jolt/TransformedShapeLease.h>
 #include <Jolt/VehicleComponents.h>
 
 #include <AzCore/Math/Vector3.h>
@@ -85,6 +87,13 @@ static_assert(sizeof(Jolt::ContactEvent) <= 112);
 static_assert(sizeof(Jolt::ContactPoint) == sizeof(Jolt::WorldPosition) * 2);
 static_assert(sizeof(Jolt::ContactPointView) == sizeof(AZStd::span<const Jolt::ContactPoint>));
 static_assert(sizeof(Jolt::EventBatch) == sizeof(void*));
+static_assert(sizeof(Jolt::TransformedShape) == sizeof(void*));
+static_assert(alignof(Jolt::TransformedShape) == alignof(void*));
+#if JOLT_DOUBLE_PRECISION
+static_assert(sizeof(Jolt::Internal::TransformedShapeLeaseRecord) <= 192);
+#else
+static_assert(sizeof(Jolt::Internal::TransformedShapeLeaseRecord) == 160);
+#endif
 #if defined(AZ_PLATFORM_WINDOWS) && JOLT_ARCH_X64
 static_assert(sizeof(Jolt::FloatEnvironment) == 16);
 #endif

@@ -654,23 +654,7 @@ namespace Jolt
     private:
         friend class World;
 
-        static constexpr size_t NativeStorageSize = 96;
-
-#if JOLT_DOUBLE_PRECISION
-        alignas(32) AZ::u8 m_nativeStorage[NativeStorageSize]{};
-#else
-        alignas(16) AZ::u8 m_nativeStorage[NativeStorageSize]{};
-#endif
-        WorldPosition m_worldOrigin;
-
-        WorldHandle m_worldHandle;
-        BodyHandle m_bodyHandle;
-        MaterialHandle m_materialHandle;
-        ShapeHandle m_shapeHandle;
-
-        AZ::u64 m_userData = 0;
-        ShapeKind m_shapeKind = ShapeKind::None;
-        void* m_leaseOwner = nullptr;
+        void* m_record = nullptr;
     };
 
     struct TransformedTriangle final

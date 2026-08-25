@@ -462,6 +462,19 @@ are not conflated.
 reads. `SimulationTests.SnapshotRecaptureReusesRetainedStorage` proves stable wrapper capacity after warmup. The lifecycle and rollback
 benchmarks publish native traffic, temporary peaks, snapshot bytes, and wrapper-retained bytes as counters on every result.
 
+## Retained transformed-shape representation
+
+The retained-shape API uses a pointer-sized opaque lease instead of embedding precision-dependent native storage in every caller object.
+The private record is 160 bytes in the single-precision build, and each World caches at most 64 released records in an intrusive free
+list. Worlds that never retain a transformed shape allocate no pool storage. After warming the requested concurrency, repeated lease
+creation and destruction does not grow `SystemAllocator` bytes.
+
+Thirty isolated clang-cl 22.1.8 Release processes measured retained shape-pair collision at 148.89 ns median versus 148.26 ns for the
+inline baseline, a 0.42% increase. Retained shape-pair cast measured 139.26 ns versus 142.10 ns, a 2.00% reduction. Variability was 3.61%
+and 1.10%, respectively. The representation therefore stays within the 1% query-cost gate while removing native precision and alignment
+from the public ABI. Optimized acquisition and non-final release have zero-byte stack frames and no out-of-line calls. Double precision,
+MSVC, and installed-consumer measurements remain final qualification gates.
+
 ## Phase 5 absolute workload matrix
 
 The Jolt-specific benchmark suite includes:

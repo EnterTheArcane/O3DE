@@ -116,6 +116,7 @@ namespace Jolt
     namespace
     {
         constexpr AZ::u32 MaximumBarrierJobCount = 2'048;
+        constexpr size_t MaximumCachedTransformedShapeLeaseRecords = 64;
         constexpr AZ::u32 StateArchiveMagic = 0x4A535341;
         constexpr AZ::u32 StateArchiveFormatVersion = 7;
         constexpr AZ::u32 VehicleTrackCount = static_cast<AZ::u32>(JPH::ETrackSide::Num);
@@ -3865,8 +3866,8 @@ namespace Jolt
         using JPH::ShapeFilter::ShouldCollide;
 
         RetainedShapePairFilterAdapter(
-            const TransformedShape& firstShape,
-            const TransformedShape& secondShape,
+            const Internal::TransformedShapeLeaseRecord& firstShape,
+            const Internal::TransformedShapeLeaseRecord& secondShape,
             const IQueryFilter* callback)
             : m_firstShape(firstShape)
             , m_secondShape(secondShape)
@@ -3905,8 +3906,8 @@ namespace Jolt
         }
 
     private:
-        const TransformedShape& m_firstShape;
-        const TransformedShape& m_secondShape;
+        const Internal::TransformedShapeLeaseRecord& m_firstShape;
+        const Internal::TransformedShapeLeaseRecord& m_secondShape;
         const IQueryFilter* m_callback = nullptr;
     };
 
@@ -4529,8 +4530,8 @@ namespace Jolt
         RetainedShapeCollisionCollector(
             const World& world,
             const JPH::RVec3& baseOffset,
-            const TransformedShape& firstShape,
-            const TransformedShape& secondShape,
+            const Internal::TransformedShapeLeaseRecord& firstShape,
+            const Internal::TransformedShapeLeaseRecord& secondShape,
             const JPH::TransformedShape& firstNativeShape,
             const JPH::TransformedShape& secondNativeShape,
             const AZStd::span<TransformedShapeCollisionHit> hits,
@@ -4698,8 +4699,8 @@ namespace Jolt
 
         const World& m_world;
         JPH::RVec3 m_baseOffset;
-        const TransformedShape& m_firstShape;
-        const TransformedShape& m_secondShape;
+        const Internal::TransformedShapeLeaseRecord& m_firstShape;
+        const Internal::TransformedShapeLeaseRecord& m_secondShape;
         const JPH::TransformedShape& m_firstNativeShape;
         const JPH::TransformedShape& m_secondNativeShape;
         AZStd::span<TransformedShapeCollisionHit> m_hits;
@@ -4714,8 +4715,8 @@ namespace Jolt
         RetainedShapeCastCollector(
             const World& world,
             const JPH::RVec3& baseOffset,
-            const TransformedShape& firstShape,
-            const TransformedShape& secondShape,
+            const Internal::TransformedShapeLeaseRecord& firstShape,
+            const Internal::TransformedShapeLeaseRecord& secondShape,
             const JPH::TransformedShape& firstNativeShape,
             const JPH::TransformedShape& secondNativeShape,
             const AZStd::span<TransformedShapeCastHit> hits,
@@ -4859,8 +4860,8 @@ namespace Jolt
 
         const World& m_world;
         JPH::RVec3 m_baseOffset;
-        const TransformedShape& m_firstShape;
-        const TransformedShape& m_secondShape;
+        const Internal::TransformedShapeLeaseRecord& m_firstShape;
+        const Internal::TransformedShapeLeaseRecord& m_secondShape;
         const JPH::TransformedShape& m_firstNativeShape;
         const JPH::TransformedShape& m_secondNativeShape;
         AZStd::span<TransformedShapeCastHit> m_hits;
@@ -4875,8 +4876,8 @@ namespace Jolt
         RetainedShapeCollisionCallback(
             const World& world,
             const JPH::RVec3& baseOffset,
-            const TransformedShape& firstShape,
-            const TransformedShape& secondShape,
+            const Internal::TransformedShapeLeaseRecord& firstShape,
+            const Internal::TransformedShapeLeaseRecord& secondShape,
             const JPH::TransformedShape& firstNativeShape,
             const JPH::TransformedShape& secondNativeShape,
             ITransformedShapeCollisionCollector& collector)
@@ -4964,8 +4965,8 @@ namespace Jolt
     private:
         const World& m_world;
         JPH::RVec3 m_baseOffset;
-        const TransformedShape& m_firstShape;
-        const TransformedShape& m_secondShape;
+        const Internal::TransformedShapeLeaseRecord& m_firstShape;
+        const Internal::TransformedShapeLeaseRecord& m_secondShape;
         const JPH::TransformedShape& m_firstNativeShape;
         const JPH::TransformedShape& m_secondNativeShape;
         ITransformedShapeCollisionCollector& m_collector;
@@ -4983,8 +4984,8 @@ namespace Jolt
         RetainedShapeCastCallback(
             const World& world,
             const JPH::RVec3& baseOffset,
-            const TransformedShape& firstShape,
-            const TransformedShape& secondShape,
+            const Internal::TransformedShapeLeaseRecord& firstShape,
+            const Internal::TransformedShapeLeaseRecord& secondShape,
             const JPH::TransformedShape& firstNativeShape,
             const JPH::TransformedShape& secondNativeShape,
             ITransformedShapeCastCollector& collector,
@@ -5075,8 +5076,8 @@ namespace Jolt
     private:
         const World& m_world;
         JPH::RVec3 m_baseOffset;
-        const TransformedShape& m_firstShape;
-        const TransformedShape& m_secondShape;
+        const Internal::TransformedShapeLeaseRecord& m_firstShape;
+        const Internal::TransformedShapeLeaseRecord& m_secondShape;
         const JPH::TransformedShape& m_firstNativeShape;
         const JPH::TransformedShape& m_secondNativeShape;
         ITransformedShapeCastCollector& m_collector;
@@ -5768,6 +5769,14 @@ namespace Jolt
             m_eventBatchPool->Shutdown();
             m_eventBatchPool = nullptr;
         }
+
+        while (m_transformedShapeLeaseRecordCache)
+        {
+            Internal::TransformedShapeLeaseRecord* record = m_transformedShapeLeaseRecordCache;
+            m_transformedShapeLeaseRecordCache = record->m_nextFree;
+            delete record;
+        }
+        m_transformedShapeLeaseRecordCacheSize = 0;
 
         TransformedShapeLeaseState* leaseState = m_transformedShapeLeaseState;
         bool destroyLeaseState = false;
@@ -26390,12 +26399,12 @@ namespace Jolt
             IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
             m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
-        const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
-        if (!nativeShape
+        const Internal::TransformedShapeLeaseRecord* record = GetTransformedShapeRecord(shape);
+        if (!record
             || !IsFinite(request.m_start)
             || !request.m_displacement.IsFinite()
             || request.m_displacement.IsZero()
-            || (request.m_filter && !request.m_filter->ShouldIncludeBody(shape.m_bodyHandle)))
+            || (request.m_filter && !request.m_filter->ShouldIncludeBody(record->m_bodyHandle)))
         {
             return false;
         }
@@ -26413,14 +26422,14 @@ namespace Jolt
         settings.mTreatConvexAsSolid = request.m_treatConvexAsSolid;
 
         const JPH::RRayCast ray(
-            ToNativePosition(request.m_start, shape.m_worldOrigin),
+            ToNativePosition(request.m_start, record->m_worldOrigin),
             ToNativeVector(request.m_displacement));
         CanonicalClosestHitCollector<JPH::CastRayCollector> collector;
         const StandaloneShapeFilterAdapter filter(
-            shape.m_shapeHandle,
+            record->m_shapeHandle,
             request.m_filter,
-            shape.m_bodyHandle);
-        nativeShape->CastRay(ray, settings, collector, filter);
+            record->m_bodyHandle);
+        record->m_nativeShape.CastRay(ray, settings, collector, filter);
         const bool found = collector.HadHit()
             && BuildTransformedShapeRaycastHit(shape, ray, collector.m_hit, hit);
         statisticsScope.SetCounts(1, 0, found);
@@ -26437,12 +26446,12 @@ namespace Jolt
             IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
             m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
-        const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
-        if (!nativeShape
+        const Internal::TransformedShapeLeaseRecord* record = GetTransformedShapeRecord(shape);
+        if (!record
             || !IsFinite(request.m_start)
             || !request.m_displacement.IsFinite()
             || request.m_displacement.IsZero()
-            || (request.m_filter && !request.m_filter->ShouldIncludeBody(shape.m_bodyHandle)))
+            || (request.m_filter && !request.m_filter->ShouldIncludeBody(record->m_bodyHandle)))
         {
             return {};
         }
@@ -26460,14 +26469,14 @@ namespace Jolt
         settings.mTreatConvexAsSolid = request.m_treatConvexAsSolid;
 
         const JPH::RRayCast ray(
-            ToNativePosition(request.m_start, shape.m_worldOrigin),
+            ToNativePosition(request.m_start, record->m_worldOrigin),
             ToNativeVector(request.m_displacement));
         JPH::AllHitCollisionCollector<JPH::CastRayCollector> collector;
         const StandaloneShapeFilterAdapter filter(
-            shape.m_shapeHandle,
+            record->m_shapeHandle,
             request.m_filter,
-            shape.m_bodyHandle);
-        nativeShape->CastRay(ray, settings, collector, filter);
+            record->m_bodyHandle);
+        record->m_nativeShape.CastRay(ray, settings, collector, filter);
         AZStd::sort(
             collector.mHits.begin(),
             collector.mHits.end(),
@@ -26506,21 +26515,21 @@ namespace Jolt
             IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
             m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
-        const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
-        if (!nativeShape
+        const Internal::TransformedShapeLeaseRecord* record = GetTransformedShapeRecord(shape);
+        if (!record
             || !IsFinite(position)
-            || (filter && !filter->ShouldIncludeBody(shape.m_bodyHandle)))
+            || (filter && !filter->ShouldIncludeBody(record->m_bodyHandle)))
         {
             return {};
         }
 
         JPH::AllHitCollisionCollector<JPH::CollidePointCollector> collector;
         const StandaloneShapeFilterAdapter nativeFilter(
-            shape.m_shapeHandle,
+            record->m_shapeHandle,
             filter,
-            shape.m_bodyHandle);
-        nativeShape->CollidePoint(
-            ToNativePosition(position, shape.m_worldOrigin),
+            record->m_bodyHandle);
+        record->m_nativeShape.CollidePoint(
+            ToNativePosition(position, record->m_worldOrigin),
             collector,
             nativeFilter);
         AZStd::sort(
@@ -26539,9 +26548,9 @@ namespace Jolt
         {
             const JPH::SubShapeID subShapeId = collector.mHits[hitIndex].mSubShapeID2;
             hits[hitIndex] = {
-                .m_bodyHandle = shape.m_bodyHandle,
-                .m_materialHandle = m_system.FindMaterialHandle(nativeShape->GetMaterial(subShapeId)),
-                .m_shapeHandle = shape.m_shapeHandle,
+                .m_bodyHandle = record->m_bodyHandle,
+                .m_materialHandle = m_system.FindMaterialHandle(record->m_nativeShape.GetMaterial(subShapeId)),
+                .m_shapeHandle = record->m_shapeHandle,
                 .m_subShapeId = SubShapeId(subShapeId.GetValue()),
             };
         }
@@ -26559,21 +26568,21 @@ namespace Jolt
             IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
             m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
-        const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
-        if (!nativeShape
+        const Internal::TransformedShapeLeaseRecord* record = GetTransformedShapeRecord(shape);
+        if (!record
             || !IsFinite(position)
-            || (filter && !filter->ShouldIncludeBody(shape.m_bodyHandle)))
+            || (filter && !filter->ShouldIncludeBody(record->m_bodyHandle)))
         {
             return false;
         }
 
         JPH::AnyHitCollisionCollector<JPH::CollidePointCollector> collector;
         const StandaloneShapeFilterAdapter nativeFilter(
-            shape.m_shapeHandle,
+            record->m_shapeHandle,
             filter,
-            shape.m_bodyHandle);
-        nativeShape->CollidePoint(
-            ToNativePosition(position, shape.m_worldOrigin),
+            record->m_bodyHandle);
+        record->m_nativeShape.CollidePoint(
+            ToNativePosition(position, record->m_worldOrigin),
             collector,
             nativeFilter);
         const bool found = collector.HadHit();
@@ -26592,25 +26601,25 @@ namespace Jolt
             IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
             m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
-        const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
-        if (!nativeShape
+        const Internal::TransformedShapeLeaseRecord* record = GetTransformedShapeRecord(shape);
+        if (!record
             || !IsFinite(bounds.m_center)
             || !bounds.m_halfExtents.IsFinite()
             || bounds.m_halfExtents.GetMinElement() < 0.0f
-            || (filter && !filter->ShouldIncludeBody(shape.m_bodyHandle)))
+            || (filter && !filter->ShouldIncludeBody(record->m_bodyHandle)))
         {
             return {};
         }
 
-        const JPH::Vec3 center = ToNativeBroadPhasePosition(bounds.m_center, shape.m_worldOrigin);
+        const JPH::Vec3 center = ToNativeBroadPhasePosition(bounds.m_center, record->m_worldOrigin);
         const JPH::Vec3 halfExtents = ToNativeVector(bounds.m_halfExtents);
         const JPH::AABox nativeBounds(center - halfExtents, center + halfExtents);
         JPH::AllHitCollisionCollector<JPH::TransformedShapeCollector> collector;
         const StandaloneShapeFilterAdapter nativeFilter(
-            shape.m_shapeHandle,
+            record->m_shapeHandle,
             filter,
-            shape.m_bodyHandle);
-        nativeShape->CollectTransformedShapes(nativeBounds, collector, nativeFilter);
+            record->m_bodyHandle);
+        record->m_nativeShape.CollectTransformedShapes(nativeBounds, collector, nativeFilter);
         AZStd::sort(
             collector.mHits.begin(),
             collector.mHits.end(),
@@ -26630,9 +26639,9 @@ namespace Jolt
             TransformedShape& child = children[result.m_hitCount];
             if (InitializeTransformedShape(
                     nativeChild,
-                    shape.m_shapeHandle,
-                    shape.m_bodyHandle,
-                    shape.m_worldOrigin,
+                    record->m_shapeHandle,
+                    record->m_bodyHandle,
+                    record->m_worldOrigin,
                     child))
             {
                 ++result.m_hitCount;
@@ -26652,8 +26661,8 @@ namespace Jolt
             IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
             m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
-        const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
-        if (!nativeShape
+        const Internal::TransformedShapeLeaseRecord* record = GetTransformedShapeRecord(shape);
+        if (!record
             || !IsFinite(bounds.m_center)
             || !bounds.m_halfExtents.IsFinite()
             || bounds.m_halfExtents.GetMinElement() < 0.0f)
@@ -26661,7 +26670,7 @@ namespace Jolt
             return {};
         }
 
-        const JPH::Vec3 center = ToNativeBroadPhasePosition(bounds.m_center, shape.m_worldOrigin);
+        const JPH::Vec3 center = ToNativeBroadPhasePosition(bounds.m_center, record->m_worldOrigin);
         const JPH::Vec3 halfExtents = ToNativeVector(bounds.m_halfExtents);
         const JPH::AABox nativeBounds(center - halfExtents, center + halfExtents);
         const JPH::RVec3 baseOffset(center);
@@ -26672,12 +26681,12 @@ namespace Jolt
         AZStd::array<JPH::Float3, TriangleBatchSize * 3> nativeVertices;
         AZStd::array<const JPH::PhysicsMaterial*, TriangleBatchSize> nativeMaterials;
         JPH::TransformedShape::GetTrianglesContext context;
-        nativeShape->GetTrianglesStart(context, nativeBounds, baseOffset);
+        record->m_nativeShape.GetTrianglesStart(context, nativeBounds, baseOffset);
 
         QueryResult result;
         while (true)
         {
-            const int triangleCount = nativeShape->GetTrianglesNext(
+            const int triangleCount = record->m_nativeShape.GetTrianglesNext(
                 context,
                 TriangleBatchSize,
                 nativeVertices.data(),
@@ -26703,7 +26712,7 @@ namespace Jolt
                 {
                     return FromNativePosition(
                         baseOffset + JPH::Vec3(vertex.x, vertex.y, vertex.z),
-                        shape.m_worldOrigin);
+                        record->m_worldOrigin);
                 };
                 triangles[result.m_hitCount] = {
                     .m_firstVertex = toWorldPosition(nativeVertices[firstVertexIndex]),
@@ -26726,8 +26735,8 @@ namespace Jolt
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::GetTransformedShapeSurfaceNormal");
         DeterministicWorldQueryLock lock(m_mutex);
-        const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
-        if (!nativeShape
+        const Internal::TransformedShapeLeaseRecord* record = GetTransformedShapeRecord(shape);
+        if (!record
             || subShapeId != shape.GetSubShapeId()
             || !IsFinite(position))
         {
@@ -26736,9 +26745,9 @@ namespace Jolt
 
         JPH::SubShapeID nativeSubShapeId;
         nativeSubShapeId.SetValue(subShapeId.GetValue());
-        normal = FromNativeVector(nativeShape->GetWorldSpaceSurfaceNormal(
+        normal = FromNativeVector(record->m_nativeShape.GetWorldSpaceSurfaceNormal(
             nativeSubShapeId,
-            ToNativePosition(position, shape.m_worldOrigin)));
+            ToNativePosition(position, record->m_worldOrigin)));
         return normal.IsFinite();
     }
 
@@ -26750,8 +26759,8 @@ namespace Jolt
     {
         JOLT_PROFILE_SCOPE(Physics, "Jolt::World::GetTransformedShapeSupportingFace");
         DeterministicWorldQueryLock lock(m_mutex);
-        const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
-        if (!nativeShape
+        const Internal::TransformedShapeLeaseRecord* record = GetTransformedShapeRecord(shape);
+        if (!record
             || subShapeId != shape.GetSubShapeId()
             || !direction.IsFinite()
             || direction.IsZero())
@@ -26762,8 +26771,8 @@ namespace Jolt
         JPH::SubShapeID nativeSubShapeId;
         nativeSubShapeId.SetValue(subShapeId.GetValue());
         JPH::Shape::SupportingFace nativeVertices;
-        const JPH::RVec3 baseOffset = nativeShape->mShapePositionCOM;
-        nativeShape->GetSupportingFace(
+        const JPH::RVec3 baseOffset = record->m_nativeShape.mShapePositionCOM;
+        record->m_nativeShape.GetSupportingFace(
             nativeSubShapeId,
             ToNativeVector(direction),
             baseOffset,
@@ -26779,7 +26788,7 @@ namespace Jolt
         {
             vertices[vertexIndex] = FromNativePosition(
                 baseOffset + nativeVertices[vertexIndex],
-                shape.m_worldOrigin);
+                record->m_worldOrigin);
         }
         return result;
     }
@@ -26830,12 +26839,12 @@ namespace Jolt
             IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
             m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
-        const JPH::TransformedShape* firstNativeShape = GetNativeTransformedShape(firstShape);
-        const JPH::TransformedShape* secondNativeShape = GetNativeTransformedShape(secondShape);
+        const Internal::TransformedShapeLeaseRecord* firstRecord = GetTransformedShapeRecord(firstShape);
+        const Internal::TransformedShapeLeaseRecord* secondRecord = GetTransformedShapeRecord(secondShape);
         const float internalEdgeToleranceSq =
             request.m_internalEdgeRemovalVertexTolerance * request.m_internalEdgeRemovalVertexTolerance;
-        if (!firstNativeShape
-            || !secondNativeShape
+        if (!firstRecord
+            || !secondRecord
             || !request.m_activeEdgeMovementDirection.IsFinite()
             || !AZ::IsFiniteFloat(request.m_internalEdgeRemovalVertexTolerance)
             || request.m_internalEdgeRemovalVertexTolerance < 0.0f
@@ -26843,12 +26852,14 @@ namespace Jolt
             || !AZ::IsFiniteFloat(request.m_maximumSeparationDistance)
             || request.m_maximumSeparationDistance < 0.0f
             || (request.m_filter
-                && (!request.m_filter->ShouldIncludeBody(firstShape.m_bodyHandle)
-                    || !request.m_filter->ShouldIncludeBody(secondShape.m_bodyHandle))))
+                && (!request.m_filter->ShouldIncludeBody(firstRecord->m_bodyHandle)
+                    || !request.m_filter->ShouldIncludeBody(secondRecord->m_bodyHandle))))
         {
             return {};
         }
 
+        const JPH::TransformedShape* firstNativeShape = &firstRecord->m_nativeShape;
+        const JPH::TransformedShape* secondNativeShape = &secondRecord->m_nativeShape;
         JPH::CollideShapeSettings settings;
         if (!ApplyShapeQuerySettings(
                 request.m_activeEdgeMode,
@@ -26879,13 +26890,13 @@ namespace Jolt
         RetainedShapeCollisionCollector collector(
             *this,
             baseOffset,
-            firstShape,
-            secondShape,
+            *firstRecord,
+            *secondRecord,
             *firstNativeShape,
             *secondNativeShape,
             hits,
             faceBuffers);
-        const RetainedShapePairFilterAdapter filter(firstShape, secondShape, request.m_filter);
+        const RetainedShapePairFilterAdapter filter(*firstRecord, *secondRecord, request.m_filter);
         if (request.m_removeInternalEdges)
         {
             JPH::InternalEdgeRemovingCollector::sCollideShapeVsShape(
@@ -26932,12 +26943,12 @@ namespace Jolt
             IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
             m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
-        const JPH::TransformedShape* firstNativeShape = GetNativeTransformedShape(firstShape);
-        const JPH::TransformedShape* secondNativeShape = GetNativeTransformedShape(secondShape);
+        const Internal::TransformedShapeLeaseRecord* firstRecord = GetTransformedShapeRecord(firstShape);
+        const Internal::TransformedShapeLeaseRecord* secondRecord = GetTransformedShapeRecord(secondShape);
         const float internalEdgeToleranceSq =
             request.m_internalEdgeRemovalVertexTolerance * request.m_internalEdgeRemovalVertexTolerance;
-        if (!firstNativeShape
-            || !secondNativeShape
+        if (!firstRecord
+            || !secondRecord
             || !request.m_activeEdgeMovementDirection.IsFinite()
             || !AZ::IsFiniteFloat(request.m_internalEdgeRemovalVertexTolerance)
             || request.m_internalEdgeRemovalVertexTolerance < 0.0f
@@ -26945,12 +26956,14 @@ namespace Jolt
             || !AZ::IsFiniteFloat(request.m_maximumSeparationDistance)
             || request.m_maximumSeparationDistance < 0.0f
             || (request.m_filter
-                && (!request.m_filter->ShouldIncludeBody(firstShape.m_bodyHandle)
-                    || !request.m_filter->ShouldIncludeBody(secondShape.m_bodyHandle))))
+                && (!request.m_filter->ShouldIncludeBody(firstRecord->m_bodyHandle)
+                    || !request.m_filter->ShouldIncludeBody(secondRecord->m_bodyHandle))))
         {
             return false;
         }
 
+        const JPH::TransformedShape* firstNativeShape = &firstRecord->m_nativeShape;
+        const JPH::TransformedShape* secondNativeShape = &secondRecord->m_nativeShape;
         JPH::CollideShapeSettings settings;
         if (!ApplyShapeQuerySettings(
                 request.m_activeEdgeMode,
@@ -26981,8 +26994,8 @@ namespace Jolt
         RetainedShapeCollisionCallback nativeCollector(
             *this,
             baseOffset,
-            firstShape,
-            secondShape,
+            *firstRecord,
+            *secondRecord,
             *firstNativeShape,
             *secondNativeShape,
             collector);
@@ -26991,7 +27004,7 @@ namespace Jolt
             return false;
         }
 
-        const RetainedShapePairFilterAdapter filter(firstShape, secondShape, request.m_filter);
+        const RetainedShapePairFilterAdapter filter(*firstRecord, *secondRecord, request.m_filter);
         if (request.m_removeInternalEdges)
         {
             JPH::InternalEdgeRemovingCollector::sCollideShapeVsShape(
@@ -27039,22 +27052,24 @@ namespace Jolt
             IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
             m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
-        const JPH::TransformedShape* firstNativeShape = GetNativeTransformedShape(firstShape);
-        const JPH::TransformedShape* secondNativeShape = GetNativeTransformedShape(secondShape);
-        if (!firstNativeShape
-            || !secondNativeShape
+        const Internal::TransformedShapeLeaseRecord* firstRecord = GetTransformedShapeRecord(firstShape);
+        const Internal::TransformedShapeLeaseRecord* secondRecord = GetTransformedShapeRecord(secondShape);
+        if (!firstRecord
+            || !secondRecord
             || !request.m_displacement.IsFinite()
             || request.m_displacement.IsZero()
             || !AZ::IsFiniteFloat(request.m_maximumFraction)
             || request.m_maximumFraction <= 0.0f
             || request.m_maximumFraction > 1.0f
             || (request.m_filter
-                && (!request.m_filter->ShouldIncludeBody(firstShape.m_bodyHandle)
-                    || !request.m_filter->ShouldIncludeBody(secondShape.m_bodyHandle))))
+                && (!request.m_filter->ShouldIncludeBody(firstRecord->m_bodyHandle)
+                    || !request.m_filter->ShouldIncludeBody(secondRecord->m_bodyHandle))))
         {
             return {};
         }
 
+        const JPH::TransformedShape* firstNativeShape = &firstRecord->m_nativeShape;
+        const JPH::TransformedShape* secondNativeShape = &secondRecord->m_nativeShape;
         JPH::ShapeCastSettings settings;
         if (!ApplyShapeQuerySettings(
                 request.m_activeEdgeMode,
@@ -27088,14 +27103,14 @@ namespace Jolt
         RetainedShapeCastCollector collector(
             *this,
             baseOffset,
-            firstShape,
-            secondShape,
+            *firstRecord,
+            *secondRecord,
             *firstNativeShape,
             *secondNativeShape,
             hits,
             faceBuffers,
             request.m_maximumFraction);
-        const RetainedShapePairFilterAdapter filter(firstShape, secondShape, request.m_filter);
+        const RetainedShapePairFilterAdapter filter(*firstRecord, *secondRecord, request.m_filter);
         JPH::CollisionDispatch::sCastShapeVsShapeWorldSpace(
             localCast,
             settings,
@@ -27122,22 +27137,24 @@ namespace Jolt
             IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Queries),
             m_performanceStatistics);
         DeterministicWorldQueryLock lock(m_mutex);
-        const JPH::TransformedShape* firstNativeShape = GetNativeTransformedShape(firstShape);
-        const JPH::TransformedShape* secondNativeShape = GetNativeTransformedShape(secondShape);
-        if (!firstNativeShape
-            || !secondNativeShape
+        const Internal::TransformedShapeLeaseRecord* firstRecord = GetTransformedShapeRecord(firstShape);
+        const Internal::TransformedShapeLeaseRecord* secondRecord = GetTransformedShapeRecord(secondShape);
+        if (!firstRecord
+            || !secondRecord
             || !request.m_displacement.IsFinite()
             || request.m_displacement.IsZero()
             || !AZ::IsFiniteFloat(request.m_maximumFraction)
             || request.m_maximumFraction <= 0.0f
             || request.m_maximumFraction > 1.0f
             || (request.m_filter
-                && (!request.m_filter->ShouldIncludeBody(firstShape.m_bodyHandle)
-                    || !request.m_filter->ShouldIncludeBody(secondShape.m_bodyHandle))))
+                && (!request.m_filter->ShouldIncludeBody(firstRecord->m_bodyHandle)
+                    || !request.m_filter->ShouldIncludeBody(secondRecord->m_bodyHandle))))
         {
             return false;
         }
 
+        const JPH::TransformedShape* firstNativeShape = &firstRecord->m_nativeShape;
+        const JPH::TransformedShape* secondNativeShape = &secondRecord->m_nativeShape;
         JPH::ShapeCastSettings settings;
         if (!ApplyShapeQuerySettings(
                 request.m_activeEdgeMode,
@@ -27171,8 +27188,8 @@ namespace Jolt
         RetainedShapeCastCallback nativeCollector(
             *this,
             baseOffset,
-            firstShape,
-            secondShape,
+            *firstRecord,
+            *secondRecord,
             *firstNativeShape,
             *secondNativeShape,
             collector,
@@ -27182,7 +27199,7 @@ namespace Jolt
             return false;
         }
 
-        const RetainedShapePairFilterAdapter filter(firstShape, secondShape, request.m_filter);
+        const RetainedShapePairFilterAdapter filter(*firstRecord, *secondRecord, request.m_filter);
         JPH::CollisionDispatch::sCastShapeVsShapeWorldSpace(
             localCast,
             settings,
@@ -32315,38 +32332,40 @@ namespace Jolt
         const JPH::RayCastResult& nativeHit,
         RaycastHit& hit) const
     {
-        const JPH::TransformedShape* nativeShape = GetNativeTransformedShape(shape);
-        if (!nativeShape || nativeHit.mFraction < 0.0f || nativeHit.mFraction > 1.0f)
+        const Internal::TransformedShapeLeaseRecord* record = GetTransformedShapeRecord(shape);
+        if (!record || nativeHit.mFraction < 0.0f || nativeHit.mFraction > 1.0f)
         {
             return false;
         }
 
         const JPH::RVec3 nativePosition = ray.GetPointOnRay(nativeHit.mFraction);
         hit = {
-            .m_position = FromNativePosition(nativePosition, shape.m_worldOrigin),
+            .m_position = FromNativePosition(nativePosition, record->m_worldOrigin),
             .m_normal = FromNativeVector(
-                nativeShape->GetWorldSpaceSurfaceNormal(nativeHit.mSubShapeID2, nativePosition)),
-            .m_bodyHandle = shape.m_bodyHandle,
+                record->m_nativeShape.GetWorldSpaceSurfaceNormal(nativeHit.mSubShapeID2, nativePosition)),
+            .m_bodyHandle = record->m_bodyHandle,
             .m_materialHandle = m_system.FindMaterialHandle(
-                nativeShape->GetMaterial(nativeHit.mSubShapeID2)),
-            .m_shapeHandle = shape.m_shapeHandle,
+                record->m_nativeShape.GetMaterial(nativeHit.mSubShapeID2)),
+            .m_shapeHandle = record->m_shapeHandle,
             .m_subShapeId = SubShapeId(nativeHit.mSubShapeID2.GetValue()),
             .m_fraction = nativeHit.mFraction,
         };
         return IsFinite(hit.m_position) && hit.m_normal.IsFinite();
     }
 
-    const JPH::TransformedShape* World::GetNativeTransformedShape(
+    const Internal::TransformedShapeLeaseRecord* World::GetTransformedShapeRecord(
         const TransformedShape& shape) const
     {
-        if (!shape
-            || shape.m_worldHandle != m_handle
-            || shape.m_leaseOwner != m_transformedShapeLeaseState)
+        const auto* record = static_cast<const Internal::TransformedShapeLeaseRecord*>(shape.m_record);
+        if (!record
+            || !record->m_nativeShape.mShape
+            || record->m_worldHandle != m_handle
+            || record->m_owner != m_transformedShapeLeaseState)
         {
             return nullptr;
         }
 
-        return reinterpret_cast<const JPH::TransformedShape*>(shape.m_nativeStorage);
+        return record;
     }
 
     bool World::InitializeTransformedShape(
@@ -32361,7 +32380,7 @@ namespace Jolt
             return false;
         }
 
-        TransformedShape retainedShape;
+        Internal::TransformedShapeLeaseRecord* record = nullptr;
         {
             AZStd::lock_guard stateLock(m_transformedShapeLeaseState->m_mutex);
             AZStd::lock_guard leaseLock(m_transformedShapeLeaseMutex);
@@ -32372,60 +32391,74 @@ namespace Jolt
                 return false;
             }
 
+            if (m_transformedShapeLeaseRecordCache)
+            {
+                record = m_transformedShapeLeaseRecordCache;
+                m_transformedShapeLeaseRecordCache = record->m_nextFree;
+                --m_transformedShapeLeaseRecordCacheSize;
+            }
+            else
+            {
+                record = aznew Internal::TransformedShapeLeaseRecord;
+            }
+
             ++rootSlot->m_transformedShapeLeaseCount;
             ++m_transformedShapeLeaseState->m_referenceCount;
-            *reinterpret_cast<JPH::TransformedShape*>(retainedShape.m_nativeStorage) = nativeShape;
-            retainedShape.m_worldOrigin = worldOrigin;
-            retainedShape.m_worldHandle = m_handle;
-            retainedShape.m_bodyHandle = bodyHandle;
-            retainedShape.m_materialHandle = m_system.FindMaterialHandle(
+            record->m_referenceCount.store(1, AZStd::memory_order_relaxed);
+            record->m_nativeShape = nativeShape;
+            record->m_worldOrigin = worldOrigin;
+            record->m_worldHandle = m_handle;
+            record->m_bodyHandle = bodyHandle;
+            record->m_materialHandle = m_system.FindMaterialHandle(
                 nativeShape.GetMaterial(nativeShape.mSubShapeIDCreator.GetID()));
-            retainedShape.m_shapeHandle = rootShapeHandle;
-            retainedShape.m_userData = rootSlot->m_shape->GetUserData();
-            retainedShape.m_shapeKind = FromNativeShapeKind(nativeShape.mShape->GetSubType());
-            retainedShape.m_leaseOwner = m_transformedShapeLeaseState;
+            record->m_shapeHandle = rootShapeHandle;
+            record->m_userData = rootSlot->m_shape->GetUserData();
+            record->m_shapeKind = FromNativeShapeKind(nativeShape.mShape->GetSubType());
+            record->m_owner = m_transformedShapeLeaseState;
+            record->m_nextFree = nullptr;
         }
 
+        TransformedShape retainedShape;
+        retainedShape.m_record = record;
         shape = AZStd::move(retainedShape);
         return true;
     }
 
     void Internal::AcquireTransformedShapeLease(
-        void* owner,
-        const ShapeHandle shapeHandle)
+        void* record)
     {
-        auto& state = *static_cast<TransformedShapeLeaseState*>(owner);
-        AZStd::lock_guard stateLock(state.m_mutex);
-        ++state.m_referenceCount;
-        if (World* world = state.m_world)
-        {
-            AZStd::lock_guard leaseLock(world->m_transformedShapeLeaseMutex);
-            World::ShapeSlot* slot = world->FindShape(shapeHandle);
-            AZ_Assert(slot, "Cannot copy a stale transformed-shape lease.");
-            AZ_Assert(
-                !slot || slot->m_transformedShapeLeaseCount < AZStd::numeric_limits<AZ::u32>::max(),
-                "Transformed-shape lease count overflowed.");
-            if (slot && slot->m_transformedShapeLeaseCount < AZStd::numeric_limits<AZ::u32>::max())
-            {
-                ++slot->m_transformedShapeLeaseCount;
-            }
-        }
+        auto* leaseRecord = static_cast<TransformedShapeLeaseRecord*>(record);
+        [[maybe_unused]] const AZ::u64 previousReferenceCount =
+            leaseRecord->m_referenceCount.fetch_add(1, AZStd::memory_order_relaxed);
+        AZ_Assert(previousReferenceCount < AZStd::numeric_limits<AZ::u64>::max(), "Transformed-shape lease count overflowed.");
     }
 
     void Internal::ReleaseTransformedShapeLease(
-        void* owner,
-        const ShapeHandle shapeHandle)
+        void* record)
     {
-        auto* state = static_cast<TransformedShapeLeaseState*>(owner);
+        auto* leaseRecord = static_cast<TransformedShapeLeaseRecord*>(record);
+        if (leaseRecord->m_referenceCount.fetch_sub(1, AZStd::memory_order_acq_rel) != 1)
+        {
+            return;
+        }
+
+        World::ReleaseFinalTransformedShapeLease(leaseRecord);
+    }
+
+    void World::ReleaseFinalTransformedShapeLease(
+        Internal::TransformedShapeLeaseRecord* leaseRecord)
+    {
+        auto* state = static_cast<TransformedShapeLeaseState*>(leaseRecord->m_owner);
         RuntimeImplementation* system = nullptr;
         WorldHandle worldHandle;
         bool destroyState = false;
+        bool destroyRecord = true;
         {
             AZStd::lock_guard stateLock(state->m_mutex);
             if (World* world = state->m_world)
             {
                 AZStd::lock_guard leaseLock(world->m_transformedShapeLeaseMutex);
-                World::ShapeSlot* slot = world->FindShape(shapeHandle);
+                World::ShapeSlot* slot = world->FindShape(leaseRecord->m_shapeHandle);
                 AZ_Assert(
                     slot && slot->m_transformedShapeLeaseCount > 0,
                     "Transformed-shape lease ownership is inconsistent.");
@@ -32435,6 +32468,15 @@ namespace Jolt
                     system = state->m_system;
                     worldHandle = state->m_worldHandle;
                 }
+                leaseRecord->m_nativeShape = {};
+                leaseRecord->m_owner = nullptr;
+                if (world->m_transformedShapeLeaseRecordCacheSize < MaximumCachedTransformedShapeLeaseRecords)
+                {
+                    leaseRecord->m_nextFree = world->m_transformedShapeLeaseRecordCache;
+                    world->m_transformedShapeLeaseRecordCache = leaseRecord;
+                    ++world->m_transformedShapeLeaseRecordCacheSize;
+                    destroyRecord = false;
+                }
             }
             AZ_Assert(state->m_referenceCount > 0, "The transformed-shape lease state reference count underflowed.");
             --state->m_referenceCount;
@@ -32443,6 +32485,10 @@ namespace Jolt
         if (destroyState)
         {
             delete state;
+        }
+        if (destroyRecord)
+        {
+            delete leaseRecord;
         }
         if (system)
         {
