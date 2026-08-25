@@ -28,7 +28,7 @@
 
 #define MAX_PATH_LENGTH 1024
 
-static HWND hwndException = 0;
+[[maybe_unused]] static HWND hwndException = 0;
 static bool g_bUserDialog = true; // true=on crash show dialog box, false=supress user interaction
 
 static constexpr const char* SettingKey_IssueReportLink = "/O3DE/Settings/Links/Issue/Create";

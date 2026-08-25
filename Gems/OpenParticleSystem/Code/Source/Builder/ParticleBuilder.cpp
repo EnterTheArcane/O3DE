@@ -22,7 +22,7 @@ namespace OpenParticle
 {
     namespace
     {
-        static constexpr char const PARTICLE_BUILDER_NAME[] = "ParticleBuilder";
+        [[maybe_unused]] static constexpr char const PARTICLE_BUILDER_NAME[] = "ParticleBuilder";
     }
 
     const char* ParticleBuilder::jobKey = "Particle Builder";

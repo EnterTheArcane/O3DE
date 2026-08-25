@@ -24,7 +24,7 @@ namespace AZ
     namespace DX12
     {
         static const char* DX12ApiName = "dx12";
-        static const char* DX12ShaderPlatformName = "DX12ShaderPlatform";
+        [[maybe_unused]] static const char* DX12ShaderPlatformName = "DX12ShaderPlatform";
         static const char* PlatformShaderHeader = "Builders/ShaderHeaders/Platform/Windows/DX12/PlatformHeader.hlsli";
         static const char* AzslShaderHeader = "Builders/ShaderHeaders/Platform/Windows/DX12/AzslcHeader.azsli";
 

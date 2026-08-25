@@ -19,7 +19,7 @@
 
 namespace PythonCoverage
 {
-    static constexpr const char* const LogCallSite = "PythonCoverageEditorSystemComponent";
+    [[maybe_unused]] static constexpr const char* const LogCallSite = "PythonCoverageEditorSystemComponent";
 
     void PythonCoverageEditorSystemComponent::Reflect(AZ::ReflectContext* context)
     {
