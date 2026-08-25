@@ -2693,6 +2693,123 @@ namespace Jolt
             }
             return digest;
         }
+
+        [[nodiscard]]
+        WorldStateDigest SimulateDeterministicCharacterMembership(
+            const AZ::u32 workerCount,
+            AZ::JobContext* jobContext)
+        {
+            SystemConfiguration configuration;
+            configuration.m_defaultWorld.m_workerCount = workerCount;
+            Runtime system(configuration, jobContext);
+            if (!system)
+            {
+                return {};
+            }
+
+            const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+            ShapeConfiguration floorShapeConfiguration;
+            floorShapeConfiguration.m_geometry = BoxShapeConfiguration{
+                .m_dimensions = AZ::Vector3(32.0f, 32.0f, 1.0f),
+            };
+            const ShapeHandle floorShapeHandle = system.CreateShape(worldHandle, floorShapeConfiguration);
+            BodyConfiguration floorConfiguration;
+            floorConfiguration.m_shapeHandle = floorShapeHandle;
+            floorConfiguration.m_transform.m_position.m_z = -0.5;
+            floorConfiguration.m_motionType = MotionType::Static;
+            const BodyHandle floorBodyHandle = system.CreateBody(worldHandle, floorConfiguration);
+
+            ShapeConfiguration characterShapeConfiguration;
+            characterShapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.4f};
+            const ShapeHandle characterShapeHandle = system.CreateShape(worldHandle, characterShapeConfiguration);
+            if (!floorShapeHandle || !floorBodyHandle || !characterShapeHandle)
+            {
+                return {};
+            }
+
+            constexpr AZ::u32 characterCount = 32;
+            AZStd::array<CharacterHandle, characterCount> characterHandles;
+            for (AZ::u32 characterIndex = 0; characterIndex < characterCount; ++characterIndex)
+            {
+                CharacterConfiguration characterConfiguration;
+                characterConfiguration.m_shapeHandle = characterShapeHandle;
+                characterConfiguration.m_transform.m_position = {
+                    .m_x = 1.5 * static_cast<double>(characterIndex % 8) - 5.25,
+                    .m_y = 1.5 * static_cast<double>(characterIndex / 8) - 2.25,
+                    .m_z = 1.0 + 0.025 * static_cast<double>(characterIndex),
+                };
+                characterHandles[characterIndex] = system.CreateCharacter(worldHandle, characterConfiguration);
+                if (!characterHandles[characterIndex]
+                    || !system.SetCharacterVelocity(
+                        worldHandle,
+                        characterHandles[characterIndex],
+                        AZ::Vector3::CreateAxisX(0.05f * static_cast<float>(characterIndex % 4))))
+                {
+                    return {};
+                }
+            }
+
+            for (AZ::u32 step = 0; step < 30; ++step)
+            {
+                if (!system.StepWorld(worldHandle, 1.0f / 60.0f))
+                {
+                    return {};
+                }
+            }
+
+            for (size_t characterIndex = 0; characterIndex < characterHandles.size(); characterIndex += 2)
+            {
+                if (!system.RemoveCharacterFromSimulation(worldHandle, characterHandles[characterIndex]))
+                {
+                    return {};
+                }
+            }
+            for (AZ::u32 step = 0; step < 10; ++step)
+            {
+                if (!system.StepWorld(worldHandle, 1.0f / 60.0f))
+                {
+                    return {};
+                }
+            }
+
+            for (size_t characterIndex = 0; characterIndex < characterHandles.size(); characterIndex += 2)
+            {
+                CharacterState state;
+                if (!system.GetCharacterState(worldHandle, characterHandles[characterIndex], state))
+                {
+                    return {};
+                }
+                state.m_transform.m_position.m_z = 2.0 + 0.025 * static_cast<double>(characterIndex);
+                if (!system.SetCharacterTransform(worldHandle, characterHandles[characterIndex], state.m_transform, false)
+                    || !system.SetCharacterVelocity(
+                        worldHandle,
+                        characterHandles[characterIndex],
+                        AZ::Vector3::CreateAxisY(0.05f * static_cast<float>(characterIndex % 6)))
+                    || !system.AddCharacterToSimulation(worldHandle, characterHandles[characterIndex], true))
+                {
+                    return {};
+                }
+            }
+
+            for (AZ::u32 step = 0; step < 90; ++step)
+            {
+                if (!system.StepWorld(worldHandle, 1.0f / 60.0f))
+                {
+                    return {};
+                }
+            }
+
+            WorldStatistics statistics;
+            WorldStateDigest digest;
+            if (!system.GetWorldStatistics(worldHandle, statistics)
+                || statistics.m_requestedWorkerCount != workerCount
+                || statistics.m_effectiveWorkerCount != workerCount
+                || !system.GetWorldStateDigest(worldHandle, digest))
+            {
+                return {};
+            }
+            return digest;
+        }
     } // namespace
 
     TEST(SimulationTests, RuntimeInfoReportsDeterministicCpuHair)
@@ -10232,6 +10349,135 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyShape(worldHandle, floorShapeHandle));
     }
 
+    TEST(SimulationTests, CharacterSimulationMembershipPreservesIdentityStateSnapshotsAndMoveEvents)
+    {
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
+        Runtime system(systemConfiguration, nullptr);
+        ASSERT_TRUE(system);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        WorldConfiguration otherWorldConfiguration;
+        otherWorldConfiguration.m_gravity = AZ::Vector3::CreateZero();
+        const WorldHandle otherWorldHandle = system.CreateWorld(otherWorldConfiguration);
+        ASSERT_TRUE(otherWorldHandle);
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.5f};
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+        ASSERT_TRUE(shapeHandle);
+
+        CharacterConfiguration characterConfiguration;
+        characterConfiguration.m_shapeHandle = shapeHandle;
+        characterConfiguration.m_transform.m_position = {.m_x = 1.0, .m_y = 2.0, .m_z = 3.0};
+        const CharacterHandle characterHandle = system.CreateCharacter(worldHandle, characterConfiguration);
+        ASSERT_TRUE(characterHandle);
+        EXPECT_TRUE(system.IsCharacterInSimulation(worldHandle, characterHandle));
+
+        CharacterState initialState;
+        ASSERT_TRUE(system.GetCharacterState(worldHandle, characterHandle, initialState));
+        const BodyHandle bodyHandle = initialState.m_bodyHandle;
+        ASSERT_TRUE(bodyHandle);
+        EXPECT_TRUE(initialState.m_isInSimulation);
+        ASSERT_TRUE(system.SetBodyMoveEventsEnabled(worldHandle, bodyHandle, true));
+        ASSERT_TRUE(system.SetBodyVelocities(
+            worldHandle,
+            bodyHandle,
+            AZ::Vector3::CreateAxisX(2.0f),
+            AZ::Vector3::CreateAxisZ(0.5f)));
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+
+        const EventBatch initialEvents = system.GetEvents(worldHandle);
+        ASSERT_EQ(initialEvents.GetBodyMoves().size(), 1);
+        EXPECT_EQ(initialEvents.GetBodyMoves().front().m_bodyHandle, bodyHandle);
+
+        CharacterState stateBeforeRemoval;
+        ASSERT_TRUE(system.GetCharacterState(worldHandle, characterHandle, stateBeforeRemoval));
+        BodyState bodyStateBeforeRemoval;
+        ASSERT_TRUE(system.GetBodyState(worldHandle, bodyHandle, bodyStateBeforeRemoval));
+        const StateSnapshotHandle addedSnapshotHandle = system.CaptureBodyState(worldHandle, bodyHandle);
+        ASSERT_TRUE(addedSnapshotHandle);
+
+        ASSERT_TRUE(system.RemoveCharacterFromSimulation(worldHandle, characterHandle));
+        EXPECT_FALSE(system.IsCharacterInSimulation(worldHandle, characterHandle));
+        EXPECT_FALSE(system.RemoveCharacterFromSimulation(worldHandle, characterHandle));
+        EXPECT_FALSE(system.IsCharacterInSimulation(otherWorldHandle, characterHandle));
+        EXPECT_FALSE(system.AddCharacterToSimulation(otherWorldHandle, characterHandle, true));
+        EXPECT_FALSE(system.RemoveCharacterFromSimulation(otherWorldHandle, characterHandle));
+
+        CharacterState detachedState;
+        ASSERT_TRUE(system.GetCharacterState(worldHandle, characterHandle, detachedState));
+        EXPECT_EQ(detachedState.m_bodyHandle, bodyHandle);
+        EXPECT_EQ(detachedState.m_shapeHandle, shapeHandle);
+        EXPECT_EQ(detachedState.m_transform.m_position, stateBeforeRemoval.m_transform.m_position);
+        EXPECT_EQ(detachedState.m_transform.m_rotation, stateBeforeRemoval.m_transform.m_rotation);
+        EXPECT_EQ(detachedState.m_linearVelocity, stateBeforeRemoval.m_linearVelocity);
+        EXPECT_FALSE(detachedState.m_isInSimulation);
+        EXPECT_TRUE(system.IsValid(worldHandle, characterHandle));
+        EXPECT_TRUE(system.IsValid(worldHandle, bodyHandle));
+        BodyState detachedBodyState;
+        ASSERT_TRUE(system.GetBodyState(worldHandle, bodyHandle, detachedBodyState));
+        EXPECT_EQ(detachedBodyState.m_linearVelocity, bodyStateBeforeRemoval.m_linearVelocity);
+        EXPECT_EQ(detachedBodyState.m_angularVelocity, bodyStateBeforeRemoval.m_angularVelocity);
+
+        const StateRestoreResult staleRestore = system.RestoreBodyState(worldHandle, addedSnapshotHandle);
+        EXPECT_EQ(staleRestore.m_status, StateRestoreStatus::Rejected);
+        EXPECT_FALSE(system.IsCharacterInSimulation(worldHandle, characterHandle));
+
+        const StateSnapshotHandle detachedSnapshotHandle = system.CaptureBodyState(worldHandle, bodyHandle);
+        ASSERT_TRUE(detachedSnapshotHandle);
+        WorldTransform mutatedTransform = detachedState.m_transform;
+        mutatedTransform.m_position = {.m_x = -7.0, .m_y = 8.0, .m_z = 9.0};
+        ASSERT_TRUE(system.SetCharacterTransform(worldHandle, characterHandle, mutatedTransform, false));
+        ASSERT_TRUE(system.SetCharacterVelocity(worldHandle, characterHandle, AZ::Vector3::CreateAxisY(5.0f)));
+        ASSERT_TRUE(system.RestoreBodyState(worldHandle, detachedSnapshotHandle));
+
+        CharacterState restoredState;
+        ASSERT_TRUE(system.GetCharacterState(worldHandle, characterHandle, restoredState));
+        EXPECT_EQ(restoredState.m_bodyHandle, bodyHandle);
+        EXPECT_EQ(restoredState.m_transform.m_position, detachedState.m_transform.m_position);
+        EXPECT_EQ(restoredState.m_transform.m_rotation, detachedState.m_transform.m_rotation);
+        EXPECT_EQ(restoredState.m_linearVelocity, detachedState.m_linearVelocity);
+        EXPECT_FALSE(restoredState.m_isInSimulation);
+
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        const EventBatch detachedEvents = system.GetEvents(worldHandle);
+        EXPECT_TRUE(detachedEvents.GetBodyMoves().empty());
+
+        ASSERT_TRUE(system.AddCharacterToSimulation(worldHandle, characterHandle, false));
+        EXPECT_FALSE(system.AddCharacterToSimulation(worldHandle, characterHandle, false));
+        ASSERT_TRUE(system.GetCharacterState(worldHandle, characterHandle, restoredState));
+        EXPECT_EQ(restoredState.m_bodyHandle, bodyHandle);
+        EXPECT_EQ(restoredState.m_transform.m_position, detachedState.m_transform.m_position);
+        EXPECT_EQ(restoredState.m_transform.m_rotation, detachedState.m_transform.m_rotation);
+        EXPECT_EQ(restoredState.m_linearVelocity, detachedState.m_linearVelocity);
+        EXPECT_TRUE(restoredState.m_isInSimulation);
+        BodyState readdedBodyState;
+        ASSERT_TRUE(system.GetBodyState(worldHandle, bodyHandle, readdedBodyState));
+        EXPECT_EQ(readdedBodyState.m_linearVelocity, detachedBodyState.m_linearVelocity);
+        EXPECT_EQ(readdedBodyState.m_angularVelocity, detachedBodyState.m_angularVelocity);
+
+        ASSERT_TRUE(system.RemoveCharacterFromSimulation(worldHandle, characterHandle));
+        ASSERT_TRUE(system.AddCharacterToSimulation(worldHandle, characterHandle, true));
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        const EventBatch resumedEvents = system.GetEvents(worldHandle);
+        ASSERT_EQ(resumedEvents.GetBodyMoves().size(), 1);
+        EXPECT_EQ(resumedEvents.GetBodyMoves().front().m_bodyHandle, bodyHandle);
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, detachedSnapshotHandle));
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, addedSnapshotHandle));
+        ASSERT_TRUE(system.RemoveCharacterFromSimulation(worldHandle, characterHandle));
+        EXPECT_TRUE(system.DestroyCharacter(worldHandle, characterHandle));
+        EXPECT_FALSE(system.IsValid(worldHandle, characterHandle));
+        EXPECT_FALSE(system.IsValid(worldHandle, bodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+        EXPECT_TRUE(system.DestroyWorld(otherWorldHandle));
+
+        EXPECT_FALSE(system.IsCharacterInSimulation(worldHandle, CharacterHandle::Invalid));
+        EXPECT_FALSE(system.AddCharacterToSimulation(worldHandle, CharacterHandle::Invalid, true));
+        EXPECT_FALSE(system.RemoveCharacterFromSimulation(worldHandle, CharacterHandle::Invalid));
+    }
+
     TEST(SimulationTests, VehiclesRejectUnaddedChassisWithoutMutatingWorld)
     {
         Runtime system(CreateSerialSystemConfiguration(), nullptr);
@@ -14963,6 +15209,28 @@ namespace Jolt
             SimulateDeterministicRagdoll(4, &jobContext);
         EXPECT_EQ(externalSerialRagdollDigest, serialRagdollDigest);
         EXPECT_EQ(externalParallelRagdollDigest, serialRagdollDigest);
+    }
+
+    TEST(SimulationTests, CharacterMembershipTransitionsAreDeterministicAcrossWorkerCounts)
+    {
+        const WorldStateDigest serialDigest = SimulateDeterministicCharacterMembership(1, nullptr);
+        ASSERT_GT(serialDigest.m_stateByteCount, 0);
+
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(8);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        const WorldStateDigest externalSerialDigest = SimulateDeterministicCharacterMembership(1, &jobContext);
+        const WorldStateDigest fourWorkerDigest = SimulateDeterministicCharacterMembership(4, &jobContext);
+        const WorldStateDigest eightWorkerDigest = SimulateDeterministicCharacterMembership(8, &jobContext);
+
+        ASSERT_GT(externalSerialDigest.m_stateByteCount, 0);
+        ASSERT_GT(fourWorkerDigest.m_stateByteCount, 0);
+        ASSERT_GT(eightWorkerDigest.m_stateByteCount, 0);
+        EXPECT_EQ(externalSerialDigest, serialDigest);
+        EXPECT_EQ(fourWorkerDigest, serialDigest);
+        EXPECT_EQ(eightWorkerDigest, serialDigest);
     }
 
     TEST(SimulationTests, SimulationRestoresCallingThreadFloatEnvironment)

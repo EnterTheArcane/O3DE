@@ -323,7 +323,35 @@ def run_characters():
         recorder.capture(
             "physical character state",
             lambda: jolt.JoltCharacterRequestBus(bus.Event, "GetState", character_id),
-            lambda state: state.shapeHandle.IsValid(),
+            lambda state: state.bodyHandle.IsValid()
+            and state.shapeHandle.IsValid()
+            and state.isInSimulation,
+        )
+        recorder.capture(
+            "physical character disabled without destroying identity",
+            lambda: jolt.JoltCharacterRequestBus(bus.Event, "DisableSimulation", character_id),
+        )
+        recorder.capture(
+            "physical character reports disabled",
+            lambda: not jolt.JoltCharacterRequestBus(bus.Event, "IsSimulationEnabled", character_id),
+        )
+        recorder.capture(
+            "physical character resources remain while disabled",
+            lambda: jolt.JoltCharacterRequestBus(bus.Event, "GetState", character_id),
+            lambda state: state.bodyHandle.IsValid()
+            and state.shapeHandle.IsValid()
+            and not state.isInSimulation,
+        )
+        recorder.capture(
+            "physical character re-enabled",
+            lambda: jolt.JoltCharacterRequestBus(bus.Event, "EnableSimulation", character_id),
+        )
+        recorder.capture(
+            "physical character membership restored",
+            lambda: jolt.JoltCharacterRequestBus(bus.Event, "GetState", character_id),
+            lambda state: state.bodyHandle.IsValid()
+            and state.shapeHandle.IsValid()
+            and state.isInSimulation,
         )
         recorder.capture(
             "virtual character contact tracking",

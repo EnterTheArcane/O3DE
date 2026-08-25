@@ -7,9 +7,11 @@
 
 #include <Jolt/BodyConfiguration.h>
 #include <Jolt/Capabilities/Bodies.h>
+#include <Jolt/Capabilities/Characters.h>
 #include <Jolt/Capabilities/Shapes.h>
 #include <Jolt/Capabilities/WorldSimulation.h>
 #include <Jolt/Capabilities/Worlds.h>
+#include <Jolt/Character.h>
 #include <Jolt/DebugDraw.h>
 #include <Jolt/Diagnostics.h>
 #include <Jolt/Event.h>
@@ -71,8 +73,9 @@ namespace
         Jolt::Worlds* worlds = Jolt::Worlds::Get();
         Jolt::Shapes* shapes = Jolt::Shapes::Get();
         Jolt::Bodies* bodies = Jolt::Bodies::Get();
+        Jolt::Characters* characters = Jolt::Characters::Get();
         Jolt::WorldSimulation* simulation = Jolt::WorldSimulation::Get();
-        if (!worlds || !shapes || !bodies || !simulation)
+        if (!worlds || !shapes || !bodies || !characters || !simulation)
         {
             return 3;
         }
@@ -112,10 +115,32 @@ namespace
         const bool moved = bodies->GetBodyState(worldHandle, bodyHandle, bodyState)
             && bodyState.m_transform.m_position.m_z < 2.0;
         const bool destroyedBody = bodies->DestroyBody(worldHandle, bodyHandle);
-        const bool destroyedShape = shapes->DestroyShape(worldHandle, shapeHandle);
-        if (!moved || !destroyedBody || !destroyedShape)
+        if (!moved || !destroyedBody)
         {
             return 8;
+        }
+
+        Jolt::CharacterConfiguration characterConfiguration;
+        characterConfiguration.m_shapeHandle = shapeHandle;
+        characterConfiguration.m_transform.m_position.m_z = 2.0;
+        const Jolt::CharacterHandle characterHandle = characters->CreateCharacter(worldHandle, characterConfiguration);
+        Jolt::CharacterState characterState;
+        if (!characterHandle
+            || !characters->IsCharacterInSimulation(worldHandle, characterHandle)
+            || !characters->GetCharacterState(worldHandle, characterHandle, characterState)
+            || !characterState.m_isInSimulation
+            || !characters->RemoveCharacterFromSimulation(worldHandle, characterHandle)
+            || characters->IsCharacterInSimulation(worldHandle, characterHandle)
+            || !characters->AddCharacterToSimulation(worldHandle, characterHandle, false)
+            || !characters->IsCharacterInSimulation(worldHandle, characterHandle)
+            || !characters->DestroyCharacter(worldHandle, characterHandle))
+        {
+            return 9;
+        }
+
+        if (!shapes->DestroyShape(worldHandle, shapeHandle))
+        {
+            return 10;
         }
 
         return 0;

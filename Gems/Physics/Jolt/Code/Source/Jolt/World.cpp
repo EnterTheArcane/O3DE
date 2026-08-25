@@ -5926,9 +5926,12 @@ namespace Jolt
         {
             if (slot.m_character)
             {
-                slot.m_character->RemoveFromPhysicsSystem();
                 if (BodySlot* bodySlot = FindBody(slot.m_bodyHandle))
                 {
+                    if (bodyInterface.IsAdded(bodySlot->m_bodyId))
+                    {
+                        slot.m_character->RemoveFromPhysicsSystem();
+                    }
                     m_system.ReleaseGroupFilter(bodySlot->m_groupFilterHandle, m_handle);
                     bodySlot->m_groupFilterHandle = {};
                     bodySlot->m_bodyId = JPH::BodyID();
@@ -14178,6 +14181,69 @@ namespace Jolt
         return characterHandle;
     }
 
+    bool World::AddCharacterToSimulation(
+        const CharacterHandle characterHandle,
+        const bool activate)
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::AddCharacterToSimulation");
+
+        AZStd::lock_guard lock(m_mutex);
+        CharacterSlot* characterSlot = FindCharacter(characterHandle);
+        if (!characterSlot)
+        {
+            return false;
+        }
+
+        const BodySlot* bodySlot = FindBody(characterSlot->m_bodyHandle);
+        JPH::BodyInterface& bodyInterface = m_physicsSystem.GetBodyInterface();
+        if (!bodySlot
+            || bodySlot->m_isDestroying
+            || bodyInterface.IsAdded(bodySlot->m_bodyId)
+            || !AdvanceConfigurationRevision())
+        {
+            return false;
+        }
+
+        JPH::EActivation activation = JPH::EActivation::DontActivate;
+        if (activate)
+        {
+            activation = JPH::EActivation::Activate;
+        }
+        characterSlot->m_character->AddToPhysicsSystem(activation);
+        return true;
+    }
+
+    bool World::RemoveCharacterFromSimulation(
+        const CharacterHandle characterHandle)
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::RemoveCharacterFromSimulation");
+
+        AZStd::lock_guard lock(m_mutex);
+        CharacterSlot* characterSlot = FindCharacter(characterHandle);
+        if (!characterSlot)
+        {
+            return false;
+        }
+
+        const BodySlot* bodySlot = FindBody(characterSlot->m_bodyHandle);
+        JPH::BodyInterface& bodyInterface = m_physicsSystem.GetBodyInterface();
+        if (!bodySlot
+            || bodySlot->m_isDestroying
+            || !bodyInterface.IsAdded(bodySlot->m_bodyId)
+            || !AdvanceConfigurationRevision())
+        {
+            return false;
+        }
+
+        JPH::Vec3 linearVelocity;
+        JPH::Vec3 angularVelocity;
+        bodyInterface.GetLinearAndAngularVelocity(bodySlot->m_bodyId, linearVelocity, angularVelocity);
+        characterSlot->m_character->RemoveFromPhysicsSystem();
+        bodyInterface.SetLinearAndAngularVelocity(bodySlot->m_bodyId, linearVelocity, angularVelocity);
+        MaintainBroadPhaseAfterBodyRemovals(1);
+        return true;
+    }
+
     bool World::DestroyCharacter(
         const CharacterHandle characterHandle)
     {
@@ -14205,8 +14271,13 @@ namespace Jolt
         [[maybe_unused]] const bool moveEventsDisabled =
             SetBodyMoveEventsEnabled(characterSlot->m_bodyHandle, false);
         AZ_Assert(moveEventsDisabled, "A character body move subscription must be removable during destruction.");
-        characterSlot->m_character->RemoveFromPhysicsSystem();
-        MaintainBroadPhaseAfterBodyRemovals(1);
+        AZ::u32 removedBodyCount = 0;
+        if (m_physicsSystem.GetBodyInterface().IsAdded(bodySlot->m_bodyId))
+        {
+            characterSlot->m_character->RemoveFromPhysicsSystem();
+            removedBodyCount = 1;
+        }
+        MaintainBroadPhaseAfterBodyRemovals(removedBodyCount);
         characterSlot->m_character = nullptr;
         ReleaseBodySlot(characterSlot->m_bodyHandle, *bodySlot);
         Internal::ReleaseHandleSlot(m_characterSlots, m_freeCharacterSlots, characterParts.m_index);
@@ -14314,8 +14385,13 @@ namespace Jolt
         [[maybe_unused]] const bool moveEventsDisabled =
             SetBodyMoveEventsEnabled(characterSlot->m_bodyHandle, false);
         AZ_Assert(moveEventsDisabled, "A character body move subscription must be removable during destruction.");
-        characterSlot->m_character->RemoveFromPhysicsSystem();
-        MaintainBroadPhaseAfterBodyRemovals(1);
+        AZ::u32 removedBodyCount = 0;
+        if (m_physicsSystem.GetBodyInterface().IsAdded(bodySlot->m_bodyId))
+        {
+            characterSlot->m_character->RemoveFromPhysicsSystem();
+            removedBodyCount = 1;
+        }
+        MaintainBroadPhaseAfterBodyRemovals(removedBodyCount);
         characterSlot->m_character = nullptr;
         ReleaseBodySlot(characterSlot->m_bodyHandle, *bodySlot);
         Internal::ReleaseHandleSlot(m_characterSlots, m_freeCharacterSlots, characterParts.m_index);
@@ -14333,6 +14409,22 @@ namespace Jolt
 
         const BodySlot* bodySlot = FindBody(characterSlot->m_bodyHandle);
         return bodySlot && bodySlot->m_isDestroying;
+    }
+
+    bool World::IsCharacterInSimulation(
+        const CharacterHandle characterHandle) const
+    {
+        JOLT_PROFILE_SCOPE(Physics, "Jolt::World::IsCharacterInSimulation");
+
+        AZStd::lock_guard lock(m_mutex);
+        const CharacterSlot* characterSlot = FindCharacter(characterHandle);
+        if (!characterSlot)
+        {
+            return false;
+        }
+
+        const BodySlot* bodySlot = FindBody(characterSlot->m_bodyHandle);
+        return bodySlot && m_physicsSystem.GetBodyInterface().IsAdded(bodySlot->m_bodyId);
     }
 
     JOLT_CAPTURE_COLD bool World::UpdateVirtualCharacterWithDebugCapture(
@@ -14416,6 +14508,7 @@ namespace Jolt
             .m_name = slot->m_name,
             .m_userData = slot->m_userData,
             .m_groundState = FromNativeGroundState(character.GetGroundState()),
+            .m_isInSimulation = m_physicsSystem.GetBodyInterface().IsAdded(character.GetBodyID()),
             .m_isSupported = character.IsSupported(),
         };
         return true;
@@ -30635,7 +30728,8 @@ namespace Jolt
 
         for (CharacterSlot& slot : m_characterSlots)
         {
-            if (slot.m_character)
+            if (slot.m_character
+                && m_physicsSystem.GetBodyInterface().IsAdded(slot.m_character->GetBodyID()))
             {
                 slot.m_character->PostSimulation(slot.m_maximumSeparationDistance);
             }

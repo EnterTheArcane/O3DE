@@ -180,9 +180,23 @@ namespace Jolt
             WorldHandle worldHandle,
             const CharacterConfiguration& configuration);
 
+        bool AddCharacterToSimulation(
+            WorldHandle worldHandle,
+            CharacterHandle characterHandle,
+            bool activate);
+
+        bool RemoveCharacterFromSimulation(
+            WorldHandle worldHandle,
+            CharacterHandle characterHandle);
+
         bool DestroyCharacter(
             WorldHandle worldHandle,
             CharacterHandle characterHandle);
+
+        [[nodiscard]]
+        bool IsCharacterInSimulation(
+            WorldHandle worldHandle,
+            CharacterHandle characterHandle) const;
 
         [[nodiscard]]
         bool IsValid(

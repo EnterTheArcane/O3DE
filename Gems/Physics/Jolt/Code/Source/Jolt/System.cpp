@@ -8375,6 +8375,25 @@ namespace Jolt
         return {};
     }
 
+    bool RuntimeImplementation::AddCharacterToSimulation(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle,
+        const bool activate)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->AddCharacterToSimulation(characterHandle, activate);
+    }
+
+    bool RuntimeImplementation::RemoveCharacterFromSimulation(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle)
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        World* world = FindWorldUnlocked(worldHandle);
+        return world && world->RemoveCharacterFromSimulation(characterHandle);
+    }
+
     bool RuntimeImplementation::DestroyCharacter(
         const WorldHandle worldHandle,
         const CharacterHandle characterHandle)
@@ -8433,6 +8452,15 @@ namespace Jolt
         AZStd::shared_lock lock(m_worldMutex);
         const World* world = FindWorldUnlocked(worldHandle);
         return world && world->IsCharacterDestructionReserved(characterHandle);
+    }
+
+    bool RuntimeImplementation::IsCharacterInSimulation(
+        const WorldHandle worldHandle,
+        const CharacterHandle characterHandle) const
+    {
+        AZStd::shared_lock lock(m_worldMutex);
+        const World* world = FindWorldUnlocked(worldHandle);
+        return world && world->IsCharacterInSimulation(characterHandle);
     }
 
     bool RuntimeImplementation::IsValid(

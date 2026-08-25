@@ -3254,11 +3254,33 @@ namespace Jolt
         return GetRuntimeImplementation(*this).CreateCharacter(worldHandle, configuration);
     }
 
+    bool Characters::AddCharacterToSimulation(
+        WorldHandle worldHandle,
+        CharacterHandle characterHandle,
+        bool activate)
+    {
+        return GetRuntimeImplementation(*this).AddCharacterToSimulation(worldHandle, characterHandle, activate);
+    }
+
+    bool Characters::RemoveCharacterFromSimulation(
+        WorldHandle worldHandle,
+        CharacterHandle characterHandle)
+    {
+        return GetRuntimeImplementation(*this).RemoveCharacterFromSimulation(worldHandle, characterHandle);
+    }
+
     bool Characters::DestroyCharacter(
         WorldHandle worldHandle,
         CharacterHandle characterHandle)
     {
         return GetRuntimeImplementation(*this).DestroyCharacter(worldHandle, characterHandle);
+    }
+
+    bool Characters::IsCharacterInSimulation(
+        WorldHandle worldHandle,
+        CharacterHandle characterHandle) const
+    {
+        return GetRuntimeImplementation(*this).IsCharacterInSimulation(worldHandle, characterHandle);
     }
 
     bool Characters::IsValid(

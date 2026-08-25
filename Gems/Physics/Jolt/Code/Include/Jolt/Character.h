@@ -86,6 +86,7 @@ namespace Jolt
         AZ::u64 m_userData = 0;
         GroundState m_groundState = GroundState::None;
 
+        bool m_isInSimulation = false;
         bool m_isSupported = false;
     };
 

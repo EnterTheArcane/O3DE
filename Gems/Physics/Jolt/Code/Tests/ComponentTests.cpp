@@ -1372,6 +1372,104 @@ namespace Jolt
         }
     }
 
+    TEST(ComponentTests, CharacterSimulationMembershipPreservesComponentResources)
+    {
+        ComponentNameDictionaryScope nameDictionary;
+        ComponentApplicationScope componentApplication;
+        AZ::ComponentDescriptor* transformDescriptor = AzFramework::TransformComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* colliderDescriptor = ColliderComponent::CreateDescriptor();
+        AZ::ComponentDescriptor* characterDescriptor = CharacterControllerComponent::CreateDescriptor();
+        const AZStd::array descriptors = {
+            transformDescriptor,
+            colliderDescriptor,
+            characterDescriptor,
+        };
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::RegisterComponentDescriptor,
+                descriptor);
+        }
+
+        Runtime system(CreateComponentSystemConfiguration(), nullptr);
+        ASSERT_TRUE(system);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+
+        ColliderShapeConfiguration colliderShape;
+        colliderShape.m_shape.m_geometry = SphereShapeConfiguration{};
+        AZ::Entity entity("Character membership");
+        entity.CreateComponent<AzFramework::TransformComponent>();
+        ColliderComponent* collider = entity.CreateComponent<ColliderComponent>(AZStd::vector{colliderShape});
+        CharacterControllerComponent* character = entity.CreateComponent<CharacterControllerComponent>();
+        ASSERT_TRUE(collider);
+        ASSERT_TRUE(character);
+
+        BodyLifecycleNotifications notifications;
+        notifications.m_system = &system;
+        notifications.BusConnect(entity.GetId());
+        entity.Init();
+        entity.Activate();
+
+        const CharacterHandle characterHandle = character->GetCharacterHandle();
+        const BodyHandle bodyHandle = character->GetBodyHandle();
+        ASSERT_TRUE(characterHandle);
+        ASSERT_TRUE(bodyHandle);
+        EXPECT_TRUE(character->IsSimulationEnabled());
+        ASSERT_TRUE(character->SetVelocity(AZ::Vector3::CreateAxisX(3.0f)));
+
+        const CharacterState stateBeforeDisable = character->GetState();
+        ASSERT_TRUE(character->DisableSimulation());
+        EXPECT_FALSE(character->IsSimulationEnabled());
+        EXPECT_EQ(character->GetCharacterHandle(), characterHandle);
+        EXPECT_EQ(character->GetBodyHandle(), bodyHandle);
+        EXPECT_TRUE(system.IsValid(worldHandle, characterHandle));
+        EXPECT_TRUE(system.IsValid(worldHandle, bodyHandle));
+        EXPECT_FALSE(system.IsCharacterInSimulation(worldHandle, characterHandle));
+        EXPECT_EQ(notifications.m_destroyingCount, 0);
+        EXPECT_EQ(notifications.m_destroyedCount, 0);
+
+        const CharacterState disabledState = character->GetState();
+        EXPECT_EQ(disabledState.m_bodyHandle, bodyHandle);
+        EXPECT_EQ(disabledState.m_shapeHandle, stateBeforeDisable.m_shapeHandle);
+        EXPECT_EQ(disabledState.m_transform.m_position, stateBeforeDisable.m_transform.m_position);
+        EXPECT_EQ(disabledState.m_transform.m_rotation, stateBeforeDisable.m_transform.m_rotation);
+        EXPECT_EQ(disabledState.m_linearVelocity, stateBeforeDisable.m_linearVelocity);
+        EXPECT_FALSE(disabledState.m_isInSimulation);
+        EXPECT_TRUE(character->DisableSimulation());
+
+        ASSERT_TRUE(character->EnableSimulation());
+        EXPECT_TRUE(character->IsSimulationEnabled());
+        EXPECT_EQ(character->GetCharacterHandle(), characterHandle);
+        EXPECT_EQ(character->GetBodyHandle(), bodyHandle);
+        EXPECT_TRUE(system.IsCharacterInSimulation(worldHandle, characterHandle));
+        EXPECT_EQ(notifications.m_destroyingCount, 0);
+        EXPECT_EQ(notifications.m_destroyedCount, 0);
+
+        const CharacterState enabledState = character->GetState();
+        EXPECT_EQ(enabledState.m_bodyHandle, bodyHandle);
+        EXPECT_EQ(enabledState.m_shapeHandle, stateBeforeDisable.m_shapeHandle);
+        EXPECT_EQ(enabledState.m_transform.m_position, stateBeforeDisable.m_transform.m_position);
+        EXPECT_EQ(enabledState.m_transform.m_rotation, stateBeforeDisable.m_transform.m_rotation);
+        EXPECT_EQ(enabledState.m_linearVelocity, stateBeforeDisable.m_linearVelocity);
+        EXPECT_TRUE(enabledState.m_isInSimulation);
+        EXPECT_TRUE(character->EnableSimulation());
+
+        entity.Deactivate();
+        EXPECT_EQ(notifications.m_destroyingCount, 1);
+        EXPECT_EQ(notifications.m_destroyedCount, 1);
+        EXPECT_FALSE(system.IsValid(worldHandle, characterHandle));
+        EXPECT_FALSE(system.IsValid(worldHandle, bodyHandle));
+        notifications.BusDisconnect();
+
+        for (AZ::ComponentDescriptor* descriptor : descriptors)
+        {
+            AZ::ComponentApplicationBus::Broadcast(
+                &AZ::ComponentApplicationRequests::UnregisterComponentDescriptor,
+                descriptor);
+            descriptor->ReleaseDescriptor();
+        }
+    }
+
     TEST(ComponentTests, ConstraintDeactivationDestroysDirectParentConstraints)
     {
         ComponentNameDictionaryScope nameDictionary;
@@ -1933,6 +2031,7 @@ namespace Jolt
         EXPECT_TRUE(behaviorContext.m_classes.contains("JoltCapsuleShapeConfiguration"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("JoltBroadPhaseLayer"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("JoltCharacterState"));
+        EXPECT_TRUE(behaviorContext.m_classes.at("JoltCharacterState")->m_properties.contains("isInSimulation"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("CharacterRuntimeConfiguration"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("ActivationEvent"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("JoltContactEvent"));

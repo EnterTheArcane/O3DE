@@ -1991,6 +1991,15 @@ namespace Jolt
             WorldHandle worldHandle,
             const CharacterConfiguration& configuration);
 
+        bool AddCharacterToSimulation(
+            WorldHandle worldHandle,
+            CharacterHandle characterHandle,
+            bool activate);
+
+        bool RemoveCharacterFromSimulation(
+            WorldHandle worldHandle,
+            CharacterHandle characterHandle);
+
         bool DestroyCharacter(
             WorldHandle worldHandle,
             CharacterHandle characterHandle);
@@ -2014,6 +2023,11 @@ namespace Jolt
 
         [[nodiscard]]
         bool IsCharacterDestructionReserved(
+            WorldHandle worldHandle,
+            CharacterHandle characterHandle) const;
+
+        [[nodiscard]]
+        bool IsCharacterInSimulation(
             WorldHandle worldHandle,
             CharacterHandle characterHandle) const;
 
@@ -4163,7 +4177,10 @@ namespace Jolt
         using RuntimeImplementation::EnableVirtualCharacterAutoUpdate;
         using RuntimeImplementation::DisableVirtualCharacterAutoUpdate;
         using RuntimeImplementation::CreateCharacter;
+        using RuntimeImplementation::AddCharacterToSimulation;
+        using RuntimeImplementation::RemoveCharacterFromSimulation;
         using RuntimeImplementation::DestroyCharacter;
+        using RuntimeImplementation::IsCharacterInSimulation;
         using RuntimeImplementation::GetCharacterState;
         using RuntimeImplementation::GetCharacterUserData;
         using RuntimeImplementation::SetCharacterUserData;

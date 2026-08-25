@@ -37,7 +37,7 @@ the row's complete contract.
 | `J3-AUD-014` | Entity request buses have one owner and deterministic result routing. | 4 | **Implemented** — every entity request interface declares `Single` locally, every notification interface declares `Multiple`, and the shared EBus container rejects a duplicate single handler instead of silently replacing the owner. Focused dispatch, fanout, and clang-cl Release application tests pass; final MSVC and install gates remain. |
 | `J3-AUD-015` | World lifecycle, simulation, queries, rollback, and diagnostics use separate ownership/scoping boundaries. | 4 | **Implemented** — five singular buses separate lifecycle/configuration, simulation, queries, rollback, and diagnostics. Reflection scopes destructive/control operations as Automation and read/query diagnostics as Common. A static parity gate accounts for all 59 reflected script operations, and the focused null-renderer scenario passes. The complete application matrix remains. |
 | `J3-AUD-016` | Ragdoll definitions construct every advertised constraint type and reject unsupported drive mappings before mutation. | 5 | **Implemented** — all 13 native constraint alternatives construct through direct Runtime and authored component paths. Stable local UUIDs replace world handles for linked gear and rack-and-pinion constraints; custom providers and paths remain retained; invalid identities, links, providers, paths, poses, and drive combinations fail before mutation. JSON, binary/editor configuration, snapshot restore, dependency lifetime, simulation membership, and exact worker-digest tests pass in the 318-test clang-cl Release non-unity suite. Final MSVC and application qualification remain. |
-| `J3-AUD-017` | Physical characters expose state-preserving add/remove simulation operations. | 5 | **Open** — identity, state, snapshot, event, and 1/4/8-worker replay tests required. |
+| `J3-AUD-017` | Physical characters expose state-preserving add/remove simulation operations. | 5 | **Implemented** — character-specific add, remove, and membership queries preserve the character handle, backing body handle, transform, linear/angular velocity, move-event subscription, and detached snapshot behavior. Component disable/re-enable preserves resources without destruction notifications, the focused scenario checks the membership transition, and exact full-state digests match at effective 1/4/8 workers. The 322-test clang-cl Release non-unity suite and fresh source consumer pass; installed-engine, MSVC, and application qualification remain. |
 | `J3-AUD-018` | One Path resource owns geometry and transform; active updates commit transactionally at a safe boundary. | 5 | **Open** — translation/rotation frame update, scale rebuild, state preservation, and failure rollback tests required. |
 | `J3-AUD-019` | Custom-shape source dependencies participate in analysis invalidation and deterministic job/product fingerprints. | 5 | **Open** — real dependency edit/delete/recovery and recook tests required. |
 | `J3-AUD-020` | Every claimed clang-cl ASan configuration is instrumented and deployed correctly or rejected during configure. | 1 | **Closed** — clang-cl 22.1.8 permits only Profile ASan trees because the Windows ASan runtime rejects the debug CRT; a fresh Ninja build proved compile instrumentation, dynamic runtime/thunk linkage, runtime deployment, the full Jolt and AzCore suites, and a symbolized heap-use-after-free sentinel. |
@@ -199,6 +199,27 @@ for all 59 reflected operations and fails for either a reflected operation witho
 configured snapshot recapture rather than using placeholder calls. The clang-cl 22.1.8 Release non-unity suite passes 316 tests with
 zero failures and one intentional disable. The focused null-renderer scenario passes in 14.5 seconds after preserving Asset Processor's
 machine-consumed control and listening port announcements in Release. The final complete scenario, MSVC, and install matrices remain.
+
+## Stage 5 physical-character membership evidence
+
+`Characters` now owns explicit add, remove, and membership operations because generic body membership deliberately rejects bodies owned
+by composite resources. Removal preserves both linear and angular velocity around Jolt's required deactivation, while the immutable
+shape, transform, metadata, native body, wrapper handles, and move-event subscription remain owned in place. Re-addition applies the
+caller's activation choice without recreating either handle. `CharacterState::m_isInSimulation` exposes the authoritative native
+broadphase membership to C++ and script callers.
+
+`SimulationTests.CharacterSimulationMembershipPreservesIdentityStateSnapshotsAndMoveEvents` proves invalid and cross-world rejection,
+duplicate-operation rejection, stable character/body/shape identity, velocity preservation, stale added-state snapshot rejection,
+detached snapshot capture/restore, event silence while detached, event resumption after re-add, and destruction from the detached state.
+`ComponentTests.CharacterSimulationMembershipPreservesComponentResources` proves that component disable/re-enable retains the same
+handles and state without publishing destruction notifications; entity deactivation still performs the complete ownership transaction.
+`SimulationTests.CharacterMembershipTransitionsAreDeterministicAcrossWorkerCounts` performs the same fixed removal, detached mutation,
+re-addition, and simulation workload in independent effective 1/4/8-worker worlds and compares the complete state digest exactly.
+
+The clang-cl 22.1.8 Release non-unity consolidated suite passes 322 tests with zero failures and one intentional disable. The focused
+`Jolt_Characters` scenario now observes the public disabled and re-enabled states through `CharacterBus`. The source/install consumer
+calls every new public capability operation; its fresh installed modular and monolithic executions, the null-renderer scenario, and the
+MSVC matrix remain final qualification gates.
 
 ## Qualification platforms
 

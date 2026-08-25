@@ -1055,6 +1055,12 @@ namespace Jolt
         [[nodiscard]]
         CharacterHandle CreateCharacter(const CharacterConfiguration& configuration);
 
+        bool AddCharacterToSimulation(
+            CharacterHandle characterHandle,
+            bool activate);
+
+        bool RemoveCharacterFromSimulation(CharacterHandle characterHandle);
+
         bool DestroyCharacter(CharacterHandle characterHandle);
 
         [[nodiscard]]
@@ -1070,6 +1076,9 @@ namespace Jolt
 
         [[nodiscard]]
         bool IsCharacterDestructionReserved(CharacterHandle characterHandle) const;
+
+        [[nodiscard]]
+        bool IsCharacterInSimulation(CharacterHandle characterHandle) const;
 
         [[nodiscard]]
         bool IsValid(CharacterHandle characterHandle) const;

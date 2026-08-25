@@ -150,6 +150,7 @@ namespace Jolt
                 ->Property("name", BehaviorValueGetter(&CharacterState::m_name), nullptr)
                 ->Property("userData", BehaviorValueGetter(&CharacterState::m_userData), nullptr)
                 ->Property("groundState", BehaviorValueGetter(&CharacterState::m_groundState), nullptr)
+                ->Property("isInSimulation", BehaviorValueGetter(&CharacterState::m_isInSimulation), nullptr)
                 ->Property("isSupported", BehaviorValueGetter(&CharacterState::m_isSupported), nullptr);
 
             behaviorContext->Class<CharacterRuntimeConfiguration>("CharacterRuntimeConfiguration")
@@ -220,7 +221,16 @@ namespace Jolt
     {
         if (m_characterHandle)
         {
-            return true;
+            if (!m_system)
+            {
+                return false;
+            }
+            if (m_system->IsCharacterInSimulation(m_worldHandle, m_characterHandle))
+            {
+                return true;
+            }
+
+            return m_system->AddCharacterToSimulation(m_worldHandle, m_characterHandle, m_configuration.m_activate);
         }
         if (!m_system || !m_collider)
         {
@@ -283,7 +293,20 @@ namespace Jolt
 
     bool CharacterControllerComponent::DisableSimulation()
     {
-        return DestroySimulation(false);
+        if (!m_characterHandle)
+        {
+            return true;
+        }
+        if (!m_system)
+        {
+            return false;
+        }
+        if (!m_system->IsCharacterInSimulation(m_worldHandle, m_characterHandle))
+        {
+            return true;
+        }
+
+        return m_system->RemoveCharacterFromSimulation(m_worldHandle, m_characterHandle);
     }
 
     bool CharacterControllerComponent::DestroySimulation(const bool mandatory)
@@ -400,7 +423,9 @@ namespace Jolt
 
     bool CharacterControllerComponent::IsSimulationEnabled() const
     {
-        return m_system && m_characterHandle;
+        return m_system
+            && m_characterHandle
+            && m_system->IsCharacterInSimulation(m_worldHandle, m_characterHandle);
     }
 
     CharacterHandle CharacterControllerComponent::GetCharacterHandle() const
