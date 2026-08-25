@@ -101,6 +101,13 @@ namespace Jolt
 
         AZStd::atomic_uint64_t m_contactEventCount{0};
         AZStd::atomic_uint64_t m_contactPointCount{0};
+        AZStd::atomic_uint64_t m_contactProducerContentionCount{0};
+        AZStd::atomic_uint64_t m_contactProducerHoldNanoseconds{0};
+        AZStd::atomic_uint64_t m_contactProducerLockCount{0};
+        AZStd::atomic_uint64_t m_contactProducerMaximumHoldNanoseconds{0};
+        AZStd::atomic_uint64_t m_contactProducerMaximumWaitNanoseconds{0};
+        AZStd::atomic_uint64_t m_contactProducerWaitNanoseconds{0};
+        AZStd::atomic_uint64_t m_contactStorageGrowthCount{0};
 
         AZStd::atomic_uint64_t m_droppedEventCount{0};
         AZStd::atomic_uint64_t m_eventHighWaterCount{0};

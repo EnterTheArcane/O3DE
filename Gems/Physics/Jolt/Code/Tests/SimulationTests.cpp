@@ -5822,6 +5822,9 @@ namespace Jolt
         configuration.m_collectActivationEvents = true;
         configuration.m_collectContactEvents = true;
         ASSERT_TRUE(system.UpdateWorldRuntimeConfiguration(worldHandle, configuration));
+        ASSERT_TRUE(system.ConfigurePerformanceStatistics(
+            worldHandle,
+            PerformanceStatisticsFlags::Events));
 
         const SphereOnFloor scene = CreateSphereOnFloor(system);
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
@@ -5836,6 +5839,29 @@ namespace Jolt
             foundContact = !events.GetContacts().empty();
         }
         EXPECT_TRUE(foundContact);
+
+        WorldPerformanceStatistics statistics;
+        ASSERT_TRUE(system.GetPerformanceStatistics(worldHandle, statistics, false));
+        EXPECT_GT(statistics.m_contactProducerLockCount, 0);
+        EXPECT_GT(statistics.m_contactProducerHoldNanoseconds, 0);
+        EXPECT_GT(statistics.m_contactStorageGrowthCount, 0);
+        EXPECT_GE(
+            statistics.m_contactProducerHoldNanoseconds,
+            statistics.m_contactProducerMaximumHoldNanoseconds);
+        EXPECT_GE(
+            statistics.m_contactProducerWaitNanoseconds,
+            statistics.m_contactProducerMaximumWaitNanoseconds);
+        EXPECT_LE(statistics.m_contactProducerContentionCount, statistics.m_contactProducerLockCount);
+
+        ASSERT_TRUE(system.GetPerformanceStatistics(worldHandle, statistics, true));
+        ASSERT_TRUE(system.GetPerformanceStatistics(worldHandle, statistics, false));
+        EXPECT_EQ(statistics.m_contactProducerContentionCount, 0);
+        EXPECT_EQ(statistics.m_contactProducerHoldNanoseconds, 0);
+        EXPECT_EQ(statistics.m_contactProducerLockCount, 0);
+        EXPECT_EQ(statistics.m_contactProducerMaximumHoldNanoseconds, 0);
+        EXPECT_EQ(statistics.m_contactProducerMaximumWaitNanoseconds, 0);
+        EXPECT_EQ(statistics.m_contactProducerWaitNanoseconds, 0);
+        EXPECT_EQ(statistics.m_contactStorageGrowthCount, 0);
 
         configuration.m_collectActivationEvents = false;
         configuration.m_collectContactEvents = false;

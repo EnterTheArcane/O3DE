@@ -367,6 +367,13 @@ namespace Jolt
         AZ::u64 m_contactEventCount = 0;
         AZ::u64 m_contactManifoldCount = 0;
         AZ::u64 m_contactPointCount = 0;
+        AZ::u64 m_contactProducerContentionCount = 0;
+        AZ::u64 m_contactProducerHoldNanoseconds = 0;
+        AZ::u64 m_contactProducerLockCount = 0;
+        AZ::u64 m_contactProducerMaximumHoldNanoseconds = 0;
+        AZ::u64 m_contactProducerMaximumWaitNanoseconds = 0;
+        AZ::u64 m_contactProducerWaitNanoseconds = 0;
+        AZ::u64 m_contactStorageGrowthCount = 0;
 
         AZ::u64 m_droppedEventCount = 0;
         AZ::u64 m_eventHighWaterCount = 0;

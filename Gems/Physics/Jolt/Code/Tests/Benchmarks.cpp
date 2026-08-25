@@ -307,8 +307,10 @@ namespace Jolt::Benchmarks
             state.counters["ActiveDynamicBodies"] = statistics.m_activeDynamicBodyCount;
             state.counters["Bodies"] = statistics.m_bodyCount;
             state.counters["Constraints"] = statistics.m_constraintCount;
+            state.counters["EffectiveWorkers"] = statistics.m_effectiveWorkerCount;
             state.counters["Jobs"] = statistics.m_lastUpdateJobCount;
             state.counters["MaximumTasks"] = statistics.m_lastUpdateMaximumTaskCount;
+            state.counters["RequestedWorkers"] = statistics.m_requestedWorkerCount;
             state.counters["ShapeBytes"] = aznumeric_cast<double>(statistics.m_shapeBytes);
             state.counters["Tasks"] = statistics.m_lastUpdateTaskCount;
             state.counters["TempAllocatorBytes"] = aznumeric_cast<double>(statistics.m_tempAllocatorUsageBytes);
@@ -3585,6 +3587,14 @@ namespace Jolt::Benchmarks
             state.SkipWithError("Failed to create the collision-policy benchmark floor.");
             return;
         }
+        if (policy == 0
+            && !system.ConfigurePerformanceStatistics(
+                worldHandle,
+                PerformanceStatisticsFlags::Events | PerformanceStatisticsFlags::NarrowPhase))
+        {
+            state.SkipWithError("Failed to enable contact-event benchmark statistics.");
+            return;
+        }
 
         for ([[maybe_unused]] auto iteration : state)
         {
@@ -3604,6 +3614,37 @@ namespace Jolt::Benchmarks
             benchmark::DoNotOptimize(events.GetContacts().size());
         }
         AddWorldCounters(state, system, worldHandle);
+        if (policy == 0)
+        {
+            WorldPerformanceStatistics statistics;
+            if (!system.GetPerformanceStatistics(worldHandle, statistics, false))
+            {
+                state.SkipWithError("Failed to read contact-event benchmark statistics.");
+                return;
+            }
+
+            state.counters["ContactEvents"] = aznumeric_cast<double>(statistics.m_contactEventCount);
+            state.counters["ContactPoints"] = aznumeric_cast<double>(statistics.m_contactPointCount);
+            state.counters["ContactProducerContentionCount"] = aznumeric_cast<double>(
+                statistics.m_contactProducerContentionCount);
+            state.counters["ContactProducerHoldNs"] = aznumeric_cast<double>(
+                statistics.m_contactProducerHoldNanoseconds);
+            state.counters["ContactProducerLocks"] = aznumeric_cast<double>(statistics.m_contactProducerLockCount);
+            state.counters["ContactProducerMaxHoldNs"] = aznumeric_cast<double>(
+                statistics.m_contactProducerMaximumHoldNanoseconds);
+            state.counters["ContactProducerMaxWaitNs"] = aznumeric_cast<double>(
+                statistics.m_contactProducerMaximumWaitNanoseconds);
+            state.counters["ContactProducerWaitNs"] = aznumeric_cast<double>(
+                statistics.m_contactProducerWaitNanoseconds);
+            state.counters["ContactStorageGrowths"] = aznumeric_cast<double>(statistics.m_contactStorageGrowthCount);
+            double waitPercent = 0.0;
+            if (statistics.m_intervalNanoseconds > 0)
+            {
+                waitPercent = 100.0 * aznumeric_cast<double>(statistics.m_contactProducerWaitNanoseconds)
+                    / aznumeric_cast<double>(statistics.m_intervalNanoseconds);
+            }
+            state.counters["ContactProducerWaitPercent"] = waitPercent;
+        }
         jobContext.AddCounters(state);
         state.counters["Bodies"] = bodyCount;
         state.counters["Policy"] = policy;
@@ -4062,6 +4103,9 @@ namespace Jolt::Benchmarks
         ->Args({128, 1, 0})
         ->Args({128, 4, 0})
         ->Args({128, 8, 0})
+        ->Args({1'024, 1, 0})
+        ->Args({1'024, 4, 0})
+        ->Args({1'024, 8, 0})
         ->Args({128, 1, 1})
         ->Args({128, 1, 2})
         ->Args({128, 1, 3})

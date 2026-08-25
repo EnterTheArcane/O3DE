@@ -344,6 +344,75 @@ namespace Jolt
                 + values.size() * (sizeof(typename Map::value_type) + 2 * sizeof(void*));
         }
 
+        class ContactProducerLock final
+        {
+        public:
+            ContactProducerLock(
+                AZStd::mutex& mutex,
+                WorldPerformanceAccumulator& statistics,
+                const bool collectStatistics)
+                : m_mutex(mutex)
+            {
+                if (!collectStatistics)
+                {
+                    m_mutex.lock();
+                    return;
+                }
+
+                m_statistics = &statistics;
+                if (!m_mutex.try_lock())
+                {
+                    m_statistics->m_contactProducerContentionCount.fetch_add(1, AZStd::memory_order_relaxed);
+                    const AZ::u64 waitStartNanoseconds = GetSteadyNanoseconds();
+                    m_mutex.lock();
+                    const AZ::u64 waitNanoseconds = GetSteadyNanoseconds() - waitStartNanoseconds;
+                    m_statistics->m_contactProducerWaitNanoseconds.fetch_add(
+                        waitNanoseconds,
+                        AZStd::memory_order_relaxed);
+                    UpdateMaximum(
+                        m_statistics->m_contactProducerMaximumWaitNanoseconds,
+                        waitNanoseconds);
+                }
+                m_holdStartNanoseconds = GetSteadyNanoseconds();
+                m_statistics->m_contactProducerLockCount.fetch_add(1, AZStd::memory_order_relaxed);
+            }
+
+            ~ContactProducerLock()
+            {
+                if (!m_statistics)
+                {
+                    m_mutex.unlock();
+                    return;
+                }
+
+                const AZ::u64 holdNanoseconds = GetSteadyNanoseconds() - m_holdStartNanoseconds;
+                m_mutex.unlock();
+                m_statistics->m_contactProducerHoldNanoseconds.fetch_add(
+                    holdNanoseconds,
+                    AZStd::memory_order_relaxed);
+                UpdateMaximum(
+                    m_statistics->m_contactProducerMaximumHoldNanoseconds,
+                    holdNanoseconds);
+            }
+
+            AZ_DISABLE_COPY_MOVE(ContactProducerLock);
+
+            void RecordStorageGrowth(const AZ::u64 growthCount)
+            {
+                if (m_statistics && growthCount > 0)
+                {
+                    m_statistics->m_contactStorageGrowthCount.fetch_add(
+                        growthCount,
+                        AZStd::memory_order_relaxed);
+                }
+            }
+
+        private:
+            AZStd::mutex& m_mutex;
+            WorldPerformanceAccumulator* m_statistics = nullptr;
+            AZ::u64 m_holdStartNanoseconds = 0;
+        };
+
         class PerformanceOperationScope final
         {
         public:
@@ -23735,6 +23804,27 @@ namespace Jolt
             statistics.m_eventHighWaterCount = ReadCounter(
                 m_performanceStatistics.m_eventHighWaterCount,
                 reset);
+            statistics.m_contactProducerContentionCount = ReadCounter(
+                m_performanceStatistics.m_contactProducerContentionCount,
+                reset);
+            statistics.m_contactProducerHoldNanoseconds = ReadCounter(
+                m_performanceStatistics.m_contactProducerHoldNanoseconds,
+                reset);
+            statistics.m_contactProducerLockCount = ReadCounter(
+                m_performanceStatistics.m_contactProducerLockCount,
+                reset);
+            statistics.m_contactProducerMaximumHoldNanoseconds = ReadCounter(
+                m_performanceStatistics.m_contactProducerMaximumHoldNanoseconds,
+                reset);
+            statistics.m_contactProducerMaximumWaitNanoseconds = ReadCounter(
+                m_performanceStatistics.m_contactProducerMaximumWaitNanoseconds,
+                reset);
+            statistics.m_contactProducerWaitNanoseconds = ReadCounter(
+                m_performanceStatistics.m_contactProducerWaitNanoseconds,
+                reset);
+            statistics.m_contactStorageGrowthCount = ReadCounter(
+                m_performanceStatistics.m_contactStorageGrowthCount,
+                reset);
             statistics.m_publishedEventCount = ReadCounter(
                 m_performanceStatistics.m_publishedEventCount,
                 reset);
@@ -23875,6 +23965,13 @@ namespace Jolt
         m_performanceStatistics.m_contactPointCount.store(0, AZStd::memory_order_relaxed);
         m_performanceStatistics.m_droppedEventCount.store(0, AZStd::memory_order_relaxed);
         m_performanceStatistics.m_eventHighWaterCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_contactProducerContentionCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_contactProducerHoldNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_contactProducerLockCount.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_contactProducerMaximumHoldNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_contactProducerMaximumWaitNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_contactProducerWaitNanoseconds.store(0, AZStd::memory_order_relaxed);
+        m_performanceStatistics.m_contactStorageGrowthCount.store(0, AZStd::memory_order_relaxed);
         m_performanceStatistics.m_publishedEventCount.store(0, AZStd::memory_order_relaxed);
         m_performanceStatistics.m_queryCandidateCount.store(0, AZStd::memory_order_relaxed);
         m_performanceStatistics.m_queryCount.store(0, AZStd::memory_order_relaxed);
@@ -31593,7 +31690,10 @@ namespace Jolt
     {
         ContactEvent event;
         {
-            AZStd::lock_guard lock(m_eventMutex);
+            ContactProducerLock lock(
+                m_eventMutex,
+                m_performanceStatistics,
+                IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Events));
             const auto contactIterator = m_contactCache.find(subShapePair);
             if (contactIterator == m_contactCache.end())
             {
@@ -31606,7 +31706,12 @@ namespace Jolt
             event.m_phase = EventPhase::End;
             if (m_configuration.m_collectContactEvents)
             {
+                const size_t previousCapacity = m_pendingContactEvents.capacity();
                 m_pendingContactEvents.push_back(event);
+                if (m_pendingContactEvents.capacity() > previousCapacity)
+                {
+                    lock.RecordStorageGrowth(1);
+                }
             }
             m_contactCache.erase(contactIterator);
         }
@@ -31828,7 +31933,10 @@ namespace Jolt
             manifold.mSubShapeID1,
             secondBody.GetID(),
             manifold.mSubShapeID2);
-        AZStd::lock_guard lock(m_eventMutex);
+        ContactProducerLock lock(
+            m_eventMutex,
+            m_performanceStatistics,
+            IsPerformanceStatisticsEnabled(PerformanceStatisticsFlags::Events));
         if (m_pendingContactPoints.size() > AZStd::numeric_limits<AZ::u32>::max()
             || manifold.mRelativeContactPointsOn1.size()
                 > AZStd::numeric_limits<AZ::u32>::max() - m_pendingContactPoints.size())
@@ -31840,6 +31948,9 @@ namespace Jolt
             return;
         }
 
+        const size_t previousContactEventCapacity = m_pendingContactEvents.capacity();
+        const size_t previousContactPointCapacity = m_pendingContactPoints.capacity();
+        const size_t previousContactCacheBucketCount = m_contactCache.bucket_count();
         if (m_configuration.m_collectContactEvents)
         {
             event.m_firstPoint = static_cast<AZ::u32>(m_pendingContactPoints.size());
@@ -31860,6 +31971,21 @@ namespace Jolt
         event.m_firstPoint = 0;
         event.m_pointCount = 0;
         m_contactCache.insert_or_assign(pair, event);
+
+        AZ::u64 growthCount = 0;
+        if (m_pendingContactEvents.capacity() > previousContactEventCapacity)
+        {
+            ++growthCount;
+        }
+        if (m_pendingContactPoints.capacity() > previousContactPointCapacity)
+        {
+            ++growthCount;
+        }
+        if (m_contactCache.bucket_count() > previousContactCacheBucketCount)
+        {
+            ++growthCount;
+        }
+        lock.RecordStorageGrowth(growthCount);
     }
 
     void World::PublishEvents()

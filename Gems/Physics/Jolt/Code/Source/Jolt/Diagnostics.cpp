@@ -183,6 +183,13 @@ namespace Jolt
                 ->Field("ContactEventCount", &WorldPerformanceStatistics::m_contactEventCount)
                 ->Field("ContactManifoldCount", &WorldPerformanceStatistics::m_contactManifoldCount)
                 ->Field("ContactPointCount", &WorldPerformanceStatistics::m_contactPointCount)
+                ->Field("ContactProducerContentionCount", &WorldPerformanceStatistics::m_contactProducerContentionCount)
+                ->Field("ContactProducerHoldNanoseconds", &WorldPerformanceStatistics::m_contactProducerHoldNanoseconds)
+                ->Field("ContactProducerLockCount", &WorldPerformanceStatistics::m_contactProducerLockCount)
+                ->Field("ContactProducerMaximumHoldNanoseconds", &WorldPerformanceStatistics::m_contactProducerMaximumHoldNanoseconds)
+                ->Field("ContactProducerMaximumWaitNanoseconds", &WorldPerformanceStatistics::m_contactProducerMaximumWaitNanoseconds)
+                ->Field("ContactProducerWaitNanoseconds", &WorldPerformanceStatistics::m_contactProducerWaitNanoseconds)
+                ->Field("ContactStorageGrowthCount", &WorldPerformanceStatistics::m_contactStorageGrowthCount)
                 ->Field("DroppedEventCount", &WorldPerformanceStatistics::m_droppedEventCount)
                 ->Field("EventHighWaterCount", &WorldPerformanceStatistics::m_eventHighWaterCount)
                 ->Field("PublishedEventCount", &WorldPerformanceStatistics::m_publishedEventCount)
@@ -770,6 +777,27 @@ namespace Jolt
                 ->Property(
                     "contactPointCount",
                     JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_contactPointCount))
+                ->Property(
+                    "contactProducerContentionCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_contactProducerContentionCount))
+                ->Property(
+                    "contactProducerHoldNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_contactProducerHoldNanoseconds))
+                ->Property(
+                    "contactProducerLockCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_contactProducerLockCount))
+                ->Property(
+                    "contactProducerMaximumHoldNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_contactProducerMaximumHoldNanoseconds))
+                ->Property(
+                    "contactProducerMaximumWaitNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_contactProducerMaximumWaitNanoseconds))
+                ->Property(
+                    "contactProducerWaitNanoseconds",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_contactProducerWaitNanoseconds))
+                ->Property(
+                    "contactStorageGrowthCount",
+                    JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_contactStorageGrowthCount))
                 ->Property(
                     "droppedEventCount",
                     JOLT_BEHAVIOR_READONLY_PROPERTY(&WorldPerformanceStatistics::m_droppedEventCount))

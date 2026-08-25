@@ -4,9 +4,9 @@
 
 The third deep audit re-opened performance qualification at revision `42dbab82f32f945b293e7c019c5a07282eb3df24`. The captures below
 remain historical optimization and regression evidence; they do not establish current shipping readiness. In particular,
-`validate.py full` does not yet schedule the native and AutomatedTesting performance suites, retained operation/event memory and
-recurring AZ allocation domains are not fully accounted, contact-event contention is not measured by the gated workloads, and the
-audit-local eight-worker step series exceeded the 5% coefficient-of-variation gate.
+`validate.py full` does not yet schedule the native and AutomatedTesting performance suites, the measured single-lock contact producer
+fails its contention gate, final Release allocation qualification remains, and the audit-local eight-worker step series exceeded the 5%
+coefficient-of-variation gate.
 
 Current closure requirements and evidence ownership are tracked in `QUALIFICATION.md`. No historical artifact may be relabelled as a
 current result after a runtime, API, workload, compiler, or runner change.
@@ -509,7 +509,31 @@ allocation, or locking in `GetId` or `GetContactPoints`; the latter is 29 instru
 
 Publication performs one relaxed module-wide compare-exchange per batch and one identity store per contact. Those operations preserve
 cross-world and cross-Runtime uniqueness without caller-owned storage. Their contact-density and 1/4/8-worker cost is not inferred from
-instruction counts: the wait/hold/growth and process-isolated measurements required by `J3-AUD-024` remain the performance gate.
+instruction counts.
+
+## Contact producer contention baseline
+
+Opt-in contact diagnostics measure only the native contact producer critical sections. They report acquisition/contention counts,
+aggregate and maximum wait/hold times, and storage growth while the producer lock is held. Disabled worlds retain the ordinary mutex path
+without clocks, atomics, or `try_lock` calls.
+
+Thirty fresh clang-cl 22.1.8 Release processes ran 120 dense-contact frames per row with a fixed eight-lane affinity mask and High process
+priority. Every row reports the requested effective worker count, and the contact/event signatures match across 1/4/8 workers. The
+single-lock baseline fails the declared 5% wait gate:
+
+| Bodies | Workers | Median | CV | Aggregate producer wait / interval | Median contentions | W8 / W4 |
+|---:|---:|---:|---:|---:|---:|---:|
+| 128 | 1 | 59.973 us | 0.982% | 0.000% | 0 | — |
+| 128 | 4 | 71.594 us | 1.129% | 67.216% | 8,781 | — |
+| 128 | 8 | 84.544 us | 1.759% | 203.613% | 10,985 | 1.181 |
+| 1,024 | 1 | 1,170.667 us | 1.054% | 0.000% | 0 | — |
+| 1,024 | 4 | 621.612 us | 0.747% | 67.937% | 89,931 | — |
+| 1,024 | 8 | 611.848 us | 2.503% | 291.909% | 112,890 | 0.984 |
+
+Aggregate wait can exceed 100% because concurrently blocked producers contribute independently. The 128-body W8 row is also 18.1%
+slower than W4, exceeding the 5% scaling gate. The exact binary, source-diff fingerprint, raw JSON, logs, and summary remain under
+`build/jolt-production-readiness/stage6/contact-contention/`. The result requires a deterministic sharded producer design; it does not
+justify dropping contacts, points, ordering, batch provenance, or callback guarantees.
 
 ## Phase 5 absolute workload matrix
 

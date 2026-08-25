@@ -2214,6 +2214,13 @@ namespace Jolt
 
         const AZ::BehaviorClass* performanceStatistics =
             behaviorContext.m_classes.at("WorldPerformanceStatistics");
+        EXPECT_TRUE(performanceStatistics->m_properties.contains("contactProducerContentionCount"));
+        EXPECT_TRUE(performanceStatistics->m_properties.contains("contactProducerHoldNanoseconds"));
+        EXPECT_TRUE(performanceStatistics->m_properties.contains("contactProducerLockCount"));
+        EXPECT_TRUE(performanceStatistics->m_properties.contains("contactProducerMaximumHoldNanoseconds"));
+        EXPECT_TRUE(performanceStatistics->m_properties.contains("contactProducerMaximumWaitNanoseconds"));
+        EXPECT_TRUE(performanceStatistics->m_properties.contains("contactProducerWaitNanoseconds"));
+        EXPECT_TRUE(performanceStatistics->m_properties.contains("contactStorageGrowthCount"));
         EXPECT_TRUE(performanceStatistics->m_properties.contains("queryCount"));
         EXPECT_TRUE(performanceStatistics->m_properties.contains("simulationNanoseconds"));
         EXPECT_TRUE(performanceStatistics->m_properties.contains("snapshotPeakBytes"));
