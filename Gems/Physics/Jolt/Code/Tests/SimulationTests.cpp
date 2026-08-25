@@ -2346,7 +2346,11 @@ namespace Jolt
             }
 
             WorldStateDigest digest;
-            if (!system.GetWorldStateDigest(worldHandle, digest))
+            WorldStatistics statistics;
+            if (!system.GetWorldStatistics(worldHandle, statistics)
+                || statistics.m_requestedWorkerCount != workerCount
+                || statistics.m_effectiveWorkerCount != workerCount
+                || !system.GetWorldStateDigest(worldHandle, digest))
             {
                 return {};
             }
@@ -2583,7 +2587,11 @@ namespace Jolt
             }
 
             WorldStateDigest replayDigest;
-            if (!system.GetWorldStateDigest(worldHandle, replayDigest)
+            WorldStatistics statistics;
+            if (!system.GetWorldStatistics(worldHandle, statistics)
+                || statistics.m_requestedWorkerCount != workerCount
+                || statistics.m_effectiveWorkerCount != workerCount
+                || !system.GetWorldStateDigest(worldHandle, replayDigest)
                 || replayDigest != firstDigest)
             {
                 return {};
@@ -2678,7 +2686,11 @@ namespace Jolt
             }
 
             WorldStateDigest digest;
-            if (!system.GetWorldStateDigest(worldHandle, digest))
+            WorldStatistics statistics;
+            if (!system.GetWorldStatistics(worldHandle, statistics)
+                || statistics.m_requestedWorkerCount != workerCount
+                || statistics.m_effectiveWorkerCount != workerCount
+                || !system.GetWorldStateDigest(worldHandle, digest))
             {
                 return {};
             }
@@ -2764,7 +2776,11 @@ namespace Jolt
             }
 
             WorldStateDigest digest;
-            if (!system.GetWorldStateDigest(worldHandle, digest))
+            WorldStatistics statistics;
+            if (!system.GetWorldStatistics(worldHandle, statistics)
+                || statistics.m_requestedWorkerCount != workerCount
+                || statistics.m_effectiveWorkerCount != workerCount
+                || !system.GetWorldStateDigest(worldHandle, digest))
             {
                 return {};
             }
@@ -2849,7 +2865,11 @@ namespace Jolt
                 }
             }
             WorldStateDigest digest;
-            if (!system.GetWorldStateDigest(worldHandle, digest))
+            WorldStatistics statistics;
+            if (!system.GetWorldStatistics(worldHandle, statistics)
+                || statistics.m_requestedWorkerCount != workerCount
+                || statistics.m_effectiveWorkerCount != workerCount
+                || !system.GetWorldStateDigest(worldHandle, digest))
             {
                 return {};
             }
@@ -15989,52 +16009,44 @@ namespace Jolt
         ASSERT_GT(serialDigest.m_stateByteCount, 0);
 
         AZ::JobManagerDesc jobManagerDescriptor;
-        jobManagerDescriptor.m_workerThreads.resize(4);
+        jobManagerDescriptor.m_workerThreads.resize(8);
         AZ::JobManager jobManager(jobManagerDescriptor);
         AZ::JobContext jobContext(jobManager);
-        const WorldStateDigest externalSerialDigest = SimulateDeterministicStack(1, &jobContext);
-        const WorldStateDigest externalParallelDigest = SimulateDeterministicStack(4, &jobContext);
-
-        EXPECT_EQ(externalSerialDigest, serialDigest);
-        EXPECT_EQ(externalParallelDigest, serialDigest);
+        constexpr AZStd::array workerCounts = {AZ::u32{1}, AZ::u32{4}, AZ::u32{8}};
+        for (const AZ::u32 workerCount : workerCounts)
+        {
+            EXPECT_EQ(SimulateDeterministicStack(workerCount, &jobContext), serialDigest) << workerCount;
+        }
 
         const WorldStateDigest serialSoftBodyDigest = SimulateDeterministicSoftBodies(1, nullptr);
         ASSERT_GT(serialSoftBodyDigest.m_stateByteCount, 0);
-        const WorldStateDigest externalSerialSoftBodyDigest =
-            SimulateDeterministicSoftBodies(1, &jobContext);
-        const WorldStateDigest externalParallelSoftBodyDigest =
-            SimulateDeterministicSoftBodies(4, &jobContext);
-        EXPECT_EQ(externalSerialSoftBodyDigest, serialSoftBodyDigest);
-        EXPECT_EQ(externalParallelSoftBodyDigest, serialSoftBodyDigest);
+        for (const AZ::u32 workerCount : workerCounts)
+        {
+            EXPECT_EQ(SimulateDeterministicSoftBodies(workerCount, &jobContext), serialSoftBodyDigest) << workerCount;
+        }
 
         const WorldStateDigest serialCustomConstraintDigest =
             SimulateDeterministicCustomConstraints(1, nullptr);
         ASSERT_GT(serialCustomConstraintDigest.m_stateByteCount, 0);
-        const WorldStateDigest externalSerialCustomConstraintDigest =
-            SimulateDeterministicCustomConstraints(1, &jobContext);
-        const WorldStateDigest externalParallelCustomConstraintDigest =
-            SimulateDeterministicCustomConstraints(4, &jobContext);
-        EXPECT_EQ(externalSerialCustomConstraintDigest, serialCustomConstraintDigest);
-        EXPECT_EQ(externalParallelCustomConstraintDigest, serialCustomConstraintDigest);
+        for (const AZ::u32 workerCount : workerCounts)
+        {
+            EXPECT_EQ(SimulateDeterministicCustomConstraints(workerCount, &jobContext), serialCustomConstraintDigest) << workerCount;
+        }
 
         const WorldStateDigest serialVehicleDigest =
             SimulateDeterministicVehicleCallbacks(1, nullptr);
         ASSERT_GT(serialVehicleDigest.m_stateByteCount, 0);
-        const WorldStateDigest externalSerialVehicleDigest =
-            SimulateDeterministicVehicleCallbacks(1, &jobContext);
-        const WorldStateDigest externalParallelVehicleDigest =
-            SimulateDeterministicVehicleCallbacks(4, &jobContext);
-        EXPECT_EQ(externalSerialVehicleDigest, serialVehicleDigest);
-        EXPECT_EQ(externalParallelVehicleDigest, serialVehicleDigest);
+        for (const AZ::u32 workerCount : workerCounts)
+        {
+            EXPECT_EQ(SimulateDeterministicVehicleCallbacks(workerCount, &jobContext), serialVehicleDigest) << workerCount;
+        }
 
         const WorldStateDigest serialRagdollDigest = SimulateDeterministicRagdoll(1, nullptr);
         ASSERT_GT(serialRagdollDigest.m_stateByteCount, 0);
-        const WorldStateDigest externalSerialRagdollDigest =
-            SimulateDeterministicRagdoll(1, &jobContext);
-        const WorldStateDigest externalParallelRagdollDigest =
-            SimulateDeterministicRagdoll(4, &jobContext);
-        EXPECT_EQ(externalSerialRagdollDigest, serialRagdollDigest);
-        EXPECT_EQ(externalParallelRagdollDigest, serialRagdollDigest);
+        for (const AZ::u32 workerCount : workerCounts)
+        {
+            EXPECT_EQ(SimulateDeterministicRagdoll(workerCount, &jobContext), serialRagdollDigest) << workerCount;
+        }
     }
 
     TEST(SimulationTests, ContactEventStreamIsDeterministicAcrossWorkerCounts)

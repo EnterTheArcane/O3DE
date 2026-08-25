@@ -58,6 +58,7 @@ def Jolt_StressAndSoak():
         )
 
         worker_digests = []
+        worker_count_evidence = []
         worker_state_signatures = []
         maximum_observed_temp_bytes = 0
         temp_capacity_bytes = 0
@@ -594,6 +595,28 @@ def Jolt_StressAndSoak():
                 if hair_definition is None or len(current_hair_vertices) != hair_definition.simulationVertexCount:
                     worker_errors.append("CPU-Hair-state")
 
+                final_statistics = jolt.WorldStatistics()
+                statistics_read = jolt.JoltWorldDiagnosticsRequestBus(
+                    bus.Broadcast,
+                    "GetWorldStatistics",
+                    world_handle,
+                    final_statistics,
+                )
+                worker_count_evidence.append(
+                    (
+                        worker_count,
+                        final_statistics.requestedWorkerCount,
+                        final_statistics.effectiveWorkerCount,
+                    )
+                )
+                recorder.check(
+                    f"{worker_count}-worker request remained effective",
+                    statistics_read
+                    and final_statistics.requestedWorkerCount == worker_count
+                    and final_statistics.effectiveWorkerCount == worker_count,
+                    worker_count_evidence[-1],
+                )
+
                 performance_statistics = jolt.WorldPerformanceStatistics()
                 recorder.capture(
                     f"{worker_count}-worker stress performance statistics snapshot",
@@ -673,8 +696,15 @@ def Jolt_StressAndSoak():
                     exit_game_mode(recorder, 10.0)
 
         recorder.check(
-            "1/4/8-worker state digests captured",
-            len(worker_digests) == 3 and all(digest[1] > 0 for digest in worker_digests),
+            "1/4/8-worker requests remained effective",
+            worker_count_evidence == [(1, 1, 1), (4, 4, 4), (8, 8, 8)],
+            worker_count_evidence,
+        )
+        recorder.check(
+            "1/4/8-worker full state digests are identical",
+            len(worker_digests) == 3
+            and all(digest[1] > 0 for digest in worker_digests)
+            and len(set(worker_digests)) == 1,
             worker_digests,
         )
         recorder.check(
