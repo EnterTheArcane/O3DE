@@ -67,13 +67,23 @@ class QualificationValidationTests(unittest.TestCase):
             "PATH": "C:/VisualStudio/bin",
             "VSCMD_VER": "18.9.0",
         }
-        with mock.patch.object(jolt_qualification.shutil, "which", return_value="cl.exe"):
+        tool_paths = {
+            "cl.exe": "C:/VisualStudio/bin/cl.exe",
+            "rc.exe": "C:/WindowsSDK/bin/rc.exe",
+        }
+        with mock.patch.object(
+            jolt_qualification.shutil,
+            "which",
+            side_effect=lambda executable, **_: tool_paths.get(executable),
+        ):
             result = jolt_qualification.load_msvc_environment(environment)
 
-        self.assertEqual(result, environment)
+        self.assertEqual(result["PATH"], environment["PATH"])
+        self.assertEqual(result["VSCMD_VER"], environment["VSCMD_VER"])
+        self.assertEqual(result["RC"], "C:/WindowsSDK/bin/rc.exe")
         self.assertIsNot(result, environment)
 
-    def test_build_environment_loads_msvc_only_for_cl(self) -> None:
+    def test_build_environment_loads_windows_sdk_for_msvc_abi_compilers(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             build_directory = Path(temporary_directory)
             cache_path = build_directory / "CMakeCache.txt"
@@ -97,18 +107,27 @@ class QualificationValidationTests(unittest.TestCase):
             self.assertEqual(result, developer_environment)
             load_environment.assert_called_once_with(base_environment)
 
-            cache_path.write_text(
-                "CMAKE_CXX_COMPILER:FILEPATH=C:/LLVM/clang-cl.exe\n",
-                encoding="utf-8",
-            )
-            with mock.patch.object(jolt_qualification, "load_msvc_environment") as load_environment:
-                result = jolt_qualification.load_build_environment(
-                    base_environment,
-                    build_directory,
+            for compiler in ("C:/LLVM/clang-cl.exe", "C:/LLVM/clang++.exe"):
+                cache_path.write_text(
+                    f"CMAKE_CXX_COMPILER:FILEPATH={compiler}\n",
+                    encoding="utf-8",
                 )
+                with mock.patch.object(
+                    jolt_qualification,
+                    "load_msvc_environment",
+                    return_value=developer_environment,
+                ) as load_environment:
+                    result = jolt_qualification.load_build_environment(
+                        base_environment,
+                        build_directory,
+                    )
 
-            self.assertIsNone(result)
-            load_environment.assert_not_called()
+                if compiler.endswith("clang-cl.exe"):
+                    self.assertEqual(result, developer_environment)
+                    load_environment.assert_called_once_with(base_environment)
+                else:
+                    self.assertIsNone(result)
+                    load_environment.assert_not_called()
 
     def test_runner_redirects_python_bytecode_beneath_its_output(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -944,6 +963,42 @@ ly_create_alias(
             "AZCORE_USE_MALLOC_SYSTEM_ALLOCATOR=ON",
             variants["clang-malloc-accounting"].definitions,
         )
+
+    def test_windows_matrix_uses_the_sdk_environment_for_clang_cl(self) -> None:
+        runner = mock.Mock()
+        runner.engine_root = Path("D:/Engine")
+        runner.environment = {"PATH": "base"}
+        runner.run_command.return_value = True
+        developer_environment = {
+            "PATH": "sdk",
+            "RC": "C:/SDK/bin/rc.exe",
+            "WindowsSdkDir": "C:/SDK",
+        }
+
+        with (
+            mock.patch.object(jolt_qualification.platform, "system", return_value="Windows"),
+            mock.patch.object(
+                jolt_qualification,
+                "load_msvc_environment",
+                return_value=developer_environment,
+            ),
+        ):
+            jolt_qualification.add_full_matrix(
+                runner,
+                Path("D:/Engine/build/matrix"),
+                16,
+                Path("D:/LLVM/22.1.8"),
+            )
+
+        commands = {call.args[0]: call for call in runner.run_command.call_args_list}
+        clang_environment = commands["configure-clang-unity-modular"].args[3]
+        asan_environment = commands["configure-clang-asan"].args[3]
+
+        self.assertEqual(clang_environment, developer_environment)
+        self.assertEqual(asan_environment["PATH"], "sdk")
+        self.assertEqual(asan_environment["RC"], "C:/SDK/bin/rc.exe")
+        self.assertEqual(asan_environment["WindowsSdkDir"], "C:/SDK")
+        self.assertEqual(asan_environment["ASAN_OPTIONS"], "detect_odr_violation=0")
 
 
 if __name__ == "__main__":

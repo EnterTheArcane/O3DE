@@ -115,7 +115,12 @@ def run_capture(engine_root: Path, command: Sequence[str]) -> bytes:
 def load_msvc_environment(base_environment: dict[str, str]) -> dict[str, str]:
     existing_compiler = shutil.which("cl.exe", path=base_environment.get("PATH"))
     if base_environment.get("VSCMD_VER") and existing_compiler:
-        return base_environment.copy()
+        environment = base_environment.copy()
+        resource_compiler = shutil.which("rc.exe", path=environment.get("PATH"))
+        if not resource_compiler:
+            raise ValueError("The Visual Studio developer environment did not provide rc.exe.")
+        environment["RC"] = resource_compiler
+        return environment
 
     program_files_x86 = base_environment.get("ProgramFiles(x86)", "C:/Program Files (x86)")
     vswhere_path = Path(program_files_x86) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe"
@@ -170,6 +175,10 @@ def load_msvc_environment(base_environment: dict[str, str]) -> dict[str, str]:
         environment["PYTHONPYCACHEPREFIX"] = base_environment["PYTHONPYCACHEPREFIX"]
     if not shutil.which("cl.exe", path=environment.get("PATH")):
         raise ValueError("Visual Studio developer environment did not provide cl.exe.")
+    resource_compiler = shutil.which("rc.exe", path=environment.get("PATH"))
+    if not resource_compiler:
+        raise ValueError("Visual Studio developer environment did not provide rc.exe.")
+    environment["RC"] = resource_compiler
     return environment
 
 
@@ -1232,7 +1241,7 @@ def load_build_environment(
         return None
 
     compiler = Path(read_cmake_cache_value(build_directory, "CMAKE_CXX_COMPILER"))
-    if compiler.name.lower() != "cl.exe":
+    if compiler.name.lower() not in ("cl.exe", "clang-cl.exe"):
         return None
 
     return load_msvc_environment(base_environment)
@@ -1867,9 +1876,7 @@ def add_full_matrix(
     for variant in variants:
         build_directory = matrix_root / variant.name
         command_environment: dict[str, str] | None = None
-        if variant.name == "clang-asan":
-            command_environment = get_clang_address_sanitizer_environment(runner.environment)
-        elif variant.name.startswith("msvc-"):
+        if platform.system() == "Windows":
             if not msvc_environment:
                 runner.skip(f"configure-{variant.name}", msvc_error)
                 for configuration in variant.configurations:
@@ -1885,6 +1892,8 @@ def add_full_matrix(
                 outcomes[variant.name] = MatrixOutcome(build_directory, False)
                 continue
             command_environment = msvc_environment
+            if variant.name == "clang-asan":
+                command_environment = get_clang_address_sanitizer_environment(command_environment)
 
         configure_command = [
             "cmake",
