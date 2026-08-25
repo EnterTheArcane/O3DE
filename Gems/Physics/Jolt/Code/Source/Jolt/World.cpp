@@ -31622,6 +31622,7 @@ namespace Jolt
         AZ_Assert(eventBatch, "The event-batch pool rejected a live world.");
         if (!eventBatch)
         {
+            AZ_Error("Jolt", false, "The event-batch identity domain is exhausted.");
             return;
         }
 
@@ -31700,6 +31701,10 @@ namespace Jolt
         }
 
         EventBatchStorage& storage = *eventBatch.m_storage;
+        for (ContactEvent& event : m_pendingContactEvents)
+        {
+            event.m_batchId = storage.m_id;
+        }
         storage.m_contacts.swap(m_pendingContactEvents);
         storage.m_contactPoints.swap(m_pendingContactPoints);
         storage.m_activations.swap(m_pendingActivationEvents);

@@ -33,7 +33,7 @@ the row's complete contract.
 | `J3-AUD-010` | IPO is support-checked, private to its owner, preserves platform guards, and is identical across source/install delivery. | 1 | **Implemented** — clang-cl modular IPO on/off and monolithic-off builds pass; MSVC modular `/GL` and `/LTCG` pass. Fresh installed-delivery and external-platform equality remain final gates. |
 | `J3-AUD-011` | Jolt does not require unrelated installed-Python metadata or non-hermetic package provisioning. | 1 | **Implemented** — the branch-local Python install and launcher-discovery workarounds are removed, and the public source consumer passes. Fresh offline installed-consumer proof remains a final gate. |
 | `J3-AUD-012` | Public retained-shape ABI is precision-independent and meets the selected representation's allocation and query-cost gates. | 4 | **Implemented** — the public lease is pointer-sized in every precision mode; its bounded private pool passes steady-state allocation, lifetime, clang-cl Release code-generation, and 30-process retained-query gates. Double-precision, MSVC, and installed modular/monolithic builds remain final qualification gates. |
-| `J3-AUD-013` | Contact points are addressable only through the immutable batch that produced their event. | 4 | **Open** — 64-bit batch provenance, cross-batch rejection, reuse, overflow, serialization, and stale-event tests required. |
+| `J3-AUD-013` | Contact points are addressable only through the immutable batch that produced their event. | 4 | **Implemented** — module-lifetime 64-bit identities bind contacts to their producing batch, never wrap, and reject live foreign or recycled storage before point-range access. Copy/move, Runtime shutdown, overflow, serialization, reflection, and modular export tests pass. Final MSVC and installed-consumer qualification remain. |
 | `J3-AUD-014` | Entity request buses have one owner and deterministic result routing. | 4 | **Open** — `Single` policy audit and duplicate-handler rejection tests required. |
 | `J3-AUD-015` | World lifecycle, simulation, queries, rollback, and diagnostics use separate ownership/scoping boundaries. | 4 | **Open** — aggregate removal, bus-policy, BehaviorContext scope, and script-call parity proof required. |
 | `J3-AUD-016` | Ragdoll definitions construct every advertised constraint type and reject unsupported drive mappings before mutation. | 5 | **Open** — all 13 types, linked local identities, providers/paths, archives, snapshots, editor, and pose-drive tests required. |
@@ -157,6 +157,28 @@ instructions; release is five instructions with one conditional branch; validati
 The final `Jolt.API.dll` SHA-256 is `DE798610C4D6EDB6B0F809B6036777A39551E0711EA4A4C540BC12E33F77FA49`; the measured
 `Jolt.Tests.Gem.dll` SHA-256 is `577770F670B2338C5C7710F64C04489B472AE3E8D76CFB52C661084E307C0C01`. Raw reports and
 disassembly remain beneath `build/jolt-production-readiness/stage4/` and are intentionally not committed.
+
+## Stage 4 contact-event provenance evidence
+
+Every acquired `EventBatch` receives a nonzero identity from one module-lifetime atomic domain. The compare-exchange source returns the
+largest 64-bit identity once and then remains exhausted at zero instead of wrapping. Publication stamps each contact before its point
+storage becomes visible, and `GetContactPoints` compares that identity before evaluating its range. A copied or moved batch retains the
+same identity and storage; a live foreign batch, a later generation that recycles the storage, or an empty batch cannot address the
+contact's points.
+
+The identity occupies existing alignment space in `ContactEvent`, whose exact checked size remains 96 bytes. `EventBatch` remains one
+pointer. `GetId` has a zero-byte stack frame, eight instructions, no calls, and one empty-batch branch. `GetContactPoints` has a zero-byte
+stack frame, 29 instructions, no calls, four validation branches, and performs no allocation or locking. The module-wide source performs
+one relaxed compare-exchange per published batch; its publication cost and cross-world contention remain explicitly assigned to
+`J3-AUD-024` rather than inferred from code generation.
+
+The complete clang-cl 22.1.8 Release non-unity suite passes all 315 tests with zero failures and one intentional disable. Focused evidence
+is `ContactPointsRequireTheirProducingBatchAcrossCopiesAndRuntimeDestruction`, `RecycledEventStorageRejectsAStaleContact`,
+`EventBatchIdentitySourceFailsInsteadOfWrapping`, and `ContactEventBatchProvenanceRoundTripsThroughJson`. Behavior reflection requires
+the read-only `batchId` property, the public consumer calls `EventBatch::GetId`, and the modular DLL exports that symbol. Raw test XML,
+export inspection, and disassembly remain beneath `build/jolt-production-readiness/stage4/` and are intentionally not committed. The
+validated `Jolt.API.dll` SHA-256 is `13CAEEA8C32D00AC258937C516C4D1B8F635ADF376089361F4BD72242859A535`; the test DLL SHA-256 is
+`CCF268488E044148F70B102EEF95FE301D5212AAA8EE1D7204C3D9A34C8006CA`.
 
 ## Qualification platforms
 

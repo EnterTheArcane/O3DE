@@ -6,6 +6,7 @@
  */
 
 #include <Jolt/AssetProduct.h>
+#include <Jolt/EventInternal.h>
 #include <Jolt/SceneAsset.h>
 #include <Jolt/SystemInternal.h>
 
@@ -21087,6 +21088,156 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyBody(scene.m_worldHandle, scene.m_floorBodyHandle));
         EXPECT_TRUE(system.DestroyShape(scene.m_worldHandle, scene.m_sphereShapeHandle));
         EXPECT_TRUE(system.DestroyShape(scene.m_worldHandle, scene.m_floorShapeHandle));
+    }
+
+    TEST(SimulationTests, ContactPointsRequireTheirProducingBatchAcrossCopiesAndRuntimeDestruction)
+    {
+        EventBatch retainedBatch;
+        ContactEvent retainedContact;
+        ContactPoint retainedPoint;
+        AZ::u64 retainedBatchId = 0;
+
+        {
+            SystemConfiguration configuration = CreateSerialSystemConfiguration();
+            configuration.m_defaultWorld.m_collectContactEvents = true;
+            Runtime system(configuration, nullptr);
+            ASSERT_TRUE(system);
+
+            const SphereOnFloor scene = CreateSphereOnFloor(system);
+            ASSERT_TRUE(scene.m_sphereBodyHandle);
+
+            bool retainedContactFound = false;
+            for (AZ::u32 step = 0; step < 120 && !retainedContactFound; ++step)
+            {
+                ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+                const EventBatch events = system.GetEvents(scene.m_worldHandle);
+                for (const ContactEvent& contact : events.GetContacts())
+                {
+                    const AZStd::span<const ContactPoint> points = events.GetContactPoints(contact);
+                    if (!points.empty())
+                    {
+                        retainedBatch = events;
+                        retainedContact = contact;
+                        retainedPoint = points.front();
+                        retainedContactFound = true;
+                        break;
+                    }
+                }
+            }
+            ASSERT_TRUE(retainedContactFound);
+            retainedBatchId = retainedBatch.GetId();
+            ASSERT_NE(retainedBatchId, 0);
+            EXPECT_EQ(retainedContact.m_batchId, retainedBatchId);
+
+            EventBatch copiedBatch = retainedBatch;
+            EventBatch movedBatch = AZStd::move(copiedBatch);
+            EXPECT_FALSE(copiedBatch);
+            EXPECT_EQ(movedBatch.GetId(), retainedBatchId);
+            const AZStd::span<const ContactPoint> movedPoints = movedBatch.GetContactPoints(retainedContact);
+            ASSERT_EQ(movedPoints.size(), retainedContact.m_pointCount);
+            EXPECT_EQ(movedPoints.front().m_positionOnFirstBody, retainedPoint.m_positionOnFirstBody);
+            EXPECT_EQ(movedPoints.front().m_positionOnSecondBody, retainedPoint.m_positionOnSecondBody);
+
+            EventBatch foreignBatch;
+            ContactEvent foreignContact;
+            bool foreignContactFound = false;
+            for (AZ::u32 step = 0; step < 10 && !foreignContactFound; ++step)
+            {
+                ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+                const EventBatch events = system.GetEvents(scene.m_worldHandle);
+                for (const ContactEvent& contact : events.GetContacts())
+                {
+                    if (!events.GetContactPoints(contact).empty())
+                    {
+                        foreignBatch = events;
+                        foreignContact = contact;
+                        foreignContactFound = true;
+                        break;
+                    }
+                }
+            }
+            ASSERT_TRUE(foreignContactFound);
+            ASSERT_NE(foreignBatch.GetId(), retainedBatchId);
+            EXPECT_EQ(foreignContact.m_batchId, foreignBatch.GetId());
+            EXPECT_TRUE(retainedBatch.GetContactPoints(foreignContact).empty());
+            EXPECT_TRUE(foreignBatch.GetContactPoints(retainedContact).empty());
+
+            EXPECT_TRUE(system.DestroyBody(scene.m_worldHandle, scene.m_sphereBodyHandle));
+            EXPECT_TRUE(system.DestroyBody(scene.m_worldHandle, scene.m_floorBodyHandle));
+            EXPECT_TRUE(system.DestroyShape(scene.m_worldHandle, scene.m_sphereShapeHandle));
+            EXPECT_TRUE(system.DestroyShape(scene.m_worldHandle, scene.m_floorShapeHandle));
+        }
+
+        EXPECT_EQ(retainedBatch.GetId(), retainedBatchId);
+        const AZStd::span<const ContactPoint> retainedPoints = retainedBatch.GetContactPoints(retainedContact);
+        ASSERT_EQ(retainedPoints.size(), retainedContact.m_pointCount);
+        EXPECT_EQ(retainedPoints.front().m_positionOnFirstBody, retainedPoint.m_positionOnFirstBody);
+        EXPECT_EQ(retainedPoints.front().m_positionOnSecondBody, retainedPoint.m_positionOnSecondBody);
+    }
+
+    TEST(SimulationTests, RecycledEventStorageRejectsAStaleContact)
+    {
+        SystemConfiguration configuration = CreateSerialSystemConfiguration();
+        configuration.m_defaultWorld.m_collectContactEvents = true;
+        Runtime system(configuration, nullptr);
+        ASSERT_TRUE(system);
+
+        const SphereOnFloor scene = CreateSphereOnFloor(system);
+        ASSERT_TRUE(scene.m_sphereBodyHandle);
+
+        ContactEvent staleContact;
+        AZ::u64 staleBatchId = 0;
+        bool staleContactFound = false;
+        for (AZ::u32 step = 0; step < 120 && !staleContactFound; ++step)
+        {
+            ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+            EventBatch events = system.GetEvents(scene.m_worldHandle);
+            for (const ContactEvent& contact : events.GetContacts())
+            {
+                if (!events.GetContactPoints(contact).empty())
+                {
+                    staleContact = contact;
+                    staleBatchId = events.GetId();
+                    staleContactFound = true;
+                    break;
+                }
+            }
+        }
+        ASSERT_TRUE(staleContactFound);
+        ASSERT_EQ(staleContact.m_batchId, staleBatchId);
+
+        ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+        ASSERT_TRUE(system.StepWorld(scene.m_worldHandle, 1.0f / 60.0f));
+        const EventBatch currentBatch = system.GetEvents(scene.m_worldHandle);
+        ASSERT_NE(currentBatch.GetId(), staleBatchId);
+
+        bool matchingRangeFound = false;
+        for (const ContactEvent& currentContact : currentBatch.GetContacts())
+        {
+            if (currentContact.m_firstPoint == staleContact.m_firstPoint
+                && currentContact.m_pointCount == staleContact.m_pointCount
+                && !currentBatch.GetContactPoints(currentContact).empty())
+            {
+                matchingRangeFound = true;
+                break;
+            }
+        }
+        ASSERT_TRUE(matchingRangeFound);
+        EXPECT_TRUE(currentBatch.GetContactPoints(staleContact).empty());
+
+        EXPECT_TRUE(system.DestroyBody(scene.m_worldHandle, scene.m_sphereBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(scene.m_worldHandle, scene.m_floorBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(scene.m_worldHandle, scene.m_sphereShapeHandle));
+        EXPECT_TRUE(system.DestroyShape(scene.m_worldHandle, scene.m_floorShapeHandle));
+    }
+
+    TEST(SimulationTests, EventBatchIdentitySourceFailsInsteadOfWrapping)
+    {
+        EventBatchIdentitySource source(AZStd::numeric_limits<AZ::u64>::max());
+
+        EXPECT_EQ(source.Acquire(), AZStd::numeric_limits<AZ::u64>::max());
+        EXPECT_EQ(source.Acquire(), 0);
+        EXPECT_EQ(source.Acquire(), 0);
     }
 
     TEST(SimulationTests, BodyMoveEventsAreOptInAndRemainStableAfterSubscriptionRemoval)

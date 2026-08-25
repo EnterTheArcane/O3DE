@@ -36,6 +36,12 @@ namespace
             return 1;
         }
 
+        const Jolt::EventBatch emptyEventBatch;
+        if (emptyEventBatch.GetId() != 0)
+        {
+            return 1;
+        }
+
         return 0;
     }
 

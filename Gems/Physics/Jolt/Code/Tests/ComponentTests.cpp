@@ -1776,6 +1776,8 @@ namespace Jolt
         EXPECT_TRUE(behaviorContext.m_classes.contains("CharacterRuntimeConfiguration"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("ActivationEvent"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("JoltContactEvent"));
+        const AZ::BehaviorClass* contactEvent = behaviorContext.m_classes.at("JoltContactEvent");
+        EXPECT_TRUE(contactEvent->m_properties.contains("batchId"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("JoltContactPoint"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("ContactPointView"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("JoltShapeProperties"));

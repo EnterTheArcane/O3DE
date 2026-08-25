@@ -635,4 +635,59 @@ namespace Jolt
         serializeContext.reset();
         AZ::GetGlobalSerializeContextModule().Cleanup();
     }
+
+    TEST(ConfigurationSerializerTests, ContactEventBatchProvenanceRoundTripsThroughJson)
+    {
+        auto serializeContext = AZStd::make_unique<AZ::SerializeContext>();
+        AssetManagerReflection::Reflect(serializeContext.get());
+        AZ::Entity::Reflect(serializeContext.get());
+        AZ::Name::Reflect(serializeContext.get());
+        serializeContext->RegisterGenericType<AZ::Data::Asset<SceneAsset>>();
+        serializeContext->RegisterGenericType<AZ::Data::Asset<SkeletonAsset>>();
+        SystemComponent::Reflect(serializeContext.get());
+
+        auto jsonContext = AZStd::make_unique<AZ::JsonRegistrationContext>();
+        AZ::JsonSystemComponent::Reflect(jsonContext.get());
+        AssetManagerReflection::Reflect(jsonContext.get());
+        SystemComponent::Reflect(jsonContext.get());
+
+        ContactEvent event;
+        event.m_batchId = 0x1020'3040'5060'7080;
+        event.m_normal = AZ::Vector3(0.25f, 0.5f, 0.75f);
+        event.m_penetrationDepth = 1.25f;
+        event.m_firstPoint = 7;
+        event.m_pointCount = 3;
+        event.m_phase = EventPhase::Persist;
+        ExpectTaggedJsonRoundTrip(
+            "ContactEvent",
+            event,
+            *serializeContext,
+            *jsonContext,
+            [](const ContactEvent& restored)
+            {
+                EXPECT_EQ(restored.m_batchId, 0x1020'3040'5060'7080);
+                EXPECT_TRUE(restored.m_normal.IsClose(AZ::Vector3(0.25f, 0.5f, 0.75f)));
+                EXPECT_FLOAT_EQ(restored.m_penetrationDepth, 1.25f);
+                EXPECT_EQ(restored.m_firstPoint, 7);
+                EXPECT_EQ(restored.m_pointCount, 3);
+                EXPECT_EQ(restored.m_phase, EventPhase::Persist);
+            });
+
+        jsonContext->EnableRemoveReflection();
+        SystemComponent::Reflect(jsonContext.get());
+        AssetManagerReflection::Reflect(jsonContext.get());
+        AZ::JsonSystemComponent::Reflect(jsonContext.get());
+        jsonContext->DisableRemoveReflection();
+
+        serializeContext->EnableRemoveReflection();
+        SystemComponent::Reflect(serializeContext.get());
+        AZ::Name::Reflect(serializeContext.get());
+        AZ::Entity::Reflect(serializeContext.get());
+        AssetManagerReflection::Reflect(serializeContext.get());
+        serializeContext->DisableRemoveReflection();
+
+        jsonContext.reset();
+        serializeContext.reset();
+        AZ::GetGlobalSerializeContextModule().Cleanup();
+    }
 } // namespace Jolt

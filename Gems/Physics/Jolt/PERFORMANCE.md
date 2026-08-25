@@ -475,6 +475,16 @@ and 1.10%, respectively. The representation therefore stays within the 1% query-
 from the public ABI. Optimized acquisition and non-final release have zero-byte stack frames and no out-of-line calls. Double precision,
 MSVC, and installed-consumer measurements remain final qualification gates.
 
+## Contact-event batch provenance
+
+Contact-point lookup validates one 64-bit batch identity before its existing range checks. The identity occupies alignment space already
+present in the 96-byte `ContactEvent`, and `EventBatch` remains pointer-sized. Optimized clang-cl Release code has no stack frame, calls,
+allocation, or locking in `GetId` or `GetContactPoints`; the latter is 29 instructions with four validation branches.
+
+Publication performs one relaxed module-wide compare-exchange per batch and one identity store per contact. Those operations preserve
+cross-world and cross-Runtime uniqueness without caller-owned storage. Their contact-density and 1/4/8-worker cost is not inferred from
+instruction counts: the wait/hold/growth and process-isolated measurements required by `J3-AUD-024` remain the performance gate.
+
 ## Phase 5 absolute workload matrix
 
 The Jolt-specific benchmark suite includes:

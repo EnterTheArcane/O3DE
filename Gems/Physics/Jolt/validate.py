@@ -527,6 +527,7 @@ def validate_public_consumer(engine_root: Path) -> str:
         "Jolt::ReflectEvents",
         "Jolt::ReflectQueries",
         "Jolt::ReflectWorldQueries",
+        "emptyEventBatch.GetId",
         "GetQueryFace",
         "GetTargetFace",
     )

@@ -78,6 +78,7 @@ namespace Jolt
         MaterialHandle m_secondMaterialHandle;
         SubShapeId m_firstSubShapeId;
         SubShapeId m_secondSubShapeId;
+        AZ::u64 m_batchId = 0;
 
         AZ::Vector3 m_normal = AZ::Vector3::CreateZero();
         float m_penetrationDepth = 0.0f;
@@ -301,6 +302,10 @@ namespace Jolt
 
         [[nodiscard]]
         explicit operator bool() const;
+
+        //! Returns zero for an empty batch.
+        [[nodiscard]]
+        AZ::u64 GetId() const;
 
         [[nodiscard]]
         AZ::u64 GetSequence() const;

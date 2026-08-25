@@ -418,6 +418,7 @@ Jolt::ReflectDiagnostics(nullptr);
 Jolt::ReflectEvents(nullptr);
 Jolt::ReflectQueries(nullptr);
 Jolt::ReflectWorldQueries(nullptr);
+emptyEventBatch.GetId();
 faceBuffers.GetQueryFace(0);
 faceBuffers.GetTargetFace(0);
 """,

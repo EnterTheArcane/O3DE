@@ -83,7 +83,7 @@ static_assert(sizeof(Jolt::WorldPosition) == sizeof(double) * 3);
 static_assert(sizeof(Jolt::WorldTransform) == 48);
 static_assert(sizeof(Jolt::ActivationEvent) <= 16);
 static_assert(sizeof(Jolt::BodyMoveEvent) == 64);
-static_assert(sizeof(Jolt::ContactEvent) <= 112);
+static_assert(sizeof(Jolt::ContactEvent) == 96);
 static_assert(sizeof(Jolt::ContactPoint) == sizeof(Jolt::WorldPosition) * 2);
 static_assert(sizeof(Jolt::ContactPointView) == sizeof(AZStd::span<const Jolt::ContactPoint>));
 static_assert(sizeof(Jolt::EventBatch) == sizeof(void*));

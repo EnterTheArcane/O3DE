@@ -15,6 +15,11 @@
 
 namespace Jolt
 {
+    namespace
+    {
+        EventBatchIdentitySource ModuleEventBatchIdentitySource;
+    } // namespace
+
     EventBatch::EventBatch(EventBatchStorage* storage)
         : m_storage(storage)
     {
@@ -62,6 +67,16 @@ namespace Jolt
     EventBatch::operator bool() const
     {
         return m_storage;
+    }
+
+    AZ::u64 EventBatch::GetId() const
+    {
+        if (m_storage)
+        {
+            return m_storage->m_id;
+        }
+
+        return 0;
     }
 
     AZ::u64 EventBatch::GetSequence() const
@@ -112,6 +127,7 @@ namespace Jolt
     AZStd::span<const ContactPoint> EventBatch::GetContactPoints(const ContactEvent& contact) const &
     {
         if (!m_storage
+            || contact.m_batchId != m_storage->m_id
             || contact.m_firstPoint > m_storage->m_contactPoints.size()
             || contact.m_pointCount > m_storage->m_contactPoints.size() - contact.m_firstPoint)
         {
@@ -125,7 +141,7 @@ namespace Jolt
 
     EventBatchPool* EventBatchPool::Create()
     {
-        return aznew EventBatchPool;
+        return aznew EventBatchPool(ModuleEventBatchIdentitySource);
     }
 
     EventBatchPool::~EventBatchPool()
@@ -137,9 +153,16 @@ namespace Jolt
     EventBatch EventBatchPool::Acquire()
     {
         EventBatchStorage* storage = nullptr;
+        AZ::u64 identity = 0;
         {
             AZStd::lock_guard lock(m_mutex);
             if (!m_acceptingStorage)
+            {
+                return {};
+            }
+
+            identity = m_identitySource.Acquire();
+            if (identity == 0)
             {
                 return {};
             }
@@ -158,6 +181,7 @@ namespace Jolt
         }
 
         storage->Clear();
+        storage->m_id = identity;
         storage->m_referenceCount.store(1, AZStd::memory_order_release);
         return EventBatch(storage);
     }
@@ -239,6 +263,7 @@ namespace Jolt
         m_activations.clear();
         m_bodyMoves.clear();
         m_virtualCharacterMoves.clear();
+        m_id = 0;
         m_sequence = 0;
     }
 
@@ -262,6 +287,7 @@ namespace Jolt
                 ->Field("SecondMaterialHandle", &ContactEvent::m_secondMaterialHandle)
                 ->Field("FirstSubShapeId", &ContactEvent::m_firstSubShapeId)
                 ->Field("SecondSubShapeId", &ContactEvent::m_secondSubShapeId)
+                ->Field("BatchId", &ContactEvent::m_batchId)
                 ->Field("Normal", &ContactEvent::m_normal)
                 ->Field("PenetrationDepth", &ContactEvent::m_penetrationDepth)
                 ->Field("FirstPoint", &ContactEvent::m_firstPoint)
@@ -336,6 +362,7 @@ namespace Jolt
                     nullptr)
                 ->Property("firstSubShapeId", BehaviorValueGetter(&ContactEvent::m_firstSubShapeId), nullptr)
                 ->Property("secondSubShapeId", BehaviorValueGetter(&ContactEvent::m_secondSubShapeId), nullptr)
+                ->Property("batchId", BehaviorValueGetter(&ContactEvent::m_batchId), nullptr)
                 ->Property("normal", BehaviorValueGetter(&ContactEvent::m_normal), nullptr)
                 ->Property(
                     "penetrationDepth",
