@@ -33,7 +33,7 @@ namespace Jolt
 
     inline constexpr AZ::u32 MaximumScriptQueryHits = 4'096;
 
-    void ReflectWorldQueries(AZ::ReflectContext* context);
+    JOLT_API void ReflectWorldQueries(AZ::ReflectContext* context);
 
     struct JOLT_API ClosestShapeCastResult final
     {

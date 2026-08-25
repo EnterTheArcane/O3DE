@@ -409,7 +409,19 @@ newAddress.m_size = SystemAllocatorPrivate::GetAllocatedSize(newAddress.m_value,
                 "set(O3DE_ENGINE_ROOT example)\ntarget_link_libraries(example Gem::Jolt.API)\n",
             )
             write_file(consumer_root, "jolt_installed_consumer_files.cmake", "set(FILES main.cpp)\n")
-            source_path = write_file(consumer_root, "main.cpp", "#include <Jolt/System.h>\n")
+            source_path = write_file(
+                consumer_root,
+                "main.cpp",
+                """#include <Jolt/System.h>
+Jolt::ReflectDebugDraw(nullptr);
+Jolt::ReflectDiagnostics(nullptr);
+Jolt::ReflectEvents(nullptr);
+Jolt::ReflectQueries(nullptr);
+Jolt::ReflectWorldQueries(nullptr);
+faceBuffers.GetQueryFace(0);
+faceBuffers.GetTargetFace(0);
+""",
+            )
             write_file(
                 consumer_root,
                 "project.json",
@@ -420,6 +432,30 @@ newAddress.m_size = SystemAllocatorPrivate::GetAllocatedSize(newAddress.m_value,
 
             source_path.write_text("JPH::PhysicsSystem* system;\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "private native term"):
+                jolt_qualification.validate_public_consumer(engine_root)
+
+    def test_public_consumer_requires_all_exported_callables(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            consumer_root = (
+                engine_root
+                / "Gems"
+                / "Physics"
+                / "Jolt"
+                / "Code"
+                / "Tests"
+                / "InstalledConsumer"
+            )
+            write_file(
+                consumer_root,
+                "CMakeLists.txt",
+                "set(O3DE_ENGINE_ROOT example)\ntarget_link_libraries(example Gem::Jolt.API)\n",
+            )
+            write_file(consumer_root, "jolt_installed_consumer_files.cmake", "set(FILES main.cpp)\n")
+            write_file(consumer_root, "main.cpp", "#include <Jolt/System.h>\n")
+            write_file(consumer_root, "project.json", json.dumps({"gem_names": ["Jolt"]}))
+
+            with self.assertRaisesRegex(ValueError, "does not call exported API"):
                 jolt_qualification.validate_public_consumer(engine_root)
 
     def test_installed_boundary_requires_public_headers_and_hides_native_jolt(self) -> None:

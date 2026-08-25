@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/Handle.h>
 #include <Jolt/TypeIds.h>
 #include <Jolt/WorldTypes.h>
@@ -28,7 +29,7 @@ namespace AZ
 
 namespace Jolt
 {
-    void ReflectDebugDraw(AZ::ReflectContext* context);
+    JOLT_API void ReflectDebugDraw(AZ::ReflectContext* context);
 
     enum class DebugCaptureFlags : AZ::u32
     {

@@ -521,6 +521,19 @@ def validate_public_consumer(engine_root: Path) -> str:
         if term in source_text:
             errors.append(f"public consumer contains private native term {term!r}")
 
+    required_callable_terms = (
+        "Jolt::ReflectDebugDraw",
+        "Jolt::ReflectDiagnostics",
+        "Jolt::ReflectEvents",
+        "Jolt::ReflectQueries",
+        "Jolt::ReflectWorldQueries",
+        "GetQueryFace",
+        "GetTargetFace",
+    )
+    missing_callable_terms = [term for term in required_callable_terms if term not in source_text]
+    if missing_callable_terms:
+        errors.append(f"public consumer does not call exported API: {', '.join(missing_callable_terms)}")
+
     cmake_text = (consumer_root / "CMakeLists.txt").read_text(encoding="utf-8")
     if "Gem::Jolt.API" not in cmake_text:
         errors.append("public consumer does not link Gem::Jolt.API")

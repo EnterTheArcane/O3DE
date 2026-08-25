@@ -28,7 +28,7 @@ the row's complete contract.
 | `J3-AUD-005` | Vehicle creation on an unadded chassis fails without changing counts, revisions, or ownership. | 3 | **Implemented** — wheeled, motorcycle, and tracked construction reject an unadded chassis before native or wrapper mutation. The focused test preserves the world digest and resource counts, then proves the chassis can still be added, removed, and destroyed normally. Final MSVC qualification remains. |
 | `J3-AUD-006` | Automatic simulation runs at physics tick order and publishes transforms before attachment and pre-render consumers. | 4 | **Implemented** — the provider runs at `TICK_PHYSICS_SYSTEM`; a moving-body integration test observes the old transform immediately before physics and the updated transform at both attachment and pre-render orders in the same tick. Final MSVC qualification remains. |
 | `J3-AUD-007` | Native acquisition is provider-owned, versioned, fingerprinted from actual objects/options, and rejects foreign targets or populations. | 1 | **Open** — clean/cached fetch, foreign-target, patch, fingerprint, license, source/install, and offline tests required. |
-| `J3-AUD-008` | Every installed public out-of-line callable is exported or private, with no native leakage. | 4 | **Open** — installed modular consumer must call every public symbol. |
+| `J3-AUD-008` | Every installed public out-of-line callable is exported or private, with no native leakage. | 4 | **Implemented** — all seven previously hidden callables are exported, present in the modular import library, and invoked by the clang-cl Release public consumer. The validator requires every call so the proof cannot regress silently. Fresh installed modular/monolithic and MSVC consumers remain final gates. |
 | `J3-AUD-009` | ISA flags follow each target architecture, retain upstream exclusions, enforce SSE4.1 on x86, and disable AVX2/FMA. | 1 | **Implemented** — MSVC and clang-cl x64 native-object commands prove the exact SSE4.1 floor; Xcode slice generation and Apple execution remain external gates. |
 | `J3-AUD-010` | IPO is support-checked, private to its owner, preserves platform guards, and is identical across source/install delivery. | 1 | **Implemented** — clang-cl modular IPO on/off and monolithic-off builds pass; MSVC modular `/GL` and `/LTCG` pass. Fresh installed-delivery and external-platform equality remain final gates. |
 | `J3-AUD-011` | Jolt does not require unrelated installed-Python metadata or non-hermetic package provisioning. | 1 | **Implemented** — the branch-local Python install and launcher-discovery workarounds are removed, and the public source consumer passes. Fresh offline installed-consumer proof remains a final gate. |
@@ -121,6 +121,15 @@ the generic default. `ComponentTests.SystemTickPublishesTransformsBeforeAttachme
 `AZ::TickBus` and captures its entity transform at the immediately preceding, attachment, and pre-render tick orders. The pre-physics
 observer sees the original transform; attachment and pre-render observers see the same newly simulated transform. The focused test and
 the complete clang-cl 22.1.8 Debug non-unity suite pass.
+
+## Stage 4 modular public-export evidence
+
+`ReflectDebugDraw`, `ReflectDiagnostics`, `ReflectEvents`, `ReflectQueries`, `ReflectWorldQueries`,
+`ShapeQueryFaceBuffers::GetQueryFace`, and `ShapeQueryFaceBuffers::GetTargetFace` are exported by `Jolt.API`. The public headers include
+their own export definition directly, and the modular import library contains all seven symbols. The source-tree public consumer calls
+every function without native headers or types, links against the clang-cl 22.1.8 Release modular provider, runs a simulation, and
+exits successfully. Static validation fails if any of those calls is removed. Fresh installed modular/monolithic consumers and the
+MSVC matrix remain final qualification gates.
 
 ## Qualification platforms
 

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/Rollback.h>
 
 #include <Jolt/Handle.h>
@@ -31,7 +32,7 @@ namespace Jolt
     class EventBatchPool;
     struct EventBatchStorage;
 
-    void ReflectEvents(AZ::ReflectContext* context);
+    JOLT_API void ReflectEvents(AZ::ReflectContext* context);
 
     enum class ActivationState : AZ::u8
     {

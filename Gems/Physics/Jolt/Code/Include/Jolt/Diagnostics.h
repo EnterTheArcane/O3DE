@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <Jolt/Configuration.h>
 #include <Jolt/Query.h>
 #include <Jolt/TypeIds.h>
 
@@ -22,7 +23,7 @@ namespace AZ
 
 namespace Jolt
 {
-    void ReflectDiagnostics(AZ::ReflectContext* context);
+    JOLT_API void ReflectDiagnostics(AZ::ReflectContext* context);
 
     enum class SimulationError : AZ::u8
     {

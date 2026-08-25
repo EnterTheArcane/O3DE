@@ -30,7 +30,7 @@ namespace AZ
 
 namespace Jolt
 {
-    void ReflectQueries(AZ::ReflectContext* context);
+    JOLT_API void ReflectQueries(AZ::ReflectContext* context);
 
     inline constexpr AZ::u32 MaximumSupportingFaceVertexCount = 32;
 
@@ -581,10 +581,10 @@ namespace Jolt
         AZStd::span<WorldPosition> m_targetVertices;
 
         [[nodiscard]]
-        AZStd::span<WorldPosition> GetQueryFace(AZ::u32 hitIndex) const;
+        JOLT_API AZStd::span<WorldPosition> GetQueryFace(AZ::u32 hitIndex) const;
 
         [[nodiscard]]
-        AZStd::span<WorldPosition> GetTargetFace(AZ::u32 hitIndex) const;
+        JOLT_API AZStd::span<WorldPosition> GetTargetFace(AZ::u32 hitIndex) const;
     };
 
     struct BroadPhaseHit final

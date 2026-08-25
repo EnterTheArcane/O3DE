@@ -10,21 +10,48 @@
 #include <Jolt/Capabilities/Shapes.h>
 #include <Jolt/Capabilities/WorldSimulation.h>
 #include <Jolt/Capabilities/Worlds.h>
+#include <Jolt/DebugDraw.h>
+#include <Jolt/Diagnostics.h>
+#include <Jolt/Event.h>
+#include <Jolt/Query.h>
 #include <Jolt/ShapeConfiguration.h>
 #include <Jolt/System.h>
+#include <Jolt/WorldQueryBus.h>
 
 #include <AzCore/Memory/SystemAllocator.h>
 
 namespace
 {
+    int VerifyExportedCallables()
+    {
+        Jolt::ReflectDebugDraw(nullptr);
+        Jolt::ReflectDiagnostics(nullptr);
+        Jolt::ReflectEvents(nullptr);
+        Jolt::ReflectQueries(nullptr);
+        Jolt::ReflectWorldQueries(nullptr);
+
+        const Jolt::ShapeQueryFaceBuffers faceBuffers;
+        if (!faceBuffers.GetQueryFace(0).empty() || !faceBuffers.GetTargetFace(0).empty())
+        {
+            return 1;
+        }
+
+        return 0;
+    }
+
     int RunSimulation()
     {
+        if (VerifyExportedCallables() != 0)
+        {
+            return 1;
+        }
+
         Jolt::SystemConfiguration systemConfiguration;
         systemConfiguration.m_defaultWorld.m_workerCount = 1;
         Jolt::System system(AZStd::move(systemConfiguration));
         if (!system)
         {
-            return 1;
+            return 2;
         }
 
         Jolt::Worlds* worlds = Jolt::Worlds::Get();
@@ -33,13 +60,13 @@ namespace
         Jolt::WorldSimulation* simulation = Jolt::WorldSimulation::Get();
         if (!worlds || !shapes || !bodies || !simulation)
         {
-            return 2;
+            return 3;
         }
 
         const Jolt::WorldHandle worldHandle = worlds->GetDefaultWorldHandle();
         if (!worldHandle)
         {
-            return 3;
+            return 4;
         }
 
         Jolt::ShapeConfiguration shapeConfiguration;
@@ -47,7 +74,7 @@ namespace
         const Jolt::ShapeHandle shapeHandle = shapes->CreateShape(worldHandle, shapeConfiguration);
         if (!shapeHandle)
         {
-            return 4;
+            return 5;
         }
 
         Jolt::BodyConfiguration bodyConfiguration;
@@ -57,14 +84,14 @@ namespace
         if (!bodyHandle)
         {
             shapes->DestroyShape(worldHandle, shapeHandle);
-            return 5;
+            return 6;
         }
 
         if (!simulation->StepWorld(worldHandle, 1.0f / 60.0f))
         {
             bodies->DestroyBody(worldHandle, bodyHandle);
             shapes->DestroyShape(worldHandle, shapeHandle);
-            return 6;
+            return 7;
         }
 
         Jolt::BodyState bodyState;
@@ -74,7 +101,7 @@ namespace
         const bool destroyedShape = shapes->DestroyShape(worldHandle, shapeHandle);
         if (!moved || !destroyedBody || !destroyedShape)
         {
-            return 7;
+            return 8;
         }
 
         return 0;
