@@ -59,11 +59,13 @@ namespace Jolt::Internal
             AZStd::memory_order_acquire);
     }
 
-    bool OperationRecord::CanReap() const
+    bool OperationRecord::CanReapWithoutWaiting() const
     {
         const OperationStatus status = GetStatus();
         return m_referenceCount.load(AZStd::memory_order_acquire) == 1
             && m_taskReferenceActive.load(AZStd::memory_order_acquire)
+            && m_completion
+            && m_completion->GetDependentCount() == 1
             && (status == OperationStatus::Succeeded
                 || status == OperationStatus::Failed
                 || status == OperationStatus::Canceled);
@@ -132,9 +134,15 @@ namespace Jolt::Internal
 
     void OperationRecord::ReleaseReference()
     {
-        if (m_referenceCount.fetch_sub(1, AZStd::memory_order_acq_rel) == 1)
+        const AZ::u32 previousReferenceCount = m_referenceCount.fetch_sub(1, AZStd::memory_order_acq_rel);
+        if (previousReferenceCount == 1)
         {
             OperationPool::Recycle(this);
+            return;
+        }
+        if (previousReferenceCount == 2)
+        {
+            RequestReap();
         }
     }
 
@@ -172,6 +180,7 @@ namespace Jolt::Internal
                 AZStd::memory_order_acquire))
         {
             AZ_Assert(expected == OperationStatus::Canceled, "A Jolt operation entered an invalid state.");
+            RequestReap();
             return;
         }
 
@@ -183,6 +192,20 @@ namespace Jolt::Internal
         else
         {
             m_status.store(OperationStatus::Failed, AZStd::memory_order_release);
+        }
+        RequestReap();
+    }
+
+    void OperationRecord::RequestReap()
+    {
+        const OperationStatus status = GetStatus();
+        if (m_referenceCount.load(AZStd::memory_order_acquire) == 1
+            && m_taskReferenceActive.load(AZStd::memory_order_acquire)
+            && (status == OperationStatus::Succeeded
+                || status == OperationStatus::Failed
+                || status == OperationStatus::Canceled))
+        {
+            m_pool.QueueForReap(this);
         }
     }
 
@@ -210,6 +233,7 @@ namespace Jolt::Internal
     {
         AZ_Assert(!m_acceptingOperations, "The operation pool must be shut down before destruction.");
         AZ_Assert(!m_activeRecords, "The operation pool retained active operations during destruction.");
+        AZ_Assert(!m_reapCandidates, "The operation pool retained completed reap candidates during destruction.");
         AZ_Assert(m_freeLists.empty(), "The operation pool retained reusable operations during destruction.");
     }
 
@@ -224,6 +248,7 @@ namespace Jolt::Internal
                 {
                     if (candidate->RequiresJoin())
                     {
+                        RemoveReapCandidate(candidate);
                         candidate->AddReference();
                         record = candidate;
                         break;
@@ -321,35 +346,58 @@ namespace Jolt::Internal
         AZStd::lock_guard lock(m_mutex);
         AZ_Assert(m_acceptingOperations, "A Jolt operation was published while the pool was shutting down.");
         record->m_nextActive = m_activeRecords;
+        record->m_previousActiveLink = &m_activeRecords;
+        if (m_activeRecords)
+        {
+            m_activeRecords->m_previousActiveLink = &record->m_nextActive;
+        }
         m_activeRecords = record;
     }
 
     void OperationPool::ReapCompleted()
     {
-        while (true)
+        OperationRecord* readyRecords = nullptr;
         {
-            OperationRecord* record = nullptr;
+            AZStd::lock_guard lock(m_mutex);
+            OperationRecord* candidate = m_reapCandidates;
+            while (candidate)
             {
-                AZStd::lock_guard lock(m_mutex);
-                for (OperationRecord* candidate = m_activeRecords; candidate; candidate = candidate->m_nextActive)
+                OperationRecord* nextCandidate = candidate->m_nextReap;
+                if (candidate->CanReapWithoutWaiting())
                 {
-                    if (candidate->CanReap())
-                    {
-                        candidate->AddReference();
-                        record = candidate;
-                        break;
-                    }
+                    RemoveReapCandidate(candidate);
+                    candidate->m_nextReap = readyRecords;
+                    readyRecords = candidate;
                 }
+                candidate = nextCandidate;
             }
-
-            if (!record)
-            {
-                return;
-            }
-
-            record->Join();
-            record->ReleaseReference();
         }
+
+        while (readyRecords)
+        {
+            OperationRecord* record = readyRecords;
+            readyRecords = record->m_nextReap;
+            record->m_nextReap = nullptr;
+            record->Join();
+        }
+    }
+
+    void OperationPool::QueueForReap(
+        OperationRecord* record)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        if (record->m_previousReapLink)
+        {
+            return;
+        }
+
+        record->m_nextReap = m_reapCandidates;
+        record->m_previousReapLink = &m_reapCandidates;
+        if (m_reapCandidates)
+        {
+            m_reapCandidates->m_previousReapLink = &record->m_nextReap;
+        }
+        m_reapCandidates = record;
     }
 
     void OperationPool::ReleasePoolReference()
@@ -366,17 +414,9 @@ namespace Jolt::Internal
         bool deleteRecord = false;
         {
             AZStd::lock_guard lock(m_mutex);
-            OperationRecord** activeLink = &m_activeRecords;
-            while (*activeLink && *activeLink != record)
-            {
-                activeLink = &(*activeLink)->m_nextActive;
-            }
-            AZ_Assert(*activeLink == record, "A Jolt operation was not owned by its pool.");
-            if (*activeLink == record)
-            {
-                *activeLink = record->m_nextActive;
-            }
-            record->m_nextActive = nullptr;
+            AZ_Assert(record->m_previousActiveLink, "A Jolt operation was not owned by its pool.");
+            RemoveActiveRecord(record);
+            RemoveReapCandidate(record);
             record->ClearForReuse();
 
             if (m_acceptingOperations)
@@ -400,6 +440,40 @@ namespace Jolt::Internal
             delete record;
             ReleasePoolReference();
         }
+    }
+
+    void OperationPool::RemoveActiveRecord(
+        OperationRecord* record)
+    {
+        if (!record->m_previousActiveLink)
+        {
+            return;
+        }
+
+        *record->m_previousActiveLink = record->m_nextActive;
+        if (record->m_nextActive)
+        {
+            record->m_nextActive->m_previousActiveLink = record->m_previousActiveLink;
+        }
+        record->m_nextActive = nullptr;
+        record->m_previousActiveLink = nullptr;
+    }
+
+    void OperationPool::RemoveReapCandidate(
+        OperationRecord* record)
+    {
+        if (!record->m_previousReapLink)
+        {
+            return;
+        }
+
+        *record->m_previousReapLink = record->m_nextReap;
+        if (record->m_nextReap)
+        {
+            record->m_nextReap->m_previousReapLink = record->m_previousReapLink;
+        }
+        record->m_nextReap = nullptr;
+        record->m_previousReapLink = nullptr;
     }
 
     bool CancelOperation(

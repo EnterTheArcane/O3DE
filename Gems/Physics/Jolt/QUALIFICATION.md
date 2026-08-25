@@ -41,7 +41,7 @@ the row's complete contract.
 | `J3-AUD-018` | One Path resource owns geometry and transform; active updates commit transactionally at a safe boundary. | 5 | **Implemented** — each Path retains canonical local geometry and one authoritative `AZ::Transform`. Queued updates coalesce before a safe-boundary transaction across every world; translation/rotation updates dependent frames, uniform-scale changes rebuild native geometry, and failed preparation leaves the previous state active. Direct, scene, ragdoll, custom-provider, component, snapshot, modular-consumer, and exact 1/4/8-worker tests pass. Final MSVC and application qualification remain. |
 | `J3-AUD-019` | Custom-shape source dependencies participate in analysis invalidation and deterministic job/product fingerprints. | 5 | **Implemented** — scene sources declare canonical asset-database-relative dependency paths. `CreateJobs` publishes their exact absolute source dependencies and fingerprints current contents plus captured provider identity/version; `ProcessJob` independently reanalyzes and rejects missing files or provider output that disagrees with the declared path/hash set. Runtime cooking canonicalizes ordering and duplicates, while compiled scene data drops authoring-only path storage. `EditorAssetBuilderTests.TracksCustomShapeDependencyEditsDeletionAndRecovery` proves dependency-only fingerprint changes, stale-provider rejection, deletion tracking, successful recovery, provider-version invalidation, and recooking without changing the parent source. Invalid provider/path/hash contracts fail transactionally. Final Asset Processor application and MSVC qualification remain. |
 | `J3-AUD-020` | Every claimed clang-cl ASan configuration is instrumented and deployed correctly or rejected during configure. | 1 | **Closed** — clang-cl 22.1.8 permits only Profile ASan trees because the Windows ASan runtime rejects the debug CRT; a fresh Ninja build proved compile instrumentation, dynamic runtime/thunk linkage, runtime deployment, the full Jolt and AzCore suites, and a symbolized heap-use-after-free sentinel. |
-| `J3-AUD-021` | Operation creation and completion reclamation are bounded and never wait for unrelated work. | 6 | **Open** — complexity, cancellation, concurrent creator, shutdown, and worker-saturation tests/benchmarks required. |
+| `J3-AUD-021` | Operation creation and completion reclamation are bounded and never wait for unrelated work. | 6 | **Implemented** — creation performs one free-list lookup and never scans, joins, or waits for active work. Terminal detached operations nominate themselves for completion-driven maintenance, and intrusive links remove active and reap entries in constant time. Profile creation of 2,048 operations with all work blocked improved from a 5,011 us median to 147 us; optimized Release measures 122 us. Concurrent creation, detached cancellation/completion, shutdown, and saturated-worker watchdog tests pass. Cache byte/count ceilings and complete memory telemetry remain `J3-AUD-022`. Final MSVC and application qualification remain. |
 | `J3-AUD-022` | Event and operation caches have count/byte ceilings and accurately report live, cached, outstanding, retained, and high-water memory. | 6 | **Open** — burst/release/reuse/oversize/teardown statistics and allocator evidence required. |
 | `J3-AUD-023` | Steady-state allocation claims cover native, wrapper, AZ job, and closure domains. | 6 | **Open** — warm 1/4/8-worker stepping, automatic worlds, queries, and CPU Hair allocation evidence required. |
 | `J3-AUD-024` | Contact publication meets the declared contention gate without weakening deterministic order or event completeness. | 6 | **Open** — wait/hold/growth instrumentation and contact-density W1/W4/W8 evidence required before changing the mutex design. |
@@ -54,7 +54,7 @@ the row's complete contract.
 | `C-AUD-003` | Path component teardown retains ownership after a failed destroy. | 3 | **Implemented** — mandatory path teardown ignores a client veto only after complete discovery, reserves the dependent native constraint closure, and commits the path after its constraints. Final MSVC qualification remains. |
 | `C-AUD-004` | Active paths have one authoritative transform and cannot snapshot inconsistent geometry and frames. | 5 | **Implemented** — activation creates native geometry and its authoritative transform together; updates publish geometry, frames, path state, and world configuration revisions in one commit. Pre-update snapshots reject the changed topology, while byte-identical post-update archives and public state match across effective 1/4/8 workers. Final MSVC and application qualification remain. |
 | `C-AUD-005` | Gameplay scripts cannot own world lifecycle, explicit stepping, or restore. | 4 | **Implemented** — lifecycle/configuration, explicit stepping, and rollback buses carry Automation scope while query and diagnostics buses alone carry Common scope. Reflection tests assert each boundary, retained-shape operations remain C++-only, script parity rejects stale or misplaced calls, and the focused clang-cl Release scenario passes. |
-| `C-AUD-006` | Creating an async operation never joins or waits for unrelated queued/running work. | 6 | **Open** — blocked-worker latency and lock-context watchdog tests required. |
+| `C-AUD-006` | Creating an async operation never joins or waits for unrelated queued/running work. | 6 | **Implemented** — a blocked-worker benchmark keeps every prior operation outstanding while timing creation, directly exposing the former active-list rescan. Creation no longer invokes maintenance. Completion-driven reaping considers only nominated terminal records and starts an already-ready completion outside the pool lock. Detached queued cancellation, concurrent creators, ordinary worker-aware waits, and the subprocess saturation watchdog pass. Final MSVC qualification remains. |
 | `C-AUD-007` | Parent/child allocator byte accounting uses the same size on allocation and deallocation in every malloc/ASan-header mode. | 1 | **Closed** — `SystemAllocator` now reports and accounts the exact size returned by deallocation. `ChildAllocatorSchema` and Jolt `NativeAllocator` round trips pass with the Profile ASan header and with `AZCORE_USE_MALLOC_SYSTEM_ALLOCATOR=ON` without that header. |
 
 ## Stage 2 evidence
@@ -259,6 +259,26 @@ hashes, traversal, unsupported shape families, and unavailable providers. The cl
 discovers 326 tests, with zero failures and one intentional disable. The public modular consumer links and executes the new extension lookup,
 and the quick validator passes all ledger, isolated-header, manifest, scenario, reflection, native-boundary, sanitizer-policy, consumer,
 and Python checks. Final Asset Processor application and MSVC qualification remain.
+
+## Stage 6 asynchronous-operation reclamation evidence
+
+Operation creation now performs one type-keyed free-list lookup and publishes through an intrusive active list. It does not inspect or
+join any unrelated record. When the caller releases the last public token, a terminal operation nominates itself for reclamation. The
+pool visits only nominated records during explicit or automatic simulation maintenance, verifies that their AZ completion is already
+ready, removes both list memberships in constant time, and joins outside the pool mutex. Running work retains its task reference, while
+detached results retain the pool and their provider-owned immutable result until safe reclamation.
+
+`Jolt/Diagnostic/Operation/CreateOutstanding` occupies the only background worker and times creation while every operation remains
+queued. At 2,048 operations, the exact clang-cl 22.1.8 Profile median fell from 5,011 us to 147 us, a 34.0x improvement, with 0.57% CV.
+The optimized Release implementation measures 122 us with 0.50% CV, or 16.75 million published operations per second. Cleanup, waits,
+and cooked-shape destruction are outside the timed region, while every result is subsequently validated and destroyed.
+
+`SimulationTests.ConcurrentOperationCreationAndDetachedCompletionRemainSafe` drives four creator threads through repeated mixed
+explicit-wait and detached-completion cycles. `QueuedOperationCanBeCanceledWithoutRunning` drops one canceled queued token without a
+wait while retaining and waiting on a second. Existing ownership, running-token destruction, result-lifetime, and saturated-worker
+subprocess tests cover the remaining completion and shutdown paths. The complete Profile and Release non-unity suites each pass 326
+tests with zero failures and one intentional disable. Raw JSON and XML evidence remains beneath
+`build/jolt-production-readiness/stage6/operation-pool/` and is intentionally not committed.
 
 ## Qualification platforms
 

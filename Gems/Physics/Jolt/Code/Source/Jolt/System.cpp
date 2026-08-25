@@ -5798,6 +5798,10 @@ namespace Jolt
         const WorldHandle worldHandle,
         const float fixedTimeStep)
     {
+        if (m_operationPool)
+        {
+            m_operationPool->ReapCompleted();
+        }
         FlushPathTransformUpdates();
         RetryDeferredResourceDestruction();
         AZStd::shared_lock lock(m_worldMutex);
@@ -5899,6 +5903,10 @@ namespace Jolt
         AZStd::span<WorldEventBatch> eventBatches,
         AZ::u32* eventBatchCount)
     {
+        if (m_operationPool)
+        {
+            m_operationPool->ReapCompleted();
+        }
         FlushPathTransformUpdates();
         RetryDeferredResourceDestruction();
         struct AutoSimulationEntry final

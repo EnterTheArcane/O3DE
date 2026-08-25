@@ -4645,6 +4645,80 @@ namespace Jolt
         EXPECT_TRUE(listenerRemovedAfterCompletion);
     }
 
+    TEST(SimulationTests, ConcurrentOperationCreationAndDetachedCompletionRemainSafe)
+    {
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(4);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        Runtime system(CreateSerialSystemConfiguration(), &jobContext);
+        ASSERT_TRUE(system);
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        ASSERT_TRUE(worldHandle);
+
+        constexpr size_t creatorCount = 4;
+        constexpr size_t operationsPerCreator = 64;
+        for (size_t round = 0; round < 4; ++round)
+        {
+            AZStd::array<AZStd::vector<Operation<SimulationResult>>, creatorCount> operations;
+            for (AZStd::vector<Operation<SimulationResult>>& creatorOperations : operations)
+            {
+                creatorOperations.reserve(operationsPerCreator);
+            }
+
+            AZStd::atomic_bool start{false};
+            AZStd::array<AZStd::thread, creatorCount> creators;
+            for (size_t creatorIndex = 0; creatorIndex < creatorCount; ++creatorIndex)
+            {
+                creators[creatorIndex] = AZStd::thread(
+                    [&system, worldHandle, &operations, &start, creatorIndex]
+                    {
+                        while (!start.load(AZStd::memory_order_acquire))
+                        {
+                            AZStd::this_thread::yield();
+                        }
+                        for (size_t operationIndex = 0; operationIndex < operationsPerCreator; ++operationIndex)
+                        {
+                            operations[creatorIndex].push_back(system.StepWorldAsync(worldHandle, 1.0f / 60.0f));
+                        }
+                    });
+            }
+            start.store(true, AZStd::memory_order_release);
+            for (AZStd::thread& creator : creators)
+            {
+                creator.join();
+            }
+
+            for (size_t creatorIndex = 0; creatorIndex < creatorCount; ++creatorIndex)
+            {
+                for (size_t operationIndex = 0; operationIndex < operationsPerCreator; ++operationIndex)
+                {
+                    Operation<SimulationResult>& operation = operations[creatorIndex][operationIndex];
+                    ASSERT_TRUE(operation);
+                    if ((creatorIndex + operationIndex) % 2 == 0)
+                    {
+                        EXPECT_EQ(operation.Wait(), OperationStatus::Succeeded);
+                        continue;
+                    }
+
+                    ASSERT_TRUE(WaitUntil(
+                        [&operation]
+                        {
+                            const OperationStatus status = operation.GetStatus();
+                            return status == OperationStatus::Succeeded || status == OperationStatus::Failed;
+                        }));
+                    operation.Reset();
+                }
+            }
+            for (AZStd::vector<Operation<SimulationResult>>& creatorOperations : operations)
+            {
+                creatorOperations.clear();
+            }
+            ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        }
+    }
+
     TEST(SimulationTests, QueuedOperationCanBeCanceledWithoutRunning)
     {
         AZ::JobManagerDesc jobManagerDescriptor;
@@ -4677,8 +4751,15 @@ namespace Jolt
                 return blockerEntered.load(AZStd::memory_order_acquire);
             }));
 
-        Operation<CookedShapeHandle> operation = system.CookShapeAsync(ShapeConfiguration{
+        Operation<CookedShapeHandle> detachedOperation = system.CookShapeAsync(ShapeConfiguration{
             .m_geometry = SphereShapeConfiguration{.m_radius = 0.5f},
+        });
+        ASSERT_TRUE(detachedOperation);
+        EXPECT_TRUE(detachedOperation.Cancel());
+        detachedOperation.Reset();
+
+        Operation<CookedShapeHandle> operation = system.CookShapeAsync(ShapeConfiguration{
+            .m_geometry = SphereShapeConfiguration{.m_radius = 0.75f},
         });
         ASSERT_TRUE(operation);
         EXPECT_TRUE(operation.Cancel());
@@ -4687,6 +4768,7 @@ namespace Jolt
         blockerCompletion.StartAndWaitForCompletion();
         EXPECT_EQ(operation.Wait(), OperationStatus::Canceled);
         EXPECT_EQ(operation.GetResult(), nullptr);
+        EXPECT_TRUE(system.StepWorld(system.GetDefaultWorldHandle(), 1.0f / 60.0f));
     }
 
     TEST(SimulationTests, CompletedOperationResultOutlivesRuntime)

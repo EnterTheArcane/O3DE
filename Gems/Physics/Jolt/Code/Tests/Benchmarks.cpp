@@ -14,7 +14,10 @@
 
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Jobs/JobContext.h>
+#include <AzCore/Jobs/JobEmpty.h>
+#include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManager.h>
+#include <AzCore/Jobs/JobManagerDesc.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
@@ -24,6 +27,8 @@
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/limits.h>
+#include <AzCore/std/parallel/atomic.h>
+#include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/sort.h>
 #include <AzCore/std/string/string.h>
@@ -1087,6 +1092,86 @@ namespace Jolt::Benchmarks
         benchmark::State& state)
     {
         CreateDestroyBodiesImpl(state, true);
+    }
+
+    void CreateOutstandingOperations(
+        benchmark::State& state)
+    {
+        const size_t operationCount = aznumeric_cast<size_t>(state.range(0));
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(1);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+        Runtime system(CreateSystemConfiguration(1, 1), &jobContext);
+        if (!system)
+        {
+            state.SkipWithError("Failed to create the Jolt outstanding-operation benchmark runtime.");
+            return;
+        }
+
+        ShapeConfiguration shapeConfiguration{
+            .m_geometry = SphereShapeConfiguration{.m_radius = 0.5f},
+        };
+        AZStd::vector<Operation<CookedShapeHandle>> operations;
+        operations.reserve(operationCount);
+        bool qualityValid = true;
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            state.PauseTiming();
+            AZStd::atomic_bool blockerEntered{false};
+            AZStd::atomic_bool releaseBlocker{false};
+            AZ::JobEmpty blockerCompletion(false, &jobContext);
+            AZ::Job* blocker = AZ::CreateJobFunction(
+                [&blockerEntered, &releaseBlocker]
+                {
+                    blockerEntered.store(true, AZStd::memory_order_release);
+                    while (!releaseBlocker.load(AZStd::memory_order_acquire))
+                    {
+                        AZStd::this_thread::yield();
+                    }
+                },
+                true,
+                &jobContext);
+            blocker->SetDependent(&blockerCompletion);
+            blocker->Start();
+            while (!blockerEntered.load(AZStd::memory_order_acquire))
+            {
+                AZStd::this_thread::yield();
+            }
+
+            state.ResumeTiming();
+            for (size_t operationIndex = 0; operationIndex < operationCount; ++operationIndex)
+            {
+                operations.push_back(system.CookShapeAsync(shapeConfiguration));
+            }
+            state.PauseTiming();
+
+            releaseBlocker.store(true, AZStd::memory_order_release);
+            blockerCompletion.StartAndWaitForCompletion();
+            for (Operation<CookedShapeHandle>& operation : operations)
+            {
+                qualityValid = operation
+                    && operation.Wait() == OperationStatus::Succeeded
+                    && operation.GetResult()
+                    && *operation.GetResult()
+                    && qualityValid;
+                if (operation.GetResult() && *operation.GetResult())
+                {
+                    qualityValid = system.DestroyCookedShape(*operation.GetResult()) && qualityValid;
+                }
+            }
+            operations.clear();
+            state.ResumeTiming();
+        }
+
+        state.counters["Operations"] = aznumeric_cast<double>(operationCount);
+        state.counters["QualityValid"] = 0;
+        if (qualityValid)
+        {
+            state.counters["QualityValid"] = 1;
+        }
+        state.counters["Workers"] = 1;
+        state.SetItemsProcessed(state.iterations() * operationCount);
     }
 
     void ChangeRagdollMembership(
@@ -3675,6 +3760,14 @@ namespace Jolt::Benchmarks
         ->Name("Jolt/Lifecycle/CreateDestroyBodies")
         ->Args({128, 1})
         ->Args({1024, 1})
+        ->Unit(benchmark::kMicrosecond)
+        ->UseRealTime();
+
+    BENCHMARK(CreateOutstandingOperations)
+        ->Name("Jolt/Diagnostic/Operation/CreateOutstanding")
+        ->Arg(128)
+        ->Arg(512)
+        ->Arg(2'048)
         ->Unit(benchmark::kMicrosecond)
         ->UseRealTime();
 

@@ -11,6 +11,13 @@ audit-local eight-worker step series exceeded the 5% coefficient-of-variation ga
 Current closure requirements and evidence ownership are tracked in `QUALIFICATION.md`. No historical artifact may be relabelled as a
 current result after a runtime, API, workload, compiler, or runner change.
 
+The Stage 6 operation-pool correction is current diagnostic evidence, not final performance qualification. The blocked-worker
+`Jolt/Diagnostic/Operation/CreateOutstanding` workload measures only creation while every earlier operation is still queued. For 2,048
+operations, clang-cl 22.1.8 Profile improved from a 5,011 us median to 147 us with 0.57% CV. The optimized Release implementation
+measures 122 us with 0.50% CV. The 34.0x Profile improvement confirms that creation no longer performs the former growing active-list
+scan; final 30-process MSVC and clang-cl qualification remains Phase 8 work. Raw evidence is retained beneath
+`build/jolt-production-readiness/stage6/operation-pool/`.
+
 Release microbenchmarks are the timing authority. Profile captures attribute time through the engine and native profiling scopes. A
 matched result is accepted only after the comparator verifies workload identity, worker count, notification policy, sleep and continuous
 collision policy, query cardinality, simulation quality, repetition count, and stability.

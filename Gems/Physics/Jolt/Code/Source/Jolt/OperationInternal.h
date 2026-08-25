@@ -47,7 +47,7 @@ namespace Jolt::Internal
         bool Cancel();
 
         [[nodiscard]]
-        bool CanReap() const;
+        bool CanReapWithoutWaiting() const;
 
         [[nodiscard]]
         const void* GetResult() const;
@@ -90,6 +90,8 @@ namespace Jolt::Internal
 
         void Execute();
 
+        void RequestReap();
+
         void ReleaseTaskReference();
 
         friend class OperationPool;
@@ -105,7 +107,10 @@ namespace Jolt::Internal
         const void* m_result = nullptr;
 
         OperationRecord* m_nextActive = nullptr;
+        OperationRecord** m_previousActiveLink = nullptr;
         OperationRecord* m_nextFree = nullptr;
+        OperationRecord* m_nextReap = nullptr;
+        OperationRecord** m_previousReapLink = nullptr;
         const void* const m_typeKey;
     };
 
@@ -192,8 +197,6 @@ namespace Jolt::Internal
             Work work,
             typename TypedOperationRecord<Result, Work>::Executor executor)
         {
-            ReapCompleted();
-
             using Record = TypedOperationRecord<Result, Work>;
             OperationRecord* storage = AcquireStorage(Record::GetTypeKey());
             Record* record = nullptr;
@@ -215,6 +218,8 @@ namespace Jolt::Internal
         }
 
         void Drain();
+
+        void ReapCompleted();
 
         void Shutdown();
 
@@ -239,16 +244,23 @@ namespace Jolt::Internal
 
         void Publish(OperationRecord* record);
 
-        void ReapCompleted();
+        void QueueForReap(OperationRecord* record);
 
         void ReleasePoolReference();
 
         void RecycleRecord(OperationRecord* record);
 
+        void RemoveActiveRecord(OperationRecord* record);
+
+        void RemoveReapCandidate(OperationRecord* record);
+
+        friend class OperationRecord;
+
         AZ::JobContext* m_jobContext = nullptr;
         AZStd::mutex m_mutex;
         AZStd::fixed_vector<FreeList, 16> m_freeLists;
         OperationRecord* m_activeRecords = nullptr;
+        OperationRecord* m_reapCandidates = nullptr;
         AZStd::atomic<AZ::u32> m_referenceCount{1};
         bool m_acceptingOperations = true;
     };
