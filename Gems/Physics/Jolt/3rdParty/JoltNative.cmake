@@ -18,6 +18,7 @@
 # no find module has to be shipped to installed engines.
 
 set(jolt_native_patch_file "${CMAKE_CURRENT_LIST_DIR}/jolt-5.6.0-o3de.patch")
+set_property(DIRECTORY "${CMAKE_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${jolt_native_patch_file}")
 file(SHA256 "${jolt_native_patch_file}" jolt_native_patch_hash)
 string(SUBSTRING "${jolt_native_patch_hash}" 0 16 jolt_native_patch_identity)
 set(jolt_native_content_base_name O3DEJoltPhysics_5_6_0)

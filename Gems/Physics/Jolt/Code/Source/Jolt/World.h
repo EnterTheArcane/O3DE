@@ -65,6 +65,8 @@ namespace JPH
     class CollideShapeSettings;
     class ConvexHullShape;
     class HeightFieldShape;
+    class PathConstraint;
+    class PathConstraintPath;
     class ShapeFilter;
     class TransformedShape;
 } // namespace JPH
@@ -624,6 +626,32 @@ namespace Jolt
             AZStd::span<const ConstraintHandle> constraintHandles,
             PathHandle pathHandle,
             AZ::u32& pathReferenceCount);
+
+        struct PreparedPathConstraintUpdate final
+        {
+            JPH::PathConstraint* m_constraint = nullptr;
+            AZ::u64* m_configurationRevision = nullptr;
+            JPH::Vec3 m_position;
+            JPH::Quat m_rotation;
+            float m_fraction = 0.0f;
+            bool m_isInSimulation = false;
+        };
+
+        struct PreparedPathUpdate final
+        {
+            AZStd::span<const PreparedPathConstraintUpdate> m_constraints;
+        };
+
+        [[nodiscard]]
+        bool PreparePathUpdate(
+            PathHandle pathHandle,
+            const JPH::PathConstraintPath& path,
+            const AZ::Transform& transform,
+            PreparedPathUpdate& update);
+
+        void CommitPathUpdate(
+            const JPH::PathConstraintPath& path,
+            const PreparedPathUpdate& update);
 
         bool ReservePathConstraintsWithDependencies(
             AZStd::span<const ConstraintHandle> constraintHandles,
@@ -2381,6 +2409,8 @@ namespace Jolt
             AZ::Name m_name;
             AZ::u64 m_userData = 0;
             AZ::u64 m_configurationRevision = 1;
+            AZ::Vector3 m_pathPosition = AZ::Vector3::CreateZero();
+            AZ::Quaternion m_pathRotation = AZ::Quaternion::CreateIdentity();
             PathRotationConstraint m_pathRotationConstraint = PathRotationConstraint::None;
             bool m_isInSimulation = false;
             bool m_isDestroying = false;
@@ -3442,6 +3472,7 @@ namespace Jolt
         AZStd::vector<AZ::u8> m_constraintDestructionMarks;
         AZStd::vector<ConstraintHandle> m_constraintHandleScratch;
         JPH::Array<JPH::Constraint*> m_constraintScratch;
+        AZStd::vector<PreparedPathConstraintUpdate> m_preparedPathConstraintUpdates;
 
         AZStd::vector<SceneInstanceSlot> m_sceneInstanceSlots;
         AZStd::vector<AZ::u32> m_freeSceneInstanceSlots;

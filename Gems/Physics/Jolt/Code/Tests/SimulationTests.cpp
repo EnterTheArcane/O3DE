@@ -2810,6 +2810,237 @@ namespace Jolt
             }
             return digest;
         }
+
+        struct ActivePathSimulationResult final
+        {
+            static constexpr AZ::u32 BodyCount = 16;
+
+            AZStd::array<BodyState, BodyCount> m_bodyStates;
+            AZStd::array<PathMeasurements, BodyCount> m_constraintMeasurements;
+            StateSnapshotArchive m_archive;
+            WorldStateDigest m_digest;
+            bool m_succeeded = false;
+        };
+
+        [[nodiscard]]
+        ActivePathSimulationResult SimulateDeterministicActivePathUpdates(
+            const AZ::u32 workerCount,
+            AZ::JobContext* jobContext)
+        {
+            SystemConfiguration configuration;
+            configuration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
+            configuration.m_defaultWorld.m_workerCount = workerCount;
+            Runtime system(configuration, jobContext);
+            if (!system)
+            {
+                return {};
+            }
+
+            HermitePathConfiguration pathConfiguration;
+            pathConfiguration.m_points = {
+                {.m_position = AZ::Vector3::CreateZero()},
+                {.m_position = AZ::Vector3::CreateAxisX(6.0f)},
+            };
+            const PathHandle pathHandle = system.CreatePath(pathConfiguration);
+            if (!pathHandle)
+            {
+                return {};
+            }
+
+            const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+            ShapeConfiguration shapeConfiguration;
+            shapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.05f};
+            const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+            if (!shapeHandle)
+            {
+                return {};
+            }
+
+            BodyConfiguration anchorConfiguration;
+            anchorConfiguration.m_shapeHandle = shapeHandle;
+            anchorConfiguration.m_isSensor = true;
+            anchorConfiguration.m_motionType = MotionType::Static;
+            const BodyHandle anchorHandle = system.CreateBody(worldHandle, anchorConfiguration);
+            if (!anchorHandle)
+            {
+                return {};
+            }
+
+            AZStd::array<BodyHandle, ActivePathSimulationResult::BodyCount> bodyHandles;
+            AZStd::array<ConstraintHandle, ActivePathSimulationResult::BodyCount> constraintHandles;
+            for (AZ::u32 bodyIndex = 0; bodyIndex < ActivePathSimulationResult::BodyCount; ++bodyIndex)
+            {
+                const float fraction = static_cast<float>(bodyIndex + 1)
+                    / static_cast<float>(ActivePathSimulationResult::BodyCount + 1);
+                const AZ::Vector3 localOffset = AZ::Vector3::CreateAxisY(0.75f * static_cast<float>(bodyIndex));
+                BodyConfiguration bodyConfiguration;
+                bodyConfiguration.m_shapeHandle = shapeHandle;
+                bodyConfiguration.m_isSensor = true;
+                bodyConfiguration.m_transform.m_position = {
+                    .m_x = 6.0 * static_cast<double>(fraction),
+                    .m_y = localOffset.GetY(),
+                };
+                bodyHandles[bodyIndex] = system.CreateBody(worldHandle, bodyConfiguration);
+                if (!bodyHandles[bodyIndex])
+                {
+                    return {};
+                }
+
+                ConstraintConfiguration constraintConfiguration;
+                constraintConfiguration.m_firstBodyHandle = anchorHandle;
+                constraintConfiguration.m_secondBodyHandle = bodyHandles[bodyIndex];
+                constraintConfiguration.m_geometry = PathConstraintConfiguration{
+                    .m_pathHandle = pathHandle,
+                    .m_pathPosition = localOffset,
+                    .m_maximumFrictionForce = 0.25f,
+                    .m_pathFraction = fraction,
+                    .m_targetPathFraction = fraction,
+                };
+                constraintHandles[bodyIndex] = system.CreateConstraint(worldHandle, constraintConfiguration);
+                if (!constraintHandles[bodyIndex]
+                    || !system.AddImpulse(
+                        worldHandle,
+                        bodyHandles[bodyIndex],
+                        AZ::Vector3(0.01f * static_cast<float>(bodyIndex + 1), -0.02f, 0.03f)))
+                {
+                    return {};
+                }
+            }
+
+            AZ::Transform finalTransform = AZ::Transform::CreateIdentity();
+            for (AZ::u32 stepIndex = 0; stepIndex < 90; ++stepIndex)
+            {
+                if (stepIndex == 10)
+                {
+                    finalTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+                        AZ::Quaternion::CreateRotationZ(0.2f),
+                        AZ::Vector3(1.0f, -0.5f, 0.25f));
+                    if (!system.QueuePathTransformUpdate(pathHandle, finalTransform))
+                    {
+                        return {};
+                    }
+                }
+                else if (stepIndex == 30)
+                {
+                    finalTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+                        AZ::Quaternion::CreateRotationZ(-0.35f),
+                        AZ::Vector3(-1.5f, 0.75f, -0.5f));
+                    finalTransform.SetUniformScale(2.0f);
+                    AZ::Transform supersededTransform = finalTransform;
+                    supersededTransform.SetTranslation(AZ::Vector3(4.0f, 3.0f, 2.0f));
+                    if (!system.QueuePathTransformUpdate(pathHandle, supersededTransform)
+                        || !system.QueuePathTransformUpdate(pathHandle, finalTransform))
+                    {
+                        return {};
+                    }
+                }
+                else if (stepIndex == 50)
+                {
+                    finalTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+                        AZ::Quaternion::CreateRotationZ(0.5f),
+                        AZ::Vector3(0.5f, 1.25f, 0.75f));
+                    finalTransform.SetUniformScale(1.5f);
+                    if (!system.QueuePathTransformUpdate(pathHandle, finalTransform))
+                    {
+                        return {};
+                    }
+                }
+
+                if (!system.StepWorld(worldHandle, 1.0f / 60.0f))
+                {
+                    return {};
+                }
+            }
+
+            ActivePathSimulationResult result;
+            PathState pathState;
+            WorldStatistics statistics;
+            if (!system.GetPathState(pathHandle, pathState)
+                || !pathState.m_transform.IsClose(finalTransform)
+                || !system.GetWorldStatistics(worldHandle, statistics)
+                || statistics.m_requestedWorkerCount != workerCount
+                || statistics.m_effectiveWorkerCount != workerCount
+                || !system.GetWorldStateDigest(worldHandle, result.m_digest))
+            {
+                return {};
+            }
+            for (AZ::u32 bodyIndex = 0; bodyIndex < ActivePathSimulationResult::BodyCount; ++bodyIndex)
+            {
+                ConstraintMeasurements measurements;
+                if (!system.GetBodyState(worldHandle, bodyHandles[bodyIndex], result.m_bodyStates[bodyIndex])
+                    || !system.GetConstraintMeasurements(worldHandle, constraintHandles[bodyIndex], measurements))
+                {
+                    return {};
+                }
+                const auto* pathMeasurements = AZStd::get_if<PathMeasurements>(&measurements);
+                if (!pathMeasurements)
+                {
+                    return {};
+                }
+                result.m_constraintMeasurements[bodyIndex] = *pathMeasurements;
+            }
+            const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
+            if (!snapshotHandle
+                || !system.ExportWorldStateArchive(worldHandle, AZStd::array{snapshotHandle}, result.m_archive)
+                || !system.DestroyStateSnapshot(worldHandle, snapshotHandle))
+            {
+                return {};
+            }
+            result.m_succeeded = true;
+            return result;
+        }
+
+        void ExpectActivePathSimulationEqual(
+            const ActivePathSimulationResult& actual,
+            const ActivePathSimulationResult& expected,
+            const char* label)
+        {
+            SCOPED_TRACE(label);
+            ASSERT_TRUE(actual.m_succeeded);
+            ASSERT_TRUE(expected.m_succeeded);
+            EXPECT_EQ(actual.m_digest, expected.m_digest);
+            ASSERT_EQ(actual.m_archive.m_binaryState.size(), expected.m_archive.m_binaryState.size());
+            const auto archiveMismatch = AZStd::mismatch(
+                actual.m_archive.m_binaryState.begin(),
+                actual.m_archive.m_binaryState.end(),
+                expected.m_archive.m_binaryState.begin());
+            const size_t archiveMismatchIndex = AZStd::distance(
+                actual.m_archive.m_binaryState.begin(), archiveMismatch.first);
+            EXPECT_EQ(archiveMismatchIndex, actual.m_archive.m_binaryState.size());
+            if (archiveMismatchIndex < actual.m_archive.m_binaryState.size())
+            {
+                const size_t comparisonEnd = AZStd::min(
+                    archiveMismatchIndex + 64,
+                    actual.m_archive.m_binaryState.size());
+                for (size_t byteIndex = archiveMismatchIndex; byteIndex < comparisonEnd; ++byteIndex)
+                {
+                    EXPECT_EQ(
+                        actual.m_archive.m_binaryState[byteIndex],
+                        expected.m_archive.m_binaryState[byteIndex]) << byteIndex;
+                }
+            }
+            for (AZ::u32 bodyIndex = 0; bodyIndex < ActivePathSimulationResult::BodyCount; ++bodyIndex)
+            {
+                const BodyState& actualBody = actual.m_bodyStates[bodyIndex];
+                const BodyState& expectedBody = expected.m_bodyStates[bodyIndex];
+                EXPECT_EQ(actualBody.m_transform.m_position, expectedBody.m_transform.m_position) << bodyIndex;
+                EXPECT_EQ(actualBody.m_transform.m_rotation, expectedBody.m_transform.m_rotation) << bodyIndex;
+                EXPECT_EQ(actualBody.m_linearVelocity, expectedBody.m_linearVelocity) << bodyIndex;
+                EXPECT_EQ(actualBody.m_angularVelocity, expectedBody.m_angularVelocity) << bodyIndex;
+                EXPECT_EQ(actualBody.m_isActive, expectedBody.m_isActive) << bodyIndex;
+                EXPECT_EQ(actualBody.m_isInSimulation, expectedBody.m_isInSimulation) << bodyIndex;
+
+                const PathMeasurements& actualConstraint = actual.m_constraintMeasurements[bodyIndex];
+                const PathMeasurements& expectedConstraint = expected.m_constraintMeasurements[bodyIndex];
+                EXPECT_EQ(actualConstraint.m_positionImpulse, expectedConstraint.m_positionImpulse) << bodyIndex;
+                EXPECT_EQ(actualConstraint.m_rotationHingeImpulse, expectedConstraint.m_rotationHingeImpulse) << bodyIndex;
+                EXPECT_EQ(actualConstraint.m_rotationImpulse, expectedConstraint.m_rotationImpulse) << bodyIndex;
+                EXPECT_EQ(actualConstraint.m_fraction, expectedConstraint.m_fraction) << bodyIndex;
+                EXPECT_EQ(actualConstraint.m_motorImpulse, expectedConstraint.m_motorImpulse) << bodyIndex;
+                EXPECT_EQ(actualConstraint.m_positionLimitImpulse, expectedConstraint.m_positionLimitImpulse) << bodyIndex;
+            }
+        }
+
     } // namespace
 
     TEST(SimulationTests, RuntimeInfoReportsDeterministicCpuHair)
@@ -7272,7 +7503,32 @@ namespace Jolt
         EXPECT_EQ(customInfo.m_providerId, customProvider.GetId());
         EXPECT_EQ(customInfo.m_providerVersion, customProvider.GetVersion());
 
+        const StateSnapshotHandle stalePathSnapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(stalePathSnapshotHandle);
+        AZ::Transform pathTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+            AZ::Quaternion::CreateRotationZ(0.5f),
+            AZ::Vector3(1.0f, -2.0f, 3.0f));
+        pathTransform.SetUniformScale(1.5f);
+        ASSERT_TRUE(system.QueuePathTransformUpdate(pathHandle, pathTransform));
         ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+
+        PathState pathState;
+        ASSERT_TRUE(system.GetPathState(pathHandle, pathState));
+        EXPECT_TRUE(pathState.m_transform.IsClose(pathTransform));
+        EXPECT_TRUE(system.IsValid(worldHandle, ragdollHandle));
+        AZStd::array<ConstraintHandle, expectedConstraintKinds.size()> updatedConstraintHandles;
+        ASSERT_TRUE(system.GetRagdollConstraints(worldHandle, ragdollHandle, updatedConstraintHandles).IsComplete());
+        EXPECT_EQ(updatedConstraintHandles, constraintHandles);
+
+        ConstraintConfiguration updatedPathConfiguration;
+        ASSERT_TRUE(system.GetConstraintConfiguration(worldHandle, constraintHandles[6], updatedPathConfiguration));
+        const auto* updatedPath = AZStd::get_if<PathConstraintConfiguration>(&updatedPathConfiguration.m_geometry);
+        ASSERT_TRUE(updatedPath);
+        EXPECT_EQ(updatedPath->m_pathHandle, pathHandle);
+        EXPECT_TRUE(updatedPath->m_pathPosition.IsClose(AZ::Vector3::CreateAxisZ()));
+        EXPECT_FALSE(system.RestoreWorldState(worldHandle, stalePathSnapshotHandle));
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, stalePathSnapshotHandle));
+
         EXPECT_GT(customProvider.m_positionCallCount.load(), 0);
         EXPECT_GT(customProvider.m_velocityCallCount.load(), 0);
 
@@ -15233,6 +15489,28 @@ namespace Jolt
         EXPECT_EQ(eightWorkerDigest, serialDigest);
     }
 
+    TEST(SimulationTests, ActivePathUpdatesAreDeterministicAcrossWorkerCounts)
+    {
+        const ActivePathSimulationResult serialResult = SimulateDeterministicActivePathUpdates(1, nullptr);
+        ASSERT_TRUE(serialResult.m_succeeded);
+        ASSERT_GT(serialResult.m_digest.m_stateByteCount, 0);
+        const ActivePathSimulationResult repeatedSerialResult = SimulateDeterministicActivePathUpdates(1, nullptr);
+        ExpectActivePathSimulationEqual(repeatedSerialResult, serialResult, "repeated internal serial");
+
+        AZ::JobManagerDesc jobManagerDescriptor;
+        jobManagerDescriptor.m_workerThreads.resize(8);
+        AZ::JobManager jobManager(jobManagerDescriptor);
+        AZ::JobContext jobContext(jobManager);
+
+        const ActivePathSimulationResult externalSerialResult = SimulateDeterministicActivePathUpdates(1, &jobContext);
+        const ActivePathSimulationResult fourWorkerResult = SimulateDeterministicActivePathUpdates(4, &jobContext);
+        const ActivePathSimulationResult eightWorkerResult = SimulateDeterministicActivePathUpdates(8, &jobContext);
+
+        ExpectActivePathSimulationEqual(externalSerialResult, serialResult, "external serial");
+        ExpectActivePathSimulationEqual(fourWorkerResult, serialResult, "four workers");
+        ExpectActivePathSimulationEqual(eightWorkerResult, serialResult, "eight workers");
+    }
+
     TEST(SimulationTests, SimulationRestoresCallingThreadFloatEnvironment)
     {
         const int originalRoundingMode = std::fegetround();
@@ -20895,10 +21173,18 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyCookedShape(cookedShapeHandle));
     }
 
-    TEST(SimulationTests, SceneDefinitionsRetainUniquePathAndCollisionFilterResources)
+    TEST(SimulationTests, SceneDefinitionsAndInstancesRetainUniquePathAndCollisionFilterResources)
     {
-        Runtime system(CreateSerialSystemConfiguration(), nullptr);
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
+        Runtime system(systemConfiguration, nullptr);
         ASSERT_TRUE(system);
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        WorldRuntimeConfiguration runtimeConfiguration;
+        ASSERT_TRUE(system.GetWorldRuntimeConfiguration(worldHandle, runtimeConfiguration));
+        runtimeConfiguration.m_enabled = false;
+        ASSERT_TRUE(system.UpdateWorldRuntimeConfiguration(worldHandle, runtimeConfiguration));
 
         GroupFilterTableConfiguration groupFilterConfiguration;
         groupFilterConfiguration.m_subGroupCount = 2;
@@ -20941,6 +21227,40 @@ namespace Jolt
         EXPECT_FALSE(system.DestroyGroupFilter(groupFilterHandle));
         EXPECT_FALSE(system.DestroyPath(pathHandle));
 
+        const SceneInstanceHandle instanceHandle = system.InstantiateScene(worldHandle, definitionHandle);
+        ASSERT_TRUE(instanceHandle);
+        AZStd::array<ConstraintHandle, 1> constraintHandles;
+        ASSERT_TRUE(system.GetSceneConstraints(worldHandle, instanceHandle, constraintHandles).IsComplete());
+        const ConstraintHandle constraintHandle = constraintHandles.front();
+        ASSERT_TRUE(constraintHandle);
+
+        const StateSnapshotHandle snapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(snapshotHandle);
+
+        AZ::Transform pathTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+            AZ::Quaternion::CreateRotationZ(0.5f),
+            AZ::Vector3(3.0f, -2.0f, 1.0f));
+        pathTransform.SetUniformScale(1.5f);
+        ASSERT_TRUE(system.QueuePathTransformUpdate(pathHandle, pathTransform));
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+
+        PathState pathState;
+        ASSERT_TRUE(system.GetPathState(pathHandle, pathState));
+        EXPECT_TRUE(pathState.m_transform.IsClose(pathTransform));
+        EXPECT_TRUE(system.IsValid(worldHandle, instanceHandle));
+        AZStd::array<ConstraintHandle, 1> updatedConstraintHandles;
+        ASSERT_TRUE(system.GetSceneConstraints(worldHandle, instanceHandle, updatedConstraintHandles).IsComplete());
+        EXPECT_EQ(updatedConstraintHandles.front(), constraintHandle);
+
+        ConstraintConfiguration constraintConfiguration;
+        ASSERT_TRUE(system.GetConstraintConfiguration(worldHandle, constraintHandle, constraintConfiguration));
+        const auto* updatedPath = AZStd::get_if<PathConstraintConfiguration>(&constraintConfiguration.m_geometry);
+        ASSERT_TRUE(updatedPath);
+        EXPECT_EQ(updatedPath->m_pathHandle, pathHandle);
+        EXPECT_FALSE(system.RestoreWorldState(worldHandle, snapshotHandle));
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, snapshotHandle));
+        EXPECT_TRUE(system.DestroySceneInstance(worldHandle, instanceHandle));
         EXPECT_TRUE(system.DestroySceneDefinition(definitionHandle));
         EXPECT_TRUE(system.DestroyGroupFilter(groupFilterHandle));
         EXPECT_TRUE(system.DestroyPath(pathHandle));
@@ -22415,6 +22735,183 @@ namespace Jolt
         EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
     }
 
+    TEST(SimulationTests, ActivePathTransformsCommitAtSafeBoundariesAndPreserveDependentState)
+    {
+        SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
+        systemConfiguration.m_defaultWorld.m_gravity = AZ::Vector3::CreateZero();
+        Runtime system(systemConfiguration, nullptr);
+        ASSERT_TRUE(system);
+
+        HermitePathConfiguration pathConfiguration;
+        pathConfiguration.m_points = {
+            {.m_position = AZ::Vector3::CreateZero()},
+            {.m_position = AZ::Vector3::CreateAxisX(4.0f)},
+        };
+        AZ::Transform initialTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+            AZ::Quaternion::CreateRotationZ(0.25f),
+            AZ::Vector3(4.0f, -2.0f, 1.0f));
+        initialTransform.SetUniformScale(2.0f);
+        const PathHandle pathHandle = system.CreatePath(pathConfiguration, initialTransform);
+        ASSERT_TRUE(pathHandle);
+
+        PathState pathState;
+        ASSERT_TRUE(system.GetPathState(pathHandle, pathState));
+        EXPECT_TRUE(pathState.m_transform.IsClose(initialTransform));
+
+        PathSample sample;
+        ASSERT_TRUE(system.SamplePath(pathHandle, 0.5f, sample));
+        EXPECT_TRUE(sample.m_position.IsClose(initialTransform.TransformPoint(AZ::Vector3::CreateAxisX(2.0f)), 1.0e-4f));
+
+        AZ::Transform invalidTransform = initialTransform;
+        invalidTransform.SetUniformScale(0.0f);
+        EXPECT_FALSE(system.QueuePathTransformUpdate(pathHandle, invalidTransform));
+        invalidTransform = initialTransform;
+        invalidTransform.SetTranslation(AZ::Vector3(AZStd::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f));
+        EXPECT_FALSE(system.QueuePathTransformUpdate(pathHandle, invalidTransform));
+        ASSERT_TRUE(system.GetPathState(pathHandle, pathState));
+        EXPECT_TRUE(pathState.m_transform.IsClose(initialTransform));
+
+        const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        WorldRuntimeConfiguration runtimeConfiguration;
+        ASSERT_TRUE(system.GetWorldRuntimeConfiguration(worldHandle, runtimeConfiguration));
+        runtimeConfiguration.m_enabled = false;
+        ASSERT_TRUE(system.UpdateWorldRuntimeConfiguration(worldHandle, runtimeConfiguration));
+
+        ShapeConfiguration shapeConfiguration;
+        shapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.25f};
+        const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);
+        ASSERT_TRUE(shapeHandle);
+
+        BodyConfiguration firstBodyConfiguration;
+        firstBodyConfiguration.m_shapeHandle = shapeHandle;
+        firstBodyConfiguration.m_motionType = MotionType::Static;
+        firstBodyConfiguration.m_isSensor = true;
+        const BodyHandle firstBodyHandle = system.CreateBody(worldHandle, firstBodyConfiguration);
+        ASSERT_TRUE(firstBodyHandle);
+
+        const AZ::Vector3 localPathOffset = AZ::Vector3::CreateAxisY(0.5f);
+        BodyConfiguration secondBodyConfiguration;
+        secondBodyConfiguration.m_shapeHandle = shapeHandle;
+        secondBodyConfiguration.m_isSensor = true;
+        const AZ::Vector3 initialBodyPosition = initialTransform.TransformPoint(
+            localPathOffset + AZ::Vector3::CreateAxisX(2.0f));
+        secondBodyConfiguration.m_transform.m_position = {
+            .m_x = initialBodyPosition.GetX(),
+            .m_y = initialBodyPosition.GetY(),
+            .m_z = initialBodyPosition.GetZ(),
+        };
+        const BodyHandle secondBodyHandle = system.CreateBody(worldHandle, secondBodyConfiguration);
+        ASSERT_TRUE(secondBodyHandle);
+
+        ConstraintConfiguration constraintConfiguration;
+        constraintConfiguration.m_firstBodyHandle = firstBodyHandle;
+        constraintConfiguration.m_secondBodyHandle = secondBodyHandle;
+        constraintConfiguration.m_geometry = PathConstraintConfiguration{
+            .m_pathHandle = pathHandle,
+            .m_pathPosition = localPathOffset,
+            .m_maximumFrictionForce = 2.0f,
+            .m_pathFraction = 0.5f,
+            .m_targetPathFraction = 0.75f,
+        };
+        const ConstraintHandle constraintHandle = system.CreateConstraint(worldHandle, constraintConfiguration);
+        ASSERT_TRUE(constraintHandle);
+        ASSERT_TRUE(system.SetConstraintEnabled(worldHandle, constraintHandle, false));
+        ASSERT_TRUE(system.RemoveConstraintFromSimulation(worldHandle, constraintHandle));
+
+        ConstraintState constraintState;
+        ASSERT_TRUE(system.GetConstraintState(worldHandle, constraintHandle, constraintState));
+        EXPECT_FALSE(constraintState.m_enabled);
+        EXPECT_FALSE(constraintState.m_isInSimulation);
+
+        const StateSnapshotHandle initialSnapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(initialSnapshotHandle);
+
+        AZ::Transform supersededTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+            AZ::Quaternion::CreateRotationZ(-0.5f),
+            AZ::Vector3(-3.0f, 1.0f, 2.0f));
+        supersededTransform.SetUniformScale(2.0f);
+        AZ::Transform committedTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+            AZ::Quaternion::CreateRotationZ(0.75f),
+            AZ::Vector3(2.0f, 3.0f, -1.0f));
+        committedTransform.SetUniformScale(2.0f);
+        ASSERT_TRUE(system.QueuePathTransformUpdate(pathHandle, supersededTransform));
+        ASSERT_TRUE(system.QueuePathTransformUpdate(pathHandle, committedTransform));
+        EXPECT_FALSE(system.QueuePathTransformUpdate(PathHandle::Invalid, committedTransform));
+
+        ASSERT_TRUE(system.GetPathState(pathHandle, pathState));
+        EXPECT_TRUE(pathState.m_transform.IsClose(initialTransform));
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        ASSERT_TRUE(system.GetPathState(pathHandle, pathState));
+        EXPECT_TRUE(pathState.m_transform.IsClose(committedTransform));
+        ASSERT_TRUE(system.SamplePath(pathHandle, 0.5f, sample));
+        EXPECT_TRUE(sample.m_position.IsClose(committedTransform.TransformPoint(AZ::Vector3::CreateAxisX(2.0f)), 1.0e-4f));
+
+        ConstraintConfiguration appliedConfiguration;
+        ASSERT_TRUE(system.GetConstraintConfiguration(worldHandle, constraintHandle, appliedConfiguration));
+        const PathConstraintConfiguration* appliedPath =
+            AZStd::get_if<PathConstraintConfiguration>(&appliedConfiguration.m_geometry);
+        ASSERT_TRUE(appliedPath);
+        EXPECT_EQ(appliedPath->m_pathHandle, pathHandle);
+        EXPECT_TRUE(appliedPath->m_pathPosition.IsClose(localPathOffset));
+        EXPECT_FLOAT_EQ(appliedPath->m_pathFraction, 0.5f);
+        EXPECT_FLOAT_EQ(appliedPath->m_targetPathFraction, 0.75f);
+        ASSERT_TRUE(system.GetConstraintState(worldHandle, constraintHandle, constraintState));
+        EXPECT_FALSE(constraintState.m_enabled);
+        EXPECT_FALSE(constraintState.m_isInSimulation);
+        EXPECT_FALSE(system.RestoreWorldState(worldHandle, initialSnapshotHandle));
+
+        const StateSnapshotHandle frameSnapshotHandle = system.CaptureWorldState(worldHandle);
+        ASSERT_TRUE(frameSnapshotHandle);
+        EXPECT_TRUE(system.RestoreWorldState(worldHandle, frameSnapshotHandle));
+
+        AZ::Transform scaledTransform = committedTransform;
+        scaledTransform.SetUniformScale(3.0f);
+        ASSERT_TRUE(system.QueuePathTransformUpdate(pathHandle, scaledTransform));
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        ASSERT_TRUE(system.GetPathState(pathHandle, pathState));
+        EXPECT_TRUE(pathState.m_transform.IsClose(scaledTransform));
+        ASSERT_TRUE(system.SamplePath(pathHandle, 0.5f, sample));
+        EXPECT_TRUE(sample.m_position.IsClose(scaledTransform.TransformPoint(AZ::Vector3::CreateAxisX(2.0f)), 1.0e-4f));
+        EXPECT_FALSE(system.RestoreWorldState(worldHandle, frameSnapshotHandle));
+
+        ASSERT_TRUE(system.GetConstraintConfiguration(worldHandle, constraintHandle, appliedConfiguration));
+        appliedPath = AZStd::get_if<PathConstraintConfiguration>(&appliedConfiguration.m_geometry);
+        ASSERT_TRUE(appliedPath);
+        EXPECT_EQ(appliedPath->m_pathHandle, pathHandle);
+        EXPECT_TRUE(appliedPath->m_pathPosition.IsClose(localPathOffset));
+        EXPECT_FLOAT_EQ(appliedPath->m_pathFraction, 0.5f);
+        EXPECT_FLOAT_EQ(appliedPath->m_targetPathFraction, 0.75f);
+
+        runtimeConfiguration.m_enabled = true;
+        ASSERT_TRUE(system.UpdateWorldRuntimeConfiguration(worldHandle, runtimeConfiguration));
+        ASSERT_TRUE(system.SetConstraintEnabled(worldHandle, constraintHandle, true));
+        ASSERT_TRUE(system.AddConstraintToSimulation(worldHandle, constraintHandle));
+        for (AZ::u32 stepIndex = 0; stepIndex < 120; ++stepIndex)
+        {
+            ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        }
+
+        BodyState secondBodyState;
+        ASSERT_TRUE(system.GetBodyState(worldHandle, secondBodyHandle, secondBodyState));
+        const AZ::Vector3 secondBodyPosition(
+            aznumeric_cast<float>(secondBodyState.m_transform.m_position.m_x),
+            aznumeric_cast<float>(secondBodyState.m_transform.m_position.m_y),
+            aznumeric_cast<float>(secondBodyState.m_transform.m_position.m_z));
+        const AZ::Vector3 worldPathOffset = scaledTransform.TransformVector(localPathOffset);
+        PathSample closestSample;
+        ASSERT_TRUE(system.FindClosestPathPoint(pathHandle, secondBodyPosition - worldPathOffset, 0.5f, closestSample));
+        EXPECT_TRUE(secondBodyPosition.IsClose(closestSample.m_position + worldPathOffset, 0.1f));
+
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, frameSnapshotHandle));
+        EXPECT_TRUE(system.DestroyStateSnapshot(worldHandle, initialSnapshotHandle));
+        EXPECT_TRUE(system.DestroyConstraint(worldHandle, constraintHandle));
+        EXPECT_TRUE(system.DestroyBody(worldHandle, secondBodyHandle));
+        EXPECT_TRUE(system.DestroyBody(worldHandle, firstBodyHandle));
+        EXPECT_TRUE(system.DestroyShape(worldHandle, shapeHandle));
+        EXPECT_TRUE(system.DestroyPath(pathHandle));
+        EXPECT_FALSE(system.QueuePathTransformUpdate(pathHandle, scaledTransform));
+    }
+
     TEST(SimulationTests, CustomPathsRetainProvidersAndExposeDeterministicSamples)
     {
         SystemConfiguration systemConfiguration = CreateSerialSystemConfiguration();
@@ -22476,6 +22973,25 @@ namespace Jolt
         EXPECT_GT(provider.m_sampleCount.load(), 2);
 
         const WorldHandle worldHandle = system.GetDefaultWorldHandle();
+        AZ::Transform transformedPath = AZ::Transform::CreateFromQuaternionAndTranslation(
+            AZ::Quaternion::CreateRotationZ(AZ::Constants::QuarterPi),
+            AZ::Vector3(2.0f, 3.0f, 1.0f));
+        transformedPath.SetUniformScale(2.0f);
+        ASSERT_TRUE(system.QueuePathTransformUpdate(pathHandle, transformedPath));
+        ASSERT_TRUE(system.GetPathState(pathHandle, state));
+        EXPECT_TRUE(state.m_transform.IsClose(AZ::Transform::CreateIdentity()));
+        ASSERT_TRUE(system.StepWorld(worldHandle, 1.0f / 60.0f));
+        ASSERT_TRUE(system.GetPathState(pathHandle, state));
+        EXPECT_TRUE(state.m_transform.IsClose(transformedPath));
+
+        ASSERT_TRUE(system.SamplePath(pathHandle, 3.0f, sample));
+        EXPECT_TRUE(sample.m_position.IsClose(transformedPath.TransformPoint(AZ::Vector3::CreateAxisX(3.0f)), 1.0e-4f));
+        const AZ::Vector3 transformedQuery = transformedPath.TransformPoint(AZ::Vector3::CreateAxisX(5.0f))
+            + transformedPath.GetRotation().TransformVector(AZ::Vector3::CreateAxisY(4.0f));
+        ASSERT_TRUE(system.FindClosestPathPoint(pathHandle, transformedQuery, 1.0f, closestSample));
+        EXPECT_FLOAT_EQ(closestSample.m_fraction, 5.0f);
+        EXPECT_TRUE(closestSample.m_position.IsClose(transformedPath.TransformPoint(AZ::Vector3::CreateAxisX(5.0f)), 1.0e-4f));
+
         ShapeConfiguration shapeConfiguration;
         shapeConfiguration.m_geometry = SphereShapeConfiguration{.m_radius = 0.25f};
         const ShapeHandle shapeHandle = system.CreateShape(worldHandle, shapeConfiguration);

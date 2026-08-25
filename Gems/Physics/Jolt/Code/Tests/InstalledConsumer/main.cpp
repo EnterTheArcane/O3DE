@@ -8,6 +8,7 @@
 #include <Jolt/BodyConfiguration.h>
 #include <Jolt/Capabilities/Bodies.h>
 #include <Jolt/Capabilities/Characters.h>
+#include <Jolt/Capabilities/Paths.h>
 #include <Jolt/Capabilities/Shapes.h>
 #include <Jolt/Capabilities/WorldSimulation.h>
 #include <Jolt/Capabilities/Worlds.h>
@@ -15,6 +16,7 @@
 #include <Jolt/DebugDraw.h>
 #include <Jolt/Diagnostics.h>
 #include <Jolt/Event.h>
+#include <Jolt/Path.h>
 #include <Jolt/Query.h>
 #include <Jolt/ShapeConfiguration.h>
 #include <Jolt/System.h>
@@ -24,6 +26,8 @@
 #include <Jolt/WorldRollbackBus.h>
 #include <Jolt/WorldSimulationBus.h>
 
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Math/Vector3.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
 namespace
@@ -74,8 +78,9 @@ namespace
         Jolt::Shapes* shapes = Jolt::Shapes::Get();
         Jolt::Bodies* bodies = Jolt::Bodies::Get();
         Jolt::Characters* characters = Jolt::Characters::Get();
+        Jolt::Paths* paths = Jolt::Paths::Get();
         Jolt::WorldSimulation* simulation = Jolt::WorldSimulation::Get();
-        if (!worlds || !shapes || !bodies || !characters || !simulation)
+        if (!worlds || !shapes || !bodies || !characters || !paths || !simulation)
         {
             return 3;
         }
@@ -141,6 +146,29 @@ namespace
         if (!shapes->DestroyShape(worldHandle, shapeHandle))
         {
             return 10;
+        }
+
+        Jolt::HermitePathConfiguration pathConfiguration;
+        pathConfiguration.m_points = {
+            {.m_position = AZ::Vector3::CreateZero()},
+            {.m_position = AZ::Vector3::CreateAxisX(4.0f)},
+        };
+        const AZ::Transform initialPathTransform = AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisY());
+        const Jolt::PathHandle pathHandle = paths->CreatePath(pathConfiguration, initialPathTransform);
+        if (!pathHandle)
+        {
+            return 11;
+        }
+
+        const AZ::Transform updatedPathTransform = AZ::Transform::CreateTranslation(AZ::Vector3::CreateAxisZ(2.0f));
+        Jolt::PathState pathState;
+        if (!paths->QueuePathTransformUpdate(pathHandle, updatedPathTransform)
+            || !simulation->StepWorld(worldHandle, 1.0f / 60.0f)
+            || !paths->GetPathState(pathHandle, pathState)
+            || !pathState.m_transform.IsClose(updatedPathTransform)
+            || !paths->DestroyPath(pathHandle))
+        {
+            return 12;
         }
 
         return 0;

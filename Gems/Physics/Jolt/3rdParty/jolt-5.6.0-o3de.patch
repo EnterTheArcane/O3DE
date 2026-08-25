@@ -934,7 +934,12 @@ diff --git a/Jolt/Jolt.cmake b/Jolt/Jolt.cmake
 diff --git a/Jolt/Physics/Constraints/PathConstraint.cpp b/Jolt/Physics/Constraints/PathConstraint.cpp
 --- a/Jolt/Physics/Constraints/PathConstraint.cpp
 +++ b/Jolt/Physics/Constraints/PathConstraint.cpp
-@@ -430,6 +430,8 @@ void PathConstraint::SaveState(StateRecorder &inStream) const
+@@ -426,10 +426,12 @@ void PathConstraint::SaveState(StateRecorder &inStream) const
+ 	mRotationConstraintPart.SaveState(inStream);
+ 
+ 	inStream.Write(mMaxFrictionForce);
+-	inStream.Write(mPositionMotorSettings);
++	mPositionMotorSettings.SaveBinaryState(inStream);
  	inStream.Write(mPositionMotorState);
  	inStream.Write(mTargetVelocity);
  	inStream.Write(mTargetPathFraction);
@@ -943,7 +948,12 @@ diff --git a/Jolt/Physics/Constraints/PathConstraint.cpp b/Jolt/Physics/Constrai
  	inStream.Write(mPathFraction);
  }
  
-@@ -448,6 +450,8 @@ void PathConstraint::RestoreState(StateRecorder &inStream)
+@@ -444,10 +446,12 @@ void PathConstraint::RestoreState(StateRecorder &inStream)
+ 	mRotationConstraintPart.RestoreState(inStream);
+ 
+ 	inStream.Read(mMaxFrictionForce);
+-	inStream.Read(mPositionMotorSettings);
++	mPositionMotorSettings.RestoreBinaryState(inStream);
  	inStream.Read(mPositionMotorState);
  	inStream.Read(mTargetVelocity);
  	inStream.Read(mTargetPathFraction);
@@ -1034,3 +1044,32 @@ diff --git a/Jolt/Physics/Vehicle/VehicleConstraint.cpp b/Jolt/Physics/Vehicle/V
  		inStream.Read(w->mContactPosition);
  		inStream.Read(w->mContactNormal);
  		inStream.Read(w->mContactLateral);
+diff --git a/Jolt/Physics/Constraints/PathConstraint.h b/Jolt/Physics/Constraints/PathConstraint.h
+--- a/Jolt/Physics/Constraints/PathConstraint.h
++++ b/Jolt/Physics/Constraints/PathConstraint.h
+@@ -107,5 +107,8 @@ public:
+ 	/// Update the path for this constraint
+ 	void							SetPath(const PathConstraintPath *inPath, float inPathFraction);
+ 
++	/// Atomically update the path and its transform relative to body 1 while preserving the body 2 attachment
++	void							SetPathAndTransform(const PathConstraintPath *inPath, float inPathFraction, Vec3Arg inPosition, QuatArg inRotation);
++
+ 	/// Access to the current path
+ 	const PathConstraintPath *		GetPath() const											{ return mPath; }
+diff --git a/Jolt/Physics/Constraints/PathConstraint.cpp b/Jolt/Physics/Constraints/PathConstraint.cpp
+--- a/Jolt/Physics/Constraints/PathConstraint.cpp
++++ b/Jolt/Physics/Constraints/PathConstraint.cpp
+@@ -104,6 +104,13 @@ void PathConstraint::SetPath(const PathConstraintPath *inPath, float inPathFract
+ 	}
+ }
+ 
++void PathConstraint::SetPathAndTransform(const PathConstraintPath *inPath, float inPathFraction, Vec3Arg inPosition, QuatArg inRotation)
++{
++	mPath = inPath;
++	mPathFraction = inPathFraction;
++	mPathToBody1 = Mat44::sRotationTranslation(inRotation, inPosition - mBody1->GetShape()->GetCenterOfMass());
++}
++
+ float PathConstraint::CalculateConstraintValue() const
+ {
+ 	float c;

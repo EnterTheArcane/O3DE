@@ -2635,6 +2635,53 @@ namespace Jolt
         }
 
         [[nodiscard]]
+        bool ToNativePathFrame(
+            const AZ::Transform& pathTransform,
+            const AZ::Vector3& localPosition,
+            const AZ::Quaternion& localRotation,
+            const WorldPosition& origin,
+            const JPH::Body& firstBody,
+            JPH::Vec3& position,
+            JPH::Quat& rotation)
+        {
+            const float pathScale = pathTransform.GetUniformScale();
+            const float localRotationLengthSq = localRotation.GetLengthSq();
+            if (!pathTransform.IsFinite()
+                || !AZ::IsFiniteFloat(pathScale)
+                || AZ::IsClose(pathScale, 0.0f, AZ::Constants::Tolerance)
+                || !localPosition.IsFinite()
+                || !localRotation.IsFinite()
+                || !AZ::IsFiniteFloat(localRotationLengthSq)
+                || localRotationLengthSq <= 0.0f)
+            {
+                return false;
+            }
+
+            AZ::Transform frame = pathTransform
+                * AZ::Transform::CreateFromQuaternionAndTranslation(localRotation.GetNormalized(), localPosition);
+            frame.SetUniformScale(1.0f);
+            const AZ::Vector3 worldPosition = frame.GetTranslation();
+            const WorldPosition positionValue{
+                .m_x = worldPosition.GetX(),
+                .m_y = worldPosition.GetY(),
+                .m_z = worldPosition.GetZ(),
+            };
+            const JPH::RMat44 pathToWorld = JPH::RMat44::sRotationTranslation(
+                ToNativeRotation(frame.GetRotation()),
+                ToNativePosition(positionValue, origin));
+            const JPH::RMat44 pathToBody = firstBody.GetWorldTransform().InversedRotationTranslation() * pathToWorld;
+            position = JPH::Vec3(pathToBody.GetTranslation());
+            rotation = pathToBody.GetQuaternion();
+            return std::isfinite(position.GetX())
+                && std::isfinite(position.GetY())
+                && std::isfinite(position.GetZ())
+                && std::isfinite(rotation.GetX())
+                && std::isfinite(rotation.GetY())
+                && std::isfinite(rotation.GetZ())
+                && std::isfinite(rotation.GetW());
+        }
+
+        [[nodiscard]]
         WorldTransform FromNativeConstraintFrame(
             JPH::Mat44Arg frame)
         {
@@ -9430,7 +9477,8 @@ namespace Jolt
                     }
 
                     JPH::RefConst<JPH::PathConstraintPath> path;
-                    if (!m_system.AcquirePath(geometry.m_pathHandle, path)
+                    AZ::Transform pathTransform = AZ::Transform::CreateIdentity();
+                    if (!m_system.AcquirePath(geometry.m_pathHandle, path, &pathTransform)
                         || geometry.m_pathFraction > path->GetPathMaxFraction()
                         || (!path->IsLooping() && geometry.m_targetPathFraction > path->GetPathMaxFraction()))
                     {
@@ -9446,8 +9494,23 @@ namespace Jolt
                     JPH::PathConstraintSettings settings;
                     configureSettings(settings);
                     settings.mPath = path;
-                    settings.mPathPosition = ToNativeVector(geometry.m_pathPosition);
-                    settings.mPathRotation = ToNativeRotation(geometry.m_pathRotation);
+                    {
+                        JPH::BodyLockRead bodyLock(m_physicsSystem.GetBodyLockInterface(), firstBodySlot->m_bodyId);
+                        if (!bodyLock.Succeeded()
+                            || !ToNativePathFrame(
+                                pathTransform,
+                                geometry.m_pathPosition,
+                                geometry.m_pathRotation,
+                                m_configuration.m_origin,
+                                bodyLock.GetBody(),
+                                settings.mPathPosition,
+                                settings.mPathRotation))
+                        {
+                            m_system.ReleasePath(geometry.m_pathHandle);
+                            pathHandle = {};
+                            return;
+                        }
+                    }
                     settings.mPathFraction = geometry.m_pathFraction;
                     settings.mMaxFrictionForce = geometry.m_maximumFrictionForce;
                     settings.mPositionMotorSettings = ToNativeMotor(geometry.m_positionMotor);
@@ -9973,6 +10036,16 @@ namespace Jolt
         slot.m_entityId = configuration.m_entityId;
         slot.m_name = configuration.m_name;
         slot.m_userData = configuration.m_userData;
+        if (const auto* path = AZStd::get_if<PathConstraintConfiguration>(&configuration.m_geometry))
+        {
+            slot.m_pathPosition = path->m_pathPosition;
+            slot.m_pathRotation = path->m_pathRotation.GetNormalized();
+        }
+        else
+        {
+            slot.m_pathPosition = AZ::Vector3::CreateZero();
+            slot.m_pathRotation = AZ::Quaternion::CreateIdentity();
+        }
         slot.m_ragdollHandle = {};
         slot.m_sceneInstanceHandle = {};
         slot.m_isInSimulation = configuration.m_startInSimulation;
@@ -10300,6 +10373,138 @@ namespace Jolt
 
         CommitConstraintDestructionUnlocked(m_constraintHandleScratch);
         return true;
+    }
+
+    bool World::PreparePathUpdate(
+        const PathHandle pathHandle,
+        const JPH::PathConstraintPath& path,
+        const AZ::Transform& transform,
+        PreparedPathUpdate& update)
+    {
+        update = {};
+        AZStd::lock_guard lock(m_mutex);
+        m_preparedPathConstraintUpdates.clear();
+
+        size_t constraintCount = 0;
+        for (ConstraintSlot& slot : m_constraintSlots)
+        {
+            if (slot.m_constraint && slot.m_pathHandle == pathHandle)
+            {
+                ++constraintCount;
+            }
+        }
+        if (constraintCount > AZStd::numeric_limits<AZ::u64>::max() - m_configurationRevision)
+        {
+            return false;
+        }
+        m_preparedPathConstraintUpdates.reserve(constraintCount);
+
+        for (ConstraintSlot& slot : m_constraintSlots)
+        {
+            if (!slot.m_constraint || slot.m_pathHandle != pathHandle)
+            {
+                continue;
+            }
+            if (slot.m_constraint->GetSubType() != JPH::EConstraintSubType::Path)
+            {
+                m_preparedPathConstraintUpdates.clear();
+                return false;
+            }
+            if (slot.m_configurationRevision == AZStd::numeric_limits<AZ::u64>::max())
+            {
+                m_preparedPathConstraintUpdates.clear();
+                return false;
+            }
+
+            const BodySlot* firstBodySlot = FindBody(slot.m_firstBodyHandle);
+            if (!firstBodySlot)
+            {
+                m_preparedPathConstraintUpdates.clear();
+                return false;
+            }
+            JPH::BodyLockRead bodyLock(m_physicsSystem.GetBodyLockInterface(), firstBodySlot->m_bodyId);
+            if (!bodyLock.Succeeded())
+            {
+                m_preparedPathConstraintUpdates.clear();
+                return false;
+            }
+
+            auto* constraint = static_cast<JPH::PathConstraint*>(slot.m_constraint.GetPtr());
+            const float fraction = constraint->GetPathFraction();
+            const float targetFraction = constraint->GetTargetPathFraction();
+            if (fraction > path.GetPathMaxFraction()
+                || (!path.IsLooping() && targetFraction > path.GetPathMaxFraction()))
+            {
+                m_preparedPathConstraintUpdates.clear();
+                return false;
+            }
+
+            PreparedPathConstraintUpdate prepared;
+            if (!ToNativePathFrame(
+                    transform,
+                    slot.m_pathPosition,
+                    slot.m_pathRotation,
+                    m_configuration.m_origin,
+                    bodyLock.GetBody(),
+                    prepared.m_position,
+                    prepared.m_rotation))
+            {
+                m_preparedPathConstraintUpdates.clear();
+                return false;
+            }
+            prepared.m_constraint = constraint;
+            prepared.m_configurationRevision = &slot.m_configurationRevision;
+            prepared.m_fraction = fraction;
+            prepared.m_isInSimulation = slot.m_isInSimulation;
+            m_preparedPathConstraintUpdates.push_back(prepared);
+        }
+
+        for (const RagdollDefinitionSlot& definition : m_ragdollDefinitionSlots)
+        {
+            if (!definition.m_settings)
+            {
+                continue;
+            }
+            for (const RagdollDefinitionSlot::ConstraintMetadata& metadata : definition.m_constraints)
+            {
+                const auto* configuration = AZStd::get_if<PathConstraintConfiguration>(&metadata.m_geometry);
+                if (configuration
+                    && configuration->m_pathHandle == pathHandle
+                    && (configuration->m_pathFraction > path.GetPathMaxFraction()
+                        || (!path.IsLooping() && configuration->m_targetPathFraction > path.GetPathMaxFraction())))
+                {
+                    m_preparedPathConstraintUpdates.clear();
+                    return false;
+                }
+            }
+        }
+        update.m_constraints = m_preparedPathConstraintUpdates;
+        return true;
+    }
+
+    void World::CommitPathUpdate(
+        const JPH::PathConstraintPath& path,
+        const PreparedPathUpdate& update)
+    {
+        AZStd::lock_guard lock(m_mutex);
+        for (const PreparedPathConstraintUpdate& prepared : update.m_constraints)
+        {
+            AZ_Assert(
+                m_configurationRevision < AZStd::numeric_limits<AZ::u64>::max(),
+                "A prepared path update must reserve configuration revisions before commit.");
+            prepared.m_constraint->SetPathAndTransform(
+                &path,
+                prepared.m_fraction,
+                prepared.m_position,
+                prepared.m_rotation);
+            prepared.m_constraint->ResetWarmStart();
+            ++m_configurationRevision;
+            *prepared.m_configurationRevision = m_configurationRevision;
+            if (prepared.m_isInSimulation)
+            {
+                m_physicsSystem.GetBodyInterface().ActivateConstraint(prepared.m_constraint);
+            }
+        }
     }
 
     bool World::CollectPathConstraintDestructionClosureUnlocked(
@@ -10805,11 +11010,10 @@ namespace Jolt
         case JPH::EConstraintSubType::Path:
         {
             const auto* constraint = static_cast<const JPH::PathConstraint*>(slot->m_constraint.GetPtr());
-            const JPH::Mat44 pathToBody = constraint->GetConstraintToBody1Matrix();
             configuration.m_geometry = PathConstraintConfiguration{
                 .m_pathHandle = slot->m_pathHandle,
-                .m_pathPosition = FromNativeVector(pathToBody.GetTranslation()),
-                .m_pathRotation = FromNativeRotation(pathToBody.GetQuaternion()),
+                .m_pathPosition = slot->m_pathPosition,
+                .m_pathRotation = slot->m_pathRotation,
                 .m_positionMotor = FromNativeMotor(
                     constraint->GetPositionMotorSettings(),
                     constraint->GetPositionMotorState()),
@@ -11560,19 +11764,53 @@ namespace Jolt
         }
 
         JPH::RefConst<JPH::PathConstraintPath> path;
-        if (!m_system.AcquirePath(pathHandle, path))
+        AZ::Transform pathTransform = AZ::Transform::CreateIdentity();
+        if (!m_system.AcquirePath(pathHandle, path, &pathTransform))
         {
             return false;
         }
-        if ((!path->IsLooping() && pathFraction > path->GetPathMaxFraction())
-            || !AdvanceConstraintConfigurationRevision(*slot))
+        auto* constraint = static_cast<JPH::PathConstraint*>(slot->m_constraint.GetPtr());
+        if ((!path->IsLooping()
+                && (pathFraction > path->GetPathMaxFraction()
+                    || constraint->GetTargetPathFraction() > path->GetPathMaxFraction())))
         {
             m_system.ReleasePath(pathHandle);
             return false;
         }
 
-        auto* constraint = static_cast<JPH::PathConstraint*>(slot->m_constraint.GetPtr());
-        constraint->SetPath(path, pathFraction);
+        JPH::Vec3 position;
+        JPH::Quat rotation;
+        {
+            const BodySlot* firstBodySlot = FindBody(slot->m_firstBodyHandle);
+            if (!firstBodySlot)
+            {
+                m_system.ReleasePath(pathHandle);
+                return false;
+            }
+            JPH::BodyLockRead bodyLock(m_physicsSystem.GetBodyLockInterface(), firstBodySlot->m_bodyId);
+            if (!bodyLock.Succeeded()
+                || !ToNativePathFrame(
+                    pathTransform,
+                    slot->m_pathPosition,
+                    slot->m_pathRotation,
+                    m_configuration.m_origin,
+                    bodyLock.GetBody(),
+                    position,
+                    rotation))
+            {
+                m_system.ReleasePath(pathHandle);
+                return false;
+            }
+        }
+
+        if (!AdvanceConstraintConfigurationRevision(*slot))
+        {
+            m_system.ReleasePath(pathHandle);
+            return false;
+        }
+
+        constraint->SetPathAndTransform(path, pathFraction, position, rotation);
+        constraint->ResetWarmStart();
         constraint->SetMaxFrictionForce(maximumFrictionForce);
         const PathHandle previousPathHandle = slot->m_pathHandle;
         slot->m_pathHandle = pathHandle;

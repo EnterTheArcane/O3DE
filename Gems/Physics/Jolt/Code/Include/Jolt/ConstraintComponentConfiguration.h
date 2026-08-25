@@ -37,11 +37,6 @@ namespace Jolt
     {
         AZ_TYPE_INFO(PathConstraintComponentConfiguration, PathConstraintComponentConfigurationTypeId);
 
-        [[nodiscard]]
-        JOLT_API AZ::Transform ResolvePathFrame(
-            const AZ::Transform& pathEntityWorldTransform,
-            const AZ::Transform& firstBodyWorldTransform) const;
-
         AZ::EntityId m_pathEntityId = AZ::EntityId();
         AZ::Vector3 m_pathPosition = AZ::Vector3::CreateZero();
         AZ::Quaternion m_pathRotation = AZ::Quaternion::CreateIdentity();

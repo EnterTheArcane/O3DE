@@ -456,14 +456,35 @@ namespace Jolt
         return GetRuntimeImplementation(*this).CreatePath(configuration);
     }
 
+    PathHandle Paths::CreatePath(
+        const HermitePathConfiguration& configuration,
+        const AZ::Transform& transform)
+    {
+        return GetRuntimeImplementation(*this).CreatePath(configuration, transform);
+    }
+
     PathHandle Paths::CreatePath(const CustomPathConfiguration& configuration)
     {
         return GetRuntimeImplementation(*this).CreatePath(configuration);
     }
 
+    PathHandle Paths::CreatePath(
+        const CustomPathConfiguration& configuration,
+        const AZ::Transform& transform)
+    {
+        return GetRuntimeImplementation(*this).CreatePath(configuration, transform);
+    }
+
     bool Paths::DestroyPath(PathHandle pathHandle)
     {
         return GetRuntimeImplementation(*this).DestroyPath(pathHandle);
+    }
+
+    bool Paths::QueuePathTransformUpdate(
+        const PathHandle pathHandle,
+        const AZ::Transform& transform)
+    {
+        return GetRuntimeImplementation(*this).QueuePathTransformUpdate(pathHandle, transform);
     }
 
     bool Paths::IsValid(PathHandle pathHandle) const

@@ -120,7 +120,7 @@ static_assert(sizeof(Jolt::HairGridCellState) == 16);
 static_assert(sizeof(Jolt::HairReadbackBuffers) == sizeof(AZStd::span<AZ::u8>) * 4);
 static_assert(sizeof(Jolt::HairReadbackResult) == sizeof(Jolt::QueryResult) * 4);
 static_assert(sizeof(Jolt::PathSample) <= 80);
-static_assert(sizeof(Jolt::PathState) <= 8);
+static_assert(sizeof(Jolt::PathState) == 48);
 static_assert(sizeof(Jolt::SoftBodyDefinitionState) <= 48);
 static_assert(sizeof(Jolt::VehicleCollisionConfiguration) <= 48);
 static_assert(sizeof(Jolt::VehiclePowertrainControl) <= 16);

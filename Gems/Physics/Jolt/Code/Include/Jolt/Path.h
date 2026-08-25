@@ -12,10 +12,11 @@
 #include <Jolt/Handle.h>
 #include <Jolt/TypeIds.h>
 
+#include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/RTTI/RTTI.h>
-#include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/span.h>
+#include <AzCore/std/containers/vector.h>
 
 namespace AZ
 {
@@ -130,6 +131,7 @@ namespace Jolt
     {
         AZ_TYPE_INFO(PathState, PathStateTypeId);
 
+        AZ::Transform m_transform = AZ::Transform::CreateIdentity();
         float m_maximumFraction = 0.0f;
         bool m_isLooping = false;
     };

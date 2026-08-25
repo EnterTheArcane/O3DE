@@ -131,6 +131,10 @@ namespace Jolt
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common)
                 ->Attribute(AZ::Script::Attributes::Module, "jolt")
                 ->Property(
+                    "transform",
+                    BehaviorValueGetter(&PathState::m_transform),
+                    nullptr)
+                ->Property(
                     "maximumFraction",
                     BehaviorValueGetter(&PathState::m_maximumFraction),
                     nullptr)
@@ -235,24 +239,7 @@ namespace Jolt
 
         AZ::Transform entityTransform = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(entityTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
-        const float uniformScale = entityTransform.GetUniformScale();
-        if (!AZ::IsFiniteFloat(uniformScale) || AZ::IsClose(uniformScale, 0.0f, AZ::Constants::Tolerance))
-        {
-            AZ_Warning("Jolt", false, "Path component '%s' has an invalid uniform scale.", GetEntity()->GetName().c_str());
-            return;
-        }
-
-        HermitePathConfiguration runtimeConfiguration = m_configuration;
-        for (HermitePathPoint& point : runtimeConfiguration.m_points)
-        {
-            point.m_position *= uniformScale;
-            point.m_tangent *= uniformScale;
-            if (uniformScale < 0.0f)
-            {
-                point.m_normal = -point.m_normal;
-            }
-        }
-        m_pathHandle = m_system->CreatePath(runtimeConfiguration);
+        m_pathHandle = m_system->CreatePath(m_configuration, entityTransform);
         if (!m_pathHandle)
         {
             AZ_Warning(
@@ -264,6 +251,7 @@ namespace Jolt
             return;
         }
 
+        AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         PathNotificationBus::Event(
             GetEntityId(),
             &IPathNotifications::OnPathCreated,
@@ -272,10 +260,28 @@ namespace Jolt
 
     void PathComponent::Deactivate()
     {
+        AZ::TransformNotificationBus::Handler::BusDisconnect();
         [[maybe_unused]] const bool destroyed = DestroyPath(true);
         AZ_Assert(destroyed, "Mandatory path teardown must retain or release every native resource.");
         PathRequestBus::Handler::BusDisconnect();
         m_system = nullptr;
+    }
+
+    void PathComponent::OnTransformChanged(
+        [[maybe_unused]] const AZ::Transform& local,
+        const AZ::Transform& world)
+    {
+        if (!m_system || !m_pathHandle)
+        {
+            return;
+        }
+
+        [[maybe_unused]] const bool queued = m_system->QueuePathTransformUpdate(m_pathHandle, world);
+        AZ_Warning(
+            "Jolt",
+            queued,
+            "Path component '%s' could not queue its transform update.",
+            GetEntity()->GetName().c_str());
     }
 
     bool PathComponent::DestroyPath(const bool mandatory)

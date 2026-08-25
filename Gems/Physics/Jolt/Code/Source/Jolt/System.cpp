@@ -293,6 +293,7 @@ namespace Jolt
         [[nodiscard]]
         PathSample FromNativePathSample(
             const JPH::PathConstraintPath& path,
+            const AZ::Transform& transform,
             const float fraction)
         {
             JPH::Vec3 position;
@@ -300,14 +301,28 @@ namespace Jolt
             JPH::Vec3 normal;
             JPH::Vec3 binormal;
             path.GetPointOnPath(fraction, position, tangent, normal, binormal);
+            AZ::Transform rigidTransform = transform;
+            rigidTransform.SetUniformScale(1.0f);
             return {
-                .m_position = {position.GetX(), position.GetY(), position.GetZ()},
-                .m_tangent = {tangent.GetX(), tangent.GetY(), tangent.GetZ()},
-                .m_normal = {normal.GetX(), normal.GetY(), normal.GetZ()},
-                .m_binormal = {binormal.GetX(), binormal.GetY(), binormal.GetZ()},
+                .m_position = rigidTransform.TransformPoint({position.GetX(), position.GetY(), position.GetZ()}),
+                .m_tangent = rigidTransform.TransformVector({tangent.GetX(), tangent.GetY(), tangent.GetZ()}),
+                .m_normal = rigidTransform.TransformVector({normal.GetX(), normal.GetY(), normal.GetZ()}),
+                .m_binormal = rigidTransform.TransformVector({binormal.GetX(), binormal.GetY(), binormal.GetZ()}),
                 .m_fraction = fraction,
                 .m_valid = true,
             };
+        }
+
+        [[nodiscard]]
+        bool IsValidPathTransform(
+            const AZ::Transform& transform)
+        {
+            const float rotationLengthSq = transform.GetRotation().GetLengthSq();
+            return transform.IsFinite()
+                && AZ::IsFiniteFloat(transform.GetUniformScale())
+                && !AZ::IsClose(transform.GetUniformScale(), 0.0f, AZ::Constants::Tolerance)
+                && AZ::IsFiniteFloat(rotationLengthSq)
+                && AZ::IsClose(rotationLengthSq, 1.0f, AZ::Constants::Tolerance);
         }
 
         [[nodiscard]]
@@ -339,10 +354,12 @@ namespace Jolt
             CustomPathAdapter(
                 ICustomPathProvider& provider,
                 AZStd::vector<AZ::u8> data,
-                const float maximumFraction)
+                const float maximumFraction,
+                const float uniformScale)
                 : m_provider(&provider)
                 , m_data(AZStd::move(data))
                 , m_maximumFraction(maximumFraction)
+                , m_uniformScale(uniformScale)
             {
             }
 
@@ -362,9 +379,10 @@ namespace Jolt
                 }
 
                 float fraction = clampedHint;
+                const float inverseScale = 1.0f / m_uniformScale;
                 if (!m_provider->FindClosestFraction(
                         m_data,
-                        {position.GetX(), position.GetY(), position.GetZ()},
+                        {position.GetX() * inverseScale, position.GetY() * inverseScale, position.GetZ() * inverseScale},
                         clampedHint,
                         fraction)
                     || !AZ::IsFiniteFloat(fraction)
@@ -398,14 +416,19 @@ namespace Jolt
                     return;
                 }
 
-                const AZ::Vector3 normalizedTangent = point.m_tangent.GetNormalized();
-                const AZ::Vector3 orthogonalNormal =
+                AZ::Vector3 normalizedTangent = point.m_tangent.GetNormalized();
+                AZ::Vector3 orthogonalNormal =
                     (point.m_normal - normalizedTangent * normalizedTangent.Dot(point.m_normal)).GetNormalized();
+                if (m_uniformScale < 0.0f)
+                {
+                    normalizedTangent = -normalizedTangent;
+                    orthogonalNormal = -orthogonalNormal;
+                }
                 const AZ::Vector3 normalizedBinormal = orthogonalNormal.Cross(normalizedTangent);
                 position = JPH::Vec3(
-                    point.m_position.GetX(),
-                    point.m_position.GetY(),
-                    point.m_position.GetZ());
+                    point.m_position.GetX() * m_uniformScale,
+                    point.m_position.GetY() * m_uniformScale,
+                    point.m_position.GetZ() * m_uniformScale);
                 tangent = JPH::Vec3(
                     normalizedTangent.GetX(),
                     normalizedTangent.GetY(),
@@ -424,6 +447,7 @@ namespace Jolt
             ICustomPathProvider* m_provider = nullptr;
             AZStd::vector<AZ::u8> m_data;
             float m_maximumFraction = 0.0f;
+            float m_uniformScale = 1.0f;
         };
 
         AZ_PUSH_DISABLE_WARNING(4505, "-Wunused-function")
@@ -432,6 +456,59 @@ namespace Jolt
             JPH_ADD_BASE_CLASS(CustomPathAdapter, JPH::PathConstraintPath)
         }
         AZ_POP_DISABLE_WARNING
+
+        [[nodiscard]]
+        JPH::RefConst<JPH::PathConstraintPath> CreateNativePath(
+            const HermitePathConfiguration& configuration,
+            const float uniformScale)
+        {
+            if (!configuration.IsValid())
+            {
+                return nullptr;
+            }
+
+            JPH::Ref<JPH::PathConstraintPathHermite> path = new JPH::PathConstraintPathHermite();
+            for (const HermitePathPoint& point : configuration.m_points)
+            {
+                if (!point.m_position.IsFinite()
+                    || !point.m_tangent.IsFinite()
+                    || point.m_tangent.IsZero()
+                    || !point.m_normal.IsFinite()
+                    || point.m_normal.IsZero()
+                    || !AZ::IsClose(point.m_tangent.GetNormalized().Dot(point.m_normal.GetNormalized()), 0.0f, 1.0e-3f))
+                {
+                    return nullptr;
+                }
+
+                AZ::Vector3 normal = point.m_normal;
+                if (uniformScale < 0.0f)
+                {
+                    normal = -normal;
+                }
+                path->AddPoint(
+                    JPH::Vec3(point.m_position.GetX(), point.m_position.GetY(), point.m_position.GetZ()) * uniformScale,
+                    JPH::Vec3(point.m_tangent.GetX(), point.m_tangent.GetY(), point.m_tangent.GetZ()) * uniformScale,
+                    JPH::Vec3(normal.GetX(), normal.GetY(), normal.GetZ()).Normalized());
+            }
+            path->SetIsLooping(configuration.m_isLooping);
+            return path.GetPtr();
+        }
+
+        [[nodiscard]]
+        JPH::RefConst<JPH::PathConstraintPath> CreateNativePath(
+            ICustomPathProvider& provider,
+            const CustomPathConfiguration& configuration,
+            const float maximumFraction,
+            const float uniformScale)
+        {
+            JPH::Ref<CustomPathAdapter> path = new CustomPathAdapter(
+                provider,
+                configuration.m_data,
+                maximumFraction,
+                uniformScale);
+            path->SetIsLooping(configuration.m_isLooping);
+            return path.GetPtr();
+        }
 
         class GroupFilterAdapter final
             : public JPH::GroupFilter
@@ -3267,39 +3344,35 @@ namespace Jolt
     PathHandle RuntimeImplementation::CreatePath(
         const HermitePathConfiguration& configuration)
     {
+        return CreatePath(configuration, AZ::Transform::CreateIdentity());
+    }
+
+    PathHandle RuntimeImplementation::CreatePath(
+        const HermitePathConfiguration& configuration,
+        const AZ::Transform& transform)
+    {
         const DeterministicFloatScope floatScope;
-        if (!configuration.IsValid())
+        if (!IsValidPathTransform(transform))
         {
             return {};
         }
 
-        JPH::Ref<JPH::PathConstraintPathHermite> path = new JPH::PathConstraintPathHermite();
-        for (const HermitePathPoint& point : configuration.m_points)
-        {
-            if (!point.m_position.IsFinite()
-                || !point.m_tangent.IsFinite()
-                || point.m_tangent.IsZero()
-                || !point.m_normal.IsFinite()
-                || point.m_normal.IsZero()
-                || !AZ::IsClose(point.m_tangent.GetNormalized().Dot(point.m_normal.GetNormalized()), 0.0f, 1.0e-3f))
-            {
-                return {};
-            }
-            path->AddPoint(
-                JPH::Vec3(point.m_position.GetX(), point.m_position.GetY(), point.m_position.GetZ()),
-                JPH::Vec3(point.m_tangent.GetX(), point.m_tangent.GetY(), point.m_tangent.GetZ()),
-                JPH::Vec3(point.m_normal.GetX(), point.m_normal.GetY(), point.m_normal.GetZ()).Normalized());
-        }
-        path->SetIsLooping(configuration.m_isLooping);
-
-        return StorePath(path.GetPtr());
+        JPH::RefConst<JPH::PathConstraintPath> path = CreateNativePath(configuration, transform.GetUniformScale());
+        return StorePath(AZStd::move(path), configuration, transform);
     }
 
     PathHandle RuntimeImplementation::CreatePath(
         const CustomPathConfiguration& configuration)
     {
+        return CreatePath(configuration, AZ::Transform::CreateIdentity());
+    }
+
+    PathHandle RuntimeImplementation::CreatePath(
+        const CustomPathConfiguration& configuration,
+        const AZ::Transform& transform)
+    {
         const DeterministicFloatScope floatScope;
-        if (configuration.m_providerId.IsNull())
+        if (configuration.m_providerId.IsNull() || !IsValidPathTransform(transform))
         {
             return {};
         }
@@ -3318,11 +3391,11 @@ namespace Jolt
             return {};
         }
 
-        JPH::Ref<CustomPathAdapter> path = new CustomPathAdapter(
+        JPH::RefConst<JPH::PathConstraintPath> path = CreateNativePath(
             *provider,
-            configuration.m_data,
-            maximumFraction);
-        path->SetIsLooping(configuration.m_isLooping);
+            configuration,
+            maximumFraction,
+            transform.GetUniformScale());
 
         AZ::HashValue64 sourceHash = AZ::TypeHash64(
             providerVersion,
@@ -3337,7 +3410,9 @@ namespace Jolt
         }
 
         const PathHandle pathHandle = StorePath(
-            path.GetPtr(),
+            AZStd::move(path),
+            configuration,
+            transform,
             configuration.m_providerId,
             providerExtension,
             providerVersion,
@@ -3351,6 +3426,8 @@ namespace Jolt
 
     PathHandle RuntimeImplementation::StorePath(
         JPH::RefConst<JPH::PathConstraintPath> path,
+        PathSource source,
+        const AZ::Transform& transform,
         const AZ::TypeId customProviderId,
         const ExtensionHandle customProviderExtension,
         const AZ::u64 customProviderVersion,
@@ -3372,10 +3449,16 @@ namespace Jolt
         const AZ::u32 pathIndex = reservation.m_index;
         PathSlot& slot = m_pathSlots[pathIndex];
         slot.m_path = AZStd::move(path);
+        slot.m_source = AZStd::move(source);
+        slot.m_transform = transform;
+        slot.m_pendingTransform = transform;
         slot.m_customProviderId = customProviderId;
         slot.m_customProviderExtension = customProviderExtension;
         slot.m_customProviderVersion = customProviderVersion;
         slot.m_sourceHash = sourceHash;
+        slot.m_updateRevision = 0;
+        slot.m_updatePreparationCount = 0;
+        slot.m_updateQueued = false;
         return pathHandle;
     }
 
@@ -3396,13 +3479,17 @@ namespace Jolt
             if (!slot.m_path
                 || slot.m_generation != parts.m_generation
                 || slot.m_constraintCount > 0
+                || slot.m_updatePreparationCount > 0
                 || slot.m_isDestroying)
             {
                 return false;
             }
 
             slot.m_path = nullptr;
+            slot.m_source = AZStd::monostate{};
+            slot.m_updateQueued = false;
             customProviderExtension = slot.m_customProviderExtension;
+            slot.m_customProviderExtension = {};
             Internal::ReleaseHandleSlot(m_pathSlots, m_freePathSlots, parts.m_index);
         }
 
@@ -3458,7 +3545,10 @@ namespace Jolt
         {
             AZStd::lock_guard pathLock(m_pathMutex);
             PathSlot* slot = FindPathUnlocked(pathHandle);
-            if (!slot || slot->m_isDestroying || slot->m_constraintCount != pathReferenceCount)
+            if (!slot
+                || slot->m_isDestroying
+                || slot->m_updatePreparationCount > 0
+                || slot->m_constraintCount != pathReferenceCount)
             {
                 return false;
             }
@@ -3592,7 +3682,10 @@ namespace Jolt
             }
 
             slot->m_path = nullptr;
+            slot->m_source = AZStd::monostate{};
+            slot->m_updateQueued = false;
             customProviderExtension = slot->m_customProviderExtension;
+            slot->m_customProviderExtension = {};
             Internal::ReleaseHandleSlot(m_pathSlots, m_freePathSlots, parts.m_index);
         }
 
@@ -3875,6 +3968,196 @@ namespace Jolt
         return FindPathUnlocked(pathHandle);
     }
 
+    bool RuntimeImplementation::QueuePathTransformUpdate(
+        const PathHandle pathHandle,
+        const AZ::Transform& transform)
+    {
+        if (!IsValidPathTransform(transform))
+        {
+            return false;
+        }
+
+        AZStd::lock_guard lock(m_pathMutex);
+        PathSlot* slot = FindPathUnlocked(pathHandle);
+        if (!slot
+            || slot->m_isDestroying
+            || slot->m_updateRevision == AZStd::numeric_limits<AZ::u64>::max())
+        {
+            return false;
+        }
+        if (slot->m_updateQueued && slot->m_pendingTransform.IsClose(transform))
+        {
+            return true;
+        }
+        if (!slot->m_updateQueued && slot->m_transform.IsClose(transform))
+        {
+            return true;
+        }
+        if (!slot->m_updateQueued)
+        {
+            m_pendingPathTransformUpdates.push_back(pathHandle);
+            slot->m_updateQueued = true;
+        }
+        slot->m_pendingTransform = transform;
+        ++slot->m_updateRevision;
+        return true;
+    }
+
+    void RuntimeImplementation::FlushPathTransformUpdates()
+    {
+        AZStd::lock_guard updateLock(m_pathTransformUpdateMutex);
+        {
+            AZStd::lock_guard lock(m_pathMutex);
+            m_pathTransformUpdateScratch.clear();
+            m_pathTransformUpdateScratch.swap(m_pendingPathTransformUpdates);
+        }
+
+        struct WorldUpdate final
+        {
+            World* m_world = nullptr;
+            World::PreparedPathUpdate m_update;
+        };
+
+        for (const PathHandle pathHandle : m_pathTransformUpdateScratch)
+        {
+            PathSource source;
+            AZ::Transform transform = AZ::Transform::CreateIdentity();
+            ExtensionHandle customProviderExtension;
+            AZ::u64 updateRevision = 0;
+            float maximumFraction = 0.0f;
+            bool rebuildPath = false;
+            JPH::RefConst<JPH::PathConstraintPath> path;
+            {
+                AZStd::lock_guard lock(m_pathMutex);
+                PathSlot* slot = FindPathUnlocked(pathHandle);
+                if (!slot || !slot->m_updateQueued || slot->m_isDestroying)
+                {
+                    continue;
+                }
+                slot->m_updateQueued = false;
+                if (slot->m_transform.IsClose(slot->m_pendingTransform))
+                {
+                    continue;
+                }
+                if (slot->m_updatePreparationCount == AZStd::numeric_limits<AZ::u32>::max())
+                {
+                    AZ_Warning("Jolt", false, "Path transform preparation capacity is exhausted.");
+                    continue;
+                }
+
+                transform = slot->m_pendingTransform;
+                updateRevision = slot->m_updateRevision;
+                path = slot->m_path;
+                rebuildPath = transform.GetUniformScale() != slot->m_transform.GetUniformScale();
+                if (rebuildPath)
+                {
+                    source = slot->m_source;
+                    customProviderExtension = slot->m_customProviderExtension;
+                    maximumFraction = slot->m_path->GetPathMaxFraction();
+                }
+                ++slot->m_updatePreparationCount;
+            }
+
+            ExtensionHandle temporaryProviderLease;
+            if (rebuildPath)
+            {
+                path = nullptr;
+                if (const auto* configuration = AZStd::get_if<HermitePathConfiguration>(&source))
+                {
+                    path = CreateNativePath(*configuration, transform.GetUniformScale());
+                }
+                else if (const auto* configuration = AZStd::get_if<CustomPathConfiguration>(&source))
+                {
+                    auto* provider = static_cast<ICustomPathProvider*>(AcquireExtension(
+                        customProviderExtension,
+                        ExtensionKind::CustomPathProvider));
+                    if (provider)
+                    {
+                        temporaryProviderLease = customProviderExtension;
+                        path = CreateNativePath(*provider, *configuration, maximumFraction, transform.GetUniformScale());
+                    }
+                }
+            }
+
+            bool prepared = path;
+            bool superseded = false;
+            AZStd::fixed_vector<WorldUpdate, Internal::MaximumWorldCount> worldUpdates;
+            AZStd::unique_lock worldLock(m_worldMutex);
+            if (prepared)
+            {
+                for (WorldSlot& worldSlot : m_worldSlots)
+                {
+                    if (!worldSlot.m_world)
+                    {
+                        continue;
+                    }
+
+                    worldUpdates.push_back({.m_world = worldSlot.m_world.get()});
+                    if (!worldSlot.m_world->PreparePathUpdate(
+                            pathHandle,
+                            *path,
+                            transform,
+                            worldUpdates.back().m_update))
+                    {
+                        prepared = false;
+                        break;
+                    }
+                }
+            }
+
+            {
+                AZStd::lock_guard pathLock(m_pathMutex);
+                PathSlot* slot = FindPathUnlocked(pathHandle);
+                if (!slot || slot->m_updatePreparationCount == 0)
+                {
+                    prepared = false;
+                }
+                else if (slot->m_isDestroying
+                    || slot->m_updateRevision != updateRevision
+                    || !slot->m_pendingTransform.IsClose(transform))
+                {
+                    prepared = false;
+                    superseded = !slot->m_isDestroying;
+                    --slot->m_updatePreparationCount;
+                }
+                else if (!prepared)
+                {
+                    --slot->m_updatePreparationCount;
+                }
+                else
+                {
+                    slot->m_path = path;
+                    slot->m_transform = transform;
+                    for (WorldUpdate& worldUpdate : worldUpdates)
+                    {
+                        worldUpdate.m_world->CommitPathUpdate(*path, worldUpdate.m_update);
+                    }
+                    --slot->m_updatePreparationCount;
+                }
+            }
+
+            worldLock.unlock();
+            if (temporaryProviderLease)
+            {
+                ReleaseExtension(temporaryProviderLease);
+            }
+            if (!prepared && !superseded)
+            {
+                AZ_Warning("Jolt", false, "A queued path transform update could not be committed; the previous path remains active.");
+            }
+        }
+
+        {
+            AZStd::lock_guard lock(m_pathMutex);
+            m_pathTransformUpdateScratch.clear();
+            if (m_pendingPathTransformUpdates.empty()
+                && m_pendingPathTransformUpdates.capacity() < m_pathTransformUpdateScratch.capacity())
+            {
+                m_pendingPathTransformUpdates.swap(m_pathTransformUpdateScratch);
+            }
+        }
+    }
+
     bool RuntimeImplementation::GetPathState(
         const PathHandle pathHandle,
         PathState& state) const
@@ -3889,6 +4172,7 @@ namespace Jolt
         }
 
         state = {
+            .m_transform = slot->m_transform,
             .m_maximumFraction = slot->m_path->GetPathMaxFraction(),
             .m_isLooping = slot->m_path->IsLooping(),
         };
@@ -3932,7 +4216,7 @@ namespace Jolt
             return false;
         }
 
-        sample = FromNativePathSample(*slot->m_path, fraction);
+        sample = FromNativePathSample(*slot->m_path, slot->m_transform, fraction);
         return true;
     }
 
@@ -3955,10 +4239,13 @@ namespace Jolt
             return false;
         }
 
+        AZ::Transform rigidTransform = slot->m_transform;
+        rigidTransform.SetUniformScale(1.0f);
+        const AZ::Vector3 localPosition = rigidTransform.GetInverse().TransformPoint(position);
         const float fraction = slot->m_path->GetClosestPoint(
-            JPH::Vec3(position.GetX(), position.GetY(), position.GetZ()),
+            JPH::Vec3(localPosition.GetX(), localPosition.GetY(), localPosition.GetZ()),
             fractionHint);
-        sample = FromNativePathSample(*slot->m_path, fraction);
+        sample = FromNativePathSample(*slot->m_path, slot->m_transform, fraction);
         return true;
     }
 
@@ -5483,6 +5770,7 @@ namespace Jolt
         const WorldHandle worldHandle,
         const float fixedTimeStep)
     {
+        FlushPathTransformUpdates();
         RetryDeferredResourceDestruction();
         AZStd::shared_lock lock(m_worldMutex);
         World* world = FindWorldUnlocked(worldHandle);
@@ -5583,6 +5871,7 @@ namespace Jolt
         AZStd::span<WorldEventBatch> eventBatches,
         AZ::u32* eventBatchCount)
     {
+        FlushPathTransformUpdates();
         RetryDeferredResourceDestruction();
         struct AutoSimulationEntry final
         {
@@ -11730,7 +12019,8 @@ namespace Jolt
 
     bool RuntimeImplementation::AcquirePath(
         const PathHandle pathHandle,
-        JPH::RefConst<JPH::PathConstraintPath>& path)
+        JPH::RefConst<JPH::PathConstraintPath>& path,
+        AZ::Transform* transform)
     {
         AZStd::lock_guard lock(m_pathMutex);
         Internal::ResourceHandleParts parts;
@@ -11746,6 +12036,10 @@ namespace Jolt
         PathSlot& pathSlot = m_pathSlots[parts.m_index];
         ++pathSlot.m_constraintCount;
         path = pathSlot.m_path;
+        if (transform)
+        {
+            *transform = pathSlot.m_transform;
+        }
         return true;
     }
 

@@ -10,6 +10,9 @@
 #include <Jolt/Configuration.h>
 #include <Jolt/Path.h>
 
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Math/Vector3.h>
+
 namespace Jolt
 {
     class Runtime;
@@ -26,9 +29,26 @@ namespace Jolt
         PathHandle CreatePath(const HermitePathConfiguration& configuration);
 
         [[nodiscard]]
+        PathHandle CreatePath(
+            const HermitePathConfiguration& configuration,
+            const AZ::Transform& transform);
+
+        [[nodiscard]]
         PathHandle CreatePath(const CustomPathConfiguration& configuration);
 
+        [[nodiscard]]
+        PathHandle CreatePath(
+            const CustomPathConfiguration& configuration,
+            const AZ::Transform& transform);
+
         bool DestroyPath(PathHandle pathHandle);
+
+        //! Queues the latest transform for an atomic update before the next simulation step.
+        //! Translation and rotation update dependent frames; a uniform-scale change rebuilds the native path.
+        //! The existing path remains active if the update cannot be prepared.
+        bool QueuePathTransformUpdate(
+            PathHandle pathHandle,
+            const AZ::Transform& transform);
 
         [[nodiscard]]
         bool IsValid(PathHandle pathHandle) const;

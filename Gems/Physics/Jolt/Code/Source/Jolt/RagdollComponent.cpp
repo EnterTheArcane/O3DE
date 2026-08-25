@@ -395,7 +395,7 @@ namespace Jolt
             neutralModelTransforms.push_back(entityRotationTransform * modelTransform);
         }
 
-        const auto resolveConstraint = [&, this](
+        const auto resolveConstraint = [&](
             const RagdollConstraintComponentConfiguration& source,
             const size_t firstPartIndex,
             RagdollConstraintConfiguration& resolved)
@@ -435,26 +435,10 @@ namespace Jolt
                             return;
                         }
 
-                        AZ::Transform pathEntityWorldTransform = AZ::Transform::CreateIdentity();
-                        AZ::TransformBus::EventResult(
-                            pathEntityWorldTransform,
-                            configuration.m_pathEntityId,
-                            &AZ::TransformInterface::GetWorldTM);
-                        AZ::Transform firstBodyWorldTransform = neutralModelTransforms[firstPartIndex];
-                        firstBodyWorldTransform.SetTranslation(
-                            firstBodyWorldTransform.GetTranslation() + m_entityTransform.GetTranslation());
-                        const AZ::Transform pathFrame =
-                            configuration.ResolvePathFrame(pathEntityWorldTransform, firstBodyWorldTransform);
-                        if (!pathFrame.IsFinite())
-                        {
-                            success = false;
-                            return;
-                        }
-
                         resolved.m_geometry = PathConstraintConfiguration{
                             .m_pathHandle = pathHandle,
-                            .m_pathPosition = pathFrame.GetTranslation(),
-                            .m_pathRotation = pathFrame.GetRotation(),
+                            .m_pathPosition = configuration.m_pathPosition,
+                            .m_pathRotation = configuration.m_pathRotation,
                             .m_positionMotor = configuration.m_positionMotor,
                             .m_maximumFrictionForce = configuration.m_maximumFrictionForce,
                             .m_pathFraction = configuration.m_pathFraction,

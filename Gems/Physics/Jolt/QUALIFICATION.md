@@ -38,7 +38,7 @@ the row's complete contract.
 | `J3-AUD-015` | World lifecycle, simulation, queries, rollback, and diagnostics use separate ownership/scoping boundaries. | 4 | **Implemented** — five singular buses separate lifecycle/configuration, simulation, queries, rollback, and diagnostics. Reflection scopes destructive/control operations as Automation and read/query diagnostics as Common. A static parity gate accounts for all 59 reflected script operations, and the focused null-renderer scenario passes. The complete application matrix remains. |
 | `J3-AUD-016` | Ragdoll definitions construct every advertised constraint type and reject unsupported drive mappings before mutation. | 5 | **Implemented** — all 13 native constraint alternatives construct through direct Runtime and authored component paths. Stable local UUIDs replace world handles for linked gear and rack-and-pinion constraints; custom providers and paths remain retained; invalid identities, links, providers, paths, poses, and drive combinations fail before mutation. JSON, binary/editor configuration, snapshot restore, dependency lifetime, simulation membership, and exact worker-digest tests pass in the 318-test clang-cl Release non-unity suite. Final MSVC and application qualification remain. |
 | `J3-AUD-017` | Physical characters expose state-preserving add/remove simulation operations. | 5 | **Implemented** — character-specific add, remove, and membership queries preserve the character handle, backing body handle, transform, linear/angular velocity, move-event subscription, and detached snapshot behavior. Component disable/re-enable preserves resources without destruction notifications, the focused scenario checks the membership transition, and exact full-state digests match at effective 1/4/8 workers. The 322-test clang-cl Release non-unity suite and fresh source consumer pass; installed-engine, MSVC, and application qualification remain. |
-| `J3-AUD-018` | One Path resource owns geometry and transform; active updates commit transactionally at a safe boundary. | 5 | **Open** — translation/rotation frame update, scale rebuild, state preservation, and failure rollback tests required. |
+| `J3-AUD-018` | One Path resource owns geometry and transform; active updates commit transactionally at a safe boundary. | 5 | **Implemented** — each Path retains canonical local geometry and one authoritative `AZ::Transform`. Queued updates coalesce before a safe-boundary transaction across every world; translation/rotation updates dependent frames, uniform-scale changes rebuild native geometry, and failed preparation leaves the previous state active. Direct, scene, ragdoll, custom-provider, component, snapshot, modular-consumer, and exact 1/4/8-worker tests pass. Final MSVC and application qualification remain. |
 | `J3-AUD-019` | Custom-shape source dependencies participate in analysis invalidation and deterministic job/product fingerprints. | 5 | **Open** — real dependency edit/delete/recovery and recook tests required. |
 | `J3-AUD-020` | Every claimed clang-cl ASan configuration is instrumented and deployed correctly or rejected during configure. | 1 | **Closed** — clang-cl 22.1.8 permits only Profile ASan trees because the Windows ASan runtime rejects the debug CRT; a fresh Ninja build proved compile instrumentation, dynamic runtime/thunk linkage, runtime deployment, the full Jolt and AzCore suites, and a symbolized heap-use-after-free sentinel. |
 | `J3-AUD-021` | Operation creation and completion reclamation are bounded and never wait for unrelated work. | 6 | **Open** — complexity, cancellation, concurrent creator, shutdown, and worker-saturation tests/benchmarks required. |
@@ -52,7 +52,7 @@ the row's complete contract.
 | `C-AUD-001` | Restoring a group filter refreshes every affected world's contact cache after commit. | 3 | **Implemented** — successful custom-filter restore invalidates affected contact caches and activates non-static bodies while the world is already locked. Mutable filters can belong to only one world, and a global-only snapshot test proves restored callbacks re-enable its body and publish a new contact on the next step. Final MSVC qualification remains. |
 | `C-AUD-002` | Static-body component teardown retains ownership after a failed destroy. | 3 | **Implemented** — an ordinary disable is atomic under a dependency veto, while mandatory entity teardown discovers the same vetoed dependency closure and completes it without abandoning the body. Final MSVC qualification remains. |
 | `C-AUD-003` | Path component teardown retains ownership after a failed destroy. | 3 | **Implemented** — mandatory path teardown ignores a client veto only after complete discovery, reserves the dependent native constraint closure, and commits the path after its constraints. Final MSVC qualification remains. |
-| `C-AUD-004` | Active paths have one authoritative transform and cannot snapshot inconsistent geometry and frames. | 5 | **Open** — activation skew and live-update tests required. |
+| `C-AUD-004` | Active paths have one authoritative transform and cannot snapshot inconsistent geometry and frames. | 5 | **Implemented** — activation creates native geometry and its authoritative transform together; updates publish geometry, frames, path state, and world configuration revisions in one commit. Pre-update snapshots reject the changed topology, while byte-identical post-update archives and public state match across effective 1/4/8 workers. Final MSVC and application qualification remain. |
 | `C-AUD-005` | Gameplay scripts cannot own world lifecycle, explicit stepping, or restore. | 4 | **Implemented** — lifecycle/configuration, explicit stepping, and rollback buses carry Automation scope while query and diagnostics buses alone carry Common scope. Reflection tests assert each boundary, retained-shape operations remain C++-only, script parity rejects stale or misplaced calls, and the focused clang-cl Release scenario passes. |
 | `C-AUD-006` | Creating an async operation never joins or waits for unrelated queued/running work. | 6 | **Open** — blocked-worker latency and lock-context watchdog tests required. |
 | `C-AUD-007` | Parent/child allocator byte accounting uses the same size on allocation and deallocation in every malloc/ASan-header mode. | 1 | **Closed** — `SystemAllocator` now reports and accounts the exact size returned by deallocation. `ChildAllocatorSchema` and Jolt `NativeAllocator` round trips pass with the Profile ASan header and with `AZCORE_USE_MALLOC_SYSTEM_ALLOCATOR=ON` without that header. |
@@ -220,6 +220,29 @@ The clang-cl 22.1.8 Release non-unity consolidated suite passes 322 tests with z
 `Jolt_Characters` scenario now observes the public disabled and re-enabled states through `CharacterBus`. The source/install consumer
 calls every new public capability operation; its fresh installed modular and monolithic executions, the null-renderer scenario, and the
 MSVC matrix remain final qualification gates.
+
+## Stage 5 active-path evidence
+
+`Paths` now retains the immutable Hermite or custom-provider source together with one authoritative `AZ::Transform`. Creation publishes
+both or neither. Transform notifications queue the latest valid value, and explicit or automatic simulation flushes queued values while
+holding the Runtime's world topology gate. Every affected world validates its complete constraint and ragdoll-definition graph before
+any Path or constraint changes. A translation or rotation reuses the native geometry; a uniform-scale change builds replacement geometry
+in scratch. Commit preserves handles, path fractions, motors, enabled and simulation-membership state, then advances every affected
+world's configuration revision. The previous Path remains active if any world, provider, or fraction validation fails.
+
+`SimulationTests.ActivePathTransformsCommitAtSafeBoundariesAndPreserveDependentState` proves coalescing, invalid-input rejection,
+translation/rotation updates, scaled rebuilds, unchanged constraint identity and state, stale-snapshot rejection, and failure atomicity.
+`SceneDefinitionsAndInstancesRetainUniquePathAndCollisionFilterResources` and
+`RagdollsSupportEveryConstraintKindAndRetainDefinitionDependencies` prove the two indirect ownership paths update without replacing their
+instance or constraint handles. `CustomPathsRetainProvidersAndExposeDeterministicSamples` covers provider-backed scaling and world-space
+queries. `ActivePathUpdatesAreDeterministicAcrossWorkerCounts` compares exact public body/constraint state, state digests, and complete
+snapshot archives across repeated internal serial, external serial, four-worker, and eight-worker executions.
+
+The private native patch serializes `MotorSettings` field-by-field, removing three indeterminate padding bytes that previously made valid
+PathConstraint archives depend on worker scheduling without changing simulation output. World preparation and pending-update storage now
+retain reusable capacity instead of allocating fresh vectors for each steady transform update. The clang-cl 22.1.8 Release non-unity
+suite passes 323 tests, the public-only modular consumer creates and updates a transformed Path successfully, and the quick validator
+passes. Final allocator measurement, MSVC, installed-engine, and application qualification remain.
 
 ## Qualification platforms
 

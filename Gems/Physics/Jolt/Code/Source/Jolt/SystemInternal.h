@@ -23,6 +23,7 @@
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/containers/span.h>
+#include <AzCore/std/containers/variant.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Collision/PhysicsMaterial.h>
@@ -332,9 +333,23 @@ namespace Jolt
         PathHandle CreatePath(const HermitePathConfiguration& configuration);
 
         [[nodiscard]]
+        PathHandle CreatePath(
+            const HermitePathConfiguration& configuration,
+            const AZ::Transform& transform);
+
+        [[nodiscard]]
         PathHandle CreatePath(const CustomPathConfiguration& configuration);
 
+        [[nodiscard]]
+        PathHandle CreatePath(
+            const CustomPathConfiguration& configuration,
+            const AZ::Transform& transform);
+
         bool DestroyPath(PathHandle pathHandle);
+
+        bool QueuePathTransformUpdate(
+            PathHandle pathHandle,
+            const AZ::Transform& transform);
 
         [[nodiscard]]
         bool ReservePathDestruction(
@@ -3303,15 +3318,26 @@ namespace Jolt
             AZ::u32 m_generation = 0;
         };
 
+        using PathSource = AZStd::variant<
+            AZStd::monostate,
+            HermitePathConfiguration,
+            CustomPathConfiguration>;
+
         struct PathSlot final
         {
             JPH::RefConst<JPH::PathConstraintPath> m_path;
+            PathSource m_source;
+            AZ::Transform m_transform = AZ::Transform::CreateIdentity();
+            AZ::Transform m_pendingTransform = AZ::Transform::CreateIdentity();
             AZ::TypeId m_customProviderId = AZ::TypeId::CreateNull();
             ExtensionHandle m_customProviderExtension;
             AZ::u64 m_customProviderVersion = 0;
             AZ::u64 m_sourceHash = 0;
+            AZ::u64 m_updateRevision = 0;
             AZ::u32 m_generation = 0;
             AZ::u32 m_constraintCount = 0;
+            AZ::u32 m_updatePreparationCount = 0;
+            bool m_updateQueued = false;
             bool m_isDestroying = false;
         };
 
@@ -3605,6 +3631,8 @@ namespace Jolt
         [[nodiscard]]
         PathHandle StorePath(
             JPH::RefConst<JPH::PathConstraintPath> path,
+            PathSource source,
+            const AZ::Transform& transform,
             AZ::TypeId customProviderId = AZ::TypeId::CreateNull(),
             ExtensionHandle customProviderExtension = ExtensionHandle::Invalid,
             AZ::u64 customProviderVersion = 0,
@@ -3613,7 +3641,8 @@ namespace Jolt
         [[nodiscard]]
         bool AcquirePath(
             PathHandle pathHandle,
-            JPH::RefConst<JPH::PathConstraintPath>& path);
+            JPH::RefConst<JPH::PathConstraintPath>& path,
+            AZ::Transform* transform = nullptr);
 
         void ReleasePath(PathHandle pathHandle);
 
@@ -3622,6 +3651,8 @@ namespace Jolt
 
         [[nodiscard]]
         const PathSlot* FindPathUnlocked(PathHandle pathHandle) const;
+
+        void FlushPathTransformUpdates();
 
         [[nodiscard]]
         SoftBodyDefinitionHandle StoreSoftBodyDefinition(
@@ -3736,8 +3767,11 @@ namespace Jolt
         AZStd::vector<AZ::u32> m_freeGroupFilterSlots;
 
         mutable AZStd::shared_mutex m_pathMutex;
+        AZStd::mutex m_pathTransformUpdateMutex;
         AZStd::vector<PathSlot> m_pathSlots;
         AZStd::vector<AZ::u32> m_freePathSlots;
+        AZStd::vector<PathHandle> m_pendingPathTransformUpdates;
+        AZStd::vector<PathHandle> m_pathTransformUpdateScratch;
 
         mutable AZStd::shared_mutex m_softBodyDefinitionMutex;
         AZStd::vector<SoftBodyDefinitionSlot> m_softBodyDefinitionSlots;
@@ -3852,6 +3886,7 @@ namespace Jolt
 
         using RuntimeImplementation::CreatePath;
         using RuntimeImplementation::DestroyPath;
+        using RuntimeImplementation::QueuePathTransformUpdate;
         using RuntimeImplementation::GetPathState;
         using RuntimeImplementation::GetCustomPathInfo;
         using RuntimeImplementation::SamplePath;

@@ -121,6 +121,53 @@ namespace Jolt
         }
 
         [[nodiscard]]
+        bool ToRagdollNativePathFrame(
+            const AZ::Transform& pathTransform,
+            const AZ::Vector3& localPosition,
+            const AZ::Quaternion& localRotation,
+            const WorldPosition& origin,
+            const JPH::Body& firstBody,
+            JPH::Vec3& position,
+            JPH::Quat& rotation)
+        {
+            const float pathScale = pathTransform.GetUniformScale();
+            const float localRotationLengthSq = localRotation.GetLengthSq();
+            if (!pathTransform.IsFinite()
+                || !AZ::IsFiniteFloat(pathScale)
+                || AZ::IsClose(pathScale, 0.0f, AZ::Constants::Tolerance)
+                || !localPosition.IsFinite()
+                || !localRotation.IsFinite()
+                || !AZ::IsFiniteFloat(localRotationLengthSq)
+                || localRotationLengthSq <= 0.0f)
+            {
+                return false;
+            }
+
+            AZ::Transform frame = pathTransform
+                * AZ::Transform::CreateFromQuaternionAndTranslation(localRotation.GetNormalized(), localPosition);
+            frame.SetUniformScale(1.0f);
+            const AZ::Vector3 worldPosition = frame.GetTranslation();
+            const WorldPosition positionValue{
+                .m_x = worldPosition.GetX(),
+                .m_y = worldPosition.GetY(),
+                .m_z = worldPosition.GetZ(),
+            };
+            const JPH::RMat44 pathToWorld = JPH::RMat44::sRotationTranslation(
+                ToRagdollNativeRotation(frame.GetRotation()),
+                ToRagdollNativePosition(positionValue, origin));
+            const JPH::RMat44 pathToBody = firstBody.GetWorldTransform().InversedRotationTranslation() * pathToWorld;
+            position = JPH::Vec3(pathToBody.GetTranslation());
+            rotation = pathToBody.GetQuaternion();
+            return std::isfinite(position.GetX())
+                && std::isfinite(position.GetY())
+                && std::isfinite(position.GetZ())
+                && std::isfinite(rotation.GetX())
+                && std::isfinite(rotation.GetY())
+                && std::isfinite(rotation.GetZ())
+                && std::isfinite(rotation.GetW());
+        }
+
+        [[nodiscard]]
         AZ::Transform FromRagdollNativeTransform(
             JPH::Mat44Arg transform)
         {
@@ -1398,6 +1445,8 @@ namespace Jolt
         }
 
         AZStd::vector<PathHandle> instancePathHandles(definition->m_constraints.size());
+        AZStd::vector<JPH::RefConst<JPH::PathConstraintPath>> instancePaths(definition->m_constraints.size());
+        AZStd::vector<AZ::Transform> instancePathTransforms(definition->m_constraints.size());
         for (size_t constraintOffset = 0; constraintOffset < definition->m_constraints.size(); ++constraintOffset)
         {
             const auto* path = AZStd::get_if<PathConstraintConfiguration>(
@@ -1408,7 +1457,10 @@ namespace Jolt
             }
 
             JPH::RefConst<JPH::PathConstraintPath> retainedPath;
-            if (!m_system.AcquirePath(path->m_pathHandle, retainedPath))
+            if (!m_system.AcquirePath(
+                    path->m_pathHandle,
+                    retainedPath,
+                    &instancePathTransforms[constraintOffset]))
             {
                 for (const PathHandle acquiredPathHandle : instancePathHandles)
                 {
@@ -1422,6 +1474,66 @@ namespace Jolt
                 return {};
             }
             instancePathHandles[constraintOffset] = path->m_pathHandle;
+            instancePaths[constraintOffset] = AZStd::move(retainedPath);
+        }
+
+        JPH::SkeletonPose initialPose;
+        initialPose.SetSkeleton(definition->m_settings->GetSkeleton());
+        initialPose.GetJointMatrices().resize(definition->m_neutralModelTransforms.size());
+        for (size_t partIndex = 0; partIndex < definition->m_neutralModelTransforms.size(); ++partIndex)
+        {
+            initialPose.GetJointMatrices()[partIndex] =
+                ToRagdollNativeTransform(definition->m_neutralModelTransforms[partIndex]);
+        }
+        initialPose.CalculateJointStates();
+        ragdoll->SetPose(
+            ToRagdollNativePosition(configuration.m_rootPosition, m_configuration.m_origin),
+            initialPose.GetJointMatrices().data());
+
+        for (size_t constraintOffset = 0; constraintOffset < definition->m_constraints.size(); ++constraintOffset)
+        {
+            const auto* path = AZStd::get_if<PathConstraintConfiguration>(
+                &definition->m_constraints[constraintOffset].m_geometry);
+            if (!path)
+            {
+                continue;
+            }
+
+            const JPH::RagdollSettings::BodyIdxPair bodyIndices =
+                definition->m_settings->GetBodyIndicesForConstraintIndex(aznumeric_cast<int>(constraintOffset));
+            const JPH::Body* firstBody = m_physicsSystem.GetBodyLockInterfaceNoLock().TryGetBody(
+                ragdoll->GetBodyID(bodyIndices.first));
+            JPH::Vec3 position;
+            JPH::Quat rotation;
+            if (!firstBody
+                || !ToRagdollNativePathFrame(
+                    instancePathTransforms[constraintOffset],
+                    path->m_pathPosition,
+                    path->m_pathRotation,
+                    m_configuration.m_origin,
+                    *firstBody,
+                    position,
+                    rotation))
+            {
+                for (const PathHandle acquiredPathHandle : instancePathHandles)
+                {
+                    if (acquiredPathHandle)
+                    {
+                        m_system.ReleasePath(acquiredPathHandle);
+                    }
+                }
+                ragdoll = nullptr;
+                Internal::RollbackHandleSlot(m_ragdollSlots, m_freeRagdollSlots, ragdollReservation);
+                return {};
+            }
+
+            auto* constraint = static_cast<JPH::PathConstraint*>(
+                ragdoll->GetConstraint(aznumeric_cast<int>(constraintOffset)));
+            constraint->SetPathAndTransform(
+                instancePaths[constraintOffset],
+                path->m_pathFraction,
+                position,
+                rotation);
         }
 
         slot.m_bodyHandles.clear();
@@ -1533,10 +1645,14 @@ namespace Jolt
             constraintSlot.m_name = configuration.m_name;
             constraintSlot.m_userData = 0;
             constraintSlot.m_configurationRevision = 1;
+            constraintSlot.m_pathPosition = AZ::Vector3::CreateZero();
+            constraintSlot.m_pathRotation = AZ::Quaternion::CreateIdentity();
             constraintSlot.m_pathRotationConstraint = PathRotationConstraint::None;
             if (const auto* path = AZStd::get_if<PathConstraintConfiguration>(
                     &definition->m_constraints[constraintOffset].m_geometry))
             {
+                constraintSlot.m_pathPosition = path->m_pathPosition;
+                constraintSlot.m_pathRotation = path->m_pathRotation.GetNormalized();
                 constraintSlot.m_pathRotationConstraint = path->m_rotationConstraint;
             }
             constraintSlot.m_parentCount = 0;
@@ -1571,18 +1687,8 @@ namespace Jolt
         }
         instancePathHandles.clear();
 
-        slot.m_pose.SetSkeleton(definition->m_settings->GetSkeleton());
-        slot.m_previousPose.SetSkeleton(definition->m_settings->GetSkeleton());
-        slot.m_pose.GetJointMatrices().resize(definition->m_neutralModelTransforms.size());
-        for (size_t partIndex = 0; partIndex < definition->m_neutralModelTransforms.size(); ++partIndex)
-        {
-            slot.m_pose.GetJointMatrices()[partIndex] =
-                ToRagdollNativeTransform(definition->m_neutralModelTransforms[partIndex]);
-        }
-        slot.m_pose.CalculateJointStates();
-        ragdoll->SetPose(
-            ToRagdollNativePosition(configuration.m_rootPosition, m_configuration.m_origin),
-            slot.m_pose.GetJointMatrices().data());
+        slot.m_pose = initialPose;
+        slot.m_previousPose = initialPose;
         JPH::EActivation activation = JPH::EActivation::DontActivate;
         if (configuration.m_activate)
         {

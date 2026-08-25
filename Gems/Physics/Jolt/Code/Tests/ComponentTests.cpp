@@ -2023,6 +2023,7 @@ namespace Jolt
         EXPECT_TRUE(behaviorContext.m_classes.contains("HermitePathPoint"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("PathSample"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("PathState"));
+        EXPECT_TRUE(behaviorContext.m_classes.at("PathState")->m_properties.contains("transform"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("BroadPhaseLayerConfiguration"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("BroadPhaseCastRequest"));
         EXPECT_TRUE(behaviorContext.m_classes.contains("BroadPhaseOverlapRequest"));
@@ -4514,7 +4515,7 @@ namespace Jolt
         const auto* resolvedPath = AZStd::get_if<PathConstraintConfiguration>(&resolvedPathConstraint.m_geometry);
         ASSERT_TRUE(resolvedPath);
         EXPECT_EQ(resolvedPath->m_pathHandle, pathHandle);
-        EXPECT_TRUE(resolvedPath->m_pathPosition.IsClose(AZ::Vector3::CreateAxisX(9.0f)));
+        EXPECT_TRUE(resolvedPath->m_pathPosition.IsClose(pathConstraint.m_pathPosition));
         EXPECT_FLOAT_EQ(resolvedPath->m_targetVelocity, 4.0f);
 
         ragdollEntity.Deactivate();
@@ -4718,6 +4719,7 @@ namespace Jolt
         const PathHandle pathHandle = path->GetPathHandle();
         EXPECT_TRUE(pathHandle);
         EXPECT_TRUE(system.IsValid(pathHandle));
+        EXPECT_EQ(AZ::TransformNotificationBus::GetNumOfEventHandlers(entity.GetId()), 1);
 
         const AZStd::vector<HermitePathPoint> points = path->CopyPoints();
         ASSERT_EQ(points.size(), 2);
@@ -4725,6 +4727,7 @@ namespace Jolt
         EXPECT_TRUE(points[1].m_position.IsClose(AZ::Vector3::CreateAxisX(2.0f)));
 
         const PathState state = path->GetState();
+        EXPECT_TRUE(state.m_transform.IsClose(entityTransform));
         EXPECT_FLOAT_EQ(state.m_maximumFraction, 1.0f);
         EXPECT_FALSE(state.m_isLooping);
 
@@ -4740,6 +4743,19 @@ namespace Jolt
         EXPECT_TRUE(closest.m_position.IsClose(AZ::Vector3::CreateAxisX(0.5f)));
         EXPECT_GT(closest.m_fraction, 0.0f);
         EXPECT_LT(closest.m_fraction, state.m_maximumFraction);
+
+        AZ::Transform updatedTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+            AZ::Quaternion::CreateRotationZ(AZ::Constants::QuarterPi),
+            AZ::Vector3(3.0f, 4.0f, 5.0f));
+        updatedTransform.SetUniformScale(3.0f);
+        AZ::TransformBus::Event(entity.GetId(), &AZ::TransformInterface::SetWorldTM, updatedTransform);
+        AZ::Transform appliedEntityTransform = AZ::Transform::CreateIdentity();
+        AZ::TransformBus::EventResult(appliedEntityTransform, entity.GetId(), &AZ::TransformInterface::GetWorldTM);
+        EXPECT_TRUE(appliedEntityTransform.IsClose(updatedTransform));
+        EXPECT_TRUE(path->GetState().m_transform.IsClose(entityTransform));
+        ASSERT_TRUE(system.StepWorld(system.GetDefaultWorldHandle(), 1.0f / 60.0f));
+        EXPECT_TRUE(path->GetState().m_transform.IsClose(updatedTransform));
+        EXPECT_TRUE(path->Sample(0.5f).m_position.IsClose(updatedTransform.TransformPoint(AZ::Vector3::CreateAxisX())));
 
         entity.Deactivate();
         EXPECT_FALSE(system.IsValid(pathHandle));
@@ -5146,12 +5162,8 @@ namespace Jolt
         ASSERT_TRUE(system.GetConstraintConfiguration(worldHandle, firstConstraintHandle, resolvedConfiguration));
         const auto* resolvedPath = AZStd::get_if<PathConstraintConfiguration>(&resolvedConfiguration.m_geometry);
         ASSERT_TRUE(resolvedPath);
-        const AZ::Transform expectedPathFrame = pathEntityTransform
-            * AZ::Transform::CreateFromQuaternionAndTranslation(
-                AZ::Quaternion::CreateRotationX(AZ::Constants::QuarterPi),
-                AZ::Vector3::CreateAxisX());
-        EXPECT_TRUE(resolvedPath->m_pathPosition.IsClose(expectedPathFrame.GetTranslation()));
-        EXPECT_TRUE(resolvedPath->m_pathRotation.IsClose(expectedPathFrame.GetRotation()));
+        EXPECT_TRUE(resolvedPath->m_pathPosition.IsClose(AZ::Vector3::CreateAxisX()));
+        EXPECT_TRUE(resolvedPath->m_pathRotation.IsClose(AZ::Quaternion::CreateRotationX(AZ::Constants::QuarterPi)));
         ASSERT_TRUE(constraint->SetEnabled(false));
         EXPECT_FALSE(constraint->GetState().m_enabled);
 

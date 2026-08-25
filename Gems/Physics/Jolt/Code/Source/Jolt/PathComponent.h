@@ -12,6 +12,7 @@
 #include <Jolt/TypeIds.h>
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Component/TransformBus.h>
 
 namespace Jolt
 {
@@ -22,6 +23,7 @@ namespace Jolt
     class JOLT_API PathComponent final
         : public AZ::Component
         , public PathRequestBus::Handler
+        , private AZ::TransformNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(PathComponent, PathComponentTypeId);
@@ -62,6 +64,10 @@ namespace Jolt
         void Activate() override;
 
         void Deactivate() override;
+
+        void OnTransformChanged(
+            const AZ::Transform& local,
+            const AZ::Transform& world) override;
 
         bool DestroyPath(bool mandatory);
 
