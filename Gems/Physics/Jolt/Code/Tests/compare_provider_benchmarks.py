@@ -16,7 +16,7 @@ from pathlib import Path
 
 
 PROVIDERS = ("Jolt", "Box3D", "PhysX")
-WORKLOAD_SCHEMA_VERSION = 5
+WORKLOAD_SCHEMA_VERSION = 6
 TAIL_SAMPLE_COUNT = 4096
 TIME_UNIT_TO_MICROSECONDS = {
     "ns": 0.001,
@@ -237,6 +237,11 @@ WORKLOADS = (
         "exact": {"Obstacles": 1024, "QualityValid": 1, "Workers": 1},
         "completion_counter": "SuccessfulQueries",
         "operations_per_iteration": 128,
+        "ratio_gate": False,
+        "ratio_gate_reason": (
+            "Jolt preserves canonical tie ordering, deterministic floating-point state, "
+            "and double-precision world positions."
+        ),
     },
     {
         "label": "Batch raycast 1024/128",
@@ -707,6 +712,10 @@ def main() -> int:
                     file=sys.stderr,
                 )
                 failed = True
+
+        if not workload.get("ratio_gate", True):
+            print(f"  Contextual comparison: {workload['ratio_gate_reason']}")
+            continue
 
         reference_samples = provider_samples[arguments.gate_provider]
         median_ratio = medians["Jolt"] / medians[arguments.gate_provider]

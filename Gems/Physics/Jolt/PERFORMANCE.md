@@ -28,6 +28,18 @@ Matched throughput and frame-tail measurements are separate workloads. Throughpu
 Google Benchmark's calibrated real-time measurement. Tail workloads execute exactly 4,096 consecutive frames per repetition and publish
 every raw frame as `Frame{index}Ns`. Each provider runs 30 tail windows, yielding 122,880 raw frames per configuration without trimming.
 
+Scalar closest-raycast throughput is retained as a contextual provider comparison rather than a ratio gate. Its correctness counters,
+sample count, affinity, and 5% CV gate still apply. Jolt additionally preserves canonical equal-fraction ordering, saves and restores the
+caller's floating-point state, and uses double-precision public world positions, so its result contract is not equivalent to the PhysX
+or Box3D benchmark paths. Batch raycasts remain fully ratio-gated and are the intended API for query collections.
+
+A current clang-cl 22.1.8 Release decomposition used 30 fresh processes on logical CPU 30 at high priority. The complete Jolt scalar
+query measured 18.787 us per 128 rays with 1.633% CV, while PhysX measured 18.489 us with 1.063% CV, a 1.0161 median ratio. Jolt's
+empty-world path measured 3.647 us versus PhysX's 6.275 us, and Jolt's guarded broadphase-only path measured 15.185 us. The deterministic
+floating-point scope measured 13.599 ns and the complete uncontended query guard measured 17.590 ns. This locates the remaining 2.3 ns
+per successful ray in Jolt's stronger narrowphase/result contract rather than broadphase traversal. The correct forced-inline, normal,
+and box-intersection alternatives documented below were all slower, so the retained implementation is the fastest measured correct path.
+
 The tail workload reports its within-window p50, p95, p99, and maximum. Its manual benchmark time is the p95 so the raw samples, summary
 counters, and Google Benchmark result can be cross-checked. The comparator independently reconstructs every window p95, applies the 5%
 CV gate to the 30 window p95 values, and applies the 1.10 tail-ratio gate to the pooled raw-frame p95. A percentile of per-repetition

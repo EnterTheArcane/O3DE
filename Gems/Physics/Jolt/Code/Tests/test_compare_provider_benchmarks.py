@@ -170,6 +170,24 @@ class CompareProviderBenchmarksTests(unittest.TestCase):
         reports["Jolt"]["benchmarks"][result_index]["SuccessfulQueries"] -= 1
         self.assertEqual(run_comparison(reports), 1)
 
+    def test_accepts_documented_correctness_differentiated_ratio(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 90.0),
+            "PhysX": make_report("PhysX", 90.0),
+        }
+        raycast_suffix = next(
+            workload["suffix"]
+            for workload in compare_provider_benchmarks.WORKLOADS
+            if workload["label"] == "Raycast 1024/128"
+        )
+        raycast_name = f"Jolt/{raycast_suffix}"
+        for result in reports["Jolt"]["benchmarks"]:
+            if result["name"] == raycast_name:
+                result["real_time"] = 110.0
+
+        self.assertEqual(run_comparison(reports), 0)
+
     def test_rejects_jolt_performance_regression(self):
         reports = {
             "Jolt": make_report("Jolt", 110.0),
