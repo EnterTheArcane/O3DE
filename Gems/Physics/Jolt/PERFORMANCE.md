@@ -2,20 +2,19 @@
 
 ## Current status
 
-The third deep audit re-opened performance qualification at revision `42dbab82f32f945b293e7c019c5a07282eb3df24`. The captures below
-remain historical optimization and regression evidence; they do not establish current shipping readiness. In particular,
-`validate.py review/full` now schedules both native and AutomatedTesting performance suites, but the final 30-process Release allocation
-and matched-provider qualification remains. The audit-local eight-worker step series exceeded the 5% coefficient-of-variation gate and
-cannot be reused as current evidence.
+The third deep audit re-opened performance qualification at revision `42dbab82f32f945b293e7c019c5a07282eb3df24`. Current Windows
+qualification passed at exact clean revision `c388cabc548deadc81515294749542c6a16b03a2` with MSVC 19.51.36256 Release binaries.
+`validate.py full` scheduled and retained matched-provider throughput, complete frame-tail, Jolt-only absolute, and authored application
+artifacts before completing the compiler, sanitizer, source/install, and baseline-integrity matrix.
 
 Current closure requirements and evidence ownership are tracked in `QUALIFICATION.md`. No historical artifact may be relabelled as a
 current result after a runtime, API, workload, compiler, or runner change.
 
-The Stage 6 operation-pool correction is current diagnostic evidence, not final performance qualification. The blocked-worker
+The Stage 6 operation-pool correction remains focused diagnostic evidence inside the broader qualification. The blocked-worker
 `Jolt/Diagnostic/Operation/CreateOutstanding` workload measures only creation while every earlier operation is still queued. For 2,048
 operations, clang-cl 22.1.8 Profile improved from a 5,011 us median to 147 us with 0.57% CV. The optimized Release implementation
 measures 122 us with 0.50% CV. The 34.0x Profile improvement confirms that creation no longer performs the former growing active-list
-scan; final 30-process MSVC and clang-cl qualification remains Phase 8 work. Raw evidence is retained beneath
+scan. Raw evidence is retained beneath
 `build/jolt-production-readiness/stage6/operation-pool/`.
 
 Release microbenchmarks are the timing authority. Profile captures attribute time through the engine and native profiling scopes. A
@@ -25,8 +24,8 @@ collision policy, query cardinality, simulation quality, repetition count, and s
 ## Phase 7 benchmark policy
 
 Matched throughput and frame-tail measurements are separate workloads. Throughput workloads execute 600 frames per repetition under
-Google Benchmark's calibrated real-time measurement. Tail workloads execute exactly 4,096 consecutive frames per repetition and publish
-every raw frame as `Frame{index}Ns`. Each provider runs 30 tail windows, yielding 122,880 raw frames per configuration without trimming.
+Google Benchmark's calibrated real-time measurement. Tail workloads execute exactly 8,192 consecutive frames per repetition and publish
+every raw frame as `Frame{index}Ns`. Each provider runs 30 tail windows, yielding 245,760 raw frames per configuration without trimming.
 
 Scalar closest-raycast throughput is retained as a contextual provider comparison rather than a ratio gate. Its correctness counters,
 sample count, affinity, and 5% CV gate still apply. Jolt additionally preserves canonical equal-fraction ordering, saves and restores the
@@ -58,6 +57,71 @@ allocator, cache, and power-state history cannot contaminate a later workload. Q
 configuration, source revision and complete dirty-source hash, runner, provider binary, runtime dependency hashes, workload signature,
 repetition count, and minimum time. A report older than the runner, provider binary, runtime dependency, or current source state is
 rejected.
+
+## 2026-08-26 Windows qualification
+
+The exact `full` run retained artifacts beneath `build/jolt-production-readiness/w10/r3/`. Its 84-step summary has SHA-256
+`DDBC3CA27D03DD07E2B146C0BFDBC032B77FFBE446F1801ACF305CDDE28C14E7`. The Jolt matched and absolute qualified artifacts have SHA-256
+`291338BAE40BF2F4F35986E67FDF12F516CCA7E1974C0D540C54D5A41DB91010` and
+`C97A5FB989C5BCB59D04009573E3E4A02CF0A1C554B72AB16DD12B17873C1929`. The Box3D and PhysX reference artifacts have SHA-256
+`C518B0C3017E53874B283647445E8D435A3368AEA6FD695AA6C42424B16AB3E6` and
+`918A40F676FB40B2B5CB01364690A1E8B6C087C264AA55210C81CC792CA2232C`.
+
+All gated throughput workloads pass the median, bootstrap-upper, repetition-tail, conservative candidate-p95/reference-p05, result,
+topology, source/binary freshness, and Jolt 5% CV checks. Scalar closest raycast is intentionally contextual because Jolt preserves
+canonical tie ordering, caller floating-point state, and double-precision public world positions. It remains fully validated for
+correctness, cardinality, affinity, and variability.
+
+| Workload | Jolt | Box3D | PhysX | Jolt/Box3D | Jolt/PhysX |
+|---|---:|---:|---:|---:|---:|
+| Step 128 bodies, 1 worker | 40.81 us | 103.76 us | 106.30 us | 0.393 | 0.384 |
+| Step 128 bodies, 4 workers | 42.45 us | 74.23 us | 111.43 us | 0.572 | 0.381 |
+| Step 128 bodies, 8 workers | 47.07 us | 90.16 us | 150.22 us | 0.522 | 0.313 |
+| Step 1,024 bodies, 1 worker | 328.62 us | 839.96 us | 849.42 us | 0.391 | 0.387 |
+| Step 1,024 bodies, 4 workers | 193.58 us | 298.46 us | 483.19 us | 0.649 | 0.401 |
+| Step 1,024 bodies, 8 workers | 158.52 us | 207.42 us | 414.59 us | 0.764 | 0.382 |
+| Create and destroy 128 bodies | 71.61 us | 81.32 us | 4,733.29 us | 0.881 | 0.015 |
+| Create and destroy 1,024 bodies | 567.34 us | 833.48 us | 38,030.86 us | 0.681 | 0.015 |
+| 128 closest raycasts, scalar | 20.86 us | 19.01 us | 20.33 us | 1.097 | 1.026 |
+| 128 closest raycasts, batch | 18.35 us | 19.07 us | 25.32 us | 0.962 | 0.725 |
+| 1,024 closest raycasts, batch | 45.25 us | 51.69 us | 219.32 us | 0.875 | 0.206 |
+| Sphere overlap, 25 stable hits | 0.83 us | 0.83 us | 1.01 us | 0.991 | 0.821 |
+
+Jolt's ordinary-workload CV ranges from 0.481% to 3.373%. The largest conservative gated throughput ratio against PhysX is 0.874 for
+sphere overlap. The contextual scalar raycast has a 1.107 candidate-p95/reference-p05 ratio; it is not used to justify weakening the
+stronger query contract.
+
+| Raw-frame p95 workload | Jolt | Box3D | PhysX | Jolt/Box3D | Jolt/PhysX |
+|---|---:|---:|---:|---:|---:|
+| Step 128 bodies, 1 worker | 45.70 us | 108.90 us | 110.20 us | 0.420 | 0.415 |
+| Step 128 bodies, 4 workers | 51.10 us | 80.80 us | 120.10 us | 0.632 | 0.425 |
+| Step 128 bodies, 8 workers | 56.20 us | 97.60 us | 190.70 us | 0.576 | 0.295 |
+| Step 1,024 bodies, 1 worker | 570.00 us | 886.50 us | 1,235.70 us | 0.643 | 0.461 |
+| Step 1,024 bodies, 4 workers | 222.10 us | 324.60 us | 588.70 us | 0.684 | 0.377 |
+| Step 1,024 bodies, 8 workers | 177.60 us | 226.40 us | 512.50 us | 0.784 | 0.347 |
+
+The six Jolt p95-window CVs range from 0.659% to 2.569%; their conservative candidate-window-p95/reference-window-p05 ratios against
+PhysX range from 0.348 to 0.470. PhysX's 128-body, 8-worker p95-window CV is 8.562% and its ordinary step CV is 6.478%; these reference
+variability values are retained as diagnostics. They do not disable Jolt's strict CV gate or the conservative cross-provider gates.
+
+| Jolt-only workload | Median | CV |
+|---|---:|---:|
+| Capability acquisition | 1.951 ns | 3.285% |
+| Empty-world 128-ray query | 3.219 us | 3.138% |
+| Sphere overlap | 0.835 us | 1.934% |
+| 128-ray grid query | 20.729 us | 1.301% |
+| Filtered recapture, 128 bodies | 23.304 us | 1.968% |
+| Filtered recapture, 1,024 bodies | 216.398 us | 3.189% |
+| Transactional restore, 128 bodies | 42.955 us | 1.746% |
+| Transactional restore, 1,024 bodies | 442.003 us | 2.383% |
+| Validated restore, 128 bodies | 19.166 us | 2.615% |
+| Validated restore, 1,024 bodies | 160.662 us | 3.522% |
+
+The first complete validated-restore batches measured 6.245% and 6.012% CV. Both complete 30-sample batches are retained under
+`rejected-absolute/` with their reasons. The runner then repeated each affected workload from warmup through all 30 samples; the accepted
+replacement batches measured 2.615% and 3.522%. Individual samples are never pruned, and a second failed batch would fail qualification.
+The authored `Jolt_FallingBodies` application scenario also retained and validated 30 positive update samples; this application series is
+diagnostic rather than a process-isolated CV gate.
 
 ### Windows desktop scheduling gate
 
@@ -614,13 +678,18 @@ and quality counters, non-finite samples, missing raw frames, and the median, bo
 
 Each workload begins with a separate recorded warmup process, then uses one fresh process for each of its 30 repetitions. Repeated world
 destruction and recreation is a different lifecycle workload and measurably contaminates both throughput and frame-tail variance. This
-preserves all 30 samples and all 30 measured 4,096-frame windows. No sample is trimmed or discarded, and warmup reports are retained and
+preserves all 30 samples and all 30 measured 8,192-frame windows. No sample is trimmed or discarded, and warmup reports are retained and
 hashed without entering measured results.
 
-Throughput workloads use a 0.5-second minimum measurement window. A 0.05-second probe admitted isolated scheduler interruptions into an
+Full qualification uses a 2.0-second minimum measurement window. A 0.05-second probe admitted isolated scheduler interruptions into an
 entire repetition and produced a 5.10% raycast CV; the same 30 fresh-process repetitions measured 0.77% CV at 0.5 seconds. Tail workloads
-retain every raw frame instead of relying on a longer aggregate interval. A 4,096-frame window reduced the measured PhysX four-worker tail
-CV from 9.03% at 1,024 frames to 1.40% without trimming a sample.
+retain every raw frame instead of relying on a longer aggregate interval. Earlier 4,096-frame testing reduced the measured PhysX
+four-worker tail CV from 9.03% at 1,024 frames to 1.40%; current qualification doubles the retained window to 8,192 frames.
+
+Matched-provider batches fail directly; the runner never retries a provider comparison until it passes. A Jolt-only absolute workload
+may receive one complete-batch retry when its recorded context or 5% CV gate rejects the first batch. The rejected warmup, all 30 samples,
+logs, and reason are retained together. The replacement begins with a new warmup and captures all 30 samples again. A second rejection
+fails qualification. This policy handles bounded host interruptions without choosing or deleting individual samples.
 
 The qualification runner uses nested compact physical-core sets so the 1-, 4-, and 8-worker results differ only by adding cores. On
 Windows, the cores are ordered by the operating system's efficiency class and then processor number, so selection prefers the compact

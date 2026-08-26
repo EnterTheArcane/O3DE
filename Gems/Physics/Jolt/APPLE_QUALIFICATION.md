@@ -6,11 +6,12 @@ JoltPhysics 5.6.0 is fetched and built privately by `3rdParty/JoltNative.cmake`;
 not cross the Gem boundary. GPU Hair is deliberately outside this qualification. The immediate scope is macOS CPU; report iOS as a
 separate external gate.
 
-Windows currently passes the complete 68-step CPU-only functional and packaging matrix with clang-cl and MSVC, including
-Debug/Profile/Release, unity/non-unity, double precision, diagnostics, ASan, modular/monolithic, and installed consumers. An earlier WSL2
-Clang Release checkpoint passed its then-current CPU suite, but the current Linux rerun is deferred and its multiworker benchmark data
-remains too variable to qualify native Linux. None of these results is Apple evidence. Do not mark an Apple ledger row complete without
-running it on the recorded hardware and current working tree.
+Windows currently passes the complete 84-step CPU-only functional, performance, and packaging matrix at revision
+`c388cabc548deadc81515294749542c6a16b03a2` with clang-cl and MSVC, including Debug/Profile/Release, unity/non-unity, double precision,
+diagnostics, ASan, modular/monolithic, installed consumers, all retained scenarios, and 30-process benchmarks. An earlier WSL2 Clang
+Release checkpoint passed its then-current CPU suite, but the final ext4 rerun for the shipping revision remains pending. WSL is not
+native-Linux or Apple evidence. Do not mark an Apple ledger row complete without running it on the recorded hardware and current working
+tree.
 
 ## Rules of engagement
 
