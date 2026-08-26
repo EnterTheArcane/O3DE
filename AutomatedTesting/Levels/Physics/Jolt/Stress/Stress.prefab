@@ -1149,7 +1149,7 @@
                                         }
                                     }
                                 ],
-                                "ToParent": null
+                                "HasParentConstraint": false
                             },
                             {
                                 "Shapes": [
@@ -1172,17 +1172,21 @@
                                         0.5
                                     ]
                                 },
-                                "ToParent": {
-                                    "$type": "HingeConstraintConfiguration",
-                                    "Value": {
-                                        "FirstPoint": {
-                                            "Z": 0.25
-                                        },
-                                        "SecondPoint": {
-                                            "Z": -0.25
+                                "ParentConstraint": {
+                                    "Geometry": {
+                                        "$type": "HingeConstraintConfiguration",
+                                        "Value": {
+                                            "FirstPoint": {
+                                                "Z": 0.25
+                                            },
+                                            "SecondPoint": {
+                                                "Z": -0.25
+                                            }
                                         }
-                                    }
-                                }
+                                    },
+                                    "Id": "{03000000-0000-4000-8000-000000000102}"
+                                },
+                                "HasParentConstraint": true
                             }
                         ],
                         "BaseConstraintPriority": 3,

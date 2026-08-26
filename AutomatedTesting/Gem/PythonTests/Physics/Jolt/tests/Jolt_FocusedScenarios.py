@@ -226,13 +226,21 @@ def run_events_and_filters():
             ("PhysX Primitive Collider", "PhysX Static Rigid Body"),
             math.Vector3(40.0, 0.0, 0.0),
         )
+        create_editor_entity(
+            recorder,
+            "Jolt Filter Target",
+            ("Jolt Collider", "Jolt Static Rigid Body"),
+            math.Vector3(3.0, 0.0, 0.0),
+        )
         return True
 
     def runtime(recorder):
         import time
 
         import azlmbr.bus as bus
+        import azlmbr.components as components
         import azlmbr.jolt as jolt
+        import azlmbr.legacy.general as general
         import azlmbr.math as math
 
         body_id = wait_for_runtime_entity("Jolt Events Body")
@@ -243,6 +251,52 @@ def run_events_and_filters():
         recorder.check(
             "PhysX coexists with Jolt",
             wait_for_runtime_entity("PhysX Coexistence Body").IsValid(),
+        )
+        filter_target_id = wait_for_runtime_entity("Jolt Filter Target")
+        recorder.check("filter target runtime entity", filter_target_id.IsValid())
+        components.TransformBus(
+            bus.Event,
+            "SetWorldTranslation",
+            filter_target_id,
+            math.Vector3(3.0, 0.0, 0.0),
+        )
+        general.idle_wait(0.05)
+        runtime_target_position = components.TransformBus(
+            bus.Event,
+            "GetWorldTranslation",
+            filter_target_id,
+        )
+        recorder.check(
+            "filter target transform position",
+            runtime_target_position.IsClose(math.Vector3(3.0, 0.0, 0.0)),
+            runtime_target_position,
+        )
+        recorder.capture(
+            "filter target body handle",
+            lambda: jolt.JoltStaticRigidBodyRequestBus(
+                bus.Event,
+                "GetBodyHandle",
+                filter_target_id,
+            ),
+            lambda handle: handle.IsValid(),
+        )
+        recorder.capture(
+            "filter target state",
+            lambda: jolt.JoltStaticRigidBodyRequestBus(
+                bus.Event,
+                "GetState",
+                filter_target_id,
+            ),
+            lambda state: state.isInSimulation and state.shapeHandle.IsValid(),
+        )
+        filter_target_world_handle = recorder.capture(
+            "filter target world handle",
+            lambda: jolt.JoltStaticRigidBodyRequestBus(
+                bus.Event,
+                "GetWorldHandle",
+                filter_target_id,
+            ),
+            lambda handle: handle.IsValid(),
         )
         world_handle = recorder.capture(
             "world handle",
@@ -287,15 +341,37 @@ def run_events_and_filters():
         allowed_filter = jolt.JoltQueryFilter()
         allowed_filter.collisionLayer = jolt.JoltObjectLayer(2)
         allowed_raycast = jolt.JoltRaycastRequest()
-        allowed_raycast.start = create_world_position(jolt, 3.0, 0.0, 2.0)
+        allowed_raycast.start = create_world_position(jolt, 3.0, 0.0, 4.0)
         allowed_raycast.displacement = math.Vector3(0.0, 0.0, -8.0)
         allowed_raycast.filter = allowed_filter
+        unfiltered_raycast = jolt.JoltRaycastRequest()
+        unfiltered_raycast.start = allowed_raycast.start
+        unfiltered_raycast.displacement = allowed_raycast.displacement
+        unfiltered_hit = jolt.JoltWorldQueryRequestBus(
+            bus.Broadcast,
+            "RaycastClosest",
+            filter_target_world_handle,
+            unfiltered_raycast,
+        )
+        recorder.check(
+            "unfiltered ray reaches static target",
+            unfiltered_hit.found
+            and unfiltered_hit.hit.bodyHandle.IsValid()
+            and unfiltered_hit.hit.shapeHandle.IsValid()
+            and abs(unfiltered_hit.hit.position.x - 3.0) < 0.01
+            and abs(unfiltered_hit.hit.position.y) < 0.01,
+            (
+                f"found={unfiltered_hit.found}, "
+                f"position=({unfiltered_hit.hit.position.x}, "
+                f"{unfiltered_hit.hit.position.y}, {unfiltered_hit.hit.position.z})"
+            ),
+        )
         allowed_hit = recorder.capture(
             "moving query layer includes non-moving geometry",
             lambda: jolt.JoltWorldQueryRequestBus(
                 bus.Broadcast,
                 "RaycastClosest",
-                world_handle,
+                filter_target_world_handle,
                 allowed_raycast,
             ),
             lambda result: result.found
@@ -314,7 +390,7 @@ def run_events_and_filters():
             lambda: jolt.JoltWorldQueryRequestBus(
                 bus.Broadcast,
                 "RaycastClosest",
-                world_handle,
+                filter_target_world_handle,
                 denied_raycast,
             ),
             lambda result: not result.found,
@@ -741,7 +817,7 @@ def run_queries():
             ("Jolt Collider", "Jolt Rigid Body"),
             math.Vector3(0.0, 0.0, 6.0),
         )
-        return recorder.passed
+        return True
 
     def runtime(recorder):
         import azlmbr.bus as bus

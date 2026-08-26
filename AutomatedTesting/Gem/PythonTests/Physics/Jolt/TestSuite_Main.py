@@ -107,6 +107,25 @@ def _validate_test_module_registration():
         raise RuntimeError("Registered Jolt scenarios do not match the minimum-check policy")
 
 
+def _validate_ragdoll_parts(label, parts, expected_constraint_id):
+    if len(parts) != 2 or any(len(part.get("Shapes", [])) != 1 for part in parts):
+        raise RuntimeError(f"{label} must contain two single-shape parts")
+    if parts[0].get("HasParentConstraint") is not False:
+        raise RuntimeError(f"{label} root part must not have a parent constraint")
+
+    child_part = parts[1]
+    parent_constraint = child_part.get("ParentConstraint", {})
+    geometry = parent_constraint.get("Geometry", {})
+    if child_part.get("HasParentConstraint") is not True:
+        raise RuntimeError(f"{label} child part must enable its parent constraint")
+    if not geometry.get("$type", "").endswith("ConstraintConfiguration"):
+        raise RuntimeError(f"{label} child part must contain constraint geometry")
+    if parent_constraint.get("Id") != expected_constraint_id:
+        raise RuntimeError(f"{label} child part must use its stable constraint identity")
+    if any("ToParent" in json.dumps(part) for part in parts):
+        raise RuntimeError(f"{label} uses the obsolete ToParent constraint schema")
+
+
 def _validate_feature_gallery_manifest():
     gallery_path = (
         Path(__file__).parents[4]
@@ -283,8 +302,11 @@ def _validate_feature_gallery_manifest():
         raise RuntimeError("Feature gallery must contain exactly one configured ragdoll")
     ragdoll_configuration = ragdoll_components[0].get("Configuration", {})
     ragdoll_parts = ragdoll_configuration.get("Parts", [])
-    if len(ragdoll_parts) != 2 or any(len(part.get("Shapes", [])) != 1 for part in ragdoll_parts):
-        raise RuntimeError("Feature-gallery ragdoll must contain two single-shape parts")
+    _validate_ragdoll_parts(
+        "Feature-gallery ragdoll",
+        ragdoll_parts,
+        "{03000000-0000-4000-8000-000000000101}",
+    )
     if ragdoll_configuration.get("BaseConstraintPriority") != 3:
         raise RuntimeError("Feature-gallery ragdoll has the wrong priority sentinel")
 
@@ -367,8 +389,11 @@ def _validate_stress_manifest():
     if len(ragdoll_components) != 1:
         raise RuntimeError("Jolt stress level must contain exactly one configured ragdoll")
     ragdoll_parts = ragdoll_components[0].get("Configuration", {}).get("Parts", [])
-    if len(ragdoll_parts) != 2 or any(len(part.get("Shapes", [])) != 1 for part in ragdoll_parts):
-        raise RuntimeError("Jolt stress ragdoll must contain two single-shape parts")
+    _validate_ragdoll_parts(
+        "Jolt stress ragdoll",
+        ragdoll_parts,
+        "{03000000-0000-4000-8000-000000000102}",
+    )
 
 
 def _validate_public_header_tests():

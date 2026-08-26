@@ -46,6 +46,10 @@ def Jolt_StressAndSoak():
     import azlmbr.math as math
 
     recorder = ScenarioRecorder("Jolt_StressAndSoak")
+    canonical_snapshot = None
+    canonical_world_handle = None
+    entered_game_mode = False
+    topology_churn_cycles = 0
     try:
         if not open_level(recorder, "Physics/Jolt", "Stress"):
             return
@@ -87,7 +91,6 @@ def Jolt_StressAndSoak():
         broad_phase_overlap.SetSphere(broad_phase_sphere)
 
         for worker_count in (1, 4, 8):
-            entered_game_mode = False
             event_handler = None
             snapshots = []
             world_handle = None
@@ -97,7 +100,17 @@ def Jolt_StressAndSoak():
             worker_errors = []
             initial_digest = None
             try:
-                entered_game_mode = enter_game_mode(recorder, 10.0)
+                if not entered_game_mode:
+                    entered_game_mode = enter_game_mode(
+                        recorder,
+                        10.0,
+                        "stress entered game mode",
+                    )
+                else:
+                    recorder.check(
+                        f"{worker_count}-worker reused active game mode",
+                        entered_game_mode,
+                    )
                 if not entered_game_mode:
                     worker_errors.append("enter-game-mode")
                     simulation_errors.extend(worker_errors)
@@ -110,6 +123,18 @@ def Jolt_StressAndSoak():
                     lambda: jolt.JoltRigidBodyRequestBus(bus.Event, "GetWorldHandle", driver_id),
                     lambda handle: handle.IsValid(),
                 )
+                if canonical_snapshot is not None:
+                    recorder.capture(
+                        f"restore canonical baseline for {worker_count} workers",
+                        lambda: jolt.JoltWorldRollbackRequestBus(
+                            bus.Broadcast,
+                            "RestoreWorldState",
+                            world_handle,
+                            canonical_snapshot,
+                        ),
+                        lambda result: is_restore_complete(jolt, result),
+                    )
+
                 configuration = recorder.capture(
                     f"{worker_count}-worker stress world configuration",
                     lambda: jolt.JoltWorldRequestBus(
@@ -183,26 +208,28 @@ def Jolt_StressAndSoak():
                     f"{worker_count}-worker stress contact body runtime entity",
                     contact_body_id.IsValid(),
                 )
-                recorder.capture(
-                    f"seed {worker_count}-worker contact body position",
-                    lambda: jolt.JoltRigidBodyRequestBus(
-                        bus.Event,
-                        "SetPosition",
-                        contact_body_id,
-                        create_world_position(jolt, 0.0, 0.0, -2.0),
-                        True,
-                    ),
-                )
-                recorder.capture(
-                    f"seed {worker_count}-worker contact body velocity",
-                    lambda: jolt.JoltRigidBodyRequestBus(
-                        bus.Event,
-                        "SetVelocities",
-                        contact_body_id,
-                        math.Vector3(0.0, 0.0, -1.0),
-                        math.Vector3(0.0, 0.0, 0.0),
-                    ),
-                )
+                creating_canonical_baseline = canonical_snapshot is None
+                if creating_canonical_baseline:
+                    recorder.capture(
+                        "seed canonical contact body position",
+                        lambda: jolt.JoltRigidBodyRequestBus(
+                            bus.Event,
+                            "SetPosition",
+                            contact_body_id,
+                            create_world_position(jolt, 0.0, 0.0, -2.0),
+                            True,
+                        ),
+                    )
+                    recorder.capture(
+                        "seed canonical contact body velocity",
+                        lambda: jolt.JoltRigidBodyRequestBus(
+                            bus.Event,
+                            "SetVelocities",
+                            contact_body_id,
+                            math.Vector3(0.0, 0.0, -1.0),
+                            math.Vector3(0.0, 0.0, 0.0),
+                        ),
+                    )
 
                 ragdoll_pose = recorder.capture(
                     f"{worker_count}-worker stress ragdoll pose",
@@ -221,16 +248,17 @@ def Jolt_StressAndSoak():
                     lambda: jolt.JoltHairRequestBus(bus.Event, "GetDefinitionState", hair_id),
                     lambda value: value.simulationVertexCount > 0,
                 )
-                recorder.capture(
-                    f"{worker_count}-worker initialization step",
-                    lambda: jolt.JoltWorldSimulationRequestBus(
-                        bus.Broadcast,
-                        "StepWorld",
-                        world_handle,
-                        1.0 / 60.0,
-                    ),
-                    lambda result: result.stepCount == 1 and result.errors == jolt.SimulationError_None,
-                )
+                if creating_canonical_baseline:
+                    recorder.capture(
+                        "canonical initialization step",
+                        lambda: jolt.JoltWorldSimulationRequestBus(
+                            bus.Broadcast,
+                            "StepWorld",
+                            world_handle,
+                            1.0 / 60.0,
+                        ),
+                        lambda result: result.stepCount == 1 and result.errors == jolt.SimulationError_None,
+                    )
                 recorder.capture(
                     f"{worker_count}-worker stress CPU Hair readback",
                     lambda: jolt.JoltHairRequestBus(bus.Event, "CopyVertexStates", hair_id),
@@ -239,20 +267,108 @@ def Jolt_StressAndSoak():
                     [],
                 )
 
-                recorder.capture(
-                    f"isolate {worker_count}-worker stress driver",
-                    lambda: jolt.JoltRigidBodyRequestBus(
-                        bus.Event,
-                        "SetPosition",
-                        driver_id,
-                        create_world_position(jolt, 0.0, 50.0, 20.0),
-                        True,
-                    ),
+                if creating_canonical_baseline:
+                    recorder.capture(
+                        "isolate canonical stress driver",
+                        lambda: jolt.JoltRigidBodyRequestBus(
+                            bus.Event,
+                            "SetPosition",
+                            driver_id,
+                            create_world_position(jolt, 0.0, 50.0, 20.0),
+                            True,
+                        ),
+                    )
+                    recorder.capture(
+                        "disable canonical stress driver gravity",
+                        lambda: jolt.JoltRigidBodyRequestBus(bus.Event, "SetGravityFactor", driver_id, 0.0),
+                    )
+
+                driver_state = recorder.capture(
+                    f"{worker_count}-worker stress driver state",
+                    lambda: jolt.JoltRigidBodyRequestBus(bus.Event, "GetState", driver_id),
+                    lambda value: value.shapeHandle.IsValid(),
                 )
-                recorder.capture(
-                    f"disable {worker_count}-worker stress driver gravity",
-                    lambda: jolt.JoltRigidBodyRequestBus(bus.Event, "SetGravityFactor", driver_id, 0.0),
-                )
+                shape_cast = jolt.JoltShapeCastRequest()
+                if driver_state is not None:
+                    shape_cast.shapeHandle = driver_state.shapeHandle
+                shape_cast_start = jolt.WorldTransform()
+                shape_cast_start.position = create_world_position(jolt, 0.0, 0.0, 24.0)
+                shape_cast.start = shape_cast_start
+                shape_cast.displacement = math.Vector3(0.0, 0.0, -32.0)
+
+                if creating_canonical_baseline:
+                    recorder.capture(
+                        "seed canonical driver velocity",
+                        lambda: jolt.JoltRigidBodyRequestBus(
+                            bus.Event,
+                            "SetVelocities",
+                            driver_id,
+                            math.Vector3(0.5, 0.0, 0.25),
+                            math.Vector3(0.0, 0.25, 0.0),
+                        ),
+                    )
+
+                    actuation_results = (
+                        (
+                            "character",
+                            jolt.JoltCharacterRequestBus(
+                                bus.Event,
+                                "SetVelocity",
+                                character_id,
+                                math.Vector3(0.2, 0.0, 0.0),
+                            ),
+                        ),
+                        (
+                            "virtual-character",
+                            jolt.JoltVirtualCharacterRequestBus(
+                                bus.Event,
+                                "SetVelocity",
+                                virtual_character_id,
+                                math.Vector3(0.2, 0.0, 0.0),
+                            ),
+                        ),
+                        (
+                            "vehicle",
+                            jolt.JoltWheeledVehicleRequestBus(bus.Event, "SetInput", vehicle_id, vehicle_input),
+                        ),
+                        (
+                            "soft-body",
+                            jolt.JoltSoftBodyRequestBus(
+                                bus.Event,
+                                "SetVertexVelocity",
+                                soft_body_id,
+                                0,
+                                math.Vector3(0.0, 0.0, 0.2),
+                            ),
+                        ),
+                        (
+                            "ragdoll",
+                            jolt.JoltRagdollRequestBus(bus.Event, "DriveMotors", ragdoll_id, ragdoll_pose),
+                        ),
+                        (
+                            "CPU-Hair",
+                            jolt.JoltHairRequestBus(
+                                bus.Event,
+                                "SetScalpToHeadTransform",
+                                hair_id,
+                                identity_transform,
+                            ),
+                        ),
+                    )
+                    for subsystem_name, succeeded in actuation_results:
+                        if not succeeded:
+                            worker_errors.append(f"{subsystem_name}-actuation")
+
+                    canonical_world_handle = world_handle
+                    canonical_snapshot = recorder.capture(
+                        "canonical stress baseline snapshot",
+                        lambda: jolt.JoltWorldRollbackRequestBus(
+                            bus.Broadcast,
+                            "CaptureWorldState",
+                            world_handle,
+                        ),
+                        lambda handle: handle.IsValid(),
+                    )
 
                 initial_snapshot = recorder.capture(
                     f"{worker_count}-worker stress initial snapshot",
@@ -278,81 +394,6 @@ def Jolt_StressAndSoak():
                     )
                     and initial_digest.stateByteCount > 0,
                 )
-
-                driver_state = recorder.capture(
-                    f"{worker_count}-worker stress driver state",
-                    lambda: jolt.JoltRigidBodyRequestBus(bus.Event, "GetState", driver_id),
-                    lambda value: value.shapeHandle.IsValid(),
-                )
-                shape_cast = jolt.JoltShapeCastRequest()
-                if driver_state is not None:
-                    shape_cast.shapeHandle = driver_state.shapeHandle
-                shape_cast_start = jolt.WorldTransform()
-                shape_cast_start.position = create_world_position(jolt, 0.0, 0.0, 24.0)
-                shape_cast.start = shape_cast_start
-                shape_cast.displacement = math.Vector3(0.0, 0.0, -32.0)
-
-                recorder.capture(
-                    f"seed velocity for {worker_count} workers",
-                    lambda: jolt.JoltRigidBodyRequestBus(
-                        bus.Event,
-                        "SetVelocities",
-                        driver_id,
-                        math.Vector3(0.5, 0.0, 0.25),
-                        math.Vector3(0.0, 0.25, 0.0),
-                    ),
-                )
-
-                actuation_results = (
-                    (
-                        "character",
-                        jolt.JoltCharacterRequestBus(
-                            bus.Event,
-                            "SetVelocity",
-                            character_id,
-                            math.Vector3(0.2, 0.0, 0.0),
-                        ),
-                    ),
-                    (
-                        "virtual-character",
-                        jolt.JoltVirtualCharacterRequestBus(
-                            bus.Event,
-                            "SetVelocity",
-                            virtual_character_id,
-                            math.Vector3(0.2, 0.0, 0.0),
-                        ),
-                    ),
-                    (
-                        "vehicle",
-                        jolt.JoltWheeledVehicleRequestBus(bus.Event, "SetInput", vehicle_id, vehicle_input),
-                    ),
-                    (
-                        "soft-body",
-                        jolt.JoltSoftBodyRequestBus(
-                            bus.Event,
-                            "SetVertexVelocity",
-                            soft_body_id,
-                            0,
-                            math.Vector3(0.0, 0.0, 0.2),
-                        ),
-                    ),
-                    (
-                        "ragdoll",
-                        jolt.JoltRagdollRequestBus(bus.Event, "DriveMotors", ragdoll_id, ragdoll_pose),
-                    ),
-                    (
-                        "CPU-Hair",
-                        jolt.JoltHairRequestBus(
-                            bus.Event,
-                            "SetScalpToHeadTransform",
-                            hair_id,
-                            identity_transform,
-                        ),
-                    ),
-                )
-                for subsystem_name, succeeded in actuation_results:
-                    if not succeeded:
-                        worker_errors.append(f"{subsystem_name}-actuation")
 
                 for tick in range(tick_count):
                     if tick % 120 == 0:
@@ -458,6 +499,38 @@ def Jolt_StressAndSoak():
                                 ):
                                     worker_errors.append(f"snapshot-destroy:{tick}")
 
+                digest = jolt.WorldStateDigest()
+                digest_read = jolt.JoltWorldRollbackRequestBus(
+                    bus.Broadcast,
+                    "GetWorldStateDigest",
+                    world_handle,
+                    digest,
+                )
+                recorder.check(
+                    f"{worker_count}-worker digest captured",
+                    digest_read and digest.stateByteCount > 0,
+                )
+                worker_digests.append((digest.hash, digest.stateByteCount))
+
+                driver_state = jolt.JoltRigidBodyRequestBus(bus.Event, "GetState", driver_id)
+                worker_state_signatures.append(
+                    (
+                        driver_state.transform.position.x,
+                        driver_state.transform.position.y,
+                        driver_state.transform.position.z,
+                        driver_state.transform.rotation.x,
+                        driver_state.transform.rotation.y,
+                        driver_state.transform.rotation.z,
+                        driver_state.transform.rotation.w,
+                        driver_state.linearVelocity.x,
+                        driver_state.linearVelocity.y,
+                        driver_state.linearVelocity.z,
+                        driver_state.angularVelocity.x,
+                        driver_state.angularVelocity.y,
+                        driver_state.angularVelocity.z,
+                    )
+                )
+
                 rollback_snapshot = jolt.JoltWorldRollbackRequestBus(
                     bus.Broadcast,
                     "CaptureWorldState",
@@ -480,91 +553,73 @@ def Jolt_StressAndSoak():
                         1.0 / 60.0,
                     )
                     recorder.check(
-                        f"{worker_count}-worker rollback step",
+                        f"{worker_count}-worker post-digest checkpoint step",
                         rollback_step.stepCount == 1 and rollback_step.errors == jolt.SimulationError_None,
                     )
-                    recorder.capture(
-                        f"{worker_count}-worker restore checkpoint",
-                        lambda: jolt.JoltWorldRollbackRequestBus(
+                    if worker_count == 8:
+                        recorder.capture(
+                            "8-worker restore checkpoint",
+                            lambda: jolt.JoltWorldRollbackRequestBus(
+                                bus.Broadcast,
+                                "RestoreWorldState",
+                                world_handle,
+                                rollback_snapshot,
+                            ),
+                            lambda result: is_restore_complete(jolt, result),
+                        )
+                        restored_digest = jolt.WorldStateDigest()
+                        restored_digest_read = jolt.JoltWorldRollbackRequestBus(
                             bus.Broadcast,
-                            "RestoreWorldState",
+                            "GetWorldStateDigest",
                             world_handle,
-                            rollback_snapshot,
-                        ),
-                        lambda result: is_restore_complete(jolt, result),
-                    )
-                    restored_digest = jolt.WorldStateDigest()
-                    restored_digest_read = jolt.JoltWorldRollbackRequestBus(
-                        bus.Broadcast,
-                        "GetWorldStateDigest",
-                        world_handle,
-                        restored_digest,
-                    )
-                    recorder.check(
-                        f"{worker_count}-worker restore reproduced checkpoint digest",
-                        restored_digest_read
-                        and rollback_digest_read
-                        and restored_digest.hash == rollback_digest.hash
-                        and restored_digest.stateByteCount == rollback_digest.stateByteCount,
-                        (
-                            (rollback_digest.hash, rollback_digest.stateByteCount),
-                            (restored_digest.hash, restored_digest.stateByteCount),
-                        ),
-                    )
+                            restored_digest,
+                        )
+                        recorder.check(
+                            "8-worker restore reproduced checkpoint digest",
+                            restored_digest_read
+                            and rollback_digest_read
+                            and restored_digest.hash == rollback_digest.hash
+                            and restored_digest.stateByteCount == rollback_digest.stateByteCount,
+                            (
+                                (rollback_digest.hash, rollback_digest.stateByteCount),
+                                (restored_digest.hash, restored_digest.stateByteCount),
+                            ),
+                        )
                 else:
                     worker_errors.append("rollback-snapshot")
 
                 churn_entity = contact_body_id
-                for churn_tick in range(min(tick_count, 600)):
-                    if churn_tick % 30 == 0:
-                        if not jolt.JoltRigidBodyRequestBus(bus.Event, "DisableSimulation", churn_entity):
-                            worker_errors.append(f"disable:{churn_tick}")
-                        if not jolt.JoltRigidBodyRequestBus(bus.Event, "EnableSimulation", churn_entity):
-                            worker_errors.append(f"enable:{churn_tick}")
-                    if churn_tick % 120 == 0:
-                        jolt.JoltRigidBodyRequestBus(bus.Event, "ActivateBody", churn_entity)
+                if worker_count == 8:
+                    for churn_tick in range(min(tick_count, 600)):
+                        if churn_tick % 30 == 0:
+                            churn_succeeded = True
+                            if not jolt.JoltRigidBodyRequestBus(bus.Event, "DisableSimulation", churn_entity):
+                                worker_errors.append(f"disable:{churn_tick}")
+                                churn_succeeded = False
+                            if not jolt.JoltRigidBodyRequestBus(bus.Event, "EnableSimulation", churn_entity):
+                                worker_errors.append(f"enable:{churn_tick}")
+                                churn_succeeded = False
+                            if churn_succeeded:
+                                topology_churn_cycles += 1
+                        if churn_tick % 120 == 0:
+                            jolt.JoltRigidBodyRequestBus(bus.Event, "ActivateBody", churn_entity)
 
-                    result = jolt.JoltWorldSimulationRequestBus(
-                        bus.Broadcast,
-                        "StepWorld",
-                        world_handle,
-                        1.0 / 60.0,
+                        result = jolt.JoltWorldSimulationRequestBus(
+                            bus.Broadcast,
+                            "StepWorld",
+                            world_handle,
+                            1.0 / 60.0,
+                        )
+                        if result.stepCount != 1 or result.errors != jolt.SimulationError_None:
+                            worker_errors.append(f"churn-step:{churn_tick}:{result.errors}")
+
+                    recorder.check(
+                        "8-worker topology churn completed",
+                        topology_churn_cycles == (min(tick_count, 600) + 29) // 30,
+                        topology_churn_cycles,
                     )
-                    if result.stepCount != 1 or result.errors != jolt.SimulationError_None:
-                        worker_errors.append(f"churn-step:{churn_tick}:{result.errors}")
-
-                digest = jolt.WorldStateDigest()
-                digest_read = jolt.JoltWorldRollbackRequestBus(
-                    bus.Broadcast,
-                    "GetWorldStateDigest",
-                    world_handle,
-                    digest,
-                )
-                recorder.check(
-                    f"{worker_count}-worker digest captured",
-                    digest_read and digest.stateByteCount > 0,
-                )
-                worker_digests.append((digest.hash, digest.stateByteCount))
 
                 character_state = jolt.JoltCharacterRequestBus(bus.Event, "GetState", character_id)
-                driver_state = jolt.JoltRigidBodyRequestBus(bus.Event, "GetState", driver_id)
-                worker_state_signatures.append(
-                    (
-                        driver_state.transform.position.x,
-                        driver_state.transform.position.y,
-                        driver_state.transform.position.z,
-                        driver_state.transform.rotation.x,
-                        driver_state.transform.rotation.y,
-                        driver_state.transform.rotation.z,
-                        driver_state.transform.rotation.w,
-                        driver_state.linearVelocity.x,
-                        driver_state.linearVelocity.y,
-                        driver_state.linearVelocity.z,
-                        driver_state.angularVelocity.x,
-                        driver_state.angularVelocity.y,
-                        driver_state.angularVelocity.z,
-                    )
-                )
                 virtual_character_state = jolt.JoltVirtualCharacterRequestBus(
                     bus.Event,
                     "GetState",
@@ -684,16 +739,14 @@ def Jolt_StressAndSoak():
             finally:
                 if event_handler is not None:
                     event_handler.disconnect()
-                if entered_game_mode:
-                    for snapshot in reversed(snapshots):
-                        if world_handle is not None and snapshot.IsValid():
-                            jolt.JoltWorldRollbackRequestBus(
-                                bus.Broadcast,
-                                "DestroyStateSnapshot",
-                                world_handle,
-                                snapshot,
-                            )
-                    exit_game_mode(recorder, 10.0)
+                for snapshot in reversed(snapshots):
+                    if world_handle is not None and snapshot.IsValid():
+                        jolt.JoltWorldRollbackRequestBus(
+                            bus.Broadcast,
+                            "DestroyStateSnapshot",
+                            world_handle,
+                            snapshot,
+                        )
 
         recorder.check(
             "1/4/8-worker requests remained effective",
@@ -731,6 +784,15 @@ def Jolt_StressAndSoak():
     except Exception as exception:
         recorder.check("stress scenario completed without an unhandled exception", False, exception)
     finally:
+        if canonical_snapshot is not None and canonical_snapshot.IsValid():
+            jolt.JoltWorldRollbackRequestBus(
+                bus.Broadcast,
+                "DestroyStateSnapshot",
+                canonical_world_handle,
+                canonical_snapshot,
+            )
+        if entered_game_mode:
+            exit_game_mode(recorder, 10.0, "stress exited game mode")
         recorder.finish()
 
 

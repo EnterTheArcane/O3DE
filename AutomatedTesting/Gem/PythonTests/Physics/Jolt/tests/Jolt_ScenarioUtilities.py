@@ -62,7 +62,7 @@ def create_editor_entity(recorder, name, component_names, position, parent_id=No
     return entity
 
 
-def enter_game_mode(recorder, timeout_seconds=5.0):
+def enter_game_mode(recorder, timeout_seconds=5.0, check_name="entered game mode"):
     import azlmbr.legacy.general as general
 
     general.enter_game_mode()
@@ -70,10 +70,10 @@ def enter_game_mode(recorder, timeout_seconds=5.0):
     while not general.is_in_game_mode() and time.monotonic() < deadline:
         general.idle_wait(0.01)
 
-    return recorder.check("entered game mode", general.is_in_game_mode())
+    return recorder.check(check_name, general.is_in_game_mode())
 
 
-def exit_game_mode(recorder, timeout_seconds=5.0):
+def exit_game_mode(recorder, timeout_seconds=5.0, check_name="exited game mode"):
     import azlmbr.legacy.general as general
 
     if general.is_in_game_mode():
@@ -83,7 +83,7 @@ def exit_game_mode(recorder, timeout_seconds=5.0):
     while general.is_in_game_mode() and time.monotonic() < deadline:
         general.idle_wait(0.01)
 
-    return recorder.check("exited game mode", not general.is_in_game_mode())
+    return recorder.check(check_name, not general.is_in_game_mode())
 
 
 def wait_for_runtime_entity(name, timeout_seconds=5.0):
