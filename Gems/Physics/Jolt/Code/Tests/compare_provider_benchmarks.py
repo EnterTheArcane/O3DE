@@ -17,7 +17,7 @@ from pathlib import Path
 
 PROVIDERS = ("Jolt", "Box3D", "PhysX")
 WORKLOAD_SCHEMA_VERSION = 6
-TAIL_SAMPLE_COUNT = 4096
+TAIL_SAMPLE_COUNT = 8192
 TIME_UNIT_TO_MICROSECONDS = {
     "ns": 0.001,
     "us": 1.0,

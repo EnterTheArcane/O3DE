@@ -39,6 +39,8 @@ ABSOLUTE_BENCHMARK_SUFFIXES = (
 ABSOLUTE_FILTER_SUFFIX = f"({'|'.join(ABSOLUTE_BENCHMARK_SUFFIXES)})"
 FULL_REPETITION_COUNT = 30
 REVIEW_REPETITION_COUNT = 3
+FULL_MINIMUM_TIME_SECONDS = 2.0
+REVIEW_MINIMUM_TIME_SECONDS = 0.05
 
 
 @dataclass(frozen=True)
@@ -542,12 +544,12 @@ def main(arguments: Sequence[str] | None = None) -> int:
     affinity_policy = build_affinity_policy()
     affinity_description = describe_affinity_policy(affinity_policy)
     repetitions = REVIEW_REPETITION_COUNT
-    minimum_time = 0.05
+    minimum_time = REVIEW_MINIMUM_TIME_SECONDS
     workloads = review_workloads()
     providers = PROVIDERS[:1]
     if options.mode == "full":
         repetitions = FULL_REPETITION_COUNT
-        minimum_time = 0.5
+        minimum_time = FULL_MINIMUM_TIME_SECONDS
         workloads = matched_workloads()
         providers = PROVIDERS
 

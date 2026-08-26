@@ -42,7 +42,7 @@ namespace Jolt::Benchmarks
         constexpr float MatchedTimeStep = 1.0f / 60.0f;
         constexpr float MatchedGridSpacing = 1.1f;
         constexpr AZ::u32 StatefulBenchmarkFrameCount = 120;
-        constexpr size_t TailSampleCount = 4096;
+        constexpr size_t TailSampleCount = 8192;
         constexpr AZ::u32 VehicleBenchmarkFrameCount = 30;
         constexpr AZ::u32 WarmupFrameCount = 600;
         constexpr AZ::u32 ValidationFrameCount = 600;

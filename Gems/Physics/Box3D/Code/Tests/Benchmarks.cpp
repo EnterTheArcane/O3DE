@@ -33,7 +33,7 @@ namespace Box3D::Benchmarks
     {
         constexpr AZ::u32 ValidationFrameCount = 600;
         constexpr float MatchedGridSpacing = 1.1f;
-        constexpr size_t TailSampleCount = 4096;
+        constexpr size_t TailSampleCount = 8192;
         constexpr AZ::u32 WarmupFrameCount = 600;
 
         void AddCpuAffinityCounters(

@@ -16,6 +16,11 @@ import run_benchmark_qualification
 
 
 class RunBenchmarkQualificationTests(unittest.TestCase):
+    def test_full_capture_uses_stable_measurement_windows(self) -> None:
+        self.assertEqual(run_benchmark_qualification.FULL_REPETITION_COUNT, 30)
+        self.assertGreaterEqual(run_benchmark_qualification.FULL_MINIMUM_TIME_SECONDS, 2.0)
+        self.assertGreaterEqual(compare_provider_benchmarks.TAIL_SAMPLE_COUNT, 8192)
+
     def test_full_workloads_follow_the_comparison_contract(self) -> None:
         workloads = run_benchmark_qualification.matched_workloads()
         expected_workloads = (
