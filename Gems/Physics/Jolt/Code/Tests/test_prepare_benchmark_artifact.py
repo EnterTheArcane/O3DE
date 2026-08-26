@@ -22,9 +22,25 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
         subprocess.run(("git", "init", "--quiet"), cwd=root, check=True)
         subprocess.run(("git", "config", "user.email", "benchmark@example.com"), cwd=root, check=True)
         subprocess.run(("git", "config", "user.name", "Benchmark Test"), cwd=root, check=True)
+        (root / ".gitignore").write_text(
+            "\n".join(
+                (
+                    "/AzTestRunner.exe",
+                    "/Jolt.API.dll",
+                    "/Jolt.Tests.Gem.dll",
+                    "/prepare-arguments.rsp",
+                    "/qualified.json",
+                    "/raw-additional.json",
+                    "/raw.json",
+                    "/warmup.json",
+                    "",
+                )
+            ),
+            encoding="utf-8",
+        )
         source = root / "source.cpp"
         source.write_text("int benchmark_source = 1;\n", encoding="utf-8")
-        subprocess.run(("git", "add", "source.cpp"), cwd=root, check=True)
+        subprocess.run(("git", "add", ".gitignore", "source.cpp"), cwd=root, check=True)
         subprocess.run(("git", "commit", "--quiet", "-m", "Create source"), cwd=root, check=True)
 
         binary = root / "Jolt.Tests.Gem.dll"

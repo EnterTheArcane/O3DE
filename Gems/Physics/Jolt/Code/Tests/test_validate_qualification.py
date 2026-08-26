@@ -84,7 +84,10 @@ class QualificationValidationTests(unittest.TestCase):
         self.assertIsNot(result, environment)
 
     def test_build_environment_loads_windows_sdk_for_msvc_abi_compilers(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary_directory:
+        with (
+            tempfile.TemporaryDirectory() as temporary_directory,
+            mock.patch.object(jolt_qualification.platform, "system", return_value="Windows"),
+        ):
             build_directory = Path(temporary_directory)
             cache_path = build_directory / "CMakeCache.txt"
             base_environment = {"PATH": "base"}
@@ -161,7 +164,7 @@ class QualificationValidationTests(unittest.TestCase):
             self.assertIn("Jolt.Tests", build_command)
             self.assertIn("Box3D.Tests", build_command)
             self.assertIn("PhysX5.Tests", build_command)
-            self.assertIn("Release", build_command)
+            self.assertIn(jolt_qualification.get_cmake_configuration("Release"), build_command)
             benchmark_command = commands["native-benchmark-qualification"]
             self.assertIn("run_benchmark_qualification.py", " ".join(benchmark_command))
             self.assertIn("full", benchmark_command)
@@ -211,6 +214,7 @@ class QualificationValidationTests(unittest.TestCase):
             matrix_root / "consumer-source-msvc-unity-modular",
         )
 
+    @unittest.skipUnless(sys.platform == "win32", "requires Windows drive semantics")
     def test_installed_consumer_uses_a_same_drive_python_environment(self) -> None:
         output_directory = Path("D:/qualification-results")
         source_profile = Path("C:/Users/Example")
@@ -231,6 +235,20 @@ class QualificationValidationTests(unittest.TestCase):
             str(source_profile / ".o3de" / "3rdParty"),
         )
         self.assertIn("same-drive Python environment", message)
+
+    def test_non_windows_installed_consumer_preserves_the_user_environment(self) -> None:
+        base_environment = {"HOME": "/home/example"}
+        with mock.patch.object(jolt_qualification.platform, "system", return_value="Linux"):
+            environment, message = jolt_qualification.prepare_installed_consumer_environment(
+                Path("build/qualification"),
+                Path("build/installed-engine"),
+                base_environment,
+                False,
+            )
+
+        self.assertEqual(environment, base_environment)
+        self.assertIsNot(environment, base_environment)
+        self.assertIn("non-Windows user environment", message)
 
     def test_installed_consumer_reuses_a_same_drive_profile(self) -> None:
         with mock.patch.object(jolt_qualification.platform, "system", return_value="Windows"):
@@ -884,7 +902,7 @@ ly_create_alias(
                 commands["configure-installed-modular-consumer"],
             )
             self.assertIn(
-                "-DCMAKE_TRY_COMPILE_CONFIGURATION=Release",
+                f"-DCMAKE_TRY_COMPILE_CONFIGURATION={jolt_qualification.get_cmake_configuration('Release')}",
                 commands["configure-installed-modular-consumer"],
             )
 
@@ -1058,6 +1076,15 @@ ly_create_alias(
             self.assertEqual(variant.preset, "linux-ninja")
             self.assertIn("CMAKE_C_COMPILER=clang", variant.definitions)
             self.assertIn("CMAKE_CXX_COMPILER=clang++", variant.definitions)
+
+    def test_cmake_configuration_uses_generator_platform_spelling(self) -> None:
+        with mock.patch.object(jolt_qualification.platform, "system", return_value="Linux"):
+            self.assertEqual(jolt_qualification.get_cmake_configuration("Profile"), "profile")
+            self.assertEqual(jolt_qualification.get_cmake_configuration("Release"), "release")
+
+        with mock.patch.object(jolt_qualification.platform, "system", return_value="Windows"):
+            self.assertEqual(jolt_qualification.get_cmake_configuration("Profile"), "Profile")
+            self.assertEqual(jolt_qualification.get_cmake_configuration("Release"), "Release")
 
 
 if __name__ == "__main__":

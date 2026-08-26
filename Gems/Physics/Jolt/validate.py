@@ -1142,6 +1142,13 @@ def get_clang_address_sanitizer_environment(
     return address_sanitizer_environment
 
 
+def get_cmake_configuration(configuration: str) -> str:
+    if platform.system() == "Windows":
+        return configuration
+
+    return configuration.lower()
+
+
 def add_primary_build_and_tests(
     runner: ValidationRunner,
     build_directory: Path,
@@ -1151,6 +1158,7 @@ def add_primary_build_and_tests(
     environment: dict[str, str] | None = None,
 ) -> None:
     review = qualification_mode in ("review", "full")
+    cmake_configuration = get_cmake_configuration(configuration)
     targets = ["Jolt.Tests", "Jolt.Module", "Jolt.Editor"]
     if review:
         targets.extend(("AssetProcessor", "Editor", "AutomatedTesting.Assets"))
@@ -1161,7 +1169,7 @@ def add_primary_build_and_tests(
             "--build",
             str(build_directory),
             "--config",
-            configuration,
+            cmake_configuration,
             "--target",
             *targets,
             "--parallel",
@@ -1182,7 +1190,7 @@ def add_primary_build_and_tests(
             "--test-dir",
             str(build_directory),
             "-C",
-            configuration,
+            cmake_configuration,
             "-R",
             r"Gem::Jolt\.Tests\.main::TEST_RUN",
             "--output-on-failure",
@@ -1207,7 +1215,7 @@ def add_primary_build_and_tests(
                 "--test-dir",
                 str(build_directory),
                 "-C",
-                configuration,
+                cmake_configuration,
                 "-R",
                 r"AutomatedTesting::JoltTests_Main\.main::TEST_RUN",
                 "--output-on-failure",
@@ -1290,6 +1298,7 @@ def add_performance_qualification(
     qualification_mode: str,
     environment: dict[str, str] | None = None,
 ) -> None:
+    release_configuration = get_cmake_configuration("Release")
     targets = ["Jolt.Tests", "Editor", "AutomatedTesting.Assets"]
     if qualification_mode == "full":
         targets.extend(("Box3D.Tests", "PhysX5.Tests"))
@@ -1300,7 +1309,7 @@ def add_performance_qualification(
             "--build",
             str(build_directory),
             "--config",
-            "Release",
+            release_configuration,
             "--target",
             *targets,
             "--parallel",
@@ -1384,7 +1393,7 @@ def add_performance_qualification(
             "--test-dir",
             str(build_directory),
             "-C",
-            "Release",
+            release_configuration,
             "-R",
             r"AutomatedTesting::JoltTests_Benchmark\.benchmark::TEST_RUN",
             "--output-on-failure",
@@ -1443,6 +1452,7 @@ def add_public_consumer(
     monolithic: bool,
     environment: dict[str, str] | None = None,
 ) -> None:
+    cmake_configuration = get_cmake_configuration(configuration)
     monolithic_option = "OFF"
     if monolithic:
         monolithic_option = "ON"
@@ -1474,7 +1484,7 @@ def add_public_consumer(
             f"-DO3DE_ENGINE_ROOT={consumer_engine_root.as_posix()}",
             f"-DCMAKE_C_COMPILER={Path(c_compiler).as_posix()}",
             f"-DCMAKE_CXX_COMPILER={Path(cxx_compiler).as_posix()}",
-            f"-DCMAKE_TRY_COMPILE_CONFIGURATION={configuration}",
+            f"-DCMAKE_TRY_COMPILE_CONFIGURATION={cmake_configuration}",
             f"-DLY_MONOLITHIC_GAME={monolithic_option}",
             "-DLY_UNITY_BUILD=ON",
         ),
@@ -1493,7 +1503,7 @@ def add_public_consumer(
             "--build",
             str(consumer_build_directory),
             "--config",
-            configuration,
+            cmake_configuration,
             "--target",
             "JoltInstalledConsumer",
             "--parallel",
@@ -1599,6 +1609,7 @@ def add_installed_consumer(
     monolithic: bool,
     environment: dict[str, str] | None = None,
 ) -> None:
+    cmake_configuration = get_cmake_configuration(configuration)
     permutation = "modular"
     configuration_component = "DEFAULT"
     binary_component = f"DEFAULT_{configuration.upper()}"
@@ -1638,7 +1649,7 @@ def add_installed_consumer(
             "--build",
             str(primary_build_directory),
             "--config",
-            configuration,
+            cmake_configuration,
             "--parallel",
             str(parallel),
         ),
@@ -1662,7 +1673,7 @@ def add_installed_consumer(
             "--install",
             str(core_build_directory),
             "--config",
-            configuration,
+            cmake_configuration,
             "--component",
             "CORE",
             "--prefix",
@@ -1678,7 +1689,7 @@ def add_installed_consumer(
             "--install",
             str(primary_build_directory),
             "--config",
-            configuration,
+            cmake_configuration,
             "--component",
             configuration_component,
             "--prefix",
@@ -1694,7 +1705,7 @@ def add_installed_consumer(
             "--install",
             str(primary_build_directory),
             "--config",
-            configuration,
+            cmake_configuration,
             "--component",
             binary_component,
             "--prefix",
@@ -2015,6 +2026,7 @@ def add_full_matrix(
         )
 
         for configuration in variant.configurations:
+            cmake_configuration = get_cmake_configuration(configuration)
             build_name = f"build-{variant.name}-{configuration.lower()}"
             test_name = f"test-{variant.name}-{configuration.lower()}"
             if not configured:
@@ -2030,7 +2042,7 @@ def add_full_matrix(
                     "--build",
                     str(build_directory),
                     "--config",
-                    configuration,
+                    cmake_configuration,
                     "--target",
                     *variant.targets,
                     "--parallel",
@@ -2075,7 +2087,7 @@ def add_full_matrix(
                         "--test-dir",
                         str(build_directory),
                         "-C",
-                        configuration,
+                        cmake_configuration,
                         "-R",
                         r"Gem::Jolt\.Tests\.main::TEST_RUN",
                         "--output-on-failure",
