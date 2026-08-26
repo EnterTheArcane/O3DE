@@ -1049,6 +1049,16 @@ ly_create_alias(
         self.assertIn("--gtest_filter=ChildAllocatorTests.*", asan_azcore_command)
         self.assertNotIn("ctest", asan_azcore_command)
 
+    def test_unix_matrix_uses_clang_for_every_variant(self) -> None:
+        with mock.patch.object(jolt_qualification.platform, "system", return_value="Linux"):
+            variants = jolt_qualification.unix_full_matrix()
+
+        self.assertTrue(variants)
+        for variant in variants:
+            self.assertEqual(variant.preset, "linux-ninja")
+            self.assertIn("CMAKE_C_COMPILER=clang", variant.definitions)
+            self.assertIn("CMAKE_CXX_COMPILER=clang++", variant.definitions)
+
 
 if __name__ == "__main__":
     unittest.main()

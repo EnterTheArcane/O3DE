@@ -1903,12 +1903,17 @@ def unix_full_matrix() -> tuple[MatrixVariant, ...]:
     preset = "linux-ninja"
     if platform.system() == "Darwin":
         preset = "mac-ninja"
+    common = (
+        "LY_PROJECTS=AutomatedTesting",
+        "CMAKE_C_COMPILER=clang",
+        "CMAKE_CXX_COMPILER=clang++",
+    )
     return (
         MatrixVariant(
             name="native-unity-modular",
             build_directory_name="nu",
             preset=preset,
-            definitions=("LY_PROJECTS=AutomatedTesting", "LY_UNITY_BUILD=ON"),
+            definitions=common + ("LY_UNITY_BUILD=ON",),
             configurations=("Profile", "Release"),
             targets=("Jolt.Tests", "Jolt.Module", "Jolt.Editor"),
         ),
@@ -1916,7 +1921,7 @@ def unix_full_matrix() -> tuple[MatrixVariant, ...]:
             name="native-no-unity",
             build_directory_name="nn",
             preset=preset,
-            definitions=("LY_PROJECTS=AutomatedTesting", "LY_UNITY_BUILD=OFF"),
+            definitions=common + ("LY_UNITY_BUILD=OFF",),
             configurations=("Profile",),
             targets=("Jolt.Tests",),
         ),
@@ -1924,7 +1929,7 @@ def unix_full_matrix() -> tuple[MatrixVariant, ...]:
             name="native-double",
             build_directory_name="nd",
             preset=preset,
-            definitions=("LY_PROJECTS=AutomatedTesting", "LY_JOLT_DOUBLE_PRECISION=ON"),
+            definitions=common + ("LY_JOLT_DOUBLE_PRECISION=ON",),
             configurations=("Profile",),
             targets=("Jolt.Tests",),
         ),
@@ -2272,6 +2277,25 @@ def main(arguments: Sequence[str] | None = None) -> int:
                     runner.skip(
                         "installed-msvc-monolithic-qualification",
                         "MSVC modular or monolithic matrix configuration failed",
+                    )
+            else:
+                modular_outcome = matrix_outcomes["native-unity-modular"]
+                if modular_outcome.configured:
+                    add_installed_consumer(
+                        runner,
+                        modular_outcome.build_directory,
+                        modular_outcome.build_directory,
+                        output_directory / "installed-native-modular",
+                        output_directory / "consumer-installed-native-modular",
+                        "Release",
+                        max(1, options.parallel),
+                        False,
+                        modular_outcome.environment,
+                    )
+                else:
+                    runner.skip(
+                        "installed-native-modular-qualification",
+                        "native modular matrix configuration failed",
                     )
 
     final_git_state = capture_git_state(engine_root)
