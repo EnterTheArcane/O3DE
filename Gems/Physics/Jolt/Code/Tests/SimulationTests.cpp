@@ -5257,13 +5257,16 @@ namespace Jolt
 
         AzFramework::ProcessLauncher::ProcessLaunchInfo launchInformation;
         launchInformation.m_processExecutableString = runnerPath.Native();
-        launchInformation.m_commandlineParameters = AZStd::vector<AZStd::string>{
-            runnerPath.Native(),
+        AZStd::vector<AZStd::string> commandLineParameters{
             modulePath.Native(),
             "AzRunUnitTests",
             "--gtest_filter=SimulationTests.DISABLED_SaturatedWorkersCompleteNestedPhysicsWorkChild",
             "--gtest_also_run_disabled_tests",
         };
+#ifdef AZ_PLATFORM_WINDOWS
+        commandLineParameters.insert(commandLineParameters.begin(), runnerPath.Native());
+#endif
+        launchInformation.m_commandlineParameters = AZStd::move(commandLineParameters);
         launchInformation.m_workingDirectory = executableDirectory.Native();
         launchInformation.m_showWindow = false;
         AZStd::unique_ptr<AzFramework::ProcessWatcher> watcher(

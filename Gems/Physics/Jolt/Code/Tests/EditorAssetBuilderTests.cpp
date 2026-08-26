@@ -871,7 +871,7 @@ namespace Jolt::Editor
         request.m_sourceFile = "source/test_scene.jolt.json";
         request.m_watchFolder = temporaryDirectory.GetDirectory();
         request.m_tempDirPath = temporaryDirectory.GetDirectory();
-        request.m_platformInfo.m_identifier = "pc";
+        request.m_platformInfo.m_identifier = GetNativeAssetPlatform();
         AssetBuilderSDK::ProcessJobResponse response;
         builder.ProcessJob(request, response);
         ASSERT_EQ(response.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
@@ -1052,7 +1052,7 @@ namespace Jolt::Editor
         EXPECT_TRUE(scenes->DestroySceneInstance(worldHandle, instanceHandle));
         EXPECT_TRUE(scenes->DestroySceneDefinition(definitionHandle));
 
-        request.m_platformInfo.m_identifier = "linux";
+        request.m_platformInfo.m_identifier = "non-native-test";
         AssetBuilderSDK::ProcessJobResponse portableResponse;
         builder.ProcessJob(request, portableResponse);
         ASSERT_EQ(portableResponse.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
@@ -1155,7 +1155,7 @@ namespace Jolt::Editor
         request.m_fullPath = sourcePath->String();
         request.m_sourceFile = "test_skeleton.jolt.json";
         request.m_tempDirPath = temporaryDirectory.GetDirectory();
-        request.m_platformInfo.m_identifier = "pc";
+        request.m_platformInfo.m_identifier = GetNativeAssetPlatform();
         AssetBuilderSDK::ProcessJobResponse response;
         AssetBuilder builder;
         EXPECT_FALSE(RuntimeConfiguration::Get());
@@ -1204,7 +1204,7 @@ namespace Jolt::Editor
         EXPECT_TRUE(skeletons->DestroySkeletalAnimation(animationHandle));
         EXPECT_TRUE(skeletons->DestroySkeletonDefinition(skeletonHandle));
 
-        request.m_platformInfo.m_identifier = "linux";
+        request.m_platformInfo.m_identifier = "non-native-test";
         AssetBuilderSDK::ProcessJobResponse portableResponse;
         builder.ProcessJob(request, portableResponse);
         ASSERT_EQ(portableResponse.m_resultCode, AssetBuilderSDK::ProcessJobResult_Success);
