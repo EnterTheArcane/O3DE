@@ -67,6 +67,7 @@ class ValidationResult:
 @dataclasses.dataclass(frozen=True)
 class MatrixVariant:
     name: str
+    build_directory_name: str
     preset: str
     definitions: tuple[str, ...]
     configurations: tuple[str, ...]
@@ -844,6 +845,8 @@ def validate_public_consumer(engine_root: Path) -> str:
         errors.append("public consumer does not link Gem::Jolt.API")
     if "O3DE_ENGINE_ROOT" not in cmake_text:
         errors.append("public consumer cannot select a source or installed engine")
+    if "list(APPEND CMAKE_MODULE_PATH ${O3DE_ENGINE_ROOT}/cmake)" not in cmake_text:
+        errors.append("public consumer does not expose installed engine find modules")
 
     project = json.loads((consumer_root / "project.json").read_text(encoding="utf-8"))
     if project.get("gem_names") != ["Jolt"]:
@@ -1471,6 +1474,7 @@ def add_public_consumer(
             f"-DO3DE_ENGINE_ROOT={consumer_engine_root.as_posix()}",
             f"-DCMAKE_C_COMPILER={Path(c_compiler).as_posix()}",
             f"-DCMAKE_CXX_COMPILER={Path(cxx_compiler).as_posix()}",
+            f"-DCMAKE_TRY_COMPILE_CONFIGURATION={configuration}",
             f"-DLY_MONOLITHIC_GAME={monolithic_option}",
             "-DLY_UNITY_BUILD=ON",
         ),
@@ -1539,6 +1543,49 @@ def get_source_consumer_build_directory(
     primary_build_directory: Path,
 ) -> Path:
     return matrix_root / f"consumer-source-{primary_build_directory.name}"
+
+
+def prepare_installed_consumer_environment(
+    output_directory: Path,
+    install_root: Path,
+    base_environment: dict[str, str],
+    dry_run: bool,
+) -> tuple[dict[str, str], str]:
+    environment = base_environment.copy()
+    if platform.system() != "Windows":
+        return environment, "The installed consumer uses the existing non-Windows user environment."
+
+    user_profile_value = environment.get("USERPROFILE")
+    if not user_profile_value:
+        raise ValueError("USERPROFILE is required to prepare an installed Windows consumer.")
+
+    user_profile = Path(user_profile_value).resolve()
+    if user_profile.drive.casefold() == install_root.resolve().drive.casefold():
+        return environment, "The installed engine and Python user environment already share a drive."
+
+    python_root = user_profile / ".o3de" / "Python"
+    required_directories = ("packages", "downloaded_packages")
+    missing_directories = [name for name in required_directories if not (python_root / name).is_dir()]
+    if missing_directories:
+        raise ValueError(
+            "The installed consumer Python environment is missing: "
+            + ", ".join(str(python_root / name) for name in missing_directories)
+        )
+
+    local_profile = output_directory / "installed-user"
+    if not dry_run:
+        for directory_name in required_directories:
+            shutil.copytree(
+                python_root / directory_name,
+                local_profile / ".o3de" / "Python" / directory_name,
+                dirs_exist_ok=True,
+            )
+
+    environment["USERPROFILE"] = str(local_profile.resolve())
+    environment.setdefault("LY_3RDPARTY_PATH", str(user_profile / ".o3de" / "3rdParty"))
+    return environment, (
+        f"Prepared a same-drive Python environment for installed consumers at {local_profile.resolve()}."
+    )
 
 
 def add_installed_consumer(
@@ -1694,6 +1741,37 @@ def add_installed_consumer(
         )
         return
 
+    consumer_environment: dict[str, str] = {}
+
+    def prepare_environment(_: Path) -> str:
+        nonlocal consumer_environment
+        consumer_environment, message = prepare_installed_consumer_environment(
+            runner.output_directory,
+            install_root,
+            environment or runner.environment,
+            runner.dry_run,
+        )
+        return message
+
+    environment_prepared = runner.run_check(
+        f"prepare-installed-{permutation}-consumer-environment",
+        prepare_environment,
+    )
+    if not environment_prepared:
+        runner.skip(
+            f"configure-installed-{permutation}-consumer",
+            f"installed {permutation} consumer environment preparation failed",
+        )
+        runner.skip(
+            f"build-installed-{permutation}-consumer",
+            f"installed {permutation} consumer environment preparation failed",
+        )
+        runner.skip(
+            f"run-installed-{permutation}-consumer",
+            f"installed {permutation} consumer environment preparation failed",
+        )
+        return
+
     add_public_consumer(
         runner,
         primary_build_directory,
@@ -1703,7 +1781,7 @@ def add_installed_consumer(
         parallel,
         f"installed-{permutation}",
         monolithic,
-        environment,
+        consumer_environment,
     )
 
 
@@ -1719,6 +1797,7 @@ def windows_full_matrix(
     return (
         MatrixVariant(
             name="clang-unity-modular",
+            build_directory_name="cu",
             preset="windows-ninja",
             definitions=common
             + clang_definitions
@@ -1728,6 +1807,7 @@ def windows_full_matrix(
         ),
         MatrixVariant(
             name="clang-no-unity",
+            build_directory_name="cn",
             preset="windows-ninja",
             definitions=common
             + clang_definitions
@@ -1737,6 +1817,7 @@ def windows_full_matrix(
         ),
         MatrixVariant(
             name="clang-double",
+            build_directory_name="cd",
             preset="windows-ninja",
             definitions=common + clang_definitions + ("LY_JOLT_DOUBLE_PRECISION=ON",),
             configurations=("Profile",),
@@ -1744,6 +1825,7 @@ def windows_full_matrix(
         ),
         MatrixVariant(
             name="clang-diagnostics",
+            build_directory_name="cg",
             preset="windows-ninja",
             definitions=common
             + clang_definitions
@@ -1759,6 +1841,7 @@ def windows_full_matrix(
         ),
         MatrixVariant(
             name="clang-asan",
+            build_directory_name="ca",
             preset="windows-ninja",
             definitions=common
             + clang_definitions
@@ -1771,6 +1854,7 @@ def windows_full_matrix(
         ),
         MatrixVariant(
             name="clang-malloc-accounting",
+            build_directory_name="cm",
             preset="windows-ninja",
             definitions=common
             + clang_definitions
@@ -1780,6 +1864,7 @@ def windows_full_matrix(
         ),
         MatrixVariant(
             name="clang-monolithic",
+            build_directory_name="cmo",
             preset="windows-ninja",
             definitions=common + clang_definitions + ("LY_MONOLITHIC_GAME=ON",),
             configurations=("Release",),
@@ -1788,6 +1873,7 @@ def windows_full_matrix(
         ),
         MatrixVariant(
             name="msvc-unity-modular",
+            build_directory_name="mu",
             preset="windows-ninja",
             definitions=common + ("LY_UNITY_BUILD=ON", "LY_MONOLITHIC_GAME=OFF"),
             configurations=("Debug", "Profile", "Release"),
@@ -1795,6 +1881,7 @@ def windows_full_matrix(
         ),
         MatrixVariant(
             name="msvc-no-unity",
+            build_directory_name="mn",
             preset="windows-ninja",
             definitions=common + ("LY_UNITY_BUILD=OFF", "LY_MONOLITHIC_GAME=OFF"),
             configurations=("Profile",),
@@ -1802,6 +1889,7 @@ def windows_full_matrix(
         ),
         MatrixVariant(
             name="msvc-monolithic",
+            build_directory_name="mmo",
             preset="windows-ninja",
             definitions=common + ("LY_UNITY_BUILD=ON", "LY_MONOLITHIC_GAME=ON"),
             configurations=("Release",),
@@ -1818,6 +1906,7 @@ def unix_full_matrix() -> tuple[MatrixVariant, ...]:
     return (
         MatrixVariant(
             name="native-unity-modular",
+            build_directory_name="nu",
             preset=preset,
             definitions=("LY_PROJECTS=AutomatedTesting", "LY_UNITY_BUILD=ON"),
             configurations=("Profile", "Release"),
@@ -1825,6 +1914,7 @@ def unix_full_matrix() -> tuple[MatrixVariant, ...]:
         ),
         MatrixVariant(
             name="native-no-unity",
+            build_directory_name="nn",
             preset=preset,
             definitions=("LY_PROJECTS=AutomatedTesting", "LY_UNITY_BUILD=OFF"),
             configurations=("Profile",),
@@ -1832,6 +1922,7 @@ def unix_full_matrix() -> tuple[MatrixVariant, ...]:
         ),
         MatrixVariant(
             name="native-double",
+            build_directory_name="nd",
             preset=preset,
             definitions=("LY_PROJECTS=AutomatedTesting", "LY_JOLT_DOUBLE_PRECISION=ON"),
             configurations=("Profile",),
@@ -1874,7 +1965,7 @@ def add_full_matrix(
 
     outcomes: dict[str, MatrixOutcome] = {}
     for variant in variants:
-        build_directory = matrix_root / variant.name
+        build_directory = matrix_root / variant.build_directory_name
         command_environment: dict[str, str] | None = None
         if platform.system() == "Windows":
             if not msvc_environment:
@@ -1988,17 +2079,14 @@ def add_full_matrix(
                     command_environment,
                 )
                 if variant.name == "clang-asan":
+                    test_runner = build_directory / "bin" / configuration.lower() / "AzTestRunner.exe"
                     runner.run_command(
                         f"test-{variant.name}-{configuration.lower()}-azcore",
                         (
-                            "ctest",
-                            "--test-dir",
-                            str(build_directory),
-                            "-C",
-                            configuration,
-                            "-R",
-                            r"AZ::AzCore\.Tests\.main::TEST_RUN",
-                            "--output-on-failure",
+                            str(test_runner),
+                            str(build_directory / "bin" / configuration.lower() / "AzCore.Tests.dll"),
+                            "AzRunUnitTests",
+                            "--gtest_filter=ChildAllocatorTests.*",
                         ),
                         1_800,
                         command_environment,

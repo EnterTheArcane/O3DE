@@ -211,6 +211,40 @@ class QualificationValidationTests(unittest.TestCase):
             matrix_root / "consumer-source-msvc-unity-modular",
         )
 
+    def test_installed_consumer_uses_a_same_drive_python_environment(self) -> None:
+        output_directory = Path("D:/qualification-results")
+        source_profile = Path("C:/Users/Example")
+        with (
+            mock.patch.object(jolt_qualification.platform, "system", return_value="Windows"),
+            mock.patch.object(Path, "is_dir", return_value=True),
+        ):
+            environment, message = jolt_qualification.prepare_installed_consumer_environment(
+                output_directory,
+                Path("D:/installed-engine"),
+                {"USERPROFILE": str(source_profile)},
+                True,
+            )
+
+        self.assertEqual(environment["USERPROFILE"], str((output_directory / "installed-user").resolve()))
+        self.assertEqual(
+            environment["LY_3RDPARTY_PATH"],
+            str(source_profile / ".o3de" / "3rdParty"),
+        )
+        self.assertIn("same-drive Python environment", message)
+
+    def test_installed_consumer_reuses_a_same_drive_profile(self) -> None:
+        with mock.patch.object(jolt_qualification.platform, "system", return_value="Windows"):
+            environment, message = jolt_qualification.prepare_installed_consumer_environment(
+                Path("D:/results"),
+                Path("D:/installed-engine"),
+                {"USERPROFILE": "D:/Users/Example"},
+                False,
+            )
+
+        self.assertEqual(environment["USERPROFILE"], "D:/Users/Example")
+        self.assertNotIn("LY_3RDPARTY_PATH", environment)
+        self.assertIn("already share a drive", message)
+
     def test_feature_ledger_rejects_missing_and_empty_exposed_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             engine_root = Path(temporary_directory)
@@ -609,7 +643,9 @@ newAddress.m_size = SystemAllocatorPrivate::GetAllocatedSize(newAddress.m_value,
             write_file(
                 consumer_root,
                 "CMakeLists.txt",
-                "set(O3DE_ENGINE_ROOT example)\ntarget_link_libraries(example Gem::Jolt.API)\n",
+                "set(O3DE_ENGINE_ROOT example)\n"
+                "list(APPEND CMAKE_MODULE_PATH ${O3DE_ENGINE_ROOT}/cmake)\n"
+                "target_link_libraries(example Gem::Jolt.API)\n",
             )
             write_file(consumer_root, "jolt_installed_consumer_files.cmake", "set(FILES main.cpp)\n")
             source_path = write_file(
@@ -657,7 +693,9 @@ faceBuffers.GetTargetFace(0);
             write_file(
                 consumer_root,
                 "CMakeLists.txt",
-                "set(O3DE_ENGINE_ROOT example)\ntarget_link_libraries(example Gem::Jolt.API)\n",
+                "set(O3DE_ENGINE_ROOT example)\n"
+                "list(APPEND CMAKE_MODULE_PATH ${O3DE_ENGINE_ROOT}/cmake)\n"
+                "target_link_libraries(example Gem::Jolt.API)\n",
             )
             write_file(consumer_root, "jolt_installed_consumer_files.cmake", "set(FILES main.cpp)\n")
             write_file(consumer_root, "main.cpp", "#include <Jolt/System.h>\n")
@@ -845,6 +883,10 @@ ly_create_alias(
                 f"-DO3DE_ENGINE_ROOT={install_root.resolve().as_posix()}",
                 commands["configure-installed-modular-consumer"],
             )
+            self.assertIn(
+                "-DCMAKE_TRY_COMPILE_CONFIGURATION=Release",
+                commands["configure-installed-modular-consumer"],
+            )
 
     def test_cmake_cache_reader_requires_the_requested_entry(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -943,6 +985,10 @@ ly_create_alias(
         self.assertIn("msvc-unity-modular", variants)
         self.assertIn("msvc-no-unity", variants)
         self.assertIn("msvc-monolithic", variants)
+        self.assertEqual(
+            {variant.build_directory_name for variant in variants.values()},
+            {"ca", "cd", "cg", "cm", "cmo", "cn", "cu", "mmo", "mn", "mu"},
+        )
         self.assertEqual(variants["clang-unity-modular"].preset, "windows-ninja")
         self.assertIn(
             "CMAKE_CXX_COMPILER=D:/LLVM/22.1.8/bin/clang-cl.exe",
@@ -993,12 +1039,15 @@ ly_create_alias(
         commands = {call.args[0]: call for call in runner.run_command.call_args_list}
         clang_environment = commands["configure-clang-unity-modular"].args[3]
         asan_environment = commands["configure-clang-asan"].args[3]
+        asan_azcore_command = commands["test-clang-asan-profile-azcore"].args[1]
 
         self.assertEqual(clang_environment, developer_environment)
         self.assertEqual(asan_environment["PATH"], "sdk")
         self.assertEqual(asan_environment["RC"], "C:/SDK/bin/rc.exe")
         self.assertEqual(asan_environment["WindowsSdkDir"], "C:/SDK")
         self.assertEqual(asan_environment["ASAN_OPTIONS"], "detect_odr_violation=0")
+        self.assertIn("--gtest_filter=ChildAllocatorTests.*", asan_azcore_command)
+        self.assertNotIn("ctest", asan_azcore_command)
 
 
 if __name__ == "__main__":

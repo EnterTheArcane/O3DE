@@ -13,6 +13,7 @@ if(NOT PROJECT_NAME)
     cmake_minimum_required(VERSION 3.24)
 
     include(${O3DE_ENGINE_ROOT}/cmake/o3deConfigVersion.cmake)
+    list(APPEND CMAKE_MODULE_PATH ${O3DE_ENGINE_ROOT}/cmake)
     include(${O3DE_ENGINE_ROOT}/cmake/Findo3de.cmake)
 
     project(JoltInstalledConsumer
