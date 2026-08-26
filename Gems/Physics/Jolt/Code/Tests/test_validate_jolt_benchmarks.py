@@ -80,6 +80,19 @@ class ValidateJoltBenchmarksTests(unittest.TestCase):
         errors = validate_jolt_benchmarks.validate_report(report, 30, 3.0, 0.02, 0.05)
         self.assertTrue(any("Capability acquisition is" in error for error in errors))
 
+    def test_rejects_unstable_representative_operation(self):
+        report = make_report()
+        operation_name = next(iter(validate_jolt_benchmarks.REPRESENTATIVE_OPERATION_BENCHMARKS))
+        result = next(
+            result
+            for result in report["benchmarks"]
+            if result["name"] == operation_name
+        )
+        result["real_time"] *= 10.0
+
+        errors = validate_jolt_benchmarks.validate_report(report, 30, 3.0, 0.02, 0.05)
+        self.assertTrue(any(operation_name in error and "CV gate" in error for error in errors))
+
     def test_rejects_steady_state_allocation_growth(self):
         report = make_report()
         rollback_result = next(

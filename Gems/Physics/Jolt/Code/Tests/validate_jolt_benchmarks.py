@@ -92,6 +92,9 @@ def validate_report(
         representative_operation_nanoseconds = []
         for name, operation_count in REPRESENTATIVE_OPERATION_BENCHMARKS.items():
             samples, _ = load_raw_samples(report, name, repetitions)
+            cv = compare_provider_benchmarks.coefficient_of_variation(samples)
+            if cv > maximum_cv:
+                errors.append(f"{name} exceeds the {maximum_cv:.3%} CV gate.")
             representative_operation_nanoseconds.append(statistics.median(samples) * 1_000.0 / operation_count)
         cheapest_operation_nanoseconds = min(representative_operation_nanoseconds)
         capability_operation_ratio = capability_nanoseconds / cheapest_operation_nanoseconds

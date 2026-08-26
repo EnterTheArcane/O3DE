@@ -14,6 +14,7 @@ import math
 import os
 import platform
 import re
+import statistics
 import subprocess
 import sys
 from contextlib import contextmanager
@@ -41,6 +42,8 @@ FULL_REPETITION_COUNT = 30
 REVIEW_REPETITION_COUNT = 3
 FULL_MINIMUM_TIME_SECONDS = 2.0
 REVIEW_MINIMUM_TIME_SECONDS = 0.05
+FULL_MAXIMUM_CV = 0.05
+FULL_ABSOLUTE_CAPTURE_ATTEMPTS = 2
 
 
 @dataclass(frozen=True)
@@ -473,38 +476,146 @@ def capture_absolute_jolt(
     output_directory: Path,
     affinity_policy: dict[int, tuple[int, ...]],
     timeout_seconds: int,
+    maximum_cv: float | None = None,
+    maximum_attempts: int = 1,
 ) -> tuple[list[Path], list[Path]]:
+    if maximum_attempts <= 0:
+        raise ValueError("The maximum capture attempt count must be positive.")
+
     module, _ = resolve_provider_files(binary_directory, provider)
     raw_reports = []
     warmup_reports = []
     for benchmark_suffix in ABSOLUTE_BENCHMARK_SUFFIXES:
         benchmark_name = safe_name(benchmark_suffix)
         warmup_path = output_directory / provider.name / f"absolute-{benchmark_name}-warmup.json"
-        run_benchmark_process(
-            runner,
-            module,
-            provider.name,
-            benchmark_suffix,
-            minimum_time,
-            warmup_path,
-            affinity_policy[1],
-            timeout_seconds,
-        )
-        warmup_reports.append(warmup_path)
-        for repetition in range(repetitions):
-            raw_path = output_directory / provider.name / f"absolute-{benchmark_name}-{repetition:02d}.json"
+        workload_reports = [
+            output_directory / provider.name / f"absolute-{benchmark_name}-{repetition:02d}.json"
+            for repetition in range(repetitions)
+        ]
+        for attempt in range(maximum_attempts):
             run_benchmark_process(
                 runner,
                 module,
                 provider.name,
                 benchmark_suffix,
                 minimum_time,
-                raw_path,
+                warmup_path,
                 affinity_policy[1],
                 timeout_seconds,
             )
-            raw_reports.append(raw_path)
+            for raw_path in workload_reports:
+                run_benchmark_process(
+                    runner,
+                    module,
+                    provider.name,
+                    benchmark_suffix,
+                    minimum_time,
+                    raw_path,
+                    affinity_policy[1],
+                    timeout_seconds,
+                )
+
+            rejection_reason = ""
+            if maximum_cv is not None:
+                rejection_reason = validate_absolute_capture_batch(
+                    workload_reports,
+                    warmup_path,
+                    maximum_cv,
+                )
+            if not rejection_reason:
+                break
+            if attempt + 1 == maximum_attempts:
+                raise RuntimeError(
+                    f"{provider.name}/{benchmark_suffix} remained invalid after "
+                    f"{maximum_attempts} complete capture attempts: {rejection_reason}"
+                )
+            rejected_directory = (
+                output_directory
+                / provider.name
+                / "rejected-absolute"
+                / f"{benchmark_name}-attempt-{attempt + 1:02d}"
+            )
+            archive_capture_batch(
+                (warmup_path, *workload_reports),
+                rejected_directory,
+                rejection_reason,
+            )
+            print(
+                f"Retrying {provider.name}/{benchmark_suffix} as a complete batch: "
+                f"{rejection_reason}",
+                file=sys.stderr,
+            )
+
+        warmup_reports.append(warmup_path)
+        raw_reports.extend(workload_reports)
     return raw_reports, warmup_reports
+
+
+def validate_absolute_capture_batch(
+    raw_reports: Sequence[Path],
+    warmup_report: Path,
+    maximum_cv: float,
+) -> str:
+    contexts = []
+    frequencies = []
+    samples = []
+    for report_path in (warmup_report, *raw_reports):
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        context = dict(report.get("context", {}))
+        context.pop("date", None)
+        frequency = float(context.pop("mhz_per_cpu", 0.0))
+        if frequency <= 0.0:
+            return f"{report_path.name} has no valid CPU frequency"
+        contexts.append(context)
+        frequencies.append(frequency)
+
+        if report_path == warmup_report:
+            continue
+        results = [
+            result
+            for result in report.get("benchmarks", [])
+            if result.get("run_type", "iteration") == "iteration"
+        ]
+        if len(results) != 1:
+            return f"{report_path.name} does not contain exactly one measured workload"
+        result = results[0]
+        time_unit = result.get("time_unit")
+        if time_unit not in compare_provider_benchmarks.TIME_UNIT_TO_MICROSECONDS:
+            return f"{report_path.name} has unsupported time unit {time_unit!r}"
+        real_time = float(result.get("real_time", math.nan))
+        if not math.isfinite(real_time) or real_time <= 0.0:
+            return f"{report_path.name} has invalid real time {real_time!r}"
+        samples.append(real_time * compare_provider_benchmarks.TIME_UNIT_TO_MICROSECONDS[time_unit])
+
+    if any(context != contexts[0] for context in contexts[1:]):
+        return "capture reports have different benchmark contexts"
+    median_frequency = statistics.median(frequencies)
+    for report_path, frequency in zip((warmup_report, *raw_reports), frequencies, strict=True):
+        frequency_ratio = frequency / median_frequency
+        if frequency_ratio < 0.99 or frequency_ratio > 1.01:
+            return f"{report_path.name} has incompatible CPU frequency {frequency:.0f} MHz"
+    cv = compare_provider_benchmarks.coefficient_of_variation(samples)
+    if cv > maximum_cv:
+        return f"CV {cv:.3%} exceeds {maximum_cv:.3%}"
+    return ""
+
+
+def archive_capture_batch(
+    reports: Sequence[Path],
+    rejected_directory: Path,
+    rejection_reason: str,
+) -> None:
+    rejected_directory.mkdir(parents=True, exist_ok=False)
+    (rejected_directory / "reason.txt").write_text(
+        rejection_reason + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    for report_path in reports:
+        report_path.replace(rejected_directory / report_path.name)
+        log_path = report_path.with_suffix(".log")
+        if log_path.is_file():
+            log_path.replace(rejected_directory / log_path.name)
 
 
 def parse_arguments(arguments: Sequence[str]) -> argparse.Namespace:
@@ -602,6 +713,8 @@ def main(arguments: Sequence[str] | None = None) -> int:
         output_directory / "raw-absolute",
         affinity_policy,
         options.timeout_seconds,
+        FULL_MAXIMUM_CV if options.mode == "full" else None,
+        FULL_ABSOLUTE_CAPTURE_ATTEMPTS if options.mode == "full" else 1,
     )
     absolute_report = output_directory / "Jolt-absolute-qualified.json"
     prepare_artifact(

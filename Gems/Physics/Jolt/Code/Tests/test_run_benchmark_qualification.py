@@ -169,6 +169,107 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
             ]
             self.assertEqual(len(matching_calls), 3)
 
+    def test_absolute_capture_retries_an_entire_invalid_batch(self) -> None:
+        provider = run_benchmark_qualification.Provider("Jolt", "Jolt.Tests.Gem.dll")
+        validation_results = iter(("CV 10.000% exceeds 5.000%", ""))
+
+        def validate_first_batch_only(*_args, **_kwargs):
+            return next(validation_results, "")
+
+        with mock.patch.object(
+            run_benchmark_qualification,
+            "resolve_provider_files",
+            return_value=(Path("bin") / provider.module_name, None),
+        ), mock.patch.object(
+            run_benchmark_qualification,
+            "run_benchmark_process",
+        ) as run_process, mock.patch.object(
+            run_benchmark_qualification,
+            "validate_absolute_capture_batch",
+            side_effect=validate_first_batch_only,
+        ), mock.patch.object(
+            run_benchmark_qualification,
+            "archive_capture_batch",
+        ) as archive_batch:
+            raw_reports, warmup_reports = run_benchmark_qualification.capture_absolute_jolt(
+                provider,
+                2,
+                0.05,
+                Path("AzTestRunner.exe"),
+                Path("bin"),
+                Path("results"),
+                {1: (15,)},
+                30,
+                0.05,
+                2,
+            )
+
+        workload_count = len(run_benchmark_qualification.ABSOLUTE_BENCHMARK_SUFFIXES)
+        self.assertEqual(len(raw_reports), workload_count * 2)
+        self.assertEqual(len(warmup_reports), workload_count)
+        self.assertEqual(run_process.call_count, workload_count * 3 + 3)
+        archive_batch.assert_called_once()
+
+    def test_absolute_capture_batch_rejects_frequency_and_timing_outliers(self) -> None:
+        def write_report(path: Path, real_time: float, frequency: float) -> None:
+            path.write_text(
+                json.dumps(
+                    {
+                        "context": {
+                            "date": "2026-08-26T00:00:00",
+                            "library_build_type": "release",
+                            "mhz_per_cpu": frequency,
+                        },
+                        "benchmarks": [
+                            {
+                                "name": "Jolt/Absolute/real_time",
+                                "real_time": real_time,
+                                "run_type": "iteration",
+                                "time_unit": "us",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            warmup_report = root / "warmup.json"
+            raw_reports = [root / f"sample-{index}.json" for index in range(3)]
+            write_report(warmup_report, 10.0, 4_500.0)
+            for raw_report in raw_reports:
+                write_report(raw_report, 10.0, 4_500.0)
+
+            self.assertEqual(
+                run_benchmark_qualification.validate_absolute_capture_batch(
+                    raw_reports,
+                    warmup_report,
+                    0.05,
+                ),
+                "",
+            )
+
+            write_report(raw_reports[0], 20.0, 4_500.0)
+            self.assertIn(
+                "CV",
+                run_benchmark_qualification.validate_absolute_capture_batch(
+                    raw_reports,
+                    warmup_report,
+                    0.05,
+                ),
+            )
+
+            write_report(raw_reports[0], 10.0, 4_600.0)
+            self.assertIn(
+                "incompatible CPU frequency",
+                run_benchmark_qualification.validate_absolute_capture_batch(
+                    raw_reports,
+                    warmup_report,
+                    0.05,
+                ),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
