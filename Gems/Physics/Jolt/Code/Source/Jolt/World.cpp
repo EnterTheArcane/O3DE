@@ -213,7 +213,7 @@ namespace Jolt
                 AddScalar(value.GetW());
             }
 
-            void AddMatrix(const JPH::Mat44Arg value)
+            void AddMatrix(JPH::Mat44Arg value)
             {
                 for (AZ::u32 column = 0; column < 4; ++column)
                 {
