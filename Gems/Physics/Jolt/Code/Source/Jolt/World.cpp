@@ -10342,7 +10342,7 @@ namespace Jolt
             AdvanceNativeConstraintTopologyEpoch();
         }
         ReleaseConstraintReferences(*slot);
-        ReleaseConstraintSlot(constraintHandle, *slot);
+        ReleaseConstraintSlot(constraintHandle);
         return true;
     }
 
@@ -10860,9 +10860,7 @@ namespace Jolt
         }
         for (const ConstraintHandle constraintHandle : constraintHandles)
         {
-            ConstraintSlot* slot = FindConstraint(constraintHandle);
-            AZ_Assert(slot, "A validated constraint handle must remain valid until its slot is released.");
-            ReleaseConstraintSlot(constraintHandle, *slot);
+            ReleaseConstraintSlot(constraintHandle);
         }
     }
 
@@ -10901,8 +10899,7 @@ namespace Jolt
     }
 
     void World::ReleaseConstraintSlot(
-        const ConstraintHandle constraintHandle,
-        ConstraintSlot& slot)
+        const ConstraintHandle constraintHandle)
     {
         Internal::WorldMemberHandleParts parts;
         [[maybe_unused]] const bool decoded = Internal::DecodeWorldMemberHandle(constraintHandle, parts);

@@ -2892,9 +2892,7 @@ namespace Jolt
 
         void CommitConstraintDestructionUnlocked(AZStd::span<const ConstraintHandle> constraintHandles);
 
-        void ReleaseConstraintSlot(
-            ConstraintHandle constraintHandle,
-            ConstraintSlot& slot);
+        void ReleaseConstraintSlot(ConstraintHandle constraintHandle);
 
         [[nodiscard]]
         const VirtualCharacterSlot* FindVirtualCharacter(VirtualCharacterHandle characterHandle) const;

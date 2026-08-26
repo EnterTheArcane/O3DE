@@ -167,7 +167,10 @@ namespace Jolt
                         return geometry.m_vertices.capacity() * sizeof(AZ::Vector3)
                             + geometry.m_triangles.capacity() * sizeof(MeshTriangle);
                     }
-                    return 0;
+                    else
+                    {
+                        return 0;
+                    }
                 },
                 configuration.m_geometry);
             return retainedBytes;
@@ -4162,11 +4165,11 @@ namespace Jolt
             if (rebuildPath)
             {
                 path = nullptr;
-                if (const auto* configuration = AZStd::get_if<HermitePathConfiguration>(&source))
+                if (const auto* hermiteConfiguration = AZStd::get_if<HermitePathConfiguration>(&source))
                 {
-                    path = CreateNativePath(*configuration, transform.GetUniformScale());
+                    path = CreateNativePath(*hermiteConfiguration, transform.GetUniformScale());
                 }
-                else if (const auto* configuration = AZStd::get_if<CustomPathConfiguration>(&source))
+                else if (const auto* customConfiguration = AZStd::get_if<CustomPathConfiguration>(&source))
                 {
                     auto* provider = static_cast<ICustomPathProvider*>(AcquireExtension(
                         customProviderExtension,
@@ -4174,7 +4177,7 @@ namespace Jolt
                     if (provider)
                     {
                         temporaryProviderLease = customProviderExtension;
-                        path = CreateNativePath(*provider, *configuration, maximumFraction, transform.GetUniformScale());
+                        path = CreateNativePath(*provider, *customConfiguration, maximumFraction, transform.GetUniformScale());
                     }
                 }
             }
