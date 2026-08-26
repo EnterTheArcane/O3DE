@@ -101,6 +101,29 @@ def run_comparison(reports: dict[str, dict]) -> int:
             return compare_provider_benchmarks.main()
 
 
+def set_tail_window_time(
+    reports: dict[str, dict],
+    provider: str,
+    repetition_index: int,
+    time_microseconds: float,
+) -> None:
+    tail_name = f"{provider}/{compare_provider_benchmarks.TAIL_WORKLOADS[0]['suffix']}"
+    result = next(
+        result
+        for result in reports[provider]["benchmarks"]
+        if result["name"] == tail_name
+        and result["repetition_index"] == repetition_index
+    )
+    sample_nanoseconds = time_microseconds * 1_000.0
+    result["real_time"] = time_microseconds
+    result["TailMaximumNs"] = sample_nanoseconds
+    result["TailP50Ns"] = sample_nanoseconds
+    result["TailP95Ns"] = sample_nanoseconds
+    result["TailP99Ns"] = sample_nanoseconds
+    for sample_index in range(compare_provider_benchmarks.TAIL_SAMPLE_COUNT):
+        result[f"Frame{sample_index}Ns"] = sample_nanoseconds
+
+
 class CompareProviderBenchmarksTests(unittest.TestCase):
     def test_accepts_valid_faster_jolt_report(self):
         reports = {
@@ -218,6 +241,28 @@ class CompareProviderBenchmarksTests(unittest.TestCase):
             tail_result["TailP99Ns"] = 200_000.0
             for sample_index in range(compare_provider_benchmarks.TAIL_SAMPLE_COUNT):
                 tail_result[f"Frame{sample_index}Ns"] = 200_000.0
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_accepts_variable_reference_with_conservative_tail_margin(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        for repetition_index in range(10, 30):
+            set_tail_window_time(reports, "PhysX", repetition_index, 150.0)
+
+        self.assertEqual(run_comparison(reports), 0)
+
+    def test_rejects_variable_reference_without_conservative_tail_margin(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 150.0),
+        }
+        for repetition_index in range(2):
+            set_tail_window_time(reports, "PhysX", repetition_index, 70.0)
+
         self.assertEqual(run_comparison(reports), 1)
 
     def test_rejects_missing_raw_frame_tail_sample(self):

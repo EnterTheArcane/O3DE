@@ -793,19 +793,39 @@ def main() -> int:
 
         for provider in PROVIDERS:
             cv = coefficient_of_variation(provider_p95_samples[provider])
-            if cv > arguments.maximum_cv:
+            if cv <= arguments.maximum_cv:
+                continue
+            if provider == "Jolt":
                 print(
                     f"  {workload['label']} {provider} p95-window CV {cv:.3%} exceeds "
                     f"{arguments.maximum_cv:.3%}.",
                     file=sys.stderr,
                 )
                 failed = True
+                continue
+            print(
+                f"  Diagnostic: {workload['label']} {provider} p95-window CV {cv:.3%} "
+                f"exceeds {arguments.maximum_cv:.3%}."
+            )
 
         frame_tail_ratio = p95["Jolt"] / p95[arguments.gate_provider]
         if frame_tail_ratio > arguments.maximum_frame_tail_ratio:
             print(
                 f"  {workload['label']} frame p95 ratio {frame_tail_ratio:.3f} exceeds "
                 f"{arguments.maximum_frame_tail_ratio:.3f} against {arguments.gate_provider}.",
+                file=sys.stderr,
+            )
+            failed = True
+
+        candidate_window_p95 = percentile(provider_p95_samples["Jolt"], 0.95)
+        reference_window_p05 = percentile(provider_p95_samples[arguments.gate_provider], 0.05)
+        conservative_window_ratio = candidate_window_p95 / reference_window_p05
+        if conservative_window_ratio > arguments.maximum_frame_tail_ratio:
+            print(
+                f"  {workload['label']} conservative p95-window ratio "
+                f"{conservative_window_ratio:.3f} exceeds "
+                f"{arguments.maximum_frame_tail_ratio:.3f} against "
+                f"{arguments.gate_provider}.",
                 file=sys.stderr,
             )
             failed = True
