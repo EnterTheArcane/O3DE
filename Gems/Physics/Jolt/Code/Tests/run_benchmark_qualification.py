@@ -475,32 +475,36 @@ def capture_absolute_jolt(
     timeout_seconds: int,
 ) -> tuple[list[Path], list[Path]]:
     module, _ = resolve_provider_files(binary_directory, provider)
-    warmup_path = output_directory / provider.name / "absolute-warmup.json"
-    run_benchmark_process(
-        runner,
-        module,
-        provider.name,
-        ABSOLUTE_FILTER_SUFFIX,
-        minimum_time,
-        warmup_path,
-        affinity_policy[1],
-        timeout_seconds,
-    )
     raw_reports = []
-    for repetition in range(repetitions):
-        raw_path = output_directory / provider.name / f"absolute-{repetition:02d}.json"
+    warmup_reports = []
+    for benchmark_suffix in ABSOLUTE_BENCHMARK_SUFFIXES:
+        benchmark_name = safe_name(benchmark_suffix)
+        warmup_path = output_directory / provider.name / f"absolute-{benchmark_name}-warmup.json"
         run_benchmark_process(
             runner,
             module,
             provider.name,
-            ABSOLUTE_FILTER_SUFFIX,
+            benchmark_suffix,
             minimum_time,
-            raw_path,
+            warmup_path,
             affinity_policy[1],
             timeout_seconds,
         )
-        raw_reports.append(raw_path)
-    return raw_reports, [warmup_path]
+        warmup_reports.append(warmup_path)
+        for repetition in range(repetitions):
+            raw_path = output_directory / provider.name / f"absolute-{benchmark_name}-{repetition:02d}.json"
+            run_benchmark_process(
+                runner,
+                module,
+                provider.name,
+                benchmark_suffix,
+                minimum_time,
+                raw_path,
+                affinity_policy[1],
+                timeout_seconds,
+            )
+            raw_reports.append(raw_path)
+    return raw_reports, warmup_reports
 
 
 def parse_arguments(arguments: Sequence[str]) -> argparse.Namespace:

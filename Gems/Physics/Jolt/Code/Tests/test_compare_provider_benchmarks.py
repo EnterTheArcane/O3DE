@@ -124,6 +124,22 @@ def set_tail_window_time(
         result[f"Frame{sample_index}Ns"] = sample_nanoseconds
 
 
+def set_workload_time(
+    reports: dict[str, dict],
+    provider: str,
+    repetition_index: int,
+    time_microseconds: float,
+) -> None:
+    workload_name = f"{provider}/{compare_provider_benchmarks.WORKLOADS[0]['suffix']}"
+    result = next(
+        result
+        for result in reports[provider]["benchmarks"]
+        if result["name"] == workload_name
+        and result["repetition_index"] == repetition_index
+    )
+    result["real_time"] = time_microseconds
+
+
 class CompareProviderBenchmarksTests(unittest.TestCase):
     def test_accepts_valid_faster_jolt_report(self):
         reports = {
@@ -217,6 +233,28 @@ class CompareProviderBenchmarksTests(unittest.TestCase):
             "Box3D": make_report("Box3D", 95.0),
             "PhysX": make_report("PhysX", 100.0),
         }
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_accepts_variable_reference_with_conservative_repetition_margin(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        for repetition_index in range(10, 30):
+            set_workload_time(reports, "PhysX", repetition_index, 150.0)
+
+        self.assertEqual(run_comparison(reports), 0)
+
+    def test_rejects_variable_reference_without_conservative_repetition_margin(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 150.0),
+        }
+        for repetition_index in range(2):
+            set_workload_time(reports, "PhysX", repetition_index, 70.0)
+
         self.assertEqual(run_comparison(reports), 1)
 
     def test_rejects_raw_frame_tail_regression(self):

@@ -131,6 +131,44 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
                         30,
                     )
 
+    def test_absolute_capture_warms_and_isolates_each_workload(self) -> None:
+        provider = run_benchmark_qualification.Provider("Jolt", "Jolt.Tests.Gem.dll")
+        runner = Path("AzTestRunner.exe")
+        binary_directory = Path("bin")
+        output_directory = Path("results")
+        affinity_policy = {1: (15,)}
+
+        with mock.patch.object(
+            run_benchmark_qualification,
+            "resolve_provider_files",
+            return_value=(binary_directory / provider.module_name, None),
+        ), mock.patch.object(
+            run_benchmark_qualification,
+            "run_benchmark_process",
+        ) as run_process:
+            raw_reports, warmup_reports = run_benchmark_qualification.capture_absolute_jolt(
+                provider,
+                2,
+                0.05,
+                runner,
+                binary_directory,
+                output_directory,
+                affinity_policy,
+                30,
+            )
+
+        workload_count = len(run_benchmark_qualification.ABSOLUTE_BENCHMARK_SUFFIXES)
+        self.assertEqual(len(raw_reports), workload_count * 2)
+        self.assertEqual(len(warmup_reports), workload_count)
+        self.assertEqual(run_process.call_count, workload_count * 3)
+        for benchmark_suffix in run_benchmark_qualification.ABSOLUTE_BENCHMARK_SUFFIXES:
+            matching_calls = [
+                call
+                for call in run_process.call_args_list
+                if call.args[3] == benchmark_suffix
+            ]
+            self.assertEqual(len(matching_calls), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

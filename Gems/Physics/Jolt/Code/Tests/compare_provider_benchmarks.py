@@ -705,13 +705,20 @@ def main() -> int:
 
         for provider in PROVIDERS:
             cv = coefficient_of_variation(provider_samples[provider])
-            if cv > arguments.maximum_cv:
+            if cv <= arguments.maximum_cv:
+                continue
+            if provider == "Jolt":
                 print(
                     f"  {workload['label']} {provider} CV {cv:.3%} exceeds "
                     f"{arguments.maximum_cv:.3%}.",
                     file=sys.stderr,
                 )
                 failed = True
+                continue
+            print(
+                f"  Diagnostic: {workload['label']} {provider} CV {cv:.3%} exceeds "
+                f"{arguments.maximum_cv:.3%}."
+            )
 
         if not workload.get("ratio_gate", True):
             print(f"  Contextual comparison: {workload['ratio_gate_reason']}")
@@ -722,6 +729,10 @@ def main() -> int:
         repetition_p95_ratio = (
             percentile(provider_samples["Jolt"], 0.95)
             / percentile(reference_samples, 0.95)
+        )
+        conservative_repetition_ratio = (
+            percentile(provider_samples["Jolt"], 0.95)
+            / percentile(reference_samples, 0.05)
         )
         _, bootstrap_upper = bootstrap_median_ratio_interval(
             provider_samples["Jolt"],
@@ -739,6 +750,15 @@ def main() -> int:
             print(
                 f"  {workload['label']} repetition p95 ratio {repetition_p95_ratio:.3f} exceeds "
                 f"{arguments.maximum_repetition_p95_ratio:.3f} against {arguments.gate_provider}.",
+                file=sys.stderr,
+            )
+            failed = True
+        if conservative_repetition_ratio > arguments.maximum_repetition_p95_ratio:
+            print(
+                f"  {workload['label']} conservative repetition ratio "
+                f"{conservative_repetition_ratio:.3f} exceeds "
+                f"{arguments.maximum_repetition_p95_ratio:.3f} against "
+                f"{arguments.gate_provider}.",
                 file=sys.stderr,
             )
             failed = True
