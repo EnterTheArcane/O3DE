@@ -338,7 +338,7 @@ def run_events_and_filters():
                 ),
             )
 
-        collision_start = create_world_position(jolt, 0.0, 0.0, 6.0)
+        collision_start = create_world_position(jolt, 0.0, 0.0, 1.75)
         recorder.capture(
             "contact trajectory started",
             lambda: jolt.JoltRigidBodyRequestBus(
@@ -354,6 +354,11 @@ def run_events_and_filters():
                 body_id,
                 math.Vector3(0.0, 0.0, -5.0),
                 math.Vector3(0.0, 0.0, 0.0),
+            )
+            and jolt.JoltRigidBodyRequestBus(
+                bus.Event,
+                "ActivateBody",
+                body_id,
             ),
         )
 
