@@ -681,15 +681,18 @@ destruction and recreation is a different lifecycle workload and measurably cont
 preserves all 30 samples and all 30 measured 8,192-frame windows. No sample is trimmed or discarded, and warmup reports are retained and
 hashed without entering measured results.
 
-Full qualification uses a 2.0-second minimum measurement window. A 0.05-second probe admitted isolated scheduler interruptions into an
-entire repetition and produced a 5.10% raycast CV; the same 30 fresh-process repetitions measured 0.77% CV at 0.5 seconds. Tail workloads
-retain every raw frame instead of relying on a longer aggregate interval. Earlier 4,096-frame testing reduced the measured PhysX
-four-worker tail CV from 9.03% at 1,024 frames to 1.40%; current qualification doubles the retained window to 8,192 frames.
+Full qualification uses a 2.0-second default minimum measurement window. The four-worker 1,024-ray batch uses 5.0 seconds for Jolt,
+Box3D, and PhysX because two complete Windows MSVC batches at 2.0 seconds measured 6.66% and 10.04% CV, while a focused 30-process
+5.0-second batch retained every sample at 1.49% CV. The per-workload override is part of the signed workload contract and benchmark
+artifact metadata; it changes neither query semantics nor provider parity. A 0.05-second probe admitted isolated scheduler interruptions
+into an entire scalar-raycast repetition and produced a 5.10% CV; the same 30 fresh-process repetitions measured 0.77% CV at 0.5 seconds.
+Tail workloads retain every raw frame instead of relying on a longer aggregate interval. Earlier 4,096-frame testing reduced the measured
+PhysX four-worker tail CV from 9.03% at 1,024 frames to 1.40%; current qualification doubles the retained window to 8,192 frames.
 
-Matched-provider batches fail directly; the runner never retries a provider comparison until it passes. A Jolt-only absolute workload
-may receive one complete-batch retry when its recorded context or 5% CV gate rejects the first batch. The rejected warmup, all 30 samples,
-logs, and reason are retained together. The replacement begins with a new warmup and captures all 30 samples again. A second rejection
-fails qualification. This policy handles bounded host interruptions without choosing or deleting individual samples.
+Each Jolt matched or absolute workload may receive one complete-batch retry when its recorded context or 5% CV gate rejects the first
+batch. The rejected warmup, all 30 samples, logs, and reason are retained together. The replacement begins with a new warmup and captures
+all 30 samples again. A second rejection fails qualification. Box3D and PhysX matched results are never retried based on comparative
+performance. This policy handles bounded host interruptions without choosing or deleting individual samples.
 
 The qualification runner uses nested compact physical-core sets so the 1-, 4-, and 8-worker results differ only by adding cores. On
 Windows, the cores are ordered by the operating system's efficiency class and then processor number, so selection prefers the compact

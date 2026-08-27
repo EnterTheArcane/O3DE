@@ -9,6 +9,7 @@
 
 import argparse
 import ctypes
+import hashlib
 import json
 import math
 import os
@@ -23,6 +24,8 @@ from pathlib import Path
 from typing import Iterator, Sequence
 
 import compare_provider_benchmarks
+import prepare_benchmark_artifact
+import validate_jolt_benchmarks
 
 
 ABSOLUTE_BENCHMARK_SUFFIXES = (
@@ -43,6 +46,9 @@ REVIEW_REPETITION_COUNT = 3
 FULL_MINIMUM_TIME_SECONDS = 2.0
 REVIEW_MINIMUM_TIME_SECONDS = 0.05
 FULL_MAXIMUM_CV = 0.05
+FULL_MAXIMUM_CAPABILITY_NANOSECONDS = 3.0
+FULL_MAXIMUM_CAPABILITY_OPERATION_RATIO = 0.02
+FULL_MATCHED_CAPTURE_ATTEMPTS = 2
 FULL_ABSOLUTE_CAPTURE_ATTEMPTS = 2
 
 
@@ -58,6 +64,7 @@ class Workload:
     label: str
     suffix: str
     worker_count: int
+    minimum_time_seconds: float = 0.0
 
 
 PROVIDERS = (
@@ -73,6 +80,7 @@ def matched_workloads() -> tuple[Workload, ...]:
             label=workload["label"],
             suffix=workload["suffix"],
             worker_count=int(workload["exact"]["Workers"]),
+            minimum_time_seconds=float(workload.get("minimum_time_seconds", 0.0)),
         )
         for workload in (*compare_provider_benchmarks.WORKLOADS, *compare_provider_benchmarks.TAIL_WORKLOADS)
     )
@@ -85,6 +93,21 @@ def review_workloads() -> tuple[Workload, ...]:
 
 def describe_workload_filter(provider: str, workloads: Sequence[Workload]) -> str:
     return f"{provider}/({'|'.join(workload.suffix for workload in workloads)})"
+
+
+def build_minimum_time_policy(
+    workloads: Sequence[Workload],
+    default_seconds: float,
+) -> dict:
+    overrides = {
+        workload.suffix: workload.minimum_time_seconds
+        for workload in workloads
+        if workload.minimum_time_seconds > default_seconds
+    }
+    return {
+        "default_seconds": default_seconds,
+        "overrides_seconds": overrides,
+    }
 
 
 def select_compact_processors(processors: Sequence[int], count: int) -> tuple[int, ...]:
@@ -343,6 +366,7 @@ def prepare_artifact(
     affinity_description: str,
     benchmark_filter: str,
     minimum_time: float,
+    minimum_time_policy: dict,
     repetitions: int,
 ) -> None:
     response_arguments = []
@@ -378,6 +402,8 @@ def prepare_artifact(
         benchmark_filter,
         "--minimum-time",
         str(minimum_time),
+        "--minimum-time-policy",
+        json.dumps(minimum_time_policy, sort_keys=True, separators=(",", ":")),
         "--repetitions",
         str(repetitions),
         "--reindex-repetitions",
@@ -420,6 +446,149 @@ def validate_smoke_report(
             raise ValueError(f"{name} does not contain {repetitions} process-isolated repetitions.")
 
 
+def validate_reusable_report(
+    report_path: Path,
+    engine_root: Path,
+    runner: Path,
+    provider: Provider,
+    module: Path,
+    runtime_dependency: Path | None,
+    compiler_id: str,
+    compiler_version: str,
+    affinity_description: str,
+    benchmark_filter: str,
+    minimum_time: float,
+    minimum_time_policy: dict,
+    repetitions: int,
+    expected_names: Sequence[str],
+) -> None:
+    report = compare_provider_benchmarks.load_report(report_path)
+    metadata = report.get("qualification", {})
+    source_revision = prepare_benchmark_artifact.run_git(
+        engine_root,
+        "rev-parse",
+        "HEAD",
+    ).decode("utf-8").strip()
+    source_state, _ = prepare_benchmark_artifact.get_source_state(engine_root)
+    expected_metadata = {
+        "benchmark_filter": benchmark_filter,
+        "binary_sha256": prepare_benchmark_artifact.sha256_file(module),
+        "build_configuration": "Release",
+        "compiler_id": compiler_id,
+        "compiler_version": compiler_version,
+        "cpu_affinity_policy": affinity_description,
+        "minimum_time": minimum_time,
+        "minimum_time_policy": minimum_time_policy,
+        "provider": provider.name,
+        "raw_samples": True,
+        "reindexed_repetitions": True,
+        "repetitions": repetitions,
+        "runner_sha256": prepare_benchmark_artifact.sha256_file(runner),
+        "source_revision": source_revision,
+        "source_state_sha256": hashlib.sha256(source_state).hexdigest(),
+        "workload_signature": compare_provider_benchmarks.workload_signature(),
+    }
+    for field, expected_value in expected_metadata.items():
+        if metadata.get(field) != expected_value:
+            raise ValueError(
+                f"The reusable {provider.name} benchmark report has stale {field}: "
+                f"expected {expected_value!r}, found {metadata.get(field)!r}."
+            )
+
+    expected_dependencies = []
+    if runtime_dependency:
+        expected_dependencies.append(
+            {
+                "path": str(runtime_dependency.resolve()),
+                "sha256": prepare_benchmark_artifact.sha256_file(runtime_dependency),
+            }
+        )
+    reported_dependencies = [
+        {
+            "path": dependency.get("path"),
+            "sha256": dependency.get("sha256"),
+        }
+        for dependency in metadata.get("runtime_dependencies", [])
+        if isinstance(dependency, dict)
+    ]
+    if reported_dependencies != expected_dependencies:
+        raise ValueError(f"The reusable {provider.name} benchmark runtime dependencies are stale.")
+
+    expected_raw_report_count = len(expected_names) * repetitions
+    if len(metadata.get("raw_report_sha256", [])) != expected_raw_report_count:
+        raise ValueError(
+            f"The reusable {provider.name} benchmark report has an incomplete raw sample set."
+        )
+    if len(metadata.get("warmup_report_sha256", [])) != len(expected_names):
+        raise ValueError(
+            f"The reusable {provider.name} benchmark report has an incomplete warmup set."
+        )
+    validate_smoke_report(report_path, repetitions, expected_names)
+
+
+def validate_matched_report_quality(
+    report_path: Path,
+    provider: Provider,
+    workloads: Sequence[Workload],
+    repetitions: int,
+    maximum_cv: float | None,
+) -> None:
+    report = compare_provider_benchmarks.load_report(report_path)
+    workload_specifications = {
+        workload["suffix"]: workload
+        for workload in (
+            *compare_provider_benchmarks.WORKLOADS,
+            *compare_provider_benchmarks.TAIL_WORKLOADS,
+        )
+    }
+    tail_workloads = {
+        workload["suffix"]
+        for workload in compare_provider_benchmarks.TAIL_WORKLOADS
+    }
+    for workload in workloads:
+        specification = workload_specifications.get(workload.suffix)
+        if not specification:
+            raise ValueError(f"The reusable benchmark workload {workload.suffix!r} is unknown.")
+
+        name = f"{provider.name}/{workload.suffix}"
+        if workload.suffix in tail_workloads:
+            _, samples, _ = compare_provider_benchmarks.load_tail_samples(
+                report,
+                provider.name,
+                name,
+                specification,
+                repetitions,
+            )
+        else:
+            samples, _ = compare_provider_benchmarks.load_samples(
+                report,
+                provider.name,
+                name,
+                specification,
+                repetitions,
+            )
+        if maximum_cv is not None:
+            cv = compare_provider_benchmarks.coefficient_of_variation(samples)
+            if cv > maximum_cv:
+                raise ValueError(f"{name} CV {cv:.3%} exceeds {maximum_cv:.3%}.")
+
+
+def validate_absolute_report_quality(
+    report_path: Path,
+    repetitions: int,
+) -> None:
+    report = compare_provider_benchmarks.load_report(report_path)
+    errors = validate_jolt_benchmarks.validate_report(
+        report,
+        repetitions,
+        FULL_MAXIMUM_CAPABILITY_NANOSECONDS,
+        FULL_MAXIMUM_CAPABILITY_OPERATION_RATIO,
+        FULL_MAXIMUM_CV,
+    )
+    if errors:
+        raise ValueError(" ".join(errors))
+
+
 def resolve_provider_files(binary_directory: Path, provider: Provider) -> tuple[Path, Path | None]:
     module = binary_directory / provider.module_name
     if platform.system() != "Windows":
@@ -446,37 +615,77 @@ def capture_matched_provider(
     output_directory: Path,
     affinity_policy: dict[int, tuple[int, ...]],
     timeout_seconds: int,
+    maximum_cv: float | None = None,
+    maximum_attempts: int = 1,
 ) -> tuple[list[Path], list[Path]]:
+    if maximum_attempts <= 0:
+        raise ValueError("The maximum capture attempt count must be positive.")
+
     module, _ = resolve_provider_files(binary_directory, provider)
     raw_reports = []
     warmup_reports = []
     for workload in workloads:
+        workload_minimum_time = max(minimum_time, workload.minimum_time_seconds)
         workload_name = safe_name(workload.label)
         warmup_path = output_directory / provider.name / f"{workload_name}-warmup.json"
-        run_benchmark_process(
-            runner,
-            module,
-            provider.name,
-            workload.suffix,
-            minimum_time,
-            warmup_path,
-            affinity_policy[workload.worker_count],
-            timeout_seconds,
-        )
-        warmup_reports.append(warmup_path)
-        for repetition in range(repetitions):
-            raw_path = output_directory / provider.name / f"{workload_name}-{repetition:02d}.json"
+        workload_reports = [
+            output_directory / provider.name / f"{workload_name}-{repetition:02d}.json"
+            for repetition in range(repetitions)
+        ]
+        for attempt in range(maximum_attempts):
             run_benchmark_process(
                 runner,
                 module,
                 provider.name,
                 workload.suffix,
-                minimum_time,
-                raw_path,
+                workload_minimum_time,
+                warmup_path,
                 affinity_policy[workload.worker_count],
                 timeout_seconds,
             )
-            raw_reports.append(raw_path)
+            for raw_path in workload_reports:
+                run_benchmark_process(
+                    runner,
+                    module,
+                    provider.name,
+                    workload.suffix,
+                    workload_minimum_time,
+                    raw_path,
+                    affinity_policy[workload.worker_count],
+                    timeout_seconds,
+                )
+
+            rejection_reason = ""
+            if maximum_cv is not None:
+                rejection_reason = validate_absolute_capture_batch(
+                    workload_reports,
+                    warmup_path,
+                    maximum_cv,
+                )
+            if not rejection_reason:
+                break
+            if attempt + 1 == maximum_attempts:
+                raise RuntimeError(
+                    f"{provider.name}/{workload.suffix} remained invalid after "
+                    f"{maximum_attempts} complete capture attempts: {rejection_reason}"
+                )
+            rejected_directory = next_rejected_capture_directory(
+                output_directory / provider.name / "rejected-matched",
+                workload_name,
+            )
+            archive_capture_batch(
+                (warmup_path, *workload_reports),
+                rejected_directory,
+                rejection_reason,
+            )
+            print(
+                f"Retrying {provider.name}/{workload.suffix} as a complete batch: "
+                f"{rejection_reason}",
+                file=sys.stderr,
+            )
+
+        warmup_reports.append(warmup_path)
+        raw_reports.extend(workload_reports)
     return raw_reports, warmup_reports
 
 
@@ -542,11 +751,9 @@ def capture_absolute_jolt(
                     f"{provider.name}/{benchmark_suffix} remained invalid after "
                     f"{maximum_attempts} complete capture attempts: {rejection_reason}"
                 )
-            rejected_directory = (
-                output_directory
-                / provider.name
-                / "rejected-absolute"
-                / f"{benchmark_name}-attempt-{attempt + 1:02d}"
+            rejected_directory = next_rejected_capture_directory(
+                output_directory / provider.name / "rejected-absolute",
+                benchmark_name,
             )
             archive_capture_batch(
                 (warmup_path, *workload_reports),
@@ -632,6 +839,39 @@ def archive_capture_batch(
             log_path.replace(rejected_directory / log_path.name)
 
 
+def next_rejected_capture_directory(
+    output_directory: Path,
+    benchmark_name: str,
+) -> Path:
+    attempt = 1
+    while True:
+        rejected_directory = output_directory / f"{benchmark_name}-attempt-{attempt:02d}"
+        if not rejected_directory.exists():
+            return rejected_directory
+        attempt += 1
+
+
+def archive_rejected_checkpoint(
+    report_path: Path,
+    output_directory: Path,
+    rejection_reason: str,
+) -> None:
+    rejected_directory = next_rejected_capture_directory(
+        output_directory,
+        safe_name(report_path.stem),
+    )
+    rejected_directory.mkdir(parents=True, exist_ok=False)
+    (rejected_directory / "reason.txt").write_text(
+        rejection_reason + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    report_path.replace(rejected_directory / report_path.name)
+    response_path = report_path.with_suffix(".rsp")
+    if response_path.is_file():
+        response_path.replace(rejected_directory / response_path.name)
+
+
 def parse_arguments(arguments: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("review", "full"))
@@ -641,6 +881,7 @@ def parse_arguments(arguments: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--compiler-id", required=True)
     parser.add_argument("--compiler-version", required=True)
     parser.add_argument("--timeout-seconds", type=int, default=1_800)
+    parser.add_argument("--resume", action="store_true")
     return parser.parse_args(arguments)
 
 
@@ -657,7 +898,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
     except ValueError:
         print(f"Benchmark output must remain beneath {build_root}.", file=sys.stderr)
         return 1
-    if output_directory.exists() and any(output_directory.iterdir()):
+    if output_directory.exists() and any(output_directory.iterdir()) and not options.resume:
         print(f"Benchmark output directory is not empty: {output_directory}", file=sys.stderr)
         return 1
     output_directory.mkdir(parents=True, exist_ok=True)
@@ -682,9 +923,58 @@ def main(arguments: Sequence[str] | None = None) -> int:
         workloads = matched_workloads()
         providers = PROVIDERS
 
+    matched_minimum_time_policy = build_minimum_time_policy(workloads, minimum_time)
+
     qualified_reports = {}
     for provider in providers:
         module, runtime_dependency = resolve_provider_files(binary_directory, provider)
+        qualified_report = output_directory / f"{provider.name}-matched-qualified.json"
+        expected_names = tuple(f"{provider.name}/{workload.suffix}" for workload in workloads)
+        maximum_cv = None
+        maximum_attempts = 1
+        if options.mode == "full" and provider.name == "Jolt":
+            maximum_cv = FULL_MAXIMUM_CV
+            maximum_attempts = FULL_MATCHED_CAPTURE_ATTEMPTS
+        if options.resume and qualified_report.is_file():
+            try:
+                validate_reusable_report(
+                    qualified_report,
+                    engine_root,
+                    runner,
+                    provider,
+                    module,
+                    runtime_dependency,
+                    options.compiler_id,
+                    options.compiler_version,
+                    affinity_description,
+                    describe_workload_filter(provider.name, workloads),
+                    minimum_time,
+                    matched_minimum_time_policy,
+                    repetitions,
+                    expected_names,
+                )
+                validate_matched_report_quality(
+                    qualified_report,
+                    provider,
+                    workloads,
+                    repetitions,
+                    maximum_cv,
+                )
+            except (OSError, ValueError) as error:
+                archive_rejected_checkpoint(
+                    qualified_report,
+                    output_directory / "rejected-checkpoints",
+                    str(error),
+                )
+                print(
+                    f"Recapturing rejected matched {provider.name} benchmark evidence: {error}",
+                    file=sys.stderr,
+                )
+            else:
+                print(f"Reusing qualified matched {provider.name} benchmark evidence.", file=sys.stderr)
+                qualified_reports[provider.name] = qualified_report
+                continue
+
         raw_reports, warmup_reports = capture_matched_provider(
             provider,
             workloads,
@@ -695,8 +985,9 @@ def main(arguments: Sequence[str] | None = None) -> int:
             output_directory / "raw-matched",
             affinity_policy,
             options.timeout_seconds,
+            maximum_cv,
+            maximum_attempts,
         )
-        qualified_report = output_directory / f"{provider.name}-matched-qualified.json"
         prepare_artifact(
             scripts_directory,
             engine_root,
@@ -712,42 +1003,119 @@ def main(arguments: Sequence[str] | None = None) -> int:
             affinity_description,
             describe_workload_filter(provider.name, workloads),
             minimum_time,
+            matched_minimum_time_policy,
             repetitions,
         )
         qualified_reports[provider.name] = qualified_report
 
+    if options.mode == "full":
+        subprocess.run(
+            (
+                sys.executable,
+                str(scripts_directory / "compare_provider_benchmarks.py"),
+                str(qualified_reports["Jolt"]),
+                str(qualified_reports["Box3D"]),
+                str(qualified_reports["PhysX"]),
+                "--gate-provider",
+                "PhysX",
+                "--repetitions",
+                str(repetitions),
+                "--maximum-median-ratio",
+                "1.0",
+                "--maximum-bootstrap-ratio",
+                "1.05",
+                "--maximum-repetition-p95-ratio",
+                "1.10",
+                "--maximum-frame-tail-ratio",
+                "1.10",
+                "--maximum-cv",
+                str(FULL_MAXIMUM_CV),
+            ),
+            cwd=engine_root,
+            check=True,
+        )
+
     jolt = PROVIDERS[0]
     jolt_module, jolt_runtime = resolve_provider_files(binary_directory, jolt)
-    absolute_raw, absolute_warmup = capture_absolute_jolt(
-        jolt,
-        repetitions,
-        minimum_time,
-        runner,
-        binary_directory,
-        output_directory / "raw-absolute",
-        affinity_policy,
-        options.timeout_seconds,
-        FULL_MAXIMUM_CV if options.mode == "full" else None,
-        FULL_ABSOLUTE_CAPTURE_ATTEMPTS if options.mode == "full" else 1,
-    )
     absolute_report = output_directory / "Jolt-absolute-qualified.json"
-    prepare_artifact(
-        scripts_directory,
-        engine_root,
-        runner,
-        jolt,
-        jolt_module,
-        jolt_runtime,
-        absolute_raw,
-        absolute_warmup,
-        absolute_report,
-        options.compiler_id,
-        options.compiler_version,
-        affinity_description,
-        f"Jolt/{ABSOLUTE_FILTER_SUFFIX}",
-        minimum_time,
-        repetitions,
-    )
+    absolute_names = tuple(f"Jolt/{suffix}" for suffix in ABSOLUTE_BENCHMARK_SUFFIXES)
+    absolute_minimum_time_policy = build_minimum_time_policy((), minimum_time)
+    if options.resume and absolute_report.is_file():
+        try:
+            validate_reusable_report(
+                absolute_report,
+                engine_root,
+                runner,
+                jolt,
+                jolt_module,
+                jolt_runtime,
+                options.compiler_id,
+                options.compiler_version,
+                affinity_description,
+                f"Jolt/{ABSOLUTE_FILTER_SUFFIX}",
+                minimum_time,
+                absolute_minimum_time_policy,
+                repetitions,
+                absolute_names,
+            )
+            if options.mode == "full":
+                validate_absolute_report_quality(absolute_report, repetitions)
+        except (OSError, ValueError) as error:
+            archive_rejected_checkpoint(
+                absolute_report,
+                output_directory / "rejected-checkpoints",
+                str(error),
+            )
+            print(
+                f"Recapturing rejected absolute Jolt benchmark evidence: {error}",
+                file=sys.stderr,
+            )
+        else:
+            print("Reusing qualified absolute Jolt benchmark evidence.", file=sys.stderr)
+            if options.mode == "review":
+                validate_smoke_report(
+                    qualified_reports["Jolt"],
+                    repetitions,
+                    tuple(f"Jolt/{workload.suffix}" for workload in workloads),
+                )
+                validate_smoke_report(
+                    absolute_report,
+                    repetitions,
+                    absolute_names,
+                )
+            return 0
+
+    if not absolute_report.is_file():
+        absolute_raw, absolute_warmup = capture_absolute_jolt(
+            jolt,
+            repetitions,
+            minimum_time,
+            runner,
+            binary_directory,
+            output_directory / "raw-absolute",
+            affinity_policy,
+            options.timeout_seconds,
+            FULL_MAXIMUM_CV if options.mode == "full" else None,
+            FULL_ABSOLUTE_CAPTURE_ATTEMPTS if options.mode == "full" else 1,
+        )
+        prepare_artifact(
+            scripts_directory,
+            engine_root,
+            runner,
+            jolt,
+            jolt_module,
+            jolt_runtime,
+            absolute_raw,
+            absolute_warmup,
+            absolute_report,
+            options.compiler_id,
+            options.compiler_version,
+            affinity_description,
+            f"Jolt/{ABSOLUTE_FILTER_SUFFIX}",
+            minimum_time,
+            absolute_minimum_time_policy,
+            repetitions,
+        )
 
     if options.mode == "review":
         validate_smoke_report(
@@ -758,35 +1126,9 @@ def main(arguments: Sequence[str] | None = None) -> int:
         validate_smoke_report(
             absolute_report,
             repetitions,
-            tuple(f"Jolt/{suffix}" for suffix in ABSOLUTE_BENCHMARK_SUFFIXES),
+            absolute_names,
         )
         return 0
-
-    subprocess.run(
-        (
-            sys.executable,
-            str(scripts_directory / "compare_provider_benchmarks.py"),
-            str(qualified_reports["Jolt"]),
-            str(qualified_reports["Box3D"]),
-            str(qualified_reports["PhysX"]),
-            "--gate-provider",
-            "PhysX",
-            "--repetitions",
-            str(repetitions),
-            "--maximum-median-ratio",
-            "1.0",
-            "--maximum-bootstrap-ratio",
-            "1.05",
-            "--maximum-repetition-p95-ratio",
-            "1.10",
-            "--maximum-frame-tail-ratio",
-            "1.10",
-            "--maximum-cv",
-            "0.05",
-        ),
-        cwd=engine_root,
-        check=True,
-    )
     subprocess.run(
         (
             sys.executable,
@@ -795,11 +1137,11 @@ def main(arguments: Sequence[str] | None = None) -> int:
             "--repetitions",
             str(repetitions),
             "--maximum-capability-nanoseconds",
-            "3.0",
+            str(FULL_MAXIMUM_CAPABILITY_NANOSECONDS),
             "--maximum-capability-operation-ratio",
-            "0.02",
+            str(FULL_MAXIMUM_CAPABILITY_OPERATION_RATIO),
             "--maximum-cv",
-            "0.05",
+            str(FULL_MAXIMUM_CV),
         ),
         cwd=engine_root,
         check=True,

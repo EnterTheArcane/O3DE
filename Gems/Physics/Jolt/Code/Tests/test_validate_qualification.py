@@ -239,6 +239,7 @@ class QualificationValidationTests(unittest.TestCase):
             benchmark_command = commands["native-benchmark-qualification"]
             self.assertIn("run_benchmark_qualification.py", " ".join(benchmark_command))
             self.assertIn("full", benchmark_command)
+            self.assertIn("--resume", benchmark_command)
             if jolt_qualification.platform.system() == "Windows":
                 self.assertIn("application-benchmark", commands)
                 self.assertIn("Release", commands["application-benchmark"])

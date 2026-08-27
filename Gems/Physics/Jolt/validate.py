@@ -1479,6 +1479,7 @@ def add_performance_qualification(
             compiler_metadata[0],
             "--compiler-version",
             compiler_metadata[1],
+            "--resume",
         ),
         172_800,
         environment,

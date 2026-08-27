@@ -8,6 +8,7 @@
 import argparse
 import hashlib
 import json
+import math
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -173,6 +174,7 @@ def main() -> int:
     parser.add_argument("--cpu-affinity-policy", required=True)
     parser.add_argument("--benchmark-filter", required=True)
     parser.add_argument("--minimum-time", type=float, required=True)
+    parser.add_argument("--minimum-time-policy", required=True)
     parser.add_argument("--repetitions", type=int, default=30)
     parser.add_argument("--additional-raw-report", action="append", type=Path, default=[])
     parser.add_argument("--runtime-dependency", action="append", type=Path, default=[])
@@ -217,6 +219,35 @@ def main() -> int:
         return 1
 
     try:
+        minimum_time_policy = json.loads(arguments.minimum_time_policy)
+        raw_default_seconds = minimum_time_policy["default_seconds"]
+        if isinstance(raw_default_seconds, bool):
+            raise ValueError
+        default_seconds = float(raw_default_seconds)
+        overrides_seconds = minimum_time_policy["overrides_seconds"]
+        if (
+            not isinstance(minimum_time_policy, dict)
+            or set(minimum_time_policy) != {"default_seconds", "overrides_seconds"}
+            or not isinstance(overrides_seconds, dict)
+            or default_seconds != arguments.minimum_time
+            or not math.isfinite(default_seconds)
+            or default_seconds <= 0.0
+            or any(
+                not isinstance(suffix, str)
+                or not suffix
+                or not isinstance(seconds, (float, int))
+                or isinstance(seconds, bool)
+                or not math.isfinite(seconds)
+                or seconds <= default_seconds
+                for suffix, seconds in overrides_seconds.items()
+            )
+        ):
+            raise ValueError
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+        print("The minimum-time policy is invalid or does not match the default minimum time.", file=sys.stderr)
+        return 1
+
+    try:
         report = load_raw_reports(
             raw_reports,
             arguments.reindex_repetitions,
@@ -255,6 +286,7 @@ def main() -> int:
         "cpu_affinity_policy": arguments.cpu_affinity_policy,
         "generated_utc": datetime.now(timezone.utc).isoformat(),
         "minimum_time": arguments.minimum_time,
+        "minimum_time_policy": minimum_time_policy,
         "provider": arguments.provider,
         "raw_samples": True,
         "raw_report_sha256": [sha256_file(raw_report) for raw_report in raw_reports],

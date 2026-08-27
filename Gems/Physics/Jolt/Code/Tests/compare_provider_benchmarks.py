@@ -259,6 +259,7 @@ WORKLOADS = (
     {
         "label": "Batch raycast 1024/1024",
         "suffix": "Query/RaycastClosestBatchGrid/1024/1024/4/real_time",
+        "minimum_time_seconds": 5.0,
         "exact": {
             "Obstacles": 1024,
             "QualityValid": 1,
@@ -375,6 +376,7 @@ def validate_context(reports: dict[str, dict]) -> None:
         "compiler_version",
         "cpu_affinity_policy",
         "minimum_time",
+        "minimum_time_policy",
         "provider",
         "raw_samples",
         "repetitions",
@@ -400,6 +402,7 @@ def validate_context(reports: dict[str, dict]) -> None:
             "compiler_version",
             "cpu_affinity_policy",
             "minimum_time",
+            "minimum_time_policy",
             "raw_samples",
             "repetitions",
             "runner_sha256",

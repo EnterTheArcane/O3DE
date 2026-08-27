@@ -75,6 +75,12 @@ def make_report(provider: str, time_microseconds: float) -> dict:
             "compiler_version": "22.1.8",
             "cpu_affinity_policy": "physical-core-group-0",
             "minimum_time": 0.05,
+            "minimum_time_policy": {
+                "default_seconds": 0.05,
+                "overrides_seconds": {
+                    "Query/RaycastClosestBatchGrid/1024/1024/4/real_time": 5.0,
+                },
+            },
             "provider": provider,
             "raw_samples": True,
             "repetitions": 30,
@@ -343,6 +349,15 @@ class CompareProviderBenchmarksTests(unittest.TestCase):
             "PhysX": make_report("PhysX", 100.0),
         }
         reports["Jolt"]["qualification"]["workload_signature"] = "stale"
+        self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_mismatched_minimum_time_policy(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["Box3D"]["qualification"]["minimum_time_policy"]["overrides_seconds"] = {}
         self.assertEqual(run_comparison(reports), 1)
 
     def test_rejects_mismatched_source_revision(self):

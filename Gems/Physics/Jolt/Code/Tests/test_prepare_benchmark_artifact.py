@@ -73,6 +73,7 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
         reindex_repetitions: bool = False,
         repetitions: int = 30,
         use_response_file: bool = False,
+        minimum_time_policy: str = '{"default_seconds":0.05,"overrides_seconds":{}}',
     ) -> int:
         arguments = [
             "prepare_benchmark_artifact.py",
@@ -95,6 +96,8 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
             "Jolt/Matched",
             "--minimum-time",
             "0.05",
+            "--minimum-time-policy",
+            minimum_time_policy,
             "--repetitions",
             str(repetitions),
         ]
@@ -144,6 +147,10 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
             self.assertEqual(qualification["binary_sha256"], prepare_benchmark_artifact.sha256_file(binary))
             self.assertEqual(qualification["runner_sha256"], prepare_benchmark_artifact.sha256_file(runner))
             self.assertEqual(
+                qualification["minimum_time_policy"],
+                {"default_seconds": 0.05, "overrides_seconds": {}},
+            )
+            self.assertEqual(
                 qualification["runtime_dependencies"],
                 [
                     {
@@ -181,6 +188,28 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
                 0,
             )
             self.assertTrue(output_report.is_file())
+
+    def test_rejects_a_minimum_time_policy_that_does_not_match_the_default(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source, binary, runner, raw_report, output_report = self.create_repository(root)
+            output_time = source.stat().st_mtime_ns + 1_000_000_000
+            os.utime(binary, ns=(output_time, output_time))
+            os.utime(runner, ns=(output_time, output_time))
+            os.utime(raw_report, ns=(output_time + 1, output_time + 1))
+
+            self.assertEqual(
+                self.run_prepare(
+                    root,
+                    binary,
+                    runner,
+                    raw_report,
+                    output_report,
+                    minimum_time_policy='{\"default_seconds\":2.0,\"overrides_seconds\":{}}',
+                ),
+                1,
+            )
+            self.assertFalse(output_report.exists())
 
     def test_rejects_binary_older_than_dirty_source(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
