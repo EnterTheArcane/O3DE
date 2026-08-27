@@ -478,6 +478,22 @@ def run_events_and_filters():
         while not all(received.values()) and time.monotonic() < deadline:
             general.idle_wait(0.01)
 
+        body_position = jolt.JoltRigidBodyRequestBus(
+            bus.Event,
+            "GetPosition",
+            body_id,
+        )
+        recorder.check(
+            "new contact established",
+            jolt.JoltWorldQueryRequestBus(
+                bus.Broadcast,
+                "WereBodiesInContact",
+                world_handle,
+                floor_body_handle,
+                body_handle,
+            ),
+            f"body z={body_position.z}",
+        )
         recorder.check("body movement event received", received["movement"])
         recorder.check("contact event received", received["contact"])
         handler.disconnect()
