@@ -892,6 +892,10 @@ ly_create_alias(
                 "-DLY_PROJECTS:STRING=",
                 commands["configure-installed-modular-engine"],
             )
+            self.assertIn(
+                "-DLY_DISABLE_TEST_MODULES=ON",
+                commands["configure-installed-modular-engine"],
+            )
             self.assertNotIn("--target", commands["build-installed-modular-engine"])
             self.assertIn("CORE", commands["install-modular-core"])
             self.assertIn(str(core_build_directory), commands["install-modular-core"])
@@ -902,7 +906,7 @@ ly_create_alias(
                 commands["configure-installed-modular-consumer"],
             )
             self.assertIn(
-                f"-DCMAKE_TRY_COMPILE_CONFIGURATION={jolt_qualification.get_cmake_configuration('Release')}",
+                "-DCMAKE_TRY_COMPILE_CONFIGURATION=Release",
                 commands["configure-installed-modular-consumer"],
             )
 

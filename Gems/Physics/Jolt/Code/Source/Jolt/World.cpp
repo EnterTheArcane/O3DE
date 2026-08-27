@@ -1903,7 +1903,7 @@ namespace Jolt
 
         [[nodiscard]]
         WorldPosition FromNativePosition(
-            const JPH::RVec3Arg position,
+            JPH::RVec3Arg position,
             const WorldPosition& origin)
         {
             return {
@@ -2793,7 +2793,7 @@ namespace Jolt
 
         [[nodiscard]]
         WorldPosition FromNativeConstraintPosition(
-            const JPH::RVec3Arg position,
+            JPH::RVec3Arg position,
             const JPH::EConstraintSpace space,
             const WorldPosition& origin)
         {
@@ -29673,7 +29673,7 @@ namespace Jolt
         public:
             TriangleCollector(
                 const JPH::AABox& bounds,
-                const JPH::RVec3Arg baseOffset,
+                JPH::RVec3Arg baseOffset,
                 const WorldPosition& origin,
                 const AZStd::span<TransformedTriangle> triangles,
                 const RuntimeImplementation& system)
@@ -31376,7 +31376,7 @@ namespace Jolt
         const JPH::CharacterVirtual* character,
         const JPH::BodyID& bodyId,
         const JPH::SubShapeID& subShapeId,
-        const JPH::RVec3Arg contactPosition,
+        JPH::RVec3Arg contactPosition,
         const JPH::Vec3Arg contactNormal,
         const JPH::Vec3Arg contactVelocity,
         const JPH::PhysicsMaterial* contactMaterial,
@@ -31544,7 +31544,7 @@ namespace Jolt
         const JPH::CharacterVirtual* character,
         const JPH::CharacterVirtual* otherCharacter,
         const JPH::SubShapeID& subShapeId,
-        const JPH::RVec3Arg contactPosition,
+        JPH::RVec3Arg contactPosition,
         const JPH::Vec3Arg contactNormal,
         const JPH::Vec3Arg contactVelocity,
         const JPH::PhysicsMaterial* contactMaterial,
@@ -31684,7 +31684,7 @@ namespace Jolt
     JPH::ValidateResult World::OnContactValidate(
         const JPH::Body& firstBody,
         const JPH::Body& secondBody,
-        const JPH::RVec3Arg baseOffset,
+        JPH::RVec3Arg baseOffset,
         const JPH::CollideShapeResult& collision)
     {
         if (!m_contactCallbacks.m_extension)

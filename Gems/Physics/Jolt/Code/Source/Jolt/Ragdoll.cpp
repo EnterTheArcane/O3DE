@@ -83,7 +83,7 @@ namespace Jolt
 
         [[nodiscard]]
         WorldPosition FromRagdollNativePosition(
-            const JPH::RVec3Arg position,
+            JPH::RVec3Arg position,
             const WorldPosition& origin)
         {
             return {

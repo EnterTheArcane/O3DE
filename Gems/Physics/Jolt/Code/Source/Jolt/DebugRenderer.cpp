@@ -215,7 +215,7 @@ namespace Jolt
 
         [[nodiscard]]
         WorldPosition FromNativePosition(
-            const JPH::RVec3Arg position,
+            JPH::RVec3Arg position,
             const WorldPosition& origin)
         {
             return {
@@ -639,8 +639,8 @@ namespace Jolt
     }
 
     void DebugRenderer::DrawLine(
-        const JPH::RVec3Arg start,
-        const JPH::RVec3Arg end,
+        JPH::RVec3Arg start,
+        JPH::RVec3Arg end,
         const JPH::ColorArg color)
     {
         AZ_Assert(m_renderer || m_capture, "No Jolt debug renderer is active.");
@@ -662,9 +662,9 @@ namespace Jolt
     }
 
     void DebugRenderer::DrawTriangle(
-        const JPH::RVec3Arg first,
-        const JPH::RVec3Arg second,
-        const JPH::RVec3Arg third,
+        JPH::RVec3Arg first,
+        JPH::RVec3Arg second,
+        JPH::RVec3Arg third,
         const JPH::ColorArg color,
         const ECastShadow castShadow)
     {
@@ -693,7 +693,7 @@ namespace Jolt
     }
 
     void DebugRenderer::DrawText3D(
-        const JPH::RVec3Arg position,
+        JPH::RVec3Arg position,
         const JPH::string_view& text,
         const JPH::ColorArg color,
         const float height)
