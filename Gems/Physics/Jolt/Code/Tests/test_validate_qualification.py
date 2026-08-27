@@ -1132,6 +1132,9 @@ ly_create_alias(
             {variant.build_directory_name for variant in variants.values()},
             {"ca", "cd", "cg", "cm", "cmo", "cn", "cu", "mmo", "mn", "mu"},
         )
+        for variant in variants.values():
+            self.assertIn("LY_DISABLE_TEST_MODULES=OFF", variant.definitions)
+
         self.assertEqual(variants["clang-unity-modular"].preset, "windows-ninja")
         self.assertIn(
             "CMAKE_CXX_COMPILER=D:/LLVM/22.1.8/bin/clang-cl.exe",
@@ -1199,6 +1202,7 @@ ly_create_alias(
         self.assertTrue(variants)
         for variant in variants:
             self.assertEqual(variant.preset, "linux-ninja")
+            self.assertIn("LY_DISABLE_TEST_MODULES=OFF", variant.definitions)
             self.assertIn("CMAKE_C_COMPILER=clang", variant.definitions)
             self.assertIn("CMAKE_CXX_COMPILER=clang++", variant.definitions)
 

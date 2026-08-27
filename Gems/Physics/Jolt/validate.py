@@ -1912,7 +1912,10 @@ def add_installed_consumer(
 def windows_full_matrix(
     clang_root: Path = Path("D:/LLVM/22.1.8"),
 ) -> tuple[MatrixVariant, ...]:
-    common = ("LY_PROJECTS=AutomatedTesting",)
+    common = (
+        "LY_PROJECTS=AutomatedTesting",
+        "LY_DISABLE_TEST_MODULES=OFF",
+    )
     clang_compiler = (clang_root / "bin" / "clang-cl.exe").as_posix()
     clang_definitions = (
         f"CMAKE_C_COMPILER={clang_compiler}",
@@ -2029,6 +2032,7 @@ def unix_full_matrix() -> tuple[MatrixVariant, ...]:
         preset = "mac-ninja"
     common = (
         "LY_PROJECTS=AutomatedTesting",
+        "LY_DISABLE_TEST_MODULES=OFF",
         "CMAKE_C_COMPILER=clang",
         "CMAKE_CXX_COMPILER=clang++",
     )
