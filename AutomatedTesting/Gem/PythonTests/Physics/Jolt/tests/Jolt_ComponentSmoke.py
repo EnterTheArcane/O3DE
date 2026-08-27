@@ -246,13 +246,18 @@ def Jolt_ComponentSmoke(recorder):
         falling_body_id,
         1.0,
     )
+    body_activated = jolt.JoltRigidBodyRequestBus(
+        bus.Event,
+        "ActivateBody",
+        falling_body_id,
+    )
 
     fall_deadline = time.monotonic() + 3.0
     body_fell = components.TransformBus(bus.Event, "GetWorldZ", falling_body_id) < 2.5
     while not body_fell and time.monotonic() < fall_deadline:
         general.idle_wait(0.01)
         body_fell = components.TransformBus(bus.Event, "GetWorldZ", falling_body_id) < 2.5
-    recorder.result(Tests.body_fell, gravity_enabled and body_fell)
+    recorder.result(Tests.body_fell, gravity_enabled and body_activated and body_fell)
     recorder.result(Tests.body_moved, movement_received["value"])
     Report.info(
         "Component smoke result: "

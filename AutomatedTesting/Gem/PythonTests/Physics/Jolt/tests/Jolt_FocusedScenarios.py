@@ -338,6 +338,25 @@ def run_events_and_filters():
                 ),
             )
 
+        collision_start = create_world_position(jolt, 0.0, 0.0, 6.0)
+        recorder.capture(
+            "contact trajectory started",
+            lambda: jolt.JoltRigidBodyRequestBus(
+                bus.Event,
+                "SetPosition",
+                body_id,
+                collision_start,
+                True,
+            )
+            and jolt.JoltRigidBodyRequestBus(
+                bus.Event,
+                "SetVelocities",
+                body_id,
+                math.Vector3(0.0, 0.0, -5.0),
+                math.Vector3(0.0, 0.0, 0.0),
+            ),
+        )
+
         allowed_filter = jolt.JoltQueryFilter()
         allowed_filter.collisionLayer = jolt.JoltObjectLayer(2)
         allowed_raycast = jolt.JoltRaycastRequest()
