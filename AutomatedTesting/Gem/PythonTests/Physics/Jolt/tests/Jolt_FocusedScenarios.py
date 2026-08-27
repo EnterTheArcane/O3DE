@@ -244,7 +244,6 @@ def run_events_and_filters():
         import azlmbr.math as math
 
         body_id = wait_for_runtime_entity("Jolt Events Body")
-        floor_id = wait_for_runtime_entity("Jolt Events Floor")
         recorder.check(
             "Box3D coexists with Jolt",
             wait_for_runtime_entity("Box3D Coexistence Body").IsValid(),
@@ -272,7 +271,7 @@ def run_events_and_filters():
             runtime_target_position.IsClose(math.Vector3(3.0, 0.0, 0.0)),
             runtime_target_position,
         )
-        recorder.capture(
+        filter_target_body_handle = recorder.capture(
             "filter target body handle",
             lambda: jolt.JoltStaticRigidBodyRequestBus(
                 bus.Event,
@@ -307,15 +306,6 @@ def run_events_and_filters():
         body_handle = recorder.capture(
             "event body handle",
             lambda: jolt.JoltRigidBodyRequestBus(bus.Event, "GetBodyHandle", body_id),
-            lambda handle: handle.IsValid(),
-        )
-        floor_body_handle = recorder.capture(
-            "event floor body handle",
-            lambda: jolt.JoltStaticRigidBodyRequestBus(
-                bus.Event,
-                "GetBodyHandle",
-                floor_id,
-            ),
             lambda handle: handle.IsValid(),
         )
 
@@ -353,7 +343,7 @@ def run_events_and_filters():
                 ),
             )
 
-        separated_position = create_world_position(jolt, 0.0, 0.0, 6.0)
+        separated_position = create_world_position(jolt, 3.0, 0.0, 4.0)
         recorder.capture(
             "existing contact separated",
             lambda: jolt.JoltRigidBodyRequestBus(
@@ -374,13 +364,13 @@ def run_events_and_filters():
                     bus.Broadcast,
                     "WereBodiesInContact",
                     world_handle,
-                    floor_body_handle,
+                    filter_target_body_handle,
                     body_handle,
                 ),
             ),
         )
 
-        collision_start = create_world_position(jolt, 0.0, 0.0, 1.75)
+        collision_start = create_world_position(jolt, 3.0, 0.0, 0.75)
         recorder.capture(
             "contact trajectory started",
             lambda: jolt.JoltRigidBodyRequestBus(
@@ -489,7 +479,7 @@ def run_events_and_filters():
                 bus.Broadcast,
                 "WereBodiesInContact",
                 world_handle,
-                floor_body_handle,
+                filter_target_body_handle,
                 body_handle,
             ),
             f"body z={body_position.z}",
