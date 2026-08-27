@@ -139,6 +139,12 @@ void AssetBuilderApplication::StartCommon(AZ::Entity* systemEntity)
     AZ::SettingsRegistryMergeUtils::MergeSettingsToRegistry_TargetBuildDependencyRegistry(registry,
         AZ_TRAIT_OS_PLATFORM_CODENAME, specializations);
 
+    // The target dependency registry is loaded after ComponentApplication's final command-line merge.
+    // Reapply explicit overrides so the Asset Processor can constrain its child builder environment.
+    AZ::SettingsRegistryMergeUtils::CommandsToParse commandsToParse;
+    commandsToParse.m_parseRegsetFileCommands = true;
+    AZ::SettingsRegistryMergeUtils::MergeSettingsToRegistry_CommandLine(registry, m_commandLine, commandsToParse);
+
     AzToolsFramework::ToolsApplication::StartCommon(systemEntity);
 
 #if defined(AZ_PLATFORM_MAC)
