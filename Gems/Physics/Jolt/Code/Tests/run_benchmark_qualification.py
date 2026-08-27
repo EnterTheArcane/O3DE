@@ -304,11 +304,24 @@ def run_benchmark_process(
         report = json.loads(output_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as error:
         raise RuntimeError(f"{provider} benchmark produced an unreadable report: {output_path}") from error
-    if not any(
-        result.get("run_type", "iteration") == "iteration"
+    iteration_results = [
+        result
         for result in report.get("benchmarks", [])
-    ):
+        if result.get("run_type", "iteration") == "iteration"
+    ]
+    if not iteration_results:
         raise RuntimeError(f"{provider} benchmark filter matched no workloads: {benchmark_filter}")
+    for result in iteration_results:
+        if round(float(result.get("AffinityConstrained", 0))) != 1:
+            raise RuntimeError(
+                f"{provider} benchmark did not preserve its inherited CPU affinity: {output_path}"
+            )
+        affinity_processor_count = round(float(result.get("AffinityProcessors", 0)))
+        if affinity_processor_count != len(processors):
+            raise RuntimeError(
+                f"{provider} benchmark reported {affinity_processor_count} affinity processors; "
+                f"expected {len(processors)}: {output_path}"
+            )
 
 
 def write_response_file(path: Path, arguments: Sequence[str]) -> None:

@@ -131,6 +131,60 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
                         30,
                     )
 
+    def test_benchmark_process_rejects_invalid_inherited_affinity(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            runner = root / "AzTestRunner.exe"
+            module = root / "Jolt.Tests.Gem.dll"
+            output_path = root / "invalid-affinity.json"
+            benchmark_result = {
+                "name": "Jolt/Step/real_time",
+                "AffinityConstrained": 0,
+                "AffinityProcessors": 0,
+            }
+
+            def write_invalid_report(*_args, **_kwargs):
+                output_path.write_text(
+                    json.dumps({"benchmarks": [benchmark_result]}),
+                    encoding="utf-8",
+                )
+                return mock.Mock(returncode=0)
+
+            with mock.patch.object(
+                run_benchmark_qualification,
+                "constrained_process",
+                return_value=mock.MagicMock(),
+            ), mock.patch.object(
+                run_benchmark_qualification.subprocess,
+                "run",
+                side_effect=write_invalid_report,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "did not preserve its inherited CPU affinity"):
+                    run_benchmark_qualification.run_benchmark_process(
+                        runner,
+                        module,
+                        "Jolt",
+                        "Step/real_time",
+                        0.05,
+                        output_path,
+                        (0,),
+                        30,
+                    )
+
+                benchmark_result["AffinityConstrained"] = 1
+                benchmark_result["AffinityProcessors"] = 4
+                with self.assertRaisesRegex(RuntimeError, "reported 4 affinity processors; expected 1"):
+                    run_benchmark_qualification.run_benchmark_process(
+                        runner,
+                        module,
+                        "Jolt",
+                        "Step/real_time",
+                        0.05,
+                        output_path,
+                        (0,),
+                        30,
+                    )
+
     def test_absolute_capture_warms_and_isolates_each_workload(self) -> None:
         provider = run_benchmark_qualification.Provider("Jolt", "Jolt.Tests.Gem.dll")
         runner = Path("AzTestRunner.exe")

@@ -371,9 +371,8 @@ namespace AZ::Test
                 }
             }
 
-            if (m_processorCount != requestedProcessorCount)
+            if (m_processorCount == 0)
             {
-                m_processorCount = 0;
                 return;
             }
 
