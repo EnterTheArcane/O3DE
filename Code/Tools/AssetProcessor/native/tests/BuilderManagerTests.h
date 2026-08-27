@@ -22,6 +22,12 @@ namespace UnitTests
             m_connectionId = connectionId;
         }
 
+        AZStd::vector<AZStd::string> BuildParamsForTesting() const
+        {
+            return BuildParams(
+                "resident", "Builders", UuidString(), "", "", AssetProcessor::BuilderPurpose::Registration);
+        }
+
     protected:
         AZ::Outcome<void, AZStd::string> Start(AssetProcessor::BuilderPurpose purpose) override;
     };

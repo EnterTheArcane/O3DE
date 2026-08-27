@@ -857,6 +857,31 @@ def validate_public_consumer(engine_root: Path) -> str:
     return "Validated the public-only source and installed-engine consumer."
 
 
+def validate_qualification_registry(engine_root: Path) -> str:
+    registry_path = (
+        engine_root
+        / "Gems"
+        / "Physics"
+        / "Jolt"
+        / "Code"
+        / "Tests"
+        / "JoltQualificationRegistry.setreg"
+    )
+    registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    gems = registry.get("O3DE", {}).get("Gems", {})
+    expected_targets = {
+        "Box3D": "Box3D.Editor",
+        "PhysX5": "PhysX5.Editor",
+        "PhysX5Debug": "PhysX5Debug.Editor",
+    }
+    for gem_name, target_name in expected_targets.items():
+        modules = gems.get(gem_name, {}).get("Targets", {}).get(target_name, {}).get("Modules")
+        if modules != []:
+            raise ValueError(f"Jolt qualification does not disable {target_name} for AssetBuilder")
+
+    return "Validated the Jolt-only AssetBuilder provider registry."
+
+
 def validate_installed_boundary(
     engine_root: Path,
     install_root: Path,
@@ -1091,6 +1116,7 @@ def add_static_checks(runner: ValidationRunner) -> None:
     runner.run_check("private-native-boundary", validate_private_native_boundary)
     runner.run_check("clang-address-sanitizer-configuration", validate_clang_address_sanitizer_configuration)
     runner.run_check("public-consumer", validate_public_consumer)
+    runner.run_check("qualification-registry", validate_qualification_registry)
 
 
 def add_python_tests(runner: ValidationRunner) -> None:
@@ -1149,6 +1175,52 @@ def get_cmake_configuration(configuration: str) -> str:
     return configuration.lower()
 
 
+def get_host_asset_platform() -> str:
+    host_system = platform.system()
+    if host_system == "Windows":
+        return "pc"
+    if host_system == "Linux":
+        return "linux"
+    if host_system == "Darwin":
+        return "mac"
+
+    raise ValueError(f"Jolt asset qualification does not support {host_system}")
+
+
+def add_jolt_asset_processing(
+    runner: ValidationRunner,
+    build_directory: Path,
+    configuration: str,
+    environment: dict[str, str] | None = None,
+) -> bool:
+    executable_name = "AssetProcessorBatch"
+    if platform.system() == "Windows":
+        executable_name += ".exe"
+
+    binary_directory = build_directory / "bin" / get_cmake_configuration(configuration)
+    qualification_registry = (
+        runner.engine_root
+        / "Gems"
+        / "Physics"
+        / "Jolt"
+        / "Code"
+        / "Tests"
+        / "JoltQualificationRegistry.setreg"
+    )
+    return runner.run_command(
+        "jolt-assets",
+        (
+            str(binary_directory / executable_name),
+            "--zeroAnalysisMode",
+            f"--project-path={runner.engine_root / 'AutomatedTesting'}",
+            f"--platforms={get_host_asset_platform()}",
+            f"--regset-file={qualification_registry}",
+        ),
+        14_400,
+        environment,
+    )
+
+
 def add_primary_build_and_tests(
     runner: ValidationRunner,
     build_directory: Path,
@@ -1161,7 +1233,7 @@ def add_primary_build_and_tests(
     cmake_configuration = get_cmake_configuration(configuration)
     targets = ["Jolt.Tests", "Jolt.Module", "Jolt.Editor"]
     if review:
-        targets.extend(("AssetProcessor", "Editor", "AutomatedTesting.Assets"))
+        targets.extend(("AssetProcessor", "AssetProcessorBatch", "Editor"))
     built = runner.run_command(
         "primary-build",
         (
@@ -1183,6 +1255,14 @@ def add_primary_build_and_tests(
         if review:
             runner.skip("jolt-automated-testing", "primary build failed")
         return
+    assets_processed = True
+    if review:
+        assets_processed = add_jolt_asset_processing(
+            runner,
+            build_directory,
+            configuration,
+            environment,
+        )
     runner.run_command(
         "jolt-cpp-tests",
         (
@@ -1199,6 +1279,10 @@ def add_primary_build_and_tests(
         environment,
     )
     if review:
+        if not assets_processed:
+            runner.skip("jolt-automated-testing", "Jolt asset processing failed")
+            runner.skip("jolt-scenario-results", "Jolt AutomatedTesting did not run")
+            return
         scenario_result_directory = runner.output_directory / "scenario-results-main"
         if scenario_result_directory.exists():
             shutil.rmtree(scenario_result_directory)
@@ -1299,7 +1383,7 @@ def add_performance_qualification(
     environment: dict[str, str] | None = None,
 ) -> None:
     release_configuration = get_cmake_configuration("Release")
-    targets = ["Jolt.Tests", "Editor", "AutomatedTesting.Assets"]
+    targets = ["Jolt.Tests", "Editor"]
     if qualification_mode == "full":
         targets.extend(("Box3D.Tests", "PhysX5.Tests"))
     built = runner.run_command(

@@ -230,7 +230,7 @@ namespace AssetProcessor
         auto settingsRegistry = AZ::SettingsRegistry::Get();
         AZ::CommandLine commandLine;
         AZ::SettingsRegistryMergeUtils::GetCommandLineFromRegistry(*settingsRegistry, commandLine);
-        AZStd::fixed_vector optionKeys{ "regset", "regremove" };
+        AZStd::fixed_vector optionKeys{ "regset", "regset-file", "regremove" };
         for (auto&& optionKey : optionKeys)
         {
             size_t commandOptionCount = commandLine.GetNumSwitchValues(optionKey);

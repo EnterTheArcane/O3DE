@@ -7,7 +7,12 @@
  */
 
 #include <AzTest/AzTest.h>
+#include <AzCore/Settings/CommandLine.h>
+#include <AzCore/Settings/SettingsRegistry.h>
+#include <AzCore/Settings/SettingsRegistryImpl.h>
+#include <AzCore/Settings/SettingsRegistryMergeUtils.h>
 #include <AzCore/UnitTest/TestTypes.h>
+#include <AzCore/std/algorithm.h>
 
 #include "BuilderManagerTests.h"
 #include <AzCore/std/smart_ptr/make_shared.h>
@@ -53,6 +58,49 @@ namespace UnitTests
 
         ASSERT_EQ(bm.GetBuilder(AssetProcessor::BuilderPurpose::CreateJobs)->GetUuid(), createJobsBuilderUuid);
         ASSERT_EQ(bm.GetBuilderCreationCount(), NumberOfBuilders + 1);
+    }
+
+    TEST_F(BuilderManagerTest, BuildParams_PropagatesRegistryOverridesToChildBuilders)
+    {
+        auto* originalSettingsRegistry = AZ::SettingsRegistry::Get();
+        if (originalSettingsRegistry)
+        {
+            AZ::SettingsRegistry::Unregister(originalSettingsRegistry);
+        }
+
+        AZ::SettingsRegistryImpl settingsRegistry;
+        settingsRegistry.Set(AZ::SettingsRegistryMergeUtils::FilePathKey_EngineRootFolder, ".");
+        settingsRegistry.Set(AZ::SettingsRegistryMergeUtils::FilePathKey_ProjectPath, ".");
+        AZ::SettingsRegistryInterface::FixedValueString projectNameKey{
+            AZ::SettingsRegistryMergeUtils::ProjectSettingsRootKey };
+        projectNameKey += "/project_name";
+        settingsRegistry.Set(projectNameKey, "AssetProcessorTests");
+        AZ::SettingsRegistry::Register(&settingsRegistry);
+
+        AZ::CommandLine commandLine;
+        commandLine.Parse(
+            {
+                "--regset=/Jolt/Setting=enabled",
+                "--regset-file=JoltQualificationRegistry.setreg",
+                "--regremove=/O3DE/Gems/Box3D",
+            });
+        AZ::SettingsRegistryMergeUtils::StoreCommandLineToRegistry(settingsRegistry, commandLine);
+
+        AssetUtilities::QuitListener quitListener;
+        TestBuilder builder(quitListener, AZ::Uuid::CreateRandom(), 1);
+        const AZStd::vector<AZStd::string> params = builder.BuildParamsForTesting();
+
+        AZ::SettingsRegistry::Unregister(&settingsRegistry);
+        if (originalSettingsRegistry)
+        {
+            AZ::SettingsRegistry::Register(originalSettingsRegistry);
+        }
+
+        EXPECT_NE(AZStd::find(params.begin(), params.end(), R"(--regset="/Jolt/Setting=enabled")"), params.end());
+        EXPECT_NE(
+            AZStd::find(params.begin(), params.end(), R"(--regset-file="JoltQualificationRegistry.setreg")"),
+            params.end());
+        EXPECT_NE(AZStd::find(params.begin(), params.end(), R"(--regremove="/O3DE/Gems/Box3D")"), params.end());
     }
 
     AZ::Outcome<void, AZStd::string> TestBuilder::Start(AssetProcessor::BuilderPurpose /*purpose*/)

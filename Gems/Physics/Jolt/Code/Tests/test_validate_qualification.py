@@ -29,6 +29,35 @@ def write_file(root: Path, relative_path: str, contents: str) -> Path:
 
 
 class QualificationValidationTests(unittest.TestCase):
+    def test_jolt_asset_processing_uses_an_isolated_provider_registry(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            output_directory = engine_root / "build" / "qualification"
+            output_directory.mkdir(parents=True)
+            build_directory = engine_root / "build" / "primary"
+            runner = jolt_qualification.ValidationRunner(engine_root, output_directory, dry_run=True)
+
+            jolt_qualification.add_primary_build_and_tests(
+                runner,
+                build_directory,
+                "Profile",
+                16,
+                "review",
+            )
+
+            commands = {result.name: result.command for result in runner.results if result.command}
+            primary_build = commands["primary-build"]
+            self.assertIn("AssetProcessorBatch", primary_build)
+            self.assertNotIn("AutomatedTesting.Assets", primary_build)
+            asset_command = commands["jolt-assets"]
+            self.assertIn(
+                f"--platforms={jolt_qualification.get_host_asset_platform()}",
+                asset_command,
+            )
+            self.assertTrue(
+                any(argument.endswith("JoltQualificationRegistry.setreg") for argument in asset_command)
+            )
+
     def test_clang_address_sanitizer_environment_disables_only_odr_detection(self) -> None:
         base_environment = {"EXAMPLE": "preserved"}
 
@@ -164,6 +193,7 @@ class QualificationValidationTests(unittest.TestCase):
             self.assertIn("Jolt.Tests", build_command)
             self.assertIn("Box3D.Tests", build_command)
             self.assertIn("PhysX5.Tests", build_command)
+            self.assertNotIn("AutomatedTesting.Assets", build_command)
             self.assertIn(jolt_qualification.get_cmake_configuration("Release"), build_command)
             benchmark_command = commands["native-benchmark-qualification"]
             self.assertIn("run_benchmark_qualification.py", " ".join(benchmark_command))

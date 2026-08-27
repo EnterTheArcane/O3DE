@@ -1,0 +1,27 @@
+{
+    "O3DE": {
+        "Gems": {
+            "Box3D": {
+                "Targets": {
+                    "Box3D.Editor": {
+                        "Modules": []
+                    }
+                }
+            },
+            "PhysX5": {
+                "Targets": {
+                    "PhysX5.Editor": {
+                        "Modules": []
+                    }
+                }
+            },
+            "PhysX5Debug": {
+                "Targets": {
+                    "PhysX5Debug.Editor": {
+                        "Modules": []
+                    }
+                }
+            }
+        }
+    }
+}
