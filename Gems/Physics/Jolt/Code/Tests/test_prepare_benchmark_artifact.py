@@ -265,6 +265,79 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
             self.assertEqual(len(report["qualification"]["raw_report_sha256"]), 2)
             self.assertEqual(len(report["capture_contexts"]), 2)
 
+    def test_preserves_but_does_not_compare_observational_context(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source, binary, runner, raw_report, output_report = self.create_repository(root)
+            raw_report.write_text(
+                json.dumps(
+                    {
+                        "context": {
+                            "date": "2026-08-26T00:00:00",
+                            "library_build_type": "release",
+                            "load_avg": [1.0, 2.0, 3.0],
+                            "mhz_per_cpu": 4_500,
+                        },
+                        "benchmarks": [{"name": "Jolt/One"}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            additional_report = root / "raw-additional.json"
+            additional_report.write_text(
+                json.dumps(
+                    {
+                        "context": {
+                            "date": "2026-08-26T00:00:01",
+                            "library_build_type": "release",
+                            "load_avg": [4.0, 5.0, 6.0],
+                            "mhz_per_cpu": 4_500,
+                        },
+                        "benchmarks": [{"name": "Jolt/Two"}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            output_time = source.stat().st_mtime_ns + 1_000_000_000
+            os.utime(binary, ns=(output_time, output_time))
+            os.utime(runner, ns=(output_time, output_time))
+            os.utime(raw_report, ns=(output_time + 1, output_time + 1))
+            os.utime(additional_report, ns=(output_time + 2, output_time + 2))
+
+            self.assertEqual(
+                self.run_prepare(
+                    root,
+                    binary,
+                    runner,
+                    raw_report,
+                    output_report,
+                    (additional_report,),
+                ),
+                0,
+            )
+            report = json.loads(output_report.read_text(encoding="utf-8"))
+            self.assertEqual(report["capture_contexts"][0]["load_avg"], [1.0, 2.0, 3.0])
+            self.assertEqual(report["capture_contexts"][1]["load_avg"], [4.0, 5.0, 6.0])
+
+            changed_report = json.loads(additional_report.read_text(encoding="utf-8"))
+            changed_report["context"]["host_name"] = "different-benchmark-host"
+            additional_report.write_text(json.dumps(changed_report), encoding="utf-8")
+            os.utime(additional_report, ns=(output_time + 3, output_time + 3))
+            output_report.unlink()
+
+            self.assertEqual(
+                self.run_prepare(
+                    root,
+                    binary,
+                    runner,
+                    raw_report,
+                    output_report,
+                    (additional_report,),
+                ),
+                1,
+            )
+            self.assertFalse(output_report.exists())
+
     def test_rejects_duplicate_results_across_reports(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)

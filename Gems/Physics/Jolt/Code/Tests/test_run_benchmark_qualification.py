@@ -211,13 +211,19 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
         archive_batch.assert_called_once()
 
     def test_absolute_capture_batch_rejects_frequency_and_timing_outliers(self) -> None:
-        def write_report(path: Path, real_time: float, frequency: float) -> None:
+        def write_report(
+            path: Path,
+            real_time: float,
+            frequency: float,
+            load_average: float,
+        ) -> None:
             path.write_text(
                 json.dumps(
                     {
                         "context": {
                             "date": "2026-08-26T00:00:00",
                             "library_build_type": "release",
+                            "load_avg": [load_average, load_average, load_average],
                             "mhz_per_cpu": frequency,
                         },
                         "benchmarks": [
@@ -237,9 +243,9 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
             root = Path(temporary_directory)
             warmup_report = root / "warmup.json"
             raw_reports = [root / f"sample-{index}.json" for index in range(3)]
-            write_report(warmup_report, 10.0, 4_500.0)
-            for raw_report in raw_reports:
-                write_report(raw_report, 10.0, 4_500.0)
+            write_report(warmup_report, 10.0, 4_500.0, 1.0)
+            for index, raw_report in enumerate(raw_reports):
+                write_report(raw_report, 10.0, 4_500.0, 2.0 + index)
 
             self.assertEqual(
                 run_benchmark_qualification.validate_absolute_capture_batch(
@@ -250,7 +256,7 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
                 "",
             )
 
-            write_report(raw_reports[0], 20.0, 4_500.0)
+            write_report(raw_reports[0], 20.0, 4_500.0, 2.0)
             self.assertIn(
                 "CV",
                 run_benchmark_qualification.validate_absolute_capture_batch(
@@ -260,7 +266,7 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
                 ),
             )
 
-            write_report(raw_reports[0], 10.0, 4_600.0)
+            write_report(raw_reports[0], 10.0, 4_600.0, 2.0)
             self.assertIn(
                 "incompatible CPU frequency",
                 run_benchmark_qualification.validate_absolute_capture_batch(

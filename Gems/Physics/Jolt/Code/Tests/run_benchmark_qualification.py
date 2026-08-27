@@ -563,6 +563,7 @@ def validate_absolute_capture_batch(
         report = json.loads(report_path.read_text(encoding="utf-8"))
         context = dict(report.get("context", {}))
         context.pop("date", None)
+        context.pop("load_avg", None)
         frequency = float(context.pop("mhz_per_cpu", 0.0))
         if frequency <= 0.0:
             return f"{report_path.name} has no valid CPU frequency"

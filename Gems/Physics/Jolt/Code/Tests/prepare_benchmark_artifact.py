@@ -87,6 +87,7 @@ def load_raw_reports(
 
     reference_context = dict(reports[0].get("context", {}))
     reference_context.pop("date", None)
+    reference_context.pop("load_avg", None)
     reference_frequency = float(reference_context.pop("mhz_per_cpu", 0.0))
     if reference_frequency <= 0.0:
         raise ValueError(f"{raw_reports[0]} has no valid CPU frequency.")
@@ -96,6 +97,7 @@ def load_raw_reports(
     for raw_report, report in zip(raw_reports, reports, strict=True):
         context = dict(report.get("context", {}))
         context.pop("date", None)
+        context.pop("load_avg", None)
         frequency = float(context.pop("mhz_per_cpu", 0.0))
         frequency_ratio = frequency / reference_frequency
         if frequency_ratio < 0.99 or frequency_ratio > 1.01:
@@ -226,6 +228,8 @@ def main() -> int:
             warmup_context = dict(warmup_report["context"])
             measured_context.pop("date", None)
             warmup_context.pop("date", None)
+            measured_context.pop("load_avg", None)
+            warmup_context.pop("load_avg", None)
             measured_frequency = float(measured_context.pop("mhz_per_cpu", 0.0))
             warmup_frequency = float(warmup_context.pop("mhz_per_cpu", 0.0))
             frequency_ratio = warmup_frequency / measured_frequency
