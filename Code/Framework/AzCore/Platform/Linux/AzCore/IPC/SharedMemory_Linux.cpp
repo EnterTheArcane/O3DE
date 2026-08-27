@@ -21,7 +21,7 @@ namespace AZ
 {
     constexpr const char* MutexSuffix = "Mtx";
     constexpr const char* SharedMemorySuffix = "Data";
-    constexpr const char* ShmMemoryLogName = "AZSystem";
+    [[maybe_unused]] constexpr const char* ShmMemoryLogName = "AZSystem";
 
     SharedMemory_Linux::SharedMemory_Linux() = default;
 
