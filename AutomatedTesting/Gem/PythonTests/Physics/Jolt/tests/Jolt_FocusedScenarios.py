@@ -244,6 +244,7 @@ def run_events_and_filters():
         import azlmbr.math as math
 
         body_id = wait_for_runtime_entity("Jolt Events Body")
+        floor_id = wait_for_runtime_entity("Jolt Events Floor")
         recorder.check(
             "Box3D coexists with Jolt",
             wait_for_runtime_entity("Box3D Coexistence Body").IsValid(),
@@ -303,6 +304,20 @@ def run_events_and_filters():
             lambda: jolt.JoltRigidBodyRequestBus(bus.Event, "GetWorldHandle", body_id),
             lambda handle: handle.IsValid(),
         )
+        body_handle = recorder.capture(
+            "event body handle",
+            lambda: jolt.JoltRigidBodyRequestBus(bus.Event, "GetBodyHandle", body_id),
+            lambda handle: handle.IsValid(),
+        )
+        floor_body_handle = recorder.capture(
+            "event floor body handle",
+            lambda: jolt.JoltStaticRigidBodyRequestBus(
+                bus.Event,
+                "GetBodyHandle",
+                floor_id,
+            ),
+            lambda handle: handle.IsValid(),
+        )
 
         received = {"contact": False, "movement": False}
 
@@ -338,6 +353,33 @@ def run_events_and_filters():
                 ),
             )
 
+        separated_position = create_world_position(jolt, 0.0, 0.0, 6.0)
+        recorder.capture(
+            "existing contact separated",
+            lambda: jolt.JoltRigidBodyRequestBus(
+                bus.Event,
+                "SetGravityFactor",
+                body_id,
+                0.0,
+            )
+            and jolt.JoltRigidBodyRequestBus(
+                bus.Event,
+                "SetPosition",
+                body_id,
+                separated_position,
+                True,
+            )
+            and wait_for_condition(
+                lambda: not jolt.JoltWorldQueryRequestBus(
+                    bus.Broadcast,
+                    "WereBodiesInContact",
+                    world_handle,
+                    floor_body_handle,
+                    body_handle,
+                ),
+            ),
+        )
+
         collision_start = create_world_position(jolt, 0.0, 0.0, 1.75)
         recorder.capture(
             "contact trajectory started",
@@ -354,6 +396,12 @@ def run_events_and_filters():
                 body_id,
                 math.Vector3(0.0, 0.0, -5.0),
                 math.Vector3(0.0, 0.0, 0.0),
+            )
+            and jolt.JoltRigidBodyRequestBus(
+                bus.Event,
+                "SetGravityFactor",
+                body_id,
+                1.0,
             )
             and jolt.JoltRigidBodyRequestBus(
                 bus.Event,
