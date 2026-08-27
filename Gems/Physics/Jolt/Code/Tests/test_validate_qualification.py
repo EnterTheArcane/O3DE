@@ -214,6 +214,56 @@ class QualificationValidationTests(unittest.TestCase):
             matrix_root / "consumer-source-msvc-unity-modular",
         )
 
+    def test_source_consumer_uses_a_standard_try_compile_configuration(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            primary_build_directory = engine_root / "build" / "primary"
+            output_directory = engine_root / "build" / "qualification"
+            primary_build_directory.mkdir(parents=True)
+            write_file(
+                primary_build_directory,
+                "CMakeCache.txt",
+                "\n".join(
+                    (
+                        "CMAKE_GENERATOR:INTERNAL=Ninja Multi-Config",
+                        "CMAKE_C_COMPILER:FILEPATH=/usr/bin/clang",
+                        "CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/clang++",
+                    )
+                ),
+            )
+            for relative_path in (
+                "CMakeLists.txt",
+                "jolt_installed_consumer_files.cmake",
+                "main.cpp",
+                "project.json",
+            ):
+                write_file(
+                    engine_root / "Gems" / "Physics" / "Jolt" / "Code" / "Tests" / "InstalledConsumer",
+                    relative_path,
+                    relative_path,
+                )
+
+            runner = jolt_qualification.ValidationRunner(
+                engine_root,
+                output_directory,
+                dry_run=True,
+            )
+            jolt_qualification.add_source_consumer(
+                runner,
+                primary_build_directory,
+                output_directory / "consumer",
+                "Profile",
+                8,
+            )
+
+            commands = {result.name: result.command for result in runner.results if result.command}
+            configure_command = commands["configure-source-consumer"]
+            self.assertIn("-DCMAKE_TRY_COMPILE_CONFIGURATION=Release", configure_command)
+            self.assertIn(
+                jolt_qualification.get_cmake_configuration("Profile"),
+                commands["build-source-consumer"],
+            )
+
     @unittest.skipUnless(sys.platform == "win32", "requires Windows drive semantics")
     def test_installed_consumer_uses_a_same_drive_python_environment(self) -> None:
         output_directory = Path("D:/qualification-results")

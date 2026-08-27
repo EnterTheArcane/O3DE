@@ -1484,7 +1484,7 @@ def add_public_consumer(
             f"-DO3DE_ENGINE_ROOT={consumer_engine_root.as_posix()}",
             f"-DCMAKE_C_COMPILER={Path(c_compiler).as_posix()}",
             f"-DCMAKE_CXX_COMPILER={Path(cxx_compiler).as_posix()}",
-            f"-DCMAKE_TRY_COMPILE_CONFIGURATION={configuration}",
+            "-DCMAKE_TRY_COMPILE_CONFIGURATION=Release",
             f"-DLY_MONOLITHIC_GAME={monolithic_option}",
             "-DLY_UNITY_BUILD=ON",
         ),
