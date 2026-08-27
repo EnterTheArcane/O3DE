@@ -29,6 +29,47 @@ def write_file(root: Path, relative_path: str, contents: str) -> Path:
 
 
 class QualificationValidationTests(unittest.TestCase):
+    def test_jolt_asset_processing_log_rejects_loaded_excluded_provider(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            log_path = Path(temporary_directory) / "asset-processing.log"
+            log_path.write_text(
+                "Module: libJolt.Editor.Gem.so\n"
+                "Module: libBox3D.Editor.Gem.so\n"
+                "Asset Processor Batch Processing complete\n"
+                "Number of Assets Failed to Process: 0\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "excluded provider module"):
+                jolt_qualification.validate_jolt_asset_processing_log(log_path)
+
+    def test_jolt_asset_processing_log_rejects_failed_assets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            log_path = Path(temporary_directory) / "asset-processing.log"
+            log_path.write_text(
+                "Module: libJolt.Editor.Gem.so\n"
+                "Asset Processor Batch Processing complete\n"
+                "Number of Assets Failed to Process: 1\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "zero failed assets"):
+                jolt_qualification.validate_jolt_asset_processing_log(log_path)
+
+    def test_jolt_asset_processing_log_validates_isolated_success(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            log_path = Path(temporary_directory) / "asset-processing.log"
+            log_path.write_text(
+                "Module: libJolt.Editor.Gem.so\n"
+                "Asset Processor Batch Processing complete\n"
+                "Number of Assets Failed to Process: 0\n",
+                encoding="utf-8",
+            )
+
+            message = jolt_qualification.validate_jolt_asset_processing_log(log_path)
+
+        self.assertIn("zero failed assets", message)
+
     def test_jolt_asset_processing_uses_an_isolated_provider_registry(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             engine_root = Path(temporary_directory)

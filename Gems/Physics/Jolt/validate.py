@@ -1187,6 +1187,26 @@ def get_host_asset_platform() -> str:
     raise ValueError(f"Jolt asset qualification does not support {host_system}")
 
 
+def validate_jolt_asset_processing_log(log_path: Path) -> str:
+    output = log_path.read_text(encoding="utf-8", errors="replace")
+    errors: list[str] = []
+    if "Jolt.Editor.Gem" not in output:
+        errors.append("the Jolt editor module was not loaded")
+
+    for excluded_module in ("Box3D.Editor.Gem", "PhysX5.Editor.Gem", "PhysX5Debug.Editor.Gem"):
+        if excluded_module in output:
+            errors.append(f"excluded provider module {excluded_module} was loaded")
+
+    if "Asset Processor Batch Processing complete" not in output:
+        errors.append("Asset Processor did not report a completed batch")
+    if not re.search(r"Number of Assets Failed to Process:\s+0\b", output):
+        errors.append("Asset Processor did not report zero failed assets")
+
+    if errors:
+        raise ValueError("; ".join(errors))
+    return "Validated isolated Jolt AssetBuilder execution and zero failed assets."
+
+
 def add_jolt_asset_processing(
     runner: ValidationRunner,
     build_directory: Path,
@@ -1207,7 +1227,7 @@ def add_jolt_asset_processing(
         / "Tests"
         / "JoltQualificationRegistry.setreg"
     )
-    return runner.run_command(
+    processed = runner.run_command(
         "jolt-assets",
         (
             str(binary_directory / executable_name),
@@ -1218,6 +1238,14 @@ def add_jolt_asset_processing(
         ),
         14_400,
         environment,
+    )
+    if not processed or runner.dry_run:
+        return processed
+
+    log_path = runner.output_directory / runner.results[-1].log_path
+    return runner.run_check(
+        "jolt-assets-log",
+        lambda _engine_root: validate_jolt_asset_processing_log(log_path),
     )
 
 
