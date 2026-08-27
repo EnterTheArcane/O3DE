@@ -1485,6 +1485,7 @@ namespace Jolt::Benchmarks
         state.counters["Bodies"] = bodyCount;
         state.counters["Constraints"] = bodyCount - 1;
         AddPerformanceCounters(state, system, worldHandle);
+        jobContext.AddCounters(state);
         state.counters["QualityValid"] = 0;
         if (qualityValid)
         {
@@ -2221,6 +2222,7 @@ namespace Jolt::Benchmarks
             }
         }
 
+        jobContext.AddCounters(state);
         state.counters["Workers"] = workerCount;
         state.SetItemsProcessed(state.iterations() * rayCount);
     }
