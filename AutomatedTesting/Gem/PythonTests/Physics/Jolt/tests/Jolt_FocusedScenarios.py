@@ -343,63 +343,6 @@ def run_events_and_filters():
                 ),
             )
 
-        separated_position = create_world_position(jolt, 3.0, 0.0, 4.0)
-        recorder.capture(
-            "existing contact separated",
-            lambda: jolt.JoltRigidBodyRequestBus(
-                bus.Event,
-                "SetGravityFactor",
-                body_id,
-                0.0,
-            )
-            and jolt.JoltRigidBodyRequestBus(
-                bus.Event,
-                "SetPosition",
-                body_id,
-                separated_position,
-                True,
-            )
-            and wait_for_condition(
-                lambda: not jolt.JoltWorldQueryRequestBus(
-                    bus.Broadcast,
-                    "WereBodiesInContact",
-                    world_handle,
-                    filter_target_body_handle,
-                    body_handle,
-                ),
-            ),
-        )
-
-        collision_start = create_world_position(jolt, 3.0, 0.0, 0.75)
-        recorder.capture(
-            "contact trajectory started",
-            lambda: jolt.JoltRigidBodyRequestBus(
-                bus.Event,
-                "SetPosition",
-                body_id,
-                collision_start,
-                True,
-            )
-            and jolt.JoltRigidBodyRequestBus(
-                bus.Event,
-                "SetVelocities",
-                body_id,
-                math.Vector3(0.0, 0.0, -5.0),
-                math.Vector3(0.0, 0.0, 0.0),
-            )
-            and jolt.JoltRigidBodyRequestBus(
-                bus.Event,
-                "SetGravityFactor",
-                body_id,
-                1.0,
-            )
-            and jolt.JoltRigidBodyRequestBus(
-                bus.Event,
-                "ActivateBody",
-                body_id,
-            ),
-        )
-
         allowed_filter = jolt.JoltQueryFilter()
         allowed_filter.collisionLayer = jolt.JoltObjectLayer(2)
         allowed_raycast = jolt.JoltRaycastRequest()
@@ -460,6 +403,63 @@ def run_events_and_filters():
         recorder.check(
             "allowed and denied filters produced distinct results",
             allowed_hit.found and not denied_hit.found,
+        )
+
+        separated_position = create_world_position(jolt, 3.0, 0.0, 4.0)
+        recorder.capture(
+            "existing contact separated",
+            lambda: jolt.JoltRigidBodyRequestBus(
+                bus.Event,
+                "SetGravityFactor",
+                body_id,
+                0.0,
+            )
+            and jolt.JoltRigidBodyRequestBus(
+                bus.Event,
+                "SetPosition",
+                body_id,
+                separated_position,
+                True,
+            )
+            and wait_for_condition(
+                lambda: not jolt.JoltWorldQueryRequestBus(
+                    bus.Broadcast,
+                    "WereBodiesInContact",
+                    world_handle,
+                    filter_target_body_handle,
+                    body_handle,
+                ),
+            ),
+        )
+
+        collision_start = create_world_position(jolt, 3.0, 0.0, 0.75)
+        recorder.capture(
+            "contact trajectory started",
+            lambda: jolt.JoltRigidBodyRequestBus(
+                bus.Event,
+                "SetPosition",
+                body_id,
+                collision_start,
+                True,
+            )
+            and jolt.JoltRigidBodyRequestBus(
+                bus.Event,
+                "SetVelocities",
+                body_id,
+                math.Vector3(0.0, 0.0, -5.0),
+                math.Vector3(0.0, 0.0, 0.0),
+            )
+            and jolt.JoltRigidBodyRequestBus(
+                bus.Event,
+                "SetGravityFactor",
+                body_id,
+                1.0,
+            )
+            and jolt.JoltRigidBodyRequestBus(
+                bus.Event,
+                "ActivateBody",
+                body_id,
+            ),
         )
 
         deadline = time.monotonic() + 5.0
