@@ -28,6 +28,9 @@ import prepare_benchmark_artifact
 import validate_jolt_benchmarks
 
 
+WINDOWS_HIGH_PRIORITY_CLASS = 0x00000080
+
+
 ABSOLUTE_BENCHMARK_SUFFIXES = (
     "Diagnostic/AcquireRuntimeConfigurationCapability/real_time",
     "Diagnostic/RaycastEmptyWorld/128/real_time",
@@ -255,10 +258,6 @@ def constrained_process(processors: Sequence[int]) -> Iterator[None]:
             ctypes.POINTER(ctypes.c_size_t),
         ]
         kernel32.GetProcessAffinityMask.restype = wintypes.BOOL
-        kernel32.GetPriorityClass.argtypes = [wintypes.HANDLE]
-        kernel32.GetPriorityClass.restype = wintypes.DWORD
-        kernel32.SetPriorityClass.argtypes = [wintypes.HANDLE, wintypes.DWORD]
-        kernel32.SetPriorityClass.restype = wintypes.BOOL
         kernel32.SetProcessAffinityMask.argtypes = [wintypes.HANDLE, ctypes.c_size_t]
         kernel32.SetProcessAffinityMask.restype = wintypes.BOOL
         process = kernel32.GetCurrentProcess()
@@ -266,23 +265,14 @@ def constrained_process(processors: Sequence[int]) -> Iterator[None]:
         system_mask = ctypes.c_size_t()
         if not kernel32.GetProcessAffinityMask(process, ctypes.byref(process_mask), ctypes.byref(system_mask)):
             raise ctypes.WinError(ctypes.get_last_error())
-        previous_priority = kernel32.GetPriorityClass(process)
-        if previous_priority == 0:
-            raise ctypes.WinError(ctypes.get_last_error())
-
         requested_mask = 0
         for processor in processors:
             requested_mask |= 1 << processor
         if not kernel32.SetProcessAffinityMask(process, ctypes.c_size_t(requested_mask)):
             raise ctypes.WinError(ctypes.get_last_error())
-        high_priority_class = 0x00000080
-        if not kernel32.SetPriorityClass(process, high_priority_class):
-            kernel32.SetProcessAffinityMask(process, process_mask)
-            raise ctypes.WinError(ctypes.get_last_error())
         try:
             yield
         finally:
-            kernel32.SetPriorityClass(process, previous_priority)
             kernel32.SetProcessAffinityMask(process, process_mask)
         return
 
@@ -327,12 +317,16 @@ def run_benchmark_process(
     )
     log_path = output_path.with_suffix(".log")
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    creation_flags = 0
+    if platform.system() == "Windows":
+        creation_flags = WINDOWS_HIGH_PRIORITY_CLASS
     with constrained_process(processors):
         with log_path.open("w", encoding="utf-8", errors="replace") as log:
             completed = subprocess.run(
                 command,
                 cwd=runner.parent,
                 check=False,
+                creationflags=creation_flags,
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 timeout=timeout_seconds,

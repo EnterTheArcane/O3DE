@@ -475,6 +475,59 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
                         30,
                     )
 
+    def test_benchmark_process_creates_a_high_priority_windows_child(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            runner = root / "AzTestRunner.exe"
+            module = root / "Jolt.Tests.Gem.dll"
+            output_path = root / "valid.json"
+
+            def write_valid_report(*_args, **_kwargs):
+                output_path.write_text(
+                    json.dumps(
+                        {
+                            "benchmarks": [
+                                {
+                                    "name": "Jolt/Step/real_time",
+                                    "AffinityConstrained": 1,
+                                    "AffinityProcessors": 1,
+                                }
+                            ]
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return mock.Mock(returncode=0)
+
+            with mock.patch.object(
+                run_benchmark_qualification,
+                "constrained_process",
+                return_value=mock.MagicMock(),
+            ), mock.patch.object(
+                run_benchmark_qualification.platform,
+                "system",
+                return_value="Windows",
+            ), mock.patch.object(
+                run_benchmark_qualification.subprocess,
+                "run",
+                side_effect=write_valid_report,
+            ) as run_process:
+                run_benchmark_qualification.run_benchmark_process(
+                    runner,
+                    module,
+                    "Jolt",
+                    "Step/real_time",
+                    0.05,
+                    output_path,
+                    (0,),
+                    30,
+                )
+
+            self.assertEqual(
+                run_process.call_args.kwargs["creationflags"],
+                run_benchmark_qualification.WINDOWS_HIGH_PRIORITY_CLASS,
+            )
+
     def test_benchmark_process_rejects_invalid_inherited_affinity(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
