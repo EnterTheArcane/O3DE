@@ -147,6 +147,20 @@ def set_workload_time(
 
 
 class CompareProviderBenchmarksTests(unittest.TestCase):
+    def test_normalizes_equivalent_numeric_compiler_versions(self):
+        self.assertEqual(
+            compare_provider_benchmarks.normalize_compiler_version("19.51.36256.0"),
+            "19.51.36256",
+        )
+        self.assertEqual(
+            compare_provider_benchmarks.normalize_compiler_version("22.1.8"),
+            "22.1.8",
+        )
+        self.assertEqual(
+            compare_provider_benchmarks.normalize_compiler_version("22.1.8-rc1"),
+            "22.1.8-rc1",
+        )
+
     def test_accepts_valid_faster_jolt_report(self):
         reports = {
             "Jolt": make_report("Jolt", 90.0),
@@ -368,6 +382,27 @@ class CompareProviderBenchmarksTests(unittest.TestCase):
         }
         reports["PhysX"]["qualification"]["source_revision"] = "other-revision"
         self.assertEqual(run_comparison(reports), 1)
+
+    def test_accepts_equivalent_numeric_compiler_versions(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["Box3D"]["qualification"]["compiler_version"] = "22.1.8.0"
+
+        compare_provider_benchmarks.validate_context(reports)
+
+    def test_rejects_different_compiler_versions(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["Box3D"]["qualification"]["compiler_version"] = "22.1.9"
+
+        with self.assertRaisesRegex(ValueError, "differs for compiler_version"):
+            compare_provider_benchmarks.validate_context(reports)
 
     def test_rejects_mismatched_runner(self):
         reports = {

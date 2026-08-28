@@ -475,7 +475,7 @@ def validate_reusable_report(
         "binary_sha256": prepare_benchmark_artifact.sha256_file(module),
         "build_configuration": "Release",
         "compiler_id": compiler_id,
-        "compiler_version": compiler_version,
+        "compiler_version": compare_provider_benchmarks.normalize_compiler_version(compiler_version),
         "cpu_affinity_policy": affinity_description,
         "minimum_time": minimum_time,
         "minimum_time_policy": minimum_time_policy,
@@ -489,10 +489,13 @@ def validate_reusable_report(
         "workload_signature": compare_provider_benchmarks.workload_signature(),
     }
     for field, expected_value in expected_metadata.items():
-        if metadata.get(field) != expected_value:
+        observed_value = metadata.get(field)
+        if field == "compiler_version" and isinstance(observed_value, str):
+            observed_value = compare_provider_benchmarks.normalize_compiler_version(observed_value)
+        if observed_value != expected_value:
             raise ValueError(
                 f"The reusable {provider.name} benchmark report has stale {field}: "
-                f"expected {expected_value!r}, found {metadata.get(field)!r}."
+                f"expected {expected_value!r}, found {observed_value!r}."
             )
 
     expected_dependencies = []

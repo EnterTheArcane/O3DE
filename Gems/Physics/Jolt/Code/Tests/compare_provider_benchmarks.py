@@ -306,6 +306,16 @@ def make_tail_workload(workload: dict) -> dict:
 TAIL_WORKLOADS = tuple(make_tail_workload(workload) for workload in WORKLOADS[:6])
 
 
+def normalize_compiler_version(version: str) -> str:
+    components = version.split(".")
+    if not components or any(not component.isdigit() for component in components):
+        return version
+
+    while len(components) > 3 and components[-1] == "0":
+        components.pop()
+    return ".".join(components)
+
+
 def workload_signature() -> str:
     encoded_workloads = json.dumps(
         {
@@ -410,10 +420,15 @@ def validate_context(reports: dict[str, dict]) -> None:
             "source_state_sha256",
             "workload_signature",
         ):
-            if metadata[field] != reference_metadata.get(field):
+            provider_value = metadata[field]
+            reference_value = reference_metadata.get(field)
+            if field == "compiler_version":
+                provider_value = normalize_compiler_version(provider_value)
+                reference_value = normalize_compiler_version(reference_value)
+            if provider_value != reference_value:
                 raise ValueError(
                     f"Benchmark qualification differs for {field}: "
-                    f"Jolt={reference_metadata.get(field)!r}, {provider}={metadata[field]!r}"
+                    f"Jolt={reference_value!r}, {provider}={provider_value!r}"
                 )
 
     binary_hashes = [

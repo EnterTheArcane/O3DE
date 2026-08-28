@@ -168,7 +168,7 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
                             ),
                             "build_configuration": "Release",
                             "compiler_id": "Clang",
-                            "compiler_version": "20.1.8",
+                            "compiler_version": "20.1.8.0",
                             "cpu_affinity_policy": "test-affinity",
                             "minimum_time": 2.0,
                             "minimum_time_policy": {

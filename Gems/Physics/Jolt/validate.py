@@ -1187,11 +1187,23 @@ def get_host_asset_platform() -> str:
     raise ValueError(f"Jolt asset qualification does not support {host_system}")
 
 
-def validate_jolt_asset_processing_log(log_path: Path) -> str:
+def validate_jolt_asset_processing_log(
+    log_path: Path,
+    product_paths: Sequence[Path],
+) -> str:
     output = log_path.read_text(encoding="utf-8", errors="replace")
     errors: list[str] = []
-    if "Jolt.Editor.Gem" not in output:
-        errors.append("the Jolt editor module was not loaded")
+    expected_jobs = (
+        'Assets/Physics/Jolt/test_scene.jolt.json "Jolt Scene"',
+        'Assets/Physics/Jolt/test_skeleton.jolt.json "Jolt Skeleton"',
+    )
+    for expected_job in expected_jobs:
+        if expected_job not in output:
+            errors.append(f"Asset Processor did not execute {expected_job}")
+
+    for product_path in product_paths:
+        if not product_path.is_file():
+            errors.append(f"Asset Processor did not create {product_path.name}")
 
     for excluded_module in ("Box3D.Editor.Gem", "PhysX5.Editor.Gem", "PhysX5Debug.Editor.Gem"):
         if excluded_module in output:
@@ -1204,7 +1216,7 @@ def validate_jolt_asset_processing_log(log_path: Path) -> str:
 
     if errors:
         raise ValueError("; ".join(errors))
-    return "Validated isolated Jolt AssetBuilder execution and zero failed assets."
+    return "Validated isolated Jolt source-to-product builds and zero failed assets."
 
 
 def add_jolt_asset_processing(
@@ -1227,6 +1239,22 @@ def add_jolt_asset_processing(
         / "Tests"
         / "JoltQualificationRegistry.setreg"
     )
+    product_root = (
+        runner.engine_root
+        / "AutomatedTesting"
+        / "Cache"
+        / get_host_asset_platform()
+        / "assets"
+        / "physics"
+        / "jolt"
+    )
+    product_paths = (
+        product_root / "test_scene.jolt",
+        product_root / "test_skeleton.jolt",
+    )
+    for product_path in product_paths:
+        product_path.unlink(missing_ok=True)
+
     processed = runner.run_command(
         "jolt-assets",
         (
@@ -1245,7 +1273,7 @@ def add_jolt_asset_processing(
     log_path = runner.output_directory / runner.results[-1].log_path
     return runner.run_check(
         "jolt-assets-log",
-        lambda _engine_root: validate_jolt_asset_processing_log(log_path),
+        lambda _engine_root: validate_jolt_asset_processing_log(log_path, product_paths),
     )
 
 

@@ -282,7 +282,7 @@ def main() -> int:
         "binary_mtime_ns": binary.stat().st_mtime_ns,
         "build_configuration": arguments.build_configuration,
         "compiler_id": arguments.compiler_id,
-        "compiler_version": arguments.compiler_version,
+        "compiler_version": compare_provider_benchmarks.normalize_compiler_version(arguments.compiler_version),
         "cpu_affinity_policy": arguments.cpu_affinity_policy,
         "generated_utc": datetime.now(timezone.utc).isoformat(),
         "minimum_time": arguments.minimum_time,
