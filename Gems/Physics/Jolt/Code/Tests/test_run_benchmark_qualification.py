@@ -149,6 +149,41 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Only 4 physical processors"):
             run_benchmark_qualification.select_compact_processors((0, 2, 4, 6), 8)
 
+    def test_windows_power_policy_is_fingerprinted_with_the_affinity_policy(self) -> None:
+        power_policy = run_benchmark_qualification.WindowsProcessorPowerPolicy(
+            active_scheme_guid="12345678-1234-1234-1234-123456789abc",
+            ac_minimum_processor_state_percent=100,
+        )
+        with mock.patch.object(
+            run_benchmark_qualification.platform,
+            "system",
+            return_value="Windows",
+        ):
+            description = run_benchmark_qualification.describe_affinity_policy(
+                {1: (15,), 4: (12, 13, 14, 15)},
+                power_policy,
+            )
+
+        self.assertIn("active power scheme=12345678-1234-1234-1234-123456789abc", description)
+        self.assertIn("AC minimum processor state=100%", description)
+
+    def test_full_windows_qualification_rejects_frequency_scaling_policy(self) -> None:
+        power_policy = run_benchmark_qualification.WindowsProcessorPowerPolicy(
+            active_scheme_guid="12345678-1234-1234-1234-123456789abc",
+            ac_minimum_processor_state_percent=0,
+        )
+
+        with self.assertRaisesRegex(ValueError, "AC minimum processor state to be 100%"):
+            run_benchmark_qualification.validate_windows_processor_power_policy(power_policy)
+
+    def test_full_windows_qualification_accepts_fixed_frequency_policy(self) -> None:
+        power_policy = run_benchmark_qualification.WindowsProcessorPowerPolicy(
+            active_scheme_guid="12345678-1234-1234-1234-123456789abc",
+            ac_minimum_processor_state_percent=100,
+        )
+
+        run_benchmark_qualification.validate_windows_processor_power_policy(power_policy)
+
     def test_smoke_report_requires_every_process_repetition(self) -> None:
         report = {
             "benchmarks": [

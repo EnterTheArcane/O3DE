@@ -18,6 +18,7 @@ import re
 import statistics
 import subprocess
 import sys
+import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -54,6 +55,7 @@ FULL_MAXIMUM_CAPABILITY_OPERATION_RATIO = 0.02
 FULL_MATCHED_CAPTURE_ATTEMPTS = 2
 FULL_ABSOLUTE_CAPTURE_ATTEMPTS = 2
 FULL_EMPTY_WORLD_MINIMUM_TIME_SECONDS = 10.0
+FULL_WINDOWS_AC_MINIMUM_PROCESSOR_STATE_PERCENT = 100
 
 
 @dataclass(frozen=True)
@@ -69,6 +71,12 @@ class Workload:
     suffix: str
     worker_count: int
     minimum_time_seconds: float = 0.0
+
+
+@dataclass(frozen=True)
+class WindowsProcessorPowerPolicy:
+    active_scheme_guid: str
+    ac_minimum_processor_state_percent: int
 
 
 PROVIDERS = (
@@ -234,7 +242,10 @@ def build_affinity_policy() -> dict[int, tuple[int, ...]]:
     }
 
 
-def describe_affinity_policy(policy: dict[int, tuple[int, ...]]) -> str:
+def describe_affinity_policy(
+    policy: dict[int, tuple[int, ...]],
+    windows_power_policy: WindowsProcessorPowerPolicy | None = None,
+) -> str:
     selections = []
     for worker_count in sorted(policy):
         processor_list = ",".join(str(processor) for processor in policy[worker_count])
@@ -242,7 +253,93 @@ def describe_affinity_policy(policy: dict[int, tuple[int, ...]]) -> str:
     priority_policy = "default priority"
     if platform.system() == "Windows":
         priority_policy = "high priority"
-    return "automatic compact high-performance physical-core lanes: " + "; ".join(selections) + f"; inherited affinity; {priority_policy}"
+    description = (
+        "automatic compact high-performance physical-core lanes: "
+        + "; ".join(selections)
+        + f"; inherited affinity; {priority_policy}"
+    )
+    if windows_power_policy:
+        description += (
+            f"; active power scheme={windows_power_policy.active_scheme_guid}"
+            f"; AC minimum processor state={windows_power_policy.ac_minimum_processor_state_percent}%"
+        )
+    return description
+
+
+def _windows_processor_power_policy() -> WindowsProcessorPowerPolicy:
+    from ctypes import wintypes
+
+    class Guid(ctypes.Structure):
+        _fields_ = (
+            ("data1", ctypes.c_uint32),
+            ("data2", ctypes.c_uint16),
+            ("data3", ctypes.c_uint16),
+            ("data4", ctypes.c_uint8 * 8),
+        )
+
+        @classmethod
+        def from_uuid(cls, value: uuid.UUID) -> "Guid":
+            return cls.from_buffer_copy(value.bytes_le)
+
+    subgroup_processor = Guid.from_uuid(uuid.UUID("54533251-82be-4824-96c1-47b60b740d00"))
+    minimum_processor_state = Guid.from_uuid(uuid.UUID("893dee8e-2bef-41e0-89c6-b55d0929964c"))
+    power_profile = ctypes.WinDLL("PowrProf", use_last_error=True)
+    power_get_active_scheme = power_profile.PowerGetActiveScheme
+    power_get_active_scheme.argtypes = [wintypes.HANDLE, ctypes.POINTER(ctypes.POINTER(Guid))]
+    power_get_active_scheme.restype = wintypes.DWORD
+    power_read_ac_value_index = power_profile.PowerReadACValueIndex
+    power_read_ac_value_index.argtypes = [
+        wintypes.HANDLE,
+        ctypes.POINTER(Guid),
+        ctypes.POINTER(Guid),
+        ctypes.POINTER(Guid),
+        ctypes.POINTER(wintypes.DWORD),
+    ]
+    power_read_ac_value_index.restype = wintypes.DWORD
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.LocalFree.argtypes = [wintypes.HLOCAL]
+    kernel32.LocalFree.restype = wintypes.HLOCAL
+
+    active_scheme = ctypes.POINTER(Guid)()
+    error = power_get_active_scheme(None, ctypes.byref(active_scheme))
+    if error != 0:
+        raise ctypes.WinError(error)
+    try:
+        ac_minimum = wintypes.DWORD()
+        error = power_read_ac_value_index(
+            None,
+            active_scheme,
+            ctypes.byref(subgroup_processor),
+            ctypes.byref(minimum_processor_state),
+            ctypes.byref(ac_minimum),
+        )
+        if error != 0:
+            raise ctypes.WinError(error)
+        if ac_minimum.value > 100:
+            raise ValueError(f"Windows reported an invalid AC minimum processor state: {ac_minimum.value}%")
+
+        active_scheme_uuid = uuid.UUID(bytes_le=ctypes.string_at(active_scheme, ctypes.sizeof(Guid)))
+        return WindowsProcessorPowerPolicy(
+            active_scheme_guid=str(active_scheme_uuid),
+            ac_minimum_processor_state_percent=ac_minimum.value,
+        )
+    finally:
+        kernel32.LocalFree(active_scheme)
+
+
+def validate_windows_processor_power_policy(
+    policy: WindowsProcessorPowerPolicy,
+) -> None:
+    if policy.ac_minimum_processor_state_percent == FULL_WINDOWS_AC_MINIMUM_PROCESSOR_STATE_PERCENT:
+        return
+
+    raise ValueError(
+        "Full Windows benchmark qualification requires the active power plan's AC minimum processor state "
+        f"to be {FULL_WINDOWS_AC_MINIMUM_PROCESSOR_STATE_PERCENT}%; scheme {policy.active_scheme_guid} reports "
+        f"{policy.ac_minimum_processor_state_percent}%. Configure the power plan before running; this tool does "
+        "not modify system policy."
+    )
 
 
 @contextmanager
@@ -931,8 +1028,18 @@ def main(arguments: Sequence[str] | None = None) -> int:
         return 1
 
     scripts_directory = Path(__file__).resolve().parent
+    windows_power_policy = None
+    if platform.system() == "Windows":
+        try:
+            windows_power_policy = _windows_processor_power_policy()
+            if options.mode == "full":
+                validate_windows_processor_power_policy(windows_power_policy)
+        except (OSError, ValueError) as error:
+            print(f"Unable to establish a reproducible Windows power policy: {error}", file=sys.stderr)
+            return 1
+
     affinity_policy = build_affinity_policy()
-    affinity_description = describe_affinity_policy(affinity_policy)
+    affinity_description = describe_affinity_policy(affinity_policy, windows_power_policy)
     repetitions = REVIEW_REPETITION_COUNT
     minimum_time = REVIEW_MINIMUM_TIME_SECONDS
     workloads = review_workloads()
