@@ -120,6 +120,27 @@ namespace AZ::Test
             }
 
             HANDLE process = GetCurrentProcess();
+            m_previousPowerThrottlingState.Version = PROCESS_POWER_THROTTLING_CURRENT_VERSION;
+            if (GetProcessInformation(
+                    process,
+                    ProcessPowerThrottling,
+                    &m_previousPowerThrottlingState,
+                    sizeof(m_previousPowerThrottlingState)))
+            {
+                PROCESS_POWER_THROTTLING_STATE highQualityOfService{};
+                highQualityOfService.Version = PROCESS_POWER_THROTTLING_CURRENT_VERSION;
+                highQualityOfService.ControlMask = PROCESS_POWER_THROTTLING_EXECUTION_SPEED;
+                if (SetProcessInformation(
+                        process,
+                        ProcessPowerThrottling,
+                        &highQualityOfService,
+                        sizeof(highQualityOfService)))
+                {
+                    m_isHighQualityOfService = true;
+                    m_restorePowerThrottling = true;
+                }
+            }
+
             DWORD_PTR systemAffinityMask = 0;
             if (!GetProcessAffinityMask(process, &m_previousProcessAffinityMask, &systemAffinityMask))
             {
@@ -411,6 +432,14 @@ namespace AZ::Test
         ~Implementation()
         {
 #if defined(AZ_PLATFORM_WINDOWS)
+            if (m_restorePowerThrottling)
+            {
+                SetProcessInformation(
+                    GetCurrentProcess(),
+                    ProcessPowerThrottling,
+                    &m_previousPowerThrottlingState,
+                    sizeof(m_previousPowerThrottlingState));
+            }
             if (m_restoreProcessAffinity)
             {
                 SetProcessAffinityMask(GetCurrentProcess(), m_previousProcessAffinityMask);
@@ -434,11 +463,14 @@ namespace AZ::Test
         AZ::u32 m_processorCount = 0;
         AZStd::vector<AZ::u64> m_workerProcessorAffinities;
         bool m_isConstrained = false;
+        bool m_isHighQualityOfService = false;
 
 #if defined(AZ_PLATFORM_WINDOWS)
+        PROCESS_POWER_THROTTLING_STATE m_previousPowerThrottlingState{};
         DWORD_PTR m_previousProcessAffinityMask = 0;
         DWORD_PTR m_previousThreadAffinityMask = 0;
         HANDLE m_benchmarkThreadHandle = nullptr;
+        bool m_restorePowerThrottling = false;
         bool m_restoreProcessAffinity = false;
 #elif defined(AZ_PLATFORM_LINUX)
         cpu_set_t m_previousThreadAffinity{};
@@ -462,6 +494,11 @@ namespace AZ::Test
     bool ScopedBenchmarkCpuAffinity::IsConstrained() const
     {
         return m_implementation->m_isConstrained;
+    }
+
+    bool ScopedBenchmarkCpuAffinity::IsHighQualityOfService() const
+    {
+        return m_implementation->m_isHighQualityOfService;
     }
 
     void ScopedBenchmarkCpuAffinity::ConfigureJobManagerThreads(

@@ -102,6 +102,11 @@ namespace PhysX::Benchmarks
                     state.counters["AffinityConstrained"] = 1;
                 }
                 state.counters["AffinityProcessors"] = m_cpuAffinity.GetProcessorCount();
+                state.counters["HighQualityOfService"] = 0;
+                if (m_cpuAffinity.IsHighQualityOfService())
+                {
+                    state.counters["HighQualityOfService"] = 1;
+                }
                 state.counters["BackgroundWorkers"] = m_backgroundWorkerCount;
                 state.counters["CallerParticipates"] = 1;
             }

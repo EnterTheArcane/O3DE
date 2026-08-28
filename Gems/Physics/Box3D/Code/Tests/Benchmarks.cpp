@@ -46,6 +46,11 @@ namespace Box3D::Benchmarks
                 state.counters["AffinityConstrained"] = 1;
             }
             state.counters["AffinityProcessors"] = cpuAffinity.GetProcessorCount();
+            state.counters["HighQualityOfService"] = 0;
+            if (cpuAffinity.IsHighQualityOfService())
+            {
+                state.counters["HighQualityOfService"] = 1;
+            }
         }
 
         class JobContextScope final

@@ -357,6 +357,8 @@ def run_benchmark_process(
                 f"{provider} benchmark reported {affinity_processor_count} affinity processors; "
                 f"expected {len(processors)}: {output_path}"
             )
+        if platform.system() == "Windows" and round(float(result.get("HighQualityOfService", 0))) != 1:
+            raise RuntimeError(f"{provider} benchmark did not enter Windows HighQoS: {output_path}")
 
 
 def write_response_file(path: Path, arguments: Sequence[str]) -> None:

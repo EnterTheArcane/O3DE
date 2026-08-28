@@ -28,6 +28,9 @@ namespace AZ::Test
         [[nodiscard]]
         bool IsConstrained() const;
 
+        [[nodiscard]]
+        bool IsHighQualityOfService() const;
+
         void ConfigureJobManagerThreads(
             AZ::JobManagerDesc& descriptor,
             AZ::u32 workerCount) const;
