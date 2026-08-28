@@ -76,6 +76,57 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
         self.assertEqual(run_process.call_count, 9)
         self.assertTrue(all(call.args[4] == 5.0 for call in run_process.call_args_list))
 
+    def test_full_empty_world_diagnostic_uses_the_measured_stable_window(self) -> None:
+        workloads = run_benchmark_qualification.absolute_workloads(True)
+        empty_world = next(
+            workload
+            for workload in workloads
+            if workload.suffix == "Diagnostic/RaycastEmptyWorld/128/real_time"
+        )
+        self.assertEqual(
+            empty_world.minimum_time_seconds,
+            run_benchmark_qualification.FULL_EMPTY_WORLD_MINIMUM_TIME_SECONDS,
+        )
+        review_workloads = run_benchmark_qualification.absolute_workloads(False)
+        self.assertTrue(all(workload.minimum_time_seconds == 0.0 for workload in review_workloads))
+        self.assertEqual(
+            run_benchmark_qualification.build_minimum_time_policy(workloads, 2.0),
+            {
+                "default_seconds": 2.0,
+                "overrides_seconds": {
+                    empty_world.suffix: run_benchmark_qualification.FULL_EMPTY_WORLD_MINIMUM_TIME_SECONDS,
+                },
+            },
+        )
+
+        with mock.patch.object(
+            run_benchmark_qualification,
+            "resolve_provider_files",
+            return_value=(Path("bin/Jolt.Tests.Gem.dll"), None),
+        ), mock.patch.object(
+            run_benchmark_qualification,
+            "run_benchmark_process",
+        ) as run_process:
+            run_benchmark_qualification.capture_absolute_jolt(
+                run_benchmark_qualification.PROVIDERS[0],
+                (empty_world,),
+                2,
+                2.0,
+                Path("AzTestRunner.exe"),
+                Path("bin"),
+                Path("results"),
+                {1: (15,)},
+                30,
+            )
+
+        self.assertEqual(run_process.call_count, 3)
+        self.assertTrue(
+            all(
+                call.args[4] == run_benchmark_qualification.FULL_EMPTY_WORLD_MINIMUM_TIME_SECONDS
+                for call in run_process.call_args_list
+            )
+        )
+
     def test_review_workloads_cover_step_query_and_tail(self) -> None:
         workloads = run_benchmark_qualification.review_workloads()
 
@@ -495,6 +546,7 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
         ) as run_process:
             raw_reports, warmup_reports = run_benchmark_qualification.capture_absolute_jolt(
                 provider,
+                run_benchmark_qualification.absolute_workloads(False),
                 2,
                 0.05,
                 runner,
@@ -540,6 +592,7 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
         ) as archive_batch:
             raw_reports, warmup_reports = run_benchmark_qualification.capture_absolute_jolt(
                 provider,
+                run_benchmark_qualification.absolute_workloads(False),
                 2,
                 0.05,
                 Path("AzTestRunner.exe"),

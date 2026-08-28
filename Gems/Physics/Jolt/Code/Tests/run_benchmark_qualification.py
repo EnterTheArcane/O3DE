@@ -50,6 +50,7 @@ FULL_MAXIMUM_CAPABILITY_NANOSECONDS = 3.0
 FULL_MAXIMUM_CAPABILITY_OPERATION_RATIO = 0.02
 FULL_MATCHED_CAPTURE_ATTEMPTS = 2
 FULL_ABSOLUTE_CAPTURE_ATTEMPTS = 2
+FULL_EMPTY_WORLD_MINIMUM_TIME_SECONDS = 10.0
 
 
 @dataclass(frozen=True)
@@ -89,6 +90,23 @@ def matched_workloads() -> tuple[Workload, ...]:
 def review_workloads() -> tuple[Workload, ...]:
     workloads = matched_workloads()
     return workloads[0], workloads[8], workloads[12]
+
+
+def absolute_workloads(full: bool) -> tuple[Workload, ...]:
+    workloads = []
+    for suffix in ABSOLUTE_BENCHMARK_SUFFIXES:
+        minimum_time_seconds = 0.0
+        if full and suffix == "Diagnostic/RaycastEmptyWorld/128/real_time":
+            minimum_time_seconds = FULL_EMPTY_WORLD_MINIMUM_TIME_SECONDS
+        workloads.append(
+            Workload(
+                label=suffix,
+                suffix=suffix,
+                worker_count=1,
+                minimum_time_seconds=minimum_time_seconds,
+            )
+        )
+    return tuple(workloads)
 
 
 def describe_workload_filter(provider: str, workloads: Sequence[Workload]) -> str:
@@ -694,6 +712,7 @@ def capture_matched_provider(
 
 def capture_absolute_jolt(
     provider: Provider,
+    workloads: Sequence[Workload],
     repetitions: int,
     minimum_time: float,
     runner: Path,
@@ -710,8 +729,10 @@ def capture_absolute_jolt(
     module, _ = resolve_provider_files(binary_directory, provider)
     raw_reports = []
     warmup_reports = []
-    for benchmark_suffix in ABSOLUTE_BENCHMARK_SUFFIXES:
+    for workload in workloads:
+        benchmark_suffix = workload.suffix
         benchmark_name = safe_name(benchmark_suffix)
+        workload_minimum_time = max(minimum_time, workload.minimum_time_seconds)
         warmup_path = output_directory / provider.name / f"absolute-{benchmark_name}-warmup.json"
         workload_reports = [
             output_directory / provider.name / f"absolute-{benchmark_name}-{repetition:02d}.json"
@@ -723,7 +744,7 @@ def capture_absolute_jolt(
                 module,
                 provider.name,
                 benchmark_suffix,
-                minimum_time,
+                workload_minimum_time,
                 warmup_path,
                 affinity_policy[1],
                 timeout_seconds,
@@ -734,7 +755,7 @@ def capture_absolute_jolt(
                     module,
                     provider.name,
                     benchmark_suffix,
-                    minimum_time,
+                    workload_minimum_time,
                     raw_path,
                     affinity_policy[1],
                     timeout_seconds,
@@ -1041,8 +1062,9 @@ def main(arguments: Sequence[str] | None = None) -> int:
     jolt = PROVIDERS[0]
     jolt_module, jolt_runtime = resolve_provider_files(binary_directory, jolt)
     absolute_report = output_directory / "Jolt-absolute-qualified.json"
-    absolute_names = tuple(f"Jolt/{suffix}" for suffix in ABSOLUTE_BENCHMARK_SUFFIXES)
-    absolute_minimum_time_policy = build_minimum_time_policy((), minimum_time)
+    absolute_workload_set = absolute_workloads(options.mode == "full")
+    absolute_names = tuple(f"Jolt/{workload.suffix}" for workload in absolute_workload_set)
+    absolute_minimum_time_policy = build_minimum_time_policy(absolute_workload_set, minimum_time)
     if options.resume and absolute_report.is_file():
         try:
             validate_reusable_report(
@@ -1091,6 +1113,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
     if not absolute_report.is_file():
         absolute_raw, absolute_warmup = capture_absolute_jolt(
             jolt,
+            absolute_workload_set,
             repetitions,
             minimum_time,
             runner,
