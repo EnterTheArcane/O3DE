@@ -272,9 +272,47 @@ class QualificationValidationTests(unittest.TestCase):
             self.assertIn("run_benchmark_qualification.py", " ".join(benchmark_command))
             self.assertIn("full", benchmark_command)
             self.assertIn("--resume", benchmark_command)
+            self.assertNotIn("--diagnostic-only", benchmark_command)
             if jolt_qualification.platform.system() == "Windows":
                 self.assertIn("application-benchmark", commands)
                 self.assertIn("Release", commands["application-benchmark"])
+
+    def test_wsl_full_qualification_retains_diagnostic_benchmark_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            engine_root = Path(temporary_directory)
+            output_directory = engine_root / "build" / "qualification"
+            output_directory.mkdir(parents=True)
+            build_directory = engine_root / "build" / "primary"
+            runner = jolt_qualification.ValidationRunner(engine_root, output_directory, dry_run=True)
+
+            with mock.patch.object(jolt_qualification, "is_wsl_environment", return_value=True):
+                jolt_qualification.add_performance_qualification(
+                    runner,
+                    build_directory,
+                    16,
+                    "full",
+                )
+
+            commands = {result.name: result.command for result in runner.results if result.command}
+            benchmark_command = commands["native-benchmark-diagnostics"]
+            self.assertIn("full", benchmark_command)
+            self.assertIn("--diagnostic-only", benchmark_command)
+            self.assertNotIn("native-benchmark-qualification", commands)
+
+    def test_wsl_detection_does_not_classify_native_linux(self) -> None:
+        with mock.patch.object(jolt_qualification.platform, "system", return_value="Linux"), mock.patch.object(
+            jolt_qualification.platform,
+            "release",
+            return_value="6.18.0-generic",
+        ):
+            self.assertFalse(jolt_qualification.is_wsl_environment())
+
+        with mock.patch.object(jolt_qualification.platform, "system", return_value="Linux"), mock.patch.object(
+            jolt_qualification.platform,
+            "release",
+            return_value="6.18.0-microsoft-standard-WSL2",
+        ):
+            self.assertTrue(jolt_qualification.is_wsl_environment())
 
     def test_output_directory_must_remain_under_build(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

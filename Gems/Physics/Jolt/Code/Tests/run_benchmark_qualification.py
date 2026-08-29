@@ -479,6 +479,7 @@ def prepare_artifact(
     minimum_time: float,
     minimum_time_policy: dict,
     repetitions: int,
+    evidence_kind: str,
 ) -> None:
     response_arguments = []
     for raw_report in raw_reports[1:]:
@@ -517,6 +518,8 @@ def prepare_artifact(
         json.dumps(minimum_time_policy, sort_keys=True, separators=(",", ":")),
         "--repetitions",
         str(repetitions),
+        "--evidence-kind",
+        evidence_kind,
         "--reindex-repetitions",
     ]
     if runtime_dependency:
@@ -572,6 +575,7 @@ def validate_reusable_report(
     minimum_time_policy: dict,
     repetitions: int,
     expected_names: Sequence[str],
+    evidence_kind: str = "qualified",
 ) -> None:
     report = compare_provider_benchmarks.load_report(report_path)
     metadata = report.get("qualification", {})
@@ -588,6 +592,7 @@ def validate_reusable_report(
         "compiler_id": compiler_id,
         "compiler_version": compare_provider_benchmarks.normalize_compiler_version(compiler_version),
         "cpu_affinity_policy": affinity_description,
+        "evidence_kind": evidence_kind,
         "minimum_time": minimum_time,
         "minimum_time_policy": minimum_time_policy,
         "provider": provider.name,
@@ -698,6 +703,22 @@ def validate_absolute_report_quality(
         FULL_MAXIMUM_CAPABILITY_NANOSECONDS,
         FULL_MAXIMUM_CAPABILITY_OPERATION_RATIO,
         FULL_MAXIMUM_CV,
+    )
+    if errors:
+        raise ValueError(" ".join(errors))
+
+
+def validate_absolute_report_correctness(
+    report_path: Path,
+    repetitions: int,
+) -> None:
+    report = compare_provider_benchmarks.load_report(report_path)
+    errors = validate_jolt_benchmarks.validate_report(
+        report,
+        repetitions,
+        math.inf,
+        math.inf,
+        math.inf,
     )
     if errors:
         raise ValueError(" ".join(errors))
@@ -999,7 +1020,11 @@ def parse_arguments(arguments: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--compiler-version", required=True)
     parser.add_argument("--timeout-seconds", type=int, default=1_800)
     parser.add_argument("--resume", action="store_true")
-    return parser.parse_args(arguments)
+    parser.add_argument("--diagnostic-only", action="store_true")
+    options = parser.parse_args(arguments)
+    if options.diagnostic_only and options.mode != "full":
+        parser.error("--diagnostic-only requires full mode")
+    return options
 
 
 def main(arguments: Sequence[str] | None = None) -> int:
@@ -1040,6 +1065,8 @@ def main(arguments: Sequence[str] | None = None) -> int:
 
     affinity_policy = build_affinity_policy()
     affinity_description = describe_affinity_policy(affinity_policy, windows_power_policy)
+    enforce_performance_gates = options.mode == "full" and not options.diagnostic_only
+    evidence_kind = "diagnostic" if options.diagnostic_only else "qualified"
     repetitions = REVIEW_REPETITION_COUNT
     minimum_time = REVIEW_MINIMUM_TIME_SECONDS
     workloads = review_workloads()
@@ -1052,20 +1079,20 @@ def main(arguments: Sequence[str] | None = None) -> int:
 
     matched_minimum_time_policy = build_minimum_time_policy(workloads, minimum_time)
 
-    qualified_reports = {}
+    matched_reports = {}
     for provider in providers:
         module, runtime_dependency = resolve_provider_files(binary_directory, provider)
-        qualified_report = output_directory / f"{provider.name}-matched-qualified.json"
+        matched_report = output_directory / f"{provider.name}-matched-{evidence_kind}.json"
         expected_names = tuple(f"{provider.name}/{workload.suffix}" for workload in workloads)
         maximum_cv = None
         maximum_attempts = 1
-        if options.mode == "full" and provider.name == "Jolt":
+        if enforce_performance_gates and provider.name == "Jolt":
             maximum_cv = FULL_MAXIMUM_CV
             maximum_attempts = FULL_MATCHED_CAPTURE_ATTEMPTS
-        if options.resume and qualified_report.is_file():
+        if options.resume and matched_report.is_file():
             try:
                 validate_reusable_report(
-                    qualified_report,
+                    matched_report,
                     engine_root,
                     runner,
                     provider,
@@ -1079,9 +1106,10 @@ def main(arguments: Sequence[str] | None = None) -> int:
                     matched_minimum_time_policy,
                     repetitions,
                     expected_names,
+                    evidence_kind,
                 )
                 validate_matched_report_quality(
-                    qualified_report,
+                    matched_report,
                     provider,
                     workloads,
                     repetitions,
@@ -1089,7 +1117,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 )
             except (OSError, ValueError) as error:
                 archive_rejected_checkpoint(
-                    qualified_report,
+                    matched_report,
                     output_directory / "rejected-checkpoints",
                     str(error),
                 )
@@ -1098,8 +1126,8 @@ def main(arguments: Sequence[str] | None = None) -> int:
                     file=sys.stderr,
                 )
             else:
-                print(f"Reusing qualified matched {provider.name} benchmark evidence.", file=sys.stderr)
-                qualified_reports[provider.name] = qualified_report
+                print(f"Reusing matched {provider.name} benchmark evidence.", file=sys.stderr)
+                matched_reports[provider.name] = matched_report
                 continue
 
         raw_reports, warmup_reports = capture_matched_provider(
@@ -1124,7 +1152,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
             runtime_dependency,
             raw_reports,
             warmup_reports,
-            qualified_report,
+            matched_report,
             options.compiler_id,
             options.compiler_version,
             affinity_description,
@@ -1132,31 +1160,48 @@ def main(arguments: Sequence[str] | None = None) -> int:
             minimum_time,
             matched_minimum_time_policy,
             repetitions,
+            evidence_kind,
         )
-        qualified_reports[provider.name] = qualified_report
+        validate_matched_report_quality(
+            matched_report,
+            provider,
+            workloads,
+            repetitions,
+            maximum_cv,
+        )
+        matched_reports[provider.name] = matched_report
 
     if options.mode == "full":
+        maximum_median_ratio = math.inf
+        maximum_bootstrap_ratio = math.inf
+        maximum_tail_ratio = math.inf
+        maximum_cv = math.inf
+        if enforce_performance_gates:
+            maximum_median_ratio = 1.0
+            maximum_bootstrap_ratio = 1.05
+            maximum_tail_ratio = 1.10
+            maximum_cv = FULL_MAXIMUM_CV
         subprocess.run(
             (
                 sys.executable,
                 str(scripts_directory / "compare_provider_benchmarks.py"),
-                str(qualified_reports["Jolt"]),
-                str(qualified_reports["Box3D"]),
-                str(qualified_reports["PhysX"]),
+                str(matched_reports["Jolt"]),
+                str(matched_reports["Box3D"]),
+                str(matched_reports["PhysX"]),
                 "--gate-provider",
                 "PhysX",
                 "--repetitions",
                 str(repetitions),
                 "--maximum-median-ratio",
-                "1.0",
+                str(maximum_median_ratio),
                 "--maximum-bootstrap-ratio",
-                "1.05",
+                str(maximum_bootstrap_ratio),
                 "--maximum-repetition-p95-ratio",
-                "1.10",
+                str(maximum_tail_ratio),
                 "--maximum-frame-tail-ratio",
-                "1.10",
+                str(maximum_tail_ratio),
                 "--maximum-cv",
-                str(FULL_MAXIMUM_CV),
+                str(maximum_cv),
             ),
             cwd=engine_root,
             check=True,
@@ -1164,7 +1209,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
 
     jolt = PROVIDERS[0]
     jolt_module, jolt_runtime = resolve_provider_files(binary_directory, jolt)
-    absolute_report = output_directory / "Jolt-absolute-qualified.json"
+    absolute_report = output_directory / f"Jolt-absolute-{evidence_kind}.json"
     absolute_workload_set = absolute_workloads(options.mode == "full")
     absolute_names = tuple(f"Jolt/{workload.suffix}" for workload in absolute_workload_set)
     absolute_minimum_time_policy = build_minimum_time_policy(absolute_workload_set, minimum_time)
@@ -1185,9 +1230,13 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 absolute_minimum_time_policy,
                 repetitions,
                 absolute_names,
+                evidence_kind,
             )
-            if options.mode == "full":
+            if enforce_performance_gates:
                 validate_absolute_report_quality(absolute_report, repetitions)
+            elif options.diagnostic_only:
+                validate_smoke_report(absolute_report, repetitions, absolute_names)
+                validate_absolute_report_correctness(absolute_report, repetitions)
         except (OSError, ValueError) as error:
             archive_rejected_checkpoint(
                 absolute_report,
@@ -1199,10 +1248,10 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 file=sys.stderr,
             )
         else:
-            print("Reusing qualified absolute Jolt benchmark evidence.", file=sys.stderr)
+            print("Reusing absolute Jolt benchmark evidence.", file=sys.stderr)
             if options.mode == "review":
                 validate_smoke_report(
-                    qualified_reports["Jolt"],
+                    matched_reports["Jolt"],
                     repetitions,
                     tuple(f"Jolt/{workload.suffix}" for workload in workloads),
                 )
@@ -1224,8 +1273,8 @@ def main(arguments: Sequence[str] | None = None) -> int:
             output_directory / "raw-absolute",
             affinity_policy,
             options.timeout_seconds,
-            FULL_MAXIMUM_CV if options.mode == "full" else None,
-            FULL_ABSOLUTE_CAPTURE_ATTEMPTS if options.mode == "full" else 1,
+            FULL_MAXIMUM_CV if enforce_performance_gates else None,
+            FULL_ABSOLUTE_CAPTURE_ATTEMPTS if enforce_performance_gates else 1,
         )
         prepare_artifact(
             scripts_directory,
@@ -1244,11 +1293,12 @@ def main(arguments: Sequence[str] | None = None) -> int:
             minimum_time,
             absolute_minimum_time_policy,
             repetitions,
+            evidence_kind,
         )
 
     if options.mode == "review":
         validate_smoke_report(
-            qualified_reports["Jolt"],
+            matched_reports["Jolt"],
             repetitions,
             tuple(f"Jolt/{workload.suffix}" for workload in workloads),
         )
@@ -1257,6 +1307,18 @@ def main(arguments: Sequence[str] | None = None) -> int:
             repetitions,
             absolute_names,
         )
+        return 0
+    if options.diagnostic_only:
+        for provider in providers:
+            validate_matched_report_quality(
+                matched_reports[provider.name],
+                provider,
+                workloads,
+                repetitions,
+                None,
+            )
+        validate_smoke_report(absolute_report, repetitions, absolute_names)
+        validate_absolute_report_correctness(absolute_report, repetitions)
         return 0
     subprocess.run(
         (

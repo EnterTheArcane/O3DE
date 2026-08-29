@@ -74,6 +74,7 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
         repetitions: int = 30,
         use_response_file: bool = False,
         minimum_time_policy: str = '{"default_seconds":0.05,"overrides_seconds":{}}',
+        evidence_kind: str = "qualified",
     ) -> int:
         arguments = [
             "prepare_benchmark_artifact.py",
@@ -100,6 +101,8 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
             minimum_time_policy,
             "--repetitions",
             str(repetitions),
+            "--evidence-kind",
+            evidence_kind,
         ]
         for additional_raw_report in additional_raw_reports:
             arguments.extend(("--additional-raw-report", str(additional_raw_report)))
@@ -144,6 +147,7 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
             )
             report = json.loads(output_report.read_text(encoding="utf-8"))
             qualification = report["qualification"]
+            self.assertEqual(qualification["evidence_kind"], "qualified")
             self.assertEqual(qualification["binary_sha256"], prepare_benchmark_artifact.sha256_file(binary))
             self.assertEqual(qualification["runner_sha256"], prepare_benchmark_artifact.sha256_file(runner))
             self.assertEqual(
@@ -166,6 +170,29 @@ class PrepareBenchmarkArtifactTests(unittest.TestCase):
             )
             self.assertTrue(qualification["source_state_sha256"])
             self.assertGreaterEqual(qualification["source_epoch_ns"], untracked.stat().st_mtime_ns)
+
+    def test_records_diagnostic_evidence_without_claiming_qualification(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source, binary, runner, raw_report, output_report = self.create_repository(root)
+            output_time = source.stat().st_mtime_ns + 1_000_000_000
+            os.utime(binary, ns=(output_time, output_time))
+            os.utime(runner, ns=(output_time, output_time))
+            os.utime(raw_report, ns=(output_time + 1, output_time + 1))
+
+            self.assertEqual(
+                self.run_prepare(
+                    root,
+                    binary,
+                    runner,
+                    raw_report,
+                    output_report,
+                    evidence_kind="diagnostic",
+                ),
+                0,
+            )
+            report = json.loads(output_report.read_text(encoding="utf-8"))
+            self.assertEqual(report["qualification"]["evidence_kind"], "diagnostic")
 
     def test_accepts_response_file_arguments(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

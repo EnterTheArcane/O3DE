@@ -176,6 +176,7 @@ def main() -> int:
     parser.add_argument("--minimum-time", type=float, required=True)
     parser.add_argument("--minimum-time-policy", required=True)
     parser.add_argument("--repetitions", type=int, default=30)
+    parser.add_argument("--evidence-kind", choices=("diagnostic", "qualified"), default="qualified")
     parser.add_argument("--additional-raw-report", action="append", type=Path, default=[])
     parser.add_argument("--runtime-dependency", action="append", type=Path, default=[])
     parser.add_argument("--reindex-repetitions", action="store_true")
@@ -284,6 +285,7 @@ def main() -> int:
         "compiler_id": arguments.compiler_id,
         "compiler_version": compare_provider_benchmarks.normalize_compiler_version(arguments.compiler_version),
         "cpu_affinity_policy": arguments.cpu_affinity_policy,
+        "evidence_kind": arguments.evidence_kind,
         "generated_utc": datetime.now(timezone.utc).isoformat(),
         "minimum_time": arguments.minimum_time,
         "minimum_time_policy": minimum_time_policy,

@@ -74,6 +74,7 @@ def make_report(provider: str, time_microseconds: float) -> dict:
             "compiler_id": "Clang",
             "compiler_version": "22.1.8",
             "cpu_affinity_policy": "physical-core-group-0",
+            "evidence_kind": "qualified",
             "minimum_time": 0.05,
             "minimum_time_policy": {
                 "default_seconds": 0.05,
@@ -382,6 +383,17 @@ class CompareProviderBenchmarksTests(unittest.TestCase):
         }
         reports["PhysX"]["qualification"]["source_revision"] = "other-revision"
         self.assertEqual(run_comparison(reports), 1)
+
+    def test_rejects_mixed_qualified_and_diagnostic_evidence(self):
+        reports = {
+            "Jolt": make_report("Jolt", 90.0),
+            "Box3D": make_report("Box3D", 95.0),
+            "PhysX": make_report("PhysX", 100.0),
+        }
+        reports["Box3D"]["qualification"]["evidence_kind"] = "diagnostic"
+
+        with self.assertRaisesRegex(ValueError, "differs for evidence_kind"):
+            compare_provider_benchmarks.validate_context(reports)
 
     def test_accepts_equivalent_numeric_compiler_versions(self):
         reports = {

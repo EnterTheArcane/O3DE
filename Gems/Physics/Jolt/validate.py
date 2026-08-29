@@ -1187,6 +1187,10 @@ def get_host_asset_platform() -> str:
     raise ValueError(f"Jolt asset qualification does not support {host_system}")
 
 
+def is_wsl_environment() -> bool:
+    return platform.system() == "Linux" and "microsoft" in platform.release().lower()
+
+
 def validate_jolt_asset_processing_log(
     log_path: Path,
     product_paths: Sequence[Path],
@@ -1438,6 +1442,11 @@ def add_performance_qualification(
     qualification_mode: str,
     environment: dict[str, str] | None = None,
 ) -> None:
+    benchmark_result_name = "native-benchmark-qualification"
+    diagnostic_only = qualification_mode == "full" and is_wsl_environment()
+    if diagnostic_only:
+        benchmark_result_name = "native-benchmark-diagnostics"
+
     release_configuration = get_cmake_configuration("Release")
     targets = ["Jolt.Tests", "Editor"]
     if qualification_mode == "full":
@@ -1459,7 +1468,7 @@ def add_performance_qualification(
         environment,
     )
     if not built:
-        runner.skip("native-benchmark-qualification", "Release performance targets failed to build")
+        runner.skip(benchmark_result_name, "Release performance targets failed to build")
         if platform.system() == "Windows":
             runner.skip("application-benchmark", "Release performance targets failed to build")
             runner.skip("application-benchmark-scenario-result", "application benchmark did not run")
@@ -1478,37 +1487,40 @@ def add_performance_qualification(
 
         runner.run_check("performance-compiler-metadata", read_compiler_metadata)
     if not compiler_metadata:
-        runner.skip("native-benchmark-qualification", "compiler metadata is unavailable")
+        runner.skip(benchmark_result_name, "compiler metadata is unavailable")
         return
 
     binary_directory = build_directory / "bin" / "release"
     native_result_directory = runner.output_directory / "native-benchmarks"
-    runner.run_command(
-        "native-benchmark-qualification",
-        (
-            sys.executable,
-            str(
-                runner.engine_root
-                / "Gems"
-                / "Physics"
-                / "Jolt"
-                / "Code"
-                / "Tests"
-                / "run_benchmark_qualification.py"
-            ),
-            qualification_mode,
-            "--engine-root",
-            str(runner.engine_root),
-            "--binary-directory",
-            str(binary_directory),
-            "--output-directory",
-            str(native_result_directory),
-            "--compiler-id",
-            compiler_metadata[0],
-            "--compiler-version",
-            compiler_metadata[1],
-            "--resume",
+    benchmark_command = [
+        sys.executable,
+        str(
+            runner.engine_root
+            / "Gems"
+            / "Physics"
+            / "Jolt"
+            / "Code"
+            / "Tests"
+            / "run_benchmark_qualification.py"
         ),
+        qualification_mode,
+        "--engine-root",
+        str(runner.engine_root),
+        "--binary-directory",
+        str(binary_directory),
+        "--output-directory",
+        str(native_result_directory),
+        "--compiler-id",
+        compiler_metadata[0],
+        "--compiler-version",
+        compiler_metadata[1],
+        "--resume",
+    ]
+    if diagnostic_only:
+        benchmark_command.append("--diagnostic-only")
+    runner.run_command(
+        benchmark_result_name,
+        benchmark_command,
         172_800,
         environment,
     )

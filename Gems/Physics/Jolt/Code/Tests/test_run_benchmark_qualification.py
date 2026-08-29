@@ -17,6 +17,27 @@ import run_benchmark_qualification
 
 
 class RunBenchmarkQualificationTests(unittest.TestCase):
+    def test_diagnostic_capture_requires_full_mode(self) -> None:
+        common_arguments = (
+            "--engine-root",
+            ".",
+            "--binary-directory",
+            "build/bin",
+            "--output-directory",
+            "build/results",
+            "--compiler-id",
+            "Clang",
+            "--compiler-version",
+            "20.1.8",
+            "--diagnostic-only",
+        )
+
+        options = run_benchmark_qualification.parse_arguments(("full", *common_arguments))
+        self.assertTrue(options.diagnostic_only)
+
+        with self.assertRaises(SystemExit):
+            run_benchmark_qualification.parse_arguments(("review", *common_arguments))
+
     def test_full_capture_uses_stable_measurement_windows(self) -> None:
         self.assertEqual(run_benchmark_qualification.FULL_REPETITION_COUNT, 30)
         self.assertGreaterEqual(run_benchmark_qualification.FULL_MINIMUM_TIME_SECONDS, 2.0)
@@ -256,6 +277,7 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
                             "compiler_id": "Clang",
                             "compiler_version": "20.1.8.0",
                             "cpu_affinity_policy": "test-affinity",
+                            "evidence_kind": "qualified",
                             "minimum_time": 2.0,
                             "minimum_time_policy": {
                                 "default_seconds": 2.0,
@@ -435,6 +457,29 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
                     Path("report.json"),
                     30,
                 )
+
+    def test_absolute_diagnostics_preserve_correctness_and_allocation_checks(self) -> None:
+        with mock.patch.object(
+            run_benchmark_qualification.compare_provider_benchmarks,
+            "load_report",
+            return_value={},
+        ), mock.patch.object(
+            run_benchmark_qualification.validate_jolt_benchmarks,
+            "validate_report",
+            return_value=[],
+        ) as validate_report:
+            run_benchmark_qualification.validate_absolute_report_correctness(
+                Path("report.json"),
+                30,
+            )
+
+        validate_report.assert_called_once_with(
+            {},
+            30,
+            float("inf"),
+            float("inf"),
+            float("inf"),
+        )
 
     def test_matched_capture_retries_an_entire_invalid_workload_batch(self) -> None:
         provider = run_benchmark_qualification.Provider("Jolt", "Jolt.Tests.Gem.dll")
