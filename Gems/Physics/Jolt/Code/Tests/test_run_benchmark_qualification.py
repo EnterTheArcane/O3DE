@@ -64,6 +64,17 @@ class RunBenchmarkQualificationTests(unittest.TestCase):
             [float(workload.get("minimum_time_seconds", 0.0)) for workload in expected_workloads],
         )
 
+    def test_diagnostic_workloads_are_jolt_representative(self) -> None:
+        workloads = run_benchmark_qualification.diagnostic_workloads()
+
+        self.assertEqual(
+            tuple(workload.suffix for workload in workloads),
+            run_benchmark_qualification.DIAGNOSTIC_MATCHED_BENCHMARK_SUFFIXES,
+        )
+        self.assertEqual({workload.worker_count for workload in workloads}, {1, 4, 8})
+        self.assertTrue(any(workload.suffix.startswith("Lifecycle/") for workload in workloads))
+        self.assertTrue(any(workload.suffix.startswith("Query/") for workload in workloads))
+
     def test_batch_raycast_uses_the_measured_stable_window_for_every_provider(self) -> None:
         workload = next(
             workload

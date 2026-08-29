@@ -1449,7 +1449,7 @@ def add_performance_qualification(
 
     release_configuration = get_cmake_configuration("Release")
     targets = ["Jolt.Tests", "Editor"]
-    if qualification_mode == "full":
+    if qualification_mode == "full" and not diagnostic_only:
         targets.extend(("Box3D.Tests", "PhysX5.Tests"))
     built = runner.run_command(
         "build-release-performance-targets",

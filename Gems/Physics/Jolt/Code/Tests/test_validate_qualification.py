@@ -254,12 +254,13 @@ class QualificationValidationTests(unittest.TestCase):
             build_directory = engine_root / "build" / "primary"
             runner = jolt_qualification.ValidationRunner(engine_root, output_directory, dry_run=True)
 
-            jolt_qualification.add_performance_qualification(
-                runner,
-                build_directory,
-                16,
-                "full",
-            )
+            with mock.patch.object(jolt_qualification, "is_wsl_environment", return_value=False):
+                jolt_qualification.add_performance_qualification(
+                    runner,
+                    build_directory,
+                    16,
+                    "full",
+                )
 
             commands = {result.name: result.command for result in runner.results if result.command}
             build_command = commands["build-release-performance-targets"]
@@ -294,6 +295,11 @@ class QualificationValidationTests(unittest.TestCase):
                 )
 
             commands = {result.name: result.command for result in runner.results if result.command}
+            build_command = commands["build-release-performance-targets"]
+            self.assertIn("Jolt.Tests", build_command)
+            self.assertIn("Editor", build_command)
+            self.assertNotIn("Box3D.Tests", build_command)
+            self.assertNotIn("PhysX5.Tests", build_command)
             benchmark_command = commands["native-benchmark-diagnostics"]
             self.assertIn("full", benchmark_command)
             self.assertIn("--diagnostic-only", benchmark_command)

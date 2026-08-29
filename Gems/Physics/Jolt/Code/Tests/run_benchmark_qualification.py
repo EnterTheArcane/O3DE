@@ -44,7 +44,14 @@ ABSOLUTE_BENCHMARK_SUFFIXES = (
     "Rollback/RestoreFilteredStateValidated/128/2/real_time",
     "Rollback/RestoreFilteredStateValidated/1024/2/real_time",
 )
-ABSOLUTE_FILTER_SUFFIX = f"({'|'.join(ABSOLUTE_BENCHMARK_SUFFIXES)})"
+DIAGNOSTIC_MATCHED_BENCHMARK_SUFFIXES = (
+    "Step/SettledBoxes/128/1/iterations:600/real_time",
+    "Step/SettledBoxes/128/4/iterations:600/real_time",
+    "Step/SettledBoxes/128/8/iterations:600/real_time",
+    "Lifecycle/CreateDestroyBodies/128/1/real_time",
+    "Query/RaycastClosestBatchGrid/1024/128/4/real_time",
+    "Query/OverlapSphereGrid/1024/1/1/real_time",
+)
 FULL_REPETITION_COUNT = 30
 REVIEW_REPETITION_COUNT = 3
 FULL_MINIMUM_TIME_SECONDS = 2.0
@@ -101,6 +108,11 @@ def matched_workloads() -> tuple[Workload, ...]:
 def review_workloads() -> tuple[Workload, ...]:
     workloads = matched_workloads()
     return workloads[0], workloads[8], workloads[12]
+
+
+def diagnostic_workloads() -> tuple[Workload, ...]:
+    workloads_by_suffix = {workload.suffix: workload for workload in matched_workloads()}
+    return tuple(workloads_by_suffix[suffix] for suffix in DIAGNOSTIC_MATCHED_BENCHMARK_SUFFIXES)
 
 
 def absolute_workloads(full: bool) -> tuple[Workload, ...]:
@@ -1073,9 +1085,12 @@ def main(arguments: Sequence[str] | None = None) -> int:
     providers = PROVIDERS[:1]
     if options.mode == "full":
         repetitions = FULL_REPETITION_COUNT
-        minimum_time = FULL_MINIMUM_TIME_SECONDS
-        workloads = matched_workloads()
-        providers = PROVIDERS
+        if options.diagnostic_only:
+            workloads = diagnostic_workloads()
+        else:
+            minimum_time = FULL_MINIMUM_TIME_SECONDS
+            workloads = matched_workloads()
+            providers = PROVIDERS
 
     matched_minimum_time_policy = build_minimum_time_policy(workloads, minimum_time)
 
@@ -1171,16 +1186,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
         )
         matched_reports[provider.name] = matched_report
 
-    if options.mode == "full":
-        maximum_median_ratio = math.inf
-        maximum_bootstrap_ratio = math.inf
-        maximum_tail_ratio = math.inf
-        maximum_cv = math.inf
-        if enforce_performance_gates:
-            maximum_median_ratio = 1.0
-            maximum_bootstrap_ratio = 1.05
-            maximum_tail_ratio = 1.10
-            maximum_cv = FULL_MAXIMUM_CV
+    if enforce_performance_gates:
         subprocess.run(
             (
                 sys.executable,
@@ -1193,15 +1199,15 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 "--repetitions",
                 str(repetitions),
                 "--maximum-median-ratio",
-                str(maximum_median_ratio),
+                "1.0",
                 "--maximum-bootstrap-ratio",
-                str(maximum_bootstrap_ratio),
+                "1.05",
                 "--maximum-repetition-p95-ratio",
-                str(maximum_tail_ratio),
+                "1.10",
                 "--maximum-frame-tail-ratio",
-                str(maximum_tail_ratio),
+                "1.10",
                 "--maximum-cv",
-                str(maximum_cv),
+                str(FULL_MAXIMUM_CV),
             ),
             cwd=engine_root,
             check=True,
@@ -1210,9 +1216,10 @@ def main(arguments: Sequence[str] | None = None) -> int:
     jolt = PROVIDERS[0]
     jolt_module, jolt_runtime = resolve_provider_files(binary_directory, jolt)
     absolute_report = output_directory / f"Jolt-absolute-{evidence_kind}.json"
-    absolute_workload_set = absolute_workloads(options.mode == "full")
+    absolute_workload_set = absolute_workloads(enforce_performance_gates)
     absolute_names = tuple(f"Jolt/{workload.suffix}" for workload in absolute_workload_set)
     absolute_minimum_time_policy = build_minimum_time_policy(absolute_workload_set, minimum_time)
+    absolute_filter = describe_workload_filter(jolt.name, absolute_workload_set)
     if options.resume and absolute_report.is_file():
         try:
             validate_reusable_report(
@@ -1225,7 +1232,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 options.compiler_id,
                 options.compiler_version,
                 affinity_description,
-                f"Jolt/{ABSOLUTE_FILTER_SUFFIX}",
+                absolute_filter,
                 minimum_time,
                 absolute_minimum_time_policy,
                 repetitions,
@@ -1289,7 +1296,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
             options.compiler_id,
             options.compiler_version,
             affinity_description,
-            f"Jolt/{ABSOLUTE_FILTER_SUFFIX}",
+            absolute_filter,
             minimum_time,
             absolute_minimum_time_policy,
             repetitions,
