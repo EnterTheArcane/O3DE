@@ -6,12 +6,11 @@ JoltPhysics 5.6.0 is fetched and built privately by `3rdParty/JoltNative.cmake`;
 not cross the Gem boundary. GPU Hair is deliberately outside this qualification. The immediate scope is macOS CPU; report iOS as a
 separate external gate.
 
-Windows currently passes the complete 84-step CPU-only functional, performance, and packaging matrix at revision
-`c388cabc548deadc81515294749542c6a16b03a2` with clang-cl and MSVC, including Debug/Profile/Release, unity/non-unity, double precision,
-diagnostics, ASan, modular/monolithic, installed consumers, all retained scenarios, and 30-process benchmarks. An earlier WSL2 Clang
-Release checkpoint passed its then-current CPU suite, but the final ext4 rerun for the shipping revision remains pending. WSL is not
-native-Linux or Apple evidence. Do not mark an Apple ledger row complete without running it on the recorded hardware and current working
-tree.
+The qualified implementation revision is `c51b7577d2d34b73c72f622b7dc5808e7a22c98d`. Complementary Windows evidence covers clang-cl
+and MSVC Debug/Profile/Release, unity/non-unity, double precision, diagnostics, ASan, modular/monolithic, installed consumers, all 21
+registered scenarios, and current-policy 30-process benchmarks. A final Clang 20.1.8 WSL2 run from a dedicated ext4 clone passes its
+functional, packaging, and representative diagnostic gates. Neither Windows nor WSL is Apple evidence. Do not mark an Apple ledger row
+complete without running it on the recorded hardware and current working tree.
 
 ## Rules of engagement
 
@@ -94,6 +93,22 @@ cmake --build build/jolt_mac --config Profile --target help \
 The configure must fetch or reuse Jolt through the Gem's private content path. It must not discover a system Jolt installation. Inspect the
 generated dependency graph if a host package manager has installed Jolt.
 
+After the primary tree is configured, use the checked-in validator as the authoritative orchestration path for its platform-neutral
+subset. It configures the current Unix matrix trees, runs source and modular-installed consumers, validates retained scenario envelopes,
+and writes JSON and JUnit summaries:
+
+```bash
+python3 Gems/Physics/Jolt/validate.py full \
+    --engine-root . \
+    --build-dir build/jolt_mac \
+    --matrix-root build/jolt_apple_results/matrix \
+    --output-dir build/jolt_apple_results/full \
+    --parallel "$jobs"
+```
+
+The focused commands below remain required for Apple-only gates that are not yet automated, including monolithic installation, Apple
+sanitizers, and device-specific analysis. They are also useful for diagnosing a failed validator step.
+
 ## Compile and test
 
 Build both Profile and Release in the primary tree, then compile the no-unity, double-precision, and monolithic permutations. Building
@@ -166,9 +181,10 @@ If the application bundle layout moves `AssetProcessorBatch`, locate the executa
 resolved path. Inspect the Asset Processor database/logs and prove that `test_scene.jolt.json` and `test_skeleton.jolt.json` each produce a
 non-empty `.jolt` product with the correct catalog asset type and no native header product.
 
-The current main suite has six coarse null-renderer scenarios. As Phase 4 lands, run every focused `Jolt_*` scenario, the saved feature
-gallery, the 600/3,600/36,000-tick stress modes appropriate to the qualification tier, save/reload, prefab instantiation, play, and clean
-shutdown. Record each scenario independently; one passing editor launch does not qualify hidden assertions.
+The current main suite has 20 focused null-renderer scenarios plus one separate benchmark scenario. Run every registered `Jolt_*`
+scenario, the saved feature gallery, the 600/3,600/36,000-tick stress modes appropriate to the qualification tier, save/reload, prefab
+instantiation, play, and clean shutdown. Retain and validate each result envelope independently; one passing editor launch does not
+qualify hidden assertions.
 
 ## Determinism
 
@@ -220,14 +236,14 @@ xcodebuild -project build/jolt_mac_xcode/O3DE.xcodeproj \
     CODE_SIGNING_ALLOWED=NO
 ```
 
-Also run the Phase-6 IWYU/header-isolation, reflection parity, native-leakage, serialization fuzz/truncation, manifest, and unrelated-diff
-checks when those entry-point modes exist. If UBSan is supported by the current engine/AppleClang combination, use a separate tree and
-record the exact flags; do not claim it from ASan coverage.
+Also run the current IWYU/header-isolation, reflection parity, native-leakage, serialization fuzz/truncation, manifest, and unrelated-diff
+checks through `validate.py`. If UBSan is supported by the current engine/AppleClang combination, use a separate tree and record the exact
+flags; do not claim it from ASan coverage.
 
 ## Build-option matrix
 
-Qualify each supported option in its own build tree. Phase 2 adds the broadphase and narrowphase statistics options; until then, record
-them as unavailable rather than passing them implicitly.
+Qualify each supported option in its own build tree. Broadphase and narrowphase statistics are implemented compile-time options and must
+be tested both disabled and enabled; do not infer either configuration from the other.
 
 | Option | Required configurations |
 |---|---|
@@ -235,8 +251,8 @@ them as unavailable rather than passing them implicitly.
 | `LY_JOLT_ENABLE_DEBUG_RENDERING` | `OFF` and `ON` |
 | `LY_JOLT_ENABLE_DETAILED_PROFILING` | `OFF` and `ON` |
 | `LY_JOLT_ENABLE_SIMULATION_STATISTICS` | `OFF` and `ON` |
-| `LY_JOLT_ENABLE_BROADPHASE_STATISTICS` | `OFF` and `ON` after Phase 2 |
-| `LY_JOLT_ENABLE_NARROWPHASE_STATISTICS` | `OFF` and `ON` after Phase 2 |
+| `LY_JOLT_ENABLE_BROADPHASE_STATISTICS` | `OFF` and `ON` |
+| `LY_JOLT_ENABLE_NARROWPHASE_STATISTICS` | `OFF` and `ON` |
 | Unity | `mac-ninja` and `mac-ninja-no-unity` |
 | Linkage | modular and `LY_MONOLITHIC_GAME=ON` |
 | Configuration | Debug compile smoke, Profile qualification, Release timing |
@@ -262,8 +278,8 @@ cmake --build build/jolt_mac_clean_fetch --config Profile \
     --parallel "$jobs"
 ```
 
-For the installed engine, use a separate prefix and build both modular and monolithic installs. The exact public-only consumer is a Phase-6
-deliverable; once present, configure it only against the installed engine and fail if it can include native Jolt headers.
+For the installed engine, use a separate prefix and build both modular and monolithic installs. Configure and run the checked-in
+public-only consumer only against the installed engine, and fail if it can include native Jolt headers.
 
 ```bash
 cmake --preset mac-ninja -S . -B build/jolt_mac_install \
@@ -279,9 +295,9 @@ find build/jolt_install -type f \
     -print
 ```
 
-The final `find` must print nothing. Repeat with `LY_MONOLITHIC_GAME=ON`. Then configure and run the checked-in installed consumer when it
-exists, including one world, body, shape, step, query, and shutdown through public AZ-facing headers only. Do not add an installed native
-lookup module to make the consumer pass.
+The final `find` must print nothing. Repeat with `LY_MONOLITHIC_GAME=ON`. Then configure and run the checked-in installed consumer,
+including one world, body, shape, step, query, and shutdown through public AZ-facing headers only. Do not add an installed native lookup
+module to make the consumer pass.
 
 ## Performance and memory qualification
 
@@ -314,8 +330,9 @@ all three providers compile on the same machine, and pass their raw files throug
 unchanged median 1.0, bootstrap 1.05, tail 1.10, 30-repetition, and 5% CV gates.
 Do not poll the benchmark process or run other local commands during timed capture; inspect the completed artifact afterward.
 
-Run Jolt-specific absolute workloads for constraints, characters, vehicles, ragdolls, soft bodies, CPU Hair, scenes, custom providers,
-events, sensors, CCD, sleep/wake, broadphase rebuild/origin shift, rollback, assets, topology churn, and 1/4/8-worker scaling as they land.
+Run the checked-in Jolt-specific absolute workloads for constraints, characters, vehicles, ragdolls, soft bodies, CPU Hair, scenes,
+custom providers, events, sensors, CCD, sleep/wake, broadphase rebuild/origin shift, rollback, assets, topology churn, and 1/4/8-worker
+scaling.
 Measure persistent bytes, temporary peaks, allocation counts, snapshot reuse, cooking, scene instantiation, event/query delivery,
 destruction/slot reuse, and no-growth steady state. Profile or Instruments traces may attribute time and allocation sites, but they do not
 replace Release timing.

@@ -4,8 +4,8 @@ This document is the authoritative closure matrix for the third deep audit. It r
 to close them; a historical passing build or test does not close a row whose behavior, workload, or instrumentation was incomplete.
 
 The remediation baseline is branch `jolt`, revision `42dbab82f32f945b293e7c019c5a07282eb3df24`, tree
-`f900eab995dd5a49836aa4112b520a2bf9f0517a`. The current Windows qualification revision is
-`c388cabc548deadc81515294749542c6a16b03a2`. Raw JSON, traces, disassembly, frame samples, and transient build metadata belong under
+`f900eab995dd5a49836aa4112b520a2bf9f0517a`. The qualified implementation revision is
+`c51b7577d2d34b73c72f622b7dc5808e7a22c98d`. Raw JSON, traces, disassembly, frame samples, and transient build metadata belong under
 `build/jolt-production-readiness/` and are not committed.
 
 ## State contract
@@ -21,18 +21,30 @@ the row's complete contract.
 
 ## Current closure matrix
 
-The exact-commit Windows `full` validator completed all 84 steps on 2026-08-26 with identical initial and final Git state. It passed 85
-validator tests, 329 consolidated C++ tests in the ordinary configurations, 20 retained main scenario envelopes, the separately retained
-benchmark scenario, the 36,000-tick full stress workload at effective 1/4/8 workers, the complete MSVC and clang-cl matrices, supported
-ASan and allocator modes, source and installed modular/monolithic consumers, and native/privacy audits. The stress scenario performed
-115 checks, reported zero dropped events, and produced the identical complete digest `(17577706548513272913, 535325)` for effective
-1/4/8-worker execution.
+Windows qualification uses complementary exact evidence rather than hiding a noisy rerun. The clean `full` run at
+`2fe832dc439489a59751bb874fc66878bba7f7d1` completed all 87 steps on 2026-08-28: 86 passed, including all functional, compiler,
+sanitizer, authoring, scenario, source/install, and packaging gates; the only failure was a Jolt 128-body, 8-worker CV batch. It passed
+all 120 validator tests, discovered 330 consolidated C++ tests, executed 329, retained one intentional disable, validated 20 main
+scenario envelopes and the separate benchmark scenario, and preserved an identical clean Git-state fingerprint. The full stress
+workload performed 115 checks over 36,000 ticks, reported zero dropped events, and produced the identical complete digest
+`(18025661526355294364, 535325)` at effective 1/4/8 workers.
 
-The MSVC 19.51.36256 Release performance gate retained 30 fresh-process samples per workload and 30 untrimmed 8,192-frame tail windows.
-All Jolt throughput CVs were at most 3.373%, tail-window CVs at most 2.569%, and absolute-workload CVs at most 3.522%. Two absolute
-workloads exceeded 5% on their first complete batch; the runner retained those rejected batches, reran every sample for the affected
-workload, and accepted the complete replacement batches. No individual sample was removed or replaced. The authored application
-benchmark retained 30 positive update samples.
+The passing MSVC 19.51.36256 Release capture at `da6229aa9b5a21a13afa18b8dbb20f29a5bb5ce4` remains valid product evidence: Git proves that
+every path changed from that revision through `c51b7577d2d34b73c72f622b7dc5808e7a22c98d` is one of eight qualification Python files, so
+the compiled product, native dependency, assets, and CMake inputs are unchanged. The current comparator and absolute validator rechecked
+the immutable 30-fresh-process samples and 30 untrimmed 8,192-frame tail windows. Jolt throughput CV is at most 2.749%, tail-window CV is
+at most 1.208%, and absolute-workload CV is at most 4.902%; every shipping ratio, correctness, allocation, and capability gate passes.
+The five-second 1,024-ray batch policy is shared and fingerprinted. No sample was removed or replaced.
+
+The final clean WSL2 ext4 run at `c51b7577d2d34b73c72f622b7dc5808e7a22c98d` passed 45 of 46 orchestrated results; the sole skip is
+the intentionally Windows-DX12-only application benchmark. It passed all 121 validator tests, Profile assets, 330-test consolidated
+C++ discovery, 20 retained AutomatedTesting envelopes, Clang 20.1.8 Profile/Release unity, Profile non-unity and double precision,
+source and installed modular public-only consumers, and representative Jolt-only 30-process diagnostics with effective 1/4/8-worker
+coverage. This is WSL evidence, not native-Linux qualification.
+
+A final Windows `quick --static-only` run at the same implementation revision passed the feature ledger, 84 isolated public headers,
+427 explicit manifest entries, 21 scenario registrations, five world buses and 59 reflected operations, the native/privacy boundary,
+the public consumer, all 121 validator tests, `git diff --check`, and baseline integrity.
 
 A separate clang-cl 22.1.8 Release non-unity tree under `build/jolt-production-readiness/w10/clean-fetch-standard/` populated Jolt from
 a fresh, hash-checked archive, applied all 31 patch hunks, built `Jolt.API`, the runtime/editor modules, and `Jolt.Tests`, and passed the
@@ -42,46 +54,82 @@ and both source-override identities. The configured native fingerprint was `0x7c
 archive and patch hashes, Clang 22.1.8, x64 SSE4.1 without AVX/FMA, deterministic floating point, IPO, CPU compute, and disabled RTTI and
 exceptions.
 
+The exact Windows functional orchestration command was:
+
+```powershell
+python Gems/Physics/Jolt/validate.py full `
+    --engine-root . `
+    --build-dir build/jolt-production-readiness/w10/p `
+    --configuration Profile `
+    --output-dir build/jolt-production-readiness/windows/full-2fe832d-final `
+    --matrix-root build/jolt-production-readiness/w10/m `
+    --clang-root D:/LLVM/22.1.8 `
+    --parallel 16
+```
+
+The Windows summary SHA-256 is `A7D36053644B1ED49BEB39D80F40ABA94856020C1BBF188A27EDB8BFEB513F69`; its initial and final
+Git-state fingerprints are both `4E03CE86A5B25BA2AB425FCD688763FD3FFBCF5D7E63A71FFDBEAE25A6070AA0`. Current-policy performance
+revalidation lives under `build/jolt-production-readiness/windows/current-policy-da6229a/`. Its provenance summary SHA-256 is
+`B11FDAA4FD11C74BCD5F881769AF1362FB20C64B9B0C4BCF89D5ABFEDAA2B40F`; the Jolt matched and absolute report hashes are
+`F2F72B5F0D909702B9B5FD137496D1B9D0ACB6B8AE8D32EECE1FFE45204C32D1` and
+`62B22E605BC8AABA8BD7945BF10CEA53DC8CE832661C186E05696F12CC998CDD`.
+
+The exact WSL orchestration command was:
+
+```bash
+python3 Gems/Physics/Jolt/validate.py full \
+    --engine-root /home/connor/o3de-jolt-production-readiness \
+    --build-dir /home/connor/o3de-jolt-production-readiness/build/jolt-production-readiness/wsl/primary \
+    --output-dir /home/connor/o3de-jolt-production-readiness/build/jolt-production-readiness/wsl/full-c51b757-final \
+    --matrix-root /home/connor/o3de-jolt-production-readiness/build/jolt-production-readiness/wsl/matrix \
+    --parallel 16
+```
+
+The WSL summary SHA-256 is `1A42F06C5E12AF2E3AB9249D420B76505234D73287CCD5A9C7D3207A3B676EB3`; its initial and final
+Git-state fingerprints are both `D8B95BF0EF597378E3201F1DB0D967EC33FB3A88DA5A69EA6CD2A52FB66893BB`. Its matched and absolute
+diagnostic report hashes are `35880EB2B9C25CB9871A08842EB690E98303E4D3DE3BA0F7561B0034721F32E6` and
+`3EFD4BA0A10377E3ED24C0BF59DB67C27D2DBC0D23099668E0164BA6FEE29E2D`.
+
 | Finding | Current state | Current evidence |
 |---|---|---|
-| `J3-AUD-001` | **Windows qualified** | Single-root publication, lifetime tests, modular/monolithic builds, and the 1.951 ns median acquisition gate pass. |
-| `J3-AUD-002` | **Windows qualified** | Sequential/concurrent Runtime, slot reuse, exhaustion, stale retained-result, and full Windows matrix tests pass. |
-| `J3-AUD-003` | **Windows qualified** | World-owned mutable rollback participants, unload barriers, restore tests, and full 36,000-tick stress pass. |
-| `J3-AUD-004` | **Windows qualified** | Transactional component/direct-capability teardown, deferred cleanup, failure/retry, and lifecycle stress pass. |
-| `J3-AUD-005` | **Windows qualified** | Every vehicle controller rejects an unadded chassis without state change; MSVC and application coverage pass. |
-| `J3-AUD-006` | **Windows qualified** | Physics tick ordering and same-frame transform visibility pass in the complete MSVC/clang-cl matrix. |
-| `J3-AUD-007` | **Windows qualified** | Fresh provider-owned acquisition, all 31 patch hunks, cached no-op reuse, foreign target/declaration/source probes, fingerprint, license, and source/install checks pass. |
-| `J3-AUD-008` | **Windows qualified** | All installed public callables link and execute through source, modular-install, and monolithic-install consumers without native leakage. |
-| `J3-AUD-009` | **Windows qualified** | Target-architecture ISA checks preserve the SSE4.1 floor and disable AVX2/FMA on qualified x64 builds; non-x64 execution remains external. |
-| `J3-AUD-010` | **Windows qualified** | IPO support/ownership and modular/monolithic source/install topology pass under MSVC and clang-cl. |
-| `J3-AUD-011` | **Windows qualified** | Unrelated installed-Python changes are absent; source and both installed public-only consumers pass. |
-| `J3-AUD-012` | **Windows qualified** | Pointer-sized retained leases pass single/double precision, allocation, query-cost, modular, monolithic, and install gates. |
-| `J3-AUD-013` | **Windows qualified** | Event-batch provenance, stale/cross-batch rejection, reflection, export, and application tests pass. |
-| `J3-AUD-014` | **Windows qualified** | Singular request ownership, notification fanout, duplicate-handler rejection, and complete application execution pass. |
-| `J3-AUD-015` | **Windows qualified** | Five world buses, all 59 reflected operations, script scopes, and all retained scenario envelopes pass parity validation. |
-| `J3-AUD-016` | **Windows qualified** | All 13 ragdoll constraints pass direct, authored, archive, dependency, drive-validation, and deterministic stress coverage. |
-| `J3-AUD-017` | **Windows qualified** | Character membership preserves identity/state through C++, component, snapshot, script, and deterministic stress paths. |
-| `J3-AUD-018` | **Windows qualified** | Active path updates pass transactional, dependent-resource, snapshot, application, and effective 1/4/8-worker tests. |
-| `J3-AUD-019` | **Windows qualified** | Custom-shape dependency discovery, edit/delete/recovery, recooking, Asset Processor, and installed-consumer paths pass. |
+| `J3-AUD-001` | **Closed** | Single-root publication, lifetime tests, modular/monolithic builds, and the 1.949 ns median acquisition gate pass on Windows; WSL consumers pass. |
+| `J3-AUD-002` | **Closed** | Sequential/concurrent Runtime, slot reuse, exhaustion, stale retained-result, Windows matrix, and WSL tests pass. |
+| `J3-AUD-003` | **Closed** | World-owned mutable rollback participants, unload barriers, restore tests, and full 36,000-tick stress pass. |
+| `J3-AUD-004` | **Closed** | Transactional component/direct-capability teardown, deferred cleanup, failure/retry, and lifecycle stress pass. |
+| `J3-AUD-005` | **Closed** | Every vehicle controller rejects an unadded chassis without state change; MSVC and application coverage pass. |
+| `J3-AUD-006` | **Closed** | Physics tick ordering and same-frame transform visibility pass in the complete MSVC/clang-cl matrix. |
+| `J3-AUD-007` | **Closed** | Fresh provider-owned acquisition, all 31 patch hunks, cached no-op reuse, foreign target/declaration/source probes, fingerprint, license, and source/install checks pass. |
+| `J3-AUD-008` | **Closed** | All installed public callables link and execute through source and installed consumers without native leakage on Windows and WSL. |
+| `J3-AUD-009` | **Closed** | Target-architecture ISA checks preserve the SSE4.1 floor and disable AVX2/FMA on qualified x64 builds; non-x64 execution remains external. |
+| `J3-AUD-010` | **Closed** | IPO support/ownership and modular/monolithic source/install topology pass under MSVC and clang-cl. |
+| `J3-AUD-011` | **Closed** | Unrelated installed-Python changes are absent; Windows and WSL public-only consumers pass. |
+| `J3-AUD-012` | **Closed** | Pointer-sized retained leases pass single/double precision, allocation, query-cost, modular, monolithic, and install gates. |
+| `J3-AUD-013` | **Closed** | Event-batch provenance, stale/cross-batch rejection, reflection, export, and application tests pass. |
+| `J3-AUD-014` | **Closed** | Singular request ownership, notification fanout, duplicate-handler rejection, and complete application execution pass. |
+| `J3-AUD-015` | **Closed** | Five world buses, all 59 reflected operations, script scopes, and all retained scenario envelopes pass parity validation. |
+| `J3-AUD-016` | **Closed** | All 13 ragdoll constraints pass direct, authored, archive, dependency, drive-validation, and deterministic stress coverage. |
+| `J3-AUD-017` | **Closed** | Character membership preserves identity/state through C++, component, snapshot, script, and deterministic stress paths. |
+| `J3-AUD-018` | **Closed** | Active path updates pass transactional, dependent-resource, snapshot, application, and effective 1/4/8-worker tests. |
+| `J3-AUD-019` | **Closed** | Custom-shape dependency discovery, edit/delete/recovery, recooking, Asset Processor, and installed-consumer paths pass. |
 | `J3-AUD-020` | **Closed** | clang-cl 22.1.8 Profile ASan is genuinely instrumented and passes Jolt plus focused ChildAllocator tests. |
-| `J3-AUD-021` | **Windows qualified** | Completion-driven O(1) reclamation, blocked-worker creation, watchdog, MSVC, and application tests pass. |
-| `J3-AUD-022` | **Windows qualified** | Count/byte ceilings and complete event/operation pool accounting pass burst, reuse, oversize, shutdown, and stress tests. |
-| `J3-AUD-023` | **Windows qualified** | Warmed job, automatic-world, query, and CPU Hair paths remain allocation-free in claimed domains across the Windows matrix. |
-| `J3-AUD-024` | **Windows qualified** | Deterministic sharded contact publication retains exact events/digests and passes contention, scaling, CV, application, and stress gates. |
-| `J3-AUD-025` | **Windows qualified** | `full` schedules and retains native plus application performance artifacts and fails closed on malformed or incomplete evidence. |
-| `J3-AUD-026` | **Windows qualified** | All 21 registered scenarios have assertion floors; 20 main and one benchmark envelope parse and pass with read-only manifests. |
-| `J3-AUD-027` | **Windows qualified** | Effective 1/4/8-worker C++ and full-stress runs retain identical complete subsystem digests and reject clamping. |
-| `J3-AUD-028` | **Windows qualified** | Current MSVC matched, absolute, tail, allocation, application, correctness, freshness, affinity, and variability gates pass. |
-| `C-AUD-001` | **Windows qualified** | Group-filter restore refreshes contact caches after commit and passes rollback plus application stress. |
-| `C-AUD-002` | **Windows qualified** | Static-body teardown retains ownership across failure and passes mandatory cleanup/lifecycle stress. |
-| `C-AUD-003` | **Windows qualified** | Path teardown retains ownership across failure and passes dependent-constraint cleanup/stress. |
-| `C-AUD-004` | **Windows qualified** | Active paths publish transform, geometry, frames, state, and revisions atomically across effective worker counts. |
-| `C-AUD-005` | **Windows qualified** | Lifecycle, explicit stepping, and restore remain Automation-only; query/diagnostics remain Common and parity-tested. |
-| `C-AUD-006` | **Windows qualified** | Operation creation never joins unrelated work; blocked-worker, cancellation, saturation, and MSVC tests pass. |
+| `J3-AUD-021` | **Closed** | Completion-driven O(1) reclamation, blocked-worker creation, watchdog, MSVC, WSL, and application tests pass. |
+| `J3-AUD-022` | **Closed** | Count/byte ceilings and complete event/operation pool accounting pass burst, reuse, oversize, shutdown, and stress tests. |
+| `J3-AUD-023` | **Closed** | Warmed job, automatic-world, query, and CPU Hair paths remain allocation-free in claimed domains across qualified builds. |
+| `J3-AUD-024` | **Closed** | Deterministic sharded contact publication retains exact events/digests and passes contention, scaling, CV, application, and stress gates. |
+| `J3-AUD-025` | **Closed** | `full` schedules and retains native plus application performance artifacts, distinguishes WSL diagnostics, and fails closed on malformed evidence. |
+| `J3-AUD-026` | **Closed** | All 21 registered scenarios have assertion floors; 20 main and one benchmark envelope parse and pass with read-only manifests. |
+| `J3-AUD-027` | **Closed** | Effective 1/4/8-worker C++ and full-stress runs retain identical complete subsystem digests and reject clamping. |
+| `J3-AUD-028` | **Closed** | Current-policy MSVC matched, absolute, tail, allocation, application, correctness, affinity, and variability gates pass with explicit product-equivalence provenance. |
+| `C-AUD-001` | **Closed** | Group-filter restore refreshes contact caches after commit and passes rollback plus application stress. |
+| `C-AUD-002` | **Closed** | Static-body teardown retains ownership across failure and passes mandatory cleanup/lifecycle stress. |
+| `C-AUD-003` | **Closed** | Path teardown retains ownership across failure and passes dependent-constraint cleanup/stress. |
+| `C-AUD-004` | **Closed** | Active paths publish transform, geometry, frames, state, and revisions atomically across effective worker counts. |
+| `C-AUD-005` | **Closed** | Lifecycle, explicit stepping, and restore remain Automation-only; query/diagnostics remain Common and parity-tested. |
+| `C-AUD-006` | **Closed** | Operation creation never joins unrelated work; blocked-worker, cancellation, saturation, MSVC, and WSL tests pass. |
 | `C-AUD-007` | **Closed** | Exact allocator byte symmetry passes with the ASan header and malloc system allocator modes. |
 
-The remaining Goal gate is the dedicated `--no-local` WSL ext4 Clang run. macOS, native Linux, ARM hardware, mobile, WebAssembly, and
-additional architectures remain external qualification gates.
+All locally available shipping findings are closed. macOS, native Linux, ARM hardware, mobile, WebAssembly, and additional architectures
+remain explicit external qualification gates.
 
 ## Pre-qualification implementation record
 
