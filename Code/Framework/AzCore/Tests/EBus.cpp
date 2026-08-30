@@ -116,11 +116,13 @@ namespace BusImplementation
         }
 
     private:
-        static int s_nextExecution;
+        // Benchmarks can dispatch more than INT_MAX events; ordering only relies on
+        // modulo arithmetic, so keep the increment defined when the counter wraps.
+        static uint32_t s_nextExecution;
     };
 
     template <typename Bus>
-    int HandlerCommon<Bus>::s_nextExecution = 0;
+    uint32_t HandlerCommon<Bus>::s_nextExecution = 0;
 
     template <typename Bus>
     class MultiHandlerCommon
@@ -235,7 +237,7 @@ public:
     }
 
     Handler(int id, int handlerOrder, bool connectOnConstruct)
-        : BusImplementation::HandlerCommon<Bus>(handlerOrder)
+        : BusImplementation::HandlerCommon<Bus>(static_cast<uint32_t>(handlerOrder))
     {
         m_busId = id;
 
@@ -289,7 +291,7 @@ public:
     }
 
     Handler(int, int handlerOrder, bool connectOnConstruct)
-        : BusImplementation::HandlerCommon<Bus>(handlerOrder)
+        : BusImplementation::HandlerCommon<Bus>(static_cast<uint32_t>(handlerOrder))
     {
         if (connectOnConstruct)
         {
@@ -2645,11 +2647,9 @@ namespace UnitTest
     struct LocklessImpl
         : public LocklessBus::Handler
     {
-        uint32_t m_val;
         uint32_t m_maxSleep;
         LocklessImpl(uint32_t maxSleep = 0)
-            : m_val(0)
-            , m_maxSleep(maxSleep)
+            : m_maxSleep(maxSleep)
         {
             BusConnect();
         }
@@ -2669,10 +2669,10 @@ namespace UnitTest
         }
         void Calculate(int x, int y, int z) override
         {
-            m_val = x + (y * z);
+            const uint32_t value = x + (y * z);
             if (m_maxSleep)
             {
-                AZStd::this_thread::sleep_for(AZStd::chrono::microseconds(m_val % m_maxSleep));
+                AZStd::this_thread::sleep_for(AZStd::chrono::microseconds(value % m_maxSleep));
             }
         }
     };
@@ -4808,4 +4808,3 @@ namespace Benchmark
 }
 
 #endif // HAVE_BENCHMARK
-

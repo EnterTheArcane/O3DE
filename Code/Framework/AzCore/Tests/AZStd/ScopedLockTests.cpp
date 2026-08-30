@@ -55,7 +55,7 @@ namespace UnitTest
             while (true)
             {
                 bool unlockedCounterValue{ false };
-                if (m_locked.compare_exchange_weak(unlockedCounterValue, lockedCounterValue, AZStd::memory_order_release))
+                if (m_locked.compare_exchange_weak(unlockedCounterValue, lockedCounterValue, AZStd::memory_order_acquire))
                 {
                     break;
                 }
@@ -72,7 +72,7 @@ namespace UnitTest
         {
             bool unlockedCounterValue{ false };
             constexpr bool lockedCounterValue{ true };
-            return m_locked.compare_exchange_strong(unlockedCounterValue, lockedCounterValue, AZStd::memory_order_release);;
+            return m_locked.compare_exchange_strong(unlockedCounterValue, lockedCounterValue, AZStd::memory_order_acquire);
         }
 
         AZStd::atomic<bool> m_locked{};

@@ -16,6 +16,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/std/containers/deque.h>
+#include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Statistics/RunningStatistic.h>
 
@@ -85,7 +86,7 @@ namespace AZ::IO
             bool IsProcessing() const;
 
             AZStd::chrono::steady_clock::time_point m_queueStartTime;
-            AZStd::chrono::steady_clock::time_point m_jobStartTime;
+            AZStd::atomic<AZStd::chrono::steady_clock::time_point> m_jobStartTime;
             Buffer m_compressedData{ nullptr };
             FileRequest* m_waitRequest{ nullptr };
             u32 m_alignmentOffset{ 0 };

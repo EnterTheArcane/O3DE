@@ -145,26 +145,23 @@ namespace UnitTest
         // do things that are thread-safe here, and only initialize things once.
         void SetUp(const ::benchmark::State& state) override
         {
-            
-            AZ::AllocatorManager::Instance().SetDefaultProfilingState(true);
-            AZ::AllocatorManager::Instance().SetDefaultTrackingMode(AZ::Debug::AllocationRecords::Mode::RECORD_FULL);
-            AZ::AllocatorManager::Instance().SetTrackingMode(AZ::Debug::AllocationRecords::Mode::RECORD_FULL);
-
             if (state.thread_index() == 0)
             {
                 AZ::AllocatorManager::Instance().EnterProfilingMode();
+                AZ::AllocatorManager::Instance().SetDefaultProfilingState(true);
+                AZ::AllocatorManager::Instance().SetDefaultTrackingMode(AZ::Debug::AllocationRecords::Mode::RECORD_FULL);
+                AZ::AllocatorManager::Instance().SetTrackingMode(AZ::Debug::AllocationRecords::Mode::RECORD_FULL);
                 m_allocatedSizes = GetAllocatedSizes();
             }
         }
         void SetUp(::benchmark::State& state) override
         {
-            AZ::AllocatorManager::Instance().EnterProfilingMode();
-            AZ::AllocatorManager::Instance().SetDefaultProfilingState(true);
-            AZ::AllocatorManager::Instance().SetDefaultTrackingMode(AZ::Debug::AllocationRecords::Mode::RECORD_FULL);
-            AZ::AllocatorManager::Instance().SetTrackingMode(AZ::Debug::AllocationRecords::Mode::RECORD_FULL);
             if (state.thread_index() == 0)
             {
                 AZ::AllocatorManager::Instance().EnterProfilingMode();
+                AZ::AllocatorManager::Instance().SetDefaultProfilingState(true);
+                AZ::AllocatorManager::Instance().SetDefaultTrackingMode(AZ::Debug::AllocationRecords::Mode::RECORD_FULL);
+                AZ::AllocatorManager::Instance().SetTrackingMode(AZ::Debug::AllocationRecords::Mode::RECORD_FULL);
                 m_allocatedSizes = GetAllocatedSizes();
             }
         }

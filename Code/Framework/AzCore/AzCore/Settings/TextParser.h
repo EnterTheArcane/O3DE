@@ -37,6 +37,7 @@ namespace AZ::Settings
         //! Function which is invoked for each "text entry" of the text file
         //! A text entry is determined as a block of text delimited by the result of the TokenDelimiterFunc
         //! By default a "text entry" is line based, but other delimiters can be used such as NUL('\0')
+        //! The token view is valid only for the duration of the callback and must be copied if it is retained.
         using ParseTextEntryFunc = AZStd::function<bool(AZStd::string_view token)>;
 
         //! Callback function which is invoked for each text entry found in the text file

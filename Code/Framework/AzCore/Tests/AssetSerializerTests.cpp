@@ -281,6 +281,21 @@ TEST_F(AssetSerializerTest, TextToData_ConvertVersion2Data_ConversionSuccessful)
     EXPECT_EQ(0, memcmp(m_testSerializedAssetVersion2, memBuffer, AZ_ARRAY_SIZE(m_testSerializedAssetVersion2)));
 }
 
+TEST_F(AssetSerializerTest, TextToData_MissingAssetTypeTerminator_ReturnsZeroWithoutWriting)
+{
+    char memBuffer[0x1000];
+    AZ::IO::MemoryStream memStream(memBuffer, AZ_ARRAY_SIZE(memBuffer), 0);
+    constexpr const char* malformedAsset =
+        "id={01234567-89AB-CDEF-FEDC-BA9876543210}:33774488,type={00112233-4455-6677-8899-AABBCCDDEEFF";
+
+    AZ_TEST_START_TRACE_SUPPRESSION;
+    const size_t bytesWritten = AZ::AssetSerializer::s_serializer.TextToData(malformedAsset, 0, memStream, false);
+    AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+
+    EXPECT_EQ(bytesWritten, 0);
+    EXPECT_EQ(memStream.GetLength(), 0);
+}
+
 TEST_F(AssetSerializerTest, Clone_CloneValidAsset_CloneSuccessful)
 {
     // Create an expected asset with an arbitrary set of expected values.

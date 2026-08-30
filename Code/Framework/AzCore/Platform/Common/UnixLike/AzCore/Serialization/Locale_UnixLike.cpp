@@ -11,6 +11,18 @@
 
 namespace AZ::Locale
 {
+    namespace
+    {
+        locale_t GetSerializationLocale()
+        {
+            // Locale objects are immutable after construction and may be shared by threads.
+            // Keeping one process-lifetime C locale also makes locale switching safe across
+            // Lua's longjmp-based error handling, which can bypass nested C++ destructors.
+            static locale_t serializationLocale = newlocale(LC_ALL_MASK, "C", nullptr);
+            return serializationLocale;
+        }
+    }
+
     void ScopedSerializationLocale_Platform::Activate()
     {
         if (m_isActive)
@@ -18,21 +30,18 @@ namespace AZ::Locale
             Deactivate();
         }
 
-        // The actual cost to create a new locale is extremely low on linux/unix type systems, and doing complex things to 
-        // try to avoid doing so is probably not worth the time it costs to actually do so. If this ever shows up in a profiler,
-        // then it might be better to see if there's a way to avoid calling this object at all or call it fewer times, 
-        // rather than to try to optimize the innards of this actual call.
-        m_createdLocale = newlocale(LC_ALL_MASK, "C", (locale_t)nullptr);
-        uselocale(m_createdLocale);
-        m_isActive = true;
+        if (locale_t serializationLocale = GetSerializationLocale())
+        {
+            m_previousLocale = uselocale(serializationLocale);
+            m_isActive = m_previousLocale != nullptr;
+        }
     }
 
     void ScopedSerializationLocale_Platform::Deactivate()
     {
         if (m_isActive)
         {
-            uselocale(LC_GLOBAL_LOCALE);
-            freelocale(m_createdLocale);
+            uselocale(m_previousLocale);
             m_isActive = false;
         }
     }

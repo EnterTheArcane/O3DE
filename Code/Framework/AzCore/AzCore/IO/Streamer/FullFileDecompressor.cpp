@@ -213,7 +213,7 @@ namespace AZ::IO
                 size_t bytesToDecompress = data->m_compressionInfo.m_compressedSize;
                 auto decompressionDuration = AZStd::chrono::microseconds(
                     aznumeric_cast<u64>((bytesToDecompress * totalDecompressionDuration) / totalBytesDecompressed));
-                auto timeInProcessing = now - m_processingJobs[i].m_jobStartTime;
+                auto timeInProcessing = now - m_processingJobs[i].m_jobStartTime.load(AZStd::memory_order_relaxed);
                 auto timeLeft = decompressionDuration > timeInProcessing ? decompressionDuration - timeInProcessing : AZStd::chrono::microseconds(0);
                 // Get the shortest time as this indicates the next decompression to become available.
                 cumulativeDelay = AZStd::min(AZStd::chrono::duration_cast<AZStd::chrono::microseconds>(timeLeft), cumulativeDelay);
@@ -638,7 +638,8 @@ namespace AZ::IO
                 DecompressionInformation& info = m_processingJobs[jobSlot];
                 info.m_waitRequest = waitRequest;
                 info.m_queueStartTime = AZStd::chrono::steady_clock::now();
-                info.m_jobStartTime = info.m_queueStartTime; // Set these to the same in case the scheduler requests an update before the job has started.
+                // Set these to the same in case the scheduler requests an update before the job has started.
+                info.m_jobStartTime.store(info.m_queueStartTime, AZStd::memory_order_relaxed);
                 info.m_compressedData = m_readBuffers[readSlot]; // Transfer ownership of the pointer.
                 m_readBuffers[readSlot] = nullptr;
 
@@ -709,9 +710,9 @@ namespace AZ::IO
         }
 
         m_decompressionJobDelayMicroSec.PushEntry(AZStd::chrono::duration_cast<AZStd::chrono::microseconds>(
-            jobInfo.m_jobStartTime - jobInfo.m_queueStartTime).count());
+            jobInfo.m_jobStartTime.load(AZStd::memory_order_relaxed) - jobInfo.m_queueStartTime).count());
         m_decompressionDurationMicroSec.PushEntry(AZStd::chrono::duration_cast<AZStd::chrono::microseconds>(
-            endTime - jobInfo.m_jobStartTime).count());
+            endTime - jobInfo.m_jobStartTime.load(AZStd::memory_order_relaxed)).count());
         m_bytesDecompressed.PushEntry(data->m_compressionInfo.m_compressedSize);
 
         AZ::AllocatorInstance<AZ::SystemAllocator>::Get().DeAllocate(jobInfo.m_compressedData, bufferSize, m_alignment);
@@ -723,7 +724,7 @@ namespace AZ::IO
 
     void FullFileDecompressor::FullDecompression(StreamerContext* context, DecompressionInformation& info)
     {
-        info.m_jobStartTime = AZStd::chrono::steady_clock::now();
+        info.m_jobStartTime.store(AZStd::chrono::steady_clock::now(), AZStd::memory_order_relaxed);
 
         FileRequest* compressedRequest = info.m_waitRequest->GetParent();
         AZ_Assert(compressedRequest, "A wait request attached to FullFileDecompressor was completed but didn't have a parent compressed request.");
@@ -748,7 +749,7 @@ namespace AZ::IO
 
     void FullFileDecompressor::PartialDecompression(StreamerContext* context, DecompressionInformation& info)
     {
-        info.m_jobStartTime = AZStd::chrono::steady_clock::now();
+        info.m_jobStartTime.store(AZStd::chrono::steady_clock::now(), AZStd::memory_order_relaxed);
 
         FileRequest* compressedRequest = info.m_waitRequest->GetParent();
         AZ_Assert(compressedRequest, "A wait request attached to FullFileDecompressor was completed but didn't have a parent compressed request.");

@@ -21,6 +21,19 @@ namespace UnitTest
 
     struct LoadAssetDataSynchronizer
     {
+        void SetReadyToLoad(bool readyToLoad)
+        {
+            {
+                AZStd::lock_guard<AZStd::mutex> lock(m_conditionMutex);
+                m_readyToLoad = readyToLoad;
+            }
+
+            if (readyToLoad)
+            {
+                m_condition.notify_all();
+            }
+        }
+
         AZStd::mutex m_conditionMutex;
         AZStd::condition_variable m_condition;
 

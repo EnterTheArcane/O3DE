@@ -397,8 +397,7 @@ namespace AZ::AzGenericTypeInfo
 #define AZ_CLASS_TYPE_INFO_INTRUSIVE_TEMPLATE_WITH_NAME(_TemplateName, _DisplayName, _TemplateUuid, ...) \
     friend AZ::TypeNameString GetO3deTypeName(AZ::Adl, AZStd::type_identity<_TemplateName>) \
     { \
-        static AZ::TypeNameString s_canonicalTypeName; \
-        if (s_canonicalTypeName.empty()) \
+        static const AZ::TypeNameString s_canonicalTypeName = [] \
         { \
             AZ::TypeNameString typeName{ _DisplayName "<" }; \
             bool prependSeparator = false; \
@@ -409,25 +408,25 @@ namespace AZ::AzGenericTypeInfo
                 prependSeparator = true; \
             } \
             typeName += '>'; \
-            s_canonicalTypeName = typeName; \
-        } \
+            return typeName; \
+        }(); \
         return s_canonicalTypeName; \
     } \
     friend AZ::TypeId GetO3deTypeId(AZ::Adl, AZStd::type_identity<_TemplateName>) \
     { \
-        static AZ::TypeId s_canonicalTypeId; \
-        if (s_canonicalTypeId.IsNull()) \
+        static const AZ::TypeId s_canonicalTypeId = [] \
         { \
             constexpr AZ::TypeId templateUuid{_TemplateUuid}; \
             if constexpr (!templateUuid.IsNull()) \
             { \
-                s_canonicalTypeId = templateUuid + AZ::Internal::AggregateTypes< __VA_ARGS__ >::GetCanonicalTypeId(); \
+                return templateUuid + AZ::Internal::AggregateTypes< __VA_ARGS__ >::GetCanonicalTypeId(); \
             } \
             else \
             { \
                 AZ_Assert(false, "Call to macro with template name %s, requires either a valid template uuid", #_DisplayName); \
+                return AZ::TypeId{}; \
             } \
-        } \
+        }(); \
         return s_canonicalTypeId; \
     } \
     friend constexpr AZ::TemplateId GetO3deClassTemplateId(AZ::Adl, AZStd::type_identity<_TemplateName>) \
@@ -483,8 +482,7 @@ namespace AZ::AzGenericTypeInfo
     _Inline AZ::TypeNameString GetO3deTypeName( \
         AZ::Adl, AZStd::type_identity<_TemplateName AZ_TYPE_INFO_TEMPLATE_ARGUMENT_LIST _TemplateParamsInParen>) \
     { \
-        static AZ::TypeNameString s_canonicalTypeName; \
-        if (s_canonicalTypeName.empty()) \
+        static const AZ::TypeNameString s_canonicalTypeName = [] \
         { \
             AZ::TypeNameString typeName{ _DisplayName "<" }; \
             bool prependSeparator = false; \
@@ -495,27 +493,27 @@ namespace AZ::AzGenericTypeInfo
                 prependSeparator = true; \
             } \
             typeName += '>'; \
-            s_canonicalTypeName = typeName; \
-        } \
+            return typeName; \
+        }(); \
         return s_canonicalTypeName; \
     } \
     AZ_TYPE_INFO_SIMPLE_TEMPLATE_ID _TemplateParamsInParen \
     _Inline AZ::TypeId GetO3deTypeId( \
         AZ::Adl, AZStd::type_identity<_TemplateName AZ_TYPE_INFO_TEMPLATE_ARGUMENT_LIST _TemplateParamsInParen>) \
     { \
-        static AZ::TypeId s_canonicalTypeId; \
-        if (s_canonicalTypeId.IsNull()) \
+        static const AZ::TypeId s_canonicalTypeId = [] \
         { \
             constexpr AZ::TypeId templateUuid{_TemplateUuid}; \
             if constexpr (!templateUuid.IsNull()) \
             { \
-                s_canonicalTypeId = templateUuid + AZ::Internal::AggregateTypes< AZ_TYPE_INFO_INTERNAL_TEMPLATE_ARGUMENT_EXPANSION _TemplateParamsInParen >::GetCanonicalTypeId(); \
+                return templateUuid + AZ::Internal::AggregateTypes< AZ_TYPE_INFO_INTERNAL_TEMPLATE_ARGUMENT_EXPANSION _TemplateParamsInParen >::GetCanonicalTypeId(); \
             } \
             else \
             { \
                 AZ_Assert(false, "Call to macro with template name %s, requires either a valid template uuid", #_DisplayName); \
+                return AZ::TypeId{}; \
             } \
-        } \
+        }(); \
         return s_canonicalTypeId; \
     } \
     AZ_TYPE_INFO_SIMPLE_TEMPLATE_ID _TemplateParamsInParen \

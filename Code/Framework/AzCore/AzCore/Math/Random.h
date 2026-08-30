@@ -43,7 +43,12 @@ namespace AZ
 
         u64 Getu64Random()
         {
-            m_seed = (m_seed * 0x5DEECE66DLL + 0xBLL) & ((1LL << 48) - 1);
+#if defined(__SIZEOF_INT128__)
+            m_seed = static_cast<u64>(static_cast<unsigned __int128>(m_seed) * 0x5DEECE66DULL + 0xBULL)
+                & ((1ULL << 48) - 1);
+#else
+            m_seed = (m_seed * 0x5DEECE66DULL + 0xBULL) & ((1ULL << 48) - 1);
+#endif
             return m_seed;
         }
 

@@ -105,7 +105,13 @@ namespace AZStd
     constexpr void hash_combine(AZStd::size_t& seed, T const& v)
     {
         hash<T> hasher;
-        seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+#if defined(__SIZEOF_INT128__)
+        const auto combined = static_cast<AZStd::size_t>(static_cast<unsigned __int128>(hasher(v))
+            + 0x9e3779b9ULL + (static_cast<unsigned __int128>(seed) << 6) + (seed >> 2));
+#else
+        const auto combined = hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+#endif
+        seed ^= combined;
     }
 
     template <class T1, class T2, class... RestTypes>

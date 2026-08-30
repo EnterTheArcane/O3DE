@@ -31,9 +31,25 @@ DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include <AzCore/std/string/utf8/core.h>
+#include <AzCore/std/typetraits/remove_cv.h>
+#include <AzCore/std/typetraits/remove_reference.h>
+#include <AzCore/std/typetraits/void_t.h>
+#include <AzCore/std/utility/declval.h>
 
 namespace Utf8::Unchecked
 {
+    template<typename Iterator, typename = void>
+    struct output_octet
+    {
+        using type = AZStd::remove_cv_t<AZStd::remove_reference_t<decltype(*AZStd::declval<Iterator&>())>>;
+    };
+
+    template<typename Iterator>
+    struct output_octet<Iterator, AZStd::void_t<typename Iterator::container_type>>
+    {
+        using type = typename Iterator::container_type::value_type;
+    };
+
     // Octet iterator class which wraps a source iterator
     template <typename Iterator>
     class octet_iterator
@@ -96,19 +112,20 @@ namespace Utf8::Unchecked
 
         static Iterator to_utf8_sequence(AZ::u32 cp, Iterator& result, size_t& resultMaxSize)
         {
+            using OctetType = typename output_octet<Iterator>::type;
             if (cp < 0x80)
             {
                 // one octet
                 resultMaxSize -= 1; // no need to check the calling function will exit the loop
-                *(result++) = static_cast<AZ::u8>(cp);
+                *(result++) = static_cast<OctetType>(cp);
             }
             else if (cp < 0x800)
             {
                 // two octets
                 if (resultMaxSize >= 2)
                 {
-                    *(result++) = static_cast<AZ::u8>((cp >> 6) | 0xc0);
-                    *(result++) = static_cast<AZ::u8>((cp & 0x3f) | 0x80);
+                    *(result++) = static_cast<OctetType>((cp >> 6) | 0xc0);
+                    *(result++) = static_cast<OctetType>((cp & 0x3f) | 0x80);
                     resultMaxSize -= 2;
                 }
                 else
@@ -121,9 +138,9 @@ namespace Utf8::Unchecked
                 // three octets
                 if (resultMaxSize >= 3)
                 {
-                    *(result++) = static_cast<AZ::u8>((cp >> 12) | 0xe0);
-                    *(result++) = static_cast<AZ::u8>(((cp >> 6) & 0x3f) | 0x80);
-                    *(result++) = static_cast<AZ::u8>((cp & 0x3f) | 0x80);
+                    *(result++) = static_cast<OctetType>((cp >> 12) | 0xe0);
+                    *(result++) = static_cast<OctetType>(((cp >> 6) & 0x3f) | 0x80);
+                    *(result++) = static_cast<OctetType>((cp & 0x3f) | 0x80);
                     resultMaxSize -= 3;
                 }
                 else
@@ -136,10 +153,10 @@ namespace Utf8::Unchecked
                 // four octets
                 if (resultMaxSize >= 4)
                 {
-                    *(result++) = static_cast<AZ::u8>((cp >> 18) | 0xf0);
-                    *(result++) = static_cast<AZ::u8>(((cp >> 12) & 0x3f) | 0x80);
-                    *(result++) = static_cast<AZ::u8>(((cp >> 6) & 0x3f) | 0x80);
-                    *(result++) = static_cast<AZ::u8>((cp & 0x3f) | 0x80);
+                    *(result++) = static_cast<OctetType>((cp >> 18) | 0xf0);
+                    *(result++) = static_cast<OctetType>(((cp >> 12) & 0x3f) | 0x80);
+                    *(result++) = static_cast<OctetType>(((cp >> 6) & 0x3f) | 0x80);
+                    *(result++) = static_cast<OctetType>((cp & 0x3f) | 0x80);
                     resultMaxSize -= 4;
                 }
                 else
@@ -302,5 +319,3 @@ namespace Utf8::Unchecked
 
 
 } // namespace Utf8::Unchecked
-
-

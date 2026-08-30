@@ -30,7 +30,7 @@ namespace AZ::Debug
 
         void OnCaptureFinished(bool result, const AZStd::string& info) override
         {
-            Call(FN_OnCaptureFinished, result, info);
+            Call(FN_OnCaptureFinished, AZStd::forward<decltype(result)>(result), AZStd::forward<decltype(info)>(info));
         }
 
         static void Reflect(AZ::ReflectContext* context)

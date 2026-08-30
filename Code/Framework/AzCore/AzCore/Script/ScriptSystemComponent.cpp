@@ -841,7 +841,7 @@ public:
 
     void OnTick(float deltaTime, ScriptTimePoint time) override
     {
-        Call(FN_OnTick,deltaTime,time);
+        Call(FN_OnTick, AZStd::forward<decltype(deltaTime)>(deltaTime), AZStd::forward<decltype(time)>(time));
     }
 
     int GetTickOrder() override

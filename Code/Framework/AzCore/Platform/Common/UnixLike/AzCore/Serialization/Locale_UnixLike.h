@@ -23,7 +23,7 @@ namespace AZ
                 void Activate();
                 void Deactivate();
             private:
-                locale_t m_createdLocale;
+                locale_t m_previousLocale{};
                 bool m_isActive = false;
         };
     }

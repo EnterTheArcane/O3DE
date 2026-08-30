@@ -421,6 +421,12 @@ namespace AZStd
 
         void reserve(size_type numElements)
         {
+            if (numElements > AZStd::numeric_limits<size_type>::max() / sizeof(node_type))
+            {
+                AZSTD_CONTAINER_ASSERT(false, "AZStd::vector::reserve - requested capacity overflows the allocation size");
+                return;
+            }
+
             size_type capacity = m_end - m_start;
             if (numElements > capacity)
             {
@@ -428,6 +434,10 @@ namespace AZStd
                 size_type byteSize = sizeof(node_type) * numElements;
                 // TODO: here we can use reallocate, if possible, reallocate will extend the current allocation
                 pointer newStart = reinterpret_cast<pointer>(static_cast<void*>(m_allocator.allocate(byteSize, alignof(node_type))));
+                if (newStart == nullptr)
+                {
+                    return;
+                }
                 pointer newLast = AZStd::uninitialized_move(m_start, m_last, newStart);
 
                 // Destroy old array

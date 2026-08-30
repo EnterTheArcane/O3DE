@@ -15,7 +15,7 @@ namespace AZ::Internal
         : Base(context)
         , m_ebus(ebus)
     {
-        Base::m_currentAttributes = &ebus->m_attributes;
+        Base::m_currentAttributes = ebus ? &ebus->m_attributes : nullptr;
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -24,7 +24,7 @@ namespace AZ::Internal
         // process all on demand queued reflections
         Base::m_context->ExecuteQueuedOnDemandReflections();
 
-        if (!Base::m_context->IsRemovingReflection())
+        if (m_ebus && !Base::m_context->IsRemovingReflection())
         {
             for (auto&& [eventName, eventSender] : m_ebus->m_events)
             {

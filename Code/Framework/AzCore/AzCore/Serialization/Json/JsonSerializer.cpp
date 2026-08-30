@@ -395,8 +395,15 @@ namespace AZ
                 }
 
                 const EnumConstantBasePtr& enumConstantPtr = enumConstantAttribute->Get(nullptr);
-                UnderlyingType enumConstantAsInt = static_cast<UnderlyingType>(AZStd::is_signed<UnderlyingType>::value ?
-                    enumConstantPtr->GetEnumValueAsInt() : enumConstantPtr->GetEnumValueAsUInt());
+                UnderlyingType enumConstantAsInt;
+                if constexpr (AZStd::is_signed_v<UnderlyingType>)
+                {
+                    enumConstantAsInt = static_cast<UnderlyingType>(enumConstantPtr->GetEnumValueAsInt());
+                }
+                else
+                {
+                    enumConstantAsInt = static_cast<UnderlyingType>(enumConstantPtr->GetEnumValueAsUInt());
+                }
 
                 if (enumInputValue == enumConstantAsInt)
                 {
@@ -446,7 +453,8 @@ namespace AZ
             UnderlyingType enumInputBitset = enumInputValue;
             for (const EnumConstantBase& enumConstant : enumConstantSet)
             {
-                enumInputBitset = enumInputBitset & ~enumConstant.GetEnumValueAsUInt();
+                enumInputBitset = enumInputBitset
+                    & static_cast<UnderlyingType>(~enumConstant.GetEnumValueAsUInt());
                 rapidjson::Value enumConstantNameValue(enumConstant.GetEnumValueName().data(),
                     aznumeric_cast<rapidjson::SizeType>(enumConstant.GetEnumValueName().size()), context.GetJsonAllocator());
                 outputValue.PushBack(AZStd::move(enumConstantNameValue), context.GetJsonAllocator());

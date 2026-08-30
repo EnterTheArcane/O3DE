@@ -255,7 +255,10 @@ namespace AZ
             void dec_ref()
             {
                 HPPA_ASSERT(mUseCount > 0);
-                mUseCount--;
+                if (mUseCount > 0)
+                {
+                    --mUseCount;
+                }
             }
             bool check_marker(size_t marker) const
             {
@@ -577,7 +580,7 @@ namespace AZ
 
 
         void debug_add(void* ptr, size_t size, debug_source source, memory_debugging_flags flags = DEBUG_FLAGS_ALL);
-        void debug_remove(void* ptr, size_t size, debug_source source, memory_debugging_flags flags = DEBUG_FLAGS_ALL);
+        bool debug_remove(void* ptr, size_t size, debug_source source, memory_debugging_flags flags = DEBUG_FLAGS_ALL);
 
         void debug_check(void*) const;
 
@@ -627,7 +630,7 @@ namespace AZ
         // alignment <= DEFAULT_ALIGNMENT acts as alloc
         inline AllocateAddress alloc(size_t size, size_t alignment)
         {
-            HPPA_ASSERT((alignment & (alignment - 1)) == 0);
+            HPPA_ASSERT(alignment == 0 || (alignment & (alignment - 1)) == 0);
             if (alignment <= DEFAULT_ALIGNMENT)
             {
                 return alloc(size);
@@ -881,10 +884,16 @@ namespace AZ
             }
             if (ptr_in_bucket(ptr))
             {
-                debug_remove(ptr, DEBUG_UNKNOWN_SIZE, DEBUG_SOURCE_BUCKETS);
+                if (!debug_remove(ptr, DEBUG_UNKNOWN_SIZE, DEBUG_SOURCE_BUCKETS))
+                {
+                    return 0;
+                }
                 return bucket_free(ptr);
             }
-            debug_remove(ptr, DEBUG_UNKNOWN_SIZE, DEBUG_SOURCE_TREE);
+            if (!debug_remove(ptr, DEBUG_UNKNOWN_SIZE, DEBUG_SOURCE_TREE))
+            {
+                return 0;
+            }
             return tree_free(ptr);
         }
 
@@ -899,10 +908,16 @@ namespace AZ
             {
                 // if this asserts probably the original alloc used alignment
                 HPPA_ASSERT(ptr_in_bucket(ptr));
-                debug_remove(ptr, origSize, DEBUG_SOURCE_BUCKETS);
+                if (!debug_remove(ptr, origSize, DEBUG_SOURCE_BUCKETS))
+                {
+                    return 0;
+                }
                 return bucket_free_direct(ptr, bucket_spacing_function(origSize + MEMORY_GUARD_SIZE));
             }
-            debug_remove(ptr, origSize, DEBUG_SOURCE_TREE);
+            if (!debug_remove(ptr, origSize, DEBUG_SOURCE_TREE))
+            {
+                return 0;
+            }
             return tree_free(ptr);
         }
 
@@ -916,10 +931,16 @@ namespace AZ
             if (is_small_allocation(origSize) && oldAlignment <= MAX_SMALL_ALLOCATION)
             {
                 HPPA_ASSERT(ptr_in_bucket(ptr), "small object ptr not in a bucket");
-                debug_remove(ptr, origSize, DEBUG_SOURCE_BUCKETS);
+                if (!debug_remove(ptr, origSize, DEBUG_SOURCE_BUCKETS))
+                {
+                    return 0;
+                }
                 return bucket_free_direct(ptr, bucket_spacing_function(AZ::SizeAlignUp(origSize + MEMORY_GUARD_SIZE, oldAlignment)));
             }
-            debug_remove(ptr, origSize, DEBUG_SOURCE_TREE);
+            if (!debug_remove(ptr, origSize, DEBUG_SOURCE_TREE))
+            {
+                return 0;
+            }
             return tree_free(ptr);
         }
 
@@ -943,7 +964,10 @@ namespace AZ
         // return the total number of allocated memory
         inline size_t allocated() const
         {
-            return mTotalAllocatedSizeBuckets + mTotalAllocatedSizeTree;
+#ifdef MULTITHREADED
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(mTreeMutex);
+#endif
+            return mTotalAllocatedSizeBuckets.load(AZStd::memory_order_relaxed) + mTotalAllocatedSizeTree;
         }
 
         /// returns allocation size for the pointer if it belongs to the allocator. result is undefined if the pointer doesn't belong to the allocator.
@@ -1321,10 +1345,18 @@ namespace AZ
     auto HphaSchemaBase<DebugAllocatorEnable>::HpAllocator::bucket_free_direct(void* ptr, unsigned bi) -> size_type
     {
         HPPA_ASSERT(bi < NUM_BUCKETS);
+        if (bi >= NUM_BUCKETS)
+        {
+            return 0;
+        }
         page* p = ptr_get_page(ptr);
         // if this asserts, the free size doesn't match the allocated size
         // most likely a class needs a base virtual destructor
         HPPA_ASSERT(bi == p->bucket_index());
+        if (bi != p->bucket_index())
+        {
+            return 0;
+        }
 #ifdef MULTITHREADED
 #if defined(USE_MUTEX_PER_BUCKET)
         AZStd::lock_guard<AZStd::mutex> lock(mBuckets[bi].get_lock());
@@ -1872,7 +1904,7 @@ namespace AZ
                 block_header* next = bl->next();
                 next = coalesce_block(next);
                 tree_attach(next);
-                mTotalAllocatedSizeTree += bl->size() - blSize;
+                mTotalAllocatedSizeTree -= blSize - bl->size();
             }
             HPPA_ASSERT(bl->size() >= size);
             return AllocateAddress{ ptr, bl->size() };
@@ -1891,7 +1923,14 @@ namespace AZ
                 split_block(bl, size);
                 tree_attach(bl->next());
             }
-            mTotalAllocatedSizeTree += bl->size() - blSize;
+            if (bl->size() >= blSize)
+            {
+                mTotalAllocatedSizeTree += bl->size() - blSize;
+            }
+            else
+            {
+                mTotalAllocatedSizeTree -= blSize - bl->size();
+            }
             return AllocateAddress{ ptr, bl->size() };
         }
         // check if the previous block can be used to avoid searching
@@ -1918,7 +1957,14 @@ namespace AZ
                 split_block(bl, size);
                 tree_attach(bl->next());
             }
-            mTotalAllocatedSizeTree += bl->size() - blSize;
+            if (const size_t resizedBlockSize = bl->size(); resizedBlockSize >= blSize)
+            {
+                mTotalAllocatedSizeTree += resizedBlockSize - blSize;
+            }
+            else
+            {
+                mTotalAllocatedSizeTree -= blSize - resizedBlockSize;
+            }
             return AllocateAddress{ newPtr, bl->size() };
         }
         // fall back to alloc/copy/free
@@ -1955,7 +2001,14 @@ namespace AZ
                 next = coalesce_block(next);
                 tree_attach(next);
             }
-            mTotalAllocatedSizeTree += bl->size() - blSize;
+            if (const size_t resizedBlockSize = bl->size(); resizedBlockSize >= blSize)
+            {
+                mTotalAllocatedSizeTree += resizedBlockSize - blSize;
+            }
+            else
+            {
+                mTotalAllocatedSizeTree -= blSize - resizedBlockSize;
+            }
             HPPA_ASSERT(bl->size() >= size);
             return AllocateAddress{ ptr, bl->size() };
         }
@@ -2064,7 +2117,14 @@ namespace AZ
                 HPPA_ASSERT(bl->size() >= size);
             }
         }
-        mTotalAllocatedSizeTree += bl->size() - blSize;
+        if (const size_t resizedBlockSize = bl->size(); resizedBlockSize >= blSize)
+        {
+            mTotalAllocatedSizeTree += resizedBlockSize - blSize;
+        }
+        else
+        {
+            mTotalAllocatedSizeTree -= blSize - resizedBlockSize;
+        }
         return bl->size();
     }
 
@@ -2326,7 +2386,8 @@ namespace AZ
             mGuardByte = guardByte;
             for (unsigned i = 0; i < MEMORY_GUARD_SIZE; i++)
             {
-                guard[i] = guardByte++;
+                guard[i] = guardByte;
+                guardByte = static_cast<unsigned char>(guardByte + 1);
             }
         }
     }
@@ -2340,10 +2401,11 @@ namespace AZ
             unsigned char* guard = (unsigned char*)mPtr + mSize;
             for (unsigned i = 0; i < MEMORY_GUARD_SIZE; i++)
             {
-                if (guardByte++ != guard[i])
+                if (guardByte != guard[i])
                 {
                     return false;
                 }
+                guardByte = static_cast<unsigned char>(guardByte + 1);
             }
         }
         return true;
@@ -2457,7 +2519,8 @@ namespace AZ
     }
 
     template<bool DebugAllocatorEnable>
-    void HphaSchemaBase<DebugAllocatorEnable>::HpAllocator::debug_remove(void* ptr, size_t size, debug_source source, memory_debugging_flags flags)
+    bool HphaSchemaBase<DebugAllocatorEnable>::HpAllocator::debug_remove(
+        void* ptr, size_t size, debug_source source, memory_debugging_flags flags)
     {
         if constexpr (DebugAllocatorEnable)
         {
@@ -2465,8 +2528,18 @@ namespace AZ
             AZStd::lock_guard<AZStd::mutex> lock(m_debugData.m_debugMutex);
 #endif
             const debug_info info = m_debugData.m_debugMap.remove(ptr, size, source, flags);
-            m_debugData.m_totalDebugRequestedSize[source] -= info.size + MEMORY_GUARD_SIZE;
+            if (info.source == DEBUG_SOURCE_INVALID)
+            {
+                return false;
+            }
+            const size_t recordedSize = info.size + MEMORY_GUARD_SIZE;
+            HPPA_ASSERT(m_debugData.m_totalDebugRequestedSize[source] >= recordedSize);
+            if (m_debugData.m_totalDebugRequestedSize[source] >= recordedSize)
+            {
+                m_debugData.m_totalDebugRequestedSize[source] -= recordedSize;
+            }
         }
+        return true;
     }
 
     template<bool DebugAllocatorEnable>
@@ -2530,8 +2603,12 @@ namespace AZ
     template<bool DebugAllocator>
     HphaSchemaBase<DebugAllocator>::HphaSchemaBase()
     {
-        static_assert(sizeof(HpAllocator) <= sizeof(m_hpAllocatorBuffer), "Increase the m_hpAllocatorBuffer, it needs to be at least the sizeof(HpAllocator)");
-        m_allocator = new (&m_hpAllocatorBuffer) HpAllocator();
+        static_assert(
+            sizeof(HpAllocator) + alignof(HpAllocator) - 1 <= sizeof(m_hpAllocatorBuffer),
+            "Increase m_hpAllocatorBuffer to hold HpAllocator plus its alignment padding");
+        auto* alignedStorage = AZ::PointerAlignUp(
+            reinterpret_cast<unsigned char*>(&m_hpAllocatorBuffer), alignof(HpAllocator));
+        m_allocator = new (alignedStorage) HpAllocator();
     }
 
     //=========================================================================

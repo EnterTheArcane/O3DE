@@ -376,7 +376,7 @@ namespace AZ
  * @param x 32-bit integer
  * @return 32-bit integer
  */
-#define azsfmt_func1(x) ((x ^ (x >> 27)) * (AZ::u32)1664525UL)
+#define azsfmt_func1(x) static_cast<AZ::u32>(static_cast<AZ::u64>((x) ^ ((x) >> 27)) * AZ::u64{ 1664525 })
 
 /**
  * This function represents a function used in the initialization
@@ -384,7 +384,10 @@ namespace AZ
  * @param x 32-bit integer
  * @return 32-bit integer
  */
-#define azsfmt_func2(x) ((x ^ (x >> 27)) * (AZ::u32)1566083941UL)
+#define azsfmt_func2(x) static_cast<AZ::u32>(static_cast<AZ::u64>((x) ^ ((x) >> 27)) * AZ::u64{ 1566083941 })
+
+#define azsfmt_add(x, y) static_cast<AZ::u32>(static_cast<AZ::u64>(x) + static_cast<AZ::u64>(y))
+#define azsfmt_sub(x, y) static_cast<AZ::u32>((AZ::u64{ 1 } << 32) + static_cast<AZ::u64>(x) - static_cast<AZ::u64>(y))
 
     //=========================================================================
     // Seed
@@ -430,35 +433,37 @@ namespace AZ
             count = N32;
         }
         r = azsfmt_func1((m_psfmt32[idxof(0)] ^ m_psfmt32[idxof(mid)] ^ m_psfmt32[idxof(N32 - 1)]));
-        m_psfmt32[idxof(mid)] += r;
-        r += numKeys;
-        m_psfmt32[idxof(mid + lag)] += r;
+        m_psfmt32[idxof(mid)] = azsfmt_add(m_psfmt32[idxof(mid)], r);
+        r = azsfmt_add(r, static_cast<AZ::u32>(numKeys));
+        m_psfmt32[idxof(mid + lag)] = azsfmt_add(m_psfmt32[idxof(mid + lag)], r);
         m_psfmt32[idxof(0)] = r;
 
         count--;
         for (i = 1, j = 0; (j < count) && (j < numKeys); j++)
         {
             r = azsfmt_func1((m_psfmt32[idxof(i)] ^ m_psfmt32[idxof((i + mid) % N32)] ^ m_psfmt32[idxof((i + N32 - 1) % N32)]));
-            m_psfmt32[idxof((i + mid) % N32)] += r;
-            r += keys[j] + i;
-            m_psfmt32[idxof((i + mid + lag) % N32)] += r;
+            m_psfmt32[idxof((i + mid) % N32)] = azsfmt_add(m_psfmt32[idxof((i + mid) % N32)], r);
+            r = azsfmt_add(r, azsfmt_add(keys[j], static_cast<AZ::u32>(i)));
+            m_psfmt32[idxof((i + mid + lag) % N32)] = azsfmt_add(m_psfmt32[idxof((i + mid + lag) % N32)], r);
             m_psfmt32[idxof(i)] = r;
             i = (i + 1) % N32;
         }
         for (; j < count; j++)
         {
             r = azsfmt_func1((m_psfmt32[idxof(i)] ^ m_psfmt32[idxof((i + mid) % N32)] ^ m_psfmt32[idxof((i + N32 - 1) % N32)]));
-            m_psfmt32[idxof((i + mid) % N32)] += r;
-            r += i;
-            m_psfmt32[idxof((i + mid + lag) % N32)] += r;
+            m_psfmt32[idxof((i + mid) % N32)] = azsfmt_add(m_psfmt32[idxof((i + mid) % N32)], r);
+            r = azsfmt_add(r, static_cast<AZ::u32>(i));
+            m_psfmt32[idxof((i + mid + lag) % N32)] = azsfmt_add(m_psfmt32[idxof((i + mid + lag) % N32)], r);
             m_psfmt32[idxof(i)] = r;
             i = (i + 1) % N32;
         }
         for (j = 0; j < N32; j++)
         {
-            r = azsfmt_func2((m_psfmt32[idxof(i)] + m_psfmt32[idxof((i + mid) % N32)] + m_psfmt32[idxof((i + N32 - 1) % N32)]));
+            r = azsfmt_func2(azsfmt_add(
+                azsfmt_add(m_psfmt32[idxof(i)], m_psfmt32[idxof((i + mid) % N32)]),
+                m_psfmt32[idxof((i + N32 - 1) % N32)]));
             m_psfmt32[idxof((i + mid) % N32)] ^= r;
-            r -= i;
+            r = azsfmt_sub(r, static_cast<AZ::u32>(i));
             m_psfmt32[idxof((i + mid + lag) % N32)] ^= r;
             m_psfmt32[idxof(i)] = r;
             i = (i + 1) % N32;
@@ -470,6 +475,8 @@ namespace AZ
 
 #undef azsfmt_func1
 #undef azsfmt_func2
+#undef azsfmt_add
+#undef azsfmt_sub
 
     //=========================================================================
     // PeriodCertification

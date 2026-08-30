@@ -63,9 +63,16 @@ namespace UnitTest
         {
             if (definition.m_type == type)
             {
-                ++m_numCreations;
                 const auto* classData = m_context->FindClassData(definition.m_type);
+                AZ_Assert(classData && classData->m_factory,
+                    "Asset type %s must be reflected with a factory before it can be created",
+                    definition.m_type.ToString<AZStd::string>().c_str());
+                if (!classData || !classData->m_factory)
+                {
+                    return nullptr;
+                }
 
+                ++m_numCreations;
                 return static_cast<AssetPtr>(classData->m_factory->Create("Unit Test Object"));
             }
         }

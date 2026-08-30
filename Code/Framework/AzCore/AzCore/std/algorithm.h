@@ -15,6 +15,7 @@
 #include <AzCore/std/typetraits/remove_cvref.h>
 #include <math.h>
 #include <cmath>
+#include <cstring>
 
 #include <algorithm>
 
@@ -398,14 +399,10 @@ namespace AZStd
     {
         static AZ_FORCE_INLINE void swap_data(T& data)
         {
-            union SafeCast
-            {
-                T               m_data;
-                unsigned short  m_ushort;
-            };
-            SafeCast* sc = (SafeCast*)&data;
-            unsigned short x = sc->m_ushort;
-            sc->m_ushort = (x >> 8) | (x << 8);
+            unsigned short value;
+            std::memcpy(&value, &data, sizeof(value));
+            value = static_cast<unsigned short>((value >> 8) | (value << 8));
+            std::memcpy(&data, &value, sizeof(value));
         }
     };
 
@@ -415,14 +412,10 @@ namespace AZStd
     {
         static AZ_FORCE_INLINE void swap_data(T& data)
         {
-            union SafeCast
-            {
-                T               m_data;
-                unsigned int    m_uint;
-            };
-            SafeCast* sc = (SafeCast*)&data;
-            unsigned int x = sc->m_uint;
-            sc->m_uint = (x >> 24) | ((x << 8) & 0x00FF0000) | ((x >> 8) & 0x0000FF00) | (x << 24);
+            unsigned int value;
+            std::memcpy(&value, &data, sizeof(value));
+            value = (value >> 24) | ((value << 8) & 0x00FF0000) | ((value >> 8) & 0x0000FF00) | (value << 24);
+            std::memcpy(&data, &value, sizeof(value));
         }
     };
 
@@ -434,21 +427,17 @@ namespace AZStd
     {
         static AZ_FORCE_INLINE void swap_data(T& data)
         {
-            union SafeCast
-            {
-                T           m_data;
-                AZ::u64     m_uint64;
-            };
-            SafeCast* sc = (SafeCast*)&data;
-            AZ::u64 x = sc->m_uint64;
-            sc->m_uint64 = (x >> 56) |
-                ((x << 40) & AZ_UINT64_CONST(0x00FF000000000000)) |
-                ((x << 24) & AZ_UINT64_CONST(0x0000FF0000000000)) |
-                ((x << 8)  & AZ_UINT64_CONST(0x000000FF00000000)) |
-                ((x >> 8)  & AZ_UINT64_CONST(0x00000000FF000000)) |
-                ((x >> 24) & AZ_UINT64_CONST(0x0000000000FF0000)) |
-                ((x >> 40) & AZ_UINT64_CONST(0x000000000000FF00)) |
-                (x << 56);
+            AZ::u64 value;
+            std::memcpy(&value, &data, sizeof(value));
+            value = (value >> 56) |
+                ((value << 40) & AZ_UINT64_CONST(0x00FF000000000000)) |
+                ((value << 24) & AZ_UINT64_CONST(0x0000FF0000000000)) |
+                ((value << 8)  & AZ_UINT64_CONST(0x000000FF00000000)) |
+                ((value >> 8)  & AZ_UINT64_CONST(0x00000000FF000000)) |
+                ((value >> 24) & AZ_UINT64_CONST(0x0000000000FF0000)) |
+                ((value >> 40) & AZ_UINT64_CONST(0x000000000000FF00)) |
+                (value << 56);
+            std::memcpy(&data, &value, sizeof(value));
         }
     };
 

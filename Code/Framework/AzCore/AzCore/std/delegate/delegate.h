@@ -95,27 +95,13 @@ namespace AZStd
         // horrible_cast<> should only be used for compiler-specific workarounds.
         // Usage is identical to reinterpret_cast<>.
 
-        // This union is declared outside the horrible_cast because BCC 5.5.1
-        // can't inline a function with a nested class, and gives a warning.
-        template <class OutputClass, class InputClass>
-        union horrible_union
-        {
-            OutputClass out;
-            InputClass in;
-        };
-
         template <class OutputClass, class InputClass>
         inline OutputClass horrible_cast(const InputClass input)
         {
-            horrible_union<OutputClass, InputClass> u;
-            // Cause a compile-time error if in, out and u are not the same size.
-            // If the compile fails here, it means the compiler has peculiar
-            // unions which would prevent the cast from working.
-            static_assert(sizeof(InputClass) == sizeof(u)
-                && sizeof(InputClass) == sizeof(OutputClass),
-                "Can't use horrible_cast");
-            u.in = input;
-            return u.out;
+            static_assert(sizeof(InputClass) == sizeof(OutputClass), "Can't use horrible_cast");
+            OutputClass output;
+            memcpy(&output, &input, sizeof(output));
+            return output;
         }
 
         ////////////////////////////////////////////////////////////////////////////////
@@ -672,39 +658,27 @@ namespace AZStd
             inline void bindstaticfunc(DerivedClass* pParent, ParentInvokerSig static_function_invoker,
                 StaticFuncPtr function_to_bind)
             {
-                if (function_to_bind == 0) // cope with assignment to 0
-                {
-                    m_pFunction = nullptr;
-                }
-                else
-                {
-                    // We'll be ignoring the 'this' pointer, but we need to make sure we pass
-                    // a valid value to bindmemfunc().
-                    bindmemfunc(pParent, static_function_invoker);
-                }
+                (void)pParent;
+                (void)static_function_invoker;
+                m_pFunction = nullptr;
 
-                // WARNING! Evil hack. We store the function in the 'this' pointer!
-                // Ensure that there's a compilation failure if function pointers
-                // and data pointers have different sizes.
-                // If you get this error, you need to #undef FASTDELEGATE_USESTATICFUNCTIONHACK.
+                // Keep the two-word delegate representation by storing the static function's
+                // object representation in the otherwise-unused object-pointer word. Static
+                // delegates are identified by a null member-function word and are invoked as
+                // functions directly, never as member calls through this stored representation.
                 static_assert(sizeof(GenericClass*) == sizeof(function_to_bind), "Can't use static function hack");
                 m_pthis = horrible_cast<GenericClass*>(function_to_bind);
-                // MSVC, SunC++ and DMC accept the following (non-standard) code:
-                //      m_pthis = static_cast<GenericClass *>(static_cast<void *>(function_to_bind));
-                // BCC32, Comeau and DMC accept this method. MSVC7.1 needs __int64 instead of long
-                //      m_pthis = reinterpret_cast<GenericClass *>(reinterpret_cast<long>(function_to_bind));
             }
-            // ******** EVIL, EVIL CODE! *******
-            // This function will be called with an invalid 'this' pointer!!
-            // We're just returning the 'this' pointer, converted into
-            // a function pointer!
+
+            inline bool IsStaticFunction() const
+            {
+                return m_pFunction == nullptr && m_pthis != nullptr;
+            }
+
             inline UnvoidStaticFuncPtr GetStaticFunction() const
             {
-                // Ensure that there's a compilation failure if function pointers
-                // and data pointers have different sizes.
-                // If you get this error, you need to #undef FASTDELEGATE_USESTATICFUNCTIONHACK.
-                static_assert(sizeof(UnvoidStaticFuncPtr) == sizeof(this), "Can't use static function hack");
-                return horrible_cast<UnvoidStaticFuncPtr>(this);
+                static_assert(sizeof(UnvoidStaticFuncPtr) == sizeof(m_pthis), "Can't use static function hack");
+                return horrible_cast<UnvoidStaticFuncPtr>(m_pthis);
             }
         #endif // !defined(FASTDELEGATE_USESTATICFUNCTIONHACK)
 
@@ -845,6 +819,10 @@ namespace AZStd
         // Invoke the delegate
         R operator() () const
         {
+            if (m_Closure.IsStaticFunction())
+            {
+                return (*(m_Closure.GetStaticFunction()))();
+            }
             return (m_Closure.GetClosureThis()->*(m_Closure.GetClosureMemPtr()))();
         }
         // Implicit conversion to "bool" using the safe_bool idiom
@@ -970,6 +948,10 @@ namespace AZStd
         // Invoke the delegate
         R operator() (Param1 p1) const
         {
+            if (m_Closure.IsStaticFunction())
+            {
+                return (*(m_Closure.GetStaticFunction()))(p1);
+            }
             return (m_Closure.GetClosureThis()->*(m_Closure.GetClosureMemPtr()))(p1);
         }
         // Implicit conversion to "bool" using the safe_bool idiom
@@ -1083,7 +1065,14 @@ namespace AZStd
         inline void operator = (R (* function_to_bind)(Param1 p1, Param2 p2))   { bind(function_to_bind);   }
         inline void bind(R (* function_to_bind)(Param1 p1, Param2 p2))       { m_Closure.bindstaticfunc(this, &delegate::InvokeStaticFunction, function_to_bind); }
         // Invoke the delegate
-        inline R operator() (Param1 p1, Param2 p2) const { return (m_Closure.GetClosureThis()->*(m_Closure.GetClosureMemPtr()))(p1, p2); }
+        inline R operator() (Param1 p1, Param2 p2) const
+        {
+            if (m_Closure.IsStaticFunction())
+            {
+                return (*(m_Closure.GetStaticFunction()))(p1, p2);
+            }
+            return (m_Closure.GetClosureThis()->*(m_Closure.GetClosureMemPtr()))(p1, p2);
+        }
         // Implicit conversion to "bool" using the safe_bool idiom
     private:
         typedef struct SafeBoolStruct
@@ -1207,6 +1196,10 @@ namespace AZStd
         // Invoke the delegate
         R operator() (Param1 p1, Param2 p2, Param3 p3) const
         {
+            if (m_Closure.IsStaticFunction())
+            {
+                return (*(m_Closure.GetStaticFunction()))(p1, p2, p3);
+            }
             return (m_Closure.GetClosureThis()->*(m_Closure.GetClosureMemPtr()))(p1, p2, p3);
         }
         // Implicit conversion to "bool" using the safe_bool idiom
@@ -1332,6 +1325,10 @@ namespace AZStd
         // Invoke the delegate
         R operator() (Param1 p1, Param2 p2, Param3 p3, Param4 p4) const
         {
+            if (m_Closure.IsStaticFunction())
+            {
+                return (*(m_Closure.GetStaticFunction()))(p1, p2, p3, p4);
+            }
             return (m_Closure.GetClosureThis()->*(m_Closure.GetClosureMemPtr()))(p1, p2, p3, p4);
         }
         // Implicit conversion to "bool" using the safe_bool idiom
@@ -1457,6 +1454,10 @@ namespace AZStd
         // Invoke the delegate
         R operator() (Param1 p1, Param2 p2, Param3 p3, Param4 p4, Param5 p5) const
         {
+            if (m_Closure.IsStaticFunction())
+            {
+                return (*(m_Closure.GetStaticFunction()))(p1, p2, p3, p4, p5);
+            }
             return (m_Closure.GetClosureThis()->*(m_Closure.GetClosureMemPtr()))(p1, p2, p3, p4, p5);
         }
         // Implicit conversion to "bool" using the safe_bool idiom
@@ -1582,6 +1583,10 @@ namespace AZStd
         // Invoke the delegate
         R operator() (Param1 p1, Param2 p2, Param3 p3, Param4 p4, Param5 p5, Param6 p6) const
         {
+            if (m_Closure.IsStaticFunction())
+            {
+                return (*(m_Closure.GetStaticFunction()))(p1, p2, p3, p4, p5, p6);
+            }
             return (m_Closure.GetClosureThis()->*(m_Closure.GetClosureMemPtr()))(p1, p2, p3, p4, p5, p6);
         }
         // Implicit conversion to "bool" using the safe_bool idiom
@@ -1706,6 +1711,10 @@ namespace AZStd
         // Invoke the delegate
         R operator() (Param1 p1, Param2 p2, Param3 p3, Param4 p4, Param5 p5, Param6 p6, Param7 p7) const
         {
+            if (m_Closure.IsStaticFunction())
+            {
+                return (*(m_Closure.GetStaticFunction()))(p1, p2, p3, p4, p5, p6, p7);
+            }
             return (m_Closure.GetClosureThis()->*(m_Closure.GetClosureMemPtr()))(p1, p2, p3, p4, p5, p6, p7);
         }
         // Implicit conversion to "bool" using the safe_bool idiom
@@ -1830,6 +1839,10 @@ namespace AZStd
         // Invoke the delegate
         R operator() (Param1 p1, Param2 p2, Param3 p3, Param4 p4, Param5 p5, Param6 p6, Param7 p7, Param8 p8) const
         {
+            if (m_Closure.IsStaticFunction())
+            {
+                return (*(m_Closure.GetStaticFunction()))(p1, p2, p3, p4, p5, p6, p7, p8);
+            }
             return (m_Closure.GetClosureThis()->*(m_Closure.GetClosureMemPtr()))(p1, p2, p3, p4, p5, p6, p7, p8);
         }
         // Implicit conversion to "bool" using the safe_bool idiom

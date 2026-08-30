@@ -151,27 +151,27 @@ namespace AZStd
         AZ_FORCE_INLINE rbtree_const_iterator()
             : m_node(nullptr) {}
         AZ_FORCE_INLINE rbtree_const_iterator(base_node_ptr_type baseNode)
-            : m_node(static_cast<node_ptr_type>(baseNode)) {}
+            : m_node(baseNode) {}
         AZ_FORCE_INLINE rbtree_const_iterator(node_ptr_type node)
             : m_node(node) {}
         //copy constructor for iterator and constructor from iterator for const_iterator
         AZ_FORCE_INLINE rbtree_const_iterator(const rbtree_const_iterator& rhs)
             : m_node(rhs.m_node) {}
 
-        AZ_FORCE_INLINE reference operator*() const { return m_node->m_value;  }
-        AZ_FORCE_INLINE pointer operator->() const  { return &(m_node->m_value); }
+        AZ_FORCE_INLINE reference operator*() const { return static_cast<node_ptr_type>(m_node)->m_value;  }
+        AZ_FORCE_INLINE pointer operator->() const  { return &(static_cast<node_ptr_type>(m_node)->m_value); }
         inline this_type& operator++()
         {
             if (m_node->m_right != nullptr)
             {
-                m_node = static_cast<node_ptr_type>(m_node->m_right->minimum());
+                m_node = m_node->m_right->minimum();
             }
             else
             {
                 base_node_ptr_type y = m_node->get_parent();
                 while (m_node == y->m_right)
                 {
-                    m_node = static_cast<node_ptr_type>(y);
+                    m_node = y;
                     y = y->get_parent();
                 }
                 // check special case: This is necessary if m_node is the
@@ -179,7 +179,7 @@ namespace AZStd
                 // that case parent, left and right all point to y!
                 if (m_node->m_right != y)
                 {
-                    m_node = static_cast<node_ptr_type>(y);
+                    m_node = y;
                 }
             }
             return *this;
@@ -195,11 +195,11 @@ namespace AZStd
         {
             if (m_node->get_color() == AZSTD_RBTREE_RED && m_node->get_parent()->get_parent() == m_node)
             {
-                m_node = static_cast<node_ptr_type>(m_node->m_right);
+                m_node = m_node->m_right;
             }
             else if (m_node->m_left != nullptr)
             {
-                m_node = static_cast<node_ptr_type>(m_node->m_left->maximum());
+                m_node = m_node->m_left->maximum();
             }
             else
             {
@@ -210,7 +210,7 @@ namespace AZStd
                     node = y;
                     y = y->get_parent();
                 }
-                m_node = static_cast<node_ptr_type>(y);
+                m_node = y;
             }
             return *this;
         }
@@ -241,7 +241,7 @@ namespace AZStd
         rbtree_const_iterator& operator-=(difference_type);
 
     protected:
-        node_ptr_type m_node;
+        base_node_ptr_type m_node;
     };
 
     /**
@@ -266,8 +266,8 @@ namespace AZStd
             : rbtree_const_iterator<T>(baseNode) {}
         AZ_FORCE_INLINE rbtree_iterator(node_ptr_type node)
             : rbtree_const_iterator<T>(node) {}
-        AZ_FORCE_INLINE reference operator*() const { return base_type::m_node->m_value; }
-        AZ_FORCE_INLINE pointer operator->() const { return &(base_type::m_node->m_value); }
+        AZ_FORCE_INLINE reference operator*() const { return static_cast<node_ptr_type>(base_type::m_node)->m_value; }
+        AZ_FORCE_INLINE pointer operator->() const { return &(static_cast<node_ptr_type>(base_type::m_node)->m_value); }
         AZ_FORCE_INLINE this_type& operator++() { base_type::operator++();  return *this;   }
         AZ_FORCE_INLINE this_type operator++(int)
         {
@@ -819,10 +819,10 @@ namespace AZStd
         inline iterator erase(const_iterator erasePos)
         {
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
-            node_ptr_type eraseNode = erasePos.get_iterator().m_node;
+            node_ptr_type eraseNode = static_cast<node_ptr_type>(erasePos.get_iterator().m_node);
             orphan_node(eraseNode);
 #else
-            node_ptr_type eraseNode = erasePos.m_node;
+            node_ptr_type eraseNode = static_cast<node_ptr_type>(erasePos.m_node);
 #endif
             iterator next(AZSTD_CHECKED_ITERATOR(iterator_impl, eraseNode));
             ++next;
@@ -1104,11 +1104,11 @@ namespace AZStd
         {
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
             AZ_Assert(iter.m_container == this, "Iterator doesn't belong to this container");
-            node_ptr_type iterNode = iter.m_iter.m_node;
+            base_node_ptr_type iterNode = iter.m_iter.m_node;
 #else
-            node_ptr_type iterNode = iter.m_node;
+            base_node_ptr_type iterNode = iter.m_node;
 #endif
-            if (iterNode == (node_ptr_type) & m_head)
+            if (iterNode == &m_head)
             {
                 return isf_valid;
             }
@@ -1119,11 +1119,11 @@ namespace AZStd
         {
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
             AZ_Assert(iter.m_container == this, "Iterator doesn't belong to this container");
-            node_ptr_type iterNode = iter.m_iter.m_node;
+            base_node_ptr_type iterNode = iter.m_iter.m_node;
 #else
-            node_ptr_type iterNode = iter.m_node;
+            base_node_ptr_type iterNode = iter.m_node;
 #endif
-            if (iterNode == (node_ptr_type) & m_head)
+            if (iterNode == &m_head)
             {
                 return isf_valid;
             }
@@ -1996,7 +1996,7 @@ namespace AZStd
             while (iter != 0)
             {
                 AZ_Assert(iter->m_container == static_cast<const checked_container_base*>(this), "rbtree::orphan_node - iterator was corrupted!");
-                node_ptr_type nodePtr = static_cast<iterator*>(iter)->m_iter.m_node;
+                base_node_ptr_type nodePtr = static_cast<iterator*>(iter)->m_iter.m_node;
 
                 if (nodePtr == node)
                 {
@@ -2111,7 +2111,7 @@ namespace AZStd
     inline NodeHandle rbtree<Traits>::node_handle_extract(const_iterator extractPos)
     {
         // Makes a non-const iterator out of a const iterator
-        node_ptr_type extractNode = extractPos.m_node;
+        node_ptr_type extractNode = static_cast<node_ptr_type>(extractPos.m_node);
         iterator next(AZSTD_CHECKED_ITERATOR(iterator_impl, extractNode));
         ++next;
 

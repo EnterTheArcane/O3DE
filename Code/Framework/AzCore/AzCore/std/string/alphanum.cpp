@@ -161,10 +161,9 @@ namespace AZStd
     #endif
 
                     // if the difference is not equal to zero, we have a comparison result
-                    const long diff = l_int - r_int;
-                    if (diff != 0)
+                    if (l_int != r_int)
                     {
-                        return static_cast<int>(diff);
+                        return l_int < r_int ? -1 : 1;
                     }
 
                     // otherwise we process the next substring in STRING mode

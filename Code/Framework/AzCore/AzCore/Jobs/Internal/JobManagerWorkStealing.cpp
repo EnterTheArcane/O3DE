@@ -97,7 +97,7 @@ JobManagerWorkStealing::~JobManagerWorkStealing()
     //kill worker threads
     if (!m_workerThreads.empty())
     {
-        m_quitRequested = true;
+        m_quitRequested.store(true, AZStd::memory_order_release);
 
         for (ThreadInfo* thread : m_workerThreads)
         {
@@ -347,7 +347,7 @@ void JobManagerWorkStealing::ProcessJobsInternal(ThreadInfo* info, Job* suspende
             //go to sleep if the global queue is empty (but only if this thread is a worker and does not have a suspended job)
             if (info->m_isWorker && !suspendedJob)
             {
-                if (m_quitRequested)
+                if (m_quitRequested.load(AZStd::memory_order_acquire))
                 {
                     return;
                 }
@@ -376,7 +376,7 @@ void JobManagerWorkStealing::ProcessJobsInternal(ThreadInfo* info, Job* suspende
                     info->m_waitEvent.acquire();
                     AZ_PROFILE_INTERVAL_END(JobManagerDetailed, info);
 
-                    if (m_quitRequested)
+                    if (m_quitRequested.load(AZStd::memory_order_acquire))
                     {
                         return;
                     }
@@ -636,12 +636,12 @@ JobManagerWorkStealing::ThreadList JobManagerWorkStealing::CreateWorkerThreads(c
         info->m_owningManager = this;
         info->m_workerId = iThread;
 
-        AZStd::fixed_string<128> threadName = AZStd::fixed_string<128>::format(
+        info->m_threadName = AZStd::fixed_string<128>::format(
             "%s worker thread %d",
             jmDesc.m_jobManagerName[0] != '\0' ? jmDesc.m_jobManagerName : "AZ JobManager",
             iThread);
         AZStd::thread_desc threadDesc;
-        threadDesc.m_name = threadName.c_str();
+        threadDesc.m_name = info->m_threadName.c_str();
         threadDesc.m_cpuId = desc.m_cpuId;
         threadDesc.m_priority = desc.m_priority;
         if (desc.m_stackSize != 0)
@@ -687,4 +687,3 @@ inline void JobManagerWorkStealing::ActivateWorker()
         }
     }
 }
-

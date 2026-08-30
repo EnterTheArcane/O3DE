@@ -40,7 +40,7 @@ namespace AZ::IO
                 {
                     m_writer->FlushCache();
                 }
-                m_writer->m_cache.push_back(c);
+                m_writer->m_cache.push_back(static_cast<AZ::u8>(c));
                 return *this;
             }
         private:

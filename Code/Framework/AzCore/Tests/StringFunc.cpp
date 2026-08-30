@@ -404,22 +404,23 @@ namespace AZ
     TEST_F(StringFuncTest, TokenizeVisitorReverse_DocExampleAboveFunctionDeclaration_Succeeds)
     {
         constexpr AZStd::array visitTokens = { "Hello", "World", "", "More", "", "", "Tokens" };
-        size_t visitIndex = visitTokens.size() - 1;
+        ptrdiff_t visitIndex = static_cast<ptrdiff_t>(visitTokens.size()) - 1;
         AZ_PUSH_DISABLE_WARNING(5233, "-Wunknown-warning-option") // Older versions of MSVC toolchain require to pass constexpr in the
                                                                   // capture. Newer versions issue unused warning
         auto visitor = [&visitIndex, &visitTokens](AZStd::string_view token)
         AZ_POP_DISABLE_WARNING
         {
-            if (visitIndex > visitTokens.size())
+            if (visitIndex < 0 || visitIndex >= static_cast<ptrdiff_t>(visitTokens.size()))
             {
                 ADD_FAILURE() << "More tokens have been visited than are expected:" << visitTokens.size();
                 return;
             }
 
-            if (token != visitTokens[visitIndex])
+            const size_t tokenIndex = static_cast<size_t>(visitIndex);
+            if (token != visitTokens[tokenIndex])
             {
                 AZStd::fixed_string<64> result{ token };
-                ADD_FAILURE() << "Visited token \"" << result.c_str() << "\" does not match token \"" << visitTokens[visitIndex] << "\" at index (" << visitIndex << ") in the visitTokens array";
+                ADD_FAILURE() << "Visited token \"" << result.c_str() << "\" does not match token \"" << visitTokens[tokenIndex] << "\" at index (" << visitIndex << ") in the visitTokens array";
             }
             --visitIndex;
         };

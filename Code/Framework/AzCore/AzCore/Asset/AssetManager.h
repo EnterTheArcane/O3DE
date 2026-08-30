@@ -314,8 +314,8 @@ namespace AZ
             /**
             * This method must be invoked before you start unregistering handlers manually and shutting down the asset manager.
             * This method ensures that all jobs in flight are either canceled or completed.
-            * This method is automatically called in the destructor but if you are unregistering handlers manually,
-            * you must invoke it yourself.
+            * This method is automatically called by Destroy before virtual destruction begins, and again by the
+            * destructor as a fallback. If you are unregistering handlers manually, you must invoke it yourself.
             */
             void        PrepareShutDown();
 
@@ -386,6 +386,9 @@ namespace AZ
             **/
             void ReleaseOwnedAssetContainer(AssetContainer* assetContainer);
 
+            //! Acquires shared ownership for a container before deferring work that uses it.
+            AZStd::shared_ptr<AssetContainer> AcquireAssetContainer(AssetContainer* assetContainer);
+
             //////////////////////////////////////////////////////////////////////////
             // AssetManagerBus
             void OnAssetReady(const Asset<AssetData>& asset) override;
@@ -418,7 +421,7 @@ namespace AZ
             AZStd::recursive_mutex  m_assetContainerMutex;       // lock when accessing the assetContainers map
 
             AZStd::thread::id m_mainThreadId;
-            IDebugAssetEvent* m_debugAssetEvents{ nullptr };
+            AZStd::atomic<IDebugAssetEvent*> m_debugAssetEvents{ nullptr };
 
             int m_creationTokenGenerator = 0; // this is used to generate unique identifiers for assets
 
@@ -464,7 +467,7 @@ namespace AZ
             void UnregisterAssetLoading(const Asset<AssetData>& asset);
 
             // Setting this to true will cause all loadAssets jobs that have not started yet to cancel as soon as they start.
-            bool m_cancelAllActiveJobs = false;
+            AZStd::atomic_bool m_cancelAllActiveJobs{ false };
 
             AZStd::atomic_int m_suspendAssetRelease{ 0 };
         };

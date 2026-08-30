@@ -17,10 +17,11 @@ namespace AZ
      * Allows jobs to be cancelled. A cancelled job will not do any processing, but otherwise behaves normally, i.e.
      * notifying dependents when it 'completes'. The JobCancelGroup a Job belongs to can be specified when the Job is
      * created. JobCancelGroups can be arranged in a tree structure, then cancelling a parent group will also cancel
-     * all the child groups.
+     * all the child groups. Cancellation is observed by walking the parent chain, so child groups can be created
+     * concurrently without modifying shared parent state.
      *
      * JobCancelGroups are not deleted by the system, the user must manage their lifetimes. They must not be deleted
-     * until their associated jobs have completed.
+     * until their associated jobs have completed. A parent group must outlive all of its child groups.
      *
      * Note: These groups are needed because the existing dependency tree goes the wrong direction for cancellation.
      * We need the ability to cancel an entire tree of work at once, this could be done by cancelling the 'join' job,
@@ -59,8 +60,10 @@ namespace AZ
         JobCancelGroup(const JobCancelGroup&);
         JobCancelGroup& operator=(const JobCancelGroup&);
 
-        JobCancelGroup* m_firstChildGroup;
-        JobCancelGroup* m_siblingGroup;
+        JobCancelGroup* m_parentGroup;
+        // Preserve the historical two-pointer object layout without retaining a parent-owned list of children.
+        // Such a list cannot safely contain short-lived groups without synchronization and removal on destruction.
+        [[maybe_unused]] JobCancelGroup* m_reserved;
 #ifdef AZCORE_JOBS_IMPL_SYNCHRONOUS
         bool m_isCancelled;
 #else
@@ -73,25 +76,17 @@ namespace AZ
     //=============================================================================================================
 
     inline JobCancelGroup::JobCancelGroup()
-        : m_firstChildGroup(nullptr)
-        , m_siblingGroup(nullptr)
+        : m_parentGroup(nullptr)
+        , m_reserved(nullptr)
         , m_isCancelled(false)
     {
     }
 
     inline JobCancelGroup::JobCancelGroup(JobCancelGroup* parentGroup)
-        : m_firstChildGroup(nullptr)
+        : m_parentGroup(parentGroup)
+        , m_reserved(nullptr)
         , m_isCancelled(false)
     {
-        if (parentGroup)
-        {
-            m_siblingGroup = parentGroup->m_firstChildGroup;
-            parentGroup->m_firstChildGroup = this;
-        }
-        else
-        {
-            m_siblingGroup = nullptr;
-        }
     }
 
     inline void JobCancelGroup::Cancel()
@@ -102,19 +97,12 @@ namespace AZ
         m_isCancelled.store(true, AZStd::memory_order_release);
 #endif
 
-        //cancel child groups
-        JobCancelGroup* child = m_firstChildGroup;
-        while (child)
-        {
-            child->Cancel();
-            child = child->m_siblingGroup;
-        }
     }
 
 #ifdef AZCORE_JOBS_IMPL_SYNCHRONOUS
     inline bool JobCancelGroup::IsCancelled() const
     {
-        return m_isCancelled;
+        return m_isCancelled || (m_parentGroup && m_parentGroup->IsCancelled());
     }
 
     inline void JobCancelGroup::Reset()
@@ -124,7 +112,8 @@ namespace AZ
 #else
     inline bool JobCancelGroup::IsCancelled() const
     {
-        return m_isCancelled.load(AZStd::memory_order_acquire);
+        return m_isCancelled.load(AZStd::memory_order_acquire)
+            || (m_parentGroup && m_parentGroup->IsCancelled());
     }
 
     inline void JobCancelGroup::Reset()

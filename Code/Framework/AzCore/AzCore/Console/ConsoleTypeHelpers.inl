@@ -159,7 +159,7 @@ namespace AZ
                 }
                 else
                 {
-                    AZ_Warning("Az Console", false, errorString, static_cast<MAX_TYPE>(outValue));
+                    AZ_Warning("Az Console", false, errorString, value);
                 }
             }
 

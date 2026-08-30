@@ -158,7 +158,7 @@ namespace AZ
             const AssetId& GetId() const { return m_assetId; }
             AssetType GetType() const { return RTTI_GetType(); }
             int GetUseCount() const { return m_useCount.load(); }
-            int GetCreationToken() const { return m_creationToken; }
+            int GetCreationToken() const { return m_creationToken.load(AZStd::memory_order_relaxed); }
 
         protected:
             /**
@@ -202,11 +202,9 @@ namespace AZ
 
             AssetHandler* m_registeredHandler{ nullptr };
 
-            // This is used to identify a unique asset and should only be set by the asset manager
-            // and therefore does not need to be atomic.
-            // All shared copy of an asset should have the same identifier and therefore
-            // should not be modified while making copy of an existing asset.
-            int m_creationToken = s_defaultCreationToken;
+            // This identifies a unique asset instance. Reload replaces the token while worker-held weak references to the old
+            // instance can still be released, so accesses must be atomic. The token does not publish any associated state.
+            AZStd::atomic_int m_creationToken{ s_defaultCreationToken };
             // General purpose flags that should only be accessed within the asset mutex
             AZStd::bitset<32> m_flags;
         };

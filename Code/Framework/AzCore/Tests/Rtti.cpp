@@ -1110,16 +1110,18 @@ namespace UnitTest
             // MyBaseExternal -> MyIntrusiveDerivedFromExternalAndIntrusive - fails
             EXPECT_EQ(nullptr, baseExternal->Cast<MyIntrusiveDerivedFromExternalAndIntrusive>(&baseInstance));
 
-            // MyBaseIntrusive -> MyBaseIntrusive(using intrusiveDerivedFromExternalAndIntrusive class RttiHelper)- succeeds
+            // MyBaseIntrusive -> MyBaseIntrusive (using the matching class RttiHelper) - succeeds
             MyBaseIntrusive baseIntrusiveInstance;
             baseIntrusiveInstance.m_uintValue = 3456893U;
-            EXPECT_NE(nullptr, intrusiveDerivedFromExternalAndIntrusive->Cast(&baseIntrusiveInstance, AZ::AzTypeInfo<MyBaseIntrusive>::Uuid()));
+            EXPECT_NE(nullptr, AZ::GetRttiHelper<MyBaseIntrusive>()->Cast(
+                &baseIntrusiveInstance, AZ::AzTypeInfo<MyBaseIntrusive>::Uuid()));
 
-            // MyDerivedIntrusive-> MyBaseIntrusive(using intrusiveDerivedFromExternalAndIntrusive class RttiHelper)- succeeds
+            // MyDerivedIntrusive -> MyBaseIntrusive (using the matching class RttiHelper) - succeeds
             MyDerivedIntrusive derivedIntrusiveInstance;
             derivedIntrusiveInstance.m_uintValue = 1700U;
             derivedIntrusiveInstance.m_doubleValue = 24.0f;
-            EXPECT_NE(nullptr, intrusiveDerivedFromExternalAndIntrusive->Cast(&derivedIntrusiveInstance, AZ::AzTypeInfo<MyBaseIntrusive>::Uuid()));
+            EXPECT_NE(nullptr, AZ::GetRttiHelper<MyDerivedIntrusive>()->Cast(
+                &derivedIntrusiveInstance, AZ::AzTypeInfo<MyBaseIntrusive>::Uuid()));
 
             // Test Rtti Free functions for class with intrusive Rtti
             enumHierarchyTotalClasses = 0;

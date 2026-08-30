@@ -15,25 +15,25 @@
 namespace AZ
 {
     template<typename Vertex>
-    static const Vertex& ScriptIndexRead(VertexContainer<Vertex>* thisPtr, int index)
+    [[maybe_unused]] static const Vertex& ScriptIndexRead(VertexContainer<Vertex>* thisPtr, int index)
     {
         return (*thisPtr)[index - 1];
     }
 
     template<typename Vertex>
-    static void ScriptUpdateVertex(VertexContainer<Vertex>* thisPtr, int index, const Vertex& vertex)
+    [[maybe_unused]] static void ScriptUpdateVertex(VertexContainer<Vertex>* thisPtr, int index, const Vertex& vertex)
     {
         thisPtr->UpdateVertex(index - 1, vertex);
     }
 
     template<typename Vertex>
-    static void ScriptInsertVertex(VertexContainer<Vertex>* thisPtr, int index, const Vertex& vertex)
+    [[maybe_unused]] static void ScriptInsertVertex(VertexContainer<Vertex>* thisPtr, int index, const Vertex& vertex)
     {
         thisPtr->InsertVertex(index - 1, vertex);
     }
 
     template<typename Vertex>
-    static void ScriptRemoveVertex(VertexContainer<Vertex>* thisPtr, int index)
+    [[maybe_unused]] static void ScriptRemoveVertex(VertexContainer<Vertex>* thisPtr, int index)
     {
         thisPtr->RemoveVertex(index - 1);
     }

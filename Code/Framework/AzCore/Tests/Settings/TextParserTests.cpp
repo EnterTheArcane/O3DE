@@ -116,7 +116,8 @@ namespace UnitTest
         auto textFileParam = GetParam();
 
         // Parse Text File and write output to a vector for testing
-        using ParseSettingsVector = AZStd::fixed_vector<AZStd::string_view, 20>;
+        // ParseTextFile reuses its internal buffer, so retain owning copies of callback tokens.
+        using ParseSettingsVector = AZStd::fixed_vector<AZStd::string, 20>;
         ParseSettingsVector parseSettingsVector;
         auto parseTextEntry = [&parseSettingsVector](AZStd::string_view textEntry)
         {
@@ -131,7 +132,11 @@ namespace UnitTest
         EXPECT_TRUE(parseOutcome);
 
         // Validate that parse lines matches the expected lines
-        EXPECT_THAT(parseSettingsVector, ::testing::ContainerEq(textFileParam.m_expectedLines));
+        ASSERT_EQ(parseSettingsVector.size(), textFileParam.m_expectedLines.size());
+        for (size_t lineIndex = 0; lineIndex < parseSettingsVector.size(); ++lineIndex)
+        {
+            EXPECT_EQ(AZStd::string_view(parseSettingsVector[lineIndex]), textFileParam.m_expectedLines[lineIndex]);
+        }
     }
 
 INSTANTIATE_TEST_SUITE_P(

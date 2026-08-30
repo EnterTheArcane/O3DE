@@ -1042,7 +1042,11 @@ namespace AZStd
         for (; first != last; ++first)
         {
             hash ^= static_cast<size_t>(*first);
+#if defined(__SIZEOF_INT128__)
+            hash = static_cast<size_t>(static_cast<unsigned __int128>(hash) * fnvPrime);
+#else
             hash *= fnvPrime;
+#endif
         }
         return hash;
     }

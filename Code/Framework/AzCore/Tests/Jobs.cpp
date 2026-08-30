@@ -58,7 +58,7 @@ namespace UnitTest
     static const int g_fibonacciSlowResult = 6765;
 #endif
 
-    static AZStd::sys_time_t s_totalJobsTime = 0;
+    static AZStd::atomic<AZStd::sys_time_t> s_totalJobsTime{ 0 };
 
     class DefaultJobManagerSetupFixture
         : public LeakDetectionFixture
@@ -257,7 +257,7 @@ namespace UnitTest
                 AZ_TEST_ASSERT(result.IsClose(Vector3(100.0f, 100.0f, 100.0f)));
             }
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
         }
     };
 
@@ -326,7 +326,7 @@ namespace UnitTest
                 jobJoin->Start();
             }
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
         }
     private:
         int m_n;
@@ -351,7 +351,7 @@ namespace UnitTest
             doneJob.StartAndWaitForCompletion();
             AZ_TEST_ASSERT(result == g_fibonacciSlowResult);
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
         }
     };
 
@@ -395,7 +395,7 @@ namespace UnitTest
                 *m_result = result1 + result2;
             }
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
         }
     private:
         int m_n;
@@ -418,7 +418,7 @@ namespace UnitTest
             doneJob.StartAndWaitForCompletion();
             AZ_TEST_ASSERT(result == g_fibonacciFastResult);
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
         }
     };
 
@@ -543,7 +543,7 @@ namespace UnitTest
             int* tempArray = reinterpret_cast<int*>(azmalloc(sizeof(int) * arraySize, 4));
             for (int i = 0; i < arraySize; ++i)
             {
-                array[i] = random.GetRandom();
+                array[i] = static_cast<int>(random.GetRandom());
             }
 
             AZStd::sys_time_t tStart = AZStd::GetTimeNowMicroSecond();
@@ -554,7 +554,7 @@ namespace UnitTest
             job->Start();
             doneJob.StartAndWaitForCompletion();
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
 
             for (int i = 0; i < arraySize - 1; ++i)
             {
@@ -647,7 +647,7 @@ namespace UnitTest
             int* array = reinterpret_cast<int*>(azmalloc(sizeof(int) * arraySize, 4));
             for (int i = 0; i < arraySize; ++i)
             {
-                array[i] = random.GetRandom();
+                array[i] = static_cast<int>(random.GetRandom());
             }
 
             AZStd::sys_time_t tStart = AZStd::GetTimeNowMicroSecond();
@@ -658,7 +658,7 @@ namespace UnitTest
             job->Start();
             doneJob.StartAndWaitForCompletion();
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
 
             for (int i = 0; i < arraySize - 1; ++i)
             {
@@ -743,7 +743,7 @@ namespace UnitTest
                 AZ_TEST_ASSERT(m_value == 0);
             }
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
         }
         void StartJobs(Job* dependent)
         {
@@ -797,7 +797,7 @@ namespace UnitTest
             job->StartAndAssistUntilComplete();
             AZ_TEST_ASSERT(result == g_fibonacciSlowResult);
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
         }
     };
 
@@ -823,7 +823,7 @@ namespace UnitTest
             group.run(&JobTaskGroupTest::TestFunc);
             group.wait();
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
         }
 
         static void TestFunc()
@@ -866,7 +866,7 @@ namespace UnitTest
             CalcFibonacci(g_fibonacciFast, &result);
             AZ_TEST_ASSERT(result == g_fibonacciFastResult);
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
         }
 
         void CalcFibonacci(int n, int* result)
@@ -916,7 +916,7 @@ namespace UnitTest
             AZ_TEST_ASSERT(result2 == g_fibonacciSlowResult);
             AZ_TEST_ASSERT(result3 == g_fibonacciSlowResult);
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
         }
 
         void FibTask(int n, int* result)
@@ -1019,7 +1019,7 @@ namespace UnitTest
                 }
             }
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
         }
 
         void FibTask(int i, int maxFibonacci)
@@ -1113,7 +1113,7 @@ namespace UnitTest
                 }
             }
 
-            s_totalJobsTime += AZStd::GetTimeNowMicroSecond() - tStart;
+            s_totalJobsTime.fetch_add(AZStd::GetTimeNowMicroSecond() - tStart, AZStd::memory_order_relaxed);
         }
 
         static void Double(int& i)
@@ -1226,7 +1226,7 @@ namespace UnitTest
             }
 #endif // AZ_COMPARE_TO_PPL
 
-            AZ_Printf("UnitTest", "\n\nJob overhead test. Serial %lld (%lld) Parallel %lld (%lld) PPL %lld (%lld) Total: %lld\n\n", nonParallelMS, nonParallelProcessMS, parallelForMS, parallelForProcessMS, parallelForPPLMS, parallelForProcessPPLMS, s_totalJobsTime);
+            AZ_Printf("UnitTest", "\n\nJob overhead test. Serial %lld (%lld) Parallel %lld (%lld) PPL %lld (%lld) Total: %lld\n\n", nonParallelMS, nonParallelProcessMS, parallelForMS, parallelForProcessMS, parallelForPPLMS, parallelForProcessPPLMS, s_totalJobsTime.load(AZStd::memory_order_relaxed));
 
 #ifdef AZ_JOBS_PRINT_CALL_ORDER
             // Find all unique threads
@@ -1559,8 +1559,8 @@ namespace Benchmark
         double pi = 0.0;
         for (AZ::u32 i = 0; i < depth; ++i)
         {
-            const double numerator = static_cast<double>(((i % 2) * 2) - 1);
-            const double denominator = static_cast<double>((2 * i) - 1);
+            const double numerator = i % 2 == 0 ? -1.0 : 1.0;
+            const double denominator = static_cast<double>(i) * 2.0 - 1.0;
             pi += numerator / denominator;
         }
         return (pi - 1.0) * 4;
@@ -1589,6 +1589,23 @@ namespace Benchmark
         const AZ::u32 m_depth;
     };
     AZStd::atomic<AZ::s32> TestJobCalculatePi::s_numIncompleteJobs = 0;
+
+    static void BM_JobCancelGroupIsCancelled(benchmark::State& state)
+    {
+        JobCancelGroup root;
+        JobCancelGroup child1(&root);
+        JobCancelGroup child2(&child1);
+        JobCancelGroup child3(&child2);
+        JobCancelGroup child4(&child3);
+        const AZStd::array<JobCancelGroup*, 5> groups{ &root, &child1, &child2, &child3, &child4 };
+        JobCancelGroup* group = groups[static_cast<size_t>(state.range(0))];
+
+        for ([[maybe_unused]] auto _ : state)
+        {
+            benchmark::DoNotOptimize(group->IsCancelled());
+        }
+    }
+    BENCHMARK(BM_JobCancelGroupIsCancelled)->Arg(0)->Arg(1)->Arg(4);
 
     class JobBenchmarkFixture : public ::benchmark::Fixture
     {

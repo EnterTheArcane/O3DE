@@ -1890,8 +1890,11 @@ namespace AZ
         template<class Derived, class Base>
         size_t GetBaseOffset()
         {
-            Derived* der = reinterpret_cast<Derived*>(AZ_INVALID_POINTER);
-            return reinterpret_cast<char*>(static_cast<Base*>(der)) - reinterpret_cast<char*>(der);
+            // Use an aligned, non-null probe address so the compiler can apply the non-virtual base adjustment
+            // without constructing Derived. No object is accessed through either pointer.
+            const size_t derivedAddress = AZ::SizeAlignUp(size_t{ 0x0badf00d }, alignof(Derived));
+            auto* derived = reinterpret_cast<Derived*>(derivedAddress);
+            return reinterpret_cast<size_t>(static_cast<Base*>(derived)) - derivedAddress;
         }
     } // namespace SerializeInternal
 
@@ -2632,4 +2635,3 @@ namespace AZ
 
 /// include implementation of SerializeContext::EnumBuilder
 #include <AzCore/Serialization/SerializeContextEnum.inl>
-

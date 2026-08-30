@@ -12,7 +12,7 @@ namespace AZ
 {
     DataPatchUpgradeManager::DataPatchUpgradeManager(const AZ::SerializeContext::DataPatchFieldUpgrades& upgrades, int startingVersion)
         : m_upgrades(upgrades)
-        , m_startingVersion(startingVersion)
+        , m_startingVersion(static_cast<unsigned int>(startingVersion))
     {}
 
     // Upgrade a data patch
@@ -40,7 +40,8 @@ namespace AZ
             if (parentClassData)
             {
                 // It would be better to store this information in the data patch so we don't make assumptions.
-                DataPatchUpgradeManager upgrader(parentClassData->m_dataPatchUpgrader.GetUpgrades(), targetClassVersion);
+                DataPatchUpgradeManager upgrader(
+                    parentClassData->m_dataPatchUpgrader.GetUpgrades(), static_cast<int>(targetClassVersion));
                 upgrader.ApplyUpgrades(address.front(), data);
                 return;
             }
@@ -55,7 +56,8 @@ namespace AZ
 
             if (parentClassData)
             {
-                DataPatchUpgradeManager upgrader(parentClassData->m_dataPatchUpgrader.GetUpgrades(), AZStd::next(addressElement)->GetElementVersion());
+                DataPatchUpgradeManager upgrader(parentClassData->m_dataPatchUpgrader.GetUpgrades(),
+                    static_cast<int>(AZStd::next(addressElement)->GetElementVersion()));
 
                 if (leafNode)
                 {
@@ -74,7 +76,8 @@ namespace AZ
         auto* parentClassData = context->FindClassData(targetClassID);
         if (parentClassData)
         {
-            DataPatchUpgradeManager upgrader(parentClassData->m_dataPatchUpgrader.GetUpgrades(), targetClassVersion);
+            DataPatchUpgradeManager upgrader(
+                parentClassData->m_dataPatchUpgrader.GetUpgrades(), static_cast<int>(targetClassVersion));
             upgrader.ApplyUpgrades(address.front());
         }
     }

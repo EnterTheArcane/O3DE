@@ -62,7 +62,8 @@ namespace AZ
 
             // Helper for creating a MidDispatchDisconnectFixer, with support for deducing handler types (required for lambdas)
             template <typename Bus, typename PreHandler, typename PostHandler>
-            auto MakeDisconnectFixer(typename Bus::Context* context, const typename Bus::BusIdType* busId, PreHandler&& remove, PostHandler&& post)
+            [[maybe_unused]] auto MakeDisconnectFixer(
+                typename Bus::Context* context, const typename Bus::BusIdType* busId, PreHandler&& remove, PostHandler&& post)
                 -> MidDispatchDisconnectFixer<Bus, PreHandler, PostHandler>
             {
                 return MidDispatchDisconnectFixer<Bus, PreHandler, PostHandler>(context, busId, AZStd::forward<PreHandler>(remove), AZStd::forward<PostHandler>(post));

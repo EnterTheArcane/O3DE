@@ -5870,8 +5870,8 @@ namespace UnitTest
                         ;
                 }
             }
-            int64_t m_value;
-            bool m_testFlag;
+            int64_t m_value{};
+            bool m_testFlag{};
         };
 
         struct ConvertedClass

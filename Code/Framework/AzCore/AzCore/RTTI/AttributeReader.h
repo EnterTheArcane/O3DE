@@ -30,7 +30,11 @@ namespace AZ
                 return true;
             }
             // try a type with an invocable function
-            if (auto invocable = azrtti_cast<AttributeInvocable<AttrType(InstType, Args...)>*>(attr); invocable != nullptr)
+            // AttributeInvoker stores instance pointers by value, but passes its member as an lvalue. Do not let that
+            // implementation detail change the erased callable signature from T* to T*&.
+            using InvocableInstType = AZStd::conditional_t<AZStd::is_pointer_v<AZStd::remove_cvref_t<InstType>>,
+                AZStd::remove_cvref_t<InstType>, InstType>;
+            if (auto invocable = azrtti_cast<AttributeInvocable<AttrType(InvocableInstType, Args...)>*>(attr); invocable != nullptr)
             {
                 value = static_cast<DestType>(invocable->operator()(AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...));
                 return true;
@@ -55,7 +59,11 @@ namespace AZ
                 return true;
             }
             // try a type with an invocable function
-            if (auto invocable = azrtti_cast<AttributeInvocable<RetType(InstType, Args...)>*>(attr); invocable != nullptr)
+            // AttributeInvoker stores instance pointers by value, but passes its member as an lvalue. Do not let that
+            // implementation detail change the erased callable signature from T* to T*&.
+            using InvocableInstType = AZStd::conditional_t<AZStd::is_pointer_v<AZStd::remove_cvref_t<InstType>>,
+                AZStd::remove_cvref_t<InstType>, InstType>;
+            if (auto invocable = azrtti_cast<AttributeInvocable<RetType(InvocableInstType, Args...)>*>(attr); invocable != nullptr)
             {
                 invocable->operator()(AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...);
                 return true;
@@ -79,66 +87,80 @@ namespace AZ
         struct AttributeReader
         {
             template<typename InstType>
-            static bool Read(DestType& value, Attribute* attr, InstType&& instance, const Args& ... args)
+            static bool Read(DestType& value, Attribute* attr, InstType&& instance, Args&& ... args)
             {
                 if constexpr (AZStd::is_integral_v<DestType> && !AZStd::is_same_v<DestType, bool>)
                 {
-                    if (AttributeRead<bool, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<bool, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
-                    if (AttributeRead<char, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<char, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
-                    if (AttributeRead<unsigned char, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<unsigned char, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
-                    if (AttributeRead<short, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<short, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
-                    if (AttributeRead<unsigned short, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<unsigned short, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
-                    if (AttributeRead<int, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<int, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
-                    if (AttributeRead<unsigned int, Args..., DestType>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<unsigned int, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
-                    if (AttributeRead<long, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<long, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
-                    if (AttributeRead<unsigned long, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<unsigned long, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
-                    if (AttributeRead<AZ::s64, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<AZ::s64, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
-                    if (AttributeRead<AZ::u64, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<AZ::u64, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
-                    if (AttributeRead<AZ::Crc32, DestType, Args...>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<AZ::Crc32, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
                 }
                 if constexpr (AZStd::is_floating_point_v<DestType>)
                 {
-                    if (AttributeRead<float, DestType>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<float, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
-                    if (AttributeRead<double, DestType>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<double, DestType, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
@@ -147,16 +169,19 @@ namespace AZ
                     || AZStd::is_same_v<AttrType, AZStd::string_view>
                     || AZStd::is_same_v<AttrType, const char*>))
                 {
-                    if (AttributeRead<const char*, AZStd::string>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<const char*, AZStd::string, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
-                    if (AttributeRead<AZStd::string_view, AZStd::string>(value, attr, AZStd::forward<InstType>(instance), args...))
+                    if (AttributeRead<AZStd::string_view, AZStd::string, InstType, Args...>(
+                        value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...))
                     {
                         return true;
                     }
                 }
-                return AttributeRead<AttrType, DestType>(value, attr, AZStd::forward<InstType>(instance), args...);
+                return AttributeRead<AttrType, DestType, InstType, Args...>(
+                    value, attr, AZStd::forward<InstType>(instance), AZStd::forward<Args>(args)...);
             }
         };
     } // namespace Internal
@@ -250,4 +275,3 @@ namespace AZ
 
     using AZ::Internal::AttributeRead;
 } // namespace AZ
-

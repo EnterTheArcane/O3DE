@@ -13,6 +13,20 @@
 #include <unistd.h>
 #include <AzCore/std/chrono/chrono.h>
 
+#if defined(__has_feature)
+#   if __has_feature(thread_sanitizer)
+#       include <sanitizer/tsan_interface.h>
+#       define AZSTD_TSAN_ENABLED 1
+#       define AZSTD_TSAN_SEMAPHORE_ACQUIRE(semaphoreAddress) __tsan_acquire(semaphoreAddress)
+#       define AZSTD_TSAN_SEMAPHORE_RELEASE(semaphoreAddress) __tsan_release(semaphoreAddress)
+#   endif
+#endif
+
+#if !defined(AZSTD_TSAN_SEMAPHORE_ACQUIRE)
+#   define AZSTD_TSAN_SEMAPHORE_ACQUIRE(semaphoreAddress) ((void)0)
+#   define AZSTD_TSAN_SEMAPHORE_RELEASE(semaphoreAddress) ((void)0)
+#endif
+
 /**
  * This file is to be included from the semaphore.h only. It should NOT be included by the user.
  */
@@ -62,6 +76,11 @@ namespace AZStd
 
         result = semaphore_wait(m_semaphore);
         AZ_Assert(result == 0, "semaphore_wait error %s\n", strerror(errno));
+        if (result == 0)
+        {
+            // Mach semaphores are synchronization primitives, but TSan does not intercept their API.
+            AZSTD_TSAN_SEMAPHORE_ACQUIRE(this);
+        }
     }
 
     template <class Rep, class Period>
@@ -86,6 +105,10 @@ namespace AZStd
         // http://opensource.apple.com//source/xnu/xnu-2422.1.72/osfmk/kern/sync_sema.c
         // http://opensource.apple.com/source/xnu/xnu-2422.1.72/osfmk/mach/kern_return.h
         AZ_Assert(result == 0 || result == KERN_OPERATION_TIMED_OUT, "semaphore_timedwait error %d\n", result);
+        if (result == 0)
+        {
+            AZSTD_TSAN_SEMAPHORE_ACQUIRE(this);
+        }
         return result == 0;
     }
 
@@ -108,7 +131,15 @@ namespace AZStd
 
         while (releaseCount)
         {
+#if defined(AZSTD_TSAN_ENABLED)
+            // Read the handle before publishing the release. The awakened thread may immediately destroy or reuse
+            // storage containing a short-lived semaphore, while this function finishes using the captured handle.
+            const native_semaphore_data_type semaphoreHandle = m_semaphore;
+            AZSTD_TSAN_SEMAPHORE_RELEASE(this);
+            result = semaphore_signal(semaphoreHandle);
+#else
             result = semaphore_signal(m_semaphore);
+#endif
             AZ_Assert(result == 0, "semaphore_signal error: %s\n", strerror(errno));
 
             if (result != 0)
@@ -125,3 +156,7 @@ namespace AZStd
         return &m_semaphore;
     }
 }
+
+#undef AZSTD_TSAN_SEMAPHORE_ACQUIRE
+#undef AZSTD_TSAN_SEMAPHORE_RELEASE
+#undef AZSTD_TSAN_ENABLED

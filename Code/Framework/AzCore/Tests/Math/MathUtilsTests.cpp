@@ -204,3 +204,21 @@ namespace UnitTest
 #endif
     }
 }
+
+#if defined(HAVE_BENCHMARK)
+namespace Benchmark
+{
+    static void BM_DivideAndRoundUpU64(benchmark::State& state)
+    {
+        AZ::u64 value = 0xfedcba9876543210ULL;
+        for ([[maybe_unused]] auto _ : state)
+        {
+            benchmark::DoNotOptimize(value);
+            const AZ::u64 result = AZ::DivideAndRoundUp(value, static_cast<AZ::u64>(state.range(0)));
+            benchmark::DoNotOptimize(result);
+            ++value;
+        }
+    }
+    BENCHMARK(BM_DivideAndRoundUpU64)->Arg(64)->Arg(4096);
+}
+#endif

@@ -9,6 +9,7 @@
 
 #include <AzCore/Debug/Budget.h>
 #include <AzCore/Statistics/StatisticalProfilerProxy.h>
+#include <AzCore/std/parallel/atomic.h>
 
 #if defined(AZ_PROFILER_MACRO_DISABLE) // by default we never disable the profiler registers as their overhead should be minimal, you can
                                        // still do that for your code though.
@@ -95,6 +96,6 @@ namespace AZ::Debug
         Budget* m_budget;
 
         // Optimization to avoid calling Interface<Profiler>::Get
-        static Profiler* m_cachedProfiler;
+        static AZStd::atomic<Profiler*> m_cachedProfiler;
     };
 } // namespace AZ::Debug

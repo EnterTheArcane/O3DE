@@ -118,47 +118,47 @@ namespace AZ
 
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> rootAsset) override
         {
-            Call(FN_OnAssetReady, rootAsset);
+            Call(FN_OnAssetReady, AZStd::forward<decltype(rootAsset)>(rootAsset));
         }
 
         void OnAssetPreReload(AZ::Data::Asset<AZ::Data::AssetData> asset) override
         {
-            Call(FN_OnAssetPreReload, asset);
+            Call(FN_OnAssetPreReload, AZStd::forward<decltype(asset)>(asset));
         }
 
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override
         {
-            Call(FN_OnAssetReloaded, asset);
+            Call(FN_OnAssetReloaded, AZStd::forward<decltype(asset)>(asset));
         }
 
         void OnAssetReloadError(AZ::Data::Asset<AZ::Data::AssetData> asset) override
         {
-            Call(FN_OnAssetReloadError, asset);
+            Call(FN_OnAssetReloadError, AZStd::forward<decltype(asset)>(asset));
         }
 
         void OnAssetSaved(AZ::Data::Asset<AZ::Data::AssetData> asset, bool isSuccessful) override
         {
-            Call(FN_OnAssetSaved, asset, isSuccessful);
+            Call(FN_OnAssetSaved, AZStd::forward<decltype(asset)>(asset), AZStd::forward<decltype(isSuccessful)>(isSuccessful));
         }
 
         void OnAssetUnloaded(AZ::Data::AssetId assetId, const AZ::Data::AssetType assetType) override
         {
-            Call(FN_OnAssetUnloaded, assetId, assetType);
+            Call(FN_OnAssetUnloaded, AZStd::forward<decltype(assetId)>(assetId), AZStd::forward<decltype(assetType)>(assetType));
         }
 
         void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset) override
         {
-            Call(FN_OnAssetError, asset);
+            Call(FN_OnAssetError, AZStd::forward<decltype(asset)>(asset));
         }
 
         void OnAssetCanceled(AZ::Data::AssetId assetId) override
         {
-            Call(FN_OnAssetCanceled, assetId);
+            Call(FN_OnAssetCanceled, AZStd::forward<decltype(assetId)>(assetId));
         }
 
         void OnAssetContainerReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override
         {
-            Call(FN_OnAssetContainerReady, asset);
+            Call(FN_OnAssetContainerReady, AZStd::forward<decltype(asset)>(asset));
         }
     };
     //=========================================================================

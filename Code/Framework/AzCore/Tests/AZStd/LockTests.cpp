@@ -110,6 +110,8 @@ namespace UnitTest
     TEST_F(LockTest, lock_LockMultipleMutexesAtOnceOnMultipleThreadsInDifferentOrders_LockedWithoutDeadlock)
     {
         // Multi thread case
+        m_nonAtomicAccumulator1 = 0;
+        m_nonAtomicAccumulator2 = 0;
         constexpr size_t numThreads = 2;
         AZStd::mutex testMutex1;
         AZStd::mutex testMutex2;
@@ -125,6 +127,9 @@ namespace UnitTest
 
         threads[0].join();
         threads[1].join();
+
+        EXPECT_EQ(7, m_nonAtomicAccumulator1);
+        EXPECT_EQ(4, m_nonAtomicAccumulator2);
     }
 
     TEST_F(LockTest, try_lock_AttemptLockMultipleAtOnce_AllMutexesAreLocked)

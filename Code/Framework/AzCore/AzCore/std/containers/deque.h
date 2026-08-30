@@ -89,10 +89,32 @@ namespace AZStd
         AZ_FORCE_INLINE this_type  operator++(int) { this_type tmp = *this; ++m_offset; return tmp; }
         AZ_FORCE_INLINE this_type& operator--() { --m_offset;   return *this; }
         AZ_FORCE_INLINE this_type  operator--(int) { this_type tmp = *this; --m_offset; return tmp; }
-        AZ_FORCE_INLINE this_type& operator+=(difference_type offset) { m_offset += offset; return *this; }
+        AZ_FORCE_INLINE this_type& operator+=(difference_type offset)
+        {
+            if (offset >= 0)
+            {
+                m_offset += static_cast<size_type>(offset);
+            }
+            else
+            {
+                m_offset -= static_cast<size_type>(-(offset + 1)) + 1;
+            }
+            return *this;
+        }
         AZ_FORCE_INLINE this_type  operator+(difference_type offset) const { this_type tmp = *this; tmp += offset; return tmp; }
         friend AZ_FORCE_INLINE this_type operator+(difference_type offset, const this_type& rhs) { this_type tmp = rhs; tmp += offset; return tmp; }
-        AZ_FORCE_INLINE this_type& operator-=(difference_type offset) { m_offset -= offset; return *this; }
+        AZ_FORCE_INLINE this_type& operator-=(difference_type offset)
+        {
+            if (offset >= 0)
+            {
+                m_offset -= static_cast<size_type>(offset);
+            }
+            else
+            {
+                m_offset += static_cast<size_type>(-(offset + 1)) + 1;
+            }
+            return *this;
+        }
         AZ_FORCE_INLINE this_type  operator-(difference_type offset) const { this_type tmp = *this; tmp -= offset; return tmp; }
         /// ???
         AZ_FORCE_INLINE difference_type operator-(const this_type& rhs) const

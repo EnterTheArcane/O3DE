@@ -464,11 +464,7 @@ namespace UnitTest
 #else
         static const int        m_numSharedAlloc = 10000; ///< Number of shared alloc free.
 #endif
-#if (ATOMIC_ADDRESS_LOCK_FREE==2)  // or we can use locked atomics
         AZStd::atomic_bool      m_doneSharedAlloc;
-#else
-        volatile bool           m_doneSharedAlloc;
-#endif
 
     public:
         void SetUp() override
@@ -551,7 +547,8 @@ namespace UnitTest
                     poolAllocator.DeAllocate(ac);
                 }
 
-                if (m_doneSharedAlloc) // once we know we don't add more elements, make one last check and exit.
+                if (m_doneSharedAlloc.load(AZStd::memory_order_acquire))
+                    // Once we know we don't add more elements, make one last check and exit.
                 {
                     ++isDone;
                 }
@@ -691,7 +688,7 @@ namespace UnitTest
                     m_threads[i].join();
                 }
 
-                m_doneSharedAlloc = true;
+                m_doneSharedAlloc.store(true, AZStd::memory_order_release);
 
                 for (unsigned int i = m_maxNumThreads / 2; i < m_maxNumThreads; ++i)
                 {

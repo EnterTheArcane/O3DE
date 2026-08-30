@@ -14,6 +14,8 @@
 #include <AzCore/std/typetraits/aligned_storage.h>
 #include <AzCore/std/typetraits/alignment_of.h>
 
+#include <bit>
+
 namespace AZStd
 {
     /**
@@ -35,15 +37,11 @@ namespace AZStd
     template<class Node, size_t NumNodes>
     class static_pool_concurrent_allocator
     {
-        using index_type = int32_t;
+        static_assert(NumNodes > 0, "static_pool_concurrent_allocator requires at least one node");
 
-        union pool_node
-        {
-            aligned_storage_t<sizeof(Node), alignment_of_v<Node>> m_node;
-            index_type m_index;
-        };
-
-        static constexpr index_type invalid_index = -1;
+        using free_node_word_type = uint64_t;
+        static constexpr size_t nodes_per_free_word = sizeof(free_node_word_type) * 8;
+        static constexpr size_t free_node_word_count = (NumNodes + nodes_per_free_word - 1) / nodes_per_free_word;
 
     public:
         using value_type = Node;
@@ -84,26 +82,23 @@ namespace AZStd
 
         [[nodiscard]] AZ_FORCE_INLINE Node* allocate()
         {
-            index_type firstFreeNode = m_firstFreeNode.load(memory_order_relaxed);
-            if (firstFreeNode != invalid_index)
+            const size_t firstFreeWord = m_nextFreeWord.fetch_add(1, memory_order_relaxed) % free_node_word_count;
+            for (size_t wordOffset = 0; wordOffset < free_node_word_count; ++wordOffset)
             {
-                ++m_numOfAllocatedNodes;
-
-                // weak compare_exchange is used here since firstFreeNode could change invalidating the value being passed to compare_exchange (2nd parameter)
-                // which requires the loop to execute. Therefore, since we need to execute the loop anyway, a spurious failure will yield to better results.
-                while (!m_firstFreeNode.compare_exchange_weak(
-                    firstFreeNode,
-                    (reinterpret_cast<pool_node*>(&m_data) + firstFreeNode)->m_index,
-                    memory_order_release,
-                    memory_order_relaxed))
+                const size_t wordIndex = (firstFreeWord + wordOffset) % free_node_word_count;
+                free_node_word_type freeNodes = m_freeNodes[wordIndex].load(memory_order_acquire);
+                while (freeNodes != 0)
                 {
-                    if (firstFreeNode == invalid_index)
+                    const size_t bitIndex = static_cast<size_t>(std::countr_zero(freeNodes));
+                    const free_node_word_type nodeMask = free_node_word_type{ 1 } << bitIndex;
+                    if (m_freeNodes[wordIndex].compare_exchange_weak(
+                        freeNodes, freeNodes & ~nodeMask, memory_order_acq_rel, memory_order_acquire))
                     {
-                        AZ_Assert(false, "AZStd::static_pool_concurrent_allocator - No more free nodes!");
-                        return nullptr;
+                        ++m_numOfAllocatedNodes;
+                        const size_t nodeIndex = wordIndex * nodes_per_free_word + bitIndex;
+                        return reinterpret_cast<Node*>(&m_data) + nodeIndex;
                     }
                 }
-                return reinterpret_cast<Node*>(reinterpret_cast<pool_node*>(&m_data) + firstFreeNode);
             }
 
             AZ_Assert(false, "AZStd::static_pool_concurrent_allocator - No more free nodes!");
@@ -124,18 +119,24 @@ namespace AZStd
 
         void deallocate(Node* ptr)
         {
-            AZ_Assert(((char*)ptr >= (char*)&m_data) && ((char*)ptr < ((char*)&m_data + sizeof(Node) * NumNodes)), "AZStd::static_pool_concurrent_allocator - Pointer is out of range!");
-
-            pool_node* firstPoolNode = reinterpret_cast<pool_node*>(&m_data);
-            pool_node* curPoolNode = reinterpret_cast<pool_node*>(ptr);
-            do
+            const uintptr_t dataAddress = reinterpret_cast<uintptr_t>(&m_data);
+            const uintptr_t nodeAddress = reinterpret_cast<uintptr_t>(ptr);
+            if (nodeAddress < dataAddress || nodeAddress >= dataAddress + sizeof(Node) * NumNodes
+                || (nodeAddress - dataAddress) % sizeof(Node) != 0)
             {
-                curPoolNode->m_index = m_firstFreeNode.load(memory_order_relaxed);
-            } while (!m_firstFreeNode.compare_exchange_weak(
-                curPoolNode->m_index,
-                static_cast<index_type>(curPoolNode - firstPoolNode),
-                memory_order_release,
-                memory_order_relaxed));
+                AZ_Assert(false, "AZStd::static_pool_concurrent_allocator - Pointer is out of range!");
+                return;
+            }
+
+            const size_t nodeIndex = (nodeAddress - dataAddress) / sizeof(Node);
+            const size_t wordIndex = nodeIndex / nodes_per_free_word;
+            const free_node_word_type nodeMask = free_node_word_type{ 1 } << (nodeIndex % nodes_per_free_word);
+            const free_node_word_type previousFreeNodes = m_freeNodes[wordIndex].fetch_or(nodeMask, memory_order_release);
+            if ((previousFreeNodes & nodeMask) != 0)
+            {
+                AZ_Assert(false, "AZStd::static_pool_concurrent_allocator - Node has already been deallocated!");
+                return;
+            }
             --m_numOfAllocatedNodes;
         }
 
@@ -153,27 +154,35 @@ namespace AZStd
             [[maybe_unused]] pointer ptr,
             [[maybe_unused]] size_type newSize) const
         {
-            return sizeof(pool_node); // this is the max size we can have.
+            return sizeof(Node); // this is the max size we can have.
         }
 
         void reset()
         {
             m_numOfAllocatedNodes = 0;
-            m_firstFreeNode = 0;
-            pool_node* poolNode = reinterpret_cast<pool_node*>(&m_data);
-            for (index_type iNode = 1; iNode < static_cast<index_type>(NumNodes); ++iNode, ++poolNode)
+            m_nextFreeWord = 0;
+            for (size_t wordIndex = 0; wordIndex < free_node_word_count; ++wordIndex)
             {
-                poolNode->m_index = iNode;
+                free_node_word_type freeNodes = ~static_cast<free_node_word_type>(0);
+                if constexpr ((NumNodes % nodes_per_free_word) != 0)
+                {
+                    if (wordIndex == free_node_word_count - 1)
+                    {
+                        freeNodes = (free_node_word_type{ 1 } << (NumNodes % nodes_per_free_word)) - 1;
+                    }
+                }
+                m_freeNodes[wordIndex].store(freeNodes, memory_order_relaxed);
             }
-
-            poolNode->m_index = invalid_index;
         }
 
         void leak_before_destroy()
         {
 #ifdef AZ_Assert // used only to confirm that it is ok for use to have allocated nodes
             m_numOfAllocatedNodes = 0;
-            m_firstFreeNode = invalid_index; // We are not allowed to allocate after we call leak_before_destroy.
+            for (atomic<free_node_word_type>& freeNodes : m_freeNodes)
+            {
+                freeNodes.store(0, memory_order_relaxed); // We are not allowed to allocate after we call leak_before_destroy.
+            }
 #endif
         }
 
@@ -196,7 +205,8 @@ namespace AZStd
 
     private:
         aligned_storage_t<sizeof(Node)* NumNodes, alignment_of_v<Node>> m_data;
-        atomic<index_type> m_firstFreeNode;
+        atomic<free_node_word_type> m_freeNodes[free_node_word_count];
+        atomic<size_t> m_nextFreeWord;
         atomic<size_type> m_numOfAllocatedNodes;
     };
 }

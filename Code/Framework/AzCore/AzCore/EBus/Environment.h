@@ -207,6 +207,11 @@ namespace AZ
         // This can fail on some compilers. If it fails, make sure that you give
         // each bus a unique name.
         static u32 GetVariableId();
+
+    private:
+        static AZStd::atomic_bool& IsDefaultGlobalContextInitialized();
+        static AZStd::mutex& GetDefaultGlobalContextMutex();
+        static void CacheDefaultGlobalContext(bool createIfMissing);
     };
 
     template<class Context>
@@ -216,9 +221,9 @@ namespace AZ
     template<class Context>
     Context* EBusEnvironmentStoragePolicy<Context>::Get()
     {
-        if (!s_defaultGlobalContext)
+        if (!IsDefaultGlobalContextInitialized().load(AZStd::memory_order_acquire))
         {
-            s_defaultGlobalContext = Environment::FindVariable<Context>(GetVariableId());
+            CacheDefaultGlobalContext(false);
         }
 
         if (s_defaultGlobalContext)
@@ -242,9 +247,9 @@ namespace AZ
     template<class Context>
     Context& EBusEnvironmentStoragePolicy<Context>::GetOrCreate()
     {
-        if (!s_defaultGlobalContext)
+        if (!IsDefaultGlobalContextInitialized().load(AZStd::memory_order_acquire))
         {
-            s_defaultGlobalContext = Environment::CreateVariable<Context>(GetVariableId());
+            CacheDefaultGlobalContext(true);
         }
 
         Context& globalContext = *s_defaultGlobalContext;
@@ -255,6 +260,38 @@ namespace AZ
         }
 
         return globalContext;
+    }
+
+    template<class Context>
+    AZStd::atomic_bool& EBusEnvironmentStoragePolicy<Context>::IsDefaultGlobalContextInitialized()
+    {
+        static AZStd::atomic_bool initialized{ false };
+        return initialized;
+    }
+
+    template<class Context>
+    AZStd::mutex& EBusEnvironmentStoragePolicy<Context>::GetDefaultGlobalContextMutex()
+    {
+        static AZStd::mutex mutex;
+        return mutex;
+    }
+
+    template<class Context>
+    void EBusEnvironmentStoragePolicy<Context>::CacheDefaultGlobalContext(bool createIfMissing)
+    {
+        AZStd::atomic_bool& initialized = IsDefaultGlobalContextInitialized();
+        AZStd::scoped_lock<AZStd::mutex> lock(GetDefaultGlobalContextMutex());
+        if (!initialized.load(AZStd::memory_order_relaxed))
+        {
+            EnvironmentVariable<Context> context = createIfMissing
+                ? Environment::CreateVariable<Context>(GetVariableId())
+                : Environment::FindVariable<Context>(GetVariableId());
+            if (context)
+            {
+                s_defaultGlobalContext = AZStd::move(context);
+                initialized.store(true, AZStd::memory_order_release);
+            }
+        }
     }
 
 } // namespace AZ

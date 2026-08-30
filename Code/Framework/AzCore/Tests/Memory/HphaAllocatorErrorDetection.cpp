@@ -226,10 +226,7 @@ namespace UnitTest
         AZ_TEST_START_TRACE_SUPPRESSION;
         ExpectDoubleDelete(1);
 
-        // double deletes produce memory tracking to fail since the counters change
-        ExpectNonEmptyBuckets(1);
-
-        m_expectedAsserts = 3;
+        m_expectedAsserts = 1;
 
         TestClass<1>* leakyObject = aznew TestClass<1>();
         delete leakyObject;
@@ -318,7 +315,7 @@ AZ_POP_DISABLE_WARNING
         }
 
         // Now produce an overflow, any value different than the initial guard will do
-        pointerToEnd[0] = ~expectedInitialGuard;
+        pointerToEnd[0] = static_cast<unsigned char>(~expectedInitialGuard);
 
         // delete the object, we should get the overflow detected
         AZ_TEST_START_TRACE_SUPPRESSION;

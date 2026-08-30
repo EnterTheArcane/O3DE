@@ -2340,8 +2340,11 @@ LUA_API const Node* lua_getDummyNode()
                 if (value.m_traits & BehaviorParameter::TR_POINTER)
                 {
                     // we need value to pointer be pointer to a pointer
-                    void* valueAddress = tempAllocator.allocate(sizeof(T) + sizeof(void*), AZStd::alignment_of<T>::value, 0);
-                    void* valueAddressPtr = reinterpret_cast<AZ::u8*>(valueAddress)+sizeof(T);
+                    constexpr size_t pointerAlignment = alignof(void*);
+                    constexpr size_t pointerOffset = (sizeof(T) + pointerAlignment - 1) & ~(pointerAlignment - 1);
+                    constexpr size_t storageAlignment = alignof(T) > pointerAlignment ? alignof(T) : pointerAlignment;
+                    void* valueAddress = tempAllocator.allocate(pointerOffset + sizeof(void*), storageAlignment, 0);
+                    void* valueAddressPtr = reinterpret_cast<AZ::u8*>(valueAddress) + pointerOffset;
                     *reinterpret_cast<void**>(valueAddressPtr) = valueAddress;
                     value.m_value = valueAddressPtr;
                 }
@@ -4746,7 +4749,11 @@ LUA_API const Node* lua_getDummyNode()
                     // read the operator type
                     AttributeReader operatorAttrReader(nullptr, operatorAttr);
                     Script::Attributes::OperatorType operatorType;
-                    operatorAttrReader.Read<Script::Attributes::OperatorType>(operatorType);
+                    if (!operatorAttrReader.Read<Script::Attributes::OperatorType>(operatorType))
+                    {
+                        AZ_Error("Script", false, "Unable to read the operator attribute for method %s", methodName);
+                        return false;
+                    }
 
                     switch (operatorType)
                     {

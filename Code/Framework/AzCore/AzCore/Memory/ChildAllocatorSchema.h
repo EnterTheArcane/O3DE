@@ -132,7 +132,9 @@ namespace AZ
             // The reallocation might have clamped the newSize to be at least the minimum allocation size
             // used by the parent schema. For example the HphaSchemaBase has a minimum allocation size of 8 bytes
             AZ_MEMORY_PROFILE(ProfileReallocation(ptr, newAddress, newAddress.GetAllocatedBytes(), newAlignment));
-            m_totalAllocatedBytes += newAddress.GetAllocatedBytes() - oldAllocatedSize;
+            const ptrdiff_t oldAllocatedBytes = static_cast<ptrdiff_t>(oldAllocatedSize);
+            const ptrdiff_t newAllocatedBytes = static_cast<ptrdiff_t>(newAddress.GetAllocatedBytes());
+            m_totalAllocatedBytes += newAllocatedBytes - oldAllocatedBytes;
             return newAddress;
         }
 

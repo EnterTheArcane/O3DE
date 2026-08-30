@@ -259,7 +259,7 @@ namespace AZ::Data
         AZ_Assert(m_weakUseCount > 0, "WeakUseCount is already 0");
 
         AssetId assetId = m_assetId;
-        int creationToken = m_creationToken;
+        int creationToken = m_creationToken.load(AZStd::memory_order_relaxed);
         AssetType assetType = GetType();
         bool removeFromHash = IsRegisterReadonlyAndShareable();
         // default creation token implies that the asset was not created by the asset manager and therefore it cannot be in the asset map.

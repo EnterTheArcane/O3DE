@@ -500,6 +500,13 @@ namespace AZ::Data
     void AssetManager::Destroy()
     {
         AZ_Assert(s_assetDB, "AssetManager not created!");
+        if (!s_assetDB || !*s_assetDB)
+        {
+            return;
+        }
+        // Drain worker activity before entering the virtual destructor. A destructor changes the object's vptr before
+        // its body runs, so waiting only from ~AssetManager can race with an in-flight AssetManagerBus virtual call.
+        (*s_assetDB)->PrepareShutDown();
         delete (*s_assetDB);
         *s_assetDB = nullptr;
     }
@@ -615,7 +622,7 @@ namespace AZ::Data
 
     bool AssetManager::ShouldCancelAllActiveJobs() const
     {
-        return m_cancelAllActiveJobs;
+        return m_cancelAllActiveJobs.load(AZStd::memory_order_acquire);
     }
 
     void AssetManager::SetParallelDependentLoadingEnabled(bool enable)
@@ -630,7 +637,7 @@ namespace AZ::Data
 
     void AssetManager::PrepareShutDown()
     {
-        m_cancelAllActiveJobs = true;
+        m_cancelAllActiveJobs.store(true, AZStd::memory_order_release);
 
         // We want to ensure that no active load jobs are in flight and
         // therefore we need to wait till all jobs have completed. Please note that jobs get deleted automatically once they complete.
@@ -831,9 +838,10 @@ namespace AZ::Data
         {
             bool removeFromHash = asset->IsRegisterReadonlyAndShareable();
             // default creation token implies that the asset was not created by the asset manager and therefore it cannot be in the asset map.
-            removeFromHash = asset->m_creationToken == s_defaultCreationToken ? false : removeFromHash;
+            const int creationToken = asset->m_creationToken.load(AZStd::memory_order_relaxed);
+            removeFromHash = creationToken == s_defaultCreationToken ? false : removeFromHash;
 
-            ReleaseAsset(asset, asset->GetId(), asset->GetType(), removeFromHash, asset->m_creationToken);
+            ReleaseAsset(asset, asset->GetId(), asset->GetType(), removeFromHash, creationToken);
         }
     }
 
@@ -1056,7 +1064,7 @@ namespace AZ::Data
                         if (assetData)
                         {
                             assetData->m_assetId = assetInfo.m_assetId;
-                            assetData->m_creationToken = ++m_creationTokenGenerator;
+                            assetData->m_creationToken.store(++m_creationTokenGenerator, AZStd::memory_order_relaxed);
                             assetData->RegisterWithHandler(handler);
                             asset.SetData(assetData);
                         }
@@ -1199,16 +1207,25 @@ namespace AZ::Data
 
     void AssetManager::UpdateDebugStatus(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
     {
-        if(!m_debugAssetEvents)
+        IDebugAssetEvent* debugAssetEvents = m_debugAssetEvents.load(AZStd::memory_order_relaxed);
+        if (!debugAssetEvents)
         {
-            m_debugAssetEvents = AZ::Interface<IDebugAssetEvent>::Get();
+            if (IDebugAssetEvent* registeredDebugAssetEvents = AZ::Interface<IDebugAssetEvent>::Get())
+            {
+                m_debugAssetEvents.compare_exchange_strong(
+                    debugAssetEvents, registeredDebugAssetEvents, AZStd::memory_order_relaxed);
+                if (!debugAssetEvents)
+                {
+                    debugAssetEvents = registeredDebugAssetEvents;
+                }
+            }
         }
 
         ASSET_DEBUG_OUTPUT(AZStd::string::format("Status - %d - " AZ_STRING_FORMAT, int(asset.GetStatus()), AZ_STRING_ARG(asset.GetId().ToFixedString())));
 
-        if(m_debugAssetEvents)
+        if (debugAssetEvents)
         {
-            m_debugAssetEvents->AssetStatusUpdate(asset.GetId(), asset.GetStatus());
+            debugAssetEvents->AssetStatusUpdate(asset.GetId(), asset.GetStatus());
         }
     }
 
@@ -1280,7 +1297,7 @@ namespace AZ::Data
                 if (assetData)
                 {
                     assetData->m_assetId = assetId;
-                    assetData->m_creationToken = ++m_creationTokenGenerator;
+                    assetData->m_creationToken.store(++m_creationTokenGenerator, AZStd::memory_order_relaxed);
                     assetData->RegisterWithHandler(handler);
                     if (assetData->IsRegisterReadonlyAndShareable())
                     {
@@ -1327,7 +1344,9 @@ namespace AZ::Data
             // if the assetId is not in the map or if the identifierId
             // do not match it implies that the asset has been already destroyed.
             // if the usecount is non zero it implies that we cannot destroy this asset.
-            if (it != m_assets.end() && it->second->m_creationToken == creationToken && it->second->m_weakUseCount.compare_exchange_strong(expectedRefCount, -1))
+            if (it != m_assets.end()
+                && it->second->m_creationToken.load(AZStd::memory_order_relaxed) == creationToken
+                && it->second->m_weakUseCount.compare_exchange_strong(expectedRefCount, -1))
             {
                 wasInAssetsHash = true;
                 m_assets.erase(it);
@@ -1347,9 +1366,9 @@ namespace AZ::Data
         {
             ASSET_DEBUG_OUTPUT(AZStd::string::format("Release asset - " AZ_STRING_FORMAT, AZ_STRING_ARG(assetId.ToFixedString())));
 
-            if(m_debugAssetEvents)
+            if (IDebugAssetEvent* debugAssetEvents = m_debugAssetEvents.load(AZStd::memory_order_relaxed))
             {
-                m_debugAssetEvents->ReleaseAsset(assetId);
+                debugAssetEvents->ReleaseAsset(assetId);
             }
 
             // find the asset type handler
@@ -1706,10 +1725,10 @@ namespace AZ::Data
                 // In this scenario if any other system have cached the old asset then the asset wont be destroyed
                 // because of creation token mismatch when it's ref count finally goes to zero. Since the old asset is not shareable anymore
                 // manually setting the creationToken to default creation token will ensure that the asset is destroyed correctly.
-                asset.m_assetData->m_creationToken = ++m_creationTokenGenerator;
+                asset.m_assetData->m_creationToken.store(++m_creationTokenGenerator, AZStd::memory_order_relaxed);
                 if (found != m_assets.end())
                 {
-                    found->second->m_creationToken = AZ::Data::s_defaultCreationToken;
+                    found->second->m_creationToken.store(AZ::Data::s_defaultCreationToken, AZStd::memory_order_relaxed);
                 }
 
                 // Held references to old data are retained, but replace the entry in the DB for future requests.
@@ -2185,6 +2204,28 @@ namespace AZ::Data
             AZ_STRING_ARG(id.ToFixedString())));
     }
 
+    AZStd::shared_ptr<AssetContainer> AssetManager::AcquireAssetContainer(AssetContainer* assetContainer)
+    {
+        AZStd::scoped_lock lock(m_assetContainerMutex);
+
+        if (auto ownedContainer = m_ownedAssetContainers.find(assetContainer);
+            ownedContainer != m_ownedAssetContainers.end())
+        {
+            return ownedContainer->second;
+        }
+
+        for (auto& [key, weakContainer] : m_assetContainers)
+        {
+            AZ_UNUSED(key);
+            if (auto container = weakContainer.lock(); container.get() == assetContainer)
+            {
+                return container;
+            }
+        }
+
+        return {};
+    }
+
     void AssetManager::OnAssetContainerReady(AssetContainer* assetContainer)
     {
         ASSET_DEBUG_OUTPUT(AZStd::string::format(
@@ -2194,13 +2235,20 @@ namespace AZ::Data
 
         AssetBus::QueueFunction([this, assetContainer, asset = assetContainer->GetRootAsset()]()
         {
+            // Resolve ownership on the dispatch thread. The container can signal before GetAsset registers
+            // its shared owner, and it can also be released before this queued callback runs.
+            AZStd::shared_ptr<AssetContainer> container = AcquireAssetContainer(assetContainer);
+
             ASSET_DEBUG_OUTPUT(AZStd::string::format(
                 "OnAssetContainerReady - Notify - %p - " AZ_STRING_FORMAT,
                 static_cast<void*>(assetContainer),
-                AZ_STRING_ARG(assetContainer->GetContainerAssetId().ToFixedString())));
+                AZ_STRING_ARG(asset.GetId().ToFixedString())));
 
             NotifyAssetContainerReady(asset);
-            ReleaseOwnedAssetContainer(assetContainer);
+            if (container)
+            {
+                ReleaseOwnedAssetContainer(container.get());
+            }
         });
     }
 
@@ -2208,7 +2256,11 @@ namespace AZ::Data
     {
         AssetBus::QueueFunction([this, assetContainer]()
         {
-            ReleaseOwnedAssetContainer(assetContainer);
+            AZStd::shared_ptr<AssetContainer> container = AcquireAssetContainer(assetContainer);
+            if (container)
+            {
+                ReleaseOwnedAssetContainer(container.get());
+            }
         });
     }
 

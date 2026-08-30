@@ -62,7 +62,8 @@ namespace AZ
         unsigned int countAndFlags = GetDependentCountAndFlags();
         AZ_Assert((countAndFlags & (unsigned int)FLAG_AUTO_DELETE) == 0, "You can't call reset on AutoDelete jobs!");
         // Remove the FLAG_DEPENDENTCOUNT_MASK and FLAG_CHILD_JOBS flags
-        countAndFlags = (countAndFlags & (~(FLAG_DEPENDENTCOUNT_MASK) & ~(FLAG_CHILD_JOBS))) | 1;
+        countAndFlags = (countAndFlags
+            & (~static_cast<unsigned int>(FLAG_DEPENDENTCOUNT_MASK) & ~static_cast<unsigned int>(FLAG_CHILD_JOBS))) | 1;
         SetDependentCountAndFlags(countAndFlags);
         if (isClearDependent)
         {
@@ -231,7 +232,8 @@ namespace AZ
         {
             oldCountAndFlags = m_dependentCountAndFlags.load(AZStd::memory_order_acquire);
             int oldCount = oldCountAndFlags & FLAG_DEPENDENTCOUNT_MASK;
-            newCountAndFlags = (oldCountAndFlags & ~FLAG_DEPENDENTCOUNT_MASK) | (oldCount + 1) | FLAG_CHILD_JOBS;
+            newCountAndFlags = (oldCountAndFlags & ~static_cast<unsigned int>(FLAG_DEPENDENTCOUNT_MASK))
+                | static_cast<unsigned int>(oldCount + 1) | static_cast<unsigned int>(FLAG_CHILD_JOBS);
         } while (!m_dependentCountAndFlags.compare_exchange_weak(oldCountAndFlags, newCountAndFlags, AZStd::memory_order_acq_rel, AZStd::memory_order_acquire));
     #endif
     }
@@ -265,7 +267,7 @@ namespace AZ
 
     AZ::s8 Job::GetPriority() const
     {
-        return (GetDependentCountAndFlags() >> FLAG_PRIORITY_START_BIT) & 0xff;
+        return static_cast<AZ::s8>((GetDependentCountAndFlags() >> FLAG_PRIORITY_START_BIT) & 0xff);
     }
 
 #ifdef AZCORE_JOBS_IMPL_SYNCHRONOUS

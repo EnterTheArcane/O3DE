@@ -428,7 +428,7 @@ namespace AZ
         return s_allocManager;
     }
 
-    static AllocatorManager* s_allocManagerDebug; // For easier viewing in crash dumps
+    [[maybe_unused]] static AllocatorManager* s_allocManagerDebug; // For easier viewing in crash dumps
 
     //////////////////////////////////////////////////////////////////////////
     bool AllocatorManager::IsReady()

@@ -9,21 +9,22 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/std/parallel/atomic.h>
 #include "StatisticalProfilerProxySystemComponent.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AZ::Statistics
 {
-    static StatisticalProfilerProxy* s_profilerProxy = nullptr;
+    static AZStd::atomic<StatisticalProfilerProxy*> s_profilerProxy{ nullptr };
 
     StatisticalProfilerProxy* StatisticalProfilerProxy::TimedScope::GetProfilerProxy()
     {
-        return s_profilerProxy;
+        return s_profilerProxy.load(AZStd::memory_order_acquire);
     }
 
     void StatisticalProfilerProxy::TimedScope::SetProfilerProxy(StatisticalProfilerProxy* profilerProxy)
     {
-        s_profilerProxy = profilerProxy;
+        s_profilerProxy.store(profilerProxy, AZStd::memory_order_release);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

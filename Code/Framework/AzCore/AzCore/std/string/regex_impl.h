@@ -1423,7 +1423,12 @@ namespace AZStd
         // set specified flags
         void _Setf(regex_constants::match_flag_type flags)      { m_mflags |= flags; }
         // clear specified flags
-        void _Clearf(regex_constants::match_flag_type flags)    { m_mflags &= ~flags; }
+        void _Clearf(regex_constants::match_flag_type flags)
+        {
+            using UnderlyingType = AZStd::underlying_type_t<regex_constants::match_flag_type>;
+            m_mflags = static_cast<regex_constants::match_flag_type>(
+                static_cast<UnderlyingType>(m_mflags) & ~static_cast<UnderlyingType>(flags));
+        }
 
         template<class Allocator>
         bool Match(Iterator first, match_results<BidirectionalIterator, Allocator>* m_matches, bool isFullMatch)

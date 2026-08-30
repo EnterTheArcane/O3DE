@@ -32,9 +32,9 @@ namespace UnitTest
     );
     AZ_ENUM_DEFINE_REFLECT_UTILITIES(TestEnum)
 
-    AZ_ENUM(TestEnumUnscoped,
-            X,
-            (Y, 5)
+    AZ_ENUM_WITH_UNDERLYING_TYPE(TestEnumUnscoped, uint8_t,
+                                 X,
+                                 (Y, 5)
     );
 
     AZ_ENUM_WITH_UNDERLYING_TYPE(TestEnum8, uint8_t,

@@ -352,20 +352,20 @@ namespace UnitTest
             // you can get the index yourself or use the FN_xxx enum FN_OnEvent
             static int eventIndex = GetFunctionIndex("OnEvent");
             AZ_Assert(eventIndex != -1, "We can't find event with name %s", "OnEvent");
-            Call(eventIndex, data);
+            Call(eventIndex, AZStd::forward<decltype(data)>(data));
         }
 
         int OnEventWithResult(int data) override
         {
             int result = 0; // default result as a function hook might not exists
-            CallResult(result, FN_OnEventWithResult, data);
+            CallResult(result, FN_OnEventWithResult, AZStd::forward<decltype(data)>(data));
             return result;
         }
 
         int OnEventWithResultContainer(const AZStd::vector<int> values) override
         {
             int result = 0;
-            CallResult(result, FN_OnEventWithResultContainer, values);
+            CallResult(result, FN_OnEventWithResultContainer, AZStd::forward<decltype(values)>(values));
             return result;
         }
 
@@ -423,20 +423,20 @@ namespace UnitTest
             // you can get the index yourself or use the FN_xxx enum FN_OnEvent
             static int eventIndex = GetFunctionIndex("OnEvent");
             AZ_Assert(eventIndex != -1, "We can't find event with name %s", "OnEvent");
-            Call(eventIndex, data);
+            Call(eventIndex, AZStd::forward<decltype(data)>(data));
         }
 
         int OnEventWithResult(int data) override
         {
             int result = 0; // default result as a function hook might not exists
-            CallResult(result, FN_OnEventWithResult, data);
+            CallResult(result, FN_OnEventWithResult, AZStd::forward<decltype(data)>(data));
             return result;
         }
 
         int OnEventWithResultContainer(const AZStd::vector<int> values) override
         {
             int result = 0;
-            CallResult(result, FN_OnEventWithResultContainer, values);
+            CallResult(result, FN_OnEventWithResultContainer, AZStd::forward<decltype(values)>(values));
             return result;
         }
 

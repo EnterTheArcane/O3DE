@@ -611,7 +611,7 @@ namespace AZ
                         fieldContainer->m_typeId = classData->m_typeId;
                         dynamicElementMetadata.m_name = element.m_name;
                         dynamicElementMetadata.m_nameCrc = element.m_nameCrc;
-                        dynamicElementMetadata.m_offset = reinterpret_cast<size_t>(&(reinterpret_cast<DynamicSerializableField const volatile*>(0)->m_data));
+                        dynamicElementMetadata.m_offset = offsetof(DynamicSerializableField, m_data);
                         dynamicElementMetadata.m_dataSize = sizeof(void*);
                         dynamicElementMetadata.m_flags = SerializeContext::ClassElement::FLG_POINTER;   // we want to load the data as a pointer
                         dynamicElementMetadata.m_azRtti = classData->m_azRtti;
@@ -1679,7 +1679,9 @@ namespace AZ
                     &m_errorLogger
                 );
                 if (ObjectStreamWriteOverrideResponse writeResponse;
-                    objectStreamWriteOverrideCB.Read<ObjectStreamWriteOverrideResponse>(writeResponse, callContext, objectPtr, *classData, classElement))
+                    objectStreamWriteOverrideCB.Read<ObjectStreamWriteOverrideResponse>(
+                        writeResponse, callContext, static_cast<const void*>(objectPtr), *classData,
+                        static_cast<const SerializeContext::ClassElement*>(classElement)))
                 {
                     switch (writeResponse)
                     {
@@ -2266,4 +2268,3 @@ namespace AZ
     }
 
 } // namespace AZ
-

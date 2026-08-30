@@ -160,7 +160,7 @@ namespace AZ::Debug
         QueueMessageCall(
             [this, fileNameString = AZStd::string(fileName), line, funcString = AZStd::string(func), messageString = AZStd::string(message)]()
         {
-            Call(FN_OnPreAssert, fileNameString.c_str(), line, funcString.c_str(), messageString.c_str());
+            Call(FN_OnPreAssert, fileNameString.c_str(), static_cast<int>(line), funcString.c_str(), messageString.c_str());
         });
         return false;
     }
@@ -170,7 +170,7 @@ namespace AZ::Debug
         QueueMessageCall(
             [this, windowString = AZStd::string(window), fileNameString = AZStd::string(fileName), line, funcString = AZStd::string(func), messageString = AZStd::string(message)]()
         {
-            Call(FN_OnPreError, windowString.c_str(), fileNameString.c_str(), line, funcString.c_str(), messageString.c_str());
+            Call(FN_OnPreError, windowString.c_str(), fileNameString.c_str(), static_cast<int>(line), funcString.c_str(), messageString.c_str());
         });
         return false;
     }
@@ -180,7 +180,7 @@ namespace AZ::Debug
         QueueMessageCall(
             [this, windowString = AZStd::string(window), fileNameString = AZStd::string(fileName), line, funcString = AZStd::string(func), messageString = AZStd::string(message)]()
         {
-            return Call(FN_OnPreWarning, windowString.c_str(), fileNameString.c_str(), line, funcString.c_str(), messageString.c_str());
+            return Call(FN_OnPreWarning, windowString.c_str(), fileNameString.c_str(), static_cast<int>(line), funcString.c_str(), messageString.c_str());
         });
         return false;
     }

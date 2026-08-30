@@ -1462,12 +1462,12 @@ namespace UnitTest
 
             testMap.emplace(8001, 1337);
             testMap.emplace(-200, 31337);
-            testMap.emplace(-932, 0xbaddf00d);
-            testMap.emplace(73, 0xfee1badd);
-            testMap.emplace(1872, 0xCDCDCDCD);
+            testMap.emplace(-932, static_cast<int32_t>(0xbaddf00dU));
+            testMap.emplace(73, static_cast<int32_t>(0xfee1baddU));
+            testMap.emplace(1872, static_cast<int32_t>(0xCDCDCDCDU));
             testMap.emplace(0xFF, 7000000);
             testMap.emplace(0777, 0b00110000010);
-            testMap.emplace(0b11010110110000101, 0xDDDDDDDD);
+            testMap.emplace(0b11010110110000101, static_cast<int32_t>(0xDDDDDDDDU));
             return testMap;
         }
     };
@@ -1517,7 +1517,7 @@ namespace UnitTest
         EXPECT_EQ(7, testContainer.size());
         EXPECT_FALSE(extractedNode.empty());
         EXPECT_EQ(73, static_cast<int32_t>(extractedNode.key()));
-        EXPECT_EQ(0xfee1badd, extractedNode.mapped());
+        EXPECT_EQ(static_cast<int32_t>(0xfee1baddU), extractedNode.mapped());
     }
 
     TYPED_TEST(HashedMapContainers, InsertNodeHandleSucceeds)
@@ -2007,7 +2007,7 @@ namespace AZStd
         template<typename ConvertableToKey>
         constexpr size_t operator()(const ConvertableToKey& key) const
         {
-            return static_cast<int>(key);
+            return static_cast<size_t>(static_cast<int>(key));
         }
     };
 }
@@ -2265,11 +2265,12 @@ namespace UnitTest
         {
             map.emplace(i, i);
         }
-        int val = 0;
+        unsigned int val = 0;
         while (state.KeepRunning())
         {
-            val += map[rand() % count];
+            val += static_cast<unsigned int>(map[rand() % count]);
         }
+        benchmark::DoNotOptimize(val);
     }
 
     template <template <typename...> class Hash>

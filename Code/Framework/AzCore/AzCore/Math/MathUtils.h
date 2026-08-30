@@ -558,8 +558,17 @@ namespace AZ
         AZ_MATH_ASSERT(alignment != 0, "0 is an invalid multiple to round to.");
         AZ_MATH_ASSERT(
             AZStd::numeric_limits<T>::max() - value >= alignment,
-            "value and alignment will overflow when added together during DivideAndRoundUp.");
-        return (value + alignment - 1) / alignment;
+            "value and alignment would overflow the legacy addition used by DivideAndRoundUp.");
+        if constexpr (AZStd::is_unsigned<T>::value)
+        {
+            // Avoid both the overflowing addition in the legacy expression and the longer quotient/remainder
+            // dependency chain generated for `value / alignment + (value % alignment != 0)`.
+            return value == 0 ? 0 : static_cast<T>(1 + (value - 1) / alignment);
+        }
+        else
+        {
+            return value / alignment + static_cast<T>(value % alignment != 0);
+        }
     }
     
     //! Returns the value rounded up to a multiple of alignment.

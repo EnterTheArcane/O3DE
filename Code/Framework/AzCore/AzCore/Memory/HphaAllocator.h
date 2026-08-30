@@ -49,8 +49,8 @@ namespace AZ
         // It is a private class implemented in the cpp
         class HpAllocator;
 
-        // this must be at least the max size of HpAllocator (defined in the cpp) + any platform compiler padding
-        // A static assert inside of HphaSchema.cpp validates that this is the case
+        // This must hold HpAllocator plus enough padding to align the placement address to alignof(HpAllocator).
+        // A static assert inside HphaAllocator.cpp validates that this is the case.
         // as of commit https://github.com/o3de/o3de/commit/92cd457c256e1ec91eeabe04b56d1d4c61f8b1af
         // When MULTITHREADED and USE_MUTEX_PER_BUCKET is defined
         // the largest sizeof for HpAllocator is 16640 on MacOS

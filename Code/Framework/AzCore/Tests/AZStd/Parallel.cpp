@@ -769,20 +769,20 @@ namespace UnitTest
 
         void Writer()
         {
-            while (m_currentValue < 100)
+            while (true)
             {
                 {
                     lock_guard<shared_mutex> lock(m_access);
                     // now we have exclusive access
 
-                    // m_currentValue must be checked within the mutex as it is possible that
-                    // the other writer thread incremented the m_currentValue to 100 between the check of
-                    // the while loop condition and the acquiring of the shared_mutex exclusive lock
-                    if (m_currentValue < 100)
+                    // The completion check must also be performed while holding the lock. Reading m_currentValue
+                    // in the loop condition would race with the other writer.
+                    if (m_currentValue >= 100)
                     {
-                        unsigned int currentValue = m_currentValue;
-                        m_currentValue = currentValue + 1;
+                        break;
                     }
+                    unsigned int currentValue = m_currentValue;
+                    m_currentValue = currentValue + 1;
                 }
 
                 this_thread::sleep_for(AZStd::chrono::milliseconds(10));

@@ -64,12 +64,12 @@ namespace AZ
 
         void OnEntityActivated(const AZ::EntityId& id) override
         {
-            Call(FN_OnEntityActivated, id);
+            Call(FN_OnEntityActivated, AZStd::forward<decltype(id)>(id));
         }
 
         void OnEntityDeactivated(const AZ::EntityId& id) override
         {
-            Call(FN_OnEntityDeactivated, id);
+            Call(FN_OnEntityDeactivated, AZStd::forward<decltype(id)>(id));
         }
     };
 
@@ -1359,9 +1359,11 @@ namespace AZ
             // inform components that depend on the service that they're waiting on one less component.
             servicesTmp.clear();
             candidateInfo.m_descriptor->GetProvidedServices(servicesTmp, candidateInfo.m_component);
-            for (ComponentServiceType providedService : servicesTmp)
+            for (auto providedService = servicesTmp.begin(); providedService != servicesTmp.end(); ++providedService)
             {
-                ProvidedServiceInfo& providedServiceInfo = providedServiceInfos[providedService];
+                AZ::EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(
+                    providedService, servicesTmp, candidateInfo.m_component->GetEntity());
+                ProvidedServiceInfo& providedServiceInfo = providedServiceInfos[*providedService];
 
                 // traverse the "linked list"
                 size_t dependentEntry = providedServiceInfo.m_firstDependentComponentEntry;

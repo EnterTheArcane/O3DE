@@ -1626,7 +1626,8 @@ namespace AZ
  *          // plus behavior can't really handle all constructs pointer to pointer, rvalues, etc. as they don't make sense for most script environments
  *          int result = 0; // set the default value for your result if the behavior if there is no implementation
  *          // The AZ_EBUS_BEHAVIOR_BINDER defines FN_EventName for each index. You can also cache it yourself (but it's slower), static int cacheIndex = GetFunctionIndex("OnEvent1"); and use that .
- *          CallResult(result, FN_OnEvent1, data);  // forward to the binding (there can be none, this is why we need to always have properly set result, when there is one)
+ *          // Forward with the declared parameter type so a by-value event is not mistaken for a reference event.
+ *          CallResult(result, FN_OnEvent1, AZStd::forward<decltype(data)>(data));
  *          return result; // return the result like you will in any normal EBus even with result
  *      } *
  *      // handle the other events here
@@ -2481,13 +2482,38 @@ namespace AZ
         template<class T>
         using UnqualifiedRemovePointerUnderlyingType = AZStd::RemoveEnumT<AZStd::remove_pointer_t<AZStd::decay_t<T>>>;
 
+        // Type-name and type-id initialization is intentionally kept out of the parameter-pack expansion below.
+        // Thread-safe function-local static initialization has a small fast path but a comparatively large cold path;
+        // inlining it into every reflected signature duplicates that cold path for every parameter occurrence.
+        template<class T>
+#if defined(AZ_COMPILER_MSVC)
+        __declspec(noinline)
+#elif defined(AZ_COMPILER_CLANG) || defined(AZ_COMPILER_GCC)
+        __attribute__((noinline))
+#endif
+        Uuid GetBehaviorParameterTypeId()
+        {
+            return AzTypeInfo<T>::Uuid();
+        }
+
+        template<class T>
+#if defined(AZ_COMPILER_MSVC)
+        __declspec(noinline)
+#elif defined(AZ_COMPILER_CLANG) || defined(AZ_COMPILER_GCC)
+        __attribute__((noinline))
+#endif
+        const char* GetBehaviorParameterTypeName()
+        {
+            return AzTypeInfo<T>::Name();
+        }
+
         // Assumes parameters array is big enough to store all parameters
         template<class... Args>
         inline void SetParametersStripped(BehaviorParameter* parameters, OnDemandReflectionOwner* onDemandReflection)
         {
             // +1 to avoid zero array size
-            Uuid argumentTypes[sizeof...(Args) + 1] = { AzTypeInfo<UnqualifiedRemovePointerUnderlyingType<Args>>::Uuid()... };
-            const char* argumentNames[sizeof...(Args) + 1] = { AzTypeInfo<Args>::Name()... };
+            Uuid argumentTypes[sizeof...(Args) + 1] = { GetBehaviorParameterTypeId<UnqualifiedRemovePointerUnderlyingType<Args>>()... };
+            const char* argumentNames[sizeof...(Args) + 1] = { GetBehaviorParameterTypeName<Args>()... };
             bool argumentIsPointer[sizeof...(Args) + 1] = { AZStd::is_pointer_v<AZStd::remove_reference_t<Args>>... };
             bool argumentIsConst[sizeof...(Args) + 1] = { AZStd::is_const_v<AZStd::remove_pointer_t<AZStd::remove_reference_t<Args>>>... };
             bool argumentIsReference[sizeof...(Args) + 1] = { AZStd::is_reference_v<Args>... };

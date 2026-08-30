@@ -394,7 +394,9 @@ namespace AZ::IO
         //////////////////////////////////////////////////////////////
         // Test equal priority requests that are past their deadlines (aka panic)
         //////////////////////////////////////////////////////////////
-        IStreamerTypes::Deadline panicDeadline(IStreamerTypes::Deadline::min());
+        // The request only needs to be overdue. Deadline::min() cannot be added to a finer-resolution
+        // steady clock without overflowing during the duration conversion.
+        IStreamerTypes::Deadline panicDeadline(-1);
         auto estimatedCompleteTime = AZStd::chrono::steady_clock::now();
         char fakeBuffer[8];
         FileRequestPtr panicRequest = m_streamer->Read("PanicRequest", fakeBuffer, sizeof(fakeBuffer), 8, panicDeadline);

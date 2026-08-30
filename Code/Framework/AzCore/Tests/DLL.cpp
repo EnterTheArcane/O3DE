@@ -168,13 +168,13 @@ namespace UnitTest
         const int numThreads = 64;
         int values[numThreads] = { 0 };
         AZStd::thread threads[numThreads];
-        AZ::EnvironmentVariable<int> envVar;
+        AZ::EnvironmentVariable<int> envVars[numThreads];
         for (int threadIdx = 0; threadIdx < numThreads; ++threadIdx)
         {
-            auto threadFunc = [&values, &envVar, threadIdx]()
+            auto threadFunc = [&values, &envVars, threadIdx]()
             {
-                envVar = AZ::Environment::CreateVariable<int>("CreateEnvironmentVariableThreadRace", threadIdx);
-                values[threadIdx] = *envVar;
+                envVars[threadIdx] = AZ::Environment::CreateVariable<int>("CreateEnvironmentVariableThreadRace", threadIdx);
+                values[threadIdx] = *envVars[threadIdx];
             };
 
             threads[threadIdx] = AZStd::thread(threadFunc);

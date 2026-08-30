@@ -7,6 +7,7 @@
  */
 
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/RTTI/BehaviorArgumentStackStorage.h>
 
 
 namespace AZ::Internal
@@ -14,16 +15,18 @@ namespace AZ::Internal
     bool BehaviorMethodImpl::Call(AZStd::span<BehaviorArgument> arguments, BehaviorArgument* result) const
     {
         size_t totalArguments = GetNumArguments();
+        BehaviorArgumentStackStorage stackArguments;
         if (arguments.size() < totalArguments)
         {
             // We are cloning all arguments on the stack, since Call is called only from Invoke we can reserve bigger "arguments" array
             // that can always handle all parameters. So far the don't use default values that ofter, so we will optimize for the common case first.
-            AZStd::span<BehaviorArgument> newArguments(reinterpret_cast<BehaviorArgument*>(alloca(sizeof(BehaviorArgument) * totalArguments)), totalArguments);
+            stackArguments.Initialize(alloca(BehaviorArgumentStackStorage::RequiredStorageSize(totalArguments)), totalArguments);
+            AZStd::span<BehaviorArgument> newArguments = stackArguments.GetSpan();
             // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
             size_t argIndex = 0;
             for (; argIndex < arguments.size(); ++argIndex)
             {
-                new(&newArguments[argIndex]) BehaviorArgument(arguments[argIndex]);
+                stackArguments.Emplace(arguments[argIndex]);
             }
 
             // clone the default parameters if they exist
@@ -35,7 +38,7 @@ namespace AZ::Internal
                     AZ_Warning("Behavior", false, "Not enough arguments to make a call! %d needed %d", arguments.size(), totalArguments);
                     return false;
                 }
-                new(&newArguments[argIndex]) BehaviorArgument(defaultValue->GetValue());
+                stackArguments.Emplace(defaultValue->GetValue());
             }
 
             arguments = newArguments;
@@ -81,15 +84,17 @@ namespace AZ::Internal
         -> ResultOutcome
     {
         size_t totalArguments = GetNumArguments();
+        BehaviorArgumentStackStorage stackArguments;
         if (arguments.size() < totalArguments)
         {
             // Clone the arguments on the stack and validate that the method can be invoked with the arguments
-            AZStd::span<BehaviorArgument> newArguments(reinterpret_cast<BehaviorArgument*>(alloca(sizeof(BehaviorArgument) * totalArguments)), totalArguments);
+            stackArguments.Initialize(alloca(BehaviorArgumentStackStorage::RequiredStorageSize(totalArguments)), totalArguments);
+            AZStd::span<BehaviorArgument> newArguments = stackArguments.GetSpan();
             // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
             size_t argIndex = 0;
             for (; argIndex < arguments.size(); ++argIndex)
             {
-                new(&newArguments[argIndex]) BehaviorArgument(arguments[argIndex]);
+                stackArguments.Emplace(arguments[argIndex]);
             }
 
             // clone the default parameters if they exist
@@ -102,7 +107,7 @@ namespace AZ::Internal
                         "Not enough arguments to make call to method %s. %zu supplied, needed %zu",
                         m_name.c_str(), arguments.size(), newArguments.size()) };
                 }
-                new(&newArguments[argIndex]) BehaviorArgument(defaultValue->GetValue());
+                stackArguments.Emplace(defaultValue->GetValue());
             }
 
             arguments = newArguments;

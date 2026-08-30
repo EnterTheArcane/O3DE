@@ -117,6 +117,7 @@ namespace AZ::Statistics
 
         virtual ~StatisticalProfilerProxy()
         {
+            TimedScope::ClearCachedProxy();
             AZ::Interface<StatisticalProfilerProxy>::Unregister(this);
         }
 

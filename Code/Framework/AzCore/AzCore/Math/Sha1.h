@@ -135,7 +135,8 @@ namespace AZ
                 k = 0xCA62C1D6;
             }
 
-            AZ::u32 temp = LeftRotate(a, 5) + f + e + k + w[i];
+            const AZ::u32 temp = static_cast<AZ::u32>(
+                static_cast<AZ::u64>(LeftRotate(a, 5)) + f + e + k + w[i]);
             e = d;
             d = c;
             c = LeftRotate(b, 30);
@@ -143,11 +144,11 @@ namespace AZ
             a = temp;
         }
 
-        m_h[0] += a;
-        m_h[1] += b;
-        m_h[2] += c;
-        m_h[3] += d;
-        m_h[4] += e;
+        m_h[0] = static_cast<AZ::u32>(static_cast<AZ::u64>(m_h[0]) + a);
+        m_h[1] = static_cast<AZ::u32>(static_cast<AZ::u64>(m_h[1]) + b);
+        m_h[2] = static_cast<AZ::u32>(static_cast<AZ::u64>(m_h[2]) + c);
+        m_h[3] = static_cast<AZ::u32>(static_cast<AZ::u64>(m_h[3]) + d);
+        m_h[4] = static_cast<AZ::u32>(static_cast<AZ::u64>(m_h[4]) + e);
     }
 
     inline constexpr void Sha1::GetDigest(DigestType digest)

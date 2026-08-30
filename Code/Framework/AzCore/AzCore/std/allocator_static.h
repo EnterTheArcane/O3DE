@@ -64,15 +64,23 @@ namespace AZStd
             size_type alignment,
             [[maybe_unused]] int flags = 0)
         {
-            AZ_Assert(alignment > 0 && (alignment & (alignment - 1)) == 0, "AZStd::static_buffer_allocator::allocate - alignment must be > 0 and power of 2");
-            char* address = AZ::PointerAlignUp(m_freeData, alignment);
-            m_freeData = address + byteSize;
-            if (static_cast<size_t>(m_freeData - reinterpret_cast<char*>(&m_data)) > Size)
+            if (alignment == 0 || (alignment & (alignment - 1)) != 0)
+            {
+                AZ_Assert(false, "AZStd::static_buffer_allocator::allocate - alignment must be > 0 and power of 2");
+                return nullptr;
+            }
+
+            const size_t baseAddress = reinterpret_cast<size_t>(&m_data);
+            const size_t alignedAddress = AZ::SizeAlignUp(reinterpret_cast<size_t>(m_freeData), alignment);
+            const size_t offset = alignedAddress - baseAddress;
+            if (alignedAddress < baseAddress || offset > Size || byteSize > Size - offset)
             {
                 AZ_Assert(false, "AZStd::static_buffer_allocator - run out of memory!");
                 return nullptr;
             }
 
+            char* address = reinterpret_cast<char*>(alignedAddress);
+            m_freeData = address + byteSize;
             m_lastAllocation = address;
             return address;
         }

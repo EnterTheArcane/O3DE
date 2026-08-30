@@ -521,6 +521,7 @@ set(FILES
     RTTI/BehaviorEBusBuilder.cpp
     RTTI/BehaviorEBusBuilder.inl
     RTTI/BehaviorEBusEvent.cpp
+    RTTI/BehaviorArgumentStackStorage.h
     RTTI/BehaviorEBusEvent.inl
     RTTI/BehaviorEBusHandler.cpp
     RTTI/BehaviorEBusHandler.inl

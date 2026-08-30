@@ -226,9 +226,9 @@ namespace AZ::Dom::Tests
         m_value["uint64_max"] = AZStd::numeric_limits<uint64_t>::max();
 
         EXPECT_EQ(m_value["uint64_min"].GetType(), Type::Uint64);
-        EXPECT_EQ(m_value["uint64_min"].GetInt64(), AZStd::numeric_limits<uint64_t>::min());
+        EXPECT_EQ(m_value["uint64_min"].GetUint64(), AZStd::numeric_limits<uint64_t>::min());
         EXPECT_EQ(m_value["uint64_max"].GetType(), Type::Uint64);
-        EXPECT_EQ(m_value["uint64_max"].GetInt64(), AZStd::numeric_limits<uint64_t>::max());
+        EXPECT_EQ(m_value["uint64_max"].GetUint64(), AZStd::numeric_limits<uint64_t>::max());
 
         PerformValueChecks();
     }

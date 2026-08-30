@@ -1096,6 +1096,17 @@ namespace AZ
             {
                 m_id = id;
             }
+
+            static void ForceSetId(AZ::Entity& entity, AZ::EntityId id)
+            {
+                entity.*GetIdMember() = id;
+            }
+
+        private:
+            static AZ::EntityId AZ::Entity::* GetIdMember()
+            {
+                return &EntityIdAccessor::m_id;
+            }
         };
 
         // Optimized specialization for InstantiatedContainers.
@@ -1120,7 +1131,7 @@ namespace AZ
                         // (but immediately put them back the way there were).
                         // The "cleaner" way to do this would be to make temporary clones of the entities
                         // and perform remapping on the clones, but that would be much less performant.
-                        static_cast<EntityIdAccessor*>(entity)->ForceSetId(newId);
+                        EntityIdAccessor::ForceSetId(*entity, newId);
 
                         ++replaced;
                     }

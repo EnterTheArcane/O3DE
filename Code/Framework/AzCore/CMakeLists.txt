@@ -117,7 +117,7 @@ ly_add_source_properties(
     VALUES ${O3DE_STACK_CAPTURE_DEPTH_DEFINE}
 )
 
-if(LY_BUILD_WITH_ADDRESS_SANITIZER OR O3DE_SYSTEM_ALLOCATOR_USE_MALLOC)
+if(LY_ADDRESS_SANITIZER_ENABLED OR O3DE_SYSTEM_ALLOCATOR_USE_MALLOC)
     # Default to use Malloc schema so ASan works well
     ly_add_source_properties(
         SOURCES AzCore/Memory/SystemAllocator.cpp
@@ -223,4 +223,3 @@ if(PAL_TRAIT_TEST_GOOGLE_TEST_SUPPORTED)
     endif()
 
 endif()
-

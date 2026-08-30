@@ -1345,7 +1345,7 @@ namespace AZ
                             dynamicElementData.m_nameCrc = AZ_CRC_CE("m_data");
                             dynamicElementData.m_typeId = dynamicFieldDesc->m_typeId;
                             dynamicElementData.m_dataSize = sizeof(void*);
-                            dynamicElementData.m_offset = reinterpret_cast<size_t>(&(reinterpret_cast<AZ::DynamicSerializableField const volatile*>(0)->m_data));
+                            dynamicElementData.m_offset = offsetof(AZ::DynamicSerializableField, m_data);
                             dynamicElementData.m_azRtti = nullptr; // we won't need this because we always serialize top classes.
                             dynamicElementData.m_genericClassInfo = FindGenericClassInfo(dynamicFieldDesc->m_typeId);
                             dynamicElementData.m_editData = nullptr; // we cannot have element edit data for dynamic fields.
@@ -2416,6 +2416,8 @@ namespace AZ::Serialize
     DataElement::DataElement()
         : m_name(nullptr)
         , m_nameCrc(0)
+        , m_dataType(DT_BINARY)
+        , m_version(0)
         , m_dataSize(0)
         , m_byteStream(&m_buffer)
         , m_stream(nullptr)

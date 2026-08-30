@@ -349,16 +349,15 @@ namespace AZ
     template<class R, class... Args>
     inline AZ::TypeNameString GetO3deTypeName(AZ::Adl, AZStd::type_identity<R(Args...)>)
     {
-        static AZ::TypeNameString s_canonicalTypeName;
-        if (s_canonicalTypeName.empty())
+        static const AZ::TypeNameString s_canonicalTypeName = []
         {
             AZStd::fixed_string<512> typeName{ '{' };
             typeName += AZ::AzTypeInfo<R>::Name();
             typeName += '(';
             typeName += AZ::Internal::AggregateTypes<Args...>::TypeName();
             typeName += ")}";
-            s_canonicalTypeName = typeName;
-        }
+            return AZ::TypeNameString{ typeName };
+        }();
 
         return s_canonicalTypeName;
     }
@@ -374,8 +373,7 @@ namespace AZ
     template<class R, class C, class... Args>
     inline AZ::TypeNameString GetO3deTypeName(AZ::Adl, AZStd::type_identity<R(C::*)(Args...)>)
     {
-        static AZ::TypeNameString s_canonicalTypeName;
-        if (s_canonicalTypeName.empty())
+        static const AZ::TypeNameString s_canonicalTypeName = []
         {
             AZStd::fixed_string<512> typeName{ '{' };
             typeName += AZ::AzTypeInfo<R>::Name();
@@ -384,8 +382,8 @@ namespace AZ
             typeName += "::*)(";
             typeName += AZ::Internal::AggregateTypes<Args...>::TypeName();
             typeName += ")}";
-            s_canonicalTypeName = typeName;
-        }
+            return AZ::TypeNameString{ typeName };
+        }();
 
         return s_canonicalTypeName;
     }
@@ -419,16 +417,15 @@ namespace AZ
     template<class R, class C>
     inline AZ::TypeNameString GetO3deTypeName(AZ::Adl, AZStd::type_identity<R C::*>)
     {
-        static AZ::TypeNameString s_canonicalTypeName;
-        if (s_canonicalTypeName.empty())
+        static const AZ::TypeNameString s_canonicalTypeName = []
         {
             AZStd::fixed_string<512> typeName{ '{' };
             typeName += AZ::AzTypeInfo<R>::Name();
             typeName += ' ';
             typeName + AZ::AzTypeInfo<C>::Name();
             typeName += "::*}";
-            s_canonicalTypeName = typeName;
-        }
+            return AZ::TypeNameString{ typeName };
+        }();
 
         return s_canonicalTypeName;
     }

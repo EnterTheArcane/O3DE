@@ -393,7 +393,14 @@ namespace AZ::Debug
             return;
         }
 
-        m_requestedBytes += (byteSize - ai->m_byteSize);
+        if (byteSize >= ai->m_byteSize)
+        {
+            m_requestedBytes += byteSize - ai->m_byteSize;
+        }
+        else
+        {
+            m_requestedBytes -= ai->m_byteSize - byteSize;
+        }
 
         ai->m_byteSize = byteSize;
         ai->m_alignment = static_cast<unsigned int>(alignment);

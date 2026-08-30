@@ -885,8 +885,7 @@ namespace UnitTest
             AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(1));
         }
 
-        m_loadDataSynchronizer.m_readyToLoad = true;
-        m_loadDataSynchronizer.m_condition.notify_all();
+        m_loadDataSynchronizer.SetReadyToLoad(true);
 
         asset3.BlockUntilLoadComplete();
         asset2.BlockUntilLoadComplete();
@@ -2163,7 +2162,12 @@ namespace UnitTest
 
             auto* assetHandlerAndCatalog = aznew DataDrivenHandlerAndCatalog;
             assetHandlerAndCatalog->m_context = &context;
-            SetupAssets(assetHandlerAndCatalog);
+            assetHandlerAndCatalog->AddAsset<AssetWithAssetReference>(MyAsset1Id, "TestAsset1.txt")->AddPreload(MyAsset4Id);
+            assetHandlerAndCatalog->AddAsset<AssetWithAssetReference>(MyAsset2Id, "TestAsset2.txt")->AddPreload(MyAsset5Id);
+            assetHandlerAndCatalog->AddAsset<AssetWithAssetReference>(MyAsset3Id, "TestAsset3.txt")->AddPreload(MyAsset6Id);
+            assetHandlerAndCatalog->AddAsset<AssetWithAssetReference>(MyAsset4Id, "TestAsset4.txt");
+            assetHandlerAndCatalog->AddAsset<AssetWithAssetReference>(MyAsset5Id, "TestAsset5.txt");
+            assetHandlerAndCatalog->AddAsset<AssetWithAssetReference>(MyAsset6Id, "TestAsset6.txt");
             AZStd::vector<AssetType> types;
             assetHandlerAndCatalog->GetHandledAssetTypes(types);
             for (const auto& type : types)
@@ -2175,22 +2179,22 @@ namespace UnitTest
             {
                 // A will be saved to disk with MyAsset1Id
                 AssetWithAssetReference a;
-                a.m_asset = AssetManager::Instance().CreateAsset<AssetWithSerializedData>(MyAsset2Id);
+                a.m_asset = AssetManager::Instance().CreateAsset<AssetWithAssetReference>(MyAsset2Id);
                 EXPECT_TRUE(m_streamerWrapper->WriteMemoryFile("TestAsset1.txt", &a, &context));
                 AssetWithAssetReference b;
-                b.m_asset = AssetManager::Instance().CreateAsset<AssetWithSerializedData>(MyAsset3Id);
+                b.m_asset = AssetManager::Instance().CreateAsset<AssetWithAssetReference>(MyAsset3Id);
                 EXPECT_TRUE(m_streamerWrapper->WriteMemoryFile("TestAsset2.txt", &b, &context));
                 AssetWithAssetReference c;
-                c.m_asset = AssetManager::Instance().CreateAsset<AssetWithSerializedData>(MyAsset4Id);
+                c.m_asset = AssetManager::Instance().CreateAsset<AssetWithAssetReference>(MyAsset4Id);
                 EXPECT_TRUE(m_streamerWrapper->WriteMemoryFile("TestAsset3.txt", &c, &context));
                 AssetWithAssetReference d;
-                d.m_asset = AssetManager::Instance().CreateAsset<AssetWithSerializedData>(MyAsset5Id);
+                d.m_asset = AssetManager::Instance().CreateAsset<AssetWithAssetReference>(MyAsset5Id);
                 EXPECT_TRUE(m_streamerWrapper->WriteMemoryFile("TestAsset4.txt", &d, &context));
                 AssetWithAssetReference e;
-                e.m_asset = AssetManager::Instance().CreateAsset<AssetWithSerializedData>(MyAsset6Id);
+                e.m_asset = AssetManager::Instance().CreateAsset<AssetWithAssetReference>(MyAsset6Id);
                 EXPECT_TRUE(m_streamerWrapper->WriteMemoryFile("TestAsset5.txt", &e, &context));
                 AssetWithAssetReference f;
-                f.m_asset = AssetManager::Instance().CreateAsset<AssetWithSerializedData>(MyAsset1Id); // refer back to asset1
+                f.m_asset = AssetManager::Instance().CreateAsset<AssetWithAssetReference>(MyAsset1Id); // refer back to asset1
                 EXPECT_TRUE(m_streamerWrapper->WriteMemoryFile("TestAsset6.txt", &f, &context));
 
                 EXPECT_TRUE(assetHandlerAndCatalog->m_numCreations == 6);
@@ -2217,6 +2221,12 @@ namespace UnitTest
             {
                 threads.emplace_back([&threadCount, &db, &cv]()
                     {
+                        auto notifyComplete = [&threadCount, &cv]()
+                        {
+                            --threadCount;
+                            cv.notify_one();
+                        };
+
                         Data::Asset<AssetWithAssetReference> assetA = db.GetAsset<AssetWithAssetReference>(
                             MyAsset1Id, AZ::Data::AssetLoadBehavior::Default);
                         while (assetA.IsLoading())
@@ -2225,23 +2235,42 @@ namespace UnitTest
                         }
 
                         EXPECT_TRUE(assetA.IsReady());
+                        if (!assetA.IsReady())
+                        {
+                            notifyComplete();
+                            return;
+                        }
 
                         Data::Asset<AssetWithAssetReference> assetB = assetA->m_asset;
                         EXPECT_TRUE(assetB.IsReady());
+                        if (!assetB.IsReady())
+                        {
+                            notifyComplete();
+                            return;
+                        }
 
                         Data::Asset<AssetWithAssetReference> assetC = assetB->m_asset;
                         EXPECT_TRUE(assetC.IsReady());
+                        if (!assetC.IsReady())
+                        {
+                            notifyComplete();
+                            return;
+                        }
 
                         Data::Asset<AssetWithAssetReference> assetD = assetC->m_asset;
                         EXPECT_TRUE(assetD.IsReady());
+                        if (!assetD.IsReady())
+                        {
+                            notifyComplete();
+                            return;
+                        }
 
                         Data::Asset<AssetWithAssetReference> assetE = assetD->m_asset;
                         EXPECT_TRUE(assetE.IsReady());
 
                         assetA = Data::Asset<AssetWithAssetReference>();
 
-                        --threadCount;
-                        cv.notify_one();
+                        notifyComplete();
                     });
             }
 
@@ -3118,8 +3147,7 @@ namespace UnitTest
         AssetManager::Instance().ResumeAssetRelease();
 
         // Now that we've removed and regained a reference to the asset while in the loading state, allow the asset to continue loading.
-        m_loadDataSynchronizer.m_readyToLoad = true;
-        m_loadDataSynchronizer.m_condition.notify_all();
+        m_loadDataSynchronizer.SetReadyToLoad(true);
         AssetManager::Instance().DispatchEvents();
 
         // If the test works, the load will complete and the asset will successfully load.
@@ -3172,8 +3200,7 @@ namespace UnitTest
         rootAsset.Reset();
 
         // Now that we've destroyed the root asset, allow the nested dependent asset to continue loading.
-        m_loadDataSynchronizer.m_readyToLoad = true;
-        m_loadDataSynchronizer.m_condition.notify_all();
+        m_loadDataSynchronizer.SetReadyToLoad(true);
         AssetManager::Instance().DispatchEvents();
 
         // If the test works, the loads will complete and the dependent assets will successfully load.
@@ -3257,8 +3284,7 @@ namespace UnitTest
                 reloadSignal,
                 AssetManager::Instance().GetAsset<AssetWithAssetReference>(RootWithSynchronizerAssetId, AssetLoadBehavior::Default));
 
-            m_loadDataSynchronizer.m_readyToLoad = true;
-            m_loadDataSynchronizer.m_condition.notify_all();
+            m_loadDataSynchronizer.SetReadyToLoad(true);
 
             ColoredPrintf(COLOR_DEFAULT, "Waiting for initial asset load to complete\n");
 
@@ -3278,15 +3304,14 @@ namespace UnitTest
             ColoredPrintf(COLOR_DEFAULT, "Starting another reload of asset\n");
 
             // 3) Start another reload
-            m_loadDataSynchronizer.m_readyToLoad = false; // Prevent the reload from progressing too far
+            m_loadDataSynchronizer.SetReadyToLoad(false); // Prevent the reload from progressing too far
             AssetManager::Instance().ReloadAsset(RootWithSynchronizerAssetId, AssetLoadBehavior::Default); // Start another reload
 
             // 4) Reassign the asset, which should cause the old asset to be unloaded
             reloadHandler.m_asset = reloadHandler.m_reloadedAsset;
 
             // Resume loading
-            m_loadDataSynchronizer.m_readyToLoad = true;
-            m_loadDataSynchronizer.m_condition.notify_all();
+            m_loadDataSynchronizer.SetReadyToLoad(true);
 
             ColoredPrintf(COLOR_DEFAULT, "Waiting for 2nd reload to complete\n");
 
@@ -3377,8 +3402,7 @@ namespace UnitTest
                 loadSignal, unloadSignal,
                 AssetManager::Instance().GetAsset<AssetWithAssetReference>(RootWithSynchronizerAssetId, AssetLoadBehavior::Default));
 
-            m_loadDataSynchronizer.m_readyToLoad = true;
-            m_loadDataSynchronizer.m_condition.notify_all();
+            m_loadDataSynchronizer.SetReadyToLoad(true);
 
             ColoredPrintf(COLOR_DEFAULT, "Waiting for initial asset load to complete\n");
 
@@ -3398,15 +3422,14 @@ namespace UnitTest
             ColoredPrintf(COLOR_DEFAULT, "Starting another load of asset\n");
 
             // 3) Start another load
-            m_loadDataSynchronizer.m_readyToLoad = false; // Prevent the load from progressing too far
+            m_loadDataSynchronizer.SetReadyToLoad(false); // Prevent the load from progressing too far
             auto loadingAsset = AssetManager::Instance().GetAsset<AssetWithAssetReference>(RootWithSynchronizerAssetId, AssetLoadBehavior::Default);
 
             // 4) Unload the old asset reference
             assetEventHandler.m_asset = {};
 
             // Resume loading
-            m_loadDataSynchronizer.m_readyToLoad = true;
-            m_loadDataSynchronizer.m_condition.notify_all();
+            m_loadDataSynchronizer.SetReadyToLoad(true);
 
             ColoredPrintf(COLOR_DEFAULT, "Waiting for 2nd reload to complete\n");
 

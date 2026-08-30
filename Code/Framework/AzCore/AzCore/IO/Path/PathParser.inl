@@ -830,7 +830,11 @@ namespace AZ::IO::parser
         for (const char first : pathSegment)
         {
             hash ^= static_cast<size_t>(hashExactPath ? first : ToLower(first));
+#if defined(__SIZEOF_INT128__)
+            hash = static_cast<size_t>(static_cast<unsigned __int128>(hash) * fnvPrime);
+#else
             hash *= fnvPrime;
+#endif
         }
         return hash;
     }

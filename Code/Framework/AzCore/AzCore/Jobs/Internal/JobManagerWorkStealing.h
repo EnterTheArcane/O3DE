@@ -20,6 +20,7 @@
 #include <AzCore/std/parallel/semaphore.h>
 #include <AzCore/std/parallel/binary_semaphore.h>
 #include <AzCore/std/parallel/thread.h>
+#include <AzCore/std/string/fixed_string.h>
 
 // #define JOBMANAGER_ENABLE_STATS
 
@@ -97,6 +98,8 @@ namespace AZ
                 void* m_owningManager = nullptr; // pointer to the job manager that owns this thread. only used for comparisons, not to call functions.
 
                 // valid only on workers (TODO: Use some lazy initialization as we don't need that data for non worker threads)
+                // The thread descriptor keeps a non-owning name pointer, so the backing storage must outlive thread startup.
+                AZStd::fixed_string<128> m_threadName;
                 AZStd::thread m_thread;
                 AZStd::atomic_bool m_isAvailable{false};
                 AZStd::binary_semaphore m_waitEvent;
@@ -142,7 +145,7 @@ namespace AZ
             GlobalJobQueue              m_globalJobQueue;
             GlobalQueueMutexType        m_globalJobQueueMutex;
 
-            volatile bool               m_quitRequested = false;
+            AZStd::atomic_bool          m_quitRequested{false};
             AZStd::atomic_uint          m_numAvailableWorkers{0};
         };
     }

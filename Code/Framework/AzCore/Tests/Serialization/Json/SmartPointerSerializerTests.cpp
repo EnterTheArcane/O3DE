@@ -831,18 +831,20 @@ namespace JsonSerializationTests
     {
         namespace JSR = AZ::JsonSerializationResult;
 
-        auto instance = AZStd::make_shared<SimpleInheritence>();
-        instance->m_baseVar = 142.0f;
-        instance->m_var1 = 242;
-        instance->m_var2 = 343.0f;
+        auto derivedInstance = AZStd::make_shared<SimpleInheritence>();
+        derivedInstance->m_baseVar = 142.0f;
+        derivedInstance->m_var1 = 242;
+        derivedInstance->m_var2 = 343.0f;
+        SmartPointer instance = derivedInstance;
 
-        auto defaultInstance = AZStd::make_shared<SimpleInheritenceAlt>();
-        defaultInstance->m_baseVar = 142.0f;
-        defaultInstance->m_var1 = 242;
-        defaultInstance->m_var2 = 343.0f;
+        auto derivedDefaultInstance = AZStd::make_shared<SimpleInheritenceAlt>();
+        derivedDefaultInstance->m_baseVar = 142.0f;
+        derivedDefaultInstance->m_var1 = 242;
+        derivedDefaultInstance->m_var2 = 343.0f;
+        SmartPointer defaultInstance = derivedDefaultInstance;
 
         JSR::ResultCode result = m_serializer.Store(*m_jsonDocument, &instance, &defaultInstance,
-            azrtti_typeid(instance), *m_jsonSerializationContext);
+            azrtti_typeid<SmartPointer>(), *m_jsonSerializationContext);
 
         EXPECT_NE(JSR::Outcomes::DefaultsUsed, result.GetOutcome());
         EXPECT_NE(JSR::Outcomes::PartialDefaults, result.GetOutcome());

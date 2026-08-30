@@ -15,6 +15,8 @@
 #include <Tests/Streamer/StreamStackEntryConformityTests.h>
 #include <Tests/Streamer/StreamStackEntryMock.h>
 
+#include <cstring>
+
 namespace AZ::IO
 {
     class ReadSplitterTestDescription :
@@ -280,10 +282,11 @@ namespace AZ::IO
         m_context->MarkRequestAsCompleted(subRequest);
         m_context->FinalizeCompletedRequests();
 
-        u32* readBuffer = reinterpret_cast<u32*>(buffer);
         for (u64 i = 0; i < readSize / sizeof(u32); ++i)
         {
-            ASSERT_EQ(aznumeric_cast<u32>(i), readBuffer[i]);
+            u32 value;
+            std::memcpy(&value, buffer + i * sizeof(u32), sizeof(value));
+            ASSERT_EQ(aznumeric_cast<u32>(i), value);
         }
 
         azfree(memory);

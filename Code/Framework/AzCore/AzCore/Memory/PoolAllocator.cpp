@@ -130,7 +130,9 @@ namespace AZ
         size_t m_maxAllocationSize;
         size_t m_numBuckets;
         BucketType* m_buckets;
-        size_t m_numBytesAllocated;
+        // Thread-pool pages can migrate between owning threads, so individual thread
+        // counters are signed deltas. Only their aggregate is exposed publicly.
+        ptrdiff_t m_numBytesAllocated;
     };
 
     /**
@@ -548,9 +550,10 @@ namespace AZ
         void* address = &page->m_freeList.front();
         page->m_freeList.pop_front();
 
-        m_numBytesAllocated += byteSize;
+        const size_t allocatedSize = page->m_elementSize;
+        m_numBytesAllocated += static_cast<ptrdiff_t>(allocatedSize);
 
-        return AllocateAddress{ address, byteSize };
+        return AllocateAddress{ address, allocatedSize };
     }
 
     //=========================================================================
@@ -569,6 +572,9 @@ namespace AZ
 
         // (pageSize - info struct at the end) / (element size)
         size_t maxElementsPerBucket = page->m_maxNumElements;
+        // Capture all page metadata before this deallocation can publish an empty page through PushFreePage.
+        // Once published, another thread may immediately acquire and reinitialize the page for a different bucket.
+        const size_t bytesDeallocated = page->m_elementSize;
 
         size_t numFreeNodes = page->m_freeList.size();
         typename PageType::FakeNode* node = new (ptr) typename PageType::FakeNode();
@@ -611,8 +617,7 @@ namespace AZ
             }
         }
 
-        size_t bytesDeallocated = page->m_elementSize;
-        m_numBytesAllocated -= bytesDeallocated;
+        m_numBytesAllocated -= static_cast<ptrdiff_t>(bytesDeallocated);
         return bytesDeallocated;
     }
 
@@ -766,7 +771,10 @@ namespace AZ
     //=========================================================================
     auto PoolSchema::NumAllocatedBytes() const -> size_type
     {
-        return m_impl->m_allocator.m_numBytesAllocated;
+        AZ_Assert(m_impl->m_allocator.m_numBytesAllocated >= 0, "Pool allocation byte count cannot be negative");
+        return m_impl->m_allocator.m_numBytesAllocated >= 0
+            ? static_cast<size_type>(m_impl->m_allocator.m_numBytesAllocated)
+            : 0;
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -995,7 +1003,7 @@ namespace AZ
     //=========================================================================
     ThreadPoolSchema::size_type ThreadPoolSchema::NumAllocatedBytes() const
     {
-        size_type bytesAllocated = 0;
+        ptrdiff_t bytesAllocated = 0;
         {
             AZStd::lock_guard<AZStd::recursive_mutex> lock(m_impl->m_mutex);
             for (size_t i = 0; i < m_impl->m_threads.size(); ++i)
@@ -1003,7 +1011,8 @@ namespace AZ
                 bytesAllocated += m_impl->m_threads[i]->m_allocator.m_numBytesAllocated;
             }
         }
-        return bytesAllocated;
+        AZ_Assert(bytesAllocated >= 0, "Thread-pool aggregate allocation byte count cannot be negative");
+        return bytesAllocated >= 0 ? static_cast<size_type>(bytesAllocated) : 0;
     }
 
     //=========================================================================

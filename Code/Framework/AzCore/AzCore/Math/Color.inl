@@ -91,7 +91,8 @@ namespace AZ
 
     AZ_MATH_INLINE u32 Color::CreateU32(u8 r, u8 g, u8 b, u8 a)
     {
-        return (a << 24) | (b << 16) | (g << 8) | r;
+        return (static_cast<u32>(a) << 24) | (static_cast<u32>(b) << 16)
+            | (static_cast<u32>(g) << 8) | static_cast<u32>(r);
     }
 
 

@@ -8,6 +8,88 @@
 
 include(cmake/Platform/Common/Configurations_common.cmake)
 
+set(LY_BUILD_WITH_ADDRESS_SANITIZER FALSE CACHE BOOL
+    "Build the Debug configuration using AddressSanitizer (legacy option).")
+set(LY_CLANG_SANITIZERS "" CACHE STRING
+    "Comma-separated Clang sanitizers to enable in Debug and Profile configurations (for example: address,undefined).")
+set_property(CACHE LY_CLANG_SANITIZERS PROPERTY STRINGS
+    ""
+    "undefined,local-bounds,vptr"
+    "unsigned-integer-overflow,implicit-conversion,nullability,float-divide-by-zero"
+    "address,undefined,local-bounds,vptr"
+    "thread"
+    "type")
+
+set(ly_clang_sanitizer_list "${LY_CLANG_SANITIZERS}")
+string(REPLACE "," ";" ly_clang_sanitizer_list "${ly_clang_sanitizer_list}")
+if(ly_clang_sanitizer_list)
+    list(TRANSFORM ly_clang_sanitizer_list STRIP)
+    list(FILTER ly_clang_sanitizer_list EXCLUDE REGEX "^$")
+    list(REMOVE_DUPLICATES ly_clang_sanitizer_list)
+endif()
+list(JOIN ly_clang_sanitizer_list "," ly_clang_sanitizers)
+
+if(LY_BUILD_WITH_ADDRESS_SANITIZER AND ly_clang_sanitizers)
+    message(FATAL_ERROR
+        "LY_BUILD_WITH_ADDRESS_SANITIZER and LY_CLANG_SANITIZERS cannot be enabled together. "
+        "Use LY_CLANG_SANITIZERS=address to instrument both Debug and Profile configurations.")
+endif()
+
+set(ly_clang_exclusive_sanitizer_count 0)
+foreach(ly_clang_exclusive_sanitizer address thread memory)
+    if(ly_clang_exclusive_sanitizer IN_LIST ly_clang_sanitizer_list)
+        math(EXPR ly_clang_exclusive_sanitizer_count "${ly_clang_exclusive_sanitizer_count} + 1")
+    endif()
+endforeach()
+if(ly_clang_exclusive_sanitizer_count GREATER 1)
+    message(FATAL_ERROR
+        "LY_CLANG_SANITIZERS cannot combine address, thread, or memory sanitizers with each other: "
+        "${ly_clang_sanitizers}")
+endif()
+
+list(LENGTH ly_clang_sanitizer_list ly_clang_sanitizer_count)
+if("type" IN_LIST ly_clang_sanitizer_list AND ly_clang_sanitizer_count GREATER 1)
+    message(FATAL_ERROR
+        "Clang TypeSanitizer cannot be combined with other sanitizers: ${ly_clang_sanitizers}")
+endif()
+
+set(ly_address_sanitizer_enabled ${LY_BUILD_WITH_ADDRESS_SANITIZER})
+if("address" IN_LIST ly_clang_sanitizer_list)
+    set(ly_address_sanitizer_enabled TRUE)
+endif()
+ly_set(LY_ADDRESS_SANITIZER_ENABLED ${ly_address_sanitizer_enabled})
+
+if(ly_clang_sanitizers)
+    set(ly_clang_sanitizer_compile_options
+        -fsanitize=${ly_clang_sanitizers}
+        -fno-omit-frame-pointer
+        -fno-sanitize-merge)
+    if(ly_address_sanitizer_enabled)
+        list(APPEND ly_clang_sanitizer_compile_options -fsanitize-address-use-after-scope)
+    endif()
+
+    # Check both instrumentation and the selected compiler-rt runtime at configure time so
+    # unsupported sanitizer/platform combinations fail before the engine build starts.
+    include(CheckCXXSourceCompiles)
+    set(ly_saved_cmake_required_flags "${CMAKE_REQUIRED_FLAGS}")
+    set(ly_saved_cmake_required_link_options "${CMAKE_REQUIRED_LINK_OPTIONS}")
+    list(JOIN ly_clang_sanitizer_compile_options " " ly_clang_sanitizer_required_flags)
+    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${ly_clang_sanitizer_required_flags}")
+    set(CMAKE_REQUIRED_LINK_OPTIONS -shared-libsan -fsanitize=${ly_clang_sanitizers})
+    string(MAKE_C_IDENTIFIER "${ly_clang_sanitizers}" ly_clang_sanitizer_identifier)
+    string(TOUPPER "${ly_clang_sanitizer_identifier}" ly_clang_sanitizer_identifier)
+    set(ly_clang_sanitizer_probe "LY_CLANG_SANITIZERS_${ly_clang_sanitizer_identifier}_SUPPORTED")
+    check_cxx_source_compiles("int main() { return 0; }" ${ly_clang_sanitizer_probe})
+    set(CMAKE_REQUIRED_FLAGS "${ly_saved_cmake_required_flags}")
+    set(CMAKE_REQUIRED_LINK_OPTIONS "${ly_saved_cmake_required_link_options}")
+    if(NOT ${ly_clang_sanitizer_probe})
+        message(FATAL_ERROR
+            "The ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} toolchain cannot compile and link "
+            "LY_CLANG_SANITIZERS=${ly_clang_sanitizers}. See CMakeFiles/CMakeError.log for the compiler diagnostic.")
+    endif()
+    message(STATUS "Clang sanitizers enabled for Debug and Profile: ${ly_clang_sanitizers}")
+endif()
+
 # Exceptions are disabled by default.  Use this to turn them on just for a specific target.
 set(O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS PUBLIC -fexceptions)
 
@@ -53,9 +135,14 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSIO
     add_compile_definitions(O3DE_DISABLE_CONDITIONAL_EXPLICIT=1)
 endif()
 
+if(NOT "address" IN_LIST ly_clang_sanitizer_list)
+    ly_append_configurations_options(
+        DEFINES_PROFILE
+            _FORTIFY_SOURCE=2
+    )
+endif()
+
 ly_append_configurations_options(
-    DEFINES_PROFILE
-        _FORTIFY_SOURCE=2
     DEFINES_RELEASE
         _FORTIFY_SOURCE=2
 
@@ -104,10 +191,27 @@ if(LY_BUILD_WITH_ADDRESS_SANITIZER)
         COMPILATION_DEBUG
             -fsanitize=address
             -fno-omit-frame-pointer
+            -fsanitize-address-use-after-scope
 
         LINK_NON_STATIC_DEBUG
             -shared-libsan
             -fsanitize=address
+    )
+endif()
+
+if(ly_clang_sanitizers)
+    ly_append_configurations_options(
+        COMPILATION_DEBUG
+            ${ly_clang_sanitizer_compile_options}
+        COMPILATION_PROFILE
+            ${ly_clang_sanitizer_compile_options}
+
+        LINK_NON_STATIC_DEBUG
+            -shared-libsan
+            -fsanitize=${ly_clang_sanitizers}
+        LINK_NON_STATIC_PROFILE
+            -shared-libsan
+            -fsanitize=${ly_clang_sanitizers}
     )
 endif()
 

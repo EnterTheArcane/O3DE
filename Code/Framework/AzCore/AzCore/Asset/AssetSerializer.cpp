@@ -158,18 +158,44 @@ namespace AZ {
     size_t  AssetSerializer::TextToData(const char* text, unsigned int textVersion, IO::GenericStream& stream, bool isDataBigEndian)
     {
         (void)isDataBigEndian;
+        if (!text)
+        {
+            AZ_Error("Serialization", false, "AssetSerializer::TextToData received null text");
+            return 0;
+        }
+
         // Parse the asset id and type
         const char* idGuidStart = strchr(text, '{');
         AZ_Assert(idGuidStart, "Invalid asset guid data! %s", text);
+        if (!idGuidStart)
+        {
+            return 0;
+        }
         const char* idGuidEnd = strchr(idGuidStart, ':');
         AZ_Assert(idGuidEnd, "Invalid asset guid data! %s", idGuidStart);
+        if (!idGuidEnd)
+        {
+            return 0;
+        }
         const char* idSubIdStart = idGuidEnd + 1;
         const char* idSubIdEnd = strchr(idSubIdStart, ',');
         AZ_Assert(idSubIdEnd, "Invalid asset subId data! %s", idSubIdStart);
+        if (!idSubIdEnd)
+        {
+            return 0;
+        }
         const char* idTypeStart = strchr(idSubIdEnd, '{');
         AZ_Assert(idTypeStart, "Invalid asset type data! %s", idSubIdEnd);
+        if (!idTypeStart)
+        {
+            return 0;
+        }
         const char* idTypeEnd = strchr(idTypeStart, '}');
         AZ_Assert(idTypeEnd, "Invalid asset type data! %s", idTypeStart);
+        if (!idTypeEnd)
+        {
+            return 0;
+        }
         idTypeEnd++;
 
         AZStd::string assetHint;
@@ -180,15 +206,27 @@ namespace AZ {
         {
             const char* hintStart = strchr(idTypeEnd, '{');
             AZ_Assert(hintStart, "Invalid asset hint data! %s", idTypeEnd);
+            if (!hintStart)
+            {
+                return 0;
+            }
             const char* hintEnd = strchr(hintStart, '}');
             AZ_Assert(hintEnd, "Invalid asset hint data! %s", hintStart);
+            if (!hintEnd)
+            {
+                return 0;
+            }
             assetHint.assign(hintStart+1, hintEnd);
 
             // Read loadBehavior for version >= 2
             if (textVersion > 1)
             {
                 const char* loadBehaviorStart = strchr(hintEnd, '=');
-                AZ_Assert(loadBehaviorStart, "Invalid asset load behavior data! %s", loadBehaviorStart);
+                AZ_Assert(loadBehaviorStart, "Invalid asset load behavior data! %s", hintEnd);
+                if (!loadBehaviorStart)
+                {
+                    return 0;
+                }
                 assetLoadBehavior = static_cast<Data::AssetLoadBehavior>(strtoul(loadBehaviorStart+1, nullptr, 16));
             }
         }

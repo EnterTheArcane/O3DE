@@ -139,9 +139,8 @@ namespace AZ
             const SerializeContext::ClassData* resolvedClassData = context.GetSerializeContext()->FindClassData(resolvedTypeId);
             if (resolvedClassData)
             {
-                status = JsonDeserializer::Load(*objectPtr, resolvedTypeId, value, true, useCustom, context);
-
-                *objectPtr = resolvedClassData->m_azRtti->Cast(*objectPtr, typeId);
+                void* resolvedObject = *objectPtr;
+                status = JsonDeserializer::Load(resolvedObject, resolvedTypeId, value, true, useCustom, context);
 
                 if (isNull && (status.GetProcessing() == Processing::Halted || status.GetProcessing() == Processing::Altered))
                 {
@@ -149,8 +148,12 @@ namespace AZ
                     // If loading fails, that steps has to be undone to adhere to the no-side effects rule.
                     AZ_Assert(resolvedClassData->m_factory,
                         "Expected class data to have a factory as it was previously used in the Json Deserializer to create a new instance.");
-                    resolvedClassData->m_factory->Destroy(*objectPtr);
+                    resolvedClassData->m_factory->Destroy(resolvedObject);
                     *objectPtr = nullptr;
+                }
+                else
+                {
+                    *objectPtr = resolvedClassData->m_azRtti->Cast(resolvedObject, typeId);
                 }
                 return status;
             }
@@ -539,7 +542,14 @@ namespace AZ
             result += '"';
             result += ' ';
             result += '(';
-            result += AZStd::to_string(signedValues ? enumConstantPtr->GetEnumValueAsInt() : enumConstantPtr->GetEnumValueAsUInt());
+            if (signedValues)
+            {
+                result += AZStd::to_string(enumConstantPtr->GetEnumValueAsInt());
+            }
+            else
+            {
+                result += AZStd::to_string(enumConstantPtr->GetEnumValueAsUInt());
+            }
             result += ')';
         }
 
@@ -567,7 +577,9 @@ namespace AZ
 
                 if (actualClassData->m_factory)
                 {
-                    actualClassData->m_factory->Destroy(*object);
+                    void* actualObject = rtti.Cast(*object, actualClassId);
+                    AZ_Assert(actualObject, "Unable to cast an existing pointer to its actual type for destruction");
+                    actualClassData->m_factory->Destroy(actualObject);
                     *object = nullptr;
                 }
                 else
@@ -647,7 +659,9 @@ namespace AZ
 
                         if (actualClassData->m_factory)
                         {
-                            actualClassData->m_factory->Destroy(*object);
+                            void* actualObject = rtti.Cast(*object, actualClassId);
+                            AZ_Assert(actualObject, "Unable to cast an existing pointer to its actual type for destruction");
+                            actualClassData->m_factory->Destroy(actualObject);
                             *object = nullptr;
                         }
                         else

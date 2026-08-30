@@ -555,8 +555,6 @@ namespace AZStd
         return AZStd::Internal::uninitialized_move(first, last, result, {});
     }
 
-    using std::move;
-
     template<class BidirectionalIterator1, class BidirectionalIterator2>
     BidirectionalIterator2 move_backward(BidirectionalIterator1 first, BidirectionalIterator1 last, BidirectionalIterator2 result)
     {
@@ -625,7 +623,7 @@ namespace AZStd::Internal
             {
                 if (az_builtin_is_constant_evaluated())
                 {
-                    for (; numElements--; ++first)
+                    for (; numElements > 0; --numElements, ++first)
                     {
                         *first = value;
                     }
@@ -638,7 +636,7 @@ namespace AZStd::Internal
         }
         else
         {
-            for (; numElements--; ++first)
+            for (; numElements > 0; --numElements, ++first)
             {
                 *first = value;
             }
@@ -705,7 +703,7 @@ namespace AZStd
             {
                 if (az_builtin_is_constant_evaluated())
                 {
-                    for (; numElements--; ++first)
+                    for (; numElements > 0; --numElements, ++first)
                     {
                         AZStd::construct_at(static_cast<iter_value_t<ForwardIterator>*>(to_address(first)), value);
                     }
@@ -718,7 +716,7 @@ namespace AZStd
         }
         else
         {
-            for (; numElements--; ++first)
+            for (; numElements > 0; --numElements, ++first)
             {
                 AZStd::construct_at(static_cast<iter_value_t<ForwardIterator>*>(to_address(first)), value);
             }

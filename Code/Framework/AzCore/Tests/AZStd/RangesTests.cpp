@@ -522,7 +522,9 @@ namespace UnitTest
         // difference + bound overload
         strIter = testString.end();
         ptrdiff_t charactersToTraverse = -20;
-        EXPECT_EQ(charactersToTraverse + testString.size(), AZStd::ranges::advance(strIter, charactersToTraverse, testString.begin()));
+        EXPECT_EQ(
+            charactersToTraverse + static_cast<ptrdiff_t>(testString.size()),
+            AZStd::ranges::advance(strIter, charactersToTraverse, testString.begin()));
         EXPECT_EQ(testString.begin(), strIter);
 
         strIter = testString.end();

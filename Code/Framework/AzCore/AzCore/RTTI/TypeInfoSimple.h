@@ -317,19 +317,18 @@ namespace AZ
 
             if constexpr (HasGetO3deTypeId_v<ValueTypeNoQualifiers>)
             {
-                static AZ::TypeId s_canonicalTypeId;
-                // Calculate the uuid only once
-                if (s_canonicalTypeId.IsNull())
+                static const AZ::TypeId s_canonicalTypeId = []
                 {
-                    s_canonicalTypeId = GetO3deTypeId(AZ::Adl{}, AZStd::type_identity<ValueTypeNoQualifiers>{});
+                    AZ::TypeId canonicalTypeId = GetO3deTypeId(AZ::Adl{}, AZStd::type_identity<ValueTypeNoQualifiers>{});
 
                     // If the T parameter is a pointer mixin the pointer id
                     if constexpr (AZStd::is_pointer_v<TypeNoQualifiers>)
                     {
                         //! The canonical TypeId for T* is the canonical TypeId for T + PointerId constant
-                        s_canonicalTypeId += AZ::Internal::PointerId_v;
+                        canonicalTypeId += AZ::Internal::PointerId_v;
                     }
-                }
+                    return canonicalTypeId;
+                }();
 
                 return s_canonicalTypeId;
             }
@@ -436,9 +435,7 @@ namespace AZ
 
             if constexpr (HasGetO3deTypeName_v<ValueTypeNoQualifiers>)
             {
-                static AZ::TypeNameString s_typeNameString;
-                // Calculate the type name only once on startup
-                if (s_typeNameString.empty())
+                static const AZ::TypeNameString s_typeNameString = []
                 {
                     AZ::TypeNameString typeName = GetO3deTypeName(AZ::Adl{}, AZStd::type_identity<ValueTypeNoQualifiers>{});
 
@@ -481,8 +478,8 @@ namespace AZ
                         typeName += "&&";
                     }
 
-                    s_typeNameString = typeName;
-                }
+                    return typeName;
+                }();
 
                 return s_typeNameString.c_str();
             }

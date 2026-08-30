@@ -599,7 +599,7 @@ namespace UnitTest
 
             for (int32_t i = 0; i < VectorType::ElementCount; ++i)
             {
-                EXPECT_THAT(testStoreValues[i], ::testing::Eq(0xFFFFFFFF));
+                EXPECT_THAT(testStoreValues[i], ::testing::Eq(static_cast<int32_t>(0xFFFFFFFFU)));
             }
         }
     }
@@ -616,7 +616,7 @@ namespace UnitTest
 
         for (int32_t i = 0; i < VectorType::ElementCount; ++i)
         {
-            EXPECT_THAT(testStoreValues[i], ::testing::Eq(0xFFF00FFF));
+            EXPECT_THAT(testStoreValues[i], ::testing::Eq(static_cast<int32_t>(0xFFF00FFFU)));
         }
     }
 
