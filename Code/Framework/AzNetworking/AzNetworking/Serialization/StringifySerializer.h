@@ -58,6 +58,7 @@ namespace AzNetworking
 
         template <typename T>
         bool ProcessData(const char* name, const T& value);
+        bool ProcessString(const char* name, const AZStd::string& value);
 
         ValueMap m_valueMap;
         AZStd::string m_prefix;

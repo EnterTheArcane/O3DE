@@ -95,14 +95,30 @@ namespace AzNetworking
         return ProcessData(name, value);
     }
 
-    bool StringifySerializer::SerializeBytes(uint8_t* buffer, uint32_t, bool isString, uint32_t&, const char* name)
+    bool StringifySerializer::SerializeBytes(
+        uint8_t* buffer,
+        uint32_t bufferCapacity,
+        bool isString,
+        uint32_t& outSize,
+        const char* name)
     {
-        if (isString)
+        if (!isString)
         {
-            AZ::CVarFixedString value = reinterpret_cast<char*>(buffer);
-            return ProcessData(name, value);
+            return false;
         }
-        return false;
+
+        if (outSize > bufferCapacity || (outSize > 0 && buffer == nullptr))
+        {
+            Invalidate();
+            return false;
+        }
+
+        AZStd::string value;
+        if (outSize > 0)
+        {
+            value.assign(reinterpret_cast<const char*>(buffer), outSize);
+        }
+        return ProcessString(name, value);
     }
 
     bool StringifySerializer::BeginObject(const char* name)
@@ -150,6 +166,20 @@ namespace AzNetworking
             valueString.c_str());
 
         m_valueMap[keyString] = valueString.c_str();
+        return true;
+    }
+
+    bool StringifySerializer::ProcessString(const char* name, const AZStd::string& value)
+    {
+        const AZStd::string keyString = m_prefix + name;
+        const ValueMap::const_iterator existingValue = m_valueMap.find(keyString);
+
+        AZ_Assert(
+            existingValue == m_valueMap.end() || existingValue->second == value,
+            "Value map contains '%s' with a different byte string.",
+            keyString.c_str());
+
+        m_valueMap[keyString] = value;
         return true;
     }
 }

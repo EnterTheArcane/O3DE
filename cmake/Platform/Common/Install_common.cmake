@@ -27,6 +27,15 @@ define_property(TARGET PROPERTY LY_INSTALL_GENERATE_RUN_TARGET
     ]]
 )
 
+define_property(TARGET PROPERTY LY_INSTALL_INTERFACE_SOURCES
+    BRIEF_DOCS "Defines installed files to expose as target interface sources"
+    FULL_DOCS [[
+        Engine-root-relative files which are installed at the same relative path and should be
+        exposed through INTERFACE_SOURCES on the reconstructed installed target. This property is
+        intended for explicitly reviewed IDE metadata such as Natvis files, not compiled sources.
+    ]]
+)
+
 # We can have elements being installed under the following components:
 # - Core (required for all) (default)
 # - Default
@@ -69,6 +78,14 @@ function(ly_setup_target OUTPUT_CONFIGURED_TARGET ALIAS_TARGET_NAME absolute_tar
     # headers end up in one folder instead of duplicating the folder structure of the public/interface include directory.
     # Instead, we install them with install(DIRECTORY)
     get_target_property(include_directories ${TARGET_NAME} INTERFACE_INCLUDE_DIRECTORIES)
+    get_target_property(system_include_directories ${TARGET_NAME} INTERFACE_SYSTEM_INCLUDE_DIRECTORIES)
+    if(NOT include_directories)
+        unset(include_directories)
+    endif()
+    if(system_include_directories)
+        list(APPEND include_directories ${system_include_directories})
+        list(REMOVE_DUPLICATES include_directories)
+    endif()
     if (include_directories)
         unset(public_headers)
         foreach(include_directory ${include_directories})
@@ -187,6 +204,74 @@ function(ly_setup_target OUTPUT_CONFIGURED_TARGET ALIAS_TARGET_NAME absolute_tar
         endif()
     endif()
 
+    unset(INTERFACE_SOURCES_BLOCK_PLACEHOLDER)
+    get_target_property(install_interface_sources ${TARGET_NAME} LY_INSTALL_INTERFACE_SOURCES)
+    if(install_interface_sources)
+        set(interface_source_target_types STATIC_LIBRARY SHARED_LIBRARY INTERFACE_LIBRARY)
+        if(NOT target_type IN_LIST interface_source_target_types)
+            message(FATAL_ERROR
+                "Target ${TARGET_NAME} uses LY_INSTALL_INTERFACE_SOURCES, but ${target_type} does not provide a supported link interface")
+        endif()
+
+        unset(installed_interface_source_lines)
+        foreach(interface_source IN LISTS install_interface_sources)
+            if(interface_source STREQUAL "")
+                message(FATAL_ERROR "Target ${TARGET_NAME} contains an empty LY_INSTALL_INTERFACE_SOURCES entry")
+            endif()
+
+            foreach(unsafe_character IN ITEMS "$" "<" ">" "\"" "'" "@" "\n" "\r" "\\")
+                string(FIND "${interface_source}" "${unsafe_character}" unsafe_character_index)
+                if(NOT unsafe_character_index EQUAL -1)
+                    message(FATAL_ERROR
+                        "Target ${TARGET_NAME} contains an unsafe LY_INSTALL_INTERFACE_SOURCES entry: ${interface_source}")
+                endif()
+            endforeach()
+            string(FIND "${interface_source}" ";" semicolon_index)
+            if(NOT semicolon_index EQUAL -1)
+                message(FATAL_ERROR
+                    "Target ${TARGET_NAME} contains an unsupported semicolon in LY_INSTALL_INTERFACE_SOURCES: ${interface_source}")
+            endif()
+
+            set(interface_source_path "${interface_source}")
+            cmake_path(IS_ABSOLUTE interface_source_path interface_source_is_absolute)
+            if(interface_source_is_absolute)
+                message(FATAL_ERROR
+                    "Target ${TARGET_NAME} contains an absolute LY_INSTALL_INTERFACE_SOURCES entry: ${interface_source}")
+            endif()
+
+            cmake_path(
+                ABSOLUTE_PATH interface_source_path
+                BASE_DIRECTORY "${LY_ROOT_FOLDER}"
+                NORMALIZE
+                OUTPUT_VARIABLE interface_source_absolute)
+            cmake_path(
+                IS_PREFIX LY_ROOT_FOLDER "${interface_source_absolute}"
+                NORMALIZE interface_source_is_in_engine)
+            if(NOT interface_source_is_in_engine)
+                message(FATAL_ERROR
+                    "Target ${TARGET_NAME} contains an LY_INSTALL_INTERFACE_SOURCES entry outside the engine root: ${interface_source}")
+            endif()
+            if(NOT EXISTS "${interface_source_absolute}" OR IS_DIRECTORY "${interface_source_absolute}")
+                message(FATAL_ERROR
+                    "Target ${TARGET_NAME} contains a missing or non-file LY_INSTALL_INTERFACE_SOURCES entry: ${interface_source}")
+            endif()
+
+            cmake_path(
+                RELATIVE_PATH interface_source_absolute
+                BASE_DIRECTORY "${LY_ROOT_FOLDER}"
+                OUTPUT_VARIABLE interface_source_relative)
+            list(APPEND installed_interface_source_lines
+                "    \"\${LY_ROOT_FOLDER}/${interface_source_relative}\"")
+        endforeach()
+
+        list(REMOVE_DUPLICATES installed_interface_source_lines)
+        list(JOIN installed_interface_source_lines "\n" installed_interface_source_lines)
+        set(INTERFACE_SOURCES_BLOCK_PLACEHOLDER
+"set_property(TARGET ${NAME_PLACEHOLDER} PROPERTY INTERFACE_SOURCES
+${installed_interface_source_lines}
+)")
+    endif()
+
     string(REPEAT " " 12 PLACEHOLDER_INDENT)
     get_target_property(COMPILE_DEFINITIONS_PLACEHOLDER ${TARGET_NAME} INTERFACE_COMPILE_DEFINITIONS)
     if(COMPILE_DEFINITIONS_PLACEHOLDER)
@@ -216,6 +301,51 @@ function(ly_setup_target OUTPUT_CONFIGURED_TARGET ALIAS_TARGET_NAME absolute_tar
         endif()
     endforeach()
     list(JOIN INCLUDE_DIRECTORIES_PLACEHOLDER "\n" INCLUDE_DIRECTORIES_PLACEHOLDER)
+
+    unset(SYSTEM_INCLUDE_DIRECTORIES_BLOCK_PLACEHOLDER)
+    if(system_include_directories)
+        unset(installed_system_include_lines)
+        foreach(system_include IN LISTS system_include_directories)
+            string(GENEX_STRIP ${system_include} system_include_genex_expr)
+            if(system_include_genex_expr STREQUAL system_include)
+                cmake_path(IS_PREFIX CMAKE_BINARY_DIR ${system_include} NORMALIZE system_include_child_of_build)
+                if(system_include_child_of_build)
+                    cmake_path(
+                        RELATIVE_PATH system_include
+                        BASE_DIRECTORY ${CMAKE_BINARY_DIR}
+                        OUTPUT_VARIABLE system_include_relative)
+                    cmake_path(SET installed_system_include ${LY_ROOT_FOLDER})
+                    cmake_path(APPEND installed_system_include ${system_include_relative})
+                else()
+                    cmake_path(
+                        IS_PREFIX LY_ROOT_FOLDER ${system_include}
+                        NORMALIZE system_include_child_of_o3de_root)
+                    if(NOT system_include_child_of_o3de_root)
+                        continue()
+                    endif()
+                    set(installed_system_include ${system_include})
+                endif()
+
+                cmake_path(
+                    RELATIVE_PATH installed_system_include
+                    BASE_DIRECTORY ${LY_ROOT_FOLDER}
+                    OUTPUT_VARIABLE installed_system_include_relative)
+                list(APPEND installed_system_include_lines
+                    "            \"\${LY_ROOT_FOLDER}/${installed_system_include_relative}\"")
+            endif()
+        endforeach()
+
+        if(installed_system_include_lines)
+            list(REMOVE_DUPLICATES installed_system_include_lines)
+            list(JOIN installed_system_include_lines "\n" installed_system_include_lines)
+            set(SYSTEM_INCLUDE_DIRECTORIES_BLOCK_PLACEHOLDER
+"ly_target_include_system_directories(
+    TARGET ${NAME_PLACEHOLDER}
+    INTERFACE
+${installed_system_include_lines}
+)")
+        endif()
+    endif()
 
     string(REPEAT " " 12 PLACEHOLDER_INDENT)
     get_property(interface_build_dependencies_props TARGET ${TARGET_NAME} PROPERTY LY_DELAYED_LINK)

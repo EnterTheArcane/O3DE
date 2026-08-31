@@ -42,19 +42,22 @@ namespace AZ
         }
 
         const AZStd::string_view value{inputValue.GetString(), inputValue.GetStringLength()};
-        const AZStd::optional<Symbol> loadedSymbol = Symbol::TryCreate(value);
-        if (!loadedSymbol)
+        const Internal::SymbolValidationError error = Internal::ValidateSymbolValue(value, Symbol::MaxStringSize);
+        if (error != Internal::SymbolValidationError::None)
         {
-            const Internal::SymbolValidationError error = Internal::ValidateSymbolValue(value, Symbol::MaxStringSize);
-            const char* message = "AZ::Symbol storage budget or allocation exhausted";
-            if (error != Internal::SymbolValidationError::None)
-            {
-                message = Internal::GetSymbolValidationErrorMessage(error);
-            }
             return context.Report(
                 JSR::Tasks::ReadField,
                 JSR::Outcomes::Invalid,
-                message);
+                Internal::GetSymbolValidationErrorMessage(error));
+        }
+
+        const AZStd::optional<Symbol> loadedSymbol = Symbol::TryCreate(value);
+        if (!loadedSymbol)
+        {
+            return context.Report(
+                JSR::Tasks::ReadField,
+                JSR::Outcomes::Unavailable,
+                "AZ::Symbol storage budget or allocation exhausted");
         }
 
         *symbol = *loadedSymbol;

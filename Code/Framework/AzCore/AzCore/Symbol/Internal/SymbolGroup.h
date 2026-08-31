@@ -12,6 +12,8 @@
 
 namespace AZ::Internal
 {
+    inline constexpr u8 SymbolGroupEmptyControl = 0x80;
+
     struct SymbolGroupMasks final
     {
         u16 m_matches;

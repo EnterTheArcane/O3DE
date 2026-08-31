@@ -14,7 +14,7 @@
 
 namespace AZ::Internal
 {
-    //! Accounts for every dynamically allocated byte owned by one SymbolTable.
+    //! Accounts for every requested dynamically allocated byte owned by one SymbolTable.
     class SymbolStorageBudget final
     {
     public:
@@ -53,6 +53,12 @@ namespace AZ::Internal
         size_t GetUsed() const
         {
             return m_used.load(AZStd::memory_order_acquire);
+        }
+
+        [[nodiscard]]
+        size_t GetLimit() const
+        {
+            return m_limit;
         }
 
     private:

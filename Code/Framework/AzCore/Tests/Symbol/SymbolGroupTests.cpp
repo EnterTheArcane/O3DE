@@ -29,7 +29,7 @@ namespace UnitTest
                 controls[lane] = static_cast<AZ::u8>(generator >> 24);
                 if ((generator & 7u) == 0)
                 {
-                    controls[lane] = 0x80;
+                    controls[lane] = AZ::Internal::SymbolGroupEmptyControl;
                 }
                 else
                 {

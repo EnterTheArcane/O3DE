@@ -9,13 +9,12 @@
 #pragma once
 
 #include <AzNetworking/Serialization/ISerializer.h>
-#include <AzNetworking/Serialization/AbstractValue.h>
 #include <AzNetworking/Serialization/NetworkInputSerializer.h>
 #include <AzNetworking/Serialization/NetworkOutputSerializer.h>
 #include <AzNetworking/DataStructures/FixedSizeVectorBitset.h>
 #include <AzNetworking/DataStructures/ByteBuffer.h>
-#include <AzCore/Utils/TypeHash.h>
-#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/array.h>
+#include <AzCore/std/containers/vector.h>
 
 namespace AzNetworking
 {
@@ -41,6 +40,10 @@ namespace AzNetworking
 
     private:
 
+        friend class DeltaSerializerCreate;
+
+        void Reset();
+
         FixedSizeVectorBitset<255> m_dirtyBits;
         ByteBuffer<1024> m_deltaBytes;
     };
@@ -49,6 +52,7 @@ namespace AzNetworking
     //! This delta can be reapplied to the same base object to reconstruct the second object using 
     //! the DeltaSerializerApply serializer
     //! NOTE: The objects serialized must have a consistent serialization footprint i.e. no changes in branches during serialization
+    //! DeltaSerializerCreate instances are single-use.
     class DeltaSerializerCreate
         : public ISerializer
     {
@@ -88,14 +92,59 @@ namespace AzNetworking
 
     private:
 
-        DeltaSerializerCreate(const DeltaSerializerCreate&) = delete;
-        DeltaSerializerCreate& operator=(const DeltaSerializerCreate&) = delete;
+        enum class RecordKind : uint8_t
+        {
+            Boolean,
+            Int8,
+            Int16,
+            Int32,
+            Long,
+            Int64,
+            Uint8,
+            Uint16,
+            Uint32,
+            UnsignedLong,
+            Uint64,
+            Float,
+            Double,
+            Bytes,
+        };
+
+        enum class WireWidth : uint8_t
+        {
+            OneByte,
+            TwoBytes,
+            FourBytes,
+            EightBytes,
+        };
+
+        static constexpr uint32_t MaxRecordCount = 255;
+        static constexpr uint32_t InlineRecordByteCapacity = 1024;
+        static constexpr uint8_t WireWidthShift = 4;
+        static constexpr uint8_t StringFlag = 1 << 6;
+
+        AZ_DISABLE_COPY_MOVE(DeltaSerializerCreate);
+
+        static WireWidth GetWireWidth(uint64_t valueRange);
 
         template <typename T>
-        bool SerializeHelper(T& value, uint32_t bufferCapacity, bool isString, uint32_t& outSize, const char* name);
+        static WireWidth GetBoundedWireWidth(T minValue, T maxValue);
+
+        static uint8_t MakeRecordMetadata(RecordKind kind, WireWidth wireWidth, bool isString);
+
+        bool FailCreate();
+        void ClearRecordState();
+
+        bool StoreRecordBytes(const uint8_t* buffer, uint32_t size, uint64_t& recordPayload);
+
+        [[nodiscard]]
+        const uint8_t* GetRecordBytes() const;
 
         template <typename T>
-        bool SerializeHelperImpl(T& value, uint32_t, bool, uint32_t&, const char* name);
+        bool SerializeHelper(T& value, RecordKind kind, WireWidth wireWidth, const char* name);
+
+        template <typename T>
+        bool SerializeHelperImpl(T& value, const char* name);
         bool SerializeHelperImpl(uint8_t* buffer, uint32_t bufferCapacity, bool isString, uint32_t& outSize, const char* name);
 
     private:
@@ -103,13 +152,20 @@ namespace AzNetworking
         SerializerDelta& m_delta;
 
         bool m_gatheringRecords = false;
+        bool m_hasCreatedDelta = false;
         uint32_t m_objectCounter = 0;
-        AZStd::vector<AbstractValue::BaseValue*> m_records;
+        uint32_t m_recordCount = 0;
+        uint32_t m_recordByteSize = 0;
+        AZStd::array<uint64_t, MaxRecordCount> m_recordPayloads;
+        AZStd::array<uint8_t, MaxRecordCount> m_recordMetadata;
+        AZStd::array<uint8_t, InlineRecordByteCapacity> m_inlineRecordBytes;
+        AZStd::vector<uint8_t> m_overflowRecordBytes;
         NetworkInputSerializer m_dataSerializer;
     };
 
     //! A serializer that is used to apply a SerializerDelta to a base object in order to reconstruct the second object.
     //! NOTE: The objects serialized must have a consistent serialization footprint i.e. no changes in branches during serialization
+    //! DeltaSerializerApply instances are single-use. A failure can leave fields visited before the failure modified.
     class DeltaSerializerApply
         : public ISerializer
     {
@@ -164,6 +220,7 @@ namespace AzNetworking
         SerializerDelta& m_delta;
         uint32_t m_nextDirtyBit = 0;
         NetworkOutputSerializer m_dataSerializer;
+        bool m_hasAppliedDelta = false;
     };
 }
 

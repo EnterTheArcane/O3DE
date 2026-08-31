@@ -12,6 +12,19 @@
 
 namespace AZ::Internal
 {
+    //! Read-only snapshot of requested storage owned by the process-local SymbolTable.
+    struct AZCORE_API SymbolStorageStats final
+    {
+        size_t m_usedByteCount = 0;
+        size_t m_limitByteCount = 0;
+        size_t m_arenaByteCount = 0;
+        size_t m_tableByteCount = 0;
+        size_t m_entryCount = 0;
+    };
+
+    [[nodiscard]]
+    AZCORE_API SymbolStorageStats GetSymbolStorageStats();
+
     //! Interns a value already checked by ValidateSymbolValue. Allocation or budget failure terminates.
     [[nodiscard]]
     AZCORE_API Symbol InternValidatedSymbol(AZStd::string_view value);

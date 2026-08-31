@@ -991,6 +991,10 @@ namespace UnitTest
 
             method = behaviorEBus->m_events.find("OnEventWithDefaultValueAndStringResult")->second.m_broadcast;
             AZStd::string defaultStringResultValue;
+            AZ::BehaviorArgument defaultStringResult(&defaultStringResultValue);
+            AZStd::span<AZ::BehaviorArgument> noArguments;
+            const AZ::BehaviorMethod::ResultOutcome callableWithDefaults = method->IsCallable(noArguments, &defaultStringResult);
+            EXPECT_TRUE(callableWithDefaults.IsSuccess());
             method->InvokeResult(defaultStringResultValue);
             EXPECT_EQ(expectedDefaultValueAndStringResult, defaultStringResultValue);
 

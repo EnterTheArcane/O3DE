@@ -14,7 +14,9 @@
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/fixed_unordered_map.h>
 #include <AzCore/std/containers/map.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/typetraits/is_same.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Vector4.h>
@@ -64,6 +66,42 @@ namespace AzNetworking
                 for (auto it = container.begin(); it != container.end(); ++it, ++i)
                 {
                     success &= serializer.Serialize(*it, GenerateIndexLabel<max>(i).c_str());
+                }
+            }
+            return success;
+        }
+    };
+
+    // Vector
+    template <typename ValueType, typename Allocator>
+    struct SerializeAzContainer<AZStd::vector<ValueType, Allocator>>
+    {
+        using Type = AZStd::vector<ValueType, Allocator>;
+
+        static bool Serialize(ISerializer& serializer, Type& container)
+        {
+            constexpr uint32_t MaxElements = std::numeric_limits<uint32_t>::max();
+            const bool write = serializer.GetSerializerMode() == SerializerMode::WriteToObject;
+
+            uint32_t size = aznumeric_cast<uint32_t>(container.size());
+            bool success = serializer.Serialize(size, "Size");
+            if (write)
+            {
+                // Preserve existing elements so serializers such as DeltaSerializerApply can leave clean fields unchanged.
+                container.resize(size);
+            }
+
+            for (uint32_t index = 0; index < size; ++index)
+            {
+                if constexpr (AZStd::is_same_v<ValueType, bool>)
+                {
+                    bool element = container[index];
+                    success &= serializer.Serialize(element, GenerateIndexLabel<MaxElements>(index).c_str());
+                    container[index] = element;
+                }
+                else
+                {
+                    success &= serializer.Serialize(container[index], GenerateIndexLabel<MaxElements>(index).c_str());
                 }
             }
             return success;
@@ -227,6 +265,7 @@ namespace AzNetworking
 
             bool success = serializer.Serialize(size, "Size");
             value.resize_no_construct(size);
+            outBytes = size;
             success &= serializer.SerializeBytes(reinterpret_cast<uint8_t*>(value.data()), size, true, outBytes, "String");
 
             return success && outBytes == size;
@@ -245,6 +284,7 @@ namespace AzNetworking
 
             bool success = serializer.Serialize(size, "Size");
             value.resize_no_construct(size);
+            outBytes = static_cast<uint32_t>(size);
             success &= serializer.SerializeBytes(reinterpret_cast<uint8_t*>(value.data()), static_cast<uint32_t>(size), true, outBytes, "String");
 
             return success && outBytes == size;

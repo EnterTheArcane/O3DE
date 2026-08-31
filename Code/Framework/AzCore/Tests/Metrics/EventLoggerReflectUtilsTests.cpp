@@ -255,6 +255,8 @@ namespace UnitTest::EventLoggerReflectUtilsTests
         // The return value argument needs storage
         bool returnStorage{};
         AZ::BehaviorArgument returnValue(&returnStorage);
+        const AZ::BehaviorMethod::ResultOutcome callable = recordEventMethod->IsCallable(behaviorArguments, &returnValue);
+        EXPECT_TRUE(callable.IsSuccess());
         EXPECT_TRUE(recordEventMethod->Call(behaviorArguments, &returnValue));
 
         ASSERT_EQ(azrtti_typeid<bool>(), returnValue.m_typeId);

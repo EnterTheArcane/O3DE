@@ -13,8 +13,6 @@
 #include <AzCore/Serialization/DataOverlayProviderMsgs.h>
 #include <AzCore/Serialization/DynamicSerializableField.h>
 #include <AzCore/Serialization/Locale.h>
-#include <AzCore/Serialization/Internal/ObjectStreamAttributes.h>
-#include <AzCore/Serialization/Internal/TextConversion.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Debug/Profiler.h>
@@ -54,6 +52,8 @@
 #include <AzCore/IO/ByteContainerStream.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/string/osstring.h>
+
+#include <cstring>
 
 namespace AZ
 {
@@ -136,10 +136,24 @@ namespace AZ
 
             bool LoadClass(IO::GenericStream& stream, SerializeContext::DataElementNode& convertedClassElement, const SerializeContext::ClassData* parentClassInfo, void* parentClassPtr, int flags);
 
-            // returns true if an element was found at the requested level
-            bool ReadElement(SerializeContext& sc, const SerializeContext::ClassData*& cd, SerializeContext::DataElement& element, const SerializeContext::ClassData* parent, bool nextLevel, bool isTopElement);
+            enum class ReadElementResult
+            {
+                Element,
+                End,
+                Error,
+            };
+
+            ReadElementResult ReadElement(SerializeContext& sc, const SerializeContext::ClassData*& cd, SerializeContext::DataElement& element, const SerializeContext::ClassData* parent, bool nextLevel, bool isTopElement);
             // used during load to skip the rest of the element including any subelements
-            void SkipElement();
+            bool SkipElement();
+            bool ReadTextStream(
+                IO::SizeType streamLength,
+                u8 streamTag,
+                AZStd::vector<char>& memoryBuffer,
+                const char* streamType);
+            bool ReadBinaryData(IO::SizeType byteCount, void* buffer, const char* description);
+            bool SkipBinaryData(IO::SizeType byteCount, const char* description);
+            void ReportBinaryReadError(const char* description);
 
             bool WriteClass(const void* classPtr, const Uuid& classId, const SerializeContext::ClassData* classData) override;
             bool WriteElement(const void* elemPtr, const SerializeContext::ClassData* classData, const SerializeContext::ClassElement* classElement);
@@ -170,7 +184,6 @@ namespace AZ
                 bool& m_errorResult;
                 SerializeContext::IDataContainer* m_classContainer{};
                 size_t& m_currentContainerElementIndex;
-                bool m_isNewContainerElement = false;
             };
             /// Retrieves storage address for data element of being loaded
             /// @param dataAddress output parameter that is populated with the address to store the value of the data type
@@ -197,7 +210,7 @@ namespace AZ
 
             /// Returns true if we will keep the element class, otherwise false
             bool ConvertOldVersion(SerializeContext& sc, SerializeContext::DataElementNode& elementNode, IO::GenericStream& stream, const SerializeContext::ClassData* elementClass);
-            void PreparseOldVersion(SerializeContext& sc, SerializeContext::DataElementNode& elementNode, IO::GenericStream& stream, const SerializeContext::ClassData* elementClass);
+            bool PreparseOldVersion(SerializeContext& sc, SerializeContext::DataElementNode& elementNode, IO::GenericStream& stream, const SerializeContext::ClassData* elementClass);
 
             int                                 m_flags;
             FilterDescriptor                    m_filterDesc;
@@ -252,7 +265,7 @@ namespace AZ
         // PreparseOldVersion
         // [4/25/2012]
         //=========================================================================
-        void ObjectStreamImpl::PreparseOldVersion(SerializeContext& sc, SerializeContext::DataElementNode& elementNode, IO::GenericStream& stream, const SerializeContext::ClassData* elementClass)
+        bool ObjectStreamImpl::PreparseOldVersion(SerializeContext& sc, SerializeContext::DataElementNode& elementNode, IO::GenericStream& stream, const SerializeContext::ClassData* elementClass)
         {
             // whenever tracing is available we make error logging available.
 #if defined(AZ_ENABLE_TRACING) 
@@ -274,7 +287,8 @@ namespace AZ
 
             const SerializeContext::ClassData* childClass = nullptr;
             bool nextLevel = true;
-            while (ReadElement(sc, childClass, childElement, elementClass, nextLevel, false))
+            ReadElementResult readResult = ReadElementResult::Element;
+            while ((readResult = ReadElement(sc, childClass, childElement, elementClass, nextLevel, false)) == ReadElementResult::Element)
             {
                 childElement.m_stream->Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
 
@@ -323,17 +337,26 @@ namespace AZ
                 if (childNode.m_element.m_dataSize > 0) // if we have values to convert
                 {
                     // Now preparse this element's children
-                    PreparseOldVersion(sc, childNode, *childNode.m_element.m_stream, childClass);
+                    if (!PreparseOldVersion(sc, childNode, *childNode.m_element.m_stream, childClass))
+                    {
+                        readResult = ReadElementResult::Error;
+                        break;
+                    }
                 }
                 else
                 {
                     // Now preparse this element's children
-                    PreparseOldVersion(sc, childNode, stream, childClass);
+                    if (!PreparseOldVersion(sc, childNode, stream, childClass))
+                    {
+                        readResult = ReadElementResult::Error;
+                        break;
+                    }
                 }
             }
 #if defined(AZ_ENABLE_TRACING)
             m_errorLogger.Pop();
 #endif // AZ_ENABLE_TRACING
+            return readResult != ReadElementResult::Error;
         }
 
 
@@ -345,7 +368,10 @@ namespace AZ
         {
             AZ_Assert(elementNode.m_classData->IsDeprecated() || elementNode.m_element.m_version < elementNode.m_classData->m_version, "Don't call this function if the element is not an old version element!");
 
-            PreparseOldVersion(sc, elementNode, stream, elementClass);
+            if (!PreparseOldVersion(sc, elementNode, stream, elementClass))
+            {
+                return false;
+            }
 
             if (elementNode.m_classData->m_converter)
             {
@@ -442,9 +468,14 @@ namespace AZ
                 }
                 else // read from the stream
                 {
-                    if (!ReadElement(*m_sc, classData, element, parentClassInfo, nextLevel, parentClassInfo == nullptr))
+                    const ReadElementResult readResult =
+                        ReadElement(*m_sc, classData, element, parentClassInfo, nextLevel, parentClassInfo == nullptr);
+                    if (readResult != ReadElementResult::Element)
                     {
-                        // we have reached the end of this branch, so exit the loop
+                        if (readResult == ReadElementResult::Error)
+                        {
+                            result = false;
+                        }
                         break;
                     }
                     nextLevel = false;
@@ -473,7 +504,6 @@ namespace AZ
                             result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                         }
 
-                        SkipElement();
                         element.m_dataSize = static_cast<size_t>(stream.GetCurPos());
                         continue;
                     }
@@ -509,7 +539,11 @@ namespace AZ
 
                     if (!isConvertedData)
                     {
-                        SkipElement();
+                        if (!SkipElement())
+                        {
+                            result = false;
+                            break;
+                        }
                     }
                     element.m_dataSize = static_cast<size_t>(stream.GetCurPos());
                     continue;
@@ -710,7 +744,11 @@ namespace AZ
                     {
                         if (!isConvertedData)
                         {
-                            SkipElement();
+                            if (!SkipElement())
+                            {
+                                result = false;
+                                break;
+                            }
                         }
                         element.m_dataSize = static_cast<size_t>(element.m_stream->GetCurPos());
 
@@ -773,7 +811,6 @@ namespace AZ
 
                 void* dataAddress = storageElement.m_dataAddress;
                 void* reserveAddress = storageElement.m_reserveAddress; // Stores the dataAddress from IDataContainer::ReserveElement
-                bool elementResult = true;
 
 
 #if defined(AZ_ENABLE_TRACING)
@@ -835,63 +872,39 @@ namespace AZ
                             classData->m_name, element.m_name ? element.m_name : "NULL", element.m_nameCrc.GetValue(),
                             GetStreamFilename());
 
-                        if (classData->FindAttribute(ObjectStreamInternal::RejectInvalidSerializerData))
-                        {
-                            elementResult = false;
-                        }
-                        else
-                        {
-                            result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);
-                        }
+                        result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                         m_errorLogger.ReportError(error.c_str());
                     }
                 }
 
-                if (elementResult)
+                // If it is a container, clear it before loading the child
+                // nodes, otherwise we end up with more elements than the ones
+                // we should have
+                if (classData->m_container && dataAddress)
                 {
-                    // If it is a container, clear it before loading the child
-                    // nodes, otherwise we end up with more elements than the ones
-                    // we should have
-                    if (classData->m_container && dataAddress)
-                    {
-                        classData->m_container->ClearElements(dataAddress, m_sc);
-                    }
-
-                    // Read child nodes
-                    elementResult = LoadClass(stream, *convertedNode, classData, dataAddress, flags);
-                }
-                else if (!isConvertedData)
-                {
-                    // A failed leaf still needs its branch consumed before its parent can continue.
-                    SkipElement();
+                    classData->m_container->ClearElements(dataAddress, m_sc);
                 }
 
-                if (elementResult)
+                // Read child nodes
+                result = LoadClass(stream, *convertedNode, classData, dataAddress, flags) && result;
+
+                if (classContainer)
                 {
-                    if (classContainer)
-                    {
-                        classContainer->StoreElement(parentClassPtr, reserveAddress);
-                    }
-                    else if (!parentClassPtr && m_readyCB)
+                    classContainer->StoreElement(parentClassPtr, reserveAddress);
+                }
+                else if (!parentClassPtr)
+                {
+                    if (m_readyCB)
                     {
                         m_readyCB(dataAddress, element.m_id, m_sc);
                     }
-                }
-                else if (storageElement.m_isNewContainerElement)
-                {
-                    classContainer->FreeReservedElement(parentClassPtr, reserveAddress, nullptr);
                 }
 
                 if (classData->m_eventHandler)
                 {
                     classData->m_eventHandler->OnWriteEnd(dataAddress);
-                    if (elementResult)
-                    {
-                        classData->m_eventHandler->OnLoadedFromObjectStream(dataAddress);
-                    }
+                    classData->m_eventHandler->OnLoadedFromObjectStream(dataAddress);
                 }
-
-                result = elementResult && result;
 
 #if defined(AZ_ENABLE_TRACING)
                 m_errorLogger.Pop();
@@ -938,10 +951,6 @@ namespace AZ
                     else if (parentClassPtr)
                     {
                         storageElement.m_reserveAddress = storageElement.m_classContainer->ReserveElement(parentClassPtr, classElement);
-                        if (storageElement.m_reserveAddress)
-                        {
-                            storageElement.m_isNewContainerElement = true;
-                        }
                     }
 
                     if (storageElement.m_reserveAddress == nullptr)
@@ -1063,7 +1072,7 @@ namespace AZ
         // ReadElement
         // [4/19/2012]
         //=========================================================================
-        bool
+        ObjectStreamImpl::ReadElementResult
         ObjectStreamImpl::ReadElement(SerializeContext& sc, const SerializeContext::ClassData*& cd, SerializeContext::DataElement& element, const SerializeContext::ClassData* parent, bool nextLevel, bool isTopElement)
         {
             AZ_Assert(element.m_stream != nullptr, "You must provide a stream to store the values!");
@@ -1100,7 +1109,7 @@ namespace AZ
                 }
                 if (!next)
                 {
-                    return false;
+                    return ReadElementResult::End;
                 }
                 m_xmlNode = next;
 
@@ -1199,7 +1208,6 @@ namespace AZ
             else if (GetType() == ST_JSON)
             {
                 const char* values = nullptr;
-                bool valueContainsEmbeddedNull = false;
                 // The current node is the last node read, so
                 // first advance to next node
                 rapidjson::Value* currentElement = nullptr;
@@ -1216,7 +1224,7 @@ namespace AZ
                     else
                     {
                         // no more levels to go
-                        return false;
+                        return ReadElementResult::End;
                     }
                 }
                 else
@@ -1226,7 +1234,7 @@ namespace AZ
                     {
                         // we are done with this level
                         m_jsonReadValues.pop_back();
-                        return false;
+                        return ReadElementResult::End;
                     }
                 }
 
@@ -1247,7 +1255,7 @@ namespace AZ
                 else
                 {
                     AZ_Error("Serialization", valueIt != currentElement->MemberEnd(), "All objects should have a typeId, loading aborted!");
-                    return false;
+                    return ReadElementResult::End;
                 }
                 
                 // Version 3 of the ObjectStream serializes the specialized type id directly in the data element id field. The data element old id field value is no longer needed
@@ -1278,8 +1286,22 @@ namespace AZ
                 valueIt = currentElement->FindMember("value");
                 if (valueIt != currentElement->MemberEnd())
                 {
-                    values = valueIt->value.GetString();
-                    valueContainsEmbeddedNull = memchr(values, '\0', valueIt->value.GetStringLength()) != nullptr;
+                    if (!valueIt->value.IsString())
+                    {
+                        AZ_Error("Serialization", false, "ObjectStream JSON values must be strings. Loading the value was skipped.");
+                    }
+                    else
+                    {
+                        values = valueIt->value.GetString();
+                        if (std::memchr(values, '\0', valueIt->value.GetStringLength()) != nullptr)
+                        {
+                            AZ_Error(
+                                "Serialization",
+                                false,
+                                "ObjectStream JSON values cannot contain embedded NUL characters. Loading the value was skipped.");
+                            values = nullptr;
+                        }
+                    }
                 }
 
                 // find the registered class data
@@ -1304,15 +1326,7 @@ namespace AZ
                 {
                     if (cd && !cd->IsDeprecated() && cd->m_serializer)
                     {
-                        if (valueContainsEmbeddedNull
-                            && cd->FindAttribute(ObjectStreamInternal::RejectInvalidSerializerData))
-                        {
-                            element.m_dataSize = 0;
-                        }
-                        else
-                        {
-                            element.m_dataSize = cd->m_serializer->TextToData(values, element.m_version, *element.m_stream);
-                        }
+                        element.m_dataSize = cd->m_serializer->TextToData(values, element.m_version, *element.m_stream);
                         element.m_dataType = SerializeContext::DataElement::DT_BINARY;
                     }
                     else
@@ -1333,26 +1347,34 @@ namespace AZ
             {
                 if (m_stream->GetCurPos() == m_stream->GetLength())
                 {
-                    // Reached the end of the stream. We may reach this state if we just skipped the root element
-                    return false;
+                    ReportBinaryReadError("element end tag");
+                    return ReadElementResult::Error;
+                }
+                if (m_stream->GetCurPos() > m_stream->GetLength())
+                {
+                    ReportBinaryReadError("element tag");
+                    return ReadElementResult::Error;
                 }
 
                 // Read flags
                 u8 flagsSize = 0;
-                IO::SizeType nBytesRead = m_stream->Read(sizeof(u8), &flagsSize);
-                AZ_Assert(nBytesRead == sizeof(u8), "Failed trying to read binary element tag!");
-                (void)nBytesRead;
+                if (!ReadBinaryData(sizeof(flagsSize), &flagsSize, "element tag"))
+                {
+                    return ReadElementResult::Error;
+                }
                 if (flagsSize == ST_BINARYFLAG_ELEMENT_END)
                 {
-                    return false;
+                    return ReadElementResult::End;
                 }
 
                 // Read name
                 if (flagsSize & ST_BINARYFLAG_HAS_NAME)
                 {
                     u32 nameCrc;
-                    nBytesRead = m_stream->Read(sizeof(nameCrc), &nameCrc);
-                    AZ_Assert(nBytesRead == sizeof(nameCrc), "Failed trying to read binary element nameCrc!");
+                    if (!ReadBinaryData(sizeof(nameCrc), &nameCrc, "element name"))
+                    {
+                        return ReadElementResult::Error;
+                    }
                     AZStd::endian_swap(nameCrc);
                     element.m_nameCrc = Crc32(nameCrc);
                 }
@@ -1361,21 +1383,29 @@ namespace AZ
                 if (flagsSize & ST_BINARYFLAG_HAS_VERSION)
                 {
                     u8 version;
-                    nBytesRead = m_stream->Read(sizeof(version), &version);
-                    AZ_Assert(nBytesRead == sizeof(version), "Failed trying to read binary element version!");
+                    if (!ReadBinaryData(sizeof(version), &version, "element version"))
+                    {
+                        return ReadElementResult::Error;
+                    }
                     element.m_version = version;
                 }
 
                 // Read uuid
-                nBytesRead = m_stream->Read(element.m_id.end() - element.m_id.begin(), element.m_id.begin());
-                AZ_Assert(nBytesRead == static_cast<IO::SizeType>(element.m_id.end() - element.m_id.begin()), "Failed trying to read binary element uuid!");
+                const IO::SizeType uuidSize = static_cast<IO::SizeType>(element.m_id.end() - element.m_id.begin());
+                if (!ReadBinaryData(uuidSize, element.m_id.begin(), "element type id"))
+                {
+                    return ReadElementResult::Error;
+                }
 
                 // Version 3 of the ObjectStream serializes the specialized type id directly in the data element id field. The data element old id field value is no longer needed
                 if (m_version == 2)
                 {
                     Uuid specializedId;
-                    nBytesRead = m_stream->Read(specializedId.end() - specializedId.begin(), specializedId.begin());
-                    AZ_Assert(nBytesRead == static_cast<IO::SizeType>(specializedId.end() - specializedId.begin()), "Failed trying to read binary class element uuid");
+                    const IO::SizeType specializedIdSize = static_cast<IO::SizeType>(specializedId.end() - specializedId.begin());
+                    if (!ReadBinaryData(specializedIdSize, specializedId.begin(), "specialized element type id"))
+                    {
+                        return ReadElementResult::Error;
+                    }
 
                     if (parent && parent->m_container && ShouldLookUpSpecializedTypeId(element))
                     {
@@ -1421,16 +1451,20 @@ namespace AZ
                         case 1:
                         {
                             u8 size;
-                            nBytesRead = m_stream->Read(sizeof(u8), &size);
-                            AZ_Assert(nBytesRead == sizeof(u8), "Failed trying to read extra size field!");
+                            if (!ReadBinaryData(sizeof(size), &size, "element value size"))
+                            {
+                                return ReadElementResult::Error;
+                            }
                             valueBytes = size;
                             break;
                         }
                         case 2:
                         {
                             u16 size;
-                            nBytesRead = m_stream->Read(sizeof(u16), &size);
-                            AZ_Assert(nBytesRead == sizeof(u16), "Failed trying to read extra size field!");
+                            if (!ReadBinaryData(sizeof(size), &size, "element value size"))
+                            {
+                                return ReadElementResult::Error;
+                            }
                             AZStd::endian_swap(size);
                             valueBytes = size;
                             break;
@@ -1438,15 +1472,26 @@ namespace AZ
                         case 4:
                         {
                             u32 size;
-                            nBytesRead = m_stream->Read(sizeof(u32), &size);
-                            AZ_Assert(nBytesRead == sizeof(u32), "Failed trying to read extra size field!");
+                            if (!ReadBinaryData(sizeof(size), &size, "element value size"))
+                            {
+                                return ReadElementResult::Error;
+                            }
                             AZStd::endian_swap(size);
                             valueBytes = size;
                             break;
                         }
                         default:
-                            AZ_Assert(false, "Invalid number of bytes for value size field! (%llu)", (u64)valueBytes);
+                            ReportBinaryReadError("element value size");
+                            return ReadElementResult::Error;
                         }
+                    }
+
+                    const IO::SizeType currentPosition = m_stream->GetCurPos();
+                    const IO::SizeType streamLength = m_stream->GetLength();
+                    if (currentPosition > streamLength || valueBytes > static_cast<size_t>(streamLength - currentPosition))
+                    {
+                        ReportBinaryReadError("element value");
+                        return ReadElementResult::Error;
                     }
 
                     element.m_dataSize = valueBytes;
@@ -1454,8 +1499,12 @@ namespace AZ
                     if (element.m_dataSize)
                     {
                         // Directly copy data from m_stream into element.m_stream
-                        [[maybe_unused]] IO::SizeType bytesWritten = element.m_stream->WriteFromStream(valueBytes, m_stream);
-                        AZ_Assert(bytesWritten == valueBytes, "Failed trying to read binary element value!");
+                        const IO::SizeType bytesWritten = element.m_stream->WriteFromStream(valueBytes, m_stream);
+                        if (bytesWritten != valueBytes)
+                        {
+                            ReportBinaryReadError("element value");
+                            return ReadElementResult::Error;
+                        }
                     }
                 }
                 else
@@ -1463,14 +1512,91 @@ namespace AZ
                     element.m_dataSize = 0;
                 }
             }
+            return ReadElementResult::Element;
+        }
+
+        //=========================================================================
+        // ReadTextStream
+        //=========================================================================
+        bool ObjectStreamImpl::ReadTextStream(
+            const IO::SizeType streamLength,
+            const u8 streamTag,
+            AZStd::vector<char>& memoryBuffer,
+            const char* streamType)
+        {
+            using BufferSizeType = AZStd::vector<char>::size_type;
+            const BufferSizeType maxBufferSize = (std::numeric_limits<BufferSizeType>::max)();
+            if (streamLength < sizeof(streamTag) || streamLength > maxBufferSize - 1)
+            {
+                const AZStd::string error = AZStd::string::format(
+                    "Invalid %s ObjectStream length. File %s", streamType, GetStreamFilename());
+                m_errorLogger.ReportError(error.c_str());
+                return false;
+            }
+
+            memoryBuffer.resize_no_construct(static_cast<BufferSizeType>(streamLength) + 1);
+            *reinterpret_cast<u8*>(memoryBuffer.data()) = streamTag;
+
+            const IO::SizeType remainingByteCount = streamLength - sizeof(streamTag);
+            if (m_stream->Read(remainingByteCount, memoryBuffer.data() + sizeof(streamTag)) != remainingByteCount)
+            {
+                const AZStd::string error = AZStd::string::format(
+                    "Failed trying to read %s ObjectStream body. File %s", streamType, GetStreamFilename());
+                m_errorLogger.ReportError(error.c_str());
+                memoryBuffer.clear();
+                return false;
+            }
+
+            memoryBuffer.back() = 0;
             return true;
+        }
+
+        //=========================================================================
+        // ReadBinaryData
+        //=========================================================================
+        bool ObjectStreamImpl::ReadBinaryData(IO::SizeType byteCount, void* buffer, const char* description)
+        {
+            if (m_stream->Read(byteCount, buffer) == byteCount)
+            {
+                return true;
+            }
+
+            ReportBinaryReadError(description);
+            return false;
+        }
+
+        //=========================================================================
+        // SkipBinaryData
+        //=========================================================================
+        bool ObjectStreamImpl::SkipBinaryData(IO::SizeType byteCount, const char* description)
+        {
+            const IO::SizeType currentPosition = m_stream->GetCurPos();
+            const IO::SizeType streamLength = m_stream->GetLength();
+            if (currentPosition > streamLength || byteCount > streamLength - currentPosition)
+            {
+                ReportBinaryReadError(description);
+                return false;
+            }
+
+            m_stream->Seek(byteCount, IO::GenericStream::ST_SEEK_CUR);
+            return true;
+        }
+
+        //=========================================================================
+        // ReportBinaryReadError
+        //=========================================================================
+        void ObjectStreamImpl::ReportBinaryReadError(const char* description)
+        {
+            const AZStd::string error = AZStd::string::format(
+                "Failed trying to read binary ObjectStream %s. File %s", description, GetStreamFilename());
+            m_errorLogger.ReportError(error.c_str());
         }
 
         //=========================================================================
         // SkipElement
         // [1/19/2013]
         //=========================================================================
-        void ObjectStreamImpl::SkipElement()
+        bool ObjectStreamImpl::SkipElement()
         {
             if (GetType() == ST_BINARY)
             {
@@ -1479,9 +1605,10 @@ namespace AZ
                 {
                     // Read flags
                     u8 flagsSize = 0;
-                    IO::SizeType nBytesRead = m_stream->Read(sizeof(u8), &flagsSize);
-                    AZ_Assert(nBytesRead == sizeof(u8), "Failed trying to read binary element tag!");
-                    (void)nBytesRead;
+                    if (!ReadBinaryData(sizeof(flagsSize), &flagsSize, "element tag while skipping"))
+                    {
+                        return false;
+                    }
                     if (flagsSize == ST_BINARYFLAG_ELEMENT_END)
                     {
                         --endTagsNeeded;
@@ -1504,7 +1631,10 @@ namespace AZ
                             bytesToSkip += sizeof(Uuid);
                         }
 
-                        m_stream->Seek(bytesToSkip, IO::GenericStream::ST_SEEK_CUR);
+                        if (!SkipBinaryData(bytesToSkip, "element header while skipping"))
+                        {
+                            return false;
+                        }
 
                         if (flagsSize & ST_BINARYFLAG_HAS_VALUE)
                         {
@@ -1516,16 +1646,20 @@ namespace AZ
                                 case 1:
                                 {
                                     u8 size;
-                                    nBytesRead = m_stream->Read(sizeof(u8), &size);
-                                    AZ_Assert(nBytesRead == sizeof(u8), "Failed trying to read extra size field!");
+                                    if (!ReadBinaryData(sizeof(size), &size, "element value size while skipping"))
+                                    {
+                                        return false;
+                                    }
                                     bytesToSkip = size;
                                     break;
                                 }
                                 case 2:
                                 {
                                     u16 size;
-                                    nBytesRead = m_stream->Read(sizeof(u16), &size);
-                                    AZ_Assert(nBytesRead == sizeof(u16), "Failed trying to read extra size field!");
+                                    if (!ReadBinaryData(sizeof(size), &size, "element value size while skipping"))
+                                    {
+                                        return false;
+                                    }
                                     AZStd::endian_swap(size);
                                     bytesToSkip = size;
                                     break;
@@ -1533,21 +1667,28 @@ namespace AZ
                                 case 4:
                                 {
                                     u32 size;
-                                    nBytesRead = m_stream->Read(sizeof(u32), &size);
-                                    AZ_Assert(nBytesRead == sizeof(u32), "Failed trying to read extra size field!");
+                                    if (!ReadBinaryData(sizeof(size), &size, "element value size while skipping"))
+                                    {
+                                        return false;
+                                    }
                                     AZStd::endian_swap(size);
                                     bytesToSkip = size;
                                     break;
                                 }
                                 default:
-                                    AZ_Assert(false, "Invalid number of bytes to skip! (%llu)", (u64)bytesToSkip);
+                                    ReportBinaryReadError("element value size while skipping");
+                                    return false;
                                 }
                             }
-                            m_stream->Seek(bytesToSkip, IO::GenericStream::ST_SEEK_CUR);
+                            if (!SkipBinaryData(bytesToSkip, "element value while skipping"))
+                            {
+                                return false;
+                            }
                         }
                     }
                 }
             }
+            return true;
         }
 
         //=========================================================================
@@ -1791,28 +1932,16 @@ namespace AZ
                     auto currentsize = static_cast<size_t>(m_inStream.GetCurPos());
                     IO::MemoryStream memStream = IO::MemoryStream(m_inStream.GetData()->data(), 0, currentsize);
                     m_outStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                    const size_t convertedSize = classData->m_serializer->DataToText(memStream, m_outStream, false);
-                    if (convertedSize == Internal::TextConversionFailure)
-                    {
-                        m_errorLogger.ReportError("Serializer could not represent a value in XML ObjectStream text.");
-                        return false;
-                    }
+                    classData->m_serializer->DataToText(memStream, m_outStream, false);
 
-                    char* rawText = static_cast<char*>(m_outStream.GetData()->data());
-                    AZStd::string_view xmlText;
-                    if (m_outStream.GetCurPos() > 0)
+                    const size_t textSize = static_cast<size_t>(m_outStream.GetCurPos());
+                    char* xmlString = m_xmlDoc->allocate_string(nullptr, textSize + 1);
+                    if (textSize > 0)
                     {
-                        xmlText = AZStd::string_view{rawText, static_cast<size_t>(m_outStream.GetCurPos())};
+                        const char* rawText = static_cast<const char*>(m_outStream.GetData()->data());
+                        AZStd::copy(rawText, rawText + textSize, xmlString);
                     }
-                    if (classData->FindAttribute(ObjectStreamInternal::RejectInvalidSerializerData)
-                        && !Internal::IsValidXmlText(xmlText))
-                    {
-                        m_errorLogger.ReportError("Serializer produced text outside the XML 1.0 character domain.");
-                        return false;
-                    }
-                    char* xmlString = m_xmlDoc->allocate_string(nullptr, static_cast<size_t>(m_outStream.GetCurPos() + 1));
-                    AZStd::copy(rawText, rawText + m_outStream.GetCurPos(), xmlString);
-                    xmlString[m_outStream.GetCurPos()] = 0;
+                    xmlString[textSize] = 0;
 
                     attr = m_xmlDoc->allocate_attribute(m_xmlDoc->allocate_string("value"), xmlString);
                     m_xmlNode->insert_attribute(m_xmlNode->last_attribute(), attr);
@@ -1857,12 +1986,7 @@ namespace AZ
                     auto currentsize = static_cast<size_t>(m_inStream.GetCurPos());
                     IO::MemoryStream memStream = IO::MemoryStream(m_inStream.GetData()->data(), 0, currentsize);
                     m_outStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                    const size_t convertedSize = classData->m_serializer->DataToText(memStream, m_outStream, false);
-                    if (convertedSize == Internal::TextConversionFailure)
-                    {
-                        m_errorLogger.ReportError("Serializer could not represent a value in JSON ObjectStream text.");
-                        return false;
-                    }
+                    classData->m_serializer->DataToText(memStream, m_outStream, false);
 
                     char* rawText = static_cast<char*>(m_outStream.GetData()->data());
                     classObject.AddMember("value", rapidjson::Value(rawText ? rawText : "", static_cast<rapidjson::SizeType>(m_outStream.GetCurPos()), m_jsonDoc->GetAllocator()), m_jsonDoc->GetAllocator());
@@ -2073,34 +2197,38 @@ namespace AZ
                         SetType(ST_BINARY);
 
                         u32 version = 0;
-                        m_stream->Read(sizeof(m_version), &version);
-                        AZStd::endian_swap(version);
-                        m_version = version;
-
-                        if (m_version <= s_objectStreamVersion)
+                        if (!ReadBinaryData(sizeof(version), &version, "stream version"))
                         {
-                            result = LoadClass(m_inStream, convertedClassElement, nullptr, nullptr, m_flags) && result;
+                            result = false;
                         }
                         else
                         {
-                            AZStd::string newVersionError = AZStd::string::format("ObjectStream binary load error: Stream is a newer version than object stream supports. ObjectStream version: %u, load stream version: %u",
-                                s_objectStreamVersion, m_version);
-                            m_errorLogger.ReportError(newVersionError.c_str());
+                            AZStd::endian_swap(version);
+                            m_version = version;
 
-                            // this is considered a "fatal" error since the entire stream is unreadable.
-                            result = false;
+                            if (m_version <= s_objectStreamVersion)
+                            {
+                                result = LoadClass(m_inStream, convertedClassElement, nullptr, nullptr, m_flags) && result;
+                            }
+                            else
+                            {
+                                AZStd::string newVersionError = AZStd::string::format("ObjectStream binary load error: Stream is a newer version than object stream supports. ObjectStream version: %u, load stream version: %u",
+                                    s_objectStreamVersion, m_version);
+                                m_errorLogger.ReportError(newVersionError.c_str());
+
+                                // this is considered a "fatal" error since the entire stream is unreadable.
+                                result = false;
+                            }
                         }
                     }
                     else if (streamTag == s_xmlStreamTag)
                     {
                         SetType(ST_XML);
                         AZStd::vector<char> memoryBuffer;
-                        memoryBuffer.resize_no_construct(static_cast<AZStd::vector<char>::size_type>(static_cast<AZStd::vector<char>::size_type>(len) + 1));
-
-                        // first byte wes already read to determine file type.
-                        *reinterpret_cast<u8*>(memoryBuffer.data()) = s_xmlStreamTag;
-                        m_stream->Read(len - sizeof(s_xmlStreamTag), memoryBuffer.data() + sizeof(s_xmlStreamTag));
-                        memoryBuffer.back() = 0;
+                        if (!ReadTextStream(len, s_xmlStreamTag, memoryBuffer, "XML"))
+                        {
+                            return false;
+                        }
 
                         rapidxml::xml_document<char> xmlDoc;
                         xmlDoc.parse<rapidxml::parse_no_data_nodes>(memoryBuffer.data());
@@ -2147,12 +2275,10 @@ namespace AZ
                     {
                         SetType(ST_JSON);
                         AZStd::vector<char> memoryBuffer;
-                        memoryBuffer.resize_no_construct(static_cast<AZStd::vector<char>::size_type>(static_cast<AZStd::vector<char>::size_type>(len) + 1));
-
-                        // first byte wes already read to determine file type.
-                        *reinterpret_cast<u8*>(memoryBuffer.data()) = s_jsonStreamTag;
-                        m_stream->Read(len - sizeof(s_jsonStreamTag), memoryBuffer.data() + sizeof(s_jsonStreamTag));
-                        memoryBuffer.back() = 0;
+                        if (!ReadTextStream(len, s_jsonStreamTag, memoryBuffer, "JSON"))
+                        {
+                            return false;
+                        }
 
                         rapidjson::Document jsonDocument;
                         jsonDocument.ParseInsitu(memoryBuffer.data());

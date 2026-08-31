@@ -8,8 +8,9 @@
 
 #pragma once
 
-#include <AzNetworking/DataStructures/ByteBuffer.h>
 #include <AzNetworking/Serialization/ISerializer.h>
+#include <AzCore/std/containers/array.h>
+#include <AzCore/std/containers/vector.h>
 
 namespace AzNetworking
 {
@@ -60,6 +61,15 @@ namespace AzNetworking
          //! Private copy operator, do not allow copying instances
         TrackChangedSerializer& operator=(const TrackChangedSerializer&) = delete;
 
+        static constexpr uint32_t InlineByteCapacity = 1024;
+
+        bool CacheBytes(const uint8_t* buffer, uint32_t size);
+
+        [[nodiscard]]
+        const uint8_t* GetCachedBytes(uint32_t size) const;
+
+        AZStd::array<uint8_t, InlineByteCapacity> m_inlineByteCache;
+        AZStd::vector<uint8_t> m_overflowByteCache;
         bool m_hasChanged;
     };
 }

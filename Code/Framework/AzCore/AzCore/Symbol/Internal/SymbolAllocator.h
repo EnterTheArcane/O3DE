@@ -28,11 +28,11 @@ namespace AZ::Internal
         void* Allocate(
             size_t byteSize,
             size_t alignment,
-            const char* name)
+            [[maybe_unused]] const char* name)
         {
             if (m_testAllocator)
             {
-                return m_testAllocator->Allocate(byteSize, alignment, 0, name);
+                return m_testAllocator->allocate(byteSize, alignment).GetAddress();
             }
             return AZ_OS_MALLOC(byteSize, alignment);
         }
@@ -44,7 +44,7 @@ namespace AZ::Internal
         {
             if (m_testAllocator)
             {
-                m_testAllocator->DeAllocate(address, byteSize, alignment);
+                m_testAllocator->deallocate(address, byteSize, alignment);
                 return;
             }
             AZ_OS_FREE(address);

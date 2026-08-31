@@ -34,7 +34,7 @@ namespace AZ
         }
         if (fread(data, 1, dataSize, m_generatorHandle) != dataSize)
         {
-            AZ_TracePrintf("System", "Failed to read %d bytes from /dev/urandom!", dataSize);
+            AZ_TracePrintf("System", "Failed to read %zu bytes from /dev/urandom!", dataSize);
             fclose(m_generatorHandle);
             m_generatorHandle = nullptr;
             return false;
