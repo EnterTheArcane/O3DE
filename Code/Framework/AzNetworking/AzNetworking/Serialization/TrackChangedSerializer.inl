@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <cstring>
+
 namespace AzNetworking
 {
     template <typename BASE_TYPE>
@@ -29,7 +31,10 @@ namespace AzNetworking
     {
         const bool cached = value;
         const bool result = BASE_TYPE::Serialize(value, name);
-        m_hasChanged |= (cached != value);
+        if (cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -38,7 +43,10 @@ namespace AzNetworking
     {
         const int8_t cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -47,7 +55,10 @@ namespace AzNetworking
     {
         const int16_t cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -56,7 +67,10 @@ namespace AzNetworking
     {
         const int32_t cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -65,7 +79,10 @@ namespace AzNetworking
     {
         const long cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -74,7 +91,10 @@ namespace AzNetworking
     {
         const AZ::s64 cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -83,7 +103,10 @@ namespace AzNetworking
     {
         const uint8_t cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -92,7 +115,10 @@ namespace AzNetworking
     {
         const uint16_t cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -101,7 +127,10 @@ namespace AzNetworking
     {
         const uint32_t cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -110,7 +139,10 @@ namespace AzNetworking
     {
         const unsigned long cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -119,7 +151,10 @@ namespace AzNetworking
     {
         const AZ::u64 cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (cached != value)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -128,7 +163,10 @@ namespace AzNetworking
     {
         const float cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (std::memcmp(&cached, &value, sizeof(value)) != 0)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
@@ -137,21 +175,89 @@ namespace AzNetworking
     {
         const double cached = value;
         const bool result = BASE_TYPE::Serialize(value, name, minValue, maxValue);
-        m_hasChanged |= (cached != value);
+        if (std::memcmp(&cached, &value, sizeof(value)) != 0)
+        {
+            m_hasChanged = true;
+        }
         return result;
     }
 
     template <typename BASE_TYPE>
     bool TrackChangedSerializer<BASE_TYPE>::SerializeBytes(uint8_t* buffer, uint32_t bufferCapacity, bool isString, uint32_t& outSize, const char* name)
     {
-        ByteBuffer<16384> cached;
-        if (!cached.CopyValues(buffer, outSize))
+        if (outSize > bufferCapacity || (outSize > 0 && buffer == nullptr))
+        {
+            this->Invalidate();
+            return false;
+        }
+
+        const uint32_t cachedSize = outSize;
+        if (!CacheBytes(buffer, cachedSize))
+        {
+            this->Invalidate();
+            return false;
+        }
+
+        const bool result = BASE_TYPE::SerializeBytes(buffer, bufferCapacity, isString, outSize, name);
+        if (outSize > bufferCapacity || (outSize > 0 && buffer == nullptr))
+        {
+            if (cachedSize != outSize)
+            {
+                m_hasChanged = true;
+            }
+            this->Invalidate();
+            return false;
+        }
+
+        bool changed = cachedSize != outSize;
+        if (!changed && outSize > 0)
+        {
+            changed = std::memcmp(GetCachedBytes(cachedSize), buffer, outSize) != 0;
+        }
+        if (changed)
+        {
+            m_hasChanged = true;
+        }
+        return result;
+    }
+
+    template <typename BASE_TYPE>
+    bool TrackChangedSerializer<BASE_TYPE>::CacheBytes(const uint8_t* buffer, uint32_t size)
+    {
+        if (size == 0)
+        {
+            return true;
+        }
+
+        if (buffer == nullptr)
         {
             return false;
         }
-        const bool result = BASE_TYPE::SerializeBytes(buffer, bufferCapacity, isString, outSize, name);
-        m_hasChanged |= (cached.IsSame(buffer, outSize));
-        return result;
+
+        if (size <= m_inlineByteCache.size())
+        {
+            std::memcpy(m_inlineByteCache.data(), buffer, size);
+            return true;
+        }
+
+        if (size > m_overflowByteCache.max_size())
+        {
+            return false;
+        }
+
+        m_overflowByteCache.resize_no_construct(size);
+        std::memcpy(m_overflowByteCache.data(), buffer, size);
+        return true;
+    }
+
+    template <typename BASE_TYPE>
+    const uint8_t* TrackChangedSerializer<BASE_TYPE>::GetCachedBytes(uint32_t size) const
+    {
+        if (size <= m_inlineByteCache.size())
+        {
+            return m_inlineByteCache.data();
+        }
+        return m_overflowByteCache.data();
     }
 
     template <typename BASE_TYPE>

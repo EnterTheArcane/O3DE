@@ -57,6 +57,12 @@ namespace UnitTest
     {
     };
 
+    TEST(HphaSchemaTests, InlineStorageSupportsPrivateAllocatorAlignment)
+    {
+        alignas(256) AZ::HphaSchema schema;
+        EXPECT_EQ(schema.NumAllocatedBytes(), 0);
+    }
+
     TEST_P(HphaSchemaTestFixture, Allocate)
     {
         AZStd::vector<void*, AZ::OSStdAllocator> allocations;

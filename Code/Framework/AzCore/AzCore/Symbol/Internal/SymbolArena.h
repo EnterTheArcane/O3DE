@@ -26,7 +26,7 @@ namespace AZ::Internal
         ~SymbolArena();
 
         [[nodiscard]]
-        SymbolEntry* AllocateEntry(AZStd::string_view value, u64 hash);
+        SymbolEntry* AllocateEntry(AZStd::string_view value, u64 tableHash);
 
     private:
         friend class SymbolTable;
@@ -56,6 +56,9 @@ namespace AZ::Internal
 
         [[nodiscard]]
         Checkpoint GetCheckpoint() const;
+
+        [[nodiscard]]
+        size_t GetStorageBytes() const;
 
         void Rollback(const Checkpoint& checkpoint);
 

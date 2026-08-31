@@ -266,6 +266,8 @@ set(FILES
     Symbol/SymbolBenchmarks.cpp
     Symbol/SymbolGroupTests.cpp
     Symbol/SymbolJsonSerializerTests.cpp
+    Symbol/SymbolSerializerTests.cpp
+    Symbol/SymbolTableTestAccess.h
     Symbol/SymbolTests.cpp
     Symbol/SymbolTestSupport.cpp
     Symbol/SymbolTestSupport.h

@@ -32,6 +32,47 @@ namespace UnitTest
             AZ::Symbol m_symbol;
         };
 
+        class NoOpOutputSerializer final
+            : public AzNetworking::NetworkOutputSerializer
+        {
+        public:
+            NoOpOutputSerializer()
+                : NetworkOutputSerializer(nullptr, 0)
+            {
+            }
+
+            bool SerializeBytes(
+                uint8_t*,
+                uint32_t,
+                bool,
+                uint32_t&,
+                const char*) override
+            {
+                return true;
+            }
+        };
+
+        class OversizedOutputSerializer final
+            : public AzNetworking::NetworkOutputSerializer
+        {
+        public:
+            OversizedOutputSerializer()
+                : NetworkOutputSerializer(nullptr, 0)
+            {
+            }
+
+            bool SerializeBytes(
+                uint8_t*,
+                uint32_t bufferCapacity,
+                bool,
+                uint32_t& outSize,
+                const char*) override
+            {
+                outSize = bufferCapacity + 1;
+                return true;
+            }
+        };
+
         AZStd::vector<AZ::u8> EncodeSymbol(AZ::Symbol symbol)
         {
             AZStd::vector<AZ::u8> buffer(AZ::Symbol::MaxStringSize + sizeof(AZ::u16));
@@ -85,6 +126,42 @@ namespace UnitTest
         const AZStd::string maximumValue(AZ::Symbol::MaxStringSize, 'm');
         const AZStd::vector<AZ::u8> maximum = EncodeSymbol(AZ::Symbol{maximumValue});
         EXPECT_EQ(maximum.size(), AZ::Symbol::MaxStringSize + sizeof(AZ::u16));
+    }
+
+    TEST_F(SymbolSerializerTests, EveryBoundedLengthTransitionUsesExactRawBytes)
+    {
+        constexpr AZStd::array<size_t, 6> ValueSizes = {0, 1, 255, 256, 1022, 1023};
+        for (const size_t valueSize : ValueSizes)
+        {
+            const AZStd::string value(valueSize, 'v');
+            const AZ::Symbol source{value};
+            const AZStd::vector<AZ::u8> encoded = EncodeSymbol(source);
+
+            ASSERT_EQ(encoded.size(), valueSize + sizeof(AZ::u16));
+            EXPECT_EQ(encoded[0], static_cast<AZ::u8>(valueSize >> 8));
+            EXPECT_EQ(encoded[1], static_cast<AZ::u8>(valueSize));
+            EXPECT_TRUE(AZStd::equal(value.begin(), value.end(), encoded.begin() + sizeof(AZ::u16)));
+
+            AZ::Symbol destination;
+            ASSERT_TRUE(DecodeSymbol(encoded, destination));
+            EXPECT_EQ(destination, source);
+        }
+    }
+
+    TEST_F(SymbolSerializerTests, NoOpAndOversizedCustomOutputPreserveDestination)
+    {
+        const AZ::Symbol original{"PreservedByCustomSerializer"};
+
+        AZ::Symbol unchanged = original;
+        NoOpOutputSerializer noOpSerializer;
+        EXPECT_TRUE(static_cast<AzNetworking::ISerializer&>(noOpSerializer).Serialize(unchanged, "Symbol"));
+        EXPECT_EQ(unchanged, original);
+
+        AZ::Symbol oversized = original;
+        OversizedOutputSerializer oversizedSerializer;
+        EXPECT_FALSE(static_cast<AzNetworking::ISerializer&>(oversizedSerializer).Serialize(oversized, "Symbol"));
+        EXPECT_FALSE(oversizedSerializer.IsValid());
+        EXPECT_EQ(oversized, original);
     }
 
     TEST_F(SymbolSerializerTests, UnknownIncomingValueIsInternedAndCanonical)
@@ -166,7 +243,26 @@ namespace UnitTest
             encoded.data(),
             aznumeric_cast<AZ::u32>(encoded.size()));
         EXPECT_TRUE(changedSerializer.Serialize(changed, "Symbol"));
+        EXPECT_TRUE(changedSerializer.GetTrackedChangesFlag());
         EXPECT_EQ(changed, source);
+    }
+
+    TEST_F(SymbolSerializerTests, UnchangedNonEmptyDeltaPreservesValue)
+    {
+        SymbolValue base{AZ::Symbol{"UnchangedNonEmptyDelta"}};
+        SymbolValue current = base;
+        AzNetworking::SerializerDelta delta;
+        AzNetworking::DeltaSerializerCreate createSerializer(delta);
+
+        ASSERT_TRUE(createSerializer.CreateDelta(base, current));
+        ASSERT_EQ(delta.GetNumDirtyBits(), 1);
+        EXPECT_FALSE(delta.GetDirtyBit(0));
+        EXPECT_EQ(delta.GetBufferSize(), 0);
+
+        SymbolValue output = base;
+        AzNetworking::DeltaSerializerApply applySerializer(delta);
+        ASSERT_TRUE(applySerializer.ApplyDelta(output));
+        EXPECT_EQ(output.m_symbol, base.m_symbol);
     }
 
     TEST_F(SymbolSerializerTests, DeltaSupportsOnlyValuesThatFitItsExistingPayload)
@@ -188,5 +284,7 @@ namespace UnitTest
         AzNetworking::SerializerDelta oversizedDelta;
         AzNetworking::DeltaSerializerCreate oversizedSerializer(oversizedDelta);
         EXPECT_FALSE(oversizedSerializer.CreateDelta(base, tooLarge));
+        EXPECT_EQ(oversizedDelta.GetNumDirtyBits(), 0);
+        EXPECT_EQ(oversizedDelta.GetBufferSize(), 0);
     }
 } // namespace UnitTest

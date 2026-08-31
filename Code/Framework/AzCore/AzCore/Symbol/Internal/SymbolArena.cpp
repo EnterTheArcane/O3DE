@@ -8,9 +8,10 @@
 
 #include <AzCore/Symbol/Internal/SymbolArena.h>
 
+#include <AzCore/std/createdestroy.h>
+
 #include <cstring>
 #include <limits>
-#include <new>
 
 namespace AZ::Internal
 {
@@ -28,7 +29,7 @@ namespace AZ::Internal
 
     SymbolEntry* SymbolArena::AllocateEntry(
         const AZStd::string_view value,
-        const u64 hash)
+        const u64 tableHash)
     {
         if (value.size() > (std::numeric_limits<size_t>::max)() - sizeof(SymbolEntry) - EntryAlignment)
         {
@@ -50,10 +51,10 @@ namespace AZ::Internal
         void* entryMemory = blockData + m_currentBlock->m_used;
         m_currentBlock->m_used += entrySize;
 
-        SymbolEntry* entry = ::new (entryMemory) SymbolEntry{
-            .m_hash = hash,
+        SymbolEntry* entry = AZStd::construct_at(reinterpret_cast<SymbolEntry*>(entryMemory), SymbolEntry{
+            .m_tableHash = tableHash,
             .m_size = static_cast<u32>(value.size()),
-        };
+        });
 
         char* entryData = reinterpret_cast<char*>(entry + 1);
         if (!value.empty())
@@ -77,6 +78,16 @@ namespace AZ::Internal
             .m_used = used,
             .m_nextBlockCapacity = m_nextBlockCapacity,
         };
+    }
+
+    size_t SymbolArena::GetStorageBytes() const
+    {
+        size_t storageBytes = 0;
+        for (const Block* block = m_currentBlock; block; block = block->m_previous)
+        {
+            storageBytes += BlockDataOffset + block->m_capacity;
+        }
+        return storageBytes;
     }
 
     void SymbolArena::Rollback(const Checkpoint& checkpoint)
@@ -124,11 +135,11 @@ namespace AZ::Internal
             return nullptr;
         }
 
-        Block* block = ::new (blockMemory) Block{
+        Block* block = AZStd::construct_at(reinterpret_cast<Block*>(blockMemory), Block{
             .m_previous = m_currentBlock,
             .m_capacity = capacity,
             .m_used = 0,
-        };
+        });
 
         if (m_nextBlockCapacity < MaximumBlockCapacity)
         {

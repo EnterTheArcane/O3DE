@@ -11,6 +11,8 @@
 #include <AzCore/Symbol/Symbol.h>
 #include <AzCore/std/containers/array.h>
 
+#include <cstring>
+
 namespace AzNetworking
 {
     namespace
@@ -23,7 +25,13 @@ namespace AzNetworking
         bool DeserializeSymbol(ISerializer& serializer, AZ::Symbol& symbol)
         {
             AZStd::array<AZ::u8, AZ::Symbol::MaxStringSize> valueBuffer;
-            AZ::u32 valueSize = 0;
+            const AZStd::string_view currentValue = symbol.GetStringView();
+            AZ::u32 valueSize = static_cast<AZ::u32>(currentValue.size());
+            if (!currentValue.empty())
+            {
+                std::memcpy(valueBuffer.data(), currentValue.data(), currentValue.size());
+            }
+
             if (!serializer.SerializeBytes(
                     valueBuffer.data(),
                     static_cast<AZ::u32>(valueBuffer.size()),
@@ -32,6 +40,25 @@ namespace AzNetworking
                     "Value"))
             {
                 return false;
+            }
+
+            if (!serializer.IsValid())
+            {
+                return false;
+            }
+
+            if (valueSize > static_cast<AZ::u32>(valueBuffer.size()))
+            {
+                serializer.Invalidate();
+                return false;
+            }
+
+            if (valueSize == currentValue.size())
+            {
+                if (valueSize == 0 || std::memcmp(valueBuffer.data(), currentValue.data(), valueSize) == 0)
+                {
+                    return true;
+                }
             }
 
             const AZStd::string_view value{reinterpret_cast<const char*>(valueBuffer.data()), valueSize};

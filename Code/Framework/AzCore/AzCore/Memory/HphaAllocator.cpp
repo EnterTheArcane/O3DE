@@ -2528,11 +2528,14 @@ namespace AZ
     // [2/22/2011]
     //=========================================================================
     template<bool DebugAllocator>
-    HphaSchemaBase<DebugAllocator>::HphaSchemaBase()
-    {
-        static_assert(sizeof(HpAllocator) <= sizeof(m_hpAllocatorBuffer), "Increase the m_hpAllocatorBuffer, it needs to be at least the sizeof(HpAllocator)");
-        m_allocator = new (&m_hpAllocatorBuffer) HpAllocator();
-    }
+HphaSchemaBase<DebugAllocator>::HphaSchemaBase()
+{
+    static_assert(
+        sizeof(HpAllocator) + alignof(HpAllocator) - 1 <= sizeof(m_hpAllocatorBuffer),
+        "Increase m_hpAllocatorBuffer so it can contain an aligned HpAllocator");
+    void* alignedBuffer = AZ::PointerAlignUp(m_hpAllocatorBuffer, alignof(HpAllocator));
+    m_allocator = new (alignedBuffer) HpAllocator();
+}
 
     //=========================================================================
     // ~HphaSchema

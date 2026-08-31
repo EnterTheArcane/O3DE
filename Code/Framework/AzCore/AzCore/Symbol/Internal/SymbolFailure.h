@@ -13,4 +13,9 @@
 namespace AZ::Internal
 {
     [[noreturn]] AZCORE_API void FailSymbol(const char* reason);
+
+    [[noreturn]] AZCORE_API void FailSymbolStorage(
+        size_t requestedValueBytes,
+        size_t usedBytes,
+        size_t limitBytes);
 } // namespace AZ::Internal

@@ -14,6 +14,8 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
 
+#include <Tests/Symbol/SymbolTableTestAccess.h>
+
 #include <xxhash.h>
 
 namespace AZ::SymbolBenchmarks
@@ -139,12 +141,11 @@ namespace AZ::SymbolBenchmarks
     BENCHMARK_DEFINE_F(SymbolBenchmarkFixture, ColdTableInsertion)(::benchmark::State& state)
     {
         constexpr AZStd::string_view Value{"ColdTableSymbol"};
-        const u64 hash = XXH3_64bits(Value.data(), Value.size());
 
         for ([[maybe_unused]] auto iteration : state)
         {
             Internal::SymbolTable table;
-            benchmark::DoNotOptimize(table.Intern(Value, hash));
+            benchmark::DoNotOptimize(table.InternValidated(Value));
         }
         state.SetItemsProcessed(state.iterations());
     }
@@ -160,14 +161,13 @@ namespace AZ::SymbolBenchmarks
         {
             values.emplace_back(AZStd::string::format("PopulatedSymbol%zu", index));
             const AZStd::string_view value = values.back();
-            benchmark::DoNotOptimize(table.Intern(value, XXH3_64bits(value.data(), value.size())));
+            benchmark::DoNotOptimize(table.InternValidated(value));
         }
 
         const AZStd::string_view target = values[valueCount / 2];
-        const u64 hash = XXH3_64bits(target.data(), target.size());
         for ([[maybe_unused]] auto iteration : state)
         {
-            benchmark::DoNotOptimize(table.Find(target, hash));
+            benchmark::DoNotOptimize(table.Find(target));
         }
         state.SetItemsProcessed(state.iterations());
     }
@@ -182,13 +182,13 @@ namespace AZ::SymbolBenchmarks
         for (size_t index = 0; index < ValueCount; ++index)
         {
             values[index] = AZStd::string::format("CollisionBenchmark%zu", index);
-            benchmark::DoNotOptimize(table.Intern(values[index], Hash));
+            benchmark::DoNotOptimize(Internal::SymbolTableTestAccess::InternWithTableHash(table, values[index], Hash));
         }
 
         const AZStd::string_view target = values.back();
         for ([[maybe_unused]] auto iteration : state)
         {
-            benchmark::DoNotOptimize(table.Find(target, Hash));
+            benchmark::DoNotOptimize(Internal::SymbolTableTestAccess::FindWithTableHash(table, target, Hash));
         }
         state.SetItemsProcessed(state.iterations());
     }
@@ -228,4 +228,28 @@ namespace AZ::SymbolBenchmarks
         state.SetBytesProcessed(state.iterations() * length);
     }
     BENCHMARK_REGISTER_F(SymbolBenchmarkFixture, SeededXxh3)->Arg(8)->Arg(24)->Arg(64)->Arg(128)->Arg(240)->Arg(241)->Arg(1023);
+
+    BENCHMARK_DEFINE_F(SymbolBenchmarkFixture, CustomSecretXxh3)(::benchmark::State& state)
+    {
+        AZStd::array<u8, 1024> input{};
+        for (size_t index = 0; index < input.size(); ++index)
+        {
+            input[index] = static_cast<u8>(index * 37 + 11);
+        }
+
+        AZStd::array<u8, 192> secret{};
+        for (size_t index = 0; index < secret.size(); ++index)
+        {
+            secret[index] = static_cast<u8>(index * 29 + 7);
+        }
+
+        const size_t length = static_cast<size_t>(state.range(0));
+        for ([[maybe_unused]] auto iteration : state)
+        {
+            benchmark::DoNotOptimize(XXH3_64bits_withSecret(input.data(), length, secret.data(), secret.size()));
+        }
+        state.SetBytesProcessed(state.iterations() * length);
+    }
+    BENCHMARK_REGISTER_F(SymbolBenchmarkFixture, CustomSecretXxh3)
+        ->Arg(8)->Arg(24)->Arg(64)->Arg(128)->Arg(240)->Arg(241)->Arg(1023);
 } // namespace AZ::SymbolBenchmarks

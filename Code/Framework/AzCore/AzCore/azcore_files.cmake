@@ -591,8 +591,6 @@ set(FILES
     Serialization/SerializationUtils.cpp
     Serialization/ObjectStream.cpp
     Serialization/ObjectStream.h
-    Serialization/Internal/ObjectStreamAttributes.h
-    Serialization/Internal/TextConversion.h
     Serialization/PointerObject.h
     Serialization/PointerObject.cpp
     Serialization/SerializeContext.cpp

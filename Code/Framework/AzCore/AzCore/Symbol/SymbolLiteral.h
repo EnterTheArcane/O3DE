@@ -48,6 +48,7 @@ namespace AZ::Internal
             return Symbol{};
         }
 
+        //! The first executed use interns the literal and can lock or allocate. Later uses return this cached pointer identity directly.
         static const Symbol symbol = InternValidatedSymbol(value);
         return symbol;
     }

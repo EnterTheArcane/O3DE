@@ -90,6 +90,10 @@ ly_add_target(
             3rdParty::cityhash
 )
 
+set_property(TARGET AzCore PROPERTY LY_INSTALL_INTERFACE_SOURCES
+    Code/Framework/AzCore/AzCore/AzCore.natvis
+)
+
 ly_install_files(
     FILES
         AzCore/AzCore.natvis

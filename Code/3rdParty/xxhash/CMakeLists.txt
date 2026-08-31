@@ -13,8 +13,14 @@ ly_add_target(
     FILES_CMAKE
         files.cmake
     INCLUDE_DIRECTORIES
-        PUBLIC
+        PRIVATE
             Include
+)
+
+ly_target_include_system_directories(
+    TARGET xxhash
+    PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/Include"
 )
 
 ly_install_files(

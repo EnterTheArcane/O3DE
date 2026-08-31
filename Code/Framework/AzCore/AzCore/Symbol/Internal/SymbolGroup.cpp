@@ -18,8 +18,6 @@ namespace AZ::Internal
 {
     namespace
     {
-        constexpr u8 SymbolGroupEmptyControl = 0x80;
-
 #if AZ_TRAIT_USE_PLATFORM_SIMD_NEON
         [[nodiscard]]
         u16 PackMask(const uint8x16_t lanes)
@@ -46,10 +44,9 @@ namespace AZ::Internal
 #if AZ_TRAIT_USE_PLATFORM_SIMD_SSE
         const __m128i controlValues = _mm_loadu_si128(reinterpret_cast<const __m128i*>(controls));
         const __m128i fingerprints = _mm_set1_epi8(static_cast<char>(fingerprint));
-        const __m128i emptyValues = _mm_set1_epi8(static_cast<char>(SymbolGroupEmptyControl));
         return SymbolGroupMasks{
             .m_matches = static_cast<u16>(_mm_movemask_epi8(_mm_cmpeq_epi8(controlValues, fingerprints))),
-            .m_empty = static_cast<u16>(_mm_movemask_epi8(_mm_cmpeq_epi8(controlValues, emptyValues))),
+            .m_empty = static_cast<u16>(_mm_movemask_epi8(controlValues)),
         };
 #elif AZ_TRAIT_USE_PLATFORM_SIMD_NEON
         const uint8x16_t controlValues = vld1q_u8(controls);

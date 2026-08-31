@@ -9,7 +9,10 @@
 #include <AzNetworking/Serialization/DeltaSerializer.h>
 #include <AzNetworking/Serialization/NetworkInputSerializer.h>
 #include <AzNetworking/Serialization/NetworkOutputSerializer.h>
-#include <AzCore/std/string/conversions.h>
+#include <AzCore/std/limits.h>
+#include <AzCore/std/typetraits/is_trivially_copyable.h>
+
+#include <cstring>
 
 namespace AzNetworking
 {
@@ -55,6 +58,12 @@ namespace AzNetworking
         m_deltaBytes.Resize(size);
     }
 
+    void SerializerDelta::Reset()
+    {
+        m_dirtyBits.Clear();
+        m_deltaBytes.Resize(0);
+    }
+
     bool SerializerDelta::Serialize(ISerializer& serializer)
     {
         return serializer.Serialize(m_dirtyBits, "DirtyBits")
@@ -68,21 +77,7 @@ namespace AzNetworking
         ;
     }
 
-    DeltaSerializerCreate::~DeltaSerializerCreate()
-    {
-        // Delete any left over records that might be hanging around
-        for (auto iter : m_records)
-        {
-            if (iter)
-            {
-                // this will probably trigger ASAN, since we don't know what the type is.
-                // But it should also only happen in scenarios where we are crashing or have already asserted/warned
-                // about mismatched serialize/deserialize.
-                delete iter;  
-            }
-        }
-        m_records.clear();
-    }
+    DeltaSerializerCreate::~DeltaSerializerCreate() = default;
 
     SerializerMode DeltaSerializerCreate::GetSerializerMode() const
     {
@@ -91,85 +86,137 @@ namespace AzNetworking
 
     bool DeltaSerializerCreate::Serialize(bool& value, const char* name)
     {
-        uint32_t unused = 0;
-        return SerializeHelper(value, 0, false, unused, name);
+        return SerializeHelper(value, RecordKind::Boolean, WireWidth::OneByte, name);
     }
 
-    bool DeltaSerializerCreate::Serialize(int8_t& value, const char* name, [[maybe_unused]] int8_t minValue, [[maybe_unused]] int8_t maxValue)
+    bool DeltaSerializerCreate::Serialize(int8_t& value, const char* name, int8_t minValue, int8_t maxValue)
     {
-        uint32_t unused = 0;
-        return SerializeHelper(value, 0, false, unused, name);
+        return SerializeHelper(value, RecordKind::Int8, GetBoundedWireWidth(minValue, maxValue), name);
     }
 
-    bool DeltaSerializerCreate::Serialize(int16_t& value, const char* name, [[maybe_unused]] int16_t minValue, [[maybe_unused]] int16_t maxValue)
+    bool DeltaSerializerCreate::Serialize(int16_t& value, const char* name, int16_t minValue, int16_t maxValue)
     {
-        uint32_t unused = 0;
-        return SerializeHelper(value, 0, false, unused, name);
+        return SerializeHelper(value, RecordKind::Int16, GetBoundedWireWidth(minValue, maxValue), name);
     }
 
-    bool DeltaSerializerCreate::Serialize(int32_t& value, const char* name, [[maybe_unused]] int32_t minValue, [[maybe_unused]] int32_t maxValue)
+    bool DeltaSerializerCreate::Serialize(int32_t& value, const char* name, int32_t minValue, int32_t maxValue)
     {
-        uint32_t unused = 0;
-        return SerializeHelper(value, 0, false, unused, name);
+        return SerializeHelper(value, RecordKind::Int32, GetBoundedWireWidth(minValue, maxValue), name);
     }
 
-    bool DeltaSerializerCreate::Serialize(long& value, const char* name, [[maybe_unused]] long minValue, [[maybe_unused]] long maxValue)
+    bool DeltaSerializerCreate::Serialize(long& value, const char* name, long minValue, long maxValue)
     {
-        uint32_t unused = 0;
-        return SerializeHelper(value, 0, false, unused, name);
+        return SerializeHelper(value, RecordKind::Long, GetBoundedWireWidth(minValue, maxValue), name);
     }
 
-    bool DeltaSerializerCreate::Serialize(AZ::s64& value, const char* name, [[maybe_unused]] AZ::s64 minValue, [[maybe_unused]] AZ::s64 maxValue)
+    bool DeltaSerializerCreate::Serialize(AZ::s64& value, const char* name, AZ::s64 minValue, AZ::s64 maxValue)
     {
-        uint32_t unused = 0;
-        return SerializeHelper(value, 0, false, unused, name);
+        return SerializeHelper(value, RecordKind::Int64, GetBoundedWireWidth(minValue, maxValue), name);
     }
 
-    bool DeltaSerializerCreate::Serialize(uint8_t& value, const char* name, [[maybe_unused]] uint8_t minValue, [[maybe_unused]] uint8_t maxValue)
+    bool DeltaSerializerCreate::Serialize(uint8_t& value, const char* name, uint8_t minValue, uint8_t maxValue)
     {
-        uint32_t unused = 0;
-        return SerializeHelper(value, 0, false, unused, name);
+        return SerializeHelper(value, RecordKind::Uint8, GetBoundedWireWidth(minValue, maxValue), name);
     }
 
-    bool DeltaSerializerCreate::Serialize(uint16_t& value, const char* name, [[maybe_unused]] uint16_t minValue, [[maybe_unused]] uint16_t maxValue)
+    bool DeltaSerializerCreate::Serialize(uint16_t& value, const char* name, uint16_t minValue, uint16_t maxValue)
     {
-        uint32_t unused = 0;
-        return SerializeHelper(value, 0, false, unused, name);
+        return SerializeHelper(value, RecordKind::Uint16, GetBoundedWireWidth(minValue, maxValue), name);
     }
 
-    bool DeltaSerializerCreate::Serialize(uint32_t& value, const char* name, [[maybe_unused]] uint32_t minValue, [[maybe_unused]] uint32_t maxValue)
+    bool DeltaSerializerCreate::Serialize(uint32_t& value, const char* name, uint32_t minValue, uint32_t maxValue)
     {
-        uint32_t unused = 0;
-        return SerializeHelper(value, 0, false, unused, name);
+        return SerializeHelper(value, RecordKind::Uint32, GetBoundedWireWidth(minValue, maxValue), name);
     }
 
-    bool DeltaSerializerCreate::Serialize(unsigned long& value, const char* name, [[maybe_unused]] unsigned long minValue, [[maybe_unused]] unsigned long maxValue)
+    bool DeltaSerializerCreate::Serialize(unsigned long& value, const char* name, unsigned long minValue, unsigned long maxValue)
     {
-        uint32_t unused = 0;
-        return SerializeHelper(value, 0, false, unused, name);
+        return SerializeHelper(value, RecordKind::UnsignedLong, GetBoundedWireWidth(minValue, maxValue), name);
     }
 
-    bool DeltaSerializerCreate::Serialize(AZ::u64& value, const char* name, [[maybe_unused]] AZ::u64 minValue, [[maybe_unused]] AZ::u64 maxValue)
+    bool DeltaSerializerCreate::Serialize(AZ::u64& value, const char* name, AZ::u64 minValue, AZ::u64 maxValue)
     {
-        uint32_t unused = 0;
-        return SerializeHelper(value, 0, false, unused, name);
+        return SerializeHelper(value, RecordKind::Uint64, GetBoundedWireWidth(minValue, maxValue), name);
     }
 
-    bool DeltaSerializerCreate::Serialize(float& value, const char* name, [[maybe_unused]] float minValue, [[maybe_unused]] float maxValue)
+    bool DeltaSerializerCreate::Serialize(
+        float& value,
+        const char* name,
+        [[maybe_unused]] float minValue,
+        [[maybe_unused]] float maxValue)
     {
-        uint32_t unused = 0;
-        return SerializeHelper(value, 0, false, unused, name);
+        return SerializeHelper(value, RecordKind::Float, WireWidth::FourBytes, name);
     }
 
-    bool DeltaSerializerCreate::Serialize(double& value, const char* name, [[maybe_unused]] double minValue, [[maybe_unused]] double maxValue)
+    bool DeltaSerializerCreate::Serialize(
+        double& value,
+        const char* name,
+        [[maybe_unused]] double minValue,
+        [[maybe_unused]] double maxValue)
     {
-        uint32_t unused = 0;
-        return SerializeHelper(value, 0, false, unused, name);
+        return SerializeHelper(value, RecordKind::Double, WireWidth::EightBytes, name);
     }
 
     bool DeltaSerializerCreate::SerializeBytes(uint8_t* buffer, uint32_t bufferCapacity, bool isString, uint32_t& outSize, const char* name)
     {
-        return SerializeHelper(buffer, bufferCapacity, isString, outSize, name);
+        if (!IsValid() || outSize > bufferCapacity || (outSize > 0 && buffer == nullptr))
+        {
+            return FailCreate();
+        }
+
+        const uint32_t objectPosition = m_objectCounter;
+        ++m_objectCounter;
+        const uint8_t metadata = MakeRecordMetadata(
+            RecordKind::Bytes,
+            GetWireWidth(bufferCapacity),
+            isString);
+
+        if (m_gatheringRecords)
+        {
+            if (m_recordCount >= MaxRecordCount)
+            {
+                return FailCreate();
+            }
+
+            uint64_t recordPayload = 0;
+            if (!StoreRecordBytes(buffer, outSize, recordPayload))
+            {
+                return FailCreate();
+            }
+            m_recordPayloads[m_recordCount] = recordPayload;
+            m_recordMetadata[m_recordCount] = metadata;
+            ++m_recordCount;
+            return true;
+        }
+
+        if (objectPosition >= m_recordCount || m_recordMetadata[objectPosition] != metadata)
+        {
+            return FailCreate();
+        }
+
+        const uint64_t recordPayload = m_recordPayloads[objectPosition];
+        const uint32_t baseOffset = static_cast<uint32_t>(recordPayload);
+        const uint32_t baseSize = static_cast<uint32_t>(recordPayload >> 32);
+        if (baseOffset > m_recordByteSize || baseSize > m_recordByteSize - baseOffset)
+        {
+            return FailCreate();
+        }
+
+        bool different = baseSize != outSize;
+        if (!different && outSize > 0)
+        {
+            different = std::memcmp(GetRecordBytes() + baseOffset, buffer, outSize) != 0;
+        }
+        if (!m_delta.InsertDirtyBit(different))
+        {
+            return FailCreate();
+        }
+
+        if (different && !SerializeHelperImpl(buffer, bufferCapacity, isString, outSize, name))
+        {
+            return FailCreate();
+        }
+        return true;
     }
 
     bool DeltaSerializerCreate::BeginObject([[maybe_unused]] const char* name)
@@ -197,84 +244,175 @@ namespace AzNetworking
         return 0;
     }
 
-    template <typename T>
-    bool DeltaSerializerCreate::SerializeHelper(T& value, uint32_t bufferCapacity, bool isString, uint32_t& outSize, const char* name)
+    DeltaSerializerCreate::WireWidth DeltaSerializerCreate::GetWireWidth(uint64_t valueRange)
     {
-        // The way this functions is that it expects its operation to be done in two phases:
-        // First, it gathers records into the m_records vector for each object being serialized, representing the prior state
-        // Then it expects to be called again, on objects in exactly the same order but with the new state.
-        // It will then compare the two states and generate a delta in m_delta for the differences.
-        // Once it has done this, the value stored in m_records is no longer required, and can be deleted while we still
-        // are in a templated function that knows the type of T and can thus invoke the correct delete operator.
-
-        // if this starts be a bottleneck or memory hotspot, consider using a static frame buffer for m_records, the kind of datastructure
-        // that runs on pre-allocated memory and resets it every frame instead of frees it, to avoid needing to delete.
-
-        typedef AbstractValue::ValueT<T> ValueType;
-
-        uint32_t objectPos = m_objectCounter;
-        AbstractValue::BaseValue* baseValue = m_records.size() > m_objectCounter ? m_records[m_objectCounter] : nullptr;
-        ++m_objectCounter;
-
-        // If we are in the gather records phase, just save off the value records
-        if (m_gatheringRecords)
+        if (valueRange <= AZStd::numeric_limits<uint8_t>::max())
         {
-            AZ_Assert(baseValue == nullptr, "Expected to create a new record but found a pre-existing one at index %d", m_objectCounter - 1);
-            baseValue = new ValueType(value);
-            m_records.push_back(baseValue);
+            return WireWidth::OneByte;
         }
-        else // If we are not gathering records, then we are comparing them
+        if (valueRange <= AZStd::numeric_limits<uint16_t>::max())
         {
-            bool different = false;
+            return WireWidth::TwoBytes;
+        }
+        if (valueRange <= AZStd::numeric_limits<uint32_t>::max())
+        {
+            return WireWidth::FourBytes;
+        }
+        return WireWidth::EightBytes;
+    }
 
-            if (baseValue)
-            {
-                // This record must match the same type that was pushed into the list during the gathering phase
-                ValueType* typedValue = static_cast<ValueType*>(baseValue);
-                // Are the two values different?
-                different = typedValue->GetValue() != value;
-            }
-            else
-            {
-                // No record? Then definitely different
-                different = true;
-            }
+    template <typename T>
+    DeltaSerializerCreate::WireWidth DeltaSerializerCreate::GetBoundedWireWidth(T minValue, T maxValue)
+    {
+        const uint64_t valueRange = static_cast<uint64_t>(maxValue) - static_cast<uint64_t>(minValue);
+        return GetWireWidth(valueRange);
+    }
 
-            // Record a bit to track this information
-            if (!m_delta.InsertDirtyBit(different))
+    uint8_t DeltaSerializerCreate::MakeRecordMetadata(RecordKind kind, WireWidth wireWidth, bool isString)
+    {
+        static_assert(static_cast<uint8_t>(RecordKind::Bytes) < 16);
+        uint8_t metadata = static_cast<uint8_t>(kind);
+        metadata |= static_cast<uint8_t>(static_cast<uint8_t>(wireWidth) << WireWidthShift);
+        if (isString)
+        {
+            metadata |= StringFlag;
+        }
+        return metadata;
+    }
+
+    bool DeltaSerializerCreate::FailCreate()
+    {
+        Invalidate();
+        m_delta.Reset();
+        ClearRecordState();
+        return false;
+    }
+
+    void DeltaSerializerCreate::ClearRecordState()
+    {
+        m_gatheringRecords = false;
+        m_objectCounter = 0;
+        m_recordCount = 0;
+        m_recordByteSize = 0;
+        m_overflowRecordBytes.clear();
+    }
+
+    bool DeltaSerializerCreate::StoreRecordBytes(const uint8_t* buffer, uint32_t size, uint64_t& recordPayload)
+    {
+        if (size > AZStd::numeric_limits<uint32_t>::max() - m_recordByteSize)
+        {
+            return false;
+        }
+
+        const uint32_t offset = m_recordByteSize;
+        const uint32_t newSize = offset + size;
+        recordPayload = (static_cast<uint64_t>(size) << 32) | offset;
+
+        if (newSize <= m_inlineRecordBytes.size())
+        {
+            if (size > 0)
             {
-                AZ_Assert(false, "Ran out of bits in DeltaSerializerCreate. You are probably trying to serialize an object with too many fields. Consider resizing the bitset in DeltaSerializerCreate");
+                std::memcpy(m_inlineRecordBytes.data() + offset, buffer, size);
+            }
+        }
+        else
+        {
+            if (newSize > m_overflowRecordBytes.max_size())
+            {
                 return false;
             }
 
-            // If different, also write the data into the delta's buffer
-            if (different)
+            const bool firstOverflow = m_overflowRecordBytes.empty();
+            m_overflowRecordBytes.resize_no_construct(newSize);
+            if (firstOverflow && offset > 0)
             {
-                if (!SerializeHelperImpl(value, bufferCapacity, isString, outSize, name))
-                {
-                    return false;
-                }
+                std::memcpy(m_overflowRecordBytes.data(), m_inlineRecordBytes.data(), offset);
             }
-
-            // once we get here, we don't need the record anymore, so discard it while we know what the type is.
-            delete static_cast<ValueType*>(baseValue);
-            m_records[objectPos] = nullptr;
+            if (size > 0)
+            {
+                std::memcpy(m_overflowRecordBytes.data() + offset, buffer, size);
+            }
         }
 
+        m_recordByteSize = newSize;
+        return true;
+    }
+
+    const uint8_t* DeltaSerializerCreate::GetRecordBytes() const
+    {
+        if (m_recordByteSize <= m_inlineRecordBytes.size())
+        {
+            return m_inlineRecordBytes.data();
+        }
+        return m_overflowRecordBytes.data();
+    }
+
+    template <typename T>
+    bool DeltaSerializerCreate::SerializeHelper(T& value, RecordKind kind, WireWidth wireWidth, const char* name)
+    {
+        static_assert(AZStd::is_trivially_copyable_v<T>);
+        static_assert(sizeof(T) <= sizeof(uint64_t));
+
+        if (!IsValid())
+        {
+            return FailCreate();
+        }
+
+        const uint32_t objectPosition = m_objectCounter;
+        ++m_objectCounter;
+        const uint8_t metadata = MakeRecordMetadata(kind, wireWidth, false);
+
+        if (m_gatheringRecords)
+        {
+            if (m_recordCount >= MaxRecordCount)
+            {
+                return FailCreate();
+            }
+
+            uint64_t recordPayload = 0;
+            std::memcpy(&recordPayload, &value, sizeof(T));
+            m_recordPayloads[m_recordCount] = recordPayload;
+            m_recordMetadata[m_recordCount] = metadata;
+            ++m_recordCount;
+            return true;
+        }
+
+        if (objectPosition >= m_recordCount || m_recordMetadata[objectPosition] != metadata)
+        {
+            return FailCreate();
+        }
+
+        T baseValue{};
+        std::memcpy(&baseValue, &m_recordPayloads[objectPosition], sizeof(T));
+        const bool different = std::memcmp(&baseValue, &value, sizeof(T)) != 0;
+        if (!m_delta.InsertDirtyBit(different))
+        {
+            return FailCreate();
+        }
+
+        if (different && !SerializeHelperImpl(value, name))
+        {
+            return FailCreate();
+        }
         return true;
     }
 
     template <typename T>
-    bool DeltaSerializerCreate::SerializeHelperImpl(T& value, uint32_t, bool, uint32_t&, const char* name)
+    bool DeltaSerializerCreate::SerializeHelperImpl(T& value, const char* name)
     {
-        ISerializer& ser = m_dataSerializer; // Use interface since it fills in defaulted type info parameters
-        return ser.Serialize(value, name);
+        ISerializer& serializer = m_dataSerializer;
+        return serializer.Serialize(value, name);
     }
 
-    bool DeltaSerializerCreate::SerializeHelperImpl(uint8_t* buffer, uint32_t bufferCapacity, bool isString, uint32_t& outSize, const char* name)
+    bool DeltaSerializerCreate::SerializeHelperImpl(
+        uint8_t* buffer,
+        uint32_t bufferCapacity,
+        bool isString,
+        uint32_t& outSize,
+        const char* name)
     {
-        ISerializer& ser = m_dataSerializer; // Use interface since it fills in defaulted type info parameters
-        return ser.SerializeBytes(buffer, bufferCapacity, isString, outSize, name);
+        ISerializer& serializer = m_dataSerializer;
+        return serializer.SerializeBytes(buffer, bufferCapacity, isString, outSize, name);
     }
 
     DeltaSerializerApply::DeltaSerializerApply(SerializerDelta& delta)
@@ -284,10 +422,7 @@ namespace AzNetworking
         ;
     }
 
-    DeltaSerializerApply::~DeltaSerializerApply()
-    {
-        ;
-    }
+    DeltaSerializerApply::~DeltaSerializerApply() = default;
 
     SerializerMode DeltaSerializerApply::GetSerializerMode() const
     {
@@ -408,6 +543,7 @@ namespace AzNetworking
         // If we have run out of delta records, something has gone wrong
         if (m_nextDirtyBit >= m_delta.GetNumDirtyBits())
         {
+            Invalidate();
             return false;
         }
 
@@ -421,7 +557,12 @@ namespace AzNetworking
         }
 
         // There is a record, so serialize the value out of the delta
-        return SerializeHelperImpl(value, bufferCapacity, isString, outSize, name);
+        if (!SerializeHelperImpl(value, bufferCapacity, isString, outSize, name))
+        {
+            Invalidate();
+            return false;
+        }
+        return true;
     }
 
     template <typename T>

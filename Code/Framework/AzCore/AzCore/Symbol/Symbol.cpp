@@ -11,7 +11,6 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Script/ScriptContext.h>
 #include <AzCore/Script/lua/lua.h>
-#include <AzCore/Serialization/Internal/ObjectStreamAttributes.h>
 #include <AzCore/Serialization/Json/RegistrationContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Symbol/Internal/SymbolEntry.h>
@@ -21,15 +20,11 @@
 #include <AzCore/Symbol/Internal/SymbolValidation.h>
 #include <AzCore/Symbol/SymbolJsonSerializer.h>
 #include <AzCore/Symbol/SymbolSerializer.h>
+#include <AzCore/std/createdestroy.h>
 #include <AzCore/std/typetraits/is_destructible.h>
 #include <AzCore/std/typetraits/is_trivially_copyable.h>
 
-#include <new>
 #include <type_traits>
-
-#define XXH_INLINE_ALL
-#include <xxhash.h>
-#undef XXH_INLINE_ALL
 
 namespace AZ
 {
@@ -47,7 +42,8 @@ namespace AZ
             {
                 Internal::FailSymbol(Internal::GetSymbolValidationErrorMessage(error));
             }
-            Internal::FailSymbol("AZ::Symbol storage budget or allocation exhausted");
+            const Internal::SymbolStorageStats stats = Internal::GetSymbolStorageStats();
+            Internal::FailSymbolStorage(value.size(), stats.m_usedByteCount, stats.m_limitByteCount);
         }
     }
 
@@ -81,8 +77,7 @@ namespace AZ
         if (auto* serializeContext = azrtti_cast<SerializeContext*>(context))
         {
             serializeContext->Class<Symbol>()
-                ->Serializer<SymbolSerializer>()
-                ->Attribute(ObjectStreamInternal::RejectInvalidSerializerData, true);
+                ->Serializer<SymbolSerializer>();
         }
 
         if (auto* behaviorContext = azrtti_cast<BehaviorContext*>(context))
@@ -93,6 +88,7 @@ namespace AZ
                 ->Attribute(Script::Attributes::Storage, Script::Attributes::StorageType::Value)
                 ->Attribute(Script::Attributes::ConstructorOverride, &Symbol::ScriptConstructor)
                 ->Constructor()
+                ->Constructor<AZStd::string_view>()
                 ->Method("ToString", &Symbol::GetCStr)
                 ->Method("__repr__", &Symbol::GetCStr)
                 ->Method("IsEmpty", &Symbol::IsEmpty)
@@ -141,7 +137,7 @@ namespace AZ
     {
         if (dataContext.GetNumArguments() == 0)
         {
-            ::new (thisPtr) Symbol{};
+            AZStd::construct_at(thisPtr);
             return;
         }
 
@@ -154,12 +150,38 @@ namespace AZ
                 &valueLength);
             if (value)
             {
-                const AZStd::optional<Symbol> symbol = TryCreate(AZStd::string_view{value, valueLength});
-                if (symbol)
+                const AZStd::string_view valueView{value, valueLength};
+                const Internal::SymbolValidationError validationError =
+                    Internal::ValidateSymbolValue(valueView, MaxStringSize);
+                if (validationError == Internal::SymbolValidationError::None)
                 {
-                    ::new (thisPtr) Symbol{*symbol};
+                    const AZStd::optional<Symbol> symbol = TryCreate(valueView);
+                    if (symbol)
+                    {
+                        AZStd::construct_at(thisPtr, *symbol);
+                        return;
+                    }
+
+                    const Internal::SymbolStorageStats stats = Internal::GetSymbolStorageStats();
+                    dataContext.GetScriptContext()->Error(
+                        ScriptContext::ErrorType::Error,
+                        true,
+                        "Symbol constructor could not allocate permanent storage: requestedValueBytes=%zu "
+                        "usedBytes=%zu limitBytes=%zu",
+                        valueLength,
+                        stats.m_usedByteCount,
+                        stats.m_limitByteCount);
+                    AZStd::construct_at(thisPtr);
                     return;
                 }
+
+                dataContext.GetScriptContext()->Error(
+                    ScriptContext::ErrorType::Error,
+                    true,
+                    "Symbol constructor rejected the value: %s",
+                    Internal::GetSymbolValidationErrorMessage(validationError));
+                AZStd::construct_at(thisPtr);
+                return;
             }
         }
 
@@ -168,7 +190,7 @@ namespace AZ
             true,
             "Symbol constructor expects valid UTF-8 text without U+0000 and no longer than %zu bytes",
             MaxStringSize);
-        ::new (thisPtr) Symbol{};
+        AZStd::construct_at(thisPtr);
     }
 
     namespace Internal
@@ -189,11 +211,11 @@ namespace AZ
                 return {};
             }
 
-            const u64 hash = XXH3_64bits(value.data(), value.size());
-            const SymbolEntry* entry = SymbolTable::Instance().TryIntern(value, hash);
+            const SymbolEntry* entry = SymbolTable::Instance().InternValidated(value);
             if (!entry)
             {
-                FailSymbol("AZ::Symbol storage budget or allocation exhausted");
+                const SymbolStorageStats stats = GetSymbolStorageStats();
+                FailSymbolStorage(value.size(), stats.m_usedByteCount, stats.m_limitByteCount);
             }
             return SymbolAccess::FromEntry(entry);
         }
@@ -202,30 +224,13 @@ namespace AZ
             Symbol& result,
             const AZStd::string_view value)
         {
-            if (value.size() > Symbol::MaxStringSize)
-            {
-                return false;
-            }
             if (value.empty())
             {
                 result = {};
                 return true;
             }
 
-            const u64 hash = XXH3_64bits(value.data(), value.size());
-            SymbolTable& table = SymbolTable::Instance();
-            if (const SymbolEntry* entry = table.Find(value, hash))
-            {
-                result = SymbolAccess::FromEntry(entry);
-                return true;
-            }
-
-            if (ValidateSymbolValue(value, Symbol::MaxStringSize) != SymbolValidationError::None)
-            {
-                return false;
-            }
-
-            const SymbolEntry* entry = table.TryIntern(value, hash);
+            const SymbolEntry* entry = SymbolTable::Instance().TryIntern(value);
             if (!entry)
             {
                 return false;
@@ -238,18 +243,13 @@ namespace AZ
             Symbol& result,
             const AZStd::string_view value)
         {
-            if (value.size() > Symbol::MaxStringSize)
-            {
-                return false;
-            }
             if (value.empty())
             {
                 result = {};
                 return true;
             }
 
-            const u64 hash = XXH3_64bits(value.data(), value.size());
-            const SymbolEntry* entry = SymbolTable::Instance().Find(value, hash);
+            const SymbolEntry* entry = SymbolTable::Instance().Find(value);
             if (!entry)
             {
                 return false;

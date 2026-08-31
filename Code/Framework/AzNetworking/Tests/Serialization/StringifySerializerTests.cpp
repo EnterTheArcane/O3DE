@@ -8,6 +8,7 @@
 
 #include <AzNetworking/Serialization/StringifySerializer.h>
 #include <AzCore/UnitTest/TestTypes.h>
+#include <AzCore/std/string/string.h>
 
 namespace UnitTest
 {
@@ -98,5 +99,36 @@ namespace UnitTest
         AZ_TEST_START_TRACE_SUPPRESSION;
         stringifySerializer.Serialize(boolValue, "Bool");
         AZ_TEST_STOP_TRACE_SUPPRESSION(1);
+    }
+
+    TEST_F(StringifySerializerTests, StringBytesPreserveExplicitLengthAndEmbeddedNulls)
+    {
+        AzNetworking::StringifySerializer stringifySerializer;
+        AZStd::string value{"prefix\0suffix", 13};
+        uint32_t valueSize = aznumeric_cast<uint32_t>(value.size());
+
+        ASSERT_TRUE(stringifySerializer.SerializeBytes(
+            reinterpret_cast<uint8_t*>(value.data()), valueSize, true, valueSize, "Value"));
+
+        const AzNetworking::StringifySerializer::ValueMap& valueMap = stringifySerializer.GetValueMap();
+        const auto valueIterator = valueMap.find("Value");
+        ASSERT_NE(valueIterator, valueMap.end());
+        EXPECT_EQ(valueIterator->second.size(), value.size());
+        EXPECT_EQ(valueIterator->second, value);
+    }
+
+    TEST_F(StringifySerializerTests, StringBytesAreNotTruncatedAtTheOldFixedStringLimit)
+    {
+        AzNetworking::StringifySerializer stringifySerializer;
+        AZStd::string value(1023, 's');
+        uint32_t valueSize = aznumeric_cast<uint32_t>(value.size());
+
+        ASSERT_TRUE(stringifySerializer.SerializeBytes(
+            reinterpret_cast<uint8_t*>(value.data()), valueSize, true, valueSize, "MaximumSymbol"));
+
+        const AzNetworking::StringifySerializer::ValueMap& valueMap = stringifySerializer.GetValueMap();
+        const auto valueIterator = valueMap.find("MaximumSymbol");
+        ASSERT_NE(valueIterator, valueMap.end());
+        EXPECT_EQ(valueIterator->second, value);
     }
 } // namespace UnitTest

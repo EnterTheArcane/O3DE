@@ -17,7 +17,10 @@
 
 namespace AZ::Internal
 {
-    //! Internal implementation surface exported for AzCore-owned collision, allocation, and budget qualification.
+    class SymbolTableTestAccess;
+    struct SymbolStorageStats;
+
+    //! Process-local concurrent canonical string table. Hashes and the hash secret are implementation details.
     class AZCORE_API SymbolTable final
     {
     public:
@@ -33,14 +36,19 @@ namespace AZ::Internal
         [[nodiscard]]
         static SymbolTable& Instance();
 
+        //! Interns a value already checked by ValidateSymbolValue. Returns null only on storage failure.
         [[nodiscard]]
-        const SymbolEntry* Intern(AZStd::string_view value, u64 hash);
+        const SymbolEntry* InternValidated(AZStd::string_view value);
+
+        //! Returns an existing entry before validation, or validates and attempts to intern a miss.
+        [[nodiscard]]
+        const SymbolEntry* TryIntern(AZStd::string_view value);
 
         [[nodiscard]]
-        const SymbolEntry* TryIntern(AZStd::string_view value, u64 hash);
+        const SymbolEntry* Find(AZStd::string_view value);
 
         [[nodiscard]]
-        const SymbolEntry* Find(AZStd::string_view value, u64 hash);
+        SymbolStorageStats GetStorageStats() const;
 
         [[nodiscard]]
         size_t GetStorageBytes() const
@@ -49,6 +57,22 @@ namespace AZ::Internal
         }
 
     private:
+        friend class SymbolTableTestAccess;
+
+        struct HashParts final
+        {
+            u8 m_h2;
+            size_t m_shardIndex;
+            u64 m_placement;
+        };
+
+        struct TableStorage final
+        {
+            u8* m_controls = nullptr;
+            const SymbolEntry** m_slots = nullptr;
+            size_t m_capacity = 0;
+        };
+
         struct ProbeResult final
         {
             const SymbolEntry* m_entry = nullptr;
@@ -63,27 +87,42 @@ namespace AZ::Internal
 
             Shard() = default;
 
-            AZStd::mutex m_mutex;
+            mutable AZStd::mutex m_mutex;
             SymbolArena m_arena;
-
-            u8* m_controls = nullptr;
-            const SymbolEntry** m_slots = nullptr;
-            size_t m_capacity = 0;
+            TableStorage m_table;
             size_t m_size = 0;
         };
 
-        [[nodiscard]]
-        static u64 MixHash(u64 hash);
+        using RandomFillFunction = bool (*)(void*, size_t);
 
         [[nodiscard]]
-        static u8 Fingerprint(u64 mixedHash);
+        u64 HashValue(AZStd::string_view value) const;
+
+        [[nodiscard]]
+        static HashParts SplitHash(u64 tableHash);
 
         [[nodiscard]]
         static ProbeResult Probe(
-            const Shard& shard,
+            const TableStorage& table,
             AZStd::string_view value,
-            u64 hash,
-            u64 mixedHash);
+            u64 tableHash);
+
+        [[nodiscard]]
+        const SymbolEntry* TryInternWithTableHash(
+            AZStd::string_view value,
+            u64 tableHash);
+
+        [[nodiscard]]
+        const SymbolEntry* FindWithTableHash(
+            AZStd::string_view value,
+            u64 tableHash);
+
+        [[nodiscard]]
+        bool AllocateTableStorage(
+            size_t capacity,
+            TableStorage& table);
+
+        void ReleaseTableStorage(TableStorage& table);
 
         [[nodiscard]]
         bool InitializeShard(Shard& shard);
@@ -92,12 +131,26 @@ namespace AZ::Internal
         bool Resize(Shard& shard);
 
         static void InsertExisting(
-            Shard& shard,
+            TableStorage& table,
             const SymbolEntry* entry);
+
+        [[nodiscard]]
+        static bool CalculateTableStorageByteSize(
+            size_t capacity,
+            size_t& storageByteSize);
+
+        static void InitializeHashSecret(
+            u8* hashSecret,
+            RandomFillFunction randomFill);
+
+        [[nodiscard]]
+        static const u8* GetProcessHashSecret();
 
         static constexpr size_t ShardCount = 32;
         static constexpr size_t ShardIndexBitCount = 5;
-        static constexpr size_t ShardIndexShift = 64 - ShardIndexBitCount;
+        static constexpr size_t FingerprintBitCount = 7;
+        static constexpr size_t PlacementBitCount = 64 - ShardIndexBitCount - FingerprintBitCount;
+        static constexpr size_t HashSecretByteCount = 192;
         static constexpr size_t InitialCapacity = 16;
 
         static_assert(ShardCount == (size_t{1} << ShardIndexBitCount));
@@ -106,5 +159,7 @@ namespace AZ::Internal
         SymbolAllocator m_allocator;
         SymbolStorageBudget m_storageBudget;
         AZStd::array<Shard, ShardCount> m_shards;
+        AZStd::array<u8, HashSecretByteCount> m_fixedHashSecretForTest{};
+        const u8* m_hashSecret = nullptr;
     };
 } // namespace AZ::Internal

@@ -17,14 +17,10 @@
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Symbol/Symbol.h>
+#include <AzCore/Symbol/SymbolLiteral.h>
 #include <Tests/DLLTestVirtualClass.h>
 
 #include "ModuleTestBus.h"
-
-namespace
-{
-    const AZ::Symbol CrossModuleStaticSymbol{"CrossModuleSymbol"};
-}
 
 class ReflectedClass
 {
@@ -96,7 +92,8 @@ extern "C" AZ_DLL_EXPORT void DoTests()
 
 extern "C" AZ_DLL_EXPORT const char* GetCrossModuleSymbolValue()
 {
-    return CrossModuleStaticSymbol.GetCStr();
+    using namespace AZ::Literals;
+    return "CrossModuleSymbol"_sym.GetCStr();
 }
 
 

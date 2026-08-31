@@ -7,6 +7,7 @@
  */
 
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/std/containers/vector.h>
 
 
 namespace AZ::Internal
@@ -16,18 +17,15 @@ namespace AZ::Internal
         size_t totalArguments = GetNumArguments();
         if (arguments.size() < totalArguments)
         {
-            // We are cloning all arguments on the stack, since Call is called only from Invoke we can reserve bigger "arguments" array
-            // that can always handle all parameters. So far the don't use default values that ofter, so we will optimize for the common case first.
-            AZStd::span<BehaviorArgument> newArguments(reinterpret_cast<BehaviorArgument*>(alloca(sizeof(BehaviorArgument) * totalArguments)), totalArguments);
-            // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
-            size_t argIndex = 0;
-            for (; argIndex < arguments.size(); ++argIndex)
+            // Default arguments are uncommon. Keep their owning storage off the normal call path and recurse once with a complete span.
+            AZStd::vector<BehaviorArgument> newArguments;
+            newArguments.reserve(totalArguments);
+            for (const BehaviorArgument& argument : arguments)
             {
-                new(&newArguments[argIndex]) BehaviorArgument(arguments[argIndex]);
+                newArguments.emplace_back(argument);
             }
 
-            // clone the default parameters if they exist
-            for (; argIndex < totalArguments; ++argIndex)
+            for (size_t argIndex = arguments.size(); argIndex < totalArguments; ++argIndex)
             {
                 BehaviorDefaultValuePtr defaultValue = GetDefaultValue(argIndex);
                 if (!defaultValue)
@@ -35,10 +33,10 @@ namespace AZ::Internal
                     AZ_Warning("Behavior", false, "Not enough arguments to make a call! %d needed %d", arguments.size(), totalArguments);
                     return false;
                 }
-                new(&newArguments[argIndex]) BehaviorArgument(defaultValue->GetValue());
+                newArguments.emplace_back(defaultValue->GetValue());
             }
 
-            arguments = newArguments;
+            return Call(newArguments, result);
         }
 
         auto memberArgument = IsMember() ? GetArgument(0) : nullptr;
@@ -83,29 +81,27 @@ namespace AZ::Internal
         size_t totalArguments = GetNumArguments();
         if (arguments.size() < totalArguments)
         {
-            // Clone the arguments on the stack and validate that the method can be invoked with the arguments
-            AZStd::span<BehaviorArgument> newArguments(reinterpret_cast<BehaviorArgument*>(alloca(sizeof(BehaviorArgument) * totalArguments)), totalArguments);
-            // clone the input parameters (we don't need to clone temp buffers, etc. as they will be still on the stack)
-            size_t argIndex = 0;
-            for (; argIndex < arguments.size(); ++argIndex)
+            // Default arguments are uncommon. Keep their owning storage off the normal validation path and recurse once with a complete span.
+            AZStd::vector<BehaviorArgument> newArguments;
+            newArguments.reserve(totalArguments);
+            for (const BehaviorArgument& argument : arguments)
             {
-                new(&newArguments[argIndex]) BehaviorArgument(arguments[argIndex]);
+                newArguments.emplace_back(argument);
             }
 
-            // clone the default parameters if they exist
-            for (; argIndex < totalArguments; ++argIndex)
+            for (size_t argIndex = arguments.size(); argIndex < totalArguments; ++argIndex)
             {
                 BehaviorDefaultValuePtr defaultValue = GetDefaultValue(argIndex);
                 if (!defaultValue)
                 {
                     return ResultOutcome{ AZStd::unexpect, ResultOutcome::ErrorType::format(
                         "Not enough arguments to make call to method %s. %zu supplied, needed %zu",
-                        m_name.c_str(), arguments.size(), newArguments.size()) };
+                        m_name.c_str(), arguments.size(), totalArguments) };
                 }
-                new(&newArguments[argIndex]) BehaviorArgument(defaultValue->GetValue());
+                newArguments.emplace_back(defaultValue->GetValue());
             }
 
-            arguments = newArguments;
+            return IsCallable(newArguments, result);
         }
         else if (arguments.size() > totalArguments)
         {

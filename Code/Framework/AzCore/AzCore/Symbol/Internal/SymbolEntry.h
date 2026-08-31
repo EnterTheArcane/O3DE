@@ -20,7 +20,8 @@ namespace AZ::Internal
             return reinterpret_cast<const char*>(this + 1);
         }
 
-        u64 m_hash;
+        //! Hash in the process-local SymbolTable domain. It is neither stable nor serialized.
+        u64 m_tableHash;
         u32 m_size;
     };
 } // namespace AZ::Internal

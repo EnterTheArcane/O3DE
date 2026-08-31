@@ -10,7 +10,6 @@
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/Memory.h>
-#include <AzCore/std/typetraits/aligned_storage.h>
 
 namespace AZ
 {
@@ -58,8 +57,10 @@ namespace AZ
         // Up this value to 18 KiB to be safe
         static constexpr size_t hpAllocatorStructureSize = 18 * 1024;
 
-        HpAllocator*        m_allocator;
-        AZStd::aligned_storage_t<hpAllocatorStructureSize, 16> m_hpAllocatorBuffer;    ///< Memory buffer for HpAllocator
+        HpAllocator* m_allocator;
+        // HpAllocator has a platform-dependent alignment greater than 16 on some platforms. Its constructor aligns the
+        // placement address within this buffer while retaining the existing HphaSchemaBase size and alignment.
+        alignas(16) unsigned char m_hpAllocatorBuffer[hpAllocatorStructureSize];
     };
 
     // Template is externed here and explicitly instantiated in the cpp file

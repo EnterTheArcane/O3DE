@@ -13,19 +13,31 @@ namespace AzNetworking
     template <typename TYPE>
     bool DeltaSerializerCreate::CreateDelta(TYPE& base, TYPE& current)
     {
+        if (m_hasCreatedDelta)
+        {
+            return FailCreate();
+        }
+        m_hasCreatedDelta = true;
+        m_delta.Reset();
+        ClearRecordState();
+
         // Gather value records from the base object
         m_gatheringRecords = true;
-        if (!base.Serialize(*this))
+        if (!base.Serialize(*this) || !IsValid())
         {
-            return false;
+            return FailCreate();
         }
 
         m_objectCounter = 0;
         // Compile deltas from the new object
         m_gatheringRecords = false;
-        if (!current.Serialize(*this))
+        if (!current.Serialize(*this)
+            || !IsValid()
+            || !m_dataSerializer.IsValid()
+            || m_objectCounter != m_recordCount
+            || m_delta.GetNumDirtyBits() != m_recordCount)
         {
-            return false;
+            return FailCreate();
         }
 
         // Update the delta buffer size based on how much data was serialized
@@ -36,6 +48,22 @@ namespace AzNetworking
     template <typename TYPE>
     bool DeltaSerializerApply::ApplyDelta(TYPE& output)
     {
-        return output.Serialize(*this);
+        if (m_hasAppliedDelta)
+        {
+            Invalidate();
+            return false;
+        }
+        m_hasAppliedDelta = true;
+
+        if (!output.Serialize(*this)
+            || !IsValid()
+            || !m_dataSerializer.IsValid()
+            || m_nextDirtyBit != m_delta.GetNumDirtyBits()
+            || m_dataSerializer.GetReadSize() != m_delta.GetBufferSize())
+        {
+            Invalidate();
+            return false;
+        }
+        return true;
     }
 }
