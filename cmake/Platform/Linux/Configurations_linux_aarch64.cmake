@@ -10,6 +10,13 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 
     include(cmake/Platform/Common/Clang/Configurations_clang.cmake)
 
+    # The MemorySanitizer runtime is supplied by the executable rather than
+    # linked into shared libraries. Requiring every shared-library reference to
+    # resolve while that library is linked therefore rejects valid MSan builds.
+    if(NOT "memory" IN_LIST ly_clang_sanitizer_list)
+        set(ly_linux_no_undefined_link_option -Wl,--no-undefined)
+    endif()
+
     ly_append_configurations_options(
         DEFINES
             LINUX
@@ -20,7 +27,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
             -ffp-contract=off
 
         LINK_NON_STATIC
-            -Wl,--no-undefined
+            ${ly_linux_no_undefined_link_option}
             -fpie
             -Wl,-z,relro,-z,now
             -Wl,-z,noexecstack

@@ -1559,7 +1559,11 @@ namespace Benchmark
         double pi = 0.0;
         for (AZ::u32 i = 0; i < depth; ++i)
         {
-            const double numerator = i % 2 == 0 ? -1.0 : 1.0;
+            double numerator = 1.0;
+            if (i % 2 == 0)
+            {
+                numerator = -1.0;
+            }
             const double denominator = static_cast<double>(i) * 2.0 - 1.0;
             pi += numerator / denominator;
         }

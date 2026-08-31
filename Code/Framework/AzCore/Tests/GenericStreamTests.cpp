@@ -42,7 +42,12 @@ public:
         // We flip the pattern ordering to ensure that our buffer copies don't keep copying the first set of bytes.
         for (size_t offset = 0; offset < numBytes; offset++)
         {
-            inBuffer[offset] = static_cast<AZ::u8>((offset >> 8) & 0x01 ? ~(offset & 0xFF) : (offset & 0xFF));
+            size_t byteValue = offset & 0xFF;
+            if (((offset >> 8) & 0x01) != 0)
+            {
+                byteValue = ~byteValue;
+            }
+            inBuffer[offset] = static_cast<AZ::u8>(byteValue);
         }
     }
 

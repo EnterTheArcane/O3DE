@@ -269,6 +269,7 @@ set(FILES
     TickBusTest.cpp
     Time/TimeTests.cpp
     UUIDTests.cpp
+    VersionTests.cpp
     XML.cpp
 )
 

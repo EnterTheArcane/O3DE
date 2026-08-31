@@ -283,9 +283,15 @@ namespace AZ
         AZStd::scoped_lock<AZStd::mutex> lock(GetDefaultGlobalContextMutex());
         if (!initialized.load(AZStd::memory_order_relaxed))
         {
-            EnvironmentVariable<Context> context = createIfMissing
-                ? Environment::CreateVariable<Context>(GetVariableId())
-                : Environment::FindVariable<Context>(GetVariableId());
+            EnvironmentVariable<Context> context;
+            if (createIfMissing)
+            {
+                context = Environment::CreateVariable<Context>(GetVariableId());
+            }
+            else
+            {
+                context = Environment::FindVariable<Context>(GetVariableId());
+            }
             if (context)
             {
                 s_defaultGlobalContext = AZStd::move(context);

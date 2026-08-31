@@ -1,0 +1,9 @@
+prefix=/opt/msan
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libunwind
+Description: LLVM unwinder instrumented with MemorySanitizer
+Version: 23.1.0
+Libs: -L${libdir} -lunwind
+Cflags: -I${includedir}

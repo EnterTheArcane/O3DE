@@ -2342,7 +2342,7 @@ LUA_API const Node* lua_getDummyNode()
                     // we need value to pointer be pointer to a pointer
                     constexpr size_t pointerAlignment = alignof(void*);
                     constexpr size_t pointerOffset = (sizeof(T) + pointerAlignment - 1) & ~(pointerAlignment - 1);
-                    constexpr size_t storageAlignment = alignof(T) > pointerAlignment ? alignof(T) : pointerAlignment;
+                    constexpr size_t storageAlignment = AZStd::max(alignof(T), pointerAlignment);
                     void* valueAddress = tempAllocator.allocate(pointerOffset + sizeof(void*), storageAlignment, 0);
                     void* valueAddressPtr = reinterpret_cast<AZ::u8*>(valueAddress) + pointerOffset;
                     *reinterpret_cast<void**>(valueAddressPtr) = valueAddress;

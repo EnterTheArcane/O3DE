@@ -40,10 +40,32 @@ Recommended AzCore audit combinations are:
 | Address, leak, and strict UB verification | `address,undefined,local-bounds,vptr` | Debug, Profile |
 | Data races | `thread` | Profile |
 | Experimental strict-aliasing checks | `type` | Profile |
+| Uninitialized reads on supported Linux targets | `memory` | Debug, Profile |
 
 Address, Thread, and Memory Sanitizer cannot be combined with each other. TypeSanitizer must
 be used alone. MemorySanitizer has no Darwin runtime; use a fully instrumented Linux build for
 that pass.
+
+## Linux MemorySanitizer container
+
+The reproducible Linux pass is documented in
+[Docker/azcore-sanitizers/README.md](../../../../Docker/azcore-sanitizers/README.md). The image
+uses Ubuntu 24.04 LTS, Clang 23, an MSan-instrumented LLVM 23.1.0 libc++/libc++abi runtime,
+and an instrumented build of AzCore's Lua dependency. It deliberately uses separate Linux
+build and third-party cache directories and a minimal source overlay containing AzCore,
+AzTest, and AzTestRunner.
+
+Run MSan with origin tracking and use-after-destruction poisoning. The container supplies
+these defaults and places the matching symbolizer in `PATH`:
+
+```sh
+MSAN_OPTIONS=halt_on_error=1:exit_code=86:poison_in_dtor=1:symbolize=1
+MSAN_SYMBOLIZER_PATH=/usr/lib/llvm-23/bin/llvm-symbolizer
+```
+
+MSan requires initialization-flow dependencies to be instrumented. Do not substitute the
+host C++ runtime or O3DE's prebuilt Lua library in this pass. Reports that cross another
+uninstrumented system or third-party boundary require source review before an AzCore change.
 
 ## Runtime configuration
 
@@ -100,7 +122,7 @@ benchmark pass can be run directly:
 ```sh
 build/mac-clang-ubsan/bin/profile/AzTestRunner \
     build/mac-clang-ubsan/bin/profile/libAzCore.Tests.dylib AzRunBenchmarks \
-    --benchmark_min_time=0.001s --benchmark_repetitions=1
+    --benchmark_min_time=0.001 --benchmark_repetitions=1
 ```
 
 Run each disabled test in isolation with a timeout, an exact GoogleTest filter, and

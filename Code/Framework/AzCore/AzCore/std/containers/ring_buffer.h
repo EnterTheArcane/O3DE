@@ -836,12 +836,20 @@ namespace AZStd
         AZ_FORCE_INLINE pointer add(pointer p, difference_type n) const
         {
             const difference_type bufferSize = m_end - m_buff;
-            return n < m_end - p ? p + n : p + (n - bufferSize);
+            if (n < m_end - p)
+            {
+                return p + n;
+            }
+            return p + (n - bufferSize);
         }
         AZ_FORCE_INLINE pointer sub(pointer p, difference_type n) const
         {
             const difference_type bufferSize = m_end - m_buff;
-            return n > p - m_buff ? p + (bufferSize - n) : p - n;
+            if (n > p - m_buff)
+            {
+                return p + (bufferSize - n);
+            }
+            return p - n;
         }
         /// Map the null pointer to virtual end of circular buffer.
         AZ_FORCE_INLINE pointer map_pointer(pointer p) const { return p == 0 ? m_last : p; }

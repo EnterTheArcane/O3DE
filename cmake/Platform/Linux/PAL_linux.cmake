@@ -10,7 +10,22 @@ ly_set(PAL_EXECUTABLE_APPLICATION_FLAG)
 ly_set(PAL_LINKOPTION_MODULE MODULE)
 
 ly_set(PAL_TRAIT_BUILD_HOST_GUI_TOOLS FALSE)
-ly_set(PAL_TRAIT_BUILD_HOST_TOOLS TRUE)
+
+# MemorySanitizer requires every library in the process to be instrumented. The
+# Linux host tools depend on prebuilt GUI libraries, so keep memory-sanitized
+# builds focused on the engine/runtime and test targets that can be instrumented
+# from source. This also keeps the AzCore MSan pass independent of host tooling.
+set(ly_linux_sanitizer_list "${LY_CLANG_SANITIZERS}")
+string(REPLACE "," ";" ly_linux_sanitizer_list "${ly_linux_sanitizer_list}")
+if(ly_linux_sanitizer_list)
+    list(TRANSFORM ly_linux_sanitizer_list STRIP)
+endif()
+if("memory" IN_LIST ly_linux_sanitizer_list)
+    ly_set(PAL_TRAIT_BUILD_HOST_TOOLS FALSE)
+    message(STATUS "Linux host tools disabled for MemorySanitizer instrumentation")
+else()
+    ly_set(PAL_TRAIT_BUILD_HOST_TOOLS TRUE)
+endif()
 ly_set(PAL_TRAIT_BUILD_SERVER_SUPPORTED TRUE)
 ly_set(PAL_TRAIT_BUILD_UNIFIED_SUPPORTED TRUE)
 ly_set(PAL_TRAIT_BUILD_UNITY_SUPPORTED TRUE)

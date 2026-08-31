@@ -13,17 +13,69 @@ sanitizer ignorelist was checked in.
 | Defined-risk checks | Profile main, sandbox, and benchmarks | Intentional modular arithmetic classified separately; no unexplained source-confirmed finding |
 | ASan/LSan plus strict UBSan | Debug and Profile main, sandbox, and benchmarks | No AzCore report after isolating intentional allocator death tests |
 | TSan | Profile main and sandbox three times; benchmark coverage once | No AzCore report |
-| TySan | Profile main, sandbox, and benchmarks | One source-reviewed aggregate/member-construction report in `ConsoleDataWrapper<bool>`; retained as an experimental-tool limitation rather than suppressing or changing valid object construction |
+| TySan | Profile main, sandbox, and benchmarks | Advisory only: source review found an aggregate/member-construction false positive in `ConsoleDataWrapper<bool>` and allocator-storage-reuse reports when HPHA reused list-node storage; neither was corroborated by UBSan, ASan, MSan, or TSan |
 | Initialization stress | Separate pattern- and zero-initialized Profile main and sandbox runs | No outcome divergence |
 
-The Profile main suite executed 11,475 tests: 11,474 passed and the existing
-`MATH_IntersectSegmentTriangleTest/RayTriangleTests.RegressionTestForSpecificSegmentsAndTriangles/2`
-assertion failed in both sanitized and unsanitized builds. Debug had the same 24 existing
-math/ray assertion failures before and after remediation. Sandbox passed 3/3. These ordinary
-test results are not sanitizer findings.
+The final Profile main suite passed 11,477/11,477 under strict UBSan and TSan. The ASan/LSan
+process passed 11,470/11,470 after seven allocator/death tests that deliberately fault were
+isolated from the shared run. Debug passed 11,454 tests and retained the same 24 existing
+math/ray assertion failures before and after remediation. Sandbox passed 3/3 in every final
+gate. These ordinary test results are not sanitizer findings.
 
 The shortened full benchmark suite exercised 1,331 registered benchmarks. Dynamic tools only
 establish cleanliness for executed paths.
+
+The defined-risk pass completed the full Profile main suite and attributed five reports to
+LLVM libc++ 23 internals: four integral `from_chars` conversions and one unsigned negation in
+`bitset`. Focused AzCore source and benchmark reruns were clean. TySan's recovery run also
+eventually crashed after flooding on valid HPHA storage reuse; because TySan is experimental
+and documents aggregate/union limitations, these reports remain tool limitations rather than
+source-confirmed AzCore findings.
+
+## Linux MemorySanitizer follow-up
+
+The Linux uninitialized-read pass uses the native arm64 Docker image in
+[`Docker/azcore-sanitizers`](../../../../Docker/azcore-sanitizers). Ubuntu 24.04 LTS was
+selected over the newer Ubuntu 26.04 LTS because it matches O3DE's Noble dependency set and
+apt.llvm.org provides an explicitly versioned Clang 23 archive for Noble. This keeps the
+historical Clang 23 audit pinned instead of depending on a moving default compiler package.
+
+The image source-builds LLVM 23.1.0's libc++, libc++abi, and libunwind with the upstream
+`MemoryWithOrigins` configuration. AzCore's statically linked Lua 5.4.4 dependency is also
+built from source under MSan using O3DE's existing patch. The executable and every AzCore,
+AzTest, and AzTestRunner translation unit are instrumented with origin tracking level 2;
+`poison_in_dtor=1` keeps use-after-destruction checks enabled. A minimal source overlay avoids
+loading unrelated prebuilt engine and GUI libraries into the process.
+
+Source-confirmed MSan findings covered:
+
+- uninitialized allocator bookkeeping, metrics arguments, version parsing, serialization test
+  data, and failed-stream output buffers;
+- missing exact allocation sizes while freeing pool pages, task-worker arrays, and erased
+  `GenericClassInfo` implementations;
+- a partially initialized ignored NEON lane; every bit of that lane is now made true before
+  reduction. The MSan branch leaves this data flow barrier-free so shadow propagation proves
+  the result, while unsanitized builds use zero-byte value barriers to retain the original
+  two-instruction hot path;
+- formatted trace-buffer termination and a fortified-glibc interceptor boundary;
+- assembly-written unwind contexts and uninstrumented system-libunwind procedure lookup.
+
+The final unwind handling checks every libunwind result, unpoisons only the context populated
+by assembly, and narrows disabled MSan interceptor checks to the external procedure-name call.
+No MSan ignorelist or `no_sanitize` function annotation is used. LLVM's source-built
+instrumented libunwind remains advisory on glibc because `_dl_find_object` itself writes
+outside MSan instrumentation.
+
+The final Profile audit selected 11,479 main tests across four isolated GoogleTest shards.
+Shards 0 and 1 passed 2,870/2,870; shard 2 passed 2,862 with eight assertion-capture/order
+failures; shard 3 passed 2,868 with one such failure. All nine shard-order failures passed
+9/9 when replayed unsharded, and no shard contained an MSan report. Sandbox passed 3/3.
+The shortened Linux benchmark registry exercised 1,194 results with no MSan report. Of 21
+disabled tests run in isolated processes, seven passed, 13 produced their ordinary expected
+assertion result, and the intentionally heavy AssetContainer stress case reached its
+180-second timeout; none reported uninitialized memory. After the last NEON code-generation
+adjustment, the exact 45-test Vector3 filter and its two affected benchmarks were rebuilt and
+rerun clean under strict MSan.
 
 ## Static results
 
@@ -66,10 +118,10 @@ non-unity layout. Final `libAzCore.dylib` section sizes were:
 
 | Section | Baseline | Final | Delta |
 |---|---:|---:|---:|
-| `__TEXT` | 13,156,352 | 13,385,728 | +229,376 (+1.74%) |
-| `__text` | 11,102,244 | 11,336,996 | +234,752 (+2.11%) |
+| `__TEXT` | 13,156,352 | 13,352,960 | +196,608 (+1.49%) |
+| `__text` | 11,102,244 | 11,307,876 | +205,632 (+1.85%) |
 | `__data` | 511,244 | 391,724 | -119,520 (-23.38%) |
-| `__bss` | 92,720 | 92,736 | +16 (+0.02%) |
+| `__bss` | 92,720 | 92,864 | +144 (+0.16%) |
 
 Most text growth is in cold, thread-safe initialization paths made explicit by the audit.
 Normalized Clang 23 arm64 assembly for endian conversion, hash combination, and the changed
@@ -97,6 +149,46 @@ Focused benchmarks were added for job-cancellation traversal and unsigned divide
 The EBus default-context fix uses an inline acquire-load fast path and moves locking and
 initialization to a cold path; this removed the initial benchmark regression.
 
+The Linux-MSan remediation and subsequent branch-wide conditional-operator cleanup were also
+compared against a separately preserved, clean Clang 23 Profile artifact from immediately
+before that follow-up:
+
+| Section | Follow-up baseline | Final | Delta |
+|---|---:|---:|---:|
+| `__TEXT` | 13,385,728 | 13,352,960 | -32,768 (-0.24%) |
+| `__text` | 11,336,996 | 11,307,876 | -29,120 (-0.26%) |
+| `__data` | 391,724 | 391,724 | 0 |
+| `__bss` | 92,736 | 92,864 | +128 (+0.14%) |
+
+The final linked `__TEXT` segment is 32 KiB smaller than the follow-up baseline. At
+the MSan-remediation checkpoint, before the explicit-control-flow cleanup, object `__text`
+deltas for the touched follow-up units were: AllocatorManager +12 bytes, PoolAllocator -24,
+TaskExecutor 0, SerializeContext +3,788, Trace +72, Vector4 0,
+SettingsRegistryMergeUtils -256, EventLoggerReflectUtils +12, and StackTracer +36. The dominant
+growth was the cold erased-type size/alignment registry in SerializeContext; sized TaskExecutor
+destruction added four linked bytes on a cold teardown path. The later cleanup preserved the
+`__TEXT` sizes of the directly affected Trace, PoolAllocator, and StackTracer objects while
+branch-wide recompilation of common inline paths reduced the final linked text size.
+
+The NEON first-three-lane fix was reworked twice after measurement rejected longer reductions.
+The accepted all-ones mask plus zero-byte value barriers produces exactly the preserved hot
+loop (`fcmeq`, `orr`, `uminv`, `fmov`, `cmp`, `cset`); normalized baseline/final instructions
+are identical, and `llvm-mca -mcpu=apple-m2` reports the same 1.2-cycle block throughput. The
+30-repetition follow-up benchmark comparison was:
+
+| Focus | Median delta | Mann-Whitney p | Classification |
+|---|---:|---:|---|
+| Vector3 equality | +47.82% | <0.001 | Test-module link-placement artifact: the identical loop moved from within one instruction-cache line to straddling a line |
+| Vector3 less-than | +0.56% | 0.119 | No significant regression; uses the same reducer |
+| JSON trace event | +0.09% | 0.695 | No regression |
+| Slice ID/reference fixup | +2.44% | <0.001 | Significant but below 5% |
+| TaskGraph queue/dequeue | +4.91% | 0.002 | Significant but below 5% |
+
+The equality result is retained in the record because discarding it would hide a real
+measurement. It does not correspond to added production instructions or modeled throughput:
+the final inner loop is instruction-for-instruction identical and the adjacent comparison
+benchmark using the same inline reducer remains stable.
+
 ## Acceptance scope
 
 The final source builds and runs under unsanitized Clang 23 Debug/Profile with unity both off
@@ -105,6 +197,6 @@ and link their compiler-rt runtimes; invalid address/thread/memory combinations,
 and simultaneous legacy/new ASan selectors fail during CMake configuration with actionable
 diagnostics.
 
-MemorySanitizer remains a separate Linux follow-up because Clang 23 does not provide a Darwin
-MSan runtime. See [Sanitizers.md](Sanitizers.md) for the reproducible configuration and runtime
-commands.
+MemorySanitizer cannot run on Darwin with Clang 23, so its acceptance pass uses the separate
+Linux container and instrumented dependencies described above. See
+[Sanitizers.md](Sanitizers.md) for the reproducible configuration and runtime commands.

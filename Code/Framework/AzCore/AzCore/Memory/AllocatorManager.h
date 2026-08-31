@@ -161,7 +161,7 @@ namespace AZ
         bool                m_isAllocatorLeaking;
         bool                m_defaultProfilingState = false;
         MemoryBreak         m_memoryBreak[MaxNumMemoryBreaks];
-        char                m_activeBreaks;
+        char                m_activeBreaks{};
         AZStd::mutex        m_allocatorListMutex;
 
         DumpInfo            m_dumpInfo[m_maxNumAllocators];

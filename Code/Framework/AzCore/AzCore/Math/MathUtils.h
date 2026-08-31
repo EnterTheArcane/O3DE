@@ -563,7 +563,11 @@ namespace AZ
         {
             // Avoid both the overflowing addition in the legacy expression and the longer quotient/remainder
             // dependency chain generated for `value / alignment + (value % alignment != 0)`.
-            return value == 0 ? 0 : static_cast<T>(1 + (value - 1) / alignment);
+            if (value == 0)
+            {
+                return 0;
+            }
+            return static_cast<T>(1 + (value - 1) / alignment);
         }
         else
         {

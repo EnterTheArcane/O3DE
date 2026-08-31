@@ -163,7 +163,11 @@ namespace AZStd
                     // if the difference is not equal to zero, we have a comparison result
                     if (l_int != r_int)
                     {
-                        return l_int < r_int ? -1 : 1;
+                        if (l_int < r_int)
+                        {
+                            return -1;
+                        }
+                        return 1;
                     }
 
                     // otherwise we process the next substring in STRING mode

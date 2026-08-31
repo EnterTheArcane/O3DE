@@ -1,0 +1,18 @@
+{
+    "engine_name": "o3de-azcore-sanitizer",
+    "display_version": "00.00",
+    "version": "2.7.0",
+    "api_versions": {
+        "editor": "1.0.0",
+        "framework": "1.2.1",
+        "launcher": "1.0.0",
+        "tools": "1.1.0"
+    },
+    "file_version": 2,
+    "copyright_year": 2023,
+    "build": 0,
+    "external_subdirectories": [],
+    "gem_names": [],
+    "projects": [],
+    "templates": []
+}

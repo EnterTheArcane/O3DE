@@ -18,7 +18,8 @@ set_property(CACHE LY_CLANG_SANITIZERS PROPERTY STRINGS
     "unsigned-integer-overflow,implicit-conversion,nullability,float-divide-by-zero"
     "address,undefined,local-bounds,vptr"
     "thread"
-    "type")
+    "type"
+    "memory")
 
 set(ly_clang_sanitizer_list "${LY_CLANG_SANITIZERS}")
 string(REPLACE "," ";" ly_clang_sanitizer_list "${ly_clang_sanitizer_list}")
@@ -135,7 +136,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSIO
     add_compile_definitions(O3DE_DISABLE_CONDITIONAL_EXPLICIT=1)
 endif()
 
-if(NOT "address" IN_LIST ly_clang_sanitizer_list)
+# Glibc's fortified *_chk entry points bypass the sanitizer interceptors. In
+# particular, MSan cannot update destination shadow bytes for calls such as
+# __strcat_chk, producing false positives in the next instrumented read.
+if(NOT "address" IN_LIST ly_clang_sanitizer_list AND NOT "memory" IN_LIST ly_clang_sanitizer_list)
     ly_append_configurations_options(
         DEFINES_PROFILE
             _FORTIFY_SOURCE=2

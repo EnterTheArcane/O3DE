@@ -163,11 +163,11 @@ namespace AZ::Metrics
 
             //! Specifies the duration of the event in microseconds
             //! For CompleteEvents only
-            AZStd::chrono::microseconds m_dur;
+            AZStd::chrono::microseconds m_dur{};
 
             //! Specifies the scope of the event
             //! For InstantEvents only
-            InstantEventScope m_scopeKey;
+            InstantEventScope m_scopeKey{ InstantEventScope::Thread };
 
         private:
             //! Arguments used to fill the "args" field for each trace event

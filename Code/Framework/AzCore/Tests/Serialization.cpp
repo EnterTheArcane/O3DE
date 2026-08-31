@@ -1737,7 +1737,7 @@ namespace UnitTest
             AZ_CLASS_ALLOCATOR(ContainersStruct, AZ::SystemAllocator);
             AZStd::vector<int>                  m_vector;
             AZStd::fixed_vector<int, 5>         m_fixedVector;
-            AZStd::array<int, 5>                m_array;
+            AZStd::array<int, 5>                m_array{};
             AZStd::list<int>                    m_list;
             AZStd::forward_list<int>            m_forwardList;
             AZStd::unordered_set<int>           m_unorderedSet;
@@ -2026,8 +2026,7 @@ TEST_F(SerializeBasicTest, BasicTypeTest_Succeed)
                 ContainersStruct* data = reinterpret_cast<ContainersStruct*>(classPtr);
                 EXPECT_EQ( controlData->m_vector, data->m_vector );
                 EXPECT_EQ( controlData->m_fixedVector, data->m_fixedVector );
-                EXPECT_EQ( controlData->m_array[0], data->m_array[0] );
-                EXPECT_EQ( controlData->m_array[1], data->m_array[1] );
+                EXPECT_EQ( controlData->m_array, data->m_array );
                 EXPECT_EQ( controlData->m_list, data->m_list );
                 EXPECT_EQ( controlData->m_forwardList, data->m_forwardList );
                 EXPECT_EQ( controlData->m_unorderedSet.size(), data->m_unorderedSet.size() );

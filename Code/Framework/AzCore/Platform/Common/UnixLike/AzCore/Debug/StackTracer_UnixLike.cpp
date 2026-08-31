@@ -18,10 +18,39 @@
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
 
+#if defined(__has_feature)
+#   if __has_feature(memory_sanitizer)
+#       include <sanitizer/msan_interface.h>
+#       define AZ_UNPOISON_UNWIND_CONTEXT(context) __msan_unpoison(&(context), sizeof(context))
+#       define AZ_DISABLE_UNWIND_INTERCEPTOR_CHECKS() __msan_scoped_disable_interceptor_checks()
+#       define AZ_ENABLE_UNWIND_INTERCEPTOR_CHECKS() __msan_scoped_enable_interceptor_checks()
+#   endif
+#endif
+
+#if !defined(AZ_UNPOISON_UNWIND_CONTEXT)
+#   define AZ_UNPOISON_UNWIND_CONTEXT(context) ((void)0)
+#   define AZ_DISABLE_UNWIND_INTERCEPTOR_CHECKS() ((void)0)
+#   define AZ_ENABLE_UNWIND_INTERCEPTOR_CHECKS() ((void)0)
+#endif
+
 #include <AzCore/std/parallel/mutex.h>
 
 using namespace AZ;
 using namespace AZ::Debug;
+
+namespace
+{
+    int GetProcedureName(unw_cursor_t* cursor, char* name, size_t nameSize, unw_word_t* offset)
+    {
+        // System libunwind is not instrumented. On Linux it calls intercepted
+        // libc functions while using its own untracked stack storage, which
+        // otherwise produces false-positive MSan reports inside libunwind.
+        AZ_DISABLE_UNWIND_INTERCEPTOR_CHECKS();
+        const int result = unw_get_proc_name(cursor, name, nameSize, offset);
+        AZ_ENABLE_UNWIND_INTERCEPTOR_CHECKS();
+        return result;
+    }
+}
 
 AZStd::mutex g_mutex;               /// All dbg help functions are single threaded, so we need to control the access.
 
@@ -51,21 +80,33 @@ StackRecorder::Record(StackFrame* frames, unsigned int maxNumOfFrames, unsigned 
     unw_context_t context;
 
     // Initialize cursor to current frame for local unwinding.
-    unw_getcontext(&context);
-    unw_init_local(&cursor, &context);
-
-    int skip = static_cast<int>((suppressCount == 0) ? 1 : suppressCount); // Skip at least this function
-    while ((unw_step(&cursor) > 0) && (count < maxNumOfFrames))
+    const int getContextResult = unw_getcontext(&context);
+    if (getContextResult == 0)
     {
-        unw_word_t pc;
-        unw_get_reg(&cursor, UNW_REG_IP, &pc);
-        if (pc == 0)
+        // unw_getcontext is implemented in assembly, so MemorySanitizer cannot
+        // observe the register values written to the context.
+        AZ_UNPOISON_UNWIND_CONTEXT(context);
+    }
+
+    if (getContextResult == 0 && unw_init_local(&cursor, &context) == 0)
+    {
+        size_t skipCount = suppressCount;
+        if (skipCount == 0)
         {
-            break;
+            skipCount = 1;
         }
-        else if (--skip < 0)
+        int skip = static_cast<int>(skipCount); // Skip at least this function
+        while ((unw_step(&cursor) > 0) && (count < maxNumOfFrames))
         {
-            frames[count++].m_programCounter = pc;
+            unw_word_t pc{};
+            if (unw_get_reg(&cursor, UNW_REG_IP, &pc) != 0 || pc == 0)
+            {
+                break;
+            }
+            else if (--skip < 0)
+            {
+                frames[count++].m_programCounter = pc;
+            }
         }
     }
 
@@ -94,8 +135,17 @@ SymbolStorage::DecodeFrames(const StackFrame* frames, unsigned int numFrames, St
     g_mutex.lock();
 
     // Initialize cursor to current frame for local unwinding.
-    unw_getcontext(&context);
-    unw_init_local(&cursor, &context);
+    if (unw_getcontext(&context) != 0)
+    {
+        g_mutex.unlock();
+        return;
+    }
+    AZ_UNPOISON_UNWIND_CONTEXT(context);
+    if (unw_init_local(&cursor, &context) != 0)
+    {
+        g_mutex.unlock();
+        return;
+    }
 
     for (unsigned int i = 0; i < numFrames; ++i)
     {
@@ -106,9 +156,9 @@ SymbolStorage::DecodeFrames(const StackFrame* frames, unsigned int numFrames, St
             SymbolStorage::StackLine& textLine = textLines[count++];
             textLine[0] = 0;
 
-            unw_word_t offset;
+            unw_word_t offset{};
             char sym[1024] = { '\0' };
-            if (unw_get_proc_name(&cursor, sym, sizeof(sym), &offset) == 0)
+            if (GetProcedureName(&cursor, sym, sizeof(sym), &offset) == 0)
             {
                 char* nameptr = sym;
                 int status = 0;

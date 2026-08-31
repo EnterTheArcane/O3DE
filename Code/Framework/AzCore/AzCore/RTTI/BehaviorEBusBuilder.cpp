@@ -15,7 +15,11 @@ namespace AZ::Internal
         : Base(context)
         , m_ebus(ebus)
     {
-        Base::m_currentAttributes = ebus ? &ebus->m_attributes : nullptr;
+        Base::m_currentAttributes = nullptr;
+        if (ebus)
+        {
+            Base::m_currentAttributes = &ebus->m_attributes;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////

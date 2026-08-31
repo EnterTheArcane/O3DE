@@ -208,7 +208,7 @@ namespace AZ
             // We store the page struct at the end of the block
             char* memBlock = reinterpret_cast<char*>(page) - m_pageSize + sizeof(Page);
             page->~Page(); // destroy the page
-            m_pageAllocator->DeAllocate(memBlock);
+            m_pageAllocator->deallocate(memBlock, m_pageSize, m_pageSize);
         }
 
         inline Page* PageFromAddress(void* address)
@@ -340,7 +340,7 @@ namespace AZ
             // We store the page struct at the end of the block
             char* memBlock = reinterpret_cast<char*>(page) - m_pageSize + sizeof(Page);
             page->~Page(); // destroy the page
-            m_pageAllocator->deallocate(memBlock);
+            m_pageAllocator->deallocate(memBlock, m_pageSize, m_pageSize);
         }
 
         inline Page* PageFromAddress(void* address) const
@@ -772,9 +772,11 @@ namespace AZ
     auto PoolSchema::NumAllocatedBytes() const -> size_type
     {
         AZ_Assert(m_impl->m_allocator.m_numBytesAllocated >= 0, "Pool allocation byte count cannot be negative");
-        return m_impl->m_allocator.m_numBytesAllocated >= 0
-            ? static_cast<size_type>(m_impl->m_allocator.m_numBytesAllocated)
-            : 0;
+        if (m_impl->m_allocator.m_numBytesAllocated < 0)
+        {
+            return 0;
+        }
+        return static_cast<size_type>(m_impl->m_allocator.m_numBytesAllocated);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -1012,7 +1014,11 @@ namespace AZ
             }
         }
         AZ_Assert(bytesAllocated >= 0, "Thread-pool aggregate allocation byte count cannot be negative");
-        return bytesAllocated >= 0 ? static_cast<size_type>(bytesAllocated) : 0;
+        if (bytesAllocated < 0)
+        {
+            return 0;
+        }
+        return static_cast<size_type>(bytesAllocated);
     }
 
     //=========================================================================

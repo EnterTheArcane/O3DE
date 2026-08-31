@@ -508,7 +508,11 @@ namespace AZ
     static size_t GetPrevIndexWrapped(size_t index, size_t backwardStep, size_t size)
     {
         AZ_MATH_ASSERT(backwardStep < size, "Do not attempt to step back by the size or more");
-        return index >= backwardStep ? index - backwardStep : size - (backwardStep - index);
+        if (index >= backwardStep)
+        {
+            return index - backwardStep;
+        }
+        return size - (backwardStep - index);
     }
 
     /**

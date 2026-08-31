@@ -84,20 +84,28 @@ namespace AZ
 
             Version<N> result;
             std::istringstream iss(versionStr.c_str());
-            for (int i = 0; i < partCount; ++i)
+            for (size_t i = 0; i < partCount; ++i)
             {
-                iss >> result.m_parts[i];
-
-                // remove the dot before the next iteration
-                char throwaway;
-                iss >> throwaway;
-                if (throwaway != VERSION_SEPARATOR_CHAR)
+                if (!(iss >> result.m_parts[i]))
                 {
                     return AZ::Failure(AZStd::string::format(
                         "Failed to parse invalid version string \"%s\". "
-                        "Unexpected separator character encountered. "
-                        "Expected: \"%d\", got: \"%d\""
-                        , versionStr.c_str(), VERSION_SEPARATOR_CHAR, throwaway));
+                        "Expected an unsigned integer for part %zu."
+                        , versionStr.c_str(), i));
+                }
+
+                // remove the dot before the next iteration
+                if (i + 1 < partCount)
+                {
+                    char separator{};
+                    if (!(iss >> separator) || separator != VERSION_SEPARATOR_CHAR)
+                    {
+                        return AZ::Failure(AZStd::string::format(
+                            "Failed to parse invalid version string \"%s\". "
+                            "Unexpected separator character encountered. "
+                            "Expected: \"%d\", got: \"%d\""
+                            , versionStr.c_str(), VERSION_SEPARATOR_CHAR, separator));
+                    }
                 }
             }
 
@@ -140,7 +148,11 @@ namespace AZ
             {
                 if (a.m_parts[i] != b.m_parts[i])
                 {
-                    return static_cast<int>(a.m_parts[i]) - static_cast<int>(b.m_parts[i]);
+                    if (a.m_parts[i] < b.m_parts[i])
+                    {
+                        return -1;
+                    }
+                    return 1;
                 }
             }
 

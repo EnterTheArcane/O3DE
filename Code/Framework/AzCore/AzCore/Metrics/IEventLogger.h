@@ -295,7 +295,7 @@ namespace AZ::Metrics
         : DurationArgs
     {
         //! Specifies the duration of the event in microseconds
-        AZStd::chrono::microseconds m_dur;
+        AZStd::chrono::microseconds m_dur{};
 
         //! (Optional) Specifies the thread clock duration of the event in microseconds
         AZStd::optional<AZStd::chrono::microseconds> m_tdur;

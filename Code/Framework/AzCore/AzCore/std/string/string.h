@@ -1268,8 +1268,25 @@ namespace AZStd
                 count = size() - offset;    // trim count to size
             }
             const_pointer data = m_storage.first().GetData();
-            const int comparison = Traits::compare(data + offset, ptr, count < ptrCount ? count : ptrCount);
-            return comparison != 0 ? comparison : count < ptrCount ? -1 : count == ptrCount ? 0 : +1;
+            size_type compareCount = count;
+            if (ptrCount < compareCount)
+            {
+                compareCount = ptrCount;
+            }
+            const int comparison = Traits::compare(data + offset, ptr, compareCount);
+            if (comparison != 0)
+            {
+                return comparison;
+            }
+            if (count < ptrCount)
+            {
+                return -1;
+            }
+            if (count > ptrCount)
+            {
+                return 1;
+            }
+            return 0;
         }
 
         // starts_with

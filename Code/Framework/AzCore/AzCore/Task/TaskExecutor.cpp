@@ -400,7 +400,7 @@ namespace AZ
             m_workers[i].~TaskWorker();
         }
 
-        azfree(m_workers);
+        azfree(m_workers, AZ::SystemAllocator, m_threadCount * sizeof(Internal::TaskWorker));
     }
 
     Internal::TaskWorker* TaskExecutor::GetTaskWorker()

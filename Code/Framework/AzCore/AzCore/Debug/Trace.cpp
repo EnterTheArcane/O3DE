@@ -50,6 +50,18 @@ namespace AZ::Debug
         // its also important that this is inside the cpp file, so that its only in the trace.cpp module and not the header shared by everyone.
         static AZ_THREAD_LOCAL bool g_alreadyHandlingAssertOrFatal = false;
         AZ_THREAD_LOCAL bool g_suppressEBusCalls = false; // used when it would be dangerous to use ebus broadcasts.
+
+        static size_t FormatMessage(char* message, size_t messageCapacity, const char* format, va_list args)
+        {
+            const int result = azvsnprintf(message, messageCapacity, format, args);
+            size_t terminatorIndex{};
+            if (result >= 0)
+            {
+                terminatorIndex = AZStd::min(static_cast<size_t>(result), messageCapacity - 1);
+            }
+            message[terminatorIndex] = '\0';
+            return terminatorIndex;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -334,7 +346,7 @@ namespace AZ::Debug
 
         va_list mark;
         va_start(mark, format);
-        azvsnprintf(message, g_maxMessageLength - 1, format, mark); // -1 to make room for the "/n" that will be appended below
+        const size_t messageLength = FormatMessage(message, g_maxMessageLength - 1, format, mark); // -1 to make room for the "/n" that will be appended below
         va_end(mark);
 
         TraceMessageResult result;
@@ -358,7 +370,8 @@ namespace AZ::Debug
             Output(g_dbgSystemWnd, "\n==================================================================\n");
             azsnprintf(header, g_maxMessageLength, "Trace::Assert\n %s(%d): (%tu) '%s'\n", fileName, line, (uintptr_t)(AZStd::this_thread::get_id().m_id), funcName);
             Output(g_dbgSystemWnd, header);
-            azstrcat(message, g_maxMessageLength, "\n");
+            message[messageLength] = '\n';
+            message[messageLength + 1] = '\0';
             Output(g_dbgSystemWnd, message);
 
             TraceMessageBus::BroadcastResult(result, &TraceMessageBus::Events::OnAssert, message);
@@ -468,7 +481,7 @@ namespace AZ::Debug
 
         va_list mark;
         va_start(mark, format);
-        azvsnprintf(message, g_maxMessageLength - 1, format, mark); // -1 to make room for the "/n" that will be appended below
+        const size_t messageLength = FormatMessage(message, g_maxMessageLength - 1, format, mark); // -1 to make room for the "/n" that will be appended below
         va_end(mark);
 
         TraceMessageResult result;
@@ -482,7 +495,8 @@ namespace AZ::Debug
         Output(window, "\n==================================================================\n");
         azsnprintf(header, g_maxMessageLength, "Trace::Error\n %s(%d): '%s'\n", fileName, line, funcName);
         Output(window, header);
-        azstrcat(message, g_maxMessageLength, "\n");
+        message[messageLength] = '\n';
+        message[messageLength + 1] = '\0';
         Output(window, message);
 
         TraceMessageBus::BroadcastResult(result, &TraceMessageBus::Events::OnError, window, message);
@@ -511,7 +525,7 @@ namespace AZ::Debug
 
         va_list mark;
         va_start(mark, format);
-        azvsnprintf(message, g_maxMessageLength - 1, format, mark); // -1 to make room for the "/n" that will be appended below
+        const size_t messageLength = DebugInternal::FormatMessage(message, g_maxMessageLength - 1, format, mark); // -1 to make room for the "/n" that will be appended below
         va_end(mark);
 
         TraceMessageResult result;
@@ -524,7 +538,8 @@ namespace AZ::Debug
         Output(window, "\n==================================================================\n");
         azsnprintf(header, g_maxMessageLength, "Trace::Warning\n %s(%d): '%s'\n", fileName, line, funcName);
         Output(window, header);
-        azstrcat(message, g_maxMessageLength, "\n");
+        message[messageLength] = '\n';
+        message[messageLength + 1] = '\0';
         Output(window, message);
 
         TraceMessageBus::BroadcastResult(result, &TraceMessageBus::Events::OnWarning, window, message);
@@ -546,7 +561,7 @@ namespace AZ::Debug
 
         va_list mark;
         va_start(mark, format);
-        azvsnprintf(message, g_maxMessageLength, format, mark);
+        DebugInternal::FormatMessage(message, g_maxMessageLength, format, mark);
         va_end(mark);
 
         TraceMessageResult result;

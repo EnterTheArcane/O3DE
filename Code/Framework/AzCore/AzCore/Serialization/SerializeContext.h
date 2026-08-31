@@ -2243,9 +2243,21 @@ namespace AZ
         void Cleanup();
 
     private:
+        struct GenericClassInfoAllocation
+        {
+            size_t m_size;
+            size_t m_alignment;
+        };
+        using GenericClassInfoAllocationMap = AZStd::unordered_map<AZ::GenericClassInfo*, GenericClassInfoAllocation>;
+
+        void AddGenericClassInfo(AZ::GenericClassInfo* genericClassInfo, size_t size, size_t alignment);
+        static GenericClassInfoAllocationMap& GetGenericClassInfoAllocations();
+
         GenericInfoModuleMap m_moduleLocalGenericClassInfos;
         using SerializeContextSet = AZStd::unordered_set<SerializeContext*>;
         SerializeContextSet m_serializeContextSet;
+
+        friend AZCORE_API GlobalGenericClassInfo& GetGlobalSerializeContextModule();
     };
 
     template<typename T>
@@ -2264,7 +2276,7 @@ namespace AZ
         auto genericClassInfo = azcreate(GenericClassInfoType, ());
         if (genericClassInfo)
         {
-            AddGenericClassInfo(genericClassInfo);
+            AddGenericClassInfo(genericClassInfo, sizeof(GenericClassInfoType), alignof(GenericClassInfoType));
         }
         return genericClassInfo;
     }

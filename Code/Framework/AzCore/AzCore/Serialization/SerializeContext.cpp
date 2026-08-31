@@ -2327,9 +2327,31 @@ namespace AZ
         }
 
         // Cleanup the memory for the GenericClassInfo objects.
+        GenericClassInfoAllocationMap& genericClassInfoAllocations = GetGenericClassInfoAllocations();
         for (const auto& [specializedTypeId, genericClassInfo] : genericClassInfoContainer)
         {
-            azdestroy(genericClassInfo);
+            const auto allocationIt = genericClassInfoAllocations.find(genericClassInfo);
+            if (allocationIt != genericClassInfoAllocations.end())
+            {
+                const GenericClassInfoAllocation allocation = allocationIt->second;
+                genericClassInfoAllocations.erase(allocationIt);
+                genericClassInfo->~GenericClassInfo();
+                AZ::AllocatorInstance<AZ::SystemAllocator>::Get().deallocate(
+                    genericClassInfo, allocation.m_size, allocation.m_alignment);
+            }
+            else
+            {
+                // Preserve support for callers of the public AddGenericClassInfo API.
+                // Generic class infos created through CreateGenericClassInfo use the
+                // exact allocation metadata above.
+                azdestroy(genericClassInfo);
+            }
+        }
+        if (genericClassInfoAllocations.empty())
+        {
+            // Do not retain registry buckets across cleanup. Leak-detection fixtures
+            // expect module generic class-info cleanup to release all related memory.
+            genericClassInfoAllocations.rehash(0);
         }
     }
 
@@ -2360,6 +2382,23 @@ namespace AZ
         m_moduleLocalGenericClassInfos.emplace(genericClassInfo->GetSpecializedTypeId(), genericClassInfo);
     }
 
+    void SerializeContext::GlobalGenericClassInfo::AddGenericClassInfo(
+        AZ::GenericClassInfo* genericClassInfo, size_t size, size_t alignment)
+    {
+        AddGenericClassInfo(genericClassInfo);
+        if (genericClassInfo)
+        {
+            GetGenericClassInfoAllocations().emplace(genericClassInfo, GenericClassInfoAllocation{ size, alignment });
+        }
+    }
+
+    SerializeContext::GlobalGenericClassInfo::GenericClassInfoAllocationMap&
+    SerializeContext::GlobalGenericClassInfo::GetGenericClassInfoAllocations()
+    {
+        static GenericClassInfoAllocationMap genericClassInfoAllocations;
+        return genericClassInfoAllocations;
+    }
+
     void SerializeContext::GlobalGenericClassInfo::RemoveGenericClassInfo(const AZ::TypeId& genericTypeId)
     {
         if (genericTypeId.IsNull())
@@ -2371,6 +2410,12 @@ namespace AZ
         auto genericClassInfoFoundIt = m_moduleLocalGenericClassInfos.find(genericTypeId);
         if (genericClassInfoFoundIt != m_moduleLocalGenericClassInfos.end())
         {
+            GenericClassInfoAllocationMap& genericClassInfoAllocations = GetGenericClassInfoAllocations();
+            genericClassInfoAllocations.erase(genericClassInfoFoundIt->second);
+            if (genericClassInfoAllocations.empty())
+            {
+                genericClassInfoAllocations.rehash(0);
+            }
             m_moduleLocalGenericClassInfos.erase(genericClassInfoFoundIt);
         }
     }
@@ -2384,6 +2429,9 @@ namespace AZ
     // Take advantage of static variables being unique per dll module to clean up module specific registered classes when the module unloads
     SerializeContext::GlobalGenericClassInfo& GetGlobalSerializeContextModule()
     {
+        // Construct the allocation registry first so it remains alive while the module
+        // cleanup object's destructor releases any remaining generic class infos.
+        SerializeContext::GlobalGenericClassInfo::GetGenericClassInfoAllocations();
         static SerializeContext::GlobalGenericClassInfo s_ModuleCleanupInstance;
         return s_ModuleCleanupInstance;
     }

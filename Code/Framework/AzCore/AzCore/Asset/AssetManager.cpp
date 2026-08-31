@@ -839,7 +839,10 @@ namespace AZ::Data
             bool removeFromHash = asset->IsRegisterReadonlyAndShareable();
             // default creation token implies that the asset was not created by the asset manager and therefore it cannot be in the asset map.
             const int creationToken = asset->m_creationToken.load(AZStd::memory_order_relaxed);
-            removeFromHash = creationToken == s_defaultCreationToken ? false : removeFromHash;
+            if (creationToken == s_defaultCreationToken)
+            {
+                removeFromHash = false;
+            }
 
             ReleaseAsset(asset, asset->GetId(), asset->GetType(), removeFromHash, creationToken);
         }

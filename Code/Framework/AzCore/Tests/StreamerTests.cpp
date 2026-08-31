@@ -23,6 +23,12 @@
 #include <AzCore/Task/TaskGraphSystemComponent.h>
 #include <AzTest/GemTestEnvironment.h>
 
+#if defined(__has_feature)
+#   if __has_feature(memory_sanitizer)
+#       define AZCORE_STREAMER_TEST_MEMORY_SANITIZER
+#   endif
+#endif
+
 namespace AZ::IO
 {
     namespace Utils
@@ -476,7 +482,11 @@ namespace AZ::IO
     // Reads multiple small pieces to make sure that the cache is hit, seeded and copied properly.
     TYPED_TEST_P(StreamerTest, Read_ReadMultiplePieces_AllReadRequestWereSuccessful)
     {
+#if defined(AZCORE_STREAMER_TEST_MEMORY_SANITIZER)
+        constexpr size_t fileSize = 128_kib;
+#else
         constexpr size_t fileSize = 2_mib;
+#endif
         // Deliberately not taking a multiple of the file size so at least one read will have a partial cache hit.
 #if defined(AZ_DEBUG_BUILD)
         constexpr size_t bufferSize = 4800;
@@ -508,7 +518,11 @@ namespace AZ::IO
     // Same as the previous test, but all requests are submitted in a single batch.
     TYPED_TEST_P(StreamerTest, Read_ReadMultiplePiecesWithBatch_AllReadRequestWereSuccessful)
     {
+#if defined(AZCORE_STREAMER_TEST_MEMORY_SANITIZER)
+        constexpr size_t fileSize = 128_kib;
+#else
         constexpr size_t fileSize = 2_mib;
+#endif
         // Deliberately not taking a multiple of the file size so at least one read will have a partial cache hit.
 #if defined(AZ_DEBUG_BUILD)
         constexpr size_t bufferSize = 4800 * sizeof(u32);
@@ -538,7 +552,9 @@ namespace AZ::IO
             }
         };
 
-        u8* buffer = new u8[fileSize];
+        // Keep the failure path defined if a read times out or completes only
+        // partially. The test assertions will still report the failed read.
+        u8* buffer = new u8[fileSize]{};
         size_t block = 0;
         size_t fileRemainder = fileSize;
         size_t requestIndex = 0;
@@ -668,5 +684,7 @@ namespace AZ::IO
 
     INSTANTIATE_TYPED_TEST_SUITE_P(StreamerTests, StreamerTest, StreamerTestCases);
 #endif // AZ_TRAIT_DISABLE_FAILED_STREAMER_TESTS
+
+#undef AZCORE_STREAMER_TEST_MEMORY_SANITIZER
 
 } // namespace AZ::IO
