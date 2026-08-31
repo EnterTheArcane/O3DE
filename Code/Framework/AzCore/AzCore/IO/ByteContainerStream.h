@@ -267,6 +267,11 @@ namespace AZ::IO
     template<typename T>
     SizeType ByteContainerStream<ContainerType>::Write(SizeType bytes, const void* iBuffer, typename T::type)
     {
+        if (iBuffer == nullptr)
+        {
+            return 0;
+        }
+
         size_t bytesToCopy = aznumeric_cast<size_t>(PrepareToWrite(bytes));
         memcpy(m_buffer->data() + m_pos, iBuffer, bytesToCopy);
         m_pos += bytesToCopy;

@@ -51,6 +51,12 @@ namespace AZ::Json
         void* Realloc(void* ptr, size_t originalSize, size_t newSize)
         {
             auto originalPtr = reinterpret_cast<AZStd::byte*>(ptr);
+            if (originalPtr == nullptr && originalSize != 0)
+            {
+                AZ_Assert(false, "Rapidjson stack allocator cannot reallocate a null pointer with a non-zero original size.");
+                return nullptr;
+            }
+
             // Can always resize downwards
             if (newSize <= originalSize)
             {
@@ -59,7 +65,7 @@ namespace AZ::Json
 
             // if the (originalPtr + originalSize) is the last allocated block(i.e the offset of free memory)
             // Then re-use the originalPtr address for the new allocation
-            if (originalPtr + originalSize == m_freeOffset)
+            if (originalPtr != nullptr && originalPtr + originalSize == m_freeOffset)
             {
                 if (originalPtr + newSize > m_buffer.data() + m_buffer.size())
                 {
@@ -76,7 +82,7 @@ namespace AZ::Json
 
             // fallback to call Malloc in this case, followed by a memcpy if malloc succeeds
             void* newPtr = Malloc(newSize);
-            if (newPtr != nullptr)
+            if (newPtr != nullptr && originalSize != 0)
             {
                 // memcpy over the old data to the new buffer
                 ::memcpy(newPtr, originalPtr, originalSize);

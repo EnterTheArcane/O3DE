@@ -58,7 +58,7 @@ namespace AZStd
         struct stamped_node_ptr
         {
             node_type* m_node;
-            unsigned int m_stamp;
+            AZStd::size_t m_stamp;
         };
 
         atomic<stamped_node_ptr> m_top;
@@ -71,7 +71,7 @@ namespace AZStd
     template<typename T, typename Hook>
     inline lock_free_intrusive_stamped_stack<T, Hook>::lock_free_intrusive_stamped_stack()
     {
-        stamped_node_ptr nodeStamp;
+        stamped_node_ptr nodeStamp{};
         nodeStamp.m_node = nullptr;
         nodeStamp.m_stamp = 0;
         m_top.store(nodeStamp, memory_order_release);
@@ -96,7 +96,7 @@ namespace AZStd
     template<typename T, typename Hook>
     inline void lock_free_intrusive_stamped_stack<T, Hook>::push(const T& value)
     {
-        stamped_node_ptr newTop;
+        stamped_node_ptr newTop{};
         newTop.m_node = const_cast<pointer>(&value);
         hook_node_type* newHookNode = Hook::to_node_ptr(newTop.m_node);
 #ifdef AZ_DEBUG_BUILD
@@ -131,7 +131,7 @@ namespace AZStd
                 return nullptr;
             }
             hook_node_type* oldHookTop = Hook::to_node_ptr(oldTop.m_node);
-            stamped_node_ptr newTop;
+            stamped_node_ptr newTop{};
             newTop.m_node = oldHookTop->m_next;
             newTop.m_stamp = oldTop.m_stamp + 1;
             if (m_top.compare_exchange_weak(oldTop, newTop, memory_order_acq_rel, memory_order_acquire))
@@ -151,4 +151,3 @@ namespace AZStd
         return (m_top.load(memory_order_acquire).m_node == nullptr);
     }
 }
-

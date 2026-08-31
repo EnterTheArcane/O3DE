@@ -77,6 +77,47 @@ assertion result, and the intentionally heavy AssetContainer stress case reached
 adjustment, the exact 45-test Vector3 filter and its two affected benchmarks were rebuilt and
 rerun clean under strict MSan.
 
+## Linux x86-64 follow-up
+
+The same Ubuntu 24.04 image was rebuilt for `linux/amd64` and executed through Docker
+Desktop's Rosetta support on the Apple Silicon host. Clang reported target
+`x86_64-pc-linux-gnu`, so these results exercise x86-64 code generation rather than the host's
+arm64 paths.
+
+The Profile strict-UBSan main pass selected and passed 11,470 tests; sandbox passed 3/3 on
+three repetitions, and the shortened complete benchmark registry finished without a report.
+ASan/LSan plus strict UBSan passed 11,463 selected main tests, sandbox 3/3 on three
+repetitions, and the benchmark registry. The seven omitted main tests are the same intentional
+allocator/death cases isolated from the shared ASan process on macOS. MSan with origin
+tracking passed 11,470 selected main tests, the benchmark registry, and sandbox 3/3 on ten
+consecutive repetitions after remediation. Ordinary architecture-specific exact-estimate and
+long-executable-path exclusions were recorded separately from sanitizer results.
+
+The x86-64 passes reproduced five issues that the arm64 passes did not expose, or made easier
+to diagnose:
+
+- RapidJSON allocator adaptation performed null pointer arithmetic and passed a null source
+  to a zero-length `memcpy`;
+- `ByteContainerStream::Write` passed a null source to a zero-length `memcpy`;
+- the profiler proxy registered and unregistered an `AZ::Interface` specialization from
+  different dynamic objects;
+- four-byte stamp fields left poisoned x86-64 tail padding in lock-free atomic structures;
+- an asset sandbox listener published its interface from a base-class constructor before the
+  derived object and synchronization state were fully alive.
+
+The fixes use explicit null boundaries, same-module out-of-line proxy lifetime operations,
+native-width stamps, value initialization, and explicit register/unregister ordering. Each
+issue has focused regression coverage. The complete sanitizer sweeps first passed with the
+strictest guard forms; after the final stream-guard code-generation refinement, all three
+variants were rebuilt from the same source and the 11 focused regression tests were replayed
+with halt-on-error enabled.
+
+An x86-64 TSan smoke process could not start under Rosetta, including with Docker's seccomp
+profile disabled. Rosetta occupies `0x800000000000`, colliding with compiler-rt's fixed TSan
+shadow mapping. This is an execution-environment limitation, not a clean or failed AzCore
+result. The existing native macOS arm64 TSan gate remains clean; x86-64 TSan still requires
+native x86-64 Linux or a VM/emulator with a compatible address layout.
+
 ## Static results
 
 The Clang Static Analyzer ran the stable `core.uninitialized`, `cplusplus.InnerPointer`,
@@ -119,7 +160,7 @@ non-unity layout. Final `libAzCore.dylib` section sizes were:
 | Section | Baseline | Final | Delta |
 |---|---:|---:|---:|
 | `__TEXT` | 13,156,352 | 13,352,960 | +196,608 (+1.49%) |
-| `__text` | 11,102,244 | 11,307,876 | +205,632 (+1.85%) |
+| `__text` | 11,102,244 | 11,308,452 | +206,208 (+1.86%) |
 | `__data` | 511,244 | 391,724 | -119,520 (-23.38%) |
 | `__bss` | 92,720 | 92,864 | +144 (+0.16%) |
 
@@ -156,7 +197,7 @@ before that follow-up:
 | Section | Follow-up baseline | Final | Delta |
 |---|---:|---:|---:|
 | `__TEXT` | 13,385,728 | 13,352,960 | -32,768 (-0.24%) |
-| `__text` | 11,336,996 | 11,307,876 | -29,120 (-0.26%) |
+| `__text` | 11,336,996 | 11,308,452 | -28,544 (-0.25%) |
 | `__data` | 391,724 | 391,724 | 0 |
 | `__bss` | 92,736 | 92,864 | +128 (+0.14%) |
 
@@ -188,6 +229,32 @@ The equality result is retained in the record because discarding it would hide a
 measurement. It does not correspond to added production instructions or modeled throughput:
 the final inner loop is instruction-for-instruction identical and the adjacent comparison
 benchmark using the same inline reducer remains stable.
+
+The source checkpoint immediately before the x86-64 remediation was preserved as another
+clean macOS arm64 Clang 23 Profile non-unity artifact. The final production library changed
+as follows:
+
+| Section | Pre-x86-remediation | Final | Delta |
+|---|---:|---:|---:|
+| `__TEXT` | 13,352,960 | 13,352,960 | 0 |
+| `__text` | 11,307,876 | 11,308,452 | +576 (+0.0051%) |
+| `__data` | 391,724 | 391,724 | 0 |
+| `__bss` | 92,864 | 92,864 | 0 |
+
+The stream null boundary adds one cold-taken branch. Four measured template instantiations
+grew by 4, 4, 8, and 8 bytes respectively, with the largest relative change 3.33%. A diagnostic
+guard was rejected during measurement because it added 60--96 bytes per instantiation; the
+accepted expression has no logging or formatting path.
+
+The lock-free stamp change was also compiled into identical unsanitized x86-64 wrapper
+objects using the preserved and final headers. Stamped push shrank from 285 to 237 bytes
+(-16.8%) and stamped pop from 226 to 205 bytes (-9.3%); empty remained 22 bytes. Total wrapper
+text shrank from 750 to 662 bytes (-11.7%), while instruction counts fell from 80 to 72 for
+push and from 70 to 61 for pop. On arm64, stamped-stack pop retained the same instruction
+layout with the intended native-width add, and stamped-queue pop shrank by 16 bytes. The
+profiler constructor/destructor move affects only cold setup and teardown. No changed hot path
+grew by more than eight bytes or showed a modeled throughput regression; the stamped paths
+became materially smaller.
 
 ## Acceptance scope
 

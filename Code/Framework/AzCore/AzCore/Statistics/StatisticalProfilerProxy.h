@@ -110,16 +110,8 @@ namespace AZ::Statistics
 
         friend class TimedScope;
 
-        StatisticalProfilerProxy()
-        {
-            AZ::Interface<StatisticalProfilerProxy>::Register(this);
-        }
-
-        virtual ~StatisticalProfilerProxy()
-        {
-            TimedScope::ClearCachedProxy();
-            AZ::Interface<StatisticalProfilerProxy>::Unregister(this);
-        }
+        StatisticalProfilerProxy();
+        virtual ~StatisticalProfilerProxy();
 
         // Note that you have to delete these for safety reasons, you will trip a static_assert if you do not
         StatisticalProfilerProxy(StatisticalProfilerProxy&&) = delete;

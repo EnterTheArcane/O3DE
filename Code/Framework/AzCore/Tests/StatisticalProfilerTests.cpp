@@ -237,6 +237,18 @@ namespace UnitTest
 
     // -- AZ::Statistics::StatisticalProfilerProxy tests --
 
+    TEST_F(AllocatorsWithTraceFixture, StatisticalProfilerProxy_DestructionUnregistersInterface)
+    {
+        using ProxyType = AZ::Statistics::StatisticalProfilerProxy;
+
+        EXPECT_EQ(nullptr, AZ::Interface<ProxyType>::Get());
+        {
+            ProxyType profilerProxy;
+            EXPECT_EQ(&profilerProxy, AZ::Interface<ProxyType>::Get());
+        }
+        EXPECT_EQ(nullptr, AZ::Interface<ProxyType>::Get());
+    }
+
     class StatisticalProfilerProxyFixture
         : public AllocatorsWithTraceFixture
     {

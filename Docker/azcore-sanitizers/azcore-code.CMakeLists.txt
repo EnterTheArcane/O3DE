@@ -7,6 +7,14 @@
 # test support library, and the executable used to load the test module.
 add_subdirectory(Framework/AzCore)
 
+# Clang 23 diagnoses libstdc++ 13's compatibility implementation of std::bind because it
+# retains the deprecated std::result_of trait. AzCore intentionally exercises that legacy
+# interface, so keep the diagnostic visible without allowing a system-header detail to stop
+# the sanitizer test build before the test can run.
+if(TARGET AzCore.Tests AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(AzCore.Tests PRIVATE -Wno-error=deprecated-declarations)
+endif()
+
 if(LY_CLANG_SANITIZERS MATCHES "(^|,)memory(,|$)")
     if(NOT TARGET 3rdParty::Lua OR NOT DEFINED ENV{MSAN_LUA_ROOT})
         message(FATAL_ERROR "The AzCore MSan container requires its instrumented Lua runtime.")

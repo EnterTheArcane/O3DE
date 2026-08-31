@@ -14,15 +14,17 @@ ly_set(PAL_TRAIT_BUILD_HOST_GUI_TOOLS FALSE)
 # MemorySanitizer requires every library in the process to be instrumented. The
 # Linux host tools depend on prebuilt GUI libraries, so keep memory-sanitized
 # builds focused on the engine/runtime and test targets that can be instrumented
-# from source. This also keeps the AzCore MSan pass independent of host tooling.
+# from source. The AzCore-only sanitizer container requests the same focused mode
+# for its other sanitizer passes because its minimal source overlay intentionally
+# omits the host-tool directories.
 set(ly_linux_sanitizer_list "${LY_CLANG_SANITIZERS}")
 string(REPLACE "," ";" ly_linux_sanitizer_list "${ly_linux_sanitizer_list}")
 if(ly_linux_sanitizer_list)
     list(TRANSFORM ly_linux_sanitizer_list STRIP)
 endif()
-if("memory" IN_LIST ly_linux_sanitizer_list)
+if("memory" IN_LIST ly_linux_sanitizer_list OR "$ENV{O3DE_AZCORE_SANITIZER_ONLY}" STREQUAL "1")
     ly_set(PAL_TRAIT_BUILD_HOST_TOOLS FALSE)
-    message(STATUS "Linux host tools disabled for MemorySanitizer instrumentation")
+    message(STATUS "Linux host tools disabled for focused sanitizer instrumentation")
 else()
     ly_set(PAL_TRAIT_BUILD_HOST_TOOLS TRUE)
 endif()

@@ -79,11 +79,26 @@ prepare_source_overlay()
     for source_entry in "${source_dir}"/*
     do
         source_name="${source_entry##*/}"
-        if [[ "${source_name}" == "engine.json" || "${source_name}" == "build" || "${source_name}" == "Code" || "${source_name}" == "Registry" ]]
+        if [[ "${source_name}" == "engine.json" || "${source_name}" == "build" || "${source_name}" == "Code" || "${source_name}" == "Registry" || "${source_name}" == "python" ]]
         then
             continue
         fi
         ln -sfn "${source_entry}" "${cmake_source_dir}/${source_name}"
+    done
+
+    # CMake keys the Python virtual environment to the overlay path. Keep the launcher as
+    # a real file in the overlay so its own path calculation selects that same environment;
+    # a symlink would resolve back to /src and select a different, uninitialized venv.
+    mkdir -p "${cmake_source_dir}/python"
+    for source_entry in "${source_dir}/python"/*
+    do
+        source_name="${source_entry##*/}"
+        if [[ "${source_name}" == "python.sh" ]]
+        then
+            cp -L "${source_entry}" "${cmake_source_dir}/python/${source_name}"
+        else
+            ln -sfn "${source_entry}" "${cmake_source_dir}/python/${source_name}"
+        fi
     done
 
     mkdir -p "${cmake_source_dir}/Code"
@@ -124,7 +139,7 @@ configure()
     # O3DE replaces the normal CMake compiler flags after compiler detection.
     # Supply both interfaces so CMake's initial probes and all generated engine
     # compile commands use the instrumented C++ runtime.
-    cmake -S "${cmake_source_dir}" -B "${build_dir}" -G "Ninja Multi-Config" \
+    O3DE_AZCORE_SANITIZER_ONLY=1 cmake -S "${cmake_source_dir}" -B "${build_dir}" -G "Ninja Multi-Config" \
         -UQT_SKIP_SETUP_DEPLOYMENT \
         -U__pkg_config_checked_libunwind \
         -Ulibunwind_* \
@@ -153,6 +168,7 @@ build()
 prepare_test_environment()
 {
     local runtime_registry="${build_dir}/bin/${configuration}/Registry"
+    local sanitizer_runtime_dir
 
     if [[ ! -x "${build_dir}/bin/${configuration}/AzTestRunner" \
         || ! -f "${build_dir}/bin/${configuration}/libAzCore.Tests.so" ]]
@@ -162,6 +178,8 @@ prepare_test_environment()
     fi
 
     export PATH="/usr/lib/llvm-${LLVM_VERSION}/bin:${PATH}"
+    sanitizer_runtime_dir="$("${CXX}" --print-runtime-dir)"
+    export LD_LIBRARY_PATH="${sanitizer_runtime_dir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
     export MSAN_SYMBOLIZER_PATH="/usr/lib/llvm-${LLVM_VERSION}/bin/llvm-symbolizer"
     export MSAN_OPTIONS="${MSAN_OPTIONS:-halt_on_error=1:exit_code=86:poison_in_dtor=1:symbolize=1}"
 

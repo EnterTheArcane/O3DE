@@ -1,13 +1,14 @@
 # AzCore Linux sanitizer container
 
-This image supplies an Ubuntu 24.04 LTS arm64 environment with LLVM/Clang 23 and
-O3DE's Linux build dependencies. It is intentionally separate from the general O3DE
-installer image in the parent directory.
+This image supplies an Ubuntu 24.04 LTS arm64 or x86-64 environment with LLVM/Clang 23
+and O3DE's Linux build dependencies. It is intentionally separate from the general O3DE
+installer image in the parent directory. Docker's `--platform` selects the target
+architecture; use a distinct image tag, build directory, and third-party cache for each one.
 
 Ubuntu 24.04 is used because O3DE carries a Noble build-node package list and Linux
-arm64 build coverage. LLVM's apt repository also publishes an explicitly versioned
-Clang 23, compiler-rt, and libc++ archive for Noble arm64. Ubuntu 26.04 is newer, but
-its apt.llvm.org versioned archive does not provide the same pinned Clang 23 path, so
+arm64 build coverage. LLVM's apt repository also publishes explicitly versioned Clang 23,
+compiler-rt, and libc++ archives for Noble arm64 and x86-64. Ubuntu 26.04 is newer, but its
+apt.llvm.org versioned archive does not provide the same pinned Clang 23 path, so
 using it would make this historical-toolchain audit depend on the repository's moving
 default packages. The image builds LLVM 23.1.0's libc++, libc++abi, and
 libunwind from source with the upstream `MemoryWithOrigins` configuration and installs
@@ -16,12 +17,13 @@ Ubuntu's uninstrumented libstdc++. It also reproduces O3DE's patched Lua 5.4.4 r
 under MSan because AzCore statically links Lua. An instrumented libunwind and private
 pkg-config file are available for advisory runtime work.
 
-Build the image from the engine root:
+Build the image from the engine root. This example selects x86-64; replace both `amd64`
+occurrences with `arm64` for a native Apple Silicon image:
 
 ```sh
-docker build --platform linux/arm64 \
+docker build --platform linux/amd64 \
     -f Docker/azcore-sanitizers/Dockerfile \
-    -t o3de-azcore-clang23-sanitizers \
+    -t o3de-azcore-clang23-sanitizers-amd64 \
     Docker/azcore-sanitizers
 ```
 
@@ -29,13 +31,28 @@ Use separate build and Linux third-party cache directories. Do not reuse macOS C
 artifacts or third-party packages:
 
 ```sh
-mkdir -p build/azcore_linux_msan build/azcore_linux_thirdparty
-docker run --rm --platform linux/arm64 \
+mkdir -p build/azcore_linux_amd64_msan build/azcore_linux_amd64_thirdparty
+docker run --rm --platform linux/amd64 \
     --mount type=bind,src="$PWD",dst=/src \
-    --mount type=bind,src="$PWD/build/azcore_linux_msan",dst=/work/build \
-    --mount type=bind,src="$PWD/build/azcore_linux_thirdparty",dst=/root/.o3de \
-    o3de-azcore-clang23-sanitizers all
+    --mount type=bind,src="$PWD/build/azcore_linux_amd64_msan",dst=/work/build \
+    --mount type=bind,src="$PWD/build/azcore_linux_amd64_thirdparty",dst=/root/.o3de \
+    o3de-azcore-clang23-sanitizers-amd64 all
 ```
+
+The image can also run the Linux UBSan and ASan/LSan gates. Mount a fresh build directory
+for each selector and add one of these options to `docker run`:
+
+```sh
+--env LY_CLANG_SANITIZERS=undefined,local-bounds,vptr
+--env LY_CLANG_SANITIZERS=address,undefined,local-bounds,vptr
+```
+
+For a strict final gate, set `UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1:symbolize=1`
+and set `ASAN_OPTIONS` to include
+`detect_leaks=1:detect_stack_use_after_return=1:strict_string_checks=1:check_initialization_order=1:detect_odr_violation=2:halt_on_error=1`.
+Address-enabled builds already compile with use-after-scope instrumentation. The test runner
+asks LSan to scan while the test module is still loaded, before unloading it, so reports retain
+complete symbols and loader teardown does not hide module-owned leaks.
 
 The complete allocator benchmark set deliberately reaches multi-gigabyte working sets; give
 Docker Desktop at least 10 GiB of memory or run benchmark filters in separate processes. The
@@ -62,14 +79,20 @@ configuration. Although the generator is multi-config, separate directories keep
 artifacts and logs unambiguous:
 
 ```sh
-mkdir -p build/azcore_linux_msan_debug
-docker run --rm --platform linux/arm64 \
+mkdir -p build/azcore_linux_amd64_msan_debug
+docker run --rm --platform linux/amd64 \
     --mount type=bind,src="$PWD",dst=/src \
-    --mount type=bind,src="$PWD/build/azcore_linux_msan_debug",dst=/work/build \
-    --mount type=bind,src="$PWD/build/azcore_linux_thirdparty",dst=/root/.o3de \
+    --mount type=bind,src="$PWD/build/azcore_linux_amd64_msan_debug",dst=/work/build \
+    --mount type=bind,src="$PWD/build/azcore_linux_amd64_thirdparty",dst=/root/.o3de \
     --env O3DE_CONFIGURATION=debug \
-    o3de-azcore-clang23-sanitizers all
+    o3de-azcore-clang23-sanitizers-amd64 all
 ```
+
+On an Apple Silicon host, Docker Desktop can run the x86-64 image through Rosetta. UBSan,
+ASan/LSan, and MSan work in that configuration. TSan does not: Rosetta is mapped at
+`0x800000000000`, which collides with compiler-rt's fixed x86-64 TSan shadow layout. Disabling
+Docker's seccomp profile does not change that mapping. Run the x86-64 TSan gate on native
+x86-64 Linux hardware or a VM/emulator whose address layout is compatible with TSan.
 
 For the final gate, run the main suite in isolated GoogleTest shards if needed, then replay
 any shard-order failures unsharded. Enumerate disabled tests with `--gtest_list_tests` and run

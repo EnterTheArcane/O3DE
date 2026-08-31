@@ -165,6 +165,17 @@ namespace AZ::IO::Test
         EXPECT_EQ(0, byteContainerStream.GetCurPos());
     }
 
+    TEST_F(ByteContainerStreamTest, WriteZeroBytesFromNullBufferDoesNotModifyStream)
+    {
+        using ContainerType = AZStd::vector<AZStd::byte>;
+        ContainerType byteBuffer;
+        AZ::IO::ByteContainerStream byteContainerStream(&byteBuffer);
+
+        EXPECT_EQ(0, byteContainerStream.Write(0, nullptr));
+        EXPECT_EQ(0, byteContainerStream.GetCurPos());
+        EXPECT_EQ(0, byteContainerStream.GetLength());
+    }
+
     TEST_F(ByteContainerStreamTest, Open_OnAlreadyOpenStream_Fails)
     {
         using ContainerType = AZStd::vector<AZStd::byte>;

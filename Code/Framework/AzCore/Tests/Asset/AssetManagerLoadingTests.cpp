@@ -3481,12 +3481,21 @@ namespace UnitTest
     };
 
     // Test class to listen to interface event and signal a semaphore when one occurs
-    class ContainerListener : public AZ::Interface<IContainerEvents>::Registrar
+    class ContainerListener : public IContainerEvents
     {
     public:
         explicit ContainerListener(AZStd::binary_semaphore& signal)
             : m_signal(signal)
         {
+            // Publish the listener only after the complete derived object and its state exist.
+            // The Registrar base publishes from its own constructor, which allows the other
+            // test thread to call CreatingContainer while virtual dispatch still sees the base.
+            AZ::Interface<IContainerEvents>::Register(this);
+        }
+
+        ~ContainerListener() override
+        {
+            AZ::Interface<IContainerEvents>::Unregister(this);
         }
 
     private:

@@ -7,6 +7,7 @@
  */
 
 #include <AzCore/JSON/rapidjson.h>
+#include <AzCore/JSON/RapidjsonAllocatorAdapter.h>
 #include <AzCore/JSON/document.h>     // rapidjson's DOM-style API
 #include <AzCore/JSON/prettywriter.h> // for stringify JSON
 #include <AzCore/UnitTest/TestTypes.h>
@@ -156,5 +157,14 @@ namespace UnitTest
     TEST_F(RapidJSON, Test)
     {
         run();
+    }
+
+    TEST_F(RapidJSON, StackAllocatorReallocNullPointerWithZeroOriginalSizeAllocates)
+    {
+        AZ::Json::RapidjsonStackAllocator<64> allocator;
+
+        void* allocation = allocator.Realloc(nullptr, 0, 16);
+
+        EXPECT_NE(nullptr, allocation);
     }
 }

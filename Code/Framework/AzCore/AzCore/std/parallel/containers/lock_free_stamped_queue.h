@@ -22,7 +22,7 @@ namespace AZStd
         struct lock_free_stamped_node_ptr
         {
             alignas(8) struct lock_free_stamped_queue_node<T>* m_node;
-            unsigned int m_stamp;
+            AZStd::size_t m_stamp;
         };
 
         template<typename T>
@@ -92,11 +92,11 @@ namespace AZStd
         AZ_Assert(m_allocator.is_stale_read_allowed(), "Allocator for lock_free_queue must allow stale reads");
 
         node_type* sentinel = create_node();
-        stamped_node_ptr nullStamp;
+        stamped_node_ptr nullStamp{};
         nullStamp.m_node = nullptr;
         nullStamp.m_stamp = 0;
         sentinel->m_next.store(nullStamp, memory_order_release);
-        stamped_node_ptr nodeStamp;
+        stamped_node_ptr nodeStamp{};
         nodeStamp.m_node = sentinel;
         nodeStamp.m_stamp = 0;
         m_head.store(nodeStamp, memory_order_release);
@@ -120,10 +120,10 @@ namespace AZStd
     template<typename T, typename Allocator>
     inline void lock_free_stamped_queue<T, Allocator>::push(const T& value)
     {
-        stamped_node_ptr nullStamp;
+        stamped_node_ptr nullStamp{};
         nullStamp.m_node = nullptr;
         nullStamp.m_stamp = 0;
-        stamped_node_ptr newNodeStamp;
+        stamped_node_ptr newNodeStamp{};
         newNodeStamp.m_node = create_node();
         newNodeStamp.m_node->m_value = value;
         newNodeStamp.m_node->m_next.store(nullStamp, memory_order_release);
@@ -218,4 +218,3 @@ namespace AZStd
         m_allocator.deallocate(node, sizeof(node_type), alignment_of_v<node_type>);
     }
 }
-

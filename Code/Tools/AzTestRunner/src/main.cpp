@@ -9,6 +9,17 @@
 #include <AzTest/AzTest.h>
 #include <AzTest/Platform.h>
 
+#if defined(__has_feature)
+#   if __has_feature(address_sanitizer)
+#       include <sanitizer/lsan_interface.h>
+#       define AZ_TEST_RUNNER_HAS_LEAK_SANITIZER 1
+#   endif
+#endif
+
+#if !defined(AZ_TEST_RUNNER_HAS_LEAK_SANITIZER)
+#   define AZ_TEST_RUNNER_HAS_LEAK_SANITIZER 0
+#endif
+
 #include "aztestrunner.h"
 
 #include <fstream>
@@ -229,6 +240,12 @@ namespace AzTestRunner
         {
             std::cout << "Retry command: " << std::endl << argv[0] << " " << lib << " " << symbol << std::endl;
         }
+
+#if AZ_TEST_RUNNER_HAS_LEAK_SANITIZER
+        // Run LSan while the dynamically loaded test module is still present. Otherwise its
+        // symbols and process-lifetime roots disappear at dlclose before LSan's exit-time scan.
+        __lsan_do_leak_check();
+#endif
 
         // unload and reset the module here, because it needs to release resources that were used / activated in
         // system allocator / etc.
