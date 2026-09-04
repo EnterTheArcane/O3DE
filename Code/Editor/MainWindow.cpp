@@ -83,7 +83,6 @@
 #include "Commands/CommandManager.h"
 #include "SettingsManagerDialog.h"
 
-#include "TrackView/TrackViewDialog.h"
 #include "ErrorReportDialog.h"
 
 #include "Dialogs/PythonScriptsDialog.h"
@@ -676,7 +675,6 @@ void MainWindow::RegisterStdViewClasses()
 {
     AzAssetBrowserWindow::createListenerForShowAssetEditorEvent(this);
 
-    CTrackViewDialog::RegisterViewClass();
     CErrorReportDialog::RegisterViewClass();
     CPythonScriptsDialog::RegisterViewClass();
 
@@ -1212,4 +1210,3 @@ namespace AzToolsFramework
         }
     }
 }
-

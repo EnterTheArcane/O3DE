@@ -28,9 +28,10 @@
 #include <AzFramework/API/ApplicationAPI.h>
 
 // AzToolsFramework
+#include <AzToolsFramework/API/EditorLevelNotificationBus.h>
+#include <AzToolsFramework/API/EditorSequenceSystemLifecycle.h>
 #include <AzToolsFramework/ComponentMode/EditorComponentModeBus.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
-#include <AzToolsFramework/API/EditorLevelNotificationBus.h>
 
 // Editor
 #include "Settings.h"
@@ -279,10 +280,9 @@ void CCryEditDoc::Load(TDocMultiArchive& /* arrXmlAr */, const QString& szFilena
 
     GetIEditor()->Notify(eNotify_OnBeginSceneOpen);
 
-    IMovieSystem* movieSystem = AZ::Interface<IMovieSystem>::Get();
-    if (movieSystem)
+    if (auto* sequenceSystem = AzToolsFramework::IEditorSequenceSystemLifecycle::Get())
     {
-        movieSystem->RemoveAllSequences();
+        sequenceSystem->OnBeginSceneOpen();
     }
 
     {
