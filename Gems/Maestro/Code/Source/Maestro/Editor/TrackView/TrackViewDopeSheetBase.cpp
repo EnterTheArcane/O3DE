@@ -30,11 +30,11 @@
 #include <AzQtComponents/Components/Widgets/ColorPicker.h>
 #include <AzQtComponents/Utilities/Conversions.h>
 
-// CryCommon
-#include <CryCommon/Maestro/Types/AnimNodeType.h>
-#include <CryCommon/Maestro/Types/AnimParamType.h>
-#include <CryCommon/Maestro/Types/AnimValueType.h>
-#include <CryCommon/Maestro/Types/AssetBlendKey.h>
+// Maestro
+#include <Maestro/Types/AnimNodeType.h>
+#include <Maestro/Types/AnimParamType.h>
+#include <Maestro/Types/AnimValueType.h>
+#include <Maestro/Types/AssetBlendKey.h>
 
 // Editor
 #include "Controls/ReflectedPropertyControl/ReflectedPropertyCtrl.h"
