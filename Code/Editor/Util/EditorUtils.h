@@ -10,6 +10,7 @@
 
 // Description : Utility classes used by Editor.
 
+#include <SandboxAPI.h>
 
 #include <CryCommon/platform.h>
 #include <IXml.h>
@@ -22,7 +23,6 @@
 #include <QGuiApplication>
 #include <QSet>
 
-#include <SandboxAPI.h>
 #include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/Math/Color.h>
 
@@ -320,14 +320,14 @@ class QColor;
 QColor ColorLinearToGamma(const AZ::Color& col);
 AZ::Color ColorGammaToLinear(const QColor& col);
 
-QColor ColorToQColor(uint32 color);
+SANDBOX_API QColor ColorToQColor(uint32 color);
 
 class QCursor;
 class QPixmap;
 
 /*! Collection of Utility MFC functions.
 */
-struct CMFCUtils
+struct SANDBOX_API CMFCUtils
 {
     static QCursor LoadCursor(unsigned int nIDResource, int hotX = -1, int hotY = -1);
 };
